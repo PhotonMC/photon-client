@@ -68,7 +68,7 @@ P20.a/b için renderer tamamlanmasını beklemek gerekmez. P15–P20'de tüm ori
 | **P25 Sunucuya/servise bağlı istemci akışları** | P06–P08, P22–P24 | a: local world oluştur/aç/kapat akışını Pumpkin yetenekleriyle eşle; b: singleplayer pause/LAN/dünya yönetimi; c: Realms ve diğer haricî servis ekran/işlemleri; d: erişilebilirlik/narrator ve platform özellikleri | Akış durumu ve UI'nin yanında sürecin gerçek sonucu ölçülür. Sunucu yazılmaz; Pumpkin veya servis karşılamıyorsa fark kapanmış sayılmaz. Bu bölüm kapsamdan çıkarılmış değil, entegrasyon/ürün kararı gereken bölümdür. |
 | **P26 Birleşik eşitlik ve dağıtım doğrulaması** | İlgili tüm önceki dilimler | a: Java ve Rust'ta aynı kontrollü oturum; b: sabit Pumpkin'de iki istemci senaryosu; c: platform/ayar matrisi ve kapsam açıkları; d: paket içeriği ve dış asset yükleme | Bağlan→chunk→hareket→eylem→envanter→ses/UI→respawn/dimension→yeniden bağlan. Tick/packet/state ve görüntü/ses birlikte karşılaştırılır. Orijinal içerik Git, paket veya executable'a girmemeli. Geçen sınırlı senaryolar tüm oyun için mutlak kanıt olarak sunulmaz. |
 
-P24 kapsam defteri ilgili bölümler geliştikçe doldurulur; en sona bırakılan bir keşif işi değildir. P25'e ait uyumluluk riskleri de ilk bağlantı aşamasından itibaren takip edilir. Hiçbir açık fark kullanıcı adına “önemsiz” sayılarak kapatılmaz.
+P24 kapsam defteri ilgili bölümler geliştikçe doldurulur; en sona bırakılan bir keşif işi değildir. Engelli bölümlerin listesi ve ilk senaryoları [kalan test planındadır](remaining-test-plan.md). P25'e ait uyumluluk riskleri de ilk bağlantı aşamasından itibaren takip edilir. Hiçbir açık fark kullanıcı adına “önemsiz” sayılarak kapatılmaz.
 
 ## İlk çalışma sırası ve mevcut engeller
 

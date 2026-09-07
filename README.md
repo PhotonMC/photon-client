@@ -28,6 +28,8 @@ Mevcut referanslar [yerel veri rehberindeki](docs/reference-data.md) `.data/` al
 - [Vec3 davranış sözleşmesi ve referans testleri](docs/vec3-contract.md)
 - [Direction davranış sözleşmesi ve referans testleri](docs/direction-contract.md)
 - [Koordinat dönüşümleri sözleşmesi ve referans testleri](docs/coords-contract.md)
+- [Random/AABB sözleşmesi ve referans testleri](docs/random-aabb-contract.md)
+- [Kalan bölümler test planı](docs/remaining-test-plan.md)
 - [NBT davranış sözleşmesi ve referans testleri](docs/nbt-contract.md)
 - [NBT doğrulaması](docs/nbt-parity.md)
 - [UTF-8 doğrulaması](docs/utf8-parity.md)
