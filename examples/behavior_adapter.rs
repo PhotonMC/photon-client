@@ -3,7 +3,7 @@
 use serde_json::{Value, json};
 use std::io::{self, BufRead, Write};
 use voxel_client::binary::{self, BlockPos, Uuid};
-use voxel_client::math::{self, Vec2};
+use voxel_client::math::{self, Vec2, Vec3};
 use voxel_client::timer::Timer;
 use voxel_client::utf8;
 use voxel_client::wire::{self, ReadError};
@@ -119,6 +119,16 @@ fn vec2_snapshot(vector: Vec2) -> Value {
     })
 }
 
+fn vec3_snapshot(vector: Vec3) -> Value {
+    json!({
+        "x": format!("{:016x}", vector.x.to_bits()),
+        "y": format!("{:016x}", vector.y.to_bits()),
+        "z": format!("{:016x}", vector.z.to_bits()),
+        "length": format!("{:016x}", vector.length().to_bits()),
+        "length_squared": format!("{:016x}", vector.length_squared().to_bits()),
+    })
+}
+
 fn math_result(request: &Value) -> Result<Value, String> {
     let operation = string(request, "operation")?;
     if operation == "vec2" {
@@ -134,6 +144,26 @@ fn math_result(request: &Value) -> Result<Value, String> {
                 _ => return Err("unknown Vec2 action".into()),
             };
             events.push(vec2_snapshot(vector));
+        }
+        return Ok(json!({"events": events}));
+    }
+    if operation == "vec3" {
+        let mut vector = Vec3::new(
+            f64_field(request, "x")?,
+            f64_field(request, "y")?,
+            f64_field(request, "z")?,
+        );
+        let mut events = vec![vec3_snapshot(vector)];
+        let steps = request["steps"]
+            .as_array()
+            .ok_or("steps must be an array")?;
+        for step in steps {
+            vector = match string(step, "action")? {
+                "normalize" => vector.normalized(),
+                "scale" => vector.scale(f64_field(step, "factor")?),
+                _ => return Err("unknown Vec3 action".into()),
+            };
+            events.push(vec3_snapshot(vector));
         }
         return Ok(json!({"events": events}));
     }

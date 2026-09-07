@@ -1,6 +1,6 @@
 # P01.b — Vec3 referans sözleşmesi
 
-Bu dilimin **40 Java davranış testi hazırdır; Rust implementasyonu henüz yoktur**. Önceki 180 math senaryosunun girdisi ve sonucu değişmedi. Dot/cross/add/subtract ve diğer Vec3 yardımcıları bu dilime dahil değildir.
+Bu dilimin **40 Java davranış testi hazırdır ve Rust karşılığı doğrulanmıştır** ([kanıt](math-parity.md)). Dot/cross/add/subtract ve diğer Vec3 yardımcıları bu dilime dahil değildir.
 
 ## Kaynak ve sınır
 
@@ -38,4 +38,4 @@ python3 tools/behavior/run.py verify --family math
 
 Yeni aileyle toplam 619 Java senaryosu yakalandı ve doğrulandı. Birleşik referans kimliği: `8ca11f8017cf6a605669c6437c7df292092304e47e7b567095dc48b195788b64`. Eski kayıtlar değiştirilmedi.
 
-Mevcut Rust matematik adaptörü Vec3 içermediğinden ilgili karşılaştırma açıkça seçilir; varsayılan bütün-aile koşusu başarısız olur. Sonraki adım bu sabit referansa karşı Vec3 Rust davranış dilimidir.
+Mevcut Rust matematik adaptörü Vec3 içerir. Beklenen çıktılar Rust'a göre değiştirilmedi.

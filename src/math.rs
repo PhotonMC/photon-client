@@ -6,7 +6,6 @@ pub struct Vec2 {
     pub x: f32,
     pub y: f32,
 }
-
 impl Vec2 {
     pub const ZERO: Self = Self::new(0.0, 0.0);
 
@@ -36,6 +35,44 @@ impl Vec2 {
             // Dividing each component preserves the reference rounding;
             // multiplication by a shared reciprocal is not interchangeable.
             Self::new(self.x / length, self.y / length)
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct Vec3 {
+    pub x: f64,
+    pub y: f64,
+    pub z: f64,
+}
+
+impl Vec3 {
+    pub const ZERO: Self = Self::new(0.0, 0.0, 0.0);
+
+    pub const fn new(x: f64, y: f64, z: f64) -> Self {
+        Self { x, y, z }
+    }
+
+    pub fn scale(self, factor: f64) -> Self {
+        Self::new(self.x * factor, self.y * factor, self.z * factor)
+    }
+
+    pub fn length_squared(self) -> f64 {
+        // Keep the reference evaluation order; do not fuse or substitute hypot.
+        self.x * self.x + self.y * self.y + self.z * self.z
+    }
+
+    pub fn length(self) -> f64 {
+        self.length_squared().sqrt()
+    }
+
+    pub fn normalized(self) -> Self {
+        let length = self.length();
+        // The reference compares against the float literal widened to double.
+        if length < f64::from(1e-5_f32) {
+            Self::ZERO
+        } else {
+            Self::new(self.x / length, self.y / length, self.z / length)
         }
     }
 }
