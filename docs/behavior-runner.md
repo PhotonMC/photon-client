@@ -65,7 +65,7 @@ Diğer `math` operasyonları `floor`, `wrap_degrees`, `clamp`; `type` alanı `f3
 
 | Aile | Senaryo | Kapsam |
 | --- | ---: | --- |
-| `math` | 238 | Vec2/Vec3 normalize/ölçek zincirleri ve f32/f64 yardımcıları; Direction özellikleri ve eksenli döndürmeler; son 18 senaryo yalnızca Java referansı |
+| `math` | 238 | Vec2/Vec3 normalize/ölçek zincirleri ve f32/f64 yardımcıları; Direction özellikleri ve eksenli döndürmeler |
 | `timer` | 22 | Tick sınırları/artık zaman, kontrollü hız değişimi, pause/freeze kombinasyonları, gerçek zaman sınırı, uzun frame ve 2^53 üzerindeki başlangıç saati |
 | `wire` | 144 | VarInt/VarLong yazma/okuma, sınırlar, hatalar, tüketim ve kalan veri |
 | `utf8` | 141 | UTF-16 birim sınırları, UTF-8 okuma/yazma, bozuk diziler, VarInt başlıkları ve hata tüketimi |

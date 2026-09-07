@@ -1,6 +1,6 @@
 # P01.c — Direction referans sözleşmesi
 
-Bu dilimin **18 Java davranış testi hazırdır; Rust implementasyonu henüz yoktur**. Önceki 220 math senaryosunun girdisi ve sonucu değişmedi. Yön bulma (entity bakışı), kuaterniyon, codec ve kalan Direction yardımcıları bu dilime dahil değildir.
+Bu dilimin **18 Java davranış testi hazırdır ve Rust karşılığı doğrulanmıştır** ([kanıt](math-parity.md)). Önceki 220 math senaryosunun girdisi ve sonucu değişmedi. Yön bulma (entity bakışı), kuaterniyon, codec ve kalan Direction yardımcıları bu dilime dahil değildir.
 
 ## Kaynak ve sınır
 
@@ -38,4 +38,4 @@ python3 tools/behavior/run.py verify --family math
 
 Yeni aileyle toplam 637 Java senaryosu yakalandı ve doğrulandı. Birleşik referans kimliği: `c34a0c2bb442fe7576fbe4de19455d484cfe2aeb0eabe5ac96ca4a37aa128314`. Eski kayıtlar değiştirilmedi.
 
-Mevcut Rust matematik adaptörü Direction içermediğinden ilgili karşılaştırma başarısız olur; yeni testler sessizce atlanmaz. Sonraki adım bu sabit referansa karşı Direction Rust davranış dilimidir.
+Beklenen çıktılar Rust'a göre değiştirilmedi.

@@ -3,6 +3,7 @@
 use serde_json::{Value, json};
 use std::io::{self, BufRead, Write};
 use voxel_client::binary::{self, BlockPos, Uuid};
+use voxel_client::direction::{Axis, Direction};
 use voxel_client::math::{self, Vec2, Vec3};
 use voxel_client::timer::Timer;
 use voxel_client::utf8;
@@ -129,6 +130,21 @@ fn vec3_snapshot(vector: Vec3) -> Value {
     })
 }
 
+fn direction_snapshot(facing: Direction) -> Value {
+    let (step_x, step_y, step_z) = facing.step();
+    json!({
+        "name": facing.name(),
+        "data3d": facing.data3d(),
+        "data2d": facing.data2d(),
+        "opposite": facing.opposite().name(),
+        "axis": facing.axis().name(),
+        "axis_direction": facing.axis_direction().name(),
+        "step_x": step_x,
+        "step_y": step_y,
+        "step_z": step_z,
+    })
+}
+
 fn math_result(request: &Value) -> Result<Value, String> {
     let operation = string(request, "operation")?;
     if operation == "vec2" {
@@ -144,6 +160,27 @@ fn math_result(request: &Value) -> Result<Value, String> {
                 _ => return Err("unknown Vec2 action".into()),
             };
             events.push(vec2_snapshot(vector));
+        }
+        return Ok(json!({"events": events}));
+    }
+    if operation == "direction" {
+        let mut facing =
+            Direction::from_name(string(request, "name")?).ok_or("unknown direction")?;
+        let mut events = vec![direction_snapshot(facing)];
+        let steps = request["steps"]
+            .as_array()
+            .ok_or("steps must be an array")?;
+        for step in steps {
+            let axis = Axis::from_name(string(step, "axis")?).ok_or("unknown axis")?;
+            let clockwise = step["clockwise"]
+                .as_bool()
+                .ok_or("clockwise must be a boolean")?;
+            facing = if clockwise {
+                facing.clockwise(axis)
+            } else {
+                facing.counter_clockwise(axis)
+            };
+            events.push(direction_snapshot(facing));
         }
         return Ok(json!({"events": events}));
     }
