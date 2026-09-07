@@ -2,6 +2,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec2;
+import net.minecraft.world.phys.Vec3;
 
 public final class MathOracle {
     public static JsonObject run(JsonObject request) {
@@ -17,6 +18,20 @@ public final class MathOracle {
                     case "normalize" -> vector.normalized();
                     case "scale" -> vector.scale(Oracle.f32(step, "factor"));
                     default -> throw new IllegalArgumentException("Unknown Vec2 action");
+                };
+                events.add(snapshot(vector));
+            }
+            result.add("events", events);
+        } else if (operation.equals("vec3")) {
+            Vec3 vector = new Vec3(f64(request, "x"), f64(request, "y"), f64(request, "z"));
+            var events = new JsonArray();
+            events.add(snapshot(vector));
+            for (var entry : request.getAsJsonArray("steps")) {
+                JsonObject step = entry.getAsJsonObject();
+                vector = switch (step.get("action").getAsString()) {
+                    case "normalize" -> vector.normalize();
+                    case "scale" -> vector.scale(f64(step, "factor"));
+                    default -> throw new IllegalArgumentException("Unknown Vec3 action");
                 };
                 events.add(snapshot(vector));
             }
@@ -50,6 +65,16 @@ public final class MathOracle {
 
     private static double f64(JsonObject object, String name) {
         return Double.longBitsToDouble(Long.parseUnsignedLong(object.get(name).getAsString(), 16));
+    }
+
+    private static JsonObject snapshot(Vec3 vector) {
+        var state = new JsonObject();
+        state.addProperty("x", Oracle.bits(vector.x));
+        state.addProperty("y", Oracle.bits(vector.y));
+        state.addProperty("z", Oracle.bits(vector.z));
+        state.addProperty("length", Oracle.bits(vector.length()));
+        state.addProperty("length_squared", Oracle.bits(vector.lengthSqr()));
+        return state;
     }
 
     private static JsonObject snapshot(Vec2 vector) {

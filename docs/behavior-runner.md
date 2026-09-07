@@ -65,12 +65,12 @@ Diğer `math` operasyonları `floor`, `wrap_degrees`, `clamp`; `type` alanı `f3
 
 | Aile | Senaryo | Kapsam |
 | --- | ---: | --- |
-| `math` | 180 | Vec2 normalizasyon/ölçek zinciri, normalize sınır komşuları, f32/f64 floor/clamp/wrap; sıfır, işaretli sıfır, subnormal, tür sınırları, sonsuzluk ve NaN |
+| `math` | 220 | Vec2 normalize/ölçek zinciri ve f32/f64 yardımcıları; Vec3 normalize/ölçek zinciri, 1e-5 eşiği; son 40 senaryo yalnızca Java referansı |
 | `timer` | 22 | Tick sınırları/artık zaman, kontrollü hız değişimi, pause/freeze kombinasyonları, gerçek zaman sınırı, uzun frame ve 2^53 üzerindeki başlangıç saati |
 | `wire` | 144 | VarInt/VarLong yazma/okuma, sınırlar, hatalar, tüketim ve kalan veri |
 | `utf8` | 141 | UTF-16 birim sınırları, UTF-8 okuma/yazma, bozuk diziler, VarInt başlıkları ve hata tüketimi |
 | `binary` | 92 | UUID/BlockPos/long array/BitSet okuma/yazma; sabit BitSet okuma/yazma, boyut sınırları ve kodlayıcı hatası |
-| **Toplam** | **579** | P01.a/P02.a/P03.a/P03.b için mevcut referans corpus'u |
+| **Toplam** | **619** | P01.a/P02.a/P03.a/P03.b için mevcut referans corpus'u |
 
 7 Eylül 2026'da Java 25.0.4.1 / Linux x86_64 üzerinde ilk 346 senaryoluk corpus iki ayrı JVM sürecinde aynı sonuçları verdi. Kayıtlı referansa karşı `verify` de çalıştırıldı. Beş sentetik altyapı testi geçti. Komut düzeyinde ayrıca kontrollü replay, tek alan mutasyonu, boş adaptör çıktısı, eksik adaptör, eksik runtime ve yanlış JAR çıkışları sınandı. Bu replay programı yalnızca karşılaştırıcı kontrolüdür; Rust veya oyun implementasyonu değildir.
 

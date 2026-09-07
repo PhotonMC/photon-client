@@ -54,6 +54,23 @@ def math_cases():
                "x": float_bits(1), "y": float_bits(-1),
                "steps": [{"action": "normalize"}, {"action": "scale", "factor": float_bits(factor)},
                          {"action": "normalize"}]}
+    vectors3 = {f"direction-{x}-{y}-{z}": (float_bits(x, "f64"), float_bits(y, "f64"), float_bits(z, "f64"))
+                for x in (-1, 0, 1) for y in (-1, 0, 1) for z in (-1, 0, 1)}
+    vectors3.update({"negative-zero": ("8000000000000000", "8000000000000000", "8000000000000000"),
+                     "subnormal": ("0000000000000001", "0000000000000001", "0000000000000001"),
+                     "max-finite": ("7fefffffffffffff", "7fefffffffffffff", "7fefffffffffffff"),
+                     "unequal": (float_bits(3, "f64"), float_bits(-7, "f64"), float_bits(0.5, "f64"))})
+    threshold = struct.unpack(">d", struct.pack(">d", struct.unpack(">f", struct.pack(">f", 1e-5))[0]))[0]
+    for index, bits in enumerate(neighbors(threshold, "f64")):
+        vectors3[f"normalization-boundary-{index}"] = (bits, "0000000000000000", "0000000000000000")
+    for label, (x, y, z) in vectors3.items():
+        yield {"case_id": f"vec3/normalize/{label}", "family": "math", "operation": "vec3",
+               "x": x, "y": y, "z": z, "steps": [{"action": "normalize"}]}
+    for factor in (-2, -0.0, 0.0, 0.37, 0.98, 3):
+        yield {"case_id": f"vec3/chain/{float_bits(factor, 'f64')}", "family": "math", "operation": "vec3",
+               "x": float_bits(1, "f64"), "y": float_bits(-1, "f64"), "z": float_bits(0.5, "f64"),
+               "steps": [{"action": "normalize"}, {"action": "scale", "factor": float_bits(factor, "f64")},
+                         {"action": "normalize"}]}
     for width in ("f32", "f64"):
         specials = {float_bits(x, width) for x in (0.0, -0.0, float("inf"), -float("inf"), float("nan"))}
         specials.update({"00000001", "80000001"} if width == "f32"

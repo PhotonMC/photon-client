@@ -49,4 +49,4 @@ python3 tools/behavior/run.py compare --family math --family timer --family wire
 
 `capture` mevcut beklentileri değiştirmez. Kayıtlı Java referansını yeniden ölçmek için `verify` kullanılır. Release için derlemeye `--release` eklenir ve `target/release/examples/behavior_adapter` seçilir.
 
-P01/P02/P03 bölümlerinin tamamı ve karakter hareketi henüz doğrulanmış değildir. P03.b UTF-8 string okuma/yazma da 141 senaryoda doğrulandı; [kanıt](utf8-parity.md). İlgisiz sayısal yardımcılar peşinen genişletilmeyecek.
+P01/P02/P03 bölümlerinin tamamı ve karakter hareketi henüz doğrulanmış değildir. P01.b Vec3 normalize/ölçek için 40 Java referans senaryosu hazır ([sözleşme](vec3-contract.md)); sıradaki küçük dilim Rust implementasyonudur. İlgisiz sayısal yardımcılar peşinen genişletilmeyecek.
