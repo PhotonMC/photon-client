@@ -21,7 +21,7 @@ Referans: Java Edition 26.2, protokol 776; orijinal client SHA-1 `2dc72797acbc1b
 | `write_varlong(i64, &mut Vec<u8>)` | VarLong baytlarını mevcut buffer sonuna ekler |
 | `varint_size(i32)`, `varlong_size(i64)` | Kodlanmış bayt sayısı |
 
-Üretim kütüphanesinin haricî bağımlılığı yok. `serde_json` yalnızca örnek test adaptörü için `dev-dependencies` altında; sürüm Cargo.lock ile sabit. JSONL alanları, hex/ondalık dönüşümleri ve hata kategorisi eşlemesi test adaptöründe kalır. Math/timer aileleri adaptör tarafından açık hata ile reddedilir.
+Üretim kütüphanesinin haricî bağımlılığı yok. `serde_json` yalnızca örnek test adaptörü için `dev-dependencies` altında; sürüm Cargo.lock ile sabit. JSONL alanları, hex/ondalık dönüşümleri ve hata kategorisi eşlemesi test adaptöründe kalır. İlk wire dilimi sırasında math/timer aileleri açık hata ile reddediliyordu. Sonraki P02.a dilimiyle timer desteği eklendi; math hâlâ desteklenmiyor.
 
 ## Doğrulama
 
@@ -47,4 +47,4 @@ python3 tools/behavior/run.py compare --family wire --adapter target/debug/examp
 
 `capture` mevcut kimliğin beklentilerini değiştirmez; yeni checkout veya yeni kimlikte açık yakalama sağlar. Yalnızca mevcut Java kaydını doğrulamak için `verify --family wire` kullanılabilir. Release denemesi için `cargo build --locked --offline --release --example behavior_adapter` ve `--adapter target/release/examples/behavior_adapter` kullanılır. Offline derleme için Cargo.lock'taki geliştirme bağımlılıkları Cargo önbelleğinde bulunmalıdır.
 
-Sıradaki bağımsız küçük dilim P02.a zamanlayıcısıdır; mevcut 22 Java senaryosuna Rust adaptörü bağlanacak. Math ve timer ailelerindeki toplam 202 senaryo şu an yalnızca Java referansı olarak hazırdır.
+Sonraki P02.a zamanlayıcı dilimi 22 senaryoda doğrulandı; [güncel birleşik çalıştırma](timer-parity.md). Math ailesindeki 180 senaryo henüz yalnızca Java referansı olarak hazırdır.

@@ -2,7 +2,7 @@
 
 Referans: **26.2 / protokol 776 / Java 25**. [Envanter](reference-baseline.md), [kaynak incelemesi](source-review.md) ve [davranış testi yaklaşımı](behavior-testing.md) bu planın dayanağıdır. Bu bir Rust mimarisi veya teknoloji seçimi değildir.
 
-Durum: ilk kaynak incelemesi ve bölüm planı hazır. P00 çalıştırıcısı ve P01.a/P02.a/P03.a için toplam 346 Java referans senaryosu hazır; [çalıştırma ve kapsam](behavior-runner.md). P03.a VarInt/VarLong Rust dilimi mevcut 144 senaryoda doğrulandı; [kanıt ve kapsam](wire-parity.md). P01.a/P02.a için Rust kodu ve diğer bölüm implementasyonları henüz yok. P03 bölümünün tamamı veya bütün istemci doğrulanmış değildir.
+Durum: ilk kaynak incelemesi ve bölüm planı hazır. P00 çalıştırıcısı ve P01.a/P02.a/P03.a için toplam 346 Java referans senaryosu hazır; [çalıştırma ve kapsam](behavior-runner.md). P03.a VarInt/VarLong Rust dilimi mevcut 144 senaryoda doğrulandı; [kanıt ve kapsam](wire-parity.md). P02.a zamanlayıcısı 22 senaryoda doğrulandı; [kanıt ve kapsam](timer-parity.md). P01.a için Rust kodu ve diğer bölüm implementasyonları henüz yok. P02/P03 bölümlerinin tamamı veya bütün istemci doğrulanmış değildir.
 
 ## Uygulama ve kabul kuralı
 
@@ -72,12 +72,12 @@ P24 kapsam defteri ilgili bölümler geliştikçe doldurulur; en sona bırakıla
 
 ## İlk çalışma sırası ve mevcut engeller
 
-P00.a–c ilk aileler için hazır. **P01.a** (180), **P02.a** (22), **P03.a** (144) Java referans senaryosu yakalandı ve doğrulandı. P03.a Rust dilimi ve wire JSONL adaptörü 144 senaryoda doğrulandı. Sırada P02.a zamanlayıcısının Rust dilimi var; mevcut 22 senaryo kullanılacak. Bu testlerin orijinal Java'da çalıştığı görülmeden Rust davranış kodu yazılmaz. Sonraki dilim seçimi bağımlılıklara göre yapılır; bütün P01 yardımcılarını bir kerede uygulamak gerekmez.
+P00.a–c ilk aileler için hazır. **P01.a** (180), **P02.a** (22), **P03.a** (144) Java referans senaryosu yakalandı ve doğrulandı. P03.a Rust dilimi ve wire JSONL adaptörü 144 senaryoda doğrulandı. P02.a zamanlayıcısı mevcut 22 senaryoda doğrulandı; wire ile birleşik 166 senaryo debug/release profillerinde geçti. Sıradaki küçük Rust dilimi P01.a Vec2 ve kullanılan sayısal yardımcılardır. Bu testlerin orijinal Java'da çalıştığı görülmeden Rust davranış kodu yazılmaz. Sonraki dilim seçimi bağımlılıklara göre yapılır; bütün P01 yardımcılarını bir kerede uygulamak gerekmez.
 
 | Konu | Mevcut durum | Etkilediği çalışma |
 | --- | --- | --- |
 | JAR/asset/JDK girdileri | Yerelde mevcut; bütünlük kontrolü geçti | İlk grafik arayüzsüz referans testleri için eksik girdi bulunmadı |
-| Java oracle | Kalıcı çalıştırıcı ve 346 senaryoluk corpus mevcut | Wire Rust adaptörü hazır; P02.a Rust dilimi sıradaki iş |
+| Java oracle | Kalıcı çalıştırıcı ve 346 senaryoluk corpus mevcut | Wire/timer Rust adaptörü hazır; P01.a Rust dilimi sıradaki iş |
 | Pumpkin 26.2 | Sabit adayda 776 eşlemesi var; gerçek bağlantı denenmedi | P06–P08, P26 kabulü açık |
 | Render ve ses yakalama | Tam istemci/GPU/ses oturumu çalıştırılmadı | P15/P20 referans ortamı kurulacak |
 | Singleplayer ve servisler | İstemci hedefi korunuyor; dış bağımlılık eşitliği açık | P25, tam oyun eşitliği iddiası |
