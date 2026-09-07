@@ -88,6 +88,34 @@ def math_cases():
         for value in coords:
             yield {"case_id": f"coord/{fn}/{value}", "family": "math", "operation": "coord",
                    "fn": fn, "value": str(value)}
+    for seed in (0, 1, -1, 12345, 9223372036854775807):
+        yield {"case_id": f"random/sequence/{seed}", "family": "math", "operation": "random",
+               "seed": str(seed), "steps": [{"op": "nextInt"}, {"op": "nextFloat"},
+                                            {"op": "nextDouble"}, {"op": "nextLong"},
+                                            {"op": "nextBoolean"}]}
+    for bound in (1, 2, 16, 100):
+        yield {"case_id": f"random/bound-{bound}", "family": "math", "operation": "random",
+               "seed": "42", "steps": [{"op": "nextIntBound", "bound": bound},
+                                       {"op": "nextIntBound", "bound": bound}]}
+    unit = {"min_x": float_bits(0.0, "f64"), "min_y": float_bits(0.0, "f64"),
+            "min_z": float_bits(0.0, "f64"), "max_x": float_bits(1.0, "f64"),
+            "max_y": float_bits(1.0, "f64"), "max_z": float_bits(1.0, "f64")}
+    inside = {"op": "contains", "x": float_bits(0.5, "f64"),
+              "y": float_bits(0.5, "f64"), "z": float_bits(0.5, "f64")}
+    outside = {"op": "contains", "x": float_bits(2.0, "f64"),
+               "y": float_bits(0.0, "f64"), "z": float_bits(0.0, "f64")}
+    yield {"case_id": "aabb/contains/unit", "family": "math", "operation": "aabb",
+           **unit, "steps": [inside, outside]}
+    yield {"case_id": "aabb/intersects/overlap", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "intersects", "box": dict(unit)},
+                             {"op": "intersects", "box": {
+                                 "min_x": float_bits(2.0, "f64"), "min_y": float_bits(2.0, "f64"),
+                                 "min_z": float_bits(2.0, "f64"), "max_x": float_bits(3.0, "f64"),
+                                 "max_y": float_bits(3.0, "f64"), "max_z": float_bits(3.0, "f64")}}]}
+    yield {"case_id": "aabb/expand-deflate/unit", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "expand", "x": float_bits(1.0, "f64"),
+                              "y": float_bits(-0.5, "f64"), "z": float_bits(0.0, "f64")},
+                             {"op": "deflate", "amount": float_bits(0.5, "f64")}]}
     for width in ("f32", "f64"):
         specials = {float_bits(x, width) for x in (0.0, -0.0, float("inf"), -float("inf"), float("nan"))}
         specials.update({"00000001", "80000001"} if width == "f32"

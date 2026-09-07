@@ -3,6 +3,8 @@ import com.google.gson.JsonObject;
 import net.minecraft.core.Direction;
 import net.minecraft.core.SectionPos;
 import net.minecraft.util.Mth;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec2;
 import net.minecraft.world.phys.Vec3;
 
@@ -67,6 +69,57 @@ public final class MathOracle {
                 events.add(snapshot(vector));
             }
             result.add("events", events);
+        } else if (operation.equals("random")) {
+            RandomSource random = RandomSource.create(Long.parseLong(request.get("seed").getAsString()));
+            var events = new JsonArray();
+            events.add(new JsonObject());
+            for (var entry : request.getAsJsonArray("steps")) {
+                JsonObject step = entry.getAsJsonObject();
+                var state = new JsonObject();
+                switch (step.get("op").getAsString()) {
+                    case "nextInt" -> state.addProperty("value", Integer.toString(random.nextInt()));
+                    case "nextIntBound" -> state.addProperty("value",
+                        Integer.toString(random.nextInt(step.get("bound").getAsInt())));
+                    case "nextLong" -> state.addProperty("value", Long.toString(random.nextLong()));
+                    case "nextBoolean" -> state.addProperty("value", Boolean.toString(random.nextBoolean()));
+                    case "nextFloat" -> state.addProperty("bits", Oracle.bits(random.nextFloat()));
+                    case "nextDouble" -> state.addProperty("bits", Oracle.bits(random.nextDouble()));
+                    default -> throw new IllegalArgumentException("Unknown random op");
+                }
+                events.add(state);
+            }
+            result.add("events", events);
+        } else if (operation.equals("aabb")) {
+            AABB box = box(request);
+            var events = new JsonArray();
+            events.add(snapshot(box));
+            for (var entry : request.getAsJsonArray("steps")) {
+                JsonObject step = entry.getAsJsonObject();
+                switch (step.get("op").getAsString()) {
+                    case "contains" -> {
+                        var state = new JsonObject();
+                        state.addProperty("hit", box.contains(
+                            f64(step, "x"), f64(step, "y"), f64(step, "z")));
+                        events.add(state);
+                    }
+                    case "intersects" -> {
+                        var state = new JsonObject();
+                        state.addProperty("hit", box.intersects(box(step.getAsJsonObject("box"))));
+                        events.add(state);
+                    }
+                    case "expand" -> {
+                        box = box.expandTowards(
+                            f64(step, "x"), f64(step, "y"), f64(step, "z"));
+                        events.add(snapshot(box));
+                    }
+                    case "deflate" -> {
+                        box = box.deflate(f64(step, "amount"));
+                        events.add(snapshot(box));
+                    }
+                    default -> throw new IllegalArgumentException("Unknown AABB op");
+                }
+            }
+            result.add("events", events);
         } else {
             String width = request.get("type").getAsString();
             if (width.equals("f32")) {
@@ -96,6 +149,22 @@ public final class MathOracle {
 
     private static double f64(JsonObject object, String name) {
         return Double.longBitsToDouble(Long.parseUnsignedLong(object.get(name).getAsString(), 16));
+    }
+
+    private static AABB box(JsonObject object) {
+        return new AABB(f64(object, "min_x"), f64(object, "min_y"), f64(object, "min_z"),
+            f64(object, "max_x"), f64(object, "max_y"), f64(object, "max_z"));
+    }
+
+    private static JsonObject snapshot(AABB box) {
+        var state = new JsonObject();
+        state.addProperty("min_x", Oracle.bits(box.minX));
+        state.addProperty("min_y", Oracle.bits(box.minY));
+        state.addProperty("min_z", Oracle.bits(box.minZ));
+        state.addProperty("max_x", Oracle.bits(box.maxX));
+        state.addProperty("max_y", Oracle.bits(box.maxY));
+        state.addProperty("max_z", Oracle.bits(box.maxZ));
+        return state;
     }
 
     private static JsonObject snapshot(Direction facing) {

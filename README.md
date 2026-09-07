@@ -8,9 +8,9 @@ Orijinal kaynak ve assetler yalnızca yerelde referans ve test girdisi olarak ku
 
 ## Mevcut aşama
 
-Kaynaklar sağlandı; bütünlük envanteri ve ilk kaynak incelemesi tamamlandı. Bölüm bazlı roadmap ve ilk davranış testi sözleşmeleri hazır. P00 yerel test çalıştırıcısı ve 749 Java referans senaryosu mevcut. NBT ağaç/liste/dizi için yeni 13 senaryo henüz yalnızca Java referansıdır. Rust uygulanan kapsamda debug/release profillerinde toplam 736 senaryoda Java ile eşleşiyor. Oynanabilir istemci henüz yok. Boş `main`, yalnızca iskelettir.
+Kaynaklar sağlandı; bütünlük envanteri ve ilk kaynak incelemesi tamamlandı. Bölüm bazlı roadmap ve ilk davranış testi sözleşmeleri hazır. P00 yerel test çalıştırıcısı ve 761 Java referans senaryosu mevcut. NBT ağaç/liste/dizi (13) ve random/AABB (12) senaryoları henüz yalnızca Java referansıdır. Rust uygulanan kapsamda debug/release profillerinde toplam 736 senaryoda Java ile eşleşiyor. Oynanabilir istemci henüz yok. Boş `main`, yalnızca iskelettir.
 
-Mevcut referanslar [yerel veri rehberindeki](docs/reference-data.md) `.data/` alanında kalır. P03.c NBT ağaç/liste/dizi kaynak incelemesi ve Java referans testleri hazır; sıradaki küçük dilim bunlara karşı Rust implementasyonudur. Her Rust diliminden önce ilgili Java referansı ve testler hazırlanacak. Grafik, ses, pencere ve ağ teknolojileri sonraya bırakıldı. Test otomasyonu Python standart kütüphanesi ve özgün Java adaptörlerini kullanıyor; üretim kütüphanesine ek Rust bağımlılığı eklenmedi. Rust JSONL test adaptörü `serde_json` geliştirme bağımlılığını kullanıyor.
+Mevcut referanslar [yerel veri rehberindeki](docs/reference-data.md) `.data/` alanında kalır. Test yol haritası P01.d/e ve NBT ağaçlarıyla sürüyor; implementasyona başlanmadı. Her Rust diliminden önce ilgili Java referansı ve testler hazırlanacak. Grafik, ses, pencere ve ağ teknolojileri sonraya bırakıldı. Test otomasyonu Python standart kütüphanesi ve özgün Java adaptörlerini kullanıyor; üretim kütüphanesine ek Rust bağımlılığı eklenmedi. Rust JSONL test adaptörü `serde_json` geliştirme bağımlılığını kullanıyor.
 
 ## Belgeler
 
