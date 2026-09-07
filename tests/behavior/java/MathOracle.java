@@ -1,5 +1,6 @@
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import net.minecraft.core.Direction;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec2;
 import net.minecraft.world.phys.Vec3;
@@ -20,6 +21,24 @@ public final class MathOracle {
                     default -> throw new IllegalArgumentException("Unknown Vec2 action");
                 };
                 events.add(snapshot(vector));
+            }
+            result.add("events", events);
+        } else if (operation.equals("direction")) {
+            Direction facing = Direction.byName(request.get("name").getAsString());
+            if (facing == null) {
+                throw new IllegalArgumentException("Unknown direction name");
+            }
+            var events = new JsonArray();
+            events.add(snapshot(facing));
+            for (var entry : request.getAsJsonArray("steps")) {
+                JsonObject step = entry.getAsJsonObject();
+                Direction.Axis axis = Direction.Axis.byName(step.get("axis").getAsString());
+                if (axis == null) {
+                    throw new IllegalArgumentException("Unknown axis name");
+                }
+                facing = step.get("clockwise").getAsBoolean()
+                    ? facing.getClockWise(axis) : facing.getCounterClockWise(axis);
+                events.add(snapshot(facing));
             }
             result.add("events", events);
         } else if (operation.equals("vec3")) {
@@ -65,6 +84,20 @@ public final class MathOracle {
 
     private static double f64(JsonObject object, String name) {
         return Double.longBitsToDouble(Long.parseUnsignedLong(object.get(name).getAsString(), 16));
+    }
+
+    private static JsonObject snapshot(Direction facing) {
+        var state = new JsonObject();
+        state.addProperty("name", facing.getName());
+        state.addProperty("data3d", facing.get3DDataValue());
+        state.addProperty("data2d", facing.get2DDataValue());
+        state.addProperty("opposite", facing.getOpposite().getName());
+        state.addProperty("axis", facing.getAxis().getName());
+        state.addProperty("axis_direction", facing.getAxisDirection().getName());
+        state.addProperty("step_x", facing.getStepX());
+        state.addProperty("step_y", facing.getStepY());
+        state.addProperty("step_z", facing.getStepZ());
+        return state;
     }
 
     private static JsonObject snapshot(Vec3 vector) {

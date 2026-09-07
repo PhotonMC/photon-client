@@ -8,9 +8,9 @@ Orijinal kaynak ve assetler yalnızca yerelde referans ve test girdisi olarak ku
 
 ## Mevcut aşama
 
-Kaynaklar sağlandı; bütünlük envanteri ve ilk kaynak incelemesi tamamlandı. Bölüm bazlı roadmap ve ilk davranış testi sözleşmeleri hazır. P00 yerel test çalıştırıcısı ve 619 Java referans senaryosu mevcut. Rust debug/release profillerinde toplam 619 senaryoda Java ile eşleşiyor. Oynanabilir istemci henüz yok. Boş `main`, yalnızca iskelettir.
+Kaynaklar sağlandı; bütünlük envanteri ve ilk kaynak incelemesi tamamlandı. Bölüm bazlı roadmap ve ilk davranış testi sözleşmeleri hazır. P00 yerel test çalıştırıcısı ve 637 Java referans senaryosu mevcut. Direction için yeni 18 senaryo henüz yalnızca Java referansıdır. Rust uygulanan kapsamda debug/release profillerinde toplam 619 senaryoda Java ile eşleşiyor. Oynanabilir istemci henüz yok. Boş `main`, yalnızca iskelettir.
 
-Mevcut referanslar [yerel veri rehberindeki](docs/reference-data.md) `.data/` alanında kalır. Her Rust diliminden önce ilgili Java referansı ve testler hazırlanacak. Grafik, ses, pencere ve ağ teknolojileri sonraya bırakıldı. Test otomasyonu Python standart kütüphanesi ve özgün Java adaptörlerini kullanıyor; üretim kütüphanesine ek Rust bağımlılığı eklenmedi. Rust JSONL test adaptörü `serde_json` geliştirme bağımlılığını kullanıyor.
+Mevcut referanslar [yerel veri rehberindeki](docs/reference-data.md) `.data/` alanında kalır. P01.c Direction kaynak incelemesi ve Java referans testleri hazır; sıradaki küçük dilim bunlara karşı Rust implementasyonudur. Her Rust diliminden önce ilgili Java referansı ve testler hazırlanacak. Grafik, ses, pencere ve ağ teknolojileri sonraya bırakıldı. Test otomasyonu Python standart kütüphanesi ve özgün Java adaptörlerini kullanıyor; üretim kütüphanesine ek Rust bağımlılığı eklenmedi. Rust JSONL test adaptörü `serde_json` geliştirme bağımlılığını kullanıyor.
 
 ## Belgeler
 
@@ -26,6 +26,7 @@ Mevcut referanslar [yerel veri rehberindeki](docs/reference-data.md) `.data/` al
 - [Zamanlayıcı doğrulaması](docs/timer-parity.md)
 - [Vec2 ve sayısal yardımcıların doğrulaması](docs/math-parity.md)
 - [Vec3 davranış sözleşmesi ve referans testleri](docs/vec3-contract.md)
+- [Direction davranış sözleşmesi ve referans testleri](docs/direction-contract.md)
 - [UTF-8 doğrulaması](docs/utf8-parity.md)
 - [UTF-8 davranış sözleşmesi ve referans testleri](docs/utf8-contract.md)
 - [UUID/BlockPos doğrulaması](docs/binary-parity.md)

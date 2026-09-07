@@ -71,6 +71,17 @@ def math_cases():
                "x": float_bits(1, "f64"), "y": float_bits(-1, "f64"), "z": float_bits(0.5, "f64"),
                "steps": [{"action": "normalize"}, {"action": "scale", "factor": float_bits(factor, "f64")},
                          {"action": "normalize"}]}
+    for name in ("down", "up", "north", "south", "west", "east"):
+        yield {"case_id": f"direction/properties/{name}", "family": "math", "operation": "direction",
+               "name": name, "steps": []}
+    for name in ("down", "up", "north", "south", "west", "east"):
+        yield {"case_id": f"direction/rotate-y/{name}", "family": "math", "operation": "direction",
+               "name": name, "steps": [{"axis": "y", "clockwise": True},
+                                       {"axis": "y", "clockwise": True}]}
+    for name, axis in (("north", "x"), ("north", "z"), ("down", "x"),
+                       ("up", "z"), ("west", "x"), ("east", "z")):
+        yield {"case_id": f"direction/rotate-{axis}/{name}", "family": "math", "operation": "direction",
+               "name": name, "steps": [{"axis": axis, "clockwise": True}]}
     for width in ("f32", "f64"):
         specials = {float_bits(x, width) for x in (0.0, -0.0, float("inf"), -float("inf"), float("nan"))}
         specials.update({"00000001", "80000001"} if width == "f32"
