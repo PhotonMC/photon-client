@@ -2,7 +2,7 @@
 
 Referans: **26.2 / protokol 776 / Java 25**. [Envanter](reference-baseline.md), [kaynak incelemesi](source-review.md) ve [davranış testi yaklaşımı](behavior-testing.md) bu planın dayanağıdır. Bu bir Rust mimarisi veya teknoloji seçimi değildir.
 
-Durum: ilk kaynak incelemesi ve bölüm planı hazır. P00 çalıştırıcısı ve P01.a/P02.a/P03.a/P03.b için toplam 530 Java referans senaryosu hazır; [çalıştırma ve kapsam](behavior-runner.md). P03.a VarInt/VarLong Rust dilimi mevcut 144 senaryoda doğrulandı; [kanıt ve kapsam](wire-parity.md). P02.a zamanlayıcısı 22 senaryoda doğrulandı; [kanıt ve kapsam](timer-parity.md). P01.a Vec2/sayısal yardımcıları 180 senaryoda doğrulandı; [kanıt ve kapsam](math-parity.md). P03.b UTF-8 string okuma/yazma 141 senaryoda doğrulandı; [kanıt](utf8-parity.md). Dört aile debug/release profillerinde 487/487 eşleşti. [P03.b UUID/BlockPos kaynak incelemesi ve 43 Java referans testi](binary-contract.md) hazır; sıradaki küçük dilim bunlara karşı Rust implementasyonudur. P01/P02/P03 bölümlerinin tamamı veya bütün istemci doğrulanmış değildir.
+Durum: ilk kaynak incelemesi ve bölüm planı hazır. P00 çalıştırıcısı ve P01.a/P02.a/P03.a/P03.b için toplam 530 Java referans senaryosu hazır; [çalıştırma ve kapsam](behavior-runner.md). P03.a VarInt/VarLong Rust dilimi mevcut 144 senaryoda doğrulandı; [kanıt ve kapsam](wire-parity.md). P02.a zamanlayıcısı 22 senaryoda doğrulandı; [kanıt ve kapsam](timer-parity.md). P01.a Vec2/sayısal yardımcıları 180 senaryoda doğrulandı; [kanıt ve kapsam](math-parity.md). P03.b UTF-8 string okuma/yazma 141 senaryoda doğrulandı; [kanıt](utf8-parity.md). P03.b UUID/BlockPos 43 senaryoda doğrulandı; [kanıt](binary-parity.md). Beş aile debug/release profillerinde 530/530 eşleşti. P01/P02/P03 bölümlerinin tamamı veya bütün istemci doğrulanmış değildir.
 
 ## Uygulama ve kabul kuralı
 
@@ -72,12 +72,12 @@ P24 kapsam defteri ilgili bölümler geliştikçe doldurulur; en sona bırakıla
 
 ## İlk çalışma sırası ve mevcut engeller
 
-P00.a–c ilk aileler için hazır. **P01.a** (180), **P02.a** (22), **P03.a** (144) ve **P03.b UTF-8** (141) Java referans senaryosu yakalandı ve doğrulandı. P03.a Rust dilimi ve wire JSONL adaptörü 144 senaryoda doğrulandı. P02.a zamanlayıcısı 22, P01.a Vec2/sayısal yardımcıları 180, P03.b UTF-8 string okuma/yazma 141 senaryoda doğrulandı; dört aile birlikte 487 senaryoda debug/release profillerinde geçti ([UTF-8 kanıtı](utf8-parity.md)). [P03.b UUID/BlockPos 43 Java referans testi](binary-contract.md) hazır; sıradaki küçük dilim Rust implementasyonudur. Sonraki dilim seçimi bağımlılıklara göre yapılır; bütün P01 yardımcılarını bir kerede uygulamak gerekmez.
+P00.a–c ilk aileler için hazır. **P01.a** (180), **P02.a** (22), **P03.a** (144), **P03.b UTF-8** (141) ve **P03.b UUID/BlockPos** (43) Java referans senaryosu yakalandı ve doğrulandı. P03.a Rust dilimi ve wire JSONL adaptörü 144 senaryoda doğrulandı. P02.a zamanlayıcısı 22, P01.a Vec2/sayısal yardımcıları 180, P03.b UTF-8 string okuma/yazma 141, P03.b UUID/BlockPos 43 senaryoda doğrulandı; beş aile birlikte 530 senaryoda debug/release profillerinde geçti ([binary kanıtı](binary-parity.md)). Sonraki dilim seçimi bağımlılıklara göre yapılır; bütün P01 yardımcılarını bir kerede uygulamak gerekmez.
 
 | Konu | Mevcut durum | Etkilediği çalışma |
 | --- | --- | --- |
 | JAR/asset/JDK girdileri | Yerelde mevcut; bütünlük kontrolü geçti | İlk grafik arayüzsüz referans testleri için eksik girdi bulunmadı |
-| Java oracle | Kalıcı çalıştırıcı ve 530 senaryoluk corpus mevcut | Dört ailede Rust adaptörü hazır ve 487/487 eşleşti; binary Rust sıradaki iş |
+| Java oracle | Kalıcı çalıştırıcı ve 530 senaryoluk corpus mevcut | Beş ailede Rust adaptörü hazır ve 530/530 eşleşti |
 | Pumpkin 26.2 | Sabit adayda 776 eşlemesi var; gerçek bağlantı denenmedi | P06–P08, P26 kabulü açık |
 | Render ve ses yakalama | Tam istemci/GPU/ses oturumu çalıştırılmadı | P15/P20 referans ortamı kurulacak |
 | Singleplayer ve servisler | İstemci hedefi korunuyor; dış bağımlılık eşitliği açık | P25, tam oyun eşitliği iddiası |

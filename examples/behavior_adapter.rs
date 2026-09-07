@@ -2,6 +2,7 @@
 
 use serde_json::{Value, json};
 use std::io::{self, BufRead, Write};
+use voxel_client::binary::{self, BlockPos, Uuid};
 use voxel_client::math::{self, Vec2};
 use voxel_client::timer::Timer;
 use voxel_client::utf8;
@@ -274,6 +275,93 @@ fn utf8_result(request: &Value) -> Result<Value, String> {
     }
 }
 
+fn binary_result(request: &Value) -> Result<Value, String> {
+    fn hex_u64(text: &str) -> Result<u64, String> {
+        if text.len() != 16 || !text.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+            return Err("UUID half must be sixteen hexadecimal digits".into());
+        }
+        u64::from_str_radix(text, 16).map_err(|error| error.to_string())
+    }
+
+    fn coordinate(value: &Value, name: &str) -> Result<i32, String> {
+        value[name]
+            .as_str()
+            .ok_or_else(|| format!("{name} must be a string"))?
+            .parse::<i32>()
+            .map_err(|error| error.to_string())
+    }
+
+    let prefix = decode_hex(string(request, "prefix_hex")?)?;
+    let codec = string(request, "codec")?;
+    match string(request, "operation")? {
+        "read" => {
+            let framed = decode_hex(string(request, "hex")?)?;
+            let mut remaining = framed.as_slice();
+            match codec {
+                "uuid" => match binary::read_uuid(&mut remaining) {
+                    Ok(value) => Ok(json!({
+                        "most_hex": format!("{:016x}", value.most),
+                        "least_hex": format!("{:016x}", value.least),
+                        "outcome": "value",
+                        "consumed": framed.len() - remaining.len(),
+                        "remaining_hex": hex(remaining),
+                    })),
+                    Err(binary::ReadError::BufferUnderflow) => Ok(json!({
+                        "outcome": "error",
+                        "error": "buffer_underflow",
+                        "consumed": framed.len() - remaining.len(),
+                        "remaining_hex": hex(remaining),
+                    })),
+                },
+                "blockpos" => match binary::read_blockpos(&mut remaining) {
+                    Ok(value) => Ok(json!({
+                        "x": value.x.to_string(),
+                        "y": value.y.to_string(),
+                        "z": value.z.to_string(),
+                        "outcome": "value",
+                        "consumed": framed.len() - remaining.len(),
+                        "remaining_hex": hex(remaining),
+                    })),
+                    Err(binary::ReadError::BufferUnderflow) => Ok(json!({
+                        "outcome": "error",
+                        "error": "buffer_underflow",
+                        "consumed": framed.len() - remaining.len(),
+                        "remaining_hex": hex(remaining),
+                    })),
+                },
+                _ => Err("unknown binary codec".into()),
+            }
+        }
+        "write" => {
+            let mut buffer = prefix.clone();
+            match codec {
+                "uuid" => {
+                    let value = Uuid::new(
+                        hex_u64(string(request, "most_hex")?)?,
+                        hex_u64(string(request, "least_hex")?)?,
+                    );
+                    binary::write_uuid(value, &mut buffer);
+                }
+                "blockpos" => {
+                    let value = BlockPos::new(
+                        coordinate(request, "x")?,
+                        coordinate(request, "y")?,
+                        coordinate(request, "z")?,
+                    );
+                    binary::write_blockpos(value, &mut buffer);
+                }
+                _ => return Err("unknown binary codec".into()),
+            }
+            Ok(json!({
+                "outcome": "value",
+                "written": buffer.len() - prefix.len(),
+                "hex": hex(&buffer),
+            }))
+        }
+        _ => Err("unknown binary operation".into()),
+    }
+}
+
 fn respond(request: Value) -> Result<Value, String> {
     if request["schema_version"].as_u64() != Some(1) {
         return Err("unsupported schema_version".into());
@@ -284,6 +372,7 @@ fn respond(request: Value) -> Result<Value, String> {
         "timer" => timer_result(&request)?,
         "math" => math_result(&request)?,
         "utf8" => utf8_result(&request)?,
+        "binary" => binary_result(&request)?,
         _ => return Err("unknown behavior family".into()),
     };
     Ok(json!({"schema_version": 1, "case_id": case_id, "result": result}))
