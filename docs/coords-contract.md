@@ -1,6 +1,6 @@
 # P01.c — Koordinat dönüşümleri referans sözleşmesi
 
-Bu dilimin **57 Java davranış testi hazırdır; Rust implementasyonu henüz yoktur**. Önceki 238 math senaryosunun girdisi ve sonucu değişmedi. Çift duyarlıklı overload, `sectionRelativePos` paketi ve kalan SectionPos/BlockPos yardımcıları bu dilime dahil değildir.
+Bu dilimin **57 Java davranış testi hazırdır ve Rust karşılığı doğrulanmıştır** ([kanıt](math-parity.md)). Önceki 238 math senaryosunun girdisi ve sonucu değişmedi. Çift duyarlıklı overload, `sectionRelativePos` paketi ve kalan SectionPos/BlockPos yardımcıları bu dilime dahil değildir.
 
 ## Kaynak ve sınır
 
@@ -32,4 +32,4 @@ python3 tools/behavior/run.py verify --family math
 
 Toplam 736 Java senaryosu yakalandı ve doğrulandı. Birleşik referans kimliği: `d8b68459939231e94c8dfd585eebb462329264c3d614fa7006d8bfea616461c3`. Eski kayıtlar değiştirilmedi.
 
-Mevcut Rust matematik adaptörü dönüşümleri içermediğinden ilgili karşılaştırma başarısız olur. Sonraki adım bu sabit referansa karşı koordinat Rust davranış dilimidir.
+Beklenen çıktılar Rust'a göre değiştirilmedi.

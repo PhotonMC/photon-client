@@ -185,6 +185,18 @@ fn math_result(request: &Value) -> Result<Value, String> {
         }
         return Ok(json!({"events": events}));
     }
+    if operation == "coord" {
+        let value = string(request, "value")?
+            .parse::<i32>()
+            .map_err(|error| error.to_string())?;
+        let out = match string(request, "fn")? {
+            "block_to_section" => math::block_to_section_coord(value),
+            "section_to_block" => math::section_to_block_coord(value),
+            "section_relative" => math::section_relative(value),
+            _ => return Err("unknown coord function".into()),
+        };
+        return Ok(json!({"value": out.to_string()}));
+    }
     if operation == "vec3" {
         let mut vector = Vec3::new(
             f64_field(request, "x")?,

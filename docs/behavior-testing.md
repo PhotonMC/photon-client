@@ -1,6 +1,6 @@
 # Davranış doğrulama sözleşmesi
 
-Bu belge yaklaşımı tanımlar. 26.2 kaynakları incelendi; [ilk test sözleşmeleri](first-behavior-tests.md) hazırlandı. [Kalıcı yerel çalıştırıcı](behavior-runner.md) ve altı ailede 736 Java referans senaryosu mevcut. Rust wire, zamanlayıcı, matematik, UTF-8, binary ve NBT adaptörleri uygulanan kapsamda toplam 679 senaryoda Java ile eşleşti; [wire kapsamı](wire-parity.md), [zamanlayıcı kapsamı](timer-parity.md), [sayısal kapsam](math-parity.md), [UTF-8 kapsamı](utf8-parity.md), [binary kapsamı](binary-parity.md). [NBT kapsamı](nbt-parity.md). [Koordinat dönüşümleri için 57 senaryo](coords-contract.md) henüz yalnızca Java referansıdır. Yalnızca Java referansını doğrulamak Rust eşitlik testi değildir.
+Bu belge yaklaşımı tanımlar. 26.2 kaynakları incelendi; [ilk test sözleşmeleri](first-behavior-tests.md) hazırlandı. [Kalıcı yerel çalıştırıcı](behavior-runner.md) ve altı ailede 736 Java referans senaryosu mevcut. Rust wire, zamanlayıcı, matematik, UTF-8, binary ve NBT adaptörleri debug/release profillerinde toplam 736 senaryoda Java ile eşleşti; [wire kapsamı](wire-parity.md), [zamanlayıcı kapsamı](timer-parity.md), [sayısal kapsam](math-parity.md), [UTF-8 kapsamı](utf8-parity.md), [binary kapsamı](binary-parity.md). [NBT kapsamı](nbt-parity.md). Yalnızca Java referansını doğrulamak Rust eşitlik testi değildir.
 
 ## Referans ve karşılaştırma
 

@@ -22,6 +22,7 @@ Kaynak köküne göre `net/minecraft/world/phys/Vec2.java`, `net/minecraft/world
 | `floor_f32`, `floor_f64` | Aşağı yuvarlama ve i32 dönüşümü; sınır dışı sonuçlar doyar, NaN sıfıra dönüşür |
 | `wrap_degrees_f32`, `wrap_degrees_f64` | İşaretli kalan üzerinden [-180, 180) aralığı; negatif sıfır kaybolmaz |
 | `clamp_f32`, `clamp_f64` | Referansın alt sınır karşılaştırması ve üst sınır minimumu; NaN/sıfır davranışı Rust'ın genel yardımcılarına bırakılmaz |
+| `block_to_section_coord`, `section_to_block_coord`, `section_relative` | Aritmetik kaydırma ve maskeleme; negatiflerde tabana yuvarlama, `0–15` aralığı |
 
 `hypot`, çarpma-toplama birleştirmesi veya ortak ters uzunlukla çarpma kullanılmadı; matematiksel olarak benzer yazımlar ara yuvarlama veya taşmayı değiştirebilir. İki hassasiyetteki scalar işlevleri küçük bir özel makroyla üretiliyor; genel matematik trait sistemi veya haricî vektör kütüphanesi eklenmedi.
 
@@ -29,19 +30,19 @@ Bu API, Vec2/Vec3/Direction sınıflarının tamamı değildir: dot/cross/add/su
 
 ## Doğrulama
 
-Mevcut 238 matematik senaryosu; Vec2 için sıfır/işaretli sıfır, eksen ve diyagonal vektörler, normalize eşiğinin komşuları ve ölçek-normalize zincirleri; Vec3 için 27 yön, işaretli sıfır, subnormal, en büyük sonlu, karışık bileşen, 1e-5 eşiğinin bit komşuları ve ölçek-normalize zincirleri; ayrıca büyük/küçük sayılar, f32/f64 sınır komşuları, sonsuzluk ve NaN girdilerini kapsıyor. Clamp sınırları mevcut corpus'ta [-1, 1] ve [0, 1]; ters/NaN sınırlar, bütün NaN payload'ları ve tüm float bit desenleri test edilmiş sayılmaz.
+Mevcut 295 matematik senaryosu; Vec2 için sıfır/işaretli sıfır, eksen ve diyagonal vektörler, normalize eşiğinin komşuları ve ölçek-normalize zincirleri; Vec3 için 27 yön, işaretli sıfır, subnormal, en büyük sonlu, karışık bileşen, 1e-5 eşiğinin bit komşuları ve ölçek-normalize zincirleri; ayrıca büyük/küçük sayılar, f32/f64 sınır komşuları, sonsuzluk ve NaN girdilerini kapsıyor. Clamp sınırları mevcut corpus'ta [-1, 1] ve [0, 1]; ters/NaN sınırlar, bütün NaN payload'ları ve tüm float bit desenleri test edilmiş sayılmaz.
 
 Java 25.0.4.1 ve Rust 1.98.1 / Linux x86_64 ortamında:
 
-- Kayıtlı 637 senaryoluk Java referansı iki yeni JVM çalıştırmasıyla doğrulandı.
-- Debug ve release Rust adaptörleri **637/637** eşleşti: 238 math + 22 timer + 144 wire + 141 utf8 + 92 binary.
+- Kayıtlı 736 senaryoluk Java referansı iki yeni JVM çalıştırmasıyla doğrulandı.
+- Debug ve release Rust adaptörleri **736/736** eşleşti: 295 math + 22 timer + 144 wire + 141 utf8 + 116 binary + 18 nbt.
 - Vec2/Vec3'te başlangıç ve her adımın bileşen, uzunluk ve uzunluk karesi bitleri; scalar işlevlerde sonuç bitleri veya tamsayı değeri karşılaştırıldı. Float toleransı veya NaN normalizasyonu eklenmedi.
 - Yanlış f64 bit formatı, bilinmeyen tür/işlem/aile, eksik clamp sınırı ve bilinmeyen Vec2/Vec3 adımı reddedildi.
 - Biçim, Clippy ve paket kapsamı kontrolleri geçti; `.data/` ve test adaptörü paket dışında kaldı.
 
-Birleşik referans kimliği: `c34a0c2bb442fe7576fbe4de19455d484cfe2aeb0eabe5ac96ca4a37aa128314`. Math ailesi kimliği: `07b321ff382a45bdabd9e3a26e16d6e436ce85e6e064d33e00d3f1c1257f1b97`.
+Birleşik referans kimliği: `d8b68459939231e94c8dfd585eebb462329264c3d614fa7006d8bfea616461c3`. Math ailesi kimliği: `9406952e0caa205e06c297a190684c65b8ba34c0e5b3abd2286b37c2c88fd88b`.
 
-Yerel raporlar: `compare-28hpnm_7` (debug 637), `compare-qq0rfe78` (release 637) dizinlerinde, `.data/runs/behavior/` altında bulunur.
+Yerel raporlar: `compare-_m4tyfm6` (debug 736), `compare-zx3k0wmm` (release 736) dizinlerinde, `.data/runs/behavior/` altında bulunur.
 
 ## Yeniden çalıştırma ve sonraki dilim
 
@@ -55,4 +56,4 @@ python3 tools/behavior/run.py compare --family math --family timer --family wire
 
 `capture` mevcut beklentileri değiştirmez. Kayıtlı Java referansını yeniden ölçmek için `verify` kullanılır. Release için derlemeye `--release` eklenir ve `target/release/examples/behavior_adapter` seçilir.
 
-P01/P02/P03 bölümlerinin tamamı ve karakter hareketi henüz doğrulanmış değildir. P01.c koordinat dönüşümleri için 57 Java referans senaryosu hazır ([sözleşme](coords-contract.md)); sıradaki küçük dilim Rust implementasyonudur. İlgisiz sayısal yardımcılar peşinen genişletilmeyecek.
+P01/P02/P03 bölümlerinin tamamı ve karakter hareketi henüz doğrulanmış değildir. Koordinat dönüşümleri 57 senaryoda doğrulandı; [sözleşme](coords-contract.md). İlgisiz sayısal yardımcılar peşinen genişletilmeyecek.

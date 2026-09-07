@@ -77,6 +77,21 @@ impl Vec3 {
     }
 }
 
+/// Block-to-section coordinate conversion, flooring toward negative infinity.
+pub fn block_to_section_coord(block_coord: i32) -> i32 {
+    block_coord >> 4
+}
+
+/// Section-to-block coordinate conversion with Java int wrapping.
+pub fn section_to_block_coord(section_coord: i32) -> i32 {
+    section_coord << 4
+}
+
+/// Position inside its section, always in `0..16`.
+pub fn section_relative(block_coord: i32) -> i32 {
+    block_coord & 15
+}
+
 // The same contract at two precisions, without a public numeric trait hierarchy.
 macro_rules! scalar_operations {
     ($ty:ty, $floor:ident, $wrap:ident, $clamp:ident) => {
