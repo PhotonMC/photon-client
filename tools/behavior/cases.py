@@ -82,6 +82,12 @@ def math_cases():
                        ("up", "z"), ("west", "x"), ("east", "z")):
         yield {"case_id": f"direction/rotate-{axis}/{name}", "family": "math", "operation": "direction",
                "name": name, "steps": [{"axis": axis, "clockwise": True}]}
+    coords = [0, 1, 15, 16, 17, -1, -15, -16, -17, 31, 32, -32, -33,
+              2147483647, -2147483648, 33554431, -33554432, 2097151, -2097152]
+    for fn in ("block_to_section", "section_to_block", "section_relative"):
+        for value in coords:
+            yield {"case_id": f"coord/{fn}/{value}", "family": "math", "operation": "coord",
+                   "fn": fn, "value": str(value)}
     for width in ("f32", "f64"):
         specials = {float_bits(x, width) for x in (0.0, -0.0, float("inf"), -float("inf"), float("nan"))}
         specials.update({"00000001", "80000001"} if width == "f32"

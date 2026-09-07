@@ -1,6 +1,7 @@
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import net.minecraft.core.Direction;
+import net.minecraft.core.SectionPos;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec2;
 import net.minecraft.world.phys.Vec3;
@@ -41,6 +42,17 @@ public final class MathOracle {
                 events.add(snapshot(facing));
             }
             result.add("events", events);
+        } else if (operation.equals("coord")) {
+            int value = Integer.parseInt(request.get("value").getAsString());
+            String fn = request.get("fn").getAsString();
+            int out = switch (fn) {
+                case "block_to_section" -> SectionPos.blockToSectionCoord(value);
+                case "section_to_block" -> SectionPos.sectionToBlockCoord(value);
+                case "section_relative" -> SectionPos.sectionRelative(value);
+                default -> throw new IllegalArgumentException("Unknown coord function");
+            };
+            result.addProperty("value", Integer.toString(out));
+            return result;
         } else if (operation.equals("vec3")) {
             Vec3 vector = new Vec3(f64(request, "x"), f64(request, "y"), f64(request, "z"));
             var events = new JsonArray();
