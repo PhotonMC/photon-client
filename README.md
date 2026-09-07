@@ -8,9 +8,9 @@ Orijinal kaynak ve assetler yalnızca yerelde referans ve test girdisi olarak ku
 
 ## Mevcut aşama
 
-Kaynaklar sağlandı; bütünlük envanteri ve ilk kaynak incelemesi tamamlandı. Bölüm bazlı roadmap ve ilk davranış testi sözleşmeleri hazır. P00 yerel test çalıştırıcısı ve 487 Java referans senaryosu (sayısal işlemler, zamanlayıcı, VarInt/VarLong, UTF-8) mevcut. UTF-8 için yeni 141 senaryo henüz yalnızca Java referansıdır. Rust VarInt/VarLong, zamanlayıcı ve Vec2/sayısal yardımcıları debug/release profillerinde toplam 346 senaryoda Java ile eşleşiyor. Oynanabilir istemci henüz yok. Boş `main`, yalnızca iskelettir.
+Kaynaklar sağlandı; bütünlük envanteri ve ilk kaynak incelemesi tamamlandı. Bölüm bazlı roadmap ve ilk davranış testi sözleşmeleri hazır. P00 yerel test çalıştırıcısı ve 530 Java referans senaryosu (sayısal işlemler, zamanlayıcı, VarInt/VarLong, UTF-8, UUID/BlockPos) mevcut. Binary için yeni 43 senaryo henüz yalnızca Java referansıdır. Rust VarInt/VarLong, zamanlayıcı, Vec2/sayısal yardımcıları ve UTF-8 debug/release profillerinde toplam 487 senaryoda Java ile eşleşiyor. Oynanabilir istemci henüz yok. Boş `main`, yalnızca iskelettir.
 
-Mevcut referanslar [yerel veri rehberindeki](docs/reference-data.md) `.data/` alanında kalır. P03.b UTF-8 string okuma/yazma kaynak incelemesi ve Java referans testleri hazır; sıradaki küçük dilim bunlara karşı Rust implementasyonudur. Her Rust diliminden önce ilgili Java referansı ve testler hazırlanacak. Grafik, ses, pencere ve ağ teknolojileri sonraya bırakıldı. Test otomasyonu Python standart kütüphanesi ve özgün Java adaptörlerini kullanıyor; üretim kütüphanesine ek Rust bağımlılığı eklenmedi. Rust JSONL test adaptörü `serde_json` geliştirme bağımlılığını kullanıyor.
+Mevcut referanslar [yerel veri rehberindeki](docs/reference-data.md) `.data/` alanında kalır. P03.b UUID/BlockPos kaynak incelemesi ve Java referans testleri hazır; sıradaki küçük dilim bunlara karşı Rust implementasyonudur. Her Rust diliminden önce ilgili Java referansı ve testler hazırlanacak. Grafik, ses, pencere ve ağ teknolojileri sonraya bırakıldı. Test otomasyonu Python standart kütüphanesi ve özgün Java adaptörlerini kullanıyor; üretim kütüphanesine ek Rust bağımlılığı eklenmedi. Rust JSONL test adaptörü `serde_json` geliştirme bağımlılığını kullanıyor.
 
 ## Belgeler
 
@@ -25,6 +25,8 @@ Mevcut referanslar [yerel veri rehberindeki](docs/reference-data.md) `.data/` al
 - [VarInt/VarLong doğrulaması](docs/wire-parity.md)
 - [Zamanlayıcı doğrulaması](docs/timer-parity.md)
 - [Vec2 ve sayısal yardımcıların doğrulaması](docs/math-parity.md)
+- [UTF-8 doğrulaması](docs/utf8-parity.md)
 - [UTF-8 davranış sözleşmesi ve referans testleri](docs/utf8-contract.md)
+- [UUID/BlockPos davranış sözleşmesi ve referans testleri](docs/binary-contract.md)
 
 Her AI aracı işe başlamadan `AGENTS.md` dosyasını okumalıdır. Claude, Gemini ve Copilot giriş dosyaları aynı kurallara yönlendirir. Talimat dosyalarını otomatik okumayan araçlarda `AGENTS.md` görev bağlamına açıkça verilmelidir; bu dosyalar modellerin davranışını teknik olarak zorlayan bir mekanizma değildir.

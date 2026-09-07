@@ -48,6 +48,14 @@
     "io.netty:netty-codec-base": {
       "file": "netty-codec-base-4.2.15.Final.jar",
       "sha1": "e97149fdd5fb04858efa90e314651c8d700dc68b"
+    },
+    "org.apache.commons:commons-lang3": {
+      "file": "commons-lang3-3.20.0.jar",
+      "sha1": "65897b3e5731220962e659e001904af3c3cbeba9"
+    },
+    "com.mojang:authlib": {
+      "file": "authlib-9.0.75.jar",
+      "sha1": "d61056a234d5e4b272e09d59b0713f80d6c0b6af"
     }
   },
   "families": {
@@ -86,6 +94,24 @@
         "io.netty:netty-buffer",
         "io.netty:netty-common",
         "io.netty:netty-codec-base"
+      ]
+    },
+    "binary": {
+      "source": "BinaryOracle.java",
+      "libraries": [
+        "com.google.code.gson:gson",
+        "io.netty:netty-buffer",
+        "io.netty:netty-common",
+        "io.netty:netty-codec-base",
+        "com.mojang:datafixerupper",
+        "com.google.guava:guava",
+        "com.google.guava:failureaccess",
+        "it.unimi.dsi:fastutil",
+        "com.mojang:logging",
+        "org.slf4j:slf4j-api",
+        "org.joml:joml",
+        "org.apache.commons:commons-lang3",
+        "com.mojang:authlib"
       ]
     }
   }

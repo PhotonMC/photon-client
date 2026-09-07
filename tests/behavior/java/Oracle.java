@@ -22,6 +22,7 @@ public final class Oracle {
                     case "utf8" -> "Utf8Oracle";
                     case "math" -> "MathOracle";
                     case "timer" -> "TimerOracle";
+                    case "binary" -> "BinaryOracle";
                     default -> throw new IllegalArgumentException("Unknown scenario family");
                 };
                 var response = new JsonObject();

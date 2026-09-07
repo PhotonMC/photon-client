@@ -182,8 +182,74 @@ def utf8_cases():
                "max_length": limit, "prefix_hex": "a55a", "hex": framed}
 
 
+def binary_cases():
+    uuids = {
+        "zero": ("0000000000000000", "0000000000000000"),
+        "max": ("ffffffffffffffff", "ffffffffffffffff"),
+        "sample": ("0011223344556677", "8899aabbccddeeff"),
+        "alternating": ("f0f0f0f0f0f0f0f0", "0f0f0f0f0f0f0f0f"),
+        "version4": ("123e4567e89b12d3", "a456426655440000"),
+        "high-bit": ("8000000000000000", "0000000000000001"),
+        "low-bit": ("0000000000000001", "8000000000000000"),
+        "deadbeef": ("deadbeefdeadbeef", "cafebabecafebabe"),
+    }
+    for label, (most, least) in uuids.items():
+        yield {"case_id": f"binary/uuid-write/{label}", "family": "binary",
+               "operation": "write", "codec": "uuid",
+               "prefix_hex": "a55a", "most_hex": most, "least_hex": least}
+    sample = bytes.fromhex("00112233445566778899aabbccddeeff").hex()
+    for length in (0, 1, 7, 8, 9, 15, 16):
+        framed = sample[:length * 2] + "55aa"
+        yield {"case_id": f"binary/uuid-read/truncated-{length}", "family": "binary",
+               "operation": "read", "codec": "uuid",
+               "prefix_hex": "a55a", "hex": framed}
+    yield {"case_id": "binary/uuid-read/exact", "family": "binary",
+           "operation": "read", "codec": "uuid",
+           "prefix_hex": "a55a", "hex": sample}
+    yield {"case_id": "binary/uuid-read/all-ones", "family": "binary",
+           "operation": "read", "codec": "uuid",
+           "prefix_hex": "a55a", "hex": "ffffffffffffffffffffffffffffffff55aa"}
+
+    positions = {
+        "origin": (0, 0, 0),
+        "unit": (1, 2, 3),
+        "negative": (-1, -1, -1),
+        "max-corner": (33554431, 2047, 33554431),
+        "min-corner": (-33554432, -2048, -33554432),
+        "wrap-x": (33554432, 0, 0),
+        "wrap-y-high": (0, 2048, 0),
+        "wrap-y-low": (0, -2049, 0),
+        "border": (30000000, 100, -30000000),
+        "i32-max": (2147483647, 2147483647, 2147483647),
+        "i32-min": (-2147483648, -2147483648, -2147483648),
+        "mixed": (123456, -789, 654321),
+    }
+    for label, (x, y, z) in positions.items():
+        yield {"case_id": f"binary/blockpos-write/{label}", "family": "binary",
+               "operation": "write", "codec": "blockpos",
+               "prefix_hex": "a55a", "x": str(x), "y": str(y), "z": str(z)}
+    payloads = {
+        "zero": "0000000000000000",
+        "ones": "ffffffffffffffff",
+        "sample": "0040000030020000",
+        "max-corner": "7fffffdffffff7ff",
+        "high-bit": "8000000000000000",
+        "deadbeef": "deadbeefcafebabe",
+    }
+    for label, payload in payloads.items():
+        yield {"case_id": f"binary/blockpos-read/{label}", "family": "binary",
+               "operation": "read", "codec": "blockpos",
+               "prefix_hex": "a55a", "hex": payload + "55aa"}
+    full = "0011223344556677"
+    for length in range(8):
+        yield {"case_id": f"binary/blockpos-read/truncated-{length}", "family": "binary",
+               "operation": "read", "codec": "blockpos",
+               "prefix_hex": "a55a", "hex": full[:length * 2] + "55aa"}
+
+
 def build_cases(families):
-    generators = {"wire": wire_cases, "math": math_cases, "timer": timer_cases, "utf8": utf8_cases}
+    generators = {"wire": wire_cases, "math": math_cases, "timer": timer_cases, "utf8": utf8_cases,
+                  "binary": binary_cases}
     cases = [dict(schema_version=1, **case)
              for family in sorted(families) for case in generators[family]()]
     ids = [case["case_id"] for case in cases]

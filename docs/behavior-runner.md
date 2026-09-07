@@ -14,10 +14,10 @@ python3 tools/behavior/test_runner.py
 - `preflight`: client ve ilgili JAR hash'lerini, Java/javac sürümünü kontrol eder. Oyun veya test çalıştırmaz.
 - `capture`: senaryoları iki ayrı Java sürecinde çalıştırır, çıktıları karşılaştırır ve kararlı referansı kaydeder. Aynı kimlikteki kaydı değiştirmez; mevcut kayıt farklı/bozuksa başarısız olur.
 - `verify`: kayıtlı referansı değiştirmeden iki yeni Java çalıştırmasıyla karşılaştırır. Önceden `capture` yapılmış olmalı.
-- `compare --adapter /mutlak/yol/program`: aynı girdileri belirtilen executable'a verir ve kayıtlı Java sonucuyla karşılaştırır. Rust wire/timer/math/utf8 adaptörü mevcut; bu komut adaptör verilmediğinde **2** ile çıkar. Derleme ve karşılaştırma komutları [UTF-8 dilim belgesindedir](utf8-parity.md).
+- `compare --adapter /mutlak/yol/program`: aynı girdileri belirtilen executable'a verir ve kayıtlı Java sonucuyla karşılaştırır. Rust wire/timer/math/utf8 adaptörü mevcut, binary henüz yok; bu komut adaptör verilmediğinde **2** ile çıkar. Derleme ve karşılaştırma komutları [UTF-8 dilim belgesindedir](utf8-parity.md).
 - `test_runner.py`: yalnızca yanlış başarı, bozuk referans ve hatalı süreç davranışlarını denetleyen beş küçük sentetik altyapı testi. Java veya asset gerektirmez.
 
-Tek aile seçmek için `--family wire`, `--family math`, `--family timer` veya `--family utf8` kullanılır; seçenek tekrarlanabilir. Seçilmezse mevcut bütün aileler çalışır. Aile seçimi referans kimliğinin parçasıdır; örneğin `verify --family timer` öncesinde aynı seçimle `capture --family timer` çalıştırılmalıdır. `--runtime /yerel/runtime` alternatif client/`libs` dizinini, `--jdk-home /jdk/koku` Java araçlarını seçer. Bu yollar yalnızca okunur. Gerekli referanslar yoksa indirme yapılmaz.
+Tek aile seçmek için `--family wire`, `--family math`, `--family timer`, `--family utf8` veya `--family binary` kullanılır; seçenek tekrarlanabilir. Seçilmezse mevcut bütün aileler çalışır. Aile seçimi referans kimliğinin parçasıdır; örneğin `verify --family timer` öncesinde aynı seçimle `capture --family timer` çalıştırılmalıdır. `--runtime /yerel/runtime` alternatif client/`libs` dizinini, `--jdk-home /jdk/koku` Java araçlarını seçer. Bu yollar yalnızca okunur. Gerekli referanslar yoksa indirme yapılmaz.
 
 ## Sonuç ve çıkış kodları
 
@@ -68,9 +68,10 @@ Diğer `math` operasyonları `floor`, `wrap_degrees`, `clamp`; `type` alanı `f3
 | `math` | 180 | Vec2 normalizasyon/ölçek zinciri, normalize sınır komşuları, f32/f64 floor/clamp/wrap; sıfır, işaretli sıfır, subnormal, tür sınırları, sonsuzluk ve NaN |
 | `timer` | 22 | Tick sınırları/artık zaman, kontrollü hız değişimi, pause/freeze kombinasyonları, gerçek zaman sınırı, uzun frame ve 2^53 üzerindeki başlangıç saati |
 | `wire` | 144 | VarInt/VarLong yazma/okuma, sınırlar, hatalar, tüketim ve kalan veri |
-| `utf8` | 141 | UTF-16 birim sınırları, UTF-8 okuma/yazma, bozuk diziler, VarInt başlıkları ve hata tüketimi; yalnızca Java referansı |
-| **Toplam** | **487** | P01.a/P02.a/P03.a/P03.b UTF-8 için mevcut referans corpus'u |
+| `utf8` | 141 | UTF-16 birim sınırları, UTF-8 okuma/yazma, bozuk diziler, VarInt başlıkları ve hata tüketimi |
+| `binary` | 43 | UUID ve BlockPos okuma/yazma, sarma sınırları, kesik veri tüketimi; yalnızca Java referansı |
+| **Toplam** | **530** | P01.a/P02.a/P03.a/P03.b için mevcut referans corpus'u |
 
 7 Eylül 2026'da Java 25.0.4.1 / Linux x86_64 üzerinde ilk 346 senaryoluk corpus iki ayrı JVM sürecinde aynı sonuçları verdi. Kayıtlı referansa karşı `verify` de çalıştırıldı. Beş sentetik altyapı testi geçti. Komut düzeyinde ayrıca kontrollü replay, tek alan mutasyonu, boş adaptör çıktısı, eksik adaptör, eksik runtime ve yanlış JAR çıkışları sınandı. Bu replay programı yalnızca karşılaştırıcı kontrolüdür; Rust veya oyun implementasyonu değildir.
 
-P00 bu ilk aileler için hazırdır; asset/GPU/gerçek ağ test altyapısı henüz yoktur. P01'in tüm matematik kapsamı, P02'nin oyun döngüsü ve P03'ün diğer veri biçimleri tamamlanmadı. Rust wire adaptörü debug/release profillerinde 144 senaryoda eşleşti; [kanıt ve sınırlar](wire-parity.md). Zamanlayıcı da 22 senaryoda eşleşti; [kanıt](timer-parity.md). Math ailesi de 180 senaryoda eşleşti; [kanıt ve sınırlar](math-parity.md). UTF-8 ailesi de 141 senaryoda eşleşti; [kanıt](utf8-parity.md). Birleşik 487 senaryo debug/release profillerinde geçti. [UTF-8 protokolü, sözleşmesi ve kanıt](utf8-contract.md).
+P00 bu ilk aileler için hazırdır; asset/GPU/gerçek ağ test altyapısı henüz yoktur. P01'in tüm matematik kapsamı, P02'nin oyun döngüsü ve P03'ün diğer veri biçimleri tamamlanmadı. Rust wire adaptörü debug/release profillerinde 144 senaryoda eşleşti; [kanıt ve sınırlar](wire-parity.md). Zamanlayıcı da 22 senaryoda eşleşti; [kanıt](timer-parity.md). Math ailesi de 180 senaryoda eşleşti; [kanıt ve sınırlar](math-parity.md). UTF-8 ailesi de 141 senaryoda eşleşti; [kanıt](utf8-parity.md). Birleşik 487 senaryo debug/release profillerinde geçti. Yeni binary ailesiyle 530 Java senaryosu yakalandı ve doğrulandı; yeni 43 senaryoda Rust eşitliği iddiası yok. [UTF-8 protokolü, sözleşmesi ve kanıt](utf8-contract.md). [Binary sözleşmesi](binary-contract.md).
