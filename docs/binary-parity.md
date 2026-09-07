@@ -37,6 +37,6 @@ cargo build --locked --offline --example behavior_adapter
 python3 tools/behavior/run.py compare --adapter target/debug/examples/behavior_adapter
 ```
 
-Kayıtlı Java referansını yeniden ölçmek için `verify` kullanılır. Release için derlemeye `--release` eklenir ve `target/release/examples/behavior_adapter` seçilir.
+Kayıtlı Java referansını yeniden ölçmek için `verify` kullanılır. Release için derlemeye `--release` eklenir ve `target/release/examples/behavior_adapter` seçilir. Binary ailesine long array/BitSet eklendiğinden mevcut Rust karşılaştırmasında uygulanan aileler açıkça seçilir.
 
-P03.b kapsamında long array ve bitset henüz uygulanmadı. Sonraki dilim bağımlılık sırasına göre seçilir.
+P03.b kapsamında long array ve BitSet için [35 Java referans testi](binary-contract.md) hazır; sıradaki küçük dilim Rust implementasyonudur.

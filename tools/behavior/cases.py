@@ -246,6 +246,66 @@ def binary_cases():
                "operation": "read", "codec": "blockpos",
                "prefix_hex": "a55a", "hex": full[:length * 2] + "55aa"}
 
+    arrays = {
+        "empty": [],
+        "zero": ["0"],
+        "sample": ["0", "1", "-1"],
+        "extremes": [str(-(1 << 63)), str((1 << 63) - 1)],
+        "powers": [str(1 << 7), str(-(1 << 7)), str(1 << 35), str(-(1 << 35))],
+        "deadbeef": ["-2401053089206453570", "2309737966"],
+    }
+    for label, values in arrays.items():
+        yield {"case_id": f"binary/longarray-write/{label}", "family": "binary",
+               "operation": "write", "codec": "longarray",
+               "prefix_hex": "a55a", "values": values}
+    reads = {
+        "empty": "0055aa",
+        "one": "01010000000000000055aa",
+        "two": "0200112233445566778899aabbccddeeff55aa",
+        "short-payload": "02001122334455667755aa",
+        "missing-payload": "01",
+        "encoded-limit": "04",
+        "negative-length": "ffffffff0f55aa",
+        "noncanonical-zero": "800055aa",
+        "prefix-overflow-to-zero": "808080801055aa",
+        "ascii-127": "7f" + "00" * 127 + "55aa",
+    }
+    for label, framed in reads.items():
+        yield {"case_id": f"binary/longarray-read/{label}", "family": "binary",
+               "operation": "read", "codec": "longarray",
+               "prefix_hex": "a55a", "hex": framed}
+    for count in range(7):
+        yield {"case_id": f"binary/longarray-read/prefix-truncated-{count}", "family": "binary",
+               "operation": "read", "codec": "longarray",
+               "prefix_hex": "a55a", "hex": "80" * count}
+    yield {"case_id": "binary/longarray-read/prefix-too-big", "family": "binary",
+           "operation": "read", "codec": "longarray",
+           "prefix_hex": "a55a", "hex": "80808080800055aa"}
+
+    bitsets = {
+        "empty": [],
+        "bit-zero": [0],
+        "byte-boundary": [7, 8],
+        "word-boundary": [63, 64, 65],
+        "sample": [1, 65, 127],
+        "trailing-zero": [0, 64],
+    }
+    for label, bits in bitsets.items():
+        yield {"case_id": f"binary/bitset-write/{label}", "family": "binary",
+               "operation": "write", "codec": "bitset",
+               "prefix_hex": "a55a", "bits": bits}
+    bit_reads = {
+        "empty": "0055aa",
+        "bit-zero": "01010000000000000055aa",
+        "two-words": "020000000000000001010000000000000055aa",
+        "short-payload": "02001122334455667755aa",
+        "negative-length": "ffffffff0f55aa",
+    }
+    for label, framed in bit_reads.items():
+        yield {"case_id": f"binary/bitset-read/{label}", "family": "binary",
+               "operation": "read", "codec": "bitset",
+               "prefix_hex": "a55a", "hex": framed}
+
 
 def build_cases(families):
     generators = {"wire": wire_cases, "math": math_cases, "timer": timer_cases, "utf8": utf8_cases,

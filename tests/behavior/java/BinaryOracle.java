@@ -1,7 +1,10 @@
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.buffer.Unpooled;
+import io.netty.handler.codec.DecoderException;
+import java.util.BitSet;
 import java.util.HexFormat;
 import java.util.Locale;
 import java.util.UUID;
@@ -23,6 +26,8 @@ public final class BinaryOracle {
         byte[] input = null;
         UUID uuid = null;
         BlockPos pos = null;
+        long[] longs = null;
+        BitSet bits = null;
         if (read) {
             input = HexFormat.of().parseHex(request.get("hex").getAsString());
         } else if (codec.equals("uuid")) {
@@ -34,10 +39,26 @@ public final class BinaryOracle {
             int y = Integer.parseInt(request.get("y").getAsString());
             int z = Integer.parseInt(request.get("z").getAsString());
             pos = new BlockPos(x, y, z);
+        } else if (codec.equals("longarray")) {
+            var values = request.getAsJsonArray("values");
+            longs = new long[values.size()];
+            for (int i = 0; i < longs.length; i++) {
+                longs[i] = Long.parseLong(values.get(i).getAsString());
+            }
+        } else if (codec.equals("bitset")) {
+            bits = new BitSet();
+            for (var entry : request.getAsJsonArray("bits")) {
+                int bit = entry.getAsInt();
+                if (bit < 0) {
+                    throw new IllegalArgumentException("Bit index outside this corpus contract");
+                }
+                bits.set(bit);
+            }
         } else {
             throw new IllegalArgumentException("Unknown binary codec");
         }
-        if (!codec.equals("uuid") && !codec.equals("blockpos")) {
+        if (!codec.equals("uuid") && !codec.equals("blockpos")
+                && !codec.equals("longarray") && !codec.equals("bitset")) {
             throw new IllegalArgumentException("Unknown binary codec");
         }
         ByteBuf buffer = Unpooled.buffer();
@@ -55,20 +76,48 @@ public final class BinaryOracle {
                         String.format(Locale.ROOT, "%016x", decoded.getMostSignificantBits()));
                     result.addProperty("least_hex",
                         String.format(Locale.ROOT, "%016x", decoded.getLeastSignificantBits()));
-                } else if (read) {
+                } else if (read && codec.equals("blockpos")) {
                     BlockPos decoded = FriendlyByteBuf.readBlockPos(buffer);
                     result.addProperty("x", Integer.toString(decoded.getX()));
                     result.addProperty("y", Integer.toString(decoded.getY()));
                     result.addProperty("z", Integer.toString(decoded.getZ()));
+                } else if (read && codec.equals("longarray")) {
+                    long[] decoded_longs = FriendlyByteBuf.readLongArray(buffer);
+                    var values = new JsonArray();
+                    for (long value : decoded_longs) {
+                        values.add(Long.toString(value));
+                    }
+                    result.add("values", values);
+                } else if (read) {
+                    long[] decoded_longs = FriendlyByteBuf.readLongArray(buffer);
+                    BitSet decoded = BitSet.valueOf(decoded_longs);
+                    var indices = new JsonArray();
+                    decoded.stream().forEach(indices::add);
+                    result.add("bits", indices);
                 } else if (codec.equals("uuid")) {
                     FriendlyByteBuf.writeUUID(buffer, uuid);
-                } else {
+                } else if (codec.equals("blockpos")) {
                     FriendlyByteBuf.writeBlockPos(buffer, pos);
+                } else if (codec.equals("longarray")) {
+                    FriendlyByteBuf.writeLongArray(buffer, longs);
+                } else {
+                    FriendlyByteBuf.writeLongArray(buffer, bits.toLongArray());
                 }
                 result.addProperty("outcome", "value");
             } catch (IndexOutOfBoundsException error) {
                 result.addProperty("outcome", "error");
                 result.addProperty("error", "buffer_underflow");
+                result.addProperty("java_exception", error.getClass().getName());
+            } catch (DecoderException | NegativeArraySizeException error) {
+                result.addProperty("outcome", "error");
+                result.addProperty("error", "decoder_error");
+                result.addProperty("java_exception", error.getClass().getName());
+            } catch (RuntimeException error) {
+                if (error.getClass() != RuntimeException.class) {
+                    throw error;
+                }
+                result.addProperty("outcome", "error");
+                result.addProperty("error", "too_big");
                 result.addProperty("java_exception", error.getClass().getName());
             }
             if (read) {
