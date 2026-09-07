@@ -274,6 +274,39 @@ def binary_cases():
                "operation": "read", "codec": "blockpos",
                "prefix_hex": "a55a", "hex": full[:length * 2] + "55aa"}
 
+    sections = {
+        "origin": (0, 0, 0),
+        "unit": (1, 2, 3),
+        "negative": (-1, -1, -1),
+        "max-corner": (2097151, 524287, 2097151),
+        "min-corner": (-2097152, -524288, -2097152),
+        "wrap-x": (2097152, 0, 0),
+        "wrap-y-high": (0, 524288, 0),
+        "wrap-y-low": (0, -524289, 0),
+        "wrap-z": (0, 0, 2097152),
+        "i32-max": (2147483647, 2147483647, 2147483647),
+        "i32-min": (-2147483648, -2147483648, -2147483648),
+        "mixed": (123456, -789, 654321),
+    }
+    for label, (x, y, z) in sections.items():
+        yield {"case_id": f"binary/sectionpos-write/{label}", "family": "binary",
+               "operation": "write", "codec": "sectionpos",
+               "prefix_hex": "a55a", "x": str(x), "y": str(y), "z": str(z)}
+    section_payloads = {
+        "zero": "0000000000000000",
+        "ones": "ffffffffffffffff",
+        "sample": "0008420000c00030",
+        "high-bit": "8000000000000000",
+    }
+    for label, payload in section_payloads.items():
+        yield {"case_id": f"binary/sectionpos-read/{label}", "family": "binary",
+               "operation": "read", "codec": "sectionpos",
+               "prefix_hex": "a55a", "hex": payload + "55aa"}
+    for length in range(8):
+        yield {"case_id": f"binary/sectionpos-read/truncated-{length}", "family": "binary",
+               "operation": "read", "codec": "sectionpos",
+               "prefix_hex": "a55a", "hex": full[:length * 2] + "55aa"}
+
     arrays = {
         "empty": [],
         "zero": ["0"],

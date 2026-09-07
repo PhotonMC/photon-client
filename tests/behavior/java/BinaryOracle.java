@@ -10,6 +10,7 @@ import java.util.HexFormat;
 import java.util.Locale;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.SectionPos;
 import net.minecraft.network.FriendlyByteBuf;
 
 /** Original test glue: all packing happens inside the pinned JAR. */
@@ -27,6 +28,7 @@ public final class BinaryOracle {
         byte[] input = null;
         UUID uuid = null;
         BlockPos pos = null;
+        int[] section = null;
         long[] longs = null;
         BitSet bits = null;
         int fixedSize = -1;
@@ -47,6 +49,11 @@ public final class BinaryOracle {
             int y = Integer.parseInt(request.get("y").getAsString());
             int z = Integer.parseInt(request.get("z").getAsString());
             pos = new BlockPos(x, y, z);
+        } else if (codec.equals("sectionpos")) {
+            int x = Integer.parseInt(request.get("x").getAsString());
+            int y = Integer.parseInt(request.get("y").getAsString());
+            int z = Integer.parseInt(request.get("z").getAsString());
+            section = new int[]{x, y, z};
         } else if (codec.equals("longarray")) {
             var values = request.getAsJsonArray("values");
             longs = new long[values.size()];
@@ -79,6 +86,7 @@ public final class BinaryOracle {
             throw new IllegalArgumentException("Unknown binary codec");
         }
         if (!codec.equals("uuid") && !codec.equals("blockpos")
+                && !codec.equals("sectionpos")
                 && !codec.equals("longarray") && !codec.equals("bitset")
                 && !codec.equals("fixedbitset")) {
             throw new IllegalArgumentException("Unknown binary codec");
@@ -106,6 +114,11 @@ public final class BinaryOracle {
                     result.addProperty("x", Integer.toString(decoded.getX()));
                     result.addProperty("y", Integer.toString(decoded.getY()));
                     result.addProperty("z", Integer.toString(decoded.getZ()));
+                } else if (read && codec.equals("sectionpos")) {
+                    SectionPos decoded = SectionPos.of(buffer.readLong());
+                    result.addProperty("x", Integer.toString(decoded.x()));
+                    result.addProperty("y", Integer.toString(decoded.y()));
+                    result.addProperty("z", Integer.toString(decoded.z()));
                 } else if (read && codec.equals("longarray")) {
                     long[] decoded_longs = FriendlyByteBuf.readLongArray(buffer);
                     var values = new JsonArray();
@@ -123,6 +136,8 @@ public final class BinaryOracle {
                     FriendlyByteBuf.writeUUID(buffer, uuid);
                 } else if (codec.equals("blockpos")) {
                     FriendlyByteBuf.writeBlockPos(buffer, pos);
+                } else if (codec.equals("sectionpos")) {
+                    buffer.writeLong(SectionPos.asLong(section[0], section[1], section[2]));
                 } else if (codec.equals("longarray")) {
                     FriendlyByteBuf.writeLongArray(buffer, longs);
                 } else {
