@@ -293,6 +293,13 @@ fn binary_result(request: &Value) -> Result<Value, String> {
 
     let prefix = decode_hex(string(request, "prefix_hex")?)?;
     let codec = string(request, "codec")?;
+    fn binary_error(error: binary::ReadError) -> &'static str {
+        match error {
+            binary::ReadError::BufferUnderflow => "buffer_underflow",
+            binary::ReadError::DecoderError => "decoder_error",
+            binary::ReadError::TooBig => "too_big",
+        }
+    }
     match string(request, "operation")? {
         "read" => {
             let framed = decode_hex(string(request, "hex")?)?;
@@ -306,9 +313,9 @@ fn binary_result(request: &Value) -> Result<Value, String> {
                         "consumed": framed.len() - remaining.len(),
                         "remaining_hex": hex(remaining),
                     })),
-                    Err(binary::ReadError::BufferUnderflow) => Ok(json!({
+                    Err(error) => Ok(json!({
                         "outcome": "error",
-                        "error": "buffer_underflow",
+                        "error": binary_error(error),
                         "consumed": framed.len() - remaining.len(),
                         "remaining_hex": hex(remaining),
                     })),
@@ -322,9 +329,37 @@ fn binary_result(request: &Value) -> Result<Value, String> {
                         "consumed": framed.len() - remaining.len(),
                         "remaining_hex": hex(remaining),
                     })),
-                    Err(binary::ReadError::BufferUnderflow) => Ok(json!({
+                    Err(error) => Ok(json!({
                         "outcome": "error",
-                        "error": "buffer_underflow",
+                        "error": binary_error(error),
+                        "consumed": framed.len() - remaining.len(),
+                        "remaining_hex": hex(remaining),
+                    })),
+                },
+                "longarray" => match binary::read_long_array(&mut remaining) {
+                    Ok(values) => Ok(json!({
+                        "values": values.iter().map(ToString::to_string).collect::<Vec<_>>(),
+                        "outcome": "value",
+                        "consumed": framed.len() - remaining.len(),
+                        "remaining_hex": hex(remaining),
+                    })),
+                    Err(error) => Ok(json!({
+                        "outcome": "error",
+                        "error": binary_error(error),
+                        "consumed": framed.len() - remaining.len(),
+                        "remaining_hex": hex(remaining),
+                    })),
+                },
+                "bitset" => match binary::read_bitset(&mut remaining) {
+                    Ok(value) => Ok(json!({
+                        "bits": value.to_bits(),
+                        "outcome": "value",
+                        "consumed": framed.len() - remaining.len(),
+                        "remaining_hex": hex(remaining),
+                    })),
+                    Err(error) => Ok(json!({
+                        "outcome": "error",
+                        "error": binary_error(error),
                         "consumed": framed.len() - remaining.len(),
                         "remaining_hex": hex(remaining),
                     })),
@@ -349,6 +384,34 @@ fn binary_result(request: &Value) -> Result<Value, String> {
                         coordinate(request, "z")?,
                     );
                     binary::write_blockpos(value, &mut buffer);
+                }
+                "longarray" => {
+                    let values = request["values"]
+                        .as_array()
+                        .ok_or("values must be an array")?;
+                    let mut longs = Vec::with_capacity(values.len());
+                    for entry in values {
+                        longs.push(
+                            entry
+                                .as_str()
+                                .ok_or("long value must be a string")?
+                                .parse::<i64>()
+                                .map_err(|error| error.to_string())?,
+                        );
+                    }
+                    binary::write_long_array(&longs, &mut buffer);
+                }
+                "bitset" => {
+                    let bits = request["bits"].as_array().ok_or("bits must be an array")?;
+                    let mut indices = Vec::with_capacity(bits.len());
+                    for entry in bits {
+                        indices.push(
+                            entry
+                                .as_u64()
+                                .ok_or("bit index must be an unsigned integer")?,
+                        );
+                    }
+                    binary::write_bitset(&binary::BitSet::from_bits(&indices), &mut buffer);
                 }
                 _ => return Err("unknown binary codec".into()),
             }

@@ -1,14 +1,19 @@
-//! Fixed-size binary codecs for the pinned reference: UUID and BlockPos.
+//! Binary codecs for the pinned reference: UUID, BlockPos, long arrays and BitSets.
 //!
-//! Both travel as big-endian longs with no length prefix. Every 16-byte
-//! UUID and every 8-byte position is valid; the only read failure is a
-//! short buffer. Each `readLong` is atomic, so a truncated UUID can leave
-//! the first half consumed while a truncated position consumes nothing.
+//! UUID and positions travel as big-endian longs with no length prefix.
+//! Long arrays prefix a VarInt length; BitSets reuse that framing through
+//! trimmed little-endian words. Each `readLong` is atomic, so a truncated
+//! UUID can leave the first half consumed while a truncated position
+//! consumes nothing.
 
-/// Short-buffer failure for fixed-size reads.
+use crate::wire;
+
+/// Failures for binary reads, using the runner's error categories.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ReadError {
     BufferUnderflow,
+    DecoderError,
+    TooBig,
 }
 
 /// 128-bit identifier split into big-endian halves.
@@ -100,4 +105,98 @@ pub fn read_blockpos(input: &mut &[u8]) -> Result<BlockPos, ReadError> {
 /// Append 8 bytes for a packed position.
 pub fn write_blockpos(value: BlockPos, output: &mut Vec<u8>) {
     output.extend_from_slice(&value.pack().to_be_bytes());
+}
+
+/// Bit set stored as trimmed little-endian words, like the reference.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct BitSet {
+    words: Vec<u64>,
+}
+
+impl BitSet {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Build from long words, dropping trailing zero words.
+    pub fn from_longs(longs: &[i64]) -> Self {
+        let mut words: Vec<u64> = longs.iter().map(|value| *value as u64).collect();
+        while words.last() == Some(&0) {
+            words.pop();
+        }
+        Self { words }
+    }
+
+    /// Build from ascending bit indices.
+    pub fn from_bits(bits: &[u64]) -> Self {
+        let mut words = Vec::new();
+        for bit in bits {
+            let word = (*bit / 64) as usize;
+            if words.len() <= word {
+                words.resize(word + 1, 0);
+            }
+            words[word] |= 1 << (bit % 64);
+        }
+        Self { words }
+    }
+
+    /// Words without trailing zeros, matching `toLongArray`.
+    pub fn to_longs(&self) -> Vec<i64> {
+        self.words.iter().map(|word| *word as i64).collect()
+    }
+
+    /// Ascending set bit indices.
+    pub fn to_bits(&self) -> Vec<u64> {
+        let mut bits = Vec::new();
+        for (word_index, word) in self.words.iter().enumerate() {
+            let mut remaining = *word;
+            while remaining != 0 {
+                let bit = remaining.trailing_zeros() as u64;
+                bits.push(word_index as u64 * 64 + bit);
+                remaining &= remaining - 1;
+            }
+        }
+        bits
+    }
+}
+
+/// Read a VarInt length followed by big-endian longs.
+pub fn read_long_array(input: &mut &[u8]) -> Result<Vec<i64>, ReadError> {
+    let length = match wire::read_varint(input) {
+        Ok(value) => value,
+        Err(wire::ReadError::BufferUnderflow) => return Err(ReadError::BufferUnderflow),
+        Err(wire::ReadError::TooBig) => return Err(ReadError::TooBig),
+    };
+    if length < 0 {
+        return Err(ReadError::DecoderError);
+    }
+    let length = length as usize;
+    if length > input.len() / 8 {
+        return Err(ReadError::DecoderError);
+    }
+    let mut values = Vec::with_capacity(length);
+    for _ in 0..length {
+        let (head, rest) = input.split_at(8);
+        values.push(i64::from_be_bytes(head.try_into().expect("checked length")));
+        *input = rest;
+    }
+    Ok(values)
+}
+
+/// Append a VarInt length followed by big-endian longs.
+pub fn write_long_array(values: &[i64], output: &mut Vec<u8>) {
+    wire::write_varint(values.len() as i32, output);
+    for value in values {
+        output.extend_from_slice(&value.to_be_bytes());
+    }
+}
+
+/// Read a BitSet through its long array framing.
+pub fn read_bitset(input: &mut &[u8]) -> Result<BitSet, ReadError> {
+    read_long_array(input).map(|longs| BitSet::from_longs(&longs))
+}
+
+/// Append a BitSet through its trimmed long array framing.
+pub fn write_bitset(value: &BitSet, output: &mut Vec<u8>) {
+    write_long_array(&value.to_longs(), output);
 }

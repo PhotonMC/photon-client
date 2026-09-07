@@ -1,6 +1,6 @@
 # P03.b — UUID, BlockPos, long array ve BitSet referans sözleşmesi
 
-Bu dilimin **78 Java davranış testi hazırdır; long array ve BitSet için Rust implementasyonu henüz yoktur**. UUID/BlockPos için Rust karşılığı mevcuttur ([kanıt](binary-parity.md)); önceki 43 UUID/BlockPos girdisi ve sonucu değişmedi. Diğer P03 biçimleri bu dilime dahil değildir.
+Bu dilimin **78 Java davranış testi hazırdır ve Rust karşılığı doğrulanmıştır** ([kanıt](binary-parity.md)). Diğer P03 biçimleri bu dilime dahil değildir.
 
 ## Kaynak ve sınır
 
@@ -59,6 +59,6 @@ cargo build --locked --offline --example behavior_adapter
 python3 tools/behavior/run.py compare --family math --family timer --family wire --family utf8 --adapter target/debug/examples/behavior_adapter
 ```
 
-Varsayılan bütün-aile karşılaştırması yeni binary senaryoları nedeniyle başarısız olur; yeni testler sessizce atlanmaz.
+Varsayılan bütün-aile karşılaştırması bu kapsamı içerir; yeni testler sessizce atlanmaz.
 
-Sonraki adım bu sabit referansa karşı long array ve BitSet Rust davranış dilimidir. Beklenen çıktılar Rust'a göre değiştirilmeyecek.
+Beklenen çıktılar Rust'a göre değiştirilmedi.
