@@ -55,4 +55,4 @@ python3 tools/behavior/run.py compare --family math --family timer --family wire
 
 `capture` mevcut beklentileri değiştirmez. Kayıtlı Java referansını yeniden ölçmek için `verify` kullanılır. Release için derlemeye `--release` eklenir ve `target/release/examples/behavior_adapter` seçilir.
 
-P01/P02/P03 bölümlerinin tamamı ve karakter hareketi henüz doğrulanmış değildir. Direction 18 senaryoda doğrulandı; [sözleşme](direction-contract.md). İlgisiz sayısal yardımcılar peşinen genişletilmeyecek.
+P01/P02/P03 bölümlerinin tamamı ve karakter hareketi henüz doğrulanmış değildir. P03.c NBT için 19 Java referans senaryosu hazır ([sözleşme](nbt-contract.md)); sıradaki küçük dilim Rust implementasyonudur. İlgisiz sayısal yardımcılar peşinen genişletilmeyecek.

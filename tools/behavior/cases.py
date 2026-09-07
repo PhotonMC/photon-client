@@ -362,9 +362,53 @@ def binary_cases():
                "prefix_hex": "a55a", "size": size, "bits": bits}
 
 
+def nbt_cases():
+    prims = {
+        "byte": ("byte", "127"),
+        "short": ("short", "-12345"),
+        "int": ("int", "2147483647"),
+        "long": ("long", "-9223372036854775808"),
+        "float": ("float", "3f800000"),
+        "double": ("double", "bff0000000000000"),
+        "string": ("string", "hi"),
+    }
+    for label, (kind, value) in prims.items():
+        yield {"case_id": f"nbt/write/{label}", "family": "nbt",
+               "operation": "write", "prefix_hex": "a55a",
+               "fields": [{"key": "k", "type": kind, "value": value}]}
+    yield {"case_id": "nbt/write/empty", "family": "nbt",
+           "operation": "write", "prefix_hex": "a55a", "fields": []}
+    yield {"case_id": "nbt/write/full", "family": "nbt",
+           "operation": "write", "prefix_hex": "a55a",
+           "fields": [{"key": "b", "type": "byte", "value": "-1"},
+                      {"key": "s", "type": "short", "value": "256"},
+                      {"key": "i", "type": "int", "value": "-42"},
+                      {"key": "l", "type": "long", "value": "123456789012345"},
+                      {"key": "f", "type": "float", "value": "40490fdb"},
+                      {"key": "d", "type": "double", "value": "4005bf0a8b145769"},
+                      {"key": "t", "type": "string", "value": "ok"}]}
+    yield {"case_id": "nbt/write/null", "family": "nbt",
+           "operation": "write", "prefix_hex": "a55a",
+           "null_root": True, "fields": []}
+    reads = {
+        "empty": "0a0055aa",
+        "null": "0055aa",
+        "byte": "0a0100016b010055aa",
+        "string": "0a08000161000268690055aa",
+        "non-compound": "030102030455aa",
+        "truncated-tag": "0a01",
+        "truncated-body": "0a0100016b",
+        "missing-payload": "0a",
+        "empty-input": "",
+    }
+    for label, framed in reads.items():
+        yield {"case_id": f"nbt/read/{label}", "family": "nbt",
+               "operation": "read", "prefix_hex": "a55a", "hex": framed}
+
+
 def build_cases(families):
     generators = {"wire": wire_cases, "math": math_cases, "timer": timer_cases, "utf8": utf8_cases,
-                  "binary": binary_cases}
+                  "binary": binary_cases, "nbt": nbt_cases}
     cases = [dict(schema_version=1, **case)
              for family in sorted(families) for case in generators[family]()]
     ids = [case["case_id"] for case in cases]
