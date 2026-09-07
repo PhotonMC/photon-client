@@ -1,6 +1,6 @@
-# P03.c — NBT referans sözleşmesi (düz bileşikler)
+# P03.c — NBT referans sözleşmesi (bileşikler, listeler, diziler)
 
-Bu dilimin **18 Java davranış testi hazırdır ve Rust karşılığı doğrulanmıştır** ([kanıt](nbt-parity.md)). Listeler, diziler, iç içe bileşikler, kota/derinlik ve SNBT bu dilime dahil değildir.
+Bu dilimin **31 Java davranış testi hazırdır; iç içe bileşikler, listeler ve diziler için Rust implementasyonu henüz yoktur**. Düz bileşikler için Rust karşılığı mevcuttur ([kanıt](nbt-parity.md)); önceki 18 girdisi ve sonucu değişmedi. Kota/derinlik ve SNBT bu dilime dahil değildir.
 
 ## Kaynak ve sınır
 
@@ -20,7 +20,9 @@ Gerekli JAR SHA-1 değerleri `tests/behavior/reference.json` içinde sabitlendi.
 
 | Grup | Sayı | Girdiler |
 | --- | ---: | --- |
-| NBT yazma | 10 | Boş, 7 ilkel tür, tam düz bileşik ve null kök |
+| NBT yazma | 10 | Boş, 7 ilkel tür ve null kök |
+| NBT ağaç yazma | 8 | İç içe bileşik, int/string listeleri, boş liste, bayt/int/long dizileri ve bileşik listesi |
+| NBT okuma | 13 | Boş, null, el yapımı ilkel/iç içe/liste yükleri, bileşik-olmayan kök, kesik girdiler |
 | NBT okuma | 9 | Boş, null, el yapımı bayt/string yükleri, bileşik-olmayan kök, kesik/etiket/gövde ve boş girdi |
 
 `family: "nbt"`, `operation: "read" | "write"` ortak girdilerdir. Yazmada `fields` dizi veya `null_root` bulunur; okumada `hex` başlık/gövdeyi taşır. Başarılı okuma `fields` veya `null` içerir; her durumda `consumed` ve `remaining_hex` bulunur.
@@ -34,8 +36,8 @@ python3 tools/behavior/run.py capture --family nbt
 python3 tools/behavior/run.py verify --family nbt
 ```
 
-18 senaryo iki ayrı JVM'de aynı sonucu verdi. NBT referans kimliği: `62d5373d5e6a9b1bbca591baca712012461907aa21f3dcc62d267434af797920`. Ham girdiler/çıktılar yalnızca `.data/` altında tutulur.
+31 senaryo iki ayrı JVM'de aynı sonucu verdi. NBT referans kimliği: `d59af1e80d3b597d7fa2e4c2c4db8efbe3c81de0161503a84f7a334146ae66b2`. Önceki 18 girdisi ve sonucu değişmedi. Ham girdiler/çıktılar yalnızca `.data/` altında tutulur.
 
-Toplam 655 Java senaryosu yakalandı ve doğrulandı. Birleşik referans kimliği: `f14752fc7c658af95024aea3bbe6011ebc3423db5a01698e6178e0f8ce765081`. Eski kayıtlar değiştirilmedi.
+Toplam 749 Java senaryosu yakalandı ve doğrulandı. Birleşik referans kimliği: `498d77d92c4ec42c9073256fe4d5ff56259297322c94741f00cfa6b799c9d92f`. Eski kayıtlar değiştirilmedi.
 
-Beklenen çıktılar Rust'a göre değiştirilmedi.
+Mevcut Rust adaptörü ağaç/liste/dizi içermediğinden ilgili karşılaştırma başarısız olur. Sonraki adım bu sabit referansa karşı NBT ağaç Rust davranış dilimidir.

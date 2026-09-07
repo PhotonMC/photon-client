@@ -35,4 +35,4 @@ cargo build --locked --offline --example behavior_adapter
 python3 tools/behavior/run.py compare --adapter target/debug/examples/behavior_adapter
 ```
 
-Kayıtlı Java referansını yeniden ölçmek için `verify` kullanılır. Sonraki dilim bağımlılık sırasına göre seçilir.
+Kayıtlı Java referansını yeniden ölçmek için `verify` kullanılır. P03.c kapsamında ağaç/liste/dizi için [13 Java referans testi](nbt-contract.md) hazır; sıradaki küçük dilim Rust implementasyonudur. Sonraki dilim bağımlılık sırasına göre seçilir.
