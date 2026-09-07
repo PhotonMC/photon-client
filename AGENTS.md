@@ -12,7 +12,7 @@ Bu kurallar model veya sağlayıcıdan bağımsızdır: GPT/Codex, Claude, Gemin
 
 ## Aşama sınırı
 
-Şu an kaynaklar bekleniyor. Oyun implementasyonu ve test yazımı yapma; ayrıntılı bölüm roadmap'i uydurma. Kullanıcı kaynakları sağladıktan sonra önce sürüm ve içerik envanterini çıkar, ilgili kaynakları incele ve kanıtlarıyla bölüm bazlı roadmap hazırla. Sonra her bölüm için davranış testlerini implementasyondan önce oluştur. Genel süreç açıklaması ayrıntılı implementasyon planı yerine geçmez.
+Kaynaklar sağlandı; referans Minecraft Java Edition 26.2, protokol 776, Java 25 olarak sabitlendi. Önce [referans envanterini](docs/reference-baseline.md), [kaynak incelemesini](docs/source-review.md) ve [roadmap'i](docs/roadmap.md) oku. Kaynak incelemesi ve planlama aşamasındayız; oyun implementasyonuna başlanmadı. Sıradaki geliştirme aşaması, [ilk davranış testleri sözleşmesine](docs/first-behavior-tests.md) göre Java referans çalıştırıcısı ve davranış testleridir. Her Rust davranış diliminden önce ilgili Java referansı ve testler hazır olmalı. Kaynak veya sürüm değişirse mevcut beklentileri sessizce yenileme; envanteri ve etkilenen sözleşmeleri yeniden incele.
 
 ## Referanslar ve dağıtım
 

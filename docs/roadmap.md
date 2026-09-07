@@ -1,27 +1,86 @@
-# Roadmap — kaynaklar bekleniyor
+# Java Edition 26.2 istemci yol haritası
 
-Durum: hazırlık iskeleti oluşturuldu. Hedef Java sürümü, kaynak envanteri, Pumpkin revizyonu, bölüm sınırları ve teknoloji seçimleri henüz belirlenmedi.
+Referans: **26.2 / protokol 776 / Java 25**. [Envanter](reference-baseline.md), [kaynak incelemesi](source-review.md) ve [davranış testi yaklaşımı](behavior-testing.md) bu planın dayanağıdır. Bu bir Rust mimarisi veya teknoloji seçimi değildir.
 
-Bu aşamada motor/mimari tasarımı, tahminî modül listesi veya implementasyon sırası oluşturulmaz. Kullanıcı `.data/` içine referansları ekledikten sonra kaynaklar incelenerek bu belge doldurulur.
+Durum: ilk kaynak incelemesi ve bölüm planı hazır. P00'ın yerel sınıf çağırma yoklaması yapıldı; kalıcı test çalıştırıcısı henüz yok. Diğer bölümlerde davranış testleri ve Rust implementasyonu başlamadı. Hiçbir bölüm “Java ile eşitliği doğrulandı” durumunda değil.
 
-İlerleme sırası:
+## Uygulama ve kabul kuralı
 
-1. Yerel kaynak, asset ve çalıştırılabilir referans envanterini çıkar; hedef sürümü ve kökeni sabitle.
-2. Kaynakları bölüm bölüm incele; istemci sınırlarını, bağımlılıkları ve gözlenebilir Java davranışlarını belirle. Pumpkin protokol uyumluluğunu doğrula.
-3. İncelemeye dayanarak küçük, bağımlılık sırası belli implementasyon dilimleri oluştur.
-4. Her dilim için önce otomatik Java referansı ve davranış testlerini hazırla; sonra Rust implementasyonunu karşılaştırarak geliştir.
-5. Eşitliği doğrulanan dilimi commit et. Davranışı koruma kanıtı olmadan optimizasyona geçme.
+Pxx bir **bölüm**, Pxx.a/b/c ise küçük davranış dilimidir. Bölüm tek commit veya tek büyük taşıma işi değildir. Her alt dilim için önce ilgili Java dalları incelenir, sözleşme ve Java referans testi oluşturulur; sonra gerekiyorsa Rust implementasyonu yapılır. Test çalıştırıcısı/test sözleşmesi ile tamamlanmış Rust dilimi ayrı incelenebilir commitler olabilir. Aşağıdaki sıra, bütün testleri tek seferde yazıp sonra bütün oyunu geliştirmek anlamına gelmez.
 
-Kaynak incelemesinden sonra her dilimin kaydı şu alanları içerecek:
+Tablolardaki testler başlangıç senaryolarıdır; alanın tüm varyantlarını kapsadığı varsayılmaz. Her alt dilimin kaydı kimliği, kesin kaynak konumlarını, bağımlılıklarını, girdileri, Java yakalama yöntemini, karşılaştırılan çıktıları, sonucu ve commit'i içerecek. Karşılaştırma kuralları [ilk sözleşmelerde](first-behavior-tests.md) somutlaştırıldı.
 
-| Alan | İçerik |
-| --- | --- |
-| Kimlik ve kapsam | Tek incelenebilir davranış dilimi, kapsam dışı kısımlar |
-| Java kanıtı | Tam sürüm, ilgili dosya/sembol konumları ve kendi ifadelerimizle davranış |
-| Bağımlılıklar | Önce tamamlanması gereken dilimler ve gereken yerel girdiler |
-| Davranış testleri | Kontrollü senaryolar, Java referans yakalama yöntemi, karşılaştırma sözleşmesi |
-| Rust çalışması | Testler hazır olduktan sonra yapılacak en küçük implementasyon |
-| Kabul ölçütü | Hangi senaryo ve ortamlarda hangi sonuçların eşit olması gerektiği |
-| Durum ve kanıt | İncelenmedi / test hazırlanıyor / implementasyon / doğrulandı / engelli; sonuç ve commit |
+Kabul için gerekli yerel testler gerçekten çalışmalı, aynı girdide Java ve Rust'ın ilgili gözlenebilir çıktıları eşit olmalı ve önceki ilgili dilimlerde fark oluşmamalı. Kaynak/ortam eksikliği veya sunucu farkı “engelli”; beklenen fark “geçti” değildir. Görsel/ses dilimlerinde yalnızca mantık izi yeterli kabul edilmez.
 
-Bu şablon henüz herhangi bir bölümün incelendiği, test edildiği veya tamamlandığı anlamına gelmez.
+## A — Çalıştırılabilir referans ve temel davranışlar
+
+| Bölüm | Ön koşul | Küçük dilimler | Önce yazılacak davranış testleri ve karşılaştırılan çıktı |
+| --- | --- | --- | --- |
+| **P00 Referans çalıştırıcısı** | Yerel girdiler mevcut | a: kimlik/bütünlük kontrolü; b: orijinal JAR sınıf çağrıları; c: senaryo, yakalama ve karşılaştırma komutları | Eksik/farklı JAR veya asset başarı üretmemeli. Aynı sabit senaryo tekrarında aynı referans; değiştirilmiş bir çıktı fark olarak yakalanmalı. Rust adaptörü yoksa eşitlik sonucu verilmemeli. |
+| **P01 Sayısal ve geometrik temel** | P00 | a: kullanılan `Mth` ve `Vec2` işlemleri; b: `Vec3`, koordinat/angle dönüşümleri; c: `BlockPos`, `SectionPos`, `Direction`; d: AABB/ray ve shape temel işlemleri; e: istemcinin gerçekten kullandığı random yolları | Negatif koordinatlar, sıfır/işaretli sıfır, sınır komşuları, diyagonal normalizasyon, açı sarmalama, kutu yüzüne temas ve sabit seed dizileri. Sayısal çıktılar, float bitleri, yön/koordinat ve hit sonucu. Bütün matematik kütüphanesini peşinen taşıma. |
+| **P02 Zaman ve olay sırası** | P00; gereken P01 işlemleri | a: `DeltaTracker.Timer`; b: frame/tick sırası ve en çok 10 tick sınırı; c: pause/freeze ve server tick-rate olayları | 0/1/49/50/51 ms çevresi, artık zaman, uzun frame, pause/unpause ve freeze kombinasyonları. Üretilen/yürütülen tick, kısmi tick bitleri, görev/paket/input/render sırası. P06 sonrası gerçek paket kuyruğuyla yeniden bağlanır. |
+| **P03 Veri ve wire kodlamaları** | P00; P01.c gereken yerlerde | a: VarInt/VarLong; b: UTF-8, UUID, konum ve bitset; c: NBT okuma/sınırları; d: registry bağımlı alanlar için adaptör sınırı | Başarılı, kesilmiş, fazla uzun, sınır dışı ve geçerli fakat alışılmadık kodlamalar. Yalnızca roundtrip değil Java'dan alınan bayt dizisi, tüketilen bayt sayısı, değer ve hata davranışı. Registry adaptörünün tamamlanması P07'ye bağlı. |
+| **P04 Yerel kaynaklar ve pack'ler** | P00, gerekli P03 biçimleri | a: index/object ve JAR kaynaklarını çözme; b: pack sırası/metadata/known pack verisi; c: reload, eksik kaynak ve uyumsuz sürüm; d: kullanıcının seçtiği asset kökünü bağlama | Aynı mantıksal yola birden fazla pack, olmayan nesne, geçersiz index, reload sırasında kaynak değişimi. Çözülen kaynak kimliği/hash'i, öncelik, hata/fallback ve reload olayları. Test verisindeki orijinal içerik yerelde kalır. |
+| **P05 Ayarlar, pencere olayları ve input** | P00–P02; kaynak isteyen alt dilimde P04 | a: option varsayılanları ve kaydet/yükle; b: key mapping, basma/bırakma/tekrar; c: `KeyboardInput`; d: mouse birikimi, scroll, odak ve GUI koordinatı | Karşıt yönler ve tüm yön kombinasyonları, aynı frame'de olaylar, tuş tutma/tekrar, odak kaybı, GUI ölçeği ve yeniden boyutlandırma. Input snapshot'ı ve hareket vektörü, click tüketimi, koordinatlar. GUI'ye yönlendirme P22'de tamamlanır. |
+
+P00–P03'ün ilk dilimleri grafik, ses veya Pumpkin kurulumu beklemez. P01/P03'te yalnızca sonraki davranış diliminin ihtiyaç duyduğu yardımcılar geliştirilir.
+
+## B — Bağlantı ve istemci dünyası
+
+| Bölüm | Ön koşul | Küçük dilimler | Önce yazılacak davranış testleri ve karşılaştırılan çıktı |
+| --- | --- | --- | --- |
+| **P06 Bağlantı ve login** | P02–P03, P05 ayarları | a: durum/ping ve frame sınırları; b: handshake/login; c: compression/encryption geçişleri; d: keepalive, disconnect ve yeniden bağlanma | Parçalı/birleştirilmiş ağ verisi, geçiş sırasında gelen paket, sıkıştırma eşiği ve kopma. Paket baytları, protokol durumu, yanıt sırası ve kullanıcıya iletilen sonuç. Java referansı ayrıca sabit Pumpkin adayına bağlanır; sadece enum eşlemesi kabul değildir. |
+| **P07 Configuration ve registry'ler** | P03–P04, P06 | a: known pack/feature seçimi; b: registry ve tag biriktirme; c: configuration→play ve yeniden configuration; d: item/block/data component bağlantıları | Paket sırasını, eksik/tekrarlı registry girdisini, tag güncellemesini ve phase sınırını kontrol et. Registry kimliği/çözümü, ack ve play'e geçiş anı Java ile aynı olmalı. Pumpkin verisinin tamamlığı ayrı raporlanır. |
+| **P08 Dünya kopyası ve chunk yaşam döngüsü** | P01–P03, P07 | a: dimension ve client level; b: palette/chunk section/biome çözümü; c: chunk/light/block entity paketleri; d: cache merkezi/radius/unload; e: entity ekleme, metadata ve temel tick | Negatif chunk koordinatı, palette genişlik değişimi, boş section, load-update-unload, dimension/respawn ve sıralı ışık güncellemeleri. Blok/biome/state kimlikleri, entity durumu, ışık dizileri, güncelleme kuyruğu ve yaşam döngüsü. Dünya üretimi yapılmaz. |
+
+## C — Oyuncunun hissettiği davranış
+
+| Bölüm | Ön koşul | Küçük dilimler | Önce yazılacak davranış testleri ve karşılaştırılan çıktı |
+| --- | --- | --- | --- |
+| **P09 Çarpışma ve çevre sorguları** | P01, P08 | a: blok/entity/world-border shape toplama; b: eksen sırasıyla çözüm; c: step-up adayları; d: pose ve sığma/kenar kontrolleri | Tam blok, slab, merdiven, dar köşe, düşük tavan, blok sınırı ve birden fazla collider. Çözülen delta, AABB, on-ground, collision flag'leri ve seçilen step yüksekliği. Genel fizik engine'i eşitlik kanıtı sayılmaz. |
+| **P10 Yerel hareket** | P02, P05, P08–P09 | a: input çarpanları ve kare hareket düzeltmesi; b: yürüme/sprint/zıplama/crouch; c: su/lav/merdiven ve farklı yüzeyler; d: uçuş/elytra/auto-jump; e: araç kontrolü ve attribute/effect etkileşimi | Tick başına konum, hız, pose, sprint/flight durumu ve tetik zamanları. Diyagonal hareket, eşya kullanırken yürüme, sprint çift basışı, tavan altında zıplama, su geçişi, buz/özel yüzeyler. Her hareket modu ayrı dilim; örnek liste tüm block/entity varyantları yerine geçmez. |
+| **P11 Hareket senkronizasyonu** | P06–P08, P10 | a: input/sprint değişim paketleri; b: konum/rotasyon/status seçimi; c: teleport ve göreli düzeltme; d: remote entity interpolasyonu ve araç paketleri | Hareket eşiğinin altı/eşiti/üstü, 20 tick hatırlatması, yalnızca rotasyon veya flag değişimi; teleport sırasında binme ve prediction. Son durumun yanında paket türü, alanları, sırası ve gönderim tick'i. |
+| **P12 Hedefleme, eylem ve prediction** | P09–P11 | a: blok/entity pick ve reach; b: saldırı/elle vurma; c: kırma başlat/devam/iptal; d: yerleştirme/eşya kullanımı; e: sequence ack, rollback ve teleport etkileşimi | Hedef değiştirerek kazma, havaya vurma, iki el önceliği, kullanırken saldırı, reddedilen placement ve gecikmiş ack. Hit sonucu, animasyon/ses tetikleri, blok/eşya tahmini ve giden paketler. Otoriter sunucu sonucunu istemcide yeniden üretme. |
+| **P13 Envanter ve container davranışı** | P03, P07, P12 | a: item stack/component ve cursor; b: pickup/quick-move/swap/throw; c: drag dağıtımı ve çift tıklama; d: server state-id/slot düzeltmeleri; e: creative ve özel menü işlemleri | Boş/dolu slot, stack sınırı, shift-click, drag iptali, yanlış state ve sunucu düzeltmesi. Slot/cursor içerikleri, değişen slot haritası ve paketler. UI görüntüleri P22'de; container mantığı önce otomatik test edilir. |
+| **P14 Kamera ve bakış hissi** | P02, P05, P10–P11 | a: mouse hassasiyet/smooth/scope; b: yaw/pitch ve kamera geçişleri; c: eye-height/FOV interpolasyonu; d: bob/hurt/üçüncü şahıs kamera çarpışması | Aynı mouse izi farklı frame bölünmelerinde, invert eksenler, sprint FOV, pose değişimi ve duvar yakını üçüncü şahıs. Kamera konumu, açı, FOV, transform ve zamanlama izi. Nihai görüntü P15 sonrası karşılaştırılır. |
+
+## D — Görüntü, animasyon ve ses
+
+| Bölüm | Ön koşul | Küçük dilimler | Önce yazılacak davranış testleri ve karşılaştırılan çıktı |
+| --- | --- | --- | --- |
+| **P15 Görsel referans ve temel çizim** | P04–P05, P14 | a: kontrollü Java frame yakalama/ortam kaydı; b: texture/sampler/atlas temeli; c: shader/pipeline, hedef ve renk davranışı; d: reload/resize/frame sunumu | Aynı kaynak ve ayarlarla kontrollü frame'ler; UV, filtreleme, alpha/depth, renk dönüşümü ve sıralama. Önce Java tekrarlarıyla ortam değişkenliği ölçülür. Backend seçimi bu ihtiyaçlar ortaya çıktıktan sonra yapılır; orijinal shaderlar yerel girdidir. |
+| **P16 Bloklar, ışık ve dünya çizimi** | P08, P15 | a: model/blockstate ve varyant seçimi; b: section geometrisi/face culling; c: ışık/AO/tint; d: transparan/fluid katman ve sıralama; e: görünürlük/section invalidation | Sabit küçük sahneler, sınır komşusu blok, saydam yüzey, biome sınırı, gece/gündüz ışığı ve chunk güncellemesi. Geometri/ışık verisi ve görüntü. Varyant seçimi random akışıyla eşleşmeli. |
+| **P17 Entity, model ve animasyon** | P08, P11, P15–P16 | a: entity render state; b: pose/yaş/interpolasyon; c: model ve animation kanalları; d: skin/equipment/layer; e: block entity ve özel renderer | Sabit tick ve partial tick'te yürüme, hasar, ölüm, yüzme, binme, ekipman ve farklı entity türleri. Eklem/transform, layer sırası ve görüntü. İçerik defteri her özel model yolunu ilgili senaryoya bağlar. |
+| **P18 Eller, eşya ve ekran etkileri** | P12–P15, P17 | a: el/equip/swing; b: yemek/içmek/yay/arbalet/dürbün ve diğer kullanım animasyonları; c: harita/iki el; d: portal/su/ateş ve diğer ekran efektleri | Kullanım başlangıcı/bitişi/iptali, el değişimi ve saldırıyla çakışma. Transform ve animasyon evresi yanında frame görüntüsü. Referanstaki yeni eşya animasyonları içerik defterine ayrıca eklenir. |
+| **P19 Partiküller ve çevre sunumu** | P01–P02, P08, P15–P16 | a: partikül doğumu/random/yaşam; b: hareket/çarpışma; c: hava/sky/cloud/fog/environment attribute; d: özel efekt ve geçişler | Seed, konum, tick ve kamera sabitken parçacık listesi/yaşı, hava/dimension geçişleri ve görüntü. Random tüketim sırası da gözlenir. |
+| **P20 Ses** | P02, P04; oyun tetikleri için P10, P12, P17 | a: ses tanımı/ağırlıklı seçim; b: oyun olayı, gecikme/loop/stop; c: listener, pitch/volume/attenuasyon; d: decode/stream/mix ve pause; e: altyazı bağlantısı | Ayak sesi, kazma, eşya, ortam/müzik; kaynak seçimi ve zaman damgaları; sabit listener ve kanal ayarlarında ses yakalama. Aynı ses dosyasını seçmek tek başına duyulan eşitlik değildir. Java'da pause sırasında devam eden kategoriler ayrıca ölçülür. |
+
+P20.a/b için renderer tamamlanmasını beklemek gerekmez. P15–P20'de tüm orijinal görüntü, PCM ve golden çıktılar `.data/` altında kalır. Yalnızca test çalıştırıcısı ve özgün senaryo tanımları izlenir.
+
+## E — Arayüz ve kapsamın tamamlanması
+
+| Bölüm | Ön koşul | Küçük dilimler | Önce yazılacak davranış testleri ve karşılaştırılan çıktı |
+| --- | --- | --- | --- |
+| **P21 Font, dil ve metin** | P04–P05, P15 | a: font sağlayıcı/glyph/fallback; b: genişlik/wrap/bidi/stil; c: dil değişimi ve reload; d: metin input, seçim ve IME | Türkçe ve diğer referans diller, eksik glyph, birleşen karakterler, sağdan sola metin, genişlik sınırları, caret/selection. Ölçüler, satırlar, event sonucu ve glyph görüntüsü. |
+| **P22 GUI, HUD ve menüler** | P05, P13, P18, P20–P21 | a: focus/hover/click/scroll ve katmanlar; b: title/options/server list/connect/pause; c: HUD/hotbar/chat paneli; d: container/creative/recipe book; e: tooltip/toast/loading/death/credits ve kalan ekranlar | Input izi ve ekran boyutuna göre widget sınırları, focus/olay tüketimi, geçiş sırası, ekran görüntüsü ve UI sesi. Ekran defteri her somut screen'i kapsar; birkaç ana ekran tamamlanması GUI eşitliği değildir. |
+| **P23 Chat, oturum ve ortak servis davranışları** | P06–P07, P21–P22 | a: component/chat geçmişi ve komut önerileri; b: signed chat/ack/session akışı; c: server resource pack/cookie/transfer/dialog; d: sosyal görünürlük ve servis hata ekranları | Kontrollü mesaj dizisi, sıralama, ack, disconnect/reconnect, iptal edilen pack ve diyalog. Metin/stil, protokol çıktısı ve ekran sonucu. Hesap gerektiren gerçek servis kontrolleri erişim yoksa engelli kaydedilir. |
+| **P24 İçerik ve özel davranış defteri** | P07–P23'te ilgili yollar | a: block/item/entity özel davranış eşlemesi; b: özel container, harita/kitap/banner gibi veriyle çizilen içerik; c: advancement/stat/scoreboard/bossbar/waypoint/tutorial; d: tüm packet handler ve resource türlerinin kapsam kontrolü | Her özel davranış yoluna senaryo ata; aynı genel yolu kullanan veri varyantlarını eşdeğerlik gruplarıyla kapsa. Bir milyon kopya test yerine kaynak dalına ve gözlenen farka göre genişlet. Atanmamış davranışlar görünür listede kalmalı. |
+| **P25 Sunucuya/servise bağlı istemci akışları** | P06–P08, P22–P24 | a: local world oluştur/aç/kapat akışını Pumpkin yetenekleriyle eşle; b: singleplayer pause/LAN/dünya yönetimi; c: Realms ve diğer haricî servis ekran/işlemleri; d: erişilebilirlik/narrator ve platform özellikleri | Akış durumu ve UI'nin yanında sürecin gerçek sonucu ölçülür. Sunucu yazılmaz; Pumpkin veya servis karşılamıyorsa fark kapanmış sayılmaz. Bu bölüm kapsamdan çıkarılmış değil, entegrasyon/ürün kararı gereken bölümdür. |
+| **P26 Birleşik eşitlik ve dağıtım doğrulaması** | İlgili tüm önceki dilimler | a: Java ve Rust'ta aynı kontrollü oturum; b: sabit Pumpkin'de iki istemci senaryosu; c: platform/ayar matrisi ve kapsam açıkları; d: paket içeriği ve dış asset yükleme | Bağlan→chunk→hareket→eylem→envanter→ses/UI→respawn/dimension→yeniden bağlan. Tick/packet/state ve görüntü/ses birlikte karşılaştırılır. Orijinal içerik Git, paket veya executable'a girmemeli. Geçen sınırlı senaryolar tüm oyun için mutlak kanıt olarak sunulmaz. |
+
+P24 kapsam defteri ilgili bölümler geliştikçe doldurulur; en sona bırakılan bir keşif işi değildir. P25'e ait uyumluluk riskleri de ilk bağlantı aşamasından itibaren takip edilir. Hiçbir açık fark kullanıcı adına “önemsiz” sayılarak kapatılmaz.
+
+## İlk çalışma sırası ve mevcut engeller
+
+İlk kalıcı çalışma **P00.a–c**, ardından **P01.a**, **P02.a** ve **P03.a** için testlerdir. Bu testlerin orijinal Java'da çalıştığı görülmeden Rust davranış kodu yazılmaz. Sonraki dilim seçimi bağımlılıklara göre yapılır; bütün P01 yardımcılarını bir kerede uygulamak gerekmez.
+
+| Konu | Mevcut durum | Etkilediği çalışma |
+| --- | --- | --- |
+| JAR/asset/JDK girdileri | Yerelde mevcut; bütünlük kontrolü geçti | İlk grafik arayüzsüz referans testleri için eksik girdi bulunmadı |
+| Java oracle | Üç orijinal sınıf çağrılabildi; kalıcı çalıştırıcı yok | P00 sıradaki iş |
+| Pumpkin 26.2 | Sabit adayda 776 eşlemesi var; gerçek bağlantı denenmedi | P06–P08, P26 kabulü açık |
+| Render ve ses yakalama | Tam istemci/GPU/ses oturumu çalıştırılmadı | P15/P20 referans ortamı kurulacak |
+| Singleplayer ve servisler | İstemci hedefi korunuyor; dış bağımlılık eşitliği açık | P25, tam oyun eşitliği iddiası |
+| Teknoloji seçimi | Rust dışında uygulama stack'i seçilmedi | İlgili dilim ihtiyaçlarıyla daha sonra karar verilecek |
+
+Optimizasyon için ayrı bir erken modül yok. Eşitliği geçen dilimde ölçümle gerekçelendirilen ve ilgili testleri bozmayan küçük iyileştirmeler yapılabilir; geniş performans çalışması doğrulanan davranış kapsamından sonra gelir.

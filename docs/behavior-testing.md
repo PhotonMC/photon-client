@@ -1,6 +1,6 @@
 # Davranış doğrulama sözleşmesi
 
-Bu belge yaklaşımı tanımlar. Kaynaklar henüz sağlanmadığı için test kodu, framework veya çalıştırma komutu oluşturulmadı.
+Bu belge yaklaşımı tanımlar. 26.2 kaynakları incelendi; [ilk test sözleşmeleri](first-behavior-tests.md) hazırlandı. Henüz depoda davranış test paketi veya Rust test adaptörü yok. `.data/` altında yapılan Java çalıştırılabilirlik yoklaması yalnızca seçilen orijinal sınıfların çağrılabildiğini gösterir; Rust eşitlik testi değildir.
 
 ## Referans ve karşılaştırma
 
