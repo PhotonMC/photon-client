@@ -2,6 +2,7 @@
 
 use serde_json::{Value, json};
 use std::io::{self, BufRead, Write};
+use voxel_client::math::{self, Vec2};
 use voxel_client::timer::Timer;
 use voxel_client::wire::{self, ReadError};
 
@@ -97,6 +98,72 @@ fn millis(value: &Value, name: &str) -> Result<i64, String> {
         .map_err(|error| error.to_string())
 }
 
+fn f64_field(value: &Value, name: &str) -> Result<f64, String> {
+    let text = string(value, name)?;
+    if text.len() != 16 || !text.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+        return Err(format!("{name} must be sixteen hexadecimal digits"));
+    }
+    u64::from_str_radix(text, 16)
+        .map(f64::from_bits)
+        .map_err(|error| error.to_string())
+}
+
+fn vec2_snapshot(vector: Vec2) -> Value {
+    json!({
+        "x": format!("{:08x}", vector.x.to_bits()),
+        "y": format!("{:08x}", vector.y.to_bits()),
+        "length": format!("{:08x}", vector.length().to_bits()),
+        "length_squared": format!("{:08x}", vector.length_squared().to_bits()),
+    })
+}
+
+fn math_result(request: &Value) -> Result<Value, String> {
+    let operation = string(request, "operation")?;
+    if operation == "vec2" {
+        let mut vector = Vec2::new(f32_field(request, "x")?, f32_field(request, "y")?);
+        let mut events = vec![vec2_snapshot(vector)];
+        let steps = request["steps"]
+            .as_array()
+            .ok_or("steps must be an array")?;
+        for step in steps {
+            vector = match string(step, "action")? {
+                "normalize" => vector.normalized(),
+                "scale" => vector.scale(f32_field(step, "factor")?),
+                _ => return Err("unknown Vec2 action".into()),
+            };
+            events.push(vec2_snapshot(vector));
+        }
+        return Ok(json!({"events": events}));
+    }
+    match string(request, "type")? {
+        "f32" => {
+            let value = f32_field(request, "value")?;
+            match operation {
+                "floor" => Ok(json!({"value": math::floor_f32(value).to_string()})),
+                "wrap_degrees" => {
+                    Ok(json!({"bits": format!("{:08x}", math::wrap_degrees_f32(value).to_bits())}))
+                }
+                "clamp" => Ok(json!({"bits": format!("{:08x}", math::clamp_f32(value,
+                    f32_field(request, "min")?, f32_field(request, "max")?).to_bits())})),
+                _ => Err("unknown math operation".into()),
+            }
+        }
+        "f64" => {
+            let value = f64_field(request, "value")?;
+            match operation {
+                "floor" => Ok(json!({"value": math::floor_f64(value).to_string()})),
+                "wrap_degrees" => {
+                    Ok(json!({"bits": format!("{:016x}", math::wrap_degrees_f64(value).to_bits())}))
+                }
+                "clamp" => Ok(json!({"bits": format!("{:016x}", math::clamp_f64(value,
+                    f64_field(request, "min")?, f64_field(request, "max")?).to_bits())})),
+                _ => Err("unknown floating-point operation".into()),
+            }
+        }
+        _ => Err("unknown floating-point type".into()),
+    }
+}
+
 fn timer_snapshot(timer: &Timer) -> Value {
     json!({
         "game_delta": format!("{:08x}", timer.game_time_delta_ticks().to_bits()),
@@ -155,7 +222,8 @@ fn respond(request: Value) -> Result<Value, String> {
     let result = match string(&request, "family")? {
         "wire" => wire_result(&request)?,
         "timer" => timer_result(&request)?,
-        _ => return Err("only wire and timer families are implemented".into()),
+        "math" => math_result(&request)?,
+        _ => return Err("unknown behavior family".into()),
     };
     Ok(json!({"schema_version": 1, "case_id": case_id, "result": result}))
 }

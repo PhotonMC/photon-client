@@ -1,6 +1,6 @@
 # İlk davranış testleri: implementasyondan önceki sözleşmeler
 
-Bu belge P00, P01.a, P02.a ve P03.a için çalıştırılabilir testlere dönüştürülecek ilk sözleşmeleri tanımlar. [Kalıcı çalıştırıcı](behavior-runner.md) ile 180 sayısal/vektör, 22 zamanlayıcı ve 144 wire senaryosu hazır. Bu ilk corpus tam P01/P02/P03 kapsamı değildir; P03.a Rust wire dilimi 144 senaryoda doğrulandı; [sonuç](wire-parity.md). P02.a Rust zamanlayıcısı da 22 senaryoda doğrulandı; [sonuç](timer-parity.md). P01.a henüz Java referansı aşamasında. Referans kimliği [envanterde](reference-baseline.md) sabitlenmiştir.
+Bu belge P00, P01.a, P02.a ve P03.a için çalıştırılabilir testlere dönüştürülecek ilk sözleşmeleri tanımlar. [Kalıcı çalıştırıcı](behavior-runner.md) ile 180 sayısal/vektör, 22 zamanlayıcı ve 144 wire senaryosu hazır. Bu ilk corpus tam P01/P02/P03 kapsamı değildir; P03.a Rust wire dilimi 144 senaryoda doğrulandı; [sonuç](wire-parity.md). P02.a Rust zamanlayıcısı da 22 senaryoda doğrulandı; [sonuç](timer-parity.md). P01.a Vec2/sayısal yardımcıları da 180 senaryoda doğrulandı; [sonuç](math-parity.md). Referans kimliği [envanterde](reference-baseline.md) sabitlenmiştir.
 
 ## P00 — Java referansı ve karşılaştırıcı
 

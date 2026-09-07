@@ -14,7 +14,7 @@ python3 tools/behavior/test_runner.py
 - `preflight`: client ve ilgili JAR hash'lerini, Java/javac sürümünü kontrol eder. Oyun veya test çalıştırmaz.
 - `capture`: senaryoları iki ayrı Java sürecinde çalıştırır, çıktıları karşılaştırır ve kararlı referansı kaydeder. Aynı kimlikteki kaydı değiştirmez; mevcut kayıt farklı/bozuksa başarısız olur.
 - `verify`: kayıtlı referansı değiştirmeden iki yeni Java çalıştırmasıyla karşılaştırır. Önceden `capture` yapılmış olmalı.
-- `compare --adapter /mutlak/yol/program`: aynı girdileri belirtilen executable'a verir ve kayıtlı Java sonucuyla karşılaştırır. Rust wire/timer adaptörü mevcut; bu komut adaptör verilmediğinde **2** ile çıkar. Derleme ve birleşik karşılaştırma komutları [zamanlayıcı dilimi belgesinde](timer-parity.md).
+- `compare --adapter /mutlak/yol/program`: aynı girdileri belirtilen executable'a verir ve kayıtlı Java sonucuyla karşılaştırır. Rust wire/timer/math adaptörü mevcut; bu komut adaptör verilmediğinde **2** ile çıkar. Derleme ve birleşik karşılaştırma komutları [sayısal dilim belgesinde](math-parity.md).
 - `test_runner.py`: yalnızca yanlış başarı, bozuk referans ve hatalı süreç davranışlarını denetleyen beş küçük sentetik altyapı testi. Java veya asset gerektirmez.
 
 Tek aile seçmek için `--family wire`, `--family math` veya `--family timer` kullanılır; seçenek tekrarlanabilir. Seçilmezse mevcut bütün aileler çalışır. Aile seçimi referans kimliğinin parçasıdır; örneğin `verify --family timer` öncesinde aynı seçimle `capture --family timer` çalıştırılmalıdır. `--runtime /yerel/runtime` alternatif client/`libs` dizinini, `--jdk-home /jdk/koku` Java araçlarını seçer. Bu yollar yalnızca okunur. Gerekli referanslar yoksa indirme yapılmaz.
@@ -49,7 +49,7 @@ Her girdi `schema_version: 1`, `case_id`, `family`, `operation` ve operasyona ö
 
 Wire corpus'u: 144 senaryo; işaretli min/max, 7 bit sınırları, negatif değerler, kesilmiş/fazla uzun/noncanonical kodlamalar ve kalan baytlar. Her `write` çağrısında orijinal decoder da çağrılır; bağımsız sentetik `read` girdileri ayrıca bulunur. Diğer P03 biçimleri henüz kapsanmıyor.
 
-JSON protokolünü konuşan bir executable'ın programlama dili araç tarafından kanıtlanmaz. `examples/behavior_adapter.rs` mevcut gerçek Rust wire/timer adaptörüdür; rapor executable SHA-256'sını ve seçili kapsamı kaydeder. Altyapı denemelerinde kullanılan sentetik programlar oyun eşitlik kanıtı değildir.
+JSON protokolünü konuşan bir executable'ın programlama dili araç tarafından kanıtlanmaz. `examples/behavior_adapter.rs` mevcut gerçek Rust wire/timer/math adaptörüdür; rapor executable SHA-256'sını ve seçili kapsamı kaydeder. Altyapı denemelerinde kullanılan sentetik programlar oyun eşitlik kanıtı değildir.
 
 ## Sayısal ve zamanlayıcı protokolü
 
@@ -72,4 +72,4 @@ Diğer `math` operasyonları `floor`, `wrap_degrees`, `clamp`; `type` alanı `f3
 
 7 Eylül 2026'da Java 25.0.4.1 / Linux x86_64 üzerinde bütün corpus iki ayrı JVM sürecinde aynı sonuçları verdi. Kayıtlı referansa karşı `verify` de çalıştırıldı. Beş sentetik altyapı testi geçti. Komut düzeyinde ayrıca kontrollü replay, tek alan mutasyonu, boş adaptör çıktısı, eksik adaptör, eksik runtime ve yanlış JAR çıkışları sınandı. Bu replay programı yalnızca karşılaştırıcı kontrolüdür; Rust veya oyun implementasyonu değildir.
 
-P00 bu ilk aileler için hazırdır; asset/GPU/gerçek ağ test altyapısı henüz yoktur. P01'in tüm matematik kapsamı, P02'nin oyun döngüsü ve P03'ün diğer veri biçimleri tamamlanmadı. Rust wire adaptörü debug/release profillerinde 144 senaryoda eşleşti; [kanıt ve sınırlar](wire-parity.md). Zamanlayıcı da 22 senaryoda eşleşti; [kanıt](timer-parity.md). Birleşik 166 wire/timer senaryosu debug/release profillerinde geçti. Math ailesi için Rust eşitliği henüz doğrulanmadı.
+P00 bu ilk aileler için hazırdır; asset/GPU/gerçek ağ test altyapısı henüz yoktur. P01'in tüm matematik kapsamı, P02'nin oyun döngüsü ve P03'ün diğer veri biçimleri tamamlanmadı. Rust wire adaptörü debug/release profillerinde 144 senaryoda eşleşti; [kanıt ve sınırlar](wire-parity.md). Zamanlayıcı da 22 senaryoda eşleşti; [kanıt](timer-parity.md). Math ailesi de 180 senaryoda eşleşti; [kanıt ve sınırlar](math-parity.md). Birleşik 346 senaryo debug/release profillerinde geçti.

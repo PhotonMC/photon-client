@@ -22,7 +22,7 @@ Bu dilim oyun döngüsü, frame başına 10 tick sınırı, paket/input sıralam
 
 ## Doğrulama sonucu
 
-Java 25.0.4.1 ve Rust 1.98.1, Linux x86_64 üzerinde:
+P02.a dilimi tamamlandığında Java 25.0.4.1 ve Rust 1.98.1, Linux x86_64 üzerinde alınan sonuçlar:
 
 | Kontrol | Sonuç |
 | --- | --- |
@@ -30,7 +30,7 @@ Java 25.0.4.1 ve Rust 1.98.1, Linux x86_64 üzerinde:
 | Rust debug adaptörü | 166/166 eşleşti |
 | Rust release adaptörü | 166/166 eşleşti |
 | Timer karşılaştırması | Başlangıçta ve her adımda tüm delta/kısmi tick alanlarının f32 bitleri; oyun adımlarında dönen tick sayısı |
-| Adaptör hata yolları | Desteklenmeyen math ailesi, bozuk float bitleri, i64 dışı saat, yanlış steps/boolean türü ve bilinmeyen action reddedildi |
+| Adaptör hata yolları | O aşamada desteklenmeyen math ailesi, bozuk float bitleri, i64 dışı saat, yanlış steps/boolean türü ve bilinmeyen action reddedildi |
 | Biçim ve Clippy | `cargo fmt --all --check`; `cargo clippy --locked --offline --all-targets -- -D warnings` geçti |
 | Paket listesi | `.data/`, orijinal içerikler ve test adaptörü dışarıda |
 
@@ -42,7 +42,7 @@ Yerel kanıt dosyaları:
 - `.data/runs/behavior/compare-vm1fv7ai/report.json` (debug)
 - `.data/runs/behavior/compare-20w25b3h/report.json` (release)
 
-Karşılaştırılan kapsam P02.a'nın mevcut 22 senaryosu ve önceki P03.a'nın 144 senaryosudur. Bu sonuç P02 bölümünün tamamlandığı veya karakter hareketinin eşleştiği anlamına gelmez. P01.a için 180 Java senaryosu hazır; Rust matematik dilimi henüz yoktur.
+Karşılaştırılan kapsam P02.a'nın mevcut 22 senaryosu ve önceki P03.a'nın 144 senaryosudur. Bu sonuç P02 bölümünün tamamlandığı veya karakter hareketinin eşleştiği anlamına gelmez. Sonraki P01.a dilimiyle 180 matematik senaryosu da Rust ile eşleşti; [güncel 346 senaryoluk doğrulama](math-parity.md).
 
 ## Tekrar çalıştırma
 
@@ -54,6 +54,6 @@ python3 tools/behavior/run.py capture --family timer --family wire
 python3 tools/behavior/run.py compare --family timer --family wire --adapter target/debug/examples/behavior_adapter
 ```
 
-Mevcut capture değiştirilmez. Yalnızca Java referansını yeniden doğrulamak için aynı aile seçimiyle `verify` kullanılabilir. Release için derlemeye `--release` eklenir ve adaptör yolu `target/release/examples/behavior_adapter` olur. Varsayılan bütün-aile `compare` henüz uygulanmamış math ailesi nedeniyle başarısız olur; tamamlanmayan aile sessizce atlanmaz.
+Mevcut capture değiştirilmez. Yalnızca Java referansını yeniden doğrulamak için aynı aile seçimiyle `verify` kullanılabilir. Release için derlemeye `--release` eklenir ve adaptör yolu `target/release/examples/behavior_adapter` olur. P01.a sonrasında varsayılan bütün-aile `compare`, math dahil mevcut üç aileyi çalıştırır.
 
-Sıradaki küçük dilim P01.a: hazır senaryolarla kullanılan Vec2 ve sayısal yardımcıların Rust karşılaştırması. Kullanıcının hareket sorusu bir öncelik değişikliği değildir; kaynak ve bağımlılık sırasına göre ilerlenir.
+P01.a Vec2 ve sayısal yardımcıları tamamlandı. Sıradaki küçük dilim P03.b UTF-8 string okuma/yazma için kaynak incelemesi ve Java referans testleridir. Kullanıcının hareket sorusu bir öncelik değişikliği değildir; kaynak ve bağımlılık sırasına göre ilerlenir.
