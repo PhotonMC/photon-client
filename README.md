@@ -8,9 +8,9 @@ Orijinal kaynak ve assetler yalnızca yerelde referans ve test girdisi olarak ku
 
 ## Mevcut aşama
 
-Kaynaklar sağlandı; bütünlük envanteri ve ilk kaynak incelemesi tamamlandı. Bölüm bazlı roadmap ve ilk davranış testi sözleşmeleri hazır. P00 yerel test çalıştırıcısı ve 679 Java referans senaryosu mevcut. SectionPos için yeni 24 senaryo henüz yalnızca Java referansıdır. Rust uygulanan kapsamda debug/release profillerinde toplam 655 senaryoda Java ile eşleşiyor. Oynanabilir istemci henüz yok. Boş `main`, yalnızca iskelettir.
+Kaynaklar sağlandı; bütünlük envanteri ve ilk kaynak incelemesi tamamlandı. Bölüm bazlı roadmap ve ilk davranış testi sözleşmeleri hazır. P00 yerel test çalıştırıcısı ve 679 Java referans senaryosu mevcut. Rust debug/release profillerinde toplam 679 senaryoda Java ile eşleşiyor. Oynanabilir istemci henüz yok. Boş `main`, yalnızca iskelettir.
 
-Mevcut referanslar [yerel veri rehberindeki](docs/reference-data.md) `.data/` alanında kalır. P03.b SectionPos kaynak incelemesi ve Java referans testleri hazır; sıradaki küçük dilim bunlara karşı Rust implementasyonudur. Her Rust diliminden önce ilgili Java referansı ve testler hazırlanacak. Grafik, ses, pencere ve ağ teknolojileri sonraya bırakıldı. Test otomasyonu Python standart kütüphanesi ve özgün Java adaptörlerini kullanıyor; üretim kütüphanesine ek Rust bağımlılığı eklenmedi. Rust JSONL test adaptörü `serde_json` geliştirme bağımlılığını kullanıyor.
+Mevcut referanslar [yerel veri rehberindeki](docs/reference-data.md) `.data/` alanında kalır. Her Rust diliminden önce ilgili Java referansı ve testler hazırlanacak. Grafik, ses, pencere ve ağ teknolojileri sonraya bırakıldı. Test otomasyonu Python standart kütüphanesi ve özgün Java adaptörlerini kullanıyor; üretim kütüphanesine ek Rust bağımlılığı eklenmedi. Rust JSONL test adaptörü `serde_json` geliştirme bağımlılığını kullanıyor.
 
 ## Belgeler
 

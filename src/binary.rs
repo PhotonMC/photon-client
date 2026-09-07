@@ -36,7 +36,6 @@ pub struct BlockPos {
     pub y: i32,
     pub z: i32,
 }
-
 pub const PACKED_HORIZONTAL_LENGTH: u32 = 26;
 pub const PACKED_Y_LENGTH: u32 = 12;
 const PACKED_HORIZONTAL_MASK: u64 = (1 << PACKED_HORIZONTAL_LENGTH) - 1;
@@ -271,4 +270,59 @@ pub fn write_fixed_bitset(
         output.push(byte);
     }
     Ok(())
+}
+
+/// Integer section coordinates with reference packing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SectionPos {
+    pub x: i32,
+    pub y: i32,
+    pub z: i32,
+}
+
+pub const PACKED_SECTION_HORIZONTAL_LENGTH: u32 = 22;
+pub const PACKED_SECTION_Y_LENGTH: u32 = 20;
+const PACKED_SECTION_HORIZONTAL_MASK: u64 = (1 << PACKED_SECTION_HORIZONTAL_LENGTH) - 1;
+const PACKED_SECTION_Y_MASK: u64 = (1 << PACKED_SECTION_Y_LENGTH) - 1;
+const SECTION_X_OFFSET: u32 = PACKED_SECTION_Y_LENGTH + PACKED_SECTION_HORIZONTAL_LENGTH;
+const SECTION_Z_OFFSET: u32 = PACKED_SECTION_Y_LENGTH;
+
+impl SectionPos {
+    pub const fn new(x: i32, y: i32, z: i32) -> Self {
+        Self { x, y, z }
+    }
+
+    /// Pack with masking, so out-of-range inputs wrap as the reference does.
+    pub fn pack(self) -> u64 {
+        ((u64::from(self.x as u32) & PACKED_SECTION_HORIZONTAL_MASK) << SECTION_X_OFFSET)
+            | ((u64::from(self.z as u32) & PACKED_SECTION_HORIZONTAL_MASK) << SECTION_Z_OFFSET)
+            | (u64::from(self.y as u32) & PACKED_SECTION_Y_MASK)
+    }
+
+    /// Unpack with arithmetic shifts, sign-extending each field.
+    pub fn unpack(packed: u64) -> Self {
+        let x = ((packed << (64 - SECTION_X_OFFSET - PACKED_SECTION_HORIZONTAL_LENGTH)) as i64
+            >> (64 - PACKED_SECTION_HORIZONTAL_LENGTH)) as i32;
+        let y = ((packed << (64 - PACKED_SECTION_Y_LENGTH)) as i64
+            >> (64 - PACKED_SECTION_Y_LENGTH)) as i32;
+        let z = ((packed << (64 - SECTION_Z_OFFSET - PACKED_SECTION_HORIZONTAL_LENGTH)) as i64
+            >> (64 - PACKED_SECTION_HORIZONTAL_LENGTH)) as i32;
+        Self { x, y, z }
+    }
+}
+
+/// Read 8 bytes as a packed section position without consuming on failure.
+pub fn read_sectionpos(input: &mut &[u8]) -> Result<SectionPos, ReadError> {
+    if input.len() < 8 {
+        return Err(ReadError::BufferUnderflow);
+    }
+    let (head, rest) = input.split_at(8);
+    let packed = u64::from_be_bytes(head.try_into().expect("checked length"));
+    *input = rest;
+    Ok(SectionPos::unpack(packed))
+}
+
+/// Append 8 bytes for a packed section position.
+pub fn write_sectionpos(value: SectionPos, output: &mut Vec<u8>) {
+    output.extend_from_slice(&value.pack().to_be_bytes());
 }

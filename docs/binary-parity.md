@@ -4,13 +4,15 @@
 
 ## Referans ve davranış
 
-Referans Java 26.2 / protokol 776; `FriendlyByteBuf` içindeki UUID/BlockPos/long array yolları ve `BlockPos` paketleme kaynak incelemesinde belirlendi. `BinaryOracle.java` doğrudan orijinal sınıfları çağırır; senaryo ve beklenen çıktılar değiştirilmedi. Ayrıntılı sözleşme ve 92 senaryoluk kapsam [binary referans belgesindedir](binary-contract.md).
+Referans Java 26.2 / protokol 776; `FriendlyByteBuf` içindeki UUID/BlockPos/long array yolları, `BlockPos`/`SectionPos` paketleme kaynak incelemesinde belirlendi. `BinaryOracle.java` doğrudan orijinal sınıfları çağırır; senaryo ve beklenen çıktılar değiştirilmedi. Ayrıntılı sözleşme ve 116 senaryoluk kapsam [binary referans belgesindedir](binary-contract.md).
 
 | Rust API | Korunan davranış |
 | --- | --- |
 | `Uuid::new`, `read_uuid`, `write_uuid` | İki big-endian u64; her 16 bayt geçerli, tek hata kesik veri |
 | `BlockPos::new`, `pack`, `unpack` | X/Z 26 bit ve Y 12 bit maskeleme ile sarma; aritmetik kaydırma ile işaret genişletme |
 | `read_blockpos`, `write_blockpos` | Tek big-endian u64; eksik veride tüketim yok |
+| `SectionPos::new`, `pack`, `unpack` | X/Z 22 bit ve Y 20 bit maskeleme ile sarma; aritmetik kaydırma ile işaret genişletme |
+| `read_sectionpos`, `write_sectionpos` | Tek big-endian u64; eksik veride tüketim yok |
 | `read_long_array`, `write_long_array` | VarInt uzunluk, negatif/aşırı uzunlukta gövde tüketilmeden `decoder_error`; önek hatalarında wire tüketimi |
 | `BitSet`, `read_bitset`, `write_bitset` | Kırpılmış little-endian kelimeler; aynı bit kümesi aynı sıralı listeyi verir |
 | Tüketim kuralı | Her `readLong` atomik; UUID ikinci yarıda eksikse ilk 8 bayt tüketilmiş olur |
@@ -21,14 +23,14 @@ Yazma bu dilimde her zaman başarılıdır; ayrı uzunluk sınırı yoktur.
 
 Java 25.0.4.1 ve Rust 1.98.1 / Linux x86_64 ortamında:
 
-- 579 senaryoluk kayıtlı Java referansı iki yeni JVM çalıştırmasıyla doğrulandı.
-- Debug ve release Rust adaptörleri **579/579** eşleşti: 180 math + 22 timer + 144 wire + 141 utf8 + 92 binary.
+- 679 senaryoluk kayıtlı Java referansı iki yeni JVM çalıştırmasıyla doğrulandı.
+- Debug ve release Rust adaptörleri **679/679** eşleşti: 238 math + 22 timer + 144 wire + 141 utf8 + 116 binary + 18 nbt.
 - Karşılaştırma kimlik bitleri, koordinatlar, diziler, bit listeleri, tüketim, kalan/yazılan baytlar ve hata kategorisini kapsar.
 - Biçim, Clippy ve paket kapsamı kontrolleri geçti; `.data/` ve test adaptörü paket dışında kaldı.
 
-Birleşik referans kimliği: `6e38fbb2e12abbb1ef3efcb8889bf9b709b769375509d6ddb41a3827e44e2b59`. Binary ailesi kimliği: `72017ab2c353dd2343a27966d37bb45eb419baa4894c1dc891321f5c5a38c42b`.
+Birleşik referans kimliği: `34ba8e91cef5a27e4d84dd229d2dd1468ba20c443bbe0d362fceb3110ccd294d`. Binary ailesi kimliği: `8ae00c7621477db27bbb1744c78d0d55d67b5dd4849c14a578aba7d155be0119`.
 
-Yerel raporlar: `compare-eb7mz513` (debug 579), `compare-_e8wf5_y` (release 579) dizinlerinde, `.data/runs/behavior/` altında bulunur.
+Yerel raporlar: `compare-mfmcyltd` (debug 679), `compare-7q4z1n2s` (release 679) dizinlerinde, `.data/runs/behavior/` altında bulunur.
 
 ## Yeniden çalıştırma ve sonraki dilim
 
@@ -41,4 +43,4 @@ python3 tools/behavior/run.py compare --adapter target/debug/examples/behavior_a
 
 Kayıtlı Java referansını yeniden ölçmek için `verify` kullanılır. Release için derlemeye `--release` eklenir ve `target/release/examples/behavior_adapter` seçilir.
 
-P03.b kapsamında sabit BitSet varyantları da uygulandı. Sonraki dilim bağımlılık sırasına göre seçilir.
+P03.b binary kapsamı tamamlandı. Sonraki dilim bağımlılık sırasına göre seçilir.

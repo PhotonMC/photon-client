@@ -69,7 +69,7 @@ Diğer `math` operasyonları `floor`, `wrap_degrees`, `clamp`; `type` alanı `f3
 | `timer` | 22 | Tick sınırları/artık zaman, kontrollü hız değişimi, pause/freeze kombinasyonları, gerçek zaman sınırı, uzun frame ve 2^53 üzerindeki başlangıç saati |
 | `wire` | 144 | VarInt/VarLong yazma/okuma, sınırlar, hatalar, tüketim ve kalan veri |
 | `utf8` | 141 | UTF-16 birim sınırları, UTF-8 okuma/yazma, bozuk diziler, VarInt başlıkları ve hata tüketimi |
-| `binary` | 116 | UUID/BlockPos/SectionPos/long array/BitSet okuma/yazma; sabit BitSet boyut sınırları; son 24 senaryo yalnızca Java referansı |
+| `binary` | 116 | UUID/BlockPos/SectionPos/long array/BitSet okuma/yazma; sabit BitSet boyut sınırları |
 | `nbt` | 18 | Düz bileşik okuma/yazma, null kök, kesik gövde ve bileşik-olmayan kök |
 | **Toplam** | **679** | P01.a/P01.b/P01.c/P02.a/P03.a/P03.b/P03.c için mevcut referans corpus'u |
 

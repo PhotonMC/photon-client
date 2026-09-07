@@ -1,6 +1,6 @@
 # P03.b — UUID, BlockPos, SectionPos, long array ve BitSet referans sözleşmesi
 
-Bu dilimin **116 Java davranış testi hazırdır; SectionPos için Rust implementasyonu henüz yoktur**. UUID/BlockPos/long array/BitSet için Rust karşılığı mevcuttur ([kanıt](binary-parity.md)); önceki 92 girdisi ve sonucu değişmedi. Diğer P03 biçimleri bu dilime dahil değildir.
+Bu dilimin **116 Java davranış testi hazırdır ve Rust karşılığı doğrulanmıştır** ([kanıt](binary-parity.md)). Diğer P03 biçimleri bu dilime dahil değildir.
 
 ## Kaynak ve sınır
 
@@ -58,7 +58,7 @@ python3 tools/behavior/run.py verify --family binary
 
 Yeni aileyle toplam 679 Java senaryosu yakalandı ve iki yeni JVM çalıştırmasıyla kayıtla eşitliği doğrulandı. Birleşik referans kimliği: `34ba8e91cef5a27e4d84dd229d2dd1468ba20c443bbe0d362fceb3110ccd294d`. Eski kayıtlar değiştirilmedi.
 
-Mevcut Rust kodu SectionPos içermediğinden ilgili karşılaştırma başarısız olur. Sonraki adım bu sabit referansa karşı SectionPos Rust davranış dilimidir.
+Beklenen çıktılar Rust'a göre değiştirilmedi.
 
 ```bash
 cargo build --locked --offline --example behavior_adapter

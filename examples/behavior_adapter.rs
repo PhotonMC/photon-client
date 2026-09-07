@@ -2,7 +2,7 @@
 
 use serde_json::{Value, json};
 use std::io::{self, BufRead, Write};
-use voxel_client::binary::{self, BlockPos, Uuid};
+use voxel_client::binary::{self, BlockPos, SectionPos, Uuid};
 use voxel_client::direction::{Axis, Direction};
 use voxel_client::math::{self, Vec2, Vec3};
 use voxel_client::nbt::{self, Field, FieldValue};
@@ -424,6 +424,22 @@ fn binary_result(request: &Value) -> Result<Value, String> {
                         "remaining_hex": hex(remaining),
                     })),
                 },
+                "sectionpos" => match binary::read_sectionpos(&mut remaining) {
+                    Ok(value) => Ok(json!({
+                        "x": value.x.to_string(),
+                        "y": value.y.to_string(),
+                        "z": value.z.to_string(),
+                        "outcome": "value",
+                        "consumed": framed.len() - remaining.len(),
+                        "remaining_hex": hex(remaining),
+                    })),
+                    Err(error) => Ok(json!({
+                        "outcome": "error",
+                        "error": binary_error(error),
+                        "consumed": framed.len() - remaining.len(),
+                        "remaining_hex": hex(remaining),
+                    })),
+                },
                 "longarray" => match binary::read_long_array(&mut remaining) {
                     Ok(values) => Ok(json!({
                         "values": values.iter().map(ToString::to_string).collect::<Vec<_>>(),
@@ -489,6 +505,14 @@ fn binary_result(request: &Value) -> Result<Value, String> {
                         coordinate(request, "z")?,
                     );
                     binary::write_blockpos(value, &mut buffer);
+                }
+                "sectionpos" => {
+                    let value = SectionPos::new(
+                        coordinate(request, "x")?,
+                        coordinate(request, "y")?,
+                        coordinate(request, "z")?,
+                    );
+                    binary::write_sectionpos(value, &mut buffer);
                 }
                 "longarray" => {
                     let values = request["values"]
