@@ -2,7 +2,7 @@
 
 Referans: **26.2 / protokol 776 / Java 25**. [Envanter](reference-baseline.md), [kaynak incelemesi](source-review.md) ve [davranış testi yaklaşımı](behavior-testing.md) bu planın dayanağıdır. Bu bir Rust mimarisi veya teknoloji seçimi değildir.
 
-Durum: ilk kaynak incelemesi ve bölüm planı hazır. P00'ın yerel sınıf çağırma yoklaması yapıldı; kalıcı test çalıştırıcısı henüz yok. Diğer bölümlerde davranış testleri ve Rust implementasyonu başlamadı. Hiçbir bölüm “Java ile eşitliği doğrulandı” durumunda değil.
+Durum: ilk kaynak incelemesi ve bölüm planı hazır. P00 çalıştırıcısı ve P03.a için 144 wire senaryosu mevcut. Diğer bölümlerde davranış testleri ve Rust implementasyonu başlamadı. Hiçbir bölüm “Java ile eşitliği doğrulandı” durumunda değil.
 
 ## Uygulama ve kabul kuralı
 
@@ -72,12 +72,12 @@ P24 kapsam defteri ilgili bölümler geliştikçe doldurulur; en sona bırakıla
 
 ## İlk çalışma sırası ve mevcut engeller
 
-İlk kalıcı çalışma **P00.a–c**, ardından **P01.a**, **P02.a** ve **P03.a** için testlerdir. Bu testlerin orijinal Java'da çalıştığı görülmeden Rust davranış kodu yazılmaz. Sonraki dilim seçimi bağımlılıklara göre yapılır; bütün P01 yardımcılarını bir kerede uygulamak gerekmez.
+P00.a–c çalıştırıcısı ve P03.a wire referans senaryoları hazır. Sırada **P01.a** ve **P02.a** testleri var. Bu testlerin orijinal Java'da çalıştığı görülmeden Rust davranış kodu yazılmaz. Sonraki dilim seçimi bağımlılıklara göre yapılır; bütün P01 yardımcılarını bir kerede uygulamak gerekmez.
 
 | Konu | Mevcut durum | Etkilediği çalışma |
 | --- | --- | --- |
 | JAR/asset/JDK girdileri | Yerelde mevcut; bütünlük kontrolü geçti | İlk grafik arayüzsüz referans testleri için eksik girdi bulunmadı |
-| Java oracle | Üç orijinal sınıf çağrılabildi; kalıcı çalıştırıcı yok | P00 sıradaki iş |
+| Java oracle | Kalıcı çalıştırıcı ve ilk wire corpus'u mevcut | P01.a/P02.a testleri sıradaki iş |
 | Pumpkin 26.2 | Sabit adayda 776 eşlemesi var; gerçek bağlantı denenmedi | P06–P08, P26 kabulü açık |
 | Render ve ses yakalama | Tam istemci/GPU/ses oturumu çalıştırılmadı | P15/P20 referans ortamı kurulacak |
 | Singleplayer ve servisler | İstemci hedefi korunuyor; dış bağımlılık eşitliği açık | P25, tam oyun eşitliği iddiası |

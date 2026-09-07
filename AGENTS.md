@@ -12,7 +12,7 @@ Bu kurallar model veya sağlayıcıdan bağımsızdır: GPT/Codex, Claude, Gemin
 
 ## Aşama sınırı
 
-Kaynaklar sağlandı; referans Minecraft Java Edition 26.2, protokol 776, Java 25 olarak sabitlendi. Önce [referans envanterini](docs/reference-baseline.md), [kaynak incelemesini](docs/source-review.md) ve [roadmap'i](docs/roadmap.md) oku. Kaynak incelemesi ve planlama aşamasındayız; oyun implementasyonuna başlanmadı. Sıradaki geliştirme aşaması, [ilk davranış testleri sözleşmesine](docs/first-behavior-tests.md) göre Java referans çalıştırıcısı ve davranış testleridir. Her Rust davranış diliminden önce ilgili Java referansı ve testler hazır olmalı. Kaynak veya sürüm değişirse mevcut beklentileri sessizce yenileme; envanteri ve etkilenen sözleşmeleri yeniden incele.
+Kaynaklar sağlandı; referans Minecraft Java Edition 26.2, protokol 776, Java 25 olarak sabitlendi. Önce [referans envanterini](docs/reference-baseline.md), [kaynak incelemesini](docs/source-review.md) ve [roadmap'i](docs/roadmap.md) oku. Davranış testi hazırlama aşamasındayız; oyun implementasyonuna başlanmadı. [Yerel test çalıştırıcısı](docs/behavior-runner.md) ve wire referans senaryoları mevcut. Sıradaki dilimler [ilk davranış testleri sözleşmesine](docs/first-behavior-tests.md) göre sayısal işlemler ve zamanlayıcı testleridir. Her Rust davranış diliminden önce ilgili Java referansı ve testler hazır olmalı. Kaynak veya sürüm değişirse mevcut beklentileri sessizce yenileme; envanteri ve etkilenen sözleşmeleri yeniden incele.
 
 ## Referanslar ve dağıtım
 

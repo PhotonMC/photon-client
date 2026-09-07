@@ -8,9 +8,9 @@ Orijinal kaynak ve assetler yalnızca yerelde referans ve test girdisi olarak ku
 
 ## Mevcut aşama
 
-Kaynaklar sağlandı; bütünlük envanteri ve ilk kaynak incelemesi tamamlandı. Bölüm bazlı roadmap ve ilk davranış testi sözleşmeleri hazır. Henüz oyun implementasyonu veya kalıcı davranış test paketi yok. Boş `main`, yalnızca iskelettir.
+Kaynaklar sağlandı; bütünlük envanteri ve ilk kaynak incelemesi tamamlandı. Bölüm bazlı roadmap ve ilk davranış testi sözleşmeleri hazır. P00 yerel test çalıştırıcısı ve ilk wire referans senaryoları mevcut; oyun implementasyonu yok. Boş `main`, yalnızca iskelettir.
 
-Mevcut referanslar [yerel veri rehberindeki](docs/reference-data.md) `.data/` alanında kalır. Sıradaki iş P00 Java referans çalıştırıcısı; ardından sayısal işlemler, zamanlayıcı ve wire kodlamalarının davranış testleridir. Her Rust diliminden önce ilgili Java referansı ve testler hazırlanacak. Grafik, ses, pencere, ağ ve test teknolojileri sonraya bırakıldı; ek bağımlılık seçilmedi.
+Mevcut referanslar [yerel veri rehberindeki](docs/reference-data.md) `.data/` alanında kalır. Sıradaki iş sayısal işlemler ve zamanlayıcı davranış testleridir. Her Rust diliminden önce ilgili Java referansı ve testler hazırlanacak. Grafik, ses, pencere, ağ ve test teknolojileri sonraya bırakıldı; ek bağımlılık seçilmedi.
 
 ## Belgeler
 
@@ -21,5 +21,6 @@ Mevcut referanslar [yerel veri rehberindeki](docs/reference-data.md) `.data/` al
 - [Kaynak incelemesi ve istemci sınırları](docs/source-review.md)
 - [Bölüm bazlı roadmap](docs/roadmap.md)
 - [İlk davranış testi sözleşmeleri](docs/first-behavior-tests.md)
+- [Yerel test komutları ve sonuçların anlamı](docs/behavior-runner.md)
 
 Her AI aracı işe başlamadan `AGENTS.md` dosyasını okumalıdır. Claude, Gemini ve Copilot giriş dosyaları aynı kurallara yönlendirir. Talimat dosyalarını otomatik okumayan araçlarda `AGENTS.md` görev bağlamına açıkça verilmelidir; bu dosyalar modellerin davranışını teknik olarak zorlayan bir mekanizma değildir.

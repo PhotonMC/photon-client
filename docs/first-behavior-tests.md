@@ -1,6 +1,6 @@
 # İlk davranış testleri: implementasyondan önceki sözleşmeler
 
-Bu belge P00, P01.a, P02.a ve P03.a için çalıştırılabilir testlere dönüştürülecek ilk sözleşmeleri tanımlar. Henüz test paketi veya Rust implementasyonu yok. Referans kimliği [envanterde](reference-baseline.md) sabitlenmiştir.
+Bu belge P00, P01.a, P02.a ve P03.a için çalıştırılabilir testlere dönüştürülecek ilk sözleşmeleri tanımlar. [Kalıcı çalıştırıcı](behavior-runner.md) ve P03.a wire corpus'u mevcut; sayısal/zamanlayıcı testleri hazırlanacak. Rust implementasyonu yok. Referans kimliği [envanterde](reference-baseline.md) sabitlenmiştir.
 
 ## P00 — Java referansı ve karşılaştırıcı
 
