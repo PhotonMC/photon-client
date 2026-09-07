@@ -43,10 +43,10 @@ Depo kökünde, yerel referans ve Cargo önbelleği mevcutken:
 
 ```bash
 cargo build --locked --offline --example behavior_adapter
-python3 tools/behavior/run.py capture
-python3 tools/behavior/run.py compare --adapter target/debug/examples/behavior_adapter
+python3 tools/behavior/run.py capture --family math --family timer --family wire
+python3 tools/behavior/run.py compare --family math --family timer --family wire --adapter target/debug/examples/behavior_adapter
 ```
 
-`capture` mevcut beklentileri değiştirmez. Kayıtlı Java referansını yeniden ölçmek için `verify` kullanılır. Release için derlemeye `--release` eklenir ve `target/release/examples/behavior_adapter` seçilir. Varsayılan karşılaştırma artık mevcut üç ailenin tamamını çalıştırır.
+`capture` mevcut beklentileri değiştirmez. Kayıtlı Java referansını yeniden ölçmek için `verify` kullanılır. Release için derlemeye `--release` eklenir ve `target/release/examples/behavior_adapter` seçilir. P03.b UTF-8 referans ailesi eklendiğinden mevcut Rust karşılaştırmasında bu üç aile açıkça seçilir. Varsayılan koşu henüz uygulanmamış UTF-8 nedeniyle başarısız olur.
 
-P01/P02/P03 bölümlerinin tamamı ve karakter hareketi henüz doğrulanmış değildir. Sıradaki küçük dilim P03.b'nin UTF-8 string okuma/yazma davranışı: önce ilgili Java kaynakları ve otomatik referans testleri, sonra Rust uygulaması. İlgisiz sayısal yardımcılar peşinen genişletilmeyecek.
+P01/P02/P03 bölümlerinin tamamı ve karakter hareketi henüz doğrulanmış değildir. Sonraki P03.b UTF-8 string okuma/yazma için [Java referans testleri](utf8-contract.md) hazırlandı; Rust uygulaması sıradadır. İlgisiz sayısal yardımcılar peşinen genişletilmeyecek.

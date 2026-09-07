@@ -44,6 +44,10 @@
     "org.slf4j:slf4j-api": {
       "file": "slf4j-api-2.0.17.jar",
       "sha1": "d9e58ac9c7779ba3bf8142aff6c830617a7fe60f"
+    },
+    "io.netty:netty-codec-base": {
+      "file": "netty-codec-base-4.2.15.Final.jar",
+      "sha1": "e97149fdd5fb04858efa90e314651c8d700dc68b"
     }
   },
   "families": {
@@ -73,6 +77,15 @@
       "libraries": [
         "com.google.code.gson:gson",
         "it.unimi.dsi:fastutil"
+      ]
+    },
+    "utf8": {
+      "source": "Utf8Oracle.java",
+      "libraries": [
+        "com.google.code.gson:gson",
+        "io.netty:netty-buffer",
+        "io.netty:netty-common",
+        "io.netty:netty-codec-base"
       ]
     }
   }
