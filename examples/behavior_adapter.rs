@@ -4,6 +4,7 @@ use serde_json::{Value, json};
 use std::io::{self, BufRead, Write};
 use voxel_client::math::{self, Vec2};
 use voxel_client::timer::Timer;
+use voxel_client::utf8;
 use voxel_client::wire::{self, ReadError};
 
 fn string<'a>(request: &'a Value, name: &str) -> Result<&'a str, String> {
@@ -214,6 +215,65 @@ fn timer_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"events": events}))
 }
 
+fn utf8_result(request: &Value) -> Result<Value, String> {
+    let max_length = request["max_length"]
+        .as_u64()
+        .ok_or("max_length must be an unsigned integer")? as usize;
+    let prefix = decode_hex(string(request, "prefix_hex")?)?;
+    match string(request, "operation")? {
+        "read" => {
+            let framed = decode_hex(string(request, "hex")?)?;
+            let mut remaining = framed.as_slice();
+            match utf8::read_utf8(&mut remaining, max_length) {
+                Ok(units) => Ok(json!({
+                    "utf16_hex": units.iter().map(|unit| format!("{unit:04x}")).collect::<String>(),
+                    "utf16_length": units.len(),
+                    "outcome": "value",
+                    "consumed": framed.len() - remaining.len(),
+                    "remaining_hex": hex(remaining),
+                })),
+                Err(error) => Ok(json!({
+                    "outcome": "error",
+                    "error": match error {
+                        utf8::ReadError::DecoderError => "decoder_error",
+                        utf8::ReadError::BufferUnderflow => "buffer_underflow",
+                        utf8::ReadError::TooBig => "too_big",
+                    },
+                    "consumed": framed.len() - remaining.len(),
+                    "remaining_hex": hex(remaining),
+                })),
+            }
+        }
+        "write" => {
+            let text = string(request, "utf16_hex")?;
+            if !text.is_ascii() || !text.len().is_multiple_of(4) {
+                return Err("utf16_hex must contain complete ASCII unit quadruples".into());
+            }
+            let mut units = Vec::with_capacity(text.len() / 4);
+            for index in (0..text.len()).step_by(4) {
+                let unit = u16::from_str_radix(&text[index..index + 4], 16)
+                    .map_err(|_| "invalid UTF-16 unit".to_owned())?;
+                units.push(unit);
+            }
+            let mut buffer = prefix.clone();
+            match utf8::write_utf8(&mut buffer, &units, max_length) {
+                Ok(()) => Ok(json!({
+                    "outcome": "value",
+                    "written": buffer.len() - prefix.len(),
+                    "hex": hex(&buffer),
+                })),
+                Err(utf8::WriteError::EncoderError) => Ok(json!({
+                    "outcome": "error",
+                    "error": "encoder_error",
+                    "written": buffer.len() - prefix.len(),
+                    "hex": hex(&buffer),
+                })),
+            }
+        }
+        _ => Err("unknown UTF-8 operation".into()),
+    }
+}
+
 fn respond(request: Value) -> Result<Value, String> {
     if request["schema_version"].as_u64() != Some(1) {
         return Err("unsupported schema_version".into());
@@ -223,6 +283,7 @@ fn respond(request: Value) -> Result<Value, String> {
         "wire" => wire_result(&request)?,
         "timer" => timer_result(&request)?,
         "math" => math_result(&request)?,
+        "utf8" => utf8_result(&request)?,
         _ => return Err("unknown behavior family".into()),
     };
     Ok(json!({"schema_version": 1, "case_id": case_id, "result": result}))

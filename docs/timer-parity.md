@@ -54,6 +54,6 @@ python3 tools/behavior/run.py capture --family timer --family wire
 python3 tools/behavior/run.py compare --family timer --family wire --adapter target/debug/examples/behavior_adapter
 ```
 
-Mevcut capture değiştirilmez. Yalnızca Java referansını yeniden doğrulamak için aynı aile seçimiyle `verify` kullanılabilir. Release için derlemeye `--release` eklenir ve adaptör yolu `target/release/examples/behavior_adapter` olur. P03.b UTF-8 referans ailesi eklendi; varsayılan bütün-aile `compare`, henüz uygulanmamış UTF-8 nedeniyle başarısız olur. Yukarıdaki aile seçimi timer/wire kapsamını çalıştırır.
+Mevcut capture değiştirilmez. Yalnızca Java referansını yeniden doğrulamak için aynı aile seçimiyle `verify` kullanılabilir. Release için derlemeye `--release` eklenir ve adaptör yolu `target/release/examples/behavior_adapter` olur. Yukarıdaki aile seçimi timer/wire kapsamını çalıştırır.
 
-P01.a Vec2 ve sayısal yardımcıları tamamlandı. P03.b UTF-8 için [kaynak incelemesi ve Java referans testleri](utf8-contract.md) hazır; sıradaki küçük dilim Rust implementasyonudur. Kullanıcının hareket sorusu bir öncelik değişikliği değildir; kaynak ve bağımlılık sırasına göre ilerlenir.
+P01.a Vec2 ve sayısal yardımcıları tamamlandı. P03.b UTF-8 de 141 senaryoda doğrulandı; [kanıt](utf8-parity.md). Kullanıcının hareket sorusu bir öncelik değişikliği değildir; kaynak ve bağımlılık sırasına göre ilerlenir.
