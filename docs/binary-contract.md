@@ -1,6 +1,6 @@
 # P03.b — UUID, BlockPos, long array ve BitSet referans sözleşmesi
 
-Bu dilimin **78 Java davranış testi hazırdır ve Rust karşılığı doğrulanmıştır** ([kanıt](binary-parity.md)). Diğer P03 biçimleri bu dilime dahil değildir.
+Bu dilimin **92 Java davranış testi hazırdır; sabit BitSet için Rust implementasyonu henüz yoktur**. UUID/BlockPos/long array/değişken BitSet için Rust karşılığı mevcuttur ([kanıt](binary-parity.md)); önceki 78 girdisi ve sonucu değişmedi. Diğer P03 biçimleri bu dilime dahil değildir.
 
 ## Kaynak ve sınır
 
@@ -16,7 +16,8 @@ Netty buffer/common yanında `core/BlockPos` sınıfı için math ailesinin bağ
 - Long array önce VarInt uzunluğu okur. VarInt önek hataları wire tüketimini korur. Negatif uzunluk `NegativeArraySizeException`, kullanılabilir veriyi aşan uzunluk `DecoderException` üretir; ikisi de `decoder_error` kategorisidir ve gövde tüketilmez. Başarılı gövdede bit deseni aynen korunur.
 - BitSet, long array gövdesinin `BitSet.valueOf` görünümüdür. Sondaki sıfır long'lar yazmada kısalır; okumada aynı bit kümesi aynı sıralı bit listesini verir.
 - Yazma bu dilimde her zaman başarılıdır; uzunluk sınırı ve hata kategorisi yoktur. Mevcut yazma sınırı hatalarında hedef buffer'a yeni veri eklenmez kuralı burada tetiklenmez.
-- Okuma hataları `buffer_underflow`, `decoder_error` ve VarInt önekinden gelen `too_big` kategorileridir. Java exception sınıfı yalnızca `diagnostics` içindedir; mesaj/stack eşitlik ölçütü değildir. Sabit BitSet varyantları ve NBT kapsam dışıdır.
+- Sabit BitSet bit boyutu `size` ile taşınır; `ceil(size/8)` bayt okunur/yazılır. Boyut 0 iken tüketim/yazım olmaz. Eksik veri `buffer_underflow`, bit kümesi boyutu aşarsa `encoder_error` üretir; hedefe ekleme yapılmaz.
+- Okuma hataları `buffer_underflow`, `decoder_error`, VarInt önekinden gelen `too_big` ve sabit yazmada `encoder_error` kategorileridir. Java exception sınıfı yalnızca `diagnostics` içindedir; mesaj/stack eşitlik ölçütü değildir. NBT kapsam dışıdır.
 
 İlk corpus `prefix_hex` olarak `a55a` kullanır; heap buffer ve sıfırdan farklı reader index ile çalışır. Direct/composite buffer varyantları ve çoklu değer akışları kapsam dışıdır.
 
@@ -32,12 +33,14 @@ Netty buffer/common yanında `core/BlockPos` sınıfı için math ailesinin bağ
 | Long array okuma | 17 | Boş/tek/çift yük, kısa/eksik gövde, negatif ve kısa-olmayan sıfır uzunluklar, 127 uzunluk sınırı, 0–6 baytlık kesik önekler ve fazla uzun önek |
 | BitSet yazma | 6 | Boş, bit 0, bayt/kelime sınırları, örnek ve sondaki sıfır kırpması |
 | BitSet okuma | 6 | Boş/tek/çift kelime, kısa gövde ve negatif uzunluk |
+| Sabit BitSet okuma | 8 | Boyut 0/1/8/9/16, yok sayılan yük, kısa/eksik gövde |
+| Sabit BitSet yazma | 6 | Boyut 0/8/9/16, sınır içi ve taşan bit kümeleri |
 
-`family: "binary"`, `operation: "read" | "write"`, `codec: "uuid" | "blockpos" | "longarray" | "bitset"` ortak girdilerdir. `prefix_hex` küçük harfli bayt hex stringdir. UUID yazmada `most_hex`/`least_hex` 16 haneli küçük harfli hex; BlockPos yazmada `x`/`y`/`z` işaretli ondalık string; long array yazmada `values` işaretli ondalık string dizisi; BitSet yazmada `bits` artan bit index dizisidir. Okumada `hex` başlık/gövdeyi taşır.
+`prefix_hex` küçük harfli bayt hex stringdir. UUID yazmada `most_hex`/`least_hex` 16 haneli küçük harfli hex; BlockPos yazmada `x`/`y`/`z` işaretli ondalık string; long array yazmada `values` işaretli ondalık string dizisi; BitSet yazmada `bits` bit index dizisidir. Sabit BitSet okuma/yazmada ek olarak `size` bit boyutu bulunur. Okumada `hex` başlık/gövdeyi taşır.
 
-Okuma adaptörü buffer başına `prefix_hex` koyup reader index'i bu alanın sonuna taşır. Başarılı UUID sonucu `most_hex`, `least_hex`; başarılı BlockPos sonucu `x`, `y`, `z`; başarılı long array sonucu `values`; başarılı BitSet sonucu `bits` içerir. Her durumda `outcome`, `consumed` ve `remaining_hex` bulunur. Hata sonucu `outcome` ve `error` içerir.
+Okuma adaptörü buffer başına `prefix_hex` koyup reader index'i bu alanın sonuna taşır. Başarılı UUID sonucu `most_hex`, `least_hex`; başarılı BlockPos sonucu `x`, `y`, `z`; başarılı long array sonucu `values`; başarılı BitSet ve sabit BitSet sonucu `bits` içerir. Her durumda `outcome`, `consumed` ve `remaining_hex` bulunur. Hata sonucu `outcome` ve `error` içerir.
 
-Yazma adaptörü mevcut `prefix_hex` üzerine ekler. Her sonuç `outcome`, eklenen bayt sayısı `written` ve prefix dahil bütün `hex` çıktısını içerir. Bu dilimde yazma hatası beklenmez; bağımsız okuma senaryoları ayrıdır.
+Yazma adaptörü mevcut `prefix_hex` üzerine ekler. Her sonuç `outcome`, eklenen bayt sayısı `written` ve prefix dahil bütün `hex` çıktısını içerir. Sabit BitSet yazmada bit kümesi boyutu aşarsa `encoder_error` döner ve hedefe ekleme yapılmaz; bağımsız okuma senaryoları ayrıdır.
 
 ## Çalıştırma ve kanıt
 
@@ -48,17 +51,18 @@ python3 tools/behavior/run.py capture --family binary
 python3 tools/behavior/run.py verify --family binary
 ```
 
-78 senaryo iki ayrı JVM'de aynı sonucu verdi; kayıtlı referans iki yeni JVM ile yeniden doğrulandı. Binary referans kimliği: `e75ce61ebc174879fff859d20c605110eee12d0cf54b480e2f575e055017d2a0`. Önceki 43 UUID/BlockPos girdisi ve sonucu değişmedi. Ham girdiler/çıktılar yalnızca `.data/` altında tutulur.
+92 senaryo iki ayrı JVM'de aynı sonucu verdi; kayıtlı referans iki yeni JVM ile yeniden doğrulandı. Binary referans kimliği: `72017ab2c353dd2343a27966d37bb45eb419baa4894c1dc891321f5c5a38c42b`. Önceki 78 girdisi ve sonucu değişmedi. Ham girdiler/çıktılar yalnızca `.data/` altında tutulur.
 
-Yeni aileyle toplam 565 Java senaryosu yakalandı ve iki yeni JVM çalıştırmasıyla kayıtla eşitliği doğrulandı. Birleşik referans kimliği: `47f992f4554d8aea1b33f0a1bbf9c793871c17af2fbbec51e8851e9f54de7a02`. Eski kayıtlar değiştirilmedi.
+Yeni aileyle toplam 579 Java senaryosu yakalandı ve iki yeni JVM çalıştırmasıyla kayıtla eşitliği doğrulandı. Birleşik referans kimliği: `6e38fbb2e12abbb1ef3efcb8889bf9b709b769375509d6ddb41a3827e44e2b59`. Eski kayıtlar değiştirilmedi.
 
-Mevcut Rust kodu UUID/BlockPos için geçerlidir; long array ve BitSet henüz uygulanmadığından desteklenen aileleri açıkça seç:
+Mevcut Rust kodu UUID/BlockPos/long array/değişken BitSet için geçerlidir; sabit BitSet henüz uygulanmadığından desteklenen kapsamı açıkça seç:
 
 ```bash
 cargo build --locked --offline --example behavior_adapter
 python3 tools/behavior/run.py compare --family math --family timer --family wire --family utf8 --adapter target/debug/examples/behavior_adapter
+python3 tools/behavior/run.py compare --family binary --adapter target/debug/examples/behavior_adapter
 ```
 
-Varsayılan bütün-aile karşılaştırması bu kapsamı içerir; yeni testler sessizce atlanmaz.
+İkinci komut sabit BitSet Rust karşılığı yokken başarısız olur; yeni testler sessizce atlanmaz.
 
-Beklenen çıktılar Rust'a göre değiştirilmedi.
+Sonraki adım bu sabit referansa karşı sabit BitSet Rust davranış dilimidir. Beklenen çıktılar Rust'a göre değiştirilmeyecek.

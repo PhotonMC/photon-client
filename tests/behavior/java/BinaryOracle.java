@@ -4,6 +4,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.DecoderException;
+import io.netty.handler.codec.EncoderException;
 import java.util.BitSet;
 import java.util.HexFormat;
 import java.util.Locale;
@@ -28,8 +29,15 @@ public final class BinaryOracle {
         BlockPos pos = null;
         long[] longs = null;
         BitSet bits = null;
+        int fixedSize = -1;
         if (read) {
             input = HexFormat.of().parseHex(request.get("hex").getAsString());
+            if (codec.equals("fixedbitset")) {
+                fixedSize = request.get("size").getAsInt();
+                if (fixedSize < 0) {
+                    throw new IllegalArgumentException("Size outside this corpus contract");
+                }
+            }
         } else if (codec.equals("uuid")) {
             long most = Long.parseUnsignedLong(request.get("most_hex").getAsString(), 16);
             long least = Long.parseUnsignedLong(request.get("least_hex").getAsString(), 16);
@@ -54,12 +62,29 @@ public final class BinaryOracle {
                 }
                 bits.set(bit);
             }
+        } else if (codec.equals("fixedbitset")) {
+            fixedSize = request.get("size").getAsInt();
+            if (fixedSize < 0) {
+                throw new IllegalArgumentException("Size outside this corpus contract");
+            }
+            bits = new BitSet();
+            for (var entry : request.getAsJsonArray("bits")) {
+                int bit = entry.getAsInt();
+                if (bit < 0) {
+                    throw new IllegalArgumentException("Bit index outside this corpus contract");
+                }
+                bits.set(bit);
+            }
         } else {
             throw new IllegalArgumentException("Unknown binary codec");
         }
         if (!codec.equals("uuid") && !codec.equals("blockpos")
-                && !codec.equals("longarray") && !codec.equals("bitset")) {
+                && !codec.equals("longarray") && !codec.equals("bitset")
+                && !codec.equals("fixedbitset")) {
             throw new IllegalArgumentException("Unknown binary codec");
+        }
+        if (codec.equals("fixedbitset")) {
+            return fixedBitSet(request, prefix, input, bits, fixedSize, read);
         }
         ByteBuf buffer = Unpooled.buffer();
         var result = new JsonObject();
@@ -118,6 +143,48 @@ public final class BinaryOracle {
                 }
                 result.addProperty("outcome", "error");
                 result.addProperty("error", "too_big");
+                result.addProperty("java_exception", error.getClass().getName());
+            }
+            if (read) {
+                result.addProperty("consumed", buffer.readerIndex() - prefix.length);
+                result.addProperty("remaining_hex", ByteBufUtil.hexDump(buffer));
+            } else {
+                result.addProperty("written", buffer.writerIndex() - prefix.length);
+                result.addProperty("hex", ByteBufUtil.hexDump(buffer));
+            }
+            return result;
+        } finally {
+            buffer.release();
+        }
+    }
+
+    private static JsonObject fixedBitSet(
+            JsonObject request, byte[] prefix, byte[] input, BitSet bits, int size, boolean read) {
+        FriendlyByteBuf buffer = new FriendlyByteBuf(Unpooled.buffer());
+        var result = new JsonObject();
+        try {
+            buffer.writeBytes(prefix);
+            if (read) {
+                buffer.writeBytes(input);
+                buffer.readerIndex(prefix.length);
+            }
+            try {
+                if (read) {
+                    BitSet decoded = buffer.readFixedBitSet(size);
+                    var indices = new JsonArray();
+                    decoded.stream().forEach(indices::add);
+                    result.add("bits", indices);
+                } else {
+                    buffer.writeFixedBitSet(bits, size);
+                }
+                result.addProperty("outcome", "value");
+            } catch (IndexOutOfBoundsException error) {
+                result.addProperty("outcome", "error");
+                result.addProperty("error", "buffer_underflow");
+                result.addProperty("java_exception", error.getClass().getName());
+            } catch (EncoderException error) {
+                result.addProperty("outcome", "error");
+                result.addProperty("error", "encoder_error");
                 result.addProperty("java_exception", error.getClass().getName());
             }
             if (read) {

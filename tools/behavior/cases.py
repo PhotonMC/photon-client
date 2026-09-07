@@ -306,6 +306,33 @@ def binary_cases():
                "operation": "read", "codec": "bitset",
                "prefix_hex": "a55a", "hex": framed}
 
+    fixed_reads = {
+        "size-zero-empty": (0, "55aa"),
+        "size-zero-ignored": (0, "ff55aa"),
+        "size-one-empty": (1, "0055aa"),
+        "size-eight": (8, "ff55aa"),
+        "size-nine": (9, "ffff55aa"),
+        "size-sixteen": (16, "010255aa"),
+        "short-payload": (9, "ff"),
+        "missing-payload": (8, ""),
+    }
+    for label, (size, framed) in fixed_reads.items():
+        yield {"case_id": f"binary/fixedbitset-read/{label}", "family": "binary",
+               "operation": "read", "codec": "fixedbitset",
+               "prefix_hex": "a55a", "size": size, "hex": framed}
+    fixed_writes = {
+        "size-zero-empty": (0, []),
+        "size-zero-overflow": (0, [0]),
+        "size-eight": (8, [0, 7]),
+        "size-eight-overflow": (8, [8]),
+        "size-nine": (9, [8]),
+        "size-sixteen": (16, [0, 15]),
+    }
+    for label, (size, bits) in fixed_writes.items():
+        yield {"case_id": f"binary/fixedbitset-write/{label}", "family": "binary",
+               "operation": "write", "codec": "fixedbitset",
+               "prefix_hex": "a55a", "size": size, "bits": bits}
+
 
 def build_cases(families):
     generators = {"wire": wire_cases, "math": math_cases, "timer": timer_cases, "utf8": utf8_cases,

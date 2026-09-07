@@ -4,7 +4,7 @@
 
 ## Referans ve davranış
 
-Referans Java 26.2 / protokol 776; `FriendlyByteBuf` içindeki UUID/BlockPos/long array yolları ve `BlockPos` paketleme kaynak incelemesinde belirlendi. `BinaryOracle.java` doğrudan orijinal sınıfları çağırır; senaryo ve beklenen çıktılar değiştirilmedi. Ayrıntılı sözleşme ve 78 senaryoluk kapsam [binary referans belgesindedir](binary-contract.md).
+Referans Java 26.2 / protokol 776; `FriendlyByteBuf` içindeki UUID/BlockPos/long array yolları ve `BlockPos` paketleme kaynak incelemesinde belirlendi. `BinaryOracle.java` doğrudan orijinal sınıfları çağırır; senaryo ve beklenen çıktılar değiştirilmedi. Ayrıntılı sözleşme ve 78 senaryoluk kapsam [binary referans belgesindedir](binary-contract.md). Sonradan eklenen 14 sabit BitSet senaryosu bu kanıtın dışındadır; toplam Java kapsamı 579 oldu.
 
 | Rust API | Korunan davranış |
 | --- | --- |
