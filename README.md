@@ -8,9 +8,9 @@ Orijinal kaynak ve assetler yalnızca yerelde referans ve test girdisi olarak ku
 
 ## Mevcut aşama
 
-Kaynaklar sağlandı; bütünlük envanteri ve ilk kaynak incelemesi tamamlandı. Bölüm bazlı roadmap ve ilk davranış testi sözleşmeleri hazır. P00 yerel test çalıştırıcısı ve 346 Java referans senaryosu (sayısal işlemler, zamanlayıcı, VarInt/VarLong) mevcut; oyun implementasyonu yok. Boş `main`, yalnızca iskelettir.
+Kaynaklar sağlandı; bütünlük envanteri ve ilk kaynak incelemesi tamamlandı. Bölüm bazlı roadmap ve ilk davranış testi sözleşmeleri hazır. P00 yerel test çalıştırıcısı ve 346 Java referans senaryosu (sayısal işlemler, zamanlayıcı, VarInt/VarLong) mevcut. İlk Rust dilimi VarInt/VarLong, 144 wire senaryosunda Java ile eşleşiyor; diğer 202 senaryo yalnızca Java referansı. Oynanabilir istemci henüz yok. Boş `main`, yalnızca iskelettir.
 
-Mevcut referanslar [yerel veri rehberindeki](docs/reference-data.md) `.data/` alanında kalır. Sıradaki iş, hazır testleri kullanarak ilk küçük Rust davranış dilimini ve JSONL test adaptörünü geliştirmektir. Her Rust diliminden önce ilgili Java referansı ve testler hazırlanacak. Grafik, ses, pencere ve ağ teknolojileri sonraya bırakıldı. Test otomasyonu Python standart kütüphanesi ve özgün Java adaptörlerini kullanıyor; uygulamaya ek Rust bağımlılığı eklenmedi.
+Mevcut referanslar [yerel veri rehberindeki](docs/reference-data.md) `.data/` alanında kalır. Sıradaki küçük Rust dilimi P02.a zamanlayıcısıdır. Her Rust diliminden önce ilgili Java referansı ve testler hazırlanacak. Grafik, ses, pencere ve ağ teknolojileri sonraya bırakıldı. Test otomasyonu Python standart kütüphanesi ve özgün Java adaptörlerini kullanıyor; üretim kütüphanesine ek Rust bağımlılığı eklenmedi. Rust JSONL test adaptörü `serde_json` geliştirme bağımlılığını kullanıyor.
 
 ## Belgeler
 
@@ -22,5 +22,6 @@ Mevcut referanslar [yerel veri rehberindeki](docs/reference-data.md) `.data/` al
 - [Bölüm bazlı roadmap](docs/roadmap.md)
 - [İlk davranış testi sözleşmeleri](docs/first-behavior-tests.md)
 - [Yerel test komutları ve sonuçların anlamı](docs/behavior-runner.md)
+- [İlk Rust dilimi: VarInt/VarLong doğrulaması](docs/wire-parity.md)
 
 Her AI aracı işe başlamadan `AGENTS.md` dosyasını okumalıdır. Claude, Gemini ve Copilot giriş dosyaları aynı kurallara yönlendirir. Talimat dosyalarını otomatik okumayan araçlarda `AGENTS.md` görev bağlamına açıkça verilmelidir; bu dosyalar modellerin davranışını teknik olarak zorlayan bir mekanizma değildir.

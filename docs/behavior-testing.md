@@ -1,6 +1,6 @@
 # Davranış doğrulama sözleşmesi
 
-Bu belge yaklaşımı tanımlar. 26.2 kaynakları incelendi; [ilk test sözleşmeleri](first-behavior-tests.md) hazırlandı. [Kalıcı yerel çalıştırıcı](behavior-runner.md) ve üç ailede 346 Java referans senaryosu mevcut. Rust test adaptörü yok; Java referans doğrulaması Rust eşitlik testi değildir.
+Bu belge yaklaşımı tanımlar. 26.2 kaynakları incelendi; [ilk test sözleşmeleri](first-behavior-tests.md) hazırlandı. [Kalıcı yerel çalıştırıcı](behavior-runner.md) ve üç ailede 346 Java referans senaryosu mevcut. Rust wire adaptörü 144 senaryoda Java ile karşılaştırıldı; [kapsam](wire-parity.md). Diğer aileler için Java referans doğrulaması Rust eşitlik testi değildir.
 
 ## Referans ve karşılaştırma
 

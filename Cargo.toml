@@ -6,3 +6,6 @@ publish = false
 include = ["/Cargo.toml", "/Cargo.lock", "/src/**", "/README.md"]
 
 [dependencies]
+
+[dev-dependencies]
+serde_json = "1.0.151"

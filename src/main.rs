@@ -1,2 +1,2 @@
-// Proje iskeleti: kaynak incelemesi ve davranış testlerinden önce oyun kodu yazılmaz.
+// Uygulama girişi: henüz oynanabilir istemci yok. Doğrulanan dilimler kütüphanede.
 fn main() {}
