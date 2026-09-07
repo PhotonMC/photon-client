@@ -70,8 +70,8 @@ Diğer `math` operasyonları `floor`, `wrap_degrees`, `clamp`; `type` alanı `f3
 | `wire` | 144 | VarInt/VarLong yazma/okuma, sınırlar, hatalar, tüketim ve kalan veri |
 | `utf8` | 141 | UTF-16 birim sınırları, UTF-8 okuma/yazma, bozuk diziler, VarInt başlıkları ve hata tüketimi |
 | `binary` | 92 | UUID/BlockPos/long array/BitSet okuma/yazma; sabit BitSet okuma/yazma, boyut sınırları ve kodlayıcı hatası |
-| `nbt` | 19 | Düz bileşik okuma/yazma, null kök, kesik gövde ve bileşik-olmayan kök; yalnızca Java referansı |
-| **Toplam** | **656** | P01.a/P01.b/P01.c/P02.a/P03.a/P03.b/P03.c için mevcut referans corpus'u |
+| `nbt` | 18 | Düz bileşik okuma/yazma, null kök, kesik gövde ve bileşik-olmayan kök |
+| **Toplam** | **655** | P01.a/P01.b/P01.c/P02.a/P03.a/P03.b/P03.c için mevcut referans corpus'u |
 
 7 Eylül 2026'da Java 25.0.4.1 / Linux x86_64 üzerinde ilk 346 senaryoluk corpus iki ayrı JVM sürecinde aynı sonuçları verdi. Kayıtlı referansa karşı `verify` de çalıştırıldı. Beş sentetik altyapı testi geçti. Komut düzeyinde ayrıca kontrollü replay, tek alan mutasyonu, boş adaptör çıktısı, eksik adaptör, eksik runtime ve yanlış JAR çıkışları sınandı. Bu replay programı yalnızca karşılaştırıcı kontrolüdür; Rust veya oyun implementasyonu değildir.
 

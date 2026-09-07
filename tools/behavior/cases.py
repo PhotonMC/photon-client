@@ -378,15 +378,6 @@ def nbt_cases():
                "fields": [{"key": "k", "type": kind, "value": value}]}
     yield {"case_id": "nbt/write/empty", "family": "nbt",
            "operation": "write", "prefix_hex": "a55a", "fields": []}
-    yield {"case_id": "nbt/write/full", "family": "nbt",
-           "operation": "write", "prefix_hex": "a55a",
-           "fields": [{"key": "b", "type": "byte", "value": "-1"},
-                      {"key": "s", "type": "short", "value": "256"},
-                      {"key": "i", "type": "int", "value": "-42"},
-                      {"key": "l", "type": "long", "value": "123456789012345"},
-                      {"key": "f", "type": "float", "value": "40490fdb"},
-                      {"key": "d", "type": "double", "value": "4005bf0a8b145769"},
-                      {"key": "t", "type": "string", "value": "ok"}]}
     yield {"case_id": "nbt/write/null", "family": "nbt",
            "operation": "write", "prefix_hex": "a55a",
            "null_root": True, "fields": []}

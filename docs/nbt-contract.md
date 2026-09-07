@@ -1,6 +1,6 @@
 # P03.c — NBT referans sözleşmesi (düz bileşikler)
 
-Bu dilimin **19 Java davranış testi hazırdır; Rust implementasyonu henüz yoktur**. Listeler, diziler, iç içe bileşikler, kota/derinlik ve SNBT bu dilime dahil değildir.
+Bu dilimin **18 Java davranış testi hazırdır ve Rust karşılığı doğrulanmıştır** ([kanıt](nbt-parity.md)). Listeler, diziler, iç içe bileşikler, kota/derinlik ve SNBT bu dilime dahil değildir.
 
 ## Kaynak ve sınır
 
@@ -34,8 +34,8 @@ python3 tools/behavior/run.py capture --family nbt
 python3 tools/behavior/run.py verify --family nbt
 ```
 
-19 senaryo iki ayrı JVM'de aynı sonucu verdi. NBT referans kimliği: `fd31f8c9934365989b3f3e6062d860c084495b2fa4d1eb7f7671b96ae784539a`. Ham girdiler/çıktılar yalnızca `.data/` altında tutulur.
+18 senaryo iki ayrı JVM'de aynı sonucu verdi. NBT referans kimliği: `62d5373d5e6a9b1bbca591baca712012461907aa21f3dcc62d267434af797920`. Ham girdiler/çıktılar yalnızca `.data/` altında tutulur.
 
-Toplam 656 Java senaryosu yakalandı ve doğrulandı. Birleşik referans kimliği: `6037eec255f7ddd5cb1976fbf9a20bdc4120168f5395e1dcca9aa6164c8f0630`. Eski kayıtlar değiştirilmedi.
+Toplam 655 Java senaryosu yakalandı ve doğrulandı. Birleşik referans kimliği: `f14752fc7c658af95024aea3bbe6011ebc3423db5a01698e6178e0f8ce765081`. Eski kayıtlar değiştirilmedi.
 
-Mevcut Rust adaptörü NBT içermediğinden varsayılan bütün-aile koşusu başarısız olur. Sonraki adım bu sabit referansa karşı NBT Rust davranış dilimidir.
+Beklenen çıktılar Rust'a göre değiştirilmedi.

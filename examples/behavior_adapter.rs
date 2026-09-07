@@ -5,6 +5,7 @@ use std::io::{self, BufRead, Write};
 use voxel_client::binary::{self, BlockPos, Uuid};
 use voxel_client::direction::{Axis, Direction};
 use voxel_client::math::{self, Vec2, Vec3};
+use voxel_client::nbt::{self, Field, FieldValue};
 use voxel_client::timer::Timer;
 use voxel_client::utf8;
 use voxel_client::wire::{self, ReadError};
@@ -540,6 +541,119 @@ fn binary_result(request: &Value) -> Result<Value, String> {
     }
 }
 
+fn nbt_result(request: &Value) -> Result<Value, String> {
+    fn nbt_error(error: nbt::ReadError) -> &'static str {
+        match error {
+            nbt::ReadError::BufferUnderflow => "buffer_underflow",
+            nbt::ReadError::DecoderError => "decoder_error",
+            nbt::ReadError::EncoderError => "encoder_error",
+            nbt::ReadError::TooBig => "too_big",
+        }
+    }
+
+    let prefix = decode_hex(string(request, "prefix_hex")?)?;
+    match string(request, "operation")? {
+        "read" => {
+            let framed = decode_hex(string(request, "hex")?)?;
+            let mut remaining = framed.as_slice();
+            match nbt::read_nbt(&mut remaining) {
+                Ok(None) => Ok(json!({
+                    "null": true,
+                    "outcome": "value",
+                    "consumed": framed.len() - remaining.len(),
+                    "remaining_hex": hex(remaining),
+                })),
+                Ok(Some(fields)) => {
+                    let mut out: Vec<Value> = fields
+                        .iter()
+                        .map(|field| {
+                            let (kind, value) = match &field.value {
+                                FieldValue::Byte(v) => ("byte", v.to_string()),
+                                FieldValue::Short(v) => ("short", v.to_string()),
+                                FieldValue::Int(v) => ("int", v.to_string()),
+                                FieldValue::Long(v) => ("long", v.to_string()),
+                                FieldValue::Float(v) => ("float", format!("{:08x}", v.to_bits())),
+                                FieldValue::Double(v) => {
+                                    ("double", format!("{:016x}", v.to_bits()))
+                                }
+                                FieldValue::Str(v) => ("string", v.clone()),
+                            };
+                            json!({"key": field.key, "type": kind, "value": value})
+                        })
+                        .collect();
+                    out.sort_by(|a, b| a["key"].as_str().cmp(&b["key"].as_str()));
+                    Ok(json!({
+                        "fields": out,
+                        "outcome": "value",
+                        "consumed": framed.len() - remaining.len(),
+                        "remaining_hex": hex(remaining),
+                    }))
+                }
+                Err(error) => Ok(json!({
+                    "outcome": "error",
+                    "error": nbt_error(error),
+                    "consumed": framed.len() - remaining.len(),
+                    "remaining_hex": hex(remaining),
+                })),
+            }
+        }
+        "write" => {
+            let mut buffer = prefix.clone();
+            if request.get("null_root").and_then(Value::as_bool) == Some(true) {
+                nbt::write_nbt(None, &mut buffer);
+            } else {
+                let fields = request["fields"]
+                    .as_array()
+                    .ok_or("fields must be an array")?;
+                let mut root = Vec::with_capacity(fields.len());
+                for entry in fields {
+                    let key = string(entry, "key")?.to_owned();
+                    let value = match string(entry, "type")? {
+                        "byte" => FieldValue::Byte(
+                            string(entry, "value")?
+                                .parse::<i8>()
+                                .map_err(|e| e.to_string())?,
+                        ),
+                        "short" => FieldValue::Short(
+                            string(entry, "value")?
+                                .parse::<i16>()
+                                .map_err(|e| e.to_string())?,
+                        ),
+                        "int" => FieldValue::Int(
+                            string(entry, "value")?
+                                .parse::<i32>()
+                                .map_err(|e| e.to_string())?,
+                        ),
+                        "long" => FieldValue::Long(
+                            string(entry, "value")?
+                                .parse::<i64>()
+                                .map_err(|e| e.to_string())?,
+                        ),
+                        "float" => FieldValue::Float(f32::from_bits(
+                            u32::from_str_radix(string(entry, "value")?, 16)
+                                .map_err(|e| e.to_string())?,
+                        )),
+                        "double" => FieldValue::Double(f64::from_bits(
+                            u64::from_str_radix(string(entry, "value")?, 16)
+                                .map_err(|e| e.to_string())?,
+                        )),
+                        "string" => FieldValue::Str(string(entry, "value")?.to_owned()),
+                        _ => return Err("unknown NBT field type".into()),
+                    };
+                    root.push(Field { key, value });
+                }
+                nbt::write_nbt(Some(&root), &mut buffer);
+            }
+            Ok(json!({
+                "outcome": "value",
+                "written": buffer.len() - prefix.len(),
+                "hex": hex(&buffer),
+            }))
+        }
+        _ => Err("unknown NBT operation".into()),
+    }
+}
+
 fn respond(request: Value) -> Result<Value, String> {
     if request["schema_version"].as_u64() != Some(1) {
         return Err("unsupported schema_version".into());
@@ -551,6 +665,7 @@ fn respond(request: Value) -> Result<Value, String> {
         "math" => math_result(&request)?,
         "utf8" => utf8_result(&request)?,
         "binary" => binary_result(&request)?,
+        "nbt" => nbt_result(&request)?,
         _ => return Err("unknown behavior family".into()),
     };
     Ok(json!({"schema_version": 1, "case_id": case_id, "result": result}))
