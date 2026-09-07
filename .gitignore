@@ -1,0 +1,17 @@
+target/
+.data/
+assets/
+reference/
+references/
+captures/
+test-results/
+*.jar
+*.class
+*.zip
+*.7z
+*.tar
+*.tar.gz
+*.log
+.env
+.env.*
+!.env.example
