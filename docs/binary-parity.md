@@ -1,10 +1,10 @@
 # P03.b — Binary Rust davranış dilimi
 
-`src/binary.rs`, sabit ve değişken boyutlu binary kodlamaları içerir. `examples/behavior_adapter.rs` üretim kütüphanesini mevcut JSONL senaryolarına bağlar; beklenen değer üretmez. Sabit BitSet varyantları, NBT ve diğer P03 biçimleri bu dilime dahil değildir.
+`src/binary.rs`, sabit ve değişken boyutlu binary kodlamaları içerir. `examples/behavior_adapter.rs` üretim kütüphanesini mevcut JSONL senaryolarına bağlar; beklenen değer üretmez. NBT ve diğer P03 biçimleri bu dilime dahil değildir.
 
 ## Referans ve davranış
 
-Referans Java 26.2 / protokol 776; `FriendlyByteBuf` içindeki UUID/BlockPos/long array yolları ve `BlockPos` paketleme kaynak incelemesinde belirlendi. `BinaryOracle.java` doğrudan orijinal sınıfları çağırır; senaryo ve beklenen çıktılar değiştirilmedi. Ayrıntılı sözleşme ve 78 senaryoluk kapsam [binary referans belgesindedir](binary-contract.md). Sonradan eklenen 14 sabit BitSet senaryosu bu kanıtın dışındadır; toplam Java kapsamı 579 oldu.
+Referans Java 26.2 / protokol 776; `FriendlyByteBuf` içindeki UUID/BlockPos/long array yolları ve `BlockPos` paketleme kaynak incelemesinde belirlendi. `BinaryOracle.java` doğrudan orijinal sınıfları çağırır; senaryo ve beklenen çıktılar değiştirilmedi. Ayrıntılı sözleşme ve 92 senaryoluk kapsam [binary referans belgesindedir](binary-contract.md).
 
 | Rust API | Korunan davranış |
 | --- | --- |
@@ -21,14 +21,14 @@ Yazma bu dilimde her zaman başarılıdır; ayrı uzunluk sınırı yoktur.
 
 Java 25.0.4.1 ve Rust 1.98.1 / Linux x86_64 ortamında:
 
-- 565 senaryoluk kayıtlı Java referansı iki yeni JVM çalıştırmasıyla doğrulandı.
-- Debug ve release Rust adaptörleri **565/565** eşleşti: 180 math + 22 timer + 144 wire + 141 utf8 + 78 binary.
+- 579 senaryoluk kayıtlı Java referansı iki yeni JVM çalıştırmasıyla doğrulandı.
+- Debug ve release Rust adaptörleri **579/579** eşleşti: 180 math + 22 timer + 144 wire + 141 utf8 + 92 binary.
 - Karşılaştırma kimlik bitleri, koordinatlar, diziler, bit listeleri, tüketim, kalan/yazılan baytlar ve hata kategorisini kapsar.
 - Biçim, Clippy ve paket kapsamı kontrolleri geçti; `.data/` ve test adaptörü paket dışında kaldı.
 
-Birleşik referans kimliği: `47f992f4554d8aea1b33f0a1bbf9c793871c17af2fbbec51e8851e9f54de7a02`. Binary ailesi kimliği: `e75ce61ebc174879fff859d20c605110eee12d0cf54b480e2f575e055017d2a0`.
+Birleşik referans kimliği: `6e38fbb2e12abbb1ef3efcb8889bf9b709b769375509d6ddb41a3827e44e2b59`. Binary ailesi kimliği: `72017ab2c353dd2343a27966d37bb45eb419baa4894c1dc891321f5c5a38c42b`.
 
-Yerel raporlar: `compare-ai12ax2d` (debug 565), `compare-068h5dad` (release 565) dizinlerinde, `.data/runs/behavior/` altında bulunur.
+Yerel raporlar: `compare-eb7mz513` (debug 579), `compare-_e8wf5_y` (release 579) dizinlerinde, `.data/runs/behavior/` altında bulunur.
 
 ## Yeniden çalıştırma ve sonraki dilim
 
@@ -41,4 +41,4 @@ python3 tools/behavior/run.py compare --adapter target/debug/examples/behavior_a
 
 Kayıtlı Java referansını yeniden ölçmek için `verify` kullanılır. Release için derlemeye `--release` eklenir ve `target/release/examples/behavior_adapter` seçilir.
 
-P03.b kapsamında sabit BitSet varyantları henüz uygulanmadı. Sonraki dilim bağımlılık sırasına göre seçilir.
+P03.b kapsamında sabit BitSet varyantları da uygulandı. Sonraki dilim bağımlılık sırasına göre seçilir.

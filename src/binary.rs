@@ -200,3 +200,75 @@ pub fn read_bitset(input: &mut &[u8]) -> Result<BitSet, ReadError> {
 pub fn write_bitset(value: &BitSet, output: &mut Vec<u8>) {
     write_long_array(&value.to_longs(), output);
 }
+
+/// Failures for fixed-size writes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WriteError {
+    EncoderError,
+}
+
+impl BitSet {
+    /// Build from little-endian bytes without masking excess bits.
+    pub fn from_bytes(bytes: &[u8]) -> Self {
+        let mut words = vec![0; bytes.len().div_ceil(8)];
+        for (index, byte) in bytes.iter().enumerate() {
+            words[index / 8] |= u64::from(*byte) << ((index % 8) * 8);
+        }
+        while words.last() == Some(&0) {
+            words.pop();
+        }
+        Self { words }
+    }
+
+    /// Test a single bit.
+    pub fn contains(&self, bit: u64) -> bool {
+        let word = (bit / 64) as usize;
+        self.words
+            .get(word)
+            .is_some_and(|value| value & (1 << (bit % 64)) != 0)
+    }
+
+    /// Highest set bit plus one, or zero when empty.
+    pub fn len(&self) -> u64 {
+        self.to_bits().last().map_or(0, |bit| bit + 1)
+    }
+
+    /// Whether no bits are set.
+    pub fn is_empty(&self) -> bool {
+        self.words.is_empty()
+    }
+}
+
+/// Read `ceil(size/8)` bytes as a fixed BitSet without consuming on failure.
+pub fn read_fixed_bitset(input: &mut &[u8], size: usize) -> Result<BitSet, ReadError> {
+    let bytes = size.div_ceil(8);
+    if input.len() < bytes {
+        return Err(ReadError::BufferUnderflow);
+    }
+    let (head, rest) = input.split_at(bytes);
+    let value = BitSet::from_bytes(head);
+    *input = rest;
+    Ok(value)
+}
+
+/// Append `ceil(size/8)` bytes, failing when a set bit meets or exceeds `size`.
+pub fn write_fixed_bitset(
+    value: &BitSet,
+    size: usize,
+    output: &mut Vec<u8>,
+) -> Result<(), WriteError> {
+    if value.len() > size as u64 {
+        return Err(WriteError::EncoderError);
+    }
+    let bytes = size.div_ceil(8);
+    for index in 0..bytes {
+        let mut byte = 0;
+        for bit in 0..8 {
+            if value.contains(index as u64 * 8 + bit) {
+                byte |= 1 << bit;
+            }
+        }
+        output.push(byte);
+    }
+    Ok(())
+}

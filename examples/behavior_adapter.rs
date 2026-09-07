@@ -291,6 +291,26 @@ fn binary_result(request: &Value) -> Result<Value, String> {
             .map_err(|error| error.to_string())
     }
 
+    fn bit_indices(value: &Value) -> Result<Vec<u64>, String> {
+        let bits = value["bits"].as_array().ok_or("bits must be an array")?;
+        let mut indices = Vec::with_capacity(bits.len());
+        for entry in bits {
+            indices.push(
+                entry
+                    .as_u64()
+                    .ok_or("bit index must be an unsigned integer")?,
+            );
+        }
+        Ok(indices)
+    }
+
+    fn bit_size(value: &Value) -> Result<usize, String> {
+        value["size"]
+            .as_u64()
+            .ok_or("size must be an unsigned integer".to_owned())
+            .map(|size| size as usize)
+    }
+
     let prefix = decode_hex(string(request, "prefix_hex")?)?;
     let codec = string(request, "codec")?;
     fn binary_error(error: binary::ReadError) -> &'static str {
@@ -364,6 +384,23 @@ fn binary_result(request: &Value) -> Result<Value, String> {
                         "remaining_hex": hex(remaining),
                     })),
                 },
+                "fixedbitset" => {
+                    let size = bit_size(request)?;
+                    match binary::read_fixed_bitset(&mut remaining, size) {
+                        Ok(value) => Ok(json!({
+                            "bits": value.to_bits(),
+                            "outcome": "value",
+                            "consumed": framed.len() - remaining.len(),
+                            "remaining_hex": hex(remaining),
+                        })),
+                        Err(error) => Ok(json!({
+                            "outcome": "error",
+                            "error": binary_error(error),
+                            "consumed": framed.len() - remaining.len(),
+                            "remaining_hex": hex(remaining),
+                        })),
+                    }
+                }
                 _ => Err("unknown binary codec".into()),
             }
         }
@@ -402,16 +439,27 @@ fn binary_result(request: &Value) -> Result<Value, String> {
                     binary::write_long_array(&longs, &mut buffer);
                 }
                 "bitset" => {
-                    let bits = request["bits"].as_array().ok_or("bits must be an array")?;
-                    let mut indices = Vec::with_capacity(bits.len());
-                    for entry in bits {
-                        indices.push(
-                            entry
-                                .as_u64()
-                                .ok_or("bit index must be an unsigned integer")?,
-                        );
-                    }
+                    let indices = bit_indices(request)?;
                     binary::write_bitset(&binary::BitSet::from_bits(&indices), &mut buffer);
+                }
+                "fixedbitset" => {
+                    let size = bit_size(request)?;
+                    let indices = bit_indices(request)?;
+                    match binary::write_fixed_bitset(
+                        &binary::BitSet::from_bits(&indices),
+                        size,
+                        &mut buffer,
+                    ) {
+                        Ok(()) => {}
+                        Err(binary::WriteError::EncoderError) => {
+                            return Ok(json!({
+                                "outcome": "error",
+                                "error": "encoder_error",
+                                "written": buffer.len() - prefix.len(),
+                                "hex": hex(&buffer),
+                            }));
+                        }
+                    }
                 }
                 _ => return Err("unknown binary codec".into()),
             }
