@@ -19,6 +19,8 @@ public final class Oracle {
                 }
                 String handler = switch (request.get("family").getAsString()) {
                     case "wire" -> "WireOracle";
+                    case "math" -> "MathOracle";
+                    case "timer" -> "TimerOracle";
                     default -> throw new IllegalArgumentException("Unknown scenario family");
                 };
                 var response = new JsonObject();

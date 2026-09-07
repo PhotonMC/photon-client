@@ -16,6 +16,34 @@
     "io.netty:netty-common": {
       "file": "netty-common-4.2.15.Final.jar",
       "sha1": "7222492c1af9c2d4d78d521eea340a619e242fda"
+    },
+    "com.google.guava:failureaccess": {
+      "file": "failureaccess-1.0.3.jar",
+      "sha1": "aeaffd00d57023a2c947393ed251f0354f0985fc"
+    },
+    "com.google.guava:guava": {
+      "file": "guava-33.6.0-jre.jar",
+      "sha1": "c376b13067cc99a5774403530953f7b05a91e218"
+    },
+    "com.mojang:datafixerupper": {
+      "file": "datafixerupper-10.0.21.jar",
+      "sha1": "b6b2ae770c02e0c1eb90f9985b151e9085a38d0b"
+    },
+    "com.mojang:logging": {
+      "file": "logging-1.7.12.jar",
+      "sha1": "351cea64a5233361327d8d54c44277041beed97f"
+    },
+    "it.unimi.dsi:fastutil": {
+      "file": "fastutil-8.5.18.jar",
+      "sha1": "a6cff377eecc19c2037bf31568a6d7106b50ba1f"
+    },
+    "org.joml:joml": {
+      "file": "joml-1.10.8.jar",
+      "sha1": "fc0a71dad90a2cf41d82a76156a0e700af8e4f8d"
+    },
+    "org.slf4j:slf4j-api": {
+      "file": "slf4j-api-2.0.17.jar",
+      "sha1": "d9e58ac9c7779ba3bf8142aff6c830617a7fe60f"
     }
   },
   "families": {
@@ -25,6 +53,26 @@
         "com.google.code.gson:gson",
         "io.netty:netty-buffer",
         "io.netty:netty-common"
+      ]
+    },
+    "math": {
+      "source": "MathOracle.java",
+      "libraries": [
+        "com.google.code.gson:gson",
+        "com.mojang:datafixerupper",
+        "com.google.guava:guava",
+        "com.google.guava:failureaccess",
+        "it.unimi.dsi:fastutil",
+        "com.mojang:logging",
+        "org.slf4j:slf4j-api",
+        "org.joml:joml"
+      ]
+    },
+    "timer": {
+      "source": "TimerOracle.java",
+      "libraries": [
+        "com.google.code.gson:gson",
+        "it.unimi.dsi:fastutil"
       ]
     }
   }

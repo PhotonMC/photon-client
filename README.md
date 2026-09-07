@@ -8,9 +8,9 @@ Orijinal kaynak ve assetler yalnızca yerelde referans ve test girdisi olarak ku
 
 ## Mevcut aşama
 
-Kaynaklar sağlandı; bütünlük envanteri ve ilk kaynak incelemesi tamamlandı. Bölüm bazlı roadmap ve ilk davranış testi sözleşmeleri hazır. P00 yerel test çalıştırıcısı ve ilk wire referans senaryoları mevcut; oyun implementasyonu yok. Boş `main`, yalnızca iskelettir.
+Kaynaklar sağlandı; bütünlük envanteri ve ilk kaynak incelemesi tamamlandı. Bölüm bazlı roadmap ve ilk davranış testi sözleşmeleri hazır. P00 yerel test çalıştırıcısı ve 346 Java referans senaryosu (sayısal işlemler, zamanlayıcı, VarInt/VarLong) mevcut; oyun implementasyonu yok. Boş `main`, yalnızca iskelettir.
 
-Mevcut referanslar [yerel veri rehberindeki](docs/reference-data.md) `.data/` alanında kalır. Sıradaki iş sayısal işlemler ve zamanlayıcı davranış testleridir. Her Rust diliminden önce ilgili Java referansı ve testler hazırlanacak. Grafik, ses, pencere, ağ ve test teknolojileri sonraya bırakıldı; ek bağımlılık seçilmedi.
+Mevcut referanslar [yerel veri rehberindeki](docs/reference-data.md) `.data/` alanında kalır. Sıradaki iş, hazır testleri kullanarak ilk küçük Rust davranış dilimini ve JSONL test adaptörünü geliştirmektir. Her Rust diliminden önce ilgili Java referansı ve testler hazırlanacak. Grafik, ses, pencere ve ağ teknolojileri sonraya bırakıldı. Test otomasyonu Python standart kütüphanesi ve özgün Java adaptörlerini kullanıyor; uygulamaya ek Rust bağımlılığı eklenmedi.
 
 ## Belgeler
 

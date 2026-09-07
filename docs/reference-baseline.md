@@ -46,7 +46,7 @@ Orijinal client JAR'ı ve mevcut bağımlılıklar kullanılarak grafik arayüzs
 | `Vec2` | Diyagonal vektör normalizasyonu, ham float bitleri | Çağrılabildi; iki çalıştırma aynı çıktı |
 | `VarInt` | Negatif sayının Netty buffer'a yazılıp okunması | Çağrılabildi; iki çalıştırma aynı çıktı |
 
-Yoklama kodu ve sonuçları `.data/runs/reference-probe/` içinde. Bu, davranış test paketi veya Rust eşitlik kanıtı değildir. İlk testler için Java sınıflarını doğrudan çağırmanın uygulanabilir olduğunu gösterir. Tam istemci açılmadı; GPU, ses çıkışı, gerçek oyuncu oturumu ve Pumpkin bağlantısı denenmedi. Kullanıcının Prism instance'ına veya ayarlarına dokunulmadı.
+Yoklama kodu ve sonuçları `.data/runs/reference-probe/` içinde. Bu ilk yoklama Rust eşitlik kanıtı değildir. Sonraki çalışmada [kalıcı çalıştırıcı ve 346 senaryoluk corpus](behavior-runner.md) hazırlandı; aşağıdaki yoklama bilgileri ilk incelemenin kaydıdır. İlk testler için Java sınıflarını doğrudan çağırmanın uygulanabilir olduğunu gösterir. Tam istemci açılmadı; GPU, ses çıkışı, gerçek oyuncu oturumu ve Pumpkin bağlantısı denenmedi. Kullanıcının Prism instance'ına veya ayarlarına dokunulmadı.
 
 ## Asset yükleme açısından sonuç
 

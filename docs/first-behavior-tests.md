@@ -1,6 +1,6 @@
 # İlk davranış testleri: implementasyondan önceki sözleşmeler
 
-Bu belge P00, P01.a, P02.a ve P03.a için çalıştırılabilir testlere dönüştürülecek ilk sözleşmeleri tanımlar. [Kalıcı çalıştırıcı](behavior-runner.md) ve P03.a wire corpus'u mevcut; sayısal/zamanlayıcı testleri hazırlanacak. Rust implementasyonu yok. Referans kimliği [envanterde](reference-baseline.md) sabitlenmiştir.
+Bu belge P00, P01.a, P02.a ve P03.a için çalıştırılabilir testlere dönüştürülecek ilk sözleşmeleri tanımlar. [Kalıcı çalıştırıcı](behavior-runner.md) ile 180 sayısal/vektör, 22 zamanlayıcı ve 144 wire senaryosu hazır. Bu ilk corpus tam P01/P02/P03 kapsamı değildir; Rust implementasyonu yok. Referans kimliği [envanterde](reference-baseline.md) sabitlenmiştir.
 
 ## P00 — Java referansı ve karşılaştırıcı
 
@@ -15,7 +15,7 @@ Yerel yoklama, `DeltaTracker.Timer`, `Vec2` ve `VarInt` çağrılarının mevcut
 3. **Karşılaştırma:** Aynı girdiyi Rust adaptörüne ver; çıktıları Java referansıyla karşılaştır. Eksik adaptör, eksik golden veya yanlış sürüm başarı üretemez. Eşitlik komutu çalıştırılmamış zorunlu senaryoları başarılı çıkışla gizlememeli.
 4. **Fark raporu:** İlk ayrışan olay/alanı, beklenen ve gerçekleşen değeri, referans kimliğini ve aynı senaryoyu yeniden çalıştırma bilgisini `.data/runs/` altına yaz.
 
-Dil bağımsız senaryo/sonuç kaydı şu bilgileri taşımalı; dosya formatının uygulaması P00'da seçilecek:
+Dil bağımsız senaryo/sonuç kaydı şu bilgileri taşımalı; mevcut uygulama JSONL kullanır; operasyon alanları [çalıştırıcı belgesinde](behavior-runner.md) tanımlıdır:
 
 | Alan | Anlam |
 | --- | --- |

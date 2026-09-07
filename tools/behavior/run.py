@@ -111,8 +111,17 @@ def parse_records(raw, cases):
     def invalid_constant(value):
         raise ValueError(f"Non-JSON number: {value}")
 
+    def unique_object(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError(f"Duplicate JSON field: {key}")
+            result[key] = value
+        return result
+
     try:
-        records = [json.loads(line, parse_constant=invalid_constant) for line in raw.splitlines()]
+        records = [json.loads(line, parse_constant=invalid_constant, object_pairs_hook=unique_object)
+                   for line in raw.splitlines()]
     except (ValueError, TypeError) as error:
         raise Failed(f"Invalid JSONL adapter output: {error}") from error
     if len(records) != len(cases):
@@ -121,6 +130,7 @@ def parse_records(raw, cases):
         if (not isinstance(response, dict) or type(response.get("schema_version")) is not int
                 or response["schema_version"] != 1 or response.get("case_id") != request["case_id"]
                 or not isinstance(response.get("result"), dict)
+                or ("diagnostics" in response and not isinstance(response["diagnostics"], dict))
                 or set(response) - {"schema_version", "case_id", "result", "diagnostics"}):
             raise Failed(f"Malformed, reordered or missing record for {request['case_id']}")
     return records
@@ -247,7 +257,7 @@ def main():
     base.mkdir(parents=True, exist_ok=True)
     run_dir = Path(tempfile.mkdtemp(prefix=args.command + "-", dir=base))
     report = {"command": args.command, "reproduce": shlex.join([sys.executable, *sys.argv]),
-              "report_dir": str(run_dir)}
+              "invocation_cwd": str(Path.cwd()), "report_dir": str(run_dir)}
     try:
         code = run_command(args, run_dir, report)
     except Blocked as error:

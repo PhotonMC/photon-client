@@ -12,7 +12,7 @@ Bu kurallar model veya sağlayıcıdan bağımsızdır: GPT/Codex, Claude, Gemin
 
 ## Aşama sınırı
 
-Kaynaklar sağlandı; referans Minecraft Java Edition 26.2, protokol 776, Java 25 olarak sabitlendi. Önce [referans envanterini](docs/reference-baseline.md), [kaynak incelemesini](docs/source-review.md) ve [roadmap'i](docs/roadmap.md) oku. Davranış testi hazırlama aşamasındayız; oyun implementasyonuna başlanmadı. [Yerel test çalıştırıcısı](docs/behavior-runner.md) ve wire referans senaryoları mevcut. Sıradaki dilimler [ilk davranış testleri sözleşmesine](docs/first-behavior-tests.md) göre sayısal işlemler ve zamanlayıcı testleridir. Her Rust davranış diliminden önce ilgili Java referansı ve testler hazır olmalı. Kaynak veya sürüm değişirse mevcut beklentileri sessizce yenileme; envanteri ve etkilenen sözleşmeleri yeniden incele.
+Kaynaklar sağlandı; referans Minecraft Java Edition 26.2, protokol 776, Java 25 olarak sabitlendi. Önce [referans envanterini](docs/reference-baseline.md), [kaynak incelemesini](docs/source-review.md) ve [roadmap'i](docs/roadmap.md) oku. Davranış testi hazırlama aşamasındayız; oyun implementasyonuna başlanmadı. [Yerel test çalıştırıcısı](docs/behavior-runner.md) ile P01.a/P02.a/P03.a için 346 Java referans senaryosu mevcut. Sıradaki geliştirme, [ilk davranış testleri sözleşmesine](docs/first-behavior-tests.md) bağlı küçük bir Rust davranış dilimi ve JSONL test adaptörüdür. Mevcut Java referanslarının geçmesini Rust eşitliği olarak raporlama. Her Rust davranış diliminden önce ilgili Java referansı ve testler hazır olmalı. Kaynak veya sürüm değişirse mevcut beklentileri sessizce yenileme; envanteri ve etkilenen sözleşmeleri yeniden incele.
 
 ## Referanslar ve dağıtım
 
@@ -21,7 +21,7 @@ Kaynaklar sağlandı; referans Minecraft Java Edition 26.2, protokol 776, Java 2
 - Orijinal kodu Rust istemci derlemesine dahil etme; orijinal assetleri executable içine gömme, paketleme, Git'e ekleme veya yükleme. Orijinal kaynakları ve türetilmiş referans çıktıları CI artifactlerine veya haricî paylaşım servislerine yükleme.
 - İleride assetler kullanıcı tarafından seçilen yerel klasörden okunacak. Kurulum orijinal asset içermez ve indirmez. Yerel testler bu assetleri ve Java referansını kullanabilir.
 - Yeni test kodu, çalıştırıcılar ve özgün sentetik girdiler izlenebilir; orijinal içerik taşıyan test fixture'ları izlenemez. Tereddüt edilen fixture yerelde tutulur ve kaynağı kaydedilir.
-- `.gitignore` tek başına paketleme güvencesi değildir. Yeni paketleme/dağıtım adımı eklenirse içerik listesi ayrıca denetlenmelidir. Ignore kurallarını `git add -f` ile aşma.
+- `.gitignore` tek başına paketleme güvencesi değildir. Cargo `include` desenlerini `/README.md` gibi depo köküne sabitle; çıplak dosya adı `.data/` içindeki aynı adlı dosyayı da eşleyebilir. Yeni paketleme/dağıtım adımı eklenirse içerik listesi ayrıca denetlenmelidir. Ignore kurallarını `git add -f` ile aşma.
 
 ## Davranış testleri ve geliştirme
 

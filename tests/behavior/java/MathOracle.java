@@ -1,0 +1,63 @@
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import net.minecraft.util.Mth;
+import net.minecraft.world.phys.Vec2;
+
+public final class MathOracle {
+    public static JsonObject run(JsonObject request) {
+        String operation = request.get("operation").getAsString();
+        var result = new JsonObject();
+        if (operation.equals("vec2")) {
+            Vec2 vector = new Vec2(Oracle.f32(request, "x"), Oracle.f32(request, "y"));
+            var events = new JsonArray();
+            events.add(snapshot(vector));
+            for (var entry : request.getAsJsonArray("steps")) {
+                JsonObject step = entry.getAsJsonObject();
+                vector = switch (step.get("action").getAsString()) {
+                    case "normalize" -> vector.normalized();
+                    case "scale" -> vector.scale(Oracle.f32(step, "factor"));
+                    default -> throw new IllegalArgumentException("Unknown Vec2 action");
+                };
+                events.add(snapshot(vector));
+            }
+            result.add("events", events);
+        } else {
+            String width = request.get("type").getAsString();
+            if (width.equals("f32")) {
+                float value = Oracle.f32(request, "value");
+                switch (operation) {
+                    case "floor" -> result.addProperty("value", Integer.toString(Mth.floor(value)));
+                    case "wrap_degrees" -> result.addProperty("bits", Oracle.bits(Mth.wrapDegrees(value)));
+                    case "clamp" -> result.addProperty("bits", Oracle.bits(Mth.clamp(value,
+                        Oracle.f32(request, "min"), Oracle.f32(request, "max"))));
+                    default -> throw new IllegalArgumentException("Unknown math operation");
+                }
+            } else if (width.equals("f64")) {
+                double value = f64(request, "value");
+                switch (operation) {
+                    case "floor" -> result.addProperty("value", Integer.toString(Mth.floor(value)));
+                    case "wrap_degrees" -> result.addProperty("bits", Oracle.bits(Mth.wrapDegrees(value)));
+                    case "clamp" -> result.addProperty("bits", Oracle.bits(Mth.clamp(value,
+                        f64(request, "min"), f64(request, "max"))));
+                    default -> throw new IllegalArgumentException("Unknown math operation");
+                }
+            } else {
+                throw new IllegalArgumentException("Unknown floating-point type");
+            }
+        }
+        return result;
+    }
+
+    private static double f64(JsonObject object, String name) {
+        return Double.longBitsToDouble(Long.parseUnsignedLong(object.get(name).getAsString(), 16));
+    }
+
+    private static JsonObject snapshot(Vec2 vector) {
+        var state = new JsonObject();
+        state.addProperty("x", Oracle.bits(vector.x));
+        state.addProperty("y", Oracle.bits(vector.y));
+        state.addProperty("length", Oracle.bits(vector.length()));
+        state.addProperty("length_squared", Oracle.bits(vector.lengthSquared()));
+        return state;
+    }
+}

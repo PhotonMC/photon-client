@@ -1,6 +1,6 @@
 # Yerel davranış testlerini çalıştırma
 
-Python 3 standart kütüphanesi ve Java 25 JDK kullanılır; yeni Python paketi, Rust bağımlılığı veya test framework'ü yok. Java adaptörleri doğrudan sabitlenen Minecraft JAR'ındaki sınıfları çağırır. Beklenen sonuçlar Rust'tan veya test içinde yeniden yazılmış algoritmalardan üretilmez.
+Python 3.10+ standart kütüphanesi ve Java 25 JDK kullanılır; yeni Python paketi, Rust bağımlılığı veya test framework'ü yok. Java adaptörleri doğrudan sabitlenen Minecraft JAR'ındaki sınıfları çağırır. Beklenen sonuçlar Rust'tan veya test içinde yeniden yazılmış algoritmalardan üretilmez.
 
 Depo kökünden:
 
@@ -17,7 +17,7 @@ python3 tools/behavior/test_runner.py
 - `compare --adapter /mutlak/yol/program`: aynı girdileri belirtilen executable'a verir ve kayıtlı Java sonucuyla karşılaştırır. Henüz Rust adaptörü yok; bu komut adaptör verilmediğinde **2** ile çıkar.
 - `test_runner.py`: yalnızca yanlış başarı, bozuk referans ve hatalı süreç davranışlarını denetleyen beş küçük sentetik altyapı testi. Java veya asset gerektirmez.
 
-Tek aile seçmek için `--family wire` kullanılır; seçenek tekrarlanabilir. Seçilmezse mevcut bütün aileler çalışır. `--runtime /yerel/runtime` alternatif client/`libs` dizinini, `--jdk-home /jdk/koku` Java araçlarını seçer. Bu yollar yalnızca okunur. Gerekli referanslar yoksa indirme yapılmaz.
+Tek aile seçmek için `--family wire`, `--family math` veya `--family timer` kullanılır; seçenek tekrarlanabilir. Seçilmezse mevcut bütün aileler çalışır. Aile seçimi referans kimliğinin parçasıdır; örneğin `verify --family timer` öncesinde aynı seçimle `capture --family timer` çalıştırılmalıdır. `--runtime /yerel/runtime` alternatif client/`libs` dizinini, `--jdk-home /jdk/koku` Java araçlarını seçer. Bu yollar yalnızca okunur. Gerekli referanslar yoksa indirme yapılmaz.
 
 ## Sonuç ve çıkış kodları
 
@@ -35,7 +35,7 @@ Referans komutunun başarılı olması istemcinin eşitliğini göstermez. Seçi
 
 İzlenen dosyalar: `tools/behavior/` çalıştırıcı ve özgün girdi üreticisi; `tests/behavior/java/` özgün Java çağrı adaptörleri; `tests/behavior/reference.json` sürüm ve gerekli artifact hash'leri. Runtime için yalnızca seçili ailenin JAR'ları kullanılır; assetler, GPU, sunucu ve decompile kaynak ağacı bu ilk testlerin ön koşulu değildir.
 
-Her koşu `.data/runs/behavior/<komut>-<benzersiz>/` altında input, stdout/stderr, derlenen sınıflar, kimlik ve `report.json` tutar. Her capture `.data/captures/behavior/<kimlik>/` altında `inputs.jsonl`, `outputs.jsonl`, `manifest.json` tutar. Referans kimliği client/dependency hash'leri, Java ve javac sürüm çıktısı, OS/mimari, seçilen aileler, Java adaptör/çalıştırıcı kodu ve senaryo girdilerini kapsar. Girdi veya çıktı dosyasının bozulması hash denetimiyle reddedilir.
+Her koşu `.data/runs/behavior/<komut>-<benzersiz>/` altında input, stdout/stderr, derlenen sınıflar, kimlik ve `report.json` tutar. Rapordaki `reproduce` komutu `invocation_cwd` dizininden yeniden çalıştırılabilir. Her capture `.data/captures/behavior/<kimlik>/` altında `inputs.jsonl`, `outputs.jsonl`, `manifest.json` tutar. Referans kimliği client/dependency hash'leri, Java ve javac sürüm çıktısı, OS/mimari, seçilen aileler, Java adaptör/çalıştırıcı kodu ve senaryo girdilerini kapsar. Girdi veya çıktı dosyasının bozulması hash denetimiyle reddedilir.
 
 Kaynak, senaryo veya ortam değişirse yeni kimlik için açıkça `capture` çalıştırılır; eski kayıtlar korunur. Bu kayıtlar kriptografik imzalı güven zinciri değildir; yerel test girdilerini ve kazara değişiklikleri izler. Değişen baseline'ı otomatik kabul eden bir test koşusu yoktur.
 
@@ -50,3 +50,26 @@ Her girdi `schema_version: 1`, `case_id`, `family`, `operation` ve operasyona ö
 Wire corpus'u: 144 senaryo; işaretli min/max, 7 bit sınırları, negatif değerler, kesilmiş/fazla uzun/noncanonical kodlamalar ve kalan baytlar. Her `write` çağrısında orijinal decoder da çağrılır; bağımsız sentetik `read` girdileri ayrıca bulunur. Diğer P03 biçimleri henüz kapsanmıyor.
 
 JSON protokolünü konuşan bir executable'ın programlama dili araç tarafından kanıtlanmaz. Gelecekte gerçek Rust adaptörü verilecek; rapor executable SHA-256'sını ve seçili kapsamı kaydeder. Altyapı denemelerinde kullanılan sentetik programlar oyun eşitlik kanıtı değildir.
+
+## Sayısal ve zamanlayıcı protokolü
+
+`math/vec2`: girdide `x`, `y` ve `steps` bulunur. Float girdiler 8 haneli küçük harfli IEEE-754 hex string'leridir. `steps` içindeki `normalize` vektör normalizasyonunu, `scale` ise aynı kayıttaki `factor` çarpanıyla ölçeklemeyi çağırır. `result.events`, başlangıçta ve her işlemden sonra `x`, `y`, `length`, `length_squared` bitlerini içerir.
+
+Diğer `math` operasyonları `floor`, `wrap_degrees`, `clamp`; `type` alanı `f32` veya `f64`'tür. `value` ve clamp'in `min`/`max` alanları türe göre 8/16 haneli hex bit string'idir. `floor` her iki overload için de i32 sonucu `result.value` ondalık string olarak döndürür; diğerleri `result.bits` üretir. Int/long overload'ları bu dilime dahil değil.
+
+`timer/trace`: `tps`, `target_mspt` f32 bit string; `start_ms` i64 ondalık string'dir. Sıralı `steps`: `game`/`real` adımları `ms` i64 string; `pause`/`freeze` adımları `value` boolean; `target` adımı `value` f32 bit string alır. Sağlayıcı başlangıçta `target_mspt`, değişiklikten sonra verilen `target` değerini döndürür. Bu, gerçek Timer API'sine kontrollü girdi sağlar.
+
+`result.events`, başlangıçta ve her adımdan sonra `game_delta`, `partial`, `partial_ignore_frozen`, `real_delta` alanlarını f32 bit string olarak taşır. Yalnızca `game` adımının sonucunda ayrıca `ticks` JSON integer vardır. Timer'ın iç alanları refleksiyonla değiştirilmez; yalnızca constructor ve gerçek public API çağrılır. Frame başına 10 tick sınırı bu Timer testine eklenmez.
+
+## Doğrulanan mevcut kapsam
+
+| Aile | Senaryo | Kapsam |
+| --- | ---: | --- |
+| `math` | 180 | Vec2 normalizasyon/ölçek zinciri, normalize sınır komşuları, f32/f64 floor/clamp/wrap; sıfır, işaretli sıfır, subnormal, tür sınırları, sonsuzluk ve NaN |
+| `timer` | 22 | Tick sınırları/artık zaman, kontrollü hız değişimi, pause/freeze kombinasyonları, gerçek zaman sınırı, uzun frame ve 2^53 üzerindeki başlangıç saati |
+| `wire` | 144 | VarInt/VarLong yazma/okuma, sınırlar, hatalar, tüketim ve kalan veri |
+| **Toplam** | **346** | P01.a/P02.a/P03.a için ilk referans corpus'u |
+
+7 Eylül 2026'da Java 25.0.4.1 / Linux x86_64 üzerinde bütün corpus iki ayrı JVM sürecinde aynı sonuçları verdi. Kayıtlı referansa karşı `verify` de çalıştırıldı. Beş sentetik altyapı testi geçti. Komut düzeyinde ayrıca kontrollü replay, tek alan mutasyonu, boş adaptör çıktısı, eksik adaptör, eksik runtime ve yanlış JAR çıkışları sınandı. Bu replay programı yalnızca karşılaştırıcı kontrolüdür; Rust veya oyun implementasyonu değildir.
+
+P00 bu ilk aileler için hazırdır; asset/GPU/gerçek ağ test altyapısı henüz yoktur. P01'in tüm matematik kapsamı, P02'nin oyun döngüsü ve P03'ün diğer veri biçimleri tamamlanmadı. Rust davranış adaptörü ve oyun implementasyonu hâlâ yok; bu nedenle **Rust eşitliği henüz doğrulanmadı**.

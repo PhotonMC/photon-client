@@ -34,7 +34,8 @@ class ReferenceContractTests(unittest.TestCase):
         pack = lambda values: "\n".join(json.dumps(x) for x in values)
         self.assertEqual(runner.parse_records(pack(records), cases), records)
         for raw in ("", pack(records[:1]), pack(records[::-1]), pack(records[:1] * 2),
-                    "not JSON", pack(records).replace('"value": "10"', '"value": NaN')):
+                    "not JSON", pack(records).replace('"value": "10"', '"value": NaN'),
+                    pack(records).replace('"value": "10"', '"value": "10", "value": "11"')):
             with self.subTest(raw=raw), self.assertRaises(runner.Failed):
                 runner.parse_records(raw, cases)
 
