@@ -1,11 +1,12 @@
 //! Voxel shapes for the first P01.d geometry slice.
 //!
 //! A shape stores coordinate planes and the occupied cells between them. This
-//! is enough to preserve Java's box, move, supported BooleanOp joins, bounds,
-//! and box iteration behavior without choosing a broader collision
-//! representation yet.
+//! is enough to preserve Java's box, move, supported BooleanOp joins, single
+//! shape collision, bounds, and box iteration behavior without choosing a
+//! broader collision representation yet.
 
 use crate::aabb::Aabb;
+use crate::direction::Axis;
 
 const EPSILON: f64 = 1.0e-7;
 
@@ -113,6 +114,70 @@ impl VoxelShape {
         })
     }
 
+    /// Limit an axis-aligned moving box's distance against this shape.
+    pub fn collide(&self, axis: Axis, moving: Aabb, distance: f64) -> f64 {
+        if self.is_empty() {
+            return distance;
+        }
+        if distance.abs() < EPSILON {
+            return 0.0;
+        }
+
+        let (a_axis, b_axis, c_axis) = collision_axes(axis);
+        let max_a = aabb_axis(moving, a_axis, false);
+        let min_a = aabb_axis(moving, a_axis, true);
+        let a_min = self.find_index(a_axis, min_a + EPSILON);
+        let a_max = self.find_index(a_axis, max_a - EPSILON);
+        let b_min = self
+            .find_index(b_axis, aabb_axis(moving, b_axis, true) + EPSILON)
+            .max(0) as usize;
+        let b_max = (self.find_index(b_axis, aabb_axis(moving, b_axis, false) - EPSILON) + 1)
+            .min(self.axis_size(b_axis) as isize)
+            .max(0) as usize;
+        let c_min = self
+            .find_index(c_axis, aabb_axis(moving, c_axis, true) + EPSILON)
+            .max(0) as usize;
+        let c_max = (self.find_index(c_axis, aabb_axis(moving, c_axis, false) - EPSILON) + 1)
+            .min(self.axis_size(c_axis) as isize)
+            .max(0) as usize;
+        let a_size = self.axis_size(a_axis);
+
+        if distance > 0.0 {
+            let start = (a_max + 1).max(0) as usize;
+            for a in start..a_size {
+                for b in b_min..b_max {
+                    for c in c_min..c_max {
+                        if self.is_full_wide(axis, a as isize, b as isize, c as isize) {
+                            let new_distance = self.axis_coord(a_axis, a) - max_a;
+                            if new_distance >= -EPSILON {
+                                return distance.min(new_distance);
+                            }
+                            return distance;
+                        }
+                    }
+                }
+            }
+        } else if distance < 0.0 {
+            let mut a = a_min - 1;
+            while a >= 0 {
+                for b in b_min..b_max {
+                    for c in c_min..c_max {
+                        if self.is_full_wide(axis, a, b as isize, c as isize) {
+                            let new_distance = self.axis_coord(a_axis, (a + 1) as usize) - min_a;
+                            if new_distance <= EPSILON {
+                                return distance.max(new_distance);
+                            }
+                            return distance;
+                        }
+                    }
+                }
+                a -= 1;
+            }
+        }
+
+        distance
+    }
+
     /// Convert occupied cells to Java's merged box iteration order.
     pub fn to_aabbs(&self) -> Vec<Aabb> {
         let grid = self.grid();
@@ -186,6 +251,51 @@ impl VoxelShape {
 
     fn grid(&self) -> Grid {
         Grid::from_coords(&self.xs, &self.ys, &self.zs)
+    }
+
+    fn axis_size(&self, axis: Axis) -> usize {
+        self.axis_coords(axis).len().saturating_sub(1)
+    }
+
+    fn axis_coord(&self, axis: Axis, index: usize) -> f64 {
+        self.axis_coords(axis)[index]
+    }
+
+    fn axis_coords(&self, axis: Axis) -> &[f64] {
+        match axis {
+            Axis::X => &self.xs,
+            Axis::Y => &self.ys,
+            Axis::Z => &self.zs,
+        }
+    }
+
+    fn find_index(&self, axis: Axis, value: f64) -> isize {
+        let coords = self.axis_coords(axis);
+        let mut low = 0;
+        let mut high = coords.len();
+        while low < high {
+            let middle = low + (high - low) / 2;
+            if value < coords[middle] {
+                high = middle;
+            } else {
+                low = middle + 1;
+            }
+        }
+        low as isize - 1
+    }
+
+    fn is_full_wide(&self, axis: Axis, a: isize, b: isize, c: isize) -> bool {
+        let (x, y, z) = match axis {
+            Axis::X => (a, b, c),
+            Axis::Y => (c, a, b),
+            Axis::Z => (b, c, a),
+        };
+        if x < 0 || y < 0 || z < 0 {
+            return false;
+        }
+        let grid = self.grid();
+        let (x, y, z) = (x as usize, y as usize, z as usize);
+        x < grid.x_size && y < grid.y_size && z < grid.z_size && self.is_full(x, y, z)
     }
 }
 
@@ -364,6 +474,25 @@ fn index(x: usize, y: usize, z: usize, grid: Grid) -> usize {
 
 fn midpoint(start: f64, end: f64) -> f64 {
     start + (end - start) * 0.5
+}
+
+fn collision_axes(axis: Axis) -> (Axis, Axis, Axis) {
+    match axis {
+        Axis::X => (Axis::X, Axis::Y, Axis::Z),
+        Axis::Y => (Axis::Y, Axis::Z, Axis::X),
+        Axis::Z => (Axis::Z, Axis::X, Axis::Y),
+    }
+}
+
+fn aabb_axis(value: Aabb, axis: Axis, min: bool) -> f64 {
+    match (axis, min) {
+        (Axis::X, true) => value.min_x,
+        (Axis::X, false) => value.max_x,
+        (Axis::Y, true) => value.min_y,
+        (Axis::Y, false) => value.max_y,
+        (Axis::Z, true) => value.min_z,
+        (Axis::Z, false) => value.max_z,
+    }
 }
 
 fn interval(coords: &[f64], value: f64) -> Option<usize> {

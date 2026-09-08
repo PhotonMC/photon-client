@@ -490,6 +490,15 @@ fn shape_result(request: &Value) -> Result<Value, String> {
                 "join_is_not_empty": Shapes::join_is_not_empty(&first, &second, operation),
             }))
         }
+        "collide" => {
+            let axis = Axis::from_name(string(request, "axis")?).ok_or("unknown collision axis")?;
+            let shape = shape_box(request.get("shape").ok_or("shape must be an object")?)?;
+            let moving = aabb_box(request.get("moving").ok_or("moving must be an object")?)?;
+            let distance = f64_field(request, "distance")?;
+            Ok(json!({
+                "distance": format!("{:016x}", shape.collide(axis, moving, distance).to_bits()),
+            }))
+        }
         _ => Err("unknown VoxelShape kind".into()),
     }
 }

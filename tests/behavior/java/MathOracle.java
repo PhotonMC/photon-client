@@ -130,6 +130,14 @@ public final class MathOracle {
                 };
                 result.add("shape", snapshot(Shapes.join(first, second, op)));
                 result.addProperty("join_is_not_empty", Shapes.joinIsNotEmpty(first, second, op));
+            } else if (kind.equals("collide")) {
+                VoxelShape shape = voxelShape(request.getAsJsonObject("shape"));
+                AABB moving = box(request.getAsJsonObject("moving"));
+                Direction.Axis axis = Direction.Axis.byName(request.get("axis").getAsString());
+                if (axis == null) {
+                    throw new IllegalArgumentException("Unknown collision axis");
+                }
+                result.addProperty("distance", Oracle.bits(shape.collide(axis, moving, f64(request, "distance"))));
             } else {
                 throw new IllegalArgumentException("Unknown VoxelShape kind");
             }

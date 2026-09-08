@@ -12,15 +12,15 @@ Java 25.0.4.1 ve Rust 1.98.1 / Linux x86_64 ortamında:
 
 - 334 senaryoluk math referansı iki ayrı JVM çalıştırmasıyla kararlı bulundu.
 - Debug ve release Rust adaptörleri **334/334** eşleşti: önceki 329 math senaryosu ve 5 yeni fork/positional senaryosu.
-- Altı ailenin birleşik corpus'u **807/807** senaryoda hem debug hem release adaptörüyle eşleşti.
+- Altı ailenin birleşik corpus'u **815/815** senaryoda hem debug hem release adaptörüyle eşleşti.
 - Parent `nextLong` tüketimi, child kaynak dizileri, i32 koordinat sınırları, Java UTF-16 hash'i ve Gaussian child sonuçları karşılaştırıldı.
 - `cargo fmt`, `cargo check --locked --offline --all-targets`, `cargo test --locked --offline --all-targets` ve Clippy kontrolleri geçti.
 
 Math referans kimliği: `aed4472ff0ba0e85f3a9ae2fe61132e8abf7af4145d0d28fcac8a64bb06fedb4`.
 
-Birleşik referans kimliği: `de3c26ebb4097aa764d25839e62f20bee934c42bb19318718b2b46242990a108`.
+Birleşik referans kimliği: `49951d8be4544e46974e9f2cf546651f4d0f7ef7a6fbc7ebf9dd5be799d9c402`.
 
-Yerel raporlar: `compare-vzri6usr` (math debug), `compare-03cd0hof` (math release), `compare-qrc1c7d0` (birleşik debug) ve `compare-1dyj22so` (birleşik release) dizinlerinde, `.data/runs/behavior/` altında bulunur.
+Yerel raporlar: `compare-vzri6usr` (math debug), `compare-03cd0hof` (math release), `compare-4qr5yaro` (birleşik debug) ve `compare-2w5gzlh_` (birleşik release) dizinlerinde, `.data/runs/behavior/` altında bulunur.
 
 ## Sınırlar
 

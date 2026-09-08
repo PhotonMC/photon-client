@@ -222,6 +222,30 @@ def math_cases():
     yield {"case_id": "shape/first/displaced", "family": "math", "operation": "shape", "kind": "join",
            "op": "first", "first": box_bits(0.75, 0, 0, 1, 1, 1),
            "second": box_bits(0, 0, 0, 0.25, 1, 1)}
+    yield {"case_id": "shape/collide/positive-x", "family": "math", "operation": "shape", "kind": "collide",
+           "axis": "x", "shape": box_bits(0, 0, 0, 1, 1, 1),
+           "moving": box_bits(-2, 0.25, 0.25, -1, 0.75, 0.75), "distance": float_bits(4, "f64")}
+    yield {"case_id": "shape/collide/negative-x", "family": "math", "operation": "shape", "kind": "collide",
+           "axis": "x", "shape": box_bits(0, 0, 0, 1, 1, 1),
+           "moving": box_bits(2, 0.25, 0.25, 3, 0.75, 0.75), "distance": float_bits(-4, "f64")}
+    yield {"case_id": "shape/collide/positive-y", "family": "math", "operation": "shape", "kind": "collide",
+           "axis": "y", "shape": box_bits(0, 0, 0, 1, 1, 1),
+           "moving": box_bits(0.25, -2, 0.25, 0.75, -1, 0.75), "distance": float_bits(4, "f64")}
+    yield {"case_id": "shape/collide/negative-z", "family": "math", "operation": "shape", "kind": "collide",
+           "axis": "z", "shape": box_bits(0, 0, 0, 1, 1, 1),
+           "moving": box_bits(0.25, 0.25, 2, 0.75, 0.75, 3), "distance": float_bits(-4, "f64")}
+    yield {"case_id": "shape/collide/orthogonal-gap", "family": "math", "operation": "shape", "kind": "collide",
+           "axis": "x", "shape": box_bits(0, 0, 0, 1, 1, 1),
+           "moving": box_bits(-2, 2, 0.25, -1, 3, 0.75), "distance": float_bits(4, "f64")}
+    yield {"case_id": "shape/collide/zero-distance", "family": "math", "operation": "shape", "kind": "collide",
+           "axis": "x", "shape": box_bits(0, 0, 0, 1, 1, 1),
+           "moving": box_bits(-2, 0.25, 0.25, -1, 0.75, 0.75), "distance": float_bits(0, "f64")}
+    yield {"case_id": "shape/collide/empty-shape", "family": "math", "operation": "shape", "kind": "collide",
+           "axis": "x", "shape": box_bits(0, 0, 0, 0.00000005, 1, 1),
+           "moving": box_bits(-2, 0.25, 0.25, -1, 0.75, 0.75), "distance": float_bits(4, "f64")}
+    yield {"case_id": "shape/collide/limited-distance", "family": "math", "operation": "shape", "kind": "collide",
+           "axis": "x", "shape": box_bits(0, 0, 0, 1, 1, 1),
+           "moving": box_bits(-2, 0.25, 0.25, -1, 0.75, 0.75), "distance": float_bits(0.5, "f64")}
     yield {"case_id": "random/fork/basic", "family": "math", "operation": "random_fork",
            "seed": "42", "prefix_steps": [],
            "child_steps": [{"op": "nextInt"}, {"op": "nextDouble"}, {"op": "nextLong"}],
