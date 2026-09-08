@@ -33,8 +33,8 @@ python3 tools/behavior/run.py compare --family math --adapter target/debug/examp
 
 323 math senaryosu iki ayrı JVM'de aynı sonucu verdi. Math referans kimliği: `b04328d3820db8458e37a31e45b96c1c92ba29348f35c055b49ac522f339a43e`. Ham girdiler/çıktılar yalnızca `.data/` altında tutulur.
 
-Altı ailenin 890 senaryolu birleşik referansı iki JVM'de doğrulandı. Birleşik referans kimliği: `b2f998eee343dbc6dba62767b64d8149f4fbd68e0790944baf45d74a3a377972`.
+Altı ailenin 896 senaryolu birleşik referansı iki JVM'de doğrulandı. Birleşik referans kimliği: `139a55d1ea7ceadd431f6f8562116e4de8d6f236648cde701d8280fe3cf8e565`.
 
-Math debug ve release Rust adaptörleri **323/323** eşleşti; birleşik debug ve release karşılaştırmaları da **890/890** geçti. Yerel raporlar `compare-71jdlsjf` (math debug), `compare-owaw1c7e` (math release), `compare-on3q4sq9` (birleşik debug) ve `compare-lvxbxbhe` (birleşik release) dizinlerinde, `.data/runs/behavior/` altında bulunur.
+Math debug ve release Rust adaptörleri **323/323** eşleşti; birleşik debug ve release karşılaştırmaları da **896/896** geçti. Yerel raporlar `compare-71jdlsjf` (math debug), `compare-owaw1c7e` (math release), `compare-z1t1heu1` (birleşik debug) ve `compare-_tnvy_kh` (birleşik release) dizinlerinde, `.data/runs/behavior/` altında bulunur.
 
 Bu doğrulama tek kutulu public `clip` yoluyla sınırlıdır. Çoklu AABB shape birleştirme, yüz yönü ve istemci hedefleme davranışları ayrı eşitlik dilimleridir.

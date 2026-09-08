@@ -12,6 +12,7 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.BooleanOp;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
+import org.joml.Vector3f;
 
 public final class MathOracle {
     public static JsonObject run(JsonObject request) {
@@ -216,6 +217,22 @@ public final class MathOracle {
                     case "move" -> {
                         box = box.move(
                             f64(step, "x"), f64(step, "y"), f64(step, "z"));
+                        events.add(snapshot(box));
+                    }
+                    case "move_block_pos" -> {
+                        box = box.move(blockPos(step.getAsJsonObject("position")));
+                        events.add(snapshot(box));
+                    }
+                    case "move_vec3" -> {
+                        box = box.move(vec3(step.getAsJsonObject("position")));
+                        events.add(snapshot(box));
+                    }
+                    case "move_vector3f" -> {
+                        JsonObject position = step.getAsJsonObject("position");
+                        box = box.move(new Vector3f(
+                            Oracle.f32(position, "x"),
+                            Oracle.f32(position, "y"),
+                            Oracle.f32(position, "z")));
                         events.add(snapshot(box));
                     }
                     case "sizes" -> {

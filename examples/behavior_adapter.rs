@@ -594,6 +594,25 @@ fn aabb_result(request: &Value) -> Result<Value, String> {
                 );
                 events.push(aabb_snapshot(value));
             }
+            "move_block_pos" => {
+                let position = blockpos(step.get("position").ok_or("position must be an object")?)?;
+                value = value.move_by_block_pos(position);
+                events.push(aabb_snapshot(value));
+            }
+            "move_vec3" => {
+                let position = f64_vec3(step.get("position").ok_or("position must be an object")?)?;
+                value = value.move_by_vec3(position);
+                events.push(aabb_snapshot(value));
+            }
+            "move_vector3f" => {
+                let position = step.get("position").ok_or("position must be an object")?;
+                value = value.move_by_vector3f(
+                    f32_field(position, "x")?,
+                    f32_field(position, "y")?,
+                    f32_field(position, "z")?,
+                );
+                events.push(aabb_snapshot(value));
+            }
             "sizes" => events.push(aabb_sizes_snapshot(value)),
             "has_nan" => events.push(json!({"has_nan": value.has_nan()})),
             "positions" => events.push(aabb_positions_snapshot(value)),

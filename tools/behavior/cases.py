@@ -302,6 +302,13 @@ def math_cases():
               "y": float_bits(0.5, "f64"), "z": float_bits(0.5, "f64")}
     outside = {"op": "contains", "x": float_bits(2.0, "f64"),
                "y": float_bits(0.0, "f64"), "z": float_bits(0.0, "f64")}
+    def vector_bits(x, y, z, width="f64"):
+        return {"x": float_bits(x, width), "y": float_bits(y, width),
+                "z": float_bits(z, width)}
+
+    def block_position(x, y, z):
+        return {"x": str(x), "y": str(y), "z": str(z)}
+
     yield {"case_id": "aabb/contains/unit", "family": "math", "operation": "aabb",
            **unit, "steps": [inside, outside]}
     yield {"case_id": "aabb/intersects/overlap", "family": "math", "operation": "aabb",
@@ -443,6 +450,32 @@ def math_cases():
                               "y": float_bits(-0.5, "f64"), "z": float_bits(1.0, "f64")},
                              {"op": "move", "x": float_bits(-0.125, "f64"),
                               "y": float_bits(0.25, "f64"), "z": float_bits(-0.5, "f64")}]}
+    yield {"case_id": "aabb/move-overload/basic", "family": "math", "operation": "aabb",
+           **box_bits(-1.25, 2.5, -3.75, 4.5, 5.75, 6.25),
+           "steps": [{"op": "move_block_pos", "position": block_position(3, -2, 5)},
+                      {"op": "move_vec3", "position": vector_bits(0.125, -0.25, 1.5)},
+                      {"op": "move_vector3f", "position": vector_bits(0.2, -0.3, 0.4, "f32")}]}
+    yield {"case_id": "aabb/move-overload/block-pos-extremes", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "move_block_pos", "position": block_position(2147483647, -2147483648, -2147483647)},
+                              {"op": "move_block_pos", "position": block_position(-2147483648, 2147483647, 2147483647)}]}
+    yield {"case_id": "aabb/move-overload/vec3-special", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "move_vec3", "position": vector_bits(float("inf"), float("-inf"), float("nan"))},
+                              {"op": "move_vec3", "position": vector_bits(float("nan"), 0.5, float("inf"))}]}
+    yield {"case_id": "aabb/move-overload/vector3f-precision", "family": "math", "operation": "aabb",
+           **box_bits(-100.0, -200.0, -300.0, 400.0, 500.0, 600.0),
+           "steps": [{"op": "move_vector3f", "position": vector_bits(0.2, -0.3, 123456.78, "f32")},
+                      {"op": "move_vector3f", "position": vector_bits(-1.0 / 3.0, 1.0 / 7.0, -0.0, "f32")}]}
+    yield {"case_id": "aabb/move-overload/signed-zero", "family": "math", "operation": "aabb",
+           "min_x": float_bits(-0.0, "f64"), "min_y": float_bits(-0.0, "f64"),
+           "min_z": float_bits(-0.0, "f64"), "max_x": float_bits(1.0, "f64"),
+           "max_y": float_bits(1.0, "f64"), "max_z": float_bits(1.0, "f64"),
+           "steps": [{"op": "move_block_pos", "position": block_position(0, 0, 0)},
+                      {"op": "move_vec3", "position": vector_bits(-0.0, 0.0, -0.0)},
+                      {"op": "move_vector3f", "position": vector_bits(-0.0, 0.0, -0.0, "f32")}]}
+    yield {"case_id": "aabb/move-overload/chain", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "move_vec3", "position": vector_bits(0.25, -0.5, 1.0)},
+                              {"op": "move_block_pos", "position": block_position(-2, 3, -4)},
+                              {"op": "move_vector3f", "position": vector_bits(0.75, 0.125, -0.25, "f32")}]}
     yield {"case_id": "aabb/sizes/unit", "family": "math", "operation": "aabb",
            **unit, "steps": [{"op": "sizes"}]}
     yield {"case_id": "aabb/sizes/rectangular", "family": "math", "operation": "aabb",

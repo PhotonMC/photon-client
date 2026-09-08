@@ -2,9 +2,10 @@
 //!
 //! This covers the constructor normalization and the contains/intersects,
 //! expand-towards, contract, inflate, intersect, minmax, move, sizes, has_nan,
-//! positions, axis endpoint queries, `of_size`, endpoint setters, deflate and segment clipping operations used by the current behavior corpus.
+//! positions, axis endpoint queries, `of_size`, endpoint setters, move overloads,
+//! deflate and segment clipping operations used by the current behavior corpus.
 
-use crate::{direction::Axis, math::Vec3};
+use crate::{binary::BlockPos, direction::Axis, math::Vec3};
 
 /// An axis-aligned box with normalized inclusive lower and exclusive upper
 /// query boundaries, matching the Java reference's stored endpoints.
@@ -156,6 +157,21 @@ impl Aabb {
             self.max_y + y,
             self.max_z + z,
         )
+    }
+
+    /// Translate by integer block coordinates, matching `AABB.move(BlockPos)`.
+    pub fn move_by_block_pos(self, pos: BlockPos) -> Self {
+        self.move_by(f64::from(pos.x), f64::from(pos.y), f64::from(pos.z))
+    }
+
+    /// Translate by a double-precision vector, matching `AABB.move(Vec3)`.
+    pub fn move_by_vec3(self, pos: Vec3) -> Self {
+        self.move_by(pos.x, pos.y, pos.z)
+    }
+
+    /// Translate by the float components of a `Vector3f` before widening them.
+    pub fn move_by_vector3f(self, x: f32, y: f32, z: f32) -> Self {
+        self.move_by(f64::from(x), f64::from(y), f64::from(z))
     }
 
     /// Return the edge lengths along the x, y and z axes.
