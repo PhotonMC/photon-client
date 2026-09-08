@@ -568,6 +568,14 @@ fn aabb_result(request: &Value) -> Result<Value, String> {
                 value = value.minmax(other);
                 events.push(aabb_snapshot(value));
             }
+            "move" => {
+                value = value.move_by(
+                    f64_field(step, "x")?,
+                    f64_field(step, "y")?,
+                    f64_field(step, "z")?,
+                );
+                events.push(aabb_snapshot(value));
+            }
             "clip" => {
                 let from = f64_vec3(step.get("from").ok_or("from must be an object")?)?;
                 let to = f64_vec3(step.get("to").ok_or("to must be an object")?)?;

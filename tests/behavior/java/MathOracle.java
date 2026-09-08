@@ -213,6 +213,11 @@ public final class MathOracle {
                         box = box.minmax(box(step.getAsJsonObject("box")));
                         events.add(snapshot(box));
                     }
+                    case "move" -> {
+                        box = box.move(
+                            f64(step, "x"), f64(step, "y"), f64(step, "z"));
+                        events.add(snapshot(box));
+                    }
                     case "clip" -> {
                         var hit = box.clip(
                             vec3(step.getAsJsonObject("from")),

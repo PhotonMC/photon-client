@@ -1,8 +1,8 @@
 //! Axis-aligned bounding boxes for the first P01.d geometry slice.
 //!
 //! This covers the constructor normalization and the contains/intersects,
-//! expand-towards, contract, inflate, intersect, deflate and segment clipping
-//! operations used by the current behavior corpus.
+//! expand-towards, contract, inflate, intersect, minmax, move, deflate and
+//! segment clipping operations used by the current behavior corpus.
 
 use crate::math::Vec3;
 
@@ -89,6 +89,18 @@ impl Aabb {
             java_max(self.max_x, other.max_x),
             java_max(self.max_y, other.max_y),
             java_max(self.max_z, other.max_z),
+        )
+    }
+
+    /// Translate every endpoint by the supplied per-axis amounts.
+    pub fn move_by(self, x: f64, y: f64, z: f64) -> Self {
+        Self::new(
+            self.min_x + x,
+            self.min_y + y,
+            self.min_z + z,
+            self.max_x + x,
+            self.max_y + y,
+            self.max_z + z,
         )
     }
 
