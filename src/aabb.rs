@@ -2,7 +2,7 @@
 //!
 //! This covers the constructor normalization and the contains/intersects,
 //! expand-towards, contract, inflate, intersect, minmax, move, sizes, has_nan,
-//! positions, axis endpoint queries, deflate and segment clipping operations used by the current behavior corpus.
+//! positions, axis endpoint queries, `of_size`, deflate and segment clipping operations used by the current behavior corpus.
 
 use crate::{direction::Axis, math::Vec3};
 
@@ -30,6 +30,18 @@ impl Aabb {
             max_y: java_max(min_y, max_y),
             max_z: java_max(min_z, max_z),
         }
+    }
+
+    /// Construct a box around a center using Java's per-axis half sizes.
+    pub fn of_size(center: Vec3, size_x: f64, size_y: f64, size_z: f64) -> Self {
+        Self::new(
+            center.x - size_x / 2.0,
+            center.y - size_y / 2.0,
+            center.z - size_z / 2.0,
+            center.x + size_x / 2.0,
+            center.y + size_y / 2.0,
+            center.z + size_z / 2.0,
+        )
     }
 
     /// Test an inclusive lower/exclusive upper point membership rule.

@@ -261,6 +261,14 @@ public final class MathOracle {
                             box(step.getAsJsonObject("box")))));
                         events.add(state);
                     }
+                    case "of_size" -> {
+                        box = AABB.ofSize(
+                            vec3(step.getAsJsonObject("center")),
+                            f64(step, "size_x"),
+                            f64(step, "size_y"),
+                            f64(step, "size_z"));
+                        events.add(snapshot(box));
+                    }
                     case "clip" -> {
                         var hit = box.clip(
                             vec3(step.getAsJsonObject("from")),

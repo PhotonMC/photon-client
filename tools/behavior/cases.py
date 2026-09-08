@@ -575,6 +575,37 @@ def math_cases():
            "steps": [{"op": "distance_box", "box": box_bits(10.0, 10.0, 10.0, 11.0, 11.0, 11.0)},
                       {"op": "distance_box", "box": box_bits(float("nan"), 0.0, 0.0, 1.0, 1.0, 1.0)}]}
 
+    yield {"case_id": "aabb/of-size/unit", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "of_size", "center": point(0.5, 0.5, 0.5),
+                               "size_x": float_bits(1.0, "f64"),
+                               "size_y": float_bits(1.0, "f64"),
+                               "size_z": float_bits(1.0, "f64")}]}
+    yield {"case_id": "aabb/of-size/asymmetric", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "of_size", "center": point(-3.25, 4.5, 0.125),
+                               "size_x": float_bits(2.5, "f64"),
+                               "size_y": float_bits(7.25, "f64"),
+                               "size_z": float_bits(0.75, "f64")}]}
+    yield {"case_id": "aabb/of-size/negative-sizes", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "of_size", "center": point(1.0, -2.0, 3.0),
+                               "size_x": float_bits(-4.0, "f64"),
+                               "size_y": float_bits(-6.0, "f64"),
+                               "size_z": float_bits(-8.0, "f64")}]}
+    yield {"case_id": "aabb/of-size/zero", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "of_size", "center": point(1.5, -2.25, 3.75),
+                               "size_x": float_bits(0.0, "f64"),
+                               "size_y": float_bits(0.0, "f64"),
+                               "size_z": float_bits(0.0, "f64")}]}
+    yield {"case_id": "aabb/of-size/signed-zero", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "of_size", "center": point(-0.0, 0.0, -0.0),
+                               "size_x": float_bits(-0.0, "f64"),
+                               "size_y": float_bits(0.0, "f64"),
+                               "size_z": float_bits(-0.0, "f64")}]}
+    yield {"case_id": "aabb/of-size/special", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "of_size", "center": point(float("inf"), float("-inf"), float("nan")),
+                               "size_x": float_bits(2.0, "f64"),
+                               "size_y": float_bits(float("inf"), "f64"),
+                               "size_z": float_bits(float("nan"), "f64")}]}
+
     clip_rays = {
         "west-to-east": ((-1.0, 0.5, 0.5), (2.0, 0.5, 0.5)),
         "east-to-west": ((2.0, 0.5, 0.5), (-1.0, 0.5, 0.5)),

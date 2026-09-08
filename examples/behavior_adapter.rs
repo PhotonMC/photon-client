@@ -620,6 +620,16 @@ fn aabb_result(request: &Value) -> Result<Value, String> {
                     "value": format!("{:016x}", value.distance_to_sqr_box(other).to_bits()),
                 }));
             }
+            "of_size" => {
+                let center = f64_vec3(step.get("center").ok_or("center must be an object")?)?;
+                value = Aabb::of_size(
+                    center,
+                    f64_field(step, "size_x")?,
+                    f64_field(step, "size_y")?,
+                    f64_field(step, "size_z")?,
+                );
+                events.push(aabb_snapshot(value));
+            }
             "clip" => {
                 let from = f64_vec3(step.get("from").ok_or("from must be an object")?)?;
                 let to = f64_vec3(step.get("to").ok_or("to must be an object")?)?;
