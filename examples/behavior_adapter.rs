@@ -608,6 +608,18 @@ fn aabb_result(request: &Value) -> Result<Value, String> {
                     "value": format!("{:016x}", endpoint.to_bits()),
                 }));
             }
+            "distance_point" => {
+                let point = f64_vec3(step.get("point").ok_or("point must be an object")?)?;
+                events.push(json!({
+                    "value": format!("{:016x}", value.distance_to_sqr_point(point).to_bits()),
+                }));
+            }
+            "distance_box" => {
+                let other = aabb_box(step.get("box").ok_or("box must be an object")?)?;
+                events.push(json!({
+                    "value": format!("{:016x}", value.distance_to_sqr_box(other).to_bits()),
+                }));
+            }
             "clip" => {
                 let from = f64_vec3(step.get("from").ok_or("from must be an object")?)?;
                 let to = f64_vec3(step.get("to").ok_or("to must be an object")?)?;

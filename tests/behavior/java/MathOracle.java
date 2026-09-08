@@ -249,6 +249,18 @@ public final class MathOracle {
                             ? box.min(axis) : box.max(axis)));
                         events.add(state);
                     }
+                    case "distance_point" -> {
+                        var state = new JsonObject();
+                        state.addProperty("value", Oracle.bits(box.distanceToSqr(
+                            vec3(step.getAsJsonObject("point")))));
+                        events.add(state);
+                    }
+                    case "distance_box" -> {
+                        var state = new JsonObject();
+                        state.addProperty("value", Oracle.bits(box.distanceToSqr(
+                            box(step.getAsJsonObject("box")))));
+                        events.add(state);
+                    }
                     case "clip" -> {
                         var hit = box.clip(
                             vec3(step.getAsJsonObject("from")),

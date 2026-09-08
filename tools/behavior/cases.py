@@ -547,6 +547,34 @@ def math_cases():
     def point(x, y, z):
         return {"x": float_bits(x, "f64"), "y": float_bits(y, "f64"), "z": float_bits(z, "f64")}
 
+    yield {"case_id": "aabb/distance/point-inside-boundary", "family": "math", "operation": "aabb",
+           **box_bits(0.0, 0.0, 0.0, 1.0, 1.0, 1.0),
+           "steps": [{"op": "distance_point", "point": point(0.5, 0.5, 0.5)},
+                      {"op": "distance_point", "point": point(0.0, 0.0, 0.0)},
+                      {"op": "distance_point", "point": point(1.0, 1.0, 1.0)}]}
+    yield {"case_id": "aabb/distance/point-outside", "family": "math", "operation": "aabb",
+           **box_bits(-2.0, -1.0, 0.0, 3.0, 4.0, 5.0),
+           "steps": [{"op": "distance_point", "point": point(5.0, -3.0, 7.0)},
+                      {"op": "distance_point", "point": point(-4.0, 2.0, 1.0)}]}
+    yield {"case_id": "aabb/distance/point-special", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "distance_point", "point": point(float("inf"), 0.5, 0.5)},
+                              {"op": "distance_point", "point": point(float("-inf"), 0.5, 0.5)},
+                              {"op": "distance_point", "point": point(float("nan"), 0.5, 0.5)}]}
+    yield {"case_id": "aabb/distance/box-overlap-touch", "family": "math", "operation": "aabb",
+           **box_bits(0.0, 0.0, 0.0, 2.0, 2.0, 2.0),
+           "steps": [{"op": "distance_box", "box": box_bits(1.0, 1.0, 1.0, 3.0, 3.0, 3.0)},
+                      {"op": "distance_box", "box": box_bits(2.0, 2.0, 2.0, 4.0, 4.0, 4.0)}]}
+    yield {"case_id": "aabb/distance/box-separated-diagonal", "family": "math", "operation": "aabb",
+           **box_bits(-2.0, -1.0, 0.0, -1.0, 1.0, 2.0),
+           "steps": [{"op": "distance_box", "box": box_bits(2.0, 3.0, 5.0, 4.0, 6.0, 7.0)},
+                      {"op": "distance_box", "box": box_bits(-5.0, -4.0, -3.0, -3.0, -2.0, -1.0)}]}
+    yield {"case_id": "aabb/distance/box-reversed-and-special", "family": "math", "operation": "aabb",
+           "min_x": float_bits(4.0, "f64"), "min_y": float_bits(3.0, "f64"),
+           "min_z": float_bits(2.0, "f64"), "max_x": float_bits(-4.0, "f64"),
+           "max_y": float_bits(-3.0, "f64"), "max_z": float_bits(-2.0, "f64"),
+           "steps": [{"op": "distance_box", "box": box_bits(10.0, 10.0, 10.0, 11.0, 11.0, 11.0)},
+                      {"op": "distance_box", "box": box_bits(float("nan"), 0.0, 0.0, 1.0, 1.0, 1.0)}]}
+
     clip_rays = {
         "west-to-east": ((-1.0, 0.5, 0.5), (2.0, 0.5, 0.5)),
         "east-to-west": ((2.0, 0.5, 0.5), (-1.0, 0.5, 0.5)),

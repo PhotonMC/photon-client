@@ -178,6 +178,31 @@ impl Aabb {
         }
     }
 
+    /// Return the squared distance from a point to this box.
+    pub fn distance_to_sqr_point(self, point: Vec3) -> f64 {
+        let dx = java_max(java_max(self.min_x - point.x, point.x - self.max_x), 0.0);
+        let dy = java_max(java_max(self.min_y - point.y, point.y - self.max_y), 0.0);
+        let dz = java_max(java_max(self.min_z - point.z, point.z - self.max_z), 0.0);
+        Vec3::new(dx, dy, dz).length_squared()
+    }
+
+    /// Return the squared distance between this box and another box.
+    pub fn distance_to_sqr_box(self, other: Self) -> f64 {
+        let dx = java_max(
+            java_max(self.min_x - other.max_x, other.min_x - self.max_x),
+            0.0,
+        );
+        let dy = java_max(
+            java_max(self.min_y - other.max_y, other.min_y - self.max_y),
+            0.0,
+        );
+        let dz = java_max(
+            java_max(self.min_z - other.max_z, other.min_z - self.max_z),
+            0.0,
+        );
+        Vec3::new(dx, dy, dz).length_squared()
+    }
+
     /// Extend both endpoints by the supplied per-axis amounts.
     pub fn inflate(self, x: f64, y: f64, z: f64) -> Self {
         Self::new(
