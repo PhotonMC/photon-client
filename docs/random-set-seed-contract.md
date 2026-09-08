@@ -1,6 +1,6 @@
 # P01.e — `setSeed` referans sözleşmesi
 
-Bu dilimin **3 Java davranış testi hazırdır ve Rust karşılığı doğrulanmıştır** ([kanıt](random-set-seed-parity.md)). Kapsam, `RandomSource.create(seed)` ile oluşturulan legacy kaynağın `setSeed` çağrısını, 48 bitlik LCG durumunun yeniden kurulmasını ve mevcut Gaussian önbelleğinin temizlenmesini içerir. Diğer random overload'ları ve farklı `RandomSource` uygulamaları ayrı dilimlerdir.
+Bu dilimin **3 Java davranış testi hazırdır ve Rust karşılığı doğrulanmıştır** ([kanıt](random-set-seed-parity.md)). Kapsam, `RandomSource.create(seed)` ile oluşturulan legacy kaynağın `setSeed` çağrısını, 48 bitlik LCG durumunun yeniden kurulmasını ve mevcut Gaussian önbelleğinin temizlenmesini içerir. Farklı `RandomSource` uygulamaları ve overflow ile oluşan geçersiz bound hataları ayrı dilimlerdir.
 
 ## Kaynak ve sınır
 
@@ -35,8 +35,8 @@ Yeni kimlik, önceki random/Gaussian/fork kayıtlarının üzerine yazmadan olu�
 
 337 math senaryosu iki ayrı JVM'de aynı sonucu verdi. Math referans kimliği: `8dc5cad800d19ec1507e2454e97aeb79e53b77267dddada36f77b45771b44f99`.
 
-Altı ailenin 791 senaryolu birleşik referansı iki JVM'de doğrulandı. Birleşik referans kimliği: `c8eefdc6cdf47f040f1dc812ea9ab8b3956789045dc6733eb493644db45d5829`.
+Altı ailenin 794 senaryolu birleşik referansı iki JVM'de doğrulandı. Birleşik referans kimliği: `163c0397bb5f159f64b44da960376b156c03dfc6e833b199a6bb06f451fe9637`.
 
-Rust debug ve release adaptörleri math ailesinde **337/337**, birleşik corpus'ta **791/791** eşleşti. Yerel raporlar `compare-yxttfhcx` (math debug), `compare-h6jl6e0l` (math release), `compare-tq4mb84i` (birleşik debug) ve `compare-zaisbyxj` (birleşik release) dizinlerinde, `.data/runs/behavior/` altında bulunur.
+Rust debug ve release adaptörleri math ailesinde **337/337**, birleşik corpus'ta **794/794** eşleşti. Yerel raporlar `compare-yxttfhcx` (math debug), `compare-h6jl6e0l` (math release), `compare-nud1r47g` (birleşik debug) ve `compare-qiyn63xt` (birleşik release) dizinlerinde, `.data/runs/behavior/` altında bulunur.
 
-Bu sözleşme legacy kaynağın `setSeed` ve Gaussian cache reset yoluyla sınırlıdır. `nextIntBetweenInclusive`, origin/bound overload'ları, triangle/consumeCount, Xoroshiro/ThreadSafe kaynakları ve istemcinin daha geniş random tüketim sıraları sonraki testlerdir.
+Bu sözleşme legacy kaynağın `setSeed` ve Gaussian cache reset yoluyla sınırlıdır. Xoroshiro/ThreadSafe kaynakları, overflow ile oluşan geçersiz bound hataları ve istemcinin daha geniş random tüketim sıraları sonraki testlerdir.

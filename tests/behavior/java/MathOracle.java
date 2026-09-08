@@ -244,6 +244,18 @@ public final class MathOracle {
                 random.setSeed(Long.parseLong(step.get("seed").getAsString()));
                 state.addProperty("op", "setSeed");
             }
+            case "nextIntBetweenInclusive" -> state.addProperty("value", Integer.toString(
+                random.nextIntBetweenInclusive(step.get("min").getAsInt(), step.get("max").getAsInt())));
+            case "nextIntRange" -> state.addProperty("value", Integer.toString(
+                random.nextInt(step.get("origin").getAsInt(), step.get("bound").getAsInt())));
+            case "triangleDouble" -> state.addProperty("bits", Oracle.bits(
+                random.triangle(f64(step, "mean"), f64(step, "spread"))));
+            case "triangleFloat" -> state.addProperty("bits", Oracle.bits(
+                random.triangle(Oracle.f32(step, "mean"), Oracle.f32(step, "spread"))));
+            case "consumeCount" -> {
+                random.consumeCount(step.get("rounds").getAsInt());
+                state.addProperty("op", "consumeCount");
+            }
             default -> throw new IllegalArgumentException("Unknown random op");
         }
         return state;

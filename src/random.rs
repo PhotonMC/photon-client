@@ -75,6 +75,23 @@ impl RandomSource {
         }
     }
 
+    /// Draw an integer from the inclusive range using Java i32 arithmetic.
+    pub fn next_int_between_inclusive(&mut self, min: i32, max: i32) -> Result<i32, RandomError> {
+        let bound = max.wrapping_sub(min).wrapping_add(1);
+        self.next_int_bound(bound)
+            .map(|value| value.wrapping_add(min))
+    }
+
+    /// Draw an integer from the half-open range `[origin, bound)`.
+    pub fn next_int_range(&mut self, origin: i32, bound: i32) -> Result<i32, RandomError> {
+        if origin >= bound {
+            return Err(RandomError::InvalidBound);
+        }
+        let width = bound.wrapping_sub(origin);
+        self.next_int_bound(width)
+            .map(|value| value.wrapping_add(origin))
+    }
+
     /// Draw a signed 64-bit value using two 32-bit draws.
     pub fn next_long(&mut self) -> i64 {
         let upper = self.next_bits(32) as i32;
@@ -100,6 +117,25 @@ impl RandomSource {
         let lower = i64::from(self.next_bits(27));
         let combined = upper.wrapping_shl(27).wrapping_add(lower);
         combined as f64 * 1.1102230246251565e-16_f64
+    }
+
+    /// Draw a double triangle value from two consecutive doubles.
+    pub fn triangle_f64(&mut self, mean: f64, spread: f64) -> f64 {
+        let difference = self.next_double() - self.next_double();
+        mean + spread * difference
+    }
+
+    /// Draw a float triangle value from two consecutive floats.
+    pub fn triangle_f32(&mut self, mean: f32, spread: f32) -> f32 {
+        let difference = self.next_float() - self.next_float();
+        mean + spread * difference
+    }
+
+    /// Consume one integer draw for each nonnegative count below `rounds`.
+    pub fn consume_count(&mut self, rounds: i32) {
+        for _ in 0..rounds {
+            self.next_int();
+        }
     }
 
     /// Draw a Java-compatible Gaussian value, caching the paired result.

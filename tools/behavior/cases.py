@@ -162,6 +162,22 @@ def math_cases():
                                       {"op": "nextInt"},
                                       {"op": "setSeed", "seed": "-9223372036854775808"},
                                       {"op": "nextLong"}]}
+    yield {"case_id": "random/overloads/integer-ranges", "family": "math", "operation": "random",
+           "seed": "314159", "steps": [
+               {"op": "nextIntBetweenInclusive", "min": -10, "max": 10},
+               {"op": "nextIntBetweenInclusive", "min": 5, "max": 5},
+               {"op": "nextIntRange", "origin": -20, "bound": 20},
+               {"op": "nextIntRange", "origin": 0, "bound": 1}]}
+    yield {"case_id": "random/overloads/triangle", "family": "math", "operation": "random",
+           "seed": "-314159", "steps": [
+               {"op": "triangleDouble", "mean": float_bits(-1.25, "f64"),
+                "spread": float_bits(0.75, "f64")},
+               {"op": "triangleFloat", "mean": float_bits(0.25),
+                "spread": float_bits(1.5)}]}
+    yield {"case_id": "random/overloads/consume-count", "family": "math", "operation": "random",
+           "seed": "42", "steps": [{"op": "nextInt"}, {"op": "consumeCount", "rounds": 3},
+                                      {"op": "nextInt"}, {"op": "consumeCount", "rounds": -2},
+                                      {"op": "nextInt"}]}
     yield {"case_id": "random/fork/basic", "family": "math", "operation": "random_fork",
            "seed": "42", "prefix_steps": [],
            "child_steps": [{"op": "nextInt"}, {"op": "nextDouble"}, {"op": "nextLong"}],

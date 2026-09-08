@@ -274,6 +274,44 @@ fn random_state(random: &mut RandomSource, step: &Value) -> Result<Value, String
             random.set_seed(seed);
             state.insert("op".into(), json!("setSeed"));
         }
+        "nextIntBetweenInclusive" => {
+            let value = random
+                .next_int_between_inclusive(i32_field(step, "min")?, i32_field(step, "max")?)
+                .map_err(|_| "bound must be positive".to_owned())?;
+            state.insert("value".into(), json!(value.to_string()));
+        }
+        "nextIntRange" => {
+            let value = random
+                .next_int_range(i32_field(step, "origin")?, i32_field(step, "bound")?)
+                .map_err(|_| "bound - origin must be positive".to_owned())?;
+            state.insert("value".into(), json!(value.to_string()));
+        }
+        "triangleDouble" => {
+            state.insert(
+                "bits".into(),
+                json!(format!(
+                    "{:016x}",
+                    random
+                        .triangle_f64(f64_field(step, "mean")?, f64_field(step, "spread")?)
+                        .to_bits()
+                )),
+            );
+        }
+        "triangleFloat" => {
+            state.insert(
+                "bits".into(),
+                json!(format!(
+                    "{:08x}",
+                    random
+                        .triangle_f32(f32_field(step, "mean")?, f32_field(step, "spread")?)
+                        .to_bits()
+                )),
+            );
+        }
+        "consumeCount" => {
+            random.consume_count(i32_field(step, "rounds")?);
+            state.insert("op".into(), json!("consumeCount"));
+        }
         _ => return Err("unknown random operation".into()),
     }
     Ok(Value::Object(state))
