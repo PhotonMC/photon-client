@@ -138,6 +138,18 @@ public final class MathOracle {
                     throw new IllegalArgumentException("Unknown collision axis");
                 }
                 result.addProperty("distance", Oracle.bits(shape.collide(axis, moving, f64(request, "distance"))));
+            } else if (kind.equals("collide_many")) {
+                AABB moving = box(request.getAsJsonObject("moving"));
+                Direction.Axis axis = Direction.Axis.byName(request.get("axis").getAsString());
+                if (axis == null) {
+                    throw new IllegalArgumentException("Unknown collision axis");
+                }
+                var shapes = new java.util.ArrayList<VoxelShape>();
+                for (var entry : request.getAsJsonArray("shapes")) {
+                    shapes.add(voxelShape(entry.getAsJsonObject()));
+                }
+                result.addProperty("distance", Oracle.bits(Shapes.collide(
+                    axis, moving, shapes, f64(request, "distance"))));
             } else {
                 throw new IllegalArgumentException("Unknown VoxelShape kind");
             }

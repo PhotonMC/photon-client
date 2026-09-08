@@ -1,6 +1,6 @@
 # P01.d — VoxelShape collision sözleşmesi
 
-Bu dilimin **8 Java davranış testi hazırdır ve Rust karşılığı doğrulanmıştır** ([kanıt](shape-collision-parity.md)). Kapsam, tek bir `VoxelShape` ile `AABB` hareketinin Java `VoxelShape.collide` çağrısında x/y/z eksenlerinde sınırlanmasını içerir. Çoklu shape iterasyonu, entity hareket sırası ve step-up çözümü sonraki kapsamdır.
+Bu dilimin **8 Java davranış testi hazırdır ve Rust karşılığı doğrulanmıştır** ([kanıt](shape-collision-parity.md)). Kapsam, tek bir `VoxelShape` ile `AABB` hareketinin Java `VoxelShape.collide` çağrısında x/y/z eksenlerinde sınırlanmasını içerir. Çoklu shape iterasyonu ayrı [sözleşmede](shape-collision-many-contract.md) kapsanır; entity hareket sırası ve step-up çözümü sonraki kapsamdır.
 
 ## Kaynak ve sınır
 
@@ -34,6 +34,6 @@ cargo build --locked --offline --example behavior_adapter
 python3 tools/behavior/run.py compare --family math --adapter target/debug/examples/behavior_adapter
 ```
 
-Collision senaryolarını içeren math referans kimliği `b31620fa93e0533f6498b86deedf056a7e4dda293e4fa80ae354dd69541d1ebd` oldu. Bu referans iki JVM çalıştırmasıyla kararlı bulundu. Birleşik altı aile referansı `49951d8be4544e46974e9f2cf546651f4d0f7ef7a6fbc7ebf9dd5be799d9c402` kimliğiyle iki JVM'de doğrulandı.
+Tek shape collision senaryolarını içeren math referans kimliği `b31620fa93e0533f6498b86deedf056a7e4dda293e4fa80ae354dd69541d1ebd` oldu. Bu referans iki JVM çalıştırmasıyla kararlı bulundu. Birleşik altı aile referansı `7d0a5df0a7863cde83c31926e73c3abe505dcf209df4d5ad2722e111ae84ac60` kimliğiyle iki JVM'de doğrulandı.
 
-Rust debug ve release adaptörleri math ailesinde 361/361, birleşik corpus'ta 815/815 eşleşti. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.
+Rust debug ve release adaptörleri tek shape math referansında 361/361, güncel birleşik corpus'ta 820/820 eşleşti. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.

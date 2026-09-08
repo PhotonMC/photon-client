@@ -499,6 +499,26 @@ fn shape_result(request: &Value) -> Result<Value, String> {
                 "distance": format!("{:016x}", shape.collide(axis, moving, distance).to_bits()),
             }))
         }
+        "collide_many" => {
+            let axis = Axis::from_name(string(request, "axis")?).ok_or("unknown collision axis")?;
+            let moving = aabb_box(request.get("moving").ok_or("moving must be an object")?)?;
+            let entries = request
+                .get("shapes")
+                .ok_or("shapes must be an array")?
+                .as_array()
+                .ok_or("shapes must be an array")?;
+            let shapes = entries
+                .iter()
+                .map(shape_box)
+                .collect::<Result<Vec<_>, _>>()?;
+            let distance = f64_field(request, "distance")?;
+            Ok(json!({
+                "distance": format!(
+                    "{:016x}",
+                    Shapes::collide(axis, moving, &shapes, distance).to_bits()
+                ),
+            }))
+        }
         _ => Err("unknown VoxelShape kind".into()),
     }
 }

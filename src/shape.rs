@@ -386,6 +386,17 @@ impl Shapes {
     ) -> bool {
         !Self::join(first, second, operation).is_empty()
     }
+
+    /// Limit a moving box against each shape in iteration order.
+    pub fn collide(axis: Axis, moving: Aabb, shapes: &[VoxelShape], mut distance: f64) -> f64 {
+        for shape in shapes {
+            if distance.abs() < EPSILON {
+                return 0.0;
+            }
+            distance = shape.collide(axis, moving, distance);
+        }
+        distance
+    }
 }
 
 #[derive(Clone, Copy)]
