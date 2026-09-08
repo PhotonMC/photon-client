@@ -426,6 +426,15 @@ fn aabb_snapshot(value: Aabb) -> Value {
     })
 }
 
+fn aabb_sizes_snapshot(value: Aabb) -> Value {
+    json!({
+        "x_size": format!("{:016x}", value.x_size().to_bits()),
+        "y_size": format!("{:016x}", value.y_size().to_bits()),
+        "z_size": format!("{:016x}", value.z_size().to_bits()),
+        "size": format!("{:016x}", value.size().to_bits()),
+    })
+}
+
 fn shape_box(value: &Value) -> Result<VoxelShape, String> {
     Shapes::box_shape(
         f64_field(value, "min_x")?,
@@ -576,6 +585,7 @@ fn aabb_result(request: &Value) -> Result<Value, String> {
                 );
                 events.push(aabb_snapshot(value));
             }
+            "sizes" => events.push(aabb_sizes_snapshot(value)),
             "clip" => {
                 let from = f64_vec3(step.get("from").ok_or("from must be an object")?)?;
                 let to = f64_vec3(step.get("to").ok_or("to must be an object")?)?;

@@ -1,6 +1,6 @@
 # P01.d — AABB inflate sözleşmesi
 
-Bu dilimin **5 Java davranış testi hazırdır ve Rust karşılığı doğrulanmıştır** ([kanıt](aabb-inflate-parity.md)). Kapsam, Java `AABB.inflate` üç eksenli ve tek miktarlı overload'larının her iki endpoint'i delta kadar dışarı taşımasını içerir. AABB contract, intersect, minmax ve move için ayrı sözleşmeler, clip ve diğer kesişim işlemleri ayrı dilimlerdir.
+Bu dilimin **5 Java davranış testi hazırdır ve Rust karşılığı doğrulanmıştır** ([kanıt](aabb-inflate-parity.md)). Kapsam, Java `AABB.inflate` üç eksenli ve tek miktarlı overload'larının her iki endpoint'i delta kadar dışarı taşımasını içerir. AABB contract, intersect, minmax, move ve sizes için ayrı sözleşmeler, clip ve diğer kesişim işlemleri ayrı dilimlerdir.
 
 ## Kaynak ve sınır
 
@@ -34,6 +34,6 @@ cargo build --locked --offline --example behavior_adapter
 python3 tools/behavior/run.py compare --family math --adapter target/debug/examples/behavior_adapter
 ```
 
-Inflate senaryolarını içeren math referans kimliği `cc1e4e363fee8a21012ea0d56273f85c05556ced56a4bd8c330f603a71ce5656` oldu. Bu referans iki JVM çalıştırmasıyla kararlı bulundu. Birleşik altı aile referansı `03bb0188e407e1e29b2e0b589a780525d2d95ffed96c93d78647b9c45f792e3e` kimliğiyle iki JVM'de doğrulandı.
+Inflate senaryolarını içeren math referans kimliği `cc1e4e363fee8a21012ea0d56273f85c05556ced56a4bd8c330f603a71ce5656` oldu. Bu referans iki JVM çalıştırmasıyla kararlı bulundu. Birleşik altı aile referansı `3989e3c4cad4083d9855033e3273ac82ba6efde8a747b4ce2c918df3552a60e2` kimliğiyle iki JVM'de doğrulandı.
 
-Rust debug ve release adaptörleri math ailesinde 376/376, birleşik corpus'ta 848/848 eşleşti. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.
+Rust debug ve release adaptörleri math ailesinde 376/376, birleşik corpus'ta 854/854 eşleşti. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.

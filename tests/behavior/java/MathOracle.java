@@ -218,6 +218,14 @@ public final class MathOracle {
                             f64(step, "x"), f64(step, "y"), f64(step, "z"));
                         events.add(snapshot(box));
                     }
+                    case "sizes" -> {
+                        var state = new JsonObject();
+                        state.addProperty("x_size", Oracle.bits(box.getXsize()));
+                        state.addProperty("y_size", Oracle.bits(box.getYsize()));
+                        state.addProperty("z_size", Oracle.bits(box.getZsize()));
+                        state.addProperty("size", Oracle.bits(box.getSize()));
+                        events.add(state);
+                    }
                     case "clip" -> {
                         var hit = box.clip(
                             vec3(step.getAsJsonObject("from")),

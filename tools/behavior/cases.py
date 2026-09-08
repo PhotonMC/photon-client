@@ -443,6 +443,31 @@ def math_cases():
                               "y": float_bits(-0.5, "f64"), "z": float_bits(1.0, "f64")},
                              {"op": "move", "x": float_bits(-0.125, "f64"),
                               "y": float_bits(0.25, "f64"), "z": float_bits(-0.5, "f64")}]}
+    yield {"case_id": "aabb/sizes/unit", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "sizes"}]}
+    yield {"case_id": "aabb/sizes/rectangular", "family": "math", "operation": "aabb",
+           "min_x": float_bits(-2.0, "f64"), "min_y": float_bits(0.5, "f64"),
+           "min_z": float_bits(10.0, "f64"), "max_x": float_bits(1.0, "f64"),
+           "max_y": float_bits(4.5, "f64"), "max_z": float_bits(12.5, "f64"),
+           "steps": [{"op": "sizes"}]}
+    yield {"case_id": "aabb/sizes/reversed-normalizes", "family": "math", "operation": "aabb",
+           "min_x": float_bits(3.0, "f64"), "min_y": float_bits(2.0, "f64"),
+           "min_z": float_bits(1.0, "f64"), "max_x": float_bits(-1.0, "f64"),
+           "max_y": float_bits(-2.0, "f64"), "max_z": float_bits(-3.0, "f64"),
+           "steps": [{"op": "sizes"}]}
+    yield {"case_id": "aabb/sizes/zero", "family": "math", "operation": "aabb",
+           "min_x": float_bits(1.5, "f64"), "min_y": float_bits(-2.0, "f64"),
+           "min_z": float_bits(4.0, "f64"), "max_x": float_bits(1.5, "f64"),
+           "max_y": float_bits(-2.0, "f64"), "max_z": float_bits(4.0, "f64"),
+           "steps": [{"op": "sizes"}]}
+    yield {"case_id": "aabb/sizes/signed-zero", "family": "math", "operation": "aabb",
+           "min_x": float_bits(-0.0, "f64"), "min_y": float_bits(-0.0, "f64"),
+           "min_z": float_bits(-0.0, "f64"), "max_x": float_bits(0.0, "f64"),
+           "max_y": float_bits(0.0, "f64"), "max_z": float_bits(0.0, "f64"),
+           "steps": [{"op": "sizes"}]}
+    yield {"case_id": "aabb/sizes/large-sum-rounding", "family": "math", "operation": "aabb",
+           **unit, "max_z": float_bits(9007199254740992.0, "f64"),
+           "steps": [{"op": "sizes"}]}
     def point(x, y, z):
         return {"x": float_bits(x, "f64"), "y": float_bits(y, "f64"), "z": float_bits(z, "f64")}
 

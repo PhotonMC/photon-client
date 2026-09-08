@@ -1,8 +1,8 @@
 //! Axis-aligned bounding boxes for the first P01.d geometry slice.
 //!
 //! This covers the constructor normalization and the contains/intersects,
-//! expand-towards, contract, inflate, intersect, minmax, move, deflate and
-//! segment clipping operations used by the current behavior corpus.
+//! expand-towards, contract, inflate, intersect, minmax, move, sizes, deflate
+//! and segment clipping operations used by the current behavior corpus.
 
 use crate::math::Vec3;
 
@@ -102,6 +102,24 @@ impl Aabb {
             self.max_y + y,
             self.max_z + z,
         )
+    }
+
+    /// Return the edge lengths along the x, y and z axes.
+    pub fn x_size(self) -> f64 {
+        self.max_x - self.min_x
+    }
+
+    pub fn y_size(self) -> f64 {
+        self.max_y - self.min_y
+    }
+
+    pub fn z_size(self) -> f64 {
+        self.max_z - self.min_z
+    }
+
+    /// Return the arithmetic mean of the three edge lengths.
+    pub fn size(self) -> f64 {
+        (self.x_size() + self.y_size() + self.z_size()) / 3.0
     }
 
     /// Extend both endpoints by the supplied per-axis amounts.
