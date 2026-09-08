@@ -231,6 +231,16 @@ public final class MathOracle {
                             blockPos(step.getAsJsonObject("position"))));
                         events.add(state);
                     }
+                    case "collided_along_vector" -> {
+                        var boxes = new java.util.ArrayList<AABB>();
+                        for (var boxEntry : step.getAsJsonArray("boxes")) {
+                            boxes.add(box(boxEntry.getAsJsonObject()));
+                        }
+                        var state = new JsonObject();
+                        state.addProperty("hit", box.collidedAlongVector(
+                            vec3(step.getAsJsonObject("vector")), boxes));
+                        events.add(state);
+                    }
                     case "intersect" -> {
                         box = box.intersect(box(step.getAsJsonObject("box")));
                         events.add(snapshot(box));

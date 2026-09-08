@@ -3,7 +3,8 @@
 //! This covers the constructor normalization and the contains/intersects,
 //! expand-towards, contract, inflate, intersect, minmax, move, sizes, has_nan,
 //! positions, axis endpoint queries, `of_size`, endpoint setters, move overloads,
-//! deflate and segment clipping operations used by the current behavior corpus.
+//! deflate, segment clipping and center-segment collision operations used by the
+//! current behavior corpus.
 
 use crate::{binary::BlockPos, direction::Axis, math::Vec3};
 
@@ -479,6 +480,24 @@ impl Aabb {
                 from.y + scale * dy,
                 from.z + scale * dz,
             )
+        })
+    }
+
+    /// Test whether the center's translated segment collides with any box.
+    pub fn collided_along_vector(self, vector: Vec3, boxes: &[Self]) -> bool {
+        let from = self.center();
+        let to = Vec3::new(from.x + vector.x, from.y + vector.y, from.z + vector.z);
+        let inflation = Vec3::new(
+            self.x_size() * 0.5 - 1.0e-7,
+            self.y_size() * 0.5 - 1.0e-7,
+            self.z_size() * 0.5 - 1.0e-7,
+        );
+
+        boxes.iter().any(|shape_part| {
+            let inflated = shape_part.inflate(inflation.x, inflation.y, inflation.z);
+            inflated.contains_vec3(to)
+                || inflated.contains_vec3(from)
+                || inflated.clip(from, to).is_some()
         })
     }
 }

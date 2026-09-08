@@ -597,6 +597,21 @@ fn aabb_result(request: &Value) -> Result<Value, String> {
                 let position = blockpos(step.get("position").ok_or("position must be an object")?)?;
                 events.push(json!({"hit": value.intersects_block_pos(position)}));
             }
+            "collided_along_vector" => {
+                let vector = f64_vec3(step.get("vector").ok_or("vector must be an object")?)?;
+                let entries = step
+                    .get("boxes")
+                    .ok_or("boxes must be an array")?
+                    .as_array()
+                    .ok_or("boxes must be an array")?;
+                let boxes = entries
+                    .iter()
+                    .map(aabb_box)
+                    .collect::<Result<Vec<_>, _>>()?;
+                events.push(json!({
+                    "hit": value.collided_along_vector(vector, &boxes),
+                }));
+            }
             "intersects" => {
                 let other = aabb_box(step.get("box").ok_or("box must be an object")?)?;
                 events.push(json!({"hit": value.intersects(other)}));

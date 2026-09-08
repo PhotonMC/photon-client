@@ -354,6 +354,36 @@ def math_cases():
                        "max": vector_bits(2.0, 2.0, 2.0)},
                       {"op": "contains_vec3", "position": vector_bits(-1.0, 0.0, 0.0)},
                       {"op": "intersects_block_pos", "position": block_position(0, 0, 0)}]}
+    yield {"case_id": "aabb/collided-along-vector/empty", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "collided_along_vector", "vector": vector_bits(1.0, 0.0, 0.0),
+                              "boxes": []}]}
+    yield {"case_id": "aabb/collided-along-vector/from-contained", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "collided_along_vector", "vector": vector_bits(0.0, 0.0, 0.0),
+                              "boxes": [box_bits(0.25, 0.25, 0.25, 0.75, 0.75, 0.75)]}]}
+    yield {"case_id": "aabb/collided-along-vector/to-contained", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "collided_along_vector", "vector": vector_bits(2.0, 0.0, 0.0),
+                              "boxes": [box_bits(2.5, 0.0, 0.0, 3.5, 1.0, 1.0)]}]}
+    yield {"case_id": "aabb/collided-along-vector/crossing", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "collided_along_vector", "vector": vector_bits(3.0, 0.0, 0.0),
+                              "boxes": [box_bits(1.5, 0.0, 0.0, 2.0, 1.0, 1.0)]}]}
+    yield {"case_id": "aabb/collided-along-vector/miss", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "collided_along_vector", "vector": vector_bits(3.0, 0.0, 0.0),
+                              "boxes": [box_bits(1.5, 2.0, 0.0, 2.0, 3.0, 1.0)]}]}
+    yield {"case_id": "aabb/collided-along-vector/many", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "collided_along_vector", "vector": vector_bits(3.0, 0.0, 0.0),
+                              "boxes": [box_bits(1.5, 2.0, 0.0, 2.0, 3.0, 1.0),
+                                        box_bits(1.5, 0.0, 0.0, 2.0, 1.0, 1.0)]}]}
+    yield {"case_id": "aabb/collided-along-vector/epsilon-special", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "collided_along_vector", "vector": vector_bits(0.0, 0.0, 0.0),
+                              "boxes": [box_bits(1.0, 0.0, 0.0, 2.0, 1.0, 1.0)]},
+                             {"op": "collided_along_vector", "vector": vector_bits(0.0000002, 0.0, 0.0),
+                              "boxes": [box_bits(1.0, 0.0, 0.0, 2.0, 1.0, 1.0)]},
+                             {"op": "collided_along_vector", "vector": vector_bits(float("nan"), 0.0, 0.0),
+                              "boxes": [box_bits(1.0, 0.0, 0.0, 2.0, 1.0, 1.0)]}]}
+    yield {"case_id": "aabb/collided-along-vector/tiny-moving-box", "family": "math", "operation": "aabb",
+           **box_bits(0.0, 0.0, 0.0, 0.00000001, 0.00000001, 0.00000001),
+           "steps": [{"op": "collided_along_vector", "vector": vector_bits(1.0, 0.0, 0.0),
+                      "boxes": [box_bits(0.5, 0.0, 0.0, 0.6, 1.0, 1.0)]}]}
     yield {"case_id": "aabb/expand-deflate/unit", "family": "math", "operation": "aabb",
            **unit, "steps": [{"op": "expand", "x": float_bits(1.0, "f64"),
                               "y": float_bits(-0.5, "f64"), "z": float_bits(0.0, "f64")},
