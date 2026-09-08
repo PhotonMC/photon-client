@@ -148,6 +148,20 @@ def math_cases():
            "seed": "42", "steps": [{"op": "nextInt"}, {"op": "nextGaussian"},
                                       {"op": "nextGaussian"}, {"op": "nextDouble"},
                                       {"op": "nextGaussian"}]}
+    yield {"case_id": "random/set-seed/gaussian-cache", "family": "math", "operation": "random",
+           "seed": "12345", "steps": [{"op": "nextGaussian"},
+                                           {"op": "setSeed", "seed": "12345"},
+                                           {"op": "nextGaussian"}, {"op": "nextGaussian"}]}
+    yield {"case_id": "random/set-seed/reseeded-state", "family": "math", "operation": "random",
+           "seed": "-1", "steps": [{"op": "nextInt"}, {"op": "nextGaussian"},
+                                        {"op": "setSeed", "seed": "0"},
+                                        {"op": "nextDouble"}, {"op": "nextGaussian"},
+                                        {"op": "nextGaussian"}]}
+    yield {"case_id": "random/set-seed/boundaries", "family": "math", "operation": "random",
+           "seed": "0", "steps": [{"op": "setSeed", "seed": "9223372036854775807"},
+                                      {"op": "nextInt"},
+                                      {"op": "setSeed", "seed": "-9223372036854775808"},
+                                      {"op": "nextLong"}]}
     yield {"case_id": "random/fork/basic", "family": "math", "operation": "random_fork",
            "seed": "42", "prefix_steps": [],
            "child_steps": [{"op": "nextInt"}, {"op": "nextDouble"}, {"op": "nextLong"}],

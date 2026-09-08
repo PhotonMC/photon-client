@@ -24,10 +24,18 @@ impl RandomSource {
 
     /// Create a source with the same seed scrambling as Java's constructor.
     pub fn create(seed: i64) -> Self {
-        Self {
-            seed: (seed as u64 ^ Self::MULTIPLIER) & Self::MASK,
+        let mut source = Self {
+            seed: 0,
             gaussian: None,
-        }
+        };
+        source.set_seed(seed);
+        source
+    }
+
+    /// Reset the source state and clear any cached Gaussian value.
+    pub fn set_seed(&mut self, seed: i64) {
+        self.seed = (seed as u64 ^ Self::MULTIPLIER) & Self::MASK;
+        self.gaussian = None;
     }
 
     fn next_bits(&mut self, bits: u32) -> u32 {

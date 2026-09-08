@@ -267,6 +267,13 @@ fn random_state(random: &mut RandomSource, step: &Value) -> Result<Value, String
                 json!(format!("{:016x}", random.next_gaussian().to_bits())),
             );
         }
+        "setSeed" => {
+            let seed = string(step, "seed")?
+                .parse::<i64>()
+                .map_err(|error| error.to_string())?;
+            random.set_seed(seed);
+            state.insert("op".into(), json!("setSeed"));
+        }
         _ => return Err("unknown random operation".into()),
     }
     Ok(Value::Object(state))

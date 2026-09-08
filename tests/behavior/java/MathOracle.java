@@ -240,6 +240,10 @@ public final class MathOracle {
             case "nextFloat" -> state.addProperty("bits", Oracle.bits(random.nextFloat()));
             case "nextDouble" -> state.addProperty("bits", Oracle.bits(random.nextDouble()));
             case "nextGaussian" -> state.addProperty("bits", Oracle.bits(random.nextGaussian()));
+            case "setSeed" -> {
+                random.setSeed(Long.parseLong(step.get("seed").getAsString()));
+                state.addProperty("op", "setSeed");
+            }
             default -> throw new IllegalArgumentException("Unknown random op");
         }
         return state;
