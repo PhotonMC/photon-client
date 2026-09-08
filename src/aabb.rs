@@ -97,14 +97,63 @@ impl Aabb {
             && z < self.max_z
     }
 
+    /// Test point membership from a double-precision vector.
+    pub fn contains_vec3(self, point: Vec3) -> bool {
+        self.contains(point.x, point.y, point.z)
+    }
+
     /// Test strict overlap on all three axes; touching faces do not overlap.
     pub fn intersects(self, other: Self) -> bool {
-        self.min_x < other.max_x
-            && self.max_x > other.min_x
-            && self.min_y < other.max_y
-            && self.max_y > other.min_y
-            && self.min_z < other.max_z
-            && self.max_z > other.min_z
+        self.intersects_coords(
+            other.min_x,
+            other.min_y,
+            other.min_z,
+            other.max_x,
+            other.max_y,
+            other.max_z,
+        )
+    }
+
+    /// Test strict overlap against raw endpoints without normalizing them.
+    pub fn intersects_coords(
+        self,
+        min_x: f64,
+        min_y: f64,
+        min_z: f64,
+        max_x: f64,
+        max_y: f64,
+        max_z: f64,
+    ) -> bool {
+        self.min_x < max_x
+            && self.max_x > min_x
+            && self.min_y < max_y
+            && self.max_y > min_y
+            && self.min_z < max_z
+            && self.max_z > min_z
+    }
+
+    /// Test strict overlap after normalizing the two vector endpoints.
+    pub fn intersects_vec3(self, min: Vec3, max: Vec3) -> bool {
+        self.intersects_coords(
+            java_min(min.x, max.x),
+            java_min(min.y, max.y),
+            java_min(min.z, max.z),
+            java_max(min.x, max.x),
+            java_max(min.y, max.y),
+            java_max(min.z, max.z),
+        )
+    }
+
+    /// Test strict overlap with the unit block whose origin is a BlockPos.
+    pub fn intersects_block_pos(self, pos: BlockPos) -> bool {
+        self.intersects_coords(
+            f64::from(pos.x),
+            f64::from(pos.y),
+            f64::from(pos.z),
+            f64::from(pos.x.wrapping_add(1)),
+            f64::from(pos.y.wrapping_add(1)),
+            f64::from(pos.z.wrapping_add(1)),
+        )
     }
 
     /// Extend only the endpoint in the direction of each nonzero delta.

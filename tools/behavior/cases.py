@@ -317,6 +317,43 @@ def math_cases():
                                  "min_x": float_bits(2.0, "f64"), "min_y": float_bits(2.0, "f64"),
                                  "min_z": float_bits(2.0, "f64"), "max_x": float_bits(3.0, "f64"),
                                  "max_y": float_bits(3.0, "f64"), "max_z": float_bits(3.0, "f64")}}]}
+    yield {"case_id": "aabb/predicate-overload/basic", "family": "math", "operation": "aabb",
+           **box_bits(-2.0, -2.0, -2.0, 2.0, 2.0, 2.0),
+           "steps": [{"op": "contains_vec3", "position": vector_bits(0.5, -0.5, 1.5)},
+                      {"op": "intersects_coords", **box_bits(-1.0, -1.0, -1.0, 0.0, 0.0, 0.0)},
+                      {"op": "intersects_vec3", "min": vector_bits(1.0, 1.0, 1.0),
+                       "max": vector_bits(-1.0, -1.0, -1.0)},
+                      {"op": "intersects_block_pos", "position": block_position(-1, -1, -1)}]}
+    yield {"case_id": "aabb/predicate-overload/contains-boundaries", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "contains_vec3", "position": vector_bits(0.0, 0.0, 0.0)},
+                              {"op": "contains_vec3", "position": vector_bits(1.0, 0.5, 0.5)},
+                              {"op": "contains_vec3", "position": vector_bits(float("nan"), 0.5, 0.5)},
+                              {"op": "contains_vec3", "position": vector_bits(float("inf"), 0.5, 0.5)}]}
+    yield {"case_id": "aabb/predicate-overload/raw-coordinates", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "intersects_coords", **box_bits(-0.5, -0.5, -0.5, 0.5, 0.5, 0.5)},
+                              {"op": "intersects_coords", **box_bits(1.0, 0.0, 0.0, 2.0, 1.0, 1.0)},
+                              {"op": "intersects_coords", **box_bits(0.5, 0.5, 0.5, -0.5, -0.5, -0.5)},
+                              {"op": "intersects_coords", **box_bits(float("nan"), 0.0, 0.0, 1.0, 1.0, 1.0)}]}
+    yield {"case_id": "aabb/predicate-overload/vec3-normalizes", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "intersects_vec3", "min": vector_bits(1.0, 1.0, 1.0),
+                               "max": vector_bits(-1.0, -1.0, -1.0)},
+                              {"op": "intersects_vec3", "min": vector_bits(0.0, -0.0, 0.0),
+                               "max": vector_bits(-0.0, 0.0, -0.0)},
+                              {"op": "intersects_vec3", "min": vector_bits(float("nan"), 0.0, 0.0),
+                               "max": vector_bits(1.0, 1.0, 1.0)}]}
+    yield {"case_id": "aabb/predicate-overload/block-pos-boundaries", "family": "math", "operation": "aabb",
+           "min_x": float_bits(-2147483648.0, "f64"), "min_y": float_bits(0.0, "f64"),
+           "min_z": float_bits(0.0, "f64"), "max_x": float_bits(-2147483647.0, "f64"),
+           "max_y": float_bits(1.0, "f64"), "max_z": float_bits(1.0, "f64"),
+           "steps": [{"op": "intersects_block_pos", "position": block_position(-2147483648, 0, 0)},
+                      {"op": "intersects_block_pos", "position": block_position(2147483647, 0, 0)}]}
+    yield {"case_id": "aabb/predicate-overload/special-chain", "family": "math", "operation": "aabb",
+           **box_bits(-1.0, -1.0, -1.0, 1.0, 1.0, 1.0),
+           "steps": [{"op": "intersects_coords", **box_bits(float("inf"), -1.0, -1.0, float("inf"), 1.0, 1.0)},
+                      {"op": "intersects_vec3", "min": vector_bits(-2.0, -2.0, -2.0),
+                       "max": vector_bits(2.0, 2.0, 2.0)},
+                      {"op": "contains_vec3", "position": vector_bits(-1.0, 0.0, 0.0)},
+                      {"op": "intersects_block_pos", "position": block_position(0, 0, 0)}]}
     yield {"case_id": "aabb/expand-deflate/unit", "family": "math", "operation": "aabb",
            **unit, "steps": [{"op": "expand", "x": float_bits(1.0, "f64"),
                               "y": float_bits(-0.5, "f64"), "z": float_bits(0.0, "f64")},

@@ -572,6 +572,31 @@ fn aabb_result(request: &Value) -> Result<Value, String> {
                     f64_field(step, "z")?,
                 )
             })),
+            "contains_vec3" => {
+                let position = f64_vec3(step.get("position").ok_or("position must be an object")?)?;
+                events.push(json!({"hit": value.contains_vec3(position)}));
+            }
+            "intersects_coords" => {
+                events.push(json!({
+                    "hit": value.intersects_coords(
+                        f64_field(step, "min_x")?,
+                        f64_field(step, "min_y")?,
+                        f64_field(step, "min_z")?,
+                        f64_field(step, "max_x")?,
+                        f64_field(step, "max_y")?,
+                        f64_field(step, "max_z")?,
+                    )
+                }));
+            }
+            "intersects_vec3" => {
+                let min = f64_vec3(step.get("min").ok_or("min must be an object")?)?;
+                let max = f64_vec3(step.get("max").ok_or("max must be an object")?)?;
+                events.push(json!({"hit": value.intersects_vec3(min, max)}));
+            }
+            "intersects_block_pos" => {
+                let position = blockpos(step.get("position").ok_or("position must be an object")?)?;
+                events.push(json!({"hit": value.intersects_block_pos(position)}));
+            }
             "intersects" => {
                 let other = aabb_box(step.get("box").ok_or("box must be an object")?)?;
                 events.push(json!({"hit": value.intersects(other)}));

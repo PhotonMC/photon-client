@@ -206,6 +206,31 @@ public final class MathOracle {
                         state.addProperty("hit", box.intersects(box(step.getAsJsonObject("box"))));
                         events.add(state);
                     }
+                    case "contains_vec3" -> {
+                        var state = new JsonObject();
+                        state.addProperty("hit", box.contains(vec3(step.getAsJsonObject("position"))));
+                        events.add(state);
+                    }
+                    case "intersects_coords" -> {
+                        var state = new JsonObject();
+                        state.addProperty("hit", box.intersects(
+                            f64(step, "min_x"), f64(step, "min_y"), f64(step, "min_z"),
+                            f64(step, "max_x"), f64(step, "max_y"), f64(step, "max_z")));
+                        events.add(state);
+                    }
+                    case "intersects_vec3" -> {
+                        var state = new JsonObject();
+                        state.addProperty("hit", box.intersects(
+                            vec3(step.getAsJsonObject("min")),
+                            vec3(step.getAsJsonObject("max"))));
+                        events.add(state);
+                    }
+                    case "intersects_block_pos" -> {
+                        var state = new JsonObject();
+                        state.addProperty("hit", box.intersects(
+                            blockPos(step.getAsJsonObject("position"))));
+                        events.add(state);
+                    }
                     case "intersect" -> {
                         box = box.intersect(box(step.getAsJsonObject("box")));
                         events.add(snapshot(box));
