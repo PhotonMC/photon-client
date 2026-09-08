@@ -148,6 +148,41 @@ def math_cases():
            "seed": "42", "steps": [{"op": "nextInt"}, {"op": "nextGaussian"},
                                       {"op": "nextGaussian"}, {"op": "nextDouble"},
                                       {"op": "nextGaussian"}]}
+    yield {"case_id": "random/fork/basic", "family": "math", "operation": "random_fork",
+           "seed": "42", "prefix_steps": [],
+           "child_steps": [{"op": "nextInt"}, {"op": "nextDouble"}, {"op": "nextLong"}],
+           "parent_steps": [{"op": "nextInt"}, {"op": "nextLong"}]}
+    yield {"case_id": "random/fork/gaussian-parent", "family": "math", "operation": "random_fork",
+           "seed": "12345", "prefix_steps": [{"op": "nextGaussian"}],
+           "child_steps": [{"op": "nextGaussian"}, {"op": "nextGaussian"}],
+           "parent_steps": [{"op": "nextGaussian"}, {"op": "nextInt"}]}
+    yield {"case_id": "random/positional/coordinates", "family": "math",
+           "operation": "random_positional", "seed": "987654321",
+           "factory_steps": [
+               {"op": "at", "x": 0, "y": 0, "z": 0,
+                "steps": [{"op": "nextInt"}, {"op": "nextDouble"}]},
+               {"op": "at", "x": -2147483648, "y": 2147483647, "z": 2147483647,
+                "steps": [{"op": "nextInt"}, {"op": "nextLong"}]},
+               {"op": "at", "x": 123456, "y": -789, "z": 654321,
+                "steps": [{"op": "nextGaussian"}, {"op": "nextGaussian"}]}],
+           "parent_steps": [{"op": "nextInt"}]}
+    yield {"case_id": "random/positional/hash", "family": "math",
+           "operation": "random_positional", "seed": "-1",
+           "factory_steps": [
+               {"op": "fromHashOf", "name": "", "steps": [{"op": "nextInt"}]},
+               {"op": "fromHashOf", "name": "minecraft:stone",
+                "steps": [{"op": "nextInt"}, {"op": "nextDouble"}]},
+               {"op": "fromHashOf", "name": "é😀",
+                "steps": [{"op": "nextLong"}, {"op": "nextGaussian"}]}],
+           "parent_steps": [{"op": "nextLong"}]}
+    yield {"case_id": "random/positional/from-seed", "family": "math",
+           "operation": "random_positional", "seed": "0",
+           "factory_steps": [
+               {"op": "fromSeed", "seed": "0", "steps": [{"op": "nextInt"}]},
+               {"op": "fromSeed", "seed": "-1", "steps": [{"op": "nextLong"}]},
+               {"op": "fromSeed", "seed": "9223372036854775807",
+                "steps": [{"op": "nextGaussian"}, {"op": "nextGaussian"}]}],
+           "parent_steps": [{"op": "nextInt"}]}
     unit = {"min_x": float_bits(0.0, "f64"), "min_y": float_bits(0.0, "f64"),
             "min_z": float_bits(0.0, "f64"), "max_x": float_bits(1.0, "f64"),
             "max_y": float_bits(1.0, "f64"), "max_z": float_bits(1.0, "f64")}

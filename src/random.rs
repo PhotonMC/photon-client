@@ -113,4 +113,56 @@ impl RandomSource {
             return x * multiplier;
         }
     }
+
+    /// Fork this source using one signed `next_long` seed.
+    pub fn fork(&mut self) -> Self {
+        Self::create(self.next_long())
+    }
+
+    /// Fork a factory using one signed `next_long` seed.
+    pub fn fork_positional(&mut self) -> PositionalRandomFactory {
+        PositionalRandomFactory {
+            seed: self.next_long(),
+        }
+    }
+}
+
+/// Factory for deterministic random sources derived from positions or names.
+#[derive(Debug, Clone, Copy)]
+pub struct PositionalRandomFactory {
+    seed: i64,
+}
+
+impl PositionalRandomFactory {
+    /// Create a source from integer coordinates using Java's `Mth.getSeed`.
+    pub fn at(&self, x: i32, y: i32, z: i32) -> RandomSource {
+        RandomSource::create(positional_seed(x, y, z) ^ self.seed)
+    }
+
+    /// Create a source from Java's UTF-16 `String.hashCode` result.
+    pub fn from_hash_of(&self, name: &str) -> RandomSource {
+        RandomSource::create(i64::from(java_string_hash(name)) ^ self.seed)
+    }
+
+    /// Create a source directly from a signed seed.
+    pub fn from_seed(&self, seed: i64) -> RandomSource {
+        RandomSource::create(seed)
+    }
+}
+
+fn positional_seed(x: i32, y: i32, z: i32) -> i64 {
+    let mut seed = i64::from(x.wrapping_mul(3_129_871))
+        ^ i64::from(z).wrapping_mul(116_129_781)
+        ^ i64::from(y);
+    seed = seed
+        .wrapping_mul(seed)
+        .wrapping_mul(42_317_861)
+        .wrapping_add(seed.wrapping_mul(11));
+    seed >> 16
+}
+
+fn java_string_hash(value: &str) -> i32 {
+    value.encode_utf16().fold(0_i32, |hash, code_unit| {
+        hash.wrapping_mul(31).wrapping_add(i32::from(code_unit))
+    })
 }

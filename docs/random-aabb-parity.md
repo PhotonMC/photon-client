@@ -32,4 +32,4 @@ Math referans kimliği: `529c11520bbda1953798018b953d4f6a3d2f46de0527d0ef9d802b2
 
 Yerel raporlar: `compare-37kc_otn` (debug) ve `compare-q246ny7w` (release), `.data/runs/behavior/` altında.
 
-Bu kanıt yalnızca 307 seçili math senaryosuyla sınırlıdır. Tek kutulu AABB segment clip ve `nextGaussian` için ayrı kanıtlar vardır. P01'in çoklu shape yolları, random fork/positional varyantları ve istemcinin diğer davranışları henüz eşitlik kanıtı değildir.
+Bu kanıt yalnızca 307 seçili math senaryosuyla sınırlıdır. Tek kutulu AABB segment clip, `nextGaussian` ve fork/positional yolları için ayrı kanıtlar vardır. P01'in çoklu shape yolları ve istemcinin diğer davranışları henüz eşitlik kanıtı değildir.

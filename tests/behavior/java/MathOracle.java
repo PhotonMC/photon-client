@@ -5,6 +5,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.SectionPos;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.level.levelgen.PositionalRandomFactory;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec2;
 import net.minecraft.world.phys.Vec3;
@@ -99,22 +100,35 @@ public final class MathOracle {
             var events = new JsonArray();
             events.add(new JsonObject());
             for (var entry : request.getAsJsonArray("steps")) {
-                JsonObject step = entry.getAsJsonObject();
-                var state = new JsonObject();
-                switch (step.get("op").getAsString()) {
-                    case "nextInt" -> state.addProperty("value", Integer.toString(random.nextInt()));
-                    case "nextIntBound" -> state.addProperty("value",
-                        Integer.toString(random.nextInt(step.get("bound").getAsInt())));
-                    case "nextLong" -> state.addProperty("value", Long.toString(random.nextLong()));
-                    case "nextBoolean" -> state.addProperty("value", Boolean.toString(random.nextBoolean()));
-                    case "nextFloat" -> state.addProperty("bits", Oracle.bits(random.nextFloat()));
-                    case "nextDouble" -> state.addProperty("bits", Oracle.bits(random.nextDouble()));
-                    case "nextGaussian" -> state.addProperty("bits", Oracle.bits(random.nextGaussian()));
-                    default -> throw new IllegalArgumentException("Unknown random op");
-                }
-                events.add(state);
+                events.add(randomState(random, entry.getAsJsonObject()));
             }
             result.add("events", events);
+        } else if (operation.equals("random_fork")) {
+            RandomSource random = RandomSource.create(Long.parseLong(request.get("seed").getAsString()));
+            result.add("prefix_events", randomSteps(random, request.getAsJsonArray("prefix_steps")));
+            RandomSource child = random.fork();
+            result.add("child_events", randomSteps(child, request.getAsJsonArray("child_steps")));
+            result.add("parent_events", randomSteps(random, request.getAsJsonArray("parent_steps")));
+        } else if (operation.equals("random_positional")) {
+            RandomSource random = RandomSource.create(Long.parseLong(request.get("seed").getAsString()));
+            PositionalRandomFactory factory = random.forkPositional();
+            var factoryEvents = new JsonArray();
+            for (var entry : request.getAsJsonArray("factory_steps")) {
+                JsonObject step = entry.getAsJsonObject();
+                RandomSource child = switch (step.get("op").getAsString()) {
+                    case "at" -> factory.at(step.get("x").getAsInt(), step.get("y").getAsInt(),
+                        step.get("z").getAsInt());
+                    case "fromHashOf" -> factory.fromHashOf(step.get("name").getAsString());
+                    case "fromSeed" -> factory.fromSeed(Long.parseLong(step.get("seed").getAsString()));
+                    default -> throw new IllegalArgumentException("Unknown positional random op");
+                };
+                var state = new JsonObject();
+                state.addProperty("op", step.get("op").getAsString());
+                state.add("events", randomSteps(child, step.getAsJsonArray("steps")));
+                factoryEvents.add(state);
+            }
+            result.add("factory_events", factoryEvents);
+            result.add("parent_events", randomSteps(random, request.getAsJsonArray("parent_steps")));
         } else if (operation.equals("aabb")) {
             AABB box = box(request);
             var events = new JsonArray();
@@ -205,6 +219,30 @@ public final class MathOracle {
 
     private static Vec3 vec3(JsonObject object) {
         return new Vec3(f64(object, "x"), f64(object, "y"), f64(object, "z"));
+    }
+
+    private static JsonArray randomSteps(RandomSource random, JsonArray entries) {
+        var events = new JsonArray();
+        for (var entry : entries) {
+            events.add(randomState(random, entry.getAsJsonObject()));
+        }
+        return events;
+    }
+
+    private static JsonObject randomState(RandomSource random, JsonObject step) {
+        var state = new JsonObject();
+        switch (step.get("op").getAsString()) {
+            case "nextInt" -> state.addProperty("value", Integer.toString(random.nextInt()));
+            case "nextIntBound" -> state.addProperty("value",
+                Integer.toString(random.nextInt(step.get("bound").getAsInt())));
+            case "nextLong" -> state.addProperty("value", Long.toString(random.nextLong()));
+            case "nextBoolean" -> state.addProperty("value", Boolean.toString(random.nextBoolean()));
+            case "nextFloat" -> state.addProperty("bits", Oracle.bits(random.nextFloat()));
+            case "nextDouble" -> state.addProperty("bits", Oracle.bits(random.nextDouble()));
+            case "nextGaussian" -> state.addProperty("bits", Oracle.bits(random.nextGaussian()));
+            default -> throw new IllegalArgumentException("Unknown random op");
+        }
+        return state;
     }
 
     private static JsonObject snapshot(AABB box) {

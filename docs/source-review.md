@@ -45,7 +45,7 @@ Sunucunun otoriter dünya üretimi, mob AI, kayıt ve redstone yürütmesini Rus
 | `client/renderer/GameRenderer.java:376,393` ve `renderer/extract/LevelExtractor.java:92` | Render için durum çıkarma ve GPU çizimi ayrı giriş noktaları. | P15–P19'da durum/transform izi ile son görüntü karşılaştırması ayrı kanıtlar. Bu Rust mimarisi seçimi değildir. |
 | `client/gui/Gui.java:145` | HUD, overlay ve screen çıkarımı koşullu ve sıralı. | P22'de aynı görüntünün yanında input yönlendirmesi, katman ve geçiş sırası test edilir. |
 | `client/sounds/SoundEngine.java:340` | Kaynak seçimi, pitch/volume, attenuasyon, sessiz başlama, streaming ve kanal edinme davranışları var. | P20'de olay izi yeterli ilk katman; duyulan sonuç için ayrıca ses yakalama gerekir. |
-| `world/level/levelgen/LegacyRandomSource.java:15-53`, `MarsagliaPolarGaussian.java:6-38` | `nextGaussian`, iki double çekiminden sonra eş sonucu önbelleğe alıyor; kabul edilmeyen birim daire örneklerini yeniden çekiyor. | P01.e'de Gaussian bitleri ve kaynak tüketim sırası ayrı çağrı dizileriyle karşılaştırılır. |
+| `world/level/levelgen/LegacyRandomSource.java:15-85`, `MarsagliaPolarGaussian.java:6-38`, `util/Mth.java:331-335` | `nextGaussian` eş sonucu önbelleğe alıyor; `fork` bir `nextLong` seed'i, positional factory ise koordinat/hash türevlerini kullanıyor. | P01.e'de Gaussian, fork ve positional kaynak tüketim sıraları ayrı çağrı dizileriyle karşılaştırılır. |
 
 Tablodaki `client/`, `network/` ve `world/` yolları `net/minecraft/` altındadır. Satır numaraları sabitlenen decompile ağacına aittir; gelecekteki sürüme taşınmaz.
 

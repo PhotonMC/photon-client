@@ -208,60 +208,154 @@ fn section_relative_result(request: &Value) -> Result<Value, String> {
 }
 
 fn random_result(request: &Value) -> Result<Value, String> {
-    let seed = string(request, "seed")?
-        .parse::<i64>()
-        .map_err(|error| error.to_string())?;
+    let seed = random_seed(request)?;
     let mut random = RandomSource::create(seed);
     let mut events = vec![json!({})];
     for step in request["steps"]
         .as_array()
         .ok_or("steps must be an array")?
     {
-        let mut state = serde_json::Map::new();
-        match string(step, "op")? {
-            "nextInt" => {
-                state.insert("value".into(), json!(random.next_int().to_string()));
-            }
-            "nextIntBound" => {
-                let bound = step["bound"]
-                    .as_i64()
-                    .ok_or("bound must be an integer")?
-                    .try_into()
-                    .map_err(|_| "bound must fit in i32".to_owned())?;
-                let value = random
-                    .next_int_bound(bound)
-                    .map_err(|_| "bound must be positive".to_owned())?;
-                state.insert("value".into(), json!(value.to_string()));
-            }
-            "nextLong" => {
-                state.insert("value".into(), json!(random.next_long().to_string()));
-            }
-            "nextBoolean" => {
-                state.insert("value".into(), json!(random.next_boolean().to_string()));
-            }
-            "nextFloat" => {
-                state.insert(
-                    "bits".into(),
-                    json!(format!("{:08x}", random.next_float().to_bits())),
-                );
-            }
-            "nextDouble" => {
-                state.insert(
-                    "bits".into(),
-                    json!(format!("{:016x}", random.next_double().to_bits())),
-                );
-            }
-            "nextGaussian" => {
-                state.insert(
-                    "bits".into(),
-                    json!(format!("{:016x}", random.next_gaussian().to_bits())),
-                );
-            }
-            _ => return Err("unknown random operation".into()),
-        }
-        events.push(Value::Object(state));
+        events.push(random_state(&mut random, step)?);
     }
     Ok(json!({"events": events}))
+}
+
+fn random_seed(request: &Value) -> Result<i64, String> {
+    string(request, "seed")?
+        .parse::<i64>()
+        .map_err(|error| error.to_string())
+}
+
+fn random_state(random: &mut RandomSource, step: &Value) -> Result<Value, String> {
+    let mut state = serde_json::Map::new();
+    match string(step, "op")? {
+        "nextInt" => {
+            state.insert("value".into(), json!(random.next_int().to_string()));
+        }
+        "nextIntBound" => {
+            let bound = step["bound"]
+                .as_i64()
+                .ok_or("bound must be an integer")?
+                .try_into()
+                .map_err(|_| "bound must fit in i32".to_owned())?;
+            let value = random
+                .next_int_bound(bound)
+                .map_err(|_| "bound must be positive".to_owned())?;
+            state.insert("value".into(), json!(value.to_string()));
+        }
+        "nextLong" => {
+            state.insert("value".into(), json!(random.next_long().to_string()));
+        }
+        "nextBoolean" => {
+            state.insert("value".into(), json!(random.next_boolean().to_string()));
+        }
+        "nextFloat" => {
+            state.insert(
+                "bits".into(),
+                json!(format!("{:08x}", random.next_float().to_bits())),
+            );
+        }
+        "nextDouble" => {
+            state.insert(
+                "bits".into(),
+                json!(format!("{:016x}", random.next_double().to_bits())),
+            );
+        }
+        "nextGaussian" => {
+            state.insert(
+                "bits".into(),
+                json!(format!("{:016x}", random.next_gaussian().to_bits())),
+            );
+        }
+        _ => return Err("unknown random operation".into()),
+    }
+    Ok(Value::Object(state))
+}
+
+fn random_steps(random: &mut RandomSource, value: &Value) -> Result<Value, String> {
+    let mut events = Vec::new();
+    for step in value.as_array().ok_or("random steps must be an array")? {
+        events.push(random_state(random, step)?);
+    }
+    Ok(Value::Array(events))
+}
+
+fn random_fork_result(request: &Value) -> Result<Value, String> {
+    let mut random = RandomSource::create(random_seed(request)?);
+    let prefix_events = random_steps(
+        &mut random,
+        request
+            .get("prefix_steps")
+            .ok_or("prefix_steps must be an array")?,
+    )?;
+    let mut child = random.fork();
+    let child_events = random_steps(
+        &mut child,
+        request
+            .get("child_steps")
+            .ok_or("child_steps must be an array")?,
+    )?;
+    let parent_events = random_steps(
+        &mut random,
+        request
+            .get("parent_steps")
+            .ok_or("parent_steps must be an array")?,
+    )?;
+    Ok(json!({
+        "prefix_events": prefix_events,
+        "child_events": child_events,
+        "parent_events": parent_events,
+    }))
+}
+
+fn i32_field(value: &Value, name: &str) -> Result<i32, String> {
+    value[name]
+        .as_i64()
+        .ok_or_else(|| format!("{name} must be an integer"))?
+        .try_into()
+        .map_err(|_| format!("{name} must fit in i32"))
+}
+
+fn random_positional_result(request: &Value) -> Result<Value, String> {
+    let mut random = RandomSource::create(random_seed(request)?);
+    let factory = random.fork_positional();
+    let mut factory_events = Vec::new();
+    for step in request
+        .get("factory_steps")
+        .ok_or("factory_steps must be an array")?
+        .as_array()
+        .ok_or("factory_steps must be an array")?
+    {
+        let mut child = match string(step, "op")? {
+            "at" => factory.at(
+                i32_field(step, "x")?,
+                i32_field(step, "y")?,
+                i32_field(step, "z")?,
+            ),
+            "fromHashOf" => factory.from_hash_of(string(step, "name")?),
+            "fromSeed" => factory.from_seed(
+                string(step, "seed")?
+                    .parse::<i64>()
+                    .map_err(|error| error.to_string())?,
+            ),
+            _ => return Err("unknown positional random operation".into()),
+        };
+        let events = random_steps(
+            &mut child,
+            step.get("steps").ok_or("steps must be an array")?,
+        )?;
+        factory_events.push(json!({"op": string(step, "op")?, "events": events}));
+    }
+    let parent_events = random_steps(
+        &mut random,
+        request
+            .get("parent_steps")
+            .ok_or("parent_steps must be an array")?,
+    )?;
+    Ok(json!({
+        "factory_events": factory_events,
+        "parent_events": parent_events,
+    }))
 }
 
 fn aabb_box(value: &Value) -> Result<Aabb, String> {
@@ -351,6 +445,12 @@ fn math_result(request: &Value) -> Result<Value, String> {
     let operation = string(request, "operation")?;
     if operation == "random" {
         return random_result(request);
+    }
+    if operation == "random_fork" {
+        return random_fork_result(request);
+    }
+    if operation == "random_positional" {
+        return random_positional_result(request);
     }
     if operation == "aabb" {
         return aabb_result(request);
