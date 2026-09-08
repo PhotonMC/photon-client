@@ -8,7 +8,7 @@ use voxel_client::direction::{Axis, Direction};
 use voxel_client::math::{self, Vec2, Vec3};
 use voxel_client::nbt::{self, Field, FieldValue};
 use voxel_client::random::RandomSource;
-use voxel_client::shape::{Shapes, VoxelShape};
+use voxel_client::shape::{BooleanOp, Shapes, VoxelShape};
 use voxel_client::timer::Timer;
 use voxel_client::utf8;
 use voxel_client::wire::{self, ReadError};
@@ -471,15 +471,19 @@ fn shape_result(request: &Value) -> Result<Value, String> {
             Ok(json!({"events": events}))
         }
         "join" => {
-            if string(request, "op")? != "or" {
-                return Err("unknown VoxelShape boolean operation".into());
-            }
+            let operation = match string(request, "op")? {
+                "or" => BooleanOp::Or,
+                "and" => BooleanOp::And,
+                "only_first" => BooleanOp::OnlyFirst,
+                "only_second" => BooleanOp::OnlySecond,
+                _ => return Err("unknown VoxelShape boolean operation".into()),
+            };
             let first = shape_box(request.get("first").ok_or("first must be an object")?)?;
             let second = shape_box(request.get("second").ok_or("second must be an object")?)?;
-            let joined = Shapes::or(&first, &second);
+            let joined = Shapes::join(&first, &second, operation);
             Ok(json!({
                 "shape": shape_snapshot(&joined),
-                "join_is_not_empty": Shapes::join_is_not_empty(&first, &second),
+                "join_is_not_empty": Shapes::join_is_not_empty(&first, &second, operation),
             }))
         }
         _ => Err("unknown VoxelShape kind".into()),

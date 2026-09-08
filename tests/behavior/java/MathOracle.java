@@ -119,6 +119,9 @@ public final class MathOracle {
                 VoxelShape second = voxelShape(request.getAsJsonObject("second"));
                 BooleanOp op = switch (request.get("op").getAsString()) {
                     case "or" -> BooleanOp.OR;
+                    case "and" -> BooleanOp.AND;
+                    case "only_first" -> BooleanOp.ONLY_FIRST;
+                    case "only_second" -> BooleanOp.ONLY_SECOND;
                     default -> throw new IllegalArgumentException("Unknown VoxelShape boolean op");
                 };
                 result.add("shape", snapshot(Shapes.join(first, second, op)));

@@ -14,6 +14,26 @@ pub enum ShapeError {
     ReversedBounds,
 }
 
+/// Boolean operation supported by the current shape join slice.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BooleanOp {
+    And,
+    OnlyFirst,
+    OnlySecond,
+    Or,
+}
+
+impl BooleanOp {
+    fn apply(self, first: bool, second: bool) -> bool {
+        match self {
+            Self::And => first && second,
+            Self::OnlyFirst => first && !second,
+            Self::OnlySecond => second && !first,
+            Self::Or => first || second,
+        }
+    }
+}
+
 /// A voxelized region described by coordinate planes and occupied cells.
 #[derive(Debug, Clone, PartialEq)]
 pub struct VoxelShape {
@@ -211,6 +231,11 @@ impl Shapes {
 
     /// Join two shapes by filling every cell occupied by either input.
     pub fn or(first: &VoxelShape, second: &VoxelShape) -> VoxelShape {
+        Self::join(first, second, BooleanOp::Or)
+    }
+
+    /// Join two shapes with one of the supported Boolean operations.
+    pub fn join(first: &VoxelShape, second: &VoxelShape, operation: BooleanOp) -> VoxelShape {
         let xs = merged_coords(&first.xs, &second.xs);
         let ys = merged_coords(&first.ys, &second.ys);
         let zs = merged_coords(&first.zs, &second.zs);
@@ -223,8 +248,10 @@ impl Shapes {
                     let center_x = midpoint(xs[x], xs[x + 1]);
                     let center_y = midpoint(ys[y], ys[y + 1]);
                     let center_z = midpoint(zs[z], zs[z + 1]);
-                    cells[index(x, y, z, grid)] = first.full_at(center_x, center_y, center_z)
-                        || second.full_at(center_x, center_y, center_z);
+                    cells[index(x, y, z, grid)] = operation.apply(
+                        first.full_at(center_x, center_y, center_z),
+                        second.full_at(center_x, center_y, center_z),
+                    );
                 }
             }
         }
@@ -232,9 +259,13 @@ impl Shapes {
         VoxelShape::new(xs, ys, zs, cells)
     }
 
-    /// Return whether the OR join contains any occupied cell.
-    pub fn join_is_not_empty(first: &VoxelShape, second: &VoxelShape) -> bool {
-        !Self::or(first, second).is_empty()
+    /// Return whether a BooleanOp join contains any occupied cell.
+    pub fn join_is_not_empty(
+        first: &VoxelShape,
+        second: &VoxelShape,
+        operation: BooleanOp,
+    ) -> bool {
+        !Self::join(first, second, operation).is_empty()
     }
 }
 
