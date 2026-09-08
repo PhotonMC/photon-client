@@ -17,7 +17,7 @@ python3 tools/behavior/test_runner.py
 - `compare --adapter /mutlak/yol/program`: aynı girdileri belirtilen executable'a verir ve kayıtlı Java sonucuyla karşılaştırır. Rust wire/timer/math/utf8/binary adaptörü mevcut; bu komut adaptör verilmediğinde **2** ile çıkar. Derleme ve karşılaştırma komutları [binary dilim belgesindedir](binary-parity.md).
 - `test_runner.py`: yalnızca yanlış başarı, bozuk referans ve hatalı süreç davranışlarını denetleyen beş küçük sentetik altyapı testi. Java veya asset gerektirmez.
 
-Tek aile seçmek için `--family wire`, `--family math`, `--family timer`, `--family utf8` veya `--family binary` kullanılır; seçenek tekrarlanabilir. Seçilmezse mevcut bütün aileler çalışır. Aile seçimi referans kimliğinin parçasıdır; örneğin `verify --family timer` öncesinde aynı seçimle `capture --family timer` çalıştırılmalıdır. `--runtime /yerel/runtime` alternatif client/`libs` dizinini, `--jdk-home /jdk/koku` Java araçlarını seçer. Bu yollar yalnızca okunur. Gerekli referanslar yoksa indirme yapılmaz.
+Tek aile seçmek için `--family wire`, `--family math`, `--family timer`, `--family utf8`, `--family binary` veya `--family nbt` kullanılır; seçenek tekrarlanabilir. Seçilmezse mevcut bütün aileler çalışır. Aile seçimi referans kimliğinin parçasıdır; örneğin `verify --family timer` öncesinde aynı seçimle `capture --family timer` çalıştırılmalıdır. `--runtime /yerel/runtime` alternatif client/`libs` dizinini, `--jdk-home /jdk/koku` Java araçlarını seçer. Bu yollar yalnızca okunur. Gerekli referanslar yoksa indirme yapılmaz.
 
 ## Sonuç ve çıkış kodları
 
@@ -65,7 +65,7 @@ Diğer `math` operasyonları `floor`, `wrap_degrees`, `clamp`; `type` alanı `f3
 
 | Aile | Senaryo | Kapsam |
 | --- | ---: | --- |
-| `math` | 307 | Vec2/Vec3 zincirleri ve f32/f64 yardımcıları; Direction ve koordinat dönüşümleri; random dizileri ve AABB; son 12 senaryo yalnızca Java referansı |
+| `math` | 307 | Vec2/Vec3 zincirleri ve f32/f64 yardımcıları; Direction ve koordinat dönüşümleri; random dizileri ve AABB |
 | `timer` | 22 | Tick sınırları/artık zaman, kontrollü hız değişimi, pause/freeze kombinasyonları, gerçek zaman sınırı, uzun frame ve 2^53 üzerindeki başlangıç saati |
 | `wire` | 144 | VarInt/VarLong yazma/okuma, sınırlar, hatalar, tüketim ve kalan veri |
 | `utf8` | 141 | UTF-16 birim sınırları, UTF-8 okuma/yazma, bozuk diziler, VarInt başlıkları ve hata tüketimi |
@@ -75,4 +75,4 @@ Diğer `math` operasyonları `floor`, `wrap_degrees`, `clamp`; `type` alanı `f3
 
 7 Eylül 2026'da Java 25.0.4.1 / Linux x86_64 üzerinde ilk 346 senaryoluk corpus iki ayrı JVM sürecinde aynı sonuçları verdi. Kayıtlı referansa karşı `verify` de çalıştırıldı. Beş sentetik altyapı testi geçti. Komut düzeyinde ayrıca kontrollü replay, tek alan mutasyonu, boş adaptör çıktısı, eksik adaptör, eksik runtime ve yanlış JAR çıkışları sınandı. Bu replay programı yalnızca karşılaştırıcı kontrolüdür; Rust veya oyun implementasyonu değildir.
 
-P00 bu ilk aileler için hazırdır; asset/GPU/gerçek ağ test altyapısı henüz yoktur. P01'in tüm matematik kapsamı, P02'nin oyun döngüsü ve P03'ün diğer veri biçimleri tamamlanmadı. Rust wire adaptörü debug/release profillerinde 144 senaryoda eşleşti; [kanıt ve sınırlar](wire-parity.md). Zamanlayıcı da 22 senaryoda eşleşti; [kanıt](timer-parity.md). Math ailesi de 220 senaryoda eşleşti; [kanıt ve sınırlar](math-parity.md). UTF-8 ailesi de 141 senaryoda eşleşti; [kanıt](utf8-parity.md). Binary ailesinin 92 senaryosu eşleşti; [kanıt](binary-parity.md). Uygulanan kapsamda birleşik 655 senaryo debug/release profillerinde geçti. Yeni SectionPos 24 senaryosu yakalandı ve doğrulandı; bu kapsamda Rust eşitliği iddiası yok. [Binary sözleşmesi](binary-contract.md). [Vec3 sözleşmesi](vec3-contract.md).
+P00 bu ilk aileler için hazırdır; asset/GPU/gerçek ağ test altyapısı henüz yoktur. P01'in tüm matematik kapsamı, P02'nin oyun döngüsü ve P03'ün diğer veri biçimleri tamamlanmadı. Rust wire adaptörü debug/release profillerinde 144 senaryoda eşleşti; [kanıt ve sınırlar](wire-parity.md). Zamanlayıcı da 22 senaryoda eşleşti; [kanıt](timer-parity.md). Math ailesi 307 senaryoda eşleşti; [kanıt ve sınırlar](math-parity.md), [random/AABB kanıtı](random-aabb-parity.md). UTF-8 ailesi de 141 senaryoda eşleşti; [kanıt](utf8-parity.md). Binary ailesi 116 senaryoda eşleşti; [kanıt](binary-parity.md). NBT ailesinin düz bileşik kapsamı 18 senaryoda eşleşti; [kanıt](nbt-parity.md). Uygulanan kapsamda 748 senaryo debug/release profillerinde geçti. NBT ağaç/liste/dizi için 13 Java referans senaryosu hazır; bu kapsamda Rust eşitliği iddiası yok. [Binary sözleşmesi](binary-contract.md). [Vec3 sözleşmesi](vec3-contract.md).

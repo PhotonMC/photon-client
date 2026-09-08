@@ -1,6 +1,6 @@
 # P01.d/e — Random ve AABB referans sözleşmesi
 
-Bu dilimin **12 Java davranış testi hazırdır; Rust implementasyonu henüz yoktur**. Önceki 295 math senaryosunun girdisi ve sonucu değişmedi. Fork/dağıtım varyantları, kalan AABB yardımcıları ve shape/ray işlemleri bu dilime dahil değildir.
+Bu dilimin 12 Java davranış testi ve Rust karşılaştırması hazırdır. Önceki 295 math senaryosunun girdisi ve sonucu değişmedi. Fork/dağıtım varyantları, kalan AABB yardımcıları ve shape/ray işlemleri bu dilime dahil değildir.
 
 ## Kaynak ve sınır
 
@@ -35,4 +35,6 @@ python3 tools/behavior/run.py verify --family math
 
 Toplam 761 Java senaryosu yakalandı ve doğrulandı. Birleşik referans kimliği: `d9a2a8b214d5bbfff3c1105d5d02029d37fbb09472a12307f14a428f4ae24a39`. Eski kayıtlar değiştirilmedi.
 
-Mevcut Rust matematik adaptörü bu işlemleri içermediğinden ilgili karşılaştırma başarısız olur. Sonraki adım bu sabit referansa karşı random/AABB Rust davranış dilimidir.
+Debug ve release Rust adaptörleri **307/307** eşleşti: 295 önceki math senaryosu ve bu dilimin 12 random/AABB senaryosu. Karşılaştırma random dizilerinin tamsayı/float/double/boolean olaylarını ve AABB uçları, üyelik, kesişim, genişletme ve büzme sonuçlarını kesin bit karşılaştırmasıyla kapsadı.
+
+Yerel raporlar: `compare-37kc_otn` (debug), `compare-q246ny7w` (release) dizinlerinde, `.data/runs/behavior/` altında bulunur. Ayrıntılı Rust API'si [parite kanıtında](random-aabb-parity.md) kayıtlıdır.

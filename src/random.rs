@@ -1,0 +1,94 @@
+//! The legacy random source used by the pinned Java reference.
+//!
+//! `RandomSource.create(seed)` selects the 48-bit linear congruential source
+//! in this slice. The public methods keep the reference's bit widths and
+//! integer overflow behavior explicit so callers can reproduce its sequence.
+
+/// Errors raised by bounded random operations.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RandomError {
+    InvalidBound,
+}
+
+/// Java-compatible 48-bit legacy random source.
+#[derive(Debug, Clone)]
+pub struct RandomSource {
+    seed: u64,
+}
+
+impl RandomSource {
+    const MASK: u64 = (1 << 48) - 1;
+    const MULTIPLIER: u64 = 25_214_903_917;
+    const INCREMENT: u64 = 11;
+
+    /// Create a source with the same seed scrambling as Java's constructor.
+    pub fn create(seed: i64) -> Self {
+        Self {
+            seed: (seed as u64 ^ Self::MULTIPLIER) & Self::MASK,
+        }
+    }
+
+    fn next_bits(&mut self, bits: u32) -> u32 {
+        debug_assert!((1..=32).contains(&bits));
+        self.seed = self
+            .seed
+            .wrapping_mul(Self::MULTIPLIER)
+            .wrapping_add(Self::INCREMENT)
+            & Self::MASK;
+        (self.seed >> (48 - bits)) as u32
+    }
+
+    /// Draw a signed 32-bit value.
+    pub fn next_int(&mut self) -> i32 {
+        self.next_bits(32) as i32
+    }
+
+    /// Draw a value in `[0, bound)`, using Java's rejection rule.
+    pub fn next_int_bound(&mut self, bound: i32) -> Result<i32, RandomError> {
+        if bound <= 0 {
+            return Err(RandomError::InvalidBound);
+        }
+
+        if bound & (bound - 1) == 0 {
+            let sample = i64::from(self.next_bits(31));
+            return Ok(((i64::from(bound) * sample) >> 31) as i32);
+        }
+
+        loop {
+            let sample = self.next_bits(31) as i32;
+            let modulo = sample % bound;
+            // Java evaluates this condition as a signed i32 expression.
+            let acceptance = sample.wrapping_sub(modulo).wrapping_add(bound - 1);
+            if acceptance >= 0 {
+                return Ok(modulo);
+            }
+        }
+    }
+
+    /// Draw a signed 64-bit value using two 32-bit draws.
+    pub fn next_long(&mut self) -> i64 {
+        let upper = self.next_bits(32) as i32;
+        let lower = self.next_bits(32) as i32;
+        i64::from(upper)
+            .wrapping_shl(32)
+            .wrapping_add(i64::from(lower))
+    }
+
+    /// Draw a boolean from one source bit.
+    pub fn next_boolean(&mut self) -> bool {
+        self.next_bits(1) != 0
+    }
+
+    /// Draw a Java-compatible 24-bit float fraction.
+    pub fn next_float(&mut self) -> f32 {
+        self.next_bits(24) as f32 * 5.9604645e-8_f32
+    }
+
+    /// Draw a Java-compatible 53-bit double fraction.
+    pub fn next_double(&mut self) -> f64 {
+        let upper = i64::from(self.next_bits(26));
+        let lower = i64::from(self.next_bits(27));
+        let combined = upper.wrapping_shl(27).wrapping_add(lower);
+        combined as f64 * 1.1102230246251565e-16_f64
+    }
+}

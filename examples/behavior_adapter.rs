@@ -2,10 +2,12 @@
 
 use serde_json::{Value, json};
 use std::io::{self, BufRead, Write};
+use voxel_client::aabb::Aabb;
 use voxel_client::binary::{self, BlockPos, SectionPos, Uuid};
 use voxel_client::direction::{Axis, Direction};
 use voxel_client::math::{self, Vec2, Vec3};
 use voxel_client::nbt::{self, Field, FieldValue};
+use voxel_client::random::RandomSource;
 use voxel_client::timer::Timer;
 use voxel_client::utf8;
 use voxel_client::wire::{self, ReadError};
@@ -146,8 +148,124 @@ fn direction_snapshot(facing: Direction) -> Value {
     })
 }
 
+fn random_result(request: &Value) -> Result<Value, String> {
+    let seed = string(request, "seed")?
+        .parse::<i64>()
+        .map_err(|error| error.to_string())?;
+    let mut random = RandomSource::create(seed);
+    let mut events = vec![json!({})];
+    for step in request["steps"]
+        .as_array()
+        .ok_or("steps must be an array")?
+    {
+        let mut state = serde_json::Map::new();
+        match string(step, "op")? {
+            "nextInt" => {
+                state.insert("value".into(), json!(random.next_int().to_string()));
+            }
+            "nextIntBound" => {
+                let bound = step["bound"]
+                    .as_i64()
+                    .ok_or("bound must be an integer")?
+                    .try_into()
+                    .map_err(|_| "bound must fit in i32".to_owned())?;
+                let value = random
+                    .next_int_bound(bound)
+                    .map_err(|_| "bound must be positive".to_owned())?;
+                state.insert("value".into(), json!(value.to_string()));
+            }
+            "nextLong" => {
+                state.insert("value".into(), json!(random.next_long().to_string()));
+            }
+            "nextBoolean" => {
+                state.insert("value".into(), json!(random.next_boolean().to_string()));
+            }
+            "nextFloat" => {
+                state.insert(
+                    "bits".into(),
+                    json!(format!("{:08x}", random.next_float().to_bits())),
+                );
+            }
+            "nextDouble" => {
+                state.insert(
+                    "bits".into(),
+                    json!(format!("{:016x}", random.next_double().to_bits())),
+                );
+            }
+            _ => return Err("unknown random operation".into()),
+        }
+        events.push(Value::Object(state));
+    }
+    Ok(json!({"events": events}))
+}
+
+fn aabb_box(value: &Value) -> Result<Aabb, String> {
+    Ok(Aabb::new(
+        f64_field(value, "min_x")?,
+        f64_field(value, "min_y")?,
+        f64_field(value, "min_z")?,
+        f64_field(value, "max_x")?,
+        f64_field(value, "max_y")?,
+        f64_field(value, "max_z")?,
+    ))
+}
+
+fn aabb_snapshot(value: Aabb) -> Value {
+    json!({
+        "min_x": format!("{:016x}", value.min_x.to_bits()),
+        "min_y": format!("{:016x}", value.min_y.to_bits()),
+        "min_z": format!("{:016x}", value.min_z.to_bits()),
+        "max_x": format!("{:016x}", value.max_x.to_bits()),
+        "max_y": format!("{:016x}", value.max_y.to_bits()),
+        "max_z": format!("{:016x}", value.max_z.to_bits()),
+    })
+}
+
+fn aabb_result(request: &Value) -> Result<Value, String> {
+    let mut value = aabb_box(request)?;
+    let mut events = vec![aabb_snapshot(value)];
+    for step in request["steps"]
+        .as_array()
+        .ok_or("steps must be an array")?
+    {
+        match string(step, "op")? {
+            "contains" => events.push(json!({
+                "hit": value.contains(
+                    f64_field(step, "x")?,
+                    f64_field(step, "y")?,
+                    f64_field(step, "z")?,
+                )
+            })),
+            "intersects" => {
+                let other = aabb_box(step.get("box").ok_or("box must be an object")?)?;
+                events.push(json!({"hit": value.intersects(other)}));
+            }
+            "expand" => {
+                value = value.expand_towards(
+                    f64_field(step, "x")?,
+                    f64_field(step, "y")?,
+                    f64_field(step, "z")?,
+                );
+                events.push(aabb_snapshot(value));
+            }
+            "deflate" => {
+                value = value.deflate(f64_field(step, "amount")?);
+                events.push(aabb_snapshot(value));
+            }
+            _ => return Err("unknown AABB operation".into()),
+        }
+    }
+    Ok(json!({"events": events}))
+}
+
 fn math_result(request: &Value) -> Result<Value, String> {
     let operation = string(request, "operation")?;
+    if operation == "random" {
+        return random_result(request);
+    }
+    if operation == "aabb" {
+        return aabb_result(request);
+    }
     if operation == "vec2" {
         let mut vector = Vec2::new(f32_field(request, "x")?, f32_field(request, "y")?);
         let mut events = vec![vec2_snapshot(vector)];
