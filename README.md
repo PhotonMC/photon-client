@@ -8,7 +8,7 @@ Orijinal kaynak ve assetler yalnızca yerelde referans ve test girdisi olarak ku
 
 ## Mevcut aşama
 
-Kaynaklar sağlandı; bütünlük envanteri ve ilk kaynak incelemesi tamamlandı. Bölüm bazlı roadmap ve ilk davranış testi sözleşmeleri hazır. P00 yerel test çalıştırıcısı ve 884 Java referans senaryosu mevcut. Random/AABB, AABB contract, AABB inflate, AABB intersect, AABB minmax, AABB move, AABB sizes, AABB hasNaN, AABB positions, AABB axis min/max, AABB distanceToSqr, AABB ofSize, AABB clip, VoxelShape temel/OR, BooleanOp join ve tekli/çoklu shape collision, nextGaussian, fork/positional, setSeed, random yardımcı overload'ları, NBT ağaç/liste/dizi ve BlockPos/section-relative dilimleri dahil Rust uygulanan kapsam debug/release profillerinde 884 senaryonun tamamında Java ile eşleşiyor. Oynanabilir istemci henüz yok. Boş `main`, yalnızca iskelettir.
+Kaynaklar sağlandı; bütünlük envanteri ve ilk kaynak incelemesi tamamlandı. Bölüm bazlı roadmap ve ilk davranış testi sözleşmeleri hazır. P00 yerel test çalıştırıcısı ve 890 Java referans senaryosu mevcut. Random/AABB, AABB contract, AABB inflate, AABB intersect, AABB minmax, AABB move, AABB sizes, AABB hasNaN, AABB positions, AABB axis min/max, AABB distanceToSqr, AABB ofSize, AABB endpoint setter'ları, AABB clip, VoxelShape temel/OR, BooleanOp join ve tekli/çoklu shape collision, nextGaussian, fork/positional, setSeed, random yardımcı overload'ları, NBT ağaç/liste/dizi ve BlockPos/section-relative dilimleri dahil Rust uygulanan kapsam debug/release profillerinde 890 senaryonun tamamında Java ile eşleşiyor. Oynanabilir istemci henüz yok. Boş `main`, yalnızca iskelettir.
 
 Mevcut referanslar [yerel veri rehberindeki](docs/reference-data.md) `.data/` alanında kalır. Test yol haritası kalan P01 yardımcıları ve bağlantı önkoşullarıyla sürüyor. Her Rust diliminden önce ilgili Java referansı ve testler hazırlanacak. Grafik, ses, pencere ve ağ teknolojileri sonraya bırakıldı. Test otomasyonu Python standart kütüphanesi ve özgün Java adaptörlerini kullanıyor; üretim kütüphanesine ek Rust bağımlılığı eklenmedi. Rust JSONL test adaptörü `serde_json` geliştirme bağımlılığını kullanıyor.
 
@@ -53,6 +53,8 @@ Mevcut referanslar [yerel veri rehberindeki](docs/reference-data.md) `.data/` al
 - [AABB distanceToSqr doğrulaması](docs/aabb-distance-parity.md)
 - [AABB ofSize sözleşmesi ve referans testleri](docs/aabb-of-size-contract.md)
 - [AABB ofSize doğrulaması](docs/aabb-of-size-parity.md)
+- [AABB endpoint setter sözleşmesi ve referans testleri](docs/aabb-set-endpoint-contract.md)
+- [AABB endpoint setter doğrulaması](docs/aabb-set-endpoint-parity.md)
 - [AABB clip sözleşmesi ve referans testleri](docs/aabb-clip-contract.md)
 - [AABB clip doğrulaması](docs/aabb-clip-parity.md)
 - [VoxelShape temel/OR doğrulaması](docs/shape-parity.md)

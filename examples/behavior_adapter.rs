@@ -630,6 +630,30 @@ fn aabb_result(request: &Value) -> Result<Value, String> {
                 );
                 events.push(aabb_snapshot(value));
             }
+            "set_min_x" => {
+                value = value.set_min_x(f64_field(step, "value")?);
+                events.push(aabb_snapshot(value));
+            }
+            "set_min_y" => {
+                value = value.set_min_y(f64_field(step, "value")?);
+                events.push(aabb_snapshot(value));
+            }
+            "set_min_z" => {
+                value = value.set_min_z(f64_field(step, "value")?);
+                events.push(aabb_snapshot(value));
+            }
+            "set_max_x" => {
+                value = value.set_max_x(f64_field(step, "value")?);
+                events.push(aabb_snapshot(value));
+            }
+            "set_max_y" => {
+                value = value.set_max_y(f64_field(step, "value")?);
+                events.push(aabb_snapshot(value));
+            }
+            "set_max_z" => {
+                value = value.set_max_z(f64_field(step, "value")?);
+                events.push(aabb_snapshot(value));
+            }
             "clip" => {
                 let from = f64_vec3(step.get("from").ok_or("from must be an object")?)?;
                 let to = f64_vec3(step.get("to").ok_or("to must be an object")?)?;

@@ -606,6 +606,47 @@ def math_cases():
                                "size_y": float_bits(float("inf"), "f64"),
                                "size_z": float_bits(float("nan"), "f64")}]}
 
+    yield {"case_id": "aabb/set-endpoint/basic", "family": "math", "operation": "aabb",
+           **box_bits(-2.0, -3.0, -4.0, 5.0, 6.0, 7.0),
+           "steps": [{"op": "set_min_x", "value": float_bits(-1.5, "f64")},
+                      {"op": "set_min_y", "value": float_bits(-2.5, "f64")},
+                      {"op": "set_min_z", "value": float_bits(-3.5, "f64")},
+                      {"op": "set_max_x", "value": float_bits(4.5, "f64")},
+                      {"op": "set_max_y", "value": float_bits(5.5, "f64")},
+                      {"op": "set_max_z", "value": float_bits(6.5, "f64")}]}
+    yield {"case_id": "aabb/set-endpoint/min-chain", "family": "math", "operation": "aabb",
+           **box_bits(0.0, 10.0, 20.0, 30.0, 40.0, 50.0),
+           "steps": [{"op": "set_min_x", "value": float_bits(1.0, "f64")},
+                      {"op": "set_min_y", "value": float_bits(11.0, "f64")},
+                      {"op": "set_min_z", "value": float_bits(21.0, "f64")}]}
+    yield {"case_id": "aabb/set-endpoint/max-chain", "family": "math", "operation": "aabb",
+           **box_bits(-30.0, -40.0, -50.0, 0.0, 10.0, 20.0),
+           "steps": [{"op": "set_max_x", "value": float_bits(-1.0, "f64")},
+                      {"op": "set_max_y", "value": float_bits(9.0, "f64")},
+                      {"op": "set_max_z", "value": float_bits(19.0, "f64")}]}
+    yield {"case_id": "aabb/set-endpoint/reversed-normalizes", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "set_min_x", "value": float_bits(4.0, "f64")},
+                              {"op": "set_min_y", "value": float_bits(5.0, "f64")},
+                              {"op": "set_min_z", "value": float_bits(6.0, "f64")},
+                              {"op": "set_max_x", "value": float_bits(-4.0, "f64")},
+                              {"op": "set_max_y", "value": float_bits(-5.0, "f64")},
+                              {"op": "set_max_z", "value": float_bits(-6.0, "f64")}]}
+    yield {"case_id": "aabb/set-endpoint/signed-zero", "family": "math", "operation": "aabb",
+           **box_bits(-0.0, -0.0, -0.0, 0.0, 0.0, 0.0),
+           "steps": [{"op": "set_min_x", "value": float_bits(-0.0, "f64")},
+                      {"op": "set_max_x", "value": float_bits(0.0, "f64")},
+                      {"op": "set_min_y", "value": float_bits(0.0, "f64")},
+                      {"op": "set_max_y", "value": float_bits(-0.0, "f64")},
+                      {"op": "set_min_z", "value": float_bits(-0.0, "f64")},
+                      {"op": "set_max_z", "value": float_bits(0.0, "f64")}]}
+    yield {"case_id": "aabb/set-endpoint/special", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "set_min_x", "value": float_bits(float("nan"), "f64")},
+                              {"op": "set_max_y", "value": float_bits(float("inf"), "f64")},
+                              {"op": "set_min_z", "value": float_bits(float("-inf"), "f64")},
+                              {"op": "set_max_x", "value": float_bits(float("nan"), "f64")},
+                              {"op": "set_min_y", "value": float_bits(float("-inf"), "f64")},
+                              {"op": "set_max_z", "value": float_bits(float("inf"), "f64")}]}
+
     clip_rays = {
         "west-to-east": ((-1.0, 0.5, 0.5), (2.0, 0.5, 0.5)),
         "east-to-west": ((2.0, 0.5, 0.5), (-1.0, 0.5, 0.5)),

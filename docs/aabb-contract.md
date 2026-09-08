@@ -1,6 +1,6 @@
 # P01.d — AABB contract sözleşmesi
 
-Bu dilimin **5 Java davranış testi hazırdır ve Rust karşılığı doğrulanmıştır** ([kanıt](aabb-parity.md)). Kapsam, hareket delta'sının işaretine göre Java `AABB.contract(double,double,double)` çağrısının kutunun tek uç noktasını içeri taşımasını içerir. AABB inflate için ayrı [sözleşme](aabb-inflate-contract.md), intersect için ayrı [sözleşme](aabb-intersect-contract.md), move için ayrı [sözleşme](aabb-move-contract.md), sizes için ayrı [sözleşme](aabb-sizes-contract.md) ve hasNaN için ayrı [sözleşme](aabb-has-nan-contract.md), positions için ayrı [sözleşme](aabb-positions-contract.md), axis min/max için ayrı [sözleşme](aabb-axis-limits-contract.md), distanceToSqr için ayrı [sözleşme](aabb-distance-contract.md), ofSize için ayrı [sözleşme](aabb-of-size-contract.md) vardır; clip ve diğer genişletme/kesişim işlemleri ayrı dilimlerdir.
+Bu dilimin **5 Java davranış testi hazırdır ve Rust karşılığı doğrulanmıştır** ([kanıt](aabb-parity.md)). Kapsam, hareket delta'sının işaretine göre Java `AABB.contract(double,double,double)` çağrısının kutunun tek uç noktasını içeri taşımasını içerir. AABB inflate için ayrı [sözleşme](aabb-inflate-contract.md), intersect için ayrı [sözleşme](aabb-intersect-contract.md), move için ayrı [sözleşme](aabb-move-contract.md), sizes için ayrı [sözleşme](aabb-sizes-contract.md) ve hasNaN için ayrı [sözleşme](aabb-has-nan-contract.md), positions için ayrı [sözleşme](aabb-positions-contract.md), axis min/max için ayrı [sözleşme](aabb-axis-limits-contract.md), distanceToSqr için ayrı [sözleşme](aabb-distance-contract.md), ofSize için ayrı [sözleşme](aabb-of-size-contract.md), endpoint setter'ları için ayrı [sözleşme](aabb-set-endpoint-contract.md) vardır; clip ve diğer genişletme/kesişim işlemleri ayrı dilimlerdir.
 
 ## Kaynak ve sınır
 
@@ -34,6 +34,6 @@ cargo build --locked --offline --example behavior_adapter
 python3 tools/behavior/run.py compare --family math --adapter target/debug/examples/behavior_adapter
 ```
 
-Contract senaryolarını içeren math referans kimliği `3795d607b2b0b2e782a153bffb5f46917835f2df40d4a855940d960953a37113` oldu. Bu referans iki JVM çalıştırmasıyla kararlı bulundu. Birleşik altı aile referansı `edc0c8336e5ffc79d1a744d6ddd301865a855ae2601c261b91b46cb5c453ddb9` kimliğiyle iki JVM'de doğrulandı.
+Contract senaryolarını içeren math referans kimliği `3795d607b2b0b2e782a153bffb5f46917835f2df40d4a855940d960953a37113` oldu. Bu referans iki JVM çalıştırmasıyla kararlı bulundu. Birleşik altı aile referansı `b2f998eee343dbc6dba62767b64d8149f4fbd68e0790944baf45d74a3a377972` kimliğiyle iki JVM'de doğrulandı.
 
-Rust debug ve release adaptörleri math ailesinde 371/371, birleşik corpus'ta 884/884 eşleşti. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.
+Rust debug ve release adaptörleri math ailesinde 371/371, birleşik corpus'ta 890/890 eşleşti. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.

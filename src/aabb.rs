@@ -2,7 +2,7 @@
 //!
 //! This covers the constructor normalization and the contains/intersects,
 //! expand-towards, contract, inflate, intersect, minmax, move, sizes, has_nan,
-//! positions, axis endpoint queries, `of_size`, deflate and segment clipping operations used by the current behavior corpus.
+//! positions, axis endpoint queries, `of_size`, endpoint setters, deflate and segment clipping operations used by the current behavior corpus.
 
 use crate::{direction::Axis, math::Vec3};
 
@@ -41,6 +41,48 @@ impl Aabb {
             center.x + size_x / 2.0,
             center.y + size_y / 2.0,
             center.z + size_z / 2.0,
+        )
+    }
+
+    /// Replace the lower x endpoint and reapply constructor normalization.
+    pub fn set_min_x(self, min_x: f64) -> Self {
+        Self::new(
+            min_x, self.min_y, self.min_z, self.max_x, self.max_y, self.max_z,
+        )
+    }
+
+    /// Replace the lower y endpoint and reapply constructor normalization.
+    pub fn set_min_y(self, min_y: f64) -> Self {
+        Self::new(
+            self.min_x, min_y, self.min_z, self.max_x, self.max_y, self.max_z,
+        )
+    }
+
+    /// Replace the lower z endpoint and reapply constructor normalization.
+    pub fn set_min_z(self, min_z: f64) -> Self {
+        Self::new(
+            self.min_x, self.min_y, min_z, self.max_x, self.max_y, self.max_z,
+        )
+    }
+
+    /// Replace the upper x endpoint and reapply constructor normalization.
+    pub fn set_max_x(self, max_x: f64) -> Self {
+        Self::new(
+            self.min_x, self.min_y, self.min_z, max_x, self.max_y, self.max_z,
+        )
+    }
+
+    /// Replace the upper y endpoint and reapply constructor normalization.
+    pub fn set_max_y(self, max_y: f64) -> Self {
+        Self::new(
+            self.min_x, self.min_y, self.min_z, self.max_x, max_y, self.max_z,
+        )
+    }
+
+    /// Replace the upper z endpoint and reapply constructor normalization.
+    pub fn set_max_z(self, max_z: f64) -> Self {
+        Self::new(
+            self.min_x, self.min_y, self.min_z, self.max_x, self.max_y, max_z,
         )
     }
 

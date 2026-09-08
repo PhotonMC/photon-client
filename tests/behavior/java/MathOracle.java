@@ -269,6 +269,30 @@ public final class MathOracle {
                             f64(step, "size_z"));
                         events.add(snapshot(box));
                     }
+                    case "set_min_x" -> {
+                        box = box.setMinX(f64(step, "value"));
+                        events.add(snapshot(box));
+                    }
+                    case "set_min_y" -> {
+                        box = box.setMinY(f64(step, "value"));
+                        events.add(snapshot(box));
+                    }
+                    case "set_min_z" -> {
+                        box = box.setMinZ(f64(step, "value"));
+                        events.add(snapshot(box));
+                    }
+                    case "set_max_x" -> {
+                        box = box.setMaxX(f64(step, "value"));
+                        events.add(snapshot(box));
+                    }
+                    case "set_max_y" -> {
+                        box = box.setMaxY(f64(step, "value"));
+                        events.add(snapshot(box));
+                    }
+                    case "set_max_z" -> {
+                        box = box.setMaxZ(f64(step, "value"));
+                        events.add(snapshot(box));
+                    }
                     case "clip" -> {
                         var hit = box.clip(
                             vec3(step.getAsJsonObject("from")),
