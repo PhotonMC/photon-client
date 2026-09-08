@@ -148,6 +148,65 @@ fn direction_snapshot(facing: Direction) -> Value {
     })
 }
 
+fn blockpos(value: &Value) -> Result<BlockPos, String> {
+    let coordinate = |name: &str| {
+        string(value, name)?
+            .parse::<i32>()
+            .map_err(|error| error.to_string())
+    };
+    Ok(BlockPos::new(
+        coordinate("x")?,
+        coordinate("y")?,
+        coordinate("z")?,
+    ))
+}
+
+fn blockpos_snapshot(value: BlockPos) -> Value {
+    json!({
+        "x": value.x.to_string(),
+        "y": value.y.to_string(),
+        "z": value.z.to_string(),
+    })
+}
+
+fn blockpos_result(request: &Value) -> Result<Value, String> {
+    let mut value = blockpos(request)?;
+    let mut events = vec![blockpos_snapshot(value)];
+    for step in request["steps"]
+        .as_array()
+        .ok_or("steps must be an array")?
+    {
+        value = match string(step, "action")? {
+            "offset" => value.offset(
+                string(step, "x")?
+                    .parse::<i32>()
+                    .map_err(|error| error.to_string())?,
+                string(step, "y")?
+                    .parse::<i32>()
+                    .map_err(|error| error.to_string())?,
+                string(step, "z")?
+                    .parse::<i32>()
+                    .map_err(|error| error.to_string())?,
+            ),
+            "min" => BlockPos::min(value, blockpos(step)?),
+            "max" => BlockPos::max(value, blockpos(step)?),
+            _ => return Err("unknown BlockPos action".into()),
+        };
+        events.push(blockpos_snapshot(value));
+    }
+    Ok(json!({"events": events}))
+}
+
+fn section_relative_result(request: &Value) -> Result<Value, String> {
+    let relative = SectionPos::section_relative_pos(blockpos(request)?);
+    Ok(json!({
+        "relative": relative.to_string(),
+        "x": SectionPos::section_relative_x(relative).to_string(),
+        "y": SectionPos::section_relative_y(relative).to_string(),
+        "z": SectionPos::section_relative_z(relative).to_string(),
+    }))
+}
+
 fn random_result(request: &Value) -> Result<Value, String> {
     let seed = string(request, "seed")?
         .parse::<i64>()
@@ -265,6 +324,12 @@ fn math_result(request: &Value) -> Result<Value, String> {
     }
     if operation == "aabb" {
         return aabb_result(request);
+    }
+    if operation == "blockpos" {
+        return blockpos_result(request);
+    }
+    if operation == "section_relative" {
+        return section_relative_result(request);
     }
     if operation == "vec2" {
         let mut vector = Vec2::new(f32_field(request, "x")?, f32_field(request, "y")?);

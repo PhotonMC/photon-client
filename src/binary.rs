@@ -49,6 +49,29 @@ impl BlockPos {
         Self { x, y, z }
     }
 
+    /// Offset coordinates with Java i32 wrapping arithmetic.
+    pub fn offset(self, x: i32, y: i32, z: i32) -> Self {
+        if x == 0 && y == 0 && z == 0 {
+            self
+        } else {
+            Self::new(
+                self.x.wrapping_add(x),
+                self.y.wrapping_add(y),
+                self.z.wrapping_add(z),
+            )
+        }
+    }
+
+    /// Componentwise minimum, matching `BlockPos.min`.
+    pub fn min(a: Self, b: Self) -> Self {
+        Self::new(a.x.min(b.x), a.y.min(b.y), a.z.min(b.z))
+    }
+
+    /// Componentwise maximum, matching `BlockPos.max`.
+    pub fn max(a: Self, b: Self) -> Self {
+        Self::new(a.x.max(b.x), a.y.max(b.y), a.z.max(b.z))
+    }
+
     /// Pack with masking, so out-of-range inputs wrap as the reference does.
     pub fn pack(self) -> u64 {
         ((u64::from(self.x as u32) & PACKED_HORIZONTAL_MASK) << X_OFFSET)
@@ -290,6 +313,26 @@ const SECTION_Z_OFFSET: u32 = PACKED_SECTION_Y_LENGTH;
 impl SectionPos {
     pub const fn new(x: i32, y: i32, z: i32) -> Self {
         Self { x, y, z }
+    }
+
+    /// Pack a block position's section-relative coordinates into 12 bits.
+    pub fn section_relative_pos(pos: BlockPos) -> u16 {
+        let x = (pos.x & 15) as u16;
+        let y = (pos.y & 15) as u16;
+        let z = (pos.z & 15) as u16;
+        (x << 8) | (z << 4) | y
+    }
+
+    pub fn section_relative_x(relative: u16) -> i32 {
+        i32::from((relative >> 8) & 15)
+    }
+
+    pub fn section_relative_y(relative: u16) -> i32 {
+        i32::from(relative & 15)
+    }
+
+    pub fn section_relative_z(relative: u16) -> i32 {
+        i32::from((relative >> 4) & 15)
     }
 
     /// Pack with masking, so out-of-range inputs wrap as the reference does.

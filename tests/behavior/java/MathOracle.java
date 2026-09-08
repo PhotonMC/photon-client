@@ -1,5 +1,6 @@
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.SectionPos;
 import net.minecraft.util.Mth;
@@ -55,6 +56,30 @@ public final class MathOracle {
             };
             result.addProperty("value", Integer.toString(out));
             return result;
+        } else if (operation.equals("blockpos")) {
+            BlockPos pos = blockPos(request);
+            var events = new JsonArray();
+            events.add(snapshot(pos));
+            for (var entry : request.getAsJsonArray("steps")) {
+                JsonObject step = entry.getAsJsonObject();
+                pos = switch (step.get("action").getAsString()) {
+                    case "offset" -> pos.offset(
+                        Integer.parseInt(step.get("x").getAsString()),
+                        Integer.parseInt(step.get("y").getAsString()),
+                        Integer.parseInt(step.get("z").getAsString()));
+                    case "min" -> BlockPos.min(pos, blockPos(step));
+                    case "max" -> BlockPos.max(pos, blockPos(step));
+                    default -> throw new IllegalArgumentException("Unknown BlockPos action");
+                };
+                events.add(snapshot(pos));
+            }
+            result.add("events", events);
+        } else if (operation.equals("section_relative")) {
+            short relative = SectionPos.sectionRelativePos(blockPos(request));
+            result.addProperty("relative", Integer.toString(Short.toUnsignedInt(relative)));
+            result.addProperty("x", Integer.toString(SectionPos.sectionRelativeX(relative)));
+            result.addProperty("y", Integer.toString(SectionPos.sectionRelativeY(relative)));
+            result.addProperty("z", Integer.toString(SectionPos.sectionRelativeZ(relative)));
         } else if (operation.equals("vec3")) {
             Vec3 vector = new Vec3(f64(request, "x"), f64(request, "y"), f64(request, "z"));
             var events = new JsonArray();
@@ -156,6 +181,14 @@ public final class MathOracle {
             f64(object, "max_x"), f64(object, "max_y"), f64(object, "max_z"));
     }
 
+    private static BlockPos blockPos(JsonObject object) {
+        return new BlockPos(
+            Integer.parseInt(object.get("x").getAsString()),
+            Integer.parseInt(object.get("y").getAsString()),
+            Integer.parseInt(object.get("z").getAsString())
+        );
+    }
+
     private static JsonObject snapshot(AABB box) {
         var state = new JsonObject();
         state.addProperty("min_x", Oracle.bits(box.minX));
@@ -164,6 +197,14 @@ public final class MathOracle {
         state.addProperty("max_x", Oracle.bits(box.maxX));
         state.addProperty("max_y", Oracle.bits(box.maxY));
         state.addProperty("max_z", Oracle.bits(box.maxZ));
+        return state;
+    }
+
+    private static JsonObject snapshot(BlockPos pos) {
+        var state = new JsonObject();
+        state.addProperty("x", Integer.toString(pos.getX()));
+        state.addProperty("y", Integer.toString(pos.getY()));
+        state.addProperty("z", Integer.toString(pos.getZ()));
         return state;
     }
 

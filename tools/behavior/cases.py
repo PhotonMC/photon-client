@@ -88,6 +88,47 @@ def math_cases():
         for value in coords:
             yield {"case_id": f"coord/{fn}/{value}", "family": "math", "operation": "coord",
                    "fn": fn, "value": str(value)}
+    blockpos_steps = {
+        "basic": [
+            {"action": "offset", "x": "0", "y": "0", "z": "0"},
+            {"action": "offset", "x": "1", "y": "-2", "z": "3"},
+            {"action": "min", "x": "-4", "y": "5", "z": "2"},
+            {"action": "max", "x": "8", "y": "-9", "z": "10"},
+        ],
+        "negative-boundaries": [
+            {"action": "offset", "x": "16", "y": "16", "z": "16"},
+            {"action": "min", "x": "-32", "y": "-15", "z": "-1"},
+            {"action": "max", "x": "-16", "y": "17", "z": "31"},
+        ],
+        "overflow": [
+            {"action": "offset", "x": "1", "y": "-1", "z": "1"},
+            {"action": "offset", "x": "-2", "y": "2", "z": "-2"},
+        ],
+        "reversed-min-max": [
+            {"action": "max", "x": "-20", "y": "30", "z": "-40"},
+            {"action": "min", "x": "20", "y": "-30", "z": "40"},
+        ],
+    }
+    blockpos_origins = {
+        "basic": (0, 0, 0),
+        "negative-boundaries": (-17, -16, -1),
+        "overflow": (2147483647, -2147483648, 2147483647),
+        "reversed-min-max": (9, -4, 20),
+    }
+    for label, steps in blockpos_steps.items():
+        x, y, z = blockpos_origins[label]
+        yield {"case_id": f"blockpos/chain/{label}", "family": "math", "operation": "blockpos",
+               "x": str(x), "y": str(y), "z": str(z), "steps": steps}
+    for label, (x, y, z) in {
+        "origin": (0, 0, 0),
+        "positive-boundary": (15, 15, 15),
+        "section-next": (16, 16, 16),
+        "negative-one": (-1, -1, -1),
+        "negative-section": (-17, -16, -1),
+        "integer-boundaries": (2147483647, -2147483648, 31),
+    }.items():
+        yield {"case_id": f"section-relative/{label}", "family": "math", "operation": "section_relative",
+               "x": str(x), "y": str(y), "z": str(z)}
     for seed in (0, 1, -1, 12345, 9223372036854775807):
         yield {"case_id": f"random/sequence/{seed}", "family": "math", "operation": "random",
                "seed": str(seed), "steps": [{"op": "nextInt"}, {"op": "nextFloat"},
