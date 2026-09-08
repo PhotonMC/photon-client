@@ -515,6 +515,35 @@ def math_cases():
                               {"op": "move", "x": float_bits(1.25, "f64"),
                                "y": float_bits(-0.5, "f64"), "z": float_bits(2.0, "f64")},
                               {"op": "positions"}]}
+    axis_box = box_bits(-4.0, -3.0, -2.0, 4.0, 3.0, 2.0)
+    yield {"case_id": "aabb/axis-limit/min-all", "family": "math", "operation": "aabb",
+           **axis_box, "steps": [{"op": "min", "axis": "x"},
+                                  {"op": "min", "axis": "y"},
+                                  {"op": "min", "axis": "z"}]}
+    yield {"case_id": "aabb/axis-limit/max-all", "family": "math", "operation": "aabb",
+           **axis_box, "steps": [{"op": "max", "axis": "x"},
+                                  {"op": "max", "axis": "y"},
+                                  {"op": "max", "axis": "z"}]}
+    yield {"case_id": "aabb/axis-limit/mixed", "family": "math", "operation": "aabb",
+           **axis_box, "steps": [{"op": "min", "axis": "z"},
+                                  {"op": "max", "axis": "x"},
+                                  {"op": "min", "axis": "y"},
+                                  {"op": "max", "axis": "z"}]}
+    yield {"case_id": "aabb/axis-limit/reversed-normalizes", "family": "math", "operation": "aabb",
+           "min_x": float_bits(4.0, "f64"), "min_y": float_bits(3.0, "f64"),
+           "min_z": float_bits(2.0, "f64"), "max_x": float_bits(-4.0, "f64"),
+           "max_y": float_bits(-3.0, "f64"), "max_z": float_bits(-2.0, "f64"),
+           "steps": [{"op": "min", "axis": "x"}, {"op": "max", "axis": "y"}]}
+    yield {"case_id": "aabb/axis-limit/signed-zero", "family": "math", "operation": "aabb",
+           "min_x": float_bits(-0.0, "f64"), "min_y": float_bits(-0.0, "f64"),
+           "min_z": float_bits(-0.0, "f64"), "max_x": float_bits(0.0, "f64"),
+           "max_y": float_bits(0.0, "f64"), "max_z": float_bits(0.0, "f64"),
+           "steps": [{"op": "min", "axis": "x"}, {"op": "max", "axis": "y"},
+                      {"op": "min", "axis": "z"}, {"op": "max", "axis": "x"}]}
+    yield {"case_id": "aabb/axis-limit/nan", "family": "math", "operation": "aabb",
+           **unit, "min_x": float_bits(float("nan"), "f64"),
+           "steps": [{"op": "min", "axis": "x"}, {"op": "max", "axis": "x"},
+                      {"op": "min", "axis": "y"}]}
     def point(x, y, z):
         return {"x": float_bits(x, "f64"), "y": float_bits(y, "f64"), "z": float_bits(z, "f64")}
 

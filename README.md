@@ -8,7 +8,7 @@ Orijinal kaynak ve assetler yalnızca yerelde referans ve test girdisi olarak ku
 
 ## Mevcut aşama
 
-Kaynaklar sağlandı; bütünlük envanteri ve ilk kaynak incelemesi tamamlandı. Bölüm bazlı roadmap ve ilk davranış testi sözleşmeleri hazır. P00 yerel test çalıştırıcısı ve 866 Java referans senaryosu mevcut. Random/AABB, AABB contract, AABB inflate, AABB intersect, AABB minmax, AABB move, AABB sizes, AABB hasNaN, AABB positions, AABB clip, VoxelShape temel/OR, BooleanOp join ve tekli/çoklu shape collision, nextGaussian, fork/positional, setSeed, random yardımcı overload'ları, NBT ağaç/liste/dizi ve BlockPos/section-relative dilimleri dahil Rust uygulanan kapsam debug/release profillerinde 866 senaryonun tamamında Java ile eşleşiyor. Oynanabilir istemci henüz yok. Boş `main`, yalnızca iskelettir.
+Kaynaklar sağlandı; bütünlük envanteri ve ilk kaynak incelemesi tamamlandı. Bölüm bazlı roadmap ve ilk davranış testi sözleşmeleri hazır. P00 yerel test çalıştırıcısı ve 872 Java referans senaryosu mevcut. Random/AABB, AABB contract, AABB inflate, AABB intersect, AABB minmax, AABB move, AABB sizes, AABB hasNaN, AABB positions, AABB axis min/max, AABB clip, VoxelShape temel/OR, BooleanOp join ve tekli/çoklu shape collision, nextGaussian, fork/positional, setSeed, random yardımcı overload'ları, NBT ağaç/liste/dizi ve BlockPos/section-relative dilimleri dahil Rust uygulanan kapsam debug/release profillerinde 872 senaryonun tamamında Java ile eşleşiyor. Oynanabilir istemci henüz yok. Boş `main`, yalnızca iskelettir.
 
 Mevcut referanslar [yerel veri rehberindeki](docs/reference-data.md) `.data/` alanında kalır. Test yol haritası kalan P01 yardımcıları ve bağlantı önkoşullarıyla sürüyor. Her Rust diliminden önce ilgili Java referansı ve testler hazırlanacak. Grafik, ses, pencere ve ağ teknolojileri sonraya bırakıldı. Test otomasyonu Python standart kütüphanesi ve özgün Java adaptörlerini kullanıyor; üretim kütüphanesine ek Rust bağımlılığı eklenmedi. Rust JSONL test adaptörü `serde_json` geliştirme bağımlılığını kullanıyor.
 
@@ -47,6 +47,8 @@ Mevcut referanslar [yerel veri rehberindeki](docs/reference-data.md) `.data/` al
 - [AABB hasNaN doğrulaması](docs/aabb-has-nan-parity.md)
 - [AABB positions sözleşmesi ve referans testleri](docs/aabb-positions-contract.md)
 - [AABB positions doğrulaması](docs/aabb-positions-parity.md)
+- [AABB axis min/max sözleşmesi ve referans testleri](docs/aabb-axis-limits-contract.md)
+- [AABB axis min/max doğrulaması](docs/aabb-axis-limits-parity.md)
 - [AABB clip sözleşmesi ve referans testleri](docs/aabb-clip-contract.md)
 - [AABB clip doğrulaması](docs/aabb-clip-parity.md)
 - [VoxelShape temel/OR doğrulaması](docs/shape-parity.md)

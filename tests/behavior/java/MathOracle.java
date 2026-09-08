@@ -239,6 +239,16 @@ public final class MathOracle {
                         state.add("max_position", snapshot(box.getMaxPosition()));
                         events.add(state);
                     }
+                    case "min", "max" -> {
+                        Direction.Axis axis = Direction.Axis.byName(step.get("axis").getAsString());
+                        if (axis == null) {
+                            throw new IllegalArgumentException("Unknown axis name");
+                        }
+                        var state = new JsonObject();
+                        state.addProperty("value", Oracle.bits(step.get("op").getAsString().equals("min")
+                            ? box.min(axis) : box.max(axis)));
+                        events.add(state);
+                    }
                     case "clip" -> {
                         var hit = box.clip(
                             vec3(step.getAsJsonObject("from")),

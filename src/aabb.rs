@@ -2,9 +2,9 @@
 //!
 //! This covers the constructor normalization and the contains/intersects,
 //! expand-towards, contract, inflate, intersect, minmax, move, sizes, has_nan,
-//! positions, deflate and segment clipping operations used by the current behavior corpus.
+//! positions, axis endpoint queries, deflate and segment clipping operations used by the current behavior corpus.
 
-use crate::math::Vec3;
+use crate::{direction::Axis, math::Vec3};
 
 /// An axis-aligned box with normalized inclusive lower and exclusive upper
 /// query boundaries, matching the Java reference's stored endpoints.
@@ -158,6 +158,24 @@ impl Aabb {
     /// Return the upper endpoint as a vector.
     pub fn max_position(self) -> Vec3 {
         Vec3::new(self.max_x, self.max_y, self.max_z)
+    }
+
+    /// Return the lower endpoint selected by an axis.
+    pub fn min(self, axis: Axis) -> f64 {
+        match axis {
+            Axis::X => self.min_x,
+            Axis::Y => self.min_y,
+            Axis::Z => self.min_z,
+        }
+    }
+
+    /// Return the upper endpoint selected by an axis.
+    pub fn max(self, axis: Axis) -> f64 {
+        match axis {
+            Axis::X => self.max_x,
+            Axis::Y => self.max_y,
+            Axis::Z => self.max_z,
+        }
     }
 
     /// Extend both endpoints by the supplied per-axis amounts.
