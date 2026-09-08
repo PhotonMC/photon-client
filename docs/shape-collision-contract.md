@@ -34,6 +34,6 @@ cargo build --locked --offline --example behavior_adapter
 python3 tools/behavior/run.py compare --family math --adapter target/debug/examples/behavior_adapter
 ```
 
-Tek shape collision senaryolarını içeren math referans kimliği `b31620fa93e0533f6498b86deedf056a7e4dda293e4fa80ae354dd69541d1ebd` oldu. Bu referans iki JVM çalıştırmasıyla kararlı bulundu. Birleşik altı aile referansı `cadb5899f013b31a0f9a6ac389c7c724dd7eb83f79803c37c0b757d7e852454e` kimliğiyle iki JVM'de doğrulandı.
+Tek shape collision senaryolarını içeren math referans kimliği `b31620fa93e0533f6498b86deedf056a7e4dda293e4fa80ae354dd69541d1ebd` oldu. Bu referans iki JVM çalıştırmasıyla kararlı bulundu. Birleşik altı aile referansı `04a71f8e9296c7c49a521c089fdc0a17ddb72a44af41997c4c78bc8812a5bbd8` kimliğiyle iki JVM'de doğrulandı.
 
-Rust debug ve release adaptörleri tek shape math referansında 361/361, güncel birleşik corpus'ta 836/836 eşleşti. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.
+Rust debug ve release adaptörleri tek shape math referansında 361/361, güncel birleşik corpus'ta 842/842 eşleşti. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.

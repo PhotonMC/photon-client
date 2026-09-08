@@ -31,10 +31,10 @@ cargo build --locked --offline --example behavior_adapter
 python3 tools/behavior/run.py compare --family math --adapter target/debug/examples/behavior_adapter
 ```
 
-323 math senaryosu iki ayrı JVM'de aynı sonucu verdi. Math referans kimliği: `b04328d3836db8458e37a31e45b96c1c92ba29348f35c055b49ac522f339a43e`. Ham girdiler/çıktılar yalnızca `.data/` altında tutulur.
+323 math senaryosu iki ayrı JVM'de aynı sonucu verdi. Math referans kimliği: `b04328d3842db8458e37a31e45b96c1c92ba29348f35c055b49ac522f339a43e`. Ham girdiler/çıktılar yalnızca `.data/` altında tutulur.
 
-Altı ailenin 836 senaryolu birleşik referansı iki JVM'de doğrulandı. Birleşik referans kimliği: `cadb5899f013b31a0f9a6ac389c7c724dd7eb83f79803c37c0b757d7e852454e`.
+Altı ailenin 842 senaryolu birleşik referansı iki JVM'de doğrulandı. Birleşik referans kimliği: `04a71f8e9296c7c49a521c089fdc0a17ddb72a44af41997c4c78bc8812a5bbd8`.
 
-Math debug ve release Rust adaptörleri **323/323** eşleşti; birleşik debug ve release karşılaştırmaları da **836/836** geçti. Yerel raporlar `compare-71jdlsjf` (math debug), `compare-owaw1c7e` (math release), `compare-2pxxyovy` (birleşik debug) ve `compare-peecwwsu` (birleşik release) dizinlerinde, `.data/runs/behavior/` altında bulunur.
+Math debug ve release Rust adaptörleri **323/323** eşleşti; birleşik debug ve release karşılaştırmaları da **842/842** geçti. Yerel raporlar `compare-71jdlsjf` (math debug), `compare-owaw1c7e` (math release), `compare-j4gk78md` (birleşik debug) ve `compare-g92e2n4y` (birleşik release) dizinlerinde, `.data/runs/behavior/` altında bulunur.
 
 Bu doğrulama tek kutulu public `clip` yoluyla sınırlıdır. Çoklu AABB shape birleştirme, yüz yönü ve istemci hedefleme davranışları ayrı eşitlik dilimleridir.

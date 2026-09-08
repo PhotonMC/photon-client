@@ -382,6 +382,43 @@ def math_cases():
                                  "min_x": float_bits(0.5, "f64"), "min_y": float_bits(-1.0, "f64"),
                                  "min_z": float_bits(0.5, "f64"), "max_x": float_bits(2.0, "f64"),
                                  "max_y": float_bits(0.5, "f64"), "max_z": float_bits(2.0, "f64")}}]}
+    yield {"case_id": "aabb/minmax/contained", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "minmax", "box": {
+               "min_x": float_bits(0.25, "f64"), "min_y": float_bits(0.25, "f64"),
+               "min_z": float_bits(0.25, "f64"), "max_x": float_bits(0.75, "f64"),
+               "max_y": float_bits(0.75, "f64"), "max_z": float_bits(0.75, "f64")}}]}
+    yield {"case_id": "aabb/minmax/partial", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "minmax", "box": {
+               "min_x": float_bits(-0.5, "f64"), "min_y": float_bits(0.25, "f64"),
+               "min_z": float_bits(-1.0, "f64"), "max_x": float_bits(0.5, "f64"),
+               "max_y": float_bits(1.5, "f64"), "max_z": float_bits(0.5, "f64")}}]}
+    yield {"case_id": "aabb/minmax/disjoint", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "minmax", "box": {
+               "min_x": float_bits(2.0, "f64"), "min_y": float_bits(2.0, "f64"),
+               "min_z": float_bits(2.0, "f64"), "max_x": float_bits(3.0, "f64"),
+               "max_y": float_bits(3.0, "f64"), "max_z": float_bits(3.0, "f64")}}]}
+    yield {"case_id": "aabb/minmax/touching-face", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "minmax", "box": {
+               "min_x": float_bits(1.0, "f64"), "min_y": float_bits(0.25, "f64"),
+               "min_z": float_bits(0.25, "f64"), "max_x": float_bits(2.0, "f64"),
+               "max_y": float_bits(0.75, "f64"), "max_z": float_bits(0.75, "f64")}}]}
+    yield {"case_id": "aabb/minmax/signed-zero", "family": "math", "operation": "aabb",
+           "min_x": float_bits(-0.0, "f64"), "min_y": float_bits(-0.0, "f64"),
+           "min_z": float_bits(-0.0, "f64"), "max_x": float_bits(1.0, "f64"),
+           "max_y": float_bits(1.0, "f64"), "max_z": float_bits(1.0, "f64"),
+           "steps": [{"op": "minmax", "box": {
+               "min_x": float_bits(0.0, "f64"), "min_y": float_bits(0.0, "f64"),
+               "min_z": float_bits(0.0, "f64"), "max_x": float_bits(0.0, "f64"),
+               "max_y": float_bits(0.0, "f64"), "max_z": float_bits(0.0, "f64")}}]}
+    yield {"case_id": "aabb/minmax/chain", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "minmax", "box": {
+               "min_x": float_bits(-0.5, "f64"), "min_y": float_bits(0.25, "f64"),
+               "min_z": float_bits(0.25, "f64"), "max_x": float_bits(0.75, "f64"),
+               "max_y": float_bits(1.5, "f64"), "max_z": float_bits(0.75, "f64")}},
+                             {"op": "minmax", "box": {
+                                 "min_x": float_bits(-1.0, "f64"), "min_y": float_bits(-1.0, "f64"),
+                                 "min_z": float_bits(-1.0, "f64"), "max_x": float_bits(0.5, "f64"),
+                                 "max_y": float_bits(0.5, "f64"), "max_z": float_bits(2.0, "f64")}}]}
     def point(x, y, z):
         return {"x": float_bits(x, "f64"), "y": float_bits(y, "f64"), "z": float_bits(z, "f64")}
 

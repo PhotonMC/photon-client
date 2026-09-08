@@ -1,6 +1,6 @@
 # P01.d — AABB intersect sözleşmesi
 
-Bu dilimin **6 Java davranış testi hazırdır ve Rust karşılığı doğrulanmıştır** ([kanıt](aabb-intersect-parity.md)). Kapsam, Java `AABB.intersect(AABB)` çağrısının iki kutunun her eksendeki ortak aralığını üretmesini ve sonucu AABB kurucusundan geçirmesini içerir. AABB contract, inflate ve clip ayrı dilimlerdir.
+Bu dilimin **6 Java davranış testi hazırdır ve Rust karşılığı doğrulanmıştır** ([kanıt](aabb-intersect-parity.md)). Kapsam, Java `AABB.intersect(AABB)` çağrısının iki kutunun her eksendeki ortak aralığını üretmesini ve sonucu AABB kurucusundan geçirmesini içerir. AABB contract, inflate, minmax ve clip ayrı dilimlerdir.
 
 ## Kaynak ve sınır
 
@@ -36,6 +36,6 @@ cargo build --locked --offline --example behavior_adapter
 python3 tools/behavior/run.py compare --family math --adapter target/debug/examples/behavior_adapter
 ```
 
-Intersect senaryolarını içeren math referans kimliği `067168f58b7d3c483bc26a542574bb0191d5cf0956a168754322b8805241bae5` oldu. Bu referans iki JVM çalıştırmasıyla kararlı bulundu. Birleşik altı aile referansı `cadb5899f013b31a0f9a6ac389c7c724dd7eb83f79803c37c0b757d7e852454e` kimliğiyle iki JVM'de doğrulandı.
+Intersect senaryolarını içeren math referans kimliği `067168f58b7d3c483bc26a542574bb0191d5cf0956a168754322b8805241bae5` oldu. Bu referans iki JVM çalıştırmasıyla kararlı bulundu. Birleşik altı aile referansı `04a71f8e9296c7c49a521c089fdc0a17ddb72a44af41997c4c78bc8812a5bbd8` kimliğiyle iki JVM'de doğrulandı.
 
-Rust debug ve release adaptörleri math ailesinde 382/382, birleşik corpus'ta 836/836 eşleşti. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.
+Rust debug ve release adaptörleri math ailesinde 382/382, birleşik corpus'ta 842/842 eşleşti. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.

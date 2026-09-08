@@ -209,6 +209,10 @@ public final class MathOracle {
                         box = box.intersect(box(step.getAsJsonObject("box")));
                         events.add(snapshot(box));
                     }
+                    case "minmax" -> {
+                        box = box.minmax(box(step.getAsJsonObject("box")));
+                        events.add(snapshot(box));
+                    }
                     case "clip" -> {
                         var hit = box.clip(
                             vec3(step.getAsJsonObject("from")),

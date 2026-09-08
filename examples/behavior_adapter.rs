@@ -563,6 +563,11 @@ fn aabb_result(request: &Value) -> Result<Value, String> {
                 value = value.intersect(other);
                 events.push(aabb_snapshot(value));
             }
+            "minmax" => {
+                let other = aabb_box(step.get("box").ok_or("box must be an object")?)?;
+                value = value.minmax(other);
+                events.push(aabb_snapshot(value));
+            }
             "clip" => {
                 let from = f64_vec3(step.get("from").ok_or("from must be an object")?)?;
                 let to = f64_vec3(step.get("to").ok_or("to must be an object")?)?;

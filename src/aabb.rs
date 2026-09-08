@@ -80,6 +80,18 @@ impl Aabb {
         )
     }
 
+    /// Enclose this box and another box, preserving Java endpoint rules.
+    pub fn minmax(self, other: Self) -> Self {
+        Self::new(
+            java_min(self.min_x, other.min_x),
+            java_min(self.min_y, other.min_y),
+            java_min(self.min_z, other.min_z),
+            java_max(self.max_x, other.max_x),
+            java_max(self.max_y, other.max_y),
+            java_max(self.max_z, other.max_z),
+        )
+    }
+
     /// Extend both endpoints by the supplied per-axis amounts.
     pub fn inflate(self, x: f64, y: f64, z: f64) -> Self {
         Self::new(
