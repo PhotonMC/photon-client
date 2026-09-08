@@ -8,7 +8,7 @@ Orijinal kaynak ve assetler yalnızca yerelde referans ve test girdisi olarak ku
 
 ## Mevcut aşama
 
-Kaynaklar sağlandı; bütünlük envanteri ve ilk kaynak incelemesi tamamlandı. Bölüm bazlı roadmap ve ilk davranış testi sözleşmeleri hazır. P00 yerel test çalıştırıcısı ve 830 Java referans senaryosu mevcut. Random/AABB, AABB contract, AABB inflate, AABB clip, VoxelShape temel/OR, BooleanOp join ve tekli/çoklu shape collision, nextGaussian, fork/positional, setSeed, random yardımcı overload'ları, NBT ağaç/liste/dizi ve BlockPos/section-relative dilimleri dahil Rust uygulanan kapsam debug/release profillerinde 830 senaryonun tamamında Java ile eşleşiyor. Oynanabilir istemci henüz yok. Boş `main`, yalnızca iskelettir.
+Kaynaklar sağlandı; bütünlük envanteri ve ilk kaynak incelemesi tamamlandı. Bölüm bazlı roadmap ve ilk davranış testi sözleşmeleri hazır. P00 yerel test çalıştırıcısı ve 836 Java referans senaryosu mevcut. Random/AABB, AABB contract, AABB inflate, AABB intersect, AABB clip, VoxelShape temel/OR, BooleanOp join ve tekli/çoklu shape collision, nextGaussian, fork/positional, setSeed, random yardımcı overload'ları, NBT ağaç/liste/dizi ve BlockPos/section-relative dilimleri dahil Rust uygulanan kapsam debug/release profillerinde 836 senaryonun tamamında Java ile eşleşiyor. Oynanabilir istemci henüz yok. Boş `main`, yalnızca iskelettir.
 
 Mevcut referanslar [yerel veri rehberindeki](docs/reference-data.md) `.data/` alanında kalır. Test yol haritası kalan P01 yardımcıları ve bağlantı önkoşullarıyla sürüyor. Her Rust diliminden önce ilgili Java referansı ve testler hazırlanacak. Grafik, ses, pencere ve ağ teknolojileri sonraya bırakıldı. Test otomasyonu Python standart kütüphanesi ve özgün Java adaptörlerini kullanıyor; üretim kütüphanesine ek Rust bağımlılığı eklenmedi. Rust JSONL test adaptörü `serde_json` geliştirme bağımlılığını kullanıyor.
 
@@ -35,6 +35,8 @@ Mevcut referanslar [yerel veri rehberindeki](docs/reference-data.md) `.data/` al
 - [AABB contract doğrulaması](docs/aabb-parity.md)
 - [AABB inflate sözleşmesi ve referans testleri](docs/aabb-inflate-contract.md)
 - [AABB inflate doğrulaması](docs/aabb-inflate-parity.md)
+- [AABB intersect sözleşmesi ve referans testleri](docs/aabb-intersect-contract.md)
+- [AABB intersect doğrulaması](docs/aabb-intersect-parity.md)
 - [AABB clip sözleşmesi ve referans testleri](docs/aabb-clip-contract.md)
 - [AABB clip doğrulaması](docs/aabb-clip-parity.md)
 - [VoxelShape temel/OR doğrulaması](docs/shape-parity.md)

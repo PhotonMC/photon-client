@@ -345,6 +345,43 @@ def math_cases():
            **unit, "steps": [{"op": "inflate_xyz", "x": float_bits(0.25, "f64"),
                               "y": float_bits(0.5, "f64"), "z": float_bits(0.0, "f64")},
                              {"op": "inflate", "amount": float_bits(-0.125, "f64")}]}
+    yield {"case_id": "aabb/intersect/contained", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "intersect", "box": {
+               "min_x": float_bits(0.25, "f64"), "min_y": float_bits(0.25, "f64"),
+               "min_z": float_bits(0.25, "f64"), "max_x": float_bits(0.75, "f64"),
+               "max_y": float_bits(0.75, "f64"), "max_z": float_bits(0.75, "f64")}}]}
+    yield {"case_id": "aabb/intersect/partial", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "intersect", "box": {
+               "min_x": float_bits(-0.5, "f64"), "min_y": float_bits(0.25, "f64"),
+               "min_z": float_bits(-1.0, "f64"), "max_x": float_bits(0.5, "f64"),
+               "max_y": float_bits(1.5, "f64"), "max_z": float_bits(0.5, "f64")}}]}
+    yield {"case_id": "aabb/intersect/disjoint-normalizes", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "intersect", "box": {
+               "min_x": float_bits(2.0, "f64"), "min_y": float_bits(2.0, "f64"),
+               "min_z": float_bits(2.0, "f64"), "max_x": float_bits(3.0, "f64"),
+               "max_y": float_bits(3.0, "f64"), "max_z": float_bits(3.0, "f64")}}]}
+    yield {"case_id": "aabb/intersect/touching-face", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "intersect", "box": {
+               "min_x": float_bits(1.0, "f64"), "min_y": float_bits(0.25, "f64"),
+               "min_z": float_bits(0.25, "f64"), "max_x": float_bits(2.0, "f64"),
+               "max_y": float_bits(0.75, "f64"), "max_z": float_bits(0.75, "f64")}}]}
+    yield {"case_id": "aabb/intersect/signed-zero", "family": "math", "operation": "aabb",
+           "min_x": float_bits(-0.0, "f64"), "min_y": float_bits(-0.0, "f64"),
+           "min_z": float_bits(-0.0, "f64"), "max_x": float_bits(1.0, "f64"),
+           "max_y": float_bits(1.0, "f64"), "max_z": float_bits(1.0, "f64"),
+           "steps": [{"op": "intersect", "box": {
+               "min_x": float_bits(0.0, "f64"), "min_y": float_bits(0.0, "f64"),
+               "min_z": float_bits(0.0, "f64"), "max_x": float_bits(0.0, "f64"),
+               "max_y": float_bits(0.0, "f64"), "max_z": float_bits(0.0, "f64")}}]}
+    yield {"case_id": "aabb/intersect/chain", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "intersect", "box": {
+               "min_x": float_bits(-0.5, "f64"), "min_y": float_bits(0.25, "f64"),
+               "min_z": float_bits(0.25, "f64"), "max_x": float_bits(0.75, "f64"),
+               "max_y": float_bits(1.5, "f64"), "max_z": float_bits(0.75, "f64")}},
+                             {"op": "intersect", "box": {
+                                 "min_x": float_bits(0.5, "f64"), "min_y": float_bits(-1.0, "f64"),
+                                 "min_z": float_bits(0.5, "f64"), "max_x": float_bits(2.0, "f64"),
+                                 "max_y": float_bits(0.5, "f64"), "max_z": float_bits(2.0, "f64")}}]}
     def point(x, y, z):
         return {"x": float_bits(x, "f64"), "y": float_bits(y, "f64"), "z": float_bits(z, "f64")}
 

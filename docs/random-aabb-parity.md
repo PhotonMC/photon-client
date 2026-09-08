@@ -1,6 +1,6 @@
 # P01.d/e — Random ve AABB Rust davranış dilimi
 
-`src/random.rs` ve `src/aabb.rs`, Java 26.2 referansından gözlenen random dizilerini ve temel AABB işlemlerini içerir. `examples/behavior_adapter.rs` aynı üretim API'sini JSONL senaryolarına bağlar; beklenen değer üretmez. Çoklu AABB shape birleşimleri sonraki dilimlerdir; tek kutulu segment `clip` yolu [ayrı dilimde](aabb-clip-parity.md), `nextGaussian` yolu [ayrı dilimde](random-gaussian-parity.md), `fork`/positional yolları [ayrı dilimde](random-fork-parity.md) ve `setSeed` yolu [ayrı dilimde](random-set-seed-parity.md) doğrulandı.
+`src/random.rs` ve `src/aabb.rs`, Java 26.2 referansından gözlenen random dizilerini ve temel AABB işlemlerini içerir. `examples/behavior_adapter.rs` aynı üretim API'sini JSONL senaryolarına bağlar; beklenen değer üretmez. Çoklu AABB shape birleşimleri sonraki dilimlerdir; tek kutulu segment `clip` yolu [ayrı dilimde](aabb-clip-parity.md), `intersect` yolu [ayrı dilimde](aabb-intersect-parity.md), `nextGaussian` yolu [ayrı dilimde](random-gaussian-parity.md), `fork`/positional yolları [ayrı dilimde](random-fork-parity.md) ve `setSeed` yolu [ayrı dilimde](random-set-seed-parity.md) doğrulandı.
 
 ## Referans ve davranış
 

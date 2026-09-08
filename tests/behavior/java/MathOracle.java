@@ -205,6 +205,10 @@ public final class MathOracle {
                         state.addProperty("hit", box.intersects(box(step.getAsJsonObject("box"))));
                         events.add(state);
                     }
+                    case "intersect" -> {
+                        box = box.intersect(box(step.getAsJsonObject("box")));
+                        events.add(snapshot(box));
+                    }
                     case "clip" -> {
                         var hit = box.clip(
                             vec3(step.getAsJsonObject("from")),
