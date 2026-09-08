@@ -314,6 +314,23 @@ def math_cases():
            **unit, "steps": [{"op": "expand", "x": float_bits(1.0, "f64"),
                               "y": float_bits(-0.5, "f64"), "z": float_bits(0.0, "f64")},
                              {"op": "deflate", "amount": float_bits(0.5, "f64")}]}
+    yield {"case_id": "aabb/contract/positive", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "contract", "x": float_bits(0.25, "f64"),
+                              "y": float_bits(0.5, "f64"), "z": float_bits(1.0, "f64")}]}
+    yield {"case_id": "aabb/contract/negative", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "contract", "x": float_bits(-0.25, "f64"),
+                              "y": float_bits(-0.5, "f64"), "z": float_bits(-1.0, "f64")}]}
+    yield {"case_id": "aabb/contract/mixed", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "contract", "x": float_bits(-0.25, "f64"),
+                              "y": float_bits(0.0, "f64"), "z": float_bits(0.5, "f64")}]}
+    yield {"case_id": "aabb/contract/signed-zero", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "contract", "x": float_bits(-0.0, "f64"),
+                              "y": float_bits(0.0, "f64"), "z": float_bits(-0.0, "f64")}]}
+    yield {"case_id": "aabb/contract/chain", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "contract", "x": float_bits(0.25, "f64"),
+                              "y": float_bits(-0.25, "f64"), "z": float_bits(0.0, "f64")},
+                             {"op": "contract", "x": float_bits(-0.125, "f64"),
+                              "y": float_bits(0.125, "f64"), "z": float_bits(-0.5, "f64")}]}
     def point(x, y, z):
         return {"x": float_bits(x, "f64"), "y": float_bits(y, "f64"), "z": float_bits(z, "f64")}
 

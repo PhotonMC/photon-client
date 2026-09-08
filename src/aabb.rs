@@ -1,8 +1,8 @@
 //! Axis-aligned bounding boxes for the first P01.d geometry slice.
 //!
 //! This covers the constructor normalization and the contains/intersects,
-//! expand-towards, deflate and segment clipping operations used by the current
-//! behavior corpus.
+//! expand-towards, contract, deflate and segment clipping operations used by
+//! the current behavior corpus.
 
 use crate::math::Vec3;
 
@@ -57,6 +57,14 @@ impl Aabb {
         let (min_x, max_x) = expand_axis(self.min_x, self.max_x, x);
         let (min_y, max_y) = expand_axis(self.min_y, self.max_y, y);
         let (min_z, max_z) = expand_axis(self.min_z, self.max_z, z);
+        Self::new(min_x, min_y, min_z, max_x, max_y, max_z)
+    }
+
+    /// Move only the endpoint opposite each nonzero delta inward.
+    pub fn contract(self, x: f64, y: f64, z: f64) -> Self {
+        let (min_x, max_x) = contract_axis(self.min_x, self.max_x, x);
+        let (min_y, max_y) = contract_axis(self.min_y, self.max_y, y);
+        let (min_z, max_z) = contract_axis(self.min_z, self.max_z, z);
         Self::new(min_x, min_y, min_z, max_x, max_y, max_z)
     }
 
@@ -239,6 +247,16 @@ fn expand_axis(min: f64, max: f64, delta: f64) -> (f64, f64) {
         (min + delta, max)
     } else if delta > 0.0 {
         (min, max + delta)
+    } else {
+        (min, max)
+    }
+}
+
+fn contract_axis(min: f64, max: f64, delta: f64) -> (f64, f64) {
+    if delta < 0.0 {
+        (min - delta, max)
+    } else if delta > 0.0 {
+        (min, max - delta)
     } else {
         (min, max)
     }

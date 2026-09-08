@@ -574,6 +574,14 @@ fn aabb_result(request: &Value) -> Result<Value, String> {
                 );
                 events.push(aabb_snapshot(value));
             }
+            "contract" => {
+                value = value.contract(
+                    f64_field(step, "x")?,
+                    f64_field(step, "y")?,
+                    f64_field(step, "z")?,
+                );
+                events.push(aabb_snapshot(value));
+            }
             "deflate" => {
                 value = value.deflate(f64_field(step, "amount")?);
                 events.push(aabb_snapshot(value));
