@@ -132,6 +132,19 @@ public final class MathOracle {
                         state.addProperty("hit", box.intersects(box(step.getAsJsonObject("box"))));
                         events.add(state);
                     }
+                    case "clip" -> {
+                        var hit = box.clip(
+                            vec3(step.getAsJsonObject("from")),
+                            vec3(step.getAsJsonObject("to")));
+                        var state = new JsonObject();
+                        if (hit.isPresent()) {
+                            state.addProperty("hit", true);
+                            state.add("point", snapshotClip(hit.get()));
+                        } else {
+                            state.addProperty("hit", false);
+                        }
+                        events.add(state);
+                    }
                     case "expand" -> {
                         box = box.expandTowards(
                             f64(step, "x"), f64(step, "y"), f64(step, "z"));
@@ -189,6 +202,10 @@ public final class MathOracle {
         );
     }
 
+    private static Vec3 vec3(JsonObject object) {
+        return new Vec3(f64(object, "x"), f64(object, "y"), f64(object, "z"));
+    }
+
     private static JsonObject snapshot(AABB box) {
         var state = new JsonObject();
         state.addProperty("min_x", Oracle.bits(box.minX));
@@ -229,6 +246,14 @@ public final class MathOracle {
         state.addProperty("z", Oracle.bits(vector.z));
         state.addProperty("length", Oracle.bits(vector.length()));
         state.addProperty("length_squared", Oracle.bits(vector.lengthSqr()));
+        return state;
+    }
+
+    private static JsonObject snapshotClip(Vec3 point) {
+        var state = new JsonObject();
+        state.addProperty("x", Oracle.bits(point.x));
+        state.addProperty("y", Oracle.bits(point.y));
+        state.addProperty("z", Oracle.bits(point.z));
         return state;
     }
 

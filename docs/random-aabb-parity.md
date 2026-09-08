@@ -1,6 +1,6 @@
 # P01.d/e — Random ve AABB Rust davranış dilimi
 
-`src/random.rs` ve `src/aabb.rs`, bu dilimde Java 26.2 referansından gözlenen random dizileri ve temel AABB işlemlerini içerir. `examples/behavior_adapter.rs` aynı üretim API'sini JSONL senaryolarına bağlar; beklenen değer üretmez. Fork/dağıtım, `nextGaussian`, AABB ışın kesişimi ve shape birleşimleri sonraki dilimlerdir.
+`src/random.rs` ve `src/aabb.rs`, Java 26.2 referansından gözlenen random dizilerini ve temel AABB işlemlerini içerir. `examples/behavior_adapter.rs` aynı üretim API'sini JSONL senaryolarına bağlar; beklenen değer üretmez. Fork/dağıtım, `nextGaussian` ve çoklu AABB shape birleşimleri sonraki dilimlerdir; tek kutulu segment `clip` yolu [ayrı dilimde](aabb-clip-parity.md) doğrulandı.
 
 ## Referans ve davranış
 
@@ -32,4 +32,4 @@ Math referans kimliği: `529c11520bbda1953798018b953d4f6a3d2f46de0527d0ef9d802b2
 
 Yerel raporlar: `compare-37kc_otn` (debug) ve `compare-q246ny7w` (release), `.data/runs/behavior/` altında.
 
-Bu kanıt yalnızca 307 seçili math senaryosuyla sınırlıdır. P01'in kalan AABB ray/shape yolları, random fork/gaussian varyantları ve istemcinin diğer davranışları henüz eşitlik kanıtı değildir.
+Bu kanıt yalnızca 307 seçili math senaryosuyla sınırlıdır. Tek kutulu AABB segment clip için [ayrı kanıt](aabb-clip-parity.md) vardır. P01'in çoklu shape yolları, random fork/gaussian varyantları ve istemcinin diğer davranışları henüz eşitlik kanıtı değildir.

@@ -280,6 +280,22 @@ fn aabb_snapshot(value: Aabb) -> Value {
     })
 }
 
+fn f64_vec3(value: &Value) -> Result<Vec3, String> {
+    Ok(Vec3::new(
+        f64_field(value, "x")?,
+        f64_field(value, "y")?,
+        f64_field(value, "z")?,
+    ))
+}
+
+fn clip_snapshot(value: Vec3) -> Value {
+    json!({
+        "x": format!("{:016x}", value.x.to_bits()),
+        "y": format!("{:016x}", value.y.to_bits()),
+        "z": format!("{:016x}", value.z.to_bits()),
+    })
+}
+
 fn aabb_result(request: &Value) -> Result<Value, String> {
     let mut value = aabb_box(request)?;
     let mut events = vec![aabb_snapshot(value)];
@@ -298,6 +314,14 @@ fn aabb_result(request: &Value) -> Result<Value, String> {
             "intersects" => {
                 let other = aabb_box(step.get("box").ok_or("box must be an object")?)?;
                 events.push(json!({"hit": value.intersects(other)}));
+            }
+            "clip" => {
+                let from = f64_vec3(step.get("from").ok_or("from must be an object")?)?;
+                let to = f64_vec3(step.get("to").ok_or("to must be an object")?)?;
+                events.push(match value.clip(from, to) {
+                    Some(point) => json!({"hit": true, "point": clip_snapshot(point)}),
+                    None => json!({"hit": false}),
+                });
             }
             "expand" => {
                 value = value.expand_towards(

@@ -65,14 +65,14 @@ Diğer `math` operasyonları `floor`, `wrap_degrees`, `clamp`; `type` alanı `f3
 
 | Aile | Senaryo | Kapsam |
 | --- | ---: | --- |
-| `math` | 317 | Vec2/Vec3 zincirleri ve f32/f64 yardımcıları; Direction ve koordinat dönüşümleri; random dizileri, AABB ve BlockPos/section-relative işlemleri |
+| `math` | 323 | Vec2/Vec3 zincirleri ve f32/f64 yardımcıları; Direction ve koordinat dönüşümleri; random dizileri, AABB, BlockPos/section-relative ve clip işlemleri |
 | `timer` | 22 | Tick sınırları/artık zaman, kontrollü hız değişimi, pause/freeze kombinasyonları, gerçek zaman sınırı, uzun frame ve 2^53 üzerindeki başlangıç saati |
 | `wire` | 144 | VarInt/VarLong yazma/okuma, sınırlar, hatalar, tüketim ve kalan veri |
 | `utf8` | 141 | UTF-16 birim sınırları, UTF-8 okuma/yazma, bozuk diziler, VarInt başlıkları ve hata tüketimi |
 | `binary` | 116 | UUID/BlockPos/SectionPos/long array/BitSet okuma/yazma; sabit BitSet boyut sınırları |
 | `nbt` | 31 | Düz/iç içe bileşik, int/string/bileşik listeleri, boş liste, byte/int/long dizileri |
-| **Toplam** | **771** | P01.a/P01.b/P01.c/P01.d/P01.e/P02.a/P03.a/P03.b/P03.c için mevcut referans corpus'u |
+| **Toplam** | **777** | P01.a/P01.b/P01.c/P01.d/P01.e/P02.a/P03.a/P03.b/P03.c için mevcut referans corpus'u |
 
 7 Eylül 2026'da Java 25.0.4.1 / Linux x86_64 üzerinde ilk 346 senaryoluk corpus iki ayrı JVM sürecinde aynı sonuçları verdi. Kayıtlı referansa karşı `verify` de çalıştırıldı. Beş sentetik altyapı testi geçti. Komut düzeyinde ayrıca kontrollü replay, tek alan mutasyonu, boş adaptör çıktısı, eksik adaptör, eksik runtime ve yanlış JAR çıkışları sınandı. Bu replay programı yalnızca karşılaştırıcı kontrolüdür; Rust veya oyun implementasyonu değildir.
 
-P00 bu ilk aileler için hazırdır; asset/GPU/gerçek ağ test altyapısı henüz yoktur. P01'in tüm matematik kapsamı, P02'nin oyun döngüsü ve P03'ün diğer veri biçimleri tamamlanmadı. Rust wire adaptörü debug/release profillerinde 144 senaryoda eşleşti; [kanıt ve sınırlar](wire-parity.md). Zamanlayıcı da 22 senaryoda eşleşti; [kanıt](timer-parity.md). Math ailesi 317 senaryoda eşleşti; [kanıt ve sınırlar](math-parity.md), [random/AABB kanıtı](random-aabb-parity.md), [BlockPos/section-relative kanıtı](blockpos-parity.md). UTF-8 ailesi de 141 senaryoda eşleşti; [kanıt](utf8-parity.md). Binary ailesi 116 senaryoda eşleşti; [kanıt](binary-parity.md). NBT ailesi 31 senaryoda eşleşti; [kanıt](nbt-parity.md). Mevcut corpus'un 771 senaryosu debug/release profillerinde geçti. [Binary sözleşmesi](binary-contract.md). [Vec3 sözleşmesi](vec3-contract.md).
+P00 bu ilk aileler için hazırdır; asset/GPU/gerçek ağ test altyapısı henüz yoktur. P01'in tüm matematik kapsamı, P02'nin oyun döngüsü ve P03'ün diğer veri biçimleri tamamlanmadı. Rust wire adaptörü debug/release profillerinde 144 senaryoda eşleşti; [kanıt ve sınırlar](wire-parity.md). Zamanlayıcı da 22 senaryoda eşleşti; [kanıt](timer-parity.md). Math ailesi 323 senaryoda eşleşti; [kanıt ve sınırlar](math-parity.md), [random/AABB kanıtı](random-aabb-parity.md), [BlockPos/section-relative kanıtı](blockpos-parity.md), [AABB clip kanıtı](aabb-clip-parity.md). UTF-8 ailesi de 141 senaryoda eşleşti; [kanıt](utf8-parity.md). Binary ailesi 116 senaryoda eşleşti; [kanıt](binary-parity.md). NBT ailesi 31 senaryoda eşleşti; [kanıt](nbt-parity.md). Mevcut corpus'un 777 senaryosu debug/release profillerinde geçti. [Binary sözleşmesi](binary-contract.md). [Vec3 sözleşmesi](vec3-contract.md).

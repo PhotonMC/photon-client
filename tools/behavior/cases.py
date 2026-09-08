@@ -157,6 +157,20 @@ def math_cases():
            **unit, "steps": [{"op": "expand", "x": float_bits(1.0, "f64"),
                               "y": float_bits(-0.5, "f64"), "z": float_bits(0.0, "f64")},
                              {"op": "deflate", "amount": float_bits(0.5, "f64")}]}
+    def point(x, y, z):
+        return {"x": float_bits(x, "f64"), "y": float_bits(y, "f64"), "z": float_bits(z, "f64")}
+
+    clip_rays = {
+        "west-to-east": ((-1.0, 0.5, 0.5), (2.0, 0.5, 0.5)),
+        "east-to-west": ((2.0, 0.5, 0.5), (-1.0, 0.5, 0.5)),
+        "inside-to-east": ((0.5, 0.5, 0.5), (2.0, 0.5, 0.5)),
+        "diagonal": ((-1.0, -1.0, -1.0), (2.0, 2.0, 2.0)),
+        "parallel-miss": ((-1.0, 2.0, 0.5), (2.0, 2.0, 0.5)),
+        "below-threshold": ((-1.0, 0.5, 0.5), (-1.0 + 1.0e-8, 0.5, 0.5)),
+    }
+    for label, (source, target) in clip_rays.items():
+        yield {"case_id": f"aabb/clip/{label}", "family": "math", "operation": "aabb",
+               **unit, "steps": [{"op": "clip", "from": point(*source), "to": point(*target)}]}
     for width in ("f32", "f64"):
         specials = {float_bits(x, width) for x in (0.0, -0.0, float("inf"), -float("inf"), float("nan"))}
         specials.update({"00000001", "80000001"} if width == "f32"

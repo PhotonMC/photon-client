@@ -1,6 +1,6 @@
 # Kalan bölümler test planı (çalıştırılamayanlar)
 
-771 Java senaryosu kayıtlıdır (beş+bir aile). Aşağıdaki bölümler yerel ortamda çalıştırılamaz; her biri engelli kaydedilir, sahte golden üretilmez. Her bölümün önkoşulu, engel kalkınca yazılacak ilk senaryolar ve kabul ölçütü tanımlıdır.
+777 Java senaryosu kayıtlıdır (beş+bir aile). Aşağıdaki bölümler yerel ortamda çalıştırılamaz; her biri engelli kaydedilir, sahte golden üretilmez. Her bölümün önkoşulu, engel kalkınca yazılacak ilk senaryolar ve kabul ölçütü tanımlıdır.
 
 ## Kural
 
@@ -37,5 +37,5 @@
 
 ## P01 kalanları (çalıştırılabilir, sonraki test dilimleri)
 
-- P01.d: AABB ışın kesişimi (`clip`) ve shape birleşimleri; bu turdaki contains/intersects/expand/deflate hazır.
+- P01.d: AABB çoklu shape birleşimleri; bu turdaki contains/intersects/expand/deflate ve tek kutulu `clip` hazır.
 - P01.e: `fork`/`split` türev akışları ve `nextGaussian` dağılımı; bu turdaki sıralı çekimler hazır.

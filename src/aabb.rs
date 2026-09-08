@@ -1,7 +1,10 @@
 //! Axis-aligned bounding boxes for the first P01.d geometry slice.
 //!
 //! This covers the constructor normalization and the contains/intersects,
-//! expand-towards and deflate operations used by the current behavior corpus.
+//! expand-towards, deflate and segment clipping operations used by the current
+//! behavior corpus.
+
+use crate::math::Vec3;
 
 /// An axis-aligned box with normalized inclusive lower and exclusive upper
 /// query boundaries, matching the Java reference's stored endpoints.
@@ -67,6 +70,167 @@ impl Aabb {
             self.max_y - amount,
             self.max_z - amount,
         )
+    }
+
+    /// Return the first segment point inside the box, matching Java `clip`.
+    pub fn clip(self, from: Vec3, to: Vec3) -> Option<Vec3> {
+        let mut scale = 1.0;
+        let mut hit = false;
+        let dx = to.x - from.x;
+        let dy = to.y - from.y;
+        let dz = to.z - from.z;
+
+        if dx > 1.0e-7 {
+            clip_point(
+                &mut scale,
+                &mut hit,
+                ClipPoint {
+                    da: dx,
+                    db: dy,
+                    dc: dz,
+                    point: self.min_x,
+                    min_b: self.min_y,
+                    max_b: self.max_y,
+                    min_c: self.min_z,
+                    max_c: self.max_z,
+                    from_a: from.x,
+                    from_b: from.y,
+                    from_c: from.z,
+                },
+            );
+        } else if dx < -1.0e-7 {
+            clip_point(
+                &mut scale,
+                &mut hit,
+                ClipPoint {
+                    da: dx,
+                    db: dy,
+                    dc: dz,
+                    point: self.max_x,
+                    min_b: self.min_y,
+                    max_b: self.max_y,
+                    min_c: self.min_z,
+                    max_c: self.max_z,
+                    from_a: from.x,
+                    from_b: from.y,
+                    from_c: from.z,
+                },
+            );
+        }
+
+        if dy > 1.0e-7 {
+            clip_point(
+                &mut scale,
+                &mut hit,
+                ClipPoint {
+                    da: dy,
+                    db: dz,
+                    dc: dx,
+                    point: self.min_y,
+                    min_b: self.min_z,
+                    max_b: self.max_z,
+                    min_c: self.min_x,
+                    max_c: self.max_x,
+                    from_a: from.y,
+                    from_b: from.z,
+                    from_c: from.x,
+                },
+            );
+        } else if dy < -1.0e-7 {
+            clip_point(
+                &mut scale,
+                &mut hit,
+                ClipPoint {
+                    da: dy,
+                    db: dz,
+                    dc: dx,
+                    point: self.max_y,
+                    min_b: self.min_z,
+                    max_b: self.max_z,
+                    min_c: self.min_x,
+                    max_c: self.max_x,
+                    from_a: from.y,
+                    from_b: from.z,
+                    from_c: from.x,
+                },
+            );
+        }
+
+        if dz > 1.0e-7 {
+            clip_point(
+                &mut scale,
+                &mut hit,
+                ClipPoint {
+                    da: dz,
+                    db: dx,
+                    dc: dy,
+                    point: self.min_z,
+                    min_b: self.min_x,
+                    max_b: self.max_x,
+                    min_c: self.min_y,
+                    max_c: self.max_y,
+                    from_a: from.z,
+                    from_b: from.x,
+                    from_c: from.y,
+                },
+            );
+        } else if dz < -1.0e-7 {
+            clip_point(
+                &mut scale,
+                &mut hit,
+                ClipPoint {
+                    da: dz,
+                    db: dx,
+                    dc: dy,
+                    point: self.max_z,
+                    min_b: self.min_x,
+                    max_b: self.max_x,
+                    min_c: self.min_y,
+                    max_c: self.max_y,
+                    from_a: from.z,
+                    from_b: from.x,
+                    from_c: from.y,
+                },
+            );
+        }
+
+        hit.then(|| {
+            Vec3::new(
+                from.x + scale * dx,
+                from.y + scale * dy,
+                from.z + scale * dz,
+            )
+        })
+    }
+}
+
+struct ClipPoint {
+    da: f64,
+    db: f64,
+    dc: f64,
+    point: f64,
+    min_b: f64,
+    max_b: f64,
+    min_c: f64,
+    max_c: f64,
+    from_a: f64,
+    from_b: f64,
+    from_c: f64,
+}
+
+fn clip_point(scale: &mut f64, hit: &mut bool, candidate: ClipPoint) {
+    let candidate_scale = (candidate.point - candidate.from_a) / candidate.da;
+    let point_b = candidate.from_b + candidate_scale * candidate.db;
+    let point_c = candidate.from_c + candidate_scale * candidate.dc;
+    if 0.0 < candidate_scale
+        && candidate_scale < *scale
+        && candidate.min_b - 1.0e-7 < point_b
+        && point_b < candidate.max_b + 1.0e-7
+        && candidate.min_c - 1.0e-7 < point_c
+        && point_c < candidate.max_c + 1.0e-7
+    {
+        *scale = candidate_scale;
+        *hit = true;
     }
 }
 
