@@ -331,6 +331,20 @@ def math_cases():
                               "y": float_bits(-0.25, "f64"), "z": float_bits(0.0, "f64")},
                              {"op": "contract", "x": float_bits(-0.125, "f64"),
                               "y": float_bits(0.125, "f64"), "z": float_bits(-0.5, "f64")}]}
+    yield {"case_id": "aabb/inflate/scalar-positive", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "inflate", "amount": float_bits(0.25, "f64")}]}
+    yield {"case_id": "aabb/inflate/vector-mixed", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "inflate_xyz", "x": float_bits(0.25, "f64"),
+                              "y": float_bits(-0.5, "f64"), "z": float_bits(0.75, "f64")}]}
+    yield {"case_id": "aabb/inflate/scalar-negative", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "inflate", "amount": float_bits(-0.75, "f64")}]}
+    yield {"case_id": "aabb/inflate/signed-zero", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "inflate_xyz", "x": float_bits(-0.0, "f64"),
+                              "y": float_bits(0.0, "f64"), "z": float_bits(-0.0, "f64")}]}
+    yield {"case_id": "aabb/inflate/chain", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "inflate_xyz", "x": float_bits(0.25, "f64"),
+                              "y": float_bits(0.5, "f64"), "z": float_bits(0.0, "f64")},
+                             {"op": "inflate", "amount": float_bits(-0.125, "f64")}]}
     def point(x, y, z):
         return {"x": float_bits(x, "f64"), "y": float_bits(y, "f64"), "z": float_bits(z, "f64")}
 

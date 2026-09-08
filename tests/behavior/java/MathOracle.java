@@ -228,6 +228,15 @@ public final class MathOracle {
                             f64(step, "x"), f64(step, "y"), f64(step, "z"));
                         events.add(snapshot(box));
                     }
+                    case "inflate" -> {
+                        box = box.inflate(f64(step, "amount"));
+                        events.add(snapshot(box));
+                    }
+                    case "inflate_xyz" -> {
+                        box = box.inflate(
+                            f64(step, "x"), f64(step, "y"), f64(step, "z"));
+                        events.add(snapshot(box));
+                    }
                     case "deflate" -> {
                         box = box.deflate(f64(step, "amount"));
                         events.add(snapshot(box));

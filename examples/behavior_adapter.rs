@@ -582,6 +582,18 @@ fn aabb_result(request: &Value) -> Result<Value, String> {
                 );
                 events.push(aabb_snapshot(value));
             }
+            "inflate" => {
+                value = value.inflate_all(f64_field(step, "amount")?);
+                events.push(aabb_snapshot(value));
+            }
+            "inflate_xyz" => {
+                value = value.inflate(
+                    f64_field(step, "x")?,
+                    f64_field(step, "y")?,
+                    f64_field(step, "z")?,
+                );
+                events.push(aabb_snapshot(value));
+            }
             "deflate" => {
                 value = value.deflate(f64_field(step, "amount")?);
                 events.push(aabb_snapshot(value));

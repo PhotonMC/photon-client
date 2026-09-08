@@ -1,6 +1,6 @@
 # P01.d — AABB contract sözleşmesi
 
-Bu dilimin **5 Java davranış testi hazırdır ve Rust karşılığı doğrulanmıştır** ([kanıt](aabb-parity.md)). Kapsam, hareket delta'sının işaretine göre Java `AABB.contract(double,double,double)` çağrısının kutunun tek uç noktasını içeri taşımasını içerir. AABB clip ve diğer genişletme/kesişim işlemleri ayrı dilimlerdir.
+Bu dilimin **5 Java davranış testi hazırdır ve Rust karşılığı doğrulanmıştır** ([kanıt](aabb-parity.md)). Kapsam, hareket delta'sının işaretine göre Java `AABB.contract(double,double,double)` çağrısının kutunun tek uç noktasını içeri taşımasını içerir. AABB inflate için ayrı [sözleşme](aabb-inflate-contract.md) vardır; clip ve diğer genişletme/kesişim işlemleri ayrı dilimlerdir.
 
 ## Kaynak ve sınır
 
@@ -34,6 +34,6 @@ cargo build --locked --offline --example behavior_adapter
 python3 tools/behavior/run.py compare --family math --adapter target/debug/examples/behavior_adapter
 ```
 
-Contract senaryolarını içeren math referans kimliği `3795d607b2b0b2e782a153bffb5f46917835f2df40d4a855940d960953a37113` oldu. Bu referans iki JVM çalıştırmasıyla kararlı bulundu. Birleşik altı aile referansı `1168e04e7293e7e8167bca1ce3ba0287443ada784032a68d4ea7a3f5cc909c7f` kimliğiyle iki JVM'de doğrulandı.
+Contract senaryolarını içeren math referans kimliği `3795d607b2b0b2e782a153bffb5f46917835f2df40d4a855940d960953a37113` oldu. Bu referans iki JVM çalıştırmasıyla kararlı bulundu. Birleşik altı aile referansı `c349a5cf4cb0c9b07fb48b5729c78eaee7eb5158b7997f64e7b6b0758904beee` kimliğiyle iki JVM'de doğrulandı.
 
-Rust debug ve release adaptörleri math ailesinde 371/371, birleşik corpus'ta 825/825 eşleşti. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.
+Rust debug ve release adaptörleri math ailesinde 371/371, birleşik corpus'ta 830/830 eşleşti. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.
