@@ -8,6 +8,7 @@ use voxel_client::direction::{Axis, Direction};
 use voxel_client::math::{self, Vec2, Vec3};
 use voxel_client::nbt::{self, Field, FieldValue};
 use voxel_client::random::RandomSource;
+use voxel_client::shape::{Shapes, VoxelShape};
 use voxel_client::timer::Timer;
 use voxel_client::utf8;
 use voxel_client::wire::{self, ReadError};
@@ -425,6 +426,66 @@ fn aabb_snapshot(value: Aabb) -> Value {
     })
 }
 
+fn shape_box(value: &Value) -> Result<VoxelShape, String> {
+    Shapes::box_shape(
+        f64_field(value, "min_x")?,
+        f64_field(value, "min_y")?,
+        f64_field(value, "min_z")?,
+        f64_field(value, "max_x")?,
+        f64_field(value, "max_y")?,
+        f64_field(value, "max_z")?,
+    )
+    .map_err(|_| "shape minimum must not exceed maximum".to_owned())
+}
+
+fn shape_snapshot(value: &VoxelShape) -> Value {
+    let mut state = json!({
+        "empty": value.is_empty(),
+        "boxes": value.to_aabbs().into_iter().map(aabb_snapshot).collect::<Vec<_>>(),
+    });
+    if let Some(bounds) = value.bounds() {
+        state["bounds"] = aabb_snapshot(bounds);
+    }
+    state
+}
+
+fn shape_result(request: &Value) -> Result<Value, String> {
+    match string(request, "kind")? {
+        "single" => {
+            let mut value = shape_box(request.get("box").ok_or("box must be an object")?)?;
+            let mut events = vec![shape_snapshot(&value)];
+            for step in request["steps"]
+                .as_array()
+                .ok_or("steps must be an array")?
+            {
+                if string(step, "op")? != "move" {
+                    return Err("unknown VoxelShape operation".into());
+                }
+                value = value.move_by(
+                    f64_field(step, "dx")?,
+                    f64_field(step, "dy")?,
+                    f64_field(step, "dz")?,
+                );
+                events.push(shape_snapshot(&value));
+            }
+            Ok(json!({"events": events}))
+        }
+        "join" => {
+            if string(request, "op")? != "or" {
+                return Err("unknown VoxelShape boolean operation".into());
+            }
+            let first = shape_box(request.get("first").ok_or("first must be an object")?)?;
+            let second = shape_box(request.get("second").ok_or("second must be an object")?)?;
+            let joined = Shapes::or(&first, &second);
+            Ok(json!({
+                "shape": shape_snapshot(&joined),
+                "join_is_not_empty": Shapes::join_is_not_empty(&first, &second),
+            }))
+        }
+        _ => Err("unknown VoxelShape kind".into()),
+    }
+}
+
 fn f64_vec3(value: &Value) -> Result<Vec3, String> {
     Ok(Vec3::new(
         f64_field(value, "x")?,
@@ -499,6 +560,9 @@ fn math_result(request: &Value) -> Result<Value, String> {
     }
     if operation == "aabb" {
         return aabb_result(request);
+    }
+    if operation == "shape" {
+        return shape_result(request);
     }
     if operation == "blockpos" {
         return blockpos_result(request);

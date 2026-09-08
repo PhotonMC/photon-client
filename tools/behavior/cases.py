@@ -7,6 +7,12 @@ def float_bits(value, width="f32"):
     return struct.pack(">f" if width == "f32" else ">d", value).hex()
 
 
+def box_bits(min_x, min_y, min_z, max_x, max_y, max_z):
+    return {"min_x": float_bits(min_x, "f64"), "min_y": float_bits(min_y, "f64"),
+            "min_z": float_bits(min_z, "f64"), "max_x": float_bits(max_x, "f64"),
+            "max_y": float_bits(max_y, "f64"), "max_z": float_bits(max_z, "f64")}
+
+
 def neighbors(value, width):
     bits = int(float_bits(value, width), 16)
     digits = 8 if width == "f32" else 16
@@ -178,6 +184,20 @@ def math_cases():
            "seed": "42", "steps": [{"op": "nextInt"}, {"op": "consumeCount", "rounds": 3},
                                       {"op": "nextInt"}, {"op": "consumeCount", "rounds": -2},
                                       {"op": "nextInt"}]}
+    yield {"case_id": "shape/basic/block", "family": "math", "operation": "shape",
+           "kind": "single", "box": box_bits(0, 0, 0, 1, 1, 1), "steps": []}
+    yield {"case_id": "shape/basic/move", "family": "math", "operation": "shape",
+           "kind": "single", "box": box_bits(-0.25, 0.125, 0.0, 0.75, 0.875, 1.25),
+           "steps": [{"op": "move", "dx": float_bits(0.5, "f64"),
+                      "dy": float_bits(-0.125, "f64"), "dz": float_bits(2, "f64")}]}
+    yield {"case_id": "shape/empty/sliver", "family": "math", "operation": "shape",
+           "kind": "single", "box": box_bits(0, 0, 0, 0.00000005, 1, 1), "steps": []}
+    yield {"case_id": "shape/or/disjoint", "family": "math", "operation": "shape", "kind": "join",
+           "op": "or", "first": box_bits(0, 0, 0, 0.25, 1, 1),
+           "second": box_bits(0.75, 0, 0, 1, 1, 1)}
+    yield {"case_id": "shape/or/touching", "family": "math", "operation": "shape", "kind": "join",
+           "op": "or", "first": box_bits(0, 0, 0, 0.5, 1, 1),
+           "second": box_bits(0.5, 0, 0, 1, 1, 1)}
     yield {"case_id": "random/fork/basic", "family": "math", "operation": "random_fork",
            "seed": "42", "prefix_steps": [],
            "child_steps": [{"op": "nextInt"}, {"op": "nextDouble"}, {"op": "nextLong"}],

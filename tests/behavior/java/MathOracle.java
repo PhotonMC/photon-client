@@ -9,6 +9,9 @@ import net.minecraft.world.level.levelgen.PositionalRandomFactory;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec2;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.shapes.BooleanOp;
+import net.minecraft.world.phys.shapes.Shapes;
+import net.minecraft.world.phys.shapes.VoxelShape;
 
 public final class MathOracle {
     public static JsonObject run(JsonObject request) {
@@ -95,6 +98,34 @@ public final class MathOracle {
                 events.add(snapshot(vector));
             }
             result.add("events", events);
+        } else if (operation.equals("shape")) {
+            String kind = request.get("kind").getAsString();
+            if (kind.equals("single")) {
+                VoxelShape shape = voxelShape(request.getAsJsonObject("box"));
+                var events = new JsonArray();
+                events.add(snapshot(shape));
+                for (var entry : request.getAsJsonArray("steps")) {
+                    JsonObject step = entry.getAsJsonObject();
+                    if (step.get("op").getAsString().equals("move")) {
+                        shape = shape.move(f64(step, "dx"), f64(step, "dy"), f64(step, "dz"));
+                    } else {
+                        throw new IllegalArgumentException("Unknown VoxelShape op");
+                    }
+                    events.add(snapshot(shape));
+                }
+                result.add("events", events);
+            } else if (kind.equals("join")) {
+                VoxelShape first = voxelShape(request.getAsJsonObject("first"));
+                VoxelShape second = voxelShape(request.getAsJsonObject("second"));
+                BooleanOp op = switch (request.get("op").getAsString()) {
+                    case "or" -> BooleanOp.OR;
+                    default -> throw new IllegalArgumentException("Unknown VoxelShape boolean op");
+                };
+                result.add("shape", snapshot(Shapes.join(first, second, op)));
+                result.addProperty("join_is_not_empty", Shapes.joinIsNotEmpty(first, second, op));
+            } else {
+                throw new IllegalArgumentException("Unknown VoxelShape kind");
+            }
         } else if (operation.equals("random")) {
             RandomSource random = RandomSource.create(Long.parseLong(request.get("seed").getAsString()));
             var events = new JsonArray();
@@ -209,6 +240,11 @@ public final class MathOracle {
             f64(object, "max_x"), f64(object, "max_y"), f64(object, "max_z"));
     }
 
+    private static VoxelShape voxelShape(JsonObject object) {
+        return Shapes.box(f64(object, "min_x"), f64(object, "min_y"), f64(object, "min_z"),
+            f64(object, "max_x"), f64(object, "max_y"), f64(object, "max_z"));
+    }
+
     private static BlockPos blockPos(JsonObject object) {
         return new BlockPos(
             Integer.parseInt(object.get("x").getAsString()),
@@ -269,6 +305,20 @@ public final class MathOracle {
         state.addProperty("max_x", Oracle.bits(box.maxX));
         state.addProperty("max_y", Oracle.bits(box.maxY));
         state.addProperty("max_z", Oracle.bits(box.maxZ));
+        return state;
+    }
+
+    private static JsonObject snapshot(VoxelShape shape) {
+        var state = new JsonObject();
+        state.addProperty("empty", shape.isEmpty());
+        var boxes = new JsonArray();
+        for (AABB box : shape.toAabbs()) {
+            boxes.add(snapshot(box));
+        }
+        state.add("boxes", boxes);
+        if (!shape.isEmpty()) {
+            state.add("bounds", snapshot(shape.bounds()));
+        }
         return state;
     }
 
