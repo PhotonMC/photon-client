@@ -1,6 +1,6 @@
 # P03.c — NBT referans sözleşmesi (bileşikler, listeler, diziler)
 
-Bu dilimin **31 Java davranış testi hazırdır; iç içe bileşikler, listeler ve diziler için Rust implementasyonu henüz yoktur**. Düz bileşikler için Rust karşılığı mevcuttur ([kanıt](nbt-parity.md)); önceki 18 girdisi ve sonucu değişmedi. Kota/derinlik ve SNBT bu dilime dahil değildir.
+Bu dilimin **31 Java davranış testi hazırdır ve Rust karşılığı doğrulanmıştır** ([kanıt](nbt-parity.md)). Kapsam; null/boş kökleri, ilkel ve string alanları, iç içe bileşikleri, listeleri ve byte/int/long dizilerini içerir. Kota/derinlik sınırları ve SNBT bu dilime dahil değildir.
 
 ## Kaynak ve sınır
 
@@ -10,22 +10,21 @@ Gerekli JAR SHA-1 değerleri `tests/behavior/reference.json` içinde sabitlendi.
 
 ## Davranış sözleşmesi
 
-- Kök boş bileşik, düz ilkel alanlı bileşik veya null'dur. Null kök tek `00` baytı olarak taşınır; boş bileşik `0a00` olarak taşınır.
-- Alan türleri `byte`, `short`, `int`, `long`, `float`, `double` ve `string` ile sınırlıdır. Tamsayılar işaretli ondalık string, float/double ham bit hex, string düz metin olarak taşınır.
-- Okuma `FriendlyByteBuf.readNbt` kullanır: bileşik değilse `DecoderException`, bozuk gövde `ReportedNbtException`, boş girdide `EncoderException` üretilir. `ReportedNbtException` ve `DecoderException` `decoder_error`, `EncoderException` `encoder_error` kategorisidir. Kesik okumalarda tüketim denenen baytları yansıtır.
-- Yazma `FriendlyByteBuf.writeNbt` kullanır ve bu dilimde her zaman başarılıdır.
-- Okuma sonucu alanlar ada göre sıralıdır. Java exception sınıfı yalnızca `diagnostics` içindedir.
+- Kök boş bileşik, ilkel alanlı bileşik, iç içe bileşik veya null olabilir. Null kök tek `00` baytı, boş bileşik `0a00` olarak taşınır.
+- Alan türleri `byte`, `short`, `int`, `long`, `float`, `double`, `string`, `byte-array`, `list`, `compound`, `int-array` ve `long-array` olarak taşınır. Tamsayılar işaretli ondalık string, float/double ham bit hex, diziler string dizisi olarak gözlenir.
+- Liste yükü element türü, eleman sayısı ve adlandırılmamış payload'lardan oluşur. Boş listede element türü `0` yazılır; mevcut testlerdeki listeler tek türden veya bileşik elemanlardan oluşur.
+- Okuma `FriendlyByteBuf.readNbt` kullanır: bileşik değilse payload tüketildikten sonra `DecoderException`, bozuk gövde `ReportedNbtException`, boş girdide `EncoderException` üretilir. Hata kategorileri sırasıyla `decoder_error` ve `encoder_error` olarak kaydedilir. Kesik okumalarda tüketim denenen baytları yansıtır.
+- Okuma sonucu kök ve iç bileşik alanları ada göre sıralanır. Java exception sınıfı yalnızca `diagnostics` içindedir.
 
 ## Senaryolar ve JSONL
 
 | Grup | Sayı | Girdiler |
 | --- | ---: | --- |
-| NBT yazma | 10 | Boş, 7 ilkel tür ve null kök |
-| NBT ağaç yazma | 8 | İç içe bileşik, int/string listeleri, boş liste, bayt/int/long dizileri ve bileşik listesi |
-| NBT okuma | 13 | Boş, null, el yapımı ilkel/iç içe/liste yükleri, bileşik-olmayan kök, kesik girdiler |
-| NBT okuma | 9 | Boş, null, el yapımı bayt/string yükleri, bileşik-olmayan kök, kesik/etiket/gövde ve boş girdi |
+| NBT yazma | 9 | Boş kök, 7 ilkel tür ve null kök |
+| NBT ağaç yazma | 8 | İç içe bileşik, int/string listeleri, boş liste, byte/int/long dizileri ve bileşik listesi |
+| NBT okuma | 14 | Boş, null, el yapımı ilkel/iç içe/liste yükleri, bileşik olmayan kök, kesik girdiler ve boş girdi |
 
-`family: "nbt"`, `operation: "read" | "write"` ortak girdilerdir. Yazmada `fields` dizi veya `null_root` bulunur; okumada `hex` başlık/gövdeyi taşır. Başarılı okuma `fields` veya `null` içerir; her durumda `consumed` ve `remaining_hex` bulunur.
+`family: "nbt"`, `operation: "read" | "write"` ortak girdilerdir. Düz yazmada `fields` dizisi, ağaç yazmada `tree`, null kökte `null_root` bulunur. Okumada `hex` başlık/gövdeyi taşır. Başarılı okuma `fields` veya `null` içerir; her durumda `consumed` ve `remaining_hex` bulunur.
 
 ## Çalıştırma ve kanıt
 
@@ -34,10 +33,14 @@ Depo kökünden:
 ```bash
 python3 tools/behavior/run.py capture --family nbt
 python3 tools/behavior/run.py verify --family nbt
+cargo build --locked --offline --example behavior_adapter
+python3 tools/behavior/run.py compare --family nbt --adapter target/debug/examples/behavior_adapter
 ```
 
-31 senaryo iki ayrı JVM'de aynı sonucu verdi. NBT referans kimliği: `d59af1e80d3b597d7fa2e4c2c4db8efbe3c81de0161503a84f7a334146ae66b2`. Önceki 18 girdisi ve sonucu değişmedi. Ham girdiler/çıktılar yalnızca `.data/` altında tutulur.
+31 senaryo iki ayrı JVM'de aynı sonucu verdi. NBT referans kimliği: `d59af1e80d3b597d7fa2e4c2c4db8efbe3c81de0161503a84f7a334146ae66b2`. Ham girdiler/çıktılar yalnızca `.data/` altında tutulur.
 
-Toplam 749 Java senaryosu yakalandı ve doğrulandı. Birleşik referans kimliği: `498d77d92c4ec42c9073256fe4d5ff56259297322c94741f00cfa6b799c9d92f`. Eski kayıtlar değiştirilmedi.
+Altı ailenin 761 senaryolu birleşik referansı iki JVM'de doğrulandı. Birleşik referans kimliği: `d9a2a8b214d5bbfff3c1105d5d02029d37fbb09472a12307f14a428f4ae24a39`.
 
-Mevcut Rust adaptörü ağaç/liste/dizi içermediğinden ilgili karşılaştırma başarısız olur. Sonraki adım bu sabit referansa karşı NBT ağaç Rust davranış dilimidir.
+NBT debug ve release Rust adaptörleri **31/31** eşleşti. Birleşik debug ve release karşılaştırmaları da **761/761** geçti. Yerel NBT raporları `compare-84b_44e5` (debug) ve `compare-3cus5l6c` (release); birleşik raporlar `compare-ka_5su6z` (debug) ve `compare-ipdk6o22` (release) dizinlerinde, `.data/runs/behavior/` altında bulunur.
+
+Bu doğrulama seçili NBT corpus'u ile sınırlıdır. Kota, derinlik sınırı, SNBT ve oyun içindeki daha geniş istemci davranışları ayrı eşitlik dilimleridir.

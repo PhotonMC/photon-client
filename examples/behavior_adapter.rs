@@ -695,6 +695,164 @@ fn binary_result(request: &Value) -> Result<Value, String> {
     }
 }
 
+fn nbt_type_name(value: &FieldValue) -> &'static str {
+    match value {
+        FieldValue::Byte(_) => "byte",
+        FieldValue::Short(_) => "short",
+        FieldValue::Int(_) => "int",
+        FieldValue::Long(_) => "long",
+        FieldValue::Float(_) => "float",
+        FieldValue::Double(_) => "double",
+        FieldValue::ByteArray(_) => "byte-array",
+        FieldValue::Str(_) => "string",
+        FieldValue::List(_) => "list",
+        FieldValue::Compound(_) => "compound",
+        FieldValue::IntArray(_) => "int-array",
+        FieldValue::LongArray(_) => "long-array",
+    }
+}
+
+fn nbt_value_json(value: &FieldValue) -> Value {
+    match value {
+        FieldValue::Byte(value) => json!(value.to_string()),
+        FieldValue::Short(value) => json!(value.to_string()),
+        FieldValue::Int(value) => json!(value.to_string()),
+        FieldValue::Long(value) => json!(value.to_string()),
+        FieldValue::Float(value) => json!(format!("{:08x}", value.to_bits())),
+        FieldValue::Double(value) => json!(format!("{:016x}", value.to_bits())),
+        FieldValue::ByteArray(values) => {
+            json!(
+                values
+                    .iter()
+                    .map(|value| value.to_string())
+                    .collect::<Vec<_>>()
+            )
+        }
+        FieldValue::Str(value) => json!(value),
+        FieldValue::List(values) => {
+            Value::Array(values.iter().map(nbt_description_json).collect::<Vec<_>>())
+        }
+        FieldValue::Compound(fields) => {
+            let mut object = serde_json::Map::new();
+            let mut sorted: Vec<&Field> = fields.iter().collect();
+            sorted.sort_by(|a, b| a.key.cmp(&b.key));
+            for field in sorted {
+                object.insert(field.key.clone(), nbt_description_json(&field.value));
+            }
+            Value::Object(object)
+        }
+        FieldValue::IntArray(values) => {
+            json!(
+                values
+                    .iter()
+                    .map(|value| value.to_string())
+                    .collect::<Vec<_>>()
+            )
+        }
+        FieldValue::LongArray(values) => {
+            json!(
+                values
+                    .iter()
+                    .map(|value| value.to_string())
+                    .collect::<Vec<_>>()
+            )
+        }
+    }
+}
+
+fn nbt_description_json(value: &FieldValue) -> Value {
+    json!({
+        "type": nbt_type_name(value),
+        "value": nbt_value_json(value),
+    })
+}
+
+fn nbt_field_json(field: &Field) -> Value {
+    json!({
+        "key": field.key,
+        "type": nbt_type_name(&field.value),
+        "value": nbt_value_json(&field.value),
+    })
+}
+
+fn nbt_tree_values<T>(node: &Value, value_name: &str) -> Result<Vec<T>, String>
+where
+    T: std::str::FromStr,
+    T::Err: std::fmt::Display,
+{
+    node["value"]
+        .as_array()
+        .ok_or_else(|| format!("{value_name} value must be an array"))?
+        .iter()
+        .map(|value| {
+            value
+                .as_str()
+                .ok_or_else(|| format!("{value_name} values must be strings"))?
+                .parse::<T>()
+                .map_err(|error| error.to_string())
+        })
+        .collect()
+}
+
+fn nbt_tree_value(node: &Value) -> Result<FieldValue, String> {
+    match string(node, "type")? {
+        "byte" => Ok(FieldValue::Byte(
+            string(node, "value")?
+                .parse::<i8>()
+                .map_err(|error| error.to_string())?,
+        )),
+        "short" => Ok(FieldValue::Short(
+            string(node, "value")?
+                .parse::<i16>()
+                .map_err(|error| error.to_string())?,
+        )),
+        "int" => Ok(FieldValue::Int(
+            string(node, "value")?
+                .parse::<i32>()
+                .map_err(|error| error.to_string())?,
+        )),
+        "long" => Ok(FieldValue::Long(
+            string(node, "value")?
+                .parse::<i64>()
+                .map_err(|error| error.to_string())?,
+        )),
+        "float" => Ok(FieldValue::Float(f32::from_bits(
+            u32::from_str_radix(string(node, "value")?, 16).map_err(|error| error.to_string())?,
+        ))),
+        "double" => Ok(FieldValue::Double(f64::from_bits(
+            u64::from_str_radix(string(node, "value")?, 16).map_err(|error| error.to_string())?,
+        ))),
+        "byte-array" => Ok(FieldValue::ByteArray(nbt_tree_values(node, "byte-array")?)),
+        "string" => Ok(FieldValue::Str(string(node, "value")?.to_owned())),
+        "list" => Ok(FieldValue::List(
+            node["value"]
+                .as_array()
+                .ok_or("list value must be an array")?
+                .iter()
+                .map(nbt_tree_value)
+                .collect::<Result<Vec<_>, _>>()?,
+        )),
+        "compound" => {
+            let object = node["value"]
+                .as_object()
+                .ok_or("compound value must be an object")?;
+            let fields = object
+                .iter()
+                .map(|(key, value)| {
+                    Ok(Field {
+                        key: key.clone(),
+                        value: nbt_tree_value(value)?,
+                    })
+                })
+                .collect::<Result<Vec<_>, String>>()?;
+            Ok(FieldValue::Compound(fields))
+        }
+        "int-array" => Ok(FieldValue::IntArray(nbt_tree_values(node, "int-array")?)),
+        "long-array" => Ok(FieldValue::LongArray(nbt_tree_values(node, "long-array")?)),
+        _ => Err("unknown NBT field type".into()),
+    }
+}
+
 fn nbt_result(request: &Value) -> Result<Value, String> {
     fn nbt_error(error: nbt::ReadError) -> &'static str {
         match error {
@@ -718,23 +876,7 @@ fn nbt_result(request: &Value) -> Result<Value, String> {
                     "remaining_hex": hex(remaining),
                 })),
                 Ok(Some(fields)) => {
-                    let mut out: Vec<Value> = fields
-                        .iter()
-                        .map(|field| {
-                            let (kind, value) = match &field.value {
-                                FieldValue::Byte(v) => ("byte", v.to_string()),
-                                FieldValue::Short(v) => ("short", v.to_string()),
-                                FieldValue::Int(v) => ("int", v.to_string()),
-                                FieldValue::Long(v) => ("long", v.to_string()),
-                                FieldValue::Float(v) => ("float", format!("{:08x}", v.to_bits())),
-                                FieldValue::Double(v) => {
-                                    ("double", format!("{:016x}", v.to_bits()))
-                                }
-                                FieldValue::Str(v) => ("string", v.clone()),
-                            };
-                            json!({"key": field.key, "type": kind, "value": value})
-                        })
-                        .collect();
+                    let mut out: Vec<Value> = fields.iter().map(nbt_field_json).collect();
                     out.sort_by(|a, b| a["key"].as_str().cmp(&b["key"].as_str()));
                     Ok(json!({
                         "fields": out,
@@ -755,6 +897,12 @@ fn nbt_result(request: &Value) -> Result<Value, String> {
             let mut buffer = prefix.clone();
             if request.get("null_root").and_then(Value::as_bool) == Some(true) {
                 nbt::write_nbt(None, &mut buffer);
+            } else if let Some(tree) = request.get("tree") {
+                let value = nbt_tree_value(tree)?;
+                let FieldValue::Compound(fields) = value else {
+                    return Err("NBT tree root must be a compound".into());
+                };
+                nbt::write_nbt(Some(&fields), &mut buffer);
             } else {
                 let fields = request["fields"]
                     .as_array()

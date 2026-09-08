@@ -1,38 +1,43 @@
-# P03.c — NBT Rust davranış dilimi (düz bileşikler)
+# P03.c — NBT Rust davranış dilimi
 
-`src/nbt.rs`, null/boş kökler ve ilkel/string alanlı düz bileşikleri içerir. `examples/behavior_adapter.rs` üretim kütüphanesini mevcut JSONL senaryolarına bağlar; beklenen değer üretmez. Listeler, diziler, iç içe bileşikler, kota/derinlik ve SNBT bu dilime dahil değildir.
+`src/nbt.rs`, null/boş kökleri, ilkel ve string alanları, iç içe bileşikleri, listeleri ve byte/int/long dizilerini içerir. `examples/behavior_adapter.rs` üretim kütüphanesini mevcut JSONL senaryolarına bağlar; beklenen değer üretmez. Kota/derinlik ve SNBT bu dilime dahil değildir.
 
 ## Referans ve davranış
 
-Referans Java 26.2 / protokol 776; `FriendlyByteBuf` NBT yolları ve `NbtIo` ikili formatı kaynak incelemesinde belirlendi. `NbtOracle.java` doğrudan orijinal sınıfları çağırır. Ayrıntılı sözleşme ve 18 senaryoluk kapsam [NBT referans belgesindedir](nbt-contract.md).
+Referans Java 26.2 / protokol 776; `FriendlyByteBuf` NBT yolları ve `NbtIo` ikili formatı kaynak incelemesinde belirlendi. `NbtOracle.java` doğrudan sabitlenen JAR sınıflarını çağırır. Ayrıntılı sözleşme ve 31 senaryoluk kapsam [NBT referans belgesindedir](nbt-contract.md).
 
 | Rust API | Korunan davranış |
 | --- | --- |
-| `read_nbt` | Boş girdide `encoder_error`; bileşik-olmayan kökte gövde tüketilip `decoder_error`; kesik gövdede denenen baytlar tüketilip `decoder_error` |
-| `write_nbt` | Null kök tek `00` baytı; bileşik `0a` + alanlar + `00`; alanlar verilen sırada yazılır |
-| Alan kodlaması | Ağ bayt sırası, string `u16` uzunluk öneki; bu dilimde ASCII girdilerde standart/modifiye UTF-8 aynıdır |
+| `read_nbt` | Null kökte end marker, bileşik kökte özyineli değer ağacı; bileşik olmayan kökte payload tüketilip `decoder_error`; kesik gövdede denenen baytlar tüketilip `decoder_error` |
+| `write_nbt` | Null kök tek `00` baytı; bileşik `0a` + adlandırılmış payload'lar + `00`; verilen alan yazma sırası korunur |
+| `FieldValue` | Primitive, string, byte/int/long array, list ve compound değerlerini özyineli olarak taşır |
+| Liste kodlaması | Java element türü byte'ı, i32 eleman sayısı, adlandırılmamış payload'lar; boş liste için tür `0` |
+| Alan kodlaması | Ağ bayt sırası, string `u16` uzunluk öneki; bu corpus'ta ASCII girdilerde standart/modifiye UTF-8 aynıdır |
 
-Çok alanlı yazımda Java `HashMap` sırası kullanılmaz; yazma senaryoları tek alanlıdır, okuma sonucu ada göre sıralıdır.
+Okuma alanları ve iç compound anahtarları ada göre sıralar; yazma alanların verilen sırasını korur. Java `HashMap` sırasının çok alanlı yazma üzerindeki etkisi bu küçük corpus'ta tek alanlı compound'larla sınırlandırılmıştır.
 
 ## Doğrulama
 
 Java 25.0.4.1 ve Rust 1.98.1 / Linux x86_64 ortamında:
 
-- 655 senaryoluk kayıtlı Java referansı iki yeni JVM çalıştırmasıyla doğrulandı.
-- Debug ve release Rust adaptörleri **655/655** eşleşti: 238 math + 22 timer + 144 wire + 141 utf8 + 92 binary + 18 nbt.
-- Biçim, Clippy ve paket kapsamı kontrolleri geçti; `.data/` ve test adaptörü paket dışında kaldı.
+- 31 senaryoluk NBT referansı iki ayrı JVM çalıştırmasıyla kararlı bulundu.
+- Debug ve release Rust adaptörleri **31/31** eşleşti: düz ve iç içe compound'lar, int/string/compound listeleri, boş liste, byte/int/long dizileri ve kesik okumalar.
+- Altı ailenin birleşik corpus'u **761/761** senaryoda hem debug hem release adaptörüyle eşleşti.
+- `cargo fmt`, `cargo check --locked --offline --all-targets`, `cargo test --locked --offline --all-targets`, Clippy ve paket kapsamı kontrolleri geçti.
 
-Birleşik referans kimliği: `f14752fc7c658af95024aea3bbe6011ebc3423db5a01698e6178e0f8ce765081`. NBT ailesi kimliği: `62d5373d5e6a9b1bbca591baca712012461907aa21f3dcc62d267434af797920`.
+NBT referans kimliği: `d59af1e80d3b597d7fa2e4c2c4db8efbe3c81de0161503a84f7a334146ae66b2`.
 
-Yerel raporlar `.data/runs/behavior/` altında bulunur.
+Birleşik referans kimliği: `d9a2a8b214d5bbfff3c1105d5d02029d37fbb09472a12307f14a428f4ae24a39`.
 
-## Yeniden çalıştırma ve sonraki dilim
+Yerel NBT raporları: `compare-84b_44e5` (debug) ve `compare-3cus5l6c` (release); birleşik raporlar `compare-ka_5su6z` (debug) ve `compare-ipdk6o22` (release) dizinlerinde, `.data/runs/behavior/` altında bulunur.
+
+## Yeniden çalıştırma ve sınırlar
 
 Depo kökünde, yerel referans ve Cargo önbelleği mevcutken:
 
 ```bash
 cargo build --locked --offline --example behavior_adapter
-python3 tools/behavior/run.py compare --adapter target/debug/examples/behavior_adapter
+python3 tools/behavior/run.py compare --family nbt --adapter target/debug/examples/behavior_adapter
 ```
 
-Kayıtlı Java referansını yeniden ölçmek için `verify` kullanılır. P03.c kapsamında ağaç/liste/dizi için [13 Java referans testi](nbt-contract.md) hazır; sıradaki küçük dilim Rust implementasyonudur. Sonraki dilim bağımlılık sırasına göre seçilir.
+Kayıtlı Java referansını yeniden ölçmek için aynı aile seçimiyle `verify` kullanılır. Bu kanıt seçili 31 NBT senaryosuyla sınırlıdır; kota, derinlik, SNBT ve oyun içindeki istemci davranışları eşitlik kapsamına dahil değildir.
