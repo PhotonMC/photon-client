@@ -1,6 +1,6 @@
 # P01.d — AABB contract sözleşmesi
 
-Bu dilimin **5 Java davranış testi hazırdır ve Rust karşılığı doğrulanmıştır** ([kanıt](aabb-parity.md)). Kapsam, hareket delta'sının işaretine göre Java `AABB.contract(double,double,double)` çağrısının kutunun tek uç noktasını içeri taşımasını içerir. AABB inflate için ayrı [sözleşme](aabb-inflate-contract.md), intersect için ayrı [sözleşme](aabb-intersect-contract.md), move için ayrı [sözleşme](aabb-move-contract.md) ve sizes için ayrı [sözleşme](aabb-sizes-contract.md) vardır; clip ve diğer genişletme/kesişim işlemleri ayrı dilimlerdir.
+Bu dilimin **5 Java davranış testi hazırdır ve Rust karşılığı doğrulanmıştır** ([kanıt](aabb-parity.md)). Kapsam, hareket delta'sının işaretine göre Java `AABB.contract(double,double,double)` çağrısının kutunun tek uç noktasını içeri taşımasını içerir. AABB inflate için ayrı [sözleşme](aabb-inflate-contract.md), intersect için ayrı [sözleşme](aabb-intersect-contract.md), move için ayrı [sözleşme](aabb-move-contract.md), sizes için ayrı [sözleşme](aabb-sizes-contract.md) ve hasNaN için ayrı [sözleşme](aabb-has-nan-contract.md) vardır; clip ve diğer genişletme/kesişim işlemleri ayrı dilimlerdir.
 
 ## Kaynak ve sınır
 
@@ -34,6 +34,6 @@ cargo build --locked --offline --example behavior_adapter
 python3 tools/behavior/run.py compare --family math --adapter target/debug/examples/behavior_adapter
 ```
 
-Contract senaryolarını içeren math referans kimliği `3795d607b2b0b2e782a153bffb5f46917835f2df40d4a855940d960953a37113` oldu. Bu referans iki JVM çalıştırmasıyla kararlı bulundu. Birleşik altı aile referansı `3989e3c4cad4083d9855033e3273ac82ba6efde8a747b4ce2c918df3552a60e2` kimliğiyle iki JVM'de doğrulandı.
+Contract senaryolarını içeren math referans kimliği `3795d607b2b0b2e782a153bffb5f46917835f2df40d4a855940d960953a37113` oldu. Bu referans iki JVM çalıştırmasıyla kararlı bulundu. Birleşik altı aile referansı `8e88d740d0b0479c35d6b7be95e63c03e348f5fbd8cc091c824dda259c04d08c` kimliğiyle iki JVM'de doğrulandı.
 
-Rust debug ve release adaptörleri math ailesinde 371/371, birleşik corpus'ta 854/854 eşleşti. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.
+Rust debug ve release adaptörleri math ailesinde 371/371, birleşik corpus'ta 860/860 eşleşti. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.

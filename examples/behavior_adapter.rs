@@ -586,6 +586,7 @@ fn aabb_result(request: &Value) -> Result<Value, String> {
                 events.push(aabb_snapshot(value));
             }
             "sizes" => events.push(aabb_sizes_snapshot(value)),
+            "has_nan" => events.push(json!({"has_nan": value.has_nan()})),
             "clip" => {
                 let from = f64_vec3(step.get("from").ok_or("from must be an object")?)?;
                 let to = f64_vec3(step.get("to").ok_or("to must be an object")?)?;

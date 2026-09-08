@@ -226,6 +226,11 @@ public final class MathOracle {
                         state.addProperty("size", Oracle.bits(box.getSize()));
                         events.add(state);
                     }
+                    case "has_nan" -> {
+                        var state = new JsonObject();
+                        state.addProperty("has_nan", box.hasNaN());
+                        events.add(state);
+                    }
                     case "clip" -> {
                         var hit = box.clip(
                             vec3(step.getAsJsonObject("from")),

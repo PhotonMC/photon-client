@@ -468,6 +468,26 @@ def math_cases():
     yield {"case_id": "aabb/sizes/large-sum-rounding", "family": "math", "operation": "aabb",
            **unit, "max_z": float_bits(9007199254740992.0, "f64"),
            "steps": [{"op": "sizes"}]}
+    yield {"case_id": "aabb/has-nan/finite", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "has_nan"}]}
+    yield {"case_id": "aabb/has-nan/x-min", "family": "math", "operation": "aabb",
+           **unit, "min_x": float_bits(float("nan"), "f64"),
+           "steps": [{"op": "has_nan"}]}
+    yield {"case_id": "aabb/has-nan/y-max", "family": "math", "operation": "aabb",
+           **unit, "max_y": float_bits(float("nan"), "f64"),
+           "steps": [{"op": "has_nan"}]}
+    yield {"case_id": "aabb/has-nan/z-both", "family": "math", "operation": "aabb",
+           **unit, "min_z": float_bits(float("nan"), "f64"),
+           "max_z": float_bits(float("nan"), "f64"),
+           "steps": [{"op": "has_nan"}]}
+    yield {"case_id": "aabb/has-nan/positive-infinity", "family": "math", "operation": "aabb",
+           **unit, "min_x": float_bits(float("inf"), "f64"),
+           "max_x": float_bits(float("inf"), "f64"),
+           "steps": [{"op": "has_nan"}]}
+    yield {"case_id": "aabb/has-nan/negative-infinity", "family": "math", "operation": "aabb",
+           **unit, "min_y": float_bits(float("-inf"), "f64"),
+           "max_y": float_bits(float("-inf"), "f64"),
+           "steps": [{"op": "has_nan"}]}
     def point(x, y, z):
         return {"x": float_bits(x, "f64"), "y": float_bits(y, "f64"), "z": float_bits(z, "f64")}
 
