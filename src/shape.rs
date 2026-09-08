@@ -1,8 +1,9 @@
 //! Voxel shapes for the first P01.d geometry slice.
 //!
 //! A shape stores coordinate planes and the occupied cells between them. This
-//! is enough to preserve Java's box, move, OR-join, bounds, and box iteration
-//! behavior without choosing a broader collision representation yet.
+//! is enough to preserve Java's box, move, supported BooleanOp joins, bounds,
+//! and box iteration behavior without choosing a broader collision
+//! representation yet.
 
 use crate::aabb::Aabb;
 
@@ -18,18 +19,26 @@ pub enum ShapeError {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BooleanOp {
     And,
+    False,
+    First,
+    NotSame,
     OnlyFirst,
     OnlySecond,
     Or,
+    Second,
 }
 
 impl BooleanOp {
     fn apply(self, first: bool, second: bool) -> bool {
         match self {
             Self::And => first && second,
+            Self::False => false,
+            Self::First => first,
+            Self::NotSame => first != second,
             Self::OnlyFirst => first && !second,
             Self::OnlySecond => second && !first,
             Self::Or => first || second,
+            Self::Second => second,
         }
     }
 }

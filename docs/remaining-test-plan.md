@@ -1,6 +1,6 @@
 # Kalan bölümler test planı (çalıştırılamayanlar)
 
-803 Java senaryosu kayıtlıdır (beş+bir aile). Aşağıdaki bölümler yerel ortamda çalıştırılamaz; her biri engelli kaydedilir, sahte golden üretilmez. Her bölümün önkoşulu, engel kalkınca yazılacak ilk senaryolar ve kabul ölçütü tanımlıdır.
+807 Java senaryosu kayıtlıdır (beş+bir aile). Aşağıdaki bölümler yerel ortamda çalıştırılamaz; her biri engelli kaydedilir, sahte golden üretilmez. Her bölümün önkoşulu, engel kalkınca yazılacak ilk senaryolar ve kabul ölçütü tanımlıdır.
 
 ## Kural
 
@@ -37,5 +37,5 @@
 
 ## P01 kalanları (çalıştırılabilir, sonraki test dilimleri)
 
-- P01.d: VoxelShape temel/OR ve `AND`/`ONLY_FIRST`/`ONLY_SECOND` join işlemleri hazır; kalan AABB çoklu shape birleşimleri, collision, occlusion ve diğer BooleanOp dalları sonraki dilimlerdir. Bu turdaki contains/intersects/expand/deflate ve tek kutulu `clip` de hazır.
+- P01.d: VoxelShape temel/OR ve `Shapes.join` tarafından kabul edilen `FALSE`, `AND`, `ONLY_FIRST`, `ONLY_SECOND`, `NOT_SAME`, `FIRST` ve `SECOND` yolları hazır; kalan AABB çoklu shape birleşimleri, collision ve occlusion sonraki dilimlerdir. `false,false` için true üreten BooleanOp sabitleri Java `Shapes.join` tarafından reddedilir. Bu turdaki contains/intersects/expand/deflate ve tek kutulu `clip` de hazır.
 - P01.e: `fork`/`forkPositional`, `nextGaussian`, `setSeed`, random yardımcı overload'ları ve bu turdaki sıralı çekimler hazır; farklı kaynak türleri ve overflow hata yolları ayrı kapsamdır.

@@ -476,6 +476,10 @@ fn shape_result(request: &Value) -> Result<Value, String> {
                 "and" => BooleanOp::And,
                 "only_first" => BooleanOp::OnlyFirst,
                 "only_second" => BooleanOp::OnlySecond,
+                "false" => BooleanOp::False,
+                "not_same" => BooleanOp::NotSame,
+                "second" => BooleanOp::Second,
+                "first" => BooleanOp::First,
                 _ => return Err("unknown VoxelShape boolean operation".into()),
             };
             let first = shape_box(request.get("first").ok_or("first must be an object")?)?;

@@ -210,6 +210,18 @@ def math_cases():
     yield {"case_id": "shape/only-second/disjoint", "family": "math", "operation": "shape", "kind": "join",
            "op": "only_second", "first": box_bits(0, 0, 0, 0.25, 1, 1),
            "second": box_bits(0.75, 0, 0, 1, 1, 1)}
+    yield {"case_id": "shape/false/overlap", "family": "math", "operation": "shape", "kind": "join",
+           "op": "false", "first": box_bits(0, 0, 0, 0.75, 1, 1),
+           "second": box_bits(0.25, 0, 0, 1, 1, 1)}
+    yield {"case_id": "shape/not-same/overlap", "family": "math", "operation": "shape", "kind": "join",
+           "op": "not_same", "first": box_bits(0, 0, 0, 0.75, 1, 1),
+           "second": box_bits(0.25, 0, 0, 1, 1, 1)}
+    yield {"case_id": "shape/second/displaced", "family": "math", "operation": "shape", "kind": "join",
+           "op": "second", "first": box_bits(0, 0, 0, 0.25, 1, 1),
+           "second": box_bits(0.75, 0, 0, 1, 1, 1)}
+    yield {"case_id": "shape/first/displaced", "family": "math", "operation": "shape", "kind": "join",
+           "op": "first", "first": box_bits(0.75, 0, 0, 1, 1, 1),
+           "second": box_bits(0, 0, 0, 0.25, 1, 1)}
     yield {"case_id": "random/fork/basic", "family": "math", "operation": "random_fork",
            "seed": "42", "prefix_steps": [],
            "child_steps": [{"op": "nextInt"}, {"op": "nextDouble"}, {"op": "nextLong"}],
