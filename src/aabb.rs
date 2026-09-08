@@ -2,7 +2,7 @@
 //!
 //! This covers the constructor normalization and the contains/intersects,
 //! expand-towards, contract, inflate, intersect, minmax, move, sizes, has_nan,
-//! deflate and segment clipping operations used by the current behavior corpus.
+//! positions, deflate and segment clipping operations used by the current behavior corpus.
 
 use crate::math::Vec3;
 
@@ -130,6 +130,34 @@ impl Aabb {
             || self.max_x.is_nan()
             || self.max_y.is_nan()
             || self.max_z.is_nan()
+    }
+
+    /// Return the midpoint of all three box axes using Java's lerp order.
+    pub fn center(self) -> Vec3 {
+        Vec3::new(
+            lerp_half(self.min_x, self.max_x),
+            lerp_half(self.min_y, self.max_y),
+            lerp_half(self.min_z, self.max_z),
+        )
+    }
+
+    /// Return the midpoint of the bottom face.
+    pub fn bottom_center(self) -> Vec3 {
+        Vec3::new(
+            lerp_half(self.min_x, self.max_x),
+            self.min_y,
+            lerp_half(self.min_z, self.max_z),
+        )
+    }
+
+    /// Return the lower endpoint as a vector.
+    pub fn min_position(self) -> Vec3 {
+        Vec3::new(self.min_x, self.min_y, self.min_z)
+    }
+
+    /// Return the upper endpoint as a vector.
+    pub fn max_position(self) -> Vec3 {
+        Vec3::new(self.max_x, self.max_y, self.max_z)
     }
 
     /// Extend both endpoints by the supplied per-axis amounts.
@@ -291,6 +319,10 @@ impl Aabb {
             )
         })
     }
+}
+
+fn lerp_half(start: f64, end: f64) -> f64 {
+    start + 0.5 * (end - start)
 }
 
 struct ClipPoint {

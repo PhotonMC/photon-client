@@ -1,6 +1,6 @@
 # P01.d/e — Random ve AABB referans sözleşmesi
 
-Bu dilimin 12 Java davranış testi ve Rust karşılaştırması hazırdır. Önceki 295 math senaryosunun girdisi ve sonucu değişmedi. AABB contract, AABB inflate, AABB intersect, AABB minmax, AABB move, AABB sizes, AABB hasNaN, AABB clip, fork/dağıtım varyantları ve çoklu shape işlemleri ayrı dilimlerdir.
+Bu dilimin 12 Java davranış testi ve Rust karşılaştırması hazırdır. Önceki 295 math senaryosunun girdisi ve sonucu değişmedi. AABB contract, AABB inflate, AABB intersect, AABB minmax, AABB move, AABB sizes, AABB hasNaN, AABB positions, AABB clip, fork/dağıtım varyantları ve çoklu shape işlemleri ayrı dilimlerdir.
 
 ## Kaynak ve sınır
 
@@ -33,7 +33,7 @@ python3 tools/behavior/run.py verify --family math
 
 307 math senaryosu iki ayrı JVM'de aynı sonucu verdi. Math referans kimliği: `529c11520bbda1953798018b953d4f6a3d2f46de0527d0ef9d802b210e08f91c`. Önceki 295 girdisi korunur. Ham girdiler/çıktılar yalnızca `.data/` altında tutulur.
 
-Toplam 860 Java senaryosu yakalandı ve doğrulandı. Birleşik referans kimliği: `8e88d740d0b0479c35d6b7be95e63c03e348f5fbd8cc091c824dda259c04d08c`. Eski kayıtlar değiştirilmedi.
+Toplam 866 Java senaryosu yakalandı ve doğrulandı. Birleşik referans kimliği: `571128a6d002b8e721c249963c5846bf521f1e933fc0062c4cb9402248146618`. Eski kayıtlar değiştirilmedi.
 
 Debug ve release Rust adaptörleri **307/307** eşleşti: 295 önceki math senaryosu ve bu dilimin 12 random/AABB senaryosu. Karşılaştırma random dizilerinin tamsayı/float/double/boolean olaylarını ve AABB uçları, üyelik, kesişim, genişletme ve büzme sonuçlarını kesin bit karşılaştırmasıyla kapsadı.
 

@@ -231,6 +231,14 @@ public final class MathOracle {
                         state.addProperty("has_nan", box.hasNaN());
                         events.add(state);
                     }
+                    case "positions" -> {
+                        var state = new JsonObject();
+                        state.add("center", snapshot(box.getCenter()));
+                        state.add("bottom_center", snapshot(box.getBottomCenter()));
+                        state.add("min_position", snapshot(box.getMinPosition()));
+                        state.add("max_position", snapshot(box.getMaxPosition()));
+                        events.add(state);
+                    }
                     case "clip" -> {
                         var hit = box.clip(
                             vec3(step.getAsJsonObject("from")),

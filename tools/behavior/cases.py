@@ -488,6 +488,33 @@ def math_cases():
            **unit, "min_y": float_bits(float("-inf"), "f64"),
            "max_y": float_bits(float("-inf"), "f64"),
            "steps": [{"op": "has_nan"}]}
+    yield {"case_id": "aabb/positions/unit", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "positions"}]}
+    yield {"case_id": "aabb/positions/reversed-normalizes", "family": "math", "operation": "aabb",
+           "min_x": float_bits(3.0, "f64"), "min_y": float_bits(2.0, "f64"),
+           "min_z": float_bits(1.0, "f64"), "max_x": float_bits(-1.0, "f64"),
+           "max_y": float_bits(-2.0, "f64"), "max_z": float_bits(-3.0, "f64"),
+           "steps": [{"op": "positions"}]}
+    yield {"case_id": "aabb/positions/asymmetric", "family": "math", "operation": "aabb",
+           "min_x": float_bits(-7.25, "f64"), "min_y": float_bits(0.125, "f64"),
+           "min_z": float_bits(10.5, "f64"), "max_x": float_bits(2.75, "f64"),
+           "max_y": float_bits(8.875, "f64"), "max_z": float_bits(11.25, "f64"),
+           "steps": [{"op": "positions"}]}
+    yield {"case_id": "aabb/positions/signed-zero", "family": "math", "operation": "aabb",
+           "min_x": float_bits(-0.0, "f64"), "min_y": float_bits(-0.0, "f64"),
+           "min_z": float_bits(-0.0, "f64"), "max_x": float_bits(0.0, "f64"),
+           "max_y": float_bits(0.0, "f64"), "max_z": float_bits(0.0, "f64"),
+           "steps": [{"op": "positions"}]}
+    yield {"case_id": "aabb/positions/infinite", "family": "math", "operation": "aabb",
+           "min_x": float_bits(float("-inf"), "f64"), "min_y": float_bits(float("-inf"), "f64"),
+           "min_z": float_bits(float("-inf"), "f64"), "max_x": float_bits(float("inf"), "f64"),
+           "max_y": float_bits(float("inf"), "f64"), "max_z": float_bits(float("inf"), "f64"),
+           "steps": [{"op": "positions"}]}
+    yield {"case_id": "aabb/positions/after-move", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "positions"},
+                              {"op": "move", "x": float_bits(1.25, "f64"),
+                               "y": float_bits(-0.5, "f64"), "z": float_bits(2.0, "f64")},
+                              {"op": "positions"}]}
     def point(x, y, z):
         return {"x": float_bits(x, "f64"), "y": float_bits(y, "f64"), "z": float_bits(z, "f64")}
 
