@@ -251,6 +251,12 @@ fn random_result(request: &Value) -> Result<Value, String> {
                     json!(format!("{:016x}", random.next_double().to_bits())),
                 );
             }
+            "nextGaussian" => {
+                state.insert(
+                    "bits".into(),
+                    json!(format!("{:016x}", random.next_gaussian().to_bits())),
+                );
+            }
             _ => return Err("unknown random operation".into()),
         }
         events.push(Value::Object(state));

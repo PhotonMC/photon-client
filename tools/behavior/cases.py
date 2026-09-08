@@ -138,6 +138,16 @@ def math_cases():
         yield {"case_id": f"random/bound-{bound}", "family": "math", "operation": "random",
                "seed": "42", "steps": [{"op": "nextIntBound", "bound": bound},
                                        {"op": "nextIntBound", "bound": bound}]}
+    for label, seed in (("zero", 0), ("one", 1), ("negative-one", -1),
+                        ("fixed", 12345), ("max", 9223372036854775807)):
+        yield {"case_id": f"random/gaussian/sequence/{label}", "family": "math",
+               "operation": "random", "seed": str(seed),
+               "steps": [{"op": "nextGaussian"}, {"op": "nextGaussian"},
+                         {"op": "nextGaussian"}]}
+    yield {"case_id": "random/gaussian/interleaved", "family": "math", "operation": "random",
+           "seed": "42", "steps": [{"op": "nextInt"}, {"op": "nextGaussian"},
+                                      {"op": "nextGaussian"}, {"op": "nextDouble"},
+                                      {"op": "nextGaussian"}]}
     unit = {"min_x": float_bits(0.0, "f64"), "min_y": float_bits(0.0, "f64"),
             "min_z": float_bits(0.0, "f64"), "max_x": float_bits(1.0, "f64"),
             "max_y": float_bits(1.0, "f64"), "max_z": float_bits(1.0, "f64")}

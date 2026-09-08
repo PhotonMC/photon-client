@@ -109,6 +109,7 @@ public final class MathOracle {
                     case "nextBoolean" -> state.addProperty("value", Boolean.toString(random.nextBoolean()));
                     case "nextFloat" -> state.addProperty("bits", Oracle.bits(random.nextFloat()));
                     case "nextDouble" -> state.addProperty("bits", Oracle.bits(random.nextDouble()));
+                    case "nextGaussian" -> state.addProperty("bits", Oracle.bits(random.nextGaussian()));
                     default -> throw new IllegalArgumentException("Unknown random op");
                 }
                 events.add(state);

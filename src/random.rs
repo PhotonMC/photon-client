@@ -14,6 +14,7 @@ pub enum RandomError {
 #[derive(Debug, Clone)]
 pub struct RandomSource {
     seed: u64,
+    gaussian: Option<f64>,
 }
 
 impl RandomSource {
@@ -25,6 +26,7 @@ impl RandomSource {
     pub fn create(seed: i64) -> Self {
         Self {
             seed: (seed as u64 ^ Self::MULTIPLIER) & Self::MASK,
+            gaussian: None,
         }
     }
 
@@ -90,5 +92,25 @@ impl RandomSource {
         let lower = i64::from(self.next_bits(27));
         let combined = upper.wrapping_shl(27).wrapping_add(lower);
         combined as f64 * 1.1102230246251565e-16_f64
+    }
+
+    /// Draw a Java-compatible Gaussian value, caching the paired result.
+    pub fn next_gaussian(&mut self) -> f64 {
+        if let Some(value) = self.gaussian.take() {
+            return value;
+        }
+
+        loop {
+            let x = 2.0 * self.next_double() - 1.0;
+            let y = 2.0 * self.next_double() - 1.0;
+            let radius_squared = x * x + y * y;
+            if radius_squared >= 1.0 || radius_squared == 0.0 {
+                continue;
+            }
+
+            let multiplier = (-2.0 * radius_squared.ln() / radius_squared).sqrt();
+            self.gaussian = Some(y * multiplier);
+            return x * multiplier;
+        }
     }
 }
