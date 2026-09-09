@@ -4,7 +4,7 @@
 
 ## Referans ve davranış
 
-Referans Java 26.2 / protokol 776; `Vec3.STREAM_CODEC` içindeki üç `ByteBuf` double yolu, `Vec3.LP_STREAM_CODEC`/`LpVec3` packed yolu ve `FriendlyByteBuf` UUID/BlockPos/long array yolları, `BlockPos`/`SectionPos` paketleme kaynak incelemesinde belirlendi. `BinaryOracle.java` doğrudan orijinal sınıfları çağırır; senaryo ve beklenen çıktılar değiştirilmedi. Ayrıntılı sözleşme ve 144 senaryoluk kapsam [binary referans belgesindedir](binary-contract.md); LP Vec3 alt kapsamı [ayrı parity belgesindedir](lp-vec3-parity.md).
+Referans Java 26.2 / protokol 776; `Vec3.STREAM_CODEC` içindeki üç `ByteBuf` double yolu, `Vec3.LP_STREAM_CODEC`/`LpVec3` packed yolu ve `FriendlyByteBuf` UUID/BlockPos/ChunkPos/long array yolları, `BlockPos`/`SectionPos`/`ChunkPos` paketleme kaynak incelemesinde belirlendi. `BinaryOracle.java` doğrudan orijinal sınıfları çağırır; senaryo ve beklenen çıktılar değiştirilmedi. Ayrıntılı sözleşme ve 164 senaryoluk kapsam [binary referans belgesindedir](binary-contract.md); LP Vec3 alt kapsamı [ayrı parity belgesindedir](lp-vec3-parity.md).
 
 | Rust API | Korunan davranış |
 | --- | --- |
@@ -15,6 +15,8 @@ Referans Java 26.2 / protokol 776; `Vec3.STREAM_CODEC` içindeki üç `ByteBuf` 
 | `read_blockpos`, `write_blockpos` | Tek big-endian u64; eksik veride tüketim yok |
 | `SectionPos::new`, `pack`, `unpack` | X/Z 22 bit ve Y 20 bit maskeleme ile sarma; aritmetik kaydırma ile işaret genişletme |
 | `read_sectionpos`, `write_sectionpos` | Tek big-endian u64; eksik veride tüketim yok |
+| `ChunkPos::new`, `pack`, `unpack` | Signed i32 x düşük ve z yüksek 32-bit alanlarda; big-endian packed long |
+| `read_chunkpos`, `write_chunkpos` | Tek big-endian u64; eksik veride tüketim yok |
 | `read_long_array`, `write_long_array` | VarInt uzunluk, negatif/aşırı uzunlukta gövde tüketilmeden `decoder_error`; önek hatalarında wire tüketimi |
 | `BitSet`, `read_bitset`, `write_bitset` | Kırpılmış little-endian kelimeler; aynı bit kümesi aynı sıralı listeyi verir |
 | Tüketim kuralı | Her `readLong` atomik; UUID ikinci yarıda eksikse ilk 8 bayt tüketilmiş olur |
@@ -25,15 +27,15 @@ Yazma bu dilimde her zaman başarılıdır; ayrı uzunluk sınırı yoktur.
 
 Java 25.0.4.1 ve Rust 1.98.1 / Linux x86_64 ortamında:
 
-- 144 senaryoluk kayıtlı binary Java referansı iki yeni JVM çalıştırmasıyla doğrulandı.
+- 164 senaryoluk kayıtlı binary Java referansı iki yeni JVM çalıştırmasıyla doğrulandı.
 - LP Vec3 alt kümesindeki 6 yazma ve 9 okuma senaryosu Java/Rust byte ve sonuç eşitliğiyle doğrulandı.
-- Debug ve release Rust adaptörleri **144/144** binary senaryosunda eşleşti.
+- Debug ve release Rust adaptörleri **164/164** binary senaryosunda eşleşti; bunun 20 senaryosu ChunkPos stream codec kapsamıdır.
 - Karşılaştırma kimlik bitleri, koordinatlar, diziler, bit listeleri, tüketim, kalan/yazılan baytlar ve hata kategorisini kapsar.
 - Biçim, Clippy ve paket kapsamı kontrolleri geçti; `.data/` ve test adaptörü paket dışında kaldı.
 
-Birleşik referans kimliği: `a2de3a61075984570c78972cf64abf406bbb6ee6d60136396680e14b82219664`. Binary ailesi kimliği: `5324fd28d97aff4539ad52a38d5e137805c4f43aca2081ac1b9fa8b1b221123b`.
+Birleşik referans kimliği: `a2c69ab98e59ffb82410fd45282bc6e8c110fd13877ba87471c7bfcc29f23318`. Binary ailesi kimliği: `faa64f0548d442718b7a8e5783155e27604ddd916aaf9595070c51b91232437e`.
 
-Yerel raporlar: `compare-qqvsym4q` (binary debug 144), `compare-7tecixjf` (binary release 144), `compare-1i6_miir` (birleşik debug 1387) ve `compare-zyhj5dym` (birleşik release 1387) dizinlerinde, `.data/runs/behavior/` altında bulunur.
+Yerel raporlar: `compare-ijck1p8v` (binary debug 164), `compare-vuahjf17` (binary release 164), `compare-smgo22vh` (birleşik debug 1407) ve `compare-h2kr9uj0` (birleşik release 1407) dizinlerinde, `.data/runs/behavior/` altında bulunur.
 
 ## Yeniden çalıştırma ve sonraki dilim
 
@@ -46,4 +48,4 @@ python3 tools/behavior/run.py compare --adapter target/debug/examples/behavior_a
 
 Kayıtlı Java referansını yeniden ölçmek için `verify` kullanılır. Release için derlemeye `--release` eklenir ve `target/release/examples/behavior_adapter` seçilir.
 
-P03.b binary kapsamı tamamlandı. Sonraki dilim bağımlılık sırasına göre seçilir.
+P03.b binary kapsamı, Vec3/LP Vec3 ve ChunkPos stream codec yollarıyla tamamlandı. Sonraki dilim bağımlılık sırasına göre seçilir.

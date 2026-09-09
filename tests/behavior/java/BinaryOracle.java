@@ -12,6 +12,7 @@ import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.phys.Vec3;
 
 /** Original test glue: all packing happens inside the pinned JAR. */
@@ -30,6 +31,7 @@ public final class BinaryOracle {
         UUID uuid = null;
         BlockPos pos = null;
         int[] section = null;
+        int[] chunk = null;
         long[] longs = null;
         BitSet bits = null;
         Vec3 vec3 = null;
@@ -56,6 +58,10 @@ public final class BinaryOracle {
             int y = Integer.parseInt(request.get("y").getAsString());
             int z = Integer.parseInt(request.get("z").getAsString());
             section = new int[]{x, y, z};
+        } else if (codec.equals("chunkpos")) {
+            int x = Integer.parseInt(request.get("x").getAsString());
+            int z = Integer.parseInt(request.get("z").getAsString());
+            chunk = new int[]{x, z};
         } else if (codec.equals("longarray")) {
             var values = request.getAsJsonArray("values");
             longs = new long[values.size()];
@@ -94,6 +100,7 @@ public final class BinaryOracle {
         }
         if (!codec.equals("uuid") && !codec.equals("blockpos")
                 && !codec.equals("sectionpos")
+                && !codec.equals("chunkpos")
                 && !codec.equals("longarray") && !codec.equals("bitset")
                 && !codec.equals("fixedbitset") && !codec.equals("vec3")
                 && !codec.equals("lp_vec3")) {
@@ -127,6 +134,10 @@ public final class BinaryOracle {
                     result.addProperty("x", Integer.toString(decoded.x()));
                     result.addProperty("y", Integer.toString(decoded.y()));
                     result.addProperty("z", Integer.toString(decoded.z()));
+                } else if (read && codec.equals("chunkpos")) {
+                    ChunkPos decoded = ChunkPos.STREAM_CODEC.decode(buffer);
+                    result.addProperty("x", Integer.toString(decoded.x()));
+                    result.addProperty("z", Integer.toString(decoded.z()));
                 } else if (read && codec.equals("longarray")) {
                     long[] decoded_longs = FriendlyByteBuf.readLongArray(buffer);
                     var values = new JsonArray();
@@ -156,6 +167,8 @@ public final class BinaryOracle {
                     FriendlyByteBuf.writeBlockPos(buffer, pos);
                 } else if (codec.equals("sectionpos")) {
                     buffer.writeLong(SectionPos.asLong(section[0], section[1], section[2]));
+                } else if (codec.equals("chunkpos")) {
+                    ChunkPos.STREAM_CODEC.encode(buffer, new ChunkPos(chunk[0], chunk[1]));
                 } else if (codec.equals("longarray")) {
                     FriendlyByteBuf.writeLongArray(buffer, longs);
                 } else if (codec.equals("vec3")) {

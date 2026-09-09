@@ -1,12 +1,12 @@
-# P03.b — Vec3 stream codec, LP Vec3 stream codec, UUID, BlockPos, SectionPos, long array ve BitSet referans sözleşmesi
+# P03.b — Vec3 stream codec, LP Vec3 stream codec, UUID, BlockPos, SectionPos, ChunkPos, long array ve BitSet referans sözleşmesi
 
-Bu dilimin **144 Java davranış testi hazırdır ve Rust karşılığı doğrulanmıştır** ([kanıt](binary-parity.md)). Java `Vec3.STREAM_CODEC` kapsamı [Vec3 stream codec sözleşmesinde](vec3-stream-codec-contract.md), `Vec3.LP_STREAM_CODEC` kapsamı [LP Vec3 stream codec sözleşmesinde](lp-vec3-contract.md) ayrıntılıdır. Diğer P03 biçimleri bu dilime dahil değildir.
+Bu dilimin **164 Java davranış testi hazırdır ve Rust karşılığı doğrulanmıştır** ([kanıt](binary-parity.md)). Java `Vec3.STREAM_CODEC` kapsamı [Vec3 stream codec sözleşmesinde](vec3-stream-codec-contract.md), `Vec3.LP_STREAM_CODEC` kapsamı [LP Vec3 stream codec sözleşmesinde](lp-vec3-contract.md) ve `ChunkPos.STREAM_CODEC` kapsamı [ChunkPos sözleşmesinde](chunkpos-contract.md) ayrıntılıdır. Bu dilimdeki diğer P03 biçimleri aşağıda listelenir.
 
 ## Kaynak ve sınır
 
-Java Edition 26.2 / protokol 776 / Java 25 referansı kullanılır. Kaynak köküne göre `world/phys/Vec3.java` içindeki iki stream codec, `network/LpVec3.java` packed codec'i ve continuation ölçeği için `network/VarInt.java`; ayrıca `network/FriendlyByteBuf.java` içindeki `readUUID`/`writeUUID`, `readBlockPos`/`writeBlockPos`, `readLongArray`/`writeLongArray`, BitSet'in bu diziye indirgenmiş karşılığı, `core/BlockPos.java` ve `core/SectionPos.java` içindeki `asLong`, `of` ve koordinat çıkarma incelendi.
+Java Edition 26.2 / protokol 776 / Java 25 referansı kullanılır. Kaynak köküne göre `world/phys/Vec3.java` içindeki iki stream codec, `network/LpVec3.java` packed codec'i ve continuation ölçeği için `network/VarInt.java`; ayrıca `network/FriendlyByteBuf.java` içindeki `readUUID`/`writeUUID`, `readBlockPos`/`writeBlockPos`, `readLongArray`/`writeLongArray`, BitSet'in bu diziye indirgenmiş karşılığı, `core/BlockPos.java` ve `core/SectionPos.java` içindeki `asLong`, `of` ve koordinat çıkarma; `world/level/ChunkPos.java` içindeki packed long dönüşümü incelendi.
 
-Netty buffer/common yanında `core/BlockPos` sınıfı için math ailesinin bağımlılıkları ve `commons-lang3` gerekir. Yerel JAR'ın SHA-1 değeri `tests/behavior/reference.json` içine sabitlendi. Yeni oyun bağımlılığı veya Rust kütüphanesi eklenmedi.
+Netty buffer/common yanında `core/BlockPos` ve `world/level/ChunkPos` sınıfları için math ailesinin bağımlılıkları ve `commons-lang3` gerekir. Yerel JAR'ın SHA-1 değeri `tests/behavior/reference.json` içine sabitlendi. Yeni oyun bağımlılığı veya Rust kütüphanesi eklenmedi.
 
 ## Davranış sözleşmesi
 
@@ -15,7 +15,8 @@ Netty buffer/common yanında `core/BlockPos` sınıfı için math ailesinin bağ
 - UUID iki big-endian i64 olarak taşınır: önce most, sonra least. Herhangi bir 16 bayt geçerlidir; uzunluk öneki ve sürüm/varyant denetimi yoktur.
 - BlockPos tek big-endian i64 olarak taşınır. X/Z 26 bit, Y 12 bit işaretli alanlara maskelenir; aralık dışı i32 girdiler sarar.
 - SectionPos tek big-endian i64 olarak taşınır. X/Z 22 bit, Y 20 bit işaretli alanlara maskelenir; aralık dışı girdiler sarar. Okuma tek `readLong` olduğundan eksik veride tüketim olmaz. Açılım aritmetik kaydırma ile işaret genişletir.
-- Okuma her `readLong` için atomiktir: yetersiz veri tüketimi ilerletmez. UUID iki ardışık okumadır; ikinci yarı eksikse ilk 8 bayt tüketilmiş olur. BlockPos tek okumadır; eksik veride tüketim olmaz.
+- ChunkPos tek big-endian i64 olarak taşınır; x imzalı i32 olarak düşük 32 bite, z imzalı i32 olarak yüksek 32 bite yerleşir ve okuma aynı iki yarıyı işaretli i32 olarak geri verir.
+- Okuma her `readLong` için atomiktir: yetersiz veri tüketimi ilerletmez. UUID iki ardışık okumadır; ikinci yarı eksikse ilk 8 bayt tüketilmiş olur. BlockPos, SectionPos ve ChunkPos tek okumadır; eksik veride tüketim olmaz.
 - Long array önce VarInt uzunluğu okur. VarInt önek hataları wire tüketimini korur. Negatif uzunluk `NegativeArraySizeException`, kullanılabilir veriyi aşan uzunluk `DecoderException` üretir; ikisi de `decoder_error` kategorisidir ve gövde tüketilmez. Başarılı gövdede bit deseni aynen korunur.
 - BitSet, long array gövdesinin `BitSet.valueOf` görünümüdür. Sondaki sıfır long'lar yazmada kısalır; okumada aynı bit kümesi aynı sıralı bit listesini verir.
 - Yazma bu dilimde her zaman başarılıdır; uzunluk sınırı ve hata kategorisi yoktur. Mevcut yazma sınırı hatalarında hedef buffer'a yeni veri eklenmez kuralı burada tetiklenmez.
@@ -39,6 +40,8 @@ Netty buffer/common yanında `core/BlockPos` sınıfı için math ailesinin bağ
 | BlockPos okuma | 14 | Bağımsız 8 baytlık yükler ve 0–7 baytlık kesikler; kalan veri `55aa` ile sınanır |
 | SectionPos yazma | 12 | Köken/birim/negatif, 22/20 bit sınırları ve sarma komşuları, i32 uçları ve karışık koordinat |
 | SectionPos okuma | 12 | Bağımsız 8 baytlık yükler ve 0–7 baytlık kesikler; kalan veri `55aa` ile sınanır |
+| ChunkPos yazma | 6 | Köken, birim, negatif ve signed i32 sınır çiftleri; x düşük/z yüksek packed long yerleşimi |
+| ChunkPos okuma | 14 | Sıfır, birim, negatif, alternating ve i32 sınır yükleri; 0–7 baytlık kesikler ve kalan veri `55aa` |
 | Long array yazma | 6 | Boş, sıfır/örnek, i64 uçları, 7/35 bit sınırları ve `deadbeef` deseni |
 | Long array okuma | 17 | Boş/tek/çift yük, kısa/eksik gövde, negatif ve kısa-olmayan sıfır uzunluklar, 127 uzunluk sınırı, 0–6 baytlık kesik önekler ve fazla uzun önek |
 | BitSet yazma | 6 | Boş, bit 0, bayt/kelime sınırları, örnek ve sondaki sıfır kırpması |
@@ -46,9 +49,9 @@ Netty buffer/common yanında `core/BlockPos` sınıfı için math ailesinin bağ
 | Sabit BitSet okuma | 8 | Boyut 0/1/8/9/16, yok sayılan yük, kısa/eksik gövde |
 | Sabit BitSet yazma | 6 | Boyut 0/8/9/16, sınır içi ve taşan bit kümeleri |
 
-`family: "binary"` altında `codec` `vec3` | `lp_vec3` | `uuid` | `blockpos` | `sectionpos` | `longarray` | `bitset` | `fixedbitset` olur. `prefix_hex` küçük harfli bayt hex stringdir. Vec3 yazmada `x`/`y`/`z` 16 haneli küçük harfli raw f64 hex; LP Vec3 yazmada aynı raw f64 alanları; UUID yazmada `most_hex`/`least_hex` 16 haneli küçük harfli hex; BlockPos ve SectionPos yazmada `x`/`y`/`z` işaretli ondalık string; long array yazmada `values` işaretli ondalık string dizisi; BitSet yazmada `bits` bit index dizisidir. Sabit BitSet okuma/yazmada ek olarak `size` bit boyutu bulunur. Okumada `hex` başlık/gövdeyi taşır.
+`family: "binary"` altında `codec` `vec3` | `lp_vec3` | `uuid` | `blockpos` | `sectionpos` | `chunkpos` | `longarray` | `bitset` | `fixedbitset` olur. `prefix_hex` küçük harfli bayt hex stringdir. Vec3 yazmada `x`/`y`/`z` 16 haneli küçük harfli raw f64 hex; LP Vec3 yazmada aynı raw f64 alanları; UUID yazmada `most_hex`/`least_hex` 16 haneli küçük harfli hex; BlockPos ve SectionPos yazmada `x`/`y`/`z` işaretli ondalık string; long array yazmada `values` işaretli ondalık string dizisi; BitSet yazmada `bits` bit index dizisidir. Sabit BitSet okuma/yazmada ek olarak `size` bit boyutu bulunur. Okumada `hex` başlık/gövdeyi taşır.
 
-Okuma adaptörü buffer başına `prefix_hex` koyup reader index'i bu alanın sonuna taşır. Başarılı UUID sonucu `most_hex`, `least_hex`; başarılı BlockPos ve SectionPos sonucu `x`, `y`, `z`; başarılı long array sonucu `values`; başarılı BitSet ve sabit BitSet sonucu `bits` içerir. Her durumda `outcome`, `consumed` ve `remaining_hex` bulunur. Hata sonucu `outcome` ve `error` içerir.
+Okuma adaptörü buffer başına `prefix_hex` koyup reader index'i bu alanın sonuna taşır. Başarılı UUID sonucu `most_hex`, `least_hex`; başarılı BlockPos, SectionPos ve ChunkPos sonucu `x`, `y`, `z`; başarılı long array sonucu `values`; başarılı BitSet ve sabit BitSet sonucu `bits` içerir. Her durumda `outcome`, `consumed` ve `remaining_hex` bulunur. Hata sonucu `outcome` ve `error` içerir.
 
 Yazma adaptörü mevcut `prefix_hex` üzerine ekler. Her sonuç `outcome`, eklenen bayt sayısı `written` ve prefix dahil bütün `hex` çıktısını içerir. Sabit BitSet yazmada bit kümesi boyutu aşarsa `encoder_error` döner ve hedefe ekleme yapılmaz; bağımsız okuma senaryoları ayrıdır.
 
@@ -61,11 +64,11 @@ python3 tools/behavior/run.py capture --family binary
 python3 tools/behavior/run.py verify --family binary
 ```
 
-144 senaryo iki ayrı JVM'de aynı sonucu verdi; kayıtlı referans iki yeni JVM ile yeniden doğrulandı. Binary referans kimliği: `5324fd28d97aff4539ad52a38d5e137805c4f43aca2081ac1b9fa8b1b221123b`. Ham girdiler/çıktılar yalnızca `.data/` altında tutulur.
+164 senaryo iki ayrı JVM'de aynı sonucu verdi; kayıtlı referans iki yeni JVM ile yeniden doğrulandı. Binary referans kimliği: `faa64f0548d442718b7a8e5783155e27604ddd916aaf9595070c51b91232437e`. Ham girdiler/çıktılar yalnızca `.data/` altında tutulur.
 
-Güncel altı aile corpus'u toplam 1387 Java senaryosundan oluşur ve iki yeni JVM çalıştırmasıyla kayıtla eşitliği doğrulandı. Birleşik referans kimliği: `a2de3a61075984570c78972cf64abf406bbb6ee6d60136396680e14b82219664`.
+Güncel altı aile corpus'u toplam 1407 Java senaryosundan oluşur ve iki yeni JVM çalıştırmasıyla kayıtla eşitliği doğrulandı. Birleşik referans kimliği: `a2c69ab98e59ffb82410fd45282bc6e8c110fd13877ba87471c7bfcc29f23318`.
 
-Beklenen çıktılar Rust'a göre değiştirilmedi.
+Beklenen çıktılar Rust'a göre değiştirilmedi. ChunkPos partial read senaryolarında 0–5 byte underflow verir; 6–7 byte prefix, fixture içindeki `55aa` suffix ile sekiz byte long'u tamamlayabildiği için Java gibi başarıyla suffix'i tüketir.
 
 ```bash
 cargo build --locked --offline --example behavior_adapter

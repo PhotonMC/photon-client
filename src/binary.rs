@@ -207,6 +207,32 @@ impl BlockPos {
     }
 }
 
+/// Integer chunk coordinates packed as x in the low half and z in the high half.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ChunkPos {
+    pub x: i32,
+    pub z: i32,
+}
+
+impl ChunkPos {
+    pub const fn new(x: i32, z: i32) -> Self {
+        Self { x, z }
+    }
+
+    /// Pack signed coordinates into the reference's two 32-bit fields.
+    pub fn pack(self) -> u64 {
+        u64::from(self.x as u32) | (u64::from(self.z as u32) << 32)
+    }
+
+    /// Unpack the two signed 32-bit fields from a packed long.
+    pub fn unpack(packed: u64) -> Self {
+        Self {
+            x: packed as u32 as i32,
+            z: (packed >> 32) as u32 as i32,
+        }
+    }
+}
+
 /// Read 16 bytes as UUID. A short second half leaves the first half consumed.
 pub fn read_uuid(input: &mut &[u8]) -> Result<Uuid, ReadError> {
     if input.len() < 8 {
@@ -243,6 +269,22 @@ pub fn read_blockpos(input: &mut &[u8]) -> Result<BlockPos, ReadError> {
 
 /// Append 8 bytes for a packed position.
 pub fn write_blockpos(value: BlockPos, output: &mut Vec<u8>) {
+    output.extend_from_slice(&value.pack().to_be_bytes());
+}
+
+/// Read 8 bytes as a packed chunk position without consuming on failure.
+pub fn read_chunkpos(input: &mut &[u8]) -> Result<ChunkPos, ReadError> {
+    if input.len() < 8 {
+        return Err(ReadError::BufferUnderflow);
+    }
+    let (head, rest) = input.split_at(8);
+    let packed = u64::from_be_bytes(head.try_into().expect("checked length"));
+    *input = rest;
+    Ok(ChunkPos::unpack(packed))
+}
+
+/// Append 8 bytes for a packed chunk position.
+pub fn write_chunkpos(value: ChunkPos, output: &mut Vec<u8>) {
     output.extend_from_slice(&value.pack().to_be_bytes());
 }
 

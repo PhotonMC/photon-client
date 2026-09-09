@@ -2473,6 +2473,36 @@ def binary_cases():
                "operation": "read", "codec": "sectionpos",
                "prefix_hex": "a55a", "hex": full[:length * 2] + "55aa"}
 
+    chunk_positions = {
+        "origin": (0, 0),
+        "unit": (1, 2),
+        "negative": (-1, -2),
+        "alternating": (1437226410, -1437226411),
+        "i32-max-min": (2147483647, -2147483648),
+        "i32-min-max": (-2147483648, 2147483647),
+    }
+    for label, (x, z) in chunk_positions.items():
+        yield {"case_id": f"binary/chunkpos-write/{label}", "family": "binary",
+               "operation": "write", "codec": "chunkpos",
+               "prefix_hex": "a55a", "x": str(x), "z": str(z)}
+    chunk_payloads = {
+        "zero": "0000000000000000",
+        "unit": "0000000200000001",
+        "negative": "fffffffeffffffff",
+        "alternating": "aa55aa5555aa55aa",
+        "i32-max-min": "800000007fffffff",
+        "sample": "deadbeefcafebabe",
+    }
+    for label, payload in chunk_payloads.items():
+        yield {"case_id": f"binary/chunkpos-read/{label}", "family": "binary",
+               "operation": "read", "codec": "chunkpos",
+               "prefix_hex": "a55a", "hex": payload + "55aa"}
+    chunk_payload = chunk_payloads["sample"]
+    for length in range(8):
+        yield {"case_id": f"binary/chunkpos-read/truncated-{length}", "family": "binary",
+               "operation": "read", "codec": "chunkpos",
+               "prefix_hex": "a55a", "hex": chunk_payload[:length * 2] + "55aa"}
+
     arrays = {
         "empty": [],
         "zero": ["0"],

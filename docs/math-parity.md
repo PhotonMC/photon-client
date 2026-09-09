@@ -192,15 +192,15 @@ Mevcut 905 matematik senaryosu; bu corpus içinde Vec2 için sıfır/işaretli s
 
 Java 25.0.4.1 ve Rust 1.98.1 / Linux x86_64 ortamında:
 
-- Kayıtlı 1387 senaryoluk birleşik Java referansı iki ayrı JVM çalıştırmasıyla doğrulandı.
-- Debug ve release Rust adaptörleri **1387/1387** eşleşti: 905 math + 22 timer + 144 wire + 141 utf8 + 144 binary + 31 nbt.
+- Kayıtlı 1407 senaryoluk birleşik Java referansı iki ayrı JVM çalıştırmasıyla doğrulandı.
+- Debug ve release Rust adaptörleri **1407/1407** eşleşti: 905 math + 22 timer + 144 wire + 141 utf8 + 164 binary + 31 nbt.
 - Vec2/Vec3'te başlangıç ve her adımın bileşen, uzunluk ve uzunluk karesi bitleri; scalar işlevlerde sonuç bitleri veya tamsayı değeri karşılaştırıldı. Float toleransı veya NaN normalizasyonu eklenmedi.
 - Yanlış f64 bit formatı, bilinmeyen tür/işlem/aile, eksik clamp sınırı ve bilinmeyen Vec2/Vec3 adımı reddedildi.
 - Biçim, Clippy ve paket kapsamı kontrolleri geçti; `.data/` ve test adaptörü paket dışında kaldı.
 
-Birleşik referans kimliği: `a2de3a61075984570c78972cf64abf406bbb6ee6d60136396680e14b82219664`. Math ailesi kimliği: `847816d7bf7d2e0e9cecc67b5d7010685842d00cd4860fb3cf9447d37a9fe8a9`.
+Birleşik referans kimliği: `a2c69ab98e59ffb82410fd45282bc6e8c110fd13877ba87471c7bfcc29f23318`. Math ailesi kimliği: `847816d7bf7d2e0e9cecc67b5d7010685842d00cd4860fb3cf9447d37a9fe8a9`.
 
-Yerel raporlar: `compare-psz_s0y8` (math debug 905), `compare-xhpjkx1_` (math release 905), `compare-1i6_miir` (birleşik debug 1387), `compare-zyhj5dym` (birleşik release 1387) ve `verify-b04aqmvb` dizinlerinde, `.data/runs/behavior/` altında bulunur.
+Yerel raporlar: `compare-psz_s0y8` (math debug 905), `compare-xhpjkx1_` (math release 905), `compare-smgo22vh` (birleşik debug 1407), `compare-h2kr9uj0` (birleşik release 1407) ve `verify-fki2znkz` dizinlerinde, `.data/runs/behavior/` altında bulunur.
 
 ## Yeniden çalıştırma ve sonraki dilim
 

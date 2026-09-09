@@ -3,7 +3,7 @@
 use serde_json::{Value, json};
 use std::io::{self, BufRead, Write};
 use voxel_client::aabb::{Aabb, AabbBuilder, AabbBuilderError, BlockHitResult, BoundingBox};
-use voxel_client::binary::{self, BlockPos, SectionPos, Uuid};
+use voxel_client::binary::{self, BlockPos, ChunkPos, SectionPos, Uuid};
 use voxel_client::direction::{Axis, Direction};
 use voxel_client::math::{self, Vec2, Vec3, Vec3f};
 use voxel_client::nbt::{self, Field, FieldValue};
@@ -2262,6 +2262,21 @@ fn binary_result(request: &Value) -> Result<Value, String> {
                         "remaining_hex": hex(remaining),
                     })),
                 },
+                "chunkpos" => match binary::read_chunkpos(&mut remaining) {
+                    Ok(value) => Ok(json!({
+                        "x": value.x.to_string(),
+                        "z": value.z.to_string(),
+                        "outcome": "value",
+                        "consumed": framed.len() - remaining.len(),
+                        "remaining_hex": hex(remaining),
+                    })),
+                    Err(error) => Ok(json!({
+                        "outcome": "error",
+                        "error": binary_error(error),
+                        "consumed": framed.len() - remaining.len(),
+                        "remaining_hex": hex(remaining),
+                    })),
+                },
                 "vec3" => match binary::read_vec3(&mut remaining) {
                     Ok(value) => Ok(json!({
                         "x": format!("{:016x}", value.x.to_bits()),
@@ -2367,6 +2382,10 @@ fn binary_result(request: &Value) -> Result<Value, String> {
                         coordinate(request, "z")?,
                     );
                     binary::write_sectionpos(value, &mut buffer);
+                }
+                "chunkpos" => {
+                    let value = ChunkPos::new(coordinate(request, "x")?, coordinate(request, "z")?);
+                    binary::write_chunkpos(value, &mut buffer);
                 }
                 "vec3" => {
                     let value = Vec3::new(
