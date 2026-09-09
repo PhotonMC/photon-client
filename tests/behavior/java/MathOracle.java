@@ -156,6 +156,9 @@ public final class MathOracle {
             Vec3 first = vec3(request.getAsJsonObject("first"));
             Vec3 second = vec3(request.getAsJsonObject("second"));
             result.add("value", snapshot(first.lerp(second, f64(request, "alpha"))));
+        } else if (operation.equals("vec3_rotate_clockwise_90")) {
+            Vec3 first = vec3(request.getAsJsonObject("first"));
+            result.add("value", snapshot(first.rotateClockwise90()));
         } else if (operation.equals("shape")) {
             String kind = request.get("kind").getAsString();
             if (kind.equals("single")) {

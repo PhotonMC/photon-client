@@ -173,6 +173,10 @@ impl Vec3 {
         )
     }
 
+    pub fn rotate_clockwise_90(self) -> Self {
+        Self::new(java_negate(self.z), self.y, self.x)
+    }
+
     pub fn length_squared(self) -> f64 {
         // Keep the reference evaluation order; do not fuse or substitute hypot.
         self.x * self.x + self.y * self.y + self.z * self.z

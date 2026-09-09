@@ -1740,6 +1740,10 @@ fn math_result(request: &Value) -> Result<Value, String> {
         let alpha = f64_field(request, "alpha")?;
         return Ok(json!({"value": vec3_snapshot(first.lerp(second, alpha))}));
     }
+    if operation == "vec3_rotate_clockwise_90" {
+        let first = f64_vec3(request.get("first").ok_or("first must be an object")?)?;
+        return Ok(json!({"value": vec3_snapshot(first.rotate_clockwise_90())}));
+    }
     match string(request, "type")? {
         "f32" => {
             let value = f32_field(request, "value")?;

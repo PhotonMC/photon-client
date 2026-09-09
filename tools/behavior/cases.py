@@ -347,6 +347,20 @@ def math_cases():
            "second": {"x": float_bits(float("-inf"), "f64"), "y": float_bits(1.0, "f64"),
                       "z": float_bits(float("inf"), "f64")},
            "alpha": float_bits(0.5, "f64")}
+    yield {"case_id": "vec3/rotate-clockwise-90/basic", "family": "math",
+           "operation": "vec3_rotate_clockwise_90", "first": vector_bits(1.25, -2.5, 3.75)}
+    yield {"case_id": "vec3/rotate-clockwise-90/negative-components", "family": "math",
+           "operation": "vec3_rotate_clockwise_90", "first": vector_bits(-4.5, 6.25, -8.75)}
+    yield {"case_id": "vec3/rotate-clockwise-90/signed-zero", "family": "math",
+           "operation": "vec3_rotate_clockwise_90",
+           "first": {"x": "8000000000000000", "y": "0000000000000000", "z": "8000000000000000"}}
+    yield {"case_id": "vec3/rotate-clockwise-90/subnormal-and-large", "family": "math",
+           "operation": "vec3_rotate_clockwise_90",
+           "first": {"x": "0000000000000001", "y": "8000000000000001", "z": "7fefffffffffffff"}}
+    yield {"case_id": "vec3/rotate-clockwise-90/special-values", "family": "math",
+           "operation": "vec3_rotate_clockwise_90",
+           "first": {"x": float_bits(float("inf"), "f64"), "y": float_bits(float("nan"), "f64"),
+                     "z": float_bits(float("-inf"), "f64")}}
     for name in ("down", "up", "north", "south", "west", "east"):
         yield {"case_id": f"direction/properties/{name}", "family": "math", "operation": "direction",
                "name": name, "steps": []}
