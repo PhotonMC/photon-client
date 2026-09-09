@@ -336,6 +336,31 @@ impl Vec3 {
         Self::new(xx, yy, zz)
     }
 
+    /// Convert pitch and yaw in degrees to a Java-compatible direction vector.
+    pub fn direction_from_rotation(rotation: Vec2) -> Self {
+        Self::direction_from_rotation_components(rotation.x, rotation.y)
+    }
+
+    /// Convert pitch and yaw components in degrees to a Java-compatible direction vector.
+    pub fn direction_from_rotation_components(rot_x: f32, rot_y: f32) -> Self {
+        // These constants are the f32 results of Java's `(float)Math.PI` and
+        // `(float)(Math.PI / 180.0)` casts. Keep all angle and vector products
+        // in f32 until the Vec3 constructor widens the results to f64.
+        const PI_F32: f32 = f32::from_bits(0x40490fdb);
+        const DEGREES_TO_RADIANS_F32: f32 = f32::from_bits(0x3c8efa35);
+        let y_angle = -rot_y * DEGREES_TO_RADIANS_F32 - PI_F32;
+        let y_cos = mth_cos(f64::from(y_angle));
+        let y_sin = mth_sin(f64::from(y_angle));
+        let x_angle = -rot_x * DEGREES_TO_RADIANS_F32;
+        let x_cos = -mth_cos(f64::from(x_angle));
+        let x_sin = mth_sin(f64::from(x_angle));
+        Self::new(
+            f64::from(y_sin * x_cos),
+            f64::from(x_sin),
+            f64::from(y_cos * x_cos),
+        )
+    }
+
     pub fn length_squared(self) -> f64 {
         // Keep the reference evaluation order; do not fuse or substitute hypot.
         self.x * self.x + self.y * self.y + self.z * self.z

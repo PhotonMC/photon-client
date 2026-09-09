@@ -234,6 +234,18 @@ public final class MathOracle {
                 default -> throw new IllegalArgumentException("Unknown Vec3 rotation axis");
             };
             result.add("value", snapshot(value));
+        } else if (operation.equals("vec3_direction_from_rotation")) {
+            Vec3 value = switch (request.get("kind").getAsString()) {
+                case "components" -> Vec3.directionFromRotation(
+                    Oracle.f32(request, "rot_x"), Oracle.f32(request, "rot_y"));
+                case "vec2" -> {
+                    JsonObject rotation = request.getAsJsonObject("rotation");
+                    yield Vec3.directionFromRotation(new Vec2(
+                        Oracle.f32(rotation, "x"), Oracle.f32(rotation, "y")));
+                }
+                default -> throw new IllegalArgumentException("Unknown Vec3 direction rotation kind");
+            };
+            result.add("value", snapshot(value));
         } else if (operation.equals("shape")) {
             String kind = request.get("kind").getAsString();
             if (kind.equals("single")) {

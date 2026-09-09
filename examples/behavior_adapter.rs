@@ -1836,6 +1836,25 @@ fn math_result(request: &Value) -> Result<Value, String> {
         };
         return Ok(json!({"value": vec3_snapshot(value)}));
     }
+    if operation == "vec3_direction_from_rotation" {
+        let value = match string(request, "kind")? {
+            "components" => Vec3::direction_from_rotation_components(
+                f32_field(request, "rot_x")?,
+                f32_field(request, "rot_y")?,
+            ),
+            "vec2" => {
+                let rotation = request
+                    .get("rotation")
+                    .ok_or("rotation must be an object")?;
+                Vec3::direction_from_rotation(Vec2::new(
+                    f32_field(rotation, "x")?,
+                    f32_field(rotation, "y")?,
+                ))
+            }
+            _ => return Err("unknown Vec3 direction rotation kind".into()),
+        };
+        return Ok(json!({"value": vec3_snapshot(value)}));
+    }
     match string(request, "type")? {
         "f32" => {
             let value = f32_field(request, "value")?;

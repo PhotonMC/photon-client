@@ -18,6 +18,10 @@ def vector_bits(x, y, z, width="f64"):
             "z": float_bits(z, width)}
 
 
+def vector2_bits(x, y, width="f32"):
+    return {"x": float_bits(x, width), "y": float_bits(y, width)}
+
+
 def raw_box(min_x, min_y, min_z, max_x, max_y, max_z):
     return {"min_x": min_x, "min_y": min_y, "min_z": min_z,
             "max_x": max_x, "max_y": max_y, "max_z": max_z}
@@ -553,6 +557,60 @@ def math_cases():
            "axis": "y", "first": vector_bits(-4.5, 6.25, -8.75), "radians": "7f800000"}
     yield {"case_id": "vec3/rotate/z-negative-infinity-angle", "family": "math", "operation": "vec3_rotate",
            "axis": "z", "first": vector_bits(2.0, -3.0, 4.0), "radians": "ff800000"}
+    yield {"case_id": "vec3/direction-from-rotation/components-basic", "family": "math",
+           "operation": "vec3_direction_from_rotation", "kind": "components",
+           "rot_x": float_bits(30.0), "rot_y": float_bits(45.0)}
+    yield {"case_id": "vec3/direction-from-rotation/vec2-basic", "family": "math",
+           "operation": "vec3_direction_from_rotation", "kind": "vec2",
+           "rotation": vector2_bits(20.0, -35.0)}
+    yield {"case_id": "vec3/direction-from-rotation/components-zero", "family": "math",
+           "operation": "vec3_direction_from_rotation", "kind": "components",
+           "rot_x": float_bits(0.0), "rot_y": float_bits(0.0)}
+    yield {"case_id": "vec3/direction-from-rotation/vec2-yaw-quarter", "family": "math",
+           "operation": "vec3_direction_from_rotation", "kind": "vec2",
+           "rotation": vector2_bits(0.0, 90.0)}
+    yield {"case_id": "vec3/direction-from-rotation/components-yaw-negative", "family": "math",
+           "operation": "vec3_direction_from_rotation", "kind": "components",
+           "rot_x": float_bits(0.0), "rot_y": float_bits(-90.0)}
+    yield {"case_id": "vec3/direction-from-rotation/vec2-yaw-half", "family": "math",
+           "operation": "vec3_direction_from_rotation", "kind": "vec2",
+           "rotation": vector2_bits(0.0, 180.0)}
+    yield {"case_id": "vec3/direction-from-rotation/components-pitch-up", "family": "math",
+           "operation": "vec3_direction_from_rotation", "kind": "components",
+           "rot_x": float_bits(90.0), "rot_y": float_bits(0.0)}
+    yield {"case_id": "vec3/direction-from-rotation/vec2-pitch-down", "family": "math",
+           "operation": "vec3_direction_from_rotation", "kind": "vec2",
+           "rotation": vector2_bits(-90.0, 0.0)}
+    yield {"case_id": "vec3/direction-from-rotation/components-combined", "family": "math",
+           "operation": "vec3_direction_from_rotation", "kind": "components",
+           "rot_x": float_bits(37.5), "rot_y": float_bits(-123.25)}
+    yield {"case_id": "vec3/direction-from-rotation/vec2-wrap", "family": "math",
+           "operation": "vec3_direction_from_rotation", "kind": "vec2",
+           "rotation": vector2_bits(360.0, 720.0)}
+    yield {"case_id": "vec3/direction-from-rotation/components-small-quantized", "family": "math",
+           "operation": "vec3_direction_from_rotation", "kind": "components",
+           "rot_x": float_bits(0.0001), "rot_y": float_bits(-0.0001)}
+    yield {"case_id": "vec3/direction-from-rotation/vec2-signed-zero", "family": "math",
+           "operation": "vec3_direction_from_rotation", "kind": "vec2",
+           "rotation": {"x": "80000000", "y": "00000000"}}
+    yield {"case_id": "vec3/direction-from-rotation/components-signed-zero", "family": "math",
+           "operation": "vec3_direction_from_rotation", "kind": "components",
+           "rot_x": "00000000", "rot_y": "80000000"}
+    yield {"case_id": "vec3/direction-from-rotation/components-nan-pitch", "family": "math",
+           "operation": "vec3_direction_from_rotation", "kind": "components",
+           "rot_x": "7fc00001", "rot_y": float_bits(45.0)}
+    yield {"case_id": "vec3/direction-from-rotation/vec2-nan-yaw", "family": "math",
+           "operation": "vec3_direction_from_rotation", "kind": "vec2",
+           "rotation": {"x": float_bits(30.0), "y": "7fc00001"}}
+    yield {"case_id": "vec3/direction-from-rotation/components-positive-infinity-pitch", "family": "math",
+           "operation": "vec3_direction_from_rotation", "kind": "components",
+           "rot_x": "7f800000", "rot_y": float_bits(45.0)}
+    yield {"case_id": "vec3/direction-from-rotation/vec2-negative-infinity-yaw", "family": "math",
+           "operation": "vec3_direction_from_rotation", "kind": "vec2",
+           "rotation": {"x": float_bits(30.0), "y": "ff800000"}}
+    yield {"case_id": "vec3/direction-from-rotation/components-max-finite", "family": "math",
+           "operation": "vec3_direction_from_rotation", "kind": "components",
+           "rot_x": "7f7fffff", "rot_y": "7f7fffff"}
     for name in ("down", "up", "north", "south", "west", "east"):
         yield {"case_id": f"direction/properties/{name}", "family": "math", "operation": "direction",
                "name": name, "steps": []}
