@@ -34,8 +34,8 @@ Yeni kimlik, mevcut random/AABB kayıtlarının üzerine yazmadan oluşturulur. 
 
 329 math senaryosu iki ayrı JVM'de aynı sonucu verdi. Math referans kimliği: `5c0a43bc10b588fbff0d141e430711057cf9e06b60cbc2bd9d6fe4fde4286159`.
 
-Altı ailenin 1536 senaryolu birleşik referansı iki JVM'de doğrulandı. Birleşik referans kimliği: `d50d1ffe555a28907b2748605bdad72312150162a6b1163dca14a521d88ea901`.
+Altı ailenin 1542 senaryolu birleşik referansı iki JVM'de doğrulandı. Birleşik referans kimliği: `b28d88fa06544e5713186c8c0c44bacbc4c7be8b946c7932a025574a1b3b2126`.
 
-Math debug ve release Rust adaptörleri **329/329** eşleşti; birleşik debug ve release karşılaştırmaları da **1536/1536** geçti. Yerel raporlar `compare-c3rqn2f5` (math debug), `compare-vdvn52ql` (math release), `compare-cmzkuxow` (birleşik debug) ve `compare-zlsxov0y` (birleşik release) dizinlerinde, `.data/runs/behavior/` altında bulunur.
+Math debug ve release Rust adaptörleri **329/329** eşleşti; birleşik debug ve release karşılaştırmaları da **1542/1542** geçti. Yerel raporlar `compare-c3rqn2f5` (math debug), `compare-vdvn52ql` (math release), `compare-1lz8q4ar` (birleşik debug) ve `compare-fvdcbn0r` (birleşik release) dizinlerinde, `.data/runs/behavior/` altında bulunur.
 
 Bu sözleşme yalnızca legacy `nextGaussian` ve seçili çağrı sıralarını kapsar. `setSeed` sonrası Gaussian önbelleğinin temizlenmesi ve istemcinin Gaussian kullanan daha geniş yolları sonraki testlerdir; `fork`/`forkPositional` için ayrı kanıt vardır.

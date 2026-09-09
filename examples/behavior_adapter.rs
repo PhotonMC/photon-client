@@ -349,6 +349,15 @@ fn blockpos_positions_snapshot(values: Vec<BlockPos>) -> Value {
     })
 }
 
+fn sectionpos_nodes_snapshot(values: Vec<u64>) -> Value {
+    json!({
+        "section_nodes": values
+            .into_iter()
+            .map(|value| format!("{value:x}"))
+            .collect::<Vec<_>>(),
+    })
+}
+
 fn chunkpos_region_coordinates_snapshot(value: ChunkPos, region_x: i32, region_z: i32) -> Value {
     json!({
         "region_x": value.get_region_x().to_string(),
@@ -2165,6 +2174,26 @@ fn math_result(request: &Value) -> Result<Value, String> {
     if operation == "sectionpos_blocks_inside" {
         return Ok(json!({
             "value": blockpos_positions_snapshot(sectionpos(request)?.blocks_inside()),
+        }));
+    }
+    if operation == "sectionpos_around_and_at_block_pos" {
+        let coordinate = |name: &str| {
+            string(request, name)?
+                .parse::<i32>()
+                .map_err(|error| error.to_string())
+        };
+        let section_nodes = match string(request, "mode")? {
+            "coordinates" => SectionPos::around_and_at_coordinates(
+                coordinate("x")?,
+                coordinate("y")?,
+                coordinate("z")?,
+            ),
+            "blockpos" => SectionPos::around_and_at_block_pos(blockpos(request)?),
+            "packed" => SectionPos::around_and_at_packed(u64_hex_field(request, "block_node")?),
+            _ => return Err("unknown SectionPos around-and-at mode".into()),
+        };
+        return Ok(json!({
+            "value": sectionpos_nodes_snapshot(section_nodes),
         }));
     }
     if operation == "chunkpos_validity" {

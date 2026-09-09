@@ -4,6 +4,7 @@ import com.google.gson.JsonObject;
 import com.mojang.math.OctahedralGroup;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.JsonOps;
+import it.unimi.dsi.fastutil.longs.LongConsumer;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.stream.Stream;
@@ -264,6 +265,8 @@ public final class MathOracle {
             result.add("value", sectionPosRanges(request));
         } else if (operation.equals("sectionpos_blocks_inside")) {
             result.add("value", sectionPosBlocksInside(request));
+        } else if (operation.equals("sectionpos_around_and_at_block_pos")) {
+            result.add("value", sectionPosAroundAndAtBlockPos(request));
         } else if (operation.equals("chunkpos_validity")) {
             ChunkPos pos = chunkPos(request);
             result.add("value", chunkPosValidity(pos));
@@ -1559,6 +1562,26 @@ public final class MathOracle {
         pos.blocksInside().forEach(block -> values.add(snapshot(block)));
         var state = new JsonObject();
         state.add("positions", values);
+        return state;
+    }
+
+    private static JsonObject sectionPosAroundAndAtBlockPos(JsonObject request) {
+        var values = new JsonArray();
+        LongConsumer sectionConsumer = sectionNode -> values.add(Long.toUnsignedString(sectionNode, 16));
+        switch (request.get("mode").getAsString()) {
+            case "coordinates" -> SectionPos.aroundAndAtBlockPos(
+                Integer.parseInt(request.get("x").getAsString()),
+                Integer.parseInt(request.get("y").getAsString()),
+                Integer.parseInt(request.get("z").getAsString()),
+                sectionConsumer);
+            case "blockpos" -> SectionPos.aroundAndAtBlockPos(blockPos(request), sectionConsumer);
+            case "packed" -> SectionPos.aroundAndAtBlockPos(
+                Long.parseUnsignedLong(request.get("block_node").getAsString(), 16),
+                sectionConsumer);
+            default -> throw new IllegalArgumentException("Unknown SectionPos around-and-at mode");
+        }
+        var state = new JsonObject();
+        state.add("section_nodes", values);
         return state;
     }
 

@@ -66,7 +66,7 @@ python3 tools/behavior/run.py verify --family binary
 
 164 senaryo iki ayrı JVM'de aynı sonucu verdi; kayıtlı referans iki yeni JVM ile yeniden doğrulandı. Binary referans kimliği: `faa64f0548d442718b7a8e5783155e27604ddd916aaf9595070c51b91232437e`. Ham girdiler/çıktılar yalnızca `.data/` altında tutulur.
 
-Güncel altı aile corpus'u toplam 1536 Java senaryosundan oluşur ve iki yeni JVM çalıştırmasıyla kayıtla eşitliği doğrulandı. Birleşik referans kimliği: `d50d1ffe555a28907b2748605bdad72312150162a6b1163dca14a521d88ea901`.
+Güncel altı aile corpus'u toplam 1542 Java senaryosundan oluşur ve iki yeni JVM çalıştırmasıyla kayıtla eşitliği doğrulandı. Birleşik referans kimliği: `b28d88fa06544e5713186c8c0c44bacbc4c7be8b946c7932a025574a1b3b2126`.
 
 Beklenen çıktılar Rust'a göre değiştirilmedi. ChunkPos partial read senaryolarında 0–5 byte underflow verir; 6–7 byte prefix, fixture içindeki `55aa` suffix ile sekiz byte long'u tamamlayabildiği için Java gibi başarıyla suffix'i tüketir.
 

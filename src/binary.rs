@@ -826,6 +826,47 @@ impl SectionPos {
         positions
     }
 
+    /// Enumerate sections around a block coordinate, including its section.
+    pub fn around_and_at_coordinates(block_x: i32, block_y: i32, block_z: i32) -> Vec<u64> {
+        let min_section_x = math::block_to_section_coord(block_x.wrapping_sub(1));
+        let max_section_x = math::block_to_section_coord(block_x.wrapping_add(1));
+        let min_section_y = math::block_to_section_coord(block_y.wrapping_sub(1));
+        let max_section_y = math::block_to_section_coord(block_y.wrapping_add(1));
+        let min_section_z = math::block_to_section_coord(block_z.wrapping_sub(1));
+        let max_section_z = math::block_to_section_coord(block_z.wrapping_add(1));
+
+        if min_section_x == max_section_x
+            && min_section_y == max_section_y
+            && min_section_z == max_section_z
+        {
+            return vec![Self::as_long_coordinates(
+                min_section_x,
+                min_section_y,
+                min_section_z,
+            )];
+        }
+
+        let mut section_nodes = Vec::new();
+        for section_x in min_section_x..=max_section_x {
+            for section_y in min_section_y..=max_section_y {
+                for section_z in min_section_z..=max_section_z {
+                    section_nodes.push(Self::as_long_coordinates(section_x, section_y, section_z));
+                }
+            }
+        }
+        section_nodes
+    }
+
+    /// Enumerate sections around a block position, including its section.
+    pub fn around_and_at_block_pos(pos: BlockPos) -> Vec<u64> {
+        Self::around_and_at_coordinates(pos.x, pos.y, pos.z)
+    }
+
+    /// Enumerate sections around a packed block position, including its section.
+    pub fn around_and_at_packed(block_node: u64) -> Vec<u64> {
+        Self::around_and_at_block_pos(BlockPos::unpack(block_node))
+    }
+
     /// Enumerate a finite inclusive range in Java's x-fastest, then y, then z order.
     pub fn between_closed(
         min_x: i32,

@@ -8,15 +8,15 @@ Java 25.0.4.1 ve Rust 1.98.1 / Linux x86_64 ortamında:
 
 - ChunkPos packed koordinat erişimcileri için 6 özgün senaryo hazırlandı.
 - Sıfır, pozitif/negatif alanlar, iki signed i32 sınır yerleşimi ve alternatif bit deseni doğrudan Java/Rust API’leriyle karşılaştırıldı.
-- Rust debug ve release adaptörleri güncel **1034/1034** math senaryosunda eşleşti.
-- Birleşik altı aile corpus’u **1536/1536** senaryoda hem debug hem release adaptörüyle eşleşti.
-- `verify` çalıştırması kayıtlı 1536 senaryoluk Java referansını yeniden doğruladı.
+- Rust debug ve release adaptörleri güncel **1040/1040** math senaryosunda eşleşti.
+- Birleşik altı aile corpus’u **1542/1542** senaryoda hem debug hem release adaptörüyle eşleşti.
+- `verify` çalıştırması kayıtlı 1542 senaryoluk Java referansını yeniden doğruladı.
 
-Math referans kimliği: `93b4f9cea962a01add258b6b2eefa539a9ebef5717ad4c7335efd92eb9fdd956`. Birleşik referans kimliği: `d50d1ffe555a28907b2748605bdad72312150162a6b1163dca14a521d88ea901`.
+Math referans kimliği: `a21163be0f5e47c3d99a4468d2f3b67c6d04d0dcee95ca6b70f49b581fac358c`. Birleşik referans kimliği: `b28d88fa06544e5713186c8c0c44bacbc4c7be8b946c7932a025574a1b3b2126`.
 
 Adapter hash’leri: debug `fe351e4afa245b39c89bece68a6dfdb02699933b5f980b5b82214942e923dc4d`, release `31dad93777713c698bdc325bea831bfa6833f276b66b5d5d665b91c0421b8bf6`.
 
-Yerel raporlar: `compare-ggothvha` (math debug), `compare-imtm_d7k` (math release), `compare-cmzkuxow` (birleşik debug), `compare-zlsxov0y` (birleşik release) ve `verify-f0a30j2p` kayıtlı referans doğrulamasında, `.data/runs/behavior/` altında bulunur.
+Yerel raporlar: `compare-_rqqaqfb` (math debug), `compare-v1ltm6cc` (math release), `compare-1lz8q4ar` (birleşik debug), `compare-fvdcbn0r` (birleşik release) ve `verify-nud8oh4e` kayıtlı referans doğrulamasında, `.data/runs/behavior/` altında bulunur.
 
 ## Sınırlar
 

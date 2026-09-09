@@ -34,6 +34,6 @@ cargo build --locked --offline --example behavior_adapter
 python3 tools/behavior/run.py compare --family math --adapter target/debug/examples/behavior_adapter
 ```
 
-Inflate senaryolarını içeren math referans kimliği `cc1e4e363fee8a21012ea0d56765f85c05556ced56a4bd8c330f603a71ce5656` oldu. Bu referans iki JVM çalıştırmasıyla kararlı bulundu. Birleşik altı aile referansı `d50d1ffe555a28907b2748605bdad72312150162a6b1163dca14a521d88ea901` kimliğiyle iki JVM'de doğrulandı.
+Inflate senaryolarını içeren math referans kimliği `cc1e4e363fee8a21012ea0d56765f85c05556ced56a4bd8c330f603a71ce5656` oldu. Bu referans iki JVM çalıştırmasıyla kararlı bulundu. Birleşik altı aile referansı `b28d88fa06544e5713186c8c0c44bacbc4c7be8b946c7932a025574a1b3b2126` kimliğiyle iki JVM'de doğrulandı.
 
-Rust debug ve release adaptörleri math ailesinde 376/376, birleşik corpus'ta 1536/1536 eşleşti. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.
+Rust debug ve release adaptörleri math ailesinde 376/376, birleşik corpus'ta 1542/1542 eşleşti. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.

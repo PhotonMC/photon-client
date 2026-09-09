@@ -8,15 +8,15 @@ Java 25.0.4.1 ve Rust 1.98.1 / Linux x86_64 ortamında:
 
 - SectionPos packed dönüşümleri için 6 özgün senaryo hazırlandı.
 - Origin, pozitif/negatif alanlar, 22/20 bit sınırları, i32 koordinat maskelenmesi ve keyfi bit desenleri doğrudan Java/Rust API'leriyle karşılaştırıldı.
-- Rust debug ve release adaptörleri güncel **1034/1034** math senaryosunda eşleşti.
-- Birleşik altı aile corpus'u **1536/1536** senaryoda hem debug hem release adaptörüyle eşleşti.
+- Rust debug ve release adaptörleri güncel **1040/1040** math senaryosunda eşleşti.
+- Birleşik altı aile corpus'u **1542/1542** senaryoda hem debug hem release adaptörüyle eşleşti.
 - Math ve birleşik `verify` çalıştırmaları kayıtlı Java referanslarını yeniden doğruladı.
 
-Math referans kimliği: `93b4f9cea962a01add258b6b2eefa539a9ebef5717ad4c7335efd92eb9fdd956`. Birleşik referans kimliği: `d50d1ffe555a28907b2748605bdad72312150162a6b1163dca14a521d88ea901`.
+Math referans kimliği: `a21163be0f5e47c3d99a4468d2f3b67c6d04d0dcee95ca6b70f49b581fac358c`. Birleşik referans kimliği: `b28d88fa06544e5713186c8c0c44bacbc4c7be8b946c7932a025574a1b3b2126`.
 
-Adapter hashleri: debug `760b7a3121ca7b5abb094c9859bf6aae04387e4e885f75f5af84c1a1825bf36c`, release `b8f1acb3cedb6d8ddf717d31aaba65f62b885cc9183af1d863b6f4db5602c402`.
+Adapter hashleri: debug `82ec5e74084c638eba36bb5d72d393ae8a19ef1411f87de0b62f86cdd533b8f2`, release `a8c11cf0e2d6a37a930e9c76b246a1ca4bca82c430535aa1ecc285e16d06d87e`.
 
-Yerel raporlar: `compare-ggothvha` ve `compare-imtm_d7k` (math debug/release), `compare-cmzkuxow` ve `compare-zlsxov0y` (birleşik debug/release), `verify-sa8ppokf` (math) ve `verify-f0a30j2p` (birleşik) `.data/runs/behavior/` altında bulunur.
+Yerel raporlar: `compare-_rqqaqfb` ve `compare-v1ltm6cc` (math debug/release), `compare-1lz8q4ar` ve `compare-fvdcbn0r` (birleşik debug/release), `verify-vtin5hn5` (math) ve `verify-nud8oh4e` (birleşik) `.data/runs/behavior/` altında bulunur.
 
 ## Sınırlar
 

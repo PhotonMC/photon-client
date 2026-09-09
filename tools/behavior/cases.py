@@ -477,6 +477,30 @@ def math_cases():
         yield {"case_id": f"sectionpos/blocks-inside/{label}", "family": "math",
                "operation": "sectionpos_blocks_inside", **values}
 
+    sectionpos_around_and_at = {
+        "coordinates-interior": {
+            "mode": "coordinates", "x": "1", "y": "2", "z": "3",
+        },
+        "coordinates-origin": {
+            "mode": "coordinates", "x": "0", "y": "0", "z": "0",
+        },
+        "coordinates-x-boundary": {
+            "mode": "coordinates", "x": "16", "y": "1", "z": "1",
+        },
+        "blockpos-overload": {
+            "mode": "blockpos", "x": "15", "y": "16", "z": "31",
+        },
+        "packed-overload": {
+            "mode": "packed", "block_node": "ffffffffffffffff",
+        },
+        "coordinate-overflow": {
+            "mode": "coordinates", "x": "2147483647", "y": "1", "z": "1",
+        },
+    }
+    for label, values in sectionpos_around_and_at.items():
+        yield {"case_id": f"sectionpos/around-and-at/{label}", "family": "math",
+               "operation": "sectionpos_around_and_at_block_pos", **values}
+
     chunkpos_validity = {
         "origin": {"x": "0", "z": "0"},
         "boundary": {"x": "2097061", "z": "-2097061"},
