@@ -328,6 +328,25 @@ def math_cases():
            "operation": "vec3_offset_random", "first": {"x": float_bits(float("inf"), "f64"),
            "y": float_bits(float("nan"), "f64"), "z": float_bits(float("-inf"), "f64")},
            "seed": "-9223372036854775808", "offset": "7f7fffff"}
+    yield {"case_id": "vec3/lerp/basic", "family": "math", "operation": "vec3_lerp",
+           "first": vector_bits(1.25, -2.5, 3.75),
+           "second": vector_bits(-4.5, 6.25, 8.75), "alpha": float_bits(0.25, "f64")}
+    yield {"case_id": "vec3/lerp/negative-extrapolation", "family": "math", "operation": "vec3_lerp",
+           "first": vector_bits(-4.5, 6.25, 8.75),
+           "second": vector_bits(1.25, -2.5, 3.75), "alpha": float_bits(-0.5, "f64")}
+    yield {"case_id": "vec3/lerp/over-one", "family": "math", "operation": "vec3_lerp",
+           "first": vector_bits(1.0e200, -1.0e200, 1.0e-200),
+           "second": vector_bits(-1.0e200, 1.0e200, -1.0e-200), "alpha": float_bits(1.5, "f64")}
+    yield {"case_id": "vec3/lerp/signed-zero-and-subnormal", "family": "math", "operation": "vec3_lerp",
+           "first": {"x": "8000000000000000", "y": "0000000000000001", "z": "8000000000000001"},
+           "second": {"x": "0000000000000000", "y": "8000000000000000", "z": "0000000000000000"},
+           "alpha": float_bits(-0.0, "f64")}
+    yield {"case_id": "vec3/lerp/special-values", "family": "math", "operation": "vec3_lerp",
+           "first": {"x": float_bits(float("inf"), "f64"), "y": float_bits(float("nan"), "f64"),
+                     "z": float_bits(float("-inf"), "f64")},
+           "second": {"x": float_bits(float("-inf"), "f64"), "y": float_bits(1.0, "f64"),
+                      "z": float_bits(float("inf"), "f64")},
+           "alpha": float_bits(0.5, "f64")}
     for name in ("down", "up", "north", "south", "west", "east"):
         yield {"case_id": f"direction/properties/{name}", "family": "math", "operation": "direction",
                "name": name, "steps": []}

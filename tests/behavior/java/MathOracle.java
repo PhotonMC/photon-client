@@ -152,6 +152,10 @@ public final class MathOracle {
             result.add("offset_random", snapshot(first.offsetRandom(random, offset)));
             RandomSource randomXZ = RandomSource.create(Long.parseLong(request.get("seed").getAsString()));
             result.add("offset_random_xz", snapshot(first.offsetRandomXZ(randomXZ, offset)));
+        } else if (operation.equals("vec3_lerp")) {
+            Vec3 first = vec3(request.getAsJsonObject("first"));
+            Vec3 second = vec3(request.getAsJsonObject("second"));
+            result.add("value", snapshot(first.lerp(second, f64(request, "alpha"))));
         } else if (operation.equals("shape")) {
             String kind = request.get("kind").getAsString();
             if (kind.equals("single")) {

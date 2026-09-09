@@ -1734,6 +1734,12 @@ fn math_result(request: &Value) -> Result<Value, String> {
             "offset_random_xz": vec3_snapshot(offset_random_xz),
         }));
     }
+    if operation == "vec3_lerp" {
+        let first = f64_vec3(request.get("first").ok_or("first must be an object")?)?;
+        let second = f64_vec3(request.get("second").ok_or("second must be an object")?)?;
+        let alpha = f64_field(request, "alpha")?;
+        return Ok(json!({"value": vec3_snapshot(first.lerp(second, alpha))}));
+    }
     match string(request, "type")? {
         "f32" => {
             let value = f32_field(request, "value")?;

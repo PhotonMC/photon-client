@@ -165,6 +165,14 @@ impl Vec3 {
         self.add_components(x, 0.0, z)
     }
 
+    pub fn lerp(self, other: Self, alpha: f64) -> Self {
+        Self::new(
+            self.x + alpha * (other.x - self.x),
+            self.y + alpha * (other.y - self.y),
+            self.z + alpha * (other.z - self.z),
+        )
+    }
+
     pub fn length_squared(self) -> f64 {
         // Keep the reference evaluation order; do not fuse or substitute hypot.
         self.x * self.x + self.y * self.y + self.z * self.z
