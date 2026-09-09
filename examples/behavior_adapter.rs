@@ -267,6 +267,14 @@ fn sectionpos_block_coordinates_snapshot(value: SectionPos) -> Value {
     })
 }
 
+fn sectionpos_spatial_snapshot(value: SectionPos) -> Value {
+    json!({
+        "origin": blockpos_snapshot(value.origin()),
+        "center": blockpos_snapshot(value.center()),
+        "chunk": chunkpos_snapshot(value.chunk()),
+    })
+}
+
 fn chunkpos_region_coordinates_snapshot(value: ChunkPos, region_x: i32, region_z: i32) -> Value {
     json!({
         "region_x": value.get_region_x().to_string(),
@@ -1988,6 +1996,11 @@ fn math_result(request: &Value) -> Result<Value, String> {
                 "block_z": value.relative_to_block_z(relative).to_string(),
                 "block_position": blockpos_snapshot(value.relative_to_block_pos(relative)),
             },
+        }));
+    }
+    if operation == "sectionpos_spatial" {
+        return Ok(json!({
+            "value": sectionpos_spatial_snapshot(sectionpos(request)?),
         }));
     }
     if operation == "chunkpos_validity" {

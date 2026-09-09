@@ -823,6 +823,21 @@ impl SectionPos {
         )
     }
 
+    /// Return the minimum block corner of this section.
+    pub fn origin(self) -> BlockPos {
+        BlockPos::new(self.min_block_x(), self.min_block_y(), self.min_block_z())
+    }
+
+    /// Return the block position at the section center using Java's offset path.
+    pub fn center(self) -> BlockPos {
+        self.origin().offset(8, 8, 8)
+    }
+
+    /// Return the ChunkPos sharing this section's x and z coordinates.
+    pub fn chunk(self) -> ChunkPos {
+        ChunkPos::new(self.x, self.z)
+    }
+
     /// Unpack with arithmetic shifts, sign-extending each field.
     pub fn unpack(packed: u64) -> Self {
         Self {

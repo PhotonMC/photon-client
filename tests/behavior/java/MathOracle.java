@@ -205,6 +205,16 @@ public final class MathOracle {
             value.addProperty("block_z", Integer.toString(pos.relativeToBlockZ(relative)));
             value.add("block_position", snapshot(pos.relativeToBlockPos(relative)));
             result.add("value", value);
+        } else if (operation.equals("sectionpos_spatial")) {
+            SectionPos pos = SectionPos.of(
+                Integer.parseInt(request.get("x").getAsString()),
+                Integer.parseInt(request.get("y").getAsString()),
+                Integer.parseInt(request.get("z").getAsString()));
+            var value = new JsonObject();
+            value.add("origin", snapshot(pos.origin()));
+            value.add("center", snapshot(pos.center()));
+            value.add("chunk", snapshot(pos.chunk()));
+            result.add("value", value);
         } else if (operation.equals("chunkpos_validity")) {
             ChunkPos pos = chunkPos(request);
             result.add("value", chunkPosValidity(pos));
