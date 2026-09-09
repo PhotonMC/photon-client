@@ -2928,6 +2928,36 @@ def math_cases():
                    "factor": float_bits(factor, width), "min": float_bits(minimum, width),
                    "max": float_bits(maximum, width)}
 
+    mth_next_int = [
+        ("normal", 42, -10, 10),
+        ("same-bounds", 42, 5, 5),
+        ("inverted-bounds", 42, 10, -10),
+        ("positive-boundary", 123, 2147483640, 2147483647),
+        ("negative-boundary", -123, -2147483648, -2147483641),
+        ("single-bit-range", 0, 0, 1),
+    ]
+    for label, seed, minimum, maximum in mth_next_int:
+        yield {"case_id": f"mth/next-random/i32/{label}", "family": "math",
+               "operation": "mth_next_random", "type": "i32", "seed": str(seed),
+               "min": str(minimum), "max": str(maximum)}
+
+    for width in ("f32", "f64"):
+        maximum_finite = (float.fromhex("0x1.fffffep127") if width == "f32"
+                          else float.fromhex("0x1.fffffffffffffp1023"))
+        mth_next_float = [
+            ("normal", 42, -1.0, 1.0),
+            ("same-bounds", 42, 0.5, 0.5),
+            ("inverted-bounds", 42, 1.0, -1.0),
+            ("signed-zero", 42, -0.0, 0.0),
+            ("wide-finite", 123, -maximum_finite, maximum_finite),
+            ("infinite-max", 123, 1.0, float("inf")),
+            ("nan-min", 123, float("nan"), 1.0),
+        ]
+        for label, seed, minimum, maximum in mth_next_float:
+            yield {"case_id": f"mth/next-random/{width}/{label}", "family": "math",
+                   "operation": "mth_next_random", "type": width, "seed": str(seed),
+                   "min": float_bits(minimum, width), "max": float_bits(maximum, width)}
+
 
 def timer_cases():
     def trace(label, steps, start=0, tps=20, target=50):

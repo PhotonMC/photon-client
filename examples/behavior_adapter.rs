@@ -626,6 +626,12 @@ fn i32_field(value: &Value, name: &str) -> Result<i32, String> {
         .map_err(|_| format!("{name} must fit in i32"))
 }
 
+fn i32_string_field(value: &Value, name: &str) -> Result<i32, String> {
+    string(value, name)?
+        .parse::<i32>()
+        .map_err(|error| format!("{name} must fit in i32: {error}"))
+}
+
 fn random_positional_result(request: &Value) -> Result<Value, String> {
     let mut random = RandomSource::create(random_seed(request)?);
     let factory = random.fork_positional();
@@ -2423,6 +2429,44 @@ fn math_result(request: &Value) -> Result<Value, String> {
             _ => return Err("unknown Mth clampedLerp type".into()),
         };
         return Ok(json!({"bits": bits}));
+    }
+    if operation == "mth_next_random" {
+        let mut random = RandomSource::create(random_seed(request)?);
+        let width = string(request, "type")?;
+        return match width {
+            "i32" => {
+                let value = math::mth_next_int(
+                    &mut random,
+                    i32_string_field(request, "min")?,
+                    i32_string_field(request, "max")?,
+                )
+                .map_err(|_| "bound must be positive".to_owned())?;
+                Ok(json!({"value": value.to_string()}))
+            }
+            "f32" => Ok(json!({
+                "bits": format!(
+                    "{:08x}",
+                    math::mth_next_float(
+                        &mut random,
+                        f32_field(request, "min")?,
+                        f32_field(request, "max")?,
+                    )
+                    .to_bits()
+                )
+            })),
+            "f64" => Ok(json!({
+                "bits": format!(
+                    "{:016x}",
+                    math::mth_next_double(
+                        &mut random,
+                        f64_field(request, "min")?,
+                        f64_field(request, "max")?,
+                    )
+                    .to_bits()
+                )
+            })),
+            _ => Err("unknown Mth next random type".into()),
+        };
     }
     if operation == "vec2" {
         let mut vector = Vec2::new(f32_field(request, "x")?, f32_field(request, "y")?);

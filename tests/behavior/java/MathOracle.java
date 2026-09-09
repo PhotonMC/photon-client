@@ -442,6 +442,23 @@ public final class MathOracle {
             } else {
                 throw new IllegalArgumentException("Unknown Mth clampedLerp type");
             }
+        } else if (operation.equals("mth_next_random")) {
+            RandomSource random = RandomSource.create(
+                Long.parseLong(request.get("seed").getAsString()));
+            String width = request.get("type").getAsString();
+            if (width.equals("i32")) {
+                result.addProperty("value", Integer.toString(Mth.nextInt(random,
+                    Integer.parseInt(request.get("min").getAsString()),
+                    Integer.parseInt(request.get("max").getAsString()))));
+            } else if (width.equals("f32")) {
+                result.addProperty("bits", Oracle.bits(Mth.nextFloat(random,
+                    Oracle.f32(request, "min"), Oracle.f32(request, "max"))));
+            } else if (width.equals("f64")) {
+                result.addProperty("bits", Oracle.bits(Mth.nextDouble(random,
+                    f64(request, "min"), f64(request, "max"))));
+            } else {
+                throw new IllegalArgumentException("Unknown Mth next random type");
+            }
         } else if (operation.equals("vec3")) {
             Vec3 vector = new Vec3(f64(request, "x"), f64(request, "y"), f64(request, "z"));
             var events = new JsonArray();

@@ -703,6 +703,41 @@ pub fn clamped_lerp_f64(factor: f64, minimum: f64, maximum: f64) -> f64 {
     }
 }
 
+/// Return Java `Mth.nextInt(RandomSource, int, int)`, including its
+/// min-greater-than-or-equal-to-max short circuit.
+pub fn mth_next_int(
+    random: &mut RandomSource,
+    minimum: i32,
+    maximum: i32,
+) -> Result<i32, crate::random::RandomError> {
+    if minimum >= maximum {
+        Ok(minimum)
+    } else {
+        let bound = maximum.wrapping_sub(minimum).wrapping_add(1);
+        random
+            .next_int_bound(bound)
+            .map(|value| value.wrapping_add(minimum))
+    }
+}
+
+/// Return Java `Mth.nextFloat(RandomSource, float, float)` in source order.
+pub fn mth_next_float(random: &mut RandomSource, minimum: f32, maximum: f32) -> f32 {
+    if minimum >= maximum {
+        minimum
+    } else {
+        random.next_float() * (maximum - minimum) + minimum
+    }
+}
+
+/// Return Java `Mth.nextDouble(RandomSource, double, double)` in source order.
+pub fn mth_next_double(random: &mut RandomSource, minimum: f64, maximum: f64) -> f64 {
+    if minimum >= maximum {
+        minimum
+    } else {
+        random.next_double() * (maximum - minimum) + minimum
+    }
+}
+
 /// Return Java `Math.floorDiv(int, int)`, including Java's signed overflow.
 pub fn floor_div_i32(dividend: i32, divisor: i32) -> i32 {
     if divisor == 0 {
