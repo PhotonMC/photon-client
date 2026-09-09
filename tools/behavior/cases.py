@@ -333,6 +333,15 @@ def math_cases():
     yield {"case_id": "shape/rotate-horizontal-initial/y-180", "family": "math", "operation": "shape",
            "kind": "rotate_horizontal_initial", "box": box_bits(0.0, 0.0, 0.0, 1.0, 0.5, 1.0),
            "initial": "ROT_180_FACE_XZ"}
+    yield {"case_id": "shape/rotate-horizontal-initial/y-90", "family": "math", "operation": "shape",
+           "kind": "rotate_horizontal_initial", "box": rotate_box,
+           "initial": "ROT_90_Y_NEG"}
+    yield {"case_id": "shape/rotate-horizontal-initial/z-90", "family": "math", "operation": "shape",
+           "kind": "rotate_horizontal_initial", "box": rotate_box,
+           "initial": "ROT_90_Z_NEG"}
+    yield {"case_id": "shape/rotate-horizontal-initial/xy-180", "family": "math", "operation": "shape",
+           "kind": "rotate_horizontal_initial", "box": rotate_box,
+           "initial": "ROT_180_FACE_XY"}
     yield {"case_id": "shape/rotate-all-initial/identity", "family": "math", "operation": "shape",
            "kind": "rotate_all_initial", "box": rotate_box, "initial": "IDENTITY",
            "center": center_bits(0.25, 0.5, 0.75)}
