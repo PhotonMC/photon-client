@@ -20,6 +20,8 @@
 
 `Vec3.vectorTo`, hedef vektör bileşenlerinden mevcut bileşenleri çıkararak yönlü fark üretir; beş senaryo [ayrı parity belgesinde](vec3-vector-to-parity.md) doğrulanır.
 
+`Vec3.dot`, üç bileşen çarpımını kaynak sırasındaki double toplamıyla üretir; beş senaryo [ayrı parity belgesinde](vec3-dot-parity.md) doğrulanır.
+
 `Shapes.rotate`, signed eksen permütasyonunu, blok merkezi çevresindeki koordinat yansıtmasını ve discrete hücre indislerinin taşınmasını Java ile aynı sırada uygular; ayrıntılı senaryo ve rapor [rotation parity belgesindedir](shape-rotate-parity.md).
 
 `Shapes.rotate` merkez overload'ı, output eksenine taşınan özel merkez bileşenlerini ve merkez farkı kadar koordinat çevirisini korur; ayrıntılı senaryo ve rapor [merkez rotation parity belgesindedir](shape-rotate-center-parity.md).
@@ -40,7 +42,7 @@ Shapes.rotateAttachFace'in desteklenen initial overload'ı, floor/wall/ceiling b
 
 ## Referans ve davranış
 
-Kaynak köküne göre `net/minecraft/world/phys/Vec2.java`, `net/minecraft/world/phys/Vec3.java` ve `net/minecraft/util/Mth.java` yeniden incelendi. Referans Java 26.2 client JAR'ı; SHA-1 `2dc72797acbc1b63fc16a11c4ac393605f453754`. Mevcut `MathOracle.java` doğrudan orijinal sınıfları çağırır. Vec3 add/subtract senaryoları Java adaptörüne eklendi; beklenen çıktılar Java yakalamasından üretildi.
+Kaynak köküne göre `net/minecraft/world/phys/Vec2.java`, `net/minecraft/world/phys/Vec3.java` ve `net/minecraft/util/Mth.java` yeniden incelendi. Referans Java 26.2 client JAR'ı; SHA-1 `2dc72797acbc1b63fc16a11c4ac393605f453754`. Mevcut `MathOracle.java` doğrudan orijinal sınıfları çağırır. Vec3 add/subtract, vectorTo ve dot senaryoları Java adaptörüne eklendi; beklenen çıktılar Java yakalamasından üretildi.
 
 | Rust API | Korunan davranış |
 | --- | --- |
@@ -57,6 +59,7 @@ Kaynak köküne göre `net/minecraft/world/phys/Vec2.java`, `net/minecraft/world
 | `Vec3::add_components`, `add_scalar`, `add_vec3` | Üç bileşenli, scalar ve Vec3 add overload'ları Java yönlendirme sırasını korur |
 | `Vec3::subtract_components`, `subtract_scalar`, `subtract_vec3` | Subtract miktarlarını Java unary negation ile tersleyip add yoluna verir |
 | `Vec3::vector_to` | Hedef bileşenlerinden mevcut bileşenleri doğrudan çıkarır |
+| `Vec3::dot` | Üç bileşen çarpımını kaynak sırasıyla toplar |
 | `Direction`/`Axis`/`AxisDirection` | Ad, veri değerleri, eksen, adım, karşıt yön ve eksenli döndürmeler; hizalı eksende birim dönüş |
 | `floor_f32`, `floor_f64` | Aşağı yuvarlama ve i32 dönüşümü; sınır dışı sonuçlar doyar, NaN sıfıra dönüşür |
 | `wrap_degrees_f32`, `wrap_degrees_f64` | İşaretli kalan üzerinden [-180, 180) aralığı; negatif sıfır kaybolmaz |
@@ -65,23 +68,23 @@ Kaynak köküne göre `net/minecraft/world/phys/Vec2.java`, `net/minecraft/world
 
 `hypot`, çarpma-toplama birleştirmesi veya ortak ters uzunlukla çarpma kullanılmadı; matematiksel olarak benzer yazımlar ara yuvarlama veya taşmayı değiştirebilir. İki hassasiyetteki scalar işlevleri küçük bir özel makroyla üretiliyor; genel matematik trait sistemi veya haricî vektör kütüphanesi eklenmedi.
 
-Bu API, Vec2/Vec3/Direction sınıflarının tamamı değildir: dot/cross, yön bulma, kuaterniyon, Java nesne eşitliği/hash'i ve resource codec'i kapsam dışındaki sonraki ihtiyaçlardır. Mth'nin int/long overload'ları, trigonometrik tablolar ve diğer yardımcıları bu dilimde uygulanmadı.
+Bu API, Vec2/Vec3/Direction sınıflarının tamamı değildir: cross, yön bulma, kuaterniyon, Java nesne eşitliği/hash'i ve resource codec'i kapsam dışındaki sonraki ihtiyaçlardır. Mth'nin int/long overload'ları, trigonometrik tablolar ve diğer yardımcıları bu dilimde uygulanmadı.
 
 ## Doğrulama
 
-Mevcut 660 matematik senaryosu; bu corpus içinde Vec2 için sıfır/işaretli sıfır, eksen ve diyagonal vektörler, normalize eşiğinin komşuları ve ölçek-normalize zincirleri; Vec3 için 27 yön, işaretli sıfır, subnormal, en büyük sonlu, karışık bileşen, 1e-5 eşiğinin bit komşuları ve ölçek-normalize zincirleri; add/subtract için Vec3, scalar ve üç bileşenli zincirler, signed zero, Infinity ve NaN senaryoları; vectorTo için sonlu fark, zincir, signed zero, double taşması, Infinity ve NaN senaryoları; ayrıca büyük/küçük sayılar, f32/f64 sınır komşuları, sonsuzluk ve NaN girdilerini kapsıyor. Clamp sınırları mevcut corpus'ta [-1, 1] ve [0, 1]; ters/NaN sınırlar, bütün NaN payload'ları ve tüm float bit desenleri test edilmiş sayılmaz. Shape dönüşümleri için identity, dokuz signed 90/180 derece dönüş, farklı grid boyutu ve OR birleşimi senaryoları; merkez overload için özel merkezli dört dönüş senaryosu; `rotateHorizontalAxis` için X/Z map ve özel merkez overload için merkezli X/Z map, `rotateAllAxis` için X/Y/Z map ve özel merkez overload için merkezli X/Y/Z map, `rotateHorizontal` için dört yön map ve `rotateAll` için altı yön map; `rotateAll` merkez overload için özel merkezli üç map senaryosu; `rotateAttachFace` için floor, wall ve ceiling iç map'lerini karşılaştıran üç senaryo; `rotateHorizontal` desteklenen initial overload için altı senaryo; singleEncompassing için boş, temas eden ve ayrık birleşimden tek kapsama box'ı üreten üç senaryo; axis min/max için empty, ayrık ve negatif koordinatlı üç senaryo; axis min/max sütun sorguları için empty, ayrık ve negatif koordinatlı üç senaryo; VoxelShape move overload'ları için Vec3, Vec3i ve empty shape üç senaryosu; VoxelShape optimize/getCoords için empty, temas eden satır ve ayrık shape üç senaryosu; VoxelShape forAllEdges için empty, box ve birleşik 3B shape üç senaryosu; `Shapes.join`/`joinUnoptimized` coordinate plane ayrımı için üç senaryo; VoxelShape forAllBoxes callback'i için üç senaryo; `Shapes.create(AABB)` için üç senaryo; `Shapes.create(double...)` için üç senaryo; `Shapes.INFINITY` için üç senaryo; `Shapes.EPSILON` ve `Shapes.BIG_EPSILON` için üç senaryo; `AABB.expandTowards(Vec3)` için üç senaryo; `AABB.equals`/`hashCode` için beş senaryo; `AABB.toString()` için beş senaryo; `AABB.Builder` için beş senaryo; `AABB.deflate(double, double, double)` için beş senaryo; `VoxelShape.equals(Object)` için üç senaryo; `VoxelShape.toString()` için beş senaryo; grid ve empty senaryoları da corpus'a dahildir.
+Mevcut 665 matematik senaryosu; bu corpus içinde Vec2 için sıfır/işaretli sıfır, eksen ve diyagonal vektörler, normalize eşiğinin komşuları ve ölçek-normalize zincirleri; Vec3 için 27 yön, işaretli sıfır, subnormal, en büyük sonlu, karışık bileşen, 1e-5 eşiğinin bit komşuları ve ölçek-normalize zincirleri; add/subtract için Vec3, scalar ve üç bileşenli zincirler, signed zero, Infinity ve NaN senaryoları; vectorTo için sonlu fark, zincir, signed zero, double taşması, Infinity ve NaN senaryoları; dot için temel çarpım, evaluation order/cancellation, signed zero, double overflow ve özel değer senaryoları; ayrıca büyük/küçük sayılar, f32/f64 sınır komşuları, sonsuzluk ve NaN girdilerini kapsıyor. Clamp sınırları mevcut corpus'ta [-1, 1] ve [0, 1]; ters/NaN sınırlar, bütün NaN payload'ları ve tüm float bit desenleri test edilmiş sayılmaz. Shape dönüşümleri için identity, dokuz signed 90/180 derece dönüş, farklı grid boyutu ve OR birleşimi senaryoları; merkez overload için özel merkezli dört dönüş senaryosu; `rotateHorizontalAxis` için X/Z map ve özel merkez overload için merkezli X/Z map, `rotateAllAxis` için X/Y/Z map ve özel merkez overload için merkezli X/Y/Z map, `rotateHorizontal` için dört yön map ve `rotateAll` için altı yön map; `rotateAll` merkez overload için özel merkezli üç map senaryosu; `rotateAttachFace` için floor, wall ve ceiling iç map'lerini karşılaştıran üç senaryo; `rotateHorizontal` desteklenen initial overload için altı senaryo; singleEncompassing için boş, temas eden ve ayrık birleşimden tek kapsama box'ı üreten üç senaryo; axis min/max için empty, ayrık ve negatif koordinatlı üç senaryo; axis min/max sütun sorguları için empty, ayrık ve negatif koordinatlı üç senaryo; VoxelShape move overload'ları için Vec3, Vec3i ve empty shape üç senaryosu; VoxelShape optimize/getCoords için empty, temas eden satır ve ayrık shape üç senaryosu; VoxelShape forAllEdges için empty, box ve birleşik 3B shape üç senaryosu; `Shapes.join`/`joinUnoptimized` coordinate plane ayrımı için üç senaryo; VoxelShape forAllBoxes callback'i için üç senaryo; `Shapes.create(AABB)` için üç senaryo; `Shapes.create(double...)` için üç senaryo; `Shapes.INFINITY` için üç senaryo; `Shapes.EPSILON` ve `Shapes.BIG_EPSILON` için üç senaryo; `AABB.expandTowards(Vec3)` için üç senaryo; `AABB.equals`/`hashCode` için beş senaryo; `AABB.toString()` için beş senaryo; `AABB.Builder` için beş senaryo; `AABB.deflate(double, double, double)` için beş senaryo; `VoxelShape.equals(Object)` için üç senaryo; `VoxelShape.toString()` için beş senaryo; grid ve empty senaryoları da corpus'a dahildir.
 
 Java 25.0.4.1 ve Rust 1.98.1 / Linux x86_64 ortamında:
 
-- Kayıtlı 1114 senaryoluk birleşik Java referansı iki ayrı JVM çalıştırmasıyla doğrulandı.
-- Debug ve release Rust adaptörleri **1114/1114** eşleşti: 660 math + 22 timer + 144 wire + 141 utf8 + 116 binary + 31 nbt.
+- Kayıtlı 1119 senaryoluk birleşik Java referansı iki ayrı JVM çalıştırmasıyla doğrulandı.
+- Debug ve release Rust adaptörleri **1119/1119** eşleşti: 665 math + 22 timer + 144 wire + 141 utf8 + 116 binary + 31 nbt.
 - Vec2/Vec3'te başlangıç ve her adımın bileşen, uzunluk ve uzunluk karesi bitleri; scalar işlevlerde sonuç bitleri veya tamsayı değeri karşılaştırıldı. Float toleransı veya NaN normalizasyonu eklenmedi.
 - Yanlış f64 bit formatı, bilinmeyen tür/işlem/aile, eksik clamp sınırı ve bilinmeyen Vec2/Vec3 adımı reddedildi.
 - Biçim, Clippy ve paket kapsamı kontrolleri geçti; `.data/` ve test adaptörü paket dışında kaldı.
 
-Birleşik referans kimliği: `15dc52b0af0addc9b446d43666846404d2d8e35a7cc7751489632ec703b826b8`. Math ailesi kimliği: `bc87ac5ece4a47cf40d4e562d69ac72206437e2c117cd058a79561ba4b4d149b`.
+Birleşik referans kimliği: `3b2bdc05bfdf0766c7665b84746689cdc5d05a2b2c751cf2d9a7ceaf66690145`. Math ailesi kimliği: `b4f21f456b1ed4b8f6d8d04534a21132ed8c550c6cc3e8f152c696a895bf9de0`.
 
-Yerel raporlar: `compare-3kg8m9ta` (debug 660), `compare-6crwfl2x` (release 660) dizinlerinde, `.data/runs/behavior/` altında bulunur.
+Yerel raporlar: `compare-2pd_izg6` (debug 665), `compare-k81tuucm` (release 665) dizinlerinde, `.data/runs/behavior/` altında bulunur.
 
 ## Yeniden çalıştırma ve sonraki dilim
 

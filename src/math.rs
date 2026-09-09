@@ -81,6 +81,10 @@ impl Vec3 {
         Self::new(other.x - self.x, other.y - self.y, other.z - self.z)
     }
 
+    pub fn dot(self, other: Self) -> f64 {
+        self.x * other.x + self.y * other.y + self.z * other.z
+    }
+
     pub fn scale(self, factor: f64) -> Self {
         Self::new(self.x * factor, self.y * factor, self.z * factor)
     }

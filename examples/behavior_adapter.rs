@@ -1665,6 +1665,11 @@ fn math_result(request: &Value) -> Result<Value, String> {
         }
         return Ok(json!({"events": events}));
     }
+    if operation == "vec3_dot" {
+        let first = f64_vec3(request.get("first").ok_or("first must be an object")?)?;
+        let second = f64_vec3(request.get("second").ok_or("second must be an object")?)?;
+        return Ok(json!({"value": format!("{:016x}", first.dot(second).to_bits())}));
+    }
     match string(request, "type")? {
         "f32" => {
             let value = f32_field(request, "value")?;

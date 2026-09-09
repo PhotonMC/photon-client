@@ -113,6 +113,10 @@ public final class MathOracle {
                 events.add(snapshot(vector));
             }
             result.add("events", events);
+        } else if (operation.equals("vec3_dot")) {
+            Vec3 first = vec3(request.getAsJsonObject("first"));
+            Vec3 second = vec3(request.getAsJsonObject("second"));
+            result.addProperty("value", Oracle.bits(first.dot(second)));
         } else if (operation.equals("shape")) {
             String kind = request.get("kind").getAsString();
             if (kind.equals("single")) {

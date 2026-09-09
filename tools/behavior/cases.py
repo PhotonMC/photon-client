@@ -143,6 +143,23 @@ def math_cases():
            "steps": [{"action": "vector_to", "target": {"x": float_bits(float("inf"), "f64"),
                                                                "y": float_bits(-float("inf"), "f64"),
                                                                "z": "7ff8000000000002"}}]}
+    yield {"case_id": "vec3/dot/basic", "family": "math", "operation": "vec3_dot",
+           "first": vector_bits(1.25, -2.5, 3.75), "second": vector_bits(4.0, -1.0, 0.5)}
+    yield {"case_id": "vec3/dot/order-and-cancellation", "family": "math", "operation": "vec3_dot",
+           "first": vector_bits(1.0, 2.0 ** -53, -1.0),
+           "second": vector_bits(2.0 ** 53, 1.0, 2.0 ** 53)}
+    yield {"case_id": "vec3/dot/signed-zero", "family": "math", "operation": "vec3_dot",
+           "first": vector_bits(-0.0, -0.0, -0.0), "second": vector_bits(1.0, 1.0, 1.0)}
+    yield {"case_id": "vec3/dot/overflow", "family": "math", "operation": "vec3_dot",
+           "first": {"x": "7fefffffffffffff", "y": float_bits(1.0, "f64"),
+                     "z": float_bits(-1.0, "f64")},
+           "second": {"x": float_bits(2.0, "f64"), "y": float_bits(0.0, "f64"),
+                      "z": float_bits(0.0, "f64")}}
+    yield {"case_id": "vec3/dot/special-values", "family": "math", "operation": "vec3_dot",
+           "first": {"x": float_bits(float("inf"), "f64"), "y": float_bits(2.0, "f64"),
+                     "z": float_bits(-3.0, "f64")},
+           "second": {"x": float_bits(0.0, "f64"), "y": float_bits(-4.0, "f64"),
+                      "z": float_bits(5.0, "f64")}}
     for name in ("down", "up", "north", "south", "west", "east"):
         yield {"case_id": f"direction/properties/{name}", "family": "math", "operation": "direction",
                "name": name, "steps": []}
