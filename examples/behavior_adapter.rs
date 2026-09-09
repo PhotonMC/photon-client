@@ -115,6 +115,14 @@ fn f64_field(value: &Value, name: &str) -> Result<f64, String> {
         .map_err(|error| error.to_string())
 }
 
+fn u64_hex_field(value: &Value, name: &str) -> Result<u64, String> {
+    let text = string(value, name)?;
+    if text.len() != 16 || !text.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+        return Err(format!("{name} must be sixteen hexadecimal digits"));
+    }
+    u64::from_str_radix(text, 16).map_err(|error| error.to_string())
+}
+
 fn f64_value(value: &Value, name: &str) -> Result<f64, String> {
     let text = value
         .as_str()
@@ -1916,6 +1924,15 @@ fn math_result(request: &Value) -> Result<Value, String> {
             _ => return Err("unknown ChunkPos constant".into()),
         };
         return Ok(json!({"value": value}));
+    }
+    if operation == "chunkpos_packed_accessors" {
+        let packed = u64_hex_field(request, "packed")?;
+        return Ok(json!({
+            "value": {
+                "x": ChunkPos::get_x(packed).to_string(),
+                "z": ChunkPos::get_z(packed).to_string(),
+            },
+        }));
     }
     if operation == "chunkpos_validity" {
         return Ok(json!({

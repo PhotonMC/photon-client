@@ -164,6 +164,12 @@ public final class MathOracle {
             result.add("value", chunkPosRangeClosed(request));
         } else if (operation.equals("chunkpos_constant")) {
             result.add("value", chunkPosConstant(request));
+        } else if (operation.equals("chunkpos_packed_accessors")) {
+            long packed = Long.parseUnsignedLong(request.get("packed").getAsString(), 16);
+            var value = new JsonObject();
+            value.addProperty("x", Integer.toString(ChunkPos.getX(packed)));
+            value.addProperty("z", Integer.toString(ChunkPos.getZ(packed)));
+            result.add("value", value);
         } else if (operation.equals("chunkpos_validity")) {
             ChunkPos pos = chunkPos(request);
             result.add("value", chunkPosValidity(pos));

@@ -241,9 +241,19 @@ impl ChunkPos {
     /// Unpack the two signed 32-bit fields from a packed long.
     pub fn unpack(packed: u64) -> Self {
         Self {
-            x: packed as u32 as i32,
-            z: (packed >> 32) as u32 as i32,
+            x: Self::get_x(packed),
+            z: Self::get_z(packed),
         }
+    }
+
+    /// Read the low signed 32-bit coordinate from a packed ChunkPos.
+    pub const fn get_x(packed: u64) -> i32 {
+        packed as u32 as i32
+    }
+
+    /// Read the high signed 32-bit coordinate from a packed ChunkPos.
+    pub const fn get_z(packed: u64) -> i32 {
+        (packed >> 32) as u32 as i32
     }
 
     /// Convert a packed SectionPos node to a packed ChunkPos, discarding y.
