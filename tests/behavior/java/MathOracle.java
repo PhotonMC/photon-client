@@ -159,6 +159,23 @@ public final class MathOracle {
                     tail[i - 1] = voxelShape(entries.get(i).getAsJsonObject());
                 }
                 result.add("shape", snapshot(Shapes.or(first, tail).singleEncompassing()));
+            } else if (kind.equals("optimize")) {
+                var entries = request.getAsJsonArray("shapes");
+                if (entries == null || entries.size() == 0) {
+                    throw new IllegalArgumentException("optimize needs at least one shape");
+                }
+                VoxelShape shape = voxelShape(entries.get(0).getAsJsonObject());
+                for (int i = 1; i < entries.size(); i++) {
+                    shape = Shapes.joinUnoptimized(
+                        shape,
+                        voxelShape(entries.get(i).getAsJsonObject()),
+                        BooleanOp.OR
+                    );
+                }
+                var events = new JsonArray();
+                events.add(snapshotWithCoords(shape));
+                events.add(snapshotWithCoords(shape.optimize()));
+                result.add("events", events);
             } else if (kind.equals("axis_limits")) {
                 var entries = request.getAsJsonArray("shapes");
                 if (entries == null || entries.size() == 0) {
@@ -888,6 +905,21 @@ public final class MathOracle {
         if (!shape.isEmpty()) {
             state.add("bounds", snapshot(shape.bounds()));
         }
+        return state;
+    }
+
+    private static JsonObject snapshotWithCoords(VoxelShape shape) {
+        var state = snapshot(shape);
+        var coordinates = new JsonObject();
+        for (Direction.Axis axis : Direction.Axis.values()) {
+            var values = new JsonArray();
+            var coords = shape.getCoords(axis);
+            for (int i = 0; i < coords.size(); i++) {
+                values.add(Oracle.bits(coords.getDouble(i)));
+            }
+            coordinates.add(axis.getName(), values);
+        }
+        state.add("coords", coordinates);
         return state;
     }
 

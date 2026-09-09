@@ -498,6 +498,28 @@ fn shape_snapshot(value: &VoxelShape) -> Value {
     state
 }
 
+fn shape_snapshot_with_coords(value: &VoxelShape) -> Value {
+    let mut state = shape_snapshot(value);
+    state["coords"] = json!({
+        "x": value
+            .coords(Axis::X)
+            .iter()
+            .map(|coordinate| format!("{:016x}", coordinate.to_bits()))
+            .collect::<Vec<_>>(),
+        "y": value
+            .coords(Axis::Y)
+            .iter()
+            .map(|coordinate| format!("{:016x}", coordinate.to_bits()))
+            .collect::<Vec<_>>(),
+        "z": value
+            .coords(Axis::Z)
+            .iter()
+            .map(|coordinate| format!("{:016x}", coordinate.to_bits()))
+            .collect::<Vec<_>>(),
+    });
+    state
+}
+
 fn shape_axis_limits_snapshot(value: &VoxelShape) -> Value {
     json!({
         "min_x": format!("{:016x}", value.min(Axis::X).to_bits()),
@@ -590,6 +612,28 @@ fn shape_result(request: &Value) -> Result<Value, String> {
             let joined = Shapes::or_many(&first, &tail);
             Ok(json!({
                 "shape": shape_snapshot(&joined.single_encompassing()),
+            }))
+        }
+        "optimize" => {
+            let entries = request
+                .get("shapes")
+                .ok_or("shapes must be an array")?
+                .as_array()
+                .ok_or("shapes must be an array")?;
+            if entries.is_empty() {
+                return Err("optimize needs at least one shape".into());
+            }
+            let first = shape_box(&entries[0])?;
+            let tail = entries[1..]
+                .iter()
+                .map(shape_box)
+                .collect::<Result<Vec<_>, _>>()?;
+            let joined = Shapes::or_many(&first, &tail);
+            Ok(json!({
+                "events": [
+                    shape_snapshot_with_coords(&joined),
+                    shape_snapshot_with_coords(&joined.optimize()),
+                ],
             }))
         }
         "axis_limits" => {

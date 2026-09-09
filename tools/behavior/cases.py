@@ -204,6 +204,22 @@ def math_cases():
                                                         "y": float_bits(-float("inf"), "f64"),
                                                         "z": float_bits(float("nan"), "f64")}},
                       {"op": "move_block_pos", "delta": {"x": "2147483647", "y": "-2147483648", "z": "0"}}]}
+    yield {"case_id": "shape/optimize/empty", "family": "math", "operation": "shape",
+           "kind": "optimize", "shapes": [
+               box_bits(0.0, 0.0, 0.0, 0.00000005, 1.0, 1.0),
+           ]}
+    yield {"case_id": "shape/optimize/touching-row", "family": "math", "operation": "shape",
+           "kind": "optimize", "shapes": [
+               box_bits(0.0, 0.0, 0.0, 0.25, 1.0, 1.0),
+               box_bits(0.25, 0.0, 0.0, 0.5, 1.0, 1.0),
+               box_bits(0.5, 0.0, 0.0, 1.0, 1.0, 1.0),
+           ]}
+    yield {"case_id": "shape/optimize/disjoint", "family": "math", "operation": "shape",
+           "kind": "optimize", "shapes": [
+               box_bits(0.0, 0.0, 0.0, 0.25, 0.5, 0.75),
+               box_bits(0.5, 0.25, 0.25, 0.75, 1.0, 0.5),
+               box_bits(0.75, 0.0, 0.75, 1.0, 0.25, 1.0),
+           ]}
     yield {"case_id": "shape/empty/sliver", "family": "math", "operation": "shape",
            "kind": "single", "box": box_bits(0, 0, 0, 0.00000005, 1, 1), "steps": []}
     yield {"case_id": "shape/or/disjoint", "family": "math", "operation": "shape", "kind": "join",

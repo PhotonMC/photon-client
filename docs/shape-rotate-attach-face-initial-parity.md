@@ -6,16 +6,16 @@
 
 Java 25.0.4.1 ve Rust 1.98.1 / Linux x86_64 ortamında:
 
-- Math ailesinin 595 senaryoluk referansı iki ayrı JVM çalıştırmasıyla kararlı bulundu.
-- Rust debug ve release adaptörleri **595/595** math senaryosunda eşleşti.
+- Math ailesinin 598 senaryoluk referansı iki ayrı JVM çalıştırmasıyla kararlı bulundu.
+- Rust debug ve release adaptörleri **598/598** math senaryosunda eşleşti.
 - `IDENTITY`, `ROT_90_X_NEG` ve `ROT_180_FACE_XZ` başlangıçlarıyla FLOOR, WALL ve CEILING dış sırası ile iç dört yön map'lerinin bileşimleri karşılaştırıldı.
-- Birleşik altı aile corpus'u **1049/1049** senaryoda hem debug hem release adaptörüyle eşleşti.
+- Birleşik altı aile corpus'u **1052/1052** senaryoda hem debug hem release adaptörüyle eşleşti.
 
-Math referans kimliği: `ce9f73691b328e00b02f83b206e661f37912928e73906f6dbb70625279cf8b0e`.
+Math referans kimliği: `7d929c43d190008e7958b13c5cd6ed1ecfd727fb2477efae2e307b70d7888deb`.
 
-Birleşik referans kimliği: `da26bf4827a53d92d2e5f34a0eef95d42ce2a999192fdf5c8181ec7a0eb1ed89`.
+Birleşik referans kimliği: `79c0a319fee88ab66551f0d6e482274fbf9e528c52ae097bb43853784b4e846a`.
 
-Yerel raporlar: `compare-hrsd4jtb` (math debug), `compare-hkyu2hj9` (math release), `compare-b4pkrz59` (birleşik debug) ve `compare-dcvn_t28` (birleşik release) dizinlerinde, `.data/runs/behavior/` altında bulunur.
+Yerel raporlar: `compare-yuxqj_ix` (math debug), `compare-fpos2gkp` (math release), `compare-witt8p3m` (birleşik debug) ve `compare-pabdz7bu` (birleşik release) dizinlerinde, `.data/runs/behavior/` altında bulunur.
 
 ## Sınırlar
 

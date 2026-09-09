@@ -192,6 +192,33 @@ impl VoxelShape {
         self.move_by(f64::from(delta.x), f64::from(delta.y), f64::from(delta.z))
     }
 
+    /// Return the coordinate planes for an axis in ascending order.
+    pub fn coords(&self, axis: Axis) -> &[f64] {
+        self.axis_coords(axis)
+    }
+
+    /// Rebuild the shape from its merged boxes using Java's optimize order.
+    pub fn optimize(&self) -> Self {
+        let mut optimized = Shapes::empty();
+        for bounds in self.to_aabbs() {
+            let box_shape = Shapes::box_shape(
+                bounds.min_x,
+                bounds.min_y,
+                bounds.min_z,
+                bounds.max_x,
+                bounds.max_y,
+                bounds.max_z,
+            )
+            .expect("merged shape boxes have ordered bounds");
+            optimized = if optimized.is_empty() {
+                box_shape
+            } else {
+                Shapes::join(&optimized, &box_shape, BooleanOp::Or)
+            };
+        }
+        optimized
+    }
+
     /// Return the smallest AABB containing every occupied cell.
     pub fn bounds(&self) -> Option<Aabb> {
         let mut min_x = usize::MAX;
