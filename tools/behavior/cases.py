@@ -283,6 +283,18 @@ def math_cases():
         yield {"case_id": f"chunkpos/packed-accessors/{label}", "family": "math",
                "operation": "chunkpos_packed_accessors", "packed": packed}
 
+    sectionpos_packed_accessors = {
+        "zero": "0000000000000000",
+        "positive": "0000040000300002",
+        "negative": "ffffffffffffffff",
+        "minimums": "8000020000080000",
+        "maximums": "7ffffdfffff7ffff",
+        "alternating": "aa55aa5555aa55aa",
+    }
+    for label, packed in sectionpos_packed_accessors.items():
+        yield {"case_id": f"sectionpos/packed-accessors/{label}", "family": "math",
+               "operation": "sectionpos_packed_accessors", "packed": packed}
+
     chunkpos_validity = {
         "origin": {"x": "0", "z": "0"},
         "boundary": {"x": "2097061", "z": "-2097061"},

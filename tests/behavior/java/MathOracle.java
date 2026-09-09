@@ -170,6 +170,13 @@ public final class MathOracle {
             value.addProperty("x", Integer.toString(ChunkPos.getX(packed)));
             value.addProperty("z", Integer.toString(ChunkPos.getZ(packed)));
             result.add("value", value);
+        } else if (operation.equals("sectionpos_packed_accessors")) {
+            long packed = Long.parseUnsignedLong(request.get("packed").getAsString(), 16);
+            var value = new JsonObject();
+            value.addProperty("x", Integer.toString(SectionPos.x(packed)));
+            value.addProperty("y", Integer.toString(SectionPos.y(packed)));
+            value.addProperty("z", Integer.toString(SectionPos.z(packed)));
+            result.add("value", value);
         } else if (operation.equals("chunkpos_validity")) {
             ChunkPos pos = chunkPos(request);
             result.add("value", chunkPosValidity(pos));

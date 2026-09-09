@@ -1934,6 +1934,16 @@ fn math_result(request: &Value) -> Result<Value, String> {
             },
         }));
     }
+    if operation == "sectionpos_packed_accessors" {
+        let packed = u64_hex_field(request, "packed")?;
+        return Ok(json!({
+            "value": {
+                "x": SectionPos::get_x(packed).to_string(),
+                "y": SectionPos::get_y(packed).to_string(),
+                "z": SectionPos::get_z(packed).to_string(),
+            },
+        }));
+    }
     if operation == "chunkpos_validity" {
         return Ok(json!({
             "value": chunkpos_validity_snapshot(chunkpos(request)?),

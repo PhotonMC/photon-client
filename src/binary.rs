@@ -750,15 +750,29 @@ impl SectionPos {
             | (u64::from(self.y as u32) & PACKED_SECTION_Y_MASK)
     }
 
+    /// Read the signed 22-bit x coordinate from a packed SectionPos.
+    pub const fn get_x(packed: u64) -> i32 {
+        ((packed as i64) >> SECTION_X_OFFSET) as i32
+    }
+
+    /// Read the signed 20-bit y coordinate from a packed SectionPos.
+    pub const fn get_y(packed: u64) -> i32 {
+        ((packed << (64 - PACKED_SECTION_Y_LENGTH)) as i64 >> (64 - PACKED_SECTION_Y_LENGTH)) as i32
+    }
+
+    /// Read the signed 22-bit z coordinate from a packed SectionPos.
+    pub const fn get_z(packed: u64) -> i32 {
+        ((packed << (64 - SECTION_Z_OFFSET - PACKED_SECTION_HORIZONTAL_LENGTH)) as i64
+            >> (64 - PACKED_SECTION_HORIZONTAL_LENGTH)) as i32
+    }
+
     /// Unpack with arithmetic shifts, sign-extending each field.
     pub fn unpack(packed: u64) -> Self {
-        let x = ((packed << (64 - SECTION_X_OFFSET - PACKED_SECTION_HORIZONTAL_LENGTH)) as i64
-            >> (64 - PACKED_SECTION_HORIZONTAL_LENGTH)) as i32;
-        let y = ((packed << (64 - PACKED_SECTION_Y_LENGTH)) as i64
-            >> (64 - PACKED_SECTION_Y_LENGTH)) as i32;
-        let z = ((packed << (64 - SECTION_Z_OFFSET - PACKED_SECTION_HORIZONTAL_LENGTH)) as i64
-            >> (64 - PACKED_SECTION_HORIZONTAL_LENGTH)) as i32;
-        Self { x, y, z }
+        Self {
+            x: Self::get_x(packed),
+            y: Self::get_y(packed),
+            z: Self::get_z(packed),
+        }
     }
 }
 
