@@ -24,4 +24,4 @@ Girdiler `family: "math"`, `operation: "shape"`, `kind: "create_aabb"` ve `aabb`
 
 ## Java yakalama
 
-Math referans kimliği `72703f27997a3fbdb61c87ead93863a7a53806ebb3533f7e4c676f9a81591df9` oldu. Birleşik altı aile referansı `e5d1fae4e50021d9e6e70de3182785f1dc68c1643d56f5a99d7e5aae91807e14` kimliğiyle doğrulandı. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.
+Math referans kimliği `6c664e0096c0ab12467c89aed7a906a49cbc22a2eb8b747dadf039bdd64c5f34` oldu. Birleşik altı aile referansı `a3f0878cf89549c06659e43bb88142eced597ada4cc7f8e7ceb2c84d2a0ef851` kimliğiyle doğrulandı. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.

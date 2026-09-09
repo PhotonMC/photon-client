@@ -888,6 +888,38 @@ impl Shapes {
         .expect("infinity bounds are ordered")
     }
 
+    /// Construct a shape from raw coordinates like Java `Shapes.create(double...)`.
+    pub fn create_from_coords(
+        min_x: f64,
+        min_y: f64,
+        min_z: f64,
+        max_x: f64,
+        max_y: f64,
+        max_z: f64,
+    ) -> VoxelShape {
+        if max_x - min_x < EPSILON || max_y - min_y < EPSILON || max_z - min_z < EPSILON {
+            return Self::empty();
+        }
+
+        match (
+            find_bits(min_x, max_x),
+            find_bits(min_y, max_y),
+            find_bits(min_z, max_z),
+        ) {
+            (Some(x_bits), Some(y_bits), Some(z_bits)) => cube_box(
+                [min_x, min_y, min_z],
+                [max_x, max_y, max_z],
+                [x_bits, y_bits, z_bits],
+            ),
+            _ => VoxelShape::new(
+                vec![min_x, max_x],
+                vec![min_y, max_y],
+                vec![min_z, max_z],
+                vec![true],
+            ),
+        }
+    }
+
     /// Construct a box, applying Java's minimum extent threshold.
     pub fn box_shape(
         min_x: f64,
@@ -900,27 +932,9 @@ impl Shapes {
         if min_x > max_x || min_y > max_y || min_z > max_z {
             return Err(ShapeError::ReversedBounds);
         }
-        if max_x - min_x < EPSILON || max_y - min_y < EPSILON || max_z - min_z < EPSILON {
-            return Ok(Self::empty());
-        }
-
-        match (
-            find_bits(min_x, max_x),
-            find_bits(min_y, max_y),
-            find_bits(min_z, max_z),
-        ) {
-            (Some(x_bits), Some(y_bits), Some(z_bits)) => Ok(cube_box(
-                [min_x, min_y, min_z],
-                [max_x, max_y, max_z],
-                [x_bits, y_bits, z_bits],
-            )),
-            _ => Ok(VoxelShape::new(
-                vec![min_x, max_x],
-                vec![min_y, max_y],
-                vec![min_z, max_z],
-                vec![true],
-            )),
-        }
+        Ok(Self::create_from_coords(
+            min_x, min_y, min_z, max_x, max_y, max_z,
+        ))
     }
 
     /// Construct a shape from normalized AABB endpoints like Java `Shapes.create(AABB)`.

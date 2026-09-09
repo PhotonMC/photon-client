@@ -269,6 +269,15 @@ def math_cases():
     yield {"case_id": "shape/create-aabb/array", "family": "math", "operation": "shape",
            "kind": "create_aabb", "aabb": box_bits(
                -1.25, 0.125, 2.0, 1.5, 0.875, 3.25)}
+    yield {"case_id": "shape/create-coords/cube", "family": "math", "operation": "shape",
+           "kind": "create_coords", "box": box_bits(
+               0.125, 0.25, 0.375, 0.625, 0.75, 0.875)}
+    yield {"case_id": "shape/create-coords/reversed", "family": "math", "operation": "shape",
+           "kind": "create_coords", "box": box_bits(
+               0.75, 0.5, 0.875, 0.125, 0.25, 0.375)}
+    yield {"case_id": "shape/create-coords/array", "family": "math", "operation": "shape",
+           "kind": "create_coords", "box": box_bits(
+               -1.25, 0.125, 2.0, 1.5, 0.875, 3.25)}
     yield {"case_id": "shape/infinity/snapshot", "family": "math", "operation": "shape",
            "kind": "infinity", "view": "snapshot"}
     yield {"case_id": "shape/infinity/boxes", "family": "math", "operation": "shape",

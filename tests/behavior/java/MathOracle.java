@@ -240,6 +240,11 @@ public final class MathOracle {
             } else if (kind.equals("create_aabb")) {
                 AABB aabb = box(request.getAsJsonObject("aabb"));
                 result.add("shape", snapshot(Shapes.create(aabb)));
+            } else if (kind.equals("create_coords")) {
+                JsonObject box = request.getAsJsonObject("box");
+                result.add("shape", snapshot(Shapes.create(
+                    f64(box, "min_x"), f64(box, "min_y"), f64(box, "min_z"),
+                    f64(box, "max_x"), f64(box, "max_y"), f64(box, "max_z"))));
             } else if (kind.equals("infinity")) {
                 VoxelShape infinity = Shapes.INFINITY;
                 String view = request.get("view").getAsString();

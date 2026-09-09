@@ -720,6 +720,18 @@ fn shape_result(request: &Value) -> Result<Value, String> {
                 .map_err(|_| "shape minimum must not exceed maximum".to_owned())?;
             Ok(json!({"shape": shape_snapshot(&shape)}))
         }
+        "create_coords" => {
+            let value = request.get("box").ok_or("box must be an object")?;
+            let shape = Shapes::create_from_coords(
+                f64_field(value, "min_x")?,
+                f64_field(value, "min_y")?,
+                f64_field(value, "min_z")?,
+                f64_field(value, "max_x")?,
+                f64_field(value, "max_y")?,
+                f64_field(value, "max_z")?,
+            );
+            Ok(json!({"shape": shape_snapshot(&shape)}))
+        }
         "infinity" => {
             let infinity = Shapes::infinity();
             match string(request, "view")? {
