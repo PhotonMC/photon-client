@@ -9,14 +9,14 @@ Java 25.0.4.1 ve Rust 1.98.1 / Linux x86_64 ortamında:
 - 456 senaryoluk math referansı iki ayrı JVM çalıştırmasıyla kararlı bulundu.
 - Rust debug ve release adaptörleri **456/456** math senaryosunda eşleşti.
 - Sekiz yeni senaryoda boş liste, başlangıç/bitiş contains, segment geçişi, kaçırma, çoklu aday, epsilon ve NaN davranışları ile negatif inflate miktarı karşılaştırıldı.
-- Birleşik altı aile corpus'u **976/976** senaryoda hem debug hem release adaptörüyle eşleşti.
+- Birleşik altı aile corpus'u **982/982** senaryoda hem debug hem release adaptörüyle eşleşti.
 - `cargo fmt`, `cargo check --locked --offline --all-targets`, `cargo test --locked --offline --all-targets` ve Clippy kontrolleri geçti.
 
 Math referans kimliği: `e8e76ccc62aed58e30c8ea04f5862929a6644eaba7132217f369f558775226a5`.
 
-Birleşik referans kimliği: `f13f272d7c3d33b3fc203feb94bab869310a7fe2c99a8b47d53c195952394c06`.
+Birleşik referans kimliği: `132874b38edd2ac3df4e52525cdc4defbd5f36ee22441bb8daba624d5c98076c`.
 
-Yerel raporlar: `compare-doqiofma` (math debug), `compare-jpkfv0nx` (math release), `compare-4zofzqxq` (birleşik debug) ve `compare-hmu7un2w` (birleşik release) dizinlerinde, `.data/runs/behavior/` altında bulunur.
+Yerel raporlar: `compare-doqiofma` (math debug), `compare-jpkfv0nx` (math release), `compare-hz_hpajw` (birleşik debug) ve `compare-7a4v0a9c` (birleşik release) dizinlerinde, `.data/runs/behavior/` altında bulunur.
 
 ## Sınırlar
 

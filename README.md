@@ -8,7 +8,7 @@ Orijinal kaynak ve assetler yalnızca yerelde referans ve test girdisi olarak ku
 
 ## Mevcut aşama
 
-Kaynaklar sağlandı; bütünlük envanteri ve ilk kaynak incelemesi tamamlandı. Bölüm bazlı roadmap ve ilk davranış testi sözleşmeleri hazır. P00 yerel test çalıştırıcısı ve 976 Java referans senaryosu mevcut. Random/AABB, AABB contract, AABB inflate, AABB intersect, AABB predicate overload'ları, AABB collidedAlongVector, AABB kutu kurucuları ve üreticileri, AABB BoundingBox köprüsü, AABB minmax, AABB move, AABB move overload'ları, AABB sizes, AABB hasNaN, AABB positions, AABB axis min/max, AABB distanceToSqr, AABB ofSize, AABB endpoint setter'ları, AABB clip, koordinat ve iterable clip/BlockHitResult overload'ları, VoxelShape temel/OR, BooleanOp join, tekli/çoklu shape collision, VoxelShape clip, VoxelShape closestPointTo, VoxelShape getFaceShape, Shapes.blockOccludes, mergedFaceOccludes/faceShapeOccludes, nextGaussian, fork/positional, setSeed, random yardımcı overload'ları, NBT ağaç/liste/dizi ve BlockPos/section-relative dilimleri dahil Rust uygulanan kapsam debug/release profillerinde 976 senaryonun tamamında Java ile eşleşiyor. Oynanabilir istemci henüz yok. Boş `main`, yalnızca iskelettir.
+Kaynaklar sağlandı; bütünlük envanteri ve ilk kaynak incelemesi tamamlandı. Bölüm bazlı roadmap ve ilk davranış testi sözleşmeleri hazır. P00 yerel test çalıştırıcısı ve 982 Java referans senaryosu mevcut. Random/AABB, AABB contract, AABB inflate, AABB intersect, AABB predicate overload'ları, AABB collidedAlongVector, AABB kutu kurucuları ve üreticileri, AABB BoundingBox köprüsü, AABB minmax, AABB move, AABB move overload'ları, AABB sizes, AABB hasNaN, AABB positions, AABB axis min/max, AABB distanceToSqr, AABB ofSize, AABB endpoint setter'ları, AABB clip, koordinat ve iterable clip/BlockHitResult overload'ları, VoxelShape temel/OR, BooleanOp join, tekli/çoklu shape collision, VoxelShape clip, VoxelShape closestPointTo, VoxelShape getFaceShape, Shapes.blockOccludes, mergedFaceOccludes/faceShapeOccludes, Shapes.equal, nextGaussian, fork/positional, setSeed, random yardımcı overload'ları, NBT ağaç/liste/dizi ve BlockPos/section-relative dilimleri dahil Rust uygulanan kapsam debug/release profillerinde 982 senaryonun tamamında Java ile eşleşiyor. Oynanabilir istemci henüz yok. Boş `main`, yalnızca iskelettir.
 
 Mevcut referanslar [yerel veri rehberindeki](docs/reference-data.md) `.data/` alanında kalır. Test yol haritası kalan P01 yardımcıları ve bağlantı önkoşullarıyla sürüyor. Her Rust diliminden önce ilgili Java referansı ve testler hazırlanacak. Grafik, ses, pencere ve ağ teknolojileri sonraya bırakıldı. Test otomasyonu Python standart kütüphanesi ve özgün Java adaptörlerini kullanıyor; üretim kütüphanesine ek Rust bağımlılığı eklenmedi. Rust JSONL test adaptörü `serde_json` geliştirme bağımlılığını kullanıyor.
 
@@ -85,6 +85,8 @@ Mevcut referanslar [yerel veri rehberindeki](docs/reference-data.md) `.data/` al
 - [Shapes.blockOccludes doğrulaması](docs/shape-occlusion-parity.md)
 - [mergedFaceOccludes ve faceShapeOccludes sözleşmesi](docs/shape-face-occlusion-contract.md)
 - [mergedFaceOccludes ve faceShapeOccludes doğrulaması](docs/shape-face-occlusion-parity.md)
+- [Shapes.equal sözleşmesi](docs/shape-equal-contract.md)
+- [Shapes.equal doğrulaması](docs/shape-equal-parity.md)
 - [`nextGaussian` sözleşmesi ve referans testleri](docs/random-gaussian-contract.md)
 - [`nextGaussian` doğrulaması](docs/random-gaussian-parity.md)
 - [`fork` ve positional random sözleşmesi](docs/random-fork-contract.md)

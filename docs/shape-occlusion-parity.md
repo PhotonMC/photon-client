@@ -6,17 +6,17 @@
 
 Java 25.0.4.1 ve Rust 1.98.1 / Linux x86_64 ortamında:
 
-- 522 senaryoluk math referansı iki ayrı JVM çalıştırmasıyla kararlı bulundu.
-- Rust debug ve release adaptörleri math ailesinde **522/522** eşleşti.
+- 528 senaryoluk math referansı iki ayrı JVM çalıştırmasıyla kararlı bulundu.
+- Rust debug ve release adaptörleri math ailesinde **528/528** eşleşti.
 - Sekiz yeni occlusion senaryosu tam blok, sınır koşulu, kısmi yüz kapsamı, yön operand sırası, empty occluder, dikey temas ve OR birleşimi sonuçlarını karşılaştırdı.
-- Birleşik altı aile corpus'u **976/976** senaryoda hem debug hem release adaptörüyle eşleşti.
+- Birleşik altı aile corpus'u **982/982** senaryoda hem debug hem release adaptörüyle eşleşti.
 - `cargo fmt`, `cargo check --locked --offline --all-targets`, `cargo test --locked --offline --all-targets` ve Clippy kontrolleri geçti.
 
 Math referans kimliği: `cb2511839f7c5474e299aa625ddba51089f3c035453190ee147a26361e7a57ef`.
 
-Birleşik referans kimliği: `f13f272d7c3d33b3fc203feb94bab869310a7fe2c99a8b47d53c195952394c06`.
+Birleşik referans kimliği: `132874b38edd2ac3df4e52525cdc4defbd5f36ee22441bb8daba624d5c98076c`.
 
-Yerel raporlar: `compare-_tou3p2b` (math debug), `compare-mkn5lc06` (math release), `compare-4zofzqxq` (birleşik debug) ve `compare-hmu7un2w` (birleşik release) dizinlerinde, `.data/runs/behavior/` altında bulunur.
+Yerel raporlar: `compare-_tou3p2b` (math debug), `compare-mkn5lc06` (math release), `compare-hz_hpajw` (birleşik debug) ve `compare-7a4v0a9c` (birleşik release) dizinlerinde, `.data/runs/behavior/` altında bulunur.
 
 ## Sınırlar
 

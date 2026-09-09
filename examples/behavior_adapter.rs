@@ -539,6 +539,11 @@ fn shape_result(request: &Value) -> Result<Value, String> {
                 "join_is_not_empty": Shapes::join_is_not_empty(&first, &second, operation),
             }))
         }
+        "equal" => {
+            let first = shape_box(request.get("first").ok_or("first must be an object")?)?;
+            let second = shape_box(request.get("second").ok_or("second must be an object")?)?;
+            Ok(json!({"equal": Shapes::equal(&first, &second)}))
+        }
         "collide" => {
             let axis = Axis::from_name(string(request, "axis")?).ok_or("unknown collision axis")?;
             let shape = shape_box(request.get("shape").ok_or("shape must be an object")?)?;

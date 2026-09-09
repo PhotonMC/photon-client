@@ -134,6 +134,10 @@ public final class MathOracle {
                 };
                 result.add("shape", snapshot(Shapes.join(first, second, op)));
                 result.addProperty("join_is_not_empty", Shapes.joinIsNotEmpty(first, second, op));
+            } else if (kind.equals("equal")) {
+                VoxelShape first = voxelShape(request.getAsJsonObject("first"));
+                VoxelShape second = voxelShape(request.getAsJsonObject("second"));
+                result.addProperty("equal", Shapes.equal(first, second));
             } else if (kind.equals("collide")) {
                 VoxelShape shape = voxelShape(request.getAsJsonObject("shape"));
                 AABB moving = box(request.getAsJsonObject("moving"));

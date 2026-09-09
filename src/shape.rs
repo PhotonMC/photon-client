@@ -559,6 +559,11 @@ impl Shapes {
         !Self::join(first, second, operation).is_empty()
     }
 
+    /// Return whether two shapes occupy the same cells.
+    pub fn equal(first: &VoxelShape, second: &VoxelShape) -> bool {
+        !Self::join_is_not_empty(first, second, BooleanOp::NotSame)
+    }
+
     /// Return whether two block-local shapes occlude across a direction.
     pub fn block_occludes(shape: &VoxelShape, occluder: &VoxelShape, direction: Direction) -> bool {
         let axis = direction.axis();
