@@ -85,6 +85,29 @@ def math_cases():
         yield {"case_id": f"vec3/codec/encode/{label}", "family": "math",
                "operation": "vec3_codec", "mode": "encode", **values}
 
+    chunkpos_codec_decodes = {
+        "basic": ["1", "-2"],
+        "zero": ["0", "0"],
+        "negative": ["-1", "-2147483648"],
+        "boundaries": ["2147483647", "-2147483648"],
+        "alternating": ["1437226410", "-1437226411"],
+        "empty": [],
+        "short": ["1"],
+        "long": ["1", "2", "3"],
+    }
+    for label, values in chunkpos_codec_decodes.items():
+        yield {"case_id": f"chunkpos/codec/decode/{label}", "family": "math",
+               "operation": "chunkpos_codec", "mode": "decode", "values": values}
+    chunkpos_codec_encodes = {
+        "basic": {"x": "1", "z": "-2"},
+        "zero": {"x": "0", "z": "0"},
+        "boundaries": {"x": "2147483647", "z": "-2147483648"},
+        "alternating": {"x": "1437226410", "z": "-1437226411"},
+    }
+    for label, values in chunkpos_codec_encodes.items():
+        yield {"case_id": f"chunkpos/codec/encode/{label}", "family": "math",
+               "operation": "chunkpos_codec", "mode": "encode", **values}
+
     vectors = {f"direction-{x}-{y}": (float_bits(x), float_bits(y))
                for x in (-1, 0, 1) for y in (-1, 0, 1)}
     vectors.update({"negative-zero": ("80000000", "80000000"),

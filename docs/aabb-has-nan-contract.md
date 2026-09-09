@@ -34,6 +34,6 @@ cargo build --locked --offline --example behavior_adapter
 python3 tools/behavior/run.py compare --family math --adapter target/debug/examples/behavior_adapter
 ```
 
-HasNaN senaryolarını içeren math referans kimliği `1b628a5ed1aa6d5d7f23933491eed86b44ffdbc00f80560b0ddbe51afb57e990` oldu. Bu referans iki JVM çalıştırmasıyla kararlı bulundu. Birleşik altı aile referansı `a2c69ab98e59ffb82410fd45282bc6e8c110fd13877ba87471c7bfcc29f23318` kimliğiyle iki JVM'de doğrulandı.
+HasNaN senaryolarını içeren math referans kimliği `1b628a5ed1aa6d5d7f23933491eed86b44ffdbc00f80560b0ddbe51afb57e990` oldu. Bu referans iki JVM çalıştırmasıyla kararlı bulundu. Birleşik altı aile referansı `cfb0f4a3444412c75186c0d8b209a59632b9d62debcc435aa548bf4c364d8656` kimliğiyle iki JVM'de doğrulandı.
 
-Rust debug ve release adaptörleri math ailesinde 406/406, birleşik corpus'ta 1407/1407 eşleşti. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.
+Rust debug ve release adaptörleri math ailesinde 406/406, birleşik corpus'ta 1419/1419 eşleşti. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.

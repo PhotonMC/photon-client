@@ -11,6 +11,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.SectionPos;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.levelgen.PositionalRandomFactory;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.block.state.properties.AttachFace;
@@ -108,6 +109,21 @@ public final class MathOracle {
                 result = codecEncodeResult(encoded);
             } else {
                 throw new IllegalArgumentException("Unknown Vec3 codec mode");
+            }
+        } else if (operation.equals("chunkpos_codec")) {
+            String mode = request.get("mode").getAsString();
+            if (mode.equals("decode")) {
+                var input = new JsonArray();
+                for (var entry : request.getAsJsonArray("values")) {
+                    input.add(Integer.parseInt(entry.getAsString()));
+                }
+                DataResult<ChunkPos> decoded = ChunkPos.CODEC.parse(JsonOps.INSTANCE, input);
+                result = chunkPosCodecDecodeResult(decoded);
+            } else if (mode.equals("encode")) {
+                DataResult<JsonElement> encoded = ChunkPos.CODEC.encodeStart(JsonOps.INSTANCE, chunkPos(request));
+                result = chunkPosCodecEncodeResult(encoded);
+            } else {
+                throw new IllegalArgumentException("Unknown ChunkPos codec mode");
             }
         } else if (operation.equals("vec3")) {
             Vec3 vector = new Vec3(f64(request, "x"), f64(request, "y"), f64(request, "z"));
@@ -1263,6 +1279,13 @@ public final class MathOracle {
         return new Vec3(f64(object, "x"), f64(object, "y"), f64(object, "z"));
     }
 
+    private static ChunkPos chunkPos(JsonObject object) {
+        return new ChunkPos(
+            Integer.parseInt(object.get("x").getAsString()),
+            Integer.parseInt(object.get("z").getAsString())
+        );
+    }
+
     private static JsonObject codecDecodeResult(DataResult<Vec3> decoded) {
         var result = new JsonObject();
         decoded.result().ifPresent(value -> {
@@ -1284,6 +1307,37 @@ public final class MathOracle {
             var values = new JsonArray();
             for (var entry : value.getAsJsonArray()) {
                 values.add(Oracle.bits(entry.getAsDouble()));
+            }
+            result.add("value", values);
+        });
+        encoded.error().ifPresent(error -> {
+            result.addProperty("outcome", "error");
+            result.addProperty("error", error.message());
+        });
+        return result;
+    }
+
+    private static JsonObject chunkPosCodecDecodeResult(DataResult<ChunkPos> decoded) {
+        var result = new JsonObject();
+        decoded.result().ifPresent(value -> {
+            result.addProperty("outcome", "value");
+            result.add("value", snapshot(value));
+        });
+        decoded.error().ifPresent(error -> {
+            result.addProperty("outcome", "error");
+            result.addProperty("error", error.message());
+            error.partialValue().ifPresent(value -> result.add("partial", snapshot(value)));
+        });
+        return result;
+    }
+
+    private static JsonObject chunkPosCodecEncodeResult(DataResult<JsonElement> encoded) {
+        var result = new JsonObject();
+        encoded.result().ifPresent(value -> {
+            result.addProperty("outcome", "value");
+            var values = new JsonArray();
+            for (var entry : value.getAsJsonArray()) {
+                values.add(entry.getAsInt());
             }
             result.add("value", values);
         });
@@ -1379,6 +1433,13 @@ public final class MathOracle {
         state.addProperty("x", Integer.toString(pos.getX()));
         state.addProperty("y", Integer.toString(pos.getY()));
         state.addProperty("z", Integer.toString(pos.getZ()));
+        return state;
+    }
+
+    private static JsonObject snapshot(ChunkPos pos) {
+        var state = new JsonObject();
+        state.addProperty("x", Integer.toString(pos.x()));
+        state.addProperty("z", Integer.toString(pos.z()));
         return state;
     }
 

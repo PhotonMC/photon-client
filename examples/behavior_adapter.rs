@@ -206,6 +206,22 @@ fn blockpos_snapshot(value: BlockPos) -> Value {
     })
 }
 
+fn chunkpos(value: &Value) -> Result<ChunkPos, String> {
+    let coordinate = |name: &str| {
+        string(value, name)?
+            .parse::<i32>()
+            .map_err(|error| error.to_string())
+    };
+    Ok(ChunkPos::new(coordinate("x")?, coordinate("z")?))
+}
+
+fn chunkpos_snapshot(value: ChunkPos) -> Value {
+    json!({
+        "x": value.x.to_string(),
+        "z": value.z.to_string(),
+    })
+}
+
 fn blockpos_result(request: &Value) -> Result<Value, String> {
     let mut value = blockpos(request)?;
     let mut events = vec![blockpos_snapshot(value)];
@@ -1638,6 +1654,49 @@ fn math_result(request: &Value) -> Result<Value, String> {
                 }))
             }
             _ => Err("unknown Vec3 codec mode".into()),
+        };
+    }
+    if operation == "chunkpos_codec" {
+        return match string(request, "mode")? {
+            "decode" => {
+                let values = request["values"]
+                    .as_array()
+                    .ok_or("values must be an array")?
+                    .iter()
+                    .enumerate()
+                    .map(|(index, value)| {
+                        value
+                            .as_str()
+                            .ok_or_else(|| format!("values[{index}] must be a string"))?
+                            .parse::<i32>()
+                            .map_err(|error| error.to_string())
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
+                match ChunkPos::codec_decode(&values) {
+                    Ok(value) => Ok(json!({
+                        "outcome": "value",
+                        "value": chunkpos_snapshot(value),
+                    })),
+                    Err(binary::ChunkPosCodecError::WrongLength { partial, .. }) => {
+                        let mut result = json!({
+                            "outcome": "error",
+                            "error": "Input is not a list of 2 ints",
+                        });
+                        if let Some(value) = partial {
+                            result["partial"] = chunkpos_snapshot(value);
+                        }
+                        Ok(result)
+                    }
+                }
+            }
+            "encode" => {
+                let value = chunkpos(request)?;
+                Ok(json!({
+                    "outcome": "value",
+                    "value": value.codec_encode(),
+                }))
+            }
+            _ => Err("unknown ChunkPos codec mode".into()),
         };
     }
     if operation == "vec2" {

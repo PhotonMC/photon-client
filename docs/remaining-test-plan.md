@@ -1,10 +1,11 @@
 # Kalan bölümler test planı (çalıştırılamayanlar)
 
-1407 Java senaryosu kayıtlıdır (beş+bir aile).
+1419 Java senaryosu kayıtlıdır (beş+bir aile).
 
 P03.b Vec3.STREAM_CODEC 13 senaryoda hazırdır ([sözleşme](vec3-stream-codec-contract.md), [kanıt](vec3-stream-codec-parity.md)). Aşağıdaki bölümler yerel ortamda çalıştırılamaz; her biri engelli kaydedilir, sahte golden üretilmez. Her bölümün önkoşulu, engel kalkınca yazılacak ilk senaryolar ve kabul ölçütü tanımlıdır.
 P03.b LP Vec3 stream codec 15 senaryoda hazırdır ([sözleşme](lp-vec3-contract.md), [kanıt](lp-vec3-parity.md)).
 P03.b ChunkPos.STREAM_CODEC 20 senaryoda hazırdır ([sözleşme](chunkpos-contract.md), [kanıt](chunkpos-parity.md)).
+P01.c ChunkPos.CODEC 12 senaryoda hazırdır ([sözleşme](chunkpos-codec-contract.md), [kanıt](chunkpos-codec-parity.md)).
 
 P01.b Vec3 `CODEC` 12 senaryoda hazırdır ([sözleşme](vec3-codec-contract.md), [kanıt](vec3-codec-parity.md)).
 

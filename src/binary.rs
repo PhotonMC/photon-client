@@ -214,6 +214,14 @@ pub struct ChunkPos {
     pub z: i32,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ChunkPosCodecError {
+    WrongLength {
+        actual: usize,
+        partial: Option<ChunkPos>,
+    },
+}
+
 impl ChunkPos {
     pub const fn new(x: i32, z: i32) -> Self {
         Self { x, z }
@@ -230,6 +238,22 @@ impl ChunkPos {
             x: packed as u32 as i32,
             z: (packed >> 32) as u32 as i32,
         }
+    }
+
+    /// Decode the fixed two-element list used by Java `ChunkPos.CODEC`.
+    pub fn codec_decode(values: &[i32]) -> Result<Self, ChunkPosCodecError> {
+        match values {
+            [x, z] => Ok(Self::new(*x, *z)),
+            values => Err(ChunkPosCodecError::WrongLength {
+                actual: values.len(),
+                partial: (values.len() >= 2).then(|| Self::new(values[0], values[1])),
+            }),
+        }
+    }
+
+    /// Encode a ChunkPos in the x, z order used by Java `ChunkPos.CODEC`.
+    pub const fn codec_encode(self) -> [i32; 2] {
+        [self.x, self.z]
     }
 }
 
