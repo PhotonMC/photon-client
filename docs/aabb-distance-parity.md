@@ -9,15 +9,15 @@ Java 25.0.4.1 ve Rust 1.98.1 / Linux x86_64 ortamında:
 - 424 senaryoluk math referansı iki ayrı JVM çalıştırmasıyla kararlı bulundu.
 - Rust debug ve release adaptörleri **424/424** math senaryosunda eşleşti.
 - Altı yeni senaryoda nokta içi/sınır/dışı sorguları, sonsuzluk ve NaN, örtüşen/değen kutular, diyagonal ayrım ve ters/NaN endpoint'ler karşılaştırıldı.
-- Birleşik altı aile corpus'u **928/928** senaryoda hem debug hem release adaptörüyle eşleşti.
+- Birleşik altı aile corpus'u **937/937** senaryoda hem debug hem release adaptörüyle eşleşti.
 - `cargo fmt`, `cargo check --locked --offline --all-targets`, `cargo test --locked --offline --all-targets` ve Clippy kontrolleri geçti.
 
 Math referans kimliği: `09c382b6287c06f691d0d698d1c32b5c89a3a02545ec723d11c894ffc006628c`.
 
-Birleşik referans kimliği: `a12f90ce3c02be38a6dfe6911fecfbecd2511e150797b4f7af83153a45a7603f`.
+Birleşik referans kimliği: `c8d58c89241aac80ecc756c6951d9eb11cd30ec80a5fe31c5a45f163479bf0b5`.
 
-Yerel raporlar: `compare-zq6owp5b` (math debug), `compare-yw81ny2k` (math release), `compare-vll4dkhy` (birleşik debug) ve `compare-gfqn_tdv` (birleşik release) dizinlerinde, `.data/runs/behavior/` altında bulunur.
+Yerel raporlar: `compare-zq6owp5b` (math debug), `compare-yw81ny2k` (math release), `compare-x71wstjw` (birleşik debug) ve `compare-rx2wtdsx` (birleşik release) dizinlerinde, `.data/runs/behavior/` altında bulunur.
 
 ## Sınırlar
 
-Bu kanıt yalnızca `AABB.distanceToSqr` iki overload'ı ve mevcut AABB adım adaptörüyle sınırlıdır. [`collidedAlongVector`](aabb-collided-along-vector-parity.md) ayrı dilimde tamamlandı; çoklu AABB clip sonraki dilimlerdir.
+Bu kanıt yalnızca `AABB.distanceToSqr` iki overload'ı ve mevcut AABB adım adaptörüyle sınırlıdır. [`collidedAlongVector`](aabb-collided-along-vector-parity.md) ayrı dilimde tamamlandı; VoxelShape clip ile istemci hedefleme davranışları sonraki dilimlerdir.

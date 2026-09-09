@@ -5,10 +5,15 @@
 //! and the contains/intersects,
 //! expand-towards, contract, inflate, intersect, minmax, move, sizes, has_nan,
 //! positions, axis endpoint queries, `of_size`, endpoint setters, move overloads,
-//! deflate, segment clipping (including raw-coordinate bounds) and center-segment
-//! collision operations used by the current behavior corpus.
+//! deflate, segment clipping (including raw-coordinate bounds and iterable hit
+//! results) and center-segment collision operations used by the current behavior
+//! corpus.
 
-use crate::{binary::BlockPos, direction::Axis, math::Vec3};
+use crate::{
+    binary::BlockPos,
+    direction::{Axis, Direction},
+    math::Vec3,
+};
 
 /// Integer-aligned bounds used by structure and world-generation geometry.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -31,6 +36,28 @@ impl BoundingBox {
             max_x: min_x.max(max_x),
             max_y: min_y.max(max_y),
             max_z: min_z.max(max_z),
+        }
+    }
+}
+
+/// A block hit produced by the iterable AABB clipping overload.
+#[derive(Debug, Clone, Copy)]
+pub struct BlockHitResult {
+    pub location: Vec3,
+    pub direction: Direction,
+    pub block_pos: BlockPos,
+    pub inside: bool,
+    pub world_border_hit: bool,
+}
+
+impl BlockHitResult {
+    fn new(location: Vec3, direction: Direction, block_pos: BlockPos, inside: bool) -> Self {
+        Self {
+            location,
+            direction,
+            block_pos,
+            inside,
+            world_border_hit: false,
         }
     }
 }
@@ -437,131 +464,46 @@ impl Aabb {
 
     /// Clip a segment against raw coordinates, without normalizing the bounds.
     pub fn clip_coords(min: Vec3, max: Vec3, from: Vec3, to: Vec3) -> Option<Vec3> {
-        let mut scale = 1.0;
-        let mut hit = false;
-        let dx = to.x - from.x;
-        let dy = to.y - from.y;
-        let dz = to.z - from.z;
+        let mut state = ClipState::new(from, to);
+        clip_bounds(min, max, &mut state);
 
-        if dx > 1.0e-7 {
-            clip_point(
-                &mut scale,
-                &mut hit,
-                ClipPoint {
-                    da: dx,
-                    db: dy,
-                    dc: dz,
-                    point: min.x,
-                    min_b: min.y,
-                    max_b: max.y,
-                    min_c: min.z,
-                    max_c: max.z,
-                    from_a: from.x,
-                    from_b: from.y,
-                    from_c: from.z,
-                },
-            );
-        } else if dx < -1.0e-7 {
-            clip_point(
-                &mut scale,
-                &mut hit,
-                ClipPoint {
-                    da: dx,
-                    db: dy,
-                    dc: dz,
-                    point: max.x,
-                    min_b: min.y,
-                    max_b: max.y,
-                    min_c: min.z,
-                    max_c: max.z,
-                    from_a: from.x,
-                    from_b: from.y,
-                    from_c: from.z,
-                },
-            );
-        }
-
-        if dy > 1.0e-7 {
-            clip_point(
-                &mut scale,
-                &mut hit,
-                ClipPoint {
-                    da: dy,
-                    db: dz,
-                    dc: dx,
-                    point: min.y,
-                    min_b: min.z,
-                    max_b: max.z,
-                    min_c: min.x,
-                    max_c: max.x,
-                    from_a: from.y,
-                    from_b: from.z,
-                    from_c: from.x,
-                },
-            );
-        } else if dy < -1.0e-7 {
-            clip_point(
-                &mut scale,
-                &mut hit,
-                ClipPoint {
-                    da: dy,
-                    db: dz,
-                    dc: dx,
-                    point: max.y,
-                    min_b: min.z,
-                    max_b: max.z,
-                    min_c: min.x,
-                    max_c: max.x,
-                    from_a: from.y,
-                    from_b: from.z,
-                    from_c: from.x,
-                },
-            );
-        }
-
-        if dz > 1.0e-7 {
-            clip_point(
-                &mut scale,
-                &mut hit,
-                ClipPoint {
-                    da: dz,
-                    db: dx,
-                    dc: dy,
-                    point: min.z,
-                    min_b: min.x,
-                    max_b: max.x,
-                    min_c: min.y,
-                    max_c: max.y,
-                    from_a: from.z,
-                    from_b: from.x,
-                    from_c: from.y,
-                },
-            );
-        } else if dz < -1.0e-7 {
-            clip_point(
-                &mut scale,
-                &mut hit,
-                ClipPoint {
-                    da: dz,
-                    db: dx,
-                    dc: dy,
-                    point: max.z,
-                    min_b: min.x,
-                    max_b: max.x,
-                    min_c: min.y,
-                    max_c: max.y,
-                    from_a: from.z,
-                    from_b: from.x,
-                    from_c: from.y,
-                },
-            );
-        }
-
-        hit.then(|| {
+        state.direction.map(|_| {
             Vec3::new(
-                from.x + scale * dx,
-                from.y + scale * dy,
-                from.z + scale * dz,
+                state.from.x + state.scale * state.dx,
+                state.from.y + state.scale * state.dy,
+                state.from.z + state.scale * state.dz,
+            )
+        })
+    }
+
+    /// Clip a segment against translated AABBs and return the nearest block hit.
+    pub fn clip_many(
+        boxes: &[Self],
+        from: Vec3,
+        to: Vec3,
+        pos: BlockPos,
+    ) -> Option<BlockHitResult> {
+        let mut state = ClipState::new(from, to);
+
+        for aabb in boxes {
+            let translated = aabb.move_by_block_pos(pos);
+            clip_bounds(
+                translated.min_position(),
+                translated.max_position(),
+                &mut state,
+            );
+        }
+
+        state.direction.map(|direction| {
+            BlockHitResult::new(
+                Vec3::new(
+                    state.from.x + state.scale * state.dx,
+                    state.from.y + state.scale * state.dy,
+                    state.from.z + state.scale * state.dz,
+                ),
+                direction,
+                pos,
+                false,
             )
         })
     }
@@ -585,6 +527,150 @@ impl Aabb {
     }
 }
 
+struct ClipState {
+    from: Vec3,
+    dx: f64,
+    dy: f64,
+    dz: f64,
+    scale: f64,
+    direction: Option<Direction>,
+}
+
+impl ClipState {
+    fn new(from: Vec3, to: Vec3) -> Self {
+        Self {
+            from,
+            dx: to.x - from.x,
+            dy: to.y - from.y,
+            dz: to.z - from.z,
+            scale: 1.0,
+            direction: None,
+        }
+    }
+}
+
+fn clip_bounds(min: Vec3, max: Vec3, state: &mut ClipState) {
+    if state.dx > 1.0e-7 {
+        if clip_point(
+            &mut state.scale,
+            ClipPoint {
+                da: state.dx,
+                db: state.dy,
+                dc: state.dz,
+                point: min.x,
+                min_b: min.y,
+                max_b: max.y,
+                min_c: min.z,
+                max_c: max.z,
+                from_a: state.from.x,
+                from_b: state.from.y,
+                from_c: state.from.z,
+            },
+        ) {
+            state.direction = Some(Direction::West);
+        }
+    } else if state.dx < -1.0e-7
+        && clip_point(
+            &mut state.scale,
+            ClipPoint {
+                da: state.dx,
+                db: state.dy,
+                dc: state.dz,
+                point: max.x,
+                min_b: min.y,
+                max_b: max.y,
+                min_c: min.z,
+                max_c: max.z,
+                from_a: state.from.x,
+                from_b: state.from.y,
+                from_c: state.from.z,
+            },
+        )
+    {
+        state.direction = Some(Direction::East);
+    }
+
+    if state.dy > 1.0e-7 {
+        if clip_point(
+            &mut state.scale,
+            ClipPoint {
+                da: state.dy,
+                db: state.dz,
+                dc: state.dx,
+                point: min.y,
+                min_b: min.z,
+                max_b: max.z,
+                min_c: min.x,
+                max_c: max.x,
+                from_a: state.from.y,
+                from_b: state.from.z,
+                from_c: state.from.x,
+            },
+        ) {
+            state.direction = Some(Direction::Down);
+        }
+    } else if state.dy < -1.0e-7
+        && clip_point(
+            &mut state.scale,
+            ClipPoint {
+                da: state.dy,
+                db: state.dz,
+                dc: state.dx,
+                point: max.y,
+                min_b: min.z,
+                max_b: max.z,
+                min_c: min.x,
+                max_c: max.x,
+                from_a: state.from.y,
+                from_b: state.from.z,
+                from_c: state.from.x,
+            },
+        )
+    {
+        state.direction = Some(Direction::Up);
+    }
+
+    if state.dz > 1.0e-7 {
+        if clip_point(
+            &mut state.scale,
+            ClipPoint {
+                da: state.dz,
+                db: state.dx,
+                dc: state.dy,
+                point: min.z,
+                min_b: min.x,
+                max_b: max.x,
+                min_c: min.y,
+                max_c: max.y,
+                from_a: state.from.z,
+                from_b: state.from.x,
+                from_c: state.from.y,
+            },
+        ) {
+            state.direction = Some(Direction::North);
+        }
+    } else if state.dz < -1.0e-7
+        && clip_point(
+            &mut state.scale,
+            ClipPoint {
+                da: state.dz,
+                db: state.dx,
+                dc: state.dy,
+                point: max.z,
+                min_b: min.x,
+                max_b: max.x,
+                min_c: min.y,
+                max_c: max.y,
+                from_a: state.from.z,
+                from_b: state.from.x,
+                from_c: state.from.y,
+            },
+        )
+    {
+        state.direction = Some(Direction::South);
+    }
+}
+
 fn lerp_half(start: f64, end: f64) -> f64 {
     start + 0.5 * (end - start)
 }
@@ -603,7 +689,7 @@ struct ClipPoint {
     from_c: f64,
 }
 
-fn clip_point(scale: &mut f64, hit: &mut bool, candidate: ClipPoint) {
+fn clip_point(scale: &mut f64, candidate: ClipPoint) -> bool {
     let candidate_scale = (candidate.point - candidate.from_a) / candidate.da;
     let point_b = candidate.from_b + candidate_scale * candidate.db;
     let point_c = candidate.from_c + candidate_scale * candidate.dc;
@@ -615,7 +701,9 @@ fn clip_point(scale: &mut f64, hit: &mut bool, candidate: ClipPoint) {
         && point_c < candidate.max_c + 1.0e-7
     {
         *scale = candidate_scale;
-        *hit = true;
+        true
+    } else {
+        false
     }
 }
 

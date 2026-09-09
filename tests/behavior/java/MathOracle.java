@@ -1,5 +1,6 @@
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import java.util.ArrayList;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.SectionPos;
@@ -8,6 +9,7 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.levelgen.PositionalRandomFactory;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec2;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.BooleanOp;
@@ -406,6 +408,18 @@ public final class MathOracle {
                         }
                         events.add(state);
                     }
+                    case "clip_many" -> {
+                        var boxes = new ArrayList<AABB>();
+                        for (var boxEntry : step.getAsJsonArray("boxes")) {
+                            boxes.add(box(boxEntry.getAsJsonObject()));
+                        }
+                        var hit = AABB.clip(
+                            boxes,
+                            vec3(step.getAsJsonObject("from")),
+                            vec3(step.getAsJsonObject("to")),
+                            blockPos(step.getAsJsonObject("pos")));
+                        events.add(snapshot(hit));
+                    }
                     case "expand" -> {
                         box = box.expandTowards(
                             f64(step, "x"), f64(step, "y"), f64(step, "z"));
@@ -570,6 +584,22 @@ public final class MathOracle {
         state.addProperty("step_x", facing.getStepX());
         state.addProperty("step_y", facing.getStepY());
         state.addProperty("step_z", facing.getStepZ());
+        return state;
+    }
+
+    private static JsonObject snapshot(BlockHitResult hit) {
+        var state = new JsonObject();
+        if (hit == null) {
+            state.addProperty("hit", false);
+            return state;
+        }
+        state.addProperty("hit", true);
+        state.addProperty("type", hit.getType().name());
+        state.add("location", snapshotClip(hit.getLocation()));
+        state.addProperty("direction", hit.getDirection().getName());
+        state.add("block_pos", snapshot(hit.getBlockPos()));
+        state.addProperty("inside", hit.isInside());
+        state.addProperty("world_border_hit", hit.isWorldBorderHit());
         return state;
     }
 

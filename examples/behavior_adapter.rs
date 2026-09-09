@@ -2,7 +2,7 @@
 
 use serde_json::{Value, json};
 use std::io::{self, BufRead, Write};
-use voxel_client::aabb::{Aabb, BoundingBox};
+use voxel_client::aabb::{Aabb, BlockHitResult, BoundingBox};
 use voxel_client::binary::{self, BlockPos, SectionPos, Uuid};
 use voxel_client::direction::{Axis, Direction};
 use voxel_client::math::{self, Vec2, Vec3};
@@ -460,6 +460,21 @@ fn aabb_positions_snapshot(value: Aabb) -> Value {
     })
 }
 
+fn block_hit_result_snapshot(value: Option<BlockHitResult>) -> Value {
+    match value {
+        Some(hit) => json!({
+            "hit": true,
+            "type": "BLOCK",
+            "location": clip_snapshot(hit.location),
+            "direction": hit.direction.name(),
+            "block_pos": blockpos_snapshot(hit.block_pos),
+            "inside": hit.inside,
+            "world_border_hit": hit.world_border_hit,
+        }),
+        None => json!({"hit": false}),
+    }
+}
+
 fn shape_box(value: &Value) -> Result<VoxelShape, String> {
     Shapes::box_shape(
         f64_field(value, "min_x")?,
@@ -786,6 +801,23 @@ fn aabb_result(request: &Value) -> Result<Value, String> {
                         None => json!({"hit": false}),
                     },
                 );
+            }
+            "clip_many" => {
+                let entries = step
+                    .get("boxes")
+                    .ok_or("boxes must be an array")?
+                    .as_array()
+                    .ok_or("boxes must be an array")?;
+                let boxes = entries
+                    .iter()
+                    .map(aabb_box)
+                    .collect::<Result<Vec<_>, _>>()?;
+                let from = f64_vec3(step.get("from").ok_or("from must be an object")?)?;
+                let to = f64_vec3(step.get("to").ok_or("to must be an object")?)?;
+                let pos = blockpos(step.get("pos").ok_or("pos must be an object")?)?;
+                events.push(block_hit_result_snapshot(Aabb::clip_many(
+                    &boxes, from, to, pos,
+                )));
             }
             "expand" => {
                 value = value.expand_towards(

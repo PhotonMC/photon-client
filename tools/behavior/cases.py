@@ -842,6 +842,48 @@ def math_cases():
                           "max_z": float_bits(max_z, "f64"), **extra})
         yield {"case_id": f"aabb/clip-coords/{label}", "family": "math", "operation": "aabb",
                **unit, "steps": steps}
+    def clip_many_step(boxes, source, target, position):
+        return {"op": "clip_many", "boxes": boxes, "from": point(*source),
+                "to": point(*target), "pos": block_position(*position)}
+
+    clip_many_unit = [box_bits(0.0, 0.0, 0.0, 1.0, 1.0, 1.0)]
+    yield {"case_id": "aabb/clip-many/west-hit", "family": "math", "operation": "aabb",
+           **unit, "steps": [clip_many_step(clip_many_unit, (-1.0, 0.5, 0.5),
+                                              (2.0, 0.5, 0.5), (0, 0, 0))]}
+    yield {"case_id": "aabb/clip-many/east-hit-offset", "family": "math", "operation": "aabb",
+           **unit, "steps": [clip_many_step(clip_many_unit, (5.0, -1.5, 5.5),
+                                              (2.0, -1.5, 5.5), (3, -2, 5))]}
+    yield {"case_id": "aabb/clip-many/vertical-and-depth", "family": "math", "operation": "aabb",
+           **unit, "steps": [
+               clip_many_step(clip_many_unit, (0.5, -1.0, 0.5), (0.5, 2.0, 0.5), (0, 0, 0)),
+               clip_many_step(clip_many_unit, (0.5, 2.0, 0.5), (0.5, -1.0, 0.5), (0, 0, 0)),
+               clip_many_step(clip_many_unit, (0.5, 0.5, -1.0), (0.5, 0.5, 2.0), (0, 0, 0)),
+               clip_many_step(clip_many_unit, (0.5, 0.5, 2.0), (0.5, 0.5, -1.0), (0, 0, 0)),
+           ]}
+    yield {"case_id": "aabb/clip-many/diagonal-priority", "family": "math", "operation": "aabb",
+           **unit, "steps": [clip_many_step(clip_many_unit, (-1.0, -1.0, -1.0),
+                                              (2.0, 2.0, 2.0), (0, 0, 0))]}
+    yield {"case_id": "aabb/clip-many/nearest-far-first", "family": "math", "operation": "aabb",
+           **unit, "steps": [clip_many_step([
+               box_bits(3.0, 0.0, 0.0, 4.0, 1.0, 1.0),
+               box_bits(0.0, 0.0, 0.0, 1.0, 1.0, 1.0),
+           ], (9.0, 0.5, 0.5), (16.0, 0.5, 0.5), (10, 0, 0))]}
+    yield {"case_id": "aabb/clip-many/nearest-near-first", "family": "math", "operation": "aabb",
+           **unit, "steps": [clip_many_step([
+               box_bits(0.0, 0.0, 0.0, 1.0, 1.0, 1.0),
+               box_bits(3.0, 0.0, 0.0, 4.0, 1.0, 1.0),
+           ], (-1.0, 0.5, 0.5), (6.0, 0.5, 0.5), (0, 0, 0))]}
+    yield {"case_id": "aabb/clip-many/empty", "family": "math", "operation": "aabb",
+           **unit, "steps": [clip_many_step([], (-1.0, 0.5, 0.5),
+                                              (2.0, 0.5, 0.5), (0, 0, 0))]}
+    yield {"case_id": "aabb/clip-many/translated-miss", "family": "math", "operation": "aabb",
+           **unit, "steps": [clip_many_step(clip_many_unit, (-1.0, 0.5, 0.5),
+                                              (2.0, 0.5, 0.5), (0, 3, 0))]}
+    yield {"case_id": "aabb/clip-many/interior-and-threshold", "family": "math", "operation": "aabb",
+           **unit, "steps": [
+               clip_many_step(clip_many_unit, (0.5, 0.5, 0.5), (2.0, 0.5, 0.5), (0, 0, 0)),
+               clip_many_step(clip_many_unit, (-1.0, 0.5, 0.5), (-1.0 + 1.0e-8, 0.5, 0.5), (0, 0, 0)),
+           ]}
     def bounding_box(min_x, min_y, min_z, max_x, max_y, max_z):
         return {"min_x": str(min_x), "min_y": str(min_y), "min_z": str(min_z),
                 "max_x": str(max_x), "max_y": str(max_y), "max_z": str(max_z)}
