@@ -2,7 +2,7 @@
 //!
 //! A shape stores coordinate planes and the occupied cells between them. This
 //! is enough to preserve Java's box, move, supported BooleanOp joins, single
-//! shape collision, VoxelShape clip hits, closest points, face/occlusion, bounds,
+//! shape collision, VoxelShape clip hits, closest points, face/occlusion, rotations, axis variants, bounds,
 //! and box iteration behavior
 //! without choosing a broader collision representation yet.
 
@@ -710,6 +710,14 @@ impl Shapes {
             new_coords[2].clone(),
             cells,
         )
+    }
+
+    /// Return the horizontal-axis variants of a shape in Java EnumMap order.
+    pub fn rotate_horizontal_axis(z_axis: &VoxelShape) -> [(Axis, VoxelShape); 2] {
+        [
+            (Axis::X, Self::rotate(z_axis, ShapeRotation::Rot90YNeg)),
+            (Axis::Z, z_axis.clone()),
+        ]
     }
 
     /// Return whether two block-local shapes occlude across a direction.

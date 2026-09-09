@@ -266,6 +266,12 @@ def math_cases():
     yield {"case_id": "shape/rotate/joined-cells", "family": "math", "operation": "shape", "kind": "rotate_join",
            "first": box_bits(0.0, 0.0, 0.0, 0.5, 0.5, 1.0),
            "second": box_bits(0.5, 0.5, 0.0, 1.0, 1.0, 1.0), "rotation": "ROT_90_Z_NEG"}
+    yield {"case_id": "shape/rotate-horizontal-axis/asymmetric", "family": "math", "operation": "shape",
+           "kind": "rotate_horizontal_axis", "box": rotate_box}
+    yield {"case_id": "shape/rotate-horizontal-axis/cube-grid", "family": "math", "operation": "shape",
+           "kind": "rotate_horizontal_axis", "box": box_bits(0.0, 0.0, 0.0, 1.0, 0.5, 1.0)}
+    yield {"case_id": "shape/rotate-horizontal-axis/empty", "family": "math", "operation": "shape",
+           "kind": "rotate_horizontal_axis", "box": box_bits(0.0, 0.0, 0.0, 0.00000005, 1.0, 1.0)}
     yield {"case_id": "shape/collide/positive-x", "family": "math", "operation": "shape", "kind": "collide",
            "axis": "x", "shape": box_bits(0, 0, 0, 1, 1, 1),
            "moving": box_bits(-2, 0.25, 0.25, -1, 0.75, 0.75), "distance": float_bits(4, "f64")}

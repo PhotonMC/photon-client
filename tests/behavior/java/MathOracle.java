@@ -148,6 +148,19 @@ public final class MathOracle {
                 VoxelShape second = voxelShape(request.getAsJsonObject("second"));
                 OctahedralGroup rotation = OctahedralGroup.valueOf(request.get("rotation").getAsString());
                 result.add("shape", snapshot(Shapes.rotate(Shapes.or(first, second), rotation)));
+            } else if (kind.equals("rotate_horizontal_axis")) {
+                VoxelShape shape = voxelShape(request.getAsJsonObject("box"));
+                var axes = Shapes.rotateHorizontalAxis(shape);
+                var snapshots = new JsonArray();
+                for (Direction.Axis axis : Direction.Axis.values()) {
+                    if (axes.containsKey(axis)) {
+                        var entry = new JsonObject();
+                        entry.addProperty("axis", axis.getName());
+                        entry.add("shape", snapshot(axes.get(axis)));
+                        snapshots.add(entry);
+                    }
+                }
+                result.add("shapes", snapshots);
             } else if (kind.equals("collide")) {
                 VoxelShape shape = voxelShape(request.getAsJsonObject("shape"));
                 AABB moving = box(request.getAsJsonObject("moving"));
