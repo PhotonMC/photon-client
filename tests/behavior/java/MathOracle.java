@@ -371,6 +371,32 @@ public final class MathOracle {
             } else {
                 throw new IllegalArgumentException("Unknown Mth angle function");
             }
+        } else if (operation.equals("mth_rounding_helpers")) {
+            String width = request.get("type").getAsString();
+            String function = request.get("fn").getAsString();
+            if (function.equals("ceil")) {
+                int value;
+                if (width.equals("f32")) {
+                    value = Mth.ceil(Oracle.f32(request, "input"));
+                } else if (width.equals("f64")) {
+                    value = Mth.ceil(f64(request, "input"));
+                } else {
+                    throw new IllegalArgumentException("Unknown Mth ceil type");
+                }
+                result.addProperty("value", Integer.toString(value));
+            } else if (function.equals("lfloor")) {
+                if (!width.equals("f64")) {
+                    throw new IllegalArgumentException("Unknown Mth lfloor type");
+                }
+                result.addProperty("value", Long.toString(Mth.lfloor(f64(request, "input"))));
+            } else if (function.equals("ceil_long")) {
+                if (!width.equals("f64")) {
+                    throw new IllegalArgumentException("Unknown Mth ceilLong type");
+                }
+                result.addProperty("value", Long.toString(Mth.ceilLong(f64(request, "input"))));
+            } else {
+                throw new IllegalArgumentException("Unknown Mth rounding function");
+            }
         } else if (operation.equals("vec3")) {
             Vec3 vector = new Vec3(f64(request, "x"), f64(request, "y"), f64(request, "z"));
             var events = new JsonArray();

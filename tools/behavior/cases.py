@@ -2771,6 +2771,49 @@ def math_cases():
                "operation": "mth_angle_helpers", "type": width, "fn": function,
                "input": input_value}
 
+    mth_rounding_helpers = [
+        ("ceil-f32/zero", "f32", "ceil", float_bits(0.0, "f32")),
+        ("ceil-f32/negative-zero", "f32", "ceil", float_bits(-0.0, "f32")),
+        ("ceil-f32/positive-fraction", "f32", "ceil", float_bits(1.25, "f32")),
+        ("ceil-f32/negative-fraction", "f32", "ceil", float_bits(-1.25, "f32")),
+        ("ceil-f32/exact", "f32", "ceil", float_bits(7.0, "f32")),
+        ("ceil-f32/lower-bound", "f32", "ceil", float_bits(-2147483648.0, "f32")),
+        ("ceil-f32/upper-overflow", "f32", "ceil", float_bits(2147483648.0, "f32")),
+        ("ceil-f32/infinity", "f32", "ceil", float_bits(float("inf"), "f32")),
+        ("ceil-f32/negative-infinity", "f32", "ceil", float_bits(-float("inf"), "f32")),
+        ("ceil-f32/nan", "f32", "ceil", float_bits(float("nan"), "f32")),
+        ("ceil-f64/zero", "f64", "ceil", float_bits(0.0, "f64")),
+        ("ceil-f64/positive-fraction", "f64", "ceil", float_bits(1.25, "f64")),
+        ("ceil-f64/negative-fraction", "f64", "ceil", float_bits(-1.25, "f64")),
+        ("ceil-f64/upper-bound", "f64", "ceil", float_bits(2147483647.0, "f64")),
+        ("ceil-f64/upper-overflow", "f64", "ceil", float_bits(2147483647.0000001, "f64")),
+        ("ceil-f64/lower-bound", "f64", "ceil", float_bits(-2147483648.0, "f64")),
+        ("ceil-f64/lower-overflow", "f64", "ceil", float_bits(-2147483648.0000001, "f64")),
+        ("ceil-f64/infinity", "f64", "ceil", float_bits(float("inf"), "f64")),
+        ("ceil-f64/negative-infinity", "f64", "ceil", float_bits(-float("inf"), "f64")),
+        ("ceil-f64/nan", "f64", "ceil", float_bits(float("nan"), "f64")),
+        ("lfloor/zero", "f64", "lfloor", float_bits(0.0, "f64")),
+        ("lfloor/positive-fraction", "f64", "lfloor", float_bits(1.25, "f64")),
+        ("lfloor/negative-fraction", "f64", "lfloor", float_bits(-1.25, "f64")),
+        ("lfloor/positive-long-overflow", "f64", "lfloor", float_bits(2.0 ** 63, "f64")),
+        ("lfloor/negative-long-bound", "f64", "lfloor", float_bits(-(2.0 ** 63), "f64")),
+        ("lfloor/infinity", "f64", "lfloor", float_bits(float("inf"), "f64")),
+        ("lfloor/negative-infinity", "f64", "lfloor", float_bits(-float("inf"), "f64")),
+        ("lfloor/nan", "f64", "lfloor", float_bits(float("nan"), "f64")),
+        ("ceil-long/zero", "f64", "ceil_long", float_bits(0.0, "f64")),
+        ("ceil-long/positive-fraction", "f64", "ceil_long", float_bits(1.25, "f64")),
+        ("ceil-long/negative-fraction", "f64", "ceil_long", float_bits(-1.25, "f64")),
+        ("ceil-long/positive-long-overflow", "f64", "ceil_long", float_bits(2.0 ** 63, "f64")),
+        ("ceil-long/negative-long-bound", "f64", "ceil_long", float_bits(-(2.0 ** 63), "f64")),
+        ("ceil-long/infinity", "f64", "ceil_long", float_bits(float("inf"), "f64")),
+        ("ceil-long/negative-infinity", "f64", "ceil_long", float_bits(-float("inf"), "f64")),
+        ("ceil-long/nan", "f64", "ceil_long", float_bits(float("nan"), "f64")),
+    ]
+    for label, width, function, input_value in mth_rounding_helpers:
+        yield {"case_id": f"mth/rounding-helpers/{label}", "family": "math",
+               "operation": "mth_rounding_helpers", "type": width, "fn": function,
+               "input": input_value}
+
 
 def timer_cases():
     def trace(label, steps, start=0, tps=20, target=50):

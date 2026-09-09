@@ -2341,6 +2341,21 @@ fn math_result(request: &Value) -> Result<Value, String> {
         };
         return Ok(result);
     }
+    if operation == "mth_rounding_helpers" {
+        let width = string(request, "type")?;
+        let function = string(request, "fn")?;
+        let value = match (function, width) {
+            ("ceil", "f32") => math::ceil_f32(f32_field(request, "input")?).to_string(),
+            ("ceil", "f64") => math::ceil_f64(f64_field(request, "input")?).to_string(),
+            ("lfloor", "f64") => math::lfloor_f64(f64_field(request, "input")?).to_string(),
+            ("ceil_long", "f64") => math::ceil_long_f64(f64_field(request, "input")?).to_string(),
+            ("ceil", _) => return Err("unknown Mth ceil type".into()),
+            ("lfloor", _) => return Err("unknown Mth lfloor type".into()),
+            ("ceil_long", _) => return Err("unknown Mth ceilLong type".into()),
+            _ => return Err("unknown Mth rounding function".into()),
+        };
+        return Ok(json!({"value": value}));
+    }
     if operation == "vec2" {
         let mut vector = Vec2::new(f32_field(request, "x")?, f32_field(request, "y")?);
         let mut events = vec![vec2_snapshot(vector)];

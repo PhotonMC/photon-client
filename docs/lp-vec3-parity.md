@@ -9,12 +9,12 @@ Java 25.0.4.1 ve Rust 1.98.1 / Linux x86_64 ortamında:
 - Binary ailesinin güncel 164 senaryoluk referansı iki ayrı JVM çalıştırmasıyla kararlı bulundu.
 - LP Vec3 codec'i 6 yazma ve 9 okuma olmak üzere 15 senaryoda debug ve release Rust adaptörleriyle **15/15** eşleşti.
 - Yazma karşılaştırması prefix dahil packed byte çıktısını ve eklenen byte sayısını; okuma karşılaştırması Vec3 raw f64 bitlerini, tüketimi, kalan veriyi ve hata kategorisini kapsar.
-- Birleşik altı aile corpus'u **1615/1615** senaryoda hem debug hem release adaptörüyle eşleşti.
-- `verify` çalıştırması kayıtlı 1615 senaryoluk Java referansını yeniden doğruladı.
+- Birleşik altı aile corpus'u **1651/1651** senaryoda hem debug hem release adaptörüyle eşleşti.
+- `verify` çalıştırması kayıtlı 1651 senaryoluk Java referansını yeniden doğruladı.
 
-Binary referans kimliği: `faa64f0548d442718b7a8e5783155e27604ddd916aaf9595070c51b91232437e`. Birleşik referans kimliği: `747c3645458af2ae3b9de41407461996409d550b8fca05e990e18b3b1983f461`.
+Binary referans kimliği: `faa64f0548d442718b7a8e5783155e27604ddd916aaf9595070c51b91232437e`. Birleşik referans kimliği: `f8cfd3cf28e07e5859a339a4844b50e474cb8351ea003bb36ba96ccaf38abec1`.
 
-Yerel raporlar: `compare-ijck1p8v` (binary debug), `compare-vuahjf17` (binary release), `compare-cxv1an3r` (birleşik debug) ve `compare-1jjs0aun` (birleşik release) karşılaştırmalarında; `verify-71u5jh9x` kayıtlı referans doğrulamasında, `.data/runs/behavior/` altında bulunur.
+Yerel raporlar: `compare-ijck1p8v` (binary debug), `compare-vuahjf17` (binary release), `compare-nc1496mg` (birleşik debug) ve `compare-ljx3yrp0` (birleşik release) karşılaştırmalarında; `verify-k950tc5l` kayıtlı referans doğrulamasında, `.data/runs/behavior/` altında bulunur.
 
 ## Sınırlar
 

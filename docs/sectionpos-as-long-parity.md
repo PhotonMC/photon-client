@@ -8,15 +8,15 @@ Java 25.0.4.1 ve Rust 1.98.1 / Linux x86_64 ortamında:
 
 - SectionPos asLong overload'ları için 6 özgün senaryo hazırlandı.
 - BlockPos section sınır geçişleri, pozitif/negatif 22/20 bit sınırları, keyfi packed girdiler ve i32 koordinat maskeleri doğrudan Java/Rust API'leriyle karşılaştırıldı.
-- Rust debug ve release adaptörleri güncel **1113/1113** math senaryosunda eşleşti.
-- Birleşik altı aile corpus'u **1615/1615** senaryoda hem debug hem release adaptörüyle eşleşti.
+- Rust debug ve release adaptörleri güncel **1149/1149** math senaryosunda eşleşti.
+- Birleşik altı aile corpus'u **1651/1651** senaryoda hem debug hem release adaptörüyle eşleşti.
 - Math ve birleşik `verify` çalıştırmaları kayıtlı Java referanslarını yeniden doğruladı.
 
-Math referans kimliği: `23d8549371228c5fe370021e1df1ce61a2d1869ad767cf1a029bcbf1930b5ac9`. Birleşik referans kimliği: `747c3645458af2ae3b9de41407461996409d550b8fca05e990e18b3b1983f461`.
+Math referans kimliği: `2f973f986814298b094b982753eef5a170865c5228762b233a6060766b5ed32e`. Birleşik referans kimliği: `f8cfd3cf28e07e5859a339a4844b50e474cb8351ea003bb36ba96ccaf38abec1`.
 
-Adapter hashleri: debug `50d15e54a8e4d9ee159108107a9950974c379fc5d72741265ebf2f9bccbac401`, release `cb77cf1f3a7ef94e14770a329f854e79896c6a2e8cca659b69c586f553d9fb9e`.
+Adapter hashleri: debug `4ba8fcc5baa3e50779e4ce239b18341b3f611b9af0a363f60520810a3220ba6a`, release `b53b10fe28e9d1ebb14986a6150d650c247091bfab362e793b57a2a4b6e068c9`.
 
-Yerel raporlar: `compare-y28xdodh` ve `compare-_7cfq3in` (math debug/release), `compare-cxv1an3r` ve `compare-1jjs0aun` (birleşik debug/release), `verify-uudhbkma` (math) ve `verify-71u5jh9x` (birleşik) `.data/runs/behavior/` altında bulunur.
+Yerel raporlar: `compare-hz521aor` ve `compare-uded0zec` (math debug/release), `compare-nc1496mg` ve `compare-ljx3yrp0` (birleşik debug/release), `verify-xa5laefb` (math) ve `verify-k950tc5l` (birleşik) `.data/runs/behavior/` altında bulunur.
 
 ## Sınırlar
 

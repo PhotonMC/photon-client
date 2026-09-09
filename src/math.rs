@@ -597,6 +597,26 @@ pub fn unpack_degrees_i8(rotation: i8) -> f32 {
     (i32::from(rotation) * 360) as f32 / 256.0
 }
 
+/// Return Java `Mth.ceil(float)` with Java's floating-point-to-int narrowing.
+pub fn ceil_f32(value: f32) -> i32 {
+    f64::from(value).ceil() as i32
+}
+
+/// Return Java `Mth.ceil(double)` with Java's floating-point-to-int narrowing.
+pub fn ceil_f64(value: f64) -> i32 {
+    value.ceil() as i32
+}
+
+/// Return Java `Mth.lfloor(double)` with Java's floating-point-to-long narrowing.
+pub fn lfloor_f64(value: f64) -> i64 {
+    value.floor() as i64
+}
+
+/// Return Java `Mth.ceilLong(double)` with Java's floating-point-to-long narrowing.
+pub fn ceil_long_f64(value: f64) -> i64 {
+    value.ceil() as i64
+}
+
 /// Return Java `Math.floorDiv(int, int)`, including Java's signed overflow.
 pub fn floor_div_i32(dividend: i32, divisor: i32) -> i32 {
     if divisor == 0 {
