@@ -714,6 +714,12 @@ fn shape_result(request: &Value) -> Result<Value, String> {
             });
             Ok(json!({"boxes": boxes}))
         }
+        "create_aabb" => {
+            let aabb = aabb_box(request.get("aabb").ok_or("aabb must be an object")?)?;
+            let shape = Shapes::create_from_aabb(aabb)
+                .map_err(|_| "shape minimum must not exceed maximum".to_owned())?;
+            Ok(json!({"shape": shape_snapshot(&shape)}))
+        }
         "axis_limits" => {
             let entries = request
                 .get("shapes")

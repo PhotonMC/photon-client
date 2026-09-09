@@ -260,6 +260,15 @@ def math_cases():
                box_bits(0.5, 0.25, 0.25, 0.75, 1.0, 0.5),
                box_bits(0.75, 0.0, 0.75, 1.0, 0.25, 1.0),
            ]}
+    yield {"case_id": "shape/create-aabb/reversed", "family": "math", "operation": "shape",
+           "kind": "create_aabb", "aabb": box_bits(
+               0.75, 0.5, 0.875, 0.125, 0.25, 0.375)}
+    yield {"case_id": "shape/create-aabb/empty", "family": "math", "operation": "shape",
+           "kind": "create_aabb", "aabb": box_bits(
+               0.0, 0.0, 0.0, 0.00000005, 1.0, 1.0)}
+    yield {"case_id": "shape/create-aabb/array", "family": "math", "operation": "shape",
+           "kind": "create_aabb", "aabb": box_bits(
+               -1.25, 0.125, 2.0, 1.5, 0.875, 3.25)}
     yield {"case_id": "shape/empty/sliver", "family": "math", "operation": "shape",
            "kind": "single", "box": box_bits(0, 0, 0, 0.00000005, 1, 1), "steps": []}
     yield {"case_id": "shape/or/disjoint", "family": "math", "operation": "shape", "kind": "join",

@@ -237,6 +237,9 @@ public final class MathOracle {
                     boxes.add(box);
                 });
                 result.add("boxes", boxes);
+            } else if (kind.equals("create_aabb")) {
+                AABB aabb = box(request.getAsJsonObject("aabb"));
+                result.add("shape", snapshot(Shapes.create(aabb)));
             } else if (kind.equals("axis_limits")) {
                 var entries = request.getAsJsonArray("shapes");
                 if (entries == null || entries.size() == 0) {

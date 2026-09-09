@@ -904,6 +904,13 @@ impl Shapes {
         }
     }
 
+    /// Construct a shape from normalized AABB endpoints like Java `Shapes.create(AABB)`.
+    pub fn create_from_aabb(aabb: Aabb) -> Result<VoxelShape, ShapeError> {
+        Self::box_shape(
+            aabb.min_x, aabb.min_y, aabb.min_z, aabb.max_x, aabb.max_y, aabb.max_z,
+        )
+    }
+
     /// Join two shapes by filling every cell occupied by either input.
     pub fn or(first: &VoxelShape, second: &VoxelShape) -> VoxelShape {
         Self::join(first, second, BooleanOp::Or)
