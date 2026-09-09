@@ -7,7 +7,7 @@
 
 use crate::aabb::{Aabb, BlockHitResult};
 use crate::binary::BlockPos;
-use crate::direction::{Axis, Direction};
+use crate::direction::{Axis, AxisDirection, Direction};
 use crate::math::{Vec3, clamp_f64};
 
 const EPSILON: f64 = 1.0e-7;
@@ -291,6 +291,79 @@ impl VoxelShape {
         closest
     }
 
+    /// Return the selected boundary face using Java's normalized slice axis.
+    pub fn face_shape(&self, direction: Direction) -> Self {
+        if self.is_empty() || self.is_cube_like_along(direction.axis()) {
+            return self.clone();
+        }
+
+        let axis = direction.axis();
+        let sample = match direction.axis_direction() {
+            AxisDirection::Positive => 0.9999999,
+            AxisDirection::Negative => 1.0e-7,
+        };
+        let slice = self.find_index(axis, sample);
+        let axis_size = self.axis_size(axis) as isize;
+        if slice < 0 || slice >= axis_size {
+            return Shapes::empty();
+        }
+
+        let parent_grid = self.grid();
+        let face_grid = Grid {
+            x_size: if axis == Axis::X {
+                1
+            } else {
+                parent_grid.x_size
+            },
+            y_size: if axis == Axis::Y {
+                1
+            } else {
+                parent_grid.y_size
+            },
+            z_size: if axis == Axis::Z {
+                1
+            } else {
+                parent_grid.z_size
+            },
+        };
+        let mut cells = vec![false; face_grid.cell_count()];
+        for x in 0..face_grid.x_size {
+            for y in 0..face_grid.y_size {
+                for z in 0..face_grid.z_size {
+                    let parent_x = if axis == Axis::X { slice as usize } else { x };
+                    let parent_y = if axis == Axis::Y { slice as usize } else { y };
+                    let parent_z = if axis == Axis::Z { slice as usize } else { z };
+                    cells[index(x, y, z, face_grid)] = self.is_full(parent_x, parent_y, parent_z);
+                }
+            }
+        }
+
+        let (xs, ys, zs) = match axis {
+            Axis::X => (vec![0.0, 1.0], self.ys.clone(), self.zs.clone()),
+            Axis::Y => (self.xs.clone(), vec![0.0, 1.0], self.zs.clone()),
+            Axis::Z => (self.xs.clone(), self.ys.clone(), vec![0.0, 1.0]),
+        };
+        let face = Self::new(xs, ys, zs, cells);
+        if face.is_empty() {
+            Shapes::empty()
+        } else if face.is_cube_like() {
+            Shapes::block()
+        } else {
+            face
+        }
+    }
+
+    fn is_cube_like(&self) -> bool {
+        self.is_cube_like_along(Axis::X)
+            && self.is_cube_like_along(Axis::Y)
+            && self.is_cube_like_along(Axis::Z)
+    }
+
+    fn is_cube_like_along(&self, axis: Axis) -> bool {
+        let coords = self.axis_coords(axis);
+        coords.len() == 2 && fuzzy_equals(coords[0], 0.0) && fuzzy_equals(coords[1], 1.0)
+    }
+
     fn is_full(&self, x: usize, y: usize, z: usize) -> bool {
         self.cells[index(x, y, z, self.grid())]
     }
@@ -364,6 +437,10 @@ fn point_distance_squared(first: Vec3, second: Vec3) -> f64 {
     let dy = first.y - second.y;
     let dz = first.z - second.z;
     dx * dx + dy * dy + dz * dz
+}
+
+fn fuzzy_equals(first: f64, second: f64) -> bool {
+    (first - second).abs() <= EPSILON
 }
 
 /// Constructors and operations for voxel shapes.

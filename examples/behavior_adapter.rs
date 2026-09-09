@@ -620,6 +620,20 @@ fn shape_result(request: &Value) -> Result<Value, String> {
                 None => json!({}),
             })
         }
+        "face" => {
+            let shape = shape_box(request.get("shape").ok_or("shape must be an object")?)?;
+            let direction = Direction::from_name(string(request, "direction")?)
+                .ok_or("unknown face direction")?;
+            Ok(json!({"shape": shape_snapshot(&shape.face_shape(direction))}))
+        }
+        "face_join" => {
+            let first = shape_box(request.get("first").ok_or("first must be an object")?)?;
+            let second = shape_box(request.get("second").ok_or("second must be an object")?)?;
+            let direction = Direction::from_name(string(request, "direction")?)
+                .ok_or("unknown face direction")?;
+            let shape = Shapes::or(&first, &second);
+            Ok(json!({"shape": shape_snapshot(&shape.face_shape(direction))}))
+        }
         _ => Err("unknown VoxelShape kind".into()),
     }
 }

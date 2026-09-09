@@ -190,6 +190,21 @@ public final class MathOracle {
                 var closest = shape.closestPointTo(vec3(request.getAsJsonObject("point")));
                 result.add("point", closest.isPresent()
                     ? snapshot(closest.get()) : com.google.gson.JsonNull.INSTANCE);
+            } else if (kind.equals("face")) {
+                VoxelShape shape = voxelShape(request.getAsJsonObject("shape"));
+                Direction direction = Direction.byName(request.get("direction").getAsString());
+                if (direction == null) {
+                    throw new IllegalArgumentException("Unknown face direction");
+                }
+                result.add("shape", snapshot(shape.getFaceShape(direction)));
+            } else if (kind.equals("face_join")) {
+                VoxelShape first = voxelShape(request.getAsJsonObject("first"));
+                VoxelShape second = voxelShape(request.getAsJsonObject("second"));
+                Direction direction = Direction.byName(request.get("direction").getAsString());
+                if (direction == null) {
+                    throw new IllegalArgumentException("Unknown face direction");
+                }
+                result.add("shape", snapshot(Shapes.or(first, second).getFaceShape(direction)));
             } else {
                 throw new IllegalArgumentException("Unknown VoxelShape kind");
             }
