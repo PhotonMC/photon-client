@@ -3,7 +3,7 @@
 //! This covers box constructors/production helpers, the integer BoundingBox bridge,
 //! constructor normalization
 //! and the contains/intersects,
-//! expand-towards, contract, inflate, intersect, minmax, move, sizes, has_nan,
+//! expand-towards, equals/hashCode, contract, inflate, intersect, minmax, move, sizes, has_nan,
 //! positions, axis endpoint queries, `of_size`, endpoint setters, move overloads,
 //! deflate, segment clipping (including raw-coordinate bounds and iterable hit
 //! results) and center-segment collision operations used by the current behavior
@@ -273,6 +273,36 @@ impl Aabb {
     /// Expand toward a double-precision vector like Java `AABB.expandTowards(Vec3)`.
     pub fn expand_towards_vec3(self, delta: Vec3) -> Self {
         self.expand_towards(delta.x, delta.y, delta.z)
+    }
+
+    /// Compare endpoints with Java `AABB.equals`, including signed zero and NaN rules.
+    pub fn equals_java(self, other: Self) -> bool {
+        java_double_compare(self.min_x, other.min_x) == 0
+            && java_double_compare(self.min_y, other.min_y) == 0
+            && java_double_compare(self.min_z, other.min_z) == 0
+            && java_double_compare(self.max_x, other.max_x) == 0
+            && java_double_compare(self.max_y, other.max_y) == 0
+            && java_double_compare(self.max_z, other.max_z) == 0
+    }
+
+    /// Compute the Java `AABB.hashCode` value for the six endpoints.
+    pub fn hash_code_java(self) -> i32 {
+        let mut result = java_double_hash(self.min_x);
+        result = result
+            .wrapping_mul(31)
+            .wrapping_add(java_double_hash(self.min_y));
+        result = result
+            .wrapping_mul(31)
+            .wrapping_add(java_double_hash(self.min_z));
+        result = result
+            .wrapping_mul(31)
+            .wrapping_add(java_double_hash(self.max_x));
+        result = result
+            .wrapping_mul(31)
+            .wrapping_add(java_double_hash(self.max_y));
+        result
+            .wrapping_mul(31)
+            .wrapping_add(java_double_hash(self.max_z))
     }
 
     /// Move only the endpoint opposite each nonzero delta inward.
@@ -771,4 +801,35 @@ fn java_max(left: f64, right: f64) -> f64 {
     } else {
         right
     }
+}
+
+fn java_double_compare(left: f64, right: f64) -> i32 {
+    if left < right {
+        -1
+    } else if left > right {
+        1
+    } else {
+        let left_bits = java_double_to_long_bits(left) as i64;
+        let right_bits = java_double_to_long_bits(right) as i64;
+        if left_bits < right_bits {
+            -1
+        } else if left_bits > right_bits {
+            1
+        } else {
+            0
+        }
+    }
+}
+
+fn java_double_to_long_bits(value: f64) -> u64 {
+    if value.is_nan() {
+        0x7ff8_0000_0000_0000
+    } else {
+        value.to_bits()
+    }
+}
+
+fn java_double_hash(value: f64) -> i32 {
+    let bits = java_double_to_long_bits(value);
+    (bits ^ (bits >> 32)) as i32
 }

@@ -727,6 +727,16 @@ public final class MathOracle {
                         box = box.expandTowards(vec3(step.getAsJsonObject("delta")));
                         events.add(snapshot(box));
                     }
+                    case "equals" -> {
+                        var state = new JsonObject();
+                        state.addProperty("equal", box.equals(box(step.getAsJsonObject("box"))));
+                        events.add(state);
+                    }
+                    case "hash_code" -> {
+                        var state = new JsonObject();
+                        state.addProperty("hash_code", box.hashCode());
+                        events.add(state);
+                    }
                     case "intersect" -> {
                         box = box.intersect(box(step.getAsJsonObject("box")));
                         events.add(snapshot(box));

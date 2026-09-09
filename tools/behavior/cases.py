@@ -13,6 +13,11 @@ def box_bits(min_x, min_y, min_z, max_x, max_y, max_z):
             "max_y": float_bits(max_y, "f64"), "max_z": float_bits(max_z, "f64")}
 
 
+def raw_box(min_x, min_y, min_z, max_x, max_y, max_z):
+    return {"min_x": min_x, "min_y": min_y, "min_z": min_z,
+            "max_x": max_x, "max_y": max_y, "max_z": max_z}
+
+
 def neighbors(value, width):
     bits = int(float_bits(value, width), 16)
     digits = 8 if width == "f32" else 16
@@ -772,6 +777,34 @@ def math_cases():
     yield {"case_id": "aabb/expand-overload/chain", "family": "math", "operation": "aabb",
            **unit, "steps": [{"op": "expand_vec3", "delta": vector_bits(-0.25, 0.5, 1.0)},
                               {"op": "expand_vec3", "delta": vector_bits(0.125, -0.75, -0.5)}]}
+    yield {"case_id": "aabb/equality/identical", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "equals", "box": box_bits(0.0, 0.0, 0.0, 1.0, 1.0, 1.0)},
+                              {"op": "hash_code"}]}
+    yield {"case_id": "aabb/equality/different-endpoint", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "equals", "box": box_bits(0.0, 0.0, 0.0, 2.0, 1.0, 1.0)},
+                              {"op": "hash_code"}]}
+    yield {"case_id": "aabb/equality/signed-zero", "family": "math", "operation": "aabb",
+           **raw_box(float_bits(-0.0, "f64"), float_bits(0.0, "f64"), float_bits(0.0, "f64"),
+                     float_bits(1.0, "f64"), float_bits(1.0, "f64"), float_bits(1.0, "f64")),
+           "steps": [{"op": "equals", "box": raw_box(
+               float_bits(0.0, "f64"), float_bits(0.0, "f64"), float_bits(0.0, "f64"),
+               float_bits(1.0, "f64"), float_bits(1.0, "f64"), float_bits(1.0, "f64"))},
+                     {"op": "hash_code"}]}
+    yield {"case_id": "aabb/equality/nan-payload", "family": "math", "operation": "aabb",
+           **raw_box("7ff8000000000000", float_bits(0.0, "f64"), float_bits(0.0, "f64"),
+                     float_bits(float("inf"), "f64"), float_bits(1.0, "f64"), float_bits(1.0, "f64")),
+           "steps": [{"op": "equals", "box": raw_box(
+               "7ff8000000000001", float_bits(0.0, "f64"), float_bits(0.0, "f64"),
+               float_bits(float("inf"), "f64"), float_bits(1.0, "f64"), float_bits(1.0, "f64"))},
+                     {"op": "hash_code"}]}
+    yield {"case_id": "aabb/equality/infinities", "family": "math", "operation": "aabb",
+           **box_bits(float("-inf"), float("-inf"), float("-inf"),
+                      float("inf"), float("inf"), float("inf")),
+           "steps": [{"op": "equals", "box": box_bits(
+               float("-inf"), float("-inf"), float("-inf"),
+               float("inf"), float("inf"), float("inf"))},
+                     {"op": "equals", "box": box_bits(-1.0, -1.0, -1.0, 1.0, 1.0, 1.0)},
+                     {"op": "hash_code"}]}
     yield {"case_id": "aabb/contract/positive", "family": "math", "operation": "aabb",
            **unit, "steps": [{"op": "contract", "x": float_bits(0.25, "f64"),
                               "y": float_bits(0.5, "f64"), "z": float_bits(1.0, "f64")}]}
