@@ -6,16 +6,16 @@ src/shape.rs, Java 26.2 Shapes.rotateAttachFace(north) yolunu floor, wall ve cei
 
 Java 25.0.4.1 ve Rust 1.98.1 / Linux x86_64 ortamında:
 
-- Math ailesinin 574 senaryoluk referansı iki ayrı JVM çalıştırmasıyla kararlı bulundu.
-- Rust debug ve release adaptörleri **574/574** math senaryosunda eşleşti.
+- Math ailesinin 577 senaryoluk referansı iki ayrı JVM çalıştırmasıyla kararlı bulundu.
+- Rust debug ve release adaptörleri **577/577** math senaryosunda eşleşti.
 - Asimetrik, yarım grid boyutlu ve empty shape girdileri üç attach face'i, her iç yön map'ini, bileşik dönüş yönünü ve enum sırasını karşılaştırdı.
-- Birleşik altı aile corpus'u **1028/1028** senaryoda hem debug hem release adaptörüyle eşleşti.
+- Birleşik altı aile corpus'u **1031/1031** senaryoda hem debug hem release adaptörüyle eşleşti.
 
-Math referans kimliği: 1431e2c083406bf997d7d068455e909ece993da6c2960b5a58aeb3505a1bbecf.
+Math referans kimliği: 5df31dedf41786bcd5bb38fc117404df6a83da03bce464c1a637063e5b3b5cbb.
 
-Birleşik referans kimliği: 973124eeb6072de7c2a8f42e33b01304c2a5e79e2ef0a87968d085bb7084a0ee.
+Birleşik referans kimliği: cc0f402235532cc834549c53fd069f064a8e771ef6ba6e2943e472b1d9b6b06d.
 
-Yerel raporlar: compare-f5pqb8w9 (math debug), compare-1ghjhwjn (math release), compare-4pe6qeij (birleşik debug) ve compare-94buxmhn (birleşik release) dizinlerinde, .data/runs/behavior/ altında bulunur.
+Yerel raporlar: compare-jrhf0iba (math debug), compare-8berq09t (math release), compare-rpvlapca (birleşik debug) ve compare-dwzkalq0 (birleşik release) dizinlerinde, .data/runs/behavior/ altında bulunur.
 
 ## Sınırlar
 

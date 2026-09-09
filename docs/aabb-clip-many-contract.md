@@ -39,4 +39,4 @@ python3 tools/behavior/run.py capture --family math
 python3 tools/behavior/run.py verify --family math
 ```
 
-Bu dilimin math referans kimliği `574f55bea348590f76cc3685cd87aadd677ba8f4649d2acfa055ee6138565743` oldu. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.
+Bu dilimin math referans kimliği `577f55bea348590f76cc3685cd87aadd677ba8f4649d2acfa055ee6138565773` oldu. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.

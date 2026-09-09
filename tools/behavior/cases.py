@@ -354,6 +354,13 @@ def math_cases():
            "kind": "rotate_attach_face", "box": box_bits(0.0, 0.0, 0.0, 1.0, 0.5, 1.0)}
     yield {"case_id": "shape/rotate-attach-face/empty", "family": "math", "operation": "shape",
            "kind": "rotate_attach_face", "box": box_bits(0.0, 0.0, 0.0, 0.00000005, 1.0, 1.0)}
+    yield {"case_id": "shape/rotate-attach-face-initial/identity", "family": "math", "operation": "shape",
+           "kind": "rotate_attach_face_initial", "box": rotate_box, "initial": "IDENTITY"}
+    yield {"case_id": "shape/rotate-attach-face-initial/x-90", "family": "math", "operation": "shape",
+           "kind": "rotate_attach_face_initial", "box": rotate_box, "initial": "ROT_90_X_NEG"}
+    yield {"case_id": "shape/rotate-attach-face-initial/y-180", "family": "math", "operation": "shape",
+           "kind": "rotate_attach_face_initial", "box": box_bits(0.0, 0.0, 0.0, 1.0, 0.5, 1.0),
+           "initial": "ROT_180_FACE_XZ"}
     yield {"case_id": "shape/collide/positive-x", "family": "math", "operation": "shape", "kind": "collide",
            "axis": "x", "shape": box_bits(0, 0, 0, 1, 1, 1),
            "moving": box_bits(-2, 0.25, 0.25, -1, 0.75, 0.75), "distance": float_bits(4, "f64")}

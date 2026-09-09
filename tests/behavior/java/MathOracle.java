@@ -294,6 +294,28 @@ public final class MathOracle {
                     faceSnapshots.add(faceEntry);
                 }
                 result.add("faces", faceSnapshots);
+            } else if (kind.equals("rotate_attach_face_initial")) {
+                VoxelShape shape = voxelShape(request.getAsJsonObject("box"));
+                OctahedralGroup initial = OctahedralGroup.valueOf(request.get("initial").getAsString());
+                var faces = Shapes.rotateAttachFace(shape, initial);
+                var faceSnapshots = new JsonArray();
+                for (AttachFace face : AttachFace.values()) {
+                    var directions = faces.get(face);
+                    var directionSnapshots = new JsonArray();
+                    for (Direction direction : Direction.values()) {
+                        if (directions.containsKey(direction)) {
+                            var directionEntry = new JsonObject();
+                            directionEntry.addProperty("direction", direction.getName());
+                            directionEntry.add("shape", snapshot(directions.get(direction)));
+                            directionSnapshots.add(directionEntry);
+                        }
+                    }
+                    var faceEntry = new JsonObject();
+                    faceEntry.addProperty("face", face.getSerializedName());
+                    faceEntry.add("shapes", directionSnapshots);
+                    faceSnapshots.add(faceEntry);
+                }
+                result.add("faces", faceSnapshots);
             } else if (kind.equals("collide")) {
                 VoxelShape shape = voxelShape(request.getAsJsonObject("shape"));
                 AABB moving = box(request.getAsJsonObject("moving"));

@@ -889,27 +889,42 @@ impl Shapes {
     }
 
     /// Return the floor, wall, and ceiling direction variants in Java enum order.
-    pub fn rotate_attach_face(
+    fn rotate_attach_face_with_transform(
         north: &VoxelShape,
+        initial: ShapeTransform,
     ) -> [(AttachFace, [(Direction, VoxelShape); 4]); 3] {
         let x_270 = ShapeRotation::Rot90XPos.transform();
-        let ceiling = ShapeRotation::Rot180FaceXz
-            .transform()
-            .compose(ShapeRotation::Rot90XNeg.transform());
+        let x_90 = ShapeRotation::Rot90XNeg.transform();
+        let y_180 = ShapeRotation::Rot180FaceXz.transform();
         [
             (
                 AttachFace::Floor,
-                Self::rotate_horizontal_with_transform(north, x_270),
+                Self::rotate_horizontal_with_transform(north, x_270.compose(initial)),
             ),
             (
                 AttachFace::Wall,
-                Self::rotate_horizontal_with_transform(north, ShapeRotation::Identity.transform()),
+                Self::rotate_horizontal_with_transform(north, initial),
             ),
             (
                 AttachFace::Ceiling,
-                Self::rotate_horizontal_with_transform(north, ceiling),
+                Self::rotate_horizontal_with_transform(north, y_180.compose(x_90).compose(initial)),
             ),
         ]
+    }
+
+    /// Return the floor, wall, and ceiling direction variants in Java enum order.
+    pub fn rotate_attach_face(
+        north: &VoxelShape,
+    ) -> [(AttachFace, [(Direction, VoxelShape); 4]); 3] {
+        Self::rotate_attach_face_with_transform(north, ShapeRotation::Identity.transform())
+    }
+
+    /// Return attach-face variants for a supported initial rotation.
+    pub fn rotate_attach_face_with_initial(
+        north: &VoxelShape,
+        initial: ShapeRotation,
+    ) -> [(AttachFace, [(Direction, VoxelShape); 4]); 3] {
+        Self::rotate_attach_face_with_transform(north, initial.transform())
     }
 
     /// Return the horizontal direction variants of a shape in Java EnumMap order.
