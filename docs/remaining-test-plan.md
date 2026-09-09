@@ -1,6 +1,6 @@
 # Kalan bölümler test planı (çalıştırılamayanlar)
 
-1533 Java senaryosu kayıtlıdır (beş+bir aile).
+1536 Java senaryosu kayıtlıdır (beş+bir aile).
 
 P03.b Vec3.STREAM_CODEC 13 senaryoda hazırdır ([sözleşme](vec3-stream-codec-contract.md), [kanıt](vec3-stream-codec-parity.md)). Aşağıdaki bölümler yerel ortamda çalıştırılamaz; her biri engelli kaydedilir, sahte golden üretilmez. Her bölümün önkoşulu, engel kalkınca yazılacak ilk senaryolar ve kabul ölçütü tanımlıdır.
 P03.b LP Vec3 stream codec 15 senaryoda hazırdır ([sözleşme](lp-vec3-contract.md), [kanıt](lp-vec3-parity.md)).
@@ -25,6 +25,7 @@ P01.c SectionPos packed dönüşümleri 6 senaryoda hazırdır ([sözleşme](sec
 P01.c SectionPos asLong overload'ları 6 senaryoda hazırdır ([sözleşme](sectionpos-as-long-contract.md), [kanıt](sectionpos-as-long-parity.md)).
 P01.c SectionPos offset overload'ları 6 senaryoda hazırdır ([sözleşme](sectionpos-offset-contract.md), [kanıt](sectionpos-offset-parity.md)).
 P01.c SectionPos range yardımcıları 6 senaryoda hazırdır ([sözleşme](sectionpos-ranges-contract.md), [kanıt](sectionpos-ranges-parity.md)).
+P01.c SectionPos blocksInside 3 senaryoda hazırdır ([sözleşme](sectionpos-blocks-inside-contract.md), [kanıt](sectionpos-blocks-inside-parity.md)).
 
 P01.b Vec3 `CODEC` 12 senaryoda hazırdır ([sözleşme](vec3-codec-contract.md), [kanıt](vec3-codec-parity.md)).
 

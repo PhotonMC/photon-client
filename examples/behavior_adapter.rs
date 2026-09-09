@@ -340,6 +340,15 @@ fn sectionpos_ranges_snapshot(values: Vec<SectionPos>) -> Value {
     })
 }
 
+fn blockpos_positions_snapshot(values: Vec<BlockPos>) -> Value {
+    json!({
+        "positions": values
+            .into_iter()
+            .map(blockpos_snapshot)
+            .collect::<Vec<_>>(),
+    })
+}
+
 fn chunkpos_region_coordinates_snapshot(value: ChunkPos, region_x: i32, region_z: i32) -> Value {
     json!({
         "region_x": value.get_region_x().to_string(),
@@ -2151,6 +2160,11 @@ fn math_result(request: &Value) -> Result<Value, String> {
         };
         return Ok(json!({
             "value": sectionpos_ranges_snapshot(positions),
+        }));
+    }
+    if operation == "sectionpos_blocks_inside" {
+        return Ok(json!({
+            "value": blockpos_positions_snapshot(sectionpos(request)?.blocks_inside()),
         }));
     }
     if operation == "chunkpos_validity" {

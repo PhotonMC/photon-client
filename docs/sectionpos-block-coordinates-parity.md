@@ -8,15 +8,15 @@ Java 25.0.4.1 ve Rust 1.98.1 / Linux x86_64 ortamında:
 
 - SectionPos blok koordinatı yardımcıları için 6 özgün senaryo hazırlandı.
 - Köken, pozitif/negatif koordinatlar, shift sınırı ve i32 koordinat uçları doğrudan Java/Rust API'leriyle karşılaştırıldı.
-- Rust debug ve release adaptörleri güncel **1031/1031** math senaryosunda eşleşti.
-- Birleşik altı aile corpus'u **1533/1533** senaryoda hem debug hem release adaptörüyle eşleşti.
+- Rust debug ve release adaptörleri güncel **1034/1034** math senaryosunda eşleşti.
+- Birleşik altı aile corpus'u **1536/1536** senaryoda hem debug hem release adaptörüyle eşleşti.
 - Math ve birleşik `verify` çalıştırmaları kayıtlı Java referanslarını yeniden doğruladı.
 
-Math referans kimliği: `cbae17cd88ce5b1617d01034d27ad104db9b471eefc8bebf83ed4e8d1dc0aa70`. Birleşik referans kimliği: `338731e44c45c8acc6fbd70e7fe1439cdaa28ec5996f6a4d9517412cc50106a0`.
+Math referans kimliği: `93b4f9cea962a01add258b6b2eefa539a9ebef5717ad4c7335efd92eb9fdd956`. Birleşik referans kimliği: `d50d1ffe555a28907b2748605bdad72312150162a6b1163dca14a521d88ea901`.
 
 Adapter hashleri: debug `7ca32df88b2b9428c0f70c0e484bc8528524a081223d5abc6f31723bb87963f8`, release `0b8de97e52cf25fab7836202ea3b5a09d7db759ce6fab368fea489722e507f79`.
 
-Yerel raporlar: `compare-2ftkouxd` ve `compare-g204xxpd` (math debug/release), `compare-ag9x0lbh` ve `compare-sl2ed6ln` (birleşik debug/release), `verify-9ocfqh7` (math) ve `verify-5bpx38hs` (birleşik) `.data/runs/behavior/` altında bulunur.
+Yerel raporlar: `compare-ggothvha` ve `compare-imtm_d7k` (math debug/release), `compare-cmzkuxow` ve `compare-zlsxov0y` (birleşik debug/release), `verify-sa8ppokf` (math) ve `verify-f0a30j2p` (birleşik) `.data/runs/behavior/` altında bulunur.
 
 ## Sınırlar
 

@@ -466,6 +466,17 @@ def math_cases():
         yield {"case_id": f"sectionpos/ranges/{label}", "family": "math",
                "operation": "sectionpos_ranges", **values}
 
+    sectionpos_blocks_inside = {
+        "origin": {"x": "0", "y": "0", "z": "0"},
+        "negative": {"x": "-1", "y": "-2", "z": "-3"},
+        "coordinate-boundaries": {
+            "x": "134217727", "y": "-134217728", "z": "134217727",
+        },
+    }
+    for label, values in sectionpos_blocks_inside.items():
+        yield {"case_id": f"sectionpos/blocks-inside/{label}", "family": "math",
+               "operation": "sectionpos_blocks_inside", **values}
+
     chunkpos_validity = {
         "origin": {"x": "0", "z": "0"},
         "boundary": {"x": "2097061", "z": "-2097061"},

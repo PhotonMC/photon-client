@@ -262,6 +262,8 @@ public final class MathOracle {
             result.add("value", value);
         } else if (operation.equals("sectionpos_ranges")) {
             result.add("value", sectionPosRanges(request));
+        } else if (operation.equals("sectionpos_blocks_inside")) {
+            result.add("value", sectionPosBlocksInside(request));
         } else if (operation.equals("chunkpos_validity")) {
             ChunkPos pos = chunkPos(request);
             result.add("value", chunkPosValidity(pos));
@@ -1543,6 +1545,18 @@ public final class MathOracle {
         }
         var values = new JsonArray();
         positions.forEach(pos -> values.add(snapshot(pos)));
+        var state = new JsonObject();
+        state.add("positions", values);
+        return state;
+    }
+
+    private static JsonObject sectionPosBlocksInside(JsonObject request) {
+        SectionPos pos = SectionPos.of(
+            Integer.parseInt(request.get("x").getAsString()),
+            Integer.parseInt(request.get("y").getAsString()),
+            Integer.parseInt(request.get("z").getAsString()));
+        var values = new JsonArray();
+        pos.blocksInside().forEach(block -> values.add(snapshot(block)));
         var state = new JsonObject();
         state.add("positions", values);
         return state;

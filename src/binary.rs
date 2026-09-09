@@ -799,6 +799,33 @@ impl SectionPos {
         }
     }
 
+    /// Enumerate the 16-by-16-by-16 block positions contained by this section.
+    pub fn blocks_inside(self) -> Vec<BlockPos> {
+        let min_x = self.min_block_x();
+        let min_y = self.min_block_y();
+        let min_z = self.min_block_z();
+        let max_x = self.max_block_x();
+        let max_y = self.max_block_y();
+        let max_z = self.max_block_z();
+        let width = max_x.wrapping_sub(min_x).wrapping_add(1);
+        let height = max_y.wrapping_sub(min_y).wrapping_add(1);
+        let depth = max_z.wrapping_sub(min_z).wrapping_add(1);
+        let end = width.wrapping_mul(height).wrapping_mul(depth);
+        if width <= 0 || height <= 0 || depth <= 0 || end <= 0 {
+            return Vec::new();
+        }
+
+        let mut positions = Vec::with_capacity(end as usize);
+        for index in 0..end {
+            let x = min_x.wrapping_add(index % width);
+            let slice = index / width;
+            let y = min_y.wrapping_add(slice % height);
+            let z = min_z.wrapping_add(slice / height);
+            positions.push(BlockPos::new(x, y, z));
+        }
+        positions
+    }
+
     /// Enumerate a finite inclusive range in Java's x-fastest, then y, then z order.
     pub fn between_closed(
         min_x: i32,
