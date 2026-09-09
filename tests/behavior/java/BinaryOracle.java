@@ -12,6 +12,7 @@ import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.world.phys.Vec3;
 
 /** Original test glue: all packing happens inside the pinned JAR. */
 public final class BinaryOracle {
@@ -31,6 +32,7 @@ public final class BinaryOracle {
         int[] section = null;
         long[] longs = null;
         BitSet bits = null;
+        Vec3 vec3 = null;
         int fixedSize = -1;
         if (read) {
             input = HexFormat.of().parseHex(request.get("hex").getAsString());
@@ -82,13 +84,18 @@ public final class BinaryOracle {
                 }
                 bits.set(bit);
             }
+        } else if (codec.equals("vec3")) {
+            vec3 = new Vec3(
+                Double.longBitsToDouble(Long.parseUnsignedLong(request.get("x").getAsString(), 16)),
+                Double.longBitsToDouble(Long.parseUnsignedLong(request.get("y").getAsString(), 16)),
+                Double.longBitsToDouble(Long.parseUnsignedLong(request.get("z").getAsString(), 16)));
         } else {
             throw new IllegalArgumentException("Unknown binary codec");
         }
         if (!codec.equals("uuid") && !codec.equals("blockpos")
                 && !codec.equals("sectionpos")
                 && !codec.equals("longarray") && !codec.equals("bitset")
-                && !codec.equals("fixedbitset")) {
+                && !codec.equals("fixedbitset") && !codec.equals("vec3")) {
             throw new IllegalArgumentException("Unknown binary codec");
         }
         if (codec.equals("fixedbitset")) {
@@ -126,6 +133,11 @@ public final class BinaryOracle {
                         values.add(Long.toString(value));
                     }
                     result.add("values", values);
+                } else if (read && codec.equals("vec3")) {
+                    Vec3 decoded = Vec3.STREAM_CODEC.decode(buffer);
+                    result.addProperty("x", String.format(Locale.ROOT, "%016x", Double.doubleToRawLongBits(decoded.x)));
+                    result.addProperty("y", String.format(Locale.ROOT, "%016x", Double.doubleToRawLongBits(decoded.y)));
+                    result.addProperty("z", String.format(Locale.ROOT, "%016x", Double.doubleToRawLongBits(decoded.z)));
                 } else if (read) {
                     long[] decoded_longs = FriendlyByteBuf.readLongArray(buffer);
                     BitSet decoded = BitSet.valueOf(decoded_longs);
@@ -140,6 +152,8 @@ public final class BinaryOracle {
                     buffer.writeLong(SectionPos.asLong(section[0], section[1], section[2]));
                 } else if (codec.equals("longarray")) {
                     FriendlyByteBuf.writeLongArray(buffer, longs);
+                } else if (codec.equals("vec3")) {
+                    Vec3.STREAM_CODEC.encode(buffer, vec3);
                 } else {
                     FriendlyByteBuf.writeLongArray(buffer, bits.toLongArray());
                 }

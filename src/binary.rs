@@ -1,4 +1,4 @@
-//! Binary codecs for the pinned reference: UUID, BlockPos, long arrays and BitSets.
+//! Binary codecs for the pinned reference: Vec3, UUID, BlockPos, long arrays and BitSets.
 //!
 //! UUID and positions travel as big-endian longs with no length prefix.
 //! Long arrays prefix a VarInt length; BitSets reuse that framing through
@@ -6,6 +6,7 @@
 //! UUID can leave the first half consumed while a truncated position
 //! consumes nothing.
 
+use crate::math::Vec3;
 use crate::wire;
 
 /// Failures for binary reads, using the runner's error categories.
@@ -27,6 +28,31 @@ impl Uuid {
     pub const fn new(most: u64, least: u64) -> Self {
         Self { most, least }
     }
+}
+
+fn read_double(input: &mut &[u8]) -> Result<f64, ReadError> {
+    if input.len() < 8 {
+        return Err(ReadError::BufferUnderflow);
+    }
+    let (head, rest) = input.split_at(8);
+    let value = f64::from_bits(u64::from_be_bytes(head.try_into().expect("checked length")));
+    *input = rest;
+    Ok(value)
+}
+
+/// Read three consecutive big-endian doubles as a Vec3.
+pub fn read_vec3(input: &mut &[u8]) -> Result<Vec3, ReadError> {
+    let x = read_double(input)?;
+    let y = read_double(input)?;
+    let z = read_double(input)?;
+    Ok(Vec3::new(x, y, z))
+}
+
+/// Append three consecutive big-endian doubles for a Vec3.
+pub fn write_vec3(value: Vec3, output: &mut Vec<u8>) {
+    output.extend_from_slice(&value.x.to_bits().to_be_bytes());
+    output.extend_from_slice(&value.y.to_bits().to_be_bytes());
+    output.extend_from_slice(&value.z.to_bits().to_be_bytes());
 }
 
 /// Integer block coordinates with reference packing.

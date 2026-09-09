@@ -1,13 +1,14 @@
 # P03.b — Binary Rust davranış dilimi
 
-`src/binary.rs`, sabit ve değişken boyutlu binary kodlamaları içerir. `examples/behavior_adapter.rs` üretim kütüphanesini mevcut JSONL senaryolarına bağlar; beklenen değer üretmez. NBT ve diğer P03 biçimleri bu dilime dahil değildir.
+`src/binary.rs`, Vec3 stream codec'i ile sabit ve değişken boyutlu binary kodlamaları içerir. `examples/behavior_adapter.rs` üretim kütüphanesini mevcut JSONL senaryolarına bağlar; beklenen değer üretmez. NBT ve diğer P03 biçimleri bu dilime dahil değildir.
 
 ## Referans ve davranış
 
-Referans Java 26.2 / protokol 776; `FriendlyByteBuf` içindeki UUID/BlockPos/long array yolları, `BlockPos`/`SectionPos` paketleme kaynak incelemesinde belirlendi. `BinaryOracle.java` doğrudan orijinal sınıfları çağırır; senaryo ve beklenen çıktılar değiştirilmedi. Ayrıntılı sözleşme ve 116 senaryoluk kapsam [binary referans belgesindedir](binary-contract.md).
+Referans Java 26.2 / protokol 776; `Vec3.STREAM_CODEC` içindeki üç `ByteBuf` double yolu ile `FriendlyByteBuf` UUID/BlockPos/long array yolları, `BlockPos`/`SectionPos` paketleme kaynak incelemesinde belirlendi. `BinaryOracle.java` doğrudan orijinal sınıfları çağırır; senaryo ve beklenen çıktılar değiştirilmedi. Ayrıntılı sözleşme ve 129 senaryoluk kapsam [binary referans belgesindedir](binary-contract.md).
 
 | Rust API | Korunan davranış |
 | --- | --- |
+| `read_vec3`, `write_vec3` | Üç ardışık big-endian f64; bileşen başına atomik okuma ve raw bit koruması |
 | `Uuid::new`, `read_uuid`, `write_uuid` | İki big-endian u64; her 16 bayt geçerli, tek hata kesik veri |
 | `BlockPos::new`, `pack`, `unpack` | X/Z 26 bit ve Y 12 bit maskeleme ile sarma; aritmetik kaydırma ile işaret genişletme |
 | `read_blockpos`, `write_blockpos` | Tek big-endian u64; eksik veride tüketim yok |
@@ -23,14 +24,14 @@ Yazma bu dilimde her zaman başarılıdır; ayrı uzunluk sınırı yoktur.
 
 Java 25.0.4.1 ve Rust 1.98.1 / Linux x86_64 ortamında:
 
-- 679 senaryoluk kayıtlı Java referansı iki yeni JVM çalıştırmasıyla doğrulandı.
-- Debug ve release Rust adaptörleri **679/679** eşleşti: 238 math + 22 timer + 144 wire + 141 utf8 + 116 binary + 18 nbt.
+- 129 senaryoluk kayıtlı binary Java referansı iki yeni JVM çalıştırmasıyla doğrulandı.
+- Debug ve release Rust adaptörleri **129/129** binary senaryosunda eşleşti.
 - Karşılaştırma kimlik bitleri, koordinatlar, diziler, bit listeleri, tüketim, kalan/yazılan baytlar ve hata kategorisini kapsar.
 - Biçim, Clippy ve paket kapsamı kontrolleri geçti; `.data/` ve test adaptörü paket dışında kaldı.
 
-Birleşik referans kimliği: `34ba8e91cef5a27e4d84dd229d2dd1468ba20c443bbe0d362fceb3110ccd294d`. Binary ailesi kimliği: `8ae00c7621477db27bbb1744c78d0d55d67b5dd4854c14a578aba7d155be0119`.
+Birleşik referans kimliği: `560602ef9264eceeefea1f7e04180a821c7e67a9bd644f85964cbe1229e4e713`. Binary ailesi kimliği: `40e3640839f4783a6a3f1b08072a8e7679461e101d4f72b5133ddfe58e06e3d0`.
 
-Yerel raporlar: `compare-mfmcyltd` (debug 679), `compare-7q4z1n2s` (release 679) dizinlerinde, `.data/runs/behavior/` altında bulunur.
+Yerel raporlar: `compare-q8wuyafn` (binary debug 129), `compare-kj2w1vpa` (binary release 129), `compare-khi93grl` (birleşik debug 1360) ve `compare-qhum5wxw` (birleşik release 1360) dizinlerinde, `.data/runs/behavior/` altında bulunur.
 
 ## Yeniden çalıştırma ve sonraki dilim
 

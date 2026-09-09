@@ -1,6 +1,6 @@
-# P03.b — UUID, BlockPos, SectionPos, long array ve BitSet referans sözleşmesi
+# P03.b — Vec3 stream codec, UUID, BlockPos, SectionPos, long array ve BitSet referans sözleşmesi
 
-Bu dilimin **116 Java davranış testi hazırdır ve Rust karşılığı doğrulanmıştır** ([kanıt](binary-parity.md)). Diğer P03 biçimleri bu dilime dahil değildir.
+Bu dilimin **129 Java davranış testi hazırdır ve Rust karşılığı doğrulanmıştır** ([kanıt](binary-parity.md)). Java `Vec3.STREAM_CODEC` için ayrıntılı kapsam [Vec3 stream codec sözleşmesindedir](vec3-stream-codec-contract.md). Diğer P03 biçimleri bu dilime dahil değildir.
 
 ## Kaynak ve sınır
 
@@ -39,7 +39,7 @@ Netty buffer/common yanında `core/BlockPos` sınıfı için math ailesinin bağ
 | Sabit BitSet okuma | 8 | Boyut 0/1/8/9/16, yok sayılan yük, kısa/eksik gövde |
 | Sabit BitSet yazma | 6 | Boyut 0/8/9/16, sınır içi ve taşan bit kümeleri |
 
-`family: "binary"` altında `codec` `uuid` | `blockpos` | `sectionpos` | `longarray` | `bitset` | `fixedbitset` olur. `prefix_hex` küçük harfli bayt hex stringdir. UUID yazmada `most_hex`/`least_hex` 16 haneli küçük harfli hex; BlockPos ve SectionPos yazmada `x`/`y`/`z` işaretli ondalık string; long array yazmada `values` işaretli ondalık string dizisi; BitSet yazmada `bits` bit index dizisidir. Sabit BitSet okuma/yazmada ek olarak `size` bit boyutu bulunur. Okumada `hex` başlık/gövdeyi taşır.
+`family: "binary"` altında `codec` `vec3` | `uuid` | `blockpos` | `sectionpos` | `longarray` | `bitset` | `fixedbitset` olur. `prefix_hex` küçük harfli bayt hex stringdir. Vec3 yazmada `x`/`y`/`z` 16 haneli küçük harfli raw f64 hex; UUID yazmada `most_hex`/`least_hex` 16 haneli küçük harfli hex; BlockPos ve SectionPos yazmada `x`/`y`/`z` işaretli ondalık string; long array yazmada `values` işaretli ondalık string dizisi; BitSet yazmada `bits` bit index dizisidir. Sabit BitSet okuma/yazmada ek olarak `size` bit boyutu bulunur. Okumada `hex` başlık/gövdeyi taşır.
 
 Okuma adaptörü buffer başına `prefix_hex` koyup reader index'i bu alanın sonuna taşır. Başarılı UUID sonucu `most_hex`, `least_hex`; başarılı BlockPos ve SectionPos sonucu `x`, `y`, `z`; başarılı long array sonucu `values`; başarılı BitSet ve sabit BitSet sonucu `bits` içerir. Her durumda `outcome`, `consumed` ve `remaining_hex` bulunur. Hata sonucu `outcome` ve `error` içerir.
 
@@ -54,9 +54,9 @@ python3 tools/behavior/run.py capture --family binary
 python3 tools/behavior/run.py verify --family binary
 ```
 
-116 senaryo iki ayrı JVM'de aynı sonucu verdi; kayıtlı referans iki yeni JVM ile yeniden doğrulandı. Binary referans kimliği: `8ae00c7621477db27bbb1744c78d0d55d67b5dd4854c14a578aba7d155be0119`. Önceki 78 girdisi ve sonucu değişmedi. Ham girdiler/çıktılar yalnızca `.data/` altında tutulur.
+129 senaryo iki ayrı JVM'de aynı sonucu verdi; kayıtlı referans iki yeni JVM ile yeniden doğrulandı. Binary referans kimliği: `40e3640839f4783a6a3f1b08072a8e7679461e101d4f72b5133ddfe58e06e3d0`. Ham girdiler/çıktılar yalnızca `.data/` altında tutulur.
 
-Yeni aileyle toplam 679 Java senaryosu yakalandı ve iki yeni JVM çalıştırmasıyla kayıtla eşitliği doğrulandı. Birleşik referans kimliği: `34ba8e91cef5a27e4d84dd229d2dd1468ba20c443bbe0d362fceb3110ccd294d`. Eski kayıtlar değiştirilmedi.
+Güncel altı aile corpus'u toplam 1360 Java senaryosundan oluşur ve iki yeni JVM çalıştırmasıyla kayıtla eşitliği doğrulandı. Birleşik referans kimliği: `560602ef9264eceeefea1f7e04180a821c7e67a9bd644f85964cbe1229e4e713`.
 
 Beklenen çıktılar Rust'a göre değiştirilmedi.
 

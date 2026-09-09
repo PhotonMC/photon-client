@@ -2304,6 +2304,27 @@ def utf8_cases():
 
 
 def binary_cases():
+    vec3_values = {
+        "zero": vector_bits(0.0, 0.0, 0.0),
+        "sample": vector_bits(1.25, -2.5, 3.75),
+        "signed-zero": {"x": "8000000000000000", "y": "0000000000000000", "z": "8000000000000000"},
+        "subnormal-and-large": {"x": "0000000000000001", "y": "7fefffffffffffff", "z": "8000000000000001"},
+        "special": {"x": "7ff8000000000002", "y": "7ff0000000000000", "z": "fff0000000000000"},
+    }
+    for label, values in vec3_values.items():
+        yield {"case_id": f"binary/vec3-write/{label}", "family": "binary",
+               "operation": "write", "codec": "vec3", "prefix_hex": "a55a", **values}
+    vec3_payload = "".join(vec3_values["sample"].values())
+    for length in (0, 7, 8, 15, 16, 23, 24):
+        suffix = "55aa" if length in (0, 8, 16, 24) else ""
+        framed = bytes.fromhex(vec3_payload)[:length].hex() + suffix
+        yield {"case_id": f"binary/vec3-read/truncated-{length}", "family": "binary",
+               "operation": "read", "codec": "vec3", "prefix_hex": "a55a", "hex": framed}
+    special_payload = "".join(vec3_values["special"].values())
+    yield {"case_id": "binary/vec3-read/special", "family": "binary",
+           "operation": "read", "codec": "vec3", "prefix_hex": "a55a",
+           "hex": special_payload + "55aa"}
+
     uuids = {
         "zero": ("0000000000000000", "0000000000000000"),
         "max": ("ffffffffffffffff", "ffffffffffffffff"),
