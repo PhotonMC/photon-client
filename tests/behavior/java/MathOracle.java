@@ -351,6 +351,9 @@ public final class MathOracle {
                     Double.POSITIVE_INFINITY,
                     Double.POSITIVE_INFINITY
                 )));
+            } else if (kind.equals("to_string")) {
+                VoxelShape shape = voxelShape(request.getAsJsonObject("shape"));
+                result.addProperty("value", shape.toString());
             } else if (kind.equals("rotate")) {
                 VoxelShape shape = voxelShape(request.getAsJsonObject("box"));
                 OctahedralGroup rotation = OctahedralGroup.valueOf(request.get("rotation").getAsString());

@@ -448,6 +448,18 @@ def math_cases():
            "different": box_bits(-2.0, -0.75, 1.5, -1.25, -0.25, 2.25)}
     yield {"case_id": "shape/object-equals/constants", "family": "math", "operation": "shape",
            "kind": "object_equals_constants"}
+    yield {"case_id": "shape/to-string/empty", "family": "math", "operation": "shape",
+           "kind": "to_string", "shape": box_bits(0.0, 0.0, 0.0, 0.00000005, 1.0, 1.0)}
+    yield {"case_id": "shape/to-string/cube", "family": "math", "operation": "shape",
+           "kind": "to_string", "shape": box_bits(0.125, 0.25, 0.375, 0.625, 0.75, 0.875)}
+    yield {"case_id": "shape/to-string/scientific", "family": "math", "operation": "shape",
+           "kind": "to_string", "shape": box_bits(0.0001, 10000000.0, -0.0,
+                                                        0.0002, 10000001.0, 2.0)}
+    yield {"case_id": "shape/to-string/infinity", "family": "math", "operation": "shape",
+           "kind": "to_string", "shape": box_bits(float("-inf"), float("-inf"), float("-inf"),
+                                                      float("inf"), float("inf"), float("inf"))}
+    yield {"case_id": "shape/to-string/nan", "family": "math", "operation": "shape",
+           "kind": "to_string", "shape": box_bits(float("nan"), 0.0, 0.0, 1.0, 1.0, 1.0)}
     rotate_box = box_bits(0.125, 0.25, 0.375, 0.625, 0.75, 0.875)
     yield {"case_id": "shape/rotate/identity", "family": "math", "operation": "shape", "kind": "rotate",
            "box": rotate_box, "rotation": "IDENTITY"}

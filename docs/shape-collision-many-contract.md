@@ -34,6 +34,6 @@ cargo build --locked --offline --example behavior_adapter
 python3 tools/behavior/run.py compare --family math --adapter target/debug/examples/behavior_adapter
 ```
 
-Çoklu collision senaryolarını içeren math referans kimliği `14e57e20448a161506b7554345c087616634381f5b7865b345738ceea2dac811` oldu. Bu referans iki JVM çalıştırmasıyla kararlı bulundu. Birleşik altı aile referansı `ac2c4ad5c101cb49e75f0ac8ce84fd9925829064f84fb224dd8fcb6107a507bc` kimliğiyle iki JVM'de doğrulandı.
+Çoklu collision senaryolarını içeren math referans kimliği `14e57e20448a161506b7554345c087616634381f5b7865b345738ceea2dac811` oldu. Bu referans iki JVM çalıştırmasıyla kararlı bulundu. Birleşik altı aile referansı `c121387466c02d22c597319b4f93bfab63c1d5b60513759b3db27ed352523c07` kimliğiyle iki JVM'de doğrulandı.
 
-Rust debug ve release adaptörleri math ailesinde 366/366, birleşik corpus'ta 1084/1084 eşleşti. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.
+Rust debug ve release adaptörleri math ailesinde 366/366, birleşik corpus'ta 1089/1089 eşleşti. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.

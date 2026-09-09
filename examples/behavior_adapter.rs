@@ -871,6 +871,10 @@ fn shape_result(request: &Value) -> Result<Value, String> {
                 "infinity_box": infinity.equals_java(&infinity_box),
             }))
         }
+        "to_string" => {
+            let shape = shape_box(request.get("shape").ok_or("shape must be an object")?)?;
+            Ok(json!({"value": shape.to_string_java()}))
+        }
         "rotate" => {
             let shape = shape_box(request.get("box").ok_or("box must be an object")?)?;
             let rotation = ShapeRotation::from_name(string(request, "rotation")?)
