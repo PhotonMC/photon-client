@@ -1673,6 +1673,20 @@ fn math_result(request: &Value) -> Result<Value, String> {
         let second = f64_vec3(request.get("second").ok_or("second must be an object")?)?;
         return Ok(json!({"value": format!("{:016x}", first.dot(second).to_bits())}));
     }
+    if operation == "vec3_distance_to_sqr" {
+        let first = f64_vec3(request.get("first").ok_or("first must be an object")?)?;
+        let second = f64_vec3(request.get("second").ok_or("second must be an object")?)?;
+        return Ok(json!({"value": format!("{:016x}", first.distance_to_sqr(second).to_bits())}));
+    }
+    if operation == "vec3_distance_to_sqr_components" {
+        let first = f64_vec3(request.get("first").ok_or("first must be an object")?)?;
+        let value = first.distance_to_sqr_components(
+            f64_field(request, "x")?,
+            f64_field(request, "y")?,
+            f64_field(request, "z")?,
+        );
+        return Ok(json!({"value": format!("{:016x}", value.to_bits())}));
+    }
     match string(request, "type")? {
         "f32" => {
             let value = f32_field(request, "value")?;

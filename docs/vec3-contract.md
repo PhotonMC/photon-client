@@ -1,6 +1,6 @@
 # P01.b — Vec3 referans sözleşmesi
 
-Bu dilimin **40 Java davranış testi hazırdır ve Rust karşılığı doğrulanmıştır** ([kanıt](math-parity.md)). Dot/cross/vectorTo/add/subtract ve diğer Vec3 yardımcıları bu dilime dahil değildir. Add/subtract overload'ları için ayrı [sözleşme](vec3-add-subtract-contract.md) ve [kanıt](vec3-add-subtract-parity.md), vectorTo için ayrı [sözleşme](vec3-vector-to-contract.md) ve [kanıt](vec3-vector-to-parity.md), dot için ayrı [sözleşme](vec3-dot-contract.md) ve [kanıt](vec3-dot-parity.md), cross için ayrı [sözleşme](vec3-cross-contract.md) ve [kanıt](vec3-cross-parity.md) tutulur.
+Bu dilimin **40 Java davranış testi hazırdır ve Rust karşılığı doğrulanmıştır** ([kanıt](math-parity.md)). Dot/cross/vectorTo/add/subtract/distanceToSqr ve diğer Vec3 yardımcıları bu dilime dahil değildir. Add/subtract overload'ları için ayrı [sözleşme](vec3-add-subtract-contract.md) ve [kanıt](vec3-add-subtract-parity.md), vectorTo için ayrı [sözleşme](vec3-vector-to-contract.md) ve [kanıt](vec3-vector-to-parity.md), dot için ayrı [sözleşme](vec3-dot-contract.md) ve [kanıt](vec3-dot-parity.md), cross için ayrı [sözleşme](vec3-cross-contract.md) ve [kanıt](vec3-cross-parity.md), distanceToSqr için ayrı [sözleşme](vec3-distance-to-sqr-contract.md) ve [kanıt](vec3-distance-to-sqr-parity.md) tutulur.
 
 ## Kaynak ve sınır
 
@@ -36,6 +36,6 @@ python3 tools/behavior/run.py verify --family math
 
 220 math senaryosu iki ayrı JVM'de aynı sonucu verdi. Math referans kimliği: `9d468b5b5edbbe267fb1a4133bfff61c3e528f274f55cb9decd6738beaca43ed`. Önceki 180 girdisi korunur. Ham girdiler/çıktılar yalnızca `.data/` altında tutulur.
 
-Yeni aileyle toplam 650 Java senaryosu yakalandı ve doğrulandı. Birleşik referans kimliği: `8ca11f8017cf6a605669c6437c7df292092304e47e7b567095dc48b195788b64`. Eski kayıtlar değiştirilmedi.
+Yeni aileyle toplam 650 Java senaryosu yakalandı ve doğrulandı. Birleşik referans kimliği: `8ca11f8017cf6a605669c6437c7df292092304e47e7b567595dc48b195788b64`. Eski kayıtlar değiştirilmedi.
 
 Mevcut Rust matematik adaptörü Vec3 içerir. Beklenen çıktılar Rust'a göre değiştirilmedi.

@@ -93,6 +93,17 @@ impl Vec3 {
         )
     }
 
+    pub fn distance_to_sqr(self, other: Self) -> f64 {
+        self.distance_to_sqr_components(other.x, other.y, other.z)
+    }
+
+    pub fn distance_to_sqr_components(self, x: f64, y: f64, z: f64) -> f64 {
+        let xd = x - self.x;
+        let yd = y - self.y;
+        let zd = z - self.z;
+        xd * xd + yd * yd + zd * zd
+    }
+
     pub fn scale(self, factor: f64) -> Self {
         Self::new(self.x * factor, self.y * factor, self.z * factor)
     }

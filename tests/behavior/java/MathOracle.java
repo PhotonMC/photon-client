@@ -118,6 +118,14 @@ public final class MathOracle {
             Vec3 first = vec3(request.getAsJsonObject("first"));
             Vec3 second = vec3(request.getAsJsonObject("second"));
             result.addProperty("value", Oracle.bits(first.dot(second)));
+        } else if (operation.equals("vec3_distance_to_sqr")) {
+            Vec3 first = vec3(request.getAsJsonObject("first"));
+            Vec3 second = vec3(request.getAsJsonObject("second"));
+            result.addProperty("value", Oracle.bits(first.distanceToSqr(second)));
+        } else if (operation.equals("vec3_distance_to_sqr_components")) {
+            Vec3 first = vec3(request.getAsJsonObject("first"));
+            result.addProperty("value", Oracle.bits(first.distanceToSqr(
+                f64(request, "x"), f64(request, "y"), f64(request, "z"))));
         } else if (operation.equals("shape")) {
             String kind = request.get("kind").getAsString();
             if (kind.equals("single")) {
