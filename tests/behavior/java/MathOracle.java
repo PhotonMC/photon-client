@@ -112,11 +112,12 @@ public final class MathOracle {
                 events.add(snapshot(shape));
                 for (var entry : request.getAsJsonArray("steps")) {
                     JsonObject step = entry.getAsJsonObject();
-                    if (step.get("op").getAsString().equals("move")) {
-                        shape = shape.move(f64(step, "dx"), f64(step, "dy"), f64(step, "dz"));
-                    } else {
-                        throw new IllegalArgumentException("Unknown VoxelShape op");
-                    }
+                    shape = switch (step.get("op").getAsString()) {
+                        case "move" -> shape.move(f64(step, "dx"), f64(step, "dy"), f64(step, "dz"));
+                        case "move_vec3" -> shape.move(vec3(step.getAsJsonObject("delta")));
+                        case "move_block_pos" -> shape.move(blockPos(step.getAsJsonObject("delta")));
+                        default -> throw new IllegalArgumentException("Unknown VoxelShape op");
+                    };
                     events.add(snapshot(shape));
                 }
                 result.add("events", events);

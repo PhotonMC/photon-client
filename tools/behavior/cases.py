@@ -190,6 +190,20 @@ def math_cases():
            "kind": "single", "box": box_bits(-0.25, 0.125, 0.0, 0.75, 0.875, 1.25),
            "steps": [{"op": "move", "dx": float_bits(0.5, "f64"),
                       "dy": float_bits(-0.125, "f64"), "dz": float_bits(2, "f64")}]}
+    yield {"case_id": "shape/move-overload/vec3", "family": "math", "operation": "shape",
+           "kind": "single", "box": box_bits(0.125, 0.25, 0.375, 0.625, 0.75, 0.875),
+           "steps": [{"op": "move_vec3", "delta": {"x": float_bits(-0.5, "f64"),
+                                                        "y": float_bits(1.25, "f64"),
+                                                        "z": float_bits(-1.75, "f64")}}]}
+    yield {"case_id": "shape/move-overload/block-pos", "family": "math", "operation": "shape",
+           "kind": "single", "box": box_bits(-3.5, -2.25, 4.75, -1.0, 0.5, 6.25),
+           "steps": [{"op": "move_block_pos", "delta": {"x": "-2", "y": "3", "z": "4"}}]}
+    yield {"case_id": "shape/move-overload/empty", "family": "math", "operation": "shape",
+           "kind": "single", "box": box_bits(0.0, 0.0, 0.0, 0.00000005, 1.0, 1.0),
+           "steps": [{"op": "move_vec3", "delta": {"x": float_bits(float("inf"), "f64"),
+                                                        "y": float_bits(-float("inf"), "f64"),
+                                                        "z": float_bits(float("nan"), "f64")}},
+                      {"op": "move_block_pos", "delta": {"x": "2147483647", "y": "-2147483648", "z": "0"}}]}
     yield {"case_id": "shape/empty/sliver", "family": "math", "operation": "shape",
            "kind": "single", "box": box_bits(0, 0, 0, 0.00000005, 1, 1), "steps": []}
     yield {"case_id": "shape/or/disjoint", "family": "math", "operation": "shape", "kind": "join",

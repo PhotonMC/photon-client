@@ -518,14 +518,20 @@ fn shape_result(request: &Value) -> Result<Value, String> {
                 .as_array()
                 .ok_or("steps must be an array")?
             {
-                if string(step, "op")? != "move" {
-                    return Err("unknown VoxelShape operation".into());
-                }
-                value = value.move_by(
-                    f64_field(step, "dx")?,
-                    f64_field(step, "dy")?,
-                    f64_field(step, "dz")?,
-                );
+                value = match string(step, "op")? {
+                    "move" => value.move_by(
+                        f64_field(step, "dx")?,
+                        f64_field(step, "dy")?,
+                        f64_field(step, "dz")?,
+                    ),
+                    "move_vec3" => value.move_by_vec3(f64_vec3(
+                        step.get("delta").ok_or("delta must be an object")?,
+                    )?),
+                    "move_block_pos" => value.move_by_block_pos(blockpos(
+                        step.get("delta").ok_or("delta must be an object")?,
+                    )?),
+                    _ => return Err("unknown VoxelShape operation".into()),
+                };
                 events.push(shape_snapshot(&value));
             }
             Ok(json!({"events": events}))

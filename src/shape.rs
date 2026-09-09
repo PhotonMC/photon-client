@@ -182,6 +182,16 @@ impl VoxelShape {
         )
     }
 
+    /// Move by a double-precision vector.
+    pub fn move_by_vec3(&self, delta: Vec3) -> Self {
+        self.move_by(delta.x, delta.y, delta.z)
+    }
+
+    /// Move by integer block coordinates converted to double precision.
+    pub fn move_by_block_pos(&self, delta: BlockPos) -> Self {
+        self.move_by(f64::from(delta.x), f64::from(delta.y), f64::from(delta.z))
+    }
+
     /// Return the smallest AABB containing every occupied cell.
     pub fn bounds(&self) -> Option<Aabb> {
         let mut min_x = usize::MAX;
