@@ -240,6 +240,20 @@ def math_cases():
                box_bits(0.25, 0.0, 0.0, 0.5, 1.0, 1.0),
                box_bits(0.5, 0.0, 0.0, 0.75, 1.0, 1.0),
            ]}
+    yield {"case_id": "shape/single-encompassing/empty", "family": "math", "operation": "shape",
+           "kind": "single_encompassing", "shapes": [
+               box_bits(0.0, 0.0, 0.0, 0.00000005, 1.0, 1.0),
+           ]}
+    yield {"case_id": "shape/single-encompassing/touching", "family": "math", "operation": "shape",
+           "kind": "single_encompassing", "shapes": [
+               box_bits(0.0, 0.0, 0.0, 0.5, 1.0, 1.0),
+               box_bits(0.5, 0.0, 0.0, 1.0, 1.0, 1.0),
+           ]}
+    yield {"case_id": "shape/single-encompassing/disjoint", "family": "math", "operation": "shape",
+           "kind": "single_encompassing", "shapes": [
+               box_bits(0.0, 0.0, 0.0, 0.25, 0.5, 0.75),
+               box_bits(0.75, 0.25, 0.5, 1.0, 1.0, 1.0),
+           ]}
     yield {"case_id": "shape/equal/same-box", "family": "math", "operation": "shape", "kind": "equal",
            "first": box_bits(0.0, 0.0, 0.0, 1.0, 1.0, 1.0),
            "second": box_bits(0.0, 0.0, 0.0, 1.0, 1.0, 1.0)}

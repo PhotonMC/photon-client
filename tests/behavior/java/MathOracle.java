@@ -147,6 +147,17 @@ public final class MathOracle {
                     tail[i - 1] = voxelShape(entries.get(i).getAsJsonObject());
                 }
                 result.add("shape", snapshot(Shapes.or(first, tail)));
+            } else if (kind.equals("single_encompassing")) {
+                var entries = request.getAsJsonArray("shapes");
+                if (entries == null || entries.size() == 0) {
+                    throw new IllegalArgumentException("single_encompassing needs at least one shape");
+                }
+                VoxelShape first = voxelShape(entries.get(0).getAsJsonObject());
+                VoxelShape[] tail = new VoxelShape[entries.size() - 1];
+                for (int i = 1; i < entries.size(); i++) {
+                    tail[i - 1] = voxelShape(entries.get(i).getAsJsonObject());
+                }
+                result.add("shape", snapshot(Shapes.or(first, tail).singleEncompassing()));
             } else if (kind.equals("equal")) {
                 VoxelShape first = voxelShape(request.getAsJsonObject("first"));
                 VoxelShape second = voxelShape(request.getAsJsonObject("second"));

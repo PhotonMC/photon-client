@@ -219,6 +219,22 @@ impl VoxelShape {
         })
     }
 
+    /// Collapse a shape to one box spanning its occupied coordinate bounds.
+    pub fn single_encompassing(&self) -> Self {
+        let Some(bounds) = self.bounds() else {
+            return Shapes::empty();
+        };
+        Shapes::box_shape(
+            bounds.min_x,
+            bounds.min_y,
+            bounds.min_z,
+            bounds.max_x,
+            bounds.max_y,
+            bounds.max_z,
+        )
+        .expect("occupied shape bounds are ordered")
+    }
+
     /// Limit an axis-aligned moving box's distance against this shape.
     pub fn collide(&self, axis: Axis, moving: Aabb, distance: f64) -> f64 {
         if self.is_empty() {
