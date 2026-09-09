@@ -123,6 +123,10 @@ impl Vec3 {
         Self::new(self.x * x_scale, self.y * y_scale, self.z * z_scale)
     }
 
+    pub fn horizontal(self) -> Self {
+        Self::new(self.x, 0.0, self.z)
+    }
+
     pub fn length_squared(self) -> f64 {
         // Keep the reference evaluation order; do not fuse or substitute hypot.
         self.x * self.x + self.y * self.y + self.z * self.z

@@ -1646,6 +1646,7 @@ fn math_result(request: &Value) -> Result<Value, String> {
                     f64_field(step, "y")?,
                     f64_field(step, "z")?,
                 ),
+                "horizontal" => vector.horizontal(),
                 "add_vec3" => vector.add_vec3(f64_vec3(
                     step.get("delta").ok_or("delta must be an object")?,
                 )?),

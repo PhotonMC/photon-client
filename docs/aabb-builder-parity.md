@@ -6,16 +6,16 @@
 
 Java 25.0.4.1 ve Rust 1.98.1 / Linux x86_64 ortamında:
 
-- Math ailesinin 685 senaryoluk referansı iki ayrı JVM çalıştırmasıyla kararlı bulundu.
-- Rust debug ve release adaptörleri **685/685** math senaryosunda eşleşti.
-- Birleşik altı aile corpus'u **1139/1139** senaryoda hem debug hem release adaptörüyle eşleşti.
+- Math ailesinin 690 senaryoluk referansı iki ayrı JVM çalıştırmasıyla kararlı bulundu.
+- Rust debug ve release adaptörleri **690/690** math senaryosunda eşleşti.
+- Birleşik altı aile corpus'u **1144/1144** senaryoda hem debug hem release adaptörüyle eşleşti.
 - Beş yeni senaryoda boş builder, tekli ve çoklu nokta birikimi, f32 hassasiyeti ve signed zero/NaN/sonsuzluk yolları karşılaştırıldı.
 - Tanımsız `build()` sonucu Java'daki `IllegalStateException` yoluna karşı `undefined` sonucu olarak doğrulandı.
-- `verify` çalıştırması kayıtlı 1139 senaryoluk Java referansını yeniden doğruladı.
+- `verify` çalıştırması kayıtlı 1144 senaryoluk Java referansını yeniden doğruladı.
 
-Math referansı `420fd67254c578e987c7ec5b975c1360f16d2eb8e7d91134b1b7f1f645635be2`, birleşik referans `d2ca721ca4ab536a692660afc465bae364927288154e3b38676eb7e5c86fa0f8` kimliğindedir.
+Math referansı `31f4b1230de1d4d8a6bb6d31a52a050cd52ce8c914c72e59f3257ac732c2a09d`, birleşik referans `20a0069e9085f30715b87aa3faae8a6ddc18d0b8a9e38233defa7ee4c21de6a8` kimliğindedir.
 
-Yerel raporlar: `compare-2oxv9wmk` (math debug), `compare-54arzdz4` (math release), `compare-3tby77d3` (birleşik debug), `compare-nscg_s6g` (birleşik release) ve `verify-bf1nxkx8` dizinlerinde, `.data/runs/behavior/` altında bulunur.
+Yerel raporlar: `compare-dj0jpbgi` (math debug), `compare-n_mw5890` (math release), `compare-wess7nxh` (birleşik debug), `compare-pqt_xf95` (birleşik release) ve `verify-0qkr8bmj` dizinlerinde, `.data/runs/behavior/` altında bulunur.
 
 ## Sınırlar
 
