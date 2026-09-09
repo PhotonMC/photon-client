@@ -239,6 +239,27 @@ public final class MathOracle {
             value.addProperty("coordinates", Long.toUnsignedString(SectionPos.asLong(x, y, z), 16));
             value.addProperty("instance", Long.toUnsignedString(SectionPos.of(sectionX, sectionY, sectionZ).asLong(), 16));
             result.add("value", value);
+        } else if (operation.equals("sectionpos_offset")) {
+            long sectionNode = Long.parseUnsignedLong(request.get("section_node").getAsString(), 16);
+            Direction direction = Direction.byName(request.get("direction").getAsString());
+            if (direction == null) {
+                throw new IllegalArgumentException("Unknown SectionPos offset direction");
+            }
+            int stepX = Integer.parseInt(request.get("step_x").getAsString());
+            int stepY = Integer.parseInt(request.get("step_y").getAsString());
+            int stepZ = Integer.parseInt(request.get("step_z").getAsString());
+            int x = Integer.parseInt(request.get("x").getAsString());
+            int y = Integer.parseInt(request.get("y").getAsString());
+            int z = Integer.parseInt(request.get("z").getAsString());
+            SectionPos instance = SectionPos.of(x, y, z).offset(stepX, stepY, stepZ);
+            var value = new JsonObject();
+            value.addProperty("packed_direction", Long.toUnsignedString(SectionPos.offset(sectionNode, direction), 16));
+            value.addProperty("packed_steps", Long.toUnsignedString(SectionPos.offset(sectionNode, stepX, stepY, stepZ), 16));
+            value.addProperty("instance_x", Integer.toString(instance.x()));
+            value.addProperty("instance_y", Integer.toString(instance.y()));
+            value.addProperty("instance_z", Integer.toString(instance.z()));
+            value.addProperty("instance_packed", Long.toUnsignedString(instance.asLong(), 16));
+            result.add("value", value);
         } else if (operation.equals("chunkpos_validity")) {
             ChunkPos pos = chunkPos(request);
             result.add("value", chunkPosValidity(pos));

@@ -35,8 +35,8 @@ Yeni kimlik, önceki random/Gaussian/fork kayıtlarının üzerine yazmadan olu�
 
 337 math senaryosu iki ayrı JVM'de aynı sonucu verdi. Math referans kimliği: `8dc5cad800d19ec1507e2454e97aeb79e53b77267dddada36f77b45771b44f99`.
 
-Altı ailenin 1521 senaryolu birleşik referansı iki JVM'de doğrulandı. Birleşik referans kimliği: `53cb6b5a4397567e26419e7466bcd8577c97308e626648d85f2a40bb55fb2406`.
+Altı ailenin 1527 senaryolu birleşik referansı iki JVM'de doğrulandı. Birleşik referans kimliği: `74f88dfa13fb755a92b838953181016d177ef3a05b113b5fa8ef1f3735031acc`.
 
-Rust debug ve release adaptörleri math ailesinde **337/337**, birleşik corpus'ta **1521/1521** eşleşti. Yerel raporlar `compare-yxttfhcx` (math debug), `compare-h6jl6e0l` (math release), `compare-uh_quimp` (birleşik debug) ve `compare-233_yr3a` (birleşik release) dizinlerinde, `.data/runs/behavior/` altında bulunur.
+Rust debug ve release adaptörleri math ailesinde **337/337**, birleşik corpus'ta **1527/1527** eşleşti. Yerel raporlar `compare-yxttfhcx` (math debug), `compare-h6jl6e0l` (math release), `compare-7wace8y9` (birleşik debug) ve `compare-ohni39xi` (birleşik release) dizinlerinde, `.data/runs/behavior/` altında bulunur.
 
 Bu sözleşme legacy kaynağın `setSeed` ve Gaussian cache reset yoluyla sınırlıdır. Xoroshiro/ThreadSafe kaynakları, overflow ile oluşan geçersiz bound hataları ve istemcinin daha geniş random tüketim sıraları sonraki testlerdir.

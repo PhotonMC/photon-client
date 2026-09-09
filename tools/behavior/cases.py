@@ -399,6 +399,42 @@ def math_cases():
         yield {"case_id": f"sectionpos/as-long/{label}", "family": "math",
                "operation": "sectionpos_as_long", **values}
 
+    sectionpos_offset = {
+        "origin-zero": {
+            "section_node": "0000000000000000", "direction": "north",
+            "step_x": "0", "step_y": "0", "step_z": "0",
+            "x": "0", "y": "0", "z": "0",
+        },
+        "positive": {
+            "section_node": "0000040000300002", "direction": "east",
+            "step_x": "1", "step_y": "2", "step_z": "3",
+            "x": "1", "y": "2", "z": "3",
+        },
+        "negative": {
+            "section_node": "ffffffffffffffff", "direction": "down",
+            "step_x": "-1", "step_y": "-2", "step_z": "-3",
+            "x": "-1", "y": "-2", "z": "-3",
+        },
+        "packed-positive-limit": {
+            "section_node": "7ffffdfffff7ffff", "direction": "up",
+            "step_x": "1", "step_y": "1", "step_z": "1",
+            "x": "2097151", "y": "524287", "z": "2097151",
+        },
+        "i32-wrap": {
+            "section_node": "8000020000080000", "direction": "west",
+            "step_x": "2147483647", "step_y": "-2147483648", "step_z": "-1",
+            "x": "2147483647", "y": "-2147483648", "z": "2147483647",
+        },
+        "arbitrary-zero": {
+            "section_node": "aa55aa5555aa55aa", "direction": "south",
+            "step_x": "0", "step_y": "0", "step_z": "0",
+            "x": "305419896", "y": "-305419896", "z": "1432778632",
+        },
+    }
+    for label, values in sectionpos_offset.items():
+        yield {"case_id": f"sectionpos/offset/{label}", "family": "math",
+               "operation": "sectionpos_offset", **values}
+
     chunkpos_validity = {
         "origin": {"x": "0", "z": "0"},
         "boundary": {"x": "2097061", "z": "-2097061"},

@@ -8,16 +8,16 @@ Java 25.0.4.1 ve Rust 1.98.1 / Linux x86_64 ortamında:
 
 - SectionPos packed dönüşümleri için 6 özgün senaryo hazırlandı.
 - Origin, pozitif/negatif alanlar, 22/20 bit sınırları, i32 koordinat maskelenmesi ve keyfi bit desenleri doğrudan Java/Rust API'leriyle karşılaştırıldı.
-- Rust debug ve release adaptörleri güncel **1019/1019** math senaryosunda eşleşti.
-- Birleşik altı aile corpus'u **1521/1521** senaryoda hem debug hem release adaptörüyle eşleşti.
+- Rust debug ve release adaptörleri güncel **1025/1025** math senaryosunda eşleşti.
+- Birleşik altı aile corpus'u **1527/1527** senaryoda hem debug hem release adaptörüyle eşleşti.
 - Math ve birleşik `verify` çalıştırmaları kayıtlı Java referanslarını yeniden doğruladı.
 
-Math referans kimliği: `5df2c7aa290a2d3deb2e318553a41a27dbe6b08b22e1d31b68362eedc36e2108`. Birleşik referans kimliği: `53cb6b5a4397567e26419e7466bcd8577c97308e626648d85f2a40bb55fb2406`.
+Math referans kimliği: `2c79e2aaba1154782177df83cd39488c1c9a365c76e1971733e837c447fe9fa3`. Birleşik referans kimliği: `74f88dfa13fb755a92b838953181016d177ef3a05b113b5fa8ef1f3735031acc`.
 
-Adapter hashleri: debug `16d22ebaba2149325070f38dc9f824049f2dabd75096e5e62690f4382900cdf2`, release `b5946ae548e5415df7ce5856927d83f5b454c350ac8d8ef6164949b8a7eca5f1`.
+Adapter hashleri: debug `7a355c6fac53d7c505e7f5dbf7ec0f7727bb2221b2f1c958f9b0281847b97deb`, release `c0dd231fcb30a82a482e257a42bbb9e9c76d5d978f7d81154cf4667af21af968`.
 
-Yerel raporlar: `compare-_lwapdio` ve `compare-ed7p25g6` (math debug/release), `compare-uh_quimp` ve `compare-233_yr3a` (birleşik debug/release), `verify-9lc8nch` (math) ve `verify-wqacm20n` (birleşik) `.data/runs/behavior/` altında bulunur.
+Yerel raporlar: `compare-0dsoh6yn` ve `compare-wdh5yokb` (math debug/release), `compare-7wace8y9` ve `compare-ohni39xi` (birleşik debug/release), `verify-4pgflsld` (math) ve `verify-a7iqdyvs` (birleşik) `.data/runs/behavior/` altında bulunur.
 
 ## Sınırlar
 
-Bu kanıt packed SectionPos dönüşümleriyle sınırlıdır. SectionPos `asLong` overload'ları, `offset`, `getZeroNode` dışındaki node akışları ve `blocksInside`/`cube` iterasyonları ayrı dilimlerdir. `.data/` altındaki Java runtime, capture ve türetilmiş çıktılar test girdisi olarak yerel kalır.
+Bu kanıt packed SectionPos dönüşümleriyle sınırlıdır. SectionPos `asLong` ve `offset` dışındaki node akışları ile `blocksInside`/`cube` iterasyonları ayrı dilimlerdir. `.data/` altındaki Java runtime, capture ve türetilmiş çıktılar test girdisi olarak yerel kalır.

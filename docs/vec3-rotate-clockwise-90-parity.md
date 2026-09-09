@@ -6,15 +6,15 @@
 
 Java 25.0.4.1 ve Rust 1.98.1 / Linux x86_64 ortamında:
 
-- Math ailesinin 1019 senaryoluk referansı iki ayrı JVM çalıştırmasıyla kararlı bulundu.
-- Rust debug ve release adaptörleri **1019/1019** math senaryosunda eşleşti.
+- Math ailesinin 1025 senaryoluk referansı iki ayrı JVM çalıştırmasıyla kararlı bulundu.
+- Rust debug ve release adaptörleri **1025/1025** math senaryosunda eşleşti.
 - Beş yeni senaryoda eksen permütasyonu, negatif bileşenler, signed zero, subnormal/en büyük sonlu değerler ve Infinity/NaN taşınması karşılaştırıldı.
-- Birleşik altı aile corpus'u **1521/1521** senaryoda hem debug hem release adaptörüyle eşleşti.
-- `verify` çalıştırması kayıtlı 1521 senaryoluk Java referansını yeniden doğruladı.
+- Birleşik altı aile corpus'u **1527/1527** senaryoda hem debug hem release adaptörüyle eşleşti.
+- `verify` çalıştırması kayıtlı 1527 senaryoluk Java referansını yeniden doğruladı.
 
-Math referansı `5df2c7aa290a2d3deb2e318553a41a27dbe6b08b22e1d31b68362eedc36e2108`, birleşik referans `53cb6b5a4397567e26419e7466bcd8577c97308e626648d85f2a40bb55fb2406` kimliğindedir.
+Math referansı `2c79e2aaba1154782177df83cd39488c1c9a365c76e1971733e837c447fe9fa3`, birleşik referans `74f88dfa13fb755a92b838953181016d177ef3a05b113b5fa8ef1f3735031acc` kimliğindedir.
 
-Yerel raporlar: `compare-_lwapdio` (math debug), `compare-ed7p25g6` (math release), `compare-uh_quimp` (birleşik debug), `compare-233_yr3a` (birleşik release) ve `verify-wqacm20n` dizinlerinde, `.data/runs/behavior/` altında bulunur.
+Yerel raporlar: `compare-0dsoh6yn` (math debug), `compare-wdh5yokb` (math release), `compare-7wace8y9` (birleşik debug), `compare-ohni39xi` (birleşik release) ve `verify-a7iqdyvs` dizinlerinde, `.data/runs/behavior/` altında bulunur.
 
 ## Sınırlar
 

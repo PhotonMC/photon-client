@@ -305,6 +305,23 @@ fn sectionpos_as_long_snapshot(
     })
 }
 
+fn sectionpos_offset_snapshot(
+    section_node: u64,
+    direction: Direction,
+    steps: (i32, i32, i32),
+    initial: SectionPos,
+) -> Value {
+    let instance = initial.offset(steps.0, steps.1, steps.2);
+    json!({
+        "packed_direction": format!("{:x}", SectionPos::offset_packed(section_node, direction)),
+        "packed_steps": format!("{:x}", SectionPos::offset_packed_by(section_node, steps.0, steps.1, steps.2)),
+        "instance_x": instance.x.to_string(),
+        "instance_y": instance.y.to_string(),
+        "instance_z": instance.z.to_string(),
+        "instance_packed": format!("{:x}", instance.as_long()),
+    })
+}
+
 fn chunkpos_region_coordinates_snapshot(value: ChunkPos, region_x: i32, region_z: i32) -> Value {
     json!({
         "region_x": value.get_region_x().to_string(),
@@ -2063,6 +2080,27 @@ fn math_result(request: &Value) -> Result<Value, String> {
                 coordinate("section_x")?,
                 coordinate("section_y")?,
                 coordinate("section_z")?,
+            ),
+        }));
+    }
+    if operation == "sectionpos_offset" {
+        let coordinate = |name: &str| {
+            string(request, name)?
+                .parse::<i32>()
+                .map_err(|error| error.to_string())
+        };
+        let direction = Direction::from_name(string(request, "direction")?)
+            .ok_or("unknown SectionPos offset direction")?;
+        return Ok(json!({
+            "value": sectionpos_offset_snapshot(
+                u64_hex_field(request, "section_node")?,
+                direction,
+                (
+                    coordinate("step_x")?,
+                    coordinate("step_y")?,
+                    coordinate("step_z")?,
+                ),
+                SectionPos::new(coordinate("x")?, coordinate("y")?, coordinate("z")?),
             ),
         }));
     }

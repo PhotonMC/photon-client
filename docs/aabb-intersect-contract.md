@@ -36,6 +36,6 @@ cargo build --locked --offline --example behavior_adapter
 python3 tools/behavior/run.py compare --family math --adapter target/debug/examples/behavior_adapter
 ```
 
-Intersect senaryolarını içeren math referans kimliği `067168f58b7d3c483bc26a542577bb0191d5cf0956a168754322b8805241bae5` oldu. Bu referans iki JVM çalıştırmasıyla kararlı bulundu. Birleşik altı aile referansı `53cb6b5a4397567e26419e7466bcd8577c97308e626648d85f2a40bb55fb2406` kimliğiyle iki JVM'de doğrulandı.
+Intersect senaryolarını içeren math referans kimliği `067168f58b7d3c483bc26a542577bb0191d5cf0956a168754322b8805241bae5` oldu. Bu referans iki JVM çalıştırmasıyla kararlı bulundu. Birleşik altı aile referansı `74f88dfa13fb755a92b838953181016d177ef3a05b113b5fa8ef1f3735031acc` kimliğiyle iki JVM'de doğrulandı.
 
-Rust debug ve release adaptörleri math ailesinde 382/382, birleşik corpus'ta 1521/1521 eşleşti. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.
+Rust debug ve release adaptörleri math ailesinde 382/382, birleşik corpus'ta 1527/1527 eşleşti. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.

@@ -6,6 +6,7 @@
 //! UUID can leave the first half consumed while a truncated position
 //! consumes nothing.
 
+use crate::direction::Direction;
 use crate::math::{self, Vec3};
 use crate::wire;
 
@@ -767,6 +768,35 @@ impl SectionPos {
     /// Pack this section position through the coordinate overload's path.
     pub fn as_long(self) -> u64 {
         Self::as_long_coordinates(self.x, self.y, self.z)
+    }
+
+    /// Offset a packed section node by a cardinal direction's step.
+    pub fn offset_packed(section_node: u64, direction: Direction) -> u64 {
+        let (step_x, step_y, step_z) = direction.step();
+        Self::offset_packed_by(section_node, step_x, step_y, step_z)
+    }
+
+    /// Offset a packed section node with Java i32 wrapping arithmetic.
+    pub fn offset_packed_by(section_node: u64, step_x: i32, step_y: i32, step_z: i32) -> u64 {
+        let section = Self::unpack(section_node);
+        Self::as_long_coordinates(
+            section.x.wrapping_add(step_x),
+            section.y.wrapping_add(step_y),
+            section.z.wrapping_add(step_z),
+        )
+    }
+
+    /// Offset section coordinates, preserving the zero-offset fast path.
+    pub fn offset(self, x: i32, y: i32, z: i32) -> Self {
+        if x == 0 && y == 0 && z == 0 {
+            self
+        } else {
+            Self::new(
+                self.x.wrapping_add(x),
+                self.y.wrapping_add(y),
+                self.z.wrapping_add(z),
+            )
+        }
     }
 
     /// Read the signed 22-bit x coordinate from a packed SectionPos.

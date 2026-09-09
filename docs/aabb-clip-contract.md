@@ -33,8 +33,8 @@ python3 tools/behavior/run.py compare --family math --adapter target/debug/examp
 
 323 math senaryosu iki ayrı JVM'de aynı sonucu verdi. Math referans kimliği: `b04328d3820db8458e37a31e45b96c1c92ba29348f35c055b49ac522f339a43e`. Ham girdiler/çıktılar yalnızca `.data/` altında tutulur.
 
-Altı ailenin 1521 senaryolu birleşik referansı iki JVM'de doğrulandı. Birleşik referans kimliği: `53cb6b5a4397567e26419e7466bcd8577c97308e626648d85f2a40bb55fb2406`.
+Altı ailenin 1527 senaryolu birleşik referansı iki JVM'de doğrulandı. Birleşik referans kimliği: `74f88dfa13fb755a92b838953181016d177ef3a05b113b5fa8ef1f3735031acc`.
 
-Math debug ve release Rust adaptörleri **323/323** eşleşti; birleşik debug ve release karşılaştırmaları da **1521/1521** geçti. Yerel raporlar `compare-71jdlsjf` (math debug), `compare-owaw1c7e` (math release), `compare-uh_quimp` (birleşik debug) ve `compare-233_yr3a` (birleşik release) dizinlerinde, `.data/runs/behavior/` altında bulunur.
+Math debug ve release Rust adaptörleri **323/323** eşleşti; birleşik debug ve release karşılaştırmaları da **1527/1527** geçti. Yerel raporlar `compare-71jdlsjf` (math debug), `compare-owaw1c7e` (math release), `compare-7wace8y9` (birleşik debug) ve `compare-ohni39xi` (birleşik release) dizinlerinde, `.data/runs/behavior/` altında bulunur.
 
 Bu doğrulama tek kutulu `AABB.clip(Vec3, Vec3)` yoluyla sınırlıdır. Koordinat endpoint'li overload [ayrı kanıttadır](aabb-clip-coordinates-parity.md); çoklu AABB shape birleştirme, yüz yönü ve istemci hedefleme davranışları ayrı eşitlik dilimleridir.
