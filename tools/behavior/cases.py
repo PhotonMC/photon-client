@@ -307,6 +307,20 @@ def math_cases():
         yield {"case_id": f"sectionpos/block-coordinates/{label}", "family": "math",
                "operation": "sectionpos_block_coordinates", **values}
 
+    sectionpos_relative_to_block = {
+        "origin-zero": {"x": "0", "y": "0", "z": "0", "relative": "0"},
+        "positive-corner": {"x": "1", "y": "2", "z": "3", "relative": "4095"},
+        "negative-all": {"x": "-1", "y": "-2", "z": "-3", "relative": "-1"},
+        "mixed-relative": {"x": "-2", "y": "3", "z": "-4", "relative": "1322"},
+        "short-min": {"x": "1", "y": "2", "z": "3", "relative": "-32768"},
+        "coordinate-boundaries": {
+            "x": "134217727", "y": "-134217728", "z": "-134217729", "relative": "4095"
+        },
+    }
+    for label, values in sectionpos_relative_to_block.items():
+        yield {"case_id": f"sectionpos/relative-to-block/{label}", "family": "math",
+               "operation": "sectionpos_relative_to_block", **values}
+
     chunkpos_validity = {
         "origin": {"x": "0", "z": "0"},
         "boundary": {"x": "2097061", "z": "-2097061"},

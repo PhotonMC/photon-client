@@ -190,6 +190,21 @@ public final class MathOracle {
             value.addProperty("max_block_y", Integer.toString(pos.maxBlockY()));
             value.addProperty("max_block_z", Integer.toString(pos.maxBlockZ()));
             result.add("value", value);
+        } else if (operation.equals("sectionpos_relative_to_block")) {
+            SectionPos pos = SectionPos.of(
+                Integer.parseInt(request.get("x").getAsString()),
+                Integer.parseInt(request.get("y").getAsString()),
+                Integer.parseInt(request.get("z").getAsString()));
+            short relative = Short.parseShort(request.get("relative").getAsString());
+            var value = new JsonObject();
+            value.addProperty("relative_x", Integer.toString(SectionPos.sectionRelativeX(relative)));
+            value.addProperty("relative_y", Integer.toString(SectionPos.sectionRelativeY(relative)));
+            value.addProperty("relative_z", Integer.toString(SectionPos.sectionRelativeZ(relative)));
+            value.addProperty("block_x", Integer.toString(pos.relativeToBlockX(relative)));
+            value.addProperty("block_y", Integer.toString(pos.relativeToBlockY(relative)));
+            value.addProperty("block_z", Integer.toString(pos.relativeToBlockZ(relative)));
+            value.add("block_position", snapshot(pos.relativeToBlockPos(relative)));
+            result.add("value", value);
         } else if (operation.equals("chunkpos_validity")) {
             ChunkPos pos = chunkPos(request);
             result.add("value", chunkPosValidity(pos));

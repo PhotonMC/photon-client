@@ -1973,6 +1973,23 @@ fn math_result(request: &Value) -> Result<Value, String> {
             "value": sectionpos_block_coordinates_snapshot(sectionpos(request)?),
         }));
     }
+    if operation == "sectionpos_relative_to_block" {
+        let value = sectionpos(request)?;
+        let relative = string(request, "relative")?
+            .parse::<i16>()
+            .map_err(|error| error.to_string())? as u16;
+        return Ok(json!({
+            "value": {
+                "relative_x": SectionPos::section_relative_x(relative).to_string(),
+                "relative_y": SectionPos::section_relative_y(relative).to_string(),
+                "relative_z": SectionPos::section_relative_z(relative).to_string(),
+                "block_x": value.relative_to_block_x(relative).to_string(),
+                "block_y": value.relative_to_block_y(relative).to_string(),
+                "block_z": value.relative_to_block_z(relative).to_string(),
+                "block_position": blockpos_snapshot(value.relative_to_block_pos(relative)),
+            },
+        }));
+    }
     if operation == "chunkpos_validity" {
         return Ok(json!({
             "value": chunkpos_validity_snapshot(chunkpos(request)?),

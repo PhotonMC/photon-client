@@ -796,6 +796,33 @@ impl SectionPos {
         self.min_block_z().wrapping_add(15)
     }
 
+    /// Add a section-relative short's x offset to the section's block origin.
+    pub fn relative_to_block_x(self, relative: u16) -> i32 {
+        self.min_block_x()
+            .wrapping_add(Self::section_relative_x(relative))
+    }
+
+    /// Add a section-relative short's y offset to the section's block origin.
+    pub fn relative_to_block_y(self, relative: u16) -> i32 {
+        self.min_block_y()
+            .wrapping_add(Self::section_relative_y(relative))
+    }
+
+    /// Add a section-relative short's z offset to the section's block origin.
+    pub fn relative_to_block_z(self, relative: u16) -> i32 {
+        self.min_block_z()
+            .wrapping_add(Self::section_relative_z(relative))
+    }
+
+    /// Convert a section-relative short into a block position in this section.
+    pub fn relative_to_block_pos(self, relative: u16) -> BlockPos {
+        BlockPos::new(
+            self.relative_to_block_x(relative),
+            self.relative_to_block_y(relative),
+            self.relative_to_block_z(relative),
+        )
+    }
+
     /// Unpack with arithmetic shifts, sign-extending each field.
     pub fn unpack(packed: u64) -> Self {
         Self {
