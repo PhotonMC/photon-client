@@ -2,7 +2,7 @@
 
 use serde_json::{Value, json};
 use std::io::{self, BufRead, Write};
-use voxel_client::aabb::Aabb;
+use voxel_client::aabb::{Aabb, BoundingBox};
 use voxel_client::binary::{self, BlockPos, SectionPos, Uuid};
 use voxel_client::direction::{Axis, Direction};
 use voxel_client::math::{self, Vec2, Vec3};
@@ -159,6 +159,22 @@ fn blockpos(value: &Value) -> Result<BlockPos, String> {
         coordinate("x")?,
         coordinate("y")?,
         coordinate("z")?,
+    ))
+}
+
+fn bounding_box(value: &Value) -> Result<BoundingBox, String> {
+    let coordinate = |name: &str| {
+        string(value, name)?
+            .parse::<i32>()
+            .map_err(|error| error.to_string())
+    };
+    Ok(BoundingBox::new(
+        coordinate("min_x")?,
+        coordinate("min_y")?,
+        coordinate("min_z")?,
+        coordinate("max_x")?,
+        coordinate("max_y")?,
+        coordinate("max_z")?,
     ))
 }
 
@@ -632,6 +648,11 @@ fn aabb_result(request: &Value) -> Result<Value, String> {
                 let first = blockpos(step.get("first").ok_or("first must be an object")?)?;
                 let second = blockpos(step.get("second").ok_or("second must be an object")?)?;
                 value = Aabb::encapsulating_full_blocks(first, second);
+                events.push(aabb_snapshot(value));
+            }
+            "of_bounding_box" => {
+                let bounds = bounding_box(step.get("box").ok_or("box must be an object")?)?;
+                value = Aabb::of_bounding_box(bounds);
                 events.push(aabb_snapshot(value));
             }
             "intersects" => {

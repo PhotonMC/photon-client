@@ -35,6 +35,6 @@ cargo build --locked --offline --example behavior_adapter
 python3 tools/behavior/run.py compare --family math --adapter target/debug/examples/behavior_adapter
 ```
 
-Axis min/max senaryolarını içeren math referans kimliği `803f0124e49c7979da9fe752dd944ea1e0edce936d4d6afa25b3ab5358a5514c` oldu. Bu referans iki JVM çalıştırmasıyla kararlı bulundu. Birleşik altı aile referansı `e2987f47bc7368919206653ca5d97a5c29d66903d5d38350380e0d43d38976c7` kimliğiyle iki JVM'de doğrulandı.
+Axis min/max senaryolarını içeren math referans kimliği `803f0124e49c7979da9fe752dd944ea1e0edce936d4d6afa25b3ab5358a5514c` oldu. Bu referans iki JVM çalıştırmasıyla kararlı bulundu. Birleşik altı aile referansı `a12f90ce3c02be38a6dfe6911fecfbecd2511e150797b4f7af83153a45a7603f` kimliğiyle iki JVM'de doğrulandı.
 
-Rust debug ve release adaptörleri math ailesinde 418/418, birleşik corpus'ta 922/922 eşleşti. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.
+Rust debug ve release adaptörleri math ailesinde 418/418, birleşik corpus'ta 928/928 eşleşti. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.

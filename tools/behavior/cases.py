@@ -842,6 +842,24 @@ def math_cases():
                           "max_z": float_bits(max_z, "f64"), **extra})
         yield {"case_id": f"aabb/clip-coords/{label}", "family": "math", "operation": "aabb",
                **unit, "steps": steps}
+    def bounding_box(min_x, min_y, min_z, max_x, max_y, max_z):
+        return {"min_x": str(min_x), "min_y": str(min_y), "min_z": str(min_z),
+                "max_x": str(max_x), "max_y": str(max_y), "max_z": str(max_z)}
+
+    bounding_box_cases = {
+        "normal": [bounding_box(-4, -2, 3, 5, 6, 9)],
+        "inverted-all": [bounding_box(4, 5, 6, -1, -2, -3)],
+        "inverted-axes": [bounding_box(4, -2, 8, -1, 6, 3)],
+        "integer-maximum-overflow": [bounding_box(-2, -3, -4, 2147483647, 2147483647, 2147483647)],
+        "integer-limits": [bounding_box(-2147483648, -2147483648, -2147483648,
+                                            2147483647, 2147483647, 2147483647)],
+        "chain": [bounding_box(10, 20, 30, 12, 24, 36),
+                   bounding_box(-8, -6, -4, -2, 0, 2)],
+    }
+    for label, boxes in bounding_box_cases.items():
+        steps = [{"op": "of_bounding_box", "box": box} for box in boxes]
+        yield {"case_id": f"aabb/of-bounding-box/{label}", "family": "math", "operation": "aabb",
+               **unit, "steps": steps}
     for width in ("f32", "f64"):
         specials = {float_bits(x, width) for x in (0.0, -0.0, float("inf"), -float("inf"), float("nan"))}
         specials.update({"00000001", "80000001"} if width == "f32"

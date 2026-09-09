@@ -1,6 +1,7 @@
 //! Axis-aligned bounding boxes for the first P01.d geometry slice.
 //!
-//! This covers box constructors/production helpers, constructor normalization
+//! This covers box constructors/production helpers, the integer BoundingBox bridge,
+//! constructor normalization
 //! and the contains/intersects,
 //! expand-towards, contract, inflate, intersect, minmax, move, sizes, has_nan,
 //! positions, axis endpoint queries, `of_size`, endpoint setters, move overloads,
@@ -8,6 +9,31 @@
 //! collision operations used by the current behavior corpus.
 
 use crate::{binary::BlockPos, direction::Axis, math::Vec3};
+
+/// Integer-aligned bounds used by structure and world-generation geometry.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BoundingBox {
+    pub min_x: i32,
+    pub min_y: i32,
+    pub min_z: i32,
+    pub max_x: i32,
+    pub max_y: i32,
+    pub max_z: i32,
+}
+
+impl BoundingBox {
+    /// Construct bounds, ordering each axis as Java's BoundingBox does.
+    pub fn new(min_x: i32, min_y: i32, min_z: i32, max_x: i32, max_y: i32, max_z: i32) -> Self {
+        Self {
+            min_x: min_x.min(max_x),
+            min_y: min_y.min(max_y),
+            min_z: min_z.min(max_z),
+            max_x: min_x.max(max_x),
+            max_y: min_y.max(max_y),
+            max_z: min_z.max(max_z),
+        }
+    }
+}
 
 /// An axis-aligned box with normalized inclusive lower and exclusive upper
 /// query boundaries, matching the Java reference's stored endpoints.
@@ -66,6 +92,18 @@ impl Aabb {
             f64::from(first.x.max(second.x).wrapping_add(1)),
             f64::from(first.y.max(second.y).wrapping_add(1)),
             f64::from(first.z.max(second.z).wrapping_add(1)),
+        )
+    }
+
+    /// Convert normalized integer bounds to an AABB with Java int upper-endpoint arithmetic.
+    pub fn of_bounding_box(value: BoundingBox) -> Self {
+        Self::new(
+            f64::from(value.min_x),
+            f64::from(value.min_y),
+            f64::from(value.min_z),
+            f64::from(value.max_x.wrapping_add(1)),
+            f64::from(value.max_y.wrapping_add(1)),
+            f64::from(value.max_z.wrapping_add(1)),
         )
     }
 

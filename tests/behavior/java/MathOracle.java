@@ -6,6 +6,7 @@ import net.minecraft.core.SectionPos;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.levelgen.PositionalRandomFactory;
+import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec2;
 import net.minecraft.world.phys.Vec3;
@@ -260,6 +261,17 @@ public final class MathOracle {
                         box = AABB.encapsulatingFullBlocks(
                             blockPos(step.getAsJsonObject("first")),
                             blockPos(step.getAsJsonObject("second")));
+                        events.add(snapshot(box));
+                    }
+                    case "of_bounding_box" -> {
+                        JsonObject boundingBox = step.getAsJsonObject("box");
+                        box = AABB.of(new BoundingBox(
+                            Integer.parseInt(boundingBox.get("min_x").getAsString()),
+                            Integer.parseInt(boundingBox.get("min_y").getAsString()),
+                            Integer.parseInt(boundingBox.get("min_z").getAsString()),
+                            Integer.parseInt(boundingBox.get("max_x").getAsString()),
+                            Integer.parseInt(boundingBox.get("max_y").getAsString()),
+                            Integer.parseInt(boundingBox.get("max_z").getAsString())));
                         events.add(snapshot(box));
                     }
                     case "intersect" -> {
