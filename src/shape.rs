@@ -230,15 +230,7 @@ impl VoxelShape {
             return "EMPTY".to_owned();
         }
         let bounds = self.bounds().expect("nonempty shape has bounds");
-        format!(
-            "VoxelShape[AABB[{}, {}, {}] -> [{}, {}, {}]]",
-            java_double_to_string(bounds.min_x),
-            java_double_to_string(bounds.min_y),
-            java_double_to_string(bounds.min_z),
-            java_double_to_string(bounds.max_x),
-            java_double_to_string(bounds.max_y),
-            java_double_to_string(bounds.max_z),
-        )
+        format!("VoxelShape[{}]", bounds.to_string_java())
     }
 
     /// Return whether no voxel cell is occupied.
@@ -1540,64 +1532,6 @@ fn find_bits(min: f64, max: f64) -> Option<u32> {
         (scaled_min - java_round(scaled_min) as f64).abs() < EPSILON * scale
             && (scaled_max - java_round(scaled_max) as f64).abs() < EPSILON * scale
     })
-}
-
-fn java_double_to_string(value: f64) -> String {
-    if value.is_nan() {
-        return "NaN".to_owned();
-    }
-    if value == f64::INFINITY {
-        return "Infinity".to_owned();
-    }
-    if value == f64::NEG_INFINITY {
-        return "-Infinity".to_owned();
-    }
-
-    let raw = format!("{value:?}");
-    if value == 0.0 || (value.abs() >= 1.0e-3 && value.abs() < 1.0e7) {
-        return raw;
-    }
-
-    if let Some((mantissa, exponent)) = raw.split_once('e') {
-        return java_scientific_string(
-            mantissa,
-            exponent.parse().expect("Rust exponent is numeric"),
-        );
-    }
-    java_decimal_to_scientific(&raw)
-}
-
-fn java_scientific_string(mantissa: &str, exponent: i32) -> String {
-    let mantissa = if mantissa.contains('.') {
-        mantissa.to_owned()
-    } else {
-        format!("{mantissa}.0")
-    };
-    format!("{mantissa}E{exponent}")
-}
-
-fn java_decimal_to_scientific(raw: &str) -> String {
-    let (sign, magnitude) = match raw.strip_prefix('-') {
-        Some(magnitude) => ("-", magnitude),
-        None => ("", raw),
-    };
-    let decimal = magnitude.find('.').unwrap_or(magnitude.len());
-    let digits = magnitude.replace('.', "");
-    let digits = digits.trim_end_matches('0');
-    let first = digits
-        .bytes()
-        .position(|digit| digit != b'0')
-        .expect("nonzero finite value has a significant digit");
-    let exponent = decimal as i32 - first as i32 - 1;
-    let mut mantissa = String::new();
-    mantissa.push(digits.as_bytes()[first] as char);
-    mantissa.push('.');
-    if first + 1 < digits.len() {
-        mantissa.push_str(&digits[first + 1..]);
-    } else {
-        mantissa.push('0');
-    }
-    format!("{sign}{mantissa}E{exponent}")
 }
 
 fn java_round(value: f64) -> i64 {

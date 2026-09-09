@@ -827,6 +827,22 @@ def math_cases():
                float("inf"), float("inf"), float("inf"))},
                      {"op": "equals", "box": box_bits(-1.0, -1.0, -1.0, 1.0, 1.0, 1.0)},
                      {"op": "hash_code"}]}
+    yield {"case_id": "aabb/to-string/basic", "family": "math", "operation": "aabb",
+           **box_bits(0.125, 0.25, 0.375, 0.625, 0.75, 0.875),
+           "steps": [{"op": "to_string"}]}
+    yield {"case_id": "aabb/to-string/scientific", "family": "math", "operation": "aabb",
+           **box_bits(0.0001, 10000000.0, -0.0, 0.0002, 10000001.0, 2.0),
+           "steps": [{"op": "to_string"}]}
+    yield {"case_id": "aabb/to-string/signed-zero", "family": "math", "operation": "aabb",
+           **box_bits(-0.0, -0.0, -0.0, 0.0, 0.0, 0.0),
+           "steps": [{"op": "to_string"}]}
+    yield {"case_id": "aabb/to-string/infinity", "family": "math", "operation": "aabb",
+           **box_bits(float("-inf"), float("-inf"), float("-inf"),
+                      float("inf"), float("inf"), float("inf")),
+           "steps": [{"op": "to_string"}]}
+    yield {"case_id": "aabb/to-string/nan", "family": "math", "operation": "aabb",
+           **box_bits(float("nan"), 0.0, 0.0, 1.0, 1.0, 1.0),
+           "steps": [{"op": "to_string"}]}
     yield {"case_id": "aabb/contract/positive", "family": "math", "operation": "aabb",
            **unit, "steps": [{"op": "contract", "x": float_bits(0.25, "f64"),
                               "y": float_bits(0.5, "f64"), "z": float_bits(1.0, "f64")}]}

@@ -9,14 +9,14 @@ Java 25.0.4.1 ve Rust 1.98.1 / Linux x86_64 ortamında:
 - 394 senaryoluk math referansı iki ayrı JVM çalıştırmasıyla kararlı bulundu.
 - Rust debug ve release adaptörleri **394/394** math senaryosunda eşleşti.
 - Altı yeni senaryoda pozitif/negatif/karışık delta, signed zero, büyük double delta'sı ve zincir sonuçları karşılaştırıldı.
-- Birleşik altı aile corpus'u **1089/1089** senaryoda hem debug hem release adaptörüyle eşleşti.
+- Birleşik altı aile corpus'u **1094/1094** senaryoda hem debug hem release adaptörüyle eşleşti.
 - `cargo fmt`, `cargo check --locked --offline --all-targets`, `cargo test --locked --offline --all-targets` ve Clippy kontrolleri geçti.
 
 Math referans kimliği: `34b14a75d8c53b3350feba4a21f2e7648537e482ea15a67806d62235270bebad`.
 
-Birleşik referans kimliği: `c121387466c02d22c597319b4f93bfab63c1d5b60513759b3db27ed352523c07`.
+Birleşik referans kimliği: `81717c09b76bd67677a312941d9eac7dd5776ef9563213a1ab5062f8ef1e32a7`.
 
-Yerel raporlar: `compare-rgmctv_7` (math debug), `compare-w4quj7cd` (math release), `compare-_c9tjida` (birleşik debug) ve `compare-jbm02l6z` (birleşik release) dizinlerinde, `.data/runs/behavior/` altında bulunur.
+Yerel raporlar: `compare-rgmctv_7` (math debug), `compare-w4quj7cd` (math release), `compare-tmxer50a` (birleşik debug) ve `compare-t62jxkbf` (birleşik release) dizinlerinde, `.data/runs/behavior/` altında bulunur.
 
 ## Sınırlar
 

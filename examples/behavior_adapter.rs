@@ -1327,6 +1327,7 @@ fn aabb_result(request: &Value) -> Result<Value, String> {
                 events.push(json!({"equal": value.equals_java(other)}));
             }
             "hash_code" => events.push(json!({"hash_code": value.hash_code_java()})),
+            "to_string" => events.push(json!({"value": value.to_string_java()})),
             "intersects" => {
                 let other = aabb_box(step.get("box").ok_or("box must be an object")?)?;
                 events.push(json!({"hit": value.intersects(other)}));

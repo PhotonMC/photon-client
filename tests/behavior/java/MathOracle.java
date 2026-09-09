@@ -766,6 +766,11 @@ public final class MathOracle {
                         state.addProperty("hash_code", box.hashCode());
                         events.add(state);
                     }
+                    case "to_string" -> {
+                        var state = new JsonObject();
+                        state.addProperty("value", box.toString());
+                        events.add(state);
+                    }
                     case "intersect" -> {
                         box = box.intersect(box(step.getAsJsonObject("box")));
                         events.add(snapshot(box));
