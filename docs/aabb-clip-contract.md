@@ -1,6 +1,6 @@
 # P01.d — AABB segment clipping referans sözleşmesi
 
-Bu dilimin **6 Java davranış testi hazırdır ve Rust karşılığı doğrulanmıştır** ([kanıt](aabb-clip-parity.md)). Kapsam, `AABB.clip(Vec3, Vec3)` ile tek bir kutu ve doğru parçası arasındaki ilk kesişim noktasını içerir. Çoklu shape ve `BlockHitResult` yolları bu dilime dahil değildir.
+Bu dilimin **6 Java davranış testi hazırdır ve Rust karşılığı doğrulanmıştır** ([kanıt](aabb-clip-parity.md)). Kapsam, `AABB.clip(Vec3, Vec3)` ile tek bir kutu ve doğru parçası arasındaki ilk kesişim noktasını içerir. Koordinat endpoint'li statik overload [ayrı dilimdedir](aabb-clip-coordinates-contract.md); çoklu shape ve `BlockHitResult` yolları bu dilime dahil değildir.
 
 ## Kaynak ve sınır
 
@@ -33,8 +33,8 @@ python3 tools/behavior/run.py compare --family math --adapter target/debug/examp
 
 323 math senaryosu iki ayrı JVM'de aynı sonucu verdi. Math referans kimliği: `b04328d3820db8458e37a31e45b96c1c92ba29348f35c055b49ac522f339a43e`. Ham girdiler/çıktılar yalnızca `.data/` altında tutulur.
 
-Altı ailenin 916 senaryolu birleşik referansı iki JVM'de doğrulandı. Birleşik referans kimliği: `f3dac1b46227eaaf38e96f7c59cd9c377a91602c26a477ec26f348affc052a2f`.
+Altı ailenin 922 senaryolu birleşik referansı iki JVM'de doğrulandı. Birleşik referans kimliği: `e2987f47bc7368919206653ca5d97a5c29d66903d5d38350380e0d43d38976c7`.
 
-Math debug ve release Rust adaptörleri **323/323** eşleşti; birleşik debug ve release karşılaştırmaları da **916/916** geçti. Yerel raporlar `compare-71jdlsjf` (math debug), `compare-owaw1c7e` (math release), `compare-nmul5np1` (birleşik debug) ve `compare-1884mtz2` (birleşik release) dizinlerinde, `.data/runs/behavior/` altında bulunur.
+Math debug ve release Rust adaptörleri **323/323** eşleşti; birleşik debug ve release karşılaştırmaları da **922/922** geçti. Yerel raporlar `compare-71jdlsjf` (math debug), `compare-owaw1c7e` (math release), `compare-yns3yhje` (birleşik debug) ve `compare-lahovkd_` (birleşik release) dizinlerinde, `.data/runs/behavior/` altında bulunur.
 
-Bu doğrulama tek kutulu public `clip` yoluyla sınırlıdır. Çoklu AABB shape birleştirme, yüz yönü ve istemci hedefleme davranışları ayrı eşitlik dilimleridir.
+Bu doğrulama tek kutulu `AABB.clip(Vec3, Vec3)` yoluyla sınırlıdır. Koordinat endpoint'li overload [ayrı kanıttadır](aabb-clip-coordinates-parity.md); çoklu AABB shape birleştirme, yüz yönü ve istemci hedefleme davranışları ayrı eşitlik dilimleridir.

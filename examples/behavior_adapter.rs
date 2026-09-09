@@ -743,6 +743,29 @@ fn aabb_result(request: &Value) -> Result<Value, String> {
                     None => json!({"hit": false}),
                 });
             }
+            "clip_coords" => {
+                let from = f64_vec3(step.get("from").ok_or("from must be an object")?)?;
+                let to = f64_vec3(step.get("to").ok_or("to must be an object")?)?;
+                events.push(
+                    match Aabb::clip_coords(
+                        Vec3::new(
+                            f64_field(step, "min_x")?,
+                            f64_field(step, "min_y")?,
+                            f64_field(step, "min_z")?,
+                        ),
+                        Vec3::new(
+                            f64_field(step, "max_x")?,
+                            f64_field(step, "max_y")?,
+                            f64_field(step, "max_z")?,
+                        ),
+                        from,
+                        to,
+                    ) {
+                        Some(point) => json!({"hit": true, "point": clip_snapshot(point)}),
+                        None => json!({"hit": false}),
+                    },
+                );
+            }
             "expand" => {
                 value = value.expand_towards(
                     f64_field(step, "x")?,

@@ -379,6 +379,21 @@ public final class MathOracle {
                         }
                         events.add(state);
                     }
+                    case "clip_coords" -> {
+                        var hit = AABB.clip(
+                            f64(step, "min_x"), f64(step, "min_y"), f64(step, "min_z"),
+                            f64(step, "max_x"), f64(step, "max_y"), f64(step, "max_z"),
+                            vec3(step.getAsJsonObject("from")),
+                            vec3(step.getAsJsonObject("to")));
+                        var state = new JsonObject();
+                        if (hit.isPresent()) {
+                            state.addProperty("hit", true);
+                            state.add("point", snapshotClip(hit.get()));
+                        } else {
+                            state.addProperty("hit", false);
+                        }
+                        events.add(state);
+                    }
                     case "expand" -> {
                         box = box.expandTowards(
                             f64(step, "x"), f64(step, "y"), f64(step, "z"));

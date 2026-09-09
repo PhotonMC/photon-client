@@ -4,8 +4,8 @@
 //! and the contains/intersects,
 //! expand-towards, contract, inflate, intersect, minmax, move, sizes, has_nan,
 //! positions, axis endpoint queries, `of_size`, endpoint setters, move overloads,
-//! deflate, segment clipping and center-segment collision operations used by the
-//! current behavior corpus.
+//! deflate, segment clipping (including raw-coordinate bounds) and center-segment
+//! collision operations used by the current behavior corpus.
 
 use crate::{binary::BlockPos, direction::Axis, math::Vec3};
 
@@ -389,6 +389,16 @@ impl Aabb {
 
     /// Return the first segment point inside the box, matching Java `clip`.
     pub fn clip(self, from: Vec3, to: Vec3) -> Option<Vec3> {
+        Self::clip_coords(
+            Vec3::new(self.min_x, self.min_y, self.min_z),
+            Vec3::new(self.max_x, self.max_y, self.max_z),
+            from,
+            to,
+        )
+    }
+
+    /// Clip a segment against raw coordinates, without normalizing the bounds.
+    pub fn clip_coords(min: Vec3, max: Vec3, from: Vec3, to: Vec3) -> Option<Vec3> {
         let mut scale = 1.0;
         let mut hit = false;
         let dx = to.x - from.x;
@@ -403,11 +413,11 @@ impl Aabb {
                     da: dx,
                     db: dy,
                     dc: dz,
-                    point: self.min_x,
-                    min_b: self.min_y,
-                    max_b: self.max_y,
-                    min_c: self.min_z,
-                    max_c: self.max_z,
+                    point: min.x,
+                    min_b: min.y,
+                    max_b: max.y,
+                    min_c: min.z,
+                    max_c: max.z,
                     from_a: from.x,
                     from_b: from.y,
                     from_c: from.z,
@@ -421,11 +431,11 @@ impl Aabb {
                     da: dx,
                     db: dy,
                     dc: dz,
-                    point: self.max_x,
-                    min_b: self.min_y,
-                    max_b: self.max_y,
-                    min_c: self.min_z,
-                    max_c: self.max_z,
+                    point: max.x,
+                    min_b: min.y,
+                    max_b: max.y,
+                    min_c: min.z,
+                    max_c: max.z,
                     from_a: from.x,
                     from_b: from.y,
                     from_c: from.z,
@@ -441,11 +451,11 @@ impl Aabb {
                     da: dy,
                     db: dz,
                     dc: dx,
-                    point: self.min_y,
-                    min_b: self.min_z,
-                    max_b: self.max_z,
-                    min_c: self.min_x,
-                    max_c: self.max_x,
+                    point: min.y,
+                    min_b: min.z,
+                    max_b: max.z,
+                    min_c: min.x,
+                    max_c: max.x,
                     from_a: from.y,
                     from_b: from.z,
                     from_c: from.x,
@@ -459,11 +469,11 @@ impl Aabb {
                     da: dy,
                     db: dz,
                     dc: dx,
-                    point: self.max_y,
-                    min_b: self.min_z,
-                    max_b: self.max_z,
-                    min_c: self.min_x,
-                    max_c: self.max_x,
+                    point: max.y,
+                    min_b: min.z,
+                    max_b: max.z,
+                    min_c: min.x,
+                    max_c: max.x,
                     from_a: from.y,
                     from_b: from.z,
                     from_c: from.x,
@@ -479,11 +489,11 @@ impl Aabb {
                     da: dz,
                     db: dx,
                     dc: dy,
-                    point: self.min_z,
-                    min_b: self.min_x,
-                    max_b: self.max_x,
-                    min_c: self.min_y,
-                    max_c: self.max_y,
+                    point: min.z,
+                    min_b: min.x,
+                    max_b: max.x,
+                    min_c: min.y,
+                    max_c: max.y,
                     from_a: from.z,
                     from_b: from.x,
                     from_c: from.y,
@@ -497,11 +507,11 @@ impl Aabb {
                     da: dz,
                     db: dx,
                     dc: dy,
-                    point: self.max_z,
-                    min_b: self.min_x,
-                    max_b: self.max_x,
-                    min_c: self.min_y,
-                    max_c: self.max_y,
+                    point: max.z,
+                    min_b: min.x,
+                    max_b: max.x,
+                    min_c: min.y,
+                    max_c: max.y,
                     from_a: from.z,
                     from_b: from.x,
                     from_c: from.y,

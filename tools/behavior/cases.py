@@ -791,6 +791,57 @@ def math_cases():
     for label, (source, target) in clip_rays.items():
         yield {"case_id": f"aabb/clip/{label}", "family": "math", "operation": "aabb",
                **unit, "steps": [{"op": "clip", "from": point(*source), "to": point(*target)}]}
+    clip_coordinate_cases = {
+        "west-to-east": {
+            "bounds": (0.0, 0.0, 0.0, 1.0, 1.0, 1.0),
+            "source": (-1.0, 0.5, 0.5),
+            "target": (2.0, 0.5, 0.5),
+        },
+        "east-to-west": {
+            "bounds": (0.0, 0.0, 0.0, 1.0, 1.0, 1.0),
+            "source": (2.0, 0.5, 0.5),
+            "target": (-1.0, 0.5, 0.5),
+        },
+        "diagonal": {
+            "bounds": (-2.0, -1.0, 0.0, 3.0, 2.0, 4.0),
+            "source": (-3.0, -2.0, -1.0),
+            "target": (4.0, 3.0, 5.0),
+        },
+        "parallel-miss": {
+            "bounds": (0.0, 0.0, 0.0, 1.0, 1.0, 1.0),
+            "source": (-1.0, 2.0, 0.5),
+            "target": (2.0, 2.0, 0.5),
+        },
+        "reversed-bounds": {
+            "bounds": (1.0, 1.0, 1.0, 0.0, 0.0, 0.0),
+            "source": (-1.0, 0.5, 0.5),
+            "target": (2.0, 0.5, 0.5),
+        },
+        "threshold-special": {
+            "bounds": (0.0, 0.0, 0.0, 1.0, 1.0, 1.0),
+            "source": (-1.0, 0.5, 0.5),
+            "target": (-1.0 + 1.0e-8, 0.5, 0.5),
+            "extra": [
+                {"from": point(0.5, 0.5, 0.5), "to": point(0.5, 0.5, 0.5)},
+                {"from": point(float("nan"), 0.5, 0.5), "to": point(2.0, 0.5, 0.5)},
+                {"from": point(float("-inf"), 0.5, 0.5), "to": point(float("inf"), 0.5, 0.5)},
+            ],
+        },
+    }
+    for label, details in clip_coordinate_cases.items():
+        min_x, min_y, min_z, max_x, max_y, max_z = details["bounds"]
+        steps = [{"op": "clip_coords", "min_x": float_bits(min_x, "f64"),
+                  "min_y": float_bits(min_y, "f64"), "min_z": float_bits(min_z, "f64"),
+                  "max_x": float_bits(max_x, "f64"), "max_y": float_bits(max_y, "f64"),
+                  "max_z": float_bits(max_z, "f64"), "from": point(*details["source"]),
+                  "to": point(*details["target"])}]
+        for extra in details.get("extra", []):
+            steps.append({"op": "clip_coords", "min_x": float_bits(min_x, "f64"),
+                          "min_y": float_bits(min_y, "f64"), "min_z": float_bits(min_z, "f64"),
+                          "max_x": float_bits(max_x, "f64"), "max_y": float_bits(max_y, "f64"),
+                          "max_z": float_bits(max_z, "f64"), **extra})
+        yield {"case_id": f"aabb/clip-coords/{label}", "family": "math", "operation": "aabb",
+               **unit, "steps": steps}
     for width in ("f32", "f64"):
         specials = {float_bits(x, width) for x in (0.0, -0.0, float("inf"), -float("inf"), float("nan"))}
         specials.update({"00000001", "80000001"} if width == "f32"
