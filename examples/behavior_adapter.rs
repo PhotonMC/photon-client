@@ -2356,6 +2356,23 @@ fn math_result(request: &Value) -> Result<Value, String> {
         };
         return Ok(json!({"value": value}));
     }
+    if operation == "mth_positive_modulo" {
+        let width = string(request, "type")?;
+        let bits = match width {
+            "f32" => format!(
+                "{:08x}",
+                math::positive_modulo_f32(f32_field(request, "input")?, f32_field(request, "mod")?)
+                    .to_bits()
+            ),
+            "f64" => format!(
+                "{:016x}",
+                math::positive_modulo_f64(f64_field(request, "input")?, f64_field(request, "mod")?)
+                    .to_bits()
+            ),
+            _ => return Err("unknown Mth positiveModulo type".into()),
+        };
+        return Ok(json!({"bits": bits}));
+    }
     if operation == "vec2" {
         let mut vector = Vec2::new(f32_field(request, "x")?, f32_field(request, "y")?);
         let mut events = vec![vec2_snapshot(vector)];

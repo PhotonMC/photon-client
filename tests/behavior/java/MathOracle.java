@@ -397,6 +397,17 @@ public final class MathOracle {
             } else {
                 throw new IllegalArgumentException("Unknown Mth rounding function");
             }
+        } else if (operation.equals("mth_positive_modulo")) {
+            String width = request.get("type").getAsString();
+            if (width.equals("f32")) {
+                result.addProperty("bits", Oracle.bits(Mth.positiveModulo(
+                    Oracle.f32(request, "input"), Oracle.f32(request, "mod"))));
+            } else if (width.equals("f64")) {
+                result.addProperty("bits", Oracle.bits(Mth.positiveModulo(
+                    f64(request, "input"), f64(request, "mod"))));
+            } else {
+                throw new IllegalArgumentException("Unknown Mth positiveModulo type");
+            }
         } else if (operation.equals("vec3")) {
             Vec3 vector = new Vec3(f64(request, "x"), f64(request, "y"), f64(request, "z"));
             var events = new JsonArray();

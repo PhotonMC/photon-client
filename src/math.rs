@@ -617,6 +617,34 @@ pub fn ceil_long_f64(value: f64) -> i64 {
     value.ceil() as i64
 }
 
+/// Return Java `Mth.positiveModulo(float)` without changing operation order.
+pub fn positive_modulo_f32(input: f32, modulus: f32) -> f32 {
+    let result = (input % modulus + modulus) % modulus;
+    if result.is_nan() {
+        if input.is_finite() && modulus.is_infinite() {
+            f32::from_bits(0xffc0_0000)
+        } else {
+            f32::from_bits(0x7fc0_0000)
+        }
+    } else {
+        result
+    }
+}
+
+/// Return Java `Mth.positiveModulo(double)` without changing operation order.
+pub fn positive_modulo_f64(input: f64, modulus: f64) -> f64 {
+    let result = (input % modulus + modulus) % modulus;
+    if result.is_nan() {
+        if input.is_finite() && modulus.is_infinite() {
+            f64::from_bits(0xfff8_0000_0000_0000)
+        } else {
+            f64::from_bits(0x7ff8_0000_0000_0000)
+        }
+    } else {
+        result
+    }
+}
+
 /// Return Java `Math.floorDiv(int, int)`, including Java's signed overflow.
 pub fn floor_div_i32(dividend: i32, divisor: i32) -> i32 {
     if divisor == 0 {

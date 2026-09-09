@@ -2814,6 +2814,40 @@ def math_cases():
                "operation": "mth_rounding_helpers", "type": width, "fn": function,
                "input": input_value}
 
+    for width in ("f32", "f64"):
+        subnormal = (float.fromhex("0x0.000001p-126") if width == "f32"
+                     else float.fromhex("0x0.0000000000001p-1022"))
+        maximum_finite = (float.fromhex("0x1.fffffep127") if width == "f32"
+                          else float.fromhex("0x1.fffffffffffffp1023"))
+        mth_positive_modulo = [
+            ("basic-positive", 1.25, 3.0),
+            ("negative-input", -1.25, 3.0),
+            ("input-over-modulus", 5.5, 3.0),
+            ("positive-exact-multiple", 6.0, 3.0),
+            ("negative-exact-multiple", -6.0, 3.0),
+            ("negative-zero-input", -0.0, 3.0),
+            ("negative-modulus", 1.25, -3.0),
+            ("both-negative", -1.25, -3.0),
+            ("subnormal-input", subnormal, 1.0),
+            ("maximum-finite-input", maximum_finite, 3.0),
+            ("zero-modulus", 1.0, 0.0),
+            ("negative-zero-modulus", 1.0, -0.0),
+            ("positive-infinity-input", float("inf"), 3.0),
+            ("negative-infinity-input", -float("inf"), 3.0),
+            ("infinite-modulus", 1.0, float("inf")),
+            ("negative-input-infinite-modulus", -1.0, float("inf")),
+            ("negative-infinite-modulus", 1.0, -float("inf")),
+            ("negative-input-negative-infinite-modulus", -1.0, -float("inf")),
+            ("nan-input", float("nan"), 3.0),
+            ("nan-input-negative-modulus", float("nan"), -3.0),
+            ("nan-modulus", 1.0, float("nan")),
+            ("negative-zero-input-zero-modulus", -0.0, 0.0),
+        ]
+        for label, input_value, modulus in mth_positive_modulo:
+            yield {"case_id": f"mth/positive-modulo/{width}/{label}", "family": "math",
+                   "operation": "mth_positive_modulo", "type": width,
+                   "input": float_bits(input_value, width), "mod": float_bits(modulus, width)}
+
 
 def timer_cases():
     def trace(label, steps, start=0, tps=20, target=50):

@@ -8,15 +8,15 @@ Java 25.0.4.1 ve Rust 1.98.1 / Linux x86_64 ortamında:
 
 - `packDegrees`, `unpackDegrees` ve `wrapDegrees(long)` için 21 özgün senaryo hazırlandı.
 - F32 açı sınırları, NaN/Infinity, signed byte uçları ve `Long.MIN_VALUE`/`Long.MAX_VALUE` kalanları karşılaştırıldı.
-- Rust debug ve release adaptörleri güncel **1149/1149** math senaryosunda eşleşti.
-- Birleşik altı aile corpus'u **1651/1651** senaryoda hem debug hem release adaptörüyle eşleşti.
+- Rust debug ve release adaptörleri güncel **1193/1193** math senaryosunda eşleşti.
+- Birleşik altı aile corpus'u **1695/1695** senaryoda hem debug hem release adaptörüyle eşleşti.
 - Math ve birleşik `verify` çalıştırmaları Java referansını iki JVM tekrarıyla yeniden doğruladı.
 
-Math referans kimliği: `2f973f986814298b094b982753eef5a170865c5228762b233a6060766b5ed32e`. Birleşik referans kimliği: `f8cfd3cf28e07e5859a339a4844b50e474cb8351ea003bb36ba96ccaf38abec1`.
+Math referans kimliği: `3a6a2f5a3d8ff6b65e565413ca95aeeb802f3ca965620ed874e898bcc52c5d61`. Birleşik referans kimliği: `5f58cd401556c40d3fc3eb7c3e511a8dbc2553c3390034c888e648d9d8a3ad4c`.
 
-Adapter hashleri: debug `4ba8fcc5baa3e50779e4ce239b18341b3f611b9af0a363f60520810a3220ba6a`, release `b53b10fe28e9d1ebb14986a6150d650c247091bfab362e793b57a2a4b6e068c9`.
+Adapter hashleri: debug `632535c3aabe8ce4f0613f6b855c54e499456585aa71beaa93412b83b0c57a54`, release `7c059afa0db707e2c536034aab21d80bc8d27f9b04cbe81728a84261b43691a7`.
 
-Yerel raporlar: `compare-hz521aor` ve `compare-uded0zec` (math debug/release), `compare-nc1496mg` ve `compare-ljx3yrp0` (birleşik debug/release), `verify-xa5laefb` (math) ve `verify-k950tc5l` (birleşik) `.data/runs/behavior/` altında bulunur.
+Yerel raporlar: `compare-dgq7mp_7` ve `compare-2hmy86uj` (math debug/release), `compare-06i9lguy` ve `compare-r6guli2r` (birleşik debug/release), `verify-9n41v5aa` (math) ve `verify-k_vt31c0` (birleşik) `.data/runs/behavior/` altında bulunur.
 
 ## Sınırlar
 
