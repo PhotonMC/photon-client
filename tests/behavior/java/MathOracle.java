@@ -263,6 +263,18 @@ public final class MathOracle {
                 } else {
                     throw new IllegalArgumentException("Unknown infinity view");
                 }
+            } else if (kind.equals("constants")) {
+                String name = request.get("name").getAsString();
+                if (name.equals("epsilon")) {
+                    result.addProperty("epsilon", Oracle.bits(Shapes.EPSILON));
+                } else if (name.equals("big_epsilon")) {
+                    result.addProperty("big_epsilon", Oracle.bits(Shapes.BIG_EPSILON));
+                } else if (name.equals("both")) {
+                    result.addProperty("epsilon", Oracle.bits(Shapes.EPSILON));
+                    result.addProperty("big_epsilon", Oracle.bits(Shapes.BIG_EPSILON));
+                } else {
+                    throw new IllegalArgumentException("Unknown shape constant");
+                }
             } else if (kind.equals("axis_limits")) {
                 var entries = request.getAsJsonArray("shapes");
                 if (entries == null || entries.size() == 0) {

@@ -748,6 +748,19 @@ fn shape_result(request: &Value) -> Result<Value, String> {
                 _ => Err("unknown infinity view".into()),
             }
         }
+        "constants" => match string(request, "name")? {
+            "epsilon" => Ok(json!({
+                "epsilon": format!("{:016x}", Shapes::EPSILON.to_bits())
+            })),
+            "big_epsilon" => Ok(json!({
+                "big_epsilon": format!("{:016x}", Shapes::BIG_EPSILON.to_bits())
+            })),
+            "both" => Ok(json!({
+                "epsilon": format!("{:016x}", Shapes::EPSILON.to_bits()),
+                "big_epsilon": format!("{:016x}", Shapes::BIG_EPSILON.to_bits()),
+            })),
+            _ => Err("unknown shape constant".into()),
+        },
         "axis_limits" => {
             let entries = request
                 .get("shapes")

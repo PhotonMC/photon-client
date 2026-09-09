@@ -859,6 +859,12 @@ fn rotate_axis_coords(
 pub struct Shapes;
 
 impl Shapes {
+    /// Minimum shape extent used by Java's shape constructors.
+    pub const EPSILON: f64 = 1.0e-7;
+
+    /// Larger fuzzy comparison extent exposed by Java's shape helpers.
+    pub const BIG_EPSILON: f64 = 1.0e-6;
+
     /// Return an empty shape.
     pub fn empty() -> VoxelShape {
         VoxelShape::new(vec![0.0], vec![0.0], vec![0.0], Vec::new())

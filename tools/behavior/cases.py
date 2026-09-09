@@ -275,6 +275,12 @@ def math_cases():
            "kind": "infinity", "view": "boxes"}
     yield {"case_id": "shape/infinity/not-same-self", "family": "math", "operation": "shape",
            "kind": "infinity", "view": "not_same_self"}
+    yield {"case_id": "shape/constants/epsilon", "family": "math", "operation": "shape",
+           "kind": "constants", "name": "epsilon"}
+    yield {"case_id": "shape/constants/big-epsilon", "family": "math", "operation": "shape",
+           "kind": "constants", "name": "big_epsilon"}
+    yield {"case_id": "shape/constants/both", "family": "math", "operation": "shape",
+           "kind": "constants", "name": "both"}
     yield {"case_id": "shape/empty/sliver", "family": "math", "operation": "shape",
            "kind": "single", "box": box_bits(0, 0, 0, 0.00000005, 1, 1), "steps": []}
     yield {"case_id": "shape/or/disjoint", "family": "math", "operation": "shape", "kind": "join",
