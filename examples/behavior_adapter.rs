@@ -289,6 +289,22 @@ fn sectionpos_packed_transformations_snapshot(
     })
 }
 
+fn sectionpos_as_long_snapshot(
+    block_node: u64,
+    x: i32,
+    y: i32,
+    z: i32,
+    section_x: i32,
+    section_y: i32,
+    section_z: i32,
+) -> Value {
+    json!({
+        "from_block_pos": format!("{:x}", SectionPos::as_long_from_block_pos(BlockPos::unpack(block_node))),
+        "coordinates": format!("{:x}", SectionPos::as_long_coordinates(x, y, z)),
+        "instance": format!("{:x}", SectionPos::new(section_x, section_y, section_z).as_long()),
+    })
+}
+
 fn chunkpos_region_coordinates_snapshot(value: ChunkPos, region_x: i32, region_z: i32) -> Value {
     json!({
         "region_x": value.get_region_x().to_string(),
@@ -2029,6 +2045,24 @@ fn math_result(request: &Value) -> Result<Value, String> {
                 u64_hex_field(request, "section_node")?,
                 coordinate("x")?,
                 coordinate("z")?,
+            ),
+        }));
+    }
+    if operation == "sectionpos_as_long" {
+        let coordinate = |name: &str| {
+            string(request, name)?
+                .parse::<i32>()
+                .map_err(|error| error.to_string())
+        };
+        return Ok(json!({
+            "value": sectionpos_as_long_snapshot(
+                u64_hex_field(request, "block_node")?,
+                coordinate("x")?,
+                coordinate("y")?,
+                coordinate("z")?,
+                coordinate("section_x")?,
+                coordinate("section_y")?,
+                coordinate("section_z")?,
             ),
         }));
     }

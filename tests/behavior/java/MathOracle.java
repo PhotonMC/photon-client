@@ -226,6 +226,19 @@ public final class MathOracle {
             value.addProperty("zero_node_coordinates", Long.toUnsignedString(SectionPos.getZeroNode(x, z), 16));
             value.addProperty("section_to_chunk", Long.toUnsignedString(SectionPos.sectionToChunk(sectionNode), 16));
             result.add("value", value);
+        } else if (operation.equals("sectionpos_as_long")) {
+            long blockNode = Long.parseUnsignedLong(request.get("block_node").getAsString(), 16);
+            int x = Integer.parseInt(request.get("x").getAsString());
+            int y = Integer.parseInt(request.get("y").getAsString());
+            int z = Integer.parseInt(request.get("z").getAsString());
+            int sectionX = Integer.parseInt(request.get("section_x").getAsString());
+            int sectionY = Integer.parseInt(request.get("section_y").getAsString());
+            int sectionZ = Integer.parseInt(request.get("section_z").getAsString());
+            var value = new JsonObject();
+            value.addProperty("from_block_pos", Long.toUnsignedString(SectionPos.asLong(BlockPos.of(blockNode)), 16));
+            value.addProperty("coordinates", Long.toUnsignedString(SectionPos.asLong(x, y, z), 16));
+            value.addProperty("instance", Long.toUnsignedString(SectionPos.of(sectionX, sectionY, sectionZ).asLong(), 16));
+            result.add("value", value);
         } else if (operation.equals("chunkpos_validity")) {
             ChunkPos pos = chunkPos(request);
             result.add("value", chunkPosValidity(pos));

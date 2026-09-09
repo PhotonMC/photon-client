@@ -363,6 +363,42 @@ def math_cases():
         yield {"case_id": f"sectionpos/packed-transformations/{label}", "family": "math",
                "operation": "sectionpos_packed_transformations", **values}
 
+    sectionpos_as_long = {
+        "origin": {
+            "block_node": "0000000000000000",
+            "x": "0", "y": "0", "z": "0",
+            "section_x": "0", "section_y": "0", "section_z": "0",
+        },
+        "positive-boundaries": {
+            "block_node": "000003c00001f010",
+            "x": "1", "y": "2", "z": "3",
+            "section_x": "1", "section_y": "2", "section_z": "3",
+        },
+        "negative-boundaries": {
+            "block_node": "ffffffffffff0fff",
+            "x": "-1", "y": "-2", "z": "-3",
+            "section_x": "-1", "section_y": "-2", "section_z": "-3",
+        },
+        "packed-positive-limits": {
+            "block_node": "7fffffdffffff7ff",
+            "x": "2097151", "y": "524287", "z": "2097151",
+            "section_x": "2097151", "section_y": "524287", "section_z": "2097151",
+        },
+        "packed-negative-limits": {
+            "block_node": "8000002000000800",
+            "x": "-2097152", "y": "-524288", "z": "-2097152",
+            "section_x": "-2097152", "section_y": "-524288", "section_z": "-2097152",
+        },
+        "arbitrary-and-i32": {
+            "block_node": "deadbeefcafebabe",
+            "x": "2147483647", "y": "-2147483648", "z": "-2147483647",
+            "section_x": "2147483647", "section_y": "-2147483648", "section_z": "-2147483647",
+        },
+    }
+    for label, values in sectionpos_as_long.items():
+        yield {"case_id": f"sectionpos/as-long/{label}", "family": "math",
+               "operation": "sectionpos_as_long", **values}
+
     chunkpos_validity = {
         "origin": {"x": "0", "z": "0"},
         "boundary": {"x": "2097061", "z": "-2097061"},

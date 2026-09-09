@@ -750,6 +750,25 @@ impl SectionPos {
             | (u64::from(self.y as u32) & PACKED_SECTION_Y_MASK)
     }
 
+    /// Pack the section containing a block position.
+    pub fn as_long_from_block_pos(pos: BlockPos) -> u64 {
+        Self::as_long_coordinates(
+            math::block_to_section_coord(pos.x),
+            math::block_to_section_coord(pos.y),
+            math::block_to_section_coord(pos.z),
+        )
+    }
+
+    /// Pack section coordinates with the reference field masks.
+    pub fn as_long_coordinates(x: i32, y: i32, z: i32) -> u64 {
+        Self::new(x, y, z).pack()
+    }
+
+    /// Pack this section position through the coordinate overload's path.
+    pub fn as_long(self) -> u64 {
+        Self::as_long_coordinates(self.x, self.y, self.z)
+    }
+
     /// Read the signed 22-bit x coordinate from a packed SectionPos.
     pub const fn get_x(packed: u64) -> i32 {
         ((packed as i64) >> SECTION_X_OFFSET) as i32

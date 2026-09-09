@@ -27,7 +27,7 @@ Referans: Java Edition 26.2, protokol 776; orijinal client SHA-1 `2dc72797acbc1b
 
 Mevcut 144 wire senaryosunun girdileri ve Java beklentileri Rust'a uydurulmadan kullanıldı. Rust kodu yazılmadan önce aileye ait referans açıkça yakalandı; iki JVM çalıştırması eşleşti. Referans kimliği:
 
-`b92f6e6ffca85f499f3d28192c96d88f23547046fc137dcfc1013f187dc2f0b2b`
+`b92f6e6ffca85f499f3d28192c96d88f23547046fc137dcfc1019f187dc2f0b2b`
 
 Rust adaptörüyle debug ve release profillerinde 144/144 senaryo eşleşti. Karşılaştırma baytları, değerleri, boyutu, hata kategorisini, tüketilen bayt sayısını ve kalan veriyi kapsıyor. Bu sonuç yalnızca mevcut corpus ve Linux x86_64 ortamı için P03.a kanıtıdır; bütün protokol veya istemci eşitliği değildir.
 
