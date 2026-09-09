@@ -148,6 +148,11 @@ public final class MathOracle {
                 VoxelShape second = voxelShape(request.getAsJsonObject("second"));
                 OctahedralGroup rotation = OctahedralGroup.valueOf(request.get("rotation").getAsString());
                 result.add("shape", snapshot(Shapes.rotate(Shapes.or(first, second), rotation)));
+            } else if (kind.equals("rotate_center")) {
+                VoxelShape shape = voxelShape(request.getAsJsonObject("box"));
+                OctahedralGroup rotation = OctahedralGroup.valueOf(request.get("rotation").getAsString());
+                result.add("shape", snapshot(Shapes.rotate(
+                    shape, rotation, vec3(request.getAsJsonObject("center")))));
             } else if (kind.equals("rotate_horizontal_axis")) {
                 VoxelShape shape = voxelShape(request.getAsJsonObject("box"));
                 var axes = Shapes.rotateHorizontalAxis(shape);

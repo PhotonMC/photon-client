@@ -519,15 +519,34 @@ fn fuzzy_equals(first: f64, second: f64) -> bool {
     (first - second).abs() <= EPSILON
 }
 
-fn rotate_axis_coords(coords: &[f64], invert: bool) -> Vec<f64> {
+fn axis_component(point: Vec3, axis: usize) -> f64 {
+    match axis {
+        0 => point.x,
+        1 => point.y,
+        _ => point.z,
+    }
+}
+
+fn rotate_axis_coords(
+    coords: &[f64],
+    invert: bool,
+    source_center: f64,
+    output_center: f64,
+) -> Vec<f64> {
+    if !invert && source_center == output_center {
+        return coords.to_vec();
+    }
     if invert {
         coords
             .iter()
             .rev()
-            .map(|value| -(*value - 0.5) + 0.5)
+            .map(|value| -(*value - source_center) + output_center)
             .collect()
     } else {
-        coords.to_vec()
+        coords
+            .iter()
+            .map(|value| *value - source_center + output_center)
+            .collect()
     }
 }
 
@@ -626,6 +645,15 @@ impl Shapes {
 
     /// Rotate a shape around the unit block center.
     pub fn rotate(shape: &VoxelShape, rotation: ShapeRotation) -> VoxelShape {
+        Self::rotate_with_center(shape, rotation, Vec3::new(0.5, 0.5, 0.5))
+    }
+
+    /// Rotate a shape around an explicit point.
+    pub fn rotate_with_center(
+        shape: &VoxelShape,
+        rotation: ShapeRotation,
+        rotation_center: Vec3,
+    ) -> VoxelShape {
         if matches!(rotation, ShapeRotation::Identity) {
             return shape.clone();
         }
@@ -700,9 +728,24 @@ impl Shapes {
         }
 
         let new_coords = [
-            rotate_axis_coords(old_coords[permutation[0]], inverted[0]),
-            rotate_axis_coords(old_coords[permutation[1]], inverted[1]),
-            rotate_axis_coords(old_coords[permutation[2]], inverted[2]),
+            rotate_axis_coords(
+                old_coords[permutation[0]],
+                inverted[0],
+                axis_component(rotation_center, permutation[0]),
+                axis_component(rotation_center, 0),
+            ),
+            rotate_axis_coords(
+                old_coords[permutation[1]],
+                inverted[1],
+                axis_component(rotation_center, permutation[1]),
+                axis_component(rotation_center, 1),
+            ),
+            rotate_axis_coords(
+                old_coords[permutation[2]],
+                inverted[2],
+                axis_component(rotation_center, permutation[2]),
+                axis_component(rotation_center, 2),
+            ),
         ];
         VoxelShape::new(
             new_coords[0].clone(),

@@ -552,6 +552,15 @@ fn shape_result(request: &Value) -> Result<Value, String> {
                 "shape": shape_snapshot(&Shapes::rotate(&shape, rotation)),
             }))
         }
+        "rotate_center" => {
+            let shape = shape_box(request.get("box").ok_or("box must be an object")?)?;
+            let rotation = ShapeRotation::from_name(string(request, "rotation")?)
+                .ok_or("unknown shape rotation")?;
+            let center = f64_vec3(request.get("center").ok_or("center must be an object")?)?;
+            Ok(json!({
+                "shape": shape_snapshot(&Shapes::rotate_with_center(&shape, rotation, center)),
+            }))
+        }
         "rotate_join" => {
             let first = shape_box(request.get("first").ok_or("first must be an object")?)?;
             let second = shape_box(request.get("second").ok_or("second must be an object")?)?;

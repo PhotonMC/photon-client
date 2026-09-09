@@ -266,6 +266,21 @@ def math_cases():
     yield {"case_id": "shape/rotate/joined-cells", "family": "math", "operation": "shape", "kind": "rotate_join",
            "first": box_bits(0.0, 0.0, 0.0, 0.5, 0.5, 1.0),
            "second": box_bits(0.5, 0.5, 0.0, 1.0, 1.0, 1.0), "rotation": "ROT_90_Z_NEG"}
+    def center_bits(x, y, z):
+        return {"x": float_bits(x, "f64"), "y": float_bits(y, "f64"), "z": float_bits(z, "f64")}
+
+    yield {"case_id": "shape/rotate-center/y-asymmetric", "family": "math", "operation": "shape",
+           "kind": "rotate_center", "box": rotate_box, "rotation": "ROT_90_Y_NEG",
+           "center": center_bits(0.25, 0.5, 0.75)}
+    yield {"case_id": "shape/rotate-center/x-cube", "family": "math", "operation": "shape",
+           "kind": "rotate_center", "box": box_bits(0.0, 0.0, 0.0, 1.0, 1.0, 1.0),
+           "rotation": "ROT_90_X_NEG", "center": center_bits(0.25, 0.5, 0.75)}
+    yield {"case_id": "shape/rotate-center/z-grid", "family": "math", "operation": "shape",
+           "kind": "rotate_center", "box": box_bits(0.0, 0.0, 0.0, 1.0, 0.5, 1.0),
+           "rotation": "ROT_90_Z_POS", "center": center_bits(0.75, 0.25, 0.5)}
+    yield {"case_id": "shape/rotate-center/identity", "family": "math", "operation": "shape",
+           "kind": "rotate_center", "box": rotate_box, "rotation": "IDENTITY",
+           "center": center_bits(2.0, -1.0, 3.0)}
     yield {"case_id": "shape/rotate-horizontal-axis/asymmetric", "family": "math", "operation": "shape",
            "kind": "rotate_horizontal_axis", "box": rotate_box}
     yield {"case_id": "shape/rotate-horizontal-axis/cube-grid", "family": "math", "operation": "shape",
