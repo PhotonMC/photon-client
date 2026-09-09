@@ -21,6 +21,11 @@ impl Vec2 {
         Self::new(self.x * factor, self.y * factor)
     }
 
+    pub fn dot(self, other: Self) -> f32 {
+        // Keep both products rounded to f32 before the source-ordered sum.
+        java_f32_add(self.x * other.x, self.y * other.y)
+    }
+
     pub fn length_squared(self) -> f32 {
         // Do not fuse the multiplication and addition or substitute hypot:
         // intermediate f32 rounding/overflow is observable in the reference.

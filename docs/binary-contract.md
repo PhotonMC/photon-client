@@ -54,7 +54,7 @@ python3 tools/behavior/run.py capture --family binary
 python3 tools/behavior/run.py verify --family binary
 ```
 
-116 senaryo iki ayrı JVM'de aynı sonucu verdi; kayıtlı referans iki yeni JVM ile yeniden doğrulandı. Binary referans kimliği: `8ae00c7621477db27bbb1744c78d0d55d67b5dd4849c14a578aba7d155be0119`. Önceki 78 girdisi ve sonucu değişmedi. Ham girdiler/çıktılar yalnızca `.data/` altında tutulur.
+116 senaryo iki ayrı JVM'de aynı sonucu verdi; kayıtlı referans iki yeni JVM ile yeniden doğrulandı. Binary referans kimliği: `8ae00c7621477db27bbb1744c78d0d55d67b5dd4854c14a578aba7d155be0119`. Önceki 78 girdisi ve sonucu değişmedi. Ham girdiler/çıktılar yalnızca `.data/` altında tutulur.
 
 Yeni aileyle toplam 679 Java senaryosu yakalandı ve iki yeni JVM çalıştırmasıyla kayıtla eşitliği doğrulandı. Birleşik referans kimliği: `34ba8e91cef5a27e4d84dd229d2dd1468ba20c443bbe0d362fceb3110ccd294d`. Eski kayıtlar değiştirilmedi.
 

@@ -36,6 +36,6 @@ python3 tools/behavior/run.py verify --family math
 
 238 math senaryosu iki ayrı JVM'de aynı sonucu verdi. Math referans kimliği: `07b321ff382a45bdabd9e3a26e16d6e436ce85e6e064d33e00d3f1c1257f1b97`. Önceki 220 girdisi korunur. Ham girdiler/çıktılar yalnızca `.data/` altında tutulur.
 
-Yeni aileyle toplam 637 Java senaryosu yakalandı ve doğrulandı. Birleşik referans kimliği: `c34a0c2bb442fe7576fbe4de19455d484cfe2aeb0eabe5ac96ca4a37aa128494`. Eski kayıtlar değiştirilmedi.
+Yeni aileyle toplam 637 Java senaryosu yakalandı ve doğrulandı. Birleşik referans kimliği: `c34a0c2bb442fe7576fbe4de19455d484cfe2aeb0eabe5ac96ca4a37aa128544`. Eski kayıtlar değiştirilmedi.
 
 Beklenen çıktılar Rust'a göre değiştirilmedi.

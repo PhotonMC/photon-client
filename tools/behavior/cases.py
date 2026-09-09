@@ -684,6 +684,19 @@ def math_cases():
            "first": vector2_bits(3.5, -7.25), "angle": "7ff8000000000001"}
     yield {"case_id": "vec2/rotate/large-finite-angle", "family": "math", "operation": "vec2_rotate",
            "first": vector2_bits(0.5, -1.0), "angle": "7fefffffffffffff"}
+    yield {"case_id": "vec2/dot/basic", "family": "math", "operation": "vec2_dot",
+           "first": vector2_bits(1.25, -2.5), "second": vector2_bits(4.0, -1.0)}
+    yield {"case_id": "vec2/dot/order-and-rounding", "family": "math", "operation": "vec2_dot",
+           "first": vector2_bits(1.0, 2.0 ** -23), "second": vector2_bits(1.0, 1.0)}
+    yield {"case_id": "vec2/dot/signed-zero", "family": "math", "operation": "vec2_dot",
+           "first": {"x": "80000000", "y": "80000000"},
+           "second": vector2_bits(1.0, 1.0)}
+    yield {"case_id": "vec2/dot/overflow", "family": "math", "operation": "vec2_dot",
+           "first": {"x": "7f7fffff", "y": float_bits(1.0)},
+           "second": vector2_bits(2.0, 0.0)}
+    yield {"case_id": "vec2/dot/special-values", "family": "math", "operation": "vec2_dot",
+           "first": {"x": "7f800000", "y": float_bits(2.0)},
+           "second": {"x": "00000000", "y": float_bits(-4.0)}}
     for name in ("down", "up", "north", "south", "west", "east"):
         yield {"case_id": f"direction/properties/{name}", "family": "math", "operation": "direction",
                "name": name, "steps": []}
