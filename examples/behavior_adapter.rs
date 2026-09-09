@@ -1855,6 +1855,10 @@ fn math_result(request: &Value) -> Result<Value, String> {
         };
         return Ok(json!({"value": vec3_snapshot(value)}));
     }
+    if operation == "vec3_rotation" {
+        let first = f64_vec3(request.get("first").ok_or("first must be an object")?)?;
+        return Ok(json!({"value": vec2_snapshot(first.rotation())}));
+    }
     match string(request, "type")? {
         "f32" => {
             let value = f32_field(request, "value")?;

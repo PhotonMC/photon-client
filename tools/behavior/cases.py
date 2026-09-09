@@ -611,6 +611,42 @@ def math_cases():
     yield {"case_id": "vec3/direction-from-rotation/components-max-finite", "family": "math",
            "operation": "vec3_direction_from_rotation", "kind": "components",
            "rot_x": "7f7fffff", "rot_y": "7f7fffff"}
+    yield {"case_id": "vec3/rotation/basic", "family": "math", "operation": "vec3_rotation",
+           "first": vector_bits(1.0, -2.0, 3.0)}
+    yield {"case_id": "vec3/rotation/x-positive", "family": "math", "operation": "vec3_rotation",
+           "first": vector_bits(1.0, 0.0, 0.0)}
+    yield {"case_id": "vec3/rotation/x-negative", "family": "math", "operation": "vec3_rotation",
+           "first": vector_bits(-1.0, 0.0, 0.0)}
+    yield {"case_id": "vec3/rotation/z-positive", "family": "math", "operation": "vec3_rotation",
+           "first": vector_bits(0.0, 0.0, 1.0)}
+    yield {"case_id": "vec3/rotation/z-negative", "family": "math", "operation": "vec3_rotation",
+           "first": vector_bits(0.0, 0.0, -1.0)}
+    yield {"case_id": "vec3/rotation/y-positive", "family": "math", "operation": "vec3_rotation",
+           "first": vector_bits(0.0, 1.0, 0.0)}
+    yield {"case_id": "vec3/rotation/y-negative", "family": "math", "operation": "vec3_rotation",
+           "first": vector_bits(0.0, -1.0, 0.0)}
+    yield {"case_id": "vec3/rotation/combined", "family": "math", "operation": "vec3_rotation",
+           "first": vector_bits(1.0, 2.0, 3.0)}
+    yield {"case_id": "vec3/rotation/negative-combined", "family": "math", "operation": "vec3_rotation",
+           "first": vector_bits(-4.0, 5.0, -6.0)}
+    yield {"case_id": "vec3/rotation/non-unit", "family": "math", "operation": "vec3_rotation",
+           "first": vector_bits(0.5, -1.5, 2.25)}
+    yield {"case_id": "vec3/rotation/zero", "family": "math", "operation": "vec3_rotation",
+           "first": vector_bits(0.0, 0.0, 0.0)}
+    yield {"case_id": "vec3/rotation/signed-zero", "family": "math", "operation": "vec3_rotation",
+           "first": {"x": "8000000000000000", "y": "0000000000000000", "z": "8000000000000000"}}
+    yield {"case_id": "vec3/rotation/signed-zero-atan2", "family": "math", "operation": "vec3_rotation",
+           "first": {"x": "0000000000000000", "y": "8000000000000000", "z": "8000000000000000"}}
+    yield {"case_id": "vec3/rotation/subnormal", "family": "math", "operation": "vec3_rotation",
+           "first": {"x": "0000000000000001", "y": "0000000000000001", "z": "0000000000000001"}}
+    yield {"case_id": "vec3/rotation/subnormal-normal", "family": "math", "operation": "vec3_rotation",
+           "first": {"x": "0000000000000001", "y": "3ff0000000000000", "z": "0000000000000000"}}
+    yield {"case_id": "vec3/rotation/max-finite", "family": "math", "operation": "vec3_rotation",
+           "first": {"x": "7fefffffffffffff", "y": "7fefffffffffffff", "z": "7fefffffffffffff"}}
+    yield {"case_id": "vec3/rotation/infinities", "family": "math", "operation": "vec3_rotation",
+           "first": {"x": "7ff0000000000000", "y": "3ff0000000000000", "z": "fff0000000000000"}}
+    yield {"case_id": "vec3/rotation/nan", "family": "math", "operation": "vec3_rotation",
+           "first": {"x": "7ff8000000000001", "y": "3ff0000000000000", "z": "0000000000000000"}}
     for name in ("down", "up", "north", "south", "west", "east"):
         yield {"case_id": f"direction/properties/{name}", "family": "math", "operation": "direction",
                "name": name, "steps": []}

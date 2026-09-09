@@ -246,6 +246,9 @@ public final class MathOracle {
                 default -> throw new IllegalArgumentException("Unknown Vec3 direction rotation kind");
             };
             result.add("value", snapshot(value));
+        } else if (operation.equals("vec3_rotation")) {
+            Vec3 first = vec3(request.getAsJsonObject("first"));
+            result.add("value", snapshot(first.rotation()));
         } else if (operation.equals("shape")) {
             String kind = request.get("kind").getAsString();
             if (kind.equals("single")) {

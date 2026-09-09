@@ -24,7 +24,7 @@ impl Vec2 {
     pub fn length_squared(self) -> f32 {
         // Do not fuse the multiplication and addition or substitute hypot:
         // intermediate f32 rounding/overflow is observable in the reference.
-        self.x * self.x + self.y * self.y
+        java_f32_add(self.x * self.x, self.y * self.y)
     }
 
     pub fn length(self) -> f32 {
@@ -361,6 +361,17 @@ impl Vec3 {
         )
     }
 
+    /// Extract pitch and yaw angles using the Java `rotation` calculation.
+    pub fn rotation(self) -> Vec2 {
+        // Java evaluates atan2/asin/sqrt in f64, narrows each angle to f32,
+        // then multiplies by the f32 degrees-per-radian constant.
+        const DEGREES_PER_RADIAN_F32: f32 = f32::from_bits(0x42652ee0);
+        let yaw = ((-self.x).atan2(self.z) as f32) * DEGREES_PER_RADIAN_F32;
+        let length_squared = self.x * self.x + self.y * self.y + self.z * self.z;
+        let pitch = (java_asin(-self.y / length_squared.sqrt()) as f32) * DEGREES_PER_RADIAN_F32;
+        Vec2::new(pitch, yaw)
+    }
+
     pub fn length_squared(self) -> f64 {
         // Keep the reference evaluation order; do not fuse or substitute hypot.
         self.x * self.x + self.y * self.y + self.z * self.z
@@ -444,6 +455,27 @@ scalar_operations!(f64, floor_f64, wrap_degrees_f64, clamp_f64);
 #[inline(never)]
 fn java_negate(value: f64) -> f64 {
     f64::from_bits(value.to_bits() ^ (1_u64 << 63))
+}
+
+fn java_asin(value: f64) -> f64 {
+    if value.abs() > 1.0 {
+        // Java Math.asin returns the negative canonical NaN for every
+        // out-of-domain finite or infinite argument. NaN inputs themselves
+        // retain their payload and sign through the platform implementation.
+        f64::from_bits(0xfff8_0000_0000_0000)
+    } else {
+        value.asin()
+    }
+}
+
+fn java_f32_add(left: f32, right: f32) -> f32 {
+    if right.is_nan() {
+        right
+    } else if left.is_nan() {
+        left
+    } else {
+        left + right
+    }
 }
 
 fn java_double_compare(left: f64, right: f64) -> i32 {
