@@ -59,6 +59,32 @@ def wire_cases():
 
 
 def math_cases():
+    codec_decodes = {
+        "basic": [float_bits(1.25, "f64"), float_bits(-2.5, "f64"), float_bits(3.75, "f64")],
+        "zero": [float_bits(0.0, "f64"), float_bits(0.0, "f64"), float_bits(0.0, "f64")],
+        "signed-zero": ["8000000000000000", "0000000000000000", "8000000000000000"],
+        "subnormal-and-large": ["0000000000000001", "7fefffffffffffff", "8000000000000001"],
+        "special": ["7ff8000000000002", "7ff0000000000000", "fff0000000000000"],
+        "empty": [],
+        "short": [float_bits(1.0, "f64"), float_bits(2.0, "f64")],
+        "long": [float_bits(1.0, "f64"), float_bits(2.0, "f64"),
+                  float_bits(3.0, "f64"), float_bits(4.0, "f64")],
+    }
+    for label, values in codec_decodes.items():
+        yield {"case_id": f"vec3/codec/decode/{label}", "family": "math",
+               "operation": "vec3_codec", "mode": "decode", "values": values}
+    codec_encodes = {
+        "basic": vector_bits(1.25, -2.5, 3.75),
+        "zero": vector_bits(0.0, 0.0, 0.0),
+        "signed-zero": {"x": "8000000000000000", "y": "0000000000000000",
+                         "z": "8000000000000000"},
+        "special": {"x": "7ff8000000000002", "y": "7ff0000000000000",
+                     "z": "fff0000000000000"},
+    }
+    for label, values in codec_encodes.items():
+        yield {"case_id": f"vec3/codec/encode/{label}", "family": "math",
+               "operation": "vec3_codec", "mode": "encode", **values}
+
     vectors = {f"direction-{x}-{y}": (float_bits(x), float_bits(y))
                for x in (-1, 0, 1) for y in (-1, 0, 1)}
     vectors.update({"negative-zero": ("80000000", "80000000"),

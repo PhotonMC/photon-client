@@ -120,6 +120,14 @@ pub struct Vec3 {
     pub z: f64,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum Vec3CodecError {
+    WrongLength {
+        actual: usize,
+        partial: Option<Vec3>,
+    },
+}
+
 impl Vec3 {
     pub const ZERO: Self = Self::new(0.0, 0.0, 0.0);
     pub const X_AXIS: Self = Self::new(1.0, 0.0, 0.0);
@@ -128,6 +136,22 @@ impl Vec3 {
 
     pub const fn new(x: f64, y: f64, z: f64) -> Self {
         Self { x, y, z }
+    }
+
+    /// Decode the fixed three-element list used by Java `Vec3.CODEC`.
+    pub fn codec_decode(values: &[f64]) -> Result<Self, Vec3CodecError> {
+        match values {
+            [x, y, z] => Ok(Self::new(*x, *y, *z)),
+            values => Err(Vec3CodecError::WrongLength {
+                actual: values.len(),
+                partial: (values.len() >= 3).then(|| Self::new(values[0], values[1], values[2])),
+            }),
+        }
+    }
+
+    /// Encode a Vec3 in the x, y, z order used by Java `Vec3.CODEC`.
+    pub const fn codec_encode(self) -> [f64; 3] {
+        [self.x, self.y, self.z]
     }
 
     pub fn at_lower_corner_of(pos: BlockPos) -> Self {

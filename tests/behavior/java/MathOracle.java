@@ -1,6 +1,9 @@
 import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.mojang.math.OctahedralGroup;
+import com.mojang.serialization.DataResult;
+import com.mojang.serialization.JsonOps;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import net.minecraft.core.BlockPos;
@@ -91,6 +94,21 @@ public final class MathOracle {
             result.addProperty("x", Integer.toString(SectionPos.sectionRelativeX(relative)));
             result.addProperty("y", Integer.toString(SectionPos.sectionRelativeY(relative)));
             result.addProperty("z", Integer.toString(SectionPos.sectionRelativeZ(relative)));
+        } else if (operation.equals("vec3_codec")) {
+            String mode = request.get("mode").getAsString();
+            if (mode.equals("decode")) {
+                var input = new JsonArray();
+                for (var entry : request.getAsJsonArray("values")) {
+                    input.add(Double.longBitsToDouble(Long.parseUnsignedLong(entry.getAsString(), 16)));
+                }
+                DataResult<Vec3> decoded = Vec3.CODEC.parse(JsonOps.INSTANCE, input);
+                result = codecDecodeResult(decoded);
+            } else if (mode.equals("encode")) {
+                DataResult<JsonElement> encoded = Vec3.CODEC.encodeStart(JsonOps.INSTANCE, vec3(request));
+                result = codecEncodeResult(encoded);
+            } else {
+                throw new IllegalArgumentException("Unknown Vec3 codec mode");
+            }
         } else if (operation.equals("vec3")) {
             Vec3 vector = new Vec3(f64(request, "x"), f64(request, "y"), f64(request, "z"));
             var events = new JsonArray();
@@ -1243,6 +1261,37 @@ public final class MathOracle {
 
     private static Vec3 vec3(JsonObject object) {
         return new Vec3(f64(object, "x"), f64(object, "y"), f64(object, "z"));
+    }
+
+    private static JsonObject codecDecodeResult(DataResult<Vec3> decoded) {
+        var result = new JsonObject();
+        decoded.result().ifPresent(value -> {
+            result.addProperty("outcome", "value");
+            result.add("value", snapshot(value));
+        });
+        decoded.error().ifPresent(error -> {
+            result.addProperty("outcome", "error");
+            result.addProperty("error", error.message());
+            error.partialValue().ifPresent(value -> result.add("partial", snapshot(value)));
+        });
+        return result;
+    }
+
+    private static JsonObject codecEncodeResult(DataResult<JsonElement> encoded) {
+        var result = new JsonObject();
+        encoded.result().ifPresent(value -> {
+            result.addProperty("outcome", "value");
+            var values = new JsonArray();
+            for (var entry : value.getAsJsonArray()) {
+                values.add(Oracle.bits(entry.getAsDouble()));
+            }
+            result.add("value", values);
+        });
+        encoded.error().ifPresent(error -> {
+            result.addProperty("outcome", "error");
+            result.addProperty("error", error.message());
+        });
+        return result;
     }
 
     private static JsonArray randomSteps(RandomSource random, JsonArray entries) {

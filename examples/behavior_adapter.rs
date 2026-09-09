@@ -115,6 +115,18 @@ fn f64_field(value: &Value, name: &str) -> Result<f64, String> {
         .map_err(|error| error.to_string())
 }
 
+fn f64_value(value: &Value, name: &str) -> Result<f64, String> {
+    let text = value
+        .as_str()
+        .ok_or_else(|| format!("{name} must be a string"))?;
+    if text.len() != 16 || !text.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+        return Err(format!("{name} must be sixteen hexadecimal digits"));
+    }
+    u64::from_str_radix(text, 16)
+        .map(f64::from_bits)
+        .map_err(|error| error.to_string())
+}
+
 fn vec2_snapshot(vector: Vec2) -> Value {
     json!({
         "x": format!("{:08x}", vector.x.to_bits()),
@@ -1582,6 +1594,51 @@ fn math_result(request: &Value) -> Result<Value, String> {
     }
     if operation == "section_relative" {
         return section_relative_result(request);
+    }
+    if operation == "vec3_codec" {
+        return match string(request, "mode")? {
+            "decode" => {
+                let values = request["values"]
+                    .as_array()
+                    .ok_or("values must be an array")?
+                    .iter()
+                    .enumerate()
+                    .map(|(index, value)| f64_value(value, &format!("values[{index}]")))
+                    .collect::<Result<Vec<_>, _>>()?;
+                match Vec3::codec_decode(&values) {
+                    Ok(value) => Ok(json!({
+                        "outcome": "value",
+                        "value": vec3_snapshot(value),
+                    })),
+                    Err(math::Vec3CodecError::WrongLength { partial, .. }) => {
+                        let mut result = json!({
+                            "outcome": "error",
+                            "error": "Input is not a list of 3 elements",
+                        });
+                        if let Some(value) = partial {
+                            result["partial"] = vec3_snapshot(value);
+                        }
+                        Ok(result)
+                    }
+                }
+            }
+            "encode" => {
+                let value = Vec3::new(
+                    f64_field(request, "x")?,
+                    f64_field(request, "y")?,
+                    f64_field(request, "z")?,
+                );
+                Ok(json!({
+                    "outcome": "value",
+                    "value": value
+                        .codec_encode()
+                        .into_iter()
+                        .map(|component| format!("{:016x}", component.to_bits()))
+                        .collect::<Vec<_>>(),
+                }))
+            }
+            _ => Err("unknown Vec3 codec mode".into()),
+        };
     }
     if operation == "vec2" {
         let mut vector = Vec2::new(f32_field(request, "x")?, f32_field(request, "y")?);
