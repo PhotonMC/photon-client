@@ -776,9 +776,23 @@ impl Shapes {
 
     /// Return the all-axis variants of a shape in Java EnumMap order.
     pub fn rotate_all_axis(north: &VoxelShape) -> [(Axis, VoxelShape); 3] {
+        Self::rotate_all_axis_with_center(north, Vec3::new(0.5, 0.5, 0.5))
+    }
+
+    /// Return all-axis variants around an explicit point.
+    pub fn rotate_all_axis_with_center(
+        north: &VoxelShape,
+        rotation_center: Vec3,
+    ) -> [(Axis, VoxelShape); 3] {
         [
-            (Axis::X, Self::rotate(north, ShapeRotation::Rot90YNeg)),
-            (Axis::Y, Self::rotate(north, ShapeRotation::Rot90XNeg)),
+            (
+                Axis::X,
+                Self::rotate_with_center(north, ShapeRotation::Rot90YNeg, rotation_center),
+            ),
+            (
+                Axis::Y,
+                Self::rotate_with_center(north, ShapeRotation::Rot90XNeg, rotation_center),
+            ),
             (Axis::Z, north.clone()),
         ]
     }
