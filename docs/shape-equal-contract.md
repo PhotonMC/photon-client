@@ -1,6 +1,6 @@
 # P01.d — Shapes.equal referans sözleşmesi
 
-Bu dilimin **6 Java davranış testi hazırdır ve Rust karşılığı doğrulanmıştır** ([kanıt](shape-equal-parity.md)). Kapsam, iki `VoxelShape` değerinin kapladığı hücreler bakımından eşitliğini ve iki empty shape'in eşit kabul edilmesini içerir.
+Bu dilimin **6 Java davranış testi hazırdır ve Rust karşılığı doğrulanmıştır** ([kanıt](shape-equal-parity.md)). Kapsam, iki `VoxelShape` değerinin kapladığı hücreler bakımından eşitliğini ve iki empty shape'in eşit kabul edilmesini içerir. Signed eksen dönüşümleri ayrı [rotation sözleşmesinde](shape-rotate-contract.md) ele alınır.
 
 ## Kaynak ve sınır
 
@@ -35,6 +35,6 @@ cargo build --locked --offline --example behavior_adapter
 python3 tools/behavior/run.py compare --family math --adapter target/debug/examples/behavior_adapter
 ```
 
-Bu dilimdeki senaryoların bulunduğu güncel math referansı `75eb7e188d3237557080017eae7056f68a6cb46cda4d41b3a7670507842ff5ae` kimliğindedir. Referans iki JVM çalıştırmasıyla kararlı bulundu. Birleşik altı aile referansı `132874b38edd2ac3df4e52525cdc4defbd5f36ee22441bb8daba624d5c98076c` kimliğiyle doğrulandı.
+Bu dilimdeki senaryoların bulunduğu güncel math referansı `075dce9be8f50635713e1d727226fab4db4a932649719fbc7f997af615335d07` kimliğindedir. Referans iki JVM çalıştırmasıyla kararlı bulundu. Birleşik altı aile referansı `1ad3b7dff5eb6494fe2bfe71adb63a9beb68d01b337e297f3838e37518f3d62f` kimliğiyle doğrulandı.
 
-Math debug/release raporları `compare-v8iab_92` ve `compare-ecl7shzk`; birleşik debug/release raporları `compare-hz_hpajw` ve `compare-7a4v0a9c` dizinlerindedir. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.
+Math debug/release raporları `compare-83oig85q` ve `compare-wde1o1u_`; birleşik debug/release raporları `compare-yb206b7s` ve `compare-og49xhho` dizinlerindedir. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.

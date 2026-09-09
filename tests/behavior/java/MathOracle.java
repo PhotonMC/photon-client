@@ -1,5 +1,6 @@
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.mojang.math.OctahedralGroup;
 import java.util.ArrayList;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -138,6 +139,15 @@ public final class MathOracle {
                 VoxelShape first = voxelShape(request.getAsJsonObject("first"));
                 VoxelShape second = voxelShape(request.getAsJsonObject("second"));
                 result.addProperty("equal", Shapes.equal(first, second));
+            } else if (kind.equals("rotate")) {
+                VoxelShape shape = voxelShape(request.getAsJsonObject("box"));
+                OctahedralGroup rotation = OctahedralGroup.valueOf(request.get("rotation").getAsString());
+                result.add("shape", snapshot(Shapes.rotate(shape, rotation)));
+            } else if (kind.equals("rotate_join")) {
+                VoxelShape first = voxelShape(request.getAsJsonObject("first"));
+                VoxelShape second = voxelShape(request.getAsJsonObject("second"));
+                OctahedralGroup rotation = OctahedralGroup.valueOf(request.get("rotation").getAsString());
+                result.add("shape", snapshot(Shapes.rotate(Shapes.or(first, second), rotation)));
             } else if (kind.equals("collide")) {
                 VoxelShape shape = voxelShape(request.getAsJsonObject("shape"));
                 AABB moving = box(request.getAsJsonObject("moving"));

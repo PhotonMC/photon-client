@@ -240,6 +240,32 @@ def math_cases():
     yield {"case_id": "shape/equal/both-empty", "family": "math", "operation": "shape", "kind": "equal",
            "first": box_bits(0.0, 0.0, 0.0, 0.00000005, 1.0, 1.0),
            "second": box_bits(-2.0, -1.0, 3.0, -1.99999995, 0.0, 4.0)}
+    rotate_box = box_bits(0.125, 0.25, 0.375, 0.625, 0.75, 0.875)
+    yield {"case_id": "shape/rotate/identity", "family": "math", "operation": "shape", "kind": "rotate",
+           "box": rotate_box, "rotation": "IDENTITY"}
+    yield {"case_id": "shape/rotate/x-90", "family": "math", "operation": "shape", "kind": "rotate",
+           "box": rotate_box, "rotation": "ROT_90_X_NEG"}
+    yield {"case_id": "shape/rotate/y-90", "family": "math", "operation": "shape", "kind": "rotate",
+           "box": rotate_box, "rotation": "ROT_90_Y_NEG"}
+    yield {"case_id": "shape/rotate/z-90", "family": "math", "operation": "shape", "kind": "rotate",
+           "box": rotate_box, "rotation": "ROT_90_Z_NEG"}
+    yield {"case_id": "shape/rotate/x-180", "family": "math", "operation": "shape", "kind": "rotate",
+           "box": rotate_box, "rotation": "ROT_180_FACE_YZ"}
+    yield {"case_id": "shape/rotate/y-180", "family": "math", "operation": "shape", "kind": "rotate",
+           "box": rotate_box, "rotation": "ROT_180_FACE_XZ"}
+    yield {"case_id": "shape/rotate/z-180", "family": "math", "operation": "shape", "kind": "rotate",
+           "box": rotate_box, "rotation": "ROT_180_FACE_XY"}
+    yield {"case_id": "shape/rotate/x-90-positive", "family": "math", "operation": "shape", "kind": "rotate",
+           "box": rotate_box, "rotation": "ROT_90_X_POS"}
+    yield {"case_id": "shape/rotate/y-90-positive", "family": "math", "operation": "shape", "kind": "rotate",
+           "box": rotate_box, "rotation": "ROT_90_Y_POS"}
+    yield {"case_id": "shape/rotate/z-90-positive", "family": "math", "operation": "shape", "kind": "rotate",
+           "box": rotate_box, "rotation": "ROT_90_Z_POS"}
+    yield {"case_id": "shape/rotate/cube-grid", "family": "math", "operation": "shape", "kind": "rotate",
+           "box": box_bits(0.0, 0.0, 0.0, 1.0, 0.5, 1.0), "rotation": "ROT_90_Y_NEG"}
+    yield {"case_id": "shape/rotate/joined-cells", "family": "math", "operation": "shape", "kind": "rotate_join",
+           "first": box_bits(0.0, 0.0, 0.0, 0.5, 0.5, 1.0),
+           "second": box_bits(0.5, 0.5, 0.0, 1.0, 1.0, 1.0), "rotation": "ROT_90_Z_NEG"}
     yield {"case_id": "shape/collide/positive-x", "family": "math", "operation": "shape", "kind": "collide",
            "axis": "x", "shape": box_bits(0, 0, 0, 1, 1, 1),
            "moving": box_bits(-2, 0.25, 0.25, -1, 0.75, 0.75), "distance": float_bits(4, "f64")}

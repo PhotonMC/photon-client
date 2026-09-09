@@ -47,6 +47,54 @@ impl BooleanOp {
     }
 }
 
+/// Signed axis permutations supported by the current shape rotation slice.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ShapeRotation {
+    Identity,
+    Rot90XNeg,
+    Rot90XPos,
+    Rot90YNeg,
+    Rot90YPos,
+    Rot90ZNeg,
+    Rot90ZPos,
+    Rot180FaceXy,
+    Rot180FaceXz,
+    Rot180FaceYz,
+}
+
+impl ShapeRotation {
+    pub fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "IDENTITY" => Some(Self::Identity),
+            "ROT_90_X_NEG" => Some(Self::Rot90XNeg),
+            "ROT_90_X_POS" => Some(Self::Rot90XPos),
+            "ROT_90_Y_NEG" => Some(Self::Rot90YNeg),
+            "ROT_90_Y_POS" => Some(Self::Rot90YPos),
+            "ROT_90_Z_NEG" => Some(Self::Rot90ZNeg),
+            "ROT_90_Z_POS" => Some(Self::Rot90ZPos),
+            "ROT_180_FACE_XY" => Some(Self::Rot180FaceXy),
+            "ROT_180_FACE_XZ" => Some(Self::Rot180FaceXz),
+            "ROT_180_FACE_YZ" => Some(Self::Rot180FaceYz),
+            _ => None,
+        }
+    }
+
+    fn axes(self) -> ([usize; 3], [bool; 3]) {
+        match self {
+            Self::Identity => ([0, 1, 2], [false, false, false]),
+            Self::Rot90XNeg => ([0, 2, 1], [false, false, true]),
+            Self::Rot90XPos => ([0, 2, 1], [false, true, false]),
+            Self::Rot90YNeg => ([2, 1, 0], [true, false, false]),
+            Self::Rot90YPos => ([2, 1, 0], [false, false, true]),
+            Self::Rot90ZNeg => ([1, 0, 2], [false, true, false]),
+            Self::Rot90ZPos => ([1, 0, 2], [true, false, false]),
+            Self::Rot180FaceXy => ([0, 1, 2], [true, true, false]),
+            Self::Rot180FaceXz => ([0, 1, 2], [true, false, true]),
+            Self::Rot180FaceYz => ([0, 1, 2], [false, true, true]),
+        }
+    }
+}
+
 /// A voxelized region described by coordinate planes and occupied cells.
 #[derive(Debug, Clone, PartialEq)]
 pub struct VoxelShape {
@@ -471,6 +519,18 @@ fn fuzzy_equals(first: f64, second: f64) -> bool {
     (first - second).abs() <= EPSILON
 }
 
+fn rotate_axis_coords(coords: &[f64], invert: bool) -> Vec<f64> {
+    if invert {
+        coords
+            .iter()
+            .rev()
+            .map(|value| -(*value - 0.5) + 0.5)
+            .collect()
+    } else {
+        coords.to_vec()
+    }
+}
+
 /// Constructors and operations for voxel shapes.
 pub struct Shapes;
 
@@ -562,6 +622,94 @@ impl Shapes {
     /// Return whether two shapes occupy the same cells.
     pub fn equal(first: &VoxelShape, second: &VoxelShape) -> bool {
         !Self::join_is_not_empty(first, second, BooleanOp::NotSame)
+    }
+
+    /// Rotate a shape around the unit block center.
+    pub fn rotate(shape: &VoxelShape, rotation: ShapeRotation) -> VoxelShape {
+        if matches!(rotation, ShapeRotation::Identity) {
+            return shape.clone();
+        }
+
+        let old_sizes = [shape.xs.len() - 1, shape.ys.len() - 1, shape.zs.len() - 1];
+        let old_coords = [&shape.xs, &shape.ys, &shape.zs];
+        let (permutation, inverted) = rotation.axes();
+        let new_sizes = [
+            old_sizes[permutation[0]],
+            old_sizes[permutation[1]],
+            old_sizes[permutation[2]],
+        ];
+        let shifts = [
+            if inverted[0] && new_sizes[0] > 0 {
+                new_sizes[0] as isize - 1
+            } else {
+                0
+            },
+            if inverted[1] && new_sizes[1] > 0 {
+                new_sizes[1] as isize - 1
+            } else {
+                0
+            },
+            if inverted[2] && new_sizes[2] > 0 {
+                new_sizes[2] as isize - 1
+            } else {
+                0
+            },
+        ];
+        let grid = Grid {
+            x_size: new_sizes[0],
+            y_size: new_sizes[1],
+            z_size: new_sizes[2],
+        };
+        let mut cells = vec![false; grid.cell_count()];
+
+        for x in 0..old_sizes[0] {
+            for y in 0..old_sizes[1] {
+                for z in 0..old_sizes[2] {
+                    if !shape.is_full(x, y, z) {
+                        continue;
+                    }
+                    let old_position = [x as isize, y as isize, z as isize];
+                    let new_position = [
+                        shifts[0]
+                            + if inverted[0] {
+                                -old_position[permutation[0]]
+                            } else {
+                                old_position[permutation[0]]
+                            },
+                        shifts[1]
+                            + if inverted[1] {
+                                -old_position[permutation[1]]
+                            } else {
+                                old_position[permutation[1]]
+                            },
+                        shifts[2]
+                            + if inverted[2] {
+                                -old_position[permutation[2]]
+                            } else {
+                                old_position[permutation[2]]
+                            },
+                    ];
+                    cells[index(
+                        new_position[0] as usize,
+                        new_position[1] as usize,
+                        new_position[2] as usize,
+                        grid,
+                    )] = true;
+                }
+            }
+        }
+
+        let new_coords = [
+            rotate_axis_coords(old_coords[permutation[0]], inverted[0]),
+            rotate_axis_coords(old_coords[permutation[1]], inverted[1]),
+            rotate_axis_coords(old_coords[permutation[2]], inverted[2]),
+        ];
+        VoxelShape::new(
+            new_coords[0].clone(),
+            new_coords[1].clone(),
+            new_coords[2].clone(),
+            cells,
+        )
     }
 
     /// Return whether two block-local shapes occlude across a direction.

@@ -6,7 +6,7 @@ Bu dilim Java 26.2 `VoxelShape.getFaceShape(Direction)` davranışını kapsar. 
 
 Java Edition 26.2 / protokol 776 / Java 25 referansı kullanılır. `world/phys/shapes/VoxelShape.java:202-235`, `SliceShape.java:6-33`, `SubShape.java:6-47`, `CubeVoxelShape.java:7-17` ve `Shapes.java:44-172` incelendi. `MathOracle` doğrudan `getFaceShape` çağrısını ve dönen shape'in box snapshot'ını gözler; beklenen yüzü Rust sonucundan üretmez.
 
-Bu dilim block-local koordinatlarla üretilen box ve OR shape'lerinin yüz sonucunu kapsar. Rotation ve dünyadaki collider toplama sonraki dilimlerdir.
+Bu dilim block-local koordinatlarla üretilen box ve OR shape'lerinin yüz sonucunu kapsar. Rotation [ayrı sözleşmede](shape-rotate-contract.md), dünyadaki collider toplama sonraki dilimlerde ele alınır.
 
 ## Davranış sözleşmesi
 
@@ -39,4 +39,4 @@ cargo build --locked --offline --example behavior_adapter
 python3 tools/behavior/run.py compare --family math --adapter target/debug/examples/behavior_adapter
 ```
 
-Bu dilimin sekiz senaryosunu içeren math referans kimliği `22be0a4cb9fc67f18a020a971ff97c40b8df3f00566b14266f8ed2f447053381`'dir. Birleşik altı aile referansı `132874b38edd2ac3df4e52525cdc4defbd5f36ee22441bb8daba624d5c98076c` ile doğrulanmıştır. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.
+Bu dilimin sekiz senaryosunu içeren math referans kimliği `22be0a4cb9fc67f18a020a971ff97c40b8df3f00566b14266f8ed2f447053381`'dir. Birleşik altı aile referansı `1ad3b7dff5eb6494fe2bfe71adb63a9beb68d01b337e297f3838e37518f3d62f` ile doğrulanmıştır. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.

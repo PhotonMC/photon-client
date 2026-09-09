@@ -1,6 +1,6 @@
 # P01.d — VoxelShape temel ve OR birleşimi referans sözleşmesi
 
-Bu dilimin **5 Java davranış testi hazırdır ve Rust karşılığı doğrulanmıştır** ([kanıt](shape-parity.md)). Kapsam, `Shapes.empty` sonucu, `Shapes.box` ile tek voxel shape üretimi, shape taşıma, iki shape'in `OR` birleşimi ve `joinIsNotEmpty` sorgusunu içerir. Tek shape collision için ayrı [sözleşme](shape-collision-contract.md), çoklu shape collision için [ayrı sözleşme](shape-collision-many-contract.md) ve VoxelShape clip için ayrı [sözleşme](shape-clip-contract.md) ile closestPointTo için ayrı [sözleşme](shape-closest-contract.md) ve getFaceShape için ayrı [sözleşme](shape-face-contract.md) ve blockOccludes için ayrı [sözleşme](shape-occlusion-contract.md), mergedFaceOccludes/faceShapeOccludes için ayrı [sözleşme](shape-face-occlusion-contract.md), `Shapes.equal` için ayrı [sözleşme](shape-equal-contract.md) vardır; rotation, diğer yüz/occlusion ve diğer BooleanOp dalları sonraki dilimlerdir.
+Bu dilimin **5 Java davranış testi hazırdır ve Rust karşılığı doğrulanmıştır** ([kanıt](shape-parity.md)). Kapsam, `Shapes.empty` sonucu, `Shapes.box` ile tek voxel shape üretimi, shape taşıma, iki shape'in `OR` birleşimi ve `joinIsNotEmpty` sorgusunu içerir. Tek shape collision için ayrı [sözleşme](shape-collision-contract.md), çoklu shape collision için [ayrı sözleşme](shape-collision-many-contract.md), VoxelShape clip için [ayrı sözleşme](shape-clip-contract.md), closestPointTo için [ayrı sözleşme](shape-closest-contract.md), getFaceShape için [ayrı sözleşme](shape-face-contract.md), blockOccludes için [ayrı sözleşme](shape-occlusion-contract.md), mergedFaceOccludes/faceShapeOccludes için [ayrı sözleşme](shape-face-occlusion-contract.md), `Shapes.equal` için [ayrı sözleşme](shape-equal-contract.md) ve `Shapes.rotate` için [ayrı sözleşme](shape-rotate-contract.md) vardır; diğer yüz/occlusion ve diğer BooleanOp dalları sonraki dilimlerdir.
 
 ## Kaynak ve sınır
 
@@ -33,6 +33,6 @@ cargo build --locked --offline --example behavior_adapter
 python3 tools/behavior/run.py compare --family math --adapter target/debug/examples/behavior_adapter
 ```
 
-Shape senaryolarını içeren math referans kimliği `eeccf6a1ab099f28829b45e5c6f977e0ebe570005108d43a151a094f55b9f021` oldu. Bu referans iki JVM çalıştırmasıyla kararlı bulundu. Birleşik altı aile referansı da iki JVM'de doğrulandı: `132874b38edd2ac3df4e52525cdc4defbd5f36ee22441bb8daba624d5c98076c`.
+Shape senaryolarını içeren math referans kimliği `eeccf6a1ab099f28829b45e5c6f977e0ebe570005108d43a151a094f55b9f021` oldu. Bu referans iki JVM çalıştırmasıyla kararlı bulundu. Birleşik altı aile referansı da iki JVM'de doğrulandı: `1ad3b7dff5eb6494fe2bfe71adb63a9beb68d01b337e297f3838e37518f3d62f`.
 
-Debug ve release Rust adaptörleri math ailesinde 345/345, birleşik corpus'ta 982/982 eşleşti. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.
+Debug ve release Rust adaptörleri math ailesinde 345/345, birleşik corpus'ta 994/994 eşleşti. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.

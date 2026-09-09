@@ -8,7 +8,7 @@ use voxel_client::direction::{Axis, Direction};
 use voxel_client::math::{self, Vec2, Vec3};
 use voxel_client::nbt::{self, Field, FieldValue};
 use voxel_client::random::RandomSource;
-use voxel_client::shape::{BooleanOp, Shapes, VoxelShape};
+use voxel_client::shape::{BooleanOp, ShapeRotation, Shapes, VoxelShape};
 use voxel_client::timer::Timer;
 use voxel_client::utf8;
 use voxel_client::wire::{self, ReadError};
@@ -543,6 +543,24 @@ fn shape_result(request: &Value) -> Result<Value, String> {
             let first = shape_box(request.get("first").ok_or("first must be an object")?)?;
             let second = shape_box(request.get("second").ok_or("second must be an object")?)?;
             Ok(json!({"equal": Shapes::equal(&first, &second)}))
+        }
+        "rotate" => {
+            let shape = shape_box(request.get("box").ok_or("box must be an object")?)?;
+            let rotation = ShapeRotation::from_name(string(request, "rotation")?)
+                .ok_or("unknown shape rotation")?;
+            Ok(json!({
+                "shape": shape_snapshot(&Shapes::rotate(&shape, rotation)),
+            }))
+        }
+        "rotate_join" => {
+            let first = shape_box(request.get("first").ok_or("first must be an object")?)?;
+            let second = shape_box(request.get("second").ok_or("second must be an object")?)?;
+            let rotation = ShapeRotation::from_name(string(request, "rotation")?)
+                .ok_or("unknown shape rotation")?;
+            let shape = Shapes::or(&first, &second);
+            Ok(json!({
+                "shape": shape_snapshot(&Shapes::rotate(&shape, rotation)),
+            }))
         }
         "collide" => {
             let axis = Axis::from_name(string(request, "axis")?).ok_or("unknown collision axis")?;
