@@ -108,6 +108,33 @@ impl Direction {
         }
     }
 
+    /// Choose the direction with the greatest Java float dot product.
+    pub fn approximate_nearest(dx: f64, dy: f64, dz: f64) -> Self {
+        let dx = dx as f32;
+        let dy = dy as f32;
+        let dz = dz as f32;
+        let mut result = Self::North;
+        let mut highest_dot = f32::from_bits(1);
+
+        for direction in [
+            Self::Down,
+            Self::Up,
+            Self::North,
+            Self::South,
+            Self::West,
+            Self::East,
+        ] {
+            let (normal_x, normal_y, normal_z) = direction.step();
+            let dot = dx * normal_x as f32 + dy * normal_y as f32 + dz * normal_z as f32;
+            if dot > highest_dot {
+                highest_dot = dot;
+                result = direction;
+            }
+        }
+
+        result
+    }
+
     fn clockwise_y(self) -> Self {
         match self {
             Self::North => Self::East,

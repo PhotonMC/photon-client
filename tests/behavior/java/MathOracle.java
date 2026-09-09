@@ -154,6 +154,30 @@ public final class MathOracle {
                 }
                 result.addProperty("distance", Oracle.bits(Shapes.collide(
                     axis, moving, shapes, f64(request, "distance"))));
+            } else if (kind.equals("clip")) {
+                VoxelShape shape = voxelShape(request.getAsJsonObject("shape"));
+                var events = new JsonArray();
+                for (var entry : request.getAsJsonArray("queries")) {
+                    JsonObject query = entry.getAsJsonObject();
+                    events.add(snapshot(shape.clip(
+                        vec3(query.getAsJsonObject("from")),
+                        vec3(query.getAsJsonObject("to")),
+                        blockPos(query.getAsJsonObject("pos")))));
+                }
+                result.add("events", events);
+            } else if (kind.equals("clip_join")) {
+                VoxelShape first = voxelShape(request.getAsJsonObject("first"));
+                VoxelShape second = voxelShape(request.getAsJsonObject("second"));
+                VoxelShape shape = Shapes.join(first, second, BooleanOp.OR);
+                var events = new JsonArray();
+                for (var entry : request.getAsJsonArray("queries")) {
+                    JsonObject query = entry.getAsJsonObject();
+                    events.add(snapshot(shape.clip(
+                        vec3(query.getAsJsonObject("from")),
+                        vec3(query.getAsJsonObject("to")),
+                        blockPos(query.getAsJsonObject("pos")))));
+                }
+                result.add("events", events);
             } else {
                 throw new IllegalArgumentException("Unknown VoxelShape kind");
             }

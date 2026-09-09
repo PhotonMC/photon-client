@@ -40,7 +40,7 @@ impl BoundingBox {
     }
 }
 
-/// A block hit produced by the iterable AABB clipping overload.
+/// A block hit produced by AABB or VoxelShape clipping.
 #[derive(Debug, Clone, Copy)]
 pub struct BlockHitResult {
     pub location: Vec3,
@@ -51,7 +51,12 @@ pub struct BlockHitResult {
 }
 
 impl BlockHitResult {
-    fn new(location: Vec3, direction: Direction, block_pos: BlockPos, inside: bool) -> Self {
+    pub(crate) fn new(
+        location: Vec3,
+        direction: Direction,
+        block_pos: BlockPos,
+        inside: bool,
+    ) -> Self {
         Self {
             location,
             direction,

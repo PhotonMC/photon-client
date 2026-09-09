@@ -568,6 +568,40 @@ fn shape_result(request: &Value) -> Result<Value, String> {
                 ),
             }))
         }
+        "clip" => {
+            let shape = shape_box(request.get("shape").ok_or("shape must be an object")?)?;
+            let queries = request
+                .get("queries")
+                .ok_or("queries must be an array")?
+                .as_array()
+                .ok_or("queries must be an array")?;
+            let mut events = Vec::with_capacity(queries.len());
+            for query in queries {
+                let from = f64_vec3(query.get("from").ok_or("from must be an object")?)?;
+                let to = f64_vec3(query.get("to").ok_or("to must be an object")?)?;
+                let pos = blockpos(query.get("pos").ok_or("pos must be an object")?)?;
+                events.push(block_hit_result_snapshot(shape.clip(from, to, pos)));
+            }
+            Ok(json!({"events": events}))
+        }
+        "clip_join" => {
+            let first = shape_box(request.get("first").ok_or("first must be an object")?)?;
+            let second = shape_box(request.get("second").ok_or("second must be an object")?)?;
+            let shape = Shapes::join(&first, &second, BooleanOp::Or);
+            let queries = request
+                .get("queries")
+                .ok_or("queries must be an array")?
+                .as_array()
+                .ok_or("queries must be an array")?;
+            let mut events = Vec::with_capacity(queries.len());
+            for query in queries {
+                let from = f64_vec3(query.get("from").ok_or("from must be an object")?)?;
+                let to = f64_vec3(query.get("to").ok_or("to must be an object")?)?;
+                let pos = blockpos(query.get("pos").ok_or("pos must be an object")?)?;
+                events.push(block_hit_result_snapshot(shape.clip(from, to, pos)));
+            }
+            Ok(json!({"events": events}))
+        }
         _ => Err("unknown VoxelShape kind".into()),
     }
 }

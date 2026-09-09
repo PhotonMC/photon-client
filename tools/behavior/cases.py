@@ -884,6 +884,36 @@ def math_cases():
                clip_many_step(clip_many_unit, (0.5, 0.5, 0.5), (2.0, 0.5, 0.5), (0, 0, 0)),
                clip_many_step(clip_many_unit, (-1.0, 0.5, 0.5), (-1.0 + 1.0e-8, 0.5, 0.5), (0, 0, 0)),
            ]}
+    def shape_clip_query(source, target, position=(0, 0, 0)):
+        return {"from": point(*source), "to": point(*target), "pos": block_position(*position)}
+
+    yield {"case_id": "shape/clip/empty", "family": "math", "operation": "shape", "kind": "clip",
+           "shape": box_bits(0.0, 0.0, 0.0, 0.00000005, 1.0, 1.0),
+           "queries": [shape_clip_query((-1.0, 0.5, 0.5), (2.0, 0.5, 0.5))]}
+    yield {"case_id": "shape/clip/short-segment", "family": "math", "operation": "shape", "kind": "clip",
+           "shape": box_bits(0.0, 0.0, 0.0, 1.0, 1.0, 1.0),
+           "queries": [shape_clip_query((0.5, 0.5, 0.5), (0.5001, 0.5, 0.5))]}
+    yield {"case_id": "shape/clip/inside-directions", "family": "math", "operation": "shape", "kind": "clip",
+           "shape": box_bits(0.0, 0.0, 0.0, 1.0, 1.0, 1.0),
+           "queries": [
+               shape_clip_query((0.5, 0.5, 0.5), (2.0, 0.5, 0.5)),
+               shape_clip_query((0.5, 0.5, 0.5), (-1.0, 0.5, 0.5)),
+               shape_clip_query((0.5, 0.5, 0.5), (0.5, 2.0, 0.5)),
+               shape_clip_query((0.5, 0.5, 0.5), (0.5, -1.0, 0.5)),
+               shape_clip_query((0.5, 0.5, 0.5), (0.5, 0.5, 2.0)),
+               shape_clip_query((0.5, 0.5, 0.5), (0.5, 0.5, -1.0)),
+               shape_clip_query((0.5, 0.5, 0.5), (2.0, 2.0, 2.0)),
+           ]}
+    yield {"case_id": "shape/clip/outside-offset", "family": "math", "operation": "shape", "kind": "clip",
+           "shape": box_bits(0.0, 0.0, 0.0, 1.0, 1.0, 1.0),
+           "queries": [shape_clip_query((5.0, -1.5, 5.5), (2.0, -1.5, 5.5), (3, -2, 5))]}
+    yield {"case_id": "shape/clip/partial-box", "family": "math", "operation": "shape", "kind": "clip",
+           "shape": box_bits(0.25, 0.25, 0.25, 0.75, 0.75, 0.75),
+           "queries": [shape_clip_query((-1.0, 0.5, 0.5), (2.0, 0.5, 0.5))]}
+    yield {"case_id": "shape/clip/joined-fallback", "family": "math", "operation": "shape", "kind": "clip_join",
+           "first": box_bits(0.0, 0.0, 0.0, 1.0, 1.0, 1.0),
+           "second": box_bits(2.0, 0.0, 0.0, 3.0, 1.0, 1.0),
+           "queries": [shape_clip_query((-1.0, 0.5, 0.5), (4.0, 0.5, 0.5))]}
     def bounding_box(min_x, min_y, min_z, max_x, max_y, max_z):
         return {"min_x": str(min_x), "min_y": str(min_y), "min_z": str(min_z),
                 "max_x": str(max_x), "max_y": str(max_y), "max_z": str(max_z)}

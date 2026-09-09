@@ -2,11 +2,13 @@
 //!
 //! A shape stores coordinate planes and the occupied cells between them. This
 //! is enough to preserve Java's box, move, supported BooleanOp joins, single
-//! shape collision, bounds, and box iteration behavior without choosing a
-//! broader collision representation yet.
+//! shape collision, VoxelShape clip hits, bounds, and box iteration behavior
+//! without choosing a broader collision representation yet.
 
-use crate::aabb::Aabb;
-use crate::direction::Axis;
+use crate::aabb::{Aabb, BlockHitResult};
+use crate::binary::BlockPos;
+use crate::direction::{Axis, Direction};
+use crate::math::Vec3;
 
 const EPSILON: f64 = 1.0e-7;
 
@@ -235,6 +237,38 @@ impl VoxelShape {
         boxes
     }
 
+    /// Clip a segment against this shape and return the nearest block hit.
+    pub fn clip(&self, from: Vec3, to: Vec3, pos: BlockPos) -> Option<BlockHitResult> {
+        if self.is_empty() {
+            return None;
+        }
+
+        let diff = Vec3::new(to.x - from.x, to.y - from.y, to.z - from.z);
+        if diff.length_squared() < EPSILON {
+            return None;
+        }
+
+        let test_point = Vec3::new(
+            from.x + diff.x * 0.001,
+            from.y + diff.y * 0.001,
+            from.z + diff.z * 0.001,
+        );
+        let x = self.find_index(Axis::X, test_point.x - f64::from(pos.x));
+        let y = self.find_index(Axis::Y, test_point.y - f64::from(pos.y));
+        let z = self.find_index(Axis::Z, test_point.z - f64::from(pos.z));
+        if self.is_full_wide_xyz(x, y, z) {
+            Some(BlockHitResult::new(
+                test_point,
+                Direction::approximate_nearest(diff.x, diff.y, diff.z).opposite(),
+                pos,
+                true,
+            ))
+        } else {
+            let boxes = self.to_aabbs();
+            Aabb::clip_many(&boxes, from, to, pos)
+        }
+    }
+
     fn is_full(&self, x: usize, y: usize, z: usize) -> bool {
         self.cells[index(x, y, z, self.grid())]
     }
@@ -290,6 +324,10 @@ impl VoxelShape {
             Axis::Y => (c, a, b),
             Axis::Z => (b, c, a),
         };
+        self.is_full_wide_xyz(x, y, z)
+    }
+
+    fn is_full_wide_xyz(&self, x: isize, y: isize, z: isize) -> bool {
         if x < 0 || y < 0 || z < 0 {
             return false;
         }
