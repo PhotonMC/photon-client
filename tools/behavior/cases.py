@@ -437,6 +437,21 @@ def math_cases():
     yield {"case_id": "vec3/align/reordered-duplicate", "family": "math", "operation": "vec3_align",
            "first": {"x": "7fefffffffffffff", "y": "0000000000000001", "z": "bff0000000000000"},
            "axes": ["z", "x", "z"]}
+    yield {"case_id": "vec3/projected-on/basic", "family": "math", "operation": "vec3_projected_on",
+           "first": vector_bits(3.0, 4.0, 0.0), "onto": vector_bits(4.0, 0.0, 0.0)}
+    yield {"case_id": "vec3/projected-on/orthogonal", "family": "math", "operation": "vec3_projected_on",
+           "first": vector_bits(0.0, 1.0, 0.0), "onto": vector_bits(1.0, 0.0, 0.0)}
+    yield {"case_id": "vec3/projected-on/zero-onto-preserves", "family": "math", "operation": "vec3_projected_on",
+           "first": vector_bits(1.25, -2.5, 3.75),
+           "onto": {"x": "8000000000000000", "y": "0000000000000000", "z": "8000000000000000"}}
+    yield {"case_id": "vec3/projected-on/negative-fraction", "family": "math", "operation": "vec3_projected_on",
+           "first": vector_bits(1.5, -2.25, 3.75), "onto": vector_bits(-2.0, 4.0, -1.0)}
+    yield {"case_id": "vec3/projected-on/special-values", "family": "math", "operation": "vec3_projected_on",
+           "first": {"x": "7ff0000000000000", "y": "3ff0000000000000", "z": "fff0000000000000"},
+           "onto": vector_bits(1.0, 0.0, 1.0)}
+    yield {"case_id": "vec3/projected-on/subnormal-onto", "family": "math", "operation": "vec3_projected_on",
+           "first": {"x": "7fefffffffffffff", "y": "8000000000000001", "z": "0000000000000001"},
+           "onto": {"x": "0000000000000001", "y": "0000000000000000", "z": "0000000000000000"}}
     for name in ("down", "up", "north", "south", "west", "east"):
         yield {"case_id": f"direction/properties/{name}", "family": "math", "operation": "direction",
                "name": name, "steps": []}

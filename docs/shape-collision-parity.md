@@ -9,14 +9,14 @@ Java 25.0.4.1 ve Rust 1.98.1 / Linux x86_64 ortamında:
 - 361 senaryoluk math referansı iki ayrı JVM çalıştırmasıyla kararlı bulundu.
 - Rust debug ve release adaptörleri **361/361** math senaryosunda eşleşti.
 - Sekiz yeni senaryoda pozitif/negatif x, eksen permütasyonu, ortogonal boşluk, sıfır/küçük eşik, empty shape ve sınırlı distance sonuçları karşılaştırıldı.
-- Birleşik altı aile corpus'u **1201/1201** senaryoda hem debug hem release adaptörüyle eşleşti.
+- Birleşik altı aile corpus'u **1207/1207** senaryoda hem debug hem release adaptörüyle eşleşti.
 - `cargo fmt`, `cargo check --locked --offline --all-targets`, `cargo test --locked --offline --all-targets` ve Clippy kontrolleri geçti.
 
 Math referans kimliği: `b31620fa93e0533f6498b86deedf056a7e4dda293e4fa80ae354dd69541d1ebd`.
 
-Birleşik referans kimliği: `faa59d430a7f5ffebd3b634a6e1cb6970d92ff920794ed661c7eaf6175f68fb7`.
+Birleşik referans kimliği: `e2ca4584024ee04709e92930122695a6bdc10c32c7e1a4c6b90f89808b9bfd54`.
 
-Yerel raporlar: `compare-w81fhtwn` (math debug), `compare-o5vdd23o` (math release), `compare-loq4vhwu` (birleşik debug) ve `compare-d1k2vrim` (birleşik release) dizinlerinde, `.data/runs/behavior/` altında bulunur.
+Yerel raporlar: `compare-w81fhtwn` (math debug), `compare-o5vdd23o` (math release), `compare-o4r8ph3e` (birleşik debug) ve `compare-umiwejve` (birleşik release) dizinlerinde, `.data/runs/behavior/` altında bulunur.
 
 ## Sınırlar
 

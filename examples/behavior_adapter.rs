@@ -1776,6 +1776,11 @@ fn math_result(request: &Value) -> Result<Value, String> {
         }
         return Ok(json!({"value": vec3_snapshot(first.align(&axes))}));
     }
+    if operation == "vec3_projected_on" {
+        let first = f64_vec3(request.get("first").ok_or("first must be an object")?)?;
+        let onto = f64_vec3(request.get("onto").ok_or("onto must be an object")?)?;
+        return Ok(json!({"value": vec3_snapshot(first.projected_on(onto))}));
+    }
     match string(request, "type")? {
         "f32" => {
             let value = f32_field(request, "value")?;

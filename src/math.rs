@@ -226,6 +226,15 @@ impl Vec3 {
         Self::new(x, y, z)
     }
 
+    pub fn projected_on(self, onto: Self) -> Self {
+        if onto.length_squared() == 0.0 {
+            onto
+        } else {
+            onto.scale(self.dot(onto))
+                .scale(1.0 / onto.length_squared())
+        }
+    }
+
     pub fn length_squared(self) -> f64 {
         // Keep the reference evaluation order; do not fuse or substitute hypot.
         self.x * self.x + self.y * self.y + self.z * self.z

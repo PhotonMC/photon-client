@@ -24,4 +24,4 @@ Girdiler `family: "math"`, `operation: "aabb"` ve `steps` içindeki `op: "expand
 
 ## Java yakalama
 
-Math ve birleşik altı aile referansı `faa59d430a7f5ffebd3b634a6e1cb6970d92ff920794ed661c7eaf6175f68fb7` kimliğiyle iki JVM çalıştırmasında doğrulandı. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.
+Math ve birleşik altı aile referansı `e2ca4584024ee04709e92930122695a6bdc10c32c7e1a4c6b90f89808b9bfd54` kimliğiyle iki JVM çalıştırmasında doğrulandı. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.

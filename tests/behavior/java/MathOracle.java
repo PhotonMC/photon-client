@@ -195,6 +195,10 @@ public final class MathOracle {
                 axes.add(axis);
             }
             result.add("value", snapshot(first.align(axes)));
+        } else if (operation.equals("vec3_projected_on")) {
+            Vec3 first = vec3(request.getAsJsonObject("first"));
+            Vec3 onto = vec3(request.getAsJsonObject("onto"));
+            result.add("value", snapshot(first.projectedOn(onto)));
         } else if (operation.equals("shape")) {
             String kind = request.get("kind").getAsString();
             if (kind.equals("single")) {
