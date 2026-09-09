@@ -408,6 +408,17 @@ public final class MathOracle {
             } else {
                 throw new IllegalArgumentException("Unknown Mth positiveModulo type");
             }
+        } else if (operation.equals("mth_abs_max")) {
+            String width = request.get("type").getAsString();
+            if (width.equals("f32")) {
+                result.addProperty("bits", Oracle.bits(Mth.absMax(
+                    Oracle.f32(request, "first"), Oracle.f32(request, "second"))));
+            } else if (width.equals("f64")) {
+                result.addProperty("bits", Oracle.bits(Mth.absMax(
+                    f64(request, "first"), f64(request, "second"))));
+            } else {
+                throw new IllegalArgumentException("Unknown Mth absMax type");
+            }
         } else if (operation.equals("vec3")) {
             Vec3 vector = new Vec3(f64(request, "x"), f64(request, "y"), f64(request, "z"));
             var events = new JsonArray();

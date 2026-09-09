@@ -2815,7 +2815,7 @@ def math_cases():
                "input": input_value}
 
     for width in ("f32", "f64"):
-        subnormal = (float.fromhex("0x0.000001p-126") if width == "f32"
+        subnormal = (float.fromhex("0x0.000002p-126") if width == "f32"
                      else float.fromhex("0x0.0000000000001p-1022"))
         maximum_finite = (float.fromhex("0x1.fffffep127") if width == "f32"
                           else float.fromhex("0x1.fffffffffffffp1023"))
@@ -2847,6 +2847,32 @@ def math_cases():
             yield {"case_id": f"mth/positive-modulo/{width}/{label}", "family": "math",
                    "operation": "mth_positive_modulo", "type": width,
                    "input": float_bits(input_value, width), "mod": float_bits(modulus, width)}
+
+    for width in ("f32", "f64"):
+        subnormal = (float.fromhex("0x0.000002p-126") if width == "f32"
+                     else float.fromhex("0x0.0000000000001p-1022"))
+        maximum_finite = (float.fromhex("0x1.fffffep127") if width == "f32"
+                          else float.fromhex("0x1.fffffffffffffp1023"))
+        mth_abs_max = [
+            ("basic", -3.0, 2.0),
+            ("second-larger", -2.0, 4.5),
+            ("both-negative", -7.25, -4.5),
+            ("same-magnitude", -3.0, 3.0),
+            ("zero", 0.0, 0.0),
+            ("signed-zero", -0.0, 0.0),
+            ("subnormal", subnormal, 0.0),
+            ("maximum-finite", -maximum_finite, maximum_finite),
+            ("positive-infinity", float("inf"), 3.0),
+            ("negative-infinity", -float("inf"), -2.0),
+            ("nan-first", float("nan"), 3.0),
+            ("negative-nan-first", -float("nan"), 3.0),
+            ("nan-second", 3.0, float("nan")),
+            ("negative-nan-second", 3.0, -float("nan")),
+        ]
+        for label, first, second in mth_abs_max:
+            yield {"case_id": f"mth/abs-max/{width}/{label}", "family": "math",
+                   "operation": "mth_abs_max", "type": width,
+                   "first": float_bits(first, width), "second": float_bits(second, width)}
 
 
 def timer_cases():

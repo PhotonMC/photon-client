@@ -645,6 +645,32 @@ pub fn positive_modulo_f64(input: f64, modulus: f64) -> f64 {
     }
 }
 
+/// Return Java `Mth.absMax(float)` with Java NaN and absolute-value bits.
+pub fn abs_max_f32(first: f32, second: f32) -> f32 {
+    let first = f32::from_bits(first.to_bits() & 0x7fff_ffff);
+    let second = f32::from_bits(second.to_bits() & 0x7fff_ffff);
+    if first.is_nan() {
+        first
+    } else if second.is_nan() {
+        second
+    } else {
+        first.max(second)
+    }
+}
+
+/// Return Java `Mth.absMax(double)` with Java NaN and absolute-value bits.
+pub fn abs_max_f64(first: f64, second: f64) -> f64 {
+    let first = f64::from_bits(first.to_bits() & 0x7fff_ffff_ffff_ffff);
+    let second = f64::from_bits(second.to_bits() & 0x7fff_ffff_ffff_ffff);
+    if first.is_nan() {
+        first
+    } else if second.is_nan() {
+        second
+    } else {
+        first.max(second)
+    }
+}
+
 /// Return Java `Math.floorDiv(int, int)`, including Java's signed overflow.
 pub fn floor_div_i32(dividend: i32, divisor: i32) -> i32 {
     if divisor == 0 {
