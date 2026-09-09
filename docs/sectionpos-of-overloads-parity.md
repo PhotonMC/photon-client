@@ -8,15 +8,15 @@ Java 25.0.4.1 ve Rust 1.98.1 / Linux x86_64 ortamında:
 
 - SectionPos `of(...)` veri overload'ları için 6 özgün senaryo hazırlandı.
 - BlockPos signed i32 sınırları, ChunkPos + sectionY aktarımı, packed alan sign extension'ı, negatif/pozitif double floor ve özel double değerleri doğrudan Java/Rust API'leriyle karşılaştırıldı.
-- Rust debug ve release adaptörleri güncel **1301/1301** math senaryosunda eşleşti.
-- Birleşik altı aile corpus'u **1803/1803** senaryoda hem debug hem release adaptörüyle eşleşti.
+- Rust debug ve release adaptörleri güncel **1319/1319** math senaryosunda eşleşti.
+- Birleşik altı aile corpus'u **1821/1821** senaryoda hem debug hem release adaptörüyle eşleşti.
 - Math ve birleşik `verify` çalıştırmaları kayıtlı Java referanslarını iki JVM tekrarıyla yeniden doğruladı.
 
-Math referans kimliği: `a7681fdbc73c8faa861a3c0f74be7f2286257b8c494b6f1d3c85598ad65f6973`. Birleşik referans kimliği: `e26e5fb4cdc24beb08ca189d4d55904fcff008d93a9a99a606f787f60554f935`.
+Math referans kimliği: `85b9ce09336ec312c84a062e772cdb41b6a2e079b6fcb1995200470edf61dd6c`. Birleşik referans kimliği: `01a770901948bb0f5650c8b4e80bf54b513d904c9746232c38b93c03a7546957`.
 
-Adapter hashleri: debug `0612fecaa42e9ad3a6abed41dc6cf2df8dd739a3fd90d05b846233f866da6f50`, release `b4afd615d2f91a70f67b659baf315615f24eb5616422cda0fd87af58271de63a`.
+Adapter hashleri: debug `43e1243cabb026db4daeb5b4e9f959cceeea3e253000b2c7e57159bade72d306`, release `01aaad8ffc0dccd9e142dee68c1e26f58b2554506e1fc2750ea7092e4f50fe1b`.
 
-Yerel raporlar: `compare-zq98bs3k` ve `compare-zgg863t0` (math debug/release), `compare-yz31bmcf` ve `compare-90dzj4qp` (birleşik debug/release), `verify-g1_f5udh` (math) ve `verify-l29xakrv` (birleşik) `.data/runs/behavior/` altında bulunur.
+Yerel raporlar: `compare-stkj42d2` ve `compare-e9upg098` (math debug/release), `compare-olmqgxpc` ve `compare-jxg0__tj` (birleşik debug/release), `verify-6wifh_w5` (math) ve `verify-m0natom3` (birleşik) `.data/runs/behavior/` altında bulunur.
 
 ## Sınırlar
 

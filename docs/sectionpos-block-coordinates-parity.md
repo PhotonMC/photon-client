@@ -8,15 +8,15 @@ Java 25.0.4.1 ve Rust 1.98.1 / Linux x86_64 ortamında:
 
 - SectionPos blok koordinatı yardımcıları için 6 özgün senaryo hazırlandı.
 - Köken, pozitif/negatif koordinatlar, shift sınırı ve i32 koordinat uçları doğrudan Java/Rust API'leriyle karşılaştırıldı.
-- Rust debug ve release adaptörleri güncel **1301/1301** math senaryosunda eşleşti.
-- Birleşik altı aile corpus'u **1803/1803** senaryoda hem debug hem release adaptörüyle eşleşti.
+- Rust debug ve release adaptörleri güncel **1319/1319** math senaryosunda eşleşti.
+- Birleşik altı aile corpus'u **1821/1821** senaryoda hem debug hem release adaptörüyle eşleşti.
 - Math ve birleşik `verify` çalıştırmaları kayıtlı Java referanslarını yeniden doğruladı.
 
-Math referans kimliği: `a7681fdbc73c8faa861a3c0f74be7f2286257b8c494b6f1d3c85598ad65f6973`. Birleşik referans kimliği: `e26e5fb4cdc24beb08ca189d4d55904fcff008d93a9a99a606f787f60554f935`.
+Math referans kimliği: `85b9ce09336ec312c84a062e772cdb41b6a2e079b6fcb1995200470edf61dd6c`. Birleşik referans kimliği: `01a770901948bb0f5650c8b4e80bf54b513d904c9746232c38b93c03a7546957`.
 
-Adapter hashleri: debug `7ca32df88b2b9428c0f70c0e484bc8528524a081223d5abc6f31803bb87963f8`, release `0b8de97e52cf25fab7836202ea3b5a09d7db759ce6fab368fea489722e507f79`.
+Adapter hashleri: debug `7ca32df88b2b9428c0f70c0e484bc8528524a081223d5abc6f31821bb87963f8`, release `0b8de97e52cf25fab7836202ea3b5a09d7db759ce6fab368fea489722e507f79`.
 
-Yerel raporlar: `compare-zq98bs3k` ve `compare-zgg863t0` (math debug/release), `compare-yz31bmcf` ve `compare-90dzj4qp` (birleşik debug/release), `verify-g1_f5udh` (math) ve `verify-l29xakrv` (birleşik) `.data/runs/behavior/` altında bulunur.
+Yerel raporlar: `compare-stkj42d2` ve `compare-e9upg098` (math debug/release), `compare-olmqgxpc` ve `compare-jxg0__tj` (birleşik debug/release), `verify-6wifh_w5` (math) ve `verify-m0natom3` (birleşik) `.data/runs/behavior/` altında bulunur.
 
 ## Sınırlar
 

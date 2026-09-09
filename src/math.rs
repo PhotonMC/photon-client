@@ -738,6 +738,28 @@ pub fn mth_next_double(random: &mut RandomSource, minimum: f64, maximum: f64) ->
     }
 }
 
+/// Return Java `Mth.randomBetweenInclusive(RandomSource, int, int)`.
+pub fn mth_random_between_inclusive(
+    random: &mut RandomSource,
+    minimum: i32,
+    maximum: i32,
+) -> Result<i32, crate::random::RandomError> {
+    let bound = maximum.wrapping_sub(minimum).wrapping_add(1);
+    random
+        .next_int_bound(bound)
+        .map(|value| value.wrapping_add(minimum))
+}
+
+/// Return Java `Mth.randomBetween(RandomSource, float, float)` in source order.
+pub fn mth_random_between(random: &mut RandomSource, minimum: f32, maximum: f32) -> f32 {
+    random.next_float() * (maximum - minimum) + minimum
+}
+
+/// Return Java `Mth.normal(RandomSource, float, float)` in source order.
+pub fn mth_normal(random: &mut RandomSource, mean: f32, deviation: f32) -> f32 {
+    mean + random.next_gaussian() as f32 * deviation
+}
+
 /// Return Java `Math.floorDiv(int, int)`, including Java's signed overflow.
 pub fn floor_div_i32(dividend: i32, divisor: i32) -> i32 {
     if divisor == 0 {

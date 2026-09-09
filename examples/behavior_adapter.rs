@@ -2468,6 +2468,46 @@ fn math_result(request: &Value) -> Result<Value, String> {
             _ => Err("unknown Mth next random type".into()),
         };
     }
+    if operation == "mth_random_helpers" {
+        let mut random = RandomSource::create(random_seed(request)?);
+        return match string(request, "fn")? {
+            "inclusive" => {
+                let value = math::mth_random_between_inclusive(
+                    &mut random,
+                    i32_string_field(request, "min")?,
+                    i32_string_field(request, "max")?,
+                )
+                .map_err(|_| "bound must be positive".to_owned())?;
+                Ok(json!({
+                    "value": value.to_string(),
+                    "follow_up": random.next_int().to_string(),
+                }))
+            }
+            "between" => {
+                let value = math::mth_random_between(
+                    &mut random,
+                    f32_field(request, "min")?,
+                    f32_field(request, "max")?,
+                );
+                Ok(json!({
+                    "bits": format!("{:08x}", value.to_bits()),
+                    "follow_up_bits": format!("{:08x}", random.next_float().to_bits()),
+                }))
+            }
+            "normal" => {
+                let value = math::mth_normal(
+                    &mut random,
+                    f32_field(request, "mean")?,
+                    f32_field(request, "deviation")?,
+                );
+                Ok(json!({
+                    "bits": format!("{:08x}", value.to_bits()),
+                    "follow_up_bits": format!("{:016x}", random.next_gaussian().to_bits()),
+                }))
+            }
+            _ => Err("unknown Mth random helper".into()),
+        };
+    }
     if operation == "vec2" {
         let mut vector = Vec2::new(f32_field(request, "x")?, f32_field(request, "y")?);
         let mut events = vec![vec2_snapshot(vector)];

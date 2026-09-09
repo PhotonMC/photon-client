@@ -459,6 +459,29 @@ public final class MathOracle {
             } else {
                 throw new IllegalArgumentException("Unknown Mth next random type");
             }
+        } else if (operation.equals("mth_random_helpers")) {
+            RandomSource random = RandomSource.create(
+                Long.parseLong(request.get("seed").getAsString()));
+            String function = request.get("fn").getAsString();
+            if (function.equals("inclusive")) {
+                int value = Mth.randomBetweenInclusive(random,
+                    Integer.parseInt(request.get("min").getAsString()),
+                    Integer.parseInt(request.get("max").getAsString()));
+                result.addProperty("value", Integer.toString(value));
+                result.addProperty("follow_up", Integer.toString(random.nextInt()));
+            } else if (function.equals("between")) {
+                float value = Mth.randomBetween(random,
+                    Oracle.f32(request, "min"), Oracle.f32(request, "max"));
+                result.addProperty("bits", Oracle.bits(value));
+                result.addProperty("follow_up_bits", Oracle.bits(random.nextFloat()));
+            } else if (function.equals("normal")) {
+                float value = Mth.normal(random,
+                    Oracle.f32(request, "mean"), Oracle.f32(request, "deviation"));
+                result.addProperty("bits", Oracle.bits(value));
+                result.addProperty("follow_up_bits", Oracle.bits(random.nextGaussian()));
+            } else {
+                throw new IllegalArgumentException("Unknown Mth random helper");
+            }
         } else if (operation.equals("vec3")) {
             Vec3 vector = new Vec3(f64(request, "x"), f64(request, "y"), f64(request, "z"));
             var events = new JsonArray();

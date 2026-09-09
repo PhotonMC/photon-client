@@ -2958,6 +2958,47 @@ def math_cases():
                    "operation": "mth_next_random", "type": width, "seed": str(seed),
                    "min": float_bits(minimum, width), "max": float_bits(maximum, width)}
 
+    mth_random_between_inclusive = [
+        ("normal", 42, -10, 10),
+        ("same-bounds", 42, 5, 5),
+        ("positive-boundary", 123, 2147483640, 2147483647),
+        ("negative-boundary", -123, -2147483648, -2147483641),
+        ("wide-finite", 7, -100, 100),
+        ("single-bit-range", 0, 0, 1),
+    ]
+    for label, seed, minimum, maximum in mth_random_between_inclusive:
+        yield {"case_id": f"mth/random-helpers/inclusive/{label}", "family": "math",
+               "operation": "mth_random_helpers", "type": "i32", "fn": "inclusive",
+               "seed": str(seed), "min": str(minimum), "max": str(maximum)}
+
+    mth_random_between = [
+        ("normal", 42, -1.0, 1.0),
+        ("same-bounds", 42, 0.5, 0.5),
+        ("reversed-bounds", 42, 1.0, -1.0),
+        ("signed-zero", 42, -0.0, 0.0),
+        ("infinite-max", 123, 1.0, float("inf")),
+        ("nan-min", 123, float("nan"), 1.0),
+    ]
+    for label, seed, minimum, maximum in mth_random_between:
+        yield {"case_id": f"mth/random-helpers/between/{label}", "family": "math",
+               "operation": "mth_random_helpers", "type": "f32", "fn": "between",
+               "seed": str(seed), "min": float_bits(minimum, "f32"),
+               "max": float_bits(maximum, "f32")}
+
+    mth_normal = [
+        ("normal", 42, 0.0, 1.0),
+        ("shifted", 123, 2.5, 0.75),
+        ("zero-deviation", 42, 4.0, 0.0),
+        ("negative-deviation", -123, 1.0, -2.0),
+        ("negative-zero-mean", 42, -0.0, 0.0),
+        ("infinite-mean", 7, float("inf"), 1.0),
+    ]
+    for label, seed, mean, deviation in mth_normal:
+        yield {"case_id": f"mth/random-helpers/normal/{label}", "family": "math",
+               "operation": "mth_random_helpers", "type": "f32", "fn": "normal",
+               "seed": str(seed), "mean": float_bits(mean, "f32"),
+               "deviation": float_bits(deviation, "f32")}
+
 
 def timer_cases():
     def trace(label, steps, start=0, tps=20, target=50):
