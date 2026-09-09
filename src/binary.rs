@@ -330,6 +330,29 @@ impl ChunkPos {
         let min = Self::min_from_region(region_x, region_z);
         Self::new(min.x.wrapping_add(31), min.z.wrapping_add(31))
     }
+
+    /// Return a block position at offsets within this chunk using Java i32 wrapping.
+    pub fn get_block_at(self, x: i32, y: i32, z: i32) -> BlockPos {
+        BlockPos::new(self.get_block_x(x), y, self.get_block_z(z))
+    }
+
+    /// Return the chunk's middle block at the requested y coordinate.
+    pub fn get_middle_block_position(self, y: i32) -> BlockPos {
+        BlockPos::new(self.get_middle_block_x(), y, self.get_middle_block_z())
+    }
+
+    /// Return the minimum block position at y=0.
+    pub fn get_world_position(self) -> BlockPos {
+        BlockPos::new(self.get_min_block_x(), 0, self.get_min_block_z())
+    }
+
+    /// Check inclusive horizontal containment; the y coordinate is ignored.
+    pub fn contains(self, pos: BlockPos) -> bool {
+        pos.x >= self.get_min_block_x()
+            && pos.z >= self.get_min_block_z()
+            && pos.x <= self.get_max_block_x()
+            && pos.z <= self.get_max_block_z()
+    }
 }
 
 /// Read 16 bytes as UUID. A short second half leaves the first half consumed.

@@ -248,6 +248,24 @@ fn chunkpos_region_coordinates_snapshot(value: ChunkPos, region_x: i32, region_z
     })
 }
 
+fn chunkpos_block_positions_snapshot(
+    value: ChunkPos,
+    block_x: i32,
+    y: i32,
+    block_z: i32,
+    contains: &[Value],
+) -> Result<Value, String> {
+    Ok(json!({
+        "block_at": blockpos_snapshot(value.get_block_at(block_x, y, block_z)),
+        "middle_block_position": blockpos_snapshot(value.get_middle_block_position(y)),
+        "world_position": blockpos_snapshot(value.get_world_position()),
+        "contains": contains
+            .iter()
+            .map(|query| blockpos(query).map(|pos| value.contains(pos)))
+            .collect::<Result<Vec<_>, _>>()?,
+    }))
+}
+
 fn blockpos_result(request: &Value) -> Result<Value, String> {
     let mut value = blockpos(request)?;
     let mut events = vec![blockpos_snapshot(value)];
@@ -1744,6 +1762,24 @@ fn math_result(request: &Value) -> Result<Value, String> {
             .map_err(|error| error.to_string())?;
         return Ok(json!({
             "value": chunkpos_region_coordinates_snapshot(value, region_x, region_z),
+        }));
+    }
+    if operation == "chunkpos_block_positions" {
+        let value = chunkpos(request)?;
+        let block_x = string(request, "block_x")?
+            .parse::<i32>()
+            .map_err(|error| error.to_string())?;
+        let y = string(request, "y")?
+            .parse::<i32>()
+            .map_err(|error| error.to_string())?;
+        let block_z = string(request, "block_z")?
+            .parse::<i32>()
+            .map_err(|error| error.to_string())?;
+        let contains = request["contains"]
+            .as_array()
+            .ok_or("contains must be an array")?;
+        return Ok(json!({
+            "value": chunkpos_block_positions_snapshot(value, block_x, y, block_z, contains)?,
         }));
     }
     if operation == "vec2" {

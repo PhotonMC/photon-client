@@ -132,6 +132,63 @@ def math_cases():
         yield {"case_id": f"chunkpos/region-coordinates/{label}", "family": "math",
                "operation": "chunkpos_region_coordinates", **values}
 
+    chunkpos_block_positions = {
+        "origin": {
+            "x": "0", "z": "0", "block_x": "0", "y": "0", "block_z": "0",
+            "contains": [
+                {"x": "0", "y": "-99", "z": "0"},
+                {"x": "15", "y": "999", "z": "15"},
+                {"x": "-1", "y": "0", "z": "0"},
+                {"x": "16", "y": "0", "z": "0"},
+            ],
+        },
+        "positive": {
+            "x": "1", "z": "2", "block_x": "7", "y": "-64", "block_z": "12",
+            "contains": [
+                {"x": "16", "y": "0", "z": "32"},
+                {"x": "31", "y": "100", "z": "47"},
+                {"x": "15", "y": "0", "z": "32"},
+                {"x": "16", "y": "0", "z": "48"},
+            ],
+        },
+        "negative": {
+            "x": "-1", "z": "-2", "block_x": "15", "y": "-1", "block_z": "0",
+            "contains": [
+                {"x": "-16", "y": "0", "z": "-32"},
+                {"x": "-1", "y": "1", "z": "-17"},
+                {"x": "-17", "y": "0", "z": "-20"},
+                {"x": "-1", "y": "0", "z": "-16"},
+            ],
+        },
+        "boundary": {
+            "x": "134217727", "z": "-134217728", "block_x": "15", "y": "2147483647", "block_z": "0",
+            "contains": [
+                {"x": "2147483632", "y": "-2147483648", "z": "-2147483648"},
+                {"x": "2147483647", "y": "0", "z": "-2147483633"},
+                {"x": "2147483647", "y": "0", "z": "-2147483632"},
+            ],
+        },
+        "offset-wrap": {
+            "x": "1", "z": "-2", "block_x": "2147483647", "y": "-2147483648", "block_z": "-2147483648",
+            "contains": [
+                {"x": "16", "y": "0", "z": "-32"},
+                {"x": "31", "y": "0", "z": "-17"},
+                {"x": "-2147483633", "y": "0", "z": "-2147483648"},
+            ],
+        },
+        "shift-wrap": {
+            "x": "134217728", "z": "-134217729", "block_x": "-1", "y": "42", "block_z": "15",
+            "contains": [
+                {"x": "-2147483648", "y": "0", "z": "2147483632"},
+                {"x": "-2147483633", "y": "0", "z": "2147483647"},
+                {"x": "-2147483632", "y": "0", "z": "2147483632"},
+            ],
+        },
+    }
+    for label, values in chunkpos_block_positions.items():
+        yield {"case_id": f"chunkpos/block-positions/{label}", "family": "math",
+               "operation": "chunkpos_block_positions", **values}
+
     vectors = {f"direction-{x}-{y}": (float_bits(x), float_bits(y))
                for x in (-1, 0, 1) for y in (-1, 0, 1)}
     vectors.update({"negative-zero": ("80000000", "80000000"),
