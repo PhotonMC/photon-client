@@ -189,6 +189,18 @@ def math_cases():
         yield {"case_id": f"chunkpos/block-positions/{label}", "family": "math",
                "operation": "chunkpos_block_positions", **values}
 
+    chunkpos_representation = {
+        "origin": {"x": "0", "z": "0", "hash_x": "0", "hash_z": "0"},
+        "basic": {"x": "1", "z": "-2", "hash_x": "1", "hash_z": "-2"},
+        "negative": {"x": "-1", "z": "-2147483648", "hash_x": "-2147483648", "hash_z": "2147483647"},
+        "boundaries": {"x": "2147483647", "z": "-2147483648", "hash_x": "2147483647", "hash_z": "-2147483648"},
+        "alternating": {"x": "1437226410", "z": "-1437226411", "hash_x": "-559038737", "hash_z": "1013904223"},
+        "hash-overflow": {"x": "2147483647", "z": "2147483647", "hash_x": "-2147483648", "hash_z": "-2147483648"},
+    }
+    for label, values in chunkpos_representation.items():
+        yield {"case_id": f"chunkpos/representation/{label}", "family": "math",
+               "operation": "chunkpos_representation", **values}
+
     vectors = {f"direction-{x}-{y}": (float_bits(x), float_bits(y))
                for x in (-1, 0, 1) for y in (-1, 0, 1)}
     vectors.update({"negative-zero": ("80000000", "80000000"),

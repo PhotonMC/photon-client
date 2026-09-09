@@ -353,6 +353,25 @@ impl ChunkPos {
             && pos.x <= self.get_max_block_x()
             && pos.z <= self.get_max_block_z()
     }
+
+    /// Compute the Java ChunkPos hash from two signed coordinates.
+    pub fn hash(x: i32, z: i32) -> i32 {
+        let x_transform = x.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+        let z_transform = (z ^ -559_038_737)
+            .wrapping_mul(1_664_525)
+            .wrapping_add(1_013_904_223);
+        x_transform ^ z_transform
+    }
+
+    /// Return the Java record hashCode result.
+    pub fn hash_code_java(self) -> i32 {
+        Self::hash(self.x, self.z)
+    }
+
+    /// Format the ChunkPos like Java's record toString implementation.
+    pub fn to_string_java(self) -> String {
+        format!("[{}, {}]", self.x, self.z)
+    }
 }
 
 /// Read 16 bytes as UUID. A short second half leaves the first half consumed.

@@ -266,6 +266,14 @@ fn chunkpos_block_positions_snapshot(
     }))
 }
 
+fn chunkpos_representation_snapshot(value: ChunkPos, hash_x: i32, hash_z: i32) -> Value {
+    json!({
+        "to_string": value.to_string_java(),
+        "hash_code": value.hash_code_java().to_string(),
+        "static_hash": ChunkPos::hash(hash_x, hash_z).to_string(),
+    })
+}
+
 fn blockpos_result(request: &Value) -> Result<Value, String> {
     let mut value = blockpos(request)?;
     let mut events = vec![blockpos_snapshot(value)];
@@ -1780,6 +1788,18 @@ fn math_result(request: &Value) -> Result<Value, String> {
             .ok_or("contains must be an array")?;
         return Ok(json!({
             "value": chunkpos_block_positions_snapshot(value, block_x, y, block_z, contains)?,
+        }));
+    }
+    if operation == "chunkpos_representation" {
+        let value = chunkpos(request)?;
+        let hash_x = string(request, "hash_x")?
+            .parse::<i32>()
+            .map_err(|error| error.to_string())?;
+        let hash_z = string(request, "hash_z")?
+            .parse::<i32>()
+            .map_err(|error| error.to_string())?;
+        return Ok(json!({
+            "value": chunkpos_representation_snapshot(value, hash_x, hash_z),
         }));
     }
     if operation == "vec2" {

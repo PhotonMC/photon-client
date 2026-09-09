@@ -34,6 +34,6 @@ cargo build --locked --offline --example behavior_adapter
 python3 tools/behavior/run.py compare --family math --adapter target/debug/examples/behavior_adapter
 ```
 
-Bu dilimdeki senaryoların bulunduğu güncel math referansı `2a0e476c9429ade902407539ef06621159d2eed0b5010504338eecbf1e77e14a` kimliğindedir. Referans iki JVM çalıştırmasıyla kararlı bulundu. Güncel birleşik altı aile referansı `2a0e476c9429ade902407539ef06621159d2eed0b5010504338eecbf1e77e14a` kimliğiyle doğrulandı.
+Bu dilimdeki senaryoların bulunduğu güncel math referansı `998945022ecb5aa3b303b59cbf3789de5cd227359a784553dadb87da8ba02eb6` kimliğindedir. Referans iki JVM çalıştırmasıyla kararlı bulundu. Güncel birleşik altı aile referansı `998945022ecb5aa3b303b59cbf3789de5cd227359a784553dadb87da8ba02eb6` kimliğiyle doğrulandı.
 
-Math debug/release raporları `compare-96_s862r` ve `compare-cbwrzmb5`; birleşik debug/release raporları `compare-fn36ocz_` ve `compare-a_hggp11` dizinlerindedir. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.
+Math debug/release raporları `compare-9rd6f2k4` ve `compare-azcslb8q`; birleşik debug/release raporları `compare-9epmwbb2` ve `compare-vdfamuam` dizinlerindedir. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.
