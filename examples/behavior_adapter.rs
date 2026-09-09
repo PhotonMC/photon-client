@@ -588,6 +588,19 @@ fn shape_result(request: &Value) -> Result<Value, String> {
                     .collect::<Vec<_>>(),
             }))
         }
+        "rotate_horizontal" => {
+            let shape = shape_box(request.get("box").ok_or("box must be an object")?)?;
+            let shapes = Shapes::rotate_horizontal(&shape);
+            Ok(json!({
+                "shapes": shapes
+                    .into_iter()
+                    .map(|(direction, shape)| json!({
+                        "direction": direction.name(),
+                        "shape": shape_snapshot(&shape),
+                    }))
+                    .collect::<Vec<_>>(),
+            }))
+        }
         "collide" => {
             let axis = Axis::from_name(string(request, "axis")?).ok_or("unknown collision axis")?;
             let shape = shape_box(request.get("shape").ok_or("shape must be an object")?)?;
