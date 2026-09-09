@@ -537,6 +537,67 @@ pub fn chessboard_distance(x0: i32, z0: i32, x1: i32, z1: i32) -> i32 {
     abs_max(x1.wrapping_sub(x0), z1.wrapping_sub(z0))
 }
 
+/// Return Java `Math.floorDiv(int, int)`, including Java's signed overflow.
+pub fn floor_div_i32(dividend: i32, divisor: i32) -> i32 {
+    if divisor == 0 {
+        panic!("division by zero");
+    }
+    // Java's integer division defines MIN_VALUE / -1 as MIN_VALUE; Rust's
+    // checked debug division would otherwise panic here.
+    if dividend == i32::MIN && divisor == -1 {
+        return i32::MIN;
+    }
+    let quotient = dividend / divisor;
+    let remainder = dividend % divisor;
+    if remainder != 0 && (dividend < 0) != (divisor < 0) {
+        quotient.wrapping_sub(1)
+    } else {
+        quotient
+    }
+}
+
+/// Return Java `Math.floorMod(int, int)` as used by `Mth.positiveModulo`.
+pub fn positive_modulo_i32(input: i32, modulus: i32) -> i32 {
+    let quotient = floor_div_i32(input, modulus);
+    input.wrapping_sub(quotient.wrapping_mul(modulus))
+}
+
+/// Return `Mth.positiveCeilDiv(int, int)` with Java negation semantics.
+pub fn positive_ceil_div_i32(input: i32, divisor: i32) -> i32 {
+    floor_div_i32(input.wrapping_neg(), divisor).wrapping_neg()
+}
+
+/// Return `Mth.positiveCeilDiv(long, long)` with Java negation semantics.
+pub fn positive_ceil_div_i64(input: i64, divisor: i64) -> i64 {
+    floor_div_i64(input.wrapping_neg(), divisor).wrapping_neg()
+}
+
+/// Return `Mth.roundToward(int, int)` with Java multiplication semantics.
+pub fn round_toward_i32(input: i32, multiple: i32) -> i32 {
+    positive_ceil_div_i32(input, multiple).wrapping_mul(multiple)
+}
+
+/// Return `Mth.roundToward(long, long)` with Java multiplication semantics.
+pub fn round_toward_i64(input: i64, multiple: i64) -> i64 {
+    positive_ceil_div_i64(input, multiple).wrapping_mul(multiple)
+}
+
+fn floor_div_i64(dividend: i64, divisor: i64) -> i64 {
+    if divisor == 0 {
+        panic!("division by zero");
+    }
+    if dividend == i64::MIN && divisor == -1 {
+        return i64::MIN;
+    }
+    let quotient = dividend / divisor;
+    let remainder = dividend % divisor;
+    if remainder != 0 && (dividend < 0) != (divisor < 0) {
+        quotient.wrapping_sub(1)
+    } else {
+        quotient
+    }
+}
+
 // The same contract at two precisions, without a public numeric trait hierarchy.
 macro_rules! scalar_operations {
     ($ty:ty, $floor:ident, $wrap:ident, $clamp:ident) => {

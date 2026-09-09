@@ -290,6 +290,32 @@ public final class MathOracle {
         } else if (operation.equals("chunkpos_validity")) {
             ChunkPos pos = chunkPos(request);
             result.add("value", chunkPosValidity(pos));
+        } else if (operation.equals("mth_integer_helpers")) {
+            String width = request.get("type").getAsString();
+            String function = request.get("fn").getAsString();
+            if (width.equals("i32")) {
+                int input = Integer.parseInt(request.get("input").getAsString());
+                int divisor = Integer.parseInt(request.get("divisor").getAsString());
+                int value = switch (function) {
+                    case "floor_div" -> Mth.floorDiv(input, divisor);
+                    case "positive_modulo" -> Mth.positiveModulo(input, divisor);
+                    case "positive_ceil_div" -> Mth.positiveCeilDiv(input, divisor);
+                    case "round_toward" -> Mth.roundToward(input, divisor);
+                    default -> throw new IllegalArgumentException("Unknown Mth integer function");
+                };
+                result.addProperty("value", Integer.toString(value));
+            } else if (width.equals("i64")) {
+                long input = Long.parseLong(request.get("input").getAsString());
+                long divisor = Long.parseLong(request.get("divisor").getAsString());
+                long value = switch (function) {
+                    case "positive_ceil_div" -> Mth.positiveCeilDiv(input, divisor);
+                    case "round_toward" -> Mth.roundToward(input, divisor);
+                    default -> throw new IllegalArgumentException("Unknown Mth long function");
+                };
+                result.addProperty("value", Long.toString(value));
+            } else {
+                throw new IllegalArgumentException("Unknown Mth integer type");
+            }
         } else if (operation.equals("vec3")) {
             Vec3 vector = new Vec3(f64(request, "x"), f64(request, "y"), f64(request, "z"));
             var events = new JsonArray();

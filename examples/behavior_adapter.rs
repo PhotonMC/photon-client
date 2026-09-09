@@ -2229,6 +2229,37 @@ fn math_result(request: &Value) -> Result<Value, String> {
             "value": chunkpos_validity_snapshot(chunkpos(request)?),
         }));
     }
+    if operation == "mth_integer_helpers" {
+        let function = string(request, "fn")?;
+        let input = string(request, "input")?;
+        let divisor = string(request, "divisor")?;
+        let value = match string(request, "type")? {
+            "i32" => {
+                let input = input.parse::<i32>().map_err(|error| error.to_string())?;
+                let divisor = divisor.parse::<i32>().map_err(|error| error.to_string())?;
+                match function {
+                    "floor_div" => math::floor_div_i32(input, divisor),
+                    "positive_modulo" => math::positive_modulo_i32(input, divisor),
+                    "positive_ceil_div" => math::positive_ceil_div_i32(input, divisor),
+                    "round_toward" => math::round_toward_i32(input, divisor),
+                    _ => return Err("unknown Mth i32 function".into()),
+                }
+                .to_string()
+            }
+            "i64" => {
+                let input = input.parse::<i64>().map_err(|error| error.to_string())?;
+                let divisor = divisor.parse::<i64>().map_err(|error| error.to_string())?;
+                match function {
+                    "positive_ceil_div" => math::positive_ceil_div_i64(input, divisor),
+                    "round_toward" => math::round_toward_i64(input, divisor),
+                    _ => return Err("unknown Mth i64 function".into()),
+                }
+                .to_string()
+            }
+            _ => return Err("unknown Mth integer type".into()),
+        };
+        return Ok(json!({"value": value}));
+    }
     if operation == "vec2" {
         let mut vector = Vec2::new(f32_field(request, "x")?, f32_field(request, "y")?);
         let mut events = vec![vec2_snapshot(vector)];

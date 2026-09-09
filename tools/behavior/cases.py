@@ -2684,6 +2684,28 @@ def math_cases():
                        "operation": "clamp", "type": width, "value": bits,
                        "min": float_bits(low, width), "max": float_bits(high, width)}
 
+    mth_integer_helpers = [
+        ("floor-div/int/negative-remainder", "i32", "floor_div", "-7", "3"),
+        ("floor-div/int/negative-divisor", "i32", "floor_div", "7", "-3"),
+        ("floor-div/int/min-overflow", "i32", "floor_div", "-2147483648", "-1"),
+        ("positive-modulo/int/negative-remainder", "i32", "positive_modulo", "-7", "3"),
+        ("positive-modulo/int/negative-divisor", "i32", "positive_modulo", "7", "-3"),
+        ("positive-modulo/int/min-overflow", "i32", "positive_modulo", "-2147483648", "-1"),
+        ("positive-ceil-div/int/positive-remainder", "i32", "positive_ceil_div", "7", "3"),
+        ("positive-ceil-div/int/negative-input", "i32", "positive_ceil_div", "-7", "3"),
+        ("positive-ceil-div/int/min-input", "i32", "positive_ceil_div", "-2147483648", "3"),
+        ("positive-ceil-div/long/min-input", "i64", "positive_ceil_div", "-9223372036854775808", "3"),
+        ("round-toward/int/positive-remainder", "i32", "round_toward", "7", "3"),
+        ("round-toward/int/negative-input", "i32", "round_toward", "-7", "3"),
+        ("round-toward/int/multiplication-overflow", "i32", "round_toward", "2147483647", "2"),
+        ("round-toward/long/negative-input", "i64", "round_toward", "-7", "3"),
+        ("round-toward/long/multiplication-overflow", "i64", "round_toward", "9223372036854775807", "2"),
+    ]
+    for label, width, function, input_value, divisor in mth_integer_helpers:
+        yield {"case_id": f"mth/integer-helpers/{label}", "family": "math",
+               "operation": "mth_integer_helpers", "type": width, "fn": function,
+               "input": input_value, "divisor": divisor}
+
 
 def timer_cases():
     def trace(label, steps, start=0, tps=20, target=50):
