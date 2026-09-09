@@ -793,24 +793,35 @@ impl Shapes {
 
     /// Return all direction variants of a shape in Java EnumMap order.
     pub fn rotate_all(north: &VoxelShape) -> [(Direction, VoxelShape); 6] {
+        Self::rotate_all_with_center(north, Vec3::new(0.5, 0.5, 0.5))
+    }
+
+    /// Return all direction variants around an explicit point.
+    pub fn rotate_all_with_center(
+        north: &VoxelShape,
+        rotation_center: Vec3,
+    ) -> [(Direction, VoxelShape); 6] {
         [
             (
                 Direction::Down,
-                Self::rotate(north, ShapeRotation::Rot90XNeg),
+                Self::rotate_with_center(north, ShapeRotation::Rot90XNeg, rotation_center),
             ),
-            (Direction::Up, Self::rotate(north, ShapeRotation::Rot90XPos)),
+            (
+                Direction::Up,
+                Self::rotate_with_center(north, ShapeRotation::Rot90XPos, rotation_center),
+            ),
             (Direction::North, north.clone()),
             (
                 Direction::South,
-                Self::rotate(north, ShapeRotation::Rot180FaceXz),
+                Self::rotate_with_center(north, ShapeRotation::Rot180FaceXz, rotation_center),
             ),
             (
                 Direction::West,
-                Self::rotate(north, ShapeRotation::Rot90YPos),
+                Self::rotate_with_center(north, ShapeRotation::Rot90YPos, rotation_center),
             ),
             (
                 Direction::East,
-                Self::rotate(north, ShapeRotation::Rot90YNeg),
+                Self::rotate_with_center(north, ShapeRotation::Rot90YNeg, rotation_center),
             ),
         ]
     }

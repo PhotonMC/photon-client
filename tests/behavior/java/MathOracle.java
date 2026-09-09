@@ -205,6 +205,19 @@ public final class MathOracle {
                     }
                 }
                 result.add("shapes", snapshots);
+            } else if (kind.equals("rotate_all_center")) {
+                VoxelShape shape = voxelShape(request.getAsJsonObject("box"));
+                var directions = Shapes.rotateAll(shape, vec3(request.getAsJsonObject("center")));
+                var snapshots = new JsonArray();
+                for (Direction direction : Direction.values()) {
+                    if (directions.containsKey(direction)) {
+                        var entry = new JsonObject();
+                        entry.addProperty("direction", direction.getName());
+                        entry.add("shape", snapshot(directions.get(direction)));
+                        snapshots.add(entry);
+                    }
+                }
+                result.add("shapes", snapshots);
             } else if (kind.equals("collide")) {
                 VoxelShape shape = voxelShape(request.getAsJsonObject("shape"));
                 AABB moving = box(request.getAsJsonObject("moving"));
