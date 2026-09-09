@@ -99,6 +99,14 @@ public final class MathOracle {
                 vector = switch (step.get("action").getAsString()) {
                     case "normalize" -> vector.normalize();
                     case "scale" -> vector.scale(f64(step, "factor"));
+                    case "add_vec3" -> vector.add(vec3(step.getAsJsonObject("delta")));
+                    case "add_scalar" -> vector.add(f64(step, "value"));
+                    case "add_components" -> vector.add(
+                        f64(step, "x"), f64(step, "y"), f64(step, "z"));
+                    case "subtract_vec3" -> vector.subtract(vec3(step.getAsJsonObject("delta")));
+                    case "subtract_scalar" -> vector.subtract(f64(step, "value"));
+                    case "subtract_components" -> vector.subtract(
+                        f64(step, "x"), f64(step, "y"), f64(step, "z"));
                     default -> throw new IllegalArgumentException("Unknown Vec3 action");
                 };
                 events.add(snapshot(vector));

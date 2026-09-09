@@ -6,16 +6,16 @@
 
 Java 25.0.4.1 ve Rust 1.98.1 / Linux x86_64 ortamında:
 
-- Math ailesinin 650 senaryoluk referansı iki ayrı JVM çalıştırmasıyla kararlı bulundu.
-- Rust debug ve release adaptörleri **650/650** math senaryosunda eşleşti.
+- Math ailesinin 655 senaryoluk referansı iki ayrı JVM çalıştırmasıyla kararlı bulundu.
+- Rust debug ve release adaptörleri **655/655** math senaryosunda eşleşti.
 - Beş yeni senaryoda karışık eksen miktarları, constructor normalizasyonu, signed zero, zincir ve NaN/sonsuzluk yolları karşılaştırıldı.
 - NaN senaryosunda release derlemesinin Java unary negation bitlerini koruduğu ayrıca doğrulandı.
-- Birleşik altı aile corpus'u **1104/1104** senaryoda hem debug hem release adaptörüyle eşleşti.
-- `verify` çalıştırması kayıtlı 1104 senaryoluk Java referansını yeniden doğruladı.
+- Birleşik altı aile corpus'u **1109/1109** senaryoda hem debug hem release adaptörüyle eşleşti.
+- `verify` çalıştırması kayıtlı 1109 senaryoluk Java referansını yeniden doğruladı.
 
-Math referansı `5a058fc1820283cfd9bba76f02ffa3a5cc4f35806c8a7ff3a32d729e52725b0e`, birleşik referans `9102b9506f63d756b598cc51931df0c5c678c82edfc98fd8f2cf6d70583ae5d8` kimliğindedir.
+Math referansı `d6cf00dcef96ef95a3851f155f114c4a188711f01d73e154880b74a70e7fc845`, birleşik referans `69fde0fc4aa758f89939bd5a995df20db6ad31f7cfbc226ea4cd13ecaa84013d` kimliğindedir.
 
-Yerel raporlar: `compare-krjmldv0` (math debug), `compare-ufbmlufj` (math release), `compare-o61mnrf6` (birleşik debug), `compare-6fi73fsy` (birleşik release) ve `verify-h3_hw3ws` dizinlerinde, `.data/runs/behavior/` altında bulunur.
+Yerel raporlar: `compare-s2mg_zzb` (math debug), `compare-vw7pifam` (math release), `compare-8ia7c6j_` (birleşik debug), `compare-fa02lzlz` (birleşik release) ve `verify-vt3ayq2q` dizinlerinde, `.data/runs/behavior/` altında bulunur.
 
 ## Sınırlar
 

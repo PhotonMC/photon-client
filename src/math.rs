@@ -53,6 +53,30 @@ impl Vec3 {
         Self { x, y, z }
     }
 
+    pub fn add_components(self, x: f64, y: f64, z: f64) -> Self {
+        Self::new(self.x + x, self.y + y, self.z + z)
+    }
+
+    pub fn add_scalar(self, value: f64) -> Self {
+        self.add_components(value, value, value)
+    }
+
+    pub fn add_vec3(self, other: Self) -> Self {
+        self.add_components(other.x, other.y, other.z)
+    }
+
+    pub fn subtract_components(self, x: f64, y: f64, z: f64) -> Self {
+        self.add_components(java_negate(x), java_negate(y), java_negate(z))
+    }
+
+    pub fn subtract_scalar(self, value: f64) -> Self {
+        self.subtract_components(value, value, value)
+    }
+
+    pub fn subtract_vec3(self, other: Self) -> Self {
+        self.subtract_components(other.x, other.y, other.z)
+    }
+
     pub fn scale(self, factor: f64) -> Self {
         Self::new(self.x * factor, self.y * factor, self.z * factor)
     }
@@ -136,3 +160,8 @@ macro_rules! scalar_operations {
 
 scalar_operations!(f32, floor_f32, wrap_degrees_f32, clamp_f32);
 scalar_operations!(f64, floor_f64, wrap_degrees_f64, clamp_f64);
+
+#[inline(never)]
+fn java_negate(value: f64) -> f64 {
+    f64::from_bits(value.to_bits() ^ (1_u64 << 63))
+}

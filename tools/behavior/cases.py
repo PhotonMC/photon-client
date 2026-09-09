@@ -13,6 +13,11 @@ def box_bits(min_x, min_y, min_z, max_x, max_y, max_z):
             "max_y": float_bits(max_y, "f64"), "max_z": float_bits(max_z, "f64")}
 
 
+def vector_bits(x, y, z, width="f64"):
+    return {"x": float_bits(x, width), "y": float_bits(y, width),
+            "z": float_bits(z, width)}
+
+
 def raw_box(min_x, min_y, min_z, max_x, max_y, max_z):
     return {"min_x": min_x, "min_y": min_y, "min_z": min_z,
             "max_x": max_x, "max_y": max_y, "max_z": max_z}
@@ -82,6 +87,38 @@ def math_cases():
                "x": float_bits(1, "f64"), "y": float_bits(-1, "f64"), "z": float_bits(0.5, "f64"),
                "steps": [{"action": "normalize"}, {"action": "scale", "factor": float_bits(factor, "f64")},
                          {"action": "normalize"}]}
+    yield {"case_id": "vec3/add-subtract/vector-chain", "family": "math", "operation": "vec3",
+           "x": float_bits(1.25, "f64"), "y": float_bits(-2.5, "f64"), "z": float_bits(3.75, "f64"),
+           "steps": [{"action": "add_vec3", "delta": vector_bits(-0.25, 4.0, -1.5)},
+                      {"action": "subtract_vec3", "delta": vector_bits(0.5, -1.0, 2.25)},
+                      {"action": "normalize"}]}
+    yield {"case_id": "vec3/add-subtract/scalar-chain", "family": "math", "operation": "vec3",
+           "x": float_bits(-1.5, "f64"), "y": float_bits(2.25, "f64"), "z": float_bits(0.75, "f64"),
+           "steps": [{"action": "add_scalar", "value": float_bits(0.5, "f64")},
+                      {"action": "subtract_scalar", "value": float_bits(-1.25, "f64")},
+                      {"action": "add_scalar", "value": float_bits(-0.0, "f64")}]}
+    yield {"case_id": "vec3/add-subtract/component-chain", "family": "math", "operation": "vec3",
+           "x": float_bits(10.0, "f64"), "y": float_bits(-20.0, "f64"), "z": float_bits(30.0, "f64"),
+           "steps": [{"action": "add_components", "x": float_bits(-1.0, "f64"),
+                      "y": float_bits(2.0, "f64"), "z": float_bits(-3.0, "f64")},
+                      {"action": "subtract_components", "x": float_bits(4.0, "f64"),
+                       "y": float_bits(-5.0, "f64"), "z": float_bits(6.0, "f64")},
+                      {"action": "add_vec3", "delta": vector_bits(0.125, -0.25, 0.5)},
+                      {"action": "subtract_scalar", "value": float_bits(0.125, "f64")}]}
+    yield {"case_id": "vec3/add-subtract/signed-zero", "family": "math", "operation": "vec3",
+           "x": float_bits(-0.0, "f64"), "y": float_bits(0.0, "f64"), "z": float_bits(-0.0, "f64"),
+           "steps": [{"action": "add_scalar", "value": float_bits(-0.0, "f64")},
+                      {"action": "subtract_components", "x": float_bits(0.0, "f64"),
+                       "y": float_bits(-0.0, "f64"), "z": float_bits(0.0, "f64")},
+                      {"action": "add_vec3", "delta": vector_bits(0.0, -0.0, 0.0)}]}
+    yield {"case_id": "vec3/add-subtract/special-values", "family": "math", "operation": "vec3",
+           "x": float_bits(1.0, "f64"), "y": float_bits(-2.0, "f64"),
+           "z": float_bits(0.0, "f64"),
+           "steps": [{"action": "add_vec3", "delta": {"x": float_bits(float("inf"), "f64"),
+                                                            "y": float_bits(-float("inf"), "f64"),
+                                                            "z": float_bits(1.0, "f64")}},
+                      {"action": "subtract_components", "x": float_bits(1.0, "f64"),
+                       "y": float_bits(-2.0, "f64"), "z": "7ff8000000000002"}]}
     for name in ("down", "up", "north", "south", "west", "east"):
         yield {"case_id": f"direction/properties/{name}", "family": "math", "operation": "direction",
                "name": name, "steps": []}
@@ -670,10 +707,6 @@ def math_cases():
               "y": float_bits(0.5, "f64"), "z": float_bits(0.5, "f64")}
     outside = {"op": "contains", "x": float_bits(2.0, "f64"),
                "y": float_bits(0.0, "f64"), "z": float_bits(0.0, "f64")}
-    def vector_bits(x, y, z, width="f64"):
-        return {"x": float_bits(x, width), "y": float_bits(y, width),
-                "z": float_bits(z, width)}
-
     def block_position(x, y, z):
         return {"x": str(x), "y": str(y), "z": str(z)}
 

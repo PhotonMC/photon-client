@@ -1,6 +1,6 @@
 # P01.b — Vec3 referans sözleşmesi
 
-Bu dilimin **40 Java davranış testi hazırdır ve Rust karşılığı doğrulanmıştır** ([kanıt](math-parity.md)). Dot/cross/add/subtract ve diğer Vec3 yardımcıları bu dilime dahil değildir.
+Bu dilimin **40 Java davranış testi hazırdır ve Rust karşılığı doğrulanmıştır** ([kanıt](math-parity.md)). Dot/cross/add/subtract ve diğer Vec3 yardımcıları bu dilime dahil değildir. Add/subtract overload'ları için ayrı [sözleşme](vec3-add-subtract-contract.md) ve [kanıt](vec3-add-subtract-parity.md) tutulur.
 
 ## Kaynak ve sınır
 

@@ -1638,6 +1638,24 @@ fn math_result(request: &Value) -> Result<Value, String> {
             vector = match string(step, "action")? {
                 "normalize" => vector.normalized(),
                 "scale" => vector.scale(f64_field(step, "factor")?),
+                "add_vec3" => vector.add_vec3(f64_vec3(
+                    step.get("delta").ok_or("delta must be an object")?,
+                )?),
+                "add_scalar" => vector.add_scalar(f64_field(step, "value")?),
+                "add_components" => vector.add_components(
+                    f64_field(step, "x")?,
+                    f64_field(step, "y")?,
+                    f64_field(step, "z")?,
+                ),
+                "subtract_vec3" => vector.subtract_vec3(f64_vec3(
+                    step.get("delta").ok_or("delta must be an object")?,
+                )?),
+                "subtract_scalar" => vector.subtract_scalar(f64_field(step, "value")?),
+                "subtract_components" => vector.subtract_components(
+                    f64_field(step, "x")?,
+                    f64_field(step, "y")?,
+                    f64_field(step, "z")?,
+                ),
                 _ => return Err("unknown Vec3 action".into()),
             };
             events.push(vec3_snapshot(vector));
