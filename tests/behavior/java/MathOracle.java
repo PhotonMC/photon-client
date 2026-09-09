@@ -316,6 +316,37 @@ public final class MathOracle {
             } else {
                 throw new IllegalArgumentException("Unknown Mth integer type");
             }
+        } else if (operation.equals("mth_integer_basics")) {
+            String width = request.get("type").getAsString();
+            String function = request.get("fn").getAsString();
+            if (width.equals("i32")) {
+                int input = Integer.parseInt(request.get("input").getAsString());
+                if (function.equals("is_multiple")) {
+                    result.addProperty("value", Mth.isMultipleOf(input,
+                        Integer.parseInt(request.get("divisor").getAsString())));
+                } else {
+                    int value = switch (function) {
+                        case "abs" -> Mth.abs(input);
+                        case "clamp" -> Mth.clamp(input,
+                            Integer.parseInt(request.get("min").getAsString()),
+                            Integer.parseInt(request.get("max").getAsString()));
+                        case "wrap_degrees" -> Mth.wrapDegrees(input);
+                        default -> throw new IllegalArgumentException("Unknown Mth integer basic function");
+                    };
+                    result.addProperty("value", Integer.toString(value));
+                }
+            } else if (width.equals("i64")) {
+                long input = Long.parseLong(request.get("input").getAsString());
+                if (!function.equals("clamp")) {
+                    throw new IllegalArgumentException("Unknown Mth long basic function");
+                }
+                long value = Mth.clamp(input,
+                    Long.parseLong(request.get("min").getAsString()),
+                    Long.parseLong(request.get("max").getAsString()));
+                result.addProperty("value", Long.toString(value));
+            } else {
+                throw new IllegalArgumentException("Unknown Mth integer basic type");
+            }
         } else if (operation.equals("vec3")) {
             Vec3 vector = new Vec3(f64(request, "x"), f64(request, "y"), f64(request, "z"));
             var events = new JsonArray();

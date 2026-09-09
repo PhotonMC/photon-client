@@ -2706,6 +2706,43 @@ def math_cases():
                "operation": "mth_integer_helpers", "type": width, "fn": function,
                "input": input_value, "divisor": divisor}
 
+    mth_integer_basics = [
+        ("abs/min", "i32", "abs", "-2147483648", None, None, None),
+        ("abs/negative", "i32", "abs", "-1", None, None, None),
+        ("abs/zero", "i32", "abs", "0", None, None, None),
+        ("abs/positive", "i32", "abs", "1", None, None, None),
+        ("abs/max", "i32", "abs", "2147483647", None, None, None),
+        ("clamp-i32/below", "i32", "clamp", "-5", "0", "10", None),
+        ("clamp-i32/inside", "i32", "clamp", "5", "0", "10", None),
+        ("clamp-i32/above", "i32", "clamp", "15", "0", "10", None),
+        ("clamp-i32/full-range", "i32", "clamp", "-2147483648", "-2147483648", "2147483647", None),
+        ("clamp-i32/reversed-bounds", "i32", "clamp", "5", "10", "-10", None),
+        ("clamp-i64/min", "i64", "clamp", "-9223372036854775808", "-9223372036854775808", "9223372036854775807", None),
+        ("clamp-i64/below", "i64", "clamp", "-20", "-10", "10", None),
+        ("clamp-i64/above", "i64", "clamp", "20", "-10", "10", None),
+        ("clamp-i64/reversed-bounds", "i64", "clamp", "5", "10", "-10", None),
+        ("multiple/positive", "i32", "is_multiple", "12", None, None, "3"),
+        ("multiple/remainder", "i32", "is_multiple", "13", None, None, "3"),
+        ("multiple/negative", "i32", "is_multiple", "-12", None, None, "3"),
+        ("multiple/min-overflow", "i32", "is_multiple", "-2147483648", None, None, "-1"),
+        ("wrap/min", "i32", "wrap_degrees", "-2147483648", None, None, None),
+        ("wrap/negative", "i32", "wrap_degrees", "-721", None, None, None),
+        ("wrap/exact-negative-turn", "i32", "wrap_degrees", "-360", None, None, None),
+        ("wrap/lower-bound", "i32", "wrap_degrees", "-180", None, None, None),
+        ("wrap/just-above-lower-bound", "i32", "wrap_degrees", "-179", None, None, None),
+        ("wrap/upper-bound", "i32", "wrap_degrees", "180", None, None, None),
+        ("wrap/max", "i32", "wrap_degrees", "2147483647", None, None, None),
+    ]
+    for label, width, function, input_value, min_value, max_value, divisor in mth_integer_basics:
+        case = {"case_id": f"mth/integer-basics/{label}", "family": "math",
+                "operation": "mth_integer_basics", "type": width, "fn": function,
+                "input": input_value}
+        if min_value is not None:
+            case.update({"min": min_value, "max": max_value})
+        if divisor is not None:
+            case["divisor"] = divisor
+        yield case
+
 
 def timer_cases():
     def trace(label, steps, start=0, tps=20, target=50):

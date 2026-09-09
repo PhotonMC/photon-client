@@ -2260,6 +2260,58 @@ fn math_result(request: &Value) -> Result<Value, String> {
         };
         return Ok(json!({"value": value}));
     }
+    if operation == "mth_integer_basics" {
+        let function = string(request, "fn")?;
+        let input = string(request, "input")?;
+        let value = match string(request, "type")? {
+            "i32" => {
+                let input = input.parse::<i32>().map_err(|error| error.to_string())?;
+                match function {
+                    "abs" => json!(math::abs_i32(input).to_string()),
+                    "clamp" => json!(
+                        math::clamp_i32(
+                            input,
+                            string(request, "min")?
+                                .parse::<i32>()
+                                .map_err(|error| error.to_string())?,
+                            string(request, "max")?
+                                .parse::<i32>()
+                                .map_err(|error| error.to_string())?,
+                        )
+                        .to_string()
+                    ),
+                    "is_multiple" => json!(math::is_multiple_of_i32(
+                        input,
+                        string(request, "divisor")?
+                            .parse::<i32>()
+                            .map_err(|error| error.to_string())?,
+                    )),
+                    "wrap_degrees" => json!(math::wrap_degrees_i32(input).to_string()),
+                    _ => return Err("unknown Mth i32 basic function".into()),
+                }
+            }
+            "i64" => {
+                let input = input.parse::<i64>().map_err(|error| error.to_string())?;
+                if function != "clamp" {
+                    return Err("unknown Mth i64 basic function".into());
+                }
+                json!(
+                    math::clamp_i64(
+                        input,
+                        string(request, "min")?
+                            .parse::<i64>()
+                            .map_err(|error| error.to_string())?,
+                        string(request, "max")?
+                            .parse::<i64>()
+                            .map_err(|error| error.to_string())?,
+                    )
+                    .to_string()
+                )
+            }
+            _ => return Err("unknown Mth integer basic type".into()),
+        };
+        return Ok(json!({"value": value}));
+    }
     if operation == "vec2" {
         let mut vector = Vec2::new(f32_field(request, "x")?, f32_field(request, "y")?);
         let mut events = vec![vec2_snapshot(vector)];

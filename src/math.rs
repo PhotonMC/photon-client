@@ -537,6 +537,44 @@ pub fn chessboard_distance(x0: i32, z0: i32, x1: i32, z1: i32) -> i32 {
     abs_max(x1.wrapping_sub(x0), z1.wrapping_sub(z0))
 }
 
+/// Return Java `Mth.abs(int)`, including `Integer.MIN_VALUE` wrapping.
+pub fn abs_i32(value: i32) -> i32 {
+    value.wrapping_abs()
+}
+
+/// Return Java `Mth.clamp(int, int, int)`.
+pub fn clamp_i32(value: i32, min: i32, max: i32) -> i32 {
+    value.max(min).min(max)
+}
+
+/// Return Java `Mth.clamp(long, long, long)`.
+pub fn clamp_i64(value: i64, min: i64, max: i64) -> i64 {
+    value.max(min).min(max)
+}
+
+/// Return Java `Mth.isMultipleOf(int, int)`.
+pub fn is_multiple_of_i32(dividend: i32, divisor: i32) -> bool {
+    if divisor == 0 {
+        panic!("division by zero");
+    }
+    if dividend == i32::MIN && divisor == -1 {
+        return true;
+    }
+    dividend % divisor == 0
+}
+
+/// Return Java `Mth.wrapDegrees(int)`.
+pub fn wrap_degrees_i32(angle: i32) -> i32 {
+    let mut normalized_angle = angle % 360;
+    if normalized_angle >= 180 {
+        normalized_angle -= 360;
+    }
+    if normalized_angle < -180 {
+        normalized_angle += 360;
+    }
+    normalized_angle
+}
+
 /// Return Java `Math.floorDiv(int, int)`, including Java's signed overflow.
 pub fn floor_div_i32(dividend: i32, divisor: i32) -> i32 {
     if divisor == 0 {
