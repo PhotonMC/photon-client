@@ -224,6 +224,16 @@ public final class MathOracle {
         } else if (operation.equals("vec3_to_string")) {
             Vec3 first = vec3(request.getAsJsonObject("first"));
             result.addProperty("value", first.toString());
+        } else if (operation.equals("vec3_rotate")) {
+            Vec3 first = vec3(request.getAsJsonObject("first"));
+            float radians = Oracle.f32(request, "radians");
+            Vec3 value = switch (request.get("axis").getAsString()) {
+                case "x" -> first.xRot(radians);
+                case "y" -> first.yRot(radians);
+                case "z" -> first.zRot(radians);
+                default -> throw new IllegalArgumentException("Unknown Vec3 rotation axis");
+            };
+            result.add("value", snapshot(value));
         } else if (operation.equals("shape")) {
             String kind = request.get("kind").getAsString();
             if (kind.equals("single")) {

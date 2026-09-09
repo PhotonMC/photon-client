@@ -306,6 +306,36 @@ impl Vec3 {
         )
     }
 
+    /// Rotate around X using the Java `Mth` sine/cosine lookup contract.
+    pub fn x_rot(self, radians: f32) -> Self {
+        let cos = f64::from(mth_cos(f64::from(radians)));
+        let sin = f64::from(mth_sin(f64::from(radians)));
+        let xx = self.x;
+        let yy = self.y * cos + self.z * sin;
+        let zz = self.z * cos - self.y * sin;
+        Self::new(xx, yy, zz)
+    }
+
+    /// Rotate around Y using the Java `Mth` sine/cosine lookup contract.
+    pub fn y_rot(self, radians: f32) -> Self {
+        let cos = f64::from(mth_cos(f64::from(radians)));
+        let sin = f64::from(mth_sin(f64::from(radians)));
+        let xx = self.x * cos + self.z * sin;
+        let yy = self.y;
+        let zz = self.z * cos - self.x * sin;
+        Self::new(xx, yy, zz)
+    }
+
+    /// Rotate around Z using the Java `Mth` sine/cosine lookup contract.
+    pub fn z_rot(self, radians: f32) -> Self {
+        let cos = f64::from(mth_cos(f64::from(radians)));
+        let sin = f64::from(mth_sin(f64::from(radians)));
+        let xx = self.x * cos + self.y * sin;
+        let yy = self.y * cos - self.x * sin;
+        let zz = self.z;
+        Self::new(xx, yy, zz)
+    }
+
     pub fn length_squared(self) -> f64 {
         // Keep the reference evaluation order; do not fuse or substitute hypot.
         self.x * self.x + self.y * self.y + self.z * self.z
@@ -420,6 +450,26 @@ fn java_double_to_long_bits(value: f64) -> u64 {
 fn java_double_hash(value: f64) -> i32 {
     let bits = java_double_to_long_bits(value);
     (bits ^ (bits >> 32)) as i32
+}
+
+const MTH_SIN_SCALE: f64 = 10430.378350470453;
+
+fn mth_sin(value: f64) -> f32 {
+    mth_sin_table_value(mth_lookup_index(value * MTH_SIN_SCALE))
+}
+
+fn mth_cos(value: f64) -> f32 {
+    mth_sin_table_value(mth_lookup_index(value * MTH_SIN_SCALE + 16384.0))
+}
+
+fn mth_lookup_index(scaled: f64) -> usize {
+    // Java's double-to-long narrowing conversion maps NaN to zero and clamps
+    // out-of-range values; Rust's float-to-int cast has the same contract.
+    ((scaled as i64) as u64 & 0xffff) as usize
+}
+
+fn mth_sin_table_value(index: usize) -> f32 {
+    (index as f64 / MTH_SIN_SCALE).sin() as f32
 }
 
 pub(crate) fn java_double_to_string(value: f64) -> String {

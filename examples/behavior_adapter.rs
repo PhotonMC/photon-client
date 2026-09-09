@@ -1825,6 +1825,17 @@ fn math_result(request: &Value) -> Result<Value, String> {
         let first = f64_vec3(request.get("first").ok_or("first must be an object")?)?;
         return Ok(json!({"value": first.to_string_java()}));
     }
+    if operation == "vec3_rotate" {
+        let first = f64_vec3(request.get("first").ok_or("first must be an object")?)?;
+        let radians = f32_field(request, "radians")?;
+        let value = match string(request, "axis")? {
+            "x" => first.x_rot(radians),
+            "y" => first.y_rot(radians),
+            "z" => first.z_rot(radians),
+            _ => return Err("unknown Vec3 rotation axis".into()),
+        };
+        return Ok(json!({"value": vec3_snapshot(value)}));
+    }
     match string(request, "type")? {
         "f32" => {
             let value = f32_field(request, "value")?;

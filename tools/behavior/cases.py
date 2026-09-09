@@ -510,6 +510,49 @@ def math_cases():
            "first": {"x": "fff0000000000000", "y": "7ff0000000000000", "z": "fff0000000000000"}}
     yield {"case_id": "vec3/to-string/nan", "family": "math", "operation": "vec3_to_string",
            "first": {"x": "7ff8000000000001", "y": "7ff0000000000001", "z": "fff8000000000001"}}
+    yield {"case_id": "vec3/rotate/x-basic", "family": "math", "operation": "vec3_rotate",
+           "axis": "x", "first": vector_bits(1.25, -2.5, 3.75), "radians": float_bits(0.5)}
+    yield {"case_id": "vec3/rotate/y-basic", "family": "math", "operation": "vec3_rotate",
+           "axis": "y", "first": vector_bits(-4.5, 6.25, -8.75), "radians": float_bits(-0.75)}
+    yield {"case_id": "vec3/rotate/z-basic", "family": "math", "operation": "vec3_rotate",
+           "axis": "z", "first": vector_bits(2.0, -3.0, 4.0), "radians": float_bits(1.25)}
+    yield {"case_id": "vec3/rotate/x-negative-angle", "family": "math", "operation": "vec3_rotate",
+           "axis": "x", "first": vector_bits(-4.5, 6.25, -8.75), "radians": float_bits(-3.0)}
+    yield {"case_id": "vec3/rotate/y-negative-angle", "family": "math", "operation": "vec3_rotate",
+           "axis": "y", "first": vector_bits(1.25, -2.5, 3.75), "radians": float_bits(2.75)}
+    yield {"case_id": "vec3/rotate/z-negative-angle", "family": "math", "operation": "vec3_rotate",
+           "axis": "z", "first": vector_bits(-1.5, 2.25, -0.75), "radians": float_bits(-2.25)}
+    yield {"case_id": "vec3/rotate/x-quantized-small-angle", "family": "math", "operation": "vec3_rotate",
+           "axis": "x", "first": vector_bits(0.125, -0.25, 0.5), "radians": float_bits(0.0001)}
+    yield {"case_id": "vec3/rotate/y-quantized-small-angle", "family": "math", "operation": "vec3_rotate",
+           "axis": "y", "first": vector_bits(-0.125, 0.25, -0.5), "radians": float_bits(-0.0001)}
+    yield {"case_id": "vec3/rotate/z-quarter-turn", "family": "math", "operation": "vec3_rotate",
+           "axis": "z", "first": vector_bits(0.25, -0.5, 1.0),
+           "radians": float_bits(1.5707963267948966)}
+    yield {"case_id": "vec3/rotate/x-signed-zero", "family": "math", "operation": "vec3_rotate",
+           "axis": "x", "first": {"x": "8000000000000000", "y": "0000000000000000", "z": "8000000000000000"},
+           "radians": "80000000"}
+    yield {"case_id": "vec3/rotate/y-signed-zero", "family": "math", "operation": "vec3_rotate",
+           "axis": "y", "first": {"x": "8000000000000000", "y": "0000000000000000", "z": "8000000000000000"},
+           "radians": "00000000"}
+    yield {"case_id": "vec3/rotate/z-signed-zero", "family": "math", "operation": "vec3_rotate",
+           "axis": "z", "first": {"x": "0000000000000000", "y": "8000000000000000", "z": "0000000000000000"},
+           "radians": "80000000"}
+    yield {"case_id": "vec3/rotate/x-special-vector", "family": "math", "operation": "vec3_rotate",
+           "axis": "x", "first": {"x": "7ff0000000000000", "y": "7ff8000000000001", "z": "fff0000000000000"},
+           "radians": float_bits(0.5)}
+    yield {"case_id": "vec3/rotate/y-special-vector", "family": "math", "operation": "vec3_rotate",
+           "axis": "y", "first": {"x": "fff0000000000000", "y": "7ff0000000000000", "z": "7ff8000000000001"},
+           "radians": float_bits(-0.75)}
+    yield {"case_id": "vec3/rotate/z-special-vector", "family": "math", "operation": "vec3_rotate",
+           "axis": "z", "first": {"x": "7ff8000000000001", "y": "7ff0000000000000", "z": "fff0000000000000"},
+           "radians": float_bits(1.25)}
+    yield {"case_id": "vec3/rotate/x-nan-angle", "family": "math", "operation": "vec3_rotate",
+           "axis": "x", "first": vector_bits(1.25, -2.5, 3.75), "radians": "7fc00001"}
+    yield {"case_id": "vec3/rotate/y-positive-infinity-angle", "family": "math", "operation": "vec3_rotate",
+           "axis": "y", "first": vector_bits(-4.5, 6.25, -8.75), "radians": "7f800000"}
+    yield {"case_id": "vec3/rotate/z-negative-infinity-angle", "family": "math", "operation": "vec3_rotate",
+           "axis": "z", "first": vector_bits(2.0, -3.0, 4.0), "radians": "ff800000"}
     for name in ("down", "up", "north", "south", "west", "east"):
         yield {"case_id": f"direction/properties/{name}", "family": "math", "operation": "direction",
                "name": name, "steps": []}
