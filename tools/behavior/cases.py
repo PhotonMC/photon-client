@@ -612,6 +612,30 @@ def math_cases():
     yield {"case_id": "vec3/direction-from-rotation/components-max-finite", "family": "math",
            "operation": "vec3_direction_from_rotation", "kind": "components",
            "rot_x": "7f7fffff", "rot_y": "7f7fffff"}
+    yield {"case_id": "vec3/local-coordinates/apply-basic", "family": "math",
+           "operation": "vec3_local_coordinates", "kind": "apply",
+           "rotation": vector2_bits(0.0, 0.0),
+           "direction": vector_bits(1.25, -2.5, 3.75)}
+    yield {"case_id": "vec3/local-coordinates/apply-combined", "family": "math",
+           "operation": "vec3_local_coordinates", "kind": "apply",
+           "rotation": vector2_bits(20.0, -35.0),
+           "direction": vector_bits(-4.5, 6.25, 8.75)}
+    yield {"case_id": "vec3/local-coordinates/apply-axis-turns", "family": "math",
+           "operation": "vec3_local_coordinates", "kind": "apply",
+           "rotation": vector2_bits(90.0, 180.0),
+           "direction": vector_bits(1.0, 2.0, -3.0)}
+    yield {"case_id": "vec3/local-coordinates/apply-signed-zero", "family": "math",
+           "operation": "vec3_local_coordinates", "kind": "apply",
+           "rotation": {"x": "80000000", "y": "00000000"},
+           "direction": {"x": "8000000000000000", "y": "0000000000000001", "z": "8000000000000001"}}
+    yield {"case_id": "vec3/local-coordinates/add-axis", "family": "math",
+           "operation": "vec3_local_coordinates", "kind": "add",
+           "first": vector_bits(0.0, 0.0, 1.0),
+           "direction": vector_bits(1.0, 2.0, 3.0)}
+    yield {"case_id": "vec3/local-coordinates/add-combined", "family": "math",
+           "operation": "vec3_local_coordinates", "kind": "add",
+           "first": vector_bits(-4.0, 5.0, -6.0),
+           "direction": vector_bits(-0.5, 1.25, -2.75)}
     yield {"case_id": "vec3/rotation/basic", "family": "math", "operation": "vec3_rotation",
            "first": vector_bits(1.0, -2.0, 3.0)}
     yield {"case_id": "vec3/rotation/x-positive", "family": "math", "operation": "vec3_rotation",

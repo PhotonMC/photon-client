@@ -420,6 +420,43 @@ impl Vec3 {
         )
     }
 
+    /// Apply local coordinates using the Java pitch/yaw basis construction.
+    pub fn apply_local_coordinates_to_rotation(rotation: Vec2, direction: Self) -> Self {
+        // Keep angle arithmetic and basis products in f32 until each basis
+        // component is widened by the Java Vec3 constructor.
+        const DEGREES_TO_RADIANS_F32: f32 = f32::from_bits(0x3c8efa35);
+        let y_angle = (rotation.y + 90.0_f32) * DEGREES_TO_RADIANS_F32;
+        let y_cos = mth_cos(f64::from(y_angle));
+        let y_sin = mth_sin(f64::from(y_angle));
+        let x_angle = -rotation.x * DEGREES_TO_RADIANS_F32;
+        let x_cos = mth_cos(f64::from(x_angle));
+        let x_sin = mth_sin(f64::from(x_angle));
+        let x_up_angle = (-rotation.x + 90.0_f32) * DEGREES_TO_RADIANS_F32;
+        let x_cos_up = mth_cos(f64::from(x_up_angle));
+        let x_sin_up = mth_sin(f64::from(x_up_angle));
+        let forwards = Self::new(
+            f64::from(y_cos * x_cos),
+            f64::from(x_sin),
+            f64::from(y_sin * x_cos),
+        );
+        let up = Self::new(
+            f64::from(y_cos * x_cos_up),
+            f64::from(x_sin_up),
+            f64::from(y_sin * x_cos_up),
+        );
+        let left = forwards.cross(up).scale(-1.0);
+        Self::new(
+            forwards.x * direction.z + up.x * direction.y + left.x * direction.x,
+            forwards.y * direction.z + up.y * direction.y + left.y * direction.x,
+            forwards.z * direction.z + up.z * direction.y + left.z * direction.x,
+        )
+    }
+
+    /// Apply local coordinates using this vector's Java rotation.
+    pub fn add_local_coordinates(self, direction: Self) -> Self {
+        Self::apply_local_coordinates_to_rotation(self.rotation(), direction)
+    }
+
     /// Extract pitch and yaw angles using the Java `rotation` calculation.
     pub fn rotation(self) -> Vec2 {
         // Java evaluates atan2/asin/sqrt in f64, narrows each angle to f32,

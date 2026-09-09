@@ -1855,6 +1855,34 @@ fn math_result(request: &Value) -> Result<Value, String> {
         };
         return Ok(json!({"value": vec3_snapshot(value)}));
     }
+    if operation == "vec3_local_coordinates" {
+        let value = match string(request, "kind")? {
+            "apply" => {
+                let rotation = request
+                    .get("rotation")
+                    .ok_or("rotation must be an object")?;
+                Vec3::apply_local_coordinates_to_rotation(
+                    Vec2::new(f32_field(rotation, "x")?, f32_field(rotation, "y")?),
+                    f64_vec3(
+                        request
+                            .get("direction")
+                            .ok_or("direction must be an object")?,
+                    )?,
+                )
+            }
+            "add" => {
+                let first = f64_vec3(request.get("first").ok_or("first must be an object")?)?;
+                let direction = f64_vec3(
+                    request
+                        .get("direction")
+                        .ok_or("direction must be an object")?,
+                )?;
+                first.add_local_coordinates(direction)
+            }
+            _ => return Err("unknown Vec3 local coordinate kind".into()),
+        };
+        return Ok(json!({"value": vec3_snapshot(value)}));
+    }
     if operation == "vec3_rotation" {
         let first = f64_vec3(request.get("first").ok_or("first must be an object")?)?;
         return Ok(json!({"value": vec2_snapshot(first.rotation())}));

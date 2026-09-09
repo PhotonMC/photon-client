@@ -246,6 +246,18 @@ public final class MathOracle {
                 default -> throw new IllegalArgumentException("Unknown Vec3 direction rotation kind");
             };
             result.add("value", snapshot(value));
+        } else if (operation.equals("vec3_local_coordinates")) {
+            Vec3 value = switch (request.get("kind").getAsString()) {
+                case "apply" -> Vec3.applyLocalCoordinatesToRotation(
+                    new Vec2(
+                        Oracle.f32(request.getAsJsonObject("rotation"), "x"),
+                        Oracle.f32(request.getAsJsonObject("rotation"), "y")),
+                    vec3(request.getAsJsonObject("direction")));
+                case "add" -> vec3(request.getAsJsonObject("first"))
+                    .addLocalCoordinates(vec3(request.getAsJsonObject("direction")));
+                default -> throw new IllegalArgumentException("Unknown Vec3 local coordinate kind");
+            };
+            result.add("value", snapshot(value));
         } else if (operation.equals("vec3_rotation")) {
             Vec3 first = vec3(request.getAsJsonObject("first"));
             result.add("value", snapshot(first.rotation()));
