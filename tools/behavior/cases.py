@@ -225,6 +225,18 @@ def math_cases():
         yield {"case_id": f"chunkpos/distances/{label}", "family": "math",
                "operation": "chunkpos_distances", **values}
 
+    chunkpos_from_section_node = {
+        "origin": {"section_node": "0000000000000000"},
+        "positive": {"section_node": "0000040000300002"},
+        "negative": {"section_node": "ffffffffffffffff"},
+        "minimums": {"section_node": "8000020000080000"},
+        "maximums": {"section_node": "7ffffdfffff7ffff"},
+        "y-discard": {"section_node": "0000abfffef7ffff"},
+    }
+    for label, values in chunkpos_from_section_node.items():
+        yield {"case_id": f"chunkpos/from-section-node/{label}", "family": "math",
+               "operation": "chunkpos_from_section_node", **values}
+
     chunkpos_validity = {
         "origin": {"x": "0", "z": "0"},
         "boundary": {"x": "2097061", "z": "-2097061"},

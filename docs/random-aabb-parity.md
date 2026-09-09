@@ -28,7 +28,7 @@ Java 25.0.4.1 ve Rust 1.98.1 / Linux x86_64 ortamında:
 - 5 random dizi, 4 bounded random ve 3 AABB senaryosunda olay sırası, signed tamsayı metinleri, float/double ham bitleri, AABB uçları ve boolean sonuçları karşılaştırıldı.
 - `cargo fmt`, `cargo check --locked --offline --all-targets`, `cargo test --locked --offline --all-targets` ve beş sentetik davranış-runner testi geçti.
 
-Math referans kimliği: `529c11520bbda1959798018b959d4f6a3d2f46de0527d0ef9d802b210e08f91c`.
+Math referans kimliği: `529c11520bbda1959798018b965d4f6a3d2f46de0527d0ef9d802b210e08f91c`.
 
 Yerel raporlar: `compare-37kc_otn` (debug) ve `compare-q246ny7w` (release), `.data/runs/behavior/` altında.
 

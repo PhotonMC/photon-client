@@ -1849,6 +1849,13 @@ fn math_result(request: &Value) -> Result<Value, String> {
             "value": chunkpos_distances_snapshot(value, other),
         }));
     }
+    if operation == "chunkpos_from_section_node" {
+        let section_node = u64::from_str_radix(string(request, "section_node")?, 16)
+            .map_err(|error| error.to_string())?;
+        return Ok(json!({
+            "value": format!("{:x}", ChunkPos::from_section_node(section_node)),
+        }));
+    }
     if operation == "chunkpos_validity" {
         return Ok(json!({
             "value": chunkpos_validity_snapshot(chunkpos(request)?),

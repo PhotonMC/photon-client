@@ -241,6 +241,12 @@ impl ChunkPos {
         }
     }
 
+    /// Convert a packed SectionPos node to a packed ChunkPos, discarding y.
+    pub fn from_section_node(section_node: u64) -> u64 {
+        let section = SectionPos::unpack(section_node);
+        Self::new(section.x, section.z).pack()
+    }
+
     /// Decode the fixed two-element list used by Java `ChunkPos.CODEC`.
     pub fn codec_decode(values: &[i32]) -> Result<Self, ChunkPosCodecError> {
         match values {

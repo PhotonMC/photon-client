@@ -156,6 +156,9 @@ public final class MathOracle {
             int otherX = Integer.parseInt(request.get("other_x").getAsString());
             int otherZ = Integer.parseInt(request.get("other_z").getAsString());
             result.add("value", chunkPosDistances(pos, otherX, otherZ));
+        } else if (operation.equals("chunkpos_from_section_node")) {
+            long sectionNode = Long.parseUnsignedLong(request.get("section_node").getAsString(), 16);
+            result.addProperty("value", Long.toUnsignedString(ChunkPos.fromSectionNode(sectionNode), 16));
         } else if (operation.equals("chunkpos_validity")) {
             ChunkPos pos = chunkPos(request);
             result.add("value", chunkPosValidity(pos));
