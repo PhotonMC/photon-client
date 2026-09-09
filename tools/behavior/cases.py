@@ -406,6 +406,23 @@ def math_cases():
     yield {"case_id": "vec3/with/y-max-finite", "family": "math", "operation": "vec3_with",
            "first": {"x": "0000000000000001", "y": "8000000000000001", "z": "8000000000000000"},
            "axis": "y", "value": "7fefffffffffffff"}
+    yield {"case_id": "vec3/relative/east-basic", "family": "math", "operation": "vec3_relative",
+           "first": vector_bits(1.25, -2.5, 3.75), "direction": "east", "distance": float_bits(9.5, "f64")}
+    yield {"case_id": "vec3/relative/west-signed-zero", "family": "math", "operation": "vec3_relative",
+           "first": {"x": "8000000000000000", "y": "0000000000000001", "z": "8000000000000000"},
+           "direction": "west", "distance": "0000000000000000"}
+    yield {"case_id": "vec3/relative/up-subnormal", "family": "math", "operation": "vec3_relative",
+           "first": {"x": "8000000000000000", "y": "8000000000000001", "z": "7fefffffffffffff"},
+           "direction": "up", "distance": "0000000000000001"}
+    yield {"case_id": "vec3/relative/down-overflow", "family": "math", "operation": "vec3_relative",
+           "first": {"x": "0000000000000001", "y": "fff0000000000000", "z": "8000000000000000"},
+           "direction": "down", "distance": "7fefffffffffffff"}
+    yield {"case_id": "vec3/relative/north-cancellation", "family": "math", "operation": "vec3_relative",
+           "first": {"x": "7fefffffffffffff", "y": "8000000000000001", "z": "7fefffffffffffff"},
+           "direction": "north", "distance": "7fefffffffffffff"}
+    yield {"case_id": "vec3/relative/south-special", "family": "math", "operation": "vec3_relative",
+           "first": {"x": "3ff4000000000000", "y": "c004000000000000", "z": "7ff0000000000000"},
+           "direction": "south", "distance": "7ff8000000000001"}
     for name in ("down", "up", "north", "south", "west", "east"):
         yield {"case_id": f"direction/properties/{name}", "family": "math", "operation": "direction",
                "name": name, "steps": []}

@@ -1,7 +1,7 @@
 //! The numeric operations currently covered by the Java behavior corpus.
 //! Arithmetic stays at the reference's precision and evaluation order.
 
-use crate::direction::Axis;
+use crate::direction::{Axis, Direction};
 use crate::random::RandomSource;
 
 #[derive(Debug, Clone, Copy)]
@@ -196,6 +196,15 @@ impl Vec3 {
             Axis::Y => Self::new(self.x, value, self.z),
             Axis::Z => Self::new(self.x, self.y, value),
         }
+    }
+
+    pub fn relative(self, direction: Direction, distance: f64) -> Self {
+        let (step_x, step_y, step_z) = direction.step();
+        Self::new(
+            self.x + distance * f64::from(step_x),
+            self.y + distance * f64::from(step_y),
+            self.z + distance * f64::from(step_z),
+        )
     }
 
     pub fn length_squared(self) -> f64 {

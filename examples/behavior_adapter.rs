@@ -1759,6 +1759,13 @@ fn math_result(request: &Value) -> Result<Value, String> {
         let value = f64_field(request, "value")?;
         return Ok(json!({"value": vec3_snapshot(first.with(axis, value))}));
     }
+    if operation == "vec3_relative" {
+        let first = f64_vec3(request.get("first").ok_or("first must be an object")?)?;
+        let direction =
+            Direction::from_name(string(request, "direction")?).ok_or("unknown direction")?;
+        let distance = f64_field(request, "distance")?;
+        return Ok(json!({"value": vec3_snapshot(first.relative(direction, distance))}));
+    }
     match string(request, "type")? {
         "f32" => {
             let value = f32_field(request, "value")?;

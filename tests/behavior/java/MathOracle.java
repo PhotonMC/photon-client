@@ -176,6 +176,13 @@ public final class MathOracle {
                 throw new IllegalArgumentException("Unknown axis name");
             }
             result.add("value", snapshot(first.with(axis, f64(request, "value"))));
+        } else if (operation.equals("vec3_relative")) {
+            Vec3 first = vec3(request.getAsJsonObject("first"));
+            Direction direction = Direction.byName(request.get("direction").getAsString());
+            if (direction == null) {
+                throw new IllegalArgumentException("Unknown direction name");
+            }
+            result.add("value", snapshot(first.relative(direction, f64(request, "distance"))));
         } else if (operation.equals("shape")) {
             String kind = request.get("kind").getAsString();
             if (kind.equals("single")) {
