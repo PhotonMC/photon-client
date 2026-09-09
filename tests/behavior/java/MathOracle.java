@@ -122,6 +122,10 @@ public final class MathOracle {
             Vec3 first = vec3(request.getAsJsonObject("first"));
             Vec3 second = vec3(request.getAsJsonObject("second"));
             result.addProperty("value", Oracle.bits(first.distanceToSqr(second)));
+        } else if (operation.equals("vec3_distance_to")) {
+            Vec3 first = vec3(request.getAsJsonObject("first"));
+            Vec3 second = vec3(request.getAsJsonObject("second"));
+            result.addProperty("value", Oracle.bits(first.distanceTo(second)));
         } else if (operation.equals("vec3_distance_to_sqr_components")) {
             Vec3 first = vec3(request.getAsJsonObject("first"));
             result.addProperty("value", Oracle.bits(first.distanceToSqr(

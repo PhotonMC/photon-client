@@ -194,6 +194,24 @@ def math_cases():
            "operation": "vec3_distance_to_sqr", "first": vector_bits(0.0, 0.0, 0.0),
            "second": {"x": "7fefffffffffffff", "y": float_bits(float("inf"), "f64"),
                       "z": "7ff8000000000002"}}
+    yield {"case_id": "vec3/distance-to/basic", "family": "math",
+           "operation": "vec3_distance_to", "first": vector_bits(1.25, -2.5, 3.75),
+           "second": vector_bits(4.5, -1.0, -0.25)}
+    yield {"case_id": "vec3/distance-to/order-and-rounding", "family": "math",
+           "operation": "vec3_distance_to", "first": vector_bits(0.0, 0.0, 0.0),
+           "second": vector_bits(2.0 ** 27, 1.0, 1.1)}
+    yield {"case_id": "vec3/distance-to/signed-zero", "family": "math",
+           "operation": "vec3_distance_to", "first": vector_bits(-0.0, -0.0, -0.0),
+           "second": vector_bits(0.0, 0.0, 0.0)}
+    yield {"case_id": "vec3/distance-to/subnormal", "family": "math",
+           "operation": "vec3_distance_to", "first": {"x": "0000000000000001",
+                                                            "y": "8000000000000001",
+                                                            "z": "0000000000000000"},
+           "second": vector_bits(0.0, 0.0, 0.0)}
+    yield {"case_id": "vec3/distance-to/overflow-and-special-values", "family": "math",
+           "operation": "vec3_distance_to", "first": vector_bits(0.0, 0.0, 0.0),
+           "second": {"x": "7fefffffffffffff", "y": float_bits(float("inf"), "f64"),
+                      "z": "7ff8000000000002"}}
     for name in ("down", "up", "north", "south", "west", "east"):
         yield {"case_id": f"direction/properties/{name}", "family": "math", "operation": "direction",
                "name": name, "steps": []}

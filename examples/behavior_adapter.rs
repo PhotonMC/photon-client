@@ -1678,6 +1678,11 @@ fn math_result(request: &Value) -> Result<Value, String> {
         let second = f64_vec3(request.get("second").ok_or("second must be an object")?)?;
         return Ok(json!({"value": format!("{:016x}", first.distance_to_sqr(second).to_bits())}));
     }
+    if operation == "vec3_distance_to" {
+        let first = f64_vec3(request.get("first").ok_or("first must be an object")?)?;
+        let second = f64_vec3(request.get("second").ok_or("second must be an object")?)?;
+        return Ok(json!({"value": format!("{:016x}", first.distance_to(second).to_bits())}));
+    }
     if operation == "vec3_distance_to_sqr_components" {
         let first = f64_vec3(request.get("first").ok_or("first must be an object")?)?;
         let value = first.distance_to_sqr_components(
