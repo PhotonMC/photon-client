@@ -363,6 +363,10 @@ impl VoxelShape {
             && self.is_cube_like_along(Axis::Z)
     }
 
+    fn is_block(&self) -> bool {
+        self.cells.len() == 1 && self.cells[0] && self.is_cube_like()
+    }
+
     fn is_cube_like_along(&self, axis: Axis) -> bool {
         let coords = self.axis_coords(axis);
         coords.len() == 2 && fuzzy_equals(coords[0], 0.0) && fuzzy_equals(coords[1], 1.0)
@@ -574,6 +578,51 @@ impl Shapes {
         let first_slice = first.slice_at(axis, first.axis_size(axis) as isize - 1);
         let second_slice = second.slice_at(axis, 0);
         !Self::join_is_not_empty(&first_slice, &second_slice, operation)
+    }
+
+    /// Return whether the merged boundary faces cover a unit block.
+    pub fn merged_face_occludes(
+        shape: &VoxelShape,
+        occluder: &VoxelShape,
+        direction: Direction,
+    ) -> bool {
+        if shape.is_block() || occluder.is_block() {
+            return true;
+        }
+
+        let axis = direction.axis();
+        let (first, second) = if matches!(direction.axis_direction(), AxisDirection::Positive) {
+            (shape, occluder)
+        } else {
+            (occluder, shape)
+        };
+        let first = if fuzzy_equals(first.max_coordinate(axis), 1.0) {
+            first.clone()
+        } else {
+            Self::empty()
+        };
+        let second = if fuzzy_equals(second.min_coordinate(axis), 0.0) {
+            second.clone()
+        } else {
+            Self::empty()
+        };
+        let first_slice = first.slice_at(axis, first.axis_size(axis) as isize - 1);
+        let second_slice = second.slice_at(axis, 0);
+        let merged = Self::or(&first_slice, &second_slice);
+        !Self::join_is_not_empty(&Self::block(), &merged, BooleanOp::OnlyFirst)
+    }
+
+    /// Return whether two face shapes cover a unit block together.
+    pub fn face_shape_occludes(shape: &VoxelShape, occluder: &VoxelShape) -> bool {
+        if shape.is_block() || occluder.is_block() {
+            return true;
+        }
+        if shape.is_empty() && occluder.is_empty() {
+            return false;
+        }
+
+        let merged = Self::or(shape, occluder);
+        !Self::join_is_not_empty(&Self::block(), &merged, BooleanOp::OnlyFirst)
     }
 
     /// Limit a moving box against each shape in iteration order.

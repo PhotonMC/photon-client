@@ -38,6 +38,6 @@ Depo kökünden:
 python3 tools/behavior/run.py capture --family math
 ```
 
-Bu dilimin math referans kimliği `e8e76ccc62aed58e30c8ea04f5862929a6644eaba7132217f369f558775216a5` oldu. Bu referans iki JVM çalıştırmasıyla kararlı bulundu. Rust ve birleşik corpus kanıtı [parity belgesindedir](aabb-collided-along-vector-parity.md).
+Bu dilimin math referans kimliği `e8e76ccc62aed58e30c8ea04f5862929a6644eaba7132217f369f558775226a5` oldu. Bu referans iki JVM çalıştırmasıyla kararlı bulundu. Rust ve birleşik corpus kanıtı [parity belgesindedir](aabb-collided-along-vector-parity.md).
 
 Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.

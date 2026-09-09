@@ -662,6 +662,30 @@ fn shape_result(request: &Value) -> Result<Value, String> {
                 "occludes": Shapes::block_occludes(&shape, &occluder, direction),
             }))
         }
+        "merged_occludes" => {
+            let shape = shape_box(request.get("shape").ok_or("shape must be an object")?)?;
+            let occluder = shape_box(
+                request
+                    .get("occluder")
+                    .ok_or("occluder must be an object")?,
+            )?;
+            let direction = Direction::from_name(string(request, "direction")?)
+                .ok_or("unknown merged occlusion direction")?;
+            Ok(json!({
+                "occludes": Shapes::merged_face_occludes(&shape, &occluder, direction),
+            }))
+        }
+        "face_occludes" => {
+            let shape = shape_box(request.get("shape").ok_or("shape must be an object")?)?;
+            let occluder = shape_box(
+                request
+                    .get("occluder")
+                    .ok_or("occluder must be an object")?,
+            )?;
+            Ok(json!({
+                "occludes": Shapes::face_shape_occludes(&shape, &occluder),
+            }))
+        }
         _ => Err("unknown VoxelShape kind".into()),
     }
 }

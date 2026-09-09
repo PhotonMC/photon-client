@@ -222,6 +222,18 @@ public final class MathOracle {
                     throw new IllegalArgumentException("Unknown occlusion direction");
                 }
                 result.addProperty("occludes", Shapes.blockOccludes(Shapes.or(first, second), occluder, direction));
+            } else if (kind.equals("merged_occludes")) {
+                VoxelShape shape = voxelShape(request.getAsJsonObject("shape"));
+                VoxelShape occluder = voxelShape(request.getAsJsonObject("occluder"));
+                Direction direction = Direction.byName(request.get("direction").getAsString());
+                if (direction == null) {
+                    throw new IllegalArgumentException("Unknown merged occlusion direction");
+                }
+                result.addProperty("occludes", Shapes.mergedFaceOccludes(shape, occluder, direction));
+            } else if (kind.equals("face_occludes")) {
+                VoxelShape shape = voxelShape(request.getAsJsonObject("shape"));
+                VoxelShape occluder = voxelShape(request.getAsJsonObject("occluder"));
+                result.addProperty("occludes", Shapes.faceShapeOccludes(shape, occluder));
             } else {
                 throw new IllegalArgumentException("Unknown VoxelShape kind");
             }

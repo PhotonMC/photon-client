@@ -6,7 +6,7 @@ Bu dilim Java 26.2 `Shapes.blockOccludes(VoxelShape, VoxelShape, Direction)` dav
 
 Java Edition 26.2 / protokol 776 / Java 25 referansı kullanılır. `world/phys/shapes/Shapes.java:246-263`, `VoxelShape.java:29-121,202-235`, `SliceShape.java:6-33` ve `SubShape.java:6-47` incelendi. `MathOracle` doğrudan `blockOccludes` çağrısını gözler; beklenen boolean sonucu Rust sonucundan üretmez.
 
-Bu dilim block-local shape'ler arasındaki tek yönlü block occlusion predicate'ini kapsar. `mergedFaceOccludes`, `faceShapeOccludes`, rotation ve dünyadaki yüz/collider toplama sonraki dilimlerdir.
+Bu dilim block-local shape'ler arasındaki tek yönlü block occlusion predicate'ini kapsar. Rotation ve dünyadaki yüz/collider toplama sonraki dilimlerdir.
 
 ## Davranış sözleşmesi
 
@@ -41,4 +41,4 @@ cargo build --locked --offline --example behavior_adapter
 python3 tools/behavior/run.py compare --family math --adapter target/debug/examples/behavior_adapter
 ```
 
-Bu dilimin sekiz senaryosunu içeren math referans kimliği `cb2511839f7c5474e299aa625ddba51089f3c035453190ee147a26361e7a57ef`'dir. Birleşik altı aile referansı `2105d50b3ac69a505c2685a91ad23c0857f85a9601098d2f6ab2b966e92919ef` ile doğrulanmıştır. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.
+Bu dilimin sekiz senaryosunu içeren math referans kimliği `cb2511839f7c5474e299aa625ddba51089f3c035453190ee147a26361e7a57ef`'dir. Birleşik altı aile referansı `f13f272d7c3d33b3fc203feb94bab869310a7fe2c99a8b47d53c195952394c06` ile doğrulanmıştır. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.

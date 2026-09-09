@@ -975,6 +975,39 @@ def math_cases():
            "kind": "block_occludes_join", "first": box_bits(0.0, 0.0, 0.0, 0.5, 1.0, 1.0),
            "second": box_bits(0.5, 0.0, 0.0, 1.0, 1.0, 1.0),
            "occluder": box_bits(0.0, 0.0, 0.0, 1.0, 1.0, 1.0), "direction": "east"}
+    yield {"case_id": "shape/occlusion/face-empty", "family": "math", "operation": "shape",
+           "kind": "face_occludes", "shape": box_bits(0.0, 0.0, 0.0, 0.00000005, 1.0, 1.0),
+           "occluder": box_bits(0.0, 0.0, 0.0, 1.0, 0.00000005, 1.0)}
+    yield {"case_id": "shape/occlusion/face-block-first", "family": "math", "operation": "shape",
+           "kind": "face_occludes", "shape": box_bits(0.0, 0.0, 0.0, 1.0, 1.0, 1.0),
+           "occluder": box_bits(0.0, 0.0, 0.0, 1.0, 0.5, 1.0)}
+    yield {"case_id": "shape/occlusion/face-block-second", "family": "math", "operation": "shape",
+           "kind": "face_occludes", "shape": box_bits(0.0, 0.0, 0.0, 1.0, 0.5, 1.0),
+           "occluder": box_bits(0.0, 0.0, 0.0, 1.0, 1.0, 1.0)}
+    yield {"case_id": "shape/occlusion/face-complementary", "family": "math", "operation": "shape",
+           "kind": "face_occludes", "shape": box_bits(0.0, 0.0, 0.0, 1.0, 0.5, 1.0),
+           "occluder": box_bits(0.0, 0.5, 0.0, 1.0, 1.0, 1.0)}
+    yield {"case_id": "shape/occlusion/face-gap", "family": "math", "operation": "shape",
+           "kind": "face_occludes", "shape": box_bits(0.0, 0.0, 0.0, 1.0, 0.4, 1.0),
+           "occluder": box_bits(0.0, 0.6, 0.0, 1.0, 1.0, 1.0)}
+    yield {"case_id": "shape/occlusion/face-depth-complementary", "family": "math", "operation": "shape",
+           "kind": "face_occludes", "shape": box_bits(0.0, 0.0, 0.0, 1.0, 1.0, 0.5),
+           "occluder": box_bits(0.0, 0.0, 0.5, 1.0, 1.0, 1.0)}
+    yield {"case_id": "shape/occlusion/merged-complementary", "family": "math", "operation": "shape",
+           "kind": "merged_occludes", "shape": box_bits(0.0, 0.0, 0.0, 1.0, 0.5, 1.0),
+           "occluder": box_bits(0.0, 0.5, 0.0, 1.0, 1.0, 1.0), "direction": "east"}
+    yield {"case_id": "shape/occlusion/merged-block-first", "family": "math", "operation": "shape",
+           "kind": "merged_occludes", "shape": box_bits(0.0, 0.0, 0.0, 1.0, 1.0, 1.0),
+           "occluder": box_bits(0.0, 0.0, 0.0, 1.0, 0.5, 1.0), "direction": "east"}
+    yield {"case_id": "shape/occlusion/merged-first-gap", "family": "math", "operation": "shape",
+           "kind": "merged_occludes", "shape": box_bits(0.0, 0.0, 0.0, 0.75, 1.0, 1.0),
+           "occluder": box_bits(0.0, 0.0, 0.0, 1.0, 1.0, 1.0), "direction": "east"}
+    yield {"case_id": "shape/occlusion/merged-second-gap", "family": "math", "operation": "shape",
+           "kind": "merged_occludes", "shape": box_bits(0.0, 0.0, 0.0, 1.0, 0.5, 1.0),
+           "occluder": box_bits(0.25, 0.5, 0.0, 1.0, 1.0, 1.0), "direction": "east"}
+    yield {"case_id": "shape/occlusion/merged-west", "family": "math", "operation": "shape",
+           "kind": "merged_occludes", "shape": box_bits(0.0, 0.0, 0.0, 1.0, 0.5, 1.0),
+           "occluder": box_bits(0.0, 0.5, 0.0, 1.0, 1.0, 1.0), "direction": "west"}
     def bounding_box(min_x, min_y, min_z, max_x, max_y, max_z):
         return {"min_x": str(min_x), "min_y": str(min_y), "min_z": str(min_z),
                 "max_x": str(max_x), "max_y": str(max_y), "max_z": str(max_z)}
