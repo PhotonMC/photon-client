@@ -2874,6 +2874,31 @@ def math_cases():
                    "operation": "mth_abs_max", "type": width,
                    "first": float_bits(first, width), "second": float_bits(second, width)}
 
+    equal_threshold = struct.unpack(">f", struct.pack(">f", 1.0e-5))[0]
+    for width in ("f32", "f64"):
+        threshold = equal_threshold
+        mth_equal = [
+            ("zero", 0.0, 0.0),
+            ("signed-zero", -0.0, 0.0),
+            ("same-finite", 1.25, 1.25),
+            ("within-threshold", 0.0, threshold * 0.5),
+            ("negative-within-threshold", 0.0, -threshold * 0.5),
+            ("threshold", 0.0, threshold),
+            ("above-threshold", 0.0, threshold * 2.0),
+            ("subnormal", 0.0, (float.fromhex("0x0.000002p-126") if width == "f32"
+                                else float.fromhex("0x0.0000000000001p-1022"))),
+            ("large-difference", 1.0e20, 1.0e20 + 1.0e6),
+            ("positive-infinity", float("inf"), float("inf")),
+            ("negative-infinity", -float("inf"), -float("inf")),
+            ("opposite-infinity", float("inf"), -float("inf")),
+            ("nan-first", float("nan"), 1.0),
+            ("nan-second", 1.0, float("nan")),
+        ]
+        for label, first, second in mth_equal:
+            yield {"case_id": f"mth/equal/{width}/{label}", "family": "math",
+                   "operation": "mth_equal", "type": width,
+                   "first": float_bits(first, width), "second": float_bits(second, width)}
+
 
 def timer_cases():
     def trace(label, steps, start=0, tps=20, target=50):

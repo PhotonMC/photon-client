@@ -6,13 +6,13 @@
 
 Java 25.0.4.1 ve Rust 1.98.1 / Linux x86_64 ortamında:
 
-- Math ailesinin 1221 senaryoluk referansı iki ayrı JVM çalıştırmasıyla kararlı bulundu.
-- Rust debug ve release adaptörleri **1221/1221** math senaryosunda eşleşti.
+- Math ailesinin 1249 senaryoluk referansı iki ayrı JVM çalıştırmasıyla kararlı bulundu.
+- Rust debug ve release adaptörleri **1249/1249** math senaryosunda eşleşti.
 - 18 yeni senaryoda iki overload, cardinal ve birleşik açıları, quantization, signed zero ve NaN/Infinity/taşma açılarını karşılaştırdı.
-- Birleşik altı aile corpus'u **1723/1723** senaryoda hem debug hem release adaptörüyle eşleşti.
-- `verify` çalıştırması kayıtlı 1723 senaryoluk Java referansını yeniden doğruladı.
+- Birleşik altı aile corpus'u **1751/1751** senaryoda hem debug hem release adaptörüyle eşleşti.
+- `verify` çalıştırması kayıtlı 1751 senaryoluk Java referansını yeniden doğruladı.
 
-Math referansı `df8b0fd452c7f12175fe9ced3c534c1f64bdb7df75cc28529becd0eb8ab97b3c`, birleşik referans `86380f621c6f188dddfa1e68a94057a8ada6d638b9f5c04d3a2c9682b1ca75cf` kimliklerindedir. Math karşılaştırma raporları `compare-6dvmyv_h` (debug) ve `compare-ak0n9_u3` (release); birleşik raporlar `compare-_8esk0jy` (debug) ve `compare-g98k9sn0` (release), Java doğrulaması `verify-72fv37y0` kimliklerindedir.
+Math referansı `29be5693737a944f40d9534d4a126556f5aeaac24dd9d2f5fccd0c6b1db3a3aa`, birleşik referans `a92e7ef25d7ffcf101102bab4b05061d96a3b0511495a77464f282a0775abfd0` kimliklerindedir. Math karşılaştırma raporları `compare-dj1scyn3` (debug) ve `compare-1g72i2us` (release); birleşik raporlar `compare-f0bjlm2c` (debug) ve `compare-eaqfihsj` (release), Java doğrulaması `verify-p2v9lu2o` kimliklerindedir.
 
 ## Sınırlar
 

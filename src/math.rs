@@ -671,6 +671,16 @@ pub fn abs_max_f64(first: f64, second: f64) -> f64 {
     }
 }
 
+/// Return Java `Mth.equal(float, float)` with its strict f32 threshold.
+pub fn equal_f32(first: f32, second: f32) -> bool {
+    (second - first).abs() < 1.0e-5_f32
+}
+
+/// Return Java `Mth.equal(double, double)` with its promoted f32 threshold.
+pub fn equal_f64(first: f64, second: f64) -> bool {
+    (second - first).abs() < f64::from(1.0e-5_f32)
+}
+
 /// Return Java `Math.floorDiv(int, int)`, including Java's signed overflow.
 pub fn floor_div_i32(dividend: i32, divisor: i32) -> i32 {
     if divisor == 0 {

@@ -419,6 +419,17 @@ public final class MathOracle {
             } else {
                 throw new IllegalArgumentException("Unknown Mth absMax type");
             }
+        } else if (operation.equals("mth_equal")) {
+            String width = request.get("type").getAsString();
+            if (width.equals("f32")) {
+                result.addProperty("equal", Mth.equal(
+                    Oracle.f32(request, "first"), Oracle.f32(request, "second")));
+            } else if (width.equals("f64")) {
+                result.addProperty("equal", Mth.equal(
+                    f64(request, "first"), f64(request, "second")));
+            } else {
+                throw new IllegalArgumentException("Unknown Mth equal type");
+            }
         } else if (operation.equals("vec3")) {
             Vec3 vector = new Vec3(f64(request, "x"), f64(request, "y"), f64(request, "z"));
             var events = new JsonArray();

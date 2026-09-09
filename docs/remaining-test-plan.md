@@ -1,6 +1,6 @@
 # Kalan bölümler test planı (çalıştırılamayanlar)
 
-1723 Java senaryosu kayıtlıdır (beş+bir aile).
+1751 Java senaryosu kayıtlıdır (beş+bir aile).
 
 P01.a Mth tamsayı yardımcıları 15 senaryoda hazırdır ([sözleşme](mth-integer-helpers-contract.md), [kanıt](mth-integer-helpers-parity.md)).
 P01.a Mth tamsayı temel yardımcıları 25 senaryoda hazırdır ([sözleşme](mth-integer-basics-contract.md), [kanıt](mth-integer-basics-parity.md)).
@@ -8,6 +8,7 @@ P01.a Mth açı yardımcıları 21 senaryoda hazırdır ([sözleşme](mth-angle-
 P01.a Mth yuvarlama yardımcıları 36 senaryoda hazırdır ([sözleşme](mth-rounding-helpers-contract.md), [kanıt](mth-rounding-helpers-parity.md)).
 P01.a Mth pozitif modulo 44 senaryoda hazırdır ([sözleşme](mth-positive-modulo-contract.md), [kanıt](mth-positive-modulo-parity.md)).
 P01.a Mth absMax 28 senaryoda hazırdır ([sözleşme](mth-abs-max-contract.md), [kanıt](mth-abs-max-parity.md)).
+P01.a Mth equal 28 senaryoda hazırdır ([sözleşme](mth-equal-contract.md), [kanıt](mth-equal-parity.md)).
 
 P03.b Vec3.STREAM_CODEC 13 senaryoda hazırdır ([sözleşme](vec3-stream-codec-contract.md), [kanıt](vec3-stream-codec-parity.md)). Aşağıdaki bölümler yerel ortamda çalıştırılamaz; her biri engelli kaydedilir, sahte golden üretilmez. Her bölümün önkoşulu, engel kalkınca yazılacak ilk senaryolar ve kabul ölçütü tanımlıdır.
 P03.b LP Vec3 stream codec 15 senaryoda hazırdır ([sözleşme](lp-vec3-contract.md), [kanıt](lp-vec3-parity.md)).

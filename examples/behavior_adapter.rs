@@ -2390,6 +2390,15 @@ fn math_result(request: &Value) -> Result<Value, String> {
         };
         return Ok(json!({"bits": bits}));
     }
+    if operation == "mth_equal" {
+        let width = string(request, "type")?;
+        let equal = match width {
+            "f32" => math::equal_f32(f32_field(request, "first")?, f32_field(request, "second")?),
+            "f64" => math::equal_f64(f64_field(request, "first")?, f64_field(request, "second")?),
+            _ => return Err("unknown Mth equal type".into()),
+        };
+        return Ok(json!({"equal": equal}));
+    }
     if operation == "vec2" {
         let mut vector = Vec2::new(f32_field(request, "x")?, f32_field(request, "y")?);
         let mut events = vec![vec2_snapshot(vector)];
