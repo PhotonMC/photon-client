@@ -222,6 +222,24 @@ def math_cases():
     yield {"case_id": "shape/first/displaced", "family": "math", "operation": "shape", "kind": "join",
            "op": "first", "first": box_bits(0.75, 0, 0, 1, 1, 1),
            "second": box_bits(0, 0, 0, 0.25, 1, 1)}
+    yield {"case_id": "shape/or-many/touching-row", "family": "math", "operation": "shape",
+           "kind": "join_many", "shapes": [
+               box_bits(0.0, 0.0, 0.0, 0.25, 1.0, 1.0),
+               box_bits(0.25, 0.0, 0.0, 0.5, 1.0, 1.0),
+               box_bits(0.5, 0.0, 0.0, 1.0, 1.0, 1.0),
+           ]}
+    yield {"case_id": "shape/or-many/disjoint", "family": "math", "operation": "shape",
+           "kind": "join_many", "shapes": [
+               box_bits(0.0, 0.0, 0.0, 0.25, 0.25, 0.25),
+               box_bits(0.5, 0.5, 0.5, 0.75, 0.75, 0.75),
+               box_bits(0.75, 0.0, 0.75, 1.0, 0.25, 1.0),
+           ]}
+    yield {"case_id": "shape/or-many/empty-first", "family": "math", "operation": "shape",
+           "kind": "join_many", "shapes": [
+               box_bits(0.0, 0.0, 0.0, 0.00000005, 1.0, 1.0),
+               box_bits(0.25, 0.0, 0.0, 0.5, 1.0, 1.0),
+               box_bits(0.5, 0.0, 0.0, 0.75, 1.0, 1.0),
+           ]}
     yield {"case_id": "shape/equal/same-box", "family": "math", "operation": "shape", "kind": "equal",
            "first": box_bits(0.0, 0.0, 0.0, 1.0, 1.0, 1.0),
            "second": box_bits(0.0, 0.0, 0.0, 1.0, 1.0, 1.0)}

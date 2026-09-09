@@ -658,6 +658,12 @@ impl Shapes {
         Self::join(first, second, BooleanOp::Or)
     }
 
+    /// Join a first shape with Java's left-to-right varargs OR tail.
+    pub fn or_many(first: &VoxelShape, tail: &[VoxelShape]) -> VoxelShape {
+        tail.iter()
+            .fold(first.clone(), |joined, shape| Self::or(&joined, shape))
+    }
+
     /// Join two shapes with one of the supported Boolean operations.
     pub fn join(first: &VoxelShape, second: &VoxelShape, operation: BooleanOp) -> VoxelShape {
         let xs = merged_coords(&first.xs, &second.xs);

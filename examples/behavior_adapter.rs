@@ -539,6 +539,23 @@ fn shape_result(request: &Value) -> Result<Value, String> {
                 "join_is_not_empty": Shapes::join_is_not_empty(&first, &second, operation),
             }))
         }
+        "join_many" => {
+            let entries = request
+                .get("shapes")
+                .ok_or("shapes must be an array")?
+                .as_array()
+                .ok_or("shapes must be an array")?;
+            if entries.is_empty() {
+                return Err("join_many needs at least one shape".into());
+            }
+            let first = shape_box(&entries[0])?;
+            let tail = entries[1..]
+                .iter()
+                .map(shape_box)
+                .collect::<Result<Vec<_>, _>>()?;
+            let joined = Shapes::or_many(&first, &tail);
+            Ok(json!({"shape": shape_snapshot(&joined)}))
+        }
         "equal" => {
             let first = shape_box(request.get("first").ok_or("first must be an object")?)?;
             let second = shape_box(request.get("second").ok_or("second must be an object")?)?;
