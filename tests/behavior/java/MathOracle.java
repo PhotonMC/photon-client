@@ -162,6 +162,8 @@ public final class MathOracle {
             result.addProperty("value", Long.toUnsignedString(ChunkPos.fromSectionNode(sectionNode), 16));
         } else if (operation.equals("chunkpos_range_closed")) {
             result.add("value", chunkPosRangeClosed(request));
+        } else if (operation.equals("chunkpos_constant")) {
+            result.add("value", chunkPosConstant(request));
         } else if (operation.equals("chunkpos_validity")) {
             ChunkPos pos = chunkPos(request);
             result.add("value", chunkPosValidity(pos));
@@ -1413,6 +1415,18 @@ public final class MathOracle {
         positions.forEach(pos -> values.add(snapshot(pos)));
         var state = new JsonObject();
         state.add("positions", values);
+        return state;
+    }
+
+    private static JsonObject chunkPosConstant(JsonObject request) {
+        var state = new JsonObject();
+        switch (request.get("name").getAsString()) {
+            case "zero" -> state.add("chunk_pos", snapshot(ChunkPos.ZERO));
+            case "invalid_chunk_pos" -> state.addProperty("packed", Long.toUnsignedString(ChunkPos.INVALID_CHUNK_POS, 16));
+            case "region_size" -> state.addProperty("value", Integer.toString(ChunkPos.REGION_SIZE));
+            case "region_max_index" -> state.addProperty("value", Integer.toString(ChunkPos.REGION_MAX_INDEX));
+            default -> throw new IllegalArgumentException("Unknown ChunkPos constant");
+        }
         return state;
     }
 

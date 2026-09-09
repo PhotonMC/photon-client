@@ -267,6 +267,10 @@ def math_cases():
         yield {"case_id": f"chunkpos/range-closed/{label}", "family": "math",
                "operation": "chunkpos_range_closed", **values}
 
+    for name in ("zero", "invalid_chunk_pos", "region_size", "region_max_index"):
+        yield {"case_id": f"chunkpos/constants/{name}", "family": "math",
+               "operation": "chunkpos_constant", "name": name}
+
     chunkpos_validity = {
         "origin": {"x": "0", "z": "0"},
         "boundary": {"x": "2097061", "z": "-2097061"},

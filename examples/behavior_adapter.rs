@@ -1899,6 +1899,24 @@ fn math_result(request: &Value) -> Result<Value, String> {
             "value": chunkpos_range_closed_snapshot(positions),
         }));
     }
+    if operation == "chunkpos_constant" {
+        let value = match string(request, "name")? {
+            "zero" => json!({
+                "chunk_pos": chunkpos_snapshot(ChunkPos::ZERO),
+            }),
+            "invalid_chunk_pos" => json!({
+                "packed": format!("{:x}", ChunkPos::INVALID_CHUNK_POS),
+            }),
+            "region_size" => json!({
+                "value": ChunkPos::REGION_SIZE.to_string(),
+            }),
+            "region_max_index" => json!({
+                "value": ChunkPos::REGION_MAX_INDEX.to_string(),
+            }),
+            _ => return Err("unknown ChunkPos constant".into()),
+        };
+        return Ok(json!({"value": value}));
+    }
     if operation == "chunkpos_validity" {
         return Ok(json!({
             "value": chunkpos_validity_snapshot(chunkpos(request)?),

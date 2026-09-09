@@ -224,6 +224,11 @@ pub enum ChunkPosCodecError {
 }
 
 impl ChunkPos {
+    pub const INVALID_CHUNK_POS: u64 = 1_875_066_u64 | (1_875_066_u64 << 32);
+    pub const ZERO: Self = Self::new(0, 0);
+    pub const REGION_SIZE: i32 = 32;
+    pub const REGION_MAX_INDEX: i32 = 31;
+
     pub const fn new(x: i32, z: i32) -> Self {
         Self { x, z }
     }
