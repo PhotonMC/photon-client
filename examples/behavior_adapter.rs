@@ -243,6 +243,15 @@ fn chunkpos_snapshot(value: ChunkPos) -> Value {
     })
 }
 
+fn sectionpos_snapshot(value: SectionPos) -> Value {
+    json!({
+        "x": value.x.to_string(),
+        "y": value.y.to_string(),
+        "z": value.z.to_string(),
+        "packed": format!("{:x}", value.as_long()),
+    })
+}
+
 fn chunkpos_block_coordinates_snapshot(value: ChunkPos, offset: i32) -> Value {
     json!({
         "min_block_x": value.get_min_block_x().to_string(),
@@ -319,6 +328,15 @@ fn sectionpos_offset_snapshot(
         "instance_y": instance.y.to_string(),
         "instance_z": instance.z.to_string(),
         "instance_packed": format!("{:x}", instance.as_long()),
+    })
+}
+
+fn sectionpos_ranges_snapshot(values: Vec<SectionPos>) -> Value {
+    json!({
+        "positions": values
+            .into_iter()
+            .map(sectionpos_snapshot)
+            .collect::<Vec<_>>(),
     })
 }
 
@@ -2102,6 +2120,37 @@ fn math_result(request: &Value) -> Result<Value, String> {
                 ),
                 SectionPos::new(coordinate("x")?, coordinate("y")?, coordinate("z")?),
             ),
+        }));
+    }
+    if operation == "sectionpos_ranges" {
+        let coordinate = |name: &str| {
+            string(request, name)?
+                .parse::<i32>()
+                .map_err(|error| error.to_string())
+        };
+        let positions = match string(request, "mode")? {
+            "between" => SectionPos::between_closed(
+                coordinate("min_x")?,
+                coordinate("min_y")?,
+                coordinate("min_z")?,
+                coordinate("max_x")?,
+                coordinate("max_y")?,
+                coordinate("max_z")?,
+            ),
+            "cube" => SectionPos::cube(
+                SectionPos::new(coordinate("x")?, coordinate("y")?, coordinate("z")?),
+                coordinate("radius")?,
+            ),
+            "around-chunk" => SectionPos::around_chunk(
+                ChunkPos::new(coordinate("chunk_x")?, coordinate("chunk_z")?),
+                coordinate("radius")?,
+                coordinate("min_section")?,
+                coordinate("max_section")?,
+            ),
+            _ => return Err("unknown SectionPos range mode".into()),
+        };
+        return Ok(json!({
+            "value": sectionpos_ranges_snapshot(positions),
         }));
     }
     if operation == "chunkpos_validity" {

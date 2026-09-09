@@ -8,16 +8,16 @@ Java 25.0.4.1 ve Rust 1.98.1 / Linux x86_64 ortamında:
 
 - SectionPos asLong overload'ları için 6 özgün senaryo hazırlandı.
 - BlockPos section sınır geçişleri, pozitif/negatif 22/20 bit sınırları, keyfi packed girdiler ve i32 koordinat maskeleri doğrudan Java/Rust API'leriyle karşılaştırıldı.
-- Rust debug ve release adaptörleri güncel **1025/1025** math senaryosunda eşleşti.
-- Birleşik altı aile corpus'u **1527/1527** senaryoda hem debug hem release adaptörüyle eşleşti.
+- Rust debug ve release adaptörleri güncel **1031/1031** math senaryosunda eşleşti.
+- Birleşik altı aile corpus'u **1533/1533** senaryoda hem debug hem release adaptörüyle eşleşti.
 - Math ve birleşik `verify` çalıştırmaları kayıtlı Java referanslarını yeniden doğruladı.
 
-Math referans kimliği: `2c79e2aaba1154782177df83cd39488c1c9a365c76e1971733e837c447fe9fa3`. Birleşik referans kimliği: `74f88dfa13fb755a92b838953181016d177ef3a05b113b5fa8ef1f3735031acc`.
+Math referans kimliği: `cbae17cd88ce5b1617d01034d27ad104db9b471eefc8bebf83ed4e8d1dc0aa70`. Birleşik referans kimliği: `338731e44c45c8acc6fbd70e7fe1439cdaa28ec5996f6a4d9517412cc50106a0`.
 
-Adapter hashleri: debug `7a355c6fac53d7c505e7f5dbf7ec0f7727bb2221b2f1c958f9b0281847b97deb`, release `c0dd231fcb30a82a482e257a42bbb9e9c76d5d978f7d81154cf4667af21af968`.
+Adapter hashleri: debug `1e600a543381273dc98aed7417b4190eb8c9abf79baf0e9db83680822cd365ee`, release `d9e2c4949ccdd14729bb882019ab8eeebbfbd427228aadc4441ce6fb53e94a3d`.
 
-Yerel raporlar: `compare-0dsoh6yn` ve `compare-wdh5yokb` (math debug/release), `compare-7wace8y9` ve `compare-ohni39xi` (birleşik debug/release), `verify-4pgflsld` (math) ve `verify-a7iqdyvs` (birleşik) `.data/runs/behavior/` altında bulunur.
+Yerel raporlar: `compare-2ftkouxd` ve `compare-g204xxpd` (math debug/release), `compare-ag9x0lbh` ve `compare-sl2ed6ln` (birleşik debug/release), `verify-9ocfqh7` (math) ve `verify-5bpx38hs` (birleşik) `.data/runs/behavior/` altında bulunur.
 
 ## Sınırlar
 
-Bu kanıt `SectionPos.asLong(BlockPos)`, `asLong(int, int, int)` ve instance `asLong()` yollarıyla sınırlıdır. SectionPos stream codec ve `blocksInside`/`cube` iterasyonları ayrı dilimlerdir. `.data/` altındaki Java runtime, capture ve türetilmiş çıktılar test girdisi olarak yerel kalır.
+Bu kanıt `SectionPos.asLong(BlockPos)`, `asLong(int, int, int)` ve instance `asLong()` yollarıyla sınırlıdır. SectionPos stream codec, `blocksInside` ve `aroundAndAtBlockPos` akışları ayrı dilimlerdir. `.data/` altındaki Java runtime, capture ve türetilmiş çıktılar test girdisi olarak yerel kalır.

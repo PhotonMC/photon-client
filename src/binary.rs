@@ -799,6 +799,63 @@ impl SectionPos {
         }
     }
 
+    /// Enumerate a finite inclusive range in Java's x-fastest, then y, then z order.
+    pub fn between_closed(
+        min_x: i32,
+        min_y: i32,
+        min_z: i32,
+        max_x: i32,
+        max_y: i32,
+        max_z: i32,
+    ) -> Vec<Self> {
+        let width = max_x.wrapping_sub(min_x).wrapping_add(1);
+        let height = max_y.wrapping_sub(min_y).wrapping_add(1);
+        let depth = max_z.wrapping_sub(min_z).wrapping_add(1);
+        let end = width.wrapping_mul(height).wrapping_mul(depth);
+        if width <= 0 || height <= 0 || depth <= 0 || end <= 0 {
+            return Vec::new();
+        }
+
+        let mut positions = Vec::with_capacity(end as usize);
+        for index in 0..end {
+            let x = min_x.wrapping_add(index % width);
+            let slice = index / width;
+            let y = min_y.wrapping_add(slice % height);
+            let z = min_z.wrapping_add(slice / height);
+            positions.push(Self::new(x, y, z));
+        }
+        positions
+    }
+
+    /// Enumerate sections in the inclusive cube around a center section.
+    pub fn cube(center: Self, radius: i32) -> Vec<Self> {
+        Self::between_closed(
+            center.x.wrapping_sub(radius),
+            center.y.wrapping_sub(radius),
+            center.z.wrapping_sub(radius),
+            center.x.wrapping_add(radius),
+            center.y.wrapping_add(radius),
+            center.z.wrapping_add(radius),
+        )
+    }
+
+    /// Enumerate sections around a chunk for an inclusive vertical section range.
+    pub fn around_chunk(
+        center: ChunkPos,
+        radius: i32,
+        min_section: i32,
+        max_section: i32,
+    ) -> Vec<Self> {
+        Self::between_closed(
+            center.x.wrapping_sub(radius),
+            min_section,
+            center.z.wrapping_sub(radius),
+            center.x.wrapping_add(radius),
+            max_section,
+            center.z.wrapping_add(radius),
+        )
+    }
+
     /// Read the signed 22-bit x coordinate from a packed SectionPos.
     pub const fn get_x(packed: u64) -> i32 {
         ((packed as i64) >> SECTION_X_OFFSET) as i32

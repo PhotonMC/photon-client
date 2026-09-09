@@ -435,6 +435,37 @@ def math_cases():
         yield {"case_id": f"sectionpos/offset/{label}", "family": "math",
                "operation": "sectionpos_offset", **values}
 
+    sectionpos_ranges = {
+        "between-single": {
+            "mode": "between",
+            "min_x": "2", "min_y": "-3", "min_z": "4",
+            "max_x": "2", "max_y": "-3", "max_z": "4",
+        },
+        "between-order": {
+            "mode": "between",
+            "min_x": "1", "min_y": "2", "min_z": "3",
+            "max_x": "2", "max_y": "3", "max_z": "4",
+        },
+        "between-negative": {
+            "mode": "between",
+            "min_x": "-2", "min_y": "-1", "min_z": "-3",
+            "max_x": "-1", "max_y": "0", "max_z": "-2",
+        },
+        "cube-origin": {
+            "mode": "cube", "x": "0", "y": "0", "z": "0", "radius": "1",
+        },
+        "cube-boundary": {
+            "mode": "cube", "x": "2147483647", "y": "-2147483648", "z": "-2147483647", "radius": "0",
+        },
+        "around-chunk": {
+            "mode": "around-chunk", "chunk_x": "2", "chunk_z": "-3", "radius": "1",
+            "min_section": "-1", "max_section": "0",
+        },
+    }
+    for label, values in sectionpos_ranges.items():
+        yield {"case_id": f"sectionpos/ranges/{label}", "family": "math",
+               "operation": "sectionpos_ranges", **values}
+
     chunkpos_validity = {
         "origin": {"x": "0", "z": "0"},
         "boundary": {"x": "2097061", "z": "-2097061"},

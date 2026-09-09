@@ -260,6 +260,8 @@ public final class MathOracle {
             value.addProperty("instance_z", Integer.toString(instance.z()));
             value.addProperty("instance_packed", Long.toUnsignedString(instance.asLong(), 16));
             result.add("value", value);
+        } else if (operation.equals("sectionpos_ranges")) {
+            result.add("value", sectionPosRanges(request));
         } else if (operation.equals("chunkpos_validity")) {
             ChunkPos pos = chunkPos(request);
             result.add("value", chunkPosValidity(pos));
@@ -1514,6 +1516,38 @@ public final class MathOracle {
         return state;
     }
 
+    private static JsonObject sectionPosRanges(JsonObject request) {
+        Stream<SectionPos> positions;
+        switch (request.get("mode").getAsString()) {
+            case "between" -> positions = SectionPos.betweenClosedStream(
+                Integer.parseInt(request.get("min_x").getAsString()),
+                Integer.parseInt(request.get("min_y").getAsString()),
+                Integer.parseInt(request.get("min_z").getAsString()),
+                Integer.parseInt(request.get("max_x").getAsString()),
+                Integer.parseInt(request.get("max_y").getAsString()),
+                Integer.parseInt(request.get("max_z").getAsString()));
+            case "cube" -> positions = SectionPos.cube(
+                SectionPos.of(
+                    Integer.parseInt(request.get("x").getAsString()),
+                    Integer.parseInt(request.get("y").getAsString()),
+                    Integer.parseInt(request.get("z").getAsString())),
+                Integer.parseInt(request.get("radius").getAsString()));
+            case "around-chunk" -> positions = SectionPos.aroundChunk(
+                new ChunkPos(
+                    Integer.parseInt(request.get("chunk_x").getAsString()),
+                    Integer.parseInt(request.get("chunk_z").getAsString())),
+                Integer.parseInt(request.get("radius").getAsString()),
+                Integer.parseInt(request.get("min_section").getAsString()),
+                Integer.parseInt(request.get("max_section").getAsString()));
+            default -> throw new IllegalArgumentException("Unknown SectionPos range mode");
+        }
+        var values = new JsonArray();
+        positions.forEach(pos -> values.add(snapshot(pos)));
+        var state = new JsonObject();
+        state.add("positions", values);
+        return state;
+    }
+
     private static JsonObject chunkPosConstant(JsonObject request) {
         var state = new JsonObject();
         switch (request.get("name").getAsString()) {
@@ -1691,6 +1725,15 @@ public final class MathOracle {
         var state = new JsonObject();
         state.addProperty("x", Integer.toString(pos.x()));
         state.addProperty("z", Integer.toString(pos.z()));
+        return state;
+    }
+
+    private static JsonObject snapshot(SectionPos pos) {
+        var state = new JsonObject();
+        state.addProperty("x", Integer.toString(pos.x()));
+        state.addProperty("y", Integer.toString(pos.y()));
+        state.addProperty("z", Integer.toString(pos.z()));
+        state.addProperty("packed", Long.toUnsignedString(pos.asLong(), 16));
         return state;
     }
 
