@@ -584,6 +584,20 @@ fn shape_result(request: &Value) -> Result<Value, String> {
                     .collect::<Vec<_>>(),
             }))
         }
+        "rotate_horizontal_axis_center" => {
+            let shape = shape_box(request.get("box").ok_or("box must be an object")?)?;
+            let center = f64_vec3(request.get("center").ok_or("center must be an object")?)?;
+            let shapes = Shapes::rotate_horizontal_axis_with_center(&shape, center);
+            Ok(json!({
+                "shapes": shapes
+                    .into_iter()
+                    .map(|(axis, shape)| json!({
+                        "axis": axis.name(),
+                        "shape": shape_snapshot(&shape),
+                    }))
+                    .collect::<Vec<_>>(),
+            }))
+        }
         "rotate_all_axis" => {
             let shape = shape_box(request.get("box").ok_or("box must be an object")?)?;
             let shapes = Shapes::rotate_all_axis(&shape);
