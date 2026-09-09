@@ -145,6 +145,13 @@ public final class MathOracle {
             result.addProperty("position", first.closerThan(second, f64(request, "distance")));
             result.addProperty("xz_y", first.closerThan(
                 second, f64(request, "distance_xz"), f64(request, "distance_y")));
+        } else if (operation.equals("vec3_offset_random")) {
+            Vec3 first = vec3(request.getAsJsonObject("first"));
+            float offset = Oracle.f32(request, "offset");
+            RandomSource random = RandomSource.create(Long.parseLong(request.get("seed").getAsString()));
+            result.add("offset_random", snapshot(first.offsetRandom(random, offset)));
+            RandomSource randomXZ = RandomSource.create(Long.parseLong(request.get("seed").getAsString()));
+            result.add("offset_random_xz", snapshot(first.offsetRandomXZ(randomXZ, offset)));
         } else if (operation.equals("shape")) {
             String kind = request.get("kind").getAsString();
             if (kind.equals("single")) {

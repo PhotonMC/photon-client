@@ -311,6 +311,23 @@ def math_cases():
            "second": vector_bits(0.0, 0.0, 0.0),
            "distance": float_bits(float("inf"), "f64"),
            "distance_xz": float_bits(float("inf"), "f64"), "distance_y": float_bits(float("inf"), "f64")}
+    yield {"case_id": "vec3/offset-random/basic", "family": "math",
+           "operation": "vec3_offset_random", "first": vector_bits(1.25, -2.5, 3.75),
+           "seed": "42", "offset": float_bits(1.0)}
+    yield {"case_id": "vec3/offset-random/negative-offset", "family": "math",
+           "operation": "vec3_offset_random", "first": vector_bits(-4.5, 6.25, 8.75),
+           "seed": "-1", "offset": float_bits(-2.5)}
+    yield {"case_id": "vec3/offset-random/signed-zero", "family": "math",
+           "operation": "vec3_offset_random", "first": vector_bits(-0.0, 0.0, -0.0),
+           "seed": "0", "offset": float_bits(-0.0)}
+    yield {"case_id": "vec3/offset-random/subnormal-offset", "family": "math",
+           "operation": "vec3_offset_random", "first": {"x": "0000000000000001",
+           "y": "8000000000000001", "z": "0000000000000000"},
+           "seed": "12345", "offset": "00000001"}
+    yield {"case_id": "vec3/offset-random/special-values", "family": "math",
+           "operation": "vec3_offset_random", "first": {"x": float_bits(float("inf"), "f64"),
+           "y": float_bits(float("nan"), "f64"), "z": float_bits(float("-inf"), "f64")},
+           "seed": "-9223372036854775808", "offset": "7f7fffff"}
     for name in ("down", "up", "north", "south", "west", "east"):
         yield {"case_id": f"direction/properties/{name}", "family": "math", "operation": "direction",
                "name": name, "steps": []}

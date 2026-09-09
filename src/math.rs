@@ -1,6 +1,8 @@
 //! The numeric operations currently covered by the Java behavior corpus.
 //! Arithmetic stays at the reference's precision and evaluation order.
 
+use crate::random::RandomSource;
+
 #[derive(Debug, Clone, Copy)]
 pub struct Vec2 {
     pub x: f32,
@@ -148,6 +150,19 @@ impl Vec3 {
 
     pub fn horizontal_distance_squared(self) -> f64 {
         self.x * self.x + self.z * self.z
+    }
+
+    pub fn offset_random(self, random: &mut RandomSource, offset: f32) -> Self {
+        let x = f64::from((random.next_float() - 0.5_f32) * offset);
+        let y = f64::from((random.next_float() - 0.5_f32) * offset);
+        let z = f64::from((random.next_float() - 0.5_f32) * offset);
+        self.add_components(x, y, z)
+    }
+
+    pub fn offset_random_xz(self, random: &mut RandomSource, offset: f32) -> Self {
+        let x = f64::from((random.next_float() - 0.5_f32) * offset);
+        let z = f64::from((random.next_float() - 0.5_f32) * offset);
+        self.add_components(x, 0.0, z)
     }
 
     pub fn length_squared(self) -> f64 {

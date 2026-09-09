@@ -1721,6 +1721,19 @@ fn math_result(request: &Value) -> Result<Value, String> {
             ),
         }));
     }
+    if operation == "vec3_offset_random" {
+        let first = f64_vec3(request.get("first").ok_or("first must be an object")?)?;
+        let offset = f32_field(request, "offset")?;
+        let seed = random_seed(request)?;
+        let mut random = RandomSource::create(seed);
+        let offset_random = first.offset_random(&mut random, offset);
+        let mut random_xz = RandomSource::create(seed);
+        let offset_random_xz = first.offset_random_xz(&mut random_xz, offset);
+        return Ok(json!({
+            "offset_random": vec3_snapshot(offset_random),
+            "offset_random_xz": vec3_snapshot(offset_random_xz),
+        }));
+    }
     match string(request, "type")? {
         "f32" => {
             let value = f32_field(request, "value")?;

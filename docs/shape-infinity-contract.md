@@ -24,4 +24,4 @@ Girdiler `family: "math"`, `operation: "shape"`, `kind: "infinity"` ve `view` al
 
 ## Java yakalama
 
-Math referans kimliği `eb9f0578dc53caaa0fab43aebfbe945ab957c5f68d0e3eb2d790a5f4fc1c92f2` oldu. Birleşik altı aile referansı `eb9f0578dc53caaa0fab43aebfbe945ab957c5f68d0e3eb2d790a5f4fc1c92f2` kimliğiyle doğrulandı. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.
+Math referans kimliği `c8cad755994093a14efe4477c58b1b8fd21d851236fe6a0ef3d51d4be36aad80` oldu. Birleşik altı aile referansı `c8cad755994093a14efe4477c58b1b8fd21d851236fe6a0ef3d51d4be36aad80` kimliğiyle doğrulandı. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.
