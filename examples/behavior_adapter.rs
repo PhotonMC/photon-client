@@ -2221,6 +2221,22 @@ fn binary_result(request: &Value) -> Result<Value, String> {
                         "remaining_hex": hex(remaining),
                     })),
                 },
+                "lp_vec3" => match binary::read_lp_vec3(&mut remaining) {
+                    Ok(value) => Ok(json!({
+                        "x": format!("{:016x}", value.x.to_bits()),
+                        "y": format!("{:016x}", value.y.to_bits()),
+                        "z": format!("{:016x}", value.z.to_bits()),
+                        "outcome": "value",
+                        "consumed": framed.len() - remaining.len(),
+                        "remaining_hex": hex(remaining),
+                    })),
+                    Err(error) => Ok(json!({
+                        "outcome": "error",
+                        "error": binary_error(error),
+                        "consumed": framed.len() - remaining.len(),
+                        "remaining_hex": hex(remaining),
+                    })),
+                },
                 "longarray" => match binary::read_long_array(&mut remaining) {
                     Ok(values) => Ok(json!({
                         "values": values.iter().map(ToString::to_string).collect::<Vec<_>>(),
@@ -2302,6 +2318,14 @@ fn binary_result(request: &Value) -> Result<Value, String> {
                         f64_field(request, "z")?,
                     );
                     binary::write_vec3(value, &mut buffer);
+                }
+                "lp_vec3" => {
+                    let value = Vec3::new(
+                        f64_field(request, "x")?,
+                        f64_field(request, "y")?,
+                        f64_field(request, "z")?,
+                    );
+                    binary::write_lp_vec3(value, &mut buffer);
                 }
                 "longarray" => {
                     let values = request["values"]

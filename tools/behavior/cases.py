@@ -2304,6 +2304,32 @@ def utf8_cases():
 
 
 def binary_cases():
+    lp_vec3_values = {
+        "zero": vector_bits(0.0, 0.0, 0.0),
+        "below-min": vector_bits(0.00001, -0.00002, 0.00003),
+        "unit-scale": vector_bits(1.0, -2.0, 3.0),
+        "partial-scale": vector_bits(4.0, -8.0, 12.0),
+        "sanitize": {"x": "7ff8000000000002", "y": "7ff0000000000000", "z": "fff0000000000000"},
+        "large-clamp": vector_bits(3.4359738366e10, -3.4359738366e10, 0.0),
+    }
+    for label, values in lp_vec3_values.items():
+        yield {"case_id": f"binary/lp-vec3-write/{label}", "family": "binary",
+               "operation": "write", "codec": "lp_vec3", "prefix_hex": "a55a", **values}
+    lp_vec3_reads = {
+        "empty": "",
+        "zero-early": "00aabb",
+        "header-only": "01",
+        "header-short": "0100",
+        "unit-payload": "010000000000aabb",
+        "continuation-no-scale": "040000000000",
+        "continuation-payload": "04000000000001aabb",
+        "continuation-varint-truncated": "04000000000080",
+        "too-big-scale": "040000000000808080808080",
+    }
+    for label, framed in lp_vec3_reads.items():
+        yield {"case_id": f"binary/lp-vec3-read/{label}", "family": "binary",
+               "operation": "read", "codec": "lp_vec3", "prefix_hex": "a55a", "hex": framed}
+
     vec3_values = {
         "zero": vector_bits(0.0, 0.0, 0.0),
         "sample": vector_bits(1.25, -2.5, 3.75),

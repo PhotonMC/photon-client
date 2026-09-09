@@ -55,6 +55,97 @@ pub fn write_vec3(value: Vec3, output: &mut Vec<u8>) {
     output.extend_from_slice(&value.z.to_bits().to_be_bytes());
 }
 
+const LP_MAX_QUANTIZED_VALUE: u64 = 32766;
+const LP_ABS_MAX_VALUE: f64 = 1.7179869183e10;
+const LP_ABS_MIN_VALUE: f64 = 3.051944088384301e-5;
+
+fn read_byte(input: &mut &[u8]) -> Result<u8, ReadError> {
+    let (&head, rest) = input.split_first().ok_or(ReadError::BufferUnderflow)?;
+    *input = rest;
+    Ok(head)
+}
+
+fn read_u32(input: &mut &[u8]) -> Result<u32, ReadError> {
+    if input.len() < 4 {
+        return Err(ReadError::BufferUnderflow);
+    }
+    let (head, rest) = input.split_at(4);
+    let value = u32::from_be_bytes(head.try_into().expect("checked length"));
+    *input = rest;
+    Ok(value)
+}
+
+fn lp_unpack(value: u64) -> f64 {
+    let quantized = (value & 0x7fff).min(LP_MAX_QUANTIZED_VALUE);
+    quantized as f64 * 2.0 / LP_MAX_QUANTIZED_VALUE as f64 - 1.0
+}
+
+fn lp_sanitize(value: f64) -> f64 {
+    if value.is_nan() {
+        0.0
+    } else if value < -LP_ABS_MAX_VALUE {
+        -LP_ABS_MAX_VALUE
+    } else {
+        value.min(LP_ABS_MAX_VALUE)
+    }
+}
+
+fn lp_pack(value: f64) -> u64 {
+    let scaled = (value * 0.5 + 0.5) * LP_MAX_QUANTIZED_VALUE as f64;
+    (scaled + 0.5).floor() as u64
+}
+
+/// Decode the packed `Vec3.LP_STREAM_CODEC` representation.
+pub fn read_lp_vec3(input: &mut &[u8]) -> Result<Vec3, ReadError> {
+    let lowest = read_byte(input)?;
+    if lowest == 0 {
+        return Ok(Vec3::ZERO);
+    }
+    let middle = read_byte(input)?;
+    let highest = read_u32(input)?;
+    let buffer = u64::from(highest) << 16 | u64::from(middle) << 8 | u64::from(lowest);
+    let mut scale = u64::from(lowest & 3);
+    if lowest & 4 != 0 {
+        let continuation = wire::read_varint(input).map_err(|error| match error {
+            wire::ReadError::BufferUnderflow => ReadError::BufferUnderflow,
+            wire::ReadError::TooBig => ReadError::TooBig,
+        })?;
+        scale |= u64::from(continuation as u32) << 2;
+    }
+    let scale = scale as f64;
+    Ok(Vec3::new(
+        lp_unpack(buffer >> 3) * scale,
+        lp_unpack(buffer >> 18) * scale,
+        lp_unpack(buffer >> 33) * scale,
+    ))
+}
+
+/// Encode a Vec3 with the packed `Vec3.LP_STREAM_CODEC` representation.
+pub fn write_lp_vec3(value: Vec3, output: &mut Vec<u8>) {
+    let x = lp_sanitize(value.x);
+    let y = lp_sanitize(value.y);
+    let z = lp_sanitize(value.z);
+    let chessboard_length = x.abs().max(y.abs().max(z.abs()));
+    if chessboard_length < LP_ABS_MIN_VALUE {
+        output.push(0);
+        return;
+    }
+
+    let scale = chessboard_length.ceil() as u64;
+    let partial = (scale & 3) != scale;
+    let markers = if partial { scale & 3 | 4 } else { scale };
+    let buffer = markers
+        | lp_pack(x / scale as f64) << 3
+        | lp_pack(y / scale as f64) << 18
+        | lp_pack(z / scale as f64) << 33;
+    output.push(buffer as u8);
+    output.push((buffer >> 8) as u8);
+    output.extend_from_slice(&((buffer >> 16) as u32).to_be_bytes());
+    if partial {
+        wire::write_varint((scale >> 2) as i32, output);
+    }
+}
+
 /// Integer block coordinates with reference packing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct BlockPos {

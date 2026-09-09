@@ -26,4 +26,4 @@ Girdiler `family: "math"`, `operation: "aabb"` ve `steps` içindeki `op: "equals
 
 ## Java yakalama
 
-Math ve birleşik altı aile referansı `560602ef9264eceeefea1f7e04180a821c7e67a9bd644f85964cbe1229e4e713` kimliğiyle iki JVM çalıştırmasında doğrulandı. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.
+Math ve birleşik altı aile referansı `7c9538198afb189201c05520d1d9beb9d8b8ed1ecf818a5751ba7c9cf2774c30` kimliğiyle iki JVM çalıştırmasında doğrulandı. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.
