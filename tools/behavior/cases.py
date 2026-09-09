@@ -108,6 +108,18 @@ def math_cases():
         yield {"case_id": f"chunkpos/codec/encode/{label}", "family": "math",
                "operation": "chunkpos_codec", "mode": "encode", **values}
 
+    chunkpos_block_coordinates = {
+        "origin": {"x": "0", "z": "0", "offset": "0"},
+        "positive": {"x": "1", "z": "2", "offset": "7"},
+        "negative": {"x": "-1", "z": "-2", "offset": "15"},
+        "boundary": {"x": "134217727", "z": "-134217728", "offset": "15"},
+        "shift-wrap": {"x": "134217728", "z": "-134217729", "offset": "-1"},
+        "offset-wrap": {"x": "1", "z": "-2", "offset": "2147483647"},
+    }
+    for label, values in chunkpos_block_coordinates.items():
+        yield {"case_id": f"chunkpos/block-coordinates/{label}", "family": "math",
+               "operation": "chunkpos_block_coordinates", **values}
+
     vectors = {f"direction-{x}-{y}": (float_bits(x), float_bits(y))
                for x in (-1, 0, 1) for y in (-1, 0, 1)}
     vectors.update({"negative-zero": ("80000000", "80000000"),

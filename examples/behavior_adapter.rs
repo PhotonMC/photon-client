@@ -222,6 +222,19 @@ fn chunkpos_snapshot(value: ChunkPos) -> Value {
     })
 }
 
+fn chunkpos_block_coordinates_snapshot(value: ChunkPos, offset: i32) -> Value {
+    json!({
+        "min_block_x": value.get_min_block_x().to_string(),
+        "min_block_z": value.get_min_block_z().to_string(),
+        "middle_block_x": value.get_middle_block_x().to_string(),
+        "middle_block_z": value.get_middle_block_z().to_string(),
+        "max_block_x": value.get_max_block_x().to_string(),
+        "max_block_z": value.get_max_block_z().to_string(),
+        "block_x": value.get_block_x(offset).to_string(),
+        "block_z": value.get_block_z(offset).to_string(),
+    })
+}
+
 fn blockpos_result(request: &Value) -> Result<Value, String> {
     let mut value = blockpos(request)?;
     let mut events = vec![blockpos_snapshot(value)];
@@ -1698,6 +1711,15 @@ fn math_result(request: &Value) -> Result<Value, String> {
             }
             _ => Err("unknown ChunkPos codec mode".into()),
         };
+    }
+    if operation == "chunkpos_block_coordinates" {
+        let value = chunkpos(request)?;
+        let offset = string(request, "offset")?
+            .parse::<i32>()
+            .map_err(|error| error.to_string())?;
+        return Ok(json!({
+            "value": chunkpos_block_coordinates_snapshot(value, offset),
+        }));
     }
     if operation == "vec2" {
         let mut vector = Vec2::new(f32_field(request, "x")?, f32_field(request, "y")?);

@@ -125,6 +125,10 @@ public final class MathOracle {
             } else {
                 throw new IllegalArgumentException("Unknown ChunkPos codec mode");
             }
+        } else if (operation.equals("chunkpos_block_coordinates")) {
+            ChunkPos pos = chunkPos(request);
+            int offset = Integer.parseInt(request.get("offset").getAsString());
+            result.add("value", chunkPosBlockCoordinates(pos, offset));
         } else if (operation.equals("vec3")) {
             Vec3 vector = new Vec3(f64(request, "x"), f64(request, "y"), f64(request, "z"));
             var events = new JsonArray();
@@ -1284,6 +1288,19 @@ public final class MathOracle {
             Integer.parseInt(object.get("x").getAsString()),
             Integer.parseInt(object.get("z").getAsString())
         );
+    }
+
+    private static JsonObject chunkPosBlockCoordinates(ChunkPos pos, int offset) {
+        var state = new JsonObject();
+        state.addProperty("min_block_x", Integer.toString(pos.getMinBlockX()));
+        state.addProperty("min_block_z", Integer.toString(pos.getMinBlockZ()));
+        state.addProperty("middle_block_x", Integer.toString(pos.getMiddleBlockX()));
+        state.addProperty("middle_block_z", Integer.toString(pos.getMiddleBlockZ()));
+        state.addProperty("max_block_x", Integer.toString(pos.getMaxBlockX()));
+        state.addProperty("max_block_z", Integer.toString(pos.getMaxBlockZ()));
+        state.addProperty("block_x", Integer.toString(pos.getBlockX(offset)));
+        state.addProperty("block_z", Integer.toString(pos.getBlockZ(offset)));
+        return state;
     }
 
     private static JsonObject codecDecodeResult(DataResult<Vec3> decoded) {

@@ -255,6 +255,40 @@ impl ChunkPos {
     pub const fn codec_encode(self) -> [i32; 2] {
         [self.x, self.z]
     }
+
+    /// Return a block x coordinate using Java's section-to-block shift and add.
+    pub fn get_block_x(self, offset: i32) -> i32 {
+        self.x.wrapping_shl(4).wrapping_add(offset)
+    }
+
+    /// Return a block z coordinate using Java's section-to-block shift and add.
+    pub fn get_block_z(self, offset: i32) -> i32 {
+        self.z.wrapping_shl(4).wrapping_add(offset)
+    }
+
+    pub fn get_min_block_x(self) -> i32 {
+        self.get_block_x(0)
+    }
+
+    pub fn get_min_block_z(self) -> i32 {
+        self.get_block_z(0)
+    }
+
+    pub fn get_middle_block_x(self) -> i32 {
+        self.get_block_x(8)
+    }
+
+    pub fn get_middle_block_z(self) -> i32 {
+        self.get_block_z(8)
+    }
+
+    pub fn get_max_block_x(self) -> i32 {
+        self.get_block_x(15)
+    }
+
+    pub fn get_max_block_z(self) -> i32 {
+        self.get_block_z(15)
+    }
 }
 
 /// Read 16 bytes as UUID. A short second half leaves the first half consumed.
