@@ -270,6 +270,20 @@ def math_cases():
            "operation": "vec3_distance_to", "first": vector_bits(0.0, 0.0, 0.0),
            "second": {"x": "7fefffffffffffff", "y": float_bits(float("inf"), "f64"),
                       "z": "7ff8000000000002"}}
+    yield {"case_id": "vec3/horizontal-distances/basic", "family": "math",
+           "operation": "vec3_horizontal_distances", "first": vector_bits(3.0, 4.0, -12.0)}
+    yield {"case_id": "vec3/horizontal-distances/order-and-rounding", "family": "math",
+           "operation": "vec3_horizontal_distances",
+           "first": vector_bits(2.0 ** 27, -123.0, 1.1)}
+    yield {"case_id": "vec3/horizontal-distances/signed-zero", "family": "math",
+           "operation": "vec3_horizontal_distances", "first": vector_bits(-0.0, 5.0, 0.0)}
+    yield {"case_id": "vec3/horizontal-distances/subnormal", "family": "math",
+           "operation": "vec3_horizontal_distances",
+           "first": {"x": "0000000000000001", "y": "7fefffffffffffff", "z": "8000000000000001"}}
+    yield {"case_id": "vec3/horizontal-distances/infinities", "family": "math",
+           "operation": "vec3_horizontal_distances",
+           "first": {"x": float_bits(float("inf"), "f64"),
+                     "y": "7ff8000000000001", "z": float_bits(float("-inf"), "f64")}}
     for name in ("down", "up", "north", "south", "west", "east"):
         yield {"case_id": f"direction/properties/{name}", "family": "math", "operation": "direction",
                "name": name, "steps": []}

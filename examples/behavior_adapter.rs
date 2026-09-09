@@ -1702,6 +1702,13 @@ fn math_result(request: &Value) -> Result<Value, String> {
         );
         return Ok(json!({"value": format!("{:016x}", value.to_bits())}));
     }
+    if operation == "vec3_horizontal_distances" {
+        let first = f64_vec3(request.get("first").ok_or("first must be an object")?)?;
+        return Ok(json!({
+            "distance": format!("{:016x}", first.horizontal_distance().to_bits()),
+            "distance_squared": format!("{:016x}", first.horizontal_distance_squared().to_bits()),
+        }));
+    }
     match string(request, "type")? {
         "f32" => {
             let value = f32_field(request, "value")?;

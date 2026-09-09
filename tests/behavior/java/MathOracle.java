@@ -135,6 +135,10 @@ public final class MathOracle {
             Vec3 first = vec3(request.getAsJsonObject("first"));
             result.addProperty("value", Oracle.bits(first.distanceToSqr(
                 f64(request, "x"), f64(request, "y"), f64(request, "z"))));
+        } else if (operation.equals("vec3_horizontal_distances")) {
+            Vec3 first = vec3(request.getAsJsonObject("first"));
+            result.addProperty("distance", Oracle.bits(first.horizontalDistance()));
+            result.addProperty("distance_squared", Oracle.bits(first.horizontalDistanceSqr()));
         } else if (operation.equals("shape")) {
             String kind = request.get("kind").getAsString();
             if (kind.equals("single")) {

@@ -131,6 +131,14 @@ impl Vec3 {
         Self::new(self.x, 0.0, self.z)
     }
 
+    pub fn horizontal_distance(self) -> f64 {
+        (self.x * self.x + self.z * self.z).sqrt()
+    }
+
+    pub fn horizontal_distance_squared(self) -> f64 {
+        self.x * self.x + self.z * self.z
+    }
+
     pub fn length_squared(self) -> f64 {
         // Keep the reference evaluation order; do not fuse or substitute hypot.
         self.x * self.x + self.y * self.y + self.z * self.z
