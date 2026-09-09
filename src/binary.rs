@@ -724,6 +724,29 @@ impl SectionPos {
         Self { x, y, z }
     }
 
+    /// Convert a block position to the section containing it.
+    pub fn from_block_pos(pos: BlockPos) -> Self {
+        Self::new(
+            math::block_to_section_coord(pos.x),
+            math::block_to_section_coord(pos.y),
+            math::block_to_section_coord(pos.z),
+        )
+    }
+
+    /// Build a section position from chunk coordinates and a vertical section.
+    pub const fn from_chunk_pos(pos: ChunkPos, section_y: i32) -> Self {
+        Self::new(pos.x, section_y, pos.z)
+    }
+
+    /// Convert a double position to the section containing it.
+    pub fn from_position(pos: Vec3) -> Self {
+        Self::new(
+            Self::block_to_section_coord_f64(pos.x),
+            Self::block_to_section_coord_f64(pos.y),
+            Self::block_to_section_coord_f64(pos.z),
+        )
+    }
+
     /// Pack a block position's section-relative coordinates into 12 bits.
     pub fn section_relative_pos(pos: BlockPos) -> u16 {
         let x = (pos.x & 15) as u16;

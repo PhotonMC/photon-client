@@ -276,6 +276,17 @@ public final class MathOracle {
                 default -> throw new IllegalArgumentException("Unknown SectionPos double coordinate function");
             };
             result.addProperty("value", Integer.toString(out));
+        } else if (operation.equals("sectionpos_of_overloads")) {
+            SectionPos value = switch (request.get("mode").getAsString()) {
+                case "blockpos" -> SectionPos.of(blockPos(request));
+                case "chunkpos" -> SectionPos.of(chunkPos(request),
+                    Integer.parseInt(request.get("section_y").getAsString()));
+                case "position" -> SectionPos.of(vec3(request));
+                case "packed" -> SectionPos.of(Long.parseUnsignedLong(
+                    request.get("section_node").getAsString(), 16));
+                default -> throw new IllegalArgumentException("Unknown SectionPos of overload mode");
+            };
+            result.add("value", snapshot(value));
         } else if (operation.equals("chunkpos_validity")) {
             ChunkPos pos = chunkPos(request);
             result.add("value", chunkPosValidity(pos));

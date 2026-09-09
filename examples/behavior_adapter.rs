@@ -2205,6 +2205,25 @@ fn math_result(request: &Value) -> Result<Value, String> {
         };
         return Ok(json!({"value": result.to_string()}));
     }
+    if operation == "sectionpos_of_overloads" {
+        let value = match string(request, "mode")? {
+            "blockpos" => SectionPos::from_block_pos(blockpos(request)?),
+            "chunkpos" => SectionPos::from_chunk_pos(
+                chunkpos(request)?,
+                string(request, "section_y")?
+                    .parse::<i32>()
+                    .map_err(|error| error.to_string())?,
+            ),
+            "position" => SectionPos::from_position(Vec3::new(
+                f64_field(request, "x")?,
+                f64_field(request, "y")?,
+                f64_field(request, "z")?,
+            )),
+            "packed" => SectionPos::unpack(u64_hex_field(request, "section_node")?),
+            _ => return Err("unknown SectionPos of overload mode".into()),
+        };
+        return Ok(json!({"value": sectionpos_snapshot(value)}));
+    }
     if operation == "chunkpos_validity" {
         return Ok(json!({
             "value": chunkpos_validity_snapshot(chunkpos(request)?),

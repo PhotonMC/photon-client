@@ -513,6 +513,32 @@ def math_cases():
         yield {"case_id": f"sectionpos/double-coordinates/{label}", "family": "math",
                "operation": "sectionpos_double_coordinates", **values}
 
+    sectionpos_of_overloads = {
+        "blockpos-boundaries": {
+            "mode": "blockpos", "x": "16", "y": "-17", "z": "31",
+        },
+        "blockpos-int-boundaries": {
+            "mode": "blockpos", "x": "2147483647", "y": "-2147483648", "z": "-1",
+        },
+        "chunkpos-section": {
+            "mode": "chunkpos", "x": "-3", "z": "7", "section_y": "-64",
+        },
+        "packed-sign-extension": {
+            "mode": "packed", "section_node": "ffffffffffffffff",
+        },
+        "position-fractions": {
+            "mode": "position", "x": "8000000000000001", "y": "4030800000000000",
+            "z": "c030000000000001",
+        },
+        "position-special-values": {
+            "mode": "position", "x": "7fefffffffffffff", "y": "7ff8000000000001",
+            "z": "fff0000000000000",
+        },
+    }
+    for label, values in sectionpos_of_overloads.items():
+        yield {"case_id": f"sectionpos/of-overloads/{label}", "family": "math",
+               "operation": "sectionpos_of_overloads", **values}
+
     chunkpos_validity = {
         "origin": {"x": "0", "z": "0"},
         "boundary": {"x": "2097061", "z": "-2097061"},
