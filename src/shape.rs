@@ -525,11 +525,13 @@ impl VoxelShape {
         distance
     }
 
-    /// Convert occupied cells to Java's merged box iteration order.
-    pub fn to_aabbs(&self) -> Vec<Aabb> {
+    /// Visit occupied cells as Java's merged boxes in iteration order.
+    pub fn for_all_boxes<F>(&self, mut consumer: F)
+    where
+        F: FnMut(f64, f64, f64, f64, f64, f64),
+    {
         let grid = self.grid();
         let mut remaining = self.cells.clone();
-        let mut boxes = Vec::new();
 
         for y in 0..grid.y_size {
             for x in 0..grid.x_size {
@@ -566,19 +568,26 @@ impl VoxelShape {
                             end_y += 1;
                         }
 
-                        boxes.push(Aabb::new(
+                        consumer(
                             self.xs[x],
                             self.ys[y],
                             self.zs[start_z],
                             self.xs[end_x + 1],
                             self.ys[end_y + 1],
                             self.zs[z],
-                        ));
+                        );
                     }
                 }
             }
         }
+    }
 
+    /// Convert occupied cells to Java's merged box iteration order.
+    pub fn to_aabbs(&self) -> Vec<Aabb> {
+        let mut boxes = Vec::new();
+        self.for_all_boxes(|min_x, min_y, min_z, max_x, max_y, max_z| {
+            boxes.push(Aabb::new(min_x, min_y, min_z, max_x, max_y, max_z));
+        });
         boxes
     }
 

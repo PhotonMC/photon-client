@@ -214,6 +214,29 @@ public final class MathOracle {
                 };
                 result.add("unoptimized", snapshotWithCoords(Shapes.joinUnoptimized(first, second, op)));
                 result.add("optimized", snapshotWithCoords(Shapes.join(first, second, op)));
+            } else if (kind.equals("boxes")) {
+                var entries = request.getAsJsonArray("shapes");
+                if (entries == null || entries.size() == 0) {
+                    throw new IllegalArgumentException("boxes needs at least one shape");
+                }
+                VoxelShape first = voxelShape(entries.get(0).getAsJsonObject());
+                VoxelShape[] tail = new VoxelShape[entries.size() - 1];
+                for (int i = 1; i < entries.size(); i++) {
+                    tail[i - 1] = voxelShape(entries.get(i).getAsJsonObject());
+                }
+                VoxelShape shape = Shapes.or(first, tail);
+                var boxes = new JsonArray();
+                shape.forAllBoxes((x1, y1, z1, x2, y2, z2) -> {
+                    var box = new JsonArray();
+                    box.add(Oracle.bits(x1));
+                    box.add(Oracle.bits(y1));
+                    box.add(Oracle.bits(z1));
+                    box.add(Oracle.bits(x2));
+                    box.add(Oracle.bits(y2));
+                    box.add(Oracle.bits(z2));
+                    boxes.add(box);
+                });
+                result.add("boxes", boxes);
             } else if (kind.equals("axis_limits")) {
                 var entries = request.getAsJsonArray("shapes");
                 if (entries == null || entries.size() == 0) {

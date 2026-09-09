@@ -246,6 +246,20 @@ def math_cases():
            "kind": "join_coords", "op": "or",
            "first": box_bits(0.0, 0.0, 0.0, 0.00000005, 1.0, 1.0),
            "second": box_bits(2.0, -1.0, 3.0, 2.5, 0.5, 4.0)}
+    yield {"case_id": "shape/boxes/empty", "family": "math", "operation": "shape",
+           "kind": "boxes", "shapes": [
+               box_bits(0.0, 0.0, 0.0, 0.00000005, 1.0, 1.0),
+           ]}
+    yield {"case_id": "shape/boxes/box", "family": "math", "operation": "shape",
+           "kind": "boxes", "shapes": [
+               box_bits(0.125, 0.25, 0.375, 0.625, 0.75, 0.875),
+           ]}
+    yield {"case_id": "shape/boxes/join", "family": "math", "operation": "shape",
+           "kind": "boxes", "shapes": [
+               box_bits(0.0, 0.0, 0.0, 0.25, 0.5, 0.75),
+               box_bits(0.5, 0.25, 0.25, 0.75, 1.0, 0.5),
+               box_bits(0.75, 0.0, 0.75, 1.0, 0.25, 1.0),
+           ]}
     yield {"case_id": "shape/empty/sliver", "family": "math", "operation": "shape",
            "kind": "single", "box": box_bits(0, 0, 0, 0.00000005, 1, 1), "steps": []}
     yield {"case_id": "shape/or/disjoint", "family": "math", "operation": "shape", "kind": "join",
