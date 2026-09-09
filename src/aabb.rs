@@ -12,7 +12,7 @@
 use crate::{
     binary::BlockPos,
     direction::{Axis, Direction},
-    math::Vec3,
+    math::{Vec3, java_double_to_string},
 };
 
 /// Integer-aligned bounds used by structure and world-generation geometry.
@@ -955,62 +955,4 @@ fn java_double_to_long_bits(value: f64) -> u64 {
 fn java_double_hash(value: f64) -> i32 {
     let bits = java_double_to_long_bits(value);
     (bits ^ (bits >> 32)) as i32
-}
-
-fn java_double_to_string(value: f64) -> String {
-    if value.is_nan() {
-        return "NaN".to_owned();
-    }
-    if value == f64::INFINITY {
-        return "Infinity".to_owned();
-    }
-    if value == f64::NEG_INFINITY {
-        return "-Infinity".to_owned();
-    }
-
-    let raw = format!("{value:?}");
-    if value == 0.0 || (value.abs() >= 1.0e-3 && value.abs() < 1.0e7) {
-        return raw;
-    }
-
-    if let Some((mantissa, exponent)) = raw.split_once('e') {
-        return java_scientific_string(
-            mantissa,
-            exponent.parse().expect("Rust exponent is numeric"),
-        );
-    }
-    java_decimal_to_scientific(&raw)
-}
-
-fn java_scientific_string(mantissa: &str, exponent: i32) -> String {
-    let mantissa = if mantissa.contains('.') {
-        mantissa.to_owned()
-    } else {
-        format!("{mantissa}.0")
-    };
-    format!("{mantissa}E{exponent}")
-}
-
-fn java_decimal_to_scientific(raw: &str) -> String {
-    let (sign, magnitude) = match raw.strip_prefix('-') {
-        Some(magnitude) => ("-", magnitude),
-        None => ("", raw),
-    };
-    let decimal = magnitude.find('.').unwrap_or(magnitude.len());
-    let digits = magnitude.replace('.', "");
-    let digits = digits.trim_end_matches('0');
-    let first = digits
-        .bytes()
-        .position(|digit| digit != b'0')
-        .expect("nonzero finite value has a significant digit");
-    let exponent = decimal as i32 - first as i32 - 1;
-    let mut mantissa = String::new();
-    mantissa.push(digits.as_bytes()[first] as char);
-    mantissa.push('.');
-    if first + 1 < digits.len() {
-        mantissa.push_str(&digits[first + 1..]);
-    } else {
-        mantissa.push('0');
-    }
-    format!("{sign}{mantissa}E{exponent}")
 }

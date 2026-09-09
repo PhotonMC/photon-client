@@ -498,6 +498,18 @@ def math_cases():
     yield {"case_id": "vec3/equality/special-mismatch", "family": "math", "operation": "vec3_equality",
            "first": {"x": "7ff0000000000000", "y": "7ff8000000000001", "z": "8000000000000000"},
            "second": {"x": "fff0000000000000", "y": "7ff0000000000001", "z": "0000000000000000"}}
+    yield {"case_id": "vec3/to-string/basic", "family": "math", "operation": "vec3_to_string",
+           "first": vector_bits(0.125, -2.5, 3.75)}
+    yield {"case_id": "vec3/to-string/scientific", "family": "math", "operation": "vec3_to_string",
+           "first": vector_bits(0.0001, 10000000.0, -0.0)}
+    yield {"case_id": "vec3/to-string/thresholds", "family": "math", "operation": "vec3_to_string",
+           "first": vector_bits(0.001, 9999999.0, 100000000.0)}
+    yield {"case_id": "vec3/to-string/signed-zero", "family": "math", "operation": "vec3_to_string",
+           "first": {"x": "8000000000000000", "y": "0000000000000000", "z": "8000000000000000"}}
+    yield {"case_id": "vec3/to-string/infinity", "family": "math", "operation": "vec3_to_string",
+           "first": {"x": "fff0000000000000", "y": "7ff0000000000000", "z": "fff0000000000000"}}
+    yield {"case_id": "vec3/to-string/nan", "family": "math", "operation": "vec3_to_string",
+           "first": {"x": "7ff8000000000001", "y": "7ff0000000000001", "z": "fff8000000000001"}}
     for name in ("down", "up", "north", "south", "west", "east"):
         yield {"case_id": f"direction/properties/{name}", "family": "math", "operation": "direction",
                "name": name, "steps": []}

@@ -1821,6 +1821,10 @@ fn math_result(request: &Value) -> Result<Value, String> {
             "second_hash": second.hash_code_java().to_string(),
         }));
     }
+    if operation == "vec3_to_string" {
+        let first = f64_vec3(request.get("first").ok_or("first must be an object")?)?;
+        return Ok(json!({"value": first.to_string_java()}));
+    }
     match string(request, "type")? {
         "f32" => {
             let value = f32_field(request, "value")?;
