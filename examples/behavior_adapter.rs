@@ -275,6 +275,20 @@ fn sectionpos_spatial_snapshot(value: SectionPos) -> Value {
     })
 }
 
+fn sectionpos_packed_transformations_snapshot(
+    block_node: u64,
+    section_node: u64,
+    x: i32,
+    z: i32,
+) -> Value {
+    json!({
+        "block_to_section": format!("{:x}", SectionPos::block_to_section(block_node)),
+        "zero_node": format!("{:x}", SectionPos::get_zero_node(section_node)),
+        "zero_node_coordinates": format!("{:x}", SectionPos::get_zero_node_from_coordinates(x, z)),
+        "section_to_chunk": format!("{:x}", SectionPos::section_to_chunk(section_node)),
+    })
+}
+
 fn chunkpos_region_coordinates_snapshot(value: ChunkPos, region_x: i32, region_z: i32) -> Value {
     json!({
         "region_x": value.get_region_x().to_string(),
@@ -2001,6 +2015,21 @@ fn math_result(request: &Value) -> Result<Value, String> {
     if operation == "sectionpos_spatial" {
         return Ok(json!({
             "value": sectionpos_spatial_snapshot(sectionpos(request)?),
+        }));
+    }
+    if operation == "sectionpos_packed_transformations" {
+        let coordinate = |name: &str| {
+            string(request, name)?
+                .parse::<i32>()
+                .map_err(|error| error.to_string())
+        };
+        return Ok(json!({
+            "value": sectionpos_packed_transformations_snapshot(
+                u64_hex_field(request, "block_node")?,
+                u64_hex_field(request, "section_node")?,
+                coordinate("x")?,
+                coordinate("z")?,
+            ),
         }));
     }
     if operation == "chunkpos_validity" {

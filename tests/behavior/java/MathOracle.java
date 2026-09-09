@@ -215,6 +215,17 @@ public final class MathOracle {
             value.add("center", snapshot(pos.center()));
             value.add("chunk", snapshot(pos.chunk()));
             result.add("value", value);
+        } else if (operation.equals("sectionpos_packed_transformations")) {
+            long blockNode = Long.parseUnsignedLong(request.get("block_node").getAsString(), 16);
+            long sectionNode = Long.parseUnsignedLong(request.get("section_node").getAsString(), 16);
+            int x = Integer.parseInt(request.get("x").getAsString());
+            int z = Integer.parseInt(request.get("z").getAsString());
+            var value = new JsonObject();
+            value.addProperty("block_to_section", Long.toUnsignedString(SectionPos.blockToSection(blockNode), 16));
+            value.addProperty("zero_node", Long.toUnsignedString(SectionPos.getZeroNode(sectionNode), 16));
+            value.addProperty("zero_node_coordinates", Long.toUnsignedString(SectionPos.getZeroNode(x, z), 16));
+            value.addProperty("section_to_chunk", Long.toUnsignedString(SectionPos.sectionToChunk(sectionNode), 16));
+            result.add("value", value);
         } else if (operation.equals("chunkpos_validity")) {
             ChunkPos pos = chunkPos(request);
             result.add("value", chunkPosValidity(pos));

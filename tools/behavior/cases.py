@@ -333,6 +333,36 @@ def math_cases():
         yield {"case_id": f"sectionpos/spatial/{label}", "family": "math",
                "operation": "sectionpos_spatial", **values}
 
+    sectionpos_packed_transformations = {
+        "origin": {
+            "block_node": "0000000000000000", "section_node": "0000000000000000",
+            "x": "0", "z": "0",
+        },
+        "positive": {
+            "block_node": "0000004000003002", "section_node": "0000040000300002",
+            "x": "1", "z": "3",
+        },
+        "negative": {
+            "block_node": "ffffffffffffdffe", "section_node": "ffffffffffdffffe",
+            "x": "-1", "z": "-3",
+        },
+        "block-boundaries": {
+            "block_node": "7fffffe0000007ff", "section_node": "7ffffe0000080000",
+            "x": "2097151", "z": "-2097152",
+        },
+        "negative-boundaries": {
+            "block_node": "8000001ffffff800", "section_node": "800001fffff7ffff",
+            "x": "-2097152", "z": "2097151",
+        },
+        "arbitrary-bits": {
+            "block_node": "aa55aa5555aa55aa", "section_node": "aa55aa5555aa55aa",
+            "x": "2147483647", "z": "-2147483648",
+        },
+    }
+    for label, values in sectionpos_packed_transformations.items():
+        yield {"case_id": f"sectionpos/packed-transformations/{label}", "family": "math",
+               "operation": "sectionpos_packed_transformations", **values}
+
     chunkpos_validity = {
         "origin": {"x": "0", "z": "0"},
         "boundary": {"x": "2097061", "z": "-2097061"},

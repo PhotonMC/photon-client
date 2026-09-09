@@ -823,6 +823,32 @@ impl SectionPos {
         )
     }
 
+    /// Convert a packed BlockPos node into a packed SectionPos node.
+    pub fn block_to_section(block_node: u64) -> u64 {
+        let block = BlockPos::unpack(block_node);
+        Self::new(
+            math::block_to_section_coord(block.x),
+            math::block_to_section_coord(block.y),
+            math::block_to_section_coord(block.z),
+        )
+        .pack()
+    }
+
+    /// Clear the packed section node's 20-bit y coordinate.
+    pub fn get_zero_node(section_node: u64) -> u64 {
+        section_node & !PACKED_SECTION_Y_MASK
+    }
+
+    /// Pack x/z section coordinates at y=0 and clear the y field.
+    pub fn get_zero_node_from_coordinates(x: i32, z: i32) -> u64 {
+        Self::get_zero_node(Self::new(x, 0, z).pack())
+    }
+
+    /// Convert a packed SectionPos node into a packed ChunkPos node.
+    pub fn section_to_chunk(section_node: u64) -> u64 {
+        ChunkPos::new(Self::get_x(section_node), Self::get_z(section_node)).pack()
+    }
+
     /// Return the minimum block corner of this section.
     pub fn origin(self) -> BlockPos {
         BlockPos::new(self.min_block_x(), self.min_block_y(), self.min_block_z())
