@@ -1270,6 +1270,12 @@ fn aabb_result(request: &Value) -> Result<Value, String> {
                 value = Aabb::of_bounding_box(bounds);
                 events.push(aabb_snapshot(value));
             }
+            "expand_vec3" => {
+                value = value.expand_towards_vec3(f64_vec3(
+                    step.get("delta").ok_or("delta must be an object")?,
+                )?);
+                events.push(aabb_snapshot(value));
+            }
             "intersects" => {
                 let other = aabb_box(step.get("box").ok_or("box must be an object")?)?;
                 events.push(json!({"hit": value.intersects(other)}));

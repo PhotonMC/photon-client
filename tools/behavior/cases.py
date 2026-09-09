@@ -762,6 +762,16 @@ def math_cases():
            **unit, "steps": [{"op": "expand", "x": float_bits(1.0, "f64"),
                               "y": float_bits(-0.5, "f64"), "z": float_bits(0.0, "f64")},
                              {"op": "deflate", "amount": float_bits(0.5, "f64")}]}
+    yield {"case_id": "aabb/expand-overload/vec3", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "expand_vec3", "delta": vector_bits(1.0, -0.5, 0.0)}]}
+    yield {"case_id": "aabb/expand-overload/signed-zero", "family": "math", "operation": "aabb",
+           "min_x": float_bits(-0.0, "f64"), "min_y": float_bits(-0.0, "f64"),
+           "min_z": float_bits(-0.0, "f64"), "max_x": float_bits(1.0, "f64"),
+           "max_y": float_bits(1.0, "f64"), "max_z": float_bits(1.0, "f64"),
+           "steps": [{"op": "expand_vec3", "delta": vector_bits(-0.0, 0.0, -0.0)}]}
+    yield {"case_id": "aabb/expand-overload/chain", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "expand_vec3", "delta": vector_bits(-0.25, 0.5, 1.0)},
+                              {"op": "expand_vec3", "delta": vector_bits(0.125, -0.75, -0.5)}]}
     yield {"case_id": "aabb/contract/positive", "family": "math", "operation": "aabb",
            **unit, "steps": [{"op": "contract", "x": float_bits(0.25, "f64"),
                               "y": float_bits(0.5, "f64"), "z": float_bits(1.0, "f64")}]}

@@ -723,6 +723,10 @@ public final class MathOracle {
                             Integer.parseInt(boundingBox.get("max_z").getAsString())));
                         events.add(snapshot(box));
                     }
+                    case "expand_vec3" -> {
+                        box = box.expandTowards(vec3(step.getAsJsonObject("delta")));
+                        events.add(snapshot(box));
+                    }
                     case "intersect" -> {
                         box = box.intersect(box(step.getAsJsonObject("box")));
                         events.add(snapshot(box));

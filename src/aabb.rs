@@ -270,6 +270,11 @@ impl Aabb {
         Self::new(min_x, min_y, min_z, max_x, max_y, max_z)
     }
 
+    /// Expand toward a double-precision vector like Java `AABB.expandTowards(Vec3)`.
+    pub fn expand_towards_vec3(self, delta: Vec3) -> Self {
+        self.expand_towards(delta.x, delta.y, delta.z)
+    }
+
     /// Move only the endpoint opposite each nonzero delta inward.
     pub fn contract(self, x: f64, y: f64, z: f64) -> Self {
         let (min_x, max_x) = contract_axis(self.min_x, self.max_x, x);
