@@ -26,6 +26,14 @@ impl Vec2 {
         java_f32_add(self.x * other.x, self.y * other.y)
     }
 
+    pub fn add_vec2(self, other: Self) -> Self {
+        Self::new(java_f32_add(self.x, other.x), java_f32_add(self.y, other.y))
+    }
+
+    pub fn add_scalar(self, value: f32) -> Self {
+        Self::new(java_f32_add(self.x, value), java_f32_add(self.y, value))
+    }
+
     pub fn length_squared(self) -> f32 {
         // Do not fuse the multiplication and addition or substitute hypot:
         // intermediate f32 rounding/overflow is observable in the reference.

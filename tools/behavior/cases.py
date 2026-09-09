@@ -697,6 +697,18 @@ def math_cases():
     yield {"case_id": "vec2/dot/special-values", "family": "math", "operation": "vec2_dot",
            "first": {"x": "7f800000", "y": float_bits(2.0)},
            "second": {"x": "00000000", "y": float_bits(-4.0)}}
+    yield {"case_id": "vec2/add/vector-basic", "family": "math", "operation": "vec2_add_vec2",
+           "first": vector2_bits(1.25, -2.5), "second": vector2_bits(-0.25, 4.0)}
+    yield {"case_id": "vec2/add/vector-signed-zero", "family": "math", "operation": "vec2_add_vec2",
+           "first": {"x": "80000000", "y": "80000000"},
+           "second": {"x": "80000000", "y": "80000000"}}
+    yield {"case_id": "vec2/add/vector-overflow", "family": "math", "operation": "vec2_add_vec2",
+           "first": {"x": "7f7fffff", "y": "ff7fffff"},
+           "second": {"x": "7f7fffff", "y": "ff7fffff"}}
+    yield {"case_id": "vec2/add/scalar-basic", "family": "math", "operation": "vec2_add_scalar",
+           "first": vector2_bits(-1.5, 2.25), "value": float_bits(0.5)}
+    yield {"case_id": "vec2/add/scalar-special-values", "family": "math", "operation": "vec2_add_scalar",
+           "first": {"x": "7f800000", "y": float_bits(2.0)}, "value": "ff800000"}
     for name in ("down", "up", "north", "south", "west", "east"):
         yield {"case_id": f"direction/properties/{name}", "family": "math", "operation": "direction",
                "name": name, "steps": []}
