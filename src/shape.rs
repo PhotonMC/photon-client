@@ -748,6 +748,30 @@ impl Shapes {
         ]
     }
 
+    /// Return all direction variants of a shape in Java EnumMap order.
+    pub fn rotate_all(north: &VoxelShape) -> [(Direction, VoxelShape); 6] {
+        [
+            (
+                Direction::Down,
+                Self::rotate(north, ShapeRotation::Rot90XNeg),
+            ),
+            (Direction::Up, Self::rotate(north, ShapeRotation::Rot90XPos)),
+            (Direction::North, north.clone()),
+            (
+                Direction::South,
+                Self::rotate(north, ShapeRotation::Rot180FaceXz),
+            ),
+            (
+                Direction::West,
+                Self::rotate(north, ShapeRotation::Rot90YPos),
+            ),
+            (
+                Direction::East,
+                Self::rotate(north, ShapeRotation::Rot90YNeg),
+            ),
+        ]
+    }
+
     /// Return whether two block-local shapes occlude across a direction.
     pub fn block_occludes(shape: &VoxelShape, occluder: &VoxelShape, direction: Direction) -> bool {
         let axis = direction.axis();

@@ -1,6 +1,6 @@
 # P01.d — Shapes.rotate referans sözleşmesi
 
-Bu dilimin **12 Java davranış testi hazırdır ve Rust karşılığı doğrulanmıştır** ([kanıt](shape-rotate-parity.md)). Kapsam, `VoxelShape` değerinin blok merkezine göre desteklenen signed eksen dönüşümleriyle döndürülmesini ve OR ile birleştirilmiş shape'in döndürülmesini içerir. `Shapes.rotateHorizontalAxis` çıktısı ayrı [sözleşme](shape-rotate-horizontal-axis-contract.md) ve [parity](shape-rotate-horizontal-axis-parity.md) belgelerinde; `Shapes.rotateAllAxis` çıktısı ayrı [sözleşme](shape-rotate-all-axis-contract.md) ve [parity](shape-rotate-all-axis-parity.md) belgelerinde; `Shapes.rotateHorizontal` çıktısı ayrı [sözleşme](shape-rotate-horizontal-contract.md) ve [parity](shape-rotate-horizontal-parity.md) belgelerinde ele alınır.
+Bu dilimin **12 Java davranış testi hazırdır ve Rust karşılığı doğrulanmıştır** ([kanıt](shape-rotate-parity.md)). Kapsam, `VoxelShape` değerinin blok merkezine göre desteklenen signed eksen dönüşümleriyle döndürülmesini ve OR ile birleştirilmiş shape'in döndürülmesini içerir. `Shapes.rotateHorizontalAxis` çıktısı ayrı [sözleşme](shape-rotate-horizontal-axis-contract.md) ve [parity](shape-rotate-horizontal-axis-parity.md) belgelerinde; `Shapes.rotateAllAxis` çıktısı ayrı [sözleşme](shape-rotate-all-axis-contract.md) ve [parity](shape-rotate-all-axis-parity.md) belgelerinde; `Shapes.rotateHorizontal` çıktısı ayrı [sözleşme](shape-rotate-horizontal-contract.md) ve [parity](shape-rotate-horizontal-parity.md) belgelerinde; `Shapes.rotateAll` çıktısı ayrı [sözleşme](shape-rotate-all-contract.md) ve [parity](shape-rotate-all-parity.md) belgelerinde ele alınır.
 
 ## Kaynak ve sınır
 
@@ -34,6 +34,6 @@ cargo build --locked --offline --example behavior_adapter
 python3 tools/behavior/run.py compare --family math --adapter target/debug/examples/behavior_adapter
 ```
 
-Bu dilimdeki senaryoların bulunduğu güncel math referansı `f205ceba714d4702c836571f170f9dfb4fd0000df6c1d6a58b646deb7d6c4426` kimliğindedir. Referans iki JVM çalıştırmasıyla kararlı bulundu. Güncel birleşik altı aile referansı `087a802cf2b50f4fd723cf119b31303a75b2a07d7e98062d8b40b0fa9394d3af` kimliğiyle doğrulandı.
+Bu dilimdeki senaryoların bulunduğu güncel math referansı `5161df0d1744dc53eed78d5785d13024594d5b8306cdcf50f765118ae2042450` kimliğindedir. Referans iki JVM çalıştırmasıyla kararlı bulundu. Güncel birleşik altı aile referansı `bbcdd8d522a3e0799b6945441c0c42cd1e0c98bbb8c9dceda370d0203bed11e9` kimliğiyle doğrulandı.
 
-Math debug/release raporları `compare-2c90a5am` ve `compare-4j73hu_g`; birleşik debug/release raporları `compare-xm1dqtf3` ve `compare-1fuiwzut` dizinlerindedir. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.
+Math debug/release raporları `compare-941j34iv` ve `compare-73_p7rtu`; birleşik debug/release raporları `compare-88gexq6y` ve `compare-dn88muge` dizinlerindedir. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.
