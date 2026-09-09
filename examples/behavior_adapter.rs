@@ -223,6 +223,19 @@ fn chunkpos(value: &Value) -> Result<ChunkPos, String> {
     Ok(ChunkPos::new(coordinate("x")?, coordinate("z")?))
 }
 
+fn sectionpos(value: &Value) -> Result<SectionPos, String> {
+    let coordinate = |name: &str| {
+        string(value, name)?
+            .parse::<i32>()
+            .map_err(|error| error.to_string())
+    };
+    Ok(SectionPos::new(
+        coordinate("x")?,
+        coordinate("y")?,
+        coordinate("z")?,
+    ))
+}
+
 fn chunkpos_snapshot(value: ChunkPos) -> Value {
     json!({
         "x": value.x.to_string(),
@@ -240,6 +253,17 @@ fn chunkpos_block_coordinates_snapshot(value: ChunkPos, offset: i32) -> Value {
         "max_block_z": value.get_max_block_z().to_string(),
         "block_x": value.get_block_x(offset).to_string(),
         "block_z": value.get_block_z(offset).to_string(),
+    })
+}
+
+fn sectionpos_block_coordinates_snapshot(value: SectionPos) -> Value {
+    json!({
+        "min_block_x": value.min_block_x().to_string(),
+        "min_block_y": value.min_block_y().to_string(),
+        "min_block_z": value.min_block_z().to_string(),
+        "max_block_x": value.max_block_x().to_string(),
+        "max_block_y": value.max_block_y().to_string(),
+        "max_block_z": value.max_block_z().to_string(),
     })
 }
 
@@ -1942,6 +1966,11 @@ fn math_result(request: &Value) -> Result<Value, String> {
                 "y": SectionPos::get_y(packed).to_string(),
                 "z": SectionPos::get_z(packed).to_string(),
             },
+        }));
+    }
+    if operation == "sectionpos_block_coordinates" {
+        return Ok(json!({
+            "value": sectionpos_block_coordinates_snapshot(sectionpos(request)?),
         }));
     }
     if operation == "chunkpos_validity" {

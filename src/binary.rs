@@ -766,6 +766,36 @@ impl SectionPos {
             >> (64 - PACKED_SECTION_HORIZONTAL_LENGTH)) as i32
     }
 
+    /// Return the minimum block coordinate on the x axis.
+    pub fn min_block_x(self) -> i32 {
+        math::section_to_block_coord(self.x)
+    }
+
+    /// Return the minimum block coordinate on the y axis.
+    pub fn min_block_y(self) -> i32 {
+        math::section_to_block_coord(self.y)
+    }
+
+    /// Return the minimum block coordinate on the z axis.
+    pub fn min_block_z(self) -> i32 {
+        math::section_to_block_coord(self.z)
+    }
+
+    /// Return the maximum block coordinate on the x axis.
+    pub fn max_block_x(self) -> i32 {
+        self.min_block_x().wrapping_add(15)
+    }
+
+    /// Return the maximum block coordinate on the y axis.
+    pub fn max_block_y(self) -> i32 {
+        self.min_block_y().wrapping_add(15)
+    }
+
+    /// Return the maximum block coordinate on the z axis.
+    pub fn max_block_z(self) -> i32 {
+        self.min_block_z().wrapping_add(15)
+    }
+
     /// Unpack with arithmetic shifts, sign-extending each field.
     pub fn unpack(packed: u64) -> Self {
         Self {

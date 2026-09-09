@@ -177,6 +177,19 @@ public final class MathOracle {
             value.addProperty("y", Integer.toString(SectionPos.y(packed)));
             value.addProperty("z", Integer.toString(SectionPos.z(packed)));
             result.add("value", value);
+        } else if (operation.equals("sectionpos_block_coordinates")) {
+            SectionPos pos = SectionPos.of(
+                Integer.parseInt(request.get("x").getAsString()),
+                Integer.parseInt(request.get("y").getAsString()),
+                Integer.parseInt(request.get("z").getAsString()));
+            var value = new JsonObject();
+            value.addProperty("min_block_x", Integer.toString(pos.minBlockX()));
+            value.addProperty("min_block_y", Integer.toString(pos.minBlockY()));
+            value.addProperty("min_block_z", Integer.toString(pos.minBlockZ()));
+            value.addProperty("max_block_x", Integer.toString(pos.maxBlockX()));
+            value.addProperty("max_block_y", Integer.toString(pos.maxBlockY()));
+            value.addProperty("max_block_z", Integer.toString(pos.maxBlockZ()));
+            result.add("value", value);
         } else if (operation.equals("chunkpos_validity")) {
             ChunkPos pos = chunkPos(request);
             result.add("value", chunkPosValidity(pos));
