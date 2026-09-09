@@ -677,6 +677,22 @@ def math_cases():
     def block_position(x, y, z):
         return {"x": str(x), "y": str(y), "z": str(z)}
 
+    yield {"case_id": "aabb-builder/empty", "family": "math", "operation": "aabb_builder",
+           "points": []}
+    yield {"case_id": "aabb-builder/single", "family": "math", "operation": "aabb_builder",
+           "points": [vector_bits(1.25, -2.5, 3.75, "f32")]}
+    yield {"case_id": "aabb-builder/multiple", "family": "math", "operation": "aabb_builder",
+           "points": [vector_bits(3.5, -1.25, 8.0, "f32"),
+                      vector_bits(-4.0, 2.5, -6.75, "f32"),
+                      vector_bits(1.0, -3.0, 4.25, "f32")]}
+    yield {"case_id": "aabb-builder/float-precision", "family": "math", "operation": "aabb_builder",
+           "points": [vector_bits(0.2, -0.3, 123456.78, "f32"),
+                      vector_bits(-1.0 / 3.0, 1.0 / 7.0, -0.0, "f32")]}
+    yield {"case_id": "aabb-builder/special-values", "family": "math", "operation": "aabb_builder",
+           "points": [vector_bits(-0.0, 0.0, -0.0, "f32"),
+                      vector_bits(0.0, -0.0, 0.0, "f32"),
+                      vector_bits(float("nan"), float("inf"), float("-inf"), "f32")]}
+
     yield {"case_id": "aabb/contains/unit", "family": "math", "operation": "aabb",
            **unit, "steps": [inside, outside]}
     yield {"case_id": "aabb/intersects/overlap", "family": "math", "operation": "aabb",

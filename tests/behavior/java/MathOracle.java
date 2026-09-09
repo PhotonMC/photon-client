@@ -667,6 +667,34 @@ public final class MathOracle {
             }
             result.add("factory_events", factoryEvents);
             result.add("parent_events", randomSteps(random, request.getAsJsonArray("parent_steps")));
+        } else if (operation.equals("aabb_builder")) {
+            AABB.Builder builder = new AABB.Builder();
+            var events = new JsonArray();
+            var initial = new JsonObject();
+            initial.addProperty("defined", builder.isDefined());
+            events.add(initial);
+            for (var entry : request.getAsJsonArray("points")) {
+                JsonObject point = entry.getAsJsonObject();
+                builder.include(new Vector3f(
+                    Oracle.f32(point, "x"),
+                    Oracle.f32(point, "y"),
+                    Oracle.f32(point, "z")
+                ));
+                var state = new JsonObject();
+                state.addProperty("defined", builder.isDefined());
+                events.add(state);
+            }
+            result.add("events", events);
+            var build = new JsonObject();
+            try {
+                build.addProperty("outcome", "value");
+                build.add("box", snapshot(builder.build()));
+            } catch (IllegalStateException error) {
+                build.addProperty("outcome", "error");
+                build.addProperty("error", "undefined");
+                result.addProperty("java_exception", error.getClass().getName());
+            }
+            result.add("build", build);
         } else if (operation.equals("aabb")) {
             AABB box = box(request);
             var events = new JsonArray();

@@ -2,7 +2,7 @@
 
 use serde_json::{Value, json};
 use std::io::{self, BufRead, Write};
-use voxel_client::aabb::{Aabb, BlockHitResult, BoundingBox};
+use voxel_client::aabb::{Aabb, AabbBuilder, AabbBuilderError, BlockHitResult, BoundingBox};
 use voxel_client::binary::{self, BlockPos, SectionPos, Uuid};
 use voxel_client::direction::{Axis, Direction};
 use voxel_client::math::{self, Vec2, Vec3};
@@ -440,6 +440,32 @@ fn aabb_snapshot(value: Aabb) -> Value {
         "max_y": format!("{:016x}", value.max_y.to_bits()),
         "max_z": format!("{:016x}", value.max_z.to_bits()),
     })
+}
+
+fn aabb_builder_result(request: &Value) -> Result<Value, String> {
+    let points = request
+        .get("points")
+        .ok_or("points must be an array")?
+        .as_array()
+        .ok_or("points must be an array")?;
+    let mut builder = AabbBuilder::new();
+    let mut events = vec![json!({"defined": builder.is_defined()})];
+    for point in points {
+        builder.include(
+            f32_field(point, "x")?,
+            f32_field(point, "y")?,
+            f32_field(point, "z")?,
+        );
+        events.push(json!({"defined": builder.is_defined()}));
+    }
+    let build = match builder.build() {
+        Ok(value) => json!({"outcome": "value", "box": aabb_snapshot(value)}),
+        Err(AabbBuilderError::Undefined) => json!({
+            "outcome": "error",
+            "error": "undefined",
+        }),
+    };
+    Ok(json!({"events": events, "build": build}))
 }
 
 fn aabb_sizes_snapshot(value: Aabb) -> Value {
@@ -1525,6 +1551,9 @@ fn math_result(request: &Value) -> Result<Value, String> {
     }
     if operation == "random_positional" {
         return random_positional_result(request);
+    }
+    if operation == "aabb_builder" {
+        return aabb_builder_result(request);
     }
     if operation == "aabb" {
         return aabb_result(request);

@@ -1,7 +1,7 @@
 //! Axis-aligned bounding boxes for the first P01.d geometry slice.
 //!
 //! This covers box constructors/production helpers, the integer BoundingBox bridge,
-//! constructor normalization
+//! AABB.Builder point accumulation, constructor normalization
 //! and the contains/intersects,
 //! expand-towards, equals/hashCode, toString, contract, inflate, intersect, minmax, move, sizes, has_nan,
 //! positions, axis endpoint queries, `of_size`, endpoint setters, move overloads,
@@ -77,6 +77,76 @@ pub struct Aabb {
     pub max_x: f64,
     pub max_y: f64,
     pub max_z: f64,
+}
+
+/// Error returned when an AABB builder has not received a point.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AabbBuilderError {
+    Undefined,
+}
+
+/// Accumulate the bounds of f32 points like Java's `AABB.Builder`.
+#[derive(Debug, Clone, Copy)]
+pub struct AabbBuilder {
+    min_x: f32,
+    min_y: f32,
+    min_z: f32,
+    max_x: f32,
+    max_y: f32,
+    max_z: f32,
+    defined: bool,
+}
+
+impl AabbBuilder {
+    /// Create an undefined builder with Java's infinite sentinels.
+    pub fn new() -> Self {
+        Self {
+            min_x: f32::INFINITY,
+            min_y: f32::INFINITY,
+            min_z: f32::INFINITY,
+            max_x: f32::NEG_INFINITY,
+            max_y: f32::NEG_INFINITY,
+            max_z: f32::NEG_INFINITY,
+            defined: false,
+        }
+    }
+
+    /// Include one f32 point from a Java `Vector3fc`-compatible value.
+    pub fn include(&mut self, x: f32, y: f32, z: f32) {
+        self.min_x = java_min_f32(self.min_x, x);
+        self.min_y = java_min_f32(self.min_y, y);
+        self.min_z = java_min_f32(self.min_z, z);
+        self.max_x = java_max_f32(self.max_x, x);
+        self.max_y = java_max_f32(self.max_y, y);
+        self.max_z = java_max_f32(self.max_z, z);
+        self.defined = true;
+    }
+
+    /// Return whether at least one point has been included.
+    pub fn is_defined(&self) -> bool {
+        self.defined
+    }
+
+    /// Build the accumulated double-precision AABB.
+    pub fn build(&self) -> Result<Aabb, AabbBuilderError> {
+        if !self.defined {
+            return Err(AabbBuilderError::Undefined);
+        }
+        Ok(Aabb::new(
+            f64::from(self.min_x),
+            f64::from(self.min_y),
+            f64::from(self.min_z),
+            f64::from(self.max_x),
+            f64::from(self.max_y),
+            f64::from(self.max_z),
+        ))
+    }
+}
+
+impl Default for AabbBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Aabb {
@@ -792,6 +862,42 @@ fn java_min(left: f64, right: f64) -> f64 {
             left
         }
     } else if left < right {
+        left
+    } else {
+        right
+    }
+}
+
+fn java_min_f32(left: f32, right: f32) -> f32 {
+    if left.is_nan() {
+        left
+    } else if right.is_nan() {
+        right
+    } else if left == right {
+        if left == 0.0 && left.to_bits() & (1 << 31) == 0 {
+            right
+        } else {
+            left
+        }
+    } else if left < right {
+        left
+    } else {
+        right
+    }
+}
+
+fn java_max_f32(left: f32, right: f32) -> f32 {
+    if left.is_nan() {
+        left
+    } else if right.is_nan() {
+        right
+    } else if left == right {
+        if left == 0.0 && left.to_bits() & (1 << 31) != 0 {
+            right
+        } else {
+            left
+        }
+    } else if left > right {
         left
     } else {
         right
