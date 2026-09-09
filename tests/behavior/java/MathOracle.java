@@ -249,6 +249,10 @@ public final class MathOracle {
         } else if (operation.equals("vec3_rotation")) {
             Vec3 first = vec3(request.getAsJsonObject("first"));
             result.add("value", snapshot(first.rotation()));
+        } else if (operation.equals("vec2_rotate")) {
+            JsonObject first = request.getAsJsonObject("first");
+            Vec2 vector = new Vec2(Oracle.f32(first, "x"), Oracle.f32(first, "y"));
+            result.add("value", snapshot(vector.rotate(f64(request, "angle"))));
         } else if (operation.equals("shape")) {
             String kind = request.get("kind").getAsString();
             if (kind.equals("single")) {

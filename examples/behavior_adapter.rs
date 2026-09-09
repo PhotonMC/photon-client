@@ -1859,6 +1859,13 @@ fn math_result(request: &Value) -> Result<Value, String> {
         let first = f64_vec3(request.get("first").ok_or("first must be an object")?)?;
         return Ok(json!({"value": vec2_snapshot(first.rotation())}));
     }
+    if operation == "vec2_rotate" {
+        let first = request.get("first").ok_or("first must be an object")?;
+        let vector = Vec2::new(f32_field(first, "x")?, f32_field(first, "y")?);
+        return Ok(json!({
+            "value": vec2_snapshot(vector.rotate(f64_field(request, "angle")?)),
+        }));
+    }
     match string(request, "type")? {
         "f32" => {
             let value = f32_field(request, "value")?;

@@ -1,5 +1,6 @@
 """Original synthetic inputs only. Expected values always come from the Java JAR."""
 
+import math
 import struct
 
 
@@ -647,6 +648,42 @@ def math_cases():
            "first": {"x": "7ff0000000000000", "y": "3ff0000000000000", "z": "fff0000000000000"}}
     yield {"case_id": "vec3/rotation/nan", "family": "math", "operation": "vec3_rotation",
            "first": {"x": "7ff8000000000001", "y": "3ff0000000000000", "z": "0000000000000000"}}
+    yield {"case_id": "vec2/rotate/basic", "family": "math", "operation": "vec2_rotate",
+           "first": vector2_bits(1.25, -2.5), "angle": float_bits(0.5, "f64")}
+    yield {"case_id": "vec2/rotate/negative-components", "family": "math", "operation": "vec2_rotate",
+           "first": vector2_bits(-4.5, 6.25), "angle": float_bits(-0.75, "f64")}
+    yield {"case_id": "vec2/rotate/zero-angle", "family": "math", "operation": "vec2_rotate",
+           "first": vector2_bits(2.0, -3.0), "angle": float_bits(0.0, "f64")}
+    yield {"case_id": "vec2/rotate/quarter-turn", "family": "math", "operation": "vec2_rotate",
+           "first": vector2_bits(1.0, 0.0), "angle": float_bits(math.pi / 2.0, "f64")}
+    yield {"case_id": "vec2/rotate/half-turn", "family": "math", "operation": "vec2_rotate",
+           "first": vector2_bits(0.25, -0.5), "angle": float_bits(math.pi, "f64")}
+    yield {"case_id": "vec2/rotate/negative-quarter-turn", "family": "math", "operation": "vec2_rotate",
+           "first": vector2_bits(0.0, 1.0), "angle": float_bits(-math.pi / 2.0, "f64")}
+    yield {"case_id": "vec2/rotate/small-quantized-angle", "family": "math", "operation": "vec2_rotate",
+           "first": vector2_bits(-0.125, 0.25), "angle": float_bits(0.0001, "f64")}
+    yield {"case_id": "vec2/rotate/full-turn", "family": "math", "operation": "vec2_rotate",
+           "first": vector2_bits(1.0, -1.0), "angle": float_bits(2.0 * math.pi, "f64")}
+    yield {"case_id": "vec2/rotate/combined", "family": "math", "operation": "vec2_rotate",
+           "first": vector2_bits(3.5, -7.25), "angle": float_bits(1.234567890123, "f64")}
+    yield {"case_id": "vec2/rotate/signed-zero-angle", "family": "math", "operation": "vec2_rotate",
+           "first": {"x": "80000000", "y": "00000000"}, "angle": "8000000000000000"}
+    yield {"case_id": "vec2/rotate/signed-zero-vector", "family": "math", "operation": "vec2_rotate",
+           "first": {"x": "00000000", "y": "80000000"}, "angle": "0000000000000000"}
+    yield {"case_id": "vec2/rotate/subnormal-vector", "family": "math", "operation": "vec2_rotate",
+           "first": {"x": "00000001", "y": "80000001"}, "angle": float_bits(math.pi / 4.0, "f64")}
+    yield {"case_id": "vec2/rotate/max-finite-vector", "family": "math", "operation": "vec2_rotate",
+           "first": {"x": "7f7fffff", "y": "ff7fffff"}, "angle": float_bits(0.25, "f64")}
+    yield {"case_id": "vec2/rotate/special-vector", "family": "math", "operation": "vec2_rotate",
+           "first": {"x": "7fc00001", "y": "ff800000"}, "angle": float_bits(0.5, "f64")}
+    yield {"case_id": "vec2/rotate/positive-infinity-angle", "family": "math", "operation": "vec2_rotate",
+           "first": vector2_bits(1.0, -2.0), "angle": float_bits(float("inf"), "f64")}
+    yield {"case_id": "vec2/rotate/negative-infinity-angle", "family": "math", "operation": "vec2_rotate",
+           "first": vector2_bits(-4.0, 6.0), "angle": float_bits(float("-inf"), "f64")}
+    yield {"case_id": "vec2/rotate/nan-angle", "family": "math", "operation": "vec2_rotate",
+           "first": vector2_bits(3.5, -7.25), "angle": "7ff8000000000001"}
+    yield {"case_id": "vec2/rotate/large-finite-angle", "family": "math", "operation": "vec2_rotate",
+           "first": vector2_bits(0.5, -1.0), "angle": "7fefffffffffffff"}
     for name in ("down", "up", "north", "south", "west", "east"):
         yield {"case_id": f"direction/properties/{name}", "family": "math", "operation": "direction",
                "name": name, "steps": []}

@@ -41,6 +41,16 @@ impl Vec2 {
             Self::new(self.x / length, self.y / length)
         }
     }
+
+    /// Rotate using the Java `Mth` sine/cosine lookup contract.
+    pub fn rotate(self, angle_radians: f64) -> Self {
+        let cosine = mth_cos(angle_radians);
+        let sine = mth_sin(angle_radians);
+        Self::new(
+            self.x * cosine - self.y * sine,
+            self.y * cosine + self.x * sine,
+        )
+    }
 }
 
 /// Three-component f32 value returned by the Java-compatible Vec3 conversion.
