@@ -498,6 +498,17 @@ fn shape_snapshot(value: &VoxelShape) -> Value {
     state
 }
 
+fn shape_axis_limits_snapshot(value: &VoxelShape) -> Value {
+    json!({
+        "min_x": format!("{:016x}", value.min(Axis::X).to_bits()),
+        "max_x": format!("{:016x}", value.max(Axis::X).to_bits()),
+        "min_y": format!("{:016x}", value.min(Axis::Y).to_bits()),
+        "max_y": format!("{:016x}", value.max(Axis::Y).to_bits()),
+        "min_z": format!("{:016x}", value.min(Axis::Z).to_bits()),
+        "max_z": format!("{:016x}", value.max(Axis::Z).to_bits()),
+    })
+}
+
 fn shape_result(request: &Value) -> Result<Value, String> {
     match string(request, "kind")? {
         "single" => {
@@ -574,6 +585,23 @@ fn shape_result(request: &Value) -> Result<Value, String> {
             Ok(json!({
                 "shape": shape_snapshot(&joined.single_encompassing()),
             }))
+        }
+        "axis_limits" => {
+            let entries = request
+                .get("shapes")
+                .ok_or("shapes must be an array")?
+                .as_array()
+                .ok_or("shapes must be an array")?;
+            if entries.is_empty() {
+                return Err("axis_limits needs at least one shape".into());
+            }
+            let first = shape_box(&entries[0])?;
+            let tail = entries[1..]
+                .iter()
+                .map(shape_box)
+                .collect::<Result<Vec<_>, _>>()?;
+            let joined = Shapes::or_many(&first, &tail);
+            Ok(shape_axis_limits_snapshot(&joined))
         }
         "equal" => {
             let first = shape_box(request.get("first").ok_or("first must be an object")?)?;

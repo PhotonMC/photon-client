@@ -219,6 +219,28 @@ impl VoxelShape {
         })
     }
 
+    /// Return the first occupied coordinate plane for an axis.
+    pub fn min(&self, axis: Axis) -> f64 {
+        self.bounds()
+            .map(|bounds| match axis {
+                Axis::X => bounds.min_x,
+                Axis::Y => bounds.min_y,
+                Axis::Z => bounds.min_z,
+            })
+            .unwrap_or(f64::INFINITY)
+    }
+
+    /// Return the last occupied coordinate plane for an axis.
+    pub fn max(&self, axis: Axis) -> f64 {
+        self.bounds()
+            .map(|bounds| match axis {
+                Axis::X => bounds.max_x,
+                Axis::Y => bounds.max_y,
+                Axis::Z => bounds.max_z,
+            })
+            .unwrap_or(f64::NEG_INFINITY)
+    }
+
     /// Collapse a shape to one box spanning its occupied coordinate bounds.
     pub fn single_encompassing(&self) -> Self {
         let Some(bounds) = self.bounds() else {

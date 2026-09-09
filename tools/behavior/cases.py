@@ -254,6 +254,20 @@ def math_cases():
                box_bits(0.0, 0.0, 0.0, 0.25, 0.5, 0.75),
                box_bits(0.75, 0.25, 0.5, 1.0, 1.0, 1.0),
            ]}
+    yield {"case_id": "shape/axis-limits/empty", "family": "math", "operation": "shape",
+           "kind": "axis_limits", "shapes": [
+               box_bits(0.0, 0.0, 0.0, 0.00000005, 1.0, 1.0),
+           ]}
+    yield {"case_id": "shape/axis-limits/disjoint", "family": "math", "operation": "shape",
+           "kind": "axis_limits", "shapes": [
+               box_bits(0.25, 0.0, 0.5, 0.5, 0.25, 0.75),
+               box_bits(0.75, 0.5, -0.5, 1.0, 1.0, 0.0),
+           ]}
+    yield {"case_id": "shape/axis-limits/negative", "family": "math", "operation": "shape",
+           "kind": "axis_limits", "shapes": [
+               box_bits(-2.0, -0.75, 1.5, -1.25, -0.25, 2.0),
+               box_bits(-0.5, 0.5, -2.0, 0.25, 1.25, -1.5),
+           ]}
     yield {"case_id": "shape/equal/same-box", "family": "math", "operation": "shape", "kind": "equal",
            "first": box_bits(0.0, 0.0, 0.0, 1.0, 1.0, 1.0),
            "second": box_bits(0.0, 0.0, 0.0, 1.0, 1.0, 1.0)}

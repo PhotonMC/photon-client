@@ -158,6 +158,23 @@ public final class MathOracle {
                     tail[i - 1] = voxelShape(entries.get(i).getAsJsonObject());
                 }
                 result.add("shape", snapshot(Shapes.or(first, tail).singleEncompassing()));
+            } else if (kind.equals("axis_limits")) {
+                var entries = request.getAsJsonArray("shapes");
+                if (entries == null || entries.size() == 0) {
+                    throw new IllegalArgumentException("axis_limits needs at least one shape");
+                }
+                VoxelShape first = voxelShape(entries.get(0).getAsJsonObject());
+                VoxelShape[] tail = new VoxelShape[entries.size() - 1];
+                for (int i = 1; i < entries.size(); i++) {
+                    tail[i - 1] = voxelShape(entries.get(i).getAsJsonObject());
+                }
+                VoxelShape shape = Shapes.or(first, tail);
+                result.addProperty("min_x", Oracle.bits(shape.min(Direction.Axis.X)));
+                result.addProperty("max_x", Oracle.bits(shape.max(Direction.Axis.X)));
+                result.addProperty("min_y", Oracle.bits(shape.min(Direction.Axis.Y)));
+                result.addProperty("max_y", Oracle.bits(shape.max(Direction.Axis.Y)));
+                result.addProperty("min_z", Oracle.bits(shape.min(Direction.Axis.Z)));
+                result.addProperty("max_z", Oracle.bits(shape.max(Direction.Axis.Z)));
             } else if (kind.equals("equal")) {
                 VoxelShape first = voxelShape(request.getAsJsonObject("first"));
                 VoxelShape second = voxelShape(request.getAsJsonObject("second"));
