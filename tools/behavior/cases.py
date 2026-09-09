@@ -87,6 +87,23 @@ def math_cases():
                "x": float_bits(1, "f64"), "y": float_bits(-1, "f64"), "z": float_bits(0.5, "f64"),
                "steps": [{"action": "normalize"}, {"action": "scale", "factor": float_bits(factor, "f64")},
                          {"action": "normalize"}]}
+    yield {"case_id": "vec3/reverse/basic", "family": "math", "operation": "vec3",
+           "x": float_bits(1.25, "f64"), "y": float_bits(-2.5, "f64"), "z": float_bits(3.75, "f64"),
+           "steps": [{"action": "reverse"}]}
+    yield {"case_id": "vec3/reverse/chain", "family": "math", "operation": "vec3",
+           "x": float_bits(-4.5, "f64"), "y": float_bits(6.25, "f64"), "z": float_bits(8.75, "f64"),
+           "steps": [{"action": "reverse"},
+                      {"action": "add_components", "x": float_bits(0.5, "f64"),
+                       "y": float_bits(-1.5, "f64"), "z": float_bits(-0.75, "f64")}]}
+    yield {"case_id": "vec3/reverse/signed-zero", "family": "math", "operation": "vec3",
+           "x": float_bits(-0.0, "f64"), "y": float_bits(0.0, "f64"), "z": float_bits(-0.0, "f64"),
+           "steps": [{"action": "reverse"}]}
+    yield {"case_id": "vec3/reverse/subnormal-and-large", "family": "math", "operation": "vec3",
+           "x": "0000000000000001", "y": "7fefffffffffffff", "z": "8000000000000001",
+           "steps": [{"action": "reverse"}]}
+    yield {"case_id": "vec3/reverse/infinities", "family": "math", "operation": "vec3",
+           "x": float_bits(float("inf"), "f64"), "y": float_bits(-2.0, "f64"),
+           "z": float_bits(float("-inf"), "f64"), "steps": [{"action": "reverse"}]}
     yield {"case_id": "vec3/horizontal/basic", "family": "math", "operation": "vec3",
            "x": float_bits(1.25, "f64"), "y": float_bits(-2.5, "f64"), "z": float_bits(3.75, "f64"),
            "steps": [{"action": "horizontal"}]}

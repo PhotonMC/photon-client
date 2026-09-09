@@ -99,6 +99,7 @@ public final class MathOracle {
                 vector = switch (step.get("action").getAsString()) {
                     case "normalize" -> vector.normalize();
                     case "scale" -> vector.scale(f64(step, "factor"));
+                    case "reverse" -> vector.reverse();
                     case "horizontal" -> vector.horizontal();
                     case "multiply_vec3" -> vector.multiply(vec3(step.getAsJsonObject("scale")));
                     case "multiply_components" -> vector.multiply(

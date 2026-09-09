@@ -1638,6 +1638,7 @@ fn math_result(request: &Value) -> Result<Value, String> {
             vector = match string(step, "action")? {
                 "normalize" => vector.normalized(),
                 "scale" => vector.scale(f64_field(step, "factor")?),
+                "reverse" => vector.reverse(),
                 "multiply_vec3" => vector.multiply_vec3(f64_vec3(
                     step.get("scale").ok_or("scale must be an object")?,
                 )?),

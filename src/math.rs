@@ -115,6 +115,10 @@ impl Vec3 {
         Self::new(self.x * factor, self.y * factor, self.z * factor)
     }
 
+    pub fn reverse(self) -> Self {
+        self.scale(-1.0)
+    }
+
     pub fn multiply_vec3(self, scale: Self) -> Self {
         self.multiply_components(scale.x, scale.y, scale.z)
     }
