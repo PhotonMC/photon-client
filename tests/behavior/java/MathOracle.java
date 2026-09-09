@@ -9,6 +9,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.levelgen.PositionalRandomFactory;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
+import net.minecraft.world.level.block.state.properties.AttachFace;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec2;
@@ -244,6 +245,27 @@ public final class MathOracle {
                     }
                 }
                 result.add("shapes", snapshots);
+            } else if (kind.equals("rotate_attach_face")) {
+                VoxelShape shape = voxelShape(request.getAsJsonObject("box"));
+                var faces = Shapes.rotateAttachFace(shape);
+                var faceSnapshots = new JsonArray();
+                for (AttachFace face : AttachFace.values()) {
+                    var directions = faces.get(face);
+                    var directionSnapshots = new JsonArray();
+                    for (Direction direction : Direction.values()) {
+                        if (directions.containsKey(direction)) {
+                            var directionEntry = new JsonObject();
+                            directionEntry.addProperty("direction", direction.getName());
+                            directionEntry.add("shape", snapshot(directions.get(direction)));
+                            directionSnapshots.add(directionEntry);
+                        }
+                    }
+                    var faceEntry = new JsonObject();
+                    faceEntry.addProperty("face", face.getSerializedName());
+                    faceEntry.add("shapes", directionSnapshots);
+                    faceSnapshots.add(faceEntry);
+                }
+                result.add("faces", faceSnapshots);
             } else if (kind.equals("collide")) {
                 VoxelShape shape = voxelShape(request.getAsJsonObject("shape"));
                 AABB moving = box(request.getAsJsonObject("moving"));

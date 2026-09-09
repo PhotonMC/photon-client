@@ -6,17 +6,17 @@
 
 Java 25.0.4.1 ve Rust 1.98.1 / Linux x86_64 ortamında:
 
-- Math ailesinin 565 senaryoluk referansı iki ayrı JVM çalıştırmasıyla kararlı bulundu.
-- Rust debug ve release adaptörleri **565/565** math senaryosunda eşleşti.
+- Math ailesinin 568 senaryoluk referansı iki ayrı JVM çalıştırmasıyla kararlı bulundu.
+- Rust debug ve release adaptörleri **568/568** math senaryosunda eşleşti.
 - Asimetrik, yarım grid boyutlu ve empty shape girdileri X/Y/Z map anahtarlarını, özel merkez çevirisini, hücre snapshot'larını ve EnumMap sırasını karşılaştırdı.
 - Z yönünün özgün shape'i ve merkezden bağımsız kalması da karşılaştırıldı.
-- Birleşik altı aile corpus'u **1019/1019** senaryoda hem debug hem release adaptörüyle eşleşti.
+- Birleşik altı aile corpus'u **1022/1022** senaryoda hem debug hem release adaptörüyle eşleşti.
 
-Math referans kimliği: `7fef30aeeb87ecb1961e06e9d0db83555784872ea9fa3cae17cc8123a707ad4f`.
+Math referans kimliği: `e5f0febf5aa99682e41be37cce313e2fd66bc5ba13b3ac085396f9832cf563d6`.
 
-Birleşik referans kimliği: `5a7e54661cfb81d403ab94e9c0e8f94be98d06ae5224fa1e69326281a398aac0`.
+Birleşik referans kimliği: `bfc03ea077b3293e5a3b4bff895bec8ea847887bae87575c13c8e0f4c0062ce0`.
 
-Yerel raporlar: `compare-8d4r7qrk` (math debug), `compare-v78ke25i` (math release), `compare-r0ijli73` (birleşik debug) ve `compare-8paqvzzw` (birleşik release) dizinlerinde, `.data/runs/behavior/` altında bulunur.
+Yerel raporlar: `compare-vf29hapu` (math debug), `compare-3bjovh7e` (math release), `compare-p9j6mea8` (birleşik debug) ve `compare-qrn5umki` (birleşik release) dizinlerinde, `.data/runs/behavior/` altında bulunur.
 
 ## Sınırlar
 

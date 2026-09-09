@@ -93,6 +93,60 @@ impl ShapeRotation {
             Self::Rot180FaceYz => ([0, 1, 2], [false, true, true]),
         }
     }
+
+    fn transform(self) -> ShapeTransform {
+        let (permutation, inverted) = self.axes();
+        ShapeTransform {
+            permutation,
+            inverted,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct ShapeTransform {
+    permutation: [usize; 3],
+    inverted: [bool; 3],
+}
+
+impl ShapeTransform {
+    fn is_identity(self) -> bool {
+        self.permutation == [0, 1, 2] && self.inverted == [false, false, false]
+    }
+
+    /// Compose in the same order as Java OctahedralGroup.compose.
+    fn compose(self, that: Self) -> Self {
+        Self {
+            permutation: [
+                that.permutation[self.permutation[0]],
+                that.permutation[self.permutation[1]],
+                that.permutation[self.permutation[2]],
+            ],
+            inverted: [
+                self.inverted[0] ^ that.inverted[self.permutation[0]],
+                self.inverted[1] ^ that.inverted[self.permutation[1]],
+                self.inverted[2] ^ that.inverted[self.permutation[2]],
+            ],
+        }
+    }
+}
+
+/// The surface to which an attachable block shape is oriented.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AttachFace {
+    Floor,
+    Wall,
+    Ceiling,
+}
+
+impl AttachFace {
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Floor => "floor",
+            Self::Wall => "wall",
+            Self::Ceiling => "ceiling",
+        }
+    }
 }
 
 /// A voxelized region described by coordinate planes and occupied cells.
@@ -654,13 +708,22 @@ impl Shapes {
         rotation: ShapeRotation,
         rotation_center: Vec3,
     ) -> VoxelShape {
-        if matches!(rotation, ShapeRotation::Identity) {
+        Self::rotate_transform_with_center(shape, rotation.transform(), rotation_center)
+    }
+
+    fn rotate_transform_with_center(
+        shape: &VoxelShape,
+        rotation: ShapeTransform,
+        rotation_center: Vec3,
+    ) -> VoxelShape {
+        if rotation.is_identity() {
             return shape.clone();
         }
 
         let old_sizes = [shape.xs.len() - 1, shape.ys.len() - 1, shape.zs.len() - 1];
         let old_coords = [&shape.xs, &shape.ys, &shape.zs];
-        let (permutation, inverted) = rotation.axes();
+        let permutation = rotation.permutation;
+        let inverted = rotation.inverted;
         let new_sizes = [
             old_sizes[permutation[0]],
             old_sizes[permutation[1]],
@@ -794,6 +857,58 @@ impl Shapes {
                 Self::rotate_with_center(north, ShapeRotation::Rot90XNeg, rotation_center),
             ),
             (Axis::Z, north.clone()),
+        ]
+    }
+
+    fn rotate_horizontal_with_transform(
+        north: &VoxelShape,
+        initial: ShapeTransform,
+    ) -> [(Direction, VoxelShape); 4] {
+        let y_90 = ShapeRotation::Rot90YNeg.transform();
+        let y_180 = ShapeRotation::Rot180FaceXz.transform();
+        let y_270 = ShapeRotation::Rot90YPos.transform();
+        let center = Vec3::new(0.5, 0.5, 0.5);
+        [
+            (
+                Direction::North,
+                Self::rotate_transform_with_center(north, initial, center),
+            ),
+            (
+                Direction::South,
+                Self::rotate_transform_with_center(north, y_180.compose(initial), center),
+            ),
+            (
+                Direction::West,
+                Self::rotate_transform_with_center(north, y_270.compose(initial), center),
+            ),
+            (
+                Direction::East,
+                Self::rotate_transform_with_center(north, y_90.compose(initial), center),
+            ),
+        ]
+    }
+
+    /// Return the floor, wall, and ceiling direction variants in Java enum order.
+    pub fn rotate_attach_face(
+        north: &VoxelShape,
+    ) -> [(AttachFace, [(Direction, VoxelShape); 4]); 3] {
+        let x_270 = ShapeRotation::Rot90XPos.transform();
+        let ceiling = ShapeRotation::Rot180FaceXz
+            .transform()
+            .compose(ShapeRotation::Rot90XNeg.transform());
+        [
+            (
+                AttachFace::Floor,
+                Self::rotate_horizontal_with_transform(north, x_270),
+            ),
+            (
+                AttachFace::Wall,
+                Self::rotate_horizontal_with_transform(north, ShapeRotation::Identity.transform()),
+            ),
+            (
+                AttachFace::Ceiling,
+                Self::rotate_horizontal_with_transform(north, ceiling),
+            ),
         ]
     }
 

@@ -665,6 +665,25 @@ fn shape_result(request: &Value) -> Result<Value, String> {
                     .collect::<Vec<_>>(),
             }))
         }
+        "rotate_attach_face" => {
+            let shape = shape_box(request.get("box").ok_or("box must be an object")?)?;
+            let faces = Shapes::rotate_attach_face(&shape);
+            Ok(json!({
+                "faces": faces
+                    .into_iter()
+                    .map(|(face, shapes)| json!({
+                        "face": face.name(),
+                        "shapes": shapes
+                            .into_iter()
+                            .map(|(direction, shape)| json!({
+                                "direction": direction.name(),
+                                "shape": shape_snapshot(&shape),
+                            }))
+                            .collect::<Vec<_>>(),
+                    }))
+                    .collect::<Vec<_>>(),
+            }))
+        }
         "collide" => {
             let axis = Axis::from_name(string(request, "axis")?).ok_or("unknown collision axis")?;
             let shape = shape_box(request.get("shape").ok_or("shape must be an object")?)?;
