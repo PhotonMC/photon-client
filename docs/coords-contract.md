@@ -1,6 +1,6 @@
 # P01.c — Koordinat dönüşümleri referans sözleşmesi
 
-Bu dilimin **57 Java davranış testi hazırdır ve Rust karşılığı doğrulanmıştır** ([kanıt](math-parity.md)). Önceki 238 math senaryosunun girdisi ve sonucu değişmedi. Çift duyarlıklı overload, `sectionRelativePos` paketi ve kalan SectionPos/BlockPos yardımcıları bu dilime dahil değildir.
+Bu dilimin **57 Java davranış testi hazırdır ve Rust karşılığı doğrulanmıştır** ([kanıt](math-parity.md)). Önceki 238 math senaryosunun girdisi ve sonucu değişmedi. Çift duyarlıklı overload bu int koordinat dilimine dahil değildir; ayrı [SectionPos double koordinat sözleşmesinde](sectionpos-double-coordinates-contract.md) doğrulanır. `sectionRelativePos` paketi ve kalan SectionPos/BlockPos yardımcıları bu dilime dahil değildir.
 
 ## Kaynak ve sınır
 

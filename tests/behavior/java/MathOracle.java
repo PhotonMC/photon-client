@@ -267,6 +267,15 @@ public final class MathOracle {
             result.add("value", sectionPosBlocksInside(request));
         } else if (operation.equals("sectionpos_around_and_at_block_pos")) {
             result.add("value", sectionPosAroundAndAtBlockPos(request));
+        } else if (operation.equals("sectionpos_double_coordinates")) {
+            double value = f64(request, "value");
+            String fn = request.get("fn").getAsString();
+            int out = switch (fn) {
+                case "pos_to_section" -> SectionPos.posToSectionCoord(value);
+                case "block_to_section" -> SectionPos.blockToSectionCoord(value);
+                default -> throw new IllegalArgumentException("Unknown SectionPos double coordinate function");
+            };
+            result.addProperty("value", Integer.toString(out));
         } else if (operation.equals("chunkpos_validity")) {
             ChunkPos pos = chunkPos(request);
             result.add("value", chunkPosValidity(pos));

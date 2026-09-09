@@ -40,4 +40,4 @@ cargo build --locked --offline --example behavior_adapter
 python3 tools/behavior/run.py compare --family math --adapter target/debug/examples/behavior_adapter
 ```
 
-Bu dilimin altı senaryosunu içeren math referans kimliği `1209dbe51a271188f3d745fe39b8854d0bed606525a2c1744f5d46c696907e5b`'dir. Birleşik altı aile referansı `b28d88fa06544e5713186c8c0c44bacbc4c7be8b946c7932a025574a1b3b2126` ile doğrulanmıştır. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.
+Bu dilimin altı senaryosunu içeren math referans kimliği `1209dbe51a271188f3d745fe39b8854d0bed606525a2c1744f5d46c696907e5b`'dir. Birleşik altı aile referansı `7a79765a9b449a8ea9c09f049a1ab917958fff879c31b1058ce2f4b8dd3208ab` ile doğrulanmıştır. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.

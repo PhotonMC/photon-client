@@ -501,6 +501,18 @@ def math_cases():
         yield {"case_id": f"sectionpos/around-and-at/{label}", "family": "math",
                "operation": "sectionpos_around_and_at_block_pos", **values}
 
+    sectionpos_double_coordinates = {
+        "pos-positive-boundary": {"fn": "pos_to_section", "value": "4030000000000000"},
+        "pos-negative-subnormal": {"fn": "pos_to_section", "value": "8000000000000001"},
+        "pos-maximum-finite": {"fn": "pos_to_section", "value": "7fefffffffffffff"},
+        "block-positive-fraction": {"fn": "block_to_section", "value": "403fffffffffffff"},
+        "block-negative-boundary": {"fn": "block_to_section", "value": "c030000000000001"},
+        "block-nan": {"fn": "block_to_section", "value": "7ff8000000000001"},
+    }
+    for label, values in sectionpos_double_coordinates.items():
+        yield {"case_id": f"sectionpos/double-coordinates/{label}", "family": "math",
+               "operation": "sectionpos_double_coordinates", **values}
+
     chunkpos_validity = {
         "origin": {"x": "0", "z": "0"},
         "boundary": {"x": "2097061", "z": "-2097061"},

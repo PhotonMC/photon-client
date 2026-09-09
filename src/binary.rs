@@ -770,6 +770,16 @@ impl SectionPos {
         Self::as_long_coordinates(self.x, self.y, self.z)
     }
 
+    /// Convert a double block position to the section coordinate containing it.
+    pub fn pos_to_section_coord(pos: f64) -> i32 {
+        math::block_to_section_coord(math::floor_f64(pos))
+    }
+
+    /// Convert a double block coordinate to its section coordinate.
+    pub fn block_to_section_coord_f64(coord: f64) -> i32 {
+        math::block_to_section_coord(math::floor_f64(coord))
+    }
+
     /// Offset a packed section node by a cardinal direction's step.
     pub fn offset_packed(section_node: u64, direction: Direction) -> u64 {
         let (step_x, step_y, step_z) = direction.step();

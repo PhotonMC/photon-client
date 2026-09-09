@@ -8,13 +8,13 @@ Java 25.0.4.1 ve Rust 1.98.1 / Linux x86_64 ortamında:
 
 - BlockPos'tan containing/pack için 6 özgün senaryo hazırlandı.
 - Pozitif ve negatif 16'lık sınırlar, mixed x/z, signed i32 uçları, y'nin etkisizliği ve packed unsigned hex metni Java sonucu ile eşleşti.
-- Rust debug ve release adaptörleri güncel **1040/1040** math senaryosunda eşleşti.
-- Birleşik altı aile corpus'u **1542/1542** senaryoda hem debug hem release adaptörüyle eşleşti.
-- `verify` çalıştırması kayıtlı 1542 senaryoluk Java referansını yeniden doğruladı.
+- Rust debug ve release adaptörleri güncel **1046/1046** math senaryosunda eşleşti.
+- Birleşik altı aile corpus'u **1548/1548** senaryoda hem debug hem release adaptörüyle eşleşti.
+- `verify` çalıştırması kayıtlı 1548 senaryoluk Java referansını yeniden doğruladı.
 
-Math referans kimliği: `a21163be0f5e47c3d99a4468d2f3b67c6d04d0dcee95ca6b70f49b581fac358c`. Birleşik referans kimliği: `b28d88fa06544e5713186c8c0c44bacbc4c7be8b946c7932a025574a1b3b2126`.
+Math referans kimliği: `bd99eadfa488c44d624d410a441fe8b99d4485c7236dd276609af1edc3394f3b`. Birleşik referans kimliği: `7a79765a9b449a8ea9c09f049a1ab917958fff879c31b1058ce2f4b8dd3208ab`.
 
-Yerel raporlar: `compare-_rqqaqfb` (math debug), `compare-v1ltm6cc` (math release), `compare-1lz8q4ar` (birleşik debug), `compare-fvdcbn0r` (birleşik release) ve `verify-nud8oh4e` kayıtlı referans doğrulamasında, `.data/runs/behavior/` altında bulunur.
+Yerel raporlar: `compare-m8v98wom` (math debug), `compare-4i19c_i3` (math release), `compare-p7m9abjy` (birleşik debug), `compare-vvlbkmvf` (birleşik release) ve `verify-_w4izisu` kayıtlı referans doğrulamasında, `.data/runs/behavior/` altında bulunur.
 
 ## Sınırlar
 

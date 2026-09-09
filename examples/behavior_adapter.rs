@@ -2196,6 +2196,15 @@ fn math_result(request: &Value) -> Result<Value, String> {
             "value": sectionpos_nodes_snapshot(section_nodes),
         }));
     }
+    if operation == "sectionpos_double_coordinates" {
+        let value = f64_field(request, "value")?;
+        let result = match string(request, "fn")? {
+            "pos_to_section" => SectionPos::pos_to_section_coord(value),
+            "block_to_section" => SectionPos::block_to_section_coord_f64(value),
+            _ => return Err("unknown SectionPos double coordinate function".into()),
+        };
+        return Ok(json!({"value": result.to_string()}));
+    }
     if operation == "chunkpos_validity" {
         return Ok(json!({
             "value": chunkpos_validity_snapshot(chunkpos(request)?),
