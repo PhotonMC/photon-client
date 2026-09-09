@@ -709,6 +709,21 @@ def math_cases():
            "first": vector2_bits(-1.5, 2.25), "value": float_bits(0.5)}
     yield {"case_id": "vec2/add/scalar-special-values", "family": "math", "operation": "vec2_add_scalar",
            "first": {"x": "7f800000", "y": float_bits(2.0)}, "value": "ff800000"}
+    yield {"case_id": "vec2/distance-to-sqr/vector-basic", "family": "math",
+           "operation": "vec2_distance_to_sqr", "first": vector2_bits(1.25, -2.5),
+           "second": vector2_bits(4.5, -1.0)}
+    yield {"case_id": "vec2/distance-to-sqr/order-and-rounding", "family": "math",
+           "operation": "vec2_distance_to_sqr", "first": vector2_bits(0.0, 0.0),
+           "second": vector2_bits(2.0 ** 12, 1.1)}
+    yield {"case_id": "vec2/distance-to-sqr/signed-zero", "family": "math",
+           "operation": "vec2_distance_to_sqr", "first": vector2_bits(-0.0, -0.0),
+           "second": vector2_bits(0.0, 0.0)}
+    yield {"case_id": "vec2/distance-to-sqr/overflow", "family": "math",
+           "operation": "vec2_distance_to_sqr", "first": vector2_bits(0.0, 0.0),
+           "second": {"x": "7f7fffff", "y": "7f7fffff"}}
+    yield {"case_id": "vec2/distance-to-sqr/special-values", "family": "math",
+           "operation": "vec2_distance_to_sqr", "first": vector2_bits(0.0, 0.0),
+           "second": {"x": "7f800000", "y": "7fc00002"}}
     for name in ("down", "up", "north", "south", "west", "east"):
         yield {"case_id": f"direction/properties/{name}", "family": "math", "operation": "direction",
                "name": name, "steps": []}

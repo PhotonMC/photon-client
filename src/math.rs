@@ -34,6 +34,12 @@ impl Vec2 {
         Self::new(java_f32_add(self.x, value), java_f32_add(self.y, value))
     }
 
+    pub fn distance_to_sqr(self, other: Self) -> f32 {
+        let xd = other.x - self.x;
+        let yd = other.y - self.y;
+        java_f32_add(xd * xd, yd * yd)
+    }
+
     pub fn length_squared(self) -> f32 {
         // Do not fuse the multiplication and addition or substitute hypot:
         // intermediate f32 rounding/overflow is observable in the reference.

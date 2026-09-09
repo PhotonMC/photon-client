@@ -1891,6 +1891,15 @@ fn math_result(request: &Value) -> Result<Value, String> {
             "value": vec2_snapshot(first.add_scalar(f32_field(request, "value")?)),
         }));
     }
+    if operation == "vec2_distance_to_sqr" {
+        let first = request.get("first").ok_or("first must be an object")?;
+        let second = request.get("second").ok_or("second must be an object")?;
+        let first = Vec2::new(f32_field(first, "x")?, f32_field(first, "y")?);
+        let second = Vec2::new(f32_field(second, "x")?, f32_field(second, "y")?);
+        return Ok(json!({
+            "value": format!("{:08x}", first.distance_to_sqr(second).to_bits()),
+        }));
+    }
     match string(request, "type")? {
         "f32" => {
             let value = f32_field(request, "value")?;
