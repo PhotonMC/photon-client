@@ -37,6 +37,6 @@ Yeni kimlik, önceki random/Gaussian kayıtlarının üzerine yazmadan oluşturu
 
 334 math senaryosu iki ayrı JVM'de aynı sonucu verdi. Math referans kimliği: `aed4472ff0ba0e85f3a9ae2fe61132e8abf7af4145d0d28fcac8a64bb06fedb4`.
 
-Rust debug ve release adaptörleri math ailesinde **334/334**, birleşik corpus'ta **1055/1055** eşleşti. Yerel raporlar `compare-vzri6usr` (math debug), `compare-03cd0hof` (math release), `compare-9k3hskia` (birleşik debug) ve `compare-yw9njwwe` (birleşik release) dizinlerinde, `.data/runs/behavior/` altında bulunur.
+Rust debug ve release adaptörleri math ailesinde **334/334**, birleşik corpus'ta **1058/1058** eşleşti. Yerel raporlar `compare-vzri6usr` (math debug), `compare-03cd0hof` (math release), `compare-ngv2kroy` (birleşik debug) ve `compare-r5i49tld` (birleşik release) dizinlerinde, `.data/runs/behavior/` altında bulunur.
 
 Bu sözleşme legacy `fork` ve positional factory'nin seçili yollarıyla sınırlıdır. Xoroshiro/ThreadSafe kaynakları, `Identifier` overload'ları ve istemcinin daha geniş random tüketim sıraları sonraki testlerdir; `setSeed` sonrası Gaussian cache temizleme için ayrı [kanıt](random-set-seed-parity.md) vardır.

@@ -199,6 +199,21 @@ public final class MathOracle {
                     edges.add(edge);
                 });
                 result.add("edges", edges);
+            } else if (kind.equals("join_coords")) {
+                VoxelShape first = voxelShape(request.getAsJsonObject("first"));
+                VoxelShape second = voxelShape(request.getAsJsonObject("second"));
+                BooleanOp op = switch (request.get("op").getAsString()) {
+                    case "or" -> BooleanOp.OR;
+                    case "only_first" -> BooleanOp.ONLY_FIRST;
+                    case "only_second" -> BooleanOp.ONLY_SECOND;
+                    case "and" -> BooleanOp.AND;
+                    case "not_same" -> BooleanOp.NOT_SAME;
+                    case "first" -> BooleanOp.FIRST;
+                    case "second" -> BooleanOp.SECOND;
+                    default -> throw new IllegalArgumentException("Unknown VoxelShape boolean op");
+                };
+                result.add("unoptimized", snapshotWithCoords(Shapes.joinUnoptimized(first, second, op)));
+                result.add("optimized", snapshotWithCoords(Shapes.join(first, second, op)));
             } else if (kind.equals("axis_limits")) {
                 var entries = request.getAsJsonArray("shapes");
                 if (entries == null || entries.size() == 0) {

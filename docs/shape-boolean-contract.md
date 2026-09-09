@@ -1,6 +1,6 @@
 # P01.d — VoxelShape BooleanOp join sözleşmesi
 
-Bu sözleşmede **8 Java davranış testi hazırdır ve Rust karşılığı doğrulanmıştır** ([kanıt](shape-boolean-parity.md)). Kapsam, `Shapes.join` ve `Shapes.joinIsNotEmpty` çağrılarında Java'nın kabul ettiği `BooleanOp.FALSE`, `OR`, `AND`, `ONLY_FIRST`, `ONLY_SECOND`, `NOT_SAME`, `FIRST` ve `SECOND` dallarını içerir. Box üretimi ve taşıma için [temel shape sözleşmesi](shape-contract.md) geçerlidir. Üç veya daha fazla shape'in varargs OR birleşimi ayrı [varargs sözleşmesinde](shape-or-many-contract.md) ele alınır.
+Bu sözleşmede **8 Java davranış testi hazırdır ve Rust karşılığı doğrulanmıştır** ([kanıt](shape-boolean-parity.md)). Kapsam, `Shapes.join` ve `Shapes.joinIsNotEmpty` çağrılarında Java'nın kabul ettiği `BooleanOp.FALSE`, `OR`, `AND`, `ONLY_FIRST`, `ONLY_SECOND`, `NOT_SAME`, `FIRST` ve `SECOND` dallarını içerir. Box üretimi ve taşıma için [temel shape sözleşmesi](shape-contract.md) geçerlidir. Üç veya daha fazla shape'in varargs OR birleşimi ayrı [varargs sözleşmesinde](shape-or-many-contract.md) ele alınır. `join` ile `joinUnoptimized` coordinate plane farkı ayrı [sözleşmede](shape-join-unoptimized-contract.md) ele alınır.
 
 ## Kaynak ve sınır
 
@@ -39,6 +39,6 @@ cargo build --locked --offline --example behavior_adapter
 python3 tools/behavior/run.py compare --family math --adapter target/debug/examples/behavior_adapter
 ```
 
-BooleanOp senaryolarını içeren math referans kimliği `a76b7eaed8646c9469410bc3c88b48be54654ae35d49dcea4d88d7e3ba8904b7` oldu. Bu referans iki JVM çalıştırmasıyla kararlı bulundu. Birleşik altı aile referansı `716f0b454b3848994e9afd84c60130e20d821311c22b7c1e80590008852fda52` kimliğiyle iki JVM'de doğrulandı.
+BooleanOp senaryolarını içeren math referans kimliği `a76b7eaed8646c9469410bc3c88b48be54654ae35d49dcea4d88d7e3ba8904b7` oldu. Bu referans iki JVM çalıştırmasıyla kararlı bulundu. Birleşik altı aile referansı `b251a60111607ad28c03f7396010655e88be4532d7dc3f048d4f3db054fce03e` kimliğiyle iki JVM'de doğrulandı.
 
-Rust debug ve release adaptörleri math ailesinde 361/361, birleşik corpus'ta 1055/1055 eşleşti. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.
+Rust debug ve release adaptörleri math ailesinde 361/361, birleşik corpus'ta 1058/1058 eşleşti. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.

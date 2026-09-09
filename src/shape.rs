@@ -256,7 +256,7 @@ impl VoxelShape {
             optimized = if optimized.is_empty() {
                 box_shape
             } else {
-                Shapes::join(&optimized, &box_shape, BooleanOp::Or)
+                Shapes::join_unoptimized(&optimized, &box_shape, BooleanOp::Or)
             };
         }
         optimized
@@ -906,8 +906,42 @@ impl Shapes {
             .fold(first.clone(), |joined, shape| Self::or(&joined, shape))
     }
 
-    /// Join two shapes with one of the supported Boolean operations.
+    /// Join two shapes and normalize the result through Java's optimize path.
     pub fn join(first: &VoxelShape, second: &VoxelShape, operation: BooleanOp) -> VoxelShape {
+        Self::join_unoptimized(first, second, operation).optimize()
+    }
+
+    /// Join two shapes while preserving the merged coordinate grid.
+    pub fn join_unoptimized(
+        first: &VoxelShape,
+        second: &VoxelShape,
+        operation: BooleanOp,
+    ) -> VoxelShape {
+        if std::ptr::eq(first, second) {
+            return if operation.apply(true, true) {
+                first.clone()
+            } else {
+                Self::empty()
+            };
+        }
+
+        let first_only_matters = operation.apply(true, false);
+        let second_only_matters = operation.apply(false, true);
+        if first.is_empty() {
+            return if second_only_matters {
+                second.clone()
+            } else {
+                Self::empty()
+            };
+        }
+        if second.is_empty() {
+            return if first_only_matters {
+                first.clone()
+            } else {
+                Self::empty()
+            };
+        }
+
         let xs = merged_coords(&first.xs, &second.xs);
         let ys = merged_coords(&first.ys, &second.ys);
         let zs = merged_coords(&first.zs, &second.zs);

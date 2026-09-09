@@ -628,7 +628,9 @@ fn shape_result(request: &Value) -> Result<Value, String> {
                 .iter()
                 .map(shape_box)
                 .collect::<Result<Vec<_>, _>>()?;
-            let joined = Shapes::or_many(&first, &tail);
+            let joined = tail.iter().fold(first.clone(), |joined, shape| {
+                Shapes::join_unoptimized(&joined, shape, BooleanOp::Or)
+            });
             Ok(json!({
                 "events": [
                     shape_snapshot_with_coords(&joined),
@@ -663,6 +665,26 @@ fn shape_result(request: &Value) -> Result<Value, String> {
                 ]);
             });
             Ok(json!({"edges": edges}))
+        }
+        "join_coords" => {
+            let operation = match string(request, "op")? {
+                "or" => BooleanOp::Or,
+                "and" => BooleanOp::And,
+                "only_first" => BooleanOp::OnlyFirst,
+                "only_second" => BooleanOp::OnlySecond,
+                "not_same" => BooleanOp::NotSame,
+                "second" => BooleanOp::Second,
+                "first" => BooleanOp::First,
+                _ => return Err("unknown VoxelShape boolean operation".into()),
+            };
+            let first = shape_box(request.get("first").ok_or("first must be an object")?)?;
+            let second = shape_box(request.get("second").ok_or("second must be an object")?)?;
+            let unoptimized = Shapes::join_unoptimized(&first, &second, operation);
+            let optimized = Shapes::join(&first, &second, operation);
+            Ok(json!({
+                "unoptimized": shape_snapshot_with_coords(&unoptimized),
+                "optimized": shape_snapshot_with_coords(&optimized),
+            }))
         }
         "axis_limits" => {
             let entries = request
