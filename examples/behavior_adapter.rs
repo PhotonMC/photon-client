@@ -602,6 +602,24 @@ fn shape_result(request: &Value) -> Result<Value, String> {
             }
             Ok(json!({"events": events}))
         }
+        "closest" => {
+            let shape = shape_box(request.get("shape").ok_or("shape must be an object")?)?;
+            let point = f64_vec3(request.get("point").ok_or("point must be an object")?)?;
+            Ok(match shape.closest_point_to(point) {
+                Some(point) => json!({"point": vec3_snapshot(point)}),
+                None => json!({}),
+            })
+        }
+        "closest_join" => {
+            let first = shape_box(request.get("first").ok_or("first must be an object")?)?;
+            let second = shape_box(request.get("second").ok_or("second must be an object")?)?;
+            let shape = Shapes::join(&first, &second, BooleanOp::Or);
+            let point = f64_vec3(request.get("point").ok_or("point must be an object")?)?;
+            Ok(match shape.closest_point_to(point) {
+                Some(point) => json!({"point": vec3_snapshot(point)}),
+                None => json!({}),
+            })
+        }
         _ => Err("unknown VoxelShape kind".into()),
     }
 }

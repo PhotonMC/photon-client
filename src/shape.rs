@@ -2,13 +2,13 @@
 //!
 //! A shape stores coordinate planes and the occupied cells between them. This
 //! is enough to preserve Java's box, move, supported BooleanOp joins, single
-//! shape collision, VoxelShape clip hits, bounds, and box iteration behavior
+//! shape collision, VoxelShape clip hits, closest points, bounds, and box iteration behavior
 //! without choosing a broader collision representation yet.
 
 use crate::aabb::{Aabb, BlockHitResult};
 use crate::binary::BlockPos;
 use crate::direction::{Axis, Direction};
-use crate::math::Vec3;
+use crate::math::{Vec3, clamp_f64};
 
 const EPSILON: f64 = 1.0e-7;
 
@@ -269,6 +269,28 @@ impl VoxelShape {
         }
     }
 
+    /// Return the closest point in the shape, preserving box iteration ties.
+    pub fn closest_point_to(&self, point: Vec3) -> Option<Vec3> {
+        if self.is_empty() {
+            return None;
+        }
+
+        let mut closest = None;
+        for aabb in self.to_aabbs() {
+            let candidate = Vec3::new(
+                clamp_f64(point.x, aabb.min_x, aabb.max_x),
+                clamp_f64(point.y, aabb.min_y, aabb.max_y),
+                clamp_f64(point.z, aabb.min_z, aabb.max_z),
+            );
+            if closest.is_none_or(|current| {
+                point_distance_squared(point, candidate) < point_distance_squared(point, current)
+            }) {
+                closest = Some(candidate);
+            }
+        }
+        closest
+    }
+
     fn is_full(&self, x: usize, y: usize, z: usize) -> bool {
         self.cells[index(x, y, z, self.grid())]
     }
@@ -335,6 +357,13 @@ impl VoxelShape {
         let (x, y, z) = (x as usize, y as usize, z as usize);
         x < grid.x_size && y < grid.y_size && z < grid.z_size && self.is_full(x, y, z)
     }
+}
+
+fn point_distance_squared(first: Vec3, second: Vec3) -> f64 {
+    let dx = first.x - second.x;
+    let dy = first.y - second.y;
+    let dz = first.z - second.z;
+    dx * dx + dy * dy + dz * dz
 }
 
 /// Constructors and operations for voxel shapes.

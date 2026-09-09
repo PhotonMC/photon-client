@@ -914,6 +914,25 @@ def math_cases():
            "first": box_bits(0.0, 0.0, 0.0, 1.0, 1.0, 1.0),
            "second": box_bits(2.0, 0.0, 0.0, 3.0, 1.0, 1.0),
            "queries": [shape_clip_query((-1.0, 0.5, 0.5), (4.0, 0.5, 0.5))]}
+    yield {"case_id": "shape/closest/empty", "family": "math", "operation": "shape", "kind": "closest",
+           "shape": box_bits(0.0, 0.0, 0.0, 0.00000005, 1.0, 1.0),
+           "point": point(0.5, 0.5, 0.5)}
+    yield {"case_id": "shape/closest/inside", "family": "math", "operation": "shape", "kind": "closest",
+           "shape": box_bits(0.0, 0.0, 0.0, 1.0, 1.0, 1.0),
+           "point": point(0.5, 0.5, 0.5)}
+    yield {"case_id": "shape/closest/axis-clamp", "family": "math", "operation": "shape", "kind": "closest",
+           "shape": box_bits(0.25, 0.25, 0.25, 0.75, 0.75, 0.75),
+           "point": point(-1.0, 0.5, 0.5)}
+    yield {"case_id": "shape/closest/diagonal-clamp", "family": "math", "operation": "shape", "kind": "closest",
+           "shape": box_bits(0.0, 0.0, 0.0, 1.0, 1.0, 1.0),
+           "point": point(2.0, -1.0, 3.0)}
+    yield {"case_id": "shape/closest/join-tie", "family": "math", "operation": "shape", "kind": "closest_join",
+           "first": box_bits(0.0, 0.0, 0.0, 1.0, 1.0, 1.0),
+           "second": box_bits(2.0, 0.0, 0.0, 3.0, 1.0, 1.0),
+           "point": point(1.5, 0.5, 0.5)}
+    yield {"case_id": "shape/closest/translated-box", "family": "math", "operation": "shape", "kind": "closest",
+           "shape": box_bits(-2.0, -3.0, 4.0, -1.0, -1.0, 6.0),
+           "point": point(-4.0, -5.0, 8.0)}
     def bounding_box(min_x, min_y, min_z, max_x, max_y, max_z):
         return {"min_x": str(min_x), "min_y": str(min_y), "min_z": str(min_z),
                 "max_x": str(max_x), "max_y": str(max_y), "max_z": str(max_z)}

@@ -178,6 +178,18 @@ public final class MathOracle {
                         blockPos(query.getAsJsonObject("pos")))));
                 }
                 result.add("events", events);
+            } else if (kind.equals("closest")) {
+                VoxelShape shape = voxelShape(request.getAsJsonObject("shape"));
+                var closest = shape.closestPointTo(vec3(request.getAsJsonObject("point")));
+                result.add("point", closest.isPresent()
+                    ? snapshot(closest.get()) : com.google.gson.JsonNull.INSTANCE);
+            } else if (kind.equals("closest_join")) {
+                VoxelShape first = voxelShape(request.getAsJsonObject("first"));
+                VoxelShape second = voxelShape(request.getAsJsonObject("second"));
+                VoxelShape shape = Shapes.join(first, second, BooleanOp.OR);
+                var closest = shape.closestPointTo(vec3(request.getAsJsonObject("point")));
+                result.add("point", closest.isPresent()
+                    ? snapshot(closest.get()) : com.google.gson.JsonNull.INSTANCE);
             } else {
                 throw new IllegalArgumentException("Unknown VoxelShape kind");
             }
