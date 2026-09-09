@@ -289,6 +289,47 @@ impl ChunkPos {
     pub fn get_max_block_z(self) -> i32 {
         self.get_block_z(15)
     }
+
+    /// Return the arithmetic-shifted region x coordinate.
+    pub fn get_region_x(self) -> i32 {
+        self.x >> 5
+    }
+
+    /// Return the arithmetic-shifted region z coordinate.
+    pub fn get_region_z(self) -> i32 {
+        self.z >> 5
+    }
+
+    /// Return the region x coordinate from a packed ChunkPos.
+    pub fn get_region_x_from_packed(packed: u64) -> i32 {
+        Self::unpack(packed).get_region_x()
+    }
+
+    /// Return the region z coordinate from a packed ChunkPos.
+    pub fn get_region_z_from_packed(packed: u64) -> i32 {
+        Self::unpack(packed).get_region_z()
+    }
+
+    /// Return the chunk's x index inside its 32-by-32 region.
+    pub fn get_region_local_x(self) -> i32 {
+        self.x & 31
+    }
+
+    /// Return the chunk's z index inside its 32-by-32 region.
+    pub fn get_region_local_z(self) -> i32 {
+        self.z & 31
+    }
+
+    /// Return the first chunk in a region using Java i32 shift wrapping.
+    pub fn min_from_region(region_x: i32, region_z: i32) -> Self {
+        Self::new(region_x.wrapping_shl(5), region_z.wrapping_shl(5))
+    }
+
+    /// Return the last chunk in a region using Java i32 add wrapping.
+    pub fn max_from_region(region_x: i32, region_z: i32) -> Self {
+        let min = Self::min_from_region(region_x, region_z);
+        Self::new(min.x.wrapping_add(31), min.z.wrapping_add(31))
+    }
 }
 
 /// Read 16 bytes as UUID. A short second half leaves the first half consumed.

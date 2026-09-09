@@ -120,6 +120,18 @@ def math_cases():
         yield {"case_id": f"chunkpos/block-coordinates/{label}", "family": "math",
                "operation": "chunkpos_block_coordinates", **values}
 
+    chunkpos_region_coordinates = {
+        "origin": {"x": "0", "z": "0", "region_x": "0", "region_z": "0"},
+        "positive-boundary": {"x": "31", "z": "32", "region_x": "1", "region_z": "2"},
+        "negative-boundary": {"x": "-1", "z": "-32", "region_x": "-1", "region_z": "-2"},
+        "mixed": {"x": "-33", "z": "63", "region_x": "67108863", "region_z": "-67108864"},
+        "shift-wrap": {"x": "134217728", "z": "-134217729", "region_x": "67108864", "region_z": "-67108865"},
+        "coordinate-boundaries": {"x": "2147483647", "z": "-2147483648", "region_x": "-67108864", "region_z": "67108863"},
+    }
+    for label, values in chunkpos_region_coordinates.items():
+        yield {"case_id": f"chunkpos/region-coordinates/{label}", "family": "math",
+               "operation": "chunkpos_region_coordinates", **values}
+
     vectors = {f"direction-{x}-{y}": (float_bits(x), float_bits(y))
                for x in (-1, 0, 1) for y in (-1, 0, 1)}
     vectors.update({"negative-zero": ("80000000", "80000000"),

@@ -235,6 +235,19 @@ fn chunkpos_block_coordinates_snapshot(value: ChunkPos, offset: i32) -> Value {
     })
 }
 
+fn chunkpos_region_coordinates_snapshot(value: ChunkPos, region_x: i32, region_z: i32) -> Value {
+    json!({
+        "region_x": value.get_region_x().to_string(),
+        "region_z": value.get_region_z().to_string(),
+        "packed_region_x": ChunkPos::get_region_x_from_packed(value.pack()).to_string(),
+        "packed_region_z": ChunkPos::get_region_z_from_packed(value.pack()).to_string(),
+        "region_local_x": value.get_region_local_x().to_string(),
+        "region_local_z": value.get_region_local_z().to_string(),
+        "min_from_region": chunkpos_snapshot(ChunkPos::min_from_region(region_x, region_z)),
+        "max_from_region": chunkpos_snapshot(ChunkPos::max_from_region(region_x, region_z)),
+    })
+}
+
 fn blockpos_result(request: &Value) -> Result<Value, String> {
     let mut value = blockpos(request)?;
     let mut events = vec![blockpos_snapshot(value)];
@@ -1719,6 +1732,18 @@ fn math_result(request: &Value) -> Result<Value, String> {
             .map_err(|error| error.to_string())?;
         return Ok(json!({
             "value": chunkpos_block_coordinates_snapshot(value, offset),
+        }));
+    }
+    if operation == "chunkpos_region_coordinates" {
+        let value = chunkpos(request)?;
+        let region_x = string(request, "region_x")?
+            .parse::<i32>()
+            .map_err(|error| error.to_string())?;
+        let region_z = string(request, "region_z")?
+            .parse::<i32>()
+            .map_err(|error| error.to_string())?;
+        return Ok(json!({
+            "value": chunkpos_region_coordinates_snapshot(value, region_x, region_z),
         }));
     }
     if operation == "vec2" {

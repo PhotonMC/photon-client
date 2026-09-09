@@ -129,6 +129,11 @@ public final class MathOracle {
             ChunkPos pos = chunkPos(request);
             int offset = Integer.parseInt(request.get("offset").getAsString());
             result.add("value", chunkPosBlockCoordinates(pos, offset));
+        } else if (operation.equals("chunkpos_region_coordinates")) {
+            ChunkPos pos = chunkPos(request);
+            int regionX = Integer.parseInt(request.get("region_x").getAsString());
+            int regionZ = Integer.parseInt(request.get("region_z").getAsString());
+            result.add("value", chunkPosRegionCoordinates(pos, regionX, regionZ));
         } else if (operation.equals("vec3")) {
             Vec3 vector = new Vec3(f64(request, "x"), f64(request, "y"), f64(request, "z"));
             var events = new JsonArray();
@@ -1300,6 +1305,19 @@ public final class MathOracle {
         state.addProperty("max_block_z", Integer.toString(pos.getMaxBlockZ()));
         state.addProperty("block_x", Integer.toString(pos.getBlockX(offset)));
         state.addProperty("block_z", Integer.toString(pos.getBlockZ(offset)));
+        return state;
+    }
+
+    private static JsonObject chunkPosRegionCoordinates(ChunkPos pos, int regionX, int regionZ) {
+        var state = new JsonObject();
+        state.addProperty("region_x", Integer.toString(pos.getRegionX()));
+        state.addProperty("region_z", Integer.toString(pos.getRegionZ()));
+        state.addProperty("packed_region_x", Integer.toString(ChunkPos.getRegionX(pos.pack())));
+        state.addProperty("packed_region_z", Integer.toString(ChunkPos.getRegionZ(pos.pack())));
+        state.addProperty("region_local_x", Integer.toString(pos.getRegionLocalX()));
+        state.addProperty("region_local_z", Integer.toString(pos.getRegionLocalZ()));
+        state.add("min_from_region", snapshot(ChunkPos.minFromRegion(regionX, regionZ)));
+        state.add("max_from_region", snapshot(ChunkPos.maxFromRegion(regionX, regionZ)));
         return state;
     }
 
