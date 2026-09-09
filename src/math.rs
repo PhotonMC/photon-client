@@ -12,6 +12,15 @@ pub struct Vec2 {
 }
 impl Vec2 {
     pub const ZERO: Self = Self::new(0.0, 0.0);
+    pub const ONE: Self = Self::new(1.0, 1.0);
+    pub const UNIT_X: Self = Self::new(1.0, 0.0);
+    pub const NEG_UNIT_X: Self = Self::new(-1.0, 0.0);
+    pub const UNIT_Y: Self = Self::new(0.0, 1.0);
+    pub const NEG_UNIT_Y: Self = Self::new(0.0, -1.0);
+    pub const MAX: Self = Self::new(f32::MAX, f32::MAX);
+    // Java Float.MIN_VALUE is the smallest positive subnormal, not the
+    // smallest positive normal represented by Rust's f32::MIN_POSITIVE.
+    pub const MIN: Self = Self::new(f32::from_bits(1), f32::from_bits(1));
 
     pub const fn new(x: f32, y: f32) -> Self {
         Self { x, y }

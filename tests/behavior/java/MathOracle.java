@@ -287,6 +287,19 @@ public final class MathOracle {
             result.addProperty("equals", first.equals(second));
             result.addProperty("first_hash", Integer.toString(first.hashCode()));
             result.addProperty("second_hash", Integer.toString(second.hashCode()));
+        } else if (operation.equals("vec2_constant")) {
+            Vec2 value = switch (request.get("name").getAsString()) {
+                case "zero" -> Vec2.ZERO;
+                case "one" -> Vec2.ONE;
+                case "unit_x" -> Vec2.UNIT_X;
+                case "neg_unit_x" -> Vec2.NEG_UNIT_X;
+                case "unit_y" -> Vec2.UNIT_Y;
+                case "neg_unit_y" -> Vec2.NEG_UNIT_Y;
+                case "max" -> Vec2.MAX;
+                case "min" -> Vec2.MIN;
+                default -> throw new IllegalArgumentException("Unknown Vec2 constant");
+            };
+            result.add("value", snapshot(value));
         } else if (operation.equals("shape")) {
             String kind = request.get("kind").getAsString();
             if (kind.equals("single")) {

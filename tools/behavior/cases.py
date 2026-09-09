@@ -750,6 +750,9 @@ def math_cases():
     yield {"case_id": "vec2/equality/special-mismatch", "family": "math", "operation": "vec2_equality",
            "first": {"x": "7f800000", "y": "7fc00001"},
            "second": {"x": "ff800000", "y": "7fc00002"}}
+    for name in ("zero", "one", "unit_x", "neg_unit_x", "unit_y", "neg_unit_y", "max", "min"):
+        yield {"case_id": f"vec2/constants/{name}", "family": "math", "operation": "vec2_constant",
+               "name": name}
     for name in ("down", "up", "north", "south", "west", "east"):
         yield {"case_id": f"direction/properties/{name}", "family": "math", "operation": "direction",
                "name": name, "steps": []}

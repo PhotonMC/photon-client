@@ -1918,6 +1918,20 @@ fn math_result(request: &Value) -> Result<Value, String> {
             "second_hash": second.hash_code_java().to_string(),
         }));
     }
+    if operation == "vec2_constant" {
+        let value = match string(request, "name")? {
+            "zero" => Vec2::ZERO,
+            "one" => Vec2::ONE,
+            "unit_x" => Vec2::UNIT_X,
+            "neg_unit_x" => Vec2::NEG_UNIT_X,
+            "unit_y" => Vec2::UNIT_Y,
+            "neg_unit_y" => Vec2::NEG_UNIT_Y,
+            "max" => Vec2::MAX,
+            "min" => Vec2::MIN,
+            _ => return Err("unknown Vec2 constant".into()),
+        };
+        return Ok(json!({"value": vec2_snapshot(value)}));
+    }
     match string(request, "type")? {
         "f32" => {
             let value = f32_field(request, "value")?;
