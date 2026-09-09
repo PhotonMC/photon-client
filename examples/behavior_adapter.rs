@@ -612,6 +612,28 @@ fn aabb_result(request: &Value) -> Result<Value, String> {
                     "hit": value.collided_along_vector(vector, &boxes),
                 }));
             }
+            "from_block_pos" => {
+                let position = blockpos(step.get("position").ok_or("position must be an object")?)?;
+                value = Aabb::from_block_pos(position);
+                events.push(aabb_snapshot(value));
+            }
+            "from_vec3" => {
+                let begin = f64_vec3(step.get("begin").ok_or("begin must be an object")?)?;
+                let end = f64_vec3(step.get("end").ok_or("end must be an object")?)?;
+                value = Aabb::from_vec3(begin, end);
+                events.push(aabb_snapshot(value));
+            }
+            "unit_cube_from_lower_corner" => {
+                let position = f64_vec3(step.get("position").ok_or("position must be an object")?)?;
+                value = Aabb::unit_cube_from_lower_corner(position);
+                events.push(aabb_snapshot(value));
+            }
+            "encapsulating_full_blocks" => {
+                let first = blockpos(step.get("first").ok_or("first must be an object")?)?;
+                let second = blockpos(step.get("second").ok_or("second must be an object")?)?;
+                value = Aabb::encapsulating_full_blocks(first, second);
+                events.push(aabb_snapshot(value));
+            }
             "intersects" => {
                 let other = aabb_box(step.get("box").ok_or("box must be an object")?)?;
                 events.push(json!({"hit": value.intersects(other)}));

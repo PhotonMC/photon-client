@@ -241,6 +241,27 @@ public final class MathOracle {
                             vec3(step.getAsJsonObject("vector")), boxes));
                         events.add(state);
                     }
+                    case "from_block_pos" -> {
+                        box = new AABB(blockPos(step.getAsJsonObject("position")));
+                        events.add(snapshot(box));
+                    }
+                    case "from_vec3" -> {
+                        box = new AABB(
+                            vec3(step.getAsJsonObject("begin")),
+                            vec3(step.getAsJsonObject("end")));
+                        events.add(snapshot(box));
+                    }
+                    case "unit_cube_from_lower_corner" -> {
+                        box = AABB.unitCubeFromLowerCorner(
+                            vec3(step.getAsJsonObject("position")));
+                        events.add(snapshot(box));
+                    }
+                    case "encapsulating_full_blocks" -> {
+                        box = AABB.encapsulatingFullBlocks(
+                            blockPos(step.getAsJsonObject("first")),
+                            blockPos(step.getAsJsonObject("second")));
+                        events.add(snapshot(box));
+                    }
                     case "intersect" -> {
                         box = box.intersect(box(step.getAsJsonObject("box")));
                         events.add(snapshot(box));

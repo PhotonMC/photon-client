@@ -384,6 +384,39 @@ def math_cases():
            **box_bits(0.0, 0.0, 0.0, 0.00000001, 0.00000001, 0.00000001),
            "steps": [{"op": "collided_along_vector", "vector": vector_bits(1.0, 0.0, 0.0),
                       "boxes": [box_bits(0.5, 0.0, 0.0, 0.6, 1.0, 1.0)]}]}
+    yield {"case_id": "aabb/constructor/block-pos", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "from_block_pos", "position": block_position(-2, 3, 4)},
+                              {"op": "from_block_pos", "position": block_position(2147483647, -2147483648, 0)}]}
+    yield {"case_id": "aabb/constructor/vec3", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "from_vec3", "begin": vector_bits(3.0, -2.0, 1.0),
+                               "end": vector_bits(-4.0, 5.0, -6.0)},
+                              {"op": "from_vec3", "begin": vector_bits(-0.0, 0.0, -0.0),
+                               "end": vector_bits(0.0, -0.0, 0.0)},
+                              {"op": "from_vec3", "begin": vector_bits(float("inf"), -float("inf"), float("nan")),
+                               "end": vector_bits(0.0, 1.0, 2.0)}]}
+    yield {"case_id": "aabb/constructor/unit-cube", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "unit_cube_from_lower_corner", "position": vector_bits(1.25, -2.5, 0.125)},
+                              {"op": "unit_cube_from_lower_corner", "position": vector_bits(-0.0, 0.0, -0.0)},
+                              {"op": "unit_cube_from_lower_corner", "position": vector_bits(float("inf"), -float("inf"), float("nan"))}]}
+    yield {"case_id": "aabb/constructor/full-blocks", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "encapsulating_full_blocks", "first": block_position(-3, 4, 8),
+                               "second": block_position(2, -1, 5)},
+                              {"op": "encapsulating_full_blocks", "first": block_position(10, 20, 30),
+                               "second": block_position(-10, -20, -30)}]}
+    yield {"case_id": "aabb/constructor/full-blocks-overflow", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "encapsulating_full_blocks",
+                               "first": block_position(2147483647, 2147483647, 2147483647),
+                               "second": block_position(2147483647, 2147483647, 2147483647)},
+                              {"op": "encapsulating_full_blocks",
+                               "first": block_position(-2147483648, -2147483648, -2147483648),
+                               "second": block_position(-2147483648, -2147483648, -2147483648)}]}
+    yield {"case_id": "aabb/constructor/chain", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "from_block_pos", "position": block_position(2, 3, 4)},
+                              {"op": "unit_cube_from_lower_corner", "position": vector_bits(-1.5, 0.25, 2.75)},
+                              {"op": "from_vec3", "begin": vector_bits(5.0, 6.0, 7.0),
+                               "end": vector_bits(1.0, 2.0, 3.0)},
+                              {"op": "encapsulating_full_blocks", "first": block_position(-2, -1, 0),
+                               "second": block_position(4, 5, 6)}]}
     yield {"case_id": "aabb/expand-deflate/unit", "family": "math", "operation": "aabb",
            **unit, "steps": [{"op": "expand", "x": float_bits(1.0, "f64"),
                               "y": float_bits(-0.5, "f64"), "z": float_bits(0.0, "f64")},

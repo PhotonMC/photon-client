@@ -1,6 +1,7 @@
 //! Axis-aligned bounding boxes for the first P01.d geometry slice.
 //!
-//! This covers the constructor normalization and the contains/intersects,
+//! This covers box constructors/production helpers, constructor normalization
+//! and the contains/intersects,
 //! expand-towards, contract, inflate, intersect, minmax, move, sizes, has_nan,
 //! positions, axis endpoint queries, `of_size`, endpoint setters, move overloads,
 //! deflate, segment clipping and center-segment collision operations used by the
@@ -32,6 +33,40 @@ impl Aabb {
             max_y: java_max(min_y, max_y),
             max_z: java_max(min_z, max_z),
         }
+    }
+
+    /// Construct the unit block represented by a BlockPos.
+    pub fn from_block_pos(pos: BlockPos) -> Self {
+        Self::new(
+            f64::from(pos.x),
+            f64::from(pos.y),
+            f64::from(pos.z),
+            f64::from(pos.x.wrapping_add(1)),
+            f64::from(pos.y.wrapping_add(1)),
+            f64::from(pos.z.wrapping_add(1)),
+        )
+    }
+
+    /// Construct a box from two double-precision vector endpoints.
+    pub fn from_vec3(begin: Vec3, end: Vec3) -> Self {
+        Self::new(begin.x, begin.y, begin.z, end.x, end.y, end.z)
+    }
+
+    /// Construct a unit cube from a double-precision lower corner.
+    pub fn unit_cube_from_lower_corner(pos: Vec3) -> Self {
+        Self::new(pos.x, pos.y, pos.z, pos.x + 1.0, pos.y + 1.0, pos.z + 1.0)
+    }
+
+    /// Enclose the full integer blocks between two BlockPos endpoints.
+    pub fn encapsulating_full_blocks(first: BlockPos, second: BlockPos) -> Self {
+        Self::new(
+            f64::from(first.x.min(second.x)),
+            f64::from(first.y.min(second.y)),
+            f64::from(first.z.min(second.z)),
+            f64::from(first.x.max(second.x).wrapping_add(1)),
+            f64::from(first.y.max(second.y).wrapping_add(1)),
+            f64::from(first.z.max(second.z).wrapping_add(1)),
+        )
     }
 
     /// Construct a box around a center using Java's per-axis half sizes.
