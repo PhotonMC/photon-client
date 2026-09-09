@@ -1793,6 +1793,25 @@ fn math_result(request: &Value) -> Result<Value, String> {
         let first = f64_vec3(request.get("first").ok_or("first must be an object")?)?;
         return Ok(json!({"value": vec3f_snapshot(first.to_vector3f())}));
     }
+    if operation == "vec3_coordinates" {
+        let pos = blockpos(request)?;
+        let value = match string(request, "kind")? {
+            "lower_corner" => Vec3::at_lower_corner_of(pos),
+            "lower_corner_offset" => Vec3::at_lower_corner_with_offset(
+                pos,
+                f64_field(request, "offset_x")?,
+                f64_field(request, "offset_y")?,
+                f64_field(request, "offset_z")?,
+            ),
+            "center" => Vec3::at_center_of(pos),
+            "bottom_center" => Vec3::at_bottom_center_of(pos),
+            "up_from_bottom_center" => {
+                Vec3::up_from_bottom_center_of(pos, f64_field(request, "y_offset")?)
+            }
+            _ => return Err("unknown Vec3 coordinate helper".into()),
+        };
+        return Ok(json!({"value": vec3_snapshot(value)}));
+    }
     match string(request, "type")? {
         "f32" => {
             let value = f32_field(request, "value")?;

@@ -202,6 +202,19 @@ public final class MathOracle {
         } else if (operation.equals("vec3_to_vector3f")) {
             Vec3 first = vec3(request.getAsJsonObject("first"));
             result.add("value", snapshot(first.toVector3f()));
+        } else if (operation.equals("vec3_coordinates")) {
+            BlockPos pos = blockPos(request);
+            String kind = request.get("kind").getAsString();
+            Vec3 value = switch (kind) {
+                case "lower_corner" -> Vec3.atLowerCornerOf(pos);
+                case "lower_corner_offset" -> Vec3.atLowerCornerWithOffset(
+                    pos, f64(request, "offset_x"), f64(request, "offset_y"), f64(request, "offset_z"));
+                case "center" -> Vec3.atCenterOf(pos);
+                case "bottom_center" -> Vec3.atBottomCenterOf(pos);
+                case "up_from_bottom_center" -> Vec3.upFromBottomCenterOf(pos, f64(request, "y_offset"));
+                default -> throw new IllegalArgumentException("Unknown Vec3 coordinate helper");
+            };
+            result.add("value", snapshot(value));
         } else if (operation.equals("shape")) {
             String kind = request.get("kind").getAsString();
             if (kind.equals("single")) {

@@ -36,8 +36,8 @@ Yeni kimlik, önceki random/setSeed/Gaussian/fork kayıtlarının üzerine yazma
 
 340 math senaryosu iki ayrı JVM'de aynı sonucu verdi. Math referans kimliği: `fe90194dbcd2294c66724523fa9ff881dae0f6d36ea62df758b4e64626760bf1`.
 
-Altı ailenin 1213 senaryolu birleşik referansı iki JVM'de doğrulandı. Birleşik referans kimliği: `dcbe4a62af107a8ef7ed2c1dd52518e6b9e2f063bfc9f0c0ba5565b0ba4617f8`.
+Altı ailenin 1219 senaryolu birleşik referansı iki JVM'de doğrulandı. Birleşik referans kimliği: `b2152a4c774941fe4652233a0e5b73b96996f580d6423ec90d76cbe55ddeff4a`.
 
-Rust debug ve release adaptörleri math ailesinde **340/340**, birleşik corpus'ta **1213/1213** eşleşti. Yerel raporlar `compare-57rndqkc` (math debug), `compare-uqisv1v5` (math release), `compare-xeqdw852` (birleşik debug) ve `compare-bk_l5btc` (birleşik release) dizinlerinde, `.data/runs/behavior/` altında bulunur.
+Rust debug ve release adaptörleri math ailesinde **340/340**, birleşik corpus'ta **1219/1219** eşleşti. Yerel raporlar `compare-57rndqkc` (math debug), `compare-uqisv1v5` (math release), `compare-u_e3yyct` (birleşik debug) ve `compare-326ehkgq` (birleşik release) dizinlerinde, `.data/runs/behavior/` altında bulunur.
 
 Bu sözleşme legacy kaynağın seçili default random yardımcılarıyla sınırlıdır. Overflow kaynaklı geçersiz bound hataları, diğer `RandomSource` implementasyonları ve istemcinin daha geniş random tüketim sıraları sonraki testlerdir.

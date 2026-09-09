@@ -1,6 +1,7 @@
 //! The numeric operations currently covered by the Java behavior corpus.
 //! Arithmetic stays at the reference's precision and evaluation order.
 
+use crate::binary::BlockPos;
 use crate::direction::{Axis, Direction};
 use crate::random::RandomSource;
 
@@ -68,6 +69,30 @@ impl Vec3 {
 
     pub const fn new(x: f64, y: f64, z: f64) -> Self {
         Self { x, y, z }
+    }
+
+    pub fn at_lower_corner_of(pos: BlockPos) -> Self {
+        Self::new(f64::from(pos.x), f64::from(pos.y), f64::from(pos.z))
+    }
+
+    pub fn at_lower_corner_with_offset(pos: BlockPos, x: f64, y: f64, z: f64) -> Self {
+        Self::new(
+            f64::from(pos.x) + x,
+            f64::from(pos.y) + y,
+            f64::from(pos.z) + z,
+        )
+    }
+
+    pub fn at_center_of(pos: BlockPos) -> Self {
+        Self::at_lower_corner_with_offset(pos, 0.5, 0.5, 0.5)
+    }
+
+    pub fn at_bottom_center_of(pos: BlockPos) -> Self {
+        Self::at_lower_corner_with_offset(pos, 0.5, 0.0, 0.5)
+    }
+
+    pub fn up_from_bottom_center_of(pos: BlockPos, y_offset: f64) -> Self {
+        Self::at_lower_corner_with_offset(pos, 0.5, y_offset, 0.5)
     }
 
     pub fn add_components(self, x: f64, y: f64, z: f64) -> Self {

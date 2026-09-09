@@ -465,6 +465,23 @@ def math_cases():
            "first": vector_bits(1.0e300, -1.0e300, 3.4028235e38)}
     yield {"case_id": "vec3/to-vector3f/special-values", "family": "math", "operation": "vec3_to_vector3f",
            "first": {"x": "7ff0000000000000", "y": "7ff8000000000001", "z": "fff0000000000000"}}
+    yield {"case_id": "vec3/coordinates/lower-corner", "family": "math", "operation": "vec3_coordinates",
+           "kind": "lower_corner", "x": str(2**31 - 1), "y": str(-(2**31)), "z": "-17"}
+    yield {"case_id": "vec3/coordinates/lower-corner-offset", "family": "math", "operation": "vec3_coordinates",
+           "kind": "lower_corner_offset", "x": "-4", "y": "5", "z": "-6",
+           "offset_x": float_bits(0.25, "f64"), "offset_y": float_bits(-1.5, "f64"),
+           "offset_z": float_bits(2.75, "f64")}
+    yield {"case_id": "vec3/coordinates/center", "family": "math", "operation": "vec3_coordinates",
+           "kind": "center", "x": "-2", "y": "-64", "z": "7"}
+    yield {"case_id": "vec3/coordinates/bottom-center", "family": "math", "operation": "vec3_coordinates",
+           "kind": "bottom_center", "x": "0", "y": "0", "z": "0"}
+    yield {"case_id": "vec3/coordinates/up-from-bottom-center", "family": "math", "operation": "vec3_coordinates",
+           "kind": "up_from_bottom_center", "x": "4", "y": "-5", "z": "6",
+           "y_offset": float_bits(-0.75, "f64")}
+    yield {"case_id": "vec3/coordinates/offset-special-values", "family": "math", "operation": "vec3_coordinates",
+           "kind": "lower_corner_offset", "x": "0", "y": "0", "z": "0",
+           "offset_x": "8000000000000000", "offset_y": "0000000000000001",
+           "offset_z": "7ff8000000000001"}
     for name in ("down", "up", "north", "south", "west", "east"):
         yield {"case_id": f"direction/properties/{name}", "family": "math", "operation": "direction",
                "name": name, "steps": []}

@@ -18,14 +18,14 @@ Java 25.0.4.1 ve Rust 1.98.1 / Linux x86_64 ortamında:
 - 468 senaryoluk math referansı iki ayrı JVM çalıştırmasıyla kararlı bulundu.
 - Debug ve release Rust adaptörleri **468/468** math senaryosunda eşleşti.
 - Altı yeni senaryoda iki yönlü geçiş, diagonal tarama, paralel miss, ham ters endpoint'ler, eşik altı delta, sıfır hareket, NaN ve sonsuzluk karşılaştırıldı.
-- Altı ailenin birleşik corpus'u **1213/1213** senaryoda hem debug hem release adaptörüyle eşleşti.
+- Altı ailenin birleşik corpus'u **1219/1219** senaryoda hem debug hem release adaptörüyle eşleşti.
 - `cargo fmt`, `cargo check --locked --offline --all-targets`, `cargo test --locked --offline --all-targets` ve Clippy kontrolleri geçti.
 
 Math referans kimliği: `30579b0337c9cbef64bfe390fc1b1e3c6fb20fd2e3c1d1f1ebb1626d7805d642`.
 
-Birleşik referans kimliği: `dcbe4a62af107a8ef7ed2c1dd52518e6b9e2f063bfc9f0c0ba5565b0ba4617f8`.
+Birleşik referans kimliği: `b2152a4c774941fe4652233a0e5b73b96996f580d6423ec90d76cbe55ddeff4a`.
 
-Yerel raporlar: `compare-z0upb0ml` (math debug), `compare-0by5xb21` (math release), `compare-xeqdw852` (birleşik debug) ve `compare-bk_l5btc` (birleşik release) dizinlerinde, `.data/runs/behavior/` altında bulunur.
+Yerel raporlar: `compare-z0upb0ml` (math debug), `compare-0by5xb21` (math release), `compare-u_e3yyct` (birleşik debug) ve `compare-326ehkgq` (birleşik release) dizinlerinde, `.data/runs/behavior/` altında bulunur.
 
 ## Sınırlar
 
