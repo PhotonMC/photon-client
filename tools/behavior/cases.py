@@ -753,6 +753,9 @@ def math_cases():
     for name in ("zero", "one", "unit_x", "neg_unit_x", "unit_y", "neg_unit_y", "max", "min"):
         yield {"case_id": f"vec2/constants/{name}", "family": "math", "operation": "vec2_constant",
                "name": name}
+    for name in ("zero", "x_axis", "y_axis", "z_axis"):
+        yield {"case_id": f"vec3/constants/{name}", "family": "math", "operation": "vec3_constant",
+               "name": name}
     for name in ("down", "up", "north", "south", "west", "east"):
         yield {"case_id": f"direction/properties/{name}", "family": "math", "operation": "direction",
                "name": name, "steps": []}

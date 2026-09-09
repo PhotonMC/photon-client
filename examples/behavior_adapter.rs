@@ -1932,6 +1932,16 @@ fn math_result(request: &Value) -> Result<Value, String> {
         };
         return Ok(json!({"value": vec2_snapshot(value)}));
     }
+    if operation == "vec3_constant" {
+        let value = match string(request, "name")? {
+            "zero" => Vec3::ZERO,
+            "x_axis" => Vec3::X_AXIS,
+            "y_axis" => Vec3::Y_AXIS,
+            "z_axis" => Vec3::Z_AXIS,
+            _ => return Err("unknown Vec3 constant".into()),
+        };
+        return Ok(json!({"value": vec3_snapshot(value)}));
+    }
     match string(request, "type")? {
         "f32" => {
             let value = f32_field(request, "value")?;

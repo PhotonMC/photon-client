@@ -122,6 +122,9 @@ pub struct Vec3 {
 
 impl Vec3 {
     pub const ZERO: Self = Self::new(0.0, 0.0, 0.0);
+    pub const X_AXIS: Self = Self::new(1.0, 0.0, 0.0);
+    pub const Y_AXIS: Self = Self::new(0.0, 1.0, 0.0);
+    pub const Z_AXIS: Self = Self::new(0.0, 0.0, 1.0);
 
     pub const fn new(x: f64, y: f64, z: f64) -> Self {
         Self { x, y, z }

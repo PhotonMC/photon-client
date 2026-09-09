@@ -300,6 +300,15 @@ public final class MathOracle {
                 default -> throw new IllegalArgumentException("Unknown Vec2 constant");
             };
             result.add("value", snapshot(value));
+        } else if (operation.equals("vec3_constant")) {
+            Vec3 value = switch (request.get("name").getAsString()) {
+                case "zero" -> Vec3.ZERO;
+                case "x_axis" -> Vec3.X_AXIS;
+                case "y_axis" -> Vec3.Y_AXIS;
+                case "z_axis" -> Vec3.Z_AXIS;
+                default -> throw new IllegalArgumentException("Unknown Vec3 constant");
+            };
+            result.add("value", snapshot(value));
         } else if (operation.equals("shape")) {
             String kind = request.get("kind").getAsString();
             if (kind.equals("single")) {
