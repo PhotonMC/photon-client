@@ -40,6 +40,10 @@ impl Vec2 {
         java_f32_add(xd * xd, yd * yd)
     }
 
+    pub fn negated(self) -> Self {
+        Self::new(-self.x, -self.y)
+    }
+
     pub fn length_squared(self) -> f32 {
         // Do not fuse the multiplication and addition or substitute hypot:
         // intermediate f32 rounding/overflow is observable in the reference.

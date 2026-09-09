@@ -724,6 +724,16 @@ def math_cases():
     yield {"case_id": "vec2/distance-to-sqr/special-values", "family": "math",
            "operation": "vec2_distance_to_sqr", "first": vector2_bits(0.0, 0.0),
            "second": {"x": "7f800000", "y": "7fc00002"}}
+    yield {"case_id": "vec2/negated/basic", "family": "math", "operation": "vec2_negated",
+           "first": vector2_bits(1.25, -2.5)}
+    yield {"case_id": "vec2/negated/signed-zero", "family": "math", "operation": "vec2_negated",
+           "first": {"x": "80000000", "y": "00000000"}}
+    yield {"case_id": "vec2/negated/subnormal", "family": "math", "operation": "vec2_negated",
+           "first": {"x": "00000001", "y": "80000001"}}
+    yield {"case_id": "vec2/negated/infinity-and-boundary", "family": "math", "operation": "vec2_negated",
+           "first": {"x": "7f7fffff", "y": "ff800000"}}
+    yield {"case_id": "vec2/negated/nan-payload", "family": "math", "operation": "vec2_negated",
+           "first": {"x": "7fc00001", "y": "ffc00002"}}
     for name in ("down", "up", "north", "south", "west", "east"):
         yield {"case_id": f"direction/properties/{name}", "family": "math", "operation": "direction",
                "name": name, "steps": []}

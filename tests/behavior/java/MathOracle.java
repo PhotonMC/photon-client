@@ -275,6 +275,10 @@ public final class MathOracle {
             Vec2 firstVector = new Vec2(Oracle.f32(first, "x"), Oracle.f32(first, "y"));
             Vec2 secondVector = new Vec2(Oracle.f32(second, "x"), Oracle.f32(second, "y"));
             result.addProperty("value", Oracle.bits(firstVector.distanceToSqr(secondVector)));
+        } else if (operation.equals("vec2_negated")) {
+            JsonObject first = request.getAsJsonObject("first");
+            Vec2 firstVector = new Vec2(Oracle.f32(first, "x"), Oracle.f32(first, "y"));
+            result.add("value", snapshot(firstVector.negated()));
         } else if (operation.equals("shape")) {
             String kind = request.get("kind").getAsString();
             if (kind.equals("single")) {
