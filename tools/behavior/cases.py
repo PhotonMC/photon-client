@@ -392,6 +392,20 @@ def math_cases():
     yield {"case_id": "vec3/get/special-values", "family": "math", "operation": "vec3_get",
            "first": {"x": float_bits(float("inf"), "f64"), "y": "7ff8000000000001",
                      "z": float_bits(float("-inf"), "f64")}, "axis": "y"}
+    yield {"case_id": "vec3/with/x", "family": "math", "operation": "vec3_with",
+           "first": vector_bits(1.25, -2.5, 3.75), "axis": "x", "value": float_bits(9.5, "f64")}
+    yield {"case_id": "vec3/with/y-signed-zero", "family": "math", "operation": "vec3_with",
+           "first": {"x": "8000000000000000", "y": "0000000000000001", "z": "7fefffffffffffff"},
+           "axis": "y", "value": "8000000000000000"}
+    yield {"case_id": "vec3/with/z-subnormal", "family": "math", "operation": "vec3_with",
+           "first": vector_bits(-4.5, 6.25, -8.75), "axis": "z", "value": "0000000000000001"}
+    yield {"case_id": "vec3/with/x-special-value", "family": "math", "operation": "vec3_with",
+           "first": {"x": float_bits(float("inf"), "f64"), "y": "7ff8000000000001",
+                     "z": float_bits(float("-inf"), "f64")},
+           "axis": "x", "value": "7ff8000000000001"}
+    yield {"case_id": "vec3/with/y-max-finite", "family": "math", "operation": "vec3_with",
+           "first": {"x": "0000000000000001", "y": "8000000000000001", "z": "8000000000000000"},
+           "axis": "y", "value": "7fefffffffffffff"}
     for name in ("down", "up", "north", "south", "west", "east"):
         yield {"case_id": f"direction/properties/{name}", "family": "math", "operation": "direction",
                "name": name, "steps": []}

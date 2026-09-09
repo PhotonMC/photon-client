@@ -1753,6 +1753,12 @@ fn math_result(request: &Value) -> Result<Value, String> {
         let axis = Axis::from_name(string(request, "axis")?).ok_or("unknown axis")?;
         return Ok(json!({"value": format!("{:016x}", first.get(axis).to_bits())}));
     }
+    if operation == "vec3_with" {
+        let first = f64_vec3(request.get("first").ok_or("first must be an object")?)?;
+        let axis = Axis::from_name(string(request, "axis")?).ok_or("unknown axis")?;
+        let value = f64_field(request, "value")?;
+        return Ok(json!({"value": vec3_snapshot(first.with(axis, value))}));
+    }
     match string(request, "type")? {
         "f32" => {
             let value = f32_field(request, "value")?;

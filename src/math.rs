@@ -190,6 +190,14 @@ impl Vec3 {
         }
     }
 
+    pub fn with(self, axis: Axis, value: f64) -> Self {
+        match axis {
+            Axis::X => Self::new(value, self.y, self.z),
+            Axis::Y => Self::new(self.x, value, self.z),
+            Axis::Z => Self::new(self.x, self.y, value),
+        }
+    }
+
     pub fn length_squared(self) -> f64 {
         // Keep the reference evaluation order; do not fuse or substitute hypot.
         self.x * self.x + self.y * self.y + self.z * self.z
