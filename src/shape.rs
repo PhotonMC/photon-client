@@ -109,6 +109,49 @@ struct ShapeTransform {
     inverted: [bool; 3],
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ShapeAxisCycle {
+    None,
+    Forward,
+    Backward,
+}
+
+impl ShapeAxisCycle {
+    fn inverse(self) -> Self {
+        match self {
+            Self::None => Self::None,
+            Self::Forward => Self::Backward,
+            Self::Backward => Self::Forward,
+        }
+    }
+
+    fn cycle_axis(self, axis: Axis) -> Axis {
+        match (self, axis) {
+            (Self::None, axis) => axis,
+            (Self::Forward, Axis::X) => Axis::Y,
+            (Self::Forward, Axis::Y) => Axis::Z,
+            (Self::Forward, Axis::Z) => Axis::X,
+            (Self::Backward, Axis::X) => Axis::Z,
+            (Self::Backward, Axis::Y) => Axis::X,
+            (Self::Backward, Axis::Z) => Axis::Y,
+        }
+    }
+
+    fn cycle_index(self, point: [isize; 3], axis: Axis) -> isize {
+        match (self, axis) {
+            (Self::None, Axis::X) => point[0],
+            (Self::None, Axis::Y) => point[1],
+            (Self::None, Axis::Z) => point[2],
+            (Self::Forward, Axis::X) => point[2],
+            (Self::Forward, Axis::Y) => point[0],
+            (Self::Forward, Axis::Z) => point[1],
+            (Self::Backward, Axis::X) => point[1],
+            (Self::Backward, Axis::Y) => point[2],
+            (Self::Backward, Axis::Z) => point[0],
+        }
+    }
+}
+
 impl ShapeTransform {
     fn is_identity(self) -> bool {
         self.permutation == [0, 1, 2] && self.inverted == [false, false, false]
@@ -217,6 +260,104 @@ impl VoxelShape {
             };
         }
         optimized
+    }
+
+    /// Visit merged boundary edges in Java's axis-cycle order.
+    pub fn for_all_edges<F>(&self, mut consumer: F)
+    where
+        F: FnMut(f64, f64, f64, f64, f64, f64),
+    {
+        for transform in [
+            ShapeAxisCycle::None,
+            ShapeAxisCycle::Forward,
+            ShapeAxisCycle::Backward,
+        ] {
+            self.for_all_axis_edges(&mut consumer, transform);
+        }
+    }
+
+    fn for_all_axis_edges<F>(&self, consumer: &mut F, transform: ShapeAxisCycle)
+    where
+        F: FnMut(f64, f64, f64, f64, f64, f64),
+    {
+        let inverse = transform.inverse();
+        let a_size = self.axis_size(inverse.cycle_axis(Axis::X));
+        let b_size = self.axis_size(inverse.cycle_axis(Axis::Y));
+        let c_size = self.axis_size(inverse.cycle_axis(Axis::Z));
+
+        for a in 0..=a_size {
+            for b in 0..=b_size {
+                let mut last_start = None;
+
+                for c in 0..=c_size {
+                    let mut full_sectors = 0;
+                    let mut odd_sectors = 0;
+                    for da in 0..=1isize {
+                        for db in 0..=1isize {
+                            if self.is_full_wide_cycle(
+                                inverse,
+                                [a as isize + da - 1, b as isize + db - 1, c as isize],
+                            ) {
+                                full_sectors += 1;
+                                odd_sectors ^= da ^ db;
+                            }
+                        }
+                    }
+
+                    let is_edge = full_sectors == 1
+                        || full_sectors == 3
+                        || full_sectors == 2 && odd_sectors & 1 == 0;
+                    if is_edge {
+                        if last_start.is_none() {
+                            last_start = Some(c);
+                        }
+                    } else if let Some(start) = last_start.take() {
+                        self.consume_edge(consumer, inverse, a, b, start, c);
+                    }
+                }
+            }
+        }
+    }
+
+    fn is_full_wide_cycle(&self, cycle: ShapeAxisCycle, point: [isize; 3]) -> bool {
+        self.is_full_wide_xyz(
+            cycle.cycle_index(point, Axis::X),
+            cycle.cycle_index(point, Axis::Y),
+            cycle.cycle_index(point, Axis::Z),
+        )
+    }
+
+    fn consume_edge<F>(
+        &self,
+        consumer: &mut F,
+        cycle: ShapeAxisCycle,
+        a: usize,
+        b: usize,
+        start: usize,
+        end: usize,
+    ) where
+        F: FnMut(f64, f64, f64, f64, f64, f64),
+    {
+        let first = [a as isize, b as isize, start as isize];
+        let second = [a as isize, b as isize, end as isize];
+        let first = [
+            cycle.cycle_index(first, Axis::X),
+            cycle.cycle_index(first, Axis::Y),
+            cycle.cycle_index(first, Axis::Z),
+        ];
+        let second = [
+            cycle.cycle_index(second, Axis::X),
+            cycle.cycle_index(second, Axis::Y),
+            cycle.cycle_index(second, Axis::Z),
+        ];
+        consumer(
+            self.axis_coord(Axis::X, first[0] as usize),
+            self.axis_coord(Axis::Y, first[1] as usize),
+            self.axis_coord(Axis::Z, first[2] as usize),
+            self.axis_coord(Axis::X, second[0] as usize),
+            self.axis_coord(Axis::Y, second[1] as usize),
+            self.axis_coord(Axis::Z, second[2] as usize),
+        );
     }
 
     /// Return the smallest AABB containing every occupied cell.

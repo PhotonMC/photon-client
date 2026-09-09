@@ -176,6 +176,29 @@ public final class MathOracle {
                 events.add(snapshotWithCoords(shape));
                 events.add(snapshotWithCoords(shape.optimize()));
                 result.add("events", events);
+            } else if (kind.equals("edges")) {
+                var entries = request.getAsJsonArray("shapes");
+                if (entries == null || entries.size() == 0) {
+                    throw new IllegalArgumentException("edges needs at least one shape");
+                }
+                VoxelShape first = voxelShape(entries.get(0).getAsJsonObject());
+                VoxelShape[] tail = new VoxelShape[entries.size() - 1];
+                for (int i = 1; i < entries.size(); i++) {
+                    tail[i - 1] = voxelShape(entries.get(i).getAsJsonObject());
+                }
+                VoxelShape shape = Shapes.or(first, tail);
+                var edges = new JsonArray();
+                shape.forAllEdges((x1, y1, z1, x2, y2, z2) -> {
+                    var edge = new JsonArray();
+                    edge.add(Oracle.bits(x1));
+                    edge.add(Oracle.bits(y1));
+                    edge.add(Oracle.bits(z1));
+                    edge.add(Oracle.bits(x2));
+                    edge.add(Oracle.bits(y2));
+                    edge.add(Oracle.bits(z2));
+                    edges.add(edge);
+                });
+                result.add("edges", edges);
             } else if (kind.equals("axis_limits")) {
                 var entries = request.getAsJsonArray("shapes");
                 if (entries == null || entries.size() == 0) {

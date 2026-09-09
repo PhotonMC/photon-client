@@ -636,6 +636,34 @@ fn shape_result(request: &Value) -> Result<Value, String> {
                 ],
             }))
         }
+        "edges" => {
+            let entries = request
+                .get("shapes")
+                .ok_or("shapes must be an array")?
+                .as_array()
+                .ok_or("shapes must be an array")?;
+            if entries.is_empty() {
+                return Err("edges needs at least one shape".into());
+            }
+            let first = shape_box(&entries[0])?;
+            let tail = entries[1..]
+                .iter()
+                .map(shape_box)
+                .collect::<Result<Vec<_>, _>>()?;
+            let joined = Shapes::or_many(&first, &tail);
+            let mut edges = Vec::new();
+            joined.for_all_edges(|x1, y1, z1, x2, y2, z2| {
+                edges.push(vec![
+                    format!("{:016x}", x1.to_bits()),
+                    format!("{:016x}", y1.to_bits()),
+                    format!("{:016x}", z1.to_bits()),
+                    format!("{:016x}", x2.to_bits()),
+                    format!("{:016x}", y2.to_bits()),
+                    format!("{:016x}", z2.to_bits()),
+                ]);
+            });
+            Ok(json!({"edges": edges}))
+        }
         "axis_limits" => {
             let entries = request
                 .get("shapes")
