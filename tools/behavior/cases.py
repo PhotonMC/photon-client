@@ -160,6 +160,24 @@ def math_cases():
                      "z": float_bits(-3.0, "f64")},
            "second": {"x": float_bits(0.0, "f64"), "y": float_bits(-4.0, "f64"),
                       "z": float_bits(5.0, "f64")}}
+    yield {"case_id": "vec3/cross/basic", "family": "math", "operation": "vec3",
+           "x": float_bits(1.0, "f64"), "y": float_bits(2.0, "f64"), "z": float_bits(3.0, "f64"),
+           "steps": [{"action": "cross", "other": vector_bits(4.0, 5.0, 6.0)}]}
+    yield {"case_id": "vec3/cross/chain", "family": "math", "operation": "vec3",
+           "x": float_bits(1.0, "f64"), "y": float_bits(2.0, "f64"), "z": float_bits(3.0, "f64"),
+           "steps": [{"action": "cross", "other": vector_bits(4.0, 5.0, 6.0)},
+                      {"action": "cross", "other": vector_bits(-1.0, 0.5, 2.0)},
+                      {"action": "normalize"}]}
+    yield {"case_id": "vec3/cross/signed-zero", "family": "math", "operation": "vec3",
+           "x": float_bits(0.0, "f64"), "y": float_bits(-0.0, "f64"), "z": float_bits(0.0, "f64"),
+           "steps": [{"action": "cross", "other": vector_bits(0.0, 0.0, 0.0)}]}
+    yield {"case_id": "vec3/cross/overflow", "family": "math", "operation": "vec3",
+           "x": "7fefffffffffffff", "y": float_bits(0.0, "f64"), "z": float_bits(0.0, "f64"),
+           "steps": [{"action": "cross", "other": vector_bits(0.0, 0.0, 2.0)}]}
+    yield {"case_id": "vec3/cross/special-values", "family": "math", "operation": "vec3",
+           "x": float_bits(float("inf"), "f64"), "y": float_bits(2.0, "f64"),
+           "z": float_bits(3.0, "f64"),
+           "steps": [{"action": "cross", "other": vector_bits(0.0, 0.0, 5.0)}]}
     for name in ("down", "up", "north", "south", "west", "east"):
         yield {"case_id": f"direction/properties/{name}", "family": "math", "operation": "direction",
                "name": name, "steps": []}

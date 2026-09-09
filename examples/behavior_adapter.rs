@@ -1659,6 +1659,9 @@ fn math_result(request: &Value) -> Result<Value, String> {
                 "vector_to" => vector.vector_to(f64_vec3(
                     step.get("target").ok_or("target must be an object")?,
                 )?),
+                "cross" => vector.cross(f64_vec3(
+                    step.get("other").ok_or("other must be an object")?,
+                )?),
                 _ => return Err("unknown Vec3 action".into()),
             };
             events.push(vec3_snapshot(vector));

@@ -108,6 +108,7 @@ public final class MathOracle {
                     case "subtract_components" -> vector.subtract(
                         f64(step, "x"), f64(step, "y"), f64(step, "z"));
                     case "vector_to" -> vector.vectorTo(vec3(step.getAsJsonObject("target")));
+                    case "cross" -> vector.cross(vec3(step.getAsJsonObject("other")));
                     default -> throw new IllegalArgumentException("Unknown Vec3 action");
                 };
                 events.add(snapshot(vector));
