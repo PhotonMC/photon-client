@@ -347,6 +347,30 @@ public final class MathOracle {
             } else {
                 throw new IllegalArgumentException("Unknown Mth integer basic type");
             }
+        } else if (operation.equals("mth_angle_helpers")) {
+            String width = request.get("type").getAsString();
+            String function = request.get("fn").getAsString();
+            if (function.equals("pack_degrees")) {
+                if (!width.equals("f32")) {
+                    throw new IllegalArgumentException("Unknown Mth packDegrees type");
+                }
+                byte value = Mth.packDegrees(Oracle.f32(request, "input"));
+                result.addProperty("value", Byte.toString(value));
+            } else if (function.equals("unpack_degrees")) {
+                if (!width.equals("i8")) {
+                    throw new IllegalArgumentException("Unknown Mth unpackDegrees type");
+                }
+                byte input = Byte.parseByte(request.get("input").getAsString());
+                result.addProperty("bits", Oracle.bits(Mth.unpackDegrees(input)));
+            } else if (function.equals("wrap_degrees")) {
+                if (!width.equals("i64")) {
+                    throw new IllegalArgumentException("Unknown Mth long wrapDegrees type");
+                }
+                long input = Long.parseLong(request.get("input").getAsString());
+                result.addProperty("bits", Oracle.bits(Mth.wrapDegrees(input)));
+            } else {
+                throw new IllegalArgumentException("Unknown Mth angle function");
+            }
         } else if (operation.equals("vec3")) {
             Vec3 vector = new Vec3(f64(request, "x"), f64(request, "y"), f64(request, "z"));
             var events = new JsonArray();

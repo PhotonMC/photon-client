@@ -8,15 +8,15 @@ Java 25.0.4.1 ve Rust 1.98.1 / Linux x86_64 ortamında:
 
 - `floorDiv`, `positiveModulo`, `positiveCeilDiv` ve `roundToward` için 15 özgün senaryo hazırlandı.
 - Negatif kalan ve bölen işaretleri, `Integer.MIN_VALUE`/`Long.MIN_VALUE` unary negation ve bölüm taşmaları ile sonuç çarpması taşmaları karşılaştırıldı.
-- Rust debug ve release adaptörleri güncel **1092/1092** math senaryosunda eşleşti.
-- Birleşik altı aile corpus'u **1594/1594** senaryoda hem debug hem release adaptörüyle eşleşti.
+- Rust debug ve release adaptörleri güncel **1113/1113** math senaryosunda eşleşti.
+- Birleşik altı aile corpus'u **1615/1615** senaryoda hem debug hem release adaptörüyle eşleşti.
 - Math ve birleşik `verify` çalıştırmaları Java referansını iki JVM tekrarıyla yeniden doğruladı.
 
-Math referans kimliği: `8475d3304542000c5493cb030a2dfb280baa6a64c19a4ba3eb09d75f9c0e67a8`. Birleşik referans kimliği: `a15082ba584c6d0bca4bc52d80fd5da8fc49f05193cec75afd71cf0af0c4ee0d`.
+Math referans kimliği: `23d8549371228c5fe370021e1df1ce61a2d1869ad767cf1a029bcbf1930b5ac9`. Birleşik referans kimliği: `747c3645458af2ae3b9de41407461996409d550b8fca05e990e18b3b1983f461`.
 
-Adapter hashleri: debug `61f28350754db6b9e7c92d36856a1f48106a81b9772704394da4169de4cdc47b`, release `12a5b4b38b7716b91145f537aac7395892c11bdfca6c18002fa0094da7ca7816`.
+Adapter hashleri: debug `50d15e54a8e4d9ee159108107a9950974c379fc5d72741265ebf2f9bccbac401`, release `cb77cf1f3a7ef94e14770a329f854e79896c6a2e8cca659b69c586f553d9fb9e`.
 
-Yerel raporlar: `compare-ta5w_83f` ve `compare-vzkk24q9` (math debug/release), `compare-271dl4fv` ve `compare-y8i46uni` (birleşik debug/release), `verify-0qcp4kkh` (math) ve `verify-3t751q44` (birleşik) `.data/runs/behavior/` altında bulunur.
+Yerel raporlar: `compare-y28xdodh` ve `compare-_7cfq3in` (math debug/release), `compare-cxv1an3r` ve `compare-1jjs0aun` (birleşik debug/release), `verify-uudhbkma` (math) ve `verify-71u5jh9x` (birleşik) `.data/runs/behavior/` altında bulunur.
 
 ## Sınırlar
 

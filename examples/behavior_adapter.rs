@@ -2312,6 +2312,35 @@ fn math_result(request: &Value) -> Result<Value, String> {
         };
         return Ok(json!({"value": value}));
     }
+    if operation == "mth_angle_helpers" {
+        let function = string(request, "fn")?;
+        let input = string(request, "input")?;
+        let result = match function {
+            "pack_degrees" => {
+                if string(request, "type")? != "f32" {
+                    return Err("unknown Mth packDegrees type".into());
+                }
+                let value = f32_field(request, "input")?;
+                json!({"value": math::pack_degrees_f32(value).to_string()})
+            }
+            "unpack_degrees" => {
+                if string(request, "type")? != "i8" {
+                    return Err("unknown Mth unpackDegrees type".into());
+                }
+                let value = input.parse::<i8>().map_err(|error| error.to_string())?;
+                json!({"bits": format!("{:08x}", math::unpack_degrees_i8(value).to_bits())})
+            }
+            "wrap_degrees" => {
+                if string(request, "type")? != "i64" {
+                    return Err("unknown Mth long wrapDegrees type".into());
+                }
+                let value = input.parse::<i64>().map_err(|error| error.to_string())?;
+                json!({"bits": format!("{:08x}", math::wrap_degrees_i64(value).to_bits())})
+            }
+            _ => return Err("unknown Mth angle function".into()),
+        };
+        return Ok(result);
+    }
     if operation == "vec2" {
         let mut vector = Vec2::new(f32_field(request, "x")?, f32_field(request, "y")?);
         let mut events = vec![vec2_snapshot(vector)];

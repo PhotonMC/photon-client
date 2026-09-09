@@ -575,6 +575,28 @@ pub fn wrap_degrees_i32(angle: i32) -> i32 {
     normalized_angle
 }
 
+/// Return Java `Mth.wrapDegrees(long)`, including the final f32 narrowing.
+pub fn wrap_degrees_i64(angle: i64) -> f32 {
+    let mut normalized_angle = (angle % 360) as f32;
+    if normalized_angle >= 180.0 {
+        normalized_angle -= 360.0;
+    }
+    if normalized_angle < -180.0 {
+        normalized_angle += 360.0;
+    }
+    normalized_angle
+}
+
+/// Return Java `Mth.packDegrees(float)` with byte narrowing semantics.
+pub fn pack_degrees_f32(angle: f32) -> i8 {
+    floor_f32(angle * 256.0 / 360.0) as i8
+}
+
+/// Return Java `Mth.unpackDegrees(byte)`.
+pub fn unpack_degrees_i8(rotation: i8) -> f32 {
+    (i32::from(rotation) * 360) as f32 / 256.0
+}
+
 /// Return Java `Math.floorDiv(int, int)`, including Java's signed overflow.
 pub fn floor_div_i32(dividend: i32, divisor: i32) -> i32 {
     if divisor == 0 {

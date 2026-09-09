@@ -2743,6 +2743,34 @@ def math_cases():
             case["divisor"] = divisor
         yield case
 
+    mth_angle_helpers = [
+        ("pack/zero", "f32", "pack_degrees", float_bits(0.0, "f32")),
+        ("pack/negative-quarter", "f32", "pack_degrees", float_bits(-90.0, "f32")),
+        ("pack/negative-half", "f32", "pack_degrees", float_bits(-180.0, "f32")),
+        ("pack/quarter", "f32", "pack_degrees", float_bits(90.0, "f32")),
+        ("pack/half-byte-wrap", "f32", "pack_degrees", float_bits(180.0, "f32")),
+        ("pack/full-byte-wrap", "f32", "pack_degrees", float_bits(360.0, "f32")),
+        ("pack/near-full-turn", "f32", "pack_degrees", float_bits(359.9, "f32")),
+        ("pack/infinity", "f32", "pack_degrees", float_bits(float("inf"), "f32")),
+        ("pack/nan", "f32", "pack_degrees", float_bits(float("nan"), "f32")),
+        ("unpack/min", "i8", "unpack_degrees", "-128"),
+        ("unpack/negative", "i8", "unpack_degrees", "-1"),
+        ("unpack/zero", "i8", "unpack_degrees", "0"),
+        ("unpack/positive", "i8", "unpack_degrees", "1"),
+        ("unpack/max", "i8", "unpack_degrees", "127"),
+        ("wrap-long/min", "i64", "wrap_degrees", "-9223372036854775808"),
+        ("wrap-long/negative", "i64", "wrap_degrees", "-721"),
+        ("wrap-long/exact-negative-turn", "i64", "wrap_degrees", "-360"),
+        ("wrap-long/lower-bound", "i64", "wrap_degrees", "-180"),
+        ("wrap-long/upper-bound", "i64", "wrap_degrees", "180"),
+        ("wrap-long/exact-turn", "i64", "wrap_degrees", "360"),
+        ("wrap-long/max", "i64", "wrap_degrees", "9223372036854775807"),
+    ]
+    for label, width, function, input_value in mth_angle_helpers:
+        yield {"case_id": f"mth/angle-helpers/{label}", "family": "math",
+               "operation": "mth_angle_helpers", "type": width, "fn": function,
+               "input": input_value}
+
 
 def timer_cases():
     def trace(label, steps, start=0, tps=20, target=50):
