@@ -213,6 +213,18 @@ def math_cases():
         yield {"case_id": f"chunkpos/from-blockpos/{label}", "family": "math",
                "operation": "chunkpos_from_blockpos", **values}
 
+    chunkpos_distances = {
+        "origin": {"x": "0", "z": "0", "other_x": "0", "other_z": "0"},
+        "basic": {"x": "1", "z": "-2", "other_x": "4", "other_z": "3"},
+        "negative": {"x": "-32", "z": "-17", "other_x": "-1", "other_z": "-64"},
+        "axis-dominant": {"x": "100", "z": "-200", "other_x": "-123", "other_z": "-150"},
+        "difference-wrap": {"x": "2147483647", "z": "-2147483648", "other_x": "-2147483648", "other_z": "2147483647"},
+        "signed-minimum": {"x": "0", "z": "0", "other_x": "-2147483648", "other_z": "-2147483648"},
+    }
+    for label, values in chunkpos_distances.items():
+        yield {"case_id": f"chunkpos/distances/{label}", "family": "math",
+               "operation": "chunkpos_distances", **values}
+
     vectors = {f"direction-{x}-{y}": (float_bits(x), float_bits(y))
                for x in (-1, 0, 1) for y in (-1, 0, 1)}
     vectors.update({"negative-zero": ("80000000", "80000000"),

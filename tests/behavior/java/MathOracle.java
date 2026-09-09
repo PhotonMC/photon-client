@@ -148,6 +148,11 @@ public final class MathOracle {
         } else if (operation.equals("chunkpos_from_blockpos")) {
             BlockPos pos = blockPos(request);
             result.add("value", chunkPosFromBlockPos(pos));
+        } else if (operation.equals("chunkpos_distances")) {
+            ChunkPos pos = chunkPos(request);
+            int otherX = Integer.parseInt(request.get("other_x").getAsString());
+            int otherZ = Integer.parseInt(request.get("other_z").getAsString());
+            result.add("value", chunkPosDistances(pos, otherX, otherZ));
         } else if (operation.equals("vec3")) {
             Vec3 vector = new Vec3(f64(request, "x"), f64(request, "y"), f64(request, "z"));
             var events = new JsonArray();
@@ -1360,6 +1365,16 @@ public final class MathOracle {
         var state = new JsonObject();
         state.add("containing", snapshot(ChunkPos.containing(pos)));
         state.addProperty("packed", Long.toUnsignedString(ChunkPos.pack(pos), 16));
+        return state;
+    }
+
+    private static JsonObject chunkPosDistances(ChunkPos pos, int otherX, int otherZ) {
+        ChunkPos other = new ChunkPos(otherX, otherZ);
+        var state = new JsonObject();
+        state.addProperty("chessboard_chunk", Integer.toString(pos.getChessboardDistance(other)));
+        state.addProperty("chessboard_coordinates", Integer.toString(pos.getChessboardDistance(otherX, otherZ)));
+        state.addProperty("distance_squared_chunk", Integer.toString(pos.distanceSquared(other)));
+        state.addProperty("distance_squared_packed", Integer.toString(pos.distanceSquared(other.pack())));
         return state;
     }
 

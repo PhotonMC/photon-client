@@ -282,6 +282,19 @@ fn chunkpos_from_blockpos_snapshot(value: BlockPos) -> Value {
     })
 }
 
+fn chunkpos_distances_snapshot(value: ChunkPos, other: ChunkPos) -> Value {
+    json!({
+        "chessboard_chunk": value.get_chessboard_distance(other).to_string(),
+        "chessboard_coordinates": value
+            .get_chessboard_distance_coordinates(other.x, other.z)
+            .to_string(),
+        "distance_squared_chunk": value.distance_squared(other).to_string(),
+        "distance_squared_packed": value
+            .distance_squared_from_packed(other.pack())
+            .to_string(),
+    })
+}
+
 fn blockpos_result(request: &Value) -> Result<Value, String> {
     let mut value = blockpos(request)?;
     let mut events = vec![blockpos_snapshot(value)];
@@ -1813,6 +1826,20 @@ fn math_result(request: &Value) -> Result<Value, String> {
     if operation == "chunkpos_from_blockpos" {
         return Ok(json!({
             "value": chunkpos_from_blockpos_snapshot(blockpos(request)?),
+        }));
+    }
+    if operation == "chunkpos_distances" {
+        let value = chunkpos(request)?;
+        let other = ChunkPos::new(
+            string(request, "other_x")?
+                .parse::<i32>()
+                .map_err(|error| error.to_string())?,
+            string(request, "other_z")?
+                .parse::<i32>()
+                .map_err(|error| error.to_string())?,
+        );
+        return Ok(json!({
+            "value": chunkpos_distances_snapshot(value, other),
         }));
     }
     if operation == "vec2" {

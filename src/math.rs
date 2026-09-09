@@ -527,6 +527,16 @@ pub fn section_relative(block_coord: i32) -> i32 {
     block_coord & 15
 }
 
+/// Return Java `Math.max(Math.abs(a), Math.abs(b))` for signed i32 values.
+pub fn abs_max(a: i32, b: i32) -> i32 {
+    a.wrapping_abs().max(b.wrapping_abs())
+}
+
+/// Return the Java `Mth.chessboardDistance` result with i32 wrapping.
+pub fn chessboard_distance(x0: i32, z0: i32, x1: i32, z1: i32) -> i32 {
+    abs_max(x1.wrapping_sub(x0), z1.wrapping_sub(z0))
+}
+
 // The same contract at two precisions, without a public numeric trait hierarchy.
 macro_rules! scalar_operations {
     ($ty:ty, $floor:ident, $wrap:ident, $clamp:ident) => {

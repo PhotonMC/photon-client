@@ -8,13 +8,13 @@ Java 25.0.4.1 ve Rust 1.98.1 / Linux x86_64 ortamında:
 
 - ChunkPos blok koordinatı yardımcıları için 6 özgün senaryo hazırlandı.
 - Minimum, orta, maksimum ve offset'li koordinatlar x/z sırasını korudu; negatif chunk koordinatları, shift taşması ve offset toplama taşması Java i32 sarma davranışıyla eşleşti.
-- Rust debug ve release adaptörleri güncel **947/947** math senaryosunda eşleşti.
-- Birleşik altı aile corpus'u **1449/1449** senaryoda hem debug hem release adaptörüyle eşleşti.
-- `verify` çalıştırması kayıtlı 1449 senaryoluk Java referansını yeniden doğruladı.
+- Rust debug ve release adaptörleri güncel **953/953** math senaryosunda eşleşti.
+- Birleşik altı aile corpus'u **1455/1455** senaryoda hem debug hem release adaptörüyle eşleşti.
+- `verify` çalıştırması kayıtlı 1455 senaryoluk Java referansını yeniden doğruladı.
 
-Math referans kimliği: `173698891dc93629abbcd5ca3642ca5af04a5ddb10ffcbaa0610cf03306c320e`. Birleşik referans kimliği: `304e1c88da43eaa3ceb24663a0ab71ddb6fb1f5487c293a9f94fb7224b94c363`.
+Math referans kimliği: `c05b4f6d5d95b034d9034387072c87ac36f1b31427b1fbbbbebe885dec1bfc3b`. Birleşik referans kimliği: `e267ec135794f878c9e54d22faa3451ffe125c25ad17b7ad67e223c1d1fb3b55`.
 
-Yerel raporlar: `compare-auuk33g2` (math debug), `compare-w_2b2455` (math release), `compare-tjsmsqxw` (birleşik debug), `compare-sks6l8sa` (birleşik release) ve `verify-egp3gvx_` kayıtlı referans doğrulamasında, `.data/runs/behavior/` altında bulunur.
+Yerel raporlar: `compare-j1r42nvx` (math debug), `compare-yls3sbu1` (math release), `compare-ttkrbj5a` (birleşik debug), `compare-dz8xzceq` (birleşik release) ve `verify-zgd9uosd` kayıtlı referans doğrulamasında, `.data/runs/behavior/` altında bulunur.
 
 ## Sınırlar
 

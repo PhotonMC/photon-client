@@ -367,6 +367,35 @@ impl ChunkPos {
         Self::containing(pos).pack()
     }
 
+    /// Return the Java chessboard distance to another chunk.
+    pub fn get_chessboard_distance(self, other: Self) -> i32 {
+        self.get_chessboard_distance_coordinates(other.x, other.z)
+    }
+
+    /// Return the Java chessboard distance to signed chunk coordinates.
+    pub fn get_chessboard_distance_coordinates(self, x: i32, z: i32) -> i32 {
+        math::chessboard_distance(x, z, self.x, self.z)
+    }
+
+    /// Return the Java squared distance to another chunk with i32 wrapping.
+    pub fn distance_squared(self, other: Self) -> i32 {
+        self.distance_squared_coordinates(other.x, other.z)
+    }
+
+    /// Return the Java squared distance to a packed chunk position.
+    pub fn distance_squared_from_packed(self, packed: u64) -> i32 {
+        let other = Self::unpack(packed);
+        self.distance_squared(other)
+    }
+
+    fn distance_squared_coordinates(self, x: i32, z: i32) -> i32 {
+        let delta_x = x.wrapping_sub(self.x);
+        let delta_z = z.wrapping_sub(self.z);
+        delta_x
+            .wrapping_mul(delta_x)
+            .wrapping_add(delta_z.wrapping_mul(delta_z))
+    }
+
     /// Compute the Java ChunkPos hash from two signed coordinates.
     pub fn hash(x: i32, z: i32) -> i32 {
         let x_transform = x.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
