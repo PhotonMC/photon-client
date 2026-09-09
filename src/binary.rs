@@ -58,6 +58,7 @@ pub fn write_vec3(value: Vec3, output: &mut Vec<u8>) {
 const LP_MAX_QUANTIZED_VALUE: u64 = 32766;
 const LP_ABS_MAX_VALUE: f64 = 1.7179869183e10;
 const LP_ABS_MIN_VALUE: f64 = 3.051944088384301e-5;
+const MAX_CHUNK_COORDINATE_VALUE: i32 = 2_097_061;
 
 fn read_byte(input: &mut &[u8]) -> Result<u8, ReadError> {
     let (&head, rest) = input.split_first().ok_or(ReadError::BufferUnderflow)?;
@@ -365,6 +366,16 @@ impl ChunkPos {
     /// Pack the chunk containing a block position into the reference long form.
     pub fn pack_block_pos(pos: BlockPos) -> u64 {
         Self::containing(pos).pack()
+    }
+
+    /// Check the chunk against Java's world-coordinate validity bound.
+    pub fn is_valid(self) -> bool {
+        Self::is_valid_coordinates(self.x, self.z)
+    }
+
+    /// Check signed chunk coordinates using Java's `Mth.absMax` semantics.
+    pub fn is_valid_coordinates(x: i32, z: i32) -> bool {
+        math::abs_max(x, z) <= MAX_CHUNK_COORDINATE_VALUE
     }
 
     /// Return the Java chessboard distance to another chunk.

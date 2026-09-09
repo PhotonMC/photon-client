@@ -295,6 +295,13 @@ fn chunkpos_distances_snapshot(value: ChunkPos, other: ChunkPos) -> Value {
     })
 }
 
+fn chunkpos_validity_snapshot(value: ChunkPos) -> Value {
+    json!({
+        "instance": value.is_valid(),
+        "static": ChunkPos::is_valid_coordinates(value.x, value.z),
+    })
+}
+
 fn blockpos_result(request: &Value) -> Result<Value, String> {
     let mut value = blockpos(request)?;
     let mut events = vec![blockpos_snapshot(value)];
@@ -1840,6 +1847,11 @@ fn math_result(request: &Value) -> Result<Value, String> {
         );
         return Ok(json!({
             "value": chunkpos_distances_snapshot(value, other),
+        }));
+    }
+    if operation == "chunkpos_validity" {
+        return Ok(json!({
+            "value": chunkpos_validity_snapshot(chunkpos(request)?),
         }));
     }
     if operation == "vec2" {

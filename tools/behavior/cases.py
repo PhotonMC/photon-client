@@ -225,6 +225,18 @@ def math_cases():
         yield {"case_id": f"chunkpos/distances/{label}", "family": "math",
                "operation": "chunkpos_distances", **values}
 
+    chunkpos_validity = {
+        "origin": {"x": "0", "z": "0"},
+        "boundary": {"x": "2097061", "z": "-2097061"},
+        "above-boundary": {"x": "2097062", "z": "0"},
+        "negative-boundary": {"x": "-2097061", "z": "2097060"},
+        "signed-minimum-quirk": {"x": "-2147483648", "z": "0"},
+        "signed-maximum": {"x": "2147483647", "z": "-2147483648"},
+    }
+    for label, values in chunkpos_validity.items():
+        yield {"case_id": f"chunkpos/validity/{label}", "family": "math",
+               "operation": "chunkpos_validity", **values}
+
     vectors = {f"direction-{x}-{y}": (float_bits(x), float_bits(y))
                for x in (-1, 0, 1) for y in (-1, 0, 1)}
     vectors.update({"negative-zero": ("80000000", "80000000"),

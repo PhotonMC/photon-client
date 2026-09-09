@@ -6,9 +6,12 @@ import com.mojang.serialization.DataResult;
 import com.mojang.serialization.JsonOps;
 import java.util.ArrayList;
 import java.util.EnumSet;
+import net.minecraft.DetectedVersion;
+import net.minecraft.SharedConstants;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.SectionPos;
+import net.minecraft.server.Bootstrap;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.ChunkPos;
@@ -153,6 +156,9 @@ public final class MathOracle {
             int otherX = Integer.parseInt(request.get("other_x").getAsString());
             int otherZ = Integer.parseInt(request.get("other_z").getAsString());
             result.add("value", chunkPosDistances(pos, otherX, otherZ));
+        } else if (operation.equals("chunkpos_validity")) {
+            ChunkPos pos = chunkPos(request);
+            result.add("value", chunkPosValidity(pos));
         } else if (operation.equals("vec3")) {
             Vec3 vector = new Vec3(f64(request, "x"), f64(request, "y"), f64(request, "z"));
             var events = new JsonArray();
@@ -1375,6 +1381,17 @@ public final class MathOracle {
         state.addProperty("chessboard_coordinates", Integer.toString(pos.getChessboardDistance(otherX, otherZ)));
         state.addProperty("distance_squared_chunk", Integer.toString(pos.distanceSquared(other)));
         state.addProperty("distance_squared_packed", Integer.toString(pos.distanceSquared(other.pack())));
+        return state;
+    }
+
+    private static JsonObject chunkPosValidity(ChunkPos pos) {
+        var output = System.out;
+        SharedConstants.setVersion(DetectedVersion.BUILT_IN);
+        Bootstrap.bootStrap();
+        System.setOut(output);
+        var state = new JsonObject();
+        state.addProperty("instance", pos.isValid());
+        state.addProperty("static", ChunkPos.isValid(pos.x(), pos.z()));
         return state;
     }
 
