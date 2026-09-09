@@ -1,6 +1,6 @@
 # P01.d — VoxelShape temel ve OR birleşimi doğrulaması
 
-`src/shape.rs`, Java 26.2 `Shapes` ve `VoxelShape` yollarının bu dilim için gereken box, empty, move, OR join, bounds ve `toAabbs` davranışlarını uygular. VoxelShape clip hit sonucu ayrı [clip kanıtında](shape-clip-parity.md), closestPointTo sonucu ayrı [closest point kanıtında](shape-closest-parity.md), getFaceShape sonucu ayrı [face kanıtında](shape-face-parity.md) doğrulanır. Tek shape collision sonucu ayrı [collision kanıtında](shape-collision-parity.md), çoklu shape collision sonucu [çoklu collision kanıtında](shape-collision-many-parity.md) doğrulanır. `examples/behavior_adapter.rs` aynı çağrı sınırını JSONL testlerine bağlar.
+`src/shape.rs`, Java 26.2 `Shapes` ve `VoxelShape` yollarının bu dilim için gereken box, empty, move, OR join, bounds ve `toAabbs` davranışlarını uygular. VoxelShape clip hit sonucu ayrı [clip kanıtında](shape-clip-parity.md), closestPointTo sonucu ayrı [closest point kanıtında](shape-closest-parity.md), getFaceShape sonucu ayrı [face kanıtında](shape-face-parity.md), blockOccludes sonucu ayrı [occlusion kanıtında](shape-occlusion-parity.md) doğrulanır. Tek shape collision sonucu ayrı [collision kanıtında](shape-collision-parity.md), çoklu shape collision sonucu [çoklu collision kanıtında](shape-collision-many-parity.md) doğrulanır. `examples/behavior_adapter.rs` aynı çağrı sınırını JSONL testlerine bağlar.
 
 ## Doğrulama
 
@@ -9,14 +9,14 @@ Java 25.0.4.1 ve Rust 1.98.1 / Linux x86_64 ortamında:
 - 345 senaryoluk math referansı iki ayrı JVM çalıştırmasıyla kararlı bulundu.
 - Rust debug ve release adaptörleri **345/345** math senaryosunda eşleşti.
 - Beş yeni shape senaryosu; tek box snapshot'ı, `move` sonrası koordinatlar, `1e-7` altı sliver'ın empty olması, ayrık OR kutuları, temas eden OR kutuları ve `joinIsNotEmpty` sonucu üzerinden karşılaştırıldı.
-- Birleşik altı aile corpus'u **957/957** senaryoda hem debug hem release adaptörüyle eşleşti.
+- Birleşik altı aile corpus'u **965/965** senaryoda hem debug hem release adaptörüyle eşleşti.
 - `cargo fmt`, `cargo check --locked --offline --all-targets`, `cargo test --locked --offline --all-targets` ve Clippy kontrolleri geçti.
 
 Math referans kimliği: `eeccf6a1ab099f28829b45e5c6f977e0ebe570005108d43a151a094f55b9f021`.
 
-Birleşik referans kimliği: `cf0e137848a347df8fce62ca16437dc60c6c7662652e688c9790d83f2d52de0b`.
+Birleşik referans kimliği: `2105d50b3ac69a505c2685a91ad23c0857f85a9601098d2f6ab2b966e92919ef`.
 
-Yerel raporlar: `compare-yvu75qgq` (math debug), `compare-9z90qh6s` (math release), `compare-uv1artlx` (birleşik debug) ve `compare-falrk_y1` (birleşik release) dizinlerinde, `.data/runs/behavior/` altında bulunur.
+Yerel raporlar: `compare-yvu75qgq` (math debug), `compare-9z90qh6s` (math release), `compare-4xmx_z9_` (birleşik debug) ve `compare-y1pppv24` (birleşik release) dizinlerinde, `.data/runs/behavior/` altında bulunur.
 
 ## Sınırlar
 

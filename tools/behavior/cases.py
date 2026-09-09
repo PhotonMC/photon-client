@@ -950,6 +950,31 @@ def math_cases():
     yield {"case_id": "shape/face/joined", "family": "math", "operation": "shape", "kind": "face_join",
            "first": box_bits(0.25, 0.0, 0.0, 1.0, 0.5, 1.0),
            "second": box_bits(0.25, 0.5, 0.0, 1.0, 1.0, 1.0), "direction": "east"}
+    yield {"case_id": "shape/occlusion/block-block-east", "family": "math", "operation": "shape",
+           "kind": "block_occludes", "shape": box_bits(0.0, 0.0, 0.0, 1.0, 1.0, 1.0),
+           "occluder": box_bits(0.0, 0.0, 0.0, 1.0, 1.0, 1.0), "direction": "east"}
+    yield {"case_id": "shape/occlusion/gap", "family": "math", "operation": "shape",
+           "kind": "block_occludes", "shape": box_bits(0.0, 0.0, 0.0, 0.75, 1.0, 1.0),
+           "occluder": box_bits(0.0, 0.0, 0.0, 1.0, 1.0, 1.0), "direction": "east"}
+    yield {"case_id": "shape/occlusion/partial-hole", "family": "math", "operation": "shape",
+           "kind": "block_occludes", "shape": box_bits(0.0, 0.0, 0.0, 1.0, 0.5, 1.0),
+           "occluder": box_bits(0.0, 0.5, 0.0, 1.0, 1.0, 1.0), "direction": "east"}
+    yield {"case_id": "shape/occlusion/partial-covered", "family": "math", "operation": "shape",
+           "kind": "block_occludes", "shape": box_bits(0.0, 0.0, 0.0, 1.0, 0.5, 1.0),
+           "occluder": box_bits(0.0, 0.0, 0.0, 1.0, 1.0, 1.0), "direction": "east"}
+    yield {"case_id": "shape/occlusion/negative-direction", "family": "math", "operation": "shape",
+           "kind": "block_occludes", "shape": box_bits(0.0, 0.0, 0.0, 1.0, 1.0, 1.0),
+           "occluder": box_bits(0.0, 0.0, 0.0, 1.0, 1.0, 1.0), "direction": "west"}
+    yield {"case_id": "shape/occlusion/empty-occluder", "family": "math", "operation": "shape",
+           "kind": "block_occludes", "shape": box_bits(0.0, 0.0, 0.0, 1.0, 1.0, 1.0),
+           "occluder": box_bits(0.0, 0.0, 0.0, 0.00000005, 1.0, 1.0), "direction": "up"}
+    yield {"case_id": "shape/occlusion/vertical-contact", "family": "math", "operation": "shape",
+           "kind": "block_occludes", "shape": box_bits(0.0, 0.0, 0.0, 1.0, 1.0, 0.5),
+           "occluder": box_bits(0.0, 0.0, 0.5, 1.0, 1.0, 1.0), "direction": "south"}
+    yield {"case_id": "shape/occlusion/joined-shape", "family": "math", "operation": "shape",
+           "kind": "block_occludes_join", "first": box_bits(0.0, 0.0, 0.0, 0.5, 1.0, 1.0),
+           "second": box_bits(0.5, 0.0, 0.0, 1.0, 1.0, 1.0),
+           "occluder": box_bits(0.0, 0.0, 0.0, 1.0, 1.0, 1.0), "direction": "east"}
     def bounding_box(min_x, min_y, min_z, max_x, max_y, max_z):
         return {"min_x": str(min_x), "min_y": str(min_y), "min_z": str(min_z),
                 "max_x": str(max_x), "max_y": str(max_y), "max_z": str(max_z)}

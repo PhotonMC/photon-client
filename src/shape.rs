@@ -2,7 +2,8 @@
 //!
 //! A shape stores coordinate planes and the occupied cells between them. This
 //! is enough to preserve Java's box, move, supported BooleanOp joins, single
-//! shape collision, VoxelShape clip hits, closest points, bounds, and box iteration behavior
+//! shape collision, VoxelShape clip hits, closest points, face/occlusion, bounds,
+//! and box iteration behavior
 //! without choosing a broader collision representation yet.
 
 use crate::aabb::{Aabb, BlockHitResult};
@@ -302,7 +303,17 @@ impl VoxelShape {
             AxisDirection::Positive => 0.9999999,
             AxisDirection::Negative => 1.0e-7,
         };
-        let slice = self.find_index(axis, sample);
+        let slice = self.slice_at(axis, self.find_index(axis, sample));
+        if slice.is_empty() {
+            Shapes::empty()
+        } else if slice.is_cube_like() {
+            Shapes::block()
+        } else {
+            slice
+        }
+    }
+
+    fn slice_at(&self, axis: Axis, slice: isize) -> Self {
         let axis_size = self.axis_size(axis) as isize;
         if slice < 0 || slice >= axis_size {
             return Shapes::empty();
@@ -343,14 +354,7 @@ impl VoxelShape {
             Axis::Y => (self.xs.clone(), vec![0.0, 1.0], self.zs.clone()),
             Axis::Z => (self.xs.clone(), self.ys.clone(), vec![0.0, 1.0]),
         };
-        let face = Self::new(xs, ys, zs, cells);
-        if face.is_empty() {
-            Shapes::empty()
-        } else if face.is_cube_like() {
-            Shapes::block()
-        } else {
-            face
-        }
+        Self::new(xs, ys, zs, cells)
     }
 
     fn is_cube_like(&self) -> bool {
@@ -362,6 +366,26 @@ impl VoxelShape {
     fn is_cube_like_along(&self, axis: Axis) -> bool {
         let coords = self.axis_coords(axis);
         coords.len() == 2 && fuzzy_equals(coords[0], 0.0) && fuzzy_equals(coords[1], 1.0)
+    }
+
+    fn min_coordinate(&self, axis: Axis) -> f64 {
+        self.bounds()
+            .map(|bounds| match axis {
+                Axis::X => bounds.min_x,
+                Axis::Y => bounds.min_y,
+                Axis::Z => bounds.min_z,
+            })
+            .unwrap_or(f64::INFINITY)
+    }
+
+    fn max_coordinate(&self, axis: Axis) -> f64 {
+        self.bounds()
+            .map(|bounds| match axis {
+                Axis::X => bounds.max_x,
+                Axis::Y => bounds.max_y,
+                Axis::Z => bounds.max_z,
+            })
+            .unwrap_or(f64::NEG_INFINITY)
     }
 
     fn is_full(&self, x: usize, y: usize, z: usize) -> bool {
@@ -529,6 +553,27 @@ impl Shapes {
         operation: BooleanOp,
     ) -> bool {
         !Self::join(first, second, operation).is_empty()
+    }
+
+    /// Return whether two block-local shapes occlude across a direction.
+    pub fn block_occludes(shape: &VoxelShape, occluder: &VoxelShape, direction: Direction) -> bool {
+        let axis = direction.axis();
+        let (first, second, operation) =
+            if matches!(direction.axis_direction(), AxisDirection::Positive) {
+                (shape, occluder, BooleanOp::OnlyFirst)
+            } else {
+                (occluder, shape, BooleanOp::OnlySecond)
+            };
+
+        if !fuzzy_equals(first.max_coordinate(axis), 1.0)
+            || !fuzzy_equals(second.min_coordinate(axis), 0.0)
+        {
+            return false;
+        }
+
+        let first_slice = first.slice_at(axis, first.axis_size(axis) as isize - 1);
+        let second_slice = second.slice_at(axis, 0);
+        !Self::join_is_not_empty(&first_slice, &second_slice, operation)
     }
 
     /// Limit a moving box against each shape in iteration order.

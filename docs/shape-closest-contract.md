@@ -6,7 +6,7 @@ Bu dilim Java 26.2 `VoxelShape.closestPointTo(Vec3)` davranışını kapsar. Emp
 
 Java Edition 26.2 / protokol 776 / Java 25 referansı kullanılır. `world/phys/shapes/VoxelShape.java:184-200` ve `util/Mth.java:106-108` incelendi. `MathOracle` doğrudan shape API'sini çağırır; beklenen noktayı Rust sonucundan üretmez.
 
-Bu dilim yalnızca shape içindeki en yakın noktayı sorgular. Yüz/occlusion, shape collider toplama ve diğer merger dalları ayrı dilimlerdir.
+Bu dilim yalnızca shape içindeki en yakın noktayı sorgular. Yüz şekilleri, diğer occlusion predicate'leri, shape collider toplama ve diğer merger dalları ayrı dilimlerdir.
 
 ## Davranış sözleşmesi
 
@@ -40,4 +40,4 @@ cargo build --locked --offline --example behavior_adapter
 python3 tools/behavior/run.py compare --family math --adapter target/debug/examples/behavior_adapter
 ```
 
-Bu dilimin altı senaryosunu içeren math referans kimliği `1209dbe51a271188f3d745fe39b8795d0bed606525a2c1744f5d46c696907e5b`'dir. Birleşik altı aile referansı `cf0e137848a347df8fce62ca16437dc60c6c7662652e688c9790d83f2d52de0b` ile doğrulanmıştır. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.
+Bu dilimin altı senaryosunu içeren math referans kimliği `1209dbe51a271188f3d745fe39b8795d0bed606525a2c1744f5d46c696907e5b`'dir. Birleşik altı aile referansı `2105d50b3ac69a505c2685a91ad23c0857f85a9601098d2f6ab2b966e92919ef` ile doğrulanmıştır. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.
