@@ -259,6 +259,20 @@ public final class MathOracle {
                     }
                 }
                 result.add("shapes", snapshots);
+            } else if (kind.equals("rotate_all_initial")) {
+                VoxelShape shape = voxelShape(request.getAsJsonObject("box"));
+                OctahedralGroup initial = OctahedralGroup.valueOf(request.get("initial").getAsString());
+                var directions = Shapes.rotateAll(shape, initial, vec3(request.getAsJsonObject("center")));
+                var snapshots = new JsonArray();
+                for (Direction direction : Direction.values()) {
+                    if (directions.containsKey(direction)) {
+                        var entry = new JsonObject();
+                        entry.addProperty("direction", direction.getName());
+                        entry.add("shape", snapshot(directions.get(direction)));
+                        snapshots.add(entry);
+                    }
+                }
+                result.add("shapes", snapshots);
             } else if (kind.equals("rotate_attach_face")) {
                 VoxelShape shape = voxelShape(request.getAsJsonObject("box"));
                 var faces = Shapes.rotateAttachFace(shape);

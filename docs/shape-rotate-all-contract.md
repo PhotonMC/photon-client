@@ -6,7 +6,7 @@ Bu dilimin **3 Java davranış testi hazırdır ve Rust karşılığı doğrulan
 
 Java Edition 26.2 / protokol 776 / Java 25 referansı kullanılır. `world/phys/shapes/Shapes.java:427-452` ve `com/mojang/math/OctahedralGroup.java` içindeki blok dönüş alias'ları incelendi. `MathOracle` doğrudan `Shapes.rotateAll` çağrısını yapar; map sonuçları oracle içinde yeniden hesaplanmaz.
 
-Bu dilim yalnızca `rotateAll(north)` overload'ını kapsar. Özel merkez overload'ı ayrı [sözleşme](shape-rotate-all-center-contract.md) ve [parity](shape-rotate-all-center-parity.md) belgelerinde ele alınır. `initial` rotation, `rotateHorizontal` ve `rotateAttachFace` yön map'leri ayrı dilimlerdir.
+Bu dilim yalnızca `rotateAll(north)` overload'ını kapsar. Özel merkez overload'ı ayrı [sözleşme](shape-rotate-all-center-contract.md) ve [parity](shape-rotate-all-center-parity.md) belgelerinde ele alınır. `initial` ve `rotationCenter` alanlarını birlikte alan overload ayrı [sözleşme](shape-rotate-all-initial-contract.md) ve [parity](shape-rotate-all-initial-parity.md) belgelerinde ele alınır. `rotateHorizontal` ve `rotateAttachFace` yön map'leri ayrı dilimlerdir.
 
 ## Davranış sözleşmesi
 
@@ -32,6 +32,6 @@ Depo kökünden:
 python3 tools/behavior/run.py capture --family math
 ```
 
-Bu dilimdeki senaryoların bulunduğu güncel math referansı `bf8eac3fe88ccc7eac0052e8b44cb5dab3dfb456982cd6a700ad1f08fadc02a2` kimliğindedir. Referans iki JVM çalıştırmasıyla kararlı bulundu. Güncel birleşik altı aile referansı `3133f0b82eddafd4383cd19cad3d4e53db2b9051614cfc78968ee4d6d98810b8` kimliğiyle doğrulandı.
+Bu dilimdeki senaryoların bulunduğu güncel math referansı `1431e2c083406bf997d7d068455e909ece993da6c2960b5a58aeb3505a1bbecf` kimliğindedir. Referans iki JVM çalıştırmasıyla kararlı bulundu. Güncel birleşik altı aile referansı `973124eeb6072de7c2a8f42e33b01304c2a5e79e2ef0a87968d085bb7084a0ee` kimliğiyle doğrulandı.
 
-Math debug/release raporları `compare-wbo29fbq` ve `compare-7m5csdkl`; birleşik debug/release raporları `compare-tyoie69t` ve `compare-_lv2ppe_` dizinlerindedir, `.data/runs/behavior/` altında bulunur. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.
+Math debug/release raporları `compare-f5pqb8w9` ve `compare-1ghjhwjn`; birleşik debug/release raporları `compare-4pe6qeij` ve `compare-94buxmhn` dizinlerindedir, `.data/runs/behavior/` altında bulunur. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.

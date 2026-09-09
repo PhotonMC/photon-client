@@ -944,34 +944,59 @@ impl Shapes {
         Self::rotate_all_with_center(north, Vec3::new(0.5, 0.5, 0.5))
     }
 
+    fn rotate_all_with_transform(
+        north: &VoxelShape,
+        initial: ShapeTransform,
+        rotation_center: Vec3,
+    ) -> [(Direction, VoxelShape); 6] {
+        let x_90 = ShapeRotation::Rot90XNeg.transform();
+        let x_270 = ShapeRotation::Rot90XPos.transform();
+        let y_90 = ShapeRotation::Rot90YNeg.transform();
+        let y_180 = ShapeRotation::Rot180FaceXz.transform();
+        let y_270 = ShapeRotation::Rot90YPos.transform();
+        [
+            (
+                Direction::Down,
+                Self::rotate_transform_with_center(north, x_90.compose(initial), rotation_center),
+            ),
+            (
+                Direction::Up,
+                Self::rotate_transform_with_center(north, x_270.compose(initial), rotation_center),
+            ),
+            (
+                Direction::North,
+                Self::rotate_transform_with_center(north, initial, Vec3::new(0.5, 0.5, 0.5)),
+            ),
+            (
+                Direction::South,
+                Self::rotate_transform_with_center(north, y_180.compose(initial), rotation_center),
+            ),
+            (
+                Direction::West,
+                Self::rotate_transform_with_center(north, y_270.compose(initial), rotation_center),
+            ),
+            (
+                Direction::East,
+                Self::rotate_transform_with_center(north, y_90.compose(initial), rotation_center),
+            ),
+        ]
+    }
+
+    /// Return all direction variants around an explicit point.
+    pub fn rotate_all_with_initial(
+        north: &VoxelShape,
+        initial: ShapeRotation,
+        rotation_center: Vec3,
+    ) -> [(Direction, VoxelShape); 6] {
+        Self::rotate_all_with_transform(north, initial.transform(), rotation_center)
+    }
+
     /// Return all direction variants around an explicit point.
     pub fn rotate_all_with_center(
         north: &VoxelShape,
         rotation_center: Vec3,
     ) -> [(Direction, VoxelShape); 6] {
-        [
-            (
-                Direction::Down,
-                Self::rotate_with_center(north, ShapeRotation::Rot90XNeg, rotation_center),
-            ),
-            (
-                Direction::Up,
-                Self::rotate_with_center(north, ShapeRotation::Rot90XPos, rotation_center),
-            ),
-            (Direction::North, north.clone()),
-            (
-                Direction::South,
-                Self::rotate_with_center(north, ShapeRotation::Rot180FaceXz, rotation_center),
-            ),
-            (
-                Direction::West,
-                Self::rotate_with_center(north, ShapeRotation::Rot90YPos, rotation_center),
-            ),
-            (
-                Direction::East,
-                Self::rotate_with_center(north, ShapeRotation::Rot90YNeg, rotation_center),
-            ),
-        ]
+        Self::rotate_all_with_transform(north, ShapeRotation::Identity.transform(), rotation_center)
     }
 
     /// Return whether two block-local shapes occlude across a direction.

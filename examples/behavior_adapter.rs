@@ -666,6 +666,22 @@ fn shape_result(request: &Value) -> Result<Value, String> {
                     .collect::<Vec<_>>(),
             }))
         }
+        "rotate_all_initial" => {
+            let shape = shape_box(request.get("box").ok_or("box must be an object")?)?;
+            let initial = ShapeRotation::from_name(string(request, "initial")?)
+                .ok_or("unknown initial shape rotation")?;
+            let center = f64_vec3(request.get("center").ok_or("center must be an object")?)?;
+            let shapes = Shapes::rotate_all_with_initial(&shape, initial, center);
+            Ok(json!({
+                "shapes": shapes
+                    .into_iter()
+                    .map(|(direction, shape)| json!({
+                        "direction": direction.name(),
+                        "shape": shape_snapshot(&shape),
+                    }))
+                    .collect::<Vec<_>>(),
+            }))
+        }
         "rotate_all_center" => {
             let shape = shape_box(request.get("box").ok_or("box must be an object")?)?;
             let center = f64_vec3(request.get("center").ok_or("center must be an object")?)?;
