@@ -931,6 +931,14 @@ impl Shapes {
         ]
     }
 
+    /// Return horizontal direction variants for a supported initial rotation.
+    pub fn rotate_horizontal_with_initial(
+        north: &VoxelShape,
+        initial: ShapeRotation,
+    ) -> [(Direction, VoxelShape); 4] {
+        Self::rotate_horizontal_with_transform(north, initial.transform())
+    }
+
     /// Return all direction variants of a shape in Java EnumMap order.
     pub fn rotate_all(north: &VoxelShape) -> [(Direction, VoxelShape); 6] {
         Self::rotate_all_with_center(north, Vec3::new(0.5, 0.5, 0.5))

@@ -638,6 +638,21 @@ fn shape_result(request: &Value) -> Result<Value, String> {
                     .collect::<Vec<_>>(),
             }))
         }
+        "rotate_horizontal_initial" => {
+            let shape = shape_box(request.get("box").ok_or("box must be an object")?)?;
+            let initial = ShapeRotation::from_name(string(request, "initial")?)
+                .ok_or("unknown initial shape rotation")?;
+            let shapes = Shapes::rotate_horizontal_with_initial(&shape, initial);
+            Ok(json!({
+                "shapes": shapes
+                    .into_iter()
+                    .map(|(direction, shape)| json!({
+                        "direction": direction.name(),
+                        "shape": shape_snapshot(&shape),
+                    }))
+                    .collect::<Vec<_>>(),
+            }))
+        }
         "rotate_all" => {
             let shape = shape_box(request.get("box").ok_or("box must be an object")?)?;
             let shapes = Shapes::rotate_all(&shape);

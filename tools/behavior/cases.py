@@ -326,6 +326,13 @@ def math_cases():
            "kind": "rotate_horizontal", "box": box_bits(0.0, 0.0, 0.0, 1.0, 0.5, 1.0)}
     yield {"case_id": "shape/rotate-horizontal/empty", "family": "math", "operation": "shape",
            "kind": "rotate_horizontal", "box": box_bits(0.0, 0.0, 0.0, 0.00000005, 1.0, 1.0)}
+    yield {"case_id": "shape/rotate-horizontal-initial/identity", "family": "math", "operation": "shape",
+           "kind": "rotate_horizontal_initial", "box": rotate_box, "initial": "IDENTITY"}
+    yield {"case_id": "shape/rotate-horizontal-initial/x-90", "family": "math", "operation": "shape",
+           "kind": "rotate_horizontal_initial", "box": rotate_box, "initial": "ROT_90_X_NEG"}
+    yield {"case_id": "shape/rotate-horizontal-initial/y-180", "family": "math", "operation": "shape",
+           "kind": "rotate_horizontal_initial", "box": box_bits(0.0, 0.0, 0.0, 1.0, 0.5, 1.0),
+           "initial": "ROT_180_FACE_XZ"}
     yield {"case_id": "shape/rotate-all/asymmetric", "family": "math", "operation": "shape",
            "kind": "rotate_all", "box": rotate_box}
     yield {"case_id": "shape/rotate-all/cube-grid", "family": "math", "operation": "shape",

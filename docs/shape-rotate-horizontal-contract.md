@@ -6,7 +6,7 @@ Bu dilimin **3 Java davranış testi hazırdır ve Rust karşılığı doğrulan
 
 Java Edition 26.2 / protokol 776 / Java 25 referansı kullanılır. `world/phys/shapes/Shapes.java:404-425` ve `com/mojang/math/OctahedralGroup.java` içindeki blok dönüş alias'ları incelendi. `MathOracle` doğrudan `Shapes.rotateHorizontal` çağrısını yapar; map sonuçları oracle içinde yeniden hesaplanmaz.
 
-Bu dilim yalnızca `rotateHorizontal(north)` overload'ını kapsar. `initial` rotation, özel merkez ve `rotateAll`/`rotateAttachFace` yön map'leri ayrı dilimlerdir.
+Bu dilim yalnızca `rotateHorizontal(north)` overload'ını kapsar. Desteklenen initial overload ayrı [sözleşme](shape-rotate-horizontal-initial-contract.md) ve [parity](shape-rotate-horizontal-initial-parity.md) belgelerinde; özel merkez ve `rotateAll`/`rotateAttachFace` yön map'leri ayrı dilimlerdir.
 
 ## Davranış sözleşmesi
 
@@ -32,6 +32,6 @@ Depo kökünden:
 python3 tools/behavior/run.py capture --family math
 ```
 
-Bu dilimdeki senaryoların bulunduğu güncel math referansı `e5f0febf5aa99682e41be37cce313e2fd66bc5ba13b3ac085396f9832cf563d6` kimliğindedir. Referans iki JVM çalıştırmasıyla kararlı bulundu. Güncel birleşik altı aile referansı `bfc03ea077b3293e5a3b4bff895bec8ea847887bae87575c13c8e0f4c0062ce0` kimliğiyle doğrulandı.
+Bu dilimdeki senaryoların bulunduğu güncel math referansı `bf8eac3fe88ccc7eac0052e8b44cb5dab3dfb456982cd6a700ad1f08fadc02a2` kimliğindedir. Referans iki JVM çalıştırmasıyla kararlı bulundu. Güncel birleşik altı aile referansı `3133f0b82eddafd4383cd19cad3d4e53db2b9051614cfc78968ee4d6d98810b8` kimliğiyle doğrulandı.
 
-Math debug/release raporları `compare-vf29hapu` ve `compare-3bjovh7e`; birleşik debug/release raporları `compare-p9j6mea8` ve `compare-qrn5umki` dizinlerindedir, `.data/runs/behavior/` altında bulunur. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.
+Math debug/release raporları `compare-wbo29fbq` ve `compare-7m5csdkl`; birleşik debug/release raporları `compare-tyoie69t` ve `compare-_lv2ppe_` dizinlerindedir, `.data/runs/behavior/` altında bulunur. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.
