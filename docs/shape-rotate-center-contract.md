@@ -34,6 +34,6 @@ Depo kökünden:
 python3 tools/behavior/run.py capture --family math
 ```
 
-Bu dilimdeki senaryoların bulunduğu güncel math referansı `69fde0fc4aa758f89939bd5a995df20db6ad31f7cfbc226ea4cd13ecaa84013d` kimliğindedir. Referans iki JVM çalıştırmasıyla kararlı bulundu. Güncel birleşik altı aile referansı `69fde0fc4aa758f89939bd5a995df20db6ad31f7cfbc226ea4cd13ecaa84013d` kimliğiyle doğrulandı.
+Bu dilimdeki senaryoların bulunduğu güncel math referansı `15dc52b0af0addc9b446d43666846404d2d8e35a7cc7751489632ec703b826b8` kimliğindedir. Referans iki JVM çalıştırmasıyla kararlı bulundu. Güncel birleşik altı aile referansı `15dc52b0af0addc9b446d43666846404d2d8e35a7cc7751489632ec703b826b8` kimliğiyle doğrulandı.
 
-Math debug/release raporları `compare-s2mg_zzb` ve `compare-vw7pifam`; birleşik debug/release raporları `compare-8ia7c6j_` ve `compare-fa02lzlz` dizinlerindedir, `.data/runs/behavior/` altında bulunur. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.
+Math debug/release raporları `compare-3kg8m9ta` ve `compare-6crwfl2x`; birleşik debug/release raporları `compare-_35t8r3l` ve `compare-g5oda9d_` dizinlerindedir, `.data/runs/behavior/` altında bulunur. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.

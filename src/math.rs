@@ -77,6 +77,10 @@ impl Vec3 {
         self.subtract_components(other.x, other.y, other.z)
     }
 
+    pub fn vector_to(self, other: Self) -> Self {
+        Self::new(other.x - self.x, other.y - self.y, other.z - self.z)
+    }
+
     pub fn scale(self, factor: f64) -> Self {
         Self::new(self.x * factor, self.y * factor, self.z * factor)
     }

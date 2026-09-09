@@ -119,6 +119,30 @@ def math_cases():
                                                             "z": float_bits(1.0, "f64")}},
                       {"action": "subtract_components", "x": float_bits(1.0, "f64"),
                        "y": float_bits(-2.0, "f64"), "z": "7ff8000000000002"}]}
+    yield {"case_id": "vec3/vector-to/basic", "family": "math", "operation": "vec3",
+           "x": float_bits(1.25, "f64"), "y": float_bits(-2.5, "f64"), "z": float_bits(3.75, "f64"),
+           "steps": [{"action": "vector_to", "target": vector_bits(4.5, -1.0, -0.25)}]}
+    yield {"case_id": "vec3/vector-to/chain", "family": "math", "operation": "vec3",
+           "x": float_bits(2.0, "f64"), "y": float_bits(-3.0, "f64"), "z": float_bits(4.0, "f64"),
+           "steps": [{"action": "vector_to", "target": vector_bits(5.0, 1.0, -2.0)},
+                      {"action": "vector_to", "target": vector_bits(-1.0, 1.0, 3.0)},
+                      {"action": "add_components", "x": float_bits(0.25, "f64"),
+                       "y": float_bits(-0.5, "f64"), "z": float_bits(0.75, "f64")},
+                      {"action": "normalize"}]}
+    yield {"case_id": "vec3/vector-to/signed-zero", "family": "math", "operation": "vec3",
+           "x": float_bits(-0.0, "f64"), "y": float_bits(0.0, "f64"), "z": float_bits(-0.0, "f64"),
+           "steps": [{"action": "vector_to", "target": vector_bits(0.0, -0.0, 0.0)},
+                      {"action": "vector_to", "target": vector_bits(-0.0, 0.0, -0.0)}]}
+    yield {"case_id": "vec3/vector-to/overflow", "family": "math", "operation": "vec3",
+           "x": "7fefffffffffffff", "y": "8000000000000000", "z": "ffefffffffffffff",
+           "steps": [{"action": "vector_to", "target": {"x": "ffefffffffffffff",
+                                                                "y": "7fefffffffffffff",
+                                                                "z": "7fefffffffffffff"}}]}
+    yield {"case_id": "vec3/vector-to/special-values", "family": "math", "operation": "vec3",
+           "x": float_bits(1.0, "f64"), "y": float_bits(-2.0, "f64"), "z": float_bits(0.0, "f64"),
+           "steps": [{"action": "vector_to", "target": {"x": float_bits(float("inf"), "f64"),
+                                                               "y": float_bits(-float("inf"), "f64"),
+                                                               "z": "7ff8000000000002"}}]}
     for name in ("down", "up", "north", "south", "west", "east"):
         yield {"case_id": f"direction/properties/{name}", "family": "math", "operation": "direction",
                "name": name, "steps": []}
