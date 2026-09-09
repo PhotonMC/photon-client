@@ -564,15 +564,14 @@ impl Aabb {
     }
 
     /// Move every lower endpoint inward and every upper endpoint inward.
+    pub fn deflate_xyz(self, x: f64, y: f64, z: f64) -> Self {
+        self.inflate(java_negate(x), java_negate(y), java_negate(z))
+    }
+
+    /// Move every lower endpoint inward and every upper endpoint inward by one amount.
     pub fn deflate(self, amount: f64) -> Self {
-        Self::new(
-            self.min_x + amount,
-            self.min_y + amount,
-            self.min_z + amount,
-            self.max_x - amount,
-            self.max_y - amount,
-            self.max_z - amount,
-        )
+        let amount = java_negate(amount);
+        self.inflate(amount, amount, amount)
     }
 
     /// Return the first segment point inside the box, matching Java `clip`.
@@ -902,6 +901,11 @@ fn java_max_f32(left: f32, right: f32) -> f32 {
     } else {
         right
     }
+}
+
+#[inline(never)]
+fn java_negate(value: f64) -> f64 {
+    f64::from_bits(value.to_bits() ^ (1_u64 << 63))
 }
 
 fn java_max(left: f64, right: f64) -> f64 {

@@ -33,7 +33,7 @@ python3 tools/behavior/run.py verify --family math
 
 307 math senaryosu iki ayrı JVM'de aynı sonucu verdi. Math referans kimliği: `529c11520bbda1953798018b953d4f6a3d2f46de0527d0ef9d802b210e08f91c`. Önceki 295 girdisi korunur. Ham girdiler/çıktılar yalnızca `.data/` altında tutulur.
 
-Toplam 1049 Java senaryosu yakalandı ve doğrulandı. Birleşik referans kimliği: `5446a74178a76985028eb4233e3a6b238ddbc347acb1f9205f57644596f79e6d`. Eski kayıtlar değiştirilmedi.
+Toplam 1049 Java senaryosu yakalandı ve doğrulandı. Birleşik referans kimliği: `9102b9506f63d756b598cc51931df0c5c678c82edfc98fd8f2cf6d70583ae5d8`. Eski kayıtlar değiştirilmedi.
 
 Debug ve release Rust adaptörleri **307/307** eşleşti: 295 önceki math senaryosu ve bu dilimin 12 random/AABB senaryosu. Karşılaştırma random dizilerinin tamsayı/float/double/boolean olaylarını ve AABB uçları, üyelik, kesişim, genişletme ve büzme sonuçlarını kesin bit karşılaştırmasıyla kapsadı.
 

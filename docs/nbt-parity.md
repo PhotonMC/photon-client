@@ -22,14 +22,14 @@ Java 25.0.4.1 ve Rust 1.98.1 / Linux x86_64 ortamında:
 
 - 31 senaryoluk NBT referansı iki ayrı JVM çalıştırmasıyla kararlı bulundu.
 - Debug ve release Rust adaptörleri **31/31** eşleşti: düz ve iç içe compound'lar, int/string/compound listeleri, boş liste, byte/int/long dizileri ve kesik okumalar.
-- Altı ailenin birleşik corpus'u **1099/1099** senaryoda hem debug hem release adaptörüyle eşleşti.
+- Altı ailenin birleşik corpus'u **1104/1104** senaryoda hem debug hem release adaptörüyle eşleşti.
 - `cargo fmt`, `cargo check --locked --offline --all-targets`, `cargo test --locked --offline --all-targets`, Clippy ve paket kapsamı kontrolleri geçti.
 
 NBT referans kimliği: `d59af1e80d3b597d7fa2e4c2c4db8efbe3c81de0161503a84f7a334146ae66b2`.
 
-Birleşik referans kimliği: `5446a74178a76985028eb4233e3a6b238ddbc347acb1f9205f57644596f79e6d`.
+Birleşik referans kimliği: `9102b9506f63d756b598cc51931df0c5c678c82edfc98fd8f2cf6d70583ae5d8`.
 
-Yerel NBT raporları: `compare-77gd9nar` (debug) ve `compare-gkct5sa5` (release); birleşik raporlar `compare-m3c3pa3i` (debug) ve `compare-1pp7ygg0` (release) dizinlerinde, `.data/runs/behavior/` altında bulunur.
+Yerel NBT raporları: `compare-77gd9nar` (debug) ve `compare-gkct5sa5` (release); birleşik raporlar `compare-o61mnrf6` (debug) ve `compare-6fi73fsy` (release) dizinlerinde, `.data/runs/behavior/` altında bulunur.
 
 ## Yeniden çalıştırma ve sınırlar
 

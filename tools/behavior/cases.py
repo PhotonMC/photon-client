@@ -890,6 +890,23 @@ def math_cases():
            **unit, "steps": [{"op": "inflate_xyz", "x": float_bits(0.25, "f64"),
                               "y": float_bits(0.5, "f64"), "z": float_bits(0.0, "f64")},
                              {"op": "inflate", "amount": float_bits(-0.125, "f64")}]}
+    yield {"case_id": "aabb/deflate/vector-mixed", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "deflate_xyz", "x": float_bits(0.25, "f64"),
+                              "y": float_bits(-0.5, "f64"), "z": float_bits(0.75, "f64")}]}
+    yield {"case_id": "aabb/deflate/vector-reversed", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "deflate_xyz", "x": float_bits(2.0, "f64"),
+                              "y": float_bits(2.0, "f64"), "z": float_bits(2.0, "f64")}]}
+    yield {"case_id": "aabb/deflate/signed-zero", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "deflate_xyz", "x": float_bits(-0.0, "f64"),
+                              "y": float_bits(0.0, "f64"), "z": float_bits(-0.0, "f64")}]}
+    yield {"case_id": "aabb/deflate/chain", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "deflate_xyz", "x": float_bits(0.25, "f64"),
+                              "y": float_bits(0.5, "f64"), "z": float_bits(0.0, "f64")},
+                             {"op": "deflate", "amount": float_bits(-0.125, "f64")}]}
+    yield {"case_id": "aabb/deflate/special-values", "family": "math", "operation": "aabb",
+           **unit, "steps": [{"op": "deflate_xyz", "x": float_bits(float("nan"), "f64"),
+                              "y": float_bits(float("inf"), "f64"),
+                              "z": float_bits(float("-inf"), "f64")}]}
     yield {"case_id": "aabb/intersect/contained", "family": "math", "operation": "aabb",
            **unit, "steps": [{"op": "intersect", "box": {
                "min_x": float_bits(0.25, "f64"), "min_y": float_bits(0.25, "f64"),

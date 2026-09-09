@@ -39,8 +39,8 @@ python3 tools/behavior/run.py compare --family nbt --adapter target/debug/exampl
 
 31 senaryo iki ayrı JVM'de aynı sonucu verdi. NBT referans kimliği: `d59af1e80d3b597d7fa2e4c2c4db8efbe3c81de0161503a84f7a334146ae66b2`. Ham girdiler/çıktılar yalnızca `.data/` altında tutulur.
 
-Altı ailenin 1099 senaryolu birleşik referansı iki JVM'de doğrulandı. Birleşik referans kimliği: `5446a74178a76985028eb4233e3a6b238ddbc347acb1f9205f57644596f79e6d`.
+Altı ailenin 1104 senaryolu birleşik referansı iki JVM'de doğrulandı. Birleşik referans kimliği: `9102b9506f63d756b598cc51931df0c5c678c82edfc98fd8f2cf6d70583ae5d8`.
 
-NBT debug ve release Rust adaptörleri **31/31** eşleşti. Birleşik debug ve release karşılaştırmaları da **1099/1099** geçti. Yerel NBT raporları `compare-77gd9nar` (debug) ve `compare-gkct5sa5` (release); birleşik raporlar `compare-m3c3pa3i` (debug) ve `compare-1pp7ygg0` (release) dizinlerinde, `.data/runs/behavior/` altında bulunur.
+NBT debug ve release Rust adaptörleri **31/31** eşleşti. Birleşik debug ve release karşılaştırmaları da **1104/1104** geçti. Yerel NBT raporları `compare-77gd9nar` (debug) ve `compare-gkct5sa5` (release); birleşik raporlar `compare-o61mnrf6` (debug) ve `compare-6fi73fsy` (release) dizinlerinde, `.data/runs/behavior/` altında bulunur.
 
 Bu doğrulama seçili NBT corpus'u ile sınırlıdır. Kota, derinlik sınırı, SNBT ve oyun içindeki daha geniş istemci davranışları ayrı eşitlik dilimleridir.

@@ -1535,6 +1535,14 @@ fn aabb_result(request: &Value) -> Result<Value, String> {
                 value = value.deflate(f64_field(step, "amount")?);
                 events.push(aabb_snapshot(value));
             }
+            "deflate_xyz" => {
+                value = value.deflate_xyz(
+                    f64_field(step, "x")?,
+                    f64_field(step, "y")?,
+                    f64_field(step, "z")?,
+                );
+                events.push(aabb_snapshot(value));
+            }
             _ => return Err("unknown AABB operation".into()),
         }
     }

@@ -966,6 +966,11 @@ public final class MathOracle {
                         box = box.deflate(f64(step, "amount"));
                         events.add(snapshot(box));
                     }
+                    case "deflate_xyz" -> {
+                        box = box.deflate(
+                            f64(step, "x"), f64(step, "y"), f64(step, "z"));
+                        events.add(snapshot(box));
+                    }
                     default -> throw new IllegalArgumentException("Unknown AABB op");
                 }
             }

@@ -35,8 +35,8 @@ python3 tools/behavior/run.py compare --family math --adapter target/debug/examp
 
 317 math senaryosu iki ayrı JVM'de aynı sonucu verdi. Math referans kimliği: `65c7ce5a63a1d8c7cc7b6ba7c60de04aa1205c8ab89967bcc45e569c80e35788`. Ham girdiler/çıktılar yalnızca `.data/` altında tutulur.
 
-Altı ailenin 1099 senaryolu birleşik referansı iki JVM'de doğrulandı. Birleşik referans kimliği: `5446a74178a76985028eb4233e3a6b238ddbc347acb1f9205f57644596f79e6d`.
+Altı ailenin 1104 senaryolu birleşik referansı iki JVM'de doğrulandı. Birleşik referans kimliği: `9102b9506f63d756b598cc51931df0c5c678c82edfc98fd8f2cf6d70583ae5d8`.
 
-Math debug ve release Rust adaptörleri **317/317** eşleşti; birleşik debug ve release karşılaştırmaları da **1099/1099** geçti. Yerel raporlar `compare-i09iy6u8` (math debug), `compare-8gjbo7nd` (math release), `compare-m3c3pa3i` (birleşik debug) ve `compare-1pp7ygg0` (birleşik release) dizinlerinde, `.data/runs/behavior/` altında bulunur.
+Math debug ve release Rust adaptörleri **317/317** eşleşti; birleşik debug ve release karşılaştırmaları da **1104/1104** geçti. Yerel raporlar `compare-i09iy6u8` (math debug), `compare-8gjbo7nd` (math release), `compare-o61mnrf6` (birleşik debug) ve `compare-6fi73fsy` (birleşik release) dizinlerinde, `.data/runs/behavior/` altında bulunur.
 
 Bu doğrulama seçili BlockPos/section-relative corpus'u ile sınırlıdır. BlockPos/SectionPos'in diğer yardımcıları ve istemci içindeki daha geniş koordinat davranışları ayrı eşitlik dilimleridir.
