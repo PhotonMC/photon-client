@@ -268,6 +268,53 @@ def math_cases():
                box_bits(-2.0, -0.75, 1.5, -1.25, -0.25, 2.0),
                box_bits(-0.5, 0.5, -2.0, 0.25, 1.25, -1.5),
            ]}
+    yield {"case_id": "shape/axis-limits-at/empty", "family": "math", "operation": "shape",
+           "kind": "axis_limits_at", "shapes": [
+               box_bits(0.0, 0.0, 0.0, 0.00000005, 1.0, 1.0),
+           ], "queries": [
+               {"op": "min", "axis": "x", "b": float_bits(0.5, "f64"),
+                "c": float_bits(0.5, "f64")},
+               {"op": "max", "axis": "z", "b": float_bits(0.5, "f64"),
+                "c": float_bits(0.5, "f64")},
+           ]}
+    yield {"case_id": "shape/axis-limits-at/disjoint", "family": "math", "operation": "shape",
+           "kind": "axis_limits_at", "shapes": [
+               box_bits(0.25, 0.0, 0.5, 0.5, 0.25, 0.75),
+               box_bits(0.75, 0.5, -0.5, 1.0, 1.0, 0.0),
+           ], "queries": [
+               {"op": "min", "axis": "x", "b": float_bits(0.125, "f64"),
+                "c": float_bits(0.625, "f64")},
+               {"op": "max", "axis": "x", "b": float_bits(0.125, "f64"),
+                "c": float_bits(0.625, "f64")},
+               {"op": "min", "axis": "y", "b": float_bits(-0.25, "f64"),
+                "c": float_bits(0.875, "f64")},
+               {"op": "max", "axis": "y", "b": float_bits(-0.25, "f64"),
+                "c": float_bits(0.875, "f64")},
+               {"op": "min", "axis": "z", "b": float_bits(0.375, "f64"),
+                "c": float_bits(0.125, "f64")},
+               {"op": "max", "axis": "z", "b": float_bits(0.375, "f64"),
+                "c": float_bits(0.125, "f64")},
+               {"op": "min", "axis": "x", "b": float_bits(0.75, "f64"),
+                "c": float_bits(0.25, "f64")},
+           ]}
+    yield {"case_id": "shape/axis-limits-at/negative", "family": "math", "operation": "shape",
+           "kind": "axis_limits_at", "shapes": [
+               box_bits(-2.0, -0.75, 1.5, -1.25, -0.25, 2.0),
+               box_bits(-0.5, 0.5, -2.0, 0.25, 1.25, -1.5),
+           ], "queries": [
+               {"op": "min", "axis": "x", "b": float_bits(-0.5, "f64"),
+                "c": float_bits(1.75, "f64")},
+               {"op": "max", "axis": "x", "b": float_bits(-0.5, "f64"),
+                "c": float_bits(1.75, "f64")},
+               {"op": "min", "axis": "y", "b": float_bits(1.75, "f64"),
+                "c": float_bits(-1.5, "f64")},
+               {"op": "max", "axis": "y", "b": float_bits(1.75, "f64"),
+                "c": float_bits(-1.5, "f64")},
+               {"op": "min", "axis": "z", "b": float_bits(-1.5, "f64"),
+                "c": float_bits(-0.5, "f64")},
+               {"op": "max", "axis": "z", "b": float_bits(-1.5, "f64"),
+                "c": float_bits(-0.5, "f64")},
+           ]}
     yield {"case_id": "shape/equal/same-box", "family": "math", "operation": "shape", "kind": "equal",
            "first": box_bits(0.0, 0.0, 0.0, 1.0, 1.0, 1.0),
            "second": box_bits(0.0, 0.0, 0.0, 1.0, 1.0, 1.0)}

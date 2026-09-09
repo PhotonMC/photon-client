@@ -241,6 +241,32 @@ impl VoxelShape {
             .unwrap_or(f64::NEG_INFINITY)
     }
 
+    /// Return the first occupied coordinate plane in the requested column.
+    pub fn min_at(&self, axis: Axis, b: f64, c: f64) -> f64 {
+        let (b_axis, c_axis) = column_axes(axis);
+        let b_index = self.find_index(b_axis, b);
+        let c_index = self.find_index(c_axis, c);
+        for a in 0..self.axis_size(axis) {
+            if self.is_full_wide(axis, a as isize, b_index, c_index) {
+                return self.axis_coord(axis, a);
+            }
+        }
+        f64::INFINITY
+    }
+
+    /// Return the last occupied coordinate plane in the requested column.
+    pub fn max_at(&self, axis: Axis, b: f64, c: f64) -> f64 {
+        let (b_axis, c_axis) = column_axes(axis);
+        let b_index = self.find_index(b_axis, b);
+        let c_index = self.find_index(c_axis, c);
+        for a in (0..self.axis_size(axis)).rev() {
+            if self.is_full_wide(axis, a as isize, b_index, c_index) {
+                return self.axis_coord(axis, a + 1);
+            }
+        }
+        f64::NEG_INFINITY
+    }
+
     /// Collapse a shape to one box spanning its occupied coordinate bounds.
     pub fn single_encompassing(&self) -> Self {
         let Some(bounds) = self.bounds() else {
@@ -1229,6 +1255,14 @@ fn collision_axes(axis: Axis) -> (Axis, Axis, Axis) {
         Axis::X => (Axis::X, Axis::Y, Axis::Z),
         Axis::Y => (Axis::Y, Axis::Z, Axis::X),
         Axis::Z => (Axis::Z, Axis::X, Axis::Y),
+    }
+}
+
+fn column_axes(axis: Axis) -> (Axis, Axis) {
+    match axis {
+        Axis::X => (Axis::Y, Axis::Z),
+        Axis::Y => (Axis::Z, Axis::X),
+        Axis::Z => (Axis::X, Axis::Y),
     }
 }
 

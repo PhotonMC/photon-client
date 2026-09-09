@@ -603,6 +603,40 @@ fn shape_result(request: &Value) -> Result<Value, String> {
             let joined = Shapes::or_many(&first, &tail);
             Ok(shape_axis_limits_snapshot(&joined))
         }
+        "axis_limits_at" => {
+            let entries = request
+                .get("shapes")
+                .ok_or("shapes must be an array")?
+                .as_array()
+                .ok_or("shapes must be an array")?;
+            if entries.is_empty() {
+                return Err("axis_limits_at needs at least one shape".into());
+            }
+            let first = shape_box(&entries[0])?;
+            let tail = entries[1..]
+                .iter()
+                .map(shape_box)
+                .collect::<Result<Vec<_>, _>>()?;
+            let joined = Shapes::or_many(&first, &tail);
+            let values = request["queries"]
+                .as_array()
+                .ok_or("queries must be an array")?
+                .iter()
+                .map(|query| {
+                    let axis =
+                        Axis::from_name(string(query, "axis")?).ok_or("unknown shape axis")?;
+                    let b = f64_field(query, "b")?;
+                    let c = f64_field(query, "c")?;
+                    let value = if string(query, "op")? == "min" {
+                        joined.min_at(axis, b, c)
+                    } else {
+                        joined.max_at(axis, b, c)
+                    };
+                    Ok(format!("{:016x}", value.to_bits()))
+                })
+                .collect::<Result<Vec<_>, String>>()?;
+            Ok(json!({"values": values}))
+        }
         "equal" => {
             let first = shape_box(request.get("first").ok_or("first must be an object")?)?;
             let second = shape_box(request.get("second").ok_or("second must be an object")?)?;

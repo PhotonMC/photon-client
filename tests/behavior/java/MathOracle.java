@@ -175,6 +175,30 @@ public final class MathOracle {
                 result.addProperty("max_y", Oracle.bits(shape.max(Direction.Axis.Y)));
                 result.addProperty("min_z", Oracle.bits(shape.min(Direction.Axis.Z)));
                 result.addProperty("max_z", Oracle.bits(shape.max(Direction.Axis.Z)));
+            } else if (kind.equals("axis_limits_at")) {
+                var entries = request.getAsJsonArray("shapes");
+                if (entries == null || entries.size() == 0) {
+                    throw new IllegalArgumentException("axis_limits_at needs at least one shape");
+                }
+                VoxelShape first = voxelShape(entries.get(0).getAsJsonObject());
+                VoxelShape[] tail = new VoxelShape[entries.size() - 1];
+                for (int i = 1; i < entries.size(); i++) {
+                    tail[i - 1] = voxelShape(entries.get(i).getAsJsonObject());
+                }
+                VoxelShape shape = Shapes.or(first, tail);
+                var values = new JsonArray();
+                for (var entry : request.getAsJsonArray("queries")) {
+                    JsonObject query = entry.getAsJsonObject();
+                    Direction.Axis axis = Direction.Axis.byName(query.get("axis").getAsString());
+                    if (axis == null) {
+                        throw new IllegalArgumentException("Unknown shape axis");
+                    }
+                    double value = query.get("op").getAsString().equals("min")
+                        ? shape.min(axis, f64(query, "b"), f64(query, "c"))
+                        : shape.max(axis, f64(query, "b"), f64(query, "c"));
+                    values.add(Oracle.bits(value));
+                }
+                result.add("values", values);
             } else if (kind.equals("equal")) {
                 VoxelShape first = voxelShape(request.getAsJsonObject("first"));
                 VoxelShape second = voxelShape(request.getAsJsonObject("second"));
