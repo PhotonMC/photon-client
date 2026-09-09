@@ -1744,6 +1744,10 @@ fn math_result(request: &Value) -> Result<Value, String> {
         let first = f64_vec3(request.get("first").ok_or("first must be an object")?)?;
         return Ok(json!({"value": vec3_snapshot(first.rotate_clockwise_90())}));
     }
+    if operation == "vec3_is_finite" {
+        let first = f64_vec3(request.get("first").ok_or("first must be an object")?)?;
+        return Ok(json!({"value": first.is_finite()}));
+    }
     match string(request, "type")? {
         "f32" => {
             let value = f32_field(request, "value")?;

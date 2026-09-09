@@ -361,6 +361,24 @@ def math_cases():
            "operation": "vec3_rotate_clockwise_90",
            "first": {"x": float_bits(float("inf"), "f64"), "y": float_bits(float("nan"), "f64"),
                      "z": float_bits(float("-inf"), "f64")}}
+    yield {"case_id": "vec3/is-finite/all-finite", "family": "math",
+           "operation": "vec3_is_finite",
+           "first": {"x": "7fefffffffffffff", "y": "8000000000000001", "z": "0000000000000000"}}
+    yield {"case_id": "vec3/is-finite/positive-infinity", "family": "math",
+           "operation": "vec3_is_finite",
+           "first": {"x": float_bits(float("inf"), "f64"), "y": float_bits(-1.0, "f64"),
+                     "z": float_bits(2.0, "f64")}}
+    yield {"case_id": "vec3/is-finite/negative-infinity", "family": "math",
+           "operation": "vec3_is_finite",
+           "first": {"x": float_bits(1.0, "f64"), "y": float_bits(float("-inf"), "f64"),
+                     "z": float_bits(2.0, "f64")}}
+    yield {"case_id": "vec3/is-finite/nan", "family": "math",
+           "operation": "vec3_is_finite",
+           "first": {"x": float_bits(1.0, "f64"), "y": float_bits(-2.0, "f64"),
+                     "z": "7ff8000000000001"}}
+    yield {"case_id": "vec3/is-finite/mixed-special-values", "family": "math",
+           "operation": "vec3_is_finite",
+           "first": {"x": "fff0000000000000", "y": "7ff8000000000000", "z": "0000000000000001"}}
     for name in ("down", "up", "north", "south", "west", "east"):
         yield {"case_id": f"direction/properties/{name}", "family": "math", "operation": "direction",
                "name": name, "steps": []}
