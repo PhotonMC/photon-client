@@ -284,6 +284,33 @@ def math_cases():
            "operation": "vec3_horizontal_distances",
            "first": {"x": float_bits(float("inf"), "f64"),
                      "y": "7ff8000000000001", "z": float_bits(float("-inf"), "f64")}}
+    yield {"case_id": "vec3/closer-than/basic", "family": "math",
+           "operation": "vec3_closer_than", "first": vector_bits(1.25, -2.5, 3.75),
+           "second": vector_bits(4.5, -1.0, -0.25),
+           "distance": float_bits(6.0, "f64"),
+           "distance_xz": float_bits(5.25, "f64"), "distance_y": float_bits(2.0, "f64")}
+    yield {"case_id": "vec3/closer-than/strict-boundary", "family": "math",
+           "operation": "vec3_closer_than", "first": vector_bits(0.0, 0.0, 0.0),
+           "second": vector_bits(3.0, 4.0, 0.0),
+           "distance": float_bits(5.0, "f64"),
+           "distance_xz": float_bits(3.0, "f64"), "distance_y": float_bits(4.0, "f64")}
+    yield {"case_id": "vec3/closer-than/vertical-gate", "family": "math",
+           "operation": "vec3_closer_than", "first": vector_bits(0.0, 0.0, 0.0),
+           "second": vector_bits(0.0, 4.0, 0.0),
+           "distance": float_bits(5.0, "f64"),
+           "distance_xz": float_bits(1.0, "f64"), "distance_y": float_bits(4.0, "f64")}
+    yield {"case_id": "vec3/closer-than/negative-zero-thresholds", "family": "math",
+           "operation": "vec3_closer_than", "first": vector_bits(-0.0, -0.0, -0.0),
+           "second": vector_bits(0.0, 0.0, 0.0),
+           "distance": float_bits(-0.0, "f64"),
+           "distance_xz": float_bits(-0.0, "f64"), "distance_y": float_bits(-0.0, "f64")}
+    yield {"case_id": "vec3/closer-than/special-values", "family": "math",
+           "operation": "vec3_closer_than",
+           "first": {"x": float_bits(float("nan"), "f64"), "y": float_bits(1.0, "f64"),
+                     "z": float_bits(float("inf"), "f64")},
+           "second": vector_bits(0.0, 0.0, 0.0),
+           "distance": float_bits(float("inf"), "f64"),
+           "distance_xz": float_bits(float("inf"), "f64"), "distance_y": float_bits(float("inf"), "f64")}
     for name in ("down", "up", "north", "south", "west", "east"):
         yield {"case_id": f"direction/properties/{name}", "family": "math", "operation": "direction",
                "name": name, "steps": []}

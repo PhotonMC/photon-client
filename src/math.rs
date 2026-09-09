@@ -77,6 +77,17 @@ impl Vec3 {
         self.subtract_components(other.x, other.y, other.z)
     }
 
+    pub fn closer_than_position(self, other: Self, distance: f64) -> bool {
+        self.distance_to_sqr_components(other.x, other.y, other.z) < distance * distance
+    }
+
+    pub fn closer_than_xz_y(self, other: Self, distance_xz: f64, distance_y: f64) -> bool {
+        let dx = other.x - self.x;
+        let dy = other.y - self.y;
+        let dz = other.z - self.z;
+        dx * dx + dz * dz < distance_xz * distance_xz && dy.abs() < distance_y
+    }
+
     pub fn vector_to(self, other: Self) -> Self {
         Self::new(other.x - self.x, other.y - self.y, other.z - self.z)
     }
