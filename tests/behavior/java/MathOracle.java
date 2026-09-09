@@ -279,6 +279,14 @@ public final class MathOracle {
             JsonObject first = request.getAsJsonObject("first");
             Vec2 firstVector = new Vec2(Oracle.f32(first, "x"), Oracle.f32(first, "y"));
             result.add("value", snapshot(firstVector.negated()));
+        } else if (operation.equals("vec2_equality")) {
+            JsonObject firstObject = request.getAsJsonObject("first");
+            JsonObject secondObject = request.getAsJsonObject("second");
+            Vec2 first = new Vec2(Oracle.f32(firstObject, "x"), Oracle.f32(firstObject, "y"));
+            Vec2 second = new Vec2(Oracle.f32(secondObject, "x"), Oracle.f32(secondObject, "y"));
+            result.addProperty("equals", first.equals(second));
+            result.addProperty("first_hash", Integer.toString(first.hashCode()));
+            result.addProperty("second_hash", Integer.toString(second.hashCode()));
         } else if (operation.equals("shape")) {
             String kind = request.get("kind").getAsString();
             if (kind.equals("single")) {

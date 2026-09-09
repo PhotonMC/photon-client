@@ -44,6 +44,20 @@ impl Vec2 {
         Self::new(-self.x, -self.y)
     }
 
+    pub fn equals_java(self, other: Self) -> bool {
+        self.x == other.x && self.y == other.y
+    }
+
+    pub fn hash_code_java(self) -> i32 {
+        let mut result = 1_i32;
+        result = result
+            .wrapping_mul(31)
+            .wrapping_add(java_float_hash(self.x));
+        result
+            .wrapping_mul(31)
+            .wrapping_add(java_float_hash(self.y))
+    }
+
     pub fn length_squared(self) -> f32 {
         // Do not fuse the multiplication and addition or substitute hypot:
         // intermediate f32 rounding/overflow is observable in the reference.
@@ -540,6 +554,15 @@ fn java_double_to_long_bits(value: f64) -> u64 {
 fn java_double_hash(value: f64) -> i32 {
     let bits = java_double_to_long_bits(value);
     (bits ^ (bits >> 32)) as i32
+}
+
+fn java_float_hash(value: f32) -> i32 {
+    let bits = if value.is_nan() {
+        0x7fc0_0000_u32
+    } else {
+        value.to_bits()
+    };
+    bits as i32
 }
 
 const MTH_SIN_SCALE: f64 = 10430.378350470453;

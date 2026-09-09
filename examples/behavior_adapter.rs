@@ -1907,6 +1907,17 @@ fn math_result(request: &Value) -> Result<Value, String> {
             "value": vec2_snapshot(first.negated()),
         }));
     }
+    if operation == "vec2_equality" {
+        let first = request.get("first").ok_or("first must be an object")?;
+        let second = request.get("second").ok_or("second must be an object")?;
+        let first = Vec2::new(f32_field(first, "x")?, f32_field(first, "y")?);
+        let second = Vec2::new(f32_field(second, "x")?, f32_field(second, "y")?);
+        return Ok(json!({
+            "equals": first.equals_java(second),
+            "first_hash": first.hash_code_java().to_string(),
+            "second_hash": second.hash_code_java().to_string(),
+        }));
+    }
     match string(request, "type")? {
         "f32" => {
             let value = f32_field(request, "value")?;

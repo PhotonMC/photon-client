@@ -734,6 +734,22 @@ def math_cases():
            "first": {"x": "7f7fffff", "y": "ff800000"}}
     yield {"case_id": "vec2/negated/nan-payload", "family": "math", "operation": "vec2_negated",
            "first": {"x": "7fc00001", "y": "ffc00002"}}
+    yield {"case_id": "vec2/equality/basic", "family": "math", "operation": "vec2_equality",
+           "first": vector2_bits(1.25, -2.5), "second": vector2_bits(1.25, -2.5)}
+    yield {"case_id": "vec2/equality/different-component", "family": "math", "operation": "vec2_equality",
+           "first": vector2_bits(1.25, -2.5), "second": vector2_bits(1.25, -2.25)}
+    yield {"case_id": "vec2/equality/signed-zero", "family": "math", "operation": "vec2_equality",
+           "first": {"x": "80000000", "y": "00000000"},
+           "second": {"x": "00000000", "y": "00000000"}}
+    yield {"case_id": "vec2/equality/nan-payloads", "family": "math", "operation": "vec2_equality",
+           "first": {"x": "7fc00001", "y": "ffc00002"},
+           "second": {"x": "7fc00002", "y": "ffc00001"}}
+    yield {"case_id": "vec2/equality/infinities", "family": "math", "operation": "vec2_equality",
+           "first": {"x": "7f800000", "y": "ff800000"},
+           "second": {"x": "7f800000", "y": "ff800000"}}
+    yield {"case_id": "vec2/equality/special-mismatch", "family": "math", "operation": "vec2_equality",
+           "first": {"x": "7f800000", "y": "7fc00001"},
+           "second": {"x": "ff800000", "y": "7fc00002"}}
     for name in ("down", "up", "north", "south", "west", "east"):
         yield {"case_id": f"direction/properties/{name}", "family": "math", "operation": "direction",
                "name": name, "steps": []}
