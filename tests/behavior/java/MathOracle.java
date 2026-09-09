@@ -215,6 +215,12 @@ public final class MathOracle {
                 default -> throw new IllegalArgumentException("Unknown Vec3 coordinate helper");
             };
             result.add("value", snapshot(value));
+        } else if (operation.equals("vec3_equality")) {
+            Vec3 first = vec3(request.getAsJsonObject("first"));
+            Vec3 second = vec3(request.getAsJsonObject("second"));
+            result.addProperty("equals", first.equals(second));
+            result.addProperty("first_hash", Integer.toString(first.hashCode()));
+            result.addProperty("second_hash", Integer.toString(second.hashCode()));
         } else if (operation.equals("shape")) {
             String kind = request.get("kind").getAsString();
             if (kind.equals("single")) {

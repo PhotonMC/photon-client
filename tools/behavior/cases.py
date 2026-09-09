@@ -482,6 +482,22 @@ def math_cases():
            "kind": "lower_corner_offset", "x": "0", "y": "0", "z": "0",
            "offset_x": "8000000000000000", "offset_y": "0000000000000001",
            "offset_z": "7ff8000000000001"}
+    yield {"case_id": "vec3/equality/basic", "family": "math", "operation": "vec3_equality",
+           "first": vector_bits(1.25, -2.5, 3.75), "second": vector_bits(1.25, -2.5, 3.75)}
+    yield {"case_id": "vec3/equality/different-component", "family": "math", "operation": "vec3_equality",
+           "first": vector_bits(1.25, -2.5, 3.75), "second": vector_bits(1.25, -2.5, 4.0)}
+    yield {"case_id": "vec3/equality/signed-zero", "family": "math", "operation": "vec3_equality",
+           "first": {"x": "8000000000000000", "y": "0000000000000000", "z": "0000000000000000"},
+           "second": vector_bits(0.0, 0.0, 0.0)}
+    yield {"case_id": "vec3/equality/nan-payloads", "family": "math", "operation": "vec3_equality",
+           "first": {"x": "7ff8000000000001", "y": "8000000000000000", "z": "7ff0000000000000"},
+           "second": {"x": "7ff0000000000001", "y": "8000000000000000", "z": "7ff0000000000000"}}
+    yield {"case_id": "vec3/equality/infinities", "family": "math", "operation": "vec3_equality",
+           "first": {"x": "7ff0000000000000", "y": "fff0000000000000", "z": "0000000000000000"},
+           "second": {"x": "7ff0000000000000", "y": "fff0000000000000", "z": "0000000000000000"}}
+    yield {"case_id": "vec3/equality/special-mismatch", "family": "math", "operation": "vec3_equality",
+           "first": {"x": "7ff0000000000000", "y": "7ff8000000000001", "z": "8000000000000000"},
+           "second": {"x": "fff0000000000000", "y": "7ff0000000000001", "z": "0000000000000000"}}
     for name in ("down", "up", "north", "south", "west", "east"):
         yield {"case_id": f"direction/properties/{name}", "family": "math", "operation": "direction",
                "name": name, "steps": []}

@@ -278,6 +278,24 @@ impl Vec3 {
         Vec3f::new(self.x as f32, self.y as f32, self.z as f32)
     }
 
+    /// Compare components with Java `Double.compare` semantics.
+    pub fn equals_java(self, other: Self) -> bool {
+        java_double_compare(self.x, other.x) == 0
+            && java_double_compare(self.y, other.y) == 0
+            && java_double_compare(self.z, other.z) == 0
+    }
+
+    /// Compute the Java `Vec3.hashCode` value for the three components.
+    pub fn hash_code_java(self) -> i32 {
+        let mut result = java_double_hash(self.x);
+        result = result
+            .wrapping_mul(31)
+            .wrapping_add(java_double_hash(self.y));
+        result
+            .wrapping_mul(31)
+            .wrapping_add(java_double_hash(self.z))
+    }
+
     pub fn length_squared(self) -> f64 {
         // Keep the reference evaluation order; do not fuse or substitute hypot.
         self.x * self.x + self.y * self.y + self.z * self.z
@@ -361,4 +379,35 @@ scalar_operations!(f64, floor_f64, wrap_degrees_f64, clamp_f64);
 #[inline(never)]
 fn java_negate(value: f64) -> f64 {
     f64::from_bits(value.to_bits() ^ (1_u64 << 63))
+}
+
+fn java_double_compare(left: f64, right: f64) -> i32 {
+    if left < right {
+        -1
+    } else if left > right {
+        1
+    } else {
+        let left_bits = java_double_to_long_bits(left) as i64;
+        let right_bits = java_double_to_long_bits(right) as i64;
+        if left_bits < right_bits {
+            -1
+        } else if left_bits > right_bits {
+            1
+        } else {
+            0
+        }
+    }
+}
+
+fn java_double_to_long_bits(value: f64) -> u64 {
+    if value.is_nan() {
+        0x7ff8_0000_0000_0000
+    } else {
+        value.to_bits()
+    }
+}
+
+fn java_double_hash(value: f64) -> i32 {
+    let bits = java_double_to_long_bits(value);
+    (bits ^ (bits >> 32)) as i32
 }

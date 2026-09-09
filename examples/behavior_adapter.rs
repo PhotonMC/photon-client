@@ -1812,6 +1812,15 @@ fn math_result(request: &Value) -> Result<Value, String> {
         };
         return Ok(json!({"value": vec3_snapshot(value)}));
     }
+    if operation == "vec3_equality" {
+        let first = f64_vec3(request.get("first").ok_or("first must be an object")?)?;
+        let second = f64_vec3(request.get("second").ok_or("second must be an object")?)?;
+        return Ok(json!({
+            "equals": first.equals_java(second),
+            "first_hash": first.hash_code_java().to_string(),
+            "second_hash": second.hash_code_java().to_string(),
+        }));
+    }
     match string(request, "type")? {
         "f32" => {
             let value = f32_field(request, "value")?;
