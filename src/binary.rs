@@ -6,7 +6,7 @@
 //! UUID can leave the first half consumed while a truncated position
 //! consumes nothing.
 
-use crate::math::Vec3;
+use crate::math::{self, Vec3};
 use crate::wire;
 
 /// Failures for binary reads, using the runner's error categories.
@@ -352,6 +352,19 @@ impl ChunkPos {
             && pos.z >= self.get_min_block_z()
             && pos.x <= self.get_max_block_x()
             && pos.z <= self.get_max_block_z()
+    }
+
+    /// Find the chunk containing a block position using Java's arithmetic shift.
+    pub fn containing(pos: BlockPos) -> Self {
+        Self::new(
+            math::block_to_section_coord(pos.x),
+            math::block_to_section_coord(pos.z),
+        )
+    }
+
+    /// Pack the chunk containing a block position into the reference long form.
+    pub fn pack_block_pos(pos: BlockPos) -> u64 {
+        Self::containing(pos).pack()
     }
 
     /// Compute the Java ChunkPos hash from two signed coordinates.

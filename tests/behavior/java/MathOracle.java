@@ -145,6 +145,9 @@ public final class MathOracle {
             int hashX = Integer.parseInt(request.get("hash_x").getAsString());
             int hashZ = Integer.parseInt(request.get("hash_z").getAsString());
             result.add("value", chunkPosRepresentation(pos, hashX, hashZ));
+        } else if (operation.equals("chunkpos_from_blockpos")) {
+            BlockPos pos = blockPos(request);
+            result.add("value", chunkPosFromBlockPos(pos));
         } else if (operation.equals("vec3")) {
             Vec3 vector = new Vec3(f64(request, "x"), f64(request, "y"), f64(request, "z"));
             var events = new JsonArray();
@@ -1350,6 +1353,13 @@ public final class MathOracle {
         state.addProperty("to_string", pos.toString());
         state.addProperty("hash_code", Integer.toString(pos.hashCode()));
         state.addProperty("static_hash", Integer.toString(ChunkPos.hash(hashX, hashZ)));
+        return state;
+    }
+
+    private static JsonObject chunkPosFromBlockPos(BlockPos pos) {
+        var state = new JsonObject();
+        state.add("containing", snapshot(ChunkPos.containing(pos)));
+        state.addProperty("packed", Long.toUnsignedString(ChunkPos.pack(pos), 16));
         return state;
     }
 

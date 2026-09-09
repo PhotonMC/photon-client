@@ -274,6 +274,14 @@ fn chunkpos_representation_snapshot(value: ChunkPos, hash_x: i32, hash_z: i32) -
     })
 }
 
+fn chunkpos_from_blockpos_snapshot(value: BlockPos) -> Value {
+    let containing = ChunkPos::containing(value);
+    json!({
+        "containing": chunkpos_snapshot(containing),
+        "packed": format!("{:x}", ChunkPos::pack_block_pos(value)),
+    })
+}
+
 fn blockpos_result(request: &Value) -> Result<Value, String> {
     let mut value = blockpos(request)?;
     let mut events = vec![blockpos_snapshot(value)];
@@ -1800,6 +1808,11 @@ fn math_result(request: &Value) -> Result<Value, String> {
             .map_err(|error| error.to_string())?;
         return Ok(json!({
             "value": chunkpos_representation_snapshot(value, hash_x, hash_z),
+        }));
+    }
+    if operation == "chunkpos_from_blockpos" {
+        return Ok(json!({
+            "value": chunkpos_from_blockpos_snapshot(blockpos(request)?),
         }));
     }
     if operation == "vec2" {

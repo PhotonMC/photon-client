@@ -201,6 +201,18 @@ def math_cases():
         yield {"case_id": f"chunkpos/representation/{label}", "family": "math",
                "operation": "chunkpos_representation", **values}
 
+    chunkpos_from_blockpos = {
+        "origin": {"x": "0", "y": "0", "z": "0"},
+        "positive-boundary": {"x": "15", "y": "99", "z": "31"},
+        "negative-boundary": {"x": "-1", "y": "-99", "z": "-16"},
+        "mixed": {"x": "-17", "y": "42", "z": "16"},
+        "max-boundary": {"x": "2147483647", "y": "2147483647", "z": "-2147483648"},
+        "min-boundary": {"x": "-2147483648", "y": "-2147483648", "z": "2147483647"},
+    }
+    for label, values in chunkpos_from_blockpos.items():
+        yield {"case_id": f"chunkpos/from-blockpos/{label}", "family": "math",
+               "operation": "chunkpos_from_blockpos", **values}
+
     vectors = {f"direction-{x}-{y}": (float_bits(x), float_bits(y))
                for x in (-1, 0, 1) for y in (-1, 0, 1)}
     vectors.update({"negative-zero": ("80000000", "80000000"),
