@@ -720,6 +720,15 @@ impl Shapes {
         ]
     }
 
+    /// Return the all-axis variants of a shape in Java EnumMap order.
+    pub fn rotate_all_axis(north: &VoxelShape) -> [(Axis, VoxelShape); 3] {
+        [
+            (Axis::X, Self::rotate(north, ShapeRotation::Rot90YNeg)),
+            (Axis::Y, Self::rotate(north, ShapeRotation::Rot90XNeg)),
+            (Axis::Z, north.clone()),
+        ]
+    }
+
     /// Return whether two block-local shapes occlude across a direction.
     pub fn block_occludes(shape: &VoxelShape, occluder: &VoxelShape, direction: Direction) -> bool {
         let axis = direction.axis();
