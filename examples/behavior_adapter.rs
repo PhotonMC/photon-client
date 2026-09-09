@@ -2399,6 +2399,31 @@ fn math_result(request: &Value) -> Result<Value, String> {
         };
         return Ok(json!({"equal": equal}));
     }
+    if operation == "mth_clamped_lerp" {
+        let width = string(request, "type")?;
+        let bits = match width {
+            "f32" => format!(
+                "{:08x}",
+                math::clamped_lerp_f32(
+                    f32_field(request, "factor")?,
+                    f32_field(request, "min")?,
+                    f32_field(request, "max")?,
+                )
+                .to_bits()
+            ),
+            "f64" => format!(
+                "{:016x}",
+                math::clamped_lerp_f64(
+                    f64_field(request, "factor")?,
+                    f64_field(request, "min")?,
+                    f64_field(request, "max")?,
+                )
+                .to_bits()
+            ),
+            _ => return Err("unknown Mth clampedLerp type".into()),
+        };
+        return Ok(json!({"bits": bits}));
+    }
     if operation == "vec2" {
         let mut vector = Vec2::new(f32_field(request, "x")?, f32_field(request, "y")?);
         let mut events = vec![vec2_snapshot(vector)];

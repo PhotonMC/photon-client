@@ -430,6 +430,18 @@ public final class MathOracle {
             } else {
                 throw new IllegalArgumentException("Unknown Mth equal type");
             }
+        } else if (operation.equals("mth_clamped_lerp")) {
+            String width = request.get("type").getAsString();
+            if (width.equals("f32")) {
+                result.addProperty("bits", Oracle.bits(Mth.clampedLerp(
+                    Oracle.f32(request, "factor"), Oracle.f32(request, "min"),
+                    Oracle.f32(request, "max"))));
+            } else if (width.equals("f64")) {
+                result.addProperty("bits", Oracle.bits(Mth.clampedLerp(
+                    f64(request, "factor"), f64(request, "min"), f64(request, "max"))));
+            } else {
+                throw new IllegalArgumentException("Unknown Mth clampedLerp type");
+            }
         } else if (operation.equals("vec3")) {
             Vec3 vector = new Vec3(f64(request, "x"), f64(request, "y"), f64(request, "z"));
             var events = new JsonArray();

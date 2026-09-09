@@ -2899,6 +2899,35 @@ def math_cases():
                    "operation": "mth_equal", "type": width,
                    "first": float_bits(first, width), "second": float_bits(second, width)}
 
+    for width in ("f32", "f64"):
+        subnormal = (float.fromhex("0x0.000002p-126") if width == "f32"
+                     else float.fromhex("0x0.0000000000001p-1022"))
+        maximum_finite = (float.fromhex("0x1.fffffep127") if width == "f32"
+                          else float.fromhex("0x1.fffffffffffffp1023"))
+        mth_clamped_lerp = [
+            ("negative-factor", -0.5, -2.5, 4.5),
+            ("negative-infinity-factor", -float("inf"), -2.5, 4.5),
+            ("negative-zero-factor", -0.0, -0.0, 1.0),
+            ("zero-factor", 0.0, -3.25, 7.5),
+            ("within-factor", 0.25, -4.0, 12.0),
+            ("half-factor", 0.5, -4.0, 12.0),
+            ("one-factor", 1.0, -4.0, 12.0),
+            ("above-factor", 1.5, -4.0, 12.0),
+            ("positive-infinity-factor", float("inf"), -4.0, 12.0),
+            ("nan-factor", float("nan"), 1.0, 2.0),
+            ("reversed-range", 0.25, 10.0, -10.0),
+            ("precision-order", 0.1, 1.0e20, 1.0e20 + 1.0e6),
+            ("subnormal-range", 0.5, 0.0, subnormal),
+            ("maximum-finite-range", 0.5, -maximum_finite, maximum_finite),
+            ("infinite-range", 0.5, -float("inf"), float("inf")),
+            ("nan-min-out-of-range", -0.5, float("nan"), 2.0),
+        ]
+        for label, factor, minimum, maximum in mth_clamped_lerp:
+            yield {"case_id": f"mth/clamped-lerp/{width}/{label}", "family": "math",
+                   "operation": "mth_clamped_lerp", "type": width,
+                   "factor": float_bits(factor, width), "min": float_bits(minimum, width),
+                   "max": float_bits(maximum, width)}
+
 
 def timer_cases():
     def trace(label, steps, start=0, tps=20, target=50):

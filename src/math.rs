@@ -681,6 +681,28 @@ pub fn equal_f64(first: f64, second: f64) -> bool {
     (second - first).abs() < f64::from(1.0e-5_f32)
 }
 
+/// Return Java `Mth.clampedLerp(float, float, float)` in source order.
+pub fn clamped_lerp_f32(factor: f32, minimum: f32, maximum: f32) -> f32 {
+    if factor < 0.0 {
+        minimum
+    } else if factor > 1.0 {
+        maximum
+    } else {
+        minimum + factor * (maximum - minimum)
+    }
+}
+
+/// Return Java `Mth.clampedLerp(double, double, double)` in source order.
+pub fn clamped_lerp_f64(factor: f64, minimum: f64, maximum: f64) -> f64 {
+    if factor < 0.0 {
+        minimum
+    } else if factor > 1.0 {
+        maximum
+    } else {
+        minimum + factor * (maximum - minimum)
+    }
+}
+
 /// Return Java `Math.floorDiv(int, int)`, including Java's signed overflow.
 pub fn floor_div_i32(dividend: i32, divisor: i32) -> i32 {
     if divisor == 0 {
