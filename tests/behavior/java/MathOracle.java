@@ -99,6 +99,9 @@ public final class MathOracle {
                 vector = switch (step.get("action").getAsString()) {
                     case "normalize" -> vector.normalize();
                     case "scale" -> vector.scale(f64(step, "factor"));
+                    case "multiply_vec3" -> vector.multiply(vec3(step.getAsJsonObject("scale")));
+                    case "multiply_components" -> vector.multiply(
+                        f64(step, "x"), f64(step, "y"), f64(step, "z"));
                     case "add_vec3" -> vector.add(vec3(step.getAsJsonObject("delta")));
                     case "add_scalar" -> vector.add(f64(step, "value"));
                     case "add_components" -> vector.add(

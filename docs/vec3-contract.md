@@ -1,10 +1,10 @@
 # P01.b — Vec3 referans sözleşmesi
 
-Bu dilimin **40 Java davranış testi hazırdır ve Rust karşılığı doğrulanmıştır** ([kanıt](math-parity.md)). Dot/cross/vectorTo/add/subtract/distanceTo/distanceToSqr ve diğer Vec3 yardımcıları bu dilime dahil değildir. Add/subtract overload'ları için ayrı [sözleşme](vec3-add-subtract-contract.md) ve [kanıt](vec3-add-subtract-parity.md), vectorTo için ayrı [sözleşme](vec3-vector-to-contract.md) ve [kanıt](vec3-vector-to-parity.md), dot için ayrı [sözleşme](vec3-dot-contract.md) ve [kanıt](vec3-dot-parity.md), cross için ayrı [sözleşme](vec3-cross-contract.md) ve [kanıt](vec3-cross-parity.md), distanceTo için ayrı [sözleşme](vec3-distance-to-contract.md) ve [kanıt](vec3-distance-to-parity.md), distanceToSqr için ayrı [sözleşme](vec3-distance-to-sqr-contract.md) ve [kanıt](vec3-distance-to-sqr-parity.md) tutulur.
+Bu dilimin **40 Java davranış testi hazırdır ve Rust karşılığı doğrulanmıştır** ([kanıt](math-parity.md)). Dot/cross/vectorTo/add/subtract/distanceTo/distanceToSqr, multiply ve diğer Vec3 yardımcıları bu dilime dahil değildir. Add/subtract overload'ları için ayrı [sözleşme](vec3-add-subtract-contract.md) ve [kanıt](vec3-add-subtract-parity.md), vectorTo için ayrı [sözleşme](vec3-vector-to-contract.md) ve [kanıt](vec3-vector-to-parity.md), dot için ayrı [sözleşme](vec3-dot-contract.md) ve [kanıt](vec3-dot-parity.md), cross için ayrı [sözleşme](vec3-cross-contract.md) ve [kanıt](vec3-cross-parity.md), distanceTo için ayrı [sözleşme](vec3-distance-to-contract.md) ve [kanıt](vec3-distance-to-parity.md), distanceToSqr için ayrı [sözleşme](vec3-distance-to-sqr-contract.md) ve [kanıt](vec3-distance-to-sqr-parity.md), multiply için ayrı [sözleşme](vec3-multiply-contract.md) ve [kanıt](vec3-multiply-parity.md) tutulur.
 
 ## Kaynak ve sınır
 
-Java Edition 26.2 / protokol 776 / Java 25 referansı kullanılır. Kaynak köküne göre `world/phys/Vec3.java` içindeki `normalize`, `scale`, `length` ve `lengthSqr` incelendi. Adaptör doğrudan orijinal sınıfı çağırır; oyun algoritması adaptörde yeniden yazılmaz.
+Java Edition 26.2 / protokol 776 / Java 25 referansı kullanılır. Kaynak köküne göre `world/phys/Vec3.java` içindeki `normalize`, `scale`, `length`, `lengthSqr` ve `multiply` incelendi. Adaptör doğrudan orijinal sınıfı çağırır; oyun algoritması adaptörde yeniden yazılmaz.
 
 `Vec3.<clinit>` Netty buffer istediğinden math ailesine `netty-buffer`/`netty-common` eklendi. Yerel JAR SHA-1 değerleri `tests/behavior/reference.json` içinde sabitlendi. Yeni oyun bağımlılığı veya Rust kütüphanesi eklenmedi.
 

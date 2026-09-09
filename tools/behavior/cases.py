@@ -87,6 +87,30 @@ def math_cases():
                "x": float_bits(1, "f64"), "y": float_bits(-1, "f64"), "z": float_bits(0.5, "f64"),
                "steps": [{"action": "normalize"}, {"action": "scale", "factor": float_bits(factor, "f64")},
                          {"action": "normalize"}]}
+    yield {"case_id": "vec3/multiply/vector-basic", "family": "math", "operation": "vec3",
+           "x": float_bits(1.25, "f64"), "y": float_bits(-2.5, "f64"), "z": float_bits(3.75, "f64"),
+           "steps": [{"action": "multiply_vec3", "scale": vector_bits(-2.0, 0.5, 4.0)}]}
+    yield {"case_id": "vec3/multiply/components-basic", "family": "math", "operation": "vec3",
+           "x": float_bits(-1.5, "f64"), "y": float_bits(2.25, "f64"), "z": float_bits(0.75, "f64"),
+           "steps": [{"action": "multiply_components", "x": float_bits(0.5, "f64"),
+                      "y": float_bits(-4.0, "f64"), "z": float_bits(8.0, "f64")}]}
+    yield {"case_id": "vec3/multiply/overload-chain", "family": "math", "operation": "vec3",
+           "x": float_bits(2.0 ** 27, "f64"), "y": float_bits(-2.0 ** 27, "f64"), "z": float_bits(1.1, "f64"),
+           "steps": [{"action": "multiply_components", "x": float_bits(0.5, "f64"),
+                      "y": float_bits(-0.5, "f64"), "z": float_bits(2.0, "f64")},
+                      {"action": "multiply_vec3", "scale": vector_bits(1.0, -2.0, 0.25)}]}
+    yield {"case_id": "vec3/multiply/signed-zero", "family": "math", "operation": "vec3",
+           "x": float_bits(-0.0, "f64"), "y": float_bits(0.0, "f64"), "z": float_bits(-0.0, "f64"),
+           "steps": [{"action": "multiply_components", "x": float_bits(-0.0, "f64"),
+                      "y": float_bits(-0.0, "f64"), "z": float_bits(0.0, "f64")},
+                      {"action": "multiply_vec3", "scale": vector_bits(-1.0, 1.0, -1.0)}]}
+    yield {"case_id": "vec3/multiply/overflow-and-special-values", "family": "math", "operation": "vec3",
+           "x": "7fefffffffffffff", "y": "ffefffffffffffff", "z": float_bits(1.0, "f64"),
+           "steps": [{"action": "multiply_vec3", "scale": {"x": float_bits(2.0, "f64"),
+                                                                   "y": float_bits(2.0, "f64"),
+                                                                   "z": "7ff8000000000002"}},
+                      {"action": "multiply_components", "x": float_bits(1.0, "f64"),
+                       "y": float_bits(-1.0, "f64"), "z": float_bits(float("inf"), "f64")}]}
     yield {"case_id": "vec3/add-subtract/vector-chain", "family": "math", "operation": "vec3",
            "x": float_bits(1.25, "f64"), "y": float_bits(-2.5, "f64"), "z": float_bits(3.75, "f64"),
            "steps": [{"action": "add_vec3", "delta": vector_bits(-0.25, 4.0, -1.5)},

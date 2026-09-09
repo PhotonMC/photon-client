@@ -1638,6 +1638,14 @@ fn math_result(request: &Value) -> Result<Value, String> {
             vector = match string(step, "action")? {
                 "normalize" => vector.normalized(),
                 "scale" => vector.scale(f64_field(step, "factor")?),
+                "multiply_vec3" => vector.multiply_vec3(f64_vec3(
+                    step.get("scale").ok_or("scale must be an object")?,
+                )?),
+                "multiply_components" => vector.multiply_components(
+                    f64_field(step, "x")?,
+                    f64_field(step, "y")?,
+                    f64_field(step, "z")?,
+                ),
                 "add_vec3" => vector.add_vec3(f64_vec3(
                     step.get("delta").ok_or("delta must be an object")?,
                 )?),

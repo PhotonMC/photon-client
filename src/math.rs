@@ -115,6 +115,14 @@ impl Vec3 {
         Self::new(self.x * factor, self.y * factor, self.z * factor)
     }
 
+    pub fn multiply_vec3(self, scale: Self) -> Self {
+        self.multiply_components(scale.x, scale.y, scale.z)
+    }
+
+    pub fn multiply_components(self, x_scale: f64, y_scale: f64, z_scale: f64) -> Self {
+        Self::new(self.x * x_scale, self.y * y_scale, self.z * z_scale)
+    }
+
     pub fn length_squared(self) -> f64 {
         // Keep the reference evaluation order; do not fuse or substitute hypot.
         self.x * self.x + self.y * self.y + self.z * self.z
