@@ -1,6 +1,7 @@
 //! The numeric operations currently covered by the Java behavior corpus.
 //! Arithmetic stays at the reference's precision and evaluation order.
 
+use crate::direction::Axis;
 use crate::random::RandomSource;
 
 #[derive(Debug, Clone, Copy)]
@@ -179,6 +180,14 @@ impl Vec3 {
 
     pub fn is_finite(self) -> bool {
         self.x.is_finite() && self.y.is_finite() && self.z.is_finite()
+    }
+
+    pub fn get(self, axis: Axis) -> f64 {
+        match axis {
+            Axis::X => self.x,
+            Axis::Y => self.y,
+            Axis::Z => self.z,
+        }
     }
 
     pub fn length_squared(self) -> f64 {

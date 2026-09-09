@@ -379,6 +379,19 @@ def math_cases():
     yield {"case_id": "vec3/is-finite/mixed-special-values", "family": "math",
            "operation": "vec3_is_finite",
            "first": {"x": "fff0000000000000", "y": "7ff8000000000000", "z": "0000000000000001"}}
+    yield {"case_id": "vec3/get/x", "family": "math", "operation": "vec3_get",
+           "first": vector_bits(1.25, -2.5, 3.75), "axis": "x"}
+    yield {"case_id": "vec3/get/y", "family": "math", "operation": "vec3_get",
+           "first": vector_bits(-4.5, 6.25, -8.75), "axis": "y"}
+    yield {"case_id": "vec3/get/z-signed-zero", "family": "math", "operation": "vec3_get",
+           "first": {"x": "0000000000000000", "y": "8000000000000000", "z": "8000000000000000"},
+           "axis": "z"}
+    yield {"case_id": "vec3/get/subnormal-and-large", "family": "math", "operation": "vec3_get",
+           "first": {"x": "0000000000000001", "y": "8000000000000001", "z": "7fefffffffffffff"},
+           "axis": "z"}
+    yield {"case_id": "vec3/get/special-values", "family": "math", "operation": "vec3_get",
+           "first": {"x": float_bits(float("inf"), "f64"), "y": "7ff8000000000001",
+                     "z": float_bits(float("-inf"), "f64")}, "axis": "y"}
     for name in ("down", "up", "north", "south", "west", "east"):
         yield {"case_id": f"direction/properties/{name}", "family": "math", "operation": "direction",
                "name": name, "steps": []}

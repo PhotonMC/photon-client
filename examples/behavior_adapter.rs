@@ -1748,6 +1748,11 @@ fn math_result(request: &Value) -> Result<Value, String> {
         let first = f64_vec3(request.get("first").ok_or("first must be an object")?)?;
         return Ok(json!({"value": first.is_finite()}));
     }
+    if operation == "vec3_get" {
+        let first = f64_vec3(request.get("first").ok_or("first must be an object")?)?;
+        let axis = Axis::from_name(string(request, "axis")?).ok_or("unknown axis")?;
+        return Ok(json!({"value": format!("{:016x}", first.get(axis).to_bits())}));
+    }
     match string(request, "type")? {
         "f32" => {
             let value = f32_field(request, "value")?;

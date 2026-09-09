@@ -162,6 +162,13 @@ public final class MathOracle {
         } else if (operation.equals("vec3_is_finite")) {
             Vec3 first = vec3(request.getAsJsonObject("first"));
             result.addProperty("value", first.isFinite());
+        } else if (operation.equals("vec3_get")) {
+            Vec3 first = vec3(request.getAsJsonObject("first"));
+            Direction.Axis axis = Direction.Axis.byName(request.get("axis").getAsString());
+            if (axis == null) {
+                throw new IllegalArgumentException("Unknown axis name");
+            }
+            result.addProperty("value", Oracle.bits(first.get(axis)));
         } else if (operation.equals("shape")) {
             String kind = request.get("kind").getAsString();
             if (kind.equals("single")) {
