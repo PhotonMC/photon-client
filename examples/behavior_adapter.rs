@@ -5,7 +5,7 @@ use std::io::{self, BufRead, Write};
 use voxel_client::aabb::{Aabb, AabbBuilder, AabbBuilderError, BlockHitResult, BoundingBox};
 use voxel_client::binary::{self, BlockPos, SectionPos, Uuid};
 use voxel_client::direction::{Axis, Direction};
-use voxel_client::math::{self, Vec2, Vec3};
+use voxel_client::math::{self, Vec2, Vec3, Vec3f};
 use voxel_client::nbt::{self, Field, FieldValue};
 use voxel_client::random::RandomSource;
 use voxel_client::shape::{BooleanOp, ShapeRotation, Shapes, VoxelShape};
@@ -131,6 +131,14 @@ fn vec3_snapshot(vector: Vec3) -> Value {
         "z": format!("{:016x}", vector.z.to_bits()),
         "length": format!("{:016x}", vector.length().to_bits()),
         "length_squared": format!("{:016x}", vector.length_squared().to_bits()),
+    })
+}
+
+fn vec3f_snapshot(vector: Vec3f) -> Value {
+    json!({
+        "x": format!("{:08x}", vector.x.to_bits()),
+        "y": format!("{:08x}", vector.y.to_bits()),
+        "z": format!("{:08x}", vector.z.to_bits()),
     })
 }
 
@@ -1780,6 +1788,10 @@ fn math_result(request: &Value) -> Result<Value, String> {
         let first = f64_vec3(request.get("first").ok_or("first must be an object")?)?;
         let onto = f64_vec3(request.get("onto").ok_or("onto must be an object")?)?;
         return Ok(json!({"value": vec3_snapshot(first.projected_on(onto))}));
+    }
+    if operation == "vec3_to_vector3f" {
+        let first = f64_vec3(request.get("first").ok_or("first must be an object")?)?;
+        return Ok(json!({"value": vec3f_snapshot(first.to_vector3f())}));
     }
     match string(request, "type")? {
         "f32" => {

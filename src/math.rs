@@ -42,6 +42,20 @@ impl Vec2 {
     }
 }
 
+/// Three-component f32 value returned by the Java-compatible Vec3 conversion.
+#[derive(Debug, Clone, Copy)]
+pub struct Vec3f {
+    pub x: f32,
+    pub y: f32,
+    pub z: f32,
+}
+
+impl Vec3f {
+    pub const fn new(x: f32, y: f32, z: f32) -> Self {
+        Self { x, y, z }
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct Vec3 {
     pub x: f64,
@@ -233,6 +247,10 @@ impl Vec3 {
             onto.scale(self.dot(onto))
                 .scale(1.0 / onto.length_squared())
         }
+    }
+
+    pub fn to_vector3f(self) -> Vec3f {
+        Vec3f::new(self.x as f32, self.y as f32, self.z as f32)
     }
 
     pub fn length_squared(self) -> f64 {

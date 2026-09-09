@@ -452,6 +452,19 @@ def math_cases():
     yield {"case_id": "vec3/projected-on/subnormal-onto", "family": "math", "operation": "vec3_projected_on",
            "first": {"x": "7fefffffffffffff", "y": "8000000000000001", "z": "0000000000000001"},
            "onto": {"x": "0000000000000001", "y": "0000000000000000", "z": "0000000000000000"}}
+    yield {"case_id": "vec3/to-vector3f/basic", "family": "math", "operation": "vec3_to_vector3f",
+           "first": vector_bits(1.25, -2.5, 3.75)}
+    yield {"case_id": "vec3/to-vector3f/rounding", "family": "math", "operation": "vec3_to_vector3f",
+           "first": vector_bits(1.00000006, -123456.789, 0.1)}
+    yield {"case_id": "vec3/to-vector3f/signed-zero", "family": "math", "operation": "vec3_to_vector3f",
+           "first": {"x": "8000000000000000", "y": "0000000000000000", "z": "8000000000000001"}}
+    yield {"case_id": "vec3/to-vector3f/subnormal", "family": "math", "operation": "vec3_to_vector3f",
+           "first": {"x": "0000000000000001", "y": "8000000000000001",
+                     "z": float_bits(2.0 ** -149, "f64")}}
+    yield {"case_id": "vec3/to-vector3f/overflow", "family": "math", "operation": "vec3_to_vector3f",
+           "first": vector_bits(1.0e300, -1.0e300, 3.4028235e38)}
+    yield {"case_id": "vec3/to-vector3f/special-values", "family": "math", "operation": "vec3_to_vector3f",
+           "first": {"x": "7ff0000000000000", "y": "7ff8000000000001", "z": "fff0000000000000"}}
     for name in ("down", "up", "north", "south", "west", "east"):
         yield {"case_id": f"direction/properties/{name}", "family": "math", "operation": "direction",
                "name": name, "steps": []}

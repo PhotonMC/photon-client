@@ -199,6 +199,9 @@ public final class MathOracle {
             Vec3 first = vec3(request.getAsJsonObject("first"));
             Vec3 onto = vec3(request.getAsJsonObject("onto"));
             result.add("value", snapshot(first.projectedOn(onto)));
+        } else if (operation.equals("vec3_to_vector3f")) {
+            Vec3 first = vec3(request.getAsJsonObject("first"));
+            result.add("value", snapshot(first.toVector3f()));
         } else if (operation.equals("shape")) {
             String kind = request.get("kind").getAsString();
             if (kind.equals("single")) {
@@ -1248,6 +1251,14 @@ public final class MathOracle {
         state.addProperty("z", Oracle.bits(vector.z));
         state.addProperty("length", Oracle.bits(vector.length()));
         state.addProperty("length_squared", Oracle.bits(vector.lengthSqr()));
+        return state;
+    }
+
+    private static JsonObject snapshot(Vector3f vector) {
+        var state = new JsonObject();
+        state.addProperty("x", Oracle.bits(vector.x));
+        state.addProperty("y", Oracle.bits(vector.y));
+        state.addProperty("z", Oracle.bits(vector.z));
         return state;
     }
 
