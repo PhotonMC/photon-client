@@ -269,6 +269,12 @@ def math_cases():
     yield {"case_id": "shape/create-aabb/array", "family": "math", "operation": "shape",
            "kind": "create_aabb", "aabb": box_bits(
                -1.25, 0.125, 2.0, 1.5, 0.875, 3.25)}
+    yield {"case_id": "shape/infinity/snapshot", "family": "math", "operation": "shape",
+           "kind": "infinity", "view": "snapshot"}
+    yield {"case_id": "shape/infinity/boxes", "family": "math", "operation": "shape",
+           "kind": "infinity", "view": "boxes"}
+    yield {"case_id": "shape/infinity/not-same-self", "family": "math", "operation": "shape",
+           "kind": "infinity", "view": "not_same_self"}
     yield {"case_id": "shape/empty/sliver", "family": "math", "operation": "shape",
            "kind": "single", "box": box_bits(0, 0, 0, 0.00000005, 1, 1), "steps": []}
     yield {"case_id": "shape/or/disjoint", "family": "math", "operation": "shape", "kind": "join",

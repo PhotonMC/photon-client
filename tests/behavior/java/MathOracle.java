@@ -240,6 +240,29 @@ public final class MathOracle {
             } else if (kind.equals("create_aabb")) {
                 AABB aabb = box(request.getAsJsonObject("aabb"));
                 result.add("shape", snapshot(Shapes.create(aabb)));
+            } else if (kind.equals("infinity")) {
+                VoxelShape infinity = Shapes.INFINITY;
+                String view = request.get("view").getAsString();
+                if (view.equals("snapshot")) {
+                    result.add("shape", snapshot(infinity));
+                } else if (view.equals("boxes")) {
+                    var boxes = new JsonArray();
+                    infinity.forAllBoxes((x1, y1, z1, x2, y2, z2) -> {
+                        var box = new JsonArray();
+                        box.add(Oracle.bits(x1));
+                        box.add(Oracle.bits(y1));
+                        box.add(Oracle.bits(z1));
+                        box.add(Oracle.bits(x2));
+                        box.add(Oracle.bits(y2));
+                        box.add(Oracle.bits(z2));
+                        boxes.add(box);
+                    });
+                    result.add("boxes", boxes);
+                } else if (view.equals("not_same_self")) {
+                    result.add("shape", snapshot(Shapes.join(infinity, infinity, BooleanOp.NOT_SAME)));
+                } else {
+                    throw new IllegalArgumentException("Unknown infinity view");
+                }
             } else if (kind.equals("axis_limits")) {
                 var entries = request.getAsJsonArray("shapes");
                 if (entries == null || entries.size() == 0) {

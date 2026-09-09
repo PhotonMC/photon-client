@@ -720,6 +720,34 @@ fn shape_result(request: &Value) -> Result<Value, String> {
                 .map_err(|_| "shape minimum must not exceed maximum".to_owned())?;
             Ok(json!({"shape": shape_snapshot(&shape)}))
         }
+        "infinity" => {
+            let infinity = Shapes::infinity();
+            match string(request, "view")? {
+                "snapshot" => Ok(json!({"shape": shape_snapshot(&infinity)})),
+                "boxes" => {
+                    let mut boxes = Vec::new();
+                    infinity.for_all_boxes(|x1, y1, z1, x2, y2, z2| {
+                        boxes.push(vec![
+                            format!("{:016x}", x1.to_bits()),
+                            format!("{:016x}", y1.to_bits()),
+                            format!("{:016x}", z1.to_bits()),
+                            format!("{:016x}", x2.to_bits()),
+                            format!("{:016x}", y2.to_bits()),
+                            format!("{:016x}", z2.to_bits()),
+                        ]);
+                    });
+                    Ok(json!({"boxes": boxes}))
+                }
+                "not_same_self" => Ok(json!({
+                    "shape": shape_snapshot(&Shapes::join(
+                        &infinity,
+                        &infinity,
+                        BooleanOp::NotSame,
+                    ))
+                })),
+                _ => Err("unknown infinity view".into()),
+            }
+        }
         "axis_limits" => {
             let entries = request
                 .get("shapes")

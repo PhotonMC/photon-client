@@ -869,6 +869,19 @@ impl Shapes {
         Self::box_shape(0.0, 0.0, 0.0, 1.0, 1.0, 1.0).expect("unit block bounds are ordered")
     }
 
+    /// Return the shape spanning negative to positive infinity on every axis.
+    pub fn infinity() -> VoxelShape {
+        Self::box_shape(
+            f64::NEG_INFINITY,
+            f64::NEG_INFINITY,
+            f64::NEG_INFINITY,
+            f64::INFINITY,
+            f64::INFINITY,
+            f64::INFINITY,
+        )
+        .expect("infinity bounds are ordered")
+    }
+
     /// Construct a box, applying Java's minimum extent threshold.
     pub fn box_shape(
         min_x: f64,
