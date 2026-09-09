@@ -10,6 +10,7 @@ use crate::aabb::{Aabb, BlockHitResult};
 use crate::binary::BlockPos;
 use crate::direction::{Axis, AxisDirection, Direction};
 use crate::math::{Vec3, clamp_f64};
+use std::sync::{Arc, OnceLock};
 
 const EPSILON: f64 = 1.0e-7;
 
@@ -199,12 +200,28 @@ pub struct VoxelShape {
     ys: Vec<f64>,
     zs: Vec<f64>,
     cells: Vec<bool>,
+    identity: Arc<()>,
 }
+
+static EMPTY_SHAPE: OnceLock<VoxelShape> = OnceLock::new();
+static BLOCK_SHAPE: OnceLock<VoxelShape> = OnceLock::new();
+static INFINITY_SHAPE: OnceLock<VoxelShape> = OnceLock::new();
 
 impl VoxelShape {
     fn new(xs: Vec<f64>, ys: Vec<f64>, zs: Vec<f64>, cells: Vec<bool>) -> Self {
         debug_assert_eq!(cells.len(), Grid::from_coords(&xs, &ys, &zs).cell_count());
-        Self { xs, ys, zs, cells }
+        Self {
+            xs,
+            ys,
+            zs,
+            cells,
+            identity: Arc::new(()),
+        }
+    }
+
+    /// Compare object identity like Java `VoxelShape.equals(Object)`.
+    pub fn equals_java(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.identity, &other.identity)
     }
 
     /// Return whether no voxel cell is occupied.
@@ -867,25 +884,33 @@ impl Shapes {
 
     /// Return an empty shape.
     pub fn empty() -> VoxelShape {
-        VoxelShape::new(vec![0.0], vec![0.0], vec![0.0], Vec::new())
+        EMPTY_SHAPE
+            .get_or_init(|| VoxelShape::new(vec![0.0], vec![0.0], vec![0.0], Vec::new()))
+            .clone()
     }
 
     /// Return the unit block shape.
     pub fn block() -> VoxelShape {
-        Self::box_shape(0.0, 0.0, 0.0, 1.0, 1.0, 1.0).expect("unit block bounds are ordered")
+        BLOCK_SHAPE
+            .get_or_init(|| cube_box([0.0, 0.0, 0.0], [1.0, 1.0, 1.0], [0, 0, 0]))
+            .clone()
     }
 
     /// Return the shape spanning negative to positive infinity on every axis.
     pub fn infinity() -> VoxelShape {
-        Self::box_shape(
-            f64::NEG_INFINITY,
-            f64::NEG_INFINITY,
-            f64::NEG_INFINITY,
-            f64::INFINITY,
-            f64::INFINITY,
-            f64::INFINITY,
-        )
-        .expect("infinity bounds are ordered")
+        INFINITY_SHAPE
+            .get_or_init(|| {
+                Self::box_shape(
+                    f64::NEG_INFINITY,
+                    f64::NEG_INFINITY,
+                    f64::NEG_INFINITY,
+                    f64::INFINITY,
+                    f64::INFINITY,
+                    f64::INFINITY,
+                )
+                .expect("infinity bounds are ordered")
+            })
+            .clone()
     }
 
     /// Construct a shape from raw coordinates like Java `Shapes.create(double...)`.
@@ -906,6 +931,7 @@ impl Shapes {
             find_bits(min_y, max_y),
             find_bits(min_z, max_z),
         ) {
+            (Some(0), Some(0), Some(0)) => Self::block(),
             (Some(x_bits), Some(y_bits), Some(z_bits)) => cube_box(
                 [min_x, min_y, min_z],
                 [max_x, max_y, max_z],
@@ -966,7 +992,7 @@ impl Shapes {
         second: &VoxelShape,
         operation: BooleanOp,
     ) -> VoxelShape {
-        if std::ptr::eq(first, second) {
+        if first.equals_java(second) {
             return if operation.apply(true, true) {
                 first.clone()
             } else {

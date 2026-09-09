@@ -829,6 +829,48 @@ fn shape_result(request: &Value) -> Result<Value, String> {
             let second = shape_box(request.get("second").ok_or("second must be an object")?)?;
             Ok(json!({"equal": Shapes::equal(&first, &second)}))
         }
+        "object_equals" => {
+            let shape = shape_box(request.get("shape").ok_or("shape must be an object")?)?;
+            let same_geometry = shape_box(request.get("same").ok_or("same must be an object")?)?;
+            let different_geometry = shape_box(
+                request
+                    .get("different")
+                    .ok_or("different must be an object")?,
+            )?;
+            Ok(json!({
+                "self": shape.equals_java(&shape),
+                "same_geometry": shape.equals_java(&same_geometry),
+                "different_geometry": shape.equals_java(&different_geometry),
+            }))
+        }
+        "object_equals_constants" => {
+            let empty = Shapes::empty();
+            let block = Shapes::block();
+            let infinity = Shapes::infinity();
+            let empty_thin = Shapes::box_shape(0.0, 0.0, 0.0, 0.00000005, 1.0, 1.0)
+                .map_err(|_| "shape minimum must not exceed maximum".to_owned())?;
+            let block_box = Shapes::box_shape(0.0, 0.0, 0.0, 1.0, 1.0, 1.0)
+                .map_err(|_| "shape minimum must not exceed maximum".to_owned())?;
+            let infinity_box = Shapes::box_shape(
+                f64::NEG_INFINITY,
+                f64::NEG_INFINITY,
+                f64::NEG_INFINITY,
+                f64::INFINITY,
+                f64::INFINITY,
+                f64::INFINITY,
+            )
+            .map_err(|_| "shape minimum must not exceed maximum".to_owned())?;
+            Ok(json!({
+                "empty_self": empty.equals_java(&Shapes::empty()),
+                "empty_thin": empty.equals_java(&empty_thin),
+                "empty_move": empty.equals_java(&empty.move_by(1.0, 2.0, 3.0)),
+                "block_self": block.equals_java(&Shapes::block()),
+                "block_box": block.equals_java(&block_box),
+                "block_move": block.equals_java(&block.move_by(0.0, 0.0, 0.0)),
+                "infinity_self": infinity.equals_java(&Shapes::infinity()),
+                "infinity_box": infinity.equals_java(&infinity_box),
+            }))
+        }
         "rotate" => {
             let shape = shape_box(request.get("box").ok_or("box must be an object")?)?;
             let rotation = ShapeRotation::from_name(string(request, "rotation")?)

@@ -438,6 +438,16 @@ def math_cases():
     yield {"case_id": "shape/equal/both-empty", "family": "math", "operation": "shape", "kind": "equal",
            "first": box_bits(0.0, 0.0, 0.0, 0.00000005, 1.0, 1.0),
            "second": box_bits(-2.0, -1.0, 3.0, -1.99999995, 0.0, 4.0)}
+    object_equals_cube = box_bits(0.125, 0.25, 0.375, 0.625, 0.75, 0.875)
+    yield {"case_id": "shape/object-equals/cube", "family": "math", "operation": "shape",
+           "kind": "object_equals", "shape": object_equals_cube, "same": object_equals_cube,
+           "different": box_bits(0.125, 0.25, 0.375, 0.75, 0.75, 0.875)}
+    object_equals_array = box_bits(-2.0, -0.75, 1.5, -1.25, -0.25, 2.0)
+    yield {"case_id": "shape/object-equals/array", "family": "math", "operation": "shape",
+           "kind": "object_equals", "shape": object_equals_array, "same": object_equals_array,
+           "different": box_bits(-2.0, -0.75, 1.5, -1.25, -0.25, 2.25)}
+    yield {"case_id": "shape/object-equals/constants", "family": "math", "operation": "shape",
+           "kind": "object_equals_constants"}
     rotate_box = box_bits(0.125, 0.25, 0.375, 0.625, 0.75, 0.875)
     yield {"case_id": "shape/rotate/identity", "family": "math", "operation": "shape", "kind": "rotate",
            "box": rotate_box, "rotation": "IDENTITY"}

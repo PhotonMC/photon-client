@@ -325,6 +325,32 @@ public final class MathOracle {
                 VoxelShape first = voxelShape(request.getAsJsonObject("first"));
                 VoxelShape second = voxelShape(request.getAsJsonObject("second"));
                 result.addProperty("equal", Shapes.equal(first, second));
+            } else if (kind.equals("object_equals")) {
+                VoxelShape shape = voxelShape(request.getAsJsonObject("shape"));
+                VoxelShape sameGeometry = voxelShape(request.getAsJsonObject("same"));
+                VoxelShape differentGeometry = voxelShape(request.getAsJsonObject("different"));
+                result.addProperty("self", shape.equals(shape));
+                result.addProperty("same_geometry", shape.equals(sameGeometry));
+                result.addProperty("different_geometry", shape.equals(differentGeometry));
+            } else if (kind.equals("object_equals_constants")) {
+                VoxelShape empty = Shapes.empty();
+                VoxelShape block = Shapes.block();
+                VoxelShape infinity = Shapes.INFINITY;
+                result.addProperty("empty_self", empty.equals(Shapes.empty()));
+                result.addProperty("empty_thin", empty.equals(Shapes.box(0.0, 0.0, 0.0, 0.00000005, 1.0, 1.0)));
+                result.addProperty("empty_move", empty.equals(empty.move(1.0, 2.0, 3.0)));
+                result.addProperty("block_self", block.equals(Shapes.block()));
+                result.addProperty("block_box", block.equals(Shapes.box(0.0, 0.0, 0.0, 1.0, 1.0, 1.0)));
+                result.addProperty("block_move", block.equals(block.move(0.0, 0.0, 0.0)));
+                result.addProperty("infinity_self", infinity.equals(Shapes.INFINITY));
+                result.addProperty("infinity_box", infinity.equals(Shapes.box(
+                    Double.NEGATIVE_INFINITY,
+                    Double.NEGATIVE_INFINITY,
+                    Double.NEGATIVE_INFINITY,
+                    Double.POSITIVE_INFINITY,
+                    Double.POSITIVE_INFINITY,
+                    Double.POSITIVE_INFINITY
+                )));
             } else if (kind.equals("rotate")) {
                 VoxelShape shape = voxelShape(request.getAsJsonObject("box"));
                 OctahedralGroup rotation = OctahedralGroup.valueOf(request.get("rotation").getAsString());
