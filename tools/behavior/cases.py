@@ -237,6 +237,36 @@ def math_cases():
         yield {"case_id": f"chunkpos/from-section-node/{label}", "family": "math",
                "operation": "chunkpos_from_section_node", **values}
 
+    chunkpos_range_closed = {
+        "from-to-single": {
+            "mode": "from-to", "from_x": "0", "from_z": "0", "to_x": "0", "to_z": "0",
+        },
+        "from-to-increasing": {
+            "mode": "from-to", "from_x": "1", "from_z": "2", "to_x": "3", "to_z": "4",
+        },
+        "from-to-decreasing": {
+            "mode": "from-to", "from_x": "3", "from_z": "4", "to_x": "1", "to_z": "2",
+        },
+        "from-to-fixed-x": {
+            "mode": "from-to", "from_x": "-5", "from_z": "7", "to_x": "-5", "to_z": "4",
+        },
+        "from-to-fixed-z": {
+            "mode": "from-to", "from_x": "-2", "from_z": "6", "to_x": "2", "to_z": "6",
+        },
+        "center-radius-zero": {
+            "mode": "center-radius", "x": "9", "z": "-4", "radius": "0",
+        },
+        "center-radius-positive": {
+            "mode": "center-radius", "x": "-2", "z": "3", "radius": "2",
+        },
+        "center-radius-negative": {
+            "mode": "center-radius", "x": "4", "z": "-6", "radius": "-1",
+        },
+    }
+    for label, values in chunkpos_range_closed.items():
+        yield {"case_id": f"chunkpos/range-closed/{label}", "family": "math",
+               "operation": "chunkpos_range_closed", **values}
+
     chunkpos_validity = {
         "origin": {"x": "0", "z": "0"},
         "boundary": {"x": "2097061", "z": "-2097061"},

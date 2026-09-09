@@ -302,6 +302,15 @@ fn chunkpos_validity_snapshot(value: ChunkPos) -> Value {
     })
 }
 
+fn chunkpos_range_closed_snapshot(values: Vec<ChunkPos>) -> Value {
+    json!({
+        "positions": values
+            .into_iter()
+            .map(chunkpos_snapshot)
+            .collect::<Vec<_>>(),
+    })
+}
+
 fn blockpos_result(request: &Value) -> Result<Value, String> {
     let mut value = blockpos(request)?;
     let mut events = vec![blockpos_snapshot(value)];
@@ -1854,6 +1863,40 @@ fn math_result(request: &Value) -> Result<Value, String> {
             .map_err(|error| error.to_string())?;
         return Ok(json!({
             "value": format!("{:x}", ChunkPos::from_section_node(section_node)),
+        }));
+    }
+    if operation == "chunkpos_range_closed" {
+        let positions = match string(request, "mode")? {
+            "center-radius" => {
+                let center = chunkpos(request)?;
+                let radius = string(request, "radius")?
+                    .parse::<i32>()
+                    .map_err(|error| error.to_string())?;
+                ChunkPos::range_closed(center, radius)
+            }
+            "from-to" => {
+                let from = ChunkPos::new(
+                    string(request, "from_x")?
+                        .parse::<i32>()
+                        .map_err(|error| error.to_string())?,
+                    string(request, "from_z")?
+                        .parse::<i32>()
+                        .map_err(|error| error.to_string())?,
+                );
+                let to = ChunkPos::new(
+                    string(request, "to_x")?
+                        .parse::<i32>()
+                        .map_err(|error| error.to_string())?,
+                    string(request, "to_z")?
+                        .parse::<i32>()
+                        .map_err(|error| error.to_string())?,
+                );
+                ChunkPos::range_closed_from_to(from, to)
+            }
+            _ => return Err("unknown ChunkPos range mode".into()),
+        };
+        return Ok(json!({
+            "value": chunkpos_range_closed_snapshot(positions),
         }));
     }
     if operation == "chunkpos_validity" {

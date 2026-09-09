@@ -6,6 +6,7 @@ import com.mojang.serialization.DataResult;
 import com.mojang.serialization.JsonOps;
 import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.stream.Stream;
 import net.minecraft.DetectedVersion;
 import net.minecraft.SharedConstants;
 import net.minecraft.core.BlockPos;
@@ -159,6 +160,8 @@ public final class MathOracle {
         } else if (operation.equals("chunkpos_from_section_node")) {
             long sectionNode = Long.parseUnsignedLong(request.get("section_node").getAsString(), 16);
             result.addProperty("value", Long.toUnsignedString(ChunkPos.fromSectionNode(sectionNode), 16));
+        } else if (operation.equals("chunkpos_range_closed")) {
+            result.add("value", chunkPosRangeClosed(request));
         } else if (operation.equals("chunkpos_validity")) {
             ChunkPos pos = chunkPos(request);
             result.add("value", chunkPosValidity(pos));
@@ -1384,6 +1387,32 @@ public final class MathOracle {
         state.addProperty("chessboard_coordinates", Integer.toString(pos.getChessboardDistance(otherX, otherZ)));
         state.addProperty("distance_squared_chunk", Integer.toString(pos.distanceSquared(other)));
         state.addProperty("distance_squared_packed", Integer.toString(pos.distanceSquared(other.pack())));
+        return state;
+    }
+
+    private static JsonObject chunkPosRangeClosed(JsonObject request) {
+        Stream<ChunkPos> positions;
+        if (request.get("mode").getAsString().equals("center-radius")) {
+            ChunkPos center = chunkPos(request);
+            int radius = Integer.parseInt(request.get("radius").getAsString());
+            positions = ChunkPos.rangeClosed(center, radius);
+        } else if (request.get("mode").getAsString().equals("from-to")) {
+            ChunkPos from = new ChunkPos(
+                Integer.parseInt(request.get("from_x").getAsString()),
+                Integer.parseInt(request.get("from_z").getAsString())
+            );
+            ChunkPos to = new ChunkPos(
+                Integer.parseInt(request.get("to_x").getAsString()),
+                Integer.parseInt(request.get("to_z").getAsString())
+            );
+            positions = ChunkPos.rangeClosed(from, to);
+        } else {
+            throw new IllegalArgumentException("Unknown ChunkPos range mode");
+        }
+        var values = new JsonArray();
+        positions.forEach(pos -> values.add(snapshot(pos)));
+        var state = new JsonObject();
+        state.add("positions", values);
         return state;
     }
 

@@ -413,6 +413,40 @@ impl ChunkPos {
             .wrapping_add(delta_z.wrapping_mul(delta_z))
     }
 
+    /// Enumerate a centered inclusive range with Java i32 endpoint arithmetic.
+    pub fn range_closed(center: Self, radius: i32) -> Vec<Self> {
+        Self::range_closed_from_to(
+            Self::new(center.x.wrapping_sub(radius), center.z.wrapping_sub(radius)),
+            Self::new(center.x.wrapping_add(radius), center.z.wrapping_add(radius)),
+        )
+    }
+
+    /// Enumerate an inclusive range in Java's x-fastest, then-z order.
+    pub fn range_closed_from_to(from: Self, to: Self) -> Vec<Self> {
+        let x_diff = if from.x < to.x { 1 } else { -1 };
+        let z_diff = if from.z < to.z { 1 } else { -1 };
+        let mut positions = Vec::new();
+        let mut position: Option<ChunkPos> = None;
+        loop {
+            let next = match position {
+                None => from,
+                Some(current) => {
+                    if current.x == to.x {
+                        if current.z == to.z {
+                            break;
+                        }
+                        Self::new(from.x, current.z.wrapping_add(z_diff))
+                    } else {
+                        Self::new(current.x.wrapping_add(x_diff), current.z)
+                    }
+                }
+            };
+            positions.push(next);
+            position = Some(next);
+        }
+        positions
+    }
+
     /// Compute the Java ChunkPos hash from two signed coordinates.
     pub fn hash(x: i32, z: i32) -> i32 {
         let x_transform = x.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
