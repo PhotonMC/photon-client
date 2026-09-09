@@ -423,6 +423,20 @@ def math_cases():
     yield {"case_id": "vec3/relative/south-special", "family": "math", "operation": "vec3_relative",
            "first": {"x": "3ff4000000000000", "y": "c004000000000000", "z": "7ff0000000000000"},
            "direction": "south", "distance": "7ff8000000000001"}
+    yield {"case_id": "vec3/align/none-preserves", "family": "math", "operation": "vec3_align",
+           "first": vector_bits(1.25, -2.5, 3.75), "axes": []}
+    yield {"case_id": "vec3/align/all-floors", "family": "math", "operation": "vec3_align",
+           "first": vector_bits(1.75, -2.25, 3.0), "axes": ["x", "y", "z"]}
+    yield {"case_id": "vec3/align/xz-negative", "family": "math", "operation": "vec3_align",
+           "first": vector_bits(-0.25, 1.75, -3.75), "axes": ["x", "z"]}
+    yield {"case_id": "vec3/align/y-signed-zero", "family": "math", "operation": "vec3_align",
+           "first": vector_bits(-0.0, -0.0, 0.0), "axes": ["y"]}
+    yield {"case_id": "vec3/align/selected-special", "family": "math", "operation": "vec3_align",
+           "first": {"x": "7ff0000000000000", "y": "7ff8000000000001", "z": "fff0000000000000"},
+           "axes": ["x", "y", "z"]}
+    yield {"case_id": "vec3/align/reordered-duplicate", "family": "math", "operation": "vec3_align",
+           "first": {"x": "7fefffffffffffff", "y": "0000000000000001", "z": "bff0000000000000"},
+           "axes": ["z", "x", "z"]}
     for name in ("down", "up", "north", "south", "west", "east"):
         yield {"case_id": f"direction/properties/{name}", "family": "math", "operation": "direction",
                "name": name, "steps": []}

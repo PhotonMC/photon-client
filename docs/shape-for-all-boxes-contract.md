@@ -25,4 +25,4 @@ Girdiler `family: "math"`, `operation: "shape"`, `kind: "boxes"` ve `shapes` ala
 
 ## Java yakalama
 
-Math referans kimliği `7eb966aeeec47bb875a064f29ee8e61b18ab59b1678b26c179ead90046713129` oldu. Birleşik altı aile referansı `7eb966aeeec47bb875a064f29ee8e61b18ab59b1678b26c179ead90046713129` kimliğiyle doğrulandı. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.
+Math referans kimliği `faa59d430a7f5ffebd3b634a6e1cb6970d92ff920794ed661c7eaf6175f68fb7` oldu. Birleşik altı aile referansı `faa59d430a7f5ffebd3b634a6e1cb6970d92ff920794ed661c7eaf6175f68fb7` kimliğiyle doğrulandı. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.

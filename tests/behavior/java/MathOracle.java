@@ -2,6 +2,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.mojang.math.OctahedralGroup;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.SectionPos;
@@ -183,6 +184,17 @@ public final class MathOracle {
                 throw new IllegalArgumentException("Unknown direction name");
             }
             result.add("value", snapshot(first.relative(direction, f64(request, "distance"))));
+        } else if (operation.equals("vec3_align")) {
+            Vec3 first = vec3(request.getAsJsonObject("first"));
+            EnumSet<Direction.Axis> axes = EnumSet.noneOf(Direction.Axis.class);
+            for (var entry : request.getAsJsonArray("axes")) {
+                Direction.Axis axis = Direction.Axis.byName(entry.getAsString());
+                if (axis == null) {
+                    throw new IllegalArgumentException("Unknown axis name");
+                }
+                axes.add(axis);
+            }
+            result.add("value", snapshot(first.align(axes)));
         } else if (operation.equals("shape")) {
             String kind = request.get("kind").getAsString();
             if (kind.equals("single")) {

@@ -207,6 +207,25 @@ impl Vec3 {
         )
     }
 
+    pub fn align(self, axes: &[Axis]) -> Self {
+        let x = if axes.contains(&Axis::X) {
+            floor_f64(self.x) as f64
+        } else {
+            self.x
+        };
+        let y = if axes.contains(&Axis::Y) {
+            floor_f64(self.y) as f64
+        } else {
+            self.y
+        };
+        let z = if axes.contains(&Axis::Z) {
+            floor_f64(self.z) as f64
+        } else {
+            self.z
+        };
+        Self::new(x, y, z)
+    }
+
     pub fn length_squared(self) -> f64 {
         // Keep the reference evaluation order; do not fuse or substitute hypot.
         self.x * self.x + self.y * self.y + self.z * self.z

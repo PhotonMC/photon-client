@@ -1766,6 +1766,16 @@ fn math_result(request: &Value) -> Result<Value, String> {
         let distance = f64_field(request, "distance")?;
         return Ok(json!({"value": vec3_snapshot(first.relative(direction, distance))}));
     }
+    if operation == "vec3_align" {
+        let first = f64_vec3(request.get("first").ok_or("first must be an object")?)?;
+        let axis_values = request["axes"].as_array().ok_or("axes must be an array")?;
+        let mut axes = Vec::with_capacity(axis_values.len());
+        for axis in axis_values {
+            let name = axis.as_str().ok_or("axis must be a string")?;
+            axes.push(Axis::from_name(name).ok_or("unknown axis")?);
+        }
+        return Ok(json!({"value": vec3_snapshot(first.align(&axes))}));
+    }
     match string(request, "type")? {
         "f32" => {
             let value = f32_field(request, "value")?;
