@@ -6294,6 +6294,70 @@ def resources_cases():
         ],
         "queries": ["minecraft:config/value.json"],
     }
+    yield {
+        "case_id": "resources/reload/replaces-active-stack",
+        "family": "resources",
+        "operation": "reload",
+        "initial_queries": ["minecraft:textures/shared.png", "other:value.json"],
+        "rounds": [
+            {
+                "packs": [
+                    {
+                        "id": "base-r1",
+                        "resources": [
+                            {"id": "minecraft:textures/shared.png", "hex": "4f4c44"},
+                            {"id": "minecraft:textures/legacy.png", "hex": "4c4547414359"},
+                        ],
+                    },
+                    {
+                        "id": "overlay-r1",
+                        "resources": [
+                            {"id": "minecraft:textures/shared.png", "hex": "4f5631"},
+                            {"id": "custom:config/value.json", "hex": "435553544f4d"},
+                        ],
+                    },
+                ],
+                "queries": [
+                    "minecraft:textures/shared.png", "minecraft:textures/legacy.png",
+                    "custom:config/value.json", "other:value.json",
+                ],
+            },
+            {
+                "packs": [
+                    {
+                        "id": "replacement-r2",
+                        "resources": [
+                            {"id": "minecraft:textures/shared.png", "hex": "4e4557"},
+                            {"id": "other:value.json", "hex": "5245504c41434544"},
+                        ],
+                    },
+                ],
+                "queries": [
+                    "minecraft:textures/shared.png", "minecraft:textures/legacy.png",
+                    "custom:config/value.json", "other:value.json",
+                ],
+            },
+        ],
+    }
+    yield {
+        "case_id": "resources/reload/empty-remove-readd",
+        "family": "resources",
+        "operation": "reload",
+        "initial_queries": ["minecraft:config/value.json"],
+        "rounds": [
+            {"packs": [], "queries": ["minecraft:config/value.json"]},
+            {
+                "packs": [
+                    {
+                        "id": "fresh",
+                        "resources": [{"id": "minecraft:config/value.json", "hex": "4652455348"}],
+                    },
+                ],
+                "queries": ["minecraft:config/value.json"],
+            },
+            {"packs": [], "queries": ["minecraft:config/value.json"]},
+        ],
+    }
 
 
 def build_cases(families):

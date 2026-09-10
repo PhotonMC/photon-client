@@ -24,7 +24,9 @@ use voxel_client::option::{
     AltEnum, ClampingLazyMaxIntRange, CycleableEnum, IntRange, LazyEnum, SliderableEnum, UnitDouble,
 };
 use voxel_client::random::RandomSource;
-use voxel_client::resources::{self, AssetIndex, AssetResolution, ResourcePack, ResourcePackStack};
+use voxel_client::resources::{
+    self, AssetIndex, AssetResolution, ReloadableResourceManager, ResourcePack, ResourcePackStack,
+};
 use voxel_client::scroll::ScrollWheelHandler;
 use voxel_client::shape::{BooleanOp, ShapeRotation, Shapes, VoxelShape};
 use voxel_client::smooth::SmoothDouble;
@@ -780,6 +782,9 @@ fn resources_result(request: &Value) -> Result<Value, String> {
     if request["operation"].as_str() == Some("packs") {
         return resource_packs_result(request);
     }
+    if request["operation"].as_str() == Some("reload") {
+        return resource_reload_result(request);
+    }
 
     let entries = request["entries"]
         .as_array()
@@ -846,7 +851,13 @@ fn resources_result(request: &Value) -> Result<Value, String> {
 }
 
 fn resource_packs_result(request: &Value) -> Result<Value, String> {
-    let packs = request["packs"]
+    let pack_stack = ResourcePackStack::new(parse_resource_packs(&request["packs"])?);
+    let queries = resource_queries_result(&pack_stack, &request["queries"])?;
+    Ok(json!({"queries": queries}))
+}
+
+fn parse_resource_packs(value: &Value) -> Result<Vec<ResourcePack>, String> {
+    value
         .as_array()
         .ok_or("packs must be an array")?
         .iter()
@@ -863,9 +874,14 @@ fn resource_packs_result(request: &Value) -> Result<Value, String> {
             }
             Ok(pack)
         })
-        .collect::<Result<Vec<_>, String>>()?;
-    let pack_stack = ResourcePackStack::new(packs);
-    let queries = request["queries"]
+        .collect::<Result<Vec<_>, String>>()
+}
+
+fn resource_queries_result(
+    pack_stack: &ResourcePackStack,
+    query_values: &Value,
+) -> Result<Value, String> {
+    let queries = query_values
         .as_array()
         .ok_or("queries must be an array")?
         .iter()
@@ -893,7 +909,32 @@ fn resource_packs_result(request: &Value) -> Result<Value, String> {
             Ok(Value::Object(result))
         })
         .collect::<Result<Vec<_>, String>>()?;
-    Ok(json!({"queries": queries}))
+    Ok(json!(queries))
+}
+
+fn resource_reload_result(request: &Value) -> Result<Value, String> {
+    let mut manager = ReloadableResourceManager::new();
+    let initial = json!({
+        "packs": manager.resources().pack_ids(),
+        "namespaces": manager.resources().namespaces(),
+        "queries": resource_queries_result(manager.resources(), &request["initial_queries"])?,
+    });
+    let rounds = request["rounds"]
+        .as_array()
+        .ok_or("rounds must be an array")?
+        .iter()
+        .enumerate()
+        .map(|(round, round_value)| {
+            manager.reload(parse_resource_packs(&round_value["packs"])?);
+            Ok(json!({
+                "packs": manager.resources().pack_ids(),
+                "namespaces": manager.resources().namespaces(),
+                "queries": resource_queries_result(manager.resources(), &round_value["queries"])?,
+                "round": round,
+            }))
+        })
+        .collect::<Result<Vec<_>, String>>()?;
+    Ok(json!({"initial": initial, "rounds": rounds}))
 }
 
 fn input_with_modifiers_snapshot<T: InputWithModifiers>(input: &T) -> Value {

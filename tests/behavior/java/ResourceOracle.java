@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import net.minecraft.network.chat.Component;
 import net.minecraft.client.resources.IndexedAssetSource;
 import net.minecraft.resources.Identifier;
@@ -19,6 +20,10 @@ import net.minecraft.server.packs.PackType;
 import net.minecraft.server.packs.PathPackResources;
 import net.minecraft.server.packs.repository.PackSource;
 import net.minecraft.server.packs.resources.MultiPackResourceManager;
+import net.minecraft.server.packs.resources.ReloadInstance;
+import net.minecraft.server.packs.resources.ReloadableResourceManager;
+import net.minecraft.server.packs.resources.ResourceManager;
+import net.minecraft.util.Unit;
 
 /** Test glue for the Java asset-index path mapping; it does not copy original assets. */
 public final class ResourceOracle {
@@ -33,6 +38,9 @@ public final class ResourceOracle {
             assets = Files.createTempDirectory("voxel-resource-oracle-");
             if (request.get("operation").getAsString().equals("packs")) {
                 return packResult(request, assets);
+            }
+            if (request.get("operation").getAsString().equals("reload")) {
+                return reloadResult(request, assets);
             }
             Path indexes = Files.createDirectories(assets.resolve("indexes"));
             Path objects = Files.createDirectories(assets.resolve("objects"));
@@ -106,9 +114,20 @@ public final class ResourceOracle {
     }
 
     private static JsonObject packResult(JsonObject request, Path root) throws IOException {
+        List<PackResources> packs = createPacks(
+            request.getAsJsonArray("packs"), Files.createDirectories(root.resolve("packs"))
+        );
+
+        try (var manager = new MultiPackResourceManager(PackType.CLIENT_RESOURCES, packs)) {
+            JsonObject result = new JsonObject();
+            result.add("queries", resourceQueries(manager, request.getAsJsonArray("queries")));
+            return result;
+        }
+    }
+
+    private static List<PackResources> createPacks(JsonArray packElements, Path packsRoot) throws IOException {
         List<PackResources> packs = new ArrayList<>();
-        Path packsRoot = Files.createDirectories(root.resolve("packs"));
-        for (JsonElement packElement : request.getAsJsonArray("packs")) {
+        for (JsonElement packElement : packElements) {
             JsonObject pack = packElement.getAsJsonObject();
             String id = pack.get("id").getAsString();
             Path packRoot = Files.createDirectories(packsRoot.resolve(id));
@@ -124,34 +143,73 @@ public final class ResourceOracle {
                 new PackLocationInfo(id, Component.literal(id), PackSource.DEFAULT, Optional.empty()), packRoot
             ));
         }
+        return packs;
+    }
 
-        try (var manager = new MultiPackResourceManager(PackType.CLIENT_RESOURCES, packs)) {
-            JsonArray queryResults = new JsonArray();
-            for (JsonElement queryElement : request.getAsJsonArray("queries")) {
-                String query = queryElement.getAsString();
-                Identifier location = Identifier.parse(query);
-                Optional<net.minecraft.server.packs.resources.Resource> resource = manager.getResource(location);
-                JsonObject result = new JsonObject();
-                result.addProperty("id", query);
-                result.addProperty("exists", resource.isPresent());
-                JsonArray stack = new JsonArray();
-                for (var layered : manager.getResourceStack(location)) {
-                    stack.add(layered.sourcePackId());
-                }
-                result.add("stack", stack);
-                if (resource.isPresent()) {
-                    var selected = resource.get();
-                    result.addProperty("source", selected.sourcePackId());
-                    try (var input = selected.open()) {
-                        result.addProperty("bytes_hex", encodeHex(input.readAllBytes()));
-                    }
-                }
-                queryResults.add(result);
-            }
+    private static JsonObject reloadResult(JsonObject request, Path root) throws IOException {
+        try (var manager = new ReloadableResourceManager(PackType.CLIENT_RESOURCES)) {
             JsonObject result = new JsonObject();
-            result.add("queries", queryResults);
+            result.add("initial", managerSnapshot(manager, request.getAsJsonArray("initial_queries")));
+            JsonArray roundResults = new JsonArray();
+            Path reloadRoot = Files.createDirectories(root.resolve("reload-packs"));
+            int roundIndex = 0;
+            for (JsonElement roundElement : request.getAsJsonArray("rounds")) {
+                JsonObject round = roundElement.getAsJsonObject();
+                Path roundRoot = Files.createDirectories(reloadRoot.resolve(Integer.toString(roundIndex)));
+                List<PackResources> packs = createPacks(round.getAsJsonArray("packs"), roundRoot);
+                ReloadInstance reload = manager.createReload(
+                    Runnable::run,
+                    Runnable::run,
+                    CompletableFuture.completedFuture(Unit.INSTANCE),
+                    packs
+                );
+                reload.done().join();
+                JsonObject snapshot = managerSnapshot(manager, round.getAsJsonArray("queries"));
+                snapshot.addProperty("round", roundIndex);
+                roundResults.add(snapshot);
+                roundIndex++;
+            }
+            result.add("rounds", roundResults);
             return result;
         }
+    }
+
+    private static JsonObject managerSnapshot(ResourceManager manager, JsonArray queryElements) throws IOException {
+        JsonArray packs = new JsonArray();
+        manager.listPacks().forEach(pack -> packs.add(pack.packId()));
+        JsonArray namespaces = new JsonArray();
+        manager.getNamespaces().stream().sorted().forEach(namespaces::add);
+        JsonObject result = new JsonObject();
+        result.add("packs", packs);
+        result.add("namespaces", namespaces);
+        result.add("queries", resourceQueries(manager, queryElements));
+        return result;
+    }
+
+    private static JsonArray resourceQueries(ResourceManager manager, JsonArray queryElements) throws IOException {
+        JsonArray queryResults = new JsonArray();
+        for (JsonElement queryElement : queryElements) {
+            String query = queryElement.getAsString();
+            Identifier location = Identifier.parse(query);
+            Optional<net.minecraft.server.packs.resources.Resource> resource = manager.getResource(location);
+            JsonObject result = new JsonObject();
+            result.addProperty("id", query);
+            result.addProperty("exists", resource.isPresent());
+            JsonArray stack = new JsonArray();
+            for (var layered : manager.getResourceStack(location)) {
+                stack.add(layered.sourcePackId());
+            }
+            result.add("stack", stack);
+            if (resource.isPresent()) {
+                var selected = resource.get();
+                result.addProperty("source", selected.sourcePackId());
+                try (var input = selected.open()) {
+                    result.addProperty("bytes_hex", encodeHex(input.readAllBytes()));
+                }
+            }
+            queryResults.add(result);
+        }
+        return queryResults;
     }
 
     private static byte[] decodeHex(String value) {

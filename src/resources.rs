@@ -1,6 +1,6 @@
 //! Read-only asset-index path mapping used by the client resource layer.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Node {
@@ -152,5 +152,48 @@ impl ResourcePackStack {
                     .map(|bytes| (pack.id.as_str(), bytes.as_slice()))
             })
             .collect()
+    }
+
+    pub fn pack_ids(&self) -> Vec<&str> {
+        self.packs.iter().map(ResourcePack::id).collect()
+    }
+
+    pub fn namespaces(&self) -> Vec<&str> {
+        let mut namespaces = BTreeSet::new();
+        for pack in &self.packs {
+            for location in pack.resources.keys() {
+                if let Some((namespace, _)) = location.split_once(':') {
+                    namespaces.insert(namespace);
+                }
+            }
+        }
+        namespaces.into_iter().collect()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReloadableResourceManager {
+    resources: ResourcePackStack,
+}
+
+impl Default for ReloadableResourceManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl ReloadableResourceManager {
+    pub fn new() -> Self {
+        Self {
+            resources: ResourcePackStack::new(Vec::new()),
+        }
+    }
+
+    pub fn reload(&mut self, packs: Vec<ResourcePack>) {
+        self.resources = ResourcePackStack::new(packs);
+    }
+
+    pub fn resources(&self) -> &ResourcePackStack {
+        &self.resources
     }
 }
