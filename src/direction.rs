@@ -350,6 +350,16 @@ impl Axis {
             Self::Z => "z",
         }
     }
+
+    /// Return Java `Direction.Axis.isVertical()`.
+    pub fn is_vertical(self) -> bool {
+        matches!(self, Self::Y)
+    }
+
+    /// Return Java `Direction.Axis.isHorizontal()`.
+    pub fn is_horizontal(self) -> bool {
+        matches!(self, Self::X | Self::Z)
+    }
 }
 
 impl AxisDirection {

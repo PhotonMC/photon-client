@@ -91,6 +91,13 @@ public final class MathOracle {
                 default -> throw new IllegalArgumentException("Unknown axis direction");
             };
             result.add("value", snapshot(Direction.fromAxisAndDirection(axis, direction)));
+        } else if (operation.equals("direction_axis_orientation")) {
+            Direction.Axis axis = Direction.Axis.byName(request.get("axis").getAsString());
+            if (axis == null) {
+                throw new IllegalArgumentException("Unknown axis name");
+            }
+            result.addProperty("vertical", axis.isVertical());
+            result.addProperty("horizontal", axis.isHorizontal());
         } else if (operation.equals("direction_to_y_rot")) {
             Direction facing = Direction.byName(request.get("name").getAsString());
             if (facing == null) {

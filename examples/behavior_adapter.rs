@@ -3151,6 +3151,13 @@ fn math_result(request: &Value) -> Result<Value, String> {
             "value": direction_snapshot(Direction::from_axis_and_direction(axis, direction)),
         }));
     }
+    if operation == "direction_axis_orientation" {
+        let axis = Axis::from_name(string(request, "axis")?).ok_or("unknown axis")?;
+        return Ok(json!({
+            "vertical": axis.is_vertical(),
+            "horizontal": axis.is_horizontal(),
+        }));
+    }
     if operation == "direction_to_y_rot" {
         let facing = Direction::from_name(string(request, "name")?).ok_or("unknown direction")?;
         return Ok(json!({
