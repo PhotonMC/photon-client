@@ -520,6 +520,9 @@ public final class MathOracle {
             } else {
                 throw new IllegalArgumentException("Unknown Mth length type");
             }
+        } else if (operation.equals("mth_quantize")) {
+            result.addProperty("value", Integer.toString(Mth.quantize(
+                f64(request, "value"), Integer.parseInt(request.get("resolution").getAsString()))));
         } else if (operation.equals("vec3")) {
             Vec3 vector = new Vec3(f64(request, "x"), f64(request, "y"), f64(request, "z"));
             var events = new JsonArray();

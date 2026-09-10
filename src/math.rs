@@ -795,6 +795,12 @@ pub fn mth_length_squared_f32_3(x: f32, y: f32, z: f32) -> f32 {
     java_f32_add(java_f32_add(x * x, y * y), z * z)
 }
 
+/// Return Java `Mth.quantize(double, int)`, including Java i32 overflow.
+pub fn mth_quantize(value: f64, resolution: i32) -> i32 {
+    let floored = (value / f64::from(resolution)).floor() as i32;
+    floored.wrapping_mul(resolution)
+}
+
 /// Return Java `Math.floorDiv(int, int)`, including Java's signed overflow.
 pub fn floor_div_i32(dividend: i32, divisor: i32) -> i32 {
     if divisor == 0 {

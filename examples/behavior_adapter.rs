@@ -2558,6 +2558,15 @@ fn math_result(request: &Value) -> Result<Value, String> {
         };
         return Ok(json!({"bits": bits}));
     }
+    if operation == "mth_quantize" {
+        let value = f64_field(request, "value")?;
+        let resolution = string(request, "resolution")?
+            .parse::<i32>()
+            .map_err(|error| error.to_string())?;
+        return Ok(json!({
+            "value": math::mth_quantize(value, resolution).to_string()
+        }));
+    }
     if operation == "vec2" {
         let mut vector = Vec2::new(f32_field(request, "x")?, f32_field(request, "y")?);
         let mut events = vec![vec2_snapshot(vector)];

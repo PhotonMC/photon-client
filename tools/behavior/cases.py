@@ -3026,6 +3026,32 @@ def math_cases():
                "x": float_bits(values[0], precision), "y": float_bits(values[1], precision),
                **({"z": float_bits(values[2], precision)} if len(values) == 3 else {})}
 
+    mth_quantize = [
+        ("positive-fraction", 5.9, 2),
+        ("exact-multiple", 6.0, 2),
+        ("negative-fraction", -5.9, 2),
+        ("negative-resolution", 5.9, -2),
+        ("near-integer-rounding", 5.999999999999999, 2),
+        ("zero", 0.0, 7),
+        ("negative-zero", -0.0, 7),
+        ("subnormal", float.fromhex("0x0.0000000000001p-1022"), 3),
+        ("positive-infinity", float("inf"), 2),
+        ("negative-infinity", -float("inf"), 2),
+        ("nan", float("nan"), 2),
+        ("above-i32-range", 2147483648.5, 1),
+        ("below-i32-range", -2147483649.5, 1),
+        ("multiplication-overflow", 4000000000.0, 2),
+        ("zero-resolution-positive", 1.5, 0),
+        ("zero-resolution-negative", -1.5, 0),
+        ("zero-resolution-zero", 0.0, 0),
+        ("minimum-resolution", 1.0, -2147483648),
+        ("minimum-resolution-overflow", -1.0, -2147483648),
+    ]
+    for label, value, resolution in mth_quantize:
+        yield {"case_id": f"mth/quantize/{label}", "family": "math",
+               "operation": "mth_quantize", "value": float_bits(value, "f64"),
+               "resolution": str(resolution)}
+
 
 def timer_cases():
     def trace(label, steps, start=0, tps=20, target=50):
