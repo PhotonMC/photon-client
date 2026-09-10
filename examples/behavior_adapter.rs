@@ -2408,6 +2408,24 @@ fn math_result(request: &Value) -> Result<Value, String> {
             Err(error) => json!({"outcome": "error", "error": error}),
         });
     }
+    if operation == "mth_angle_wrap_difference" {
+        if string(request, "type")? != "f32" {
+            return Err("unknown Mth angle wrap/difference type".into());
+        }
+        let value = match string(request, "fn")? {
+            "wrap_degrees_90" => math::mth_wrap_degrees_90_f32(f32_field(request, "value")?),
+            "degrees_difference" => math::mth_degrees_difference_f32(
+                f32_field(request, "from")?,
+                f32_field(request, "to")?,
+            ),
+            "degrees_difference_abs" => math::mth_degrees_difference_abs_f32(
+                f32_field(request, "from")?,
+                f32_field(request, "to")?,
+            ),
+            _ => return Err("unknown Mth angle wrap/difference function".into()),
+        };
+        return Ok(json!({"bits": format!("{:08x}", value.to_bits())}));
+    }
     if operation == "mth_integer_helpers" {
         let function = string(request, "fn")?;
         let input = string(request, "input")?;

@@ -3105,6 +3105,77 @@ def math_cases():
                    "operation": "mth_hsv_to_color", "mode": mode, "hue": hue,
                    "saturation": saturation, "value": value, "alpha": str(alpha)}
 
+    mth_wrap_degrees_90 = [
+        ("zero", "00000000"),
+        ("negative-zero", "80000000"),
+        ("positive-boundary-below", "4233ffff"),
+        ("positive-boundary", "42340000"),
+        ("positive-boundary-above", "42340001"),
+        ("negative-boundary-above", "c233ffff"),
+        ("negative-boundary", "c2340000"),
+        ("negative-boundary-below", "c2340001"),
+        ("positive-quarter-turn", float_bits(90.0, "f32")),
+        ("negative-quarter-turn", float_bits(-90.0, "f32")),
+        ("positive-half-turn", float_bits(180.0, "f32")),
+        ("negative-half-turn", float_bits(-180.0, "f32")),
+        ("wrapped-positive", float_bits(360.25, "f32")),
+        ("wrapped-negative", float_bits(-360.25, "f32")),
+        ("positive-subnormal", "00000001"),
+        ("negative-subnormal", "80000001"),
+        ("positive-infinity", "7f800000"),
+        ("nan-payload", "7fc12345"),
+    ]
+    for label, value in mth_wrap_degrees_90:
+        yield {"case_id": f"mth/angle-wrap-difference/wrap-degrees-90/{label}", "family": "math",
+               "operation": "mth_angle_wrap_difference", "type": "f32",
+               "fn": "wrap_degrees_90", "value": value}
+
+    mth_degrees_difference = [
+        ("same", float_bits(10.0, "f32"), float_bits(10.0, "f32")),
+        ("signed-zero", "80000000", "00000000"),
+        ("simple-positive", float_bits(10.0, "f32"), float_bits(40.0, "f32")),
+        ("simple-negative", float_bits(40.0, "f32"), float_bits(10.0, "f32")),
+        ("upper-bound", float_bits(0.0, "f32"), float_bits(180.0, "f32")),
+        ("lower-bound", float_bits(0.0, "f32"), float_bits(-180.0, "f32")),
+        ("cross-positive", float_bits(170.0, "f32"), float_bits(-170.0, "f32")),
+        ("cross-negative", float_bits(-170.0, "f32"), float_bits(170.0, "f32")),
+        ("whole-turn", float_bits(10.0, "f32"), float_bits(370.0, "f32")),
+        ("fractional", float_bits(-12.5, "f32"), float_bits(289.25, "f32")),
+        ("large-finite", float_bits(1.0e10, "f32"), float_bits(-1.0e10, "f32")),
+        ("positive-infinity", float_bits(0.0, "f32"), "7f800000"),
+        ("negative-infinity", float_bits(0.0, "f32"), "ff800000"),
+        ("nan-from", "7fc12345", float_bits(1.0, "f32")),
+        ("nan-to", float_bits(1.0, "f32"), "7fc12345"),
+        ("overflow", "ff7fffff", "7f7fffff"),
+    ]
+    for label, from_value, to_value in mth_degrees_difference:
+        yield {"case_id": f"mth/angle-wrap-difference/degrees-difference/{label}", "family": "math",
+               "operation": "mth_angle_wrap_difference", "type": "f32",
+               "fn": "degrees_difference", "from": from_value, "to": to_value}
+
+    mth_degrees_difference_abs = [
+        ("zero", float_bits(0.0, "f32"), float_bits(0.0, "f32")),
+        ("negative-zero", "80000000", "00000000"),
+        ("simple-positive", float_bits(10.0, "f32"), float_bits(40.0, "f32")),
+        ("simple-negative", float_bits(40.0, "f32"), float_bits(10.0, "f32")),
+        ("upper-bound", float_bits(0.0, "f32"), float_bits(180.0, "f32")),
+        ("lower-bound", float_bits(0.0, "f32"), float_bits(-180.0, "f32")),
+        ("cross-positive", float_bits(170.0, "f32"), float_bits(-170.0, "f32")),
+        ("cross-negative", float_bits(-170.0, "f32"), float_bits(170.0, "f32")),
+        ("whole-turn", float_bits(10.0, "f32"), float_bits(370.0, "f32")),
+        ("fractional", float_bits(-12.5, "f32"), float_bits(289.25, "f32")),
+        ("negative-result-zero", "80000000", "80000000"),
+        ("positive-infinity", float_bits(0.0, "f32"), "7f800000"),
+        ("nan-from", "7fc12345", float_bits(1.0, "f32")),
+        ("nan-to", float_bits(1.0, "f32"), "7fc12345"),
+        ("overflow", "ff7fffff", "7f7fffff"),
+        ("subnormal", "00000001", "80000001"),
+    ]
+    for label, from_value, to_value in mth_degrees_difference_abs:
+        yield {"case_id": f"mth/angle-wrap-difference/degrees-difference-abs/{label}", "family": "math",
+               "operation": "mth_angle_wrap_difference", "type": "f32",
+               "fn": "degrees_difference_abs", "from": from_value, "to": to_value}
+
     mth_integer_helpers = [
         ("floor-div/int/negative-remainder", "i32", "floor_div", "-7", "3"),
         ("floor-div/int/negative-divisor", "i32", "floor_div", "7", "-3"),

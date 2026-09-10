@@ -35,4 +35,4 @@ python3 tools/behavior/run.py compare --family math --adapter target/debug/examp
 
 Shape senaryolarını içeren math referans kimliği `eeccf6a1ab099f28829b45e5c6f1019e0ebe570005108d43a151a094f55b9f021` oldu. Bu referans iki JVM çalıştırmasıyla kararlı bulundu. Birleşik altı aile referansı da iki JVM'de doğrulandı: `8c4789d8c4953d1e6851df238f157e9ea125bc1a32a2eb87d50f55beeda3476b`.
 
-Debug ve release Rust adaptörleri math ailesinde 345/345, birleşik corpus'ta 2668/2668 eşleşti. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.
+Debug ve release Rust adaptörleri math ailesinde 345/345, birleşik corpus'ta 2718/2718 eşleşti. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.

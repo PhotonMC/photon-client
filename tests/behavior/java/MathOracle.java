@@ -409,6 +409,20 @@ public final class MathOracle {
                 result.addProperty("error", "hue_out_of_range");
                 result.addProperty("java_exception", error.getClass().getName());
             }
+        } else if (operation.equals("mth_angle_wrap_difference")) {
+            if (!request.get("type").getAsString().equals("f32")) {
+                throw new IllegalArgumentException("Unknown Mth angle wrap/difference type");
+            }
+            String function = request.get("fn").getAsString();
+            float value = switch (function) {
+                case "wrap_degrees_90" -> Mth.wrapDegrees90(Oracle.f32(request, "value"));
+                case "degrees_difference" -> Mth.degreesDifference(
+                    Oracle.f32(request, "from"), Oracle.f32(request, "to"));
+                case "degrees_difference_abs" -> Mth.degreesDifferenceAbs(
+                    Oracle.f32(request, "from"), Oracle.f32(request, "to"));
+                default -> throw new IllegalArgumentException("Unknown Mth angle wrap/difference function");
+            };
+            result.addProperty("bits", Oracle.bits(value));
         } else if (operation.equals("mth_integer_helpers")) {
             String width = request.get("type").getAsString();
             String function = request.get("fn").getAsString();

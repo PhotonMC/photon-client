@@ -786,6 +786,28 @@ pub fn mth_hsv_to_argb_f32(
     Ok((((alpha as u32 & 0xff) << 24) | (red << 16) | (green << 8) | blue) as i32)
 }
 
+/// Return Java `Mth.wrapDegrees90(float)` with its 90-degree remainder path.
+pub fn mth_wrap_degrees_90_f32(angle: f32) -> f32 {
+    let mut normalized_angle = angle % 90.0_f32;
+    if normalized_angle >= 45.0_f32 {
+        normalized_angle -= 90.0_f32;
+    }
+    if normalized_angle < -45.0_f32 {
+        normalized_angle += 90.0_f32;
+    }
+    normalized_angle
+}
+
+/// Return Java `Mth.degreesDifference(float, float)` in source order.
+pub fn mth_degrees_difference_f32(from_angle: f32, to_angle: f32) -> f32 {
+    wrap_degrees_f32(to_angle - from_angle)
+}
+
+/// Return Java `Mth.degreesDifferenceAbs(float, float)` with Java abs semantics.
+pub fn mth_degrees_difference_abs_f32(angle_a: f32, angle_b: f32) -> f32 {
+    mth_abs_f32(mth_degrees_difference_f32(angle_a, angle_b))
+}
+
 /// Return Java `Mth.ceilLong(double)` with Java's floating-point-to-long narrowing.
 pub fn ceil_long_f64(value: f64) -> i64 {
     value.ceil() as i64

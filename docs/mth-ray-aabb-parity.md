@@ -7,9 +7,9 @@
 Java 25.0.4.1 ve Rust 1.98.1 / Linux x86_64 ortamında:
 
 - İçeride, dışarıda, eksen yönlü, diagonal, tangent, sınır, paralel, sıfır/signed-zero, ters/degenerate kutu ve özel f64 girdileri için 29 özgün senaryo hazırlandı.
-- Math referansı iki ayrı JVM çalıştırmasıyla 2166 senaryoda kararlı bulundu.
-- Rust debug ve release adaptörleri güncel 2166/2166 math senaryosunda eşleşti.
-- Birleşik altı aile corpus'u 2668/2668 senaryoda hem debug hem release adaptörüyle eşleşti.
+- Math referansı iki ayrı JVM çalıştırmasıyla 2216 senaryoda kararlı bulundu.
+- Rust debug ve release adaptörleri güncel 2216/2216 math senaryosunda eşleşti.
+- Birleşik altı aile corpus'u 2718/2718 senaryoda hem debug hem release adaptörüyle eşleşti.
 
 Math referans kimliği: `9421a309da79905eddc1ce85361a8baef1e5c3a592c7326ac123cb13c20a6508`. Birleşik referans kimliği: `8c4789d8c4953d1e6851df238f157e9ea125bc1a32a2eb87d50f55beeda3476b`.
 
