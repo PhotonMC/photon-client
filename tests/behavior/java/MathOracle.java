@@ -669,6 +669,40 @@ public final class MathOracle {
             } else {
                 result.add("value", com.google.gson.JsonNull.INSTANCE);
             }
+        } else if (operation.equals("blockpos_between_closed_streams")) {
+            BlockPos from = blockPos(request.getAsJsonObject("from"));
+            BlockPos to = blockPos(request.getAsJsonObject("to"));
+            var blockPositions = new JsonArray();
+            BlockPos.betweenClosedStream(from, to)
+                .forEach(pos -> blockPositions.add(snapshot(pos)));
+            JsonObject bounds = request.getAsJsonObject("bounding_box");
+            BoundingBox boundingBox = new BoundingBox(
+                Integer.parseInt(bounds.get("min_x").getAsString()),
+                Integer.parseInt(bounds.get("min_y").getAsString()),
+                Integer.parseInt(bounds.get("min_z").getAsString()),
+                Integer.parseInt(bounds.get("max_x").getAsString()),
+                Integer.parseInt(bounds.get("max_y").getAsString()),
+                Integer.parseInt(bounds.get("max_z").getAsString()));
+            var boundingPositions = new JsonArray();
+            BlockPos.betweenClosedStream(boundingBox)
+                .forEach(pos -> boundingPositions.add(snapshot(pos)));
+            AABB aabb = box(request.getAsJsonObject("aabb"));
+            var aabbPositions = new JsonArray();
+            BlockPos.betweenClosedStream(aabb)
+                .forEach(pos -> aabbPositions.add(snapshot(pos)));
+            int minX = Integer.parseInt(request.get("min_x").getAsString());
+            int minY = Integer.parseInt(request.get("min_y").getAsString());
+            int minZ = Integer.parseInt(request.get("min_z").getAsString());
+            int maxX = Integer.parseInt(request.get("max_x").getAsString());
+            int maxY = Integer.parseInt(request.get("max_y").getAsString());
+            int maxZ = Integer.parseInt(request.get("max_z").getAsString());
+            var coordinatePositions = new JsonArray();
+            BlockPos.betweenClosedStream(minX, minY, minZ, maxX, maxY, maxZ)
+                .forEach(pos -> coordinatePositions.add(snapshot(pos)));
+            result.add("block", blockPositions);
+            result.add("bounding_box", boundingPositions);
+            result.add("aabb", aabbPositions);
+            result.add("coordinates", coordinatePositions);
         } else if (operation.equals("section_relative")) {
             short relative = SectionPos.sectionRelativePos(blockPos(request));
             result.addProperty("relative", Integer.toString(Short.toUnsignedInt(relative)));

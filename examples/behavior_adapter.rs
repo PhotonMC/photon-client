@@ -2055,6 +2055,34 @@ fn math_result(request: &Value) -> Result<Value, String> {
             aabb,
         )));
     }
+    if operation == "blockpos_between_closed_streams" {
+        let from = blockpos(request.get("from").ok_or("from must be an object")?)?;
+        let to = blockpos(request.get("to").ok_or("to must be an object")?)?;
+        let bounds = bounding_box(
+            request
+                .get("bounding_box")
+                .ok_or("bounding_box must be an object")?,
+        )?;
+        let aabb = aabb_box(request.get("aabb").ok_or("aabb must be an object")?)?;
+        let min_x = i32_string_field(request, "min_x")?;
+        let min_y = i32_string_field(request, "min_y")?;
+        let min_z = i32_string_field(request, "min_z")?;
+        let max_x = i32_string_field(request, "max_x")?;
+        let max_y = i32_string_field(request, "max_y")?;
+        let max_z = i32_string_field(request, "max_z")?;
+        return Ok(json!({
+            "block": blockpos_position_list(BlockPos::between_closed_stream(from, to)),
+            "bounding_box": blockpos_position_list(
+                BlockPos::between_closed_stream_bounding_box(bounds),
+            ),
+            "aabb": blockpos_position_list(BlockPos::between_closed_stream_aabb(aabb)),
+            "coordinates": blockpos_position_list(
+                BlockPos::between_closed_stream_coordinates(
+                    min_x, min_y, min_z, max_x, max_y, max_z,
+                ),
+            ),
+        }));
+    }
     if operation == "blockpos_within_manhattan" {
         let origin = blockpos(request.get("origin").ok_or("origin must be an object")?)?;
         let reach_x = i32_string_field(request, "reach_x")?;

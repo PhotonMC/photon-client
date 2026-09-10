@@ -6,7 +6,7 @@
 //! UUID can leave the first half consumed while a truncated position
 //! consumes nothing.
 
-use crate::aabb::Aabb;
+use crate::aabb::{Aabb, BoundingBox};
 use crate::direction::Direction;
 use crate::math::{self, Vec3};
 use crate::random::{RandomError, RandomSource};
@@ -459,6 +459,40 @@ impl BlockPos {
                 math::floor_f64(value.max_z),
             ),
         )
+    }
+
+    /// Forward the BlockPos stream overload to the inclusive range traversal.
+    pub fn between_closed_stream(from: Self, to: Self) -> Vec<Self> {
+        Self::between_closed(from, to)
+    }
+
+    /// Forward the BoundingBox stream overload after componentwise normalization.
+    pub fn between_closed_stream_bounding_box(value: BoundingBox) -> Vec<Self> {
+        Self::between_closed_coordinates(
+            value.min_x.min(value.max_x),
+            value.min_y.min(value.max_y),
+            value.min_z.min(value.max_z),
+            value.min_x.max(value.max_x),
+            value.min_y.max(value.max_y),
+            value.min_z.max(value.max_z),
+        )
+    }
+
+    /// Forward the AABB stream overload through Java floor conversion.
+    pub fn between_closed_stream_aabb(value: Aabb) -> Vec<Self> {
+        Self::between_closed_aabb(value)
+    }
+
+    /// Forward the coordinate stream overload to the inclusive range traversal.
+    pub fn between_closed_stream_coordinates(
+        min_x: i32,
+        min_y: i32,
+        min_z: i32,
+        max_x: i32,
+        max_y: i32,
+        max_z: i32,
+    ) -> Vec<Self> {
+        Self::between_closed_coordinates(min_x, min_y, min_z, max_x, max_y, max_z)
     }
 
     /// Enumerate Java's Manhattan reach iterator in its source traversal order.

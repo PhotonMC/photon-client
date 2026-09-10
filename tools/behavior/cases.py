@@ -1917,6 +1917,32 @@ def math_cases():
     for label, values in blockpos_find_closest_match.items():
         yield {"case_id": f"blockpos/find-closest-match/{label}", "family": "math",
                "operation": "blockpos_find_closest_match", **values}
+    blockpos_between_closed_streams = {
+        "normal": {
+            "from": {"x": "2", "y": "-1", "z": "3"},
+            "to": {"x": "1", "y": "0", "z": "4"},
+            "bounding_box": {"min_x": "-2", "min_y": "1", "min_z": "3", "max_x": "-1", "max_y": "2", "max_z": "4"},
+            "aabb": box_bits(0.25, -1.25, 2.0, 1.75, 0.75, 3.5),
+            "min_x": "4", "min_y": "-2", "min_z": "5", "max_x": "5", "max_y": "-1", "max_z": "6",
+        },
+        "reversed": {
+            "from": {"x": "-1", "y": "3", "z": "2"},
+            "to": {"x": "1", "y": "1", "z": "0"},
+            "bounding_box": {"min_x": "2", "min_y": "0", "min_z": "-1", "max_x": "1", "max_y": "-1", "max_z": "-2"},
+            "aabb": box_bits(2.5, 1.5, 0.5, 0.5, -0.5, -1.5),
+            "min_x": "-3", "min_y": "-2", "min_z": "-1", "max_x": "-2", "max_y": "-1", "max_z": "0",
+        },
+        "integer-boundaries": {
+            "from": {"x": "2147483647", "y": "-2147483648", "z": "0"},
+            "to": {"x": "2147483647", "y": "-2147483648", "z": "0"},
+            "bounding_box": {"min_x": "2147483647", "min_y": "-2147483648", "min_z": "0", "max_x": "2147483647", "max_y": "-2147483648", "max_z": "0"},
+            "aabb": box_bits(2147483647.0, -2147483648.0, 0.0, 2147483647.0, -2147483648.0, 0.0),
+            "min_x": "2147483647", "min_y": "-2147483648", "min_z": "0", "max_x": "2147483647", "max_y": "-2147483648", "max_z": "0",
+        },
+    }
+    for label, values in blockpos_between_closed_streams.items():
+        yield {"case_id": f"blockpos/between-closed-streams/{label}", "family": "math",
+               "operation": "blockpos_between_closed_streams", **values}
     for label, (x, y, z) in {
         "origin": (0, 0, 0),
         "positive-boundary": (15, 15, 15),
