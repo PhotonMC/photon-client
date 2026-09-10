@@ -25,8 +25,8 @@ use voxel_client::option::{
 };
 use voxel_client::random::RandomSource;
 use voxel_client::resources::{
-    self, AssetIndex, AssetResolution, KnownPack, PackCompatibility, PackFormat,
-    ReloadableResourceManager, ResourcePack, ResourcePackStack, VanillaPackResources,
+    self, AssetIndex, AssetResolution, KnownPack, KnownPackCodecError, PackCompatibility,
+    PackFormat, ReloadableResourceManager, ResourcePack, ResourcePackStack, VanillaPackResources,
 };
 use voxel_client::scroll::ScrollWheelHandler;
 use voxel_client::shape::{BooleanOp, ShapeRotation, Shapes, VoxelShape};
@@ -795,6 +795,9 @@ fn resources_result(request: &Value) -> Result<Value, String> {
     if request["operation"].as_str() == Some("known_pack") {
         return resource_known_pack_result(request);
     }
+    if request["operation"].as_str() == Some("known_pack_codec") {
+        return resource_known_pack_codec_result(request);
+    }
 
     let entries = request["entries"]
         .as_array()
@@ -1042,6 +1045,66 @@ fn resource_known_pack_result(request: &Value) -> Result<Value, String> {
         })
         .collect::<Result<Vec<_>, String>>()?;
     Ok(json!({"packs": packs}))
+}
+
+fn known_pack_codec_error(error: KnownPackCodecError) -> &'static str {
+    match error {
+        KnownPackCodecError::Read(utf8::ReadError::DecoderError) => "decoder_error",
+        KnownPackCodecError::Read(utf8::ReadError::BufferUnderflow) => "buffer_underflow",
+        KnownPackCodecError::Read(utf8::ReadError::TooBig) => "too_big",
+        KnownPackCodecError::Write(utf8::WriteError::EncoderError) => "encoder_error",
+        KnownPackCodecError::InvalidUtf16 => "decoder_error",
+    }
+}
+
+fn resource_known_pack_codec_result(request: &Value) -> Result<Value, String> {
+    let prefix = decode_hex(string(request, "prefix_hex")?)?;
+    match string(request, "mode")? {
+        "encode" => {
+            let pack = KnownPack::new(
+                string(request, "namespace")?.to_owned(),
+                string(request, "id")?.to_owned(),
+                string(request, "version")?.to_owned(),
+            );
+            let mut bytes = prefix.clone();
+            let result = match pack.encode_stream(&mut bytes) {
+                Ok(()) => json!({
+                    "outcome": "value",
+                    "written": bytes.len() - prefix.len(),
+                    "hex": hex(&bytes),
+                }),
+                Err(error) => json!({
+                    "outcome": "error",
+                    "error": known_pack_codec_error(error),
+                    "written": bytes.len() - prefix.len(),
+                    "hex": hex(&bytes),
+                }),
+            };
+            Ok(result)
+        }
+        "decode" => {
+            let framed = decode_hex(string(request, "hex")?)?;
+            let mut remaining = framed.as_slice();
+            match KnownPack::decode_stream(&mut remaining) {
+                Ok(pack) => Ok(json!({
+                    "namespace": pack.namespace(),
+                    "id": pack.id(),
+                    "version": pack.version(),
+                    "string": pack.to_string(),
+                    "outcome": "value",
+                    "consumed": framed.len() - remaining.len(),
+                    "remaining_hex": hex(remaining),
+                })),
+                Err(error) => Ok(json!({
+                    "outcome": "error",
+                    "error": known_pack_codec_error(error),
+                    "consumed": framed.len() - remaining.len(),
+                    "remaining_hex": hex(remaining),
+                })),
+            }
+        }
+        _ => Err("unknown KnownPack codec operation".into()),
+    }
 }
 
 fn input_with_modifiers_snapshot<T: InputWithModifiers>(input: &T) -> Value {

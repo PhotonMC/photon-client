@@ -152,6 +152,7 @@
       "source": "ResourceOracle.java",
       "libraries": [
         "com.google.code.gson:gson",
+        "io.netty:netty-buffer",
         "io.netty:netty-codec-base",
         "io.netty:netty-common",
         "org.joml:joml",

@@ -2,6 +2,10 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import io.netty.buffer.ByteBufUtil;
+import io.netty.buffer.Unpooled;
+import io.netty.handler.codec.DecoderException;
+import io.netty.handler.codec.EncoderException;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -58,6 +62,9 @@ public final class ResourceOracle {
             }
             if (request.get("operation").getAsString().equals("known_pack")) {
                 return knownPackResult(request);
+            }
+            if (request.get("operation").getAsString().equals("known_pack_codec")) {
+                return knownPackCodecResult(request);
             }
             Path indexes = Files.createDirectories(assets.resolve("indexes"));
             Path objects = Files.createDirectories(assets.resolve("objects"));
@@ -309,6 +316,65 @@ public final class ResourceOracle {
 
         JsonObject result = new JsonObject();
         result.add("packs", packs);
+        return result;
+    }
+
+    private static JsonObject knownPackCodecResult(JsonObject request) {
+        String operation = request.get("mode").getAsString();
+        boolean decode = switch (operation) {
+            case "decode" -> true;
+            case "encode" -> false;
+            default -> throw new IllegalArgumentException("Unknown KnownPack codec operation");
+        };
+        byte[] prefix = decodeHex(request.get("prefix_hex").getAsString());
+        byte[] input = decode ? decodeHex(request.get("hex").getAsString()) : null;
+        KnownPack pack = decode ? null : new KnownPack(
+            request.get("namespace").getAsString(),
+            request.get("id").getAsString(),
+            request.get("version").getAsString()
+        );
+
+        var buffer = Unpooled.buffer();
+        var result = new JsonObject();
+        try {
+            buffer.writeBytes(prefix);
+            if (decode) {
+                buffer.writeBytes(input);
+                buffer.readerIndex(prefix.length);
+                pack = KnownPack.STREAM_CODEC.decode(buffer);
+                result.addProperty("namespace", pack.namespace());
+                result.addProperty("id", pack.id());
+                result.addProperty("version", pack.version());
+                result.addProperty("string", pack.toString());
+            } else {
+                KnownPack.STREAM_CODEC.encode(buffer, pack);
+            }
+            result.addProperty("outcome", "value");
+        } catch (RuntimeException error) {
+            String category;
+            if (decode && error instanceof DecoderException) {
+                category = "decoder_error";
+            } else if (!decode && error instanceof EncoderException) {
+                category = "encoder_error";
+            } else if (decode && error instanceof IndexOutOfBoundsException) {
+                category = "buffer_underflow";
+            } else if (decode && error.getClass() == RuntimeException.class) {
+                category = "too_big";
+            } else {
+                throw error;
+            }
+            result.addProperty("outcome", "error");
+            result.addProperty("error", category);
+            result.addProperty("java_exception", error.getClass().getName());
+        }
+        if (decode) {
+            result.addProperty("consumed", buffer.readerIndex() - prefix.length);
+            result.addProperty("remaining_hex", ByteBufUtil.hexDump(buffer));
+        } else {
+            result.addProperty("written", buffer.writerIndex() - prefix.length);
+            result.addProperty("hex", ByteBufUtil.hexDump(buffer));
+        }
+        buffer.release();
         return result;
     }
 

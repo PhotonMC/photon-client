@@ -6194,6 +6194,17 @@ def nbt_cases():
 
 
 def resources_cases():
+    def string_frame(value):
+        encoded = value.encode("utf-8")
+        length = len(encoded)
+        prefix = bytearray()
+        while True:
+            part = length & 0x7f
+            length >>= 7
+            prefix.append(part | (0x80 if length else 0))
+            if not length:
+                return bytes(prefix + encoded).hex()
+
     hashes = {
         "a": "00112233445566778899aabbccddeeff00112233",
         "b": "abcdefabcdefabcdefabcdefabcdefabcdefabcd",
@@ -6432,6 +6443,54 @@ def resources_cases():
             {"namespace": "", "id": "", "version": ""},
         ],
     }
+    codec_encodes = [
+        ("ascii", "minecraft", "vanilla", "26.2"),
+        ("unicode", "mïnecraft", "pack-😀", "v1́"),
+        ("empty-fields", "", "", ""),
+        ("long-namespace", "a" * 32768, "id", "v"),
+        ("long-id", "minecraft", "b" * 32768, "v"),
+        ("long-version", "minecraft", "id", "c" * 32768),
+    ]
+    for label, namespace, pack_id, version in codec_encodes:
+        yield {
+            "case_id": f"resources/metadata/known-pack-codec/encode/{label}",
+            "family": "resources",
+            "operation": "known_pack_codec",
+            "mode": "encode",
+            "namespace": namespace,
+            "id": pack_id,
+            "version": version,
+            "prefix_hex": "a55a",
+        }
+
+    codec_decodes = [
+        (
+            "ascii",
+            string_frame("minecraft") + string_frame("vanilla") + string_frame("26.2"),
+        ),
+        (
+            "unicode",
+            string_frame("mïnecraft") + string_frame("pack-😀") + string_frame("v1́"),
+        ),
+        ("empty-fields", "000000"),
+        ("trailing", "00000000aa"),
+        ("malformed-body", "01ff000000"),
+        ("second-prefix-truncated", "0080"),
+        ("third-body-missing", "000001"),
+        ("second-body-short", "000241"),
+        ("first-prefix-truncated", "80"),
+        ("first-prefix-too-big", "808080808000"),
+        ("first-encoded-limit", "feff05"),
+    ]
+    for label, framed in codec_decodes:
+        yield {
+            "case_id": f"resources/metadata/known-pack-codec/decode/{label}",
+            "family": "resources",
+            "operation": "known_pack_codec",
+            "mode": "decode",
+            "hex": framed,
+            "prefix_hex": "a55a",
+        }
 
 
 def build_cases(families):

@@ -3,6 +3,8 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
+use crate::utf8;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Node {
     file_hash: Option<String>,
@@ -138,6 +140,15 @@ pub struct KnownPack {
     version: String,
 }
 
+const KNOWN_PACK_STRING_MAX_LENGTH: usize = 32_767;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum KnownPackCodecError {
+    Read(utf8::ReadError),
+    Write(utf8::WriteError),
+    InvalidUtf16,
+}
+
 impl KnownPack {
     pub const VANILLA_NAMESPACE: &'static str = "minecraft";
     pub const VANILLA_VERSION: &'static str = "26.2";
@@ -173,6 +184,34 @@ impl KnownPack {
     pub fn is_vanilla(&self) -> bool {
         self.namespace == Self::VANILLA_NAMESPACE
     }
+
+    /// Decode the three sequential STRING_UTF8 fields used by Java's stream codec.
+    pub fn decode_stream(input: &mut &[u8]) -> Result<Self, KnownPackCodecError> {
+        let namespace = decode_known_pack_string(input)?;
+        let id = decode_known_pack_string(input)?;
+        let version = decode_known_pack_string(input)?;
+        Ok(Self::new(namespace, id, version))
+    }
+
+    /// Encode the three sequential STRING_UTF8 fields used by Java's stream codec.
+    pub fn encode_stream(&self, output: &mut Vec<u8>) -> Result<(), KnownPackCodecError> {
+        encode_known_pack_string(output, &self.namespace)?;
+        encode_known_pack_string(output, &self.id)?;
+        encode_known_pack_string(output, &self.version)?;
+        Ok(())
+    }
+}
+
+fn decode_known_pack_string(input: &mut &[u8]) -> Result<String, KnownPackCodecError> {
+    let units =
+        utf8::read_utf8(input, KNOWN_PACK_STRING_MAX_LENGTH).map_err(KnownPackCodecError::Read)?;
+    String::from_utf16(&units).map_err(|_| KnownPackCodecError::InvalidUtf16)
+}
+
+fn encode_known_pack_string(output: &mut Vec<u8>, value: &str) -> Result<(), KnownPackCodecError> {
+    let units: Vec<u16> = value.encode_utf16().collect();
+    utf8::write_utf8(output, &units, KNOWN_PACK_STRING_MAX_LENGTH)
+        .map_err(KnownPackCodecError::Write)
 }
 
 impl fmt::Display for KnownPack {
