@@ -476,6 +476,10 @@ fn blockpos_positions_snapshot(values: Vec<BlockPos>) -> Value {
     })
 }
 
+fn blockpos_position_list(values: Vec<BlockPos>) -> Value {
+    Value::Array(values.into_iter().map(blockpos_snapshot).collect())
+}
+
 fn sectionpos_nodes_snapshot(values: Vec<u64>) -> Value {
     json!({
         "section_nodes": values
@@ -2029,6 +2033,21 @@ fn math_result(request: &Value) -> Result<Value, String> {
                 .ok_or("location must be an object")?,
         )?;
         return Ok(blockpos_clamp_location_snapshot(value, location));
+    }
+    if operation == "blockpos_between_closed" {
+        let from = blockpos(request.get("from").ok_or("from must be an object")?)?;
+        let to = blockpos(request.get("to").ok_or("to must be an object")?)?;
+        return Ok(json!({
+            "from_to": blockpos_position_list(BlockPos::between_closed(from, to)),
+            "coordinates": blockpos_position_list(BlockPos::between_closed_coordinates(
+                i32_string_field(request, "min_x")?,
+                i32_string_field(request, "min_y")?,
+                i32_string_field(request, "min_z")?,
+                i32_string_field(request, "max_x")?,
+                i32_string_field(request, "max_y")?,
+                i32_string_field(request, "max_z")?,
+            )),
+        }));
     }
     if operation == "section_relative" {
         return section_relative_result(request);

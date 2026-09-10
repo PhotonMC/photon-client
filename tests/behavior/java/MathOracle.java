@@ -561,6 +561,25 @@ public final class MathOracle {
             BlockPos pos = blockPos(request);
             result.add("value", snapshot(pos.clampLocationWithin(
                 vec3(request.getAsJsonObject("location")))));
+        } else if (operation.equals("blockpos_between_closed")) {
+            BlockPos from = blockPos(request.getAsJsonObject("from"));
+            BlockPos to = blockPos(request.getAsJsonObject("to"));
+            var fromTo = new JsonArray();
+            for (BlockPos pos : BlockPos.betweenClosed(from, to)) {
+                fromTo.add(snapshot(pos));
+            }
+            int minX = Integer.parseInt(request.get("min_x").getAsString());
+            int minY = Integer.parseInt(request.get("min_y").getAsString());
+            int minZ = Integer.parseInt(request.get("min_z").getAsString());
+            int maxX = Integer.parseInt(request.get("max_x").getAsString());
+            int maxY = Integer.parseInt(request.get("max_y").getAsString());
+            int maxZ = Integer.parseInt(request.get("max_z").getAsString());
+            var coordinates = new JsonArray();
+            for (BlockPos pos : BlockPos.betweenClosed(minX, minY, minZ, maxX, maxY, maxZ)) {
+                coordinates.add(snapshot(pos));
+            }
+            result.add("from_to", fromTo);
+            result.add("coordinates", coordinates);
         } else if (operation.equals("section_relative")) {
             short relative = SectionPos.sectionRelativePos(blockPos(request));
             result.addProperty("relative", Integer.toString(Short.toUnsignedInt(relative)));

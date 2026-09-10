@@ -1748,6 +1748,37 @@ def math_cases():
     for label, values in blockpos_clamp_location.items():
         yield {"case_id": f"blockpos/clamp-location/{label}", "family": "math",
                "operation": "blockpos_clamp_location", **values}
+    blockpos_between_closed = {
+        "single": {
+            "from": {"x": "2", "y": "-3", "z": "4"},
+            "to": {"x": "2", "y": "-3", "z": "4"},
+            "min_x": "-1", "min_y": "2", "min_z": "-3", "max_x": "0", "max_y": "3", "max_z": "-2",
+        },
+        "order": {
+            "from": {"x": "1", "y": "2", "z": "3"},
+            "to": {"x": "2", "y": "3", "z": "4"},
+            "min_x": "-2", "min_y": "-1", "min_z": "-3", "max_x": "-1", "max_y": "0", "max_z": "-2",
+        },
+        "reversed": {
+            "from": {"x": "2", "y": "3", "z": "4"},
+            "to": {"x": "1", "y": "2", "z": "3"},
+            "min_x": "3", "min_y": "4", "min_z": "5", "max_x": "4", "max_y": "5", "max_z": "6",
+        },
+        "negative": {
+            "from": {"x": "-2", "y": "-1", "z": "-3"},
+            "to": {"x": "-1", "y": "0", "z": "-2"},
+            "min_x": "-3", "min_y": "-2", "min_z": "-1", "max_x": "-2", "max_y": "-1", "max_z": "0",
+        },
+        "integer-boundaries": {
+            "from": {"x": "2147483647", "y": "-2147483648", "z": "2147483647"},
+            "to": {"x": "2147483647", "y": "-2147483648", "z": "2147483647"},
+            "min_x": "2147483647", "min_y": "-2147483648", "min_z": "31",
+            "max_x": "2147483647", "max_y": "-2147483648", "max_z": "31",
+        },
+    }
+    for label, values in blockpos_between_closed.items():
+        yield {"case_id": f"blockpos/between-closed/{label}", "family": "math",
+               "operation": "blockpos_between_closed", **values}
     for label, (x, y, z) in {
         "origin": (0, 0, 0),
         "positive-boundary": (15, 15, 15),

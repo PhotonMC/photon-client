@@ -426,6 +426,46 @@ impl BlockPos {
         self.relative_direction(Direction::East, steps)
     }
 
+    /// Enumerate an inclusive range after componentwise endpoint normalization.
+    pub fn between_closed(from: Self, to: Self) -> Vec<Self> {
+        Self::between_closed_coordinates(
+            from.x.min(to.x),
+            from.y.min(to.y),
+            from.z.min(to.z),
+            from.x.max(to.x),
+            from.y.max(to.y),
+            from.z.max(to.z),
+        )
+    }
+
+    /// Enumerate an inclusive range in Java's x-fastest, then y, then z order.
+    pub fn between_closed_coordinates(
+        min_x: i32,
+        min_y: i32,
+        min_z: i32,
+        max_x: i32,
+        max_y: i32,
+        max_z: i32,
+    ) -> Vec<Self> {
+        let width = max_x.wrapping_sub(min_x).wrapping_add(1);
+        let height = max_y.wrapping_sub(min_y).wrapping_add(1);
+        let depth = max_z.wrapping_sub(min_z).wrapping_add(1);
+        let end = width.wrapping_mul(height).wrapping_mul(depth);
+        if width <= 0 || height <= 0 || depth <= 0 || end <= 0 {
+            return Vec::new();
+        }
+
+        let mut positions = Vec::with_capacity(end as usize);
+        for index in 0..end {
+            let x = min_x.wrapping_add(index % width);
+            let slice = index / width;
+            let y = min_y.wrapping_add(slice % height);
+            let z = min_z.wrapping_add(slice / height);
+            positions.push(Self::new(x, y, z));
+        }
+        positions
+    }
+
     /// Offset a packed block position by a cardinal direction's step.
     pub fn offset_packed(block_node: u64, direction: Direction) -> u64 {
         Self::offset_packed_by(
