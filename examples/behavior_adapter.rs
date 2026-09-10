@@ -3458,6 +3458,30 @@ fn math_result(request: &Value) -> Result<Value, String> {
             _ => Err("unknown enum text kind".into()),
         };
     }
+    if operation == "direction_enum_name" {
+        let name = string(request, "name")?;
+        return match string(request, "kind")? {
+            "direction" => {
+                let direction = Direction::from_name(name).ok_or("unknown direction name")?;
+                Ok(json!({
+                    "enum_name": direction.enum_name(),
+                    "name": direction.name(),
+                    "serialized_name": direction.name(),
+                    "text": direction.name(),
+                }))
+            }
+            "axis" => {
+                let axis = Axis::from_name(name).ok_or("unknown axis name")?;
+                Ok(json!({
+                    "enum_name": axis.enum_name(),
+                    "name": axis.name(),
+                    "serialized_name": axis.name(),
+                    "text": axis.name(),
+                }))
+            }
+            _ => Err("unknown enum name kind".into()),
+        };
+    }
     if operation == "direction_approximate_nearest" {
         let facing = Direction::approximate_nearest(
             f64_field(request, "x")?,

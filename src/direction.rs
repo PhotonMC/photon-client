@@ -67,6 +67,18 @@ fn shuffled_copy<T: Copy>(items: &[T], random: &mut RandomSource) -> Vec<T> {
 }
 
 impl Direction {
+    /// Return Java `Enum.name()` for this direction.
+    pub fn enum_name(self) -> &'static str {
+        match self {
+            Self::Down => "DOWN",
+            Self::Up => "UP",
+            Self::North => "NORTH",
+            Self::South => "SOUTH",
+            Self::West => "WEST",
+            Self::East => "EAST",
+        }
+    }
+
     pub fn from_name(name: &str) -> Option<Self> {
         match name {
             "down" => Some(Self::Down),
@@ -482,6 +494,15 @@ impl Direction {
 }
 
 impl Axis {
+    /// Return Java `Enum.name()` for this axis.
+    pub fn enum_name(self) -> &'static str {
+        match self {
+            Self::X => "X",
+            Self::Y => "Y",
+            Self::Z => "Z",
+        }
+    }
+
     pub fn from_name(name: &str) -> Option<Self> {
         match name {
             "x" => Some(Self::X),

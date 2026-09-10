@@ -1421,6 +1421,14 @@ def math_cases():
         for name in names:
             yield {"case_id": f"direction/enum-text/{kind}/{name}", "family": "math",
                    "operation": "direction_enum_text", "kind": kind, "name": name}
+    direction_enum_name_cases = (
+        ("direction", ("down", "up", "north", "south", "west", "east")),
+        ("axis", ("x", "y", "z")),
+    )
+    for kind, names in direction_enum_name_cases:
+        for name in names:
+            yield {"case_id": f"direction/enum-name/{kind}/{name}", "family": "math",
+                   "operation": "direction_enum_name", "kind": kind, "name": name}
     direction_approximate_nearest_cases = [
         ("south", vector_bits(0.0, 0.0, 1.0)),
         ("north", vector_bits(0.0, 0.0, -1.0)),
