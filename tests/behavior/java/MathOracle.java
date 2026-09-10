@@ -222,6 +222,10 @@ public final class MathOracle {
             }
             result.add("faces", faces);
             result.addProperty("tail", Integer.toString(random.nextInt()));
+        } else if (operation.equals("direction_stream")) {
+            var faces = new JsonArray();
+            Direction.stream().forEach(direction -> faces.add(direction.getName()));
+            result.add("faces", faces);
         } else if (operation.equals("direction_to_y_rot")) {
             Direction facing = Direction.byName(request.get("name").getAsString());
             if (facing == null) {

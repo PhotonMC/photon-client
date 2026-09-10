@@ -3299,6 +3299,12 @@ fn math_result(request: &Value) -> Result<Value, String> {
             "tail": random.next_int().to_string(),
         }));
     }
+    if operation == "direction_stream" {
+        let faces = Direction::stream()
+            .map(|direction| direction.name())
+            .collect::<Vec<_>>();
+        return Ok(json!({"faces": faces}));
+    }
     if operation == "direction_to_y_rot" {
         let facing = Direction::from_name(string(request, "name")?).ok_or("unknown direction")?;
         return Ok(json!({

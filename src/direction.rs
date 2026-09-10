@@ -39,6 +39,15 @@ pub enum Plane {
     Vertical,
 }
 
+const DIRECTIONS: [Direction; 6] = [
+    Direction::Down,
+    Direction::Up,
+    Direction::North,
+    Direction::South,
+    Direction::West,
+    Direction::East,
+];
+
 fn shuffled_copy<T: Copy>(items: &[T], random: &mut RandomSource) -> Vec<T> {
     let mut copy = items.to_vec();
     for index in (1..copy.len()).rev() {
@@ -217,29 +226,18 @@ impl Direction {
 
     /// Return Java `Direction.getRandom(RandomSource)` using enum declaration order.
     pub fn get_random(random: &mut RandomSource) -> Self {
-        const DIRECTIONS: [Direction; 6] = [
-            Direction::Down,
-            Direction::Up,
-            Direction::North,
-            Direction::South,
-            Direction::West,
-            Direction::East,
-        ];
         DIRECTIONS[random
             .next_int_bound(DIRECTIONS.len() as i32)
             .expect("direction random bound is positive") as usize]
     }
 
+    /// Return Java `Direction.stream()` in enum declaration order.
+    pub fn stream() -> impl Iterator<Item = Self> {
+        DIRECTIONS.iter().copied()
+    }
+
     /// Return Java `Direction.allShuffled(RandomSource)` in enum declaration order.
     pub fn all_shuffled(random: &mut RandomSource) -> Vec<Self> {
-        const DIRECTIONS: [Direction; 6] = [
-            Direction::Down,
-            Direction::Up,
-            Direction::North,
-            Direction::South,
-            Direction::West,
-            Direction::East,
-        ];
         shuffled_copy(&DIRECTIONS, random)
     }
 
