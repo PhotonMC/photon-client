@@ -423,6 +423,24 @@ public final class MathOracle {
                 default -> throw new IllegalArgumentException("Unknown Mth angle wrap/difference function");
             };
             result.addProperty("bits", Oracle.bits(value));
+        } else if (operation.equals("mth_angle_approach")) {
+            if (!request.get("type").getAsString().equals("f32")) {
+                throw new IllegalArgumentException("Unknown Mth angle approach type");
+            }
+            String function = request.get("fn").getAsString();
+            float value = switch (function) {
+                case "rotate_if_necessary" -> Mth.rotateIfNecessary(
+                    Oracle.f32(request, "base"), Oracle.f32(request, "target"),
+                    Oracle.f32(request, "max"));
+                case "approach" -> Mth.approach(
+                    Oracle.f32(request, "current"), Oracle.f32(request, "target"),
+                    Oracle.f32(request, "increment"));
+                case "approach_degrees" -> Mth.approachDegrees(
+                    Oracle.f32(request, "current"), Oracle.f32(request, "target"),
+                    Oracle.f32(request, "increment"));
+                default -> throw new IllegalArgumentException("Unknown Mth angle approach function");
+            };
+            result.addProperty("bits", Oracle.bits(value));
         } else if (operation.equals("mth_integer_helpers")) {
             String width = request.get("type").getAsString();
             String function = request.get("fn").getAsString();

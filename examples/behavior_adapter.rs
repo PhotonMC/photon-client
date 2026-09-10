@@ -2426,6 +2426,30 @@ fn math_result(request: &Value) -> Result<Value, String> {
         };
         return Ok(json!({"bits": format!("{:08x}", value.to_bits())}));
     }
+    if operation == "mth_angle_approach" {
+        if string(request, "type")? != "f32" {
+            return Err("unknown Mth angle approach type".into());
+        }
+        let value = match string(request, "fn")? {
+            "rotate_if_necessary" => math::mth_rotate_if_necessary_f32(
+                f32_field(request, "base")?,
+                f32_field(request, "target")?,
+                f32_field(request, "max")?,
+            ),
+            "approach" => math::mth_approach_f32(
+                f32_field(request, "current")?,
+                f32_field(request, "target")?,
+                f32_field(request, "increment")?,
+            ),
+            "approach_degrees" => math::mth_approach_degrees_f32(
+                f32_field(request, "current")?,
+                f32_field(request, "target")?,
+                f32_field(request, "increment")?,
+            ),
+            _ => return Err("unknown Mth angle approach function".into()),
+        };
+        return Ok(json!({"bits": format!("{:08x}", value.to_bits())}));
+    }
     if operation == "mth_integer_helpers" {
         let function = string(request, "fn")?;
         let input = string(request, "input")?;

@@ -3176,6 +3176,90 @@ def math_cases():
                "operation": "mth_angle_wrap_difference", "type": "f32",
                "fn": "degrees_difference_abs", "from": from_value, "to": to_value}
 
+    mth_rotate_if_necessary = [
+        ("same", 10.0, 10.0, 5.0),
+        ("positive-under", 10.0, 12.0, 5.0),
+        ("positive-boundary", 10.0, 15.0, 5.0),
+        ("positive-over", 10.0, 20.0, 5.0),
+        ("negative-under", 20.0, 18.0, 5.0),
+        ("negative-boundary", 20.0, 15.0, 5.0),
+        ("negative-over", 20.0, 10.0, 5.0),
+        ("cross-positive", 170.0, -170.0, 30.0),
+        ("cross-negative", -170.0, 170.0, 30.0),
+        ("upper-bound", 0.0, 180.0, 45.0),
+        ("lower-bound", 0.0, -180.0, 45.0),
+        ("zero-limit", 10.0, 80.0, 0.0),
+        ("large-limit", 10.0, 80.0, 100.0),
+        ("negative-limit", 10.0, 20.0, -5.0),
+        ("signed-zero", "80000000", "00000000", 1.0),
+        ("positive-infinity-target", 0.0, "7f800000", 30.0),
+        ("nan-base", "7fc12345", 0.0, 30.0),
+        ("overflow", "7f7fffff", "ff7fffff", "7f7fffff"),
+    ]
+    for label, base, target, maximum in mth_rotate_if_necessary:
+        base = base if isinstance(base, str) else float_bits(base, "f32")
+        target = target if isinstance(target, str) else float_bits(target, "f32")
+        maximum = maximum if isinstance(maximum, str) else float_bits(maximum, "f32")
+        yield {"case_id": f"mth/angle-approach/rotate-if-necessary/{label}", "family": "math",
+               "operation": "mth_angle_approach", "type": "f32", "fn": "rotate_if_necessary",
+               "base": base, "target": target, "max": maximum}
+
+    mth_approach = [
+        ("same", 10.0, 10.0, 2.0),
+        ("below", 0.0, 10.0, 2.0),
+        ("exact", 0.0, 10.0, 10.0),
+        ("over", 0.0, 10.0, 20.0),
+        ("above", 10.0, 0.0, 2.0),
+        ("negative-increment", 0.0, 10.0, -2.0),
+        ("zero-increment", 0.0, 10.0, 0.0),
+        ("signed-zero", "80000000", "00000000", 1.0),
+        ("positive-subnormal", 0.0, "00000001", 1.0),
+        ("negative-subnormal", "80000001", 0.0, 1.0),
+        ("max-finite-current", "7f7fffff", 0.0, 1.0),
+        ("infinity-increment", 0.0, 10.0, "7f800000"),
+        ("infinity-current", "7f800000", 10.0, 1.0),
+        ("infinity-target", 0.0, "7f800000", 1.0),
+        ("nan-current", "7fc12345", 0.0, 1.0),
+        ("nan-target", 0.0, "7fc12345", 1.0),
+        ("nan-increment", 0.0, 10.0, "7fc12345"),
+        ("rounding", "3f800001", "3f800101", "33800000"),
+    ]
+    for label, current, target, increment in mth_approach:
+        current = current if isinstance(current, str) else float_bits(current, "f32")
+        target = target if isinstance(target, str) else float_bits(target, "f32")
+        increment = increment if isinstance(increment, str) else float_bits(increment, "f32")
+        yield {"case_id": f"mth/angle-approach/approach/{label}", "family": "math",
+               "operation": "mth_angle_approach", "type": "f32", "fn": "approach",
+               "current": current, "target": target, "increment": increment}
+
+    mth_approach_degrees = [
+        ("same", 10.0, 10.0, 5.0),
+        ("simple-positive", 10.0, 40.0, 5.0),
+        ("simple-negative", 40.0, 10.0, 5.0),
+        ("cross-positive", 170.0, -170.0, 5.0),
+        ("cross-negative", -170.0, 170.0, 5.0),
+        ("upper-bound", 0.0, 180.0, 10.0),
+        ("lower-bound", 0.0, -180.0, 10.0),
+        ("whole-turn", 10.0, 370.0, 5.0),
+        ("fractional", -12.5, 289.25, 7.0),
+        ("negative-increment", 0.0, 90.0, -10.0),
+        ("zero-increment", 0.0, 90.0, 0.0),
+        ("signed-zero", "80000000", "00000000", 1.0),
+        ("positive-subnormal", 0.0, "00000001", "00000001"),
+        ("large-finite", 1.0e10, -1.0e10, 1.0e5),
+        ("infinity-increment", 0.0, 90.0, "7f800000"),
+        ("infinity-target", 0.0, "7f800000", 1.0),
+        ("nan-current", "7fc12345", 0.0, 1.0),
+        ("nan-target", 0.0, "7fc12345", 1.0),
+    ]
+    for label, current, target, increment in mth_approach_degrees:
+        current = current if isinstance(current, str) else float_bits(current, "f32")
+        target = target if isinstance(target, str) else float_bits(target, "f32")
+        increment = increment if isinstance(increment, str) else float_bits(increment, "f32")
+        yield {"case_id": f"mth/angle-approach/approach-degrees/{label}", "family": "math",
+               "operation": "mth_angle_approach", "type": "f32", "fn": "approach_degrees",
+               "current": current, "target": target, "increment": increment}
+
     mth_integer_helpers = [
         ("floor-div/int/negative-remainder", "i32", "floor_div", "-7", "3"),
         ("floor-div/int/negative-divisor", "i32", "floor_div", "7", "-3"),

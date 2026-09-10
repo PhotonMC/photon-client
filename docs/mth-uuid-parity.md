@@ -7,9 +7,9 @@
 Java 25.0.4.1 ve Rust 1.98.1 / Linux x86_64 ortamında:
 
 - On iki özgün signed i64 seed senaryosu hazırlandı. Sıfır, negatif ve yüksek bit seed'leri ile iki çekişin version 4 ve RFC 4122 variant maskeleri kapsandı.
-- Math referansı iki ayrı JVM çalıştırmasıyla 2216 senaryoda kararlı bulundu.
-- Rust debug ve release adaptörleri güncel 2216/2216 math senaryosunda eşleşti.
-- Birleşik altı aile corpus'u 2718/2718 senaryoda hem debug hem release adaptörüyle eşleşti.
+- Math referansı iki ayrı JVM çalıştırmasıyla 2270 senaryoda kararlı bulundu.
+- Rust debug ve release adaptörleri güncel 2270/2270 math senaryosunda eşleşti.
+- Birleşik altı aile corpus'u 2772/2772 senaryoda hem debug hem release adaptörüyle eşleşti.
 
 Math referans kimliği: `9421a309da79905eddc1ce85361a8baef1e5c3a592c7326ac123cb13c20a6508`. Birleşik referans kimliği: `8c4789d8c4953d1e6851df238f157e9ea125bc1a32a2eb87d50f55beeda3476b`.
 

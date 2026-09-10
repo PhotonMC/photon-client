@@ -808,6 +808,29 @@ pub fn mth_degrees_difference_abs_f32(angle_a: f32, angle_b: f32) -> f32 {
     mth_abs_f32(mth_degrees_difference_f32(angle_a, angle_b))
 }
 
+/// Return Java `Mth.rotateIfNecessary(float, float, float)`.
+pub fn mth_rotate_if_necessary_f32(base_angle: f32, target_angle: f32, max_angle_diff: f32) -> f32 {
+    let delta_angle = mth_degrees_difference_f32(base_angle, target_angle);
+    let delta_angle_clamped = clamp_f32(delta_angle, -max_angle_diff, max_angle_diff);
+    target_angle - delta_angle_clamped
+}
+
+/// Return Java `Mth.approach(float, float, float)`.
+pub fn mth_approach_f32(current: f32, target: f32, increment: f32) -> f32 {
+    let increment = mth_abs_f32(increment);
+    if current < target {
+        clamp_f32(current + increment, current, target)
+    } else {
+        clamp_f32(current - increment, target, current)
+    }
+}
+
+/// Return Java `Mth.approachDegrees(float, float, float)`.
+pub fn mth_approach_degrees_f32(current: f32, target: f32, increment: f32) -> f32 {
+    let difference = mth_degrees_difference_f32(current, target);
+    mth_approach_f32(current, current + difference, increment)
+}
+
 /// Return Java `Mth.ceilLong(double)` with Java's floating-point-to-long narrowing.
 pub fn ceil_long_f64(value: f64) -> i64 {
     value.ceil() as i64
