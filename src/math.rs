@@ -784,6 +784,17 @@ pub fn mth_smoothstep_derivative(x: f64) -> f64 {
     30.0 * x * x * (x - 1.0) * (x - 1.0)
 }
 
+/// Return Java `Mth.sign(double)` with its NaN branch preserved.
+pub fn mth_sign(number: f64) -> i32 {
+    if number == 0.0 {
+        0
+    } else if number > 0.0 {
+        1
+    } else {
+        -1
+    }
+}
+
 /// Return Java `Mth.nextInt(RandomSource, int, int)`, including its
 /// min-greater-than-or-equal-to-max short circuit.
 pub fn mth_next_int(

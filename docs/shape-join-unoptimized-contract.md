@@ -25,4 +25,4 @@ Girdiler `family: "math"`, `operation: "shape"`, `kind: "join_coords"` biçimind
 
 ## Java yakalama
 
-Math referans kimliği `5607afc8c59b5ee3393ed20e95d9fbca8ce40846df423d5e52589b902d90b90f` oldu. Birleşik altı aile referansı `5607afc8c59b5ee3393ed20e95d9fbca8ce40846df423d5e52589b902d90b90f` kimliğiyle doğrulandı. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.
+Math referans kimliği `0d4c76950a37451c226bb147399cfa08349c81c96e4a8ea2b85e47696f0caf11` oldu. Birleşik altı aile referansı `0d4c76950a37451c226bb147399cfa08349c81c96e4a8ea2b85e47696f0caf11` kimliğiyle doğrulandı. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.

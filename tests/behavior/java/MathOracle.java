@@ -603,6 +603,8 @@ public final class MathOracle {
         } else if (operation.equals("mth_smoothstep_derivative")) {
             result.addProperty("bits", Oracle.bits(Mth.smoothstepDerivative(
                 f64(request, "x"))));
+        } else if (operation.equals("mth_sign")) {
+            result.addProperty("value", Integer.toString(Mth.sign(f64(request, "x"))));
         } else if (operation.equals("vec3")) {
             Vec3 vector = new Vec3(f64(request, "x"), f64(request, "y"), f64(request, "z"));
             var events = new JsonArray();

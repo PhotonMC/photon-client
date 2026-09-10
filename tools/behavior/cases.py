@@ -3240,6 +3240,26 @@ def math_cases():
             yield {"case_id": f"mth/{path_name}/{label}", "family": "math",
                    "operation": operation, "x": float_bits(value, "f64")}
 
+    mth_sign = [
+        ("negative-one", -1.0),
+        ("negative-quarter", -0.25),
+        ("negative-zero", -0.0),
+        ("positive-zero", 0.0),
+        ("positive-quarter", 0.25),
+        ("positive-one", 1.0),
+        ("negative-subnormal", -float.fromhex("0x0.0000000000001p-1022")),
+        ("positive-subnormal", float.fromhex("0x0.0000000000001p-1022")),
+        ("negative-maximum-finite", -float.fromhex("0x1.fffffffffffffp1023")),
+        ("positive-maximum-finite", float.fromhex("0x1.fffffffffffffp1023")),
+        ("negative-infinity", -float("inf")),
+        ("positive-infinity", float("inf")),
+        ("nan", float("nan")),
+        ("negative-small", -1.0e-300),
+    ]
+    for label, value in mth_sign:
+        yield {"case_id": f"mth/sign/{label}", "family": "math",
+               "operation": "mth_sign", "x": float_bits(value, "f64")}
+
 
 def timer_cases():
     def trace(label, steps, start=0, tps=20, target=50):
