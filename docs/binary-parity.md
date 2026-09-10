@@ -33,9 +33,9 @@ Java 25.0.4.1 ve Rust 1.98.1 / Linux x86_64 ortamında:
 - Karşılaştırma kimlik bitleri, koordinatlar, diziler, bit listeleri, tüketim, kalan/yazılan baytlar ve hata kategorisini kapsar.
 - Biçim, Clippy ve paket kapsamı kontrolleri geçti; `.data/` ve test adaptörü paket dışında kaldı.
 
-Birleşik referans kimliği: `413b981c2a619373545c6c4c74d3e7fec6b1a2e1dc34d5a49ee2f4eed5231162`. Binary ailesi kimliği: `faa64f0548d442718b7a8e5783155e27604ddd916aaf9595070c51b91232437e`.
+Birleşik referans kimliği: `07898354b4bb5d4f13d9fb4841bbe80cf32e162852f5635cbf2013b0de73a161`. Binary ailesi kimliği: `faa64f0548d442718b7a8e5783155e27604ddd916aaf9595070c51b91232437e`.
 
-Yerel raporlar: `compare-ijck1p8v` (binary debug 164), `compare-vuahjf17` (binary release 164), `compare-8vwtvwwl` (birleşik debug 2205) ve `compare-uey51w68` (birleşik release 2205) dizinlerinde, `.data/runs/behavior/` altında bulunur.
+Yerel raporlar: `compare-ijck1p8v` (binary debug 164), `compare-vuahjf17` (binary release 164), `compare-c5b8xhs4` (birleşik debug 2225) ve `compare-mdqcgmw7` (birleşik release 2225) dizinlerinde, `.data/runs/behavior/` altında bulunur.
 
 ## Yeniden çalıştırma ve sonraki dilim
 

@@ -640,6 +640,11 @@ public final class MathOracle {
             result.addProperty("bits", Oracle.bits(Mth.clampedMap(
                 f64(request, "value"), f64(request, "from_min"), f64(request, "from_max"),
                 f64(request, "to_min"), f64(request, "to_max"))));
+        } else if (operation.equals("mth_clamped_map_f32")) {
+            result.addProperty("bits", Oracle.bits(Mth.clampedMap(
+                Oracle.f32(request, "value"), Oracle.f32(request, "from_min"),
+                Oracle.f32(request, "from_max"), Oracle.f32(request, "to_min"),
+                Oracle.f32(request, "to_max"))));
         } else if (operation.equals("vec3")) {
             Vec3 vector = new Vec3(f64(request, "x"), f64(request, "y"), f64(request, "z"));
             var events = new JsonArray();
