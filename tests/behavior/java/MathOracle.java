@@ -214,6 +214,14 @@ public final class MathOracle {
             }
             result.add("faces", faces);
             result.addProperty("tail", Integer.toString(random.nextInt()));
+        } else if (operation.equals("direction_all_shuffle")) {
+            RandomSource random = RandomSource.create(Long.parseLong(request.get("seed").getAsString()));
+            var faces = new JsonArray();
+            for (Direction direction : Direction.allShuffled(random)) {
+                faces.add(direction.getName());
+            }
+            result.add("faces", faces);
+            result.addProperty("tail", Integer.toString(random.nextInt()));
         } else if (operation.equals("direction_to_y_rot")) {
             Direction facing = Direction.byName(request.get("name").getAsString());
             if (facing == null) {

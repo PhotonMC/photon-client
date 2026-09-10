@@ -1372,6 +1372,8 @@ def math_cases():
                    "operation": "direction_random", "seed": seed, "plane": plane}
             yield {"case_id": f"direction/plane-shuffle/{seed}/{plane}", "family": "math",
                    "operation": "direction_plane_shuffle", "seed": seed, "plane": plane}
+        yield {"case_id": f"direction/all-shuffle/{seed}", "family": "math",
+               "operation": "direction_all_shuffle", "seed": seed}
     for name in ("down", "up", "north", "south", "west", "east"):
         yield {"case_id": f"direction/to-y-rot/{name}", "family": "math",
                "operation": "direction_to_y_rot", "name": name}

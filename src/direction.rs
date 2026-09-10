@@ -39,6 +39,17 @@ pub enum Plane {
     Vertical,
 }
 
+fn shuffled_copy<T: Copy>(items: &[T], random: &mut RandomSource) -> Vec<T> {
+    let mut copy = items.to_vec();
+    for index in (1..copy.len()).rev() {
+        let swap_to = random
+            .next_int_bound(index as i32 + 1)
+            .expect("shuffle bound is positive") as usize;
+        copy.swap(index, swap_to);
+    }
+    copy
+}
+
 impl Direction {
     pub fn from_name(name: &str) -> Option<Self> {
         match name {
@@ -217,6 +228,19 @@ impl Direction {
         DIRECTIONS[random
             .next_int_bound(DIRECTIONS.len() as i32)
             .expect("direction random bound is positive") as usize]
+    }
+
+    /// Return Java `Direction.allShuffled(RandomSource)` in enum declaration order.
+    pub fn all_shuffled(random: &mut RandomSource) -> Vec<Self> {
+        const DIRECTIONS: [Direction; 6] = [
+            Direction::Down,
+            Direction::Up,
+            Direction::North,
+            Direction::South,
+            Direction::West,
+            Direction::East,
+        ];
+        shuffled_copy(&DIRECTIONS, random)
     }
 
     /// Return Java `Direction.isFacingAngle(float)` using the Mth lookup table.
@@ -516,14 +540,7 @@ impl Plane {
 
     /// Return Java `Direction.Plane.shuffledCopy(RandomSource)`.
     pub fn shuffled_copy(self, random: &mut RandomSource) -> Vec<Direction> {
-        let mut copy = self.directions().to_vec();
-        for index in (1..copy.len()).rev() {
-            let swap_to = random
-                .next_int_bound(index as i32 + 1)
-                .expect("plane shuffle bound is positive") as usize;
-            copy.swap(index, swap_to);
-        }
-        copy
+        shuffled_copy(self.directions(), random)
     }
 
     /// Return Java `Direction.Plane.test(Direction)` with nullable input.
