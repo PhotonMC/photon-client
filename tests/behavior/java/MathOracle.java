@@ -454,6 +454,16 @@ public final class MathOracle {
         } else if (operation.equals("mth_atan2")) {
             result.addProperty("bits", Oracle.bits(Mth.atan2(
                 f64(request, "y"), f64(request, "x"))));
+        } else if (operation.equals("mth_inv_sqrt")) {
+            if (request.get("type").getAsString().equals("f32")) {
+                result.addProperty("bits", Oracle.bits(Mth.invSqrt(
+                    Oracle.f32(request, "input"))));
+            } else if (request.get("type").getAsString().equals("f64")) {
+                result.addProperty("bits", Oracle.bits(Mth.invSqrt(
+                    f64(request, "input"))));
+            } else {
+                throw new IllegalArgumentException("Unknown Mth invSqrt type");
+            }
         } else if (operation.equals("mth_integer_helpers")) {
             String width = request.get("type").getAsString();
             String function = request.get("fn").getAsString();

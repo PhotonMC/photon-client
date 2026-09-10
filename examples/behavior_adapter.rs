@@ -2473,6 +2473,20 @@ fn math_result(request: &Value) -> Result<Value, String> {
         let value = math::mth_atan2(f64_field(request, "y")?, f64_field(request, "x")?);
         return Ok(json!({"bits": format!("{:016x}", value.to_bits())}));
     }
+    if operation == "mth_inv_sqrt" {
+        let bits = match string(request, "type")? {
+            "f32" => format!(
+                "{:08x}",
+                math::mth_inv_sqrt_f32(f32_field(request, "input")?).to_bits()
+            ),
+            "f64" => format!(
+                "{:016x}",
+                math::mth_inv_sqrt_f64(f64_field(request, "input")?).to_bits()
+            ),
+            _ => return Err("unknown Mth invSqrt type".into()),
+        };
+        return Ok(json!({"bits": bits}));
+    }
     if operation == "mth_integer_helpers" {
         let function = string(request, "fn")?;
         let input = string(request, "input")?;

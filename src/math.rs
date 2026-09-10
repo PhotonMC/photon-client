@@ -988,6 +988,17 @@ fn mth_atan2_table_entry(index: usize) -> (f64, f64) {
     (asin, asin.cos())
 }
 
+/// Return JOML-backed Java `Mth.invSqrt(float)` with its f64 sqrt and f32 divide.
+pub fn mth_inv_sqrt_f32(value: f32) -> f32 {
+    let square_root = f64::from(value).sqrt() as f32;
+    1.0_f32 / square_root
+}
+
+/// Return JOML-backed Java `Mth.invSqrt(double)`.
+pub fn mth_inv_sqrt_f64(value: f64) -> f64 {
+    1.0 / value.sqrt()
+}
+
 /// Return Java `Mth.ceilLong(double)` with Java's floating-point-to-long narrowing.
 pub fn ceil_long_f64(value: f64) -> i64 {
     value.ceil() as i64

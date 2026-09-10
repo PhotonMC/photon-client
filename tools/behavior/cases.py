@@ -3368,6 +3368,48 @@ def math_cases():
         yield {"case_id": f"mth/atan2/{label}", "family": "math",
                "operation": "mth_atan2", "y": y, "x": x}
 
+    mth_inv_sqrt_f32 = [
+        ("zero", "00000000"),
+        ("negative-zero", "80000000"),
+        ("one", "3f800000"),
+        ("two", "40000000"),
+        ("quarter", "3e800000"),
+        ("maximum-finite", "7f7fffff"),
+        ("minimum-normal", "00800000"),
+        ("positive-subnormal", "00000001"),
+        ("negative-one", "bf800000"),
+        ("negative-subnormal", "80000001"),
+        ("infinity", "7f800000"),
+        ("negative-infinity", "ff800000"),
+        ("nan", "7fc00000"),
+        ("nan-payload", "7fc12345"),
+        ("negative-nan-payload", "ffc12345"),
+    ]
+    for label, input_value in mth_inv_sqrt_f32:
+        yield {"case_id": f"mth/inv-sqrt/f32/{label}", "family": "math",
+               "operation": "mth_inv_sqrt", "type": "f32", "input": input_value}
+
+    mth_inv_sqrt_f64 = [
+        ("zero", "0000000000000000"),
+        ("negative-zero", "8000000000000000"),
+        ("one", "3ff0000000000000"),
+        ("two", "4000000000000000"),
+        ("quarter", "3fd0000000000000"),
+        ("maximum-finite", "7fefffffffffffff"),
+        ("minimum-normal", "0010000000000000"),
+        ("positive-subnormal", "0000000000000001"),
+        ("negative-one", "bff0000000000000"),
+        ("negative-subnormal", "8000000000000001"),
+        ("infinity", "7ff0000000000000"),
+        ("negative-infinity", "fff0000000000000"),
+        ("nan", "7ff8000000000000"),
+        ("nan-payload", "7ff0000000000001"),
+        ("negative-nan-payload", "fff0000000000001"),
+    ]
+    for label, input_value in mth_inv_sqrt_f64:
+        yield {"case_id": f"mth/inv-sqrt/f64/{label}", "family": "math",
+               "operation": "mth_inv_sqrt", "type": "f64", "input": input_value}
+
     mth_integer_helpers = [
         ("floor-div/int/negative-remainder", "i32", "floor_div", "-7", "3"),
         ("floor-div/int/negative-divisor", "i32", "floor_div", "7", "-3"),
