@@ -136,6 +136,18 @@ public final class MathOracle {
                 default -> throw new IllegalArgumentException("Unknown axis direction");
             };
             result.add("value", snapshot(Direction.get(direction, axis)));
+        } else if (operation.equals("direction_unit_vectors")) {
+            Direction facing = Direction.byName(request.get("name").getAsString());
+            if (facing == null) {
+                throw new IllegalArgumentException("Unknown direction name");
+            }
+            var unitVec3i = new JsonObject();
+            unitVec3i.addProperty("x", facing.getUnitVec3i().getX());
+            unitVec3i.addProperty("y", facing.getUnitVec3i().getY());
+            unitVec3i.addProperty("z", facing.getUnitVec3i().getZ());
+            result.add("unit_vec3i", unitVec3i);
+            result.add("unit_vec3", snapshot(facing.getUnitVec3()));
+            result.add("unit_vec3f", snapshot(new Vector3f(facing.getUnitVec3f())));
         } else if (operation.equals("direction_axis_orientation")) {
             Direction.Axis axis = Direction.Axis.byName(request.get("axis").getAsString());
             if (axis == null) {

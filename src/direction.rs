@@ -3,6 +3,7 @@
 //! Covers names, data values, axes, steps, opposites and axial rotations.
 //! Entity-lookahead, quaternions and codecs belong to later slices.
 
+use crate::math::{Vec3, Vec3f};
 use crate::random::RandomSource;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -145,6 +146,18 @@ impl Direction {
             Self::West => (-1, 0, 0),
             Self::East => (1, 0, 0),
         }
+    }
+
+    /// Return Java `Direction.getUnitVec3()` as a f64 vector.
+    pub fn unit_vec3(self) -> Vec3 {
+        let (x, y, z) = self.step();
+        Vec3::new(f64::from(x), f64::from(y), f64::from(z))
+    }
+
+    /// Return Java `Direction.getUnitVec3f()` as a f32 vector.
+    pub fn unit_vec3f(self) -> Vec3f {
+        let (x, y, z) = self.step();
+        Vec3f::new(x as f32, y as f32, z as f32)
     }
 
     /// Return Java `Direction.from3DDataValue(int)` with its abs-remainder index.

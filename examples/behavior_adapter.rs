@@ -3196,6 +3196,15 @@ fn math_result(request: &Value) -> Result<Value, String> {
             "value": direction_snapshot(Direction::get(direction, axis)),
         }));
     }
+    if operation == "direction_unit_vectors" {
+        let facing = Direction::from_name(string(request, "name")?).ok_or("unknown direction")?;
+        let (x, y, z) = facing.step();
+        return Ok(json!({
+            "unit_vec3i": {"x": x, "y": y, "z": z},
+            "unit_vec3": vec3_snapshot(facing.unit_vec3()),
+            "unit_vec3f": vec3f_snapshot(facing.unit_vec3f()),
+        }));
+    }
     if operation == "direction_axis_orientation" {
         let axis = Axis::from_name(string(request, "axis")?).ok_or("unknown axis")?;
         return Ok(json!({
