@@ -176,3 +176,29 @@ where
             .then(|| value.clone())
     }
 }
+
+/// Ordered values exposed by a cycle button option.
+#[derive(Debug, Clone, PartialEq)]
+pub struct CycleableEnum<T> {
+    values: Vec<T>,
+}
+
+impl<T> CycleableEnum<T>
+where
+    T: Clone + PartialEq,
+{
+    pub fn new(values: Vec<T>) -> Self {
+        Self { values }
+    }
+
+    pub fn values(&self) -> &[T] {
+        &self.values
+    }
+
+    pub fn validate_value(&self, value: &T) -> Option<T> {
+        self.values
+            .iter()
+            .any(|candidate| candidate == value)
+            .then(|| value.clone())
+    }
+}

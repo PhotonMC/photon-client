@@ -18,7 +18,7 @@ use voxel_client::input_event::{
 use voxel_client::key_mapping::{InputKey, KeyMapping, KeyMappingRegistry};
 use voxel_client::math::{self, Quaternionf, Vec2, Vec3, Vec3f};
 use voxel_client::nbt::{self, Field, FieldValue};
-use voxel_client::option::{IntRange, SliderableEnum, UnitDouble};
+use voxel_client::option::{CycleableEnum, IntRange, SliderableEnum, UnitDouble};
 use voxel_client::random::RandomSource;
 use voxel_client::scroll::ScrollWheelHandler;
 use voxel_client::shape::{BooleanOp, ShapeRotation, Shapes, VoxelShape};
@@ -30,6 +30,13 @@ use voxel_client::wire::{self, ReadError};
 fn string<'a>(request: &'a Value, name: &str) -> Result<&'a str, String> {
     request[name]
         .as_str()
+        .ok_or_else(|| format!("{name} must be a string"))
+}
+
+fn string_value(value: &Value, name: &str) -> Result<String, String> {
+    value
+        .as_str()
+        .map(str::to_owned)
         .ok_or_else(|| format!("{name} must be a string"))
 }
 
@@ -359,6 +366,39 @@ fn sliderable_enum_result(request: &Value) -> Result<Value, String> {
         "values": value_set.values(),
         "probes": probes,
         "sliders": sliders,
+    }))
+}
+
+fn cycleable_enum_result(request: &Value) -> Result<Value, String> {
+    let values = request["values"]
+        .as_array()
+        .ok_or("values must be an array")?
+        .iter()
+        .map(|value| string_value(value, "values entry"))
+        .collect::<Result<Vec<_>, String>>()?;
+    let value_set = CycleableEnum::new(values);
+    let probes = request["probes"]
+        .as_array()
+        .ok_or("probes must be an array")?
+        .iter()
+        .map(|probe| {
+            let value = string_value(probe, "probe")?;
+            let mut state = serde_json::Map::new();
+            state.insert("value".into(), json!(&value));
+            state.insert(
+                "valid".into(),
+                json!(value_set.validate_value(&value).is_some()),
+            );
+            if let Some(validated) = value_set.validate_value(&value) {
+                state.insert("validated".into(), json!(validated));
+            }
+            Ok(Value::Object(state))
+        })
+        .collect::<Result<Vec<_>, String>>()?;
+    Ok(json!({
+        "values": value_set.values(),
+        "selected_values": value_set.values(),
+        "probes": probes,
     }))
 }
 
@@ -4516,6 +4556,9 @@ fn math_result(request: &Value) -> Result<Value, String> {
     }
     if operation == "sliderable_enum" {
         return sliderable_enum_result(request);
+    }
+    if operation == "cycleable_enum" {
+        return cycleable_enum_result(request);
     }
     if operation == "scroll_wheel" {
         return scroll_wheel_result(request);

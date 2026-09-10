@@ -140,6 +140,23 @@ def math_cases():
         ],
     )
 
+    def cycleable_enum_case(label, values, probes):
+        return {
+            "case_id": f"cycleable-enum/{label}", "family": "math",
+            "operation": "cycleable_enum", "values": values, "probes": probes,
+        }
+
+    yield cycleable_enum_case(
+        "membership-and-order",
+        ["off", "fast", "fancy", "fabulous"],
+        ["off", "fabulous", "missing", ""],
+    )
+    yield cycleable_enum_case(
+        "duplicate-values",
+        ["first", "first", "last"],
+        ["first", "last", "outside"],
+    )
+
     def scroll_wheel_case(label, scrolls, selections):
         return {
             "case_id": f"scroll-wheel/{label}", "family": "math",

@@ -195,6 +195,32 @@ public final class MathOracle {
                 sliders.add(state);
             }
             result.add("sliders", sliders);
+        } else if (operation.equals("cycleable_enum")) {
+            var values = new ArrayList<String>();
+            for (JsonElement entry : request.getAsJsonArray("values")) {
+                values.add(entry.getAsString());
+            }
+            OptionInstance.Enum<String> valueSet = new OptionInstance.Enum<>(values, com.mojang.serialization.Codec.STRING);
+            var valueListSupplier = valueSet.valueListSupplier();
+            result.add("values", new JsonArray());
+            for (String value : valueListSupplier.getDefaultList()) {
+                result.getAsJsonArray("values").add(value);
+            }
+            result.add("selected_values", new JsonArray());
+            for (String value : valueListSupplier.getSelectedList()) {
+                result.getAsJsonArray("selected_values").add(value);
+            }
+            var probes = new JsonArray();
+            for (JsonElement entry : request.getAsJsonArray("probes")) {
+                String value = entry.getAsString();
+                var state = new JsonObject();
+                state.addProperty("value", value);
+                var validated = valueSet.validateValue(value);
+                state.addProperty("valid", validated.isPresent());
+                validated.ifPresent(item -> state.addProperty("validated", item));
+                probes.add(state);
+            }
+            result.add("probes", probes);
         } else if (operation.equals("scroll_wheel")) {
             ScrollWheelHandler handler = new ScrollWheelHandler();
             var events = new JsonArray();
