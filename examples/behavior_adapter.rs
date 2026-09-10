@@ -3,7 +3,9 @@
 use serde_json::{Value, json};
 use std::io::{self, BufRead, Write};
 use voxel_client::aabb::{Aabb, AabbBuilder, AabbBuilderError, BlockHitResult, BoundingBox};
-use voxel_client::binary::{self, BlockPos, BlockRotation, ChunkPos, SectionPos, Uuid};
+use voxel_client::binary::{
+    self, BlockPos, BlockRotation, ChunkPos, MutableBlockPos, SectionPos, Uuid,
+};
 use voxel_client::direction::{
     Axis, AxisDirection, Direction, DirectionYRotError, DirectionYRotationError, Plane,
 };
@@ -2189,6 +2191,168 @@ fn math_result(request: &Value) -> Result<Value, String> {
             "count": count,
             "processed": blockpos_position_list(processed),
             "provider_calls": blockpos_position_list(provider_calls),
+        }));
+    }
+    if operation == "blockpos_mutable_helpers" {
+        let initial = blockpos(request.get("initial").ok_or("initial must be an object")?)?;
+        let mut mutable = initial.mutable();
+        let mut constructors = serde_json::Map::new();
+        constructors.insert("immutable".into(), blockpos_snapshot(initial.immutable()));
+        constructors.insert(
+            "mutable".into(),
+            blockpos_snapshot(initial.mutable().immutable()),
+        );
+        constructors.insert(
+            "double".into(),
+            blockpos_snapshot(
+                MutableBlockPos::from_f64(
+                    f64_field(request, "double_x")?,
+                    f64_field(request, "double_y")?,
+                    f64_field(request, "double_z")?,
+                )
+                .immutable(),
+            ),
+        );
+        let mut events = Vec::new();
+        for step in request["steps"]
+            .as_array()
+            .ok_or("steps must be an array")?
+        {
+            let mut event = serde_json::Map::new();
+            match string(step, "op")? {
+                "set" => {
+                    mutable.set(
+                        i32_string_field(step, "x")?,
+                        i32_string_field(step, "y")?,
+                        i32_string_field(step, "z")?,
+                    );
+                }
+                "set_double" => {
+                    mutable.set_f64(
+                        f64_field(step, "x")?,
+                        f64_field(step, "y")?,
+                        f64_field(step, "z")?,
+                    );
+                }
+                "set_block_pos" => {
+                    mutable.set_block_pos(blockpos(
+                        step.get("value").ok_or("value must be an object")?,
+                    )?);
+                }
+                "set_packed" => {
+                    mutable.set_packed(u64_hex_field(step, "value")?);
+                }
+                "set_with_offset_direction" => {
+                    let position =
+                        blockpos(step.get("position").ok_or("position must be an object")?)?;
+                    let direction = Direction::from_name(string(step, "direction")?)
+                        .ok_or("unknown direction")?;
+                    mutable.set_with_offset_direction(position, direction);
+                }
+                "set_with_offset_components" => {
+                    mutable.set_with_offset_components(
+                        blockpos(step.get("position").ok_or("position must be an object")?)?,
+                        i32_string_field(step, "x")?,
+                        i32_string_field(step, "y")?,
+                        i32_string_field(step, "z")?,
+                    );
+                }
+                "set_with_offset_block_pos" => {
+                    mutable.set_with_offset_block_pos(
+                        blockpos(step.get("position").ok_or("position must be an object")?)?,
+                        blockpos(step.get("offset").ok_or("offset must be an object")?)?,
+                    );
+                }
+                "move_direction" => {
+                    let direction = Direction::from_name(string(step, "direction")?)
+                        .ok_or("unknown direction")?;
+                    mutable.move_direction(direction, 1);
+                }
+                "move_direction_steps" => {
+                    let direction = Direction::from_name(string(step, "direction")?)
+                        .ok_or("unknown direction")?;
+                    mutable.move_direction(direction, i32_string_field(step, "steps")?);
+                }
+                "move_components" => {
+                    mutable.move_components(
+                        i32_string_field(step, "x")?,
+                        i32_string_field(step, "y")?,
+                        i32_string_field(step, "z")?,
+                    );
+                }
+                "move_block_pos" => {
+                    mutable.move_block_pos(blockpos(
+                        step.get("value").ok_or("value must be an object")?,
+                    )?);
+                }
+                "clamp" => {
+                    let axis = Axis::from_name(string(step, "axis")?).ok_or("unknown axis")?;
+                    mutable.clamp(
+                        axis,
+                        i32_string_field(step, "minimum")?,
+                        i32_string_field(step, "maximum")?,
+                    );
+                }
+                "set_x" => {
+                    mutable.set_x(i32_string_field(step, "value")?);
+                }
+                "set_y" => {
+                    mutable.set_y(i32_string_field(step, "value")?);
+                }
+                "set_z" => {
+                    mutable.set_z(i32_string_field(step, "value")?);
+                }
+                "offset_return" => {
+                    event.insert(
+                        "returned".into(),
+                        blockpos_snapshot(mutable.offset(
+                            i32_string_field(step, "x")?,
+                            i32_string_field(step, "y")?,
+                            i32_string_field(step, "z")?,
+                        )),
+                    );
+                }
+                "multiply_return" => {
+                    event.insert(
+                        "returned".into(),
+                        blockpos_snapshot(mutable.multiply(i32_string_field(step, "scale")?)),
+                    );
+                }
+                "relative_return" => {
+                    let direction = Direction::from_name(string(step, "direction")?)
+                        .ok_or("unknown direction")?;
+                    event.insert(
+                        "returned".into(),
+                        blockpos_snapshot(
+                            mutable.relative_direction(direction, i32_string_field(step, "steps")?),
+                        ),
+                    );
+                }
+                "relative_axis_return" => {
+                    let axis = Axis::from_name(string(step, "axis")?).ok_or("unknown axis")?;
+                    event.insert(
+                        "returned".into(),
+                        blockpos_snapshot(
+                            mutable.relative_axis(axis, i32_string_field(step, "steps")?),
+                        ),
+                    );
+                }
+                "rotate_return" => {
+                    let rotation = BlockRotation::from_name(string(step, "rotation")?)
+                        .ok_or("unknown rotation")?;
+                    event.insert(
+                        "returned".into(),
+                        blockpos_snapshot(mutable.rotate(rotation)),
+                    );
+                }
+                _ => return Err("unknown mutable BlockPos operation".into()),
+            }
+            event.insert("state".into(), blockpos_snapshot(mutable.immutable()));
+            events.push(Value::Object(event));
+        }
+        return Ok(json!({
+            "constructors": Value::Object(constructors),
+            "events": events,
         }));
     }
     if operation == "blockpos_within_manhattan" {

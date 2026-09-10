@@ -782,6 +782,86 @@ public final class MathOracle {
             result.addProperty("count", count);
             result.add("processed", processed);
             result.add("provider_calls", providerCalls);
+        } else if (operation.equals("blockpos_mutable_helpers")) {
+            BlockPos initial = blockPos(request.getAsJsonObject("initial"));
+            BlockPos.MutableBlockPos mutable = initial.mutable();
+            var constructors = new JsonObject();
+            constructors.add("immutable", snapshot(initial.immutable()));
+            constructors.add("mutable", snapshot(initial.mutable()));
+            constructors.add("double", snapshot(new BlockPos.MutableBlockPos(
+                f64(request, "double_x"), f64(request, "double_y"), f64(request, "double_z"))));
+            var events = new JsonArray();
+            for (JsonElement entry : request.getAsJsonArray("steps")) {
+                JsonObject step = entry.getAsJsonObject();
+                JsonObject event = new JsonObject();
+                switch (step.get("op").getAsString()) {
+                    case "set" -> mutable.set(
+                        Integer.parseInt(step.get("x").getAsString()),
+                        Integer.parseInt(step.get("y").getAsString()),
+                        Integer.parseInt(step.get("z").getAsString()));
+                    case "set_double" -> mutable.set(
+                        f64(step, "x"), f64(step, "y"), f64(step, "z"));
+                    case "set_block_pos" -> mutable.set(blockPos(step.getAsJsonObject("value")));
+                    case "set_packed" -> mutable.set(Long.parseUnsignedLong(step.get("value").getAsString(), 16));
+                    case "set_with_offset_direction" -> {
+                        BlockPos pos = blockPos(step.getAsJsonObject("position"));
+                        Direction direction = Direction.byName(step.get("direction").getAsString());
+                        mutable.setWithOffset(pos, direction);
+                    }
+                    case "set_with_offset_components" -> mutable.setWithOffset(
+                        blockPos(step.getAsJsonObject("position")),
+                        Integer.parseInt(step.get("x").getAsString()),
+                        Integer.parseInt(step.get("y").getAsString()),
+                        Integer.parseInt(step.get("z").getAsString()));
+                    case "set_with_offset_block_pos" -> mutable.setWithOffset(
+                        blockPos(step.getAsJsonObject("position")),
+                        blockPos(step.getAsJsonObject("offset")));
+                    case "move_direction" -> mutable.move(
+                        Direction.byName(step.get("direction").getAsString()));
+                    case "move_direction_steps" -> mutable.move(
+                        Direction.byName(step.get("direction").getAsString()),
+                        Integer.parseInt(step.get("steps").getAsString()));
+                    case "move_components" -> mutable.move(
+                        Integer.parseInt(step.get("x").getAsString()),
+                        Integer.parseInt(step.get("y").getAsString()),
+                        Integer.parseInt(step.get("z").getAsString()));
+                    case "move_block_pos" -> mutable.move(blockPos(step.getAsJsonObject("value")));
+                    case "clamp" -> mutable.clamp(
+                        Direction.Axis.byName(step.get("axis").getAsString()),
+                        Integer.parseInt(step.get("minimum").getAsString()),
+                        Integer.parseInt(step.get("maximum").getAsString()));
+                    case "set_x" -> mutable.setX(Integer.parseInt(step.get("value").getAsString()));
+                    case "set_y" -> mutable.setY(Integer.parseInt(step.get("value").getAsString()));
+                    case "set_z" -> mutable.setZ(Integer.parseInt(step.get("value").getAsString()));
+                    case "offset_return" -> event.add("returned", snapshot(mutable.offset(
+                        Integer.parseInt(step.get("x").getAsString()),
+                        Integer.parseInt(step.get("y").getAsString()),
+                        Integer.parseInt(step.get("z").getAsString()))));
+                    case "multiply_return" -> event.add("returned", snapshot(mutable.multiply(
+                        Integer.parseInt(step.get("scale").getAsString()))));
+                    case "relative_return" -> event.add("returned", snapshot(mutable.relative(
+                        Direction.byName(step.get("direction").getAsString()),
+                        Integer.parseInt(step.get("steps").getAsString()))));
+                    case "relative_axis_return" -> event.add("returned", snapshot(mutable.relative(
+                        Direction.Axis.byName(step.get("axis").getAsString()),
+                        Integer.parseInt(step.get("steps").getAsString()))));
+                    case "rotate_return" -> {
+                        Rotation rotation = switch (step.get("rotation").getAsString()) {
+                            case "none" -> Rotation.NONE;
+                            case "clockwise_90" -> Rotation.CLOCKWISE_90;
+                            case "180" -> Rotation.CLOCKWISE_180;
+                            case "counterclockwise_90" -> Rotation.COUNTERCLOCKWISE_90;
+                            default -> throw new IllegalArgumentException("Unknown mutable rotation");
+                        };
+                        event.add("returned", snapshot(mutable.rotate(rotation)));
+                    }
+                    default -> throw new IllegalArgumentException("Unknown mutable BlockPos operation");
+                }
+                event.add("state", snapshot(mutable));
+                events.add(event);
+            }
+            result.add("constructors", constructors);
+            result.add("events", events);
         } else if (operation.equals("section_relative")) {
             short relative = SectionPos.sectionRelativePos(blockPos(request));
             result.addProperty("relative", Integer.toString(Short.toUnsignedInt(relative)));

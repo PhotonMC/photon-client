@@ -2079,6 +2079,57 @@ def math_cases():
     for label, values in blockpos_breadth_first_traversal.items():
         yield {"case_id": f"blockpos/breadth-first-traversal/{label}", "family": "math",
                "operation": "blockpos_breadth_first_traversal", **values}
+    blockpos_mutable_helpers = {
+        "all-overloads": {
+            "initial": {"x": "1", "y": "-2", "z": "3"},
+            "double_x": float_bits(-0.1, "f64"), "double_y": float_bits(2.0, "f64"),
+            "double_z": float_bits(-3.9, "f64"),
+            "steps": [
+                {"op": "set", "x": "4", "y": "-5", "z": "6"},
+                {"op": "set_double", "x": float_bits(1.9, "f64"), "y": float_bits(-2.0, "f64"),
+                 "z": float_bits(-3.1, "f64")},
+                {"op": "set_block_pos", "value": {"x": "-7", "y": "8", "z": "-9"}},
+                {"op": "set_packed", "value": "ffffffffffffffff"},
+                {"op": "set_with_offset_direction", "position": {"x": "10", "y": "20", "z": "30"},
+                 "direction": "west"},
+                {"op": "set_with_offset_components", "position": {"x": "-4", "y": "5", "z": "-6"},
+                 "x": "1", "y": "-2", "z": "3"},
+                {"op": "set_with_offset_block_pos", "position": {"x": "7", "y": "-8", "z": "9"},
+                 "offset": {"x": "-2", "y": "3", "z": "-4"}},
+                {"op": "move_direction", "direction": "east"},
+                {"op": "move_direction_steps", "direction": "down", "steps": "-2"},
+                {"op": "move_components", "x": "1", "y": "-2", "z": "3"},
+                {"op": "move_block_pos", "value": {"x": "-1", "y": "2", "z": "-3"}},
+                {"op": "clamp", "axis": "x", "minimum": "0", "maximum": "4"},
+                {"op": "clamp", "axis": "y", "minimum": "-4", "maximum": "-2"},
+                {"op": "clamp", "axis": "z", "minimum": "6", "maximum": "9"},
+                {"op": "set_x", "value": "2147483647"},
+                {"op": "set_y", "value": "-2147483648"},
+                {"op": "set_z", "value": "0"},
+                {"op": "offset_return", "x": "1", "y": "-1", "z": "2"},
+                {"op": "multiply_return", "scale": "-2"},
+                {"op": "relative_return", "direction": "north", "steps": "3"},
+                {"op": "relative_axis_return", "axis": "z", "steps": "-4"},
+                {"op": "rotate_return", "rotation": "clockwise_90"},
+            ],
+        },
+        "overflow-and-clamp": {
+            "initial": {"x": "2147483647", "y": "-2147483648", "z": "2147483647"},
+            "double_x": float_bits(2147483647.9, "f64"), "double_y": float_bits(-2147483648.1, "f64"),
+            "double_z": float_bits(-0.01, "f64"),
+            "steps": [
+                {"op": "move_components", "x": "1", "y": "-1", "z": "1"},
+                {"op": "set_with_offset_components", "position": {"x": "2147483647", "y": "-2147483648", "z": "2147483647"},
+                 "x": "1", "y": "-1", "z": "1"},
+                {"op": "clamp", "axis": "x", "minimum": "-2", "maximum": "-1"},
+                {"op": "clamp", "axis": "y", "minimum": "1", "maximum": "2"},
+                {"op": "clamp", "axis": "z", "minimum": "-4", "maximum": "-3"},
+            ],
+        },
+    }
+    for label, values in blockpos_mutable_helpers.items():
+        yield {"case_id": f"blockpos/mutable-helpers/{label}", "family": "math",
+               "operation": "blockpos_mutable_helpers", **values}
     for label, (x, y, z) in {
         "origin": (0, 0, 0),
         "positive-boundary": (15, 15, 15),
