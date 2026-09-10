@@ -3230,6 +3230,19 @@ fn math_result(request: &Value) -> Result<Value, String> {
         };
         return Ok(json!({"value": plane.test(input)}));
     }
+    if operation == "direction_plane_order" {
+        let plane = match string(request, "plane")? {
+            "horizontal" => Plane::Horizontal,
+            "vertical" => Plane::Vertical,
+            _ => return Err("unknown plane".into()),
+        };
+        return Ok(json!({
+            "faces": plane.directions().iter().map(|direction| direction.name()).collect::<Vec<_>>(),
+            "stream_faces": plane.directions().iter().map(|direction| direction.name()).collect::<Vec<_>>(),
+            "axes": plane.axes().iter().map(|axis| axis.name()).collect::<Vec<_>>(),
+            "length": plane.length(),
+        }));
+    }
     if operation == "direction_to_y_rot" {
         let facing = Direction::from_name(string(request, "name")?).ok_or("unknown direction")?;
         return Ok(json!({

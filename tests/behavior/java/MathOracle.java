@@ -166,6 +166,29 @@ public final class MathOracle {
                 throw new IllegalArgumentException("Unknown direction name");
             }
             result.addProperty("value", plane.test(input));
+        } else if (operation.equals("direction_plane_order")) {
+            Direction.Plane plane = switch (request.get("plane").getAsString()) {
+                case "horizontal" -> Direction.Plane.HORIZONTAL;
+                case "vertical" -> Direction.Plane.VERTICAL;
+                default -> throw new IllegalArgumentException("Unknown plane");
+            };
+            var faces = new JsonArray();
+            for (Direction direction : plane) {
+                faces.add(direction.getName());
+            }
+            var streamFaces = new JsonArray();
+            plane.stream().forEach(direction -> streamFaces.add(direction.getName()));
+            var axes = new JsonArray();
+            if (plane == Direction.Plane.HORIZONTAL) {
+                axes.add(Direction.Axis.X.getName());
+                axes.add(Direction.Axis.Z.getName());
+            } else {
+                axes.add(Direction.Axis.Y.getName());
+            }
+            result.add("faces", faces);
+            result.add("stream_faces", streamFaces);
+            result.add("axes", axes);
+            result.addProperty("length", plane.length());
         } else if (operation.equals("direction_to_y_rot")) {
             Direction facing = Direction.byName(request.get("name").getAsString());
             if (facing == null) {

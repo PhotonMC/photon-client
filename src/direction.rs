@@ -461,4 +461,30 @@ impl Plane {
     pub fn test(self, input: Option<Direction>) -> bool {
         input.is_some_and(|direction| direction.axis().get_plane() == self)
     }
+
+    /// Return the Java Plane face order used by iteration and streams.
+    pub fn directions(self) -> &'static [Direction] {
+        match self {
+            Self::Horizontal => &[
+                Direction::North,
+                Direction::East,
+                Direction::South,
+                Direction::West,
+            ],
+            Self::Vertical => &[Direction::Up, Direction::Down],
+        }
+    }
+
+    /// Return the Java Plane axis order used by random-axis selection.
+    pub fn axes(self) -> &'static [Axis] {
+        match self {
+            Self::Horizontal => &[Axis::X, Axis::Z],
+            Self::Vertical => &[Axis::Y],
+        }
+    }
+
+    /// Return Java `Direction.Plane.length()`.
+    pub fn length(self) -> usize {
+        self.directions().len()
+    }
 }
