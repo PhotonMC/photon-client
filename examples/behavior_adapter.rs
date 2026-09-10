@@ -2391,6 +2391,23 @@ fn math_result(request: &Value) -> Result<Value, String> {
         let bits = math::mth_fast_inv_cube_root_f32(f32_field(request, "input")?).to_bits();
         return Ok(json!({"bits": format!("{bits:08x}")}));
     }
+    if operation == "mth_hsv_to_color" {
+        let hue = f32_field(request, "hue")?;
+        let saturation = f32_field(request, "saturation")?;
+        let value = f32_field(request, "value")?;
+        let alpha = string(request, "alpha")?
+            .parse::<i32>()
+            .map_err(|error| error.to_string())?;
+        let color = match string(request, "mode")? {
+            "rgb" => math::mth_hsv_to_rgb_f32(hue, saturation, value),
+            "argb" => math::mth_hsv_to_argb_f32(hue, saturation, value, alpha),
+            _ => return Err("unknown Mth HSV color mode".into()),
+        };
+        return Ok(match color {
+            Ok(value) => json!({"value": value.to_string()}),
+            Err(error) => json!({"outcome": "error", "error": error}),
+        });
+    }
     if operation == "mth_integer_helpers" {
         let function = string(request, "fn")?;
         let input = string(request, "input")?;

@@ -37,4 +37,4 @@ python3 tools/behavior/run.py compare --family math --adapter target/debug/examp
 
 Axis min/max senaryolarını içeren math referans kimliği `803f0124e49c7979da9fe752dd944ea1e0edce936d4d6afa25b3ab5358a5514c` oldu. Bu referans iki JVM çalıştırmasıyla kararlı bulundu. Birleşik altı aile referansı `8c4789d8c4953d1e6851df238f157e9ea125bc1a32a2eb87d50f55beeda3476b` kimliğiyle iki JVM'de doğrulandı.
 
-Rust debug ve release adaptörleri math ailesinde 418/418, birleşik corpus'ta 2626/2626 eşleşti. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.
+Rust debug ve release adaptörleri math ailesinde 418/418, birleşik corpus'ta 2668/2668 eşleşti. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.

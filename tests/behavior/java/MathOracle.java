@@ -389,6 +389,26 @@ public final class MathOracle {
         } else if (operation.equals("mth_fast_inv_cube_root")) {
             result.addProperty("bits", Oracle.bits(Mth.fastInvCubeRoot(
                 Oracle.f32(request, "input"))));
+        } else if (operation.equals("mth_hsv_to_color")) {
+            try {
+                float hue = Oracle.f32(request, "hue");
+                float saturation = Oracle.f32(request, "saturation");
+                float value = Oracle.f32(request, "value");
+                int alpha = Integer.parseInt(request.get("alpha").getAsString());
+                int color = switch (request.get("mode").getAsString()) {
+                    case "rgb" -> Mth.hsvToRgb(hue, saturation, value);
+                    case "argb" -> Mth.hsvToArgb(hue, saturation, value, alpha);
+                    default -> throw new IllegalArgumentException("Unknown Mth HSV color mode");
+                };
+                result.addProperty("value", Integer.toString(color));
+            } catch (RuntimeException error) {
+                if (error.getClass() != RuntimeException.class) {
+                    throw error;
+                }
+                result.addProperty("outcome", "error");
+                result.addProperty("error", "hue_out_of_range");
+                result.addProperty("java_exception", error.getClass().getName());
+            }
         } else if (operation.equals("mth_integer_helpers")) {
             String width = request.get("type").getAsString();
             String function = request.get("fn").getAsString();

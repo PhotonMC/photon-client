@@ -7,9 +7,9 @@
 Java 25.0.4.1 ve Rust 1.98.1 / Linux x86_64 ortamında:
 
 - Sıfır, signed zero, 1.0 bit komşuları, normal/subnormal pozitif ve negatif değerler, f64 sınırları, sonsuzluk ve farklı NaN payload'ları için 24 özgün senaryo hazırlandı.
-- Math referansı iki ayrı JVM çalıştırmasıyla 2124 senaryoda kararlı bulundu.
-- Rust debug ve release adaptörleri güncel 2124/2124 math senaryosunda eşleşti.
-- Birleşik altı aile corpus'u 2626/2626 senaryoda hem debug hem release adaptörüyle eşleşti.
+- Math referansı iki ayrı JVM çalıştırmasıyla 2166 senaryoda kararlı bulundu.
+- Rust debug ve release adaptörleri güncel 2166/2166 math senaryosunda eşleşti.
+- Birleşik altı aile corpus'u 2668/2668 senaryoda hem debug hem release adaptörüyle eşleşti.
 
 Math referans kimliği: `9421a309da79905eddc1ce85361a8baef1e5c3a592c7326ac123cb13c20a6508`. Birleşik referans kimliği: `8c4789d8c4953d1e6851df238f157e9ea125bc1a32a2eb87d50f55beeda3476b`.
 

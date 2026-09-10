@@ -3073,6 +3073,38 @@ def math_cases():
         yield {"case_id": f"mth/fast-inv-cube-root/{label}", "family": "math",
                "operation": "mth_fast_inv_cube_root", "input": input_value}
 
+    mth_hsv_to_color = [
+        ("red-sector", 0.0, 1.0, 1.0, 255),
+        ("yellow-sector", 1.0 / 6.0, 1.0, 1.0, 128),
+        ("green-sector", 1.0 / 3.0, 1.0, 1.0, 64),
+        ("cyan-sector", 0.5, 1.0, 1.0, 32),
+        ("blue-sector", 2.0 / 3.0, 1.0, 1.0, 16),
+        ("magenta-sector", 5.0 / 6.0, 1.0, 1.0, 8),
+        ("wrapped-one", 1.0, 1.0, 1.0, 255),
+        ("boundary-below", math.nextafter(1.0 / 6.0, 0.0), 1.0, 1.0, 255),
+        ("zero-saturation", 0.5, 0.0, 0.5, 17),
+        ("fractional", 0.23, 0.61, 0.73, 200),
+        ("small-negative-hue", -0.1, 1.0, 1.0, -1),
+        ("wrapped-positive-hue", 1.2, 1.0, 1.0, 256),
+        ("negative-sector", -0.2, 1.0, 1.0, 0),
+        ("nan-hue", "7fc00000", 0.5, 0.5, 42),
+        ("positive-infinity-hue", "7f800000", 0.5, 0.5, 42),
+        ("negative-infinity-hue", "ff800000", 0.5, 0.5, 42),
+        ("nan-saturation", 0.25, "7fc00000", 0.75, 255),
+        ("nan-value", 0.25, 0.5, "7fc00000", 255),
+        ("outside-components", 0.75, -0.5, 1.5, 256),
+        ("negative-value", 0.75, 0.5, -1.0, -128),
+        ("signed-zero", "80000000", "80000000", "80000000", 0),
+    ]
+    for label, hue, saturation, value, alpha in mth_hsv_to_color:
+        hue = hue if isinstance(hue, str) else float_bits(hue, "f32")
+        saturation = saturation if isinstance(saturation, str) else float_bits(saturation, "f32")
+        value = value if isinstance(value, str) else float_bits(value, "f32")
+        for mode in ("rgb", "argb"):
+            yield {"case_id": f"mth/hsv-to-color/{label}/{mode}", "family": "math",
+                   "operation": "mth_hsv_to_color", "mode": mode, "hue": hue,
+                   "saturation": saturation, "value": value, "alpha": str(alpha)}
+
     mth_integer_helpers = [
         ("floor-div/int/negative-remainder", "i32", "floor_div", "-7", "3"),
         ("floor-div/int/negative-divisor", "i32", "floor_div", "7", "-3"),

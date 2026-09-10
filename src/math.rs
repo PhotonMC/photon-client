@@ -753,6 +753,39 @@ pub fn mth_fast_inv_cube_root_f32(value: f32) -> f32 {
     0.6666667_f32 * estimate + 1.0_f32 / (3.0_f32 * estimate * estimate * value)
 }
 
+/// Return Java `Mth.hsvToRgb(float, float, float)` with alpha zero.
+pub fn mth_hsv_to_rgb_f32(hue: f32, saturation: f32, value: f32) -> Result<i32, &'static str> {
+    mth_hsv_to_argb_f32(hue, saturation, value, 0)
+}
+
+/// Return Java `Mth.hsvToArgb(float, float, float, int)` in source order.
+pub fn mth_hsv_to_argb_f32(
+    hue: f32,
+    saturation: f32,
+    value: f32,
+    alpha: i32,
+) -> Result<i32, &'static str> {
+    let h = (hue * 6.0_f32) as i32 % 6;
+    let f = hue * 6.0_f32 - h as f32;
+    let p = value * (1.0_f32 - saturation);
+    let q = value * (1.0_f32 - f * saturation);
+    let t = value * (1.0_f32 - (1.0_f32 - f) * saturation);
+    let (red, green, blue) = match h {
+        0 => (value, t, p),
+        1 => (q, value, p),
+        2 => (p, value, t),
+        3 => (p, q, value),
+        4 => (t, p, value),
+        5 => (value, p, q),
+        _ => return Err("hue_out_of_range"),
+    };
+
+    let red = clamp_i32((red * 255.0_f32) as i32, 0, 255) as u32;
+    let green = clamp_i32((green * 255.0_f32) as i32, 0, 255) as u32;
+    let blue = clamp_i32((blue * 255.0_f32) as i32, 0, 255) as u32;
+    Ok((((alpha as u32 & 0xff) << 24) | (red << 16) | (green << 8) | blue) as i32)
+}
+
 /// Return Java `Mth.ceilLong(double)` with Java's floating-point-to-long narrowing.
 pub fn ceil_long_f64(value: f64) -> i64 {
     value.ceil() as i64
