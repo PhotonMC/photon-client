@@ -3441,6 +3441,37 @@ def math_cases():
         yield {"case_id": f"mth/square-i64/{label}", "family": "math",
                "operation": "mth_square_i64", "x": str(x)}
 
+    min_subnormal_f64 = float.fromhex("0x0.0000000000001p-1022")
+    maximum_finite_f64 = float.fromhex("0x1.fffffffffffffp1023")
+    mth_clamped_map_f64 = [
+        ("basic", 5.0, 0.0, 10.0, 0.0, 100.0),
+        ("below-source", -5.0, 0.0, 10.0, 100.0, 200.0),
+        ("above-source", 15.0, 0.0, 10.0, 100.0, 200.0),
+        ("lower-endpoint", 0.0, 0.0, 10.0, -4.0, 12.0),
+        ("upper-endpoint", 10.0, 0.0, 10.0, -4.0, 12.0),
+        ("negative-range", -5.0, -10.0, 0.0, 10.0, 30.0),
+        ("reversed-source", 5.0, 10.0, 0.0, 0.0, 100.0),
+        ("reversed-target", 0.25, 0.0, 1.0, 10.0, -10.0),
+        ("reversed-both", 5.0, 10.0, 0.0, 100.0, 0.0),
+        ("negative-zero", -0.0, 0.0, 1.0, -0.0, 1.0),
+        ("source-subnormal", min_subnormal_f64, 0.0, min_subnormal_f64, 0.0, 1.0),
+        ("target-subnormal", 0.5, 0.0, 1.0, 0.0, min_subnormal_f64),
+        ("precision-order", 0.1, 1.0e20, 1.0e20 + 1.0e6, -1.0e20, 1.0e20),
+        ("zero-source-range", 1.0, 1.0, 1.0, 0.0, 1.0),
+        ("infinite-source-range", 0.0, -float("inf"), float("inf"), 0.0, 1.0),
+        ("positive-infinity-value", float("inf"), 0.0, 1.0, 0.0, 1.0),
+        ("negative-infinity-value", -float("inf"), 0.0, 1.0, 0.0, 1.0),
+        ("nan-value", float("nan"), 0.0, 1.0, 0.0, 1.0),
+        ("nan-from-min", 0.0, float("nan"), 1.0, 0.0, 1.0),
+        ("overflow-output", 0.5, 0.0, 1.0, -maximum_finite_f64, maximum_finite_f64),
+    ]
+    for label, value, from_min, from_max, to_min, to_max in mth_clamped_map_f64:
+        yield {"case_id": f"mth/clamped-map-f64/{label}", "family": "math",
+               "operation": "mth_clamped_map_f64",
+               "value": float_bits(value, "f64"), "from_min": float_bits(from_min, "f64"),
+               "from_max": float_bits(from_max, "f64"), "to_min": float_bits(to_min, "f64"),
+               "to_max": float_bits(to_max, "f64")}
+
 
 def timer_cases():
     def trace(label, steps, start=0, tps=20, target=50):

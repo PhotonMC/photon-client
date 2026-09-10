@@ -2439,6 +2439,16 @@ fn math_result(request: &Value) -> Result<Value, String> {
         };
         return Ok(json!({"bits": bits}));
     }
+    if operation == "mth_clamped_map_f64" {
+        let value = math::mth_clamped_map_f64(
+            f64_field(request, "value")?,
+            f64_field(request, "from_min")?,
+            f64_field(request, "from_max")?,
+            f64_field(request, "to_min")?,
+            f64_field(request, "to_max")?,
+        );
+        return Ok(json!({"bits": format!("{:016x}", value.to_bits())}));
+    }
     if operation == "mth_next_random" {
         let mut random = RandomSource::create(random_seed(request)?);
         let width = string(request, "type")?;

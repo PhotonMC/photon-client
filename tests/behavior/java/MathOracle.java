@@ -636,6 +636,10 @@ public final class MathOracle {
         } else if (operation.equals("mth_square_i64")) {
             result.addProperty("value", Long.toString(Mth.square(
                 Long.parseLong(request.get("x").getAsString()))));
+        } else if (operation.equals("mth_clamped_map_f64")) {
+            result.addProperty("bits", Oracle.bits(Mth.clampedMap(
+                f64(request, "value"), f64(request, "from_min"), f64(request, "from_max"),
+                f64(request, "to_min"), f64(request, "to_max"))));
         } else if (operation.equals("vec3")) {
             Vec3 vector = new Vec3(f64(request, "x"), f64(request, "y"), f64(request, "z"));
             var events = new JsonArray();

@@ -8,15 +8,15 @@ Java 25.0.4.1 ve Rust 1.98.1 / Linux x86_64 ortamında:
 
 - 6 int, 7 f32 ve 7 f64 olmak üzere toplam **20 özgün senaryo** hazırlandı.
 - Int için normal, eşit ve ters sınırlar, pozitif/negatif i32 uçları ve tek bitlik aralık; kayan nokta için eşit/ters sınırlar, signed zero, geniş sonlu aralık, Infinity ve NaN dalları karşılaştırıldı.
-- Rust debug ve release adaptörleri güncel **1683/1683** math senaryosunda eşleşti.
-- Birleşik altı aile corpus'u **2185/2185** senaryoda hem debug hem release adaptörüyle eşleşti.
+- Rust debug ve release adaptörleri güncel **1703/1703** math senaryosunda eşleşti.
+- Birleşik altı aile corpus'u **2205/2205** senaryoda hem debug hem release adaptörüyle eşleşti.
 - Math ve birleşik `verify` çalıştırmaları Java referansını iki JVM tekrarıyla yeniden doğruladı.
 
-Math referans kimliği: `d91d4fb976af018c6ced8eb9d475396c09c64f7ef8429742661a9ba2d8c34267`. Birleşik referans kimliği: `595049f32d6822eff3379ec8f2d5211ef192043bf7f6a11db9b9d7c609fe01a1`.
+Math referans kimliği: `b93cda4c5257c03011378a24fe916e8b8cd7e11d2fe75e1a1de108e4b4ebd630`. Birleşik referans kimliği: `413b981c2a619373545c6c4c74d3e7fec6b1a2e1dc34d5a49ee2f4eed5231162`.
 
-Adapter hashleri: debug `a8905dba481a438cfebc22b452d1af22f2d3f1e7de4d2d3a376e85d6141eff61`, release `b6b7d1e7f5cd800ac6971e91b29dee4b36db61aef4e537adc1de1d2f5bff5f93`.
+Adapter hashleri: debug `c1464c3995fc085081d8d7d5957a9eca938185a498315c143c30d63e829ffe90`, release `a68437319cbfe090fc182a3c8ec431a6c95605056e456fc47471c96ea253ffda`.
 
-Yerel raporlar: `compare-arjeniq4` ve `compare-_0386q8q` (math debug/release), `compare-63qzbune` ve `compare-1pb7x57b` (birleşik debug/release), `verify-wl7nytn8` (math) ve `verify-f_mau559` (birleşik) `.data/runs/behavior/` altında bulunur.
+Yerel raporlar: `compare-a8qhmnrl` ve `compare-usm27y8z` (math debug/release), `compare-8vwtvwwl` ve `compare-uey51w68` (birleşik debug/release), `verify-d3ywhdwp` (math) ve `verify-l3irw60r` (birleşik) `.data/runs/behavior/` altında bulunur.
 
 ## Sınırlar
 
