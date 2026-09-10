@@ -6373,6 +6373,52 @@ def resources_cases():
             {"min_major": 87, "min_minor": 99, "max_major": 88, "max_minor": 0},
         ],
     }
+    yield {
+        "case_id": "resources/vanilla/external-root-precedence",
+        "family": "resources",
+        "operation": "vanilla",
+        "roots": [
+            {
+                "id": "jar",
+                "resources": [
+                    {"id": "minecraft:textures/shared.png", "hex": "4a4152"},
+                    {"id": "minecraft:textures/jar-only.png", "hex": "4a4152"},
+                ],
+            },
+            {
+                "id": "external",
+                "resources": [
+                    {"id": "minecraft:textures/shared.png", "hex": "455854"},
+                    {"id": "minecraft:textures/external-only.png", "hex": "455854"},
+                ],
+            },
+        ],
+        "namespaces": ["minecraft"],
+        "queries": [
+            "minecraft:textures/shared.png", "minecraft:textures/jar-only.png",
+            "minecraft:textures/external-only.png", "minecraft:textures/missing.png",
+        ],
+    }
+    yield {
+        "case_id": "resources/vanilla/explicit-namespaces",
+        "family": "resources",
+        "operation": "vanilla",
+        "roots": [
+            {
+                "id": "assets",
+                "resources": [
+                    {"id": "minecraft:lang/en_us.json", "hex": "4d494e"},
+                    {"id": "realms:icons/realm.png", "hex": "5245414c4d53"},
+                    {"id": "custom:data/value.json", "hex": "435553544f4d"},
+                ],
+            },
+        ],
+        "namespaces": ["realms", "minecraft"],
+        "queries": [
+            "minecraft:lang/en_us.json", "realms:icons/realm.png",
+            "custom:data/value.json", "unknown:data/value.json",
+        ],
+    }
 
 
 def build_cases(families):

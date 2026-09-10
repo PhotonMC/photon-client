@@ -19,6 +19,7 @@ import net.minecraft.server.packs.PackLocationInfo;
 import net.minecraft.server.packs.PackResources;
 import net.minecraft.server.packs.PackType;
 import net.minecraft.server.packs.PathPackResources;
+import net.minecraft.server.packs.VanillaPackResourcesBuilder;
 import net.minecraft.server.packs.metadata.pack.PackFormat;
 import net.minecraft.server.packs.repository.PackSource;
 import net.minecraft.server.packs.repository.PackCompatibility;
@@ -48,6 +49,9 @@ public final class ResourceOracle {
             }
             if (request.get("operation").getAsString().equals("compatibility")) {
                 return compatibilityResult(request);
+            }
+            if (request.get("operation").getAsString().equals("vanilla")) {
+                return vanillaResult(request, assets);
             }
             Path indexes = Files.createDirectories(assets.resolve("indexes"));
             Path objects = Files.createDirectories(assets.resolve("objects"));
@@ -238,6 +242,40 @@ public final class ResourceOracle {
         result.addProperty("game_minor", game.minor());
         result.add("probes", probeResults);
         return result;
+    }
+
+    private static JsonObject vanillaResult(JsonObject request, Path root) throws IOException {
+        Path rootsRoot = Files.createDirectories(root.resolve("vanilla-roots"));
+        VanillaPackResourcesBuilder builder = new VanillaPackResourcesBuilder();
+        int rootIndex = 0;
+        for (JsonElement rootElement : request.getAsJsonArray("roots")) {
+            JsonObject rootValue = rootElement.getAsJsonObject();
+            Path assetRoot = Files.createDirectories(rootsRoot.resolve(Integer.toString(rootIndex)));
+            for (JsonElement resourceElement : rootValue.getAsJsonArray("resources")) {
+                JsonObject resource = resourceElement.getAsJsonObject();
+                Identifier location = Identifier.parse(resource.get("id").getAsString());
+                Path file = assetRoot.resolve(location.getNamespace()).resolve(location.getPath());
+                Files.createDirectories(file.getParent());
+                Files.write(file, decodeHex(resource.get("hex").getAsString()));
+            }
+            builder.pushAssetPath(PackType.CLIENT_RESOURCES, assetRoot);
+            rootIndex++;
+        }
+        for (JsonElement namespace : request.getAsJsonArray("namespaces")) {
+            builder.exposeNamespace(namespace.getAsString());
+        }
+
+        PackResources vanilla = builder.build(
+            new PackLocationInfo("vanilla", Component.literal("vanilla"), PackSource.BUILT_IN, Optional.empty())
+        );
+        try (var manager = new MultiPackResourceManager(PackType.CLIENT_RESOURCES, List.of(vanilla))) {
+            JsonObject result = new JsonObject();
+            JsonArray namespaces = new JsonArray();
+            manager.getNamespaces().stream().sorted().forEach(namespaces::add);
+            result.add("namespaces", namespaces);
+            result.add("queries", resourceQueries(manager, request.getAsJsonArray("queries")));
+            return result;
+        }
     }
 
     private static byte[] decodeHex(String value) {

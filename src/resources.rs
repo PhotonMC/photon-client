@@ -184,6 +184,41 @@ impl ResourcePack {
     }
 }
 
+/// Ordered roots used by Java's vanilla pack resource builder.
+///
+/// Roots are pushed in low-to-high order and searched in reverse order. The
+/// namespace set is supplied by the caller instead of being inferred from
+/// files on disk.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct VanillaPackResources {
+    roots: ResourcePackStack,
+    namespaces: BTreeSet<String>,
+}
+
+impl VanillaPackResources {
+    pub fn new<I>(namespaces: I, roots: Vec<ResourcePack>) -> Self
+    where
+        I: IntoIterator<Item = String>,
+    {
+        Self {
+            roots: ResourcePackStack::new(roots),
+            namespaces: namespaces.into_iter().collect(),
+        }
+    }
+
+    pub fn resource(&self, location: &str) -> Option<(&str, &[u8])> {
+        let namespace = location.split_once(':')?.0;
+        if !self.namespaces.contains(namespace) {
+            return None;
+        }
+        self.roots.resource(location)
+    }
+
+    pub fn namespaces(&self) -> Vec<&str> {
+        self.namespaces.iter().map(String::as_str).collect()
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResourcePackStack {
     packs: Vec<ResourcePack>,

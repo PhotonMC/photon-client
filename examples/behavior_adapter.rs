@@ -26,7 +26,7 @@ use voxel_client::option::{
 use voxel_client::random::RandomSource;
 use voxel_client::resources::{
     self, AssetIndex, AssetResolution, PackCompatibility, PackFormat, ReloadableResourceManager,
-    ResourcePack, ResourcePackStack,
+    ResourcePack, ResourcePackStack, VanillaPackResources,
 };
 use voxel_client::scroll::ScrollWheelHandler;
 use voxel_client::shape::{BooleanOp, ShapeRotation, Shapes, VoxelShape};
@@ -789,6 +789,9 @@ fn resources_result(request: &Value) -> Result<Value, String> {
     if request["operation"].as_str() == Some("compatibility") {
         return resource_compatibility_result(request);
     }
+    if request["operation"].as_str() == Some("vanilla") {
+        return resource_vanilla_result(request);
+    }
 
     let entries = request["entries"]
         .as_array()
@@ -967,6 +970,47 @@ fn resource_compatibility_result(request: &Value) -> Result<Value, String> {
         "game_major": game.major(),
         "game_minor": game.minor(),
         "probes": probes,
+    }))
+}
+
+fn resource_vanilla_result(request: &Value) -> Result<Value, String> {
+    let namespaces = request["namespaces"]
+        .as_array()
+        .ok_or("namespaces must be an array")?
+        .iter()
+        .map(|value| {
+            value
+                .as_str()
+                .ok_or_else(|| "namespace entries must be strings".to_owned())
+                .map(str::to_owned)
+        })
+        .collect::<Result<Vec<_>, String>>()?;
+    let resources = VanillaPackResources::new(namespaces, parse_resource_packs(&request["roots"])?);
+    let queries = request["queries"]
+        .as_array()
+        .ok_or("queries must be an array")?
+        .iter()
+        .map(|query_value| {
+            let id = query_value
+                .as_str()
+                .ok_or("query entries must be strings")?;
+            let mut result = serde_json::Map::new();
+            result.insert("id".into(), json!(id));
+            if let Some((_root_id, bytes)) = resources.resource(id) {
+                result.insert("exists".into(), json!(true));
+                result.insert("stack".into(), json!(["vanilla"]));
+                result.insert("source".into(), json!("vanilla"));
+                result.insert("bytes_hex".into(), json!(hex(bytes)));
+            } else {
+                result.insert("exists".into(), json!(false));
+                result.insert("stack".into(), json!([]));
+            }
+            Ok(Value::Object(result))
+        })
+        .collect::<Result<Vec<_>, String>>()?;
+    Ok(json!({
+        "namespaces": resources.namespaces(),
+        "queries": queries,
     }))
 }
 
