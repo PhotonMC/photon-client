@@ -80,6 +80,17 @@ public final class MathOracle {
             result.add("value", snapshot(facing));
         } else if (operation.equals("direction_y_rot")) {
             result.add("value", snapshot(Direction.fromYRot(f64(request, "value"))));
+        } else if (operation.equals("direction_axis")) {
+            Direction.Axis axis = Direction.Axis.byName(request.get("axis").getAsString());
+            if (axis == null) {
+                throw new IllegalArgumentException("Unknown axis name");
+            }
+            Direction.AxisDirection direction = switch (request.get("direction").getAsString()) {
+                case "positive" -> Direction.AxisDirection.POSITIVE;
+                case "negative" -> Direction.AxisDirection.NEGATIVE;
+                default -> throw new IllegalArgumentException("Unknown axis direction");
+            };
+            result.add("value", snapshot(Direction.fromAxisAndDirection(axis, direction)));
         } else if (operation.equals("coord")) {
             int value = Integer.parseInt(request.get("value").getAsString());
             String fn = request.get("fn").getAsString();

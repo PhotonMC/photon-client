@@ -4,7 +4,7 @@ use serde_json::{Value, json};
 use std::io::{self, BufRead, Write};
 use voxel_client::aabb::{Aabb, AabbBuilder, AabbBuilderError, BlockHitResult, BoundingBox};
 use voxel_client::binary::{self, BlockPos, ChunkPos, SectionPos, Uuid};
-use voxel_client::direction::{Axis, Direction};
+use voxel_client::direction::{Axis, AxisDirection, Direction};
 use voxel_client::math::{self, Quaternionf, Vec2, Vec3, Vec3f};
 use voxel_client::nbt::{self, Field, FieldValue};
 use voxel_client::random::RandomSource;
@@ -3138,6 +3138,17 @@ fn math_result(request: &Value) -> Result<Value, String> {
         let y_rot = f64_field(request, "value")?;
         return Ok(json!({
             "value": direction_snapshot(Direction::from_y_rot(y_rot)),
+        }));
+    }
+    if operation == "direction_axis" {
+        let axis = Axis::from_name(string(request, "axis")?).ok_or("unknown axis")?;
+        let direction = match string(request, "direction")? {
+            "positive" => AxisDirection::Positive,
+            "negative" => AxisDirection::Negative,
+            _ => return Err("unknown axis direction".into()),
+        };
+        return Ok(json!({
+            "value": direction_snapshot(Direction::from_axis_and_direction(axis, direction)),
         }));
     }
     if operation == "coord" {

@@ -1319,6 +1319,10 @@ def math_cases():
     for name, value in direction_y_rot_values:
         yield {"case_id": f"direction/y-rot/{name}", "family": "math",
                "operation": "direction_y_rot", "value": value}
+    for axis in ("x", "y", "z"):
+        for direction in ("positive", "negative"):
+            yield {"case_id": f"direction/axis/{axis}/{direction}", "family": "math",
+                   "operation": "direction_axis", "axis": axis, "direction": direction}
     coords = [0, 1, 15, 16, 17, -1, -15, -16, -17, 31, 32, -32, -33,
               2147483647, -2147483648, 33554431, -33554432, 2097151, -2097152]
     for fn in ("block_to_section", "section_to_block", "section_relative"):

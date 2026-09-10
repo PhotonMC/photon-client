@@ -138,6 +138,18 @@ impl Direction {
         Self::from_2d_data_value(data)
     }
 
+    /// Return Java `Direction.fromAxisAndDirection(Axis, AxisDirection)`.
+    pub fn from_axis_and_direction(axis: Axis, direction: AxisDirection) -> Self {
+        match (axis, direction) {
+            (Axis::X, AxisDirection::Positive) => Self::East,
+            (Axis::X, AxisDirection::Negative) => Self::West,
+            (Axis::Y, AxisDirection::Positive) => Self::Up,
+            (Axis::Y, AxisDirection::Negative) => Self::Down,
+            (Axis::Z, AxisDirection::Positive) => Self::South,
+            (Axis::Z, AxisDirection::Negative) => Self::North,
+        }
+    }
+
     /// Choose the direction with the greatest Java float dot product.
     pub fn approximate_nearest(dx: f64, dy: f64, dz: f64) -> Self {
         let dx = dx as f32;
