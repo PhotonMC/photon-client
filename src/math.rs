@@ -774,6 +774,18 @@ pub fn mth_clamped_map_f32(
     clamped_lerp_f32(factor, to_minimum, to_maximum)
 }
 
+/// Return Java `Mth.map(double, double, double, double, double)` in source order.
+pub fn mth_map_f64(
+    value: f64,
+    from_minimum: f64,
+    from_maximum: f64,
+    to_minimum: f64,
+    to_maximum: f64,
+) -> f64 {
+    let factor = mth_inverse_lerp_f64(value, from_minimum, from_maximum);
+    mth_lerp_f64(factor, to_minimum, to_maximum)
+}
+
 /// Return Java `Mth.lerp(float, float, float)` in source order.
 pub fn mth_lerp_f32(alpha: f32, start: f32, end: f32) -> f32 {
     start + alpha * (end - start)
