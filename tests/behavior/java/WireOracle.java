@@ -49,8 +49,10 @@ import net.minecraft.network.protocol.ping.ClientboundPongResponsePacket;
 import net.minecraft.network.protocol.ping.ServerboundPingRequestPacket;
 import net.minecraft.network.protocol.status.ServerboundStatusRequestPacket;
 import net.minecraft.network.protocol.common.ServerboundClientInformationPacket;
+import net.minecraft.network.protocol.configuration.ClientboundCodeOfConductPacket;
 import net.minecraft.network.protocol.configuration.ClientboundRegistryDataPacket;
 import net.minecraft.network.protocol.configuration.ClientboundFinishConfigurationPacket;
+import net.minecraft.network.protocol.configuration.ClientboundResetChatPacket;
 import net.minecraft.core.RegistrySynchronization;
 import net.minecraft.network.protocol.configuration.ServerboundAcceptCodeOfConductPacket;
 import net.minecraft.network.protocol.configuration.ServerboundFinishConfigurationPacket;
@@ -97,6 +99,9 @@ public final class WireOracle {
         }
         if (operation.equals("configuration_unit")) {
             return configurationUnitResult(request);
+        }
+        if (operation.equals("configuration_misc")) {
+            return configurationMiscResult(request);
         }
         if (operation.equals("client_information")) {
             return clientInformationResult(request);
@@ -670,6 +675,80 @@ public final class WireOracle {
         }
 
         throw new IllegalArgumentException("Unknown configuration unit direction");
+    }
+
+    private static JsonObject configurationMiscResult(JsonObject request) {
+        String direction = request.get("direction").getAsString();
+        String packet = request.get("packet").getAsString();
+        if (direction.equals("write")) {
+            byte[] prefix = HexFormat.of().parseHex(request.get("prefix_hex").getAsString());
+            ByteBuf buffer = Unpooled.buffer();
+            try {
+                buffer.writeBytes(prefix);
+                var result = new JsonObject();
+                try {
+                    switch (packet) {
+                        case "code-of-conduct" -> ClientboundCodeOfConductPacket.STREAM_CODEC.encode(
+                            buffer, new ClientboundCodeOfConductPacket(
+                                fromUtf16Hex(request.get("code_of_conduct_utf16_hex").getAsString())
+                            )
+                        );
+                        case "reset-chat" -> ClientboundResetChatPacket.STREAM_CODEC.encode(
+                            buffer, ClientboundResetChatPacket.INSTANCE
+                        );
+                        default -> throw new IllegalArgumentException("Unknown configuration misc packet");
+                    }
+                    result.addProperty("outcome", "value");
+                } catch (EncoderException error) {
+                    result.addProperty("outcome", "error");
+                    result.addProperty("error", "encoder_error");
+                    result.addProperty("java_exception", error.getClass().getName());
+                }
+                result.addProperty("written", buffer.writerIndex() - prefix.length);
+                result.addProperty("hex", ByteBufUtil.hexDump(buffer));
+                return result;
+            } finally {
+                buffer.release();
+            }
+        }
+
+        if (direction.equals("read")) {
+            ByteBuf buffer = Unpooled.buffer();
+            try {
+                buffer.writeBytes(HexFormat.of().parseHex(request.get("hex").getAsString()));
+                var result = new JsonObject();
+                try {
+                    if (packet.equals("code-of-conduct")) {
+                        ClientboundCodeOfConductPacket decoded = ClientboundCodeOfConductPacket.STREAM_CODEC
+                            .decode(buffer);
+                        result.addProperty("code_of_conduct_utf16_hex", toUtf16Hex(decoded.codeOfConduct()));
+                    } else if (packet.equals("reset-chat")) {
+                        result.addProperty(
+                            "singleton", ClientboundResetChatPacket.STREAM_CODEC.decode(buffer)
+                                == ClientboundResetChatPacket.INSTANCE
+                        );
+                    } else {
+                        throw new IllegalArgumentException("Unknown configuration misc packet");
+                    }
+                    result.addProperty("outcome", "value");
+                } catch (IndexOutOfBoundsException error) {
+                    result.addProperty("outcome", "error");
+                    result.addProperty("error", "buffer_underflow");
+                    result.addProperty("java_exception", error.getClass().getName());
+                } catch (RuntimeException error) {
+                    result.addProperty("outcome", "error");
+                    result.addProperty("error", error.getClass() == RuntimeException.class ? "too_big" : "decoder_error");
+                    result.addProperty("java_exception", error.getClass().getName());
+                }
+                result.addProperty("consumed", buffer.readerIndex());
+                result.addProperty("remaining_hex", ByteBufUtil.hexDump(buffer));
+                return result;
+            } finally {
+                buffer.release();
+            }
+        }
+
+        throw new IllegalArgumentException("Unknown configuration misc direction");
     }
 
     private static JsonObject clientInformationResult(JsonObject request) {

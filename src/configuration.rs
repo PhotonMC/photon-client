@@ -170,6 +170,31 @@ impl ClientboundUpdateEnabledFeaturesPacket {
     }
 }
 
+/// Clientbound configuration code-of-conduct text.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClientboundCodeOfConductPacket {
+    pub code_of_conduct: Vec<u16>,
+}
+
+impl ClientboundCodeOfConductPacket {
+    pub fn new(code_of_conduct: Vec<u16>) -> Self {
+        Self { code_of_conduct }
+    }
+
+    /// Encode the text with Java's default 32767 UTF-16-unit bound.
+    pub fn encode(&self, output: &mut Vec<u8>) -> Result<(), WriteError> {
+        utf8::write_utf8(output, &self.code_of_conduct, 32_767)
+            .map_err(|_| WriteError::EncoderError)
+    }
+
+    /// Decode the text with Java's default 32767 UTF-16-unit bound.
+    pub fn decode(input: &mut &[u8]) -> Result<Self, ReadError> {
+        Ok(Self::new(
+            utf8::read_utf8(input, 32_767).map_err(map_utf8_error)?,
+        ))
+    }
+}
+
 impl ServerboundClientInformationPacket {
     pub fn new(information: ClientInformation) -> Self {
         Self { information }
@@ -247,6 +272,20 @@ impl ClientboundFinishConfigurationPacket {
 pub struct ServerboundAcceptCodeOfConductPacket;
 
 impl ServerboundAcceptCodeOfConductPacket {
+    pub const INSTANCE: Self = Self;
+
+    pub const fn encode(self, _output: &mut Vec<u8>) {}
+
+    pub const fn decode(_input: &mut &[u8]) -> Result<Self, ReadError> {
+        Ok(Self)
+    }
+}
+
+/// Empty clientbound reset-chat packet.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ClientboundResetChatPacket;
+
+impl ClientboundResetChatPacket {
     pub const INSTANCE: Self = Self;
 
     pub const fn encode(self, _output: &mut Vec<u8>) {}

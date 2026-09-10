@@ -323,6 +323,47 @@ def wire_cases():
                    "operation": "configuration_unit", "direction": "read",
                    "packet": packet, "hex": encoded}
 
+    def code_of_conduct_frame(value):
+        encoded = value.encode("utf-8")
+        return varint_hex(len(encoded)) + encoded.hex()
+
+    code_of_conduct_writes = [
+        ("empty", "", ""),
+        ("url", "https://example.invalid/rules", "deadbeef"),
+        ("unicode", "Kurallar: 😀 / Türkçe", ""),
+        ("encode-limit", "a" * 32767, ""),
+        ("encode-too-long", "a" * 32768, ""),
+    ]
+    for label, value, prefix_hex in code_of_conduct_writes:
+        yield {"case_id": f"configuration/code-of-conduct/write/{label}", "family": "wire",
+               "operation": "configuration_misc", "direction": "write",
+               "packet": "code-of-conduct", "code_of_conduct_utf16_hex": utf16_hex(value),
+               "prefix_hex": prefix_hex}
+
+    code_of_conduct_reads = [
+        ("empty", code_of_conduct_frame("")),
+        ("url", code_of_conduct_frame("https://example.invalid/rules")),
+        ("unicode", code_of_conduct_frame("Kurallar: 😀 / Türkçe")),
+        ("trailing", code_of_conduct_frame("ok") + "aabb"),
+        ("body-underflow", "01"),
+        ("malformed-utf8", "01ff"),
+        ("encoded-too-big", "808080808000"),
+        ("decoded-too-long", varint_hex(32768) + "61" * 32768),
+    ]
+    for label, encoded in code_of_conduct_reads:
+        yield {"case_id": f"configuration/code-of-conduct/read/{label}", "family": "wire",
+               "operation": "configuration_misc", "direction": "read",
+               "packet": "code-of-conduct", "hex": encoded}
+
+    for label, prefix_hex in [("empty", ""), ("with-prefix", "deadbeef")]:
+        yield {"case_id": f"configuration/reset-chat/write/{label}", "family": "wire",
+               "operation": "configuration_misc", "direction": "write",
+               "packet": "reset-chat", "prefix_hex": prefix_hex}
+    for label, encoded in [("empty", ""), ("trailing", "aabbcc"), ("zero", "00")]:
+        yield {"case_id": f"configuration/reset-chat/read/{label}", "family": "wire",
+               "operation": "configuration_misc", "direction": "read",
+               "packet": "reset-chat", "hex": encoded}
+
     def client_information_hex(language_bytes, view_distance, chat_visibility, chat_colors,
                                model_customisation, main_hand, text_filtering, allows_listing,
                                particle_status):

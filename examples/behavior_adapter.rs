@@ -14,7 +14,8 @@ use voxel_client::common::{
     ServerboundPongPacket,
 };
 use voxel_client::configuration::{
-    ChatVisibility, ClientInformation, ClientboundFinishConfigurationPacket,
+    ChatVisibility, ClientInformation, ClientboundCodeOfConductPacket,
+    ClientboundFinishConfigurationPacket, ClientboundResetChatPacket,
     ClientboundUpdateEnabledFeaturesPacket, MainHand, ParticleStatus,
     ServerboundAcceptCodeOfConductPacket, ServerboundClientInformationPacket,
     ServerboundFinishConfigurationPacket,
@@ -123,6 +124,9 @@ fn wire_result(request: &Value) -> Result<Value, String> {
     }
     if request["operation"].as_str() == Some("configuration_unit") {
         return configuration_unit_result(request);
+    }
+    if request["operation"].as_str() == Some("configuration_misc") {
+        return configuration_misc_result(request);
     }
     if request["operation"].as_str() == Some("client_information") {
         return client_information_result(request);
@@ -679,6 +683,72 @@ fn configuration_unit_result(request: &Value) -> Result<Value, String> {
             }))
         }
         _ => Err("unknown configuration unit direction".into()),
+    }
+}
+
+fn configuration_misc_result(request: &Value) -> Result<Value, String> {
+    let packet = string(request, "packet")?;
+    match string(request, "direction")? {
+        "write" => {
+            let prefix = decode_hex(string(request, "prefix_hex")?)?;
+            let mut buffer = prefix.clone();
+            let mut result = match packet {
+                "code-of-conduct" => {
+                    let code_of_conduct = utf16_hex_units(
+                        string(request, "code_of_conduct_utf16_hex")?,
+                        "code_of_conduct_utf16_hex",
+                    )?;
+                    match ClientboundCodeOfConductPacket::new(code_of_conduct).encode(&mut buffer) {
+                        Ok(()) => json!({"outcome": "value"}),
+                        Err(voxel_client::configuration::WriteError::EncoderError) => {
+                            json!({"outcome": "error", "error": "encoder_error"})
+                        }
+                    }
+                }
+                "reset-chat" => {
+                    ClientboundResetChatPacket::INSTANCE.encode(&mut buffer);
+                    json!({"outcome": "value"})
+                }
+                _ => return Err("unknown configuration misc packet".into()),
+            };
+            result["written"] = json!(buffer.len() - prefix.len());
+            result["hex"] = json!(hex(&buffer));
+            Ok(result)
+        }
+        "read" => {
+            let bytes = decode_hex(string(request, "hex")?)?;
+            let mut remaining = bytes.as_slice();
+            let result = match packet {
+                "code-of-conduct" => {
+                    ClientboundCodeOfConductPacket::decode(&mut remaining).map(|packet| {
+                        json!({
+                            "code_of_conduct_utf16_hex": packet.code_of_conduct.iter()
+                                .map(|unit| format!("{unit:04x}"))
+                                .collect::<String>(),
+                            "outcome": "value",
+                        })
+                    })
+                }
+                "reset-chat" => ClientboundResetChatPacket::decode(&mut remaining).map(|packet| {
+                    json!({
+                        "singleton": packet == ClientboundResetChatPacket::INSTANCE,
+                        "outcome": "value",
+                    })
+                }),
+                _ => return Err("unknown configuration misc packet".into()),
+            };
+            let mut result = match result {
+                Ok(value) => value,
+                Err(error) => json!({
+                    "outcome": "error",
+                    "error": login_read_error(error),
+                }),
+            };
+            result["consumed"] = json!(bytes.len() - remaining.len());
+            result["remaining_hex"] = json!(hex(remaining));
+            Ok(result)
+        }
+        _ => Err("unknown configuration misc direction".into()),
     }
 }
 
