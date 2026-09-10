@@ -1330,6 +1330,8 @@ def math_cases():
         for direction in ("positive", "negative"):
             yield {"case_id": f"direction/axis/{axis}/{direction}", "family": "math",
                    "operation": "direction_axis", "axis": axis, "direction": direction}
+            yield {"case_id": f"direction/get/{axis}/{direction}", "family": "math",
+                   "operation": "direction_get", "axis": axis, "direction": direction}
     for axis in ("x", "y", "z"):
         yield {"case_id": f"direction/axis-orientation/{axis}", "family": "math",
                "operation": "direction_axis_orientation", "axis": axis}

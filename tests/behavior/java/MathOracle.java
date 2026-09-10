@@ -125,6 +125,17 @@ public final class MathOracle {
                 default -> throw new IllegalArgumentException("Unknown axis direction");
             };
             result.add("value", snapshot(Direction.fromAxisAndDirection(axis, direction)));
+        } else if (operation.equals("direction_get")) {
+            Direction.Axis axis = Direction.Axis.byName(request.get("axis").getAsString());
+            if (axis == null) {
+                throw new IllegalArgumentException("Unknown axis name");
+            }
+            Direction.AxisDirection direction = switch (request.get("direction").getAsString()) {
+                case "positive" -> Direction.AxisDirection.POSITIVE;
+                case "negative" -> Direction.AxisDirection.NEGATIVE;
+                default -> throw new IllegalArgumentException("Unknown axis direction");
+            };
+            result.add("value", snapshot(Direction.get(direction, axis)));
         } else if (operation.equals("direction_axis_orientation")) {
             Direction.Axis axis = Direction.Axis.byName(request.get("axis").getAsString());
             if (axis == null) {

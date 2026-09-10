@@ -189,6 +189,11 @@ impl Direction {
         }
     }
 
+    /// Return Java `Direction.get(AxisDirection, Axis)`.
+    pub fn get(axis_direction: AxisDirection, axis: Axis) -> Self {
+        Self::from_axis_and_direction(axis, axis_direction)
+    }
+
     /// Return Java `Direction.toYRot()` as a float after its integer data mask.
     pub fn to_y_rot(self) -> f32 {
         ((self.data2d() & 3) * 90) as f32
