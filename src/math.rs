@@ -798,6 +798,13 @@ pub fn mth_map_f32(
     mth_lerp_f32(factor, to_minimum, to_maximum)
 }
 
+/// Return Java `Mth.wobble(double)` with its deterministic floor-derived seed.
+pub fn mth_wobble_f64(coord: f64) -> f64 {
+    let seed = floor_f64(coord * 3000.0);
+    let mut random = RandomSource::create(i64::from(seed));
+    coord + (2.0 * random.next_double() - 1.0) * 1.0E-7 / 2.0
+}
+
 /// Return Java `Mth.lerp(float, float, float)` in source order.
 pub fn mth_lerp_f32(alpha: f32, start: f32, end: f32) -> f32 {
     start + alpha * (end - start)

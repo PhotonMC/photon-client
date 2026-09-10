@@ -654,6 +654,9 @@ public final class MathOracle {
                 Oracle.f32(request, "value"), Oracle.f32(request, "from_min"),
                 Oracle.f32(request, "from_max"), Oracle.f32(request, "to_min"),
                 Oracle.f32(request, "to_max"))));
+        } else if (operation.equals("mth_wobble_f64")) {
+            result.addProperty("bits", Oracle.bits(Mth.wobble(
+                f64(request, "coord"))));
         } else if (operation.equals("vec3")) {
             Vec3 vector = new Vec3(f64(request, "x"), f64(request, "y"), f64(request, "z"));
             var events = new JsonArray();

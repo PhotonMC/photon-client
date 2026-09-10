@@ -3561,6 +3561,33 @@ def math_cases():
                "from_max": float_bits(from_max, "f32"), "to_min": float_bits(to_min, "f32"),
                "to_max": float_bits(to_max, "f32")}
 
+    maximum_finite_f64 = float.fromhex("0x1.fffffffffffffp1023")
+    wobble_coords = [
+        ("zero", float_bits(0.0, "f64")),
+        ("negative-zero", "8000000000000000"),
+        ("positive-integer", float_bits(1.0, "f64")),
+        ("negative-integer", float_bits(-1.0, "f64")),
+        ("positive-fraction", float_bits(0.25, "f64")),
+        ("negative-fraction", float_bits(-0.25, "f64")),
+        ("positive-boundary", float_bits(1.0 / 3000.0, "f64")),
+        ("negative-boundary", float_bits(-1.0 / 3000.0, "f64")),
+        ("below-positive-boundary", float_bits(math.nextafter(1.0 / 3000.0, 0.0), "f64")),
+        ("above-positive-boundary", float_bits(math.nextafter(1.0 / 3000.0, math.inf), "f64")),
+        ("large-positive", float_bits(1_000_000.25, "f64")),
+        ("large-negative", float_bits(-1_000_000.25, "f64")),
+        ("positive-floor-overflow", float_bits(715_827.883, "f64")),
+        ("negative-floor-overflow", float_bits(-715_827.883, "f64")),
+        ("maximum-finite", float_bits(maximum_finite_f64, "f64")),
+        ("positive-subnormal", "0000000000000001"),
+        ("negative-subnormal", "8000000000000001"),
+        ("positive-infinity", "7ff0000000000000"),
+        ("negative-infinity", "fff0000000000000"),
+        ("negative-nan-payload", "fff8000000000001"),
+    ]
+    for label, coord in wobble_coords:
+        yield {"case_id": f"mth/wobble-f64/{label}", "family": "math",
+               "operation": "mth_wobble_f64", "coord": coord}
+
 
 def timer_cases():
     def trace(label, steps, start=0, tps=20, target=50):

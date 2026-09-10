@@ -2479,6 +2479,10 @@ fn math_result(request: &Value) -> Result<Value, String> {
         );
         return Ok(json!({"bits": format!("{:08x}", value.to_bits())}));
     }
+    if operation == "mth_wobble_f64" {
+        let value = math::mth_wobble_f64(f64_field(request, "coord")?);
+        return Ok(json!({"bits": format!("{:016x}", value.to_bits())}));
+    }
     if operation == "mth_next_random" {
         let mut random = RandomSource::create(random_seed(request)?);
         let width = string(request, "type")?;
