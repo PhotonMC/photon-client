@@ -14,10 +14,10 @@ python3 tools/behavior/test_runner.py
 - `preflight`: client ve ilgili JAR hash'lerini, Java/javac sürümünü kontrol eder. Oyun veya test çalıştırmaz.
 - `capture`: senaryoları iki ayrı Java sürecinde çalıştırır, çıktıları karşılaştırır ve kararlı referansı kaydeder. Aynı kimlikteki kaydı değiştirmez; mevcut kayıt farklı/bozuksa başarısız olur.
 - `verify`: kayıtlı referansı değiştirmeden iki yeni Java çalıştırmasıyla karşılaştırır. Önceden `capture` yapılmış olmalı.
-- `compare --adapter /mutlak/yol/program`: aynı girdileri belirtilen executable'a verir ve kayıtlı Java sonucuyla karşılaştırır. Rust wire/timer/math/utf8/binary/NBT adaptörü mevcut; bu komut adaptör verilmediğinde **2** ile çıkar. Derleme ve karşılaştırma komutları [binary dilim belgesindedir](binary-parity.md).
+- `compare --adapter /mutlak/yol/program`: aynı girdileri belirtilen executable'a verir ve kayıtlı Java sonucuyla karşılaştırır. Rust wire/timer/math/utf8/binary/NBT/resources adaptörü mevcut; bu komut adaptör verilmediğinde **2** ile çıkar. Derleme ve karşılaştırma komutları [binary dilim belgesindedir](binary-parity.md).
 - `test_runner.py`: yalnızca yanlış başarı, bozuk referans ve hatalı süreç davranışlarını denetleyen sentetik altyapı kontrolleri. Java veya asset gerektirmez.
 
-Tek aile seçmek için `--family wire`, `--family math`, `--family timer`, `--family utf8`, `--family binary` veya `--family nbt` kullanılır; seçenek tekrarlanabilir. Seçilmezse mevcut bütün aileler çalışır. Aile seçimi referans kimliğinin parçasıdır; örneğin `verify --family timer` öncesinde aynı seçimle `capture --family timer` çalıştırılmalıdır. `--runtime /yerel/runtime` alternatif client/`libs` dizinini, `--jdk-home /jdk/koku` Java araçlarını seçer. Bu yollar yalnızca okunur. Gerekli referanslar yoksa indirme yapılmaz.
+Tek aile seçmek için `--family wire`, `--family math`, `--family timer`, `--family utf8`, `--family binary`, `--family nbt` veya `--family resources` kullanılır; seçenek tekrarlanabilir. Seçilmezse mevcut bütün aileler çalışır. Aile seçimi referans kimliğinin parçasıdır; örneğin `verify --family timer` öncesinde aynı seçimle `capture --family timer` çalıştırılmalıdır. `--runtime /yerel/runtime` alternatif client/`libs` dizinini, `--jdk-home /jdk/koku` Java araçlarını seçer. Bu yollar yalnızca okunur. Gerekli referanslar yoksa indirme yapılmaz.
 
 ## Sonuç ve çıkış kodları
 
@@ -63,6 +63,7 @@ Runner'ın ortak JSONL ve kesin karşılaştırma kuralları yukarıdaki protoko
 | utf8 | UTF-8 sınırları, bozuk diziler ve hata tüketimi |
 | binary | Vec3/LP Vec3, UUID, konum, chunk/section, array ve bitset kodlamaları |
 | nbt | Bileşik, liste ve primitive array okuma/yazma davranışı |
+| resources | Asset index yolu çözümleme ve sanal object bağlantıları |
 
 Yeni bir operation eklendiğinde kendi kaynak incelemesi, oracle branch'i, senaryoları ve contract/parity belgesi eklenir. Bu genel runner belgesinde hareketli senaryo toplamı veya operation başına sayaç tutulmaz.
 

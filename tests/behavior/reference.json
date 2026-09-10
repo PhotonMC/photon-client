@@ -147,6 +147,19 @@
         "com.mojang:authlib",
         "org.jspecify:jspecify"
       ]
+    },
+    "resources": {
+      "source": "ResourceOracle.java",
+      "libraries": [
+        "com.google.code.gson:gson",
+        "com.google.guava:guava",
+        "com.google.guava:failureaccess",
+        "it.unimi.dsi:fastutil",
+        "com.mojang:logging",
+        "org.slf4j:slf4j-api",
+        "org.jspecify:jspecify",
+        "org.apache.commons:commons-lang3"
+      ]
     }
   }
 }

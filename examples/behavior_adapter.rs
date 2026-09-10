@@ -24,6 +24,7 @@ use voxel_client::option::{
     AltEnum, ClampingLazyMaxIntRange, CycleableEnum, IntRange, LazyEnum, SliderableEnum, UnitDouble,
 };
 use voxel_client::random::RandomSource;
+use voxel_client::resources::{self, AssetIndex, AssetResolution};
 use voxel_client::scroll::ScrollWheelHandler;
 use voxel_client::shape::{BooleanOp, ShapeRotation, Shapes, VoxelShape};
 use voxel_client::smooth::SmoothDouble;
@@ -773,6 +774,71 @@ fn smooth_double_result(request: &Value) -> Result<Value, String> {
         })
         .collect::<Result<Vec<_>, String>>()?;
     Ok(json!({"events": events}))
+}
+
+fn resources_result(request: &Value) -> Result<Value, String> {
+    let entries = request["entries"]
+        .as_array()
+        .ok_or("entries must be an array")?
+        .iter()
+        .map(|entry| {
+            Ok((
+                string(entry, "path")?.to_owned(),
+                string(entry, "hash")?.to_owned(),
+            ))
+        })
+        .collect::<Result<Vec<(String, String)>, String>>()?;
+    let index = AssetIndex::from_entries(entries)
+        .map_err(|error| format!("invalid asset index: {error:?}"))?;
+    let objects = request["objects"]
+        .as_array()
+        .ok_or("objects must be an array")?
+        .iter()
+        .map(|entry| {
+            Ok((
+                string(entry, "hash")?.to_owned(),
+                decode_hex(string(entry, "hex")?)?,
+            ))
+        })
+        .collect::<Result<std::collections::HashMap<String, Vec<u8>>, String>>()?;
+    let queries = request["queries"]
+        .as_array()
+        .ok_or("queries must be an array")?
+        .iter()
+        .map(|entry| {
+            let path = entry
+                .as_str()
+                .ok_or("query entries must be strings")?
+                .to_owned();
+            let mut result = serde_json::Map::new();
+            result.insert("path".into(), json!(&path));
+            match index.resolve(&path) {
+                AssetResolution::Missing => {
+                    result.insert("exists".into(), json!(false));
+                    result.insert("directory".into(), json!(false));
+                    result.insert("readable".into(), json!(false));
+                }
+                AssetResolution::Directory => {
+                    result.insert("exists".into(), json!(true));
+                    result.insert("directory".into(), json!(true));
+                    result.insert("readable".into(), json!(false));
+                }
+                AssetResolution::File { hash } => {
+                    result.insert("exists".into(), json!(true));
+                    result.insert("directory".into(), json!(false));
+                    result.insert("object_path".into(), json!(resources::object_path(hash)));
+                    if let Some(bytes) = objects.get(hash) {
+                        result.insert("readable".into(), json!(true));
+                        result.insert("bytes_hex".into(), json!(hex(bytes)));
+                    } else {
+                        result.insert("readable".into(), json!(false));
+                    }
+                }
+            }
+            Ok(Value::Object(result))
+        })
+        .collect::<Result<Vec<Value>, String>>()?;
+    Ok(json!({"queries": queries}))
 }
 
 fn input_with_modifiers_snapshot<T: InputWithModifiers>(input: &T) -> Value {
@@ -6378,6 +6444,7 @@ fn respond(request: Value) -> Result<Value, String> {
         "utf8" => utf8_result(&request)?,
         "binary" => binary_result(&request)?,
         "nbt" => nbt_result(&request)?,
+        "resources" => resources_result(&request)?,
         _ => return Err("unknown behavior family".into()),
     };
     Ok(json!({"schema_version": 1, "case_id": case_id, "result": result}))

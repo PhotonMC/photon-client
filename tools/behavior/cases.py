@@ -6193,9 +6193,76 @@ def nbt_cases():
                "operation": "read", "prefix_hex": "a55a", "hex": framed}
 
 
+def resources_cases():
+    hashes = {
+        "a": "00112233445566778899aabbccddeeff00112233",
+        "b": "abcdefabcdefabcdefabcdefabcdefabcdefabcd",
+        "c": "102030405060708090a0b0c0d0e0f00010203040",
+        "missing": "fedcba9876543210fedcba9876543210fedcba98",
+    }
+
+    yield {
+        "case_id": "resources/index/basic-mappings",
+        "family": "resources",
+        "operation": "index",
+        "index": "32",
+        "entries": [
+            {"path": "minecraft/textures/a.png", "hash": hashes["a"]},
+            {"path": "minecraft/lang/en_us.json", "hash": hashes["b"]},
+            {"path": "realms/icons/realm.png", "hash": hashes["c"]},
+        ],
+        "objects": [
+            {"hash": hashes["a"], "hex": "89504e470d0a"},
+            {"hash": hashes["b"], "hex": "7b226c616e67223a7d"},
+            {"hash": hashes["c"], "hex": "5245414c4d53"},
+        ],
+        "queries": [
+            "minecraft/textures/a.png", "minecraft/lang/en_us.json",
+            "realms/icons/realm.png", "minecraft/textures", "minecraft",
+            "minecraft/textures/missing.png", "unknown",
+        ],
+    }
+    yield {
+        "case_id": "resources/index/file-directory-collision",
+        "family": "resources",
+        "operation": "index",
+        "index": "collision",
+        "entries": [
+            {"path": "foo", "hash": hashes["a"]},
+            {"path": "foo/bar", "hash": hashes["b"]},
+            {"path": "foo/bar/baz", "hash": hashes["c"]},
+            {"path": "foo/qux", "hash": hashes["missing"]},
+        ],
+        "objects": [
+            {"hash": hashes["a"], "hex": "41"},
+            {"hash": hashes["b"], "hex": "42"},
+            {"hash": hashes["c"], "hex": "4343"},
+        ],
+        "queries": ["foo", "foo/bar", "foo/bar/baz", "foo/qux", "bar"],
+    }
+    yield {
+        "case_id": "resources/index/missing-object",
+        "family": "resources",
+        "operation": "index",
+        "index": "missing",
+        "entries": [{"path": "minecraft/data/missing.bin", "hash": hashes["missing"]}],
+        "objects": [],
+        "queries": ["minecraft/data/missing.bin", "minecraft/data", "minecraft/data/other.bin"],
+    }
+    yield {
+        "case_id": "resources/index/empty",
+        "family": "resources",
+        "operation": "index",
+        "index": "empty",
+        "entries": [],
+        "objects": [],
+        "queries": ["minecraft", "minecraft/data"],
+    }
+
+
 def build_cases(families):
     generators = {"wire": wire_cases, "math": math_cases, "timer": timer_cases, "utf8": utf8_cases,
-                  "binary": binary_cases, "nbt": nbt_cases}
+                  "binary": binary_cases, "nbt": nbt_cases, "resources": resources_cases}
     cases = [dict(schema_version=1, **case)
              for family in sorted(families) for case in generators[family]()]
     ids = [case["case_id"] for case in cases]

@@ -24,6 +24,7 @@ public final class Oracle {
                     case "timer" -> "TimerOracle";
                     case "binary" -> "BinaryOracle";
                     case "nbt" -> "NbtOracle";
+                    case "resources" -> "ResourceOracle";
                     default -> throw new IllegalArgumentException("Unknown scenario family");
                 };
                 var response = new JsonObject();
