@@ -292,6 +292,31 @@ public final class MathOracle {
         } else if (operation.equals("chunkpos_validity")) {
             ChunkPos pos = chunkPos(request);
             result.add("value", chunkPosValidity(pos));
+        } else if (operation.equals("mth_floating_primitives")) {
+            String function = request.get("fn").getAsString();
+            if (function.equals("sin")) {
+                result.addProperty("bits", Oracle.bits(Mth.sin(f64(request, "value"))));
+            } else if (function.equals("cos")) {
+                result.addProperty("bits", Oracle.bits(Mth.cos(f64(request, "value"))));
+            } else if (function.equals("sqrt")) {
+                result.addProperty("bits", Oracle.bits(Mth.sqrt(Oracle.f32(request, "value"))));
+            } else if (function.equals("abs")) {
+                result.addProperty("bits", Oracle.bits(Mth.abs(Oracle.f32(request, "value"))));
+            } else if (function.equals("clamp")) {
+                String width = request.get("type").getAsString();
+                if (width.equals("f32")) {
+                    result.addProperty("bits", Oracle.bits(Mth.clamp(
+                        Oracle.f32(request, "value"), Oracle.f32(request, "min"),
+                        Oracle.f32(request, "max"))));
+                } else if (width.equals("f64")) {
+                    result.addProperty("bits", Oracle.bits(Mth.clamp(
+                        f64(request, "value"), f64(request, "min"), f64(request, "max"))));
+                } else {
+                    throw new IllegalArgumentException("Unknown Mth clamp type");
+                }
+            } else {
+                throw new IllegalArgumentException("Unknown Mth floating primitive");
+            }
         } else if (operation.equals("mth_integer_helpers")) {
             String width = request.get("type").getAsString();
             String function = request.get("fn").getAsString();

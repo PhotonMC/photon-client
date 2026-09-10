@@ -650,6 +650,26 @@ pub fn ceil_long_f64(value: f64) -> i64 {
     value.ceil() as i64
 }
 
+/// Return Java `Mth.sin(double)` from its quantized f32 lookup table.
+pub fn mth_sin_f64(value: f64) -> f32 {
+    mth_sin(value)
+}
+
+/// Return Java `Mth.cos(double)` from its quantized f32 lookup table.
+pub fn mth_cos_f64(value: f64) -> f32 {
+    mth_cos(value)
+}
+
+/// Return Java `Mth.sqrt(float)`, including the f64 math and f32 narrowing.
+pub fn mth_sqrt_f32(value: f32) -> f32 {
+    f64::from(value).sqrt() as f32
+}
+
+/// Return Java `Mth.abs(float)` while preserving raw NaN payload bits.
+pub fn mth_abs_f32(value: f32) -> f32 {
+    value.abs()
+}
+
 /// Return Java `Mth.positiveModulo(float)` without changing operation order.
 pub fn positive_modulo_f32(input: f32, modulus: f32) -> f32 {
     let result = (input % modulus + modulus) % modulus;

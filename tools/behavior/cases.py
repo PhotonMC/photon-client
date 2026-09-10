@@ -2684,6 +2684,96 @@ def math_cases():
                        "operation": "clamp", "type": width, "value": bits,
                        "min": float_bits(low, width), "max": float_bits(high, width)}
 
+    mth_trigonometric_values = [
+        ("zero", float_bits(0.0, "f64")),
+        ("negative-zero", "8000000000000000"),
+        ("quarter-turn", float_bits(math.pi / 2.0, "f64")),
+        ("negative-quarter-turn", float_bits(-math.pi / 2.0, "f64")),
+        ("pi", float_bits(math.pi, "f64")),
+        ("negative-pi", float_bits(-math.pi, "f64")),
+        ("large-finite", float_bits(1.0e300, "f64")),
+        ("positive-infinity", "7ff0000000000000"),
+        ("negative-infinity", "fff0000000000000"),
+        ("nan-payload", "7ff8000000000001"),
+    ]
+    for function in ("sin", "cos"):
+        for label, value in mth_trigonometric_values:
+            yield {"case_id": f"mth/{function}/{label}", "family": "math",
+                   "operation": "mth_floating_primitives", "fn": function,
+                   "type": "f64", "value": value}
+
+    mth_sqrt_values = [
+        ("zero", "00000000"),
+        ("negative-zero", "80000000"),
+        ("one", float_bits(1.0, "f32")),
+        ("two", float_bits(2.0, "f32")),
+        ("min-subnormal", "00000001"),
+        ("max-finite", "7f7fffff"),
+        ("negative-one", float_bits(-1.0, "f32")),
+        ("positive-infinity", "7f800000"),
+        ("negative-infinity", "ff800000"),
+        ("nan-payload", "7fc00001"),
+    ]
+    for label, value in mth_sqrt_values:
+        yield {"case_id": f"mth/sqrt/{label}", "family": "math",
+               "operation": "mth_floating_primitives", "fn": "sqrt",
+               "type": "f32", "value": value}
+
+    mth_abs_values = [
+        ("zero", "00000000"),
+        ("negative-zero", "80000000"),
+        ("one", float_bits(1.0, "f32")),
+        ("negative-one", float_bits(-1.0, "f32")),
+        ("min-subnormal", "00000001"),
+        ("negative-min-subnormal", "80000001"),
+        ("negative-max-finite", "ff7fffff"),
+        ("positive-infinity", "7f800000"),
+        ("negative-infinity", "ff800000"),
+        ("negative-nan-payload", "ffc01234"),
+    ]
+    for label, value in mth_abs_values:
+        yield {"case_id": f"mth/abs-f32/{label}", "family": "math",
+               "operation": "mth_floating_primitives", "fn": "abs",
+               "type": "f32", "value": value}
+
+    mth_clamp_f32 = [
+        ("inside", 0.25, 0.0, 1.0),
+        ("below", -1.0, 0.0, 1.0),
+        ("above", 2.0, 0.0, 1.0),
+        ("min-equal", 0.0, 0.0, 1.0),
+        ("max-equal", 1.0, 0.0, 1.0),
+        ("reversed-bounds", 0.0, 1.0, -1.0),
+        ("negative-zero-value", "80000000", "00000000", "3f800000"),
+        ("negative-zero-max", "00000000", "bf800000", "80000000"),
+        ("nan-value", "7fc01234", "00000000", "3f800000"),
+        ("nan-max", "3f800000", "00000000", "7fc01234"),
+    ]
+    for label, value, minimum, maximum in mth_clamp_f32:
+        yield {"case_id": f"mth/clamp-f32/{label}", "family": "math",
+               "operation": "mth_floating_primitives", "fn": "clamp", "type": "f32",
+               "value": value if isinstance(value, str) else float_bits(value, "f32"),
+               "min": minimum if isinstance(minimum, str) else float_bits(minimum, "f32"),
+               "max": maximum if isinstance(maximum, str) else float_bits(maximum, "f32")}
+
+    mth_clamp_f64 = [
+        ("inside", 0.25, 0.0, 1.0),
+        ("below", -1.0, 0.0, 1.0),
+        ("above", 2.0, 0.0, 1.0),
+        ("min-equal", 0.0, 0.0, 1.0),
+        ("max-equal", 1.0, 0.0, 1.0),
+        ("reversed-bounds", 0.0, 1.0, -1.0),
+        ("negative-zero-value", "8000000000000000", "0000000000000000", "3ff0000000000000"),
+        ("negative-zero-max", "0000000000000000", "bff0000000000000", "8000000000000000"),
+        ("nan-value", "7ff8000000001234", "0000000000000000", "3ff0000000000000"),
+        ("nan-max", "3ff0000000000000", "0000000000000000", "7ff8000000001234"),
+    ]
+    for label, value, minimum, maximum in mth_clamp_f64:
+        yield {"case_id": f"mth/clamp-f64/{label}", "family": "math",
+               "operation": "mth_floating_primitives", "fn": "clamp", "type": "f64",
+               "value": value if isinstance(value, str) else float_bits(value, "f64"),
+               "min": minimum if isinstance(minimum, str) else float_bits(minimum, "f64"),
+               "max": maximum if isinstance(maximum, str) else float_bits(maximum, "f64")}
+
     mth_integer_helpers = [
         ("floor-div/int/negative-remainder", "i32", "floor_div", "-7", "3"),
         ("floor-div/int/negative-divisor", "i32", "floor_div", "7", "-3"),

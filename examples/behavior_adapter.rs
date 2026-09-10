@@ -2244,6 +2244,50 @@ fn math_result(request: &Value) -> Result<Value, String> {
             "value": chunkpos_validity_snapshot(chunkpos(request)?),
         }));
     }
+    if operation == "mth_floating_primitives" {
+        let function = string(request, "fn")?;
+        let bits = match function {
+            "sin" => format!(
+                "{:08x}",
+                math::mth_sin_f64(f64_field(request, "value")?).to_bits()
+            ),
+            "cos" => format!(
+                "{:08x}",
+                math::mth_cos_f64(f64_field(request, "value")?).to_bits()
+            ),
+            "sqrt" => format!(
+                "{:08x}",
+                math::mth_sqrt_f32(f32_field(request, "value")?).to_bits()
+            ),
+            "abs" => format!(
+                "{:08x}",
+                math::mth_abs_f32(f32_field(request, "value")?).to_bits()
+            ),
+            "clamp" => match string(request, "type")? {
+                "f32" => format!(
+                    "{:08x}",
+                    math::clamp_f32(
+                        f32_field(request, "value")?,
+                        f32_field(request, "min")?,
+                        f32_field(request, "max")?,
+                    )
+                    .to_bits()
+                ),
+                "f64" => format!(
+                    "{:016x}",
+                    math::clamp_f64(
+                        f64_field(request, "value")?,
+                        f64_field(request, "min")?,
+                        f64_field(request, "max")?,
+                    )
+                    .to_bits()
+                ),
+                _ => return Err("unknown Mth clamp type".into()),
+            },
+            _ => return Err("unknown Mth floating primitive".into()),
+        };
+        return Ok(json!({"bits": bits}));
+    }
     if operation == "mth_integer_helpers" {
         let function = string(request, "fn")?;
         let input = string(request, "input")?;
