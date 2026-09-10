@@ -645,6 +645,16 @@ pub fn lfloor_f64(value: f64) -> i64 {
     value.floor() as i64
 }
 
+/// Return Java `Mth.frac(float)` with its floor result narrowed to f32.
+pub fn frac_f32(value: f32) -> f32 {
+    value - floor_f32(value) as f32
+}
+
+/// Return Java `Mth.frac(double)` with its lfloor result widened to f64.
+pub fn frac_f64(value: f64) -> f64 {
+    value - lfloor_f64(value) as f64
+}
+
 /// Return Java `Mth.ceilLong(double)` with Java's floating-point-to-long narrowing.
 pub fn ceil_long_f64(value: f64) -> i64 {
     value.ceil() as i64

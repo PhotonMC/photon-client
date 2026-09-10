@@ -2318,6 +2318,23 @@ fn math_result(request: &Value) -> Result<Value, String> {
         };
         return Ok(json!({"value": value}));
     }
+    if operation == "mth_frac" {
+        if string(request, "fn")? != "frac" {
+            return Err("unknown Mth frac function".into());
+        }
+        let bits = match string(request, "type")? {
+            "f32" => format!(
+                "{:08x}",
+                math::frac_f32(f32_field(request, "input")?).to_bits()
+            ),
+            "f64" => format!(
+                "{:016x}",
+                math::frac_f64(f64_field(request, "input")?).to_bits()
+            ),
+            _ => return Err("unknown Mth frac type".into()),
+        };
+        return Ok(json!({"bits": bits}));
+    }
     if operation == "mth_integer_helpers" {
         let function = string(request, "fn")?;
         let input = string(request, "input")?;

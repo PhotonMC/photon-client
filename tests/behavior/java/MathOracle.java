@@ -343,6 +343,18 @@ public final class MathOracle {
             } else {
                 throw new IllegalArgumentException("Unknown Mth power helper type");
             }
+        } else if (operation.equals("mth_frac")) {
+            String width = request.get("type").getAsString();
+            if (!request.get("fn").getAsString().equals("frac")) {
+                throw new IllegalArgumentException("Unknown Mth frac function");
+            }
+            if (width.equals("f32")) {
+                result.addProperty("bits", Oracle.bits(Mth.frac(Oracle.f32(request, "input"))));
+            } else if (width.equals("f64")) {
+                result.addProperty("bits", Oracle.bits(Mth.frac(f64(request, "input"))));
+            } else {
+                throw new IllegalArgumentException("Unknown Mth frac type");
+            }
         } else if (operation.equals("mth_integer_helpers")) {
             String width = request.get("type").getAsString();
             String function = request.get("fn").getAsString();

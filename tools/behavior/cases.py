@@ -2841,6 +2841,37 @@ def math_cases():
                "operation": "mth_power_helpers", "type": width, "fn": function,
                "input": input_value}
 
+    mth_frac_helpers = [
+        ("f32/zero", "f32", float_bits(0.0, "f32")),
+        ("f32/negative-zero", "f32", "80000000"),
+        ("f32/positive-fraction", "f32", float_bits(1.25, "f32")),
+        ("f32/negative-fraction", "f32", float_bits(-1.25, "f32")),
+        ("f32/positive-exact", "f32", float_bits(7.0, "f32")),
+        ("f32/negative-exact", "f32", float_bits(-7.0, "f32")),
+        ("f32/positive-subnormal", "f32", float_bits(float.fromhex("0x0.000002p-126"), "f32")),
+        ("f32/negative-subnormal", "f32", float_bits(-float.fromhex("0x0.000002p-126"), "f32")),
+        ("f32/int-upper-overflow", "f32", float_bits(2147483648.0, "f32")),
+        ("f32/infinity", "f32", float_bits(float("inf"), "f32")),
+        ("f32/negative-infinity", "f32", float_bits(-float("inf"), "f32")),
+        ("f32/nan", "f32", float_bits(float("nan"), "f32")),
+        ("f64/zero", "f64", float_bits(0.0, "f64")),
+        ("f64/negative-zero", "f64", "8000000000000000"),
+        ("f64/positive-fraction", "f64", float_bits(1.25, "f64")),
+        ("f64/negative-fraction", "f64", float_bits(-1.25, "f64")),
+        ("f64/positive-exact", "f64", float_bits(7.0, "f64")),
+        ("f64/negative-exact", "f64", float_bits(-7.0, "f64")),
+        ("f64/positive-subnormal", "f64", float_bits(float.fromhex("0x0.0000000000001p-1022"), "f64")),
+        ("f64/long-upper-overflow", "f64", float_bits(2.0 ** 63, "f64")),
+        ("f64/long-lower-bound", "f64", float_bits(-(2.0 ** 63), "f64")),
+        ("f64/infinity", "f64", float_bits(float("inf"), "f64")),
+        ("f64/negative-infinity", "f64", float_bits(-float("inf"), "f64")),
+        ("f64/nan", "f64", float_bits(float("nan"), "f64")),
+    ]
+    for label, width, input_value in mth_frac_helpers:
+        yield {"case_id": f"mth/frac/{label}", "family": "math",
+               "operation": "mth_frac", "type": width, "fn": "frac",
+               "input": input_value}
+
     mth_integer_helpers = [
         ("floor-div/int/negative-remainder", "i32", "floor_div", "-7", "3"),
         ("floor-div/int/negative-divisor", "i32", "floor_div", "7", "-3"),
