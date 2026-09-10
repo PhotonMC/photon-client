@@ -70,6 +70,17 @@ public final class MathOracle {
                 events.add(snapshot(facing));
             }
             result.add("events", events);
+        } else if (operation.equals("direction_axial_rotation")) {
+            Direction facing = Direction.byName(request.get("name").getAsString());
+            if (facing == null) {
+                throw new IllegalArgumentException("Unknown direction name");
+            }
+            Direction.Axis axis = Direction.Axis.byName(request.get("axis").getAsString());
+            if (axis == null) {
+                throw new IllegalArgumentException("Unknown axis name");
+            }
+            result.add("clockwise", snapshot(facing.getClockWise(axis)));
+            result.add("counter_clockwise", snapshot(facing.getCounterClockWise(axis)));
         } else if (operation.equals("direction_data")) {
             int value = Integer.parseInt(request.get("value").getAsString());
             Direction facing = switch (request.get("type").getAsString()) {

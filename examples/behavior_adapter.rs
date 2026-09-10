@@ -3123,6 +3123,14 @@ fn math_result(request: &Value) -> Result<Value, String> {
         }
         return Ok(json!({"events": events}));
     }
+    if operation == "direction_axial_rotation" {
+        let facing = Direction::from_name(string(request, "name")?).ok_or("unknown direction")?;
+        let axis = Axis::from_name(string(request, "axis")?).ok_or("unknown axis")?;
+        return Ok(json!({
+            "clockwise": direction_snapshot(facing.clockwise(axis)),
+            "counter_clockwise": direction_snapshot(facing.counter_clockwise(axis)),
+        }));
+    }
     if operation == "direction_data" {
         let value = string(request, "value")?
             .parse::<i32>()

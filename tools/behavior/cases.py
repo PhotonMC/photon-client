@@ -1283,6 +1283,10 @@ def math_cases():
                        ("up", "z"), ("west", "x"), ("east", "z")):
         yield {"case_id": f"direction/rotate-{axis}/{name}", "family": "math", "operation": "direction",
                "name": name, "steps": [{"axis": axis, "clockwise": True}]}
+    for direction in ("down", "up", "north", "south", "west", "east"):
+        for axis in ("x", "y", "z"):
+            yield {"case_id": f"direction/axial-rotation/{direction}/{axis}", "family": "math",
+                   "operation": "direction_axial_rotation", "name": direction, "axis": axis}
     direction_data_values = {
         "3d": [0, 1, 2, 3, 4, 5, -1, -2, -3, -4, -5, -6, -7,
                6, 11, -11, -2147483648, 2147483647],
