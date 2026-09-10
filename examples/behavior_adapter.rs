@@ -2049,6 +2049,12 @@ fn math_result(request: &Value) -> Result<Value, String> {
             )),
         }));
     }
+    if operation == "blockpos_between_closed_aabb" {
+        let aabb = aabb_box(request.get("aabb").ok_or("aabb must be an object")?)?;
+        return Ok(blockpos_positions_snapshot(BlockPos::between_closed_aabb(
+            aabb,
+        )));
+    }
     if operation == "blockpos_neighbor_column" {
         return Ok(blockpos_positions_snapshot(BlockPos::neighbor_column(
             i32_string_field(request, "start_x")?,

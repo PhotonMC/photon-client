@@ -626,6 +626,13 @@ public final class MathOracle {
             result.addProperty("after_between", Integer.toString(afterBetween));
             result.add("cube", cube);
             result.addProperty("after_cube", Integer.toString(afterCube));
+        } else if (operation.equals("blockpos_between_closed_aabb")) {
+            AABB aabb = box(request.getAsJsonObject("aabb"));
+            var positions = new JsonArray();
+            for (BlockPos pos : BlockPos.betweenClosed(aabb)) {
+                positions.add(snapshot(pos));
+            }
+            result.add("positions", positions);
         } else if (operation.equals("section_relative")) {
             short relative = SectionPos.sectionRelativePos(blockPos(request));
             result.addProperty("relative", Integer.toString(Short.toUnsignedInt(relative)));

@@ -6,6 +6,7 @@
 //! UUID can leave the first half consumed while a truncated position
 //! consumes nothing.
 
+use crate::aabb::Aabb;
 use crate::direction::Direction;
 use crate::math::{self, Vec3};
 use crate::random::{RandomError, RandomSource};
@@ -436,6 +437,22 @@ impl BlockPos {
             from.x.max(to.x),
             from.y.max(to.y),
             from.z.max(to.z),
+        )
+    }
+
+    /// Enumerate the blocks covered by an AABB after Java floor conversion.
+    pub fn between_closed_aabb(value: Aabb) -> Vec<Self> {
+        Self::between_closed(
+            Self::new(
+                math::floor_f64(value.min_x),
+                math::floor_f64(value.min_y),
+                math::floor_f64(value.min_z),
+            ),
+            Self::new(
+                math::floor_f64(value.max_x),
+                math::floor_f64(value.max_y),
+                math::floor_f64(value.max_z),
+            ),
         )
     }
 

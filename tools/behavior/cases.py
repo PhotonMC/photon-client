@@ -1835,6 +1835,16 @@ def math_cases():
     for label, values in blockpos_random_ranges.items():
         yield {"case_id": f"blockpos/random-ranges/{label}", "family": "math",
                "operation": "blockpos_random_ranges", **values}
+    blockpos_between_closed_aabb = {
+        "fractional": box_bits(0.25, 0.25, 0.25, 1.75, 1.75, 1.75),
+        "negative-fractional": box_bits(-1.75, -0.2, -3.0, -0.25, 0.8, -1.1),
+        "reversed": box_bits(2.5, 1.5, 3.5, 0.5, -0.5, 1.5),
+        "integer-boundaries": box_bits(0.0, -1.0, 2.0, 1.0, 0.0, 3.0),
+        "signed-zero": box_bits(-0.0, -0.0, -0.0, 0.0, 0.0, 0.0),
+    }
+    for label, values in blockpos_between_closed_aabb.items():
+        yield {"case_id": f"blockpos/between-closed-aabb/{label}", "family": "math",
+               "operation": "blockpos_between_closed_aabb", "aabb": values}
     for label, (x, y, z) in {
         "origin": (0, 0, 0),
         "positive-boundary": (15, 15, 15),
