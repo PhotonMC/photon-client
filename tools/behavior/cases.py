@@ -6419,6 +6419,19 @@ def resources_cases():
             "custom:data/value.json", "unknown:data/value.json",
         ],
     }
+    yield {
+        "case_id": "resources/metadata/known-pack-values",
+        "family": "resources",
+        "operation": "known_pack",
+        "probes": [
+            {"kind": "vanilla", "id": "vanilla"},
+            {"kind": "vanilla", "id": "custom-pack"},
+            {"namespace": "minecraft", "id": "manual", "version": "26.2"},
+            {"namespace": "custom", "id": "manual", "version": "v1"},
+            {"namespace": "Minecraft", "id": "case-sensitive", "version": "26.2"},
+            {"namespace": "", "id": "", "version": ""},
+        ],
+    }
 
 
 def build_cases(families):

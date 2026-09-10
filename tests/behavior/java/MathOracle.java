@@ -15,6 +15,7 @@ import java.util.function.IntPredicate;
 import java.util.stream.Stream;
 import net.minecraft.DetectedVersion;
 import net.minecraft.SharedConstants;
+import net.minecraft.WorldVersion;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.GraphicsPreset;
 import net.minecraft.client.Options;
@@ -56,6 +57,8 @@ import org.joml.Vector2i;
 import sun.misc.Unsafe;
 
 public final class MathOracle {
+    private static final WorldVersion TEST_VERSION = DetectedVersion.createBuiltIn("26.2", "26.2");
+
     public static JsonObject run(JsonObject request) {
         String operation = request.get("operation").getAsString();
         var result = new JsonObject();
@@ -3580,7 +3583,7 @@ public final class MathOracle {
 
     private static JsonObject chunkPosValidity(ChunkPos pos) {
         var output = System.out;
-        SharedConstants.setVersion(DetectedVersion.BUILT_IN);
+        SharedConstants.setVersion(TEST_VERSION);
         Bootstrap.bootStrap();
         System.setOut(output);
         var state = new JsonObject();

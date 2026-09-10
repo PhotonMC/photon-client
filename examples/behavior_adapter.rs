@@ -25,8 +25,8 @@ use voxel_client::option::{
 };
 use voxel_client::random::RandomSource;
 use voxel_client::resources::{
-    self, AssetIndex, AssetResolution, PackCompatibility, PackFormat, ReloadableResourceManager,
-    ResourcePack, ResourcePackStack, VanillaPackResources,
+    self, AssetIndex, AssetResolution, KnownPack, PackCompatibility, PackFormat,
+    ReloadableResourceManager, ResourcePack, ResourcePackStack, VanillaPackResources,
 };
 use voxel_client::scroll::ScrollWheelHandler;
 use voxel_client::shape::{BooleanOp, ShapeRotation, Shapes, VoxelShape};
@@ -792,6 +792,9 @@ fn resources_result(request: &Value) -> Result<Value, String> {
     if request["operation"].as_str() == Some("vanilla") {
         return resource_vanilla_result(request);
     }
+    if request["operation"].as_str() == Some("known_pack") {
+        return resource_known_pack_result(request);
+    }
 
     let entries = request["entries"]
         .as_array()
@@ -1012,6 +1015,33 @@ fn resource_vanilla_result(request: &Value) -> Result<Value, String> {
         "namespaces": resources.namespaces(),
         "queries": queries,
     }))
+}
+
+fn resource_known_pack_result(request: &Value) -> Result<Value, String> {
+    let packs = request["probes"]
+        .as_array()
+        .ok_or("probes must be an array")?
+        .iter()
+        .map(|probe| {
+            let pack = if probe["kind"].as_str() == Some("vanilla") {
+                KnownPack::vanilla(string(probe, "id")?.to_owned())
+            } else {
+                KnownPack::new(
+                    string(probe, "namespace")?.to_owned(),
+                    string(probe, "id")?.to_owned(),
+                    string(probe, "version")?.to_owned(),
+                )
+            };
+            Ok(json!({
+                "namespace": pack.namespace(),
+                "id": pack.id(),
+                "version": pack.version(),
+                "is_vanilla": pack.is_vanilla(),
+                "string": pack.to_string(),
+            }))
+        })
+        .collect::<Result<Vec<_>, String>>()?;
+    Ok(json!({"packs": packs}))
 }
 
 fn input_with_modifiers_snapshot<T: InputWithModifiers>(input: &T) -> Value {

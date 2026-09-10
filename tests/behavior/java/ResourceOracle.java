@@ -13,6 +13,7 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import net.minecraft.network.chat.Component;
 import net.minecraft.SharedConstants;
+import net.minecraft.DetectedVersion;
 import net.minecraft.client.resources.IndexedAssetSource;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.PackLocationInfo;
@@ -21,6 +22,7 @@ import net.minecraft.server.packs.PackType;
 import net.minecraft.server.packs.PathPackResources;
 import net.minecraft.server.packs.VanillaPackResourcesBuilder;
 import net.minecraft.server.packs.metadata.pack.PackFormat;
+import net.minecraft.server.packs.repository.KnownPack;
 import net.minecraft.server.packs.repository.PackSource;
 import net.minecraft.server.packs.repository.PackCompatibility;
 import net.minecraft.server.packs.resources.MultiPackResourceManager;
@@ -40,6 +42,7 @@ public final class ResourceOracle {
     public static JsonObject run(JsonObject request) {
         Path assets = null;
         try {
+            ensureVersion();
             assets = Files.createTempDirectory("voxel-resource-oracle-");
             if (request.get("operation").getAsString().equals("packs")) {
                 return packResult(request, assets);
@@ -52,6 +55,9 @@ public final class ResourceOracle {
             }
             if (request.get("operation").getAsString().equals("vanilla")) {
                 return vanillaResult(request, assets);
+            }
+            if (request.get("operation").getAsString().equals("known_pack")) {
+                return knownPackResult(request);
             }
             Path indexes = Files.createDirectories(assets.resolve("indexes"));
             Path objects = Files.createDirectories(assets.resolve("objects"));
@@ -275,6 +281,42 @@ public final class ResourceOracle {
             result.add("namespaces", namespaces);
             result.add("queries", resourceQueries(manager, request.getAsJsonArray("queries")));
             return result;
+        }
+    }
+
+    private static JsonObject knownPackResult(JsonObject request) {
+        JsonArray packs = new JsonArray();
+        for (JsonElement element : request.getAsJsonArray("probes")) {
+            JsonObject probe = element.getAsJsonObject();
+            KnownPack pack;
+            if (probe.has("kind") && probe.get("kind").getAsString().equals("vanilla")) {
+                pack = KnownPack.vanilla(probe.get("id").getAsString());
+            } else {
+                pack = new KnownPack(
+                    probe.get("namespace").getAsString(),
+                    probe.get("id").getAsString(),
+                    probe.get("version").getAsString()
+                );
+            }
+            JsonObject result = new JsonObject();
+            result.addProperty("namespace", pack.namespace());
+            result.addProperty("id", pack.id());
+            result.addProperty("version", pack.version());
+            result.addProperty("is_vanilla", pack.isVanilla());
+            result.addProperty("string", pack.toString());
+            packs.add(result);
+        }
+
+        JsonObject result = new JsonObject();
+        result.add("packs", packs);
+        return result;
+    }
+
+    private static void ensureVersion() {
+        try {
+            SharedConstants.getCurrentVersion();
+        } catch (IllegalStateException error) {
+            SharedConstants.setVersion(DetectedVersion.createBuiltIn("26.2", "26.2"));
         }
     }
 

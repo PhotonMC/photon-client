@@ -1,6 +1,7 @@
 //! Read-only asset-index path mapping used by the client resource layer.
 
 use std::collections::{BTreeMap, BTreeSet};
+use std::fmt;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Node {
@@ -128,6 +129,56 @@ pub enum PackCompatibility {
     TooNew,
     Unknown,
     Compatible,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct KnownPack {
+    namespace: String,
+    id: String,
+    version: String,
+}
+
+impl KnownPack {
+    pub const VANILLA_NAMESPACE: &'static str = "minecraft";
+    pub const VANILLA_VERSION: &'static str = "26.2";
+
+    pub fn new(namespace: String, id: String, version: String) -> Self {
+        Self {
+            namespace,
+            id,
+            version,
+        }
+    }
+
+    pub fn vanilla(id: String) -> Self {
+        Self::new(
+            Self::VANILLA_NAMESPACE.to_owned(),
+            id,
+            Self::VANILLA_VERSION.to_owned(),
+        )
+    }
+
+    pub fn namespace(&self) -> &str {
+        &self.namespace
+    }
+
+    pub fn id(&self) -> &str {
+        &self.id
+    }
+
+    pub fn version(&self) -> &str {
+        &self.version
+    }
+
+    pub fn is_vanilla(&self) -> bool {
+        self.namespace == Self::VANILLA_NAMESPACE
+    }
+}
+
+impl fmt::Display for KnownPack {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(formatter, "{}:{}:{}", self.namespace, self.id, self.version)
+    }
 }
 
 impl PackCompatibility {
