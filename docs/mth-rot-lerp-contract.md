@@ -8,4 +8,4 @@ Behavior runner `alpha`, `from` ve `to` alanlarını overload hassasiyetine gör
 
 İncelenen kaynak konumu: `net/minecraft/util/Mth.java:608-614`.
 
-Kapsam dışı kalanlar: `rotLerpRad`, `triangleWave`, `square`, diğer açı yardımcıları ve `rotLerp` kullanan istemci akışları.
+Bu belgenin kapsamı dışında kalanlar: `triangleWave`, `square`, diğer açı yardımcıları ve `rotLerp` kullanan istemci akışları. `rotLerpRad` ayrı bir sözleşme ve parity belgesinde ele alınır.

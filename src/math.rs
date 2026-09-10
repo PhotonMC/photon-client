@@ -805,6 +805,22 @@ pub fn mth_rot_lerp_f64(alpha: f64, from: f64, to: f64) -> f64 {
     from + alpha * wrap_degrees_f64(to - from)
 }
 
+/// Return Java `Mth.rotLerpRad(float, float, float)` with float loop constants.
+pub fn mth_rot_lerp_rad(alpha: f32, from: f32, to: f32) -> f32 {
+    let mut diff = to - from;
+    let pi = f32::from_bits(0x4049_0fdb);
+    let two_pi = f32::from_bits(0x40c9_0fdb);
+
+    while diff < -pi {
+        diff += two_pi;
+    }
+    while diff >= pi {
+        diff -= two_pi;
+    }
+
+    from + alpha * diff
+}
+
 /// Return Java `Mth.nextInt(RandomSource, int, int)`, including its
 /// min-greater-than-or-equal-to-max short circuit.
 pub fn mth_next_int(

@@ -3289,6 +3289,30 @@ def math_cases():
                    "from": float_bits(from_value, width),
                    "to": float_bits(to_value, width)}
 
+    mth_rot_lerp_rad = [
+        ("basic", 0.25, 0.0, 1.0),
+        ("zero-alpha", -0.0, 0.5, 1.0),
+        ("one-alpha", 1.0, 0.5, 1.0),
+        ("negative-alpha", -0.5, 0.5, 1.0),
+        ("over-one-alpha", 1.5, 0.5, 1.0),
+        ("positive-crossing", 0.5, 3.0, -3.0),
+        ("negative-crossing", 0.5, -3.0, 3.0),
+        ("positive-pi-boundary", 1.0, 0.0, math.pi),
+        ("negative-pi-boundary", 1.0, 0.0, -math.pi),
+        ("full-turn", 0.5, 0.0, math.pi * 2),
+        ("signed-zero", 0.5, -0.0, 0.0),
+        ("subnormal-difference", 1.0, 0.0, float.fromhex("0x0.000002p-126")),
+        ("large-finite", 0.5, -100.0, 100.0),
+        ("nan-alpha", float("nan"), 0.0, 1.0),
+        ("nan-to", 0.5, 0.0, float("nan")),
+    ]
+    for label, alpha, from_value, to_value in mth_rot_lerp_rad:
+        yield {"case_id": f"mth/rot-lerp-rad/{label}", "family": "math",
+               "operation": "mth_rot_lerp_rad",
+               "alpha": float_bits(alpha, "f32"),
+               "from": float_bits(from_value, "f32"),
+               "to": float_bits(to_value, "f32")}
+
 
 def timer_cases():
     def trace(label, steps, start=0, tps=20, target=50):
