@@ -410,6 +410,11 @@ impl Axis {
             Self::Z => z,
         }
     }
+
+    /// Return Java `Direction.Axis.test(Direction)` with nullable input.
+    pub fn test(self, input: Option<Direction>) -> bool {
+        input.is_some_and(|direction| direction.axis() == self)
+    }
 }
 
 impl AxisDirection {

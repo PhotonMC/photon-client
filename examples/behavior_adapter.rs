@@ -3202,6 +3202,14 @@ fn math_result(request: &Value) -> Result<Value, String> {
             ),
         }));
     }
+    if operation == "direction_axis_test" {
+        let axis = Axis::from_name(string(request, "axis")?).ok_or("unknown axis")?;
+        let input = match string(request, "direction")? {
+            "none" => None,
+            name => Some(Direction::from_name(name).ok_or("unknown direction")?),
+        };
+        return Ok(json!({"value": axis.test(input)}));
+    }
     if operation == "direction_to_y_rot" {
         let facing = Direction::from_name(string(request, "name")?).ok_or("unknown direction")?;
         return Ok(json!({

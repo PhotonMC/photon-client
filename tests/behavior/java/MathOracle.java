@@ -136,6 +136,17 @@ public final class MathOracle {
             result.addProperty("int", intValue);
             result.addProperty("double", Oracle.bits(doubleValue));
             result.addProperty("boolean", booleanValue);
+        } else if (operation.equals("direction_axis_test")) {
+            Direction.Axis axis = Direction.Axis.byName(request.get("axis").getAsString());
+            if (axis == null) {
+                throw new IllegalArgumentException("Unknown axis name");
+            }
+            Direction input = request.get("direction").getAsString().equals("none")
+                ? null : Direction.byName(request.get("direction").getAsString());
+            if (!request.get("direction").getAsString().equals("none") && input == null) {
+                throw new IllegalArgumentException("Unknown direction name");
+            }
+            result.addProperty("value", axis.test(input));
         } else if (operation.equals("direction_to_y_rot")) {
             Direction facing = Direction.byName(request.get("name").getAsString());
             if (facing == null) {
