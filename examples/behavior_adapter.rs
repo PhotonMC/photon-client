@@ -549,6 +549,67 @@ fn clamping_lazy_max_int_range_result(request: &Value) -> Result<Value, String> 
     }))
 }
 
+fn mapped_int_range_result(request: &Value) -> Result<Value, String> {
+    let range = IntRange::new(i32_field(request, "min")?, i32_field(request, "max")?);
+    let discrete = request["discrete"]
+        .as_bool()
+        .ok_or("discrete must be a boolean")?;
+    let mapped = range.xmap(
+        |value| value.to_string(),
+        |value: &String| {
+            value
+                .parse::<i32>()
+                .expect("mapped test values must be signed integers")
+        },
+        discrete,
+    );
+    let values = request["values"]
+        .as_array()
+        .ok_or("values must be an array")?
+        .iter()
+        .map(|value| string_value(value, "mapped value"))
+        .collect::<Result<Vec<_>, String>>()?;
+    let value_results = values
+        .iter()
+        .map(|value| {
+            let mut state = serde_json::Map::new();
+            state.insert("value".into(), json!(value));
+            let validated = mapped.validate_value(value);
+            state.insert("valid".into(), json!(validated.is_some()));
+            if let Some(validated) = validated {
+                state.insert("validated".into(), json!(validated));
+            }
+            state.insert(
+                "to_slider".into(),
+                json!(format!("{:016x}", mapped.to_slider_value(value).to_bits())),
+            );
+            if let Some(next) = mapped.next(value) {
+                state.insert("next".into(), json!(next));
+            }
+            if let Some(previous) = mapped.previous(value) {
+                state.insert("previous".into(), json!(previous));
+            }
+            Value::Object(state)
+        })
+        .collect::<Vec<_>>();
+    let sliders = request["sliders"]
+        .as_array()
+        .ok_or("sliders must be an array")?
+        .iter()
+        .map(|entry| {
+            let slider = f64_value(entry, "slider")?;
+            Ok(json!({
+                "slider": format!("{:016x}", slider.to_bits()),
+                "from_slider": mapped.from_slider_value(slider),
+            }))
+        })
+        .collect::<Result<Vec<_>, String>>()?;
+    Ok(json!({
+        "values": value_results,
+        "sliders": sliders,
+    }))
+}
+
 fn scroll_wheel_result(request: &Value) -> Result<Value, String> {
     let mut handler = ScrollWheelHandler::new();
     let events = request["scrolls"]
@@ -4712,6 +4773,9 @@ fn math_result(request: &Value) -> Result<Value, String> {
     }
     if operation == "clamping_lazy_max_int_range" {
         return clamping_lazy_max_int_range_result(request);
+    }
+    if operation == "mapped_int_range" {
+        return mapped_int_range_result(request);
     }
     if operation == "scroll_wheel" {
         return scroll_wheel_result(request);

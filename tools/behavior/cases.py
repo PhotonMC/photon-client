@@ -191,6 +191,31 @@ def math_cases():
         [-float("inf"), -0.2, 0.0, 0.1, 0.5, 0.99999, 1.0, 1.5, float("inf"), float("nan")],
     )
 
+    def mapped_int_range_case(label, minimum, maximum, discrete, values, sliders):
+        return {
+            "case_id": f"mapped-int-range/{label}", "family": "math",
+            "operation": "mapped_int_range", "min": minimum, "max": maximum,
+            "discrete": discrete, "values": values,
+            "sliders": [float_bits(value, "f64") for value in sliders],
+        }
+
+    yield mapped_int_range_case(
+        "discrete",
+        -2,
+        3,
+        True,
+        ["-3", "-2", "-1", "0", "2", "3", "4"],
+        [-float("inf"), -0.2, 0.0, 0.1, 0.5, 0.99999, 1.0, 1.5, float("inf"), float("nan")],
+    )
+    yield mapped_int_range_case(
+        "continuous",
+        0,
+        4,
+        False,
+        ["-1", "0", "2", "4", "5"],
+        [-0.25, 0.0, 0.2, 0.5, 1.0],
+    )
+
     def scroll_wheel_case(label, scrolls, selections):
         return {
             "case_id": f"scroll-wheel/{label}", "family": "math",

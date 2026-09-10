@@ -79,6 +79,80 @@ impl IntRange {
         )
         .floor() as i32
     }
+
+    pub fn xmap<R, To, FromValue>(
+        self,
+        to: To,
+        from: FromValue,
+        discrete: bool,
+    ) -> MappedIntRange<R, To, FromValue>
+    where
+        To: Fn(i32) -> R,
+        FromValue: Fn(&R) -> i32,
+    {
+        MappedIntRange {
+            range: self,
+            to,
+            from,
+            discrete,
+        }
+    }
+}
+
+/// An integer range mapped to another option value type.
+pub struct MappedIntRange<R, To, FromValue>
+where
+    To: Fn(i32) -> R,
+    FromValue: Fn(&R) -> i32,
+{
+    range: IntRange,
+    to: To,
+    from: FromValue,
+    discrete: bool,
+}
+
+impl<R, To, FromValue> MappedIntRange<R, To, FromValue>
+where
+    To: Fn(i32) -> R,
+    FromValue: Fn(&R) -> i32,
+{
+    pub fn validate_value(&self, value: &R) -> Option<R> {
+        self.range
+            .validate_value((self.from)(value))
+            .map(|value| (self.to)(value))
+    }
+
+    pub fn to_slider_value(&self, value: &R) -> f64 {
+        self.range.to_slider_value((self.from)(value))
+    }
+
+    pub fn next(&self, current: &R) -> Option<R> {
+        if !self.discrete {
+            return None;
+        }
+        let current_index = (self.from)(current);
+        let next_index = self
+            .range
+            .validate_value(current_index.wrapping_add(1))
+            .unwrap_or(current_index);
+        Some((self.to)(next_index))
+    }
+
+    pub fn previous(&self, current: &R) -> Option<R> {
+        if !self.discrete {
+            return None;
+        }
+        let current_index = (self.from)(current);
+        let previous_index = self
+            .range
+            .validate_value(current_index.wrapping_sub(1))
+            .unwrap_or(current_index);
+        Some((self.to)(previous_index))
+    }
+
+    pub fn from_slider_value(&self, slider: f64) -> R {
+        (self.to)(self.range.from_slider_value(slider))
+    }
 }
 
 /// Unit interval value set used by normalized double options.

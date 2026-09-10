@@ -321,6 +321,37 @@ public final class MathOracle {
                 sliders.add(state);
             }
             result.add("sliders", sliders);
+        } else if (operation.equals("mapped_int_range")) {
+            OptionInstance.IntRange range = new OptionInstance.IntRange(
+                request.get("min").getAsInt(), request.get("max").getAsInt(), true);
+            boolean discrete = request.get("discrete").getAsBoolean();
+            OptionInstance.SliderableValueSet<String> mapped = range.xmap(
+                Integer::toString, Integer::parseInt, discrete);
+            var values = new JsonArray();
+            for (JsonElement entry : request.getAsJsonArray("values")) {
+                String value = entry.getAsString();
+                var state = new JsonObject();
+                state.addProperty("value", value);
+                var validated = mapped.validateValue(value);
+                state.addProperty("valid", validated.isPresent());
+                validated.ifPresent(item -> state.addProperty("validated", item));
+                state.addProperty("to_slider", Oracle.bits(mapped.toSliderValue(value)));
+                state.add("next", JsonNull.INSTANCE);
+                mapped.next(value).ifPresent(item -> state.addProperty("next", item));
+                state.add("previous", JsonNull.INSTANCE);
+                mapped.previous(value).ifPresent(item -> state.addProperty("previous", item));
+                values.add(state);
+            }
+            result.add("values", values);
+            var sliders = new JsonArray();
+            for (JsonElement entry : request.getAsJsonArray("sliders")) {
+                double slider = f64(entry.getAsString());
+                var state = new JsonObject();
+                state.addProperty("slider", Oracle.bits(slider));
+                state.addProperty("from_slider", mapped.fromSliderValue(slider));
+                sliders.add(state);
+            }
+            result.add("sliders", sliders);
         } else if (operation.equals("scroll_wheel")) {
             ScrollWheelHandler handler = new ScrollWheelHandler();
             var events = new JsonArray();
