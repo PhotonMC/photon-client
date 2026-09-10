@@ -6492,6 +6492,75 @@ def resources_cases():
             "prefix_hex": "a55a",
         }
 
+    def known_pack_value(namespace, pack_id, version):
+        return {"namespace": namespace, "id": pack_id, "version": version}
+
+    def varint_frame(value):
+        encoded = bytearray()
+        value &= 0xffffffff
+        while True:
+            part = value & 0x7f
+            value >>= 7
+            encoded.append(part | (0x80 if value else 0))
+            if not value:
+                return bytes(encoded).hex()
+
+    def known_pack_frame(pack):
+        return string_frame(pack["namespace"]) + string_frame(pack["id"]) + string_frame(pack["version"])
+
+    basic_packs = [
+        known_pack_value("minecraft", "vanilla", "26.2"),
+        known_pack_value("custom", "example", "v1"),
+    ]
+    list_encodes = [
+        ("clientbound-empty", "clientbound", []),
+        ("clientbound-basic", "clientbound", basic_packs),
+        ("serverbound-empty", "serverbound", []),
+        ("serverbound-64", "serverbound", [known_pack_value("minecraft", "p", "1")] * 64),
+        ("serverbound-65", "serverbound", [known_pack_value("minecraft", "p", "1")] * 65),
+        (
+            "serverbound-member-partial",
+            "serverbound",
+            [known_pack_value("minecraft", "a" * 32768, "1")],
+        ),
+    ]
+    for label, packet, packs in list_encodes:
+        yield {
+            "case_id": f"resources/metadata/known-pack-list-codec/encode/{label}",
+            "family": "resources",
+            "operation": "known_pack_list_codec",
+            "mode": "encode",
+            "packet": packet,
+            "packs": packs,
+            "prefix_hex": "a55a",
+        }
+
+    client_basic_frame = varint_frame(len(basic_packs)) + "".join(
+        known_pack_frame(pack) for pack in basic_packs
+    )
+    empty_pack_frame = "000000"
+    list_decodes = [
+        ("clientbound-basic", "clientbound", client_basic_frame),
+        ("clientbound-trailing", "clientbound", "00aa"),
+        ("serverbound-basic", "serverbound", varint_frame(1) + known_pack_frame(basic_packs[0])),
+        ("serverbound-64", "serverbound", varint_frame(64) + empty_pack_frame * 64),
+        ("serverbound-65", "serverbound", "41"),
+        ("count-truncated", "serverbound", "80"),
+        ("negative-count", "serverbound", "ffffffff0f"),
+        ("member-malformed-body", "serverbound", "0101ff0000"),
+        ("member-truncated", "serverbound", "0200000000"),
+    ]
+    for label, packet, framed in list_decodes:
+        yield {
+            "case_id": f"resources/metadata/known-pack-list-codec/decode/{label}",
+            "family": "resources",
+            "operation": "known_pack_list_codec",
+            "mode": "decode",
+            "packet": packet,
+            "hex": framed,
+            "prefix_hex": "a55a",
+        }
+
 
 def build_cases(families):
     generators = {"wire": wire_cases, "math": math_cases, "timer": timer_cases, "utf8": utf8_cases,

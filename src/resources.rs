@@ -4,6 +4,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
 use crate::utf8;
+use crate::wire;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Node {
@@ -149,6 +150,14 @@ pub enum KnownPackCodecError {
     InvalidUtf16,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum KnownPackListCodecError {
+    CountRead(wire::ReadError),
+    CountTooBig,
+    NegativeCount,
+    Pack(KnownPackCodecError),
+}
+
 impl KnownPack {
     pub const VANILLA_NAMESPACE: &'static str = "minecraft";
     pub const VANILLA_VERSION: &'static str = "26.2";
@@ -198,6 +207,42 @@ impl KnownPack {
         encode_known_pack_string(output, &self.namespace)?;
         encode_known_pack_string(output, &self.id)?;
         encode_known_pack_string(output, &self.version)?;
+        Ok(())
+    }
+
+    pub fn decode_list(
+        input: &mut &[u8],
+        max_size: usize,
+    ) -> Result<Vec<Self>, KnownPackListCodecError> {
+        let count = wire::read_varint(input).map_err(KnownPackListCodecError::CountRead)?;
+        if count < 0 {
+            return Err(KnownPackListCodecError::NegativeCount);
+        }
+        let count = count as usize;
+        if count > max_size {
+            return Err(KnownPackListCodecError::CountTooBig);
+        }
+
+        let mut packs = Vec::with_capacity(count);
+        for _ in 0..count {
+            packs.push(Self::decode_stream(input).map_err(KnownPackListCodecError::Pack)?);
+        }
+        Ok(packs)
+    }
+
+    pub fn encode_list(
+        packs: &[Self],
+        output: &mut Vec<u8>,
+        max_size: usize,
+    ) -> Result<(), KnownPackListCodecError> {
+        if packs.len() > max_size {
+            return Err(KnownPackListCodecError::CountTooBig);
+        }
+        wire::write_varint(packs.len() as i32, output);
+        for pack in packs {
+            pack.encode_stream(output)
+                .map_err(KnownPackListCodecError::Pack)?;
+        }
         Ok(())
     }
 }

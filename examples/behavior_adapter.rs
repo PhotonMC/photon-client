@@ -25,8 +25,9 @@ use voxel_client::option::{
 };
 use voxel_client::random::RandomSource;
 use voxel_client::resources::{
-    self, AssetIndex, AssetResolution, KnownPack, KnownPackCodecError, PackCompatibility,
-    PackFormat, ReloadableResourceManager, ResourcePack, ResourcePackStack, VanillaPackResources,
+    self, AssetIndex, AssetResolution, KnownPack, KnownPackCodecError, KnownPackListCodecError,
+    PackCompatibility, PackFormat, ReloadableResourceManager, ResourcePack, ResourcePackStack,
+    VanillaPackResources,
 };
 use voxel_client::scroll::ScrollWheelHandler;
 use voxel_client::shape::{BooleanOp, ShapeRotation, Shapes, VoxelShape};
@@ -798,6 +799,9 @@ fn resources_result(request: &Value) -> Result<Value, String> {
     if request["operation"].as_str() == Some("known_pack_codec") {
         return resource_known_pack_codec_result(request);
     }
+    if request["operation"].as_str() == Some("known_pack_list_codec") {
+        return resource_known_pack_list_codec_result(request);
+    }
 
     let entries = request["entries"]
         .as_array()
@@ -1104,6 +1108,104 @@ fn resource_known_pack_codec_result(request: &Value) -> Result<Value, String> {
             }
         }
         _ => Err("unknown KnownPack codec operation".into()),
+    }
+}
+
+fn known_pack_list_codec_error(error: KnownPackListCodecError, encoding: bool) -> &'static str {
+    match error {
+        KnownPackListCodecError::CountRead(error) => match error {
+            wire::ReadError::BufferUnderflow => "buffer_underflow",
+            wire::ReadError::TooBig => "too_big",
+        },
+        KnownPackListCodecError::CountTooBig => {
+            if encoding {
+                "encoder_error"
+            } else {
+                "decoder_error"
+            }
+        }
+        KnownPackListCodecError::NegativeCount => "invalid_count",
+        KnownPackListCodecError::Pack(error) => known_pack_codec_error(error),
+    }
+}
+
+fn parse_known_pack_list(value: &Value) -> Result<Vec<KnownPack>, String> {
+    value
+        .as_array()
+        .ok_or("packs must be an array")?
+        .iter()
+        .map(|pack| {
+            Ok(KnownPack::new(
+                string(pack, "namespace")?.to_owned(),
+                string(pack, "id")?.to_owned(),
+                string(pack, "version")?.to_owned(),
+            ))
+        })
+        .collect()
+}
+
+fn known_pack_list_value(packs: &[KnownPack]) -> Value {
+    Value::Array(
+        packs
+            .iter()
+            .map(|pack| {
+                json!({
+                    "namespace": pack.namespace(),
+                    "id": pack.id(),
+                    "version": pack.version(),
+                    "string": pack.to_string(),
+                })
+            })
+            .collect(),
+    )
+}
+
+fn resource_known_pack_list_codec_result(request: &Value) -> Result<Value, String> {
+    let packet = string(request, "packet")?;
+    let max_size = match packet {
+        "clientbound" => i32::MAX as usize,
+        "serverbound" => 64,
+        _ => return Err("unknown KnownPack list packet".into()),
+    };
+    let prefix = decode_hex(string(request, "prefix_hex")?)?;
+    match string(request, "mode")? {
+        "encode" => {
+            let packs = parse_known_pack_list(&request["packs"])?;
+            let mut bytes = prefix.clone();
+            let result = match KnownPack::encode_list(&packs, &mut bytes, max_size) {
+                Ok(()) => json!({
+                    "outcome": "value",
+                    "written": bytes.len() - prefix.len(),
+                    "hex": hex(&bytes),
+                }),
+                Err(error) => json!({
+                    "outcome": "error",
+                    "error": known_pack_list_codec_error(error, true),
+                    "written": bytes.len() - prefix.len(),
+                    "hex": hex(&bytes),
+                }),
+            };
+            Ok(result)
+        }
+        "decode" => {
+            let framed = decode_hex(string(request, "hex")?)?;
+            let mut remaining = framed.as_slice();
+            match KnownPack::decode_list(&mut remaining, max_size) {
+                Ok(packs) => Ok(json!({
+                    "packs": known_pack_list_value(&packs),
+                    "outcome": "value",
+                    "consumed": framed.len() - remaining.len(),
+                    "remaining_hex": hex(remaining),
+                })),
+                Err(error) => Ok(json!({
+                    "outcome": "error",
+                    "error": known_pack_list_codec_error(error, false),
+                    "consumed": framed.len() - remaining.len(),
+                    "remaining_hex": hex(remaining),
+                })),
+            }
+        }
+        _ => Err("unknown KnownPack list codec operation".into()),
     }
 }
 

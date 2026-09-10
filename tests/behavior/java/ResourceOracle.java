@@ -19,6 +19,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.SharedConstants;
 import net.minecraft.DetectedVersion;
 import net.minecraft.client.resources.IndexedAssetSource;
+import net.minecraft.network.protocol.configuration.ClientboundSelectKnownPacks;
+import net.minecraft.network.protocol.configuration.ServerboundSelectKnownPacks;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.PackLocationInfo;
 import net.minecraft.server.packs.PackResources;
@@ -65,6 +67,9 @@ public final class ResourceOracle {
             }
             if (request.get("operation").getAsString().equals("known_pack_codec")) {
                 return knownPackCodecResult(request);
+            }
+            if (request.get("operation").getAsString().equals("known_pack_list_codec")) {
+                return knownPackListCodecResult(request);
             }
             Path indexes = Files.createDirectories(assets.resolve("indexes"));
             Path objects = Files.createDirectories(assets.resolve("objects"));
@@ -375,6 +380,96 @@ public final class ResourceOracle {
             result.addProperty("hex", ByteBufUtil.hexDump(buffer));
         }
         buffer.release();
+        return result;
+    }
+
+    private static JsonObject knownPackListCodecResult(JsonObject request) {
+        String packet = request.get("packet").getAsString();
+        boolean serverbound = switch (packet) {
+            case "clientbound" -> false;
+            case "serverbound" -> true;
+            default -> throw new IllegalArgumentException("Unknown KnownPack list packet");
+        };
+        String operation = request.get("mode").getAsString();
+        boolean decode = switch (operation) {
+            case "decode" -> true;
+            case "encode" -> false;
+            default -> throw new IllegalArgumentException("Unknown KnownPack list codec operation");
+        };
+        byte[] prefix = decodeHex(request.get("prefix_hex").getAsString());
+        byte[] input = decode ? decodeHex(request.get("hex").getAsString()) : null;
+        List<KnownPack> packs = decode ? null : knownPacksFromJson(request.getAsJsonArray("packs"));
+
+        var buffer = Unpooled.buffer();
+        var result = new JsonObject();
+        try {
+            buffer.writeBytes(prefix);
+            if (decode) {
+                buffer.writeBytes(input);
+                buffer.readerIndex(prefix.length);
+                packs = serverbound
+                    ? ServerboundSelectKnownPacks.STREAM_CODEC.decode(buffer).knownPacks()
+                    : ClientboundSelectKnownPacks.STREAM_CODEC.decode(buffer).knownPacks();
+                result.add("packs", knownPackArray(packs));
+            } else if (serverbound) {
+                ServerboundSelectKnownPacks.STREAM_CODEC.encode(buffer, new ServerboundSelectKnownPacks(packs));
+            } else {
+                ClientboundSelectKnownPacks.STREAM_CODEC.encode(buffer, new ClientboundSelectKnownPacks(packs));
+            }
+            result.addProperty("outcome", "value");
+        } catch (RuntimeException error) {
+            String category;
+            if (decode && error instanceof DecoderException) {
+                category = "decoder_error";
+            } else if (!decode && error instanceof EncoderException) {
+                category = "encoder_error";
+            } else if (decode && error instanceof IndexOutOfBoundsException) {
+                category = "buffer_underflow";
+            } else if (decode && error instanceof IllegalArgumentException) {
+                category = "invalid_count";
+            } else if (decode && error.getClass() == RuntimeException.class) {
+                category = "too_big";
+            } else {
+                throw error;
+            }
+            result.addProperty("outcome", "error");
+            result.addProperty("error", category);
+            result.addProperty("java_exception", error.getClass().getName());
+        }
+        if (decode) {
+            result.addProperty("consumed", buffer.readerIndex() - prefix.length);
+            result.addProperty("remaining_hex", ByteBufUtil.hexDump(buffer));
+        } else {
+            result.addProperty("written", buffer.writerIndex() - prefix.length);
+            result.addProperty("hex", ByteBufUtil.hexDump(buffer));
+        }
+        buffer.release();
+        return result;
+    }
+
+    private static List<KnownPack> knownPacksFromJson(JsonArray elements) {
+        List<KnownPack> packs = new ArrayList<>(elements.size());
+        for (JsonElement element : elements) {
+            JsonObject pack = element.getAsJsonObject();
+            packs.add(new KnownPack(
+                pack.get("namespace").getAsString(),
+                pack.get("id").getAsString(),
+                pack.get("version").getAsString()
+            ));
+        }
+        return packs;
+    }
+
+    private static JsonArray knownPackArray(List<KnownPack> packs) {
+        JsonArray result = new JsonArray();
+        for (KnownPack pack : packs) {
+            JsonObject value = new JsonObject();
+            value.addProperty("namespace", pack.namespace());
+            value.addProperty("id", pack.id());
+            value.addProperty("version", pack.version());
+            value.addProperty("string", pack.toString());
+            result.add(value);
+        }
         return result;
     }
 
