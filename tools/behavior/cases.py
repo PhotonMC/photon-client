@@ -3313,6 +3313,29 @@ def math_cases():
                "from": float_bits(from_value, "f32"),
                "to": float_bits(to_value, "f32")}
 
+    mth_triangle_wave = [
+        ("basic", 0.0, 4.0),
+        ("quarter", 1.0, 4.0),
+        ("midpoint", 2.0, 4.0),
+        ("three-quarter", 3.0, 4.0),
+        ("period-boundary", 4.0, 4.0),
+        ("negative-index", -1.0, 4.0),
+        ("negative-period", 2.0, -4.0),
+        ("fractional-period", 0.75, 3.0),
+        ("negative-fractional", -0.75, 3.0),
+        ("signed-zero-index", -0.0, 4.0),
+        ("subnormal-period", 1.0, float.fromhex("0x0.000002p-126")),
+        ("maximum-finite-index", float.fromhex("0x1.fffffep127"), 3.0),
+        ("zero-period", 1.0, 0.0),
+        ("infinite-index", float("inf"), 4.0),
+        ("nan-index", float("nan"), 4.0),
+    ]
+    for label, index, period in mth_triangle_wave:
+        yield {"case_id": f"mth/triangle-wave/{label}", "family": "math",
+               "operation": "mth_triangle_wave",
+               "index": float_bits(index, "f32"),
+               "period": float_bits(period, "f32")}
+
 
 def timer_cases():
     def trace(label, steps, start=0, tps=20, target=50):

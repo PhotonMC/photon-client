@@ -2719,6 +2719,11 @@ fn math_result(request: &Value) -> Result<Value, String> {
         );
         return Ok(json!({"bits": format!("{:08x}", value.to_bits())}));
     }
+    if operation == "mth_triangle_wave" {
+        let value =
+            math::mth_triangle_wave(f32_field(request, "index")?, f32_field(request, "period")?);
+        return Ok(json!({"bits": format!("{:08x}", value.to_bits())}));
+    }
     if operation == "vec2" {
         let mut vector = Vec2::new(f32_field(request, "x")?, f32_field(request, "y")?);
         let mut events = vec![vec2_snapshot(vector)];

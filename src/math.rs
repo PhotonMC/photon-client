@@ -821,6 +821,11 @@ pub fn mth_rot_lerp_rad(alpha: f32, from: f32, to: f32) -> f32 {
     from + alpha * diff
 }
 
+/// Return Java `Mth.triangleWave(float, float)` in source order.
+pub fn mth_triangle_wave(index: f32, period: f32) -> f32 {
+    ((index % period - period * 0.5_f32).abs() - period * 0.25_f32) / (period * 0.25_f32)
+}
+
 /// Return Java `Mth.nextInt(RandomSource, int, int)`, including its
 /// min-greater-than-or-equal-to-max short circuit.
 pub fn mth_next_int(
