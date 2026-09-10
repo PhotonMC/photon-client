@@ -84,7 +84,9 @@
         "it.unimi.dsi:fastutil",
         "com.google.guava:guava",
         "com.google.guava:failureaccess",
-        "com.mojang:authlib"
+        "com.mojang:authlib",
+        "com.mojang:brigadier",
+        "org.apache.commons:commons-lang3"
       ]
     },
     "math": {

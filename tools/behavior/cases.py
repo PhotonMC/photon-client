@@ -312,6 +312,70 @@ def wire_cases():
         yield {"case_id": f"login/finished/read/{label}", "family": "wire",
                "operation": "login_finished", "direction": "read", "hex": encoded}
 
+    configuration_units = ["server-finish", "client-finish", "accept-code-of-conduct"]
+    for packet in configuration_units:
+        for label, prefix_hex in [("empty", ""), ("with-prefix", "deadbeef")]:
+            yield {"case_id": f"configuration/unit/{packet}/write/{label}", "family": "wire",
+                   "operation": "configuration_unit", "direction": "write",
+                   "packet": packet, "prefix_hex": prefix_hex}
+        for label, encoded in [("empty", ""), ("trailing", "aabbcc"), ("zero", "00")]:
+            yield {"case_id": f"configuration/unit/{packet}/read/{label}", "family": "wire",
+                   "operation": "configuration_unit", "direction": "read",
+                   "packet": packet, "hex": encoded}
+
+    def client_information_hex(language_bytes, view_distance, chat_visibility, chat_colors,
+                               model_customisation, main_hand, text_filtering, allows_listing,
+                               particle_status):
+        return (varint_hex(len(language_bytes)) + language_bytes.hex()
+                + (view_distance & 0xff).to_bytes(1, "big").hex()
+                + varint_hex(chat_visibility) + ("01" if chat_colors else "00")
+                + (model_customisation & 0xff).to_bytes(1, "big").hex()
+                + varint_hex(main_hand) + ("01" if text_filtering else "00")
+                + ("01" if allows_listing else "00") + varint_hex(particle_status))
+
+    client_information_writes = [
+        ("basic", "en_us", 2, "full", True, 0, "right", False, False, "all", ""),
+        ("empty", "", 0, "hidden", False, 255, "left", True, True, "minimal", "aa55"),
+        ("unicode", "tr_TR😀", -1, "system", True, 3, "right", True, False, "decreased", ""),
+        ("view-overflow", "en_us", 256, "full", False, 0, "left", False, False, "all", ""),
+        ("model-overflow", "en_us", 2, "full", False, 511, "right", False, False, "all", ""),
+        ("language-encode-limit", "a" * 32768, 2, "full", True, 0, "right", False, False, "all", ""),
+    ]
+    chat_ids = {"full": 0, "system": 1, "hidden": 2}
+    hand_ids = {"left": 0, "right": 1}
+    particle_ids = {"all": 0, "decreased": 1, "minimal": 2}
+    for label, language, view_distance, chat_visibility, chat_colors, model_customisation, main_hand, text_filtering, allows_listing, particle_status, prefix_hex in client_information_writes:
+        yield {"case_id": f"configuration/client-information/write/{label}", "family": "wire",
+               "operation": "client_information", "direction": "write",
+               "language_utf16_hex": utf16_hex(language), "view_distance": view_distance,
+               "chat_visibility": chat_visibility, "chat_colors": chat_colors,
+               "model_customisation": model_customisation, "main_hand": main_hand,
+               "text_filtering_enabled": text_filtering, "allows_listing": allows_listing,
+               "particle_status": particle_status, "prefix_hex": prefix_hex}
+
+    information_values = {
+        "basic": client_information_hex(b"en_us", 2, 0, True, 0, 1, False, False, 0),
+        "trailing": client_information_hex(b"en_us", 2, 0, True, 0, 1, False, False, 0) + "aabb",
+        "unicode": client_information_hex("tr_TR😀".encode("utf-8"), -1, 1, True, 3, 1, True, False, 1),
+        "language-underflow": "01",
+        "language-encoded-too-long": varint_hex(49),
+        "language-decoded-too-long": varint_hex(17) + "61" * 17,
+        "view-underflow": "00",
+        "chat-prefix-underflow": "000080",
+        "chat-invalid": "000003",
+        "chat-colors-underflow": "000000",
+        "model-underflow": "00000000",
+        "arm-invalid": "000000000003",
+        "text-filter-underflow": "000000000001",
+        "allows-underflow": "00000000000100",
+        "particle-invalid": "000000000001000003",
+        "particle-underflow": "000000000001000080",
+        "boolean-noncanonical": "000000020001020300",
+    }
+    for label, encoded in information_values.items():
+        yield {"case_id": f"configuration/client-information/read/{label}", "family": "wire",
+               "operation": "client_information", "direction": "read", "hex": encoded}
+
     status_request_writes = [
         ("empty", ""),
         ("with-prefix", "deadbeef"),

@@ -9,6 +9,11 @@ use voxel_client::axis_cycle::AxisCycle;
 use voxel_client::binary::{
     self, BlockPos, BlockRotation, ChunkPos, MutableBlockPos, SectionPos, Uuid,
 };
+use voxel_client::configuration::{
+    ChatVisibility, ClientInformation, ClientboundFinishConfigurationPacket, MainHand,
+    ParticleStatus, ServerboundAcceptCodeOfConductPacket, ServerboundClientInformationPacket,
+    ServerboundFinishConfigurationPacket,
+};
 use voxel_client::direction::{
     Axis, AxisDirection, Direction, DirectionYRotError, DirectionYRotationError, Plane,
 };
@@ -107,6 +112,12 @@ fn wire_result(request: &Value) -> Result<Value, String> {
     }
     if request["operation"].as_str() == Some("login_finished") {
         return login_finished_result(request);
+    }
+    if request["operation"].as_str() == Some("configuration_unit") {
+        return configuration_unit_result(request);
+    }
+    if request["operation"].as_str() == Some("client_information") {
+        return client_information_result(request);
     }
     if request["operation"].as_str() == Some("status_request") {
         return status_request_result(request);
@@ -598,6 +609,191 @@ fn login_finished_result(request: &Value) -> Result<Value, String> {
             Ok(result)
         }
         _ => Err("unknown login finished direction".into()),
+    }
+}
+
+fn configuration_unit_result(request: &Value) -> Result<Value, String> {
+    let packet = string(request, "packet")?;
+    match string(request, "direction")? {
+        "write" => {
+            let prefix = decode_hex(string(request, "prefix_hex")?)?;
+            let mut buffer = prefix.clone();
+            match packet {
+                "server-finish" => {
+                    ServerboundFinishConfigurationPacket::INSTANCE.encode(&mut buffer)
+                }
+                "client-finish" => {
+                    ClientboundFinishConfigurationPacket::INSTANCE.encode(&mut buffer)
+                }
+                "accept-code-of-conduct" => {
+                    ServerboundAcceptCodeOfConductPacket::INSTANCE.encode(&mut buffer)
+                }
+                _ => return Err("unknown configuration unit packet".into()),
+            }
+            Ok(json!({
+                "outcome": "value",
+                "written": buffer.len() - prefix.len(),
+                "hex": hex(&buffer),
+            }))
+        }
+        "read" => {
+            let bytes = decode_hex(string(request, "hex")?)?;
+            let mut remaining = bytes.as_slice();
+            let singleton = match packet {
+                "server-finish" => ServerboundFinishConfigurationPacket::decode(&mut remaining)
+                    .map(|value| value == ServerboundFinishConfigurationPacket::INSTANCE),
+                "client-finish" => ClientboundFinishConfigurationPacket::decode(&mut remaining)
+                    .map(|value| value == ClientboundFinishConfigurationPacket::INSTANCE),
+                "accept-code-of-conduct" => {
+                    ServerboundAcceptCodeOfConductPacket::decode(&mut remaining)
+                        .map(|value| value == ServerboundAcceptCodeOfConductPacket::INSTANCE)
+                }
+                _ => return Err("unknown configuration unit packet".into()),
+            }
+            .map_err(|error| format!("configuration unit decode failed: {error:?}"))?;
+            Ok(json!({
+                "singleton": singleton,
+                "outcome": "value",
+                "consumed": bytes.len() - remaining.len(),
+                "remaining_hex": hex(remaining),
+            }))
+        }
+        _ => Err("unknown configuration unit direction".into()),
+    }
+}
+
+fn client_information_chat_visibility(value: &str) -> Result<ChatVisibility, String> {
+    match value {
+        "full" => Ok(ChatVisibility::Full),
+        "system" => Ok(ChatVisibility::System),
+        "hidden" => Ok(ChatVisibility::Hidden),
+        _ => Err("unknown chat visibility".into()),
+    }
+}
+
+fn client_information_main_hand(value: &str) -> Result<MainHand, String> {
+    match value {
+        "left" => Ok(MainHand::Left),
+        "right" => Ok(MainHand::Right),
+        _ => Err("unknown main hand".into()),
+    }
+}
+
+fn client_information_particle_status(value: &str) -> Result<ParticleStatus, String> {
+    match value {
+        "all" => Ok(ParticleStatus::All),
+        "decreased" => Ok(ParticleStatus::Decreased),
+        "minimal" => Ok(ParticleStatus::Minimal),
+        _ => Err("unknown particle status".into()),
+    }
+}
+
+fn client_information_chat_visibility_name(value: ChatVisibility) -> &'static str {
+    match value {
+        ChatVisibility::Full => "full",
+        ChatVisibility::System => "system",
+        ChatVisibility::Hidden => "hidden",
+    }
+}
+
+fn client_information_main_hand_name(value: MainHand) -> &'static str {
+    match value {
+        MainHand::Left => "left",
+        MainHand::Right => "right",
+    }
+}
+
+fn client_information_particle_status_name(value: ParticleStatus) -> &'static str {
+    match value {
+        ParticleStatus::All => "all",
+        ParticleStatus::Decreased => "decreased",
+        ParticleStatus::Minimal => "minimal",
+    }
+}
+
+fn client_information_result(request: &Value) -> Result<Value, String> {
+    match string(request, "direction")? {
+        "write" => {
+            let language =
+                utf16_hex_units(string(request, "language_utf16_hex")?, "language_utf16_hex")?;
+            let view_distance = request["view_distance"]
+                .as_i64()
+                .ok_or("view_distance must be an integer")?
+                .try_into()
+                .map_err(|_| "view_distance must fit in i32")?;
+            let chat_visibility =
+                client_information_chat_visibility(string(request, "chat_visibility")?)?;
+            let chat_colors = request["chat_colors"]
+                .as_bool()
+                .ok_or("chat_colors must be a boolean")?;
+            let model_customisation = request["model_customisation"]
+                .as_i64()
+                .ok_or("model_customisation must be an integer")?
+                .try_into()
+                .map_err(|_| "model_customisation must fit in i32")?;
+            let main_hand = client_information_main_hand(string(request, "main_hand")?)?;
+            let text_filtering_enabled = request["text_filtering_enabled"]
+                .as_bool()
+                .ok_or("text_filtering_enabled must be a boolean")?;
+            let allows_listing = request["allows_listing"]
+                .as_bool()
+                .ok_or("allows_listing must be a boolean")?;
+            let particle_status =
+                client_information_particle_status(string(request, "particle_status")?)?;
+            let packet = ServerboundClientInformationPacket::new(ClientInformation::new(
+                language,
+                view_distance,
+                chat_visibility,
+                chat_colors,
+                model_customisation,
+                main_hand,
+                text_filtering_enabled,
+                allows_listing,
+                particle_status,
+            ));
+            let prefix = decode_hex(string(request, "prefix_hex")?)?;
+            let mut buffer = prefix.clone();
+            let mut result = match packet.encode(&mut buffer) {
+                Ok(()) => json!({"outcome": "value"}),
+                Err(voxel_client::configuration::WriteError::EncoderError) => {
+                    json!({"outcome": "error", "error": "encoder_error"})
+                }
+            };
+            result["written"] = json!(buffer.len() - prefix.len());
+            result["hex"] = json!(hex(&buffer));
+            Ok(result)
+        }
+        "read" => {
+            let bytes = decode_hex(string(request, "hex")?)?;
+            let mut remaining = bytes.as_slice();
+            let mut result = match ServerboundClientInformationPacket::decode(&mut remaining) {
+                Ok(packet) => {
+                    let information = packet.information;
+                    json!({
+                        "language_utf16_hex": information.language.iter()
+                            .map(|unit| format!("{unit:04x}"))
+                            .collect::<String>(),
+                        "view_distance": information.view_distance,
+                        "chat_visibility": client_information_chat_visibility_name(information.chat_visibility),
+                        "chat_colors": information.chat_colors,
+                        "model_customisation": information.model_customisation,
+                        "main_hand": client_information_main_hand_name(information.main_hand),
+                        "text_filtering_enabled": information.text_filtering_enabled,
+                        "allows_listing": information.allows_listing,
+                        "particle_status": client_information_particle_status_name(information.particle_status),
+                        "outcome": "value",
+                    })
+                }
+                Err(error) => json!({
+                    "outcome": "error",
+                    "error": login_read_error(error),
+                }),
+            };
+            result["consumed"] = json!(bytes.len() - remaining.len());
+            result["remaining_hex"] = json!(hex(remaining));
+            Ok(result)
+        }
+        _ => Err("unknown client information direction".into()),
     }
 }
 

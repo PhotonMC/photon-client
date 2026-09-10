@@ -31,6 +31,14 @@ import net.minecraft.network.protocol.login.ServerboundHelloPacket;
 import net.minecraft.network.protocol.ping.ClientboundPongResponsePacket;
 import net.minecraft.network.protocol.ping.ServerboundPingRequestPacket;
 import net.minecraft.network.protocol.status.ServerboundStatusRequestPacket;
+import net.minecraft.network.protocol.common.ServerboundClientInformationPacket;
+import net.minecraft.network.protocol.configuration.ClientboundFinishConfigurationPacket;
+import net.minecraft.network.protocol.configuration.ServerboundAcceptCodeOfConductPacket;
+import net.minecraft.network.protocol.configuration.ServerboundFinishConfigurationPacket;
+import net.minecraft.server.level.ClientInformation;
+import net.minecraft.server.level.ParticleStatus;
+import net.minecraft.world.entity.HumanoidArm;
+import net.minecraft.world.entity.player.ChatVisiblity;
 
 public final class WireOracle {
     public static JsonObject run(JsonObject request) {
@@ -58,6 +66,12 @@ public final class WireOracle {
         }
         if (operation.equals("login_finished")) {
             return loginFinishedResult(request);
+        }
+        if (operation.equals("configuration_unit")) {
+            return configurationUnitResult(request);
+        }
+        if (operation.equals("client_information")) {
+            return clientInformationResult(request);
         }
         if (operation.equals("status_request")) {
             return statusRequestResult(request);
@@ -559,6 +573,168 @@ public final class WireOracle {
         }
 
         throw new IllegalArgumentException("Unknown login finished direction");
+    }
+
+    private static JsonObject configurationUnitResult(JsonObject request) {
+        String direction = request.get("direction").getAsString();
+        String packet = request.get("packet").getAsString();
+        if (direction.equals("write")) {
+            byte[] prefix = HexFormat.of().parseHex(request.get("prefix_hex").getAsString());
+            ByteBuf buffer = Unpooled.buffer();
+            try {
+                buffer.writeBytes(prefix);
+                switch (packet) {
+                    case "server-finish" -> ServerboundFinishConfigurationPacket.STREAM_CODEC.encode(
+                        buffer, ServerboundFinishConfigurationPacket.INSTANCE
+                    );
+                    case "client-finish" -> ClientboundFinishConfigurationPacket.STREAM_CODEC.encode(
+                        buffer, ClientboundFinishConfigurationPacket.INSTANCE
+                    );
+                    case "accept-code-of-conduct" -> ServerboundAcceptCodeOfConductPacket.STREAM_CODEC.encode(
+                        buffer, ServerboundAcceptCodeOfConductPacket.INSTANCE
+                    );
+                    default -> throw new IllegalArgumentException("Unknown configuration unit packet");
+                }
+                var result = new JsonObject();
+                result.addProperty("outcome", "value");
+                result.addProperty("written", buffer.writerIndex() - prefix.length);
+                result.addProperty("hex", ByteBufUtil.hexDump(buffer));
+                return result;
+            } finally {
+                buffer.release();
+            }
+        }
+
+        if (direction.equals("read")) {
+            ByteBuf buffer = Unpooled.buffer();
+            try {
+                buffer.writeBytes(HexFormat.of().parseHex(request.get("hex").getAsString()));
+                boolean singleton = switch (packet) {
+                    case "server-finish" -> ServerboundFinishConfigurationPacket.STREAM_CODEC.decode(buffer)
+                        == ServerboundFinishConfigurationPacket.INSTANCE;
+                    case "client-finish" -> ClientboundFinishConfigurationPacket.STREAM_CODEC.decode(buffer)
+                        == ClientboundFinishConfigurationPacket.INSTANCE;
+                    case "accept-code-of-conduct" -> ServerboundAcceptCodeOfConductPacket.STREAM_CODEC.decode(buffer)
+                        == ServerboundAcceptCodeOfConductPacket.INSTANCE;
+                    default -> throw new IllegalArgumentException("Unknown configuration unit packet");
+                };
+                var result = new JsonObject();
+                result.addProperty("singleton", singleton);
+                result.addProperty("outcome", "value");
+                result.addProperty("consumed", buffer.readerIndex());
+                result.addProperty("remaining_hex", ByteBufUtil.hexDump(buffer));
+                return result;
+            } finally {
+                buffer.release();
+            }
+        }
+
+        throw new IllegalArgumentException("Unknown configuration unit direction");
+    }
+
+    private static JsonObject clientInformationResult(JsonObject request) {
+        String direction = request.get("direction").getAsString();
+        if (direction.equals("write")) {
+            ClientInformation information = new ClientInformation(
+                fromUtf16Hex(request.get("language_utf16_hex").getAsString()),
+                request.get("view_distance").getAsInt(),
+                chatVisibility(request.get("chat_visibility").getAsString()),
+                request.get("chat_colors").getAsBoolean(),
+                request.get("model_customisation").getAsInt(),
+                humanoidArm(request.get("main_hand").getAsString()),
+                request.get("text_filtering_enabled").getAsBoolean(),
+                request.get("allows_listing").getAsBoolean(),
+                particleStatus(request.get("particle_status").getAsString())
+            );
+            byte[] prefix = HexFormat.of().parseHex(request.get("prefix_hex").getAsString());
+            ByteBuf buffer = Unpooled.buffer();
+            try {
+                buffer.writeBytes(prefix);
+                var result = new JsonObject();
+                try {
+                    ServerboundClientInformationPacket.STREAM_CODEC.encode(
+                        new FriendlyByteBuf(buffer), new ServerboundClientInformationPacket(information)
+                    );
+                    result.addProperty("outcome", "value");
+                } catch (EncoderException error) {
+                    result.addProperty("outcome", "error");
+                    result.addProperty("error", "encoder_error");
+                    result.addProperty("java_exception", error.getClass().getName());
+                }
+                result.addProperty("written", buffer.writerIndex() - prefix.length);
+                result.addProperty("hex", ByteBufUtil.hexDump(buffer));
+                return result;
+            } finally {
+                buffer.release();
+            }
+        }
+
+        if (direction.equals("read")) {
+            ByteBuf buffer = Unpooled.buffer();
+            try {
+                buffer.writeBytes(HexFormat.of().parseHex(request.get("hex").getAsString()));
+                var result = new JsonObject();
+                try {
+                    ClientInformation information = ServerboundClientInformationPacket.STREAM_CODEC
+                        .decode(new FriendlyByteBuf(buffer)).information();
+                    result.addProperty("language_utf16_hex", toUtf16Hex(information.language()));
+                    result.addProperty("view_distance", information.viewDistance());
+                    result.addProperty("chat_visibility", information.chatVisibility().name().toLowerCase(Locale.ROOT));
+                    result.addProperty("chat_colors", information.chatColors());
+                    result.addProperty("model_customisation", information.modelCustomisation());
+                    result.addProperty("main_hand", information.mainHand().name().toLowerCase(Locale.ROOT));
+                    result.addProperty("text_filtering_enabled", information.textFilteringEnabled());
+                    result.addProperty("allows_listing", information.allowsListing());
+                    result.addProperty("particle_status", information.particleStatus().name().toLowerCase(Locale.ROOT));
+                    result.addProperty("outcome", "value");
+                } catch (ArrayIndexOutOfBoundsException error) {
+                    result.addProperty("outcome", "error");
+                    result.addProperty("error", "decoder_error");
+                    result.addProperty("java_exception", error.getClass().getName());
+                } catch (IndexOutOfBoundsException error) {
+                    result.addProperty("outcome", "error");
+                    result.addProperty("error", "buffer_underflow");
+                    result.addProperty("java_exception", error.getClass().getName());
+                } catch (RuntimeException error) {
+                    result.addProperty("outcome", "error");
+                    result.addProperty("error", error.getClass() == RuntimeException.class ? "too_big" : "decoder_error");
+                    result.addProperty("java_exception", error.getClass().getName());
+                }
+                result.addProperty("consumed", buffer.readerIndex());
+                result.addProperty("remaining_hex", ByteBufUtil.hexDump(buffer));
+                return result;
+            } finally {
+                buffer.release();
+            }
+        }
+
+        throw new IllegalArgumentException("Unknown client information direction");
+    }
+
+    private static ChatVisiblity chatVisibility(String value) {
+        return switch (value) {
+            case "full" -> ChatVisiblity.FULL;
+            case "system" -> ChatVisiblity.SYSTEM;
+            case "hidden" -> ChatVisiblity.HIDDEN;
+            default -> throw new IllegalArgumentException("Unknown chat visibility");
+        };
+    }
+
+    private static HumanoidArm humanoidArm(String value) {
+        return switch (value) {
+            case "left" -> HumanoidArm.LEFT;
+            case "right" -> HumanoidArm.RIGHT;
+            default -> throw new IllegalArgumentException("Unknown main hand");
+        };
+    }
+
+    private static ParticleStatus particleStatus(String value) {
+        return switch (value) {
+            case "all" -> ParticleStatus.ALL;
+            case "decreased" -> ParticleStatus.DECREASED;
+            case "minimal" -> ParticleStatus.MINIMAL;
+            default -> throw new IllegalArgumentException("Unknown particle status");
+        };
     }
 
     private static GameProfile profileFromRequest(JsonObject request) {
