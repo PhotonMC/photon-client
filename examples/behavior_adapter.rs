@@ -2674,6 +2674,15 @@ fn math_result(request: &Value) -> Result<Value, String> {
         };
         return Ok(json!({"value": value.to_string()}));
     }
+    if operation == "mth_smoothstep" || operation == "mth_smoothstep_derivative" {
+        let x = f64_field(request, "x")?;
+        let value = if operation == "mth_smoothstep" {
+            math::mth_smoothstep(x)
+        } else {
+            math::mth_smoothstep_derivative(x)
+        };
+        return Ok(json!({"bits": format!("{:016x}", value.to_bits())}));
+    }
     if operation == "vec2" {
         let mut vector = Vec2::new(f32_field(request, "x")?, f32_field(request, "y")?);
         let mut events = vec![vec2_snapshot(vector)];

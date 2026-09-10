@@ -597,6 +597,12 @@ public final class MathOracle {
                 Oracle.f32(request, "alpha"),
                 Integer.parseInt(request.get("p0").getAsString()),
                 Integer.parseInt(request.get("p1").getAsString()))));
+        } else if (operation.equals("mth_smoothstep")) {
+            result.addProperty("bits", Oracle.bits(Mth.smoothstep(
+                f64(request, "x"))));
+        } else if (operation.equals("mth_smoothstep_derivative")) {
+            result.addProperty("bits", Oracle.bits(Mth.smoothstepDerivative(
+                f64(request, "x"))));
         } else if (operation.equals("vec3")) {
             Vec3 vector = new Vec3(f64(request, "x"), f64(request, "y"), f64(request, "z"));
             var events = new JsonArray();

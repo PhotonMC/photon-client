@@ -774,6 +774,16 @@ pub fn mth_lerp_discrete(alpha: f32, start: i32, end: i32) -> i32 {
     start.wrapping_add(offset).wrapping_add(positive_alpha)
 }
 
+/// Return Java `Mth.smoothstep(double)` in source order.
+pub fn mth_smoothstep(x: f64) -> f64 {
+    x * x * x * (x * (x * 6.0 - 15.0) + 10.0)
+}
+
+/// Return Java `Mth.smoothstepDerivative(double)` in source order.
+pub fn mth_smoothstep_derivative(x: f64) -> f64 {
+    30.0 * x * x * (x - 1.0) * (x - 1.0)
+}
+
 /// Return Java `Mth.nextInt(RandomSource, int, int)`, including its
 /// min-greater-than-or-equal-to-max short circuit.
 pub fn mth_next_int(

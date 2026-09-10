@@ -3218,6 +3218,28 @@ def math_cases():
                    "operation": operation, "alpha": float_bits(alpha, "f32"),
                    "p0": str(p0), "p1": str(p1)}
 
+    mth_smoothstep = [
+        ("zero", 0.0),
+        ("one", 1.0),
+        ("midpoint", 0.5),
+        ("quarter", 0.25),
+        ("negative", -0.5),
+        ("over-one", 1.5),
+        ("signed-zero", -0.0),
+        ("subnormal", float.fromhex("0x0.0000000000001p-1022")),
+        ("maximum-finite", float.fromhex("0x1.fffffffffffffp1023")),
+        ("positive-infinity", float("inf")),
+        ("negative-infinity", -float("inf")),
+        ("nan", float("nan")),
+        ("below-one", math.nextafter(1.0, 0.0)),
+        ("above-one", math.nextafter(1.0, math.inf)),
+    ]
+    for operation, path_name in (("mth_smoothstep", "smoothstep"),
+                                 ("mth_smoothstep_derivative", "smoothstep-derivative")):
+        for label, value in mth_smoothstep:
+            yield {"case_id": f"mth/{path_name}/{label}", "family": "math",
+                   "operation": operation, "x": float_bits(value, "f64")}
+
 
 def timer_cases():
     def trace(label, steps, start=0, tps=20, target=50):
