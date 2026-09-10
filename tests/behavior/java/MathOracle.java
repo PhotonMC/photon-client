@@ -148,6 +148,15 @@ public final class MathOracle {
             result.add("unit_vec3i", unitVec3i);
             result.add("unit_vec3", snapshot(facing.getUnitVec3()));
             result.add("unit_vec3f", snapshot(new Vector3f(facing.getUnitVec3f())));
+        } else if (operation.equals("direction_step")) {
+            Direction facing = Direction.byName(request.get("name").getAsString());
+            if (facing == null) {
+                throw new IllegalArgumentException("Unknown direction name");
+            }
+            result.addProperty("step_x", facing.getStepX());
+            result.addProperty("step_y", facing.getStepY());
+            result.addProperty("step_z", facing.getStepZ());
+            result.add("step", snapshot(facing.step()));
         } else if (operation.equals("direction_axis_orientation")) {
             Direction.Axis axis = Direction.Axis.byName(request.get("axis").getAsString());
             if (axis == null) {

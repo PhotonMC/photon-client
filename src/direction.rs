@@ -148,6 +148,26 @@ impl Direction {
         }
     }
 
+    /// Return Java `Direction.getStepX()`.
+    pub fn get_step_x(self) -> i32 {
+        self.step().0
+    }
+
+    /// Return Java `Direction.getStepY()`.
+    pub fn get_step_y(self) -> i32 {
+        self.step().1
+    }
+
+    /// Return Java `Direction.getStepZ()`.
+    pub fn get_step_z(self) -> i32 {
+        self.step().2
+    }
+
+    /// Return Java `Direction.step()` as a f32 vector.
+    pub fn step_vec3f(self) -> Vec3f {
+        self.unit_vec3f()
+    }
+
     /// Return Java `Direction.getUnitVec3()` as a f64 vector.
     pub fn unit_vec3(self) -> Vec3 {
         let (x, y, z) = self.step();
