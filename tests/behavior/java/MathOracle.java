@@ -147,6 +147,13 @@ public final class MathOracle {
                 throw new IllegalArgumentException("Unknown direction name");
             }
             result.addProperty("value", axis.test(input));
+        } else if (operation.equals("direction_axis_plane")) {
+            Direction.Axis axis = Direction.Axis.byName(request.get("axis").getAsString());
+            if (axis == null) {
+                throw new IllegalArgumentException("Unknown axis name");
+            }
+            result.addProperty("plane", axis.getPlane() == Direction.Plane.HORIZONTAL
+                ? "horizontal" : "vertical");
         } else if (operation.equals("direction_to_y_rot")) {
             Direction facing = Direction.byName(request.get("name").getAsString());
             if (facing == null) {

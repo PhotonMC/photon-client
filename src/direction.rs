@@ -26,6 +26,12 @@ pub enum AxisDirection {
     Negative,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Plane {
+    Horizontal,
+    Vertical,
+}
+
 impl Direction {
     pub fn from_name(name: &str) -> Option<Self> {
         match name {
@@ -414,6 +420,14 @@ impl Axis {
     /// Return Java `Direction.Axis.test(Direction)` with nullable input.
     pub fn test(self, input: Option<Direction>) -> bool {
         input.is_some_and(|direction| direction.axis() == self)
+    }
+
+    /// Return Java `Direction.Axis.getPlane()`.
+    pub fn get_plane(self) -> Plane {
+        match self {
+            Self::X | Self::Z => Plane::Horizontal,
+            Self::Y => Plane::Vertical,
+        }
     }
 }
 
