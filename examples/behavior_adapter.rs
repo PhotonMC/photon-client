@@ -3123,6 +3123,17 @@ fn math_result(request: &Value) -> Result<Value, String> {
         }
         return Ok(json!({"events": events}));
     }
+    if operation == "direction_data" {
+        let value = string(request, "value")?
+            .parse::<i32>()
+            .map_err(|error| error.to_string())?;
+        let facing = match string(request, "type")? {
+            "3d" => Direction::from_3d_data_value(value),
+            "2d" => Direction::from_2d_data_value(value),
+            _ => return Err("unknown Direction data type".into()),
+        };
+        return Ok(json!({"value": direction_snapshot(facing)}));
+    }
     if operation == "coord" {
         let value = string(request, "value")?
             .parse::<i32>()

@@ -1283,6 +1283,16 @@ def math_cases():
                        ("up", "z"), ("west", "x"), ("east", "z")):
         yield {"case_id": f"direction/rotate-{axis}/{name}", "family": "math", "operation": "direction",
                "name": name, "steps": [{"axis": axis, "clockwise": True}]}
+    direction_data_values = {
+        "3d": [0, 1, 2, 3, 4, 5, -1, -2, -3, -4, -5, -6, -7,
+               6, 11, -11, -2147483648, 2147483647],
+        "2d": [0, 1, 2, 3, -1, -2, -3, -4, -5, 4, 7, -7,
+               -2147483648, 2147483647],
+    }
+    for width, values in direction_data_values.items():
+        for value in values:
+            yield {"case_id": f"direction/data/{width}/{value}", "family": "math",
+                   "operation": "direction_data", "type": width, "value": str(value)}
     coords = [0, 1, 15, 16, 17, -1, -15, -16, -17, 31, 32, -32, -33,
               2147483647, -2147483648, 33554431, -33554432, 2097151, -2097152]
     for fn in ("block_to_section", "section_to_block", "section_relative"):

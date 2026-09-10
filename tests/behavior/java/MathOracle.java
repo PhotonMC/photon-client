@@ -70,6 +70,14 @@ public final class MathOracle {
                 events.add(snapshot(facing));
             }
             result.add("events", events);
+        } else if (operation.equals("direction_data")) {
+            int value = Integer.parseInt(request.get("value").getAsString());
+            Direction facing = switch (request.get("type").getAsString()) {
+                case "3d" -> Direction.from3DDataValue(value);
+                case "2d" -> Direction.from2DDataValue(value);
+                default -> throw new IllegalArgumentException("Unknown Direction data type");
+            };
+            result.add("value", snapshot(facing));
         } else if (operation.equals("coord")) {
             int value = Integer.parseInt(request.get("value").getAsString());
             String fn = request.get("fn").getAsString();

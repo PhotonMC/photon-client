@@ -108,6 +108,30 @@ impl Direction {
         }
     }
 
+    /// Return Java `Direction.from3DDataValue(int)` with its abs-remainder index.
+    pub fn from_3d_data_value(value: i32) -> Self {
+        match value.wrapping_rem(6).wrapping_abs() {
+            0 => Self::Down,
+            1 => Self::Up,
+            2 => Self::North,
+            3 => Self::South,
+            4 => Self::West,
+            5 => Self::East,
+            _ => unreachable!("remainder is bounded by the direction table length"),
+        }
+    }
+
+    /// Return Java `Direction.from2DDataValue(int)` with its abs-remainder index.
+    pub fn from_2d_data_value(value: i32) -> Self {
+        match value.wrapping_rem(4).wrapping_abs() {
+            0 => Self::South,
+            1 => Self::West,
+            2 => Self::North,
+            3 => Self::East,
+            _ => unreachable!("remainder is bounded by the horizontal direction table length"),
+        }
+    }
+
     /// Choose the direction with the greatest Java float dot product.
     pub fn approximate_nearest(dx: f64, dy: f64, dz: f64) -> Self {
         let dx = dx as f32;
