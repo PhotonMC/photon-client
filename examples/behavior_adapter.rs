@@ -2100,6 +2100,35 @@ fn math_result(request: &Value) -> Result<Value, String> {
             "max": blockpos_snapshot(BlockPos::max(first, second)),
         }));
     }
+    if operation == "blockpos_between_corners_direction" {
+        let aabb = aabb_box(request.get("aabb").ok_or("aabb must be an object")?)?;
+        let first = blockpos(request.get("first").ok_or("first must be an object")?)?;
+        let second = blockpos(request.get("second").ok_or("second must be an object")?)?;
+        let direction = f64_vec3(
+            request
+                .get("direction")
+                .ok_or("direction must be an object")?,
+        )?;
+        return Ok(json!({
+            "aabb": blockpos_position_list(
+                BlockPos::between_corners_in_direction_aabb(aabb, direction),
+            ),
+            "block_pos": blockpos_position_list(
+                BlockPos::between_corners_in_direction(first, second, direction),
+            ),
+            "coordinates": blockpos_position_list(
+                BlockPos::between_corners_in_direction_coordinates(
+                    i32_string_field(request, "first_x")?,
+                    i32_string_field(request, "first_y")?,
+                    i32_string_field(request, "first_z")?,
+                    i32_string_field(request, "second_x")?,
+                    i32_string_field(request, "second_y")?,
+                    i32_string_field(request, "second_z")?,
+                    direction,
+                ),
+            ),
+        }));
+    }
     if operation == "blockpos_within_manhattan" {
         let origin = blockpos(request.get("origin").ok_or("origin must be an object")?)?;
         let reach_x = i32_string_field(request, "reach_x")?;

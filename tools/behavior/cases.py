@@ -1969,6 +1969,59 @@ def math_cases():
     for label, values in blockpos_coordinate_helpers.items():
         yield {"case_id": f"blockpos/coordinate-helpers/{label}", "family": "math",
                "operation": "blockpos_coordinate_helpers", **values}
+    blockpos_between_corners_direction = {
+        "positive-z": {
+            "aabb": box_bits(1.2, -1.8, 2.0, 3.9, 1.1, 4.2),
+            "first": {"x": "1", "y": "-1", "z": "2"},
+            "second": {"x": "3", "y": "1", "z": "4"},
+            "first_x": "1", "first_y": "-1", "first_z": "2",
+            "second_x": "3", "second_y": "1", "second_z": "4",
+            "direction": vector_bits(0.5, 0.25, 2.0),
+        },
+        "negative-x": {
+            "aabb": box_bits(4.8, -1.2, -2.1, -0.2, 2.8, 1.7),
+            "first": {"x": "4", "y": "2", "z": "-3"},
+            "second": {"x": "-1", "y": "-1", "z": "0"},
+            "first_x": "4", "first_y": "2", "first_z": "-3",
+            "second_x": "-1", "second_y": "-1", "second_z": "0",
+            "direction": vector_bits(-2.0, -0.5, 0.25),
+        },
+        "negative-z": {
+            "aabb": box_bits(-0.2, 0.0, -0.2, 1.8, 1.9, 1.8),
+            "first": {"x": "0", "y": "0", "z": "0"},
+            "second": {"x": "1", "y": "1", "z": "1"},
+            "first_x": "0", "first_y": "0", "first_z": "0",
+            "second_x": "1", "second_y": "1", "second_z": "1",
+            "direction": vector_bits(0.5, -1.0, -2.0),
+        },
+        "signed-zero": {
+            "aabb": box_bits(-0.0, -0.0, -0.0, 1.0, 1.0, 1.0),
+            "first": {"x": "-1", "y": "2", "z": "-3"},
+            "second": {"x": "0", "y": "3", "z": "-2"},
+            "first_x": "-1", "first_y": "2", "first_z": "-3",
+            "second_x": "0", "second_y": "3", "second_z": "-2",
+            "direction": vector_bits(-0.0, -0.0, 0.0),
+        },
+        "nan-direction": {
+            "aabb": box_bits(0.0, -2.0, 3.0, 2.0, 0.0, 4.0),
+            "first": {"x": "0", "y": "-2", "z": "3"},
+            "second": {"x": "2", "y": "0", "z": "4"},
+            "first_x": "0", "first_y": "-2", "first_z": "3",
+            "second_x": "2", "second_y": "0", "second_z": "4",
+            "direction": vector_bits(float("nan"), float("nan"), 1.0),
+        },
+        "integer-boundary-overflow": {
+            "aabb": box_bits(2147483647.0, 0.0, 0.0, -2147483648.0, 0.0, 0.0),
+            "first": {"x": "2147483647", "y": "0", "z": "0"},
+            "second": {"x": "-2147483648", "y": "0", "z": "0"},
+            "first_x": "2147483647", "first_y": "0", "first_z": "0",
+            "second_x": "-2147483648", "second_y": "0", "second_z": "0",
+            "direction": vector_bits(-1.0, 0.0, 0.0),
+        },
+    }
+    for label, values in blockpos_between_corners_direction.items():
+        yield {"case_id": f"blockpos/between-corners-direction/{label}", "family": "math",
+               "operation": "blockpos_between_corners_direction", **values}
     for label, (x, y, z) in {
         "origin": (0, 0, 0),
         "positive-boundary": (15, 15, 15),

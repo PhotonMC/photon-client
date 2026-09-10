@@ -7,7 +7,7 @@
 //! consumes nothing.
 
 use crate::aabb::{Aabb, BoundingBox};
-use crate::direction::Direction;
+use crate::direction::{Axis, Direction};
 use crate::math::{self, Vec3};
 use crate::random::{RandomError, RandomSource};
 use crate::wire;
@@ -503,6 +503,105 @@ impl BlockPos {
         max_z: i32,
     ) -> Vec<Self> {
         Self::between_closed_coordinates(min_x, min_y, min_z, max_x, max_y, max_z)
+    }
+
+    /// Enumerate the AABB corner traversal after Java floor conversion.
+    pub fn between_corners_in_direction_aabb(value: Aabb, direction: Vec3) -> Vec<Self> {
+        Self::between_corners_in_direction_coordinates(
+            math::floor_f64(value.min_x),
+            math::floor_f64(value.min_y),
+            math::floor_f64(value.min_z),
+            math::floor_f64(value.max_x),
+            math::floor_f64(value.max_y),
+            math::floor_f64(value.max_z),
+            direction,
+        )
+    }
+
+    /// Enumerate the corner traversal between two BlockPos values.
+    pub fn between_corners_in_direction(first: Self, second: Self, direction: Vec3) -> Vec<Self> {
+        Self::between_corners_in_direction_coordinates(
+            first.x, first.y, first.z, second.x, second.y, second.z, direction,
+        )
+    }
+
+    /// Enumerate normalized integer corners in the direction-prioritized order.
+    pub fn between_corners_in_direction_coordinates(
+        first_x: i32,
+        first_y: i32,
+        first_z: i32,
+        second_x: i32,
+        second_y: i32,
+        second_z: i32,
+        direction: Vec3,
+    ) -> Vec<Self> {
+        let min_x = first_x.min(second_x);
+        let min_y = first_y.min(second_y);
+        let min_z = first_z.min(second_z);
+        let max_x = first_x.max(second_x);
+        let max_y = first_y.max(second_y);
+        let max_z = first_z.max(second_z);
+        let diff_x = max_x.wrapping_sub(min_x);
+        let diff_y = max_y.wrapping_sub(min_y);
+        let diff_z = max_z.wrapping_sub(min_z);
+        let start_x = if direction.x >= 0.0 { min_x } else { max_x };
+        let start_y = if direction.y >= 0.0 { min_y } else { max_y };
+        let start_z = if direction.z >= 0.0 { min_z } else { max_z };
+        let [first_axis, second_axis, third_axis] =
+            Direction::axis_step_order(direction.x, direction.z);
+        let axis_component = |axis| match axis {
+            Axis::X => direction.x,
+            Axis::Y => direction.y,
+            Axis::Z => direction.z,
+        };
+        let axis_direction = |axis| {
+            if axis_component(axis) >= 0.0 {
+                axis.get_positive()
+            } else {
+                axis.get_negative()
+            }
+        };
+        let first_step = axis_direction(first_axis).step();
+        let second_step = axis_direction(second_axis).step();
+        let third_step = axis_direction(third_axis).step();
+        let first_max = first_axis.choose_i32(diff_x, diff_y, diff_z);
+        let second_max = second_axis.choose_i32(diff_x, diff_y, diff_z);
+        let third_max = third_axis.choose_i32(diff_x, diff_y, diff_z);
+        let mut first_index = 0_i32;
+        let mut second_index = 0_i32;
+        let mut third_index = 0_i32;
+        let mut positions = Vec::new();
+
+        loop {
+            let x = start_x
+                .wrapping_add(first_step.0.wrapping_mul(first_index))
+                .wrapping_add(second_step.0.wrapping_mul(second_index))
+                .wrapping_add(third_step.0.wrapping_mul(third_index));
+            let y = start_y
+                .wrapping_add(first_step.1.wrapping_mul(first_index))
+                .wrapping_add(second_step.1.wrapping_mul(second_index))
+                .wrapping_add(third_step.1.wrapping_mul(third_index));
+            let z = start_z
+                .wrapping_add(first_step.2.wrapping_mul(first_index))
+                .wrapping_add(second_step.2.wrapping_mul(second_index))
+                .wrapping_add(third_step.2.wrapping_mul(third_index));
+            positions.push(Self::new(x, y, z));
+
+            if third_index < third_max {
+                third_index = third_index.wrapping_add(1);
+            } else if second_index < second_max {
+                second_index = second_index.wrapping_add(1);
+                third_index = 0;
+            } else if first_index < first_max {
+                first_index = first_index.wrapping_add(1);
+                second_index = 0;
+                third_index = 0;
+            } else {
+                break;
+            }
+        }
+
+        positions
     }
 
     /// Enumerate Java's Manhattan reach iterator in its source traversal order.

@@ -714,6 +714,33 @@ public final class MathOracle {
             result.add("containing_position", snapshot(BlockPos.containing(point)));
             result.add("min", snapshot(BlockPos.min(first, second)));
             result.add("max", snapshot(BlockPos.max(first, second)));
+        } else if (operation.equals("blockpos_between_corners_direction")) {
+            AABB aabb = box(request.getAsJsonObject("aabb"));
+            BlockPos first = blockPos(request.getAsJsonObject("first"));
+            BlockPos second = blockPos(request.getAsJsonObject("second"));
+            int firstX = Integer.parseInt(request.get("first_x").getAsString());
+            int firstY = Integer.parseInt(request.get("first_y").getAsString());
+            int firstZ = Integer.parseInt(request.get("first_z").getAsString());
+            int secondX = Integer.parseInt(request.get("second_x").getAsString());
+            int secondY = Integer.parseInt(request.get("second_y").getAsString());
+            int secondZ = Integer.parseInt(request.get("second_z").getAsString());
+            Vec3 direction = vec3(request.getAsJsonObject("direction"));
+            var aabbPositions = new JsonArray();
+            for (BlockPos pos : BlockPos.betweenCornersInDirection(aabb, direction)) {
+                aabbPositions.add(snapshot(pos));
+            }
+            var blockPositions = new JsonArray();
+            for (BlockPos pos : BlockPos.betweenCornersInDirection(first, second, direction)) {
+                blockPositions.add(snapshot(pos));
+            }
+            var coordinatePositions = new JsonArray();
+            for (BlockPos pos : BlockPos.betweenCornersInDirection(
+                firstX, firstY, firstZ, secondX, secondY, secondZ, direction)) {
+                coordinatePositions.add(snapshot(pos));
+            }
+            result.add("aabb", aabbPositions);
+            result.add("block_pos", blockPositions);
+            result.add("coordinates", coordinatePositions);
         } else if (operation.equals("section_relative")) {
             short relative = SectionPos.sectionRelativePos(blockPos(request));
             result.addProperty("relative", Integer.toString(Short.toUnsignedInt(relative)));
