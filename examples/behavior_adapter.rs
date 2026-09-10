@@ -3,7 +3,7 @@
 use serde_json::{Value, json};
 use std::io::{self, BufRead, Write};
 use voxel_client::aabb::{Aabb, AabbBuilder, AabbBuilderError, BlockHitResult, BoundingBox};
-use voxel_client::binary::{self, BlockPos, ChunkPos, SectionPos, Uuid};
+use voxel_client::binary::{self, BlockPos, BlockRotation, ChunkPos, SectionPos, Uuid};
 use voxel_client::direction::{
     Axis, AxisDirection, Direction, DirectionYRotError, DirectionYRotationError, Plane,
 };
@@ -287,6 +287,19 @@ fn blockpos_vector_helpers_snapshot(value: BlockPos, delta: BlockPos, scale: i32
         "offset_vec3i": blockpos_snapshot(value.offset_by_block_pos(delta)),
         "subtract_vec3i": blockpos_snapshot(value.subtract_block_pos(delta)),
         "multiply": blockpos_snapshot(value.multiply(scale)),
+    })
+}
+
+fn blockpos_geometry_helpers_snapshot(
+    value: BlockPos,
+    rotation: BlockRotation,
+    up_vector: BlockPos,
+    y: i32,
+) -> Value {
+    json!({
+        "rotate": blockpos_snapshot(value.rotate(rotation)),
+        "cross": blockpos_snapshot(value.cross(up_vector)),
+        "at_y": blockpos_snapshot(value.at_y(y)),
     })
 }
 
@@ -1941,6 +1954,20 @@ fn math_result(request: &Value) -> Result<Value, String> {
         );
         let scale = i32_string_field(request, "scale")?;
         return Ok(blockpos_vector_helpers_snapshot(value, delta, scale));
+    }
+    if operation == "blockpos_geometry_helpers" {
+        let value = blockpos(request)?;
+        let rotation = BlockRotation::from_name(string(request, "rotation")?)
+            .ok_or("unknown BlockPos rotation")?;
+        let up_vector = BlockPos::new(
+            i32_string_field(request, "up_x")?,
+            i32_string_field(request, "up_y")?,
+            i32_string_field(request, "up_z")?,
+        );
+        let y = i32_string_field(request, "at_y")?;
+        return Ok(blockpos_geometry_helpers_snapshot(
+            value, rotation, up_vector, y,
+        ));
     }
     if operation == "section_relative" {
         return section_relative_result(request);

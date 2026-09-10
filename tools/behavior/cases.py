@@ -1644,6 +1644,31 @@ def math_cases():
     for label, values in blockpos_vector_helpers.items():
         yield {"case_id": f"blockpos/vector-helpers/{label}", "family": "math",
                "operation": "blockpos_vector_helpers", **values}
+    blockpos_geometry_helpers = {
+        "basic": {
+            "x": "1", "y": "2", "z": "3", "rotation": "clockwise_90",
+            "up_x": "4", "up_y": "5", "up_z": "6", "at_y": "9",
+        },
+        "none-negative": {
+            "x": "-10", "y": "20", "z": "-30", "rotation": "none",
+            "up_x": "-2", "up_y": "3", "up_z": "-4", "at_y": "-7",
+        },
+        "half-turn": {
+            "x": "17", "y": "-16", "z": "1", "rotation": "180",
+            "up_x": "-5", "up_y": "6", "up_z": "-7", "at_y": "0",
+        },
+        "counterclockwise": {
+            "x": "-17", "y": "16", "z": "-1", "rotation": "counterclockwise_90",
+            "up_x": "5", "up_y": "-6", "up_z": "7", "at_y": "31",
+        },
+        "overflow": {
+            "x": "2147483647", "y": "-2147483648", "z": "-2147483648", "rotation": "180",
+            "up_x": "-2147483648", "up_y": "2147483647", "up_z": "-2147483648", "at_y": "2147483647",
+        },
+    }
+    for label, values in blockpos_geometry_helpers.items():
+        yield {"case_id": f"blockpos/geometry-helpers/{label}", "family": "math",
+               "operation": "blockpos_geometry_helpers", **values}
     for label, (x, y, z) in {
         "origin": (0, 0, 0),
         "positive-boundary": (15, 15, 15),

@@ -148,6 +148,26 @@ pub fn write_lp_vec3(value: Vec3, output: &mut Vec<u8>) {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BlockRotation {
+    None,
+    Clockwise90,
+    Clockwise180,
+    CounterClockwise90,
+}
+
+impl BlockRotation {
+    pub fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "none" => Some(Self::None),
+            "clockwise_90" => Some(Self::Clockwise90),
+            "180" => Some(Self::Clockwise180),
+            "counterclockwise_90" => Some(Self::CounterClockwise90),
+            _ => None,
+        }
+    }
+}
+
 /// Integer block coordinates with reference packing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct BlockPos {
@@ -213,6 +233,38 @@ impl BlockPos {
                 self.z.wrapping_mul(scale),
             )
         }
+    }
+
+    /// Rotate around the y axis using Java `BlockPos.rotate(Rotation)`.
+    pub fn rotate(self, rotation: BlockRotation) -> Self {
+        match rotation {
+            BlockRotation::None => self,
+            BlockRotation::Clockwise90 => Self::new(self.z.wrapping_neg(), self.y, self.x),
+            BlockRotation::Clockwise180 => {
+                Self::new(self.x.wrapping_neg(), self.y, self.z.wrapping_neg())
+            }
+            BlockRotation::CounterClockwise90 => Self::new(self.z, self.y, self.x.wrapping_neg()),
+        }
+    }
+
+    /// Return Java `BlockPos.cross(Vec3i)` with Java i32 wrapping arithmetic.
+    pub fn cross(self, up_vector: Self) -> Self {
+        Self::new(
+            self.y
+                .wrapping_mul(up_vector.z)
+                .wrapping_sub(self.z.wrapping_mul(up_vector.y)),
+            self.z
+                .wrapping_mul(up_vector.x)
+                .wrapping_sub(self.x.wrapping_mul(up_vector.z)),
+            self.x
+                .wrapping_mul(up_vector.y)
+                .wrapping_sub(self.y.wrapping_mul(up_vector.x)),
+        )
+    }
+
+    /// Return a copy with only the y coordinate replaced.
+    pub fn at_y(self, y: i32) -> Self {
+        Self::new(self.x, y, self.z)
     }
 
     /// Return Java `BlockPos.relative(Direction)` and its stepped overload.

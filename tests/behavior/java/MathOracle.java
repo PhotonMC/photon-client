@@ -20,6 +20,7 @@ import net.minecraft.server.Bootstrap;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.levelgen.PositionalRandomFactory;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.block.state.properties.AttachFace;
@@ -518,6 +519,23 @@ public final class MathOracle {
             result.add("offset_vec3i", snapshot(pos.offset(delta)));
             result.add("subtract_vec3i", snapshot(pos.subtract(delta)));
             result.add("multiply", snapshot(pos.multiply(scale)));
+        } else if (operation.equals("blockpos_geometry_helpers")) {
+            BlockPos pos = blockPos(request);
+            Rotation rotation = switch (request.get("rotation").getAsString()) {
+                case "none" -> Rotation.NONE;
+                case "clockwise_90" -> Rotation.CLOCKWISE_90;
+                case "180" -> Rotation.CLOCKWISE_180;
+                case "counterclockwise_90" -> Rotation.COUNTERCLOCKWISE_90;
+                default -> throw new IllegalArgumentException("Unknown BlockPos rotation");
+            };
+            BlockPos upVector = new BlockPos(
+                Integer.parseInt(request.get("up_x").getAsString()),
+                Integer.parseInt(request.get("up_y").getAsString()),
+                Integer.parseInt(request.get("up_z").getAsString()));
+            int y = Integer.parseInt(request.get("at_y").getAsString());
+            result.add("rotate", snapshot(pos.rotate(rotation)));
+            result.add("cross", snapshot(pos.cross(upVector)));
+            result.add("at_y", snapshot(pos.atY(y)));
         } else if (operation.equals("section_relative")) {
             short relative = SectionPos.sectionRelativePos(blockPos(request));
             result.addProperty("relative", Integer.toString(Short.toUnsignedInt(relative)));
