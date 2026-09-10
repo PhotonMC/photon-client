@@ -17,6 +17,7 @@ import net.minecraft.DetectedVersion;
 import net.minecraft.SharedConstants;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Options;
+import net.minecraft.client.OptionInstance;
 import net.minecraft.client.ToggleKeyMapping;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
@@ -120,6 +121,47 @@ public final class MathOracle {
             } else {
                 result.add("event", snapshotPreedit(event));
             }
+        } else if (operation.equals("option_values")) {
+            OptionInstance.IntRange range = new OptionInstance.IntRange(
+                request.get("min").getAsInt(), request.get("max").getAsInt(),
+                request.get("apply_value_immediately").getAsBoolean());
+            result.addProperty("min", range.minInclusive());
+            result.addProperty("max", range.maxInclusive());
+            result.addProperty("apply_value_immediately", range.applyValueImmediately());
+            var intValues = new JsonArray();
+            for (JsonElement entry : request.getAsJsonArray("int_values")) {
+                int value = entry.getAsInt();
+                var state = new JsonObject();
+                state.addProperty("value", value);
+                state.addProperty("valid", range.validateValue(value).isPresent());
+                state.addProperty("next", range.next(value).get());
+                state.addProperty("previous", range.previous(value).get());
+                state.addProperty("to_slider", Oracle.bits(range.toSliderValue(value)));
+                intValues.add(state);
+            }
+            result.add("int_values", intValues);
+            var sliders = new JsonArray();
+            for (JsonElement entry : request.getAsJsonArray("sliders")) {
+                double slider = f64(entry.getAsString());
+                var state = new JsonObject();
+                state.addProperty("slider", Oracle.bits(slider));
+                state.addProperty("from_slider", range.fromSliderValue(slider));
+                sliders.add(state);
+            }
+            result.add("sliders", sliders);
+            var unitValues = new JsonArray();
+            for (JsonElement entry : request.getAsJsonArray("unit_values")) {
+                double value = f64(entry.getAsString());
+                var state = new JsonObject();
+                state.addProperty("value", Oracle.bits(value));
+                var validated = OptionInstance.UnitDouble.INSTANCE.validateValue(value);
+                state.addProperty("valid", validated.isPresent());
+                validated.ifPresent(item -> state.addProperty("validated", Oracle.bits(item)));
+                state.addProperty("to_slider", Oracle.bits(OptionInstance.UnitDouble.INSTANCE.toSliderValue(value)));
+                state.addProperty("from_slider", Oracle.bits(OptionInstance.UnitDouble.INSTANCE.fromSliderValue(value)));
+                unitValues.add(state);
+            }
+            result.add("unit_values", unitValues);
         } else if (operation.equals("input_with_modifiers")) {
             KeyEvent keyEvent = new KeyEvent(
                 request.get("key").getAsInt(), request.get("scancode").getAsInt(), request.get("modifiers").getAsInt());
@@ -3013,7 +3055,11 @@ public final class MathOracle {
     }
 
     private static double f64(JsonObject object, String name) {
-        return Double.longBitsToDouble(Long.parseUnsignedLong(object.get(name).getAsString(), 16));
+        return f64(object.get(name).getAsString());
+    }
+
+    private static double f64(String bits) {
+        return Double.longBitsToDouble(Long.parseUnsignedLong(bits, 16));
     }
 
     private static AABB box(JsonObject object) {

@@ -18,6 +18,7 @@ use voxel_client::input_event::{
 use voxel_client::key_mapping::{InputKey, KeyMapping, KeyMappingRegistry};
 use voxel_client::math::{self, Quaternionf, Vec2, Vec3, Vec3f};
 use voxel_client::nbt::{self, Field, FieldValue};
+use voxel_client::option::{IntRange, UnitDouble};
 use voxel_client::random::RandomSource;
 use voxel_client::shape::{BooleanOp, ShapeRotation, Shapes, VoxelShape};
 use voxel_client::timer::Timer;
@@ -229,6 +230,90 @@ fn preedit_event_result(request: &Value) -> Result<Value, String> {
         Some(Ok(event)) => json!({"event": preedit_snapshot(&event)}),
         Some(Err(error)) => return Err(format!("preedit event error: {error:?}")),
     })
+}
+
+fn option_values_result(request: &Value) -> Result<Value, String> {
+    let range = IntRange::with_apply_value_immediately(
+        i32_field(request, "min")?,
+        i32_field(request, "max")?,
+        request["apply_value_immediately"]
+            .as_bool()
+            .ok_or("apply_value_immediately must be a boolean")?,
+    );
+    let int_values = request["int_values"]
+        .as_array()
+        .ok_or("int_values must be an array")?
+        .iter()
+        .map(|value| {
+            let value = value
+                .as_i64()
+                .ok_or("int_values entries must be integers")?
+                .try_into()
+                .map_err(|_| "int_values entry must fit in i32")?;
+            Ok(json!({
+                "value": value,
+                "valid": range.validate_value(value).is_some(),
+                "next": range.next(value),
+                "previous": range.previous(value),
+                "to_slider": format!("{:016x}", range.to_slider_value(value).to_bits()),
+            }))
+        })
+        .collect::<Result<Vec<_>, String>>()?;
+    let sliders = request["sliders"]
+        .as_array()
+        .ok_or("sliders must be an array")?
+        .iter()
+        .map(|value| {
+            let slider = f64_value(value, "slider")?;
+            Ok(json!({
+                "slider": format!("{:016x}", slider.to_bits()),
+                "from_slider": range.from_slider_value(slider),
+            }))
+        })
+        .collect::<Result<Vec<_>, String>>()?;
+    let unit_values = request["unit_values"]
+        .as_array()
+        .ok_or("unit_values must be an array")?
+        .iter()
+        .map(|value| {
+            let value = f64_value(value, "unit_value")?;
+            let mut state = serde_json::Map::new();
+            state.insert("value".into(), json!(format!("{:016x}", value.to_bits())));
+            state.insert(
+                "valid".into(),
+                json!(UnitDouble::validate_value(value).is_some()),
+            );
+            if let Some(validated) = UnitDouble::validate_value(value) {
+                state.insert(
+                    "validated".into(),
+                    json!(format!("{:016x}", validated.to_bits())),
+                );
+            }
+            state.insert(
+                "to_slider".into(),
+                json!(format!(
+                    "{:016x}",
+                    UnitDouble::to_slider_value(value).to_bits()
+                )),
+            );
+            state.insert(
+                "from_slider".into(),
+                json!(format!(
+                    "{:016x}",
+                    UnitDouble::from_slider_value(value).to_bits()
+                )),
+            );
+            Ok(Value::Object(state))
+        })
+        .collect::<Result<Vec<_>, String>>()?;
+    Ok(json!({
+        "min": range.min_inclusive,
+        "max": range.max_inclusive,
+        "apply_value_immediately": range.apply_value_immediately,
+        "int_values": int_values,
+        "sliders": sliders,
+        "unit_values": unit_values,
+    }))
 }
 
 fn input_with_modifiers_snapshot<T: InputWithModifiers>(input: &T) -> Value {
@@ -4323,6 +4408,9 @@ fn math_result(request: &Value) -> Result<Value, String> {
     }
     if operation == "preedit_event" {
         return preedit_event_result(request);
+    }
+    if operation == "option_values" {
+        return option_values_result(request);
     }
     if operation == "input_with_modifiers" {
         return input_event_result(request);

@@ -9,6 +9,7 @@ pub mod input_event;
 pub mod key_mapping;
 pub mod math;
 pub mod nbt;
+pub mod option;
 pub mod random;
 pub mod shape;
 pub mod timer;

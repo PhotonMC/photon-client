@@ -98,6 +98,31 @@ def math_cases():
     ]
     yield from preedit_event_cases
 
+    def option_values_case(label, minimum, maximum, apply_value_immediately,
+                           int_values, sliders, unit_values):
+        return {
+            "case_id": f"option-values/{label}", "family": "math",
+            "operation": "option_values", "min": minimum, "max": maximum,
+            "apply_value_immediately": apply_value_immediately, "int_values": int_values,
+            "sliders": [float_bits(value, "f64") for value in sliders],
+            "unit_values": [float_bits(value, "f64") for value in unit_values],
+        }
+
+    option_value_cases = [
+        option_values_case(
+            "zero-to-ten", 0, 10, True, [-1, 0, 1, 5, 10, 11],
+            [-float("inf"), -0.2, 0.0, 0.05, 0.5, 0.99999, 1.0, 1.5, float("inf"), float("nan")],
+            [-0.1, -0.0, 0.0, 0.5, 1.0, 1.1, float("inf"), float("nan")]),
+        option_values_case(
+            "negative-range", -3, 3, False, [-4, -3, -2, 0, 3, 4],
+            [-0.5, 0.0, 0.25, 0.5, 0.75, 1.0],
+            [0.0, 0.25, 1.0]),
+        option_values_case(
+            "integer-edge", 2_147_483_646, 2_147_483_647, True,
+            [2_147_483_646, 2_147_483_647], [0.0, 0.5, 0.99999, 1.0], [0.0, 1.0]),
+    ]
+    yield from option_value_cases
+
     def input_event_case(label, key, scancode, modifiers, mouse_button, mouse_x, mouse_y):
         return {
             "case_id": f"input-with-modifiers/{label}", "family": "math",
