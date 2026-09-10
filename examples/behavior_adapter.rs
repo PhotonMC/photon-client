@@ -2728,6 +2728,10 @@ fn math_result(request: &Value) -> Result<Value, String> {
         let value = math::mth_square_f32(f32_field(request, "x")?);
         return Ok(json!({"bits": format!("{:08x}", value.to_bits())}));
     }
+    if operation == "mth_cube_f32" {
+        let value = math::mth_cube_f32(f32_field(request, "x")?);
+        return Ok(json!({"bits": format!("{:08x}", value.to_bits())}));
+    }
     if operation == "vec2" {
         let mut vector = Vec2::new(f32_field(request, "x")?, f32_field(request, "y")?);
         let mut events = vec![vec2_snapshot(vector)];

@@ -10,12 +10,12 @@ Java 25.0.4.1 ve Rust 1.98.1 / Linux x86_64 ortamında:
 - Encode sonuçları düşük 32 bit x, yüksek 32 bit z düzenini; negative ve i32 sınırlarını korudu.
 - Decode sonuçları signed i32 yeniden yorumlamasını, kalan byte'ları ve kısa readLong tüketim davranışını korudu.
 - Debug ve release Rust adapter'ları güncel binary ailesinde **164/164** eşleşti.
-- Birleşik altı aile corpus'u **2125/2125** senaryoda debug ve release adapter'larıyla eşleşti.
-- `verify` çalıştırması kayıtlı 2125 senaryoluk Java referansını iki JVM ile yeniden doğruladı.
+- Birleşik altı aile corpus'u **2140/2140** senaryoda debug ve release adapter'larıyla eşleşti.
+- `verify` çalıştırması kayıtlı 2140 senaryoluk Java referansını iki JVM ile yeniden doğruladı.
 
-Binary referans kimliği: `faa64f0548d442718b7a8e5783155e27604ddd916aaf9595070c51b91232437e`. Birleşik referans kimliği: `14062308d34164b4d537528e94d89e360ce28e02bc1488fc00ccd7a15390b0eb`.
+Binary referans kimliği: `faa64f0548d442718b7a8e5783155e27604ddd916aaf9595070c51b91232437e`. Birleşik referans kimliği: `1d27ad7d5cb42689c896be0cd7749d1c016b384dacc64f804fb9b17c36a7f38f`.
 
-Yerel raporlar: `compare-ijck1p8v` (binary debug), `compare-vuahjf17` (binary release), `compare-us5kn_kw` (birleşik debug), `compare-qnl_96jt` (birleşik release) ve `verify-m1vz27n6` dizinlerinde, `.data/runs/behavior/` altında bulunur.
+Yerel raporlar: `compare-ijck1p8v` (binary debug), `compare-vuahjf17` (binary release), `compare-a21c2t4m` (birleşik debug), `compare-uwg2_ewv` (birleşik release) ve `verify-yscj0_fq` dizinlerinde, `.data/runs/behavior/` altında bulunur.
 
 ## Sınırlar
 
