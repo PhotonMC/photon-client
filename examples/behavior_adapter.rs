@@ -24,7 +24,7 @@ use voxel_client::option::{
     AltEnum, ClampingLazyMaxIntRange, CycleableEnum, IntRange, LazyEnum, SliderableEnum, UnitDouble,
 };
 use voxel_client::random::RandomSource;
-use voxel_client::resources::{self, AssetIndex, AssetResolution};
+use voxel_client::resources::{self, AssetIndex, AssetResolution, ResourcePack, ResourcePackStack};
 use voxel_client::scroll::ScrollWheelHandler;
 use voxel_client::shape::{BooleanOp, ShapeRotation, Shapes, VoxelShape};
 use voxel_client::smooth::SmoothDouble;
@@ -777,6 +777,10 @@ fn smooth_double_result(request: &Value) -> Result<Value, String> {
 }
 
 fn resources_result(request: &Value) -> Result<Value, String> {
+    if request["operation"].as_str() == Some("packs") {
+        return resource_packs_result(request);
+    }
+
     let entries = request["entries"]
         .as_array()
         .ok_or("entries must be an array")?
@@ -838,6 +842,57 @@ fn resources_result(request: &Value) -> Result<Value, String> {
             Ok(Value::Object(result))
         })
         .collect::<Result<Vec<Value>, String>>()?;
+    Ok(json!({"queries": queries}))
+}
+
+fn resource_packs_result(request: &Value) -> Result<Value, String> {
+    let packs = request["packs"]
+        .as_array()
+        .ok_or("packs must be an array")?
+        .iter()
+        .map(|pack_value| {
+            let mut pack = ResourcePack::new(string(pack_value, "id")?.to_owned());
+            for resource_value in pack_value["resources"]
+                .as_array()
+                .ok_or("pack resources must be an array")?
+            {
+                pack.insert(
+                    string(resource_value, "id")?.to_owned(),
+                    decode_hex(string(resource_value, "hex")?)?,
+                );
+            }
+            Ok(pack)
+        })
+        .collect::<Result<Vec<_>, String>>()?;
+    let pack_stack = ResourcePackStack::new(packs);
+    let queries = request["queries"]
+        .as_array()
+        .ok_or("queries must be an array")?
+        .iter()
+        .map(|query_value| {
+            let id = query_value
+                .as_str()
+                .ok_or("query entries must be strings")?;
+            let stack = pack_stack.resource_stack(id);
+            let mut result = serde_json::Map::new();
+            result.insert("id".into(), json!(id));
+            result.insert("exists".into(), json!(pack_stack.resource(id).is_some()));
+            result.insert(
+                "stack".into(),
+                json!(
+                    stack
+                        .iter()
+                        .map(|(pack_id, _)| *pack_id)
+                        .collect::<Vec<_>>()
+                ),
+            );
+            if let Some((source, bytes)) = pack_stack.resource(id) {
+                result.insert("source".into(), json!(source));
+                result.insert("bytes_hex".into(), json!(hex(bytes)));
+            }
+            Ok(Value::Object(result))
+        })
+        .collect::<Result<Vec<_>, String>>()?;
     Ok(json!({"queries": queries}))
 }
 

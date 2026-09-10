@@ -6258,6 +6258,42 @@ def resources_cases():
         "objects": [],
         "queries": ["minecraft", "minecraft/data"],
     }
+    yield {
+        "case_id": "resources/packs/priority-and-stack",
+        "family": "resources",
+        "operation": "packs",
+        "packs": [
+            {
+                "id": "base",
+                "resources": [
+                    {"id": "minecraft:textures/shared.png", "hex": "42415345"},
+                    {"id": "minecraft:textures/base.png", "hex": "42415345"},
+                ],
+            },
+            {
+                "id": "overlay",
+                "resources": [
+                    {"id": "minecraft:textures/shared.png", "hex": "4f564552"},
+                    {"id": "minecraft:textures/overlay.png", "hex": "4f564552"},
+                ],
+            },
+        ],
+        "queries": [
+            "minecraft:textures/shared.png", "minecraft:textures/base.png",
+            "minecraft:textures/overlay.png", "minecraft:textures/missing.png",
+        ],
+    }
+    yield {
+        "case_id": "resources/packs/three-layer-precedence",
+        "family": "resources",
+        "operation": "packs",
+        "packs": [
+            {"id": "low", "resources": [{"id": "minecraft:config/value.json", "hex": "4c4f57"}]},
+            {"id": "middle", "resources": [{"id": "minecraft:config/value.json", "hex": "4d4944"}]},
+            {"id": "high", "resources": [{"id": "minecraft:config/value.json", "hex": "48494748"}]},
+        ],
+        "queries": ["minecraft:config/value.json"],
+    }
 
 
 def build_cases(families):

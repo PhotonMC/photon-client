@@ -63,7 +63,7 @@ Runner'ın ortak JSONL ve kesin karşılaştırma kuralları yukarıdaki protoko
 | utf8 | UTF-8 sınırları, bozuk diziler ve hata tüketimi |
 | binary | Vec3/LP Vec3, UUID, konum, chunk/section, array ve bitset kodlamaları |
 | nbt | Bileşik, liste ve primitive array okuma/yazma davranışı |
-| resources | Asset index yolu çözümleme ve sanal object bağlantıları |
+| resources | Asset index yolu çözümleme, sanal object bağlantıları ve pack kaynak önceliği |
 
 Yeni bir operation eklendiğinde kendi kaynak incelemesi, oracle branch'i, senaryoları ve contract/parity belgesi eklenir. Bu genel runner belgesinde hareketli senaryo toplamı veya operation başına sayaç tutulmaz.
 

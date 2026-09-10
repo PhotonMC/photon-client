@@ -152,13 +152,19 @@
       "source": "ResourceOracle.java",
       "libraries": [
         "com.google.code.gson:gson",
+        "io.netty:netty-codec-base",
+        "io.netty:netty-common",
+        "org.joml:joml",
+        "com.mojang:authlib",
         "com.google.guava:guava",
         "com.google.guava:failureaccess",
         "it.unimi.dsi:fastutil",
+        "com.mojang:datafixerupper",
         "com.mojang:logging",
         "org.slf4j:slf4j-api",
         "org.jspecify:jspecify",
-        "org.apache.commons:commons-lang3"
+        "org.apache.commons:commons-lang3",
+        "com.mojang:brigadier"
       ]
     }
   }

@@ -101,3 +101,56 @@ impl AssetIndex {
 pub fn object_path(hash: &str) -> String {
     format!("{}/{}", &hash[..2], hash)
 }
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ResourcePack {
+    id: String,
+    resources: BTreeMap<String, Vec<u8>>,
+}
+
+impl ResourcePack {
+    pub fn new(id: String) -> Self {
+        Self {
+            id,
+            resources: BTreeMap::new(),
+        }
+    }
+
+    pub fn id(&self) -> &str {
+        &self.id
+    }
+
+    pub fn insert(&mut self, location: String, bytes: Vec<u8>) {
+        self.resources.insert(location, bytes);
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ResourcePackStack {
+    packs: Vec<ResourcePack>,
+}
+
+impl ResourcePackStack {
+    pub fn new(packs: Vec<ResourcePack>) -> Self {
+        Self { packs }
+    }
+
+    pub fn resource(&self, location: &str) -> Option<(&str, &[u8])> {
+        self.packs.iter().rev().find_map(|pack| {
+            pack.resources
+                .get(location)
+                .map(|bytes| (pack.id.as_str(), bytes.as_slice()))
+        })
+    }
+
+    pub fn resource_stack(&self, location: &str) -> Vec<(&str, &[u8])> {
+        self.packs
+            .iter()
+            .filter_map(|pack| {
+                pack.resources
+                    .get(location)
+                    .map(|bytes| (pack.id.as_str(), bytes.as_slice()))
+            })
+            .collect()
+    }
+}

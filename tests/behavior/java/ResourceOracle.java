@@ -6,8 +6,19 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.List;
+import java.util.Optional;
+import net.minecraft.network.chat.Component;
 import net.minecraft.client.resources.IndexedAssetSource;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.packs.PackLocationInfo;
+import net.minecraft.server.packs.PackResources;
+import net.minecraft.server.packs.PackType;
+import net.minecraft.server.packs.PathPackResources;
+import net.minecraft.server.packs.repository.PackSource;
+import net.minecraft.server.packs.resources.MultiPackResourceManager;
 
 /** Test glue for the Java asset-index path mapping; it does not copy original assets. */
 public final class ResourceOracle {
@@ -20,6 +31,9 @@ public final class ResourceOracle {
         Path assets = null;
         try {
             assets = Files.createTempDirectory("voxel-resource-oracle-");
+            if (request.get("operation").getAsString().equals("packs")) {
+                return packResult(request, assets);
+            }
             Path indexes = Files.createDirectories(assets.resolve("indexes"));
             Path objects = Files.createDirectories(assets.resolve("objects"));
             String indexName = request.get("index").getAsString();
@@ -88,6 +102,55 @@ public final class ResourceOracle {
             throw new IllegalStateException(error);
         } finally {
             deleteTree(assets);
+        }
+    }
+
+    private static JsonObject packResult(JsonObject request, Path root) throws IOException {
+        List<PackResources> packs = new ArrayList<>();
+        Path packsRoot = Files.createDirectories(root.resolve("packs"));
+        for (JsonElement packElement : request.getAsJsonArray("packs")) {
+            JsonObject pack = packElement.getAsJsonObject();
+            String id = pack.get("id").getAsString();
+            Path packRoot = Files.createDirectories(packsRoot.resolve(id));
+            for (JsonElement resourceElement : pack.getAsJsonArray("resources")) {
+                JsonObject resource = resourceElement.getAsJsonObject();
+                Identifier location = Identifier.parse(resource.get("id").getAsString());
+                Path file = packRoot.resolve(PackType.CLIENT_RESOURCES.getDirectory())
+                    .resolve(location.getNamespace()).resolve(location.getPath());
+                Files.createDirectories(file.getParent());
+                Files.write(file, decodeHex(resource.get("hex").getAsString()));
+            }
+            packs.add(new PathPackResources(
+                new PackLocationInfo(id, Component.literal(id), PackSource.DEFAULT, Optional.empty()), packRoot
+            ));
+        }
+
+        try (var manager = new MultiPackResourceManager(PackType.CLIENT_RESOURCES, packs)) {
+            JsonArray queryResults = new JsonArray();
+            for (JsonElement queryElement : request.getAsJsonArray("queries")) {
+                String query = queryElement.getAsString();
+                Identifier location = Identifier.parse(query);
+                Optional<net.minecraft.server.packs.resources.Resource> resource = manager.getResource(location);
+                JsonObject result = new JsonObject();
+                result.addProperty("id", query);
+                result.addProperty("exists", resource.isPresent());
+                JsonArray stack = new JsonArray();
+                for (var layered : manager.getResourceStack(location)) {
+                    stack.add(layered.sourcePackId());
+                }
+                result.add("stack", stack);
+                if (resource.isPresent()) {
+                    var selected = resource.get();
+                    result.addProperty("source", selected.sourcePackId());
+                    try (var input = selected.open()) {
+                        result.addProperty("bytes_hex", encodeHex(input.readAllBytes()));
+                    }
+                }
+                queryResults.add(result);
+            }
+            JsonObject result = new JsonObject();
+            result.add("queries", queryResults);
+            return result;
         }
     }
 
