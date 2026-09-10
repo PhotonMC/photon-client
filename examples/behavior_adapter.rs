@@ -3184,6 +3184,12 @@ fn math_result(request: &Value) -> Result<Value, String> {
             "axes": axes.into_iter().map(Axis::name).collect::<Vec<_>>(),
         }));
     }
+    if operation == "direction_is_facing_angle" {
+        let facing = Direction::from_name(string(request, "name")?).ok_or("unknown direction")?;
+        return Ok(json!({
+            "value": facing.is_facing_angle(f32_field(request, "angle")?),
+        }));
+    }
     if operation == "coord" {
         let value = string(request, "value")?
             .parse::<i32>()

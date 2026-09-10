@@ -180,6 +180,17 @@ impl Direction {
         }
     }
 
+    /// Return Java `Direction.isFacingAngle(float)` using the Mth lookup table.
+    pub fn is_facing_angle(self, y_angle: f32) -> bool {
+        // Java evaluates `(float) (Math.PI / 180.0)` before the f32 product.
+        const DEGREES_TO_RADIANS_F32: f32 = f32::from_bits(0x3c8e_fa35);
+        let radians = y_angle * DEGREES_TO_RADIANS_F32;
+        let dx = -crate::math::mth_sin_f64(f64::from(radians));
+        let dz = crate::math::mth_cos_f64(f64::from(radians));
+        let (normal_x, _, normal_z) = self.step();
+        normal_x as f32 * dx + normal_z as f32 * dz > 0.0
+    }
+
     /// Choose the direction with the greatest Java float dot product.
     pub fn approximate_nearest(dx: f64, dy: f64, dz: f64) -> Self {
         let dx = dx as f32;

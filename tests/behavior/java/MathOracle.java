@@ -122,6 +122,12 @@ public final class MathOracle {
                 axes.add(axis.getName());
             }
             result.add("axes", axes);
+        } else if (operation.equals("direction_is_facing_angle")) {
+            Direction facing = Direction.byName(request.get("name").getAsString());
+            if (facing == null) {
+                throw new IllegalArgumentException("Unknown direction name");
+            }
+            result.addProperty("value", facing.isFacingAngle(Oracle.f32(request, "angle")));
         } else if (operation.equals("coord")) {
             int value = Integer.parseInt(request.get("value").getAsString());
             String fn = request.get("fn").getAsString();

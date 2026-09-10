@@ -1367,6 +1367,37 @@ def math_cases():
     for name, vector in direction_axis_step_values:
         yield {"case_id": f"direction/axis-step-order/{name}", "family": "math",
                "operation": "direction_axis_step_order", **vector}
+    direction_facing_angle_cases = [
+        ("south-zero", "south", float_bits(0.0)),
+        ("south-quarter", "south", float_bits(90.0)),
+        ("south-half-turn", "south", float_bits(180.0)),
+        ("south-three-quarter", "south", float_bits(270.0)),
+        ("north-zero", "north", float_bits(0.0)),
+        ("north-half-turn", "north", float_bits(180.0)),
+        ("east-zero", "east", float_bits(0.0)),
+        ("east-negative-quarter", "east", float_bits(-90.0)),
+        ("west-zero", "west", float_bits(0.0)),
+        ("west-quarter", "west", float_bits(90.0)),
+        ("up-zero", "up", float_bits(0.0)),
+        ("down-negative-quarter", "down", float_bits(-90.0)),
+        ("south-before-quarter", "south", float_bits(89.0)),
+        ("south-after-quarter", "south", float_bits(91.0)),
+        ("west-diagonal", "west", float_bits(45.0)),
+        ("east-diagonal", "east", float_bits(-45.0)),
+        ("negative-angle", "south", float_bits(-45.0)),
+        ("full-turn", "south", float_bits(360.0)),
+        ("signed-zero", "south", "80000000"),
+        ("positive-subnormal", "south", "00000001"),
+        ("negative-subnormal", "south", "80000001"),
+        ("positive-infinity", "south", "7f800000"),
+        ("negative-infinity", "south", "ff800000"),
+        ("nan", "south", "7fc00001"),
+        ("max-finite", "east", "7f7fffff"),
+        ("min-negative-finite", "west", "ff7fffff"),
+    ]
+    for name, direction, angle in direction_facing_angle_cases:
+        yield {"case_id": f"direction/is-facing-angle/{name}", "family": "math",
+               "operation": "direction_is_facing_angle", "name": direction, "angle": angle}
     coords = [0, 1, 15, 16, 17, -1, -15, -16, -17, 31, 32, -32, -33,
               2147483647, -2147483648, 33554431, -33554432, 2097151, -2097152]
     for fn in ("block_to_section", "section_to_block", "section_relative"):
