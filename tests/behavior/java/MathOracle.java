@@ -110,6 +110,15 @@ public final class MathOracle {
             result.add("positive", snapshot(axis.getPositive()));
             result.add("negative", snapshot(axis.getNegative()));
             result.add("directions", directions);
+        } else if (operation.equals("direction_axis_direction_values")) {
+            Direction.AxisDirection direction = switch (request.get("direction").getAsString()) {
+                case "positive" -> Direction.AxisDirection.POSITIVE;
+                case "negative" -> Direction.AxisDirection.NEGATIVE;
+                default -> throw new IllegalArgumentException("Unknown axis direction");
+            };
+            result.addProperty("step", direction.getStep());
+            result.addProperty("name", direction.getName());
+            result.addProperty("opposite", direction.opposite().getName());
         } else if (operation.equals("direction_to_y_rot")) {
             Direction facing = Direction.byName(request.get("name").getAsString());
             if (facing == null) {

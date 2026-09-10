@@ -392,4 +392,20 @@ impl AxisDirection {
             Self::Negative => "Towards negative",
         }
     }
+
+    /// Return Java `Direction.AxisDirection.getStep()`.
+    pub fn get_step(self) -> i32 {
+        match self {
+            Self::Positive => 1,
+            Self::Negative => -1,
+        }
+    }
+
+    /// Return Java `Direction.AxisDirection.opposite()`.
+    pub fn opposite(self) -> Self {
+        match self {
+            Self::Positive => Self::Negative,
+            Self::Negative => Self::Positive,
+        }
+    }
 }

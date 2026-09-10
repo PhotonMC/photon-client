@@ -3167,6 +3167,18 @@ fn math_result(request: &Value) -> Result<Value, String> {
             "directions": directions.into_iter().map(direction_snapshot).collect::<Vec<_>>(),
         }));
     }
+    if operation == "direction_axis_direction_values" {
+        let direction = match string(request, "direction")? {
+            "positive" => AxisDirection::Positive,
+            "negative" => AxisDirection::Negative,
+            _ => return Err("unknown axis direction".into()),
+        };
+        return Ok(json!({
+            "step": direction.get_step(),
+            "name": direction.name(),
+            "opposite": direction.opposite().name(),
+        }));
+    }
     if operation == "direction_to_y_rot" {
         let facing = Direction::from_name(string(request, "name")?).ok_or("unknown direction")?;
         return Ok(json!({
