@@ -53,6 +53,117 @@ impl CharacterEvent {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PreeditError {
+    NegativePreeditSize(i32),
+    CodepointBufferUnderflow { required: usize, available: usize },
+    InvalidCodePoint(InvalidCodePoint),
+    FocusedBlockOutOfBounds { index: i32, block_count: usize },
+}
+
+/// Text composition data supplied by an IME pre-edit callback.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PreeditEvent {
+    pub full_text: Vec<u16>,
+    pub caret_position: i32,
+    pub blocks: Vec<Vec<u16>>,
+    pub focused_block: i32,
+}
+
+impl PreeditEvent {
+    pub fn new(
+        full_text: Vec<u16>,
+        caret_position: i32,
+        blocks: Vec<Vec<u16>>,
+        focused_block: i32,
+    ) -> Result<Self, PreeditError> {
+        if focused_block < 0 || focused_block as usize >= blocks.len() {
+            return Err(PreeditError::FocusedBlockOutOfBounds {
+                index: focused_block,
+                block_count: blocks.len(),
+            });
+        }
+        Ok(Self {
+            full_text,
+            caret_position,
+            blocks,
+            focused_block,
+        })
+    }
+
+    /// Build the record from the arrays read by Java's native callback bridge.
+    pub fn create_from_callback(
+        preedit_size: i32,
+        codepoints: &[i32],
+        block_sizes: &[i32],
+        focused_block: i32,
+        caret: i32,
+    ) -> Option<Result<Self, PreeditError>> {
+        if preedit_size == 0 {
+            return None;
+        }
+        if preedit_size < 0 {
+            return Some(Err(PreeditError::NegativePreeditSize(preedit_size)));
+        }
+
+        let required = preedit_size as usize;
+        if codepoints.len() < required {
+            return Some(Err(PreeditError::CodepointBufferUnderflow {
+                required,
+                available: codepoints.len(),
+            }));
+        }
+
+        let codepoints = &codepoints[..required];
+        let mut full_text = Vec::new();
+        let mut blocks = Vec::with_capacity(block_sizes.len());
+        let mut offset = 0usize;
+        let mut converted_caret = 0i32;
+
+        for &block_size in block_sizes {
+            let count = if block_size < 0 {
+                0
+            } else {
+                block_size as usize
+            };
+            if count > codepoints.len().saturating_sub(offset) {
+                return Some(Err(PreeditError::CodepointBufferUnderflow {
+                    required: offset.saturating_add(count),
+                    available: codepoints.len(),
+                }));
+            }
+
+            let mut block = Vec::new();
+            for &codepoint in &codepoints[offset..offset + count] {
+                if offset as i32 == caret {
+                    converted_caret = (full_text.len() + block.len()) as i32;
+                }
+                let units = match CharacterEvent::new(codepoint).codepoint_as_utf16() {
+                    Ok(units) => units,
+                    Err(error) => {
+                        return Some(Err(PreeditError::InvalidCodePoint(error)));
+                    }
+                };
+                block.extend(units);
+                offset += 1;
+            }
+            full_text.extend_from_slice(&block);
+            blocks.push(block);
+        }
+
+        if offset as i32 == caret {
+            converted_caret = full_text.len() as i32;
+        }
+
+        Some(PreeditEvent::new(
+            full_text,
+            converted_caret,
+            blocks,
+            focused_block,
+        ))
+    }
+}
+
 /// Shared classification and modifier helpers for client input records.
 pub trait InputWithModifiers {
     fn input(&self) -> i32;

@@ -13,7 +13,7 @@ use voxel_client::direction::{
 use voxel_client::input::{Input, KeyboardInput};
 use voxel_client::input_event::{
     CharacterEvent, InputWithModifiers, KeyEvent as InputKeyEvent, MouseButtonEvent,
-    MouseButtonInfo,
+    MouseButtonInfo, PreeditEvent,
 };
 use voxel_client::key_mapping::{InputKey, KeyMapping, KeyMappingRegistry};
 use voxel_client::math::{self, Quaternionf, Vec2, Vec3, Vec3f};
@@ -186,6 +186,49 @@ fn character_event_result(request: &Value) -> Result<Value, String> {
         "utf16": utf16_snapshot(&units),
         "is_allowed_chat_character": event.is_allowed_chat_character(),
     }))
+}
+
+fn i32_array_field(value: &Value, name: &str) -> Result<Vec<i32>, String> {
+    value[name]
+        .as_array()
+        .ok_or_else(|| format!("{name} must be an array"))?
+        .iter()
+        .map(|entry| {
+            entry
+                .as_i64()
+                .ok_or_else(|| format!("{name} entries must be integers"))?
+                .try_into()
+                .map_err(|_| format!("{name} entry must fit in i32"))
+        })
+        .collect()
+}
+
+fn preedit_snapshot(event: &PreeditEvent) -> Value {
+    json!({
+        "full_text": utf16_snapshot(&event.full_text),
+        "caret_position": event.caret_position,
+        "blocks": event.blocks.iter().map(|block| utf16_snapshot(block)).collect::<Vec<_>>(),
+        "focused_block": event.focused_block,
+    })
+}
+
+fn preedit_event_result(request: &Value) -> Result<Value, String> {
+    let codepoints = i32_array_field(request, "codepoints")?;
+    let block_sizes = i32_array_field(request, "block_sizes")?;
+    let preedit_size = i32::try_from(codepoints.len())
+        .map_err(|_| "codepoint array is too large for Java int".to_owned())?;
+    let event = PreeditEvent::create_from_callback(
+        preedit_size,
+        &codepoints,
+        &block_sizes,
+        i32_field(request, "focused_block")?,
+        i32_field(request, "caret")?,
+    );
+    Ok(match event {
+        None => json!({}),
+        Some(Ok(event)) => json!({"event": preedit_snapshot(&event)}),
+        Some(Err(error)) => return Err(format!("preedit event error: {error:?}")),
+    })
 }
 
 fn input_with_modifiers_snapshot<T: InputWithModifiers>(input: &T) -> Value {
@@ -4277,6 +4320,9 @@ fn math_result(request: &Value) -> Result<Value, String> {
     }
     if operation == "character_event" {
         return character_event_result(request);
+    }
+    if operation == "preedit_event" {
+        return preedit_event_result(request);
     }
     if operation == "input_with_modifiers" {
         return input_event_result(request);

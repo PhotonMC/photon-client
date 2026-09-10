@@ -1,5 +1,6 @@
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.math.OctahedralGroup;
@@ -22,6 +23,7 @@ import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.InputWithModifiers;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.input.MouseButtonInfo;
+import net.minecraft.client.input.PreeditEvent;
 import net.minecraft.client.player.KeyboardInput;
 import net.minecraft.core.AxisCycle;
 import net.minecraft.core.BlockPos;
@@ -84,6 +86,40 @@ public final class MathOracle {
             result.addProperty("codepoint", event.codepoint());
             result.add("utf16", snapshotUtf16(event.codepointAsString()));
             result.addProperty("is_allowed_chat_character", event.isAllowedChatCharacter());
+        } else if (operation.equals("preedit_event")) {
+            JsonArray codepointValues = request.getAsJsonArray("codepoints");
+            JsonArray blockSizeValues = request.getAsJsonArray("block_sizes");
+            int preeditSize = codepointValues.size();
+            PreeditEvent event;
+            if (preeditSize == 0) {
+                event = PreeditEvent.createFromCallback(
+                    0, 0L, blockSizeValues.size(), 0L,
+                    request.get("focused_block").getAsInt(), request.get("caret").getAsInt());
+            } else {
+                Unsafe unsafe = unsafeInstance();
+                long codepoints = unsafe.allocateMemory((long)preeditSize * Integer.BYTES);
+                long blockSizes = unsafe.allocateMemory((long)blockSizeValues.size() * Integer.BYTES);
+                try {
+                    for (int i = 0; i < codepointValues.size(); i++) {
+                        unsafe.putInt(codepoints + (long)i * Integer.BYTES, codepointValues.get(i).getAsInt());
+                    }
+                    for (int i = 0; i < blockSizeValues.size(); i++) {
+                        unsafe.putInt(blockSizes + (long)i * Integer.BYTES, blockSizeValues.get(i).getAsInt());
+                    }
+                    event = PreeditEvent.createFromCallback(
+                        preeditSize, codepoints, blockSizeValues.size(), blockSizes,
+                        request.get("focused_block").getAsInt(),
+                        request.get("caret").getAsInt());
+                } finally {
+                    unsafe.freeMemory(codepoints);
+                    unsafe.freeMemory(blockSizes);
+                }
+            }
+            if (event == null) {
+                result.add("event", JsonNull.INSTANCE);
+            } else {
+                result.add("event", snapshotPreedit(event));
+            }
         } else if (operation.equals("input_with_modifiers")) {
             KeyEvent keyEvent = new KeyEvent(
                 request.get("key").getAsInt(), request.get("scancode").getAsInt(), request.get("modifiers").getAsInt());
@@ -3458,6 +3494,19 @@ public final class MathOracle {
         return units;
     }
 
+    private static JsonObject snapshotPreedit(PreeditEvent event) {
+        var state = new JsonObject();
+        state.add("full_text", snapshotUtf16(event.fullText()));
+        state.addProperty("caret_position", event.caretPosition());
+        var blocks = new JsonArray();
+        for (String block : event.blocks()) {
+            blocks.add(snapshotUtf16(block));
+        }
+        state.add("blocks", blocks);
+        state.addProperty("focused_block", event.focusedBlock());
+        return state;
+    }
+
     private static JsonObject snapshotInputWithModifiers(InputWithModifiers input) {
         var state = new JsonObject();
         state.addProperty("input", input.input());
@@ -3575,9 +3624,7 @@ public final class MathOracle {
 
     private static Options optionsFor(Input keys) {
         try {
-            var unsafeField = Unsafe.class.getDeclaredField("theUnsafe");
-            unsafeField.setAccessible(true);
-            Unsafe unsafe = (Unsafe)unsafeField.get(null);
+            Unsafe unsafe = unsafeInstance();
             Options options = (Options)unsafe.allocateInstance(Options.class);
             putKey(unsafe, options, "keyUp", "behavior.keyboard.up", 100, keys.forward());
             putKey(unsafe, options, "keyDown", "behavior.keyboard.down", 101, keys.backward());
@@ -3589,6 +3636,16 @@ public final class MathOracle {
             return options;
         } catch (ReflectiveOperationException error) {
             throw new IllegalStateException("Unable to construct controlled keyboard options", error);
+        }
+    }
+
+    private static Unsafe unsafeInstance() {
+        try {
+            var unsafeField = Unsafe.class.getDeclaredField("theUnsafe");
+            unsafeField.setAccessible(true);
+            return (Unsafe)unsafeField.get(null);
+        } catch (ReflectiveOperationException error) {
+            throw new IllegalStateException("Unable to access controlled native memory", error);
         }
     }
 

@@ -96,6 +96,8 @@ def preflight(families, runtime, jdk_home, run_dir):
             raise Blocked(f"Expected {name} {pin['java_major']}; got {version}")
         versions[name] = version
     sources = [SPEC / "java/Oracle.java"] + [SPEC / "java" / pin["families"][f]["source"] for f in sorted(families)]
+    if "math" in families:
+        sources.append(SPEC / "java/org/lwjgl/system/MemoryUtil.java")
     identity = {
         "schema_version": 1, "minecraft_version": pin["version"], "protocol": pin["protocol"],
         "client_sha1": pin["client_sha1"], "libraries": {k: pin["libraries"][k] for k in keys},

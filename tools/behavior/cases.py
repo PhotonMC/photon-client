@@ -79,6 +79,25 @@ def math_cases():
     ]
     yield from character_event_cases
 
+    def preedit_event_case(label, codepoints, block_sizes, focused_block, caret):
+        return {
+            "case_id": f"preedit-event/{label}", "family": "math",
+            "operation": "preedit_event", "codepoints": codepoints,
+            "block_sizes": block_sizes, "focused_block": focused_block, "caret": caret,
+        }
+
+    preedit_event_cases = [
+        preedit_event_case("empty", [], [0], 0, 0),
+        preedit_event_case("single-block", [65, 66], [2], 0, 1),
+        preedit_event_case("multiple-blocks", [65, 66, 67], [1, 2], 1, 2),
+        preedit_event_case("supplementary-caret", [0x1F600, 0x00E9, 66], [2, 1], 0, 1),
+        preedit_event_case("block-boundary-caret", [65, 0x1F600, 66], [1, 2], 1, 1),
+        preedit_event_case("end-caret", [65, 0x1F600], [2], 0, 2),
+        preedit_event_case("negative-block-size", [65], [-1, 1], 1, 0),
+        preedit_event_case("ignored-trailing-codepoints", [65, 66, 67], [1], 0, 2),
+    ]
+    yield from preedit_event_cases
+
     def input_event_case(label, key, scancode, modifiers, mouse_button, mouse_x, mouse_y):
         return {
             "case_id": f"input-with-modifiers/{label}", "family": "math",

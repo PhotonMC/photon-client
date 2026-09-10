@@ -33,7 +33,7 @@ Referans komutunun başarılı olması istemcinin eşitliğini göstermez. Seçi
 
 ## Dosyalar ve kimlik
 
-İzlenen dosyalar: `tools/behavior/` çalıştırıcı ve özgün girdi üreticisi; `tests/behavior/java/` özgün Java çağrı adaptörleri; `tests/behavior/reference.json` sürüm ve gerekli artifact hash'leri. Runtime için yalnızca seçili ailenin JAR'ları kullanılır; assetler, GPU, sunucu ve decompile kaynak ağacı bu ilk testlerin ön koşulu değildir.
+İzlenen dosyalar: `tools/behavior/` çalıştırıcı ve özgün girdi üreticisi; `tests/behavior/java/` Java çağrı adaptörleri ve gerekli sentetik test köprüleri; `tests/behavior/reference.json` sürüm ve gerekli artifact hash'leri. Runtime için yalnızca seçili ailenin JAR'ları kullanılır; assetler, GPU, sunucu ve decompile kaynak ağacı bu ilk testlerin ön koşulu değildir.
 
 Her koşu `.data/runs/behavior/<komut>-<benzersiz>/` altında input, stdout/stderr, derlenen sınıflar, kimlik ve `report.json` tutar. Rapordaki `reproduce` komutu `invocation_cwd` dizininden yeniden çalıştırılabilir. Her capture `.data/captures/behavior/<kimlik>/` altında `inputs.jsonl`, `outputs.jsonl`, `manifest.json` tutar. Referans kimliği client/dependency hash'leri, Java ve javac sürüm çıktısı, OS/mimari, seçilen aileler, Java adaptör/çalıştırıcı kodu ve senaryo girdilerini kapsar. Girdi veya çıktı dosyasının bozulması hash denetimiyle reddedilir.
 
