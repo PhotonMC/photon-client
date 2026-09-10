@@ -1359,6 +1359,10 @@ def math_cases():
     for axis in ("x", "y", "z"):
         yield {"case_id": f"direction/axis-plane/{axis}", "family": "math",
                "operation": "direction_axis_plane", "axis": axis}
+    for plane in ("horizontal", "vertical"):
+        for direction in ("down", "up", "north", "south", "west", "east", "none"):
+            yield {"case_id": f"direction/plane-test/{plane}/{direction}", "family": "math",
+                   "operation": "direction_plane_test", "plane": plane, "direction": direction}
     for name in ("down", "up", "north", "south", "west", "east"):
         yield {"case_id": f"direction/to-y-rot/{name}", "family": "math",
                "operation": "direction_to_y_rot", "name": name}

@@ -154,6 +154,18 @@ public final class MathOracle {
             }
             result.addProperty("plane", axis.getPlane() == Direction.Plane.HORIZONTAL
                 ? "horizontal" : "vertical");
+        } else if (operation.equals("direction_plane_test")) {
+            Direction.Plane plane = switch (request.get("plane").getAsString()) {
+                case "horizontal" -> Direction.Plane.HORIZONTAL;
+                case "vertical" -> Direction.Plane.VERTICAL;
+                default -> throw new IllegalArgumentException("Unknown plane");
+            };
+            Direction input = request.get("direction").getAsString().equals("none")
+                ? null : Direction.byName(request.get("direction").getAsString());
+            if (!request.get("direction").getAsString().equals("none") && input == null) {
+                throw new IllegalArgumentException("Unknown direction name");
+            }
+            result.addProperty("value", plane.test(input));
         } else if (operation.equals("direction_to_y_rot")) {
             Direction facing = Direction.byName(request.get("name").getAsString());
             if (facing == null) {

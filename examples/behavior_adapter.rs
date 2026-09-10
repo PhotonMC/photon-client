@@ -3218,6 +3218,18 @@ fn math_result(request: &Value) -> Result<Value, String> {
         };
         return Ok(json!({"plane": plane}));
     }
+    if operation == "direction_plane_test" {
+        let plane = match string(request, "plane")? {
+            "horizontal" => Plane::Horizontal,
+            "vertical" => Plane::Vertical,
+            _ => return Err("unknown plane".into()),
+        };
+        let input = match string(request, "direction")? {
+            "none" => None,
+            name => Some(Direction::from_name(name).ok_or("unknown direction")?),
+        };
+        return Ok(json!({"value": plane.test(input)}));
+    }
     if operation == "direction_to_y_rot" {
         let facing = Direction::from_name(string(request, "name")?).ok_or("unknown direction")?;
         return Ok(json!({

@@ -455,3 +455,10 @@ impl AxisDirection {
         }
     }
 }
+
+impl Plane {
+    /// Return Java `Direction.Plane.test(Direction)` with nullable input.
+    pub fn test(self, input: Option<Direction>) -> bool {
+        input.is_some_and(|direction| direction.axis().get_plane() == self)
+    }
+}
