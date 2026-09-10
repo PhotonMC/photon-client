@@ -1,84 +1,8 @@
 # Kalan bölümler test planı (çalıştırılamayanlar)
 
-2801 Java senaryosu kayıtlıdır (beş+bir aile).
+Bu belge, henüz çalıştırılamayan istemci ve entegrasyon davranışlarının ön koşullarını kaydeder. Eşitlik kanıtı için [davranış testi sözleşmesindeki](behavior-testing.md) sıra, Java oracle ve Rust karşılaştırması gerekir.
 
-P01.a Mth tamsayı yardımcıları 15 senaryoda hazırdır ([sözleşme](mth-integer-helpers-contract.md), [kanıt](mth-integer-helpers-parity.md)).
-P01.a Mth tamsayı temel yardımcıları 25 senaryoda hazırdır ([sözleşme](mth-integer-basics-contract.md), [kanıt](mth-integer-basics-parity.md)).
-P01.a Mth açı yardımcıları 21 senaryoda hazırdır ([sözleşme](mth-angle-helpers-contract.md), [kanıt](mth-angle-helpers-parity.md)).
-P01.a Mth yuvarlama yardımcıları 36 senaryoda hazırdır ([sözleşme](mth-rounding-helpers-contract.md), [kanıt](mth-rounding-helpers-parity.md)).
-P01.a Mth pozitif modulo 44 senaryoda hazırdır ([sözleşme](mth-positive-modulo-contract.md), [kanıt](mth-positive-modulo-parity.md)).
-P01.a Mth absMax 28 senaryoda hazırdır ([sözleşme](mth-abs-max-contract.md), [kanıt](mth-abs-max-parity.md)).
-P01.a Mth equal 28 senaryoda hazırdır ([sözleşme](mth-equal-contract.md), [kanıt](mth-equal-parity.md)).
-P01.a Mth clampedLerp 32 senaryoda hazırdır ([sözleşme](mth-clamped-lerp-contract.md), [kanıt](mth-clamped-lerp-parity.md)).
-P01.a Mth next random 20 senaryoda hazırdır ([sözleşme](mth-next-random-contract.md), [kanıt](mth-next-random-parity.md)).
-P01.a Mth random helpers 18 senaryoda hazırdır ([sözleşme](mth-random-helpers-contract.md), [kanıt](mth-random-helpers-parity.md)).
-P01.a Mth length 16 senaryoda hazırdır ([sözleşme](mth-length-contract.md), [kanıt](mth-length-parity.md)).
-P01.a Mth quantize 19 senaryoda hazırdır ([sözleşme](mth-quantize-contract.md), [kanıt](mth-quantize-parity.md)).
-P01.a Mth outFromOrigin 24 senaryoda hazırdır ([sözleşme](mth-out-from-origin-contract.md), [kanıt](mth-out-from-origin-parity.md)).
-P01.a Mth mulAndTruncate 20 senaryoda hazırdır ([sözleşme](mth-mul-and-truncate-contract.md), [kanıt](mth-mul-and-truncate-parity.md)).
-P01.a Mth rotationAroundAxis 24 senaryoda hazırdır ([sözleşme](mth-rotation-around-axis-contract.md), [kanıt](mth-rotation-around-axis-parity.md)).
-P01.a Mth inverseLerp 28 senaryoda hazırdır ([sözleşme](mth-inverse-lerp-contract.md), [kanıt](mth-inverse-lerp-parity.md)).
-P01.a Mth lerp 28 senaryoda hazırdır ([sözleşme](mth-lerp-contract.md), [kanıt](mth-lerp-parity.md)).
-P01.a Mth lerpInt/lerpDiscrete 28 senaryoda hazırdır ([sözleşme](mth-lerp-integer-contract.md), [kanıt](mth-lerp-integer-parity.md)).
-P01.a Mth smoothstep/smoothstepDerivative 28 senaryoda hazırdır ([sözleşme](mth-smoothstep-contract.md), [kanıt](mth-smoothstep-parity.md)).
-P01.a Mth sign 14 senaryoda hazırdır ([sözleşme](mth-sign-contract.md), [kanıt](mth-sign-parity.md)).
-P01.a Mth rotLerp float/double overload'ları 30 senaryoda hazırdır ([sözleşme](mth-rot-lerp-contract.md), [kanıt](mth-rot-lerp-parity.md)).
-P01.a Mth rotLerpRad 15 senaryoda hazırdır ([sözleşme](mth-rot-lerp-rad-contract.md), [kanıt](mth-rot-lerp-rad-parity.md)).
-P01.a Mth triangleWave 15 senaryoda hazırdır ([sözleşme](mth-triangle-wave-contract.md), [kanıt](mth-triangle-wave-parity.md)).
-P01.a Mth square(float) 15 senaryoda hazırdır ([sözleşme](mth-square-f32-contract.md), [kanıt](mth-square-f32-parity.md)).
-P01.a Mth cube(float) 15 senaryoda hazırdır ([sözleşme](mth-cube-f32-contract.md), [kanıt](mth-cube-f32-parity.md)).
-P01.a Mth square(double) 15 senaryoda hazırdır ([sözleşme](mth-square-f64-contract.md), [kanıt](mth-square-f64-parity.md)).
-P01.a Mth square(int) 15 senaryoda hazırdır ([sözleşme](mth-square-i32-contract.md), [kanıt](mth-square-i32-parity.md)).
-P01.a Mth square(long) 15 senaryoda hazırdır ([sözleşme](mth-square-i64-contract.md), [kanıt](mth-square-i64-parity.md)).
-P01.a Mth clampedMap(double) 20 senaryoda hazırdır ([sözleşme](mth-clamped-map-f64-contract.md), [kanıt](mth-clamped-map-f64-parity.md)).
-P01.a Mth clampedMap(float) 20 senaryoda hazırdır ([sözleşme](mth-clamped-map-f32-contract.md), [kanıt](mth-clamped-map-f32-parity.md)).
-P01.a Mth map(double) 20 senaryoda hazırdır ([sözleşme](mth-map-f64-contract.md), [kanıt](mth-map-f64-parity.md)).
-P01.a Mth map(float) 20 senaryoda hazırdır ([sözleşme](mth-map-f32-contract.md), [kanıt](mth-map-f32-parity.md)).
-P01.a Mth wobble(double) 20 senaryoda hazırdır ([sözleşme](mth-wobble-contract.md), [kanıt](mth-wobble-parity.md)).
-P01.a Mth lerp2/lerp3/catmullrom 60 senaryoda hazırdır ([sözleşme](mth-interpolation-contract.md), [kanıt](mth-interpolation-parity.md)).
-P01.a Mth kayan nokta temel yardımcıları 60 senaryoda hazırdır ([sözleşme](mth-floating-primitives-contract.md), [kanıt](mth-floating-primitives-parity.md)).
-P01.a Mth güç-of-two yardımcıları 60 senaryoda hazırdır ([sözleşme](mth-power-contract.md), [kanıt](mth-power-parity.md)).
-P01.a Mth frac yardımcıları 24 senaryoda hazırdır ([sözleşme](mth-frac-contract.md), [kanıt](mth-frac-parity.md)).
-P01.a Mth createInsecureUUID 12 senaryoda hazırdır ([sözleşme](mth-uuid-contract.md), [kanıt](mth-uuid-parity.md)).
-P01.a Mth murmurHash3Mixer 24 senaryoda hazırdır ([sözleşme](mth-murmur-hash-contract.md), [kanıt](mth-murmur-hash-parity.md)).
-P01.a Mth binarySearch 24 senaryoda hazırdır ([sözleşme](mth-binary-search-contract.md), [kanıt](mth-binary-search-parity.md)).
-P01.a Mth rayIntersectsAABB 29 senaryoda hazırdır ([sözleşme](mth-ray-aabb-contract.md), [kanıt](mth-ray-aabb-parity.md)).
-P01.a Mth fastInvSqrt 24 senaryoda hazırdır ([sözleşme](mth-fast-inv-sqrt-contract.md), [kanıt](mth-fast-inv-sqrt-parity.md)).
-P01.a Mth fastInvCubeRoot 24 senaryoda hazırdır ([sözleşme](mth-fast-inv-cube-root-contract.md), [kanıt](mth-fast-inv-cube-root-parity.md)).
-P01.a Mth HSV renk dönüşümü 42 senaryoda hazırdır ([sözleşme](mth-hsv-color-contract.md), [kanıt](mth-hsv-color-parity.md)).
-P01.a Mth açı sarma ve derece farkı yardımcıları 50 senaryoda hazırdır ([sözleşme](mth-angle-wrap-difference-contract.md), [kanıt](mth-angle-wrap-difference-parity.md)).
-P01.a Mth açı yaklaşım yardımcıları 54 senaryoda hazırdır ([sözleşme](mth-angle-approach-contract.md), [kanıt](mth-angle-approach-parity.md)).
-P01.a Mth getInt 29 senaryoda hazırdır ([sözleşme](mth-get-int-contract.md), [kanıt](mth-get-int-parity.md)).
-
-P03.b Vec3.STREAM_CODEC 13 senaryoda hazırdır ([sözleşme](vec3-stream-codec-contract.md), [kanıt](vec3-stream-codec-parity.md)). Aşağıdaki bölümler yerel ortamda çalıştırılamaz; her biri engelli kaydedilir, sahte golden üretilmez. Her bölümün önkoşulu, engel kalkınca yazılacak ilk senaryolar ve kabul ölçütü tanımlıdır.
-P03.b LP Vec3 stream codec 15 senaryoda hazırdır ([sözleşme](lp-vec3-contract.md), [kanıt](lp-vec3-parity.md)).
-P03.b ChunkPos.STREAM_CODEC 20 senaryoda hazırdır ([sözleşme](chunkpos-contract.md), [kanıt](chunkpos-parity.md)).
-P01.c ChunkPos.CODEC 12 senaryoda hazırdır ([sözleşme](chunkpos-codec-contract.md), [kanıt](chunkpos-codec-parity.md)).
-P01.c ChunkPos blok koordinatı yardımcıları 6 senaryoda hazırdır ([sözleşme](chunkpos-block-coordinates-contract.md), [kanıt](chunkpos-block-coordinates-parity.md)).
-P01.c ChunkPos region koordinatı yardımcıları 6 senaryoda hazırdır ([sözleşme](chunkpos-region-coordinates-contract.md), [kanıt](chunkpos-region-coordinates-parity.md)).
-P01.c ChunkPos BlockPos yardımcıları 6 senaryoda hazırdır ([sözleşme](chunkpos-block-positions-contract.md), [kanıt](chunkpos-block-positions-parity.md)).
-P01.c ChunkPos temsil ve hash 6 senaryoda hazırdır ([sözleşme](chunkpos-representation-contract.md), [kanıt](chunkpos-representation-parity.md)).
-P01.c ChunkPos BlockPos'tan containing/pack 6 senaryoda hazırdır ([sözleşme](chunkpos-from-blockpos-contract.md), [kanıt](chunkpos-from-blockpos-parity.md)).
-P01.c ChunkPos mesafe yardımcıları 6 senaryoda hazırdır ([sözleşme](chunkpos-distances-contract.md), [kanıt](chunkpos-distances-parity.md)).
-P01.c ChunkPos validity yardımcıları 6 senaryoda hazırdır ([sözleşme](chunkpos-validity-contract.md), [kanıt](chunkpos-validity-parity.md)).
-P01.c ChunkPos section node dönüşümü 6 senaryoda hazırdır ([sözleşme](chunkpos-from-section-node-contract.md), [kanıt](chunkpos-from-section-node-parity.md)).
-P01.c ChunkPos rangeClosed 8 senaryoda hazırdır ([sözleşme](chunkpos-range-closed-contract.md), [kanıt](chunkpos-range-closed-parity.md)).
-P01.c ChunkPos public sabitleri 4 senaryoda hazırdır ([sözleşme](chunkpos-constants-contract.md), [kanıt](chunkpos-constants-parity.md)).
-P01.c ChunkPos packed koordinat erişimcileri 6 senaryoda hazırdır ([sözleşme](chunkpos-packed-accessors-contract.md), [kanıt](chunkpos-packed-accessors-parity.md)).
-P01.c SectionPos packed koordinat erişimcileri 6 senaryoda hazırdır ([sözleşme](sectionpos-packed-accessors-contract.md), [kanıt](sectionpos-packed-accessors-parity.md)).
-P01.c SectionPos blok koordinatı yardımcıları 6 senaryoda hazırdır ([sözleşme](sectionpos-block-coordinates-contract.md), [kanıt](sectionpos-block-coordinates-parity.md)).
-P01.c SectionPos relative-to-block yardımcıları 6 senaryoda hazırdır ([sözleşme](sectionpos-relative-to-block-contract.md), [kanıt](sectionpos-relative-to-block-parity.md)).
-P01.c SectionPos spatial yardımcıları 6 senaryoda hazırdır ([sözleşme](sectionpos-spatial-contract.md), [kanıt](sectionpos-spatial-parity.md)).
-P01.c SectionPos packed dönüşümleri 6 senaryoda hazırdır ([sözleşme](sectionpos-packed-transformations-contract.md), [kanıt](sectionpos-packed-transformations-parity.md)).
-P01.c SectionPos asLong overload'ları 6 senaryoda hazırdır ([sözleşme](sectionpos-as-long-contract.md), [kanıt](sectionpos-as-long-parity.md)).
-P01.c SectionPos offset overload'ları 6 senaryoda hazırdır ([sözleşme](sectionpos-offset-contract.md), [kanıt](sectionpos-offset-parity.md)).
-P01.c SectionPos range yardımcıları 6 senaryoda hazırdır ([sözleşme](sectionpos-ranges-contract.md), [kanıt](sectionpos-ranges-parity.md)).
-P01.c SectionPos blocksInside 3 senaryoda hazırdır ([sözleşme](sectionpos-blocks-inside-contract.md), [kanıt](sectionpos-blocks-inside-parity.md)).
-P01.c SectionPos aroundAndAtBlockPos 6 senaryoda hazırdır ([sözleşme](sectionpos-around-and-at-contract.md), [kanıt](sectionpos-around-and-at-parity.md)).
-P01.c SectionPos double koordinat yardımcıları 6 senaryoda hazırdır ([sözleşme](sectionpos-double-coordinates-contract.md), [kanıt](sectionpos-double-coordinates-parity.md)).
-P01.c SectionPos `of(...)` veri overload'ları 6 senaryoda hazırdır ([sözleşme](sectionpos-of-overloads-contract.md), [kanıt](sectionpos-of-overloads-parity.md)).
-
-P01.b Vec3 `CODEC` 12 senaryoda hazırdır ([sözleşme](vec3-codec-contract.md), [kanıt](vec3-codec-parity.md)).
+Kapsam veya test durumu bu belgede hareketli toplamlarla tutulmaz. Tamamlanan küçük dilimler kendi parity belgelerinde, bekleyen kaynak kararları [source review](source-review.md) ve bağımlılık sırası [roadmap](roadmap.md) içinde bulunur.
 
 ## Kural
 
@@ -115,42 +39,8 @@ P01.b Vec3 `CODEC` 12 senaryoda hazırdır ([sözleşme](vec3-codec-contract.md)
 
 ## P01 kalanları (çalıştırılabilir, sonraki test dilimleri)
 
-- P01.b Vec3 add/subtract overload'ları 5 senaryoda hazırdır ([sözleşme](vec3-add-subtract-contract.md), [kanıt](vec3-add-subtract-parity.md)).
-- P01.b Vec3 vectorTo 5 senaryoda hazırdır ([sözleşme](vec3-vector-to-contract.md), [kanıt](vec3-vector-to-parity.md)).
-- P01.b Vec3 dot 5 senaryoda hazırdır ([sözleşme](vec3-dot-contract.md), [kanıt](vec3-dot-parity.md)).
-- P01.b Vec3 cross 5 senaryoda hazırdır ([sözleşme](vec3-cross-contract.md), [kanıt](vec3-cross-parity.md)).
-- P01.b Vec3 distanceTo 5 senaryoda hazırdır ([sözleşme](vec3-distance-to-contract.md), [kanıt](vec3-distance-to-parity.md)).
-- P01.b Vec3 distanceToSqr overload'ları 5 senaryoda hazırdır ([sözleşme](vec3-distance-to-sqr-contract.md), [kanıt](vec3-distance-to-sqr-parity.md)).
-- P01.b Vec3 multiply overload'ları 5 senaryoda hazırdır ([sözleşme](vec3-multiply-contract.md), [kanıt](vec3-multiply-parity.md)).
-- P01.b Vec3 horizontal 5 senaryoda hazırdır ([sözleşme](vec3-horizontal-contract.md), [kanıt](vec3-horizontal-parity.md)).
-- P01.b Vec3 horizontalDistance ve horizontalDistanceSqr 5 senaryoda hazırdır ([sözleşme](vec3-horizontal-distances-contract.md), [kanıt](vec3-horizontal-distances-parity.md)).
-- P01.b Vec3 closerThan overload'ları 5 senaryoda hazırdır ([sözleşme](vec3-closer-than-contract.md), [kanıt](vec3-closer-than-parity.md)).
-- P01.b Vec3 reverse 5 senaryoda hazırdır ([sözleşme](vec3-reverse-contract.md), [kanıt](vec3-reverse-parity.md)).
-- P01.b Vec3 offsetRandom ve offsetRandomXZ 5 senaryoda hazırdır ([sözleşme](vec3-offset-random-contract.md), [kanıt](vec3-offset-random-parity.md)).
-- P01.b Vec3 lerp 5 senaryoda hazırdır ([sözleşme](vec3-lerp-contract.md), [kanıt](vec3-lerp-parity.md)).
-- P01.b Vec3 rotateClockwise90 5 senaryoda hazırdır ([sözleşme](vec3-rotate-clockwise-90-contract.md), [kanıt](vec3-rotate-clockwise-90-parity.md)).
-- P01.b Vec3 isFinite 5 senaryoda hazırdır ([sözleşme](vec3-is-finite-contract.md), [kanıt](vec3-is-finite-parity.md)).
-- P01.b Vec3 get 5 senaryoda hazırdır ([sözleşme](vec3-get-contract.md), [kanıt](vec3-get-parity.md)).
-- P01.b Vec3 with 5 senaryoda hazırdır ([sözleşme](vec3-with-contract.md), [kanıt](vec3-with-parity.md)).
-- P01.b Vec3 relative 6 senaryoda hazırdır ([sözleşme](vec3-relative-contract.md), [kanıt](vec3-relative-parity.md)).
-- P01.b Vec3 align 6 senaryoda hazırdır ([sözleşme](vec3-align-contract.md), [kanıt](vec3-align-parity.md)).
-- P01.b Vec3 projectedOn 6 senaryoda hazırdır ([sözleşme](vec3-projected-on-contract.md), [kanıt](vec3-projected-on-parity.md)).
-- P01.b Vec3 toVector3f 6 senaryoda hazırdır ([sözleşme](vec3-to-vector3f-contract.md), [kanıt](vec3-to-vector3f-parity.md)).
-- P01.b Vec3 koordinat yardımcıları 6 senaryoda hazırdır ([sözleşme](vec3-coordinates-contract.md), [kanıt](vec3-coordinates-parity.md)).
-- P01.b Vec3 equals/hashCode 6 senaryoda hazırdır ([sözleşme](vec3-equality-contract.md), [kanıt](vec3-equality-parity.md)).
-- P01.b Vec3 toString 6 senaryoda hazırdır ([sözleşme](vec3-to-string-contract.md), [kanıt](vec3-to-string-parity.md)).
-- P01.b Vec3 xRot/yRot/zRot 18 senaryoda hazırdır ([sözleşme](vec3-rotation-contract.md), [kanıt](vec3-rotation-parity.md)).
-- P01.b Vec3 directionFromRotation overload'ları 18 senaryoda hazırdır ([sözleşme](vec3-direction-from-rotation-contract.md), [kanıt](vec3-direction-from-rotation-parity.md)).
-- P01.b Vec3 rotation() 18 senaryoda hazırdır ([sözleşme](vec3-rotation-method-contract.md), [kanıt](vec3-rotation-method-parity.md)).
-- P01.b Vec2 rotate(double) 18 senaryoda hazırdır ([sözleşme](vec2-rotate-contract.md), [kanıt](vec2-rotate-parity.md)).
-- P01.b Vec2 dot(Vec2) 5 senaryoda hazırdır ([sözleşme](vec2-dot-contract.md), [kanıt](vec2-dot-parity.md)).
-- P01.b Vec2 add(Vec2) ve add(float) overload'ları 5 senaryoda hazırdır ([sözleşme](vec2-add-contract.md), [kanıt](vec2-add-parity.md)).
-- P01.b Vec2 distanceToSqr(Vec2) 5 senaryoda hazırdır ([sözleşme](vec2-distance-to-sqr-contract.md), [kanıt](vec2-distance-to-sqr-parity.md)).
-- P01.b Vec2 negated() 5 senaryoda hazırdır ([sözleşme](vec2-negated-contract.md), [kanıt](vec2-negated-parity.md)).
-- P01.b Vec2 equals(Object)/hashCode() 6 senaryoda hazırdır ([sözleşme](vec2-equality-contract.md), [kanıt](vec2-equality-parity.md)).
-- P01.b Vec2 public sabitleri 8 senaryoda hazırdır ([sözleşme](vec2-constants-contract.md), [kanıt](vec2-constants-parity.md)).
-- P01.b Vec3 public sabitleri 4 senaryoda hazırdır ([sözleşme](vec3-constants-contract.md), [kanıt](vec3-constants-parity.md)).
-- P01.b Vec3 local coordinate yardımcıları 6 senaryoda hazırdır ([sözleşme](vec3-local-coordinates-contract.md), [kanıt](vec3-local-coordinates-parity.md)).
-- P01.b Vec3 `CODEC` 12 senaryoda hazırdır ([sözleşme](vec3-codec-contract.md), [kanıt](vec3-codec-parity.md)).
-- P01.d: VoxelShape temel/OR, varargs OR, singleEncompassing, min/max, min/max sütun sorguları, move overload'ları, optimize, getCoords, forAllBoxes, Shapes.create(AABB), Shapes.create(double...), Shapes.INFINITY, Shapes.EPSILON/BIG_EPSILON ve forAllEdges ve `Shapes.join` tarafından kabul edilen `FALSE`, `AND`, `ONLY_FIRST`, `ONLY_SECOND`, `NOT_SAME`, `FIRST` ve `SECOND` yolları hazır; tekli ve çoklu shape collision de hazır ([tekli sözleşme](shape-collision-contract.md), [çoklu sözleşme](shape-collision-many-contract.md)); VoxelShape clip de hazır ([sözleşme](shape-clip-contract.md)); VoxelShape closestPointTo da hazır ([sözleşme](shape-closest-contract.md)); VoxelShape getFaceShape da hazır ([sözleşme](shape-face-contract.md)); Shapes.blockOccludes da hazır ([sözleşme](shape-occlusion-contract.md)); mergedFaceOccludes ve faceShapeOccludes da hazır ([sözleşme](shape-face-occlusion-contract.md)); `Shapes.equal` de hazır ([sözleşme](shape-equal-contract.md)); VoxelShape equals(Object) de hazır ([sözleşme](shape-object-equals-contract.md), [kanıt](shape-object-equals-parity.md)); VoxelShape toString() de hazır ([sözleşme](shape-to-string-contract.md), [kanıt](shape-to-string-parity.md)); `Shapes.rotate` de hazır ([sözleşme](shape-rotate-contract.md)); `Shapes.rotate` merkez overload'ı da hazır ([sözleşme](shape-rotate-center-contract.md), [kanıt](shape-rotate-center-parity.md)); `Shapes.rotateHorizontalAxis` de hazır ([sözleşme](shape-rotate-horizontal-axis-contract.md)); merkez overload'ı da hazır ([sözleşme](shape-rotate-horizontal-axis-center-contract.md), [kanıt](shape-rotate-horizontal-axis-center-parity.md)); `Shapes.rotateAllAxis` de hazır ([sözleşme](shape-rotate-all-axis-contract.md)); merkez overload'ı da hazır ([sözleşme](shape-rotate-all-axis-center-contract.md), [kanıt](shape-rotate-all-axis-center-parity.md)); `Shapes.rotateHorizontal` de hazır ([sözleşme](shape-rotate-horizontal-contract.md)); `Shapes.rotateAll` de hazır ([sözleşme](shape-rotate-all-contract.md)); `Shapes.rotateAll` merkez overload'ı da hazır ([sözleşme](shape-rotate-all-center-contract.md), [kanıt](shape-rotate-all-center-parity.md)); Shapes.rotateAttachFace varsayılan overload'ı da hazır ([sözleşme](shape-rotate-attach-face-contract.md), [kanıt](shape-rotate-attach-face-parity.md)); Shapes.rotateHorizontal desteklenen initial overload'ı da hazır ([sözleşme](shape-rotate-horizontal-initial-contract.md), [kanıt](shape-rotate-horizontal-initial-parity.md)); Shapes.rotateAll desteklenen initial overload'ı da hazır ([sözleşme](shape-rotate-all-initial-contract.md), [kanıt](shape-rotate-all-initial-parity.md)); Shapes.rotateAttachFace desteklenen initial overload'ı da hazır ([sözleşme](shape-rotate-attach-face-initial-contract.md), [kanıt](shape-rotate-attach-face-initial-parity.md)); AABB contract, expandTowards(Vec3), equals/hashCode, toString(), Builder, deflate üç eksenli overload'u, inflate, intersect, predicate overload'ları, collidedAlongVector, kutu kurucuları ve üreticileri, BoundingBox köprüsü, minmax, move, move overload'ları, sizes, hasNaN, positions, axis min/max, distanceToSqr, ofSize, endpoint setter'ları, koordinat clip ve iterable clip/BlockHitResult overload'ları da hazır ([contract sözleşmesi](aabb-contract.md), [expandTowards(Vec3) sözleşmesi](aabb-expand-overload-contract.md), [expandTowards(Vec3) kanıtı](aabb-expand-overload-parity.md), [equals/hashCode sözleşmesi](aabb-equality-contract.md), [equals/hashCode kanıtı](aabb-equality-parity.md), [toString sözleşmesi](aabb-to-string-contract.md), [toString kanıtı](aabb-to-string-parity.md), [Builder sözleşmesi](aabb-builder-contract.md), [Builder kanıtı](aabb-builder-parity.md), [deflate üç eksenli overload sözleşmesi](aabb-deflate-overload-contract.md), [deflate üç eksenli overload kanıtı](aabb-deflate-overload-parity.md), [inflate sözleşmesi](aabb-inflate-contract.md), [intersect sözleşmesi](aabb-intersect-contract.md), [predicate overload sözleşmesi](aabb-predicate-overloads-contract.md), [collidedAlongVector sözleşmesi](aabb-collided-along-vector-contract.md), [kutu kurucuları sözleşmesi](aabb-constructors-contract.md), [BoundingBox köprüsü sözleşmesi](aabb-bounding-box-contract.md), [minmax sözleşmesi](aabb-minmax-contract.md), [move sözleşmesi](aabb-move-contract.md), [move overload sözleşmesi](aabb-move-overloads-contract.md), [sizes sözleşmesi](aabb-sizes-contract.md), [hasNaN sözleşmesi](aabb-has-nan-contract.md), [positions sözleşmesi](aabb-positions-contract.md), [axis min/max sözleşmesi](aabb-axis-limits-contract.md), [distanceToSqr sözleşmesi](aabb-distance-contract.md), [ofSize sözleşmesi](aabb-of-size-contract.md), [endpoint setter sözleşmesi](aabb-set-endpoint-contract.md), [iterable clip sözleşmesi](aabb-clip-many-contract.md)); kalan AABB çoklu shape birleşimleri ile diğer merger dalları ve world face/collider toplama sonraki dilimlerdir. `false,false` için true üreten BooleanOp sabitleri Java `Shapes.join` tarafından reddedilir. Bu turdaki contains/contains_vec3/intersects/intersects_coords/intersects_vec3/intersects_block_pos/collided_along_vector/from_block_pos/from_vec3/unit_cube_from_lower_corner/encapsulating_full_blocks/of_bounding_box/intersect/minmax/move/move overload'ları/sizes/has_nan/positions/min/max/distance_point/distance_box/of_size/set_min_x/set_min_y/set_min_z/set_max_x/set_max_y/set_max_z/expand/expand_vec3/equals/hash_code/to_string/deflate_xyz/deflate ve tekli/iterable `clip`/`clip_coords` de hazır.
-- P01.e: `fork`/`forkPositional`, `nextGaussian`, `setSeed`, random yardımcı overload'ları ve bu turdaki sıralı çekimler hazır; farklı kaynak türleri ve overflow hata yolları ayrı kapsamdır.
+P01 için sıradaki küçük dilim, [source review](source-review.md) içindeki uygulanmamış Java giriş noktalarından seçilir. Her dilim kendi özgün senaryolarını, Java capture'ını, Rust karşılaştırmasını ve contract/parity belgesini ekler. Önceki dilim belgeleri yeni bir dilim nedeniyle yeniden yazılmaz.
+
+P01.d/e geometrik ve random kapsamı, istemci dünyası oluşmadan yalnızca bağımsız veri yolları ölçülebildiği kadar ilerletilir. World collider toplama, movement resolution ve gerçek packet tüketimi P08–P12 ön koşullarına bağlıdır.
+
+Yeni bir davranış dilimi hazır olduğunda bu dosyaya yalnızca yeni engel veya bağımlılık eklenir; senaryo sayıları ve genel corpus özeti runner raporlarında kalır.
