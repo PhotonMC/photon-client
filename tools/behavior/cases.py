@@ -1845,6 +1845,27 @@ def math_cases():
     for label, values in blockpos_between_closed_aabb.items():
         yield {"case_id": f"blockpos/between-closed-aabb/{label}", "family": "math",
                "operation": "blockpos_between_closed_aabb", "aabb": values}
+    blockpos_within_manhattan = {
+        "unit": {
+            "origin": {"x": "0", "y": "0", "z": "0"},
+            "reach_x": "1", "reach_y": "1", "reach_z": "1",
+        },
+        "asymmetric": {
+            "origin": {"x": "10", "y": "-5", "z": "7"},
+            "reach_x": "2", "reach_y": "1", "reach_z": "1",
+        },
+        "flat": {
+            "origin": {"x": "-3", "y": "4", "z": "-2"},
+            "reach_x": "1", "reach_y": "0", "reach_z": "0",
+        },
+        "integer-boundaries": {
+            "origin": {"x": "2147483647", "y": "-2147483648", "z": "2147483647"},
+            "reach_x": "1", "reach_y": "1", "reach_z": "0",
+        },
+    }
+    for label, values in blockpos_within_manhattan.items():
+        yield {"case_id": f"blockpos/within-manhattan/{label}", "family": "math",
+               "operation": "blockpos_within_manhattan", **values}
     for label, (x, y, z) in {
         "origin": (0, 0, 0),
         "positive-boundary": (15, 15, 15),

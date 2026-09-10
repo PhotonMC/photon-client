@@ -633,6 +633,20 @@ public final class MathOracle {
                 positions.add(snapshot(pos));
             }
             result.add("positions", positions);
+        } else if (operation.equals("blockpos_within_manhattan")) {
+            BlockPos origin = blockPos(request.getAsJsonObject("origin"));
+            int reachX = Integer.parseInt(request.get("reach_x").getAsString());
+            int reachY = Integer.parseInt(request.get("reach_y").getAsString());
+            int reachZ = Integer.parseInt(request.get("reach_z").getAsString());
+            var positions = new JsonArray();
+            for (BlockPos pos : BlockPos.withinManhattan(origin, reachX, reachY, reachZ)) {
+                positions.add(snapshot(pos));
+            }
+            var streamPositions = new JsonArray();
+            BlockPos.withinManhattanStream(origin, reachX, reachY, reachZ)
+                .forEach(pos -> streamPositions.add(snapshot(pos)));
+            result.add("positions", positions);
+            result.add("stream_positions", streamPositions);
         } else if (operation.equals("section_relative")) {
             short relative = SectionPos.sectionRelativePos(blockPos(request));
             result.addProperty("relative", Integer.toString(Short.toUnsignedInt(relative)));

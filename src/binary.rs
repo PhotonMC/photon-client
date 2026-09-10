@@ -456,6 +456,63 @@ impl BlockPos {
         )
     }
 
+    /// Enumerate Java's Manhattan reach iterator in its source traversal order.
+    pub fn within_manhattan(origin: Self, reach_x: i32, reach_y: i32, reach_z: i32) -> Vec<Self> {
+        let max_depth = reach_x.wrapping_add(reach_y).wrapping_add(reach_z);
+        let mut positions = Vec::new();
+        let mut current_depth: i32 = 0;
+        let mut max_x: i32 = 0;
+        let mut max_y: i32 = 0;
+        let mut x: i32 = 0;
+        let mut y: i32 = 0;
+        let mut cursor = Self::ZERO;
+        let mut z_mirror = false;
+
+        loop {
+            if z_mirror {
+                z_mirror = false;
+                cursor.z = origin.z.wrapping_sub(cursor.z.wrapping_sub(origin.z));
+                positions.push(cursor);
+                continue;
+            }
+
+            loop {
+                if y > max_y {
+                    x = x.wrapping_add(1);
+                    if x > max_x {
+                        current_depth = current_depth.wrapping_add(1);
+                        if current_depth > max_depth {
+                            return positions;
+                        }
+
+                        max_x = reach_x.min(current_depth);
+                        x = max_x.wrapping_neg();
+                    }
+
+                    max_y = reach_y.min(current_depth.wrapping_sub(java_abs_i32(x)));
+                    y = max_y.wrapping_neg();
+                }
+
+                let xx = x;
+                let yy = y;
+                let zz = current_depth
+                    .wrapping_sub(java_abs_i32(xx))
+                    .wrapping_sub(java_abs_i32(yy));
+                y = y.wrapping_add(1);
+                if zz <= reach_z {
+                    z_mirror = zz != 0;
+                    cursor = Self::new(
+                        origin.x.wrapping_add(xx),
+                        origin.y.wrapping_add(yy),
+                        origin.z.wrapping_add(zz),
+                    );
+                    positions.push(cursor);
+                    break;
+                }
+            }
+        }
+    }
+
     /// Enumerate an inclusive range in Java's x-fastest, then y, then z order.
     pub fn between_closed_coordinates(
         min_x: i32,

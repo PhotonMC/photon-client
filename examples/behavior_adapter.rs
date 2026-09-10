@@ -2055,6 +2055,20 @@ fn math_result(request: &Value) -> Result<Value, String> {
             aabb,
         )));
     }
+    if operation == "blockpos_within_manhattan" {
+        let origin = blockpos(request.get("origin").ok_or("origin must be an object")?)?;
+        let reach_x = i32_string_field(request, "reach_x")?;
+        let reach_y = i32_string_field(request, "reach_y")?;
+        let reach_z = i32_string_field(request, "reach_z")?;
+        return Ok(json!({
+            "positions": blockpos_position_list(BlockPos::within_manhattan(
+                origin, reach_x, reach_y, reach_z,
+            )),
+            "stream_positions": blockpos_position_list(BlockPos::within_manhattan(
+                origin, reach_x, reach_y, reach_z,
+            )),
+        }));
+    }
     if operation == "blockpos_neighbor_column" {
         return Ok(blockpos_positions_snapshot(BlockPos::neighbor_column(
             i32_string_field(request, "start_x")?,
