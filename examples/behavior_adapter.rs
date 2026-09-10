@@ -9,6 +9,10 @@ use voxel_client::axis_cycle::AxisCycle;
 use voxel_client::binary::{
     self, BlockPos, BlockRotation, ChunkPos, MutableBlockPos, SectionPos, Uuid,
 };
+use voxel_client::common::{
+    ClientboundKeepAlivePacket, ClientboundPingPacket, ServerboundKeepAlivePacket,
+    ServerboundPongPacket,
+};
 use voxel_client::configuration::{
     ChatVisibility, ClientInformation, ClientboundFinishConfigurationPacket, MainHand,
     ParticleStatus, ServerboundAcceptCodeOfConductPacket, ServerboundClientInformationPacket,
@@ -118,6 +122,9 @@ fn wire_result(request: &Value) -> Result<Value, String> {
     }
     if request["operation"].as_str() == Some("client_information") {
         return client_information_result(request);
+    }
+    if request["operation"].as_str() == Some("common_packet") {
+        return common_packet_result(request);
     }
     if request["operation"].as_str() == Some("status_request") {
         return status_request_result(request);
@@ -794,6 +801,75 @@ fn client_information_result(request: &Value) -> Result<Value, String> {
             Ok(result)
         }
         _ => Err("unknown client information direction".into()),
+    }
+}
+
+fn common_read_error(error: voxel_client::common::ReadError) -> &'static str {
+    match error {
+        voxel_client::common::ReadError::BufferUnderflow => "buffer_underflow",
+        voxel_client::common::ReadError::DecoderError => "decoder_error",
+        voxel_client::common::ReadError::TooBig => "too_big",
+    }
+}
+
+fn common_packet_result(request: &Value) -> Result<Value, String> {
+    let packet = string(request, "packet")?;
+    match string(request, "direction")? {
+        "write" => {
+            let id = string(request, "id")?
+                .parse::<i64>()
+                .map_err(|error| error.to_string())?;
+            let prefix = decode_hex(string(request, "prefix_hex")?)?;
+            let mut buffer = prefix.clone();
+            match packet {
+                "client-ping" => {
+                    ClientboundPingPacket::new(id.try_into().map_err(|_| "id must fit in i32")?)
+                        .encode(&mut buffer);
+                }
+                "server-pong" => {
+                    ServerboundPongPacket::new(id.try_into().map_err(|_| "id must fit in i32")?)
+                        .encode(&mut buffer);
+                }
+                "client-keepalive" => {
+                    ClientboundKeepAlivePacket::new(id).encode(&mut buffer);
+                }
+                "server-keepalive" => {
+                    ServerboundKeepAlivePacket::new(id).encode(&mut buffer);
+                }
+                _ => return Err("unknown common packet".into()),
+            }
+            Ok(json!({
+                "outcome": "value",
+                "written": buffer.len() - prefix.len(),
+                "hex": hex(&buffer),
+            }))
+        }
+        "read" => {
+            let bytes = decode_hex(string(request, "hex")?)?;
+            let mut remaining = bytes.as_slice();
+            let result = match packet {
+                "client-ping" => ClientboundPingPacket::decode(&mut remaining)
+                    .map(|value| json!({"id": value.id.to_string(), "outcome": "value"})),
+                "server-pong" => ServerboundPongPacket::decode(&mut remaining)
+                    .map(|value| json!({"id": value.id.to_string(), "outcome": "value"})),
+                "client-keepalive" => ClientboundKeepAlivePacket::decode(&mut remaining)
+                    .map(|value| json!({"id": value.id.to_string(), "outcome": "value"})),
+                "server-keepalive" => ServerboundKeepAlivePacket::decode(&mut remaining)
+                    .map(|value| json!({"id": value.id.to_string(), "outcome": "value"})),
+                _ => return Err("unknown common packet".into()),
+            };
+            let mut result = match result {
+                Ok(value) => value,
+                Err(error) => json!({
+                    "outcome": "error",
+                    "error": common_read_error(error),
+                }),
+            };
+            result["consumed"] = json!(bytes.len() - remaining.len());
+            result["remaining_hex"] = json!(hex(remaining));
+            Ok(result)
+        }
+        _ => Err("unknown common packet direction".into()),
     }
 }
 

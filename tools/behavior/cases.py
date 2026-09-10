@@ -424,6 +424,42 @@ def wire_cases():
                    "operation": "ping", "direction": "read", "packet": packet,
                    "hex": encoded}
 
+    def common_fixed_hex(value, width):
+        return int(value).to_bytes(width, "big", signed=True).hex()
+
+    common_packets = [
+        ("client-ping", 4, 32, 16909060),
+        ("server-pong", 4, 32, 16909060),
+        ("client-keepalive", 8, 64, 72623859790382856),
+        ("server-keepalive", 8, 64, 72623859790382856),
+    ]
+    for packet, width, bits, pattern in common_packets:
+        common_writes = [
+            ("zero", "0", ""),
+            ("negative-one", "-1", ""),
+            ("minimum", str(-(1 << (bits - 1))), "deadbeef"),
+            ("maximum", str((1 << (bits - 1)) - 1), ""),
+            ("pattern", str(pattern), "aa55"),
+        ]
+        for label, value, prefix_hex in common_writes:
+            yield {"case_id": f"common/{packet}/write/{label}", "family": "wire",
+                   "operation": "common_packet", "direction": "write", "packet": packet,
+                   "id": value, "prefix_hex": prefix_hex}
+
+        common_reads = [
+            ("zero", common_fixed_hex(0, width)),
+            ("negative-one", common_fixed_hex(-1, width)),
+            ("minimum", common_fixed_hex(-(1 << (bits - 1)), width)),
+            ("maximum", common_fixed_hex((1 << (bits - 1)) - 1, width)),
+            ("trailing", common_fixed_hex(pattern, width) + "aabb"),
+            (f"underflow-{width - 1}", "00" * (width - 1)),
+            ("empty", ""),
+        ]
+        for label, encoded in common_reads:
+            yield {"case_id": f"common/{packet}/read/{label}", "family": "wire",
+                   "operation": "common_packet", "direction": "read", "packet": packet,
+                   "hex": encoded}
+
 
 def math_cases():
     def character_event_case(label, codepoint):

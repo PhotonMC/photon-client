@@ -28,6 +28,10 @@ import net.minecraft.network.protocol.login.ClientboundLoginCompressionPacket;
 import net.minecraft.network.protocol.login.ClientboundLoginFinishedPacket;
 import net.minecraft.network.protocol.login.ServerboundLoginAcknowledgedPacket;
 import net.minecraft.network.protocol.login.ServerboundHelloPacket;
+import net.minecraft.network.protocol.common.ClientboundKeepAlivePacket;
+import net.minecraft.network.protocol.common.ClientboundPingPacket;
+import net.minecraft.network.protocol.common.ServerboundKeepAlivePacket;
+import net.minecraft.network.protocol.common.ServerboundPongPacket;
 import net.minecraft.network.protocol.ping.ClientboundPongResponsePacket;
 import net.minecraft.network.protocol.ping.ServerboundPingRequestPacket;
 import net.minecraft.network.protocol.status.ServerboundStatusRequestPacket;
@@ -72,6 +76,9 @@ public final class WireOracle {
         }
         if (operation.equals("client_information")) {
             return clientInformationResult(request);
+        }
+        if (operation.equals("common_packet")) {
+            return commonPacketResult(request);
         }
         if (operation.equals("status_request")) {
             return statusRequestResult(request);
@@ -814,6 +821,76 @@ public final class WireOracle {
         }
 
         throw new IllegalArgumentException("Unknown status request direction");
+    }
+
+    private static JsonObject commonPacketResult(JsonObject request) {
+        String direction = request.get("direction").getAsString();
+        String packet = request.get("packet").getAsString();
+        if (direction.equals("write")) {
+            long id = Long.parseLong(request.get("id").getAsString());
+            byte[] prefix = HexFormat.of().parseHex(request.get("prefix_hex").getAsString());
+            ByteBuf buffer = Unpooled.buffer();
+            try {
+                buffer.writeBytes(prefix);
+                FriendlyByteBuf friendly = new FriendlyByteBuf(buffer);
+                switch (packet) {
+                    case "client-ping" -> ClientboundPingPacket.STREAM_CODEC.encode(
+                        friendly, new ClientboundPingPacket(Math.toIntExact(id))
+                    );
+                    case "server-pong" -> ServerboundPongPacket.STREAM_CODEC.encode(
+                        friendly, new ServerboundPongPacket(Math.toIntExact(id))
+                    );
+                    case "client-keepalive" -> ClientboundKeepAlivePacket.STREAM_CODEC.encode(
+                        friendly, new ClientboundKeepAlivePacket(id)
+                    );
+                    case "server-keepalive" -> ServerboundKeepAlivePacket.STREAM_CODEC.encode(
+                        friendly, new ServerboundKeepAlivePacket(id)
+                    );
+                    default -> throw new IllegalArgumentException("Unknown common packet");
+                }
+                var result = new JsonObject();
+                result.addProperty("outcome", "value");
+                result.addProperty("written", buffer.writerIndex() - prefix.length);
+                result.addProperty("hex", ByteBufUtil.hexDump(buffer));
+                return result;
+            } finally {
+                buffer.release();
+            }
+        }
+
+        if (direction.equals("read")) {
+            ByteBuf buffer = Unpooled.buffer();
+            try {
+                buffer.writeBytes(HexFormat.of().parseHex(request.get("hex").getAsString()));
+                var result = new JsonObject();
+                try {
+                    long id = switch (packet) {
+                        case "client-ping" -> ClientboundPingPacket.STREAM_CODEC
+                            .decode(new FriendlyByteBuf(buffer)).getId();
+                        case "server-pong" -> ServerboundPongPacket.STREAM_CODEC
+                            .decode(new FriendlyByteBuf(buffer)).getId();
+                        case "client-keepalive" -> ClientboundKeepAlivePacket.STREAM_CODEC
+                            .decode(new FriendlyByteBuf(buffer)).getId();
+                        case "server-keepalive" -> ServerboundKeepAlivePacket.STREAM_CODEC
+                            .decode(new FriendlyByteBuf(buffer)).getId();
+                        default -> throw new IllegalArgumentException("Unknown common packet");
+                    };
+                    result.addProperty("id", Long.toString(id));
+                    result.addProperty("outcome", "value");
+                } catch (IndexOutOfBoundsException error) {
+                    result.addProperty("outcome", "error");
+                    result.addProperty("error", "buffer_underflow");
+                    result.addProperty("java_exception", error.getClass().getName());
+                }
+                result.addProperty("consumed", buffer.readerIndex());
+                result.addProperty("remaining_hex", ByteBufUtil.hexDump(buffer));
+                return result;
+            } finally {
+                buffer.release();
+            }
+        }
+
+        throw new IllegalArgumentException("Unknown common packet direction");
     }
 
     private static JsonObject pingResult(JsonObject request) {

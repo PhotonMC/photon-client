@@ -3,6 +3,7 @@
 pub mod aabb;
 pub mod axis_cycle;
 pub mod binary;
+pub mod common;
 pub mod configuration;
 pub mod direction;
 pub mod frame;
