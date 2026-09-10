@@ -3399,6 +3399,27 @@ def math_cases():
         yield {"case_id": f"mth/square-f64/{label}", "family": "math",
                "operation": "mth_square_f64", "x": float_bits(x, "f64")}
 
+    mth_square_i32 = [
+        ("basic", 3),
+        ("zero", 0),
+        ("positive-one", 1),
+        ("negative-one", -1),
+        ("negative", -3),
+        ("exact-int-limit", 46340),
+        ("positive-overflow", 46341),
+        ("negative-overflow", -46341),
+        ("power-of-two-wrap", 65536),
+        ("negative-power-of-two-wrap", -65536),
+        ("maximum", 2147483647),
+        ("minimum", -2147483648),
+        ("maximum-minus-one", 2147483646),
+        ("minimum-plus-one", -2147483647),
+        ("mixed", 123456789),
+    ]
+    for label, x in mth_square_i32:
+        yield {"case_id": f"mth/square-i32/{label}", "family": "math",
+               "operation": "mth_square_i32", "x": str(x)}
+
 
 def timer_cases():
     def trace(label, steps, start=0, tps=20, target=50):
