@@ -1605,6 +1605,24 @@ def math_cases():
     for label, values in blockpos_packed_helpers.items():
         yield {"case_id": f"blockpos/packed-helpers/{label}", "family": "math",
                "operation": "blockpos_packed_helpers", **values}
+    blockpos_relative_helpers = {
+        "basic": {
+            "x": "10", "y": "20", "z": "30", "direction": "north", "axis": "x", "steps": "3",
+        },
+        "zero-steps": {
+            "x": "-10", "y": "-20", "z": "-30", "direction": "up", "axis": "y", "steps": "0",
+        },
+        "negative-steps": {
+            "x": "17", "y": "-16", "z": "1", "direction": "west", "axis": "z", "steps": "-2",
+        },
+        "overflow": {
+            "x": "2147483647", "y": "-2147483648", "z": "2147483647",
+            "direction": "east", "axis": "y", "steps": "2147483647",
+        },
+    }
+    for label, values in blockpos_relative_helpers.items():
+        yield {"case_id": f"blockpos/relative-helpers/{label}", "family": "math",
+               "operation": "blockpos_relative_helpers", **values}
     for label, (x, y, z) in {
         "origin": (0, 0, 0),
         "positive-boundary": (15, 15, 15),

@@ -480,6 +480,34 @@ public final class MathOracle {
                 BlockPos.offset(neighborNode, direction), 16));
             result.addProperty("offset_steps", Long.toUnsignedString(
                 BlockPos.offset(neighborNode, stepX, stepY, stepZ), 16));
+        } else if (operation.equals("blockpos_relative_helpers")) {
+            BlockPos pos = blockPos(request);
+            Direction direction = Direction.byName(request.get("direction").getAsString());
+            if (direction == null) {
+                throw new IllegalArgumentException("Unknown direction name");
+            }
+            Direction.Axis axis = Direction.Axis.byName(request.get("axis").getAsString());
+            if (axis == null) {
+                throw new IllegalArgumentException("Unknown axis name");
+            }
+            int steps = Integer.parseInt(request.get("steps").getAsString());
+            var cardinal = new JsonObject();
+            cardinal.add("above", snapshot(pos.above()));
+            cardinal.add("above_steps", snapshot(pos.above(steps)));
+            cardinal.add("below", snapshot(pos.below()));
+            cardinal.add("below_steps", snapshot(pos.below(steps)));
+            cardinal.add("north", snapshot(pos.north()));
+            cardinal.add("north_steps", snapshot(pos.north(steps)));
+            cardinal.add("south", snapshot(pos.south()));
+            cardinal.add("south_steps", snapshot(pos.south(steps)));
+            cardinal.add("west", snapshot(pos.west()));
+            cardinal.add("west_steps", snapshot(pos.west(steps)));
+            cardinal.add("east", snapshot(pos.east()));
+            cardinal.add("east_steps", snapshot(pos.east(steps)));
+            result.add("relative_direction", snapshot(pos.relative(direction)));
+            result.add("relative_direction_steps", snapshot(pos.relative(direction, steps)));
+            result.add("relative_axis_steps", snapshot(pos.relative(axis, steps)));
+            result.add("cardinal", cardinal);
         } else if (operation.equals("section_relative")) {
             short relative = SectionPos.sectionRelativePos(blockPos(request));
             result.addProperty("relative", Integer.toString(Short.toUnsignedInt(relative)));

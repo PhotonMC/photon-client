@@ -186,6 +186,98 @@ impl BlockPos {
         }
     }
 
+    /// Return Java `BlockPos.relative(Direction)` and its stepped overload.
+    pub fn relative_direction(self, direction: Direction, steps: i32) -> Self {
+        if steps == 0 {
+            self
+        } else {
+            let (step_x, step_y, step_z) = direction.step();
+            Self::new(
+                self.x.wrapping_add(step_x.wrapping_mul(steps)),
+                self.y.wrapping_add(step_y.wrapping_mul(steps)),
+                self.z.wrapping_add(step_z.wrapping_mul(steps)),
+            )
+        }
+    }
+
+    /// Return Java `BlockPos.relative(Axis, int)`.
+    pub fn relative_axis(self, axis: crate::direction::Axis, steps: i32) -> Self {
+        if steps == 0 {
+            self
+        } else {
+            let (step_x, step_y, step_z) = match axis {
+                crate::direction::Axis::X => (steps, 0, 0),
+                crate::direction::Axis::Y => (0, steps, 0),
+                crate::direction::Axis::Z => (0, 0, steps),
+            };
+            Self::new(
+                self.x.wrapping_add(step_x),
+                self.y.wrapping_add(step_y),
+                self.z.wrapping_add(step_z),
+            )
+        }
+    }
+
+    /// Return Java `BlockPos.above()`.
+    pub fn above(self) -> Self {
+        self.relative_direction(Direction::Up, 1)
+    }
+
+    /// Return Java `BlockPos.above(int)`.
+    pub fn above_steps(self, steps: i32) -> Self {
+        self.relative_direction(Direction::Up, steps)
+    }
+
+    /// Return Java `BlockPos.below()`.
+    pub fn below(self) -> Self {
+        self.relative_direction(Direction::Down, 1)
+    }
+
+    /// Return Java `BlockPos.below(int)`.
+    pub fn below_steps(self, steps: i32) -> Self {
+        self.relative_direction(Direction::Down, steps)
+    }
+
+    /// Return Java `BlockPos.north()`.
+    pub fn north(self) -> Self {
+        self.relative_direction(Direction::North, 1)
+    }
+
+    /// Return Java `BlockPos.north(int)`.
+    pub fn north_steps(self, steps: i32) -> Self {
+        self.relative_direction(Direction::North, steps)
+    }
+
+    /// Return Java `BlockPos.south()`.
+    pub fn south(self) -> Self {
+        self.relative_direction(Direction::South, 1)
+    }
+
+    /// Return Java `BlockPos.south(int)`.
+    pub fn south_steps(self, steps: i32) -> Self {
+        self.relative_direction(Direction::South, steps)
+    }
+
+    /// Return Java `BlockPos.west()`.
+    pub fn west(self) -> Self {
+        self.relative_direction(Direction::West, 1)
+    }
+
+    /// Return Java `BlockPos.west(int)`.
+    pub fn west_steps(self, steps: i32) -> Self {
+        self.relative_direction(Direction::West, steps)
+    }
+
+    /// Return Java `BlockPos.east()`.
+    pub fn east(self) -> Self {
+        self.relative_direction(Direction::East, 1)
+    }
+
+    /// Return Java `BlockPos.east(int)`.
+    pub fn east_steps(self, steps: i32) -> Self {
+        self.relative_direction(Direction::East, steps)
+    }
+
     /// Offset a packed block position by a cardinal direction's step.
     pub fn offset_packed(block_node: u64, direction: Direction) -> u64 {
         Self::offset_packed_by(

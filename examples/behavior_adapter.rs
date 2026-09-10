@@ -255,6 +255,33 @@ fn blockpos_packed_helpers_snapshot(
     })
 }
 
+fn blockpos_relative_helpers_snapshot(
+    value: BlockPos,
+    direction: Direction,
+    axis: Axis,
+    steps: i32,
+) -> Value {
+    json!({
+        "relative_direction": blockpos_snapshot(value.relative_direction(direction, 1)),
+        "relative_direction_steps": blockpos_snapshot(value.relative_direction(direction, steps)),
+        "relative_axis_steps": blockpos_snapshot(value.relative_axis(axis, steps)),
+        "cardinal": {
+            "above": blockpos_snapshot(value.above()),
+            "above_steps": blockpos_snapshot(value.above_steps(steps)),
+            "below": blockpos_snapshot(value.below()),
+            "below_steps": blockpos_snapshot(value.below_steps(steps)),
+            "north": blockpos_snapshot(value.north()),
+            "north_steps": blockpos_snapshot(value.north_steps(steps)),
+            "south": blockpos_snapshot(value.south()),
+            "south_steps": blockpos_snapshot(value.south_steps(steps)),
+            "west": blockpos_snapshot(value.west()),
+            "west_steps": blockpos_snapshot(value.west_steps(steps)),
+            "east": blockpos_snapshot(value.east()),
+            "east_steps": blockpos_snapshot(value.east_steps(steps)),
+        },
+    })
+}
+
 fn chunkpos(value: &Value) -> Result<ChunkPos, String> {
     let coordinate = |name: &str| {
         string(value, name)?
@@ -1883,6 +1910,18 @@ fn math_result(request: &Value) -> Result<Value, String> {
             coordinate("step_x")?,
             coordinate("step_y")?,
             coordinate("step_z")?,
+        ));
+    }
+    if operation == "blockpos_relative_helpers" {
+        let value = blockpos(request)?;
+        let direction =
+            Direction::from_name(string(request, "direction")?).ok_or("unknown direction name")?;
+        let axis = Axis::from_name(string(request, "axis")?).ok_or("unknown axis name")?;
+        let steps = string(request, "steps")?
+            .parse::<i32>()
+            .map_err(|error| error.to_string())?;
+        return Ok(blockpos_relative_helpers_snapshot(
+            value, direction, axis, steps,
         ));
     }
     if operation == "section_relative" {
