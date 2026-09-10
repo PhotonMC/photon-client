@@ -81,6 +81,29 @@ public final class MathOracle {
             }
             result.add("clockwise", snapshot(facing.getClockWise(axis)));
             result.add("counter_clockwise", snapshot(facing.getCounterClockWise(axis)));
+        } else if (operation.equals("direction_y_rotation")) {
+            Direction facing = Direction.byName(request.get("name").getAsString());
+            if (facing == null) {
+                throw new IllegalArgumentException("Unknown direction name");
+            }
+            var clockwise = new JsonObject();
+            try {
+                clockwise.addProperty("outcome", "value");
+                clockwise.add("value", snapshot(facing.getClockWise()));
+            } catch (IllegalStateException error) {
+                clockwise.addProperty("outcome", "error");
+                clockwise.addProperty("error", error.getMessage());
+            }
+            var counterClockwise = new JsonObject();
+            try {
+                counterClockwise.addProperty("outcome", "value");
+                counterClockwise.add("value", snapshot(facing.getCounterClockWise()));
+            } catch (IllegalStateException error) {
+                counterClockwise.addProperty("outcome", "error");
+                counterClockwise.addProperty("error", error.getMessage());
+            }
+            result.add("clockwise", clockwise);
+            result.add("counter_clockwise", counterClockwise);
         } else if (operation.equals("direction_data")) {
             int value = Integer.parseInt(request.get("value").getAsString());
             Direction facing = switch (request.get("type").getAsString()) {

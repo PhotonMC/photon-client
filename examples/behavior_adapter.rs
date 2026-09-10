@@ -4,7 +4,9 @@ use serde_json::{Value, json};
 use std::io::{self, BufRead, Write};
 use voxel_client::aabb::{Aabb, AabbBuilder, AabbBuilderError, BlockHitResult, BoundingBox};
 use voxel_client::binary::{self, BlockPos, ChunkPos, SectionPos, Uuid};
-use voxel_client::direction::{Axis, AxisDirection, Direction, DirectionYRotError, Plane};
+use voxel_client::direction::{
+    Axis, AxisDirection, Direction, DirectionYRotError, DirectionYRotationError, Plane,
+};
 use voxel_client::math::{self, Quaternionf, Vec2, Vec3, Vec3f};
 use voxel_client::nbt::{self, Field, FieldValue};
 use voxel_client::random::RandomSource;
@@ -3130,6 +3132,30 @@ fn math_result(request: &Value) -> Result<Value, String> {
             "clockwise": direction_snapshot(facing.clockwise(axis)),
             "counter_clockwise": direction_snapshot(facing.counter_clockwise(axis)),
         }));
+    }
+    if operation == "direction_y_rotation" {
+        let facing = Direction::from_name(string(request, "name")?).ok_or("unknown direction")?;
+        let clockwise = match facing.clockwise_y() {
+            Ok(direction) => json!({"outcome": "value", "value": direction_snapshot(direction)}),
+            Err(DirectionYRotationError::ClockwiseVertical(direction)) => json!({
+                "outcome": "error",
+                "error": format!("Unable to get Y-rotated facing of {}", direction.name()),
+            }),
+            Err(DirectionYRotationError::CounterClockwiseVertical(_)) => {
+                unreachable!("clockwise_y cannot return a counter-clockwise error")
+            }
+        };
+        let counter_clockwise = match facing.counter_clockwise_y() {
+            Ok(direction) => json!({"outcome": "value", "value": direction_snapshot(direction)}),
+            Err(DirectionYRotationError::CounterClockwiseVertical(direction)) => json!({
+                "outcome": "error",
+                "error": format!("Unable to get CCW facing of {}", direction.name()),
+            }),
+            Err(DirectionYRotationError::ClockwiseVertical(_)) => {
+                unreachable!("counter_clockwise_y cannot return a clockwise error")
+            }
+        };
+        return Ok(json!({"clockwise": clockwise, "counter_clockwise": counter_clockwise}));
     }
     if operation == "direction_data" {
         let value = string(request, "value")?

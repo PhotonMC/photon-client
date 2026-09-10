@@ -21,6 +21,12 @@ pub enum DirectionYRotError {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DirectionYRotationError {
+    ClockwiseVertical(Direction),
+    CounterClockwiseVertical(Direction),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Axis {
     X,
     Y,
@@ -279,7 +285,7 @@ impl Direction {
         result
     }
 
-    fn clockwise_y(self) -> Self {
+    fn clockwise_y_axis(self) -> Self {
         match self {
             Self::North => Self::East,
             Self::East => Self::South,
@@ -289,7 +295,7 @@ impl Direction {
         }
     }
 
-    fn counter_clockwise_y(self) -> Self {
+    fn counter_clockwise_y_axis(self) -> Self {
         match self {
             Self::North => Self::West,
             Self::West => Self::South,
@@ -339,6 +345,28 @@ impl Direction {
         }
     }
 
+    /// Return Java `Direction.getClockWise()` with its vertical error path.
+    pub fn clockwise_y(self) -> Result<Self, DirectionYRotationError> {
+        match self {
+            Self::North => Ok(Self::East),
+            Self::East => Ok(Self::South),
+            Self::South => Ok(Self::West),
+            Self::West => Ok(Self::North),
+            Self::Down | Self::Up => Err(DirectionYRotationError::ClockwiseVertical(self)),
+        }
+    }
+
+    /// Return Java `Direction.getCounterClockWise()` with its vertical error path.
+    pub fn counter_clockwise_y(self) -> Result<Self, DirectionYRotationError> {
+        match self {
+            Self::North => Ok(Self::West),
+            Self::South => Ok(Self::East),
+            Self::West => Ok(Self::South),
+            Self::East => Ok(Self::North),
+            Self::Down | Self::Up => Err(DirectionYRotationError::CounterClockwiseVertical(self)),
+        }
+    }
+
     /// Axial rotation; directions aligned to the axis stay put.
     pub fn clockwise(self, axis: Axis) -> Self {
         match axis {
@@ -353,7 +381,7 @@ impl Direction {
                 if matches!(self, Self::Up | Self::Down) {
                     self
                 } else {
-                    self.clockwise_y()
+                    self.clockwise_y_axis()
                 }
             }
             Axis::Z => {
@@ -380,7 +408,7 @@ impl Direction {
                 if matches!(self, Self::Up | Self::Down) {
                     self
                 } else {
-                    self.counter_clockwise_y()
+                    self.counter_clockwise_y_axis()
                 }
             }
             Axis::Z => {
