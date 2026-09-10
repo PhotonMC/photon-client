@@ -2288,6 +2288,36 @@ fn math_result(request: &Value) -> Result<Value, String> {
         };
         return Ok(json!({"bits": bits}));
     }
+    if operation == "mth_power_helpers" {
+        let function = string(request, "fn")?;
+        let input = string(request, "input")?;
+        let value = match string(request, "type")? {
+            "i32" => {
+                let input = input.parse::<i32>().map_err(|error| error.to_string())?;
+                match function {
+                    "smallest_encompassing_power_of_two" => {
+                        json!(math::smallest_encompassing_power_of_two(input).to_string())
+                    }
+                    "smallest_square_side" => {
+                        json!(math::smallest_square_side(input)?.to_string())
+                    }
+                    "is_power_of_two" => json!(math::is_power_of_two_i32(input)),
+                    "ceillog2" => json!(math::ceillog2(input).to_string()),
+                    "log2" => json!(math::log2(input).to_string()),
+                    _ => return Err("unknown Mth i32 power helper".into()),
+                }
+            }
+            "i64" => {
+                let input = input.parse::<i64>().map_err(|error| error.to_string())?;
+                if function != "is_power_of_two" {
+                    return Err("unknown Mth i64 power helper".into());
+                }
+                json!(math::is_power_of_two_i64(input))
+            }
+            _ => return Err("unknown Mth power helper type".into()),
+        };
+        return Ok(json!({"value": value}));
+    }
     if operation == "mth_integer_helpers" {
         let function = string(request, "fn")?;
         let input = string(request, "input")?;

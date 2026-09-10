@@ -670,6 +670,57 @@ pub fn mth_abs_f32(value: f32) -> f32 {
     value.abs()
 }
 
+/// Return Java `Mth.smallestEncompassingPowerOfTwo(int)` with i32 wrapping.
+pub fn smallest_encompassing_power_of_two(input: i32) -> i32 {
+    let mut result = input.wrapping_sub(1);
+    result |= result >> 1;
+    result |= result >> 2;
+    result |= result >> 4;
+    result |= result >> 8;
+    result |= result >> 16;
+    result.wrapping_add(1)
+}
+
+/// Return Java `Mth.smallestSquareSide(int)` for a valid nonnegative count.
+pub fn smallest_square_side(item_count: i32) -> Result<i32, String> {
+    if item_count < 0 {
+        Err("itemCount must be greater than or equal to zero".into())
+    } else {
+        Ok(f64::from(item_count).sqrt().ceil() as i32)
+    }
+}
+
+/// Return Java `Mth.isPowerOfTwo(int)` using the input's wrapped bit pattern.
+pub fn is_power_of_two_i32(input: i32) -> bool {
+    input != 0 && (input & input.wrapping_sub(1)) == 0
+}
+
+/// Return Java `Mth.isPowerOfTwo(long)` using the input's wrapped bit pattern.
+pub fn is_power_of_two_i64(input: i64) -> bool {
+    input != 0 && (input & input.wrapping_sub(1)) == 0
+}
+
+const MULTIPLY_DE_BRUIJN_BIT_POSITION: [i32; 32] = [
+    0, 1, 28, 2, 29, 14, 24, 3, 30, 22, 20, 15, 25, 17, 4, 8, 31, 27, 13, 23, 21, 19, 16, 7, 26,
+    12, 18, 6, 11, 5, 10, 9,
+];
+
+/// Return Java `Mth.ceillog2(int)` with its De Bruijn lookup.
+pub fn ceillog2(input: i32) -> i32 {
+    let input = if is_power_of_two_i32(input) {
+        input
+    } else {
+        smallest_encompassing_power_of_two(input)
+    };
+    let index = (((i64::from(input) * 125_613_361_i64) >> 27) as i32) & 31;
+    MULTIPLY_DE_BRUIJN_BIT_POSITION[index as usize]
+}
+
+/// Return Java `Mth.log2(int)`, including its zero/non-power correction.
+pub fn log2(input: i32) -> i32 {
+    ceillog2(input) - i32::from(!is_power_of_two_i32(input))
+}
+
 /// Return Java `Mth.positiveModulo(float)` without changing operation order.
 pub fn positive_modulo_f32(input: f32, modulus: f32) -> f32 {
     let result = (input % modulus + modulus) % modulus;

@@ -317,6 +317,32 @@ public final class MathOracle {
             } else {
                 throw new IllegalArgumentException("Unknown Mth floating primitive");
             }
+        } else if (operation.equals("mth_power_helpers")) {
+            String width = request.get("type").getAsString();
+            String function = request.get("fn").getAsString();
+            if (width.equals("i32")) {
+                int input = Integer.parseInt(request.get("input").getAsString());
+                if (function.equals("is_power_of_two")) {
+                    result.addProperty("value", Mth.isPowerOfTwo(input));
+                } else {
+                    int value = switch (function) {
+                        case "smallest_encompassing_power_of_two" -> Mth.smallestEncompassingPowerOfTwo(input);
+                        case "smallest_square_side" -> Mth.smallestSquareSide(input);
+                        case "ceillog2" -> Mth.ceillog2(input);
+                        case "log2" -> Mth.log2(input);
+                        default -> throw new IllegalArgumentException("Unknown Mth i32 power helper");
+                    };
+                    result.addProperty("value", Integer.toString(value));
+                }
+            } else if (width.equals("i64")) {
+                if (!function.equals("is_power_of_two")) {
+                    throw new IllegalArgumentException("Unknown Mth i64 power helper");
+                }
+                result.addProperty("value", Mth.isPowerOfTwo(
+                    Long.parseLong(request.get("input").getAsString())));
+            } else {
+                throw new IllegalArgumentException("Unknown Mth power helper type");
+            }
         } else if (operation.equals("mth_integer_helpers")) {
             String width = request.get("type").getAsString();
             String function = request.get("fn").getAsString();
