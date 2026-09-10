@@ -590,6 +590,14 @@ public final class MathOracle {
                 positions.add(snapshot(pos));
             }
             result.add("positions", positions);
+        } else if (operation.equals("blockpos_square_out_south_east")) {
+            BlockPos from = blockPos(request);
+            var positions = new JsonArray();
+            positions.add(snapshot(from));
+            positions.add(snapshot(from.south()));
+            positions.add(snapshot(from.east()));
+            positions.add(snapshot(from.south().east()));
+            result.add("positions", positions);
         } else if (operation.equals("section_relative")) {
             short relative = SectionPos.sectionRelativePos(blockPos(request));
             result.addProperty("relative", Integer.toString(Short.toUnsignedInt(relative)));

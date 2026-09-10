@@ -2057,6 +2057,16 @@ fn math_result(request: &Value) -> Result<Value, String> {
             i32_string_field(request, "end_y")?,
         )));
     }
+    if operation == "blockpos_square_out_south_east" {
+        return Ok(blockpos_positions_snapshot(
+            BlockPos::new(
+                i32_string_field(request, "x")?,
+                i32_string_field(request, "y")?,
+                i32_string_field(request, "z")?,
+            )
+            .square_out_south_east(),
+        ));
+    }
     if operation == "section_relative" {
         return section_relative_result(request);
     }

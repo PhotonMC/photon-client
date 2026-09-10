@@ -489,6 +489,11 @@ impl BlockPos {
         positions
     }
 
+    /// Return Java's deprecated four-position south-east square stream order.
+    pub fn square_out_south_east(self) -> Vec<Self> {
+        vec![self, self.south(), self.east(), self.south().east()]
+    }
+
     /// Offset a packed block position by a cardinal direction's step.
     pub fn offset_packed(block_node: u64, direction: Direction) -> u64 {
         Self::offset_packed_by(

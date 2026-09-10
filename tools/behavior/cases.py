@@ -1797,6 +1797,15 @@ def math_cases():
     for label, values in blockpos_neighbor_column.items():
         yield {"case_id": f"blockpos/neighbor-column/{label}", "family": "math",
                "operation": "blockpos_neighbor_column", **values}
+    blockpos_square_out_south_east = {
+        "basic": {"x": "1", "y": "2", "z": "3"},
+        "negative": {"x": "-4", "y": "5", "z": "-6"},
+        "zero": {"x": "0", "y": "0", "z": "0"},
+        "integer-boundaries": {"x": "2147483647", "y": "-2147483648", "z": "2147483647"},
+    }
+    for label, values in blockpos_square_out_south_east.items():
+        yield {"case_id": f"blockpos/square-out-south-east/{label}", "family": "math",
+               "operation": "blockpos_square_out_south_east", **values}
     for label, (x, y, z) in {
         "origin": (0, 0, 0),
         "positive-boundary": (15, 15, 15),
