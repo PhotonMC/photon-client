@@ -96,3 +96,83 @@ impl UnitDouble {
         slider
     }
 }
+
+/// Ordered non-empty enum values used by a discrete slider option.
+#[derive(Debug, Clone, PartialEq)]
+pub struct SliderableEnum<T> {
+    values: Vec<T>,
+}
+
+impl<T> SliderableEnum<T>
+where
+    T: Clone + PartialEq,
+{
+    /// Create a slider value set. Java's slider methods require at least one value.
+    pub fn new(values: Vec<T>) -> Self {
+        assert!(
+            !values.is_empty(),
+            "SliderableEnum requires a non-empty value list"
+        );
+        Self { values }
+    }
+
+    pub fn values(&self) -> &[T] {
+        &self.values
+    }
+
+    pub fn to_slider_value(&self, value: &T) -> f64 {
+        if value == &self.values[0] {
+            return 0.0;
+        }
+        if value == self.values.last().expect("non-empty SliderableEnum") {
+            return 1.0;
+        }
+
+        let index = self
+            .values
+            .iter()
+            .position(|candidate| candidate == value)
+            .map_or(-1_i32, |index| index as i32);
+        map(index as f64, 0.0, self.values.len() as f64 - 1.0, 0.0, 1.0)
+    }
+
+    pub fn next(&self, current: &T) -> T {
+        let current_index = self
+            .values
+            .iter()
+            .position(|candidate| candidate == current)
+            .map_or(-1_i32, |index| index as i32);
+        let next_index = current_index
+            .wrapping_add(1)
+            .clamp(0, self.values.len() as i32 - 1);
+        self.values[next_index as usize].clone()
+    }
+
+    pub fn previous(&self, current: &T) -> T {
+        let current_index = self
+            .values
+            .iter()
+            .position(|candidate| candidate == current)
+            .map_or(-1_i32, |index| index as i32);
+        let previous_index = current_index
+            .wrapping_sub(1)
+            .clamp(0, self.values.len() as i32 - 1);
+        self.values[previous_index as usize].clone()
+    }
+
+    pub fn from_slider_value(&self, mut slider: f64) -> T {
+        if slider >= 1.0 {
+            slider = f64::from(0.99999_f32);
+        }
+        let index = map(slider, 0.0, 1.0, 0.0, self.values.len() as f64).floor() as i32;
+        let index = index.clamp(0, self.values.len() as i32 - 1);
+        self.values[index as usize].clone()
+    }
+
+    pub fn validate_value(&self, value: &T) -> Option<T> {
+        self.values
+            .iter()
+            .any(|candidate| candidate == value)
+            .then(|| value.clone())
+    }
+}

@@ -18,7 +18,7 @@ use voxel_client::input_event::{
 use voxel_client::key_mapping::{InputKey, KeyMapping, KeyMappingRegistry};
 use voxel_client::math::{self, Quaternionf, Vec2, Vec3, Vec3f};
 use voxel_client::nbt::{self, Field, FieldValue};
-use voxel_client::option::{IntRange, UnitDouble};
+use voxel_client::option::{IntRange, SliderableEnum, UnitDouble};
 use voxel_client::random::RandomSource;
 use voxel_client::scroll::ScrollWheelHandler;
 use voxel_client::shape::{BooleanOp, ShapeRotation, Shapes, VoxelShape};
@@ -315,6 +315,50 @@ fn option_values_result(request: &Value) -> Result<Value, String> {
         "int_values": int_values,
         "sliders": sliders,
         "unit_values": unit_values,
+    }))
+}
+
+fn sliderable_enum_result(request: &Value) -> Result<Value, String> {
+    const GRAPHICS_PRESETS: [&str; 4] = ["FAST", "FANCY", "FABULOUS", "CUSTOM"];
+    let value_set = SliderableEnum::new(
+        GRAPHICS_PRESETS
+            .iter()
+            .map(|value| (*value).to_owned())
+            .collect(),
+    );
+    let probes = request["probes"]
+        .as_array()
+        .ok_or("probes must be an array")?
+        .iter()
+        .map(|probe| {
+            let value = string(probe, "value")?.to_owned();
+            let next = value_set.next(&value);
+            let previous = value_set.previous(&value);
+            Ok(json!({
+                "value": value,
+                "valid": value_set.validate_value(&value).is_some(),
+                "to_slider": format!("{:016x}", value_set.to_slider_value(&value).to_bits()),
+                "next": next,
+                "previous": previous,
+            }))
+        })
+        .collect::<Result<Vec<_>, String>>()?;
+    let sliders = request["sliders"]
+        .as_array()
+        .ok_or("sliders must be an array")?
+        .iter()
+        .map(|entry| {
+            let slider = f64_value(entry, "slider")?;
+            Ok(json!({
+                "slider": format!("{:016x}", slider.to_bits()),
+                "from_slider": value_set.from_slider_value(slider),
+            }))
+        })
+        .collect::<Result<Vec<_>, String>>()?;
+    Ok(json!({
+        "values": value_set.values(),
+        "probes": probes,
+        "sliders": sliders,
     }))
 }
 
@@ -4469,6 +4513,9 @@ fn math_result(request: &Value) -> Result<Value, String> {
     }
     if operation == "option_values" {
         return option_values_result(request);
+    }
+    if operation == "sliderable_enum" {
+        return sliderable_enum_result(request);
     }
     if operation == "scroll_wheel" {
         return scroll_wheel_result(request);

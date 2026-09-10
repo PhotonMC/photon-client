@@ -16,6 +16,7 @@ import java.util.stream.Stream;
 import net.minecraft.DetectedVersion;
 import net.minecraft.SharedConstants;
 import net.minecraft.client.KeyMapping;
+import net.minecraft.client.GraphicsPreset;
 import net.minecraft.client.Options;
 import net.minecraft.client.OptionInstance;
 import net.minecraft.client.ScrollWheelHandler;
@@ -165,6 +166,35 @@ public final class MathOracle {
                 unitValues.add(state);
             }
             result.add("unit_values", unitValues);
+        } else if (operation.equals("sliderable_enum")) {
+            OptionInstance.SliderableEnum<GraphicsPreset> valueSet = new OptionInstance.SliderableEnum<>(
+                java.util.List.of(GraphicsPreset.values()), GraphicsPreset.CODEC);
+            var values = new JsonArray();
+            for (GraphicsPreset value : GraphicsPreset.values()) {
+                values.add(value.name());
+            }
+            result.add("values", values);
+            var probes = new JsonArray();
+            for (JsonElement entry : request.getAsJsonArray("probes")) {
+                GraphicsPreset value = GraphicsPreset.valueOf(entry.getAsJsonObject().get("value").getAsString());
+                var state = new JsonObject();
+                state.addProperty("value", value.name());
+                state.addProperty("valid", valueSet.validateValue(value).isPresent());
+                state.addProperty("to_slider", Oracle.bits(valueSet.toSliderValue(value)));
+                state.addProperty("next", valueSet.next(value).orElseThrow().name());
+                state.addProperty("previous", valueSet.previous(value).orElseThrow().name());
+                probes.add(state);
+            }
+            result.add("probes", probes);
+            var sliders = new JsonArray();
+            for (JsonElement entry : request.getAsJsonArray("sliders")) {
+                double slider = f64(entry.getAsString());
+                var state = new JsonObject();
+                state.addProperty("slider", Oracle.bits(slider));
+                state.addProperty("from_slider", valueSet.fromSliderValue(slider).name());
+                sliders.add(state);
+            }
+            result.add("sliders", sliders);
         } else if (operation.equals("scroll_wheel")) {
             ScrollWheelHandler handler = new ScrollWheelHandler();
             var events = new JsonArray();

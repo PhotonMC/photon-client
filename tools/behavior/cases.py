@@ -123,6 +123,23 @@ def math_cases():
     ]
     yield from option_value_cases
 
+    def sliderable_enum_case(label, probe_values, sliders):
+        return {
+            "case_id": f"sliderable-enum/{label}", "family": "math",
+            "operation": "sliderable_enum",
+            "probes": [{"value": value} for value in probe_values],
+            "sliders": [float_bits(value, "f64") for value in sliders],
+        }
+
+    yield sliderable_enum_case(
+        "graphics-presets",
+        ["FAST", "FANCY", "FABULOUS", "CUSTOM"],
+        [
+            -float("inf"), -0.0, 0.0, 0.124999999999, 0.125, 0.249999999999,
+            0.25, 0.5, 0.75, 0.99999, 1.0, 1.5, float("inf"), float("nan"),
+        ],
+    )
+
     def scroll_wheel_case(label, scrolls, selections):
         return {
             "case_id": f"scroll-wheel/{label}", "family": "math",
