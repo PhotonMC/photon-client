@@ -132,6 +132,12 @@ impl Direction {
         }
     }
 
+    /// Return Java `Direction.fromYRot(double)` with its floor, mask, and 2D lookup order.
+    pub fn from_y_rot(y_rot: f64) -> Self {
+        let data = crate::math::floor_f64(y_rot / 90.0 + 0.5) & 3;
+        Self::from_2d_data_value(data)
+    }
+
     /// Choose the direction with the greatest Java float dot product.
     pub fn approximate_nearest(dx: f64, dy: f64, dz: f64) -> Self {
         let dx = dx as f32;

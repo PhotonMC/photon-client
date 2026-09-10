@@ -1293,6 +1293,32 @@ def math_cases():
         for value in values:
             yield {"case_id": f"direction/data/{width}/{value}", "family": "math",
                    "operation": "direction_data", "type": width, "value": str(value)}
+    direction_y_rot_values = [
+        ("zero", float_bits(0.0, "f64")),
+        ("negative-zero", float_bits(-0.0, "f64")),
+        ("south-quarter", float_bits(44.99999999999999, "f64")),
+        ("west-boundary", float_bits(45.0, "f64")),
+        ("west-quarter", float_bits(89.99999999999999, "f64")),
+        ("north-boundary", float_bits(135.0, "f64")),
+        ("east-boundary", float_bits(225.0, "f64")),
+        ("south-wrap", float_bits(315.0, "f64")),
+        ("south-full-turn", float_bits(360.0, "f64")),
+        ("negative-east-boundary", float_bits(-45.0, "f64")),
+        ("negative-east-before", float_bits(-45.00000000000001, "f64")),
+        ("negative-south-after", float_bits(-44.99999999999999, "f64")),
+        ("negative-north-boundary", float_bits(-135.0, "f64")),
+        ("negative-full-turn", float_bits(-360.0, "f64")),
+        ("subnormal", "0000000000000001"),
+        ("negative-subnormal", "8000000000000001"),
+        ("positive-int-bound", float_bits((2**31) * 90.0, "f64")),
+        ("negative-int-bound", float_bits(-(2**31) * 90.0, "f64")),
+        ("positive-infinity", "7ff0000000000000"),
+        ("negative-infinity", "fff0000000000000"),
+        ("nan", "7ff8000000000001"),
+    ]
+    for name, value in direction_y_rot_values:
+        yield {"case_id": f"direction/y-rot/{name}", "family": "math",
+               "operation": "direction_y_rot", "value": value}
     coords = [0, 1, 15, 16, 17, -1, -15, -16, -17, 31, 32, -32, -33,
               2147483647, -2147483648, 33554431, -33554432, 2097151, -2097152]
     for fn in ("block_to_section", "section_to_block", "section_relative"):

@@ -3134,6 +3134,12 @@ fn math_result(request: &Value) -> Result<Value, String> {
         };
         return Ok(json!({"value": direction_snapshot(facing)}));
     }
+    if operation == "direction_y_rot" {
+        let y_rot = f64_field(request, "value")?;
+        return Ok(json!({
+            "value": direction_snapshot(Direction::from_y_rot(y_rot)),
+        }));
+    }
     if operation == "coord" {
         let value = string(request, "value")?
             .parse::<i32>()

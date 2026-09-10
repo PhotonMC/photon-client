@@ -78,6 +78,8 @@ public final class MathOracle {
                 default -> throw new IllegalArgumentException("Unknown Direction data type");
             };
             result.add("value", snapshot(facing));
+        } else if (operation.equals("direction_y_rot")) {
+            result.add("value", snapshot(Direction.fromYRot(f64(request, "value"))));
         } else if (operation.equals("coord")) {
             int value = Integer.parseInt(request.get("value").getAsString());
             String fn = request.get("fn").getAsString();
