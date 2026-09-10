@@ -498,6 +498,18 @@ impl Plane {
             .expect("plane axis random bound is positive") as usize]
     }
 
+    /// Return Java `Direction.Plane.shuffledCopy(RandomSource)`.
+    pub fn shuffled_copy(self, random: &mut RandomSource) -> Vec<Direction> {
+        let mut copy = self.directions().to_vec();
+        for index in (1..copy.len()).rev() {
+            let swap_to = random
+                .next_int_bound(index as i32 + 1)
+                .expect("plane shuffle bound is positive") as usize;
+            copy.swap(index, swap_to);
+        }
+        copy
+    }
+
     /// Return Java `Direction.Plane.test(Direction)` with nullable input.
     pub fn test(self, input: Option<Direction>) -> bool {
         input.is_some_and(|direction| direction.axis().get_plane() == self)

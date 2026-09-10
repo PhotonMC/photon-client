@@ -201,6 +201,19 @@ public final class MathOracle {
             result.add("plane_direction", snapshot(plane.getRandomDirection(random)));
             result.addProperty("plane_axis", plane.getRandomAxis(random).getName());
             result.addProperty("tail", Integer.toString(random.nextInt()));
+        } else if (operation.equals("direction_plane_shuffle")) {
+            RandomSource random = RandomSource.create(Long.parseLong(request.get("seed").getAsString()));
+            Direction.Plane plane = switch (request.get("plane").getAsString()) {
+                case "horizontal" -> Direction.Plane.HORIZONTAL;
+                case "vertical" -> Direction.Plane.VERTICAL;
+                default -> throw new IllegalArgumentException("Unknown plane");
+            };
+            var faces = new JsonArray();
+            for (Direction direction : plane.shuffledCopy(random)) {
+                faces.add(direction.getName());
+            }
+            result.add("faces", faces);
+            result.addProperty("tail", Integer.toString(random.nextInt()));
         } else if (operation.equals("direction_to_y_rot")) {
             Direction facing = Direction.byName(request.get("name").getAsString());
             if (facing == null) {

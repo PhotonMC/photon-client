@@ -3265,6 +3265,26 @@ fn math_result(request: &Value) -> Result<Value, String> {
             "tail": random.next_int().to_string(),
         }));
     }
+    if operation == "direction_plane_shuffle" {
+        let seed = string(request, "seed")?
+            .parse::<i64>()
+            .map_err(|error| error.to_string())?;
+        let plane = match string(request, "plane")? {
+            "horizontal" => Plane::Horizontal,
+            "vertical" => Plane::Vertical,
+            _ => return Err("unknown plane".into()),
+        };
+        let mut random = RandomSource::create(seed);
+        let faces = plane
+            .shuffled_copy(&mut random)
+            .into_iter()
+            .map(|direction| direction.name())
+            .collect::<Vec<_>>();
+        return Ok(json!({
+            "faces": faces,
+            "tail": random.next_int().to_string(),
+        }));
+    }
     if operation == "direction_to_y_rot" {
         let facing = Direction::from_name(string(request, "name")?).ok_or("unknown direction")?;
         return Ok(json!({
