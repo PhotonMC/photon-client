@@ -28,6 +28,7 @@ import net.minecraft.world.phys.shapes.BooleanOp;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.apache.commons.lang3.math.Fraction;
+import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
 public final class MathOracle {
@@ -550,6 +551,18 @@ public final class MathOracle {
                 Integer.parseInt(request.get("denominator").getAsString()));
             result.addProperty("value", Integer.toString(Mth.mulAndTruncate(
                 fraction, Integer.parseInt(request.get("factor").getAsString()))));
+        } else if (operation.equals("mth_rotation_around_axis")) {
+            Vector3f axis = new Vector3f(
+                Oracle.f32(request, "axis_x"),
+                Oracle.f32(request, "axis_y"),
+                Oracle.f32(request, "axis_z"));
+            Quaternionf rotation = new Quaternionf(
+                Oracle.f32(request, "rotation_x"),
+                Oracle.f32(request, "rotation_y"),
+                Oracle.f32(request, "rotation_z"),
+                Oracle.f32(request, "rotation_w"));
+            result.add("value", snapshot(Mth.rotationAroundAxis(
+                axis, rotation, new Quaternionf())));
         } else if (operation.equals("vec3")) {
             Vec3 vector = new Vec3(f64(request, "x"), f64(request, "y"), f64(request, "z"));
             var events = new JsonArray();
@@ -2099,6 +2112,15 @@ public final class MathOracle {
         state.addProperty("x", Oracle.bits(vector.x));
         state.addProperty("y", Oracle.bits(vector.y));
         state.addProperty("z", Oracle.bits(vector.z));
+        return state;
+    }
+
+    private static JsonObject snapshot(Quaternionf quaternion) {
+        var state = new JsonObject();
+        state.addProperty("x", Oracle.bits(quaternion.x));
+        state.addProperty("y", Oracle.bits(quaternion.y));
+        state.addProperty("z", Oracle.bits(quaternion.z));
+        state.addProperty("w", Oracle.bits(quaternion.w));
         return state;
     }
 

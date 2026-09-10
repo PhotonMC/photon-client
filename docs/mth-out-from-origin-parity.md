@@ -8,14 +8,14 @@ Java 25.0.4.1 ve Rust 1.98.1 / Linux x86_64 ortamında:
 
 - Default ve explicit step overload'larını, origin'in alt/üst sınıra clamp edilmesini, singleton/asimetrik aralıkları, aralığı aşan adımı, i32 origin sınırlarını ve lower/upper ile step hatalarını kapsayan toplam **24 özgün senaryo** hazırlandı.
 - Oracle referansı iki ayrı JVM çalıştırmasıyla yeniden doğrulandı.
-- Rust debug ve release adaptörleri güncel **1398/1398** math senaryosunda eşleşti.
-- Birleşik altı aile corpus'u **1900/1900** senaryoda hem debug hem release adaptörüyle eşleşti.
+- Rust debug ve release adaptörleri güncel **1422/1422** math senaryosunda eşleşti.
+- Birleşik altı aile corpus'u **1924/1924** senaryoda hem debug hem release adaptörüyle eşleşti.
 
-Math referans kimliği: `4cc46837e07b2a435f9a79ffddebd09d7fed0ad74e1310e64453de08cb4bf4bd`. Birleşik referans kimliği: `dd8cd9014d22178671ef078ce966d61e97e820f7256f6c8a55c5e30c2f1ec4ea`.
+Math referans kimliği: `cc96d24cc80c682020b8b8d28795f7b434dad5677010e1608fc1b6e2a730e5d7`. Birleşik referans kimliği: `a346583dc8bd7a5d672fe737c86d9febc8a2861cc99d0c486416f41813870b7c`.
 
-Adapter hashleri: debug `7fcaaf04b4fa67068cb95022cc7e832f9013a10846c57ad8dee850949ac64f59`, release `b98e59cbf911f59510b79a9d182e31d455c93c6084ae18d3ce74b07bab212466`.
+Adapter hashleri: debug `4e30afd61f45820df0f57541587fa8df456d9a1374ec71795c01f465ec26de87`, release `73c1c9ea2bef7322d279fc4f84d077a2009745e23f36ce680884b73fe11b7d45`.
 
-Yerel raporlar: `compare-xljwmsb7` ve `compare-s_oqvkq3` (math debug/release), `compare-uf5y7y3a` ve `compare-wrj9a6ex` (birleşik debug/release), `verify-_l31ex7g` (math) ve `verify-5ju3ok97` (birleşik) `.data/runs/behavior/` altında bulunur.
+Yerel raporlar: `compare-ox0b8e23` ve `compare-8yyrdrg5` (math debug/release), `compare-xbim8rgs` ve `compare-kg978z18` (birleşik debug/release), `verify-p7_v_2m3` (math) ve `verify-tw8nqf_h` (birleşik) `.data/runs/behavior/` altında bulunur.
 
 ## Sınırlar
 

@@ -3109,6 +3109,43 @@ def math_cases():
                "operation": "mth_mul_and_truncate", "numerator": numerator,
                "denominator": denominator, "factor": factor}
 
+    mth_rotation_around_axis = [
+        ("axis-x", (1.0, 0.0, 0.0), (0.5, -0.25, 0.75, 1.0)),
+        ("axis-y", (0.0, 1.0, 0.0), (-0.5, 0.25, -0.75, 1.0)),
+        ("axis-z", (0.0, 0.0, 1.0), (0.5, 0.25, -0.75, -1.0)),
+        ("non-unit-axis", (1.0, 2.0, 3.0), (0.25, -0.5, 0.75, 1.0)),
+        ("negative-axis", (-1.0, 2.0, -3.0), (0.25, 0.5, -0.75, -0.5)),
+        ("zero-axis", (0.0, 0.0, 0.0), (0.25, -0.5, 0.75, 1.0)),
+        ("zero-vector", (1.0, -2.0, 3.0), (0.0, 0.0, 0.0, 1.0)),
+        ("zero-scalar", (1.0, 2.0, 3.0), (0.25, -0.5, 0.75, 0.0)),
+        ("projection-negative", (1.0, 2.0, 3.0), (-1.0, -2.0, -3.0, 0.5)),
+        ("fma-cancellation", (1.0, 1.0, 1.0), (1.0, 0.00000011920928955078125, -1.0, 0.25)),
+        ("fma-order", (3.0, -2.0, 0.5), (0.125, 0.25, 0.75, -0.25)),
+        ("fractional-axis", (0.125, -0.25, 0.5), (0.75, 0.5, -0.25, 0.125)),
+        ("signed-zero", (-0.0, 0.0, -0.0), (-0.0, 0.0, -0.0, -0.0)),
+        ("signed-zero-projection", (-0.0, 1.0, 0.0), (0.0, -0.0, 0.0, 1.0)),
+        ("subnormal", (float.fromhex("0x0.000002p-126"), 1.0, -1.0),
+         (float.fromhex("0x0.000004p-126"), -0.5, 0.25, 0.5)),
+        ("tiny-quaternion", (1.0, -1.0, 0.5),
+         (float.fromhex("0x0.000002p-126"), float.fromhex("-0x0.000002p-126"), 0.0, 1.0)),
+        ("maximum-finite", (float.fromhex("0x1.fffffep127"), 1.0, -1.0),
+         (1.0, 0.5, -0.25, 0.75)),
+        ("infinite-axis", (float("inf"), 1.0, 0.0), (0.0, 1.0, 0.0, 1.0)),
+        ("infinite-rotation", (1.0, 0.0, 0.0), (float("inf"), 1.0, 0.0, 1.0)),
+        ("nan-axis", (float("nan"), 1.0, 0.0), (1.0, 0.0, 0.0, 1.0)),
+        ("nan-rotation", (1.0, 0.0, 0.0), (float("nan"), 1.0, 0.0, 1.0)),
+        ("zero-quaternion", (1.0, 2.0, 3.0), (0.0, 0.0, 0.0, 0.0)),
+        ("large-components", (4096.0, -2048.0, 1024.0), (512.0, 256.0, -128.0, 64.0)),
+        ("mixed-sign-finite", (-0.75, 1.25, -1.5), (2.5, -3.5, 4.5, -5.5)),
+    ]
+    for label, axis, rotation in mth_rotation_around_axis:
+        yield {"case_id": f"mth/rotation-around-axis/{label}", "family": "math",
+               "operation": "mth_rotation_around_axis",
+               "axis_x": float_bits(axis[0]), "axis_y": float_bits(axis[1]),
+               "axis_z": float_bits(axis[2]), "rotation_x": float_bits(rotation[0]),
+               "rotation_y": float_bits(rotation[1]), "rotation_z": float_bits(rotation[2]),
+               "rotation_w": float_bits(rotation[3])}
+
 
 def timer_cases():
     def trace(label, steps, start=0, tps=20, target=50):

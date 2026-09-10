@@ -5,7 +5,7 @@ use std::io::{self, BufRead, Write};
 use voxel_client::aabb::{Aabb, AabbBuilder, AabbBuilderError, BlockHitResult, BoundingBox};
 use voxel_client::binary::{self, BlockPos, ChunkPos, SectionPos, Uuid};
 use voxel_client::direction::{Axis, Direction};
-use voxel_client::math::{self, Vec2, Vec3, Vec3f};
+use voxel_client::math::{self, Quaternionf, Vec2, Vec3, Vec3f};
 use voxel_client::nbt::{self, Field, FieldValue};
 use voxel_client::random::RandomSource;
 use voxel_client::shape::{BooleanOp, ShapeRotation, Shapes, VoxelShape};
@@ -159,6 +159,15 @@ fn vec3f_snapshot(vector: Vec3f) -> Value {
         "x": format!("{:08x}", vector.x.to_bits()),
         "y": format!("{:08x}", vector.y.to_bits()),
         "z": format!("{:08x}", vector.z.to_bits()),
+    })
+}
+
+fn quaternion_snapshot(quaternion: Quaternionf) -> Value {
+    json!({
+        "x": format!("{:08x}", quaternion.x.to_bits()),
+        "y": format!("{:08x}", quaternion.y.to_bits()),
+        "z": format!("{:08x}", quaternion.z.to_bits()),
+        "w": format!("{:08x}", quaternion.w.to_bits()),
     })
 }
 
@@ -2588,6 +2597,22 @@ fn math_result(request: &Value) -> Result<Value, String> {
         let factor = i32_string_field(request, "factor")?;
         return Ok(json!({
             "value": math::mth_mul_and_truncate(numerator, denominator, factor).to_string()
+        }));
+    }
+    if operation == "mth_rotation_around_axis" {
+        let axis = Vec3f::new(
+            f32_field(request, "axis_x")?,
+            f32_field(request, "axis_y")?,
+            f32_field(request, "axis_z")?,
+        );
+        let rotation = Quaternionf::new(
+            f32_field(request, "rotation_x")?,
+            f32_field(request, "rotation_y")?,
+            f32_field(request, "rotation_z")?,
+            f32_field(request, "rotation_w")?,
+        );
+        return Ok(json!({
+            "value": quaternion_snapshot(math::mth_rotation_around_axis(axis, rotation))
         }));
     }
     if operation == "vec2" {

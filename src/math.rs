@@ -113,6 +113,39 @@ impl Vec3f {
     }
 }
 
+/// Four-component f32 value used by Java-compatible quaternion helpers.
+#[derive(Debug, Clone, Copy)]
+pub struct Quaternionf {
+    pub x: f32,
+    pub y: f32,
+    pub z: f32,
+    pub w: f32,
+}
+
+impl Quaternionf {
+    pub const fn new(x: f32, y: f32, z: f32, w: f32) -> Self {
+        Self { x, y, z, w }
+    }
+
+    fn normalized(self) -> Self {
+        // JOML accumulates the quaternion norm with a right-associated f32
+        // FMA chain, then narrows Math.sqrt's f64 result before dividing.
+        let length_squared = self.x.mul_add(
+            self.x,
+            self.y
+                .mul_add(self.y, self.z.mul_add(self.z, self.w * self.w)),
+        );
+        let square_root = f64::from(length_squared).sqrt() as f32;
+        let inverse = 1.0_f32 / square_root;
+        Self::new(
+            self.x * inverse,
+            self.y * inverse,
+            self.z * inverse,
+            self.w * inverse,
+        )
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct Vec3 {
     pub x: f64,
@@ -859,6 +892,20 @@ pub fn mth_mul_and_truncate(numerator: i32, denominator: i32, factor: i32) -> i3
     } else {
         product / denominator
     }
+}
+
+/// Return Java `Mth.rotationAroundAxis(Vector3fc, Quaternionf, Quaternionf)`.
+pub fn mth_rotation_around_axis(axis: Vec3f, rotation: Quaternionf) -> Quaternionf {
+    let projected_length = axis
+        .x
+        .mul_add(rotation.x, axis.y.mul_add(rotation.y, axis.z * rotation.z));
+    Quaternionf::new(
+        axis.x * projected_length,
+        axis.y * projected_length,
+        axis.z * projected_length,
+        rotation.w,
+    )
+    .normalized()
 }
 
 /// Return Java `Math.floorDiv(int, int)`, including Java's signed overflow.
