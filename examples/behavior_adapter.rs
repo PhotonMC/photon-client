@@ -2639,6 +2639,30 @@ fn math_result(request: &Value) -> Result<Value, String> {
         };
         return Ok(json!({"bits": bits}));
     }
+    if operation == "mth_lerp" {
+        let bits = match string(request, "type")? {
+            "f32" => format!(
+                "{:08x}",
+                math::mth_lerp_f32(
+                    f32_field(request, "alpha")?,
+                    f32_field(request, "p0")?,
+                    f32_field(request, "p1")?,
+                )
+                .to_bits()
+            ),
+            "f64" => format!(
+                "{:016x}",
+                math::mth_lerp_f64(
+                    f64_field(request, "alpha")?,
+                    f64_field(request, "p0")?,
+                    f64_field(request, "p1")?,
+                )
+                .to_bits()
+            ),
+            _ => return Err("unknown Mth lerp type".into()),
+        };
+        return Ok(json!({"bits": bits}));
+    }
     if operation == "vec2" {
         let mut vector = Vec2::new(f32_field(request, "x")?, f32_field(request, "y")?);
         let mut events = vec![vec2_snapshot(vector)];

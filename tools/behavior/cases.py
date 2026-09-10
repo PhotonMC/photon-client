@@ -3173,6 +3173,28 @@ def math_cases():
                    "value": float_bits(value, width), "min": float_bits(minimum, width),
                    "max": float_bits(maximum, width)}
 
+        mth_lerp = [
+            ("basic", 0.25, 0.0, 8.0),
+            ("negative-extrapolation", -0.5, 2.0, 10.0),
+            ("over-one", 1.5, 2.0, 10.0),
+            ("negative-range", 0.25, -4.0, 8.0),
+            ("reverse-endpoints", 0.25, 8.0, -4.0),
+            ("same-endpoints", 0.75, 3.0, 3.0),
+            ("alpha-signed-zero", -0.0, 0.0, 1.0),
+            ("negative-zero-start", 0.0, -0.0, 1.0),
+            ("subnormal", 2.0 * subnormal, subnormal, 3.0 * subnormal),
+            ("maximum-finite-difference", 0.5, -maximum_finite, maximum_finite),
+            ("infinite-alpha", float("inf"), 0.0, 1.0),
+            ("nan-alpha", float("nan"), 0.0, 1.0),
+            ("infinite-endpoint", 0.5, 0.0, float("inf")),
+            ("nan-endpoint", 0.5, float("nan"), 1.0),
+        ]
+        for label, alpha, p0, p1 in mth_lerp:
+            yield {"case_id": f"mth/lerp/{width}/{label}", "family": "math",
+                   "operation": "mth_lerp", "type": width,
+                   "alpha": float_bits(alpha, width), "p0": float_bits(p0, width),
+                   "p1": float_bits(p1, width)}
+
 
 def timer_cases():
     def trace(label, steps, start=0, tps=20, target=50):

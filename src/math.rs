@@ -750,6 +750,16 @@ pub fn mth_inverse_lerp_f64(value: f64, minimum: f64, maximum: f64) -> f64 {
     numerator / denominator
 }
 
+/// Return Java `Mth.lerp(float, float, float)` in source order.
+pub fn mth_lerp_f32(alpha: f32, start: f32, end: f32) -> f32 {
+    start + alpha * (end - start)
+}
+
+/// Return Java `Mth.lerp(double, double, double)` in source order.
+pub fn mth_lerp_f64(alpha: f64, start: f64, end: f64) -> f64 {
+    start + alpha * (end - start)
+}
+
 /// Return Java `Mth.nextInt(RandomSource, int, int)`, including its
 /// min-greater-than-or-equal-to-max short circuit.
 pub fn mth_next_int(

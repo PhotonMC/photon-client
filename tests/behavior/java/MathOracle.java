@@ -575,6 +575,18 @@ public final class MathOracle {
             } else {
                 throw new IllegalArgumentException("Unknown Mth inverseLerp type");
             }
+        } else if (operation.equals("mth_lerp")) {
+            String width = request.get("type").getAsString();
+            if (width.equals("f32")) {
+                result.addProperty("bits", Oracle.bits(Mth.lerp(
+                    Oracle.f32(request, "alpha"), Oracle.f32(request, "p0"),
+                    Oracle.f32(request, "p1"))));
+            } else if (width.equals("f64")) {
+                result.addProperty("bits", Oracle.bits(Mth.lerp(
+                    f64(request, "alpha"), f64(request, "p0"), f64(request, "p1"))));
+            } else {
+                throw new IllegalArgumentException("Unknown Mth lerp type");
+            }
         } else if (operation.equals("vec3")) {
             Vec3 vector = new Vec3(f64(request, "x"), f64(request, "y"), f64(request, "z"));
             var events = new JsonArray();
