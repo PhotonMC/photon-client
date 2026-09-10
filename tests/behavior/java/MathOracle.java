@@ -97,6 +97,25 @@ public final class MathOracle {
                 throw new IllegalArgumentException("Unknown direction name");
             }
             result.addProperty("bits", Oracle.bits(facing.toYRot()));
+        } else if (operation.equals("direction_nearest")) {
+            Direction fallback = directionOrElse(request);
+            Direction facing;
+            if (request.get("kind").getAsString().equals("components")) {
+                facing = Direction.getNearest(
+                    Integer.parseInt(request.get("x").getAsString()),
+                    Integer.parseInt(request.get("y").getAsString()),
+                    Integer.parseInt(request.get("z").getAsString()),
+                    fallback);
+            } else if (request.get("kind").getAsString().equals("vec3i")) {
+                facing = Direction.getNearest(blockPos(request), fallback);
+            } else {
+                throw new IllegalArgumentException("Unknown Direction nearest kind");
+            }
+            if (facing == null) {
+                result.add("value", null);
+            } else {
+                result.add("value", snapshot(facing));
+            }
         } else if (operation.equals("coord")) {
             int value = Integer.parseInt(request.get("value").getAsString());
             String fn = request.get("fn").getAsString();
@@ -2024,6 +2043,18 @@ public final class MathOracle {
             Integer.parseInt(object.get("y").getAsString()),
             Integer.parseInt(object.get("z").getAsString())
         );
+    }
+
+    private static Direction directionOrElse(JsonObject object) {
+        String name = object.get("or_else").getAsString();
+        if (name.equals("none")) {
+            return null;
+        }
+        Direction direction = Direction.byName(name);
+        if (direction == null) {
+            throw new IllegalArgumentException("Unknown fallback direction");
+        }
+        return direction;
     }
 
     private static Vec3 vec3(JsonObject object) {

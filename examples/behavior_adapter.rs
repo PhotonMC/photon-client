@@ -3157,6 +3157,27 @@ fn math_result(request: &Value) -> Result<Value, String> {
             "bits": format!("{:08x}", facing.to_y_rot().to_bits()),
         }));
     }
+    if operation == "direction_nearest" {
+        let coordinate = |name: &str| {
+            string(request, name)?
+                .parse::<i32>()
+                .map_err(|error| error.to_string())
+        };
+        let or_else = match string(request, "or_else")? {
+            "none" => None,
+            name => Some(Direction::from_name(name).ok_or("unknown fallback direction")?),
+        };
+        let facing = Direction::get_nearest(
+            coordinate("x")?,
+            coordinate("y")?,
+            coordinate("z")?,
+            or_else,
+        );
+        return Ok(match facing {
+            Some(facing) => json!({"value": direction_snapshot(facing)}),
+            None => json!({}),
+        });
+    }
     if operation == "coord" {
         let value = string(request, "value")?
             .parse::<i32>()

@@ -155,6 +155,22 @@ impl Direction {
         ((self.data2d() & 3) * 90) as f32
     }
 
+    /// Return Java `Direction.getNearest(int, int, int, Direction)` with nullable fallback.
+    pub fn get_nearest(x: i32, y: i32, z: i32, or_else: Option<Self>) -> Option<Self> {
+        let abs_x = x.wrapping_abs();
+        let abs_y = y.wrapping_abs();
+        let abs_z = z.wrapping_abs();
+        if abs_x > abs_z && abs_x > abs_y {
+            Some(if x < 0 { Self::West } else { Self::East })
+        } else if abs_z > abs_x && abs_z > abs_y {
+            Some(if z < 0 { Self::North } else { Self::South })
+        } else if abs_y > abs_x && abs_y > abs_z {
+            Some(if y < 0 { Self::Down } else { Self::Up })
+        } else {
+            or_else
+        }
+    }
+
     /// Choose the direction with the greatest Java float dot product.
     pub fn approximate_nearest(dx: f64, dy: f64, dz: f64) -> Self {
         let dx = dx as f32;

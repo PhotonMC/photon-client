@@ -1326,6 +1326,29 @@ def math_cases():
     for name in ("down", "up", "north", "south", "west", "east"):
         yield {"case_id": f"direction/to-y-rot/{name}", "family": "math",
                "operation": "direction_to_y_rot", "name": name}
+    direction_nearest_cases = [
+        ("components/x-positive", "components", 3, 1, 2, "none"),
+        ("components/x-negative", "components", -3, 1, 2, "none"),
+        ("components/z-positive", "components", 1, 2, 4, "none"),
+        ("components/z-negative", "components", 1, 2, -4, "none"),
+        ("components/y-positive", "components", 1, 5, 2, "none"),
+        ("components/y-negative", "components", 1, -5, 2, "none"),
+        ("components/tie-x-z", "components", 4, 1, 4, "west"),
+        ("components/tie-x-y", "components", 4, 4, 1, "south"),
+        ("components/zero-none", "components", 0, 0, 0, "none"),
+        ("components/zero-fallback", "components", 0, 0, 0, "north"),
+        ("components/min-x", "components", -2147483648, 0, 0, "none"),
+        ("components/min-y", "components", 0, -2147483648, 0, "east"),
+        ("vec3i/x-positive", "vec3i", 3, 1, 2, "none"),
+        ("vec3i/z-negative", "vec3i", 1, 2, -4, "none"),
+        ("vec3i/tie", "vec3i", 2, 2, 0, "down"),
+        ("vec3i/zero-none", "vec3i", 0, 0, 0, "none"),
+        ("vec3i/min-z", "vec3i", 0, 0, -2147483648, "up"),
+    ]
+    for name, kind, x, y, z, or_else in direction_nearest_cases:
+        yield {"case_id": f"direction/nearest/{name}", "family": "math",
+               "operation": "direction_nearest", "kind": kind, "x": str(x),
+               "y": str(y), "z": str(z), "or_else": or_else}
     coords = [0, 1, 15, 16, 17, -1, -15, -16, -17, 31, 32, -32, -33,
               2147483647, -2147483648, 33554431, -33554432, 2097151, -2097152]
     for fn in ("block_to_section", "section_to_block", "section_relative"):
