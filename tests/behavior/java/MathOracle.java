@@ -220,6 +220,18 @@ public final class MathOracle {
                 throw new IllegalArgumentException("Unknown direction name");
             }
             result.addProperty("bits", Oracle.bits(facing.toYRot()));
+        } else if (operation.equals("direction_get_y_rot")) {
+            Direction facing = Direction.byName(request.get("name").getAsString());
+            if (facing == null) {
+                throw new IllegalArgumentException("Unknown direction name");
+            }
+            try {
+                result.addProperty("outcome", "value");
+                result.addProperty("bits", Oracle.bits(Direction.getYRot(facing)));
+            } catch (IllegalStateException error) {
+                result.addProperty("outcome", "error");
+                result.addProperty("error", error.getMessage());
+            }
         } else if (operation.equals("direction_nearest")) {
             Direction fallback = directionOrElse(request);
             Direction facing;

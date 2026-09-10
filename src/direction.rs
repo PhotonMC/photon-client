@@ -16,6 +16,11 @@ pub enum Direction {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DirectionYRotError {
+    Vertical(Direction),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Axis {
     X,
     Y,
@@ -161,6 +166,17 @@ impl Direction {
     /// Return Java `Direction.toYRot()` as a float after its integer data mask.
     pub fn to_y_rot(self) -> f32 {
         ((self.data2d() & 3) * 90) as f32
+    }
+
+    /// Return Java `Direction.getYRot(Direction)`, including its vertical error path.
+    pub fn get_y_rot(direction: Self) -> Result<f32, DirectionYRotError> {
+        match direction {
+            Self::North => Ok(180.0),
+            Self::South => Ok(0.0),
+            Self::West => Ok(90.0),
+            Self::East => Ok(-90.0),
+            Self::Down | Self::Up => Err(DirectionYRotError::Vertical(direction)),
+        }
     }
 
     /// Return Java `Direction.getNearest(int, int, int, Direction)` with nullable fallback.

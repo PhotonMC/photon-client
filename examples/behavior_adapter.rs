@@ -4,7 +4,7 @@ use serde_json::{Value, json};
 use std::io::{self, BufRead, Write};
 use voxel_client::aabb::{Aabb, AabbBuilder, AabbBuilderError, BlockHitResult, BoundingBox};
 use voxel_client::binary::{self, BlockPos, ChunkPos, SectionPos, Uuid};
-use voxel_client::direction::{Axis, AxisDirection, Direction, Plane};
+use voxel_client::direction::{Axis, AxisDirection, Direction, DirectionYRotError, Plane};
 use voxel_client::math::{self, Quaternionf, Vec2, Vec3, Vec3f};
 use voxel_client::nbt::{self, Field, FieldValue};
 use voxel_client::random::RandomSource;
@@ -3290,6 +3290,16 @@ fn math_result(request: &Value) -> Result<Value, String> {
         return Ok(json!({
             "bits": format!("{:08x}", facing.to_y_rot().to_bits()),
         }));
+    }
+    if operation == "direction_get_y_rot" {
+        let facing = Direction::from_name(string(request, "name")?).ok_or("unknown direction")?;
+        return Ok(match Direction::get_y_rot(facing) {
+            Ok(value) => json!({"outcome": "value", "bits": format!("{:08x}", value.to_bits())}),
+            Err(DirectionYRotError::Vertical(direction)) => json!({
+                "outcome": "error",
+                "error": format!("No y-Rot for vertical axis: {}", direction.name()),
+            }),
+        });
     }
     if operation == "direction_nearest" {
         let coordinate = |name: &str| {
