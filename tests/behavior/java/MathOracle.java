@@ -272,6 +272,55 @@ public final class MathOracle {
                 probes.add(state);
             }
             result.add("probes", probes);
+        } else if (operation.equals("clamping_lazy_max_int_range")) {
+            var maxValues = new ArrayList<Integer>();
+            for (JsonElement entry : request.getAsJsonArray("max_values")) {
+                maxValues.add(entry.getAsInt());
+            }
+            int[] maxCalls = {0};
+            java.util.function.IntSupplier maxSupplier = () -> {
+                int index = Math.min(maxCalls[0]++, maxValues.size() - 1);
+                return maxValues.get(index);
+            };
+            OptionInstance.ClampingLazyMaxIntRange range = new OptionInstance.ClampingLazyMaxIntRange(
+                request.get("min").getAsInt(), maxSupplier, request.get("encodable_max").getAsInt());
+            result.addProperty("min", range.minInclusive());
+            result.addProperty("encodable_max", range.encodableMaxInclusive());
+            var maxima = new JsonArray();
+            maxima.add(range.maxInclusive());
+            maxima.add(range.maxInclusive());
+            result.add("maxima", maxima);
+            result.addProperty("create_cycle_button", range.createCycleButton());
+            var valueListSupplier = range.valueListSupplier();
+            result.add("values", new JsonArray());
+            for (Integer value : valueListSupplier.getDefaultList()) {
+                result.getAsJsonArray("values").add(value);
+            }
+            result.add("selected_values", new JsonArray());
+            for (Integer value : valueListSupplier.getSelectedList()) {
+                result.getAsJsonArray("selected_values").add(value);
+            }
+            var probes = new JsonArray();
+            for (JsonElement entry : request.getAsJsonArray("probes")) {
+                int value = entry.getAsInt();
+                var state = new JsonObject();
+                state.addProperty("value", value);
+                state.addProperty("validated", range.validateValue(value).orElseThrow());
+                state.addProperty("next", range.next(value).orElseThrow());
+                state.addProperty("previous", range.previous(value).orElseThrow());
+                state.addProperty("to_slider", Oracle.bits(range.toSliderValue(value)));
+                probes.add(state);
+            }
+            result.add("probes", probes);
+            var sliders = new JsonArray();
+            for (JsonElement entry : request.getAsJsonArray("sliders")) {
+                double slider = f64(entry.getAsString());
+                var state = new JsonObject();
+                state.addProperty("slider", Oracle.bits(slider));
+                state.addProperty("from_slider", range.fromSliderValue(slider));
+                sliders.add(state);
+            }
+            result.add("sliders", sliders);
         } else if (operation.equals("scroll_wheel")) {
             ScrollWheelHandler handler = new ScrollWheelHandler();
             var events = new JsonArray();

@@ -20,7 +20,9 @@ use voxel_client::input_event::{
 use voxel_client::key_mapping::{InputKey, KeyMapping, KeyMappingRegistry};
 use voxel_client::math::{self, Quaternionf, Vec2, Vec3, Vec3f};
 use voxel_client::nbt::{self, Field, FieldValue};
-use voxel_client::option::{CycleableEnum, IntRange, LazyEnum, SliderableEnum, UnitDouble};
+use voxel_client::option::{
+    ClampingLazyMaxIntRange, CycleableEnum, IntRange, LazyEnum, SliderableEnum, UnitDouble,
+};
 use voxel_client::random::RandomSource;
 use voxel_client::scroll::ScrollWheelHandler;
 use voxel_client::shape::{BooleanOp, ShapeRotation, Shapes, VoxelShape};
@@ -470,6 +472,80 @@ fn lazy_enum_result(request: &Value) -> Result<Value, String> {
         "second_default": second_values,
         "second_selected": second_values.clone(),
         "probes": probes,
+    }))
+}
+
+fn clamping_lazy_max_int_range_result(request: &Value) -> Result<Value, String> {
+    let max_values = request["max_values"]
+        .as_array()
+        .ok_or("max_values must be an array")?
+        .iter()
+        .map(|value| {
+            value
+                .as_i64()
+                .ok_or("max_values entries must be integers")?
+                .try_into()
+                .map_err(|_| "max_values entry must fit in i32".to_owned())
+        })
+        .collect::<Result<Vec<i32>, String>>()?;
+    if max_values.is_empty() {
+        return Err("max_values must not be empty".into());
+    }
+    let supplied_maxima = max_values.clone();
+    let max_calls = Rc::new(RefCell::new(0_usize));
+    let supplier_calls = Rc::clone(&max_calls);
+    let range = ClampingLazyMaxIntRange::new(
+        i32_field(request, "min")?,
+        move || {
+            let mut call = supplier_calls.borrow_mut();
+            let index = (*call).min(supplied_maxima.len() - 1);
+            *call += 1;
+            supplied_maxima[index]
+        },
+        i32_field(request, "encodable_max")?,
+    );
+    let maxima = vec![range.max_inclusive(), range.max_inclusive()];
+    let probes = request["probes"]
+        .as_array()
+        .ok_or("probes must be an array")?
+        .iter()
+        .map(|entry| {
+            let value = entry
+                .as_i64()
+                .ok_or("probe entries must be integers")?
+                .try_into()
+                .map_err(|_| "probe entry must fit in i32".to_owned())?;
+            Ok(json!({
+                "value": value,
+                "validated": range.validate_value(value),
+                "next": range.next(value),
+                "previous": range.previous(value),
+                "to_slider": format!("{:016x}", range.to_slider_value(value).to_bits()),
+            }))
+        })
+        .collect::<Result<Vec<_>, String>>()?;
+    let sliders = request["sliders"]
+        .as_array()
+        .ok_or("sliders must be an array")?
+        .iter()
+        .map(|entry| {
+            let slider = f64_value(entry, "slider")?;
+            Ok(json!({
+                "slider": format!("{:016x}", slider.to_bits()),
+                "from_slider": range.from_slider_value(slider),
+            }))
+        })
+        .collect::<Result<Vec<_>, String>>()?;
+    let values = range.values();
+    Ok(json!({
+        "min": range.min_inclusive(),
+        "encodable_max": range.encodable_max_inclusive(),
+        "maxima": maxima,
+        "create_cycle_button": range.create_cycle_button(),
+        "values": values.clone(),
+        "selected_values": values,
+        "probes": probes,
+        "sliders": sliders,
     }))
 }
 
@@ -4633,6 +4709,9 @@ fn math_result(request: &Value) -> Result<Value, String> {
     }
     if operation == "lazy_enum" {
         return lazy_enum_result(request);
+    }
+    if operation == "clamping_lazy_max_int_range" {
+        return clamping_lazy_max_int_range_result(request);
     }
     if operation == "scroll_wheel" {
         return scroll_wheel_result(request);

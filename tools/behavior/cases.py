@@ -177,6 +177,20 @@ def math_cases():
         ["default", "alternate", "external"],
     )
 
+    def clamping_lazy_max_int_range_case(label, minimum, max_values, encodable_max, probes, sliders):
+        return {
+            "case_id": f"clamping-lazy-max-int-range/{label}", "family": "math",
+            "operation": "clamping_lazy_max_int_range", "min": minimum,
+            "max_values": max_values, "encodable_max": encodable_max,
+            "probes": probes, "sliders": [float_bits(value, "f64") for value in sliders],
+        }
+
+    yield clamping_lazy_max_int_range_case(
+        "dynamic-upper-bound", -2, [3, 5], 7,
+        [-3, -2, -1, 0, 3, 5, 6],
+        [-float("inf"), -0.2, 0.0, 0.1, 0.5, 0.99999, 1.0, 1.5, float("inf"), float("nan")],
+    )
+
     def scroll_wheel_case(label, scrolls, selections):
         return {
             "case_id": f"scroll-wheel/{label}", "family": "math",

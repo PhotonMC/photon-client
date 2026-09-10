@@ -237,3 +237,95 @@ where
         (self.validate_value)(value)
     }
 }
+
+/// Integer range whose upper bound is supplied when it is read.
+pub struct ClampingLazyMaxIntRange<Max>
+where
+    Max: Fn() -> i32,
+{
+    min_inclusive: i32,
+    max_supplier: Max,
+    encodable_max_inclusive: i32,
+}
+
+impl<Max> ClampingLazyMaxIntRange<Max>
+where
+    Max: Fn() -> i32,
+{
+    pub fn new(min_inclusive: i32, max_supplier: Max, encodable_max_inclusive: i32) -> Self {
+        Self {
+            min_inclusive,
+            max_supplier,
+            encodable_max_inclusive,
+        }
+    }
+
+    pub const fn min_inclusive(&self) -> i32 {
+        self.min_inclusive
+    }
+
+    pub fn max_inclusive(&self) -> i32 {
+        (self.max_supplier)()
+    }
+
+    pub const fn encodable_max_inclusive(&self) -> i32 {
+        self.encodable_max_inclusive
+    }
+
+    pub fn validate_value(&self, value: i32) -> i32 {
+        value.max(self.min_inclusive).min(self.max_inclusive())
+    }
+
+    pub const fn next(&self, current: i32) -> i32 {
+        current.wrapping_add(1)
+    }
+
+    pub const fn previous(&self, current: i32) -> i32 {
+        current.wrapping_sub(1)
+    }
+
+    pub fn to_slider_value(&self, value: i32) -> f64 {
+        let maximum = self.max_inclusive();
+        if value == self.min_inclusive {
+            0.0
+        } else if value == maximum {
+            1.0
+        } else {
+            map(
+                f64::from(value) + 0.5,
+                f64::from(self.min_inclusive),
+                f64::from(maximum) + 1.0,
+                0.0,
+                1.0,
+            )
+        }
+    }
+
+    pub fn from_slider_value(&self, mut slider: f64) -> i32 {
+        let maximum = self.max_inclusive();
+        if slider >= 1.0 {
+            slider = f64::from(0.99999_f32);
+        }
+        map(
+            slider,
+            0.0,
+            1.0,
+            f64::from(self.min_inclusive),
+            f64::from(maximum) + 1.0,
+        )
+        .floor() as i32
+    }
+
+    pub const fn create_cycle_button(&self) -> bool {
+        true
+    }
+
+    pub fn values(&self) -> Vec<i32> {
+        let end = self.max_inclusive().wrapping_add(1);
+        if self.min_inclusive >= end {
+            Vec::new()
+        } else {
+            (self.min_inclusive..end).collect()
+        }
+    }
+}
