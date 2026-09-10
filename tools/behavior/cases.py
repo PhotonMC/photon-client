@@ -1866,6 +1866,31 @@ def math_cases():
     for label, values in blockpos_within_manhattan.items():
         yield {"case_id": f"blockpos/within-manhattan/{label}", "family": "math",
                "operation": "blockpos_within_manhattan", **values}
+    blockpos_spiral_around = {
+        "radius-one-horizontal": {
+            "center": {"x": "0", "y": "0", "z": "0"}, "radius": "1",
+            "first_direction": "north", "second_direction": "east",
+        },
+        "radius-two-horizontal": {
+            "center": {"x": "5", "y": "-2", "z": "7"}, "radius": "2",
+            "first_direction": "west", "second_direction": "south",
+        },
+        "vertical": {
+            "center": {"x": "2147483647", "y": "-2147483648", "z": "0"}, "radius": "1",
+            "first_direction": "up", "second_direction": "north",
+        },
+        "zero-radius": {
+            "center": {"x": "-3", "y": "4", "z": "-5"}, "radius": "0",
+            "first_direction": "south", "second_direction": "east",
+        },
+        "negative-radius": {
+            "center": {"x": "1", "y": "2", "z": "3"}, "radius": "-1",
+            "first_direction": "north", "second_direction": "east",
+        },
+    }
+    for label, values in blockpos_spiral_around.items():
+        yield {"case_id": f"blockpos/spiral-around/{label}", "family": "math",
+               "operation": "blockpos_spiral_around", **values}
     for label, (x, y, z) in {
         "origin": (0, 0, 0),
         "positive-boundary": (15, 15, 15),

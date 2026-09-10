@@ -2069,6 +2069,17 @@ fn math_result(request: &Value) -> Result<Value, String> {
             )),
         }));
     }
+    if operation == "blockpos_spiral_around" {
+        let center = blockpos(request.get("center").ok_or("center must be an object")?)?;
+        let radius = i32_string_field(request, "radius")?;
+        let first_direction = Direction::from_name(string(request, "first_direction")?)
+            .ok_or("unknown first spiral direction")?;
+        let second_direction = Direction::from_name(string(request, "second_direction")?)
+            .ok_or("unknown second spiral direction")?;
+        let positions = BlockPos::spiral_around(center, radius, first_direction, second_direction)
+            .map_err(|_| "spiral directions must use different axes".to_owned())?;
+        return Ok(blockpos_positions_snapshot(positions));
+    }
     if operation == "blockpos_neighbor_column" {
         return Ok(blockpos_positions_snapshot(BlockPos::neighbor_column(
             i32_string_field(request, "start_x")?,

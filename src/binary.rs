@@ -170,6 +170,11 @@ impl BlockRotation {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SpiralAroundError {
+    SameAxis,
+}
+
 /// Integer block coordinates with reference packing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct BlockPos {
@@ -510,6 +515,54 @@ impl BlockPos {
                     break;
                 }
             }
+        }
+    }
+
+    /// Enumerate Java's spiral iterator from two directions on different axes.
+    pub fn spiral_around(
+        center: Self,
+        radius: i32,
+        first_direction: Direction,
+        second_direction: Direction,
+    ) -> Result<Vec<Self>, SpiralAroundError> {
+        if first_direction.axis() == second_direction.axis() {
+            return Err(SpiralAroundError::SameAxis);
+        }
+
+        let legs = 4_i32.wrapping_mul(radius);
+        if legs < 0 {
+            return Ok(Vec::new());
+        }
+
+        let directions = [
+            first_direction,
+            second_direction,
+            first_direction.opposite(),
+            second_direction.opposite(),
+        ];
+        let mut cursor = center.relative_direction(second_direction, 1);
+        let mut last = cursor;
+        let mut positions = Vec::new();
+        let mut leg: i32 = -1;
+        let mut leg_size: i32 = 0;
+        let mut leg_index: i32 = 0;
+
+        loop {
+            let direction = directions[(leg.wrapping_add(4) % 4) as usize];
+            cursor = last.relative_direction(direction, 1);
+            last = cursor;
+            if leg_index >= leg_size {
+                if leg >= legs {
+                    return Ok(positions);
+                }
+
+                leg = leg.wrapping_add(1);
+                leg_index = 0;
+                leg_size = leg / 2 + 1;
+            }
+
+            leg_index = leg_index.wrapping_add(1);
+            positions.push(cursor);
         }
     }
 

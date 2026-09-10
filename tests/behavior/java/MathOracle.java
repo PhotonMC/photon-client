@@ -647,6 +647,16 @@ public final class MathOracle {
                 .forEach(pos -> streamPositions.add(snapshot(pos)));
             result.add("positions", positions);
             result.add("stream_positions", streamPositions);
+        } else if (operation.equals("blockpos_spiral_around")) {
+            BlockPos center = blockPos(request.getAsJsonObject("center"));
+            int radius = Integer.parseInt(request.get("radius").getAsString());
+            Direction firstDirection = Direction.byName(request.get("first_direction").getAsString());
+            Direction secondDirection = Direction.byName(request.get("second_direction").getAsString());
+            var positions = new JsonArray();
+            for (BlockPos.MutableBlockPos pos : BlockPos.spiralAround(center, radius, firstDirection, secondDirection)) {
+                positions.add(snapshot(pos));
+            }
+            result.add("positions", positions);
         } else if (operation.equals("section_relative")) {
             short relative = SectionPos.sectionRelativePos(blockPos(request));
             result.addProperty("relative", Integer.toString(Short.toUnsignedInt(relative)));
