@@ -183,6 +183,14 @@ const X_OFFSET: u32 = PACKED_Y_LENGTH + PACKED_HORIZONTAL_LENGTH;
 const Z_OFFSET: u32 = PACKED_Y_LENGTH;
 pub const MAX_HORIZONTAL_COORDINATE: i32 = (1 << PACKED_HORIZONTAL_LENGTH) / 2 - 1;
 
+fn java_abs_i32(value: i32) -> i32 {
+    if value < 0 {
+        value.wrapping_neg()
+    } else {
+        value
+    }
+}
+
 impl BlockPos {
     pub const ZERO: Self = Self::new(0, 0, 0);
     pub const PACKED_HORIZONTAL_LENGTH: u32 = PACKED_HORIZONTAL_LENGTH;
@@ -291,6 +299,27 @@ impl BlockPos {
     /// Return Java `Vec3i.closerThan(Vec3i, double)`.
     pub fn closer_than(self, pos: Self, distance: f64) -> bool {
         self.dist_sqr(pos) < distance * distance
+    }
+
+    /// Return Java `Vec3i.distManhattan(Vec3i)` with Java int/float casts.
+    pub fn dist_manhattan(self, pos: Self) -> i32 {
+        let xd = java_abs_i32(pos.x.wrapping_sub(self.x)) as f32;
+        let yd = java_abs_i32(pos.y.wrapping_sub(self.y)) as f32;
+        let zd = java_abs_i32(pos.z.wrapping_sub(self.z)) as f32;
+        (xd + yd + zd) as i32
+    }
+
+    /// Return Java `Vec3i.distChessboard(Vec3i)` with Java i32 arithmetic.
+    pub fn dist_chessboard(self, pos: Self) -> i32 {
+        let xd = java_abs_i32(self.x.wrapping_sub(pos.x));
+        let yd = java_abs_i32(self.y.wrapping_sub(pos.y));
+        let zd = java_abs_i32(self.z.wrapping_sub(pos.z));
+        xd.max(yd).max(zd)
+    }
+
+    /// Return Java `Vec3i.get(Direction.Axis)`.
+    pub fn get(self, axis: crate::direction::Axis) -> i32 {
+        axis.choose_i32(self.x, self.y, self.z)
     }
 
     /// Return Java `BlockPos.relative(Direction)` and its stepped overload.

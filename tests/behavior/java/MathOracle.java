@@ -547,6 +547,16 @@ public final class MathOracle {
             result.addProperty("dist_center_sqr", Oracle.bits(pos.distToCenterSqr(
                 f64(point, "x"), f64(point, "y"), f64(point, "z"))));
             result.addProperty("closer_than", pos.closerThan(other, distance));
+        } else if (operation.equals("blockpos_integer_helpers")) {
+            BlockPos pos = blockPos(request);
+            BlockPos other = blockPos(request.getAsJsonObject("other"));
+            var selected = new JsonObject();
+            selected.addProperty("x", pos.get(Direction.Axis.X));
+            selected.addProperty("y", pos.get(Direction.Axis.Y));
+            selected.addProperty("z", pos.get(Direction.Axis.Z));
+            result.addProperty("dist_manhattan", pos.distManhattan(other));
+            result.addProperty("dist_chessboard", pos.distChessboard(other));
+            result.add("get", selected);
         } else if (operation.equals("section_relative")) {
             short relative = SectionPos.sectionRelativePos(blockPos(request));
             result.addProperty("relative", Integer.toString(Short.toUnsignedInt(relative)));

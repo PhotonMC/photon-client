@@ -323,6 +323,18 @@ fn blockpos_distance_helpers_snapshot(
     })
 }
 
+fn blockpos_integer_helpers_snapshot(value: BlockPos, other: BlockPos) -> Value {
+    json!({
+        "dist_manhattan": value.dist_manhattan(other),
+        "dist_chessboard": value.dist_chessboard(other),
+        "get": {
+            "x": value.get(Axis::X),
+            "y": value.get(Axis::Y),
+            "z": value.get(Axis::Z),
+        },
+    })
+}
+
 fn chunkpos(value: &Value) -> Result<ChunkPos, String> {
     let coordinate = |name: &str| {
         string(value, name)?
@@ -1997,6 +2009,11 @@ fn math_result(request: &Value) -> Result<Value, String> {
         return Ok(blockpos_distance_helpers_snapshot(
             value, other, point, distance,
         ));
+    }
+    if operation == "blockpos_integer_helpers" {
+        let value = blockpos(request)?;
+        let other = blockpos(request.get("other").ok_or("other must be an object")?)?;
+        return Ok(blockpos_integer_helpers_snapshot(value, other));
     }
     if operation == "section_relative" {
         return section_relative_result(request);

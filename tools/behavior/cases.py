@@ -1701,6 +1701,28 @@ def math_cases():
     for label, values in blockpos_distance_helpers.items():
         yield {"case_id": f"blockpos/distance-helpers/{label}", "family": "math",
                "operation": "blockpos_distance_helpers", **values}
+    blockpos_integer_helpers = {
+        "basic": {
+            "x": "0", "y": "0", "z": "0", "other": {"x": "3", "y": "-4", "z": "5"},
+        },
+        "negative": {
+            "x": "-10", "y": "20", "z": "-30", "other": {"x": "-7", "y": "24", "z": "-35"},
+        },
+        "same": {
+            "x": "17", "y": "-16", "z": "1", "other": {"x": "17", "y": "-16", "z": "1"},
+        },
+        "min-abs-edge": {
+            "x": "0", "y": "-2147483648", "z": "0",
+            "other": {"x": "-2147483648", "y": "0", "z": "-2147483648"},
+        },
+        "integer-boundaries": {
+            "x": "2147483647", "y": "-2147483648", "z": "2147483647",
+            "other": {"x": "-2147483648", "y": "2147483647", "z": "-2147483648"},
+        },
+    }
+    for label, values in blockpos_integer_helpers.items():
+        yield {"case_id": f"blockpos/integer-helpers/{label}", "family": "math",
+               "operation": "blockpos_integer_helpers", **values}
     for label, (x, y, z) in {
         "origin": (0, 0, 0),
         "positive-boundary": (15, 15, 15),
