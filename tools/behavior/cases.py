@@ -59,6 +59,26 @@ def wire_cases():
 
 
 def math_cases():
+    def character_event_case(label, codepoint):
+        return {
+            "case_id": f"character-event/{label}", "family": "math",
+            "operation": "character_event", "codepoint": codepoint,
+        }
+
+    character_event_cases = [
+        character_event_case("nul", 0),
+        character_event_case("space", 32),
+        character_event_case("ascii", 65),
+        character_event_case("newline", 10),
+        character_event_case("delete", 127),
+        character_event_case("section-sign", 167),
+        character_event_case("accented", 0x00E9),
+        character_event_case("surrogate", 0xD800),
+        character_event_case("supplementary", 0x1F600),
+        character_event_case("maximum", 0x10FFFF),
+    ]
+    yield from character_event_cases
+
     def input_event_case(label, key, scancode, modifiers, mouse_button, mouse_x, mouse_y):
         return {
             "case_id": f"input-with-modifiers/{label}", "family": "math",

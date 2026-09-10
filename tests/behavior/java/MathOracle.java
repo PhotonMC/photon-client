@@ -17,6 +17,7 @@ import net.minecraft.SharedConstants;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Options;
 import net.minecraft.client.ToggleKeyMapping;
+import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.InputWithModifiers;
 import net.minecraft.client.input.MouseButtonEvent;
@@ -78,6 +79,11 @@ public final class MathOracle {
             keyboard.tick();
             result.add("key_presses", snapshot(keyboard.keyPresses));
             result.add("move_vector", snapshot(keyboard.getMoveVector()));
+        } else if (operation.equals("character_event")) {
+            CharacterEvent event = new CharacterEvent(request.get("codepoint").getAsInt());
+            result.addProperty("codepoint", event.codepoint());
+            result.add("utf16", snapshotUtf16(event.codepointAsString()));
+            result.addProperty("is_allowed_chat_character", event.isAllowedChatCharacter());
         } else if (operation.equals("input_with_modifiers")) {
             KeyEvent keyEvent = new KeyEvent(
                 request.get("key").getAsInt(), request.get("scancode").getAsInt(), request.get("modifiers").getAsInt());
@@ -3442,6 +3448,14 @@ public final class MathOracle {
         state.addProperty("shift", input.shift());
         state.addProperty("sprint", input.sprint());
         return state;
+    }
+
+    private static JsonArray snapshotUtf16(String value) {
+        var units = new JsonArray();
+        for (int i = 0; i < value.length(); i++) {
+            units.add(String.format(Locale.ROOT, "%04x", (int)value.charAt(i)));
+        }
+        return units;
     }
 
     private static JsonObject snapshotInputWithModifiers(InputWithModifiers input) {

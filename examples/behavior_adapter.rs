@@ -12,7 +12,8 @@ use voxel_client::direction::{
 };
 use voxel_client::input::{Input, KeyboardInput};
 use voxel_client::input_event::{
-    InputWithModifiers, KeyEvent as InputKeyEvent, MouseButtonEvent, MouseButtonInfo,
+    CharacterEvent, InputWithModifiers, KeyEvent as InputKeyEvent, MouseButtonEvent,
+    MouseButtonInfo,
 };
 use voxel_client::key_mapping::{InputKey, KeyMapping, KeyMappingRegistry};
 use voxel_client::math::{self, Quaternionf, Vec2, Vec3, Vec3f};
@@ -164,6 +165,27 @@ fn input_snapshot(input: Input) -> Value {
         "shift": input.shift,
         "sprint": input.sprint,
     })
+}
+
+fn utf16_snapshot(units: &[u16]) -> Value {
+    Value::Array(
+        units
+            .iter()
+            .map(|unit| json!(format!("{unit:04x}")))
+            .collect(),
+    )
+}
+
+fn character_event_result(request: &Value) -> Result<Value, String> {
+    let event = CharacterEvent::new(i32_field(request, "codepoint")?);
+    let units = event
+        .codepoint_as_utf16()
+        .map_err(|error| format!("invalid codepoint: {}", error.0))?;
+    Ok(json!({
+        "codepoint": event.codepoint,
+        "utf16": utf16_snapshot(&units),
+        "is_allowed_chat_character": event.is_allowed_chat_character(),
+    }))
 }
 
 fn input_with_modifiers_snapshot<T: InputWithModifiers>(input: &T) -> Value {
@@ -4252,6 +4274,9 @@ fn math_result(request: &Value) -> Result<Value, String> {
             "key_presses": input_snapshot(keyboard.key_presses),
             "move_vector": vec2_snapshot(keyboard.move_vector()),
         }));
+    }
+    if operation == "character_event" {
+        return character_event_result(request);
     }
     if operation == "input_with_modifiers" {
         return input_event_result(request);
