@@ -59,6 +59,35 @@ def wire_cases():
 
 
 def math_cases():
+    keyboard_inputs = {
+        "empty": {},
+        "forward": {"up": True},
+        "backward": {"down": True},
+        "left": {"left": True},
+        "right": {"right": True},
+        "forward-left": {"up": True, "left": True},
+        "forward-right": {"up": True, "right": True},
+        "backward-left": {"down": True, "left": True},
+        "backward-right": {"down": True, "right": True},
+        "forward-backward": {"up": True, "down": True},
+        "left-right": {"left": True, "right": True},
+        "all-movement": {"up": True, "down": True, "left": True, "right": True},
+        "jump": {"jump": True},
+        "shift": {"shift": True},
+        "sprint": {"sprint": True},
+        "movement-and-flags": {
+            "up": True, "right": True, "jump": True, "shift": True, "sprint": True,
+        },
+    }
+    keyboard_defaults = {
+        "up": False, "down": False, "left": False, "right": False,
+        "jump": False, "shift": False, "sprint": False,
+    }
+    for label, values in keyboard_inputs.items():
+        keys = {**keyboard_defaults, **values}
+        yield {"case_id": f"keyboard-input/tick/{label}", "family": "math",
+               "operation": "keyboard_input", **keys}
+
     codec_decodes = {
         "basic": [float_bits(1.25, "f64"), float_bits(-2.5, "f64"), float_bits(3.75, "f64")],
         "zero": [float_bits(0.0, "f64"), float_bits(0.0, "f64"), float_bits(0.0, "f64")],

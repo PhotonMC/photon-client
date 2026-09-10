@@ -13,6 +13,9 @@ import java.util.function.IntPredicate;
 import java.util.stream.Stream;
 import net.minecraft.DetectedVersion;
 import net.minecraft.SharedConstants;
+import net.minecraft.client.KeyMapping;
+import net.minecraft.client.Options;
+import net.minecraft.client.player.KeyboardInput;
 import net.minecraft.core.AxisCycle;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -20,6 +23,7 @@ import net.minecraft.core.SectionPos;
 import net.minecraft.server.Bootstrap;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.levelgen.PositionalRandomFactory;
@@ -35,6 +39,7 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 import org.apache.commons.lang3.math.Fraction;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
+import sun.misc.Unsafe;
 
 public final class MathOracle {
     public static JsonObject run(JsonObject request) {
@@ -54,6 +59,19 @@ public final class MathOracle {
                 events.add(snapshot(vector));
             }
             result.add("events", events);
+        } else if (operation.equals("keyboard_input")) {
+            Input keys = new Input(
+                request.get("up").getAsBoolean(),
+                request.get("down").getAsBoolean(),
+                request.get("left").getAsBoolean(),
+                request.get("right").getAsBoolean(),
+                request.get("jump").getAsBoolean(),
+                request.get("shift").getAsBoolean(),
+                request.get("sprint").getAsBoolean());
+            KeyboardInput keyboard = new KeyboardInput(optionsFor(keys));
+            keyboard.tick();
+            result.add("key_presses", snapshot(keyboard.keyPresses));
+            result.add("move_vector", snapshot(keyboard.getMoveVector()));
         } else if (operation.equals("direction")) {
             Direction facing = Direction.byName(request.get("name").getAsString());
             if (facing == null) {
@@ -3256,5 +3274,44 @@ public final class MathOracle {
         state.addProperty("length", Oracle.bits(vector.length()));
         state.addProperty("length_squared", Oracle.bits(vector.lengthSquared()));
         return state;
+    }
+
+    private static JsonObject snapshot(Input input) {
+        var state = new JsonObject();
+        state.addProperty("forward", input.forward());
+        state.addProperty("backward", input.backward());
+        state.addProperty("left", input.left());
+        state.addProperty("right", input.right());
+        state.addProperty("jump", input.jump());
+        state.addProperty("shift", input.shift());
+        state.addProperty("sprint", input.sprint());
+        return state;
+    }
+
+    private static Options optionsFor(Input keys) {
+        try {
+            var unsafeField = Unsafe.class.getDeclaredField("theUnsafe");
+            unsafeField.setAccessible(true);
+            Unsafe unsafe = (Unsafe)unsafeField.get(null);
+            Options options = (Options)unsafe.allocateInstance(Options.class);
+            putKey(unsafe, options, "keyUp", "behavior.keyboard.up", 100, keys.forward());
+            putKey(unsafe, options, "keyDown", "behavior.keyboard.down", 101, keys.backward());
+            putKey(unsafe, options, "keyLeft", "behavior.keyboard.left", 102, keys.left());
+            putKey(unsafe, options, "keyRight", "behavior.keyboard.right", 103, keys.right());
+            putKey(unsafe, options, "keyJump", "behavior.keyboard.jump", 104, keys.jump());
+            putKey(unsafe, options, "keyShift", "behavior.keyboard.shift", 105, keys.shift());
+            putKey(unsafe, options, "keySprint", "behavior.keyboard.sprint", 106, keys.sprint());
+            return options;
+        } catch (ReflectiveOperationException error) {
+            throw new IllegalStateException("Unable to construct controlled keyboard options", error);
+        }
+    }
+
+    private static void putKey(Unsafe unsafe, Options options, String fieldName, String name,
+                               int keyCode, boolean down) throws ReflectiveOperationException {
+        KeyMapping key = new KeyMapping(name, keyCode, KeyMapping.Category.MOVEMENT);
+        key.setDown(down);
+        var field = Options.class.getField(fieldName);
+        unsafe.putObject(options, unsafe.objectFieldOffset(field), key);
     }
 }

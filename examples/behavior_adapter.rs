@@ -10,6 +10,7 @@ use voxel_client::binary::{
 use voxel_client::direction::{
     Axis, AxisDirection, Direction, DirectionYRotError, DirectionYRotationError, Plane,
 };
+use voxel_client::input::{Input, KeyboardInput};
 use voxel_client::math::{self, Quaternionf, Vec2, Vec3, Vec3f};
 use voxel_client::nbt::{self, Field, FieldValue};
 use voxel_client::random::RandomSource;
@@ -146,6 +147,18 @@ fn vec2_snapshot(vector: Vec2) -> Value {
         "y": format!("{:08x}", vector.y.to_bits()),
         "length": format!("{:08x}", vector.length().to_bits()),
         "length_squared": format!("{:08x}", vector.length_squared().to_bits()),
+    })
+}
+
+fn input_snapshot(input: Input) -> Value {
+    json!({
+        "forward": input.forward,
+        "backward": input.backward,
+        "left": input.left,
+        "right": input.right,
+        "jump": input.jump,
+        "shift": input.shift,
+        "sprint": input.sprint,
     })
 }
 
@@ -3779,6 +3792,29 @@ fn math_result(request: &Value) -> Result<Value, String> {
             events.push(vec2_snapshot(vector));
         }
         return Ok(json!({"events": events}));
+    }
+    if operation == "keyboard_input" {
+        let keys = Input::new(
+            request["up"].as_bool().ok_or("up must be a boolean")?,
+            request["down"].as_bool().ok_or("down must be a boolean")?,
+            request["left"].as_bool().ok_or("left must be a boolean")?,
+            request["right"]
+                .as_bool()
+                .ok_or("right must be a boolean")?,
+            request["jump"].as_bool().ok_or("jump must be a boolean")?,
+            request["shift"]
+                .as_bool()
+                .ok_or("shift must be a boolean")?,
+            request["sprint"]
+                .as_bool()
+                .ok_or("sprint must be a boolean")?,
+        );
+        let mut keyboard = KeyboardInput::new(keys);
+        keyboard.tick();
+        return Ok(json!({
+            "key_presses": input_snapshot(keyboard.key_presses),
+            "move_vector": vec2_snapshot(keyboard.move_vector()),
+        }));
     }
     if operation == "direction" {
         let mut facing =

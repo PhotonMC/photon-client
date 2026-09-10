@@ -4,6 +4,7 @@ pub mod aabb;
 pub mod axis_cycle;
 pub mod binary;
 pub mod direction;
+pub mod input;
 pub mod math;
 pub mod nbt;
 pub mod random;
