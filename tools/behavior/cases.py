@@ -1806,6 +1806,35 @@ def math_cases():
     for label, values in blockpos_square_out_south_east.items():
         yield {"case_id": f"blockpos/square-out-south-east/{label}", "family": "math",
                "operation": "blockpos_square_out_south_east", **values}
+    blockpos_random_ranges = {
+        "basic": {
+            "seed": "42", "limit": "5",
+            "min_x": "-2", "min_y": "0", "min_z": "3",
+            "max_x": "2", "max_y": "4", "max_z": "7",
+            "center": {"x": "10", "y": "20", "z": "-5"}, "size": "2",
+        },
+        "zero-limit": {
+            "seed": "12345", "limit": "0",
+            "min_x": "-1", "min_y": "-1", "min_z": "-1",
+            "max_x": "1", "max_y": "1", "max_z": "1",
+            "center": {"x": "0", "y": "0", "z": "0"}, "size": "1",
+        },
+        "unit-ranges": {
+            "seed": "-1", "limit": "3",
+            "min_x": "7", "min_y": "-8", "min_z": "9",
+            "max_x": "7", "max_y": "-8", "max_z": "9",
+            "center": {"x": "-4", "y": "5", "z": "-6"}, "size": "0",
+        },
+        "integer-boundaries": {
+            "seed": "9223372036854775807", "limit": "3",
+            "min_x": "2147483645", "min_y": "-2147483647", "min_z": "2147483645",
+            "max_x": "-2147483647", "max_y": "-2147483645", "max_z": "-2147483647",
+            "center": {"x": "2147483647", "y": "-2147483648", "z": "2147483647"}, "size": "2",
+        },
+    }
+    for label, values in blockpos_random_ranges.items():
+        yield {"case_id": f"blockpos/random-ranges/{label}", "family": "math",
+               "operation": "blockpos_random_ranges", **values}
     for label, (x, y, z) in {
         "origin": (0, 0, 0),
         "positive-boundary": (15, 15, 15),

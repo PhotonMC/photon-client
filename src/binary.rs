@@ -8,6 +8,7 @@
 
 use crate::direction::Direction;
 use crate::math::{self, Vec3};
+use crate::random::{RandomError, RandomSource};
 use crate::wire;
 
 /// Failures for binary reads, using the runner's error categories.
@@ -492,6 +493,56 @@ impl BlockPos {
     /// Return Java's deprecated four-position south-east square stream order.
     pub fn square_out_south_east(self) -> Vec<Self> {
         vec![self, self.south(), self.east(), self.south().east()]
+    }
+
+    /// Enumerate Java's bounded random block positions in x, y, z draw order.
+    // The six coordinates mirror Java's public overload exactly.
+    #[allow(clippy::too_many_arguments)]
+    pub fn random_between_closed(
+        random: &mut RandomSource,
+        limit: i32,
+        min_x: i32,
+        min_y: i32,
+        min_z: i32,
+        max_x: i32,
+        max_y: i32,
+        max_z: i32,
+    ) -> Result<Vec<Self>, RandomError> {
+        let width = max_x.wrapping_sub(min_x).wrapping_add(1);
+        let height = max_y.wrapping_sub(min_y).wrapping_add(1);
+        let depth = max_z.wrapping_sub(min_z).wrapping_add(1);
+        if limit <= 0 {
+            return Ok(Vec::new());
+        }
+
+        let mut positions = Vec::with_capacity(limit as usize);
+        for _ in 0..limit {
+            positions.push(Self::new(
+                min_x.wrapping_add(random.next_int_bound(width)?),
+                min_y.wrapping_add(random.next_int_bound(height)?),
+                min_z.wrapping_add(random.next_int_bound(depth)?),
+            ));
+        }
+        Ok(positions)
+    }
+
+    /// Enumerate random block positions in the cube centered at `center`.
+    pub fn random_in_cube(
+        random: &mut RandomSource,
+        limit: i32,
+        center: Self,
+        size_to_scan_in_all_directions: i32,
+    ) -> Result<Vec<Self>, RandomError> {
+        Self::random_between_closed(
+            random,
+            limit,
+            center.x.wrapping_sub(size_to_scan_in_all_directions),
+            center.y.wrapping_sub(size_to_scan_in_all_directions),
+            center.z.wrapping_sub(size_to_scan_in_all_directions),
+            center.x.wrapping_add(size_to_scan_in_all_directions),
+            center.y.wrapping_add(size_to_scan_in_all_directions),
+            center.z.wrapping_add(size_to_scan_in_all_directions),
+        )
     }
 
     /// Offset a packed block position by a cardinal direction's step.

@@ -2067,6 +2067,41 @@ fn math_result(request: &Value) -> Result<Value, String> {
             .square_out_south_east(),
         ));
     }
+    if operation == "blockpos_random_ranges" {
+        let seed = random_seed(request)?;
+        let limit = i32_string_field(request, "limit")?;
+        let min_x = i32_string_field(request, "min_x")?;
+        let min_y = i32_string_field(request, "min_y")?;
+        let min_z = i32_string_field(request, "min_z")?;
+        let max_x = i32_string_field(request, "max_x")?;
+        let max_y = i32_string_field(request, "max_y")?;
+        let max_z = i32_string_field(request, "max_z")?;
+        let mut between_random = RandomSource::create(seed);
+        let between = BlockPos::random_between_closed(
+            &mut between_random,
+            limit,
+            min_x,
+            min_y,
+            min_z,
+            max_x,
+            max_y,
+            max_z,
+        )
+        .map_err(|_| "bound must be positive".to_owned())?;
+        let after_between = between_random.next_int();
+        let center = blockpos(request.get("center").ok_or("center must be an object")?)?;
+        let size = i32_string_field(request, "size")?;
+        let mut cube_random = RandomSource::create(seed);
+        let cube = BlockPos::random_in_cube(&mut cube_random, limit, center, size)
+            .map_err(|_| "bound must be positive".to_owned())?;
+        let after_cube = cube_random.next_int();
+        return Ok(json!({
+            "between": blockpos_position_list(between),
+            "after_between": after_between.to_string(),
+            "cube": blockpos_position_list(cube),
+            "after_cube": after_cube.to_string(),
+        }));
+    }
     if operation == "section_relative" {
         return section_relative_result(request);
     }

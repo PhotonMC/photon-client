@@ -598,6 +598,34 @@ public final class MathOracle {
             positions.add(snapshot(from.east()));
             positions.add(snapshot(from.south().east()));
             result.add("positions", positions);
+        } else if (operation.equals("blockpos_random_ranges")) {
+            long seed = Long.parseLong(request.get("seed").getAsString());
+            int limit = Integer.parseInt(request.get("limit").getAsString());
+            int minX = Integer.parseInt(request.get("min_x").getAsString());
+            int minY = Integer.parseInt(request.get("min_y").getAsString());
+            int minZ = Integer.parseInt(request.get("min_z").getAsString());
+            int maxX = Integer.parseInt(request.get("max_x").getAsString());
+            int maxY = Integer.parseInt(request.get("max_y").getAsString());
+            int maxZ = Integer.parseInt(request.get("max_z").getAsString());
+            RandomSource betweenRandom = RandomSource.create(seed);
+            var between = new JsonArray();
+            for (BlockPos pos : BlockPos.randomBetweenClosed(
+                betweenRandom, limit, minX, minY, minZ, maxX, maxY, maxZ)) {
+                between.add(snapshot(pos));
+            }
+            int afterBetween = betweenRandom.nextInt();
+            BlockPos center = blockPos(request.getAsJsonObject("center"));
+            int size = Integer.parseInt(request.get("size").getAsString());
+            RandomSource cubeRandom = RandomSource.create(seed);
+            var cube = new JsonArray();
+            for (BlockPos pos : BlockPos.randomInCube(cubeRandom, limit, center, size)) {
+                cube.add(snapshot(pos));
+            }
+            int afterCube = cubeRandom.nextInt();
+            result.add("between", between);
+            result.addProperty("after_between", Integer.toString(afterBetween));
+            result.add("cube", cube);
+            result.addProperty("after_cube", Integer.toString(afterCube));
         } else if (operation.equals("section_relative")) {
             short relative = SectionPos.sectionRelativePos(blockPos(request));
             result.addProperty("relative", Integer.toString(Short.toUnsignedInt(relative)));
