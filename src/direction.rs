@@ -383,6 +383,33 @@ impl Axis {
     pub fn get_directions(self) -> [Direction; 2] {
         [self.get_positive(), self.get_negative()]
     }
+
+    /// Return Java `Direction.Axis.choose(int, int, int)`.
+    pub fn choose_i32(self, x: i32, y: i32, z: i32) -> i32 {
+        match self {
+            Self::X => x,
+            Self::Y => y,
+            Self::Z => z,
+        }
+    }
+
+    /// Return Java `Direction.Axis.choose(double, double, double)`.
+    pub fn choose_f64(self, x: f64, y: f64, z: f64) -> f64 {
+        match self {
+            Self::X => x,
+            Self::Y => y,
+            Self::Z => z,
+        }
+    }
+
+    /// Return Java `Direction.Axis.choose(boolean, boolean, boolean)`.
+    pub fn choose_bool(self, x: bool, y: bool, z: bool) -> bool {
+        match self {
+            Self::X => x,
+            Self::Y => y,
+            Self::Z => z,
+        }
+    }
 }
 
 impl AxisDirection {

@@ -3179,6 +3179,29 @@ fn math_result(request: &Value) -> Result<Value, String> {
             "opposite": direction.opposite().name(),
         }));
     }
+    if operation == "direction_axis_choose" {
+        let axis = Axis::from_name(string(request, "axis")?).ok_or("unknown axis")?;
+        let int_value = |name: &str| {
+            string(request, name)?
+                .parse::<i32>()
+                .map_err(|error| error.to_string())
+        };
+        let double_value = |name: &str| f64_field(request, name);
+        let bool_value = |name: &str| {
+            request[name]
+                .as_bool()
+                .ok_or_else(|| format!("{name} must be a boolean"))
+        };
+        return Ok(json!({
+            "int": axis.choose_i32(int_value("int_x")?, int_value("int_y")?, int_value("int_z")?),
+            "double": format!("{:016x}", axis.choose_f64(
+                double_value("double_x")?, double_value("double_y")?, double_value("double_z")?,
+            ).to_bits()),
+            "boolean": axis.choose_bool(
+                bool_value("bool_x")?, bool_value("bool_y")?, bool_value("bool_z")?,
+            ),
+        }));
+    }
     if operation == "direction_to_y_rot" {
         let facing = Direction::from_name(string(request, "name")?).ok_or("unknown direction")?;
         return Ok(json!({

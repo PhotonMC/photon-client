@@ -1332,6 +1332,26 @@ def math_cases():
     for direction in ("positive", "negative"):
         yield {"case_id": f"direction/axis-direction-values/{direction}", "family": "math",
                "operation": "direction_axis_direction_values", "direction": direction}
+    direction_axis_choose_cases = {
+        "distinct": {
+            "int_x": "-17", "int_y": "11", "int_z": "29",
+            "double_x": float_bits(-1.25, "f64"),
+            "double_y": float_bits(2.5, "f64"),
+            "double_z": float_bits(3.75, "f64"),
+            "bool_x": True, "bool_y": False, "bool_z": True,
+        },
+        "special": {
+            "int_x": str(-(2**31)), "int_y": str(2**31 - 1), "int_z": "0",
+            "double_x": "8000000000000000",
+            "double_y": "7ff0000000000000",
+            "double_z": "7ff8000000000001",
+            "bool_x": False, "bool_y": True, "bool_z": False,
+        },
+    }
+    for label, values in direction_axis_choose_cases.items():
+        for axis in ("x", "y", "z"):
+            yield {"case_id": f"direction/axis-choose/{label}/{axis}", "family": "math",
+                   "operation": "direction_axis_choose", "axis": axis, **values}
     for name in ("down", "up", "north", "south", "west", "east"):
         yield {"case_id": f"direction/to-y-rot/{name}", "family": "math",
                "operation": "direction_to_y_rot", "name": name}

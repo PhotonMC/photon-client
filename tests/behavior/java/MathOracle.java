@@ -119,6 +119,23 @@ public final class MathOracle {
             result.addProperty("step", direction.getStep());
             result.addProperty("name", direction.getName());
             result.addProperty("opposite", direction.opposite().getName());
+        } else if (operation.equals("direction_axis_choose")) {
+            Direction.Axis axis = Direction.Axis.byName(request.get("axis").getAsString());
+            if (axis == null) {
+                throw new IllegalArgumentException("Unknown axis name");
+            }
+            int intValue = axis.choose(
+                Integer.parseInt(request.get("int_x").getAsString()),
+                Integer.parseInt(request.get("int_y").getAsString()),
+                Integer.parseInt(request.get("int_z").getAsString()));
+            double doubleValue = axis.choose(
+                f64(request, "double_x"), f64(request, "double_y"), f64(request, "double_z"));
+            boolean booleanValue = axis.choose(
+                request.get("bool_x").getAsBoolean(), request.get("bool_y").getAsBoolean(),
+                request.get("bool_z").getAsBoolean());
+            result.addProperty("int", intValue);
+            result.addProperty("double", Oracle.bits(doubleValue));
+            result.addProperty("boolean", booleanValue);
         } else if (operation.equals("direction_to_y_rot")) {
             Direction facing = Direction.byName(request.get("name").getAsString());
             if (facing == null) {
