@@ -1,5 +1,7 @@
 //! Resource identifiers used by protocol payloads.
 
+use crate::{binary, utf8};
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ParseError;
 
@@ -60,6 +62,81 @@ impl Identifier {
     }
 }
 
+pub(crate) fn write_identifier(
+    identifier: &Identifier,
+    output: &mut Vec<u8>,
+) -> Result<(), utf8::WriteError> {
+    let units: Vec<u16> = identifier.as_string().encode_utf16().collect();
+    utf8::write_utf8(output, &units, 32_767)
+}
+
+pub(crate) fn read_identifier(input: &mut &[u8]) -> Result<Identifier, binary::ReadError> {
+    let units = utf8::read_utf8(input, 32_767).map_err(map_utf8_error)?;
+    let value = String::from_utf16(&units).map_err(|_| binary::ReadError::DecoderError)?;
+    Identifier::parse(&value).map_err(|_| binary::ReadError::DecoderError)
+}
+
+pub(crate) fn java_hash_set_order(
+    features: Vec<Identifier>,
+    initial_capacity: usize,
+) -> Vec<Identifier> {
+    java_hash_map_order(
+        features.into_iter().map(|feature| (feature, ())).collect(),
+        initial_capacity,
+    )
+    .into_iter()
+    .map(|(feature, ())| feature)
+    .collect()
+}
+
+pub(crate) fn java_hash_map_order<T>(
+    entries: Vec<(Identifier, T)>,
+    initial_capacity: usize,
+) -> Vec<(Identifier, T)> {
+    if entries.is_empty() {
+        return entries;
+    }
+
+    let capacity = if initial_capacity == 0 {
+        16
+    } else {
+        table_size_for(initial_capacity)
+    };
+    let mut table: Vec<Vec<(Identifier, T)>> = (0..capacity).map(|_| Vec::new()).collect();
+    let mut threshold = table.len() * 3 / 4;
+    let mut size = 0;
+    for (key, value) in entries {
+        let mut existing = None;
+        for (bucket_index, bucket) in table.iter().enumerate() {
+            if let Some(entry_index) = bucket.iter().position(|entry| entry.0 == key) {
+                existing = Some((bucket_index, entry_index));
+                break;
+            }
+        }
+        if let Some((bucket_index, entry_index)) = existing {
+            table[bucket_index][entry_index].1 = value;
+            continue;
+        }
+
+        let index = hash_bucket(&key, table.len());
+        table[index].push((key, value));
+        size += 1;
+        if size > threshold {
+            let mut resized: Vec<Vec<(Identifier, T)>> =
+                (0..table.len() * 2).map(|_| Vec::new()).collect();
+            for bucket in table {
+                for entry in bucket {
+                    let index = hash_bucket(&entry.0, resized.len());
+                    resized[index].push(entry);
+                }
+            }
+            threshold = resized.len() * 3 / 4;
+            table = resized;
+        }
+    }
+    table.into_iter().flatten().collect()
+}
+
 trait JavaStringHash {
     fn java_string_hash(&self) -> i32;
 }
@@ -86,4 +163,21 @@ fn is_valid_namespace_char(value: char) -> bool {
 
 fn is_valid_path_char(value: char) -> bool {
     is_valid_namespace_char(value) || value == '/'
+}
+
+fn map_utf8_error(error: utf8::ReadError) -> binary::ReadError {
+    match error {
+        utf8::ReadError::DecoderError => binary::ReadError::DecoderError,
+        utf8::ReadError::BufferUnderflow => binary::ReadError::BufferUnderflow,
+        utf8::ReadError::TooBig => binary::ReadError::TooBig,
+    }
+}
+
+fn hash_bucket(identifier: &Identifier, capacity: usize) -> usize {
+    let hash = identifier.java_hash_code() as u32;
+    ((hash ^ (hash >> 16)) as usize) & (capacity - 1)
+}
+
+fn table_size_for(value: usize) -> usize {
+    value.max(1).next_power_of_two()
 }

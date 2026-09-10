@@ -12,14 +12,19 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.CorruptedFrameException;
 import io.netty.handler.codec.DecoderException;
 import io.netty.handler.codec.EncoderException;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.IntList;
 import java.util.ArrayList;
 import java.util.HexFormat;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import net.minecraft.IdentifierException;
+import net.minecraft.core.Registry;
 import net.minecraft.network.Varint21FrameDecoder;
 import net.minecraft.network.Varint21LengthFieldPrepender;
 import net.minecraft.network.FriendlyByteBuf;
@@ -36,6 +41,7 @@ import net.minecraft.network.protocol.common.ClientboundKeepAlivePacket;
 import net.minecraft.network.protocol.common.ClientboundPingPacket;
 import net.minecraft.network.protocol.common.ServerboundKeepAlivePacket;
 import net.minecraft.network.protocol.common.ServerboundPongPacket;
+import net.minecraft.network.protocol.common.ClientboundUpdateTagsPacket;
 import net.minecraft.network.protocol.configuration.ClientboundUpdateEnabledFeaturesPacket;
 import net.minecraft.network.protocol.ping.ClientboundPongResponsePacket;
 import net.minecraft.network.protocol.ping.ServerboundPingRequestPacket;
@@ -46,6 +52,9 @@ import net.minecraft.network.protocol.configuration.ServerboundAcceptCodeOfCondu
 import net.minecraft.network.protocol.configuration.ServerboundFinishConfigurationPacket;
 import net.minecraft.server.level.ClientInformation;
 import net.minecraft.server.level.ParticleStatus;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.tags.TagNetworkSerialization;
 import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.entity.player.ChatVisiblity;
 
@@ -87,6 +96,9 @@ public final class WireOracle {
         }
         if (operation.equals("enabled_features")) {
             return enabledFeaturesResult(request);
+        }
+        if (operation.equals("update_tags")) {
+            return updateTagsResult(request);
         }
         if (operation.equals("status_request")) {
             return statusRequestResult(request);
@@ -967,6 +979,108 @@ public final class WireOracle {
         }
 
         throw new IllegalArgumentException("Unknown enabled features direction");
+    }
+
+    private static JsonObject updateTagsResult(JsonObject request) {
+        String direction = request.get("direction").getAsString();
+        if (direction.equals("write")) {
+            Map<ResourceKey<? extends Registry<?>>, TagNetworkSerialization.NetworkPayload> registries = new HashMap<>();
+            for (JsonElement registryElement : request.getAsJsonArray("registries")) {
+                JsonObject registryValue = registryElement.getAsJsonObject();
+                Map<Identifier, IntList> tags = new HashMap<>();
+                for (JsonElement tagElement : registryValue.getAsJsonArray("tags")) {
+                    JsonObject tagValue = tagElement.getAsJsonObject();
+                    IntList values = new IntArrayList();
+                    for (JsonElement value : tagValue.getAsJsonArray("values")) {
+                        values.add(value.getAsInt());
+                    }
+                    tags.put(Identifier.parse(tagValue.get("id").getAsString()), values);
+                }
+                Identifier registry = Identifier.parse(registryValue.get("registry").getAsString());
+                registries.put(ResourceKey.createRegistryKey(registry), new TagNetworkSerialization.NetworkPayload(tags));
+            }
+            byte[] prefix = HexFormat.of().parseHex(request.get("prefix_hex").getAsString());
+            ByteBuf buffer = Unpooled.buffer();
+            try {
+                buffer.writeBytes(prefix);
+                var result = new JsonObject();
+                try {
+                    ClientboundUpdateTagsPacket.STREAM_CODEC.encode(
+                        new FriendlyByteBuf(buffer), new ClientboundUpdateTagsPacket(registries)
+                    );
+                    result.addProperty("outcome", "value");
+                } catch (EncoderException error) {
+                    result.addProperty("outcome", "error");
+                    result.addProperty("error", "encoder_error");
+                    result.addProperty("java_exception", error.getClass().getName());
+                }
+                result.addProperty("written", buffer.writerIndex() - prefix.length);
+                result.addProperty("hex", ByteBufUtil.hexDump(buffer));
+                return result;
+            } finally {
+                buffer.release();
+            }
+        }
+
+        if (direction.equals("read")) {
+            ByteBuf buffer = Unpooled.buffer();
+            try {
+                buffer.writeBytes(HexFormat.of().parseHex(request.get("hex").getAsString()));
+                var result = new JsonObject();
+                try {
+                    Map<ResourceKey<? extends Registry<?>>, TagNetworkSerialization.NetworkPayload> registries = ClientboundUpdateTagsPacket.STREAM_CODEC
+                        .decode(new FriendlyByteBuf(buffer)).getTags();
+                    var registryValues = new JsonArray();
+                    for (var registryEntry : registries.entrySet()) {
+                        var registryValue = new JsonObject();
+                        registryValue.addProperty("registry", registryEntry.getKey().identifier().toString());
+                        var tagValues = new JsonArray();
+                        for (var tagEntry : networkPayloadTags(registryEntry.getValue()).entrySet()) {
+                            var tagValue = new JsonObject();
+                            tagValue.addProperty("id", tagEntry.getKey().toString());
+                            var values = new JsonArray();
+                            tagEntry.getValue().forEach(value -> values.add(value));
+                            tagValue.add("values", values);
+                            tagValues.add(tagValue);
+                        }
+                        registryValue.add("tags", tagValues);
+                        registryValues.add(registryValue);
+                    }
+                    result.add("registries", registryValues);
+                    result.addProperty("outcome", "value");
+                } catch (IndexOutOfBoundsException error) {
+                    result.addProperty("outcome", "error");
+                    result.addProperty("error", "buffer_underflow");
+                    result.addProperty("java_exception", error.getClass().getName());
+                } catch (DecoderException | IdentifierException error) {
+                    result.addProperty("outcome", "error");
+                    result.addProperty("error", "decoder_error");
+                    result.addProperty("java_exception", error.getClass().getName());
+                } catch (RuntimeException error) {
+                    result.addProperty("outcome", "error");
+                    result.addProperty("error", error.getClass() == RuntimeException.class ? "too_big" : "decoder_error");
+                    result.addProperty("java_exception", error.getClass().getName());
+                }
+                result.addProperty("consumed", buffer.readerIndex());
+                result.addProperty("remaining_hex", ByteBufUtil.hexDump(buffer));
+                return result;
+            } finally {
+                buffer.release();
+            }
+        }
+
+        throw new IllegalArgumentException("Unknown update tags direction");
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<Identifier, IntList> networkPayloadTags(TagNetworkSerialization.NetworkPayload payload) {
+        try {
+            var field = TagNetworkSerialization.NetworkPayload.class.getDeclaredField("tags");
+            field.setAccessible(true);
+            return (Map<Identifier, IntList>)field.get(payload);
+        } catch (ReflectiveOperationException error) {
+            throw new RuntimeException(error);
+        }
     }
 
     private static JsonObject pingResult(JsonObject request) {

@@ -504,6 +504,71 @@ def wire_cases():
         yield {"case_id": f"configuration/enabled-features/read/{label}", "family": "wire",
                "operation": "enabled_features", "direction": "read", "hex": encoded}
 
+    def tag_values_frame(values):
+        return varint_hex(len(values)) + "".join(varint_hex(value) for value in values)
+
+    def tags_frame(registry, entries):
+        return (varint_hex(1) + feature_string_frame(registry) + varint_hex(len(entries))
+                + "".join(feature_string_frame(tag) + tag_values_frame(values)
+                           for tag, values in entries))
+
+    tag_writes = [
+        ("empty", [] , "deadbeef"),
+        ("registry-empty", [{"registry": "minecraft:block", "tags": []}], ""),
+        ("multiple", [{"registry": "minecraft:block", "tags": [
+            {"id": "minecraft:stone", "values": [1, 2]},
+            {"id": "custom:ore/rare", "values": [-1, 300]},
+            {"id": "minecraft:logs", "values": []},
+        ]}], ""),
+        ("reordered", [{"registry": "minecraft:block", "tags": [
+            {"id": "custom:ore/rare", "values": [-1, 300]},
+            {"id": "minecraft:logs", "values": []},
+            {"id": "minecraft:stone", "values": [1, 2]},
+        ]}], ""),
+        ("duplicate-tag", [{"registry": "minecraft:block", "tags": [
+            {"id": "minecraft:stone", "values": [1]},
+            {"id": "minecraft:stone", "values": [2, 3]},
+        ]}], "aa55"),
+    ]
+    for label, registries, prefix_hex in tag_writes:
+        yield {"case_id": f"common/update-tags/write/{label}", "family": "wire",
+               "operation": "update_tags", "direction": "write", "registries": registries,
+               "prefix_hex": prefix_hex}
+
+    tag_read_values = [
+        ("empty", varint_hex(0)),
+        ("registry-empty", tags_frame("minecraft:block", [])),
+        ("multiple", tags_frame("minecraft:block", [
+            ("minecraft:stone", [1, 2]),
+            ("custom:ore/rare", [-1, 300]),
+            ("minecraft:logs", []),
+        ])),
+        ("reordered", tags_frame("minecraft:block", [
+            ("custom:ore/rare", [-1, 300]),
+            ("minecraft:logs", []),
+            ("minecraft:stone", [1, 2]),
+        ])),
+        ("duplicate-tag", tags_frame("minecraft:block", [
+            ("minecraft:stone", [1]),
+            ("minecraft:stone", [2, 3]),
+        ])),
+        ("trailing", tags_frame("minecraft:block", []) + "aabb"),
+        ("registry-prefix-underflow", varint_hex(1)),
+        ("registry-body-underflow", varint_hex(1) + varint_hex(14) + "6d696e656372616674"),
+        ("tag-count-underflow", varint_hex(1) + feature_string_frame("minecraft:block")),
+        ("tag-prefix-underflow", tags_frame("minecraft:block", [])[:-2] + "01"),
+        ("values-prefix-underflow", varint_hex(1) + feature_string_frame("minecraft:block")
+         + varint_hex(1) + feature_string_frame("minecraft:stone")),
+        ("negative-values-count", varint_hex(1) + feature_string_frame("minecraft:block")
+         + varint_hex(1) + feature_string_frame("minecraft:stone") + varint_hex(-1)),
+        ("invalid-tag-identifier", tags_frame("minecraft:block", [("Bad:tag", [])])),
+        ("negative-count", varint_hex(-1)),
+        ("count-too-big", "808080808001"),
+    ]
+    for label, encoded in tag_read_values:
+        yield {"case_id": f"common/update-tags/read/{label}", "family": "wire",
+               "operation": "update_tags", "direction": "read", "hex": encoded}
+
 
 def math_cases():
     def character_event_case(label, codepoint):

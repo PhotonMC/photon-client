@@ -52,6 +52,7 @@ use voxel_client::smooth::SmoothDouble;
 use voxel_client::status::{
     ClientboundPongResponsePacket, ServerboundPingRequestPacket, ServerboundStatusRequestPacket,
 };
+use voxel_client::tags::{ClientboundUpdateTagsPacket, RegistryTags, TagEntry};
 use voxel_client::timer::Timer;
 use voxel_client::utf8;
 use voxel_client::wire::{self, ReadError};
@@ -130,6 +131,9 @@ fn wire_result(request: &Value) -> Result<Value, String> {
     }
     if request["operation"].as_str() == Some("enabled_features") {
         return enabled_features_result(request);
+    }
+    if request["operation"].as_str() == Some("update_tags") {
+        return update_tags_result(request);
     }
     if request["operation"].as_str() == Some("status_request") {
         return status_request_result(request);
@@ -923,6 +927,91 @@ fn enabled_features_result(request: &Value) -> Result<Value, String> {
             Ok(result)
         }
         _ => Err("unknown enabled features direction".into()),
+    }
+}
+
+fn update_tags_result(request: &Value) -> Result<Value, String> {
+    match string(request, "direction")? {
+        "write" => {
+            let registries = request["registries"]
+                .as_array()
+                .ok_or("registries must be an array")?
+                .iter()
+                .map(|registry| {
+                    let registry = registry
+                        .as_object()
+                        .ok_or("registry entries must be objects")?;
+                    let registry_id = Identifier::parse(
+                        registry["registry"]
+                            .as_str()
+                            .ok_or("registry must be a string")?,
+                    )
+                    .map_err(|_| "invalid registry identifier".to_owned())?;
+                    let tags = registry["tags"]
+                        .as_array()
+                        .ok_or("tags must be an array")?
+                        .iter()
+                        .map(|tag| {
+                            let tag = tag.as_object().ok_or("tag entries must be objects")?;
+                            let id = Identifier::parse(
+                                tag["id"].as_str().ok_or("tag id must be a string")?,
+                            )
+                            .map_err(|_| "invalid tag identifier".to_owned())?;
+                            let values = tag["values"]
+                                .as_array()
+                                .ok_or("tag values must be an array")?
+                                .iter()
+                                .map(|value| {
+                                    value
+                                        .as_i64()
+                                        .ok_or("tag values must be integers")?
+                                        .try_into()
+                                        .map_err(|_| "tag value must fit in i32".to_owned())
+                                })
+                                .collect::<Result<Vec<i32>, String>>()?;
+                            Ok(TagEntry::new(id, values))
+                        })
+                        .collect::<Result<Vec<_>, String>>()?;
+                    Ok(RegistryTags::new(registry_id, tags))
+                })
+                .collect::<Result<Vec<_>, String>>()?;
+            let prefix = decode_hex(string(request, "prefix_hex")?)?;
+            let mut buffer = prefix.clone();
+            let mut result = match ClientboundUpdateTagsPacket::new(registries).encode(&mut buffer)
+            {
+                Ok(()) => json!({"outcome": "value"}),
+                Err(voxel_client::tags::WriteError::EncoderError) => {
+                    json!({"outcome": "error", "error": "encoder_error"})
+                }
+            };
+            result["written"] = json!(buffer.len() - prefix.len());
+            result["hex"] = json!(hex(&buffer));
+            Ok(result)
+        }
+        "read" => {
+            let bytes = decode_hex(string(request, "hex")?)?;
+            let mut remaining = bytes.as_slice();
+            let mut result = match ClientboundUpdateTagsPacket::decode(&mut remaining) {
+                Ok(packet) => json!({
+                    "registries": packet.registries.iter().map(|registry| json!({
+                        "registry": registry.registry.as_string(),
+                        "tags": registry.tags.iter().map(|tag| json!({
+                            "id": tag.id.as_string(),
+                            "values": tag.values,
+                        })).collect::<Vec<_>>(),
+                    })).collect::<Vec<_>>(),
+                    "outcome": "value",
+                }),
+                Err(error) => json!({
+                    "outcome": "error",
+                    "error": login_read_error(error),
+                }),
+            };
+            result["consumed"] = json!(bytes.len() - remaining.len());
+            result["remaining_hex"] = json!(hex(remaining));
+            Ok(result)
+        }
+        _ => Err("unknown update tags direction".into()),
     }
 }
 
