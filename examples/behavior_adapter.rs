@@ -2469,6 +2469,16 @@ fn math_result(request: &Value) -> Result<Value, String> {
         );
         return Ok(json!({"bits": format!("{:016x}", value.to_bits())}));
     }
+    if operation == "mth_map_f32" {
+        let value = math::mth_map_f32(
+            f32_field(request, "value")?,
+            f32_field(request, "from_min")?,
+            f32_field(request, "from_max")?,
+            f32_field(request, "to_min")?,
+            f32_field(request, "to_max")?,
+        );
+        return Ok(json!({"bits": format!("{:08x}", value.to_bits())}));
+    }
     if operation == "mth_next_random" {
         let mut random = RandomSource::create(random_seed(request)?);
         let width = string(request, "type")?;

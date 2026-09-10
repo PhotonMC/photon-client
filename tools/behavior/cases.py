@@ -3532,6 +3532,35 @@ def math_cases():
                "from_max": float_bits(from_max, "f64"), "to_min": float_bits(to_min, "f64"),
                "to_max": float_bits(to_max, "f64")}
 
+    mth_map_f32 = [
+        ("basic", 5.0, 0.0, 10.0, 0.0, 100.0),
+        ("below-source", -5.0, 0.0, 10.0, 100.0, 200.0),
+        ("above-source", 15.0, 0.0, 10.0, 100.0, 200.0),
+        ("lower-endpoint", 0.0, 0.0, 10.0, -4.0, 12.0),
+        ("upper-endpoint", 10.0, 0.0, 10.0, -4.0, 12.0),
+        ("negative-range", -5.0, -10.0, 0.0, 10.0, 30.0),
+        ("reversed-source", 5.0, 10.0, 0.0, 0.0, 100.0),
+        ("reversed-target", 0.25, 0.0, 1.0, 10.0, -10.0),
+        ("reversed-both", 5.0, 10.0, 0.0, 100.0, 0.0),
+        ("negative-zero", -0.0, 0.0, 1.0, -0.0, 1.0),
+        ("source-subnormal", min_subnormal_f32, 0.0, min_subnormal_f32, 0.0, 1.0),
+        ("target-subnormal", 0.5, 0.0, 1.0, 0.0, min_subnormal_f32),
+        ("precision-order", 0.1, 1.0e10, 1.0e10 + 1.0e6, -1.0e10, 1.0e10),
+        ("zero-source-range", 1.0, 1.0, 1.0, 0.0, 1.0),
+        ("infinite-source-range", 0.0, -float("inf"), float("inf"), 0.0, 1.0),
+        ("positive-infinity-value", float("inf"), 0.0, 1.0, 0.0, 1.0),
+        ("negative-infinity-value", -float("inf"), 0.0, 1.0, 0.0, 1.0),
+        ("nan-value", float("nan"), 0.0, 1.0, 0.0, 1.0),
+        ("nan-from-min", 0.0, float("nan"), 1.0, 0.0, 1.0),
+        ("overflow-output", 0.5, 0.0, 1.0, -maximum_finite_f32, maximum_finite_f32),
+    ]
+    for label, value, from_min, from_max, to_min, to_max in mth_map_f32:
+        yield {"case_id": f"mth/map-f32/{label}", "family": "math",
+               "operation": "mth_map_f32",
+               "value": float_bits(value, "f32"), "from_min": float_bits(from_min, "f32"),
+               "from_max": float_bits(from_max, "f32"), "to_min": float_bits(to_min, "f32"),
+               "to_max": float_bits(to_max, "f32")}
+
 
 def timer_cases():
     def trace(label, steps, start=0, tps=20, target=50):
