@@ -27,6 +27,7 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.BooleanOp;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
+import org.apache.commons.lang3.math.Fraction;
 import org.joml.Vector3f;
 
 public final class MathOracle {
@@ -543,6 +544,12 @@ public final class MathOracle {
                 result.addProperty("error", error.getMessage());
                 result.addProperty("java_exception", error.getClass().getName());
             }
+        } else if (operation.equals("mth_mul_and_truncate")) {
+            Fraction fraction = Fraction.getFraction(
+                Integer.parseInt(request.get("numerator").getAsString()),
+                Integer.parseInt(request.get("denominator").getAsString()));
+            result.addProperty("value", Integer.toString(Mth.mulAndTruncate(
+                fraction, Integer.parseInt(request.get("factor").getAsString()))));
         } else if (operation.equals("vec3")) {
             Vec3 vector = new Vec3(f64(request, "x"), f64(request, "y"), f64(request, "z"));
             var events = new JsonArray();

@@ -3082,6 +3082,33 @@ def math_cases():
         yield {"case_id": f"mth/out-from-origin/{label}", "family": "math",
                "operation": "mth_out_from_origin", **values}
 
+    mth_mul_and_truncate = [
+        ("zero-numerator", "0", "7", "94"),
+        ("unit", "1", "1", "12"),
+        ("positive-truncate", "1", "3", "10"),
+        ("negative-truncate", "-1", "3", "10"),
+        ("negative-factor", "3", "2", "-5"),
+        ("both-negative", "-3", "2", "-5"),
+        ("non-reduced", "6", "4", "10"),
+        ("zero-factor", "123", "7", "0"),
+        ("denominator-one-max-numerator", str((1 << 31) - 1), "1", "1"),
+        ("numerator-max-overflow", str((1 << 31) - 1), "1", "2"),
+        ("numerator-min-overflow", str(-(1 << 31)), "1", "2"),
+        ("min-times-negative-one", str(-(1 << 31)), "1", "-1"),
+        ("factor-min", "1", "1", str(-(1 << 31))),
+        ("product-to-min", str(1 << 30), "1", "2"),
+        ("large-denominator", str((1 << 31) - 1), str((1 << 31) - 1), str((1 << 31) - 1)),
+        ("negative-numerator-large", str(-(1 << 31)), str((1 << 31) - 1), str((1 << 31) - 1)),
+        ("fractional-negative-result", "5", "3", str(-(1 << 31))),
+        ("factor-maximum", "3", "7", str((1 << 31) - 1)),
+        ("denominator-two", str((1 << 31) - 1), "2", "3"),
+        ("mixed-overflow", "123456789", "97", "-987654321"),
+    ]
+    for label, numerator, denominator, factor in mth_mul_and_truncate:
+        yield {"case_id": f"mth/mul-and-truncate/{label}", "family": "math",
+               "operation": "mth_mul_and_truncate", "numerator": numerator,
+               "denominator": denominator, "factor": factor}
+
 
 def timer_cases():
     def trace(label, steps, start=0, tps=20, target=50):

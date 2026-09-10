@@ -851,6 +851,16 @@ pub fn mth_out_from_origin(
     Ok(values)
 }
 
+/// Return Java `Mth.mulAndTruncate(Fraction, int)` for a Fraction's fields.
+pub fn mth_mul_and_truncate(numerator: i32, denominator: i32, factor: i32) -> i32 {
+    let product = numerator.wrapping_mul(factor);
+    if product == i32::MIN && denominator == -1 {
+        i32::MIN
+    } else {
+        product / denominator
+    }
+}
+
 /// Return Java `Math.floorDiv(int, int)`, including Java's signed overflow.
 pub fn floor_div_i32(dividend: i32, divisor: i32) -> i32 {
     if divisor == 0 {

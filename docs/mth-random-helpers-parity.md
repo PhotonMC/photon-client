@@ -9,15 +9,15 @@ Java 25.0.4.1 ve Rust 1.98.1 / Linux x86_64 ortamında:
 - 6 inclusive int, 6 f32 aralık ve 6 normal olmak üzere toplam **18 özgün senaryo** hazırlandı.
 - Inclusive int için eşit sınırda `nextInt(1)` tüketimi, pozitif/negatif i32 uçları ve geniş geçerli aralıklar; f32 aralık için ters/eşit sınırlar, signed zero, Infinity ve NaN; normal için mean/deviation, signed zero, Infinity ve negatif deviation yolları karşılaştırıldı.
 - Her helper sonucundan sonra kontrollü bir takip çekişi yapıldı; normal yolunda takip Gaussian değeri cache davranışını da doğruladı.
-- Rust debug ve release adaptörleri güncel **1378/1378** math senaryosunda eşleşti.
-- Birleşik altı aile corpus'u **1880/1880** senaryoda hem debug hem release adaptörüyle eşleşti.
+- Rust debug ve release adaptörleri güncel **1398/1398** math senaryosunda eşleşti.
+- Birleşik altı aile corpus'u **1900/1900** senaryoda hem debug hem release adaptörüyle eşleşti.
 - Math ve birleşik `verify` çalıştırmaları Java referansını iki JVM tekrarıyla yeniden doğruladı.
 
-Math referans kimliği: `6d35da84e1eb81c28088bf3f4951651b252daed29eda65c96f035389b897e6e4`. Birleşik referans kimliği: `d1375ef4dcd71b8eb3c95f84ca200ef0ed3303aa7500447f6683cb24a4bd1d81`.
+Math referans kimliği: `4cc46837e07b2a435f9a79ffddebd09d7fed0ad74e1310e64453de08cb4bf4bd`. Birleşik referans kimliği: `dd8cd9014d22178671ef078ce966d61e97e820f7256f6c8a55c5e30c2f1ec4ea`.
 
-Adapter hashleri: debug `9a363e9bb616ddf43015a46c9dac5fe7c3f1f0a485172346278b402b743e4e87`, release `afe7371264512dc68a7bfa00996d3d561cca30b346b8edb775b90e213ad3d397`.
+Adapter hashleri: debug `7fcaaf04b4fa67068cb95022cc7e832f9013a10846c57ad8dee850949ac64f59`, release `b98e59cbf911f59510b79a9d182e31d455c93c6084ae18d3ce74b07bab212466`.
 
-Yerel raporlar: `compare-_ohp5wb8` ve `compare-bezugwpw` (math debug/release), `compare-i4o7vofo` ve `compare-9vhvfokc` (birleşik debug/release), `verify-i3bunamx` (math) ve `verify-kfxghdw3` (birleşik) `.data/runs/behavior/` altında bulunur.
+Yerel raporlar: `compare-xljwmsb7` ve `compare-s_oqvkq3` (math debug/release), `compare-uf5y7y3a` ve `compare-wrj9a6ex` (birleşik debug/release), `verify-_l31ex7g` (math) ve `verify-5ju3ok97` (birleşik) `.data/runs/behavior/` altında bulunur.
 
 ## Sınırlar
 

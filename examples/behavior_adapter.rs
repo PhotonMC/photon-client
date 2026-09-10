@@ -2582,6 +2582,14 @@ fn math_result(request: &Value) -> Result<Value, String> {
         };
         return Ok(result);
     }
+    if operation == "mth_mul_and_truncate" {
+        let numerator = i32_string_field(request, "numerator")?;
+        let denominator = i32_string_field(request, "denominator")?;
+        let factor = i32_string_field(request, "factor")?;
+        return Ok(json!({
+            "value": math::mth_mul_and_truncate(numerator, denominator, factor).to_string()
+        }));
+    }
     if operation == "vec2" {
         let mut vector = Vec2::new(f32_field(request, "x")?, f32_field(request, "y")?);
         let mut events = vec![vec2_snapshot(vector)];
