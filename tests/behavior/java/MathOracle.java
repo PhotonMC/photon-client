@@ -446,6 +446,11 @@ public final class MathOracle {
             String input = inputElement.isJsonNull() ? null : inputElement.getAsString();
             int defaultValue = Integer.parseInt(request.get("default").getAsString());
             result.addProperty("value", Integer.toString(Mth.getInt(input, defaultValue)));
+        } else if (operation.equals("mth_get_seed")) {
+            int x = request.get("x").getAsInt();
+            int y = request.get("y").getAsInt();
+            int z = request.get("z").getAsInt();
+            result.addProperty("value", Long.toString(Mth.getSeed(x, y, z)));
         } else if (operation.equals("mth_integer_helpers")) {
             String width = request.get("type").getAsString();
             String function = request.get("fn").getAsString();

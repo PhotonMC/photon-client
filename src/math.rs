@@ -923,6 +923,18 @@ pub fn mth_get_int(input: Option<&str>, default: i32) -> i32 {
     input.and_then(parse_java_i32).unwrap_or(default)
 }
 
+/// Return Java `Mth.getSeed(int, int, int)` with Java-width overflow.
+pub fn mth_get_seed(x: i32, y: i32, z: i32) -> i64 {
+    let mut seed = i64::from(x.wrapping_mul(3_129_871))
+        ^ i64::from(z).wrapping_mul(116_129_781)
+        ^ i64::from(y);
+    seed = seed
+        .wrapping_mul(seed)
+        .wrapping_mul(42_317_861)
+        .wrapping_add(seed.wrapping_mul(11));
+    seed >> 16
+}
+
 /// Return Java `Mth.ceilLong(double)` with Java's floating-point-to-long narrowing.
 pub fn ceil_long_f64(value: f64) -> i64 {
     value.ceil() as i64

@@ -2461,6 +2461,14 @@ fn math_result(request: &Value) -> Result<Value, String> {
             .map_err(|error| error.to_string())?;
         return Ok(json!({"value": math::mth_get_int(input, default).to_string()}));
     }
+    if operation == "mth_get_seed" {
+        let value = math::mth_get_seed(
+            i32_field(request, "x")?,
+            i32_field(request, "y")?,
+            i32_field(request, "z")?,
+        );
+        return Ok(json!({"value": value.to_string()}));
+    }
     if operation == "mth_integer_helpers" {
         let function = string(request, "fn")?;
         let input = string(request, "input")?;

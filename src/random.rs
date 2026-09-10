@@ -180,7 +180,7 @@ pub struct PositionalRandomFactory {
 impl PositionalRandomFactory {
     /// Create a source from integer coordinates using Java's `Mth.getSeed`.
     pub fn at(&self, x: i32, y: i32, z: i32) -> RandomSource {
-        RandomSource::create(positional_seed(x, y, z) ^ self.seed)
+        RandomSource::create(crate::math::mth_get_seed(x, y, z) ^ self.seed)
     }
 
     /// Create a source from Java's UTF-16 `String.hashCode` result.
@@ -192,17 +192,6 @@ impl PositionalRandomFactory {
     pub fn from_seed(&self, seed: i64) -> RandomSource {
         RandomSource::create(seed)
     }
-}
-
-fn positional_seed(x: i32, y: i32, z: i32) -> i64 {
-    let mut seed = i64::from(x.wrapping_mul(3_129_871))
-        ^ i64::from(z).wrapping_mul(116_129_781)
-        ^ i64::from(y);
-    seed = seed
-        .wrapping_mul(seed)
-        .wrapping_mul(42_317_861)
-        .wrapping_add(seed.wrapping_mul(11));
-    seed >> 16
 }
 
 fn java_string_hash(value: &str) -> i32 {

@@ -3295,6 +3295,36 @@ def math_cases():
         yield {"case_id": f"mth/get-int/{label}", "family": "math",
                "operation": "mth_get_int", "input": input_value, "default": default}
 
+    mth_get_seed = [
+        ("zero", 0, 0, 0),
+        ("simple-positive", 1, 2, 3),
+        ("simple-negative", -1, -2, -3),
+        ("mixed-signs", -123, 456, -789),
+        ("x-only", 123456, 0, 0),
+        ("y-only", 0, -789, 0),
+        ("z-only", 0, 0, 654321),
+        ("x-min", -2147483648, 0, 0),
+        ("x-max", 2147483647, 0, 0),
+        ("y-min", 0, -2147483648, 0),
+        ("y-max", 0, 2147483647, 0),
+        ("z-min", 0, 0, -2147483648),
+        ("z-max", 0, 0, 2147483647),
+        ("all-min", -2147483648, -2147483648, -2147483648),
+        ("all-max", 2147483647, 2147483647, 2147483647),
+        ("alternating-boundaries", -2147483648, 2147483647, -2147483648),
+        ("reversed-boundaries", 2147483647, -2147483648, 2147483647),
+        ("x-product-within-i32", 686, 0, 0),
+        ("x-product-wraps-positive", 687, 0, 0),
+        ("x-product-wraps-negative", -687, 0, 0),
+        ("large-mixed-positive", 1000000000, -1000000000, 1000000000),
+        ("large-mixed-negative", -1000000000, 1000000000, -1000000000),
+        ("hash-like", 123456789, -987654321, 135792468),
+        ("section-like", -2097152, 319, 2097151),
+    ]
+    for label, x, y, z in mth_get_seed:
+        yield {"case_id": f"mth/get-seed/{label}", "family": "math",
+               "operation": "mth_get_seed", "x": x, "y": y, "z": z}
+
     mth_integer_helpers = [
         ("floor-div/int/negative-remainder", "i32", "floor_div", "-7", "3"),
         ("floor-div/int/negative-divisor", "i32", "floor_div", "7", "-3"),
