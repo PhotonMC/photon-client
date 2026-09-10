@@ -11,6 +11,7 @@ use voxel_client::direction::{
     Axis, AxisDirection, Direction, DirectionYRotError, DirectionYRotationError, Plane,
 };
 use voxel_client::input::{Input, KeyboardInput};
+use voxel_client::key_mapping::{InputKey, KeyMapping, KeyMappingRegistry};
 use voxel_client::math::{self, Quaternionf, Vec2, Vec3, Vec3f};
 use voxel_client::nbt::{self, Field, FieldValue};
 use voxel_client::random::RandomSource;
@@ -160,6 +161,244 @@ fn input_snapshot(input: Input) -> Value {
         "shift": input.shift,
         "sprint": input.sprint,
     })
+}
+
+fn input_key(value: &Value) -> Result<InputKey, String> {
+    let kind = string(value, "type")?;
+    let number = i32_field(value, "value")?;
+    match kind {
+        "keysym" => Ok(InputKey::key_sym(number)),
+        "scancode" => Ok(InputKey::scan_code(number)),
+        "mouse" => Ok(InputKey::mouse(number)),
+        _ => Err("unknown input key type".into()),
+    }
+}
+
+fn mapping_id(
+    target: &str,
+    primary: usize,
+    secondary: usize,
+    other: usize,
+) -> Result<usize, String> {
+    match target {
+        "primary" => Ok(primary),
+        "secondary" => Ok(secondary),
+        "other" => Ok(other),
+        _ => Err("unknown key mapping target".into()),
+    }
+}
+
+fn action_key(
+    target: &str,
+    primary: InputKey,
+    primary_default: InputKey,
+    secondary: InputKey,
+    other: InputKey,
+    rebind: InputKey,
+) -> Result<InputKey, String> {
+    match target {
+        "primary" => Ok(primary),
+        "primary_default" => Ok(primary_default),
+        "secondary" => Ok(secondary),
+        "other" => Ok(other),
+        "rebind" => Ok(rebind),
+        _ => Err("unknown action key".into()),
+    }
+}
+
+fn key_mapping_state(
+    registry: &KeyMappingRegistry,
+    primary: usize,
+    secondary: usize,
+    other: usize,
+) -> Result<Value, String> {
+    let primary_down = registry
+        .mapping(primary)
+        .ok_or("missing primary key mapping")?
+        .is_down();
+    let secondary_down = registry
+        .mapping(secondary)
+        .ok_or("missing secondary key mapping")?
+        .is_down();
+    let other_down = registry
+        .mapping(other)
+        .ok_or("missing other key mapping")?
+        .is_down();
+    Ok(json!({
+        "primary_down": primary_down,
+        "secondary_down": secondary_down,
+        "other_down": other_down,
+    }))
+}
+
+fn key_mapping_property(
+    mapping: &KeyMapping,
+    key_event: (i32, i32),
+    unknown_key_event: (i32, i32),
+    mouse_button: i32,
+) -> Value {
+    json!({
+        "name": mapping.name(),
+        "key": mapping.key().name(),
+        "default_key": mapping.default_key().name(),
+        "is_default": mapping.is_default(),
+        "is_unbound": mapping.is_unbound(),
+        "save": mapping.save_string(),
+        "matches_key_event": mapping.matches_key_event(key_event.0, key_event.1),
+        "matches_unknown_key_event": mapping.matches_key_event(unknown_key_event.0, unknown_key_event.1),
+        "matches_mouse": mapping.matches_mouse(mouse_button),
+    })
+}
+
+fn key_mapping_properties(
+    registry: &KeyMappingRegistry,
+    primary: usize,
+    secondary: usize,
+    other: usize,
+    key_event: (i32, i32),
+    unknown_key_event: (i32, i32),
+    mouse_button: i32,
+) -> Result<Value, String> {
+    let primary_mapping = registry
+        .mapping(primary)
+        .ok_or("missing primary key mapping")?;
+    let secondary_mapping = registry
+        .mapping(secondary)
+        .ok_or("missing secondary key mapping")?;
+    let other_mapping = registry.mapping(other).ok_or("missing other key mapping")?;
+    Ok(json!({
+        "primary": key_mapping_property(primary_mapping, key_event, unknown_key_event, mouse_button),
+        "secondary": key_mapping_property(secondary_mapping, key_event, unknown_key_event, mouse_button),
+        "other": key_mapping_property(other_mapping, key_event, unknown_key_event, mouse_button),
+        "primary_same_secondary": primary_mapping.same(secondary_mapping),
+        "primary_same_other": primary_mapping.same(other_mapping),
+    }))
+}
+
+fn key_mapping_result(request: &Value) -> Result<Value, String> {
+    let primary_key = input_key(&request["primary"])?;
+    let primary_default_key = primary_key;
+    let mut secondary_key = input_key(&request["secondary"])?;
+    let mut other_key = input_key(&request["other"])?;
+    let rebind_key = input_key(&request["rebind"])?;
+    let mut current_primary_key = primary_key;
+    let prefix = format!("behavior.key-mapping.{}", string(request, "case_id")?);
+    let mut registry = KeyMappingRegistry::default();
+    let primary = registry.register(format!("{prefix}.primary"), primary_key);
+    let secondary = registry.register(format!("{prefix}.secondary"), secondary_key);
+    let other = registry.register(format!("{prefix}.other"), other_key);
+    let key_event = (
+        i32_field(&request["key_event"], "key")?,
+        i32_field(&request["key_event"], "scancode")?,
+    );
+    let unknown_key_event = (
+        i32_field(&request["unknown_key_event"], "key")?,
+        i32_field(&request["unknown_key_event"], "scancode")?,
+    );
+    let mouse_button = i32_field(request, "mouse_button")?;
+    let initial = key_mapping_state(&registry, primary, secondary, other)?;
+    let initial_properties = key_mapping_properties(
+        &registry,
+        primary,
+        secondary,
+        other,
+        key_event,
+        unknown_key_event,
+        mouse_button,
+    )?;
+    let mut events = Vec::new();
+    for action in request["actions"]
+        .as_array()
+        .ok_or("actions must be an array")?
+    {
+        let kind = string(action, "op")?;
+        let mut consumed = None;
+        match kind {
+            "set_down" => {
+                let id = mapping_id(string(action, "target")?, primary, secondary, other)?;
+                registry
+                    .mapping_mut(id)
+                    .ok_or("missing key mapping")?
+                    .set_down(action["value"].as_bool().ok_or("value must be a boolean")?);
+            }
+            "set" => {
+                let key = action_key(
+                    string(action, "key")?,
+                    current_primary_key,
+                    primary_default_key,
+                    secondary_key,
+                    other_key,
+                    rebind_key,
+                )?;
+                registry.set(
+                    key,
+                    action["value"].as_bool().ok_or("value must be a boolean")?,
+                );
+            }
+            "click" => {
+                let key = action_key(
+                    string(action, "key")?,
+                    current_primary_key,
+                    primary_default_key,
+                    secondary_key,
+                    other_key,
+                    rebind_key,
+                )?;
+                registry.click(key);
+            }
+            "consume_click" => {
+                let id = mapping_id(string(action, "target")?, primary, secondary, other)?;
+                consumed = Some(
+                    registry
+                        .mapping_mut(id)
+                        .ok_or("missing key mapping")?
+                        .consume_click(),
+                );
+            }
+            "set_key" => {
+                let target = string(action, "target")?;
+                let replacement = action_key(
+                    string(action, "key")?,
+                    current_primary_key,
+                    primary_default_key,
+                    secondary_key,
+                    other_key,
+                    rebind_key,
+                )?;
+                let id = mapping_id(target, primary, secondary, other)?;
+                registry
+                    .mapping_mut(id)
+                    .ok_or("missing key mapping")?
+                    .set_key(replacement);
+                match target {
+                    "primary" => current_primary_key = replacement,
+                    "secondary" => secondary_key = replacement,
+                    "other" => other_key = replacement,
+                    _ => return Err("unknown key mapping target".into()),
+                }
+            }
+            "release_all" => registry.release_all(),
+            _ => return Err("unknown key mapping action".into()),
+        }
+        let mut event = key_mapping_state(&registry, primary, secondary, other)?;
+        if let Some(value) = consumed {
+            event["consumed"] = json!(value);
+        }
+        events.push(event);
+    }
+    let properties = key_mapping_properties(
+        &registry,
+        primary,
+        secondary,
+        other,
+        key_event,
+        unknown_key_event,
+        mouse_button,
+    )?;
+    Ok(
+        json!({"initial": initial, "initial_properties": initial_properties,
+        "events": events, "properties": properties}),
+    )
 }
 
 fn vec3_snapshot(vector: Vec3) -> Value {
@@ -3815,6 +4054,9 @@ fn math_result(request: &Value) -> Result<Value, String> {
             "key_presses": input_snapshot(keyboard.key_presses),
             "move_vector": vec2_snapshot(keyboard.move_vector()),
         }));
+    }
+    if operation == "key_mapping" {
+        return key_mapping_result(request);
     }
     if operation == "direction" {
         let mut facing =

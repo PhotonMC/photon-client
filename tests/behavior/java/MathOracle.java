@@ -1,6 +1,7 @@
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.math.OctahedralGroup;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.JsonOps;
@@ -15,6 +16,9 @@ import net.minecraft.DetectedVersion;
 import net.minecraft.SharedConstants;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Options;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.input.MouseButtonInfo;
 import net.minecraft.client.player.KeyboardInput;
 import net.minecraft.core.AxisCycle;
 import net.minecraft.core.BlockPos;
@@ -72,6 +76,71 @@ public final class MathOracle {
             keyboard.tick();
             result.add("key_presses", snapshot(keyboard.keyPresses));
             result.add("move_vector", snapshot(keyboard.getMoveVector()));
+        } else if (operation.equals("key_mapping")) {
+            KeyMapping.releaseAll();
+            String prefix = "behavior.key-mapping." + request.get("case_id").getAsString();
+            InputConstants.Key primaryKey = inputKey(request.getAsJsonObject("primary"));
+            InputConstants.Key primaryDefaultKey = primaryKey;
+            InputConstants.Key secondaryKey = inputKey(request.getAsJsonObject("secondary"));
+            InputConstants.Key secondaryDefaultKey = secondaryKey;
+            InputConstants.Key otherKey = inputKey(request.getAsJsonObject("other"));
+            InputConstants.Key otherDefaultKey = otherKey;
+            InputConstants.Key rebindKey = inputKey(request.getAsJsonObject("rebind"));
+            KeyMapping primary = newKeyMapping(prefix + ".primary", primaryKey);
+            KeyMapping secondary = newKeyMapping(prefix + ".secondary", secondaryKey);
+            KeyMapping other = newKeyMapping(prefix + ".other", otherKey);
+            KeyEvent keyEvent = new KeyEvent(
+                request.getAsJsonObject("key_event").get("key").getAsInt(),
+                request.getAsJsonObject("key_event").get("scancode").getAsInt(), 0);
+            KeyEvent unknownKeyEvent = new KeyEvent(
+                request.getAsJsonObject("unknown_key_event").get("key").getAsInt(),
+                request.getAsJsonObject("unknown_key_event").get("scancode").getAsInt(), 0);
+            MouseButtonEvent mouseEvent = new MouseButtonEvent(
+                0.0, 0.0,
+                new MouseButtonInfo(request.get("mouse_button").getAsInt(), 0));
+            result.add("initial", keyMappingState(primary, secondary, other));
+            result.add("initial_properties", keyMappingProperties(
+                primary, secondary, other, primaryKey, primaryDefaultKey, secondaryKey,
+                secondaryDefaultKey, otherKey, otherDefaultKey, keyEvent, unknownKeyEvent, mouseEvent));
+            var events = new JsonArray();
+            for (var entry : request.getAsJsonArray("actions")) {
+                JsonObject action = entry.getAsJsonObject();
+                String kind = action.get("op").getAsString();
+                Boolean consumed = null;
+                switch (kind) {
+                    case "set_down" -> mapping(action.get("target").getAsString(), primary, secondary, other)
+                        .setDown(action.get("value").getAsBoolean());
+                    case "set" -> KeyMapping.set(actionKey(action.get("key").getAsString(), primaryKey,
+                        primaryDefaultKey, secondaryKey, otherKey, rebindKey), action.get("value").getAsBoolean());
+                    case "click" -> KeyMapping.click(actionKey(action.get("key").getAsString(), primaryKey,
+                        primaryDefaultKey, secondaryKey, otherKey, rebindKey));
+                    case "consume_click" -> consumed = mapping(action.get("target").getAsString(),
+                        primary, secondary, other).consumeClick();
+                    case "set_key" -> {
+                        String target = action.get("target").getAsString();
+                        InputConstants.Key replacement = actionKey(action.get("key").getAsString(), primaryKey,
+                            primaryDefaultKey, secondaryKey, otherKey, rebindKey);
+                        mapping(target, primary, secondary, other).setKey(replacement);
+                        switch (target) {
+                            case "primary" -> primaryKey = replacement;
+                            case "secondary" -> secondaryKey = replacement;
+                            case "other" -> otherKey = replacement;
+                            default -> throw new IllegalArgumentException("Unknown key mapping target");
+                        }
+                    }
+                    case "release_all" -> KeyMapping.releaseAll();
+                    default -> throw new IllegalArgumentException("Unknown key mapping action");
+                }
+                JsonObject event = keyMappingState(primary, secondary, other);
+                if (consumed != null) {
+                    event.addProperty("consumed", consumed);
+                }
+                events.add(event);
+            }
+            result.add("events", events);
+            result.add("properties", keyMappingProperties(
+                primary, secondary, other, primaryKey, primaryDefaultKey, secondaryKey,
+                secondaryDefaultKey, otherKey, otherDefaultKey, keyEvent, unknownKeyEvent, mouseEvent));
         } else if (operation.equals("direction")) {
             Direction facing = Direction.byName(request.get("name").getAsString());
             if (facing == null) {
@@ -3285,6 +3354,96 @@ public final class MathOracle {
         state.addProperty("jump", input.jump());
         state.addProperty("shift", input.shift());
         state.addProperty("sprint", input.sprint());
+        return state;
+    }
+
+    private static InputConstants.Key inputKey(JsonObject value) {
+        InputConstants.Type type = switch (value.get("type").getAsString()) {
+            case "keysym" -> InputConstants.Type.KEYSYM;
+            case "scancode" -> InputConstants.Type.SCANCODE;
+            case "mouse" -> InputConstants.Type.MOUSE;
+            default -> throw new IllegalArgumentException("Unknown input key type");
+        };
+        return type.getOrCreate(value.get("value").getAsInt());
+    }
+
+    private static KeyMapping newKeyMapping(String name, InputConstants.Key key) {
+        return new KeyMapping(name, key.getType(), key.getValue(), KeyMapping.Category.MOVEMENT);
+    }
+
+    private static KeyMapping mapping(String target, KeyMapping primary, KeyMapping secondary, KeyMapping other) {
+        return switch (target) {
+            case "primary" -> primary;
+            case "secondary" -> secondary;
+            case "other" -> other;
+            default -> throw new IllegalArgumentException("Unknown key mapping target");
+        };
+    }
+
+    private static InputConstants.Key actionKey(String target, InputConstants.Key primary,
+                                                InputConstants.Key primaryDefault,
+                                                InputConstants.Key secondary,
+                                                InputConstants.Key other,
+                                                InputConstants.Key rebind) {
+        return switch (target) {
+            case "primary" -> primary;
+            case "primary_default" -> primaryDefault;
+            case "secondary" -> secondary;
+            case "other" -> other;
+            case "rebind" -> rebind;
+            default -> throw new IllegalArgumentException("Unknown action key");
+        };
+    }
+
+    private static JsonObject keyMappingState(KeyMapping primary, KeyMapping secondary, KeyMapping other) {
+        var state = new JsonObject();
+        state.addProperty("primary_down", primary.isDown());
+        state.addProperty("secondary_down", secondary.isDown());
+        state.addProperty("other_down", other.isDown());
+        return state;
+    }
+
+    private static JsonObject keyMappingProperties(
+        KeyMapping primary,
+        KeyMapping secondary,
+        KeyMapping other,
+        InputConstants.Key primaryKey,
+        InputConstants.Key primaryDefaultKey,
+        InputConstants.Key secondaryKey,
+        InputConstants.Key secondaryDefaultKey,
+        InputConstants.Key otherKey,
+        InputConstants.Key otherDefaultKey,
+        KeyEvent keyEvent,
+        KeyEvent unknownKeyEvent,
+        MouseButtonEvent mouseEvent
+    ) {
+        var state = new JsonObject();
+        state.add("primary", keyMappingProperty(primary, primaryKey, primaryDefaultKey, keyEvent, unknownKeyEvent, mouseEvent));
+        state.add("secondary", keyMappingProperty(secondary, secondaryKey, secondaryDefaultKey, keyEvent, unknownKeyEvent, mouseEvent));
+        state.add("other", keyMappingProperty(other, otherKey, otherDefaultKey, keyEvent, unknownKeyEvent, mouseEvent));
+        state.addProperty("primary_same_secondary", primary.same(secondary));
+        state.addProperty("primary_same_other", primary.same(other));
+        return state;
+    }
+
+    private static JsonObject keyMappingProperty(
+        KeyMapping mapping,
+        InputConstants.Key key,
+        InputConstants.Key defaultKey,
+        KeyEvent keyEvent,
+        KeyEvent unknownKeyEvent,
+        MouseButtonEvent mouseEvent
+    ) {
+        var state = new JsonObject();
+        state.addProperty("name", mapping.getName());
+        state.addProperty("key", key.getName());
+        state.addProperty("default_key", defaultKey.getName());
+        state.addProperty("is_default", mapping.isDefault());
+        state.addProperty("is_unbound", mapping.isUnbound());
+        state.addProperty("save", mapping.saveString());
+        state.addProperty("matches_key_event", mapping.matches(keyEvent));
+        state.addProperty("matches_unknown_key_event", mapping.matches(unknownKeyEvent));
+        state.addProperty("matches_mouse", mapping.matchesMouse(mouseEvent));
         return state;
     }
 

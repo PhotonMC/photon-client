@@ -59,6 +59,90 @@ def wire_cases():
 
 
 def math_cases():
+    def key_spec(kind, value):
+        return {"type": kind, "value": value}
+
+    def key_mapping_case(label, primary, secondary, other, rebind, actions,
+                         key_event, unknown_key_event, mouse_button):
+        return {
+            "case_id": f"key-mapping/state/{label}", "family": "math",
+            "operation": "key_mapping", "primary": primary, "secondary": secondary,
+            "other": other, "rebind": rebind, "actions": actions,
+            "key_event": key_event, "unknown_key_event": unknown_key_event,
+            "mouse_button": mouse_button,
+        }
+
+    key_mapping_cases = []
+    base = 1000
+    key_mapping_cases.append(key_mapping_case(
+        "shared-press-release",
+        key_spec("keysym", base), key_spec("keysym", base), key_spec("keysym", base + 1),
+        key_spec("scancode", base + 2),
+        [{"op": "set_down", "target": "primary", "value": True},
+         {"op": "set", "key": "primary", "value": False},
+         {"op": "click", "key": "primary"},
+         {"op": "consume_click", "target": "primary"},
+         {"op": "consume_click", "target": "primary"},
+         {"op": "consume_click", "target": "secondary"},
+         {"op": "set_down", "target": "other", "value": True},
+         {"op": "release_all"},
+         {"op": "consume_click", "target": "secondary"}],
+        {"key": base, "scancode": base + 10},
+        {"key": -1, "scancode": base + 10}, base + 20))
+    base += 100
+    key_mapping_cases.append(key_mapping_case(
+        "repeated-clicks",
+        key_spec("keysym", base), key_spec("keysym", base), key_spec("mouse", base + 1),
+        key_spec("scancode", base + 2),
+        [{"op": "click", "key": "primary"},
+         {"op": "click", "key": "primary"},
+         {"op": "consume_click", "target": "primary"},
+         {"op": "consume_click", "target": "primary"},
+         {"op": "consume_click", "target": "primary"},
+         {"op": "consume_click", "target": "secondary"},
+         {"op": "consume_click", "target": "secondary"},
+         {"op": "consume_click", "target": "secondary"}],
+        {"key": base, "scancode": base + 10},
+        {"key": -1, "scancode": base + 10}, base + 1))
+    base += 100
+    key_mapping_cases.append(key_mapping_case(
+        "rebind-keeps-old-table",
+        key_spec("keysym", base), key_spec("keysym", base), key_spec("mouse", base + 10),
+        key_spec("scancode", base + 20),
+        [{"op": "set_down", "target": "primary", "value": True},
+         {"op": "set_key", "target": "primary", "key": "rebind"},
+         {"op": "set", "key": "primary_default", "value": False},
+         {"op": "set", "key": "primary", "value": True},
+         {"op": "click", "key": "primary"},
+         {"op": "click", "key": "primary_default"},
+         {"op": "consume_click", "target": "primary"},
+         {"op": "consume_click", "target": "secondary"},
+         {"op": "release_all"},
+         {"op": "set_key", "target": "primary", "key": "rebind"}],
+        {"key": base, "scancode": base + 20},
+        {"key": -1, "scancode": base + 20}, base + 10))
+    base += 100
+    key_mapping_cases.append(key_mapping_case(
+        "default-and-unbound",
+        key_spec("keysym", -1), key_spec("keysym", -1), key_spec("mouse", base),
+        key_spec("keysym", base + 1),
+        [{"op": "set_key", "target": "primary", "key": "rebind"}],
+        {"key": -1, "scancode": base + 2},
+        {"key": -1, "scancode": base + 2}, base))
+    base += 100
+    key_mapping_cases.append(key_mapping_case(
+        "event-matching",
+        key_spec("keysym", base), key_spec("scancode", base + 1), key_spec("mouse", base + 2),
+        key_spec("keysym", base + 3), [],
+        {"key": base, "scancode": base + 1},
+        {"key": -1, "scancode": base + 1}, base + 2))
+    key_mapping_cases.append(key_mapping_case(
+        "known-key-names",
+        key_spec("keysym", 87), key_spec("keysym", 65), key_spec("mouse", 0),
+        key_spec("keysym", 32), [],
+        {"key": 87, "scancode": 65}, {"key": -1, "scancode": 65}, 0))
+    yield from key_mapping_cases
+
     keyboard_inputs = {
         "empty": {},
         "forward": {"up": True},
