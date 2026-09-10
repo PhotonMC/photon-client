@@ -18,6 +18,7 @@ import net.minecraft.SharedConstants;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Options;
 import net.minecraft.client.OptionInstance;
+import net.minecraft.client.ScrollWheelHandler;
 import net.minecraft.client.ToggleKeyMapping;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
@@ -49,6 +50,7 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 import org.apache.commons.lang3.math.Fraction;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
+import org.joml.Vector2i;
 import sun.misc.Unsafe;
 
 public final class MathOracle {
@@ -162,6 +164,32 @@ public final class MathOracle {
                 unitValues.add(state);
             }
             result.add("unit_values", unitValues);
+        } else if (operation.equals("scroll_wheel")) {
+            ScrollWheelHandler handler = new ScrollWheelHandler();
+            var events = new JsonArray();
+            for (JsonElement entry : request.getAsJsonArray("scrolls")) {
+                JsonObject step = entry.getAsJsonObject();
+                Vector2i wheel = handler.onMouseScroll(f64(step, "x"), f64(step, "y"));
+                var state = new JsonObject();
+                state.addProperty("x", wheel.x);
+                state.addProperty("y", wheel.y);
+                events.add(state);
+            }
+            result.add("scrolls", events);
+            var selections = new JsonArray();
+            for (JsonElement entry : request.getAsJsonArray("selections")) {
+                JsonObject selection = entry.getAsJsonObject();
+                double wheel = f64(selection, "wheel");
+                int current = selection.get("current").getAsInt();
+                int limit = selection.get("limit").getAsInt();
+                var state = new JsonObject();
+                state.addProperty("wheel", Oracle.bits(wheel));
+                state.addProperty("current", current);
+                state.addProperty("limit", limit);
+                state.addProperty("selected", ScrollWheelHandler.getNextScrollWheelSelection(wheel, current, limit));
+                selections.add(state);
+            }
+            result.add("selections", selections);
         } else if (operation.equals("input_with_modifiers")) {
             KeyEvent keyEvent = new KeyEvent(
                 request.get("key").getAsInt(), request.get("scancode").getAsInt(), request.get("modifiers").getAsInt());

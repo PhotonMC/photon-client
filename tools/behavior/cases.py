@@ -123,6 +123,33 @@ def math_cases():
     ]
     yield from option_value_cases
 
+    def scroll_wheel_case(label, scrolls, selections):
+        return {
+            "case_id": f"scroll-wheel/{label}", "family": "math",
+            "operation": "scroll_wheel",
+            "scrolls": [{"x": float_bits(x, "f64"), "y": float_bits(y, "f64")} for x, y in scrolls],
+            "selections": [
+                {"wheel": float_bits(wheel, "f64"), "current": current, "limit": limit}
+                for wheel, current, limit in selections
+            ],
+        }
+
+    scroll_wheel_cases = [
+        scroll_wheel_case(
+            "fractional-and-both-axes",
+            [(0.4, 0.0), (0.4, 0.6), (0.4, 0.6), (-0.2, -0.6), (-1.0, -1.0)],
+            [(1.0, 0, 9), (-1.0, 0, 9), (0.0, 4, 9), (float("nan"), 4, 9),
+             (float("inf"), 0, 9), (float("-inf"), 0, 9)],
+        ),
+        scroll_wheel_case(
+            "negative-and-selection-wrap",
+            [(-0.6, -0.6), (-0.6, -0.6), (-0.8, -0.8), (0.1, 0.1), (1.0, 0.0)],
+            [(1.0, 0, 9), (-1.0, 0, 9), (1.0, 8, 9), (-1.0, 0, 9),
+             (float("nan"), -1, 9), (float("inf"), 8, 9)],
+        ),
+    ]
+    yield from scroll_wheel_cases
+
     def input_event_case(label, key, scancode, modifiers, mouse_button, mouse_x, mouse_y):
         return {
             "case_id": f"input-with-modifiers/{label}", "family": "math",

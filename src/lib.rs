@@ -11,6 +11,7 @@ pub mod math;
 pub mod nbt;
 pub mod option;
 pub mod random;
+pub mod scroll;
 pub mod shape;
 pub mod timer;
 pub mod utf8;

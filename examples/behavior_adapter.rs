@@ -20,6 +20,7 @@ use voxel_client::math::{self, Quaternionf, Vec2, Vec3, Vec3f};
 use voxel_client::nbt::{self, Field, FieldValue};
 use voxel_client::option::{IntRange, UnitDouble};
 use voxel_client::random::RandomSource;
+use voxel_client::scroll::ScrollWheelHandler;
 use voxel_client::shape::{BooleanOp, ShapeRotation, Shapes, VoxelShape};
 use voxel_client::timer::Timer;
 use voxel_client::utf8;
@@ -314,6 +315,37 @@ fn option_values_result(request: &Value) -> Result<Value, String> {
         "sliders": sliders,
         "unit_values": unit_values,
     }))
+}
+
+fn scroll_wheel_result(request: &Value) -> Result<Value, String> {
+    let mut handler = ScrollWheelHandler::new();
+    let events = request["scrolls"]
+        .as_array()
+        .ok_or("scrolls must be an array")?
+        .iter()
+        .map(|step| {
+            let (x, y) = handler.on_mouse_scroll(f64_field(step, "x")?, f64_field(step, "y")?);
+            Ok(json!({"x": x, "y": y}))
+        })
+        .collect::<Result<Vec<_>, String>>()?;
+    let selections = request["selections"]
+        .as_array()
+        .ok_or("selections must be an array")?
+        .iter()
+        .map(|selection| {
+            Ok(json!({
+                "wheel": format!("{:016x}", f64_field(selection, "wheel")?.to_bits()),
+                "current": i32_field(selection, "current")?,
+                "limit": i32_field(selection, "limit")?,
+                "selected": ScrollWheelHandler::next_scroll_wheel_selection(
+                    f64_field(selection, "wheel")?,
+                    i32_field(selection, "current")?,
+                    i32_field(selection, "limit")?,
+                ),
+            }))
+        })
+        .collect::<Result<Vec<_>, String>>()?;
+    Ok(json!({"scrolls": events, "selections": selections}))
 }
 
 fn input_with_modifiers_snapshot<T: InputWithModifiers>(input: &T) -> Value {
@@ -4411,6 +4443,9 @@ fn math_result(request: &Value) -> Result<Value, String> {
     }
     if operation == "option_values" {
         return option_values_result(request);
+    }
+    if operation == "scroll_wheel" {
+        return scroll_wheel_result(request);
     }
     if operation == "input_with_modifiers" {
         return input_event_result(request);
