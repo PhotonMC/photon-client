@@ -379,6 +379,11 @@ public final class MathOracle {
                 default -> throw new IllegalArgumentException("Unknown Mth binary search condition");
             };
             result.addProperty("value", Integer.toString(Mth.binarySearch(from, to, condition)));
+        } else if (operation.equals("mth_ray_intersects_aabb")) {
+            Vec3 rayStart = vec3(request.getAsJsonObject("ray_start"));
+            Vec3 rayDir = vec3(request.getAsJsonObject("ray_dir"));
+            AABB aabb = box(request.getAsJsonObject("aabb"));
+            result.addProperty("value", Mth.rayIntersectsAABB(rayStart, rayDir, aabb));
         } else if (operation.equals("mth_integer_helpers")) {
             String width = request.get("type").getAsString();
             String function = request.get("fn").getAsString();

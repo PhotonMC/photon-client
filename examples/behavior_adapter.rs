@@ -2371,6 +2371,18 @@ fn math_result(request: &Value) -> Result<Value, String> {
         };
         return Ok(json!({"value": value.to_string()}));
     }
+    if operation == "mth_ray_intersects_aabb" {
+        let ray_start = f64_vec3(
+            request
+                .get("ray_start")
+                .ok_or("ray_start must be an object")?,
+        )?;
+        let ray_dir = f64_vec3(request.get("ray_dir").ok_or("ray_dir must be an object")?)?;
+        let aabb = aabb_box(request.get("aabb").ok_or("aabb must be an object")?)?;
+        return Ok(json!({
+            "value": math::mth_ray_intersects_aabb(ray_start, ray_dir, aabb),
+        }));
+    }
     if operation == "mth_integer_helpers" {
         let function = string(request, "fn")?;
         let input = string(request, "input")?;
