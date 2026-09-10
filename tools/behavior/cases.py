@@ -150,6 +150,38 @@ def math_cases():
     ]
     yield from scroll_wheel_cases
 
+    def smooth_double_case(label, steps):
+        return {
+            "case_id": f"smooth-double/{label}", "family": "math",
+            "operation": "smooth_double", "steps": steps,
+        }
+
+    def smooth_delta(target_delta, time):
+        return {
+            "op": "delta", "target_delta": float_bits(target_delta, "f64"),
+            "time": float_bits(time, "f64"),
+        }
+
+    smooth_double_cases = [
+        smooth_double_case("positive-negative", [
+            smooth_delta(1.0, 1.0), smooth_delta(1.0, 0.5), smooth_delta(-0.25, 1.0),
+            smooth_delta(0.0, 2.0), smooth_delta(-2.0, 0.25),
+        ]),
+        smooth_double_case("reset", [
+            smooth_delta(4.0, 0.25), {"op": "reset"}, smooth_delta(-1.0, 1.0),
+            smooth_delta(0.5, 0.0), {"op": "reset"}, smooth_delta(0.0, 1.0),
+        ]),
+        smooth_double_case("signed-zero", [
+            smooth_delta(-0.0, 1.0), smooth_delta(0.0, -0.0), smooth_delta(-1.0, -0.5),
+        ]),
+        smooth_double_case("special-values", [
+            smooth_delta(float("nan"), 1.0), smooth_delta(1.0, 1.0),
+            {"op": "reset"}, smooth_delta(float("inf"), 0.5),
+            smooth_delta(float("-inf"), 1.0),
+        ]),
+    ]
+    yield from smooth_double_cases
+
     def input_event_case(label, key, scancode, modifiers, mouse_button, mouse_x, mouse_y):
         return {
             "case_id": f"input-with-modifiers/{label}", "family": "math",

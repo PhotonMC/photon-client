@@ -34,6 +34,7 @@ import net.minecraft.core.SectionPos;
 import net.minecraft.server.Bootstrap;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
+import net.minecraft.util.SmoothDouble;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.Rotation;
@@ -190,6 +191,28 @@ public final class MathOracle {
                 selections.add(state);
             }
             result.add("selections", selections);
+        } else if (operation.equals("smooth_double")) {
+            SmoothDouble smooth = new SmoothDouble();
+            var events = new JsonArray();
+            for (JsonElement entry : request.getAsJsonArray("steps")) {
+                JsonObject step = entry.getAsJsonObject();
+                String op = step.get("op").getAsString();
+                if (op.equals("reset")) {
+                    smooth.reset();
+                    var state = new JsonObject();
+                    state.addProperty("op", "reset");
+                    events.add(state);
+                } else if (op.equals("delta")) {
+                    double value = smooth.getNewDeltaValue(f64(step, "target_delta"), f64(step, "time"));
+                    var state = new JsonObject();
+                    state.addProperty("op", "delta");
+                    state.addProperty("value", Oracle.bits(value));
+                    events.add(state);
+                } else {
+                    throw new IllegalArgumentException("Unknown SmoothDouble operation");
+                }
+            }
+            result.add("events", events);
         } else if (operation.equals("input_with_modifiers")) {
             KeyEvent keyEvent = new KeyEvent(
                 request.get("key").getAsInt(), request.get("scancode").getAsInt(), request.get("modifiers").getAsInt());

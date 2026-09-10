@@ -13,6 +13,7 @@ pub mod option;
 pub mod random;
 pub mod scroll;
 pub mod shape;
+pub mod smooth;
 pub mod timer;
 pub mod utf8;
 pub mod wire;

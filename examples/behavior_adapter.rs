@@ -22,6 +22,7 @@ use voxel_client::option::{IntRange, UnitDouble};
 use voxel_client::random::RandomSource;
 use voxel_client::scroll::ScrollWheelHandler;
 use voxel_client::shape::{BooleanOp, ShapeRotation, Shapes, VoxelShape};
+use voxel_client::smooth::SmoothDouble;
 use voxel_client::timer::Timer;
 use voxel_client::utf8;
 use voxel_client::wire::{self, ReadError};
@@ -346,6 +347,31 @@ fn scroll_wheel_result(request: &Value) -> Result<Value, String> {
         })
         .collect::<Result<Vec<_>, String>>()?;
     Ok(json!({"scrolls": events, "selections": selections}))
+}
+
+fn smooth_double_result(request: &Value) -> Result<Value, String> {
+    let mut smooth = SmoothDouble::new();
+    let events = request["steps"]
+        .as_array()
+        .ok_or("steps must be an array")?
+        .iter()
+        .map(|step| {
+            let operation = string(step, "op")?;
+            if operation == "reset" {
+                smooth.reset();
+                Ok(json!({"op": "reset"}))
+            } else if operation == "delta" {
+                let value = smooth.get_new_delta_value(
+                    f64_field(step, "target_delta")?,
+                    f64_field(step, "time")?,
+                );
+                Ok(json!({"op": "delta", "value": format!("{:016x}", value.to_bits())}))
+            } else {
+                Err("unknown SmoothDouble operation".into())
+            }
+        })
+        .collect::<Result<Vec<_>, String>>()?;
+    Ok(json!({"events": events}))
 }
 
 fn input_with_modifiers_snapshot<T: InputWithModifiers>(input: &T) -> Value {
@@ -4446,6 +4472,9 @@ fn math_result(request: &Value) -> Result<Value, String> {
     }
     if operation == "scroll_wheel" {
         return scroll_wheel_result(request);
+    }
+    if operation == "smooth_double" {
+        return smooth_double_result(request);
     }
     if operation == "input_with_modifiers" {
         return input_event_result(request);
