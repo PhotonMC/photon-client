@@ -1411,6 +1411,14 @@ def math_cases():
             label = name if name else "empty"
             yield {"case_id": f"direction/name-lookup/{kind}/{label}", "family": "math",
                    "operation": "direction_name_lookup", "kind": kind, "name": name}
+    direction_enum_text_cases = (
+        ("axis_direction", ("positive", "negative")),
+        ("plane", ("horizontal", "vertical")),
+    )
+    for kind, names in direction_enum_text_cases:
+        for name in names:
+            yield {"case_id": f"direction/enum-text/{kind}/{name}", "family": "math",
+                   "operation": "direction_enum_text", "kind": kind, "name": name}
     direction_approximate_nearest_cases = [
         ("south", vector_bits(0.0, 0.0, 1.0)),
         ("north", vector_bits(0.0, 0.0, -1.0)),

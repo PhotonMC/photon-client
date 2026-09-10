@@ -3420,6 +3420,35 @@ fn math_result(request: &Value) -> Result<Value, String> {
             _ => Err("unknown name lookup kind".into()),
         };
     }
+    if operation == "direction_enum_text" {
+        let name = string(request, "name")?;
+        return match string(request, "kind")? {
+            "axis_direction" => {
+                let direction = match name {
+                    "positive" => AxisDirection::Positive,
+                    "negative" => AxisDirection::Negative,
+                    _ => return Err("unknown axis direction".into()),
+                };
+                Ok(json!({
+                    "enum_name": direction.enum_name(),
+                    "name": direction.name(),
+                    "text": direction.to_string_java(),
+                }))
+            }
+            "plane" => {
+                let plane = match name {
+                    "horizontal" => Plane::Horizontal,
+                    "vertical" => Plane::Vertical,
+                    _ => return Err("unknown plane".into()),
+                };
+                Ok(json!({
+                    "enum_name": plane.enum_name(),
+                    "text": plane.to_string_java(),
+                }))
+            }
+            _ => Err("unknown enum text kind".into()),
+        };
+    }
     if operation == "direction_approximate_nearest" {
         let facing = Direction::approximate_nearest(
             f64_field(request, "x")?,

@@ -562,11 +562,24 @@ impl Axis {
 }
 
 impl AxisDirection {
+    /// Return Java `Enum.name()` for this axis direction.
+    pub fn enum_name(self) -> &'static str {
+        match self {
+            Self::Positive => "POSITIVE",
+            Self::Negative => "NEGATIVE",
+        }
+    }
+
     pub fn name(self) -> &'static str {
         match self {
             Self::Positive => "Towards positive",
             Self::Negative => "Towards negative",
         }
+    }
+
+    /// Return Java `AxisDirection.toString()`.
+    pub fn to_string_java(self) -> &'static str {
+        self.name()
     }
 
     /// Return Java `Direction.AxisDirection.getStep()`.
@@ -587,6 +600,19 @@ impl AxisDirection {
 }
 
 impl Plane {
+    /// Return Java `Enum.name()` for this plane.
+    pub fn enum_name(self) -> &'static str {
+        match self {
+            Self::Horizontal => "HORIZONTAL",
+            Self::Vertical => "VERTICAL",
+        }
+    }
+
+    /// Return Java `Plane.toString()`, which inherits `Enum.toString()`.
+    pub fn to_string_java(self) -> &'static str {
+        self.enum_name()
+    }
+
     /// Return Java `Direction.Plane.getRandomDirection(RandomSource)`.
     pub fn get_random_direction(self, random: &mut RandomSource) -> Direction {
         let directions = self.directions();

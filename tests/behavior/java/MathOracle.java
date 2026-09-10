@@ -328,6 +328,28 @@ public final class MathOracle {
             } else {
                 throw new IllegalArgumentException("Unknown name lookup kind");
             }
+        } else if (operation.equals("direction_enum_text")) {
+            String name = request.get("name").getAsString();
+            if (request.get("kind").getAsString().equals("axis_direction")) {
+                Direction.AxisDirection direction = switch (name) {
+                    case "positive" -> Direction.AxisDirection.POSITIVE;
+                    case "negative" -> Direction.AxisDirection.NEGATIVE;
+                    default -> throw new IllegalArgumentException("Unknown axis direction");
+                };
+                result.addProperty("enum_name", direction.name());
+                result.addProperty("name", direction.getName());
+                result.addProperty("text", direction.toString());
+            } else if (request.get("kind").getAsString().equals("plane")) {
+                Direction.Plane plane = switch (name) {
+                    case "horizontal" -> Direction.Plane.HORIZONTAL;
+                    case "vertical" -> Direction.Plane.VERTICAL;
+                    default -> throw new IllegalArgumentException("Unknown plane");
+                };
+                result.addProperty("enum_name", plane.name());
+                result.addProperty("text", plane.toString());
+            } else {
+                throw new IllegalArgumentException("Unknown enum text kind");
+            }
         } else if (operation.equals("direction_approximate_nearest")) {
             result.add("value", snapshot(Direction.getApproximateNearest(
                 f64(request, "x"), f64(request, "y"), f64(request, "z"))));
