@@ -3151,6 +3151,12 @@ fn math_result(request: &Value) -> Result<Value, String> {
             "value": direction_snapshot(Direction::from_axis_and_direction(axis, direction)),
         }));
     }
+    if operation == "direction_to_y_rot" {
+        let facing = Direction::from_name(string(request, "name")?).ok_or("unknown direction")?;
+        return Ok(json!({
+            "bits": format!("{:08x}", facing.to_y_rot().to_bits()),
+        }));
+    }
     if operation == "coord" {
         let value = string(request, "value")?
             .parse::<i32>()

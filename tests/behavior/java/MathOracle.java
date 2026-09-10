@@ -91,6 +91,12 @@ public final class MathOracle {
                 default -> throw new IllegalArgumentException("Unknown axis direction");
             };
             result.add("value", snapshot(Direction.fromAxisAndDirection(axis, direction)));
+        } else if (operation.equals("direction_to_y_rot")) {
+            Direction facing = Direction.byName(request.get("name").getAsString());
+            if (facing == null) {
+                throw new IllegalArgumentException("Unknown direction name");
+            }
+            result.addProperty("bits", Oracle.bits(facing.toYRot()));
         } else if (operation.equals("coord")) {
             int value = Integer.parseInt(request.get("value").getAsString());
             String fn = request.get("fn").getAsString();

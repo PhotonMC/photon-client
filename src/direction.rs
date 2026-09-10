@@ -150,6 +150,11 @@ impl Direction {
         }
     }
 
+    /// Return Java `Direction.toYRot()` as a float after its integer data mask.
+    pub fn to_y_rot(self) -> f32 {
+        ((self.data2d() & 3) * 90) as f32
+    }
+
     /// Choose the direction with the greatest Java float dot product.
     pub fn approximate_nearest(dx: f64, dy: f64, dz: f64) -> Self {
         let dx = dx as f32;
