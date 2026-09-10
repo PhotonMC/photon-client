@@ -7,6 +7,8 @@ import com.mojang.serialization.JsonOps;
 import it.unimi.dsi.fastutil.longs.LongConsumer;
 import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.Locale;
+import java.util.UUID;
 import java.util.stream.Stream;
 import net.minecraft.DetectedVersion;
 import net.minecraft.SharedConstants;
@@ -355,6 +357,14 @@ public final class MathOracle {
             } else {
                 throw new IllegalArgumentException("Unknown Mth frac type");
             }
+        } else if (operation.equals("mth_create_insecure_uuid")) {
+            RandomSource random = RandomSource.create(
+                Long.parseLong(request.get("seed").getAsString()));
+            UUID uuid = Mth.createInsecureUUID(random);
+            result.addProperty("most_hex", String.format(Locale.ROOT, "%016x",
+                uuid.getMostSignificantBits()));
+            result.addProperty("least_hex", String.format(Locale.ROOT, "%016x",
+                uuid.getLeastSignificantBits()));
         } else if (operation.equals("mth_integer_helpers")) {
             String width = request.get("type").getAsString();
             String function = request.get("fn").getAsString();

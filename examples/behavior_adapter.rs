@@ -2335,6 +2335,17 @@ fn math_result(request: &Value) -> Result<Value, String> {
         };
         return Ok(json!({"bits": bits}));
     }
+    if operation == "mth_create_insecure_uuid" {
+        let seed = string(request, "seed")?
+            .parse::<i64>()
+            .map_err(|error| error.to_string())?;
+        let mut random = RandomSource::create(seed);
+        let uuid = math::mth_create_insecure_uuid(&mut random);
+        return Ok(json!({
+            "most_hex": format!("{:016x}", uuid.most),
+            "least_hex": format!("{:016x}", uuid.least),
+        }));
+    }
     if operation == "mth_integer_helpers" {
         let function = string(request, "fn")?;
         let input = string(request, "input")?;

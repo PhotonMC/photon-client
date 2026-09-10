@@ -2872,6 +2872,23 @@ def math_cases():
                "operation": "mth_frac", "type": width, "fn": "frac",
                "input": input_value}
 
+    for label, seed in (
+        ("zero", 0),
+        ("one", 1),
+        ("negative-one", -1),
+        ("positive", 42),
+        ("negative", -42),
+        ("large-positive", 987654321),
+        ("large-negative", -987654321),
+        ("long-max", 9223372036854775807),
+        ("long-min", -9223372036854775808),
+        ("alternating-positive", 305419896),
+        ("alternating-negative", -6148914691236517206),
+        ("high-bit", 4611686018427387904),
+    ):
+        yield {"case_id": f"mth/create-insecure-uuid/{label}", "family": "math",
+               "operation": "mth_create_insecure_uuid", "seed": str(seed)}
+
     mth_integer_helpers = [
         ("floor-div/int/negative-remainder", "i32", "floor_div", "-7", "3"),
         ("floor-div/int/negative-divisor", "i32", "floor_div", "7", "-3"),

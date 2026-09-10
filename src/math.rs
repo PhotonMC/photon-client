@@ -1,7 +1,7 @@
 //! The numeric operations currently covered by the Java behavior corpus.
 //! Arithmetic stays at the reference's precision and evaluation order.
 
-use crate::binary::BlockPos;
+use crate::binary::{BlockPos, Uuid};
 use crate::direction::{Axis, Direction};
 use crate::random::RandomSource;
 
@@ -653,6 +653,13 @@ pub fn frac_f32(value: f32) -> f32 {
 /// Return Java `Mth.frac(double)` with its lfloor result widened to f64.
 pub fn frac_f64(value: f64) -> f64 {
     value - lfloor_f64(value) as f64
+}
+
+/// Return Java `Mth.createInsecureUUID(RandomSource)` from two long draws.
+pub fn mth_create_insecure_uuid(random: &mut RandomSource) -> Uuid {
+    let most = (random.next_long() as u64 & (-61_441_i64 as u64)) | 16_384_u64;
+    let least = (random.next_long() as u64 & 4_611_686_018_427_387_903_u64) | (i64::MIN as u64);
+    Uuid::new(most, least)
 }
 
 /// Return Java `Mth.ceilLong(double)` with Java's floating-point-to-long narrowing.
