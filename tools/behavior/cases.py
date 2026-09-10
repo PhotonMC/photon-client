@@ -364,6 +364,13 @@ def wire_cases():
                "operation": "configuration_misc", "direction": "read",
                "packet": "reset-chat", "hex": encoded}
 
+    for name in ["HANDSHAKING", "PLAY", "STATUS", "LOGIN", "CONFIGURATION"]:
+        yield {"case_id": f"protocol/connection/{name.lower()}", "family": "wire",
+               "operation": "protocol_metadata", "kind": "connection", "name": name}
+    for name in ["SERVERBOUND", "CLIENTBOUND"]:
+        yield {"case_id": f"protocol/flow/{name.lower()}", "family": "wire",
+               "operation": "protocol_metadata", "kind": "flow", "name": name}
+
     def client_information_hex(language_bytes, view_distance, chat_visibility, chat_colors,
                                model_customisation, main_hand, text_filtering, allows_listing,
                                particle_status):

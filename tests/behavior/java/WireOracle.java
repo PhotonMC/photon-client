@@ -32,6 +32,7 @@ import net.minecraft.network.Varint21LengthFieldPrepender;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.VarInt;
 import net.minecraft.network.VarLong;
+import net.minecraft.network.ConnectionProtocol;
 import net.minecraft.network.protocol.handshake.ClientIntent;
 import net.minecraft.network.protocol.handshake.ClientIntentionPacket;
 import net.minecraft.network.protocol.login.ClientboundHelloPacket;
@@ -56,6 +57,7 @@ import net.minecraft.network.protocol.configuration.ClientboundResetChatPacket;
 import net.minecraft.core.RegistrySynchronization;
 import net.minecraft.network.protocol.configuration.ServerboundAcceptCodeOfConductPacket;
 import net.minecraft.network.protocol.configuration.ServerboundFinishConfigurationPacket;
+import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.server.level.ClientInformation;
 import net.minecraft.server.level.ParticleStatus;
 import net.minecraft.resources.Identifier;
@@ -102,6 +104,9 @@ public final class WireOracle {
         }
         if (operation.equals("configuration_misc")) {
             return configurationMiscResult(request);
+        }
+        if (operation.equals("protocol_metadata")) {
+            return protocolMetadataResult(request);
         }
         if (operation.equals("client_information")) {
             return clientInformationResult(request);
@@ -749,6 +754,28 @@ public final class WireOracle {
         }
 
         throw new IllegalArgumentException("Unknown configuration misc direction");
+    }
+
+    private static JsonObject protocolMetadataResult(JsonObject request) {
+        String kind = request.get("kind").getAsString();
+        String name = request.get("name").getAsString();
+        JsonObject result = new JsonObject();
+        if (kind.equals("connection")) {
+            ConnectionProtocol protocol = ConnectionProtocol.valueOf(name);
+            result.addProperty("id", protocol.id());
+            result.addProperty("name", protocol.name());
+            result.addProperty("ordinal", protocol.ordinal());
+        } else if (kind.equals("flow")) {
+            PacketFlow flow = PacketFlow.valueOf(name);
+            result.addProperty("id", flow.id());
+            result.addProperty("name", flow.name());
+            result.addProperty("opposite", flow.getOpposite().name());
+            result.addProperty("ordinal", flow.ordinal());
+        } else {
+            throw new IllegalArgumentException("Unknown protocol metadata kind");
+        }
+        result.addProperty("outcome", "value");
+        return result;
     }
 
     private static JsonObject clientInformationResult(JsonObject request) {

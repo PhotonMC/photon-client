@@ -16,6 +16,7 @@ pub mod login;
 pub mod math;
 pub mod nbt;
 pub mod option;
+pub mod protocol;
 pub mod random;
 pub mod registry_data;
 pub mod resources;

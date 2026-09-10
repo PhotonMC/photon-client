@@ -41,6 +41,7 @@ use voxel_client::nbt::{self, Field, FieldValue};
 use voxel_client::option::{
     AltEnum, ClampingLazyMaxIntRange, CycleableEnum, IntRange, LazyEnum, SliderableEnum, UnitDouble,
 };
+use voxel_client::protocol::{ConnectionProtocol, PacketFlow};
 use voxel_client::random::RandomSource;
 use voxel_client::registry_data::{ClientboundRegistryDataPacket, PackedRegistryEntry};
 use voxel_client::resources::{
@@ -127,6 +128,9 @@ fn wire_result(request: &Value) -> Result<Value, String> {
     }
     if request["operation"].as_str() == Some("configuration_misc") {
         return configuration_misc_result(request);
+    }
+    if request["operation"].as_str() == Some("protocol_metadata") {
+        return protocol_metadata_result(request);
     }
     if request["operation"].as_str() == Some("client_information") {
         return client_information_result(request);
@@ -749,6 +753,44 @@ fn configuration_misc_result(request: &Value) -> Result<Value, String> {
             Ok(result)
         }
         _ => Err("unknown configuration misc direction".into()),
+    }
+}
+
+fn protocol_metadata_result(request: &Value) -> Result<Value, String> {
+    let kind = string(request, "kind")?;
+    let name = string(request, "name")?;
+    match kind {
+        "connection" => {
+            let protocol = match name {
+                "HANDSHAKING" => ConnectionProtocol::Handshaking,
+                "PLAY" => ConnectionProtocol::Play,
+                "STATUS" => ConnectionProtocol::Status,
+                "LOGIN" => ConnectionProtocol::Login,
+                "CONFIGURATION" => ConnectionProtocol::Configuration,
+                _ => return Err("unknown connection protocol".into()),
+            };
+            Ok(json!({
+                "id": protocol.id(),
+                "name": protocol.name(),
+                "ordinal": protocol.ordinal(),
+                "outcome": "value",
+            }))
+        }
+        "flow" => {
+            let flow = match name {
+                "SERVERBOUND" => PacketFlow::Serverbound,
+                "CLIENTBOUND" => PacketFlow::Clientbound,
+                _ => return Err("unknown packet flow".into()),
+            };
+            Ok(json!({
+                "id": flow.id(),
+                "name": flow.name(),
+                "opposite": flow.opposite().name(),
+                "ordinal": flow.ordinal(),
+                "outcome": "value",
+            }))
+        }
+        _ => Err("unknown protocol metadata kind".into()),
     }
 }
 
