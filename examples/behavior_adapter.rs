@@ -41,6 +41,7 @@ use voxel_client::option::{
     AltEnum, ClampingLazyMaxIntRange, CycleableEnum, IntRange, LazyEnum, SliderableEnum, UnitDouble,
 };
 use voxel_client::random::RandomSource;
+use voxel_client::registry_data::{ClientboundRegistryDataPacket, PackedRegistryEntry};
 use voxel_client::resources::{
     self, AssetIndex, AssetResolution, KnownPack, KnownPackCodecError, KnownPackListCodecError,
     PackCompatibility, PackFormat, ReloadableResourceManager, ResourcePack, ResourcePackStack,
@@ -134,6 +135,9 @@ fn wire_result(request: &Value) -> Result<Value, String> {
     }
     if request["operation"].as_str() == Some("update_tags") {
         return update_tags_result(request);
+    }
+    if request["operation"].as_str() == Some("registry_data") {
+        return registry_data_result(request);
     }
     if request["operation"].as_str() == Some("status_request") {
         return status_request_result(request);
@@ -1012,6 +1016,79 @@ fn update_tags_result(request: &Value) -> Result<Value, String> {
             Ok(result)
         }
         _ => Err("unknown update tags direction".into()),
+    }
+}
+
+fn registry_data_read_error(error: voxel_client::registry_data::ReadError) -> &'static str {
+    match error {
+        voxel_client::registry_data::ReadError::BufferUnderflow => "buffer_underflow",
+        voxel_client::registry_data::ReadError::DecoderError => "decoder_error",
+        voxel_client::registry_data::ReadError::EncoderError => "encoder_error",
+        voxel_client::registry_data::ReadError::TooBig => "too_big",
+    }
+}
+
+fn registry_data_result(request: &Value) -> Result<Value, String> {
+    match string(request, "direction")? {
+        "write" => {
+            let registry = Identifier::parse(string(request, "registry")?)
+                .map_err(|_| "invalid registry identifier".to_owned())?;
+            let entries = request["entries"]
+                .as_array()
+                .ok_or("entries must be an array")?
+                .iter()
+                .map(|entry| {
+                    let entry = entry
+                        .as_object()
+                        .ok_or("registry entries must be objects")?;
+                    let id =
+                        Identifier::parse(entry["id"].as_str().ok_or("entry id must be a string")?)
+                            .map_err(|_| "invalid entry identifier".to_owned())?;
+                    let data = match entry.get("data") {
+                        None | Some(Value::Null) => None,
+                        Some(tree) => Some(nbt_tree_value(tree)?),
+                    };
+                    Ok(PackedRegistryEntry::new(id, data))
+                })
+                .collect::<Result<Vec<_>, String>>()?;
+            let prefix = decode_hex(string(request, "prefix_hex")?)?;
+            let mut buffer = prefix.clone();
+            let mut result =
+                match ClientboundRegistryDataPacket::new(registry, entries).encode(&mut buffer) {
+                    Ok(()) => json!({"outcome": "value"}),
+                    Err(voxel_client::registry_data::WriteError::EncoderError) => {
+                        json!({"outcome": "error", "error": "encoder_error"})
+                    }
+                };
+            result["written"] = json!(buffer.len() - prefix.len());
+            result["hex"] = json!(hex(&buffer));
+            Ok(result)
+        }
+        "read" => {
+            let bytes = decode_hex(string(request, "hex")?)?;
+            let mut remaining = bytes.as_slice();
+            let mut result = match ClientboundRegistryDataPacket::decode(&mut remaining) {
+                Ok(packet) => json!({
+                    "registry": packet.registry.as_string(),
+                    "entries": packet.entries.iter().map(|entry| {
+                        let mut result = json!({"id": entry.id.as_string()});
+                        if let Some(data) = &entry.data {
+                            result["data"] = nbt_description_json(data);
+                        }
+                        result
+                    }).collect::<Vec<_>>(),
+                    "outcome": "value",
+                }),
+                Err(error) => json!({
+                    "outcome": "error",
+                    "error": registry_data_read_error(error),
+                }),
+            };
+            result["consumed"] = json!(bytes.len() - remaining.len());
+            result["remaining_hex"] = json!(hex(remaining));
+            Ok(result)
+        }
+        _ => Err("unknown registry data direction".into()),
     }
 }
 

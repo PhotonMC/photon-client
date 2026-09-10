@@ -1,5 +1,6 @@
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.google.common.collect.ArrayListMultimap;
 import com.mojang.authlib.GameProfile;
@@ -21,6 +22,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import net.minecraft.IdentifierException;
@@ -47,13 +49,21 @@ import net.minecraft.network.protocol.ping.ClientboundPongResponsePacket;
 import net.minecraft.network.protocol.ping.ServerboundPingRequestPacket;
 import net.minecraft.network.protocol.status.ServerboundStatusRequestPacket;
 import net.minecraft.network.protocol.common.ServerboundClientInformationPacket;
+import net.minecraft.network.protocol.configuration.ClientboundRegistryDataPacket;
 import net.minecraft.network.protocol.configuration.ClientboundFinishConfigurationPacket;
+import net.minecraft.core.RegistrySynchronization;
 import net.minecraft.network.protocol.configuration.ServerboundAcceptCodeOfConductPacket;
 import net.minecraft.network.protocol.configuration.ServerboundFinishConfigurationPacket;
 import net.minecraft.server.level.ClientInformation;
 import net.minecraft.server.level.ParticleStatus;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.nbt.ByteArrayTag;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.IntArrayTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.LongArrayTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.tags.TagNetworkSerialization;
 import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.entity.player.ChatVisiblity;
@@ -99,6 +109,9 @@ public final class WireOracle {
         }
         if (operation.equals("update_tags")) {
             return updateTagsResult(request);
+        }
+        if (operation.equals("registry_data")) {
+            return registryDataResult(request);
         }
         if (operation.equals("status_request")) {
             return statusRequestResult(request);
@@ -1070,6 +1083,230 @@ public final class WireOracle {
         }
 
         throw new IllegalArgumentException("Unknown update tags direction");
+    }
+
+    private static JsonObject registryDataResult(JsonObject request) {
+        String direction = request.get("direction").getAsString();
+        if (direction.equals("write")) {
+            Identifier registryId = Identifier.parse(request.get("registry").getAsString());
+            List<RegistrySynchronization.PackedRegistryEntry> entries = new ArrayList<>();
+            for (JsonElement element : request.getAsJsonArray("entries")) {
+                JsonObject entry = element.getAsJsonObject();
+                Identifier id = Identifier.parse(entry.get("id").getAsString());
+                JsonElement data = entry.get("data");
+                Optional<Tag> tag = data == null || data.isJsonNull()
+                    ? Optional.empty()
+                    : Optional.of(buildTag(data.getAsJsonObject()));
+                entries.add(new RegistrySynchronization.PackedRegistryEntry(id, tag));
+            }
+            ResourceKey<? extends Registry<?>> registry = ResourceKey.createRegistryKey(registryId);
+            byte[] prefix = HexFormat.of().parseHex(request.get("prefix_hex").getAsString());
+            ByteBuf buffer = Unpooled.buffer();
+            try {
+                buffer.writeBytes(prefix);
+                var result = new JsonObject();
+                try {
+                    ClientboundRegistryDataPacket.STREAM_CODEC.encode(
+                        new FriendlyByteBuf(buffer), new ClientboundRegistryDataPacket(registry, entries)
+                    );
+                    result.addProperty("outcome", "value");
+                } catch (EncoderException error) {
+                    result.addProperty("outcome", "error");
+                    result.addProperty("error", "encoder_error");
+                    result.addProperty("java_exception", error.getClass().getName());
+                }
+                result.addProperty("written", buffer.writerIndex() - prefix.length);
+                result.addProperty("hex", ByteBufUtil.hexDump(buffer));
+                return result;
+            } finally {
+                buffer.release();
+            }
+        }
+
+        if (direction.equals("read")) {
+            ByteBuf buffer = Unpooled.buffer();
+            try {
+                buffer.writeBytes(HexFormat.of().parseHex(request.get("hex").getAsString()));
+                var result = new JsonObject();
+                try {
+                    ClientboundRegistryDataPacket packet = ClientboundRegistryDataPacket.STREAM_CODEC
+                        .decode(new FriendlyByteBuf(buffer));
+                    result.addProperty("registry", packet.registry().identifier().toString());
+                    var entryValues = new JsonArray();
+                    for (RegistrySynchronization.PackedRegistryEntry entry : packet.entries()) {
+                        var entryValue = new JsonObject();
+                        entryValue.addProperty("id", entry.id().toString());
+                        if (entry.data().isPresent()) {
+                            entryValue.add("data", describeTag(entry.data().get()));
+                        } else {
+                            entryValue.add("data", JsonNull.INSTANCE);
+                        }
+                        entryValues.add(entryValue);
+                    }
+                    result.add("entries", entryValues);
+                    result.addProperty("outcome", "value");
+                } catch (IndexOutOfBoundsException error) {
+                    result.addProperty("outcome", "error");
+                    result.addProperty("error", "buffer_underflow");
+                    result.addProperty("java_exception", error.getClass().getName());
+                } catch (EncoderException error) {
+                    result.addProperty("outcome", "error");
+                    result.addProperty("error", "encoder_error");
+                    result.addProperty("java_exception", error.getClass().getName());
+                } catch (DecoderException | IdentifierException error) {
+                    result.addProperty("outcome", "error");
+                    result.addProperty("error", "decoder_error");
+                    result.addProperty("java_exception", error.getClass().getName());
+                } catch (RuntimeException error) {
+                    result.addProperty("outcome", "error");
+                    result.addProperty("error", error.getClass() == RuntimeException.class ? "too_big" : "decoder_error");
+                    result.addProperty("java_exception", error.getClass().getName());
+                }
+                result.addProperty("consumed", buffer.readerIndex());
+                result.addProperty("remaining_hex", ByteBufUtil.hexDump(buffer));
+                return result;
+            } finally {
+                buffer.release();
+            }
+        }
+
+        throw new IllegalArgumentException("Unknown registry data direction");
+    }
+
+    private static Tag buildTag(JsonObject node) {
+        return switch (node.get("type").getAsString()) {
+            case "byte" -> net.minecraft.nbt.ByteTag.valueOf(Byte.parseByte(node.get("value").getAsString()));
+            case "short" -> net.minecraft.nbt.ShortTag.valueOf(Short.parseShort(node.get("value").getAsString()));
+            case "int" -> net.minecraft.nbt.IntTag.valueOf(Integer.parseInt(node.get("value").getAsString()));
+            case "long" -> net.minecraft.nbt.LongTag.valueOf(Long.parseLong(node.get("value").getAsString()));
+            case "float" -> net.minecraft.nbt.FloatTag.valueOf(Float.intBitsToFloat(
+                Integer.parseUnsignedInt(node.get("value").getAsString(), 16)));
+            case "double" -> net.minecraft.nbt.DoubleTag.valueOf(Double.longBitsToDouble(
+                Long.parseUnsignedLong(node.get("value").getAsString(), 16)));
+            case "string" -> net.minecraft.nbt.StringTag.valueOf(node.get("value").getAsString());
+            case "byte-array" -> {
+                var values = node.getAsJsonArray("value");
+                byte[] data = new byte[values.size()];
+                for (int i = 0; i < data.length; i++) {
+                    data[i] = Byte.parseByte(values.get(i).getAsString());
+                }
+                yield new ByteArrayTag(data);
+            }
+            case "int-array" -> {
+                var values = node.getAsJsonArray("value");
+                int[] data = new int[values.size()];
+                for (int i = 0; i < data.length; i++) {
+                    data[i] = Integer.parseInt(values.get(i).getAsString());
+                }
+                yield new IntArrayTag(data);
+            }
+            case "long-array" -> {
+                var values = node.getAsJsonArray("value");
+                long[] data = new long[values.size()];
+                for (int i = 0; i < data.length; i++) {
+                    data[i] = Long.parseLong(values.get(i).getAsString());
+                }
+                yield new LongArrayTag(data);
+            }
+            case "list" -> {
+                var list = new ListTag();
+                for (JsonElement value : node.getAsJsonArray("value")) {
+                    list.add(list.size(), buildTag(value.getAsJsonObject()));
+                }
+                yield list;
+            }
+            case "compound" -> {
+                var compound = new CompoundTag();
+                JsonObject members = node.getAsJsonObject("value");
+                for (String key : members.keySet()) {
+                    compound.put(key, buildTag(members.getAsJsonObject(key)));
+                }
+                yield compound;
+            }
+            default -> throw new IllegalArgumentException("Unknown NBT node type");
+        };
+    }
+
+    private static JsonObject describeTag(Tag tag) {
+        var node = new JsonObject();
+        switch (tag.getId()) {
+            case 1 -> {
+                node.addProperty("type", "byte");
+                node.addProperty("value", Byte.toString(((net.minecraft.nbt.ByteTag)tag).value()));
+            }
+            case 2 -> {
+                node.addProperty("type", "short");
+                node.addProperty("value", Short.toString(((net.minecraft.nbt.ShortTag)tag).value()));
+            }
+            case 3 -> {
+                node.addProperty("type", "int");
+                node.addProperty("value", Integer.toString(((net.minecraft.nbt.IntTag)tag).value()));
+            }
+            case 4 -> {
+                node.addProperty("type", "long");
+                node.addProperty("value", Long.toString(((net.minecraft.nbt.LongTag)tag).value()));
+            }
+            case 5 -> {
+                node.addProperty("type", "float");
+                node.addProperty("value", String.format("%08x", Float.floatToRawIntBits(
+                    ((net.minecraft.nbt.FloatTag)tag).value())));
+            }
+            case 6 -> {
+                node.addProperty("type", "double");
+                node.addProperty("value", String.format("%016x", Double.doubleToRawLongBits(
+                    ((net.minecraft.nbt.DoubleTag)tag).value())));
+            }
+            case 7 -> {
+                node.addProperty("type", "byte-array");
+                var values = new JsonArray();
+                for (byte value : ((ByteArrayTag)tag).getAsByteArray()) {
+                    values.add(Byte.toString(value));
+                }
+                node.add("value", values);
+            }
+            case 8 -> {
+                node.addProperty("type", "string");
+                node.addProperty("value", ((net.minecraft.nbt.StringTag)tag).value());
+            }
+            case 9 -> {
+                node.addProperty("type", "list");
+                var values = new JsonArray();
+                ListTag list = (ListTag)tag;
+                for (int i = 0; i < list.size(); i++) {
+                    values.add(describeTag(list.get(i)));
+                }
+                node.add("value", values);
+            }
+            case 10 -> {
+                node.addProperty("type", "compound");
+                var members = new JsonObject();
+                CompoundTag compound = (CompoundTag)tag;
+                List<String> keys = new ArrayList<>(compound.keySet());
+                keys.sort(String::compareTo);
+                for (String key : keys) {
+                    members.add(key, describeTag(compound.get(key)));
+                }
+                node.add("value", members);
+            }
+            case 11 -> {
+                node.addProperty("type", "int-array");
+                var values = new JsonArray();
+                for (int value : ((IntArrayTag)tag).getAsIntArray()) {
+                    values.add(Integer.toString(value));
+                }
+                node.add("value", values);
+            }
+            case 12 -> {
+                node.addProperty("type", "long-array");
+                var values = new JsonArray();
+                for (long value : ((LongArrayTag)tag).getAsLongArray()) {
+                    values.add(Long.toString(value));
+                }
+                node.add("value", values);
+            }
+            default -> throw new IllegalStateException("Unexpected tag in registry data");
+        }
+        return node;
     }
 
     @SuppressWarnings("unchecked")

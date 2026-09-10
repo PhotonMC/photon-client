@@ -86,7 +86,9 @@
         "com.google.guava:failureaccess",
         "com.mojang:authlib",
         "com.mojang:brigadier",
-        "org.apache.commons:commons-lang3"
+        "org.apache.commons:commons-lang3",
+        "com.mojang:logging",
+        "org.slf4j:slf4j-api"
       ]
     },
     "math": {

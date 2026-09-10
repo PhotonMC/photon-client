@@ -215,16 +215,21 @@ fn read_compound(input: &mut &[u8]) -> Result<Vec<Field>, ReadError> {
     }
 }
 
-/// Read one root tag: `None` for the end marker, otherwise a compound.
-pub fn read_nbt(input: &mut &[u8]) -> Result<Option<Vec<Field>>, ReadError> {
+/// Read one root tag: `None` for the end marker, otherwise any NBT payload.
+pub fn read_any_nbt(input: &mut &[u8]) -> Result<Option<FieldValue>, ReadError> {
     let id = read_byte(input)?;
     if id == 0 {
         return Ok(None);
     }
+    read_payload(input, id).map(Some)
+}
 
-    let value = read_payload(input, id)?;
+/// Read one root tag: `None` for the end marker, otherwise a compound.
+pub fn read_nbt(input: &mut &[u8]) -> Result<Option<Vec<Field>>, ReadError> {
+    let value = read_any_nbt(input)?;
     match value {
-        FieldValue::Compound(fields) if id == 10 => Ok(Some(fields)),
+        None => Ok(None),
+        Some(FieldValue::Compound(fields)) => Ok(Some(fields)),
         _ => Err(ReadError::DecoderError),
     }
 }
@@ -327,11 +332,17 @@ fn write_payload(value: &FieldValue, output: &mut Vec<u8>) {
 }
 
 /// Append one root tag: `None` writes the end marker.
-pub fn write_nbt(root: Option<&[Field]>, output: &mut Vec<u8>) {
-    let Some(fields) = root else {
+pub fn write_any_nbt(root: Option<&FieldValue>, output: &mut Vec<u8>) {
+    let Some(value) = root else {
         output.push(0);
         return;
     };
-    output.push(10);
-    write_compound(fields, output);
+    output.push(type_id(value));
+    write_payload(value, output);
+}
+
+/// Append one compound root tag: `None` writes the end marker.
+pub fn write_nbt(root: Option<&[Field]>, output: &mut Vec<u8>) {
+    let value = root.map(|fields| FieldValue::Compound(fields.to_vec()));
+    write_any_nbt(value.as_ref(), output);
 }

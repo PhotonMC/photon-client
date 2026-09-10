@@ -17,6 +17,7 @@ pub mod math;
 pub mod nbt;
 pub mod option;
 pub mod random;
+pub mod registry_data;
 pub mod resources;
 pub mod scroll;
 pub mod shape;

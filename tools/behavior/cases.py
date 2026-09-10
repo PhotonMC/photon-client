@@ -569,6 +569,141 @@ def wire_cases():
         yield {"case_id": f"common/update-tags/read/{label}", "family": "wire",
                "operation": "update_tags", "direction": "read", "hex": encoded}
 
+    def nbt_tree_hex(node):
+        type_name = node["type"]
+        type_ids = {
+            "byte": 1, "short": 2, "int": 3, "long": 4, "float": 5,
+            "double": 6, "byte-array": 7, "string": 8, "list": 9,
+            "compound": 10, "int-array": 11, "long-array": 12,
+        }
+        type_id = type_ids[type_name]
+        if type_name == "byte":
+            return f"{type_id:02x}" + int(node["value"]).to_bytes(1, "big", signed=True).hex()
+        if type_name == "short":
+            return f"{type_id:02x}" + int(node["value"]).to_bytes(2, "big", signed=True).hex()
+        if type_name == "int":
+            return f"{type_id:02x}" + int(node["value"]).to_bytes(4, "big", signed=True).hex()
+        if type_name == "long":
+            return f"{type_id:02x}" + int(node["value"]).to_bytes(8, "big", signed=True).hex()
+        if type_name == "float":
+            return f"{type_id:02x}" + node["value"]
+        if type_name == "double":
+            return f"{type_id:02x}" + node["value"]
+        if type_name == "byte-array":
+            values = node["value"]
+            return (f"{type_id:02x}" + len(values).to_bytes(4, "big", signed=True).hex()
+                    + bytes(int(value) & 0xff for value in values).hex())
+        if type_name == "string":
+            encoded = node["value"].encode("utf-8")
+            return f"{type_id:02x}" + len(encoded).to_bytes(2, "big").hex() + encoded.hex()
+        if type_name == "list":
+            values = node["value"]
+            element_id = 0 if not values else type_ids[values[0]["type"]]
+            assert all(type_ids[value["type"]] == element_id for value in values)
+            payload = "".join(nbt_tree_hex(value)[2:] for value in values)
+            return (f"{type_id:02x}{element_id:02x}"
+                    + len(values).to_bytes(4, "big", signed=True).hex() + payload)
+        if type_name == "compound":
+            payload = ""
+            for key, value in node["value"].items():
+                encoded_key = key.encode("utf-8")
+                value_hex = nbt_tree_hex(value)
+                payload += value_hex[:2] + len(encoded_key).to_bytes(2, "big").hex() + encoded_key.hex()
+                payload += value_hex[2:]
+            return f"{type_id:02x}" + payload + "00"
+        if type_name == "int-array":
+            values = node["value"]
+            return (f"{type_id:02x}" + len(values).to_bytes(4, "big", signed=True).hex()
+                    + "".join(int(value).to_bytes(4, "big", signed=True).hex() for value in values))
+        if type_name == "long-array":
+            values = node["value"]
+            return (f"{type_id:02x}" + len(values).to_bytes(4, "big", signed=True).hex()
+                    + "".join(int(value).to_bytes(8, "big", signed=True).hex() for value in values))
+        raise AssertionError(type_name)
+
+    def registry_data_frame(registry, entries):
+        encoded = feature_string_frame(registry) + varint_hex(len(entries))
+        for entry in entries:
+            encoded += feature_string_frame(entry["id"])
+            data = entry.get("data")
+            if data is None:
+                encoded += "00"
+            else:
+                encoded += "01" + nbt_tree_hex(data)
+        return encoded
+
+    registry = "minecraft:dimension_type"
+    compound_tag = {"type": "compound", "value": {
+        "name": {"type": "string", "value": "overworld"},
+    }}
+    list_tag = {"type": "list", "value": [
+        {"type": "int", "value": "1"},
+        {"type": "int", "value": "-2"},
+    ]}
+    registry_writes = [
+        ("empty", [], "deadbeef"),
+        ("absent-data", [{"id": "minecraft:overworld", "data": None}], ""),
+        ("scalar-data", [{"id": "minecraft:overworld",
+                           "data": {"type": "int", "value": "42"}}], ""),
+        ("compound-data", [{"id": "minecraft:overworld", "data": compound_tag}], ""),
+        ("list-data", [{"id": "minecraft:overworld", "data": list_tag}], ""),
+        ("multiple", [
+            {"id": "minecraft:overworld", "data": None},
+            {"id": "minecraft:the_nether", "data": compound_tag},
+        ], "aa55"),
+        ("mixed-tags", [
+            {"id": "custom:one", "data": {"type": "byte", "value": "-128"}},
+            {"id": "custom:two", "data": {"type": "string", "value": "hi"}},
+            {"id": "custom:three", "data": None},
+        ], ""),
+    ]
+    for label, entries, prefix_hex in registry_writes:
+        yield {"case_id": f"configuration/registry-data/write/{label}", "family": "wire",
+               "operation": "registry_data", "direction": "write", "registry": registry,
+               "entries": entries, "prefix_hex": prefix_hex}
+
+    registry_read_values = [
+        ("empty", registry_data_frame(registry, [])),
+        ("absent-data", registry_data_frame(registry, [{"id": "minecraft:overworld", "data": None}])),
+        ("scalar-data", registry_data_frame(registry, [{
+            "id": "minecraft:overworld", "data": {"type": "int", "value": "42"},
+        }])),
+        ("compound-data", registry_data_frame(registry, [{
+            "id": "minecraft:overworld", "data": compound_tag,
+        }])),
+        ("list-data", registry_data_frame(registry, [{
+            "id": "minecraft:overworld", "data": list_tag,
+        }])),
+        ("multiple", registry_data_frame(registry, [
+            {"id": "minecraft:overworld", "data": None},
+            {"id": "minecraft:the_nether", "data": compound_tag},
+        ])),
+        ("trailing", registry_data_frame(registry, []) + "aabb"),
+        ("noncanonical-present", feature_string_frame(registry) + varint_hex(1)
+         + feature_string_frame("minecraft:overworld")
+         + "02" + nbt_tree_hex({"type": "int", "value": "42"})),
+        ("registry-prefix-underflow", "80"),
+        ("registry-body-underflow", "01"),
+        ("entry-count-underflow", feature_string_frame(registry)),
+        ("entry-id-prefix-underflow", feature_string_frame(registry) + varint_hex(1) + "80"),
+        ("optional-underflow", feature_string_frame(registry) + varint_hex(1)
+         + feature_string_frame("minecraft:overworld")),
+        ("tag-empty", feature_string_frame(registry) + varint_hex(1)
+         + feature_string_frame("minecraft:overworld") + "01"),
+        ("tag-end", feature_string_frame(registry) + varint_hex(1)
+         + feature_string_frame("minecraft:overworld") + "0100"),
+        ("tag-body-underflow", feature_string_frame(registry) + varint_hex(1)
+         + feature_string_frame("minecraft:overworld") + "0103"),
+        ("invalid-registry-identifier", feature_string_frame("Bad:registry") + varint_hex(0)),
+        ("invalid-entry-identifier", feature_string_frame(registry) + varint_hex(1)
+         + feature_string_frame("Bad:entry") + "00"),
+        ("negative-entry-count", feature_string_frame(registry) + varint_hex(-1)),
+        ("entry-count-too-big", feature_string_frame(registry) + "808080808001"),
+    ]
+    for label, encoded in registry_read_values:
+        yield {"case_id": f"configuration/registry-data/read/{label}", "family": "wire",
+               "operation": "registry_data", "direction": "read", "hex": encoded}
+
 
 def math_cases():
     def character_event_case(label, codepoint):
