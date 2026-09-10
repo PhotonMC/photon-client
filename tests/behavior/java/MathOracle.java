@@ -605,6 +605,18 @@ public final class MathOracle {
                 f64(request, "x"))));
         } else if (operation.equals("mth_sign")) {
             result.addProperty("value", Integer.toString(Mth.sign(f64(request, "x"))));
+        } else if (operation.equals("mth_rot_lerp")) {
+            String width = request.get("type").getAsString();
+            if (width.equals("f32")) {
+                result.addProperty("bits", Oracle.bits(Mth.rotLerp(
+                    Oracle.f32(request, "alpha"), Oracle.f32(request, "from"),
+                    Oracle.f32(request, "to"))));
+            } else if (width.equals("f64")) {
+                result.addProperty("bits", Oracle.bits(Mth.rotLerp(
+                    f64(request, "alpha"), f64(request, "from"), f64(request, "to"))));
+            } else {
+                throw new IllegalArgumentException("Unknown Mth rotLerp type");
+            }
         } else if (operation.equals("vec3")) {
             Vec3 vector = new Vec3(f64(request, "x"), f64(request, "y"), f64(request, "z"));
             var events = new JsonArray();

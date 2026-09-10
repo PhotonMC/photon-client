@@ -3260,6 +3260,35 @@ def math_cases():
         yield {"case_id": f"mth/sign/{label}", "family": "math",
                "operation": "mth_sign", "x": float_bits(value, "f64")}
 
+    for width in ("f32", "f64"):
+        subnormal = (float.fromhex("0x0.000002p-126") if width == "f32"
+                     else float.fromhex("0x0.0000000000001p-1022"))
+        maximum_finite = (float.fromhex("0x1.fffffep127") if width == "f32"
+                          else float.fromhex("0x1.fffffffffffffp1023"))
+        mth_rot_lerp = [
+            ("basic", 0.25, 10.0, 50.0),
+            ("zero-alpha", -0.0, 45.0, 90.0),
+            ("one-alpha", 1.0, 45.0, 90.0),
+            ("negative-alpha", -0.5, 10.0, 50.0),
+            ("over-one-alpha", 1.5, 10.0, 50.0),
+            ("positive-crossing", 0.5, 170.0, -170.0),
+            ("negative-crossing", 0.5, -170.0, 170.0),
+            ("positive-half-turn", 1.0, 0.0, 180.0),
+            ("negative-half-turn", 1.0, 0.0, -180.0),
+            ("full-turn", 0.5, 12.0, 372.0),
+            ("signed-zero", 0.5, -0.0, 0.0),
+            ("subnormal-difference", 1.0, 0.0, subnormal),
+            ("maximum-finite", 0.5, -maximum_finite, maximum_finite),
+            ("infinite-to", 0.5, 0.0, float("inf")),
+            ("nan-to", 0.5, 0.0, float("nan")),
+        ]
+        for label, alpha, from_value, to_value in mth_rot_lerp:
+            yield {"case_id": f"mth/rot-lerp/{width}/{label}", "family": "math",
+                   "operation": "mth_rot_lerp", "type": width,
+                   "alpha": float_bits(alpha, width),
+                   "from": float_bits(from_value, width),
+                   "to": float_bits(to_value, width)}
+
 
 def timer_cases():
     def trace(label, steps, start=0, tps=20, target=50):

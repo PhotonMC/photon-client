@@ -10,12 +10,12 @@ Java 25.0.4.1 ve Rust 1.98.1 / Linux x86_64 ortamında:
 - Rust debug ve release adaptörleri **129/129** binary senaryosunda eşleşti.
 - Beş yazma senaryosu 24 baytlık x/y/z sırasını, prefix'i ve raw f64 bitlerini karşılaştırdı.
 - Yedi okuma sınırı ilk, ikinci ve üçüncü double underflow'unda tüketim davranışını; tam okuma ve NaN/Infinity raw bitleri başarı yolunu karşılaştırdı.
-- Birleşik altı aile corpus'u **2050/2050** senaryoda hem debug hem release adaptörüyle eşleşti.
-- `verify` çalıştırması kayıtlı 2050 senaryoluk Java referansını yeniden doğruladı.
+- Birleşik altı aile corpus'u **2080/2080** senaryoda hem debug hem release adaptörüyle eşleşti.
+- `verify` çalıştırması kayıtlı 2080 senaryoluk Java referansını yeniden doğruladı.
 
-Binary referansı `40e3640839f4783a6a3f1b08072a8e7679461e101d4f72b5133ddfe58e06e3d0`, birleşik referans `0d4c76950a37451c226bb147399cfa08349c81c96e4a8ea2b85e47696f0caf11` kimliklerindedir.
+Binary referansı `40e3640839f4783a6a3f1b08072a8e7679461e101d4f72b5133ddfe58e06e3d0`, birleşik referans `e1fbdb47e2227938261f4e5bd3238926120301582d50b1af7c84fefac9844a94` kimliklerindedir.
 
-Yerel raporlar: `compare-q8wuyafn` (binary debug), `compare-kj2w1vpa` (binary release), `compare-hmu92wq0` (birleşik debug), `compare-ha45dyno` (birleşik release) ve `verify-46sjfnqt` dizinlerinde, `.data/runs/behavior/` altında bulunur.
+Yerel raporlar: `compare-q8wuyafn` (binary debug), `compare-kj2w1vpa` (binary release), `compare-oc9sa8gq` (birleşik debug), `compare-m9ue0q18` (birleşik release) ve `verify-np1asir2` dizinlerinde, `.data/runs/behavior/` altında bulunur.
 
 ## Sınırlar
 

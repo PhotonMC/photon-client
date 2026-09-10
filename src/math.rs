@@ -795,6 +795,16 @@ pub fn mth_sign(number: f64) -> i32 {
     }
 }
 
+/// Return Java `Mth.rotLerp(float, float, float)` in source order.
+pub fn mth_rot_lerp_f32(alpha: f32, from: f32, to: f32) -> f32 {
+    from + alpha * wrap_degrees_f32(to - from)
+}
+
+/// Return Java `Mth.rotLerp(double, double, double)` in source order.
+pub fn mth_rot_lerp_f64(alpha: f64, from: f64, to: f64) -> f64 {
+    from + alpha * wrap_degrees_f64(to - from)
+}
+
 /// Return Java `Mth.nextInt(RandomSource, int, int)`, including its
 /// min-greater-than-or-equal-to-max short circuit.
 pub fn mth_next_int(
