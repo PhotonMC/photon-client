@@ -587,6 +587,16 @@ public final class MathOracle {
             } else {
                 throw new IllegalArgumentException("Unknown Mth lerp type");
             }
+        } else if (operation.equals("mth_lerp_int")) {
+            result.addProperty("value", Integer.toString(Mth.lerpInt(
+                Oracle.f32(request, "alpha"),
+                Integer.parseInt(request.get("p0").getAsString()),
+                Integer.parseInt(request.get("p1").getAsString()))));
+        } else if (operation.equals("mth_lerp_discrete")) {
+            result.addProperty("value", Integer.toString(Mth.lerpDiscrete(
+                Oracle.f32(request, "alpha"),
+                Integer.parseInt(request.get("p0").getAsString()),
+                Integer.parseInt(request.get("p1").getAsString()))));
         } else if (operation.equals("vec3")) {
             Vec3 vector = new Vec3(f64(request, "x"), f64(request, "y"), f64(request, "z"));
             var events = new JsonArray();

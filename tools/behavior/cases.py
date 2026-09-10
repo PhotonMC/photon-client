@@ -3195,6 +3195,29 @@ def math_cases():
                    "alpha": float_bits(alpha, width), "p0": float_bits(p0, width),
                    "p1": float_bits(p1, width)}
 
+    mth_integer_lerp = [
+        ("basic", 0.25, 0, 8),
+        ("zero-alpha", 0.0, 5, 17),
+        ("one-alpha", 1.0, -4, 12),
+        ("over-one", 1.5, 2, 10),
+        ("negative-extrapolation", -0.5, 2, 10),
+        ("negative-range", 0.25, -12, -4),
+        ("signed-zero-alpha", -0.0, 5, 17),
+        ("subnormal-alpha", float.fromhex("0x0.000002p-126"), -7, 19),
+        ("nan-alpha", float("nan"), 7, 23),
+        ("positive-infinity-alpha", float("inf"), 1, 3),
+        ("negative-infinity-alpha", -float("inf"), 1, 3),
+        ("delta-overflow-half", 0.5, (1 << 31) - 1, -(1 << 31)),
+        ("delta-min-half", 0.5, 0, -(1 << 31)),
+        ("start-overflow-one", 1.0, (1 << 31) - 1, -(1 << 31)),
+    ]
+    for operation, path_name in (("mth_lerp_int", "lerp-int"),
+                                 ("mth_lerp_discrete", "lerp-discrete")):
+        for label, alpha, p0, p1 in mth_integer_lerp:
+            yield {"case_id": f"mth/{path_name}/{label}", "family": "math",
+                   "operation": operation, "alpha": float_bits(alpha, "f32"),
+                   "p0": str(p0), "p1": str(p1)}
+
 
 def timer_cases():
     def trace(label, steps, start=0, tps=20, target=50):

@@ -8,14 +8,14 @@ Java 25.0.4.1 ve Rust 1.98.1 / Linux x86_64 ortamında:
 
 - Unit/non-unit ve negatif eksenleri, sıfır ve işaretli sıfırı, FMA işlem sırasını, subnormal değerleri, f32 sınır taşmasını, Infinity/NaN ve sıfır quaternion normalizasyonunu kapsayan toplam **24 özgün senaryo** hazırlandı.
 - Oracle referansı iki ayrı JVM çalıştırmasıyla yeniden doğrulandı.
-- Rust debug ve release adaptörleri güncel **1478/1478** math senaryosunda eşleşti.
-- Birleşik altı aile corpus'u **1980/1980** senaryoda hem debug hem release adaptörüyle eşleşti.
+- Rust debug ve release adaptörleri güncel **1506/1506** math senaryosunda eşleşti.
+- Birleşik altı aile corpus'u **2008/2008** senaryoda hem debug hem release adaptörüyle eşleşti.
 
-Math referans kimliği: `abe3d8cdf014db1ee9b2fa953ff1b7ba7bc40e31c9d35672c0cd8adb20896f50`. Birleşik referans kimliği: `e068e38cc1d0ab64ac2844f20d474f313e2325b42cc620af39051ca8aa6748cd`.
+Math referans kimliği: `521c517003287d78e7dee051e04062b28c1fdcf7965213cb691cb7e1e0a3f9df`. Birleşik referans kimliği: `8a534e59c23e5da8152cd10fc0f559f6e05cac44a30f5600b40c9a6b5a45ce57`.
 
-Adapter hashleri: debug `639376b4d3cf372f630ca79f26c76c925bf13904a7589eed8fca87f128139dd9`, release `766e0548962d2a8ef9defd19efec60a2b73ae570040cbdac0c16bb9a136e8d85`.
+Adapter hashleri: debug `52e3bc734f101621ceeedaaab373e873cb8ff23b03f5e311af53dca952ea5d65`, release `cc56dec0269a5529f0c2179449bd12ee4a89acc1dbe7aba6c4c6422d930460ad`.
 
-Yerel raporlar: `compare-xrmyz06w` ve `compare-zrxwzjp_` (math debug/release), `compare-dxdmken0` ve `compare-cvif6gdr` (birleşik debug/release), `verify-nrvzr4d3` (math) ve `verify-jlkp_8wf` (birleşik) `.data/runs/behavior/` altında bulunur.
+Yerel raporlar: `compare-wn40y3iw` ve `compare-9phkvs2k` (math debug/release), `compare-a415_00_` ve `compare-djb85w4w` (birleşik debug/release), `verify-ih3gzbil` (math) ve `verify-nqxvpkjm` (birleşik) `.data/runs/behavior/` altında bulunur.
 
 ## Sınırlar
 

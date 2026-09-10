@@ -2663,6 +2663,17 @@ fn math_result(request: &Value) -> Result<Value, String> {
         };
         return Ok(json!({"bits": bits}));
     }
+    if operation == "mth_lerp_int" || operation == "mth_lerp_discrete" {
+        let alpha = f32_field(request, "alpha")?;
+        let start = i32_string_field(request, "p0")?;
+        let end = i32_string_field(request, "p1")?;
+        let value = if operation == "mth_lerp_int" {
+            math::mth_lerp_int(alpha, start, end)
+        } else {
+            math::mth_lerp_discrete(alpha, start, end)
+        };
+        return Ok(json!({"value": value.to_string()}));
+    }
     if operation == "vec2" {
         let mut vector = Vec2::new(f32_field(request, "x")?, f32_field(request, "y")?);
         let mut events = vec![vec2_snapshot(vector)];

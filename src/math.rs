@@ -760,6 +760,20 @@ pub fn mth_lerp_f64(alpha: f64, start: f64, end: f64) -> f64 {
     start + alpha * (end - start)
 }
 
+/// Return Java `Mth.lerpInt(float, int, int)` with i32 wrapping arithmetic.
+pub fn mth_lerp_int(alpha: f32, start: i32, end: i32) -> i32 {
+    let delta = end.wrapping_sub(start);
+    start.wrapping_add(floor_f32(alpha * delta as f32))
+}
+
+/// Return Java `Mth.lerpDiscrete(float, int, int)` with i32 wrapping arithmetic.
+pub fn mth_lerp_discrete(alpha: f32, start: i32, end: i32) -> i32 {
+    let delta = end.wrapping_sub(start);
+    let offset = floor_f32(alpha * delta.wrapping_sub(1) as f32);
+    let positive_alpha = if alpha > 0.0 { 1 } else { 0 };
+    start.wrapping_add(offset).wrapping_add(positive_alpha)
+}
+
 /// Return Java `Mth.nextInt(RandomSource, int, int)`, including its
 /// min-greater-than-or-equal-to-max short circuit.
 pub fn mth_next_int(
