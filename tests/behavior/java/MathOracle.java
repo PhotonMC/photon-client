@@ -13,6 +13,7 @@ import java.util.function.IntPredicate;
 import java.util.stream.Stream;
 import net.minecraft.DetectedVersion;
 import net.minecraft.SharedConstants;
+import net.minecraft.core.AxisCycle;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.SectionPos;
@@ -862,6 +863,47 @@ public final class MathOracle {
             }
             result.add("constructors", constructors);
             result.add("events", events);
+        } else if (operation.equals("axis_cycle_helpers")) {
+            int x = Integer.parseInt(request.get("x").getAsString());
+            int y = Integer.parseInt(request.get("y").getAsString());
+            int z = Integer.parseInt(request.get("z").getAsString());
+            double doubleX = f64(request, "double_x");
+            double doubleY = f64(request, "double_y");
+            double doubleZ = f64(request, "double_z");
+            var cycles = new JsonObject();
+            for (AxisCycle cycle : AxisCycle.values()) {
+                var value = new JsonObject();
+                value.addProperty("int_x", cycle.cycle(x, y, z, Direction.Axis.X));
+                value.addProperty("int_y", cycle.cycle(x, y, z, Direction.Axis.Y));
+                value.addProperty("int_z", cycle.cycle(x, y, z, Direction.Axis.Z));
+                value.addProperty("double_x", Oracle.bits(cycle.cycle(doubleX, doubleY, doubleZ, Direction.Axis.X)));
+                value.addProperty("double_y", Oracle.bits(cycle.cycle(doubleX, doubleY, doubleZ, Direction.Axis.Y)));
+                value.addProperty("double_z", Oracle.bits(cycle.cycle(doubleX, doubleY, doubleZ, Direction.Axis.Z)));
+                value.addProperty("axis_x", cycle.cycle(Direction.Axis.X).getName());
+                value.addProperty("axis_y", cycle.cycle(Direction.Axis.Y).getName());
+                value.addProperty("axis_z", cycle.cycle(Direction.Axis.Z).getName());
+                value.addProperty("inverse", cycle.inverse().name().toLowerCase(Locale.ROOT));
+                cycles.add(cycle.name().toLowerCase(Locale.ROOT), value);
+            }
+            var between = new JsonArray();
+            for (Direction.Axis from : AxisCycle.AXIS_VALUES) {
+                for (Direction.Axis to : AxisCycle.AXIS_VALUES) {
+                    var value = new JsonObject();
+                    value.addProperty("from", from.getName());
+                    value.addProperty("to", to.getName());
+                    value.addProperty("cycle", AxisCycle.between(from, to).name().toLowerCase(Locale.ROOT));
+                    between.add(value);
+                }
+            }
+            var mutableSet = new JsonObject();
+            for (AxisCycle cycle : AxisCycle.values()) {
+                BlockPos.MutableBlockPos value = new BlockPos.MutableBlockPos();
+                value.set(cycle, x, y, z);
+                mutableSet.add(cycle.name().toLowerCase(Locale.ROOT), snapshot(value));
+            }
+            result.add("cycles", cycles);
+            result.add("between", between);
+            result.add("mutable_set", mutableSet);
         } else if (operation.equals("section_relative")) {
             short relative = SectionPos.sectionRelativePos(blockPos(request));
             result.addProperty("relative", Integer.toString(Short.toUnsignedInt(relative)));

@@ -3,6 +3,7 @@
 use serde_json::{Value, json};
 use std::io::{self, BufRead, Write};
 use voxel_client::aabb::{Aabb, AabbBuilder, AabbBuilderError, BlockHitResult, BoundingBox};
+use voxel_client::axis_cycle::AxisCycle;
 use voxel_client::binary::{
     self, BlockPos, BlockRotation, ChunkPos, MutableBlockPos, SectionPos, Uuid,
 };
@@ -2353,6 +2354,53 @@ fn math_result(request: &Value) -> Result<Value, String> {
         return Ok(json!({
             "constructors": Value::Object(constructors),
             "events": events,
+        }));
+    }
+    if operation == "axis_cycle_helpers" {
+        let x = i32_string_field(request, "x")?;
+        let y = i32_string_field(request, "y")?;
+        let z = i32_string_field(request, "z")?;
+        let double_x = f64_field(request, "double_x")?;
+        let double_y = f64_field(request, "double_y")?;
+        let double_z = f64_field(request, "double_z")?;
+        let mut cycles = serde_json::Map::new();
+        for cycle in AxisCycle::VALUES {
+            cycles.insert(
+                cycle.name().into(),
+                json!({
+                    "int_x": cycle.cycle_i32(x, y, z, Axis::X),
+                    "int_y": cycle.cycle_i32(x, y, z, Axis::Y),
+                    "int_z": cycle.cycle_i32(x, y, z, Axis::Z),
+                    "double_x": format!("{:016x}", cycle.cycle_f64(double_x, double_y, double_z, Axis::X).to_bits()),
+                    "double_y": format!("{:016x}", cycle.cycle_f64(double_x, double_y, double_z, Axis::Y).to_bits()),
+                    "double_z": format!("{:016x}", cycle.cycle_f64(double_x, double_y, double_z, Axis::Z).to_bits()),
+                    "axis_x": cycle.cycle_axis(Axis::X).name(),
+                    "axis_y": cycle.cycle_axis(Axis::Y).name(),
+                    "axis_z": cycle.cycle_axis(Axis::Z).name(),
+                    "inverse": cycle.inverse().name(),
+                }),
+            );
+        }
+        let mut between = Vec::new();
+        for from in [Axis::X, Axis::Y, Axis::Z] {
+            for to in [Axis::X, Axis::Y, Axis::Z] {
+                between.push(json!({
+                    "from": from.name(),
+                    "to": to.name(),
+                    "cycle": AxisCycle::between(from, to).name(),
+                }));
+            }
+        }
+        let mut mutable_set = serde_json::Map::new();
+        for cycle in AxisCycle::VALUES {
+            let mut value = MutableBlockPos::new(0, 0, 0);
+            value.set_axis_cycle(cycle, x, y, z);
+            mutable_set.insert(cycle.name().into(), blockpos_snapshot(value.immutable()));
+        }
+        return Ok(json!({
+            "cycles": Value::Object(cycles),
+            "between": between,
+            "mutable_set": Value::Object(mutable_set),
         }));
     }
     if operation == "blockpos_within_manhattan" {

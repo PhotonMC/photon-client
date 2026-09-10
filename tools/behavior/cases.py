@@ -2130,6 +2130,21 @@ def math_cases():
     for label, values in blockpos_mutable_helpers.items():
         yield {"case_id": f"blockpos/mutable-helpers/{label}", "family": "math",
                "operation": "blockpos_mutable_helpers", **values}
+    axis_cycle_helpers = {
+        "basic": {
+            "x": "10", "y": "-20", "z": "30",
+            "double_x": float_bits(1.25, "f64"), "double_y": float_bits(-2.5, "f64"),
+            "double_z": float_bits(3.75, "f64"),
+        },
+        "boundaries": {
+            "x": "2147483647", "y": "-2147483648", "z": "-1",
+            "double_x": "8000000000000000", "double_y": "7ff8000000000002",
+            "double_z": "7ff0000000000000",
+        },
+    }
+    for label, values in axis_cycle_helpers.items():
+        yield {"case_id": f"axis-cycle/helpers/{label}", "family": "math",
+               "operation": "axis_cycle_helpers", **values}
     for label, (x, y, z) in {
         "origin": (0, 0, 0),
         "positive-boundary": (15, 15, 15),

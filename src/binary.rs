@@ -7,6 +7,7 @@
 //! consumes nothing.
 
 use crate::aabb::{Aabb, BoundingBox};
+use crate::axis_cycle::AxisCycle;
 use crate::direction::{Axis, Direction};
 use crate::math::{self, Vec3};
 use crate::random::{RandomError, RandomSource};
@@ -1026,6 +1027,15 @@ impl MutableBlockPos {
     /// Set all three coordinates from a packed BlockPos long.
     pub const fn set_packed(&mut self, value: u64) -> &mut Self {
         self.set_block_pos(BlockPos::of(value))
+    }
+
+    /// Set coordinates after applying a Java AxisCycle to each output axis.
+    pub fn set_axis_cycle(&mut self, cycle: AxisCycle, x: i32, y: i32, z: i32) -> &mut Self {
+        self.set(
+            cycle.cycle_i32(x, y, z, Axis::X),
+            cycle.cycle_i32(x, y, z, Axis::Y),
+            cycle.cycle_i32(x, y, z, Axis::Z),
+        )
     }
 
     /// Set to a position plus one cardinal direction step.
