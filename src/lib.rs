@@ -5,6 +5,7 @@ pub mod axis_cycle;
 pub mod binary;
 pub mod direction;
 pub mod input;
+pub mod input_event;
 pub mod key_mapping;
 pub mod math;
 pub mod nbt;

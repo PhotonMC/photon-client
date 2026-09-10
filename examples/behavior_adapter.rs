@@ -11,6 +11,9 @@ use voxel_client::direction::{
     Axis, AxisDirection, Direction, DirectionYRotError, DirectionYRotationError, Plane,
 };
 use voxel_client::input::{Input, KeyboardInput};
+use voxel_client::input_event::{
+    InputWithModifiers, KeyEvent as InputKeyEvent, MouseButtonEvent, MouseButtonInfo,
+};
 use voxel_client::key_mapping::{InputKey, KeyMapping, KeyMappingRegistry};
 use voxel_client::math::{self, Quaternionf, Vec2, Vec3, Vec3f};
 use voxel_client::nbt::{self, Field, FieldValue};
@@ -161,6 +164,57 @@ fn input_snapshot(input: Input) -> Value {
         "shift": input.shift,
         "sprint": input.sprint,
     })
+}
+
+fn input_with_modifiers_snapshot<T: InputWithModifiers>(input: &T) -> Value {
+    json!({
+        "input": input.input(),
+        "modifiers": input.modifiers(),
+        "is_selection": input.is_selection(),
+        "is_confirmation": input.is_confirmation(),
+        "is_escape": input.is_escape(),
+        "is_left": input.is_left(),
+        "is_right": input.is_right(),
+        "is_up": input.is_up(),
+        "is_down": input.is_down(),
+        "is_cycle_focus": input.is_cycle_focus(),
+        "digit": input.get_digit(),
+        "has_alt_down": input.has_alt_down(),
+        "has_shift_down": input.has_shift_down(),
+        "has_control_down": input.has_control_down(),
+        "has_control_down_with_quirk": input.has_control_down_with_quirk(),
+        "is_select_all": input.is_select_all(),
+        "is_copy": input.is_copy(),
+        "is_paste": input.is_paste(),
+        "is_cut": input.is_cut(),
+    })
+}
+
+fn input_event_result(request: &Value) -> Result<Value, String> {
+    let key_event = InputKeyEvent::new(
+        i32_field(request, "key")?,
+        i32_field(request, "scancode")?,
+        i32_field(request, "modifiers")?,
+    );
+    let button_info = MouseButtonInfo::new(
+        i32_field(request, "mouse_button")?,
+        i32_field(request, "modifiers")?,
+    );
+    let mouse_event = MouseButtonEvent::new(
+        f64_field(request, "mouse_x")?,
+        f64_field(request, "mouse_y")?,
+        button_info,
+    );
+    let mut key = input_with_modifiers_snapshot(&key_event);
+    key["key"] = json!(key_event.key);
+    key["scancode"] = json!(key_event.scancode);
+    let mut info = input_with_modifiers_snapshot(&button_info);
+    info["button"] = json!(button_info.button);
+    let mut mouse = input_with_modifiers_snapshot(&mouse_event);
+    mouse["x"] = json!(format!("{:016x}", mouse_event.x.to_bits()));
+    mouse["y"] = json!(format!("{:016x}", mouse_event.y.to_bits()));
+    mouse["button"] = json!(mouse_event.button());
+    Ok(json!({"key_event": key, "mouse_button_info": info, "mouse_button_event": mouse}))
 }
 
 fn input_key(value: &Value) -> Result<InputKey, String> {
@@ -4198,6 +4252,9 @@ fn math_result(request: &Value) -> Result<Value, String> {
             "key_presses": input_snapshot(keyboard.key_presses),
             "move_vector": vec2_snapshot(keyboard.move_vector()),
         }));
+    }
+    if operation == "input_with_modifiers" {
+        return input_event_result(request);
     }
     if operation == "key_mapping" {
         return key_mapping_result(request);

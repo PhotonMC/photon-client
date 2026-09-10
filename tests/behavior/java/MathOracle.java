@@ -18,6 +18,7 @@ import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Options;
 import net.minecraft.client.ToggleKeyMapping;
 import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.InputWithModifiers;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.input.MouseButtonInfo;
 import net.minecraft.client.player.KeyboardInput;
@@ -77,6 +78,25 @@ public final class MathOracle {
             keyboard.tick();
             result.add("key_presses", snapshot(keyboard.keyPresses));
             result.add("move_vector", snapshot(keyboard.getMoveVector()));
+        } else if (operation.equals("input_with_modifiers")) {
+            KeyEvent keyEvent = new KeyEvent(
+                request.get("key").getAsInt(), request.get("scancode").getAsInt(), request.get("modifiers").getAsInt());
+            MouseButtonInfo buttonInfo = new MouseButtonInfo(
+                request.get("mouse_button").getAsInt(), request.get("modifiers").getAsInt());
+            MouseButtonEvent mouseEvent = new MouseButtonEvent(
+                f64(request, "mouse_x"), f64(request, "mouse_y"), buttonInfo);
+            JsonObject key = snapshotInputWithModifiers(keyEvent);
+            key.addProperty("key", keyEvent.key());
+            key.addProperty("scancode", keyEvent.scancode());
+            JsonObject info = snapshotInputWithModifiers(buttonInfo);
+            info.addProperty("button", buttonInfo.button());
+            JsonObject mouse = snapshotInputWithModifiers(mouseEvent);
+            mouse.addProperty("x", Oracle.bits(mouseEvent.x()));
+            mouse.addProperty("y", Oracle.bits(mouseEvent.y()));
+            mouse.addProperty("button", mouseEvent.button());
+            result.add("key_event", key);
+            result.add("mouse_button_info", info);
+            result.add("mouse_button_event", mouse);
         } else if (operation.equals("key_mapping")) {
             KeyMapping.releaseAll();
             String prefix = "behavior.key-mapping." + request.get("case_id").getAsString();
@@ -3421,6 +3441,30 @@ public final class MathOracle {
         state.addProperty("jump", input.jump());
         state.addProperty("shift", input.shift());
         state.addProperty("sprint", input.sprint());
+        return state;
+    }
+
+    private static JsonObject snapshotInputWithModifiers(InputWithModifiers input) {
+        var state = new JsonObject();
+        state.addProperty("input", input.input());
+        state.addProperty("modifiers", input.modifiers());
+        state.addProperty("is_selection", input.isSelection());
+        state.addProperty("is_confirmation", input.isConfirmation());
+        state.addProperty("is_escape", input.isEscape());
+        state.addProperty("is_left", input.isLeft());
+        state.addProperty("is_right", input.isRight());
+        state.addProperty("is_up", input.isUp());
+        state.addProperty("is_down", input.isDown());
+        state.addProperty("is_cycle_focus", input.isCycleFocus());
+        state.addProperty("digit", input.getDigit());
+        state.addProperty("has_alt_down", input.hasAltDown());
+        state.addProperty("has_shift_down", input.hasShiftDown());
+        state.addProperty("has_control_down", input.hasControlDown());
+        state.addProperty("has_control_down_with_quirk", input.hasControlDownWithQuirk());
+        state.addProperty("is_select_all", input.isSelectAll());
+        state.addProperty("is_copy", input.isCopy());
+        state.addProperty("is_paste", input.isPaste());
+        state.addProperty("is_cut", input.isCut());
         return state;
     }
 

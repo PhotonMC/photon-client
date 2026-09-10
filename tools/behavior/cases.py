@@ -59,6 +59,38 @@ def wire_cases():
 
 
 def math_cases():
+    def input_event_case(label, key, scancode, modifiers, mouse_button, mouse_x, mouse_y):
+        return {
+            "case_id": f"input-with-modifiers/{label}", "family": "math",
+            "operation": "input_with_modifiers", "key": key, "scancode": scancode,
+            "modifiers": modifiers, "mouse_button": mouse_button,
+            "mouse_x": float_bits(mouse_x, "f64"), "mouse_y": float_bits(mouse_y, "f64"),
+        }
+
+    input_event_cases = [
+        input_event_case("enter-selection", 257, 1, 0, 0, 1.25, -2.5),
+        input_event_case("space-selection", 32, 2, 0, 1, 0.0, 0.0),
+        input_event_case("keypad-enter-selection", 335, 3, 0, 2, -0.0, 3.5),
+        input_event_case("escape", 256, 4, 0, 3, 4.5, -0.0),
+        input_event_case("left", 263, 5, 0, 4, 5.5, 6.5),
+        input_event_case("right", 262, 6, 0, 5, 7.5, 8.5),
+        input_event_case("up", 265, 7, 0, 6, 9.5, 10.5),
+        input_event_case("down", 264, 8, 0, 7, 11.5, 12.5),
+        input_event_case("cycle-focus", 258, 9, 0, 0, 13.5, 14.5),
+        input_event_case("digit-zero", 48, 10, 0, 1, 15.5, 16.5),
+        input_event_case("digit-nine", 57, 11, 0, 2, 17.5, 18.5),
+        input_event_case("non-digit", 58, 12, 0, 3, 19.5, 20.5),
+        input_event_case("select-all", 65, 13, 2, 4, 21.5, 22.5),
+        input_event_case("copy", 67, 14, 2, 5, 23.5, 24.5),
+        input_event_case("paste", 86, 15, 2, 6, 25.5, 26.5),
+        input_event_case("cut", 88, 16, 2, 7, 27.5, 28.5),
+        input_event_case("shortcut-with-shift", 65, 17, 3, 0, 29.5, 30.5),
+        input_event_case("modifier-bits", 0, 18, 15, 1, 31.5, 32.5),
+        input_event_case("super-only", 65, 19, 8, 2, 33.5, 34.5),
+        input_event_case("integer-underflow", -2147483648, 20, 0, 3, 35.5, 36.5),
+    ]
+    yield from input_event_cases
+
     def key_spec(kind, value):
         return {"type": kind, "value": value}
 
