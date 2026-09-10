@@ -610,6 +610,52 @@ fn mapped_int_range_result(request: &Value) -> Result<Value, String> {
     }))
 }
 
+fn mapped_unit_double_result(request: &Value) -> Result<Value, String> {
+    let mapped = UnitDouble::xmap(|value| value * value, |value: &f64| value.sqrt());
+    let values = request["values"]
+        .as_array()
+        .ok_or("values must be an array")?
+        .iter()
+        .map(|value| f64_value(value, "mapped value"))
+        .collect::<Result<Vec<_>, String>>()?;
+    let value_results = values
+        .iter()
+        .map(|value| {
+            let mut state = serde_json::Map::new();
+            state.insert("value".into(), json!(format!("{:016x}", value.to_bits())));
+            let validated = mapped.validate_value(value);
+            state.insert("valid".into(), json!(validated.is_some()));
+            if let Some(validated) = validated {
+                state.insert(
+                    "validated".into(),
+                    json!(format!("{:016x}", validated.to_bits())),
+                );
+            }
+            state.insert(
+                "to_slider".into(),
+                json!(format!("{:016x}", mapped.to_slider_value(value).to_bits())),
+            );
+            Value::Object(state)
+        })
+        .collect::<Vec<_>>();
+    let sliders = request["sliders"]
+        .as_array()
+        .ok_or("sliders must be an array")?
+        .iter()
+        .map(|entry| {
+            let slider = f64_value(entry, "slider")?;
+            Ok(json!({
+                "slider": format!("{:016x}", slider.to_bits()),
+                "from_slider": format!("{:016x}", mapped.from_slider_value(slider).to_bits()),
+            }))
+        })
+        .collect::<Result<Vec<_>, String>>()?;
+    Ok(json!({
+        "values": value_results,
+        "sliders": sliders,
+    }))
+}
+
 fn scroll_wheel_result(request: &Value) -> Result<Value, String> {
     let mut handler = ScrollWheelHandler::new();
     let events = request["scrolls"]
@@ -4776,6 +4822,9 @@ fn math_result(request: &Value) -> Result<Value, String> {
     }
     if operation == "mapped_int_range" {
         return mapped_int_range_result(request);
+    }
+    if operation == "mapped_unit_double" {
+        return mapped_unit_double_result(request);
     }
     if operation == "scroll_wheel" {
         return scroll_wheel_result(request);

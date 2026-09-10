@@ -216,6 +216,25 @@ def math_cases():
         [-0.25, 0.0, 0.2, 0.5, 1.0],
     )
 
+    def mapped_unit_double_case(label, values, sliders):
+        return {
+            "case_id": f"mapped-unit-double/{label}", "family": "math",
+            "operation": "mapped_unit_double",
+            "values": [float_bits(value, "f64") for value in values],
+            "sliders": [float_bits(value, "f64") for value in sliders],
+        }
+
+    yield mapped_unit_double_case(
+        "square-root",
+        [-float("inf"), -1.0, -0.0, 0.0, 0.25, 0.5, 1.0, 1.0000000001, float("inf"), float("nan")],
+        [-float("inf"), -0.25, -0.0, 0.0, 0.25, 0.5, 1.0, 1.0000000001, float("inf"), float("nan")],
+    )
+    yield mapped_unit_double_case(
+        "rounding-and-subnormal",
+        [5e-324, 0.1, 1.0 / 3.0, 0.9999999999999999],
+        [5e-324, 0.1, 1.0 / 3.0, 0.9999999999999999],
+    )
+
     def scroll_wheel_case(label, scrolls, selections):
         return {
             "case_id": f"scroll-wheel/{label}", "family": "math",

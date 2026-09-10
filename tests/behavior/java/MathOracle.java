@@ -352,6 +352,30 @@ public final class MathOracle {
                 sliders.add(state);
             }
             result.add("sliders", sliders);
+        } else if (operation.equals("mapped_unit_double")) {
+            OptionInstance.SliderableValueSet<Double> mapped = OptionInstance.UnitDouble.INSTANCE.xmap(
+                Mth::square, Math::sqrt);
+            var values = new JsonArray();
+            for (JsonElement entry : request.getAsJsonArray("values")) {
+                double value = f64(entry.getAsString());
+                var state = new JsonObject();
+                state.addProperty("value", Oracle.bits(value));
+                var validated = mapped.validateValue(value);
+                state.addProperty("valid", validated.isPresent());
+                validated.ifPresent(item -> state.addProperty("validated", Oracle.bits(item)));
+                state.addProperty("to_slider", Oracle.bits(mapped.toSliderValue(value)));
+                values.add(state);
+            }
+            result.add("values", values);
+            var sliders = new JsonArray();
+            for (JsonElement entry : request.getAsJsonArray("sliders")) {
+                double slider = f64(entry.getAsString());
+                var state = new JsonObject();
+                state.addProperty("slider", Oracle.bits(slider));
+                state.addProperty("from_slider", Oracle.bits(mapped.fromSliderValue(slider)));
+                sliders.add(state);
+            }
+            result.add("sliders", sliders);
         } else if (operation.equals("scroll_wheel")) {
             ScrollWheelHandler handler = new ScrollWheelHandler();
             var events = new JsonArray();

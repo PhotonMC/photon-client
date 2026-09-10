@@ -171,6 +171,42 @@ impl UnitDouble {
     pub const fn from_slider_value(slider: f64) -> f64 {
         slider
     }
+
+    pub fn xmap<R, To, FromValue>(to: To, from: FromValue) -> MappedUnitDouble<R, To, FromValue>
+    where
+        To: Fn(f64) -> R,
+        FromValue: Fn(&R) -> f64,
+    {
+        MappedUnitDouble { to, from }
+    }
+}
+
+/// A unit double value set mapped to another option value type.
+pub struct MappedUnitDouble<R, To, FromValue>
+where
+    To: Fn(f64) -> R,
+    FromValue: Fn(&R) -> f64,
+{
+    to: To,
+    from: FromValue,
+}
+
+impl<R, To, FromValue> MappedUnitDouble<R, To, FromValue>
+where
+    To: Fn(f64) -> R,
+    FromValue: Fn(&R) -> f64,
+{
+    pub fn validate_value(&self, value: &R) -> Option<R> {
+        UnitDouble::validate_value((self.from)(value)).map(|value| (self.to)(value))
+    }
+
+    pub fn to_slider_value(&self, value: &R) -> f64 {
+        UnitDouble::to_slider_value((self.from)(value))
+    }
+
+    pub fn from_slider_value(&self, slider: f64) -> R {
+        (self.to)(UnitDouble::from_slider_value(slider))
+    }
 }
 
 /// Ordered non-empty enum values used by a discrete slider option.
