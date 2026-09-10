@@ -2508,6 +2508,56 @@ fn math_result(request: &Value) -> Result<Value, String> {
             _ => Err("unknown Mth random helper".into()),
         };
     }
+    if operation == "mth_length" {
+        let width = string(request, "type")?;
+        let function = string(request, "fn")?;
+        let bits = match (width, function) {
+            ("f64_2", "length_squared") => format!(
+                "{:016x}",
+                math::mth_length_squared_f64_2(f64_field(request, "x")?, f64_field(request, "y")?,)
+                    .to_bits()
+            ),
+            ("f64_2", "length") => format!(
+                "{:016x}",
+                math::mth_length_f64_2(f64_field(request, "x")?, f64_field(request, "y")?,)
+                    .to_bits()
+            ),
+            ("f32_2", "length") => format!(
+                "{:08x}",
+                math::mth_length_f32_2(f32_field(request, "x")?, f32_field(request, "y")?,)
+                    .to_bits()
+            ),
+            ("f64_3", "length_squared") => format!(
+                "{:016x}",
+                math::mth_length_squared_f64_3(
+                    f64_field(request, "x")?,
+                    f64_field(request, "y")?,
+                    f64_field(request, "z")?,
+                )
+                .to_bits()
+            ),
+            ("f64_3", "length") => format!(
+                "{:016x}",
+                math::mth_length_f64_3(
+                    f64_field(request, "x")?,
+                    f64_field(request, "y")?,
+                    f64_field(request, "z")?,
+                )
+                .to_bits()
+            ),
+            ("f32_3", "length_squared") => format!(
+                "{:08x}",
+                math::mth_length_squared_f32_3(
+                    f32_field(request, "x")?,
+                    f32_field(request, "y")?,
+                    f32_field(request, "z")?,
+                )
+                .to_bits()
+            ),
+            _ => return Err("unknown Mth length overload".into()),
+        };
+        return Ok(json!({"bits": bits}));
+    }
     if operation == "vec2" {
         let mut vector = Vec2::new(f32_field(request, "x")?, f32_field(request, "y")?);
         let mut events = vec![vec2_snapshot(vector)];

@@ -2999,6 +2999,33 @@ def math_cases():
                "seed": str(seed), "mean": float_bits(mean, "f32"),
                "deviation": float_bits(deviation, "f32")}
 
+    mth_lengths = [
+        ("f64-2/squared-basic", "f64_2", "length_squared", (3.0, 4.0)),
+        ("f64-2/length-basic", "f64_2", "length", (3.0, 4.0)),
+        ("f64-2/squared-signed-zero", "f64_2", "length_squared", (-0.0, 0.0)),
+        ("f64-2/length-infinity", "f64_2", "length", (float("inf"), 1.0)),
+        ("f64-2/length-nan", "f64_2", "length", (float("nan"), 1.0)),
+        ("f32-2/length-basic", "f32_2", "length", (3.0, 4.0)),
+        ("f32-2/length-signed-zero", "f32_2", "length", (-0.0, 0.0)),
+        ("f32-2/length-overflow", "f32_2", "length",
+         (float.fromhex("0x1.fffffep127"), 1.0)),
+        ("f64-3/squared-basic", "f64_3", "length_squared", (1.0, 2.0, 2.0)),
+        ("f64-3/length-basic", "f64_3", "length", (1.0, 2.0, 2.0)),
+        ("f64-3/squared-overflow", "f64_3", "length_squared", (1.0e308, 1.0e-308, 0.0)),
+        ("f64-3/length-nan", "f64_3", "length", (float("inf"), 0.0, float("nan"))),
+        ("f64-3/length-signed-zero", "f64_3", "length", (-0.0, 0.0, -0.0)),
+        ("f32-3/squared-basic", "f32_3", "length_squared", (1.0, 2.0, 2.0)),
+        ("f32-3/squared-overflow", "f32_3", "length_squared",
+         (float.fromhex("0x1.fffffep127"), float.fromhex("0x1.fffffep127"), 0.0)),
+        ("f32-3/squared-signed-zero", "f32_3", "length_squared", (-0.0, 0.0, -0.0)),
+    ]
+    for label, width, function, values in mth_lengths:
+        precision = "f32" if width.startswith("f32") else "f64"
+        yield {"case_id": f"mth/length/{label}", "family": "math",
+               "operation": "mth_length", "type": width, "fn": function,
+               "x": float_bits(values[0], precision), "y": float_bits(values[1], precision),
+               **({"z": float_bits(values[2], precision)} if len(values) == 3 else {})}
+
 
 def timer_cases():
     def trace(label, steps, start=0, tps=20, target=50):

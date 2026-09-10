@@ -760,6 +760,41 @@ pub fn mth_normal(random: &mut RandomSource, mean: f32, deviation: f32) -> f32 {
     mean + random.next_gaussian() as f32 * deviation
 }
 
+/// Return Java `Mth.lengthSquared(double, double)` in source order.
+pub fn mth_length_squared_f64_2(x: f64, y: f64) -> f64 {
+    let x_squared = x * x;
+    let y_squared = y * y;
+    x_squared + y_squared
+}
+
+/// Return Java `Mth.length(double, double)` in source order.
+pub fn mth_length_f64_2(x: f64, y: f64) -> f64 {
+    mth_length_squared_f64_2(x, y).sqrt()
+}
+
+/// Return Java `Mth.length(float, float)`, including its double helper call.
+pub fn mth_length_f32_2(x: f32, y: f32) -> f32 {
+    mth_length_squared_f64_2(f64::from(x), f64::from(y)).sqrt() as f32
+}
+
+/// Return Java `Mth.lengthSquared(double, double, double)` in source order.
+pub fn mth_length_squared_f64_3(x: f64, y: f64, z: f64) -> f64 {
+    let x_squared = x * x;
+    let y_squared = y * y;
+    let z_squared = z * z;
+    x_squared + y_squared + z_squared
+}
+
+/// Return Java `Mth.length(double, double, double)` in source order.
+pub fn mth_length_f64_3(x: f64, y: f64, z: f64) -> f64 {
+    mth_length_squared_f64_3(x, y, z).sqrt()
+}
+
+/// Return Java `Mth.lengthSquared(float, float, float)` with f32 rounding.
+pub fn mth_length_squared_f32_3(x: f32, y: f32, z: f32) -> f32 {
+    java_f32_add(java_f32_add(x * x, y * y), z * z)
+}
+
 /// Return Java `Math.floorDiv(int, int)`, including Java's signed overflow.
 pub fn floor_div_i32(dividend: i32, divisor: i32) -> i32 {
     if divisor == 0 {

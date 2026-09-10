@@ -482,6 +482,44 @@ public final class MathOracle {
             } else {
                 throw new IllegalArgumentException("Unknown Mth random helper");
             }
+        } else if (operation.equals("mth_length")) {
+            String type = request.get("type").getAsString();
+            String function = request.get("fn").getAsString();
+            if (type.equals("f64_2")) {
+                double x = f64(request, "x");
+                double y = f64(request, "y");
+                double value = switch (function) {
+                    case "length_squared" -> Mth.lengthSquared(x, y);
+                    case "length" -> Mth.length(x, y);
+                    default -> throw new IllegalArgumentException("Unknown Mth length function");
+                };
+                result.addProperty("bits", Oracle.bits(value));
+            } else if (type.equals("f32_2")) {
+                if (!function.equals("length")) {
+                    throw new IllegalArgumentException("Unknown Mth length function");
+                }
+                result.addProperty("bits", Oracle.bits(Mth.length(
+                    Oracle.f32(request, "x"), Oracle.f32(request, "y"))));
+            } else if (type.equals("f64_3")) {
+                double x = f64(request, "x");
+                double y = f64(request, "y");
+                double z = f64(request, "z");
+                double value = switch (function) {
+                    case "length_squared" -> Mth.lengthSquared(x, y, z);
+                    case "length" -> Mth.length(x, y, z);
+                    default -> throw new IllegalArgumentException("Unknown Mth length function");
+                };
+                result.addProperty("bits", Oracle.bits(value));
+            } else if (type.equals("f32_3")) {
+                if (!function.equals("length_squared")) {
+                    throw new IllegalArgumentException("Unknown Mth length function");
+                }
+                result.addProperty("bits", Oracle.bits(Mth.lengthSquared(
+                    Oracle.f32(request, "x"), Oracle.f32(request, "y"),
+                    Oracle.f32(request, "z"))));
+            } else {
+                throw new IllegalArgumentException("Unknown Mth length type");
+            }
         } else if (operation.equals("vec3")) {
             Vec3 vector = new Vec3(f64(request, "x"), f64(request, "y"), f64(request, "z"));
             var events = new JsonArray();
