@@ -20,7 +20,9 @@ use voxel_client::input_event::{
     MouseButtonInfo, PreeditEvent,
 };
 use voxel_client::key_mapping::{InputKey, KeyMapping, KeyMappingRegistry};
-use voxel_client::login::{ClientboundLoginCompressionPacket, ServerboundHelloPacket};
+use voxel_client::login::{
+    ClientboundHelloPacket, ClientboundLoginCompressionPacket, ServerboundHelloPacket,
+};
 use voxel_client::math::{self, Quaternionf, Vec2, Vec3, Vec3f};
 use voxel_client::nbt::{self, Field, FieldValue};
 use voxel_client::option::{
@@ -92,6 +94,9 @@ fn wire_result(request: &Value) -> Result<Value, String> {
     }
     if request["operation"].as_str() == Some("login_compression") {
         return login_compression_result(request);
+    }
+    if request["operation"].as_str() == Some("login_server_hello") {
+        return login_server_hello_result(request);
     }
     let wide = match string(request, "codec")? {
         "varint" => false,
@@ -406,6 +411,58 @@ fn login_compression_result(request: &Value) -> Result<Value, String> {
             Ok(result)
         }
         _ => Err("unknown compression direction".into()),
+    }
+}
+
+fn login_server_hello_result(request: &Value) -> Result<Value, String> {
+    match string(request, "direction")? {
+        "write" => {
+            let server_id = utf16_hex_units(
+                string(request, "server_id_utf16_hex")?,
+                "server_id_utf16_hex",
+            )?;
+            let public_key = decode_hex(string(request, "public_key_hex")?)?;
+            let challenge = decode_hex(string(request, "challenge_hex")?)?;
+            let should_authenticate = request["should_authenticate"]
+                .as_bool()
+                .ok_or("should_authenticate must be a boolean")?;
+            let prefix = decode_hex(string(request, "prefix_hex")?)?;
+            let packet =
+                ClientboundHelloPacket::new(server_id, public_key, challenge, should_authenticate);
+            let mut buffer = prefix.clone();
+            let mut result = match packet.encode(&mut buffer) {
+                Ok(()) => json!({"outcome": "value"}),
+                Err(voxel_client::login::WriteError::EncoderError) => {
+                    json!({"outcome": "error", "error": "encoder_error"})
+                }
+            };
+            result["written"] = json!(buffer.len() - prefix.len());
+            result["hex"] = json!(hex(&buffer));
+            Ok(result)
+        }
+        "read" => {
+            let bytes = decode_hex(string(request, "hex")?)?;
+            let mut remaining = bytes.as_slice();
+            let mut result = match ClientboundHelloPacket::decode(&mut remaining) {
+                Ok(packet) => json!({
+                    "server_id_utf16_hex": packet.server_id.iter()
+                        .map(|unit| format!("{unit:04x}"))
+                        .collect::<String>(),
+                    "public_key_hex": hex(&packet.public_key),
+                    "challenge_hex": hex(&packet.challenge),
+                    "should_authenticate": packet.should_authenticate,
+                    "outcome": "value",
+                }),
+                Err(error) => json!({
+                    "outcome": "error",
+                    "error": login_read_error(error),
+                }),
+            };
+            result["consumed"] = json!(bytes.len() - remaining.len());
+            result["remaining_hex"] = json!(hex(remaining));
+            Ok(result)
+        }
+        _ => Err("unknown server hello direction".into()),
     }
 }
 

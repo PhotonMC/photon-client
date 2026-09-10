@@ -195,6 +195,44 @@ def wire_cases():
         yield {"case_id": f"login/compression/read/{label}", "family": "wire",
                "operation": "login_compression", "direction": "read", "hex": encoded}
 
+    def server_hello_hex(server_bytes, public_key_hex, challenge_hex, should_authenticate):
+        return (varint_hex(len(server_bytes)) + server_bytes.hex()
+                + varint_hex(len(bytes.fromhex(public_key_hex))) + public_key_hex
+                + varint_hex(len(bytes.fromhex(challenge_hex))) + challenge_hex
+                + ("01" if should_authenticate else "00"))
+
+    server_hello_writes = [
+        ("basic", "server", "000102", "aabb", True, "dead"),
+        ("empty", "", "", "", False, ""),
+        ("unicode-server-id", "服务器", "ff00", "01020304", True, ""),
+        ("maximum-read-name", "a" * 20, "", "", False, ""),
+        ("over-read-limit", "a" * 21, "00", "00", True, ""),
+    ]
+    for label, server_id, public_key_hex, challenge_hex, should_authenticate, prefix_hex in server_hello_writes:
+        yield {"case_id": f"login/server-hello/write/{label}", "family": "wire",
+               "operation": "login_server_hello", "direction": "write",
+               "server_id_utf16_hex": utf16_hex(server_id), "public_key_hex": public_key_hex,
+               "challenge_hex": challenge_hex, "should_authenticate": should_authenticate,
+               "prefix_hex": prefix_hex}
+
+    server_hello_reads = [
+        ("basic", server_hello_hex(b"server", "000102", "aabb", True)),
+        ("trailing", server_hello_hex(b"server", "000102", "aabb", True) + "aabb"),
+        ("empty", server_hello_hex(b"", "", "", False)),
+        ("server-id-underflow", "01"),
+        ("server-id-encoded-too-long", varint_hex(61)),
+        ("server-id-decoded-too-long", server_hello_hex(b"a" * 21, "00", "00", True)),
+        ("public-key-underflow", "0003aabb"),
+        ("challenge-underflow", "00010002aa"),
+        ("boolean-underflow", "000000"),
+        ("boolean-noncanonical", "00000002"),
+        ("negative-array-size", "00" + varint_hex(-1)),
+        ("server-id-too-big", "808080808001"),
+    ]
+    for label, encoded in server_hello_reads:
+        yield {"case_id": f"login/server-hello/read/{label}", "family": "wire",
+               "operation": "login_server_hello", "direction": "read", "hex": encoded}
+
 
 def math_cases():
     def character_event_case(label, codepoint):

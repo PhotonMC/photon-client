@@ -4,6 +4,8 @@ use crate::binary::{self, Uuid};
 use crate::{utf8, wire};
 
 pub const MAX_NAME_LENGTH: usize = 16;
+pub const MAX_SERVER_ID_LENGTH: usize = 20;
+pub const MAX_ENCODE_SERVER_ID_LENGTH: usize = 32_767;
 
 pub type ReadError = binary::ReadError;
 
@@ -62,10 +64,91 @@ impl ClientboundLoginCompressionPacket {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClientboundHelloPacket {
+    pub server_id: Vec<u16>,
+    pub public_key: Vec<u8>,
+    pub challenge: Vec<u8>,
+    pub should_authenticate: bool,
+}
+
+impl ClientboundHelloPacket {
+    pub fn new(
+        server_id: Vec<u16>,
+        public_key: Vec<u8>,
+        challenge: Vec<u8>,
+        should_authenticate: bool,
+    ) -> Self {
+        Self {
+            server_id,
+            public_key,
+            challenge,
+            should_authenticate,
+        }
+    }
+
+    /// Encode the server id, two length-prefixed byte arrays and a boolean.
+    pub fn encode(&self, output: &mut Vec<u8>) -> Result<(), WriteError> {
+        utf8::write_utf8(output, &self.server_id, MAX_ENCODE_SERVER_ID_LENGTH)
+            .map_err(|_| WriteError::EncoderError)?;
+        write_byte_array(&self.public_key, output)?;
+        write_byte_array(&self.challenge, output)?;
+        output.push(u8::from(self.should_authenticate));
+        Ok(())
+    }
+
+    /// Decode fields in Java's server-id, public-key, challenge, boolean order.
+    pub fn decode(input: &mut &[u8]) -> Result<Self, ReadError> {
+        let server_id = utf8::read_utf8(input, MAX_SERVER_ID_LENGTH).map_err(map_utf8_error)?;
+        let public_key = read_byte_array(input)?;
+        let challenge = read_byte_array(input)?;
+        let (&should_authenticate, rest) = input.split_first().ok_or(ReadError::BufferUnderflow)?;
+        *input = rest;
+        Ok(Self {
+            server_id,
+            public_key,
+            challenge,
+            should_authenticate: should_authenticate != 0,
+        })
+    }
+}
+
+fn write_byte_array(value: &[u8], output: &mut Vec<u8>) -> Result<(), WriteError> {
+    let length = i32::try_from(value.len()).map_err(|_| WriteError::EncoderError)?;
+    wire::write_varint(length, output);
+    output.extend_from_slice(value);
+    Ok(())
+}
+
+fn read_byte_array(input: &mut &[u8]) -> Result<Vec<u8>, ReadError> {
+    let available_before_length = input.len();
+    let length = wire::read_varint(input).map_err(map_wire_error)?;
+    if length < 0 {
+        return Err(ReadError::DecoderError);
+    }
+    let length = length as usize;
+    if length > available_before_length {
+        return Err(ReadError::DecoderError);
+    }
+    if length > input.len() {
+        return Err(ReadError::BufferUnderflow);
+    }
+    let (value, rest) = input.split_at(length);
+    *input = rest;
+    Ok(value.to_vec())
+}
+
 fn map_utf8_error(error: utf8::ReadError) -> ReadError {
     match error {
         utf8::ReadError::DecoderError => ReadError::DecoderError,
         utf8::ReadError::BufferUnderflow => ReadError::BufferUnderflow,
         utf8::ReadError::TooBig => ReadError::TooBig,
+    }
+}
+
+fn map_wire_error(error: wire::ReadError) -> ReadError {
+    match error {
+        wire::ReadError::BufferUnderflow => ReadError::BufferUnderflow,
+        wire::ReadError::TooBig => ReadError::TooBig,
     }
 }

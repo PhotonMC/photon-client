@@ -18,6 +18,7 @@ import net.minecraft.network.VarInt;
 import net.minecraft.network.VarLong;
 import net.minecraft.network.protocol.handshake.ClientIntent;
 import net.minecraft.network.protocol.handshake.ClientIntentionPacket;
+import net.minecraft.network.protocol.login.ClientboundHelloPacket;
 import net.minecraft.network.protocol.login.ClientboundLoginCompressionPacket;
 import net.minecraft.network.protocol.login.ServerboundHelloPacket;
 
@@ -38,6 +39,9 @@ public final class WireOracle {
         }
         if (operation.equals("login_compression")) {
             return loginCompressionResult(request);
+        }
+        if (operation.equals("login_server_hello")) {
+            return loginServerHelloResult(request);
         }
         boolean wide = switch (request.get("codec").getAsString()) {
             case "varint" -> false;
@@ -370,6 +374,69 @@ public final class WireOracle {
         throw new IllegalArgumentException("Unknown compression direction");
     }
 
+    private static JsonObject loginServerHelloResult(JsonObject request) {
+        String direction = request.get("direction").getAsString();
+        if (direction.equals("write")) {
+            String serverId = fromUtf16Hex(request.get("server_id_utf16_hex").getAsString());
+            byte[] publicKey = HexFormat.of().parseHex(request.get("public_key_hex").getAsString());
+            byte[] challenge = HexFormat.of().parseHex(request.get("challenge_hex").getAsString());
+            boolean shouldAuthenticate = request.get("should_authenticate").getAsBoolean();
+            byte[] prefix = HexFormat.of().parseHex(request.get("prefix_hex").getAsString());
+            ByteBuf buffer = Unpooled.buffer();
+            try {
+                buffer.writeBytes(prefix);
+                var result = new JsonObject();
+                try {
+                    ClientboundHelloPacket.STREAM_CODEC.encode(
+                        new FriendlyByteBuf(buffer),
+                        new ClientboundHelloPacket(serverId, publicKey, challenge, shouldAuthenticate)
+                    );
+                    result.addProperty("outcome", "value");
+                } catch (EncoderException error) {
+                    result.addProperty("outcome", "error");
+                    result.addProperty("error", "encoder_error");
+                    result.addProperty("java_exception", error.getClass().getName());
+                }
+                result.addProperty("written", buffer.writerIndex() - prefix.length);
+                result.addProperty("hex", ByteBufUtil.hexDump(buffer));
+                return result;
+            } finally {
+                buffer.release();
+            }
+        }
+
+        if (direction.equals("read")) {
+            ByteBuf buffer = Unpooled.buffer();
+            try {
+                buffer.writeBytes(HexFormat.of().parseHex(request.get("hex").getAsString()));
+                var result = new JsonObject();
+                try {
+                    ClientboundHelloPacket packet = ClientboundHelloPacket.STREAM_CODEC.decode(new FriendlyByteBuf(buffer));
+                    result.addProperty("server_id_utf16_hex", toUtf16Hex(packet.getServerId()));
+                    result.addProperty("public_key_hex", ByteBufUtil.hexDump(rawPublicKey(packet)));
+                    result.addProperty("challenge_hex", ByteBufUtil.hexDump(packet.getChallenge()));
+                    result.addProperty("should_authenticate", packet.shouldAuthenticate());
+                    result.addProperty("outcome", "value");
+                } catch (IndexOutOfBoundsException error) {
+                    result.addProperty("outcome", "error");
+                    result.addProperty("error", "buffer_underflow");
+                    result.addProperty("java_exception", error.getClass().getName());
+                } catch (RuntimeException error) {
+                    result.addProperty("outcome", "error");
+                    result.addProperty("error", error.getClass() == RuntimeException.class ? "too_big" : "decoder_error");
+                    result.addProperty("java_exception", error.getClass().getName());
+                }
+                result.addProperty("consumed", buffer.readerIndex());
+                result.addProperty("remaining_hex", ByteBufUtil.hexDump(buffer));
+                return result;
+            } finally {
+                buffer.release();
+            }
+        }
+
+        throw new IllegalArgumentException("Unknown server hello direction");
+    }
+
     private static String fromUtf16Hex(String value) {
         if (value.length() % 4 != 0) {
             throw new IllegalArgumentException("UTF-16 hex must contain complete units");
@@ -387,5 +454,15 @@ public final class WireOracle {
             result.append(String.format(Locale.ROOT, "%04x", (int)value.charAt(index)));
         }
         return result.toString();
+    }
+
+    private static byte[] rawPublicKey(ClientboundHelloPacket packet) {
+        try {
+            var field = ClientboundHelloPacket.class.getDeclaredField("publicKey");
+            field.setAccessible(true);
+            return ((byte[])field.get(packet)).clone();
+        } catch (ReflectiveOperationException error) {
+            throw new IllegalStateException("Cannot inspect decoded public key", error);
+        }
     }
 }
