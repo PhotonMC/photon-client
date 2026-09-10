@@ -563,6 +563,18 @@ public final class MathOracle {
                 Oracle.f32(request, "rotation_w"));
             result.add("value", snapshot(Mth.rotationAroundAxis(
                 axis, rotation, new Quaternionf())));
+        } else if (operation.equals("mth_inverse_lerp")) {
+            String width = request.get("type").getAsString();
+            if (width.equals("f32")) {
+                result.addProperty("bits", Oracle.bits(Mth.inverseLerp(
+                    Oracle.f32(request, "value"), Oracle.f32(request, "min"),
+                    Oracle.f32(request, "max"))));
+            } else if (width.equals("f64")) {
+                result.addProperty("bits", Oracle.bits(Mth.inverseLerp(
+                    f64(request, "value"), f64(request, "min"), f64(request, "max"))));
+            } else {
+                throw new IllegalArgumentException("Unknown Mth inverseLerp type");
+            }
         } else if (operation.equals("vec3")) {
             Vec3 vector = new Vec3(f64(request, "x"), f64(request, "y"), f64(request, "z"));
             var events = new JsonArray();

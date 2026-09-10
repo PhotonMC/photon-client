@@ -2615,6 +2615,30 @@ fn math_result(request: &Value) -> Result<Value, String> {
             "value": quaternion_snapshot(math::mth_rotation_around_axis(axis, rotation))
         }));
     }
+    if operation == "mth_inverse_lerp" {
+        let bits = match string(request, "type")? {
+            "f32" => format!(
+                "{:08x}",
+                math::mth_inverse_lerp_f32(
+                    f32_field(request, "value")?,
+                    f32_field(request, "min")?,
+                    f32_field(request, "max")?,
+                )
+                .to_bits()
+            ),
+            "f64" => format!(
+                "{:016x}",
+                math::mth_inverse_lerp_f64(
+                    f64_field(request, "value")?,
+                    f64_field(request, "min")?,
+                    f64_field(request, "max")?,
+                )
+                .to_bits()
+            ),
+            _ => return Err("unknown Mth inverseLerp type".into()),
+        };
+        return Ok(json!({"bits": bits}));
+    }
     if operation == "vec2" {
         let mut vector = Vec2::new(f32_field(request, "x")?, f32_field(request, "y")?);
         let mut events = vec![vec2_snapshot(vector)];

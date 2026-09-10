@@ -33,6 +33,6 @@ python3 tools/behavior/run.py capture --family math
 python3 tools/behavior/run.py verify --family math
 ```
 
-Bu dilimin bulunduğu güncel math referansı `a346583dc8bd7a5d672fe737c86d9febc8a2861cc99d0c486416f41813870b7c` kimliğindedir. Referans iki JVM çalıştırmasıyla kararlı bulundu. Güncel birleşik altı aile referansı `a346583dc8bd7a5d672fe737c86d9febc8a2861cc99d0c486416f41813870b7c` kimliğiyle doğrulandı.
+Bu dilimin bulunduğu güncel math referansı `4a0878eb618b5394066f49b60b766126e243dc668d2c5a98b675f2d4a0cf4f11` kimliğindedir. Referans iki JVM çalıştırmasıyla kararlı bulundu. Güncel birleşik altı aile referansı `4a0878eb618b5394066f49b60b766126e243dc668d2c5a98b675f2d4a0cf4f11` kimliğiyle doğrulandı.
 
-Math debug/release raporları `compare-ox0b8e23` ve `compare-8yyrdrg5`; birleşik debug/release raporları `compare-xbim8rgs` ve `compare-kg978z18` dizinlerindedir, `.data/runs/behavior/` altında bulunur. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.
+Math debug/release raporları `compare-qtqxwt9b` ve `compare-ebava42g`; birleşik debug/release raporları `compare-x0hkkvkv` ve `compare-x5wgwswa` dizinlerindedir, `.data/runs/behavior/` altında bulunur. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.

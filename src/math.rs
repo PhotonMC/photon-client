@@ -736,6 +736,20 @@ pub fn clamped_lerp_f64(factor: f64, minimum: f64, maximum: f64) -> f64 {
     }
 }
 
+/// Return Java `Mth.inverseLerp(float, float, float)` in source order.
+pub fn mth_inverse_lerp_f32(value: f32, minimum: f32, maximum: f32) -> f32 {
+    let numerator = value - minimum;
+    let denominator = maximum - minimum;
+    numerator / denominator
+}
+
+/// Return Java `Mth.inverseLerp(double, double, double)` in source order.
+pub fn mth_inverse_lerp_f64(value: f64, minimum: f64, maximum: f64) -> f64 {
+    let numerator = value - minimum;
+    let denominator = maximum - minimum;
+    numerator / denominator
+}
+
 /// Return Java `Mth.nextInt(RandomSource, int, int)`, including its
 /// min-greater-than-or-equal-to-max short circuit.
 pub fn mth_next_int(

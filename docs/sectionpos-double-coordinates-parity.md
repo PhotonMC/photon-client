@@ -8,15 +8,15 @@ Java 25.0.4.1 ve Rust 1.98.1 / Linux x86_64 ortamında:
 
 - SectionPos double koordinatları için 6 özgün senaryo hazırlandı.
 - İki overload; pozitif/negatif sınırlar, subnormal, en büyük sonlu değer ve NaN girdileriyle doğrudan Java/Rust API'leriyle karşılaştırıldı.
-- Rust debug ve release adaptörleri güncel **1422/1422** math senaryosunda eşleşti.
-- Birleşik altı aile corpus'u **1924/1924** senaryoda hem debug hem release adaptörüyle eşleşti.
+- Rust debug ve release adaptörleri güncel **1450/1450** math senaryosunda eşleşti.
+- Birleşik altı aile corpus'u **1952/1952** senaryoda hem debug hem release adaptörüyle eşleşti.
 - Math ve birleşik `verify` çalıştırmaları kayıtlı Java referanslarını iki JVM tekrarıyla yeniden doğruladı.
 
-Math referans kimliği: `cc96d24cc80c682020b8b8d28795f7b434dad5677010e1608fc1b6e2a730e5d7`. Birleşik referans kimliği: `a346583dc8bd7a5d672fe737c86d9febc8a2861cc99d0c486416f41813870b7c`.
+Math referans kimliği: `fb79a016fcf5041a8631f665991eaad422d1346ef0c1c0c12f2166cdb0057846`. Birleşik referans kimliği: `4a0878eb618b5394066f49b60b766126e243dc668d2c5a98b675f2d4a0cf4f11`.
 
-Adapter hashleri: debug `4e30afd61f45820df0f57541587fa8df456d9a1374ec71795c01f465ec26de87`, release `73c1c9ea2bef7322d279fc4f84d077a2009745e23f36ce680884b73fe11b7d45`.
+Adapter hashleri: debug `1a871a434c144a587a2723327bd46aaf9a6d1b4612396a66fffe175369c31d12`, release `8c7871587c66a581ea4b33d57a1ef23281843488a7661885a1a704dee0ad3e74`.
 
-Yerel raporlar: `compare-ox0b8e23` (math debug), `compare-8yyrdrg5` (math release), `compare-xbim8rgs` (birleşik debug), `compare-kg978z18` (birleşik release), `verify-p7_v_2m3` (math) ve `verify-tw8nqf_h` (birleşik) `.data/runs/behavior/` altında bulunur.
+Yerel raporlar: `compare-qtqxwt9b` (math debug), `compare-ebava42g` (math release), `compare-x0hkkvkv` (birleşik debug), `compare-x5wgwswa` (birleşik release), `verify-m2eek8to` (math) ve `verify-rc21vyy9` (birleşik) `.data/runs/behavior/` altında bulunur.
 
 ## Sınırlar
 

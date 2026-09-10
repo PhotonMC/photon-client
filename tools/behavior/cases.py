@@ -3146,6 +3146,33 @@ def math_cases():
                "rotation_y": float_bits(rotation[1]), "rotation_z": float_bits(rotation[2]),
                "rotation_w": float_bits(rotation[3])}
 
+    for width in ("f32", "f64"):
+        subnormal = (float.fromhex("0x0.000002p-126") if width == "f32"
+                     else float.fromhex("0x0.0000000000001p-1022"))
+        maximum_finite = (float.fromhex("0x1.fffffep127") if width == "f32"
+                          else float.fromhex("0x1.fffffffffffffp1023"))
+        mth_inverse_lerp = [
+            ("basic", 1.25, 0.0, 5.0),
+            ("below", -1.0, 0.0, 5.0),
+            ("above", 7.0, 0.0, 5.0),
+            ("negative-range", -2.0, -5.0, 5.0),
+            ("reverse-bounds", 2.0, 5.0, -5.0),
+            ("exact-min", -2.0, -2.0, 6.0),
+            ("exact-max", 6.0, -2.0, 6.0),
+            ("signed-zero", -0.0, 0.0, 1.0),
+            ("zero-range", 1.0, 1.0, 1.0),
+            ("subnormal", 2.0 * subnormal, subnormal, 3.0 * subnormal),
+            ("maximum-finite-overflow", maximum_finite, -maximum_finite, maximum_finite),
+            ("infinite-value", float("inf"), 0.0, 1.0),
+            ("nan-value", float("nan"), 0.0, 1.0),
+            ("infinite-bound", 1.0, 0.0, float("inf")),
+        ]
+        for label, value, minimum, maximum in mth_inverse_lerp:
+            yield {"case_id": f"mth/inverse-lerp/{width}/{label}", "family": "math",
+                   "operation": "mth_inverse_lerp", "type": width,
+                   "value": float_bits(value, width), "min": float_bits(minimum, width),
+                   "max": float_bits(maximum, width)}
+
 
 def timer_cases():
     def trace(label, steps, start=0, tps=20, target=50):
