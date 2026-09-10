@@ -360,6 +360,29 @@ impl Axis {
     pub fn is_horizontal(self) -> bool {
         matches!(self, Self::X | Self::Z)
     }
+
+    /// Return Java `Direction.Axis.getPositive()`.
+    pub fn get_positive(self) -> Direction {
+        match self {
+            Self::X => Direction::East,
+            Self::Y => Direction::Up,
+            Self::Z => Direction::South,
+        }
+    }
+
+    /// Return Java `Direction.Axis.getNegative()`.
+    pub fn get_negative(self) -> Direction {
+        match self {
+            Self::X => Direction::West,
+            Self::Y => Direction::Down,
+            Self::Z => Direction::North,
+        }
+    }
+
+    /// Return Java `Direction.Axis.getDirections()` in positive/negative order.
+    pub fn get_directions(self) -> [Direction; 2] {
+        [self.get_positive(), self.get_negative()]
+    }
 }
 
 impl AxisDirection {

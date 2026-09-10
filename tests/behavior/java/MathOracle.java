@@ -98,6 +98,18 @@ public final class MathOracle {
             }
             result.addProperty("vertical", axis.isVertical());
             result.addProperty("horizontal", axis.isHorizontal());
+        } else if (operation.equals("direction_axis_directions")) {
+            Direction.Axis axis = Direction.Axis.byName(request.get("axis").getAsString());
+            if (axis == null) {
+                throw new IllegalArgumentException("Unknown axis name");
+            }
+            var directions = new JsonArray();
+            for (Direction direction : axis.getDirections()) {
+                directions.add(snapshot(direction));
+            }
+            result.add("positive", snapshot(axis.getPositive()));
+            result.add("negative", snapshot(axis.getNegative()));
+            result.add("directions", directions);
         } else if (operation.equals("direction_to_y_rot")) {
             Direction facing = Direction.byName(request.get("name").getAsString());
             if (facing == null) {
