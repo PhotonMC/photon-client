@@ -3379,6 +3379,30 @@ fn math_result(request: &Value) -> Result<Value, String> {
         let facing = Direction::from_name(string(request, "name")?).ok_or("unknown direction")?;
         return Ok(json!({"value": quaternion_snapshot(facing.get_rotation())}));
     }
+    if operation == "direction_name_lookup" {
+        let name = string(request, "name")?;
+        return match string(request, "kind")? {
+            "direction" => Ok(match Direction::from_name(name) {
+                Some(direction) => json!({
+                    "found": true,
+                    "name": direction.name(),
+                    "serialized_name": direction.name(),
+                    "text": direction.name(),
+                }),
+                None => json!({"found": false}),
+            }),
+            "axis" => Ok(match Axis::from_name(name) {
+                Some(axis) => json!({
+                    "found": true,
+                    "name": axis.name(),
+                    "serialized_name": axis.name(),
+                    "text": axis.name(),
+                }),
+                None => json!({"found": false}),
+            }),
+            _ => Err("unknown name lookup kind".into()),
+        };
+    }
     if operation == "direction_approximate_nearest" {
         let facing = Direction::approximate_nearest(
             f64_field(request, "x")?,

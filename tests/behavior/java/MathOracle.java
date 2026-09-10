@@ -307,6 +307,27 @@ public final class MathOracle {
                 throw new IllegalArgumentException("Unknown direction name");
             }
             result.add("value", snapshot(facing.getRotation()));
+        } else if (operation.equals("direction_name_lookup")) {
+            String name = request.get("name").getAsString();
+            if (request.get("kind").getAsString().equals("direction")) {
+                Direction facing = Direction.byName(name);
+                result.addProperty("found", facing != null);
+                if (facing != null) {
+                    result.addProperty("name", facing.getName());
+                    result.addProperty("serialized_name", facing.getSerializedName());
+                    result.addProperty("text", facing.toString());
+                }
+            } else if (request.get("kind").getAsString().equals("axis")) {
+                Direction.Axis axis = Direction.Axis.byName(name);
+                result.addProperty("found", axis != null);
+                if (axis != null) {
+                    result.addProperty("name", axis.getName());
+                    result.addProperty("serialized_name", axis.getSerializedName());
+                    result.addProperty("text", axis.toString());
+                }
+            } else {
+                throw new IllegalArgumentException("Unknown name lookup kind");
+            }
         } else if (operation.equals("direction_approximate_nearest")) {
             result.add("value", snapshot(Direction.getApproximateNearest(
                 f64(request, "x"), f64(request, "y"), f64(request, "z"))));
