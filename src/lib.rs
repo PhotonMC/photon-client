@@ -4,6 +4,7 @@ pub mod aabb;
 pub mod axis_cycle;
 pub mod binary;
 pub mod direction;
+pub mod frame;
 pub mod input;
 pub mod input_event;
 pub mod key_mapping;

@@ -12,6 +12,7 @@ use voxel_client::binary::{
 use voxel_client::direction::{
     Axis, AxisDirection, Direction, DirectionYRotError, DirectionYRotationError, Plane,
 };
+use voxel_client::frame::{self, FrameError, Varint21FrameDecoder};
 use voxel_client::input::{Input, KeyboardInput};
 use voxel_client::input_event::{
     CharacterEvent, InputWithModifiers, KeyEvent as InputKeyEvent, MouseButtonEvent,
@@ -75,6 +76,12 @@ fn read(input: &mut &[u8], wide: bool) -> Result<i64, ReadError> {
 }
 
 fn wire_result(request: &Value) -> Result<Value, String> {
+    if request["operation"].as_str() == Some("frame_prepend") {
+        return frame_prepend_result(request);
+    }
+    if request["operation"].as_str() == Some("frame_decode") {
+        return frame_decode_result(request);
+    }
     let wide = match string(request, "codec")? {
         "varint" => false,
         "varlong" => true,
@@ -117,6 +124,83 @@ fn wire_result(request: &Value) -> Result<Value, String> {
         _ => return Err("unknown wire operation".into()),
     }
     Ok(result)
+}
+
+fn frame_error(error: FrameError) -> &'static str {
+    match error {
+        FrameError::LengthTooWide | FrameError::ZeroLength => "decoder_error",
+        FrameError::PacketTooLarge => "encoder_error",
+    }
+}
+
+fn frame_prepend_result(request: &Value) -> Result<Value, String> {
+    let length = request["body_length"]
+        .as_u64()
+        .ok_or("body_length must be an unsigned integer")? as usize;
+    let skip = request["reader_skip"]
+        .as_u64()
+        .ok_or("reader_skip must be an unsigned integer")? as usize;
+    let mut message = vec![0_u8; skip.saturating_add(length)];
+    for (index, byte) in message[skip..].iter_mut().enumerate() {
+        *byte = index as u8;
+    }
+    let body = &message[skip..];
+    match frame::prepend(body) {
+        Ok(framed) => Ok(json!({
+            "outcome": "value",
+            "written": framed.len(),
+            "hex": hex(&framed),
+        })),
+        Err(error) => Ok(json!({
+            "outcome": "error",
+            "error": frame_error(error),
+            "written": 0,
+            "hex": "",
+        })),
+    }
+}
+
+fn frame_decode_result(request: &Value) -> Result<Value, String> {
+    let chunks = request["chunks"]
+        .as_array()
+        .ok_or("chunks must be an array")?
+        .iter()
+        .map(|chunk| {
+            chunk
+                .as_str()
+                .ok_or_else(|| "chunk entries must be strings".to_owned())
+                .and_then(decode_hex)
+        })
+        .collect::<Result<Vec<_>, String>>()?;
+    let mut decoder = Varint21FrameDecoder::new();
+    let mut steps = Vec::with_capacity(chunks.len());
+    for chunk in chunks {
+        let mut step = serde_json::Map::new();
+        let mut frames = Vec::new();
+        let failed = match decoder.feed(&chunk) {
+            Ok(Some(frame)) => {
+                frames.push(hex(&frame));
+                false
+            }
+            Ok(None) => false,
+            Err(error) => {
+                step.insert("outcome".into(), json!("error"));
+                step.insert("error".into(), json!(frame_error(error)));
+                true
+            }
+        };
+        step.insert("frames".into(), json!(frames));
+        if !failed {
+            step.insert("outcome".into(), json!("value"));
+        }
+        step.insert("consumed".into(), json!(decoder.consumed()));
+        step.insert("remaining_hex".into(), json!(hex(decoder.remaining())));
+        steps.push(Value::Object(step));
+        if failed {
+            break;
+        }
+    }
+    Ok(json!({"steps": steps}))
 }
 
 fn f32_field(value: &Value, name: &str) -> Result<f32, String> {

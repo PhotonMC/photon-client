@@ -57,6 +57,37 @@ def wire_cases():
             yield {"case_id": f"{codec}/read/{label}", "family": "wire",
                    "operation": "read", "codec": codec, "hex": value}
 
+    prepend_cases = [
+        ("empty", 0, 0),
+        ("one-with-prefix", 1, 3),
+        ("single-byte-header-limit", 127, 2),
+        ("two-byte-header-start", 128, 1),
+        ("two-byte-header-limit", 16383, 0),
+        ("three-byte-header-start", 16384, 4),
+        ("maximum", (1 << 21) - 1, 0),
+        ("too-large", 1 << 21, 0),
+    ]
+    for label, body_length, reader_skip in prepend_cases:
+        yield {"case_id": f"frame/prepend/{label}", "family": "wire",
+               "operation": "frame_prepend", "body_length": body_length,
+               "reader_skip": reader_skip}
+
+    decode_cases = [
+        ("exact", ["03aabbcc"]),
+        ("fragmented-header", ["80", "01" + "aa" * 128]),
+        ("fragmented-body", ["02aa", "bb"]),
+        ("zero-length", ["00"]),
+        ("wide-length", ["808080"]),
+        ("incomplete-header", ["80"]),
+        ("incomplete-body", ["03aabb"]),
+        ("trailing-frame", ["01aa01bb"]),
+        ("successive-frames", ["01aa", "01bb"]),
+        ("three-byte-length", ["808001" + "00" * 16384]),
+    ]
+    for label, chunks in decode_cases:
+        yield {"case_id": f"frame/decode/{label}", "family": "wire",
+               "operation": "frame_decode", "chunks": chunks}
+
 
 def math_cases():
     def character_event_case(label, codepoint):
