@@ -13,6 +13,7 @@ use voxel_client::direction::{
     Axis, AxisDirection, Direction, DirectionYRotError, DirectionYRotationError, Plane,
 };
 use voxel_client::frame::{self, FrameError, Varint21FrameDecoder};
+use voxel_client::handshake::{self, ClientIntent, ClientIntentionPacket};
 use voxel_client::input::{Input, KeyboardInput};
 use voxel_client::input_event::{
     CharacterEvent, InputWithModifiers, KeyEvent as InputKeyEvent, MouseButtonEvent,
@@ -81,6 +82,9 @@ fn wire_result(request: &Value) -> Result<Value, String> {
     }
     if request["operation"].as_str() == Some("frame_decode") {
         return frame_decode_result(request);
+    }
+    if request["operation"].as_str() == Some("handshake_intention") {
+        return handshake_intention_result(request);
     }
     let wide = match string(request, "codec")? {
         "varint" => false,
@@ -201,6 +205,93 @@ fn frame_decode_result(request: &Value) -> Result<Value, String> {
         }
     }
     Ok(json!({"steps": steps}))
+}
+
+fn handshake_read_error(error: handshake::ReadError) -> &'static str {
+    match error {
+        handshake::ReadError::BufferUnderflow => "buffer_underflow",
+        handshake::ReadError::DecoderError => "decoder_error",
+        handshake::ReadError::TooBig => "too_big",
+    }
+}
+
+fn handshake_intent(value: &str) -> Result<ClientIntent, String> {
+    match value {
+        "status" => Ok(ClientIntent::Status),
+        "login" => Ok(ClientIntent::Login),
+        "transfer" => Ok(ClientIntent::Transfer),
+        _ => Err("unknown client intent".into()),
+    }
+}
+
+fn utf16_hex_units(value: &str, name: &str) -> Result<Vec<u16>, String> {
+    if !value.is_ascii() || !value.len().is_multiple_of(4) {
+        return Err(format!(
+            "{name} must contain complete ASCII unit quadruples"
+        ));
+    }
+    (0..value.len())
+        .step_by(4)
+        .map(|index| {
+            u16::from_str_radix(&value[index..index + 4], 16)
+                .map_err(|_| format!("invalid UTF-16 unit in {name}"))
+        })
+        .collect()
+}
+
+fn handshake_intention_result(request: &Value) -> Result<Value, String> {
+    match string(request, "direction")? {
+        "write" => {
+            let protocol_version = request["protocol_version"]
+                .as_i64()
+                .ok_or("protocol_version must be an integer")?
+                .try_into()
+                .map_err(|_| "protocol_version must fit in i32")?;
+            let host_name = utf16_hex_units(string(request, "host_utf16_hex")?, "host_utf16_hex")?;
+            let port = request["port"]
+                .as_i64()
+                .ok_or("port must be an integer")?
+                .try_into()
+                .map_err(|_| "port must fit in i32")?;
+            let intention = handshake_intent(string(request, "intention")?)?;
+            let prefix = decode_hex(string(request, "prefix_hex")?)?;
+            let packet = ClientIntentionPacket::new(protocol_version, host_name, port, intention);
+            let mut buffer = prefix.clone();
+            let mut result = match packet.encode(&mut buffer) {
+                Ok(()) => json!({"outcome": "value"}),
+                Err(handshake::WriteError::EncoderError) => {
+                    json!({"outcome": "error", "error": "encoder_error"})
+                }
+            };
+            result["written"] = json!(buffer.len() - prefix.len());
+            result["hex"] = json!(hex(&buffer));
+            Ok(result)
+        }
+        "read" => {
+            let bytes = decode_hex(string(request, "hex")?)?;
+            let mut remaining = bytes.as_slice();
+            let mut result = match ClientIntentionPacket::decode(&mut remaining) {
+                Ok(packet) => json!({
+                    "protocol_version": packet.protocol_version,
+                    "host_utf16_hex": packet.host_name.iter()
+                        .map(|unit| format!("{unit:04x}"))
+                        .collect::<String>(),
+                    "port": packet.port,
+                    "intention": packet.intention.name(),
+                    "intention_id": packet.intention.id(),
+                    "outcome": "value",
+                }),
+                Err(error) => json!({
+                    "outcome": "error",
+                    "error": handshake_read_error(error),
+                }),
+            };
+            result["consumed"] = json!(bytes.len() - remaining.len());
+            result["remaining_hex"] = json!(hex(remaining));
+            Ok(result)
+        }
+        _ => Err("unknown handshake direction".into()),
+    }
 }
 
 fn f32_field(value: &Value, name: &str) -> Result<f32, String> {

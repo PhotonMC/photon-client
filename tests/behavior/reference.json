@@ -78,7 +78,10 @@
         "io.netty:netty-buffer",
         "io.netty:netty-common",
         "io.netty:netty-codec-base",
-        "io.netty:netty-transport"
+        "io.netty:netty-transport",
+        "org.joml:joml",
+        "com.mojang:datafixerupper",
+        "it.unimi.dsi:fastutil"
       ]
     },
     "math": {

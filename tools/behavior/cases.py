@@ -88,6 +88,54 @@ def wire_cases():
         yield {"case_id": f"frame/decode/{label}", "family": "wire",
                "operation": "frame_decode", "chunks": chunks}
 
+    def varint_hex(value):
+        value &= 0xFFFFFFFF
+        encoded = []
+        while value & ~0x7F:
+            encoded.append((value & 0x7F) | 0x80)
+            value >>= 7
+        encoded.append(value)
+        return bytes(encoded).hex()
+
+    def utf16_hex(value):
+        return value.encode("utf-16-be", "surrogatepass").hex()
+
+    def intention_hex(protocol_version, host_bytes, port, intention_id):
+        return (varint_hex(protocol_version) + varint_hex(len(host_bytes)) + host_bytes.hex()
+                + (port & 0xFFFF).to_bytes(2, "big").hex() + varint_hex(intention_id))
+
+    intention_writes = [
+        ("basic", 776, "localhost", 25565, "status", "deadbeef"),
+        ("unicode-host", 776, "例え.テスト", 25565, "login", ""),
+        ("transfer", 776, "transfer.example", 0, "transfer", ""),
+        ("empty-host", 0, "", 65535, "login", "aa"),
+        ("negative-protocol", -1, "legacy", 25565, "status", ""),
+        ("port-wrap", 776, "localhost", -1, "status", ""),
+        ("host-over-decode-limit", 776, "a" * 256, 25565, "login", ""),
+        ("host-encode-limit", 776, "a" * 32768, 25565, "login", ""),
+    ]
+    for label, protocol_version, host, port, intention, prefix_hex in intention_writes:
+        yield {"case_id": f"handshake/intention/write/{label}", "family": "wire",
+               "operation": "handshake_intention", "direction": "write",
+               "protocol_version": protocol_version, "host_utf16_hex": utf16_hex(host),
+               "port": port, "intention": intention, "prefix_hex": prefix_hex}
+
+    intention_reads = [
+        ("basic", intention_hex(776, b"localhost", 25565, 1)),
+        ("unicode-host", intention_hex(776, "例え.テスト".encode("utf-8"), 25565, 2)),
+        ("trailing", intention_hex(776, b"localhost", 25565, 1) + "aabb"),
+        ("protocol-underflow", ""),
+        ("host-prefix-underflow", varint_hex(776) + "80"),
+        ("port-underflow", varint_hex(776) + "00" + "00"),
+        ("unknown-intent", intention_hex(776, b"localhost", 25565, 4)),
+        ("host-encoded-too-long", varint_hex(776) + varint_hex(766)),
+        ("host-decoded-too-long", intention_hex(776, b"a" * 256, 25565, 2)),
+        ("protocol-too-big", "808080808001"),
+    ]
+    for label, encoded in intention_reads:
+        yield {"case_id": f"handshake/intention/read/{label}", "family": "wire",
+               "operation": "handshake_intention", "direction": "read", "hex": encoded}
+
 
 def math_cases():
     def character_event_case(label, codepoint):

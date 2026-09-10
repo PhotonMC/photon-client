@@ -9,10 +9,14 @@ import io.netty.handler.codec.EncoderException;
 import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Locale;
 import net.minecraft.network.Varint21FrameDecoder;
 import net.minecraft.network.Varint21LengthFieldPrepender;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.VarInt;
 import net.minecraft.network.VarLong;
+import net.minecraft.network.protocol.handshake.ClientIntent;
+import net.minecraft.network.protocol.handshake.ClientIntentionPacket;
 
 public final class WireOracle {
     public static JsonObject run(JsonObject request) {
@@ -22,6 +26,9 @@ public final class WireOracle {
         }
         if (operation.equals("frame_decode")) {
             return frameDecodeResult(request);
+        }
+        if (operation.equals("handshake_intention")) {
+            return handshakeIntentionResult(request);
         }
         boolean wide = switch (request.get("codec").getAsString()) {
             case "varint" -> false;
@@ -165,5 +172,97 @@ public final class WireOracle {
         void close() {
             super.handlerRemoved0((ChannelHandlerContext)null);
         }
+    }
+
+    private static JsonObject handshakeIntentionResult(JsonObject request) {
+        String direction = request.get("direction").getAsString();
+        if (direction.equals("write")) {
+            int protocolVersion = request.get("protocol_version").getAsInt();
+            String hostName = fromUtf16Hex(request.get("host_utf16_hex").getAsString());
+            int port = request.get("port").getAsInt();
+            ClientIntent intention = clientIntent(request.get("intention").getAsString());
+            byte[] prefix = HexFormat.of().parseHex(request.get("prefix_hex").getAsString());
+            ByteBuf buffer = Unpooled.buffer();
+            try {
+                buffer.writeBytes(prefix);
+                var result = new JsonObject();
+                try {
+                    ClientIntentionPacket.STREAM_CODEC.encode(
+                        new FriendlyByteBuf(buffer),
+                        new ClientIntentionPacket(protocolVersion, hostName, port, intention)
+                    );
+                    result.addProperty("outcome", "value");
+                } catch (EncoderException error) {
+                    result.addProperty("outcome", "error");
+                    result.addProperty("error", "encoder_error");
+                    result.addProperty("java_exception", error.getClass().getName());
+                }
+                result.addProperty("written", buffer.writerIndex() - prefix.length);
+                result.addProperty("hex", ByteBufUtil.hexDump(buffer));
+                return result;
+            } finally {
+                buffer.release();
+            }
+        }
+
+        if (direction.equals("read")) {
+            ByteBuf buffer = Unpooled.buffer();
+            try {
+                buffer.writeBytes(HexFormat.of().parseHex(request.get("hex").getAsString()));
+                var result = new JsonObject();
+                try {
+                    ClientIntentionPacket packet = ClientIntentionPacket.STREAM_CODEC.decode(new FriendlyByteBuf(buffer));
+                    result.addProperty("protocol_version", packet.protocolVersion());
+                    result.addProperty("host_utf16_hex", toUtf16Hex(packet.hostName()));
+                    result.addProperty("port", packet.port());
+                    result.addProperty("intention", packet.intention().name().toLowerCase(Locale.ROOT));
+                    result.addProperty("intention_id", packet.intention().id());
+                    result.addProperty("outcome", "value");
+                } catch (IndexOutOfBoundsException error) {
+                    result.addProperty("outcome", "error");
+                    result.addProperty("error", "buffer_underflow");
+                    result.addProperty("java_exception", error.getClass().getName());
+                } catch (RuntimeException error) {
+                    result.addProperty("outcome", "error");
+                    result.addProperty("error", error.getClass() == RuntimeException.class ? "too_big" : "decoder_error");
+                    result.addProperty("java_exception", error.getClass().getName());
+                }
+                result.addProperty("consumed", buffer.readerIndex());
+                result.addProperty("remaining_hex", ByteBufUtil.hexDump(buffer));
+                return result;
+            } finally {
+                buffer.release();
+            }
+        }
+
+        throw new IllegalArgumentException("Unknown handshake direction");
+    }
+
+    private static ClientIntent clientIntent(String name) {
+        return switch (name) {
+            case "status" -> ClientIntent.STATUS;
+            case "login" -> ClientIntent.LOGIN;
+            case "transfer" -> ClientIntent.TRANSFER;
+            default -> throw new IllegalArgumentException("Unknown client intent");
+        };
+    }
+
+    private static String fromUtf16Hex(String value) {
+        if (value.length() % 4 != 0) {
+            throw new IllegalArgumentException("UTF-16 hex must contain complete units");
+        }
+        char[] units = new char[value.length() / 4];
+        for (int index = 0; index < units.length; index++) {
+            units[index] = (char)Integer.parseInt(value.substring(index * 4, index * 4 + 4), 16);
+        }
+        return new String(units);
+    }
+
+    private static String toUtf16Hex(String value) {
+        StringBuilder result = new StringBuilder(value.length() * 4);
+        for (int index = 0; index < value.length(); index++) {
+            result.append(String.format(Locale.ROOT, "%04x", (int)value.charAt(index)));
+        }
+        return result.toString();
     }
 }
