@@ -2918,6 +2918,36 @@ def math_cases():
         yield {"case_id": f"mth/murmur-hash3-mixer/{label}", "family": "math",
                "operation": "mth_murmur_hash3_mixer", "input": str(input_value)}
 
+    for label, from_value, to_value, condition, threshold in (
+        ("empty", 0, 0, "ge", 0),
+        ("single-true", 0, 1, "ge", 0),
+        ("single-false", 0, 1, "ge", 1),
+        ("single-gt-true", 0, 1, "gt", -1),
+        ("basic-ge", 0, 16, "ge", 7),
+        ("basic-gt", 0, 16, "gt", 7),
+        ("threshold-at-to", -10, 10, "ge", 10),
+        ("all-true", -10, 10, "ge", -20),
+        ("negative-ge", -20, -5, "ge", -12),
+        ("negative-gt", -20, -5, "gt", -12),
+        ("cross-zero-ge", -10, 11, "ge", -1),
+        ("cross-zero-gt", -10, 11, "gt", -1),
+        ("offset-range", 5, 25, "ge", 13),
+        ("descending-range", 25, 5, "ge", 13),
+        ("max-empty", 2147483647, 2147483647, "ge", 2147483647),
+        ("min-empty", -2147483648, -2147483648, "ge", -2147483648),
+        ("full-range-overflow", -2147483648, 2147483647, "ge", 0),
+        ("max-to-min-wrap", 2147483647, -2147483648, "gt", 2147483647),
+        ("high-wrap-two", 2147483646, -2147483648, "gt", 2147483647),
+        ("low-range-all-true", -2147483648, -2147483640, "ge", -2147483644),
+        ("high-range-ge", 2147483630, 2147483647, "ge", 2147483640),
+        ("high-range-gt", 2147483630, 2147483647, "gt", 2147483640),
+        ("low-range-ge", -2147483648, -2147483630, "ge", -2147483640),
+        ("low-range-gt", -2147483648, -2147483630, "gt", -2147483640),
+    ):
+        yield {"case_id": f"mth/binary-search/{label}", "family": "math",
+               "operation": "mth_binary_search", "from": str(from_value),
+               "to": str(to_value), "condition": condition, "threshold": str(threshold)}
+
     mth_integer_helpers = [
         ("floor-div/int/negative-remainder", "i32", "floor_div", "-7", "3"),
         ("floor-div/int/negative-divisor", "i32", "floor_div", "7", "-3"),

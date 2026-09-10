@@ -16,7 +16,7 @@ Java Edition 26.2 / protokol 776 / Java 25 referansı kullanılır. `util/Random
 
 | Grup | Sayı | Girdiler |
 | --- | ---: | --- |
-| Gaussian ardışık çağrılar | 5 | 0, 1, -1, 12525 ve i64 maksimum seed'leri; üç Gaussian çağrısı |
+| Gaussian ardışık çağrılar | 5 | 0, 1, -1, 12549 ve i64 maksimum seed'leri; üç Gaussian çağrısı |
 | Gaussian aralıklı çağrılar | 1 | `nextInt`, iki önbellek ilişkili Gaussian, `nextDouble` ve yeni Gaussian |
 
 `family: "math"`, `operation: "random"` ortak girdilerdir. `steps` içindeki `op: "nextGaussian"` sonucu `bits` alanında 16 haneli küçük harfli hex olarak döner.
@@ -34,8 +34,8 @@ Yeni kimlik, mevcut random/AABB kayıtlarının üzerine yazmadan oluşturulur. 
 
 329 math senaryosu iki ayrı JVM'de aynı sonucu verdi. Math referans kimliği: `5c0a43bc10b588fbff0d141e430711057cf9e06b60cbc2bd9d6fe4fde4286159`.
 
-Altı ailenin 2525 senaryolu birleşik referansı iki JVM'de doğrulandı. Birleşik referans kimliği: `38386c8d844bb2560f83f62571433316aca08b176233a98979cccf45ec22a8d5`.
+Altı ailenin 2549 senaryolu birleşik referansı iki JVM'de doğrulandı. Birleşik referans kimliği: `510e1d4575f7dd92a09a6d3f896c2b8077a8fb2c01dd57ea32b9b48ce94a7583`.
 
-Math debug ve release Rust adaptörleri **329/329** eşleşti; birleşik debug ve release karşılaştırmaları da **2525/2525** geçti. Yerel raporlar `compare-c3rqn2f5` (math debug), `compare-vdvn52ql` (math release), `compare-czvhou3w` (birleşik debug) ve `compare-oz19j96e` (birleşik release) dizinlerinde, `.data/runs/behavior/` altında bulunur.
+Math debug ve release Rust adaptörleri **329/329** eşleşti; birleşik debug ve release karşılaştırmaları da **2549/2549** geçti. Yerel raporlar `compare-c3rqn2f5` (math debug), `compare-vdvn52ql` (math release), `compare-qz7665of` (birleşik debug) ve `compare-2e2muf1s` (birleşik release) dizinlerinde, `.data/runs/behavior/` altında bulunur.
 
 Bu sözleşme yalnızca legacy `nextGaussian` ve seçili çağrı sıralarını kapsar. `setSeed` sonrası Gaussian önbelleğinin temizlenmesi ve istemcinin Gaussian kullanan daha geniş yolları sonraki testlerdir; `fork`/`forkPositional` için ayrı kanıt vardır.

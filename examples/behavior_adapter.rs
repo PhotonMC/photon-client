@@ -2354,6 +2354,23 @@ fn math_result(request: &Value) -> Result<Value, String> {
             "value": math::mth_murmur_hash3_mixer(input).to_string(),
         }));
     }
+    if operation == "mth_binary_search" {
+        let from = string(request, "from")?
+            .parse::<i32>()
+            .map_err(|error| error.to_string())?;
+        let to = string(request, "to")?
+            .parse::<i32>()
+            .map_err(|error| error.to_string())?;
+        let threshold = string(request, "threshold")?
+            .parse::<i32>()
+            .map_err(|error| error.to_string())?;
+        let value = match string(request, "condition")? {
+            "ge" => math::mth_binary_search(from, to, |value| value >= threshold),
+            "gt" => math::mth_binary_search(from, to, |value| value > threshold),
+            _ => return Err("unknown Mth binary search condition".into()),
+        };
+        return Ok(json!({"value": value.to_string()}));
+    }
     if operation == "mth_integer_helpers" {
         let function = string(request, "fn")?;
         let input = string(request, "input")?;

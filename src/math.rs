@@ -671,6 +671,25 @@ pub fn mth_murmur_hash3_mixer(mut hash: i32) -> i32 {
     hash ^ ((hash as u32) >> 16) as i32
 }
 
+/// Return Java `Mth.binarySearch(int, int, IntPredicate)` with i32 wrapping steps.
+pub fn mth_binary_search<F>(mut from: i32, to: i32, condition: F) -> i32
+where
+    F: Fn(i32) -> bool,
+{
+    let mut len = to.wrapping_sub(from);
+    while len > 0 {
+        let half = len / 2;
+        let middle = from.wrapping_add(half);
+        if condition(middle) {
+            len = half;
+        } else {
+            from = middle.wrapping_add(1);
+            len = len.wrapping_sub(half.wrapping_add(1));
+        }
+    }
+    from
+}
+
 /// Return Java `Mth.ceilLong(double)` with Java's floating-point-to-long narrowing.
 pub fn ceil_long_f64(value: f64) -> i64 {
     value.ceil() as i64

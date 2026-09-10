@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.Locale;
 import java.util.UUID;
+import java.util.function.IntPredicate;
 import java.util.stream.Stream;
 import net.minecraft.DetectedVersion;
 import net.minecraft.SharedConstants;
@@ -368,6 +369,16 @@ public final class MathOracle {
         } else if (operation.equals("mth_murmur_hash3_mixer")) {
             int hash = Integer.parseInt(request.get("input").getAsString());
             result.addProperty("value", Integer.toString(Mth.murmurHash3Mixer(hash)));
+        } else if (operation.equals("mth_binary_search")) {
+            int from = Integer.parseInt(request.get("from").getAsString());
+            int to = Integer.parseInt(request.get("to").getAsString());
+            int threshold = Integer.parseInt(request.get("threshold").getAsString());
+            IntPredicate condition = switch (request.get("condition").getAsString()) {
+                case "ge" -> value -> value >= threshold;
+                case "gt" -> value -> value > threshold;
+                default -> throw new IllegalArgumentException("Unknown Mth binary search condition");
+            };
+            result.addProperty("value", Integer.toString(Mth.binarySearch(from, to, condition)));
         } else if (operation.equals("mth_integer_helpers")) {
             String width = request.get("type").getAsString();
             String function = request.get("fn").getAsString();
