@@ -2889,6 +2889,35 @@ def math_cases():
         yield {"case_id": f"mth/create-insecure-uuid/{label}", "family": "math",
                "operation": "mth_create_insecure_uuid", "seed": str(seed)}
 
+    for label, input_value in (
+        ("zero", 0),
+        ("one", 1),
+        ("negative-one", -1),
+        ("i32-max", 2147483647),
+        ("i32-min", -2147483648),
+        ("high-bit-plus-one", -2147483647),
+        ("low-31-bit", 1073741824),
+        ("alternating-positive", 1431655765),
+        ("alternating-negative", -1431655766),
+        ("byte-alternating-positive", 16711935),
+        ("byte-alternating-negative", -16711936),
+        ("ascending-hex", 305419896),
+        ("descending-hex", -2023406815),
+        ("shift-16", 65536),
+        ("shift-13", 8192),
+        ("shift-1", 2),
+        ("near-high-bit", 1073741823),
+        ("near-low-bit", -1073741825),
+        ("mixed-positive", 19088743),
+        ("mixed-negative", -19088744),
+        ("large-positive", 987654321),
+        ("large-negative", -987654321),
+        ("signed-pattern", -305419896),
+        ("all-zero-high-byte", 16777215),
+    ):
+        yield {"case_id": f"mth/murmur-hash3-mixer/{label}", "family": "math",
+               "operation": "mth_murmur_hash3_mixer", "input": str(input_value)}
+
     mth_integer_helpers = [
         ("floor-div/int/negative-remainder", "i32", "floor_div", "-7", "3"),
         ("floor-div/int/negative-divisor", "i32", "floor_div", "7", "-3"),

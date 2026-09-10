@@ -2346,6 +2346,14 @@ fn math_result(request: &Value) -> Result<Value, String> {
             "least_hex": format!("{:016x}", uuid.least),
         }));
     }
+    if operation == "mth_murmur_hash3_mixer" {
+        let input = string(request, "input")?
+            .parse::<i32>()
+            .map_err(|error| error.to_string())?;
+        return Ok(json!({
+            "value": math::mth_murmur_hash3_mixer(input).to_string(),
+        }));
+    }
     if operation == "mth_integer_helpers" {
         let function = string(request, "fn")?;
         let input = string(request, "input")?;

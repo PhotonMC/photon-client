@@ -365,6 +365,9 @@ public final class MathOracle {
                 uuid.getMostSignificantBits()));
             result.addProperty("least_hex", String.format(Locale.ROOT, "%016x",
                 uuid.getLeastSignificantBits()));
+        } else if (operation.equals("mth_murmur_hash3_mixer")) {
+            int hash = Integer.parseInt(request.get("input").getAsString());
+            result.addProperty("value", Integer.toString(Mth.murmurHash3Mixer(hash)));
         } else if (operation.equals("mth_integer_helpers")) {
             String width = request.get("type").getAsString();
             String function = request.get("fn").getAsString();

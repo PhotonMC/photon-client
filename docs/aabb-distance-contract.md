@@ -38,6 +38,6 @@ cargo build --locked --offline --example behavior_adapter
 python3 tools/behavior/run.py compare --family math --adapter target/debug/examples/behavior_adapter
 ```
 
-DistanceToSqr senaryolarını içeren math referans kimliği `09c382b6287c06f691d0d698d1c32b5c89a3a02545ec723d11c894ffc006628c` oldu. Bu referans iki JVM çalıştırmasıyla kararlı bulundu. Rust debug ve release adaptörleri math ailesinde 424/424, birleşik corpus'ta 2501/2501 eşleşti; ayrıntılar [parity belgesindedir](aabb-distance-parity.md).
+DistanceToSqr senaryolarını içeren math referans kimliği `09c382b6287c06f691d0d698d1c32b5c89a3a02545ec723d11c894ffc006628c` oldu. Bu referans iki JVM çalıştırmasıyla kararlı bulundu. Rust debug ve release adaptörleri math ailesinde 424/424, birleşik corpus'ta 2525/2525 eşleşti; ayrıntılar [parity belgesindedir](aabb-distance-parity.md).
 
 Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.

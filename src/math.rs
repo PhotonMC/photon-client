@@ -662,6 +662,15 @@ pub fn mth_create_insecure_uuid(random: &mut RandomSource) -> Uuid {
     Uuid::new(most, least)
 }
 
+/// Return Java `Mth.murmurHash3Mixer(int)` with i32 wrapping arithmetic.
+pub fn mth_murmur_hash3_mixer(mut hash: i32) -> i32 {
+    hash ^= ((hash as u32) >> 16) as i32;
+    hash = hash.wrapping_mul(-2_048_144_789);
+    hash ^= ((hash as u32) >> 13) as i32;
+    hash = hash.wrapping_mul(-1_028_477_387);
+    hash ^ ((hash as u32) >> 16) as i32
+}
+
 /// Return Java `Mth.ceilLong(double)` with Java's floating-point-to-long narrowing.
 pub fn ceil_long_f64(value: f64) -> i64 {
     value.ceil() as i64

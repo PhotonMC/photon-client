@@ -35,6 +35,6 @@ Depo kökünden:
 python3 tools/behavior/run.py capture --family math
 ```
 
-Predicate overload senaryolarını içeren math referans kimliği `88113a66373c63d82501d5e2c26347bce90060d5e60c0b41a5a1ffc6127377a7` oldu. Bu referans iki JVM çalıştırmasıyla kararlı bulundu. Rust ve birleşik corpus kanıtı [parity belgesindedir](aabb-predicate-overloads-parity.md).
+Predicate overload senaryolarını içeren math referans kimliği `88113a66373c63d82525d5e2c26347bce90060d5e60c0b41a5a1ffc6127377a7` oldu. Bu referans iki JVM çalıştırmasıyla kararlı bulundu. Rust ve birleşik corpus kanıtı [parity belgesindedir](aabb-predicate-overloads-parity.md).
 
 Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.
