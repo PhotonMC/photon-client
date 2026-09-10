@@ -1891,6 +1891,32 @@ def math_cases():
     for label, values in blockpos_spiral_around.items():
         yield {"case_id": f"blockpos/spiral-around/{label}", "family": "math",
                "operation": "blockpos_spiral_around", **values}
+    blockpos_find_closest_match = {
+        "origin": {
+            "start": {"x": "0", "y": "0", "z": "0"},
+            "horizontal_radius": "1", "vertical_radius": "1", "target": {"x": "0", "y": "0", "z": "0"},
+        },
+        "reachable": {
+            "start": {"x": "10", "y": "-5", "z": "7"},
+            "horizontal_radius": "2", "vertical_radius": "1", "target": {"x": "9", "y": "-5", "z": "8"},
+        },
+        "unreachable": {
+            "start": {"x": "-3", "y": "4", "z": "-2"},
+            "horizontal_radius": "1", "vertical_radius": "1", "target": {"x": "4", "y": "4", "z": "-2"},
+        },
+        "zero-radii": {
+            "start": {"x": "6", "y": "-7", "z": "8"},
+            "horizontal_radius": "0", "vertical_radius": "0", "target": {"x": "6", "y": "-7", "z": "9"},
+        },
+        "integer-boundaries": {
+            "start": {"x": "2147483647", "y": "-2147483648", "z": "2147483647"},
+            "horizontal_radius": "1", "vertical_radius": "0",
+            "target": {"x": "-2147483648", "y": "-2147483648", "z": "2147483647"},
+        },
+    }
+    for label, values in blockpos_find_closest_match.items():
+        yield {"case_id": f"blockpos/find-closest-match/{label}", "family": "math",
+               "operation": "blockpos_find_closest_match", **values}
     for label, (x, y, z) in {
         "origin": (0, 0, 0),
         "positive-boundary": (15, 15, 15),

@@ -2080,6 +2080,21 @@ fn math_result(request: &Value) -> Result<Value, String> {
             .map_err(|_| "spiral directions must use different axes".to_owned())?;
         return Ok(blockpos_positions_snapshot(positions));
     }
+    if operation == "blockpos_find_closest_match" {
+        let start = blockpos(request.get("start").ok_or("start must be an object")?)?;
+        let horizontal_radius = i32_string_field(request, "horizontal_radius")?;
+        let vertical_radius = i32_string_field(request, "vertical_radius")?;
+        let target = blockpos(request.get("target").ok_or("target must be an object")?)?;
+        let value =
+            BlockPos::find_closest_match(start, horizontal_radius, vertical_radius, |candidate| {
+                candidate == target
+            });
+        let mut result = serde_json::Map::new();
+        if let Some(value) = value {
+            result.insert("value".into(), blockpos_snapshot(value));
+        }
+        return Ok(Value::Object(result));
+    }
     if operation == "blockpos_neighbor_column" {
         return Ok(blockpos_positions_snapshot(BlockPos::neighbor_column(
             i32_string_field(request, "start_x")?,

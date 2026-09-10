@@ -657,6 +657,18 @@ public final class MathOracle {
                 positions.add(snapshot(pos));
             }
             result.add("positions", positions);
+        } else if (operation.equals("blockpos_find_closest_match")) {
+            BlockPos startPos = blockPos(request.getAsJsonObject("start"));
+            int horizontalRadius = Integer.parseInt(request.get("horizontal_radius").getAsString());
+            int verticalRadius = Integer.parseInt(request.get("vertical_radius").getAsString());
+            BlockPos target = blockPos(request.getAsJsonObject("target"));
+            var match = BlockPos.findClosestMatch(
+                startPos, horizontalRadius, verticalRadius, pos -> pos.equals(target));
+            if (match.isPresent()) {
+                result.add("value", snapshot(match.get()));
+            } else {
+                result.add("value", com.google.gson.JsonNull.INSTANCE);
+            }
         } else if (operation.equals("section_relative")) {
             short relative = SectionPos.sectionRelativePos(blockPos(request));
             result.addProperty("relative", Integer.toString(Short.toUnsignedInt(relative)));

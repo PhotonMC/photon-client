@@ -566,6 +566,26 @@ impl BlockPos {
         }
     }
 
+    /// Return the first Manhattan position accepted by a predicate.
+    pub fn find_closest_match<F>(
+        start_pos: Self,
+        horizontal_search_radius: i32,
+        vertical_search_radius: i32,
+        mut predicate: F,
+    ) -> Option<Self>
+    where
+        F: FnMut(Self) -> bool,
+    {
+        Self::within_manhattan(
+            start_pos,
+            horizontal_search_radius,
+            vertical_search_radius,
+            horizontal_search_radius,
+        )
+        .into_iter()
+        .find(|&position| predicate(position))
+    }
+
     /// Enumerate an inclusive range in Java's x-fastest, then y, then z order.
     pub fn between_closed_coordinates(
         min_x: i32,
