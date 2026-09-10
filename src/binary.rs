@@ -164,6 +164,11 @@ const Z_OFFSET: u32 = PACKED_Y_LENGTH;
 pub const MAX_HORIZONTAL_COORDINATE: i32 = (1 << PACKED_HORIZONTAL_LENGTH) / 2 - 1;
 
 impl BlockPos {
+    pub const ZERO: Self = Self::new(0, 0, 0);
+    pub const PACKED_HORIZONTAL_LENGTH: u32 = PACKED_HORIZONTAL_LENGTH;
+    pub const PACKED_Y_LENGTH: u32 = PACKED_Y_LENGTH;
+    pub const MAX_HORIZONTAL_COORDINATE: i32 = MAX_HORIZONTAL_COORDINATE;
+
     pub const fn new(x: i32, y: i32, z: i32) -> Self {
         Self { x, y, z }
     }
@@ -179,6 +184,67 @@ impl BlockPos {
                 self.z.wrapping_add(z),
             )
         }
+    }
+
+    /// Offset a packed block position by a cardinal direction's step.
+    pub fn offset_packed(block_node: u64, direction: Direction) -> u64 {
+        Self::offset_packed_by(
+            block_node,
+            direction.get_step_x(),
+            direction.get_step_y(),
+            direction.get_step_z(),
+        )
+    }
+
+    /// Offset a packed block position with Java i32 wrapping arithmetic.
+    pub fn offset_packed_by(block_node: u64, step_x: i32, step_y: i32, step_z: i32) -> u64 {
+        let position = Self::unpack(block_node);
+        Self::as_long_coordinates(
+            position.x.wrapping_add(step_x),
+            position.y.wrapping_add(step_y),
+            position.z.wrapping_add(step_z),
+        )
+    }
+
+    /// Read the signed x field from a packed block position.
+    pub const fn get_x(block_node: u64) -> i32 {
+        ((block_node << (64 - X_OFFSET - PACKED_HORIZONTAL_LENGTH)) as i64
+            >> (64 - PACKED_HORIZONTAL_LENGTH)) as i32
+    }
+
+    /// Read the signed y field from a packed block position.
+    pub const fn get_y(block_node: u64) -> i32 {
+        ((block_node << (64 - PACKED_Y_LENGTH)) as i64 >> (64 - PACKED_Y_LENGTH)) as i32
+    }
+
+    /// Read the signed z field from a packed block position.
+    pub const fn get_z(block_node: u64) -> i32 {
+        ((block_node << (64 - Z_OFFSET - PACKED_HORIZONTAL_LENGTH)) as i64
+            >> (64 - PACKED_HORIZONTAL_LENGTH)) as i32
+    }
+
+    /// Return Java `BlockPos.of(long)`.
+    pub const fn of(block_node: u64) -> Self {
+        Self::new(
+            Self::get_x(block_node),
+            Self::get_y(block_node),
+            Self::get_z(block_node),
+        )
+    }
+
+    /// Return Java `BlockPos.getFlatIndex(long)`.
+    pub const fn get_flat_index(neighbor_block_node: u64) -> u64 {
+        neighbor_block_node & !15
+    }
+
+    /// Return Java `BlockPos.asLong()`.
+    pub fn as_long(self) -> u64 {
+        self.pack()
+    }
+
+    /// Return Java `BlockPos.asLong(int, int, int)`.
+    pub fn as_long_coordinates(x: i32, y: i32, z: i32) -> u64 {
+        Self::new(x, y, z).pack()
     }
 
     /// Componentwise minimum, matching `BlockPos.min`.
@@ -200,12 +266,7 @@ impl BlockPos {
 
     /// Unpack with arithmetic shifts, sign-extending each field.
     pub fn unpack(packed: u64) -> Self {
-        let x = ((packed << (64 - X_OFFSET - PACKED_HORIZONTAL_LENGTH)) as i64
-            >> (64 - PACKED_HORIZONTAL_LENGTH)) as i32;
-        let y = ((packed << (64 - PACKED_Y_LENGTH)) as i64 >> (64 - PACKED_Y_LENGTH)) as i32;
-        let z = ((packed << (64 - Z_OFFSET - PACKED_HORIZONTAL_LENGTH)) as i64
-            >> (64 - PACKED_HORIZONTAL_LENGTH)) as i32;
-        Self { x, y, z }
+        Self::of(packed)
     }
 }
 

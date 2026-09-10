@@ -451,6 +451,35 @@ public final class MathOracle {
                 events.add(snapshot(pos));
             }
             result.add("events", events);
+        } else if (operation.equals("blockpos_packed_helpers")) {
+            BlockPos pos = blockPos(request);
+            long packed = pos.asLong();
+            long neighborNode = Long.parseUnsignedLong(request.get("neighbor_node").getAsString(), 16);
+            Direction direction = Direction.byName(request.get("direction").getAsString());
+            if (direction == null) {
+                throw new IllegalArgumentException("Unknown direction name");
+            }
+            int stepX = Integer.parseInt(request.get("step_x").getAsString());
+            int stepY = Integer.parseInt(request.get("step_y").getAsString());
+            int stepZ = Integer.parseInt(request.get("step_z").getAsString());
+            var accessors = new JsonObject();
+            accessors.addProperty("x", Integer.toString(BlockPos.getX(packed)));
+            accessors.addProperty("y", Integer.toString(BlockPos.getY(packed)));
+            accessors.addProperty("z", Integer.toString(BlockPos.getZ(packed)));
+            result.add("zero", snapshot(BlockPos.ZERO));
+            result.addProperty("packed_horizontal_length", BlockPos.PACKED_HORIZONTAL_LENGTH);
+            result.addProperty("packed_y_length", BlockPos.PACKED_Y_LENGTH);
+            result.addProperty("max_horizontal_coordinate", BlockPos.MAX_HORIZONTAL_COORDINATE);
+            result.addProperty("packed", Long.toUnsignedString(packed, 16));
+            result.addProperty("coordinate_packed", Long.toUnsignedString(BlockPos.asLong(
+                pos.getX(), pos.getY(), pos.getZ()), 16));
+            result.add("decoded", snapshot(BlockPos.of(packed)));
+            result.add("accessors", accessors);
+            result.addProperty("flat_index", Long.toUnsignedString(BlockPos.getFlatIndex(neighborNode), 16));
+            result.addProperty("offset_direction", Long.toUnsignedString(
+                BlockPos.offset(neighborNode, direction), 16));
+            result.addProperty("offset_steps", Long.toUnsignedString(
+                BlockPos.offset(neighborNode, stepX, stepY, stepZ), 16));
         } else if (operation.equals("section_relative")) {
             short relative = SectionPos.sectionRelativePos(blockPos(request));
             result.addProperty("relative", Integer.toString(Short.toUnsignedInt(relative)));

@@ -225,6 +225,36 @@ fn blockpos_snapshot(value: BlockPos) -> Value {
     })
 }
 
+fn blockpos_packed_helpers_snapshot(
+    value: BlockPos,
+    neighbor_node: u64,
+    direction: Direction,
+    step_x: i32,
+    step_y: i32,
+    step_z: i32,
+) -> Value {
+    let packed = value.as_long();
+    json!({
+        "zero": blockpos_snapshot(BlockPos::ZERO),
+        "packed_horizontal_length": BlockPos::PACKED_HORIZONTAL_LENGTH,
+        "packed_y_length": BlockPos::PACKED_Y_LENGTH,
+        "max_horizontal_coordinate": BlockPos::MAX_HORIZONTAL_COORDINATE,
+        "packed": format!("{packed:x}"),
+        "coordinate_packed": format!("{:x}", BlockPos::as_long_coordinates(value.x, value.y, value.z)),
+        "decoded": blockpos_snapshot(BlockPos::of(packed)),
+        "accessors": {
+            "x": BlockPos::get_x(packed).to_string(),
+            "y": BlockPos::get_y(packed).to_string(),
+            "z": BlockPos::get_z(packed).to_string(),
+        },
+        "flat_index": format!("{:x}", BlockPos::get_flat_index(neighbor_node)),
+        "offset_direction": format!("{:x}", BlockPos::offset_packed(neighbor_node, direction)),
+        "offset_steps": format!("{:x}", BlockPos::offset_packed_by(
+            neighbor_node, step_x, step_y, step_z,
+        )),
+    })
+}
+
 fn chunkpos(value: &Value) -> Result<ChunkPos, String> {
     let coordinate = |name: &str| {
         string(value, name)?
@@ -1836,6 +1866,24 @@ fn math_result(request: &Value) -> Result<Value, String> {
     }
     if operation == "blockpos" {
         return blockpos_result(request);
+    }
+    if operation == "blockpos_packed_helpers" {
+        let value = blockpos(request)?;
+        let direction =
+            Direction::from_name(string(request, "direction")?).ok_or("unknown direction name")?;
+        let coordinate = |name: &str| {
+            string(request, name)?
+                .parse::<i32>()
+                .map_err(|error| error.to_string())
+        };
+        return Ok(blockpos_packed_helpers_snapshot(
+            value,
+            u64_hex_field(request, "neighbor_node")?,
+            direction,
+            coordinate("step_x")?,
+            coordinate("step_y")?,
+            coordinate("step_z")?,
+        ));
     }
     if operation == "section_relative" {
         return section_relative_result(request);

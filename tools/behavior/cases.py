@@ -1580,6 +1580,31 @@ def math_cases():
         x, y, z = blockpos_origins[label]
         yield {"case_id": f"blockpos/chain/{label}", "family": "math", "operation": "blockpos",
                "x": str(x), "y": str(y), "z": str(z), "steps": steps}
+    blockpos_packed_helpers = {
+        "origin": {
+            "x": "0", "y": "0", "z": "0", "neighbor_node": "0000000000000000",
+            "direction": "up", "step_x": "1", "step_y": "-2", "step_z": "3",
+        },
+        "negative-fields": {
+            "x": "-1", "y": "-2", "z": "-3", "neighbor_node": "ffffffffffffffff",
+            "direction": "north", "step_x": "-4", "step_y": "5", "step_z": "-6",
+        },
+        "packed-boundaries": {
+            "x": "33554431", "y": "2047", "z": "-33554432", "neighbor_node": "8000001ffffff800",
+            "direction": "east", "step_x": "1", "step_y": "1", "step_z": "1",
+        },
+        "masked-overflow": {
+            "x": "33554432", "y": "2048", "z": "-33554433", "neighbor_node": "7fffffe0000007ff",
+            "direction": "down", "step_x": "2147483647", "step_y": "-2147483648", "step_z": "-1",
+        },
+        "integer-boundaries": {
+            "x": "2147483647", "y": "-2147483648", "z": "2147483647", "neighbor_node": "deadbeefcafebabe",
+            "direction": "west", "step_x": "-2147483648", "step_y": "2147483647", "step_z": "0",
+        },
+    }
+    for label, values in blockpos_packed_helpers.items():
+        yield {"case_id": f"blockpos/packed-helpers/{label}", "family": "math",
+               "operation": "blockpos_packed_helpers", **values}
     for label, (x, y, z) in {
         "origin": (0, 0, 0),
         "positive-boundary": (15, 15, 15),
