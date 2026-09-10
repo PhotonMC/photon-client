@@ -278,9 +278,11 @@ impl Direction {
 
     /// Return Java `Direction.getApproximateNearest(double, double, double)`.
     pub fn approximate_nearest(dx: f64, dy: f64, dz: f64) -> Self {
-        let dx = dx as f32;
-        let dy = dy as f32;
-        let dz = dz as f32;
+        Self::approximate_nearest_f32(dx as f32, dy as f32, dz as f32)
+    }
+
+    /// Return Java `Direction.getApproximateNearest(float, float, float)`.
+    pub fn approximate_nearest_f32(dx: f32, dy: f32, dz: f32) -> Self {
         let mut result = Self::North;
         let mut highest_dot = f32::from_bits(1);
 
@@ -301,6 +303,11 @@ impl Direction {
         }
 
         result
+    }
+
+    /// Return Java `Direction.getApproximateNearest(Vec3)`.
+    pub fn approximate_nearest_vec3(vector: Vec3) -> Self {
+        Self::approximate_nearest(vector.x, vector.y, vector.z)
     }
 
     fn clockwise_y_axis(self) -> Self {

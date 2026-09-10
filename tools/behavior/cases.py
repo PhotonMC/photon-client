@@ -1414,6 +1414,27 @@ def math_cases():
     for name, vector in direction_approximate_nearest_cases:
         yield {"case_id": f"direction/approximate-nearest/{name}", "family": "math",
                "operation": "direction_approximate_nearest", **vector}
+    direction_approximate_nearest_overload_cases = [
+        ("cardinal", {"f32_x": float_bits(0.0), "f32_y": float_bits(0.0), "f32_z": float_bits(1.0),
+                       "x": float_bits(0.0, "f64"), "y": float_bits(0.0, "f64"), "z": float_bits(1.0, "f64")}),
+        ("tie", {"f32_x": float_bits(1.0), "f32_y": float_bits(0.0), "f32_z": float_bits(1.0),
+                  "x": float_bits(1.0, "f64"), "y": float_bits(0.0, "f64"), "z": float_bits(1.0, "f64")}),
+        ("zero", {"f32_x": float_bits(0.0), "f32_y": float_bits(0.0), "f32_z": float_bits(0.0),
+                   "x": float_bits(0.0, "f64"), "y": float_bits(0.0, "f64"), "z": float_bits(0.0, "f64")}),
+        ("negative", {"f32_x": float_bits(-1.0), "f32_y": float_bits(-2.0), "f32_z": float_bits(-3.0),
+                       "x": float_bits(-1.0, "f64"), "y": float_bits(-2.0, "f64"), "z": float_bits(-3.0, "f64")}),
+        ("f32-nan", {"f32_x": "7fc00001", "f32_y": float_bits(0.0), "f32_z": float_bits(0.0),
+                      "x": "7ff8000000000001", "y": float_bits(0.0, "f64"), "z": float_bits(0.0, "f64")}),
+        ("f32-infinity", {"f32_x": "7f800000", "f32_y": float_bits(0.0), "f32_z": float_bits(0.0),
+                           "x": "7ff0000000000000", "y": float_bits(0.0, "f64"), "z": float_bits(0.0, "f64")}),
+        ("precision-boundary", {"f32_x": "3f800000", "f32_y": float_bits(0.0), "f32_z": float_bits(0.0),
+                                 "x": "3ff0000010000000", "y": float_bits(0.0, "f64"), "z": float_bits(0.0, "f64")}),
+        ("signed-zero", {"f32_x": "80000000", "f32_y": "00000000", "f32_z": "00000000",
+                          "x": "8000000000000000", "y": "0000000000000000", "z": "0000000000000000"}),
+    ]
+    for name, values in direction_approximate_nearest_overload_cases:
+        yield {"case_id": f"direction/approximate-nearest-overloads/{name}", "family": "math",
+               "operation": "direction_approximate_nearest_overloads", **values}
     direction_nearest_cases = [
         ("components/x-positive", "components", 3, 1, 2, "none"),
         ("components/x-negative", "components", -3, 1, 2, "none"),

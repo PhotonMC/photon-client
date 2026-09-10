@@ -3383,6 +3383,25 @@ fn math_result(request: &Value) -> Result<Value, String> {
         );
         return Ok(json!({"value": direction_snapshot(facing)}));
     }
+    if operation == "direction_approximate_nearest_overloads" {
+        let f32_facing = Direction::approximate_nearest_f32(
+            f32_field(request, "f32_x")?,
+            f32_field(request, "f32_y")?,
+            f32_field(request, "f32_z")?,
+        );
+        let f64_vector = Vec3::new(
+            f64_field(request, "x")?,
+            f64_field(request, "y")?,
+            f64_field(request, "z")?,
+        );
+        return Ok(json!({
+            "f32": direction_snapshot(f32_facing),
+            "f64": direction_snapshot(Direction::approximate_nearest(
+                f64_vector.x, f64_vector.y, f64_vector.z,
+            )),
+            "vec3": direction_snapshot(Direction::approximate_nearest_vec3(f64_vector)),
+        }));
+    }
     if operation == "direction_nearest" {
         let coordinate = |name: &str| {
             string(request, name)?

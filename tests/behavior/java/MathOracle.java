@@ -304,6 +304,12 @@ public final class MathOracle {
         } else if (operation.equals("direction_approximate_nearest")) {
             result.add("value", snapshot(Direction.getApproximateNearest(
                 f64(request, "x"), f64(request, "y"), f64(request, "z"))));
+        } else if (operation.equals("direction_approximate_nearest_overloads")) {
+            result.add("f32", snapshot(Direction.getApproximateNearest(
+                Oracle.f32(request, "f32_x"), Oracle.f32(request, "f32_y"), Oracle.f32(request, "f32_z"))));
+            result.add("f64", snapshot(Direction.getApproximateNearest(
+                f64(request, "x"), f64(request, "y"), f64(request, "z"))));
+            result.add("vec3", snapshot(Direction.getApproximateNearest(vec3(request))));
         } else if (operation.equals("direction_nearest")) {
             Direction fallback = directionOrElse(request);
             Direction facing;
