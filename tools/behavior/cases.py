@@ -168,6 +168,33 @@ def wire_cases():
         yield {"case_id": f"login/hello/read/{label}", "family": "wire",
                "operation": "login_hello", "direction": "read", "hex": encoded}
 
+    compression_writes = [
+        ("zero", 0, ""),
+        ("one", 1, ""),
+        ("single-byte-limit", 127, ""),
+        ("two-byte-start", 128, ""),
+        ("negative", -1, ""),
+        ("maximum", (1 << 31) - 1, ""),
+        ("with-prefix", 256, "deadbeef"),
+    ]
+    for label, threshold, prefix_hex in compression_writes:
+        yield {"case_id": f"login/compression/write/{label}", "family": "wire",
+               "operation": "login_compression", "direction": "write",
+               "threshold": threshold, "prefix_hex": prefix_hex}
+
+    compression_reads = [
+        ("zero", varint_hex(0)),
+        ("negative", varint_hex(-1)),
+        ("trailing", varint_hex(128) + "aabb"),
+        ("noncanonical-zero", "8000"),
+        ("empty", ""),
+        ("truncated", "80"),
+        ("too-big", "808080808001"),
+    ]
+    for label, encoded in compression_reads:
+        yield {"case_id": f"login/compression/read/{label}", "family": "wire",
+               "operation": "login_compression", "direction": "read", "hex": encoded}
+
 
 def math_cases():
     def character_event_case(label, codepoint):

@@ -18,6 +18,7 @@ import net.minecraft.network.VarInt;
 import net.minecraft.network.VarLong;
 import net.minecraft.network.protocol.handshake.ClientIntent;
 import net.minecraft.network.protocol.handshake.ClientIntentionPacket;
+import net.minecraft.network.protocol.login.ClientboundLoginCompressionPacket;
 import net.minecraft.network.protocol.login.ServerboundHelloPacket;
 
 public final class WireOracle {
@@ -34,6 +35,9 @@ public final class WireOracle {
         }
         if (operation.equals("login_hello")) {
             return loginHelloResult(request);
+        }
+        if (operation.equals("login_compression")) {
+            return loginCompressionResult(request);
         }
         boolean wide = switch (request.get("codec").getAsString()) {
             case "varint" -> false;
@@ -313,6 +317,57 @@ public final class WireOracle {
         }
 
         throw new IllegalArgumentException("Unknown login direction");
+    }
+
+    private static JsonObject loginCompressionResult(JsonObject request) {
+        String direction = request.get("direction").getAsString();
+        if (direction.equals("write")) {
+            int threshold = request.get("threshold").getAsInt();
+            byte[] prefix = HexFormat.of().parseHex(request.get("prefix_hex").getAsString());
+            ByteBuf buffer = Unpooled.buffer();
+            try {
+                buffer.writeBytes(prefix);
+                var result = new JsonObject();
+                ClientboundLoginCompressionPacket.STREAM_CODEC.encode(
+                    new FriendlyByteBuf(buffer),
+                    new ClientboundLoginCompressionPacket(threshold)
+                );
+                result.addProperty("outcome", "value");
+                result.addProperty("written", buffer.writerIndex() - prefix.length);
+                result.addProperty("hex", ByteBufUtil.hexDump(buffer));
+                return result;
+            } finally {
+                buffer.release();
+            }
+        }
+
+        if (direction.equals("read")) {
+            ByteBuf buffer = Unpooled.buffer();
+            try {
+                buffer.writeBytes(HexFormat.of().parseHex(request.get("hex").getAsString()));
+                var result = new JsonObject();
+                try {
+                    ClientboundLoginCompressionPacket packet = ClientboundLoginCompressionPacket.STREAM_CODEC.decode(new FriendlyByteBuf(buffer));
+                    result.addProperty("threshold", packet.getCompressionThreshold());
+                    result.addProperty("outcome", "value");
+                } catch (IndexOutOfBoundsException error) {
+                    result.addProperty("outcome", "error");
+                    result.addProperty("error", "buffer_underflow");
+                    result.addProperty("java_exception", error.getClass().getName());
+                } catch (RuntimeException error) {
+                    result.addProperty("outcome", "error");
+                    result.addProperty("error", error.getClass() == RuntimeException.class ? "too_big" : "decoder_error");
+                    result.addProperty("java_exception", error.getClass().getName());
+                }
+                result.addProperty("consumed", buffer.readerIndex());
+                result.addProperty("remaining_hex", ByteBufUtil.hexDump(buffer));
+                return result;
+            } finally {
+                buffer.release();
+            }
+        }
+
+        throw new IllegalArgumentException("Unknown compression direction");
     }
 
     private static String fromUtf16Hex(String value) {

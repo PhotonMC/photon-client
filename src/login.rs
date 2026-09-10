@@ -1,7 +1,7 @@
 //! The serverbound login hello packet sent after a handshake intention.
 
 use crate::binary::{self, Uuid};
-use crate::utf8;
+use crate::{utf8, wire};
 
 pub const MAX_NAME_LENGTH: usize = 16;
 
@@ -36,6 +36,29 @@ impl ServerboundHelloPacket {
         let name = utf8::read_utf8(input, MAX_NAME_LENGTH).map_err(map_utf8_error)?;
         let profile_id = binary::read_uuid(input)?;
         Ok(Self { name, profile_id })
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ClientboundLoginCompressionPacket {
+    pub threshold: i32,
+}
+
+impl ClientboundLoginCompressionPacket {
+    pub const fn new(threshold: i32) -> Self {
+        Self { threshold }
+    }
+
+    /// Encode the compression threshold as one Java VarInt.
+    pub fn encode(self, output: &mut Vec<u8>) {
+        wire::write_varint(self.threshold, output);
+    }
+
+    /// Decode the threshold without applying compression to later frames.
+    pub fn decode(input: &mut &[u8]) -> Result<Self, wire::ReadError> {
+        Ok(Self {
+            threshold: wire::read_varint(input)?,
+        })
     }
 }
 

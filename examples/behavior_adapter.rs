@@ -20,7 +20,7 @@ use voxel_client::input_event::{
     MouseButtonInfo, PreeditEvent,
 };
 use voxel_client::key_mapping::{InputKey, KeyMapping, KeyMappingRegistry};
-use voxel_client::login::ServerboundHelloPacket;
+use voxel_client::login::{ClientboundLoginCompressionPacket, ServerboundHelloPacket};
 use voxel_client::math::{self, Quaternionf, Vec2, Vec3, Vec3f};
 use voxel_client::nbt::{self, Field, FieldValue};
 use voxel_client::option::{
@@ -89,6 +89,9 @@ fn wire_result(request: &Value) -> Result<Value, String> {
     }
     if request["operation"].as_str() == Some("login_hello") {
         return login_hello_result(request);
+    }
+    if request["operation"].as_str() == Some("login_compression") {
+        return login_compression_result(request);
     }
     let wide = match string(request, "codec")? {
         "varint" => false,
@@ -357,6 +360,52 @@ fn login_hello_result(request: &Value) -> Result<Value, String> {
             Ok(result)
         }
         _ => Err("unknown login direction".into()),
+    }
+}
+
+fn compression_read_error(error: wire::ReadError) -> &'static str {
+    match error {
+        wire::ReadError::BufferUnderflow => "buffer_underflow",
+        wire::ReadError::TooBig => "too_big",
+    }
+}
+
+fn login_compression_result(request: &Value) -> Result<Value, String> {
+    match string(request, "direction")? {
+        "write" => {
+            let threshold = request["threshold"]
+                .as_i64()
+                .ok_or("threshold must be an integer")?
+                .try_into()
+                .map_err(|_| "threshold must fit in i32")?;
+            let prefix = decode_hex(string(request, "prefix_hex")?)?;
+            let packet = ClientboundLoginCompressionPacket::new(threshold);
+            let mut buffer = prefix.clone();
+            packet.encode(&mut buffer);
+            Ok(json!({
+                "outcome": "value",
+                "written": buffer.len() - prefix.len(),
+                "hex": hex(&buffer),
+            }))
+        }
+        "read" => {
+            let bytes = decode_hex(string(request, "hex")?)?;
+            let mut remaining = bytes.as_slice();
+            let mut result = match ClientboundLoginCompressionPacket::decode(&mut remaining) {
+                Ok(packet) => json!({
+                    "threshold": packet.threshold,
+                    "outcome": "value",
+                }),
+                Err(error) => json!({
+                    "outcome": "error",
+                    "error": compression_read_error(error),
+                }),
+            };
+            result["consumed"] = json!(bytes.len() - remaining.len());
+            result["remaining_hex"] = json!(hex(remaining));
+            Ok(result)
+        }
+        _ => Err("unknown compression direction".into()),
     }
 }
 
