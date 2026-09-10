@@ -6,6 +6,15 @@ use crate::binary::{BlockPos, Uuid};
 use crate::direction::{Axis, Direction};
 use crate::random::RandomSource;
 
+/// Java `Mth` public scalar constants, stored with their reference f32 bits.
+pub const MTH_PI: f32 = f32::from_bits(0x4049_0fdb);
+pub const MTH_HALF_PI: f32 = f32::from_bits(0x3fc9_0fdb);
+pub const MTH_TWO_PI: f32 = f32::from_bits(0x40c9_0fdb);
+pub const MTH_DEG_TO_RAD: f32 = f32::from_bits(0x3c8e_fa35);
+pub const MTH_RAD_TO_DEG: f32 = f32::from_bits(0x4265_2ee0);
+pub const MTH_EPSILON: f32 = f32::from_bits(0x3727_c5ac);
+pub const MTH_SQRT_OF_TWO: f32 = f32::from_bits(0x3fb5_04f3);
+
 #[derive(Debug, Clone, Copy)]
 pub struct Vec2 {
     pub x: f32,
@@ -113,6 +122,11 @@ impl Vec3f {
         Self { x, y, z }
     }
 }
+
+/// Java `Mth` public unit-axis constants (`Vector3fc` values).
+pub const MTH_Y_AXIS: Vec3f = Vec3f::new(0.0, 1.0, 0.0);
+pub const MTH_X_AXIS: Vec3f = Vec3f::new(1.0, 0.0, 0.0);
+pub const MTH_Z_AXIS: Vec3f = Vec3f::new(0.0, 0.0, 1.0);
 
 /// Four-component f32 value used by Java-compatible quaternion helpers.
 #[derive(Debug, Clone, Copy)]

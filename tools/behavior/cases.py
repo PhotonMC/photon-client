@@ -551,6 +551,11 @@ def math_cases():
         yield {"case_id": f"chunkpos/validity/{label}", "family": "math",
                "operation": "chunkpos_validity", **values}
 
+    for name in ("pi", "half_pi", "two_pi", "deg_to_rad", "rad_to_deg", "epsilon",
+                 "sqrt_of_two", "y_axis", "x_axis", "z_axis"):
+        yield {"case_id": f"mth/constants/{name}", "family": "math",
+               "operation": "mth_constants", "name": name}
+
     vectors = {f"direction-{x}-{y}": (float_bits(x), float_bits(y))
                for x in (-1, 0, 1) for y in (-1, 0, 1)}
     vectors.update({"negative-zero": ("80000000", "80000000"),

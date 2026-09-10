@@ -593,6 +593,20 @@ public final class MathOracle {
         } else if (operation.equals("chunkpos_validity")) {
             ChunkPos pos = chunkPos(request);
             result.add("value", chunkPosValidity(pos));
+        } else if (operation.equals("mth_constants")) {
+            switch (request.get("name").getAsString()) {
+                case "pi" -> result.addProperty("bits", Oracle.bits(Mth.PI));
+                case "half_pi" -> result.addProperty("bits", Oracle.bits(Mth.HALF_PI));
+                case "two_pi" -> result.addProperty("bits", Oracle.bits(Mth.TWO_PI));
+                case "deg_to_rad" -> result.addProperty("bits", Oracle.bits(Mth.DEG_TO_RAD));
+                case "rad_to_deg" -> result.addProperty("bits", Oracle.bits(Mth.RAD_TO_DEG));
+                case "epsilon" -> result.addProperty("bits", Oracle.bits(Mth.EPSILON));
+                case "sqrt_of_two" -> result.addProperty("bits", Oracle.bits(Mth.SQRT_OF_TWO));
+                case "y_axis" -> result.add("value", snapshot(new Vector3f(Mth.Y_AXIS)));
+                case "x_axis" -> result.add("value", snapshot(new Vector3f(Mth.X_AXIS)));
+                case "z_axis" -> result.add("value", snapshot(new Vector3f(Mth.Z_AXIS)));
+                default -> throw new IllegalArgumentException("Unknown Mth constant");
+            }
         } else if (operation.equals("mth_floating_primitives")) {
             String function = request.get("fn").getAsString();
             if (function.equals("sin")) {

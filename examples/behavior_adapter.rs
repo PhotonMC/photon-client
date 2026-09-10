@@ -2290,6 +2290,23 @@ fn math_result(request: &Value) -> Result<Value, String> {
         };
         return Ok(json!({"bits": bits}));
     }
+    if operation == "mth_constants" {
+        return match string(request, "name")? {
+            "pi" => Ok(json!({"bits": format!("{:08x}", math::MTH_PI.to_bits())})),
+            "half_pi" => Ok(json!({"bits": format!("{:08x}", math::MTH_HALF_PI.to_bits())})),
+            "two_pi" => Ok(json!({"bits": format!("{:08x}", math::MTH_TWO_PI.to_bits())})),
+            "deg_to_rad" => Ok(json!({"bits": format!("{:08x}", math::MTH_DEG_TO_RAD.to_bits())})),
+            "rad_to_deg" => Ok(json!({"bits": format!("{:08x}", math::MTH_RAD_TO_DEG.to_bits())})),
+            "epsilon" => Ok(json!({"bits": format!("{:08x}", math::MTH_EPSILON.to_bits())})),
+            "sqrt_of_two" => {
+                Ok(json!({"bits": format!("{:08x}", math::MTH_SQRT_OF_TWO.to_bits())}))
+            }
+            "y_axis" => Ok(json!({"value": vec3f_snapshot(math::MTH_Y_AXIS)})),
+            "x_axis" => Ok(json!({"value": vec3f_snapshot(math::MTH_X_AXIS)})),
+            "z_axis" => Ok(json!({"value": vec3f_snapshot(math::MTH_Z_AXIS)})),
+            _ => Err("unknown Mth constant".into()),
+        };
+    }
     if operation == "mth_power_helpers" {
         let function = string(request, "fn")?;
         let input = string(request, "input")?;
