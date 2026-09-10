@@ -6358,6 +6358,21 @@ def resources_cases():
             {"packs": [], "queries": ["minecraft:config/value.json"]},
         ],
     }
+    yield {
+        "case_id": "resources/metadata/compatibility-boundaries",
+        "family": "resources",
+        "operation": "compatibility",
+        "probes": [
+            {"min_major": 2147483647, "min_minor": 0, "max_major": 2147483647, "max_minor": 0},
+            {"min_major": 0, "min_minor": 0, "max_major": 87, "max_minor": 0},
+            {"min_major": 87, "min_minor": 5, "max_major": 87, "max_minor": 99},
+            {"min_major": 87, "min_minor": 0, "max_major": 88, "max_minor": 0},
+            {"min_major": 88, "min_minor": 0, "max_major": 88, "max_minor": 0},
+            {"min_major": 88, "min_minor": 1, "max_major": 88, "max_minor": 2},
+            {"min_major": 89, "min_minor": 0, "max_major": 89, "max_minor": 0},
+            {"min_major": 87, "min_minor": 99, "max_major": 88, "max_minor": 0},
+        ],
+    }
 
 
 def build_cases(families):

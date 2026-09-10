@@ -25,7 +25,8 @@ use voxel_client::option::{
 };
 use voxel_client::random::RandomSource;
 use voxel_client::resources::{
-    self, AssetIndex, AssetResolution, ReloadableResourceManager, ResourcePack, ResourcePackStack,
+    self, AssetIndex, AssetResolution, PackCompatibility, PackFormat, ReloadableResourceManager,
+    ResourcePack, ResourcePackStack,
 };
 use voxel_client::scroll::ScrollWheelHandler;
 use voxel_client::shape::{BooleanOp, ShapeRotation, Shapes, VoxelShape};
@@ -785,6 +786,9 @@ fn resources_result(request: &Value) -> Result<Value, String> {
     if request["operation"].as_str() == Some("reload") {
         return resource_reload_result(request);
     }
+    if request["operation"].as_str() == Some("compatibility") {
+        return resource_compatibility_result(request);
+    }
 
     let entries = request["entries"]
         .as_array()
@@ -935,6 +939,35 @@ fn resource_reload_result(request: &Value) -> Result<Value, String> {
         })
         .collect::<Result<Vec<_>, String>>()?;
     Ok(json!({"initial": initial, "rounds": rounds}))
+}
+
+fn resource_compatibility_result(request: &Value) -> Result<Value, String> {
+    let game = PackFormat::new(88, 0);
+    let probes = request["probes"]
+        .as_array()
+        .ok_or("probes must be an array")?
+        .iter()
+        .map(|probe| {
+            let declared_min = PackFormat::new(
+                i32_field(probe, "min_major")?,
+                i32_field(probe, "min_minor")?,
+            );
+            let declared_max = PackFormat::new(
+                i32_field(probe, "max_major")?,
+                i32_field(probe, "max_minor")?,
+            );
+            let compatibility = PackCompatibility::for_version(declared_min, declared_max, game);
+            Ok(json!({
+                "compatibility": compatibility.name(),
+                "is_compatible": compatibility.is_compatible(),
+            }))
+        })
+        .collect::<Result<Vec<_>, String>>()?;
+    Ok(json!({
+        "game_major": game.major(),
+        "game_minor": game.minor(),
+        "probes": probes,
+    }))
 }
 
 fn input_with_modifiers_snapshot<T: InputWithModifiers>(input: &T) -> Value {

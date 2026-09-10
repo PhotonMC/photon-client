@@ -12,18 +12,22 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import net.minecraft.network.chat.Component;
+import net.minecraft.SharedConstants;
 import net.minecraft.client.resources.IndexedAssetSource;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.PackLocationInfo;
 import net.minecraft.server.packs.PackResources;
 import net.minecraft.server.packs.PackType;
 import net.minecraft.server.packs.PathPackResources;
+import net.minecraft.server.packs.metadata.pack.PackFormat;
 import net.minecraft.server.packs.repository.PackSource;
+import net.minecraft.server.packs.repository.PackCompatibility;
 import net.minecraft.server.packs.resources.MultiPackResourceManager;
 import net.minecraft.server.packs.resources.ReloadInstance;
 import net.minecraft.server.packs.resources.ReloadableResourceManager;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.util.Unit;
+import net.minecraft.util.InclusiveRange;
 
 /** Test glue for the Java asset-index path mapping; it does not copy original assets. */
 public final class ResourceOracle {
@@ -41,6 +45,9 @@ public final class ResourceOracle {
             }
             if (request.get("operation").getAsString().equals("reload")) {
                 return reloadResult(request, assets);
+            }
+            if (request.get("operation").getAsString().equals("compatibility")) {
+                return compatibilityResult(request);
             }
             Path indexes = Files.createDirectories(assets.resolve("indexes"));
             Path objects = Files.createDirectories(assets.resolve("objects"));
@@ -210,6 +217,27 @@ public final class ResourceOracle {
             queryResults.add(result);
         }
         return queryResults;
+    }
+
+    private static JsonObject compatibilityResult(JsonObject request) {
+        PackFormat game = PackFormat.of(SharedConstants.RESOURCE_PACK_FORMAT_MAJOR, SharedConstants.RESOURCE_PACK_FORMAT_MINOR);
+        JsonArray probeResults = new JsonArray();
+        for (JsonElement probeElement : request.getAsJsonArray("probes")) {
+            JsonObject probe = probeElement.getAsJsonObject();
+            PackFormat min = PackFormat.of(probe.get("min_major").getAsInt(), probe.get("min_minor").getAsInt());
+            PackFormat max = PackFormat.of(probe.get("max_major").getAsInt(), probe.get("max_minor").getAsInt());
+            PackCompatibility compatibility = PackCompatibility.forVersion(new InclusiveRange<>(min, max), game);
+            JsonObject result = new JsonObject();
+            result.addProperty("compatibility", compatibility.name());
+            result.addProperty("is_compatible", compatibility.isCompatible());
+            probeResults.add(result);
+        }
+
+        JsonObject result = new JsonObject();
+        result.addProperty("game_major", game.major());
+        result.addProperty("game_minor", game.minor());
+        result.add("probes", probeResults);
+        return result;
     }
 
     private static byte[] decodeHex(String value) {

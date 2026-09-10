@@ -102,6 +102,65 @@ pub fn object_path(hash: &str) -> String {
     format!("{}/{}", &hash[..2], hash)
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct PackFormat {
+    major: i32,
+    minor: i32,
+}
+
+impl PackFormat {
+    pub const fn new(major: i32, minor: i32) -> Self {
+        Self { major, minor }
+    }
+
+    pub const fn major(self) -> i32 {
+        self.major
+    }
+
+    pub const fn minor(self) -> i32 {
+        self.minor
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PackCompatibility {
+    TooOld,
+    TooNew,
+    Unknown,
+    Compatible,
+}
+
+impl PackCompatibility {
+    pub fn for_version(
+        declared_min: PackFormat,
+        declared_max: PackFormat,
+        game: PackFormat,
+    ) -> Self {
+        if declared_min.major() == i32::MAX {
+            Self::Unknown
+        } else if declared_max < game {
+            Self::TooOld
+        } else if game < declared_min {
+            Self::TooNew
+        } else {
+            Self::Compatible
+        }
+    }
+
+    pub const fn is_compatible(self) -> bool {
+        matches!(self, Self::Compatible)
+    }
+
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::TooOld => "TOO_OLD",
+            Self::TooNew => "TOO_NEW",
+            Self::Unknown => "UNKNOWN",
+            Self::Compatible => "COMPATIBLE",
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResourcePack {
     id: String,
