@@ -37,6 +37,9 @@ use voxel_client::resources::{
 use voxel_client::scroll::ScrollWheelHandler;
 use voxel_client::shape::{BooleanOp, ShapeRotation, Shapes, VoxelShape};
 use voxel_client::smooth::SmoothDouble;
+use voxel_client::status::{
+    ClientboundPongResponsePacket, ServerboundPingRequestPacket, ServerboundStatusRequestPacket,
+};
 use voxel_client::timer::Timer;
 use voxel_client::utf8;
 use voxel_client::wire::{self, ReadError};
@@ -97,6 +100,12 @@ fn wire_result(request: &Value) -> Result<Value, String> {
     }
     if request["operation"].as_str() == Some("login_server_hello") {
         return login_server_hello_result(request);
+    }
+    if request["operation"].as_str() == Some("status_request") {
+        return status_request_result(request);
+    }
+    if request["operation"].as_str() == Some("ping") {
+        return ping_result(request);
     }
     let wide = match string(request, "codec")? {
         "varint" => false,
@@ -463,6 +472,85 @@ fn login_server_hello_result(request: &Value) -> Result<Value, String> {
             Ok(result)
         }
         _ => Err("unknown server hello direction".into()),
+    }
+}
+
+fn status_request_result(request: &Value) -> Result<Value, String> {
+    match string(request, "direction")? {
+        "write" => {
+            let prefix = decode_hex(string(request, "prefix_hex")?)?;
+            let mut buffer = prefix.clone();
+            ServerboundStatusRequestPacket::INSTANCE.encode(&mut buffer);
+            Ok(json!({
+                "outcome": "value",
+                "written": buffer.len() - prefix.len(),
+                "hex": hex(&buffer),
+            }))
+        }
+        "read" => {
+            let bytes = decode_hex(string(request, "hex")?)?;
+            let mut remaining = bytes.as_slice();
+            let packet = ServerboundStatusRequestPacket::decode(&mut remaining)
+                .map_err(|error| format!("status request decode failed: {error:?}"))?;
+            Ok(json!({
+                "singleton": packet == ServerboundStatusRequestPacket::INSTANCE,
+                "outcome": "value",
+                "consumed": bytes.len() - remaining.len(),
+                "remaining_hex": hex(remaining),
+            }))
+        }
+        _ => Err("unknown status request direction".into()),
+    }
+}
+
+fn ping_read_error(error: voxel_client::status::ReadError) -> &'static str {
+    match error {
+        voxel_client::status::ReadError::BufferUnderflow => "buffer_underflow",
+        voxel_client::status::ReadError::DecoderError => "decoder_error",
+        voxel_client::status::ReadError::TooBig => "too_big",
+    }
+}
+
+fn ping_result(request: &Value) -> Result<Value, String> {
+    let packet = string(request, "packet")?;
+    match string(request, "direction")? {
+        "write" => {
+            let time = millis(request, "time")?;
+            let prefix = decode_hex(string(request, "prefix_hex")?)?;
+            let mut buffer = prefix.clone();
+            match packet {
+                "request" => ServerboundPingRequestPacket::new(time).encode(&mut buffer),
+                "response" => ClientboundPongResponsePacket::new(time).encode(&mut buffer),
+                _ => return Err("unknown ping packet".into()),
+            }
+            Ok(json!({
+                "outcome": "value",
+                "written": buffer.len() - prefix.len(),
+                "hex": hex(&buffer),
+            }))
+        }
+        "read" => {
+            let bytes = decode_hex(string(request, "hex")?)?;
+            let mut remaining = bytes.as_slice();
+            let result = match packet {
+                "request" => ServerboundPingRequestPacket::decode(&mut remaining)
+                    .map(|value| json!({"time": value.time.to_string(), "outcome": "value"})),
+                "response" => ClientboundPongResponsePacket::decode(&mut remaining)
+                    .map(|value| json!({"time": value.time.to_string(), "outcome": "value"})),
+                _ => return Err("unknown ping packet".into()),
+            };
+            let mut result = match result {
+                Ok(value) => value,
+                Err(error) => json!({
+                    "outcome": "error",
+                    "error": ping_read_error(error),
+                }),
+            };
+            result["consumed"] = json!(bytes.len() - remaining.len());
+            result["remaining_hex"] = json!(hex(remaining));
+            Ok(result)
+        }
+        _ => Err("unknown ping direction".into()),
     }
 }
 

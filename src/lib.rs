@@ -18,6 +18,7 @@ pub mod resources;
 pub mod scroll;
 pub mod shape;
 pub mod smooth;
+pub mod status;
 pub mod timer;
 pub mod utf8;
 pub mod wire;

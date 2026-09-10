@@ -21,6 +21,9 @@ import net.minecraft.network.protocol.handshake.ClientIntentionPacket;
 import net.minecraft.network.protocol.login.ClientboundHelloPacket;
 import net.minecraft.network.protocol.login.ClientboundLoginCompressionPacket;
 import net.minecraft.network.protocol.login.ServerboundHelloPacket;
+import net.minecraft.network.protocol.ping.ClientboundPongResponsePacket;
+import net.minecraft.network.protocol.ping.ServerboundPingRequestPacket;
+import net.minecraft.network.protocol.status.ServerboundStatusRequestPacket;
 
 public final class WireOracle {
     public static JsonObject run(JsonObject request) {
@@ -42,6 +45,12 @@ public final class WireOracle {
         }
         if (operation.equals("login_server_hello")) {
             return loginServerHelloResult(request);
+        }
+        if (operation.equals("status_request")) {
+            return statusRequestResult(request);
+        }
+        if (operation.equals("ping")) {
+            return pingResult(request);
         }
         boolean wide = switch (request.get("codec").getAsString()) {
             case "varint" -> false;
@@ -435,6 +444,101 @@ public final class WireOracle {
         }
 
         throw new IllegalArgumentException("Unknown server hello direction");
+    }
+
+    private static JsonObject statusRequestResult(JsonObject request) {
+        String direction = request.get("direction").getAsString();
+        if (direction.equals("write")) {
+            byte[] prefix = HexFormat.of().parseHex(request.get("prefix_hex").getAsString());
+            ByteBuf buffer = Unpooled.buffer();
+            try {
+                buffer.writeBytes(prefix);
+                ServerboundStatusRequestPacket.STREAM_CODEC.encode(buffer, ServerboundStatusRequestPacket.INSTANCE);
+                var result = new JsonObject();
+                result.addProperty("outcome", "value");
+                result.addProperty("written", buffer.writerIndex() - prefix.length);
+                result.addProperty("hex", ByteBufUtil.hexDump(buffer));
+                return result;
+            } finally {
+                buffer.release();
+            }
+        }
+
+        if (direction.equals("read")) {
+            ByteBuf buffer = Unpooled.buffer();
+            try {
+                buffer.writeBytes(HexFormat.of().parseHex(request.get("hex").getAsString()));
+                var result = new JsonObject();
+                ServerboundStatusRequestPacket packet = ServerboundStatusRequestPacket.STREAM_CODEC.decode(buffer);
+                result.addProperty("singleton", packet == ServerboundStatusRequestPacket.INSTANCE);
+                result.addProperty("outcome", "value");
+                result.addProperty("consumed", buffer.readerIndex());
+                result.addProperty("remaining_hex", ByteBufUtil.hexDump(buffer));
+                return result;
+            } finally {
+                buffer.release();
+            }
+        }
+
+        throw new IllegalArgumentException("Unknown status request direction");
+    }
+
+    private static JsonObject pingResult(JsonObject request) {
+        String direction = request.get("direction").getAsString();
+        String packet = request.get("packet").getAsString();
+        if (direction.equals("write")) {
+            long time = Long.parseLong(request.get("time").getAsString());
+            byte[] prefix = HexFormat.of().parseHex(request.get("prefix_hex").getAsString());
+            ByteBuf buffer = Unpooled.buffer();
+            try {
+                buffer.writeBytes(prefix);
+                if (packet.equals("request")) {
+                    ServerboundPingRequestPacket.STREAM_CODEC.encode(buffer, new ServerboundPingRequestPacket(time));
+                } else if (packet.equals("response")) {
+                    ClientboundPongResponsePacket.STREAM_CODEC.encode(new FriendlyByteBuf(buffer), new ClientboundPongResponsePacket(time));
+                } else {
+                    throw new IllegalArgumentException("Unknown ping packet");
+                }
+                var result = new JsonObject();
+                result.addProperty("outcome", "value");
+                result.addProperty("written", buffer.writerIndex() - prefix.length);
+                result.addProperty("hex", ByteBufUtil.hexDump(buffer));
+                return result;
+            } finally {
+                buffer.release();
+            }
+        }
+
+        if (direction.equals("read")) {
+            ByteBuf buffer = Unpooled.buffer();
+            try {
+                buffer.writeBytes(HexFormat.of().parseHex(request.get("hex").getAsString()));
+                var result = new JsonObject();
+                try {
+                    long time;
+                    if (packet.equals("request")) {
+                        time = ServerboundPingRequestPacket.STREAM_CODEC.decode(buffer).getTime();
+                    } else if (packet.equals("response")) {
+                        time = ClientboundPongResponsePacket.STREAM_CODEC.decode(new FriendlyByteBuf(buffer)).time();
+                    } else {
+                        throw new IllegalArgumentException("Unknown ping packet");
+                    }
+                    result.addProperty("time", Long.toString(time));
+                    result.addProperty("outcome", "value");
+                } catch (IndexOutOfBoundsException error) {
+                    result.addProperty("outcome", "error");
+                    result.addProperty("error", "buffer_underflow");
+                    result.addProperty("java_exception", error.getClass().getName());
+                }
+                result.addProperty("consumed", buffer.readerIndex());
+                result.addProperty("remaining_hex", ByteBufUtil.hexDump(buffer));
+                return result;
+            } finally {
+                buffer.release();
+            }
+        }
+
+        throw new IllegalArgumentException("Unknown ping direction");
     }
 
     private static String fromUtf16Hex(String value) {
