@@ -14,8 +14,9 @@ use voxel_client::common::{
     ServerboundPongPacket,
 };
 use voxel_client::configuration::{
-    ChatVisibility, ClientInformation, ClientboundFinishConfigurationPacket, MainHand,
-    ParticleStatus, ServerboundAcceptCodeOfConductPacket, ServerboundClientInformationPacket,
+    ChatVisibility, ClientInformation, ClientboundFinishConfigurationPacket,
+    ClientboundUpdateEnabledFeaturesPacket, MainHand, ParticleStatus,
+    ServerboundAcceptCodeOfConductPacket, ServerboundClientInformationPacket,
     ServerboundFinishConfigurationPacket,
 };
 use voxel_client::direction::{
@@ -23,6 +24,7 @@ use voxel_client::direction::{
 };
 use voxel_client::frame::{self, FrameError, Varint21FrameDecoder};
 use voxel_client::handshake::{self, ClientIntent, ClientIntentionPacket};
+use voxel_client::identifier::Identifier;
 use voxel_client::input::{Input, KeyboardInput};
 use voxel_client::input_event::{
     CharacterEvent, InputWithModifiers, KeyEvent as InputKeyEvent, MouseButtonEvent,
@@ -125,6 +127,9 @@ fn wire_result(request: &Value) -> Result<Value, String> {
     }
     if request["operation"].as_str() == Some("common_packet") {
         return common_packet_result(request);
+    }
+    if request["operation"].as_str() == Some("enabled_features") {
+        return enabled_features_result(request);
     }
     if request["operation"].as_str() == Some("status_request") {
         return status_request_result(request);
@@ -870,6 +875,54 @@ fn common_packet_result(request: &Value) -> Result<Value, String> {
             Ok(result)
         }
         _ => Err("unknown common packet direction".into()),
+    }
+}
+
+fn enabled_features_result(request: &Value) -> Result<Value, String> {
+    match string(request, "direction")? {
+        "write" => {
+            let features = request["features"]
+                .as_array()
+                .ok_or("features must be an array")?
+                .iter()
+                .map(|value| {
+                    Identifier::parse(value.as_str().ok_or("feature entries must be strings")?)
+                        .map_err(|_| "invalid feature identifier".to_owned())
+                })
+                .collect::<Result<Vec<_>, String>>()?;
+            let prefix = decode_hex(string(request, "prefix_hex")?)?;
+            let mut buffer = prefix.clone();
+            let mut result =
+                match ClientboundUpdateEnabledFeaturesPacket::new(features).encode(&mut buffer) {
+                    Ok(()) => json!({"outcome": "value"}),
+                    Err(voxel_client::configuration::WriteError::EncoderError) => {
+                        json!({"outcome": "error", "error": "encoder_error"})
+                    }
+                };
+            result["written"] = json!(buffer.len() - prefix.len());
+            result["hex"] = json!(hex(&buffer));
+            Ok(result)
+        }
+        "read" => {
+            let bytes = decode_hex(string(request, "hex")?)?;
+            let mut remaining = bytes.as_slice();
+            let mut result = match ClientboundUpdateEnabledFeaturesPacket::decode(&mut remaining) {
+                Ok(packet) => json!({
+                    "features": packet.features.iter()
+                        .map(Identifier::as_string)
+                        .collect::<Vec<_>>(),
+                    "outcome": "value",
+                }),
+                Err(error) => json!({
+                    "outcome": "error",
+                    "error": login_read_error(error),
+                }),
+            };
+            result["consumed"] = json!(bytes.len() - remaining.len());
+            result["remaining_hex"] = json!(hex(remaining));
+            Ok(result)
+        }
+        _ => Err("unknown enabled features direction".into()),
     }
 }
 

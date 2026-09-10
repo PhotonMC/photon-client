@@ -8,6 +8,7 @@ pub mod configuration;
 pub mod direction;
 pub mod frame;
 pub mod handshake;
+pub mod identifier;
 pub mod input;
 pub mod input_event;
 pub mod key_mapping;

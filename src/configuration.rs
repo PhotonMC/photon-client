@@ -1,6 +1,7 @@
 //! Configuration phase packet codecs for the pinned Java protocol.
 
 use crate::binary;
+use crate::identifier::Identifier;
 use crate::{utf8, wire};
 
 pub type ReadError = binary::ReadError;
@@ -130,6 +131,45 @@ pub struct ServerboundClientInformationPacket {
     pub information: ClientInformation,
 }
 
+/// Clientbound configuration features represented by Java's identifier set.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClientboundUpdateEnabledFeaturesPacket {
+    pub features: Vec<Identifier>,
+}
+
+impl ClientboundUpdateEnabledFeaturesPacket {
+    pub fn new(features: Vec<Identifier>) -> Self {
+        Self {
+            features: java_hash_set_order(features, 0),
+        }
+    }
+
+    /// Encode the HashSet-backed feature collection and each UTF-8 identifier.
+    pub fn encode(&self, output: &mut Vec<u8>) -> Result<(), WriteError> {
+        wire::write_varint(self.features.len() as i32, output);
+        for feature in &self.features {
+            write_identifier(feature, output)?;
+        }
+        Ok(())
+    }
+
+    /// Decode the count-sized HashSet and preserve Java's iteration order.
+    pub fn decode(input: &mut &[u8]) -> Result<Self, ReadError> {
+        let count = wire::read_varint(input).map_err(map_wire_error)?;
+        if count < 0 {
+            return Err(ReadError::DecoderError);
+        }
+        let count = count as usize;
+        let mut raw = Vec::new();
+        for _ in 0..count {
+            raw.push(read_identifier(input)?);
+        }
+        Ok(Self {
+            features: java_hash_set_order(raw, count),
+        })
+    }
+}
+
 impl ServerboundClientInformationPacket {
     pub fn new(information: ClientInformation) -> Self {
         Self { information }
@@ -243,4 +283,61 @@ fn map_wire_error(error: wire::ReadError) -> ReadError {
         wire::ReadError::BufferUnderflow => ReadError::BufferUnderflow,
         wire::ReadError::TooBig => ReadError::TooBig,
     }
+}
+
+fn write_identifier(identifier: &Identifier, output: &mut Vec<u8>) -> Result<(), WriteError> {
+    let units: Vec<u16> = identifier.as_string().encode_utf16().collect();
+    utf8::write_utf8(output, &units, 32_767).map_err(|_| WriteError::EncoderError)
+}
+
+fn read_identifier(input: &mut &[u8]) -> Result<Identifier, ReadError> {
+    let units = utf8::read_utf8(input, 32_767).map_err(map_utf8_error)?;
+    let value = String::from_utf16(&units).map_err(|_| ReadError::DecoderError)?;
+    Identifier::parse(&value).map_err(|_| ReadError::DecoderError)
+}
+
+fn java_hash_set_order(features: Vec<Identifier>, initial_capacity: usize) -> Vec<Identifier> {
+    if features.is_empty() {
+        return features;
+    }
+
+    let mut table = vec![
+        Vec::new();
+        if initial_capacity == 0 {
+            16
+        } else {
+            table_size_for(initial_capacity)
+        }
+    ];
+    let mut threshold = table.len() * 3 / 4;
+    let mut size = 0;
+    for feature in features {
+        if table.iter().flatten().any(|existing| existing == &feature) {
+            continue;
+        }
+        let index = hash_bucket(&feature, table.len());
+        table[index].push(feature);
+        size += 1;
+        if size > threshold {
+            let mut resized = vec![Vec::new(); table.len() * 2];
+            for bucket in table {
+                for feature in bucket {
+                    let index = hash_bucket(&feature, resized.len());
+                    resized[index].push(feature);
+                }
+            }
+            threshold = resized.len() * 3 / 4;
+            table = resized;
+        }
+    }
+    table.into_iter().flatten().collect()
+}
+
+fn hash_bucket(identifier: &Identifier, capacity: usize) -> usize {
+    let hash = identifier.java_hash_code() as u32;
+    ((hash ^ (hash >> 16)) as usize) & (capacity - 1)
+}
+
+fn table_size_for(value: usize) -> usize {
+    value.max(1).next_power_of_two()
 }

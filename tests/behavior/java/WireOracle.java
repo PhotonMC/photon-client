@@ -10,12 +10,16 @@ import io.netty.buffer.ByteBufUtil;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.CorruptedFrameException;
+import io.netty.handler.codec.DecoderException;
 import io.netty.handler.codec.EncoderException;
 import java.util.ArrayList;
 import java.util.HexFormat;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
+import net.minecraft.IdentifierException;
 import net.minecraft.network.Varint21FrameDecoder;
 import net.minecraft.network.Varint21LengthFieldPrepender;
 import net.minecraft.network.FriendlyByteBuf;
@@ -32,6 +36,7 @@ import net.minecraft.network.protocol.common.ClientboundKeepAlivePacket;
 import net.minecraft.network.protocol.common.ClientboundPingPacket;
 import net.minecraft.network.protocol.common.ServerboundKeepAlivePacket;
 import net.minecraft.network.protocol.common.ServerboundPongPacket;
+import net.minecraft.network.protocol.configuration.ClientboundUpdateEnabledFeaturesPacket;
 import net.minecraft.network.protocol.ping.ClientboundPongResponsePacket;
 import net.minecraft.network.protocol.ping.ServerboundPingRequestPacket;
 import net.minecraft.network.protocol.status.ServerboundStatusRequestPacket;
@@ -79,6 +84,9 @@ public final class WireOracle {
         }
         if (operation.equals("common_packet")) {
             return commonPacketResult(request);
+        }
+        if (operation.equals("enabled_features")) {
+            return enabledFeaturesResult(request);
         }
         if (operation.equals("status_request")) {
             return statusRequestResult(request);
@@ -891,6 +899,74 @@ public final class WireOracle {
         }
 
         throw new IllegalArgumentException("Unknown common packet direction");
+    }
+
+    private static JsonObject enabledFeaturesResult(JsonObject request) {
+        String direction = request.get("direction").getAsString();
+        if (direction.equals("write")) {
+            Set<net.minecraft.resources.Identifier> features = new HashSet<>();
+            for (JsonElement element : request.getAsJsonArray("features")) {
+                features.add(net.minecraft.resources.Identifier.parse(element.getAsString()));
+            }
+            byte[] prefix = HexFormat.of().parseHex(request.get("prefix_hex").getAsString());
+            ByteBuf buffer = Unpooled.buffer();
+            try {
+                buffer.writeBytes(prefix);
+                var result = new JsonObject();
+                try {
+                    ClientboundUpdateEnabledFeaturesPacket.STREAM_CODEC.encode(
+                        new FriendlyByteBuf(buffer), new ClientboundUpdateEnabledFeaturesPacket(features)
+                    );
+                    result.addProperty("outcome", "value");
+                } catch (EncoderException error) {
+                    result.addProperty("outcome", "error");
+                    result.addProperty("error", "encoder_error");
+                    result.addProperty("java_exception", error.getClass().getName());
+                }
+                result.addProperty("written", buffer.writerIndex() - prefix.length);
+                result.addProperty("hex", ByteBufUtil.hexDump(buffer));
+                return result;
+            } finally {
+                buffer.release();
+            }
+        }
+
+        if (direction.equals("read")) {
+            ByteBuf buffer = Unpooled.buffer();
+            try {
+                buffer.writeBytes(HexFormat.of().parseHex(request.get("hex").getAsString()));
+                var result = new JsonObject();
+                try {
+                    Set<net.minecraft.resources.Identifier> features = ClientboundUpdateEnabledFeaturesPacket.STREAM_CODEC
+                        .decode(new FriendlyByteBuf(buffer)).features();
+                    var values = new JsonArray();
+                    for (net.minecraft.resources.Identifier feature : features) {
+                        values.add(feature.toString());
+                    }
+                    result.add("features", values);
+                    result.addProperty("outcome", "value");
+                } catch (IndexOutOfBoundsException error) {
+                    result.addProperty("outcome", "error");
+                    result.addProperty("error", "buffer_underflow");
+                    result.addProperty("java_exception", error.getClass().getName());
+                } catch (DecoderException | IdentifierException error) {
+                    result.addProperty("outcome", "error");
+                    result.addProperty("error", "decoder_error");
+                    result.addProperty("java_exception", error.getClass().getName());
+                } catch (RuntimeException error) {
+                    result.addProperty("outcome", "error");
+                    result.addProperty("error", error.getClass() == RuntimeException.class ? "too_big" : "decoder_error");
+                    result.addProperty("java_exception", error.getClass().getName());
+                }
+                result.addProperty("consumed", buffer.readerIndex());
+                result.addProperty("remaining_hex", ByteBufUtil.hexDump(buffer));
+                return result;
+            } finally {
+                buffer.release();
+            }
+        }
+
+        throw new IllegalArgumentException("Unknown enabled features direction");
     }
 
     private static JsonObject pingResult(JsonObject request) {

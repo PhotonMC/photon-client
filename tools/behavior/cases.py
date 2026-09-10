@@ -460,6 +460,50 @@ def wire_cases():
                    "operation": "common_packet", "direction": "read", "packet": packet,
                    "hex": encoded}
 
+    def feature_string_frame(value):
+        encoded = value.encode("utf-8")
+        return varint_hex(len(encoded)) + encoded.hex()
+
+    def feature_frame(values):
+        return varint_hex(len(values)) + "".join(feature_string_frame(value) for value in values)
+
+    feature_writes = [
+        ("empty", [], "deadbeef"),
+        ("single", ["minecraft:vanilla"], ""),
+        ("default-namespace", ["vanilla"], ""),
+        ("multiple", ["minecraft:vanilla", "minecraft:trade_rebalance", "custom:feature/path"], ""),
+        ("reordered", ["custom:feature/path", "minecraft:trade_rebalance", "minecraft:vanilla"], ""),
+        ("duplicate", ["minecraft:vanilla", "minecraft:vanilla", "custom:feature/path"], "aa55"),
+        ("feature-encode-too-long", ["minecraft:" + "a" * 32768], ""),
+    ]
+    for label, features, prefix_hex in feature_writes:
+        yield {"case_id": f"configuration/enabled-features/write/{label}", "family": "wire",
+               "operation": "enabled_features", "direction": "write", "features": features,
+               "prefix_hex": prefix_hex}
+
+    oversized_feature = "a" * 32768
+    feature_reads = [
+        ("empty", feature_frame([])),
+        ("single", feature_frame(["minecraft:vanilla"])),
+        ("default-namespace", feature_frame(["vanilla"])),
+        ("multiple", feature_frame(["minecraft:vanilla", "minecraft:trade_rebalance", "custom:feature/path"])),
+        ("reordered", feature_frame(["custom:feature/path", "minecraft:trade_rebalance", "minecraft:vanilla"])),
+        ("duplicate", feature_frame(["minecraft:vanilla", "minecraft:vanilla", "custom:feature/path"])),
+        ("trailing", feature_frame(["minecraft:vanilla"]) + "aabb"),
+        ("feature-prefix-underflow", varint_hex(1)),
+        ("feature-body-underflow", varint_hex(1) + varint_hex(4) + "6162"),
+        ("invalid-namespace", feature_frame(["Bad:feature"])),
+        ("invalid-path", feature_frame(["minecraft:bad?feature"])),
+        ("malformed-utf8", varint_hex(1) + varint_hex(1) + "ff"),
+        ("encoded-too-long", varint_hex(1) + varint_hex(32767 * 3 + 1)),
+        ("decoded-too-long", feature_frame([oversized_feature])),
+        ("negative-count", varint_hex(-1)),
+        ("count-too-big", "808080808001"),
+    ]
+    for label, encoded in feature_reads:
+        yield {"case_id": f"configuration/enabled-features/read/{label}", "family": "wire",
+               "operation": "enabled_features", "direction": "read", "hex": encoded}
+
 
 def math_cases():
     def character_event_case(label, codepoint):
