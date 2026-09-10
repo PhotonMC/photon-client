@@ -1,7 +1,9 @@
 //! JSONL test glue. Behavior is delegated to the production library.
 
 use serde_json::{Value, json};
+use std::cell::RefCell;
 use std::io::{self, BufRead, Write};
+use std::rc::Rc;
 use voxel_client::aabb::{Aabb, AabbBuilder, AabbBuilderError, BlockHitResult, BoundingBox};
 use voxel_client::axis_cycle::AxisCycle;
 use voxel_client::binary::{
@@ -18,7 +20,7 @@ use voxel_client::input_event::{
 use voxel_client::key_mapping::{InputKey, KeyMapping, KeyMappingRegistry};
 use voxel_client::math::{self, Quaternionf, Vec2, Vec3, Vec3f};
 use voxel_client::nbt::{self, Field, FieldValue};
-use voxel_client::option::{CycleableEnum, IntRange, SliderableEnum, UnitDouble};
+use voxel_client::option::{CycleableEnum, IntRange, LazyEnum, SliderableEnum, UnitDouble};
 use voxel_client::random::RandomSource;
 use voxel_client::scroll::ScrollWheelHandler;
 use voxel_client::shape::{BooleanOp, ShapeRotation, Shapes, VoxelShape};
@@ -398,6 +400,75 @@ fn cycleable_enum_result(request: &Value) -> Result<Value, String> {
     Ok(json!({
         "values": value_set.values(),
         "selected_values": value_set.values(),
+        "probes": probes,
+    }))
+}
+
+fn lazy_enum_result(request: &Value) -> Result<Value, String> {
+    let value_lists = request["value_lists"]
+        .as_array()
+        .ok_or("value_lists must be an array")?
+        .iter()
+        .map(|values| {
+            values
+                .as_array()
+                .ok_or("value list must be an array")?
+                .iter()
+                .map(|value| string_value(value, "value list entry"))
+                .collect::<Result<Vec<_>, String>>()
+        })
+        .collect::<Result<Vec<_>, String>>()?;
+    if value_lists.is_empty() {
+        return Err("value_lists must not be empty".into());
+    }
+    let valid_values = request["valid_values"]
+        .as_array()
+        .ok_or("valid_values must be an array")?
+        .iter()
+        .map(|value| string_value(value, "valid value"))
+        .collect::<Result<Vec<_>, String>>()?;
+    let calls = Rc::new(RefCell::new(0_usize));
+    let supplier_calls = Rc::clone(&calls);
+    let supplied_lists = value_lists.clone();
+    let value_set = LazyEnum::new(
+        move || {
+            let mut call = supplier_calls.borrow_mut();
+            let index = (*call).min(supplied_lists.len() - 1);
+            *call += 1;
+            supplied_lists[index].clone()
+        },
+        move |value: &String| {
+            valid_values
+                .iter()
+                .any(|candidate| candidate == value)
+                .then(|| value.clone())
+        },
+    );
+    let first_values = value_set.values();
+    let second_values = value_set.values();
+    let probes = request["probes"]
+        .as_array()
+        .ok_or("probes must be an array")?
+        .iter()
+        .map(|probe| {
+            let value = string_value(probe, "probe")?;
+            let mut state = serde_json::Map::new();
+            state.insert("value".into(), json!(&value));
+            state.insert(
+                "valid".into(),
+                json!(value_set.validate_value(&value).is_some()),
+            );
+            if let Some(validated) = value_set.validate_value(&value) {
+                state.insert("validated".into(), json!(validated));
+            }
+            Ok(Value::Object(state))
+        })
+        .collect::<Result<Vec<_>, String>>()?;
+    Ok(json!({
+        "first_default": first_values,
+        "first_selected": first_values.clone(),
+        "second_default": second_values,
+        "second_selected": second_values.clone(),
         "probes": probes,
     }))
 }
@@ -4559,6 +4630,9 @@ fn math_result(request: &Value) -> Result<Value, String> {
     }
     if operation == "cycleable_enum" {
         return cycleable_enum_result(request);
+    }
+    if operation == "lazy_enum" {
+        return lazy_enum_result(request);
     }
     if operation == "scroll_wheel" {
         return scroll_wheel_result(request);

@@ -157,6 +157,26 @@ def math_cases():
         ["first", "last", "outside"],
     )
 
+    def lazy_enum_case(label, value_lists, valid_values, probes):
+        return {
+            "case_id": f"lazy-enum/{label}", "family": "math",
+            "operation": "lazy_enum", "value_lists": value_lists,
+            "valid_values": valid_values, "probes": probes,
+        }
+
+    yield lazy_enum_case(
+        "dynamic-values",
+        [[""], ["", "speakers"], ["", "headphones"]],
+        ["", "speakers"],
+        ["", "speakers", "headphones", "missing"],
+    )
+    yield lazy_enum_case(
+        "validation-independent-of-list",
+        [["default", "alternate"], ["default"]],
+        ["default", "external"],
+        ["default", "alternate", "external"],
+    )
+
     def scroll_wheel_case(label, scrolls, selections):
         return {
             "case_id": f"scroll-wheel/{label}", "family": "math",

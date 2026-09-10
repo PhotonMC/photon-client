@@ -221,6 +221,57 @@ public final class MathOracle {
                 probes.add(state);
             }
             result.add("probes", probes);
+        } else if (operation.equals("lazy_enum")) {
+            var valueLists = new ArrayList<java.util.List<String>>();
+            for (JsonElement listElement : request.getAsJsonArray("value_lists")) {
+                var values = new ArrayList<String>();
+                for (JsonElement entry : listElement.getAsJsonArray()) {
+                    values.add(entry.getAsString());
+                }
+                valueLists.add(values);
+            }
+            int[] supplierCalls = {0};
+            java.util.function.Supplier<java.util.List<String>> supplier = () -> {
+                int index = Math.min(supplierCalls[0]++, valueLists.size() - 1);
+                return new ArrayList<>(valueLists.get(index));
+            };
+            var validValues = new ArrayList<String>();
+            for (JsonElement entry : request.getAsJsonArray("valid_values")) {
+                validValues.add(entry.getAsString());
+            }
+            java.util.function.Function<String, java.util.Optional<String>> validator = value ->
+                validValues.contains(value) ? java.util.Optional.of(value) : java.util.Optional.empty();
+            OptionInstance.LazyEnum<String> valueSet = new OptionInstance.LazyEnum<>(
+                supplier, validator, com.mojang.serialization.Codec.STRING);
+            var firstSupplier = valueSet.valueListSupplier();
+            var secondSupplier = valueSet.valueListSupplier();
+            result.add("first_default", new JsonArray());
+            for (String value : firstSupplier.getDefaultList()) {
+                result.getAsJsonArray("first_default").add(value);
+            }
+            result.add("first_selected", new JsonArray());
+            for (String value : firstSupplier.getSelectedList()) {
+                result.getAsJsonArray("first_selected").add(value);
+            }
+            result.add("second_default", new JsonArray());
+            for (String value : secondSupplier.getDefaultList()) {
+                result.getAsJsonArray("second_default").add(value);
+            }
+            result.add("second_selected", new JsonArray());
+            for (String value : secondSupplier.getSelectedList()) {
+                result.getAsJsonArray("second_selected").add(value);
+            }
+            var probes = new JsonArray();
+            for (JsonElement entry : request.getAsJsonArray("probes")) {
+                String value = entry.getAsString();
+                var state = new JsonObject();
+                state.addProperty("value", value);
+                var validated = valueSet.validateValue(value);
+                state.addProperty("valid", validated.isPresent());
+                validated.ifPresent(item -> state.addProperty("validated", item));
+                probes.add(state);
+            }
+            result.add("probes", probes);
         } else if (operation.equals("scroll_wheel")) {
             ScrollWheelHandler handler = new ScrollWheelHandler();
             var events = new JsonArray();

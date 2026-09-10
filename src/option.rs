@@ -1,5 +1,7 @@
 //! Headless option value sets from the client settings layer.
 
+use std::marker::PhantomData;
+
 fn map(value: f64, from_min: f64, from_max: f64, to_min: f64, to_max: f64) -> f64 {
     let alpha = (value - from_min) / (from_max - from_min);
     to_min + alpha * (to_max - to_min)
@@ -200,5 +202,38 @@ where
             .iter()
             .any(|candidate| candidate == value)
             .then(|| value.clone())
+    }
+}
+
+/// Runtime-supplied values and validation for a cycle button option.
+pub struct LazyEnum<T, Values, Validator>
+where
+    Values: Fn() -> Vec<T>,
+    Validator: Fn(&T) -> Option<T>,
+{
+    values: Values,
+    validate_value: Validator,
+    marker: PhantomData<fn() -> T>,
+}
+
+impl<T, Values, Validator> LazyEnum<T, Values, Validator>
+where
+    Values: Fn() -> Vec<T>,
+    Validator: Fn(&T) -> Option<T>,
+{
+    pub fn new(values: Values, validate_value: Validator) -> Self {
+        Self {
+            values,
+            validate_value,
+            marker: PhantomData,
+        }
+    }
+
+    pub fn values(&self) -> Vec<T> {
+        (self.values)()
+    }
+
+    pub fn validate_value(&self, value: &T) -> Option<T> {
+        (self.validate_value)(value)
     }
 }
