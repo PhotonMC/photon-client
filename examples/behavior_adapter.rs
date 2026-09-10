@@ -2083,6 +2083,23 @@ fn math_result(request: &Value) -> Result<Value, String> {
             ),
         }));
     }
+    if operation == "blockpos_coordinate_helpers" {
+        let containing = BlockPos::containing(
+            f64_field(request, "x")?,
+            f64_field(request, "y")?,
+            f64_field(request, "z")?,
+        );
+        let point = f64_vec3(request.get("point").ok_or("point must be an object")?);
+        let point = BlockPos::containing_vec3(point?);
+        let first = blockpos(request.get("first").ok_or("first must be an object")?)?;
+        let second = blockpos(request.get("second").ok_or("second must be an object")?)?;
+        return Ok(json!({
+            "containing": blockpos_snapshot(containing),
+            "containing_position": blockpos_snapshot(point),
+            "min": blockpos_snapshot(BlockPos::min(first, second)),
+            "max": blockpos_snapshot(BlockPos::max(first, second)),
+        }));
+    }
     if operation == "blockpos_within_manhattan" {
         let origin = blockpos(request.get("origin").ok_or("origin must be an object")?)?;
         let reach_x = i32_string_field(request, "reach_x")?;

@@ -703,6 +703,17 @@ public final class MathOracle {
             result.add("bounding_box", boundingPositions);
             result.add("aabb", aabbPositions);
             result.add("coordinates", coordinatePositions);
+        } else if (operation.equals("blockpos_coordinate_helpers")) {
+            double x = f64(request, "x");
+            double y = f64(request, "y");
+            double z = f64(request, "z");
+            Vec3 point = vec3(request.getAsJsonObject("point"));
+            BlockPos first = blockPos(request.getAsJsonObject("first"));
+            BlockPos second = blockPos(request.getAsJsonObject("second"));
+            result.add("containing", snapshot(BlockPos.containing(x, y, z)));
+            result.add("containing_position", snapshot(BlockPos.containing(point)));
+            result.add("min", snapshot(BlockPos.min(first, second)));
+            result.add("max", snapshot(BlockPos.max(first, second)));
         } else if (operation.equals("section_relative")) {
             short relative = SectionPos.sectionRelativePos(blockPos(request));
             result.addProperty("relative", Integer.toString(Short.toUnsignedInt(relative)));

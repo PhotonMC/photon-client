@@ -1943,6 +1943,32 @@ def math_cases():
     for label, values in blockpos_between_closed_streams.items():
         yield {"case_id": f"blockpos/between-closed-streams/{label}", "family": "math",
                "operation": "blockpos_between_closed_streams", **values}
+    blockpos_coordinate_helpers = {
+        "fractional": {
+            "x": float_bits(2.75, "f64"), "y": float_bits(-1.0, "f64"), "z": float_bits(-0.01, "f64"),
+            "point": vector_bits(3.1, -2.2, 4.9),
+            "first": {"x": "3", "y": "-4", "z": "5"}, "second": {"x": "-2", "y": "6", "z": "1"},
+        },
+        "negative-fractional": {
+            "x": float_bits(-0.01, "f64"), "y": float_bits(-2.0, "f64"), "z": float_bits(3.0, "f64"),
+            "point": vector_bits(-1.1, 2.0, -3.9),
+            "first": {"x": "-10", "y": "20", "z": "-30"}, "second": {"x": "-7", "y": "24", "z": "-35"},
+        },
+        "signed-zero": {
+            "x": float_bits(-0.0, "f64"), "y": float_bits(0.0, "f64"), "z": float_bits(-0.0, "f64"),
+            "point": vector_bits(-0.0, 0.0, -0.0),
+            "first": {"x": "0", "y": "-1", "z": "2"}, "second": {"x": "0", "y": "-1", "z": "2"},
+        },
+        "integer-boundaries": {
+            "x": float_bits(2147483647.0, "f64"), "y": float_bits(-2147483648.0, "f64"), "z": float_bits(31.0, "f64"),
+            "point": vector_bits(2147483646.5, -2147483647.5, 31.5),
+            "first": {"x": "2147483647", "y": "-2147483648", "z": "2147483647"},
+            "second": {"x": "-2147483648", "y": "2147483647", "z": "-2147483648"},
+        },
+    }
+    for label, values in blockpos_coordinate_helpers.items():
+        yield {"case_id": f"blockpos/coordinate-helpers/{label}", "family": "math",
+               "operation": "blockpos_coordinate_helpers", **values}
     for label, (x, y, z) in {
         "origin": (0, 0, 0),
         "positive-boundary": (15, 15, 15),

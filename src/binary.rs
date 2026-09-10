@@ -208,6 +208,16 @@ impl BlockPos {
         Self { x, y, z }
     }
 
+    /// Convert double coordinates to a BlockPos using Java floor semantics.
+    pub fn containing(x: f64, y: f64, z: f64) -> Self {
+        Self::new(math::floor_f64(x), math::floor_f64(y), math::floor_f64(z))
+    }
+
+    /// Convert a Vec3 Position to a BlockPos using Java floor semantics.
+    pub fn containing_vec3(value: Vec3) -> Self {
+        Self::containing(value.x, value.y, value.z)
+    }
+
     /// Offset coordinates with Java i32 wrapping arithmetic.
     pub fn offset(self, x: i32, y: i32, z: i32) -> Self {
         if x == 0 && y == 0 && z == 0 {
