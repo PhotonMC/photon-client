@@ -441,6 +441,11 @@ public final class MathOracle {
                 default -> throw new IllegalArgumentException("Unknown Mth angle approach function");
             };
             result.addProperty("bits", Oracle.bits(value));
+        } else if (operation.equals("mth_get_int")) {
+            JsonElement inputElement = request.get("input");
+            String input = inputElement.isJsonNull() ? null : inputElement.getAsString();
+            int defaultValue = Integer.parseInt(request.get("default").getAsString());
+            result.addProperty("value", Integer.toString(Mth.getInt(input, defaultValue)));
         } else if (operation.equals("mth_integer_helpers")) {
             String width = request.get("type").getAsString();
             String function = request.get("fn").getAsString();

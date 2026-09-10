@@ -2450,6 +2450,17 @@ fn math_result(request: &Value) -> Result<Value, String> {
         };
         return Ok(json!({"bits": format!("{:08x}", value.to_bits())}));
     }
+    if operation == "mth_get_int" {
+        let input = if request["input"].is_null() {
+            None
+        } else {
+            Some(string(request, "input")?)
+        };
+        let default = string(request, "default")?
+            .parse::<i32>()
+            .map_err(|error| error.to_string())?;
+        return Ok(json!({"value": math::mth_get_int(input, default).to_string()}));
+    }
     if operation == "mth_integer_helpers" {
         let function = string(request, "fn")?;
         let input = string(request, "input")?;

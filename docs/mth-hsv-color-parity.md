@@ -7,9 +7,9 @@
 Java 25.0.4.1 ve Rust 1.98.1 / Linux x86_64 ortamında:
 
 - Altı hue sektörü, sektör sınırı, `hsvToRgb` alpha sıfır yönlendirmesi, hue sarımı, küçük negatif hue, negatif sektör hatası, sıfır doygunluk, aralık dışı bileşenler, signed zero, NaN ve sonsuzluk yolları için 42 özgün senaryo hazırlandı.
-- Math referansı iki ayrı JVM çalıştırmasıyla 2270 senaryoda kararlı bulundu.
-- Rust debug ve release adaptörleri güncel 2270/2270 math senaryosunda eşleşti.
-- Birleşik altı aile corpus'u 2772/2772 senaryoda hem debug hem release adaptörüyle eşleşti.
+- Math referansı iki ayrı JVM çalıştırmasıyla 2299 senaryoda kararlı bulundu.
+- Rust debug ve release adaptörleri güncel 2299/2299 math senaryosunda eşleşti.
+- Birleşik altı aile corpus'u 2801/2801 senaryoda hem debug hem release adaptörüyle eşleşti.
 
 Math referans kimliği: `89d159ae1a7102bf99ab1e16a0ee38307e541a1e55f0ce683170c77f383d59b7`. Birleşik referans kimliği: `d90dcaddb9651f596532bebab20189c338c387b0754412659b0ead41a64b0e38`.
 

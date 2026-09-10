@@ -8,9 +8,9 @@ Java 25.0.4.1 ve Rust 1.98.1 / Linux x86_64 ortamında:
 
 - `wrapDegrees90` için 18, `degreesDifference` için 16 ve `degreesDifferenceAbs` için 16 olmak üzere 50 özgün senaryo hazırlandı.
 - 90/45 derece sınırları, signed zero, subnormal değerler, tam dönüşler, büyük sonlu farklar, Infinity ve NaN payload yolları karşılaştırıldı.
-- Math referansı iki ayrı JVM çalıştırmasıyla 2270 senaryoda kararlı bulundu.
-- Rust debug ve release adaptörleri güncel 2270/2270 math senaryosunda eşleşti.
-- Birleşik altı aile corpus'u 2772/2772 senaryoda hem debug hem release adaptörüyle eşleşti.
+- Math referansı iki ayrı JVM çalıştırmasıyla 2299 senaryoda kararlı bulundu.
+- Rust debug ve release adaptörleri güncel 2299/2299 math senaryosunda eşleşti.
+- Birleşik altı aile corpus'u 2801/2801 senaryoda hem debug hem release adaptörüyle eşleşti.
 
 Math referans kimliği: `83ecec7ae6c7b3a479f7e803acc6f69c131c24c99c742795b3636da166600d4b`. Birleşik referans kimliği: `09f408f28585c8496c25687a9409d42bfa5efb95844c6581107fbf59b5513efa`.
 

@@ -8,8 +8,8 @@ Java 25.0.4.1 ve Rust 1.98.1 / Linux x86_64 ortamında:
 
 - Sıfır, signed zero, negatif ve kesirli değerler, subnormal girdi/sonuç, büyük ve en büyük sonlu değer, Infinity, NaN ve yuvarlama sınırı içeren **15 özgün senaryo** hazırlandı.
 - Oracle referansı iki ayrı JVM çalıştırmasıyla yeniden doğrulandı.
-- Rust debug ve release adaptörleri güncel **2270/2270** math senaryosunda eşleşti.
-- Birleşik altı aile corpus'u **2772/2772** senaryoda hem debug hem release adaptörüyle eşleşti.
+- Rust debug ve release adaptörleri güncel **2299/2299** math senaryosunda eşleşti.
+- Birleşik altı aile corpus'u **2801/2801** senaryoda hem debug hem release adaptörüyle eşleşti.
 
 Math referans kimliği: `9421a309da79905eddc1ce85361a8baef1e5c3a592c7326ac123cb13c20a6508`. Birleşik referans kimliği: `8c4789d8c4953d1e6851df238f157e9ea125bc1a32a2eb87d50f55beeda3476b`.
 

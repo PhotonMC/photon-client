@@ -8,9 +8,9 @@ Java 25.0.4.1 ve Rust 1.98.1 / Linux x86_64 ortamında:
 
 - `rotateIfNecessary`, `approach` ve `approachDegrees` için 18'er olmak üzere 54 özgün senaryo hazırlandı.
 - Derece farkının sarılmış sınırları, clamp altında/eşit/üstünde kalan değerler, negatif ve sonsuz artışlar, signed zero, subnormal, taşma, Infinity ve NaN payload yolları karşılaştırıldı.
-- Math referansı iki ayrı JVM çalıştırmasıyla 2270 senaryoda kararlı bulundu.
-- Rust debug ve release adaptörleri güncel 2270/2270 math senaryosunda eşleşti.
-- Birleşik altı aile corpus'u 2772/2772 senaryoda hem debug hem release adaptörüyle eşleşti.
+- Math referansı iki ayrı JVM çalıştırmasıyla 2299 senaryoda kararlı bulundu.
+- Rust debug ve release adaptörleri güncel 2299/2299 math senaryosunda eşleşti.
+- Birleşik altı aile corpus'u 2801/2801 senaryoda hem debug hem release adaptörüyle eşleşti.
 
 Math referans kimliği: `96ef27535e7a4e280fd719f9f136eced5db51563e18c3fa857889d87d58f37fe`. Birleşik referans kimliği: `04ac5e2cd34a4961d5bae6f6de20187673ac1b301ab032b064de5b4e480f2450`.
 

@@ -3260,6 +3260,41 @@ def math_cases():
                "operation": "mth_angle_approach", "type": "f32", "fn": "approach_degrees",
                "current": current, "target": target, "increment": increment}
 
+    mth_get_int = [
+        ("null-zero-default", None, "0"),
+        ("null-negative-default", None, "-2147483648"),
+        ("empty", "", "7"),
+        ("decimal", "42", "7"),
+        ("negative", "-42", "7"),
+        ("positive-sign", "+42", "7"),
+        ("leading-zeroes", "00042", "7"),
+        ("negative-zero", "-0", "7"),
+        ("minimum", "-2147483648", "7"),
+        ("maximum", "2147483647", "-7"),
+        ("underflow", "-2147483649", "11"),
+        ("overflow", "2147483648", "11"),
+        ("positive-overflow", "+2147483648", "11"),
+        ("leading-space", " 42", "11"),
+        ("trailing-space", "42 ", "11"),
+        ("tab-prefix", "\t42", "11"),
+        ("internal-space", "4 2", "11"),
+        ("decimal-point", "42.0", "11"),
+        ("hex-prefix", "0x2a", "11"),
+        ("underscore", "1_000", "11"),
+        ("plus-only", "+", "11"),
+        ("minus-only", "-", "11"),
+        ("arabic-indic", "٤٢", "11"),
+        ("fullwidth", "４２", "11"),
+        ("devanagari", "४२", "11"),
+        ("unicode-minus", "−42", "11"),
+        ("newline-suffix", "42\n", "11"),
+        ("invalid-max-default", "invalid", "2147483647"),
+        ("invalid-min-default", "invalid", "-2147483648"),
+    ]
+    for label, input_value, default in mth_get_int:
+        yield {"case_id": f"mth/get-int/{label}", "family": "math",
+               "operation": "mth_get_int", "input": input_value, "default": default}
+
     mth_integer_helpers = [
         ("floor-div/int/negative-remainder", "i32", "floor_div", "-7", "3"),
         ("floor-div/int/negative-divisor", "i32", "floor_div", "7", "-3"),

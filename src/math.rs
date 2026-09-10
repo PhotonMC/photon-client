@@ -831,6 +831,98 @@ pub fn mth_approach_degrees_f32(current: f32, target: f32, increment: f32) -> f3
     mth_approach_f32(current, current + difference, increment)
 }
 
+fn java_decimal_digit(character: char) -> Option<i64> {
+    const DIGIT_RANGES: &[(u32, u32)] = &[
+        (0x0030, 0x0039),
+        (0x0660, 0x0669),
+        (0x06f0, 0x06f9),
+        (0x07c0, 0x07c9),
+        (0x0966, 0x096f),
+        (0x09e6, 0x09ef),
+        (0x0a66, 0x0a6f),
+        (0x0ae6, 0x0aef),
+        (0x0b66, 0x0b6f),
+        (0x0be6, 0x0bef),
+        (0x0c66, 0x0c6f),
+        (0x0ce6, 0x0cef),
+        (0x0d66, 0x0d6f),
+        (0x0de6, 0x0def),
+        (0x0e50, 0x0e59),
+        (0x0ed0, 0x0ed9),
+        (0x0f20, 0x0f29),
+        (0x1040, 0x1049),
+        (0x1090, 0x1099),
+        (0x17e0, 0x17e9),
+        (0x1810, 0x1819),
+        (0x1946, 0x194f),
+        (0x19d0, 0x19d9),
+        (0x1a80, 0x1a89),
+        (0x1a90, 0x1a99),
+        (0x1b50, 0x1b59),
+        (0x1bb0, 0x1bb9),
+        (0x1c40, 0x1c49),
+        (0x1c50, 0x1c59),
+        (0xa620, 0xa629),
+        (0xa8d0, 0xa8d9),
+        (0xa900, 0xa909),
+        (0xa9d0, 0xa9d9),
+        (0xa9f0, 0xa9f9),
+        (0xaa50, 0xaa59),
+        (0xabf0, 0xabf9),
+        (0xff10, 0xff19),
+    ];
+    let codepoint = character as u32;
+    DIGIT_RANGES.iter().find_map(|&(first, last)| {
+        if (first..=last).contains(&codepoint) {
+            Some(i64::from(codepoint - first))
+        } else {
+            None
+        }
+    })
+}
+
+fn parse_java_i32(input: &str) -> Option<i32> {
+    let mut characters = input.chars();
+    let first = characters.next()?;
+    let (negative, first_digit) = match first {
+        '-' => (true, None),
+        '+' => (false, None),
+        character => (false, Some(java_decimal_digit(character)?)),
+    };
+    let limit = if negative {
+        i64::from(i32::MIN)
+    } else {
+        -i64::from(i32::MAX)
+    };
+    let mut result = 0_i64;
+    let mut digit_count = 0;
+    if let Some(digit) = first_digit {
+        result = -digit;
+        digit_count = 1;
+    }
+    for character in characters {
+        let digit = java_decimal_digit(character)?;
+        result = result.checked_mul(10)?.checked_sub(digit)?;
+        if result < limit {
+            return None;
+        }
+        digit_count += 1;
+    }
+    if digit_count == 0 {
+        return None;
+    }
+    if negative {
+        Some(result as i32)
+    } else {
+        Some((-result) as i32)
+    }
+}
+
+/// Return Java `Mth.getInt(String, int)`, including `Integer.parseInt` digit rules.
+pub fn mth_get_int(input: Option<&str>, default: i32) -> i32 {
+    input.and_then(parse_java_i32).unwrap_or(default)
+}
+
 /// Return Java `Mth.ceilLong(double)` with Java's floating-point-to-long narrowing.
 pub fn ceil_long_f64(value: f64) -> i64 {
     value.ceil() as i64
