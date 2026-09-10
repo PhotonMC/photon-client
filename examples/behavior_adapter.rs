@@ -2483,6 +2483,53 @@ fn math_result(request: &Value) -> Result<Value, String> {
         let value = math::mth_wobble_f64(f64_field(request, "coord")?);
         return Ok(json!({"bits": format!("{:016x}", value.to_bits())}));
     }
+    if operation == "mth_interpolation" {
+        let function = string(request, "fn")?;
+        let bits = match function {
+            "lerp2" => format!(
+                "{:016x}",
+                math::mth_lerp2_f64(
+                    f64_field(request, "alpha1")?,
+                    f64_field(request, "alpha2")?,
+                    f64_field(request, "x00")?,
+                    f64_field(request, "x10")?,
+                    f64_field(request, "x01")?,
+                    f64_field(request, "x11")?,
+                )
+                .to_bits()
+            ),
+            "lerp3" => format!(
+                "{:016x}",
+                math::mth_lerp3_f64(
+                    f64_field(request, "alpha1")?,
+                    f64_field(request, "alpha2")?,
+                    f64_field(request, "alpha3")?,
+                    f64_field(request, "x000")?,
+                    f64_field(request, "x100")?,
+                    f64_field(request, "x010")?,
+                    f64_field(request, "x110")?,
+                    f64_field(request, "x001")?,
+                    f64_field(request, "x101")?,
+                    f64_field(request, "x011")?,
+                    f64_field(request, "x111")?,
+                )
+                .to_bits()
+            ),
+            "catmullrom" => format!(
+                "{:08x}",
+                math::mth_catmullrom_f32(
+                    f32_field(request, "alpha")?,
+                    f32_field(request, "p0")?,
+                    f32_field(request, "p1")?,
+                    f32_field(request, "p2")?,
+                    f32_field(request, "p3")?,
+                )
+                .to_bits()
+            ),
+            _ => return Err("unknown Mth interpolation function".into()),
+        };
+        return Ok(json!({"bits": bits}));
+    }
     if operation == "mth_next_random" {
         let mut random = RandomSource::create(random_seed(request)?);
         let width = string(request, "type")?;

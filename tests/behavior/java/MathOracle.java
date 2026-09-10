@@ -657,6 +657,26 @@ public final class MathOracle {
         } else if (operation.equals("mth_wobble_f64")) {
             result.addProperty("bits", Oracle.bits(Mth.wobble(
                 f64(request, "coord"))));
+        } else if (operation.equals("mth_interpolation")) {
+            String function = request.get("fn").getAsString();
+            switch (function) {
+                case "lerp2" -> result.addProperty("bits", Oracle.bits(Mth.lerp2(
+                    f64(request, "alpha1"), f64(request, "alpha2"),
+                    f64(request, "x00"), f64(request, "x10"),
+                    f64(request, "x01"), f64(request, "x11"))));
+                case "lerp3" -> result.addProperty("bits", Oracle.bits(Mth.lerp3(
+                    f64(request, "alpha1"), f64(request, "alpha2"),
+                    f64(request, "alpha3"), f64(request, "x000"),
+                    f64(request, "x100"), f64(request, "x010"),
+                    f64(request, "x110"), f64(request, "x001"),
+                    f64(request, "x101"), f64(request, "x011"),
+                    f64(request, "x111"))));
+                case "catmullrom" -> result.addProperty("bits", Oracle.bits(Mth.catmullrom(
+                    Oracle.f32(request, "alpha"), Oracle.f32(request, "p0"),
+                    Oracle.f32(request, "p1"), Oracle.f32(request, "p2"),
+                    Oracle.f32(request, "p3"))));
+                default -> throw new IllegalArgumentException("Unknown Mth interpolation function");
+            }
         } else if (operation.equals("vec3")) {
             Vec3 vector = new Vec3(f64(request, "x"), f64(request, "y"), f64(request, "z"));
             var events = new JsonArray();

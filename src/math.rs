@@ -805,6 +805,43 @@ pub fn mth_wobble_f64(coord: f64) -> f64 {
     coord + (2.0 * random.next_double() - 1.0) * 1.0E-7 / 2.0
 }
 
+/// Return Java `Mth.lerp2(double, double, double, double, double, double)`.
+pub fn mth_lerp2_f64(alpha1: f64, alpha2: f64, x00: f64, x10: f64, x01: f64, x11: f64) -> f64 {
+    let lower = mth_lerp_f64(alpha1, x00, x10);
+    let upper = mth_lerp_f64(alpha1, x01, x11);
+    mth_lerp_f64(alpha2, lower, upper)
+}
+
+/// Return Java `Mth.lerp3(double, ...)` with its two plane calls in source order.
+#[allow(clippy::too_many_arguments)]
+pub fn mth_lerp3_f64(
+    alpha1: f64,
+    alpha2: f64,
+    alpha3: f64,
+    x000: f64,
+    x100: f64,
+    x010: f64,
+    x110: f64,
+    x001: f64,
+    x101: f64,
+    x011: f64,
+    x111: f64,
+) -> f64 {
+    let lower = mth_lerp2_f64(alpha1, alpha2, x000, x100, x010, x110);
+    let upper = mth_lerp2_f64(alpha1, alpha2, x001, x101, x011, x111);
+    mth_lerp_f64(alpha3, lower, upper)
+}
+
+/// Return Java `Mth.catmullrom(float, float, float, float, float)`.
+pub fn mth_catmullrom_f32(alpha: f32, p0: f32, p1: f32, p2: f32, p3: f32) -> f32 {
+    let linear = (p2 - p0) * alpha;
+    let quadratic_coefficient = 2.0_f32 * p0 - 5.0_f32 * p1 + 4.0_f32 * p2 - p3;
+    let quadratic = quadratic_coefficient * alpha * alpha;
+    let cubic_coefficient = 3.0_f32 * p1 - p0 - 3.0_f32 * p2 + p3;
+    let cubic = cubic_coefficient * alpha * alpha * alpha;
+    0.5_f32 * (2.0_f32 * p1 + linear + quadratic + cubic)
+}
+
 /// Return Java `Mth.lerp(float, float, float)` in source order.
 pub fn mth_lerp_f32(alpha: f32, start: f32, end: f32) -> f32 {
     start + alpha * (end - start)
