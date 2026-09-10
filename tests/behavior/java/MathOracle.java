@@ -301,6 +301,12 @@ public final class MathOracle {
                 result.addProperty("outcome", "error");
                 result.addProperty("error", error.getMessage());
             }
+        } else if (operation.equals("direction_rotation")) {
+            Direction facing = Direction.byName(request.get("name").getAsString());
+            if (facing == null) {
+                throw new IllegalArgumentException("Unknown direction name");
+            }
+            result.add("value", snapshot(facing.getRotation()));
         } else if (operation.equals("direction_approximate_nearest")) {
             result.add("value", snapshot(Direction.getApproximateNearest(
                 f64(request, "x"), f64(request, "y"), f64(request, "z"))));

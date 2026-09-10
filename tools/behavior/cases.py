@@ -1393,6 +1393,9 @@ def math_cases():
     for name in ("down", "up", "north", "south", "west", "east"):
         yield {"case_id": f"direction/get-y-rot/{name}", "family": "math",
                "operation": "direction_get_y_rot", "name": name}
+    for name in ("down", "up", "north", "south", "west", "east"):
+        yield {"case_id": f"direction/rotation/{name}", "family": "math",
+               "operation": "direction_rotation", "name": name}
     direction_approximate_nearest_cases = [
         ("south", vector_bits(0.0, 0.0, 1.0)),
         ("north", vector_bits(0.0, 0.0, -1.0)),

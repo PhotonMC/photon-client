@@ -3375,6 +3375,10 @@ fn math_result(request: &Value) -> Result<Value, String> {
             }),
         });
     }
+    if operation == "direction_rotation" {
+        let facing = Direction::from_name(string(request, "name")?).ok_or("unknown direction")?;
+        return Ok(json!({"value": quaternion_snapshot(facing.get_rotation())}));
+    }
     if operation == "direction_approximate_nearest" {
         let facing = Direction::approximate_nearest(
             f64_field(request, "x")?,

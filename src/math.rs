@@ -128,6 +128,40 @@ impl Quaternionf {
         Self { x, y, z, w }
     }
 
+    /// Return the JOML `Quaternionf.rotationX(float)` construction used by
+    /// Direction's fixed rotations.
+    pub(crate) fn rotation_x(angle: f32) -> Self {
+        let half_angle = angle * 0.5;
+        let sine = joml_sin_f32(half_angle);
+        let cosine = joml_cos_from_sin(sine, half_angle);
+        Self::new(sine, 0.0, 0.0, cosine)
+    }
+
+    /// Return the JOML `Quaternionf.rotationXYZ(float, float, float)`
+    /// construction used by Direction's fixed rotations.
+    pub(crate) fn rotation_xyz(x_angle: f32, y_angle: f32, z_angle: f32) -> Self {
+        let x_half = x_angle * 0.5;
+        let x_sin = joml_sin_f32(x_half);
+        let x_cos = joml_cos_from_sin(x_sin, x_half);
+        let y_half = y_angle * 0.5;
+        let y_sin = joml_sin_f32(y_half);
+        let y_cos = joml_cos_from_sin(y_sin, y_half);
+        let z_half = z_angle * 0.5;
+        let z_sin = joml_sin_f32(z_half);
+        let z_cos = joml_cos_from_sin(z_sin, z_half);
+
+        let cos_y_cos_z = y_cos * z_cos;
+        let sin_y_sin_z = y_sin * z_sin;
+        let sin_y_cos_z = y_sin * z_cos;
+        let cos_y_sin_z = y_cos * z_sin;
+        Self::new(
+            x_sin * cos_y_cos_z + x_cos * sin_y_sin_z,
+            x_cos * sin_y_cos_z - x_sin * cos_y_sin_z,
+            x_cos * cos_y_sin_z + x_sin * sin_y_cos_z,
+            x_cos * cos_y_cos_z - x_sin * sin_y_sin_z,
+        )
+    }
+
     fn normalized(self) -> Self {
         // JOML accumulates the quaternion norm with a right-associated f32
         // FMA chain, then narrows Math.sqrt's f64 result before dividing.
@@ -144,6 +178,29 @@ impl Quaternionf {
             self.z * inverse,
             self.w * inverse,
         )
+    }
+}
+
+fn joml_sin_f32(value: f32) -> f32 {
+    f64::from(value).sin() as f32
+}
+
+fn joml_cos_from_sin(sine: f32, angle: f32) -> f32 {
+    const JOML_HALF_PI: f32 = f32::from_bits(0x3fc9_0fdb);
+    const JOML_TWO_PI: f32 = f32::from_bits(0x40c9_0fdb);
+    const JOML_PI: f32 = f32::from_bits(0x4049_0fdb);
+
+    let magnitude = f64::from(1.0_f32 - sine * sine).sqrt() as f32;
+    let mut quadrant = angle + JOML_HALF_PI;
+    let turns = (quadrant / JOML_TWO_PI) as i32;
+    quadrant -= turns as f32 * JOML_TWO_PI;
+    if quadrant < 0.0 {
+        quadrant += JOML_TWO_PI;
+    }
+    if quadrant >= JOML_PI {
+        -magnitude
+    } else {
+        magnitude
     }
 }
 

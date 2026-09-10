@@ -1,9 +1,9 @@
 //! Cardinal directions for the pinned reference (P01.c).
 //!
-//! Covers names, data values, axes, steps, opposites and axial rotations.
-//! Entity-lookahead, quaternions and codecs belong to later slices.
+//! Covers names, data values, axes, steps, opposites, rotations and quaternion
+//! orientation values. Entity-lookahead and codecs belong to later slices.
 
-use crate::math::{Vec3, Vec3f};
+use crate::math::{Quaternionf, Vec3, Vec3f};
 use crate::random::RandomSource;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -220,6 +220,20 @@ impl Direction {
             Self::West => Ok(90.0),
             Self::East => Ok(-90.0),
             Self::Down | Self::Up => Err(DirectionYRotError::Vertical(direction)),
+        }
+    }
+
+    /// Return Java `Direction.getRotation()` using the pinned JOML formulas.
+    pub fn get_rotation(self) -> Quaternionf {
+        let half_pi = std::f32::consts::FRAC_PI_2;
+        let pi = std::f32::consts::PI;
+        match self {
+            Self::Down => Quaternionf::rotation_x(pi),
+            Self::Up => Quaternionf::new(0.0, 0.0, 0.0, 1.0),
+            Self::North => Quaternionf::rotation_xyz(half_pi, 0.0, pi),
+            Self::South => Quaternionf::rotation_x(half_pi),
+            Self::West => Quaternionf::rotation_xyz(half_pi, 0.0, half_pi),
+            Self::East => Quaternionf::rotation_xyz(half_pi, 0.0, -half_pi),
         }
     }
 
