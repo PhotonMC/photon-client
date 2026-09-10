@@ -1365,6 +1365,11 @@ def math_cases():
                    "operation": "direction_plane_test", "plane": plane, "direction": direction}
         yield {"case_id": f"direction/plane-order/{plane}", "family": "math",
                "operation": "direction_plane_order", "plane": plane}
+    for seed in ("0", "1", "-1", "42", "12345", "9223372036854775807",
+                 "-9223372036854775808"):
+        for plane in ("horizontal", "vertical"):
+            yield {"case_id": f"direction/random/{seed}/{plane}", "family": "math",
+                   "operation": "direction_random", "seed": seed, "plane": plane}
     for name in ("down", "up", "north", "south", "west", "east"):
         yield {"case_id": f"direction/to-y-rot/{name}", "family": "math",
                "operation": "direction_to_y_rot", "name": name}

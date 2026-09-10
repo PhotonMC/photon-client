@@ -3,6 +3,8 @@
 //! Covers names, data values, axes, steps, opposites and axial rotations.
 //! Entity-lookahead, quaternions and codecs belong to later slices.
 
+use crate::random::RandomSource;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Direction {
     Down,
@@ -184,6 +186,21 @@ impl Direction {
         } else {
             [Axis::Y, Axis::X, Axis::Z]
         }
+    }
+
+    /// Return Java `Direction.getRandom(RandomSource)` using enum declaration order.
+    pub fn get_random(random: &mut RandomSource) -> Self {
+        const DIRECTIONS: [Direction; 6] = [
+            Direction::Down,
+            Direction::Up,
+            Direction::North,
+            Direction::South,
+            Direction::West,
+            Direction::East,
+        ];
+        DIRECTIONS[random
+            .next_int_bound(DIRECTIONS.len() as i32)
+            .expect("direction random bound is positive") as usize]
     }
 
     /// Return Java `Direction.isFacingAngle(float)` using the Mth lookup table.
@@ -390,6 +407,14 @@ impl Axis {
         [self.get_positive(), self.get_negative()]
     }
 
+    /// Return Java `Direction.Axis.getRandom(RandomSource)` using enum order.
+    pub fn get_random(random: &mut RandomSource) -> Self {
+        const AXES: [Axis; 3] = [Axis::X, Axis::Y, Axis::Z];
+        AXES[random
+            .next_int_bound(AXES.len() as i32)
+            .expect("axis random bound is positive") as usize]
+    }
+
     /// Return Java `Direction.Axis.choose(int, int, int)`.
     pub fn choose_i32(self, x: i32, y: i32, z: i32) -> i32 {
         match self {
@@ -457,6 +482,22 @@ impl AxisDirection {
 }
 
 impl Plane {
+    /// Return Java `Direction.Plane.getRandomDirection(RandomSource)`.
+    pub fn get_random_direction(self, random: &mut RandomSource) -> Direction {
+        let directions = self.directions();
+        directions[random
+            .next_int_bound(directions.len() as i32)
+            .expect("plane direction random bound is positive") as usize]
+    }
+
+    /// Return Java `Direction.Plane.getRandomAxis(RandomSource)`.
+    pub fn get_random_axis(self, random: &mut RandomSource) -> Axis {
+        let axes = self.axes();
+        axes[random
+            .next_int_bound(axes.len() as i32)
+            .expect("plane axis random bound is positive") as usize]
+    }
+
     /// Return Java `Direction.Plane.test(Direction)` with nullable input.
     pub fn test(self, input: Option<Direction>) -> bool {
         input.is_some_and(|direction| direction.axis().get_plane() == self)

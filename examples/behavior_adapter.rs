@@ -3243,6 +3243,28 @@ fn math_result(request: &Value) -> Result<Value, String> {
             "length": plane.length(),
         }));
     }
+    if operation == "direction_random" {
+        let seed = string(request, "seed")?
+            .parse::<i64>()
+            .map_err(|error| error.to_string())?;
+        let plane = match string(request, "plane")? {
+            "horizontal" => Plane::Horizontal,
+            "vertical" => Plane::Vertical,
+            _ => return Err("unknown plane".into()),
+        };
+        let mut random = RandomSource::create(seed);
+        let direction = Direction::get_random(&mut random);
+        let axis = Axis::get_random(&mut random);
+        let plane_direction = plane.get_random_direction(&mut random);
+        let plane_axis = plane.get_random_axis(&mut random);
+        return Ok(json!({
+            "direction": direction_snapshot(direction),
+            "axis": axis.name(),
+            "plane_direction": direction_snapshot(plane_direction),
+            "plane_axis": plane_axis.name(),
+            "tail": random.next_int().to_string(),
+        }));
+    }
     if operation == "direction_to_y_rot" {
         let facing = Direction::from_name(string(request, "name")?).ok_or("unknown direction")?;
         return Ok(json!({
