@@ -2383,6 +2383,10 @@ fn math_result(request: &Value) -> Result<Value, String> {
             "value": math::mth_ray_intersects_aabb(ray_start, ray_dir, aabb),
         }));
     }
+    if operation == "mth_fast_inv_sqrt" {
+        let bits = math::mth_fast_inv_sqrt_f64(f64_field(request, "input")?).to_bits();
+        return Ok(json!({"bits": format!("{bits:016x}")}));
+    }
     if operation == "mth_integer_helpers" {
         let function = string(request, "fn")?;
         let input = string(request, "input")?;

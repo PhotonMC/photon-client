@@ -3013,6 +3013,36 @@ def math_cases():
                "operation": "mth_ray_intersects_aabb", "ray_start": ray_start,
                "ray_dir": ray_dir, "aabb": aabb}
 
+    mth_fast_inv_sqrt = [
+        ("zero", float_bits(0.0, "f64")),
+        ("negative-zero", "8000000000000000"),
+        ("one", float_bits(1.0, "f64")),
+        ("one-below", "3fefffffffffffff"),
+        ("one-above", "3ff0000000000001"),
+        ("two", float_bits(2.0, "f64")),
+        ("quarter", float_bits(0.25, "f64")),
+        ("four", float_bits(4.0, "f64")),
+        ("pi", float_bits(math.pi, "f64")),
+        ("large", float_bits(1.0e20, "f64")),
+        ("max", "7fefffffffffffff"),
+        ("min-normal", "0010000000000000"),
+        ("positive-subnormal", "0000000000000001"),
+        ("negative-one", float_bits(-1.0, "f64")),
+        ("negative-two", float_bits(-2.0, "f64")),
+        ("negative-max", "ffefffffffffffff"),
+        ("negative-min-normal", "8010000000000000"),
+        ("negative-subnormal", "8000000000000001"),
+        ("infinity", "7ff0000000000000"),
+        ("negative-infinity", "fff0000000000000"),
+        ("nan", "7ff8000000000000"),
+        ("nan-payload", "7ff0000000000001"),
+        ("negative-nan-payload", "fff0000000000001"),
+        ("tiny-neighbor", "0000000000000002"),
+    ]
+    for label, input_value in mth_fast_inv_sqrt:
+        yield {"case_id": f"mth/fast-inv-sqrt/{label}", "family": "math",
+               "operation": "mth_fast_inv_sqrt", "input": input_value}
+
     mth_integer_helpers = [
         ("floor-div/int/negative-remainder", "i32", "floor_div", "-7", "3"),
         ("floor-div/int/negative-divisor", "i32", "floor_div", "7", "-3"),

@@ -384,6 +384,8 @@ public final class MathOracle {
             Vec3 rayDir = vec3(request.getAsJsonObject("ray_dir"));
             AABB aabb = box(request.getAsJsonObject("aabb"));
             result.addProperty("value", Mth.rayIntersectsAABB(rayStart, rayDir, aabb));
+        } else if (operation.equals("mth_fast_inv_sqrt")) {
+            result.addProperty("bits", Oracle.bits(Mth.fastInvSqrt(f64(request, "input"))));
         } else if (operation.equals("mth_integer_helpers")) {
             String width = request.get("type").getAsString();
             String function = request.get("fn").getAsString();

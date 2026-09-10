@@ -731,6 +731,15 @@ pub fn mth_ray_intersects_aabb(ray_start: Vec3, ray_dir: Vec3, aabb: Aabb) -> bo
     f.abs() < box_extent_x * andrew_woo_diff_y + box_extent_y * andrew_woo_diff_x
 }
 
+/// Return Java `Mth.fastInvSqrt(double)` with the raw-bit seed and one correction.
+pub fn mth_fast_inv_sqrt_f64(mut value: f64) -> f64 {
+    let half = 0.5 * value;
+    let bits = (value.to_bits() as i64) >> 1;
+    let bits = 6_910_469_410_427_058_090_i64.wrapping_sub(bits);
+    value = f64::from_bits(bits as u64);
+    value * (1.5 - half * value * value)
+}
+
 /// Return Java `Mth.ceilLong(double)` with Java's floating-point-to-long narrowing.
 pub fn ceil_long_f64(value: f64) -> i64 {
     value.ceil() as i64
