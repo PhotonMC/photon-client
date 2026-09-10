@@ -536,6 +536,17 @@ public final class MathOracle {
             result.add("rotate", snapshot(pos.rotate(rotation)));
             result.add("cross", snapshot(pos.cross(upVector)));
             result.add("at_y", snapshot(pos.atY(y)));
+        } else if (operation.equals("blockpos_distance_helpers")) {
+            BlockPos pos = blockPos(request);
+            BlockPos other = blockPos(request.getAsJsonObject("other"));
+            JsonObject point = request.getAsJsonObject("point");
+            double distance = f64(request, "distance");
+            result.addProperty("dist_sqr", Oracle.bits(pos.distSqr(other)));
+            result.addProperty("dist_low_corner_sqr", Oracle.bits(pos.distToLowCornerSqr(
+                f64(point, "x"), f64(point, "y"), f64(point, "z"))));
+            result.addProperty("dist_center_sqr", Oracle.bits(pos.distToCenterSqr(
+                f64(point, "x"), f64(point, "y"), f64(point, "z"))));
+            result.addProperty("closer_than", pos.closerThan(other, distance));
         } else if (operation.equals("section_relative")) {
             short relative = SectionPos.sectionRelativePos(blockPos(request));
             result.addProperty("relative", Integer.toString(Short.toUnsignedInt(relative)));

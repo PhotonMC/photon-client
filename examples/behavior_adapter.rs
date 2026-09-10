@@ -303,6 +303,26 @@ fn blockpos_geometry_helpers_snapshot(
     })
 }
 
+fn blockpos_distance_helpers_snapshot(
+    value: BlockPos,
+    other: BlockPos,
+    point: Vec3,
+    distance: f64,
+) -> Value {
+    json!({
+        "dist_sqr": format!("{:016x}", value.dist_sqr(other).to_bits()),
+        "dist_low_corner_sqr": format!(
+            "{:016x}",
+            value.dist_to_low_corner_sqr(point.x, point.y, point.z).to_bits(),
+        ),
+        "dist_center_sqr": format!(
+            "{:016x}",
+            value.dist_to_center_sqr(point.x, point.y, point.z).to_bits(),
+        ),
+        "closer_than": value.closer_than(other, distance),
+    })
+}
+
 fn chunkpos(value: &Value) -> Result<ChunkPos, String> {
     let coordinate = |name: &str| {
         string(value, name)?
@@ -1967,6 +1987,15 @@ fn math_result(request: &Value) -> Result<Value, String> {
         let y = i32_string_field(request, "at_y")?;
         return Ok(blockpos_geometry_helpers_snapshot(
             value, rotation, up_vector, y,
+        ));
+    }
+    if operation == "blockpos_distance_helpers" {
+        let value = blockpos(request)?;
+        let other = blockpos(request.get("other").ok_or("other must be an object")?)?;
+        let point = f64_vec3(request.get("point").ok_or("point must be an object")?)?;
+        let distance = f64_field(request, "distance")?;
+        return Ok(blockpos_distance_helpers_snapshot(
+            value, other, point, distance,
         ));
     }
     if operation == "section_relative" {

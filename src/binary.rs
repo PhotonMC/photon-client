@@ -267,6 +267,32 @@ impl BlockPos {
         Self::new(self.x, y, self.z)
     }
 
+    /// Return Java `Vec3i.distSqr(Vec3i)` for block coordinates.
+    pub fn dist_sqr(self, pos: Self) -> f64 {
+        self.dist_to_low_corner_sqr(f64::from(pos.x), f64::from(pos.y), f64::from(pos.z))
+    }
+
+    /// Return Java `Vec3i.distToLowCornerSqr(double, double, double)`.
+    pub fn dist_to_low_corner_sqr(self, x: f64, y: f64, z: f64) -> f64 {
+        let dx = f64::from(self.x) - x;
+        let dy = f64::from(self.y) - y;
+        let dz = f64::from(self.z) - z;
+        dx * dx + dy * dy + dz * dz
+    }
+
+    /// Return Java `Vec3i.distToCenterSqr(double, double, double)`.
+    pub fn dist_to_center_sqr(self, x: f64, y: f64, z: f64) -> f64 {
+        let dx = f64::from(self.x) + 0.5 - x;
+        let dy = f64::from(self.y) + 0.5 - y;
+        let dz = f64::from(self.z) + 0.5 - z;
+        dx * dx + dy * dy + dz * dz
+    }
+
+    /// Return Java `Vec3i.closerThan(Vec3i, double)`.
+    pub fn closer_than(self, pos: Self, distance: f64) -> bool {
+        self.dist_sqr(pos) < distance * distance
+    }
+
     /// Return Java `BlockPos.relative(Direction)` and its stepped overload.
     pub fn relative_direction(self, direction: Direction, steps: i32) -> Self {
         if steps == 0 {

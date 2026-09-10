@@ -1669,6 +1669,38 @@ def math_cases():
     for label, values in blockpos_geometry_helpers.items():
         yield {"case_id": f"blockpos/geometry-helpers/{label}", "family": "math",
                "operation": "blockpos_geometry_helpers", **values}
+    blockpos_distance_helpers = {
+        "basic": {
+            "x": "0", "y": "0", "z": "0",
+            "other": {"x": "3", "y": "4", "z": "0"},
+            "point": vector_bits(1.0, 2.0, 3.0), "distance": float_bits(5.0, "f64"),
+        },
+        "center": {
+            "x": "-10", "y": "20", "z": "-30",
+            "other": {"x": "-7", "y": "24", "z": "-30"},
+            "point": vector_bits(-9.5, 20.5, -29.5), "distance": float_bits(4.0, "f64"),
+        },
+        "negative": {
+            "x": "17", "y": "-16", "z": "1",
+            "other": {"x": "-17", "y": "16", "z": "-1"},
+            "point": vector_bits(-16.5, 15.5, -0.5), "distance": float_bits(64.0, "f64"),
+        },
+        "integer-boundaries": {
+            "x": "2147483647", "y": "-2147483648", "z": "2147483647",
+            "other": {"x": "-2147483648", "y": "2147483647", "z": "-2147483648"},
+            "point": vector_bits(2147483647.5, -2147483648.5, 2147483647.5),
+            "distance": float_bits(4294967296.0, "f64"),
+        },
+        "special-point": {
+            "x": "1", "y": "2", "z": "3",
+            "other": {"x": "1", "y": "2", "z": "3"},
+            "point": {"x": "7ff8000000000002", "y": "7ff0000000000000", "z": "fff0000000000000"},
+            "distance": "7ff8000000000002",
+        },
+    }
+    for label, values in blockpos_distance_helpers.items():
+        yield {"case_id": f"blockpos/distance-helpers/{label}", "family": "math",
+               "operation": "blockpos_distance_helpers", **values}
     for label, (x, y, z) in {
         "origin": (0, 0, 0),
         "positive-boundary": (15, 15, 15),
