@@ -136,6 +136,38 @@ def wire_cases():
         yield {"case_id": f"handshake/intention/read/{label}", "family": "wire",
                "operation": "handshake_intention", "direction": "read", "hex": encoded}
 
+    def hello_hex(name_bytes, most_hex, least_hex):
+        return (varint_hex(len(name_bytes)) + name_bytes.hex()
+                + most_hex + least_hex)
+
+    hello_writes = [
+        ("basic", "Player", "0123456789abcdef", "fedcba9876543210", ""),
+        ("empty-name", "", "0000000000000000", "0000000000000000", "aa55"),
+        ("unicode-name", "😀Alex", "8000000000000001", "7fffffffffffffff", ""),
+        ("maximum-name", "a" * 16, "ffffffffffffffff", "0000000000000001", ""),
+        ("too-long-name", "a" * 17, "0123456789abcdef", "fedcba9876543210", ""),
+    ]
+    for label, name, most_hex, least_hex, prefix_hex in hello_writes:
+        yield {"case_id": f"login/hello/write/{label}", "family": "wire",
+               "operation": "login_hello", "direction": "write",
+               "name_utf16_hex": utf16_hex(name), "profile_most_hex": most_hex,
+               "profile_least_hex": least_hex, "prefix_hex": prefix_hex}
+
+    hello_reads = [
+        ("basic", hello_hex(b"Player", "0123456789abcdef", "fedcba9876543210")),
+        ("trailing", hello_hex(b"Player", "0123456789abcdef", "fedcba9876543210") + "aabb"),
+        ("empty-name", hello_hex(b"", "0000000000000000", "0000000000000000")),
+        ("name-underflow", "01"),
+        ("name-encoded-too-long", "31"),
+        ("name-decoded-too-long", hello_hex(b"a" * 17, "0123456789abcdef", "fedcba9876543210")),
+        ("uuid-first-half-underflow", "00" + "00" * 7),
+        ("uuid-second-half-underflow", "00" + "00" * 15),
+        ("name-too-big", "808080808001"),
+    ]
+    for label, encoded in hello_reads:
+        yield {"case_id": f"login/hello/read/{label}", "family": "wire",
+               "operation": "login_hello", "direction": "read", "hex": encoded}
+
 
 def math_cases():
     def character_event_case(label, codepoint):

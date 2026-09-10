@@ -20,6 +20,7 @@ use voxel_client::input_event::{
     MouseButtonInfo, PreeditEvent,
 };
 use voxel_client::key_mapping::{InputKey, KeyMapping, KeyMappingRegistry};
+use voxel_client::login::ServerboundHelloPacket;
 use voxel_client::math::{self, Quaternionf, Vec2, Vec3, Vec3f};
 use voxel_client::nbt::{self, Field, FieldValue};
 use voxel_client::option::{
@@ -85,6 +86,9 @@ fn wire_result(request: &Value) -> Result<Value, String> {
     }
     if request["operation"].as_str() == Some("handshake_intention") {
         return handshake_intention_result(request);
+    }
+    if request["operation"].as_str() == Some("login_hello") {
+        return login_hello_result(request);
     }
     let wide = match string(request, "codec")? {
         "varint" => false,
@@ -291,6 +295,68 @@ fn handshake_intention_result(request: &Value) -> Result<Value, String> {
             Ok(result)
         }
         _ => Err("unknown handshake direction".into()),
+    }
+}
+
+fn login_read_error(error: voxel_client::login::ReadError) -> &'static str {
+    match error {
+        voxel_client::login::ReadError::BufferUnderflow => "buffer_underflow",
+        voxel_client::login::ReadError::DecoderError => "decoder_error",
+        voxel_client::login::ReadError::TooBig => "too_big",
+    }
+}
+
+fn uuid_hex_field(request: &Value, name: &str) -> Result<u64, String> {
+    let value = string(request, name)?;
+    if value.len() != 16 || !value.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+        return Err(format!("{name} must be sixteen hexadecimal digits"));
+    }
+    u64::from_str_radix(value, 16).map_err(|_| format!("invalid hexadecimal {name}"))
+}
+
+fn login_hello_result(request: &Value) -> Result<Value, String> {
+    match string(request, "direction")? {
+        "write" => {
+            let name = utf16_hex_units(string(request, "name_utf16_hex")?, "name_utf16_hex")?;
+            let profile_id = voxel_client::binary::Uuid::new(
+                uuid_hex_field(request, "profile_most_hex")?,
+                uuid_hex_field(request, "profile_least_hex")?,
+            );
+            let prefix = decode_hex(string(request, "prefix_hex")?)?;
+            let packet = ServerboundHelloPacket::new(name, profile_id);
+            let mut buffer = prefix.clone();
+            let mut result = match packet.encode(&mut buffer) {
+                Ok(()) => json!({"outcome": "value"}),
+                Err(voxel_client::login::WriteError::EncoderError) => {
+                    json!({"outcome": "error", "error": "encoder_error"})
+                }
+            };
+            result["written"] = json!(buffer.len() - prefix.len());
+            result["hex"] = json!(hex(&buffer));
+            Ok(result)
+        }
+        "read" => {
+            let bytes = decode_hex(string(request, "hex")?)?;
+            let mut remaining = bytes.as_slice();
+            let mut result = match ServerboundHelloPacket::decode(&mut remaining) {
+                Ok(packet) => json!({
+                    "name_utf16_hex": packet.name.iter()
+                        .map(|unit| format!("{unit:04x}"))
+                        .collect::<String>(),
+                    "profile_most_hex": format!("{:016x}", packet.profile_id.most),
+                    "profile_least_hex": format!("{:016x}", packet.profile_id.least),
+                    "outcome": "value",
+                }),
+                Err(error) => json!({
+                    "outcome": "error",
+                    "error": login_read_error(error),
+                }),
+            };
+            result["consumed"] = json!(bytes.len() - remaining.len());
+            result["remaining_hex"] = json!(hex(remaining));
+            Ok(result)
+        }
+        _ => Err("unknown login direction".into()),
     }
 }
 

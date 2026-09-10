@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
 import net.minecraft.network.Varint21FrameDecoder;
 import net.minecraft.network.Varint21LengthFieldPrepender;
 import net.minecraft.network.FriendlyByteBuf;
@@ -17,6 +18,7 @@ import net.minecraft.network.VarInt;
 import net.minecraft.network.VarLong;
 import net.minecraft.network.protocol.handshake.ClientIntent;
 import net.minecraft.network.protocol.handshake.ClientIntentionPacket;
+import net.minecraft.network.protocol.login.ServerboundHelloPacket;
 
 public final class WireOracle {
     public static JsonObject run(JsonObject request) {
@@ -29,6 +31,9 @@ public final class WireOracle {
         }
         if (operation.equals("handshake_intention")) {
             return handshakeIntentionResult(request);
+        }
+        if (operation.equals("login_hello")) {
+            return loginHelloResult(request);
         }
         boolean wide = switch (request.get("codec").getAsString()) {
             case "varint" -> false;
@@ -245,6 +250,69 @@ public final class WireOracle {
             case "transfer" -> ClientIntent.TRANSFER;
             default -> throw new IllegalArgumentException("Unknown client intent");
         };
+    }
+
+    private static JsonObject loginHelloResult(JsonObject request) {
+        String direction = request.get("direction").getAsString();
+        if (direction.equals("write")) {
+            String name = fromUtf16Hex(request.get("name_utf16_hex").getAsString());
+            UUID profileId = new UUID(
+                Long.parseUnsignedLong(request.get("profile_most_hex").getAsString(), 16),
+                Long.parseUnsignedLong(request.get("profile_least_hex").getAsString(), 16)
+            );
+            byte[] prefix = HexFormat.of().parseHex(request.get("prefix_hex").getAsString());
+            ByteBuf buffer = Unpooled.buffer();
+            try {
+                buffer.writeBytes(prefix);
+                var result = new JsonObject();
+                try {
+                    ServerboundHelloPacket.STREAM_CODEC.encode(
+                        new FriendlyByteBuf(buffer),
+                        new ServerboundHelloPacket(name, profileId)
+                    );
+                    result.addProperty("outcome", "value");
+                } catch (EncoderException error) {
+                    result.addProperty("outcome", "error");
+                    result.addProperty("error", "encoder_error");
+                    result.addProperty("java_exception", error.getClass().getName());
+                }
+                result.addProperty("written", buffer.writerIndex() - prefix.length);
+                result.addProperty("hex", ByteBufUtil.hexDump(buffer));
+                return result;
+            } finally {
+                buffer.release();
+            }
+        }
+
+        if (direction.equals("read")) {
+            ByteBuf buffer = Unpooled.buffer();
+            try {
+                buffer.writeBytes(HexFormat.of().parseHex(request.get("hex").getAsString()));
+                var result = new JsonObject();
+                try {
+                    ServerboundHelloPacket packet = ServerboundHelloPacket.STREAM_CODEC.decode(new FriendlyByteBuf(buffer));
+                    result.addProperty("name_utf16_hex", toUtf16Hex(packet.name()));
+                    result.addProperty("profile_most_hex", String.format(Locale.ROOT, "%016x", packet.profileId().getMostSignificantBits()));
+                    result.addProperty("profile_least_hex", String.format(Locale.ROOT, "%016x", packet.profileId().getLeastSignificantBits()));
+                    result.addProperty("outcome", "value");
+                } catch (IndexOutOfBoundsException error) {
+                    result.addProperty("outcome", "error");
+                    result.addProperty("error", "buffer_underflow");
+                    result.addProperty("java_exception", error.getClass().getName());
+                } catch (RuntimeException error) {
+                    result.addProperty("outcome", "error");
+                    result.addProperty("error", error.getClass() == RuntimeException.class ? "too_big" : "decoder_error");
+                    result.addProperty("java_exception", error.getClass().getName());
+                }
+                result.addProperty("consumed", buffer.readerIndex());
+                result.addProperty("remaining_hex", ByteBufUtil.hexDump(buffer));
+                return result;
+            } finally {
+                buffer.release();
+            }
+        }
+
+        throw new IllegalArgumentException("Unknown login direction");
     }
 
     private static String fromUtf16Hex(String value) {

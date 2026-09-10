@@ -9,6 +9,7 @@ pub mod handshake;
 pub mod input;
 pub mod input_event;
 pub mod key_mapping;
+pub mod login;
 pub mod math;
 pub mod nbt;
 pub mod option;
