@@ -466,6 +466,29 @@ impl BlockPos {
         positions
     }
 
+    /// Enumerate Java's five horizontal neighbor columns with inclusive Y bounds.
+    pub fn neighbor_column(start_x: i32, start_y: i32, start_z: i32, end_y: i32) -> Vec<Self> {
+        let y_direction = if end_y > start_y { 1 } else { -1 };
+        let height = java_abs_i32(end_y.wrapping_sub(start_y)).wrapping_add(1);
+        let step_count = 5_i32.wrapping_mul(height);
+        if height <= 0 || step_count <= 0 {
+            return Vec::new();
+        }
+
+        let steps = [(0, 0), (0, -1), (1, 0), (0, 1), (-1, 0)];
+        let mut positions = Vec::with_capacity(step_count as usize);
+        for index in 0..step_count {
+            let y = index % height;
+            let step = steps[(index / height) as usize];
+            positions.push(Self::new(
+                start_x.wrapping_add(step.0),
+                start_y.wrapping_add(y.wrapping_mul(y_direction)),
+                start_z.wrapping_add(step.1),
+            ));
+        }
+        positions
+    }
+
     /// Offset a packed block position by a cardinal direction's step.
     pub fn offset_packed(block_node: u64, direction: Direction) -> u64 {
         Self::offset_packed_by(

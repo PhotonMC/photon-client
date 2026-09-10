@@ -1779,6 +1779,24 @@ def math_cases():
     for label, values in blockpos_between_closed.items():
         yield {"case_id": f"blockpos/between-closed/{label}", "family": "math",
                "operation": "blockpos_between_closed", **values}
+    blockpos_neighbor_column = {
+        "ascending": {
+            "start_x": "10", "start_y": "5", "start_z": "-2", "end_y": "7",
+        },
+        "descending": {
+            "start_x": "-3", "start_y": "4", "start_z": "9", "end_y": "2",
+        },
+        "singleton": {
+            "start_x": "0", "start_y": "-2", "start_z": "0", "end_y": "-2",
+        },
+        "integer-boundaries": {
+            "start_x": "2147483647", "start_y": "-2147483648", "start_z": "-2147483648",
+            "end_y": "-2147483648",
+        },
+    }
+    for label, values in blockpos_neighbor_column.items():
+        yield {"case_id": f"blockpos/neighbor-column/{label}", "family": "math",
+               "operation": "blockpos_neighbor_column", **values}
     for label, (x, y, z) in {
         "origin": (0, 0, 0),
         "positive-boundary": (15, 15, 15),

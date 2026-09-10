@@ -580,6 +580,16 @@ public final class MathOracle {
             }
             result.add("from_to", fromTo);
             result.add("coordinates", coordinates);
+        } else if (operation.equals("blockpos_neighbor_column")) {
+            int startX = Integer.parseInt(request.get("start_x").getAsString());
+            int startY = Integer.parseInt(request.get("start_y").getAsString());
+            int startZ = Integer.parseInt(request.get("start_z").getAsString());
+            int endY = Integer.parseInt(request.get("end_y").getAsString());
+            var positions = new JsonArray();
+            for (BlockPos pos : BlockPos.neighborColumn(startX, startY, startZ, endY)) {
+                positions.add(snapshot(pos));
+            }
+            result.add("positions", positions);
         } else if (operation.equals("section_relative")) {
             short relative = SectionPos.sectionRelativePos(blockPos(request));
             result.addProperty("relative", Integer.toString(Short.toUnsignedInt(relative)));

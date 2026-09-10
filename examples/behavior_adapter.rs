@@ -2049,6 +2049,14 @@ fn math_result(request: &Value) -> Result<Value, String> {
             )),
         }));
     }
+    if operation == "blockpos_neighbor_column" {
+        return Ok(blockpos_positions_snapshot(BlockPos::neighbor_column(
+            i32_string_field(request, "start_x")?,
+            i32_string_field(request, "start_y")?,
+            i32_string_field(request, "start_z")?,
+            i32_string_field(request, "end_y")?,
+        )));
+    }
     if operation == "section_relative" {
         return section_relative_result(request);
     }
