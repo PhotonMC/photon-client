@@ -157,6 +157,28 @@ def math_cases():
         ["first", "last", "outside"],
     )
 
+    def alt_enum_case(label, values, alt_values, conditions, probes):
+        return {
+            "case_id": f"alt-enum/{label}", "family": "math",
+            "operation": "alt_enum", "values": values, "alt_values": alt_values,
+            "conditions": conditions, "probes": probes,
+        }
+
+    yield alt_enum_case(
+        "condition-switch",
+        ["default", "shared", "only-default"],
+        ["alternate", "shared", "only-alternate"],
+        [False, True, False, True],
+        ["default", "alternate", "shared", "only-alternate", "missing"],
+    )
+    yield alt_enum_case(
+        "duplicates-and-empty-alternative",
+        ["first", "first", "last"],
+        [],
+        [True, False, True, False],
+        ["first", "last", "outside"],
+    )
+
     def lazy_enum_case(label, value_lists, valid_values, probes):
         return {
             "case_id": f"lazy-enum/{label}", "family": "math",

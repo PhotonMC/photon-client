@@ -21,7 +21,7 @@ use voxel_client::key_mapping::{InputKey, KeyMapping, KeyMappingRegistry};
 use voxel_client::math::{self, Quaternionf, Vec2, Vec3, Vec3f};
 use voxel_client::nbt::{self, Field, FieldValue};
 use voxel_client::option::{
-    ClampingLazyMaxIntRange, CycleableEnum, IntRange, LazyEnum, SliderableEnum, UnitDouble,
+    AltEnum, ClampingLazyMaxIntRange, CycleableEnum, IntRange, LazyEnum, SliderableEnum, UnitDouble,
 };
 use voxel_client::random::RandomSource;
 use voxel_client::scroll::ScrollWheelHandler;
@@ -402,6 +402,69 @@ fn cycleable_enum_result(request: &Value) -> Result<Value, String> {
     Ok(json!({
         "values": value_set.values(),
         "selected_values": value_set.values(),
+        "probes": probes,
+    }))
+}
+
+fn alt_enum_result(request: &Value) -> Result<Value, String> {
+    let values = request["values"]
+        .as_array()
+        .ok_or("values must be an array")?
+        .iter()
+        .map(|value| string_value(value, "values entry"))
+        .collect::<Result<Vec<_>, String>>()?;
+    let alt_values = request["alt_values"]
+        .as_array()
+        .ok_or("alt_values must be an array")?
+        .iter()
+        .map(|value| string_value(value, "alt_values entry"))
+        .collect::<Result<Vec<_>, String>>()?;
+    let conditions = request["conditions"]
+        .as_array()
+        .ok_or("conditions must be an array")?
+        .iter()
+        .map(|value| {
+            value
+                .as_bool()
+                .ok_or_else(|| "condition entries must be booleans".to_owned())
+        })
+        .collect::<Result<Vec<_>, String>>()?;
+    if conditions.is_empty() {
+        return Err("conditions must not be empty".into());
+    }
+    let supplied_conditions = conditions.clone();
+    let condition_calls = Rc::new(RefCell::new(0_usize));
+    let condition_counter = Rc::clone(&condition_calls);
+    let value_set = AltEnum::new(values, alt_values, move || {
+        let mut call = condition_counter.borrow_mut();
+        let index = (*call).min(supplied_conditions.len() - 1);
+        *call += 1;
+        supplied_conditions[index]
+    });
+    let mut selected_values = Vec::with_capacity(conditions.len());
+    for _ in &conditions {
+        selected_values.push(value_set.selected_values());
+    }
+    let probes = request["probes"]
+        .as_array()
+        .ok_or("probes must be an array")?
+        .iter()
+        .map(|probe| {
+            let value = string_value(probe, "probe")?;
+            let mut state = serde_json::Map::new();
+            state.insert("value".into(), json!(&value));
+            let validated = value_set.validate_value(&value);
+            state.insert("valid".into(), json!(validated.is_some()));
+            if let Some(validated) = validated {
+                state.insert("validated".into(), json!(validated));
+            }
+            Ok(Value::Object(state))
+        })
+        .collect::<Result<Vec<_>, String>>()?;
+    Ok(json!({
+        "default_values": value_set.values(),
+        "alt_values": value_set.alt_values(),
+        "selected_values": selected_values,
         "probes": probes,
     }))
 }
@@ -4813,6 +4876,9 @@ fn math_result(request: &Value) -> Result<Value, String> {
     }
     if operation == "cycleable_enum" {
         return cycleable_enum_result(request);
+    }
+    if operation == "alt_enum" {
+        return alt_enum_result(request);
     }
     if operation == "lazy_enum" {
         return lazy_enum_result(request);

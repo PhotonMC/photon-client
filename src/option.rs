@@ -7,6 +7,55 @@ fn map(value: f64, from_min: f64, from_max: f64, to_min: f64, to_max: f64) -> f6
     to_min + alpha * (to_max - to_min)
 }
 
+/// Ordered default and alternate values selected by a runtime condition.
+pub struct AltEnum<T, Condition>
+where
+    Condition: Fn() -> bool,
+{
+    values: Vec<T>,
+    alt_values: Vec<T>,
+    alt_condition: Condition,
+}
+
+impl<T, Condition> AltEnum<T, Condition>
+where
+    T: Clone + PartialEq,
+    Condition: Fn() -> bool,
+{
+    pub fn new(values: Vec<T>, alt_values: Vec<T>, alt_condition: Condition) -> Self {
+        Self {
+            values,
+            alt_values,
+            alt_condition,
+        }
+    }
+
+    pub fn values(&self) -> Vec<T> {
+        self.values.clone()
+    }
+
+    pub fn alt_values(&self) -> Vec<T> {
+        self.alt_values.clone()
+    }
+
+    pub fn selected_values(&self) -> Vec<T> {
+        if (self.alt_condition)() {
+            self.alt_values()
+        } else {
+            self.values()
+        }
+    }
+
+    pub fn validate_value(&self, value: &T) -> Option<T> {
+        let values = if (self.alt_condition)() {
+            &self.alt_values
+        } else {
+            &self.values
+        };
+        values.contains(value).then(|| value.clone())
+    }
+}
+
 /// Inclusive integer range used by slider-backed options.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct IntRange {

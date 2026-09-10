@@ -221,6 +221,53 @@ public final class MathOracle {
                 probes.add(state);
             }
             result.add("probes", probes);
+        } else if (operation.equals("alt_enum")) {
+            var values = new ArrayList<String>();
+            for (JsonElement entry : request.getAsJsonArray("values")) {
+                values.add(entry.getAsString());
+            }
+            var altValues = new ArrayList<String>();
+            for (JsonElement entry : request.getAsJsonArray("alt_values")) {
+                altValues.add(entry.getAsString());
+            }
+            var conditions = new ArrayList<Boolean>();
+            for (JsonElement entry : request.getAsJsonArray("conditions")) {
+                conditions.add(entry.getAsBoolean());
+            }
+            int[] conditionCalls = {0};
+            java.util.function.BooleanSupplier altCondition = () -> {
+                int index = Math.min(conditionCalls[0]++, conditions.size() - 1);
+                return conditions.get(index);
+            };
+            OptionInstance.AltEnum<String> valueSet = new OptionInstance.AltEnum<>(
+                values, altValues, altCondition, (instance, value) -> {}, com.mojang.serialization.Codec.STRING);
+            var valueListSupplier = valueSet.valueListSupplier();
+            result.add("default_values", new JsonArray());
+            for (String value : valueListSupplier.getDefaultList()) {
+                result.getAsJsonArray("default_values").add(value);
+            }
+            result.add("alt_values", new JsonArray());
+            for (String value : altValues) {
+                result.getAsJsonArray("alt_values").add(value);
+            }
+            result.add("selected_values", new JsonArray());
+            for (int i = 0; i < conditions.size(); i++) {
+                result.getAsJsonArray("selected_values").add(new JsonArray());
+                for (String value : valueListSupplier.getSelectedList()) {
+                    result.getAsJsonArray("selected_values").get(i).getAsJsonArray().add(value);
+                }
+            }
+            var probes = new JsonArray();
+            for (JsonElement entry : request.getAsJsonArray("probes")) {
+                String value = entry.getAsString();
+                var state = new JsonObject();
+                state.addProperty("value", value);
+                var validated = valueSet.validateValue(value);
+                state.addProperty("valid", validated.isPresent());
+                validated.ifPresent(item -> state.addProperty("validated", item));
+                probes.add(state);
+            }
+            result.add("probes", probes);
         } else if (operation.equals("lazy_enum")) {
             var valueLists = new ArrayList<java.util.List<String>>();
             for (JsonElement listElement : request.getAsJsonArray("value_lists")) {
