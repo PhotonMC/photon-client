@@ -741,6 +741,47 @@ public final class MathOracle {
             result.add("aabb", aabbPositions);
             result.add("block_pos", blockPositions);
             result.add("coordinates", coordinatePositions);
+        } else if (operation.equals("blockpos_breadth_first_traversal")) {
+            BlockPos start = blockPos(request.getAsJsonObject("start"));
+            int maxDepth = Integer.parseInt(request.get("max_depth").getAsString());
+            int maxCount = Integer.parseInt(request.get("max_count").getAsString());
+            JsonArray rules = request.getAsJsonArray("nodes");
+            var processed = new JsonArray();
+            var providerCalls = new JsonArray();
+            int count = BlockPos.breadthFirstTraversal(
+                start,
+                maxDepth,
+                maxCount,
+                (pos, consumer) -> {
+                    providerCalls.add(snapshot(pos));
+                    for (JsonElement entry : rules) {
+                        JsonObject rule = entry.getAsJsonObject();
+                        if (pos.equals(blockPos(rule.getAsJsonObject("position")))) {
+                            for (JsonElement neighbour : rule.getAsJsonArray("neighbors")) {
+                                consumer.accept(blockPos(neighbour.getAsJsonObject()));
+                            }
+                            break;
+                        }
+                    }
+                },
+                pos -> {
+                    processed.add(snapshot(pos));
+                    for (JsonElement entry : rules) {
+                        JsonObject rule = entry.getAsJsonObject();
+                        if (pos.equals(blockPos(rule.getAsJsonObject("position")))) {
+                            return switch (rule.get("status").getAsString()) {
+                                case "accept" -> BlockPos.TraversalNodeStatus.ACCEPT;
+                                case "skip" -> BlockPos.TraversalNodeStatus.SKIP;
+                                case "stop" -> BlockPos.TraversalNodeStatus.STOP;
+                                default -> throw new IllegalArgumentException("Unknown traversal status");
+                            };
+                        }
+                    }
+                    return BlockPos.TraversalNodeStatus.ACCEPT;
+                });
+            result.addProperty("count", count);
+            result.add("processed", processed);
+            result.add("provider_calls", providerCalls);
         } else if (operation.equals("section_relative")) {
             short relative = SectionPos.sectionRelativePos(blockPos(request));
             result.addProperty("relative", Integer.toString(Short.toUnsignedInt(relative)));

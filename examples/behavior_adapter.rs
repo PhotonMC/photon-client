@@ -2129,6 +2129,68 @@ fn math_result(request: &Value) -> Result<Value, String> {
             ),
         }));
     }
+    if operation == "blockpos_breadth_first_traversal" {
+        let start = blockpos(request.get("start").ok_or("start must be an object")?)?;
+        let max_depth = i32_string_field(request, "max_depth")?;
+        let max_count = i32_string_field(request, "max_count")?;
+        let rules = request
+            .get("nodes")
+            .ok_or("nodes must be an array")?
+            .as_array()
+            .ok_or("nodes must be an array")?
+            .iter()
+            .map(|entry| {
+                let position =
+                    blockpos(entry.get("position").ok_or("position must be an object")?)?;
+                let status = match string(entry, "status")? {
+                    "accept" => binary::TraversalNodeStatus::Accept,
+                    "skip" => binary::TraversalNodeStatus::Skip,
+                    "stop" => binary::TraversalNodeStatus::Stop,
+                    _ => return Err("unknown traversal status".into()),
+                };
+                let neighbours = entry
+                    .get("neighbors")
+                    .ok_or("neighbors must be an array")?
+                    .as_array()
+                    .ok_or("neighbors must be an array")?
+                    .iter()
+                    .map(blockpos)
+                    .collect::<Result<Vec<_>, _>>()?;
+                Ok((position, status, neighbours))
+            })
+            .collect::<Result<Vec<_>, String>>()?;
+        let mut processed = Vec::new();
+        let mut provider_calls = Vec::new();
+        let count = BlockPos::breadth_first_traversal(
+            start,
+            max_depth,
+            max_count,
+            |position, enqueue| {
+                provider_calls.push(position);
+                if let Some((_, _, neighbours)) =
+                    rules.iter().find(|(node, _, _)| *node == position)
+                {
+                    for neighbour in neighbours {
+                        enqueue(*neighbour);
+                    }
+                }
+            },
+            |position| {
+                processed.push(position);
+                rules
+                    .iter()
+                    .find(|(node, _, _)| *node == position)
+                    .map_or(binary::TraversalNodeStatus::Accept, |(_, status, _)| {
+                        *status
+                    })
+            },
+        );
+        return Ok(json!({
+            "count": count,
+            "processed": blockpos_position_list(processed),
+            "provider_calls": blockpos_position_list(provider_calls),
+        }));
+    }
     if operation == "blockpos_within_manhattan" {
         let origin = blockpos(request.get("origin").ok_or("origin must be an object")?)?;
         let reach_x = i32_string_field(request, "reach_x")?;

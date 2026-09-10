@@ -182,6 +182,15 @@ pub struct BlockPos {
     pub y: i32,
     pub z: i32,
 }
+
+/// Result of processing a node in a bounded BlockPos traversal.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TraversalNodeStatus {
+    Accept,
+    Skip,
+    Stop,
+}
+
 pub const PACKED_HORIZONTAL_LENGTH: u32 = 26;
 pub const PACKED_Y_LENGTH: u32 = 12;
 const PACKED_HORIZONTAL_MASK: u64 = (1 << PACKED_HORIZONTAL_LENGTH) - 1;
@@ -602,6 +611,49 @@ impl BlockPos {
         }
 
         positions
+    }
+
+    /// Traverse a BlockPos graph using Java's FIFO, depth, count, and packed-visited rules.
+    pub fn breadth_first_traversal<NeighbourProvider, NodeProcessor>(
+        start: Self,
+        max_depth: i32,
+        max_count: i32,
+        mut neighbour_provider: NeighbourProvider,
+        mut node_processor: NodeProcessor,
+    ) -> i32
+    where
+        NeighbourProvider: FnMut(Self, &mut dyn FnMut(Self)),
+        NodeProcessor: FnMut(Self) -> TraversalNodeStatus,
+    {
+        let mut nodes = std::collections::VecDeque::new();
+        let mut visited = std::collections::HashSet::new();
+        nodes.push_back((start, 0_i32));
+        let mut count = 0_i32;
+
+        while let Some((current, depth)) = nodes.pop_front() {
+            if visited.insert(current.as_long()) {
+                match node_processor(current) {
+                    TraversalNodeStatus::Skip => {}
+                    TraversalNodeStatus::Stop => break,
+                    TraversalNodeStatus::Accept => {
+                        count = count.wrapping_add(1);
+                        if count >= max_count {
+                            return count;
+                        }
+
+                        if depth < max_depth {
+                            let mut neighbours = Vec::new();
+                            neighbour_provider(current, &mut |position| neighbours.push(position));
+                            for position in neighbours {
+                                nodes.push_back((position, depth.wrapping_add(1)));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        count
     }
 
     /// Enumerate Java's Manhattan reach iterator in its source traversal order.

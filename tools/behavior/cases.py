@@ -2022,6 +2022,63 @@ def math_cases():
     for label, values in blockpos_between_corners_direction.items():
         yield {"case_id": f"blockpos/between-corners-direction/{label}", "family": "math",
                "operation": "blockpos_between_corners_direction", **values}
+    def traversal_node(position, status, neighbors):
+        return {"position": {"x": str(position[0]), "y": str(position[1]), "z": str(position[2])},
+                "status": status,
+                "neighbors": [{"x": str(x), "y": str(y), "z": str(z)} for x, y, z in neighbors]}
+
+    blockpos_breadth_first_traversal = {
+        "breadth-first": {
+            "start": {"x": "0", "y": "0", "z": "0"}, "max_depth": "2", "max_count": "99",
+            "nodes": [
+                traversal_node((0, 0, 0), "accept", [(1, 0, 0), (0, 0, 1)]),
+                traversal_node((1, 0, 0), "accept", [(2, 0, 0), (0, 0, 0)]),
+                traversal_node((0, 0, 1), "accept", [(2, 0, 0), (0, 0, 2)]),
+                traversal_node((2, 0, 0), "skip", [(3, 0, 0)]),
+                traversal_node((0, 0, 2), "accept", [(0, 0, 3)]),
+            ],
+        },
+        "stop": {
+            "start": {"x": "0", "y": "0", "z": "0"}, "max_depth": "3", "max_count": "99",
+            "nodes": [
+                traversal_node((0, 0, 0), "accept", [(1, 0, 0), (0, 0, 1)]),
+                traversal_node((1, 0, 0), "stop", [(2, 0, 0)]),
+                traversal_node((0, 0, 1), "accept", [(0, 0, 2)]),
+            ],
+        },
+        "skip-root": {
+            "start": {"x": "4", "y": "-2", "z": "7"}, "max_depth": "3", "max_count": "1",
+            "nodes": [
+                traversal_node((4, -2, 7), "skip", [(5, -2, 7)]),
+                traversal_node((5, -2, 7), "accept", []),
+            ],
+        },
+        "max-count": {
+            "start": {"x": "0", "y": "0", "z": "0"}, "max_depth": "4", "max_count": "2",
+            "nodes": [
+                traversal_node((0, 0, 0), "accept", [(1, 0, 0), (2, 0, 0)]),
+                traversal_node((1, 0, 0), "accept", [(3, 0, 0)]),
+                traversal_node((2, 0, 0), "accept", []),
+            ],
+        },
+        "depth-limit": {
+            "start": {"x": "-1", "y": "3", "z": "5"}, "max_depth": "1", "max_count": "99",
+            "nodes": [
+                traversal_node((-1, 3, 5), "accept", [(0, 3, 5)]),
+                traversal_node((0, 3, 5), "accept", [(1, 3, 5)]),
+            ],
+        },
+        "packed-visited": {
+            "start": {"x": "0", "y": "0", "z": "0"}, "max_depth": "1", "max_count": "99",
+            "nodes": [
+                traversal_node((0, 0, 0), "accept", [(33554432, 0, 0)]),
+                traversal_node((33554432, 0, 0), "stop", []),
+            ],
+        },
+    }
+    for label, values in blockpos_breadth_first_traversal.items():
+        yield {"case_id": f"blockpos/breadth-first-traversal/{label}", "family": "math",
+               "operation": "blockpos_breadth_first_traversal", **values}
     for label, (x, y, z) in {
         "origin": (0, 0, 0),
         "positive-boundary": (15, 15, 15),
