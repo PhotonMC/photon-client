@@ -846,6 +846,11 @@ pub fn mth_square_i32(x: i32) -> i32 {
     x.wrapping_mul(x)
 }
 
+/// Return Java `Mth.square(long)` with Java's wrapping i64 multiplication.
+pub fn mth_square_i64(x: i64) -> i64 {
+    x.wrapping_mul(x)
+}
+
 /// Return Java `Mth.nextInt(RandomSource, int, int)`, including its
 /// min-greater-than-or-equal-to-max short circuit.
 pub fn mth_next_int(

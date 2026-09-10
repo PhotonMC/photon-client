@@ -633,6 +633,9 @@ public final class MathOracle {
         } else if (operation.equals("mth_square_i32")) {
             result.addProperty("value", Integer.toString(Mth.square(
                 Integer.parseInt(request.get("x").getAsString()))));
+        } else if (operation.equals("mth_square_i64")) {
+            result.addProperty("value", Long.toString(Mth.square(
+                Long.parseLong(request.get("x").getAsString()))));
         } else if (operation.equals("vec3")) {
             Vec3 vector = new Vec3(f64(request, "x"), f64(request, "y"), f64(request, "z"));
             var events = new JsonArray();
