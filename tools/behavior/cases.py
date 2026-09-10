@@ -3325,6 +3325,49 @@ def math_cases():
         yield {"case_id": f"mth/get-seed/{label}", "family": "math",
                "operation": "mth_get_seed", "x": x, "y": y, "z": z}
 
+    mth_atan2 = [
+        ("zero-zero", 0.0, 0.0),
+        ("negative-zero-y", -0.0, 0.0),
+        ("negative-zero-x", 0.0, -0.0),
+        ("both-negative-zero", -0.0, -0.0),
+        ("positive-x-axis", 0.0, 1.0),
+        ("negative-x-axis", 0.0, -1.0),
+        ("positive-y-axis", 1.0, 0.0),
+        ("negative-y-axis", -1.0, 0.0),
+        ("first-quadrant", 1.0, 1.0),
+        ("second-quadrant", 1.0, -1.0),
+        ("third-quadrant", -1.0, -1.0),
+        ("fourth-quadrant", -1.0, 1.0),
+        ("shallow-positive", 0.25, 1.0),
+        ("steep-positive", 1.0, 0.25),
+        ("shallow-negative-y", -0.25, 1.0),
+        ("steep-negative-y", -1.0, 0.25),
+        ("table-boundary-low", math.nextafter(1.0 / 256.0, 0.0), 1.0),
+        ("table-boundary", 1.0 / 256.0, 1.0),
+        ("table-boundary-high", math.nextafter(1.0 / 256.0, math.inf), 1.0),
+        ("steep-boundary-low", 1.0, math.nextafter(1.0, 0.0)),
+        ("steep-boundary-high", 1.0, math.nextafter(1.0, math.inf)),
+        ("tiny-y", float.fromhex("0x0.0000000000001p-1022"), 1.0),
+        ("both-min-subnormal", float.fromhex("0x0.0000000000001p-1022"),
+         float.fromhex("0x0.0000000000001p-1022")),
+        ("mixed-exponents", 2.0 ** -500, 2.0 ** 500),
+        ("large-finite", 1.0e200, -1.0e200),
+        ("maximum-y", 1.0e308, 0.0),
+        ("positive-infinity-x", 1.0, float("inf")),
+        ("negative-infinity-x", 1.0, float("-inf")),
+        ("positive-infinity-y", float("inf"), 1.0),
+        ("negative-infinity-y", float("-inf"), 1.0),
+        ("both-positive-infinity", float("inf"), float("inf")),
+        ("nan-y", float("nan"), 1.0),
+        ("nan-x", 1.0, float("nan")),
+        ("nan-y-payload", "7ff0000000000001", 1.0),
+    ]
+    for label, y, x in mth_atan2:
+        y = y if isinstance(y, str) else float_bits(y, "f64")
+        x = x if isinstance(x, str) else float_bits(x, "f64")
+        yield {"case_id": f"mth/atan2/{label}", "family": "math",
+               "operation": "mth_atan2", "y": y, "x": x}
+
     mth_integer_helpers = [
         ("floor-div/int/negative-remainder", "i32", "floor_div", "-7", "3"),
         ("floor-div/int/negative-divisor", "i32", "floor_div", "7", "-3"),

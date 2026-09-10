@@ -2469,6 +2469,10 @@ fn math_result(request: &Value) -> Result<Value, String> {
         );
         return Ok(json!({"value": value.to_string()}));
     }
+    if operation == "mth_atan2" {
+        let value = math::mth_atan2(f64_field(request, "y")?, f64_field(request, "x")?);
+        return Ok(json!({"bits": format!("{:016x}", value.to_bits())}));
+    }
     if operation == "mth_integer_helpers" {
         let function = string(request, "fn")?;
         let input = string(request, "input")?;

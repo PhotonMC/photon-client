@@ -935,6 +935,59 @@ pub fn mth_get_seed(x: i32, y: i32, z: i32) -> i64 {
     seed >> 16
 }
 
+/// Return Java `Mth.atan2(double, double)` with its table approximation.
+pub fn mth_atan2(mut y: f64, mut x: f64) -> f64 {
+    let squared_length = x * x + y * y;
+    if squared_length.is_nan() {
+        return f64::NAN;
+    }
+
+    let negative_y = y < 0.0;
+    if negative_y {
+        y = -y;
+    }
+
+    let negative_x = x < 0.0;
+    if negative_x {
+        x = -x;
+    }
+
+    let steep = y > x;
+    if steep {
+        std::mem::swap(&mut x, &mut y);
+    }
+
+    let inverse_length = mth_fast_inv_sqrt_f64(squared_length);
+    x *= inverse_length;
+    y *= inverse_length;
+
+    let fractional_bias = f64::from_bits(0x42b0_0000_0000_0000);
+    let y_with_bias = fractional_bias + y;
+    let index = (y_with_bias.to_bits() as u32) as usize;
+    let (phi, cosine_phi) = mth_atan2_table_entry(index);
+    let sine_phi = y_with_bias - fractional_bias;
+    let sine_difference = y * cosine_phi - x * sine_phi;
+    let correction =
+        (6.0 + sine_difference * sine_difference) * sine_difference * 0.16666666666666666;
+    let mut theta = phi + correction;
+    if steep {
+        theta = (std::f64::consts::PI / 2.0) - theta;
+    }
+    if negative_x {
+        theta = std::f64::consts::PI - theta;
+    }
+    if negative_y {
+        theta = -theta;
+    }
+    theta
+}
+
+fn mth_atan2_table_entry(index: usize) -> (f64, f64) {
+    let value = index as f64 / 256.0;
+    let asin = value.asin();
+    (asin, asin.cos())
+}
+
 /// Return Java `Mth.ceilLong(double)` with Java's floating-point-to-long narrowing.
 pub fn ceil_long_f64(value: f64) -> i64 {
     value.ceil() as i64

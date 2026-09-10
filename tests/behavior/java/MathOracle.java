@@ -451,6 +451,9 @@ public final class MathOracle {
             int y = request.get("y").getAsInt();
             int z = request.get("z").getAsInt();
             result.addProperty("value", Long.toString(Mth.getSeed(x, y, z)));
+        } else if (operation.equals("mth_atan2")) {
+            result.addProperty("bits", Oracle.bits(Mth.atan2(
+                f64(request, "y"), f64(request, "x"))));
         } else if (operation.equals("mth_integer_helpers")) {
             String width = request.get("type").getAsString();
             String function = request.get("fn").getAsString();
