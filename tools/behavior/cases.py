@@ -1349,6 +1349,24 @@ def math_cases():
         yield {"case_id": f"direction/nearest/{name}", "family": "math",
                "operation": "direction_nearest", "kind": kind, "x": str(x),
                "y": str(y), "z": str(z), "or_else": or_else}
+    direction_axis_step_values = [
+        ("x-smaller", vector_bits(1.0, 0.0, 2.0)),
+        ("z-smaller", vector_bits(2.0, 0.0, 1.0)),
+        ("tie", vector_bits(2.0, 0.0, 2.0)),
+        ("negative-x-smaller", vector_bits(-1.0, 0.0, 2.0)),
+        ("negative-both", vector_bits(-2.0, 0.0, -3.0)),
+        ("zero", vector_bits(0.0, 0.0, 0.0)),
+        ("signed-zero", {"x": "8000000000000000", "y": "0000000000000000", "z": "0000000000000000"}),
+        ("subnormal-x", {"x": "0000000000000001", "y": "0000000000000000", "z": "0000000000000002"}),
+        ("positive-infinity-x", {"x": "7ff0000000000000", "y": "0000000000000000", "z": float_bits(1.0, "f64")}),
+        ("positive-infinity-z", {"x": float_bits(1.0, "f64"), "y": "0000000000000000", "z": "7ff0000000000000"}),
+        ("both-infinity", {"x": "7ff0000000000000", "y": "0000000000000000", "z": "7ff0000000000000"}),
+        ("nan-x", {"x": "7ff8000000000001", "y": "0000000000000000", "z": float_bits(1.0, "f64")}),
+        ("nan-z", {"x": float_bits(1.0, "f64"), "y": "0000000000000000", "z": "7ff8000000000001"}),
+    ]
+    for name, vector in direction_axis_step_values:
+        yield {"case_id": f"direction/axis-step-order/{name}", "family": "math",
+               "operation": "direction_axis_step_order", **vector}
     coords = [0, 1, 15, 16, 17, -1, -15, -16, -17, 31, 32, -32, -33,
               2147483647, -2147483648, 33554431, -33554432, 2097151, -2097152]
     for fn in ("block_to_section", "section_to_block", "section_relative"):

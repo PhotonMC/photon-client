@@ -171,6 +171,15 @@ impl Direction {
         }
     }
 
+    /// Return Java `Direction.axisStepOrder(Vec3)` using the strict X/Z magnitude check.
+    pub fn axis_step_order(x: f64, z: f64) -> [Axis; 3] {
+        if x.abs() < z.abs() {
+            [Axis::Y, Axis::Z, Axis::X]
+        } else {
+            [Axis::Y, Axis::X, Axis::Z]
+        }
+    }
+
     /// Choose the direction with the greatest Java float dot product.
     pub fn approximate_nearest(dx: f64, dy: f64, dz: f64) -> Self {
         let dx = dx as f32;

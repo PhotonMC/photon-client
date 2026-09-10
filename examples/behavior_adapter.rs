@@ -3178,6 +3178,12 @@ fn math_result(request: &Value) -> Result<Value, String> {
             None => json!({}),
         });
     }
+    if operation == "direction_axis_step_order" {
+        let axes = Direction::axis_step_order(f64_field(request, "x")?, f64_field(request, "z")?);
+        return Ok(json!({
+            "axes": axes.into_iter().map(Axis::name).collect::<Vec<_>>(),
+        }));
+    }
     if operation == "coord" {
         let value = string(request, "value")?
             .parse::<i32>()

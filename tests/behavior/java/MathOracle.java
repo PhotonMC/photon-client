@@ -116,6 +116,12 @@ public final class MathOracle {
             } else {
                 result.add("value", snapshot(facing));
             }
+        } else if (operation.equals("direction_axis_step_order")) {
+            var axes = new JsonArray();
+            for (Direction.Axis axis : Direction.axisStepOrder(vec3(request))) {
+                axes.add(axis.getName());
+            }
+            result.add("axes", axes);
         } else if (operation.equals("coord")) {
             int value = Integer.parseInt(request.get("value").getAsString());
             String fn = request.get("fn").getAsString();
