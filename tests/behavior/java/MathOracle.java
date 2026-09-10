@@ -508,6 +508,16 @@ public final class MathOracle {
             result.add("relative_direction_steps", snapshot(pos.relative(direction, steps)));
             result.add("relative_axis_steps", snapshot(pos.relative(axis, steps)));
             result.add("cardinal", cardinal);
+        } else if (operation.equals("blockpos_vector_helpers")) {
+            BlockPos pos = blockPos(request);
+            BlockPos delta = new BlockPos(
+                Integer.parseInt(request.get("dx").getAsString()),
+                Integer.parseInt(request.get("dy").getAsString()),
+                Integer.parseInt(request.get("dz").getAsString()));
+            int scale = Integer.parseInt(request.get("scale").getAsString());
+            result.add("offset_vec3i", snapshot(pos.offset(delta)));
+            result.add("subtract_vec3i", snapshot(pos.subtract(delta)));
+            result.add("multiply", snapshot(pos.multiply(scale)));
         } else if (operation.equals("section_relative")) {
             short relative = SectionPos.sectionRelativePos(blockPos(request));
             result.addProperty("relative", Integer.toString(Short.toUnsignedInt(relative)));

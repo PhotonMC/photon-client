@@ -282,6 +282,14 @@ fn blockpos_relative_helpers_snapshot(
     })
 }
 
+fn blockpos_vector_helpers_snapshot(value: BlockPos, delta: BlockPos, scale: i32) -> Value {
+    json!({
+        "offset_vec3i": blockpos_snapshot(value.offset_by_block_pos(delta)),
+        "subtract_vec3i": blockpos_snapshot(value.subtract_block_pos(delta)),
+        "multiply": blockpos_snapshot(value.multiply(scale)),
+    })
+}
+
 fn chunkpos(value: &Value) -> Result<ChunkPos, String> {
     let coordinate = |name: &str| {
         string(value, name)?
@@ -1923,6 +1931,16 @@ fn math_result(request: &Value) -> Result<Value, String> {
         return Ok(blockpos_relative_helpers_snapshot(
             value, direction, axis, steps,
         ));
+    }
+    if operation == "blockpos_vector_helpers" {
+        let value = blockpos(request)?;
+        let delta = BlockPos::new(
+            i32_string_field(request, "dx")?,
+            i32_string_field(request, "dy")?,
+            i32_string_field(request, "dz")?,
+        );
+        let scale = i32_string_field(request, "scale")?;
+        return Ok(blockpos_vector_helpers_snapshot(value, delta, scale));
     }
     if operation == "section_relative" {
         return section_relative_result(request);

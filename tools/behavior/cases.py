@@ -1623,6 +1623,27 @@ def math_cases():
     for label, values in blockpos_relative_helpers.items():
         yield {"case_id": f"blockpos/relative-helpers/{label}", "family": "math",
                "operation": "blockpos_relative_helpers", **values}
+    blockpos_vector_helpers = {
+        "basic": {
+            "x": "10", "y": "-20", "z": "30", "dx": "2", "dy": "3", "dz": "-4", "scale": "3",
+        },
+        "zero-delta-scale-one": {
+            "x": "-10", "y": "20", "z": "-30", "dx": "0", "dy": "0", "dz": "0", "scale": "1",
+        },
+        "zero-scale": {
+            "x": "17", "y": "-16", "z": "1", "dx": "-5", "dy": "6", "dz": "-7", "scale": "0",
+        },
+        "negative": {
+            "x": "-17", "y": "16", "z": "-1", "dx": "5", "dy": "-6", "dz": "7", "scale": "-3",
+        },
+        "overflow": {
+            "x": "2147483647", "y": "-2147483648", "z": "2147483647",
+            "dx": "-2147483648", "dy": "2147483647", "dz": "-2147483648", "scale": "-2147483648",
+        },
+    }
+    for label, values in blockpos_vector_helpers.items():
+        yield {"case_id": f"blockpos/vector-helpers/{label}", "family": "math",
+               "operation": "blockpos_vector_helpers", **values}
     for label, (x, y, z) in {
         "origin": (0, 0, 0),
         "positive-boundary": (15, 15, 15),

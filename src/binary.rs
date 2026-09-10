@@ -186,6 +186,35 @@ impl BlockPos {
         }
     }
 
+    /// Return Java `BlockPos.offset(Vec3i)` with a block position as delta.
+    pub fn offset_by_block_pos(self, delta: Self) -> Self {
+        self.offset(delta.x, delta.y, delta.z)
+    }
+
+    /// Return Java `BlockPos.subtract(Vec3i)` with wrapping unary negation.
+    pub fn subtract_block_pos(self, delta: Self) -> Self {
+        self.offset(
+            delta.x.wrapping_neg(),
+            delta.y.wrapping_neg(),
+            delta.z.wrapping_neg(),
+        )
+    }
+
+    /// Return Java `BlockPos.multiply(int)` with Java i32 wrapping arithmetic.
+    pub fn multiply(self, scale: i32) -> Self {
+        if scale == 1 {
+            self
+        } else if scale == 0 {
+            Self::ZERO
+        } else {
+            Self::new(
+                self.x.wrapping_mul(scale),
+                self.y.wrapping_mul(scale),
+                self.z.wrapping_mul(scale),
+            )
+        }
+    }
+
     /// Return Java `BlockPos.relative(Direction)` and its stepped overload.
     pub fn relative_direction(self, direction: Direction, steps: i32) -> Self {
         if steps == 0 {
