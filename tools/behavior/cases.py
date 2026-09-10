@@ -3043,6 +3043,36 @@ def math_cases():
         yield {"case_id": f"mth/fast-inv-sqrt/{label}", "family": "math",
                "operation": "mth_fast_inv_sqrt", "input": input_value}
 
+    mth_fast_inv_cube_root = [
+        ("zero", "00000000"),
+        ("negative-zero", "80000000"),
+        ("one", "3f800000"),
+        ("one-below", "3f7fffff"),
+        ("one-above", "3f800001"),
+        ("eight", "41000000"),
+        ("eighth", "3e000000"),
+        ("twenty-seven", "41d80000"),
+        ("pi", float_bits(math.pi, "f32")),
+        ("large", float_bits(1.0e20, "f32")),
+        ("max", "7f7fffff"),
+        ("min-normal", "00800000"),
+        ("positive-subnormal", "00000001"),
+        ("negative-one", "bf800000"),
+        ("negative-eight", "c1000000"),
+        ("negative-max", "ff7fffff"),
+        ("negative-min-normal", "80800000"),
+        ("negative-subnormal", "80000001"),
+        ("infinity", "7f800000"),
+        ("negative-infinity", "ff800000"),
+        ("nan", "7fc00000"),
+        ("nan-payload", "7fc12345"),
+        ("negative-nan-payload", "ffc12345"),
+        ("tiny-neighbor", "00000002"),
+    ]
+    for label, input_value in mth_fast_inv_cube_root:
+        yield {"case_id": f"mth/fast-inv-cube-root/{label}", "family": "math",
+               "operation": "mth_fast_inv_cube_root", "input": input_value}
+
     mth_integer_helpers = [
         ("floor-div/int/negative-remainder", "i32", "floor_div", "-7", "3"),
         ("floor-div/int/negative-divisor", "i32", "floor_div", "7", "-3"),

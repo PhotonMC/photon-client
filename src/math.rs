@@ -740,6 +740,19 @@ pub fn mth_fast_inv_sqrt_f64(mut value: f64) -> f64 {
     value * (1.5 - half * value * value)
 }
 
+/// Return Java `Mth.fastInvCubeRoot(float)` with two f32 corrections.
+pub fn mth_fast_inv_cube_root_f32(value: f32) -> f32 {
+    let bits = if value.is_nan() {
+        0x7fc0_0000
+    } else {
+        value.to_bits()
+    };
+    let seed = 1_419_967_116_i32.wrapping_sub((bits as i32) / 3);
+    let mut estimate = f32::from_bits(seed as u32);
+    estimate = 0.6666667_f32 * estimate + 1.0_f32 / (3.0_f32 * estimate * estimate * value);
+    0.6666667_f32 * estimate + 1.0_f32 / (3.0_f32 * estimate * estimate * value)
+}
+
 /// Return Java `Mth.ceilLong(double)` with Java's floating-point-to-long narrowing.
 pub fn ceil_long_f64(value: f64) -> i64 {
     value.ceil() as i64

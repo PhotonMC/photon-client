@@ -386,6 +386,9 @@ public final class MathOracle {
             result.addProperty("value", Mth.rayIntersectsAABB(rayStart, rayDir, aabb));
         } else if (operation.equals("mth_fast_inv_sqrt")) {
             result.addProperty("bits", Oracle.bits(Mth.fastInvSqrt(f64(request, "input"))));
+        } else if (operation.equals("mth_fast_inv_cube_root")) {
+            result.addProperty("bits", Oracle.bits(Mth.fastInvCubeRoot(
+                Oracle.f32(request, "input"))));
         } else if (operation.equals("mth_integer_helpers")) {
             String width = request.get("type").getAsString();
             String function = request.get("fn").getAsString();
