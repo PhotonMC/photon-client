@@ -3321,6 +3321,14 @@ fn math_result(request: &Value) -> Result<Value, String> {
             }),
         });
     }
+    if operation == "direction_approximate_nearest" {
+        let facing = Direction::approximate_nearest(
+            f64_field(request, "x")?,
+            f64_field(request, "y")?,
+            f64_field(request, "z")?,
+        );
+        return Ok(json!({"value": direction_snapshot(facing)}));
+    }
     if operation == "direction_nearest" {
         let coordinate = |name: &str| {
             string(request, name)?

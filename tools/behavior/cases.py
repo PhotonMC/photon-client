@@ -1381,6 +1381,27 @@ def math_cases():
     for name in ("down", "up", "north", "south", "west", "east"):
         yield {"case_id": f"direction/get-y-rot/{name}", "family": "math",
                "operation": "direction_get_y_rot", "name": name}
+    direction_approximate_nearest_cases = [
+        ("south", vector_bits(0.0, 0.0, 1.0)),
+        ("north", vector_bits(0.0, 0.0, -1.0)),
+        ("east", vector_bits(1.0, 0.0, 0.0)),
+        ("west", vector_bits(-1.0, 0.0, 0.0)),
+        ("up", vector_bits(0.0, 1.0, 0.0)),
+        ("down", vector_bits(0.0, -1.0, 0.0)),
+        ("zero", vector_bits(0.0, 0.0, 0.0)),
+        ("all-negative", vector_bits(-1.0, -1.0, -1.0)),
+        ("tie-horizontal", vector_bits(1.0, 0.0, 1.0)),
+        ("tie-vertical-horizontal", vector_bits(1.0, 1.0, 0.0)),
+        ("f64-to-f32", vector_bits(1.0000000596046448, 0.0, 0.0)),
+        ("positive-infinity-x", {"x": "7ff0000000000000", "y": "0000000000000000", "z": "0000000000000000"}),
+        ("negative-infinity-z", {"x": "0000000000000000", "y": "0000000000000000", "z": "fff0000000000000"}),
+        ("nan-x", {"x": "7ff8000000000001", "y": "0000000000000000", "z": "0000000000000000"}),
+        ("subnormal", {"x": "0000000000000001", "y": "0000000000000000", "z": "0000000000000000"}),
+        ("max-finite", {"x": "7fefffffffffffff", "y": "0000000000000000", "z": "0000000000000000"}),
+    ]
+    for name, vector in direction_approximate_nearest_cases:
+        yield {"case_id": f"direction/approximate-nearest/{name}", "family": "math",
+               "operation": "direction_approximate_nearest", **vector}
     direction_nearest_cases = [
         ("components/x-positive", "components", 3, 1, 2, "none"),
         ("components/x-negative", "components", -3, 1, 2, "none"),

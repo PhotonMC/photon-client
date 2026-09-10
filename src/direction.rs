@@ -252,7 +252,7 @@ impl Direction {
         normal_x as f32 * dx + normal_z as f32 * dz > 0.0
     }
 
-    /// Choose the direction with the greatest Java float dot product.
+    /// Return Java `Direction.getApproximateNearest(double, double, double)`.
     pub fn approximate_nearest(dx: f64, dy: f64, dz: f64) -> Self {
         let dx = dx as f32;
         let dy = dy as f32;

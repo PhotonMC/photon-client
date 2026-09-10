@@ -244,6 +244,9 @@ public final class MathOracle {
                 result.addProperty("outcome", "error");
                 result.addProperty("error", error.getMessage());
             }
+        } else if (operation.equals("direction_approximate_nearest")) {
+            result.add("value", snapshot(Direction.getApproximateNearest(
+                f64(request, "x"), f64(request, "y"), f64(request, "z"))));
         } else if (operation.equals("direction_nearest")) {
             Direction fallback = directionOrElse(request);
             Direction facing;
