@@ -836,6 +836,11 @@ pub fn mth_cube_f32(x: f32) -> f32 {
     x * x * x
 }
 
+/// Return Java `Mth.square(double)` in source order.
+pub fn mth_square_f64(x: f64) -> f64 {
+    x * x
+}
+
 /// Return Java `Mth.nextInt(RandomSource, int, int)`, including its
 /// min-greater-than-or-equal-to-max short circuit.
 pub fn mth_next_int(

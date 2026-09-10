@@ -3378,6 +3378,27 @@ def math_cases():
         yield {"case_id": f"mth/cube-f32/{label}", "family": "math",
                "operation": "mth_cube_f32", "x": float_bits(x, "f32")}
 
+    mth_square_f64 = [
+        ("basic", 3.0),
+        ("zero", 0.0),
+        ("signed-zero", -0.0),
+        ("negative-fractional", -1.5),
+        ("fractional", 1.5),
+        ("minimum-positive-subnormal", float.fromhex("0x0.0000000000001p-1022")),
+        ("subnormal-result", float.fromhex("0x1.0p-537")),
+        ("large-finite", float.fromhex("0x1.0p511")),
+        ("overflow-finite", float.fromhex("0x1.0p512")),
+        ("maximum-finite", float.fromhex("0x1.fffffffffffffp1023")),
+        ("negative-maximum-finite", -float.fromhex("0x1.fffffffffffffp1023")),
+        ("positive-infinity", float("inf")),
+        ("negative-infinity", float("-inf")),
+        ("nan", float("nan")),
+        ("rounding-boundary", float.fromhex("0x1.0000000000001p0")),
+    ]
+    for label, x in mth_square_f64:
+        yield {"case_id": f"mth/square-f64/{label}", "family": "math",
+               "operation": "mth_square_f64", "x": float_bits(x, "f64")}
+
 
 def timer_cases():
     def trace(label, steps, start=0, tps=20, target=50):
