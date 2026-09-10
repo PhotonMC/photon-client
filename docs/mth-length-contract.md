@@ -8,4 +8,4 @@ Her senaryo girdileri overload'un gerçek parametre hassasiyetinde raw f32 veya 
 
 İncelenen kaynak konumu: `net/minecraft/util/Mth.java:702-726`.
 
-Kapsam dışı kalanlar: Vec2/Vec3 `length` ve `lengthSqr` metotları, `Mth.quantize`, `Mth.outFromOrigin` ve bu yardımcıları kullanan istemci çağrı zincirleri.
+Kapsam dışı kalanlar: Vec2/Vec3 `length` ve `lengthSqr` metotları, `Mth.quantize`, `Mth.outFromOrigin` dışındaki sonraki `Mth` yardımcıları ve bu yardımcıları kullanan istemci çağrı zincirleri.

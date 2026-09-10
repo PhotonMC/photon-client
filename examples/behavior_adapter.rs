@@ -2567,6 +2567,21 @@ fn math_result(request: &Value) -> Result<Value, String> {
             "value": math::mth_quantize(value, resolution).to_string()
         }));
     }
+    if operation == "mth_out_from_origin" {
+        let origin = i32_string_field(request, "origin")?;
+        let lower_bound = i32_string_field(request, "lower")?;
+        let upper_bound = i32_string_field(request, "upper")?;
+        let step_size = match string(request, "mode")? {
+            "default" => 1,
+            "step" => i32_string_field(request, "step")?,
+            _ => return Err("unknown Mth outFromOrigin mode".into()),
+        };
+        let result = match math::mth_out_from_origin(origin, lower_bound, upper_bound, step_size) {
+            Ok(values) => json!({"outcome": "value", "value": values}),
+            Err(error) => json!({"outcome": "error", "error": error}),
+        };
+        return Ok(result);
+    }
     if operation == "vec2" {
         let mut vector = Vec2::new(f32_field(request, "x")?, f32_field(request, "y")?);
         let mut events = vec![vec2_snapshot(vector)];

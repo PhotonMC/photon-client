@@ -8,4 +8,4 @@ Her senaryo `value` için raw f64 bit string'i, `resolution` için signed i32 de
 
 İncelenen kaynak konumu: `net/minecraft/util/Mth.java:62-68,726-728`.
 
-Kapsam dışı kalanlar: `Mth.outFromOrigin`, `roundToward`, `positiveCeilDiv` ve quantize sonucunu kullanan istemci çağrı zincirleri.
+Kapsam dışı kalanlar: `roundToward`, `positiveCeilDiv` ve quantize sonucunu kullanan istemci çağrı zincirleri.

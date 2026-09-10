@@ -801,6 +801,56 @@ pub fn mth_quantize(value: f64, resolution: i32) -> i32 {
     floored.wrapping_mul(resolution)
 }
 
+/// Return Java `Mth.outFromOrigin(int, int, int, int)` as an ordered list.
+pub fn mth_out_from_origin(
+    origin: i32,
+    lower_bound: i32,
+    upper_bound: i32,
+    step_size: i32,
+) -> Result<Vec<i32>, String> {
+    if lower_bound > upper_bound {
+        return Err(format!(
+            "upperBound {upper_bound} expected to be > lowerBound {lower_bound}"
+        ));
+    }
+    if step_size < 1 {
+        return Err(format!("step size expected to be >= 1, was {step_size}"));
+    }
+
+    let clamped_origin = clamp_i32(origin, lower_bound, upper_bound);
+    let mut cursor = clamped_origin;
+    let mut values = Vec::new();
+    loop {
+        let current_distance = clamped_origin.wrapping_sub(cursor).wrapping_abs();
+        let has_next = clamped_origin.wrapping_sub(current_distance) >= lower_bound
+            || clamped_origin.wrapping_add(current_distance) <= upper_bound;
+        if !has_next {
+            break;
+        }
+        values.push(cursor);
+
+        let previous_was_negative = cursor <= clamped_origin;
+        let can_move_positive = clamped_origin
+            .wrapping_add(current_distance)
+            .wrapping_add(step_size)
+            <= upper_bound;
+        if !previous_was_negative || !can_move_positive {
+            let attempted_step = clamped_origin
+                .wrapping_sub(current_distance)
+                .wrapping_sub(if previous_was_negative { step_size } else { 0 });
+            if attempted_step >= lower_bound {
+                cursor = attempted_step;
+                continue;
+            }
+        }
+
+        cursor = clamped_origin
+            .wrapping_add(current_distance)
+            .wrapping_add(step_size);
+    }
+    Ok(values)
+}
+
 /// Return Java `Math.floorDiv(int, int)`, including Java's signed overflow.
 pub fn floor_div_i32(dividend: i32, divisor: i32) -> i32 {
     if divisor == 0 {

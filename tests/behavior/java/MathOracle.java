@@ -523,6 +523,26 @@ public final class MathOracle {
         } else if (operation.equals("mth_quantize")) {
             result.addProperty("value", Integer.toString(Mth.quantize(
                 f64(request, "value"), Integer.parseInt(request.get("resolution").getAsString()))));
+        } else if (operation.equals("mth_out_from_origin")) {
+            int origin = Integer.parseInt(request.get("origin").getAsString());
+            int lowerBound = Integer.parseInt(request.get("lower").getAsString());
+            int upperBound = Integer.parseInt(request.get("upper").getAsString());
+            try {
+                var positions = switch (request.get("mode").getAsString()) {
+                    case "default" -> Mth.outFromOrigin(origin, lowerBound, upperBound);
+                    case "step" -> Mth.outFromOrigin(origin, lowerBound, upperBound,
+                        Integer.parseInt(request.get("step").getAsString()));
+                    default -> throw new IllegalArgumentException("Unknown Mth outFromOrigin mode");
+                };
+                var values = new JsonArray();
+                positions.forEach(value -> values.add(value));
+                result.addProperty("outcome", "value");
+                result.add("value", values);
+            } catch (IllegalArgumentException error) {
+                result.addProperty("outcome", "error");
+                result.addProperty("error", error.getMessage());
+                result.addProperty("java_exception", error.getClass().getName());
+            }
         } else if (operation.equals("vec3")) {
             Vec3 vector = new Vec3(f64(request, "x"), f64(request, "y"), f64(request, "z"));
             var events = new JsonArray();

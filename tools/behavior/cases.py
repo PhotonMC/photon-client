@@ -3052,6 +3052,36 @@ def math_cases():
                "operation": "mth_quantize", "value": float_bits(value, "f64"),
                "resolution": str(resolution)}
 
+    mth_out_from_origin = [
+        ("default-symmetric", {"mode": "default", "origin": "0", "lower": "-3", "upper": "3"}),
+        ("default-negative-symmetric", {"mode": "default", "origin": "-1", "lower": "-4", "upper": "2"}),
+        ("default-singleton", {"mode": "default", "origin": "10", "lower": "4", "upper": "4"}),
+        ("default-origin-below", {"mode": "default", "origin": "-20", "lower": "2", "upper": "6"}),
+        ("default-origin-above", {"mode": "default", "origin": "20", "lower": "-6", "upper": "-2"}),
+        ("default-origin-at-lower", {"mode": "default", "origin": "-3", "lower": "-3", "upper": "4"}),
+        ("default-origin-at-upper", {"mode": "default", "origin": "5", "lower": "-4", "upper": "5"}),
+        ("default-left-asymmetric", {"mode": "default", "origin": "-1", "lower": "-5", "upper": "1"}),
+        ("default-right-asymmetric", {"mode": "default", "origin": "1", "lower": "-1", "upper": "5"}),
+        ("default-i32-origin-min", {"mode": "default", "origin": str(-(1 << 31)), "lower": "-2", "upper": "2"}),
+        ("default-i32-origin-max", {"mode": "default", "origin": str((1 << 31) - 1), "lower": "-2", "upper": "2"}),
+        ("step-two-symmetric", {"mode": "step", "origin": "0", "lower": "-6", "upper": "6", "step": "2"}),
+        ("step-two-offset", {"mode": "step", "origin": "1", "lower": "-5", "upper": "7", "step": "2"}),
+        ("step-three-asymmetric", {"mode": "step", "origin": "2", "lower": "-7", "upper": "8", "step": "3"}),
+        ("step-exact-upper", {"mode": "step", "origin": "0", "lower": "-4", "upper": "4", "step": "4"}),
+        ("step-exceeds-range", {"mode": "step", "origin": "0", "lower": "-2", "upper": "2", "step": "5"}),
+        ("step-clamped-below", {"mode": "step", "origin": "-20", "lower": "2", "upper": "9", "step": "3"}),
+        ("step-clamped-above", {"mode": "step", "origin": "20", "lower": "-9", "upper": "2", "step": "3"}),
+        ("step-singleton", {"mode": "step", "origin": "0", "lower": "7", "upper": "7", "step": "1"}),
+        ("step-i32-max", {"mode": "step", "origin": "0", "lower": "-1", "upper": "1", "step": str((1 << 31) - 1)}),
+        ("invalid-reversed", {"mode": "default", "origin": "0", "lower": "4", "upper": "-4"}),
+        ("invalid-zero-step", {"mode": "step", "origin": "0", "lower": "-1", "upper": "1", "step": "0"}),
+        ("invalid-negative-step", {"mode": "step", "origin": "0", "lower": "-1", "upper": "1", "step": "-2"}),
+        ("invalid-both", {"mode": "step", "origin": "0", "lower": "2", "upper": "-2", "step": "0"}),
+    ]
+    for label, values in mth_out_from_origin:
+        yield {"case_id": f"mth/out-from-origin/{label}", "family": "math",
+               "operation": "mth_out_from_origin", **values}
+
 
 def timer_cases():
     def trace(label, steps, start=0, tps=20, target=50):
