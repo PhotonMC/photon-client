@@ -624,6 +624,8 @@ public final class MathOracle {
         } else if (operation.equals("mth_triangle_wave")) {
             result.addProperty("bits", Oracle.bits(Mth.triangleWave(
                 Oracle.f32(request, "index"), Oracle.f32(request, "period"))));
+        } else if (operation.equals("mth_square_f32")) {
+            result.addProperty("bits", Oracle.bits(Mth.square(Oracle.f32(request, "x"))));
         } else if (operation.equals("vec3")) {
             Vec3 vector = new Vec3(f64(request, "x"), f64(request, "y"), f64(request, "z"));
             var events = new JsonArray();
