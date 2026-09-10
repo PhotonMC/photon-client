@@ -233,6 +233,85 @@ def wire_cases():
         yield {"case_id": f"login/server-hello/read/{label}", "family": "wire",
                "operation": "login_server_hello", "direction": "read", "hex": encoded}
 
+    acknowledgement_writes = [
+        ("empty", ""),
+        ("with-prefix", "deadbeef"),
+    ]
+    for label, prefix_hex in acknowledgement_writes:
+        yield {"case_id": f"login/acknowledged/write/{label}", "family": "wire",
+               "operation": "login_acknowledged", "direction": "write", "prefix_hex": prefix_hex}
+
+    acknowledgement_reads = [
+        ("empty", ""),
+        ("trailing", "aabbcc"),
+        ("zero", "00"),
+    ]
+    for label, encoded in acknowledgement_reads:
+        yield {"case_id": f"login/acknowledged/read/{label}", "family": "wire",
+               "operation": "login_acknowledged", "direction": "read", "hex": encoded}
+
+    def profile_property(name, value, signature=None):
+        return {"name_utf16_hex": utf16_hex(name), "value_utf16_hex": utf16_hex(value),
+                "signature_utf16_hex": None if signature is None else utf16_hex(signature)}
+
+    profile_id = ("0123456789abcdef", "fedcba9876543210")
+    session_id = ("0011223344556677", "8899aabbccddeeff")
+
+    finished_writes = [
+        ("basic", "Player", [], ""),
+        ("empty", "", [], "aa55"),
+        ("unicode-signed", "😀Alex", [profile_property("textures", "payload", "signature")], ""),
+        ("maximum-name", "a" * 16,
+         [profile_property("p", f"v{index}") for index in range(16)], ""),
+        ("too-many-properties", "Player",
+         [profile_property(f"p{index}", f"v{index}") for index in range(17)], ""),
+        ("too-long-name", "a" * 17, [], ""),
+        ("property-name-too-long", "Player", [profile_property("n" * 65, "v")], ""),
+        ("property-value-too-long", "Player", [profile_property("n", "v" * 32768)], ""),
+        ("signature-too-long", "Player", [profile_property("n", "v", "s" * 1025)], ""),
+    ]
+    for label, name, properties, prefix_hex in finished_writes:
+        yield {"case_id": f"login/finished/write/{label}", "family": "wire",
+               "operation": "login_finished", "direction": "write",
+               "profile_most_hex": profile_id[0], "profile_least_hex": profile_id[1],
+               "name_utf16_hex": utf16_hex(name), "properties": properties,
+               "session_most_hex": session_id[0], "session_least_hex": session_id[1],
+               "prefix_hex": prefix_hex}
+
+    def property_hex(name_bytes, value_bytes, signature_bytes=None):
+        result = varint_hex(len(name_bytes)) + name_bytes.hex()
+        result += varint_hex(len(value_bytes)) + value_bytes.hex()
+        if signature_bytes is None:
+            return result + "00"
+        return result + "01" + varint_hex(len(signature_bytes)) + signature_bytes.hex()
+
+    def finished_hex(name_bytes, properties, profile=("0123456789abcdef", "fedcba9876543210"),
+                     session=("0011223344556677", "8899aabbccddeeff")):
+        return (profile[0] + profile[1] + varint_hex(len(name_bytes)) + name_bytes.hex()
+                + varint_hex(len(properties)) + "".join(properties)
+                + session[0] + session[1])
+
+    finished_reads = [
+        ("basic", finished_hex(b"Player", [])),
+        ("signed-property", finished_hex(b"Player", [property_hex(b"textures", b"payload", b"signature")])),
+        ("trailing", finished_hex(b"Player", []) + "aabb"),
+        ("profile-first-underflow", "00" * 7),
+        ("profile-second-underflow", "00" * 15),
+        ("name-underflow", profile_id[0] + profile_id[1] + "01"),
+        ("name-too-long", profile_id[0] + profile_id[1] + varint_hex(49)),
+        ("property-count-too-large", finished_hex(b"Player", [])[:-34] + varint_hex(17)),
+        ("property-count-negative", finished_hex(b"", [])[:-34] + varint_hex(-1) + session_id[0] + session_id[1]),
+        ("property-name-underflow", finished_hex(b"", [])[:-34] + varint_hex(1)),
+        ("property-value-underflow", finished_hex(b"", [])[:-34] + varint_hex(1) + varint_hex(1) + b"n".hex() + "01"),
+        ("signature-underflow", finished_hex(b"", [])[:-34] + varint_hex(1)
+         + property_hex(b"n", b"v")[:-2] + "01" + "01"),
+        ("session-first-underflow", finished_hex(b"", [])[:-32] + "00" * 7),
+        ("session-second-underflow", finished_hex(b"", [])[:-32] + "00" * 15),
+    ]
+    for label, encoded in finished_reads:
+        yield {"case_id": f"login/finished/read/{label}", "family": "wire",
+               "operation": "login_finished", "direction": "read", "hex": encoded}
+
     status_request_writes = [
         ("empty", ""),
         ("with-prefix", "deadbeef"),

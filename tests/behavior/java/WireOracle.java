@@ -1,5 +1,10 @@
 import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.common.collect.ArrayListMultimap;
+import com.mojang.authlib.GameProfile;
+import com.mojang.authlib.properties.Property;
+import com.mojang.authlib.properties.PropertyMap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.buffer.Unpooled;
@@ -20,6 +25,8 @@ import net.minecraft.network.protocol.handshake.ClientIntent;
 import net.minecraft.network.protocol.handshake.ClientIntentionPacket;
 import net.minecraft.network.protocol.login.ClientboundHelloPacket;
 import net.minecraft.network.protocol.login.ClientboundLoginCompressionPacket;
+import net.minecraft.network.protocol.login.ClientboundLoginFinishedPacket;
+import net.minecraft.network.protocol.login.ServerboundLoginAcknowledgedPacket;
 import net.minecraft.network.protocol.login.ServerboundHelloPacket;
 import net.minecraft.network.protocol.ping.ClientboundPongResponsePacket;
 import net.minecraft.network.protocol.ping.ServerboundPingRequestPacket;
@@ -45,6 +52,12 @@ public final class WireOracle {
         }
         if (operation.equals("login_server_hello")) {
             return loginServerHelloResult(request);
+        }
+        if (operation.equals("login_acknowledged")) {
+            return loginAcknowledgedResult(request);
+        }
+        if (operation.equals("login_finished")) {
+            return loginFinishedResult(request);
         }
         if (operation.equals("status_request")) {
             return statusRequestResult(request);
@@ -444,6 +457,150 @@ public final class WireOracle {
         }
 
         throw new IllegalArgumentException("Unknown server hello direction");
+    }
+
+    private static JsonObject loginAcknowledgedResult(JsonObject request) {
+        String direction = request.get("direction").getAsString();
+        if (direction.equals("write")) {
+            byte[] prefix = HexFormat.of().parseHex(request.get("prefix_hex").getAsString());
+            ByteBuf buffer = Unpooled.buffer();
+            try {
+                buffer.writeBytes(prefix);
+                ServerboundLoginAcknowledgedPacket.STREAM_CODEC.encode(
+                    buffer, ServerboundLoginAcknowledgedPacket.INSTANCE
+                );
+                var result = new JsonObject();
+                result.addProperty("outcome", "value");
+                result.addProperty("written", buffer.writerIndex() - prefix.length);
+                result.addProperty("hex", ByteBufUtil.hexDump(buffer));
+                return result;
+            } finally {
+                buffer.release();
+            }
+        }
+
+        if (direction.equals("read")) {
+            ByteBuf buffer = Unpooled.buffer();
+            try {
+                buffer.writeBytes(HexFormat.of().parseHex(request.get("hex").getAsString()));
+                ServerboundLoginAcknowledgedPacket packet = ServerboundLoginAcknowledgedPacket.STREAM_CODEC.decode(buffer);
+                var result = new JsonObject();
+                result.addProperty("singleton", packet == ServerboundLoginAcknowledgedPacket.INSTANCE);
+                result.addProperty("outcome", "value");
+                result.addProperty("consumed", buffer.readerIndex());
+                result.addProperty("remaining_hex", ByteBufUtil.hexDump(buffer));
+                return result;
+            } finally {
+                buffer.release();
+            }
+        }
+
+        throw new IllegalArgumentException("Unknown login acknowledgement direction");
+    }
+
+    private static JsonObject loginFinishedResult(JsonObject request) {
+        String direction = request.get("direction").getAsString();
+        if (direction.equals("write")) {
+            GameProfile profile = profileFromRequest(request);
+            UUID sessionId = uuidFromHex(request, "session");
+            byte[] prefix = HexFormat.of().parseHex(request.get("prefix_hex").getAsString());
+            ByteBuf buffer = Unpooled.buffer();
+            try {
+                buffer.writeBytes(prefix);
+                var result = new JsonObject();
+                try {
+                    ClientboundLoginFinishedPacket.STREAM_CODEC.encode(
+                        buffer, new ClientboundLoginFinishedPacket(profile, sessionId)
+                    );
+                    result.addProperty("outcome", "value");
+                } catch (EncoderException error) {
+                    result.addProperty("outcome", "error");
+                    result.addProperty("error", "encoder_error");
+                    result.addProperty("java_exception", error.getClass().getName());
+                }
+                result.addProperty("written", buffer.writerIndex() - prefix.length);
+                result.addProperty("hex", ByteBufUtil.hexDump(buffer));
+                return result;
+            } finally {
+                buffer.release();
+            }
+        }
+
+        if (direction.equals("read")) {
+            ByteBuf buffer = Unpooled.buffer();
+            try {
+                buffer.writeBytes(HexFormat.of().parseHex(request.get("hex").getAsString()));
+                var result = new JsonObject();
+                try {
+                    ClientboundLoginFinishedPacket packet = ClientboundLoginFinishedPacket.STREAM_CODEC.decode(buffer);
+                    GameProfile profile = packet.gameProfile();
+                    result.addProperty("profile_most_hex", String.format(Locale.ROOT, "%016x", profile.id().getMostSignificantBits()));
+                    result.addProperty("profile_least_hex", String.format(Locale.ROOT, "%016x", profile.id().getLeastSignificantBits()));
+                    result.addProperty("name_utf16_hex", toUtf16Hex(profile.name()));
+                    result.add("properties", propertiesToJson(profile.properties()));
+                    result.addProperty("session_most_hex", String.format(Locale.ROOT, "%016x", packet.sessionId().getMostSignificantBits()));
+                    result.addProperty("session_least_hex", String.format(Locale.ROOT, "%016x", packet.sessionId().getLeastSignificantBits()));
+                    result.addProperty("outcome", "value");
+                } catch (IndexOutOfBoundsException error) {
+                    result.addProperty("outcome", "error");
+                    result.addProperty("error", "buffer_underflow");
+                    result.addProperty("java_exception", error.getClass().getName());
+                } catch (RuntimeException error) {
+                    result.addProperty("outcome", "error");
+                    result.addProperty("error", error.getClass() == RuntimeException.class ? "too_big" : "decoder_error");
+                    result.addProperty("java_exception", error.getClass().getName());
+                }
+                result.addProperty("consumed", buffer.readerIndex());
+                result.addProperty("remaining_hex", ByteBufUtil.hexDump(buffer));
+                return result;
+            } finally {
+                buffer.release();
+            }
+        }
+
+        throw new IllegalArgumentException("Unknown login finished direction");
+    }
+
+    private static GameProfile profileFromRequest(JsonObject request) {
+        ArrayListMultimap<String, Property> properties = ArrayListMultimap.create();
+        for (var element : request.getAsJsonArray("properties")) {
+            JsonObject value = element.getAsJsonObject();
+            String name = fromUtf16Hex(value.get("name_utf16_hex").getAsString());
+            String propertyValue = fromUtf16Hex(value.get("value_utf16_hex").getAsString());
+            JsonElement signatureValue = value.get("signature_utf16_hex");
+            Property property = signatureValue == null || signatureValue.isJsonNull()
+                ? new Property(name, propertyValue)
+                : new Property(name, propertyValue, fromUtf16Hex(signatureValue.getAsString()));
+            properties.put(name, property);
+        }
+        return new GameProfile(
+            uuidFromHex(request, "profile"),
+            fromUtf16Hex(request.get("name_utf16_hex").getAsString()),
+            new PropertyMap(properties)
+        );
+    }
+
+    private static UUID uuidFromHex(JsonObject request, String prefix) {
+        return new UUID(
+            Long.parseUnsignedLong(request.get(prefix + "_most_hex").getAsString(), 16),
+            Long.parseUnsignedLong(request.get(prefix + "_least_hex").getAsString(), 16)
+        );
+    }
+
+    private static JsonArray propertiesToJson(PropertyMap properties) {
+        JsonArray result = new JsonArray();
+        for (Property property : properties.values()) {
+            var value = new JsonObject();
+            value.addProperty("name_utf16_hex", toUtf16Hex(property.name()));
+            value.addProperty("value_utf16_hex", toUtf16Hex(property.value()));
+            if (property.signature() == null) {
+                value.add("signature_utf16_hex", com.google.gson.JsonNull.INSTANCE);
+            } else {
+                value.addProperty("signature_utf16_hex", toUtf16Hex(property.signature()));
+            }
+            result.add(value);
+        }
+        return result;
     }
 
     private static JsonObject statusRequestResult(JsonObject request) {

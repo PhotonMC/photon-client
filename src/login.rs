@@ -6,6 +6,10 @@ use crate::{utf8, wire};
 pub const MAX_NAME_LENGTH: usize = 16;
 pub const MAX_SERVER_ID_LENGTH: usize = 20;
 pub const MAX_ENCODE_SERVER_ID_LENGTH: usize = 32_767;
+pub const MAX_PROFILE_PROPERTIES: usize = 16;
+pub const MAX_PROPERTY_NAME_LENGTH: usize = 64;
+pub const MAX_PROPERTY_VALUE_LENGTH: usize = 32_767;
+pub const MAX_PROPERTY_SIGNATURE_LENGTH: usize = 1_024;
 
 pub type ReadError = binary::ReadError;
 
@@ -111,6 +115,137 @@ impl ClientboundHelloPacket {
             should_authenticate: should_authenticate != 0,
         })
     }
+}
+
+/// The empty login acknowledgement packet, decoded as its singleton.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ServerboundLoginAcknowledgedPacket;
+
+impl ServerboundLoginAcknowledgedPacket {
+    pub const INSTANCE: Self = Self;
+
+    pub const fn encode(self, _output: &mut Vec<u8>) {}
+
+    pub const fn decode(_input: &mut &[u8]) -> Result<Self, ReadError> {
+        Ok(Self)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ProfileProperty {
+    pub name: Vec<u16>,
+    pub value: Vec<u16>,
+    pub signature: Option<Vec<u16>>,
+}
+
+impl ProfileProperty {
+    pub fn new(name: Vec<u16>, value: Vec<u16>, signature: Option<Vec<u16>>) -> Self {
+        Self {
+            name,
+            value,
+            signature,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GameProfile {
+    pub id: Uuid,
+    pub name: Vec<u16>,
+    pub properties: Vec<ProfileProperty>,
+}
+
+impl GameProfile {
+    pub fn new(id: Uuid, name: Vec<u16>, properties: Vec<ProfileProperty>) -> Self {
+        Self {
+            id,
+            name,
+            properties,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClientboundLoginFinishedPacket {
+    pub game_profile: GameProfile,
+    pub session_id: Uuid,
+}
+
+impl ClientboundLoginFinishedPacket {
+    pub fn new(game_profile: GameProfile, session_id: Uuid) -> Self {
+        Self {
+            game_profile,
+            session_id,
+        }
+    }
+
+    /// Encode GameProfile fields followed by the session UUID.
+    pub fn encode(&self, output: &mut Vec<u8>) -> Result<(), WriteError> {
+        binary::write_uuid(self.game_profile.id, output);
+        utf8::write_utf8(output, &self.game_profile.name, MAX_NAME_LENGTH)
+            .map_err(|_| WriteError::EncoderError)?;
+        write_properties(&self.game_profile.properties, output)?;
+        binary::write_uuid(self.session_id, output);
+        Ok(())
+    }
+
+    /// Decode GameProfile fields followed by the session UUID.
+    pub fn decode(input: &mut &[u8]) -> Result<Self, ReadError> {
+        let id = binary::read_uuid(input)?;
+        let name = utf8::read_utf8(input, MAX_NAME_LENGTH).map_err(map_utf8_error)?;
+        let properties = read_properties(input)?;
+        let session_id = binary::read_uuid(input)?;
+        Ok(Self::new(
+            GameProfile::new(id, name, properties),
+            session_id,
+        ))
+    }
+}
+
+fn write_properties(
+    properties: &[ProfileProperty],
+    output: &mut Vec<u8>,
+) -> Result<(), WriteError> {
+    if properties.len() > MAX_PROFILE_PROPERTIES {
+        return Err(WriteError::EncoderError);
+    }
+    wire::write_varint(properties.len() as i32, output);
+    for property in properties {
+        utf8::write_utf8(output, &property.name, MAX_PROPERTY_NAME_LENGTH)
+            .map_err(|_| WriteError::EncoderError)?;
+        utf8::write_utf8(output, &property.value, MAX_PROPERTY_VALUE_LENGTH)
+            .map_err(|_| WriteError::EncoderError)?;
+        match &property.signature {
+            Some(signature) => {
+                output.push(1);
+                utf8::write_utf8(output, signature, MAX_PROPERTY_SIGNATURE_LENGTH)
+                    .map_err(|_| WriteError::EncoderError)?;
+            }
+            None => output.push(0),
+        }
+    }
+    Ok(())
+}
+
+fn read_properties(input: &mut &[u8]) -> Result<Vec<ProfileProperty>, ReadError> {
+    let count = wire::read_varint(input).map_err(map_wire_error)?;
+    if count > MAX_PROFILE_PROPERTIES as i32 {
+        return Err(ReadError::DecoderError);
+    }
+    let mut properties = Vec::new();
+    for _ in 0..count {
+        let name = utf8::read_utf8(input, MAX_PROPERTY_NAME_LENGTH).map_err(map_utf8_error)?;
+        let value = utf8::read_utf8(input, MAX_PROPERTY_VALUE_LENGTH).map_err(map_utf8_error)?;
+        let (&has_signature, rest) = input.split_first().ok_or(ReadError::BufferUnderflow)?;
+        *input = rest;
+        let signature = if has_signature != 0 {
+            Some(utf8::read_utf8(input, MAX_PROPERTY_SIGNATURE_LENGTH).map_err(map_utf8_error)?)
+        } else {
+            None
+        };
+        properties.push(ProfileProperty::new(name, value, signature));
+    }
+    Ok(properties)
 }
 
 fn write_byte_array(value: &[u8], output: &mut Vec<u8>) -> Result<(), WriteError> {
