@@ -335,6 +335,12 @@ fn blockpos_integer_helpers_snapshot(value: BlockPos, other: BlockPos) -> Value 
     })
 }
 
+fn blockpos_clamp_location_snapshot(value: BlockPos, location: Vec3) -> Value {
+    json!({
+        "value": vec3_snapshot(value.clamp_location_within(location)),
+    })
+}
+
 fn chunkpos(value: &Value) -> Result<ChunkPos, String> {
     let coordinate = |name: &str| {
         string(value, name)?
@@ -2014,6 +2020,15 @@ fn math_result(request: &Value) -> Result<Value, String> {
         let value = blockpos(request)?;
         let other = blockpos(request.get("other").ok_or("other must be an object")?)?;
         return Ok(blockpos_integer_helpers_snapshot(value, other));
+    }
+    if operation == "blockpos_clamp_location" {
+        let value = blockpos(request)?;
+        let location = f64_vec3(
+            request
+                .get("location")
+                .ok_or("location must be an object")?,
+        )?;
+        return Ok(blockpos_clamp_location_snapshot(value, location));
     }
     if operation == "section_relative" {
         return section_relative_result(request);

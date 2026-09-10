@@ -322,6 +322,18 @@ impl BlockPos {
         axis.choose_i32(self.x, self.y, self.z)
     }
 
+    /// Clamp a Vec3 inside this block using Java's mixed-precision bounds.
+    pub fn clamp_location_within(self, location: Vec3) -> Vec3 {
+        let epsilon = 1.0e-5_f32;
+        let lower = |coordinate: i32| (coordinate as f32 + epsilon) as f64;
+        let upper = |coordinate: i32| f64::from(coordinate) + 1.0 - f64::from(epsilon);
+        Vec3::new(
+            math::clamp_f64(location.x, lower(self.x), upper(self.x)),
+            math::clamp_f64(location.y, lower(self.y), upper(self.y)),
+            math::clamp_f64(location.z, lower(self.z), upper(self.z)),
+        )
+    }
+
     /// Return Java `BlockPos.relative(Direction)` and its stepped overload.
     pub fn relative_direction(self, direction: Direction, steps: i32) -> Self {
         if steps == 0 {

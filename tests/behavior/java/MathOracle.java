@@ -557,6 +557,10 @@ public final class MathOracle {
             result.addProperty("dist_manhattan", pos.distManhattan(other));
             result.addProperty("dist_chessboard", pos.distChessboard(other));
             result.add("get", selected);
+        } else if (operation.equals("blockpos_clamp_location")) {
+            BlockPos pos = blockPos(request);
+            result.add("value", snapshot(pos.clampLocationWithin(
+                vec3(request.getAsJsonObject("location")))));
         } else if (operation.equals("section_relative")) {
             short relative = SectionPos.sectionRelativePos(blockPos(request));
             result.addProperty("relative", Integer.toString(Short.toUnsignedInt(relative)));

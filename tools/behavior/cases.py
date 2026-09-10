@@ -1723,6 +1723,31 @@ def math_cases():
     for label, values in blockpos_integer_helpers.items():
         yield {"case_id": f"blockpos/integer-helpers/{label}", "family": "math",
                "operation": "blockpos_integer_helpers", **values}
+    blockpos_clamp_location = {
+        "inside": {
+            "x": "10", "y": "20", "z": "30",
+            "location": vector_bits(10.5, 20.5, 30.5),
+        },
+        "outside": {
+            "x": "-10", "y": "20", "z": "-30",
+            "location": vector_bits(-11.0, 21.0, -29.0),
+        },
+        "boundary": {
+            "x": "0", "y": "-1", "z": "1",
+            "location": vector_bits(-0.0, -0.0, 1.0),
+        },
+        "integer-boundaries": {
+            "x": "2147483647", "y": "-2147483648", "z": "2147483647",
+            "location": vector_bits(2147483647.5, -2147483648.5, 2147483647.5),
+        },
+        "special": {
+            "x": "1", "y": "2", "z": "3",
+            "location": {"x": "7ff8000000000002", "y": "7ff0000000000000", "z": "fff0000000000000"},
+        },
+    }
+    for label, values in blockpos_clamp_location.items():
+        yield {"case_id": f"blockpos/clamp-location/{label}", "family": "math",
+               "operation": "blockpos_clamp_location", **values}
     for label, (x, y, z) in {
         "origin": (0, 0, 0),
         "positive-boundary": (15, 15, 15),
