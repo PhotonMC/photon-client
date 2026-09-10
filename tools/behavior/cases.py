@@ -141,7 +141,82 @@ def math_cases():
         key_spec("keysym", 87), key_spec("keysym", 65), key_spec("mouse", 0),
         key_spec("keysym", 32), [],
         {"key": 87, "scancode": 65}, {"key": -1, "scancode": 65}, 0))
+
+    def toggle_key_mapping_case(label, primary, secondary, other, settings, actions,
+                                key_event, unknown_key_event, mouse_button):
+        return {
+            "case_id": f"toggle-key-mapping/state/{label}", "family": "math",
+            "operation": "toggle_key_mapping", "primary": primary, "secondary": secondary,
+            "other": other, **settings, "actions": actions,
+            "key_event": key_event, "unknown_key_event": unknown_key_event,
+            "mouse_button": mouse_button,
+        }
+
+    toggle_key_mapping_cases = []
+    base = 1500
+    toggle_key_mapping_cases.append(toggle_key_mapping_case(
+        "toggle-and-restore",
+        key_spec("keysym", base), key_spec("keysym", base), key_spec("mouse", base + 1),
+        {"primary_needs_toggle": True, "primary_should_restore": True,
+         "secondary_needs_toggle": True, "secondary_should_restore": False,
+         "other_needs_toggle": False, "other_should_restore": True},
+        [{"op": "set_down", "target": "primary", "value": True},
+         {"op": "set_down", "target": "primary", "value": True},
+         {"op": "set", "key": "primary", "value": True},
+         {"op": "click", "key": "primary"},
+         {"op": "consume_click", "target": "primary"},
+         {"op": "release_all"},
+         {"op": "restore_toggle_states"},
+         {"op": "should_restore", "target": "primary"},
+         {"op": "reset_toggle_keys"}],
+        {"key": base, "scancode": base + 10},
+        {"key": -1, "scancode": base + 10}, base + 1))
+    base += 100
+    toggle_key_mapping_cases.append(toggle_key_mapping_case(
+        "scancode-does-not-restore",
+        key_spec("scancode", base), key_spec("scancode", base), key_spec("keysym", base + 1),
+        {"primary_needs_toggle": True, "primary_should_restore": True,
+         "secondary_needs_toggle": True, "secondary_should_restore": True,
+         "other_needs_toggle": True, "other_should_restore": True},
+        [{"op": "set_down", "target": "primary", "value": True},
+         {"op": "release_all"},
+         {"op": "restore_toggle_states"},
+         {"op": "should_restore", "target": "primary"},
+         {"op": "reset_toggle_keys"}],
+        {"key": -1, "scancode": base},
+        {"key": -1, "scancode": base}, base + 1))
+    base += 100
+    toggle_key_mapping_cases.append(toggle_key_mapping_case(
+        "direct-set-mode",
+        key_spec("keysym", base), key_spec("keysym", base), key_spec("mouse", base + 1),
+        {"primary_needs_toggle": False, "primary_should_restore": True,
+         "secondary_needs_toggle": False, "secondary_should_restore": True,
+         "other_needs_toggle": False, "other_should_restore": True},
+        [{"op": "set_down", "target": "primary", "value": True},
+         {"op": "set_down", "target": "primary", "value": False},
+         {"op": "set", "key": "primary", "value": True},
+         {"op": "release_all"},
+         {"op": "restore_toggle_states"},
+         {"op": "should_restore", "target": "primary"},
+         {"op": "reset_toggle_keys"}],
+        {"key": base, "scancode": base + 10},
+        {"key": -1, "scancode": base + 10}, base + 1))
+    base += 100
+    toggle_key_mapping_cases.append(toggle_key_mapping_case(
+        "toggle-without-restore",
+        key_spec("keysym", base), key_spec("keysym", base + 1), key_spec("mouse", base + 2),
+        {"primary_needs_toggle": True, "primary_should_restore": False,
+         "secondary_needs_toggle": True, "secondary_should_restore": False,
+         "other_needs_toggle": True, "other_should_restore": False},
+        [{"op": "set_down", "target": "primary", "value": True},
+         {"op": "release_all"},
+         {"op": "restore_toggle_states"},
+         {"op": "should_restore", "target": "primary"},
+         {"op": "reset_toggle_keys"}],
+        {"key": base, "scancode": base + 10},
+        {"key": -1, "scancode": base + 10}, base + 2))
     yield from key_mapping_cases
+    yield from toggle_key_mapping_cases
 
     keyboard_inputs = {
         "empty": {},

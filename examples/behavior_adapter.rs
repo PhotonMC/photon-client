@@ -241,6 +241,7 @@ fn key_mapping_property(
         "name": mapping.name(),
         "key": mapping.key().name(),
         "default_key": mapping.default_key().name(),
+        "is_toggle": mapping.is_toggle(),
         "is_default": mapping.is_default(),
         "is_unbound": mapping.is_unbound(),
         "save": mapping.save_string(),
@@ -383,6 +384,149 @@ fn key_mapping_result(request: &Value) -> Result<Value, String> {
         let mut event = key_mapping_state(&registry, primary, secondary, other)?;
         if let Some(value) = consumed {
             event["consumed"] = json!(value);
+        }
+        events.push(event);
+    }
+    let properties = key_mapping_properties(
+        &registry,
+        primary,
+        secondary,
+        other,
+        key_event,
+        unknown_key_event,
+        mouse_button,
+    )?;
+    Ok(
+        json!({"initial": initial, "initial_properties": initial_properties,
+        "events": events, "properties": properties}),
+    )
+}
+
+fn toggle_key_mapping_result(request: &Value) -> Result<Value, String> {
+    let primary_key = input_key(&request["primary"])?;
+    let secondary_key = input_key(&request["secondary"])?;
+    let other_key = input_key(&request["other"])?;
+    let prefix = format!("behavior.key-mapping.{}", string(request, "case_id")?);
+    let mut registry = KeyMappingRegistry::default();
+    let primary = registry.register_toggle(
+        format!("{prefix}.primary"),
+        primary_key,
+        request["primary_needs_toggle"]
+            .as_bool()
+            .ok_or("primary_needs_toggle must be a boolean")?,
+        request["primary_should_restore"]
+            .as_bool()
+            .ok_or("primary_should_restore must be a boolean")?,
+    );
+    let secondary = registry.register_toggle(
+        format!("{prefix}.secondary"),
+        secondary_key,
+        request["secondary_needs_toggle"]
+            .as_bool()
+            .ok_or("secondary_needs_toggle must be a boolean")?,
+        request["secondary_should_restore"]
+            .as_bool()
+            .ok_or("secondary_should_restore must be a boolean")?,
+    );
+    let other = registry.register_toggle(
+        format!("{prefix}.other"),
+        other_key,
+        request["other_needs_toggle"]
+            .as_bool()
+            .ok_or("other_needs_toggle must be a boolean")?,
+        request["other_should_restore"]
+            .as_bool()
+            .ok_or("other_should_restore must be a boolean")?,
+    );
+    let key_event = (
+        i32_field(&request["key_event"], "key")?,
+        i32_field(&request["key_event"], "scancode")?,
+    );
+    let unknown_key_event = (
+        i32_field(&request["unknown_key_event"], "key")?,
+        i32_field(&request["unknown_key_event"], "scancode")?,
+    );
+    let mouse_button = i32_field(request, "mouse_button")?;
+    let initial = key_mapping_state(&registry, primary, secondary, other)?;
+    let initial_properties = key_mapping_properties(
+        &registry,
+        primary,
+        secondary,
+        other,
+        key_event,
+        unknown_key_event,
+        mouse_button,
+    )?;
+    let mut events = Vec::new();
+    for action in request["actions"]
+        .as_array()
+        .ok_or("actions must be an array")?
+    {
+        let kind = string(action, "op")?;
+        let mut consumed = None;
+        let mut should_restore = None;
+        match kind {
+            "set_down" => {
+                let id = mapping_id(string(action, "target")?, primary, secondary, other)?;
+                registry
+                    .mapping_mut(id)
+                    .ok_or("missing key mapping")?
+                    .set_down(action["value"].as_bool().ok_or("value must be a boolean")?);
+            }
+            "set" => {
+                let key = action_key(
+                    string(action, "key")?,
+                    primary_key,
+                    primary_key,
+                    secondary_key,
+                    other_key,
+                    primary_key,
+                )?;
+                registry.set(
+                    key,
+                    action["value"].as_bool().ok_or("value must be a boolean")?,
+                );
+            }
+            "click" => {
+                let key = action_key(
+                    string(action, "key")?,
+                    primary_key,
+                    primary_key,
+                    secondary_key,
+                    other_key,
+                    primary_key,
+                )?;
+                registry.click(key);
+            }
+            "consume_click" => {
+                let id = mapping_id(string(action, "target")?, primary, secondary, other)?;
+                consumed = Some(
+                    registry
+                        .mapping_mut(id)
+                        .ok_or("missing key mapping")?
+                        .consume_click(),
+                );
+            }
+            "release_all" => registry.release_all(),
+            "restore_toggle_states" => registry.restore_toggle_states_on_screen_closed(),
+            "reset_toggle_keys" => registry.reset_toggle_keys(),
+            "should_restore" => {
+                let id = mapping_id(string(action, "target")?, primary, secondary, other)?;
+                should_restore = Some(
+                    registry
+                        .mapping_mut(id)
+                        .ok_or("missing key mapping")?
+                        .should_restore_state_on_screen_closed(),
+                );
+            }
+            _ => return Err("unknown toggle key mapping action".into()),
+        }
+        let mut event = key_mapping_state(&registry, primary, secondary, other)?;
+        if let Some(value) = consumed {
+            event["consumed"] = json!(value);
+        }
+        if let Some(value) = should_restore {
+            event["should_restore"] = json!(value);
         }
         events.push(event);
     }
@@ -4057,6 +4201,9 @@ fn math_result(request: &Value) -> Result<Value, String> {
     }
     if operation == "key_mapping" {
         return key_mapping_result(request);
+    }
+    if operation == "toggle_key_mapping" {
+        return toggle_key_mapping_result(request);
     }
     if operation == "direction" {
         let mut facing =

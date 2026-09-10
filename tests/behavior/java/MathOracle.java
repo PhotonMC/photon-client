@@ -16,6 +16,7 @@ import net.minecraft.DetectedVersion;
 import net.minecraft.SharedConstants;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Options;
+import net.minecraft.client.ToggleKeyMapping;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.input.MouseButtonInfo;
@@ -141,6 +142,72 @@ public final class MathOracle {
             result.add("properties", keyMappingProperties(
                 primary, secondary, other, primaryKey, primaryDefaultKey, secondaryKey,
                 secondaryDefaultKey, otherKey, otherDefaultKey, keyEvent, unknownKeyEvent, mouseEvent));
+        } else if (operation.equals("toggle_key_mapping")) {
+            KeyMapping.releaseAll();
+            String prefix = "behavior.key-mapping." + request.get("case_id").getAsString();
+            InputConstants.Key primaryKey = inputKey(request.getAsJsonObject("primary"));
+            InputConstants.Key secondaryKey = inputKey(request.getAsJsonObject("secondary"));
+            InputConstants.Key otherKey = inputKey(request.getAsJsonObject("other"));
+            boolean primaryNeedsToggle = request.get("primary_needs_toggle").getAsBoolean();
+            boolean primaryShouldRestore = request.get("primary_should_restore").getAsBoolean();
+            boolean secondaryNeedsToggle = request.get("secondary_needs_toggle").getAsBoolean();
+            boolean secondaryShouldRestore = request.get("secondary_should_restore").getAsBoolean();
+            boolean otherNeedsToggle = request.get("other_needs_toggle").getAsBoolean();
+            boolean otherShouldRestore = request.get("other_should_restore").getAsBoolean();
+            KeyMapping primary = new ToggleKeyMapping(prefix + ".primary", primaryKey.getType(), primaryKey.getValue(),
+                KeyMapping.Category.MOVEMENT, () -> primaryNeedsToggle, primaryShouldRestore);
+            KeyMapping secondary = new ToggleKeyMapping(prefix + ".secondary", secondaryKey.getType(), secondaryKey.getValue(),
+                KeyMapping.Category.MOVEMENT, () -> secondaryNeedsToggle, secondaryShouldRestore);
+            KeyMapping other = new ToggleKeyMapping(prefix + ".other", otherKey.getType(), otherKey.getValue(),
+                KeyMapping.Category.MOVEMENT, () -> otherNeedsToggle, otherShouldRestore);
+            KeyEvent keyEvent = new KeyEvent(
+                request.getAsJsonObject("key_event").get("key").getAsInt(),
+                request.getAsJsonObject("key_event").get("scancode").getAsInt(), 0);
+            KeyEvent unknownKeyEvent = new KeyEvent(
+                request.getAsJsonObject("unknown_key_event").get("key").getAsInt(),
+                request.getAsJsonObject("unknown_key_event").get("scancode").getAsInt(), 0);
+            MouseButtonEvent mouseEvent = new MouseButtonEvent(
+                0.0, 0.0,
+                new MouseButtonInfo(request.get("mouse_button").getAsInt(), 0));
+            result.add("initial", keyMappingState(primary, secondary, other));
+            result.add("initial_properties", keyMappingProperties(
+                primary, secondary, other, primaryKey, primaryKey, secondaryKey,
+                secondaryKey, otherKey, otherKey, keyEvent, unknownKeyEvent, mouseEvent));
+            var events = new JsonArray();
+            for (var entry : request.getAsJsonArray("actions")) {
+                JsonObject action = entry.getAsJsonObject();
+                String kind = action.get("op").getAsString();
+                Boolean consumed = null;
+                Boolean shouldRestore = null;
+                switch (kind) {
+                    case "set_down" -> mapping(action.get("target").getAsString(), primary, secondary, other)
+                        .setDown(action.get("value").getAsBoolean());
+                    case "set" -> KeyMapping.set(actionKey(action.get("key").getAsString(), primaryKey,
+                        primaryKey, secondaryKey, otherKey, primaryKey), action.get("value").getAsBoolean());
+                    case "click" -> KeyMapping.click(actionKey(action.get("key").getAsString(), primaryKey,
+                        primaryKey, secondaryKey, otherKey, primaryKey));
+                    case "consume_click" -> consumed = mapping(action.get("target").getAsString(),
+                        primary, secondary, other).consumeClick();
+                    case "release_all" -> KeyMapping.releaseAll();
+                    case "restore_toggle_states" -> KeyMapping.restoreToggleStatesOnScreenClosed();
+                    case "reset_toggle_keys" -> KeyMapping.resetToggleKeys();
+                    case "should_restore" -> shouldRestore = ((ToggleKeyMapping)mapping(action.get("target").getAsString(),
+                        primary, secondary, other)).shouldRestoreStateOnScreenClosed();
+                    default -> throw new IllegalArgumentException("Unknown toggle key mapping action");
+                }
+                JsonObject event = keyMappingState(primary, secondary, other);
+                if (consumed != null) {
+                    event.addProperty("consumed", consumed);
+                }
+                if (shouldRestore != null) {
+                    event.addProperty("should_restore", shouldRestore);
+                }
+                events.add(event);
+            }
+            result.add("events", events);
+            result.add("properties", keyMappingProperties(
+                primary, secondary, other, primaryKey, primaryKey, secondaryKey,
+                secondaryKey, otherKey, otherKey, keyEvent, unknownKeyEvent, mouseEvent));
         } else if (operation.equals("direction")) {
             Direction facing = Direction.byName(request.get("name").getAsString());
             if (facing == null) {
@@ -3438,6 +3505,7 @@ public final class MathOracle {
         state.addProperty("name", mapping.getName());
         state.addProperty("key", key.getName());
         state.addProperty("default_key", defaultKey.getName());
+        state.addProperty("is_toggle", mapping instanceof ToggleKeyMapping);
         state.addProperty("is_default", mapping.isDefault());
         state.addProperty("is_unbound", mapping.isUnbound());
         state.addProperty("save", mapping.saveString());

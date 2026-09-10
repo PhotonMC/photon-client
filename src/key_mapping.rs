@@ -123,6 +123,14 @@ pub struct KeyMapping {
     key: InputKey,
     is_down: bool,
     click_count: i32,
+    toggle: Option<ToggleState>,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct ToggleState {
+    needs_toggle: bool,
+    released_by_screen_when_down: bool,
+    should_restore: bool,
 }
 
 impl KeyMapping {
@@ -133,6 +141,27 @@ impl KeyMapping {
             key,
             is_down: false,
             click_count: 0,
+            toggle: None,
+        }
+    }
+
+    fn new_toggle(
+        name: impl Into<String>,
+        key: InputKey,
+        needs_toggle: bool,
+        should_restore: bool,
+    ) -> Self {
+        Self {
+            name: name.into(),
+            default_key: key,
+            key,
+            is_down: false,
+            click_count: 0,
+            toggle: Some(ToggleState {
+                needs_toggle,
+                released_by_screen_when_down: false,
+                should_restore,
+            }),
         }
     }
 
@@ -148,12 +177,26 @@ impl KeyMapping {
         &self.name
     }
 
+    pub const fn is_toggle(&self) -> bool {
+        self.toggle.is_some()
+    }
+
     pub const fn default_key(&self) -> InputKey {
         self.default_key
     }
 
     pub fn set_down(&mut self, down: bool) {
-        self.is_down = down;
+        if let Some(toggle) = self.toggle {
+            if toggle.needs_toggle {
+                if down {
+                    self.is_down = !self.is_down;
+                }
+            } else {
+                self.is_down = down;
+            }
+        } else {
+            self.is_down = down;
+        }
     }
 
     pub fn consume_click(&mut self) -> bool {
@@ -202,13 +245,36 @@ impl KeyMapping {
         matches!(self.key, InputKey::Mouse(expected) if expected == button)
     }
 
+    pub fn should_restore_state_on_screen_closed(&mut self) -> bool {
+        let Some(toggle) = &mut self.toggle else {
+            return false;
+        };
+        let should_restore = toggle.should_restore
+            && toggle.needs_toggle
+            && matches!(self.key, InputKey::KeySym(_))
+            && toggle.released_by_screen_when_down;
+        toggle.released_by_screen_when_down = false;
+        should_restore
+    }
+
     fn click(&mut self) {
         self.click_count = self.click_count.wrapping_add(1);
     }
 
     fn release(&mut self) {
+        if let Some(toggle) = &mut self.toggle
+            && ((toggle.needs_toggle && self.is_down) || toggle.released_by_screen_when_down)
+        {
+            toggle.released_by_screen_when_down = true;
+        }
         self.click_count = 0;
         self.is_down = false;
+    }
+
+    fn reset_toggle(&mut self) {
+        if self.toggle.is_some() {
+            self.is_down = false;
+        }
     }
 }
 
@@ -231,6 +297,24 @@ impl KeyMappingRegistry {
     pub fn register(&mut self, name: impl Into<String>, key: InputKey) -> usize {
         let id = self.mappings.len();
         self.mappings.push(KeyMapping::new(name, key));
+        self.by_key.entry(key).or_default().push(id);
+        id
+    }
+
+    pub fn register_toggle(
+        &mut self,
+        name: impl Into<String>,
+        key: InputKey,
+        needs_toggle: bool,
+        should_restore: bool,
+    ) -> usize {
+        let id = self.mappings.len();
+        self.mappings.push(KeyMapping::new_toggle(
+            name,
+            key,
+            needs_toggle,
+            should_restore,
+        ));
         self.by_key.entry(key).or_default().push(id);
         id
     }
@@ -262,6 +346,20 @@ impl KeyMappingRegistry {
     pub fn release_all(&mut self) {
         for mapping in &mut self.mappings {
             mapping.release();
+        }
+    }
+
+    pub fn restore_toggle_states_on_screen_closed(&mut self) {
+        for mapping in &mut self.mappings {
+            if mapping.should_restore_state_on_screen_closed() {
+                mapping.set_down(true);
+            }
+        }
+    }
+
+    pub fn reset_toggle_keys(&mut self) {
+        for mapping in &mut self.mappings {
+            mapping.reset_toggle();
         }
     }
 }
