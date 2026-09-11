@@ -881,6 +881,22 @@ pub fn connect_and_survival_inventory_wrong_carried_prediction_probe(
     )
 }
 
+/// Connect to a Java-protocol server, send a current inventory state id with
+/// both post-click predictions wrong, and observe the independent slot and
+/// cursor corrections.
+pub fn connect_and_survival_inventory_wrong_both_prediction_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeMode::SurvivalInventoryWrongBothPrediction,
+    )
+}
+
 /// Connect to a Java-protocol server, shift-click a supplied survival inventory
 /// stack with a stale container state id, and observe the authoritative full resync.
 pub fn connect_and_survival_inventory_quick_move_state_correction_probe(
@@ -1084,6 +1100,7 @@ enum PlayProbeMode {
     SurvivalInventoryCorrectPrediction,
     SurvivalInventoryWrongSlotPrediction,
     SurvivalInventoryWrongCarriedPrediction,
+    SurvivalInventoryWrongBothPrediction,
     SurvivalInventoryQuickMoveStateCorrection,
     SurvivalInventorySwapStateCorrection,
     CreativePlace,
@@ -2245,6 +2262,22 @@ fn connect_and_probe_with_mode(
             }
             if matches!(
                 probe_mode,
+                PlayProbeMode::SurvivalInventoryWrongBothPrediction
+            ) && trace.container_click_packets_sent == 0
+            {
+                std::thread::sleep(Duration::from_secs(20));
+                send_packet(
+                    &mut stream,
+                    ConnectionProtocol::Play,
+                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
+                    |output| encode_inventory_pickup_with_wrong_both_prediction(output, 2, 8, 1),
+                    compression_threshold,
+                )?;
+                trace.container_click_packets_sent += 1;
+                trace.container_click_state_id_sent = Some(2);
+            }
+            if matches!(
+                probe_mode,
                 PlayProbeMode::SurvivalInventoryQuickMoveStateCorrection
             ) && trace.container_click_packets_sent == 0
             {
@@ -2384,6 +2417,7 @@ fn connect_and_probe_with_mode(
                 PlayProbeMode::SurvivalInventoryCorrectPrediction => CONSUMABLE_DRAIN_TIMEOUT,
                 PlayProbeMode::SurvivalInventoryWrongSlotPrediction => CONSUMABLE_DRAIN_TIMEOUT,
                 PlayProbeMode::SurvivalInventoryWrongCarriedPrediction => CONSUMABLE_DRAIN_TIMEOUT,
+                PlayProbeMode::SurvivalInventoryWrongBothPrediction => CONSUMABLE_DRAIN_TIMEOUT,
                 PlayProbeMode::SurvivalInventoryQuickMoveStateCorrection => {
                     CONSUMABLE_DRAIN_TIMEOUT
                 }
@@ -2425,6 +2459,7 @@ fn connect_and_probe_with_mode(
             PlayProbeMode::SurvivalInventoryCorrectPrediction => CONSUMABLE_DRAIN_TIMEOUT,
             PlayProbeMode::SurvivalInventoryWrongSlotPrediction => CONSUMABLE_DRAIN_TIMEOUT,
             PlayProbeMode::SurvivalInventoryWrongCarriedPrediction => CONSUMABLE_DRAIN_TIMEOUT,
+            PlayProbeMode::SurvivalInventoryWrongBothPrediction => CONSUMABLE_DRAIN_TIMEOUT,
             PlayProbeMode::SurvivalInventoryQuickMoveStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
             PlayProbeMode::SurvivalInventorySwapStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
             _ => WORLD_READY_DRAIN_TIMEOUT,
@@ -2707,6 +2742,15 @@ fn encode_inventory_pickup_with_wrong_carried_prediction(
     state_id: i32,
 ) -> Result<(), ConnectionError> {
     encode_inventory_pickup_prediction(output, state_id, None, None)
+}
+
+fn encode_inventory_pickup_with_wrong_both_prediction(
+    output: &mut Vec<u8>,
+    state_id: i32,
+    item_count: i32,
+    item_registry_id: i32,
+) -> Result<(), ConnectionError> {
+    encode_inventory_pickup_prediction(output, state_id, Some((item_count, item_registry_id)), None)
 }
 
 fn encode_inventory_pickup_prediction(
@@ -3780,6 +3824,7 @@ mod tests {
         encode_creative_item_slot, encode_creative_stone_slot, encode_inventory_click_with_input,
         encode_inventory_drag_empty_cancel_state_correction,
         encode_inventory_pickup_state_correction, encode_inventory_pickup_with_prediction,
+        encode_inventory_pickup_with_wrong_both_prediction,
         encode_inventory_pickup_with_wrong_carried_prediction,
         encode_inventory_pickup_with_wrong_slot_prediction,
         encode_inventory_quick_move_state_correction,
@@ -4787,6 +4832,55 @@ mod tests {
         input = &input[2..];
         assert_eq!(input[0], 0, "changed slot should be empty");
         input = &input[1..];
+        assert_eq!(input[0], 0, "carried prediction should be empty");
+        input = &input[1..];
+        assert!(input.is_empty());
+    }
+
+    #[test]
+    fn inventory_wrong_both_prediction_encoder_keeps_slot_item_and_empty_carried_hash() {
+        let mut payload = Vec::new();
+        encode_inventory_pickup_with_wrong_both_prediction(&mut payload, 2, 8, 1)
+            .expect("wrong-both inventory prediction packet");
+
+        let mut input = payload.as_slice();
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("container id"),
+            0
+        );
+        assert_eq!(crate::wire::read_varint(&mut input).expect("state id"), 2);
+        assert_eq!(i16::from_be_bytes(input[..2].try_into().expect("slot")), 36);
+        input = &input[2..];
+        assert_eq!(input[0], 0);
+        input = &input[1..];
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("container input"),
+            0
+        );
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("changed slot count"),
+            1
+        );
+        assert_eq!(
+            i16::from_be_bytes(input[..2].try_into().expect("changed slot")),
+            36
+        );
+        input = &input[2..];
+        assert_eq!(input[0], 1, "changed slot should be non-empty");
+        input = &input[1..];
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("item registry id"),
+            1
+        );
+        assert_eq!(crate::wire::read_varint(&mut input).expect("item count"), 8);
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("component map count"),
+            0
+        );
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("removed component count"),
+            0
+        );
         assert_eq!(input[0], 0, "carried prediction should be empty");
         input = &input[1..];
         assert!(input.is_empty());
