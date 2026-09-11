@@ -34,6 +34,8 @@ Rust uygulama girişi henüz oynanabilir istemci değildir. İlk gerçek vanilla
 - [Vanilla yaratıcı blok kırma doğrulaması](docs/vanilla-block-break-parity.md)
 - [Menzil dışı blok kırma sözleşmesi](docs/block-break-rejection-contract.md)
 - [Vanilla menzil dışı blok kırma doğrulaması](docs/vanilla-block-break-rejection-parity.md)
+- [Boş elle use item on sözleşmesi](docs/use-item-on-contract.md)
+- [Vanilla boş elle use item on doğrulaması](docs/vanilla-use-item-on-parity.md)
 - [Vanilla status socket doğrulaması](docs/status-connection-parity.md)
 - [Pumpkin uyumluluk oturumu doğrulaması](docs/game-connection-parity.md)
 - [Kaynak incelemesi ve istemci sınırları](docs/source-review.md)

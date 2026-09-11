@@ -69,6 +69,7 @@ const PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID: i32 = 11;
 const PLAY_SERVERBOUND_KEEP_ALIVE_PACKET_ID: i32 = 28;
 const PLAY_SERVERBOUND_MOVE_PLAYER_POS_ROT_PACKET_ID: i32 = 31;
 const PLAY_SERVERBOUND_PLAYER_LOADED_PACKET_ID: i32 = 44;
+const PLAY_SERVERBOUND_USE_ITEM_ON_PACKET_ID: i32 = 66;
 
 const PLAYER_RELATIVE_X_FLAG: i32 = 1 << 0;
 const PLAYER_RELATIVE_Y_FLAG: i32 = 1 << 1;
@@ -157,6 +158,7 @@ pub struct PlayConnectionTrace {
     pub player_loaded_sent: bool,
     pub movement_packets_sent: usize,
     pub player_action_packets_sent: usize,
+    pub use_item_on_packets_sent: usize,
     pub block_changed_ack_sequences: Vec<i32>,
     pub block_update_observations: Vec<BlockUpdateObservation>,
     pub chunk_packet_count: usize,
@@ -370,6 +372,15 @@ pub fn connect_and_block_break_rejection_probe(
     )
 }
 
+/// Connect to a Java-protocol server and use the empty main hand on the supporting block.
+pub fn connect_and_use_item_on_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(address, username, timeout, PlayProbeMode::UseItemOn)
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum PlayProbeMode {
     Basic,
@@ -377,6 +388,7 @@ enum PlayProbeMode {
     BlockAction,
     BlockBreak,
     BlockBreakOutOfRange,
+    UseItemOn,
 }
 
 fn connect_and_probe_with_mode(
@@ -784,6 +796,21 @@ fn connect_and_probe_with_mode(
                 )?;
                 trace.player_action_packets_sent += 1;
             }
+            if matches!(probe_mode, PlayProbeMode::UseItemOn) && trace.use_item_on_packets_sent == 0
+            {
+                let Some(position) = player_position else {
+                    return Err(ConnectionError::Codec("use item on probe player position"));
+                };
+                let target = support_block_position(position);
+                send_packet(
+                    &mut stream,
+                    ConnectionProtocol::Play,
+                    PLAY_SERVERBOUND_USE_ITEM_ON_PACKET_ID,
+                    |output| encode_use_item_on(output, target, 4),
+                    compression_threshold,
+                )?;
+                trace.use_item_on_packets_sent += 1;
+            }
             world_ready_drain_started = Some(Instant::now());
             stream.set_read_timeout(Some(WORLD_READY_DRAIN_TIMEOUT))?;
         }
@@ -877,6 +904,23 @@ fn encode_start_destroy_block(
     sequence: i32,
 ) -> Result<(), ConnectionError> {
     encode_player_action(output, 0, position, 1, sequence)
+}
+
+fn encode_use_item_on(
+    output: &mut Vec<u8>,
+    position: (i32, i32, i32),
+    sequence: i32,
+) -> Result<(), ConnectionError> {
+    wire::write_varint(0, output);
+    output.extend_from_slice(&pack_block_position(position).to_be_bytes());
+    wire::write_varint(1, output);
+    output.extend_from_slice(&0.5_f32.to_be_bytes());
+    output.extend_from_slice(&1.0_f32.to_be_bytes());
+    output.extend_from_slice(&0.5_f32.to_be_bytes());
+    output.push(0);
+    output.push(0);
+    wire::write_varint(sequence, output);
+    Ok(())
 }
 
 fn encode_player_action(
@@ -1530,10 +1574,11 @@ mod tests {
         PLAY_SERVERBOUND_ACCEPT_TELEPORTATION_PACKET_ID,
         PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID, PLAY_SERVERBOUND_KEEP_ALIVE_PACKET_ID,
         PLAY_SERVERBOUND_MOVE_PLAYER_POS_ROT_PACKET_ID, PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID,
-        PLAY_SERVERBOUND_PLAYER_LOADED_PACKET_ID, STATUS_CLIENTBOUND_PONG_RESPONSE_PACKET_ID,
-        STATUS_CLIENTBOUND_RESPONSE_PACKET_ID, STATUS_SERVERBOUND_PING_REQUEST_PACKET_ID,
-        STATUS_SERVERBOUND_REQUEST_PACKET_ID, decode_packet_frame, encode_abort_destroy_block,
-        encode_packet_frame, pack_block_position, parse_block_update_packet, parse_chunk_packet,
+        PLAY_SERVERBOUND_PLAYER_LOADED_PACKET_ID, PLAY_SERVERBOUND_USE_ITEM_ON_PACKET_ID,
+        STATUS_CLIENTBOUND_PONG_RESPONSE_PACKET_ID, STATUS_CLIENTBOUND_RESPONSE_PACKET_ID,
+        STATUS_SERVERBOUND_PING_REQUEST_PACKET_ID, STATUS_SERVERBOUND_REQUEST_PACKET_ID,
+        decode_packet_frame, encode_abort_destroy_block, encode_packet_frame, encode_use_item_on,
+        pack_block_position, parse_block_update_packet, parse_chunk_packet,
         parse_player_position_packet, parse_section_data, resolve_player_position,
         support_block_position,
     };
@@ -1570,6 +1615,7 @@ mod tests {
         assert_eq!(PLAY_SERVERBOUND_KEEP_ALIVE_PACKET_ID, 28);
         assert_eq!(PLAY_SERVERBOUND_MOVE_PLAYER_POS_ROT_PACKET_ID, 31);
         assert_eq!(PLAY_SERVERBOUND_PLAYER_LOADED_PACKET_ID, 44);
+        assert_eq!(PLAY_SERVERBOUND_USE_ITEM_ON_PACKET_ID, 66);
     }
 
     #[test]
@@ -1750,6 +1796,31 @@ mod tests {
             support_block_position((20.5, 64.0, -37.5, 0.0, 0.0)),
             (20, 63, -38)
         );
+    }
+
+    #[test]
+    fn use_item_on_encoder_matches_java_block_hit_result_field_order() {
+        let mut payload = Vec::new();
+        encode_use_item_on(&mut payload, (-12, 67, 9), 4).expect("use item on packet");
+
+        let mut input = payload.as_slice();
+        assert_eq!(crate::wire::read_varint(&mut input).expect("hand"), 0);
+        let (packed, rest) = input.split_at(8);
+        input = rest;
+        assert_eq!(
+            i64::from_be_bytes(packed.try_into().expect("packed block position")),
+            pack_block_position((-12, 67, 9))
+        );
+        assert_eq!(crate::wire::read_varint(&mut input).expect("direction"), 1);
+        assert_eq!(input.len(), 4 * 3 + 2 + 1);
+        assert_eq!(&input[0..4], &0.5_f32.to_be_bytes());
+        assert_eq!(&input[4..8], &1.0_f32.to_be_bytes());
+        assert_eq!(&input[8..12], &0.5_f32.to_be_bytes());
+        assert_eq!(input[12], 0);
+        assert_eq!(input[13], 0);
+        input = &input[14..];
+        assert_eq!(crate::wire::read_varint(&mut input).expect("sequence"), 4);
+        assert!(input.is_empty());
     }
 
     #[test]

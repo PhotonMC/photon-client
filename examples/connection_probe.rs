@@ -36,6 +36,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         trace.player_action_packets_sent
     );
     println!(
+        "use_item_on_packets_sent={}",
+        trace.use_item_on_packets_sent
+    );
+    println!(
         "block_changed_ack_sequences={:?}",
         trace.block_changed_ack_sequences
     );
