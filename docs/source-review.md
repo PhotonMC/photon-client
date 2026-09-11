@@ -304,6 +304,12 @@ Bu bölüm metot/bağımlılık haritasıdır; bütün davranış dallarının i
 | Yazı | `client/gui/font/FontManager.java:reload`, `client/gui/Font.java`, `client/StringSplitter.java`, `client/resources/language/` | P21 |
 | GUI | `client/gui/Gui.java`, `Hud.java`, `GuiGraphicsExtractor.java`, `render/GuiRenderer.java`, `screens/Screen.java` | P22 |
 | Chat ve servisler | `client/multiplayer/chat/`, `network/chat/`, `client/gui/screens/social/`, `com/mojang/realmsclient/` | P23, P25 |
+
+## P13 inventory state-id correction dilimi
+
+| Kaynak konumu | Gözlem | Parity kapsamı |
+| --- | --- | --- |
+| `network/protocol/game/ServerboundContainerClickPacket.java:12-47`, `world/inventory/ContainerInput.java:9-25`, `server/network/ServerGamePacketListenerImpl.java:1946-1980`, `world/inventory/AbstractContainerMenu.java:318-467,618-630,823-825`, `server/level/ServerPlayer.java:294-311`, `network/protocol/game/ClientboundContainerSetContentPacket.java:9-22` | `container_click` play serverbound dispatch'te 18 numaralı pakettir; player inventory primary pickup için `ContainerInput.PICKUP` id `0`, slot `36` ve button `0` kullanılır. Server state-id uyuşmazlığında da `clicked` çağrısını uygular, ardından `broadcastFullState` ile artmış state-id'li tüm slot/cursor içeriğini yollar. `ServerPlayer` başlangıç ve slot yayınlarında menu state-id'sini artırır; vanilla taş item registry ID'si `1`'dir. | P13 vanilla survival inventory pickup state-id correction probe'u slot 36'ya console ile verilen count `8` stone stack'inde state-id `0`, boş changed-slot map'i ve empty carried hash ile bir `container_click` yollar. İki vanilla oturumunda başlangıç content `state=1`, hazırlık `state=2/slot36=count8/item1`, tam correction `state=3/slot36=empty/carried=count8/item1` ve click sayısı `1` gözlenir. Doğru hashed prediction, secondary pickup, quick-move, swap, throw, drag, double-click, stack sınırı ve özel menu akışları açık kalır. |
 | Kalan içerik | `client/gui/screens/`, `client/renderer/special/`, `client/waypoints/`, `client/tutorial/`, `client/resources/` | P24–P25 |
 
 `com/mojang/` ile başlayan yollar kaynak köküne, diğerleri `net/minecraft/` altına göredir. Dizin grupları kapsam keşfi için verilmiştir; her sınıfı aynı commit'te taşıma talimatı değildir.

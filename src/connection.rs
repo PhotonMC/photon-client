@@ -78,6 +78,7 @@ const PLAY_SERVERBOUND_MOVE_PLAYER_POS_ROT_PACKET_ID: i32 = 31;
 const PLAY_SERVERBOUND_PLAYER_LOADED_PACKET_ID: i32 = 44;
 const PLAY_SERVERBOUND_SET_CARRIED_ITEM_PACKET_ID: i32 = 53;
 const PLAY_SERVERBOUND_SET_CREATIVE_MODE_SLOT_PACKET_ID: i32 = 56;
+const PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID: i32 = 18;
 const PLAY_SERVERBOUND_USE_ITEM_ON_PACKET_ID: i32 = 66;
 const PLAY_SERVERBOUND_USE_ITEM_PACKET_ID: i32 = 67;
 
@@ -186,6 +187,8 @@ pub struct PlayConnectionTrace {
     pub use_item_packets_sent: usize,
     pub creative_mode_slot_packets_sent: usize,
     pub carried_item_packets_sent: usize,
+    pub container_click_packets_sent: usize,
+    pub container_click_state_id_sent: Option<i32>,
     pub stone_item_registry_id: Option<i32>,
     pub snowball_item_registry_id: Option<i32>,
     pub add_entity_observations: Vec<AddEntityObservation>,
@@ -680,6 +683,21 @@ pub fn connect_and_survival_enchanted_golden_apple_use_probe(
     )
 }
 
+/// Connect to a Java-protocol server, pick up a supplied survival inventory stack
+/// with a stale container state id, and observe the authoritative full resync.
+pub fn connect_and_survival_inventory_pickup_state_correction_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeMode::SurvivalInventoryPickupStateCorrection,
+    )
+}
+
 /// Connect to a Java-protocol server, place a stone stack in the creative hotbar,
 /// select it and request a side placement against the supporting block.
 pub fn connect_and_creative_place_probe(
@@ -841,6 +859,7 @@ enum PlayProbeMode {
     SurvivalPufferfishFullHungerRejection,
     SurvivalGoldenAppleUse,
     SurvivalEnchantedGoldenAppleUse,
+    SurvivalInventoryPickupStateCorrection,
     CreativePlace,
     SurvivalBreakAbort,
     SurvivalBreakStop,
@@ -1784,6 +1803,22 @@ fn connect_and_probe_with_mode(
                 )?;
                 trace.use_item_packets_sent += 1;
             }
+            if matches!(
+                probe_mode,
+                PlayProbeMode::SurvivalInventoryPickupStateCorrection
+            ) && trace.container_click_packets_sent == 0
+            {
+                std::thread::sleep(Duration::from_secs(12));
+                send_packet(
+                    &mut stream,
+                    ConnectionProtocol::Play,
+                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
+                    |output| encode_inventory_pickup_state_correction(output, 0),
+                    compression_threshold,
+                )?;
+                trace.container_click_packets_sent += 1;
+                trace.container_click_state_id_sent = Some(0);
+            }
             if matches!(probe_mode, PlayProbeMode::CreativeSnowballUse)
                 && trace.creative_mode_slot_packets_sent == 0
             {
@@ -1871,6 +1906,7 @@ fn connect_and_probe_with_mode(
                 | PlayProbeMode::SurvivalPufferfishFullHungerRejection
                 | PlayProbeMode::SurvivalGoldenAppleUse
                 | PlayProbeMode::SurvivalEnchantedGoldenAppleUse => CONSUMABLE_DRAIN_TIMEOUT,
+                PlayProbeMode::SurvivalInventoryPickupStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
                 _ => WORLD_READY_DRAIN_TIMEOUT,
             };
             stream.set_read_timeout(Some(drain_timeout))?;
@@ -1888,6 +1924,7 @@ fn connect_and_probe_with_mode(
             | PlayProbeMode::SurvivalPufferfishFullHungerRejection
             | PlayProbeMode::SurvivalGoldenAppleUse
             | PlayProbeMode::SurvivalEnchantedGoldenAppleUse => CONSUMABLE_DRAIN_TIMEOUT,
+            PlayProbeMode::SurvivalInventoryPickupStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
             _ => WORLD_READY_DRAIN_TIMEOUT,
         };
         if world_ready_drain_started.is_some_and(|started| started.elapsed() >= drain_timeout) {
@@ -2050,6 +2087,20 @@ fn encode_creative_item_slot(
     wire::write_varint(item_registry_id, output);
     wire::write_varint(0, output);
     wire::write_varint(0, output);
+    Ok(())
+}
+
+fn encode_inventory_pickup_state_correction(
+    output: &mut Vec<u8>,
+    state_id: i32,
+) -> Result<(), ConnectionError> {
+    wire::write_varint(0, output);
+    wire::write_varint(state_id, output);
+    output.extend_from_slice(&36_i16.to_be_bytes());
+    output.push(0);
+    wire::write_varint(0, output);
+    wire::write_varint(0, output);
+    output.push(0);
     Ok(())
 }
 
@@ -3027,18 +3078,20 @@ mod tests {
         PLAY_CLIENTBOUND_REMOVE_MOB_EFFECT_PACKET_ID, PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID,
         PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID,
         PLAY_SERVERBOUND_ACCEPT_TELEPORTATION_PACKET_ID,
-        PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID, PLAY_SERVERBOUND_KEEP_ALIVE_PACKET_ID,
+        PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID,
+        PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID, PLAY_SERVERBOUND_KEEP_ALIVE_PACKET_ID,
         PLAY_SERVERBOUND_MOVE_PLAYER_POS_ROT_PACKET_ID, PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID,
         PLAY_SERVERBOUND_PLAYER_LOADED_PACKET_ID, PLAY_SERVERBOUND_SET_CARRIED_ITEM_PACKET_ID,
         PLAY_SERVERBOUND_SET_CREATIVE_MODE_SLOT_PACKET_ID, PLAY_SERVERBOUND_USE_ITEM_ON_PACKET_ID,
         PLAY_SERVERBOUND_USE_ITEM_PACKET_ID, STATUS_CLIENTBOUND_PONG_RESPONSE_PACKET_ID,
         STATUS_CLIENTBOUND_RESPONSE_PACKET_ID, STATUS_SERVERBOUND_PING_REQUEST_PACKET_ID,
         STATUS_SERVERBOUND_REQUEST_PACKET_ID, decode_packet_frame, encode_abort_destroy_block,
-        encode_creative_item_slot, encode_creative_stone_slot, encode_packet_frame,
-        encode_release_use_item, encode_set_carried_item, encode_stop_destroy_block,
-        encode_use_item, encode_use_item_on, encode_use_item_on_hit, pack_block_position,
-        parse_add_entity_packet, parse_block_destruction_packet, parse_block_update_packet,
-        parse_chunk_packet, parse_container_set_content_packet, parse_container_set_slot_packet,
+        encode_creative_item_slot, encode_creative_stone_slot,
+        encode_inventory_pickup_state_correction, encode_packet_frame, encode_release_use_item,
+        encode_set_carried_item, encode_stop_destroy_block, encode_use_item, encode_use_item_on,
+        encode_use_item_on_hit, pack_block_position, parse_add_entity_packet,
+        parse_block_destruction_packet, parse_block_update_packet, parse_chunk_packet,
+        parse_container_set_content_packet, parse_container_set_slot_packet,
         parse_player_position_packet, parse_remove_mob_effect_packet, parse_section_data,
         parse_system_chat_packet, parse_update_mob_effect_packet, resolve_player_position,
         support_block_position,
@@ -3083,6 +3136,7 @@ mod tests {
         assert_eq!(PLAY_SERVERBOUND_KEEP_ALIVE_PACKET_ID, 28);
         assert_eq!(PLAY_SERVERBOUND_MOVE_PLAYER_POS_ROT_PACKET_ID, 31);
         assert_eq!(PLAY_SERVERBOUND_PLAYER_LOADED_PACKET_ID, 44);
+        assert_eq!(PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID, 18);
         assert_eq!(PLAY_SERVERBOUND_SET_CARRIED_ITEM_PACKET_ID, 53);
         assert_eq!(PLAY_SERVERBOUND_SET_CREATIVE_MODE_SLOT_PACKET_ID, 56);
         assert_eq!(PLAY_SERVERBOUND_USE_ITEM_ON_PACKET_ID, 66);
@@ -3641,6 +3695,32 @@ mod tests {
         let mut payload = Vec::new();
         encode_set_carried_item(&mut payload, 0).expect("carried item packet");
         assert_eq!(payload, [0, 0]);
+    }
+
+    #[test]
+    fn inventory_click_encoder_matches_java_empty_prediction_fields() {
+        let mut payload = Vec::new();
+        encode_inventory_pickup_state_correction(&mut payload, 0).expect("inventory click packet");
+
+        let mut input = payload.as_slice();
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("container id"),
+            0
+        );
+        assert_eq!(crate::wire::read_varint(&mut input).expect("state id"), 0);
+        assert_eq!(i16::from_be_bytes(input[..2].try_into().expect("slot")), 36);
+        input = &input[2..];
+        assert_eq!(input[0], 0);
+        input = &input[1..];
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("container input"),
+            0
+        );
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("changed slot count"),
+            0
+        );
+        assert_eq!(input, [0]);
     }
 
     #[test]
