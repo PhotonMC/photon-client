@@ -151,6 +151,7 @@ pub struct ChunkPacketObservation {
     pub x: i32,
     pub z: i32,
     pub heightmap_count: usize,
+    pub heightmap_observations: Vec<HeightmapObservation>,
     pub section_data_length: usize,
     pub section_observations: Vec<ChunkSectionObservation>,
     pub block_entity_count: usize,
@@ -159,7 +160,16 @@ pub struct ChunkPacketObservation {
     pub empty_sky_mask_word_count: usize,
     pub empty_block_mask_word_count: usize,
     pub sky_update_count: usize,
+    pub sky_update_lengths: Vec<usize>,
     pub block_update_count: usize,
+    pub block_update_lengths: Vec<usize>,
+}
+
+/// Wire-level fields observed from one chunk heightmap entry.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HeightmapObservation {
+    pub type_id: i32,
+    pub word_count: usize,
 }
 
 /// Structural fields decoded from one serialized 16-by-16 chunk section.
@@ -802,9 +812,14 @@ fn parse_chunk_packet(mut input: &[u8]) -> Result<ChunkPacketObservation, Connec
     let z = read_i32(&mut input, "chunk z")?;
 
     let heightmap_count = read_count(&mut input, "heightmap count")?;
+    let mut heightmap_observations = Vec::with_capacity(heightmap_count);
     for _ in 0..heightmap_count {
-        read_varint(&mut input, "heightmap type")?;
-        read_long_array(&mut input, "heightmap data")?;
+        let type_id = read_varint(&mut input, "heightmap type")?;
+        let word_count = read_long_array(&mut input, "heightmap data")?.len();
+        heightmap_observations.push(HeightmapObservation {
+            type_id,
+            word_count,
+        });
     }
 
     let section_data =
@@ -824,8 +839,8 @@ fn parse_chunk_packet(mut input: &[u8]) -> Result<ChunkPacketObservation, Connec
     let block_mask_word_count = read_long_array(&mut input, "block light mask")?.len();
     let empty_sky_mask_word_count = read_long_array(&mut input, "empty sky light mask")?.len();
     let empty_block_mask_word_count = read_long_array(&mut input, "empty block light mask")?.len();
-    let sky_update_count = read_light_updates(&mut input, "sky light updates")?;
-    let block_update_count = read_light_updates(&mut input, "block light updates")?;
+    let sky_update_lengths = read_light_updates(&mut input, "sky light updates")?;
+    let block_update_lengths = read_light_updates(&mut input, "block light updates")?;
 
     if !input.is_empty() {
         return Err(ConnectionError::Codec("chunk trailing payload"));
@@ -835,6 +850,7 @@ fn parse_chunk_packet(mut input: &[u8]) -> Result<ChunkPacketObservation, Connec
         x,
         z,
         heightmap_count,
+        heightmap_observations,
         section_data_length,
         section_observations,
         block_entity_count,
@@ -842,8 +858,10 @@ fn parse_chunk_packet(mut input: &[u8]) -> Result<ChunkPacketObservation, Connec
         block_mask_word_count,
         empty_sky_mask_word_count,
         empty_block_mask_word_count,
-        sky_update_count,
-        block_update_count,
+        sky_update_count: sky_update_lengths.len(),
+        sky_update_lengths,
+        block_update_count: block_update_lengths.len(),
+        block_update_lengths,
     })
 }
 
@@ -904,12 +922,17 @@ fn read_length_prefixed_bytes<'a>(
     Ok(head)
 }
 
-fn read_light_updates(input: &mut &[u8], name: &'static str) -> Result<usize, ConnectionError> {
+fn read_light_updates(
+    input: &mut &[u8],
+    name: &'static str,
+) -> Result<Vec<usize>, ConnectionError> {
     let count = read_count(input, name)?;
+    let mut lengths = Vec::with_capacity(count);
     for _ in 0..count {
-        let _ = read_length_prefixed_bytes(input, 2_048, name)?;
+        let bytes = read_length_prefixed_bytes(input, 2_048, name)?;
+        lengths.push(bytes.len());
     }
-    Ok(count)
+    Ok(lengths)
 }
 
 fn parse_section_data(mut input: &[u8]) -> Result<Vec<ChunkSectionObservation>, ConnectionError> {
@@ -1179,6 +1202,7 @@ mod tests {
         assert_eq!(observation.x, -17);
         assert_eq!(observation.z, 23);
         assert_eq!(observation.heightmap_count, 0);
+        assert!(observation.heightmap_observations.is_empty());
         assert_eq!(observation.section_data_length, 0);
         assert_eq!(observation.block_entity_count, 0);
         assert_eq!(observation.sky_mask_word_count, 0);
@@ -1186,7 +1210,9 @@ mod tests {
         assert_eq!(observation.empty_sky_mask_word_count, 0);
         assert_eq!(observation.empty_block_mask_word_count, 0);
         assert_eq!(observation.sky_update_count, 0);
+        assert!(observation.sky_update_lengths.is_empty());
         assert_eq!(observation.block_update_count, 0);
+        assert!(observation.block_update_lengths.is_empty());
     }
 
     #[test]
@@ -1207,6 +1233,57 @@ mod tests {
 
         let observation = parse_chunk_packet(&payload).expect("nullable block entity tag");
         assert_eq!(observation.block_entity_count, 1);
+    }
+
+    #[test]
+    fn chunk_packet_parser_records_heightmap_and_light_lengths() {
+        let mut payload = Vec::new();
+        payload.extend_from_slice(&4_i32.to_be_bytes());
+        payload.extend_from_slice(&(-9_i32).to_be_bytes());
+
+        crate::wire::write_varint(2, &mut payload);
+        crate::wire::write_varint(1, &mut payload);
+        crate::wire::write_varint(2, &mut payload);
+        payload.extend_from_slice(&[0; 16]);
+        crate::wire::write_varint(4, &mut payload);
+        crate::wire::write_varint(3, &mut payload);
+        payload.extend_from_slice(&[0; 24]);
+
+        crate::wire::write_varint(0, &mut payload);
+        crate::wire::write_varint(0, &mut payload);
+        for _ in 0..4 {
+            crate::wire::write_varint(0, &mut payload);
+        }
+
+        crate::wire::write_varint(2, &mut payload);
+        crate::wire::write_varint(2_048, &mut payload);
+        payload.extend_from_slice(&[0xa5; 2_048]);
+        crate::wire::write_varint(3, &mut payload);
+        payload.extend_from_slice(&[0x5a; 3]);
+
+        crate::wire::write_varint(1, &mut payload);
+        crate::wire::write_varint(2_048, &mut payload);
+        payload.extend_from_slice(&[0x3c; 2_048]);
+
+        let observation = parse_chunk_packet(&payload).expect("heightmap and light lengths");
+        assert_eq!(observation.heightmap_count, 2);
+        assert_eq!(
+            observation.heightmap_observations,
+            [
+                super::HeightmapObservation {
+                    type_id: 1,
+                    word_count: 2,
+                },
+                super::HeightmapObservation {
+                    type_id: 4,
+                    word_count: 3,
+                },
+            ]
+        );
+        assert_eq!(observation.sky_update_count, 2);
+        assert_eq!(observation.sky_update_lengths, [2_048, 3]);
+        assert_eq!(observation.block_update_count, 1);
+        assert_eq!(observation.block_update_lengths, [2_048]);
     }
 
     #[test]
