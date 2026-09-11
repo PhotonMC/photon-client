@@ -974,6 +974,22 @@ pub fn connect_and_survival_inventory_ahead_state_correct_prediction_probe(
     )
 }
 
+/// Connect to a Java-protocol server, send a component-bearing pickup with an
+/// ahead container state id and the exact component hash, and observe the full
+/// resync.
+pub fn connect_and_survival_inventory_ahead_component_correct_prediction_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeMode::SurvivalInventoryAheadComponentCorrectPrediction,
+    )
+}
+
 /// Connect to a Java-protocol server, shift-click a supplied survival inventory
 /// stack with a stale container state id, and observe the authoritative full resync.
 pub fn connect_and_survival_inventory_quick_move_state_correction_probe(
@@ -1183,6 +1199,7 @@ enum PlayProbeMode {
     SurvivalInventoryPartialChangedSlotPrediction,
     SurvivalInventoryStaleStateCorrectPrediction,
     SurvivalInventoryAheadStateCorrectPrediction,
+    SurvivalInventoryAheadComponentCorrectPrediction,
     SurvivalInventoryQuickMoveStateCorrection,
     SurvivalInventorySwapStateCorrection,
     CreativePlace,
@@ -2461,6 +2478,29 @@ fn connect_and_probe_with_mode(
             }
             if matches!(
                 probe_mode,
+                PlayProbeMode::SurvivalInventoryAheadComponentCorrectPrediction
+            ) && trace.container_click_packets_sent == 0
+            {
+                std::thread::sleep(Duration::from_secs(20));
+                send_packet(
+                    &mut stream,
+                    ConnectionProtocol::Play,
+                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
+                    |output| {
+                        encode_inventory_pickup_with_component_correct_prediction(
+                            output,
+                            99,
+                            1,
+                            VANILLA_MILK_BUCKET_ITEM_REGISTRY_ID,
+                        )
+                    },
+                    compression_threshold,
+                )?;
+                trace.container_click_packets_sent += 1;
+                trace.container_click_state_id_sent = Some(99);
+            }
+            if matches!(
+                probe_mode,
                 PlayProbeMode::SurvivalInventoryQuickMoveStateCorrection
             ) && trace.container_click_packets_sent == 0
             {
@@ -2614,6 +2654,9 @@ fn connect_and_probe_with_mode(
                 PlayProbeMode::SurvivalInventoryAheadStateCorrectPrediction => {
                     CONSUMABLE_DRAIN_TIMEOUT
                 }
+                PlayProbeMode::SurvivalInventoryAheadComponentCorrectPrediction => {
+                    CONSUMABLE_DRAIN_TIMEOUT
+                }
                 PlayProbeMode::SurvivalInventoryQuickMoveStateCorrection => {
                     CONSUMABLE_DRAIN_TIMEOUT
                 }
@@ -2663,6 +2706,9 @@ fn connect_and_probe_with_mode(
             }
             PlayProbeMode::SurvivalInventoryStaleStateCorrectPrediction => CONSUMABLE_DRAIN_TIMEOUT,
             PlayProbeMode::SurvivalInventoryAheadStateCorrectPrediction => CONSUMABLE_DRAIN_TIMEOUT,
+            PlayProbeMode::SurvivalInventoryAheadComponentCorrectPrediction => {
+                CONSUMABLE_DRAIN_TIMEOUT
+            }
             PlayProbeMode::SurvivalInventoryQuickMoveStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
             PlayProbeMode::SurvivalInventorySwapStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
             _ => WORLD_READY_DRAIN_TIMEOUT,
