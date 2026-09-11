@@ -32,6 +32,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         trace.container_content_observations
     );
     println!(
+        "mob_effect_update_observations={:?}",
+        trace.mob_effect_update_observations
+    );
+    println!(
+        "mob_effect_remove_observations={:?}",
+        trace.mob_effect_remove_observations
+    );
+    println!(
         "block_changed_ack_sequences={:?}",
         trace.block_changed_ack_sequences
     );

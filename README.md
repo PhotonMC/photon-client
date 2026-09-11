@@ -48,6 +48,8 @@ Rust uygulama girişi henüz oynanabilir istemci değildir. İlk gerçek vanilla
 - [Vanilla survival empty bucket pickup doğrulaması](docs/vanilla-survival-empty-bucket-pickup-parity.md)
 - [Survival component-bearing milk bucket use sözleşmesi](docs/survival-milk-bucket-use-contract.md)
 - [Vanilla survival component-bearing milk bucket use doğrulaması](docs/vanilla-survival-milk-bucket-use-parity.md)
+- [Survival active multi-effect milk bucket cleanup sözleşmesi](docs/survival-milk-bucket-clear-effects-contract.md)
+- [Vanilla survival active multi-effect milk bucket cleanup doğrulaması](docs/vanilla-survival-milk-bucket-clear-effects-parity.md)
 - [Survival component-bearing honey bottle use sözleşmesi](docs/survival-honey-bottle-use-contract.md)
 - [Vanilla survival component-bearing honey bottle use doğrulaması](docs/vanilla-survival-honey-bottle-use-parity.md)
 - [Survival honey bottle poison cleanup sözleşmesi](docs/survival-honey-bottle-poison-cleanup-contract.md)
