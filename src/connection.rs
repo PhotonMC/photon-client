@@ -792,6 +792,22 @@ pub fn connect_and_survival_inventory_double_click_state_correction_probe(
     )
 }
 
+/// Connect to a Java-protocol server, collect a second survival inventory stack
+/// up to the carried stack limit with a stale container state id, and observe
+/// the authoritative full resync.
+pub fn connect_and_survival_inventory_double_click_stack_limit_state_correction_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeMode::SurvivalInventoryDoubleClickStackLimitStateCorrection,
+    )
+}
+
 /// Connect to a Java-protocol server, shift-click a supplied survival inventory
 /// stack with a stale container state id, and observe the authoritative full resync.
 pub fn connect_and_survival_inventory_quick_move_state_correction_probe(
@@ -990,6 +1006,7 @@ enum PlayProbeMode {
     SurvivalInventoryDragEmptyCancelStateCorrection,
     SurvivalInventoryDragDistributionStateCorrection,
     SurvivalInventoryDoubleClickStateCorrection,
+    SurvivalInventoryDoubleClickStackLimitStateCorrection,
     SurvivalInventoryQuickMoveStateCorrection,
     SurvivalInventorySwapStateCorrection,
     CreativePlace,
@@ -2062,6 +2079,26 @@ fn connect_and_probe_with_mode(
             }
             if matches!(
                 probe_mode,
+                PlayProbeMode::SurvivalInventoryDoubleClickStackLimitStateCorrection
+            ) && trace.container_click_packets_sent == 0
+            {
+                std::thread::sleep(Duration::from_secs(20));
+                for (slot, button, input_id) in [(36_i16, 0_u8, 0_i32), (10_i16, 0_u8, 6_i32)] {
+                    send_packet(
+                        &mut stream,
+                        ConnectionProtocol::Play,
+                        PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
+                        |output| {
+                            encode_inventory_click_with_input(output, 0, slot, button, input_id)
+                        },
+                        compression_threshold,
+                    )?;
+                    trace.container_click_packets_sent += 1;
+                }
+                trace.container_click_state_id_sent = Some(0);
+            }
+            if matches!(
+                probe_mode,
                 PlayProbeMode::SurvivalInventoryQuickMoveStateCorrection
             ) && trace.container_click_packets_sent == 0
             {
@@ -2194,6 +2231,9 @@ fn connect_and_probe_with_mode(
                 PlayProbeMode::SurvivalInventoryDoubleClickStateCorrection => {
                     CONSUMABLE_DRAIN_TIMEOUT
                 }
+                PlayProbeMode::SurvivalInventoryDoubleClickStackLimitStateCorrection => {
+                    CONSUMABLE_DRAIN_TIMEOUT
+                }
                 PlayProbeMode::SurvivalInventoryQuickMoveStateCorrection => {
                     CONSUMABLE_DRAIN_TIMEOUT
                 }
@@ -2228,6 +2268,9 @@ fn connect_and_probe_with_mode(
                 CONSUMABLE_DRAIN_TIMEOUT
             }
             PlayProbeMode::SurvivalInventoryDoubleClickStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
+            PlayProbeMode::SurvivalInventoryDoubleClickStackLimitStateCorrection => {
+                CONSUMABLE_DRAIN_TIMEOUT
+            }
             PlayProbeMode::SurvivalInventoryQuickMoveStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
             PlayProbeMode::SurvivalInventorySwapStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
             _ => WORLD_READY_DRAIN_TIMEOUT,
