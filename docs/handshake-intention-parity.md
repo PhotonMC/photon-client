@@ -8,4 +8,4 @@ Java 25.0.4.1 / Linux x86_64 üzerinde odaklı capture kimliği `da81ea5da291737
 
 Güncel birleşik corpus 3476 senaryodur: `binary=164`, `math=2894`, `nbt=31`, `resources=44`, `timer=22`, `utf8=141`, `wire=180`. Birleşik capture kimliği `22b7eff1e5b7cdd30d0859f047d321b058410a257c2f9fc8cf4a38c747f0c1f6`; `verify-682kpa0b`, debug `compare-ezhc4kko` ve release `compare-6s5p7_y0` raporlarının tamamı geçti.
 
-Bu sonuç P06.b'nin handshake intention codec sınırını doğrular. Connection state, status response, login challenge, compression/encryption ve Pumpkin ile gerçek bağlantı akışı sonraki dilimlerdedir.
+Bu sonuç P06.b'nin handshake intention codec sınırını doğrular. Connection state, status response, login challenge, compression/encryption ve vanilla 26.2 ile gerçek bağlantı akışı sonraki dilimlerdedir.

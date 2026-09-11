@@ -1,4 +1,4 @@
-//! A small synchronous client connection used by the first Pumpkin integration probe.
+//! A small synchronous client connection used by the first real-server integration probe.
 //!
 //! This module owns the byte pipeline up to the first play-world packets. It does not
 //! implement a renderer or a client world; its purpose is to make the phase transition
@@ -49,7 +49,7 @@ const CONFIG_CODE_OF_CONDUCT_PACKET_ID: i32 = 19;
 const PLAY_CLIENTBOUND_BUNDLE_DELIMITER_PACKET_ID: i32 = 0;
 const PLAY_CLIENTBOUND_CHUNK_BATCH_FINISHED_PACKET_ID: i32 = 11;
 const PLAY_CLIENTBOUND_CHUNK_BATCH_START_PACKET_ID: i32 = 12;
-const PLAY_CLIENTBOUND_KEEP_ALIVE_PACKET_ID: i32 = 43;
+const PLAY_CLIENTBOUND_KEEP_ALIVE_PACKET_ID: i32 = 44;
 const PLAY_CLIENTBOUND_CHUNK_PACKET_ID: i32 = 45;
 const PLAY_CLIENTBOUND_LOGIN_PACKET_ID: i32 = 49;
 const PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID: i32 = 11;
@@ -118,7 +118,7 @@ pub struct PacketObservation {
     pub body_length: usize,
 }
 
-/// The observable result of the initial real Pumpkin session.
+/// The observable result of the initial real-server session.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct PlayConnectionTrace {
     pub packets: Vec<PacketObservation>,
@@ -647,7 +647,11 @@ fn split_packet(body: &[u8]) -> Result<(i32, &[u8]), ConnectionError> {
 
 #[cfg(test)]
 mod tests {
-    use super::{decode_packet_frame, encode_packet_frame};
+    use super::{
+        PLAY_CLIENTBOUND_CHUNK_PACKET_ID, PLAY_CLIENTBOUND_KEEP_ALIVE_PACKET_ID,
+        PLAY_CLIENTBOUND_LOGIN_PACKET_ID, PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID,
+        PLAY_SERVERBOUND_KEEP_ALIVE_PACKET_ID, decode_packet_frame, encode_packet_frame,
+    };
 
     #[test]
     fn compression_uses_java_boundary_and_round_trips() {
@@ -665,5 +669,14 @@ mod tests {
         crate::wire::read_varint(&mut at_header).expect("at frame header");
         assert_ne!(at_header[0], 0x00);
         assert_eq!(decode_packet_frame(at_header, Some(256)).unwrap(), at);
+    }
+
+    #[test]
+    fn play_packet_ids_match_java_26_2_dispatch_order() {
+        assert_eq!(PLAY_CLIENTBOUND_KEEP_ALIVE_PACKET_ID, 44);
+        assert_eq!(PLAY_CLIENTBOUND_CHUNK_PACKET_ID, 45);
+        assert_eq!(PLAY_CLIENTBOUND_LOGIN_PACKET_ID, 49);
+        assert_eq!(PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID, 11);
+        assert_eq!(PLAY_SERVERBOUND_KEEP_ALIVE_PACKET_ID, 28);
     }
 }

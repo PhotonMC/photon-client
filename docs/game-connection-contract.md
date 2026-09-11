@@ -1,15 +1,16 @@
 # P06–P08 — İlk gerçek oyun oturumu sözleşmesi
 
-Bu dilim, Rust tarafının sabit bir Pumpkin sunucusuna bağlanıp login, configuration ve play'e geçişte ilk dünya paketlerini almasını ölçer. Bu bir oynanabilir istemci veya Java eşitliği kanıtı değildir; sonraki dünya, hareket ve görüntü dilimleri için otomatik bir bağlantı ön koşuludur.
+Bu dilim, Rust tarafının sabit bir Java Edition 26.2 protokol sunucusuna bağlanıp login, configuration ve play'e geçişte ilk dünya paketlerini almasını ölçer. Bu bir oynanabilir istemci veya Java eşitliği kanıtı değildir; sonraki dünya, hareket ve görüntü dilimleri için otomatik bir bağlantı ön koşuludur.
 
 ## Sabit referans
 
 - Java Edition 26.2
 - Protokol 776
 - Java 25
-- Offline-authenticated, yerel Pumpkin 26.2 sunucusu
-- TCP adresi test koşusunda `127.0.0.1:25565`
-- Kullanıcı adları test koşusunda `RustProbe3` ve `RustProbe4`
+- Offline-authenticated, yerel vanilla 26.2 dedicated server
+- Güncel baseline TCP adresi test koşusunda `127.0.0.1:25566`
+- Probe kullanıcı adları koşuya göre sabitlenir; güncel vanilla kaydı `VanillaProbe2` ve `VanillaProbe3` adlarını kullanır
+- Pumpkin koşusu ayrı bir uyumluluk karşılaştırması olarak [kendi kaydında](game-connection-parity.md) tutulur
 
 Java kaynak incelemesinde `ServerLoginPacketListenerImpl`, `ClientHandshakePacketListenerImpl`, `ServerConfigurationPacketListenerImpl`, `CompressionEncoder`, `CompressionDecoder`, `ClientPacketListener` içindeki chunk batch akışı ve `GameProtocols` paket sıraları kullanıldı. Kaynak kodu bu depoya kopyalanmadı.
 
@@ -35,4 +36,4 @@ Sözleşmenin temel gözlemleri şunlardır:
 
 ## Kapsam dışı
 
-Bu dilim chunk gövdesini dünya state'ine dönüştürmez; palette, section, ışık, biome, block entity ve entity decoder'ları P08 alt dilimleridir. P05 pencere/input, oyuncu tick'i, hareket, eylem, envanter, kamera, renderer, ses, GUI ve yeniden bağlanma da bu sözleşmede yoktur. Sunucu davranışı istemciye uyarlamak için değiştirilmez; Pumpkin yalnızca sabit entegrasyon karşılığıdır.
+Bu dilim chunk gövdesini dünya state'ine dönüştürmez; palette, section, ışık, biome, block entity ve entity decoder'ları P08 alt dilimleridir. P05 pencere/input, oyuncu tick'i, hareket, eylem, envanter, kamera, renderer, ses, GUI ve yeniden bağlanma da bu sözleşmede yoktur. Vanilla baseline'ı istemci davranışının bağımsız referansıdır; Pumpkin'a özgü eksikleri telafi eden istemci dalları bu sözleşmeye eklenmez.

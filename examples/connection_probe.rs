@@ -7,7 +7,7 @@ use voxel_client::connection::connect_and_probe;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let address: SocketAddr = env::args()
         .nth(1)
-        .unwrap_or_else(|| "127.0.0.1:25565".to_owned())
+        .unwrap_or_else(|| "127.0.0.1:25566".to_owned())
         .parse()?;
     let username = env::args().nth(2).unwrap_or_else(|| "RustProbe".to_owned());
     let trace = connect_and_probe(address, &username, Duration::from_secs(20))?;

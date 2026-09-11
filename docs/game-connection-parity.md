@@ -1,16 +1,16 @@
-# P06–P08 — İlk gerçek oyun oturumu doğrulaması
+# P06–P08 — Pumpkin uyumluluk oturumu doğrulaması
 
 **Tarih:** 2026-09-11
 **Referans:** Java Edition 26.2 / protokol 776 / Java 25
 **Sunucu:** yerel, offline Pumpkin 26.2 adayı
-**Sonuç:** bağlantı ve ilk dünya teslimi iki Rust probe koşusunda geçti.
+**Sonuç:** bağlantı ve ilk dünya teslimi iki Rust probe koşusunda geçti. Bu kayıt vanilla baseline'dan ayrı tutulur; güncel resmi server sonucu [vanilla doğrulamasındadır](vanilla-connection-parity.md).
 
 ## Çalıştırma
 
 Pumpkin izole bir geçici dünya/config kopyasında çalıştırıldı. Rust probe şu komutla iki ayrı koşuda, `RustProbe3` ve `RustProbe4` kullanıcı adlarıyla çalıştırıldı:
 
 ```text
-cargo run --offline --example pumpkin_probe -- 127.0.0.1:25565 RustProbe3
+cargo run --offline --example connection_probe -- 127.0.0.1:25565 RustProbe3
 ```
 
 Komut gerçek TCP oturumu açar; elle oyun oynama veya ekran değerlendirmesi istemez. Probe, ilk world chunk akışından sonra kısa bir drain penceresi kullandığı için Pumpkin logunda erken `connection reset` uyarısı oluşmadı. Her iki oturumda da Pumpkin `joined` ve `left` kaydı üretti.

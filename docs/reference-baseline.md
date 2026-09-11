@@ -46,7 +46,7 @@ Orijinal client JAR'ı ve mevcut bağımlılıklar kullanılarak grafik arayüzs
 | `Vec2` | Diyagonal vektör normalizasyonu, ham float bitleri | Çağrılabildi; iki çalıştırma aynı çıktı |
 | `VarInt` | Negatif sayının Netty buffer'a yazılıp okunması | Çağrılabildi; iki çalıştırma aynı çıktı |
 
-Yoklama kodu ve sonuçları `.data/runs/reference-probe/` içinde. Bu ilk yoklama Rust eşitlik kanıtı değildir. Sonraki çalışmada [kalıcı çalıştırıcı ve 346 senaryoluk corpus](behavior-runner.md) hazırlandı; aşağıdaki yoklama bilgileri ilk incelemenin kaydıdır. İlk testler için Java sınıflarını doğrudan çağırmanın uygulanabilir olduğunu gösterir. İlk envanter sırasında tam istemci, GPU, ses çıkışı, gerçek oyuncu oturumu ve Pumpkin bağlantısı denenmedi; güncel ilk bağlantı/world-delivery sonucu [ayrı doğrulama kaydındadır](game-connection-parity.md). Kullanıcının Prism instance'ına veya ayarlarına dokunulmadı.
+Yoklama kodu ve sonuçları `.data/runs/reference-probe/` içinde. Bu ilk yoklama Rust eşitlik kanıtı değildir. Sonraki çalışmada [kalıcı çalıştırıcı ve 346 senaryoluk corpus](behavior-runner.md) hazırlandı; aşağıdaki yoklama bilgileri ilk incelemenin kaydıdır. İlk testler için Java sınıflarını doğrudan çağırmanın uygulanabilir olduğunu gösterir. İlk envanter sırasında tam istemci, GPU, ses çıkışı ve gerçek oyuncu oturumu denenmedi; güncel vanilla bağlantı/world-delivery sonucu [ayrı doğrulama kaydındadır](vanilla-connection-parity.md). Önceki Pumpkin koşusu [ayrı uyumluluk kaydıdır](game-connection-parity.md). Kullanıcının Prism instance'ına veya ayarlarına dokunulmadı.
 
 ## Asset yükleme açısından sonuç
 
@@ -62,7 +62,7 @@ Bu revizyonun `JavaMinecraftVersion` tanımı `V_26_2` ile `776` arasında iki y
 
 Sunucunun kendi README'si geliştirme aşamasında olduğunu ve tamamlanmamış mekanikler bulunduğunu belirtiyor. Protokol numarasının tanınması bütün paketlerin, registry verilerinin veya oyun mekaniklerinin eşitliğine kanıt değildir. [Sabit revizyondaki README](https://github.com/Pumpkin-Mc/Pumpkin/blob/786e2fbf782f92113543fcb46eaf95ba53835d41/README.md).
 
-İnceleme kopyaları `.data/runs/pumpkin-review/` içinde. Bu envanter incelemesinde Pumpkin kurulmadı, derlenmedi veya çalıştırılmadı; sunucu kodu projeye dahil edilmedi. Sonraki izole runtime koşusunda ilk offline Rust probe'u başarılı oldu; kapsamı [P06–P08 bağlantı sözleşmesi](game-connection-contract.md) ile sınırlıdır. P06–P08'in geri kalan ve P26 oyun senaryolarıyla uyumluluk ayrıca ölçülecek.
+İnceleme kopyaları `.data/runs/pumpkin-review/` içinde. Bu envanter incelemesinde Pumpkin sunucu kodu projeye dahil edilmedi. Güncel test baseline'ı Mojang vanilla 26.2 server ile [ayrı doğrulama kaydında](vanilla-connection-parity.md) tutulur; Pumpkin koşusu bununla karıştırılmadan [ayrı kaydedilmiştir](game-connection-parity.md). Her iki probe da [P06–P08 bağlantı sözleşmesinin](game-connection-contract.md) dar kapsamındadır; P06–P08'in geri kalan ve P26 oyun senaryolarıyla uyumluluk ayrıca ölçülecek.
 
 ## Henüz doğrulanmayanlar
 

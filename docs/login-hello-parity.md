@@ -8,4 +8,4 @@ Java 25.0.4.1 / Linux x86_64 üzerinde odaklı capture kimliği `fb8431b38d799e7
 
 Birleşik doğrulama corpus'u 3490 senaryodur: `binary=164`, `math=2894`, `nbt=31`, `resources=44`, `timer=22`, `utf8=141`, `wire=194`. Capture kimliği `3f9c8b6d0c4eb140d51c97e347bac0115ca5a68e601a86c97a73622bc6d8b8e5`; `verify-zu15xkpg`, debug `compare-5z6q2aso` ve release `compare-6tjk1hjz` raporlarının tamamı geçti.
 
-Bu sonuç P06.b'nin packet codec sınırını doğrular. Login challenge/key exchange, compression/encryption, state transition ve Pumpkin ile gerçek bağlantı akışı sonraki dilimlerdedir.
+Bu sonuç P06.b'nin packet codec sınırını doğrular. Login challenge/key exchange, compression/encryption, state transition ve vanilla 26.2 ile gerçek bağlantı akışı sonraki dilimlerdedir.

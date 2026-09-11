@@ -31,7 +31,7 @@ Otomatik görüntü ve ses ölçümleri, insan algısında fark olmadığına te
 5. Fark varsa nedenini çöz; beklentiyi Rust'a uydurma. İlgili önceki davranış testlerini de çalıştır.
 6. Doğrulanan kapsamı ve açık boşlukları kaydet; tamamlanmış dilimi ayrı commit yap.
 
-İstemciye verilen aynı sunucu olaylarıyla davranış testi ve gerçek Pumpkin bağlantısıyla entegrasyon doğrulaması ayrı değerlendirilir. Testte olay beslemek üretim sunucusu geliştirmek anlamına gelmez. Pumpkin'in eksik veya farklı bir davranışı Java istemci eşitliğinin kanıtı değildir; farkın hangi taraftan geldiği kaydedilir.
+İstemciye verilen aynı sunucu olaylarıyla davranış testi ve gerçek vanilla 26.2 bağlantısıyla entegrasyon doğrulaması ayrı değerlendirilir. Testte olay beslemek üretim sunucusu geliştirmek anlamına gelmez. Vanilla dışındaki bir sunucunun eksik veya farklı davranışı Java istemci eşitliğinin kanıtı değildir; farkın hangi taraftan geldiği kaydedilir. Pumpkin koşuları ayrıca karşılaştırma kaydı olarak tutulur.
 
 Her senaryo geçti, kaldı veya engelli olarak raporlanır. Eksik Java, asset, ekran/ses ortamı veya Pumpkin desteği nedeniyle çalışmayan test, eşitlik onayı vermez. Başarısızlık raporları girdileri, ilk ayrışmayı ve yeniden çalıştırma bilgisini yerelde saklar.
 

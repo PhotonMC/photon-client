@@ -8,4 +8,4 @@ Java 25.0.4.1 / Linux x86_64 üzerinde odaklı capture kimliği `ff841d76d465a86
 
 Bu packet eklendikten sonraki birleşik corpus 3521 senaryodur: `binary=164`, `math=2894`, `nbt=31`, `resources=44`, `timer=22`, `utf8=141`, `wire=225`. Birleşik capture kimliği `8caa126e3ab721369267d91d226301863bef39b68d74205175a9f3ce2ca1a0c4`; `verify-ai_dqm2s`, debug `compare-62syulpe` ve release `compare-iwk2cson` raporlarının tamamı geçti.
 
-Bu sonuç packet codec sınırını doğrular. Public-key parse/authentication, encryption, compression pipeline, login state transition ve Pumpkin ile gerçek bağlantı sonraki dilimlerdedir.
+Bu sonuç packet codec sınırını doğrular. Public-key parse/authentication, encryption, compression pipeline, login state transition ve vanilla 26.2 ile gerçek bağlantı sonraki dilimlerdedir.

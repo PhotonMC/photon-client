@@ -83,4 +83,4 @@ Runner yedi aileyi aynı JSONL sözleşmesiyle işler: math, timer, wire, utf8, 
 
 Kesin senaryo listesi generator'dan, referans kimliği capture manifest'inden, dilim sınırları ise ilgili contract/parity belgelerinden okunur. Bu bölüm hareketli corpus toplamını tekrar etmez.
 
-Bu kapsam headless yardımcı ve veri davranışlarıyla sınırlıdır. İlk gerçek Pumpkin oturumu [Rust connection probe'u](game-connection-parity.md) ile doğrulandı; oynanabilir istemci, pencere/input, chunk/world state, GPU frame yakalama, audio capture ve tam user-facing akışlar henüz doğrulanmış değildir.
+Bu kapsam headless yardımcı ve veri davranışlarıyla sınırlıdır. İlk gerçek vanilla 26.2 oturumu [Rust connection probe'u](vanilla-connection-parity.md) ile doğrulandı; Pumpkin karşılaştırması [ayrı kayıttadır](game-connection-parity.md). Oynanabilir istemci, pencere/input, chunk/world state, GPU frame yakalama, audio capture ve tam user-facing akışlar henüz doğrulanmış değildir.

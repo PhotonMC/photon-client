@@ -8,4 +8,4 @@ Java 25.0.4.1 / Linux x86_64 üzerinde odaklı capture kimliği `d36a36fe7d43fab
 
 Bu packet eklendikten sonraki birleşik corpus 3504 senaryodur: `binary=164`, `math=2894`, `nbt=31`, `resources=44`, `timer=22`, `utf8=141`, `wire=208`. Birleşik capture kimliği `fd09e0ac958f9a4cfa8bb7f7f74d634ffdd3c3662e15d6fecfde11fc9f5b5846`; `verify-s7ldy3lp`, debug `compare-3fpmctxj` ve release `compare-tqn2f4hv` raporlarının tamamı geçti.
 
-Bu sonuç yalnızca threshold packet codec'ini doğrular. Sıkıştırılmış frame dönüşümü, pipeline handler'ı, login state transition ve Pumpkin ile gerçek bağlantı sonraki P06.c/P06.d dilimlerindedir.
+Bu sonuç yalnızca threshold packet codec'ini doğrular. Sıkıştırılmış frame dönüşümü, pipeline handler'ı, login state transition ve vanilla 26.2 ile gerçek bağlantı sonraki P06.c/P06.d dilimlerindedir.
