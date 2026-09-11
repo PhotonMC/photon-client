@@ -929,6 +929,21 @@ pub fn connect_and_survival_inventory_component_correct_prediction_probe(
     )
 }
 
+/// Connect to a Java-protocol server, pick up a survival stack without sending
+/// its changed-slot hash, and observe the authoritative slot correction.
+pub fn connect_and_survival_inventory_partial_changed_slot_prediction_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeMode::SurvivalInventoryPartialChangedSlotPrediction,
+    )
+}
+
 /// Connect to a Java-protocol server, shift-click a supplied survival inventory
 /// stack with a stale container state id, and observe the authoritative full resync.
 pub fn connect_and_survival_inventory_quick_move_state_correction_probe(
@@ -1135,6 +1150,7 @@ enum PlayProbeMode {
     SurvivalInventoryWrongBothPrediction,
     SurvivalInventoryComponentHashPrediction,
     SurvivalInventoryComponentCorrectPrediction,
+    SurvivalInventoryPartialChangedSlotPrediction,
     SurvivalInventoryQuickMoveStateCorrection,
     SurvivalInventorySwapStateCorrection,
     CreativePlace,
@@ -2358,6 +2374,29 @@ fn connect_and_probe_with_mode(
             }
             if matches!(
                 probe_mode,
+                PlayProbeMode::SurvivalInventoryPartialChangedSlotPrediction
+            ) && trace.container_click_packets_sent == 0
+            {
+                std::thread::sleep(Duration::from_secs(20));
+                send_packet(
+                    &mut stream,
+                    ConnectionProtocol::Play,
+                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
+                    |output| {
+                        encode_inventory_pickup_with_partial_changed_slot_prediction(
+                            output,
+                            2,
+                            8,
+                            VANILLA_STONE_ITEM_REGISTRY_ID,
+                        )
+                    },
+                    compression_threshold,
+                )?;
+                trace.container_click_packets_sent += 1;
+                trace.container_click_state_id_sent = Some(2);
+            }
+            if matches!(
+                probe_mode,
                 PlayProbeMode::SurvivalInventoryQuickMoveStateCorrection
             ) && trace.container_click_packets_sent == 0
             {
@@ -2502,6 +2541,9 @@ fn connect_and_probe_with_mode(
                 PlayProbeMode::SurvivalInventoryComponentCorrectPrediction => {
                     CONSUMABLE_DRAIN_TIMEOUT
                 }
+                PlayProbeMode::SurvivalInventoryPartialChangedSlotPrediction => {
+                    CONSUMABLE_DRAIN_TIMEOUT
+                }
                 PlayProbeMode::SurvivalInventoryQuickMoveStateCorrection => {
                     CONSUMABLE_DRAIN_TIMEOUT
                 }
@@ -2546,6 +2588,9 @@ fn connect_and_probe_with_mode(
             PlayProbeMode::SurvivalInventoryWrongBothPrediction => CONSUMABLE_DRAIN_TIMEOUT,
             PlayProbeMode::SurvivalInventoryComponentHashPrediction => CONSUMABLE_DRAIN_TIMEOUT,
             PlayProbeMode::SurvivalInventoryComponentCorrectPrediction => CONSUMABLE_DRAIN_TIMEOUT,
+            PlayProbeMode::SurvivalInventoryPartialChangedSlotPrediction => {
+                CONSUMABLE_DRAIN_TIMEOUT
+            }
             PlayProbeMode::SurvivalInventoryQuickMoveStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
             PlayProbeMode::SurvivalInventorySwapStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
             _ => WORLD_READY_DRAIN_TIMEOUT,
@@ -2893,10 +2938,44 @@ fn encode_inventory_pickup_with_component_correct_prediction(
     )
 }
 
+fn encode_inventory_pickup_with_partial_changed_slot_prediction(
+    output: &mut Vec<u8>,
+    state_id: i32,
+    item_count: i32,
+    item_registry_id: i32,
+) -> Result<(), ConnectionError> {
+    encode_inventory_pickup_prediction_packet(
+        output,
+        state_id,
+        None,
+        Some((item_count, item_registry_id)),
+        &[],
+        &[],
+    )
+}
+
 fn encode_inventory_pickup_prediction_with_carried_patch(
     output: &mut Vec<u8>,
     state_id: i32,
     changed_slot_item: Option<(i32, i32)>,
+    carried_item: Option<(i32, i32)>,
+    carried_added_components: &[(i32, i32)],
+    carried_removed_components: &[i32],
+) -> Result<(), ConnectionError> {
+    encode_inventory_pickup_prediction_packet(
+        output,
+        state_id,
+        Some(changed_slot_item),
+        carried_item,
+        carried_added_components,
+        carried_removed_components,
+    )
+}
+
+fn encode_inventory_pickup_prediction_packet(
+    output: &mut Vec<u8>,
+    state_id: i32,
+    changed_slot_item: Option<Option<(i32, i32)>>,
     carried_item: Option<(i32, i32)>,
     carried_added_components: &[(i32, i32)],
     carried_removed_components: &[i32],
@@ -2906,9 +2985,13 @@ fn encode_inventory_pickup_prediction_with_carried_patch(
     output.extend_from_slice(&36_i16.to_be_bytes());
     output.push(0);
     wire::write_varint(0, output);
-    wire::write_varint(1, output);
-    output.extend_from_slice(&36_i16.to_be_bytes());
-    encode_hashed_stack(output, changed_slot_item);
+    if let Some(changed_slot_item) = changed_slot_item {
+        wire::write_varint(1, output);
+        output.extend_from_slice(&36_i16.to_be_bytes());
+        encode_hashed_stack(output, changed_slot_item);
+    } else {
+        wire::write_varint(0, output);
+    }
     encode_hashed_stack_with_components(
         output,
         carried_item,
@@ -3990,6 +4073,7 @@ mod tests {
         encode_inventory_pickup_state_correction,
         encode_inventory_pickup_with_component_correct_prediction,
         encode_inventory_pickup_with_component_hash_prediction,
+        encode_inventory_pickup_with_partial_changed_slot_prediction,
         encode_inventory_pickup_with_prediction,
         encode_inventory_pickup_with_wrong_both_prediction,
         encode_inventory_pickup_with_wrong_carried_prediction,
@@ -5166,6 +5250,45 @@ mod tests {
             VANILLA_CUSTOM_MODEL_DATA_COMPONENT_HASH
         );
         input = &input[4..];
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("removed component count"),
+            0
+        );
+        assert!(input.is_empty());
+    }
+
+    #[test]
+    fn inventory_partial_changed_slot_prediction_encoder_omits_slot_hash() {
+        let mut payload = Vec::new();
+        encode_inventory_pickup_with_partial_changed_slot_prediction(&mut payload, 2, 8, 1)
+            .expect("partial changed-slot prediction packet");
+
+        let mut input = payload.as_slice();
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("container id"),
+            0
+        );
+        assert_eq!(crate::wire::read_varint(&mut input).expect("state id"), 2);
+        assert_eq!(i16::from_be_bytes(input[..2].try_into().expect("slot")), 36);
+        input = &input[2..];
+        assert_eq!(input[0], 0);
+        input = &input[1..];
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("container input"),
+            0
+        );
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("changed slot count"),
+            0
+        );
+        assert_eq!(input[0], 1, "carried should be non-empty");
+        input = &input[1..];
+        assert_eq!(crate::wire::read_varint(&mut input).expect("item id"), 1);
+        assert_eq!(crate::wire::read_varint(&mut input).expect("item count"), 8);
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("component map count"),
+            0
+        );
         assert_eq!(
             crate::wire::read_varint(&mut input).expect("removed component count"),
             0
