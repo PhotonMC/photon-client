@@ -53,7 +53,7 @@ için bu başarısız koşular kanıt sayılmadı.
 tarafından tüketildiğini, 32 tick kullanımın ardından stack'in boşaldığını,
 ACK'in `35` olarak korunduğunu ve pufferfish effect'lerinin Java'daki üçlü
 sıra, süre, amplifier ve flags değerleriyle geldiğini doğrular. Daha fazla
-component codec'i, diğer consumable/effect varyantları, default full-hunger
-reddi ve inventory click açık kalır.
+component codec'i, diğer consumable/effect varyantları ve inventory click
+açık kalır. Default full-hunger reddi [ayrı parity kaydındadır](vanilla-survival-pufferfish-full-hunger-rejection-parity.md).
 
 Sözleşme ayrıntıları [survival pufferfish use contract belgesindedir](survival-pufferfish-use-contract.md).

@@ -637,6 +637,21 @@ pub fn connect_and_survival_pufferfish_use_probe(
     )
 }
 
+/// Connect to a Java-protocol server, attempt a full-hunger survival pufferfish use,
+/// and observe the rejection without consuming the stack.
+pub fn connect_and_survival_pufferfish_full_hunger_rejection_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeMode::SurvivalPufferfishFullHungerRejection,
+    )
+}
+
 /// Connect to a Java-protocol server, consume a survival golden apple, and observe its effects.
 pub fn connect_and_survival_golden_apple_use_probe(
     address: SocketAddr,
@@ -823,6 +838,7 @@ enum PlayProbeMode {
     SurvivalHoneyBottlePoisonCleanup,
     SurvivalHoneyBottleEarlyRelease,
     SurvivalPufferfishUse,
+    SurvivalPufferfishFullHungerRejection,
     SurvivalGoldenAppleUse,
     SurvivalEnchantedGoldenAppleUse,
     CreativePlace,
@@ -1742,6 +1758,7 @@ fn connect_and_probe_with_mode(
             }
             let consumable_use_sequence = match probe_mode {
                 PlayProbeMode::SurvivalPufferfishUse => Some(35),
+                PlayProbeMode::SurvivalPufferfishFullHungerRejection => Some(38),
                 PlayProbeMode::SurvivalGoldenAppleUse => Some(36),
                 PlayProbeMode::SurvivalEnchantedGoldenAppleUse => Some(37),
                 _ => None,
@@ -1851,6 +1868,7 @@ fn connect_and_probe_with_mode(
                 PlayProbeMode::SurvivalHoneyBottleUse => CONSUMABLE_DRAIN_TIMEOUT,
                 PlayProbeMode::SurvivalHoneyBottlePoisonCleanup => CONSUMABLE_DRAIN_TIMEOUT,
                 PlayProbeMode::SurvivalPufferfishUse
+                | PlayProbeMode::SurvivalPufferfishFullHungerRejection
                 | PlayProbeMode::SurvivalGoldenAppleUse
                 | PlayProbeMode::SurvivalEnchantedGoldenAppleUse => CONSUMABLE_DRAIN_TIMEOUT,
                 _ => WORLD_READY_DRAIN_TIMEOUT,
@@ -1867,6 +1885,7 @@ fn connect_and_probe_with_mode(
             PlayProbeMode::SurvivalHoneyBottleUse => CONSUMABLE_DRAIN_TIMEOUT,
             PlayProbeMode::SurvivalHoneyBottlePoisonCleanup => CONSUMABLE_DRAIN_TIMEOUT,
             PlayProbeMode::SurvivalPufferfishUse
+            | PlayProbeMode::SurvivalPufferfishFullHungerRejection
             | PlayProbeMode::SurvivalGoldenAppleUse
             | PlayProbeMode::SurvivalEnchantedGoldenAppleUse => CONSUMABLE_DRAIN_TIMEOUT,
             _ => WORLD_READY_DRAIN_TIMEOUT,

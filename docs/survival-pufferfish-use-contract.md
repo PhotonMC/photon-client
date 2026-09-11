@@ -47,6 +47,6 @@ paketi beklenmez.
 ## Sınır
 
 Bu sözleşme food component codec'ini ve pufferfish consumable effect sırasını
-kapsar. Default pufferfish'in tam açlık reddi, daha fazla component codec'i,
-diğer consumable/effect varyantları, effect yenileme, iki el önceliği ve
-inventory click sonraki dilimlerdir.
+kapsar. Default pufferfish'in tam açlık reddi [ayrı negative contract'ta](survival-pufferfish-full-hunger-rejection-contract.md)
+doğrulanır. Daha fazla component codec'i, diğer consumable/effect varyantları,
+effect yenileme, iki el önceliği ve inventory click sonraki dilimlerdir.

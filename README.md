@@ -56,6 +56,8 @@ Rust uygulama girişi henüz oynanabilir istemci değildir. İlk gerçek vanilla
 - [Vanilla survival honey bottle erken bırakma doğrulaması](docs/vanilla-survival-honey-bottle-early-release-parity.md)
 - [Survival food component override'lı pufferfish use sözleşmesi](docs/survival-pufferfish-use-contract.md)
 - [Vanilla survival food component override'lı pufferfish use doğrulaması](docs/vanilla-survival-pufferfish-use-parity.md)
+- [Survival pufferfish full-hunger rejection sözleşmesi](docs/survival-pufferfish-full-hunger-rejection-contract.md)
+- [Vanilla survival pufferfish full-hunger rejection doğrulaması](docs/vanilla-survival-pufferfish-full-hunger-rejection-parity.md)
 - [Survival golden apple use sözleşmesi](docs/survival-golden-apple-use-contract.md)
 - [Vanilla survival golden apple use doğrulaması](docs/vanilla-survival-golden-apple-use-parity.md)
 - [Survival enchanted golden apple use sözleşmesi](docs/survival-enchanted-golden-apple-use-contract.md)
