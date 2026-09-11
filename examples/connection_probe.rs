@@ -31,6 +31,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
     println!("player_loaded_sent={}", trace.player_loaded_sent);
     println!("movement_packets_sent={}", trace.movement_packets_sent);
+    println!(
+        "player_action_packets_sent={}",
+        trace.player_action_packets_sent
+    );
+    println!(
+        "block_changed_ack_sequences={:?}",
+        trace.block_changed_ack_sequences
+    );
     println!("chunk_packet_count={}", trace.chunk_packet_count);
     println!("decoded_chunk_count={}", trace.chunk_observations.len());
     if let Some(chunk) = trace.chunk_observations.first() {

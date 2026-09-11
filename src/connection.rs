@@ -55,6 +55,7 @@ const CONFIG_CODE_OF_CONDUCT_PACKET_ID: i32 = 19;
 // The virtual bundle packet is not registered in the Java dispatch table; the delimiter
 // occupies id 0 and shifts the listed play clientbound packet ids by one.
 const PLAY_CLIENTBOUND_BUNDLE_DELIMITER_PACKET_ID: i32 = 0;
+const PLAY_CLIENTBOUND_BLOCK_CHANGED_ACK_PACKET_ID: i32 = 4;
 const PLAY_CLIENTBOUND_CHUNK_BATCH_FINISHED_PACKET_ID: i32 = 11;
 const PLAY_CLIENTBOUND_CHUNK_BATCH_START_PACKET_ID: i32 = 12;
 const PLAY_CLIENTBOUND_KEEP_ALIVE_PACKET_ID: i32 = 44;
@@ -62,6 +63,7 @@ const PLAY_CLIENTBOUND_CHUNK_PACKET_ID: i32 = 45;
 const PLAY_CLIENTBOUND_LOGIN_PACKET_ID: i32 = 49;
 const PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID: i32 = 72;
 const PLAY_SERVERBOUND_ACCEPT_TELEPORTATION_PACKET_ID: i32 = 0;
+const PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID: i32 = 41;
 const PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID: i32 = 11;
 const PLAY_SERVERBOUND_KEEP_ALIVE_PACKET_ID: i32 = 28;
 const PLAY_SERVERBOUND_MOVE_PLAYER_POS_ROT_PACKET_ID: i32 = 31;
@@ -153,6 +155,8 @@ pub struct PlayConnectionTrace {
     pub player_position_observations: Vec<PlayerPositionObservation>,
     pub player_loaded_sent: bool,
     pub movement_packets_sent: usize,
+    pub player_action_packets_sent: usize,
+    pub block_changed_ack_sequences: Vec<i32>,
     pub chunk_packet_count: usize,
     pub chunk_batch_finished_count: usize,
     pub chunk_observations: Vec<ChunkPacketObservation>,
@@ -311,7 +315,7 @@ pub fn connect_and_probe(
     username: &str,
     timeout: Duration,
 ) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(address, username, timeout, false)
+    connect_and_probe_with_mode(address, username, timeout, PlayProbeMode::Basic)
 }
 
 /// Connect to a Java-protocol server and send a short controlled position trace after loading.
@@ -320,14 +324,30 @@ pub fn connect_and_move_probe(
     username: &str,
     timeout: Duration,
 ) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(address, username, timeout, true)
+    connect_and_probe_with_mode(address, username, timeout, PlayProbeMode::Movement)
+}
+
+/// Connect to a Java-protocol server and send a harmless block-action packet after loading.
+pub fn connect_and_action_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(address, username, timeout, PlayProbeMode::BlockAction)
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum PlayProbeMode {
+    Basic,
+    Movement,
+    BlockAction,
 }
 
 fn connect_and_probe_with_mode(
     address: SocketAddr,
     username: &str,
     timeout: Duration,
-    movement_probe: bool,
+    probe_mode: PlayProbeMode,
 ) -> Result<PlayConnectionTrace, ConnectionError> {
     if username.is_empty() || username.encode_utf16().count() > crate::login::MAX_NAME_LENGTH {
         return Err(ConnectionError::InvalidArgument("username"));
@@ -563,6 +583,14 @@ fn connect_and_probe_with_mode(
         });
 
         match packet_id {
+            PLAY_CLIENTBOUND_BLOCK_CHANGED_ACK_PACKET_ID => {
+                let mut input = payload;
+                let sequence = read_varint(&mut input, "block changed ack sequence")?;
+                if !input.is_empty() {
+                    return Err(ConnectionError::Codec("block changed ack trailing payload"));
+                }
+                trace.block_changed_ack_sequences.push(sequence);
+            }
             PLAY_CLIENTBOUND_CHUNK_BATCH_START_PACKET_ID => {
                 chunk_batch_started = true;
             }
@@ -652,7 +680,7 @@ fn connect_and_probe_with_mode(
                 player_loaded_sent = true;
                 trace.player_loaded_sent = true;
             }
-            if movement_probe && trace.movement_packets_sent == 0 {
+            if matches!(probe_mode, PlayProbeMode::Movement) && trace.movement_packets_sent == 0 {
                 let Some(position) = player_position else {
                     return Err(ConnectionError::Codec("movement probe player position"));
                 };
@@ -674,6 +702,18 @@ fn connect_and_probe_with_mode(
                     trace.movement_packets_sent += 1;
                     player_position = Some(moved);
                 }
+            }
+            if matches!(probe_mode, PlayProbeMode::BlockAction)
+                && trace.player_action_packets_sent == 0
+            {
+                send_packet(
+                    &mut stream,
+                    ConnectionProtocol::Play,
+                    PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID,
+                    |output| encode_abort_destroy_block(output, (0, 0, 0), 1),
+                    compression_threshold,
+                )?;
+                trace.player_action_packets_sent += 1;
             }
             world_ready_drain_started = Some(Instant::now());
             stream.set_read_timeout(Some(WORLD_READY_DRAIN_TIMEOUT))?;
@@ -752,6 +792,27 @@ fn encode_move_player_pos_rot(
     output.extend_from_slice(&position.4.to_be_bytes());
     output.push(flags);
     Ok(())
+}
+
+fn encode_abort_destroy_block(
+    output: &mut Vec<u8>,
+    position: (i32, i32, i32),
+    sequence: i32,
+) -> Result<(), ConnectionError> {
+    wire::write_varint(1, output);
+    output.extend_from_slice(&pack_block_position(position).to_be_bytes());
+    output.push(0);
+    wire::write_varint(sequence, output);
+    Ok(())
+}
+
+fn pack_block_position(position: (i32, i32, i32)) -> i64 {
+    const HORIZONTAL_MASK: i64 = (1_i64 << 26) - 1;
+    const Y_MASK: i64 = (1_i64 << 12) - 1;
+
+    ((i64::from(position.0) & HORIZONTAL_MASK) << 38)
+        | ((i64::from(position.2) & HORIZONTAL_MASK) << 12)
+        | (i64::from(position.1) & Y_MASK)
 }
 
 fn connect_stream(address: SocketAddr, timeout: Duration) -> Result<TcpStream, ConnectionError> {
@@ -1348,14 +1409,16 @@ fn decode_palette_values(
 #[cfg(test)]
 mod tests {
     use super::{
-        PLAY_CLIENTBOUND_CHUNK_PACKET_ID, PLAY_CLIENTBOUND_KEEP_ALIVE_PACKET_ID,
-        PLAY_CLIENTBOUND_LOGIN_PACKET_ID, PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID,
+        PLAY_CLIENTBOUND_BLOCK_CHANGED_ACK_PACKET_ID, PLAY_CLIENTBOUND_CHUNK_PACKET_ID,
+        PLAY_CLIENTBOUND_KEEP_ALIVE_PACKET_ID, PLAY_CLIENTBOUND_LOGIN_PACKET_ID,
+        PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID,
         PLAY_SERVERBOUND_ACCEPT_TELEPORTATION_PACKET_ID,
         PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID, PLAY_SERVERBOUND_KEEP_ALIVE_PACKET_ID,
-        PLAY_SERVERBOUND_MOVE_PLAYER_POS_ROT_PACKET_ID, PLAY_SERVERBOUND_PLAYER_LOADED_PACKET_ID,
-        STATUS_CLIENTBOUND_PONG_RESPONSE_PACKET_ID, STATUS_CLIENTBOUND_RESPONSE_PACKET_ID,
-        STATUS_SERVERBOUND_PING_REQUEST_PACKET_ID, STATUS_SERVERBOUND_REQUEST_PACKET_ID,
-        decode_packet_frame, encode_packet_frame, parse_chunk_packet, parse_player_position_packet,
+        PLAY_SERVERBOUND_MOVE_PLAYER_POS_ROT_PACKET_ID, PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID,
+        PLAY_SERVERBOUND_PLAYER_LOADED_PACKET_ID, STATUS_CLIENTBOUND_PONG_RESPONSE_PACKET_ID,
+        STATUS_CLIENTBOUND_RESPONSE_PACKET_ID, STATUS_SERVERBOUND_PING_REQUEST_PACKET_ID,
+        STATUS_SERVERBOUND_REQUEST_PACKET_ID, decode_packet_frame, encode_abort_destroy_block,
+        encode_packet_frame, pack_block_position, parse_chunk_packet, parse_player_position_packet,
         parse_section_data, resolve_player_position,
     };
 
@@ -1383,7 +1446,9 @@ mod tests {
         assert_eq!(PLAY_CLIENTBOUND_CHUNK_PACKET_ID, 45);
         assert_eq!(PLAY_CLIENTBOUND_LOGIN_PACKET_ID, 49);
         assert_eq!(PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID, 72);
+        assert_eq!(PLAY_CLIENTBOUND_BLOCK_CHANGED_ACK_PACKET_ID, 4);
         assert_eq!(PLAY_SERVERBOUND_ACCEPT_TELEPORTATION_PACKET_ID, 0);
+        assert_eq!(PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID, 41);
         assert_eq!(PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID, 11);
         assert_eq!(PLAY_SERVERBOUND_KEEP_ALIVE_PACKET_ID, 28);
         assert_eq!(PLAY_SERVERBOUND_MOVE_PLAYER_POS_ROT_PACKET_ID, 31);
@@ -1525,6 +1590,25 @@ mod tests {
             resolve_player_position(packet, Some((10.0, 20.0, 30.0, 350.0, -80.0))),
             (11.25, -63.0, 4.5, 380.0, 20.0)
         );
+    }
+
+    #[test]
+    fn player_action_encoder_matches_java_abort_field_order() {
+        let mut payload = Vec::new();
+        encode_abort_destroy_block(&mut payload, (-12, 67, 9), 1).expect("action packet");
+
+        let mut input = payload.as_slice();
+        assert_eq!(crate::wire::read_varint(&mut input).expect("action"), 1);
+        let (packed, rest) = input.split_at(8);
+        input = rest;
+        assert_eq!(
+            i64::from_be_bytes(packed.try_into().expect("packed block position")),
+            pack_block_position((-12, 67, 9))
+        );
+        assert_eq!(input[0], 0);
+        input = &input[1..];
+        assert_eq!(crate::wire::read_varint(&mut input).expect("sequence"), 1);
+        assert!(input.is_empty());
     }
 
     #[test]
