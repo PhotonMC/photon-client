@@ -96,6 +96,7 @@ const MAX_KNOWN_PACKS: usize = 64;
 const MAX_READABLE_FRAME_LENGTH: usize = MAX_FRAME_LENGTH;
 const WORLD_READY_DRAIN_TIMEOUT: Duration = Duration::from_millis(250);
 const DELAYED_DESTROY_DRAIN_TIMEOUT: Duration = Duration::from_millis(1_200);
+const WATER_BUCKET_DRAIN_TIMEOUT: Duration = Duration::from_millis(1_000);
 
 /// Errors raised while driving the initial real-server client session.
 #[derive(Debug)]
@@ -184,6 +185,8 @@ pub struct PlayConnectionTrace {
     pub system_chat_observations: Vec<SystemChatObservation>,
     pub creative_place_target_update: Option<BlockUpdateObservation>,
     pub creative_place_neighbor_update: Option<BlockUpdateObservation>,
+    pub survival_water_bucket_target_update: Option<BlockUpdateObservation>,
+    pub survival_water_bucket_neighbor_update: Option<BlockUpdateObservation>,
     pub block_destruction_observations: Vec<BlockDestructionObservation>,
     pub block_changed_ack_sequences: Vec<i32>,
     pub block_update_observations: Vec<BlockUpdateObservation>,
@@ -495,6 +498,21 @@ pub fn connect_and_survival_snowball_use_probe(
     )
 }
 
+/// Connect to a Java-protocol server, select a supplied survival water bucket and use it
+/// on the upper face of the supporting block.
+pub fn connect_and_survival_water_bucket_use_on_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeMode::SurvivalWaterBucketUseOn,
+    )
+}
+
 /// Connect to a Java-protocol server, place a stone stack in the creative hotbar,
 /// select it and request a side placement against the supporting block.
 pub fn connect_and_creative_place_probe(
@@ -616,6 +634,7 @@ enum PlayProbeMode {
     UseItem,
     CreativeSnowballUse,
     SurvivalSnowballUse,
+    SurvivalWaterBucketUseOn,
     CreativePlace,
     SurvivalBreakAbort,
     SurvivalBreakStop,
@@ -851,6 +870,8 @@ fn connect_and_probe_with_mode(
     let mut player_position = None;
     let mut creative_place_target_position = None;
     let mut creative_place_neighbor_position = None;
+    let mut survival_water_bucket_target_position = None;
+    let mut survival_water_bucket_neighbor_position = None;
     let mut world_ready_drain_started = None;
     while play_started.elapsed() <= timeout {
         let body = match read_packet(&mut stream, compression_threshold) {
@@ -918,6 +939,16 @@ fn connect_and_probe_with_mode(
                     position == (observation.x, observation.y, observation.z)
                 }) {
                     trace.creative_place_neighbor_update = Some(observation.clone());
+                }
+                if survival_water_bucket_target_position.is_some_and(|position| {
+                    position == (observation.x, observation.y, observation.z)
+                }) {
+                    trace.survival_water_bucket_target_update = Some(observation.clone());
+                }
+                if survival_water_bucket_neighbor_position.is_some_and(|position| {
+                    position == (observation.x, observation.y, observation.z)
+                }) {
+                    trace.survival_water_bucket_neighbor_update = Some(observation.clone());
                 }
                 trace.block_update_observations.push(observation);
             }
@@ -1267,6 +1298,43 @@ fn connect_and_probe_with_mode(
                 )?;
                 trace.use_item_packets_sent += 1;
             }
+            if matches!(probe_mode, PlayProbeMode::SurvivalWaterBucketUseOn)
+                && trace.use_item_on_packets_sent == 0
+            {
+                let Some(position) = player_position else {
+                    return Err(ConnectionError::Codec(
+                        "survival water bucket probe player position",
+                    ));
+                };
+                std::thread::sleep(Duration::from_secs(20));
+                send_packet(
+                    &mut stream,
+                    ConnectionProtocol::Play,
+                    PLAY_SERVERBOUND_SET_CARRIED_ITEM_PACKET_ID,
+                    |output| encode_set_carried_item(output, 0),
+                    compression_threshold,
+                )?;
+                trace.carried_item_packets_sent += 1;
+                let target = support_block_position(position);
+                survival_water_bucket_target_position = Some(target);
+                survival_water_bucket_neighbor_position = Some((target.0, target.1 + 1, target.2));
+                send_packet(
+                    &mut stream,
+                    ConnectionProtocol::Play,
+                    PLAY_SERVERBOUND_USE_ITEM_ON_PACKET_ID,
+                    |output| encode_use_item_on_hit(output, target, 1, (0.5, 1.0, 0.5), 23),
+                    compression_threshold,
+                )?;
+                trace.use_item_on_packets_sent += 1;
+                send_packet(
+                    &mut stream,
+                    ConnectionProtocol::Play,
+                    PLAY_SERVERBOUND_USE_ITEM_PACKET_ID,
+                    |output| encode_use_item(output, 24, 0.0, 90.0),
+                    compression_threshold,
+                )?;
+                trace.use_item_packets_sent += 1;
+            }
             if matches!(probe_mode, PlayProbeMode::CreativeSnowballUse)
                 && trace.creative_mode_slot_packets_sent == 0
             {
@@ -1343,18 +1411,18 @@ fn connect_and_probe_with_mode(
                 trace.use_item_on_packets_sent += 1;
             }
             world_ready_drain_started = Some(Instant::now());
-            let drain_timeout = if matches!(probe_mode, PlayProbeMode::SurvivalDelayedDestroy) {
-                DELAYED_DESTROY_DRAIN_TIMEOUT
-            } else {
-                WORLD_READY_DRAIN_TIMEOUT
+            let drain_timeout = match probe_mode {
+                PlayProbeMode::SurvivalDelayedDestroy => DELAYED_DESTROY_DRAIN_TIMEOUT,
+                PlayProbeMode::SurvivalWaterBucketUseOn => WATER_BUCKET_DRAIN_TIMEOUT,
+                _ => WORLD_READY_DRAIN_TIMEOUT,
             };
             stream.set_read_timeout(Some(drain_timeout))?;
         }
 
-        let drain_timeout = if matches!(probe_mode, PlayProbeMode::SurvivalDelayedDestroy) {
-            DELAYED_DESTROY_DRAIN_TIMEOUT
-        } else {
-            WORLD_READY_DRAIN_TIMEOUT
+        let drain_timeout = match probe_mode {
+            PlayProbeMode::SurvivalDelayedDestroy => DELAYED_DESTROY_DRAIN_TIMEOUT,
+            PlayProbeMode::SurvivalWaterBucketUseOn => WATER_BUCKET_DRAIN_TIMEOUT,
+            _ => WORLD_READY_DRAIN_TIMEOUT,
         };
         if world_ready_drain_started.is_some_and(|started| started.elapsed() >= drain_timeout) {
             return Ok(trace);

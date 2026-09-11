@@ -42,6 +42,8 @@ Rust uygulama girişi henüz oynanabilir istemci değildir. İlk gerçek vanilla
 - [Vanilla creative snowball use doğrulaması](docs/vanilla-creative-snowball-use-parity.md)
 - [Survival snowball tüketimi sözleşmesi](docs/survival-snowball-use-contract.md)
 - [Vanilla survival snowball tüketimi doğrulaması](docs/vanilla-survival-snowball-use-parity.md)
+- [Survival water bucket use-on sözleşmesi](docs/survival-water-bucket-use-on-contract.md)
+- [Vanilla survival water bucket use-on doğrulaması](docs/vanilla-survival-water-bucket-use-on-parity.md)
 - [Yaratıcı item stack placement sözleşmesi](docs/creative-placement-contract.md)
 - [Vanilla yaratıcı item stack placement doğrulaması](docs/vanilla-creative-placement-parity.md)
 - [Survival block-break abort sözleşmesi](docs/survival-break-abort-contract.md)
