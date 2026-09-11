@@ -1,0 +1,64 @@
+# P13 — Survival inventory wrong carried prediction sözleşmesi
+
+Bu dilim, client'ın doğru menu state-id'siyle gönderdiği inventory click
+packet'inde değişen slot için doğru post-click hash, carried için yanlış
+post-click hash taşıdığı durumda vanilla server'ın yalnızca cursor düzeltmesi
+göndermesini sınar.
+
+## Java referansı
+
+`MultiPlayerGameMode.handleContainerInput`, click'i client menüsünde
+uyguladıktan sonra değişen slotların ve carried değerinin sonraki durumundan
+`HashedStack` üretir. Bu probe slot hash'ini doğru click sonrası empty değer
+olarak, carried hash'ini ise bilerek empty değer olarak gönderir; gerçek carried
+stone stack'iyle eşleşmez.
+
+`ServerGamePacketListenerImpl.handleContainerClick`, eşleşen state-id ile
+gelen changed-slot ve carried hash'lerini remote beklentiye kaydeder, click'i
+uygular ve `broadcastChanges` çağırır. Slotun remote beklentisi gerçek click
+sonrası empty slotla eşleştiği için slot düzeltmesi gerekmez; carried remote
+beklentisi empty kaldığı için gerçek stone stack ile eşleşmez.
+`AbstractContainerMenu` bu durumda cursor için state taşımayan
+`ClientboundSetCursorItemPacket` gönderir.
+
+`HashedStack` non-empty değer için optional presence byte'ı, item holder'ı,
+count'u ve `HashedPatchMap` component patch'ini taşır. Component'siz stone
+stack'inde added component map'i ve removed component set'i boştur.
+
+## Probe girdisi ve akışı
+
+- Oyun modu: `SURVIVAL`
+- Container: id `0`, player inventory menu
+- Hazırlık: hotbar index `0` / menu slotu `36` içine `minecraft:stone 8`
+- Stone item registry ID: `1`
+- Menu state-id: `2` (initial content state `1` sonrasındaki hazırlık state'i)
+- Click: slot `36`, button `0`, `PICKUP` input id `0`
+- Changed-slot prediction: slot `36` için click sonrası empty hash
+- Carried prediction: bilerek click sonrası empty hash
+
+Probe, item hazırlığı sonrası tek `container_click` paketi yollar; ardından
+slot, cursor ve full content güncellemelerini toplar.
+
+Beklenen invariant'lar şunlardır:
+
+- Başlangıç content'i container `0`, state `1`, 46 slot ve carried için boş
+  değer taşır.
+- Console item hazırlığı menu slotu `36` için state `2`, count `8` ve item ID
+  `1` slot gözlemi üretir.
+- Server click'i mismatch saymaz ve pickup davranışını uygular.
+- Changed-slot prediction doğru olduğu için click sonrası slot `36` düzeltmesi
+  gönderilmez.
+- Yanlış carried hash'i nedeniyle count `8`, item ID `1` ve boş component
+  patch'i taşıyan `set_cursor_item` paketi gönderilir.
+- Item hazırlığı dışındaki `container_set_content` gözlemi oluşmaz; full resync
+  yolu çalışmaz.
+- Rust probe bir `container_click` paketi yollar ve gönderilen state-id `2`
+  olarak gözlenir.
+
+## Sınır
+
+Bu dilim component'siz stone stack için yanlış carried hash'inin yalnızca
+cursor düzeltmesine yol açmasını kapsar. Yanlış changed-slot hash'i, iki hash'in
+birlikte yanlış olması, component hash'leri, kısmi changed-slot map'i, diğer
+click input'ları, stale state varyantları ve özel container'lar sonraki P13
+dilimleridir.
