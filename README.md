@@ -68,6 +68,8 @@ Rust uygulama girişi henüz oynanabilir istemci değildir. İlk gerçek vanilla
 - [Vanilla survival inventory pickup state-id correction doğrulaması](docs/vanilla-survival-inventory-pickup-state-correction-parity.md)
 - [Survival inventory secondary pickup state-id correction sözleşmesi](docs/survival-inventory-secondary-pickup-state-correction-contract.md)
 - [Vanilla survival inventory secondary pickup state-id correction doğrulaması](docs/vanilla-survival-inventory-secondary-pickup-state-correction-parity.md)
+- [Survival inventory throw state-id correction sözleşmesi](docs/survival-inventory-throw-state-correction-contract.md)
+- [Vanilla survival inventory throw state-id correction doğrulaması](docs/vanilla-survival-inventory-throw-state-correction-parity.md)
 - [Survival inventory quick-move state-id correction sözleşmesi](docs/survival-inventory-quick-move-state-correction-contract.md)
 - [Vanilla survival inventory quick-move state-id correction doğrulaması](docs/vanilla-survival-inventory-quick-move-state-correction-parity.md)
 - [Survival inventory swap state-id correction sözleşmesi](docs/survival-inventory-swap-state-correction-contract.md)
