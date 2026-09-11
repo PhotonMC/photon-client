@@ -26,6 +26,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
     println!("play_login={}", trace.play_login);
     println!("chunk_packet_count={}", trace.chunk_packet_count);
+    println!("decoded_chunk_count={}", trace.chunk_observations.len());
+    if let Some(chunk) = trace.chunk_observations.first() {
+        println!(
+            "first_chunk=x:{},z:{},heightmaps:{},section_bytes:{},block_entities:{},sky_mask_words:{},block_mask_words:{},empty_sky_mask_words:{},empty_block_mask_words:{},sky_updates:{},block_updates:{}",
+            chunk.x,
+            chunk.z,
+            chunk.heightmap_count,
+            chunk.section_data_length,
+            chunk.block_entity_count,
+            chunk.sky_mask_word_count,
+            chunk.block_mask_word_count,
+            chunk.empty_sky_mask_word_count,
+            chunk.empty_block_mask_word_count,
+            chunk.sky_update_count,
+            chunk.block_update_count,
+        );
+    }
     println!(
         "chunk_batch_finished_count={}",
         trace.chunk_batch_finished_count

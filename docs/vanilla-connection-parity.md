@@ -46,6 +46,6 @@ Bu koşu Rust parity karşılaştırması değildir. Sahte offline kimlik bilgil
 
 ## Açık kapsam
 
-Bu sonuç P06/P07'nin offline login, compression, phase transition, keep-alive/ping ve registry/tag teslimi dilimlerini; P08'in ise ilk chunk teslimi ön koşulunu kapsar. Encryption, parçalı ağ, disconnect/reconnect, chunk section/palette/light decoder'ları, entity state, client world cache, input/pencere, hareket, eylem ve Rust tarafında oynanabilir render akışı açık kalır. Başarılı probe tamamlanmış istemci veya Java ile tam oyun eşitliği anlamına gelmez.
+Bu sonuç P06/P07'nin offline login, compression, phase transition, keep-alive/ping ve registry/tag teslimi dilimlerini; P08'in ilk chunk teslimi ön koşulunu kapsar. Chunk packet gövdesinin yapısal doğrulaması [ayrı P08 kaydında](chunk-packet-parity.md) tutulur. Encryption, parçalı ağ, disconnect/reconnect, chunk section/palette/light decoder'ları, entity state, client world cache, input/pencere, hareket, eylem ve Rust tarafında oynanabilir render akışı açık kalır. Başarılı probe tamamlanmış istemci veya Java ile tam oyun eşitliği anlamına gelmez.
 
 Orijinal Java server/client dosyaları, assetler, dünya ve ham loglar yerel referans veya geçici dizinlerde kaldı; depoya eklenmedi.

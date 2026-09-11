@@ -1,0 +1,40 @@
+# P08.b/c — Vanilla 26.2 chunk paketinin yapısal doğrulaması
+
+**Tarih:** 2026-09-11
+**Referans:** Java Edition 26.2 / protokol 776 / Java 25
+**Sunucu:** Mojang'ın vanilla 26.2 dedicated server JAR'ı, offline yerel koşu
+**Sunucu SHA-1:** `823e2250d24b3ddac457a60c92a6a941943fcd6a`
+
+## Çalıştırma
+
+Sunucu geçici `/tmp/voxel-vanilla-26.2-test` dizininde `127.0.0.1:25566`, `online-mode=false`, seed `776`, view/simulation distance `5`, creative ve peaceful ayarlarıyla başlatıldı. JAR ve dünya depoya alınmadı.
+
+```text
+cargo run --offline --example connection_probe -- 127.0.0.1:25566 RustChunk1
+cargo run --offline --example connection_probe -- 127.0.0.1:25566 RustChunk2
+```
+
+İki bağımsız oturumda parser bütün alınan chunk payload'larını hatasız tüketti:
+
+| Gözlem | RustChunk1 | RustChunk2 |
+| --- | ---: | ---: |
+| chunk packet | 27 | 24 |
+| decoded chunk | 27 | 24 |
+| chunk batch finished | 7 | 6 |
+| toplam alınan packet | 483 | 372 |
+
+`decoded chunk` sayısının `chunk packet` sayısına eşit olması, canlı koşuda her chunk gövdesinin parser'dan geçtiğini gösterir. Toplam packet ve chunk sayısı vanilla sunucunun geçici gönderim zamanlamasına bağlıdır.
+
+İlk chunk gözlemi iki koşuda da aynıdır:
+
+```text
+first_chunk=x:1,z:-3,heightmaps:3,section_bytes:22265,block_entities:0,sky_mask_words:1,block_mask_words:1,empty_sky_mask_words:1,empty_block_mask_words:1,sky_updates:4,block_updates:2
+```
+
+Bu sonuç x/z signed integer alanlarını, üç heightmap kaydını, 22.265 byte'lık section buffer sınırını, boş block entity listesini, dört ışık maskesini ve sky/block update listelerini vanilla wire sırasıyla ayırdığımızı gösterir. Parser payload sonunda trailing byte bırakmadı.
+
+## Açık kapsam
+
+Bu kayıt yalnızca packet gövdesinin yapısal tüketimidir. Section palette ve block state çözümü, biome verisi, ışık nibble değerleri, heightmap semantiği, registry ID çözümü, block entity world konumu, client chunk cache'i, load/update/unload sırası, dimension/respawn ve render açık kalır. Başarılı canlı parser, oynanabilir istemci veya Java ile tam dünya eşitliği anlamına gelmez.
+
+Sözleşme ayrıntıları [chunk packet contract belgesindedir](chunk-packet-contract.md). Önceki login/configuration/play bağlantı kanıtı [vanilla oyun oturumu kaydında](vanilla-connection-parity.md), Pumpkin koşusu ise [ayrı kayıtta](game-connection-parity.md) tutulur. Bu test kullanıcının istediği üzere resmi vanilla sunucusuyla yapıldı; Pumpkin eksikleri bu baseline'a karıştırılmadı.

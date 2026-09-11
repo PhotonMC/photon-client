@@ -63,6 +63,7 @@ const PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID: i32 = 11;
 const PLAY_SERVERBOUND_KEEP_ALIVE_PACKET_ID: i32 = 28;
 
 const MAX_PACKET_UNCOMPRESSED_LENGTH: usize = 8 * 1024 * 1024;
+const MAX_CHUNK_DATA_LENGTH: usize = 2 * 1024 * 1024;
 const MAX_KNOWN_PACKS: usize = 64;
 const MAX_READABLE_FRAME_LENGTH: usize = MAX_FRAME_LENGTH;
 const WORLD_READY_DRAIN_TIMEOUT: Duration = Duration::from_millis(250);
@@ -140,6 +141,23 @@ pub struct PlayConnectionTrace {
     pub play_login: bool,
     pub chunk_packet_count: usize,
     pub chunk_batch_finished_count: usize,
+    pub chunk_observations: Vec<ChunkPacketObservation>,
+}
+
+/// Structural fields decoded from one clientbound level-chunk-with-light packet.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ChunkPacketObservation {
+    pub x: i32,
+    pub z: i32,
+    pub heightmap_count: usize,
+    pub section_data_length: usize,
+    pub block_entity_count: usize,
+    pub sky_mask_word_count: usize,
+    pub block_mask_word_count: usize,
+    pub empty_sky_mask_word_count: usize,
+    pub empty_block_mask_word_count: usize,
+    pub sky_update_count: usize,
+    pub block_update_count: usize,
 }
 
 /// The observable result of a status and ping session.
@@ -496,7 +514,10 @@ pub fn connect_and_probe(
                 )?;
             }
             PLAY_CLIENTBOUND_LOGIN_PACKET_ID => trace.play_login = true,
-            PLAY_CLIENTBOUND_CHUNK_PACKET_ID => trace.chunk_packet_count += 1,
+            PLAY_CLIENTBOUND_CHUNK_PACKET_ID => {
+                trace.chunk_observations.push(parse_chunk_packet(payload)?);
+                trace.chunk_packet_count += 1;
+            }
             PLAY_CLIENTBOUND_KEEP_ALIVE_PACKET_ID => {
                 let mut input = payload;
                 let packet = crate::common::ClientboundKeepAlivePacket::decode(&mut input)
@@ -755,6 +776,117 @@ fn split_packet(body: &[u8]) -> Result<(i32, &[u8]), ConnectionError> {
     Ok((packet_id, input))
 }
 
+fn parse_chunk_packet(mut input: &[u8]) -> Result<ChunkPacketObservation, ConnectionError> {
+    let x = read_i32(&mut input, "chunk x")?;
+    let z = read_i32(&mut input, "chunk z")?;
+
+    let heightmap_count = read_count(&mut input, "heightmap count")?;
+    for _ in 0..heightmap_count {
+        read_varint(&mut input, "heightmap type")?;
+        read_long_array(&mut input, "heightmap data")?;
+    }
+
+    let section_data_length =
+        read_length_prefixed_bytes(&mut input, MAX_CHUNK_DATA_LENGTH, "chunk section data")?;
+
+    let block_entity_count = read_count(&mut input, "block entity count")?;
+    for _ in 0..block_entity_count {
+        read_byte(&mut input, "block entity packed xz")?;
+        read_i16(&mut input, "block entity y")?;
+        read_varint(&mut input, "block entity type")?;
+        crate::nbt::read_nbt(&mut input).map_err(|_| ConnectionError::Codec("block entity nbt"))?;
+    }
+
+    let sky_mask_word_count = read_long_array(&mut input, "sky light mask")?.len();
+    let block_mask_word_count = read_long_array(&mut input, "block light mask")?.len();
+    let empty_sky_mask_word_count = read_long_array(&mut input, "empty sky light mask")?.len();
+    let empty_block_mask_word_count = read_long_array(&mut input, "empty block light mask")?.len();
+    let sky_update_count = read_light_updates(&mut input, "sky light updates")?;
+    let block_update_count = read_light_updates(&mut input, "block light updates")?;
+
+    if !input.is_empty() {
+        return Err(ConnectionError::Codec("chunk trailing payload"));
+    }
+
+    Ok(ChunkPacketObservation {
+        x,
+        z,
+        heightmap_count,
+        section_data_length,
+        block_entity_count,
+        sky_mask_word_count,
+        block_mask_word_count,
+        empty_sky_mask_word_count,
+        empty_block_mask_word_count,
+        sky_update_count,
+        block_update_count,
+    })
+}
+
+fn read_varint(input: &mut &[u8], name: &'static str) -> Result<i32, ConnectionError> {
+    wire::read_varint(input).map_err(|_| ConnectionError::Codec(name))
+}
+
+fn read_count(input: &mut &[u8], name: &'static str) -> Result<usize, ConnectionError> {
+    let count = read_varint(input, name)?;
+    usize::try_from(count).map_err(|_| ConnectionError::Codec(name))
+}
+
+fn read_byte(input: &mut &[u8], name: &'static str) -> Result<u8, ConnectionError> {
+    let Some((&byte, rest)) = input.split_first() else {
+        return Err(ConnectionError::Codec(name));
+    };
+    *input = rest;
+    Ok(byte)
+}
+
+fn read_i16(input: &mut &[u8], name: &'static str) -> Result<i16, ConnectionError> {
+    if input.len() < 2 {
+        return Err(ConnectionError::Codec(name));
+    }
+    let (head, rest) = input.split_at(2);
+    *input = rest;
+    Ok(i16::from_be_bytes(
+        head.try_into().expect("checked short length"),
+    ))
+}
+
+fn read_i32(input: &mut &[u8], name: &'static str) -> Result<i32, ConnectionError> {
+    if input.len() < 4 {
+        return Err(ConnectionError::Codec(name));
+    }
+    let (head, rest) = input.split_at(4);
+    *input = rest;
+    Ok(i32::from_be_bytes(
+        head.try_into().expect("checked int length"),
+    ))
+}
+
+fn read_long_array(input: &mut &[u8], name: &'static str) -> Result<Vec<i64>, ConnectionError> {
+    crate::binary::read_long_array(input).map_err(|_| ConnectionError::Codec(name))
+}
+
+fn read_length_prefixed_bytes(
+    input: &mut &[u8],
+    max_length: usize,
+    name: &'static str,
+) -> Result<usize, ConnectionError> {
+    let length = read_count(input, name)?;
+    if length > max_length || input.len() < length {
+        return Err(ConnectionError::Codec(name));
+    }
+    *input = &input[length..];
+    Ok(length)
+}
+
+fn read_light_updates(input: &mut &[u8], name: &'static str) -> Result<usize, ConnectionError> {
+    let count = read_count(input, name)?;
+    for _ in 0..count {
+        read_length_prefixed_bytes(input, 2_048, name)?;
+    }
+    Ok(count)
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
@@ -763,6 +895,7 @@ mod tests {
         PLAY_SERVERBOUND_KEEP_ALIVE_PACKET_ID, STATUS_CLIENTBOUND_PONG_RESPONSE_PACKET_ID,
         STATUS_CLIENTBOUND_RESPONSE_PACKET_ID, STATUS_SERVERBOUND_PING_REQUEST_PACKET_ID,
         STATUS_SERVERBOUND_REQUEST_PACKET_ID, decode_packet_frame, encode_packet_frame,
+        parse_chunk_packet,
     };
 
     #[test]
@@ -798,5 +931,69 @@ mod tests {
         assert_eq!(STATUS_SERVERBOUND_PING_REQUEST_PACKET_ID, 1);
         assert_eq!(STATUS_CLIENTBOUND_RESPONSE_PACKET_ID, 0);
         assert_eq!(STATUS_CLIENTBOUND_PONG_RESPONSE_PACKET_ID, 1);
+    }
+
+    #[test]
+    fn chunk_packet_parser_consumes_empty_java_payload() {
+        let mut payload = Vec::new();
+        payload.extend_from_slice(&(-17_i32).to_be_bytes());
+        payload.extend_from_slice(&23_i32.to_be_bytes());
+        crate::wire::write_varint(0, &mut payload);
+        crate::wire::write_varint(0, &mut payload);
+        crate::wire::write_varint(0, &mut payload);
+        for _ in 0..6 {
+            crate::wire::write_varint(0, &mut payload);
+        }
+
+        let observation = parse_chunk_packet(&payload).expect("empty chunk payload");
+        assert_eq!(observation.x, -17);
+        assert_eq!(observation.z, 23);
+        assert_eq!(observation.heightmap_count, 0);
+        assert_eq!(observation.section_data_length, 0);
+        assert_eq!(observation.block_entity_count, 0);
+        assert_eq!(observation.sky_mask_word_count, 0);
+        assert_eq!(observation.block_mask_word_count, 0);
+        assert_eq!(observation.empty_sky_mask_word_count, 0);
+        assert_eq!(observation.empty_block_mask_word_count, 0);
+        assert_eq!(observation.sky_update_count, 0);
+        assert_eq!(observation.block_update_count, 0);
+    }
+
+    #[test]
+    fn chunk_packet_parser_consumes_nullable_block_entity_nbt() {
+        let mut payload = Vec::new();
+        payload.extend_from_slice(&0_i32.to_be_bytes());
+        payload.extend_from_slice(&0_i32.to_be_bytes());
+        crate::wire::write_varint(0, &mut payload);
+        crate::wire::write_varint(0, &mut payload);
+        crate::wire::write_varint(1, &mut payload);
+        payload.push(0x21);
+        payload.extend_from_slice(&(-64_i16).to_be_bytes());
+        crate::wire::write_varint(0, &mut payload);
+        payload.push(0);
+        for _ in 0..6 {
+            crate::wire::write_varint(0, &mut payload);
+        }
+
+        let observation = parse_chunk_packet(&payload).expect("nullable block entity tag");
+        assert_eq!(observation.block_entity_count, 1);
+    }
+
+    #[test]
+    fn chunk_packet_parser_rejects_trailing_payload() {
+        let mut payload = Vec::new();
+        payload.extend_from_slice(&0_i32.to_be_bytes());
+        payload.extend_from_slice(&0_i32.to_be_bytes());
+        for _ in 0..9 {
+            crate::wire::write_varint(0, &mut payload);
+        }
+        payload.push(0xff);
+
+        match parse_chunk_packet(&payload) {
+            Err(super::ConnectionError::Codec(name)) => {
+                assert_eq!(name, "chunk trailing payload")
+            }
+            result => panic!("unexpected chunk parser result: {result:?}"),
+        }
     }
 }
