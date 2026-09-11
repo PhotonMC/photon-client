@@ -61,6 +61,7 @@ const PLAY_CLIENTBOUND_BLOCK_DESTRUCTION_PACKET_ID: i32 = 5;
 const PLAY_CLIENTBOUND_BLOCK_UPDATE_PACKET_ID: i32 = 8;
 const PLAY_CLIENTBOUND_CHUNK_BATCH_FINISHED_PACKET_ID: i32 = 11;
 const PLAY_CLIENTBOUND_CHUNK_BATCH_START_PACKET_ID: i32 = 12;
+const PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID: i32 = 121;
 const PLAY_CLIENTBOUND_KEEP_ALIVE_PACKET_ID: i32 = 44;
 const PLAY_CLIENTBOUND_CHUNK_PACKET_ID: i32 = 45;
 const PLAY_CLIENTBOUND_LOGIN_PACKET_ID: i32 = 49;
@@ -176,6 +177,7 @@ pub struct PlayConnectionTrace {
     pub stone_item_registry_id: Option<i32>,
     pub snowball_item_registry_id: Option<i32>,
     pub add_entity_observations: Vec<AddEntityObservation>,
+    pub system_chat_observations: Vec<SystemChatObservation>,
     pub creative_place_target_update: Option<BlockUpdateObservation>,
     pub creative_place_neighbor_update: Option<BlockUpdateObservation>,
     pub block_destruction_observations: Vec<BlockDestructionObservation>,
@@ -221,6 +223,13 @@ pub struct AddEntityObservation {
     pub y: f64,
     pub z: f64,
     pub data: i32,
+}
+
+/// Wire-level fields decoded from one clientbound system-chat packet.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SystemChatObservation {
+    pub overlay: bool,
+    pub translation_key: Option<String>,
 }
 
 /// Structural fields decoded from one clientbound level-chunk-with-light packet.
@@ -511,6 +520,21 @@ pub fn connect_and_survival_delayed_destroy_probe(
     )
 }
 
+/// Connect to a Java-protocol server, request a protected spawn-area block break
+/// in survival mode and observe the denial message and sequence acknowledgement.
+pub fn connect_and_survival_spawn_protection_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeMode::SurvivalSpawnProtection,
+    )
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum PlayProbeMode {
     Basic,
@@ -526,6 +550,7 @@ enum PlayProbeMode {
     SurvivalBreakStop,
     SurvivalStoneBreakStop,
     SurvivalDelayedDestroy,
+    SurvivalSpawnProtection,
 }
 
 fn connect_and_probe_with_mode(
@@ -780,6 +805,11 @@ fn connect_and_probe_with_mode(
                 trace
                     .add_entity_observations
                     .push(parse_add_entity_packet(payload)?);
+            }
+            PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID => {
+                trace
+                    .system_chat_observations
+                    .push(parse_system_chat_packet(payload)?);
             }
             PLAY_CLIENTBOUND_BLOCK_CHANGED_ACK_PACKET_ID => {
                 let mut input = payload;
@@ -1044,6 +1074,24 @@ fn connect_and_probe_with_mode(
                     ConnectionProtocol::Play,
                     PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID,
                     |output| encode_stop_destroy_block(output, target, 15),
+                    compression_threshold,
+                )?;
+                trace.player_action_packets_sent += 1;
+            }
+            if matches!(probe_mode, PlayProbeMode::SurvivalSpawnProtection)
+                && trace.player_action_packets_sent == 0
+            {
+                let Some(position) = player_position else {
+                    return Err(ConnectionError::Codec(
+                        "survival spawn protection probe player position",
+                    ));
+                };
+                let target = support_block_position(position);
+                send_packet(
+                    &mut stream,
+                    ConnectionProtocol::Play,
+                    PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID,
+                    |output| encode_start_destroy_block(output, target, 16),
                     compression_threshold,
                 )?;
                 trace.player_action_packets_sent += 1;
@@ -1607,6 +1655,32 @@ fn parse_add_entity_packet(input: &[u8]) -> Result<AddEntityObservation, Connect
     })
 }
 
+fn parse_system_chat_packet(input: &[u8]) -> Result<SystemChatObservation, ConnectionError> {
+    let mut input = input;
+    let component = crate::nbt::read_nbt(&mut input)
+        .map_err(|_| ConnectionError::Codec("system chat component"))?;
+    let translation_key = component.and_then(|fields| {
+        fields.into_iter().find_map(|field| {
+            if field.key == "translate" {
+                match field.value {
+                    crate::nbt::FieldValue::Str(value) => Some(value),
+                    _ => None,
+                }
+            } else {
+                None
+            }
+        })
+    });
+    let overlay = read_byte(&mut input, "system chat overlay")? != 0;
+    if !input.is_empty() {
+        return Err(ConnectionError::Codec("system chat trailing payload"));
+    }
+    Ok(SystemChatObservation {
+        overlay,
+        translation_key,
+    })
+}
+
 fn skip_lp_vec3(input: &mut &[u8]) -> Result<(), ConnectionError> {
     let lowest = read_byte(input, "add entity movement marker")?;
     if lowest == 0 {
@@ -2051,7 +2125,7 @@ mod tests {
         PLAY_CLIENTBOUND_BLOCK_DESTRUCTION_PACKET_ID, PLAY_CLIENTBOUND_BLOCK_UPDATE_PACKET_ID,
         PLAY_CLIENTBOUND_CHUNK_PACKET_ID, PLAY_CLIENTBOUND_KEEP_ALIVE_PACKET_ID,
         PLAY_CLIENTBOUND_LOGIN_PACKET_ID, PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID,
-        PLAY_SERVERBOUND_ACCEPT_TELEPORTATION_PACKET_ID,
+        PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID, PLAY_SERVERBOUND_ACCEPT_TELEPORTATION_PACKET_ID,
         PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID, PLAY_SERVERBOUND_KEEP_ALIVE_PACKET_ID,
         PLAY_SERVERBOUND_MOVE_PLAYER_POS_ROT_PACKET_ID, PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID,
         PLAY_SERVERBOUND_PLAYER_LOADED_PACKET_ID, PLAY_SERVERBOUND_SET_CARRIED_ITEM_PACKET_ID,
@@ -2063,8 +2137,8 @@ mod tests {
         encode_set_carried_item, encode_stop_destroy_block, encode_use_item, encode_use_item_on,
         encode_use_item_on_hit, pack_block_position, parse_add_entity_packet,
         parse_block_destruction_packet, parse_block_update_packet, parse_chunk_packet,
-        parse_player_position_packet, parse_section_data, resolve_player_position,
-        support_block_position,
+        parse_player_position_packet, parse_section_data, parse_system_chat_packet,
+        resolve_player_position, support_block_position,
     };
 
     #[test]
@@ -2095,6 +2169,7 @@ mod tests {
         assert_eq!(PLAY_CLIENTBOUND_BLOCK_UPDATE_PACKET_ID, 8);
         assert_eq!(PLAY_CLIENTBOUND_BLOCK_CHANGED_ACK_PACKET_ID, 4);
         assert_eq!(PLAY_CLIENTBOUND_BLOCK_DESTRUCTION_PACKET_ID, 5);
+        assert_eq!(PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID, 121);
         assert_eq!(PLAY_SERVERBOUND_ACCEPT_TELEPORTATION_PACKET_ID, 0);
         assert_eq!(PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID, 41);
         assert_eq!(PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID, 11);
@@ -2334,6 +2409,27 @@ mod tests {
                 y: 80.0,
                 z: -35.5,
                 data: 0,
+            }
+        );
+    }
+
+    #[test]
+    fn system_chat_parser_matches_translatable_overlay_component() {
+        let mut payload = Vec::new();
+        crate::nbt::write_nbt(
+            Some(&[crate::nbt::Field {
+                key: "translate".to_owned(),
+                value: crate::nbt::FieldValue::Str("build.spawn_protection".to_owned()),
+            }]),
+            &mut payload,
+        );
+        payload.push(1);
+
+        assert_eq!(
+            parse_system_chat_packet(&payload).expect("system chat packet"),
+            super::SystemChatObservation {
+                overlay: true,
+                translation_key: Some("build.spawn_protection".to_owned()),
             }
         );
     }

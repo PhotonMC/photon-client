@@ -50,6 +50,8 @@ Rust uygulama girişi henüz oynanabilir istemci değildir. İlk gerçek vanilla
 - [Vanilla survival stone hardness doğrulaması](docs/vanilla-survival-stone-break-stop-parity.md)
 - [Survival delayed destroy sözleşmesi](docs/survival-delayed-destroy-contract.md)
 - [Vanilla survival delayed destroy doğrulaması](docs/vanilla-survival-delayed-destroy-parity.md)
+- [Survival spawn protection sözleşmesi](docs/survival-spawn-protection-contract.md)
+- [Vanilla survival spawn protection doğrulaması](docs/vanilla-survival-spawn-protection-parity.md)
 - [Vanilla status socket doğrulaması](docs/status-connection-parity.md)
 - [Pumpkin uyumluluk oturumu doğrulaması](docs/game-connection-parity.md)
 - [Kaynak incelemesi ve istemci sınırları](docs/source-review.md)
