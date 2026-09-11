@@ -4,6 +4,7 @@
 //! implement a renderer or a client world; its purpose is to make the phase transition
 //! and the first world delivery observable without turning the test into a manual launch.
 
+use std::collections::BTreeSet;
 use std::fmt;
 use std::io::{self, Read, Write};
 use std::net::{SocketAddr, TcpStream};
@@ -170,10 +171,14 @@ pub struct ChunkSectionObservation {
     pub block_state_palette_entry_count: usize,
     pub block_state_palette_ids: Vec<i32>,
     pub block_state_storage_word_count: usize,
+    pub block_state_first_values: Vec<i32>,
+    pub block_state_distinct_value_count: usize,
     pub biome_bits_per_entry: u8,
     pub biome_palette_entry_count: usize,
     pub biome_palette_ids: Vec<i32>,
     pub biome_storage_word_count: usize,
+    pub biome_first_values: Vec<i32>,
+    pub biome_distinct_value_count: usize,
 }
 
 /// The observable result of a status and ping session.
@@ -921,10 +926,14 @@ fn parse_section_data(mut input: &[u8]) -> Result<Vec<ChunkSectionObservation>, 
             block_state_palette_entry_count: block_states.palette_entry_count,
             block_state_palette_ids: block_states.palette_ids,
             block_state_storage_word_count: block_states.storage_word_count,
+            block_state_first_values: block_states.first_values,
+            block_state_distinct_value_count: block_states.distinct_value_count,
             biome_bits_per_entry: biomes.bits_per_entry,
             biome_palette_entry_count: biomes.palette_entry_count,
             biome_palette_ids: biomes.palette_ids,
             biome_storage_word_count: biomes.storage_word_count,
+            biome_first_values: biomes.first_values,
+            biome_distinct_value_count: biomes.distinct_value_count,
         });
     }
     Ok(sections)
@@ -936,6 +945,8 @@ struct PaletteObservation {
     palette_entry_count: usize,
     palette_ids: Vec<i32>,
     storage_word_count: usize,
+    first_values: Vec<i32>,
+    distinct_value_count: usize,
 }
 
 fn parse_palette_container(
@@ -1011,7 +1022,7 @@ fn parse_palette_container(
         let values_per_long = 64 / usize::from(storage_bits);
         entry_count.div_ceil(values_per_long)
     };
-    read_fixed_long_array(
+    let storage = read_fixed_long_array(
         input,
         storage_word_count,
         if block_states {
@@ -1021,11 +1032,25 @@ fn parse_palette_container(
         },
     )?;
 
+    let (first_values, distinct_value_count) = decode_palette_values(
+        &storage,
+        entry_count,
+        storage_bits,
+        &palette_ids,
+        if block_states {
+            "block state value"
+        } else {
+            "biome value"
+        },
+    )?;
+
     Ok(PaletteObservation {
         bits_per_entry,
         palette_entry_count: palette_ids.len(),
         palette_ids,
         storage_word_count,
+        first_values,
+        distinct_value_count,
     })
 }
 
@@ -1033,15 +1058,63 @@ fn read_fixed_long_array(
     input: &mut &[u8],
     word_count: usize,
     name: &'static str,
-) -> Result<(), ConnectionError> {
+) -> Result<Vec<u64>, ConnectionError> {
     let byte_count = word_count
         .checked_mul(8)
         .ok_or(ConnectionError::Codec(name))?;
     if input.len() < byte_count {
         return Err(ConnectionError::Codec(name));
     }
-    *input = &input[byte_count..];
-    Ok(())
+    let (head, rest) = input.split_at(byte_count);
+    *input = rest;
+    let mut words = Vec::with_capacity(word_count);
+    let (chunks, remainder) = head.as_chunks::<8>();
+    debug_assert!(remainder.is_empty());
+    for word in chunks {
+        words.push(u64::from_be_bytes(*word));
+    }
+    Ok(words)
+}
+
+fn decode_palette_values(
+    storage: &[u64],
+    entry_count: usize,
+    storage_bits: u8,
+    palette_ids: &[i32],
+    name: &'static str,
+) -> Result<(Vec<i32>, usize), ConnectionError> {
+    if storage_bits == 0 {
+        let Some(&value) = palette_ids.first() else {
+            return Err(ConnectionError::Codec(name));
+        };
+        return Ok((vec![value; entry_count.min(4)], 1));
+    }
+
+    let bits = usize::from(storage_bits);
+    let values_per_long = 64 / bits;
+    let mask = if bits == 32 {
+        u64::from(u32::MAX)
+    } else {
+        (1_u64 << bits) - 1
+    };
+    let mut first_values = Vec::with_capacity(entry_count.min(4));
+    let mut distinct_values = BTreeSet::new();
+    for index in 0..entry_count {
+        let word = storage[index / values_per_long];
+        let palette_index = ((word >> ((index % values_per_long) * bits)) & mask) as usize;
+        let value = if palette_ids.is_empty() {
+            i32::try_from(palette_index).map_err(|_| ConnectionError::Codec(name))?
+        } else {
+            *palette_ids
+                .get(palette_index)
+                .ok_or(ConnectionError::Codec(name))?
+        };
+        if first_values.len() < 4 {
+            first_values.push(value);
+        }
+        distinct_values.insert(value);
+    }
+    Ok((first_values, distinct_values.len()))
 }
 
 #[cfg(test)]
@@ -1164,13 +1237,15 @@ mod tests {
         crate::wire::write_varint(2, &mut section);
         crate::wire::write_varint(0, &mut section);
         crate::wire::write_varint(3, &mut section);
-        section.resize(section.len() + 256 * 8, 0);
+        section.extend_from_slice(&0x101_u64.to_be_bytes());
+        section.resize(section.len() + 255 * 8, 0);
 
         section.push(3);
         crate::wire::write_varint(2, &mut section);
         crate::wire::write_varint(0, &mut section);
         crate::wire::write_varint(1, &mut section);
-        section.resize(section.len() + 4 * 8, 0);
+        section.extend_from_slice(&0x249_u64.to_be_bytes());
+        section.resize(section.len() + 3 * 8, 0);
 
         let observations = parse_section_data(&section).expect("serialized section");
         assert_eq!(observations.len(), 1);
@@ -1181,10 +1256,14 @@ mod tests {
         assert_eq!(observation.block_state_palette_entry_count, 2);
         assert_eq!(observation.block_state_palette_ids, [0, 3]);
         assert_eq!(observation.block_state_storage_word_count, 256);
+        assert_eq!(observation.block_state_first_values, [3, 0, 3, 0]);
+        assert_eq!(observation.block_state_distinct_value_count, 2);
         assert_eq!(observation.biome_bits_per_entry, 3);
         assert_eq!(observation.biome_palette_entry_count, 2);
         assert_eq!(observation.biome_palette_ids, [0, 1]);
         assert_eq!(observation.biome_storage_word_count, 4);
+        assert_eq!(observation.biome_first_values, [1, 1, 1, 1]);
+        assert_eq!(observation.biome_distinct_value_count, 2);
     }
 
     #[test]
@@ -1203,9 +1282,13 @@ mod tests {
         assert_eq!(observations[0].block_state_palette_entry_count, 1);
         assert_eq!(observations[0].block_state_palette_ids, [0]);
         assert_eq!(observations[0].block_state_storage_word_count, 0);
+        assert_eq!(observations[0].block_state_first_values, [0, 0, 0, 0]);
+        assert_eq!(observations[0].block_state_distinct_value_count, 1);
         assert_eq!(observations[0].biome_bits_per_entry, 0);
         assert_eq!(observations[0].biome_palette_entry_count, 1);
         assert_eq!(observations[0].biome_palette_ids, [0]);
         assert_eq!(observations[0].biome_storage_word_count, 0);
+        assert_eq!(observations[0].biome_first_values, [0, 0, 0, 0]);
+        assert_eq!(observations[0].biome_distinct_value_count, 1);
     }
 }

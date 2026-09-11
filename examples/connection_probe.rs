@@ -48,17 +48,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         );
         if let Some(section) = chunk.section_observations.first() {
             println!(
-                "first_section=non_empty:{},fluid:{},block_bits:{},block_palette:{},block_palette_ids:{:?},block_words:{},biome_bits:{},biome_palette:{},biome_palette_ids:{:?},biome_words:{}",
+                "first_section=non_empty:{},fluid:{},block_bits:{},block_palette:{},block_palette_ids:{:?},block_words:{},block_first_values:{:?},block_distinct:{},biome_bits:{},biome_palette:{},biome_palette_ids:{:?},biome_words:{},biome_first_values:{:?},biome_distinct:{}",
                 section.non_empty_block_count,
                 section.fluid_count,
                 section.block_state_bits_per_entry,
                 section.block_state_palette_entry_count,
                 section.block_state_palette_ids,
                 section.block_state_storage_word_count,
+                section.block_state_first_values,
+                section.block_state_distinct_value_count,
                 section.biome_bits_per_entry,
                 section.biome_palette_entry_count,
                 section.biome_palette_ids,
                 section.biome_storage_word_count,
+                section.biome_first_values,
+                section.biome_distinct_value_count,
             );
         }
     }
