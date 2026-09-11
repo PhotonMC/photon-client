@@ -63,11 +63,13 @@ const PLAY_CLIENTBOUND_CHUNK_BATCH_FINISHED_PACKET_ID: i32 = 11;
 const PLAY_CLIENTBOUND_CHUNK_BATCH_START_PACKET_ID: i32 = 12;
 const PLAY_CLIENTBOUND_CONTAINER_SET_CONTENT_PACKET_ID: i32 = 18;
 const PLAY_CLIENTBOUND_CONTAINER_SET_SLOT_PACKET_ID: i32 = 20;
+const PLAY_CLIENTBOUND_REMOVE_MOB_EFFECT_PACKET_ID: i32 = 78;
 const PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID: i32 = 121;
 const PLAY_CLIENTBOUND_KEEP_ALIVE_PACKET_ID: i32 = 44;
 const PLAY_CLIENTBOUND_CHUNK_PACKET_ID: i32 = 45;
 const PLAY_CLIENTBOUND_LOGIN_PACKET_ID: i32 = 49;
 const PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID: i32 = 72;
+const PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID: i32 = 132;
 const PLAY_SERVERBOUND_ACCEPT_TELEPORTATION_PACKET_ID: i32 = 0;
 const PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID: i32 = 41;
 const PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID: i32 = 11;
@@ -185,6 +187,8 @@ pub struct PlayConnectionTrace {
     pub add_entity_observations: Vec<AddEntityObservation>,
     pub container_content_observations: Vec<ContainerSetContentObservation>,
     pub container_slot_observations: Vec<ContainerSetSlotObservation>,
+    pub mob_effect_remove_observations: Vec<MobEffectRemoveObservation>,
+    pub mob_effect_update_observations: Vec<MobEffectUpdateObservation>,
     pub system_chat_observations: Vec<SystemChatObservation>,
     pub creative_place_target_update: Option<BlockUpdateObservation>,
     pub creative_place_neighbor_update: Option<BlockUpdateObservation>,
@@ -261,6 +265,23 @@ pub struct ContainerSetContentObservation {
     pub carried_item_registry_id: Option<i32>,
     pub carried_positive_component_type_ids: Vec<i32>,
     pub carried_negative_component_type_ids: Vec<i32>,
+}
+
+/// Wire-level fields decoded from one clientbound mob-effect removal packet.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MobEffectRemoveObservation {
+    pub entity_id: i32,
+    pub effect_registry_id: i32,
+}
+
+/// Wire-level fields decoded from one clientbound mob-effect update packet.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MobEffectUpdateObservation {
+    pub entity_id: i32,
+    pub effect_registry_id: i32,
+    pub amplifier: i32,
+    pub duration_ticks: i32,
+    pub flags: u8,
 }
 
 /// Wire-level fields decoded from one clientbound system-chat packet.
@@ -567,6 +588,22 @@ pub fn connect_and_survival_honey_bottle_use_probe(
     )
 }
 
+/// Connect to a Java-protocol server, use a component-bearing survival honey bottle
+/// while poison is active, and observe the completed glass-bottle remainder and the
+/// authoritative mob-effect removal packet.
+pub fn connect_and_survival_honey_bottle_poison_cleanup_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeMode::SurvivalHoneyBottlePoisonCleanup,
+    )
+}
+
 /// Connect to a Java-protocol server, place a stone stack in the creative hotbar,
 /// select it and request a side placement against the supporting block.
 pub fn connect_and_creative_place_probe(
@@ -692,6 +729,7 @@ enum PlayProbeMode {
     SurvivalEmptyBucketPickup,
     SurvivalMilkBucketUse,
     SurvivalHoneyBottleUse,
+    SurvivalHoneyBottlePoisonCleanup,
     CreativePlace,
     SurvivalBreakAbort,
     SurvivalBreakStop,
@@ -967,6 +1005,11 @@ fn connect_and_probe_with_mode(
                     .container_slot_observations
                     .push(parse_container_set_slot_packet(payload)?);
             }
+            PLAY_CLIENTBOUND_REMOVE_MOB_EFFECT_PACKET_ID => {
+                trace
+                    .mob_effect_remove_observations
+                    .push(parse_remove_mob_effect_packet(payload)?);
+            }
             PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID => {
                 trace
                     .system_chat_observations
@@ -1058,6 +1101,11 @@ fn connect_and_probe_with_mode(
                     compression_threshold,
                 )?;
                 player_position = Some(absolute);
+            }
+            PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID => {
+                trace
+                    .mob_effect_update_observations
+                    .push(parse_update_mob_effect_packet(payload)?);
             }
             PLAY_CLIENTBOUND_CHUNK_PACKET_ID => {
                 trace.chunk_observations.push(parse_chunk_packet(payload)?);
@@ -1470,6 +1518,27 @@ fn connect_and_probe_with_mode(
                 )?;
                 trace.use_item_packets_sent += 1;
             }
+            if matches!(probe_mode, PlayProbeMode::SurvivalHoneyBottlePoisonCleanup)
+                && trace.use_item_packets_sent == 0
+            {
+                std::thread::sleep(Duration::from_secs(20));
+                send_packet(
+                    &mut stream,
+                    ConnectionProtocol::Play,
+                    PLAY_SERVERBOUND_SET_CARRIED_ITEM_PACKET_ID,
+                    |output| encode_set_carried_item(output, 0),
+                    compression_threshold,
+                )?;
+                trace.carried_item_packets_sent += 1;
+                send_packet(
+                    &mut stream,
+                    ConnectionProtocol::Play,
+                    PLAY_SERVERBOUND_USE_ITEM_PACKET_ID,
+                    |output| encode_use_item(output, 29, 0.0, 0.0),
+                    compression_threshold,
+                )?;
+                trace.use_item_packets_sent += 1;
+            }
             if matches!(probe_mode, PlayProbeMode::CreativeSnowballUse)
                 && trace.creative_mode_slot_packets_sent == 0
             {
@@ -1552,6 +1621,7 @@ fn connect_and_probe_with_mode(
                 | PlayProbeMode::SurvivalEmptyBucketPickup => WATER_BUCKET_DRAIN_TIMEOUT,
                 PlayProbeMode::SurvivalMilkBucketUse => CONSUMABLE_DRAIN_TIMEOUT,
                 PlayProbeMode::SurvivalHoneyBottleUse => CONSUMABLE_DRAIN_TIMEOUT,
+                PlayProbeMode::SurvivalHoneyBottlePoisonCleanup => CONSUMABLE_DRAIN_TIMEOUT,
                 _ => WORLD_READY_DRAIN_TIMEOUT,
             };
             stream.set_read_timeout(Some(drain_timeout))?;
@@ -1564,6 +1634,7 @@ fn connect_and_probe_with_mode(
             }
             PlayProbeMode::SurvivalMilkBucketUse => CONSUMABLE_DRAIN_TIMEOUT,
             PlayProbeMode::SurvivalHoneyBottleUse => CONSUMABLE_DRAIN_TIMEOUT,
+            PlayProbeMode::SurvivalHoneyBottlePoisonCleanup => CONSUMABLE_DRAIN_TIMEOUT,
             _ => WORLD_READY_DRAIN_TIMEOUT,
         };
         if world_ready_drain_started.is_some_and(|started| started.elapsed() >= drain_timeout) {
@@ -2008,6 +2079,42 @@ fn parse_add_entity_packet(input: &[u8]) -> Result<AddEntityObservation, Connect
         y,
         z,
         data,
+    })
+}
+
+fn parse_remove_mob_effect_packet(
+    input: &[u8],
+) -> Result<MobEffectRemoveObservation, ConnectionError> {
+    let mut input = input;
+    let entity_id = read_varint(&mut input, "remove mob effect entity id")?;
+    let effect_registry_id = read_varint(&mut input, "remove mob effect registry id")?;
+    if !input.is_empty() {
+        return Err(ConnectionError::Codec("remove mob effect trailing payload"));
+    }
+    Ok(MobEffectRemoveObservation {
+        entity_id,
+        effect_registry_id,
+    })
+}
+
+fn parse_update_mob_effect_packet(
+    input: &[u8],
+) -> Result<MobEffectUpdateObservation, ConnectionError> {
+    let mut input = input;
+    let entity_id = read_varint(&mut input, "update mob effect entity id")?;
+    let effect_registry_id = read_varint(&mut input, "update mob effect registry id")?;
+    let amplifier = read_varint(&mut input, "update mob effect amplifier")?;
+    let duration_ticks = read_varint(&mut input, "update mob effect duration")?;
+    let flags = read_byte(&mut input, "update mob effect flags")?;
+    if !input.is_empty() {
+        return Err(ConnectionError::Codec("update mob effect trailing payload"));
+    }
+    Ok(MobEffectUpdateObservation {
+        entity_id,
+        effect_registry_id,
+        amplifier,
+        duration_ticks,
+        flags,
     })
 }
 
@@ -2608,7 +2715,9 @@ mod tests {
         PLAY_CLIENTBOUND_CHUNK_PACKET_ID, PLAY_CLIENTBOUND_CONTAINER_SET_CONTENT_PACKET_ID,
         PLAY_CLIENTBOUND_CONTAINER_SET_SLOT_PACKET_ID, PLAY_CLIENTBOUND_KEEP_ALIVE_PACKET_ID,
         PLAY_CLIENTBOUND_LOGIN_PACKET_ID, PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID,
-        PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID, PLAY_SERVERBOUND_ACCEPT_TELEPORTATION_PACKET_ID,
+        PLAY_CLIENTBOUND_REMOVE_MOB_EFFECT_PACKET_ID, PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID,
+        PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID,
+        PLAY_SERVERBOUND_ACCEPT_TELEPORTATION_PACKET_ID,
         PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID, PLAY_SERVERBOUND_KEEP_ALIVE_PACKET_ID,
         PLAY_SERVERBOUND_MOVE_PLAYER_POS_ROT_PACKET_ID, PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID,
         PLAY_SERVERBOUND_PLAYER_LOADED_PACKET_ID, PLAY_SERVERBOUND_SET_CARRIED_ITEM_PACKET_ID,
@@ -2621,8 +2730,9 @@ mod tests {
         encode_use_item_on_hit, pack_block_position, parse_add_entity_packet,
         parse_block_destruction_packet, parse_block_update_packet, parse_chunk_packet,
         parse_container_set_content_packet, parse_container_set_slot_packet,
-        parse_player_position_packet, parse_section_data, parse_system_chat_packet,
-        resolve_player_position, support_block_position,
+        parse_player_position_packet, parse_remove_mob_effect_packet, parse_section_data,
+        parse_system_chat_packet, parse_update_mob_effect_packet, resolve_player_position,
+        support_block_position,
     };
 
     #[test]
@@ -2655,7 +2765,9 @@ mod tests {
         assert_eq!(PLAY_CLIENTBOUND_BLOCK_DESTRUCTION_PACKET_ID, 5);
         assert_eq!(PLAY_CLIENTBOUND_CONTAINER_SET_CONTENT_PACKET_ID, 18);
         assert_eq!(PLAY_CLIENTBOUND_CONTAINER_SET_SLOT_PACKET_ID, 20);
+        assert_eq!(PLAY_CLIENTBOUND_REMOVE_MOB_EFFECT_PACKET_ID, 78);
         assert_eq!(PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID, 121);
+        assert_eq!(PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID, 132);
         assert_eq!(PLAY_SERVERBOUND_ACCEPT_TELEPORTATION_PACKET_ID, 0);
         assert_eq!(PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID, 41);
         assert_eq!(PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID, 11);
@@ -2895,6 +3007,39 @@ mod tests {
                 y: 80.0,
                 z: -35.5,
                 data: 0,
+            }
+        );
+    }
+
+    #[test]
+    fn mob_effect_parsers_match_java_registry_and_effect_fields() {
+        let mut update_payload = Vec::new();
+        crate::wire::write_varint(42, &mut update_payload);
+        crate::wire::write_varint(19, &mut update_payload);
+        crate::wire::write_varint(1, &mut update_payload);
+        crate::wire::write_varint(1_200, &mut update_payload);
+        update_payload.push(0b1111);
+
+        assert_eq!(
+            parse_update_mob_effect_packet(&update_payload).expect("mob effect update"),
+            super::MobEffectUpdateObservation {
+                entity_id: 42,
+                effect_registry_id: 19,
+                amplifier: 1,
+                duration_ticks: 1_200,
+                flags: 0b1111,
+            }
+        );
+
+        let mut remove_payload = Vec::new();
+        crate::wire::write_varint(42, &mut remove_payload);
+        crate::wire::write_varint(19, &mut remove_payload);
+
+        assert_eq!(
+            parse_remove_mob_effect_packet(&remove_payload).expect("mob effect removal"),
+            super::MobEffectRemoveObservation {
+                entity_id: 42,
+                effect_registry_id: 19,
             }
         );
     }
