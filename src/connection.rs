@@ -429,6 +429,16 @@ pub fn connect_and_survival_break_abort_probe(
     )
 }
 
+/// Connect to a Java-protocol server, break the supporting dirt block in survival mode
+/// with a timed stop action and observe the authoritative air update.
+pub fn connect_and_survival_break_stop_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(address, username, timeout, PlayProbeMode::SurvivalBreakStop)
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum PlayProbeMode {
     Basic,
@@ -439,6 +449,7 @@ enum PlayProbeMode {
     UseItemOn,
     CreativePlace,
     SurvivalBreakAbort,
+    SurvivalBreakStop,
 }
 
 fn connect_and_probe_with_mode(
@@ -891,6 +902,33 @@ fn connect_and_probe_with_mode(
                 )?;
                 trace.player_action_packets_sent += 1;
             }
+            if matches!(probe_mode, PlayProbeMode::SurvivalBreakStop)
+                && trace.player_action_packets_sent == 0
+            {
+                let Some(position) = player_position else {
+                    return Err(ConnectionError::Codec(
+                        "survival break stop probe player position",
+                    ));
+                };
+                let target = support_block_position(position);
+                send_packet(
+                    &mut stream,
+                    ConnectionProtocol::Play,
+                    PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID,
+                    |output| encode_start_destroy_block(output, target, 8),
+                    compression_threshold,
+                )?;
+                trace.player_action_packets_sent += 1;
+                std::thread::sleep(Duration::from_millis(650));
+                send_packet(
+                    &mut stream,
+                    ConnectionProtocol::Play,
+                    PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID,
+                    |output| encode_stop_destroy_block(output, target, 9),
+                    compression_threshold,
+                )?;
+                trace.player_action_packets_sent += 1;
+            }
             if matches!(probe_mode, PlayProbeMode::UseItemOn) && trace.use_item_on_packets_sent == 0
             {
                 let Some(position) = player_position else {
@@ -1041,6 +1079,14 @@ fn encode_start_destroy_block(
     sequence: i32,
 ) -> Result<(), ConnectionError> {
     encode_player_action(output, 0, position, 1, sequence)
+}
+
+fn encode_stop_destroy_block(
+    output: &mut Vec<u8>,
+    position: (i32, i32, i32),
+    sequence: i32,
+) -> Result<(), ConnectionError> {
+    encode_player_action(output, 2, position, 1, sequence)
 }
 
 fn encode_use_item_on(
@@ -1773,10 +1819,11 @@ mod tests {
         STATUS_CLIENTBOUND_PONG_RESPONSE_PACKET_ID, STATUS_CLIENTBOUND_RESPONSE_PACKET_ID,
         STATUS_SERVERBOUND_PING_REQUEST_PACKET_ID, STATUS_SERVERBOUND_REQUEST_PACKET_ID,
         decode_packet_frame, encode_abort_destroy_block, encode_creative_stone_slot,
-        encode_packet_frame, encode_set_carried_item, encode_use_item_on, encode_use_item_on_hit,
-        pack_block_position, parse_block_destruction_packet, parse_block_update_packet,
-        parse_chunk_packet, parse_player_position_packet, parse_section_data,
-        resolve_player_position, support_block_position,
+        encode_packet_frame, encode_set_carried_item, encode_stop_destroy_block,
+        encode_use_item_on, encode_use_item_on_hit, pack_block_position,
+        parse_block_destruction_packet, parse_block_update_packet, parse_chunk_packet,
+        parse_player_position_packet, parse_section_data, resolve_player_position,
+        support_block_position,
     };
 
     #[test]
@@ -1970,6 +2017,20 @@ mod tests {
         assert_eq!(input[0], 0);
         input = &input[1..];
         assert_eq!(crate::wire::read_varint(&mut input).expect("sequence"), 1);
+        assert!(input.is_empty());
+    }
+
+    #[test]
+    fn player_action_encoder_matches_java_stop_action() {
+        let mut payload = Vec::new();
+        encode_stop_destroy_block(&mut payload, (-12, 67, 9), 9).expect("stop action packet");
+
+        let mut input = payload.as_slice();
+        assert_eq!(crate::wire::read_varint(&mut input).expect("action"), 2);
+        input = &input[8..];
+        assert_eq!(input[0], 1);
+        input = &input[1..];
+        assert_eq!(crate::wire::read_varint(&mut input).expect("sequence"), 9);
         assert!(input.is_empty());
     }
 
