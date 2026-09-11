@@ -520,6 +520,21 @@ pub fn connect_and_survival_oak_planks_break_stop_probe(
     )
 }
 
+/// Connect to a Java-protocol server, select a wooden pickaxe supplied in hotbar slot 0,
+/// and break the supporting stone block in survival mode.
+pub fn connect_and_survival_stone_wooden_pickaxe_break_stop_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeMode::SurvivalStoneWoodenPickaxeBreakStop,
+    )
+}
+
 /// Connect to a Java-protocol server, stop a short survival dirt break early and
 /// observe the server's delayed destroy completion on later ticks.
 pub fn connect_and_survival_delayed_destroy_probe(
@@ -565,6 +580,7 @@ enum PlayProbeMode {
     SurvivalBreakStop,
     SurvivalStoneBreakStop,
     SurvivalOakPlanksBreakStop,
+    SurvivalStoneWoodenPickaxeBreakStop,
     SurvivalDelayedDestroy,
     SurvivalSpawnProtection,
 }
@@ -1067,6 +1083,44 @@ fn connect_and_probe_with_mode(
                     ConnectionProtocol::Play,
                     PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID,
                     |output| encode_stop_destroy_block(output, target, stop_sequence),
+                    compression_threshold,
+                )?;
+                trace.player_action_packets_sent += 1;
+            }
+            if matches!(
+                probe_mode,
+                PlayProbeMode::SurvivalStoneWoodenPickaxeBreakStop
+            ) && trace.player_action_packets_sent == 0
+            {
+                let Some(position) = player_position else {
+                    return Err(ConnectionError::Codec(
+                        "survival wooden pickaxe probe player position",
+                    ));
+                };
+                std::thread::sleep(Duration::from_secs(12));
+                send_packet(
+                    &mut stream,
+                    ConnectionProtocol::Play,
+                    PLAY_SERVERBOUND_SET_CARRIED_ITEM_PACKET_ID,
+                    |output| encode_set_carried_item(output, 0),
+                    compression_threshold,
+                )?;
+                trace.carried_item_packets_sent += 1;
+                let target = support_block_position(position);
+                send_packet(
+                    &mut stream,
+                    ConnectionProtocol::Play,
+                    PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID,
+                    |output| encode_start_destroy_block(output, target, 20),
+                    compression_threshold,
+                )?;
+                trace.player_action_packets_sent += 1;
+                std::thread::sleep(Duration::from_millis(2_200));
+                send_packet(
+                    &mut stream,
+                    ConnectionProtocol::Play,
+                    PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID,
+                    |output| encode_stop_destroy_block(output, target, 21),
                     compression_threshold,
                 )?;
                 trace.player_action_packets_sent += 1;
