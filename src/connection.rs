@@ -86,6 +86,7 @@ const PLAY_SERVERBOUND_USE_ITEM_PACKET_ID: i32 = 67;
 // The pinned vanilla built-in item registry is not sent in configuration registry data.
 // Items.java registers AIR before STONE, so STONE has id 1 in BuiltInRegistries.ITEM.
 const VANILLA_STONE_ITEM_REGISTRY_ID: i32 = 1;
+const VANILLA_STONE_DAMAGE_COMPONENT_HASH: i32 = 0x5d50_d71c;
 const VANILLA_MILK_BUCKET_ITEM_REGISTRY_ID: i32 = 1_046;
 const VANILLA_PUFFERFISH_ITEM_REGISTRY_ID: i32 = 1_089;
 const VANILLA_SNOWBALL_ITEM_REGISTRY_ID: i32 = 1_044;
@@ -1007,6 +1008,21 @@ pub fn connect_and_survival_inventory_food_component_correct_prediction_probe(
     )
 }
 
+/// Connect to a Java-protocol server, pick up a damage-component survival
+/// stack with the exact component hash, and observe no correction.
+pub fn connect_and_survival_inventory_damage_component_correct_prediction_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeMode::SurvivalInventoryDamageComponentCorrectPrediction,
+    )
+}
+
 /// Connect to a Java-protocol server, shift-click a supplied survival inventory
 /// stack with a stale container state id, and observe the authoritative full resync.
 pub fn connect_and_survival_inventory_quick_move_state_correction_probe(
@@ -1218,6 +1234,7 @@ enum PlayProbeMode {
     SurvivalInventoryAheadStateCorrectPrediction,
     SurvivalInventoryAheadComponentCorrectPrediction,
     SurvivalInventoryFoodComponentCorrectPrediction,
+    SurvivalInventoryDamageComponentCorrectPrediction,
     SurvivalInventoryQuickMoveStateCorrection,
     SurvivalInventorySwapStateCorrection,
     CreativePlace,
@@ -2544,6 +2561,31 @@ fn connect_and_probe_with_mode(
             }
             if matches!(
                 probe_mode,
+                PlayProbeMode::SurvivalInventoryDamageComponentCorrectPrediction
+            ) && trace.container_click_packets_sent == 0
+            {
+                std::thread::sleep(Duration::from_secs(20));
+                send_packet(
+                    &mut stream,
+                    ConnectionProtocol::Play,
+                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
+                    |output| {
+                        encode_inventory_pickup_with_exact_component_prediction(
+                            output,
+                            2,
+                            1,
+                            VANILLA_STONE_ITEM_REGISTRY_ID,
+                            VANILLA_DAMAGE_COMPONENT_ID,
+                            VANILLA_STONE_DAMAGE_COMPONENT_HASH,
+                        )
+                    },
+                    compression_threshold,
+                )?;
+                trace.container_click_packets_sent += 1;
+                trace.container_click_state_id_sent = Some(2);
+            }
+            if matches!(
+                probe_mode,
                 PlayProbeMode::SurvivalInventoryQuickMoveStateCorrection
             ) && trace.container_click_packets_sent == 0
             {
@@ -2703,6 +2745,9 @@ fn connect_and_probe_with_mode(
                 PlayProbeMode::SurvivalInventoryFoodComponentCorrectPrediction => {
                     CONSUMABLE_DRAIN_TIMEOUT
                 }
+                PlayProbeMode::SurvivalInventoryDamageComponentCorrectPrediction => {
+                    CONSUMABLE_DRAIN_TIMEOUT
+                }
                 PlayProbeMode::SurvivalInventoryQuickMoveStateCorrection => {
                     CONSUMABLE_DRAIN_TIMEOUT
                 }
@@ -2756,6 +2801,9 @@ fn connect_and_probe_with_mode(
                 CONSUMABLE_DRAIN_TIMEOUT
             }
             PlayProbeMode::SurvivalInventoryFoodComponentCorrectPrediction => {
+                CONSUMABLE_DRAIN_TIMEOUT
+            }
+            PlayProbeMode::SurvivalInventoryDamageComponentCorrectPrediction => {
                 CONSUMABLE_DRAIN_TIMEOUT
             }
             PlayProbeMode::SurvivalInventoryQuickMoveStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
@@ -4249,10 +4297,12 @@ mod tests {
         PLAY_SERVERBOUND_USE_ITEM_PACKET_ID, STATUS_CLIENTBOUND_PONG_RESPONSE_PACKET_ID,
         STATUS_CLIENTBOUND_RESPONSE_PACKET_ID, STATUS_SERVERBOUND_PING_REQUEST_PACKET_ID,
         STATUS_SERVERBOUND_REQUEST_PACKET_ID, VANILLA_CUSTOM_MODEL_DATA_COMPONENT_HASH,
-        VANILLA_CUSTOM_MODEL_DATA_COMPONENT_ID, VANILLA_FOOD_COMPONENT_HASH,
-        VANILLA_FOOD_COMPONENT_ID, VANILLA_PUFFERFISH_ITEM_REGISTRY_ID, decode_packet_frame,
-        encode_abort_destroy_block, encode_creative_item_slot, encode_creative_stone_slot,
-        encode_inventory_click_with_input, encode_inventory_drag_empty_cancel_state_correction,
+        VANILLA_CUSTOM_MODEL_DATA_COMPONENT_ID, VANILLA_DAMAGE_COMPONENT_ID,
+        VANILLA_FOOD_COMPONENT_HASH, VANILLA_FOOD_COMPONENT_ID,
+        VANILLA_PUFFERFISH_ITEM_REGISTRY_ID, VANILLA_STONE_DAMAGE_COMPONENT_HASH,
+        VANILLA_STONE_ITEM_REGISTRY_ID, decode_packet_frame, encode_abort_destroy_block,
+        encode_creative_item_slot, encode_creative_stone_slot, encode_inventory_click_with_input,
+        encode_inventory_drag_empty_cancel_state_correction,
         encode_inventory_pickup_state_correction,
         encode_inventory_pickup_with_component_correct_prediction,
         encode_inventory_pickup_with_component_hash_prediction,
@@ -5493,6 +5543,67 @@ mod tests {
         assert_eq!(
             i32::from_be_bytes(input[..4].try_into().expect("component hash")),
             VANILLA_FOOD_COMPONENT_HASH
+        );
+        input = &input[4..];
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("removed component count"),
+            0
+        );
+        assert!(input.is_empty());
+    }
+
+    #[test]
+    fn inventory_damage_component_prediction_encoder_keeps_java_hash() {
+        let mut payload = Vec::new();
+        encode_inventory_pickup_with_exact_component_prediction(
+            &mut payload,
+            2,
+            1,
+            VANILLA_STONE_ITEM_REGISTRY_ID,
+            VANILLA_DAMAGE_COMPONENT_ID,
+            VANILLA_STONE_DAMAGE_COMPONENT_HASH,
+        )
+        .expect("damage component prediction packet");
+
+        let mut input = payload.as_slice();
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("container id"),
+            0
+        );
+        assert_eq!(crate::wire::read_varint(&mut input).expect("state id"), 2);
+        assert_eq!(i16::from_be_bytes(input[..2].try_into().expect("slot")), 36);
+        input = &input[2..];
+        assert_eq!(input[0], 0);
+        input = &input[1..];
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("container input"),
+            0
+        );
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("changed slot count"),
+            1
+        );
+        input = &input[2..];
+        assert_eq!(input[0], 0, "changed slot should be empty");
+        input = &input[1..];
+        assert_eq!(input[0], 1, "carried should be non-empty");
+        input = &input[1..];
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("item registry id"),
+            VANILLA_STONE_ITEM_REGISTRY_ID
+        );
+        assert_eq!(crate::wire::read_varint(&mut input).expect("item count"), 1);
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("component map count"),
+            1
+        );
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("component type id"),
+            VANILLA_DAMAGE_COMPONENT_ID
+        );
+        assert_eq!(
+            i32::from_be_bytes(input[..4].try_into().expect("component hash")),
+            VANILLA_STONE_DAMAGE_COMPONENT_HASH
         );
         input = &input[4..];
         assert_eq!(
