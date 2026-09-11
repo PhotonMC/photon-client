@@ -63,6 +63,7 @@ const PLAY_CLIENTBOUND_CHUNK_BATCH_FINISHED_PACKET_ID: i32 = 11;
 const PLAY_CLIENTBOUND_CHUNK_BATCH_START_PACKET_ID: i32 = 12;
 const PLAY_CLIENTBOUND_CONTAINER_SET_CONTENT_PACKET_ID: i32 = 18;
 const PLAY_CLIENTBOUND_CONTAINER_SET_SLOT_PACKET_ID: i32 = 20;
+const PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID: i32 = 96;
 const PLAY_CLIENTBOUND_REMOVE_MOB_EFFECT_PACKET_ID: i32 = 78;
 const PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID: i32 = 121;
 const PLAY_CLIENTBOUND_KEEP_ALIVE_PACKET_ID: i32 = 44;
@@ -194,6 +195,7 @@ pub struct PlayConnectionTrace {
     pub add_entity_observations: Vec<AddEntityObservation>,
     pub container_content_observations: Vec<ContainerSetContentObservation>,
     pub container_slot_observations: Vec<ContainerSetSlotObservation>,
+    pub cursor_item_observations: Vec<CursorItemObservation>,
     pub mob_effect_remove_observations: Vec<MobEffectRemoveObservation>,
     pub mob_effect_update_observations: Vec<MobEffectUpdateObservation>,
     pub system_chat_observations: Vec<SystemChatObservation>,
@@ -252,6 +254,15 @@ pub struct ContainerSetSlotObservation {
     pub container_id: i32,
     pub state_id: i32,
     pub slot: i16,
+    pub item_count: Option<i32>,
+    pub item_registry_id: Option<i32>,
+    pub positive_component_type_ids: Vec<i32>,
+    pub negative_component_type_ids: Vec<i32>,
+}
+
+/// Wire-level fields decoded from one clientbound cursor item update.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CursorItemObservation {
     pub item_count: Option<i32>,
     pub item_registry_id: Option<i32>,
     pub positive_component_type_ids: Vec<i32>,
@@ -823,6 +834,21 @@ pub fn connect_and_survival_inventory_ahead_state_correction_probe(
     )
 }
 
+/// Connect to a Java-protocol server, send a current inventory state id and a
+/// hashed slot prediction for a survival pickup, and observe the incremental updates.
+pub fn connect_and_survival_inventory_correct_prediction_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeMode::SurvivalInventoryCorrectPrediction,
+    )
+}
+
 /// Connect to a Java-protocol server, shift-click a supplied survival inventory
 /// stack with a stale container state id, and observe the authoritative full resync.
 pub fn connect_and_survival_inventory_quick_move_state_correction_probe(
@@ -1023,6 +1049,7 @@ enum PlayProbeMode {
     SurvivalInventoryDoubleClickStateCorrection,
     SurvivalInventoryDoubleClickStackLimitStateCorrection,
     SurvivalInventoryAheadStateCorrection,
+    SurvivalInventoryCorrectPrediction,
     SurvivalInventoryQuickMoveStateCorrection,
     SurvivalInventorySwapStateCorrection,
     CreativePlace,
@@ -1301,6 +1328,11 @@ fn connect_and_probe_with_mode(
                 trace
                     .container_slot_observations
                     .push(parse_container_set_slot_packet(payload)?);
+            }
+            PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID => {
+                trace
+                    .cursor_item_observations
+                    .push(parse_cursor_item_packet(payload)?);
             }
             PLAY_CLIENTBOUND_REMOVE_MOB_EFFECT_PACKET_ID => {
                 trace
@@ -2131,6 +2163,22 @@ fn connect_and_probe_with_mode(
             }
             if matches!(
                 probe_mode,
+                PlayProbeMode::SurvivalInventoryCorrectPrediction
+            ) && trace.container_click_packets_sent == 0
+            {
+                std::thread::sleep(Duration::from_secs(20));
+                send_packet(
+                    &mut stream,
+                    ConnectionProtocol::Play,
+                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
+                    |output| encode_inventory_pickup_with_prediction(output, 2, 8, 1),
+                    compression_threshold,
+                )?;
+                trace.container_click_packets_sent += 1;
+                trace.container_click_state_id_sent = Some(2);
+            }
+            if matches!(
+                probe_mode,
                 PlayProbeMode::SurvivalInventoryQuickMoveStateCorrection
             ) && trace.container_click_packets_sent == 0
             {
@@ -2267,6 +2315,7 @@ fn connect_and_probe_with_mode(
                     CONSUMABLE_DRAIN_TIMEOUT
                 }
                 PlayProbeMode::SurvivalInventoryAheadStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
+                PlayProbeMode::SurvivalInventoryCorrectPrediction => CONSUMABLE_DRAIN_TIMEOUT,
                 PlayProbeMode::SurvivalInventoryQuickMoveStateCorrection => {
                     CONSUMABLE_DRAIN_TIMEOUT
                 }
@@ -2305,6 +2354,7 @@ fn connect_and_probe_with_mode(
                 CONSUMABLE_DRAIN_TIMEOUT
             }
             PlayProbeMode::SurvivalInventoryAheadStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
+            PlayProbeMode::SurvivalInventoryCorrectPrediction => CONSUMABLE_DRAIN_TIMEOUT,
             PlayProbeMode::SurvivalInventoryQuickMoveStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
             PlayProbeMode::SurvivalInventorySwapStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
             _ => WORLD_READY_DRAIN_TIMEOUT,
@@ -2554,6 +2604,28 @@ fn encode_inventory_click_with_input(
     output.extend_from_slice(&slot.to_be_bytes());
     output.push(button);
     wire::write_varint(input_id, output);
+    wire::write_varint(0, output);
+    output.push(0);
+    Ok(())
+}
+
+fn encode_inventory_pickup_with_prediction(
+    output: &mut Vec<u8>,
+    state_id: i32,
+    item_count: i32,
+    item_registry_id: i32,
+) -> Result<(), ConnectionError> {
+    wire::write_varint(0, output);
+    wire::write_varint(state_id, output);
+    output.extend_from_slice(&36_i16.to_be_bytes());
+    output.push(0);
+    wire::write_varint(0, output);
+    wire::write_varint(1, output);
+    output.extend_from_slice(&36_i16.to_be_bytes());
+    output.push(1);
+    wire::write_varint(item_registry_id, output);
+    wire::write_varint(item_count, output);
+    wire::write_varint(0, output);
     wire::write_varint(0, output);
     output.push(0);
     Ok(())
@@ -3100,6 +3172,20 @@ fn parse_container_set_slot_packet(
     })
 }
 
+fn parse_cursor_item_packet(input: &[u8]) -> Result<CursorItemObservation, ConnectionError> {
+    let mut input = input;
+    let item = parse_optional_item_stack(&mut input, "cursor item stack")?;
+    if !input.is_empty() {
+        return Err(ConnectionError::Codec("cursor item trailing payload"));
+    }
+    Ok(CursorItemObservation {
+        item_count: item.item_count,
+        item_registry_id: item.item_registry_id,
+        positive_component_type_ids: item.positive_component_type_ids,
+        negative_component_type_ids: item.negative_component_type_ids,
+    })
+}
+
 fn parse_system_chat_packet(input: &[u8]) -> Result<SystemChatObservation, ConnectionError> {
     let mut input = input;
     let component = crate::nbt::read_nbt(&mut input)
@@ -3571,8 +3657,8 @@ mod tests {
         PLAY_CLIENTBOUND_CHUNK_PACKET_ID, PLAY_CLIENTBOUND_CONTAINER_SET_CONTENT_PACKET_ID,
         PLAY_CLIENTBOUND_CONTAINER_SET_SLOT_PACKET_ID, PLAY_CLIENTBOUND_KEEP_ALIVE_PACKET_ID,
         PLAY_CLIENTBOUND_LOGIN_PACKET_ID, PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID,
-        PLAY_CLIENTBOUND_REMOVE_MOB_EFFECT_PACKET_ID, PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID,
-        PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID,
+        PLAY_CLIENTBOUND_REMOVE_MOB_EFFECT_PACKET_ID, PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID,
+        PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID, PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID,
         PLAY_SERVERBOUND_ACCEPT_TELEPORTATION_PACKET_ID,
         PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID,
         PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID, PLAY_SERVERBOUND_KEEP_ALIVE_PACKET_ID,
@@ -3584,7 +3670,8 @@ mod tests {
         STATUS_SERVERBOUND_REQUEST_PACKET_ID, decode_packet_frame, encode_abort_destroy_block,
         encode_creative_item_slot, encode_creative_stone_slot, encode_inventory_click_with_input,
         encode_inventory_drag_empty_cancel_state_correction,
-        encode_inventory_pickup_state_correction, encode_inventory_quick_move_state_correction,
+        encode_inventory_pickup_state_correction, encode_inventory_pickup_with_prediction,
+        encode_inventory_quick_move_state_correction,
         encode_inventory_secondary_pickup_state_correction, encode_inventory_swap_state_correction,
         encode_inventory_throw_all_state_correction, encode_inventory_throw_one_state_correction,
         encode_packet_frame, encode_release_use_item, encode_set_carried_item,
@@ -3626,6 +3713,7 @@ mod tests {
         assert_eq!(PLAY_CLIENTBOUND_BLOCK_DESTRUCTION_PACKET_ID, 5);
         assert_eq!(PLAY_CLIENTBOUND_CONTAINER_SET_CONTENT_PACKET_ID, 18);
         assert_eq!(PLAY_CLIENTBOUND_CONTAINER_SET_SLOT_PACKET_ID, 20);
+        assert_eq!(PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID, 96);
         assert_eq!(PLAY_CLIENTBOUND_REMOVE_MOB_EFFECT_PACKET_ID, 78);
         assert_eq!(PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID, 121);
         assert_eq!(PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID, 132);
@@ -4453,6 +4541,53 @@ mod tests {
         );
         assert_eq!(
             crate::wire::read_varint(&mut input).expect("changed slot count"),
+            0
+        );
+        assert_eq!(input, [0]);
+    }
+
+    #[test]
+    fn inventory_pickup_prediction_encoder_keeps_item_hash_fields() {
+        let mut payload = Vec::new();
+        encode_inventory_pickup_with_prediction(&mut payload, 2, 8, 1)
+            .expect("inventory prediction packet");
+
+        let mut input = payload.as_slice();
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("container id"),
+            0
+        );
+        assert_eq!(crate::wire::read_varint(&mut input).expect("state id"), 2);
+        assert_eq!(i16::from_be_bytes(input[..2].try_into().expect("slot")), 36);
+        input = &input[2..];
+        assert_eq!(input[0], 0);
+        input = &input[1..];
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("container input"),
+            0
+        );
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("changed slot count"),
+            1
+        );
+        assert_eq!(
+            i16::from_be_bytes(input[..2].try_into().expect("changed slot")),
+            36
+        );
+        input = &input[2..];
+        assert_eq!(input[0], 1);
+        input = &input[1..];
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("item registry id"),
+            1
+        );
+        assert_eq!(crate::wire::read_varint(&mut input).expect("item count"), 8);
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("component map count"),
+            0
+        );
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("removed component count"),
             0
         );
         assert_eq!(input, [0]);
