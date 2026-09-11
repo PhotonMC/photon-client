@@ -777,6 +777,21 @@ pub fn connect_and_survival_inventory_drag_distribution_state_correction_probe(
     )
 }
 
+/// Connect to a Java-protocol server, collect a second survival inventory stack
+/// with a stale container state id, and observe the authoritative full resync.
+pub fn connect_and_survival_inventory_double_click_state_correction_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeMode::SurvivalInventoryDoubleClickStateCorrection,
+    )
+}
+
 /// Connect to a Java-protocol server, shift-click a supplied survival inventory
 /// stack with a stale container state id, and observe the authoritative full resync.
 pub fn connect_and_survival_inventory_quick_move_state_correction_probe(
@@ -974,6 +989,7 @@ enum PlayProbeMode {
     SurvivalInventoryThrowAllStateCorrection,
     SurvivalInventoryDragEmptyCancelStateCorrection,
     SurvivalInventoryDragDistributionStateCorrection,
+    SurvivalInventoryDoubleClickStateCorrection,
     SurvivalInventoryQuickMoveStateCorrection,
     SurvivalInventorySwapStateCorrection,
     CreativePlace,
@@ -2016,9 +2032,27 @@ fn connect_and_probe_with_mode(
                         ConnectionProtocol::Play,
                         PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
                         |output| {
-                            encode_inventory_drag_distribution_click(
-                                output, 0, slot, button, input_id,
-                            )
+                            encode_inventory_click_with_input(output, 0, slot, button, input_id)
+                        },
+                        compression_threshold,
+                    )?;
+                    trace.container_click_packets_sent += 1;
+                }
+                trace.container_click_state_id_sent = Some(0);
+            }
+            if matches!(
+                probe_mode,
+                PlayProbeMode::SurvivalInventoryDoubleClickStateCorrection
+            ) && trace.container_click_packets_sent == 0
+            {
+                std::thread::sleep(Duration::from_secs(20));
+                for (slot, button, input_id) in [(36_i16, 0_u8, 0_i32), (10_i16, 0_u8, 6_i32)] {
+                    send_packet(
+                        &mut stream,
+                        ConnectionProtocol::Play,
+                        PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
+                        |output| {
+                            encode_inventory_click_with_input(output, 0, slot, button, input_id)
                         },
                         compression_threshold,
                     )?;
@@ -2157,6 +2191,9 @@ fn connect_and_probe_with_mode(
                 PlayProbeMode::SurvivalInventoryDragDistributionStateCorrection => {
                     CONSUMABLE_DRAIN_TIMEOUT
                 }
+                PlayProbeMode::SurvivalInventoryDoubleClickStateCorrection => {
+                    CONSUMABLE_DRAIN_TIMEOUT
+                }
                 PlayProbeMode::SurvivalInventoryQuickMoveStateCorrection => {
                     CONSUMABLE_DRAIN_TIMEOUT
                 }
@@ -2190,6 +2227,7 @@ fn connect_and_probe_with_mode(
             PlayProbeMode::SurvivalInventoryDragDistributionStateCorrection => {
                 CONSUMABLE_DRAIN_TIMEOUT
             }
+            PlayProbeMode::SurvivalInventoryDoubleClickStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
             PlayProbeMode::SurvivalInventoryQuickMoveStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
             PlayProbeMode::SurvivalInventorySwapStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
             _ => WORLD_READY_DRAIN_TIMEOUT,
@@ -2427,7 +2465,7 @@ fn encode_inventory_drag_empty_cancel_state_correction(
     Ok(())
 }
 
-fn encode_inventory_drag_distribution_click(
+fn encode_inventory_click_with_input(
     output: &mut Vec<u8>,
     state_id: i32,
     slot: i16,
@@ -3467,8 +3505,7 @@ mod tests {
         PLAY_SERVERBOUND_USE_ITEM_PACKET_ID, STATUS_CLIENTBOUND_PONG_RESPONSE_PACKET_ID,
         STATUS_CLIENTBOUND_RESPONSE_PACKET_ID, STATUS_SERVERBOUND_PING_REQUEST_PACKET_ID,
         STATUS_SERVERBOUND_REQUEST_PACKET_ID, decode_packet_frame, encode_abort_destroy_block,
-        encode_creative_item_slot, encode_creative_stone_slot,
-        encode_inventory_drag_distribution_click,
+        encode_creative_item_slot, encode_creative_stone_slot, encode_inventory_click_with_input,
         encode_inventory_drag_empty_cancel_state_correction,
         encode_inventory_pickup_state_correction, encode_inventory_quick_move_state_correction,
         encode_inventory_secondary_pickup_state_correction, encode_inventory_swap_state_correction,
@@ -4263,7 +4300,7 @@ mod tests {
     #[test]
     fn inventory_drag_distribution_encoder_keeps_slot_button_and_input() {
         let mut payload = Vec::new();
-        encode_inventory_drag_distribution_click(&mut payload, 0, -999, 2, 5)
+        encode_inventory_click_with_input(&mut payload, 0, -999, 2, 5)
             .expect("inventory drag distribution packet");
 
         let mut input = payload.as_slice();
@@ -4282,6 +4319,33 @@ mod tests {
         assert_eq!(
             crate::wire::read_varint(&mut input).expect("container input"),
             5
+        );
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("changed slot count"),
+            0
+        );
+        assert_eq!(input, [0]);
+    }
+
+    #[test]
+    fn inventory_double_click_encoder_keeps_empty_target_and_pickup_all_input() {
+        let mut payload = Vec::new();
+        encode_inventory_click_with_input(&mut payload, 0, 10, 0, 6)
+            .expect("inventory double-click packet");
+
+        let mut input = payload.as_slice();
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("container id"),
+            0
+        );
+        assert_eq!(crate::wire::read_varint(&mut input).expect("state id"), 0);
+        assert_eq!(i16::from_be_bytes(input[..2].try_into().expect("slot")), 10);
+        input = &input[2..];
+        assert_eq!(input[0], 0);
+        input = &input[1..];
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("container input"),
+            6
         );
         assert_eq!(
             crate::wire::read_varint(&mut input).expect("changed slot count"),
