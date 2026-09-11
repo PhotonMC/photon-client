@@ -651,6 +651,20 @@ pub fn connect_and_survival_golden_apple_use_probe(
     )
 }
 
+/// Connect to a Java-protocol server, consume a survival enchanted golden apple, and observe its effects.
+pub fn connect_and_survival_enchanted_golden_apple_use_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeMode::SurvivalEnchantedGoldenAppleUse,
+    )
+}
+
 /// Connect to a Java-protocol server, place a stone stack in the creative hotbar,
 /// select it and request a side placement against the supporting block.
 pub fn connect_and_creative_place_probe(
@@ -810,6 +824,7 @@ enum PlayProbeMode {
     SurvivalHoneyBottleEarlyRelease,
     SurvivalPufferfishUse,
     SurvivalGoldenAppleUse,
+    SurvivalEnchantedGoldenAppleUse,
     CreativePlace,
     SurvivalBreakAbort,
     SurvivalBreakStop,
@@ -1728,6 +1743,7 @@ fn connect_and_probe_with_mode(
             let consumable_use_sequence = match probe_mode {
                 PlayProbeMode::SurvivalPufferfishUse => Some(35),
                 PlayProbeMode::SurvivalGoldenAppleUse => Some(36),
+                PlayProbeMode::SurvivalEnchantedGoldenAppleUse => Some(37),
                 _ => None,
             };
             if let Some(sequence) =
@@ -1834,9 +1850,9 @@ fn connect_and_probe_with_mode(
                 PlayProbeMode::SurvivalMilkBucketUse => CONSUMABLE_DRAIN_TIMEOUT,
                 PlayProbeMode::SurvivalHoneyBottleUse => CONSUMABLE_DRAIN_TIMEOUT,
                 PlayProbeMode::SurvivalHoneyBottlePoisonCleanup => CONSUMABLE_DRAIN_TIMEOUT,
-                PlayProbeMode::SurvivalPufferfishUse | PlayProbeMode::SurvivalGoldenAppleUse => {
-                    CONSUMABLE_DRAIN_TIMEOUT
-                }
+                PlayProbeMode::SurvivalPufferfishUse
+                | PlayProbeMode::SurvivalGoldenAppleUse
+                | PlayProbeMode::SurvivalEnchantedGoldenAppleUse => CONSUMABLE_DRAIN_TIMEOUT,
                 _ => WORLD_READY_DRAIN_TIMEOUT,
             };
             stream.set_read_timeout(Some(drain_timeout))?;
@@ -1850,9 +1866,9 @@ fn connect_and_probe_with_mode(
             PlayProbeMode::SurvivalMilkBucketUse => CONSUMABLE_DRAIN_TIMEOUT,
             PlayProbeMode::SurvivalHoneyBottleUse => CONSUMABLE_DRAIN_TIMEOUT,
             PlayProbeMode::SurvivalHoneyBottlePoisonCleanup => CONSUMABLE_DRAIN_TIMEOUT,
-            PlayProbeMode::SurvivalPufferfishUse | PlayProbeMode::SurvivalGoldenAppleUse => {
-                CONSUMABLE_DRAIN_TIMEOUT
-            }
+            PlayProbeMode::SurvivalPufferfishUse
+            | PlayProbeMode::SurvivalGoldenAppleUse
+            | PlayProbeMode::SurvivalEnchantedGoldenAppleUse => CONSUMABLE_DRAIN_TIMEOUT,
             _ => WORLD_READY_DRAIN_TIMEOUT,
         };
         if world_ready_drain_started.is_some_and(|started| started.elapsed() >= drain_timeout) {
