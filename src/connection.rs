@@ -152,6 +152,7 @@ pub struct PlayConnectionTrace {
     pub play_login: bool,
     pub player_position_observations: Vec<PlayerPositionObservation>,
     pub player_loaded_sent: bool,
+    pub movement_packets_sent: usize,
     pub chunk_packet_count: usize,
     pub chunk_batch_finished_count: usize,
     pub chunk_observations: Vec<ChunkPacketObservation>,
@@ -309,6 +310,24 @@ pub fn connect_and_probe(
     address: SocketAddr,
     username: &str,
     timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(address, username, timeout, false)
+}
+
+/// Connect to a Java-protocol server and send a short controlled position trace after loading.
+pub fn connect_and_move_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(address, username, timeout, true)
+}
+
+fn connect_and_probe_with_mode(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+    movement_probe: bool,
 ) -> Result<PlayConnectionTrace, ConnectionError> {
     if username.is_empty() || username.encode_utf16().count() > crate::login::MAX_NAME_LENGTH {
         return Err(ConnectionError::InvalidArgument("username"));
@@ -589,15 +608,7 @@ pub fn connect_and_probe(
                     &mut stream,
                     ConnectionProtocol::Play,
                     PLAY_SERVERBOUND_MOVE_PLAYER_POS_ROT_PACKET_ID,
-                    |output| {
-                        output.extend_from_slice(&absolute.0.to_be_bytes());
-                        output.extend_from_slice(&absolute.1.to_be_bytes());
-                        output.extend_from_slice(&absolute.2.to_be_bytes());
-                        output.extend_from_slice(&absolute.3.to_be_bytes());
-                        output.extend_from_slice(&absolute.4.to_be_bytes());
-                        output.push(0);
-                        Ok(())
-                    },
+                    |output| encode_move_player_pos_rot(output, absolute, 0),
                     compression_threshold,
                 )?;
                 player_position = Some(absolute);
@@ -640,6 +651,29 @@ pub fn connect_and_probe(
                 )?;
                 player_loaded_sent = true;
                 trace.player_loaded_sent = true;
+            }
+            if movement_probe && trace.movement_packets_sent == 0 {
+                let Some(position) = player_position else {
+                    return Err(ConnectionError::Codec("movement probe player position"));
+                };
+                for offset in [0.25_f64, 0.5, 0.75] {
+                    let moved = (
+                        position.0 + offset,
+                        position.1,
+                        position.2,
+                        position.3,
+                        position.4,
+                    );
+                    send_packet(
+                        &mut stream,
+                        ConnectionProtocol::Play,
+                        PLAY_SERVERBOUND_MOVE_PLAYER_POS_ROT_PACKET_ID,
+                        |output| encode_move_player_pos_rot(output, moved, 1),
+                        compression_threshold,
+                    )?;
+                    trace.movement_packets_sent += 1;
+                    player_position = Some(moved);
+                }
             }
             world_ready_drain_started = Some(Instant::now());
             stream.set_read_timeout(Some(WORLD_READY_DRAIN_TIMEOUT))?;
@@ -704,6 +738,20 @@ fn send_configuration_start(
         },
         compression_threshold,
     )
+}
+
+fn encode_move_player_pos_rot(
+    output: &mut Vec<u8>,
+    position: (f64, f64, f64, f32, f32),
+    flags: u8,
+) -> Result<(), ConnectionError> {
+    output.extend_from_slice(&position.0.to_be_bytes());
+    output.extend_from_slice(&position.1.to_be_bytes());
+    output.extend_from_slice(&position.2.to_be_bytes());
+    output.extend_from_slice(&position.3.to_be_bytes());
+    output.extend_from_slice(&position.4.to_be_bytes());
+    output.push(flags);
+    Ok(())
 }
 
 fn connect_stream(address: SocketAddr, timeout: Duration) -> Result<TcpStream, ConnectionError> {
