@@ -60,8 +60,18 @@ const PLAY_CLIENTBOUND_CHUNK_BATCH_START_PACKET_ID: i32 = 12;
 const PLAY_CLIENTBOUND_KEEP_ALIVE_PACKET_ID: i32 = 44;
 const PLAY_CLIENTBOUND_CHUNK_PACKET_ID: i32 = 45;
 const PLAY_CLIENTBOUND_LOGIN_PACKET_ID: i32 = 49;
+const PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID: i32 = 72;
+const PLAY_SERVERBOUND_ACCEPT_TELEPORTATION_PACKET_ID: i32 = 0;
 const PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID: i32 = 11;
 const PLAY_SERVERBOUND_KEEP_ALIVE_PACKET_ID: i32 = 28;
+const PLAY_SERVERBOUND_MOVE_PLAYER_POS_ROT_PACKET_ID: i32 = 31;
+const PLAY_SERVERBOUND_PLAYER_LOADED_PACKET_ID: i32 = 44;
+
+const PLAYER_RELATIVE_X_FLAG: i32 = 1 << 0;
+const PLAYER_RELATIVE_Y_FLAG: i32 = 1 << 1;
+const PLAYER_RELATIVE_Z_FLAG: i32 = 1 << 2;
+const PLAYER_RELATIVE_Y_ROT_FLAG: i32 = 1 << 3;
+const PLAYER_RELATIVE_X_ROT_FLAG: i32 = 1 << 4;
 
 const MAX_PACKET_UNCOMPRESSED_LENGTH: usize = 8 * 1024 * 1024;
 const MAX_CHUNK_DATA_LENGTH: usize = 2 * 1024 * 1024;
@@ -140,9 +150,18 @@ pub struct PlayConnectionTrace {
     pub registry_entry_count: usize,
     pub update_tags_packet_count: usize,
     pub play_login: bool,
+    pub player_position_observations: Vec<PlayerPositionObservation>,
+    pub player_loaded_sent: bool,
     pub chunk_packet_count: usize,
     pub chunk_batch_finished_count: usize,
     pub chunk_observations: Vec<ChunkPacketObservation>,
+}
+
+/// Wire-level fields observed from a clientbound player-position correction.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PlayerPositionObservation {
+    pub teleport_id: i32,
+    pub relative_flags: i32,
 }
 
 /// Structural fields decoded from one clientbound level-chunk-with-light packet.
@@ -500,6 +519,8 @@ pub fn connect_and_probe(
 
     let play_started = Instant::now();
     let mut chunk_batch_started = false;
+    let mut player_loaded_sent = false;
+    let mut player_position = None;
     let mut world_ready_drain_started = None;
     while play_started.elapsed() <= timeout {
         let body = match read_packet(&mut stream, compression_threshold) {
@@ -545,6 +566,42 @@ pub fn connect_and_probe(
                 )?;
             }
             PLAY_CLIENTBOUND_LOGIN_PACKET_ID => trace.play_login = true,
+            PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID => {
+                let packet = parse_player_position_packet(payload)?;
+                trace
+                    .player_position_observations
+                    .push(PlayerPositionObservation {
+                        teleport_id: packet.teleport_id,
+                        relative_flags: packet.relative_flags,
+                    });
+                let absolute = resolve_player_position(packet, player_position);
+                send_packet(
+                    &mut stream,
+                    ConnectionProtocol::Play,
+                    PLAY_SERVERBOUND_ACCEPT_TELEPORTATION_PACKET_ID,
+                    |output| {
+                        wire::write_varint(packet.teleport_id, output);
+                        Ok(())
+                    },
+                    compression_threshold,
+                )?;
+                send_packet(
+                    &mut stream,
+                    ConnectionProtocol::Play,
+                    PLAY_SERVERBOUND_MOVE_PLAYER_POS_ROT_PACKET_ID,
+                    |output| {
+                        output.extend_from_slice(&absolute.0.to_be_bytes());
+                        output.extend_from_slice(&absolute.1.to_be_bytes());
+                        output.extend_from_slice(&absolute.2.to_be_bytes());
+                        output.extend_from_slice(&absolute.3.to_be_bytes());
+                        output.extend_from_slice(&absolute.4.to_be_bytes());
+                        output.push(0);
+                        Ok(())
+                    },
+                    compression_threshold,
+                )?;
+                player_position = Some(absolute);
+            }
             PLAY_CLIENTBOUND_CHUNK_PACKET_ID => {
                 trace.chunk_observations.push(parse_chunk_packet(payload)?);
                 trace.chunk_packet_count += 1;
@@ -573,6 +630,17 @@ pub fn connect_and_probe(
             && (!chunk_batch_started || trace.chunk_batch_finished_count > 0)
             && world_ready_drain_started.is_none()
         {
+            if !player_loaded_sent {
+                send_packet(
+                    &mut stream,
+                    ConnectionProtocol::Play,
+                    PLAY_SERVERBOUND_PLAYER_LOADED_PACKET_ID,
+                    |_output| Ok(()),
+                    compression_threshold,
+                )?;
+                player_loaded_sent = true;
+                trace.player_loaded_sent = true;
+            }
             world_ready_drain_started = Some(Instant::now());
             stream.set_read_timeout(Some(WORLD_READY_DRAIN_TIMEOUT))?;
         }
@@ -904,6 +972,95 @@ fn read_i32(input: &mut &[u8], name: &'static str) -> Result<i32, ConnectionErro
     ))
 }
 
+fn read_f32(input: &mut &[u8], name: &'static str) -> Result<f32, ConnectionError> {
+    if input.len() < 4 {
+        return Err(ConnectionError::Codec(name));
+    }
+    let (head, rest) = input.split_at(4);
+    *input = rest;
+    Ok(f32::from_be_bytes(
+        head.try_into().expect("checked float length"),
+    ))
+}
+
+fn read_f64(input: &mut &[u8], name: &'static str) -> Result<f64, ConnectionError> {
+    if input.len() < 8 {
+        return Err(ConnectionError::Codec(name));
+    }
+    let (head, rest) = input.split_at(8);
+    *input = rest;
+    Ok(f64::from_be_bytes(
+        head.try_into().expect("checked double length"),
+    ))
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct PlayerPositionPacket {
+    teleport_id: i32,
+    x: f64,
+    y: f64,
+    z: f64,
+    delta_x: f64,
+    delta_y: f64,
+    delta_z: f64,
+    y_rot: f32,
+    x_rot: f32,
+    relative_flags: i32,
+}
+
+fn parse_player_position_packet(input: &[u8]) -> Result<PlayerPositionPacket, ConnectionError> {
+    let mut input = input;
+    let packet = PlayerPositionPacket {
+        teleport_id: read_varint(&mut input, "player position teleport id")?,
+        x: read_f64(&mut input, "player position x")?,
+        y: read_f64(&mut input, "player position y")?,
+        z: read_f64(&mut input, "player position z")?,
+        delta_x: read_f64(&mut input, "player position delta x")?,
+        delta_y: read_f64(&mut input, "player position delta y")?,
+        delta_z: read_f64(&mut input, "player position delta z")?,
+        y_rot: read_f32(&mut input, "player position y rotation")?,
+        x_rot: read_f32(&mut input, "player position x rotation")?,
+        relative_flags: read_i32(&mut input, "player position relative flags")?,
+    };
+    if !input.is_empty() {
+        return Err(ConnectionError::Codec("player position trailing payload"));
+    }
+    Ok(packet)
+}
+
+fn resolve_player_position(
+    packet: PlayerPositionPacket,
+    current: Option<(f64, f64, f64, f32, f32)>,
+) -> (f64, f64, f64, f32, f32) {
+    let current = current.unwrap_or((0.0, 0.0, 0.0, 0.0, 0.0));
+    let x = if packet.relative_flags & PLAYER_RELATIVE_X_FLAG != 0 {
+        current.0 + packet.x
+    } else {
+        packet.x
+    };
+    let y = if packet.relative_flags & PLAYER_RELATIVE_Y_FLAG != 0 {
+        current.1 + packet.y
+    } else {
+        packet.y
+    };
+    let z = if packet.relative_flags & PLAYER_RELATIVE_Z_FLAG != 0 {
+        current.2 + packet.z
+    } else {
+        packet.z
+    };
+    let y_rot = if packet.relative_flags & PLAYER_RELATIVE_Y_ROT_FLAG != 0 {
+        current.3 + packet.y_rot
+    } else {
+        packet.y_rot
+    };
+    let x_rot = if packet.relative_flags & PLAYER_RELATIVE_X_ROT_FLAG != 0 {
+        (current.4 + packet.x_rot).clamp(-90.0, 90.0)
+    } else {
+        packet.x_rot.clamp(-90.0, 90.0)
+    };
+    (x, y, z, y_rot, x_rot)
+}
+
 fn read_long_array(input: &mut &[u8], name: &'static str) -> Result<Vec<i64>, ConnectionError> {
     crate::binary::read_long_array(input).map_err(|_| ConnectionError::Codec(name))
 }
@@ -1144,11 +1301,14 @@ fn decode_palette_values(
 mod tests {
     use super::{
         PLAY_CLIENTBOUND_CHUNK_PACKET_ID, PLAY_CLIENTBOUND_KEEP_ALIVE_PACKET_ID,
-        PLAY_CLIENTBOUND_LOGIN_PACKET_ID, PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID,
-        PLAY_SERVERBOUND_KEEP_ALIVE_PACKET_ID, STATUS_CLIENTBOUND_PONG_RESPONSE_PACKET_ID,
-        STATUS_CLIENTBOUND_RESPONSE_PACKET_ID, STATUS_SERVERBOUND_PING_REQUEST_PACKET_ID,
-        STATUS_SERVERBOUND_REQUEST_PACKET_ID, decode_packet_frame, encode_packet_frame,
-        parse_chunk_packet, parse_section_data,
+        PLAY_CLIENTBOUND_LOGIN_PACKET_ID, PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID,
+        PLAY_SERVERBOUND_ACCEPT_TELEPORTATION_PACKET_ID,
+        PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID, PLAY_SERVERBOUND_KEEP_ALIVE_PACKET_ID,
+        PLAY_SERVERBOUND_MOVE_PLAYER_POS_ROT_PACKET_ID, PLAY_SERVERBOUND_PLAYER_LOADED_PACKET_ID,
+        STATUS_CLIENTBOUND_PONG_RESPONSE_PACKET_ID, STATUS_CLIENTBOUND_RESPONSE_PACKET_ID,
+        STATUS_SERVERBOUND_PING_REQUEST_PACKET_ID, STATUS_SERVERBOUND_REQUEST_PACKET_ID,
+        decode_packet_frame, encode_packet_frame, parse_chunk_packet, parse_player_position_packet,
+        parse_section_data, resolve_player_position,
     };
 
     #[test]
@@ -1174,8 +1334,12 @@ mod tests {
         assert_eq!(PLAY_CLIENTBOUND_KEEP_ALIVE_PACKET_ID, 44);
         assert_eq!(PLAY_CLIENTBOUND_CHUNK_PACKET_ID, 45);
         assert_eq!(PLAY_CLIENTBOUND_LOGIN_PACKET_ID, 49);
+        assert_eq!(PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID, 72);
+        assert_eq!(PLAY_SERVERBOUND_ACCEPT_TELEPORTATION_PACKET_ID, 0);
         assert_eq!(PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID, 11);
         assert_eq!(PLAY_SERVERBOUND_KEEP_ALIVE_PACKET_ID, 28);
+        assert_eq!(PLAY_SERVERBOUND_MOVE_PLAYER_POS_ROT_PACKET_ID, 31);
+        assert_eq!(PLAY_SERVERBOUND_PLAYER_LOADED_PACKET_ID, 44);
     }
 
     #[test]
@@ -1284,6 +1448,35 @@ mod tests {
         assert_eq!(observation.sky_update_lengths, [2_048, 3]);
         assert_eq!(observation.block_update_count, 1);
         assert_eq!(observation.block_update_lengths, [2_048]);
+    }
+
+    #[test]
+    fn player_position_parser_matches_java_field_order_and_relative_resolution() {
+        let mut payload = Vec::new();
+        crate::wire::write_varint(17, &mut payload);
+        for value in [1.25_f64, -63.0, 4.5, 0.125, 0.0, -0.25] {
+            payload.extend_from_slice(&value.to_be_bytes());
+        }
+        payload.extend_from_slice(&30.0_f32.to_be_bytes());
+        payload.extend_from_slice(&100.0_f32.to_be_bytes());
+        payload.extend_from_slice(&25_i32.to_be_bytes());
+
+        let packet = parse_player_position_packet(&payload).expect("player position packet");
+        assert_eq!(packet.teleport_id, 17);
+        assert_eq!(packet.x, 1.25);
+        assert_eq!(packet.y, -63.0);
+        assert_eq!(packet.z, 4.5);
+        assert_eq!(packet.delta_x, 0.125);
+        assert_eq!(packet.delta_y, 0.0);
+        assert_eq!(packet.delta_z, -0.25);
+        assert_eq!(packet.y_rot, 30.0);
+        assert_eq!(packet.x_rot, 100.0);
+        assert_eq!(packet.relative_flags, 25);
+
+        assert_eq!(
+            resolve_player_position(packet, Some((10.0, 20.0, 30.0, 350.0, -80.0))),
+            (11.25, -63.0, 4.5, 380.0, 20.0)
+        );
     }
 
     #[test]

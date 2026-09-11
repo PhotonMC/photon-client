@@ -24,6 +24,7 @@ Java kaynak incelemesinde `ServerLoginPacketListenerImpl`, `ClientHandshakePacke
 4. Brand, client information ve known-pack seçimini gönderir; registry data, enabled features ve tags paketlerini çözüp sayar; keep-alive, ping ve code-of-conduct yanıtlarını verir.
 5. Configuration finished sonrasında play login, chunk ve chunk batch finished paketlerini gözlemler. Batch tamamlanınca Java başlangıç hesaplayıcısındaki `3.5f` hedef değerini gönderir.
 6. İlk chunk alındıktan sonra kısa bir sessizlik penceresinde gelen paketleri tüketir. Bu, probe'un sunucu paketlerini yazarken bağlantıyı erken bırakmasını önler.
+7. İlk clientbound oyuncu konumu düzeltmesinde teleport ID ve relative flag'lerini çözer; Java akışındaki teleport kabulü ile mutlak `move_player_pos_rot` cevabını gönderir ve ilk chunk batch'i tamamlanınca `player_loaded` bildirir.
 
 Sözleşmenin temel gözlemleri şunlardır:
 
@@ -32,6 +33,7 @@ Sözleşmenin temel gözlemleri şunlardır:
 - enabled feature, known pack, registry ve tag sayıları
 - play login ve ilk chunk teslimi
 - chunk batch geri bildirim sayısı
+- ilk oyuncu konumu düzeltmesi ve `player_loaded` gönderimi
 - alınan paketlerin phase, id ve gövde uzunluğu
 
 ## Kapsam dışı

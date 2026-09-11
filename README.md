@@ -2,7 +2,7 @@
 
 Minecraft Java Edition istemcisinin Rust ile sıfırdan yeniden uygulanması için hazırlık deposu. `voxel-client` geçici proje adıdır; Minecraft ile resmî bağlantısı yoktur.
 
-Hedef, oyuncunun fark hissedemeyeceği davranış ve sunum eşitliğidir: mekanikler, hareket, animasyon, texture, UI ve sesler dahil. Sunucu geliştirilmeyecek; uzun vadeli uyumluluk hedefi [Pumpkin](https://github.com/Pumpkin-Mc/Pumpkin). Referans Java Edition **26.2**, protokol **776**, Java **25** olarak sabitlendi. Güncel bağlantı baseline'ı resmi vanilla 26.2 server ile login, configuration ve ilk chunk teslimini doğruladı; chunk wire gövdesi de yapısal olarak tüketiliyor. Mekanik uyumluluk ve oynanabilir istemci henüz yok.
+Hedef, oyuncunun fark hissedemeyeceği davranış ve sunum eşitliğidir: mekanikler, hareket, animasyon, texture, UI ve sesler dahil. Sunucu geliştirilmeyecek; uzun vadeli uyumluluk hedefi [Pumpkin](https://github.com/Pumpkin-Mc/Pumpkin). Referans Java Edition **26.2**, protokol **776**, Java **25** olarak sabitlendi. Güncel bağlantı baseline'ı resmi vanilla 26.2 server ile login, configuration, ilk chunk ve ilk oyuncu konumu düzeltmesini doğruladı; chunk wire gövdesi de yapısal olarak tüketiliyor. Mekanik uyumluluk ve oynanabilir istemci henüz yok.
 
 Orijinal kaynak ve assetler yalnızca yerelde referans ve test girdisi olarak kullanılacak. Git'e, GitHub'a, derleme çıktısına veya dağıtım paketine eklenmeyecek. İstemci ileride kullanıcının seçtiği yerel asset klasörünü okuyacak; kurulum orijinal asset içermeyecek veya otomatik indirmeyecek.
 
@@ -24,6 +24,8 @@ Rust uygulama girişi henüz oynanabilir istemci değildir. İlk gerçek vanilla
 - [Vanilla 26.2 oyun oturumu doğrulaması](docs/vanilla-connection-parity.md)
 - [Chunk ve ışık paketi yapısal sözleşmesi](docs/chunk-packet-contract.md)
 - [Vanilla 26.2 chunk paketi doğrulaması](docs/chunk-packet-parity.md)
+- [İlk oyuncu konumu sözleşmesi](docs/player-position-contract.md)
+- [Vanilla ilk oyuncu konumu doğrulaması](docs/vanilla-player-position-parity.md)
 - [Vanilla status socket doğrulaması](docs/status-connection-parity.md)
 - [Pumpkin uyumluluk oturumu doğrulaması](docs/game-connection-parity.md)
 - [Kaynak incelemesi ve istemci sınırları](docs/source-review.md)

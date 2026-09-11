@@ -18,7 +18,7 @@ Kapsam veya test durumu bu belgede hareketli toplamlarla tutulmaz. Tamamlanan k�
 | P03.d registry adaptör sınırı | Registry verisi P07'ye bağlı | Bilinmeyen registry girdisi, eksik tag, phase sınırı; adaptörün reddetme davranışı |
 | P04 kaynaklar/pack'ler | Asset index yerelde var ama pack reload akışı oyun dizini ister | Aynı yola iki pack, olmayan nesne, geçersiz index, reload sırasında değişim; çözülen kimlik/hash ve öncelik |
 | P05 ayarlar/input | Pencere/odak/GUI koordinatı gerçek istemci ister | Karşıt yön sıfırlama, tuş tutma/tekrar, odak kaybı; input snapshot ve hareket vektörü |
-| P06 bağlantı/login | Vanilla 26.2 status ve ilk offline play probe'ları geçti; encryption, parçalı ağ, disconnect ve reconnect harness'i açık | Parçalı paket, sıkıştırma eşiği, kopma; paket baytları ve durum sırası |
+| P06 bağlantı/login | Vanilla 26.2 status ve ilk offline play probe'ları geçti; ilk oyuncu konumu kabulü ve `player_loaded` bildirimi de vanilla koşusunda tamamlandı; encryption, parçalı ağ, disconnect ve reconnect harness'i açık | Parçalı paket, sıkıştırma eşiği, kopma; paket baytları ve durum sırası |
 | P07 configuration/registry | Vanilla baseline'da ilk registry/tag ve phase geçiş probe'u geçti; eksik/tekrarlı veri ve tam client state bağlantısı açık | Registry/tag biriktirme, eksik girdide ack'siz bekleme, play'e geçiş anı |
 | P08 dünya/chunk | İlk chunk teslimi ve vanilla chunk wire gövdesi ile section palette storage layout'unun yapısal tüketimi geçti; heightmap type/word alanları ve ışık update uzunlukları da gözleniyor; state/biome eşleme, ışık/entity decoder'ları ve world cache açık | Palette genişlik değişimi, boş section, load-update-unload sırası |
 
@@ -28,7 +28,7 @@ Kapsam veya test durumu bu belgede hareketli toplamlarla tutulmaz. Tamamlanan k�
 | --- | --- | --- |
 | P09 çarpışma | P08 dünyası yok | Slab/merdiven/dar köşe/düşük tavan; çözülen delta, on-ground ve step yüksekliği |
 | P10 yerel hareket | P05 + P08 + P09'a bağlı | Tick başına konum/hız/pose; diyagonal, sprint çift basışı, su/buz/merdiven |
-| P11 senkronizasyon | P06 + P10'a bağlı | Eşik altı/üstü hareket paketleri, 20 tick hatırlatması, teleport düzeltmesi |
+| P11 senkronizasyon | Initial vanilla teleport correction ack probe geçti; P06 + P10'a bağlı hareket senkronizasyonu açık | Eşik altı/üstü hareket paketleri, 20 tick hatırlatması, teleport düzeltmesi |
 | P12 hedefleme/eylem | P09–P11'e bağlı | Hit sonucu, kazma iptali, reddedilen yerleştirme, ack/rollback sırası |
 | P13 envanter | P07 + P12'ye bağlı | Shift-click, drag iptali, yanlış state, sunucu düzeltmesi |
 | P14 kamera | P05 + P10'a bağlı | Aynı mouse izi farklı frame bölünmesinde; FOV/pose ve zamanlama izi |
