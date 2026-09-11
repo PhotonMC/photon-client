@@ -74,6 +74,8 @@ Rust uygulama girişi henüz oynanabilir istemci değildir. İlk gerçek vanilla
 - [Vanilla survival inventory throw-all state-id correction doğrulaması](docs/vanilla-survival-inventory-throw-all-state-correction-parity.md)
 - [Survival inventory empty drag cancellation state-id correction sözleşmesi](docs/survival-inventory-drag-empty-cancel-state-correction-contract.md)
 - [Vanilla survival inventory empty drag cancellation state-id correction doğrulaması](docs/vanilla-survival-inventory-drag-empty-cancel-state-correction-parity.md)
+- [Survival inventory drag distribution state-id correction sözleşmesi](docs/survival-inventory-drag-distribution-state-correction-contract.md)
+- [Vanilla survival inventory drag distribution state-id correction doğrulaması](docs/vanilla-survival-inventory-drag-distribution-state-id-correction-parity.md)
 - [Survival inventory quick-move state-id correction sözleşmesi](docs/survival-inventory-quick-move-state-correction-contract.md)
 - [Vanilla survival inventory quick-move state-id correction doğrulaması](docs/vanilla-survival-inventory-quick-move-state-correction-parity.md)
 - [Survival inventory swap state-id correction sözleşmesi](docs/survival-inventory-swap-state-correction-contract.md)
