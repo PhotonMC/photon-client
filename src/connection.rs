@@ -607,6 +607,21 @@ pub fn connect_and_survival_honey_bottle_poison_cleanup_probe(
     )
 }
 
+/// Connect to a Java-protocol server, start using a component-bearing survival honey bottle,
+/// and release it before the consumable duration completes.
+pub fn connect_and_survival_honey_bottle_early_release_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeMode::SurvivalHoneyBottleEarlyRelease,
+    )
+}
+
 /// Connect to a Java-protocol server, place a stone stack in the creative hotbar,
 /// select it and request a side placement against the supporting block.
 pub fn connect_and_creative_place_probe(
@@ -763,6 +778,7 @@ enum PlayProbeMode {
     SurvivalMilkBucketUse,
     SurvivalHoneyBottleUse,
     SurvivalHoneyBottlePoisonCleanup,
+    SurvivalHoneyBottleEarlyRelease,
     CreativePlace,
     SurvivalBreakAbort,
     SurvivalBreakStop,
@@ -1648,6 +1664,36 @@ fn connect_and_probe_with_mode(
                 )?;
                 trace.use_item_packets_sent += 1;
             }
+            if matches!(probe_mode, PlayProbeMode::SurvivalHoneyBottleEarlyRelease)
+                && trace.use_item_packets_sent == 0
+            {
+                std::thread::sleep(Duration::from_secs(20));
+                send_packet(
+                    &mut stream,
+                    ConnectionProtocol::Play,
+                    PLAY_SERVERBOUND_SET_CARRIED_ITEM_PACKET_ID,
+                    |output| encode_set_carried_item(output, 0),
+                    compression_threshold,
+                )?;
+                trace.carried_item_packets_sent += 1;
+                send_packet(
+                    &mut stream,
+                    ConnectionProtocol::Play,
+                    PLAY_SERVERBOUND_USE_ITEM_PACKET_ID,
+                    |output| encode_use_item(output, 34, 0.0, 0.0),
+                    compression_threshold,
+                )?;
+                trace.use_item_packets_sent += 1;
+                std::thread::sleep(Duration::from_millis(250));
+                send_packet(
+                    &mut stream,
+                    ConnectionProtocol::Play,
+                    PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID,
+                    encode_release_use_item,
+                    compression_threshold,
+                )?;
+                trace.player_action_packets_sent += 1;
+            }
             if matches!(probe_mode, PlayProbeMode::CreativeSnowballUse)
                 && trace.creative_mode_slot_packets_sent == 0
             {
@@ -1841,6 +1887,10 @@ fn encode_stop_destroy_block(
     sequence: i32,
 ) -> Result<(), ConnectionError> {
     encode_player_action(output, 2, position, 1, sequence)
+}
+
+fn encode_release_use_item(output: &mut Vec<u8>) -> Result<(), ConnectionError> {
+    encode_player_action(output, 5, (0, 0, 0), 0, 0)
 }
 
 fn encode_use_item_on(
@@ -2879,10 +2929,10 @@ mod tests {
         STATUS_CLIENTBOUND_RESPONSE_PACKET_ID, STATUS_SERVERBOUND_PING_REQUEST_PACKET_ID,
         STATUS_SERVERBOUND_REQUEST_PACKET_ID, decode_packet_frame, encode_abort_destroy_block,
         encode_creative_item_slot, encode_creative_stone_slot, encode_packet_frame,
-        encode_set_carried_item, encode_stop_destroy_block, encode_use_item, encode_use_item_on,
-        encode_use_item_on_hit, pack_block_position, parse_add_entity_packet,
-        parse_block_destruction_packet, parse_block_update_packet, parse_chunk_packet,
-        parse_container_set_content_packet, parse_container_set_slot_packet,
+        encode_release_use_item, encode_set_carried_item, encode_stop_destroy_block,
+        encode_use_item, encode_use_item_on, encode_use_item_on_hit, pack_block_position,
+        parse_add_entity_packet, parse_block_destruction_packet, parse_block_update_packet,
+        parse_chunk_packet, parse_container_set_content_packet, parse_container_set_slot_packet,
         parse_player_position_packet, parse_remove_mob_effect_packet, parse_section_data,
         parse_system_chat_packet, parse_update_mob_effect_packet, resolve_player_position,
         support_block_position,
@@ -3100,6 +3150,21 @@ mod tests {
         assert_eq!(input[0], 1);
         input = &input[1..];
         assert_eq!(crate::wire::read_varint(&mut input).expect("sequence"), 9);
+        assert!(input.is_empty());
+    }
+
+    #[test]
+    fn player_action_encoder_matches_java_release_use_item() {
+        let mut payload = Vec::new();
+        encode_release_use_item(&mut payload).expect("release use item packet");
+
+        let mut input = payload.as_slice();
+        assert_eq!(crate::wire::read_varint(&mut input).expect("action"), 5);
+        assert_eq!(input[..8], [0; 8]);
+        input = &input[8..];
+        assert_eq!(input[0], 0);
+        input = &input[1..];
+        assert_eq!(crate::wire::read_varint(&mut input).expect("sequence"), 0);
         assert!(input.is_empty());
     }
 
