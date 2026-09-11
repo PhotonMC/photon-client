@@ -85,8 +85,11 @@ const PLAY_SERVERBOUND_USE_ITEM_PACKET_ID: i32 = 67;
 // Items.java registers AIR before STONE, so STONE has id 1 in BuiltInRegistries.ITEM.
 const VANILLA_STONE_ITEM_REGISTRY_ID: i32 = 1;
 const VANILLA_SNOWBALL_ITEM_REGISTRY_ID: i32 = 1_044;
+const VANILLA_DAMAGE_COMPONENT_ID: i32 = 3;
 // DataComponents registers CUSTOM_MODEL_DATA after the first 17 built-in component types.
 const VANILLA_CUSTOM_MODEL_DATA_COMPONENT_ID: i32 = 17;
+const VANILLA_TOOL_COMPONENT_ID: i32 = 28;
+const VANILLA_WEAPON_COMPONENT_ID: i32 = 29;
 
 const PLAYER_RELATIVE_X_FLAG: i32 = 1 << 0;
 const PLAYER_RELATIVE_Y_FLAG: i32 = 1 << 1;
@@ -684,6 +687,21 @@ pub fn connect_and_survival_stone_wooden_pickaxe_break_stop_probe(
     )
 }
 
+/// Connect to a Java-protocol server, select a wooden shovel supplied in hotbar slot 0,
+/// and break the supporting dirt block in survival mode.
+pub fn connect_and_survival_dirt_wooden_shovel_break_stop_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeMode::SurvivalDirtWoodenShovelBreakStop,
+    )
+}
+
 /// Connect to a Java-protocol server, stop a short survival dirt break early and
 /// observe the server's delayed destroy completion on later ticks.
 pub fn connect_and_survival_delayed_destroy_probe(
@@ -736,6 +754,7 @@ enum PlayProbeMode {
     SurvivalStoneBreakStop,
     SurvivalOakPlanksBreakStop,
     SurvivalStoneWoodenPickaxeBreakStop,
+    SurvivalDirtWoodenShovelBreakStop,
     SurvivalDelayedDestroy,
     SurvivalSpawnProtection,
 }
@@ -1308,6 +1327,42 @@ fn connect_and_probe_with_mode(
                     ConnectionProtocol::Play,
                     PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID,
                     |output| encode_stop_destroy_block(output, target, 21),
+                    compression_threshold,
+                )?;
+                trace.player_action_packets_sent += 1;
+            }
+            if matches!(probe_mode, PlayProbeMode::SurvivalDirtWoodenShovelBreakStop)
+                && trace.player_action_packets_sent == 0
+            {
+                let Some(position) = player_position else {
+                    return Err(ConnectionError::Codec(
+                        "survival wooden shovel probe player position",
+                    ));
+                };
+                std::thread::sleep(Duration::from_secs(12));
+                send_packet(
+                    &mut stream,
+                    ConnectionProtocol::Play,
+                    PLAY_SERVERBOUND_SET_CARRIED_ITEM_PACKET_ID,
+                    |output| encode_set_carried_item(output, 0),
+                    compression_threshold,
+                )?;
+                trace.carried_item_packets_sent += 1;
+                let target = support_block_position(position);
+                send_packet(
+                    &mut stream,
+                    ConnectionProtocol::Play,
+                    PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID,
+                    |output| encode_start_destroy_block(output, target, 30),
+                    compression_threshold,
+                )?;
+                trace.player_action_packets_sent += 1;
+                std::thread::sleep(Duration::from_millis(650));
+                send_packet(
+                    &mut stream,
+                    ConnectionProtocol::Play,
+                    PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID,
+                    |output| encode_stop_destroy_block(output, target, 31),
                     compression_threshold,
                 )?;
                 trace.player_action_packets_sent += 1;
@@ -2145,10 +2200,15 @@ fn parse_optional_item_stack(
     let mut positive_component_type_ids = Vec::with_capacity(positive_component_count);
     for _ in 0..positive_component_count {
         let component_type_id = read_varint(input, name)?;
-        if component_type_id != VANILLA_CUSTOM_MODEL_DATA_COMPONENT_ID {
-            return Err(ConnectionError::Codec(name));
+        match component_type_id {
+            VANILLA_DAMAGE_COMPONENT_ID => {
+                read_varint(input, name)?;
+            }
+            VANILLA_CUSTOM_MODEL_DATA_COMPONENT_ID => skip_custom_model_data(input, name)?,
+            VANILLA_TOOL_COMPONENT_ID => skip_tool(input, name)?,
+            VANILLA_WEAPON_COMPONENT_ID => skip_weapon(input, name)?,
+            _ => return Err(ConnectionError::Codec(name)),
         }
-        skip_custom_model_data(input, name)?;
         positive_component_type_ids.push(component_type_id);
     }
     let mut negative_component_type_ids = Vec::with_capacity(negative_component_count);
@@ -2180,6 +2240,45 @@ fn skip_custom_model_data(input: &mut &[u8], name: &'static str) -> Result<(), C
     for _ in 0..color_count {
         read_i32(input, name)?;
     }
+    Ok(())
+}
+
+fn skip_tool(input: &mut &[u8], name: &'static str) -> Result<(), ConnectionError> {
+    let rule_count = read_count(input, name)?;
+    for _ in 0..rule_count {
+        skip_holder_set(input, name)?;
+        if read_byte(input, name)? != 0 {
+            read_f32(input, name)?;
+        }
+        if read_byte(input, name)? != 0 {
+            read_byte(input, name)?;
+        }
+    }
+    read_f32(input, name)?;
+    read_varint(input, name)?;
+    read_byte(input, name)?;
+    Ok(())
+}
+
+fn skip_holder_set(input: &mut &[u8], name: &'static str) -> Result<(), ConnectionError> {
+    let encoded_count = read_varint(input, name)?;
+    if encoded_count == 0 {
+        read_length_prefixed_bytes(input, 131_068, name)?;
+    } else if encoded_count > 0 {
+        let holder_count =
+            usize::try_from(encoded_count - 1).map_err(|_| ConnectionError::Codec(name))?;
+        for _ in 0..holder_count {
+            read_varint(input, name)?;
+        }
+    } else {
+        return Err(ConnectionError::Codec(name));
+    }
+    Ok(())
+}
+
+fn skip_weapon(input: &mut &[u8], name: &'static str) -> Result<(), ConnectionError> {
+    read_varint(input, name)?;
+    read_f32(input, name)?;
     Ok(())
 }
 
@@ -3113,6 +3212,59 @@ mod tests {
                 item_count: Some(1),
                 item_registry_id: Some(1_046),
                 positive_component_type_ids: vec![17],
+                negative_component_type_ids: Vec::new(),
+            }
+        );
+    }
+
+    #[test]
+    fn container_slot_parser_skips_damage_tool_and_weapon_components() {
+        let mut payload = Vec::new();
+        crate::wire::write_varint(0, &mut payload);
+        crate::wire::write_varint(9, &mut payload);
+        payload.extend_from_slice(&36_i16.to_be_bytes());
+        crate::wire::write_varint(1, &mut payload);
+        crate::wire::write_varint(1_000, &mut payload);
+        crate::wire::write_varint(3, &mut payload);
+        crate::wire::write_varint(0, &mut payload);
+
+        crate::wire::write_varint(3, &mut payload);
+        crate::wire::write_varint(1, &mut payload);
+
+        crate::wire::write_varint(28, &mut payload);
+        crate::wire::write_varint(2, &mut payload);
+        let incorrect_tag = b"minecraft:incorrect_for_wooden_tool";
+        crate::wire::write_varint(0, &mut payload);
+        crate::wire::write_varint(incorrect_tag.len() as i32, &mut payload);
+        payload.extend_from_slice(incorrect_tag);
+        payload.push(0);
+        payload.push(1);
+        payload.push(0);
+        crate::wire::write_varint(0, &mut payload);
+        let mineable_tag = b"minecraft:mineable/shovel";
+        crate::wire::write_varint(mineable_tag.len() as i32, &mut payload);
+        payload.extend_from_slice(mineable_tag);
+        payload.push(1);
+        payload.extend_from_slice(&2.0_f32.to_be_bytes());
+        payload.push(1);
+        payload.push(1);
+        payload.extend_from_slice(&1.0_f32.to_be_bytes());
+        crate::wire::write_varint(1, &mut payload);
+        payload.push(1);
+
+        crate::wire::write_varint(29, &mut payload);
+        crate::wire::write_varint(2, &mut payload);
+        payload.extend_from_slice(&0.0_f32.to_be_bytes());
+
+        assert_eq!(
+            parse_container_set_slot_packet(&payload).expect("tool component-bearing slot"),
+            super::ContainerSetSlotObservation {
+                container_id: 0,
+                state_id: 9,
+                slot: 36,
+                item_count: Some(1),
+                item_registry_id: Some(1_000),
+                positive_component_type_ids: vec![3, 28, 29],
                 negative_component_type_ids: Vec::new(),
             }
         );

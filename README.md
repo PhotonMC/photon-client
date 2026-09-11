@@ -64,6 +64,8 @@ Rust uygulama girişi henüz oynanabilir istemci değildir. İlk gerçek vanilla
 - [Vanilla survival oak planks hardness doğrulaması](docs/vanilla-survival-oak-planks-break-stop-parity.md)
 - [Survival wooden pickaxe tool progress sözleşmesi](docs/survival-stone-wooden-pickaxe-break-stop-contract.md)
 - [Vanilla survival wooden pickaxe tool progress doğrulaması](docs/vanilla-survival-stone-wooden-pickaxe-break-stop-parity.md)
+- [Survival dirt wooden shovel tool progress sözleşmesi](docs/survival-dirt-wooden-shovel-break-stop-contract.md)
+- [Vanilla survival dirt wooden shovel tool progress doğrulaması](docs/vanilla-survival-dirt-wooden-shovel-break-stop-parity.md)
 - [Survival delayed destroy sözleşmesi](docs/survival-delayed-destroy-contract.md)
 - [Vanilla survival delayed destroy doğrulaması](docs/vanilla-survival-delayed-destroy-parity.md)
 - [Survival spawn protection sözleşmesi](docs/survival-spawn-protection-contract.md)
