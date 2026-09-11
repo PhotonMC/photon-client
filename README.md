@@ -46,6 +46,8 @@ Rust uygulama girişi henüz oynanabilir istemci değildir. İlk gerçek vanilla
 - [Vanilla survival water bucket use-on doğrulaması](docs/vanilla-survival-water-bucket-use-on-parity.md)
 - [Survival empty bucket pickup sözleşmesi](docs/survival-empty-bucket-pickup-contract.md)
 - [Vanilla survival empty bucket pickup doğrulaması](docs/vanilla-survival-empty-bucket-pickup-parity.md)
+- [Survival component-bearing milk bucket use sözleşmesi](docs/survival-milk-bucket-use-contract.md)
+- [Vanilla survival component-bearing milk bucket use doğrulaması](docs/vanilla-survival-milk-bucket-use-parity.md)
 - [Yaratıcı item stack placement sözleşmesi](docs/creative-placement-contract.md)
 - [Vanilla yaratıcı item stack placement doğrulaması](docs/vanilla-creative-placement-parity.md)
 - [Survival block-break abort sözleşmesi](docs/survival-break-abort-contract.md)

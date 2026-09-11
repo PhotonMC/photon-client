@@ -83,6 +83,8 @@ const PLAY_SERVERBOUND_USE_ITEM_PACKET_ID: i32 = 67;
 // Items.java registers AIR before STONE, so STONE has id 1 in BuiltInRegistries.ITEM.
 const VANILLA_STONE_ITEM_REGISTRY_ID: i32 = 1;
 const VANILLA_SNOWBALL_ITEM_REGISTRY_ID: i32 = 1_044;
+// DataComponents registers CUSTOM_MODEL_DATA after the first 17 built-in component types.
+const VANILLA_CUSTOM_MODEL_DATA_COMPONENT_ID: i32 = 17;
 
 const PLAYER_RELATIVE_X_FLAG: i32 = 1 << 0;
 const PLAYER_RELATIVE_Y_FLAG: i32 = 1 << 1;
@@ -97,6 +99,7 @@ const MAX_READABLE_FRAME_LENGTH: usize = MAX_FRAME_LENGTH;
 const WORLD_READY_DRAIN_TIMEOUT: Duration = Duration::from_millis(250);
 const DELAYED_DESTROY_DRAIN_TIMEOUT: Duration = Duration::from_millis(1_200);
 const WATER_BUCKET_DRAIN_TIMEOUT: Duration = Duration::from_millis(1_000);
+const CONSUMABLE_DRAIN_TIMEOUT: Duration = Duration::from_millis(2_500);
 
 /// Errors raised while driving the initial real-server client session.
 #[derive(Debug)]
@@ -240,6 +243,8 @@ pub struct ContainerSetSlotObservation {
     pub slot: i16,
     pub item_count: Option<i32>,
     pub item_registry_id: Option<i32>,
+    pub positive_component_type_ids: Vec<i32>,
+    pub negative_component_type_ids: Vec<i32>,
 }
 
 /// Wire-level fields decoded from one clientbound container content update.
@@ -250,8 +255,12 @@ pub struct ContainerSetContentObservation {
     pub item_count: usize,
     pub hotbar_slot_zero_item_count: Option<i32>,
     pub hotbar_slot_zero_item_registry_id: Option<i32>,
+    pub hotbar_slot_zero_positive_component_type_ids: Vec<i32>,
+    pub hotbar_slot_zero_negative_component_type_ids: Vec<i32>,
     pub carried_item_count: Option<i32>,
     pub carried_item_registry_id: Option<i32>,
+    pub carried_positive_component_type_ids: Vec<i32>,
+    pub carried_negative_component_type_ids: Vec<i32>,
 }
 
 /// Wire-level fields decoded from one clientbound system-chat packet.
@@ -528,6 +537,21 @@ pub fn connect_and_survival_empty_bucket_pickup_probe(
     )
 }
 
+/// Connect to a Java-protocol server, use a component-bearing survival milk bucket,
+/// and observe its completed bucket remainder.
+pub fn connect_and_survival_milk_bucket_use_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeMode::SurvivalMilkBucketUse,
+    )
+}
+
 /// Connect to a Java-protocol server, place a stone stack in the creative hotbar,
 /// select it and request a side placement against the supporting block.
 pub fn connect_and_creative_place_probe(
@@ -651,6 +675,7 @@ enum PlayProbeMode {
     SurvivalSnowballUse,
     SurvivalWaterBucketUseOn,
     SurvivalEmptyBucketPickup,
+    SurvivalMilkBucketUse,
     CreativePlace,
     SurvivalBreakAbort,
     SurvivalBreakStop,
@@ -1387,6 +1412,27 @@ fn connect_and_probe_with_mode(
                 )?;
                 trace.use_item_packets_sent += 1;
             }
+            if matches!(probe_mode, PlayProbeMode::SurvivalMilkBucketUse)
+                && trace.use_item_packets_sent == 0
+            {
+                std::thread::sleep(Duration::from_secs(20));
+                send_packet(
+                    &mut stream,
+                    ConnectionProtocol::Play,
+                    PLAY_SERVERBOUND_SET_CARRIED_ITEM_PACKET_ID,
+                    |output| encode_set_carried_item(output, 0),
+                    compression_threshold,
+                )?;
+                trace.carried_item_packets_sent += 1;
+                send_packet(
+                    &mut stream,
+                    ConnectionProtocol::Play,
+                    PLAY_SERVERBOUND_USE_ITEM_PACKET_ID,
+                    |output| encode_use_item(output, 27, 0.0, 0.0),
+                    compression_threshold,
+                )?;
+                trace.use_item_packets_sent += 1;
+            }
             if matches!(probe_mode, PlayProbeMode::CreativeSnowballUse)
                 && trace.creative_mode_slot_packets_sent == 0
             {
@@ -1467,6 +1513,7 @@ fn connect_and_probe_with_mode(
                 PlayProbeMode::SurvivalDelayedDestroy => DELAYED_DESTROY_DRAIN_TIMEOUT,
                 PlayProbeMode::SurvivalWaterBucketUseOn
                 | PlayProbeMode::SurvivalEmptyBucketPickup => WATER_BUCKET_DRAIN_TIMEOUT,
+                PlayProbeMode::SurvivalMilkBucketUse => CONSUMABLE_DRAIN_TIMEOUT,
                 _ => WORLD_READY_DRAIN_TIMEOUT,
             };
             stream.set_read_timeout(Some(drain_timeout))?;
@@ -1477,6 +1524,7 @@ fn connect_and_probe_with_mode(
             PlayProbeMode::SurvivalWaterBucketUseOn | PlayProbeMode::SurvivalEmptyBucketPickup => {
                 WATER_BUCKET_DRAIN_TIMEOUT
             }
+            PlayProbeMode::SurvivalMilkBucketUse => CONSUMABLE_DRAIN_TIMEOUT,
             _ => WORLD_READY_DRAIN_TIMEOUT,
         };
         if world_ready_drain_started.is_some_and(|started| started.elapsed() >= drain_timeout) {
@@ -1924,21 +1972,69 @@ fn parse_add_entity_packet(input: &[u8]) -> Result<AddEntityObservation, Connect
     })
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ParsedItemStackObservation {
+    item_count: Option<i32>,
+    item_registry_id: Option<i32>,
+    positive_component_type_ids: Vec<i32>,
+    negative_component_type_ids: Vec<i32>,
+}
+
 fn parse_optional_item_stack(
     input: &mut &[u8],
     name: &'static str,
-) -> Result<(Option<i32>, Option<i32>), ConnectionError> {
+) -> Result<ParsedItemStackObservation, ConnectionError> {
     let item_count = read_varint(input, name)?;
     if item_count <= 0 {
-        return Ok((None, None));
+        return Ok(ParsedItemStackObservation {
+            item_count: None,
+            item_registry_id: None,
+            positive_component_type_ids: Vec::new(),
+            negative_component_type_ids: Vec::new(),
+        });
     }
     let item_registry_id = read_varint(input, name)?;
-    let positive_components = read_varint(input, name)?;
-    let negative_components = read_varint(input, name)?;
-    if positive_components != 0 || negative_components != 0 {
-        return Err(ConnectionError::Codec(name));
+    let positive_component_count = read_count(input, name)?;
+    let negative_component_count = read_count(input, name)?;
+    let mut positive_component_type_ids = Vec::with_capacity(positive_component_count);
+    for _ in 0..positive_component_count {
+        let component_type_id = read_varint(input, name)?;
+        if component_type_id != VANILLA_CUSTOM_MODEL_DATA_COMPONENT_ID {
+            return Err(ConnectionError::Codec(name));
+        }
+        skip_custom_model_data(input, name)?;
+        positive_component_type_ids.push(component_type_id);
     }
-    Ok((Some(item_count), Some(item_registry_id)))
+    let mut negative_component_type_ids = Vec::with_capacity(negative_component_count);
+    for _ in 0..negative_component_count {
+        negative_component_type_ids.push(read_varint(input, name)?);
+    }
+    Ok(ParsedItemStackObservation {
+        item_count: Some(item_count),
+        item_registry_id: Some(item_registry_id),
+        positive_component_type_ids,
+        negative_component_type_ids,
+    })
+}
+
+fn skip_custom_model_data(input: &mut &[u8], name: &'static str) -> Result<(), ConnectionError> {
+    let float_count = read_count(input, name)?;
+    for _ in 0..float_count {
+        read_f32(input, name)?;
+    }
+    let flag_count = read_count(input, name)?;
+    for _ in 0..flag_count {
+        read_byte(input, name)?;
+    }
+    let string_count = read_count(input, name)?;
+    for _ in 0..string_count {
+        read_length_prefixed_bytes(input, 131_068, name)?;
+    }
+    let color_count = read_count(input, name)?;
+    for _ in 0..color_count {
+        read_i32(input, name)?;
+    }
+    Ok(())
 }
 
 fn parse_container_set_content_packet(
@@ -1950,16 +2046,18 @@ fn parse_container_set_content_packet(
     let item_count = read_count(&mut input, "container content item count")?;
     let mut hotbar_slot_zero_item_count = None;
     let mut hotbar_slot_zero_item_registry_id = None;
+    let mut hotbar_slot_zero_positive_component_type_ids = Vec::new();
+    let mut hotbar_slot_zero_negative_component_type_ids = Vec::new();
     for slot in 0..item_count {
-        let (item_count, item_registry_id) =
-            parse_optional_item_stack(&mut input, "container content item stack")?;
+        let item = parse_optional_item_stack(&mut input, "container content item stack")?;
         if slot == 36 {
-            hotbar_slot_zero_item_count = item_count;
-            hotbar_slot_zero_item_registry_id = item_registry_id;
+            hotbar_slot_zero_item_count = item.item_count;
+            hotbar_slot_zero_item_registry_id = item.item_registry_id;
+            hotbar_slot_zero_positive_component_type_ids = item.positive_component_type_ids;
+            hotbar_slot_zero_negative_component_type_ids = item.negative_component_type_ids;
         }
     }
-    let (carried_item_count, carried_item_registry_id) =
-        parse_optional_item_stack(&mut input, "container content carried item")?;
+    let carried_item = parse_optional_item_stack(&mut input, "container content carried item")?;
     if !input.is_empty() {
         return Err(ConnectionError::Codec("container content trailing payload"));
     }
@@ -1969,8 +2067,12 @@ fn parse_container_set_content_packet(
         item_count,
         hotbar_slot_zero_item_count,
         hotbar_slot_zero_item_registry_id,
-        carried_item_count,
-        carried_item_registry_id,
+        hotbar_slot_zero_positive_component_type_ids,
+        hotbar_slot_zero_negative_component_type_ids,
+        carried_item_count: carried_item.item_count,
+        carried_item_registry_id: carried_item.item_registry_id,
+        carried_positive_component_type_ids: carried_item.positive_component_type_ids,
+        carried_negative_component_type_ids: carried_item.negative_component_type_ids,
     })
 }
 
@@ -1981,8 +2083,7 @@ fn parse_container_set_slot_packet(
     let container_id = read_varint(&mut input, "container slot container id")?;
     let state_id = read_varint(&mut input, "container slot state id")?;
     let slot = read_i16(&mut input, "container slot index")?;
-    let (item_count, item_registry_id) =
-        parse_optional_item_stack(&mut input, "container slot item stack")?;
+    let item = parse_optional_item_stack(&mut input, "container slot item stack")?;
     if !input.is_empty() {
         return Err(ConnectionError::Codec("container slot trailing payload"));
     }
@@ -1990,8 +2091,10 @@ fn parse_container_set_slot_packet(
         container_id,
         state_id,
         slot,
-        item_count,
-        item_registry_id,
+        item_count: item.item_count,
+        item_registry_id: item.item_registry_id,
+        positive_component_type_ids: item.positive_component_type_ids,
+        negative_component_type_ids: item.negative_component_type_ids,
     })
 }
 
@@ -2794,6 +2897,39 @@ mod tests {
                 slot: 36,
                 item_count: None,
                 item_registry_id: None,
+                positive_component_type_ids: Vec::new(),
+                negative_component_type_ids: Vec::new(),
+            }
+        );
+    }
+
+    #[test]
+    fn container_slot_parser_skips_custom_model_data_component() {
+        let mut payload = Vec::new();
+        crate::wire::write_varint(0, &mut payload);
+        crate::wire::write_varint(8, &mut payload);
+        payload.extend_from_slice(&36_i16.to_be_bytes());
+        crate::wire::write_varint(1, &mut payload);
+        crate::wire::write_varint(1_046, &mut payload);
+        crate::wire::write_varint(1, &mut payload);
+        crate::wire::write_varint(0, &mut payload);
+        crate::wire::write_varint(17, &mut payload);
+        crate::wire::write_varint(1, &mut payload);
+        payload.extend_from_slice(&1.0_f32.to_be_bytes());
+        crate::wire::write_varint(0, &mut payload);
+        crate::wire::write_varint(0, &mut payload);
+        crate::wire::write_varint(0, &mut payload);
+
+        assert_eq!(
+            parse_container_set_slot_packet(&payload).expect("component-bearing container slot"),
+            super::ContainerSetSlotObservation {
+                container_id: 0,
+                state_id: 8,
+                slot: 36,
+                item_count: Some(1),
+                item_registry_id: Some(1_046),
+                positive_component_type_ids: vec![17],
+                negative_component_type_ids: Vec::new(),
             }
         );
     }
@@ -2817,8 +2953,12 @@ mod tests {
                 item_count: 37,
                 hotbar_slot_zero_item_count: None,
                 hotbar_slot_zero_item_registry_id: None,
+                hotbar_slot_zero_positive_component_type_ids: Vec::new(),
+                hotbar_slot_zero_negative_component_type_ids: Vec::new(),
                 carried_item_count: None,
                 carried_item_registry_id: None,
+                carried_positive_component_type_ids: Vec::new(),
+                carried_negative_component_type_ids: Vec::new(),
             }
         );
     }
