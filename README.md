@@ -84,6 +84,8 @@ Rust uygulama girişi henüz oynanabilir istemci değildir. İlk gerçek vanilla
 - [Vanilla survival inventory ahead state-id correction doğrulaması](docs/vanilla-survival-inventory-ahead-state-correction-parity.md)
 - [Survival inventory correct prediction sözleşmesi](docs/survival-inventory-correct-prediction-contract.md)
 - [Vanilla survival inventory correct prediction doğrulaması](docs/vanilla-survival-inventory-correct-prediction-parity.md)
+- [Survival inventory wrong changed-slot prediction sözleşmesi](docs/survival-inventory-wrong-slot-prediction-contract.md)
+- [Vanilla survival inventory wrong changed-slot prediction doğrulaması](docs/vanilla-survival-inventory-wrong-slot-prediction-parity.md)
 - [Survival inventory quick-move state-id correction sözleşmesi](docs/survival-inventory-quick-move-state-correction-contract.md)
 - [Vanilla survival inventory quick-move state-id correction doğrulaması](docs/vanilla-survival-inventory-quick-move-state-correction-parity.md)
 - [Survival inventory swap state-id correction sözleşmesi](docs/survival-inventory-swap-state-correction-contract.md)
