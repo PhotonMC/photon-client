@@ -68,6 +68,8 @@ Rust uygulama girişi henüz oynanabilir istemci değildir. İlk gerçek vanilla
 - [Vanilla survival inventory pickup state-id correction doğrulaması](docs/vanilla-survival-inventory-pickup-state-correction-parity.md)
 - [Survival inventory quick-move state-id correction sözleşmesi](docs/survival-inventory-quick-move-state-correction-contract.md)
 - [Vanilla survival inventory quick-move state-id correction doğrulaması](docs/vanilla-survival-inventory-quick-move-state-correction-parity.md)
+- [Survival inventory swap state-id correction sözleşmesi](docs/survival-inventory-swap-state-correction-contract.md)
+- [Vanilla survival inventory swap state-id correction doğrulaması](docs/vanilla-survival-inventory-swap-state-correction-parity.md)
 - [Yaratıcı item stack placement sözleşmesi](docs/creative-placement-contract.md)
 - [Vanilla yaratıcı item stack placement doğrulaması](docs/vanilla-creative-placement-parity.md)
 - [Survival block-break abort sözleşmesi](docs/survival-break-abort-contract.md)
