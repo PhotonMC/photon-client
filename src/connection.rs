@@ -356,12 +356,27 @@ pub fn connect_and_block_break_probe(
     connect_and_probe_with_mode(address, username, timeout, PlayProbeMode::BlockBreak)
 }
 
+/// Connect to a Java-protocol server and send a block-break action outside interaction range.
+pub fn connect_and_block_break_rejection_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeMode::BlockBreakOutOfRange,
+    )
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum PlayProbeMode {
     Basic,
     Movement,
     BlockAction,
     BlockBreak,
+    BlockBreakOutOfRange,
 }
 
 fn connect_and_probe_with_mode(
@@ -753,6 +768,18 @@ fn connect_and_probe_with_mode(
                     ConnectionProtocol::Play,
                     PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID,
                     |output| encode_start_destroy_block(output, target, 2),
+                    compression_threshold,
+                )?;
+                trace.player_action_packets_sent += 1;
+            }
+            if matches!(probe_mode, PlayProbeMode::BlockBreakOutOfRange)
+                && trace.player_action_packets_sent == 0
+            {
+                send_packet(
+                    &mut stream,
+                    ConnectionProtocol::Play,
+                    PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID,
+                    |output| encode_start_destroy_block(output, (1_000_000, 64, 1_000_000), 3),
                     compression_threshold,
                 )?;
                 trace.player_action_packets_sent += 1;
