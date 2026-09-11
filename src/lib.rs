@@ -5,6 +5,7 @@ pub mod axis_cycle;
 pub mod binary;
 pub mod common;
 pub mod configuration;
+pub mod connection;
 pub mod direction;
 pub mod frame;
 pub mod handshake;

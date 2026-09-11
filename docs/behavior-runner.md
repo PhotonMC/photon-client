@@ -1,6 +1,6 @@
 # Yerel davranış testlerini çalıştırma
 
-Python 3.10+ standart kütüphanesi ve Java 25 JDK kullanılır; yeni Python paketi veya test framework'ü yok. Rust JSONL adaptörü `serde_json` geliştirme bağımlılığını kullanır; üretim kütüphanesi haricî bağımlılık kullanmaz. Java adaptörleri doğrudan sabitlenen Minecraft JAR'ındaki sınıfları çağırır. Beklenen sonuçlar Rust'tan veya test içinde yeniden yazılmış algoritmalardan üretilmez.
+Python 3.10+ standart kütüphanesi ve Java 25 JDK kullanılır; yeni Python paketi veya test framework'ü yok. Rust JSONL adaptörü `serde_json` geliştirme bağımlılığını kullanır; gerçek bağlantı probe'undaki zlib çerçevesi için üretim `flate2` bağımlılığı kullanılır. Java adaptörleri doğrudan sabitlenen Minecraft JAR'ındaki sınıfları çağırır. Beklenen sonuçlar Rust'tan veya test içinde yeniden yazılmış algoritmalardan üretilmez.
 
 Depo kökünden:
 
@@ -69,7 +69,7 @@ Yeni bir operation eklendiğinde kendi kaynak incelemesi, oracle branch'i, senar
 
 ## Doğrulanan mevcut kapsam
 
-Runner altı aileyi aynı JSONL sözleşmesiyle işler: math, timer, wire, utf8, binary ve nbt. Her seçili capture iki Java çalıştırmasıyla tekrarlanabilirliği, adapter karşılaştırması ise kayıtlı Java çıktısıyla kesin eşitliği denetler.
+Runner yedi aileyi aynı JSONL sözleşmesiyle işler: math, timer, wire, utf8, binary, nbt ve resources. Her seçili capture iki Java çalıştırmasıyla tekrarlanabilirliği, adapter karşılaştırması ise kayıtlı Java çıktısıyla kesin eşitliği denetler.
 
 | Aile | Gözlenen kapsam |
 | --- | --- |
@@ -79,7 +79,8 @@ Runner altı aileyi aynı JSONL sözleşmesiyle işler: math, timer, wire, utf8,
 | utf8 | UTF-8/UTF-16 sınırları, bozuk diziler, başlıklar ve hata tüketimi |
 | binary | Vec3/LP Vec3, UUID, konum, chunk/section, long array ve bitset kodlamaları |
 | nbt | Bileşik, liste ve primitive array okuma/yazma ile sınır davranışı |
+| resources | Asset index yolu çözümleme, sanal object bağlantıları ve pack kaynak önceliği |
 
 Kesin senaryo listesi generator'dan, referans kimliği capture manifest'inden, dilim sınırları ise ilgili contract/parity belgelerinden okunur. Bu bölüm hareketli corpus toplamını tekrar etmez.
 
-Bu kapsam headless yardımcı ve veri davranışlarıyla sınırlıdır. Oynanabilir istemci, pencere/input, gerçek Pumpkin oturumu, GPU frame yakalama, audio capture ve tam user-facing akışlar henüz doğrulanmış değildir.
+Bu kapsam headless yardımcı ve veri davranışlarıyla sınırlıdır. İlk gerçek Pumpkin oturumu [Rust connection probe'u](game-connection-parity.md) ile doğrulandı; oynanabilir istemci, pencere/input, chunk/world state, GPU frame yakalama, audio capture ve tam user-facing akışlar henüz doğrulanmış değildir.

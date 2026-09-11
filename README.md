@@ -2,7 +2,7 @@
 
 Minecraft Java Edition istemcisinin Rust ile sıfırdan yeniden uygulanması için hazırlık deposu. `voxel-client` geçici proje adıdır; Minecraft ile resmî bağlantısı yoktur.
 
-Hedef, oyuncunun fark hissedemeyeceği davranış ve sunum eşitliğidir: mekanikler, hareket, animasyon, texture, UI ve sesler dahil. Sunucu geliştirilmeyecek; [Pumpkin](https://github.com/Pumpkin-Mc/Pumpkin) kullanılacak. Referans Java Edition **26.2**, protokol **776**, Java **25** olarak sabitlendi. İncelenen Pumpkin adayında 776 sürüm eşlemesi mevcut; gerçek bağlantı ve mekanik uyumluluğu henüz doğrulanmadı.
+Hedef, oyuncunun fark hissedemeyeceği davranış ve sunum eşitliğidir: mekanikler, hareket, animasyon, texture, UI ve sesler dahil. Sunucu geliştirilmeyecek; [Pumpkin](https://github.com/Pumpkin-Mc/Pumpkin) kullanılacak. Referans Java Edition **26.2**, protokol **776**, Java **25** olarak sabitlendi. İlk offline Rust bağlantı probe'u sabit Pumpkin adayında login, configuration ve ilk chunk teslimini doğruladı; mekanik uyumluluk ve oynanabilir istemci henüz yok.
 
 Orijinal kaynak ve assetler yalnızca yerelde referans ve test girdisi olarak kullanılacak. Git'e, GitHub'a, derleme çıktısına veya dağıtım paketine eklenmeyecek. İstemci ileride kullanıcının seçtiği yerel asset klasörünü okuyacak; kurulum orijinal asset içermeyecek veya otomatik indirmeyecek.
 
@@ -12,7 +12,7 @@ Referans Minecraft Java Edition 26.2, protokol 776 ve Java 25 olarak sabittir. H
 
 Kapsamın kesin listesi ve capture kimlikleri [davranış runner'ında](docs/behavior-runner.md), kaynak kararları [source review'da](docs/source-review.md), açık bağımlılıklar [roadmap](docs/roadmap.md) ve [kalan test planında](docs/remaining-test-plan.md) bulunur. Bu genel bakışta hareketli test toplamı tutulmaz; yeni dilim eski durum paragraflarını güncellemeden kendi kanıtını ekler.
 
-Rust uygulama girişi henüz oynanabilir istemci değildir. Pencere/input, Pumpkin bağlantısı, dünya, hareket, render, ses ve GUI için gerçek istemciye bağlı doğrulamalar sonraki roadmap bölümlerindedir.
+Rust uygulama girişi henüz oynanabilir istemci değildir. İlk gerçek Pumpkin bağlantı probe'u [sözleşme](docs/game-connection-contract.md) ve [doğrulama](docs/game-connection-parity.md) ile kaydedildi; pencere/input, dünya state'i, hareket, render, ses ve GUI için istemciye bağlı doğrulamalar sonraki roadmap bölümlerindedir.
 
 ## Belgeler
 
@@ -20,6 +20,8 @@ Rust uygulama girişi henüz oynanabilir istemci değildir. Pencere/input, Pumpk
 - [Yerel kaynak ve asset yerleşimi](docs/reference-data.md)
 - [Davranış doğrulama yaklaşımı](docs/behavior-testing.md)
 - [Doğrulanan referans envanteri ve Pumpkin adayı](docs/reference-baseline.md)
+- [İlk oyun oturumu bağlantı sözleşmesi](docs/game-connection-contract.md)
+- [İlk oyun oturumu doğrulaması](docs/game-connection-parity.md)
 - [Kaynak incelemesi ve istemci sınırları](docs/source-review.md)
 - [Bölüm bazlı roadmap](docs/roadmap.md)
 - [İlk davranış testi sözleşmeleri](docs/first-behavior-tests.md)
