@@ -4,4 +4,4 @@ Java Edition 26.2 / protokol 776 / Java 25 referansı kullanılır. `Serverbound
 
 `ServerboundPingRequestPacket` ile `ClientboundPongResponsePacket` bir signed Java `long` taşır. Değer sekiz bayt big-endian olarak yazılır ve okunur. Rust API'si `i64` kullanır; sekiz bayttan kısa input `BufferUnderflow` üretir ve atomic `readLong` davranışıyla input'u ilerletmez.
 
-Bu dilim packet payload codec'leriyle sınırlıdır. VarInt21 frame sınırı, status JSON cevabının `ServerStatus` codec'i, socket bağlantısı ve protocol state transition ayrı dilimlerdir.
+Bu dilim packet payload codec'leriyle sınırlıdır. VarInt21 frame sınırı, status JSON cevabının `ServerStatus` codec'i ve tam protocol state transition ayrı dilimlerdir. Ham status response framing'i ile socket üzerindeki ping echo'su [ayrı bağlantı sözleşmesinde](status-connection-contract.md) ölçülür.

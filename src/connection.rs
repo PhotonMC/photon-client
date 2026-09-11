@@ -31,6 +31,13 @@ const LOGIN_ACKNOWLEDGED_PACKET_ID: i32 = 3;
 const LOGIN_FINISHED_PACKET_ID: i32 = 2;
 const LOGIN_COMPRESSION_PACKET_ID: i32 = 3;
 
+const STATUS_SERVERBOUND_REQUEST_PACKET_ID: i32 = 0;
+const STATUS_SERVERBOUND_PING_REQUEST_PACKET_ID: i32 = 1;
+const STATUS_CLIENTBOUND_RESPONSE_PACKET_ID: i32 = 0;
+const STATUS_CLIENTBOUND_PONG_RESPONSE_PACKET_ID: i32 = 1;
+const STATUS_RESPONSE_MAX_UTF16_LENGTH: usize = 32_767;
+const STATUS_PROBE_TIME: i64 = 0x0102_0304_0506_0708;
+
 const CONFIG_CLIENT_INFORMATION_PACKET_ID: i32 = 0;
 const CONFIG_CUSTOM_PAYLOAD_PACKET_ID: i32 = 2;
 const CONFIG_FINISH_PACKET_ID: i32 = 3;
@@ -135,6 +142,97 @@ pub struct PlayConnectionTrace {
     pub chunk_batch_finished_count: usize,
 }
 
+/// The observable result of a status and ping session.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StatusConnectionTrace {
+    pub packets: Vec<PacketObservation>,
+    pub status_response: String,
+    pub pong_time: i64,
+}
+
+/// Query a Java-protocol server's status and verify its ping echo.
+pub fn query_status_and_ping(
+    address: SocketAddr,
+    timeout: Duration,
+) -> Result<StatusConnectionTrace, ConnectionError> {
+    if timeout.is_zero() {
+        return Err(ConnectionError::InvalidArgument("timeout"));
+    }
+
+    let mut stream = connect_stream(address, timeout)?;
+    send_handshake_intention(&mut stream, address, ClientIntent::Status)?;
+    send_packet(
+        &mut stream,
+        ConnectionProtocol::Status,
+        STATUS_SERVERBOUND_REQUEST_PACKET_ID,
+        |payload| {
+            crate::status::ServerboundStatusRequestPacket::INSTANCE.encode(payload);
+            Ok(())
+        },
+        None,
+    )?;
+
+    let mut packets = Vec::with_capacity(2);
+    let body = read_packet(&mut stream, None)?;
+    let (packet_id, payload) = split_packet(&body)?;
+    packets.push(PacketObservation {
+        phase: ConnectionProtocol::Status,
+        id: packet_id,
+        body_length: body.len(),
+    });
+    if packet_id != STATUS_CLIENTBOUND_RESPONSE_PACKET_ID {
+        return Err(ConnectionError::UnsupportedPacket {
+            phase: ConnectionProtocol::Status,
+            id: packet_id,
+        });
+    }
+
+    let mut input = payload;
+    let status_units = crate::utf8::read_utf8(&mut input, STATUS_RESPONSE_MAX_UTF16_LENGTH)
+        .map_err(|_| ConnectionError::Codec("status response"))?;
+    let status_response = String::from_utf16(&status_units)
+        .map_err(|_| ConnectionError::Codec("status response UTF-16"))?;
+
+    let ping = crate::status::ServerboundPingRequestPacket::new(STATUS_PROBE_TIME);
+    send_packet(
+        &mut stream,
+        ConnectionProtocol::Status,
+        STATUS_SERVERBOUND_PING_REQUEST_PACKET_ID,
+        |payload| {
+            ping.encode(payload);
+            Ok(())
+        },
+        None,
+    )?;
+
+    let body = read_packet(&mut stream, None)?;
+    let (packet_id, payload) = split_packet(&body)?;
+    packets.push(PacketObservation {
+        phase: ConnectionProtocol::Status,
+        id: packet_id,
+        body_length: body.len(),
+    });
+    if packet_id != STATUS_CLIENTBOUND_PONG_RESPONSE_PACKET_ID {
+        return Err(ConnectionError::UnsupportedPacket {
+            phase: ConnectionProtocol::Status,
+            id: packet_id,
+        });
+    }
+
+    let mut input = payload;
+    let pong = crate::status::ClientboundPongResponsePacket::decode(&mut input)
+        .map_err(|_| ConnectionError::Codec("status pong"))?;
+    if pong.time != STATUS_PROBE_TIME {
+        return Err(ConnectionError::Codec("status pong echo"));
+    }
+
+    Ok(StatusConnectionTrace {
+        packets,
+        status_response,
+        pong_time: pong.time,
+    })
+}
+
 /// Connect to a Java-protocol server and drive the session until the first play chunk.
 ///
 /// The server must use offline authentication, as the project deliberately does not
@@ -151,29 +249,8 @@ pub fn connect_and_probe(
         return Err(ConnectionError::InvalidArgument("timeout"));
     }
 
-    let mut stream = TcpStream::connect_timeout(&address, timeout)?;
-    stream.set_read_timeout(Some(timeout))?;
-    stream.set_write_timeout(Some(timeout))?;
-    stream.set_nodelay(true)?;
-
-    let host = address.ip().to_string();
-    let intention = ClientIntentionPacket::new(
-        PROTOCOL_VERSION,
-        host.encode_utf16().collect(),
-        i32::from(address.port()),
-        ClientIntent::Login,
-    );
-    send_packet(
-        &mut stream,
-        ConnectionProtocol::Handshaking,
-        LOGIN_INTENTION_PACKET_ID,
-        |payload| {
-            intention
-                .encode(payload)
-                .map_err(|_| ConnectionError::Codec("handshake"))
-        },
-        None,
-    )?;
+    let mut stream = connect_stream(address, timeout)?;
+    send_handshake_intention(&mut stream, address, ClientIntent::Login)?;
 
     let hello = ServerboundHelloPacket::new(username.encode_utf16().collect(), Uuid::new(0, 1));
     send_packet(
@@ -509,6 +586,39 @@ fn send_configuration_start(
     )
 }
 
+fn connect_stream(address: SocketAddr, timeout: Duration) -> Result<TcpStream, ConnectionError> {
+    let stream = TcpStream::connect_timeout(&address, timeout)?;
+    stream.set_read_timeout(Some(timeout))?;
+    stream.set_write_timeout(Some(timeout))?;
+    stream.set_nodelay(true)?;
+    Ok(stream)
+}
+
+fn send_handshake_intention(
+    stream: &mut TcpStream,
+    address: SocketAddr,
+    intent: ClientIntent,
+) -> Result<(), ConnectionError> {
+    let host = address.ip().to_string();
+    let intention = ClientIntentionPacket::new(
+        PROTOCOL_VERSION,
+        host.encode_utf16().collect(),
+        i32::from(address.port()),
+        intent,
+    );
+    send_packet(
+        stream,
+        ConnectionProtocol::Handshaking,
+        LOGIN_INTENTION_PACKET_ID,
+        |payload| {
+            intention
+                .encode(payload)
+                .map_err(|_| ConnectionError::Codec("handshake"))
+        },
+        None,
+    )
+}
+
 fn send_packet<F>(
     stream: &mut TcpStream,
     _phase: ConnectionProtocol,
@@ -650,7 +760,9 @@ mod tests {
     use super::{
         PLAY_CLIENTBOUND_CHUNK_PACKET_ID, PLAY_CLIENTBOUND_KEEP_ALIVE_PACKET_ID,
         PLAY_CLIENTBOUND_LOGIN_PACKET_ID, PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID,
-        PLAY_SERVERBOUND_KEEP_ALIVE_PACKET_ID, decode_packet_frame, encode_packet_frame,
+        PLAY_SERVERBOUND_KEEP_ALIVE_PACKET_ID, STATUS_CLIENTBOUND_PONG_RESPONSE_PACKET_ID,
+        STATUS_CLIENTBOUND_RESPONSE_PACKET_ID, STATUS_SERVERBOUND_PING_REQUEST_PACKET_ID,
+        STATUS_SERVERBOUND_REQUEST_PACKET_ID, decode_packet_frame, encode_packet_frame,
     };
 
     #[test]
@@ -678,5 +790,13 @@ mod tests {
         assert_eq!(PLAY_CLIENTBOUND_LOGIN_PACKET_ID, 49);
         assert_eq!(PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID, 11);
         assert_eq!(PLAY_SERVERBOUND_KEEP_ALIVE_PACKET_ID, 28);
+    }
+
+    #[test]
+    fn status_packet_ids_match_java_26_2_dispatch_order() {
+        assert_eq!(STATUS_SERVERBOUND_REQUEST_PACKET_ID, 0);
+        assert_eq!(STATUS_SERVERBOUND_PING_REQUEST_PACKET_ID, 1);
+        assert_eq!(STATUS_CLIENTBOUND_RESPONSE_PACKET_ID, 0);
+        assert_eq!(STATUS_CLIENTBOUND_PONG_RESPONSE_PACKET_ID, 1);
     }
 }

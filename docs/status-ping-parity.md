@@ -8,4 +8,4 @@ Wire ailesinin 250 senaryolu odaklı capture kimliği `ffac2b8a79961c5ea39fe9508
 
 Bu packet’ler eklendikten sonraki birleşik corpus 3546 senaryodur: `binary=164`, `math=2894`, `nbt=31`, `resources=44`, `timer=22`, `utf8=141`, `wire=250`. Birleşik capture kimliği `3298d7861ee33b75319509c05b7e12dc218b6c43b34fc7357ea7a79ed2bc4e1b`; debug `compare-tuwq8bxc` ve release `compare-ebt1eln` raporları geçti. Birleşik capture’ın Java referansı iki tekrar çalıştırmasıyla kararlı bulundu.
 
-Bu sonuç payload codec sınırını doğrular. Status JSON serileştirmesi, frame decoder, socket connection ve protocol state geçişi sonraki P06 dilimlerindedir.
+Bu sonuç payload codec sınırını doğrular. Status JSON serileştirmesi ve tam protocol state geçişi ayrı kapsamdır; ham status response framing'i ve socket ping echo'su [ayrı vanilla bağlantı kaydında](status-connection-parity.md) doğrulanmıştır.

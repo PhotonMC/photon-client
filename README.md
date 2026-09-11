@@ -22,6 +22,7 @@ Rust uygulama girişi henüz oynanabilir istemci değildir. İlk gerçek vanilla
 - [Doğrulanan referans envanteri ve Pumpkin adayı](docs/reference-baseline.md)
 - [İlk oyun oturumu bağlantı sözleşmesi](docs/game-connection-contract.md)
 - [Vanilla 26.2 oyun oturumu doğrulaması](docs/vanilla-connection-parity.md)
+- [Vanilla status socket doğrulaması](docs/status-connection-parity.md)
 - [Pumpkin uyumluluk oturumu doğrulaması](docs/game-connection-parity.md)
 - [Kaynak incelemesi ve istemci sınırları](docs/source-review.md)
 - [Bölüm bazlı roadmap](docs/roadmap.md)
