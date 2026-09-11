@@ -86,6 +86,7 @@ const PLAY_SERVERBOUND_USE_ITEM_PACKET_ID: i32 = 67;
 // The pinned vanilla built-in item registry is not sent in configuration registry data.
 // Items.java registers AIR before STONE, so STONE has id 1 in BuiltInRegistries.ITEM.
 const VANILLA_STONE_ITEM_REGISTRY_ID: i32 = 1;
+const VANILLA_MILK_BUCKET_ITEM_REGISTRY_ID: i32 = 1_046;
 const VANILLA_SNOWBALL_ITEM_REGISTRY_ID: i32 = 1_044;
 const VANILLA_DAMAGE_COMPONENT_ID: i32 = 3;
 // DataComponents registers CUSTOM_MODEL_DATA after the first 17 built-in component types.
@@ -897,6 +898,21 @@ pub fn connect_and_survival_inventory_wrong_both_prediction_probe(
     )
 }
 
+/// Connect to a Java-protocol server, pick up a component-bearing survival
+/// stack with a wrong carried component hash, and observe the cursor correction.
+pub fn connect_and_survival_inventory_component_hash_prediction_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeMode::SurvivalInventoryComponentHashPrediction,
+    )
+}
+
 /// Connect to a Java-protocol server, shift-click a supplied survival inventory
 /// stack with a stale container state id, and observe the authoritative full resync.
 pub fn connect_and_survival_inventory_quick_move_state_correction_probe(
@@ -1101,6 +1117,7 @@ enum PlayProbeMode {
     SurvivalInventoryWrongSlotPrediction,
     SurvivalInventoryWrongCarriedPrediction,
     SurvivalInventoryWrongBothPrediction,
+    SurvivalInventoryComponentHashPrediction,
     SurvivalInventoryQuickMoveStateCorrection,
     SurvivalInventorySwapStateCorrection,
     CreativePlace,
@@ -2278,6 +2295,29 @@ fn connect_and_probe_with_mode(
             }
             if matches!(
                 probe_mode,
+                PlayProbeMode::SurvivalInventoryComponentHashPrediction
+            ) && trace.container_click_packets_sent == 0
+            {
+                std::thread::sleep(Duration::from_secs(20));
+                send_packet(
+                    &mut stream,
+                    ConnectionProtocol::Play,
+                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
+                    |output| {
+                        encode_inventory_pickup_with_component_hash_prediction(
+                            output,
+                            2,
+                            1,
+                            VANILLA_MILK_BUCKET_ITEM_REGISTRY_ID,
+                        )
+                    },
+                    compression_threshold,
+                )?;
+                trace.container_click_packets_sent += 1;
+                trace.container_click_state_id_sent = Some(2);
+            }
+            if matches!(
+                probe_mode,
                 PlayProbeMode::SurvivalInventoryQuickMoveStateCorrection
             ) && trace.container_click_packets_sent == 0
             {
@@ -2418,6 +2458,7 @@ fn connect_and_probe_with_mode(
                 PlayProbeMode::SurvivalInventoryWrongSlotPrediction => CONSUMABLE_DRAIN_TIMEOUT,
                 PlayProbeMode::SurvivalInventoryWrongCarriedPrediction => CONSUMABLE_DRAIN_TIMEOUT,
                 PlayProbeMode::SurvivalInventoryWrongBothPrediction => CONSUMABLE_DRAIN_TIMEOUT,
+                PlayProbeMode::SurvivalInventoryComponentHashPrediction => CONSUMABLE_DRAIN_TIMEOUT,
                 PlayProbeMode::SurvivalInventoryQuickMoveStateCorrection => {
                     CONSUMABLE_DRAIN_TIMEOUT
                 }
@@ -2460,6 +2501,7 @@ fn connect_and_probe_with_mode(
             PlayProbeMode::SurvivalInventoryWrongSlotPrediction => CONSUMABLE_DRAIN_TIMEOUT,
             PlayProbeMode::SurvivalInventoryWrongCarriedPrediction => CONSUMABLE_DRAIN_TIMEOUT,
             PlayProbeMode::SurvivalInventoryWrongBothPrediction => CONSUMABLE_DRAIN_TIMEOUT,
+            PlayProbeMode::SurvivalInventoryComponentHashPrediction => CONSUMABLE_DRAIN_TIMEOUT,
             PlayProbeMode::SurvivalInventoryQuickMoveStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
             PlayProbeMode::SurvivalInventorySwapStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
             _ => WORLD_READY_DRAIN_TIMEOUT,
@@ -2759,6 +2801,42 @@ fn encode_inventory_pickup_prediction(
     changed_slot_item: Option<(i32, i32)>,
     carried_item: Option<(i32, i32)>,
 ) -> Result<(), ConnectionError> {
+    encode_inventory_pickup_prediction_with_carried_patch(
+        output,
+        state_id,
+        changed_slot_item,
+        carried_item,
+        &[],
+        &[],
+    )
+}
+
+fn encode_inventory_pickup_with_component_hash_prediction(
+    output: &mut Vec<u8>,
+    state_id: i32,
+    item_count: i32,
+    item_registry_id: i32,
+) -> Result<(), ConnectionError> {
+    let added_components = [(VANILLA_CUSTOM_MODEL_DATA_COMPONENT_ID, 0x0102_0304)];
+    let removed_components = [VANILLA_CUSTOM_MODEL_DATA_COMPONENT_ID];
+    encode_inventory_pickup_prediction_with_carried_patch(
+        output,
+        state_id,
+        None,
+        Some((item_count, item_registry_id)),
+        &added_components,
+        &removed_components,
+    )
+}
+
+fn encode_inventory_pickup_prediction_with_carried_patch(
+    output: &mut Vec<u8>,
+    state_id: i32,
+    changed_slot_item: Option<(i32, i32)>,
+    carried_item: Option<(i32, i32)>,
+    carried_added_components: &[(i32, i32)],
+    carried_removed_components: &[i32],
+) -> Result<(), ConnectionError> {
     wire::write_varint(0, output);
     wire::write_varint(state_id, output);
     output.extend_from_slice(&36_i16.to_be_bytes());
@@ -2767,11 +2845,25 @@ fn encode_inventory_pickup_prediction(
     wire::write_varint(1, output);
     output.extend_from_slice(&36_i16.to_be_bytes());
     encode_hashed_stack(output, changed_slot_item);
-    encode_hashed_stack(output, carried_item);
+    encode_hashed_stack_with_components(
+        output,
+        carried_item,
+        carried_added_components,
+        carried_removed_components,
+    );
     Ok(())
 }
 
 fn encode_hashed_stack(output: &mut Vec<u8>, item: Option<(i32, i32)>) {
+    encode_hashed_stack_with_components(output, item, &[], &[]);
+}
+
+fn encode_hashed_stack_with_components(
+    output: &mut Vec<u8>,
+    item: Option<(i32, i32)>,
+    added_components: &[(i32, i32)],
+    removed_components: &[i32],
+) {
     let Some((item_count, item_registry_id)) = item else {
         output.push(0);
         return;
@@ -2780,8 +2872,15 @@ fn encode_hashed_stack(output: &mut Vec<u8>, item: Option<(i32, i32)>) {
     output.push(1);
     wire::write_varint(item_registry_id, output);
     wire::write_varint(item_count, output);
-    wire::write_varint(0, output);
-    wire::write_varint(0, output);
+    wire::write_varint(added_components.len() as i32, output);
+    for (component_type_id, component_hash) in added_components {
+        wire::write_varint(*component_type_id, output);
+        output.extend_from_slice(&component_hash.to_be_bytes());
+    }
+    wire::write_varint(removed_components.len() as i32, output);
+    for component_type_id in removed_components {
+        wire::write_varint(*component_type_id, output);
+    }
 }
 
 fn encode_inventory_quick_move_state_correction(
@@ -3823,7 +3922,9 @@ mod tests {
         STATUS_SERVERBOUND_REQUEST_PACKET_ID, decode_packet_frame, encode_abort_destroy_block,
         encode_creative_item_slot, encode_creative_stone_slot, encode_inventory_click_with_input,
         encode_inventory_drag_empty_cancel_state_correction,
-        encode_inventory_pickup_state_correction, encode_inventory_pickup_with_prediction,
+        encode_inventory_pickup_state_correction,
+        encode_inventory_pickup_with_component_hash_prediction,
+        encode_inventory_pickup_with_prediction,
         encode_inventory_pickup_with_wrong_both_prediction,
         encode_inventory_pickup_with_wrong_carried_prediction,
         encode_inventory_pickup_with_wrong_slot_prediction,
@@ -4883,6 +4984,68 @@ mod tests {
         );
         assert_eq!(input[0], 0, "carried prediction should be empty");
         input = &input[1..];
+        assert!(input.is_empty());
+    }
+
+    #[test]
+    fn inventory_component_hash_prediction_encoder_keeps_registry_hash_fields() {
+        let mut payload = Vec::new();
+        encode_inventory_pickup_with_component_hash_prediction(&mut payload, 2, 1, 1_046)
+            .expect("component-hash inventory prediction packet");
+
+        let mut input = payload.as_slice();
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("container id"),
+            0
+        );
+        assert_eq!(crate::wire::read_varint(&mut input).expect("state id"), 2);
+        assert_eq!(i16::from_be_bytes(input[..2].try_into().expect("slot")), 36);
+        input = &input[2..];
+        assert_eq!(input[0], 0);
+        input = &input[1..];
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("container input"),
+            0
+        );
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("changed slot count"),
+            1
+        );
+        assert_eq!(
+            i16::from_be_bytes(input[..2].try_into().expect("changed slot")),
+            36
+        );
+        input = &input[2..];
+        assert_eq!(input[0], 0, "changed slot should be empty");
+        input = &input[1..];
+        assert_eq!(input[0], 1, "carried should be non-empty");
+        input = &input[1..];
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("item registry id"),
+            1_046
+        );
+        assert_eq!(crate::wire::read_varint(&mut input).expect("item count"), 1);
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("component map count"),
+            1
+        );
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("component type id"),
+            17
+        );
+        assert_eq!(
+            i32::from_be_bytes(input[..4].try_into().expect("component hash")),
+            0x0102_0304
+        );
+        input = &input[4..];
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("removed component count"),
+            1
+        );
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("removed component type id"),
+            17
+        );
         assert!(input.is_empty());
     }
 
