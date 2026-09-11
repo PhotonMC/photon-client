@@ -505,6 +505,21 @@ pub fn connect_and_survival_stone_break_stop_probe(
     )
 }
 
+/// Connect to a Java-protocol server, start breaking the supporting oak-planks block in
+/// survival mode and stop before the bare-hand hardness threshold is reached.
+pub fn connect_and_survival_oak_planks_break_stop_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeMode::SurvivalOakPlanksBreakStop,
+    )
+}
+
 /// Connect to a Java-protocol server, stop a short survival dirt break early and
 /// observe the server's delayed destroy completion on later ticks.
 pub fn connect_and_survival_delayed_destroy_probe(
@@ -549,6 +564,7 @@ enum PlayProbeMode {
     SurvivalBreakAbort,
     SurvivalBreakStop,
     SurvivalStoneBreakStop,
+    SurvivalOakPlanksBreakStop,
     SurvivalDelayedDestroy,
     SurvivalSpawnProtection,
 }
@@ -1018,7 +1034,9 @@ fn connect_and_probe_with_mode(
             }
             if matches!(
                 probe_mode,
-                PlayProbeMode::SurvivalBreakStop | PlayProbeMode::SurvivalStoneBreakStop
+                PlayProbeMode::SurvivalBreakStop
+                    | PlayProbeMode::SurvivalStoneBreakStop
+                    | PlayProbeMode::SurvivalOakPlanksBreakStop
             ) && trace.player_action_packets_sent == 0
             {
                 let Some(position) = player_position else {
@@ -1030,6 +1048,8 @@ fn connect_and_probe_with_mode(
                 let (start_sequence, stop_sequence) =
                     if matches!(probe_mode, PlayProbeMode::SurvivalStoneBreakStop) {
                         (12, 13)
+                    } else if matches!(probe_mode, PlayProbeMode::SurvivalOakPlanksBreakStop) {
+                        (18, 19)
                     } else {
                         (8, 9)
                     };
