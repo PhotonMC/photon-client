@@ -55,6 +55,7 @@ const CONFIG_CODE_OF_CONDUCT_PACKET_ID: i32 = 19;
 // The virtual bundle packet is not registered in the Java dispatch table; the delimiter
 // occupies id 0 and shifts the listed play clientbound packet ids by one.
 const PLAY_CLIENTBOUND_BUNDLE_DELIMITER_PACKET_ID: i32 = 0;
+const PLAY_CLIENTBOUND_ADD_ENTITY_PACKET_ID: i32 = 1;
 const PLAY_CLIENTBOUND_BLOCK_CHANGED_ACK_PACKET_ID: i32 = 4;
 const PLAY_CLIENTBOUND_BLOCK_DESTRUCTION_PACKET_ID: i32 = 5;
 const PLAY_CLIENTBOUND_BLOCK_UPDATE_PACKET_ID: i32 = 8;
@@ -78,6 +79,7 @@ const PLAY_SERVERBOUND_USE_ITEM_PACKET_ID: i32 = 67;
 // The pinned vanilla built-in item registry is not sent in configuration registry data.
 // Items.java registers AIR before STONE, so STONE has id 1 in BuiltInRegistries.ITEM.
 const VANILLA_STONE_ITEM_REGISTRY_ID: i32 = 1;
+const VANILLA_SNOWBALL_ITEM_REGISTRY_ID: i32 = 1_044;
 
 const PLAYER_RELATIVE_X_FLAG: i32 = 1 << 0;
 const PLAYER_RELATIVE_Y_FLAG: i32 = 1 << 1;
@@ -150,7 +152,7 @@ pub struct PacketObservation {
 }
 
 /// The observable result of the initial real-server session.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct PlayConnectionTrace {
     pub packets: Vec<PacketObservation>,
     pub compression_threshold: Option<usize>,
@@ -171,6 +173,8 @@ pub struct PlayConnectionTrace {
     pub creative_mode_slot_packets_sent: usize,
     pub carried_item_packets_sent: usize,
     pub stone_item_registry_id: Option<i32>,
+    pub snowball_item_registry_id: Option<i32>,
+    pub add_entity_observations: Vec<AddEntityObservation>,
     pub creative_place_target_update: Option<BlockUpdateObservation>,
     pub creative_place_neighbor_update: Option<BlockUpdateObservation>,
     pub block_destruction_observations: Vec<BlockDestructionObservation>,
@@ -205,6 +209,17 @@ pub struct BlockDestructionObservation {
     pub y: i32,
     pub z: i32,
     pub progress: u8,
+}
+
+/// Wire-level fields decoded from one clientbound add-entity packet.
+#[derive(Debug, Clone, PartialEq)]
+pub struct AddEntityObservation {
+    pub entity_id: i32,
+    pub entity_type_id: i32,
+    pub x: f64,
+    pub y: f64,
+    pub z: f64,
+    pub data: i32,
 }
 
 /// Structural fields decoded from one clientbound level-chunk-with-light packet.
@@ -415,6 +430,21 @@ pub fn connect_and_use_item_probe(
     connect_and_probe_with_mode(address, username, timeout, PlayProbeMode::UseItem)
 }
 
+/// Connect to a Java-protocol server, place a snowball stack in the creative hotbar,
+/// select it and use the main hand to spawn a projectile.
+pub fn connect_and_creative_snowball_use_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeMode::CreativeSnowballUse,
+    )
+}
+
 /// Connect to a Java-protocol server, place a stone stack in the creative hotbar,
 /// select it and request a side placement against the supporting block.
 pub fn connect_and_creative_place_probe(
@@ -459,6 +489,7 @@ enum PlayProbeMode {
     BlockBreakOutOfRange,
     UseItemOn,
     UseItem,
+    CreativeSnowballUse,
     CreativePlace,
     SurvivalBreakAbort,
     SurvivalBreakStop,
@@ -498,6 +529,9 @@ fn connect_and_probe_with_mode(
     let mut trace = PlayConnectionTrace::default();
     if matches!(probe_mode, PlayProbeMode::CreativePlace) {
         trace.stone_item_registry_id = Some(VANILLA_STONE_ITEM_REGISTRY_ID);
+    }
+    if matches!(probe_mode, PlayProbeMode::CreativeSnowballUse) {
+        trace.snowball_item_registry_id = Some(VANILLA_SNOWBALL_ITEM_REGISTRY_ID);
     }
 
     loop {
@@ -709,6 +743,11 @@ fn connect_and_probe_with_mode(
         });
 
         match packet_id {
+            PLAY_CLIENTBOUND_ADD_ENTITY_PACKET_ID => {
+                trace
+                    .add_entity_observations
+                    .push(parse_add_entity_packet(payload)?);
+            }
             PLAY_CLIENTBOUND_BLOCK_CHANGED_ACK_PACKET_ID => {
                 let mut input = payload;
                 let sequence = read_varint(&mut input, "block changed ack sequence")?;
@@ -966,6 +1005,39 @@ fn connect_and_probe_with_mode(
                 )?;
                 trace.use_item_packets_sent += 1;
             }
+            if matches!(probe_mode, PlayProbeMode::CreativeSnowballUse)
+                && trace.creative_mode_slot_packets_sent == 0
+            {
+                let Some(snowball_item_registry_id) = trace.snowball_item_registry_id else {
+                    return Err(ConnectionError::Codec(
+                        "creative snowball use item registry id",
+                    ));
+                };
+                send_packet(
+                    &mut stream,
+                    ConnectionProtocol::Play,
+                    PLAY_SERVERBOUND_SET_CREATIVE_MODE_SLOT_PACKET_ID,
+                    |output| encode_creative_item_slot(output, 36, 1, snowball_item_registry_id),
+                    compression_threshold,
+                )?;
+                trace.creative_mode_slot_packets_sent += 1;
+                send_packet(
+                    &mut stream,
+                    ConnectionProtocol::Play,
+                    PLAY_SERVERBOUND_SET_CARRIED_ITEM_PACKET_ID,
+                    |output| encode_set_carried_item(output, 0),
+                    compression_threshold,
+                )?;
+                trace.carried_item_packets_sent += 1;
+                send_packet(
+                    &mut stream,
+                    ConnectionProtocol::Play,
+                    PLAY_SERVERBOUND_USE_ITEM_PACKET_ID,
+                    |output| encode_use_item(output, 11, 0.0, 0.0),
+                    compression_threshold,
+                )?;
+                trace.use_item_packets_sent += 1;
+            }
             if matches!(probe_mode, PlayProbeMode::CreativePlace)
                 && trace.creative_mode_slot_packets_sent == 0
             {
@@ -1156,9 +1228,18 @@ fn encode_creative_stone_slot(
     slot: i16,
     stone_item_registry_id: i32,
 ) -> Result<(), ConnectionError> {
+    encode_creative_item_slot(output, slot, 1, stone_item_registry_id)
+}
+
+fn encode_creative_item_slot(
+    output: &mut Vec<u8>,
+    slot: i16,
+    count: i32,
+    item_registry_id: i32,
+) -> Result<(), ConnectionError> {
     output.extend_from_slice(&slot.to_be_bytes());
-    wire::write_varint(1, output);
-    wire::write_varint(stone_item_registry_id, output);
+    wire::write_varint(count, output);
+    wire::write_varint(item_registry_id, output);
     wire::write_varint(0, output);
     wire::write_varint(0, output);
     Ok(())
@@ -1415,6 +1496,54 @@ fn parse_block_destruction_packet(
         z: position.z,
         progress,
     })
+}
+
+fn parse_add_entity_packet(input: &[u8]) -> Result<AddEntityObservation, ConnectionError> {
+    let mut input = input;
+    let entity_id = read_varint(&mut input, "add entity id")?;
+    if input.len() < 16 {
+        return Err(ConnectionError::Codec("add entity uuid"));
+    }
+    input = &input[16..];
+    let entity_type_id = read_varint(&mut input, "add entity type")?;
+    let x = read_f64(&mut input, "add entity x")?;
+    let y = read_f64(&mut input, "add entity y")?;
+    let z = read_f64(&mut input, "add entity z")?;
+    skip_lp_vec3(&mut input)?;
+    for name in [
+        "add entity x rotation",
+        "add entity y rotation",
+        "add entity head rotation",
+    ] {
+        read_byte(&mut input, name)?;
+    }
+    let data = read_varint(&mut input, "add entity data")?;
+    if !input.is_empty() {
+        return Err(ConnectionError::Codec("add entity trailing payload"));
+    }
+    Ok(AddEntityObservation {
+        entity_id,
+        entity_type_id,
+        x,
+        y,
+        z,
+        data,
+    })
+}
+
+fn skip_lp_vec3(input: &mut &[u8]) -> Result<(), ConnectionError> {
+    let lowest = read_byte(input, "add entity movement marker")?;
+    if lowest == 0 {
+        return Ok(());
+    }
+    read_byte(input, "add entity movement middle")?;
+    for _ in 0..4 {
+        read_byte(input, "add entity movement high")?;
+    }
+    if lowest & 4 != 0 {
+        read_varint(input, "add entity movement scale")?;
+    }
+    Ok(())
 }
 
 fn parse_chunk_packet(mut input: &[u8]) -> Result<ChunkPacketObservation, ConnectionError> {
@@ -1842,10 +1971,10 @@ fn decode_palette_values(
 #[cfg(test)]
 mod tests {
     use super::{
-        PLAY_CLIENTBOUND_BLOCK_CHANGED_ACK_PACKET_ID, PLAY_CLIENTBOUND_BLOCK_DESTRUCTION_PACKET_ID,
-        PLAY_CLIENTBOUND_BLOCK_UPDATE_PACKET_ID, PLAY_CLIENTBOUND_CHUNK_PACKET_ID,
-        PLAY_CLIENTBOUND_KEEP_ALIVE_PACKET_ID, PLAY_CLIENTBOUND_LOGIN_PACKET_ID,
-        PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID,
+        PLAY_CLIENTBOUND_ADD_ENTITY_PACKET_ID, PLAY_CLIENTBOUND_BLOCK_CHANGED_ACK_PACKET_ID,
+        PLAY_CLIENTBOUND_BLOCK_DESTRUCTION_PACKET_ID, PLAY_CLIENTBOUND_BLOCK_UPDATE_PACKET_ID,
+        PLAY_CLIENTBOUND_CHUNK_PACKET_ID, PLAY_CLIENTBOUND_KEEP_ALIVE_PACKET_ID,
+        PLAY_CLIENTBOUND_LOGIN_PACKET_ID, PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID,
         PLAY_SERVERBOUND_ACCEPT_TELEPORTATION_PACKET_ID,
         PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID, PLAY_SERVERBOUND_KEEP_ALIVE_PACKET_ID,
         PLAY_SERVERBOUND_MOVE_PLAYER_POS_ROT_PACKET_ID, PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID,
@@ -1854,11 +1983,12 @@ mod tests {
         PLAY_SERVERBOUND_USE_ITEM_PACKET_ID, STATUS_CLIENTBOUND_PONG_RESPONSE_PACKET_ID,
         STATUS_CLIENTBOUND_RESPONSE_PACKET_ID, STATUS_SERVERBOUND_PING_REQUEST_PACKET_ID,
         STATUS_SERVERBOUND_REQUEST_PACKET_ID, decode_packet_frame, encode_abort_destroy_block,
-        encode_creative_stone_slot, encode_packet_frame, encode_set_carried_item,
-        encode_stop_destroy_block, encode_use_item, encode_use_item_on, encode_use_item_on_hit,
-        pack_block_position, parse_block_destruction_packet, parse_block_update_packet,
-        parse_chunk_packet, parse_player_position_packet, parse_section_data,
-        resolve_player_position, support_block_position,
+        encode_creative_item_slot, encode_creative_stone_slot, encode_packet_frame,
+        encode_set_carried_item, encode_stop_destroy_block, encode_use_item, encode_use_item_on,
+        encode_use_item_on_hit, pack_block_position, parse_add_entity_packet,
+        parse_block_destruction_packet, parse_block_update_packet, parse_chunk_packet,
+        parse_player_position_packet, parse_section_data, resolve_player_position,
+        support_block_position,
     };
 
     #[test]
@@ -1881,6 +2011,7 @@ mod tests {
 
     #[test]
     fn play_packet_ids_match_java_26_2_dispatch_order() {
+        assert_eq!(PLAY_CLIENTBOUND_ADD_ENTITY_PACKET_ID, 1);
         assert_eq!(PLAY_CLIENTBOUND_KEEP_ALIVE_PACKET_ID, 44);
         assert_eq!(PLAY_CLIENTBOUND_CHUNK_PACKET_ID, 45);
         assert_eq!(PLAY_CLIENTBOUND_LOGIN_PACKET_ID, 49);
@@ -2106,6 +2237,32 @@ mod tests {
     }
 
     #[test]
+    fn add_entity_parser_matches_java_spawn_field_order() {
+        let mut payload = Vec::new();
+        crate::wire::write_varint(37, &mut payload);
+        payload.extend_from_slice(&[0; 16]);
+        crate::wire::write_varint(120, &mut payload);
+        for value in [1.25_f64, 80.0, -35.5] {
+            payload.extend_from_slice(&value.to_be_bytes());
+        }
+        payload.push(0);
+        payload.extend_from_slice(&[0, 0, 0]);
+        crate::wire::write_varint(0, &mut payload);
+
+        assert_eq!(
+            parse_add_entity_packet(&payload).expect("add entity"),
+            super::AddEntityObservation {
+                entity_id: 37,
+                entity_type_id: 120,
+                x: 1.25,
+                y: 80.0,
+                z: -35.5,
+                data: 0,
+            }
+        );
+    }
+
+    #[test]
     fn block_break_target_uses_java_floor_coordinates() {
         assert_eq!(
             support_block_position((20.5, 64.0, -37.5, 0.0, 0.0)),
@@ -2151,6 +2308,30 @@ mod tests {
         assert_eq!(
             crate::wire::read_varint(&mut input).expect("item registry id"),
             1
+        );
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("positive components"),
+            0
+        );
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("negative components"),
+            0
+        );
+        assert!(input.is_empty());
+    }
+
+    #[test]
+    fn creative_item_slot_encoder_keeps_registry_id_and_empty_components() {
+        let mut payload = Vec::new();
+        encode_creative_item_slot(&mut payload, 36, 1, 1_044).expect("creative item slot");
+
+        let mut input = payload.as_slice();
+        assert_eq!(i16::from_be_bytes(input[..2].try_into().expect("slot")), 36);
+        input = &input[2..];
+        assert_eq!(crate::wire::read_varint(&mut input).expect("item count"), 1);
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("item registry id"),
+            1_044
         );
         assert_eq!(
             crate::wire::read_varint(&mut input).expect("positive components"),
