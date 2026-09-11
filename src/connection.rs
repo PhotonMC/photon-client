@@ -61,6 +61,8 @@ const PLAY_CLIENTBOUND_BLOCK_DESTRUCTION_PACKET_ID: i32 = 5;
 const PLAY_CLIENTBOUND_BLOCK_UPDATE_PACKET_ID: i32 = 8;
 const PLAY_CLIENTBOUND_CHUNK_BATCH_FINISHED_PACKET_ID: i32 = 11;
 const PLAY_CLIENTBOUND_CHUNK_BATCH_START_PACKET_ID: i32 = 12;
+const PLAY_CLIENTBOUND_CONTAINER_SET_CONTENT_PACKET_ID: i32 = 18;
+const PLAY_CLIENTBOUND_CONTAINER_SET_SLOT_PACKET_ID: i32 = 20;
 const PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID: i32 = 121;
 const PLAY_CLIENTBOUND_KEEP_ALIVE_PACKET_ID: i32 = 44;
 const PLAY_CLIENTBOUND_CHUNK_PACKET_ID: i32 = 45;
@@ -177,6 +179,8 @@ pub struct PlayConnectionTrace {
     pub stone_item_registry_id: Option<i32>,
     pub snowball_item_registry_id: Option<i32>,
     pub add_entity_observations: Vec<AddEntityObservation>,
+    pub container_content_observations: Vec<ContainerSetContentObservation>,
+    pub container_slot_observations: Vec<ContainerSetSlotObservation>,
     pub system_chat_observations: Vec<SystemChatObservation>,
     pub creative_place_target_update: Option<BlockUpdateObservation>,
     pub creative_place_neighbor_update: Option<BlockUpdateObservation>,
@@ -223,6 +227,28 @@ pub struct AddEntityObservation {
     pub y: f64,
     pub z: f64,
     pub data: i32,
+}
+
+/// Wire-level fields decoded from one clientbound container slot update.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ContainerSetSlotObservation {
+    pub container_id: i32,
+    pub state_id: i32,
+    pub slot: i16,
+    pub item_count: Option<i32>,
+    pub item_registry_id: Option<i32>,
+}
+
+/// Wire-level fields decoded from one clientbound container content update.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ContainerSetContentObservation {
+    pub container_id: i32,
+    pub state_id: i32,
+    pub item_count: usize,
+    pub hotbar_slot_zero_item_count: Option<i32>,
+    pub hotbar_slot_zero_item_registry_id: Option<i32>,
+    pub carried_item_count: Option<i32>,
+    pub carried_item_registry_id: Option<i32>,
 }
 
 /// Wire-level fields decoded from one clientbound system-chat packet.
@@ -455,6 +481,20 @@ pub fn connect_and_creative_snowball_use_probe(
     )
 }
 
+/// Connect to a Java-protocol server, select a supplied survival snowball stack and use it.
+pub fn connect_and_survival_snowball_use_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeMode::SurvivalSnowballUse,
+    )
+}
+
 /// Connect to a Java-protocol server, place a stone stack in the creative hotbar,
 /// select it and request a side placement against the supporting block.
 pub fn connect_and_creative_place_probe(
@@ -575,6 +615,7 @@ enum PlayProbeMode {
     UseItemOn,
     UseItem,
     CreativeSnowballUse,
+    SurvivalSnowballUse,
     CreativePlace,
     SurvivalBreakAbort,
     SurvivalBreakStop,
@@ -837,6 +878,16 @@ fn connect_and_probe_with_mode(
                 trace
                     .add_entity_observations
                     .push(parse_add_entity_packet(payload)?);
+            }
+            PLAY_CLIENTBOUND_CONTAINER_SET_CONTENT_PACKET_ID => {
+                trace
+                    .container_content_observations
+                    .push(parse_container_set_content_packet(payload)?);
+            }
+            PLAY_CLIENTBOUND_CONTAINER_SET_SLOT_PACKET_ID => {
+                trace
+                    .container_slot_observations
+                    .push(parse_container_set_slot_packet(payload)?);
             }
             PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID => {
                 trace
@@ -1191,6 +1242,27 @@ fn connect_and_probe_with_mode(
                     ConnectionProtocol::Play,
                     PLAY_SERVERBOUND_USE_ITEM_PACKET_ID,
                     |output| encode_use_item(output, 10, 0.0, 0.0),
+                    compression_threshold,
+                )?;
+                trace.use_item_packets_sent += 1;
+            }
+            if matches!(probe_mode, PlayProbeMode::SurvivalSnowballUse)
+                && trace.use_item_packets_sent == 0
+            {
+                std::thread::sleep(Duration::from_secs(12));
+                send_packet(
+                    &mut stream,
+                    ConnectionProtocol::Play,
+                    PLAY_SERVERBOUND_SET_CARRIED_ITEM_PACKET_ID,
+                    |output| encode_set_carried_item(output, 0),
+                    compression_threshold,
+                )?;
+                trace.carried_item_packets_sent += 1;
+                send_packet(
+                    &mut stream,
+                    ConnectionProtocol::Play,
+                    PLAY_SERVERBOUND_USE_ITEM_PACKET_ID,
+                    |output| encode_use_item(output, 22, 0.0, 0.0),
                     compression_threshold,
                 )?;
                 trace.use_item_packets_sent += 1;
@@ -1729,6 +1801,77 @@ fn parse_add_entity_packet(input: &[u8]) -> Result<AddEntityObservation, Connect
     })
 }
 
+fn parse_optional_item_stack(
+    input: &mut &[u8],
+    name: &'static str,
+) -> Result<(Option<i32>, Option<i32>), ConnectionError> {
+    let item_count = read_varint(input, name)?;
+    if item_count <= 0 {
+        return Ok((None, None));
+    }
+    let item_registry_id = read_varint(input, name)?;
+    let positive_components = read_varint(input, name)?;
+    let negative_components = read_varint(input, name)?;
+    if positive_components != 0 || negative_components != 0 {
+        return Err(ConnectionError::Codec(name));
+    }
+    Ok((Some(item_count), Some(item_registry_id)))
+}
+
+fn parse_container_set_content_packet(
+    input: &[u8],
+) -> Result<ContainerSetContentObservation, ConnectionError> {
+    let mut input = input;
+    let container_id = read_varint(&mut input, "container content container id")?;
+    let state_id = read_varint(&mut input, "container content state id")?;
+    let item_count = read_count(&mut input, "container content item count")?;
+    let mut hotbar_slot_zero_item_count = None;
+    let mut hotbar_slot_zero_item_registry_id = None;
+    for slot in 0..item_count {
+        let (item_count, item_registry_id) =
+            parse_optional_item_stack(&mut input, "container content item stack")?;
+        if slot == 36 {
+            hotbar_slot_zero_item_count = item_count;
+            hotbar_slot_zero_item_registry_id = item_registry_id;
+        }
+    }
+    let (carried_item_count, carried_item_registry_id) =
+        parse_optional_item_stack(&mut input, "container content carried item")?;
+    if !input.is_empty() {
+        return Err(ConnectionError::Codec("container content trailing payload"));
+    }
+    Ok(ContainerSetContentObservation {
+        container_id,
+        state_id,
+        item_count,
+        hotbar_slot_zero_item_count,
+        hotbar_slot_zero_item_registry_id,
+        carried_item_count,
+        carried_item_registry_id,
+    })
+}
+
+fn parse_container_set_slot_packet(
+    input: &[u8],
+) -> Result<ContainerSetSlotObservation, ConnectionError> {
+    let mut input = input;
+    let container_id = read_varint(&mut input, "container slot container id")?;
+    let state_id = read_varint(&mut input, "container slot state id")?;
+    let slot = read_i16(&mut input, "container slot index")?;
+    let (item_count, item_registry_id) =
+        parse_optional_item_stack(&mut input, "container slot item stack")?;
+    if !input.is_empty() {
+        return Err(ConnectionError::Codec("container slot trailing payload"));
+    }
+    Ok(ContainerSetSlotObservation {
+        container_id,
+        state_id,
+        slot,
+        item_count,
+        item_registry_id,
+    })
+}
+
 fn parse_system_chat_packet(input: &[u8]) -> Result<SystemChatObservation, ConnectionError> {
     let mut input = input;
     let component = crate::nbt::read_nbt(&mut input)
@@ -2197,7 +2340,8 @@ mod tests {
     use super::{
         PLAY_CLIENTBOUND_ADD_ENTITY_PACKET_ID, PLAY_CLIENTBOUND_BLOCK_CHANGED_ACK_PACKET_ID,
         PLAY_CLIENTBOUND_BLOCK_DESTRUCTION_PACKET_ID, PLAY_CLIENTBOUND_BLOCK_UPDATE_PACKET_ID,
-        PLAY_CLIENTBOUND_CHUNK_PACKET_ID, PLAY_CLIENTBOUND_KEEP_ALIVE_PACKET_ID,
+        PLAY_CLIENTBOUND_CHUNK_PACKET_ID, PLAY_CLIENTBOUND_CONTAINER_SET_CONTENT_PACKET_ID,
+        PLAY_CLIENTBOUND_CONTAINER_SET_SLOT_PACKET_ID, PLAY_CLIENTBOUND_KEEP_ALIVE_PACKET_ID,
         PLAY_CLIENTBOUND_LOGIN_PACKET_ID, PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID,
         PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID, PLAY_SERVERBOUND_ACCEPT_TELEPORTATION_PACKET_ID,
         PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID, PLAY_SERVERBOUND_KEEP_ALIVE_PACKET_ID,
@@ -2211,6 +2355,7 @@ mod tests {
         encode_set_carried_item, encode_stop_destroy_block, encode_use_item, encode_use_item_on,
         encode_use_item_on_hit, pack_block_position, parse_add_entity_packet,
         parse_block_destruction_packet, parse_block_update_packet, parse_chunk_packet,
+        parse_container_set_content_packet, parse_container_set_slot_packet,
         parse_player_position_packet, parse_section_data, parse_system_chat_packet,
         resolve_player_position, support_block_position,
     };
@@ -2243,6 +2388,8 @@ mod tests {
         assert_eq!(PLAY_CLIENTBOUND_BLOCK_UPDATE_PACKET_ID, 8);
         assert_eq!(PLAY_CLIENTBOUND_BLOCK_CHANGED_ACK_PACKET_ID, 4);
         assert_eq!(PLAY_CLIENTBOUND_BLOCK_DESTRUCTION_PACKET_ID, 5);
+        assert_eq!(PLAY_CLIENTBOUND_CONTAINER_SET_CONTENT_PACKET_ID, 18);
+        assert_eq!(PLAY_CLIENTBOUND_CONTAINER_SET_SLOT_PACKET_ID, 20);
         assert_eq!(PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID, 121);
         assert_eq!(PLAY_SERVERBOUND_ACCEPT_TELEPORTATION_PACKET_ID, 0);
         assert_eq!(PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID, 41);
@@ -2504,6 +2651,51 @@ mod tests {
             super::SystemChatObservation {
                 overlay: true,
                 translation_key: Some("build.spawn_protection".to_owned()),
+            }
+        );
+    }
+
+    #[test]
+    fn container_slot_parser_matches_empty_optional_item_stack() {
+        let mut payload = Vec::new();
+        crate::wire::write_varint(0, &mut payload);
+        crate::wire::write_varint(7, &mut payload);
+        payload.extend_from_slice(&36_i16.to_be_bytes());
+        crate::wire::write_varint(0, &mut payload);
+
+        assert_eq!(
+            parse_container_set_slot_packet(&payload).expect("container slot packet"),
+            super::ContainerSetSlotObservation {
+                container_id: 0,
+                state_id: 7,
+                slot: 36,
+                item_count: None,
+                item_registry_id: None,
+            }
+        );
+    }
+
+    #[test]
+    fn container_content_parser_matches_empty_hotbar_stack() {
+        let mut payload = Vec::new();
+        crate::wire::write_varint(0, &mut payload);
+        crate::wire::write_varint(9, &mut payload);
+        crate::wire::write_varint(37, &mut payload);
+        for _ in 0..37 {
+            crate::wire::write_varint(0, &mut payload);
+        }
+        crate::wire::write_varint(0, &mut payload);
+
+        assert_eq!(
+            parse_container_set_content_packet(&payload).expect("container content packet"),
+            super::ContainerSetContentObservation {
+                container_id: 0,
+                state_id: 9,
+                item_count: 37,
+                hotbar_slot_zero_item_count: None,
+                hotbar_slot_zero_item_registry_id: None,
+                carried_item_count: None,
+                carried_item_registry_id: None,
             }
         );
     }
