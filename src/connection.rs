@@ -732,6 +732,21 @@ pub fn connect_and_survival_inventory_throw_one_state_correction_probe(
     )
 }
 
+/// Connect to a Java-protocol server, throw an entire supplied survival
+/// inventory stack with a stale container state id, and observe the full resync.
+pub fn connect_and_survival_inventory_throw_all_state_correction_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeMode::SurvivalInventoryThrowAllStateCorrection,
+    )
+}
+
 /// Connect to a Java-protocol server, shift-click a supplied survival inventory
 /// stack with a stale container state id, and observe the authoritative full resync.
 pub fn connect_and_survival_inventory_quick_move_state_correction_probe(
@@ -926,6 +941,7 @@ enum PlayProbeMode {
     SurvivalInventoryPickupStateCorrection,
     SurvivalInventorySecondaryPickupStateCorrection,
     SurvivalInventoryThrowOneStateCorrection,
+    SurvivalInventoryThrowAllStateCorrection,
     SurvivalInventoryQuickMoveStateCorrection,
     SurvivalInventorySwapStateCorrection,
     CreativePlace,
@@ -1921,6 +1937,22 @@ fn connect_and_probe_with_mode(
             }
             if matches!(
                 probe_mode,
+                PlayProbeMode::SurvivalInventoryThrowAllStateCorrection
+            ) && trace.container_click_packets_sent == 0
+            {
+                std::thread::sleep(Duration::from_secs(30));
+                send_packet(
+                    &mut stream,
+                    ConnectionProtocol::Play,
+                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
+                    |output| encode_inventory_throw_all_state_correction(output, 0),
+                    compression_threshold,
+                )?;
+                trace.container_click_packets_sent += 1;
+                trace.container_click_state_id_sent = Some(0);
+            }
+            if matches!(
+                probe_mode,
                 PlayProbeMode::SurvivalInventoryQuickMoveStateCorrection
             ) && trace.container_click_packets_sent == 0
             {
@@ -2043,6 +2075,7 @@ fn connect_and_probe_with_mode(
                     CONSUMABLE_DRAIN_TIMEOUT
                 }
                 PlayProbeMode::SurvivalInventoryThrowOneStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
+                PlayProbeMode::SurvivalInventoryThrowAllStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
                 PlayProbeMode::SurvivalInventoryQuickMoveStateCorrection => {
                     CONSUMABLE_DRAIN_TIMEOUT
                 }
@@ -2069,6 +2102,7 @@ fn connect_and_probe_with_mode(
                 CONSUMABLE_DRAIN_TIMEOUT
             }
             PlayProbeMode::SurvivalInventoryThrowOneStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
+            PlayProbeMode::SurvivalInventoryThrowAllStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
             PlayProbeMode::SurvivalInventoryQuickMoveStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
             PlayProbeMode::SurvivalInventorySwapStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
             _ => WORLD_READY_DRAIN_TIMEOUT,
@@ -2272,6 +2306,20 @@ fn encode_inventory_throw_one_state_correction(
     wire::write_varint(state_id, output);
     output.extend_from_slice(&36_i16.to_be_bytes());
     output.push(0);
+    wire::write_varint(4, output);
+    wire::write_varint(0, output);
+    output.push(0);
+    Ok(())
+}
+
+fn encode_inventory_throw_all_state_correction(
+    output: &mut Vec<u8>,
+    state_id: i32,
+) -> Result<(), ConnectionError> {
+    wire::write_varint(0, output);
+    wire::write_varint(state_id, output);
+    output.extend_from_slice(&36_i16.to_be_bytes());
+    output.push(1);
     wire::write_varint(4, output);
     wire::write_varint(0, output);
     output.push(0);
@@ -3304,14 +3352,14 @@ mod tests {
         encode_creative_item_slot, encode_creative_stone_slot,
         encode_inventory_pickup_state_correction, encode_inventory_quick_move_state_correction,
         encode_inventory_secondary_pickup_state_correction, encode_inventory_swap_state_correction,
-        encode_inventory_throw_one_state_correction, encode_packet_frame, encode_release_use_item,
-        encode_set_carried_item, encode_stop_destroy_block, encode_use_item, encode_use_item_on,
-        encode_use_item_on_hit, pack_block_position, parse_add_entity_packet,
-        parse_block_destruction_packet, parse_block_update_packet, parse_chunk_packet,
-        parse_container_set_content_packet, parse_container_set_slot_packet,
-        parse_player_position_packet, parse_remove_mob_effect_packet, parse_section_data,
-        parse_system_chat_packet, parse_update_mob_effect_packet, resolve_player_position,
-        support_block_position,
+        encode_inventory_throw_all_state_correction, encode_inventory_throw_one_state_correction,
+        encode_packet_frame, encode_release_use_item, encode_set_carried_item,
+        encode_stop_destroy_block, encode_use_item, encode_use_item_on, encode_use_item_on_hit,
+        pack_block_position, parse_add_entity_packet, parse_block_destruction_packet,
+        parse_block_update_packet, parse_chunk_packet, parse_container_set_content_packet,
+        parse_container_set_slot_packet, parse_player_position_packet,
+        parse_remove_mob_effect_packet, parse_section_data, parse_system_chat_packet,
+        parse_update_mob_effect_packet, resolve_player_position, support_block_position,
     };
 
     #[test]
@@ -4023,6 +4071,33 @@ mod tests {
         assert_eq!(i16::from_be_bytes(input[..2].try_into().expect("slot")), 36);
         input = &input[2..];
         assert_eq!(input[0], 0);
+        input = &input[1..];
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("container input"),
+            4
+        );
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("changed slot count"),
+            0
+        );
+        assert_eq!(input, [0]);
+    }
+
+    #[test]
+    fn inventory_throw_all_encoder_keeps_secondary_throw_button() {
+        let mut payload = Vec::new();
+        encode_inventory_throw_all_state_correction(&mut payload, 0)
+            .expect("inventory throw-all packet");
+
+        let mut input = payload.as_slice();
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("container id"),
+            0
+        );
+        assert_eq!(crate::wire::read_varint(&mut input).expect("state id"), 0);
+        assert_eq!(i16::from_be_bytes(input[..2].try_into().expect("slot")), 36);
+        input = &input[2..];
+        assert_eq!(input[0], 1);
         input = &input[1..];
         assert_eq!(
             crate::wire::read_varint(&mut input).expect("container input"),
