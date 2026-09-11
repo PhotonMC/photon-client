@@ -480,6 +480,21 @@ pub fn connect_and_survival_break_stop_probe(
     connect_and_probe_with_mode(address, username, timeout, PlayProbeMode::SurvivalBreakStop)
 }
 
+/// Connect to a Java-protocol server, start breaking the supporting stone block in survival
+/// mode and stop before the bare-hand hardness threshold is reached.
+pub fn connect_and_survival_stone_break_stop_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeMode::SurvivalStoneBreakStop,
+    )
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum PlayProbeMode {
     Basic,
@@ -493,6 +508,7 @@ enum PlayProbeMode {
     CreativePlace,
     SurvivalBreakAbort,
     SurvivalBreakStop,
+    SurvivalStoneBreakStop,
 }
 
 fn connect_and_probe_with_mode(
@@ -953,8 +969,10 @@ fn connect_and_probe_with_mode(
                 )?;
                 trace.player_action_packets_sent += 1;
             }
-            if matches!(probe_mode, PlayProbeMode::SurvivalBreakStop)
-                && trace.player_action_packets_sent == 0
+            if matches!(
+                probe_mode,
+                PlayProbeMode::SurvivalBreakStop | PlayProbeMode::SurvivalStoneBreakStop
+            ) && trace.player_action_packets_sent == 0
             {
                 let Some(position) = player_position else {
                     return Err(ConnectionError::Codec(
@@ -962,11 +980,17 @@ fn connect_and_probe_with_mode(
                     ));
                 };
                 let target = support_block_position(position);
+                let (start_sequence, stop_sequence) =
+                    if matches!(probe_mode, PlayProbeMode::SurvivalStoneBreakStop) {
+                        (12, 13)
+                    } else {
+                        (8, 9)
+                    };
                 send_packet(
                     &mut stream,
                     ConnectionProtocol::Play,
                     PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID,
-                    |output| encode_start_destroy_block(output, target, 8),
+                    |output| encode_start_destroy_block(output, target, start_sequence),
                     compression_threshold,
                 )?;
                 trace.player_action_packets_sent += 1;
@@ -975,7 +999,7 @@ fn connect_and_probe_with_mode(
                     &mut stream,
                     ConnectionProtocol::Play,
                     PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID,
-                    |output| encode_stop_destroy_block(output, target, 9),
+                    |output| encode_stop_destroy_block(output, target, stop_sequence),
                     compression_threshold,
                 )?;
                 trace.player_action_packets_sent += 1;
