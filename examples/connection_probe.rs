@@ -42,6 +42,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             chunk.sky_update_count,
             chunk.block_update_count,
         );
+        println!(
+            "first_chunk_section_count={}",
+            chunk.section_observations.len()
+        );
+        if let Some(section) = chunk.section_observations.first() {
+            println!(
+                "first_section=non_empty:{},fluid:{},block_bits:{},block_palette:{},block_words:{},biome_bits:{},biome_palette:{},biome_words:{}",
+                section.non_empty_block_count,
+                section.fluid_count,
+                section.block_state_bits_per_entry,
+                section.block_state_palette_entry_count,
+                section.block_state_storage_word_count,
+                section.biome_bits_per_entry,
+                section.biome_palette_entry_count,
+                section.biome_storage_word_count,
+            );
+        }
     }
     println!(
         "chunk_batch_finished_count={}",
