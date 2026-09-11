@@ -120,6 +120,8 @@ Rust uygulama girişi henüz oynanabilir istemci değildir. İlk gerçek vanilla
 - [Vanilla survival inventory minimum attack charge component correct prediction doğrulaması](docs/vanilla-survival-inventory-minimum-attack-charge-component-correct-prediction-parity.md)
 - [Survival inventory repair cost component correct prediction sözleşmesi](docs/survival-inventory-repair-cost-component-correct-prediction-contract.md)
 - [Vanilla survival inventory repair cost component correct prediction doğrulaması](docs/vanilla-survival-inventory-repair-cost-component-correct-prediction-parity.md)
+- [Survival inventory enchantment glint override component correct prediction sözleşmesi](docs/survival-inventory-enchantment-glint-override-component-correct-prediction-contract.md)
+- [Vanilla survival inventory enchantment glint override component correct prediction doğrulaması](docs/vanilla-survival-inventory-enchantment-glint-override-component-correct-prediction-parity.md)
 - [Survival inventory quick-move state-id correction sözleşmesi](docs/survival-inventory-quick-move-state-correction-contract.md)
 - [Vanilla survival inventory quick-move state-id correction doğrulaması](docs/vanilla-survival-inventory-quick-move-state-correction-parity.md)
 - [Survival inventory swap state-id correction sözleşmesi](docs/survival-inventory-swap-state-correction-contract.md)
