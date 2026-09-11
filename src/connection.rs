@@ -69,7 +69,13 @@ const PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID: i32 = 11;
 const PLAY_SERVERBOUND_KEEP_ALIVE_PACKET_ID: i32 = 28;
 const PLAY_SERVERBOUND_MOVE_PLAYER_POS_ROT_PACKET_ID: i32 = 31;
 const PLAY_SERVERBOUND_PLAYER_LOADED_PACKET_ID: i32 = 44;
+const PLAY_SERVERBOUND_SET_CARRIED_ITEM_PACKET_ID: i32 = 53;
+const PLAY_SERVERBOUND_SET_CREATIVE_MODE_SLOT_PACKET_ID: i32 = 56;
 const PLAY_SERVERBOUND_USE_ITEM_ON_PACKET_ID: i32 = 66;
+
+// The pinned vanilla built-in item registry is not sent in configuration registry data.
+// Items.java registers AIR before STONE, so STONE has id 1 in BuiltInRegistries.ITEM.
+const VANILLA_STONE_ITEM_REGISTRY_ID: i32 = 1;
 
 const PLAYER_RELATIVE_X_FLAG: i32 = 1 << 0;
 const PLAYER_RELATIVE_Y_FLAG: i32 = 1 << 1;
@@ -159,6 +165,11 @@ pub struct PlayConnectionTrace {
     pub movement_packets_sent: usize,
     pub player_action_packets_sent: usize,
     pub use_item_on_packets_sent: usize,
+    pub creative_mode_slot_packets_sent: usize,
+    pub carried_item_packets_sent: usize,
+    pub stone_item_registry_id: Option<i32>,
+    pub creative_place_target_update: Option<BlockUpdateObservation>,
+    pub creative_place_neighbor_update: Option<BlockUpdateObservation>,
     pub block_changed_ack_sequences: Vec<i32>,
     pub block_update_observations: Vec<BlockUpdateObservation>,
     pub chunk_packet_count: usize,
@@ -381,6 +392,16 @@ pub fn connect_and_use_item_on_probe(
     connect_and_probe_with_mode(address, username, timeout, PlayProbeMode::UseItemOn)
 }
 
+/// Connect to a Java-protocol server, place a stone stack in the creative hotbar,
+/// select it and request a side placement against the supporting block.
+pub fn connect_and_creative_place_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(address, username, timeout, PlayProbeMode::CreativePlace)
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum PlayProbeMode {
     Basic,
@@ -389,6 +410,7 @@ enum PlayProbeMode {
     BlockBreak,
     BlockBreakOutOfRange,
     UseItemOn,
+    CreativePlace,
 }
 
 fn connect_and_probe_with_mode(
@@ -423,6 +445,9 @@ fn connect_and_probe_with_mode(
     let started = Instant::now();
     let mut compression_threshold = None;
     let mut trace = PlayConnectionTrace::default();
+    if matches!(probe_mode, PlayProbeMode::CreativePlace) {
+        trace.stone_item_registry_id = Some(VANILLA_STONE_ITEM_REGISTRY_ID);
+    }
 
     loop {
         let body = read_packet(&mut stream, compression_threshold)?;
@@ -608,6 +633,8 @@ fn connect_and_probe_with_mode(
     let mut chunk_batch_started = false;
     let mut player_loaded_sent = false;
     let mut player_position = None;
+    let mut creative_place_target_position = None;
+    let mut creative_place_neighbor_position = None;
     let mut world_ready_drain_started = None;
     while play_started.elapsed() <= timeout {
         let body = match read_packet(&mut stream, compression_threshold) {
@@ -640,9 +667,18 @@ fn connect_and_probe_with_mode(
                 trace.block_changed_ack_sequences.push(sequence);
             }
             PLAY_CLIENTBOUND_BLOCK_UPDATE_PACKET_ID => {
-                trace
-                    .block_update_observations
-                    .push(parse_block_update_packet(payload)?);
+                let observation = parse_block_update_packet(payload)?;
+                if creative_place_target_position.is_some_and(|position| {
+                    position == (observation.x, observation.y, observation.z)
+                }) {
+                    trace.creative_place_target_update = Some(observation.clone());
+                }
+                if creative_place_neighbor_position.is_some_and(|position| {
+                    position == (observation.x, observation.y, observation.z)
+                }) {
+                    trace.creative_place_neighbor_update = Some(observation.clone());
+                }
+                trace.block_update_observations.push(observation);
             }
             PLAY_CLIENTBOUND_CHUNK_BATCH_START_PACKET_ID => {
                 chunk_batch_started = true;
@@ -811,6 +847,48 @@ fn connect_and_probe_with_mode(
                 )?;
                 trace.use_item_on_packets_sent += 1;
             }
+            if matches!(probe_mode, PlayProbeMode::CreativePlace)
+                && trace.creative_mode_slot_packets_sent == 0
+            {
+                let Some(position) = player_position else {
+                    return Err(ConnectionError::Codec(
+                        "creative place probe player position",
+                    ));
+                };
+                let Some(stone_item_registry_id) = trace.stone_item_registry_id else {
+                    return Err(ConnectionError::Codec(
+                        "creative place stone item registry id",
+                    ));
+                };
+                send_packet(
+                    &mut stream,
+                    ConnectionProtocol::Play,
+                    PLAY_SERVERBOUND_SET_CREATIVE_MODE_SLOT_PACKET_ID,
+                    |output| encode_creative_stone_slot(output, 36, stone_item_registry_id),
+                    compression_threshold,
+                )?;
+                trace.creative_mode_slot_packets_sent += 1;
+                send_packet(
+                    &mut stream,
+                    ConnectionProtocol::Play,
+                    PLAY_SERVERBOUND_SET_CARRIED_ITEM_PACKET_ID,
+                    |output| encode_set_carried_item(output, 0),
+                    compression_threshold,
+                )?;
+                trace.carried_item_packets_sent += 1;
+
+                let target = support_block_position(position);
+                creative_place_target_position = Some(target);
+                creative_place_neighbor_position = Some((target.0, target.1, target.2 - 1));
+                send_packet(
+                    &mut stream,
+                    ConnectionProtocol::Play,
+                    PLAY_SERVERBOUND_USE_ITEM_ON_PACKET_ID,
+                    |output| encode_use_item_on_hit(output, target, 2, (0.5, 0.5, 0.0), 5),
+                    compression_threshold,
+                )?;
+                trace.use_item_on_packets_sent += 1;
+            }
             world_ready_drain_started = Some(Instant::now());
             stream.set_read_timeout(Some(WORLD_READY_DRAIN_TIMEOUT))?;
         }
@@ -911,15 +989,43 @@ fn encode_use_item_on(
     position: (i32, i32, i32),
     sequence: i32,
 ) -> Result<(), ConnectionError> {
+    encode_use_item_on_hit(output, position, 1, (0.5, 1.0, 0.5), sequence)
+}
+
+fn encode_use_item_on_hit(
+    output: &mut Vec<u8>,
+    position: (i32, i32, i32),
+    direction: u8,
+    click: (f32, f32, f32),
+    sequence: i32,
+) -> Result<(), ConnectionError> {
     wire::write_varint(0, output);
     output.extend_from_slice(&pack_block_position(position).to_be_bytes());
-    wire::write_varint(1, output);
-    output.extend_from_slice(&0.5_f32.to_be_bytes());
-    output.extend_from_slice(&1.0_f32.to_be_bytes());
-    output.extend_from_slice(&0.5_f32.to_be_bytes());
+    wire::write_varint(i32::from(direction), output);
+    output.extend_from_slice(&click.0.to_be_bytes());
+    output.extend_from_slice(&click.1.to_be_bytes());
+    output.extend_from_slice(&click.2.to_be_bytes());
     output.push(0);
     output.push(0);
     wire::write_varint(sequence, output);
+    Ok(())
+}
+
+fn encode_creative_stone_slot(
+    output: &mut Vec<u8>,
+    slot: i16,
+    stone_item_registry_id: i32,
+) -> Result<(), ConnectionError> {
+    output.extend_from_slice(&slot.to_be_bytes());
+    wire::write_varint(1, output);
+    wire::write_varint(stone_item_registry_id, output);
+    wire::write_varint(0, output);
+    wire::write_varint(0, output);
+    Ok(())
+}
+
+fn encode_set_carried_item(output: &mut Vec<u8>, slot: i16) -> Result<(), ConnectionError> {
+    output.extend_from_slice(&slot.to_be_bytes());
     Ok(())
 }
 
@@ -1574,10 +1680,12 @@ mod tests {
         PLAY_SERVERBOUND_ACCEPT_TELEPORTATION_PACKET_ID,
         PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID, PLAY_SERVERBOUND_KEEP_ALIVE_PACKET_ID,
         PLAY_SERVERBOUND_MOVE_PLAYER_POS_ROT_PACKET_ID, PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID,
-        PLAY_SERVERBOUND_PLAYER_LOADED_PACKET_ID, PLAY_SERVERBOUND_USE_ITEM_ON_PACKET_ID,
+        PLAY_SERVERBOUND_PLAYER_LOADED_PACKET_ID, PLAY_SERVERBOUND_SET_CARRIED_ITEM_PACKET_ID,
+        PLAY_SERVERBOUND_SET_CREATIVE_MODE_SLOT_PACKET_ID, PLAY_SERVERBOUND_USE_ITEM_ON_PACKET_ID,
         STATUS_CLIENTBOUND_PONG_RESPONSE_PACKET_ID, STATUS_CLIENTBOUND_RESPONSE_PACKET_ID,
         STATUS_SERVERBOUND_PING_REQUEST_PACKET_ID, STATUS_SERVERBOUND_REQUEST_PACKET_ID,
-        decode_packet_frame, encode_abort_destroy_block, encode_packet_frame, encode_use_item_on,
+        decode_packet_frame, encode_abort_destroy_block, encode_creative_stone_slot,
+        encode_packet_frame, encode_set_carried_item, encode_use_item_on, encode_use_item_on_hit,
         pack_block_position, parse_block_update_packet, parse_chunk_packet,
         parse_player_position_packet, parse_section_data, resolve_player_position,
         support_block_position,
@@ -1615,6 +1723,8 @@ mod tests {
         assert_eq!(PLAY_SERVERBOUND_KEEP_ALIVE_PACKET_ID, 28);
         assert_eq!(PLAY_SERVERBOUND_MOVE_PLAYER_POS_ROT_PACKET_ID, 31);
         assert_eq!(PLAY_SERVERBOUND_PLAYER_LOADED_PACKET_ID, 44);
+        assert_eq!(PLAY_SERVERBOUND_SET_CARRIED_ITEM_PACKET_ID, 53);
+        assert_eq!(PLAY_SERVERBOUND_SET_CREATIVE_MODE_SLOT_PACKET_ID, 56);
         assert_eq!(PLAY_SERVERBOUND_USE_ITEM_ON_PACKET_ID, 66);
     }
 
@@ -1820,6 +1930,61 @@ mod tests {
         assert_eq!(input[13], 0);
         input = &input[14..];
         assert_eq!(crate::wire::read_varint(&mut input).expect("sequence"), 4);
+        assert!(input.is_empty());
+    }
+
+    #[test]
+    fn creative_stone_slot_encoder_matches_java_optional_item_stack() {
+        let mut payload = Vec::new();
+        encode_creative_stone_slot(&mut payload, 36, 1).expect("creative slot packet");
+
+        let mut input = payload.as_slice();
+        let (slot, rest) = input.split_at(2);
+        input = rest;
+        assert_eq!(i16::from_be_bytes(slot.try_into().expect("slot")), 36);
+        assert_eq!(crate::wire::read_varint(&mut input).expect("item count"), 1);
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("item registry id"),
+            1
+        );
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("positive components"),
+            0
+        );
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("negative components"),
+            0
+        );
+        assert!(input.is_empty());
+    }
+
+    #[test]
+    fn carried_item_encoder_matches_java_short_slot() {
+        let mut payload = Vec::new();
+        encode_set_carried_item(&mut payload, 0).expect("carried item packet");
+        assert_eq!(payload, [0, 0]);
+    }
+
+    #[test]
+    fn side_use_item_on_encoder_keeps_click_position_and_face() {
+        let mut payload = Vec::new();
+        encode_use_item_on_hit(&mut payload, (2, 70, -4), 2, (0.5, 0.5, 0.0), 5)
+            .expect("side use item on packet");
+
+        let mut input = payload.as_slice();
+        assert_eq!(crate::wire::read_varint(&mut input).expect("hand"), 0);
+        input = &input[8..];
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("north direction"),
+            2
+        );
+        assert_eq!(&input[0..4], &0.5_f32.to_be_bytes());
+        assert_eq!(&input[4..8], &0.5_f32.to_be_bytes());
+        assert_eq!(&input[8..12], &0.0_f32.to_be_bytes());
+        assert_eq!(input[12], 0);
+        assert_eq!(input[13], 0);
+        input = &input[14..];
+        assert_eq!(crate::wire::read_varint(&mut input).expect("sequence"), 5);
         assert!(input.is_empty());
     }
 
