@@ -36,6 +36,8 @@ Rust uygulama girişi henüz oynanabilir istemci değildir. İlk gerçek vanilla
 - [Vanilla menzil dışı blok kırma doğrulaması](docs/vanilla-block-break-rejection-parity.md)
 - [Boş elle use item on sözleşmesi](docs/use-item-on-contract.md)
 - [Vanilla boş elle use item on doğrulaması](docs/vanilla-use-item-on-parity.md)
+- [Boş elle use item sözleşmesi](docs/use-item-contract.md)
+- [Vanilla boş elle use item doğrulaması](docs/vanilla-use-item-parity.md)
 - [Yaratıcı item stack placement sözleşmesi](docs/creative-placement-contract.md)
 - [Vanilla yaratıcı item stack placement doğrulaması](docs/vanilla-creative-placement-parity.md)
 - [Survival block-break abort sözleşmesi](docs/survival-break-abort-contract.md)
