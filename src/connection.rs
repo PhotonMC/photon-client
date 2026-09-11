@@ -637,6 +637,20 @@ pub fn connect_and_survival_pufferfish_use_probe(
     )
 }
 
+/// Connect to a Java-protocol server, consume a survival golden apple, and observe its effects.
+pub fn connect_and_survival_golden_apple_use_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeMode::SurvivalGoldenAppleUse,
+    )
+}
+
 /// Connect to a Java-protocol server, place a stone stack in the creative hotbar,
 /// select it and request a side placement against the supporting block.
 pub fn connect_and_creative_place_probe(
@@ -795,6 +809,7 @@ enum PlayProbeMode {
     SurvivalHoneyBottlePoisonCleanup,
     SurvivalHoneyBottleEarlyRelease,
     SurvivalPufferfishUse,
+    SurvivalGoldenAppleUse,
     CreativePlace,
     SurvivalBreakAbort,
     SurvivalBreakStop,
@@ -1710,8 +1725,13 @@ fn connect_and_probe_with_mode(
                 )?;
                 trace.player_action_packets_sent += 1;
             }
-            if matches!(probe_mode, PlayProbeMode::SurvivalPufferfishUse)
-                && trace.use_item_packets_sent == 0
+            let consumable_use_sequence = match probe_mode {
+                PlayProbeMode::SurvivalPufferfishUse => Some(35),
+                PlayProbeMode::SurvivalGoldenAppleUse => Some(36),
+                _ => None,
+            };
+            if let Some(sequence) =
+                consumable_use_sequence.filter(|_| trace.use_item_packets_sent == 0)
             {
                 std::thread::sleep(Duration::from_secs(20));
                 send_packet(
@@ -1726,7 +1746,7 @@ fn connect_and_probe_with_mode(
                     &mut stream,
                     ConnectionProtocol::Play,
                     PLAY_SERVERBOUND_USE_ITEM_PACKET_ID,
-                    |output| encode_use_item(output, 35, 0.0, 0.0),
+                    move |output| encode_use_item(output, sequence, 0.0, 0.0),
                     compression_threshold,
                 )?;
                 trace.use_item_packets_sent += 1;
@@ -1814,7 +1834,9 @@ fn connect_and_probe_with_mode(
                 PlayProbeMode::SurvivalMilkBucketUse => CONSUMABLE_DRAIN_TIMEOUT,
                 PlayProbeMode::SurvivalHoneyBottleUse => CONSUMABLE_DRAIN_TIMEOUT,
                 PlayProbeMode::SurvivalHoneyBottlePoisonCleanup => CONSUMABLE_DRAIN_TIMEOUT,
-                PlayProbeMode::SurvivalPufferfishUse => CONSUMABLE_DRAIN_TIMEOUT,
+                PlayProbeMode::SurvivalPufferfishUse | PlayProbeMode::SurvivalGoldenAppleUse => {
+                    CONSUMABLE_DRAIN_TIMEOUT
+                }
                 _ => WORLD_READY_DRAIN_TIMEOUT,
             };
             stream.set_read_timeout(Some(drain_timeout))?;
@@ -1828,7 +1850,9 @@ fn connect_and_probe_with_mode(
             PlayProbeMode::SurvivalMilkBucketUse => CONSUMABLE_DRAIN_TIMEOUT,
             PlayProbeMode::SurvivalHoneyBottleUse => CONSUMABLE_DRAIN_TIMEOUT,
             PlayProbeMode::SurvivalHoneyBottlePoisonCleanup => CONSUMABLE_DRAIN_TIMEOUT,
-            PlayProbeMode::SurvivalPufferfishUse => CONSUMABLE_DRAIN_TIMEOUT,
+            PlayProbeMode::SurvivalPufferfishUse | PlayProbeMode::SurvivalGoldenAppleUse => {
+                CONSUMABLE_DRAIN_TIMEOUT
+            }
             _ => WORLD_READY_DRAIN_TIMEOUT,
         };
         if world_ready_drain_started.is_some_and(|started| started.elapsed() >= drain_timeout) {
