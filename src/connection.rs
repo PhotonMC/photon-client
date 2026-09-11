@@ -268,6 +268,10 @@ pub struct ContainerSetContentObservation {
     pub hotbar_slot_zero_item_registry_id: Option<i32>,
     pub hotbar_slot_zero_positive_component_type_ids: Vec<i32>,
     pub hotbar_slot_zero_negative_component_type_ids: Vec<i32>,
+    pub main_inventory_slot_zero_item_count: Option<i32>,
+    pub main_inventory_slot_zero_item_registry_id: Option<i32>,
+    pub main_inventory_slot_zero_positive_component_type_ids: Vec<i32>,
+    pub main_inventory_slot_zero_negative_component_type_ids: Vec<i32>,
     pub carried_item_count: Option<i32>,
     pub carried_item_registry_id: Option<i32>,
     pub carried_positive_component_type_ids: Vec<i32>,
@@ -698,6 +702,21 @@ pub fn connect_and_survival_inventory_pickup_state_correction_probe(
     )
 }
 
+/// Connect to a Java-protocol server, shift-click a supplied survival inventory
+/// stack with a stale container state id, and observe the authoritative full resync.
+pub fn connect_and_survival_inventory_quick_move_state_correction_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeMode::SurvivalInventoryQuickMoveStateCorrection,
+    )
+}
+
 /// Connect to a Java-protocol server, place a stone stack in the creative hotbar,
 /// select it and request a side placement against the supporting block.
 pub fn connect_and_creative_place_probe(
@@ -860,6 +879,7 @@ enum PlayProbeMode {
     SurvivalGoldenAppleUse,
     SurvivalEnchantedGoldenAppleUse,
     SurvivalInventoryPickupStateCorrection,
+    SurvivalInventoryQuickMoveStateCorrection,
     CreativePlace,
     SurvivalBreakAbort,
     SurvivalBreakStop,
@@ -1819,6 +1839,22 @@ fn connect_and_probe_with_mode(
                 trace.container_click_packets_sent += 1;
                 trace.container_click_state_id_sent = Some(0);
             }
+            if matches!(
+                probe_mode,
+                PlayProbeMode::SurvivalInventoryQuickMoveStateCorrection
+            ) && trace.container_click_packets_sent == 0
+            {
+                std::thread::sleep(Duration::from_secs(12));
+                send_packet(
+                    &mut stream,
+                    ConnectionProtocol::Play,
+                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
+                    |output| encode_inventory_quick_move_state_correction(output, 0),
+                    compression_threshold,
+                )?;
+                trace.container_click_packets_sent += 1;
+                trace.container_click_state_id_sent = Some(0);
+            }
             if matches!(probe_mode, PlayProbeMode::CreativeSnowballUse)
                 && trace.creative_mode_slot_packets_sent == 0
             {
@@ -1907,6 +1943,9 @@ fn connect_and_probe_with_mode(
                 | PlayProbeMode::SurvivalGoldenAppleUse
                 | PlayProbeMode::SurvivalEnchantedGoldenAppleUse => CONSUMABLE_DRAIN_TIMEOUT,
                 PlayProbeMode::SurvivalInventoryPickupStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
+                PlayProbeMode::SurvivalInventoryQuickMoveStateCorrection => {
+                    CONSUMABLE_DRAIN_TIMEOUT
+                }
                 _ => WORLD_READY_DRAIN_TIMEOUT,
             };
             stream.set_read_timeout(Some(drain_timeout))?;
@@ -1925,6 +1964,7 @@ fn connect_and_probe_with_mode(
             | PlayProbeMode::SurvivalGoldenAppleUse
             | PlayProbeMode::SurvivalEnchantedGoldenAppleUse => CONSUMABLE_DRAIN_TIMEOUT,
             PlayProbeMode::SurvivalInventoryPickupStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
+            PlayProbeMode::SurvivalInventoryQuickMoveStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
             _ => WORLD_READY_DRAIN_TIMEOUT,
         };
         if world_ready_drain_started.is_some_and(|started| started.elapsed() >= drain_timeout) {
@@ -2099,6 +2139,20 @@ fn encode_inventory_pickup_state_correction(
     output.extend_from_slice(&36_i16.to_be_bytes());
     output.push(0);
     wire::write_varint(0, output);
+    wire::write_varint(0, output);
+    output.push(0);
+    Ok(())
+}
+
+fn encode_inventory_quick_move_state_correction(
+    output: &mut Vec<u8>,
+    state_id: i32,
+) -> Result<(), ConnectionError> {
+    wire::write_varint(0, output);
+    wire::write_varint(state_id, output);
+    output.extend_from_slice(&36_i16.to_be_bytes());
+    output.push(0);
+    wire::write_varint(1, output);
     wire::write_varint(0, output);
     output.push(0);
     Ok(())
@@ -2554,6 +2608,10 @@ fn parse_container_set_content_packet(
     let mut hotbar_slot_zero_item_registry_id = None;
     let mut hotbar_slot_zero_positive_component_type_ids = Vec::new();
     let mut hotbar_slot_zero_negative_component_type_ids = Vec::new();
+    let mut main_inventory_slot_zero_item_count = None;
+    let mut main_inventory_slot_zero_item_registry_id = None;
+    let mut main_inventory_slot_zero_positive_component_type_ids = Vec::new();
+    let mut main_inventory_slot_zero_negative_component_type_ids = Vec::new();
     for slot in 0..item_count {
         let item = parse_optional_item_stack(&mut input, "container content item stack")?;
         if slot == 36 {
@@ -2561,6 +2619,11 @@ fn parse_container_set_content_packet(
             hotbar_slot_zero_item_registry_id = item.item_registry_id;
             hotbar_slot_zero_positive_component_type_ids = item.positive_component_type_ids;
             hotbar_slot_zero_negative_component_type_ids = item.negative_component_type_ids;
+        } else if slot == 9 {
+            main_inventory_slot_zero_item_count = item.item_count;
+            main_inventory_slot_zero_item_registry_id = item.item_registry_id;
+            main_inventory_slot_zero_positive_component_type_ids = item.positive_component_type_ids;
+            main_inventory_slot_zero_negative_component_type_ids = item.negative_component_type_ids;
         }
     }
     let carried_item = parse_optional_item_stack(&mut input, "container content carried item")?;
@@ -2575,6 +2638,10 @@ fn parse_container_set_content_packet(
         hotbar_slot_zero_item_registry_id,
         hotbar_slot_zero_positive_component_type_ids,
         hotbar_slot_zero_negative_component_type_ids,
+        main_inventory_slot_zero_item_count,
+        main_inventory_slot_zero_item_registry_id,
+        main_inventory_slot_zero_positive_component_type_ids,
+        main_inventory_slot_zero_negative_component_type_ids,
         carried_item_count: carried_item.item_count,
         carried_item_registry_id: carried_item.item_registry_id,
         carried_positive_component_type_ids: carried_item.positive_component_type_ids,
@@ -3087,14 +3154,14 @@ mod tests {
         STATUS_CLIENTBOUND_RESPONSE_PACKET_ID, STATUS_SERVERBOUND_PING_REQUEST_PACKET_ID,
         STATUS_SERVERBOUND_REQUEST_PACKET_ID, decode_packet_frame, encode_abort_destroy_block,
         encode_creative_item_slot, encode_creative_stone_slot,
-        encode_inventory_pickup_state_correction, encode_packet_frame, encode_release_use_item,
-        encode_set_carried_item, encode_stop_destroy_block, encode_use_item, encode_use_item_on,
-        encode_use_item_on_hit, pack_block_position, parse_add_entity_packet,
-        parse_block_destruction_packet, parse_block_update_packet, parse_chunk_packet,
-        parse_container_set_content_packet, parse_container_set_slot_packet,
-        parse_player_position_packet, parse_remove_mob_effect_packet, parse_section_data,
-        parse_system_chat_packet, parse_update_mob_effect_packet, resolve_player_position,
-        support_block_position,
+        encode_inventory_pickup_state_correction, encode_inventory_quick_move_state_correction,
+        encode_packet_frame, encode_release_use_item, encode_set_carried_item,
+        encode_stop_destroy_block, encode_use_item, encode_use_item_on, encode_use_item_on_hit,
+        pack_block_position, parse_add_entity_packet, parse_block_destruction_packet,
+        parse_block_update_packet, parse_chunk_packet, parse_container_set_content_packet,
+        parse_container_set_slot_packet, parse_player_position_packet,
+        parse_remove_mob_effect_packet, parse_section_data, parse_system_chat_packet,
+        parse_update_mob_effect_packet, resolve_player_position, support_block_position,
     };
 
     #[test]
@@ -3600,11 +3667,52 @@ mod tests {
                 hotbar_slot_zero_item_registry_id: None,
                 hotbar_slot_zero_positive_component_type_ids: Vec::new(),
                 hotbar_slot_zero_negative_component_type_ids: Vec::new(),
+                main_inventory_slot_zero_item_count: None,
+                main_inventory_slot_zero_item_registry_id: None,
+                main_inventory_slot_zero_positive_component_type_ids: Vec::new(),
+                main_inventory_slot_zero_negative_component_type_ids: Vec::new(),
                 carried_item_count: None,
                 carried_item_registry_id: None,
                 carried_positive_component_type_ids: Vec::new(),
                 carried_negative_component_type_ids: Vec::new(),
             }
+        );
+    }
+
+    #[test]
+    fn container_content_parser_observes_main_inventory_slot_zero() {
+        let mut payload = Vec::new();
+        crate::wire::write_varint(0, &mut payload);
+        crate::wire::write_varint(10, &mut payload);
+        crate::wire::write_varint(46, &mut payload);
+        for slot in 0..46 {
+            if slot == 9 {
+                crate::wire::write_varint(1, &mut payload);
+                crate::wire::write_varint(1, &mut payload);
+                crate::wire::write_varint(0, &mut payload);
+                crate::wire::write_varint(0, &mut payload);
+            } else {
+                crate::wire::write_varint(0, &mut payload);
+            }
+        }
+        crate::wire::write_varint(0, &mut payload);
+
+        let observation =
+            parse_container_set_content_packet(&payload).expect("main inventory slot packet");
+        assert_eq!(observation.main_inventory_slot_zero_item_count, Some(1));
+        assert_eq!(
+            observation.main_inventory_slot_zero_item_registry_id,
+            Some(1)
+        );
+        assert!(
+            observation
+                .main_inventory_slot_zero_positive_component_type_ids
+                .is_empty()
+        );
+        assert!(
+            observation
+                .main_inventory_slot_zero_negative_component_type_ids
+                .is_empty()
         );
     }
 
@@ -3715,6 +3823,31 @@ mod tests {
         assert_eq!(
             crate::wire::read_varint(&mut input).expect("container input"),
             0
+        );
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("changed slot count"),
+            0
+        );
+        assert_eq!(input, [0]);
+    }
+
+    #[test]
+    fn inventory_quick_move_encoder_keeps_quick_move_input_id() {
+        let mut payload = Vec::new();
+        encode_inventory_quick_move_state_correction(&mut payload, 0)
+            .expect("inventory quick move packet");
+
+        let mut input = payload.as_slice();
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("container id"),
+            0
+        );
+        assert_eq!(crate::wire::read_varint(&mut input).expect("state id"), 0);
+        assert_eq!(i16::from_be_bytes(input[..2].try_into().expect("slot")), 36);
+        input = &input[3..];
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("container input"),
+            1
         );
         assert_eq!(
             crate::wire::read_varint(&mut input).expect("changed slot count"),
