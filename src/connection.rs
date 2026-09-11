@@ -168,9 +168,11 @@ pub struct ChunkSectionObservation {
     pub fluid_count: i16,
     pub block_state_bits_per_entry: u8,
     pub block_state_palette_entry_count: usize,
+    pub block_state_palette_ids: Vec<i32>,
     pub block_state_storage_word_count: usize,
     pub biome_bits_per_entry: u8,
     pub biome_palette_entry_count: usize,
+    pub biome_palette_ids: Vec<i32>,
     pub biome_storage_word_count: usize,
 }
 
@@ -917,19 +919,22 @@ fn parse_section_data(mut input: &[u8]) -> Result<Vec<ChunkSectionObservation>, 
             fluid_count,
             block_state_bits_per_entry: block_states.bits_per_entry,
             block_state_palette_entry_count: block_states.palette_entry_count,
+            block_state_palette_ids: block_states.palette_ids,
             block_state_storage_word_count: block_states.storage_word_count,
             biome_bits_per_entry: biomes.bits_per_entry,
             biome_palette_entry_count: biomes.palette_entry_count,
+            biome_palette_ids: biomes.palette_ids,
             biome_storage_word_count: biomes.storage_word_count,
         });
     }
     Ok(sections)
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct PaletteObservation {
     bits_per_entry: u8,
     palette_entry_count: usize,
+    palette_ids: Vec<i32>,
     storage_word_count: usize,
 }
 
@@ -964,8 +969,8 @@ fn parse_palette_container(
         (None, bits_per_entry)
     };
 
-    let palette_entry_count = if bits_per_entry == 0 {
-        read_varint(
+    let palette_ids = if bits_per_entry == 0 {
+        let value = read_varint(
             input,
             if block_states {
                 "block state palette value"
@@ -973,7 +978,7 @@ fn parse_palette_container(
                 "biome palette value"
             },
         )?;
-        1
+        vec![value]
     } else if let Some(capacity) = palette_capacity {
         let name = if block_states {
             "block state palette"
@@ -984,19 +989,20 @@ fn parse_palette_container(
         if count > capacity {
             return Err(ConnectionError::Codec(name));
         }
+        let mut palette_ids = Vec::with_capacity(count);
         for _ in 0..count {
-            read_varint(
+            palette_ids.push(read_varint(
                 input,
                 if block_states {
                     "block state palette value"
                 } else {
                     "biome palette value"
                 },
-            )?;
+            )?);
         }
-        count
+        palette_ids
     } else {
-        0
+        Vec::new()
     };
 
     let storage_word_count = if storage_bits == 0 {
@@ -1017,7 +1023,8 @@ fn parse_palette_container(
 
     Ok(PaletteObservation {
         bits_per_entry,
-        palette_entry_count,
+        palette_entry_count: palette_ids.len(),
+        palette_ids,
         storage_word_count,
     })
 }
@@ -1172,9 +1179,11 @@ mod tests {
         assert_eq!(observation.fluid_count, 2);
         assert_eq!(observation.block_state_bits_per_entry, 4);
         assert_eq!(observation.block_state_palette_entry_count, 2);
+        assert_eq!(observation.block_state_palette_ids, [0, 3]);
         assert_eq!(observation.block_state_storage_word_count, 256);
         assert_eq!(observation.biome_bits_per_entry, 3);
         assert_eq!(observation.biome_palette_entry_count, 2);
+        assert_eq!(observation.biome_palette_ids, [0, 1]);
         assert_eq!(observation.biome_storage_word_count, 4);
     }
 
@@ -1192,9 +1201,11 @@ mod tests {
         assert_eq!(observations.len(), 1);
         assert_eq!(observations[0].block_state_bits_per_entry, 0);
         assert_eq!(observations[0].block_state_palette_entry_count, 1);
+        assert_eq!(observations[0].block_state_palette_ids, [0]);
         assert_eq!(observations[0].block_state_storage_word_count, 0);
         assert_eq!(observations[0].biome_bits_per_entry, 0);
         assert_eq!(observations[0].biome_palette_entry_count, 1);
+        assert_eq!(observations[0].biome_palette_ids, [0]);
         assert_eq!(observations[0].biome_storage_word_count, 0);
     }
 }
