@@ -2622,12 +2622,12 @@ fn encode_inventory_pickup_with_prediction(
     wire::write_varint(0, output);
     wire::write_varint(1, output);
     output.extend_from_slice(&36_i16.to_be_bytes());
+    output.push(0);
     output.push(1);
     wire::write_varint(item_registry_id, output);
     wire::write_varint(item_count, output);
     wire::write_varint(0, output);
     wire::write_varint(0, output);
-    output.push(0);
     Ok(())
 }
 
@@ -4575,6 +4575,8 @@ mod tests {
             36
         );
         input = &input[2..];
+        assert_eq!(input[0], 0);
+        input = &input[1..];
         assert_eq!(input[0], 1);
         input = &input[1..];
         assert_eq!(
@@ -4590,7 +4592,7 @@ mod tests {
             crate::wire::read_varint(&mut input).expect("removed component count"),
             0
         );
-        assert_eq!(input, [0]);
+        assert!(input.is_empty());
     }
 
     #[test]

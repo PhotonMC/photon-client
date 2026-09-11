@@ -1,8 +1,8 @@
 # P13 — Survival inventory correct prediction sözleşmesi
 
-Bu dilim, client'ın inventory click packet'inde vanilla'nın beklediği mevcut
-slot/cursor hash'lerini ve doğru menu state-id'sini göndermesi durumunda server'ın
-full resync yerine artımlı slot/cursor güncellemeleri yayınlamasını sınar.
+Bu dilim, client'ın inventory click packet'inde vanilla'nın beklediği post-click
+slot/cursor hash'lerini ve doğru menu state-id'sini göndermesi durumunda
+server'ın full resync veya ek slot/cursor düzeltmesi yayınlamamasını sınar.
 
 ## Java referansı
 
@@ -18,12 +18,16 @@ added component map'i ve removed component set'i boş olur.
 component hash değerine ihtiyaç duymaz. `RemoteSlot.receive` packet'teki hash'i
 server'ın mevcut remote beklentisi olarak kaydeder.
 
-`ServerGamePacketListenerImpl.handleContainerClick`, state-id packet ile menu
-state-id'si eşitse `broadcastChanges` yolunu kullanır. Pickup click'i slotu
-boşaltıp carried stack'i oluşturur; remote slot hash'i eski stack'i doğru
-gösterdiği için yalnızca slot değişimi yayınlanır. `ServerPlayer` slot değişimi
-için state-id'yi artıran `ClientboundContainerSetSlotPacket`, cursor değişimi
-için state-id taşımayan `ClientboundSetCursorItemPacket` gönderir.
+`MultiPlayerGameMode.handleContainerInput`, click'i client menüsünde uyguladıktan
+sonra değişen slotların ve carried değerinin yeni durumundan `HashedStack`
+oluşturur. Bu yüzden prediction, click öncesi kaynak stack'ini değil click
+sonrası slot/cursor durumunu taşır. `ServerGamePacketListenerImpl.handleContainerClick`,
+state-id packet ile menu state-id'si eşitse bu hash'leri remote beklenti olarak
+kaydeder ve `broadcastChanges` yolunu kullanır. Pickup click'i slotu boşaltıp
+carried stack'i oluşturduğunda iki hash de gerçek server durumuyla eşleşirse
+ek slot veya cursor paketi yayınlanmaz. Hash eşleşmezse server'ın
+`ClientboundContainerSetSlotPacket` ve `ClientboundSetCursorItemPacket` ile
+düzeltme yapması ayrı bir varyanttır.
 
 ## Probe girdisi ve akışı
 
@@ -33,9 +37,9 @@ için state-id taşımayan `ClientboundSetCursorItemPacket` gönderir.
 - Stone item registry ID: `1`
 - Menu state-id: `2` (initial content state `1` sonrasındaki hazırlık state'i)
 - Click: slot `36`, button `0`, `PICKUP` input id `0`
-- Changed-slot prediction: map içinde slot `36`, item id `1`, count `8`, boş
-  component map/set
-- Carried prediction: empty hash
+- Changed-slot prediction: map içinde slot `36`, pickup sonrası boş hash
+- Carried prediction: pickup sonrası item id `1`, count `8`, boş component
+  map/set içeren non-empty hash
 
 Probe, item hazırlığı sonrası doğru state-id ve prediction ile tek
 `container_click` paketi yollar; ardından slot/cursor güncellemelerini toplar.
@@ -47,9 +51,10 @@ Beklenen invariant'lar şunlardır:
 - Console item hazırlığı menu slotu `36` için state `2`, count `8` ve item ID
   `1` slot gözlemi üretir.
 - Server click'i mismatch saymaz ve pickup davranışını uygular.
-- Slot `36` için state `3` ile empty `container_set_slot` gönderilir.
-- Cursor için ayrı `set_cursor_item` paketi count `8`, item ID `1` ve boş
-  component patch'i taşır.
+- Prediction gerçek post-click durumla eşleştiği için hazırlık gözlemi dışında
+  slot `36` için `container_set_slot` gönderilmez.
+- Prediction gerçek post-click carried durumla eşleştiği için `set_cursor_item`
+  gönderilmez.
 - Item hazırlığı dışındaki `container_set_content` gözlemi oluşmaz; full resync
   yerine artımlı yayın yapılır.
 - Rust probe bir `container_click` paketi yollar ve gönderilen state-id `2`
@@ -57,7 +62,8 @@ Beklenen invariant'lar şunlardır:
 
 ## Sınır
 
-Bu dilim component'siz stone stack için doğru state-id, changed-slot hash'i,
-empty carried hash'i ve incremental slot/cursor yayınını kapsar. Component
-hash değerleri, yanlış veya kısmi prediction, diğer click input'ları, stale
-state varyantları ve özel container'lar sonraki P13 dilimleridir.
+Bu dilim component'siz stone stack için doğru state-id, pickup sonrası
+changed-slot hash'i, non-empty carried hash'i ve eşleşen prediction'ın ek
+paketleri bastırmasını kapsar. Component hash değerleri, yanlış veya kısmi
+prediction, diğer click input'ları, stale state varyantları ve özel container'lar
+sonraki P13 dilimleridir.
