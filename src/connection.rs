@@ -92,6 +92,7 @@ const MAX_CHUNK_DATA_LENGTH: usize = 2 * 1024 * 1024;
 const MAX_KNOWN_PACKS: usize = 64;
 const MAX_READABLE_FRAME_LENGTH: usize = MAX_FRAME_LENGTH;
 const WORLD_READY_DRAIN_TIMEOUT: Duration = Duration::from_millis(250);
+const DELAYED_DESTROY_DRAIN_TIMEOUT: Duration = Duration::from_millis(1_200);
 
 /// Errors raised while driving the initial real-server client session.
 #[derive(Debug)]
@@ -495,6 +496,21 @@ pub fn connect_and_survival_stone_break_stop_probe(
     )
 }
 
+/// Connect to a Java-protocol server, stop a short survival dirt break early and
+/// observe the server's delayed destroy completion on later ticks.
+pub fn connect_and_survival_delayed_destroy_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeMode::SurvivalDelayedDestroy,
+    )
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum PlayProbeMode {
     Basic,
@@ -509,6 +525,7 @@ enum PlayProbeMode {
     SurvivalBreakAbort,
     SurvivalBreakStop,
     SurvivalStoneBreakStop,
+    SurvivalDelayedDestroy,
 }
 
 fn connect_and_probe_with_mode(
@@ -1004,6 +1021,33 @@ fn connect_and_probe_with_mode(
                 )?;
                 trace.player_action_packets_sent += 1;
             }
+            if matches!(probe_mode, PlayProbeMode::SurvivalDelayedDestroy)
+                && trace.player_action_packets_sent == 0
+            {
+                let Some(position) = player_position else {
+                    return Err(ConnectionError::Codec(
+                        "survival delayed destroy probe player position",
+                    ));
+                };
+                let target = support_block_position(position);
+                send_packet(
+                    &mut stream,
+                    ConnectionProtocol::Play,
+                    PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID,
+                    |output| encode_start_destroy_block(output, target, 14),
+                    compression_threshold,
+                )?;
+                trace.player_action_packets_sent += 1;
+                std::thread::sleep(Duration::from_millis(100));
+                send_packet(
+                    &mut stream,
+                    ConnectionProtocol::Play,
+                    PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID,
+                    |output| encode_stop_destroy_block(output, target, 15),
+                    compression_threshold,
+                )?;
+                trace.player_action_packets_sent += 1;
+            }
             if matches!(probe_mode, PlayProbeMode::UseItemOn) && trace.use_item_on_packets_sent == 0
             {
                 let Some(position) = player_position else {
@@ -1105,12 +1149,20 @@ fn connect_and_probe_with_mode(
                 trace.use_item_on_packets_sent += 1;
             }
             world_ready_drain_started = Some(Instant::now());
-            stream.set_read_timeout(Some(WORLD_READY_DRAIN_TIMEOUT))?;
+            let drain_timeout = if matches!(probe_mode, PlayProbeMode::SurvivalDelayedDestroy) {
+                DELAYED_DESTROY_DRAIN_TIMEOUT
+            } else {
+                WORLD_READY_DRAIN_TIMEOUT
+            };
+            stream.set_read_timeout(Some(drain_timeout))?;
         }
 
-        if world_ready_drain_started
-            .is_some_and(|started| started.elapsed() >= WORLD_READY_DRAIN_TIMEOUT)
-        {
+        let drain_timeout = if matches!(probe_mode, PlayProbeMode::SurvivalDelayedDestroy) {
+            DELAYED_DESTROY_DRAIN_TIMEOUT
+        } else {
+            WORLD_READY_DRAIN_TIMEOUT
+        };
+        if world_ready_drain_started.is_some_and(|started| started.elapsed() >= drain_timeout) {
             return Ok(trace);
         }
     }
