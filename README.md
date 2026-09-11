@@ -38,6 +38,8 @@ Rust uygulama girişi henüz oynanabilir istemci değildir. İlk gerçek vanilla
 - [Vanilla boş elle use item on doğrulaması](docs/vanilla-use-item-on-parity.md)
 - [Yaratıcı item stack placement sözleşmesi](docs/creative-placement-contract.md)
 - [Vanilla yaratıcı item stack placement doğrulaması](docs/vanilla-creative-placement-parity.md)
+- [Survival block-break abort sözleşmesi](docs/survival-break-abort-contract.md)
+- [Vanilla survival block-break abort doğrulaması](docs/vanilla-survival-break-abort-parity.md)
 - [Vanilla status socket doğrulaması](docs/status-connection-parity.md)
 - [Pumpkin uyumluluk oturumu doğrulaması](docs/game-connection-parity.md)
 - [Kaynak incelemesi ve istemci sınırları](docs/source-review.md)

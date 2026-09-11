@@ -56,6 +56,7 @@ const CONFIG_CODE_OF_CONDUCT_PACKET_ID: i32 = 19;
 // occupies id 0 and shifts the listed play clientbound packet ids by one.
 const PLAY_CLIENTBOUND_BUNDLE_DELIMITER_PACKET_ID: i32 = 0;
 const PLAY_CLIENTBOUND_BLOCK_CHANGED_ACK_PACKET_ID: i32 = 4;
+const PLAY_CLIENTBOUND_BLOCK_DESTRUCTION_PACKET_ID: i32 = 5;
 const PLAY_CLIENTBOUND_BLOCK_UPDATE_PACKET_ID: i32 = 8;
 const PLAY_CLIENTBOUND_CHUNK_BATCH_FINISHED_PACKET_ID: i32 = 11;
 const PLAY_CLIENTBOUND_CHUNK_BATCH_START_PACKET_ID: i32 = 12;
@@ -170,6 +171,7 @@ pub struct PlayConnectionTrace {
     pub stone_item_registry_id: Option<i32>,
     pub creative_place_target_update: Option<BlockUpdateObservation>,
     pub creative_place_neighbor_update: Option<BlockUpdateObservation>,
+    pub block_destruction_observations: Vec<BlockDestructionObservation>,
     pub block_changed_ack_sequences: Vec<i32>,
     pub block_update_observations: Vec<BlockUpdateObservation>,
     pub chunk_packet_count: usize,
@@ -191,6 +193,16 @@ pub struct BlockUpdateObservation {
     pub y: i32,
     pub z: i32,
     pub state_id: i32,
+}
+
+/// Wire-level fields decoded from one clientbound block-destruction progress packet.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BlockDestructionObservation {
+    pub entity_id: i32,
+    pub x: i32,
+    pub y: i32,
+    pub z: i32,
+    pub progress: u8,
 }
 
 /// Structural fields decoded from one clientbound level-chunk-with-light packet.
@@ -402,6 +414,21 @@ pub fn connect_and_creative_place_probe(
     connect_and_probe_with_mode(address, username, timeout, PlayProbeMode::CreativePlace)
 }
 
+/// Connect to a Java-protocol server, start breaking the supporting block in survival
+/// mode and immediately abort the same action.
+pub fn connect_and_survival_break_abort_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeMode::SurvivalBreakAbort,
+    )
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum PlayProbeMode {
     Basic,
@@ -411,6 +438,7 @@ enum PlayProbeMode {
     BlockBreakOutOfRange,
     UseItemOn,
     CreativePlace,
+    SurvivalBreakAbort,
 }
 
 fn connect_and_probe_with_mode(
@@ -666,6 +694,11 @@ fn connect_and_probe_with_mode(
                 }
                 trace.block_changed_ack_sequences.push(sequence);
             }
+            PLAY_CLIENTBOUND_BLOCK_DESTRUCTION_PACKET_ID => {
+                trace
+                    .block_destruction_observations
+                    .push(parse_block_destruction_packet(payload)?);
+            }
             PLAY_CLIENTBOUND_BLOCK_UPDATE_PACKET_ID => {
                 let observation = parse_block_update_packet(payload)?;
                 if creative_place_target_position.is_some_and(|position| {
@@ -828,6 +861,32 @@ fn connect_and_probe_with_mode(
                     ConnectionProtocol::Play,
                     PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID,
                     |output| encode_start_destroy_block(output, (1_000_000, 64, 1_000_000), 3),
+                    compression_threshold,
+                )?;
+                trace.player_action_packets_sent += 1;
+            }
+            if matches!(probe_mode, PlayProbeMode::SurvivalBreakAbort)
+                && trace.player_action_packets_sent == 0
+            {
+                let Some(position) = player_position else {
+                    return Err(ConnectionError::Codec(
+                        "survival break probe player position",
+                    ));
+                };
+                let target = support_block_position(position);
+                send_packet(
+                    &mut stream,
+                    ConnectionProtocol::Play,
+                    PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID,
+                    |output| encode_start_destroy_block(output, target, 6),
+                    compression_threshold,
+                )?;
+                trace.player_action_packets_sent += 1;
+                send_packet(
+                    &mut stream,
+                    ConnectionProtocol::Play,
+                    PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID,
+                    |output| encode_abort_destroy_block(output, target, 7),
                     compression_threshold,
                 )?;
                 trace.player_action_packets_sent += 1;
@@ -1246,6 +1305,34 @@ fn parse_block_update_packet(input: &[u8]) -> Result<BlockUpdateObservation, Con
         y: position.y,
         z: position.z,
         state_id,
+    })
+}
+
+fn parse_block_destruction_packet(
+    input: &[u8],
+) -> Result<BlockDestructionObservation, ConnectionError> {
+    let mut input = input;
+    let entity_id = read_varint(&mut input, "block destruction entity id")?;
+    if input.len() < 8 {
+        return Err(ConnectionError::Codec("block destruction position"));
+    }
+    let (packed, rest) = input.split_at(8);
+    input = rest;
+    let position = crate::binary::BlockPos::unpack(u64::from_be_bytes(
+        packed
+            .try_into()
+            .expect("checked block destruction position length"),
+    ));
+    let progress = read_byte(&mut input, "block destruction progress")?;
+    if !input.is_empty() {
+        return Err(ConnectionError::Codec("block destruction trailing payload"));
+    }
+    Ok(BlockDestructionObservation {
+        entity_id,
+        x: position.x,
+        y: position.y,
+        z: position.z,
+        progress,
     })
 }
 
@@ -1674,9 +1761,10 @@ fn decode_palette_values(
 #[cfg(test)]
 mod tests {
     use super::{
-        PLAY_CLIENTBOUND_BLOCK_CHANGED_ACK_PACKET_ID, PLAY_CLIENTBOUND_BLOCK_UPDATE_PACKET_ID,
-        PLAY_CLIENTBOUND_CHUNK_PACKET_ID, PLAY_CLIENTBOUND_KEEP_ALIVE_PACKET_ID,
-        PLAY_CLIENTBOUND_LOGIN_PACKET_ID, PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID,
+        PLAY_CLIENTBOUND_BLOCK_CHANGED_ACK_PACKET_ID, PLAY_CLIENTBOUND_BLOCK_DESTRUCTION_PACKET_ID,
+        PLAY_CLIENTBOUND_BLOCK_UPDATE_PACKET_ID, PLAY_CLIENTBOUND_CHUNK_PACKET_ID,
+        PLAY_CLIENTBOUND_KEEP_ALIVE_PACKET_ID, PLAY_CLIENTBOUND_LOGIN_PACKET_ID,
+        PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID,
         PLAY_SERVERBOUND_ACCEPT_TELEPORTATION_PACKET_ID,
         PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID, PLAY_SERVERBOUND_KEEP_ALIVE_PACKET_ID,
         PLAY_SERVERBOUND_MOVE_PLAYER_POS_ROT_PACKET_ID, PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID,
@@ -1686,9 +1774,9 @@ mod tests {
         STATUS_SERVERBOUND_PING_REQUEST_PACKET_ID, STATUS_SERVERBOUND_REQUEST_PACKET_ID,
         decode_packet_frame, encode_abort_destroy_block, encode_creative_stone_slot,
         encode_packet_frame, encode_set_carried_item, encode_use_item_on, encode_use_item_on_hit,
-        pack_block_position, parse_block_update_packet, parse_chunk_packet,
-        parse_player_position_packet, parse_section_data, resolve_player_position,
-        support_block_position,
+        pack_block_position, parse_block_destruction_packet, parse_block_update_packet,
+        parse_chunk_packet, parse_player_position_packet, parse_section_data,
+        resolve_player_position, support_block_position,
     };
 
     #[test]
@@ -1717,6 +1805,7 @@ mod tests {
         assert_eq!(PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID, 72);
         assert_eq!(PLAY_CLIENTBOUND_BLOCK_UPDATE_PACKET_ID, 8);
         assert_eq!(PLAY_CLIENTBOUND_BLOCK_CHANGED_ACK_PACKET_ID, 4);
+        assert_eq!(PLAY_CLIENTBOUND_BLOCK_DESTRUCTION_PACKET_ID, 5);
         assert_eq!(PLAY_SERVERBOUND_ACCEPT_TELEPORTATION_PACKET_ID, 0);
         assert_eq!(PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID, 41);
         assert_eq!(PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID, 11);
@@ -1896,6 +1985,25 @@ mod tests {
                 y: -63,
                 z: 9,
                 state_id: 123,
+            }
+        );
+    }
+
+    #[test]
+    fn block_destruction_parser_matches_java_progress_fields() {
+        let mut payload = Vec::new();
+        crate::wire::write_varint(37, &mut payload);
+        payload.extend_from_slice(&pack_block_position((-12, 67, 9)).to_be_bytes());
+        payload.push(255);
+
+        assert_eq!(
+            parse_block_destruction_packet(&payload).expect("block destruction"),
+            super::BlockDestructionObservation {
+                entity_id: 37,
+                x: -12,
+                y: 67,
+                z: 9,
+                progress: 255,
             }
         );
     }
