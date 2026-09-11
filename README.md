@@ -96,6 +96,8 @@ Rust uygulama girişi henüz oynanabilir istemci değildir. İlk gerçek vanilla
 - [Vanilla survival inventory component correct prediction doğrulaması](docs/vanilla-survival-inventory-component-correct-prediction-parity.md)
 - [Survival inventory partial changed-slot prediction sözleşmesi](docs/survival-inventory-partial-changed-slot-prediction-contract.md)
 - [Vanilla survival inventory partial changed-slot prediction doğrulaması](docs/vanilla-survival-inventory-partial-changed-slot-prediction-parity.md)
+- [Survival inventory stale state correct prediction sözleşmesi](docs/survival-inventory-stale-state-correct-prediction-contract.md)
+- [Vanilla survival inventory stale state correct prediction doğrulaması](docs/vanilla-survival-inventory-stale-state-correct-prediction-parity.md)
 - [Survival inventory quick-move state-id correction sözleşmesi](docs/survival-inventory-quick-move-state-correction-contract.md)
 - [Vanilla survival inventory quick-move state-id correction doğrulaması](docs/vanilla-survival-inventory-quick-move-state-correction-parity.md)
 - [Survival inventory swap state-id correction sözleşmesi](docs/survival-inventory-swap-state-correction-contract.md)

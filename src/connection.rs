@@ -944,6 +944,21 @@ pub fn connect_and_survival_inventory_partial_changed_slot_prediction_probe(
     )
 }
 
+/// Connect to a Java-protocol server, send correct pickup predictions with a
+/// stale container state id, and observe the authoritative full resync.
+pub fn connect_and_survival_inventory_stale_state_correct_prediction_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeMode::SurvivalInventoryStaleStateCorrectPrediction,
+    )
+}
+
 /// Connect to a Java-protocol server, shift-click a supplied survival inventory
 /// stack with a stale container state id, and observe the authoritative full resync.
 pub fn connect_and_survival_inventory_quick_move_state_correction_probe(
@@ -1151,6 +1166,7 @@ enum PlayProbeMode {
     SurvivalInventoryComponentHashPrediction,
     SurvivalInventoryComponentCorrectPrediction,
     SurvivalInventoryPartialChangedSlotPrediction,
+    SurvivalInventoryStaleStateCorrectPrediction,
     SurvivalInventoryQuickMoveStateCorrection,
     SurvivalInventorySwapStateCorrection,
     CreativePlace,
@@ -2397,6 +2413,22 @@ fn connect_and_probe_with_mode(
             }
             if matches!(
                 probe_mode,
+                PlayProbeMode::SurvivalInventoryStaleStateCorrectPrediction
+            ) && trace.container_click_packets_sent == 0
+            {
+                std::thread::sleep(Duration::from_secs(20));
+                send_packet(
+                    &mut stream,
+                    ConnectionProtocol::Play,
+                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
+                    |output| encode_inventory_pickup_with_prediction(output, 0, 8, 1),
+                    compression_threshold,
+                )?;
+                trace.container_click_packets_sent += 1;
+                trace.container_click_state_id_sent = Some(0);
+            }
+            if matches!(
+                probe_mode,
                 PlayProbeMode::SurvivalInventoryQuickMoveStateCorrection
             ) && trace.container_click_packets_sent == 0
             {
@@ -2544,6 +2576,9 @@ fn connect_and_probe_with_mode(
                 PlayProbeMode::SurvivalInventoryPartialChangedSlotPrediction => {
                     CONSUMABLE_DRAIN_TIMEOUT
                 }
+                PlayProbeMode::SurvivalInventoryStaleStateCorrectPrediction => {
+                    CONSUMABLE_DRAIN_TIMEOUT
+                }
                 PlayProbeMode::SurvivalInventoryQuickMoveStateCorrection => {
                     CONSUMABLE_DRAIN_TIMEOUT
                 }
@@ -2591,6 +2626,7 @@ fn connect_and_probe_with_mode(
             PlayProbeMode::SurvivalInventoryPartialChangedSlotPrediction => {
                 CONSUMABLE_DRAIN_TIMEOUT
             }
+            PlayProbeMode::SurvivalInventoryStaleStateCorrectPrediction => CONSUMABLE_DRAIN_TIMEOUT,
             PlayProbeMode::SurvivalInventoryQuickMoveStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
             PlayProbeMode::SurvivalInventorySwapStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
             _ => WORLD_READY_DRAIN_TIMEOUT,
