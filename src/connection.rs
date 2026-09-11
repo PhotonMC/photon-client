@@ -88,6 +88,7 @@ const VANILLA_SNOWBALL_ITEM_REGISTRY_ID: i32 = 1_044;
 const VANILLA_DAMAGE_COMPONENT_ID: i32 = 3;
 // DataComponents registers CUSTOM_MODEL_DATA after the first 17 built-in component types.
 const VANILLA_CUSTOM_MODEL_DATA_COMPONENT_ID: i32 = 17;
+const VANILLA_FOOD_COMPONENT_ID: i32 = 23;
 const VANILLA_TOOL_COMPONENT_ID: i32 = 28;
 const VANILLA_WEAPON_COMPONENT_ID: i32 = 29;
 
@@ -622,6 +623,20 @@ pub fn connect_and_survival_honey_bottle_early_release_probe(
     )
 }
 
+/// Connect to a Java-protocol server, consume a survival pufferfish, and observe its effects.
+pub fn connect_and_survival_pufferfish_use_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeMode::SurvivalPufferfishUse,
+    )
+}
+
 /// Connect to a Java-protocol server, place a stone stack in the creative hotbar,
 /// select it and request a side placement against the supporting block.
 pub fn connect_and_creative_place_probe(
@@ -779,6 +794,7 @@ enum PlayProbeMode {
     SurvivalHoneyBottleUse,
     SurvivalHoneyBottlePoisonCleanup,
     SurvivalHoneyBottleEarlyRelease,
+    SurvivalPufferfishUse,
     CreativePlace,
     SurvivalBreakAbort,
     SurvivalBreakStop,
@@ -1694,6 +1710,27 @@ fn connect_and_probe_with_mode(
                 )?;
                 trace.player_action_packets_sent += 1;
             }
+            if matches!(probe_mode, PlayProbeMode::SurvivalPufferfishUse)
+                && trace.use_item_packets_sent == 0
+            {
+                std::thread::sleep(Duration::from_secs(20));
+                send_packet(
+                    &mut stream,
+                    ConnectionProtocol::Play,
+                    PLAY_SERVERBOUND_SET_CARRIED_ITEM_PACKET_ID,
+                    |output| encode_set_carried_item(output, 0),
+                    compression_threshold,
+                )?;
+                trace.carried_item_packets_sent += 1;
+                send_packet(
+                    &mut stream,
+                    ConnectionProtocol::Play,
+                    PLAY_SERVERBOUND_USE_ITEM_PACKET_ID,
+                    |output| encode_use_item(output, 35, 0.0, 0.0),
+                    compression_threshold,
+                )?;
+                trace.use_item_packets_sent += 1;
+            }
             if matches!(probe_mode, PlayProbeMode::CreativeSnowballUse)
                 && trace.creative_mode_slot_packets_sent == 0
             {
@@ -1777,6 +1814,7 @@ fn connect_and_probe_with_mode(
                 PlayProbeMode::SurvivalMilkBucketUse => CONSUMABLE_DRAIN_TIMEOUT,
                 PlayProbeMode::SurvivalHoneyBottleUse => CONSUMABLE_DRAIN_TIMEOUT,
                 PlayProbeMode::SurvivalHoneyBottlePoisonCleanup => CONSUMABLE_DRAIN_TIMEOUT,
+                PlayProbeMode::SurvivalPufferfishUse => CONSUMABLE_DRAIN_TIMEOUT,
                 _ => WORLD_READY_DRAIN_TIMEOUT,
             };
             stream.set_read_timeout(Some(drain_timeout))?;
@@ -1790,6 +1828,7 @@ fn connect_and_probe_with_mode(
             PlayProbeMode::SurvivalMilkBucketUse => CONSUMABLE_DRAIN_TIMEOUT,
             PlayProbeMode::SurvivalHoneyBottleUse => CONSUMABLE_DRAIN_TIMEOUT,
             PlayProbeMode::SurvivalHoneyBottlePoisonCleanup => CONSUMABLE_DRAIN_TIMEOUT,
+            PlayProbeMode::SurvivalPufferfishUse => CONSUMABLE_DRAIN_TIMEOUT,
             _ => WORLD_READY_DRAIN_TIMEOUT,
         };
         if world_ready_drain_started.is_some_and(|started| started.elapsed() >= drain_timeout) {
@@ -2309,6 +2348,7 @@ fn parse_optional_item_stack(
                 read_varint(input, name)?;
             }
             VANILLA_CUSTOM_MODEL_DATA_COMPONENT_ID => skip_custom_model_data(input, name)?,
+            VANILLA_FOOD_COMPONENT_ID => skip_food(input, name)?,
             VANILLA_TOOL_COMPONENT_ID => skip_tool(input, name)?,
             VANILLA_WEAPON_COMPONENT_ID => skip_weapon(input, name)?,
             _ => return Err(ConnectionError::Codec(name)),
@@ -2344,6 +2384,13 @@ fn skip_custom_model_data(input: &mut &[u8], name: &'static str) -> Result<(), C
     for _ in 0..color_count {
         read_i32(input, name)?;
     }
+    Ok(())
+}
+
+fn skip_food(input: &mut &[u8], name: &'static str) -> Result<(), ConnectionError> {
+    read_varint(input, name)?;
+    read_f32(input, name)?;
+    read_byte(input, name)?;
     Ok(())
 }
 
@@ -3331,6 +3378,36 @@ mod tests {
                 item_count: Some(1),
                 item_registry_id: Some(1_046),
                 positive_component_type_ids: vec![17],
+                negative_component_type_ids: Vec::new(),
+            }
+        );
+    }
+
+    #[test]
+    fn container_slot_parser_skips_food_component() {
+        let mut payload = Vec::new();
+        crate::wire::write_varint(0, &mut payload);
+        crate::wire::write_varint(10, &mut payload);
+        payload.extend_from_slice(&36_i16.to_be_bytes());
+        crate::wire::write_varint(1, &mut payload);
+        crate::wire::write_varint(1_089, &mut payload);
+        crate::wire::write_varint(1, &mut payload);
+        crate::wire::write_varint(0, &mut payload);
+        crate::wire::write_varint(23, &mut payload);
+        crate::wire::write_varint(1, &mut payload);
+        payload.extend_from_slice(&0.1_f32.to_be_bytes());
+        payload.push(1);
+
+        assert_eq!(
+            parse_container_set_slot_packet(&payload)
+                .expect("food component-bearing container slot"),
+            super::ContainerSetSlotObservation {
+                container_id: 0,
+                state_id: 10,
+                slot: 36,
+                item_count: Some(1),
+                item_registry_id: Some(1_089),
+                positive_component_type_ids: vec![23],
                 negative_component_type_ids: Vec::new(),
             }
         );

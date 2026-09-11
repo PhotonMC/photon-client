@@ -54,6 +54,8 @@ Rust uygulama girişi henüz oynanabilir istemci değildir. İlk gerçek vanilla
 - [Vanilla survival honey bottle poison cleanup doğrulaması](docs/vanilla-survival-honey-bottle-poison-cleanup-parity.md)
 - [Survival honey bottle erken bırakma sözleşmesi](docs/survival-honey-bottle-early-release-contract.md)
 - [Vanilla survival honey bottle erken bırakma doğrulaması](docs/vanilla-survival-honey-bottle-early-release-parity.md)
+- [Survival food component override'lı pufferfish use sözleşmesi](docs/survival-pufferfish-use-contract.md)
+- [Vanilla survival food component override'lı pufferfish use doğrulaması](docs/vanilla-survival-pufferfish-use-parity.md)
 - [Yaratıcı item stack placement sözleşmesi](docs/creative-placement-contract.md)
 - [Vanilla yaratıcı item stack placement doğrulaması](docs/vanilla-creative-placement-parity.md)
 - [Survival block-break abort sözleşmesi](docs/survival-break-abort-contract.md)
