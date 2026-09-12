@@ -1073,6 +1073,13 @@ fn connect_and_probe_with_mode(
                         io::ErrorKind::TimedOut | io::ErrorKind::WouldBlock
                     ) =>
             {
+                if matches!(
+                    probe.action,
+                    ProbeAction::SurvivalInventoryItemComponentConformance(_)
+                ) && trace.container_click_packets_sent == 0
+                {
+                    return Err(ConnectionError::Codec("item component preparation"));
+                }
                 return Ok(trace);
             }
             Err(error) => return Err(error),
@@ -2375,6 +2382,13 @@ fn connect_and_probe_with_mode(
             _ => WORLD_READY_DRAIN_TIMEOUT,
         };
         if world_ready_drain_started.is_some_and(|started| started.elapsed() >= drain_timeout) {
+            if matches!(
+                probe.action,
+                ProbeAction::SurvivalInventoryItemComponentConformance(_)
+            ) && trace.container_click_packets_sent == 0
+            {
+                return Err(ConnectionError::Codec("item component preparation"));
+            }
             return Ok(trace);
         }
     }

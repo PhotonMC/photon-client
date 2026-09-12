@@ -86,13 +86,18 @@ codec/branch veya önceki kayıtlardan farklı bir gözlem ortaya çıkarsa ekle
 iki bağımsız vanilla oturumunda `container_click_packets_sent=1` ve
 `chunk packet / decoded / batch finished=157 / 157 / 51` verdi; geçerli koşul
 sonuçlarında click sonrası incremental slot/cursor update sayısı `0`, ek full
-content gözlemi `0` ve server logunda protocol error yoktu.
+content gözlemi `0` ve server logunda protocol error yoktu. Hazırlık komutu
+uygulanmadan çalışan `InvNoPrep2C26` koşusu başarı kabul edilmedi; probe artık
+30 saniyelik hazırlık penceresi sonunda `item component preparation` codec
+hatası döndürür. Guard sonrasında gerçek hazırlıkla çalışan `InvPrep2C26`
+koşusu `damage` satırını yeniden doğruladı ve aynı `1 / 157 / 157 / 51`
+ölçümlerini verdi.
 
 | Component path | Geçerli kayıtlar |
 | --- | --- |
 | `custom_model_data` | `InvCompOk3`, `InvCompOk4` |
 | `food` | `InvFood2`, `InvFood3` |
-| `damage` | `InvDamage2`, `InvDamage3`, `CompDamageC26` |
+| `damage` | `InvDamage2`, `InvDamage3`, `CompDamageC26`, `InvPrep2C26` |
 | `tool` | `InvTool2`, `InvTool3` |
 | `weapon` | `InvWeapon2`, `InvWeapon3` |
 | `max_stack_size` | `InvMaxStack2`, `InvMaxStack4` |
