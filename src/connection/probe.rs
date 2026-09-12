@@ -4,7 +4,7 @@
 //! keeps scenario-specific packet sequences and observations at the probe boundary.
 
 use std::io;
-use std::net::SocketAddr;
+use std::net::{SocketAddr, TcpStream};
 use std::time::{Duration, Instant};
 
 use crate::binary::Uuid;
@@ -35,6 +35,42 @@ pub fn connect_and_probe(
     )
 }
 
+fn send_world_chunk_unload_step(
+    stream: &mut TcpStream,
+    player_position: &mut Option<(f64, f64, f64, f32, f32)>,
+    trace: &mut PlayConnectionTrace,
+    compression_threshold: Option<usize>,
+    context: &'static str,
+) -> Result<(), ConnectionError> {
+    let Some(position) = *player_position else {
+        return Err(ConnectionError::Codec(context));
+    };
+    let moved = (
+        position.0 + 4.0,
+        position.1,
+        position.2,
+        position.3,
+        position.4,
+    );
+    send_packet(
+        stream,
+        ConnectionProtocol::Play,
+        PLAY_SERVERBOUND_MOVE_PLAYER_POS_ROT_PACKET_ID,
+        |output| encode_move_player_pos_rot(output, moved, 1),
+        compression_threshold,
+    )?;
+    trace.movement_packets_sent += 1;
+    *player_position = Some(moved);
+    send_packet(
+        stream,
+        ConnectionProtocol::Play,
+        PLAY_SERVERBOUND_CLIENT_TICK_END_PACKET_ID,
+        |_output| Ok(()),
+        compression_threshold,
+    )?;
+    Ok(())
+}
+
 /// Connect to a Java-protocol server and send a short controlled position trace after loading.
 pub fn connect_and_move_probe(
     address: SocketAddr,
@@ -46,6 +82,21 @@ pub fn connect_and_move_probe(
         username,
         timeout,
         PlayProbeConfig::new(ProbeAction::Movement),
+    )
+}
+
+/// Connect to a Java-protocol server, move across the configured view radius,
+/// and observe chunk columns dropped from the client world copy.
+pub fn connect_and_world_chunk_unload_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeConfig::new(ProbeAction::WorldChunkUnload),
     )
 }
 
@@ -785,6 +836,7 @@ impl PlayProbeConfig {
 enum ProbeAction {
     Basic,
     Movement,
+    WorldChunkUnload,
     BlockAction,
     BlockBreak,
     BlockBreakOutOfRange,
@@ -1062,6 +1114,7 @@ fn connect_and_probe_with_mode(
     let mut creative_place_neighbor_position = None;
     let mut survival_water_bucket_target_position = None;
     let mut survival_water_bucket_neighbor_position = None;
+    let mut world_chunk_unload_last_sent = None;
     let mut world_ready_drain_started = None;
     while play_started.elapsed() <= timeout {
         let body = match read_packet(&mut stream, compression_threshold) {
@@ -1073,6 +1126,22 @@ fn connect_and_probe_with_mode(
                         io::ErrorKind::TimedOut | io::ErrorKind::WouldBlock
                     ) =>
             {
+                if matches!(probe.action, ProbeAction::WorldChunkUnload)
+                    && trace.movement_packets_sent < 96
+                {
+                    send_world_chunk_unload_step(
+                        &mut stream,
+                        &mut player_position,
+                        &mut trace,
+                        compression_threshold,
+                        "world chunk unload timeout step position",
+                    )?;
+                    world_chunk_unload_last_sent = Some(Instant::now());
+                    if trace.movement_packets_sent >= 96 {
+                        stream.set_read_timeout(Some(WORLD_LIFECYCLE_DRAIN_TIMEOUT))?;
+                    }
+                    continue;
+                }
                 if matches!(
                     probe.action,
                     ProbeAction::SurvivalInventoryItemComponentConformance(_)
@@ -1164,6 +1233,17 @@ fn connect_and_probe_with_mode(
                     trace.survival_water_bucket_neighbor_update = Some(observation.clone());
                 }
                 trace.block_update_observations.push(observation);
+            }
+            PLAY_CLIENTBOUND_FORGET_LEVEL_CHUNK_PACKET_ID => {
+                let (x, z) = parse_forget_level_chunk_packet(payload)?;
+                let removed_from_world = trace.world.unload_chunk(x, z);
+                trace
+                    .chunk_unload_observations
+                    .push(ChunkUnloadObservation {
+                        x,
+                        z,
+                        removed_from_world,
+                    });
             }
             PLAY_CLIENTBOUND_CHUNK_BATCH_START_PACKET_ID => {
                 chunk_batch_started = true;
@@ -1260,6 +1340,7 @@ fn connect_and_probe_with_mode(
         if trace.play_login
             && trace.chunk_packet_count > 0
             && (!chunk_batch_started || trace.chunk_batch_finished_count > 0)
+            && (!matches!(probe.action, ProbeAction::WorldChunkUnload) || player_position.is_some())
             && world_ready_drain_started.is_none()
         {
             if !player_loaded_sent {
@@ -1295,6 +1376,19 @@ fn connect_and_probe_with_mode(
                     trace.movement_packets_sent += 1;
                     player_position = Some(moved);
                 }
+            }
+            if matches!(probe.action, ProbeAction::WorldChunkUnload)
+                && trace.movement_packets_sent == 0
+            {
+                std::thread::sleep(Duration::from_secs(1));
+                send_world_chunk_unload_step(
+                    &mut stream,
+                    &mut player_position,
+                    &mut trace,
+                    compression_threshold,
+                    "world chunk unload initial step position",
+                )?;
+                world_chunk_unload_last_sent = Some(Instant::now());
             }
             if matches!(probe.action, ProbeAction::BlockAction)
                 && trace.player_action_packets_sent == 0
@@ -2266,6 +2360,7 @@ fn connect_and_probe_with_mode(
             world_ready_drain_started = Some(Instant::now());
             let drain_timeout = match probe.action {
                 ProbeAction::SurvivalDelayedDestroy => DELAYED_DESTROY_DRAIN_TIMEOUT,
+                ProbeAction::WorldChunkUnload => WORLD_LIFECYCLE_DRAIN_TIMEOUT,
                 ProbeAction::SurvivalWaterBucketUseOn | ProbeAction::SurvivalEmptyBucketPickup => {
                     WATER_BUCKET_DRAIN_TIMEOUT
                 }
@@ -2307,7 +2402,14 @@ fn connect_and_probe_with_mode(
                 ProbeAction::SurvivalInventorySwapStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
                 _ => WORLD_READY_DRAIN_TIMEOUT,
             };
-            stream.set_read_timeout(Some(drain_timeout))?;
+            let read_timeout = if matches!(probe.action, ProbeAction::WorldChunkUnload)
+                && trace.movement_packets_sent < 96
+            {
+                Duration::from_millis(100)
+            } else {
+                drain_timeout
+            };
+            stream.set_read_timeout(Some(read_timeout))?;
         }
 
         if let ProbeAction::SurvivalInventoryItemComponentConformance(spec) = probe.action
@@ -2346,8 +2448,28 @@ fn connect_and_probe_with_mode(
             }
         }
 
+        if matches!(probe.action, ProbeAction::WorldChunkUnload)
+            && world_ready_drain_started.is_some()
+            && trace.movement_packets_sent < 96
+            && world_chunk_unload_last_sent
+                .is_none_or(|last_sent| last_sent.elapsed() >= Duration::from_millis(50))
+        {
+            send_world_chunk_unload_step(
+                &mut stream,
+                &mut player_position,
+                &mut trace,
+                compression_threshold,
+                "world chunk unload packet step position",
+            )?;
+            world_chunk_unload_last_sent = Some(Instant::now());
+            if trace.movement_packets_sent >= 96 {
+                stream.set_read_timeout(Some(WORLD_LIFECYCLE_DRAIN_TIMEOUT))?;
+            }
+        }
+
         let drain_timeout = match probe.action {
             ProbeAction::SurvivalDelayedDestroy => DELAYED_DESTROY_DRAIN_TIMEOUT,
+            ProbeAction::WorldChunkUnload => WORLD_LIFECYCLE_DRAIN_TIMEOUT,
             ProbeAction::SurvivalWaterBucketUseOn | ProbeAction::SurvivalEmptyBucketPickup => {
                 WATER_BUCKET_DRAIN_TIMEOUT
             }

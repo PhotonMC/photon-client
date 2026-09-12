@@ -48,6 +48,7 @@ pub(crate) const PLAY_CLIENTBOUND_ADD_ENTITY_PACKET_ID: i32 = 1;
 pub(crate) const PLAY_CLIENTBOUND_BLOCK_CHANGED_ACK_PACKET_ID: i32 = 4;
 pub(crate) const PLAY_CLIENTBOUND_BLOCK_DESTRUCTION_PACKET_ID: i32 = 5;
 pub(crate) const PLAY_CLIENTBOUND_BLOCK_UPDATE_PACKET_ID: i32 = 8;
+pub(crate) const PLAY_CLIENTBOUND_FORGET_LEVEL_CHUNK_PACKET_ID: i32 = 37;
 pub(crate) const PLAY_CLIENTBOUND_CHUNK_BATCH_FINISHED_PACKET_ID: i32 = 11;
 pub(crate) const PLAY_CLIENTBOUND_CHUNK_BATCH_START_PACKET_ID: i32 = 12;
 pub(crate) const PLAY_CLIENTBOUND_CONTAINER_SET_CONTENT_PACKET_ID: i32 = 18;
@@ -63,6 +64,7 @@ pub(crate) const PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID: i32 = 132;
 pub(crate) const PLAY_SERVERBOUND_ACCEPT_TELEPORTATION_PACKET_ID: i32 = 0;
 pub(crate) const PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID: i32 = 41;
 pub(crate) const PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID: i32 = 11;
+pub(crate) const PLAY_SERVERBOUND_CLIENT_TICK_END_PACKET_ID: i32 = 13;
 pub(crate) const PLAY_SERVERBOUND_KEEP_ALIVE_PACKET_ID: i32 = 28;
 pub(crate) const PLAY_SERVERBOUND_MOVE_PLAYER_POS_ROT_PACKET_ID: i32 = 31;
 pub(crate) const PLAY_SERVERBOUND_PLAYER_LOADED_PACKET_ID: i32 = 44;
@@ -441,6 +443,7 @@ pub(crate) const DELAYED_DESTROY_DRAIN_TIMEOUT: Duration = Duration::from_millis
 pub(crate) const WATER_BUCKET_DRAIN_TIMEOUT: Duration = Duration::from_millis(1_000);
 pub(crate) const CONSUMABLE_DRAIN_TIMEOUT: Duration = Duration::from_millis(2_500);
 pub(crate) const COMPONENT_PREPARATION_DRAIN_TIMEOUT: Duration = Duration::from_secs(30);
+pub(crate) const WORLD_LIFECYCLE_DRAIN_TIMEOUT: Duration = Duration::from_secs(15);
 
 /// Errors raised while driving the initial real-server client session.
 #[derive(Debug)]
@@ -539,6 +542,7 @@ pub struct PlayConnectionTrace {
     pub block_destruction_observations: Vec<BlockDestructionObservation>,
     pub block_changed_ack_sequences: Vec<i32>,
     pub block_update_observations: Vec<BlockUpdateObservation>,
+    pub chunk_unload_observations: Vec<ChunkUnloadObservation>,
     pub chunk_packet_count: usize,
     pub chunk_batch_finished_count: usize,
     pub chunk_observations: Vec<ChunkPacketObservation>,
@@ -559,6 +563,14 @@ pub struct BlockUpdateObservation {
     pub y: i32,
     pub z: i32,
     pub state_id: i32,
+}
+
+/// Wire-level fields observed from one clientbound chunk-unload packet.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ChunkUnloadObservation {
+    pub x: i32,
+    pub z: i32,
+    pub removed_from_world: bool,
 }
 
 /// Wire-level fields decoded from one clientbound block-destruction progress packet.
@@ -1681,6 +1693,23 @@ pub(crate) fn parse_chunk_packet(
     })
 }
 
+pub(crate) fn parse_forget_level_chunk_packet(
+    mut input: &[u8],
+) -> Result<(i32, i32), ConnectionError> {
+    if input.len() < 8 {
+        return Err(ConnectionError::Codec("forget level chunk position"));
+    }
+    let (packed, rest) = input.split_at(8);
+    input = rest;
+    if !input.is_empty() {
+        return Err(ConnectionError::Codec(
+            "forget level chunk trailing payload",
+        ));
+    }
+    let packed = i64::from_be_bytes(packed.try_into().expect("checked chunk position length"));
+    Ok((packed as i32, (packed >> 32) as i32))
+}
+
 pub(crate) fn read_varint(input: &mut &[u8], name: &'static str) -> Result<i32, ConnectionError> {
     wire::read_varint(input).map_err(|_| ConnectionError::Codec(name))
 }
@@ -2063,15 +2092,17 @@ mod tests {
         PLAY_CLIENTBOUND_BLOCK_CHANGED_ACK_PACKET_ID, PLAY_CLIENTBOUND_BLOCK_DESTRUCTION_PACKET_ID,
         PLAY_CLIENTBOUND_BLOCK_UPDATE_PACKET_ID, PLAY_CLIENTBOUND_CHUNK_PACKET_ID,
         PLAY_CLIENTBOUND_CONTAINER_SET_CONTENT_PACKET_ID,
-        PLAY_CLIENTBOUND_CONTAINER_SET_SLOT_PACKET_ID, PLAY_CLIENTBOUND_KEEP_ALIVE_PACKET_ID,
+        PLAY_CLIENTBOUND_CONTAINER_SET_SLOT_PACKET_ID,
+        PLAY_CLIENTBOUND_FORGET_LEVEL_CHUNK_PACKET_ID, PLAY_CLIENTBOUND_KEEP_ALIVE_PACKET_ID,
         PLAY_CLIENTBOUND_LOGIN_PACKET_ID, PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID,
         PLAY_CLIENTBOUND_REMOVE_MOB_EFFECT_PACKET_ID, PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID,
         PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID, PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID,
         PLAY_SERVERBOUND_ACCEPT_TELEPORTATION_PACKET_ID,
         PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID,
-        PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID, PLAY_SERVERBOUND_KEEP_ALIVE_PACKET_ID,
-        PLAY_SERVERBOUND_MOVE_PLAYER_POS_ROT_PACKET_ID, PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID,
-        PLAY_SERVERBOUND_PLAYER_LOADED_PACKET_ID, PLAY_SERVERBOUND_SET_CARRIED_ITEM_PACKET_ID,
+        PLAY_SERVERBOUND_CLIENT_TICK_END_PACKET_ID, PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
+        PLAY_SERVERBOUND_KEEP_ALIVE_PACKET_ID, PLAY_SERVERBOUND_MOVE_PLAYER_POS_ROT_PACKET_ID,
+        PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID, PLAY_SERVERBOUND_PLAYER_LOADED_PACKET_ID,
+        PLAY_SERVERBOUND_SET_CARRIED_ITEM_PACKET_ID,
         PLAY_SERVERBOUND_SET_CREATIVE_MODE_SLOT_PACKET_ID, PLAY_SERVERBOUND_USE_ITEM_ON_PACKET_ID,
         PLAY_SERVERBOUND_USE_ITEM_PACKET_ID, STATUS_CLIENTBOUND_PONG_RESPONSE_PACKET_ID,
         STATUS_CLIENTBOUND_RESPONSE_PACKET_ID, STATUS_SERVERBOUND_PING_REQUEST_PACKET_ID,
@@ -2094,9 +2125,10 @@ mod tests {
         encode_stop_destroy_block, encode_use_item, encode_use_item_on, encode_use_item_on_hit,
         pack_block_position, parse_add_entity_packet, parse_block_destruction_packet,
         parse_block_update_packet, parse_chunk_packet, parse_container_set_content_packet,
-        parse_container_set_slot_packet, parse_optional_item_stack, parse_player_position_packet,
-        parse_remove_mob_effect_packet, parse_section_data, parse_system_chat_packet,
-        parse_update_mob_effect_packet, resolve_player_position, support_block_position,
+        parse_container_set_slot_packet, parse_forget_level_chunk_packet,
+        parse_optional_item_stack, parse_player_position_packet, parse_remove_mob_effect_packet,
+        parse_section_data, parse_system_chat_packet, parse_update_mob_effect_packet,
+        resolve_player_position, support_block_position,
     };
 
     #[test]
@@ -2125,6 +2157,7 @@ mod tests {
         assert_eq!(PLAY_CLIENTBOUND_LOGIN_PACKET_ID, 49);
         assert_eq!(PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID, 72);
         assert_eq!(PLAY_CLIENTBOUND_BLOCK_UPDATE_PACKET_ID, 8);
+        assert_eq!(PLAY_CLIENTBOUND_FORGET_LEVEL_CHUNK_PACKET_ID, 37);
         assert_eq!(PLAY_CLIENTBOUND_BLOCK_CHANGED_ACK_PACKET_ID, 4);
         assert_eq!(PLAY_CLIENTBOUND_BLOCK_DESTRUCTION_PACKET_ID, 5);
         assert_eq!(PLAY_CLIENTBOUND_CONTAINER_SET_CONTENT_PACKET_ID, 18);
@@ -2136,6 +2169,7 @@ mod tests {
         assert_eq!(PLAY_SERVERBOUND_ACCEPT_TELEPORTATION_PACKET_ID, 0);
         assert_eq!(PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID, 41);
         assert_eq!(PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID, 11);
+        assert_eq!(PLAY_SERVERBOUND_CLIENT_TICK_END_PACKET_ID, 13);
         assert_eq!(PLAY_SERVERBOUND_KEEP_ALIVE_PACKET_ID, 28);
         assert_eq!(PLAY_SERVERBOUND_MOVE_PLAYER_POS_ROT_PACKET_ID, 31);
         assert_eq!(PLAY_SERVERBOUND_PLAYER_LOADED_PACKET_ID, 44);
@@ -2345,6 +2379,21 @@ mod tests {
                 state_id: 123,
             }
         );
+    }
+
+    #[test]
+    fn forget_level_chunk_parser_matches_java_chunk_pos_packing() {
+        let packed = ((2_u64 << 32) | u64::from(u32::MAX)) as i64;
+
+        assert_eq!(
+            parse_forget_level_chunk_packet(&packed.to_be_bytes()).expect("chunk position"),
+            (-1, 2)
+        );
+        assert!(parse_forget_level_chunk_packet(&packed.to_be_bytes()[..7]).is_err());
+
+        let mut trailing = packed.to_be_bytes().to_vec();
+        trailing.push(0);
+        assert!(parse_forget_level_chunk_packet(&trailing).is_err());
     }
 
     #[test]
