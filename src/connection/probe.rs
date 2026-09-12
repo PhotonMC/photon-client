@@ -13,7 +13,7 @@ use crate::login::{ClientboundLoginFinishedPacket, ServerboundHelloPacket};
 use crate::protocol::ConnectionProtocol;
 use crate::resources::KnownPack;
 use crate::wire;
-use crate::world::{LightLayerInput, LightUpdateInput, SectionInput};
+use crate::world::{BlockEntityInput, LightLayerInput, LightUpdateInput, SectionInput};
 
 use super::protocol::*;
 use super::session::*;
@@ -112,6 +112,21 @@ pub fn connect_and_world_light_update_probe(
         username,
         timeout,
         PlayProbeConfig::new(ProbeAction::WorldLightUpdate),
+    )
+}
+
+/// Connect to a Java-protocol server, keep the loaded world open, and observe standalone
+/// clientbound block-entity data without adding movement to the scenario.
+pub fn connect_and_world_block_entity_update_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeConfig::new(ProbeAction::WorldBlockEntityUpdate),
     )
 }
 
@@ -853,6 +868,7 @@ enum ProbeAction {
     Movement,
     WorldChunkUnload,
     WorldLightUpdate,
+    WorldBlockEntityUpdate,
     BlockAction,
     BlockBreak,
     BlockBreakOutOfRange,
@@ -1220,6 +1236,18 @@ fn connect_and_probe_with_mode(
                     .block_destruction_observations
                     .push(parse_block_destruction_packet(payload)?);
             }
+            PLAY_CLIENTBOUND_BLOCK_ENTITY_DATA_PACKET_ID => {
+                let mut observation = parse_block_entity_data_packet(payload)?;
+                observation.applied_to_world =
+                    trace.world.apply_block_entity_update(BlockEntityInput {
+                        x: observation.x,
+                        y: observation.y,
+                        z: observation.z,
+                        type_id: observation.type_id,
+                        tag: observation.tag.as_deref(),
+                    });
+                trace.block_entity_observations.push(observation);
+            }
             PLAY_CLIENTBOUND_BLOCK_UPDATE_PACKET_ID => {
                 let observation = parse_block_update_packet(payload)?;
                 trace.world.update_block_state(
@@ -1342,7 +1370,7 @@ fn connect_and_probe_with_mode(
                     .push(parse_update_mob_effect_packet(payload)?);
             }
             PLAY_CLIENTBOUND_CHUNK_PACKET_ID => {
-                let chunk = parse_chunk_packet(payload)?;
+                let mut chunk = parse_chunk_packet(payload)?;
                 trace.world.replace_chunk(
                     chunk.x,
                     chunk.z,
@@ -1356,6 +1384,23 @@ fn connect_and_probe_with_mode(
                             biomes: &section.biome_values,
                         }),
                 );
+                let applied_block_entities = trace.world.apply_block_entities(
+                    chunk.x,
+                    chunk.z,
+                    chunk.block_entities.iter().map(|entity| BlockEntityInput {
+                        x: entity.x,
+                        y: entity.y,
+                        z: entity.z,
+                        type_id: entity.type_id,
+                        tag: entity.tag.as_deref(),
+                    }),
+                );
+                if applied_block_entities != chunk.block_entities.len() {
+                    return Err(ConnectionError::Codec("chunk block entity application"));
+                }
+                for entity in &mut chunk.block_entities {
+                    entity.applied_to_world = true;
+                }
                 let light_application = trace.world.apply_light_updates(
                     chunk.x,
                     chunk.z,
@@ -2424,6 +2469,7 @@ fn connect_and_probe_with_mode(
                 ProbeAction::SurvivalDelayedDestroy => DELAYED_DESTROY_DRAIN_TIMEOUT,
                 ProbeAction::WorldChunkUnload => WORLD_LIFECYCLE_DRAIN_TIMEOUT,
                 ProbeAction::WorldLightUpdate => LIGHT_UPDATE_DRAIN_TIMEOUT,
+                ProbeAction::WorldBlockEntityUpdate => BLOCK_ENTITY_UPDATE_DRAIN_TIMEOUT,
                 ProbeAction::SurvivalWaterBucketUseOn | ProbeAction::SurvivalEmptyBucketPickup => {
                     WATER_BUCKET_DRAIN_TIMEOUT
                 }
@@ -2534,6 +2580,7 @@ fn connect_and_probe_with_mode(
             ProbeAction::SurvivalDelayedDestroy => DELAYED_DESTROY_DRAIN_TIMEOUT,
             ProbeAction::WorldChunkUnload => WORLD_LIFECYCLE_DRAIN_TIMEOUT,
             ProbeAction::WorldLightUpdate => LIGHT_UPDATE_DRAIN_TIMEOUT,
+            ProbeAction::WorldBlockEntityUpdate => BLOCK_ENTITY_UPDATE_DRAIN_TIMEOUT,
             ProbeAction::SurvivalWaterBucketUseOn | ProbeAction::SurvivalEmptyBucketPickup => {
                 WATER_BUCKET_DRAIN_TIMEOUT
             }

@@ -91,6 +91,18 @@ impl ClientWorld {
         self.light_at(LightLayer::Block, x, y, z)
     }
 
+    pub fn loaded_block_entity_count(&self) -> usize {
+        self.chunks
+            .values()
+            .map(|chunk| chunk.block_entities.len())
+            .sum()
+    }
+
+    pub fn block_entity_at(&self, x: i32, y: i32, z: i32) -> Option<&ClientBlockEntity> {
+        let chunk_key = (x.div_euclid(16), z.div_euclid(16));
+        self.chunks.get(&chunk_key)?.block_entities.get(&(x, y, z))
+    }
+
     pub(crate) fn apply_light_updates(
         &mut self,
         chunk_x: i32,
@@ -162,6 +174,50 @@ impl ClientWorld {
         true
     }
 
+    pub(crate) fn apply_block_entities<'a, I>(
+        &mut self,
+        chunk_x: i32,
+        chunk_z: i32,
+        entities: I,
+    ) -> usize
+    where
+        I: IntoIterator<Item = BlockEntityInput<'a>>,
+    {
+        let Some(chunk) = self.chunks.get_mut(&(chunk_x, chunk_z)) else {
+            return 0;
+        };
+        let mut applied = 0;
+        for entity in entities {
+            if entity.x.div_euclid(16) != chunk_x || entity.z.div_euclid(16) != chunk_z {
+                continue;
+            }
+            chunk.block_entities.insert(
+                (entity.x, entity.y, entity.z),
+                ClientBlockEntity {
+                    type_id: entity.type_id,
+                    tag: entity.tag.map(<[u8]>::to_vec),
+                },
+            );
+            applied += 1;
+        }
+        applied
+    }
+
+    pub(crate) fn apply_block_entity_update(&mut self, entity: BlockEntityInput<'_>) -> bool {
+        let chunk_key = (entity.x.div_euclid(16), entity.z.div_euclid(16));
+        let Some(chunk) = self.chunks.get_mut(&chunk_key) else {
+            return false;
+        };
+        chunk.block_entities.insert(
+            (entity.x, entity.y, entity.z),
+            ClientBlockEntity {
+                type_id: entity.type_id,
+                tag: entity.tag.map(<[u8]>::to_vec),
+            },
+        );
+        true
+    }
+
     pub fn section_counts_at(
         &self,
         chunk_x: i32,
@@ -227,15 +283,23 @@ impl ClientWorld {
             ClientChunk {
                 sections,
                 lights: BTreeMap::new(),
+                block_entities: BTreeMap::new(),
             },
         );
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClientBlockEntity {
+    pub type_id: i32,
+    pub tag: Option<Vec<u8>>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct ClientChunk {
     sections: BTreeMap<i32, ClientSection>,
     lights: BTreeMap<i32, ClientLightSection>,
+    block_entities: BTreeMap<(i32, i32, i32), ClientBlockEntity>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -268,6 +332,14 @@ pub(crate) struct LightLayerInput<'a> {
     pub(crate) mask: &'a BitSet,
     pub(crate) empty_mask: &'a BitSet,
     pub(crate) updates: &'a [Vec<u8>],
+}
+
+pub(crate) struct BlockEntityInput<'a> {
+    pub(crate) x: i32,
+    pub(crate) y: i32,
+    pub(crate) z: i32,
+    pub(crate) type_id: i32,
+    pub(crate) tag: Option<&'a [u8]>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -330,7 +402,10 @@ fn apply_light_layer(
 
 #[cfg(test)]
 mod tests {
-    use super::{ClientWorld, DimensionBounds, LightLayerInput, LightUpdateInput, SectionInput};
+    use super::{
+        BlockEntityInput, ClientWorld, DimensionBounds, LightLayerInput, LightUpdateInput,
+        SectionInput,
+    };
     use crate::binary::BitSet;
 
     fn section(block_value: i32, biome_value: i32) -> (Vec<i32>, Vec<i32>) {
@@ -497,6 +572,63 @@ mod tests {
         assert!(world.unload_chunk(0, 0));
         assert_eq!(world.sky_light_at(0, -64, 0), None);
         assert_eq!(world.loaded_light_section_count(), 0);
+    }
+
+    #[test]
+    fn block_entities_are_queryable_and_removed_with_their_chunk() {
+        let (blocks, biomes) = section(7, 8);
+        let mut world = ClientWorld::default();
+        world.replace_chunk(
+            -1,
+            2,
+            [SectionInput {
+                non_empty_block_count: 1,
+                fluid_count: 0,
+                block_states: &blocks,
+                biomes: &biomes,
+            }],
+        );
+        let tag = [10, 0];
+
+        assert_eq!(
+            world.apply_block_entities(
+                -1,
+                2,
+                [BlockEntityInput {
+                    x: -1,
+                    y: -63,
+                    z: 32,
+                    type_id: 7,
+                    tag: Some(&tag),
+                }],
+            ),
+            1
+        );
+        assert_eq!(world.loaded_block_entity_count(), 1);
+        assert_eq!(
+            world.block_entity_at(-1, -63, 32),
+            Some(&super::ClientBlockEntity {
+                type_id: 7,
+                tag: Some(tag.to_vec()),
+            })
+        );
+
+        let replacement = [10, 0, 0];
+        assert!(world.apply_block_entity_update(BlockEntityInput {
+            x: -1,
+            y: -63,
+            z: 32,
+            type_id: 8,
+            tag: Some(&replacement),
+        }));
+        assert_eq!(world.block_entity_at(-1, -63, 32).unwrap().type_id, 8);
+        assert_eq!(
+            world.block_entity_at(-1, -63, 32).unwrap().tag,
+            Some(replacement.to_vec())
+        );
+        assert!(world.unload_chunk(-1, 2));
+        assert_eq!(world.loaded_block_entity_count(), 0);
+        assert_eq!(world.block_entity_at(-1, -63, 32), None);
     }
 
     #[test]

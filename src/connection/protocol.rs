@@ -48,6 +48,7 @@ pub(crate) const PLAY_CLIENTBOUND_BUNDLE_DELIMITER_PACKET_ID: i32 = 0;
 pub(crate) const PLAY_CLIENTBOUND_ADD_ENTITY_PACKET_ID: i32 = 1;
 pub(crate) const PLAY_CLIENTBOUND_BLOCK_CHANGED_ACK_PACKET_ID: i32 = 4;
 pub(crate) const PLAY_CLIENTBOUND_BLOCK_DESTRUCTION_PACKET_ID: i32 = 5;
+pub(crate) const PLAY_CLIENTBOUND_BLOCK_ENTITY_DATA_PACKET_ID: i32 = 6;
 pub(crate) const PLAY_CLIENTBOUND_BLOCK_UPDATE_PACKET_ID: i32 = 8;
 pub(crate) const PLAY_CLIENTBOUND_FORGET_LEVEL_CHUNK_PACKET_ID: i32 = 37;
 pub(crate) const PLAY_CLIENTBOUND_LIGHT_UPDATE_PACKET_ID: i32 = 48;
@@ -447,6 +448,7 @@ pub(crate) const CONSUMABLE_DRAIN_TIMEOUT: Duration = Duration::from_millis(2_50
 pub(crate) const COMPONENT_PREPARATION_DRAIN_TIMEOUT: Duration = Duration::from_secs(30);
 pub(crate) const WORLD_LIFECYCLE_DRAIN_TIMEOUT: Duration = Duration::from_secs(15);
 pub(crate) const LIGHT_UPDATE_DRAIN_TIMEOUT: Duration = Duration::from_secs(30);
+pub(crate) const BLOCK_ENTITY_UPDATE_DRAIN_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// Errors raised while driving the initial real-server client session.
 #[derive(Debug)]
@@ -547,6 +549,7 @@ pub struct PlayConnectionTrace {
     pub block_update_observations: Vec<BlockUpdateObservation>,
     pub chunk_unload_observations: Vec<ChunkUnloadObservation>,
     pub light_update_observations: Vec<LightUpdateObservation>,
+    pub block_entity_observations: Vec<BlockEntityObservation>,
     pub chunk_packet_count: usize,
     pub chunk_batch_finished_count: usize,
     pub chunk_observations: Vec<ChunkPacketObservation>,
@@ -591,6 +594,18 @@ pub struct LightUpdateObservation {
     pub applied_sky_sections: usize,
     pub applied_block_sections: usize,
     pub(crate) light_data: LightUpdateData,
+}
+
+/// Wire-level fields decoded from one clientbound block-entity data record.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BlockEntityObservation {
+    pub x: i32,
+    pub y: i32,
+    pub z: i32,
+    pub type_id: i32,
+    pub tag_length: usize,
+    pub applied_to_world: bool,
+    pub(crate) tag: Option<Vec<u8>>,
 }
 
 /// Wire-level fields decoded from one clientbound block-destruction progress packet.
@@ -689,6 +704,7 @@ pub struct ChunkPacketObservation {
     pub section_data_length: usize,
     pub section_observations: Vec<ChunkSectionObservation>,
     pub block_entity_count: usize,
+    pub block_entities: Vec<BlockEntityObservation>,
     pub sky_mask_word_count: usize,
     pub block_mask_word_count: usize,
     pub empty_sky_mask_word_count: usize,
@@ -1288,6 +1304,36 @@ pub(crate) fn parse_block_update_packet(
     })
 }
 
+pub(crate) fn parse_block_entity_data_packet(
+    input: &[u8],
+) -> Result<BlockEntityObservation, ConnectionError> {
+    if input.len() < 8 {
+        return Err(ConnectionError::Codec("block entity position"));
+    }
+    let (packed, rest) = input.split_at(8);
+    let position = crate::binary::BlockPos::unpack(u64::from_be_bytes(
+        packed
+            .try_into()
+            .expect("checked block entity position length"),
+    ));
+    let mut input = rest;
+    let type_id = read_varint(&mut input, "block entity type")?;
+    let tag = read_nbt_bytes(&mut input, "block entity nbt")?;
+    if !input.is_empty() {
+        return Err(ConnectionError::Codec("block entity trailing payload"));
+    }
+    let tag_length = tag.as_ref().map_or(0, Vec::len);
+    Ok(BlockEntityObservation {
+        x: position.x,
+        y: position.y,
+        z: position.z,
+        type_id,
+        tag_length,
+        applied_to_world: false,
+        tag,
+    })
+}
+
 pub(crate) fn parse_block_destruction_packet(
     input: &[u8],
 ) -> Result<BlockDestructionObservation, ConnectionError> {
@@ -1664,6 +1710,16 @@ pub(crate) fn skip_lp_vec3(input: &mut &[u8]) -> Result<(), ConnectionError> {
     Ok(())
 }
 
+fn read_nbt_bytes(
+    input: &mut &[u8],
+    name: &'static str,
+) -> Result<Option<Vec<u8>>, ConnectionError> {
+    let before = *input;
+    let value = crate::nbt::read_nbt(input).map_err(|_| ConnectionError::Codec(name))?;
+    let consumed = before.len() - input.len();
+    Ok(value.map(|_| before[..consumed].to_vec()))
+}
+
 pub(crate) fn parse_chunk_packet(
     mut input: &[u8],
 ) -> Result<ChunkPacketObservation, ConnectionError> {
@@ -1687,11 +1743,26 @@ pub(crate) fn parse_chunk_packet(
     let section_observations = parse_section_data(section_data)?;
 
     let block_entity_count = read_count(&mut input, "block entity count")?;
+    let mut block_entities = Vec::with_capacity(block_entity_count);
     for _ in 0..block_entity_count {
-        read_byte(&mut input, "block entity packed xz")?;
-        read_i16(&mut input, "block entity y")?;
-        read_varint(&mut input, "block entity type")?;
-        crate::nbt::read_nbt(&mut input).map_err(|_| ConnectionError::Codec("block entity nbt"))?;
+        let packed_xz = read_byte(&mut input, "block entity packed xz")?;
+        let y = i32::from(read_i16(&mut input, "block entity y")?);
+        let type_id = read_varint(&mut input, "block entity type")?;
+        let tag = read_nbt_bytes(&mut input, "block entity nbt")?;
+        let local_x = i32::from(packed_xz >> 4);
+        let local_z = i32::from(packed_xz & 0x0f);
+        let x = x.wrapping_mul(16).wrapping_add(local_x);
+        let z = z.wrapping_mul(16).wrapping_add(local_z);
+        let tag_length = tag.as_ref().map_or(0, Vec::len);
+        block_entities.push(BlockEntityObservation {
+            x,
+            y,
+            z,
+            type_id,
+            tag_length,
+            applied_to_world: false,
+            tag,
+        });
     }
 
     let light_data = parse_light_data(&mut input)?;
@@ -1722,6 +1793,7 @@ pub(crate) fn parse_chunk_packet(
         section_data_length,
         section_observations,
         block_entity_count,
+        block_entities,
         sky_mask_word_count,
         block_mask_word_count,
         empty_sky_mask_word_count,
@@ -2193,8 +2265,8 @@ mod tests {
     use super::{
         InventoryComponentCodec, PLAY_CLIENTBOUND_ADD_ENTITY_PACKET_ID,
         PLAY_CLIENTBOUND_BLOCK_CHANGED_ACK_PACKET_ID, PLAY_CLIENTBOUND_BLOCK_DESTRUCTION_PACKET_ID,
-        PLAY_CLIENTBOUND_BLOCK_UPDATE_PACKET_ID, PLAY_CLIENTBOUND_CHUNK_PACKET_ID,
-        PLAY_CLIENTBOUND_CONTAINER_SET_CONTENT_PACKET_ID,
+        PLAY_CLIENTBOUND_BLOCK_ENTITY_DATA_PACKET_ID, PLAY_CLIENTBOUND_BLOCK_UPDATE_PACKET_ID,
+        PLAY_CLIENTBOUND_CHUNK_PACKET_ID, PLAY_CLIENTBOUND_CONTAINER_SET_CONTENT_PACKET_ID,
         PLAY_CLIENTBOUND_CONTAINER_SET_SLOT_PACKET_ID,
         PLAY_CLIENTBOUND_FORGET_LEVEL_CHUNK_PACKET_ID, PLAY_CLIENTBOUND_KEEP_ALIVE_PACKET_ID,
         PLAY_CLIENTBOUND_LIGHT_UPDATE_PACKET_ID, PLAY_CLIENTBOUND_LOGIN_PACKET_ID,
@@ -2228,11 +2300,12 @@ mod tests {
         encode_packet_frame, encode_release_use_item, encode_set_carried_item,
         encode_stop_destroy_block, encode_use_item, encode_use_item_on, encode_use_item_on_hit,
         pack_block_position, parse_add_entity_packet, parse_block_destruction_packet,
-        parse_block_update_packet, parse_chunk_packet, parse_container_set_content_packet,
-        parse_container_set_slot_packet, parse_forget_level_chunk_packet,
-        parse_light_update_packet, parse_optional_item_stack, parse_player_position_packet,
-        parse_remove_mob_effect_packet, parse_section_data, parse_system_chat_packet,
-        parse_update_mob_effect_packet, resolve_player_position, support_block_position,
+        parse_block_entity_data_packet, parse_block_update_packet, parse_chunk_packet,
+        parse_container_set_content_packet, parse_container_set_slot_packet,
+        parse_forget_level_chunk_packet, parse_light_update_packet, parse_optional_item_stack,
+        parse_player_position_packet, parse_remove_mob_effect_packet, parse_section_data,
+        parse_system_chat_packet, parse_update_mob_effect_packet, resolve_player_position,
+        support_block_position,
     };
 
     #[test]
@@ -2261,6 +2334,7 @@ mod tests {
         assert_eq!(PLAY_CLIENTBOUND_LOGIN_PACKET_ID, 49);
         assert_eq!(PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID, 72);
         assert_eq!(PLAY_CLIENTBOUND_BLOCK_UPDATE_PACKET_ID, 8);
+        assert_eq!(PLAY_CLIENTBOUND_BLOCK_ENTITY_DATA_PACKET_ID, 6);
         assert_eq!(PLAY_CLIENTBOUND_FORGET_LEVEL_CHUNK_PACKET_ID, 37);
         assert_eq!(PLAY_CLIENTBOUND_LIGHT_UPDATE_PACKET_ID, 48);
         assert_eq!(PLAY_CLIENTBOUND_BLOCK_CHANGED_ACK_PACKET_ID, 4);
@@ -2340,6 +2414,36 @@ mod tests {
 
         let observation = parse_chunk_packet(&payload).expect("nullable block entity tag");
         assert_eq!(observation.block_entity_count, 1);
+        assert_eq!(
+            observation.block_entities,
+            [super::BlockEntityObservation {
+                x: 2,
+                y: -64,
+                z: 1,
+                type_id: 0,
+                tag_length: 0,
+                applied_to_world: false,
+                tag: None,
+            }]
+        );
+    }
+
+    #[test]
+    fn block_entity_data_packet_parser_decodes_packed_position_and_nbt() {
+        let mut payload = pack_block_position((-12, -63, 9)).to_be_bytes().to_vec();
+        crate::wire::write_varint(42, &mut payload);
+        payload.extend_from_slice(&[10, 0]);
+
+        let observation = parse_block_entity_data_packet(&payload).expect("block entity data");
+        assert_eq!(observation.x, -12);
+        assert_eq!(observation.y, -63);
+        assert_eq!(observation.z, 9);
+        assert_eq!(observation.type_id, 42);
+        assert_eq!(observation.tag_length, 2);
+        assert!(!observation.applied_to_world);
+
+        payload.push(0);
+        assert!(parse_block_entity_data_packet(&payload).is_err());
     }
 
     #[test]
