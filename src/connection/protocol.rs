@@ -1,104 +1,82 @@
-//! A small synchronous client connection used by the first real-server integration probe.
-//!
-//! This module owns the byte pipeline up to the first play-world packets. It does not
-//! implement a renderer or a client world; its purpose is to make the phase transition
-//! and the first world delivery observable without turning the test into a manual launch.
-//!
-//! Pending restructure (see `docs/course-correction-2026-09-12.md`): this module currently
-//! mixes three concerns and must be split before it grows further — wire codecs and packet
-//! types, the session state machine, and the probe scaffolding. The scaffolding does not
-//! belong in the library. `PlayProbeMode` is the wrong shape: a scenario is data, not an
-//! enum variant with match arms spread across the file. Adding a new constant-only variant
-//! of an existing code path (item component ids, hashes) is not a new slice; extend the
-//! scenario table instead. The next behaviour slice on the critical path is the client world
-//! copy (P08.a/b), not another probe: chunk packets are currently parsed into counters and
-//! discarded, so no queryable world state exists yet.
+//! Packet codecs, wire observations, and frame serialization for the Java protocol.
 
 use std::collections::BTreeSet;
 use std::fmt;
 use std::io::{self, Read, Write};
-use std::net::{SocketAddr, TcpStream};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use flate2::Compression;
 use flate2::read::ZlibDecoder;
 use flate2::write::ZlibEncoder;
 
-use crate::binary::Uuid;
-use crate::configuration::{
-    ChatVisibility, ClientInformation, MainHand, ParticleStatus, ServerboundClientInformationPacket,
-};
-use crate::frame::{self, FrameError, MAX_FRAME_LENGTH, MAX_VARINT21_BYTES};
-use crate::handshake::{ClientIntent, ClientIntentionPacket};
-use crate::login::{ClientboundLoginFinishedPacket, ServerboundHelloPacket};
+use crate::frame::{self, FrameError, MAX_FRAME_LENGTH};
 use crate::protocol::ConnectionProtocol;
-use crate::resources::KnownPack;
 use crate::wire;
 
-const PROTOCOL_VERSION: i32 = 776;
-const LOGIN_INTENTION_PACKET_ID: i32 = 0;
-const LOGIN_HELLO_PACKET_ID: i32 = 0;
-const LOGIN_ACKNOWLEDGED_PACKET_ID: i32 = 3;
-const LOGIN_FINISHED_PACKET_ID: i32 = 2;
-const LOGIN_COMPRESSION_PACKET_ID: i32 = 3;
+pub(crate) const PROTOCOL_VERSION: i32 = 776;
+pub(crate) const LOGIN_INTENTION_PACKET_ID: i32 = 0;
+pub(crate) const LOGIN_HELLO_PACKET_ID: i32 = 0;
+pub(crate) const LOGIN_ACKNOWLEDGED_PACKET_ID: i32 = 3;
+pub(crate) const LOGIN_FINISHED_PACKET_ID: i32 = 2;
+pub(crate) const LOGIN_COMPRESSION_PACKET_ID: i32 = 3;
 
-const STATUS_SERVERBOUND_REQUEST_PACKET_ID: i32 = 0;
-const STATUS_SERVERBOUND_PING_REQUEST_PACKET_ID: i32 = 1;
-const STATUS_CLIENTBOUND_RESPONSE_PACKET_ID: i32 = 0;
-const STATUS_CLIENTBOUND_PONG_RESPONSE_PACKET_ID: i32 = 1;
-const STATUS_RESPONSE_MAX_UTF16_LENGTH: usize = 32_767;
-const STATUS_PROBE_TIME: i64 = 0x0102_0304_0506_0708;
+pub(crate) const STATUS_SERVERBOUND_REQUEST_PACKET_ID: i32 = 0;
+pub(crate) const STATUS_SERVERBOUND_PING_REQUEST_PACKET_ID: i32 = 1;
+pub(crate) const STATUS_CLIENTBOUND_RESPONSE_PACKET_ID: i32 = 0;
+pub(crate) const STATUS_CLIENTBOUND_PONG_RESPONSE_PACKET_ID: i32 = 1;
+pub(crate) const STATUS_RESPONSE_MAX_UTF16_LENGTH: usize = 32_767;
+pub(crate) const STATUS_PROBE_TIME: i64 = 0x0102_0304_0506_0708;
 
-const CONFIG_CLIENT_INFORMATION_PACKET_ID: i32 = 0;
-const CONFIG_CUSTOM_PAYLOAD_PACKET_ID: i32 = 2;
-const CONFIG_FINISH_PACKET_ID: i32 = 3;
-const CONFIG_KEEP_ALIVE_PACKET_ID: i32 = 4;
-const CONFIG_PONG_PACKET_ID: i32 = 5;
-const CONFIG_REGISTRY_DATA_PACKET_ID: i32 = 7;
-const CONFIG_SELECT_KNOWN_PACKS_PACKET_ID: i32 = 14;
-const CONFIG_SERVERBOUND_SELECT_KNOWN_PACKS_PACKET_ID: i32 = 7;
-const CONFIG_ACCEPT_CODE_OF_CONDUCT_PACKET_ID: i32 = 9;
-const CONFIG_ENABLED_FEATURES_PACKET_ID: i32 = 12;
-const CONFIG_UPDATE_TAGS_PACKET_ID: i32 = 13;
-const CONFIG_CODE_OF_CONDUCT_PACKET_ID: i32 = 19;
+pub(crate) const CONFIG_CLIENT_INFORMATION_PACKET_ID: i32 = 0;
+pub(crate) const CONFIG_CUSTOM_PAYLOAD_PACKET_ID: i32 = 2;
+pub(crate) const CONFIG_FINISH_PACKET_ID: i32 = 3;
+pub(crate) const CONFIG_KEEP_ALIVE_PACKET_ID: i32 = 4;
+pub(crate) const CONFIG_PONG_PACKET_ID: i32 = 5;
+pub(crate) const CONFIG_REGISTRY_DATA_PACKET_ID: i32 = 7;
+pub(crate) const CONFIG_SELECT_KNOWN_PACKS_PACKET_ID: i32 = 14;
+pub(crate) const CONFIG_SERVERBOUND_SELECT_KNOWN_PACKS_PACKET_ID: i32 = 7;
+pub(crate) const CONFIG_ACCEPT_CODE_OF_CONDUCT_PACKET_ID: i32 = 9;
+pub(crate) const CONFIG_ENABLED_FEATURES_PACKET_ID: i32 = 12;
+pub(crate) const CONFIG_UPDATE_TAGS_PACKET_ID: i32 = 13;
+pub(crate) const CONFIG_CODE_OF_CONDUCT_PACKET_ID: i32 = 19;
 
 // The virtual bundle packet is not registered in the Java dispatch table; the delimiter
 // occupies id 0 and shifts the listed play clientbound packet ids by one.
-const PLAY_CLIENTBOUND_BUNDLE_DELIMITER_PACKET_ID: i32 = 0;
-const PLAY_CLIENTBOUND_ADD_ENTITY_PACKET_ID: i32 = 1;
-const PLAY_CLIENTBOUND_BLOCK_CHANGED_ACK_PACKET_ID: i32 = 4;
-const PLAY_CLIENTBOUND_BLOCK_DESTRUCTION_PACKET_ID: i32 = 5;
-const PLAY_CLIENTBOUND_BLOCK_UPDATE_PACKET_ID: i32 = 8;
-const PLAY_CLIENTBOUND_CHUNK_BATCH_FINISHED_PACKET_ID: i32 = 11;
-const PLAY_CLIENTBOUND_CHUNK_BATCH_START_PACKET_ID: i32 = 12;
-const PLAY_CLIENTBOUND_CONTAINER_SET_CONTENT_PACKET_ID: i32 = 18;
-const PLAY_CLIENTBOUND_CONTAINER_SET_SLOT_PACKET_ID: i32 = 20;
-const PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID: i32 = 96;
-const PLAY_CLIENTBOUND_REMOVE_MOB_EFFECT_PACKET_ID: i32 = 78;
-const PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID: i32 = 121;
-const PLAY_CLIENTBOUND_KEEP_ALIVE_PACKET_ID: i32 = 44;
-const PLAY_CLIENTBOUND_CHUNK_PACKET_ID: i32 = 45;
-const PLAY_CLIENTBOUND_LOGIN_PACKET_ID: i32 = 49;
-const PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID: i32 = 72;
-const PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID: i32 = 132;
-const PLAY_SERVERBOUND_ACCEPT_TELEPORTATION_PACKET_ID: i32 = 0;
-const PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID: i32 = 41;
-const PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID: i32 = 11;
-const PLAY_SERVERBOUND_KEEP_ALIVE_PACKET_ID: i32 = 28;
-const PLAY_SERVERBOUND_MOVE_PLAYER_POS_ROT_PACKET_ID: i32 = 31;
-const PLAY_SERVERBOUND_PLAYER_LOADED_PACKET_ID: i32 = 44;
-const PLAY_SERVERBOUND_SET_CARRIED_ITEM_PACKET_ID: i32 = 53;
-const PLAY_SERVERBOUND_SET_CREATIVE_MODE_SLOT_PACKET_ID: i32 = 56;
-const PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID: i32 = 18;
-const PLAY_SERVERBOUND_USE_ITEM_ON_PACKET_ID: i32 = 66;
-const PLAY_SERVERBOUND_USE_ITEM_PACKET_ID: i32 = 67;
+pub(crate) const PLAY_CLIENTBOUND_BUNDLE_DELIMITER_PACKET_ID: i32 = 0;
+pub(crate) const PLAY_CLIENTBOUND_ADD_ENTITY_PACKET_ID: i32 = 1;
+pub(crate) const PLAY_CLIENTBOUND_BLOCK_CHANGED_ACK_PACKET_ID: i32 = 4;
+pub(crate) const PLAY_CLIENTBOUND_BLOCK_DESTRUCTION_PACKET_ID: i32 = 5;
+pub(crate) const PLAY_CLIENTBOUND_BLOCK_UPDATE_PACKET_ID: i32 = 8;
+pub(crate) const PLAY_CLIENTBOUND_CHUNK_BATCH_FINISHED_PACKET_ID: i32 = 11;
+pub(crate) const PLAY_CLIENTBOUND_CHUNK_BATCH_START_PACKET_ID: i32 = 12;
+pub(crate) const PLAY_CLIENTBOUND_CONTAINER_SET_CONTENT_PACKET_ID: i32 = 18;
+pub(crate) const PLAY_CLIENTBOUND_CONTAINER_SET_SLOT_PACKET_ID: i32 = 20;
+pub(crate) const PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID: i32 = 96;
+pub(crate) const PLAY_CLIENTBOUND_REMOVE_MOB_EFFECT_PACKET_ID: i32 = 78;
+pub(crate) const PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID: i32 = 121;
+pub(crate) const PLAY_CLIENTBOUND_KEEP_ALIVE_PACKET_ID: i32 = 44;
+pub(crate) const PLAY_CLIENTBOUND_CHUNK_PACKET_ID: i32 = 45;
+pub(crate) const PLAY_CLIENTBOUND_LOGIN_PACKET_ID: i32 = 49;
+pub(crate) const PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID: i32 = 72;
+pub(crate) const PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID: i32 = 132;
+pub(crate) const PLAY_SERVERBOUND_ACCEPT_TELEPORTATION_PACKET_ID: i32 = 0;
+pub(crate) const PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID: i32 = 41;
+pub(crate) const PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID: i32 = 11;
+pub(crate) const PLAY_SERVERBOUND_KEEP_ALIVE_PACKET_ID: i32 = 28;
+pub(crate) const PLAY_SERVERBOUND_MOVE_PLAYER_POS_ROT_PACKET_ID: i32 = 31;
+pub(crate) const PLAY_SERVERBOUND_PLAYER_LOADED_PACKET_ID: i32 = 44;
+pub(crate) const PLAY_SERVERBOUND_SET_CARRIED_ITEM_PACKET_ID: i32 = 53;
+pub(crate) const PLAY_SERVERBOUND_SET_CREATIVE_MODE_SLOT_PACKET_ID: i32 = 56;
+pub(crate) const PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID: i32 = 18;
+pub(crate) const PLAY_SERVERBOUND_USE_ITEM_ON_PACKET_ID: i32 = 66;
+pub(crate) const PLAY_SERVERBOUND_USE_ITEM_PACKET_ID: i32 = 67;
 
 // The pinned vanilla built-in item registry is not sent in configuration registry data.
 // Items.java registers AIR before STONE, so STONE has id 1 in BuiltInRegistries.ITEM.
-const VANILLA_STONE_ITEM_REGISTRY_ID: i32 = 1;
+pub(crate) const VANILLA_STONE_ITEM_REGISTRY_ID: i32 = 1;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum InventoryComponentCodec {
+pub(crate) enum InventoryComponentCodec {
     VarInt,
     RegistryId,
     Unit,
@@ -114,17 +92,17 @@ enum InventoryComponentCodec {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct InventoryComponentProbeSpec {
-    component_path: &'static str,
-    component_type_id: i32,
-    codec: InventoryComponentCodec,
-    component_hash: i32,
-    item_registry_id: i32,
-    expected_positive_component_type_ids: &'static [i32],
-    carried_components: &'static [(i32, i32)],
+pub(crate) struct InventoryComponentProbeSpec {
+    pub(crate) component_path: &'static str,
+    pub(crate) component_type_id: i32,
+    pub(crate) codec: InventoryComponentCodec,
+    pub(crate) component_hash: i32,
+    pub(crate) item_registry_id: i32,
+    pub(crate) expected_positive_component_type_ids: &'static [i32],
+    pub(crate) carried_components: &'static [(i32, i32)],
 }
 
-const VANILLA_ITEM_COMPONENT_CONFORMANCE: &[InventoryComponentProbeSpec] = &[
+pub(crate) const VANILLA_ITEM_COMPONENT_CONFORMANCE: &[InventoryComponentProbeSpec] = &[
     InventoryComponentProbeSpec {
         component_path: "custom_model_data",
         component_type_id: 17,
@@ -424,7 +402,9 @@ const VANILLA_ITEM_COMPONENT_CONFORMANCE: &[InventoryComponentProbeSpec] = &[
     },
 ];
 
-fn inventory_component_spec(component_path: &str) -> Option<&'static InventoryComponentProbeSpec> {
+pub(crate) fn inventory_component_spec(
+    component_path: &str,
+) -> Option<&'static InventoryComponentProbeSpec> {
     let component_path = component_path
         .strip_prefix("minecraft:")
         .unwrap_or(component_path);
@@ -433,7 +413,7 @@ fn inventory_component_spec(component_path: &str) -> Option<&'static InventoryCo
         .find(|spec| spec.component_path == component_path)
 }
 
-fn inventory_component_spec_by_type_id(
+pub(crate) fn inventory_component_spec_by_type_id(
     component_type_id: i32,
 ) -> Option<&'static InventoryComponentProbeSpec> {
     VANILLA_ITEM_COMPONENT_CONFORMANCE
@@ -441,25 +421,25 @@ fn inventory_component_spec_by_type_id(
         .find(|spec| spec.component_type_id == component_type_id)
 }
 
-const VANILLA_MILK_BUCKET_ITEM_REGISTRY_ID: i32 = 1_046;
-const VANILLA_SNOWBALL_ITEM_REGISTRY_ID: i32 = 1_044;
+pub(crate) const VANILLA_MILK_BUCKET_ITEM_REGISTRY_ID: i32 = 1_046;
+pub(crate) const VANILLA_SNOWBALL_ITEM_REGISTRY_ID: i32 = 1_044;
 // DataComponents registers CUSTOM_MODEL_DATA after the first 17 built-in component types.
 
-const PLAYER_RELATIVE_X_FLAG: i32 = 1 << 0;
-const PLAYER_RELATIVE_Y_FLAG: i32 = 1 << 1;
-const PLAYER_RELATIVE_Z_FLAG: i32 = 1 << 2;
-const PLAYER_RELATIVE_Y_ROT_FLAG: i32 = 1 << 3;
-const PLAYER_RELATIVE_X_ROT_FLAG: i32 = 1 << 4;
+pub(crate) const PLAYER_RELATIVE_X_FLAG: i32 = 1 << 0;
+pub(crate) const PLAYER_RELATIVE_Y_FLAG: i32 = 1 << 1;
+pub(crate) const PLAYER_RELATIVE_Z_FLAG: i32 = 1 << 2;
+pub(crate) const PLAYER_RELATIVE_Y_ROT_FLAG: i32 = 1 << 3;
+pub(crate) const PLAYER_RELATIVE_X_ROT_FLAG: i32 = 1 << 4;
 
-const MAX_PACKET_UNCOMPRESSED_LENGTH: usize = 8 * 1024 * 1024;
-const MAX_CHUNK_DATA_LENGTH: usize = 2 * 1024 * 1024;
-const MAX_KNOWN_PACKS: usize = 64;
-const MAX_READABLE_FRAME_LENGTH: usize = MAX_FRAME_LENGTH;
-const WORLD_READY_DRAIN_TIMEOUT: Duration = Duration::from_millis(250);
-const DELAYED_DESTROY_DRAIN_TIMEOUT: Duration = Duration::from_millis(1_200);
-const WATER_BUCKET_DRAIN_TIMEOUT: Duration = Duration::from_millis(1_000);
-const CONSUMABLE_DRAIN_TIMEOUT: Duration = Duration::from_millis(2_500);
-const COMPONENT_PREPARATION_DRAIN_TIMEOUT: Duration = Duration::from_secs(30);
+pub(crate) const MAX_PACKET_UNCOMPRESSED_LENGTH: usize = 8 * 1024 * 1024;
+pub(crate) const MAX_CHUNK_DATA_LENGTH: usize = 2 * 1024 * 1024;
+pub(crate) const MAX_KNOWN_PACKS: usize = 64;
+pub(crate) const MAX_READABLE_FRAME_LENGTH: usize = MAX_FRAME_LENGTH;
+pub(crate) const WORLD_READY_DRAIN_TIMEOUT: Duration = Duration::from_millis(250);
+pub(crate) const DELAYED_DESTROY_DRAIN_TIMEOUT: Duration = Duration::from_millis(1_200);
+pub(crate) const WATER_BUCKET_DRAIN_TIMEOUT: Duration = Duration::from_millis(1_000);
+pub(crate) const CONSUMABLE_DRAIN_TIMEOUT: Duration = Duration::from_millis(2_500);
+pub(crate) const COMPONENT_PREPARATION_DRAIN_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// Errors raised while driving the initial real-server client session.
 #[derive(Debug)]
@@ -719,2441 +699,7 @@ pub struct StatusConnectionTrace {
     pub pong_time: i64,
 }
 
-/// Query a Java-protocol server's status and verify its ping echo.
-pub fn query_status_and_ping(
-    address: SocketAddr,
-    timeout: Duration,
-) -> Result<StatusConnectionTrace, ConnectionError> {
-    if timeout.is_zero() {
-        return Err(ConnectionError::InvalidArgument("timeout"));
-    }
-
-    let mut stream = connect_stream(address, timeout)?;
-    send_handshake_intention(&mut stream, address, ClientIntent::Status)?;
-    send_packet(
-        &mut stream,
-        ConnectionProtocol::Status,
-        STATUS_SERVERBOUND_REQUEST_PACKET_ID,
-        |payload| {
-            crate::status::ServerboundStatusRequestPacket::INSTANCE.encode(payload);
-            Ok(())
-        },
-        None,
-    )?;
-
-    let mut packets = Vec::with_capacity(2);
-    let body = read_packet(&mut stream, None)?;
-    let (packet_id, payload) = split_packet(&body)?;
-    packets.push(PacketObservation {
-        phase: ConnectionProtocol::Status,
-        id: packet_id,
-        body_length: body.len(),
-    });
-    if packet_id != STATUS_CLIENTBOUND_RESPONSE_PACKET_ID {
-        return Err(ConnectionError::UnsupportedPacket {
-            phase: ConnectionProtocol::Status,
-            id: packet_id,
-        });
-    }
-
-    let mut input = payload;
-    let status_units = crate::utf8::read_utf8(&mut input, STATUS_RESPONSE_MAX_UTF16_LENGTH)
-        .map_err(|_| ConnectionError::Codec("status response"))?;
-    let status_response = String::from_utf16(&status_units)
-        .map_err(|_| ConnectionError::Codec("status response UTF-16"))?;
-
-    let ping = crate::status::ServerboundPingRequestPacket::new(STATUS_PROBE_TIME);
-    send_packet(
-        &mut stream,
-        ConnectionProtocol::Status,
-        STATUS_SERVERBOUND_PING_REQUEST_PACKET_ID,
-        |payload| {
-            ping.encode(payload);
-            Ok(())
-        },
-        None,
-    )?;
-
-    let body = read_packet(&mut stream, None)?;
-    let (packet_id, payload) = split_packet(&body)?;
-    packets.push(PacketObservation {
-        phase: ConnectionProtocol::Status,
-        id: packet_id,
-        body_length: body.len(),
-    });
-    if packet_id != STATUS_CLIENTBOUND_PONG_RESPONSE_PACKET_ID {
-        return Err(ConnectionError::UnsupportedPacket {
-            phase: ConnectionProtocol::Status,
-            id: packet_id,
-        });
-    }
-
-    let mut input = payload;
-    let pong = crate::status::ClientboundPongResponsePacket::decode(&mut input)
-        .map_err(|_| ConnectionError::Codec("status pong"))?;
-    if pong.time != STATUS_PROBE_TIME {
-        return Err(ConnectionError::Codec("status pong echo"));
-    }
-
-    Ok(StatusConnectionTrace {
-        packets,
-        status_response,
-        pong_time: pong.time,
-    })
-}
-
-/// Connect to a Java-protocol server and drive the session until the first play chunk.
-///
-/// The server must use offline authentication, as the project deliberately does not
-/// implement Mojang's encryption/authentication exchange in this first slice.
-pub fn connect_and_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(address, username, timeout, PlayProbeMode::Basic)
-}
-
-/// Connect to a Java-protocol server and send a short controlled position trace after loading.
-pub fn connect_and_move_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(address, username, timeout, PlayProbeMode::Movement)
-}
-
-/// Connect to a Java-protocol server and send a harmless block-action packet after loading.
-pub fn connect_and_action_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(address, username, timeout, PlayProbeMode::BlockAction)
-}
-
-/// Connect to a Java-protocol server and break the block supporting the spawned player.
-pub fn connect_and_block_break_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(address, username, timeout, PlayProbeMode::BlockBreak)
-}
-
-/// Connect to a Java-protocol server and send a block-break action outside interaction range.
-pub fn connect_and_block_break_rejection_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::BlockBreakOutOfRange,
-    )
-}
-
-/// Connect to a Java-protocol server and use the empty main hand on the supporting block.
-pub fn connect_and_use_item_on_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(address, username, timeout, PlayProbeMode::UseItemOn)
-}
-
-/// Connect to a Java-protocol server and use the empty main hand in open space.
-pub fn connect_and_use_item_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(address, username, timeout, PlayProbeMode::UseItem)
-}
-
-/// Connect to a Java-protocol server, place a snowball stack in the creative hotbar,
-/// select it and use the main hand to spawn a projectile.
-pub fn connect_and_creative_snowball_use_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::CreativeSnowballUse,
-    )
-}
-
-/// Connect to a Java-protocol server, select a supplied survival snowball stack and use it.
-pub fn connect_and_survival_snowball_use_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalSnowballUse,
-    )
-}
-
-/// Connect to a Java-protocol server, select a supplied survival water bucket and use it
-/// on the upper face of the supporting block.
-pub fn connect_and_survival_water_bucket_use_on_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalWaterBucketUseOn,
-    )
-}
-
-/// Connect to a Java-protocol server, select a supplied survival empty bucket and use it
-/// to pick up a water source beside the supporting block.
-pub fn connect_and_survival_empty_bucket_pickup_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalEmptyBucketPickup,
-    )
-}
-
-/// Connect to a Java-protocol server, use a component-bearing survival milk bucket,
-/// and observe its completed bucket remainder.
-pub fn connect_and_survival_milk_bucket_use_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalMilkBucketUse,
-    )
-}
-
-/// Connect to a Java-protocol server, use a component-bearing survival honey bottle,
-/// and observe its completed glass-bottle remainder.
-pub fn connect_and_survival_honey_bottle_use_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalHoneyBottleUse,
-    )
-}
-
-/// Connect to a Java-protocol server, use a component-bearing survival honey bottle
-/// while poison is active, and observe the completed glass-bottle remainder and the
-/// authoritative mob-effect removal packet.
-pub fn connect_and_survival_honey_bottle_poison_cleanup_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalHoneyBottlePoisonCleanup,
-    )
-}
-
-/// Connect to a Java-protocol server, start using a component-bearing survival honey bottle,
-/// and release it before the consumable duration completes.
-pub fn connect_and_survival_honey_bottle_early_release_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalHoneyBottleEarlyRelease,
-    )
-}
-
-/// Connect to a Java-protocol server, consume a survival pufferfish, and observe its effects.
-pub fn connect_and_survival_pufferfish_use_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalPufferfishUse,
-    )
-}
-
-/// Connect to a Java-protocol server, attempt a full-hunger survival pufferfish use,
-/// and observe the rejection without consuming the stack.
-pub fn connect_and_survival_pufferfish_full_hunger_rejection_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalPufferfishFullHungerRejection,
-    )
-}
-
-/// Connect to a Java-protocol server, consume a survival golden apple, and observe its effects.
-pub fn connect_and_survival_golden_apple_use_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalGoldenAppleUse,
-    )
-}
-
-/// Connect to a Java-protocol server, consume a survival enchanted golden apple, and observe its effects.
-pub fn connect_and_survival_enchanted_golden_apple_use_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalEnchantedGoldenAppleUse,
-    )
-}
-
-/// Connect to a Java-protocol server, pick up a supplied survival inventory stack
-/// with a stale container state id, and observe the authoritative full resync.
-pub fn connect_and_survival_inventory_pickup_state_correction_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalInventoryPickupStateCorrection,
-    )
-}
-
-/// Connect to a Java-protocol server, pick up half of a supplied survival
-/// inventory stack with a stale container state id, and observe the full resync.
-pub fn connect_and_survival_inventory_secondary_pickup_state_correction_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalInventorySecondaryPickupStateCorrection,
-    )
-}
-
-/// Connect to a Java-protocol server, throw one item from a supplied survival
-/// inventory stack with a stale container state id, and observe the full resync.
-pub fn connect_and_survival_inventory_throw_one_state_correction_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalInventoryThrowOneStateCorrection,
-    )
-}
-
-/// Connect to a Java-protocol server, throw an entire supplied survival
-/// inventory stack with a stale container state id, and observe the full resync.
-pub fn connect_and_survival_inventory_throw_all_state_correction_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalInventoryThrowAllStateCorrection,
-    )
-}
-
-/// Connect to a Java-protocol server, start an empty-carried survival drag with
-/// a stale container state id, and observe the no-op full resync.
-pub fn connect_and_survival_inventory_drag_empty_cancel_state_correction_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalInventoryDragEmptyCancelStateCorrection,
-    )
-}
-
-/// Connect to a Java-protocol server, distribute a supplied survival stack over
-/// two inventory slots with stale container state ids, and observe the resyncs.
-pub fn connect_and_survival_inventory_drag_distribution_state_correction_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalInventoryDragDistributionStateCorrection,
-    )
-}
-
-/// Connect to a Java-protocol server, collect a second survival inventory stack
-/// with a stale container state id, and observe the authoritative full resync.
-pub fn connect_and_survival_inventory_double_click_state_correction_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalInventoryDoubleClickStateCorrection,
-    )
-}
-
-/// Connect to a Java-protocol server, collect a second survival inventory stack
-/// up to the carried stack limit with a stale container state id, and observe
-/// the authoritative full resync.
-pub fn connect_and_survival_inventory_double_click_stack_limit_state_correction_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalInventoryDoubleClickStackLimitStateCorrection,
-    )
-}
-
-/// Connect to a Java-protocol server, pick up a supplied survival inventory
-/// stack with an ahead-of-menu container state id, and observe the full resync.
-pub fn connect_and_survival_inventory_ahead_state_correction_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalInventoryAheadStateCorrection,
-    )
-}
-
-/// Connect to a Java-protocol server, send a current inventory state id and
-/// matching post-click hashes for a survival pickup, and observe no correction.
-pub fn connect_and_survival_inventory_correct_prediction_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalInventoryCorrectPrediction,
-    )
-}
-
-/// Connect to a Java-protocol server, send a current inventory state id with a
-/// wrong post-click slot prediction and a correct carried prediction, and
-/// observe the authoritative slot correction.
-pub fn connect_and_survival_inventory_wrong_slot_prediction_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalInventoryWrongSlotPrediction,
-    )
-}
-
-/// Connect to a Java-protocol server, send a current inventory state id with a
-/// correct post-click slot prediction and a wrong carried prediction, and
-/// observe the authoritative cursor correction.
-pub fn connect_and_survival_inventory_wrong_carried_prediction_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalInventoryWrongCarriedPrediction,
-    )
-}
-
-/// Connect to a Java-protocol server, send a current inventory state id with
-/// both post-click predictions wrong, and observe the independent slot and
-/// cursor corrections.
-pub fn connect_and_survival_inventory_wrong_both_prediction_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalInventoryWrongBothPrediction,
-    )
-}
-
-/// Connect to a Java-protocol server, pick up a component-bearing survival
-/// stack with a wrong carried component hash, and observe the cursor correction.
-pub fn connect_and_survival_inventory_component_hash_prediction_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalInventoryComponentHashPrediction,
-    )
-}
-
-/// Connect to a Java-protocol server, pick up one table-selected component
-/// stack with its Java-derived carried hash, and observe the server response.
-pub fn connect_and_survival_inventory_item_component_conformance_probe(
-    address: SocketAddr,
-    username: &str,
-    component_path: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    let Some(spec) = inventory_component_spec(component_path) else {
-        return Err(ConnectionError::InvalidArgument("component_path"));
-    };
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalInventoryItemComponentConformance(spec),
-    )
-}
-
-/// Connect to a Java-protocol server, pick up a survival stack without sending
-/// its changed-slot hash, and observe the authoritative slot correction.
-pub fn connect_and_survival_inventory_partial_changed_slot_prediction_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalInventoryPartialChangedSlotPrediction,
-    )
-}
-
-/// Connect to a Java-protocol server, send correct pickup predictions with a
-/// stale container state id, and observe the authoritative full resync.
-pub fn connect_and_survival_inventory_stale_state_correct_prediction_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalInventoryStaleStateCorrectPrediction,
-    )
-}
-
-/// Connect to a Java-protocol server, send correct pickup predictions with an
-/// ahead container state id, and observe the authoritative full resync.
-pub fn connect_and_survival_inventory_ahead_state_correct_prediction_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalInventoryAheadStateCorrectPrediction,
-    )
-}
-
-/// Connect to a Java-protocol server, send a component-bearing pickup with an
-/// ahead container state id and the exact component hash, and observe the full
-/// resync.
-pub fn connect_and_survival_inventory_ahead_component_correct_prediction_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalInventoryAheadComponentCorrectPrediction,
-    )
-}
-
-/// Connect to a Java-protocol server, shift-click a supplied survival inventory
-/// stack with a stale container state id, and observe the authoritative full resync.
-pub fn connect_and_survival_inventory_quick_move_state_correction_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalInventoryQuickMoveStateCorrection,
-    )
-}
-
-/// Connect to a Java-protocol server, swap a supplied survival hotbar stack into
-/// the main inventory with a stale container state id, and observe the full resync.
-pub fn connect_and_survival_inventory_swap_state_correction_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalInventorySwapStateCorrection,
-    )
-}
-
-/// Connect to a Java-protocol server, place a stone stack in the creative hotbar,
-/// select it and request a side placement against the supporting block.
-pub fn connect_and_creative_place_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(address, username, timeout, PlayProbeMode::CreativePlace)
-}
-
-/// Connect to a Java-protocol server, start breaking the supporting block in survival
-/// mode and immediately abort the same action.
-pub fn connect_and_survival_break_abort_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalBreakAbort,
-    )
-}
-
-/// Connect to a Java-protocol server, break the supporting dirt block in survival mode
-/// with a timed stop action and observe the authoritative air update.
-pub fn connect_and_survival_break_stop_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(address, username, timeout, PlayProbeMode::SurvivalBreakStop)
-}
-
-/// Connect to a Java-protocol server, start breaking the supporting stone block in survival
-/// mode and stop before the bare-hand hardness threshold is reached.
-pub fn connect_and_survival_stone_break_stop_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalStoneBreakStop,
-    )
-}
-
-/// Connect to a Java-protocol server, start breaking the supporting oak-planks block in
-/// survival mode and stop before the bare-hand hardness threshold is reached.
-pub fn connect_and_survival_oak_planks_break_stop_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalOakPlanksBreakStop,
-    )
-}
-
-/// Connect to a Java-protocol server, select a wooden pickaxe supplied in hotbar slot 0,
-/// and break the supporting stone block in survival mode.
-pub fn connect_and_survival_stone_wooden_pickaxe_break_stop_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalStoneWoodenPickaxeBreakStop,
-    )
-}
-
-/// Connect to a Java-protocol server, select a wooden shovel supplied in hotbar slot 0,
-/// and break the supporting dirt block in survival mode.
-pub fn connect_and_survival_dirt_wooden_shovel_break_stop_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalDirtWoodenShovelBreakStop,
-    )
-}
-
-/// Connect to a Java-protocol server, select a wooden axe supplied in hotbar slot 0,
-/// and break the supporting oak planks block in survival mode.
-pub fn connect_and_survival_oak_planks_wooden_axe_break_stop_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalOakPlanksWoodenAxeBreakStop,
-    )
-}
-
-/// Connect to a Java-protocol server, stop a short survival dirt break early and
-/// observe the server's delayed destroy completion on later ticks.
-pub fn connect_and_survival_delayed_destroy_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalDelayedDestroy,
-    )
-}
-
-/// Connect to a Java-protocol server, request a protected spawn-area block break
-/// in survival mode and observe the denial message and sequence acknowledgement.
-pub fn connect_and_survival_spawn_protection_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalSpawnProtection,
-    )
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum PlayProbeMode {
-    Basic,
-    Movement,
-    BlockAction,
-    BlockBreak,
-    BlockBreakOutOfRange,
-    UseItemOn,
-    UseItem,
-    CreativeSnowballUse,
-    SurvivalSnowballUse,
-    SurvivalWaterBucketUseOn,
-    SurvivalEmptyBucketPickup,
-    SurvivalMilkBucketUse,
-    SurvivalHoneyBottleUse,
-    SurvivalHoneyBottlePoisonCleanup,
-    SurvivalHoneyBottleEarlyRelease,
-    SurvivalPufferfishUse,
-    SurvivalPufferfishFullHungerRejection,
-    SurvivalGoldenAppleUse,
-    SurvivalEnchantedGoldenAppleUse,
-    SurvivalInventoryPickupStateCorrection,
-    SurvivalInventorySecondaryPickupStateCorrection,
-    SurvivalInventoryThrowOneStateCorrection,
-    SurvivalInventoryThrowAllStateCorrection,
-    SurvivalInventoryDragEmptyCancelStateCorrection,
-    SurvivalInventoryDragDistributionStateCorrection,
-    SurvivalInventoryDoubleClickStateCorrection,
-    SurvivalInventoryDoubleClickStackLimitStateCorrection,
-    SurvivalInventoryAheadStateCorrection,
-    SurvivalInventoryCorrectPrediction,
-    SurvivalInventoryWrongSlotPrediction,
-    SurvivalInventoryWrongCarriedPrediction,
-    SurvivalInventoryWrongBothPrediction,
-    SurvivalInventoryComponentHashPrediction,
-    SurvivalInventoryPartialChangedSlotPrediction,
-    SurvivalInventoryStaleStateCorrectPrediction,
-    SurvivalInventoryAheadStateCorrectPrediction,
-    SurvivalInventoryAheadComponentCorrectPrediction,
-    SurvivalInventoryItemComponentConformance(&'static InventoryComponentProbeSpec),
-    SurvivalInventoryQuickMoveStateCorrection,
-    SurvivalInventorySwapStateCorrection,
-    CreativePlace,
-    SurvivalBreakAbort,
-    SurvivalBreakStop,
-    SurvivalStoneBreakStop,
-    SurvivalOakPlanksBreakStop,
-    SurvivalStoneWoodenPickaxeBreakStop,
-    SurvivalDirtWoodenShovelBreakStop,
-    SurvivalOakPlanksWoodenAxeBreakStop,
-    SurvivalDelayedDestroy,
-    SurvivalSpawnProtection,
-}
-
-fn connect_and_probe_with_mode(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-    probe_mode: PlayProbeMode,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    if username.is_empty() || username.encode_utf16().count() > crate::login::MAX_NAME_LENGTH {
-        return Err(ConnectionError::InvalidArgument("username"));
-    }
-    if timeout.is_zero() {
-        return Err(ConnectionError::InvalidArgument("timeout"));
-    }
-
-    let mut stream = connect_stream(address, timeout)?;
-    send_handshake_intention(&mut stream, address, ClientIntent::Login)?;
-
-    let hello = ServerboundHelloPacket::new(username.encode_utf16().collect(), Uuid::new(0, 1));
-    send_packet(
-        &mut stream,
-        ConnectionProtocol::Login,
-        LOGIN_HELLO_PACKET_ID,
-        |payload| {
-            hello
-                .encode(payload)
-                .map_err(|_| ConnectionError::Codec("login hello"))
-        },
-        None,
-    )?;
-
-    let started = Instant::now();
-    let mut compression_threshold = None;
-    let mut trace = PlayConnectionTrace::default();
-    if matches!(probe_mode, PlayProbeMode::CreativePlace) {
-        trace.stone_item_registry_id = Some(VANILLA_STONE_ITEM_REGISTRY_ID);
-    }
-    if matches!(probe_mode, PlayProbeMode::CreativeSnowballUse) {
-        trace.snowball_item_registry_id = Some(VANILLA_SNOWBALL_ITEM_REGISTRY_ID);
-    }
-
-    loop {
-        let body = read_packet(&mut stream, compression_threshold)?;
-        let (packet_id, payload) = split_packet(&body)?;
-        trace.packets.push(PacketObservation {
-            phase: ConnectionProtocol::Login,
-            id: packet_id,
-            body_length: body.len(),
-        });
-
-        match packet_id {
-            LOGIN_COMPRESSION_PACKET_ID => {
-                let mut input = payload;
-                let packet = crate::login::ClientboundLoginCompressionPacket::decode(&mut input)
-                    .map_err(|_| ConnectionError::Codec("login compression"))?;
-                compression_threshold = if packet.threshold < 0 {
-                    None
-                } else {
-                    Some(packet.threshold as usize)
-                };
-                trace.compression_threshold = compression_threshold;
-            }
-            LOGIN_FINISHED_PACKET_ID => {
-                let mut input = payload;
-                ClientboundLoginFinishedPacket::decode(&mut input)
-                    .map_err(|_| ConnectionError::Codec("login finished"))?;
-                trace.login_finished = true;
-
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Login,
-                    LOGIN_ACKNOWLEDGED_PACKET_ID,
-                    |_payload| Ok(()),
-                    compression_threshold,
-                )?;
-                send_configuration_start(&mut stream, compression_threshold)?;
-                break;
-            }
-            0 => return Err(ConnectionError::ServerDisconnected),
-            1 => {
-                return Err(ConnectionError::UnsupportedPacket {
-                    phase: ConnectionProtocol::Login,
-                    id: packet_id,
-                });
-            }
-            _ => {}
-        }
-
-        if started.elapsed() > timeout {
-            return Err(ConnectionError::Io(io::Error::new(
-                io::ErrorKind::TimedOut,
-                "login timeout",
-            )));
-        }
-    }
-
-    let configuration_started = Instant::now();
-    loop {
-        let body = read_packet(&mut stream, compression_threshold)?;
-        let (packet_id, payload) = split_packet(&body)?;
-        trace.packets.push(PacketObservation {
-            phase: ConnectionProtocol::Configuration,
-            id: packet_id,
-            body_length: body.len(),
-        });
-
-        match packet_id {
-            CONFIG_REGISTRY_DATA_PACKET_ID => {
-                let mut input = payload;
-                let packet =
-                    crate::registry_data::ClientboundRegistryDataPacket::decode(&mut input)
-                        .map_err(|_| ConnectionError::Codec("registry data"))?;
-                trace.registry_packet_count += 1;
-                trace.registry_entry_count += packet.entries.len();
-            }
-            CONFIG_UPDATE_TAGS_PACKET_ID => {
-                let mut input = payload;
-                crate::tags::ClientboundUpdateTagsPacket::decode(&mut input)
-                    .map_err(|_| ConnectionError::Codec("update tags"))?;
-                trace.update_tags_packet_count += 1;
-            }
-            CONFIG_ENABLED_FEATURES_PACKET_ID => {
-                let mut input = payload;
-                let packet = crate::configuration::ClientboundUpdateEnabledFeaturesPacket::decode(
-                    &mut input,
-                )
-                .map_err(|_| ConnectionError::Codec("enabled features"))?;
-                trace.enabled_feature_count = packet.features.len();
-            }
-            CONFIG_SELECT_KNOWN_PACKS_PACKET_ID => {
-                let mut input = payload;
-                let packs = KnownPack::decode_list(&mut input, usize::MAX)
-                    .map_err(|_| ConnectionError::Codec("clientbound known packs"))?;
-                trace.known_pack_count = packs.len();
-
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Configuration,
-                    CONFIG_SERVERBOUND_SELECT_KNOWN_PACKS_PACKET_ID,
-                    |output| {
-                        KnownPack::encode_list(&packs, output, MAX_KNOWN_PACKS)
-                            .map_err(|_| ConnectionError::Codec("serverbound known packs"))
-                    },
-                    compression_threshold,
-                )?;
-            }
-            CONFIG_KEEP_ALIVE_PACKET_ID => {
-                let mut input = payload;
-                let packet = crate::common::ClientboundKeepAlivePacket::decode(&mut input)
-                    .map_err(|_| ConnectionError::Codec("configuration keep alive"))?;
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Configuration,
-                    CONFIG_KEEP_ALIVE_PACKET_ID,
-                    |output| {
-                        crate::common::ServerboundKeepAlivePacket::new(packet.id).encode(output);
-                        Ok(())
-                    },
-                    compression_threshold,
-                )?;
-            }
-            CONFIG_PONG_PACKET_ID => {
-                let mut input = payload;
-                let packet = crate::common::ClientboundPingPacket::decode(&mut input)
-                    .map_err(|_| ConnectionError::Codec("configuration ping"))?;
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Configuration,
-                    CONFIG_PONG_PACKET_ID,
-                    |output| {
-                        crate::common::ServerboundPongPacket::new(packet.id).encode(output);
-                        Ok(())
-                    },
-                    compression_threshold,
-                )?;
-            }
-            CONFIG_CODE_OF_CONDUCT_PACKET_ID => {
-                let mut input = payload;
-                crate::configuration::ClientboundCodeOfConductPacket::decode(&mut input)
-                    .map_err(|_| ConnectionError::Codec("code of conduct"))?;
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Configuration,
-                    CONFIG_ACCEPT_CODE_OF_CONDUCT_PACKET_ID,
-                    |_payload| Ok(()),
-                    compression_threshold,
-                )?;
-            }
-            CONFIG_FINISH_PACKET_ID => {
-                crate::configuration::ClientboundFinishConfigurationPacket::decode(
-                    &mut &payload[..],
-                )
-                .map_err(|_| ConnectionError::Codec("finish configuration"))?;
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Configuration,
-                    CONFIG_FINISH_PACKET_ID,
-                    |_payload| Ok(()),
-                    compression_threshold,
-                )?;
-                trace.configuration_finished = true;
-                break;
-            }
-            2 => return Err(ConnectionError::ServerDisconnected),
-            9 | 11 => {
-                return Err(ConnectionError::UnsupportedPacket {
-                    phase: ConnectionProtocol::Configuration,
-                    id: packet_id,
-                });
-            }
-            _ => {}
-        }
-
-        if configuration_started.elapsed() > timeout {
-            return Err(ConnectionError::Io(io::Error::new(
-                io::ErrorKind::TimedOut,
-                "configuration timeout",
-            )));
-        }
-    }
-
-    let play_started = Instant::now();
-    let mut chunk_batch_started = false;
-    let mut player_loaded_sent = false;
-    let mut player_position = None;
-    let mut creative_place_target_position = None;
-    let mut creative_place_neighbor_position = None;
-    let mut survival_water_bucket_target_position = None;
-    let mut survival_water_bucket_neighbor_position = None;
-    let mut world_ready_drain_started = None;
-    while play_started.elapsed() <= timeout {
-        let body = match read_packet(&mut stream, compression_threshold) {
-            Ok(body) => body,
-            Err(ConnectionError::Io(error))
-                if world_ready_drain_started.is_some()
-                    && matches!(
-                        error.kind(),
-                        io::ErrorKind::TimedOut | io::ErrorKind::WouldBlock
-                    ) =>
-            {
-                return Ok(trace);
-            }
-            Err(error) => return Err(error),
-        };
-        let (packet_id, payload) = split_packet(&body)?;
-        trace.packets.push(PacketObservation {
-            phase: ConnectionProtocol::Play,
-            id: packet_id,
-            body_length: body.len(),
-        });
-
-        match packet_id {
-            PLAY_CLIENTBOUND_ADD_ENTITY_PACKET_ID => {
-                trace
-                    .add_entity_observations
-                    .push(parse_add_entity_packet(payload)?);
-            }
-            PLAY_CLIENTBOUND_CONTAINER_SET_CONTENT_PACKET_ID => {
-                trace
-                    .container_content_observations
-                    .push(parse_container_set_content_packet(payload)?);
-            }
-            PLAY_CLIENTBOUND_CONTAINER_SET_SLOT_PACKET_ID => {
-                trace
-                    .container_slot_observations
-                    .push(parse_container_set_slot_packet(payload)?);
-            }
-            PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID => {
-                trace
-                    .cursor_item_observations
-                    .push(parse_cursor_item_packet(payload)?);
-            }
-            PLAY_CLIENTBOUND_REMOVE_MOB_EFFECT_PACKET_ID => {
-                trace
-                    .mob_effect_remove_observations
-                    .push(parse_remove_mob_effect_packet(payload)?);
-            }
-            PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID => {
-                trace
-                    .system_chat_observations
-                    .push(parse_system_chat_packet(payload)?);
-            }
-            PLAY_CLIENTBOUND_BLOCK_CHANGED_ACK_PACKET_ID => {
-                let mut input = payload;
-                let sequence = read_varint(&mut input, "block changed ack sequence")?;
-                if !input.is_empty() {
-                    return Err(ConnectionError::Codec("block changed ack trailing payload"));
-                }
-                trace.block_changed_ack_sequences.push(sequence);
-            }
-            PLAY_CLIENTBOUND_BLOCK_DESTRUCTION_PACKET_ID => {
-                trace
-                    .block_destruction_observations
-                    .push(parse_block_destruction_packet(payload)?);
-            }
-            PLAY_CLIENTBOUND_BLOCK_UPDATE_PACKET_ID => {
-                let observation = parse_block_update_packet(payload)?;
-                if creative_place_target_position.is_some_and(|position| {
-                    position == (observation.x, observation.y, observation.z)
-                }) {
-                    trace.creative_place_target_update = Some(observation.clone());
-                }
-                if creative_place_neighbor_position.is_some_and(|position| {
-                    position == (observation.x, observation.y, observation.z)
-                }) {
-                    trace.creative_place_neighbor_update = Some(observation.clone());
-                }
-                if survival_water_bucket_target_position.is_some_and(|position| {
-                    position == (observation.x, observation.y, observation.z)
-                }) {
-                    trace.survival_water_bucket_target_update = Some(observation.clone());
-                }
-                if survival_water_bucket_neighbor_position.is_some_and(|position| {
-                    position == (observation.x, observation.y, observation.z)
-                }) {
-                    trace.survival_water_bucket_neighbor_update = Some(observation.clone());
-                }
-                trace.block_update_observations.push(observation);
-            }
-            PLAY_CLIENTBOUND_CHUNK_BATCH_START_PACKET_ID => {
-                chunk_batch_started = true;
-            }
-            PLAY_CLIENTBOUND_CHUNK_BATCH_FINISHED_PACKET_ID => {
-                let mut input = payload;
-                wire::read_varint(&mut input)
-                    .map_err(|_| ConnectionError::Codec("chunk batch finished"))?;
-                trace.chunk_batch_finished_count += 1;
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID,
-                    |output| {
-                        // This is the initial value used by Java's chunk batch calculator:
-                        // 7,000,000 ns / 2,000,000 ns per chunk.
-                        output.extend_from_slice(&3.5_f32.to_be_bytes());
-                        Ok(())
-                    },
-                    compression_threshold,
-                )?;
-            }
-            PLAY_CLIENTBOUND_LOGIN_PACKET_ID => trace.play_login = true,
-            PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID => {
-                let packet = parse_player_position_packet(payload)?;
-                trace
-                    .player_position_observations
-                    .push(PlayerPositionObservation {
-                        teleport_id: packet.teleport_id,
-                        relative_flags: packet.relative_flags,
-                    });
-                let absolute = resolve_player_position(packet, player_position);
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_ACCEPT_TELEPORTATION_PACKET_ID,
-                    |output| {
-                        wire::write_varint(packet.teleport_id, output);
-                        Ok(())
-                    },
-                    compression_threshold,
-                )?;
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_MOVE_PLAYER_POS_ROT_PACKET_ID,
-                    |output| encode_move_player_pos_rot(output, absolute, 0),
-                    compression_threshold,
-                )?;
-                player_position = Some(absolute);
-            }
-            PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID => {
-                trace
-                    .mob_effect_update_observations
-                    .push(parse_update_mob_effect_packet(payload)?);
-            }
-            PLAY_CLIENTBOUND_CHUNK_PACKET_ID => {
-                trace.chunk_observations.push(parse_chunk_packet(payload)?);
-                trace.chunk_packet_count += 1;
-            }
-            PLAY_CLIENTBOUND_KEEP_ALIVE_PACKET_ID => {
-                let mut input = payload;
-                let packet = crate::common::ClientboundKeepAlivePacket::decode(&mut input)
-                    .map_err(|_| ConnectionError::Codec("play keep alive"))?;
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_KEEP_ALIVE_PACKET_ID,
-                    |output| {
-                        crate::common::ServerboundKeepAlivePacket::new(packet.id).encode(output);
-                        Ok(())
-                    },
-                    compression_threshold,
-                )?;
-            }
-            PLAY_CLIENTBOUND_BUNDLE_DELIMITER_PACKET_ID => {}
-            _ => {}
-        }
-
-        if trace.play_login
-            && trace.chunk_packet_count > 0
-            && (!chunk_batch_started || trace.chunk_batch_finished_count > 0)
-            && world_ready_drain_started.is_none()
-        {
-            if !player_loaded_sent {
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_PLAYER_LOADED_PACKET_ID,
-                    |_output| Ok(()),
-                    compression_threshold,
-                )?;
-                player_loaded_sent = true;
-                trace.player_loaded_sent = true;
-            }
-            if matches!(probe_mode, PlayProbeMode::Movement) && trace.movement_packets_sent == 0 {
-                let Some(position) = player_position else {
-                    return Err(ConnectionError::Codec("movement probe player position"));
-                };
-                for offset in [0.25_f64, 0.5, 0.75] {
-                    let moved = (
-                        position.0 + offset,
-                        position.1,
-                        position.2,
-                        position.3,
-                        position.4,
-                    );
-                    send_packet(
-                        &mut stream,
-                        ConnectionProtocol::Play,
-                        PLAY_SERVERBOUND_MOVE_PLAYER_POS_ROT_PACKET_ID,
-                        |output| encode_move_player_pos_rot(output, moved, 1),
-                        compression_threshold,
-                    )?;
-                    trace.movement_packets_sent += 1;
-                    player_position = Some(moved);
-                }
-            }
-            if matches!(probe_mode, PlayProbeMode::BlockAction)
-                && trace.player_action_packets_sent == 0
-            {
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID,
-                    |output| encode_abort_destroy_block(output, (0, 0, 0), 1),
-                    compression_threshold,
-                )?;
-                trace.player_action_packets_sent += 1;
-            }
-            if matches!(probe_mode, PlayProbeMode::BlockBreak)
-                && trace.player_action_packets_sent == 0
-            {
-                let Some(position) = player_position else {
-                    return Err(ConnectionError::Codec("block break probe player position"));
-                };
-                let target = support_block_position(position);
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID,
-                    |output| encode_start_destroy_block(output, target, 2),
-                    compression_threshold,
-                )?;
-                trace.player_action_packets_sent += 1;
-            }
-            if matches!(probe_mode, PlayProbeMode::BlockBreakOutOfRange)
-                && trace.player_action_packets_sent == 0
-            {
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID,
-                    |output| encode_start_destroy_block(output, (1_000_000, 64, 1_000_000), 3),
-                    compression_threshold,
-                )?;
-                trace.player_action_packets_sent += 1;
-            }
-            if matches!(probe_mode, PlayProbeMode::SurvivalBreakAbort)
-                && trace.player_action_packets_sent == 0
-            {
-                let Some(position) = player_position else {
-                    return Err(ConnectionError::Codec(
-                        "survival break probe player position",
-                    ));
-                };
-                let target = support_block_position(position);
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID,
-                    |output| encode_start_destroy_block(output, target, 6),
-                    compression_threshold,
-                )?;
-                trace.player_action_packets_sent += 1;
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID,
-                    |output| encode_abort_destroy_block(output, target, 7),
-                    compression_threshold,
-                )?;
-                trace.player_action_packets_sent += 1;
-            }
-            if matches!(
-                probe_mode,
-                PlayProbeMode::SurvivalBreakStop
-                    | PlayProbeMode::SurvivalStoneBreakStop
-                    | PlayProbeMode::SurvivalOakPlanksBreakStop
-            ) && trace.player_action_packets_sent == 0
-            {
-                let Some(position) = player_position else {
-                    return Err(ConnectionError::Codec(
-                        "survival break stop probe player position",
-                    ));
-                };
-                let target = support_block_position(position);
-                let (start_sequence, stop_sequence) =
-                    if matches!(probe_mode, PlayProbeMode::SurvivalStoneBreakStop) {
-                        (12, 13)
-                    } else if matches!(probe_mode, PlayProbeMode::SurvivalOakPlanksBreakStop) {
-                        (18, 19)
-                    } else {
-                        (8, 9)
-                    };
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID,
-                    |output| encode_start_destroy_block(output, target, start_sequence),
-                    compression_threshold,
-                )?;
-                trace.player_action_packets_sent += 1;
-                std::thread::sleep(Duration::from_millis(650));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID,
-                    |output| encode_stop_destroy_block(output, target, stop_sequence),
-                    compression_threshold,
-                )?;
-                trace.player_action_packets_sent += 1;
-            }
-            if matches!(
-                probe_mode,
-                PlayProbeMode::SurvivalStoneWoodenPickaxeBreakStop
-            ) && trace.player_action_packets_sent == 0
-            {
-                let Some(position) = player_position else {
-                    return Err(ConnectionError::Codec(
-                        "survival wooden pickaxe probe player position",
-                    ));
-                };
-                std::thread::sleep(Duration::from_secs(12));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_SET_CARRIED_ITEM_PACKET_ID,
-                    |output| encode_set_carried_item(output, 0),
-                    compression_threshold,
-                )?;
-                trace.carried_item_packets_sent += 1;
-                let target = support_block_position(position);
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID,
-                    |output| encode_start_destroy_block(output, target, 20),
-                    compression_threshold,
-                )?;
-                trace.player_action_packets_sent += 1;
-                std::thread::sleep(Duration::from_millis(2_200));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID,
-                    |output| encode_stop_destroy_block(output, target, 21),
-                    compression_threshold,
-                )?;
-                trace.player_action_packets_sent += 1;
-            }
-            if matches!(probe_mode, PlayProbeMode::SurvivalDirtWoodenShovelBreakStop)
-                && trace.player_action_packets_sent == 0
-            {
-                let Some(position) = player_position else {
-                    return Err(ConnectionError::Codec(
-                        "survival wooden shovel probe player position",
-                    ));
-                };
-                std::thread::sleep(Duration::from_secs(12));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_SET_CARRIED_ITEM_PACKET_ID,
-                    |output| encode_set_carried_item(output, 0),
-                    compression_threshold,
-                )?;
-                trace.carried_item_packets_sent += 1;
-                let target = support_block_position(position);
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID,
-                    |output| encode_start_destroy_block(output, target, 30),
-                    compression_threshold,
-                )?;
-                trace.player_action_packets_sent += 1;
-                std::thread::sleep(Duration::from_millis(650));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID,
-                    |output| encode_stop_destroy_block(output, target, 31),
-                    compression_threshold,
-                )?;
-                trace.player_action_packets_sent += 1;
-            }
-            if matches!(
-                probe_mode,
-                PlayProbeMode::SurvivalOakPlanksWoodenAxeBreakStop
-            ) && trace.player_action_packets_sent == 0
-            {
-                let Some(position) = player_position else {
-                    return Err(ConnectionError::Codec(
-                        "survival wooden axe probe player position",
-                    ));
-                };
-                std::thread::sleep(Duration::from_secs(12));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_SET_CARRIED_ITEM_PACKET_ID,
-                    |output| encode_set_carried_item(output, 0),
-                    compression_threshold,
-                )?;
-                trace.carried_item_packets_sent += 1;
-                let target = support_block_position(position);
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID,
-                    |output| encode_start_destroy_block(output, target, 32),
-                    compression_threshold,
-                )?;
-                trace.player_action_packets_sent += 1;
-                std::thread::sleep(Duration::from_millis(1_200));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID,
-                    |output| encode_stop_destroy_block(output, target, 33),
-                    compression_threshold,
-                )?;
-                trace.player_action_packets_sent += 1;
-            }
-            if matches!(probe_mode, PlayProbeMode::SurvivalDelayedDestroy)
-                && trace.player_action_packets_sent == 0
-            {
-                let Some(position) = player_position else {
-                    return Err(ConnectionError::Codec(
-                        "survival delayed destroy probe player position",
-                    ));
-                };
-                let target = support_block_position(position);
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID,
-                    |output| encode_start_destroy_block(output, target, 14),
-                    compression_threshold,
-                )?;
-                trace.player_action_packets_sent += 1;
-                std::thread::sleep(Duration::from_millis(100));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID,
-                    |output| encode_stop_destroy_block(output, target, 15),
-                    compression_threshold,
-                )?;
-                trace.player_action_packets_sent += 1;
-            }
-            if matches!(probe_mode, PlayProbeMode::SurvivalSpawnProtection)
-                && trace.player_action_packets_sent == 0
-            {
-                let Some(position) = player_position else {
-                    return Err(ConnectionError::Codec(
-                        "survival spawn protection probe player position",
-                    ));
-                };
-                let target = support_block_position(position);
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID,
-                    |output| encode_start_destroy_block(output, target, 16),
-                    compression_threshold,
-                )?;
-                trace.player_action_packets_sent += 1;
-            }
-            if matches!(probe_mode, PlayProbeMode::UseItemOn) && trace.use_item_on_packets_sent == 0
-            {
-                let Some(position) = player_position else {
-                    return Err(ConnectionError::Codec("use item on probe player position"));
-                };
-                let target = support_block_position(position);
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_USE_ITEM_ON_PACKET_ID,
-                    |output| encode_use_item_on(output, target, 4),
-                    compression_threshold,
-                )?;
-                trace.use_item_on_packets_sent += 1;
-            }
-            if matches!(probe_mode, PlayProbeMode::UseItem) && trace.use_item_packets_sent == 0 {
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_USE_ITEM_PACKET_ID,
-                    |output| encode_use_item(output, 10, 0.0, 0.0),
-                    compression_threshold,
-                )?;
-                trace.use_item_packets_sent += 1;
-            }
-            if matches!(probe_mode, PlayProbeMode::SurvivalSnowballUse)
-                && trace.use_item_packets_sent == 0
-            {
-                std::thread::sleep(Duration::from_secs(12));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_SET_CARRIED_ITEM_PACKET_ID,
-                    |output| encode_set_carried_item(output, 0),
-                    compression_threshold,
-                )?;
-                trace.carried_item_packets_sent += 1;
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_USE_ITEM_PACKET_ID,
-                    |output| encode_use_item(output, 22, 0.0, 0.0),
-                    compression_threshold,
-                )?;
-                trace.use_item_packets_sent += 1;
-            }
-            if matches!(probe_mode, PlayProbeMode::SurvivalWaterBucketUseOn)
-                && trace.use_item_on_packets_sent == 0
-            {
-                let Some(position) = player_position else {
-                    return Err(ConnectionError::Codec(
-                        "survival water bucket probe player position",
-                    ));
-                };
-                std::thread::sleep(Duration::from_secs(20));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_SET_CARRIED_ITEM_PACKET_ID,
-                    |output| encode_set_carried_item(output, 0),
-                    compression_threshold,
-                )?;
-                trace.carried_item_packets_sent += 1;
-                let target = support_block_position(position);
-                survival_water_bucket_target_position = Some(target);
-                survival_water_bucket_neighbor_position = Some((target.0, target.1 + 1, target.2));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_USE_ITEM_ON_PACKET_ID,
-                    |output| encode_use_item_on_hit(output, target, 1, (0.5, 1.0, 0.5), 23),
-                    compression_threshold,
-                )?;
-                trace.use_item_on_packets_sent += 1;
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_USE_ITEM_PACKET_ID,
-                    |output| encode_use_item(output, 24, 0.0, 90.0),
-                    compression_threshold,
-                )?;
-                trace.use_item_packets_sent += 1;
-            }
-            if matches!(probe_mode, PlayProbeMode::SurvivalEmptyBucketPickup)
-                && trace.use_item_on_packets_sent == 0
-            {
-                let Some(position) = player_position else {
-                    return Err(ConnectionError::Codec(
-                        "survival empty bucket pickup probe player position",
-                    ));
-                };
-                std::thread::sleep(Duration::from_secs(20));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_SET_CARRIED_ITEM_PACKET_ID,
-                    |output| encode_set_carried_item(output, 0),
-                    compression_threshold,
-                )?;
-                trace.carried_item_packets_sent += 1;
-                let support = support_block_position(position);
-                let target = (support.0, support.1 + 1, support.2);
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_USE_ITEM_ON_PACKET_ID,
-                    |output| encode_use_item_on_hit(output, target, 1, (0.5, 1.0, 0.5), 25),
-                    compression_threshold,
-                )?;
-                trace.use_item_on_packets_sent += 1;
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_USE_ITEM_PACKET_ID,
-                    |output| encode_use_item(output, 26, 0.0, 90.0),
-                    compression_threshold,
-                )?;
-                trace.use_item_packets_sent += 1;
-            }
-            if matches!(probe_mode, PlayProbeMode::SurvivalMilkBucketUse)
-                && trace.use_item_packets_sent == 0
-            {
-                std::thread::sleep(Duration::from_secs(20));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_SET_CARRIED_ITEM_PACKET_ID,
-                    |output| encode_set_carried_item(output, 0),
-                    compression_threshold,
-                )?;
-                trace.carried_item_packets_sent += 1;
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_USE_ITEM_PACKET_ID,
-                    |output| encode_use_item(output, 27, 0.0, 0.0),
-                    compression_threshold,
-                )?;
-                trace.use_item_packets_sent += 1;
-            }
-            if matches!(probe_mode, PlayProbeMode::SurvivalHoneyBottleUse)
-                && trace.use_item_packets_sent == 0
-            {
-                std::thread::sleep(Duration::from_secs(20));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_SET_CARRIED_ITEM_PACKET_ID,
-                    |output| encode_set_carried_item(output, 0),
-                    compression_threshold,
-                )?;
-                trace.carried_item_packets_sent += 1;
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_USE_ITEM_PACKET_ID,
-                    |output| encode_use_item(output, 28, 0.0, 0.0),
-                    compression_threshold,
-                )?;
-                trace.use_item_packets_sent += 1;
-            }
-            if matches!(probe_mode, PlayProbeMode::SurvivalHoneyBottlePoisonCleanup)
-                && trace.use_item_packets_sent == 0
-            {
-                std::thread::sleep(Duration::from_secs(20));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_SET_CARRIED_ITEM_PACKET_ID,
-                    |output| encode_set_carried_item(output, 0),
-                    compression_threshold,
-                )?;
-                trace.carried_item_packets_sent += 1;
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_USE_ITEM_PACKET_ID,
-                    |output| encode_use_item(output, 29, 0.0, 0.0),
-                    compression_threshold,
-                )?;
-                trace.use_item_packets_sent += 1;
-            }
-            if matches!(probe_mode, PlayProbeMode::SurvivalHoneyBottleEarlyRelease)
-                && trace.use_item_packets_sent == 0
-            {
-                std::thread::sleep(Duration::from_secs(20));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_SET_CARRIED_ITEM_PACKET_ID,
-                    |output| encode_set_carried_item(output, 0),
-                    compression_threshold,
-                )?;
-                trace.carried_item_packets_sent += 1;
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_USE_ITEM_PACKET_ID,
-                    |output| encode_use_item(output, 34, 0.0, 0.0),
-                    compression_threshold,
-                )?;
-                trace.use_item_packets_sent += 1;
-                std::thread::sleep(Duration::from_millis(250));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID,
-                    encode_release_use_item,
-                    compression_threshold,
-                )?;
-                trace.player_action_packets_sent += 1;
-            }
-            let consumable_use_sequence = match probe_mode {
-                PlayProbeMode::SurvivalPufferfishUse => Some(35),
-                PlayProbeMode::SurvivalPufferfishFullHungerRejection => Some(38),
-                PlayProbeMode::SurvivalGoldenAppleUse => Some(36),
-                PlayProbeMode::SurvivalEnchantedGoldenAppleUse => Some(37),
-                _ => None,
-            };
-            if let Some(sequence) =
-                consumable_use_sequence.filter(|_| trace.use_item_packets_sent == 0)
-            {
-                std::thread::sleep(Duration::from_secs(20));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_SET_CARRIED_ITEM_PACKET_ID,
-                    |output| encode_set_carried_item(output, 0),
-                    compression_threshold,
-                )?;
-                trace.carried_item_packets_sent += 1;
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_USE_ITEM_PACKET_ID,
-                    move |output| encode_use_item(output, sequence, 0.0, 0.0),
-                    compression_threshold,
-                )?;
-                trace.use_item_packets_sent += 1;
-            }
-            if matches!(
-                probe_mode,
-                PlayProbeMode::SurvivalInventoryPickupStateCorrection
-            ) && trace.container_click_packets_sent == 0
-            {
-                std::thread::sleep(Duration::from_secs(12));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                    |output| encode_inventory_pickup_state_correction(output, 0),
-                    compression_threshold,
-                )?;
-                trace.container_click_packets_sent += 1;
-                trace.container_click_state_id_sent = Some(0);
-            }
-            if matches!(
-                probe_mode,
-                PlayProbeMode::SurvivalInventorySecondaryPickupStateCorrection
-            ) && trace.container_click_packets_sent == 0
-            {
-                std::thread::sleep(Duration::from_secs(20));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                    |output| encode_inventory_secondary_pickup_state_correction(output, 0),
-                    compression_threshold,
-                )?;
-                trace.container_click_packets_sent += 1;
-                trace.container_click_state_id_sent = Some(0);
-            }
-            if matches!(
-                probe_mode,
-                PlayProbeMode::SurvivalInventoryThrowOneStateCorrection
-            ) && trace.container_click_packets_sent == 0
-            {
-                std::thread::sleep(Duration::from_secs(20));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                    |output| encode_inventory_throw_one_state_correction(output, 0),
-                    compression_threshold,
-                )?;
-                trace.container_click_packets_sent += 1;
-                trace.container_click_state_id_sent = Some(0);
-            }
-            if matches!(
-                probe_mode,
-                PlayProbeMode::SurvivalInventoryThrowAllStateCorrection
-            ) && trace.container_click_packets_sent == 0
-            {
-                std::thread::sleep(Duration::from_secs(30));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                    |output| encode_inventory_throw_all_state_correction(output, 0),
-                    compression_threshold,
-                )?;
-                trace.container_click_packets_sent += 1;
-                trace.container_click_state_id_sent = Some(0);
-            }
-            if matches!(
-                probe_mode,
-                PlayProbeMode::SurvivalInventoryDragEmptyCancelStateCorrection
-            ) && trace.container_click_packets_sent == 0
-            {
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                    |output| encode_inventory_drag_empty_cancel_state_correction(output, 0),
-                    compression_threshold,
-                )?;
-                trace.container_click_packets_sent += 1;
-                trace.container_click_state_id_sent = Some(0);
-            }
-            if matches!(
-                probe_mode,
-                PlayProbeMode::SurvivalInventoryDragDistributionStateCorrection
-            ) && trace.container_click_packets_sent == 0
-            {
-                std::thread::sleep(Duration::from_secs(20));
-                for (slot, button, input_id) in [
-                    (36_i16, 0_u8, 0_i32),
-                    (-999_i16, 0_u8, 5_i32),
-                    (9_i16, 1_u8, 5_i32),
-                    (36_i16, 1_u8, 5_i32),
-                    (-999_i16, 2_u8, 5_i32),
-                ] {
-                    send_packet(
-                        &mut stream,
-                        ConnectionProtocol::Play,
-                        PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                        |output| {
-                            encode_inventory_click_with_input(output, 0, slot, button, input_id)
-                        },
-                        compression_threshold,
-                    )?;
-                    trace.container_click_packets_sent += 1;
-                }
-                trace.container_click_state_id_sent = Some(0);
-            }
-            if matches!(
-                probe_mode,
-                PlayProbeMode::SurvivalInventoryDoubleClickStateCorrection
-            ) && trace.container_click_packets_sent == 0
-            {
-                std::thread::sleep(Duration::from_secs(20));
-                for (slot, button, input_id) in [(36_i16, 0_u8, 0_i32), (10_i16, 0_u8, 6_i32)] {
-                    send_packet(
-                        &mut stream,
-                        ConnectionProtocol::Play,
-                        PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                        |output| {
-                            encode_inventory_click_with_input(output, 0, slot, button, input_id)
-                        },
-                        compression_threshold,
-                    )?;
-                    trace.container_click_packets_sent += 1;
-                }
-                trace.container_click_state_id_sent = Some(0);
-            }
-            if matches!(
-                probe_mode,
-                PlayProbeMode::SurvivalInventoryDoubleClickStackLimitStateCorrection
-            ) && trace.container_click_packets_sent == 0
-            {
-                std::thread::sleep(Duration::from_secs(20));
-                for (slot, button, input_id) in [(36_i16, 0_u8, 0_i32), (10_i16, 0_u8, 6_i32)] {
-                    send_packet(
-                        &mut stream,
-                        ConnectionProtocol::Play,
-                        PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                        |output| {
-                            encode_inventory_click_with_input(output, 0, slot, button, input_id)
-                        },
-                        compression_threshold,
-                    )?;
-                    trace.container_click_packets_sent += 1;
-                }
-                trace.container_click_state_id_sent = Some(0);
-            }
-            if matches!(
-                probe_mode,
-                PlayProbeMode::SurvivalInventoryAheadStateCorrection
-            ) && trace.container_click_packets_sent == 0
-            {
-                std::thread::sleep(Duration::from_secs(20));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                    |output| encode_inventory_click_with_input(output, 99, 36, 0, 0),
-                    compression_threshold,
-                )?;
-                trace.container_click_packets_sent += 1;
-                trace.container_click_state_id_sent = Some(99);
-            }
-            if matches!(
-                probe_mode,
-                PlayProbeMode::SurvivalInventoryCorrectPrediction
-            ) && trace.container_click_packets_sent == 0
-            {
-                std::thread::sleep(Duration::from_secs(20));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                    |output| encode_inventory_pickup_with_prediction(output, 2, 8, 1),
-                    compression_threshold,
-                )?;
-                trace.container_click_packets_sent += 1;
-                trace.container_click_state_id_sent = Some(2);
-            }
-            if matches!(
-                probe_mode,
-                PlayProbeMode::SurvivalInventoryWrongSlotPrediction
-            ) && trace.container_click_packets_sent == 0
-            {
-                std::thread::sleep(Duration::from_secs(20));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                    |output| encode_inventory_pickup_with_wrong_slot_prediction(output, 2, 8, 1),
-                    compression_threshold,
-                )?;
-                trace.container_click_packets_sent += 1;
-                trace.container_click_state_id_sent = Some(2);
-            }
-            if matches!(
-                probe_mode,
-                PlayProbeMode::SurvivalInventoryWrongCarriedPrediction
-            ) && trace.container_click_packets_sent == 0
-            {
-                std::thread::sleep(Duration::from_secs(20));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                    |output| encode_inventory_pickup_with_wrong_carried_prediction(output, 2),
-                    compression_threshold,
-                )?;
-                trace.container_click_packets_sent += 1;
-                trace.container_click_state_id_sent = Some(2);
-            }
-            if matches!(
-                probe_mode,
-                PlayProbeMode::SurvivalInventoryWrongBothPrediction
-            ) && trace.container_click_packets_sent == 0
-            {
-                std::thread::sleep(Duration::from_secs(20));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                    |output| encode_inventory_pickup_with_wrong_both_prediction(output, 2, 8, 1),
-                    compression_threshold,
-                )?;
-                trace.container_click_packets_sent += 1;
-                trace.container_click_state_id_sent = Some(2);
-            }
-            if matches!(
-                probe_mode,
-                PlayProbeMode::SurvivalInventoryComponentHashPrediction
-            ) && trace.container_click_packets_sent == 0
-            {
-                std::thread::sleep(Duration::from_secs(20));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                    |output| {
-                        encode_inventory_pickup_with_component_hash_prediction(
-                            output,
-                            2,
-                            1,
-                            VANILLA_MILK_BUCKET_ITEM_REGISTRY_ID,
-                        )
-                    },
-                    compression_threshold,
-                )?;
-                trace.container_click_packets_sent += 1;
-                trace.container_click_state_id_sent = Some(2);
-            }
-            if matches!(
-                probe_mode,
-                PlayProbeMode::SurvivalInventoryPartialChangedSlotPrediction
-            ) && trace.container_click_packets_sent == 0
-            {
-                std::thread::sleep(Duration::from_secs(20));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                    |output| {
-                        encode_inventory_pickup_with_partial_changed_slot_prediction(
-                            output,
-                            2,
-                            8,
-                            VANILLA_STONE_ITEM_REGISTRY_ID,
-                        )
-                    },
-                    compression_threshold,
-                )?;
-                trace.container_click_packets_sent += 1;
-                trace.container_click_state_id_sent = Some(2);
-            }
-            if matches!(
-                probe_mode,
-                PlayProbeMode::SurvivalInventoryStaleStateCorrectPrediction
-            ) && trace.container_click_packets_sent == 0
-            {
-                std::thread::sleep(Duration::from_secs(20));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                    |output| encode_inventory_pickup_with_prediction(output, 0, 8, 1),
-                    compression_threshold,
-                )?;
-                trace.container_click_packets_sent += 1;
-                trace.container_click_state_id_sent = Some(0);
-            }
-            if matches!(
-                probe_mode,
-                PlayProbeMode::SurvivalInventoryAheadStateCorrectPrediction
-            ) && trace.container_click_packets_sent == 0
-            {
-                std::thread::sleep(Duration::from_secs(20));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                    |output| encode_inventory_pickup_with_prediction(output, 99, 8, 1),
-                    compression_threshold,
-                )?;
-                trace.container_click_packets_sent += 1;
-                trace.container_click_state_id_sent = Some(99);
-            }
-            if matches!(
-                probe_mode,
-                PlayProbeMode::SurvivalInventoryAheadComponentCorrectPrediction
-            ) && trace.container_click_packets_sent == 0
-            {
-                std::thread::sleep(Duration::from_secs(20));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                    |output| {
-                        let spec = inventory_component_spec("custom_model_data")
-                            .expect("custom model data component is in the conformance table");
-                        encode_inventory_pickup_with_component_spec_prediction(output, 99, spec)
-                    },
-                    compression_threshold,
-                )?;
-                trace.container_click_packets_sent += 1;
-                trace.container_click_state_id_sent = Some(99);
-            }
-            if let PlayProbeMode::SurvivalInventoryItemComponentConformance(spec) = probe_mode {
-                if trace.container_click_packets_sent == 0 {
-                    let prepared_state_id = trace
-                        .container_slot_observations
-                        .iter()
-                        .rev()
-                        .find(|observation| {
-                            observation.container_id == 0
-                                && observation.slot == 36
-                                && observation.item_count == Some(1)
-                                && observation.item_registry_id == Some(spec.item_registry_id)
-                                && observation.positive_component_type_ids.as_slice()
-                                    == spec.expected_positive_component_type_ids
-                                && observation.negative_component_type_ids.is_empty()
-                        })
-                        .map(|observation| observation.state_id);
-                    if let Some(prepared_state_id) = prepared_state_id {
-                        send_packet(
-                            &mut stream,
-                            ConnectionProtocol::Play,
-                            PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                            |output| {
-                                encode_inventory_pickup_with_component_spec_prediction(
-                                    output,
-                                    prepared_state_id,
-                                    spec,
-                                )
-                            },
-                            compression_threshold,
-                        )?;
-                        trace.container_click_packets_sent += 1;
-                        trace.container_click_state_id_sent = Some(prepared_state_id);
-                    }
-                }
-            }
-            if matches!(
-                probe_mode,
-                PlayProbeMode::SurvivalInventoryQuickMoveStateCorrection
-            ) && trace.container_click_packets_sent == 0
-            {
-                std::thread::sleep(Duration::from_secs(12));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                    |output| encode_inventory_quick_move_state_correction(output, 0),
-                    compression_threshold,
-                )?;
-                trace.container_click_packets_sent += 1;
-                trace.container_click_state_id_sent = Some(0);
-            }
-            if matches!(
-                probe_mode,
-                PlayProbeMode::SurvivalInventorySwapStateCorrection
-            ) && trace.container_click_packets_sent == 0
-            {
-                std::thread::sleep(Duration::from_secs(12));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                    |output| encode_inventory_swap_state_correction(output, 0),
-                    compression_threshold,
-                )?;
-                trace.container_click_packets_sent += 1;
-                trace.container_click_state_id_sent = Some(0);
-            }
-            if matches!(probe_mode, PlayProbeMode::CreativeSnowballUse)
-                && trace.creative_mode_slot_packets_sent == 0
-            {
-                let Some(snowball_item_registry_id) = trace.snowball_item_registry_id else {
-                    return Err(ConnectionError::Codec(
-                        "creative snowball use item registry id",
-                    ));
-                };
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_SET_CREATIVE_MODE_SLOT_PACKET_ID,
-                    |output| encode_creative_item_slot(output, 36, 1, snowball_item_registry_id),
-                    compression_threshold,
-                )?;
-                trace.creative_mode_slot_packets_sent += 1;
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_SET_CARRIED_ITEM_PACKET_ID,
-                    |output| encode_set_carried_item(output, 0),
-                    compression_threshold,
-                )?;
-                trace.carried_item_packets_sent += 1;
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_USE_ITEM_PACKET_ID,
-                    |output| encode_use_item(output, 11, 0.0, 0.0),
-                    compression_threshold,
-                )?;
-                trace.use_item_packets_sent += 1;
-            }
-            if matches!(probe_mode, PlayProbeMode::CreativePlace)
-                && trace.creative_mode_slot_packets_sent == 0
-            {
-                let Some(position) = player_position else {
-                    return Err(ConnectionError::Codec(
-                        "creative place probe player position",
-                    ));
-                };
-                let Some(stone_item_registry_id) = trace.stone_item_registry_id else {
-                    return Err(ConnectionError::Codec(
-                        "creative place stone item registry id",
-                    ));
-                };
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_SET_CREATIVE_MODE_SLOT_PACKET_ID,
-                    |output| encode_creative_stone_slot(output, 36, stone_item_registry_id),
-                    compression_threshold,
-                )?;
-                trace.creative_mode_slot_packets_sent += 1;
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_SET_CARRIED_ITEM_PACKET_ID,
-                    |output| encode_set_carried_item(output, 0),
-                    compression_threshold,
-                )?;
-                trace.carried_item_packets_sent += 1;
-
-                let target = support_block_position(position);
-                creative_place_target_position = Some(target);
-                creative_place_neighbor_position = Some((target.0, target.1, target.2 - 1));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_USE_ITEM_ON_PACKET_ID,
-                    |output| encode_use_item_on_hit(output, target, 2, (0.5, 0.5, 0.0), 5),
-                    compression_threshold,
-                )?;
-                trace.use_item_on_packets_sent += 1;
-            }
-            world_ready_drain_started = Some(Instant::now());
-            let drain_timeout = match probe_mode {
-                PlayProbeMode::SurvivalDelayedDestroy => DELAYED_DESTROY_DRAIN_TIMEOUT,
-                PlayProbeMode::SurvivalWaterBucketUseOn
-                | PlayProbeMode::SurvivalEmptyBucketPickup => WATER_BUCKET_DRAIN_TIMEOUT,
-                PlayProbeMode::SurvivalMilkBucketUse => CONSUMABLE_DRAIN_TIMEOUT,
-                PlayProbeMode::SurvivalHoneyBottleUse => CONSUMABLE_DRAIN_TIMEOUT,
-                PlayProbeMode::SurvivalHoneyBottlePoisonCleanup => CONSUMABLE_DRAIN_TIMEOUT,
-                PlayProbeMode::SurvivalPufferfishUse
-                | PlayProbeMode::SurvivalPufferfishFullHungerRejection
-                | PlayProbeMode::SurvivalGoldenAppleUse
-                | PlayProbeMode::SurvivalEnchantedGoldenAppleUse => CONSUMABLE_DRAIN_TIMEOUT,
-                PlayProbeMode::SurvivalInventoryPickupStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
-                PlayProbeMode::SurvivalInventorySecondaryPickupStateCorrection => {
-                    CONSUMABLE_DRAIN_TIMEOUT
-                }
-                PlayProbeMode::SurvivalInventoryThrowOneStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
-                PlayProbeMode::SurvivalInventoryThrowAllStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
-                PlayProbeMode::SurvivalInventoryDragEmptyCancelStateCorrection => {
-                    CONSUMABLE_DRAIN_TIMEOUT
-                }
-                PlayProbeMode::SurvivalInventoryDragDistributionStateCorrection => {
-                    CONSUMABLE_DRAIN_TIMEOUT
-                }
-                PlayProbeMode::SurvivalInventoryDoubleClickStateCorrection => {
-                    CONSUMABLE_DRAIN_TIMEOUT
-                }
-                PlayProbeMode::SurvivalInventoryDoubleClickStackLimitStateCorrection => {
-                    CONSUMABLE_DRAIN_TIMEOUT
-                }
-                PlayProbeMode::SurvivalInventoryAheadStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
-                PlayProbeMode::SurvivalInventoryCorrectPrediction => CONSUMABLE_DRAIN_TIMEOUT,
-                PlayProbeMode::SurvivalInventoryWrongSlotPrediction => CONSUMABLE_DRAIN_TIMEOUT,
-                PlayProbeMode::SurvivalInventoryWrongCarriedPrediction => CONSUMABLE_DRAIN_TIMEOUT,
-                PlayProbeMode::SurvivalInventoryWrongBothPrediction => CONSUMABLE_DRAIN_TIMEOUT,
-                PlayProbeMode::SurvivalInventoryComponentHashPrediction => CONSUMABLE_DRAIN_TIMEOUT,
-                PlayProbeMode::SurvivalInventoryItemComponentConformance(_) => {
-                    COMPONENT_PREPARATION_DRAIN_TIMEOUT
-                }
-                PlayProbeMode::SurvivalInventoryQuickMoveStateCorrection => {
-                    CONSUMABLE_DRAIN_TIMEOUT
-                }
-                PlayProbeMode::SurvivalInventorySwapStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
-                _ => WORLD_READY_DRAIN_TIMEOUT,
-            };
-            stream.set_read_timeout(Some(drain_timeout))?;
-        }
-
-        if let PlayProbeMode::SurvivalInventoryItemComponentConformance(spec) = probe_mode {
-            if trace.container_click_packets_sent == 0 {
-                let prepared_state_id = trace
-                    .container_slot_observations
-                    .iter()
-                    .rev()
-                    .find(|observation| {
-                        observation.container_id == 0
-                            && observation.slot == 36
-                            && observation.item_count == Some(1)
-                            && observation.item_registry_id == Some(spec.item_registry_id)
-                            && observation.positive_component_type_ids.as_slice()
-                                == spec.expected_positive_component_type_ids
-                            && observation.negative_component_type_ids.is_empty()
-                    })
-                    .map(|observation| observation.state_id);
-                if let Some(prepared_state_id) = prepared_state_id {
-                    send_packet(
-                        &mut stream,
-                        ConnectionProtocol::Play,
-                        PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                        |output| {
-                            encode_inventory_pickup_with_component_spec_prediction(
-                                output,
-                                prepared_state_id,
-                                spec,
-                            )
-                        },
-                        compression_threshold,
-                    )?;
-                    trace.container_click_packets_sent += 1;
-                    trace.container_click_state_id_sent = Some(prepared_state_id);
-                }
-            }
-        }
-
-        let drain_timeout = match probe_mode {
-            PlayProbeMode::SurvivalDelayedDestroy => DELAYED_DESTROY_DRAIN_TIMEOUT,
-            PlayProbeMode::SurvivalWaterBucketUseOn | PlayProbeMode::SurvivalEmptyBucketPickup => {
-                WATER_BUCKET_DRAIN_TIMEOUT
-            }
-            PlayProbeMode::SurvivalMilkBucketUse => CONSUMABLE_DRAIN_TIMEOUT,
-            PlayProbeMode::SurvivalHoneyBottleUse => CONSUMABLE_DRAIN_TIMEOUT,
-            PlayProbeMode::SurvivalHoneyBottlePoisonCleanup => CONSUMABLE_DRAIN_TIMEOUT,
-            PlayProbeMode::SurvivalPufferfishUse
-            | PlayProbeMode::SurvivalPufferfishFullHungerRejection
-            | PlayProbeMode::SurvivalGoldenAppleUse
-            | PlayProbeMode::SurvivalEnchantedGoldenAppleUse => CONSUMABLE_DRAIN_TIMEOUT,
-            PlayProbeMode::SurvivalInventoryPickupStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
-            PlayProbeMode::SurvivalInventorySecondaryPickupStateCorrection => {
-                CONSUMABLE_DRAIN_TIMEOUT
-            }
-            PlayProbeMode::SurvivalInventoryThrowOneStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
-            PlayProbeMode::SurvivalInventoryThrowAllStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
-            PlayProbeMode::SurvivalInventoryDragEmptyCancelStateCorrection => {
-                CONSUMABLE_DRAIN_TIMEOUT
-            }
-            PlayProbeMode::SurvivalInventoryDragDistributionStateCorrection => {
-                CONSUMABLE_DRAIN_TIMEOUT
-            }
-            PlayProbeMode::SurvivalInventoryDoubleClickStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
-            PlayProbeMode::SurvivalInventoryDoubleClickStackLimitStateCorrection => {
-                CONSUMABLE_DRAIN_TIMEOUT
-            }
-            PlayProbeMode::SurvivalInventoryAheadStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
-            PlayProbeMode::SurvivalInventoryCorrectPrediction => CONSUMABLE_DRAIN_TIMEOUT,
-            PlayProbeMode::SurvivalInventoryWrongSlotPrediction => CONSUMABLE_DRAIN_TIMEOUT,
-            PlayProbeMode::SurvivalInventoryWrongCarriedPrediction => CONSUMABLE_DRAIN_TIMEOUT,
-            PlayProbeMode::SurvivalInventoryWrongBothPrediction => CONSUMABLE_DRAIN_TIMEOUT,
-            PlayProbeMode::SurvivalInventoryComponentHashPrediction => CONSUMABLE_DRAIN_TIMEOUT,
-            PlayProbeMode::SurvivalInventoryItemComponentConformance(_) => {
-                COMPONENT_PREPARATION_DRAIN_TIMEOUT
-            }
-            PlayProbeMode::SurvivalInventoryQuickMoveStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
-            PlayProbeMode::SurvivalInventorySwapStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
-            _ => WORLD_READY_DRAIN_TIMEOUT,
-        };
-        if world_ready_drain_started.is_some_and(|started| started.elapsed() >= drain_timeout) {
-            return Ok(trace);
-        }
-    }
-
-    Err(ConnectionError::Io(io::Error::new(
-        io::ErrorKind::TimedOut,
-        "play world did not arrive before timeout",
-    )))
-}
-
-fn send_configuration_start(
-    stream: &mut TcpStream,
-    compression_threshold: Option<usize>,
-) -> Result<(), ConnectionError> {
-    send_packet(
-        stream,
-        ConnectionProtocol::Configuration,
-        CONFIG_CUSTOM_PAYLOAD_PACKET_ID,
-        |output| {
-            let id = crate::identifier::Identifier::parse("minecraft:brand")
-                .map_err(|_| ConnectionError::Codec("brand identifier"))?;
-            crate::identifier::write_identifier(&id, output)
-                .map_err(|_| ConnectionError::Codec("brand identifier"))?;
-            crate::utf8::write_utf8(
-                output,
-                &"vanilla".encode_utf16().collect::<Vec<_>>(),
-                32_767,
-            )
-            .map_err(|_| ConnectionError::Codec("brand payload"))?;
-            Ok(())
-        },
-        compression_threshold,
-    )?;
-
-    let information = ClientInformation::new(
-        "en_us".encode_utf16().collect(),
-        12,
-        ChatVisibility::Full,
-        true,
-        127,
-        MainHand::Right,
-        false,
-        true,
-        ParticleStatus::All,
-    );
-    send_packet(
-        stream,
-        ConnectionProtocol::Configuration,
-        CONFIG_CLIENT_INFORMATION_PACKET_ID,
-        |output| {
-            ServerboundClientInformationPacket::new(information)
-                .encode(output)
-                .map_err(|_| ConnectionError::Codec("client information"))
-        },
-        compression_threshold,
-    )
-}
-
-fn encode_move_player_pos_rot(
+pub(crate) fn encode_move_player_pos_rot(
     output: &mut Vec<u8>,
     position: (f64, f64, f64, f32, f32),
     flags: u8,
@@ -3167,7 +713,7 @@ fn encode_move_player_pos_rot(
     Ok(())
 }
 
-fn encode_abort_destroy_block(
+pub(crate) fn encode_abort_destroy_block(
     output: &mut Vec<u8>,
     position: (i32, i32, i32),
     sequence: i32,
@@ -3175,7 +721,7 @@ fn encode_abort_destroy_block(
     encode_player_action(output, 1, position, 0, sequence)
 }
 
-fn encode_start_destroy_block(
+pub(crate) fn encode_start_destroy_block(
     output: &mut Vec<u8>,
     position: (i32, i32, i32),
     sequence: i32,
@@ -3183,7 +729,7 @@ fn encode_start_destroy_block(
     encode_player_action(output, 0, position, 1, sequence)
 }
 
-fn encode_stop_destroy_block(
+pub(crate) fn encode_stop_destroy_block(
     output: &mut Vec<u8>,
     position: (i32, i32, i32),
     sequence: i32,
@@ -3191,11 +737,11 @@ fn encode_stop_destroy_block(
     encode_player_action(output, 2, position, 1, sequence)
 }
 
-fn encode_release_use_item(output: &mut Vec<u8>) -> Result<(), ConnectionError> {
+pub(crate) fn encode_release_use_item(output: &mut Vec<u8>) -> Result<(), ConnectionError> {
     encode_player_action(output, 5, (0, 0, 0), 0, 0)
 }
 
-fn encode_use_item_on(
+pub(crate) fn encode_use_item_on(
     output: &mut Vec<u8>,
     position: (i32, i32, i32),
     sequence: i32,
@@ -3203,7 +749,7 @@ fn encode_use_item_on(
     encode_use_item_on_hit(output, position, 1, (0.5, 1.0, 0.5), sequence)
 }
 
-fn encode_use_item(
+pub(crate) fn encode_use_item(
     output: &mut Vec<u8>,
     sequence: i32,
     y_rot: f32,
@@ -3216,7 +762,7 @@ fn encode_use_item(
     Ok(())
 }
 
-fn encode_use_item_on_hit(
+pub(crate) fn encode_use_item_on_hit(
     output: &mut Vec<u8>,
     position: (i32, i32, i32),
     direction: u8,
@@ -3235,7 +781,7 @@ fn encode_use_item_on_hit(
     Ok(())
 }
 
-fn encode_creative_stone_slot(
+pub(crate) fn encode_creative_stone_slot(
     output: &mut Vec<u8>,
     slot: i16,
     stone_item_registry_id: i32,
@@ -3243,7 +789,7 @@ fn encode_creative_stone_slot(
     encode_creative_item_slot(output, slot, 1, stone_item_registry_id)
 }
 
-fn encode_creative_item_slot(
+pub(crate) fn encode_creative_item_slot(
     output: &mut Vec<u8>,
     slot: i16,
     count: i32,
@@ -3257,7 +803,7 @@ fn encode_creative_item_slot(
     Ok(())
 }
 
-fn encode_inventory_pickup_state_correction(
+pub(crate) fn encode_inventory_pickup_state_correction(
     output: &mut Vec<u8>,
     state_id: i32,
 ) -> Result<(), ConnectionError> {
@@ -3271,7 +817,7 @@ fn encode_inventory_pickup_state_correction(
     Ok(())
 }
 
-fn encode_inventory_secondary_pickup_state_correction(
+pub(crate) fn encode_inventory_secondary_pickup_state_correction(
     output: &mut Vec<u8>,
     state_id: i32,
 ) -> Result<(), ConnectionError> {
@@ -3285,7 +831,7 @@ fn encode_inventory_secondary_pickup_state_correction(
     Ok(())
 }
 
-fn encode_inventory_throw_one_state_correction(
+pub(crate) fn encode_inventory_throw_one_state_correction(
     output: &mut Vec<u8>,
     state_id: i32,
 ) -> Result<(), ConnectionError> {
@@ -3299,7 +845,7 @@ fn encode_inventory_throw_one_state_correction(
     Ok(())
 }
 
-fn encode_inventory_throw_all_state_correction(
+pub(crate) fn encode_inventory_throw_all_state_correction(
     output: &mut Vec<u8>,
     state_id: i32,
 ) -> Result<(), ConnectionError> {
@@ -3313,7 +859,7 @@ fn encode_inventory_throw_all_state_correction(
     Ok(())
 }
 
-fn encode_inventory_drag_empty_cancel_state_correction(
+pub(crate) fn encode_inventory_drag_empty_cancel_state_correction(
     output: &mut Vec<u8>,
     state_id: i32,
 ) -> Result<(), ConnectionError> {
@@ -3327,7 +873,7 @@ fn encode_inventory_drag_empty_cancel_state_correction(
     Ok(())
 }
 
-fn encode_inventory_click_with_input(
+pub(crate) fn encode_inventory_click_with_input(
     output: &mut Vec<u8>,
     state_id: i32,
     slot: i16,
@@ -3344,7 +890,7 @@ fn encode_inventory_click_with_input(
     Ok(())
 }
 
-fn encode_inventory_pickup_with_prediction(
+pub(crate) fn encode_inventory_pickup_with_prediction(
     output: &mut Vec<u8>,
     state_id: i32,
     item_count: i32,
@@ -3353,7 +899,7 @@ fn encode_inventory_pickup_with_prediction(
     encode_inventory_pickup_prediction(output, state_id, None, Some((item_count, item_registry_id)))
 }
 
-fn encode_inventory_pickup_with_wrong_slot_prediction(
+pub(crate) fn encode_inventory_pickup_with_wrong_slot_prediction(
     output: &mut Vec<u8>,
     state_id: i32,
     item_count: i32,
@@ -3367,14 +913,14 @@ fn encode_inventory_pickup_with_wrong_slot_prediction(
     )
 }
 
-fn encode_inventory_pickup_with_wrong_carried_prediction(
+pub(crate) fn encode_inventory_pickup_with_wrong_carried_prediction(
     output: &mut Vec<u8>,
     state_id: i32,
 ) -> Result<(), ConnectionError> {
     encode_inventory_pickup_prediction(output, state_id, None, None)
 }
 
-fn encode_inventory_pickup_with_wrong_both_prediction(
+pub(crate) fn encode_inventory_pickup_with_wrong_both_prediction(
     output: &mut Vec<u8>,
     state_id: i32,
     item_count: i32,
@@ -3383,7 +929,7 @@ fn encode_inventory_pickup_with_wrong_both_prediction(
     encode_inventory_pickup_prediction(output, state_id, Some((item_count, item_registry_id)), None)
 }
 
-fn encode_inventory_pickup_prediction(
+pub(crate) fn encode_inventory_pickup_prediction(
     output: &mut Vec<u8>,
     state_id: i32,
     changed_slot_item: Option<(i32, i32)>,
@@ -3399,7 +945,7 @@ fn encode_inventory_pickup_prediction(
     )
 }
 
-fn encode_inventory_pickup_with_component_hash_prediction(
+pub(crate) fn encode_inventory_pickup_with_component_hash_prediction(
     output: &mut Vec<u8>,
     state_id: i32,
     item_count: i32,
@@ -3419,7 +965,7 @@ fn encode_inventory_pickup_with_component_hash_prediction(
     )
 }
 
-fn encode_inventory_pickup_with_component_spec_prediction(
+pub(crate) fn encode_inventory_pickup_with_component_spec_prediction(
     output: &mut Vec<u8>,
     state_id: i32,
     spec: &'static InventoryComponentProbeSpec,
@@ -3434,7 +980,7 @@ fn encode_inventory_pickup_with_component_spec_prediction(
     )
 }
 
-fn encode_inventory_pickup_with_partial_changed_slot_prediction(
+pub(crate) fn encode_inventory_pickup_with_partial_changed_slot_prediction(
     output: &mut Vec<u8>,
     state_id: i32,
     item_count: i32,
@@ -3450,7 +996,7 @@ fn encode_inventory_pickup_with_partial_changed_slot_prediction(
     )
 }
 
-fn encode_inventory_pickup_prediction_with_carried_patch(
+pub(crate) fn encode_inventory_pickup_prediction_with_carried_patch(
     output: &mut Vec<u8>,
     state_id: i32,
     changed_slot_item: Option<(i32, i32)>,
@@ -3468,7 +1014,7 @@ fn encode_inventory_pickup_prediction_with_carried_patch(
     )
 }
 
-fn encode_inventory_pickup_prediction_packet(
+pub(crate) fn encode_inventory_pickup_prediction_packet(
     output: &mut Vec<u8>,
     state_id: i32,
     changed_slot_item: Option<Option<(i32, i32)>>,
@@ -3497,11 +1043,11 @@ fn encode_inventory_pickup_prediction_packet(
     Ok(())
 }
 
-fn encode_hashed_stack(output: &mut Vec<u8>, item: Option<(i32, i32)>) {
+pub(crate) fn encode_hashed_stack(output: &mut Vec<u8>, item: Option<(i32, i32)>) {
     encode_hashed_stack_with_components(output, item, &[], &[]);
 }
 
-fn encode_hashed_stack_with_components(
+pub(crate) fn encode_hashed_stack_with_components(
     output: &mut Vec<u8>,
     item: Option<(i32, i32)>,
     added_components: &[(i32, i32)],
@@ -3526,7 +1072,7 @@ fn encode_hashed_stack_with_components(
     }
 }
 
-fn encode_inventory_quick_move_state_correction(
+pub(crate) fn encode_inventory_quick_move_state_correction(
     output: &mut Vec<u8>,
     state_id: i32,
 ) -> Result<(), ConnectionError> {
@@ -3540,7 +1086,7 @@ fn encode_inventory_quick_move_state_correction(
     Ok(())
 }
 
-fn encode_inventory_swap_state_correction(
+pub(crate) fn encode_inventory_swap_state_correction(
     output: &mut Vec<u8>,
     state_id: i32,
 ) -> Result<(), ConnectionError> {
@@ -3554,12 +1100,15 @@ fn encode_inventory_swap_state_correction(
     Ok(())
 }
 
-fn encode_set_carried_item(output: &mut Vec<u8>, slot: i16) -> Result<(), ConnectionError> {
+pub(crate) fn encode_set_carried_item(
+    output: &mut Vec<u8>,
+    slot: i16,
+) -> Result<(), ConnectionError> {
     output.extend_from_slice(&slot.to_be_bytes());
     Ok(())
 }
 
-fn encode_player_action(
+pub(crate) fn encode_player_action(
     output: &mut Vec<u8>,
     action: i32,
     position: (i32, i32, i32),
@@ -3573,7 +1122,7 @@ fn encode_player_action(
     Ok(())
 }
 
-fn pack_block_position(position: (i32, i32, i32)) -> i64 {
+pub(crate) fn pack_block_position(position: (i32, i32, i32)) -> i64 {
     const HORIZONTAL_MASK: i64 = (1_i64 << 26) - 1;
     const Y_MASK: i64 = (1_i64 << 12) - 1;
 
@@ -3582,101 +1131,12 @@ fn pack_block_position(position: (i32, i32, i32)) -> i64 {
         | (i64::from(position.1) & Y_MASK)
 }
 
-fn support_block_position(position: (f64, f64, f64, f32, f32)) -> (i32, i32, i32) {
+pub(crate) fn support_block_position(position: (f64, f64, f64, f32, f32)) -> (i32, i32, i32) {
     let block = crate::binary::BlockPos::containing(position.0, position.1 - 1.0, position.2);
     (block.x, block.y, block.z)
 }
 
-fn connect_stream(address: SocketAddr, timeout: Duration) -> Result<TcpStream, ConnectionError> {
-    let stream = TcpStream::connect_timeout(&address, timeout)?;
-    stream.set_read_timeout(Some(timeout))?;
-    stream.set_write_timeout(Some(timeout))?;
-    stream.set_nodelay(true)?;
-    Ok(stream)
-}
-
-fn send_handshake_intention(
-    stream: &mut TcpStream,
-    address: SocketAddr,
-    intent: ClientIntent,
-) -> Result<(), ConnectionError> {
-    let host = address.ip().to_string();
-    let intention = ClientIntentionPacket::new(
-        PROTOCOL_VERSION,
-        host.encode_utf16().collect(),
-        i32::from(address.port()),
-        intent,
-    );
-    send_packet(
-        stream,
-        ConnectionProtocol::Handshaking,
-        LOGIN_INTENTION_PACKET_ID,
-        |payload| {
-            intention
-                .encode(payload)
-                .map_err(|_| ConnectionError::Codec("handshake"))
-        },
-        None,
-    )
-}
-
-fn send_packet<F>(
-    stream: &mut TcpStream,
-    _phase: ConnectionProtocol,
-    packet_id: i32,
-    encode_payload: F,
-    compression_threshold: Option<usize>,
-) -> Result<(), ConnectionError>
-where
-    F: FnOnce(&mut Vec<u8>) -> Result<(), ConnectionError>,
-{
-    let mut body = Vec::new();
-    wire::write_varint(packet_id, &mut body);
-    encode_payload(&mut body)?;
-    let framed = encode_packet_frame(&body, compression_threshold)?;
-    stream.write_all(&framed)?;
-    stream.flush()?;
-    Ok(())
-}
-
-fn read_packet(
-    stream: &mut TcpStream,
-    compression_threshold: Option<usize>,
-) -> Result<Vec<u8>, ConnectionError> {
-    let frame = read_frame(stream)?;
-    decode_packet_frame(&frame, compression_threshold)
-}
-
-fn read_frame(stream: &mut TcpStream) -> Result<Vec<u8>, ConnectionError> {
-    let mut header = Vec::with_capacity(MAX_VARINT21_BYTES);
-    for _ in 0..MAX_VARINT21_BYTES {
-        let mut byte = [0_u8; 1];
-        stream.read_exact(&mut byte)?;
-        header.push(byte[0]);
-        if byte[0] & 0x80 == 0 {
-            let mut input = header.as_slice();
-            let length = wire::read_varint(&mut input)?;
-            if length <= 0 {
-                return Err(ConnectionError::Frame(if length == 0 {
-                    FrameError::ZeroLength
-                } else {
-                    FrameError::PacketTooLarge
-                }));
-            }
-            let length = usize::try_from(length)
-                .map_err(|_| ConnectionError::Frame(FrameError::PacketTooLarge))?;
-            if length > MAX_READABLE_FRAME_LENGTH {
-                return Err(ConnectionError::Frame(FrameError::PacketTooLarge));
-            }
-            let mut body = vec![0_u8; length];
-            stream.read_exact(&mut body)?;
-            return Ok(body);
-        }
-    }
-    Err(ConnectionError::Frame(FrameError::LengthTooWide))
-}
-
-fn encode_packet_frame(
+pub(crate) fn encode_packet_frame(
     body: &[u8],
     compression_threshold: Option<usize>,
 ) -> Result<Vec<u8>, ConnectionError> {
@@ -3709,7 +1169,7 @@ fn encode_packet_frame(
     frame::prepend(&payload).map_err(ConnectionError::from)
 }
 
-fn decode_packet_frame(
+pub(crate) fn decode_packet_frame(
     frame: &[u8],
     compression_threshold: Option<usize>,
 ) -> Result<Vec<u8>, ConnectionError> {
@@ -3750,13 +1210,15 @@ fn decode_packet_frame(
     Ok(output)
 }
 
-fn split_packet(body: &[u8]) -> Result<(i32, &[u8]), ConnectionError> {
+pub(crate) fn split_packet(body: &[u8]) -> Result<(i32, &[u8]), ConnectionError> {
     let mut input = body;
     let packet_id = wire::read_varint(&mut input)?;
     Ok((packet_id, input))
 }
 
-fn parse_block_update_packet(input: &[u8]) -> Result<BlockUpdateObservation, ConnectionError> {
+pub(crate) fn parse_block_update_packet(
+    input: &[u8],
+) -> Result<BlockUpdateObservation, ConnectionError> {
     if input.len() < 8 {
         return Err(ConnectionError::Codec("block update position"));
     }
@@ -3779,7 +1241,7 @@ fn parse_block_update_packet(input: &[u8]) -> Result<BlockUpdateObservation, Con
     })
 }
 
-fn parse_block_destruction_packet(
+pub(crate) fn parse_block_destruction_packet(
     input: &[u8],
 ) -> Result<BlockDestructionObservation, ConnectionError> {
     let mut input = input;
@@ -3807,7 +1269,9 @@ fn parse_block_destruction_packet(
     })
 }
 
-fn parse_add_entity_packet(input: &[u8]) -> Result<AddEntityObservation, ConnectionError> {
+pub(crate) fn parse_add_entity_packet(
+    input: &[u8],
+) -> Result<AddEntityObservation, ConnectionError> {
     let mut input = input;
     let entity_id = read_varint(&mut input, "add entity id")?;
     if input.len() < 16 {
@@ -3840,7 +1304,7 @@ fn parse_add_entity_packet(input: &[u8]) -> Result<AddEntityObservation, Connect
     })
 }
 
-fn parse_remove_mob_effect_packet(
+pub(crate) fn parse_remove_mob_effect_packet(
     input: &[u8],
 ) -> Result<MobEffectRemoveObservation, ConnectionError> {
     let mut input = input;
@@ -3855,7 +1319,7 @@ fn parse_remove_mob_effect_packet(
     })
 }
 
-fn parse_update_mob_effect_packet(
+pub(crate) fn parse_update_mob_effect_packet(
     input: &[u8],
 ) -> Result<MobEffectUpdateObservation, ConnectionError> {
     let mut input = input;
@@ -3948,7 +1412,10 @@ fn parse_optional_item_stack(
     })
 }
 
-fn skip_custom_model_data(input: &mut &[u8], name: &'static str) -> Result<(), ConnectionError> {
+pub(crate) fn skip_custom_model_data(
+    input: &mut &[u8],
+    name: &'static str,
+) -> Result<(), ConnectionError> {
     let float_count = read_count(input, name)?;
     for _ in 0..float_count {
         read_f32(input, name)?;
@@ -3968,14 +1435,14 @@ fn skip_custom_model_data(input: &mut &[u8], name: &'static str) -> Result<(), C
     Ok(())
 }
 
-fn skip_food(input: &mut &[u8], name: &'static str) -> Result<(), ConnectionError> {
+pub(crate) fn skip_food(input: &mut &[u8], name: &'static str) -> Result<(), ConnectionError> {
     read_varint(input, name)?;
     read_f32(input, name)?;
     read_byte(input, name)?;
     Ok(())
 }
 
-fn skip_tool(input: &mut &[u8], name: &'static str) -> Result<(), ConnectionError> {
+pub(crate) fn skip_tool(input: &mut &[u8], name: &'static str) -> Result<(), ConnectionError> {
     let rule_count = read_count(input, name)?;
     for _ in 0..rule_count {
         skip_holder_set(input, name)?;
@@ -3992,7 +1459,10 @@ fn skip_tool(input: &mut &[u8], name: &'static str) -> Result<(), ConnectionErro
     Ok(())
 }
 
-fn skip_holder_set(input: &mut &[u8], name: &'static str) -> Result<(), ConnectionError> {
+pub(crate) fn skip_holder_set(
+    input: &mut &[u8],
+    name: &'static str,
+) -> Result<(), ConnectionError> {
     let encoded_count = read_varint(input, name)?;
     if encoded_count == 0 {
         read_length_prefixed_bytes(input, 131_068, name)?;
@@ -4008,13 +1478,13 @@ fn skip_holder_set(input: &mut &[u8], name: &'static str) -> Result<(), Connecti
     Ok(())
 }
 
-fn skip_weapon(input: &mut &[u8], name: &'static str) -> Result<(), ConnectionError> {
+pub(crate) fn skip_weapon(input: &mut &[u8], name: &'static str) -> Result<(), ConnectionError> {
     read_varint(input, name)?;
     read_f32(input, name)?;
     Ok(())
 }
 
-fn parse_container_set_content_packet(
+pub(crate) fn parse_container_set_content_packet(
     input: &[u8],
 ) -> Result<ContainerSetContentObservation, ConnectionError> {
     let mut input = input;
@@ -4066,7 +1536,7 @@ fn parse_container_set_content_packet(
     })
 }
 
-fn parse_container_set_slot_packet(
+pub(crate) fn parse_container_set_slot_packet(
     input: &[u8],
 ) -> Result<ContainerSetSlotObservation, ConnectionError> {
     let mut input = input;
@@ -4088,7 +1558,9 @@ fn parse_container_set_slot_packet(
     })
 }
 
-fn parse_cursor_item_packet(input: &[u8]) -> Result<CursorItemObservation, ConnectionError> {
+pub(crate) fn parse_cursor_item_packet(
+    input: &[u8],
+) -> Result<CursorItemObservation, ConnectionError> {
     let mut input = input;
     let item = parse_optional_item_stack(&mut input, "cursor item stack")?;
     if !input.is_empty() {
@@ -4102,7 +1574,9 @@ fn parse_cursor_item_packet(input: &[u8]) -> Result<CursorItemObservation, Conne
     })
 }
 
-fn parse_system_chat_packet(input: &[u8]) -> Result<SystemChatObservation, ConnectionError> {
+pub(crate) fn parse_system_chat_packet(
+    input: &[u8],
+) -> Result<SystemChatObservation, ConnectionError> {
     let mut input = input;
     let component = crate::nbt::read_nbt(&mut input)
         .map_err(|_| ConnectionError::Codec("system chat component"))?;
@@ -4128,7 +1602,7 @@ fn parse_system_chat_packet(input: &[u8]) -> Result<SystemChatObservation, Conne
     })
 }
 
-fn skip_lp_vec3(input: &mut &[u8]) -> Result<(), ConnectionError> {
+pub(crate) fn skip_lp_vec3(input: &mut &[u8]) -> Result<(), ConnectionError> {
     let lowest = read_byte(input, "add entity movement marker")?;
     if lowest == 0 {
         return Ok(());
@@ -4143,7 +1617,9 @@ fn skip_lp_vec3(input: &mut &[u8]) -> Result<(), ConnectionError> {
     Ok(())
 }
 
-fn parse_chunk_packet(mut input: &[u8]) -> Result<ChunkPacketObservation, ConnectionError> {
+pub(crate) fn parse_chunk_packet(
+    mut input: &[u8],
+) -> Result<ChunkPacketObservation, ConnectionError> {
     let x = read_i32(&mut input, "chunk x")?;
     let z = read_i32(&mut input, "chunk z")?;
 
@@ -4201,16 +1677,16 @@ fn parse_chunk_packet(mut input: &[u8]) -> Result<ChunkPacketObservation, Connec
     })
 }
 
-fn read_varint(input: &mut &[u8], name: &'static str) -> Result<i32, ConnectionError> {
+pub(crate) fn read_varint(input: &mut &[u8], name: &'static str) -> Result<i32, ConnectionError> {
     wire::read_varint(input).map_err(|_| ConnectionError::Codec(name))
 }
 
-fn read_count(input: &mut &[u8], name: &'static str) -> Result<usize, ConnectionError> {
+pub(crate) fn read_count(input: &mut &[u8], name: &'static str) -> Result<usize, ConnectionError> {
     let count = read_varint(input, name)?;
     usize::try_from(count).map_err(|_| ConnectionError::Codec(name))
 }
 
-fn read_byte(input: &mut &[u8], name: &'static str) -> Result<u8, ConnectionError> {
+pub(crate) fn read_byte(input: &mut &[u8], name: &'static str) -> Result<u8, ConnectionError> {
     let Some((&byte, rest)) = input.split_first() else {
         return Err(ConnectionError::Codec(name));
     };
@@ -4218,7 +1694,7 @@ fn read_byte(input: &mut &[u8], name: &'static str) -> Result<u8, ConnectionErro
     Ok(byte)
 }
 
-fn read_i16(input: &mut &[u8], name: &'static str) -> Result<i16, ConnectionError> {
+pub(crate) fn read_i16(input: &mut &[u8], name: &'static str) -> Result<i16, ConnectionError> {
     if input.len() < 2 {
         return Err(ConnectionError::Codec(name));
     }
@@ -4229,7 +1705,7 @@ fn read_i16(input: &mut &[u8], name: &'static str) -> Result<i16, ConnectionErro
     ))
 }
 
-fn read_i32(input: &mut &[u8], name: &'static str) -> Result<i32, ConnectionError> {
+pub(crate) fn read_i32(input: &mut &[u8], name: &'static str) -> Result<i32, ConnectionError> {
     if input.len() < 4 {
         return Err(ConnectionError::Codec(name));
     }
@@ -4240,7 +1716,7 @@ fn read_i32(input: &mut &[u8], name: &'static str) -> Result<i32, ConnectionErro
     ))
 }
 
-fn read_f32(input: &mut &[u8], name: &'static str) -> Result<f32, ConnectionError> {
+pub(crate) fn read_f32(input: &mut &[u8], name: &'static str) -> Result<f32, ConnectionError> {
     if input.len() < 4 {
         return Err(ConnectionError::Codec(name));
     }
@@ -4251,7 +1727,7 @@ fn read_f32(input: &mut &[u8], name: &'static str) -> Result<f32, ConnectionErro
     ))
 }
 
-fn read_f64(input: &mut &[u8], name: &'static str) -> Result<f64, ConnectionError> {
+pub(crate) fn read_f64(input: &mut &[u8], name: &'static str) -> Result<f64, ConnectionError> {
     if input.len() < 8 {
         return Err(ConnectionError::Codec(name));
     }
@@ -4263,20 +1739,22 @@ fn read_f64(input: &mut &[u8], name: &'static str) -> Result<f64, ConnectionErro
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-struct PlayerPositionPacket {
-    teleport_id: i32,
-    x: f64,
-    y: f64,
-    z: f64,
-    delta_x: f64,
-    delta_y: f64,
-    delta_z: f64,
-    y_rot: f32,
-    x_rot: f32,
-    relative_flags: i32,
+pub(crate) struct PlayerPositionPacket {
+    pub(crate) teleport_id: i32,
+    pub(crate) x: f64,
+    pub(crate) y: f64,
+    pub(crate) z: f64,
+    pub(crate) delta_x: f64,
+    pub(crate) delta_y: f64,
+    pub(crate) delta_z: f64,
+    pub(crate) y_rot: f32,
+    pub(crate) x_rot: f32,
+    pub(crate) relative_flags: i32,
 }
 
-fn parse_player_position_packet(input: &[u8]) -> Result<PlayerPositionPacket, ConnectionError> {
+pub(crate) fn parse_player_position_packet(
+    input: &[u8],
+) -> Result<PlayerPositionPacket, ConnectionError> {
     let mut input = input;
     let packet = PlayerPositionPacket {
         teleport_id: read_varint(&mut input, "player position teleport id")?,
@@ -4296,7 +1774,7 @@ fn parse_player_position_packet(input: &[u8]) -> Result<PlayerPositionPacket, Co
     Ok(packet)
 }
 
-fn resolve_player_position(
+pub(crate) fn resolve_player_position(
     packet: PlayerPositionPacket,
     current: Option<(f64, f64, f64, f32, f32)>,
 ) -> (f64, f64, f64, f32, f32) {
@@ -4329,11 +1807,14 @@ fn resolve_player_position(
     (x, y, z, y_rot, x_rot)
 }
 
-fn read_long_array(input: &mut &[u8], name: &'static str) -> Result<Vec<i64>, ConnectionError> {
+pub(crate) fn read_long_array(
+    input: &mut &[u8],
+    name: &'static str,
+) -> Result<Vec<i64>, ConnectionError> {
     crate::binary::read_long_array(input).map_err(|_| ConnectionError::Codec(name))
 }
 
-fn read_length_prefixed_bytes<'a>(
+pub(crate) fn read_length_prefixed_bytes<'a>(
     input: &mut &'a [u8],
     max_length: usize,
     name: &'static str,
@@ -4347,7 +1828,7 @@ fn read_length_prefixed_bytes<'a>(
     Ok(head)
 }
 
-fn read_light_updates(
+pub(crate) fn read_light_updates(
     input: &mut &[u8],
     name: &'static str,
 ) -> Result<Vec<usize>, ConnectionError> {
@@ -4360,7 +1841,9 @@ fn read_light_updates(
     Ok(lengths)
 }
 
-fn parse_section_data(mut input: &[u8]) -> Result<Vec<ChunkSectionObservation>, ConnectionError> {
+pub(crate) fn parse_section_data(
+    mut input: &[u8],
+) -> Result<Vec<ChunkSectionObservation>, ConnectionError> {
     let mut sections = Vec::new();
     while !input.is_empty() {
         let non_empty_block_count = read_i16(&mut input, "section non-empty block count")?;
@@ -4502,7 +1985,7 @@ fn parse_palette_container(
     })
 }
 
-fn read_fixed_long_array(
+pub(crate) fn read_fixed_long_array(
     input: &mut &[u8],
     word_count: usize,
     name: &'static str,
@@ -4524,7 +2007,7 @@ fn read_fixed_long_array(
     Ok(words)
 }
 
-fn decode_palette_values(
+pub(crate) fn decode_palette_values(
     storage: &[u64],
     entry_count: usize,
     storage_bits: u8,
