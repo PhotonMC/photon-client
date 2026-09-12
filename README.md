@@ -130,6 +130,8 @@ Rust uygulama girişi henüz oynanabilir istemci değildir. İlk gerçek vanilla
 - [Vanilla survival inventory use effects component correct prediction doğrulaması](docs/vanilla-survival-inventory-use-effects-component-correct-prediction-parity.md)
 - [Survival inventory damage type component correct prediction sözleşmesi](docs/survival-inventory-damage-type-component-correct-prediction-contract.md)
 - [Vanilla survival inventory damage type component correct prediction doğrulaması](docs/vanilla-survival-inventory-damage-type-component-correct-prediction-parity.md)
+- [Survival inventory glider component correct prediction sözleşmesi](docs/survival-inventory-glider-component-correct-prediction-contract.md)
+- [Vanilla survival inventory glider component correct prediction doğrulaması](docs/vanilla-survival-inventory-glider-component-correct-prediction-parity.md)
 - [Survival inventory quick-move state-id correction sözleşmesi](docs/survival-inventory-quick-move-state-correction-contract.md)
 - [Vanilla survival inventory quick-move state-id correction doğrulaması](docs/vanilla-survival-inventory-quick-move-state-correction-parity.md)
 - [Survival inventory swap state-id correction sözleşmesi](docs/survival-inventory-swap-state-correction-contract.md)
