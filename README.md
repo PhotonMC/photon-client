@@ -144,6 +144,8 @@ Rust uygulama girişi henüz oynanabilir istemci değildir. İlk gerçek vanilla
 - [Vanilla survival inventory potion duration scale component correct prediction doğrulaması](docs/vanilla-survival-inventory-potion-duration-scale-component-correct-prediction-parity.md)
 - [Survival inventory map color component correct prediction sözleşmesi](docs/survival-inventory-map-color-component-correct-prediction-contract.md)
 - [Vanilla survival inventory map color component correct prediction doğrulaması](docs/vanilla-survival-inventory-map-color-component-correct-prediction-parity.md)
+- [Survival inventory map id component correct prediction sözleşmesi](docs/survival-inventory-map-id-component-correct-prediction-contract.md)
+- [Vanilla survival inventory map id component correct prediction doğrulaması](docs/vanilla-survival-inventory-map-id-component-correct-prediction-parity.md)
 - [Survival inventory quick-move state-id correction sözleşmesi](docs/survival-inventory-quick-move-state-correction-contract.md)
 - [Vanilla survival inventory quick-move state-id correction doğrulaması](docs/vanilla-survival-inventory-quick-move-state-correction-parity.md)
 - [Survival inventory swap state-id correction sözleşmesi](docs/survival-inventory-swap-state-correction-contract.md)
