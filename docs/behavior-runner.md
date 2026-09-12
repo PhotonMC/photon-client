@@ -14,7 +14,7 @@ python3 tools/behavior/test_runner.py
 - `preflight`: client ve ilgili JAR hash'lerini, Java/javac sürümünü kontrol eder. Oyun veya test çalıştırmaz.
 - `capture`: senaryoları iki ayrı Java sürecinde çalıştırır, çıktıları karşılaştırır ve kararlı referansı kaydeder. Aynı kimlikteki kaydı değiştirmez; mevcut kayıt farklı/bozuksa başarısız olur.
 - `verify`: kayıtlı referansı değiştirmeden iki yeni Java çalıştırmasıyla karşılaştırır. Önceden `capture` yapılmış olmalı.
-- `compare --adapter /mutlak/yol/program`: aynı girdileri belirtilen executable'a verir ve kayıtlı Java sonucuyla karşılaştırır. Rust wire/timer/math/utf8/binary/NBT/resources adaptörü mevcut; bu komut adaptör verilmediğinde **2** ile çıkar. Derleme ve karşılaştırma komutları [binary dilim belgesindedir](binary-parity.md).
+- `compare --adapter /mutlak/yol/program`: aynı girdileri belirtilen executable'a verir ve kayıtlı Java sonucuyla karşılaştırır. Rust wire/timer/math/utf8/binary/NBT/resources adaptörü mevcut; bu komut adaptör verilmediğinde **2** ile çıkar. Derleme ve karşılaştırma komutları [binary dilim belgesindedir](binary-conformance.md).
 - `test_runner.py`: yalnızca yanlış başarı, bozuk referans ve hatalı süreç davranışlarını denetleyen sentetik altyapı kontrolleri. Java veya asset gerektirmez.
 
 Tek aile seçmek için `--family wire`, `--family math`, `--family timer`, `--family utf8`, `--family binary`, `--family nbt` veya `--family resources` kullanılır; seçenek tekrarlanabilir. Seçilmezse mevcut bütün aileler çalışır. Aile seçimi referans kimliğinin parçasıdır; örneğin `verify --family timer` öncesinde aynı seçimle `capture --family timer` çalıştırılmalıdır. `--runtime /yerel/runtime` alternatif client/`libs` dizinini, `--jdk-home /jdk/koku` Java araçlarını seçer. Bu yollar yalnızca okunur. Gerekli referanslar yoksa indirme yapılmaz.
@@ -53,7 +53,7 @@ JSON protokolünü konuşan bir executable'ın programlama dili araç tarafında
 
 ## Aile ve operation sözleşmeleri
 
-Runner'ın ortak JSONL ve kesin karşılaştırma kuralları yukarıdaki protokolde tanımlıdır. Aileye ve operation'a özgü alanlar, Java kaynak incelemesiyle birlikte ilgili contract/parity belgesinde tutulur; senaryo girdilerinin tek üretim noktası tools/behavior/cases.py dosyasıdır.
+Runner'ın ortak JSONL ve kesin karşılaştırma kuralları yukarıdaki protokolde tanımlıdır. Aileye ve operation'a özgü alanlar, Java kaynak incelemesiyle birlikte ilgili birleşik contract/parity kaydında tutulur; senaryo girdilerinin tek üretim noktası tools/behavior/cases.py dosyasıdır.
 
 | Aile | Sözleşme sınırı |
 | --- | --- |
@@ -65,7 +65,7 @@ Runner'ın ortak JSONL ve kesin karşılaştırma kuralları yukarıdaki protoko
 | nbt | Bileşik, liste ve primitive array okuma/yazma davranışı |
 | resources | Asset index yolu çözümleme, sanal object bağlantıları ve pack kaynak önceliği |
 
-Yeni bir operation eklendiğinde kendi kaynak incelemesi, oracle branch'i, senaryoları ve contract/parity belgesi eklenir. Bu genel runner belgesinde hareketli senaryo toplamı veya operation başına sayaç tutulmaz.
+Yeni bir operation eklendiğinde kendi kaynak incelemesi, oracle branch'i, senaryoları ve birleşik contract/parity kaydı eklenir. Bu genel runner belgesinde hareketli senaryo toplamı veya operation başına sayaç tutulmaz.
 
 ## Doğrulanan mevcut kapsam
 
@@ -81,6 +81,6 @@ Runner yedi aileyi aynı JSONL sözleşmesiyle işler: math, timer, wire, utf8, 
 | nbt | Bileşik, liste ve primitive array okuma/yazma ile sınır davranışı |
 | resources | Asset index yolu çözümleme, sanal object bağlantıları ve pack kaynak önceliği |
 
-Kesin senaryo listesi generator'dan, referans kimliği capture manifest'inden, dilim sınırları ise ilgili contract/parity belgelerinden okunur. Bu bölüm hareketli corpus toplamını tekrar etmez.
+Kesin senaryo listesi generator'dan, referans kimliği capture manifest'inden, dilim sınırları ise ilgili birleşik contract/parity kayıtlarından okunur. Bu bölüm hareketli corpus toplamını tekrar etmez.
 
-Bu kapsam headless yardımcı ve veri davranışlarıyla sınırlıdır. İlk gerçek vanilla 26.2 oturumu [Rust connection probe'u](vanilla-connection-parity.md) ile doğrulandı; Pumpkin karşılaştırması [ayrı kayıttadır](game-connection-parity.md). Oynanabilir istemci, pencere/input, chunk/world state, GPU frame yakalama, audio capture ve tam user-facing akışlar henüz doğrulanmış değildir.
+Bu kapsam headless yardımcı ve veri davranışlarıyla sınırlıdır. İlk gerçek vanilla 26.2 oturumu ve Pumpkin karşılaştırması [birleşik oyun oturumu kaydının alt bölümlerindedir](game-connection-conformance.md). Oynanabilir istemci, pencere/input, chunk/world state, GPU frame yakalama, audio capture ve tam user-facing akışlar henüz doğrulanmış değildir.

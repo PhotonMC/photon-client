@@ -50,7 +50,7 @@ istemci davranış eşitliği kanıtı değildir.
 [Davranış testi sözleşmesi](behavior-testing.md) bunu zaten söylüyordu; eksik
 olan, kaydın adında ve roadmap satırında bu ayrımın görünmemesiydi. Kanıt
 sınıfları artık [behavior-testing.md](behavior-testing.md) içinde tanımlıdır ve
-her contract/parity belgesi sınıfını başlıkta bildirir.
+her birleşik contract/parity belgesi sınıfını başlıkta bildirir.
 
 ## Bulgu 2 — Varyant patlaması
 
@@ -88,7 +88,7 @@ Her probe commit'i beş ortak dosyaya dokunuyordu: `README.md`, `roadmap.md`,
 `remaining-test-plan.md`, `source-review.md` ve iki yeni belge. Sonuçta
 `roadmap.md` ve `remaining-test-plan.md` içindeki P12/P13 hücreleri elli maddeyi
 aşan tek cümleye dönüştü ve okunamaz hale geldi. Bu hücreler zaten roadmap'in
-kendi kuralını ihlal ediyordu: dilim durumu kendi contract/parity belgesinde
+kendi kuralını ihlal ediyordu: dilim durumu kendi birleşik contract/parity belgesinde
 tutulur, genel belgelerde hareketli toplam tekrar edilmez.
 
 Bu belgeyle birlikte ilgili hücreler özet biçime indirildi; senaryo listesi

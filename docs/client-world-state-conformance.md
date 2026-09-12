@@ -81,4 +81,4 @@ yükseklik okuma, respawn ile world değiştirme, ışık nibble değerleri, blo
 entity world state'i, block update ile section değiştirme, radius/unload sırası,
 entity deposu ve render için section invalidation P08'in kalan işleridir.
 Chunk packet'inin wire alanları ve ışık byte sınırlarına ait önceki kayıt
-[chunk paketinin yapısal doğrulamasında](chunk-packet-parity.md) bulunur.
+[chunk paketinin yapısal doğrulamasında](chunk-packet-conformance.md) bulunur.

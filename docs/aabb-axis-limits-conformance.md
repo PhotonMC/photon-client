@@ -1,0 +1,69 @@
+# P01.d — AABB axis min/max sözleşmesi — [client-parity] birleşik kayıt
+
+Bu dosya, aynı davranış diliminin sözleşmesini ve doğrulama kaydını birlikte tutar.
+
+## Sözleşme
+
+Bu dilimin **6 Java davranış testi hazırdır ve Rust karşılığı doğrulanmıştır** ([kanıt](#client-parity-doğrulaması)). Kapsam, Java `AABB.min(Direction.Axis)` ve `AABB.max(Direction.Axis)` sorgularının seçilen eksenin saklanan endpoint'ini döndürmesini içerir.
+
+## Kaynak ve sınır
+
+Java Edition 26.2 / protokol 776 / Java 25 referansı kullanılır. `world/phys/AABB.java:87-94` ve eksen seçiminin `core/Direction.java:402-544` içindeki `Axis.choose` davranışı incelendi. `MathOracle` getter'ları doğrudan çağırır; endpoint değerleri oracle içinde yeniden seçilmez.
+
+## Davranış sözleşmesi
+
+- X ekseni `minX`/`maxX`, Y ekseni `minY`/`maxY`, Z ekseni `minZ`/`maxZ` çiftini seçer.
+- Sorgu aritmetik yapmaz; seçilen endpoint'in f64 bitleri NaN ve signed zero dahil aynen döner.
+- Constructor normalizasyonu getter'dan önce uygulanır. Sorgu kutuyu değiştirmez.
+- `minmax(AABB)` kapsamı ayrı dilimde doğrulanır; burada yalnızca bir `Direction.Axis` seçimi vardır.
+
+## Senaryolar ve JSONL
+
+| Grup | Sayı | Girdiler |
+| --- | ---: | --- |
+| Eksen seçimi | 3 | X/Y/Z için tüm min endpoint'leri |
+| Üst endpoint | 1 | X/Y/Z için tüm max endpoint'leri |
+| Karışık sorgu | 1 | Farklı sırada min ve max çağrıları |
+| Sayısal ayrıntı | 1 | Ters sıralı, signed zero ve NaN endpoint'leri |
+
+`family: "math"`, `operation: "aabb"` girdileridir. `steps` içinde `op: "min"` veya `op: "max"` ve `axis: "x" | "y" | "z"` bulunur. Her sonuç seçilen endpoint'i `value` f64 bit string alanında taşır.
+
+## Java yakalama
+
+Depo kökünden:
+
+```bash
+python3 tools/behavior/run.py capture --family math
+python3 tools/behavior/run.py verify --family math
+cargo build --locked --offline --example behavior_adapter
+python3 tools/behavior/run.py compare --family math --adapter target/debug/examples/behavior_adapter
+```
+
+Axis min/max senaryolarını içeren math referans kimliği `803f0124e49c7979da9fe752dd944ea1e0edce936d4d6afa25b3ab5358a5514c` oldu. Bu referans iki JVM çalıştırmasıyla kararlı bulundu. Birleşik altı aile referansı `8c4789d8c4953d1e6851df238f157e9ea125bc1a32a2eb87d50f55beeda3476b` kimliğiyle iki JVM'de doğrulandı.
+
+Rust debug ve release adaptörleri math ailesinde 418/418, birleşik corpus'ta 2801/2801 eşleşti. Ham girdiler ve Java çıktıları yalnızca `.data/` altında tutulur.
+
+
+## Client-parity doğrulaması
+
+`src/aabb.rs`, Java `AABB.min(Direction.Axis)` ve `AABB.max(Direction.Axis)` seçimlerini uygular. `examples/behavior_adapter.rs` `min` ve `max` adımlarını JSONL math senaryolarına bağlar.
+
+## Doğrulama
+
+Java 25.0.4.1 ve Rust 1.98.1 / Linux x86_64 ortamında:
+
+- 418 senaryoluk math referansı iki ayrı JVM çalıştırmasıyla kararlı bulundu.
+- Rust debug ve release adaptörleri **418/418** math senaryosunda eşleşti.
+- Altı yeni senaryoda üç eksen seçimi, min/max çağrı sırası, constructor normalizasyonu, signed zero ve NaN endpoint'leri karşılaştırıldı.
+- Birleşik altı aile corpus'u **2801/2801** senaryoda hem debug hem release adaptörüyle eşleşti.
+- `cargo fmt`, `cargo check --locked --offline --all-targets`, `cargo test --locked --offline --all-targets` ve Clippy kontrolleri geçti.
+
+Math referans kimliği: `803f0124e49c7979da9fe752dd944ea1e0edce936d4d6afa25b3ab5358a5514c`.
+
+Birleşik referans kimliği: `8c4789d8c4953d1e6851df238f157e9ea125bc1a32a2eb87d50f55beeda3476b`.
+
+Yerel raporlar: `compare-3zt58eiq` (math debug), `compare-pk22hysr` (math release), `compare-5bjkz31s` (birleşik debug) ve `compare-zfkba6ts` (birleşik release) dizinlerinde, `.data/runs/behavior/` altında bulunur.
+
+## Sınırlar
+
+Bu kanıt yalnızca `AABB.min/max(Direction.Axis)` ve mevcut AABB adım adaptörüyle sınırlıdır. [`collidedAlongVector`](aabb-collided-along-vector-conformance.md) ayrı dilimde tamamlandı; diğer overload'lar sonraki dilimlerdir; VoxelShape clip ayrı [kanıtta](shape-clip-conformance.md) tamamlandı.

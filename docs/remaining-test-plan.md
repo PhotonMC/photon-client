@@ -9,7 +9,7 @@ Kapsam veya test durumu bu belgede hareketli toplamlarla tutulmaz. Tamamlanan k�
 - Engelli test başarı sayılmaz; varsayılan koşu engeli gizlemez.
 - Ortam hazır olunca ilgili bölüm için önce Java referansı ve testler hazırlanır (davranış testi belgesindeki sıra değişmez).
 - Bu dosya kapsam defteridir; hiçbir satırı eşitlik kanıtı değildir.
-- Hücrelerde senaryo adı biriktirilmez. Geçen senaryoların listesi kendi parity belgesindedir; burada yalnızca engel, bağımlılık ve kanıt sınıfı yazılır.
+- Hücrelerde senaryo adı biriktirilmez. Geçen senaryoların listesi kendi birleşik conformance kaydındadır; burada yalnızca engel, bağımlılık ve kanıt sınıfı yazılır.
 - `server-conformance` kaydı bölümü ilerletir, kapatmaz. Bölüm ancak `client-parity` kaydıyla kapanır; tanımlar [davranış testi sözleşmesindedir](behavior-testing.md).
 - Aynı kod yolunun sabiti değişen kopyası yeni satır veya yeni dilim üretmez; gerekçe [yön düzeltmesindedir](course-correction-2026-09-12.md).
 
@@ -42,7 +42,7 @@ Kapsam veya test durumu bu belgede hareketli toplamlarla tutulmaz. Tamamlanan k�
 
 ## P01 kalanları (çalıştırılabilir, sonraki test dilimleri)
 
-P01 için sıradaki küçük dilim, [source review](source-review.md) içindeki uygulanmamış Java giriş noktalarından seçilir. Her dilim kendi özgün senaryolarını, Java capture'ını, Rust karşılaştırmasını ve contract/parity belgesini ekler. Önceki dilim belgeleri yeni bir dilim nedeniyle yeniden yazılmaz.
+P01 için sıradaki küçük dilim, [source review](source-review.md) içindeki uygulanmamış Java giriş noktalarından seçilir. Her dilim kendi özgün senaryolarını, Java capture'ını, Rust karşılaştırmasını ve birleşik conformance kaydını ekler. Önceki dilim belgeleri yeni bir dilim nedeniyle yeniden yazılmaz.
 
 P01.d/e geometrik ve random kapsamı, istemci dünyası oluşmadan yalnızca bağımsız veri yolları ölçülebildiği kadar ilerletilir. World collider toplama, movement resolution ve gerçek packet tüketimi P08–P12 ön koşullarına bağlıdır.
 
