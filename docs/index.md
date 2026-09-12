@@ -86,6 +86,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P01.c — ChunkPos temsil ve hash sözleşmesi — client-parity birleşik kayıt](chunkpos-representation-conformance.md)
 - [P01.c — ChunkPos validity sözleşmesi — client-parity birleşik kayıt](chunkpos-validity-conformance.md)
 - [P05.a — OptionInstance ClampingLazyMaxIntRange sözleşmesi — client-parity birleşik kayıt](clamping-lazy-max-int-range-conformance.md)
+- [P06–P08 — Ölçülebilir istemci giriş ucu — server-conformance birleşik kayıt](client-runtime-conformance.md)
 - [P08.a/b — server-conformance ClientWorld chunk kopyası ve section cache](client-world-state-conformance.md)
 - [P06.d — Ortak ping/pong ve keep-alive paket sözleşmesi — client-parity birleşik kayıt](common-packet-conformance.md)
 - [P07 — ClientInformation ve configuration unit packet sözleşmesi — client-parity birleşik kayıt](configuration-client-information-conformance.md)
@@ -356,5 +357,3 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P01.b — Vec3 vectorTo sözleşmesi — client-parity birleşik kayıt](vec3-vector-to-conformance.md)
 - [P01.b — Vec3 with sözleşmesi — client-parity birleşik kayıt](vec3-with-conformance.md)
 - [P03.a — Rust VarInt/VarLong davranış dilimi — client-parity kapsam kaydı](wire-conformance.md)
-
-## Diğer referans kayıtları

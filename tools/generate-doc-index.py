@@ -45,11 +45,12 @@ def grouped_documents() -> list[tuple[str, list[Path]]]:
         if path.name.endswith("-conformance.md") and path not in core
     ]
     remaining = [path for path in documents if path not in core and path not in conformance]
-    return [
+    groups = [
         ("Proje ve test yönlendirmeleri", core),
         ("Birleşik davranış sözleşmeleri ve kanıtları", conformance),
         ("Diğer referans kayıtları", remaining),
     ]
+    return [(heading, paths) for heading, paths in groups if paths]
 
 
 def main() -> None:
@@ -63,7 +64,7 @@ def main() -> None:
     for heading, documents in grouped_documents():
         lines.extend(["", f"## {heading}", ""])
         lines.extend(f"- [{title(path)}]({path.name})" for path in documents)
-    INDEX.write_text("\n".join(lines) + "\n")
+    INDEX.write_text("\n".join(lines).rstrip() + "\n")
 
 
 if __name__ == "__main__":

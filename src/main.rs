@@ -1,2 +1,42 @@
-// Uygulama girişi: henüz oynanabilir istemci yok. Doğrulanan dilimler kütüphanede.
-fn main() {}
+use std::env;
+use std::net::SocketAddr;
+use std::time::Duration;
+
+use voxel_client::connection::connect_and_probe;
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut args = env::args().skip(1);
+    let address: SocketAddr = args
+        .next()
+        .unwrap_or_else(|| "127.0.0.1:25566".to_owned())
+        .parse()?;
+    let username = args.next().unwrap_or_else(|| "VoxelClient".to_owned());
+    let ticks: u32 = args
+        .next()
+        .map(|value| value.parse())
+        .transpose()?
+        .unwrap_or(20);
+    let timeout_seconds: u64 = args
+        .next()
+        .map(|value| value.parse())
+        .transpose()?
+        .unwrap_or(20);
+    if timeout_seconds == 0 {
+        return Err("timeout_seconds must be greater than zero".into());
+    }
+
+    let mut trace = connect_and_probe(address, &username, Duration::from_secs(timeout_seconds))?;
+    for _ in 0..ticks {
+        trace.world.tick();
+    }
+
+    println!("client_connection=ok");
+    println!("play_login={}", trace.play_login);
+    println!("world_constructed=true");
+    println!("world_chunk_count={}", trace.world.loaded_chunk_count());
+    println!("world_section_count={}", trace.world.loaded_section_count());
+    println!("ticks_run={ticks}");
+    println!("world_game_time={}", trace.world.game_time());
+    println!("rendered_frames=0");
+    Ok(())
+}
