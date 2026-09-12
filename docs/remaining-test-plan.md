@@ -23,7 +23,7 @@ Kapsam veya test durumu bu belgede hareketli toplamlarla tutulmaz. Tamamlanan k�
 | P05 ayarlar/input | Pencere/odak/GUI koordinatı gerçek istemci ister | Karşıt yön sıfırlama, tuş tutma/tekrar, odak kaybı; input snapshot ve hareket vektörü |
 | P06 bağlantı/login | Vanilla 26.2 status ve ilk offline play probe'ları geçti; ilk oyuncu konumu kabulü ve `player_loaded` bildirimi de vanilla koşusunda tamamlandı; encryption, parçalı ağ, disconnect ve reconnect harness'i açık | Parçalı paket, sıkıştırma eşiği, kopma; paket baytları ve durum sırası |
 | P07 configuration/registry | Vanilla baseline'da ilk registry/tag ve phase geçiş probe'u geçti; eksik/tekrarlı veri ve tam client state bağlantısı açık | Registry/tag biriktirme, eksik girdide ack'siz bekleme, play'e geçiş anı |
-| P08 dünya/chunk | İlk chunk teslimi ve vanilla chunk wire gövdesi ile section palette storage layout'unun yapısal tüketimi geçti; heightmap type/word alanları ve ışık update uzunlukları da gözleniyor; state/biome eşleme, ışık/entity decoder'ları ve world cache açık | Palette genişlik değişimi, boş section, load-update-unload sırası |
+| P08 dünya/chunk | İlk chunk teslimi ve vanilla chunk wire gövdesi ile section palette storage layout'unun yapısal tüketimi geçti; tam block/biome palette çözümü sorgulanabilir `ClientWorld` section cache'ine yazılıyor ([P08.a/b kaydı](client-world-state-conformance.md), `server-conformance`); dinamik dimension/respawn, ışık/entity decoder'ları, block update ve yaşam döngüsü açık | Palette genişlik değişimi, boş section, load-update-unload sırası |
 
 ## C — His, görüntü, ses
 

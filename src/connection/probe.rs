@@ -13,6 +13,7 @@ use crate::login::{ClientboundLoginFinishedPacket, ServerboundHelloPacket};
 use crate::protocol::ConnectionProtocol;
 use crate::resources::KnownPack;
 use crate::wire;
+use crate::world::SectionInput;
 
 use super::protocol::*;
 use super::session::*;
@@ -1207,7 +1208,21 @@ fn connect_and_probe_with_mode(
                     .push(parse_update_mob_effect_packet(payload)?);
             }
             PLAY_CLIENTBOUND_CHUNK_PACKET_ID => {
-                trace.chunk_observations.push(parse_chunk_packet(payload)?);
+                let chunk = parse_chunk_packet(payload)?;
+                trace.world.replace_chunk(
+                    chunk.x,
+                    chunk.z,
+                    chunk
+                        .section_observations
+                        .iter()
+                        .map(|section| SectionInput {
+                            non_empty_block_count: section.non_empty_block_count,
+                            fluid_count: section.fluid_count,
+                            block_states: &section.block_state_values,
+                            biomes: &section.biome_values,
+                        }),
+                );
+                trace.chunk_observations.push(chunk);
                 trace.chunk_packet_count += 1;
             }
             PLAY_CLIENTBOUND_KEEP_ALIVE_PACKET_ID => {

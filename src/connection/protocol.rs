@@ -12,6 +12,7 @@ use flate2::write::ZlibEncoder;
 use crate::frame::{self, FrameError, MAX_FRAME_LENGTH};
 use crate::protocol::ConnectionProtocol;
 use crate::wire;
+use crate::world::ClientWorld;
 
 pub(crate) const PROTOCOL_VERSION: i32 = 776;
 pub(crate) const LOGIN_INTENTION_PACKET_ID: i32 = 0;
@@ -541,6 +542,7 @@ pub struct PlayConnectionTrace {
     pub chunk_packet_count: usize,
     pub chunk_batch_finished_count: usize,
     pub chunk_observations: Vec<ChunkPacketObservation>,
+    pub world: ClientWorld,
 }
 
 /// Wire-level fields observed from a clientbound player-position correction.
@@ -682,12 +684,14 @@ pub struct ChunkSectionObservation {
     pub block_state_palette_ids: Vec<i32>,
     pub block_state_storage_word_count: usize,
     pub block_state_first_values: Vec<i32>,
+    pub block_state_values: Vec<i32>,
     pub block_state_distinct_value_count: usize,
     pub biome_bits_per_entry: u8,
     pub biome_palette_entry_count: usize,
     pub biome_palette_ids: Vec<i32>,
     pub biome_storage_word_count: usize,
     pub biome_first_values: Vec<i32>,
+    pub biome_values: Vec<i32>,
     pub biome_distinct_value_count: usize,
 }
 
@@ -1858,12 +1862,14 @@ pub(crate) fn parse_section_data(
             block_state_palette_ids: block_states.palette_ids,
             block_state_storage_word_count: block_states.storage_word_count,
             block_state_first_values: block_states.first_values,
+            block_state_values: block_states.values,
             block_state_distinct_value_count: block_states.distinct_value_count,
             biome_bits_per_entry: biomes.bits_per_entry,
             biome_palette_entry_count: biomes.palette_entry_count,
             biome_palette_ids: biomes.palette_ids,
             biome_storage_word_count: biomes.storage_word_count,
             biome_first_values: biomes.first_values,
+            biome_values: biomes.values,
             biome_distinct_value_count: biomes.distinct_value_count,
         });
     }
@@ -1877,6 +1883,7 @@ struct PaletteObservation {
     palette_ids: Vec<i32>,
     storage_word_count: usize,
     first_values: Vec<i32>,
+    values: Vec<i32>,
     distinct_value_count: usize,
 }
 
@@ -1963,7 +1970,7 @@ fn parse_palette_container(
         },
     )?;
 
-    let (first_values, distinct_value_count) = decode_palette_values(
+    let values = decode_palette_values(
         &storage,
         entry_count,
         storage_bits,
@@ -1974,6 +1981,8 @@ fn parse_palette_container(
             "biome value"
         },
     )?;
+    let first_values = values.iter().copied().take(4).collect();
+    let distinct_value_count = values.iter().copied().collect::<BTreeSet<_>>().len();
 
     Ok(PaletteObservation {
         bits_per_entry,
@@ -1981,6 +1990,7 @@ fn parse_palette_container(
         palette_ids,
         storage_word_count,
         first_values,
+        values,
         distinct_value_count,
     })
 }
@@ -2013,12 +2023,12 @@ pub(crate) fn decode_palette_values(
     storage_bits: u8,
     palette_ids: &[i32],
     name: &'static str,
-) -> Result<(Vec<i32>, usize), ConnectionError> {
+) -> Result<Vec<i32>, ConnectionError> {
     if storage_bits == 0 {
         let Some(&value) = palette_ids.first() else {
             return Err(ConnectionError::Codec(name));
         };
-        return Ok((vec![value; entry_count.min(4)], 1));
+        return Ok(vec![value; entry_count]);
     }
 
     let bits = usize::from(storage_bits);
@@ -2028,10 +2038,11 @@ pub(crate) fn decode_palette_values(
     } else {
         (1_u64 << bits) - 1
     };
-    let mut first_values = Vec::with_capacity(entry_count.min(4));
-    let mut distinct_values = BTreeSet::new();
+    let mut values = Vec::with_capacity(entry_count);
     for index in 0..entry_count {
-        let word = storage[index / values_per_long];
+        let Some(&word) = storage.get(index / values_per_long) else {
+            return Err(ConnectionError::Codec(name));
+        };
         let palette_index = ((word >> ((index % values_per_long) * bits)) & mask) as usize;
         let value = if palette_ids.is_empty() {
             i32::try_from(palette_index).map_err(|_| ConnectionError::Codec(name))?
@@ -2040,12 +2051,9 @@ pub(crate) fn decode_palette_values(
                 .get(palette_index)
                 .ok_or(ConnectionError::Codec(name))?
         };
-        if first_values.len() < 4 {
-            first_values.push(value);
-        }
-        distinct_values.insert(value);
+        values.push(value);
     }
-    Ok((first_values, distinct_values.len()))
+    Ok(values)
 }
 
 #[cfg(test)]
@@ -3548,12 +3556,16 @@ mod tests {
         assert_eq!(observation.block_state_palette_ids, [0, 3]);
         assert_eq!(observation.block_state_storage_word_count, 256);
         assert_eq!(observation.block_state_first_values, [3, 0, 3, 0]);
+        assert_eq!(observation.block_state_values.len(), 4_096);
+        assert_eq!(&observation.block_state_values[..4], [3, 0, 3, 0]);
         assert_eq!(observation.block_state_distinct_value_count, 2);
         assert_eq!(observation.biome_bits_per_entry, 3);
         assert_eq!(observation.biome_palette_entry_count, 2);
         assert_eq!(observation.biome_palette_ids, [0, 1]);
         assert_eq!(observation.biome_storage_word_count, 4);
         assert_eq!(observation.biome_first_values, [1, 1, 1, 1]);
+        assert_eq!(observation.biome_values.len(), 64);
+        assert_eq!(&observation.biome_values[..4], [1, 1, 1, 1]);
         assert_eq!(observation.biome_distinct_value_count, 2);
     }
 
@@ -3574,12 +3586,14 @@ mod tests {
         assert_eq!(observations[0].block_state_palette_ids, [0]);
         assert_eq!(observations[0].block_state_storage_word_count, 0);
         assert_eq!(observations[0].block_state_first_values, [0, 0, 0, 0]);
+        assert_eq!(observations[0].block_state_values, vec![0; 4_096]);
         assert_eq!(observations[0].block_state_distinct_value_count, 1);
         assert_eq!(observations[0].biome_bits_per_entry, 0);
         assert_eq!(observations[0].biome_palette_entry_count, 1);
         assert_eq!(observations[0].biome_palette_ids, [0]);
         assert_eq!(observations[0].biome_storage_word_count, 0);
         assert_eq!(observations[0].biome_first_values, [0, 0, 0, 0]);
+        assert_eq!(observations[0].biome_values, vec![0; 64]);
         assert_eq!(observations[0].biome_distinct_value_count, 1);
     }
 }

@@ -33,7 +33,7 @@ P00–P03'ün ilk dilimleri grafik, ses veya Pumpkin kurulumu beklemez. P01/P03'
 | --- | --- | --- | --- |
 | **P06 Bağlantı ve login** | P02–P03, P05 ayarları | a: durum/ping ve frame sınırları; b: handshake/login; c: compression/encryption geçişleri; d: keepalive, ilk oyuncu konumu, player-loaded, disconnect ve yeniden bağlanma | Parçalı/birleştirilmiş ağ verisi, geçiş sırasında gelen paket, sıkıştırma eşiği ve kopma. Paket baytları, protokol durumu, yanıt sırası ve kullanıcıya iletilen sonuç. Güncel canlı baseline resmi vanilla 26.2 server'dır; Pumpkin adayındaki farklar ayrı karşılaştırma kaydıdır. |
 | **P07 Configuration ve registry'ler** | P03–P04, P06 | a: known pack/feature seçimi; b: registry ve tag biriktirme; c: configuration→play ve yeniden configuration; d: item/block/data component bağlantıları | Paket sırasını, eksik/tekrarlı registry girdisini, tag güncellemesini ve phase sınırını kontrol et. Registry kimliği/çözümü, ack ve play'e geçiş anı Java ile aynı olmalı. Pumpkin verisinin tamamlığı ayrı raporlanır. |
-| **P08 Dünya kopyası ve chunk yaşam döngüsü** | P01–P03, P07 | a: dimension ve client level; b: palette/chunk section/biome çözümü; c: chunk/light/block entity paketleri ve ilk oyuncu konumu bildirimi; d: cache merkezi/radius/unload; e: entity ekleme, metadata ve temel tick | Negatif chunk koordinatı, palette genişlik değişimi, boş section, load-update-unload, dimension/respawn ve sıralı ışık güncellemeleri. Blok/biome/state kimlikleri, entity durumu, ışık dizileri, güncelleme kuyruğu ve yaşam döngüsü. Dünya üretimi yapılmaz. |
+| **P08 Dünya kopyası ve chunk yaşam döngüsü** | P01–P03, P07 | a: dimension ve client level; b: palette/chunk section/biome çözümü; c: chunk/light/block entity paketleri ve ilk oyuncu konumu bildirimi; d: cache merkezi/radius/unload; e: entity ekleme, metadata ve temel tick | İlk vanilla chunk'ları sorgulanabilir `ClientWorld` ve section cache'e yazan P08.a/b `server-conformance` kaydı [kendi belgesindedir](client-world-state-conformance.md). Açık: dinamik dimension/respawn, ışık/block entity/block update, radius/unload ve entity yaşam döngüsü; `client-parity` kaydı yok. Dünya üretimi yapılmaz. |
 
 ## C — Oyuncunun hissettiği davranış
 
@@ -83,11 +83,13 @@ kayıtların tamamı `server-conformance` sınıfındadır.
 
 ## Kritik yol
 
-Bloke ettiği bölüm sayısına göre sıradaki iş **P08.a/b istemci dünya
-kopyasıdır**: `ClientLevel` eşdeğeri, chunk deposu, palette → blockstate çözümü
-ve section cache. P09 çarpışma, P10 hareket, P14 kamera ve P16 dünya çizimi bu
-dilim olmadan başlayamaz. Bugünkü kod chunk paketini çözüp sayaçlara yazıp
-atmaktadır; bölüm, sorgulanabilir bir dünya durumu oluşmadan kapanmaz.
+Bloke ettiği bölüm sayısına göre kritik yol hâlâ **P08 dünya kopyasıdır**.
+İlk P08.a/b diliminde `ClientWorld` eşdeğeri, chunk deposu, palette → blockstate
+çözümü ve section cache oluşturuldu; vanilla kanıtı
+[kendi kaydındadır](client-world-state-conformance.md). P09 çarpışma, P10
+hareket, P14 kamera ve P16 dünya çizimi için dinamik dimension, ışık/block
+update ve yaşam döngüsü state'i hâlâ eksiktir; P08 `client-parity` ile
+kapanmadan bu bağımlılıklar açılmaz.
 
 P12/P13 altında yeni item component varyantı açılmaz; gerekçe ve bağlayıcı
 eylemler [yön düzeltmesi belgesindedir](course-correction-2026-09-12.md).
@@ -99,6 +101,6 @@ Headless Java oracle, JSONL runner ve Rust adapter ilk davranış dilimleri içi
 
 P01'deki yeni yardımcılar Java kaynak incelemesi ve kendi parity belgeleriyle sırayla ele alınır. P02/P03'ün istemciye bağlanan frame, registry ve packet akışları ilgili bağımlılıklar hazır olduğunda ilerler. Kesin açık helper listesi [source review](source-review.md) içinde tutulur.
 
-İnsan tarafından elle oynanması gereken ayrı bir kabul süreci tasarlanmıyor. P06–P08 için ilk gerçek vanilla 26.2 bağlantı/world-delivery probe'u [kendi sözleşmesi](game-connection-contract.md) ve [doğrulama kaydı](vanilla-connection-parity.md) ile çalışır durumdadır; chunk ve ışık packet gövdesinin, heightmap/light sınırlarının ve section palette storage layout'unun yapısal tüketimi [ayrı P08 kaydında](chunk-packet-parity.md) doğrulanmıştır. Pumpkin koşusu [ayrı bir uyumluluk kaydıdır](game-connection-parity.md). Bu probe oynanabilir istemci değildir; P05 pencere/input, chunk state, dünya cache'i, disconnect/reconnect, hareket, eylem, inventory, kamera, render, ses ve GUI katmanlarının kontrollü harness'leri hâlâ kurulacaktır.
+İnsan tarafından elle oynanması gereken ayrı bir kabul süreci tasarlanmıyor. P06–P08 için ilk gerçek vanilla 26.2 bağlantı/world-delivery probe'u [kendi sözleşmesi](game-connection-contract.md) ve [doğrulama kaydı](vanilla-connection-parity.md) ile çalışır durumdadır; chunk ve ışık packet gövdesinin, heightmap/light sınırlarının ve section palette storage layout'unun yapısal tüketimi [ayrı P08 kaydında](chunk-packet-parity.md), sorgulanabilir ilk `ClientWorld` state'i ise [P08.a/b kaydında](client-world-state-conformance.md) doğrulanmıştır. Pumpkin koşusu [ayrı bir uyumluluk kaydıdır](game-connection-parity.md). Bu probe oynanabilir istemci değildir; P05 pencere/input, dinamik dünya yaşam döngüsü, disconnect/reconnect, hareket, eylem, inventory, kamera, render, ses ve GUI katmanlarının kontrollü harness'leri hâlâ kurulacaktır.
 
-Kalan ilk gerçek istemci engelleri pencere ve input, chunk/client world state, disconnect/reconnect ve kontrollü frame/audio/network capture ortamıdır. [Kalan test planı](remaining-test-plan.md) her engelin ön koşulunu ve beklenen gözlemi taşır.
+Kalan ilk gerçek istemci engelleri pencere ve input, dinamik chunk/client world state, disconnect/reconnect ve kontrollü frame/audio/network capture ortamıdır. [Kalan test planı](remaining-test-plan.md) her engelin ön koşulunu ve beklenen gözlemi taşır.

@@ -26,6 +26,6 @@ Bir clientbound chunk packet'i aşağıdaki alanları taşır:
 
 ## Rust sınırı
 
-Bu adımda heightmap type ID'leri veya block entity registry ID'leri çözümlenmez. Section palette ID'leri ve sınırlı storage hücre özeti okunur ve trace'e aktarılır, fakat bunlar block state veya biome kayıtlarına eşlenmez; ışık update byte'larının uzunluğu kaydedilir, nibble değerleri ve ışık maskesi semantiği çözülmez. Client world cache, dimension state, chunk load/update/unload ve entity bağlantısı sonraki P08 dilimleridir.
+Bu sözleşmede heightmap type ID'leri veya block entity registry ID'leri çözümlenmez. Section palette ID'leri ve storage'daki bütün block/biome hücreleri global ID'ye çözülür; registry nesnesi ve block entity state eşlemesi yapılmaz. Işık update byte'larının uzunluğu kaydedilir, nibble değerleri ve ışık maskesi semantiği çözülmez. İlk client world cache uygulaması ve section sorguları [P08.a/b kayıt belgesinde](client-world-state-conformance.md) tutulur; dimension state, chunk load/update/unload yaşam döngüsü ve entity bağlantısı sonraki P08 dilimleridir.
 
 Yerel unit testleri Java packet sırasını boş gövde, nullable block entity NBT ve trailing byte senaryolarıyla kontrol eder. Canlı kanıt [vanilla chunk parity kaydındadır](chunk-packet-parity.md).

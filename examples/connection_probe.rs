@@ -45,6 +45,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
     println!("chunk_packet_count={}", trace.chunk_packet_count);
     println!("decoded_chunk_count={}", trace.chunk_observations.len());
+    println!(
+        "world_dimension=min_y:{},height:{}",
+        trace.world.dimension().min_y,
+        trace.world.dimension().height
+    );
+    println!("world_chunk_count={}", trace.world.loaded_chunk_count());
+    println!("world_section_count={}", trace.world.loaded_section_count());
+    println!("world_game_time={}", trace.world.game_time());
     if let Some(chunk) = trace.chunk_observations.first() {
         println!(
             "first_chunk=x:{},z:{},heightmaps:{},heightmap_observations:{:?},section_bytes:{},block_entities:{},sky_mask_words:{},block_mask_words:{},empty_sky_mask_words:{},empty_block_mask_words:{},sky_updates:{:?},block_updates:{:?}",
@@ -64,6 +72,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!(
             "first_chunk_section_count={}",
             chunk.section_observations.len()
+        );
+        let origin_x = chunk.x * 16;
+        let origin_z = chunk.z * 16;
+        println!(
+            "first_world_state=chunk_x:{},chunk_z:{},section_y:{},block_state_at_origin:{:?},biome_at_origin:{:?},section_counts:{:?}",
+            chunk.x,
+            chunk.z,
+            trace.world.dimension().min_y / 16,
+            trace
+                .world
+                .block_state_at(origin_x, trace.world.dimension().min_y, origin_z),
+            trace
+                .world
+                .biome_at(origin_x, trace.world.dimension().min_y, origin_z),
+            trace
+                .world
+                .section_counts_at(chunk.x, trace.world.dimension().min_y / 16, chunk.z),
         );
         if let Some(section) = chunk.section_observations.first() {
             println!(

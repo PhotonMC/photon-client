@@ -27,6 +27,7 @@ Rust uygulama girişi henüz oynanabilir istemci değildir. İlk gerçek vanilla
 - [Vanilla 26.2 oyun oturumu doğrulaması](docs/vanilla-connection-parity.md)
 - [Chunk ve ışık paketi yapısal sözleşmesi](docs/chunk-packet-contract.md)
 - [Vanilla 26.2 chunk paketi doğrulaması](docs/chunk-packet-parity.md)
+- [ClientWorld chunk kopyası ve section cache doğrulaması](docs/client-world-state-conformance.md)
 - [İlk oyuncu konumu sözleşmesi](docs/player-position-contract.md)
 - [Vanilla ilk oyuncu konumu doğrulaması](docs/vanilla-player-position-parity.md)
 - [Kontrollü oyuncu hareketi sözleşmesi](docs/movement-probe-contract.md)

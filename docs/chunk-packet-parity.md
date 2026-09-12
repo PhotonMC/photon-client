@@ -44,6 +44,6 @@ Bu sonuç x/z signed integer alanlarını, üç heightmap kaydını, section buf
 
 ## Açık kapsam
 
-Bu kayıt packet gövdesinin, section palette storage düzeninin ve heightmap/light byte sınırlarının yapısal tüketimidir. Palette ID'lerinin block state/biome kayıtlarına çözümü, storage'ın tüm hücre çözümü, ışık nibble değerleri, heightmap semantiği, registry ID çözümü, block entity world konumu, client chunk cache'i, load/update/unload sırası, dimension/respawn ve render açık kalır. Başarılı canlı parser, oynanabilir istemci veya Java ile tam dünya eşitliği anlamına gelmez.
+Bu kayıt packet gövdesinin, section palette storage düzeninin ve heightmap/light byte sınırlarının yapısal tüketimidir. Palette storage'ın bütün hücrelerinin global ID çözümü ve ilk sorgulanabilir section cache'i [ayrı P08.a/b kaydında](client-world-state-conformance.md) bulunur. Işık nibble değerleri, heightmap semantiği, registry ID çözümü, block entity world konumu, load/update/unload sırası, dimension/respawn ve render açık kalır. Başarılı canlı parser, oynanabilir istemci veya Java ile tam dünya eşitliği anlamına gelmez.
 
 Sözleşme ayrıntıları [chunk packet contract belgesindedir](chunk-packet-contract.md). Önceki login/configuration/play bağlantı kanıtı [vanilla oyun oturumu kaydında](vanilla-connection-parity.md), Pumpkin koşusu ise [ayrı kayıtta](game-connection-parity.md) tutulur. Bu test kullanıcının istediği üzere resmi vanilla sunucusuyla yapıldı; Pumpkin eksikleri bu baseline'a karıştırılmadı.
