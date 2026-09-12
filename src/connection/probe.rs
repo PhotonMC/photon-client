@@ -13,7 +13,7 @@ use crate::login::{ClientboundLoginFinishedPacket, ServerboundHelloPacket};
 use crate::protocol::ConnectionProtocol;
 use crate::resources::KnownPack;
 use crate::wire;
-use crate::world::SectionInput;
+use crate::world::{LightLayerInput, LightUpdateInput, SectionInput};
 
 use super::protocol::*;
 use super::session::*;
@@ -97,6 +97,21 @@ pub fn connect_and_world_chunk_unload_probe(
         username,
         timeout,
         PlayProbeConfig::new(ProbeAction::WorldChunkUnload),
+    )
+}
+
+/// Connect to a Java-protocol server, keep the loaded world open, and observe standalone
+/// clientbound light updates without adding movement to the scenario.
+pub fn connect_and_world_light_update_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeConfig::new(ProbeAction::WorldLightUpdate),
     )
 }
 
@@ -837,6 +852,7 @@ enum ProbeAction {
     Basic,
     Movement,
     WorldChunkUnload,
+    WorldLightUpdate,
     BlockAction,
     BlockBreak,
     BlockBreakOutOfRange,
@@ -1245,6 +1261,31 @@ fn connect_and_probe_with_mode(
                         removed_from_world,
                     });
             }
+            PLAY_CLIENTBOUND_LIGHT_UPDATE_PACKET_ID => {
+                let mut observation = parse_light_update_packet(payload)?;
+                let application = trace.world.apply_light_updates(
+                    observation.x,
+                    observation.z,
+                    LightUpdateInput {
+                        sky: LightLayerInput {
+                            mask: &observation.light_data.sky_mask,
+                            empty_mask: &observation.light_data.empty_sky_mask,
+                            updates: &observation.light_data.sky_updates,
+                        },
+                        block: LightLayerInput {
+                            mask: &observation.light_data.block_mask,
+                            empty_mask: &observation.light_data.empty_block_mask,
+                            updates: &observation.light_data.block_updates,
+                        },
+                    },
+                );
+                if application.invalid_sky_updates != 0 || application.invalid_block_updates != 0 {
+                    return Err(ConnectionError::Codec("light update data layer"));
+                }
+                observation.applied_sky_sections = application.applied_sky_sections;
+                observation.applied_block_sections = application.applied_block_sections;
+                trace.light_update_observations.push(observation);
+            }
             PLAY_CLIENTBOUND_CHUNK_BATCH_START_PACKET_ID => {
                 chunk_batch_started = true;
             }
@@ -1315,6 +1356,27 @@ fn connect_and_probe_with_mode(
                             biomes: &section.biome_values,
                         }),
                 );
+                let light_application = trace.world.apply_light_updates(
+                    chunk.x,
+                    chunk.z,
+                    LightUpdateInput {
+                        sky: LightLayerInput {
+                            mask: &chunk.light_data.sky_mask,
+                            empty_mask: &chunk.light_data.empty_sky_mask,
+                            updates: &chunk.light_data.sky_updates,
+                        },
+                        block: LightLayerInput {
+                            mask: &chunk.light_data.block_mask,
+                            empty_mask: &chunk.light_data.empty_block_mask,
+                            updates: &chunk.light_data.block_updates,
+                        },
+                    },
+                );
+                if light_application.invalid_sky_updates != 0
+                    || light_application.invalid_block_updates != 0
+                {
+                    return Err(ConnectionError::Codec("chunk light data layer"));
+                }
                 trace.chunk_observations.push(chunk);
                 trace.chunk_packet_count += 1;
             }
@@ -2361,6 +2423,7 @@ fn connect_and_probe_with_mode(
             let drain_timeout = match probe.action {
                 ProbeAction::SurvivalDelayedDestroy => DELAYED_DESTROY_DRAIN_TIMEOUT,
                 ProbeAction::WorldChunkUnload => WORLD_LIFECYCLE_DRAIN_TIMEOUT,
+                ProbeAction::WorldLightUpdate => LIGHT_UPDATE_DRAIN_TIMEOUT,
                 ProbeAction::SurvivalWaterBucketUseOn | ProbeAction::SurvivalEmptyBucketPickup => {
                     WATER_BUCKET_DRAIN_TIMEOUT
                 }
@@ -2470,6 +2533,7 @@ fn connect_and_probe_with_mode(
         let drain_timeout = match probe.action {
             ProbeAction::SurvivalDelayedDestroy => DELAYED_DESTROY_DRAIN_TIMEOUT,
             ProbeAction::WorldChunkUnload => WORLD_LIFECYCLE_DRAIN_TIMEOUT,
+            ProbeAction::WorldLightUpdate => LIGHT_UPDATE_DRAIN_TIMEOUT,
             ProbeAction::SurvivalWaterBucketUseOn | ProbeAction::SurvivalEmptyBucketPickup => {
                 WATER_BUCKET_DRAIN_TIMEOUT
             }

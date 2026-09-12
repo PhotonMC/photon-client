@@ -2,6 +2,8 @@
 
 use std::collections::BTreeMap;
 
+use crate::binary::BitSet;
+
 /// The vertical bounds used when mapping a chunk packet's section order to Y.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DimensionBounds {
@@ -77,6 +79,55 @@ impl ClientWorld {
         self.chunks.remove(&(chunk_x, chunk_z)).is_some()
     }
 
+    pub fn loaded_light_section_count(&self) -> usize {
+        self.chunks.values().map(|chunk| chunk.lights.len()).sum()
+    }
+
+    pub fn sky_light_at(&self, x: i32, y: i32, z: i32) -> Option<u8> {
+        self.light_at(LightLayer::Sky, x, y, z)
+    }
+
+    pub fn block_light_at(&self, x: i32, y: i32, z: i32) -> Option<u8> {
+        self.light_at(LightLayer::Block, x, y, z)
+    }
+
+    pub(crate) fn apply_light_updates(
+        &mut self,
+        chunk_x: i32,
+        chunk_z: i32,
+        updates: LightUpdateInput<'_>,
+    ) -> LightApplication {
+        let Some(chunk) = self.chunks.get_mut(&(chunk_x, chunk_z)) else {
+            return LightApplication::default();
+        };
+        let min_light_section_y = self.dimension.min_section_y() - 1;
+        let light_section_count = self.dimension.section_count().saturating_add(2);
+        let (applied_sky_sections, invalid_sky_updates) = apply_light_layer(
+            &mut chunk.lights,
+            min_light_section_y,
+            light_section_count,
+            LightLayer::Sky,
+            updates.sky.mask,
+            updates.sky.empty_mask,
+            updates.sky.updates,
+        );
+        let (applied_block_sections, invalid_block_updates) = apply_light_layer(
+            &mut chunk.lights,
+            min_light_section_y,
+            light_section_count,
+            LightLayer::Block,
+            updates.block.mask,
+            updates.block.empty_mask,
+            updates.block.updates,
+        );
+        LightApplication {
+            applied_sky_sections,
+            applied_block_sections,
+            invalid_sky_updates,
+            invalid_block_updates,
+        }
+    }
+
     /// Return the resolved global block-state ID at a world coordinate.
     pub fn block_state_at(&self, x: i32, y: i32, z: i32) -> Option<i32> {
         let chunk_key = (x.div_euclid(16), z.div_euclid(16));
@@ -135,6 +186,22 @@ impl ClientWorld {
         section.biomes.get(index).copied()
     }
 
+    fn light_at(&self, layer: LightLayer, x: i32, y: i32, z: i32) -> Option<u8> {
+        let chunk_key = (x.div_euclid(16), z.div_euclid(16));
+        let chunk = self.chunks.get(&chunk_key)?;
+        let section_y = y.div_euclid(16);
+        let section = chunk.lights.get(&section_y)?;
+        let data = match layer {
+            LightLayer::Sky => section.sky.as_ref()?,
+            LightLayer::Block => section.block.as_ref()?,
+        };
+        let local_x = x.rem_euclid(16) as usize;
+        let local_y = y.rem_euclid(16) as usize;
+        let local_z = z.rem_euclid(16) as usize;
+        let index = local_y * 256 + local_z * 16 + local_x;
+        Some((data[index / 2] >> ((index & 1) * 4)) & 0x0f)
+    }
+
     pub(crate) fn replace_chunk<'a, I>(&mut self, chunk_x: i32, chunk_z: i32, sections: I)
     where
         I: IntoIterator<Item = SectionInput<'a>>,
@@ -155,14 +222,26 @@ impl ClientWorld {
                 )
             })
             .collect();
-        self.chunks
-            .insert((chunk_x, chunk_z), ClientChunk { sections });
+        self.chunks.insert(
+            (chunk_x, chunk_z),
+            ClientChunk {
+                sections,
+                lights: BTreeMap::new(),
+            },
+        );
     }
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct ClientChunk {
     sections: BTreeMap<i32, ClientSection>,
+    lights: BTreeMap<i32, ClientLightSection>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+struct ClientLightSection {
+    sky: Option<Vec<u8>>,
+    block: Option<Vec<u8>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -180,9 +259,79 @@ pub(crate) struct SectionInput<'a> {
     pub(crate) biomes: &'a [i32],
 }
 
+pub(crate) struct LightUpdateInput<'a> {
+    pub(crate) sky: LightLayerInput<'a>,
+    pub(crate) block: LightLayerInput<'a>,
+}
+
+pub(crate) struct LightLayerInput<'a> {
+    pub(crate) mask: &'a BitSet,
+    pub(crate) empty_mask: &'a BitSet,
+    pub(crate) updates: &'a [Vec<u8>],
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum LightLayer {
+    Sky,
+    Block,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) struct LightApplication {
+    pub(crate) applied_sky_sections: usize,
+    pub(crate) applied_block_sections: usize,
+    pub(crate) invalid_sky_updates: usize,
+    pub(crate) invalid_block_updates: usize,
+}
+
+fn apply_light_layer(
+    lights: &mut BTreeMap<i32, ClientLightSection>,
+    min_section_y: i32,
+    section_count: usize,
+    layer: LightLayer,
+    mask: &BitSet,
+    empty_mask: &BitSet,
+    updates: &[Vec<u8>],
+) -> (usize, usize) {
+    let mut update_index = 0;
+    let mut applied_sections = 0;
+    let mut invalid_updates = 0;
+    for section_index in 0..section_count {
+        let bit = section_index as u64;
+        if mask.contains(bit) {
+            let update = updates.get(update_index);
+            update_index += 1;
+            if let Some(update) = update.filter(|update| update.len() == 2_048) {
+                let section = lights
+                    .entry(min_section_y + section_index as i32)
+                    .or_default();
+                match layer {
+                    LightLayer::Sky => section.sky = Some(update.clone()),
+                    LightLayer::Block => section.block = Some(update.clone()),
+                }
+                applied_sections += 1;
+            } else {
+                invalid_updates += 1;
+            }
+        } else if empty_mask.contains(bit) {
+            let section = lights
+                .entry(min_section_y + section_index as i32)
+                .or_default();
+            let empty = vec![0; 2_048];
+            match layer {
+                LightLayer::Sky => section.sky = Some(empty),
+                LightLayer::Block => section.block = Some(empty),
+            }
+            applied_sections += 1;
+        }
+    }
+    (applied_sections, invalid_updates)
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{ClientWorld, DimensionBounds, SectionInput};
+    use super::{ClientWorld, DimensionBounds, LightLayerInput, LightUpdateInput, SectionInput};
+    use crate::binary::BitSet;
 
     fn section(block_value: i32, biome_value: i32) -> (Vec<i32>, Vec<i32>) {
         let mut blocks = vec![block_value; 4_096];
@@ -291,6 +440,63 @@ mod tests {
         assert_eq!(world.loaded_section_count(), 0);
         assert_eq!(world.block_state_at(0, -64, 0), None);
         assert!(!world.unload_chunk(0, 0));
+    }
+
+    #[test]
+    fn light_updates_store_java_nibble_order_and_empty_sections() {
+        let (blocks, biomes) = section(7, 8);
+        let mut world = ClientWorld::default();
+        world.replace_chunk(
+            0,
+            0,
+            [SectionInput {
+                non_empty_block_count: 1,
+                fluid_count: 0,
+                block_states: &blocks,
+                biomes: &biomes,
+            }],
+        );
+
+        let mut sky = vec![0; 2_048];
+        sky[0] = 0xc3;
+        sky[8] = 0x05;
+        sky[128] = 0x09;
+        let mut block = vec![0; 2_048];
+        block[0] = 0xa6;
+        let application = world.apply_light_updates(
+            0,
+            0,
+            LightUpdateInput {
+                sky: LightLayerInput {
+                    mask: &BitSet::from_bits(&[1]),
+                    empty_mask: &BitSet::from_bits(&[2]),
+                    updates: &[sky],
+                },
+                block: LightLayerInput {
+                    mask: &BitSet::from_bits(&[1]),
+                    empty_mask: &BitSet::from_bits(&[2]),
+                    updates: &[block],
+                },
+            },
+        );
+
+        assert_eq!(application.applied_sky_sections, 2);
+        assert_eq!(application.applied_block_sections, 2);
+        assert_eq!(application.invalid_sky_updates, 0);
+        assert_eq!(application.invalid_block_updates, 0);
+        assert_eq!(world.loaded_light_section_count(), 2);
+        assert_eq!(world.sky_light_at(0, -64, 0), Some(3));
+        assert_eq!(world.sky_light_at(1, -64, 0), Some(12));
+        assert_eq!(world.sky_light_at(0, -64, 1), Some(5));
+        assert_eq!(world.sky_light_at(0, -63, 0), Some(9));
+        assert_eq!(world.block_light_at(0, -64, 0), Some(6));
+        assert_eq!(world.block_light_at(1, -64, 0), Some(10));
+        assert_eq!(world.sky_light_at(0, -48, 0), Some(0));
+        assert_eq!(world.block_light_at(0, -48, 0), Some(0));
+
+        assert!(world.unload_chunk(0, 0));
+        assert_eq!(world.sky_light_at(0, -64, 0), None);
+        assert_eq!(world.loaded_light_section_count(), 0);
     }
 
     #[test]

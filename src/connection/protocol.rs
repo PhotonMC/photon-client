@@ -9,6 +9,7 @@ use flate2::Compression;
 use flate2::read::ZlibDecoder;
 use flate2::write::ZlibEncoder;
 
+use crate::binary::BitSet;
 use crate::frame::{self, FrameError, MAX_FRAME_LENGTH};
 use crate::protocol::ConnectionProtocol;
 use crate::wire;
@@ -49,6 +50,7 @@ pub(crate) const PLAY_CLIENTBOUND_BLOCK_CHANGED_ACK_PACKET_ID: i32 = 4;
 pub(crate) const PLAY_CLIENTBOUND_BLOCK_DESTRUCTION_PACKET_ID: i32 = 5;
 pub(crate) const PLAY_CLIENTBOUND_BLOCK_UPDATE_PACKET_ID: i32 = 8;
 pub(crate) const PLAY_CLIENTBOUND_FORGET_LEVEL_CHUNK_PACKET_ID: i32 = 37;
+pub(crate) const PLAY_CLIENTBOUND_LIGHT_UPDATE_PACKET_ID: i32 = 48;
 pub(crate) const PLAY_CLIENTBOUND_CHUNK_BATCH_FINISHED_PACKET_ID: i32 = 11;
 pub(crate) const PLAY_CLIENTBOUND_CHUNK_BATCH_START_PACKET_ID: i32 = 12;
 pub(crate) const PLAY_CLIENTBOUND_CONTAINER_SET_CONTENT_PACKET_ID: i32 = 18;
@@ -444,6 +446,7 @@ pub(crate) const WATER_BUCKET_DRAIN_TIMEOUT: Duration = Duration::from_millis(1_
 pub(crate) const CONSUMABLE_DRAIN_TIMEOUT: Duration = Duration::from_millis(2_500);
 pub(crate) const COMPONENT_PREPARATION_DRAIN_TIMEOUT: Duration = Duration::from_secs(30);
 pub(crate) const WORLD_LIFECYCLE_DRAIN_TIMEOUT: Duration = Duration::from_secs(15);
+pub(crate) const LIGHT_UPDATE_DRAIN_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// Errors raised while driving the initial real-server client session.
 #[derive(Debug)]
@@ -543,6 +546,7 @@ pub struct PlayConnectionTrace {
     pub block_changed_ack_sequences: Vec<i32>,
     pub block_update_observations: Vec<BlockUpdateObservation>,
     pub chunk_unload_observations: Vec<ChunkUnloadObservation>,
+    pub light_update_observations: Vec<LightUpdateObservation>,
     pub chunk_packet_count: usize,
     pub chunk_batch_finished_count: usize,
     pub chunk_observations: Vec<ChunkPacketObservation>,
@@ -571,6 +575,22 @@ pub struct ChunkUnloadObservation {
     pub x: i32,
     pub z: i32,
     pub removed_from_world: bool,
+}
+
+/// Wire-level fields decoded from one clientbound light-update packet.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LightUpdateObservation {
+    pub x: i32,
+    pub z: i32,
+    pub sky_mask_word_count: usize,
+    pub block_mask_word_count: usize,
+    pub empty_sky_mask_word_count: usize,
+    pub empty_block_mask_word_count: usize,
+    pub sky_update_lengths: Vec<usize>,
+    pub block_update_lengths: Vec<usize>,
+    pub applied_sky_sections: usize,
+    pub applied_block_sections: usize,
+    pub(crate) light_data: LightUpdateData,
 }
 
 /// Wire-level fields decoded from one clientbound block-destruction progress packet.
@@ -677,6 +697,17 @@ pub struct ChunkPacketObservation {
     pub sky_update_lengths: Vec<usize>,
     pub block_update_count: usize,
     pub block_update_lengths: Vec<usize>,
+    pub(crate) light_data: LightUpdateData,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct LightUpdateData {
+    pub(crate) sky_mask: BitSet,
+    pub(crate) block_mask: BitSet,
+    pub(crate) empty_sky_mask: BitSet,
+    pub(crate) empty_block_mask: BitSet,
+    pub(crate) sky_updates: Vec<Vec<u8>>,
+    pub(crate) block_updates: Vec<Vec<u8>>,
 }
 
 /// Wire-level fields observed from one chunk heightmap entry.
@@ -1663,12 +1694,21 @@ pub(crate) fn parse_chunk_packet(
         crate::nbt::read_nbt(&mut input).map_err(|_| ConnectionError::Codec("block entity nbt"))?;
     }
 
-    let sky_mask_word_count = read_long_array(&mut input, "sky light mask")?.len();
-    let block_mask_word_count = read_long_array(&mut input, "block light mask")?.len();
-    let empty_sky_mask_word_count = read_long_array(&mut input, "empty sky light mask")?.len();
-    let empty_block_mask_word_count = read_long_array(&mut input, "empty block light mask")?.len();
-    let sky_update_lengths = read_light_updates(&mut input, "sky light updates")?;
-    let block_update_lengths = read_light_updates(&mut input, "block light updates")?;
+    let light_data = parse_light_data(&mut input)?;
+    let sky_mask_word_count = light_data.sky_mask.to_longs().len();
+    let block_mask_word_count = light_data.block_mask.to_longs().len();
+    let empty_sky_mask_word_count = light_data.empty_sky_mask.to_longs().len();
+    let empty_block_mask_word_count = light_data.empty_block_mask.to_longs().len();
+    let sky_update_lengths = light_data
+        .sky_updates
+        .iter()
+        .map(Vec::len)
+        .collect::<Vec<_>>();
+    let block_update_lengths = light_data
+        .block_updates
+        .iter()
+        .map(Vec::len)
+        .collect::<Vec<_>>();
 
     if !input.is_empty() {
         return Err(ConnectionError::Codec("chunk trailing payload"));
@@ -1690,6 +1730,62 @@ pub(crate) fn parse_chunk_packet(
         sky_update_lengths,
         block_update_count: block_update_lengths.len(),
         block_update_lengths,
+        light_data,
+    })
+}
+
+pub(crate) fn parse_light_update_packet(
+    mut input: &[u8],
+) -> Result<LightUpdateObservation, ConnectionError> {
+    let x = read_varint(&mut input, "light update chunk x")?;
+    let z = read_varint(&mut input, "light update chunk z")?;
+    let light_data = parse_light_data(&mut input)?;
+    if !input.is_empty() {
+        return Err(ConnectionError::Codec("light update trailing payload"));
+    }
+    let sky_mask_word_count = light_data.sky_mask.to_longs().len();
+    let block_mask_word_count = light_data.block_mask.to_longs().len();
+    let empty_sky_mask_word_count = light_data.empty_sky_mask.to_longs().len();
+    let empty_block_mask_word_count = light_data.empty_block_mask.to_longs().len();
+    let sky_update_lengths = light_data
+        .sky_updates
+        .iter()
+        .map(Vec::len)
+        .collect::<Vec<_>>();
+    let block_update_lengths = light_data
+        .block_updates
+        .iter()
+        .map(Vec::len)
+        .collect::<Vec<_>>();
+    Ok(LightUpdateObservation {
+        x,
+        z,
+        sky_mask_word_count,
+        block_mask_word_count,
+        empty_sky_mask_word_count,
+        empty_block_mask_word_count,
+        sky_update_lengths,
+        block_update_lengths,
+        applied_sky_sections: 0,
+        applied_block_sections: 0,
+        light_data,
+    })
+}
+
+fn parse_light_data(input: &mut &[u8]) -> Result<LightUpdateData, ConnectionError> {
+    let sky_mask = read_bitset(input, "sky light mask")?;
+    let block_mask = read_bitset(input, "block light mask")?;
+    let empty_sky_mask = read_bitset(input, "empty sky light mask")?;
+    let empty_block_mask = read_bitset(input, "empty block light mask")?;
+    let sky_updates = read_light_update_bytes(input, "sky light updates")?;
+    let block_updates = read_light_update_bytes(input, "block light updates")?;
+    Ok(LightUpdateData {
+        sky_mask,
+        block_mask,
+        empty_sky_mask,
+        empty_block_mask,
+        sky_updates,
+        block_updates,
     })
 }
 
@@ -1847,6 +1943,13 @@ pub(crate) fn read_long_array(
     crate::binary::read_long_array(input).map_err(|_| ConnectionError::Codec(name))
 }
 
+pub(crate) fn read_bitset(
+    input: &mut &[u8],
+    name: &'static str,
+) -> Result<BitSet, ConnectionError> {
+    crate::binary::read_bitset(input).map_err(|_| ConnectionError::Codec(name))
+}
+
 pub(crate) fn read_length_prefixed_bytes<'a>(
     input: &mut &'a [u8],
     max_length: usize,
@@ -1861,17 +1964,17 @@ pub(crate) fn read_length_prefixed_bytes<'a>(
     Ok(head)
 }
 
-pub(crate) fn read_light_updates(
+pub(crate) fn read_light_update_bytes(
     input: &mut &[u8],
     name: &'static str,
-) -> Result<Vec<usize>, ConnectionError> {
+) -> Result<Vec<Vec<u8>>, ConnectionError> {
     let count = read_count(input, name)?;
-    let mut lengths = Vec::with_capacity(count);
+    let mut updates = Vec::with_capacity(count);
     for _ in 0..count {
         let bytes = read_length_prefixed_bytes(input, 2_048, name)?;
-        lengths.push(bytes.len());
+        updates.push(bytes.to_vec());
     }
-    Ok(lengths)
+    Ok(updates)
 }
 
 pub(crate) fn parse_section_data(
@@ -2094,9 +2197,10 @@ mod tests {
         PLAY_CLIENTBOUND_CONTAINER_SET_CONTENT_PACKET_ID,
         PLAY_CLIENTBOUND_CONTAINER_SET_SLOT_PACKET_ID,
         PLAY_CLIENTBOUND_FORGET_LEVEL_CHUNK_PACKET_ID, PLAY_CLIENTBOUND_KEEP_ALIVE_PACKET_ID,
-        PLAY_CLIENTBOUND_LOGIN_PACKET_ID, PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID,
-        PLAY_CLIENTBOUND_REMOVE_MOB_EFFECT_PACKET_ID, PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID,
-        PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID, PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID,
+        PLAY_CLIENTBOUND_LIGHT_UPDATE_PACKET_ID, PLAY_CLIENTBOUND_LOGIN_PACKET_ID,
+        PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID, PLAY_CLIENTBOUND_REMOVE_MOB_EFFECT_PACKET_ID,
+        PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID, PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID,
+        PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID,
         PLAY_SERVERBOUND_ACCEPT_TELEPORTATION_PACKET_ID,
         PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID,
         PLAY_SERVERBOUND_CLIENT_TICK_END_PACKET_ID, PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
@@ -2126,9 +2230,9 @@ mod tests {
         pack_block_position, parse_add_entity_packet, parse_block_destruction_packet,
         parse_block_update_packet, parse_chunk_packet, parse_container_set_content_packet,
         parse_container_set_slot_packet, parse_forget_level_chunk_packet,
-        parse_optional_item_stack, parse_player_position_packet, parse_remove_mob_effect_packet,
-        parse_section_data, parse_system_chat_packet, parse_update_mob_effect_packet,
-        resolve_player_position, support_block_position,
+        parse_light_update_packet, parse_optional_item_stack, parse_player_position_packet,
+        parse_remove_mob_effect_packet, parse_section_data, parse_system_chat_packet,
+        parse_update_mob_effect_packet, resolve_player_position, support_block_position,
     };
 
     #[test]
@@ -2158,6 +2262,7 @@ mod tests {
         assert_eq!(PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID, 72);
         assert_eq!(PLAY_CLIENTBOUND_BLOCK_UPDATE_PACKET_ID, 8);
         assert_eq!(PLAY_CLIENTBOUND_FORGET_LEVEL_CHUNK_PACKET_ID, 37);
+        assert_eq!(PLAY_CLIENTBOUND_LIGHT_UPDATE_PACKET_ID, 48);
         assert_eq!(PLAY_CLIENTBOUND_BLOCK_CHANGED_ACK_PACKET_ID, 4);
         assert_eq!(PLAY_CLIENTBOUND_BLOCK_DESTRUCTION_PACKET_ID, 5);
         assert_eq!(PLAY_CLIENTBOUND_CONTAINER_SET_CONTENT_PACKET_ID, 18);
@@ -2394,6 +2499,40 @@ mod tests {
         let mut trailing = packed.to_be_bytes().to_vec();
         trailing.push(0);
         assert!(parse_forget_level_chunk_packet(&trailing).is_err());
+    }
+
+    #[test]
+    fn light_update_parser_matches_java_masks_and_data_layer_lengths() {
+        let mut payload = Vec::new();
+        crate::wire::write_varint(-3, &mut payload);
+        crate::wire::write_varint(7, &mut payload);
+        crate::binary::write_bitset(&crate::binary::BitSet::from_bits(&[0, 2]), &mut payload);
+        crate::binary::write_bitset(&crate::binary::BitSet::from_bits(&[1]), &mut payload);
+        crate::binary::write_bitset(&crate::binary::BitSet::from_bits(&[3]), &mut payload);
+        crate::binary::write_bitset(&crate::binary::BitSet::from_bits(&[4]), &mut payload);
+        crate::wire::write_varint(2, &mut payload);
+        crate::wire::write_varint(2_048, &mut payload);
+        payload.extend_from_slice(&[0x12; 2_048]);
+        crate::wire::write_varint(2_048, &mut payload);
+        payload.extend_from_slice(&[0x34; 2_048]);
+        crate::wire::write_varint(1, &mut payload);
+        crate::wire::write_varint(2_048, &mut payload);
+        payload.extend_from_slice(&[0x56; 2_048]);
+
+        let observation = parse_light_update_packet(&payload).expect("light update");
+        assert_eq!((observation.x, observation.z), (-3, 7));
+        assert_eq!(observation.sky_mask_word_count, 1);
+        assert_eq!(observation.block_mask_word_count, 1);
+        assert_eq!(observation.empty_sky_mask_word_count, 1);
+        assert_eq!(observation.empty_block_mask_word_count, 1);
+        assert_eq!(observation.sky_update_lengths, [2_048, 2_048]);
+        assert_eq!(observation.block_update_lengths, [2_048]);
+        assert_eq!(observation.applied_sky_sections, 0);
+        assert_eq!(observation.applied_block_sections, 0);
+
+        let mut trailing = payload;
+        trailing.push(0);
+        assert!(parse_light_update_packet(&trailing).is_err());
     }
 
     #[test]
