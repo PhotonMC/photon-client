@@ -145,6 +145,8 @@ const VANILLA_TROPICAL_FISH_PATTERN_COLOR_COMPONENT_ID: i32 = 91;
 const VANILLA_STONE_TROPICAL_FISH_PATTERN_COLOR_COMPONENT_HASH: i32 = 0x8c64_52aa_u32 as i32;
 const VANILLA_CAT_COLLAR_COMPONENT_ID: i32 = 108;
 const VANILLA_STONE_CAT_COLLAR_COMPONENT_HASH: i32 = 0x8c64_52aa_u32 as i32;
+const VANILLA_SHEEP_COLOR_COMPONENT_ID: i32 = 109;
+const VANILLA_STONE_SHEEP_COLOR_COMPONENT_HASH: i32 = 0x8c64_52aa_u32 as i32;
 const VANILLA_POTION_DURATION_SCALE_COMPONENT_ID: i32 = 52;
 const VANILLA_STONE_POTION_DURATION_SCALE_COMPONENT_HASH: i32 = 0x9a13_eb94_u32 as i32;
 const VANILLA_MILK_BUCKET_ITEM_REGISTRY_ID: i32 = 1_046;
@@ -1519,6 +1521,21 @@ pub fn connect_and_survival_inventory_cat_collar_component_correct_prediction_pr
     )
 }
 
+/// Connect to a Java-protocol server, pick up a sheep-color-component survival
+/// stack with the exact component hash, and observe no correction.
+pub fn connect_and_survival_inventory_sheep_color_component_correct_prediction_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeMode::SurvivalInventorySheepColorComponentCorrectPrediction,
+    )
+}
+
 /// Connect to a Java-protocol server, shift-click a supplied survival inventory
 /// stack with a stale container state id, and observe the authoritative full resync.
 pub fn connect_and_survival_inventory_quick_move_state_correction_probe(
@@ -1760,6 +1777,7 @@ enum PlayProbeMode {
     SurvivalInventoryTropicalFishPatternComponentCorrectPrediction,
     SurvivalInventoryTropicalFishPatternColorComponentCorrectPrediction,
     SurvivalInventoryCatCollarComponentCorrectPrediction,
+    SurvivalInventorySheepColorComponentCorrectPrediction,
     SurvivalInventoryQuickMoveStateCorrection,
     SurvivalInventorySwapStateCorrection,
     CreativePlace,
@@ -1785,6 +1803,10 @@ fn inventory_component_preparation_target(probe_mode: PlayProbeMode) -> Option<(
         PlayProbeMode::SurvivalInventoryCatCollarComponentCorrectPrediction => Some((
             VANILLA_CAT_COLLAR_COMPONENT_ID,
             VANILLA_STONE_CAT_COLLAR_COMPONENT_HASH,
+        )),
+        PlayProbeMode::SurvivalInventorySheepColorComponentCorrectPrediction => Some((
+            VANILLA_SHEEP_COLOR_COMPONENT_ID,
+            VANILLA_STONE_SHEEP_COLOR_COMPONENT_HASH,
         )),
         _ => None,
     }
@@ -3800,6 +3822,7 @@ fn connect_and_probe_with_mode(
                 probe_mode,
                 PlayProbeMode::SurvivalInventoryTropicalFishPatternColorComponentCorrectPrediction
                     | PlayProbeMode::SurvivalInventoryCatCollarComponentCorrectPrediction
+                    | PlayProbeMode::SurvivalInventorySheepColorComponentCorrectPrediction
             ) && trace.container_click_packets_sent == 0
             {
                 let Some((component_type_id, component_hash)) =
@@ -4092,6 +4115,9 @@ fn connect_and_probe_with_mode(
                 PlayProbeMode::SurvivalInventoryCatCollarComponentCorrectPrediction => {
                     COMPONENT_PREPARATION_DRAIN_TIMEOUT
                 }
+                PlayProbeMode::SurvivalInventorySheepColorComponentCorrectPrediction => {
+                    COMPONENT_PREPARATION_DRAIN_TIMEOUT
+                }
                 PlayProbeMode::SurvivalInventoryQuickMoveStateCorrection => {
                     CONSUMABLE_DRAIN_TIMEOUT
                 }
@@ -4105,6 +4131,7 @@ fn connect_and_probe_with_mode(
             probe_mode,
             PlayProbeMode::SurvivalInventoryTropicalFishPatternColorComponentCorrectPrediction
                 | PlayProbeMode::SurvivalInventoryCatCollarComponentCorrectPrediction
+                | PlayProbeMode::SurvivalInventorySheepColorComponentCorrectPrediction
         ) && trace.container_click_packets_sent == 0
         {
             let Some((component_type_id, component_hash)) =
@@ -4281,6 +4308,9 @@ fn connect_and_probe_with_mode(
                 COMPONENT_PREPARATION_DRAIN_TIMEOUT
             }
             PlayProbeMode::SurvivalInventoryCatCollarComponentCorrectPrediction => {
+                COMPONENT_PREPARATION_DRAIN_TIMEOUT
+            }
+            PlayProbeMode::SurvivalInventorySheepColorComponentCorrectPrediction => {
                 COMPONENT_PREPARATION_DRAIN_TIMEOUT
             }
             PlayProbeMode::SurvivalInventoryQuickMoveStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
@@ -5236,6 +5266,9 @@ fn parse_optional_item_stack(
             VANILLA_CAT_COLLAR_COMPONENT_ID => {
                 read_varint(input, name)?;
             }
+            VANILLA_SHEEP_COLOR_COMPONENT_ID => {
+                read_varint(input, name)?;
+            }
             VANILLA_POTION_DURATION_SCALE_COMPONENT_ID => {
                 read_f32(input, name)?;
             }
@@ -5910,11 +5943,12 @@ mod tests {
         VANILLA_MINIMUM_ATTACK_CHARGE_COMPONENT_ID, VANILLA_NOTE_BLOCK_SOUND_COMPONENT_ID,
         VANILLA_OMINOUS_BOTTLE_AMPLIFIER_COMPONENT_ID, VANILLA_POTION_DURATION_SCALE_COMPONENT_ID,
         VANILLA_PUFFERFISH_ITEM_REGISTRY_ID, VANILLA_RARITY_COMPONENT_ID,
-        VANILLA_REPAIR_COST_COMPONENT_ID, VANILLA_STONE_BASE_COLOR_COMPONENT_HASH,
-        VANILLA_STONE_BREAK_SOUND_COMPONENT_HASH, VANILLA_STONE_BREAK_SOUND_REGISTRY_ID,
-        VANILLA_STONE_CAT_COLLAR_COMPONENT_HASH, VANILLA_STONE_DAMAGE_COMPONENT_HASH,
-        VANILLA_STONE_DAMAGE_TYPE_COMPONENT_HASH, VANILLA_STONE_DYE_COMPONENT_HASH,
-        VANILLA_STONE_DYED_COLOR_COMPONENT_HASH, VANILLA_STONE_ENCHANTABLE_COMPONENT_HASH,
+        VANILLA_REPAIR_COST_COMPONENT_ID, VANILLA_SHEEP_COLOR_COMPONENT_ID,
+        VANILLA_STONE_BASE_COLOR_COMPONENT_HASH, VANILLA_STONE_BREAK_SOUND_COMPONENT_HASH,
+        VANILLA_STONE_BREAK_SOUND_REGISTRY_ID, VANILLA_STONE_CAT_COLLAR_COMPONENT_HASH,
+        VANILLA_STONE_DAMAGE_COMPONENT_HASH, VANILLA_STONE_DAMAGE_TYPE_COMPONENT_HASH,
+        VANILLA_STONE_DYE_COMPONENT_HASH, VANILLA_STONE_DYED_COLOR_COMPONENT_HASH,
+        VANILLA_STONE_ENCHANTABLE_COMPONENT_HASH,
         VANILLA_STONE_ENCHANTMENT_GLINT_OVERRIDE_COMPONENT_HASH,
         VANILLA_STONE_GLIDER_COMPONENT_HASH, VANILLA_STONE_ITEM_MODEL_COMPONENT_HASH,
         VANILLA_STONE_ITEM_REGISTRY_ID, VANILLA_STONE_MAP_COLOR_COMPONENT_HASH,
@@ -5924,8 +5958,8 @@ mod tests {
         VANILLA_STONE_NOTE_BLOCK_SOUND_COMPONENT_HASH,
         VANILLA_STONE_OMINOUS_BOTTLE_AMPLIFIER_COMPONENT_HASH,
         VANILLA_STONE_POTION_DURATION_SCALE_COMPONENT_HASH, VANILLA_STONE_RARITY_COMPONENT_HASH,
-        VANILLA_STONE_REPAIR_COST_COMPONENT_HASH, VANILLA_STONE_TOOL_COMPONENT_HASH,
-        VANILLA_STONE_TOOLTIP_STYLE_COMPONENT_HASH,
+        VANILLA_STONE_REPAIR_COST_COMPONENT_HASH, VANILLA_STONE_SHEEP_COLOR_COMPONENT_HASH,
+        VANILLA_STONE_TOOL_COMPONENT_HASH, VANILLA_STONE_TOOLTIP_STYLE_COMPONENT_HASH,
         VANILLA_STONE_TROPICAL_FISH_BASE_COLOR_COMPONENT_HASH,
         VANILLA_STONE_TROPICAL_FISH_PATTERN_COLOR_COMPONENT_HASH,
         VANILLA_STONE_TROPICAL_FISH_PATTERN_COMPONENT_HASH,
@@ -9500,6 +9534,93 @@ mod tests {
         assert_eq!(
             observation.positive_component_type_ids,
             [VANILLA_CAT_COLLAR_COMPONENT_ID]
+        );
+        assert!(observation.negative_component_type_ids.is_empty());
+        assert!(input.is_empty());
+    }
+
+    #[test]
+    fn inventory_sheep_color_component_prediction_encoder_keeps_java_hash() {
+        let mut payload = Vec::new();
+        encode_inventory_pickup_with_exact_component_prediction(
+            &mut payload,
+            2,
+            1,
+            VANILLA_STONE_ITEM_REGISTRY_ID,
+            VANILLA_SHEEP_COLOR_COMPONENT_ID,
+            VANILLA_STONE_SHEEP_COLOR_COMPONENT_HASH,
+        )
+        .expect("sheep color component prediction packet");
+
+        let mut input = payload.as_slice();
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("container id"),
+            0
+        );
+        assert_eq!(crate::wire::read_varint(&mut input).expect("state id"), 2);
+        assert_eq!(i16::from_be_bytes(input[..2].try_into().expect("slot")), 36);
+        input = &input[2..];
+        assert_eq!(input[0], 0);
+        input = &input[1..];
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("container input"),
+            0
+        );
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("changed slot count"),
+            1
+        );
+        input = &input[2..];
+        assert_eq!(input[0], 0, "changed slot should be empty");
+        input = &input[1..];
+        assert_eq!(input[0], 1, "carried should be non-empty");
+        input = &input[1..];
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("item registry id"),
+            VANILLA_STONE_ITEM_REGISTRY_ID
+        );
+        assert_eq!(crate::wire::read_varint(&mut input).expect("item count"), 1);
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("component map count"),
+            1
+        );
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("component type id"),
+            VANILLA_SHEEP_COLOR_COMPONENT_ID
+        );
+        assert_eq!(
+            i32::from_be_bytes(input[..4].try_into().expect("component hash")),
+            VANILLA_STONE_SHEEP_COLOR_COMPONENT_HASH
+        );
+        input = &input[4..];
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("removed component count"),
+            0
+        );
+        assert!(input.is_empty());
+    }
+
+    #[test]
+    fn optional_item_stack_parser_consumes_sheep_color_dye_varint() {
+        let mut payload = Vec::new();
+        crate::wire::write_varint(1, &mut payload);
+        crate::wire::write_varint(VANILLA_STONE_ITEM_REGISTRY_ID, &mut payload);
+        crate::wire::write_varint(1, &mut payload);
+        crate::wire::write_varint(0, &mut payload);
+        crate::wire::write_varint(VANILLA_SHEEP_COLOR_COMPONENT_ID, &mut payload);
+        crate::wire::write_varint(14, &mut payload);
+
+        let mut input = payload.as_slice();
+        let observation = parse_optional_item_stack(&mut input, "sheep color item stack")
+            .expect("sheep color item stack");
+        assert_eq!(observation.item_count, Some(1));
+        assert_eq!(
+            observation.item_registry_id,
+            Some(VANILLA_STONE_ITEM_REGISTRY_ID)
+        );
+        assert_eq!(
+            observation.positive_component_type_ids,
+            [VANILLA_SHEEP_COLOR_COMPONENT_ID]
         );
         assert!(observation.negative_component_type_ids.is_empty());
         assert!(input.is_empty());
