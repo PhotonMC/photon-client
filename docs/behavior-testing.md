@@ -14,6 +14,27 @@ Her test kaydı davranış kimliğini, kaynak konumunu (kod alıntısı olmadan)
 
 Java doğrulanmadan Rust'a uygun golden oluşturulmaz. Referans yenileme açık bir işlem olmalı; test çalıştırması sırasında mevcut beklentiler sessizce değiştirilmemelidir. Aynı Java senaryosu tekrarlanarak referansın kararlılığı da değerlendirilir.
 
+## Kanıt sınıfları
+
+Her kayıt iki sınıftan birini taşır ve sınıfını contract/parity belgesinin
+başlığında bildirir. Sınıf belirtmeyen kayıt eksik sayılır.
+
+| Sınıf | Karşılaştırılan | Kanıtladığı | Kanıtlamadığı |
+| --- | --- | --- | --- |
+| `client-parity` | Aynı girdide Java istemcisi ile Rust | İstemci davranış eşitliği | Sunucu tarafı ve ölçülmemiş senaryolar |
+| `server-conformance` | Rust'ın ürettiği paket ile canlı vanilla sunucusunun yanıtı | Wire biçimi ve protokol akışının sunucu tarafından kabulü | İstemcinin aynı durumda aynı paketi üreteceğini veya aynı iç durumu kuracağını |
+
+Java oracle'ın yalnızca sabit üretmek için çağrılması (registry ID, component
+type ID, hash) kaydı `client-parity` yapmaz; karşılaştırılan çıktı Java
+istemcisinin davranışı değilse sınıf `server-conformance`'tır.
+
+`server-conformance` kayıtları gereklidir ve roadmap bölümünü ilerletir, ancak
+bölüm kapatmaz. Bir bölüm, ilgili istemci durumunun Java ile karşılaştırıldığı
+`client-parity` kaydı olmadan tamamlanmış sayılmaz.
+
+Kanıt sınıfı ayrımının gerekçesi ve deponun bu ayrımı kaybettiği dönem
+[yön düzeltmesi belgesindedir](course-correction-2026-09-12.md).
+
 ## Kontrol edilecek koşullar
 
 İlgili olduğu ölçüde seed, dünya/oyuncu durumu, input zamanları, tick, frame süresi, ağ olaylarının sırası, dil, çözünürlük, GUI ölçeği, FOV, ses ayarları ve asset kimliği sabitlenir. Saat ve rastlantısallık kontrolü oyun semantiğini değiştirmemelidir. Java'nın taşma, kayan nokta, yuvarlama, işlem sırası ve olay sırası davranışları Rust varsayımlarıyla değiştirilmez.
@@ -36,3 +57,9 @@ Otomatik görüntü ve ses ölçümleri, insan algısında fark olmadığına te
 Her senaryo geçti, kaldı veya engelli olarak raporlanır. Eksik Java, asset, ekran/ses ortamı veya Pumpkin desteği nedeniyle çalışmayan test, eşitlik onayı vermez. Başarısızlık raporları girdileri, ilk ayrışmayı ve yeniden çalıştırma bilgisini yerelde saklar.
 
 Davranış kapsamı gerektiği kadar ayrıntılı olabilir. Kod kalitesi için tekrarlı mikro testler ve gereksiz kapsam yüzdesi hedefleri eklenmez. Test altyapısı ihtiyaç ortaya çıktıkça küçük adımlarla büyür.
+
+Aynı kod yolunun sabiti değişen kopyası ayrı dilim, ayrı probe ve ayrı belge
+üretmez. Bu durumda girdi bir tabloya satır olarak eklenir ve tek parametrik
+karşılaştırmayla kapatılır; kayıt, kapsadığı bütün satırları tek belgede
+listeler. Ayrı dilim yalnızca Java kaynağında ilk kez çalışan bir dal veya
+gözlenmiş bir fark varsa açılır.

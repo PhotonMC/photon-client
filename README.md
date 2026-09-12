@@ -12,11 +12,14 @@ Referans Minecraft Java Edition 26.2, protokol 776 ve Java 25 olarak sabittir. H
 
 Kapsamın kesin listesi ve capture kimlikleri [davranış runner'ında](docs/behavior-runner.md), kaynak kararları [source review'da](docs/source-review.md), açık bağımlılıklar [roadmap](docs/roadmap.md) ve [kalan test planında](docs/remaining-test-plan.md) bulunur. Bu genel bakışta hareketli test toplamı tutulmaz; yeni dilim eski durum paragraflarını güncellemeden kendi kanıtını ekler.
 
+2026-09-12 tarihli [yön düzeltmesi](docs/course-correction-2026-09-12.md) kanıt sınıflarını (`client-parity` / `server-conformance`) ayırır, item component varyant serisini durdurur ve sıradaki kritik yolu P08 istemci dünya kopyası olarak sabitler. P06–P08 ve P12–P13 altındaki mevcut bağlantı ve envanter kayıtları `server-conformance` sınıfındadır; bölüm kapatmazlar.
+
 Rust uygulama girişi henüz oynanabilir istemci değildir. İlk gerçek vanilla bağlantı probe'u [sözleşme](docs/game-connection-contract.md) ve [doğrulama](docs/vanilla-connection-parity.md) ile kaydedildi; önceki Pumpkin koşusu [ayrı kayıtta](docs/game-connection-parity.md) tutulur. Pencere/input, dünya state'i, hareket, render, ses ve GUI için istemciye bağlı doğrulamalar sonraki roadmap bölümlerindedir.
 
 ## Belgeler
 
 - [Tüm ajanlar için çalışma kuralları](AGENTS.md)
+- [2026-09-12 yön düzeltmesi: kanıt sınıfı, varyant patlaması ve kritik yol](docs/course-correction-2026-09-12.md)
 - [Yerel kaynak ve asset yerleşimi](docs/reference-data.md)
 - [Davranış doğrulama yaklaşımı](docs/behavior-testing.md)
 - [Doğrulanan referans envanteri ve Pumpkin adayı](docs/reference-baseline.md)

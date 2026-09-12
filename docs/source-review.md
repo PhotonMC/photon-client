@@ -2,6 +2,8 @@
 
 Referans: [26.2 envanteri](reference-baseline.md). Aşağıdaki yollar `.data/minecraft/source/` köküne göredir. Kod alıntısı yerine kendi ifadelerimizle gözlem ve kaynak konumları kaydedildi.
 
+Kayıt ekleme kuralı: bir satır, Java kaynağında ilk kez incelenen bir dalı belgeler. Aynı dalın yalnızca sabiti değişen kopyası (component type ID, registry ID, hash) yeni satır açmaz; ilgili satırın tablosuna eklenir. Gerekçe [yön düzeltmesindedir](course-correction-2026-09-12.md).
+
 Bu ilk inceleme, bütün dosyaların satır satır incelendiği anlamına gelmez. Tüm kaynak ağacının envanteri çıkarıldı; ana döngü, zamanlayıcı, input, yerel hareket, çarpışma, hareket senkronizasyonu, kaynak paketi ve configuration geçişlerinin seçilmiş metot gövdeleri okundu. Diğer alt sistemlerde giriş noktaları ve metot haritası çıkarıldı. Her roadmap dilimi başlamadan kendi dalları ayrıca incelenecek.
 
 ## Dosya dağılımı ve istemci sınırı

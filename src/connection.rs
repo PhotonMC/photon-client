@@ -3,6 +3,16 @@
 //! This module owns the byte pipeline up to the first play-world packets. It does not
 //! implement a renderer or a client world; its purpose is to make the phase transition
 //! and the first world delivery observable without turning the test into a manual launch.
+//!
+//! Pending restructure (see `docs/course-correction-2026-09-12.md`): this module currently
+//! mixes three concerns and must be split before it grows further — wire codecs and packet
+//! types, the session state machine, and the probe scaffolding. The scaffolding does not
+//! belong in the library. `PlayProbeMode` is the wrong shape: a scenario is data, not an
+//! enum variant with match arms spread across the file. Adding a new constant-only variant
+//! of an existing code path (item component ids, hashes) is not a new slice; extend the
+//! scenario table instead. The next behaviour slice on the critical path is the client world
+//! copy (P08.a/b), not another probe: chunk packets are currently parsed into counters and
+//! discarded, so no queryable world state exists yet.
 
 use std::collections::BTreeSet;
 use std::fmt;

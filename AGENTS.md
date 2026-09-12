@@ -18,6 +18,8 @@ Tamamlanan Rust davranış dilimleri kendi contract/parity belgelerinde tutulur.
 
 Yeni bir dilim için sıra Java kaynak incelemesi, özgün senaryo ve oracle, Java capture, Rust implementasyonu, karşılaştırma ve dilime özel kanıttır. Eski dilim belgeleri yeni bir dilim eklendiğinde güncellenmez; paylaşılan davranış sözleşmesi veya protokol değişirse etkilenen belgeler yeniden incelenir. Java referansının geçmesi tek başına Rust veya istemci eşitliği değildir.
 
+2026-09-12 tarihli [yön düzeltmesi](docs/course-correction-2026-09-12.md) bağlayıcıdır: kanıt sınıfı ayrımı, varyant patlamasının durdurulması, `src/connection.rs` bölünmesi ve kritik yol olarak istemci dünya kopyası orada kayıtlıdır. Yeni dilim seçmeden önce o belge okunur.
+
 Uygulama girişi hâlâ boştur ve oynanabilir istemci yoktur. Pencere/input, bağlantı, dünya, hareket, görüntü, ses ve arayüz çalışmaları [roadmap](docs/roadmap.md) ile [kalan test planında](docs/remaining-test-plan.md) izlenir.
 
 ## Referanslar ve dağıtım
@@ -36,6 +38,10 @@ Uygulama girişi hâlâ boştur ve oynanabilir istemci yoktur. Pencere/input, ba
 - Hedef sürümü, girdileri, başlangıç durumunu, seed, saat/tick, ortam ve referans kimliğini sabitle. Java'nın sayısal, sıralama ve zamanlama semantiğini ilgili bölümde açıkça doğrula.
 - Eksik referans veya desteklenmeyen ortamı başarı sayma. Hedef davranışın doğrulanamadığı durumları ve kapsam boşluklarını açıkça bildir; sahte golden üretme.
 - Eşitliği yakalamak için gerekli davranış testlerini yaz. Kod kalitesi adına gereksiz çok sayıda test veya implementasyonu tekrar eden test ekleme. İlgili kontrolleri çalıştır; yeni neden yoksa aynı geniş testleri tekrar tekrar koşma.
+- Kanıtı sınıflandır. `client-parity` aynı girdide Java istemcisiyle Rust'ın karşılaştırılmasıdır; `server-conformance` canlı sunucunun Rust paketini kabul etmesidir. İkincisi wire uyumluluğu gösterir, istemci eşitliği göstermez. Sınıf, contract ve parity belgesinin başlığında ve roadmap satırında açıkça yazılır; sunucu-uyum kaydı eşitlik kanıtı olarak sunulmaz.
+- Varyant değil dal geliştir. Yeni bir dilim, ancak Java kaynağında ayrı bir dal ya da gözlenmiş bir fark varsa açılır. Aynı kod yolunun yalnızca sabiti değişen kopyası yeni dilim değildir; tablo satırı olarak eklenir ve tek parametrik testle kapatılır. Yeni probe açmadan önce şu üçünü yanıtla: hangi Java dalı ilk kez çalışıyor, hangi gözlem öncekilerden farklı olacak, aynı sonucu veren kaç kayıt zaten var. Üçü de yeni bilgi göstermiyorsa dilim açılmaz.
 - Tek seferde küçük, incelenebilir bir davranış dilimi geliştir. Kullanıcının değişikliklerini koru. Her tamamlanmış dilimi uygun doğrulama sonrasında ayrı commit yap.
+- Kritik yolu ilerlet. Sıradaki dilim, roadmap'te en çok bölümü bloke eden bağımlılıktan seçilir; kolay ölçülebilir olduğu için yatay varyant üretme. Bir bölüm wire tüketimiyle değil, sorgulanabilir istemci durumuyla kapanır.
+- Belge yükünü sabit tut. Bir dilim kendi contract/parity kaydını ekler; `README.md`, `roadmap.md` ve `remaining-test-plan.md` içindeki genel hücrelere senaryo adı biriktirmez. Bu belgelerde hareketli toplam ve senaryo listesi tutulmaz, ilgili kayda bağlantı verilir.
 - Commit mesajlarına `Co-Authored-By` veya başka AI atıf footer'ları ekleme. Git yazar kimliği uydurma. Commit öncesi staged diff ve dosya listesini denetle; yerel referanslar veya çıktılar sızmamalı.
 - Kullanıcı istemedikçe release veya yayın yapma. Sonuçta değişikliği, doğrulamayı ve açık kalan davranış farklarını kısa ve dürüst biçimde bildir.
