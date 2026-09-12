@@ -113,6 +113,8 @@ const VANILLA_STONE_DAMAGE_TYPE_COMPONENT_HASH: i32 = 0x55e3_3a50_u32 as i32;
 const VANILLA_GENERIC_DAMAGE_TYPE_REGISTRY_ID: i32 = 27;
 const VANILLA_GLIDER_COMPONENT_ID: i32 = 34;
 const VANILLA_STONE_GLIDER_COMPONENT_HASH: i32 = 0xc574_b4c8_u32 as i32;
+const VANILLA_TOOLTIP_STYLE_COMPONENT_ID: i32 = 35;
+const VANILLA_STONE_TOOLTIP_STYLE_COMPONENT_HASH: i32 = 0xabab_f3db_u32 as i32;
 const VANILLA_MILK_BUCKET_ITEM_REGISTRY_ID: i32 = 1_046;
 const VANILLA_PUFFERFISH_ITEM_REGISTRY_ID: i32 = 1_089;
 const VANILLA_SNOWBALL_ITEM_REGISTRY_ID: i32 = 1_044;
@@ -1244,6 +1246,21 @@ pub fn connect_and_survival_inventory_glider_component_correct_prediction_probe(
     )
 }
 
+/// Connect to a Java-protocol server, pick up a tooltip-style-component
+/// survival stack with the exact component hash, and observe no correction.
+pub fn connect_and_survival_inventory_tooltip_style_component_correct_prediction_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeMode::SurvivalInventoryTooltipStyleComponentCorrectPrediction,
+    )
+}
+
 /// Connect to a Java-protocol server, shift-click a supplied survival inventory
 /// stack with a stale container state id, and observe the authoritative full resync.
 pub fn connect_and_survival_inventory_quick_move_state_correction_probe(
@@ -1469,6 +1486,7 @@ enum PlayProbeMode {
     SurvivalInventoryUseEffectsComponentCorrectPrediction,
     SurvivalInventoryDamageTypeComponentCorrectPrediction,
     SurvivalInventoryGliderComponentCorrectPrediction,
+    SurvivalInventoryTooltipStyleComponentCorrectPrediction,
     SurvivalInventoryQuickMoveStateCorrection,
     SurvivalInventorySwapStateCorrection,
     CreativePlace,
@@ -3141,6 +3159,31 @@ fn connect_and_probe_with_mode(
             }
             if matches!(
                 probe_mode,
+                PlayProbeMode::SurvivalInventoryTooltipStyleComponentCorrectPrediction
+            ) && trace.container_click_packets_sent == 0
+            {
+                std::thread::sleep(Duration::from_secs(20));
+                send_packet(
+                    &mut stream,
+                    ConnectionProtocol::Play,
+                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
+                    |output| {
+                        encode_inventory_pickup_with_exact_component_prediction(
+                            output,
+                            2,
+                            1,
+                            VANILLA_STONE_ITEM_REGISTRY_ID,
+                            VANILLA_TOOLTIP_STYLE_COMPONENT_ID,
+                            VANILLA_STONE_TOOLTIP_STYLE_COMPONENT_HASH,
+                        )
+                    },
+                    compression_threshold,
+                )?;
+                trace.container_click_packets_sent += 1;
+                trace.container_click_state_id_sent = Some(2);
+            }
+            if matches!(
+                probe_mode,
                 PlayProbeMode::SurvivalInventoryQuickMoveStateCorrection
             ) && trace.container_click_packets_sent == 0
             {
@@ -3342,6 +3385,9 @@ fn connect_and_probe_with_mode(
                 PlayProbeMode::SurvivalInventoryGliderComponentCorrectPrediction => {
                     CONSUMABLE_DRAIN_TIMEOUT
                 }
+                PlayProbeMode::SurvivalInventoryTooltipStyleComponentCorrectPrediction => {
+                    CONSUMABLE_DRAIN_TIMEOUT
+                }
                 PlayProbeMode::SurvivalInventoryQuickMoveStateCorrection => {
                     CONSUMABLE_DRAIN_TIMEOUT
                 }
@@ -3437,6 +3483,9 @@ fn connect_and_probe_with_mode(
                 CONSUMABLE_DRAIN_TIMEOUT
             }
             PlayProbeMode::SurvivalInventoryGliderComponentCorrectPrediction => {
+                CONSUMABLE_DRAIN_TIMEOUT
+            }
+            PlayProbeMode::SurvivalInventoryTooltipStyleComponentCorrectPrediction => {
                 CONSUMABLE_DRAIN_TIMEOUT
             }
             PlayProbeMode::SurvivalInventoryQuickMoveStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
@@ -4345,6 +4394,10 @@ fn parse_optional_item_stack(
                 read_varint(input, name)?;
             }
             VANILLA_GLIDER_COMPONENT_ID => {}
+            VANILLA_TOOLTIP_STYLE_COMPONENT_ID => {
+                crate::identifier::read_identifier(input)
+                    .map_err(|_| ConnectionError::Codec(name))?;
+            }
             VANILLA_DAMAGE_COMPONENT_ID => {
                 read_varint(input, name)?;
             }
@@ -5019,8 +5072,9 @@ mod tests {
         VANILLA_STONE_MAX_STACK_SIZE_COMPONENT_HASH,
         VANILLA_STONE_MINIMUM_ATTACK_CHARGE_COMPONENT_HASH, VANILLA_STONE_RARITY_COMPONENT_HASH,
         VANILLA_STONE_REPAIR_COST_COMPONENT_HASH, VANILLA_STONE_TOOL_COMPONENT_HASH,
-        VANILLA_STONE_UNBREAKABLE_COMPONENT_HASH, VANILLA_STONE_USE_EFFECTS_COMPONENT_HASH,
-        VANILLA_STONE_WEAPON_COMPONENT_HASH, VANILLA_TOOL_COMPONENT_ID,
+        VANILLA_STONE_TOOLTIP_STYLE_COMPONENT_HASH, VANILLA_STONE_UNBREAKABLE_COMPONENT_HASH,
+        VANILLA_STONE_USE_EFFECTS_COMPONENT_HASH, VANILLA_STONE_WEAPON_COMPONENT_HASH,
+        VANILLA_TOOL_COMPONENT_ID, VANILLA_TOOLTIP_STYLE_COMPONENT_ID,
         VANILLA_UNBREAKABLE_COMPONENT_ID, VANILLA_USE_EFFECTS_COMPONENT_ID,
         VANILLA_WEAPON_COMPONENT_ID, decode_packet_frame, encode_abort_destroy_block,
         encode_creative_item_slot, encode_creative_stone_slot, encode_inventory_click_with_input,
@@ -7181,6 +7235,96 @@ mod tests {
         assert_eq!(
             observation.positive_component_type_ids,
             [VANILLA_GLIDER_COMPONENT_ID]
+        );
+        assert!(observation.negative_component_type_ids.is_empty());
+        assert!(input.is_empty());
+    }
+
+    #[test]
+    fn inventory_tooltip_style_component_prediction_encoder_keeps_java_hash() {
+        let mut payload = Vec::new();
+        encode_inventory_pickup_with_exact_component_prediction(
+            &mut payload,
+            2,
+            1,
+            VANILLA_STONE_ITEM_REGISTRY_ID,
+            VANILLA_TOOLTIP_STYLE_COMPONENT_ID,
+            VANILLA_STONE_TOOLTIP_STYLE_COMPONENT_HASH,
+        )
+        .expect("tooltip style component prediction packet");
+
+        let mut input = payload.as_slice();
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("container id"),
+            0
+        );
+        assert_eq!(crate::wire::read_varint(&mut input).expect("state id"), 2);
+        assert_eq!(i16::from_be_bytes(input[..2].try_into().expect("slot")), 36);
+        input = &input[2..];
+        assert_eq!(input[0], 0);
+        input = &input[1..];
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("container input"),
+            0
+        );
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("changed slot count"),
+            1
+        );
+        input = &input[2..];
+        assert_eq!(input[0], 0, "changed slot should be empty");
+        input = &input[1..];
+        assert_eq!(input[0], 1, "carried should be non-empty");
+        input = &input[1..];
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("item registry id"),
+            VANILLA_STONE_ITEM_REGISTRY_ID
+        );
+        assert_eq!(crate::wire::read_varint(&mut input).expect("item count"), 1);
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("component map count"),
+            1
+        );
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("component type id"),
+            VANILLA_TOOLTIP_STYLE_COMPONENT_ID
+        );
+        assert_eq!(
+            i32::from_be_bytes(input[..4].try_into().expect("component hash")),
+            VANILLA_STONE_TOOLTIP_STYLE_COMPONENT_HASH
+        );
+        input = &input[4..];
+        assert_eq!(
+            crate::wire::read_varint(&mut input).expect("removed component count"),
+            0
+        );
+        assert!(input.is_empty());
+    }
+
+    #[test]
+    fn optional_item_stack_parser_consumes_tooltip_style_identifier() {
+        let mut payload = Vec::new();
+        crate::wire::write_varint(1, &mut payload);
+        crate::wire::write_varint(VANILLA_STONE_ITEM_REGISTRY_ID, &mut payload);
+        crate::wire::write_varint(1, &mut payload);
+        crate::wire::write_varint(0, &mut payload);
+        crate::wire::write_varint(VANILLA_TOOLTIP_STYLE_COMPONENT_ID, &mut payload);
+        let tooltip_style = crate::identifier::Identifier::parse("minecraft:default")
+            .expect("tooltip style identifier");
+        crate::identifier::write_identifier(&tooltip_style, &mut payload)
+            .expect("tooltip style identifier");
+
+        let mut input = payload.as_slice();
+        let observation = parse_optional_item_stack(&mut input, "tooltip style item stack")
+            .expect("tooltip style item stack");
+        assert_eq!(observation.item_count, Some(1));
+        assert_eq!(
+            observation.item_registry_id,
+            Some(VANILLA_STONE_ITEM_REGISTRY_ID)
+        );
+        assert_eq!(
+            observation.positive_component_type_ids,
+            [VANILLA_TOOLTIP_STYLE_COMPONENT_ID]
         );
         assert!(observation.negative_component_type_ids.is_empty());
         assert!(input.is_empty());
