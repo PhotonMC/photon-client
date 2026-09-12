@@ -2,7 +2,7 @@ use std::env;
 use std::net::SocketAddr;
 use std::time::Duration;
 
-use voxel_client::connection::connect_and_survival_inventory_use_effects_component_correct_prediction_probe;
+use voxel_client::connection::connect_and_survival_inventory_item_component_conformance_probe;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let address: SocketAddr = env::args()
@@ -11,14 +11,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .parse()?;
     let username = env::args()
         .nth(2)
-        .unwrap_or_else(|| "InvUseEffectsComp1".to_owned());
-    let trace = connect_and_survival_inventory_use_effects_component_correct_prediction_probe(
+        .unwrap_or_else(|| "InvComponentC26".to_owned());
+    let component_path = env::args().nth(3).unwrap_or_else(|| "damage".to_owned());
+    let trace = connect_and_survival_inventory_item_component_conformance_probe(
         address,
         &username,
+        &component_path,
         Duration::from_secs(55),
     )?;
 
     println!("connection=ok");
+    println!("component_path={component_path}");
     println!("play_login={}", trace.play_login);
     println!("player_loaded_sent={}", trace.player_loaded_sent);
     println!(

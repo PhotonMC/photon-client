@@ -96,80 +96,354 @@ const PLAY_SERVERBOUND_USE_ITEM_PACKET_ID: i32 = 67;
 // The pinned vanilla built-in item registry is not sent in configuration registry data.
 // Items.java registers AIR before STONE, so STONE has id 1 in BuiltInRegistries.ITEM.
 const VANILLA_STONE_ITEM_REGISTRY_ID: i32 = 1;
-const VANILLA_STONE_DAMAGE_COMPONENT_HASH: i32 = 0x5d50_d71c;
-const VANILLA_STONE_TOOL_COMPONENT_HASH: i32 = 0x37de_0062;
-const VANILLA_STONE_WEAPON_COMPONENT_HASH: i32 = 0xc574_b4c8_u32 as i32;
-const VANILLA_MAX_STACK_SIZE_COMPONENT_ID: i32 = 1;
-const VANILLA_STONE_MAX_STACK_SIZE_COMPONENT_HASH: i32 = 0x5d50_d71c;
-const VANILLA_MAX_DAMAGE_COMPONENT_ID: i32 = 2;
-const VANILLA_STONE_MAX_DAMAGE_COMPONENT_HASH: i32 = 0x5d50_d71c;
-const VANILLA_UNBREAKABLE_COMPONENT_ID: i32 = 4;
-const VANILLA_STONE_UNBREAKABLE_COMPONENT_HASH: i32 = 0xc574_b4c8_u32 as i32;
-const VANILLA_MINIMUM_ATTACK_CHARGE_COMPONENT_ID: i32 = 7;
-const VANILLA_STONE_MINIMUM_ATTACK_CHARGE_COMPONENT_HASH: i32 = 0x9ec7_d769_u32 as i32;
-const VANILLA_REPAIR_COST_COMPONENT_ID: i32 = 19;
-const VANILLA_STONE_REPAIR_COST_COMPONENT_HASH: i32 = 0x5d50_d71c;
-const VANILLA_ENCHANTMENT_GLINT_OVERRIDE_COMPONENT_ID: i32 = 21;
-const VANILLA_STONE_ENCHANTMENT_GLINT_OVERRIDE_COMPONENT_HASH: i32 = 0xc336_cec2_u32 as i32;
-const VANILLA_RARITY_COMPONENT_ID: i32 = 12;
-const VANILLA_STONE_RARITY_COMPONENT_HASH: i32 = 0xab53_df3a_u32 as i32;
-const VANILLA_ITEM_MODEL_COMPONENT_ID: i32 = 10;
-const VANILLA_STONE_ITEM_MODEL_COMPONENT_HASH: i32 = 0x75c9_3192_u32 as i32;
-const VANILLA_USE_EFFECTS_COMPONENT_ID: i32 = 5;
-const VANILLA_STONE_USE_EFFECTS_COMPONENT_HASH: i32 = 0x9619_e224_u32 as i32;
-const VANILLA_DAMAGE_TYPE_COMPONENT_ID: i32 = 8;
-const VANILLA_STONE_DAMAGE_TYPE_COMPONENT_HASH: i32 = 0x55e3_3a50_u32 as i32;
-#[cfg(test)]
-const VANILLA_GENERIC_DAMAGE_TYPE_REGISTRY_ID: i32 = 27;
-const VANILLA_GLIDER_COMPONENT_ID: i32 = 34;
-const VANILLA_STONE_GLIDER_COMPONENT_HASH: i32 = 0xc574_b4c8_u32 as i32;
-const VANILLA_TOOLTIP_STYLE_COMPONENT_ID: i32 = 35;
-const VANILLA_STONE_TOOLTIP_STYLE_COMPONENT_HASH: i32 = 0xabab_f3db_u32 as i32;
-const VANILLA_ENCHANTABLE_COMPONENT_ID: i32 = 31;
-const VANILLA_STONE_ENCHANTABLE_COMPONENT_HASH: i32 = 0xdeed_7aaa_u32 as i32;
-const VANILLA_DYE_COMPONENT_ID: i32 = 43;
-const VANILLA_STONE_DYE_COMPONENT_HASH: i32 = 0x8c64_52aa_u32 as i32;
-const VANILLA_DYED_COLOR_COMPONENT_ID: i32 = 44;
-const VANILLA_STONE_DYED_COLOR_COMPONENT_HASH: i32 = 0x23f6_5927_u32 as i32;
-const VANILLA_MAP_COLOR_COMPONENT_ID: i32 = 45;
-const VANILLA_STONE_MAP_COLOR_COMPONENT_HASH: i32 = 0x23f6_5927_u32 as i32;
-const VANILLA_MAP_ID_COMPONENT_ID: i32 = 46;
-const VANILLA_STONE_MAP_ID_COMPONENT_HASH: i32 = 0x5d50_d71c;
-const VANILLA_BASE_COLOR_COMPONENT_ID: i32 = 73;
-const VANILLA_STONE_BASE_COLOR_COMPONENT_HASH: i32 = 0x8c64_52aa_u32 as i32;
-const VANILLA_NOTE_BLOCK_SOUND_COMPONENT_ID: i32 = 71;
-const VANILLA_STONE_NOTE_BLOCK_SOUND_COMPONENT_HASH: i32 = 0xda54_5935_u32 as i32;
-const VANILLA_OMINOUS_BOTTLE_AMPLIFIER_COMPONENT_ID: i32 = 63;
-const VANILLA_STONE_OMINOUS_BOTTLE_AMPLIFIER_COMPONENT_HASH: i32 = 0x3f72_5e25_u32 as i32;
-const VANILLA_BREAK_SOUND_COMPONENT_ID: i32 = 81;
-const VANILLA_STONE_BREAK_SOUND_COMPONENT_HASH: i32 = 0x9662_f221_u32 as i32;
-#[cfg(test)]
-const VANILLA_STONE_BREAK_SOUND_REGISTRY_ID: i32 = 1_596;
-const VANILLA_WOLF_COLLAR_COMPONENT_ID: i32 = 85;
-const VANILLA_STONE_WOLF_COLLAR_COMPONENT_HASH: i32 = 0x8c64_52aa_u32 as i32;
-const VANILLA_TROPICAL_FISH_PATTERN_COMPONENT_ID: i32 = 89;
-const VANILLA_STONE_TROPICAL_FISH_PATTERN_COMPONENT_HASH: i32 = 0xe196_874b_u32 as i32;
-const VANILLA_TROPICAL_FISH_BASE_COLOR_COMPONENT_ID: i32 = 90;
-const VANILLA_STONE_TROPICAL_FISH_BASE_COLOR_COMPONENT_HASH: i32 = 0x8c64_52aa_u32 as i32;
-const VANILLA_TROPICAL_FISH_PATTERN_COLOR_COMPONENT_ID: i32 = 91;
-const VANILLA_STONE_TROPICAL_FISH_PATTERN_COLOR_COMPONENT_HASH: i32 = 0x8c64_52aa_u32 as i32;
-const VANILLA_CAT_COLLAR_COMPONENT_ID: i32 = 108;
-const VANILLA_STONE_CAT_COLLAR_COMPONENT_HASH: i32 = 0x8c64_52aa_u32 as i32;
-const VANILLA_SHEEP_COLOR_COMPONENT_ID: i32 = 109;
-const VANILLA_STONE_SHEEP_COLOR_COMPONENT_HASH: i32 = 0x8c64_52aa_u32 as i32;
-const VANILLA_POTION_DURATION_SCALE_COMPONENT_ID: i32 = 52;
-const VANILLA_STONE_POTION_DURATION_SCALE_COMPONENT_HASH: i32 = 0x9a13_eb94_u32 as i32;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum InventoryComponentCodec {
+    VarInt,
+    RegistryId,
+    Unit,
+    Float,
+    Byte,
+    Int,
+    Identifier,
+    UseEffects,
+    CustomModelData,
+    Food,
+    Tool,
+    Weapon,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct InventoryComponentProbeSpec {
+    component_path: &'static str,
+    component_type_id: i32,
+    codec: InventoryComponentCodec,
+    component_hash: i32,
+    item_registry_id: i32,
+    expected_positive_component_type_ids: &'static [i32],
+    carried_components: &'static [(i32, i32)],
+}
+
+const VANILLA_ITEM_COMPONENT_CONFORMANCE: &[InventoryComponentProbeSpec] = &[
+    InventoryComponentProbeSpec {
+        component_path: "custom_model_data",
+        component_type_id: 17,
+        codec: InventoryComponentCodec::CustomModelData,
+        component_hash: 0x77a4_a24f,
+        item_registry_id: 1_046,
+        expected_positive_component_type_ids: &[17],
+        carried_components: &[(17, 0x77a4_a24f)],
+    },
+    InventoryComponentProbeSpec {
+        component_path: "food",
+        component_type_id: 23,
+        codec: InventoryComponentCodec::Food,
+        component_hash: 0xfac6_9b4d_u32 as i32,
+        item_registry_id: 1_089,
+        expected_positive_component_type_ids: &[23],
+        carried_components: &[(23, 0xfac6_9b4d_u32 as i32)],
+    },
+    InventoryComponentProbeSpec {
+        component_path: "damage",
+        component_type_id: 3,
+        codec: InventoryComponentCodec::VarInt,
+        component_hash: 0x5d50_d71c,
+        item_registry_id: VANILLA_STONE_ITEM_REGISTRY_ID,
+        expected_positive_component_type_ids: &[3],
+        carried_components: &[(3, 0x5d50_d71c)],
+    },
+    InventoryComponentProbeSpec {
+        component_path: "tool",
+        component_type_id: 28,
+        codec: InventoryComponentCodec::Tool,
+        component_hash: 0x37de_0062,
+        item_registry_id: VANILLA_STONE_ITEM_REGISTRY_ID,
+        expected_positive_component_type_ids: &[28],
+        carried_components: &[(28, 0x37de_0062)],
+    },
+    InventoryComponentProbeSpec {
+        component_path: "weapon",
+        component_type_id: 29,
+        codec: InventoryComponentCodec::Weapon,
+        component_hash: 0xc574_b4c8_u32 as i32,
+        item_registry_id: VANILLA_STONE_ITEM_REGISTRY_ID,
+        expected_positive_component_type_ids: &[29],
+        carried_components: &[(29, 0xc574_b4c8_u32 as i32)],
+    },
+    InventoryComponentProbeSpec {
+        component_path: "max_stack_size",
+        component_type_id: 1,
+        codec: InventoryComponentCodec::VarInt,
+        component_hash: 0x5d50_d71c,
+        item_registry_id: VANILLA_STONE_ITEM_REGISTRY_ID,
+        expected_positive_component_type_ids: &[1],
+        carried_components: &[(1, 0x5d50_d71c)],
+    },
+    InventoryComponentProbeSpec {
+        component_path: "max_damage",
+        component_type_id: 2,
+        codec: InventoryComponentCodec::VarInt,
+        component_hash: 0x5d50_d71c,
+        item_registry_id: VANILLA_STONE_ITEM_REGISTRY_ID,
+        expected_positive_component_type_ids: &[1, 2],
+        carried_components: &[(1, 0x5d50_d71c), (2, 0x5d50_d71c)],
+    },
+    InventoryComponentProbeSpec {
+        component_path: "unbreakable",
+        component_type_id: 4,
+        codec: InventoryComponentCodec::Unit,
+        component_hash: 0xc574_b4c8_u32 as i32,
+        item_registry_id: VANILLA_STONE_ITEM_REGISTRY_ID,
+        expected_positive_component_type_ids: &[4],
+        carried_components: &[(4, 0xc574_b4c8_u32 as i32)],
+    },
+    InventoryComponentProbeSpec {
+        component_path: "minimum_attack_charge",
+        component_type_id: 7,
+        codec: InventoryComponentCodec::Float,
+        component_hash: 0x9ec7_d769_u32 as i32,
+        item_registry_id: VANILLA_STONE_ITEM_REGISTRY_ID,
+        expected_positive_component_type_ids: &[7],
+        carried_components: &[(7, 0x9ec7_d769_u32 as i32)],
+    },
+    InventoryComponentProbeSpec {
+        component_path: "repair_cost",
+        component_type_id: 19,
+        codec: InventoryComponentCodec::VarInt,
+        component_hash: 0x5d50_d71c,
+        item_registry_id: VANILLA_STONE_ITEM_REGISTRY_ID,
+        expected_positive_component_type_ids: &[19],
+        carried_components: &[(19, 0x5d50_d71c)],
+    },
+    InventoryComponentProbeSpec {
+        component_path: "enchantment_glint_override",
+        component_type_id: 21,
+        codec: InventoryComponentCodec::Byte,
+        component_hash: 0xc336_cec2_u32 as i32,
+        item_registry_id: VANILLA_STONE_ITEM_REGISTRY_ID,
+        expected_positive_component_type_ids: &[21],
+        carried_components: &[(21, 0xc336_cec2_u32 as i32)],
+    },
+    InventoryComponentProbeSpec {
+        component_path: "rarity",
+        component_type_id: 12,
+        codec: InventoryComponentCodec::VarInt,
+        component_hash: 0xab53_df3a_u32 as i32,
+        item_registry_id: VANILLA_STONE_ITEM_REGISTRY_ID,
+        expected_positive_component_type_ids: &[12],
+        carried_components: &[(12, 0xab53_df3a_u32 as i32)],
+    },
+    InventoryComponentProbeSpec {
+        component_path: "item_model",
+        component_type_id: 10,
+        codec: InventoryComponentCodec::Identifier,
+        component_hash: 0x75c9_3192_u32 as i32,
+        item_registry_id: VANILLA_STONE_ITEM_REGISTRY_ID,
+        expected_positive_component_type_ids: &[10],
+        carried_components: &[(10, 0x75c9_3192_u32 as i32)],
+    },
+    InventoryComponentProbeSpec {
+        component_path: "use_effects",
+        component_type_id: 5,
+        codec: InventoryComponentCodec::UseEffects,
+        component_hash: 0x9619_e224_u32 as i32,
+        item_registry_id: VANILLA_STONE_ITEM_REGISTRY_ID,
+        expected_positive_component_type_ids: &[5],
+        carried_components: &[(5, 0x9619_e224_u32 as i32)],
+    },
+    InventoryComponentProbeSpec {
+        component_path: "damage_type",
+        component_type_id: 8,
+        codec: InventoryComponentCodec::RegistryId,
+        component_hash: 0x55e3_3a50_u32 as i32,
+        item_registry_id: VANILLA_STONE_ITEM_REGISTRY_ID,
+        expected_positive_component_type_ids: &[8],
+        carried_components: &[(8, 0x55e3_3a50_u32 as i32)],
+    },
+    InventoryComponentProbeSpec {
+        component_path: "glider",
+        component_type_id: 34,
+        codec: InventoryComponentCodec::Unit,
+        component_hash: 0xc574_b4c8_u32 as i32,
+        item_registry_id: VANILLA_STONE_ITEM_REGISTRY_ID,
+        expected_positive_component_type_ids: &[34],
+        carried_components: &[(34, 0xc574_b4c8_u32 as i32)],
+    },
+    InventoryComponentProbeSpec {
+        component_path: "tooltip_style",
+        component_type_id: 35,
+        codec: InventoryComponentCodec::Identifier,
+        component_hash: 0xabab_f3db_u32 as i32,
+        item_registry_id: VANILLA_STONE_ITEM_REGISTRY_ID,
+        expected_positive_component_type_ids: &[35],
+        carried_components: &[(35, 0xabab_f3db_u32 as i32)],
+    },
+    InventoryComponentProbeSpec {
+        component_path: "enchantable",
+        component_type_id: 31,
+        codec: InventoryComponentCodec::VarInt,
+        component_hash: 0xdeed_7aaa_u32 as i32,
+        item_registry_id: VANILLA_STONE_ITEM_REGISTRY_ID,
+        expected_positive_component_type_ids: &[31],
+        carried_components: &[(31, 0xdeed_7aaa_u32 as i32)],
+    },
+    InventoryComponentProbeSpec {
+        component_path: "dye",
+        component_type_id: 43,
+        codec: InventoryComponentCodec::VarInt,
+        component_hash: 0x8c64_52aa_u32 as i32,
+        item_registry_id: VANILLA_STONE_ITEM_REGISTRY_ID,
+        expected_positive_component_type_ids: &[43],
+        carried_components: &[(43, 0x8c64_52aa_u32 as i32)],
+    },
+    InventoryComponentProbeSpec {
+        component_path: "dyed_color",
+        component_type_id: 44,
+        codec: InventoryComponentCodec::Int,
+        component_hash: 0x23f6_5927_u32 as i32,
+        item_registry_id: VANILLA_STONE_ITEM_REGISTRY_ID,
+        expected_positive_component_type_ids: &[44],
+        carried_components: &[(44, 0x23f6_5927_u32 as i32)],
+    },
+    InventoryComponentProbeSpec {
+        component_path: "potion_duration_scale",
+        component_type_id: 52,
+        codec: InventoryComponentCodec::Float,
+        component_hash: 0x9a13_eb94_u32 as i32,
+        item_registry_id: VANILLA_STONE_ITEM_REGISTRY_ID,
+        expected_positive_component_type_ids: &[52],
+        carried_components: &[(52, 0x9a13_eb94_u32 as i32)],
+    },
+    InventoryComponentProbeSpec {
+        component_path: "map_color",
+        component_type_id: 45,
+        codec: InventoryComponentCodec::Int,
+        component_hash: 0x23f6_5927_u32 as i32,
+        item_registry_id: VANILLA_STONE_ITEM_REGISTRY_ID,
+        expected_positive_component_type_ids: &[45],
+        carried_components: &[(45, 0x23f6_5927_u32 as i32)],
+    },
+    InventoryComponentProbeSpec {
+        component_path: "map_id",
+        component_type_id: 46,
+        codec: InventoryComponentCodec::VarInt,
+        component_hash: 0x5d50_d71c,
+        item_registry_id: VANILLA_STONE_ITEM_REGISTRY_ID,
+        expected_positive_component_type_ids: &[46],
+        carried_components: &[(46, 0x5d50_d71c)],
+    },
+    InventoryComponentProbeSpec {
+        component_path: "base_color",
+        component_type_id: 73,
+        codec: InventoryComponentCodec::VarInt,
+        component_hash: 0x8c64_52aa_u32 as i32,
+        item_registry_id: VANILLA_STONE_ITEM_REGISTRY_ID,
+        expected_positive_component_type_ids: &[73],
+        carried_components: &[(73, 0x8c64_52aa_u32 as i32)],
+    },
+    InventoryComponentProbeSpec {
+        component_path: "note_block_sound",
+        component_type_id: 71,
+        codec: InventoryComponentCodec::Identifier,
+        component_hash: 0xda54_5935_u32 as i32,
+        item_registry_id: VANILLA_STONE_ITEM_REGISTRY_ID,
+        expected_positive_component_type_ids: &[71],
+        carried_components: &[(71, 0xda54_5935_u32 as i32)],
+    },
+    InventoryComponentProbeSpec {
+        component_path: "ominous_bottle_amplifier",
+        component_type_id: 63,
+        codec: InventoryComponentCodec::VarInt,
+        component_hash: 0x3f72_5e25_u32 as i32,
+        item_registry_id: VANILLA_STONE_ITEM_REGISTRY_ID,
+        expected_positive_component_type_ids: &[63],
+        carried_components: &[(63, 0x3f72_5e25_u32 as i32)],
+    },
+    InventoryComponentProbeSpec {
+        component_path: "break_sound",
+        component_type_id: 81,
+        codec: InventoryComponentCodec::RegistryId,
+        component_hash: 0x9662_f221_u32 as i32,
+        item_registry_id: VANILLA_STONE_ITEM_REGISTRY_ID,
+        expected_positive_component_type_ids: &[81],
+        carried_components: &[(81, 0x9662_f221_u32 as i32)],
+    },
+    InventoryComponentProbeSpec {
+        component_path: "wolf/collar",
+        component_type_id: 85,
+        codec: InventoryComponentCodec::VarInt,
+        component_hash: 0x8c64_52aa_u32 as i32,
+        item_registry_id: VANILLA_STONE_ITEM_REGISTRY_ID,
+        expected_positive_component_type_ids: &[85],
+        carried_components: &[(85, 0x8c64_52aa_u32 as i32)],
+    },
+    InventoryComponentProbeSpec {
+        component_path: "tropical_fish/base_color",
+        component_type_id: 90,
+        codec: InventoryComponentCodec::VarInt,
+        component_hash: 0x8c64_52aa_u32 as i32,
+        item_registry_id: VANILLA_STONE_ITEM_REGISTRY_ID,
+        expected_positive_component_type_ids: &[90],
+        carried_components: &[(90, 0x8c64_52aa_u32 as i32)],
+    },
+    InventoryComponentProbeSpec {
+        component_path: "tropical_fish/pattern",
+        component_type_id: 89,
+        codec: InventoryComponentCodec::VarInt,
+        component_hash: 0xe196_874b_u32 as i32,
+        item_registry_id: VANILLA_STONE_ITEM_REGISTRY_ID,
+        expected_positive_component_type_ids: &[89],
+        carried_components: &[(89, 0xe196_874b_u32 as i32)],
+    },
+    InventoryComponentProbeSpec {
+        component_path: "tropical_fish/pattern_color",
+        component_type_id: 91,
+        codec: InventoryComponentCodec::VarInt,
+        component_hash: 0x8c64_52aa_u32 as i32,
+        item_registry_id: VANILLA_STONE_ITEM_REGISTRY_ID,
+        expected_positive_component_type_ids: &[91],
+        carried_components: &[(91, 0x8c64_52aa_u32 as i32)],
+    },
+    InventoryComponentProbeSpec {
+        component_path: "cat/collar",
+        component_type_id: 108,
+        codec: InventoryComponentCodec::VarInt,
+        component_hash: 0x8c64_52aa_u32 as i32,
+        item_registry_id: VANILLA_STONE_ITEM_REGISTRY_ID,
+        expected_positive_component_type_ids: &[108],
+        carried_components: &[(108, 0x8c64_52aa_u32 as i32)],
+    },
+    InventoryComponentProbeSpec {
+        component_path: "sheep/color",
+        component_type_id: 109,
+        codec: InventoryComponentCodec::VarInt,
+        component_hash: 0x8c64_52aa_u32 as i32,
+        item_registry_id: VANILLA_STONE_ITEM_REGISTRY_ID,
+        expected_positive_component_type_ids: &[109],
+        carried_components: &[(109, 0x8c64_52aa_u32 as i32)],
+    },
+];
+
+fn inventory_component_spec(component_path: &str) -> Option<&'static InventoryComponentProbeSpec> {
+    let component_path = component_path
+        .strip_prefix("minecraft:")
+        .unwrap_or(component_path);
+    VANILLA_ITEM_COMPONENT_CONFORMANCE
+        .iter()
+        .find(|spec| spec.component_path == component_path)
+}
+
+fn inventory_component_spec_by_type_id(
+    component_type_id: i32,
+) -> Option<&'static InventoryComponentProbeSpec> {
+    VANILLA_ITEM_COMPONENT_CONFORMANCE
+        .iter()
+        .find(|spec| spec.component_type_id == component_type_id)
+}
+
 const VANILLA_MILK_BUCKET_ITEM_REGISTRY_ID: i32 = 1_046;
-const VANILLA_PUFFERFISH_ITEM_REGISTRY_ID: i32 = 1_089;
 const VANILLA_SNOWBALL_ITEM_REGISTRY_ID: i32 = 1_044;
-const VANILLA_DAMAGE_COMPONENT_ID: i32 = 3;
 // DataComponents registers CUSTOM_MODEL_DATA after the first 17 built-in component types.
-const VANILLA_CUSTOM_MODEL_DATA_COMPONENT_ID: i32 = 17;
-const VANILLA_CUSTOM_MODEL_DATA_COMPONENT_HASH: i32 = 0x77a4_a24f;
-const VANILLA_FOOD_COMPONENT_ID: i32 = 23;
-const VANILLA_FOOD_COMPONENT_HASH: i32 = 0xfac6_9b4d_u32 as i32;
-const VANILLA_TOOL_COMPONENT_ID: i32 = 28;
-const VANILLA_WEAPON_COMPONENT_ID: i32 = 29;
 
 const PLAYER_RELATIVE_X_FLAG: i32 = 1 << 0;
 const PLAYER_RELATIVE_Y_FLAG: i32 = 1 << 1;
@@ -990,18 +1264,22 @@ pub fn connect_and_survival_inventory_component_hash_prediction_probe(
     )
 }
 
-/// Connect to a Java-protocol server, pick up a component-bearing survival
-/// stack with the exact carried component hash, and observe no correction.
-pub fn connect_and_survival_inventory_component_correct_prediction_probe(
+/// Connect to a Java-protocol server, pick up one table-selected component
+/// stack with its Java-derived carried hash, and observe the server response.
+pub fn connect_and_survival_inventory_item_component_conformance_probe(
     address: SocketAddr,
     username: &str,
+    component_path: &str,
     timeout: Duration,
 ) -> Result<PlayConnectionTrace, ConnectionError> {
+    let Some(spec) = inventory_component_spec(component_path) else {
+        return Err(ConnectionError::InvalidArgument("component_path"));
+    };
     connect_and_probe_with_mode(
         address,
         username,
         timeout,
-        PlayProbeMode::SurvivalInventoryComponentCorrectPrediction,
+        PlayProbeMode::SurvivalInventoryItemComponentConformance(spec),
     )
 }
 
@@ -1063,486 +1341,6 @@ pub fn connect_and_survival_inventory_ahead_component_correct_prediction_probe(
         username,
         timeout,
         PlayProbeMode::SurvivalInventoryAheadComponentCorrectPrediction,
-    )
-}
-
-/// Connect to a Java-protocol server, pick up a food-component survival stack
-/// with the exact component hash, and observe no correction.
-pub fn connect_and_survival_inventory_food_component_correct_prediction_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalInventoryFoodComponentCorrectPrediction,
-    )
-}
-
-/// Connect to a Java-protocol server, pick up a damage-component survival
-/// stack with the exact component hash, and observe no correction.
-pub fn connect_and_survival_inventory_damage_component_correct_prediction_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalInventoryDamageComponentCorrectPrediction,
-    )
-}
-
-/// Connect to a Java-protocol server, pick up a tool-component survival
-/// stack with the exact component hash, and observe no correction.
-pub fn connect_and_survival_inventory_tool_component_correct_prediction_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalInventoryToolComponentCorrectPrediction,
-    )
-}
-
-/// Connect to a Java-protocol server, pick up a weapon-component survival
-/// stack with the exact component hash, and observe no correction.
-pub fn connect_and_survival_inventory_weapon_component_correct_prediction_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalInventoryWeaponComponentCorrectPrediction,
-    )
-}
-
-/// Connect to a Java-protocol server, pick up a max-stack-size component
-/// survival stack with the exact component hash, and observe no correction.
-pub fn connect_and_survival_inventory_max_stack_size_component_correct_prediction_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalInventoryMaxStackSizeComponentCorrectPrediction,
-    )
-}
-
-/// Connect to a Java-protocol server, pick up a max-damage component survival
-/// stack with the exact component hash, and observe no correction.
-pub fn connect_and_survival_inventory_max_damage_component_correct_prediction_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalInventoryMaxDamageComponentCorrectPrediction,
-    )
-}
-
-/// Connect to a Java-protocol server, pick up an unbreakable survival stack
-/// with the exact component hash, and observe no correction.
-pub fn connect_and_survival_inventory_unbreakable_component_correct_prediction_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalInventoryUnbreakableComponentCorrectPrediction,
-    )
-}
-
-/// Connect to a Java-protocol server, pick up a minimum-attack-charge survival
-/// stack with the exact component hash, and observe no correction.
-pub fn connect_and_survival_inventory_minimum_attack_charge_component_correct_prediction_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalInventoryMinimumAttackChargeComponentCorrectPrediction,
-    )
-}
-
-/// Connect to a Java-protocol server, pick up a repair-cost survival stack
-/// with the exact component hash, and observe no correction.
-pub fn connect_and_survival_inventory_repair_cost_component_correct_prediction_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalInventoryRepairCostComponentCorrectPrediction,
-    )
-}
-
-/// Connect to a Java-protocol server, pick up an enchantment-glint-override
-/// survival stack with the exact component hash, and observe no correction.
-pub fn connect_and_survival_inventory_enchantment_glint_override_component_correct_prediction_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalInventoryEnchantmentGlintOverrideComponentCorrectPrediction,
-    )
-}
-
-/// Connect to a Java-protocol server, pick up a rarity-component survival
-/// stack with the exact component hash, and observe no correction.
-pub fn connect_and_survival_inventory_rarity_component_correct_prediction_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalInventoryRarityComponentCorrectPrediction,
-    )
-}
-
-/// Connect to a Java-protocol server, pick up an item-model-component
-/// survival stack with the exact component hash, and observe no correction.
-pub fn connect_and_survival_inventory_item_model_component_correct_prediction_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalInventoryItemModelComponentCorrectPrediction,
-    )
-}
-
-/// Connect to a Java-protocol server, pick up a use-effects-component
-/// survival stack with the exact component hash, and observe no correction.
-pub fn connect_and_survival_inventory_use_effects_component_correct_prediction_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalInventoryUseEffectsComponentCorrectPrediction,
-    )
-}
-
-/// Connect to a Java-protocol server, pick up a damage-type-component
-/// survival stack with the exact component hash, and observe no correction.
-pub fn connect_and_survival_inventory_damage_type_component_correct_prediction_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalInventoryDamageTypeComponentCorrectPrediction,
-    )
-}
-
-/// Connect to a Java-protocol server, pick up a glider-component survival
-/// stack with the exact component hash, and observe no correction.
-pub fn connect_and_survival_inventory_glider_component_correct_prediction_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalInventoryGliderComponentCorrectPrediction,
-    )
-}
-
-/// Connect to a Java-protocol server, pick up a tooltip-style-component
-/// survival stack with the exact component hash, and observe no correction.
-pub fn connect_and_survival_inventory_tooltip_style_component_correct_prediction_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalInventoryTooltipStyleComponentCorrectPrediction,
-    )
-}
-
-/// Connect to a Java-protocol server, pick up an enchantable-component
-/// survival stack with the exact component hash, and observe no correction.
-pub fn connect_and_survival_inventory_enchantable_component_correct_prediction_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalInventoryEnchantableComponentCorrectPrediction,
-    )
-}
-
-/// Connect to a Java-protocol server, pick up a dye-component survival stack
-/// with the exact component hash, and observe no correction.
-pub fn connect_and_survival_inventory_dye_component_correct_prediction_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalInventoryDyeComponentCorrectPrediction,
-    )
-}
-
-/// Connect to a Java-protocol server, pick up a dyed-color-component survival
-/// stack with the exact component hash, and observe no correction.
-pub fn connect_and_survival_inventory_dyed_color_component_correct_prediction_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalInventoryDyedColorComponentCorrectPrediction,
-    )
-}
-
-/// Connect to a Java-protocol server, pick up a potion-duration-scale-component
-/// survival stack with the exact component hash, and observe no correction.
-pub fn connect_and_survival_inventory_potion_duration_scale_component_correct_prediction_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalInventoryPotionDurationScaleComponentCorrectPrediction,
-    )
-}
-
-/// Connect to a Java-protocol server, pick up a map-color-component survival
-/// stack with the exact component hash, and observe no correction.
-pub fn connect_and_survival_inventory_map_color_component_correct_prediction_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalInventoryMapColorComponentCorrectPrediction,
-    )
-}
-
-/// Connect to a Java-protocol server, pick up a map-id-component survival
-/// stack with the exact component hash, and observe no correction.
-pub fn connect_and_survival_inventory_map_id_component_correct_prediction_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalInventoryMapIdComponentCorrectPrediction,
-    )
-}
-
-/// Connect to a Java-protocol server, pick up a base-color-component survival
-/// stack with the exact component hash, and observe no correction.
-pub fn connect_and_survival_inventory_base_color_component_correct_prediction_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalInventoryBaseColorComponentCorrectPrediction,
-    )
-}
-
-/// Connect to a Java-protocol server, pick up a note-block-sound-component
-/// survival stack with the exact component hash, and observe no correction.
-pub fn connect_and_survival_inventory_note_block_sound_component_correct_prediction_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalInventoryNoteBlockSoundComponentCorrectPrediction,
-    )
-}
-
-/// Connect to a Java-protocol server, pick up an ominous-bottle-amplifier
-/// component survival stack with the exact component hash, and observe no correction.
-pub fn connect_and_survival_inventory_ominous_bottle_amplifier_component_correct_prediction_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalInventoryOminousBottleAmplifierComponentCorrectPrediction,
-    )
-}
-
-/// Connect to a Java-protocol server, pick up a break-sound-component survival
-/// stack with the exact component hash, and observe no correction.
-pub fn connect_and_survival_inventory_break_sound_component_correct_prediction_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalInventoryBreakSoundComponentCorrectPrediction,
-    )
-}
-
-/// Connect to a Java-protocol server, pick up a wolf-collar-component survival
-/// stack with the exact component hash, and observe no correction.
-pub fn connect_and_survival_inventory_wolf_collar_component_correct_prediction_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalInventoryWolfCollarComponentCorrectPrediction,
-    )
-}
-
-/// Connect to a Java-protocol server, pick up a tropical-fish-base-color-component
-/// survival stack with the exact component hash, and observe no correction.
-pub fn connect_and_survival_inventory_tropical_fish_base_color_component_correct_prediction_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalInventoryTropicalFishBaseColorComponentCorrectPrediction,
-    )
-}
-
-/// Connect to a Java-protocol server, pick up a tropical-fish-pattern-component
-/// survival stack with the exact component hash, and observe no correction.
-pub fn connect_and_survival_inventory_tropical_fish_pattern_component_correct_prediction_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalInventoryTropicalFishPatternComponentCorrectPrediction,
-    )
-}
-
-/// Connect to a Java-protocol server, pick up a tropical-fish-pattern-color-component
-/// survival stack with the exact component hash, and observe no correction.
-pub fn connect_and_survival_inventory_tropical_fish_pattern_color_component_correct_prediction_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalInventoryTropicalFishPatternColorComponentCorrectPrediction,
-    )
-}
-
-/// Connect to a Java-protocol server, pick up a cat-collar-component survival
-/// stack with the exact component hash, and observe no correction.
-pub fn connect_and_survival_inventory_cat_collar_component_correct_prediction_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalInventoryCatCollarComponentCorrectPrediction,
-    )
-}
-
-/// Connect to a Java-protocol server, pick up a sheep-color-component survival
-/// stack with the exact component hash, and observe no correction.
-pub fn connect_and_survival_inventory_sheep_color_component_correct_prediction_probe(
-    address: SocketAddr,
-    username: &str,
-    timeout: Duration,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    connect_and_probe_with_mode(
-        address,
-        username,
-        timeout,
-        PlayProbeMode::SurvivalInventorySheepColorComponentCorrectPrediction,
     )
 }
 
@@ -1751,43 +1549,11 @@ enum PlayProbeMode {
     SurvivalInventoryWrongCarriedPrediction,
     SurvivalInventoryWrongBothPrediction,
     SurvivalInventoryComponentHashPrediction,
-    SurvivalInventoryComponentCorrectPrediction,
     SurvivalInventoryPartialChangedSlotPrediction,
     SurvivalInventoryStaleStateCorrectPrediction,
     SurvivalInventoryAheadStateCorrectPrediction,
     SurvivalInventoryAheadComponentCorrectPrediction,
-    SurvivalInventoryFoodComponentCorrectPrediction,
-    SurvivalInventoryDamageComponentCorrectPrediction,
-    SurvivalInventoryToolComponentCorrectPrediction,
-    SurvivalInventoryWeaponComponentCorrectPrediction,
-    SurvivalInventoryMaxStackSizeComponentCorrectPrediction,
-    SurvivalInventoryMaxDamageComponentCorrectPrediction,
-    SurvivalInventoryUnbreakableComponentCorrectPrediction,
-    SurvivalInventoryMinimumAttackChargeComponentCorrectPrediction,
-    SurvivalInventoryRepairCostComponentCorrectPrediction,
-    SurvivalInventoryEnchantmentGlintOverrideComponentCorrectPrediction,
-    SurvivalInventoryRarityComponentCorrectPrediction,
-    SurvivalInventoryItemModelComponentCorrectPrediction,
-    SurvivalInventoryUseEffectsComponentCorrectPrediction,
-    SurvivalInventoryDamageTypeComponentCorrectPrediction,
-    SurvivalInventoryGliderComponentCorrectPrediction,
-    SurvivalInventoryTooltipStyleComponentCorrectPrediction,
-    SurvivalInventoryEnchantableComponentCorrectPrediction,
-    SurvivalInventoryDyeComponentCorrectPrediction,
-    SurvivalInventoryDyedColorComponentCorrectPrediction,
-    SurvivalInventoryPotionDurationScaleComponentCorrectPrediction,
-    SurvivalInventoryMapColorComponentCorrectPrediction,
-    SurvivalInventoryMapIdComponentCorrectPrediction,
-    SurvivalInventoryBaseColorComponentCorrectPrediction,
-    SurvivalInventoryNoteBlockSoundComponentCorrectPrediction,
-    SurvivalInventoryOminousBottleAmplifierComponentCorrectPrediction,
-    SurvivalInventoryBreakSoundComponentCorrectPrediction,
-    SurvivalInventoryWolfCollarComponentCorrectPrediction,
-    SurvivalInventoryTropicalFishBaseColorComponentCorrectPrediction,
-    SurvivalInventoryTropicalFishPatternComponentCorrectPrediction,
-    SurvivalInventoryTropicalFishPatternColorComponentCorrectPrediction,
-    SurvivalInventoryCatCollarComponentCorrectPrediction,
-    SurvivalInventorySheepColorComponentCorrectPrediction,
+    SurvivalInventoryItemComponentConformance(&'static InventoryComponentProbeSpec),
     SurvivalInventoryQuickMoveStateCorrection,
     SurvivalInventorySwapStateCorrection,
     CreativePlace,
@@ -1800,26 +1566,6 @@ enum PlayProbeMode {
     SurvivalOakPlanksWoodenAxeBreakStop,
     SurvivalDelayedDestroy,
     SurvivalSpawnProtection,
-}
-
-fn inventory_component_preparation_target(probe_mode: PlayProbeMode) -> Option<(i32, i32)> {
-    match probe_mode {
-        PlayProbeMode::SurvivalInventoryTropicalFishPatternColorComponentCorrectPrediction => {
-            Some((
-                VANILLA_TROPICAL_FISH_PATTERN_COLOR_COMPONENT_ID,
-                VANILLA_STONE_TROPICAL_FISH_PATTERN_COLOR_COMPONENT_HASH,
-            ))
-        }
-        PlayProbeMode::SurvivalInventoryCatCollarComponentCorrectPrediction => Some((
-            VANILLA_CAT_COLLAR_COMPONENT_ID,
-            VANILLA_STONE_CAT_COLLAR_COMPONENT_HASH,
-        )),
-        PlayProbeMode::SurvivalInventorySheepColorComponentCorrectPrediction => Some((
-            VANILLA_SHEEP_COLOR_COMPONENT_ID,
-            VANILLA_STONE_SHEEP_COLOR_COMPONENT_HASH,
-        )),
-        _ => None,
-    }
 }
 
 fn connect_and_probe_with_mode(
@@ -3008,29 +2754,6 @@ fn connect_and_probe_with_mode(
             }
             if matches!(
                 probe_mode,
-                PlayProbeMode::SurvivalInventoryComponentCorrectPrediction
-            ) && trace.container_click_packets_sent == 0
-            {
-                std::thread::sleep(Duration::from_secs(20));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                    |output| {
-                        encode_inventory_pickup_with_component_correct_prediction(
-                            output,
-                            2,
-                            1,
-                            VANILLA_MILK_BUCKET_ITEM_REGISTRY_ID,
-                        )
-                    },
-                    compression_threshold,
-                )?;
-                trace.container_click_packets_sent += 1;
-                trace.container_click_state_id_sent = Some(2);
-            }
-            if matches!(
-                probe_mode,
                 PlayProbeMode::SurvivalInventoryPartialChangedSlotPrediction
             ) && trace.container_click_packets_sent == 0
             {
@@ -3095,783 +2818,48 @@ fn connect_and_probe_with_mode(
                     ConnectionProtocol::Play,
                     PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
                     |output| {
-                        encode_inventory_pickup_with_component_correct_prediction(
-                            output,
-                            99,
-                            1,
-                            VANILLA_MILK_BUCKET_ITEM_REGISTRY_ID,
-                        )
+                        let spec = inventory_component_spec("custom_model_data")
+                            .expect("custom model data component is in the conformance table");
+                        encode_inventory_pickup_with_component_spec_prediction(output, 99, spec)
                     },
                     compression_threshold,
                 )?;
                 trace.container_click_packets_sent += 1;
                 trace.container_click_state_id_sent = Some(99);
             }
-            if matches!(
-                probe_mode,
-                PlayProbeMode::SurvivalInventoryFoodComponentCorrectPrediction
-            ) && trace.container_click_packets_sent == 0
-            {
-                std::thread::sleep(Duration::from_secs(20));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                    |output| {
-                        encode_inventory_pickup_with_exact_component_prediction(
-                            output,
-                            2,
-                            1,
-                            VANILLA_PUFFERFISH_ITEM_REGISTRY_ID,
-                            VANILLA_FOOD_COMPONENT_ID,
-                            VANILLA_FOOD_COMPONENT_HASH,
-                        )
-                    },
-                    compression_threshold,
-                )?;
-                trace.container_click_packets_sent += 1;
-                trace.container_click_state_id_sent = Some(2);
-            }
-            if matches!(
-                probe_mode,
-                PlayProbeMode::SurvivalInventoryDamageComponentCorrectPrediction
-            ) && trace.container_click_packets_sent == 0
-            {
-                std::thread::sleep(Duration::from_secs(20));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                    |output| {
-                        encode_inventory_pickup_with_exact_component_prediction(
-                            output,
-                            2,
-                            1,
-                            VANILLA_STONE_ITEM_REGISTRY_ID,
-                            VANILLA_DAMAGE_COMPONENT_ID,
-                            VANILLA_STONE_DAMAGE_COMPONENT_HASH,
-                        )
-                    },
-                    compression_threshold,
-                )?;
-                trace.container_click_packets_sent += 1;
-                trace.container_click_state_id_sent = Some(2);
-            }
-            if matches!(
-                probe_mode,
-                PlayProbeMode::SurvivalInventoryToolComponentCorrectPrediction
-            ) && trace.container_click_packets_sent == 0
-            {
-                std::thread::sleep(Duration::from_secs(20));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                    |output| {
-                        encode_inventory_pickup_with_exact_component_prediction(
-                            output,
-                            2,
-                            1,
-                            VANILLA_STONE_ITEM_REGISTRY_ID,
-                            VANILLA_TOOL_COMPONENT_ID,
-                            VANILLA_STONE_TOOL_COMPONENT_HASH,
-                        )
-                    },
-                    compression_threshold,
-                )?;
-                trace.container_click_packets_sent += 1;
-                trace.container_click_state_id_sent = Some(2);
-            }
-            if matches!(
-                probe_mode,
-                PlayProbeMode::SurvivalInventoryWeaponComponentCorrectPrediction
-            ) && trace.container_click_packets_sent == 0
-            {
-                std::thread::sleep(Duration::from_secs(20));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                    |output| {
-                        encode_inventory_pickup_with_exact_component_prediction(
-                            output,
-                            2,
-                            1,
-                            VANILLA_STONE_ITEM_REGISTRY_ID,
-                            VANILLA_WEAPON_COMPONENT_ID,
-                            VANILLA_STONE_WEAPON_COMPONENT_HASH,
-                        )
-                    },
-                    compression_threshold,
-                )?;
-                trace.container_click_packets_sent += 1;
-                trace.container_click_state_id_sent = Some(2);
-            }
-            if matches!(
-                probe_mode,
-                PlayProbeMode::SurvivalInventoryMaxStackSizeComponentCorrectPrediction
-            ) && trace.container_click_packets_sent == 0
-            {
-                std::thread::sleep(Duration::from_secs(20));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                    |output| {
-                        encode_inventory_pickup_with_exact_component_prediction(
-                            output,
-                            2,
-                            1,
-                            VANILLA_STONE_ITEM_REGISTRY_ID,
-                            VANILLA_MAX_STACK_SIZE_COMPONENT_ID,
-                            VANILLA_STONE_MAX_STACK_SIZE_COMPONENT_HASH,
-                        )
-                    },
-                    compression_threshold,
-                )?;
-                trace.container_click_packets_sent += 1;
-                trace.container_click_state_id_sent = Some(2);
-            }
-            if matches!(
-                probe_mode,
-                PlayProbeMode::SurvivalInventoryMaxDamageComponentCorrectPrediction
-            ) && trace.container_click_packets_sent == 0
-            {
-                std::thread::sleep(Duration::from_secs(20));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                    |output| {
-                        encode_inventory_pickup_with_max_damage_prediction(
-                            output,
-                            2,
-                            1,
-                            VANILLA_STONE_ITEM_REGISTRY_ID,
-                        )
-                    },
-                    compression_threshold,
-                )?;
-                trace.container_click_packets_sent += 1;
-                trace.container_click_state_id_sent = Some(2);
-            }
-            if matches!(
-                probe_mode,
-                PlayProbeMode::SurvivalInventoryUnbreakableComponentCorrectPrediction
-            ) && trace.container_click_packets_sent == 0
-            {
-                std::thread::sleep(Duration::from_secs(20));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                    |output| {
-                        encode_inventory_pickup_with_unbreakable_prediction(
-                            output,
-                            2,
-                            1,
-                            VANILLA_STONE_ITEM_REGISTRY_ID,
-                        )
-                    },
-                    compression_threshold,
-                )?;
-                trace.container_click_packets_sent += 1;
-                trace.container_click_state_id_sent = Some(2);
-            }
-            if matches!(
-                probe_mode,
-                PlayProbeMode::SurvivalInventoryMinimumAttackChargeComponentCorrectPrediction
-            ) && trace.container_click_packets_sent == 0
-            {
-                std::thread::sleep(Duration::from_secs(20));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                    |output| {
-                        encode_inventory_pickup_with_exact_component_prediction(
-                            output,
-                            2,
-                            1,
-                            VANILLA_STONE_ITEM_REGISTRY_ID,
-                            VANILLA_MINIMUM_ATTACK_CHARGE_COMPONENT_ID,
-                            VANILLA_STONE_MINIMUM_ATTACK_CHARGE_COMPONENT_HASH,
-                        )
-                    },
-                    compression_threshold,
-                )?;
-                trace.container_click_packets_sent += 1;
-                trace.container_click_state_id_sent = Some(2);
-            }
-            if matches!(
-                probe_mode,
-                PlayProbeMode::SurvivalInventoryRepairCostComponentCorrectPrediction
-            ) && trace.container_click_packets_sent == 0
-            {
-                std::thread::sleep(Duration::from_secs(20));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                    |output| {
-                        encode_inventory_pickup_with_exact_component_prediction(
-                            output,
-                            2,
-                            1,
-                            VANILLA_STONE_ITEM_REGISTRY_ID,
-                            VANILLA_REPAIR_COST_COMPONENT_ID,
-                            VANILLA_STONE_REPAIR_COST_COMPONENT_HASH,
-                        )
-                    },
-                    compression_threshold,
-                )?;
-                trace.container_click_packets_sent += 1;
-                trace.container_click_state_id_sent = Some(2);
-            }
-            if matches!(
-                probe_mode,
-                PlayProbeMode::SurvivalInventoryEnchantmentGlintOverrideComponentCorrectPrediction
-            ) && trace.container_click_packets_sent == 0
-            {
-                std::thread::sleep(Duration::from_secs(20));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                    |output| {
-                        encode_inventory_pickup_with_exact_component_prediction(
-                            output,
-                            2,
-                            1,
-                            VANILLA_STONE_ITEM_REGISTRY_ID,
-                            VANILLA_ENCHANTMENT_GLINT_OVERRIDE_COMPONENT_ID,
-                            VANILLA_STONE_ENCHANTMENT_GLINT_OVERRIDE_COMPONENT_HASH,
-                        )
-                    },
-                    compression_threshold,
-                )?;
-                trace.container_click_packets_sent += 1;
-                trace.container_click_state_id_sent = Some(2);
-            }
-            if matches!(
-                probe_mode,
-                PlayProbeMode::SurvivalInventoryRarityComponentCorrectPrediction
-            ) && trace.container_click_packets_sent == 0
-            {
-                std::thread::sleep(Duration::from_secs(20));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                    |output| {
-                        encode_inventory_pickup_with_exact_component_prediction(
-                            output,
-                            2,
-                            1,
-                            VANILLA_STONE_ITEM_REGISTRY_ID,
-                            VANILLA_RARITY_COMPONENT_ID,
-                            VANILLA_STONE_RARITY_COMPONENT_HASH,
-                        )
-                    },
-                    compression_threshold,
-                )?;
-                trace.container_click_packets_sent += 1;
-                trace.container_click_state_id_sent = Some(2);
-            }
-            if matches!(
-                probe_mode,
-                PlayProbeMode::SurvivalInventoryItemModelComponentCorrectPrediction
-            ) && trace.container_click_packets_sent == 0
-            {
-                std::thread::sleep(Duration::from_secs(20));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                    |output| {
-                        encode_inventory_pickup_with_exact_component_prediction(
-                            output,
-                            2,
-                            1,
-                            VANILLA_STONE_ITEM_REGISTRY_ID,
-                            VANILLA_ITEM_MODEL_COMPONENT_ID,
-                            VANILLA_STONE_ITEM_MODEL_COMPONENT_HASH,
-                        )
-                    },
-                    compression_threshold,
-                )?;
-                trace.container_click_packets_sent += 1;
-                trace.container_click_state_id_sent = Some(2);
-            }
-            if matches!(
-                probe_mode,
-                PlayProbeMode::SurvivalInventoryUseEffectsComponentCorrectPrediction
-            ) && trace.container_click_packets_sent == 0
-            {
-                std::thread::sleep(Duration::from_secs(20));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                    |output| {
-                        encode_inventory_pickup_with_exact_component_prediction(
-                            output,
-                            2,
-                            1,
-                            VANILLA_STONE_ITEM_REGISTRY_ID,
-                            VANILLA_USE_EFFECTS_COMPONENT_ID,
-                            VANILLA_STONE_USE_EFFECTS_COMPONENT_HASH,
-                        )
-                    },
-                    compression_threshold,
-                )?;
-                trace.container_click_packets_sent += 1;
-                trace.container_click_state_id_sent = Some(2);
-            }
-            if matches!(
-                probe_mode,
-                PlayProbeMode::SurvivalInventoryDamageTypeComponentCorrectPrediction
-            ) && trace.container_click_packets_sent == 0
-            {
-                std::thread::sleep(Duration::from_secs(20));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                    |output| {
-                        encode_inventory_pickup_with_exact_component_prediction(
-                            output,
-                            2,
-                            1,
-                            VANILLA_STONE_ITEM_REGISTRY_ID,
-                            VANILLA_DAMAGE_TYPE_COMPONENT_ID,
-                            VANILLA_STONE_DAMAGE_TYPE_COMPONENT_HASH,
-                        )
-                    },
-                    compression_threshold,
-                )?;
-                trace.container_click_packets_sent += 1;
-                trace.container_click_state_id_sent = Some(2);
-            }
-            if matches!(
-                probe_mode,
-                PlayProbeMode::SurvivalInventoryGliderComponentCorrectPrediction
-            ) && trace.container_click_packets_sent == 0
-            {
-                std::thread::sleep(Duration::from_secs(20));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                    |output| {
-                        encode_inventory_pickup_with_exact_component_prediction(
-                            output,
-                            2,
-                            1,
-                            VANILLA_STONE_ITEM_REGISTRY_ID,
-                            VANILLA_GLIDER_COMPONENT_ID,
-                            VANILLA_STONE_GLIDER_COMPONENT_HASH,
-                        )
-                    },
-                    compression_threshold,
-                )?;
-                trace.container_click_packets_sent += 1;
-                trace.container_click_state_id_sent = Some(2);
-            }
-            if matches!(
-                probe_mode,
-                PlayProbeMode::SurvivalInventoryTooltipStyleComponentCorrectPrediction
-            ) && trace.container_click_packets_sent == 0
-            {
-                std::thread::sleep(Duration::from_secs(20));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                    |output| {
-                        encode_inventory_pickup_with_exact_component_prediction(
-                            output,
-                            2,
-                            1,
-                            VANILLA_STONE_ITEM_REGISTRY_ID,
-                            VANILLA_TOOLTIP_STYLE_COMPONENT_ID,
-                            VANILLA_STONE_TOOLTIP_STYLE_COMPONENT_HASH,
-                        )
-                    },
-                    compression_threshold,
-                )?;
-                trace.container_click_packets_sent += 1;
-                trace.container_click_state_id_sent = Some(2);
-            }
-            if matches!(
-                probe_mode,
-                PlayProbeMode::SurvivalInventoryEnchantableComponentCorrectPrediction
-            ) && trace.container_click_packets_sent == 0
-            {
-                std::thread::sleep(Duration::from_secs(20));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                    |output| {
-                        encode_inventory_pickup_with_exact_component_prediction(
-                            output,
-                            2,
-                            1,
-                            VANILLA_STONE_ITEM_REGISTRY_ID,
-                            VANILLA_ENCHANTABLE_COMPONENT_ID,
-                            VANILLA_STONE_ENCHANTABLE_COMPONENT_HASH,
-                        )
-                    },
-                    compression_threshold,
-                )?;
-                trace.container_click_packets_sent += 1;
-                trace.container_click_state_id_sent = Some(2);
-            }
-            if matches!(
-                probe_mode,
-                PlayProbeMode::SurvivalInventoryDyeComponentCorrectPrediction
-            ) && trace.container_click_packets_sent == 0
-            {
-                std::thread::sleep(Duration::from_secs(20));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                    |output| {
-                        encode_inventory_pickup_with_exact_component_prediction(
-                            output,
-                            2,
-                            1,
-                            VANILLA_STONE_ITEM_REGISTRY_ID,
-                            VANILLA_DYE_COMPONENT_ID,
-                            VANILLA_STONE_DYE_COMPONENT_HASH,
-                        )
-                    },
-                    compression_threshold,
-                )?;
-                trace.container_click_packets_sent += 1;
-                trace.container_click_state_id_sent = Some(2);
-            }
-            if matches!(
-                probe_mode,
-                PlayProbeMode::SurvivalInventoryDyedColorComponentCorrectPrediction
-            ) && trace.container_click_packets_sent == 0
-            {
-                std::thread::sleep(Duration::from_secs(20));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                    |output| {
-                        encode_inventory_pickup_with_exact_component_prediction(
-                            output,
-                            2,
-                            1,
-                            VANILLA_STONE_ITEM_REGISTRY_ID,
-                            VANILLA_DYED_COLOR_COMPONENT_ID,
-                            VANILLA_STONE_DYED_COLOR_COMPONENT_HASH,
-                        )
-                    },
-                    compression_threshold,
-                )?;
-                trace.container_click_packets_sent += 1;
-                trace.container_click_state_id_sent = Some(2);
-            }
-            if matches!(
-                probe_mode,
-                PlayProbeMode::SurvivalInventoryPotionDurationScaleComponentCorrectPrediction
-            ) && trace.container_click_packets_sent == 0
-            {
-                std::thread::sleep(Duration::from_secs(20));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                    |output| {
-                        encode_inventory_pickup_with_exact_component_prediction(
-                            output,
-                            2,
-                            1,
-                            VANILLA_STONE_ITEM_REGISTRY_ID,
-                            VANILLA_POTION_DURATION_SCALE_COMPONENT_ID,
-                            VANILLA_STONE_POTION_DURATION_SCALE_COMPONENT_HASH,
-                        )
-                    },
-                    compression_threshold,
-                )?;
-                trace.container_click_packets_sent += 1;
-                trace.container_click_state_id_sent = Some(2);
-            }
-            if matches!(
-                probe_mode,
-                PlayProbeMode::SurvivalInventoryMapColorComponentCorrectPrediction
-            ) && trace.container_click_packets_sent == 0
-            {
-                std::thread::sleep(Duration::from_secs(20));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                    |output| {
-                        encode_inventory_pickup_with_exact_component_prediction(
-                            output,
-                            2,
-                            1,
-                            VANILLA_STONE_ITEM_REGISTRY_ID,
-                            VANILLA_MAP_COLOR_COMPONENT_ID,
-                            VANILLA_STONE_MAP_COLOR_COMPONENT_HASH,
-                        )
-                    },
-                    compression_threshold,
-                )?;
-                trace.container_click_packets_sent += 1;
-                trace.container_click_state_id_sent = Some(2);
-            }
-            if matches!(
-                probe_mode,
-                PlayProbeMode::SurvivalInventoryMapIdComponentCorrectPrediction
-            ) && trace.container_click_packets_sent == 0
-            {
-                std::thread::sleep(Duration::from_secs(20));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                    |output| {
-                        encode_inventory_pickup_with_exact_component_prediction(
-                            output,
-                            2,
-                            1,
-                            VANILLA_STONE_ITEM_REGISTRY_ID,
-                            VANILLA_MAP_ID_COMPONENT_ID,
-                            VANILLA_STONE_MAP_ID_COMPONENT_HASH,
-                        )
-                    },
-                    compression_threshold,
-                )?;
-                trace.container_click_packets_sent += 1;
-                trace.container_click_state_id_sent = Some(2);
-            }
-            if matches!(
-                probe_mode,
-                PlayProbeMode::SurvivalInventoryBaseColorComponentCorrectPrediction
-            ) && trace.container_click_packets_sent == 0
-            {
-                std::thread::sleep(Duration::from_secs(20));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                    |output| {
-                        encode_inventory_pickup_with_exact_component_prediction(
-                            output,
-                            2,
-                            1,
-                            VANILLA_STONE_ITEM_REGISTRY_ID,
-                            VANILLA_BASE_COLOR_COMPONENT_ID,
-                            VANILLA_STONE_BASE_COLOR_COMPONENT_HASH,
-                        )
-                    },
-                    compression_threshold,
-                )?;
-                trace.container_click_packets_sent += 1;
-                trace.container_click_state_id_sent = Some(2);
-            }
-            if matches!(
-                probe_mode,
-                PlayProbeMode::SurvivalInventoryNoteBlockSoundComponentCorrectPrediction
-            ) && trace.container_click_packets_sent == 0
-            {
-                std::thread::sleep(Duration::from_secs(20));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                    |output| {
-                        encode_inventory_pickup_with_exact_component_prediction(
-                            output,
-                            2,
-                            1,
-                            VANILLA_STONE_ITEM_REGISTRY_ID,
-                            VANILLA_NOTE_BLOCK_SOUND_COMPONENT_ID,
-                            VANILLA_STONE_NOTE_BLOCK_SOUND_COMPONENT_HASH,
-                        )
-                    },
-                    compression_threshold,
-                )?;
-                trace.container_click_packets_sent += 1;
-                trace.container_click_state_id_sent = Some(2);
-            }
-            if matches!(
-                probe_mode,
-                PlayProbeMode::SurvivalInventoryOminousBottleAmplifierComponentCorrectPrediction
-            ) && trace.container_click_packets_sent == 0
-            {
-                std::thread::sleep(Duration::from_secs(20));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                    |output| {
-                        encode_inventory_pickup_with_exact_component_prediction(
-                            output,
-                            2,
-                            1,
-                            VANILLA_STONE_ITEM_REGISTRY_ID,
-                            VANILLA_OMINOUS_BOTTLE_AMPLIFIER_COMPONENT_ID,
-                            VANILLA_STONE_OMINOUS_BOTTLE_AMPLIFIER_COMPONENT_HASH,
-                        )
-                    },
-                    compression_threshold,
-                )?;
-                trace.container_click_packets_sent += 1;
-                trace.container_click_state_id_sent = Some(2);
-            }
-            if matches!(
-                probe_mode,
-                PlayProbeMode::SurvivalInventoryBreakSoundComponentCorrectPrediction
-            ) && trace.container_click_packets_sent == 0
-            {
-                std::thread::sleep(Duration::from_secs(20));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                    |output| {
-                        encode_inventory_pickup_with_exact_component_prediction(
-                            output,
-                            2,
-                            1,
-                            VANILLA_STONE_ITEM_REGISTRY_ID,
-                            VANILLA_BREAK_SOUND_COMPONENT_ID,
-                            VANILLA_STONE_BREAK_SOUND_COMPONENT_HASH,
-                        )
-                    },
-                    compression_threshold,
-                )?;
-                trace.container_click_packets_sent += 1;
-                trace.container_click_state_id_sent = Some(2);
-            }
-            if matches!(
-                probe_mode,
-                PlayProbeMode::SurvivalInventoryWolfCollarComponentCorrectPrediction
-            ) && trace.container_click_packets_sent == 0
-            {
-                std::thread::sleep(Duration::from_secs(20));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                    |output| {
-                        encode_inventory_pickup_with_exact_component_prediction(
-                            output,
-                            2,
-                            1,
-                            VANILLA_STONE_ITEM_REGISTRY_ID,
-                            VANILLA_WOLF_COLLAR_COMPONENT_ID,
-                            VANILLA_STONE_WOLF_COLLAR_COMPONENT_HASH,
-                        )
-                    },
-                    compression_threshold,
-                )?;
-                trace.container_click_packets_sent += 1;
-                trace.container_click_state_id_sent = Some(2);
-            }
-            if matches!(
-                probe_mode,
-                PlayProbeMode::SurvivalInventoryTropicalFishBaseColorComponentCorrectPrediction
-            ) && trace.container_click_packets_sent == 0
-            {
-                std::thread::sleep(Duration::from_secs(20));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                    |output| {
-                        encode_inventory_pickup_with_exact_component_prediction(
-                            output,
-                            2,
-                            1,
-                            VANILLA_STONE_ITEM_REGISTRY_ID,
-                            VANILLA_TROPICAL_FISH_BASE_COLOR_COMPONENT_ID,
-                            VANILLA_STONE_TROPICAL_FISH_BASE_COLOR_COMPONENT_HASH,
-                        )
-                    },
-                    compression_threshold,
-                )?;
-                trace.container_click_packets_sent += 1;
-                trace.container_click_state_id_sent = Some(2);
-            }
-            if matches!(
-                probe_mode,
-                PlayProbeMode::SurvivalInventoryTropicalFishPatternComponentCorrectPrediction
-            ) && trace.container_click_packets_sent == 0
-            {
-                std::thread::sleep(Duration::from_secs(20));
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                    |output| {
-                        encode_inventory_pickup_with_exact_component_prediction(
-                            output,
-                            2,
-                            1,
-                            VANILLA_STONE_ITEM_REGISTRY_ID,
-                            VANILLA_TROPICAL_FISH_PATTERN_COMPONENT_ID,
-                            VANILLA_STONE_TROPICAL_FISH_PATTERN_COMPONENT_HASH,
-                        )
-                    },
-                    compression_threshold,
-                )?;
-                trace.container_click_packets_sent += 1;
-                trace.container_click_state_id_sent = Some(2);
-            }
-            if matches!(
-                probe_mode,
-                PlayProbeMode::SurvivalInventoryTropicalFishPatternColorComponentCorrectPrediction
-                    | PlayProbeMode::SurvivalInventoryCatCollarComponentCorrectPrediction
-                    | PlayProbeMode::SurvivalInventorySheepColorComponentCorrectPrediction
-            ) && trace.container_click_packets_sent == 0
-            {
-                let Some((component_type_id, component_hash)) =
-                    inventory_component_preparation_target(probe_mode)
-                else {
-                    unreachable!("component preparation target should exist for this probe")
-                };
-                let prepared_state_id = trace
-                    .container_slot_observations
-                    .iter()
-                    .rev()
-                    .find(|observation| {
-                        observation.container_id == 0
-                            && observation.slot == 36
-                            && observation.item_count == Some(1)
-                            && observation.item_registry_id == Some(VANILLA_STONE_ITEM_REGISTRY_ID)
-                            && observation.positive_component_type_ids == [component_type_id]
-                            && observation.negative_component_type_ids.is_empty()
-                    })
-                    .map(|observation| observation.state_id);
-                if let Some(prepared_state_id) = prepared_state_id {
-                    send_packet(
-                        &mut stream,
-                        ConnectionProtocol::Play,
-                        PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                        |output| {
-                            encode_inventory_pickup_with_exact_component_prediction(
-                                output,
-                                prepared_state_id,
-                                1,
-                                VANILLA_STONE_ITEM_REGISTRY_ID,
-                                component_type_id,
-                                component_hash,
-                            )
-                        },
-                        compression_threshold,
-                    )?;
-                    trace.container_click_packets_sent += 1;
-                    trace.container_click_state_id_sent = Some(prepared_state_id);
+            if let PlayProbeMode::SurvivalInventoryItemComponentConformance(spec) = probe_mode {
+                if trace.container_click_packets_sent == 0 {
+                    let prepared_state_id = trace
+                        .container_slot_observations
+                        .iter()
+                        .rev()
+                        .find(|observation| {
+                            observation.container_id == 0
+                                && observation.slot == 36
+                                && observation.item_count == Some(1)
+                                && observation.item_registry_id == Some(spec.item_registry_id)
+                                && observation.positive_component_type_ids.as_slice()
+                                    == spec.expected_positive_component_type_ids
+                                && observation.negative_component_type_ids.is_empty()
+                        })
+                        .map(|observation| observation.state_id);
+                    if let Some(prepared_state_id) = prepared_state_id {
+                        send_packet(
+                            &mut stream,
+                            ConnectionProtocol::Play,
+                            PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
+                            |output| {
+                                encode_inventory_pickup_with_component_spec_prediction(
+                                    output,
+                                    prepared_state_id,
+                                    spec,
+                                )
+                            },
+                            compression_threshold,
+                        )?;
+                        trace.container_click_packets_sent += 1;
+                        trace.container_click_state_id_sent = Some(prepared_state_id);
+                    }
                 }
             }
             if matches!(
@@ -4017,115 +3005,7 @@ fn connect_and_probe_with_mode(
                 PlayProbeMode::SurvivalInventoryWrongCarriedPrediction => CONSUMABLE_DRAIN_TIMEOUT,
                 PlayProbeMode::SurvivalInventoryWrongBothPrediction => CONSUMABLE_DRAIN_TIMEOUT,
                 PlayProbeMode::SurvivalInventoryComponentHashPrediction => CONSUMABLE_DRAIN_TIMEOUT,
-                PlayProbeMode::SurvivalInventoryComponentCorrectPrediction => {
-                    CONSUMABLE_DRAIN_TIMEOUT
-                }
-                PlayProbeMode::SurvivalInventoryPartialChangedSlotPrediction => {
-                    CONSUMABLE_DRAIN_TIMEOUT
-                }
-                PlayProbeMode::SurvivalInventoryStaleStateCorrectPrediction => {
-                    CONSUMABLE_DRAIN_TIMEOUT
-                }
-                PlayProbeMode::SurvivalInventoryAheadStateCorrectPrediction => {
-                    CONSUMABLE_DRAIN_TIMEOUT
-                }
-                PlayProbeMode::SurvivalInventoryAheadComponentCorrectPrediction => {
-                    CONSUMABLE_DRAIN_TIMEOUT
-                }
-                PlayProbeMode::SurvivalInventoryFoodComponentCorrectPrediction => {
-                    CONSUMABLE_DRAIN_TIMEOUT
-                }
-                PlayProbeMode::SurvivalInventoryDamageComponentCorrectPrediction => {
-                    CONSUMABLE_DRAIN_TIMEOUT
-                }
-                PlayProbeMode::SurvivalInventoryToolComponentCorrectPrediction => {
-                    CONSUMABLE_DRAIN_TIMEOUT
-                }
-                PlayProbeMode::SurvivalInventoryWeaponComponentCorrectPrediction => {
-                    CONSUMABLE_DRAIN_TIMEOUT
-                }
-                PlayProbeMode::SurvivalInventoryMaxStackSizeComponentCorrectPrediction => {
-                    CONSUMABLE_DRAIN_TIMEOUT
-                }
-                PlayProbeMode::SurvivalInventoryMaxDamageComponentCorrectPrediction => {
-                    CONSUMABLE_DRAIN_TIMEOUT
-                }
-                PlayProbeMode::SurvivalInventoryUnbreakableComponentCorrectPrediction => {
-                    CONSUMABLE_DRAIN_TIMEOUT
-                }
-                PlayProbeMode::SurvivalInventoryMinimumAttackChargeComponentCorrectPrediction => {
-                    CONSUMABLE_DRAIN_TIMEOUT
-                }
-                PlayProbeMode::SurvivalInventoryRepairCostComponentCorrectPrediction => {
-                    CONSUMABLE_DRAIN_TIMEOUT
-                }
-                PlayProbeMode::SurvivalInventoryEnchantmentGlintOverrideComponentCorrectPrediction => {
-                    CONSUMABLE_DRAIN_TIMEOUT
-                }
-                PlayProbeMode::SurvivalInventoryRarityComponentCorrectPrediction => {
-                    CONSUMABLE_DRAIN_TIMEOUT
-                }
-                PlayProbeMode::SurvivalInventoryItemModelComponentCorrectPrediction => {
-                    CONSUMABLE_DRAIN_TIMEOUT
-                }
-                PlayProbeMode::SurvivalInventoryUseEffectsComponentCorrectPrediction => {
-                    CONSUMABLE_DRAIN_TIMEOUT
-                }
-                PlayProbeMode::SurvivalInventoryDamageTypeComponentCorrectPrediction => {
-                    CONSUMABLE_DRAIN_TIMEOUT
-                }
-                PlayProbeMode::SurvivalInventoryGliderComponentCorrectPrediction => {
-                    CONSUMABLE_DRAIN_TIMEOUT
-                }
-                PlayProbeMode::SurvivalInventoryTooltipStyleComponentCorrectPrediction => {
-                    CONSUMABLE_DRAIN_TIMEOUT
-                }
-                PlayProbeMode::SurvivalInventoryEnchantableComponentCorrectPrediction => {
-                    CONSUMABLE_DRAIN_TIMEOUT
-                }
-                PlayProbeMode::SurvivalInventoryDyeComponentCorrectPrediction => {
-                    CONSUMABLE_DRAIN_TIMEOUT
-                }
-                PlayProbeMode::SurvivalInventoryDyedColorComponentCorrectPrediction => {
-                    CONSUMABLE_DRAIN_TIMEOUT
-                }
-                PlayProbeMode::SurvivalInventoryPotionDurationScaleComponentCorrectPrediction => {
-                    CONSUMABLE_DRAIN_TIMEOUT
-                }
-                PlayProbeMode::SurvivalInventoryMapColorComponentCorrectPrediction => {
-                    CONSUMABLE_DRAIN_TIMEOUT
-                }
-                PlayProbeMode::SurvivalInventoryMapIdComponentCorrectPrediction => {
-                    CONSUMABLE_DRAIN_TIMEOUT
-                }
-                PlayProbeMode::SurvivalInventoryBaseColorComponentCorrectPrediction => {
-                    CONSUMABLE_DRAIN_TIMEOUT
-                }
-                PlayProbeMode::SurvivalInventoryNoteBlockSoundComponentCorrectPrediction => {
-                    CONSUMABLE_DRAIN_TIMEOUT
-                }
-                PlayProbeMode::SurvivalInventoryOminousBottleAmplifierComponentCorrectPrediction => {
-                    CONSUMABLE_DRAIN_TIMEOUT
-                }
-                PlayProbeMode::SurvivalInventoryBreakSoundComponentCorrectPrediction => {
-                    CONSUMABLE_DRAIN_TIMEOUT
-                }
-                PlayProbeMode::SurvivalInventoryWolfCollarComponentCorrectPrediction => {
-                    CONSUMABLE_DRAIN_TIMEOUT
-                }
-                PlayProbeMode::SurvivalInventoryTropicalFishBaseColorComponentCorrectPrediction => {
-                    CONSUMABLE_DRAIN_TIMEOUT
-                }
-                PlayProbeMode::SurvivalInventoryTropicalFishPatternComponentCorrectPrediction => {
-                    CONSUMABLE_DRAIN_TIMEOUT
-                }
-                PlayProbeMode::SurvivalInventoryTropicalFishPatternColorComponentCorrectPrediction => {
-                    COMPONENT_PREPARATION_DRAIN_TIMEOUT
-                }
-                PlayProbeMode::SurvivalInventoryCatCollarComponentCorrectPrediction => {
-                    COMPONENT_PREPARATION_DRAIN_TIMEOUT
-                }
-                PlayProbeMode::SurvivalInventorySheepColorComponentCorrectPrediction => {
+                PlayProbeMode::SurvivalInventoryItemComponentConformance(_) => {
                     COMPONENT_PREPARATION_DRAIN_TIMEOUT
                 }
                 PlayProbeMode::SurvivalInventoryQuickMoveStateCorrection => {
@@ -4137,50 +3017,39 @@ fn connect_and_probe_with_mode(
             stream.set_read_timeout(Some(drain_timeout))?;
         }
 
-        if matches!(
-            probe_mode,
-            PlayProbeMode::SurvivalInventoryTropicalFishPatternColorComponentCorrectPrediction
-                | PlayProbeMode::SurvivalInventoryCatCollarComponentCorrectPrediction
-                | PlayProbeMode::SurvivalInventorySheepColorComponentCorrectPrediction
-        ) && trace.container_click_packets_sent == 0
-        {
-            let Some((component_type_id, component_hash)) =
-                inventory_component_preparation_target(probe_mode)
-            else {
-                unreachable!("component preparation target should exist for this probe")
-            };
-            let prepared_state_id = trace
-                .container_slot_observations
-                .iter()
-                .rev()
-                .find(|observation| {
-                    observation.container_id == 0
-                        && observation.slot == 36
-                        && observation.item_count == Some(1)
-                        && observation.item_registry_id == Some(VANILLA_STONE_ITEM_REGISTRY_ID)
-                        && observation.positive_component_type_ids == [component_type_id]
-                        && observation.negative_component_type_ids.is_empty()
-                })
-                .map(|observation| observation.state_id);
-            if let Some(prepared_state_id) = prepared_state_id {
-                send_packet(
-                    &mut stream,
-                    ConnectionProtocol::Play,
-                    PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                    |output| {
-                        encode_inventory_pickup_with_exact_component_prediction(
-                            output,
-                            prepared_state_id,
-                            1,
-                            VANILLA_STONE_ITEM_REGISTRY_ID,
-                            component_type_id,
-                            component_hash,
-                        )
-                    },
-                    compression_threshold,
-                )?;
-                trace.container_click_packets_sent += 1;
-                trace.container_click_state_id_sent = Some(prepared_state_id);
+        if let PlayProbeMode::SurvivalInventoryItemComponentConformance(spec) = probe_mode {
+            if trace.container_click_packets_sent == 0 {
+                let prepared_state_id = trace
+                    .container_slot_observations
+                    .iter()
+                    .rev()
+                    .find(|observation| {
+                        observation.container_id == 0
+                            && observation.slot == 36
+                            && observation.item_count == Some(1)
+                            && observation.item_registry_id == Some(spec.item_registry_id)
+                            && observation.positive_component_type_ids.as_slice()
+                                == spec.expected_positive_component_type_ids
+                            && observation.negative_component_type_ids.is_empty()
+                    })
+                    .map(|observation| observation.state_id);
+                if let Some(prepared_state_id) = prepared_state_id {
+                    send_packet(
+                        &mut stream,
+                        ConnectionProtocol::Play,
+                        PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
+                        |output| {
+                            encode_inventory_pickup_with_component_spec_prediction(
+                                output,
+                                prepared_state_id,
+                                spec,
+                            )
+                        },
+                        compression_threshold,
+                    )?;
+                    trace.container_click_packets_sent += 1;
+                    trace.container_click_state_id_sent = Some(prepared_state_id);
+                }
             }
         }
 
@@ -4218,109 +3087,7 @@ fn connect_and_probe_with_mode(
             PlayProbeMode::SurvivalInventoryWrongCarriedPrediction => CONSUMABLE_DRAIN_TIMEOUT,
             PlayProbeMode::SurvivalInventoryWrongBothPrediction => CONSUMABLE_DRAIN_TIMEOUT,
             PlayProbeMode::SurvivalInventoryComponentHashPrediction => CONSUMABLE_DRAIN_TIMEOUT,
-            PlayProbeMode::SurvivalInventoryComponentCorrectPrediction => CONSUMABLE_DRAIN_TIMEOUT,
-            PlayProbeMode::SurvivalInventoryPartialChangedSlotPrediction => {
-                CONSUMABLE_DRAIN_TIMEOUT
-            }
-            PlayProbeMode::SurvivalInventoryStaleStateCorrectPrediction => CONSUMABLE_DRAIN_TIMEOUT,
-            PlayProbeMode::SurvivalInventoryAheadStateCorrectPrediction => CONSUMABLE_DRAIN_TIMEOUT,
-            PlayProbeMode::SurvivalInventoryAheadComponentCorrectPrediction => {
-                CONSUMABLE_DRAIN_TIMEOUT
-            }
-            PlayProbeMode::SurvivalInventoryFoodComponentCorrectPrediction => {
-                CONSUMABLE_DRAIN_TIMEOUT
-            }
-            PlayProbeMode::SurvivalInventoryDamageComponentCorrectPrediction => {
-                CONSUMABLE_DRAIN_TIMEOUT
-            }
-            PlayProbeMode::SurvivalInventoryToolComponentCorrectPrediction => {
-                CONSUMABLE_DRAIN_TIMEOUT
-            }
-            PlayProbeMode::SurvivalInventoryWeaponComponentCorrectPrediction => {
-                CONSUMABLE_DRAIN_TIMEOUT
-            }
-            PlayProbeMode::SurvivalInventoryMaxStackSizeComponentCorrectPrediction => {
-                CONSUMABLE_DRAIN_TIMEOUT
-            }
-            PlayProbeMode::SurvivalInventoryMaxDamageComponentCorrectPrediction => {
-                CONSUMABLE_DRAIN_TIMEOUT
-            }
-            PlayProbeMode::SurvivalInventoryUnbreakableComponentCorrectPrediction => {
-                CONSUMABLE_DRAIN_TIMEOUT
-            }
-            PlayProbeMode::SurvivalInventoryMinimumAttackChargeComponentCorrectPrediction => {
-                CONSUMABLE_DRAIN_TIMEOUT
-            }
-            PlayProbeMode::SurvivalInventoryRepairCostComponentCorrectPrediction => {
-                CONSUMABLE_DRAIN_TIMEOUT
-            }
-            PlayProbeMode::SurvivalInventoryEnchantmentGlintOverrideComponentCorrectPrediction => {
-                CONSUMABLE_DRAIN_TIMEOUT
-            }
-            PlayProbeMode::SurvivalInventoryRarityComponentCorrectPrediction => {
-                CONSUMABLE_DRAIN_TIMEOUT
-            }
-            PlayProbeMode::SurvivalInventoryItemModelComponentCorrectPrediction => {
-                CONSUMABLE_DRAIN_TIMEOUT
-            }
-            PlayProbeMode::SurvivalInventoryUseEffectsComponentCorrectPrediction => {
-                CONSUMABLE_DRAIN_TIMEOUT
-            }
-            PlayProbeMode::SurvivalInventoryDamageTypeComponentCorrectPrediction => {
-                CONSUMABLE_DRAIN_TIMEOUT
-            }
-            PlayProbeMode::SurvivalInventoryGliderComponentCorrectPrediction => {
-                CONSUMABLE_DRAIN_TIMEOUT
-            }
-            PlayProbeMode::SurvivalInventoryTooltipStyleComponentCorrectPrediction => {
-                CONSUMABLE_DRAIN_TIMEOUT
-            }
-            PlayProbeMode::SurvivalInventoryEnchantableComponentCorrectPrediction => {
-                CONSUMABLE_DRAIN_TIMEOUT
-            }
-            PlayProbeMode::SurvivalInventoryDyeComponentCorrectPrediction => {
-                CONSUMABLE_DRAIN_TIMEOUT
-            }
-            PlayProbeMode::SurvivalInventoryDyedColorComponentCorrectPrediction => {
-                CONSUMABLE_DRAIN_TIMEOUT
-            }
-            PlayProbeMode::SurvivalInventoryPotionDurationScaleComponentCorrectPrediction => {
-                CONSUMABLE_DRAIN_TIMEOUT
-            }
-            PlayProbeMode::SurvivalInventoryMapColorComponentCorrectPrediction => {
-                CONSUMABLE_DRAIN_TIMEOUT
-            }
-            PlayProbeMode::SurvivalInventoryMapIdComponentCorrectPrediction => {
-                CONSUMABLE_DRAIN_TIMEOUT
-            }
-            PlayProbeMode::SurvivalInventoryBaseColorComponentCorrectPrediction => {
-                CONSUMABLE_DRAIN_TIMEOUT
-            }
-            PlayProbeMode::SurvivalInventoryNoteBlockSoundComponentCorrectPrediction => {
-                CONSUMABLE_DRAIN_TIMEOUT
-            }
-            PlayProbeMode::SurvivalInventoryOminousBottleAmplifierComponentCorrectPrediction => {
-                CONSUMABLE_DRAIN_TIMEOUT
-            }
-            PlayProbeMode::SurvivalInventoryBreakSoundComponentCorrectPrediction => {
-                CONSUMABLE_DRAIN_TIMEOUT
-            }
-            PlayProbeMode::SurvivalInventoryWolfCollarComponentCorrectPrediction => {
-                CONSUMABLE_DRAIN_TIMEOUT
-            }
-            PlayProbeMode::SurvivalInventoryTropicalFishBaseColorComponentCorrectPrediction => {
-                CONSUMABLE_DRAIN_TIMEOUT
-            }
-            PlayProbeMode::SurvivalInventoryTropicalFishPatternComponentCorrectPrediction => {
-                CONSUMABLE_DRAIN_TIMEOUT
-            }
-            PlayProbeMode::SurvivalInventoryTropicalFishPatternColorComponentCorrectPrediction => {
-                COMPONENT_PREPARATION_DRAIN_TIMEOUT
-            }
-            PlayProbeMode::SurvivalInventoryCatCollarComponentCorrectPrediction => {
-                COMPONENT_PREPARATION_DRAIN_TIMEOUT
-            }
-            PlayProbeMode::SurvivalInventorySheepColorComponentCorrectPrediction => {
+            PlayProbeMode::SurvivalInventoryItemComponentConformance(_) => {
                 COMPONENT_PREPARATION_DRAIN_TIMEOUT
             }
             PlayProbeMode::SurvivalInventoryQuickMoveStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
@@ -4638,8 +3405,10 @@ fn encode_inventory_pickup_with_component_hash_prediction(
     item_count: i32,
     item_registry_id: i32,
 ) -> Result<(), ConnectionError> {
-    let added_components = [(VANILLA_CUSTOM_MODEL_DATA_COMPONENT_ID, 0x0102_0304)];
-    let removed_components = [VANILLA_CUSTOM_MODEL_DATA_COMPONENT_ID];
+    let spec = inventory_component_spec("custom_model_data")
+        .expect("custom model data component is in the conformance table");
+    let added_components = [(spec.component_type_id, 0x0102_0304)];
+    let removed_components = [spec.component_type_id];
     encode_inventory_pickup_prediction_with_carried_patch(
         output,
         state_id,
@@ -4650,80 +3419,18 @@ fn encode_inventory_pickup_with_component_hash_prediction(
     )
 }
 
-fn encode_inventory_pickup_with_component_correct_prediction(
+fn encode_inventory_pickup_with_component_spec_prediction(
     output: &mut Vec<u8>,
     state_id: i32,
-    item_count: i32,
-    item_registry_id: i32,
+    spec: &'static InventoryComponentProbeSpec,
 ) -> Result<(), ConnectionError> {
-    encode_inventory_pickup_with_exact_component_prediction(
-        output,
-        state_id,
-        item_count,
-        item_registry_id,
-        VANILLA_CUSTOM_MODEL_DATA_COMPONENT_ID,
-        VANILLA_CUSTOM_MODEL_DATA_COMPONENT_HASH,
-    )
-}
-
-fn encode_inventory_pickup_with_exact_component_prediction(
-    output: &mut Vec<u8>,
-    state_id: i32,
-    item_count: i32,
-    item_registry_id: i32,
-    component_type_id: i32,
-    component_hash: i32,
-) -> Result<(), ConnectionError> {
-    let added_components = [(component_type_id, component_hash)];
     encode_inventory_pickup_prediction_with_carried_patch(
         output,
         state_id,
         None,
-        Some((item_count, item_registry_id)),
-        &added_components,
+        Some((1, spec.item_registry_id)),
+        spec.carried_components,
         &[],
-    )
-}
-
-fn encode_inventory_pickup_with_max_damage_prediction(
-    output: &mut Vec<u8>,
-    state_id: i32,
-    item_count: i32,
-    item_registry_id: i32,
-) -> Result<(), ConnectionError> {
-    let added_components = [
-        (
-            VANILLA_MAX_STACK_SIZE_COMPONENT_ID,
-            VANILLA_STONE_MAX_STACK_SIZE_COMPONENT_HASH,
-        ),
-        (
-            VANILLA_MAX_DAMAGE_COMPONENT_ID,
-            VANILLA_STONE_MAX_DAMAGE_COMPONENT_HASH,
-        ),
-    ];
-    encode_inventory_pickup_prediction_with_carried_patch(
-        output,
-        state_id,
-        None,
-        Some((item_count, item_registry_id)),
-        &added_components,
-        &[],
-    )
-}
-
-fn encode_inventory_pickup_with_unbreakable_prediction(
-    output: &mut Vec<u8>,
-    state_id: i32,
-    item_count: i32,
-    item_registry_id: i32,
-) -> Result<(), ConnectionError> {
-    encode_inventory_pickup_with_exact_component_prediction(
-        output,
-        state_id,
-        item_count,
-        item_registry_id,
-        VANILLA_UNBREAKABLE_COMPONENT_ID,
-        VANILLA_STONE_UNBREAKABLE_COMPONENT_HASH,
     )
 }
 
@@ -5196,100 +3903,36 @@ fn parse_optional_item_stack(
     let mut positive_component_type_ids = Vec::with_capacity(positive_component_count);
     for _ in 0..positive_component_count {
         let component_type_id = read_varint(input, name)?;
-        match component_type_id {
-            VANILLA_MAX_STACK_SIZE_COMPONENT_ID => {
+        let Some(spec) = inventory_component_spec_by_type_id(component_type_id) else {
+            return Err(ConnectionError::Codec(name));
+        };
+        match spec.codec {
+            InventoryComponentCodec::VarInt | InventoryComponentCodec::RegistryId => {
                 read_varint(input, name)?;
             }
-            VANILLA_MAX_DAMAGE_COMPONENT_ID => {
-                read_varint(input, name)?;
-            }
-            VANILLA_UNBREAKABLE_COMPONENT_ID => {}
-            VANILLA_MINIMUM_ATTACK_CHARGE_COMPONENT_ID => {
+            InventoryComponentCodec::Unit => {}
+            InventoryComponentCodec::Float => {
                 read_f32(input, name)?;
             }
-            VANILLA_REPAIR_COST_COMPONENT_ID => {
-                read_varint(input, name)?;
-            }
-            VANILLA_ENCHANTMENT_GLINT_OVERRIDE_COMPONENT_ID => {
+            InventoryComponentCodec::Byte => {
                 read_byte(input, name)?;
             }
-            VANILLA_RARITY_COMPONENT_ID => {
-                read_varint(input, name)?;
-            }
-            VANILLA_ITEM_MODEL_COMPONENT_ID => {
-                crate::identifier::read_identifier(input)
-                    .map_err(|_| ConnectionError::Codec(name))?;
-            }
-            VANILLA_USE_EFFECTS_COMPONENT_ID => {
-                read_byte(input, name)?;
-                read_byte(input, name)?;
-                read_f32(input, name)?;
-            }
-            VANILLA_DAMAGE_TYPE_COMPONENT_ID => {
-                read_varint(input, name)?;
-            }
-            VANILLA_GLIDER_COMPONENT_ID => {}
-            VANILLA_TOOLTIP_STYLE_COMPONENT_ID => {
-                crate::identifier::read_identifier(input)
-                    .map_err(|_| ConnectionError::Codec(name))?;
-            }
-            VANILLA_ENCHANTABLE_COMPONENT_ID => {
-                read_varint(input, name)?;
-            }
-            VANILLA_DYE_COMPONENT_ID => {
-                read_varint(input, name)?;
-            }
-            VANILLA_DYED_COLOR_COMPONENT_ID => {
+            InventoryComponentCodec::Int => {
                 read_i32(input, name)?;
             }
-            VANILLA_MAP_COLOR_COMPONENT_ID => {
-                read_i32(input, name)?;
-            }
-            VANILLA_MAP_ID_COMPONENT_ID => {
-                read_varint(input, name)?;
-            }
-            VANILLA_BASE_COLOR_COMPONENT_ID => {
-                read_varint(input, name)?;
-            }
-            VANILLA_NOTE_BLOCK_SOUND_COMPONENT_ID => {
+            InventoryComponentCodec::Identifier => {
                 crate::identifier::read_identifier(input)
                     .map_err(|_| ConnectionError::Codec(name))?;
             }
-            VANILLA_OMINOUS_BOTTLE_AMPLIFIER_COMPONENT_ID => {
-                read_varint(input, name)?;
-            }
-            VANILLA_BREAK_SOUND_COMPONENT_ID => {
-                read_varint(input, name)?;
-            }
-            VANILLA_WOLF_COLLAR_COMPONENT_ID => {
-                read_varint(input, name)?;
-            }
-            VANILLA_TROPICAL_FISH_BASE_COLOR_COMPONENT_ID => {
-                read_varint(input, name)?;
-            }
-            VANILLA_TROPICAL_FISH_PATTERN_COMPONENT_ID => {
-                read_varint(input, name)?;
-            }
-            VANILLA_TROPICAL_FISH_PATTERN_COLOR_COMPONENT_ID => {
-                read_varint(input, name)?;
-            }
-            VANILLA_CAT_COLLAR_COMPONENT_ID => {
-                read_varint(input, name)?;
-            }
-            VANILLA_SHEEP_COLOR_COMPONENT_ID => {
-                read_varint(input, name)?;
-            }
-            VANILLA_POTION_DURATION_SCALE_COMPONENT_ID => {
+            InventoryComponentCodec::UseEffects => {
+                read_byte(input, name)?;
+                read_byte(input, name)?;
                 read_f32(input, name)?;
             }
-            VANILLA_DAMAGE_COMPONENT_ID => {
-                read_varint(input, name)?;
-            }
-            VANILLA_CUSTOM_MODEL_DATA_COMPONENT_ID => skip_custom_model_data(input, name)?,
-            VANILLA_FOOD_COMPONENT_ID => skip_food(input, name)?,
-            VANILLA_TOOL_COMPONENT_ID => skip_tool(input, name)?,
-            VANILLA_WEAPON_COMPONENT_ID => skip_weapon(input, name)?,
-            _ => return Err(ConnectionError::Codec(name)),
+            InventoryComponentCodec::CustomModelData => skip_custom_model_data(input, name)?,
+            InventoryComponentCodec::Food => skip_food(input, name)?,
+            InventoryComponentCodec::Tool => skip_tool(input, name)?,
+            InventoryComponentCodec::Weapon => skip_weapon(input, name)?,
         }
         positive_component_type_ids.push(component_type_id);
     }
@@ -5925,9 +4568,10 @@ fn decode_palette_values(
 #[cfg(test)]
 mod tests {
     use super::{
-        PLAY_CLIENTBOUND_ADD_ENTITY_PACKET_ID, PLAY_CLIENTBOUND_BLOCK_CHANGED_ACK_PACKET_ID,
-        PLAY_CLIENTBOUND_BLOCK_DESTRUCTION_PACKET_ID, PLAY_CLIENTBOUND_BLOCK_UPDATE_PACKET_ID,
-        PLAY_CLIENTBOUND_CHUNK_PACKET_ID, PLAY_CLIENTBOUND_CONTAINER_SET_CONTENT_PACKET_ID,
+        InventoryComponentCodec, PLAY_CLIENTBOUND_ADD_ENTITY_PACKET_ID,
+        PLAY_CLIENTBOUND_BLOCK_CHANGED_ACK_PACKET_ID, PLAY_CLIENTBOUND_BLOCK_DESTRUCTION_PACKET_ID,
+        PLAY_CLIENTBOUND_BLOCK_UPDATE_PACKET_ID, PLAY_CLIENTBOUND_CHUNK_PACKET_ID,
+        PLAY_CLIENTBOUND_CONTAINER_SET_CONTENT_PACKET_ID,
         PLAY_CLIENTBOUND_CONTAINER_SET_SLOT_PACKET_ID, PLAY_CLIENTBOUND_KEEP_ALIVE_PACKET_ID,
         PLAY_CLIENTBOUND_LOGIN_PACKET_ID, PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID,
         PLAY_CLIENTBOUND_REMOVE_MOB_EFFECT_PACKET_ID, PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID,
@@ -5940,57 +4584,15 @@ mod tests {
         PLAY_SERVERBOUND_SET_CREATIVE_MODE_SLOT_PACKET_ID, PLAY_SERVERBOUND_USE_ITEM_ON_PACKET_ID,
         PLAY_SERVERBOUND_USE_ITEM_PACKET_ID, STATUS_CLIENTBOUND_PONG_RESPONSE_PACKET_ID,
         STATUS_CLIENTBOUND_RESPONSE_PACKET_ID, STATUS_SERVERBOUND_PING_REQUEST_PACKET_ID,
-        STATUS_SERVERBOUND_REQUEST_PACKET_ID, VANILLA_BASE_COLOR_COMPONENT_ID,
-        VANILLA_BREAK_SOUND_COMPONENT_ID, VANILLA_CAT_COLLAR_COMPONENT_ID,
-        VANILLA_CUSTOM_MODEL_DATA_COMPONENT_HASH, VANILLA_CUSTOM_MODEL_DATA_COMPONENT_ID,
-        VANILLA_DAMAGE_COMPONENT_ID, VANILLA_DAMAGE_TYPE_COMPONENT_ID, VANILLA_DYE_COMPONENT_ID,
-        VANILLA_DYED_COLOR_COMPONENT_ID, VANILLA_ENCHANTABLE_COMPONENT_ID,
-        VANILLA_ENCHANTMENT_GLINT_OVERRIDE_COMPONENT_ID, VANILLA_FOOD_COMPONENT_HASH,
-        VANILLA_FOOD_COMPONENT_ID, VANILLA_GENERIC_DAMAGE_TYPE_REGISTRY_ID,
-        VANILLA_GLIDER_COMPONENT_ID, VANILLA_ITEM_MODEL_COMPONENT_ID,
-        VANILLA_MAP_COLOR_COMPONENT_ID, VANILLA_MAP_ID_COMPONENT_ID,
-        VANILLA_MAX_DAMAGE_COMPONENT_ID, VANILLA_MAX_STACK_SIZE_COMPONENT_ID,
-        VANILLA_MINIMUM_ATTACK_CHARGE_COMPONENT_ID, VANILLA_NOTE_BLOCK_SOUND_COMPONENT_ID,
-        VANILLA_OMINOUS_BOTTLE_AMPLIFIER_COMPONENT_ID, VANILLA_POTION_DURATION_SCALE_COMPONENT_ID,
-        VANILLA_PUFFERFISH_ITEM_REGISTRY_ID, VANILLA_RARITY_COMPONENT_ID,
-        VANILLA_REPAIR_COST_COMPONENT_ID, VANILLA_SHEEP_COLOR_COMPONENT_ID,
-        VANILLA_STONE_BASE_COLOR_COMPONENT_HASH, VANILLA_STONE_BREAK_SOUND_COMPONENT_HASH,
-        VANILLA_STONE_BREAK_SOUND_REGISTRY_ID, VANILLA_STONE_CAT_COLLAR_COMPONENT_HASH,
-        VANILLA_STONE_DAMAGE_COMPONENT_HASH, VANILLA_STONE_DAMAGE_TYPE_COMPONENT_HASH,
-        VANILLA_STONE_DYE_COMPONENT_HASH, VANILLA_STONE_DYED_COLOR_COMPONENT_HASH,
-        VANILLA_STONE_ENCHANTABLE_COMPONENT_HASH,
-        VANILLA_STONE_ENCHANTMENT_GLINT_OVERRIDE_COMPONENT_HASH,
-        VANILLA_STONE_GLIDER_COMPONENT_HASH, VANILLA_STONE_ITEM_MODEL_COMPONENT_HASH,
-        VANILLA_STONE_ITEM_REGISTRY_ID, VANILLA_STONE_MAP_COLOR_COMPONENT_HASH,
-        VANILLA_STONE_MAP_ID_COMPONENT_HASH, VANILLA_STONE_MAX_DAMAGE_COMPONENT_HASH,
-        VANILLA_STONE_MAX_STACK_SIZE_COMPONENT_HASH,
-        VANILLA_STONE_MINIMUM_ATTACK_CHARGE_COMPONENT_HASH,
-        VANILLA_STONE_NOTE_BLOCK_SOUND_COMPONENT_HASH,
-        VANILLA_STONE_OMINOUS_BOTTLE_AMPLIFIER_COMPONENT_HASH,
-        VANILLA_STONE_POTION_DURATION_SCALE_COMPONENT_HASH, VANILLA_STONE_RARITY_COMPONENT_HASH,
-        VANILLA_STONE_REPAIR_COST_COMPONENT_HASH, VANILLA_STONE_SHEEP_COLOR_COMPONENT_HASH,
-        VANILLA_STONE_TOOL_COMPONENT_HASH, VANILLA_STONE_TOOLTIP_STYLE_COMPONENT_HASH,
-        VANILLA_STONE_TROPICAL_FISH_BASE_COLOR_COMPONENT_HASH,
-        VANILLA_STONE_TROPICAL_FISH_PATTERN_COLOR_COMPONENT_HASH,
-        VANILLA_STONE_TROPICAL_FISH_PATTERN_COMPONENT_HASH,
-        VANILLA_STONE_UNBREAKABLE_COMPONENT_HASH, VANILLA_STONE_USE_EFFECTS_COMPONENT_HASH,
-        VANILLA_STONE_WEAPON_COMPONENT_HASH, VANILLA_STONE_WOLF_COLLAR_COMPONENT_HASH,
-        VANILLA_TOOL_COMPONENT_ID, VANILLA_TOOLTIP_STYLE_COMPONENT_ID,
-        VANILLA_TROPICAL_FISH_BASE_COLOR_COMPONENT_ID,
-        VANILLA_TROPICAL_FISH_PATTERN_COLOR_COMPONENT_ID,
-        VANILLA_TROPICAL_FISH_PATTERN_COMPONENT_ID, VANILLA_UNBREAKABLE_COMPONENT_ID,
-        VANILLA_USE_EFFECTS_COMPONENT_ID, VANILLA_WEAPON_COMPONENT_ID,
-        VANILLA_WOLF_COLLAR_COMPONENT_ID, decode_packet_frame, encode_abort_destroy_block,
-        encode_creative_item_slot, encode_creative_stone_slot, encode_inventory_click_with_input,
+        STATUS_SERVERBOUND_REQUEST_PACKET_ID, VANILLA_ITEM_COMPONENT_CONFORMANCE,
+        decode_packet_frame, encode_abort_destroy_block, encode_creative_item_slot,
+        encode_creative_stone_slot, encode_inventory_click_with_input,
         encode_inventory_drag_empty_cancel_state_correction,
         encode_inventory_pickup_state_correction,
-        encode_inventory_pickup_with_component_correct_prediction,
         encode_inventory_pickup_with_component_hash_prediction,
-        encode_inventory_pickup_with_exact_component_prediction,
-        encode_inventory_pickup_with_max_damage_prediction,
+        encode_inventory_pickup_with_component_spec_prediction,
         encode_inventory_pickup_with_partial_changed_slot_prediction,
         encode_inventory_pickup_with_prediction,
-        encode_inventory_pickup_with_unbreakable_prediction,
         encode_inventory_pickup_with_wrong_both_prediction,
         encode_inventory_pickup_with_wrong_carried_prediction,
         encode_inventory_pickup_with_wrong_slot_prediction,
@@ -7115,2525 +5717,180 @@ mod tests {
         assert!(input.is_empty());
     }
 
-    #[test]
-    fn inventory_component_correct_prediction_encoder_keeps_java_hash() {
-        let mut payload = Vec::new();
-        encode_inventory_pickup_with_component_correct_prediction(&mut payload, 2, 1, 1_046)
-            .expect("correct component prediction packet");
-
-        let mut input = payload.as_slice();
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container id"),
-            0
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("state id"), 2);
-        assert_eq!(i16::from_be_bytes(input[..2].try_into().expect("slot")), 36);
-        input = &input[2..];
-        assert_eq!(input[0], 0);
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container input"),
-            0
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("changed slot count"),
-            1
-        );
-        assert_eq!(
-            i16::from_be_bytes(input[..2].try_into().expect("changed slot")),
-            36
-        );
-        input = &input[2..];
-        assert_eq!(input[0], 0, "changed slot should be empty");
-        input = &input[1..];
-        assert_eq!(input[0], 1, "carried should be non-empty");
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("item registry id"),
-            1_046
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("item count"), 1);
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component map count"),
-            1
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component type id"),
-            VANILLA_CUSTOM_MODEL_DATA_COMPONENT_ID
-        );
-        assert_eq!(
-            i32::from_be_bytes(input[..4].try_into().expect("component hash")),
-            VANILLA_CUSTOM_MODEL_DATA_COMPONENT_HASH
-        );
-        input = &input[4..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("removed component count"),
-            0
-        );
-        assert!(input.is_empty());
+    fn write_component_fixture(codec: InventoryComponentCodec, output: &mut Vec<u8>) {
+        match codec {
+            InventoryComponentCodec::VarInt | InventoryComponentCodec::RegistryId => {
+                crate::wire::write_varint(0, output);
+            }
+            InventoryComponentCodec::Unit => {}
+            InventoryComponentCodec::Float => output.extend_from_slice(&0.0_f32.to_be_bytes()),
+            InventoryComponentCodec::Byte => output.push(0),
+            InventoryComponentCodec::Int => output.extend_from_slice(&0_i32.to_be_bytes()),
+            InventoryComponentCodec::Identifier => {
+                let identifier = crate::identifier::Identifier::parse("minecraft:test")
+                    .expect("identifier fixture");
+                crate::identifier::write_identifier(&identifier, output)
+                    .expect("identifier fixture encoding");
+            }
+            InventoryComponentCodec::UseEffects => {
+                output.push(1);
+                output.push(0);
+                output.extend_from_slice(&1.0_f32.to_be_bytes());
+            }
+            InventoryComponentCodec::CustomModelData => {
+                crate::wire::write_varint(1, output);
+                output.extend_from_slice(&1.0_f32.to_be_bytes());
+                for _ in 0..3 {
+                    crate::wire::write_varint(0, output);
+                }
+            }
+            InventoryComponentCodec::Food => {
+                crate::wire::write_varint(1, output);
+                output.extend_from_slice(&0.1_f32.to_be_bytes());
+                output.push(1);
+            }
+            InventoryComponentCodec::Tool => {
+                crate::wire::write_varint(0, output);
+                output.extend_from_slice(&1.0_f32.to_be_bytes());
+                crate::wire::write_varint(0, output);
+                output.push(1);
+            }
+            InventoryComponentCodec::Weapon => {
+                crate::wire::write_varint(1, output);
+                output.extend_from_slice(&0.0_f32.to_be_bytes());
+            }
+        }
     }
 
     #[test]
-    fn inventory_food_component_prediction_encoder_keeps_java_hash() {
-        let mut payload = Vec::new();
-        encode_inventory_pickup_with_exact_component_prediction(
-            &mut payload,
-            2,
-            1,
-            VANILLA_PUFFERFISH_ITEM_REGISTRY_ID,
-            VANILLA_FOOD_COMPONENT_ID,
-            VANILLA_FOOD_COMPONENT_HASH,
-        )
-        .expect("food component prediction packet");
+    fn inventory_item_component_conformance_encoder_uses_table_rows() {
+        for spec in VANILLA_ITEM_COMPONENT_CONFORMANCE {
+            let carried_ids: Vec<_> = spec
+                .carried_components
+                .iter()
+                .map(|(component_type_id, _)| *component_type_id)
+                .collect();
+            assert_eq!(
+                carried_ids.as_slice(),
+                spec.expected_positive_component_type_ids,
+                "table component ids for {}",
+                spec.component_path
+            );
+            assert_eq!(
+                spec.carried_components
+                    .iter()
+                    .find(|(component_type_id, _)| *component_type_id == spec.component_type_id)
+                    .map(|(_, hash)| *hash),
+                Some(spec.component_hash),
+                "table component hash for {}",
+                spec.component_path
+            );
 
-        let mut input = payload.as_slice();
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container id"),
-            0
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("state id"), 2);
-        assert_eq!(i16::from_be_bytes(input[..2].try_into().expect("slot")), 36);
-        input = &input[2..];
-        assert_eq!(input[0], 0);
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container input"),
-            0
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("changed slot count"),
-            1
-        );
-        input = &input[2..];
-        assert_eq!(input[0], 0, "changed slot should be empty");
-        input = &input[1..];
-        assert_eq!(input[0], 1, "carried should be non-empty");
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("item registry id"),
-            VANILLA_PUFFERFISH_ITEM_REGISTRY_ID
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("item count"), 1);
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component map count"),
-            1
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component type id"),
-            VANILLA_FOOD_COMPONENT_ID
-        );
-        assert_eq!(
-            i32::from_be_bytes(input[..4].try_into().expect("component hash")),
-            VANILLA_FOOD_COMPONENT_HASH
-        );
-        input = &input[4..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("removed component count"),
-            0
-        );
-        assert!(input.is_empty());
+            let mut payload = Vec::new();
+            encode_inventory_pickup_with_component_spec_prediction(&mut payload, 2, spec)
+                .expect("table component prediction packet");
+            let mut input = payload.as_slice();
+            assert_eq!(
+                crate::wire::read_varint(&mut input).expect("container id"),
+                0
+            );
+            assert_eq!(crate::wire::read_varint(&mut input).expect("state id"), 2);
+            assert_eq!(i16::from_be_bytes(input[..2].try_into().expect("slot")), 36);
+            input = &input[2..];
+            assert_eq!(input[0], 0, "button");
+            input = &input[1..];
+            assert_eq!(
+                crate::wire::read_varint(&mut input).expect("container input"),
+                0
+            );
+            assert_eq!(
+                crate::wire::read_varint(&mut input).expect("changed slot count"),
+                1
+            );
+            assert_eq!(
+                i16::from_be_bytes(input[..2].try_into().expect("changed slot")),
+                36
+            );
+            input = &input[2..];
+            assert_eq!(input[0], 0, "changed slot should be empty");
+            input = &input[1..];
+            assert_eq!(input[0], 1, "carried should be non-empty");
+            input = &input[1..];
+            assert_eq!(
+                crate::wire::read_varint(&mut input).expect("item registry id"),
+                spec.item_registry_id
+            );
+            assert_eq!(crate::wire::read_varint(&mut input).expect("item count"), 1);
+            assert_eq!(
+                crate::wire::read_varint(&mut input).expect("component map count"),
+                spec.carried_components.len() as i32
+            );
+            for (expected_type_id, expected_hash) in spec.carried_components {
+                assert_eq!(
+                    crate::wire::read_varint(&mut input).expect("component type id"),
+                    *expected_type_id,
+                    "component type for {}",
+                    spec.component_path
+                );
+                assert_eq!(
+                    i32::from_be_bytes(input[..4].try_into().expect("component hash")),
+                    *expected_hash,
+                    "component hash for {}",
+                    spec.component_path
+                );
+                input = &input[4..];
+            }
+            assert_eq!(
+                crate::wire::read_varint(&mut input).expect("removed component count"),
+                0
+            );
+            assert!(
+                input.is_empty(),
+                "trailing bytes for {}",
+                spec.component_path
+            );
+        }
     }
 
     #[test]
-    fn inventory_damage_component_prediction_encoder_keeps_java_hash() {
-        let mut payload = Vec::new();
-        encode_inventory_pickup_with_exact_component_prediction(
-            &mut payload,
-            2,
-            1,
-            VANILLA_STONE_ITEM_REGISTRY_ID,
-            VANILLA_DAMAGE_COMPONENT_ID,
-            VANILLA_STONE_DAMAGE_COMPONENT_HASH,
-        )
-        .expect("damage component prediction packet");
-
-        let mut input = payload.as_slice();
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container id"),
-            0
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("state id"), 2);
-        assert_eq!(i16::from_be_bytes(input[..2].try_into().expect("slot")), 36);
-        input = &input[2..];
-        assert_eq!(input[0], 0);
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container input"),
-            0
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("changed slot count"),
-            1
-        );
-        input = &input[2..];
-        assert_eq!(input[0], 0, "changed slot should be empty");
-        input = &input[1..];
-        assert_eq!(input[0], 1, "carried should be non-empty");
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("item registry id"),
-            VANILLA_STONE_ITEM_REGISTRY_ID
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("item count"), 1);
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component map count"),
-            1
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component type id"),
-            VANILLA_DAMAGE_COMPONENT_ID
-        );
-        assert_eq!(
-            i32::from_be_bytes(input[..4].try_into().expect("component hash")),
-            VANILLA_STONE_DAMAGE_COMPONENT_HASH
-        );
-        input = &input[4..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("removed component count"),
-            0
-        );
-        assert!(input.is_empty());
-    }
-
-    #[test]
-    fn inventory_tool_component_prediction_encoder_keeps_java_hash() {
-        let mut payload = Vec::new();
-        encode_inventory_pickup_with_exact_component_prediction(
-            &mut payload,
-            2,
-            1,
-            VANILLA_STONE_ITEM_REGISTRY_ID,
-            VANILLA_TOOL_COMPONENT_ID,
-            VANILLA_STONE_TOOL_COMPONENT_HASH,
-        )
-        .expect("tool component prediction packet");
-
-        let mut input = payload.as_slice();
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container id"),
-            0
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("state id"), 2);
-        assert_eq!(i16::from_be_bytes(input[..2].try_into().expect("slot")), 36);
-        input = &input[2..];
-        assert_eq!(input[0], 0);
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container input"),
-            0
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("changed slot count"),
-            1
-        );
-        input = &input[2..];
-        assert_eq!(input[0], 0, "changed slot should be empty");
-        input = &input[1..];
-        assert_eq!(input[0], 1, "carried should be non-empty");
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("item registry id"),
-            VANILLA_STONE_ITEM_REGISTRY_ID
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("item count"), 1);
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component map count"),
-            1
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component type id"),
-            VANILLA_TOOL_COMPONENT_ID
-        );
-        assert_eq!(
-            i32::from_be_bytes(input[..4].try_into().expect("component hash")),
-            VANILLA_STONE_TOOL_COMPONENT_HASH
-        );
-        input = &input[4..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("removed component count"),
-            0
-        );
-        assert!(input.is_empty());
-    }
-
-    #[test]
-    fn inventory_weapon_component_prediction_encoder_keeps_java_hash() {
-        let mut payload = Vec::new();
-        encode_inventory_pickup_with_exact_component_prediction(
-            &mut payload,
-            2,
-            1,
-            VANILLA_STONE_ITEM_REGISTRY_ID,
-            VANILLA_WEAPON_COMPONENT_ID,
-            VANILLA_STONE_WEAPON_COMPONENT_HASH,
-        )
-        .expect("weapon component prediction packet");
-
-        let mut input = payload.as_slice();
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container id"),
-            0
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("state id"), 2);
-        assert_eq!(i16::from_be_bytes(input[..2].try_into().expect("slot")), 36);
-        input = &input[2..];
-        assert_eq!(input[0], 0);
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container input"),
-            0
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("changed slot count"),
-            1
-        );
-        input = &input[2..];
-        assert_eq!(input[0], 0, "changed slot should be empty");
-        input = &input[1..];
-        assert_eq!(input[0], 1, "carried should be non-empty");
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("item registry id"),
-            VANILLA_STONE_ITEM_REGISTRY_ID
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("item count"), 1);
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component map count"),
-            1
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component type id"),
-            VANILLA_WEAPON_COMPONENT_ID
-        );
-        assert_eq!(
-            i32::from_be_bytes(input[..4].try_into().expect("component hash")),
-            VANILLA_STONE_WEAPON_COMPONENT_HASH
-        );
-        input = &input[4..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("removed component count"),
-            0
-        );
-        assert!(input.is_empty());
-    }
-
-    #[test]
-    fn inventory_max_stack_size_component_prediction_encoder_keeps_java_hash() {
-        let mut payload = Vec::new();
-        encode_inventory_pickup_with_exact_component_prediction(
-            &mut payload,
-            2,
-            1,
-            VANILLA_STONE_ITEM_REGISTRY_ID,
-            VANILLA_MAX_STACK_SIZE_COMPONENT_ID,
-            VANILLA_STONE_MAX_STACK_SIZE_COMPONENT_HASH,
-        )
-        .expect("max stack size component prediction packet");
-
-        let mut input = payload.as_slice();
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container id"),
-            0
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("state id"), 2);
-        assert_eq!(i16::from_be_bytes(input[..2].try_into().expect("slot")), 36);
-        input = &input[2..];
-        assert_eq!(input[0], 0);
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container input"),
-            0
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("changed slot count"),
-            1
-        );
-        input = &input[2..];
-        assert_eq!(input[0], 0, "changed slot should be empty");
-        input = &input[1..];
-        assert_eq!(input[0], 1, "carried should be non-empty");
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("item registry id"),
-            VANILLA_STONE_ITEM_REGISTRY_ID
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("item count"), 1);
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component map count"),
-            1
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component type id"),
-            VANILLA_MAX_STACK_SIZE_COMPONENT_ID
-        );
-        assert_eq!(
-            i32::from_be_bytes(input[..4].try_into().expect("component hash")),
-            VANILLA_STONE_MAX_STACK_SIZE_COMPONENT_HASH
-        );
-        input = &input[4..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("removed component count"),
-            0
-        );
-        assert!(input.is_empty());
-    }
-
-    #[test]
-    fn inventory_max_damage_component_prediction_encoder_keeps_java_hash() {
-        let mut payload = Vec::new();
-        encode_inventory_pickup_with_max_damage_prediction(
-            &mut payload,
-            2,
-            1,
-            VANILLA_STONE_ITEM_REGISTRY_ID,
-        )
-        .expect("max damage component prediction packet");
-
-        let mut input = payload.as_slice();
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container id"),
-            0
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("state id"), 2);
-        assert_eq!(i16::from_be_bytes(input[..2].try_into().expect("slot")), 36);
-        input = &input[2..];
-        assert_eq!(input[0], 0);
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container input"),
-            0
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("changed slot count"),
-            1
-        );
-        input = &input[2..];
-        assert_eq!(input[0], 0, "changed slot should be empty");
-        input = &input[1..];
-        assert_eq!(input[0], 1, "carried should be non-empty");
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("item registry id"),
-            VANILLA_STONE_ITEM_REGISTRY_ID
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("item count"), 1);
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component map count"),
-            2
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component type id"),
-            VANILLA_MAX_STACK_SIZE_COMPONENT_ID
-        );
-        assert_eq!(
-            i32::from_be_bytes(input[..4].try_into().expect("component hash")),
-            VANILLA_STONE_MAX_STACK_SIZE_COMPONENT_HASH
-        );
-        input = &input[4..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component type id"),
-            VANILLA_MAX_DAMAGE_COMPONENT_ID
-        );
-        assert_eq!(
-            i32::from_be_bytes(input[..4].try_into().expect("component hash")),
-            VANILLA_STONE_MAX_DAMAGE_COMPONENT_HASH
-        );
-        input = &input[4..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("removed component count"),
-            0
-        );
-        assert!(input.is_empty());
-    }
-
-    #[test]
-    fn inventory_unbreakable_component_prediction_encoder_keeps_java_hash() {
-        let mut payload = Vec::new();
-        encode_inventory_pickup_with_unbreakable_prediction(
-            &mut payload,
-            2,
-            1,
-            VANILLA_STONE_ITEM_REGISTRY_ID,
-        )
-        .expect("unbreakable component prediction packet");
-
-        let mut input = payload.as_slice();
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container id"),
-            0
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("state id"), 2);
-        assert_eq!(i16::from_be_bytes(input[..2].try_into().expect("slot")), 36);
-        input = &input[2..];
-        assert_eq!(input[0], 0);
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container input"),
-            0
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("changed slot count"),
-            1
-        );
-        input = &input[2..];
-        assert_eq!(input[0], 0, "changed slot should be empty");
-        input = &input[1..];
-        assert_eq!(input[0], 1, "carried should be non-empty");
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("item registry id"),
-            VANILLA_STONE_ITEM_REGISTRY_ID
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("item count"), 1);
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component map count"),
-            1
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component type id"),
-            VANILLA_UNBREAKABLE_COMPONENT_ID
-        );
-        assert_eq!(
-            i32::from_be_bytes(input[..4].try_into().expect("component hash")),
-            VANILLA_STONE_UNBREAKABLE_COMPONENT_HASH
-        );
-        input = &input[4..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("removed component count"),
-            0
-        );
-        assert!(input.is_empty());
-    }
-
-    #[test]
-    fn inventory_minimum_attack_charge_component_prediction_encoder_keeps_java_hash() {
-        let mut payload = Vec::new();
-        encode_inventory_pickup_with_exact_component_prediction(
-            &mut payload,
-            2,
-            1,
-            VANILLA_STONE_ITEM_REGISTRY_ID,
-            VANILLA_MINIMUM_ATTACK_CHARGE_COMPONENT_ID,
-            VANILLA_STONE_MINIMUM_ATTACK_CHARGE_COMPONENT_HASH,
-        )
-        .expect("minimum attack charge component prediction packet");
-
-        let mut input = payload.as_slice();
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container id"),
-            0
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("state id"), 2);
-        assert_eq!(i16::from_be_bytes(input[..2].try_into().expect("slot")), 36);
-        input = &input[2..];
-        assert_eq!(input[0], 0);
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container input"),
-            0
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("changed slot count"),
-            1
-        );
-        input = &input[2..];
-        assert_eq!(input[0], 0, "changed slot should be empty");
-        input = &input[1..];
-        assert_eq!(input[0], 1, "carried should be non-empty");
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("item registry id"),
-            VANILLA_STONE_ITEM_REGISTRY_ID
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("item count"), 1);
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component map count"),
-            1
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component type id"),
-            VANILLA_MINIMUM_ATTACK_CHARGE_COMPONENT_ID
-        );
-        assert_eq!(
-            i32::from_be_bytes(input[..4].try_into().expect("component hash")),
-            VANILLA_STONE_MINIMUM_ATTACK_CHARGE_COMPONENT_HASH
-        );
-        input = &input[4..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("removed component count"),
-            0
-        );
-        assert!(input.is_empty());
-    }
-
-    #[test]
-    fn inventory_repair_cost_component_prediction_encoder_keeps_java_hash() {
-        let mut payload = Vec::new();
-        encode_inventory_pickup_with_exact_component_prediction(
-            &mut payload,
-            2,
-            1,
-            VANILLA_STONE_ITEM_REGISTRY_ID,
-            VANILLA_REPAIR_COST_COMPONENT_ID,
-            VANILLA_STONE_REPAIR_COST_COMPONENT_HASH,
-        )
-        .expect("repair cost component prediction packet");
-
-        let mut input = payload.as_slice();
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container id"),
-            0
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("state id"), 2);
-        assert_eq!(i16::from_be_bytes(input[..2].try_into().expect("slot")), 36);
-        input = &input[2..];
-        assert_eq!(input[0], 0);
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container input"),
-            0
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("changed slot count"),
-            1
-        );
-        input = &input[2..];
-        assert_eq!(input[0], 0, "changed slot should be empty");
-        input = &input[1..];
-        assert_eq!(input[0], 1, "carried should be non-empty");
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("item registry id"),
-            VANILLA_STONE_ITEM_REGISTRY_ID
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("item count"), 1);
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component map count"),
-            1
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component type id"),
-            VANILLA_REPAIR_COST_COMPONENT_ID
-        );
-        assert_eq!(
-            i32::from_be_bytes(input[..4].try_into().expect("component hash")),
-            VANILLA_STONE_REPAIR_COST_COMPONENT_HASH
-        );
-        input = &input[4..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("removed component count"),
-            0
-        );
-        assert!(input.is_empty());
-    }
-
-    #[test]
-    fn inventory_enchantment_glint_override_component_prediction_encoder_keeps_java_hash() {
-        let mut payload = Vec::new();
-        encode_inventory_pickup_with_exact_component_prediction(
-            &mut payload,
-            2,
-            1,
-            VANILLA_STONE_ITEM_REGISTRY_ID,
-            VANILLA_ENCHANTMENT_GLINT_OVERRIDE_COMPONENT_ID,
-            VANILLA_STONE_ENCHANTMENT_GLINT_OVERRIDE_COMPONENT_HASH,
-        )
-        .expect("enchantment glint override component prediction packet");
-
-        let mut input = payload.as_slice();
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container id"),
-            0
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("state id"), 2);
-        assert_eq!(i16::from_be_bytes(input[..2].try_into().expect("slot")), 36);
-        input = &input[2..];
-        assert_eq!(input[0], 0);
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container input"),
-            0
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("changed slot count"),
-            1
-        );
-        input = &input[2..];
-        assert_eq!(input[0], 0, "changed slot should be empty");
-        input = &input[1..];
-        assert_eq!(input[0], 1, "carried should be non-empty");
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("item registry id"),
-            VANILLA_STONE_ITEM_REGISTRY_ID
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("item count"), 1);
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component map count"),
-            1
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component type id"),
-            VANILLA_ENCHANTMENT_GLINT_OVERRIDE_COMPONENT_ID
-        );
-        assert_eq!(
-            i32::from_be_bytes(input[..4].try_into().expect("component hash")),
-            VANILLA_STONE_ENCHANTMENT_GLINT_OVERRIDE_COMPONENT_HASH
-        );
-        input = &input[4..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("removed component count"),
-            0
-        );
-        assert!(input.is_empty());
-    }
-
-    #[test]
-    fn inventory_rarity_component_prediction_encoder_keeps_java_hash() {
-        let mut payload = Vec::new();
-        encode_inventory_pickup_with_exact_component_prediction(
-            &mut payload,
-            2,
-            1,
-            VANILLA_STONE_ITEM_REGISTRY_ID,
-            VANILLA_RARITY_COMPONENT_ID,
-            VANILLA_STONE_RARITY_COMPONENT_HASH,
-        )
-        .expect("rarity component prediction packet");
-
-        let mut input = payload.as_slice();
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container id"),
-            0
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("state id"), 2);
-        assert_eq!(i16::from_be_bytes(input[..2].try_into().expect("slot")), 36);
-        input = &input[2..];
-        assert_eq!(input[0], 0);
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container input"),
-            0
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("changed slot count"),
-            1
-        );
-        input = &input[2..];
-        assert_eq!(input[0], 0, "changed slot should be empty");
-        input = &input[1..];
-        assert_eq!(input[0], 1, "carried should be non-empty");
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("item registry id"),
-            VANILLA_STONE_ITEM_REGISTRY_ID
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("item count"), 1);
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component map count"),
-            1
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component type id"),
-            VANILLA_RARITY_COMPONENT_ID
-        );
-        assert_eq!(
-            i32::from_be_bytes(input[..4].try_into().expect("component hash")),
-            VANILLA_STONE_RARITY_COMPONENT_HASH
-        );
-        input = &input[4..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("removed component count"),
-            0
-        );
-        assert!(input.is_empty());
-    }
-
-    #[test]
-    fn inventory_item_model_component_prediction_encoder_keeps_java_hash() {
-        let mut payload = Vec::new();
-        encode_inventory_pickup_with_exact_component_prediction(
-            &mut payload,
-            2,
-            1,
-            VANILLA_STONE_ITEM_REGISTRY_ID,
-            VANILLA_ITEM_MODEL_COMPONENT_ID,
-            VANILLA_STONE_ITEM_MODEL_COMPONENT_HASH,
-        )
-        .expect("item model component prediction packet");
-
-        let mut input = payload.as_slice();
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container id"),
-            0
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("state id"), 2);
-        assert_eq!(i16::from_be_bytes(input[..2].try_into().expect("slot")), 36);
-        input = &input[2..];
-        assert_eq!(input[0], 0);
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container input"),
-            0
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("changed slot count"),
-            1
-        );
-        input = &input[2..];
-        assert_eq!(input[0], 0, "changed slot should be empty");
-        input = &input[1..];
-        assert_eq!(input[0], 1, "carried should be non-empty");
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("item registry id"),
-            VANILLA_STONE_ITEM_REGISTRY_ID
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("item count"), 1);
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component map count"),
-            1
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component type id"),
-            VANILLA_ITEM_MODEL_COMPONENT_ID
-        );
-        assert_eq!(
-            i32::from_be_bytes(input[..4].try_into().expect("component hash")),
-            VANILLA_STONE_ITEM_MODEL_COMPONENT_HASH
-        );
-        input = &input[4..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("removed component count"),
-            0
-        );
-        assert!(input.is_empty());
-    }
-
-    #[test]
-    fn inventory_use_effects_component_prediction_encoder_keeps_java_hash() {
-        let mut payload = Vec::new();
-        encode_inventory_pickup_with_exact_component_prediction(
-            &mut payload,
-            2,
-            1,
-            VANILLA_STONE_ITEM_REGISTRY_ID,
-            VANILLA_USE_EFFECTS_COMPONENT_ID,
-            VANILLA_STONE_USE_EFFECTS_COMPONENT_HASH,
-        )
-        .expect("use effects component prediction packet");
-
-        let mut input = payload.as_slice();
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container id"),
-            0
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("state id"), 2);
-        assert_eq!(i16::from_be_bytes(input[..2].try_into().expect("slot")), 36);
-        input = &input[2..];
-        assert_eq!(input[0], 0);
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container input"),
-            0
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("changed slot count"),
-            1
-        );
-        input = &input[2..];
-        assert_eq!(input[0], 0, "changed slot should be empty");
-        input = &input[1..];
-        assert_eq!(input[0], 1, "carried should be non-empty");
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("item registry id"),
-            VANILLA_STONE_ITEM_REGISTRY_ID
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("item count"), 1);
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component map count"),
-            1
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component type id"),
-            VANILLA_USE_EFFECTS_COMPONENT_ID
-        );
-        assert_eq!(
-            i32::from_be_bytes(input[..4].try_into().expect("component hash")),
-            VANILLA_STONE_USE_EFFECTS_COMPONENT_HASH
-        );
-        input = &input[4..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("removed component count"),
-            0
-        );
-        assert!(input.is_empty());
-    }
-
-    #[test]
-    fn inventory_damage_type_component_prediction_encoder_keeps_java_hash() {
-        let mut payload = Vec::new();
-        encode_inventory_pickup_with_exact_component_prediction(
-            &mut payload,
-            2,
-            1,
-            VANILLA_STONE_ITEM_REGISTRY_ID,
-            VANILLA_DAMAGE_TYPE_COMPONENT_ID,
-            VANILLA_STONE_DAMAGE_TYPE_COMPONENT_HASH,
-        )
-        .expect("damage type component prediction packet");
-
-        let mut input = payload.as_slice();
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container id"),
-            0
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("state id"), 2);
-        assert_eq!(i16::from_be_bytes(input[..2].try_into().expect("slot")), 36);
-        input = &input[2..];
-        assert_eq!(input[0], 0);
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container input"),
-            0
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("changed slot count"),
-            1
-        );
-        input = &input[2..];
-        assert_eq!(input[0], 0, "changed slot should be empty");
-        input = &input[1..];
-        assert_eq!(input[0], 1, "carried should be non-empty");
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("item registry id"),
-            VANILLA_STONE_ITEM_REGISTRY_ID
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("item count"), 1);
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component map count"),
-            1
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component type id"),
-            VANILLA_DAMAGE_TYPE_COMPONENT_ID
-        );
-        assert_eq!(
-            i32::from_be_bytes(input[..4].try_into().expect("component hash")),
-            VANILLA_STONE_DAMAGE_TYPE_COMPONENT_HASH
-        );
-        input = &input[4..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("removed component count"),
-            0
-        );
-        assert!(input.is_empty());
-    }
-
-    #[test]
-    fn optional_item_stack_parser_consumes_damage_type_registry_id() {
-        let mut payload = Vec::new();
-        crate::wire::write_varint(1, &mut payload);
-        crate::wire::write_varint(VANILLA_STONE_ITEM_REGISTRY_ID, &mut payload);
-        crate::wire::write_varint(1, &mut payload);
-        crate::wire::write_varint(0, &mut payload);
-        crate::wire::write_varint(VANILLA_DAMAGE_TYPE_COMPONENT_ID, &mut payload);
-        crate::wire::write_varint(VANILLA_GENERIC_DAMAGE_TYPE_REGISTRY_ID, &mut payload);
-
-        let mut input = payload.as_slice();
-        let observation = parse_optional_item_stack(&mut input, "damage type item stack")
-            .expect("damage type item stack");
-        assert_eq!(observation.item_count, Some(1));
-        assert_eq!(
-            observation.item_registry_id,
-            Some(VANILLA_STONE_ITEM_REGISTRY_ID)
-        );
-        assert_eq!(
-            observation.positive_component_type_ids,
-            [VANILLA_DAMAGE_TYPE_COMPONENT_ID]
-        );
-        assert!(observation.negative_component_type_ids.is_empty());
-        assert!(input.is_empty());
-    }
-
-    #[test]
-    fn inventory_glider_component_prediction_encoder_keeps_java_hash() {
-        let mut payload = Vec::new();
-        encode_inventory_pickup_with_exact_component_prediction(
-            &mut payload,
-            2,
-            1,
-            VANILLA_STONE_ITEM_REGISTRY_ID,
-            VANILLA_GLIDER_COMPONENT_ID,
-            VANILLA_STONE_GLIDER_COMPONENT_HASH,
-        )
-        .expect("glider component prediction packet");
-
-        let mut input = payload.as_slice();
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container id"),
-            0
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("state id"), 2);
-        assert_eq!(i16::from_be_bytes(input[..2].try_into().expect("slot")), 36);
-        input = &input[2..];
-        assert_eq!(input[0], 0);
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container input"),
-            0
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("changed slot count"),
-            1
-        );
-        input = &input[2..];
-        assert_eq!(input[0], 0, "changed slot should be empty");
-        input = &input[1..];
-        assert_eq!(input[0], 1, "carried should be non-empty");
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("item registry id"),
-            VANILLA_STONE_ITEM_REGISTRY_ID
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("item count"), 1);
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component map count"),
-            1
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component type id"),
-            VANILLA_GLIDER_COMPONENT_ID
-        );
-        assert_eq!(
-            i32::from_be_bytes(input[..4].try_into().expect("component hash")),
-            VANILLA_STONE_GLIDER_COMPONENT_HASH
-        );
-        input = &input[4..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("removed component count"),
-            0
-        );
-        assert!(input.is_empty());
-    }
-
-    #[test]
-    fn optional_item_stack_parser_consumes_glider_unit_without_payload() {
-        let mut payload = Vec::new();
-        crate::wire::write_varint(1, &mut payload);
-        crate::wire::write_varint(VANILLA_STONE_ITEM_REGISTRY_ID, &mut payload);
-        crate::wire::write_varint(1, &mut payload);
-        crate::wire::write_varint(0, &mut payload);
-        crate::wire::write_varint(VANILLA_GLIDER_COMPONENT_ID, &mut payload);
-
-        let mut input = payload.as_slice();
-        let observation =
-            parse_optional_item_stack(&mut input, "glider item stack").expect("glider item stack");
-        assert_eq!(observation.item_count, Some(1));
-        assert_eq!(
-            observation.item_registry_id,
-            Some(VANILLA_STONE_ITEM_REGISTRY_ID)
-        );
-        assert_eq!(
-            observation.positive_component_type_ids,
-            [VANILLA_GLIDER_COMPONENT_ID]
-        );
-        assert!(observation.negative_component_type_ids.is_empty());
-        assert!(input.is_empty());
-    }
-
-    #[test]
-    fn inventory_tooltip_style_component_prediction_encoder_keeps_java_hash() {
-        let mut payload = Vec::new();
-        encode_inventory_pickup_with_exact_component_prediction(
-            &mut payload,
-            2,
-            1,
-            VANILLA_STONE_ITEM_REGISTRY_ID,
-            VANILLA_TOOLTIP_STYLE_COMPONENT_ID,
-            VANILLA_STONE_TOOLTIP_STYLE_COMPONENT_HASH,
-        )
-        .expect("tooltip style component prediction packet");
-
-        let mut input = payload.as_slice();
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container id"),
-            0
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("state id"), 2);
-        assert_eq!(i16::from_be_bytes(input[..2].try_into().expect("slot")), 36);
-        input = &input[2..];
-        assert_eq!(input[0], 0);
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container input"),
-            0
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("changed slot count"),
-            1
-        );
-        input = &input[2..];
-        assert_eq!(input[0], 0, "changed slot should be empty");
-        input = &input[1..];
-        assert_eq!(input[0], 1, "carried should be non-empty");
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("item registry id"),
-            VANILLA_STONE_ITEM_REGISTRY_ID
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("item count"), 1);
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component map count"),
-            1
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component type id"),
-            VANILLA_TOOLTIP_STYLE_COMPONENT_ID
-        );
-        assert_eq!(
-            i32::from_be_bytes(input[..4].try_into().expect("component hash")),
-            VANILLA_STONE_TOOLTIP_STYLE_COMPONENT_HASH
-        );
-        input = &input[4..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("removed component count"),
-            0
-        );
-        assert!(input.is_empty());
-    }
-
-    #[test]
-    fn optional_item_stack_parser_consumes_tooltip_style_identifier() {
-        let mut payload = Vec::new();
-        crate::wire::write_varint(1, &mut payload);
-        crate::wire::write_varint(VANILLA_STONE_ITEM_REGISTRY_ID, &mut payload);
-        crate::wire::write_varint(1, &mut payload);
-        crate::wire::write_varint(0, &mut payload);
-        crate::wire::write_varint(VANILLA_TOOLTIP_STYLE_COMPONENT_ID, &mut payload);
-        let tooltip_style = crate::identifier::Identifier::parse("minecraft:default")
-            .expect("tooltip style identifier");
-        crate::identifier::write_identifier(&tooltip_style, &mut payload)
-            .expect("tooltip style identifier");
-
-        let mut input = payload.as_slice();
-        let observation = parse_optional_item_stack(&mut input, "tooltip style item stack")
-            .expect("tooltip style item stack");
-        assert_eq!(observation.item_count, Some(1));
-        assert_eq!(
-            observation.item_registry_id,
-            Some(VANILLA_STONE_ITEM_REGISTRY_ID)
-        );
-        assert_eq!(
-            observation.positive_component_type_ids,
-            [VANILLA_TOOLTIP_STYLE_COMPONENT_ID]
-        );
-        assert!(observation.negative_component_type_ids.is_empty());
-        assert!(input.is_empty());
-    }
-
-    #[test]
-    fn inventory_enchantable_component_prediction_encoder_keeps_java_hash() {
-        let mut payload = Vec::new();
-        encode_inventory_pickup_with_exact_component_prediction(
-            &mut payload,
-            2,
-            1,
-            VANILLA_STONE_ITEM_REGISTRY_ID,
-            VANILLA_ENCHANTABLE_COMPONENT_ID,
-            VANILLA_STONE_ENCHANTABLE_COMPONENT_HASH,
-        )
-        .expect("enchantable component prediction packet");
-
-        let mut input = payload.as_slice();
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container id"),
-            0
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("state id"), 2);
-        assert_eq!(i16::from_be_bytes(input[..2].try_into().expect("slot")), 36);
-        input = &input[2..];
-        assert_eq!(input[0], 0);
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container input"),
-            0
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("changed slot count"),
-            1
-        );
-        input = &input[2..];
-        assert_eq!(input[0], 0, "changed slot should be empty");
-        input = &input[1..];
-        assert_eq!(input[0], 1, "carried should be non-empty");
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("item registry id"),
-            VANILLA_STONE_ITEM_REGISTRY_ID
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("item count"), 1);
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component map count"),
-            1
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component type id"),
-            VANILLA_ENCHANTABLE_COMPONENT_ID
-        );
-        assert_eq!(
-            i32::from_be_bytes(input[..4].try_into().expect("component hash")),
-            VANILLA_STONE_ENCHANTABLE_COMPONENT_HASH
-        );
-        input = &input[4..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("removed component count"),
-            0
-        );
-        assert!(input.is_empty());
-    }
-
-    #[test]
-    fn optional_item_stack_parser_consumes_enchantable_varint() {
-        let mut payload = Vec::new();
-        crate::wire::write_varint(1, &mut payload);
-        crate::wire::write_varint(VANILLA_STONE_ITEM_REGISTRY_ID, &mut payload);
-        crate::wire::write_varint(1, &mut payload);
-        crate::wire::write_varint(0, &mut payload);
-        crate::wire::write_varint(VANILLA_ENCHANTABLE_COMPONENT_ID, &mut payload);
-        crate::wire::write_varint(10, &mut payload);
-
-        let mut input = payload.as_slice();
-        let observation = parse_optional_item_stack(&mut input, "enchantable item stack")
-            .expect("enchantable item stack");
-        assert_eq!(observation.item_count, Some(1));
-        assert_eq!(
-            observation.item_registry_id,
-            Some(VANILLA_STONE_ITEM_REGISTRY_ID)
-        );
-        assert_eq!(
-            observation.positive_component_type_ids,
-            [VANILLA_ENCHANTABLE_COMPONENT_ID]
-        );
-        assert!(observation.negative_component_type_ids.is_empty());
-        assert!(input.is_empty());
-    }
-
-    #[test]
-    fn inventory_dye_component_prediction_encoder_keeps_java_hash() {
-        let mut payload = Vec::new();
-        encode_inventory_pickup_with_exact_component_prediction(
-            &mut payload,
-            2,
-            1,
-            VANILLA_STONE_ITEM_REGISTRY_ID,
-            VANILLA_DYE_COMPONENT_ID,
-            VANILLA_STONE_DYE_COMPONENT_HASH,
-        )
-        .expect("dye component prediction packet");
-
-        let mut input = payload.as_slice();
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container id"),
-            0
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("state id"), 2);
-        assert_eq!(i16::from_be_bytes(input[..2].try_into().expect("slot")), 36);
-        input = &input[2..];
-        assert_eq!(input[0], 0);
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container input"),
-            0
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("changed slot count"),
-            1
-        );
-        input = &input[2..];
-        assert_eq!(input[0], 0, "changed slot should be empty");
-        input = &input[1..];
-        assert_eq!(input[0], 1, "carried should be non-empty");
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("item registry id"),
-            VANILLA_STONE_ITEM_REGISTRY_ID
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("item count"), 1);
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component map count"),
-            1
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component type id"),
-            VANILLA_DYE_COMPONENT_ID
-        );
-        assert_eq!(
-            i32::from_be_bytes(input[..4].try_into().expect("component hash")),
-            VANILLA_STONE_DYE_COMPONENT_HASH
-        );
-        input = &input[4..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("removed component count"),
-            0
-        );
-        assert!(input.is_empty());
-    }
-
-    #[test]
-    fn optional_item_stack_parser_consumes_dye_varint() {
-        let mut payload = Vec::new();
-        crate::wire::write_varint(1, &mut payload);
-        crate::wire::write_varint(VANILLA_STONE_ITEM_REGISTRY_ID, &mut payload);
-        crate::wire::write_varint(1, &mut payload);
-        crate::wire::write_varint(0, &mut payload);
-        crate::wire::write_varint(VANILLA_DYE_COMPONENT_ID, &mut payload);
-        crate::wire::write_varint(14, &mut payload);
-
-        let mut input = payload.as_slice();
-        let observation =
-            parse_optional_item_stack(&mut input, "dye item stack").expect("dye item stack");
-        assert_eq!(observation.item_count, Some(1));
-        assert_eq!(
-            observation.item_registry_id,
-            Some(VANILLA_STONE_ITEM_REGISTRY_ID)
-        );
-        assert_eq!(
-            observation.positive_component_type_ids,
-            [VANILLA_DYE_COMPONENT_ID]
-        );
-        assert!(observation.negative_component_type_ids.is_empty());
-        assert!(input.is_empty());
-    }
-
-    #[test]
-    fn inventory_dyed_color_component_prediction_encoder_keeps_java_hash() {
-        let mut payload = Vec::new();
-        encode_inventory_pickup_with_exact_component_prediction(
-            &mut payload,
-            2,
-            1,
-            VANILLA_STONE_ITEM_REGISTRY_ID,
-            VANILLA_DYED_COLOR_COMPONENT_ID,
-            VANILLA_STONE_DYED_COLOR_COMPONENT_HASH,
-        )
-        .expect("dyed color component prediction packet");
-
-        let mut input = payload.as_slice();
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container id"),
-            0
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("state id"), 2);
-        assert_eq!(i16::from_be_bytes(input[..2].try_into().expect("slot")), 36);
-        input = &input[2..];
-        assert_eq!(input[0], 0);
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container input"),
-            0
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("changed slot count"),
-            1
-        );
-        input = &input[2..];
-        assert_eq!(input[0], 0, "changed slot should be empty");
-        input = &input[1..];
-        assert_eq!(input[0], 1, "carried should be non-empty");
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("item registry id"),
-            VANILLA_STONE_ITEM_REGISTRY_ID
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("item count"), 1);
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component map count"),
-            1
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component type id"),
-            VANILLA_DYED_COLOR_COMPONENT_ID
-        );
-        assert_eq!(
-            i32::from_be_bytes(input[..4].try_into().expect("component hash")),
-            VANILLA_STONE_DYED_COLOR_COMPONENT_HASH
-        );
-        input = &input[4..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("removed component count"),
-            0
-        );
-        assert!(input.is_empty());
-    }
-
-    #[test]
-    fn optional_item_stack_parser_consumes_dyed_color_int() {
-        let mut payload = Vec::new();
-        crate::wire::write_varint(1, &mut payload);
-        crate::wire::write_varint(VANILLA_STONE_ITEM_REGISTRY_ID, &mut payload);
-        crate::wire::write_varint(1, &mut payload);
-        crate::wire::write_varint(0, &mut payload);
-        crate::wire::write_varint(VANILLA_DYED_COLOR_COMPONENT_ID, &mut payload);
-        payload.extend_from_slice(&0x00ff_0000_i32.to_be_bytes());
-
-        let mut input = payload.as_slice();
-        let observation = parse_optional_item_stack(&mut input, "dyed color item stack")
-            .expect("dyed color item stack");
-        assert_eq!(observation.item_count, Some(1));
-        assert_eq!(
-            observation.item_registry_id,
-            Some(VANILLA_STONE_ITEM_REGISTRY_ID)
-        );
-        assert_eq!(
-            observation.positive_component_type_ids,
-            [VANILLA_DYED_COLOR_COMPONENT_ID]
-        );
-        assert!(observation.negative_component_type_ids.is_empty());
-        assert!(input.is_empty());
-    }
-
-    #[test]
-    fn inventory_potion_duration_scale_component_prediction_encoder_keeps_java_hash() {
-        let mut payload = Vec::new();
-        encode_inventory_pickup_with_exact_component_prediction(
-            &mut payload,
-            2,
-            1,
-            VANILLA_STONE_ITEM_REGISTRY_ID,
-            VANILLA_POTION_DURATION_SCALE_COMPONENT_ID,
-            VANILLA_STONE_POTION_DURATION_SCALE_COMPONENT_HASH,
-        )
-        .expect("potion duration scale component prediction packet");
-
-        let mut input = payload.as_slice();
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container id"),
-            0
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("state id"), 2);
-        assert_eq!(i16::from_be_bytes(input[..2].try_into().expect("slot")), 36);
-        input = &input[2..];
-        assert_eq!(input[0], 0);
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container input"),
-            0
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("changed slot count"),
-            1
-        );
-        input = &input[2..];
-        assert_eq!(input[0], 0, "changed slot should be empty");
-        input = &input[1..];
-        assert_eq!(input[0], 1, "carried should be non-empty");
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("item registry id"),
-            VANILLA_STONE_ITEM_REGISTRY_ID
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("item count"), 1);
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component map count"),
-            1
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component type id"),
-            VANILLA_POTION_DURATION_SCALE_COMPONENT_ID
-        );
-        assert_eq!(
-            i32::from_be_bytes(input[..4].try_into().expect("component hash")),
-            VANILLA_STONE_POTION_DURATION_SCALE_COMPONENT_HASH
-        );
-        input = &input[4..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("removed component count"),
-            0
-        );
-        assert!(input.is_empty());
-    }
-
-    #[test]
-    fn optional_item_stack_parser_consumes_potion_duration_scale_float() {
-        let mut payload = Vec::new();
-        crate::wire::write_varint(1, &mut payload);
-        crate::wire::write_varint(VANILLA_STONE_ITEM_REGISTRY_ID, &mut payload);
-        crate::wire::write_varint(1, &mut payload);
-        crate::wire::write_varint(0, &mut payload);
-        crate::wire::write_varint(VANILLA_POTION_DURATION_SCALE_COMPONENT_ID, &mut payload);
-        payload.extend_from_slice(&1.5_f32.to_bits().to_be_bytes());
-
-        let mut input = payload.as_slice();
-        let observation = parse_optional_item_stack(&mut input, "potion duration scale item stack")
-            .expect("potion duration scale item stack");
-        assert_eq!(observation.item_count, Some(1));
-        assert_eq!(
-            observation.item_registry_id,
-            Some(VANILLA_STONE_ITEM_REGISTRY_ID)
-        );
-        assert_eq!(
-            observation.positive_component_type_ids,
-            [VANILLA_POTION_DURATION_SCALE_COMPONENT_ID]
-        );
-        assert!(observation.negative_component_type_ids.is_empty());
-        assert!(input.is_empty());
-    }
-
-    #[test]
-    fn inventory_map_color_component_prediction_encoder_keeps_java_hash() {
-        let mut payload = Vec::new();
-        encode_inventory_pickup_with_exact_component_prediction(
-            &mut payload,
-            2,
-            1,
-            VANILLA_STONE_ITEM_REGISTRY_ID,
-            VANILLA_MAP_COLOR_COMPONENT_ID,
-            VANILLA_STONE_MAP_COLOR_COMPONENT_HASH,
-        )
-        .expect("map color component prediction packet");
-
-        let mut input = payload.as_slice();
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container id"),
-            0
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("state id"), 2);
-        assert_eq!(i16::from_be_bytes(input[..2].try_into().expect("slot")), 36);
-        input = &input[2..];
-        assert_eq!(input[0], 0);
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container input"),
-            0
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("changed slot count"),
-            1
-        );
-        input = &input[2..];
-        assert_eq!(input[0], 0, "changed slot should be empty");
-        input = &input[1..];
-        assert_eq!(input[0], 1, "carried should be non-empty");
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("item registry id"),
-            VANILLA_STONE_ITEM_REGISTRY_ID
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("item count"), 1);
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component map count"),
-            1
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component type id"),
-            VANILLA_MAP_COLOR_COMPONENT_ID
-        );
-        assert_eq!(
-            i32::from_be_bytes(input[..4].try_into().expect("component hash")),
-            VANILLA_STONE_MAP_COLOR_COMPONENT_HASH
-        );
-        input = &input[4..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("removed component count"),
-            0
-        );
-        assert!(input.is_empty());
-    }
-
-    #[test]
-    fn optional_item_stack_parser_consumes_map_color_int() {
-        let mut payload = Vec::new();
-        crate::wire::write_varint(1, &mut payload);
-        crate::wire::write_varint(VANILLA_STONE_ITEM_REGISTRY_ID, &mut payload);
-        crate::wire::write_varint(1, &mut payload);
-        crate::wire::write_varint(0, &mut payload);
-        crate::wire::write_varint(VANILLA_MAP_COLOR_COMPONENT_ID, &mut payload);
-        payload.extend_from_slice(&0x00ff_0000_i32.to_be_bytes());
-
-        let mut input = payload.as_slice();
-        let observation = parse_optional_item_stack(&mut input, "map color item stack")
-            .expect("map color item stack");
-        assert_eq!(observation.item_count, Some(1));
-        assert_eq!(
-            observation.item_registry_id,
-            Some(VANILLA_STONE_ITEM_REGISTRY_ID)
-        );
-        assert_eq!(
-            observation.positive_component_type_ids,
-            [VANILLA_MAP_COLOR_COMPONENT_ID]
-        );
-        assert!(observation.negative_component_type_ids.is_empty());
-        assert!(input.is_empty());
-    }
-
-    #[test]
-    fn inventory_map_id_component_prediction_encoder_keeps_java_hash() {
-        let mut payload = Vec::new();
-        encode_inventory_pickup_with_exact_component_prediction(
-            &mut payload,
-            2,
-            1,
-            VANILLA_STONE_ITEM_REGISTRY_ID,
-            VANILLA_MAP_ID_COMPONENT_ID,
-            VANILLA_STONE_MAP_ID_COMPONENT_HASH,
-        )
-        .expect("map id component prediction packet");
-
-        let mut input = payload.as_slice();
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container id"),
-            0
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("state id"), 2);
-        assert_eq!(i16::from_be_bytes(input[..2].try_into().expect("slot")), 36);
-        input = &input[2..];
-        assert_eq!(input[0], 0);
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container input"),
-            0
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("changed slot count"),
-            1
-        );
-        input = &input[2..];
-        assert_eq!(input[0], 0, "changed slot should be empty");
-        input = &input[1..];
-        assert_eq!(input[0], 1, "carried should be non-empty");
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("item registry id"),
-            VANILLA_STONE_ITEM_REGISTRY_ID
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("item count"), 1);
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component map count"),
-            1
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component type id"),
-            VANILLA_MAP_ID_COMPONENT_ID
-        );
-        assert_eq!(
-            i32::from_be_bytes(input[..4].try_into().expect("component hash")),
-            VANILLA_STONE_MAP_ID_COMPONENT_HASH
-        );
-        input = &input[4..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("removed component count"),
-            0
-        );
-        assert!(input.is_empty());
-    }
-
-    #[test]
-    fn optional_item_stack_parser_consumes_map_id_varint() {
-        let mut payload = Vec::new();
-        crate::wire::write_varint(1, &mut payload);
-        crate::wire::write_varint(VANILLA_STONE_ITEM_REGISTRY_ID, &mut payload);
-        crate::wire::write_varint(1, &mut payload);
-        crate::wire::write_varint(0, &mut payload);
-        crate::wire::write_varint(VANILLA_MAP_ID_COMPONENT_ID, &mut payload);
-        crate::wire::write_varint(1, &mut payload);
-
-        let mut input = payload.as_slice();
-        let observation =
-            parse_optional_item_stack(&mut input, "map id item stack").expect("map id item stack");
-        assert_eq!(observation.item_count, Some(1));
-        assert_eq!(
-            observation.item_registry_id,
-            Some(VANILLA_STONE_ITEM_REGISTRY_ID)
-        );
-        assert_eq!(
-            observation.positive_component_type_ids,
-            [VANILLA_MAP_ID_COMPONENT_ID]
-        );
-        assert!(observation.negative_component_type_ids.is_empty());
-        assert!(input.is_empty());
-    }
-
-    #[test]
-    fn inventory_base_color_component_prediction_encoder_keeps_java_hash() {
-        let mut payload = Vec::new();
-        encode_inventory_pickup_with_exact_component_prediction(
-            &mut payload,
-            2,
-            1,
-            VANILLA_STONE_ITEM_REGISTRY_ID,
-            VANILLA_BASE_COLOR_COMPONENT_ID,
-            VANILLA_STONE_BASE_COLOR_COMPONENT_HASH,
-        )
-        .expect("base color component prediction packet");
-
-        let mut input = payload.as_slice();
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container id"),
-            0
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("state id"), 2);
-        assert_eq!(i16::from_be_bytes(input[..2].try_into().expect("slot")), 36);
-        input = &input[2..];
-        assert_eq!(input[0], 0);
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container input"),
-            0
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("changed slot count"),
-            1
-        );
-        input = &input[2..];
-        assert_eq!(input[0], 0, "changed slot should be empty");
-        input = &input[1..];
-        assert_eq!(input[0], 1, "carried should be non-empty");
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("item registry id"),
-            VANILLA_STONE_ITEM_REGISTRY_ID
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("item count"), 1);
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component map count"),
-            1
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component type id"),
-            VANILLA_BASE_COLOR_COMPONENT_ID
-        );
-        assert_eq!(
-            i32::from_be_bytes(input[..4].try_into().expect("component hash")),
-            VANILLA_STONE_BASE_COLOR_COMPONENT_HASH
-        );
-        input = &input[4..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("removed component count"),
-            0
-        );
-        assert!(input.is_empty());
-    }
-
-    #[test]
-    fn optional_item_stack_parser_consumes_base_color_varint() {
-        let mut payload = Vec::new();
-        crate::wire::write_varint(1, &mut payload);
-        crate::wire::write_varint(VANILLA_STONE_ITEM_REGISTRY_ID, &mut payload);
-        crate::wire::write_varint(1, &mut payload);
-        crate::wire::write_varint(0, &mut payload);
-        crate::wire::write_varint(VANILLA_BASE_COLOR_COMPONENT_ID, &mut payload);
-        crate::wire::write_varint(14, &mut payload);
-
-        let mut input = payload.as_slice();
-        let observation = parse_optional_item_stack(&mut input, "base color item stack")
-            .expect("base color item stack");
-        assert_eq!(observation.item_count, Some(1));
-        assert_eq!(
-            observation.item_registry_id,
-            Some(VANILLA_STONE_ITEM_REGISTRY_ID)
-        );
-        assert_eq!(
-            observation.positive_component_type_ids,
-            [VANILLA_BASE_COLOR_COMPONENT_ID]
-        );
-        assert!(observation.negative_component_type_ids.is_empty());
-        assert!(input.is_empty());
-    }
-
-    #[test]
-    fn inventory_note_block_sound_component_prediction_encoder_keeps_java_hash() {
-        let mut payload = Vec::new();
-        encode_inventory_pickup_with_exact_component_prediction(
-            &mut payload,
-            2,
-            1,
-            VANILLA_STONE_ITEM_REGISTRY_ID,
-            VANILLA_NOTE_BLOCK_SOUND_COMPONENT_ID,
-            VANILLA_STONE_NOTE_BLOCK_SOUND_COMPONENT_HASH,
-        )
-        .expect("note block sound component prediction packet");
-
-        let mut input = payload.as_slice();
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container id"),
-            0
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("state id"), 2);
-        assert_eq!(i16::from_be_bytes(input[..2].try_into().expect("slot")), 36);
-        input = &input[2..];
-        assert_eq!(input[0], 0);
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container input"),
-            0
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("changed slot count"),
-            1
-        );
-        input = &input[2..];
-        assert_eq!(input[0], 0, "changed slot should be empty");
-        input = &input[1..];
-        assert_eq!(input[0], 1, "carried should be non-empty");
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("item registry id"),
-            VANILLA_STONE_ITEM_REGISTRY_ID
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("item count"), 1);
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component map count"),
-            1
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component type id"),
-            VANILLA_NOTE_BLOCK_SOUND_COMPONENT_ID
-        );
-        assert_eq!(
-            i32::from_be_bytes(input[..4].try_into().expect("component hash")),
-            VANILLA_STONE_NOTE_BLOCK_SOUND_COMPONENT_HASH
-        );
-        input = &input[4..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("removed component count"),
-            0
-        );
-        assert!(input.is_empty());
-    }
-
-    #[test]
-    fn optional_item_stack_parser_consumes_note_block_sound_identifier() {
-        let mut payload = Vec::new();
-        crate::wire::write_varint(1, &mut payload);
-        crate::wire::write_varint(VANILLA_STONE_ITEM_REGISTRY_ID, &mut payload);
-        crate::wire::write_varint(1, &mut payload);
-        crate::wire::write_varint(0, &mut payload);
-        crate::wire::write_varint(VANILLA_NOTE_BLOCK_SOUND_COMPONENT_ID, &mut payload);
-        let note_block_sound =
-            crate::identifier::Identifier::parse("minecraft:block.note_block.harp")
-                .expect("note block sound identifier");
-        crate::identifier::write_identifier(&note_block_sound, &mut payload)
-            .expect("note block sound identifier");
-
-        let mut input = payload.as_slice();
-        let observation = parse_optional_item_stack(&mut input, "note block sound item stack")
-            .expect("note block sound item stack");
-        assert_eq!(observation.item_count, Some(1));
-        assert_eq!(
-            observation.item_registry_id,
-            Some(VANILLA_STONE_ITEM_REGISTRY_ID)
-        );
-        assert_eq!(
-            observation.positive_component_type_ids,
-            [VANILLA_NOTE_BLOCK_SOUND_COMPONENT_ID]
-        );
-        assert!(observation.negative_component_type_ids.is_empty());
-        assert!(input.is_empty());
-    }
-
-    #[test]
-    fn inventory_ominous_bottle_amplifier_component_prediction_encoder_keeps_java_hash() {
-        let mut payload = Vec::new();
-        encode_inventory_pickup_with_exact_component_prediction(
-            &mut payload,
-            2,
-            1,
-            VANILLA_STONE_ITEM_REGISTRY_ID,
-            VANILLA_OMINOUS_BOTTLE_AMPLIFIER_COMPONENT_ID,
-            VANILLA_STONE_OMINOUS_BOTTLE_AMPLIFIER_COMPONENT_HASH,
-        )
-        .expect("ominous bottle amplifier component prediction packet");
-
-        let mut input = payload.as_slice();
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container id"),
-            0
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("state id"), 2);
-        assert_eq!(i16::from_be_bytes(input[..2].try_into().expect("slot")), 36);
-        input = &input[2..];
-        assert_eq!(input[0], 0);
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container input"),
-            0
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("changed slot count"),
-            1
-        );
-        input = &input[2..];
-        assert_eq!(input[0], 0, "changed slot should be empty");
-        input = &input[1..];
-        assert_eq!(input[0], 1, "carried should be non-empty");
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("item registry id"),
-            VANILLA_STONE_ITEM_REGISTRY_ID
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("item count"), 1);
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component map count"),
-            1
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component type id"),
-            VANILLA_OMINOUS_BOTTLE_AMPLIFIER_COMPONENT_ID
-        );
-        assert_eq!(
-            i32::from_be_bytes(input[..4].try_into().expect("component hash")),
-            VANILLA_STONE_OMINOUS_BOTTLE_AMPLIFIER_COMPONENT_HASH
-        );
-        input = &input[4..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("removed component count"),
-            0
-        );
-        assert!(input.is_empty());
-    }
-
-    #[test]
-    fn optional_item_stack_parser_consumes_ominous_bottle_amplifier_varint() {
-        let mut payload = Vec::new();
-        crate::wire::write_varint(1, &mut payload);
-        crate::wire::write_varint(VANILLA_STONE_ITEM_REGISTRY_ID, &mut payload);
-        crate::wire::write_varint(1, &mut payload);
-        crate::wire::write_varint(0, &mut payload);
-        crate::wire::write_varint(VANILLA_OMINOUS_BOTTLE_AMPLIFIER_COMPONENT_ID, &mut payload);
-        crate::wire::write_varint(2, &mut payload);
-
-        let mut input = payload.as_slice();
-        let observation =
-            parse_optional_item_stack(&mut input, "ominous bottle amplifier item stack")
-                .expect("ominous bottle amplifier item stack");
-        assert_eq!(observation.item_count, Some(1));
-        assert_eq!(
-            observation.item_registry_id,
-            Some(VANILLA_STONE_ITEM_REGISTRY_ID)
-        );
-        assert_eq!(
-            observation.positive_component_type_ids,
-            [VANILLA_OMINOUS_BOTTLE_AMPLIFIER_COMPONENT_ID]
-        );
-        assert!(observation.negative_component_type_ids.is_empty());
-        assert!(input.is_empty());
-    }
-
-    #[test]
-    fn inventory_break_sound_component_prediction_encoder_keeps_java_hash() {
-        let mut payload = Vec::new();
-        encode_inventory_pickup_with_exact_component_prediction(
-            &mut payload,
-            2,
-            1,
-            VANILLA_STONE_ITEM_REGISTRY_ID,
-            VANILLA_BREAK_SOUND_COMPONENT_ID,
-            VANILLA_STONE_BREAK_SOUND_COMPONENT_HASH,
-        )
-        .expect("break sound component prediction packet");
-
-        let mut input = payload.as_slice();
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container id"),
-            0
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("state id"), 2);
-        assert_eq!(i16::from_be_bytes(input[..2].try_into().expect("slot")), 36);
-        input = &input[2..];
-        assert_eq!(input[0], 0);
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container input"),
-            0
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("changed slot count"),
-            1
-        );
-        input = &input[2..];
-        assert_eq!(input[0], 0, "changed slot should be empty");
-        input = &input[1..];
-        assert_eq!(input[0], 1, "carried should be non-empty");
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("item registry id"),
-            VANILLA_STONE_ITEM_REGISTRY_ID
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("item count"), 1);
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component map count"),
-            1
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component type id"),
-            VANILLA_BREAK_SOUND_COMPONENT_ID
-        );
-        assert_eq!(
-            i32::from_be_bytes(input[..4].try_into().expect("component hash")),
-            VANILLA_STONE_BREAK_SOUND_COMPONENT_HASH
-        );
-        input = &input[4..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("removed component count"),
-            0
-        );
-        assert!(input.is_empty());
-    }
-
-    #[test]
-    fn optional_item_stack_parser_consumes_break_sound_registry_id() {
-        let mut payload = Vec::new();
-        crate::wire::write_varint(1, &mut payload);
-        crate::wire::write_varint(VANILLA_STONE_ITEM_REGISTRY_ID, &mut payload);
-        crate::wire::write_varint(1, &mut payload);
-        crate::wire::write_varint(0, &mut payload);
-        crate::wire::write_varint(VANILLA_BREAK_SOUND_COMPONENT_ID, &mut payload);
-        crate::wire::write_varint(VANILLA_STONE_BREAK_SOUND_REGISTRY_ID, &mut payload);
-
-        let mut input = payload.as_slice();
-        let observation = parse_optional_item_stack(&mut input, "break sound item stack")
-            .expect("break sound item stack");
-        assert_eq!(observation.item_count, Some(1));
-        assert_eq!(
-            observation.item_registry_id,
-            Some(VANILLA_STONE_ITEM_REGISTRY_ID)
-        );
-        assert_eq!(
-            observation.positive_component_type_ids,
-            [VANILLA_BREAK_SOUND_COMPONENT_ID]
-        );
-        assert!(observation.negative_component_type_ids.is_empty());
-        assert!(input.is_empty());
-    }
-
-    #[test]
-    fn inventory_wolf_collar_component_prediction_encoder_keeps_java_hash() {
-        let mut payload = Vec::new();
-        encode_inventory_pickup_with_exact_component_prediction(
-            &mut payload,
-            2,
-            1,
-            VANILLA_STONE_ITEM_REGISTRY_ID,
-            VANILLA_WOLF_COLLAR_COMPONENT_ID,
-            VANILLA_STONE_WOLF_COLLAR_COMPONENT_HASH,
-        )
-        .expect("wolf collar component prediction packet");
-
-        let mut input = payload.as_slice();
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container id"),
-            0
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("state id"), 2);
-        assert_eq!(i16::from_be_bytes(input[..2].try_into().expect("slot")), 36);
-        input = &input[2..];
-        assert_eq!(input[0], 0);
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container input"),
-            0
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("changed slot count"),
-            1
-        );
-        input = &input[2..];
-        assert_eq!(input[0], 0, "changed slot should be empty");
-        input = &input[1..];
-        assert_eq!(input[0], 1, "carried should be non-empty");
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("item registry id"),
-            VANILLA_STONE_ITEM_REGISTRY_ID
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("item count"), 1);
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component map count"),
-            1
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component type id"),
-            VANILLA_WOLF_COLLAR_COMPONENT_ID
-        );
-        assert_eq!(
-            i32::from_be_bytes(input[..4].try_into().expect("component hash")),
-            VANILLA_STONE_WOLF_COLLAR_COMPONENT_HASH
-        );
-        input = &input[4..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("removed component count"),
-            0
-        );
-        assert!(input.is_empty());
-    }
-
-    #[test]
-    fn optional_item_stack_parser_consumes_wolf_collar_dye_varint() {
-        let mut payload = Vec::new();
-        crate::wire::write_varint(1, &mut payload);
-        crate::wire::write_varint(VANILLA_STONE_ITEM_REGISTRY_ID, &mut payload);
-        crate::wire::write_varint(1, &mut payload);
-        crate::wire::write_varint(0, &mut payload);
-        crate::wire::write_varint(VANILLA_WOLF_COLLAR_COMPONENT_ID, &mut payload);
-        crate::wire::write_varint(14, &mut payload);
-
-        let mut input = payload.as_slice();
-        let observation = parse_optional_item_stack(&mut input, "wolf collar item stack")
-            .expect("wolf collar item stack");
-        assert_eq!(observation.item_count, Some(1));
-        assert_eq!(
-            observation.item_registry_id,
-            Some(VANILLA_STONE_ITEM_REGISTRY_ID)
-        );
-        assert_eq!(
-            observation.positive_component_type_ids,
-            [VANILLA_WOLF_COLLAR_COMPONENT_ID]
-        );
-        assert!(observation.negative_component_type_ids.is_empty());
-        assert!(input.is_empty());
-    }
-
-    #[test]
-    fn inventory_tropical_fish_base_color_component_prediction_encoder_keeps_java_hash() {
-        let mut payload = Vec::new();
-        encode_inventory_pickup_with_exact_component_prediction(
-            &mut payload,
-            2,
-            1,
-            VANILLA_STONE_ITEM_REGISTRY_ID,
-            VANILLA_TROPICAL_FISH_BASE_COLOR_COMPONENT_ID,
-            VANILLA_STONE_TROPICAL_FISH_BASE_COLOR_COMPONENT_HASH,
-        )
-        .expect("tropical fish base color component prediction packet");
-
-        let mut input = payload.as_slice();
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container id"),
-            0
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("state id"), 2);
-        assert_eq!(i16::from_be_bytes(input[..2].try_into().expect("slot")), 36);
-        input = &input[2..];
-        assert_eq!(input[0], 0);
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container input"),
-            0
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("changed slot count"),
-            1
-        );
-        input = &input[2..];
-        assert_eq!(input[0], 0, "changed slot should be empty");
-        input = &input[1..];
-        assert_eq!(input[0], 1, "carried should be non-empty");
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("item registry id"),
-            VANILLA_STONE_ITEM_REGISTRY_ID
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("item count"), 1);
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component map count"),
-            1
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component type id"),
-            VANILLA_TROPICAL_FISH_BASE_COLOR_COMPONENT_ID
-        );
-        assert_eq!(
-            i32::from_be_bytes(input[..4].try_into().expect("component hash")),
-            VANILLA_STONE_TROPICAL_FISH_BASE_COLOR_COMPONENT_HASH
-        );
-        input = &input[4..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("removed component count"),
-            0
-        );
-        assert!(input.is_empty());
-    }
-
-    #[test]
-    fn optional_item_stack_parser_consumes_tropical_fish_base_color_dye_varint() {
-        let mut payload = Vec::new();
-        crate::wire::write_varint(1, &mut payload);
-        crate::wire::write_varint(VANILLA_STONE_ITEM_REGISTRY_ID, &mut payload);
-        crate::wire::write_varint(1, &mut payload);
-        crate::wire::write_varint(0, &mut payload);
-        crate::wire::write_varint(VANILLA_TROPICAL_FISH_BASE_COLOR_COMPONENT_ID, &mut payload);
-        crate::wire::write_varint(14, &mut payload);
-
-        let mut input = payload.as_slice();
-        let observation =
-            parse_optional_item_stack(&mut input, "tropical fish base color item stack")
-                .expect("tropical fish base color item stack");
-        assert_eq!(observation.item_count, Some(1));
-        assert_eq!(
-            observation.item_registry_id,
-            Some(VANILLA_STONE_ITEM_REGISTRY_ID)
-        );
-        assert_eq!(
-            observation.positive_component_type_ids,
-            [VANILLA_TROPICAL_FISH_BASE_COLOR_COMPONENT_ID]
-        );
-        assert!(observation.negative_component_type_ids.is_empty());
-        assert!(input.is_empty());
-    }
-
-    #[test]
-    fn inventory_tropical_fish_pattern_component_prediction_encoder_keeps_java_hash() {
-        let mut payload = Vec::new();
-        encode_inventory_pickup_with_exact_component_prediction(
-            &mut payload,
-            2,
-            1,
-            VANILLA_STONE_ITEM_REGISTRY_ID,
-            VANILLA_TROPICAL_FISH_PATTERN_COMPONENT_ID,
-            VANILLA_STONE_TROPICAL_FISH_PATTERN_COMPONENT_HASH,
-        )
-        .expect("tropical fish pattern component prediction packet");
-
-        let mut input = payload.as_slice();
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container id"),
-            0
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("state id"), 2);
-        assert_eq!(i16::from_be_bytes(input[..2].try_into().expect("slot")), 36);
-        input = &input[2..];
-        assert_eq!(input[0], 0);
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container input"),
-            0
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("changed slot count"),
-            1
-        );
-        input = &input[2..];
-        assert_eq!(input[0], 0, "changed slot should be empty");
-        input = &input[1..];
-        assert_eq!(input[0], 1, "carried should be non-empty");
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("item registry id"),
-            VANILLA_STONE_ITEM_REGISTRY_ID
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("item count"), 1);
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component map count"),
-            1
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component type id"),
-            VANILLA_TROPICAL_FISH_PATTERN_COMPONENT_ID
-        );
-        assert_eq!(
-            i32::from_be_bytes(input[..4].try_into().expect("component hash")),
-            VANILLA_STONE_TROPICAL_FISH_PATTERN_COMPONENT_HASH
-        );
-        input = &input[4..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("removed component count"),
-            0
-        );
-        assert!(input.is_empty());
-    }
-
-    #[test]
-    fn optional_item_stack_parser_consumes_tropical_fish_pattern_varint() {
-        let mut payload = Vec::new();
-        crate::wire::write_varint(1, &mut payload);
-        crate::wire::write_varint(VANILLA_STONE_ITEM_REGISTRY_ID, &mut payload);
-        crate::wire::write_varint(1, &mut payload);
-        crate::wire::write_varint(0, &mut payload);
-        crate::wire::write_varint(VANILLA_TROPICAL_FISH_PATTERN_COMPONENT_ID, &mut payload);
-        crate::wire::write_varint(257, &mut payload);
-
-        let mut input = payload.as_slice();
-        let observation = parse_optional_item_stack(&mut input, "tropical fish pattern item stack")
-            .expect("tropical fish pattern item stack");
-        assert_eq!(observation.item_count, Some(1));
-        assert_eq!(
-            observation.item_registry_id,
-            Some(VANILLA_STONE_ITEM_REGISTRY_ID)
-        );
-        assert_eq!(
-            observation.positive_component_type_ids,
-            [VANILLA_TROPICAL_FISH_PATTERN_COMPONENT_ID]
-        );
-        assert!(observation.negative_component_type_ids.is_empty());
-        assert!(input.is_empty());
-    }
-
-    #[test]
-    fn inventory_tropical_fish_pattern_color_component_prediction_encoder_keeps_java_hash() {
-        let mut payload = Vec::new();
-        encode_inventory_pickup_with_exact_component_prediction(
-            &mut payload,
-            2,
-            1,
-            VANILLA_STONE_ITEM_REGISTRY_ID,
-            VANILLA_TROPICAL_FISH_PATTERN_COLOR_COMPONENT_ID,
-            VANILLA_STONE_TROPICAL_FISH_PATTERN_COLOR_COMPONENT_HASH,
-        )
-        .expect("tropical fish pattern color component prediction packet");
-
-        let mut input = payload.as_slice();
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container id"),
-            0
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("state id"), 2);
-        assert_eq!(i16::from_be_bytes(input[..2].try_into().expect("slot")), 36);
-        input = &input[2..];
-        assert_eq!(input[0], 0);
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container input"),
-            0
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("changed slot count"),
-            1
-        );
-        input = &input[2..];
-        assert_eq!(input[0], 0, "changed slot should be empty");
-        input = &input[1..];
-        assert_eq!(input[0], 1, "carried should be non-empty");
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("item registry id"),
-            VANILLA_STONE_ITEM_REGISTRY_ID
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("item count"), 1);
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component map count"),
-            1
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component type id"),
-            VANILLA_TROPICAL_FISH_PATTERN_COLOR_COMPONENT_ID
-        );
-        assert_eq!(
-            i32::from_be_bytes(input[..4].try_into().expect("component hash")),
-            VANILLA_STONE_TROPICAL_FISH_PATTERN_COLOR_COMPONENT_HASH
-        );
-        input = &input[4..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("removed component count"),
-            0
-        );
-        assert!(input.is_empty());
-    }
-
-    #[test]
-    fn optional_item_stack_parser_consumes_tropical_fish_pattern_color_dye_varint() {
-        let mut payload = Vec::new();
-        crate::wire::write_varint(1, &mut payload);
-        crate::wire::write_varint(VANILLA_STONE_ITEM_REGISTRY_ID, &mut payload);
-        crate::wire::write_varint(1, &mut payload);
-        crate::wire::write_varint(0, &mut payload);
-        crate::wire::write_varint(
-            VANILLA_TROPICAL_FISH_PATTERN_COLOR_COMPONENT_ID,
-            &mut payload,
-        );
-        crate::wire::write_varint(14, &mut payload);
-
-        let mut input = payload.as_slice();
-        let observation =
-            parse_optional_item_stack(&mut input, "tropical fish pattern color item stack")
-                .expect("tropical fish pattern color item stack");
-        assert_eq!(observation.item_count, Some(1));
-        assert_eq!(
-            observation.item_registry_id,
-            Some(VANILLA_STONE_ITEM_REGISTRY_ID)
-        );
-        assert_eq!(
-            observation.positive_component_type_ids,
-            [VANILLA_TROPICAL_FISH_PATTERN_COLOR_COMPONENT_ID]
-        );
-        assert!(observation.negative_component_type_ids.is_empty());
-        assert!(input.is_empty());
-    }
-
-    #[test]
-    fn inventory_cat_collar_component_prediction_encoder_keeps_java_hash() {
-        let mut payload = Vec::new();
-        encode_inventory_pickup_with_exact_component_prediction(
-            &mut payload,
-            2,
-            1,
-            VANILLA_STONE_ITEM_REGISTRY_ID,
-            VANILLA_CAT_COLLAR_COMPONENT_ID,
-            VANILLA_STONE_CAT_COLLAR_COMPONENT_HASH,
-        )
-        .expect("cat collar component prediction packet");
-
-        let mut input = payload.as_slice();
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container id"),
-            0
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("state id"), 2);
-        assert_eq!(i16::from_be_bytes(input[..2].try_into().expect("slot")), 36);
-        input = &input[2..];
-        assert_eq!(input[0], 0);
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container input"),
-            0
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("changed slot count"),
-            1
-        );
-        input = &input[2..];
-        assert_eq!(input[0], 0, "changed slot should be empty");
-        input = &input[1..];
-        assert_eq!(input[0], 1, "carried should be non-empty");
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("item registry id"),
-            VANILLA_STONE_ITEM_REGISTRY_ID
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("item count"), 1);
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component map count"),
-            1
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component type id"),
-            VANILLA_CAT_COLLAR_COMPONENT_ID
-        );
-        assert_eq!(
-            i32::from_be_bytes(input[..4].try_into().expect("component hash")),
-            VANILLA_STONE_CAT_COLLAR_COMPONENT_HASH
-        );
-        input = &input[4..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("removed component count"),
-            0
-        );
-        assert!(input.is_empty());
-    }
-
-    #[test]
-    fn optional_item_stack_parser_consumes_cat_collar_dye_varint() {
-        let mut payload = Vec::new();
-        crate::wire::write_varint(1, &mut payload);
-        crate::wire::write_varint(VANILLA_STONE_ITEM_REGISTRY_ID, &mut payload);
-        crate::wire::write_varint(1, &mut payload);
-        crate::wire::write_varint(0, &mut payload);
-        crate::wire::write_varint(VANILLA_CAT_COLLAR_COMPONENT_ID, &mut payload);
-        crate::wire::write_varint(14, &mut payload);
-
-        let mut input = payload.as_slice();
-        let observation = parse_optional_item_stack(&mut input, "cat collar item stack")
-            .expect("cat collar item stack");
-        assert_eq!(observation.item_count, Some(1));
-        assert_eq!(
-            observation.item_registry_id,
-            Some(VANILLA_STONE_ITEM_REGISTRY_ID)
-        );
-        assert_eq!(
-            observation.positive_component_type_ids,
-            [VANILLA_CAT_COLLAR_COMPONENT_ID]
-        );
-        assert!(observation.negative_component_type_ids.is_empty());
-        assert!(input.is_empty());
-    }
-
-    #[test]
-    fn inventory_sheep_color_component_prediction_encoder_keeps_java_hash() {
-        let mut payload = Vec::new();
-        encode_inventory_pickup_with_exact_component_prediction(
-            &mut payload,
-            2,
-            1,
-            VANILLA_STONE_ITEM_REGISTRY_ID,
-            VANILLA_SHEEP_COLOR_COMPONENT_ID,
-            VANILLA_STONE_SHEEP_COLOR_COMPONENT_HASH,
-        )
-        .expect("sheep color component prediction packet");
-
-        let mut input = payload.as_slice();
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container id"),
-            0
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("state id"), 2);
-        assert_eq!(i16::from_be_bytes(input[..2].try_into().expect("slot")), 36);
-        input = &input[2..];
-        assert_eq!(input[0], 0);
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("container input"),
-            0
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("changed slot count"),
-            1
-        );
-        input = &input[2..];
-        assert_eq!(input[0], 0, "changed slot should be empty");
-        input = &input[1..];
-        assert_eq!(input[0], 1, "carried should be non-empty");
-        input = &input[1..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("item registry id"),
-            VANILLA_STONE_ITEM_REGISTRY_ID
-        );
-        assert_eq!(crate::wire::read_varint(&mut input).expect("item count"), 1);
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component map count"),
-            1
-        );
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("component type id"),
-            VANILLA_SHEEP_COLOR_COMPONENT_ID
-        );
-        assert_eq!(
-            i32::from_be_bytes(input[..4].try_into().expect("component hash")),
-            VANILLA_STONE_SHEEP_COLOR_COMPONENT_HASH
-        );
-        input = &input[4..];
-        assert_eq!(
-            crate::wire::read_varint(&mut input).expect("removed component count"),
-            0
-        );
-        assert!(input.is_empty());
-    }
-
-    #[test]
-    fn optional_item_stack_parser_consumes_sheep_color_dye_varint() {
-        let mut payload = Vec::new();
-        crate::wire::write_varint(1, &mut payload);
-        crate::wire::write_varint(VANILLA_STONE_ITEM_REGISTRY_ID, &mut payload);
-        crate::wire::write_varint(1, &mut payload);
-        crate::wire::write_varint(0, &mut payload);
-        crate::wire::write_varint(VANILLA_SHEEP_COLOR_COMPONENT_ID, &mut payload);
-        crate::wire::write_varint(14, &mut payload);
-
-        let mut input = payload.as_slice();
-        let observation = parse_optional_item_stack(&mut input, "sheep color item stack")
-            .expect("sheep color item stack");
-        assert_eq!(observation.item_count, Some(1));
-        assert_eq!(
-            observation.item_registry_id,
-            Some(VANILLA_STONE_ITEM_REGISTRY_ID)
-        );
-        assert_eq!(
-            observation.positive_component_type_ids,
-            [VANILLA_SHEEP_COLOR_COMPONENT_ID]
-        );
-        assert!(observation.negative_component_type_ids.is_empty());
-        assert!(input.is_empty());
+    fn inventory_item_component_conformance_parser_consumes_table_codecs() {
+        for spec in VANILLA_ITEM_COMPONENT_CONFORMANCE {
+            let mut payload = Vec::new();
+            crate::wire::write_varint(1, &mut payload);
+            crate::wire::write_varint(spec.item_registry_id, &mut payload);
+            crate::wire::write_varint(1, &mut payload);
+            crate::wire::write_varint(0, &mut payload);
+            crate::wire::write_varint(spec.component_type_id, &mut payload);
+            write_component_fixture(spec.codec, &mut payload);
+
+            let mut input = payload.as_slice();
+            let observation = parse_optional_item_stack(&mut input, "table component item stack")
+                .expect("table component item stack");
+            assert_eq!(
+                observation.item_count,
+                Some(1),
+                "item count for {}",
+                spec.component_path
+            );
+            assert_eq!(
+                observation.item_registry_id,
+                Some(spec.item_registry_id),
+                "item registry id for {}",
+                spec.component_path
+            );
+            assert_eq!(
+                observation.positive_component_type_ids,
+                vec![spec.component_type_id],
+                "component type for {}",
+                spec.component_path
+            );
+            assert!(observation.negative_component_type_ids.is_empty());
+            assert!(
+                input.is_empty(),
+                "trailing bytes for {}",
+                spec.component_path
+            );
+        }
     }
 
     #[test]
