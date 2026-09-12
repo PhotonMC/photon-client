@@ -1137,6 +1137,12 @@ fn connect_and_probe_with_mode(
             }
             PLAY_CLIENTBOUND_BLOCK_UPDATE_PACKET_ID => {
                 let observation = parse_block_update_packet(payload)?;
+                trace.world.update_block_state(
+                    observation.x,
+                    observation.y,
+                    observation.z,
+                    observation.state_id,
+                );
                 if creative_place_target_position.is_some_and(|position| {
                     position == (observation.x, observation.y, observation.z)
                 }) {

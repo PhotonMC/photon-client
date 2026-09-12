@@ -42,10 +42,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "survival_water_bucket_target_update={:?}",
         trace.survival_water_bucket_target_update
     );
+    if let Some(update) = trace.survival_water_bucket_target_update.as_ref() {
+        println!(
+            "survival_water_bucket_target_world_state={:?}",
+            trace.world.block_state_at(update.x, update.y, update.z)
+        );
+    }
     println!(
         "survival_water_bucket_neighbor_update={:?}",
         trace.survival_water_bucket_neighbor_update
     );
+    if let Some(update) = trace.survival_water_bucket_neighbor_update.as_ref() {
+        println!(
+            "survival_water_bucket_neighbor_world_state={:?}",
+            trace.world.block_state_at(update.x, update.y, update.z)
+        );
+    }
     println!(
         "block_update_observations={:?}",
         trace.block_update_observations

@@ -90,6 +90,27 @@ impl ClientWorld {
         section.block_states.get(index).copied()
     }
 
+    /// Apply a server-verified block-state update to an already loaded section.
+    pub(crate) fn update_block_state(&mut self, x: i32, y: i32, z: i32, state_id: i32) -> bool {
+        let chunk_key = (x.div_euclid(16), z.div_euclid(16));
+        let Some(chunk) = self.chunks.get_mut(&chunk_key) else {
+            return false;
+        };
+        let section_y = y.div_euclid(16);
+        let Some(section) = chunk.sections.get_mut(&section_y) else {
+            return false;
+        };
+        let local_x = x.rem_euclid(16) as usize;
+        let local_y = y.rem_euclid(16) as usize;
+        let local_z = z.rem_euclid(16) as usize;
+        let index = local_y * 256 + local_z * 16 + local_x;
+        let Some(block_state) = section.block_states.get_mut(index) else {
+            return false;
+        };
+        *block_state = state_id;
+        true
+    }
+
     pub fn section_counts_at(
         &self,
         chunk_x: i32,
@@ -209,6 +230,28 @@ mod tests {
         assert_eq!(world.biome_at(-4, -64, 32), Some(22));
         assert_eq!(world.biome_at(-16, -64, 36), Some(23));
         assert_eq!(world.biome_at(-1, -49, 47), Some(24));
+    }
+
+    #[test]
+    fn server_block_update_replaces_loaded_state() {
+        let (blocks, biomes) = section(7, 8);
+        let mut world = ClientWorld::default();
+        world.replace_chunk(
+            -1,
+            2,
+            [SectionInput {
+                non_empty_block_count: 1,
+                fluid_count: 0,
+                block_states: &blocks,
+                biomes: &biomes,
+            }],
+        );
+
+        assert_eq!(world.block_state_at(-1, -64, 32), Some(12));
+        assert!(world.update_block_state(-1, -64, 32, 86));
+        assert_eq!(world.block_state_at(-1, -64, 32), Some(86));
+        assert!(!world.update_block_state(-17, -64, 32, 86));
+        assert!(!world.update_block_state(-1, -48, 32, 86));
     }
 
     #[test]
