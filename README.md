@@ -152,6 +152,8 @@ Rust uygulama girişi henüz oynanabilir istemci değildir. İlk gerçek vanilla
 - [Vanilla survival inventory note block sound component correct prediction doğrulaması](docs/vanilla-survival-inventory-note-block-sound-component-correct-prediction-parity.md)
 - [Survival inventory ominous bottle amplifier component correct prediction sözleşmesi](docs/survival-inventory-ominous-bottle-amplifier-component-correct-prediction-contract.md)
 - [Vanilla survival inventory ominous bottle amplifier component correct prediction doğrulaması](docs/vanilla-survival-inventory-ominous-bottle-amplifier-component-correct-prediction-parity.md)
+- [Survival inventory break sound component correct prediction sözleşmesi](docs/survival-inventory-break-sound-component-correct-prediction-contract.md)
+- [Vanilla survival inventory break sound component correct prediction doğrulaması](docs/vanilla-survival-inventory-break-sound-component-correct-prediction-parity.md)
 - [Survival inventory quick-move state-id correction sözleşmesi](docs/survival-inventory-quick-move-state-correction-contract.md)
 - [Vanilla survival inventory quick-move state-id correction doğrulaması](docs/vanilla-survival-inventory-quick-move-state-correction-parity.md)
 - [Survival inventory swap state-id correction sözleşmesi](docs/survival-inventory-swap-state-correction-contract.md)
