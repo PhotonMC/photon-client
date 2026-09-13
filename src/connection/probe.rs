@@ -1264,6 +1264,7 @@ fn connect_and_probe_with_mode(
                 let mut observation = parse_add_entity_packet(payload)?;
                 observation.applied_to_world = trace.world.apply_entity(EntityInput {
                     entity_id: observation.entity_id,
+                    uuid: observation.uuid,
                     type_id: observation.entity_type_id,
                     x: observation.x,
                     y: observation.y,

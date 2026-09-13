@@ -30,15 +30,18 @@ olan global entity deposu dalıdır.
   data değerini verir.
 - Entity ekleme, ilgili chunk'ın `ClientWorld` içinde bulunmasını gerektirmez.
   Packet gözlemi ve world application sonucu ayrı izlenir.
-- UUID, hareket vektörü, üç rotation değeri, metadata/equipment paketleri,
+- UUID state'i [ayrı P08.e UUID kaydında](client-world-entity-uuid-conformance.md)
+  ele alınır. Hareket vektörü, üç rotation değeri, metadata/equipment paketleri,
   remove packet'leri ve entity tick/interpolation state'i bu dilimin dışındadır.
 
 ## Rust doğrulaması
 
 `parse_add_entity_packet`, Java alan sırasındaki bütün wire alanlarını tüketir
-ve trailing byte'ları reddeder. `WorldEntityAdd` probe modu her başarılı add
-paketini `EntityInput` olarak `ClientWorld`'e uygular ve observation üzerinde
-uygulama sonucunu işaretler.
+UUID'yi ayrıştırır ve trailing byte'ları reddeder. `WorldEntityAdd` probe modu
+her başarılı add paketini `EntityInput` olarak `ClientWorld`'e uygular ve
+observation üzerinde uygulama sonucunu işaretler. UUID'nin world state'ine
+taşınması [ayrı UUID kaydında](client-world-entity-uuid-conformance.md)
+doğrulanır.
 
 `ClientWorld` unit testi aynı ID ile iki entity eklemesini, map boyutunun sabit
 kalmasını ve son type/position/data state'inin sorgulanmasını kontrol eder.
@@ -84,8 +87,8 @@ world kopyasına taşındığını gösterir; Java istemcisiyle parity iddiası 
 
 ## Açık kapsam
 
-UUID'nin world state'inde tutulması, entity type registry'nin semantic çözümü,
-metadata/equipment/status paketleri, `REMOVE_ENTITIES` yaşam döngüsü, chunk
+Entity type registry'nin semantic çözümü, metadata/equipment/status paketleri,
+`REMOVE_ENTITIES` yaşam döngüsü, chunk
 unload ile entity temizliği, dimension/respawn, entity tick/fizik, remote
 interpolation, render state'i ve `ClientWorld`'ün oynanabilir istemciye
 bağlanması açık kalır. Bu raw entity state'i `server-conformance` ilerlemesidir;

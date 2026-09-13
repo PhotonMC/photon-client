@@ -25,11 +25,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Err("vanilla entity add was not applied to ClientWorld".into());
     }
 
-    let first = &trace.add_entity_observations[0];
-    let entity = trace.world.entity_at(first.entity_id);
-    if entity.is_none() {
-        return Err("applied vanilla entity is not queryable in ClientWorld".into());
-    }
+    let Some(first) = trace.add_entity_observations.iter().find(|observation| {
+        observation.applied_to_world
+            && trace
+                .world
+                .entity_at(observation.entity_id)
+                .is_some_and(|entity| entity.uuid == observation.uuid)
+    }) else {
+        return Err("vanilla entity UUID was not preserved in ClientWorld".into());
+    };
+    let entity = trace
+        .world
+        .entity_at(first.entity_id)
+        .expect("matched entity UUID implies queryable entity");
 
     println!("connection=ok");
     println!("play_login={}", trace.play_login);
@@ -40,8 +48,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
     println!("add_entity_applied_count={applied_count}");
     println!(
-        "first_entity=id:{},type_id:{},x:{},y:{},z:{},data:{},applied:{}",
+        "first_entity=id:{},uuid_most:{},uuid_least:{},type_id:{},x:{},y:{},z:{},data:{},applied:{}",
         first.entity_id,
+        first.uuid.most,
+        first.uuid.least,
         first.entity_type_id,
         first.x,
         first.y,
@@ -51,7 +61,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
     println!(
         "world_entity={:?}",
-        entity.map(|value| (value.type_id, value.position(), value.data))
+        Some((entity.uuid, entity.type_id, entity.position(), entity.data))
     );
     println!("world_entity_count={}", trace.world.loaded_entity_count());
     println!("world_chunk_count={}", trace.world.loaded_chunk_count());

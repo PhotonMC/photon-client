@@ -249,6 +249,7 @@ impl ClientWorld {
         self.entities.insert(
             entity.entity_id,
             ClientEntity {
+                uuid: entity.uuid,
                 type_id: entity.type_id,
                 x_bits: entity.x.to_bits(),
                 y_bits: entity.y.to_bits(),
@@ -386,6 +387,7 @@ pub struct ClientBlockEntity {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ClientEntity {
+    pub uuid: crate::binary::Uuid,
     pub type_id: i32,
     x_bits: u64,
     y_bits: u64,
@@ -457,6 +459,7 @@ pub(crate) struct BlockEntityInput<'a> {
 
 pub(crate) struct EntityInput {
     pub(crate) entity_id: i32,
+    pub(crate) uuid: crate::binary::Uuid,
     pub(crate) type_id: i32,
     pub(crate) x: f64,
     pub(crate) y: f64,
@@ -553,7 +556,7 @@ mod tests {
         BlockEntityInput, ClientWorld, DimensionBounds, EntityInput, EntityMoveInput,
         EntityPositionInput, LightLayerInput, LightUpdateInput, SectionInput,
     };
-    use crate::binary::BitSet;
+    use crate::binary::{BitSet, Uuid};
 
     fn section(block_value: i32, biome_value: i32) -> (Vec<i32>, Vec<i32>) {
         let mut blocks = vec![block_value; 4_096];
@@ -783,6 +786,7 @@ mod tests {
         let mut world = ClientWorld::default();
         assert!(world.apply_entity(EntityInput {
             entity_id: 37,
+            uuid: Uuid::new(1, 2),
             type_id: 120,
             x: 1.25,
             y: 80.0,
@@ -796,6 +800,10 @@ mod tests {
         );
         assert_eq!(world.entity_at(37).map(|entity| entity.type_id), Some(120));
         assert_eq!(world.entity_at(37).map(|entity| entity.data), Some(6));
+        assert_eq!(
+            world.entity_at(37).map(|entity| entity.uuid),
+            Some(Uuid::new(1, 2))
+        );
         assert_eq!(world.entity_metadata_at(37), None);
         assert!(world.apply_entity_metadata(37, &[1, 0, 255]));
         assert_eq!(world.entity_metadata_at(37), Some(&[1, 0, 255][..]));
@@ -855,6 +863,7 @@ mod tests {
 
         assert!(world.apply_entity(EntityInput {
             entity_id: 37,
+            uuid: Uuid::new(3, 4),
             type_id: 71,
             x: -4.0,
             y: 65.0,
@@ -863,6 +872,10 @@ mod tests {
         }));
         assert_eq!(world.loaded_entity_count(), 1);
         assert_eq!(world.entity_at(37).map(|entity| entity.type_id), Some(71));
+        assert_eq!(
+            world.entity_at(37).map(|entity| entity.uuid),
+            Some(Uuid::new(3, 4))
+        );
         assert_eq!(
             world.entity_at(37).map(super::ClientEntity::position),
             Some((-4.0, 65.0, 2.0))

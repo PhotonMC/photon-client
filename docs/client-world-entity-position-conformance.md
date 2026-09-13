@@ -43,7 +43,7 @@ etkileri entity sınıfının ayrı state'lerine bağlıdır.
 - World'de bulunmayan entity ID'si için packet observation tutulur fakat
   application sonucu false olur.
 - Bu dilim `ClientWorld` içinde yalnız konum state'ini günceller. Rotation,
-  delta movement, on-ground, interpolation base/history, passenger ve render
+  delta movement, on-ground, interpolation base/history, passenger, UUID ve render
   state'leri semantic olarak uygulanmaz.
 
 ## Rust doğrulaması
@@ -113,7 +113,7 @@ gösterir; Java istemcisiyle parity iddiası değildir.
 
 Quantized delta base'inin Java render/interpolation state'iyle ayrıştırılması,
 rotation ve head rotation state'i, delta movement, on-ground, teleport
-relative rotation/delta bitleri, passenger/vehicle ilişkisi, entity UUID,
-entity tick/fizik, chunk unload temizliği, dimension/respawn, render state'i
+relative rotation/delta bitleri, passenger/vehicle ilişkisi, entity tick/fizik,
+chunk unload temizliği, dimension/respawn, render state'i
 ve oynanabilir istemci bağlantısı açık kalır. Bu konum state'i
 `server-conformance` ilerlemesidir; P08'in `client-parity` kapanışı değildir.

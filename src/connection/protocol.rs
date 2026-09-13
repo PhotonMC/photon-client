@@ -9,7 +9,7 @@ use flate2::Compression;
 use flate2::read::ZlibDecoder;
 use flate2::write::ZlibEncoder;
 
-use crate::binary::BitSet;
+use crate::binary::{BitSet, Uuid};
 use crate::frame::{self, FrameError, MAX_FRAME_LENGTH};
 use crate::protocol::ConnectionProtocol;
 use crate::wire;
@@ -638,6 +638,7 @@ pub struct BlockDestructionObservation {
 #[derive(Debug, Clone, PartialEq)]
 pub struct AddEntityObservation {
     pub entity_id: i32,
+    pub uuid: Uuid,
     pub entity_type_id: i32,
     pub x: f64,
     pub y: f64,
@@ -1451,10 +1452,8 @@ pub(crate) fn parse_add_entity_packet(
 ) -> Result<AddEntityObservation, ConnectionError> {
     let mut input = input;
     let entity_id = read_varint(&mut input, "add entity id")?;
-    if input.len() < 16 {
-        return Err(ConnectionError::Codec("add entity uuid"));
-    }
-    input = &input[16..];
+    let uuid = crate::binary::read_uuid(&mut input)
+        .map_err(|_| ConnectionError::Codec("add entity uuid"))?;
     let entity_type_id = read_varint(&mut input, "add entity type")?;
     let x = read_f64(&mut input, "add entity x")?;
     let y = read_f64(&mut input, "add entity y")?;
@@ -1473,6 +1472,7 @@ pub(crate) fn parse_add_entity_packet(
     }
     Ok(AddEntityObservation {
         entity_id,
+        uuid,
         entity_type_id,
         x,
         y,
@@ -2945,6 +2945,7 @@ mod tests {
             parse_add_entity_packet(&payload).expect("add entity"),
             super::AddEntityObservation {
                 entity_id: 37,
+                uuid: crate::binary::Uuid::new(0, 0),
                 entity_type_id: 120,
                 x: 1.25,
                 y: 80.0,
