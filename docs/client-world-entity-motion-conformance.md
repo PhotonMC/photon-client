@@ -33,6 +33,8 @@ bulduğunda `lerpMotion` çağırır; `Entity.java:2644` bu yolu
   loaded air-cell free-flight tick'i [P08.aq kaydında](client-world-entity-snowball-tick-conformance.md)
   ayrıca ele alınır; genel motion entegrasyonu, yerçekimi, çarpışma,
   interpolation, finite-value filtreleri ve render state'i bu kaydın dışındadır.
+  Remote Player position interpolation [P08.ar kaydında](client-world-entity-player-interpolation-conformance.md)
+  ayrı ve dar bir dal olarak tutulur.
 
 ## Rust doğrulaması
 
@@ -92,10 +94,11 @@ kopyasına taşındığını gösterir; Java istemcisiyle parity iddiası değil
 
 ## Açık kapsam
 
-Genel motion'in tick entegrasyonu, yerçekimi ve collision, network
+Genel motion'in tick entegrasyonu, yerçekimi ve collision, generic network
 interpolation, rotation interpolation/head-body semantic state'i, on-ground,
 passenger ilişkisi, metadata/equipment, remove/lifecycle, chunk unload temizliği,
 dimension/respawn, render state'i ve oynanabilir istemci bağlantısı açık kalır.
 Snowball free-flight alt dalı [P08.aq](client-world-entity-snowball-tick-conformance.md)
+ile, remote Player position interpolation [P08.ar](client-world-entity-player-interpolation-conformance.md)
 ile sınırlı olarak ilerletilmiştir. Bu motion state'i
 `server-conformance` ilerlemesidir; P08'in `client-parity` kapanışı değildir.

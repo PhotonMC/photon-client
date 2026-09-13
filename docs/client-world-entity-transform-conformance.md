@@ -28,7 +28,9 @@ incelendi:
   rotation lerp'inin aritmetik sırasını tanımlar.
 
 Packet listener'ın `moveOrInterpolateTo` ve snap ayrımı bu dilimin sınırıdır:
-network hedefini çok adımlı interpolation state'ine çevirmiyoruz; alınan
+genel network hedefini çok adımlı interpolation state'ine çevirmiyoruz; remote
+Player'ın dar üç tick'lik dalı [P08.ar kaydında](client-world-entity-player-interpolation-conformance.md)
+ayrıca tutulur. Alınan
 current transform'ı bir sonraki uygun world tick'inde history snapshot'ına
 alıyoruz.
 
@@ -106,7 +108,7 @@ unit testte ölçülür. Sunucu logunda bu oturum için protocol error oluşmad�
 
 ## Açık kapsam
 
-Bu kayıt `moveOrInterpolateTo` içindeki çok adımlı network interpolation'ı,
+Bu kayıt `moveOrInterpolateTo` içindeki genel çok adımlı network interpolation'ı,
 teleport snap'in history düzeltmesini, gerçek entity tick/motion entegrasyonunu,
 passenger transformlarını, LivingEntity body rotation semantic'ini ve render
 frame/partial-tick zamanlamasını kapatmaz. Java istemcisiyle karşılaştırmalı

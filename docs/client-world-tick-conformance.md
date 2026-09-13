@@ -39,6 +39,8 @@ esas alındı:
 - Sayaç taşmaları Rust'ta `wrapping_add` ile tutulur. Type `120` snowball için
   loaded air-cell free-flight entity tick gövdesi [P08.aq kaydında](client-world-entity-snowball-tick-conformance.md)
   sınırlı olarak uygulanır; diğer entity tick gövdeleri bu dilimin dışındadır.
+  Remote Player position interpolation [P08.ar kaydında](client-world-entity-player-interpolation-conformance.md)
+  ayrı olarak ilerletilmiştir.
 
 ## Rust doğrulaması
 
@@ -96,8 +98,9 @@ oluşmadı.
 ## Açık kapsam
 
 Bu kayıt genel `Entity.tick()` davranışını, snowball dışı motion entegrasyonunu,
-collision'ı, eski konum/rotasyon interpolasyonunun tüm yollarını,
+collision'ı, eski konum/rotasyon interpolasyonunun tüm genel yollarını,
 removed/passenger/frozen filtrelerini, always-ticking remote entity manager'ını
-ve entity lifecycle'ını kapatmaz. Snowball free-flight alt dalı [P08.aq](client-world-entity-snowball-tick-conformance.md)
+ve entity lifecycle'ını kapatmaz. Snowball free-flight alt dalı [P08.aq](client-world-entity-snowball-tick-conformance.md),
+remote Player position interpolation [P08.ar](client-world-entity-player-interpolation-conformance.md)
 ile sınırlı olarak ilerletilmiştir.
 Java istemcisiyle karşılaştırmalı `client-parity` kanıtı da henüz yoktur.

@@ -112,6 +112,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P08.e-entity-motion — server-conformance ClientWorld entity motion state](client-world-entity-motion-conformance.md)
 - [P08.ab — server-conformance Entity no-gravity semantic state](client-world-entity-no-gravity-conformance.md)
 - [P08.ap-player-head-rotation — server-conformance Remote Player head rotation interpolation](client-world-entity-player-head-rotation-conformance.md)
+- [P08.ar-player-interpolation — server-conformance Remote Player position interpolation](client-world-entity-player-interpolation-conformance.md)
 - [P08.ad — server-conformance Entity pose semantic state](client-world-entity-pose-conformance.md)
 - [P08.e-entity-position — server-conformance ClientWorld entity position synchronization](client-world-entity-position-conformance.md)
 - [P08.e-entity-remove — server-conformance ClientWorld entity removal state](client-world-entity-remove-conformance.md)

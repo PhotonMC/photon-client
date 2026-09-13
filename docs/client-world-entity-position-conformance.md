@@ -44,7 +44,7 @@ etkileri entity sınıfının ayrı state'lerine bağlıdır.
   application sonucu false olur.
 - Bu dilim `ClientWorld` içinde konum state'ini günceller. Packet içindeki raw
   rotation alanlarının world state'ine uygulanması [rotation kaydında](client-world-entity-rotation-conformance.md)
-  ele alınır. On-ground, interpolation base/history, passenger ve render state'leri semantic
+  ele alınır. On-ground, generic interpolation base/history, passenger ve render state'leri semantic
   olarak uygulanmaz; raw delta movement state'i [motion kaydında](client-world-entity-motion-conformance.md)
   ele alınır.
 
@@ -55,7 +55,9 @@ varyant parser'ı Java alan sırasını tüketir ve trailing byte'ları reddeder
 `ClientWorld`, mutlak/relative konum uygulamasını ve quantized move çözümünü
 sorgulanabilir entity position olarak saklar. Her uygulanan observation, probe
 sırasında uygulama anındaki konumu kaydeder; sonradan gelen entity tick'leri
-ile karıştırılmaz.
+ile karıştırılmaz. Player type ID `156` için network interpolation hedefi ve
+üç tick sonucu [P08.ar kaydında](client-world-entity-player-interpolation-conformance.md)
+ayrıca tutulur.
 
 Unit testleri packet ID'lerini, iki `PositionMoveRotation` alan sırasını, üç
 move wire varyantını, absolute/relative konum çözümünü ve rotation-only
@@ -115,7 +117,7 @@ gösterir; Java istemcisiyle parity iddiası değildir.
 
 Quantized delta base'inin Java render/interpolation state'iyle ayrıştırılması,
 rotation interpolation ve head/body semantic state'i, delta movement integration, on-ground, teleport
-relative rotation/delta bitleri, passenger/vehicle ilişkisi, entity tick/fizik,
+relative rotation/delta bitleri, generic living interpolation, passenger/vehicle ilişkisi, entity tick/fizik,
 chunk unload temizliği, dimension/respawn, render state'i
 ve oynanabilir istemci bağlantısı açık kalır. Bu konum state'i
 `server-conformance` ilerlemesidir; P08'in `client-parity` kapanışı değildir.

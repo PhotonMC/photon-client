@@ -3,7 +3,7 @@
 use std::collections::{BTreeMap, VecDeque};
 
 use crate::binary::BitSet;
-use crate::math::{mth_atan2, mth_lerp_f32, mth_lerp_f64, mth_rot_lerp_f32};
+use crate::math::{mth_atan2, mth_lerp_f32, mth_lerp_f64, mth_rot_lerp_f32, mth_rot_lerp_f64};
 
 pub(crate) const PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS: u8 = 1;
 pub(crate) const PLAYER_RESPAWN_KEEP_ENTITY_DATA: u8 = 2;
@@ -38,6 +38,7 @@ const ENTITY_EFFECT_PARTICLE_TYPE_ID: i32 = 28;
 const DEFAULT_AIR_SUPPLY: i32 = 300;
 const DEFAULT_TICKS_REQUIRED_TO_FREEZE: i32 = 140;
 const LIVING_ENTITY_HEAD_LERP_STEPS: u8 = 3;
+const LIVING_ENTITY_POSITION_LERP_STEPS: u8 = 3;
 const SNOWBALL_GRAVITY: f64 = 0.03;
 const LIVING_FLAG_USING_ITEM: u8 = 0;
 const LIVING_FLAG_OFF_HAND: u8 = 1;
@@ -137,6 +138,38 @@ fn advance_head_rotation(current_bits: &mut u32, target_bits: u32, steps: &mut u
     let target = f32::from_bits(target_bits);
     *current_bits = mth_rot_lerp_f32(1.0 / step_count, current, target).to_bits();
     *steps -= 1;
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct EntityInterpolationState {
+    target_x_bits: u64,
+    target_y_bits: u64,
+    target_z_bits: u64,
+    target_y_rot_bits: u32,
+    target_x_rot_bits: u32,
+    previous_x_bits: u64,
+    previous_y_bits: u64,
+    previous_z_bits: u64,
+    previous_y_rot_bits: u32,
+    previous_x_rot_bits: u32,
+    steps: u8,
+}
+
+impl EntityInterpolationState {
+    fn target_position(self) -> (f64, f64, f64) {
+        (
+            f64::from_bits(self.target_x_bits),
+            f64::from_bits(self.target_y_bits),
+            f64::from_bits(self.target_z_bits),
+        )
+    }
+
+    fn target_rotation(self) -> (f32, f32) {
+        (
+            f32::from_bits(self.target_y_rot_bits),
+            f32::from_bits(self.target_x_rot_bits),
+        )
+    }
 }
 
 fn read_effect_particle_type_ids(metadata: &mut &[u8]) -> Option<Vec<i32>> {
@@ -1248,8 +1281,11 @@ impl ClientWorld {
                 .get_mut(&entity_id)
                 .expect("ticking entity was collected from the world");
             entity.capture_old_transform();
-            entity.tick_head_rotation();
             entity.tick_count = entity.tick_count.wrapping_add(1);
+            if entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID {
+                entity.tick_position_interpolation();
+            }
+            entity.tick_head_rotation();
             if can_tick_snowball {
                 entity.tick_snowball();
             }
@@ -1556,6 +1592,7 @@ impl ClientWorld {
                 old_y_head_rot_bits: entity.rotation.2.to_bits(),
                 head_rotation_target_bits: entity.rotation.2.to_bits(),
                 head_lerp_steps: 0,
+                interpolation: None,
                 on_ground: false,
                 always_ticking: entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID,
                 ticking: ticking || entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID,
@@ -1740,23 +1777,44 @@ impl ClientWorld {
             let Some(entity) = self.entities.get_mut(&input.entity_id) else {
                 return false;
             };
-            if let Some(y_rot) = input.y_rot {
-                let current = f32::from_bits(entity.y_rot_bits);
-                let value = if input.relative_y_rot {
-                    current + y_rot
-                } else {
-                    y_rot
-                };
-                entity.y_rot_bits = (value % 360.0).to_bits();
-            }
-            if let Some(x_rot) = input.x_rot {
-                let current = f32::from_bits(entity.x_rot_bits);
-                let value = if input.relative_x_rot {
-                    current + x_rot
-                } else {
-                    x_rot
-                };
-                entity.x_rot_bits = (value % 360.0).clamp(-90.0, 90.0).to_bits();
+            if entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID
+                && (input.y_rot.is_some() || input.x_rot.is_some())
+            {
+                let (current_y_rot, current_x_rot) = entity.interpolation_rotation();
+                let y_rot = input.y_rot.map_or(current_y_rot, |y_rot| {
+                    if input.relative_y_rot {
+                        current_y_rot + y_rot
+                    } else {
+                        y_rot
+                    }
+                });
+                let x_rot = input.x_rot.map_or(current_x_rot, |x_rot| {
+                    if input.relative_x_rot {
+                        current_x_rot + x_rot
+                    } else {
+                        x_rot
+                    }
+                });
+                entity.interpolate_to(entity.interpolation_position(), y_rot, x_rot);
+            } else {
+                if let Some(y_rot) = input.y_rot {
+                    let current = f32::from_bits(entity.y_rot_bits);
+                    let value = if input.relative_y_rot {
+                        current + y_rot
+                    } else {
+                        y_rot
+                    };
+                    entity.y_rot_bits = (value % 360.0).to_bits();
+                }
+                if let Some(x_rot) = input.x_rot {
+                    let current = f32::from_bits(entity.x_rot_bits);
+                    let value = if input.relative_x_rot {
+                        current + x_rot
+                    } else {
+                        x_rot
+                    };
+                    entity.x_rot_bits = (value % 360.0).clamp(-90.0, 90.0).to_bits();
+                }
             }
             if let Some(y_head_rot) = input.y_head_rot {
                 if entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID {
@@ -1783,7 +1841,7 @@ impl ClientWorld {
         let Some(current) = self
             .entities
             .get(&input.entity_id)
-            .map(|entity| entity.position())
+            .map(|entity| entity.interpolation_position())
         else {
             return false;
         };
@@ -1808,9 +1866,14 @@ impl ClientWorld {
             .entities
             .get_mut(&input.entity_id)
             .expect("entity checked above");
-        entity.x_bits = x.to_bits();
-        entity.y_bits = y.to_bits();
-        entity.z_bits = z.to_bits();
+        if entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID {
+            let (y_rot, x_rot) = entity.interpolation_rotation();
+            entity.interpolate_to((x, y, z), y_rot, x_rot);
+        } else {
+            entity.x_bits = x.to_bits();
+            entity.y_bits = y.to_bits();
+            entity.z_bits = z.to_bits();
+        }
         entity.ticking = entity.always_ticking || ticking;
         true
     }
@@ -1819,7 +1882,7 @@ impl ClientWorld {
         let Some(current) = self
             .entities
             .get(&input.entity_id)
-            .map(|entity| entity.position())
+            .map(|entity| entity.interpolation_position())
         else {
             return false;
         };
@@ -1838,18 +1901,29 @@ impl ClientWorld {
             .entities
             .get_mut(&input.entity_id)
             .expect("entity checked above");
-        if input.has_position {
-            let (x, y, z) = new_position.expect("position was requested");
-            entity.x_bits = x.to_bits();
-            entity.y_bits = y.to_bits();
-            entity.z_bits = z.to_bits();
-            entity.ticking = entity.always_ticking || ticking.expect("position ticking state");
+        if entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID {
+            let target_position = new_position.unwrap_or(current);
+            let (current_y_rot, current_x_rot) = entity.interpolation_rotation();
+            let target_y_rot = input.y_rot.unwrap_or(current_y_rot);
+            let target_x_rot = input.x_rot.unwrap_or(current_x_rot);
+            entity.interpolate_to(target_position, target_y_rot, target_x_rot);
+        } else {
+            if input.has_position {
+                let (x, y, z) = new_position.expect("position was requested");
+                entity.x_bits = x.to_bits();
+                entity.y_bits = y.to_bits();
+                entity.z_bits = z.to_bits();
+                entity.ticking = entity.always_ticking || ticking.expect("position ticking state");
+            }
+            if let Some(y_rot) = input.y_rot {
+                entity.y_rot_bits = (y_rot % 360.0).to_bits();
+            }
+            if let Some(x_rot) = input.x_rot {
+                entity.x_rot_bits = (x_rot % 360.0).clamp(-90.0, 90.0).to_bits();
+            }
         }
-        if let Some(y_rot) = input.y_rot {
-            entity.y_rot_bits = (y_rot % 360.0).to_bits();
-        }
-        if let Some(x_rot) = input.x_rot {
-            entity.x_rot_bits = (x_rot % 360.0).clamp(-90.0, 90.0).to_bits();
+        if entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID {
+            entity.ticking = true;
         }
         true
     }
@@ -2064,6 +2138,7 @@ pub struct ClientEntity {
     old_y_head_rot_bits: u32,
     head_rotation_target_bits: u32,
     head_lerp_steps: u8,
+    interpolation: Option<EntityInterpolationState>,
     on_ground: bool,
     always_ticking: bool,
     ticking: bool,
@@ -2606,6 +2681,128 @@ impl ClientEntity {
         );
     }
 
+    fn interpolation_position(&self) -> (f64, f64, f64) {
+        self.interpolation
+            .filter(|interpolation| interpolation.steps > 0)
+            .map_or_else(
+                || self.position(),
+                EntityInterpolationState::target_position,
+            )
+    }
+
+    fn interpolation_rotation(&self) -> (f32, f32) {
+        self.interpolation
+            .filter(|interpolation| interpolation.steps > 0)
+            .map_or_else(
+                || self.body_rotation(),
+                EntityInterpolationState::target_rotation,
+            )
+    }
+
+    fn interpolate_to(&mut self, position: (f64, f64, f64), y_rot: f32, x_rot: f32) {
+        let target_matches = self.interpolation.is_some_and(|interpolation| {
+            interpolation.steps > 0
+                && interpolation.target_x_bits == position.0.to_bits()
+                && interpolation.target_y_bits == position.1.to_bits()
+                && interpolation.target_z_bits == position.2.to_bits()
+                && interpolation.target_y_rot_bits == y_rot.to_bits()
+                && interpolation.target_x_rot_bits == x_rot.to_bits()
+        });
+        if target_matches {
+            return;
+        }
+
+        let current_position = self.position();
+        let current_rotation = self.body_rotation();
+        self.interpolation = Some(EntityInterpolationState {
+            target_x_bits: position.0.to_bits(),
+            target_y_bits: position.1.to_bits(),
+            target_z_bits: position.2.to_bits(),
+            target_y_rot_bits: y_rot.to_bits(),
+            target_x_rot_bits: x_rot.to_bits(),
+            previous_x_bits: current_position.0.to_bits(),
+            previous_y_bits: current_position.1.to_bits(),
+            previous_z_bits: current_position.2.to_bits(),
+            previous_y_rot_bits: current_rotation.0.to_bits(),
+            previous_x_rot_bits: current_rotation.1.to_bits(),
+            steps: LIVING_ENTITY_POSITION_LERP_STEPS,
+        });
+    }
+
+    fn tick_position_interpolation(&mut self) {
+        let current_position = self.position();
+        let current_rotation = self.body_rotation();
+        let Some(interpolation) = self
+            .interpolation
+            .as_mut()
+            .filter(|interpolation| interpolation.steps > 0)
+        else {
+            return;
+        };
+
+        let alpha = 1.0 / f64::from(interpolation.steps);
+        let previous_position = (
+            f64::from_bits(interpolation.previous_x_bits),
+            f64::from_bits(interpolation.previous_y_bits),
+            f64::from_bits(interpolation.previous_z_bits),
+        );
+        let delta_position = (
+            current_position.0 - previous_position.0,
+            current_position.1 - previous_position.1,
+            current_position.2 - previous_position.2,
+        );
+        interpolation.target_x_bits =
+            (f64::from_bits(interpolation.target_x_bits) + delta_position.0).to_bits();
+        interpolation.target_y_bits =
+            (f64::from_bits(interpolation.target_y_bits) + delta_position.1).to_bits();
+        interpolation.target_z_bits =
+            (f64::from_bits(interpolation.target_z_bits) + delta_position.2).to_bits();
+
+        let previous_rotation = (
+            f32::from_bits(interpolation.previous_y_rot_bits),
+            f32::from_bits(interpolation.previous_x_rot_bits),
+        );
+        let delta_rotation = (
+            current_rotation.0 - previous_rotation.0,
+            current_rotation.1 - previous_rotation.1,
+        );
+        interpolation.target_y_rot_bits =
+            (f32::from_bits(interpolation.target_y_rot_bits) + delta_rotation.0).to_bits();
+        interpolation.target_x_rot_bits =
+            (f32::from_bits(interpolation.target_x_rot_bits) + delta_rotation.1).to_bits();
+
+        let target_position = interpolation.target_position();
+        let target_rotation = interpolation.target_rotation();
+        let new_position = (
+            mth_lerp_f64(alpha, current_position.0, target_position.0),
+            mth_lerp_f64(alpha, current_position.1, target_position.1),
+            mth_lerp_f64(alpha, current_position.2, target_position.2),
+        );
+        let new_rotation = (
+            mth_rot_lerp_f64(
+                alpha,
+                f64::from(current_rotation.0),
+                f64::from(target_rotation.0),
+            ) as f32,
+            mth_lerp_f64(
+                alpha,
+                f64::from(current_rotation.1),
+                f64::from(target_rotation.1),
+            ) as f32,
+        );
+        self.x_bits = new_position.0.to_bits();
+        self.y_bits = new_position.1.to_bits();
+        self.z_bits = new_position.2.to_bits();
+        self.y_rot_bits = (new_rotation.0 % 360.0).to_bits();
+        self.x_rot_bits = (new_rotation.1 % 360.0).clamp(-90.0, 90.0).to_bits();
+        interpolation.steps -= 1;
+        interpolation.previous_x_bits = new_position.0.to_bits();
+        interpolation.previous_y_bits = new_position.1.to_bits();
+        interpolation.previous_z_bits = new_position.2.to_bits();
+        interpolation.previous_y_rot_bits = new_rotation.0.to_bits();
+        interpolation.previous_x_rot_bits = new_rotation.1.to_bits();
+    }
+
     fn tick_snowball(&mut self) {
         let air_drag = f64::from(0.99_f32);
         let gravity = if self.no_gravity {
@@ -2685,6 +2882,31 @@ impl ClientEntity {
             f32::from_bits(self.x_rot_bits),
             f32::from_bits(self.y_head_rot_bits),
         )
+    }
+
+    fn body_rotation(&self) -> (f32, f32) {
+        (
+            f32::from_bits(self.y_rot_bits),
+            f32::from_bits(self.x_rot_bits),
+        )
+    }
+
+    pub fn interpolation_target_position(&self) -> Option<(f64, f64, f64)> {
+        self.interpolation
+            .filter(|interpolation| interpolation.steps > 0)
+            .map(EntityInterpolationState::target_position)
+    }
+
+    pub fn interpolation_target_rotation(&self) -> Option<(f32, f32)> {
+        self.interpolation
+            .filter(|interpolation| interpolation.steps > 0)
+            .map(EntityInterpolationState::target_rotation)
+    }
+
+    pub fn interpolation_steps(&self) -> u8 {
+        self.interpolation
+            .filter(|interpolation| interpolation.steps > 0)
+            .map_or(0, |interpolation| interpolation.steps)
     }
 
     pub fn previous_rotation(&self) -> (f32, f32, f32) {
@@ -5280,6 +5502,89 @@ mod tests {
                 .map(super::ClientEntity::previous_position),
             Some((4.0, 82.0, -34.5))
         );
+    }
+
+    #[test]
+    fn remote_player_position_interpolation_follows_java_three_step_handler() {
+        let mut world = ClientWorld::default();
+        let (blocks, biomes) = section(0, 0);
+        world.replace_chunk(
+            0,
+            -3,
+            [SectionInput {
+                non_empty_block_count: 0,
+                fluid_count: 0,
+                block_states: &blocks,
+                biomes: &biomes,
+            }],
+        );
+        assert!(world.apply_entity(EntityInput {
+            entity_id: 37,
+            uuid: Uuid::new(1, 2),
+            type_id: VANILLA_PLAYER_ENTITY_TYPE_ID,
+            x: 1.0,
+            y: 80.0,
+            z: -35.5,
+            movement: (0.0, 0.0, 0.0),
+            rotation: (350.0, -20.0, 350.0),
+            data: 0,
+        }));
+
+        assert!(world.apply_entity_position(EntityPositionInput {
+            entity_id: 37,
+            x: 4.0,
+            y: 82.0,
+            z: -34.5,
+            relative_flags: 0,
+        }));
+        assert_eq!(
+            world.entity_at(37).map(super::ClientEntity::position),
+            Some((1.0, 80.0, -35.5))
+        );
+        assert_eq!(
+            world
+                .entity_at(37)
+                .and_then(super::ClientEntity::interpolation_target_position),
+            Some((4.0, 82.0, -34.5))
+        );
+        assert!(world.apply_entity_rotation(EntityRotationInput {
+            entity_id: 37,
+            y_rot: Some(10.0),
+            x_rot: Some(20.0),
+            y_head_rot: None,
+            relative_y_rot: false,
+            relative_x_rot: false,
+        }));
+        assert_eq!(
+            world
+                .entity_at(37)
+                .and_then(super::ClientEntity::interpolation_target_rotation),
+            Some((10.0, 20.0))
+        );
+
+        world.tick();
+        let first = world.entity_at(37).expect("first interpolation step");
+        assert_eq!(first.interpolation_steps(), 2);
+        assert_eq!(
+            first.position(),
+            (2.0, 80.66666666666667, -35.166666666666664)
+        );
+        assert_eq!(first.rotation(), (356.666_66_f32, -6.6666665_f32, 350.0));
+
+        world.tick();
+        let second = world.entity_at(37).expect("second interpolation step");
+        assert_eq!(second.interpolation_steps(), 1);
+        assert_eq!(
+            second.position(),
+            (3.0, 81.33333333333334, -34.83333333333333)
+        );
+        assert_eq!(second.rotation(), (3.333313_f32, 6.666667_f32, 350.0));
+
+        world.tick();
+        let third = world.entity_at(37).expect("final interpolation step");
+        assert_eq!(third.interpolation_steps(), 0);
+        assert_eq!(third.position(), (4.0, 82.0, -34.5));
+        assert_eq!(third.rotation(), (10.0, 20.0, 350.0));
     }
 
     #[test]

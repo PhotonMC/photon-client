@@ -126,6 +126,43 @@ pub fn connect_and_remote_player_head_rotation_observer_probe(
     )
 }
 
+/// Connect to a Java-protocol server and send a short controlled movement trace
+/// whose remote-player position interpolation can be observed by another client.
+pub fn connect_and_remote_player_interpolation_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    const YAW_SEQUENCE: &[i16] = &[90, 180, 270];
+
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeConfig::new(ProbeAction::Movement)
+            .with_movement_yaws(YAW_SEQUENCE)
+            .with_movement_pause(Duration::from_millis(500))
+            .with_movement_hold(Duration::from_secs(5)),
+    )
+}
+
+/// Connect to a Java-protocol server and observe a remote Player's three-step
+/// LivingEntity position interpolation during the controlled movement trace.
+pub fn connect_and_remote_player_interpolation_observer_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeConfig::new(ProbeAction::WorldEntityAdd)
+            .with_player_interpolation_observation()
+            .with_drain_timeout(Duration::from_secs(5)),
+    )
+}
+
 /// Connect to a Java-protocol server, move across the configured view radius,
 /// and observe chunk columns dropped from the client world copy.
 pub fn connect_and_world_chunk_unload_probe(
@@ -1061,6 +1098,7 @@ struct PlayProbeConfig {
     movement_yaws: Option<&'static [i16]>,
     movement_pause: Duration,
     movement_hold: Duration,
+    observe_player_interpolation: bool,
     drain_timeout_override: Option<Duration>,
 }
 
@@ -1073,6 +1111,7 @@ impl PlayProbeConfig {
             movement_yaws: None,
             movement_pause: Duration::ZERO,
             movement_hold: Duration::ZERO,
+            observe_player_interpolation: false,
             drain_timeout_override: None,
         }
     }
@@ -1085,6 +1124,7 @@ impl PlayProbeConfig {
             movement_yaws: None,
             movement_pause: Duration::ZERO,
             movement_hold: Duration::ZERO,
+            observe_player_interpolation: false,
             drain_timeout_override: None,
         }
     }
@@ -1097,6 +1137,7 @@ impl PlayProbeConfig {
             movement_yaws: None,
             movement_pause: Duration::ZERO,
             movement_hold: Duration::ZERO,
+            observe_player_interpolation: false,
             drain_timeout_override: None,
         }
     }
@@ -1116,10 +1157,68 @@ impl PlayProbeConfig {
         self
     }
 
+    const fn with_player_interpolation_observation(mut self) -> Self {
+        self.observe_player_interpolation = true;
+        self
+    }
+
     const fn with_drain_timeout(mut self, timeout: Duration) -> Self {
         self.drain_timeout_override = Some(timeout);
         self
     }
+}
+
+fn observe_player_interpolation(
+    trace: &mut PlayConnectionTrace,
+    entity_id: i32,
+    before_position: (f64, f64, f64),
+    before_rotation: (f32, f32),
+) {
+    if !trace.entity_interpolation_observations.is_empty() {
+        return;
+    }
+    let Some(entity) = trace.world.entity_at(entity_id) else {
+        return;
+    };
+    if entity.type_id != 156 {
+        return;
+    }
+    let Some(target_position) = entity.interpolation_target_position() else {
+        return;
+    };
+    let Some(target_rotation) = entity.interpolation_target_rotation() else {
+        return;
+    };
+    if target_position == before_position && target_rotation == before_rotation {
+        return;
+    }
+
+    let mut positions_after_ticks = Vec::with_capacity(3);
+    let mut rotations_after_ticks = Vec::with_capacity(3);
+    for _ in 0..3 {
+        trace.world.tick();
+        let Some(entity) = trace.world.entity_at(entity_id) else {
+            return;
+        };
+        positions_after_ticks.push(entity.position());
+        rotations_after_ticks.push((entity.rotation().0, entity.rotation().1));
+    }
+    let Some(entity) = trace.world.entity_at(entity_id) else {
+        return;
+    };
+    trace
+        .entity_interpolation_observations
+        .push(EntityInterpolationObservation {
+            entity_id,
+            entity_type_id: entity.type_id,
+            before_position,
+            target_position,
+            before_rotation,
+            target_rotation,
+            positions_after_ticks,
+            rotations_after_ticks,
+            tick_count: entity.tick_count(),
+        });
 }
 
 fn dimension_bounds_for_spawn_info(
@@ -1692,6 +1791,20 @@ fn connect_and_probe_with_mode(
             }
             PLAY_CLIENTBOUND_MOVE_ENTITY_POS_PACKET_ID => {
                 let mut observation = parse_move_entity_pos_packet(payload)?;
+                let interpolation_before = if probe.observe_player_interpolation {
+                    trace
+                        .world
+                        .entity_at(observation.entity_id)
+                        .filter(|entity| entity.type_id == 156)
+                        .map(|entity| {
+                            (
+                                entity.position(),
+                                (entity.rotation().0, entity.rotation().1),
+                            )
+                        })
+                } else {
+                    None
+                };
                 observation.applied_to_world = trace.world.apply_entity_move(EntityMoveInput {
                     entity_id: observation.entity_id,
                     delta_x: observation.delta_x,
@@ -1717,11 +1830,35 @@ fn connect_and_probe_with_mode(
                         .world
                         .entity_at(observation.entity_id)
                         .map(|entity| entity.on_ground());
+                    if observation.has_position
+                        && let Some((before_position, before_rotation)) = interpolation_before
+                    {
+                        observe_player_interpolation(
+                            &mut trace,
+                            observation.entity_id,
+                            before_position,
+                            before_rotation,
+                        );
+                    }
                 }
                 trace.entity_move_observations.push(observation);
             }
             PLAY_CLIENTBOUND_MOVE_ENTITY_POS_ROT_PACKET_ID => {
                 let mut observation = parse_move_entity_pos_rot_packet(payload)?;
+                let interpolation_before = if probe.observe_player_interpolation {
+                    trace
+                        .world
+                        .entity_at(observation.entity_id)
+                        .filter(|entity| entity.type_id == 156)
+                        .map(|entity| {
+                            (
+                                entity.position(),
+                                (entity.rotation().0, entity.rotation().1),
+                            )
+                        })
+                } else {
+                    None
+                };
                 observation.applied_to_world = trace.world.apply_entity_move(EntityMoveInput {
                     entity_id: observation.entity_id,
                     delta_x: observation.delta_x,
@@ -1747,11 +1884,35 @@ fn connect_and_probe_with_mode(
                         .world
                         .entity_at(observation.entity_id)
                         .map(|entity| entity.on_ground());
+                    if observation.has_position
+                        && let Some((before_position, before_rotation)) = interpolation_before
+                    {
+                        observe_player_interpolation(
+                            &mut trace,
+                            observation.entity_id,
+                            before_position,
+                            before_rotation,
+                        );
+                    }
                 }
                 trace.entity_move_observations.push(observation);
             }
             PLAY_CLIENTBOUND_MOVE_ENTITY_ROT_PACKET_ID => {
                 let mut observation = parse_move_entity_rot_packet(payload)?;
+                let interpolation_before = if probe.observe_player_interpolation {
+                    trace
+                        .world
+                        .entity_at(observation.entity_id)
+                        .filter(|entity| entity.type_id == 156)
+                        .map(|entity| {
+                            (
+                                entity.position(),
+                                (entity.rotation().0, entity.rotation().1),
+                            )
+                        })
+                } else {
+                    None
+                };
                 observation.applied_to_world = trace.world.apply_entity_move(EntityMoveInput {
                     entity_id: observation.entity_id,
                     delta_x: observation.delta_x,
@@ -1773,6 +1934,16 @@ fn connect_and_probe_with_mode(
                         .world
                         .entity_at(observation.entity_id)
                         .map(|entity| entity.on_ground());
+                    if observation.has_position
+                        && let Some((before_position, before_rotation)) = interpolation_before
+                    {
+                        observe_player_interpolation(
+                            &mut trace,
+                            observation.entity_id,
+                            before_position,
+                            before_rotation,
+                        );
+                    }
                 }
                 trace.entity_move_observations.push(observation);
             }

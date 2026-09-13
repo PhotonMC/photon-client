@@ -567,6 +567,7 @@ pub struct PlayConnectionTrace {
     pub snowball_item_registry_id: Option<i32>,
     pub add_entity_observations: Vec<AddEntityObservation>,
     pub projectile_tick_observations: Vec<ProjectileTickObservation>,
+    pub entity_interpolation_observations: Vec<EntityInterpolationObservation>,
     pub entity_motion_observations: Vec<EntityMotionObservation>,
     pub entity_head_rotation_observations: Vec<EntityHeadRotationObservation>,
     pub remove_entities_observations: Vec<RemoveEntitiesObservation>,
@@ -785,6 +786,20 @@ pub struct ProjectileTickObservation {
     pub after_motion: (f64, f64, f64),
     pub before_rotation: (f32, f32, f32),
     pub after_rotation: (f32, f32, f32),
+    pub tick_count: i32,
+}
+
+/// One Java LivingEntity interpolation target and its three world-tick steps.
+#[derive(Debug, Clone, PartialEq)]
+pub struct EntityInterpolationObservation {
+    pub entity_id: i32,
+    pub entity_type_id: i32,
+    pub before_position: (f64, f64, f64),
+    pub target_position: (f64, f64, f64),
+    pub before_rotation: (f32, f32),
+    pub target_rotation: (f32, f32),
+    pub positions_after_ticks: Vec<(f64, f64, f64)>,
+    pub rotations_after_ticks: Vec<(f32, f32)>,
     pub tick_count: i32,
 }
 
