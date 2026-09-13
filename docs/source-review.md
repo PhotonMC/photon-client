@@ -303,6 +303,8 @@ Sunucunun otoriter dünya üretimi, mob AI, kayıt ve redstone yürütmesini Rus
 
 Tablodaki `client/`, `network/`, `server/` ve `world/` yolları `net/minecraft/` altındadır. Satır numaraları sabitlenen decompile ağacına aittir; gelecekteki sürüme taşınmaz.
 
+| `world/level/BaseSpawner.java:39-59,88-107,194-225`, `world/level/block/entity/SpawnerBlockEntity.java:41-70`, `network/protocol/game/ClientboundBlockEntityDataPacket.java:16-39,41-65`, `client/multiplayer/ClientPacketListener.java:1471-1489`, `world/level/block/entity/BlockEntityTypes.java:89` | Mob spawner, `Delay`, `MinSpawnDelay`, `MaxSpawnDelay`, `SpawnCount`, `MaxNearbyEntities`, `RequiredPlayerRange` ve `SpawnRange` alanlarını Java varsayılanlarıyla yükler; update tag'i bu alanları numeric NBT olarak taşır ve `SpawnPotentials`'ı çıkarır. Client packet listener eşleşen type/konumdaki block entity'ye compound tag'i yükler; mob spawner registry ID'si vanilla'da `9`'dur. | P08.s spawner semantic state dilimi yedi numeric alanın Java varsayılanları ve dönüşümleriyle `ClientWorld` query'sine uygulanmasını iki bağımsız vanilla 26.2 oturumunda [kendi kaydında](client-world-block-entity-spawner-conformance.md) `server-conformance` olarak doğrular. `SpawnData`, `SpawnPotentials`, spawner tick/display/render ve diğer block entity semantic alanları açık kalır. |
+
 ## Diğer alt sistemlerin doğrulanan giriş noktaları
 
 Bu bölüm metot/bağımlılık haritasıdır; bütün davranış dallarının incelendiği iddiası değildir.

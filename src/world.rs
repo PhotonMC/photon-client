@@ -912,10 +912,7 @@ impl ClientWorld {
             }
             chunk.block_entities.insert(
                 (entity.x, entity.y, entity.z),
-                ClientBlockEntity {
-                    type_id: entity.type_id,
-                    tag: entity.tag.map(<[u8]>::to_vec),
-                },
+                ClientBlockEntity::from_wire(entity.type_id, entity.tag.map(<[u8]>::to_vec)),
             );
             applied += 1;
         }
@@ -929,10 +926,7 @@ impl ClientWorld {
         };
         chunk.block_entities.insert(
             (entity.x, entity.y, entity.z),
-            ClientBlockEntity {
-                type_id: entity.type_id,
-                tag: entity.tag.map(<[u8]>::to_vec),
-            },
+            ClientBlockEntity::from_wire(entity.type_id, entity.tag.map(<[u8]>::to_vec)),
         );
         true
     }
@@ -1177,9 +1171,114 @@ impl ClientWorld {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClientSpawnerState {
+    delay: i32,
+    min_spawn_delay: i32,
+    max_spawn_delay: i32,
+    spawn_count: i32,
+    max_nearby_entities: i32,
+    required_player_range: i32,
+    spawn_range: i32,
+}
+
+impl ClientSpawnerState {
+    pub fn delay(&self) -> i32 {
+        self.delay
+    }
+
+    pub fn min_spawn_delay(&self) -> i32 {
+        self.min_spawn_delay
+    }
+
+    pub fn max_spawn_delay(&self) -> i32 {
+        self.max_spawn_delay
+    }
+
+    pub fn spawn_count(&self) -> i32 {
+        self.spawn_count
+    }
+
+    pub fn max_nearby_entities(&self) -> i32 {
+        self.max_nearby_entities
+    }
+
+    pub fn required_player_range(&self) -> i32 {
+        self.required_player_range
+    }
+
+    pub fn spawn_range(&self) -> i32 {
+        self.spawn_range
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ClientBlockEntity {
     pub type_id: i32,
     pub tag: Option<Vec<u8>>,
+    spawner_state: Option<ClientSpawnerState>,
+}
+
+impl ClientBlockEntity {
+    fn from_wire(type_id: i32, tag: Option<Vec<u8>>) -> Self {
+        let spawner_state = parse_spawner_state(type_id, tag.as_deref());
+        Self {
+            type_id,
+            tag,
+            spawner_state,
+        }
+    }
+
+    pub fn spawner_state(&self) -> Option<&ClientSpawnerState> {
+        self.spawner_state.as_ref()
+    }
+}
+
+fn parse_spawner_state(type_id: i32, tag: Option<&[u8]>) -> Option<ClientSpawnerState> {
+    if type_id != 9 {
+        return None;
+    }
+    let mut input = tag?;
+    let fields = crate::nbt::read_nbt(&mut input).ok()??;
+    if !input.is_empty() {
+        return None;
+    }
+    Some(ClientSpawnerState {
+        delay: spawner_short_number(&fields, "Delay", 20),
+        min_spawn_delay: spawner_int_number(&fields, "MinSpawnDelay", 200),
+        max_spawn_delay: spawner_int_number(&fields, "MaxSpawnDelay", 800),
+        spawn_count: spawner_int_number(&fields, "SpawnCount", 4),
+        max_nearby_entities: spawner_int_number(&fields, "MaxNearbyEntities", 6),
+        required_player_range: spawner_int_number(&fields, "RequiredPlayerRange", 16),
+        spawn_range: spawner_int_number(&fields, "SpawnRange", 4),
+    })
+}
+
+fn spawner_short_number(fields: &[crate::nbt::Field], key: &str, default: i32) -> i32 {
+    fields
+        .iter()
+        .find(|field| field.key == key)
+        .and_then(|field| numeric_nbt_value(&field.value))
+        .map_or(default, |value| value as i16 as i32)
+}
+
+fn spawner_int_number(fields: &[crate::nbt::Field], key: &str, default: i32) -> i32 {
+    fields
+        .iter()
+        .find(|field| field.key == key)
+        .and_then(|field| numeric_nbt_value(&field.value))
+        .unwrap_or(default)
+}
+
+fn numeric_nbt_value(value: &crate::nbt::FieldValue) -> Option<i32> {
+    match value {
+        crate::nbt::FieldValue::Byte(value) => Some(i32::from(*value)),
+        crate::nbt::FieldValue::Short(value) => Some(i32::from(*value)),
+        crate::nbt::FieldValue::Int(value) => Some(*value),
+        crate::nbt::FieldValue::Long(value) => Some(*value as i32),
+        crate::nbt::FieldValue::Float(value) => Some(*value as i32),
+        crate::nbt::FieldValue::Double(value) => Some(*value as i32),
+        _ => None,
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1895,6 +1994,7 @@ mod tests {
             Some(&super::ClientBlockEntity {
                 type_id: 7,
                 tag: Some(tag.to_vec()),
+                spawner_state: None,
             })
         );
 
@@ -1914,6 +2014,76 @@ mod tests {
         assert!(world.unload_chunk(-1, 2));
         assert_eq!(world.loaded_block_entity_count(), 0);
         assert_eq!(world.block_entity_at(-1, -63, 32), None);
+    }
+
+    #[test]
+    fn spawner_state_decodes_java_update_tag_and_defaults() {
+        use crate::nbt::{Field, FieldValue};
+
+        let mut tag = Vec::new();
+        crate::nbt::write_nbt(
+            Some(&[
+                Field {
+                    key: "Delay".to_owned(),
+                    value: FieldValue::Int(65_535),
+                },
+                Field {
+                    key: "MaxSpawnDelay".to_owned(),
+                    value: FieldValue::Short(640),
+                },
+                Field {
+                    key: "MinSpawnDelay".to_owned(),
+                    value: FieldValue::Short(120),
+                },
+                Field {
+                    key: "SpawnCount".to_owned(),
+                    value: FieldValue::Str("invalid numeric tag".to_owned()),
+                },
+            ]),
+            &mut tag,
+        );
+
+        let (blocks, biomes) = section(7, 8);
+        let mut world = ClientWorld::default();
+        world.replace_chunk(
+            0,
+            0,
+            [SectionInput {
+                non_empty_block_count: 1,
+                fluid_count: 0,
+                block_states: &blocks,
+                biomes: &biomes,
+            }],
+        );
+        assert_eq!(
+            world.apply_block_entities(
+                0,
+                0,
+                [BlockEntityInput {
+                    x: 1,
+                    y: -63,
+                    z: 2,
+                    type_id: 9,
+                    tag: Some(&tag),
+                }],
+            ),
+            1
+        );
+
+        let state = world
+            .block_entity_at(1, -63, 2)
+            .and_then(super::ClientBlockEntity::spawner_state)
+            .expect("spawner tag should be retained as semantic state");
+        assert_eq!(state.delay(), -1);
+        assert_eq!(state.min_spawn_delay(), 120);
+        assert_eq!(state.max_spawn_delay(), 640);
+        assert_eq!(state.spawn_count(), 4);
+        assert_eq!(state.max_nearby_entities(), 6);
+        assert_eq!(state.required_player_range(), 16);
+        assert_eq!(state.spawn_range(), 4);
+
+        let non_spawner = world.block_entity_at(1, -63, 2).unwrap();
+        assert_eq!(non_spawner.type_id, 9);
     }
 
     #[test]
