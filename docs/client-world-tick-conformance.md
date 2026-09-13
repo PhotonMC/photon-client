@@ -36,8 +36,9 @@ esas alındı:
 - Remote entity yeni oluşturulduğunda `tick_count=0` olur ve yalnızca mevcut
   `ticking` uygunluğu true iken bir artırılır. Chunk unload bu uygunluğu
   kapatır; chunk yeniden yüklendiğinde sonraki tick'te sayaç devam eder.
-- Sayaç taşmaları Rust'ta `wrapping_add` ile tutulur; gerçek entity tick
-  gövdesi, eski transform alanları ve hareket entegrasyonu bu dilimin dışıdır.
+- Sayaç taşmaları Rust'ta `wrapping_add` ile tutulur. Type `120` snowball için
+  loaded air-cell free-flight entity tick gövdesi [P08.aq kaydında](client-world-entity-snowball-tick-conformance.md)
+  sınırlı olarak uygulanır; diğer entity tick gövdeleri bu dilimin dışındadır.
 
 ## Rust doğrulaması
 
@@ -46,7 +47,8 @@ esas alındı:
 şunları aynı state kopyasında kontrol eder: local player'ın üç ardışık tick'te
 ilerlemesi, yüklü remote entity'nin ilerlemesi, chunk unload sırasında
 durması, yeniden yüklemeden sonra devam etmesi ve player respawn'ında sıfıra
-dönmesi.
+dönmesi. Snowball gravity/drag ve transform history testi ayrıca
+[P08.aq kaydında](client-world-entity-snowball-tick-conformance.md) tutulur.
 
 ```text
 cargo test --locked --offline --all-targets --quiet
@@ -93,7 +95,9 @@ oluşmadı.
 
 ## Açık kapsam
 
-Bu kayıt gerçek `Entity.tick()` davranışını, motion entegrasyonunu, eski
-konum/rotasyon interpolasyonunu, removed/passenger/frozen filtrelerini,
-always-ticking remote entity manager'ını ve entity lifecycle'ını kapatmaz.
+Bu kayıt genel `Entity.tick()` davranışını, snowball dışı motion entegrasyonunu,
+collision'ı, eski konum/rotasyon interpolasyonunun tüm yollarını,
+removed/passenger/frozen filtrelerini, always-ticking remote entity manager'ını
+ve entity lifecycle'ını kapatmaz. Snowball free-flight alt dalı [P08.aq](client-world-entity-snowball-tick-conformance.md)
+ile sınırlı olarak ilerletilmiştir.
 Java istemcisiyle karşılaştırmalı `client-parity` kanıtı da henüz yoktur.

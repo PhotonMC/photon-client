@@ -3,11 +3,13 @@
 use std::collections::{BTreeMap, VecDeque};
 
 use crate::binary::BitSet;
-use crate::math::{mth_lerp_f32, mth_lerp_f64, mth_rot_lerp_f32};
+use crate::math::{mth_atan2, mth_lerp_f32, mth_lerp_f64, mth_rot_lerp_f32};
 
 pub(crate) const PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS: u8 = 1;
 pub(crate) const PLAYER_RESPAWN_KEEP_ENTITY_DATA: u8 = 2;
 const VANILLA_PLAYER_ENTITY_TYPE_ID: i32 = 156;
+pub(crate) const VANILLA_SNOWBALL_ENTITY_TYPE_ID: i32 = 120;
+const VANILLA_AIR_BLOCK_STATE_ID: i32 = 0;
 const ENTITY_SHARED_FLAGS_DATA_ID: u8 = 0;
 const ENTITY_AIR_SUPPLY_DATA_ID: u8 = 1;
 const ENTITY_CUSTOM_NAME_DATA_ID: u8 = 2;
@@ -36,6 +38,7 @@ const ENTITY_EFFECT_PARTICLE_TYPE_ID: i32 = 28;
 const DEFAULT_AIR_SUPPLY: i32 = 300;
 const DEFAULT_TICKS_REQUIRED_TO_FREEZE: i32 = 140;
 const LIVING_ENTITY_HEAD_LERP_STEPS: u8 = 3;
+const SNOWBALL_GRAVITY: f64 = 0.03;
 const LIVING_FLAG_USING_ITEM: u8 = 0;
 const LIVING_FLAG_OFF_HAND: u8 = 1;
 const LIVING_FLAG_SPIN_ATTACK: u8 = 2;
@@ -1224,11 +1227,62 @@ impl ClientWorld {
                 effect.tick_client();
             }
         }
-        for entity in self.entities.values_mut().filter(|entity| entity.ticking) {
+
+        let ticking_entity_ids: Vec<i32> = self
+            .entities
+            .iter()
+            .filter(|(_, entity)| entity.ticking)
+            .map(|(&entity_id, _)| entity_id)
+            .collect();
+        for entity_id in ticking_entity_ids {
+            let can_tick_snowball = self.entities.get(&entity_id).is_some_and(|entity| {
+                entity.type_id == VANILLA_SNOWBALL_ENTITY_TYPE_ID
+                    && self.snowball_path_is_open(
+                        entity.position(),
+                        entity.motion(),
+                        entity.no_gravity,
+                    )
+            });
+            let entity = self
+                .entities
+                .get_mut(&entity_id)
+                .expect("ticking entity was collected from the world");
             entity.capture_old_transform();
             entity.tick_head_rotation();
             entity.tick_count = entity.tick_count.wrapping_add(1);
+            if can_tick_snowball {
+                entity.tick_snowball();
+            }
         }
+    }
+
+    fn snowball_path_is_open(
+        &self,
+        position: (f64, f64, f64),
+        motion: (f64, f64, f64),
+        no_gravity: bool,
+    ) -> bool {
+        let air_drag = f64::from(0.99_f32);
+        let gravity = if no_gravity { 0.0 } else { SNOWBALL_GRAVITY };
+        let next_position = (
+            position.0 + motion.0 * air_drag,
+            position.1 + (motion.1 - gravity) * air_drag,
+            position.2 + motion.2 * air_drag,
+        );
+        let current_block = (
+            position.0.floor() as i32,
+            position.1.floor() as i32,
+            position.2.floor() as i32,
+        );
+        let next_block = (
+            next_position.0.floor() as i32,
+            next_position.1.floor() as i32,
+            next_position.2.floor() as i32,
+        );
+        self.block_state_at(current_block.0, current_block.1, current_block.2)
+            == Some(VANILLA_AIR_BLOCK_STATE_ID)
+            && self.block_state_at(next_block.0, next_block.1, next_block.2)
+                == Some(VANILLA_AIR_BLOCK_STATE_ID)
     }
 
     pub fn loaded_chunk_count(&self) -> usize {
@@ -2552,6 +2606,40 @@ impl ClientEntity {
         );
     }
 
+    fn tick_snowball(&mut self) {
+        let air_drag = f64::from(0.99_f32);
+        let gravity = if self.no_gravity {
+            0.0
+        } else {
+            SNOWBALL_GRAVITY
+        };
+        let current_motion = self.motion();
+        let motion = (
+            current_motion.0 * air_drag,
+            (current_motion.1 - gravity) * air_drag,
+            current_motion.2 * air_drag,
+        );
+        self.motion_x_bits = motion.0.to_bits();
+        self.motion_y_bits = motion.1.to_bits();
+        self.motion_z_bits = motion.2.to_bits();
+
+        let current_position = self.position();
+        self.x_bits = (current_position.0 + motion.0).to_bits();
+        self.y_bits = (current_position.1 + motion.1).to_bits();
+        self.z_bits = (current_position.2 + motion.2).to_bits();
+
+        const PI_F32: f32 = f32::from_bits(0x4049_0fdb);
+        let horizontal_distance = (motion.0 * motion.0 + motion.2 * motion.2).sqrt();
+        let target_x_rot = (mth_atan2(motion.1, horizontal_distance) * f64::from(180.0_f32)
+            / f64::from(PI_F32)) as f32;
+        let target_y_rot =
+            (mth_atan2(motion.0, motion.2) * f64::from(180.0_f32) / f64::from(PI_F32)) as f32;
+        self.x_rot_bits =
+            mth_rot_lerp_f32(0.2_f32, f32::from_bits(self.old_x_rot_bits), target_x_rot).to_bits();
+        self.y_rot_bits =
+            mth_rot_lerp_f32(0.2_f32, f32::from_bits(self.old_y_rot_bits), target_y_rot).to_bits();
+    }
+
     pub fn tick_count(&self) -> i32 {
         self.tick_count
     }
@@ -3042,11 +3130,12 @@ fn apply_light_layer(
 mod tests {
     use super::{
         BlockEntityInput, ClientAttributeModifierState, ClientAttributeState, ClientItemStackState,
-        ClientWorld, DimensionBounds, DimensionEnvironment, DimensionInput, EntityInput,
+        ClientWorld, DimensionBounds, DimensionEnvironment, DimensionInput,
+        ENTITY_DATA_SERIALIZER_BOOLEAN_ID, ENTITY_NO_GRAVITY_DATA_ID, EntityInput,
         EntityMotionInput, EntityMoveInput, EntityPositionInput, EntityRotationInput,
         LightLayerInput, LightUpdateInput, PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS,
-        PLAYER_RESPAWN_KEEP_ENTITY_DATA, SectionInput, VANILLA_PLAYER_ENTITY_TYPE_ID,
-        menu_top_slot_count,
+        PLAYER_RESPAWN_KEEP_ENTITY_DATA, SNOWBALL_GRAVITY, SectionInput,
+        VANILLA_PLAYER_ENTITY_TYPE_ID, VANILLA_SNOWBALL_ENTITY_TYPE_ID, menu_top_slot_count,
     };
     use crate::binary::{BitSet, Uuid};
 
@@ -4915,6 +5004,80 @@ mod tests {
         world.tick();
         assert_eq!(world.game_time(), 2);
         assert_eq!(world.loaded_chunk_count(), 0);
+    }
+
+    #[test]
+    fn ticking_snowballs_applies_java_free_flight_gravity_drag_and_history() {
+        let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+        let (blocks, biomes) = section(0, 0);
+        world.replace_chunk(
+            0,
+            0,
+            [SectionInput {
+                non_empty_block_count: 0,
+                fluid_count: 0,
+                block_states: &blocks,
+                biomes: &biomes,
+            }],
+        );
+        assert!(world.apply_entity(EntityInput {
+            entity_id: 37,
+            uuid: Uuid::new(1, 2),
+            type_id: VANILLA_SNOWBALL_ENTITY_TYPE_ID,
+            x: 2.0,
+            y: 1.0,
+            z: 2.0,
+            movement: (0.25, 0.5, 0.25),
+            rotation: (10.0, -20.0, 30.0),
+            data: 0,
+        }));
+        assert!(world.apply_entity(EntityInput {
+            entity_id: 38,
+            uuid: Uuid::new(3, 4),
+            type_id: VANILLA_SNOWBALL_ENTITY_TYPE_ID,
+            x: 4.0,
+            y: 1.0,
+            z: 2.0,
+            movement: (0.0, 0.0, 1.0),
+            rotation: (45.0, 30.0, 0.0),
+            data: 0,
+        }));
+        assert!(world.apply_entity_metadata(
+            38,
+            &[
+                ENTITY_NO_GRAVITY_DATA_ID,
+                ENTITY_DATA_SERIALIZER_BOOLEAN_ID as u8,
+                1,
+                255,
+            ],
+        ));
+
+        world.tick();
+
+        let air_drag = f64::from(0.99_f32);
+        let expected_motion = (
+            0.25 * air_drag,
+            (0.5 - SNOWBALL_GRAVITY) * air_drag,
+            0.25 * air_drag,
+        );
+        let entity = world.entity_at(37).expect("gravity snowball");
+        assert_eq!(entity.previous_position(), (2.0, 1.0, 2.0));
+        assert_eq!(entity.motion(), expected_motion);
+        assert_eq!(
+            entity.position(),
+            (
+                2.0 + expected_motion.0,
+                1.0 + expected_motion.1,
+                2.0 + expected_motion.2
+            )
+        );
+        assert_eq!(entity.tick_count(), 1);
+
+        let entity = world.entity_at(38).expect("no-gravity snowball");
+        assert_eq!(entity.motion(), (0.0, 0.0, air_drag));
+        assert_eq!(entity.position(), (4.0, 1.0, 2.0 + air_drag));
+        assert_eq!(entity.previous_position(), (4.0, 1.0, 2.0));
+        assert_eq!(entity.rotation(), (36.0, 24.0, 0.0));
     }
 
     #[test]

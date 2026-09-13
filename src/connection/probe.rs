@@ -17,7 +17,7 @@ use crate::world::{
     BlockEntityInput, DimensionBounds, DimensionEnvironment, DimensionInput, EntityInput,
     EntityMotionInput, EntityMoveInput, EntityPositionInput, EntityRotationInput, LightLayerInput,
     LightUpdateInput, PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS, PLAYER_RESPAWN_KEEP_ENTITY_DATA,
-    SectionInput,
+    SectionInput, VANILLA_SNOWBALL_ENTITY_TYPE_ID,
 };
 
 use super::protocol::*;
@@ -398,6 +398,22 @@ pub fn connect_and_creative_snowball_use_probe(
         username,
         timeout,
         PlayProbeConfig::new(ProbeAction::CreativeSnowballUse),
+    )
+}
+
+/// Connect to a Java-protocol server, spawn a snowball and apply one free-flight
+/// client-world tick to the freshly added projectile.
+pub fn connect_and_world_snowball_tick_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeConfig::new(ProbeAction::WorldSnowballTick)
+            .with_drain_timeout(Duration::from_secs(2)),
     )
 }
 
@@ -1149,6 +1165,7 @@ enum ProbeAction {
     UseItemOn,
     UseItem,
     CreativeSnowballUse,
+    WorldSnowballTick,
     SurvivalSnowballUse,
     SurvivalWaterBucketUseOn,
     SurvivalEmptyBucketPickup,
@@ -1228,7 +1245,10 @@ fn connect_and_probe_with_mode(
     if matches!(probe.action, ProbeAction::CreativePlace) {
         trace.stone_item_registry_id = Some(VANILLA_STONE_ITEM_REGISTRY_ID);
     }
-    if matches!(probe.action, ProbeAction::CreativeSnowballUse) {
+    if matches!(
+        probe.action,
+        ProbeAction::CreativeSnowballUse | ProbeAction::WorldSnowballTick
+    ) {
         trace.snowball_item_registry_id = Some(VANILLA_SNOWBALL_ITEM_REGISTRY_ID);
     }
 
@@ -1515,6 +1535,37 @@ fn connect_and_probe_with_mode(
                     .world
                     .entity_at(observation.entity_id)
                     .map(|entity| entity.rotation());
+                if matches!(probe.action, ProbeAction::WorldSnowballTick)
+                    && trace.use_item_packets_sent > 0
+                    && observation.entity_type_id == VANILLA_SNOWBALL_ENTITY_TYPE_ID
+                    && trace.projectile_tick_observations.is_empty()
+                {
+                    let entity = trace
+                        .world
+                        .entity_at(observation.entity_id)
+                        .ok_or(ConnectionError::Codec("snowball tick entity"))?;
+                    let before_position = entity.position();
+                    let before_motion = entity.motion();
+                    let before_rotation = entity.rotation();
+                    trace.world.tick();
+                    let entity = trace
+                        .world
+                        .entity_at(observation.entity_id)
+                        .ok_or(ConnectionError::Codec("snowball tick result"))?;
+                    trace
+                        .projectile_tick_observations
+                        .push(ProjectileTickObservation {
+                            entity_id: observation.entity_id,
+                            entity_type_id: observation.entity_type_id,
+                            before_position,
+                            after_position: entity.position(),
+                            before_motion,
+                            after_motion: entity.motion(),
+                            before_rotation,
+                            after_rotation: entity.rotation(),
+                            tick_count: entity.tick_count(),
+                        });
+                }
                 trace.add_entity_observations.push(observation);
             }
             PLAY_CLIENTBOUND_SET_ENTITY_MOTION_PACKET_ID => {
@@ -3113,8 +3164,10 @@ fn connect_and_probe_with_mode(
                 trace.container_click_packets_sent += 1;
                 trace.container_click_state_id_sent = Some(0);
             }
-            if matches!(probe.action, ProbeAction::CreativeSnowballUse)
-                && trace.creative_mode_slot_packets_sent == 0
+            if matches!(
+                probe.action,
+                ProbeAction::CreativeSnowballUse | ProbeAction::WorldSnowballTick
+            ) && trace.creative_mode_slot_packets_sent == 0
             {
                 let Some(snowball_item_registry_id) = trace.snowball_item_registry_id else {
                     return Err(ConnectionError::Codec(

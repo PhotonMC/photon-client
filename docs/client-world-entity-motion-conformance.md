@@ -29,9 +29,10 @@ bulduğunda `lerpMotion` çağırır; `Entity.java:2644` bu yolu
   yazar.
 - Bilinmeyen entity ID'si için packet observation tutulur fakat application
   sonucu false olur.
-- Bu dilim raw motion state'ini sorgulanabilir kılar. Tick sırasında hareket
-  entegrasyonu, yerçekimi, çarpışma, interpolation, finite-value filtreleri ve
-  render state'i uygulanmaz.
+- Bu dilim raw motion state'ini sorgulanabilir kılar. Type `120` snowball için
+  loaded air-cell free-flight tick'i [P08.aq kaydında](client-world-entity-snowball-tick-conformance.md)
+  ayrıca ele alınır; genel motion entegrasyonu, yerçekimi, çarpışma,
+  interpolation, finite-value filtreleri ve render state'i bu kaydın dışındadır.
 
 ## Rust doğrulaması
 
@@ -91,8 +92,10 @@ kopyasına taşındığını gösterir; Java istemcisiyle parity iddiası değil
 
 ## Açık kapsam
 
-Motion'in tick entegrasyonu, yerçekimi ve collision, network interpolation,
-rotation interpolation/head-body semantic state'i, on-ground, passenger ilişkisi, metadata/equipment,
-remove/lifecycle, chunk unload temizliği, dimension/respawn, render state'i
-ve oynanabilir istemci bağlantısı açık kalır. Bu motion state'i
+Genel motion'in tick entegrasyonu, yerçekimi ve collision, network
+interpolation, rotation interpolation/head-body semantic state'i, on-ground,
+passenger ilişkisi, metadata/equipment, remove/lifecycle, chunk unload temizliği,
+dimension/respawn, render state'i ve oynanabilir istemci bağlantısı açık kalır.
+Snowball free-flight alt dalı [P08.aq](client-world-entity-snowball-tick-conformance.md)
+ile sınırlı olarak ilerletilmiştir. Bu motion state'i
 `server-conformance` ilerlemesidir; P08'in `client-parity` kapanışı değildir.

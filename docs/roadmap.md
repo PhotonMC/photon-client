@@ -93,8 +93,10 @@ adımlarıyla sorgulanabilir hâle geldi. Bu kanıtlar vanilla 26.2 sunucusuna b
 P09 çarpışma, P10 hareket, P14 kamera ve P16 dünya çizimi için palette/empty
 section edge case'leri, attribute gameplay etkileri, ışık propagation/queue,
 kalan semantic metadata ve serializer alanları, kalan body/head turn semantiği,
-motion integration, gerçek entity tick yürütmesi ve tam entity lifecycle hâlâ
-ön koşuldur. P08 `client-parity` ile kapanmadan bu bağımlılıklar açılmaz.
+genel motion integration, gerçek entity tick yürütmesi ve tam entity lifecycle
+hâlâ ön koşuldur. Snowball free-flight tick alt dalı [P08.aq kaydında](client-world-entity-snowball-tick-conformance.md)
+sınırlı olarak ilerletilmiştir; P08 `client-parity` ile kapanmadan bu
+bağımlılıklar açılmaz.
 
 P12/P13 altında yeni item component varyantı açılmaz; gerekçe ve bağlayıcı
 eylemler [yön düzeltmesi belgesindedir](course-correction-2026-09-12.md).

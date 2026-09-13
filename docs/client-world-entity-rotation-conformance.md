@@ -49,8 +49,9 @@ kapsamındadır.
   LivingEntity sözleşmesidir. Bilinmeyen entity ID'si için observation tutulur
   fakat application sonucu false olur.
 - Bu dilim raw current rotation sorgusunu ve Player dışı entity uygulamasını
-  sağlar. Partial-tick rotation, living entity body/head semantic'leri,
-  finite-value hata yolu ve render state'i uygulanmaz.
+  sağlar. Snowball projectile'ın free-flight yön güncellemesi [P08.aq kaydında](client-world-entity-snowball-tick-conformance.md)
+  ayrıca ele alınır; genel partial-tick rotation, living entity body/head
+  semantic'leri, finite-value hata yolu ve render state'i uygulanmaz.
 
 ## Rust doğrulaması
 
@@ -123,9 +124,10 @@ kopyasına taşındığını gösterir; Java istemcisiyle parity iddiası değil
 ## Açık kapsam
 
 Partial tick ve `rotLerp` sorgularının tam client kullanımı, living entity'nin
-body/head ayrımının tick içindeki semantic davranışı, on-ground, motion
+body/head ayrımının tick içindeki semantic davranışı, on-ground, genel motion
 integration, passenger ilişkisi, metadata/equipment, remove/lifecycle, chunk
 unload temizliği, dimension/respawn, render state'i ve oynanabilir istemci
-bağlantısı açık kalır. Player head interpolation [P08.ap](client-world-entity-player-head-rotation-conformance.md)
+bağlantısı açık kalır. Snowball free-flight yön rotation'ı [P08.aq](client-world-entity-snowball-tick-conformance.md)
+ile sınırlı olarak ilerletilmiştir. Player head interpolation [P08.ap](client-world-entity-player-head-rotation-conformance.md)
 ile ayrı `server-conformance` ilerlemesidir; P08'in `client-parity` kapanışı
 değildir.

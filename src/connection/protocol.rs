@@ -566,6 +566,7 @@ pub struct PlayConnectionTrace {
     pub stone_item_registry_id: Option<i32>,
     pub snowball_item_registry_id: Option<i32>,
     pub add_entity_observations: Vec<AddEntityObservation>,
+    pub projectile_tick_observations: Vec<ProjectileTickObservation>,
     pub entity_motion_observations: Vec<EntityMotionObservation>,
     pub entity_head_rotation_observations: Vec<EntityHeadRotationObservation>,
     pub remove_entities_observations: Vec<RemoveEntitiesObservation>,
@@ -771,6 +772,20 @@ pub struct AddEntityObservation {
     pub data: i32,
     pub applied_to_world: bool,
     pub applied_rotation: Option<(f32, f32, f32)>,
+}
+
+/// One client-world tick applied to a supported projectile after its add packet.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ProjectileTickObservation {
+    pub entity_id: i32,
+    pub entity_type_id: i32,
+    pub before_position: (f64, f64, f64),
+    pub after_position: (f64, f64, f64),
+    pub before_motion: (f64, f64, f64),
+    pub after_motion: (f64, f64, f64),
+    pub before_rotation: (f32, f32, f32),
+    pub after_rotation: (f32, f32, f32),
+    pub tick_count: i32,
 }
 
 /// Wire-level fields decoded from one clientbound entity-motion packet.
