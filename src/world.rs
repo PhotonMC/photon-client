@@ -78,7 +78,15 @@ impl ClientWorld {
     }
 
     pub fn unload_chunk(&mut self, chunk_x: i32, chunk_z: i32) -> bool {
-        self.chunks.remove(&(chunk_x, chunk_z)).is_some()
+        let removed = self.chunks.remove(&(chunk_x, chunk_z)).is_some();
+        if removed {
+            for entity in self.entities.values_mut() {
+                if entity_chunk_key(entity.position()) == (chunk_x, chunk_z) {
+                    entity.ticking = false;
+                }
+            }
+        }
+        removed
     }
 
     pub fn loaded_light_section_count(&self) -> usize {
@@ -111,6 +119,10 @@ impl ClientWorld {
 
     pub fn entity_at(&self, entity_id: i32) -> Option<&ClientEntity> {
         self.entities.get(&entity_id)
+    }
+
+    pub fn entities(&self) -> impl Iterator<Item = &ClientEntity> {
+        self.entities.values()
     }
 
     pub fn entity_metadata_at(&self, entity_id: i32) -> Option<&[u8]> {
@@ -246,6 +258,8 @@ impl ClientWorld {
     }
 
     pub(crate) fn apply_entity(&mut self, entity: EntityInput) -> bool {
+        let (chunk_x, chunk_z) = entity_chunk_key((entity.x, entity.y, entity.z));
+        let ticking = self.contains_chunk(chunk_x, chunk_z);
         self.entities.insert(
             entity.entity_id,
             ClientEntity {
@@ -261,6 +275,7 @@ impl ClientWorld {
                 y_rot_bits: entity.rotation.0.to_bits(),
                 y_head_rot_bits: entity.rotation.2.to_bits(),
                 on_ground: false,
+                ticking,
                 data: entity.data,
                 metadata: None,
             },
@@ -323,10 +338,13 @@ impl ClientWorld {
     }
 
     pub(crate) fn apply_entity_position(&mut self, input: EntityPositionInput) -> bool {
-        let Some(entity) = self.entities.get_mut(&input.entity_id) else {
+        let Some(current) = self
+            .entities
+            .get(&input.entity_id)
+            .map(|entity| entity.position())
+        else {
             return false;
         };
-        let current = entity.position();
         let x = if input.relative_flags & (1 << 0) != 0 {
             current.0 + input.x
         } else {
@@ -342,21 +360,48 @@ impl ClientWorld {
         } else {
             input.z
         };
+        let (chunk_x, chunk_z) = entity_chunk_key((x, y, z));
+        let ticking = self.contains_chunk(chunk_x, chunk_z);
+        let entity = self
+            .entities
+            .get_mut(&input.entity_id)
+            .expect("entity checked above");
         entity.x_bits = x.to_bits();
         entity.y_bits = y.to_bits();
         entity.z_bits = z.to_bits();
+        entity.ticking = ticking;
         true
     }
 
     pub(crate) fn apply_entity_move(&mut self, input: EntityMoveInput) -> bool {
-        let Some(entity) = self.entities.get_mut(&input.entity_id) else {
+        let Some(current) = self
+            .entities
+            .get(&input.entity_id)
+            .map(|entity| entity.position())
+        else {
             return false;
         };
+        let new_position = input.has_position.then(|| {
+            (
+                f64::from_bits(decode_entity_delta(current.0, input.delta_x)),
+                f64::from_bits(decode_entity_delta(current.1, input.delta_y)),
+                f64::from_bits(decode_entity_delta(current.2, input.delta_z)),
+            )
+        });
+        let ticking = new_position.map(|position| {
+            let (chunk_x, chunk_z) = entity_chunk_key(position);
+            self.contains_chunk(chunk_x, chunk_z)
+        });
+        let entity = self
+            .entities
+            .get_mut(&input.entity_id)
+            .expect("entity checked above");
         if input.has_position {
-            let current = entity.position();
-            entity.x_bits = decode_entity_delta(current.0, input.delta_x);
-            entity.y_bits = decode_entity_delta(current.1, input.delta_y);
-            entity.z_bits = decode_entity_delta(current.2, input.delta_z);
+            let (x, y, z) = new_position.expect("position was requested");
+            entity.x_bits = x.to_bits();
+            entity.y_bits = y.to_bits();
+            entity.z_bits = z.to_bits();
+            entity.ticking = ticking.expect("position ticking state");
         }
         if let Some(y_rot) = input.y_rot {
             entity.y_rot_bits = (y_rot % 360.0).to_bits();
@@ -435,6 +480,11 @@ impl ClientWorld {
                 block_entities: BTreeMap::new(),
             },
         );
+        for entity in self.entities.values_mut() {
+            if entity_chunk_key(entity.position()) == (chunk_x, chunk_z) {
+                entity.ticking = true;
+            }
+        }
     }
 }
 
@@ -458,6 +508,7 @@ pub struct ClientEntity {
     y_rot_bits: u32,
     y_head_rot_bits: u32,
     on_ground: bool,
+    ticking: bool,
     pub data: i32,
     metadata: Option<Vec<u8>>,
 }
@@ -489,6 +540,10 @@ impl ClientEntity {
 
     pub fn on_ground(&self) -> bool {
         self.on_ground
+    }
+
+    pub fn is_ticking(&self) -> bool {
+        self.ticking
     }
 
     pub fn metadata(&self) -> Option<&[u8]> {
@@ -587,6 +642,13 @@ pub(crate) struct EntityMoveInput {
     pub(crate) has_position: bool,
     pub(crate) y_rot: Option<f32>,
     pub(crate) x_rot: Option<f32>,
+}
+
+fn entity_chunk_key(position: (f64, f64, f64)) -> (i32, i32) {
+    (
+        (position.0.floor() as i32).div_euclid(16),
+        (position.2.floor() as i32).div_euclid(16),
+    )
 }
 
 fn decode_entity_delta(base: f64, delta: i16) -> u64 {
@@ -891,6 +953,17 @@ mod tests {
     #[test]
     fn entities_are_queryable_and_replaced_by_entity_id() {
         let mut world = ClientWorld::default();
+        let (blocks, biomes) = section(0, 0);
+        world.replace_chunk(
+            0,
+            -3,
+            [SectionInput {
+                non_empty_block_count: 0,
+                fluid_count: 0,
+                block_states: &blocks,
+                biomes: &biomes,
+            }],
+        );
         assert!(world.apply_entity(EntityInput {
             entity_id: 37,
             uuid: Uuid::new(1, 2),
@@ -924,6 +997,29 @@ mod tests {
         assert_eq!(
             world.entity_at(37).map(super::ClientEntity::on_ground),
             Some(false)
+        );
+        assert_eq!(
+            world.entity_at(37).map(super::ClientEntity::is_ticking),
+            Some(true)
+        );
+        assert!(world.unload_chunk(0, -3));
+        assert_eq!(
+            world.entity_at(37).map(super::ClientEntity::is_ticking),
+            Some(false)
+        );
+        world.replace_chunk(
+            0,
+            -3,
+            [SectionInput {
+                non_empty_block_count: 0,
+                fluid_count: 0,
+                block_states: &blocks,
+                biomes: &biomes,
+            }],
+        );
+        assert_eq!(
+            world.entity_at(37).map(super::ClientEntity::is_ticking),
+            Some(true)
         );
         assert_eq!(world.entity_metadata_at(37), None);
         assert!(world.apply_entity_metadata(37, &[1, 0, 255]));
@@ -1000,6 +1096,10 @@ mod tests {
             world.entity_at(37).map(super::ClientEntity::position),
             Some((10.0, 20.0, 30.0))
         );
+        assert_eq!(
+            world.entity_at(37).map(super::ClientEntity::is_ticking),
+            Some(false)
+        );
         assert!(world.apply_entity_position(EntityPositionInput {
             entity_id: 37,
             x: 0.5,
@@ -1043,6 +1143,29 @@ mod tests {
         assert_eq!(
             world.entity_at(37).map(super::ClientEntity::position),
             Some((11.0, 18.0, 32.0))
+        );
+        world.replace_chunk(
+            1,
+            2,
+            [SectionInput {
+                non_empty_block_count: 0,
+                fluid_count: 0,
+                block_states: &blocks,
+                biomes: &biomes,
+            }],
+        );
+        assert!(world.apply_entity_move(EntityMoveInput {
+            entity_id: 37,
+            delta_x: 32_767,
+            delta_y: 0,
+            delta_z: 0,
+            has_position: true,
+            y_rot: None,
+            x_rot: None,
+        }));
+        assert_eq!(
+            world.entity_at(37).map(super::ClientEntity::is_ticking),
+            Some(true)
         );
 
         assert!(world.apply_entity(EntityInput {

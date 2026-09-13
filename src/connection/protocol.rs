@@ -598,6 +598,9 @@ pub struct ChunkUnloadObservation {
     pub x: i32,
     pub z: i32,
     pub removed_from_world: bool,
+    pub tracked_entity_count: usize,
+    pub ticking_entity_count: usize,
+    pub stopped_entity_count: usize,
 }
 
 /// Wire-level fields decoded from one clientbound light-update packet.

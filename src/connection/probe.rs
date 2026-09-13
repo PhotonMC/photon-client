@@ -103,6 +103,21 @@ pub fn connect_and_world_chunk_unload_probe(
     )
 }
 
+/// Connect to a Java-protocol server, move across the configured view radius,
+/// and observe entity ticking eligibility while client chunks unload.
+pub fn connect_and_world_entity_ticking_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeConfig::new(ProbeAction::WorldEntityTicking),
+    )
+}
+
 /// Connect to a Java-protocol server, keep the loaded world open, and observe standalone
 /// clientbound light updates without adding movement to the scenario.
 pub fn connect_and_world_light_update_probe(
@@ -930,6 +945,7 @@ enum ProbeAction {
     Basic,
     Movement,
     WorldChunkUnload,
+    WorldEntityTicking,
     WorldLightUpdate,
     WorldBlockEntityUpdate,
     WorldEntityAdd,
@@ -1225,8 +1241,10 @@ fn connect_and_probe_with_mode(
                         io::ErrorKind::TimedOut | io::ErrorKind::WouldBlock
                     ) =>
             {
-                if matches!(probe.action, ProbeAction::WorldChunkUnload)
-                    && trace.movement_packets_sent < 96
+                if matches!(
+                    probe.action,
+                    ProbeAction::WorldChunkUnload | ProbeAction::WorldEntityTicking
+                ) && trace.movement_packets_sent < 96
                 {
                     send_world_chunk_unload_step(
                         &mut stream,
@@ -1570,12 +1588,21 @@ fn connect_and_probe_with_mode(
             PLAY_CLIENTBOUND_FORGET_LEVEL_CHUNK_PACKET_ID => {
                 let (x, z) = parse_forget_level_chunk_packet(payload)?;
                 let removed_from_world = trace.world.unload_chunk(x, z);
+                let tracked_entity_count = trace.world.loaded_entity_count();
+                let ticking_entity_count = trace
+                    .world
+                    .entities()
+                    .filter(|entity| entity.is_ticking())
+                    .count();
                 trace
                     .chunk_unload_observations
                     .push(ChunkUnloadObservation {
                         x,
                         z,
                         removed_from_world,
+                        tracked_entity_count,
+                        ticking_entity_count,
+                        stopped_entity_count: tracked_entity_count - ticking_entity_count,
                     });
             }
             PLAY_CLIENTBOUND_LIGHT_UPDATE_PACKET_ID => {
@@ -1736,7 +1763,10 @@ fn connect_and_probe_with_mode(
         if trace.play_login
             && trace.chunk_packet_count > 0
             && (!chunk_batch_started || trace.chunk_batch_finished_count > 0)
-            && (!matches!(probe.action, ProbeAction::WorldChunkUnload) || player_position.is_some())
+            && (!matches!(
+                probe.action,
+                ProbeAction::WorldChunkUnload | ProbeAction::WorldEntityTicking
+            ) || player_position.is_some())
             && world_ready_drain_started.is_none()
         {
             if !player_loaded_sent {
@@ -1773,8 +1803,10 @@ fn connect_and_probe_with_mode(
                     player_position = Some(moved);
                 }
             }
-            if matches!(probe.action, ProbeAction::WorldChunkUnload)
-                && trace.movement_packets_sent == 0
+            if matches!(
+                probe.action,
+                ProbeAction::WorldChunkUnload | ProbeAction::WorldEntityTicking
+            ) && trace.movement_packets_sent == 0
             {
                 std::thread::sleep(Duration::from_secs(1));
                 send_world_chunk_unload_step(
@@ -2756,7 +2788,9 @@ fn connect_and_probe_with_mode(
             world_ready_drain_started = Some(Instant::now());
             let drain_timeout = match probe.action {
                 ProbeAction::SurvivalDelayedDestroy => DELAYED_DESTROY_DRAIN_TIMEOUT,
-                ProbeAction::WorldChunkUnload => WORLD_LIFECYCLE_DRAIN_TIMEOUT,
+                ProbeAction::WorldChunkUnload | ProbeAction::WorldEntityTicking => {
+                    WORLD_LIFECYCLE_DRAIN_TIMEOUT
+                }
                 ProbeAction::WorldLightUpdate => LIGHT_UPDATE_DRAIN_TIMEOUT,
                 ProbeAction::WorldBlockEntityUpdate => BLOCK_ENTITY_UPDATE_DRAIN_TIMEOUT,
                 ProbeAction::WorldEntityAdd => ENTITY_ADD_DRAIN_TIMEOUT,
@@ -2804,8 +2838,10 @@ fn connect_and_probe_with_mode(
                 ProbeAction::SurvivalInventorySwapStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
                 _ => WORLD_READY_DRAIN_TIMEOUT,
             };
-            let read_timeout = if matches!(probe.action, ProbeAction::WorldChunkUnload)
-                && trace.movement_packets_sent < 96
+            let read_timeout = if matches!(
+                probe.action,
+                ProbeAction::WorldChunkUnload | ProbeAction::WorldEntityTicking
+            ) && trace.movement_packets_sent < 96
             {
                 Duration::from_millis(100)
             } else {
@@ -2850,8 +2886,10 @@ fn connect_and_probe_with_mode(
             }
         }
 
-        if matches!(probe.action, ProbeAction::WorldChunkUnload)
-            && world_ready_drain_started.is_some()
+        if matches!(
+            probe.action,
+            ProbeAction::WorldChunkUnload | ProbeAction::WorldEntityTicking
+        ) && world_ready_drain_started.is_some()
             && trace.movement_packets_sent < 96
             && world_chunk_unload_last_sent
                 .is_none_or(|last_sent| last_sent.elapsed() >= Duration::from_millis(50))
@@ -2871,7 +2909,9 @@ fn connect_and_probe_with_mode(
 
         let drain_timeout = match probe.action {
             ProbeAction::SurvivalDelayedDestroy => DELAYED_DESTROY_DRAIN_TIMEOUT,
-            ProbeAction::WorldChunkUnload => WORLD_LIFECYCLE_DRAIN_TIMEOUT,
+            ProbeAction::WorldChunkUnload | ProbeAction::WorldEntityTicking => {
+                WORLD_LIFECYCLE_DRAIN_TIMEOUT
+            }
             ProbeAction::WorldLightUpdate => LIGHT_UPDATE_DRAIN_TIMEOUT,
             ProbeAction::WorldBlockEntityUpdate => BLOCK_ENTITY_UPDATE_DRAIN_TIMEOUT,
             ProbeAction::WorldEntityAdd => ENTITY_ADD_DRAIN_TIMEOUT,

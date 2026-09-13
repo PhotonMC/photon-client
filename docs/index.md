@@ -97,6 +97,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P08.e-entity-position — server-conformance ClientWorld entity position synchronization](client-world-entity-position-conformance.md)
 - [P08.e-entity-remove — server-conformance ClientWorld entity removal state](client-world-entity-remove-conformance.md)
 - [P08.e-entity-rotation — server-conformance ClientWorld entity rotation state](client-world-entity-rotation-conformance.md)
+- [P08.e — server-conformance ClientWorld entity ticking eligibility](client-world-entity-ticking-conformance.md)
 - [P08.e-entity-uuid — server-conformance ClientWorld entity UUID state](client-world-entity-uuid-conformance.md)
 - [P08.c-light — server-conformance ClientWorld ışık state'i](client-world-light-conformance.md)
 - [P08.a/b — server-conformance ClientWorld chunk kopyası ve section cache](client-world-state-conformance.md)
