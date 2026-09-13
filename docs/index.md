@@ -102,6 +102,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P08.e — server-conformance ClientWorld entity ticking eligibility](client-world-entity-ticking-conformance.md)
 - [P08.e-entity-uuid — server-conformance ClientWorld entity UUID state](client-world-entity-uuid-conformance.md)
 - [P08.c-light — server-conformance ClientWorld ışık state'i](client-world-light-conformance.md)
+- [P08.i — server-conformance Aynı dimension ölüm respawn'ı ve `dataToKeep=0`](client-world-player-death-respawn-conformance.md)
 - [P08.h — server-conformance LocalPlayer yeniden kurulumu ve `dataToKeep`](client-world-player-respawn-conformance.md)
 - [P08.a/b — server-conformance ClientWorld chunk kopyası ve section cache](client-world-state-conformance.md)
 - [P06.d — Ortak ping/pong ve keep-alive paket sözleşmesi — client-parity birleşik kayıt](common-packet-conformance.md)

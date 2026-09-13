@@ -113,7 +113,8 @@ eşitliği iddiası değildir.
 
 ## Açık kapsam
 
-Same-dimension ölüm respawn'ı ve `dataToKeep=0` canlı senaryosu, attribute
-değerlerinin aktarılması, menu/inventory/effect state'i, reset konumunun tam
-Java spawn davranışı, datapack custom dimension ve `client-parity`
-karşılaştırması açık kalır.
+Same-dimension ölüm respawn'ı ve `dataToKeep=0` canlı senaryosu
+[P08.i kaydında](client-world-player-death-respawn-conformance.md)
+doğrulanır. Attribute değerlerinin aktarılması, menu/inventory/effect state'i,
+reset konumunun tam Java spawn davranışı, datapack custom dimension ve
+`client-parity` karşılaştırması açık kalır.

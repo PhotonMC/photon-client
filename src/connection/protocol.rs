@@ -73,10 +73,12 @@ pub(crate) const PLAY_CLIENTBOUND_CHUNK_PACKET_ID: i32 = 45;
 pub(crate) const PLAY_CLIENTBOUND_LOGIN_PACKET_ID: i32 = 49;
 pub(crate) const PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID: i32 = 72;
 pub(crate) const PLAY_CLIENTBOUND_RESPAWN_PACKET_ID: i32 = 82;
+pub(crate) const PLAY_CLIENTBOUND_SET_HEALTH_PACKET_ID: i32 = 104;
 pub(crate) const PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID: i32 = 132;
 pub(crate) const PLAY_SERVERBOUND_ACCEPT_TELEPORTATION_PACKET_ID: i32 = 0;
 pub(crate) const PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID: i32 = 41;
 pub(crate) const PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID: i32 = 11;
+pub(crate) const PLAY_SERVERBOUND_CLIENT_COMMAND_PACKET_ID: i32 = 12;
 pub(crate) const PLAY_SERVERBOUND_CLIENT_TICK_END_PACKET_ID: i32 = 13;
 pub(crate) const PLAY_SERVERBOUND_KEEP_ALIVE_PACKET_ID: i32 = 28;
 pub(crate) const PLAY_SERVERBOUND_MOVE_PLAYER_POS_ROT_PACKET_ID: i32 = 31;
@@ -540,6 +542,8 @@ pub struct PlayConnectionTrace {
     pub play_login: bool,
     pub login_observation: Option<LoginObservation>,
     pub respawn_observations: Vec<RespawnObservation>,
+    pub health_observations: Vec<HealthObservation>,
+    pub respawn_command_packets_sent: usize,
     pub player_position_observations: Vec<PlayerPositionObservation>,
     pub player_loaded_sent: bool,
     pub movement_packets_sent: usize,
@@ -628,6 +632,14 @@ pub struct RespawnObservation {
     pub cleared_chunk_count: usize,
     pub cleared_entity_count: usize,
     pub applied_to_world: bool,
+}
+
+/// Wire-level fields decoded from one clientbound health update.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct HealthObservation {
+    pub health: f32,
+    pub food: i32,
+    pub saturation: f32,
 }
 
 /// A serialized global position embedded in spawn info.
@@ -958,6 +970,11 @@ pub(crate) fn encode_move_player_pos_rot(
     output.extend_from_slice(&position.3.to_be_bytes());
     output.extend_from_slice(&position.4.to_be_bytes());
     output.push(flags);
+    Ok(())
+}
+
+pub(crate) fn encode_perform_respawn(output: &mut Vec<u8>) -> Result<(), ConnectionError> {
+    output.push(0);
     Ok(())
 }
 
@@ -1502,6 +1519,19 @@ pub(crate) fn parse_respawn_packet(
         return Err(ConnectionError::Codec("respawn trailing payload"));
     }
     Ok((spawn_info, data_to_keep))
+}
+
+pub(crate) fn parse_set_health_packet(input: &[u8]) -> Result<HealthObservation, ConnectionError> {
+    let mut input = input;
+    let packet = HealthObservation {
+        health: read_f32(&mut input, "set health health")?,
+        food: read_varint(&mut input, "set health food")?,
+        saturation: read_f32(&mut input, "set health saturation")?,
+    };
+    if !input.is_empty() {
+        return Err(ConnectionError::Codec("set health trailing payload"));
+    }
+    Ok(packet)
 }
 
 fn parse_spawn_info(input: &mut &[u8]) -> Result<SpawnInfoObservation, ConnectionError> {
@@ -2776,10 +2806,11 @@ mod tests {
         PLAY_CLIENTBOUND_REMOVE_ENTITIES_PACKET_ID, PLAY_CLIENTBOUND_REMOVE_MOB_EFFECT_PACKET_ID,
         PLAY_CLIENTBOUND_RESPAWN_PACKET_ID, PLAY_CLIENTBOUND_ROTATE_HEAD_PACKET_ID,
         PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID, PLAY_CLIENTBOUND_SET_ENTITY_DATA_PACKET_ID,
-        PLAY_CLIENTBOUND_SET_ENTITY_MOTION_PACKET_ID, PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID,
-        PLAY_CLIENTBOUND_TELEPORT_ENTITY_PACKET_ID, PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID,
+        PLAY_CLIENTBOUND_SET_ENTITY_MOTION_PACKET_ID, PLAY_CLIENTBOUND_SET_HEALTH_PACKET_ID,
+        PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID, PLAY_CLIENTBOUND_TELEPORT_ENTITY_PACKET_ID,
+        PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID,
         PLAY_SERVERBOUND_ACCEPT_TELEPORTATION_PACKET_ID,
-        PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID,
+        PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID, PLAY_SERVERBOUND_CLIENT_COMMAND_PACKET_ID,
         PLAY_SERVERBOUND_CLIENT_TICK_END_PACKET_ID, PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
         PLAY_SERVERBOUND_KEEP_ALIVE_PACKET_ID, PLAY_SERVERBOUND_MOVE_PLAYER_POS_ROT_PACKET_ID,
         PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID, PLAY_SERVERBOUND_PLAYER_LOADED_PACKET_ID,
@@ -2802,19 +2833,19 @@ mod tests {
         encode_inventory_quick_move_state_correction,
         encode_inventory_secondary_pickup_state_correction, encode_inventory_swap_state_correction,
         encode_inventory_throw_all_state_correction, encode_inventory_throw_one_state_correction,
-        encode_packet_frame, encode_release_use_item, encode_set_carried_item,
-        encode_stop_destroy_block, encode_use_item, encode_use_item_on, encode_use_item_on_hit,
-        pack_block_position, parse_add_entity_packet, parse_block_destruction_packet,
-        parse_block_entity_data_packet, parse_block_update_packet, parse_chunk_packet,
-        parse_container_set_content_packet, parse_container_set_slot_packet,
+        encode_packet_frame, encode_perform_respawn, encode_release_use_item,
+        encode_set_carried_item, encode_stop_destroy_block, encode_use_item, encode_use_item_on,
+        encode_use_item_on_hit, pack_block_position, parse_add_entity_packet,
+        parse_block_destruction_packet, parse_block_entity_data_packet, parse_block_update_packet,
+        parse_chunk_packet, parse_container_set_content_packet, parse_container_set_slot_packet,
         parse_entity_metadata_packet, parse_entity_position_sync_packet,
         parse_entity_teleport_packet, parse_forget_level_chunk_packet, parse_light_update_packet,
         parse_login_packet, parse_move_entity_pos_packet, parse_move_entity_pos_rot_packet,
         parse_move_entity_rot_packet, parse_optional_item_stack, parse_player_position_packet,
         parse_remove_entities_packet, parse_remove_mob_effect_packet, parse_respawn_packet,
         parse_rotate_head_packet, parse_section_data, parse_set_entity_motion_packet,
-        parse_system_chat_packet, parse_update_mob_effect_packet, resolve_player_position,
-        support_block_position,
+        parse_set_health_packet, parse_system_chat_packet, parse_update_mob_effect_packet,
+        resolve_player_position, support_block_position,
     };
 
     #[test]
@@ -2849,6 +2880,7 @@ mod tests {
         assert_eq!(PLAY_CLIENTBOUND_LOGIN_PACKET_ID, 49);
         assert_eq!(PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID, 72);
         assert_eq!(PLAY_CLIENTBOUND_RESPAWN_PACKET_ID, 82);
+        assert_eq!(PLAY_CLIENTBOUND_SET_HEALTH_PACKET_ID, 104);
         assert_eq!(PLAY_CLIENTBOUND_BLOCK_UPDATE_PACKET_ID, 8);
         assert_eq!(PLAY_CLIENTBOUND_BLOCK_ENTITY_DATA_PACKET_ID, 6);
         assert_eq!(PLAY_CLIENTBOUND_FORGET_LEVEL_CHUNK_PACKET_ID, 37);
@@ -2867,6 +2899,7 @@ mod tests {
         assert_eq!(PLAY_SERVERBOUND_ACCEPT_TELEPORTATION_PACKET_ID, 0);
         assert_eq!(PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID, 41);
         assert_eq!(PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID, 11);
+        assert_eq!(PLAY_SERVERBOUND_CLIENT_COMMAND_PACKET_ID, 12);
         assert_eq!(PLAY_SERVERBOUND_CLIENT_TICK_END_PACKET_ID, 13);
         assert_eq!(PLAY_SERVERBOUND_KEEP_ALIVE_PACKET_ID, 28);
         assert_eq!(PLAY_SERVERBOUND_MOVE_PLAYER_POS_ROT_PACKET_ID, 31);
@@ -3119,6 +3152,30 @@ mod tests {
 
         respawn_payload.push(0);
         assert!(parse_respawn_packet(&respawn_payload).is_err());
+    }
+
+    #[test]
+    fn set_health_parser_and_perform_respawn_encoder_match_java_order() {
+        let mut payload = Vec::new();
+        payload.extend_from_slice(&0.0_f32.to_be_bytes());
+        crate::wire::write_varint(20, &mut payload);
+        payload.extend_from_slice(&5.5_f32.to_be_bytes());
+
+        assert_eq!(
+            parse_set_health_packet(&payload).expect("set health packet"),
+            super::HealthObservation {
+                health: 0.0,
+                food: 20,
+                saturation: 5.5,
+            }
+        );
+
+        payload.push(0);
+        assert!(parse_set_health_packet(&payload).is_err());
+
+        let mut command_payload = Vec::new();
+        encode_perform_respawn(&mut command_payload).expect("perform respawn command");
+        assert_eq!(command_payload, [0]);
     }
 
     #[test]

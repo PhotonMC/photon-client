@@ -120,6 +120,8 @@ state uygulamasını gösterir; Java client eşitliği iddiası değildir.
 ## Açık kapsam
 
 Datapack custom dimension için gerçek bounds çözümü, `dataToKeep` maskesinin
-attribute/menu/inventory state'ine uygulanması, same-dimension ölüm respawn'ı,
-portal coordinate scaling, dimension-specific
-environment/render state'i ve `client-parity` karşılaştırması açık kalır.
+attribute/menu/inventory state'ine uygulanması, portal coordinate scaling,
+dimension-specific environment/render state'i ve `client-parity`
+karşılaştırması açık kalır. Same-dimension ölüm respawn'ı ve `dataToKeep=0`
+akışı [P08.i kaydında](client-world-player-death-respawn-conformance.md)
+doğrulanmıştır.

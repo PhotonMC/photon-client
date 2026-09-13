@@ -178,6 +178,8 @@ impl ClientWorld {
             player.y_rot_bits = previous.y_rot_bits;
             player.x_rot_bits = previous.x_rot_bits;
             player.entity_data = previous.entity_data;
+        } else {
+            player.y_rot_bits = (-180.0_f32).to_bits();
         }
         self.local_player = Some(player);
         true
@@ -1472,7 +1474,7 @@ mod tests {
         assert_eq!(player.id(), 42);
         assert_eq!(player.generation(), 2);
         assert_eq!(player.motion(), (0.0, 0.0, 0.0));
-        assert_eq!(player.rotation(), (0.0, 0.0));
+        assert_eq!(player.rotation(), (-180.0, 0.0));
         assert_eq!(player.entity_data(), None);
     }
 

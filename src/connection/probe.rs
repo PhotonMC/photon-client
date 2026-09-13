@@ -134,6 +134,21 @@ pub fn connect_and_world_dimension_respawn_probe(
     )
 }
 
+/// Connect to a Java-protocol server, wait for an externally triggered death,
+/// and observe the same-dimension respawn with an empty keep mask.
+pub fn connect_and_world_player_death_respawn_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeConfig::new(ProbeAction::WorldPlayerDeathRespawn),
+    )
+}
+
 /// Connect without selecting local known packs and observe registry-provided
 /// DimensionType bounds during a controlled respawn.
 pub fn connect_and_world_dimension_type_bounds_probe(
@@ -1000,6 +1015,7 @@ enum ProbeAction {
     WorldChunkUnload,
     WorldEntityTicking,
     WorldDimensionRespawn,
+    WorldPlayerDeathRespawn,
     WorldDimensionTypeBounds,
     WorldLightUpdate,
     WorldBlockEntityUpdate,
@@ -1300,9 +1316,20 @@ fn connect_and_probe_with_mode(
     let mut survival_water_bucket_neighbor_position = None;
     let mut world_chunk_unload_last_sent = None;
     let mut world_ready_drain_started = None;
+    let mut death_respawn_command_sent = false;
     while play_started.elapsed() <= timeout {
         let body = match read_packet(&mut stream, compression_threshold) {
             Ok(body) => body,
+            Err(ConnectionError::Io(error))
+                if matches!(probe.action, ProbeAction::WorldPlayerDeathRespawn)
+                    && world_ready_drain_started.is_none()
+                    && matches!(
+                        error.kind(),
+                        io::ErrorKind::TimedOut | io::ErrorKind::WouldBlock
+                    ) =>
+            {
+                continue;
+            }
             Err(ConnectionError::Io(error))
                 if world_ready_drain_started.is_some()
                     && matches!(
@@ -1770,6 +1797,27 @@ fn connect_and_probe_with_mode(
                     compression_threshold,
                 )?;
                 player_position = Some(absolute);
+            }
+            PLAY_CLIENTBOUND_SET_HEALTH_PACKET_ID => {
+                let observation = parse_set_health_packet(payload)?;
+                let is_dead = observation.health <= 0.0;
+                trace.health_observations.push(observation);
+                if matches!(probe.action, ProbeAction::WorldPlayerDeathRespawn)
+                    && is_dead
+                    && !death_respawn_command_sent
+                {
+                    send_packet(
+                        &mut stream,
+                        ConnectionProtocol::Play,
+                        PLAY_SERVERBOUND_CLIENT_COMMAND_PACKET_ID,
+                        encode_perform_respawn,
+                        compression_threshold,
+                    )?;
+                    death_respawn_command_sent = true;
+                    trace.respawn_command_packets_sent += 1;
+                    world_ready_drain_started = Some(Instant::now());
+                    stream.set_read_timeout(Some(DIMENSION_RESPAWN_DRAIN_TIMEOUT))?;
+                }
             }
             PLAY_CLIENTBOUND_RESPAWN_PACKET_ID => {
                 let (spawn_info, data_to_keep) = parse_respawn_packet(payload)?;
@@ -2911,72 +2959,85 @@ fn connect_and_probe_with_mode(
                 )?;
                 trace.use_item_on_packets_sent += 1;
             }
-            world_ready_drain_started = Some(Instant::now());
-            let drain_timeout = match probe.action {
-                ProbeAction::SurvivalDelayedDestroy => DELAYED_DESTROY_DRAIN_TIMEOUT,
-                ProbeAction::WorldChunkUnload | ProbeAction::WorldEntityTicking => {
-                    WORLD_LIFECYCLE_DRAIN_TIMEOUT
-                }
-                ProbeAction::WorldDimensionRespawn | ProbeAction::WorldDimensionTypeBounds => {
-                    DIMENSION_RESPAWN_DRAIN_TIMEOUT
-                }
-                ProbeAction::WorldLightUpdate => LIGHT_UPDATE_DRAIN_TIMEOUT,
-                ProbeAction::WorldBlockEntityUpdate => BLOCK_ENTITY_UPDATE_DRAIN_TIMEOUT,
-                ProbeAction::WorldEntityAdd => ENTITY_ADD_DRAIN_TIMEOUT,
-                ProbeAction::WorldEntityRemove => ENTITY_REMOVE_DRAIN_TIMEOUT,
-                ProbeAction::WorldEntityMetadata => ENTITY_METADATA_DRAIN_TIMEOUT,
-                ProbeAction::WorldEntityPosition => ENTITY_POSITION_SYNC_DRAIN_TIMEOUT,
-                ProbeAction::SurvivalWaterBucketUseOn | ProbeAction::SurvivalEmptyBucketPickup => {
-                    WATER_BUCKET_DRAIN_TIMEOUT
-                }
-                ProbeAction::SurvivalMilkBucketUse => CONSUMABLE_DRAIN_TIMEOUT,
-                ProbeAction::SurvivalHoneyBottleUse => CONSUMABLE_DRAIN_TIMEOUT,
-                ProbeAction::SurvivalHoneyBottlePoisonCleanup => CONSUMABLE_DRAIN_TIMEOUT,
-                ProbeAction::SurvivalPufferfishUse
-                | ProbeAction::SurvivalPufferfishFullHungerRejection
-                | ProbeAction::SurvivalGoldenAppleUse
-                | ProbeAction::SurvivalEnchantedGoldenAppleUse => CONSUMABLE_DRAIN_TIMEOUT,
-                ProbeAction::SurvivalInventoryPickupStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
-                ProbeAction::SurvivalInventorySecondaryPickupStateCorrection => {
-                    CONSUMABLE_DRAIN_TIMEOUT
-                }
-                ProbeAction::SurvivalInventoryThrowOneStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
-                ProbeAction::SurvivalInventoryThrowAllStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
-                ProbeAction::SurvivalInventoryDragEmptyCancelStateCorrection => {
-                    CONSUMABLE_DRAIN_TIMEOUT
-                }
-                ProbeAction::SurvivalInventoryDragDistributionStateCorrection => {
-                    CONSUMABLE_DRAIN_TIMEOUT
-                }
-                ProbeAction::SurvivalInventoryDoubleClickStateCorrection => {
-                    CONSUMABLE_DRAIN_TIMEOUT
-                }
-                ProbeAction::SurvivalInventoryDoubleClickStackLimitStateCorrection => {
-                    CONSUMABLE_DRAIN_TIMEOUT
-                }
-                ProbeAction::SurvivalInventoryAheadStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
-                ProbeAction::SurvivalInventoryCorrectPrediction => CONSUMABLE_DRAIN_TIMEOUT,
-                ProbeAction::SurvivalInventoryWrongSlotPrediction => CONSUMABLE_DRAIN_TIMEOUT,
-                ProbeAction::SurvivalInventoryWrongCarriedPrediction => CONSUMABLE_DRAIN_TIMEOUT,
-                ProbeAction::SurvivalInventoryWrongBothPrediction => CONSUMABLE_DRAIN_TIMEOUT,
-                ProbeAction::SurvivalInventoryComponentHashPrediction => CONSUMABLE_DRAIN_TIMEOUT,
-                ProbeAction::SurvivalInventoryItemComponentConformance(_) => {
-                    COMPONENT_PREPARATION_DRAIN_TIMEOUT
-                }
-                ProbeAction::SurvivalInventoryQuickMoveStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
-                ProbeAction::SurvivalInventorySwapStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
-                _ => WORLD_READY_DRAIN_TIMEOUT,
-            };
-            let read_timeout = if matches!(
-                probe.action,
-                ProbeAction::WorldChunkUnload | ProbeAction::WorldEntityTicking
-            ) && trace.movement_packets_sent < 96
-            {
-                Duration::from_millis(100)
+            if matches!(probe.action, ProbeAction::WorldPlayerDeathRespawn) {
+                stream.set_read_timeout(Some(Duration::from_millis(100)))?;
             } else {
-                drain_timeout
-            };
-            stream.set_read_timeout(Some(read_timeout))?;
+                world_ready_drain_started = Some(Instant::now());
+                let drain_timeout = match probe.action {
+                    ProbeAction::SurvivalDelayedDestroy => DELAYED_DESTROY_DRAIN_TIMEOUT,
+                    ProbeAction::WorldChunkUnload | ProbeAction::WorldEntityTicking => {
+                        WORLD_LIFECYCLE_DRAIN_TIMEOUT
+                    }
+                    ProbeAction::WorldDimensionRespawn | ProbeAction::WorldDimensionTypeBounds => {
+                        DIMENSION_RESPAWN_DRAIN_TIMEOUT
+                    }
+                    ProbeAction::WorldLightUpdate => LIGHT_UPDATE_DRAIN_TIMEOUT,
+                    ProbeAction::WorldBlockEntityUpdate => BLOCK_ENTITY_UPDATE_DRAIN_TIMEOUT,
+                    ProbeAction::WorldEntityAdd => ENTITY_ADD_DRAIN_TIMEOUT,
+                    ProbeAction::WorldEntityRemove => ENTITY_REMOVE_DRAIN_TIMEOUT,
+                    ProbeAction::WorldEntityMetadata => ENTITY_METADATA_DRAIN_TIMEOUT,
+                    ProbeAction::WorldEntityPosition => ENTITY_POSITION_SYNC_DRAIN_TIMEOUT,
+                    ProbeAction::SurvivalWaterBucketUseOn
+                    | ProbeAction::SurvivalEmptyBucketPickup => WATER_BUCKET_DRAIN_TIMEOUT,
+                    ProbeAction::SurvivalMilkBucketUse => CONSUMABLE_DRAIN_TIMEOUT,
+                    ProbeAction::SurvivalHoneyBottleUse => CONSUMABLE_DRAIN_TIMEOUT,
+                    ProbeAction::SurvivalHoneyBottlePoisonCleanup => CONSUMABLE_DRAIN_TIMEOUT,
+                    ProbeAction::SurvivalPufferfishUse
+                    | ProbeAction::SurvivalPufferfishFullHungerRejection
+                    | ProbeAction::SurvivalGoldenAppleUse
+                    | ProbeAction::SurvivalEnchantedGoldenAppleUse => CONSUMABLE_DRAIN_TIMEOUT,
+                    ProbeAction::SurvivalInventoryPickupStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
+                    ProbeAction::SurvivalInventorySecondaryPickupStateCorrection => {
+                        CONSUMABLE_DRAIN_TIMEOUT
+                    }
+                    ProbeAction::SurvivalInventoryThrowOneStateCorrection => {
+                        CONSUMABLE_DRAIN_TIMEOUT
+                    }
+                    ProbeAction::SurvivalInventoryThrowAllStateCorrection => {
+                        CONSUMABLE_DRAIN_TIMEOUT
+                    }
+                    ProbeAction::SurvivalInventoryDragEmptyCancelStateCorrection => {
+                        CONSUMABLE_DRAIN_TIMEOUT
+                    }
+                    ProbeAction::SurvivalInventoryDragDistributionStateCorrection => {
+                        CONSUMABLE_DRAIN_TIMEOUT
+                    }
+                    ProbeAction::SurvivalInventoryDoubleClickStateCorrection => {
+                        CONSUMABLE_DRAIN_TIMEOUT
+                    }
+                    ProbeAction::SurvivalInventoryDoubleClickStackLimitStateCorrection => {
+                        CONSUMABLE_DRAIN_TIMEOUT
+                    }
+                    ProbeAction::SurvivalInventoryAheadStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
+                    ProbeAction::SurvivalInventoryCorrectPrediction => CONSUMABLE_DRAIN_TIMEOUT,
+                    ProbeAction::SurvivalInventoryWrongSlotPrediction => CONSUMABLE_DRAIN_TIMEOUT,
+                    ProbeAction::SurvivalInventoryWrongCarriedPrediction => {
+                        CONSUMABLE_DRAIN_TIMEOUT
+                    }
+                    ProbeAction::SurvivalInventoryWrongBothPrediction => CONSUMABLE_DRAIN_TIMEOUT,
+                    ProbeAction::SurvivalInventoryComponentHashPrediction => {
+                        CONSUMABLE_DRAIN_TIMEOUT
+                    }
+                    ProbeAction::SurvivalInventoryItemComponentConformance(_) => {
+                        COMPONENT_PREPARATION_DRAIN_TIMEOUT
+                    }
+                    ProbeAction::SurvivalInventoryQuickMoveStateCorrection => {
+                        CONSUMABLE_DRAIN_TIMEOUT
+                    }
+                    ProbeAction::SurvivalInventorySwapStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
+                    _ => WORLD_READY_DRAIN_TIMEOUT,
+                };
+                let read_timeout = if matches!(
+                    probe.action,
+                    ProbeAction::WorldChunkUnload | ProbeAction::WorldEntityTicking
+                ) && trace.movement_packets_sent < 96
+                {
+                    Duration::from_millis(100)
+                } else {
+                    drain_timeout
+                };
+                stream.set_read_timeout(Some(read_timeout))?;
+            }
         }
 
         if let ProbeAction::SurvivalInventoryItemComponentConformance(spec) = probe.action
@@ -3041,9 +3102,9 @@ fn connect_and_probe_with_mode(
             ProbeAction::WorldChunkUnload | ProbeAction::WorldEntityTicking => {
                 WORLD_LIFECYCLE_DRAIN_TIMEOUT
             }
-            ProbeAction::WorldDimensionRespawn | ProbeAction::WorldDimensionTypeBounds => {
-                DIMENSION_RESPAWN_DRAIN_TIMEOUT
-            }
+            ProbeAction::WorldDimensionRespawn
+            | ProbeAction::WorldPlayerDeathRespawn
+            | ProbeAction::WorldDimensionTypeBounds => DIMENSION_RESPAWN_DRAIN_TIMEOUT,
             ProbeAction::WorldLightUpdate => LIGHT_UPDATE_DRAIN_TIMEOUT,
             ProbeAction::WorldBlockEntityUpdate => BLOCK_ENTITY_UPDATE_DRAIN_TIMEOUT,
             ProbeAction::WorldEntityAdd => ENTITY_ADD_DRAIN_TIMEOUT,
