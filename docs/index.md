@@ -102,6 +102,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P08.ak — server-conformance Entity living arrow count semantic state](client-world-entity-arrow-count-conformance.md)
 - [P08.af — server-conformance Entity custom-name visibility semantic state](client-world-entity-custom-name-conformance.md)
 - [P08.ag — server-conformance Entity custom-name presence semantic state](client-world-entity-custom-name-presence-conformance.md)
+- [P08.al — server-conformance Entity effect ambience semantic state](client-world-entity-effect-ambience-conformance.md)
 - [P08.e-entity-ground — server-conformance ClientWorld entity on-ground state](client-world-entity-ground-conformance.md)
 - [P08.ah — server-conformance Entity living health semantic state](client-world-entity-health-conformance.md)
 - [P08.ai — server-conformance Entity living flags semantic state](client-world-entity-living-flags-conformance.md)

@@ -18,6 +18,7 @@ const ENTITY_POSE_DATA_ID: u8 = 6;
 const ENTITY_TICKS_FROZEN_DATA_ID: u8 = 7;
 const ENTITY_LIVING_FLAGS_DATA_ID: u8 = 8;
 const ENTITY_HEALTH_DATA_ID: u8 = 9;
+const ENTITY_EFFECT_AMBIENCE_DATA_ID: u8 = 11;
 const ENTITY_ARROW_COUNT_DATA_ID: u8 = 12;
 const ENTITY_MOB_FLAGS_DATA_ID: u8 = 15;
 const ENTITY_DATA_SERIALIZER_BYTE_ID: i32 = 0;
@@ -25,6 +26,7 @@ const ENTITY_DATA_SERIALIZER_INT_ID: i32 = 1;
 const ENTITY_DATA_SERIALIZER_FLOAT_ID: i32 = 3;
 const ENTITY_DATA_SERIALIZER_OPTIONAL_COMPONENT_ID: i32 = 6;
 const ENTITY_DATA_SERIALIZER_BOOLEAN_ID: i32 = 8;
+const ENTITY_DATA_SERIALIZER_PARTICLES_ID: i32 = 17;
 const ENTITY_DATA_SERIALIZER_POSE_ID: i32 = 20;
 const DEFAULT_AIR_SUPPLY: i32 = 300;
 const DEFAULT_TICKS_REQUIRED_TO_FREEZE: i32 = 140;
@@ -134,6 +136,12 @@ fn skip_metadata_value(metadata: &mut &[u8], serializer_id: i32) -> Option<()> {
             if present != 0 {
                 let component = crate::nbt::read_any_nbt(metadata).ok()?;
                 component.as_ref()?;
+            }
+        }
+        ENTITY_DATA_SERIALIZER_PARTICLES_ID => {
+            let count = crate::wire::read_varint(metadata).ok()?;
+            if count != 0 {
+                return None;
             }
         }
         _ => return None,
@@ -269,6 +277,10 @@ fn health_from_metadata(metadata: &[u8]) -> Option<f32> {
 
 fn arrow_count_from_metadata(metadata: &[u8]) -> Option<i32> {
     metadata_int_value(metadata, ENTITY_ARROW_COUNT_DATA_ID)
+}
+
+fn effect_ambience_from_metadata(metadata: &[u8]) -> Option<bool> {
+    metadata_boolean_value(metadata, ENTITY_EFFECT_AMBIENCE_DATA_ID)
 }
 
 fn ticks_frozen_from_metadata(metadata: &[u8]) -> Option<i32> {
@@ -968,6 +980,7 @@ impl ClientWorld {
             player.shared_flags = previous.shared_flags;
             player.living_flags = previous.living_flags;
             player.arrow_count = previous.arrow_count;
+            player.effect_ambience = previous.effect_ambience;
             player.air_supply = previous.air_supply;
             player.custom_name_present = previous.custom_name_present;
             player.custom_name_visible = previous.custom_name_visible;
@@ -1382,6 +1395,7 @@ impl ClientWorld {
                 air_supply: DEFAULT_AIR_SUPPLY,
                 health_bits: None,
                 arrow_count: 0,
+                effect_ambience: false,
                 custom_name_present: false,
                 custom_name_visible: false,
                 no_gravity: false,
@@ -1400,6 +1414,7 @@ impl ClientWorld {
         let air_supply = air_supply_from_metadata(metadata);
         let health = health_from_metadata(metadata);
         let arrow_count = arrow_count_from_metadata(metadata);
+        let effect_ambience = effect_ambience_from_metadata(metadata);
         let custom_name_present = custom_name_present_from_metadata(metadata);
         let custom_name_visible = custom_name_visible_from_metadata(metadata);
         let no_gravity = no_gravity_from_metadata(metadata);
@@ -1426,6 +1441,9 @@ impl ClientWorld {
             }
             if let Some(arrow_count) = arrow_count {
                 player.arrow_count = arrow_count;
+            }
+            if let Some(effect_ambience) = effect_ambience {
+                player.effect_ambience = effect_ambience;
             }
             if let Some(custom_name_present) = custom_name_present {
                 player.custom_name_present = custom_name_present;
@@ -1468,6 +1486,9 @@ impl ClientWorld {
         }
         if let Some(arrow_count) = arrow_count {
             entity.arrow_count = arrow_count;
+        }
+        if let Some(effect_ambience) = effect_ambience {
+            entity.effect_ambience = effect_ambience;
         }
         if let Some(custom_name_present) = custom_name_present {
             entity.custom_name_present = custom_name_present;
@@ -1830,6 +1851,7 @@ pub struct ClientEntity {
     air_supply: i32,
     health_bits: Option<u32>,
     arrow_count: i32,
+    effect_ambience: bool,
     custom_name_present: bool,
     custom_name_visible: bool,
     no_gravity: bool,
@@ -1992,6 +2014,7 @@ pub struct ClientPlayerState {
     shared_flags: u8,
     living_flags: u8,
     arrow_count: i32,
+    effect_ambience: bool,
     air_supply: i32,
     custom_name_present: bool,
     custom_name_visible: bool,
@@ -2041,6 +2064,7 @@ impl ClientPlayerState {
             shared_flags: 0,
             living_flags: 0,
             arrow_count: 0,
+            effect_ambience: false,
             air_supply: DEFAULT_AIR_SUPPLY,
             custom_name_present: false,
             custom_name_visible: false,
@@ -2246,6 +2270,10 @@ impl ClientPlayerState {
         self.arrow_count
     }
 
+    pub fn is_effect_ambient(&self) -> bool {
+        self.effect_ambience
+    }
+
     pub fn food(&self) -> i32 {
         self.food
     }
@@ -2415,6 +2443,10 @@ impl ClientEntity {
 
     pub fn arrow_count(&self) -> i32 {
         self.arrow_count
+    }
+
+    pub fn is_effect_ambient(&self) -> bool {
+        self.effect_ambience
     }
 
     pub fn has_custom_name(&self) -> bool {
@@ -3849,6 +3881,84 @@ mod tests {
         assert_eq!(
             world.local_player().map(|player| player.arrow_count()),
             Some(0)
+        );
+    }
+
+    #[test]
+    fn entity_effect_ambience_follows_java_boolean_metadata_with_empty_particles() {
+        let mut world = ClientWorld::default();
+        assert!(world.apply_entity(EntityInput {
+            entity_id: 37,
+            uuid: Uuid::new(1, 2),
+            type_id: 54,
+            x: 1.25,
+            y: 80.0,
+            z: -35.5,
+            movement: (0.0, 0.0, 0.0),
+            rotation: (0.0, 0.0, 0.0),
+            data: 0,
+        }));
+        assert!(!world.entity_at(37).expect("entity").is_effect_ambient());
+
+        assert!(world.apply_entity_metadata(37, &[10, 17, 0, 11, 8, 1, 255]));
+        assert!(
+            world
+                .entity_at(37)
+                .expect("ambient entity")
+                .is_effect_ambient()
+        );
+
+        assert!(world.apply_entity_metadata(37, &[5, 8, 1, 255]));
+        assert!(
+            world
+                .entity_at(37)
+                .expect("ambient entity after partial metadata")
+                .is_effect_ambient()
+        );
+
+        assert!(world.apply_entity_metadata(37, &[11, 0, 0, 255]));
+        assert!(
+            world
+                .entity_at(37)
+                .expect("ambient entity after wrong serializer")
+                .is_effect_ambient()
+        );
+
+        assert!(world.apply_entity_metadata(37, &[10, 17, 1, 0, 11, 8, 0, 255]));
+        assert!(
+            world
+                .entity_at(37)
+                .expect("ambient entity after unsupported particles")
+                .is_effect_ambient()
+        );
+    }
+
+    #[test]
+    fn local_player_effect_ambience_metadata_follows_entity_data_keep_respawn() {
+        let mut world = ClientWorld::default();
+        world.set_local_player_id(42);
+        assert!(world.apply_entity_metadata(42, &[10, 17, 0, 11, 8, 1, 255]));
+        assert!(
+            world
+                .local_player()
+                .expect("ambient player")
+                .is_effect_ambient()
+        );
+
+        assert!(world.recreate_local_player(PLAYER_RESPAWN_KEEP_ENTITY_DATA));
+        assert!(
+            world
+                .local_player()
+                .expect("respawned ambient player")
+                .is_effect_ambient()
+        );
+
+        assert!(world.recreate_local_player(0));
+        assert!(
+            !world
+                .local_player()
+                .expect("reset ambient player")
+                .is_effect_ambient()
         );
     }
 
