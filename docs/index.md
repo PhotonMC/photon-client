@@ -103,6 +103,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P08.ag — server-conformance Entity custom-name presence semantic state](client-world-entity-custom-name-presence-conformance.md)
 - [P08.e-entity-ground — server-conformance ClientWorld entity on-ground state](client-world-entity-ground-conformance.md)
 - [P08.ah — server-conformance Entity living health semantic state](client-world-entity-health-conformance.md)
+- [P08.ai — server-conformance Entity living flags semantic state](client-world-entity-living-flags-conformance.md)
 - [P08.e-entity-metadata — server-conformance ClientWorld raw entity metadata](client-world-entity-metadata-conformance.md)
 - [P08.e-entity-motion — server-conformance ClientWorld entity motion state](client-world-entity-motion-conformance.md)
 - [P08.ab — server-conformance Entity no-gravity semantic state](client-world-entity-no-gravity-conformance.md)

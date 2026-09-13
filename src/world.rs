@@ -16,6 +16,7 @@ const ENTITY_SILENT_DATA_ID: u8 = 4;
 const ENTITY_NO_GRAVITY_DATA_ID: u8 = 5;
 const ENTITY_POSE_DATA_ID: u8 = 6;
 const ENTITY_TICKS_FROZEN_DATA_ID: u8 = 7;
+const ENTITY_LIVING_FLAGS_DATA_ID: u8 = 8;
 const ENTITY_HEALTH_DATA_ID: u8 = 9;
 const ENTITY_DATA_SERIALIZER_BYTE_ID: i32 = 0;
 const ENTITY_DATA_SERIALIZER_INT_ID: i32 = 1;
@@ -25,6 +26,9 @@ const ENTITY_DATA_SERIALIZER_BOOLEAN_ID: i32 = 8;
 const ENTITY_DATA_SERIALIZER_POSE_ID: i32 = 20;
 const DEFAULT_AIR_SUPPLY: i32 = 300;
 const DEFAULT_TICKS_REQUIRED_TO_FREEZE: i32 = 140;
+const LIVING_FLAG_USING_ITEM: u8 = 0;
+const LIVING_FLAG_OFF_HAND: u8 = 1;
+const LIVING_FLAG_SPIN_ATTACK: u8 = 2;
 const SHARED_FLAG_ON_FIRE: u8 = 0;
 const SHARED_FLAG_SHIFT_KEY_DOWN: u8 = 1;
 const SHARED_FLAG_SPRINTING: u8 = 3;
@@ -240,6 +244,10 @@ fn metadata_pose_value(metadata: &[u8]) -> Option<ClientEntityPose> {
 
 fn shared_flags_from_metadata(metadata: &[u8]) -> Option<u8> {
     metadata_byte_value(metadata, ENTITY_SHARED_FLAGS_DATA_ID)
+}
+
+fn living_flags_from_metadata(metadata: &[u8]) -> Option<u8> {
+    metadata_byte_value(metadata, ENTITY_LIVING_FLAGS_DATA_ID)
 }
 
 fn air_supply_from_metadata(metadata: &[u8]) -> Option<i32> {
@@ -945,6 +953,7 @@ impl ClientWorld {
             player.y_rot_bits = previous.y_rot_bits;
             player.x_rot_bits = previous.x_rot_bits;
             player.shared_flags = previous.shared_flags;
+            player.living_flags = previous.living_flags;
             player.air_supply = previous.air_supply;
             player.custom_name_present = previous.custom_name_present;
             player.custom_name_visible = previous.custom_name_visible;
@@ -1354,6 +1363,7 @@ impl ClientWorld {
                 data: entity.data,
                 metadata: None,
                 shared_flags: 0,
+                living_flags: 0,
                 air_supply: DEFAULT_AIR_SUPPLY,
                 health_bits: None,
                 custom_name_present: false,
@@ -1369,6 +1379,7 @@ impl ClientWorld {
 
     pub(crate) fn apply_entity_metadata(&mut self, entity_id: i32, metadata: &[u8]) -> bool {
         let shared_flags = shared_flags_from_metadata(metadata);
+        let living_flags = living_flags_from_metadata(metadata);
         let air_supply = air_supply_from_metadata(metadata);
         let health = health_from_metadata(metadata);
         let custom_name_present = custom_name_present_from_metadata(metadata);
@@ -1385,6 +1396,9 @@ impl ClientWorld {
             player.entity_data = Some(metadata.to_vec());
             if let Some(shared_flags) = shared_flags {
                 player.shared_flags = shared_flags;
+            }
+            if let Some(living_flags) = living_flags {
+                player.living_flags = living_flags;
             }
             if let Some(air_supply) = air_supply {
                 player.air_supply = air_supply;
@@ -1418,6 +1432,9 @@ impl ClientWorld {
         entity.metadata = Some(metadata.to_vec());
         if let Some(shared_flags) = shared_flags {
             entity.shared_flags = shared_flags;
+        }
+        if let Some(living_flags) = living_flags {
+            entity.living_flags = living_flags;
         }
         if let Some(air_supply) = air_supply {
             entity.air_supply = air_supply;
@@ -1781,6 +1798,7 @@ pub struct ClientEntity {
     pub data: i32,
     metadata: Option<Vec<u8>>,
     shared_flags: u8,
+    living_flags: u8,
     air_supply: i32,
     health_bits: Option<u32>,
     custom_name_present: bool,
@@ -1943,6 +1961,7 @@ pub struct ClientPlayerState {
     old_x_rot_bits: u32,
     entity_data: Option<Vec<u8>>,
     shared_flags: u8,
+    living_flags: u8,
     air_supply: i32,
     custom_name_present: bool,
     custom_name_visible: bool,
@@ -1990,6 +2009,7 @@ impl ClientPlayerState {
             old_x_rot_bits: 0.0_f32.to_bits(),
             entity_data: None,
             shared_flags: 0,
+            living_flags: 0,
             air_supply: DEFAULT_AIR_SUPPLY,
             custom_name_present: false,
             custom_name_visible: false,
@@ -2088,6 +2108,22 @@ impl ClientPlayerState {
 
     pub fn shared_flags(&self) -> u8 {
         self.shared_flags
+    }
+
+    pub fn living_flags(&self) -> u8 {
+        self.living_flags
+    }
+
+    pub fn is_using_item(&self) -> bool {
+        shared_flag_is_set(self.living_flags, LIVING_FLAG_USING_ITEM)
+    }
+
+    pub fn used_item_is_off_hand(&self) -> bool {
+        shared_flag_is_set(self.living_flags, LIVING_FLAG_OFF_HAND)
+    }
+
+    pub fn is_auto_spin_attack(&self) -> bool {
+        shared_flag_is_set(self.living_flags, LIVING_FLAG_SPIN_ATTACK)
     }
 
     pub fn air_supply(&self) -> i32 {
@@ -2300,6 +2336,22 @@ impl ClientEntity {
 
     pub fn shared_flags(&self) -> u8 {
         self.shared_flags
+    }
+
+    pub fn living_flags(&self) -> u8 {
+        self.living_flags
+    }
+
+    pub fn is_using_item(&self) -> bool {
+        shared_flag_is_set(self.living_flags, LIVING_FLAG_USING_ITEM)
+    }
+
+    pub fn used_item_is_off_hand(&self) -> bool {
+        shared_flag_is_set(self.living_flags, LIVING_FLAG_OFF_HAND)
+    }
+
+    pub fn is_auto_spin_attack(&self) -> bool {
+        shared_flag_is_set(self.living_flags, LIVING_FLAG_SPIN_ATTACK)
     }
 
     pub fn air_supply(&self) -> i32 {
@@ -3669,6 +3721,101 @@ mod tests {
             world.local_player().map(|player| player.health()),
             Some(20.0)
         );
+    }
+
+    #[test]
+    fn entity_living_flags_follow_java_byte_metadata_masks() {
+        let mut world = ClientWorld::default();
+        assert!(world.apply_entity(EntityInput {
+            entity_id: 37,
+            uuid: Uuid::new(1, 2),
+            type_id: 54,
+            x: 1.25,
+            y: 80.0,
+            z: -35.5,
+            movement: (0.0, 0.0, 0.0),
+            rotation: (0.0, 0.0, 0.0),
+            data: 0,
+        }));
+        let entity = world.entity_at(37).expect("default living flags entity");
+        assert_eq!(entity.living_flags(), 0);
+        assert!(!entity.is_using_item());
+        assert!(!entity.used_item_is_off_hand());
+        assert!(!entity.is_auto_spin_attack());
+
+        assert!(world.apply_entity_metadata(
+            37,
+            &[
+                super::ENTITY_LIVING_FLAGS_DATA_ID,
+                super::ENTITY_DATA_SERIALIZER_BYTE_ID as u8,
+                0b111,
+                255,
+            ],
+        ));
+        let entity = world.entity_at(37).expect("all living flags entity");
+        assert_eq!(entity.living_flags(), 0b111);
+        assert!(entity.is_using_item());
+        assert!(entity.used_item_is_off_hand());
+        assert!(entity.is_auto_spin_attack());
+
+        assert!(world.apply_entity_metadata(
+            37,
+            &[
+                super::ENTITY_LIVING_FLAGS_DATA_ID,
+                super::ENTITY_DATA_SERIALIZER_BYTE_ID as u8,
+                0b010,
+                255,
+            ],
+        ));
+        let entity = world.entity_at(37).expect("off-hand living flags entity");
+        assert_eq!(entity.living_flags(), 0b010);
+        assert!(!entity.is_using_item());
+        assert!(entity.used_item_is_off_hand());
+        assert!(!entity.is_auto_spin_attack());
+
+        assert!(world.apply_entity_metadata(37, &[5, 8, 1, 255]));
+        let entity = world
+            .entity_at(37)
+            .expect("living flags after partial metadata");
+        assert_eq!(entity.living_flags(), 0b010);
+        assert!(entity.is_no_gravity());
+    }
+
+    #[test]
+    fn local_player_living_flags_follow_metadata_and_respawn_keep_mask() {
+        let mut world = ClientWorld::default();
+        world.set_local_player_id(42);
+        assert_eq!(
+            world.local_player().map(|player| player.living_flags()),
+            Some(0)
+        );
+
+        assert!(world.apply_entity_metadata(
+            42,
+            &[
+                super::ENTITY_LIVING_FLAGS_DATA_ID,
+                super::ENTITY_DATA_SERIALIZER_BYTE_ID as u8,
+                0b111,
+                255,
+            ],
+        ));
+        let player = world.local_player().expect("living flags player");
+        assert_eq!(player.living_flags(), 0b111);
+        assert!(player.is_using_item());
+        assert!(player.used_item_is_off_hand());
+        assert!(player.is_auto_spin_attack());
+
+        assert!(world.recreate_local_player(PLAYER_RESPAWN_KEEP_ENTITY_DATA));
+        let player = world.local_player().expect("respawned living flags player");
+        assert_eq!(player.living_flags(), 0b111);
+        assert!(player.is_using_item());
+
+        assert!(world.recreate_local_player(0));
+        let player = world.local_player().expect("reset living flags player");
+        assert_eq!(player.living_flags(), 0);
+        assert!(!player.is_using_item());
+        assert!(!player.used_item_is_off_hand());
+        assert!(!player.is_auto_spin_attack());
     }
 
     #[test]
