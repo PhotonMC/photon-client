@@ -99,7 +99,7 @@ uygulamasını gösterir; Java client eşitliği iddiası değildir.
 
 Vanilla built-in kayıtlarla registry çözümü doğrulandı. Datapack ile yeni bir
 dimension key/type oluşturulan canlı senaryo, dimension type'ın diğer
-environment alanları, attribute/menu/inventory respawn state'i,
+environment alanları, effective attribute/menu/inventory respawn state'i,
 `dataToKeep` bit 1 etkisi ve `client-parity` karşılaştırması açık kalır.
 Local player identity ve bit 2 entity state uygulaması [P08.h kaydında](client-world-player-respawn-conformance.md),
 same-dimension ölüm respawn'ı ve `dataToKeep=0` akışı [P08.i kaydında](client-world-player-death-respawn-conformance.md)

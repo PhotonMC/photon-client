@@ -13,7 +13,9 @@ use crate::binary::{BitSet, Uuid};
 use crate::frame::{self, FrameError, MAX_FRAME_LENGTH};
 use crate::protocol::ConnectionProtocol;
 use crate::wire;
-use crate::world::{ClientWorld, DimensionBounds};
+use crate::world::{
+    ClientAttributeModifierState, ClientAttributeState, ClientWorld, DimensionBounds,
+};
 
 pub(crate) const PROTOCOL_VERSION: i32 = 776;
 pub(crate) const LOGIN_INTENTION_PACKET_ID: i32 = 0;
@@ -74,6 +76,7 @@ pub(crate) const PLAY_CLIENTBOUND_LOGIN_PACKET_ID: i32 = 49;
 pub(crate) const PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID: i32 = 72;
 pub(crate) const PLAY_CLIENTBOUND_RESPAWN_PACKET_ID: i32 = 82;
 pub(crate) const PLAY_CLIENTBOUND_SET_HEALTH_PACKET_ID: i32 = 104;
+pub(crate) const PLAY_CLIENTBOUND_UPDATE_ATTRIBUTES_PACKET_ID: i32 = 131;
 pub(crate) const PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID: i32 = 132;
 pub(crate) const PLAY_SERVERBOUND_ACCEPT_TELEPORTATION_PACKET_ID: i32 = 0;
 pub(crate) const PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID: i32 = 41;
@@ -542,6 +545,7 @@ pub struct PlayConnectionTrace {
     pub play_login: bool,
     pub login_observation: Option<LoginObservation>,
     pub respawn_observations: Vec<RespawnObservation>,
+    pub attribute_update_observations: Vec<AttributeUpdateObservation>,
     pub health_observations: Vec<HealthObservation>,
     pub respawn_command_packets_sent: usize,
     pub player_position_observations: Vec<PlayerPositionObservation>,
@@ -628,6 +632,8 @@ pub struct RespawnObservation {
     pub local_player_generation: Option<u64>,
     pub keep_entity_data: bool,
     pub keep_attribute_modifiers: bool,
+    pub local_player_attribute_count: usize,
+    pub local_player_attribute_modifier_count: usize,
     pub dimension_changed: bool,
     pub cleared_chunk_count: usize,
     pub cleared_entity_count: usize,
@@ -640,6 +646,14 @@ pub struct HealthObservation {
     pub health: f32,
     pub food: i32,
     pub saturation: f32,
+}
+
+/// Wire-level fields decoded from one clientbound attribute update.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AttributeUpdateObservation {
+    pub entity_id: i32,
+    pub attributes: Vec<ClientAttributeState>,
+    pub applied_to_world: bool,
 }
 
 /// A serialized global position embedded in spawn info.
@@ -1532,6 +1546,45 @@ pub(crate) fn parse_set_health_packet(input: &[u8]) -> Result<HealthObservation,
         return Err(ConnectionError::Codec("set health trailing payload"));
     }
     Ok(packet)
+}
+
+pub(crate) fn parse_update_attributes_packet(
+    input: &[u8],
+) -> Result<AttributeUpdateObservation, ConnectionError> {
+    let mut input = input;
+    let entity_id = read_varint(&mut input, "update attributes entity id")?;
+    let attribute_count = read_count(&mut input, "update attributes count")?;
+    if attribute_count > 128 {
+        return Err(ConnectionError::Codec("update attributes count"));
+    }
+    let mut attributes = Vec::with_capacity(attribute_count);
+    for _ in 0..attribute_count {
+        let attribute_id = read_varint(&mut input, "update attribute id")?;
+        let base_value = read_f64(&mut input, "update attribute base value")?;
+        let modifier_count = read_count(&mut input, "update attribute modifier count")?;
+        let mut modifiers = Vec::with_capacity(modifier_count);
+        for _ in 0..modifier_count {
+            let id = read_identifier_string(&mut input, "update attribute modifier id")?;
+            let amount = read_f64(&mut input, "update attribute modifier amount")?;
+            let operation = read_byte(&mut input, "update attribute modifier operation")?;
+            modifiers.push(ClientAttributeModifierState::from_wire(
+                id, amount, operation,
+            ));
+        }
+        attributes.push(ClientAttributeState::from_wire(
+            attribute_id,
+            base_value,
+            modifiers,
+        ));
+    }
+    if !input.is_empty() {
+        return Err(ConnectionError::Codec("update attributes trailing payload"));
+    }
+    Ok(AttributeUpdateObservation {
+        entity_id,
+        attributes,
+        applied_to_world: false,
+    })
 }
 
 fn parse_spawn_info(input: &mut &[u8]) -> Result<SpawnInfoObservation, ConnectionError> {
@@ -2808,7 +2861,7 @@ mod tests {
         PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID, PLAY_CLIENTBOUND_SET_ENTITY_DATA_PACKET_ID,
         PLAY_CLIENTBOUND_SET_ENTITY_MOTION_PACKET_ID, PLAY_CLIENTBOUND_SET_HEALTH_PACKET_ID,
         PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID, PLAY_CLIENTBOUND_TELEPORT_ENTITY_PACKET_ID,
-        PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID,
+        PLAY_CLIENTBOUND_UPDATE_ATTRIBUTES_PACKET_ID, PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID,
         PLAY_SERVERBOUND_ACCEPT_TELEPORTATION_PACKET_ID,
         PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID, PLAY_SERVERBOUND_CLIENT_COMMAND_PACKET_ID,
         PLAY_SERVERBOUND_CLIENT_TICK_END_PACKET_ID, PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
@@ -2844,8 +2897,8 @@ mod tests {
         parse_move_entity_rot_packet, parse_optional_item_stack, parse_player_position_packet,
         parse_remove_entities_packet, parse_remove_mob_effect_packet, parse_respawn_packet,
         parse_rotate_head_packet, parse_section_data, parse_set_entity_motion_packet,
-        parse_set_health_packet, parse_system_chat_packet, parse_update_mob_effect_packet,
-        resolve_player_position, support_block_position,
+        parse_set_health_packet, parse_system_chat_packet, parse_update_attributes_packet,
+        parse_update_mob_effect_packet, resolve_player_position, support_block_position,
     };
 
     #[test]
@@ -2881,6 +2934,7 @@ mod tests {
         assert_eq!(PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID, 72);
         assert_eq!(PLAY_CLIENTBOUND_RESPAWN_PACKET_ID, 82);
         assert_eq!(PLAY_CLIENTBOUND_SET_HEALTH_PACKET_ID, 104);
+        assert_eq!(PLAY_CLIENTBOUND_UPDATE_ATTRIBUTES_PACKET_ID, 131);
         assert_eq!(PLAY_CLIENTBOUND_BLOCK_UPDATE_PACKET_ID, 8);
         assert_eq!(PLAY_CLIENTBOUND_BLOCK_ENTITY_DATA_PACKET_ID, 6);
         assert_eq!(PLAY_CLIENTBOUND_FORGET_LEVEL_CHUNK_PACKET_ID, 37);
@@ -3176,6 +3230,40 @@ mod tests {
         let mut command_payload = Vec::new();
         encode_perform_respawn(&mut command_payload).expect("perform respawn command");
         assert_eq!(command_payload, [0]);
+    }
+
+    #[test]
+    fn update_attributes_parser_matches_java_snapshot_and_modifier_order() {
+        let mut payload = Vec::new();
+        crate::wire::write_varint(42, &mut payload);
+        crate::wire::write_varint(1, &mut payload);
+        crate::wire::write_varint(17, &mut payload);
+        payload.extend_from_slice(&2.5_f64.to_be_bytes());
+        crate::wire::write_varint(1, &mut payload);
+        crate::identifier::write_identifier(
+            &crate::identifier::Identifier::parse("minecraft:test_modifier")
+                .expect("modifier identifier"),
+            &mut payload,
+        )
+        .expect("modifier identifier bytes");
+        payload.extend_from_slice(&0.25_f64.to_be_bytes());
+        payload.push(2);
+
+        let observation =
+            parse_update_attributes_packet(&payload).expect("update attributes packet");
+        assert_eq!(observation.entity_id, 42);
+        assert!(!observation.applied_to_world);
+        assert_eq!(observation.attributes.len(), 1);
+        let attribute = &observation.attributes[0];
+        assert_eq!(attribute.attribute_id(), 17);
+        assert_eq!(attribute.base_value(), 2.5);
+        assert_eq!(attribute.modifiers().len(), 1);
+        assert_eq!(attribute.modifiers()[0].id(), "minecraft:test_modifier");
+        assert_eq!(attribute.modifiers()[0].amount(), 0.25);
+        assert_eq!(attribute.modifiers()[0].operation(), 2);
+
+        payload.push(0);
+        assert!(parse_update_attributes_packet(&payload).is_err());
     }
 
     #[test]

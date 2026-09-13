@@ -40,8 +40,9 @@ sorgulanabilir local player state'ine yazar.
 - `dataToKeep` bit 2 açıksa önceki local player'ın entity data, hareket ve
   rotasyon state'i yeni nesle taşınır. Bit kapalıysa bu state'ler yeni default
   değerlerine döner.
-- Bit 1 bu kayıtta `keep_attribute_modifiers` olarak kaydedilir; attribute
-  değerlerinin kendisi henüz world modelinde tutulmaz.
+- Bit 1'in attribute base/modifier aktarımı [P08.j kaydında](client-world-player-attributes-conformance.md)
+  uygulanmıştır; bu belge bit 2 entity state'i ve ortak local player yeniden
+  kurulumunu kapsar.
 
 ## Rust doğrulaması
 
@@ -115,6 +116,6 @@ eşitliği iddiası değildir.
 
 Same-dimension ölüm respawn'ı ve `dataToKeep=0` canlı senaryosu
 [P08.i kaydında](client-world-player-death-respawn-conformance.md)
-doğrulanır. Attribute değerlerinin aktarılması, menu/inventory/effect state'i,
-reset konumunun tam Java spawn davranışı, datapack custom dimension ve
-`client-parity` karşılaştırması açık kalır.
+doğrulanır. Effective attribute hesaplarının ve gameplay etkilerinin tamamı,
+menu/inventory/effect state'i, reset konumunun tam Java spawn davranışı,
+datapack custom dimension ve `client-parity` karşılaştırması açık kalır.

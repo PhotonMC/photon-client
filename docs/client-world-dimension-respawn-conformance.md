@@ -43,9 +43,9 @@ belirler; bundle delimiter ID `0` olduğundan bu packet ID `82`'dir.
 - Dimension key aynı kaldığında mevcut chunk/entity depolaması korunur; bu,
   Java listener'ın yeni `ClientLevel` yaratmadığı dala karşılık gelir.
 - `dataToKeep` kaydedilir. Local player'ın aynı ID ile yeniden kurulması ve bit
-  2 entity state'inin taşınması [P08.h kaydında](client-world-player-respawn-conformance.md)
-  uygulanmıştır; attribute/menu/inventory state'i ve bit 1'in gerçek değer
-  aktarımı hâlâ açık kapsamdır.
+  2 entity state'inin taşınması [P08.h kaydında](client-world-player-respawn-conformance.md),
+  bit 1 attribute base/modifier state aktarımı ise [P08.j kaydında](client-world-player-attributes-conformance.md)
+  uygulanmıştır; menu/inventory state'i hâlâ açık kapsamdır.
 - P08.f kapsamındaki built-in key çözümü, configuration registry'den gelen
   `DimensionType` bounds çözümüyle [P08.g kaydında](client-world-dimension-type-bounds-conformance.md)
   genişletilmiştir. P08.f'in tek başına ölçümü bilinmeyen key için varsayılan
@@ -120,8 +120,9 @@ state uygulamasını gösterir; Java client eşitliği iddiası değildir.
 ## Açık kapsam
 
 Datapack custom dimension için gerçek bounds çözümü, `dataToKeep` maskesinin
-attribute/menu/inventory state'ine uygulanması, portal coordinate scaling,
-dimension-specific environment/render state'i ve `client-parity`
+menu/inventory state'ine uygulanması, effective attribute hesapları, portal
+coordinate scaling, dimension-specific environment/render state'i ve
+`client-parity`
 karşılaştırması açık kalır. Same-dimension ölüm respawn'ı ve `dataToKeep=0`
 akışı [P08.i kaydında](client-world-player-death-respawn-conformance.md)
 doğrulanmıştır.

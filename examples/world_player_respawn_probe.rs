@@ -23,6 +23,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let Some(player) = trace.world.local_player() else {
         return Err("Rust world did not create a local player state".into());
     };
+    let Some(initial_attribute_update) =
+        trace
+            .attribute_update_observations
+            .iter()
+            .find(|observation| {
+                observation.entity_id == login.player_id && observation.applied_to_world
+            })
+    else {
+        return Err("vanilla did not provide the local player attribute snapshot".into());
+    };
+    let initial_attribute_modifier_count = initial_attribute_update
+        .attributes
+        .iter()
+        .map(|attribute| attribute.modifiers().len())
+        .sum::<usize>();
 
     if !respawn.local_player_recreated
         || respawn.local_player_id != Some(login.player_id)
@@ -31,6 +46,30 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     {
         return Err(format!(
             "local player replacement did not preserve Java identity semantics: {respawn:?}, player={player:?}"
+        )
+        .into());
+    }
+    if respawn.local_player_attribute_count != initial_attribute_update.attributes.len()
+        || respawn.local_player_attribute_modifier_count != initial_attribute_modifier_count
+        || player.attributes().len() != initial_attribute_update.attributes.len()
+        || player
+            .attributes()
+            .iter()
+            .map(|attribute| attribute.modifiers().len())
+            .sum::<usize>()
+            != initial_attribute_modifier_count
+    {
+        return Err(format!(
+            "local player attribute state was not carried through respawn: initial={:?}, respawn_attribute_count={}, respawn_modifier_count={}, player_attribute_count={}, player_modifier_count={}",
+            initial_attribute_update.attributes,
+            respawn.local_player_attribute_count,
+            respawn.local_player_attribute_modifier_count,
+            player.attributes().len(),
+            player
+                .attributes()
+                .iter()
+                .map(|attribute| attribute.modifiers().len())
+                .sum::<usize>()
         )
         .into());
     }
@@ -45,6 +84,34 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "keep_attribute_modifiers={}",
         respawn.keep_attribute_modifiers
     );
+    println!(
+        "attribute_update_observation_count={}",
+        trace.attribute_update_observations.len()
+    );
+    println!(
+        "local_player_attribute_update_count={}",
+        trace
+            .attribute_update_observations
+            .iter()
+            .filter(|observation| observation.entity_id == login.player_id)
+            .count()
+    );
+    println!(
+        "initial_local_player_attribute_count={}",
+        initial_attribute_update.attributes.len()
+    );
+    println!(
+        "initial_local_player_attribute_modifier_count={}",
+        initial_attribute_modifier_count
+    );
+    println!(
+        "respawn_local_player_attribute_count={}",
+        respawn.local_player_attribute_count
+    );
+    println!(
+        "respawn_local_player_attribute_modifier_count={}",
+        respawn.local_player_attribute_modifier_count
+    );
     println!("local_player_id={}", player.id());
     println!("local_player_recreated={}", respawn.local_player_recreated);
     println!("local_player_generation={}", player.generation());
@@ -54,6 +121,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!(
         "local_player_entity_data_present={}",
         player.entity_data().is_some()
+    );
+    println!("local_player_attribute_count={}", player.attributes().len());
+    println!(
+        "local_player_attribute_modifier_count={}",
+        player
+            .attributes()
+            .iter()
+            .map(|attribute| attribute.modifiers().len())
+            .sum::<usize>()
     );
     println!(
         "player_position_observation_count={}",

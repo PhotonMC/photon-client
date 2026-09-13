@@ -29,7 +29,9 @@ packet'leri gönderebilir.
 `ClientPacketListener.java:1247-1337`, dimension key aynıysa mevcut
 `ClientLevel`'ı koruyup yeni `LocalPlayer` oluşturduğunu, ID'yi koruduğunu ve
 keep bit 2 kapalıysa oyuncuyu reset konumuna alıp yaw'ı `-180` yaptığını
-gösterir. Keep bit 1 kapalı olduğunda attribute'lar base değerlerine döner.
+gösterir. Keep bit 1 kapalı olduğunda attribute'ların base değerlerine dönmesi
+[P08.j kaydında](client-world-player-attributes-conformance.md) world state
+üzerinde ayrıca uygulanır.
 
 ## Sözleşme
 
@@ -46,8 +48,9 @@ gösterir. Keep bit 1 kapalı olduğunda attribute'lar base değerlerine döner.
   için önceki motion, rotation ve ham entity-data state'ini taşımamalıdır.
   Respawn sonrasında gelen player-position veya metadata packet'leri bu
   başlangıç state'ini güncelleyebilir.
-- Bu dilim attribute değerlerinin, menu/inventory/effect state'inin ve Java
-  client ekran/level-loading akışının tamamını kapatmaz.
+- Bu dilim menu/inventory/effect state'inin ve Java client ekran/level-loading
+  akışının tamamını kapatmaz. Attribute base/modifier state'i
+  [P08.j kaydında](client-world-player-attributes-conformance.md) ele alınır.
 
 ## Rust doğrulaması
 
@@ -126,7 +129,7 @@ değildir.
 
 ## Açık kapsam
 
-`dataToKeep` bit 1'in gerçek attribute değerlerine etkisi, death screen ve
-level-loading UI state'i, menu/inventory/effect state'i, respawn config ve
+Death screen ve level-loading UI state'i, menu/inventory/effect state'i,
+effective attribute hesapları, respawn config ve
 anchor dalları, datapack custom dimension, exact pre-correction spawn state'i
 ve `client-parity` karşılaştırması açık kalır.

@@ -1838,6 +1838,22 @@ fn connect_and_probe_with_mode(
                 let local_player_id = trace.world.local_player().map(|player| player.id());
                 let local_player_generation =
                     trace.world.local_player().map(|player| player.generation());
+                let local_player_attribute_count = trace
+                    .world
+                    .local_player()
+                    .map(|player| player.attributes().len())
+                    .unwrap_or(0);
+                let local_player_attribute_modifier_count = trace
+                    .world
+                    .local_player()
+                    .map(|player| {
+                        player
+                            .attributes()
+                            .iter()
+                            .map(|attribute| attribute.modifiers().len())
+                            .sum()
+                    })
+                    .unwrap_or(0);
                 trace.respawn_observations.push(RespawnObservation {
                     spawn_info,
                     data_to_keep,
@@ -1848,11 +1864,20 @@ fn connect_and_probe_with_mode(
                     keep_attribute_modifiers: data_to_keep
                         & PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS
                         != 0,
+                    local_player_attribute_count,
+                    local_player_attribute_modifier_count,
                     dimension_changed,
                     cleared_chunk_count,
                     cleared_entity_count,
                     applied_to_world: true,
                 });
+            }
+            PLAY_CLIENTBOUND_UPDATE_ATTRIBUTES_PACKET_ID => {
+                let mut observation = parse_update_attributes_packet(payload)?;
+                observation.applied_to_world = trace
+                    .world
+                    .apply_local_player_attributes(observation.entity_id, &observation.attributes);
+                trace.attribute_update_observations.push(observation);
             }
             PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID => {
                 trace

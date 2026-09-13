@@ -169,8 +169,20 @@ impl ClientWorld {
             return false;
         };
         let keep_entity_data = data_to_keep & PLAYER_RESPAWN_KEEP_ENTITY_DATA != 0;
+        let keep_attribute_modifiers = data_to_keep & PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS != 0;
         let mut player = ClientPlayerState::new(previous.id);
         player.generation = previous.generation.saturating_add(1);
+        player.attributes = previous
+            .attributes
+            .iter()
+            .map(|attribute| {
+                let mut attribute = attribute.clone();
+                if !keep_attribute_modifiers {
+                    attribute.modifiers.clear();
+                }
+                attribute
+            })
+            .collect();
         if keep_entity_data {
             player.motion_x_bits = previous.motion_x_bits;
             player.motion_y_bits = previous.motion_y_bits;
@@ -182,6 +194,32 @@ impl ClientWorld {
             player.y_rot_bits = (-180.0_f32).to_bits();
         }
         self.local_player = Some(player);
+        true
+    }
+
+    pub(crate) fn apply_local_player_attributes(
+        &mut self,
+        player_id: i32,
+        attributes: &[ClientAttributeState],
+    ) -> bool {
+        let Some(player) = self
+            .local_player
+            .as_mut()
+            .filter(|player| player.id == player_id)
+        else {
+            return false;
+        };
+        for attribute in attributes {
+            if let Some(existing) = player
+                .attributes
+                .iter_mut()
+                .find(|existing| existing.attribute_id == attribute.attribute_id)
+            {
+                *existing = attribute.clone();
+            } else {
+                player.attributes.push(attribute.clone());
+            }
+        }
         true
     }
 
@@ -671,6 +709,68 @@ pub struct ClientEntity {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClientAttributeModifierState {
+    id: String,
+    amount_bits: u64,
+    operation: u8,
+}
+
+impl ClientAttributeModifierState {
+    pub(crate) fn from_wire(id: String, amount: f64, operation: u8) -> Self {
+        Self {
+            id,
+            amount_bits: amount.to_bits(),
+            operation,
+        }
+    }
+
+    pub fn id(&self) -> &str {
+        &self.id
+    }
+
+    pub fn amount(&self) -> f64 {
+        f64::from_bits(self.amount_bits)
+    }
+
+    pub fn operation(&self) -> u8 {
+        self.operation
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClientAttributeState {
+    attribute_id: i32,
+    base_value_bits: u64,
+    modifiers: Vec<ClientAttributeModifierState>,
+}
+
+impl ClientAttributeState {
+    pub(crate) fn from_wire(
+        attribute_id: i32,
+        base_value: f64,
+        modifiers: Vec<ClientAttributeModifierState>,
+    ) -> Self {
+        Self {
+            attribute_id,
+            base_value_bits: base_value.to_bits(),
+            modifiers,
+        }
+    }
+
+    pub fn attribute_id(&self) -> i32 {
+        self.attribute_id
+    }
+
+    pub fn base_value(&self) -> f64 {
+        f64::from_bits(self.base_value_bits)
+    }
+
+    pub fn modifiers(&self) -> &[ClientAttributeModifierState] {
+        &self.modifiers
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ClientPlayerState {
     id: i32,
     generation: u64,
@@ -683,6 +783,7 @@ pub struct ClientPlayerState {
     y_rot_bits: u32,
     x_rot_bits: u32,
     entity_data: Option<Vec<u8>>,
+    attributes: Vec<ClientAttributeState>,
 }
 
 impl ClientPlayerState {
@@ -699,6 +800,7 @@ impl ClientPlayerState {
             y_rot_bits: 0.0_f32.to_bits(),
             x_rot_bits: 0.0_f32.to_bits(),
             entity_data: None,
+            attributes: Vec::new(),
         }
     }
 
@@ -735,6 +837,10 @@ impl ClientPlayerState {
 
     pub fn entity_data(&self) -> Option<&[u8]> {
         self.entity_data.as_deref()
+    }
+
+    pub fn attributes(&self) -> &[ClientAttributeState] {
+        &self.attributes
     }
 }
 
@@ -956,10 +1062,10 @@ fn apply_light_layer(
 #[cfg(test)]
 mod tests {
     use super::{
-        BlockEntityInput, ClientWorld, DimensionBounds, DimensionInput, EntityInput,
-        EntityMotionInput, EntityMoveInput, EntityPositionInput, EntityRotationInput,
-        LightLayerInput, LightUpdateInput, PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS,
-        PLAYER_RESPAWN_KEEP_ENTITY_DATA, SectionInput,
+        BlockEntityInput, ClientAttributeModifierState, ClientAttributeState, ClientWorld,
+        DimensionBounds, DimensionInput, EntityInput, EntityMotionInput, EntityMoveInput,
+        EntityPositionInput, EntityRotationInput, LightLayerInput, LightUpdateInput,
+        PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS, PLAYER_RESPAWN_KEEP_ENTITY_DATA, SectionInput,
     };
     use crate::binary::{BitSet, Uuid};
 
@@ -1476,6 +1582,43 @@ mod tests {
         assert_eq!(player.motion(), (0.0, 0.0, 0.0));
         assert_eq!(player.rotation(), (-180.0, 0.0));
         assert_eq!(player.entity_data(), None);
+    }
+
+    #[test]
+    fn local_player_respawn_preserves_attribute_bases_and_applies_modifier_mask() {
+        let mut world = ClientWorld::default();
+        world.set_local_player_id(42);
+        let modifier =
+            ClientAttributeModifierState::from_wire("minecraft:test_modifier".to_owned(), 0.25, 2);
+        let attribute = ClientAttributeState::from_wire(17, 2.5, vec![modifier.clone()]);
+
+        assert!(world.apply_local_player_attributes(42, &[attribute]));
+        let player = world.local_player().expect("initial local player");
+        assert_eq!(player.attributes().len(), 1);
+        assert_eq!(player.attributes()[0].base_value(), 2.5);
+        assert_eq!(
+            player.attributes()[0].modifiers(),
+            std::slice::from_ref(&modifier)
+        );
+
+        assert!(world.recreate_local_player(0));
+        let player = world.local_player().expect("base-only respawned player");
+        assert_eq!(player.attributes().len(), 1);
+        assert_eq!(player.attributes()[0].base_value(), 2.5);
+        assert!(player.attributes()[0].modifiers().is_empty());
+
+        assert!(world.apply_local_player_attributes(
+            42,
+            &[ClientAttributeState::from_wire(
+                17,
+                3.5,
+                vec![modifier.clone()],
+            )],
+        ));
+        assert!(world.recreate_local_player(PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS));
+        let player = world.local_player().expect("modifier-preserving player");
+        assert_eq!(player.attributes()[0].base_value(), 3.5);
+        assert_eq!(player.attributes()[0].modifiers(), &[modifier]);
     }
 
     #[test]
