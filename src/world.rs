@@ -268,6 +268,45 @@ impl ClientWorld {
         true
     }
 
+    pub(crate) fn apply_entity_position(&mut self, input: EntityPositionInput) -> bool {
+        let Some(entity) = self.entities.get_mut(&input.entity_id) else {
+            return false;
+        };
+        let current = entity.position();
+        let x = if input.relative_flags & (1 << 0) != 0 {
+            current.0 + input.x
+        } else {
+            input.x
+        };
+        let y = if input.relative_flags & (1 << 1) != 0 {
+            current.1 + input.y
+        } else {
+            input.y
+        };
+        let z = if input.relative_flags & (1 << 2) != 0 {
+            current.2 + input.z
+        } else {
+            input.z
+        };
+        entity.x_bits = x.to_bits();
+        entity.y_bits = y.to_bits();
+        entity.z_bits = z.to_bits();
+        true
+    }
+
+    pub(crate) fn apply_entity_move(&mut self, input: EntityMoveInput) -> bool {
+        let Some(entity) = self.entities.get_mut(&input.entity_id) else {
+            return false;
+        };
+        if input.has_position {
+            let current = entity.position();
+            entity.x_bits = decode_entity_delta(current.0, input.delta_x);
+            entity.y_bits = decode_entity_delta(current.1, input.delta_y);
+            entity.z_bits = decode_entity_delta(current.2, input.delta_z);
+        }
+        true
+    }
+
     pub fn section_counts_at(
         &self,
         chunk_x: i32,
@@ -425,6 +464,31 @@ pub(crate) struct EntityInput {
     pub(crate) data: i32,
 }
 
+pub(crate) struct EntityPositionInput {
+    pub(crate) entity_id: i32,
+    pub(crate) x: f64,
+    pub(crate) y: f64,
+    pub(crate) z: f64,
+    pub(crate) relative_flags: i32,
+}
+
+pub(crate) struct EntityMoveInput {
+    pub(crate) entity_id: i32,
+    pub(crate) delta_x: i16,
+    pub(crate) delta_y: i16,
+    pub(crate) delta_z: i16,
+    pub(crate) has_position: bool,
+}
+
+fn decode_entity_delta(base: f64, delta: i16) -> u64 {
+    if delta == 0 {
+        base.to_bits()
+    } else {
+        let encoded_base = (base * 4096.0 + 0.5).floor() as i64;
+        ((encoded_base + i64::from(delta)) as f64 / 4096.0).to_bits()
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum LightLayer {
     Sky,
@@ -486,8 +550,8 @@ fn apply_light_layer(
 #[cfg(test)]
 mod tests {
     use super::{
-        BlockEntityInput, ClientWorld, DimensionBounds, EntityInput, LightLayerInput,
-        LightUpdateInput, SectionInput,
+        BlockEntityInput, ClientWorld, DimensionBounds, EntityInput, EntityMoveInput,
+        EntityPositionInput, LightLayerInput, LightUpdateInput, SectionInput,
     };
     use crate::binary::BitSet;
 
@@ -736,6 +800,58 @@ mod tests {
         assert!(world.apply_entity_metadata(37, &[1, 0, 255]));
         assert_eq!(world.entity_metadata_at(37), Some(&[1, 0, 255][..]));
         assert!(!world.apply_entity_metadata(999, &[255]));
+
+        assert!(world.apply_entity_position(EntityPositionInput {
+            entity_id: 37,
+            x: 10.0,
+            y: 20.0,
+            z: 30.0,
+            relative_flags: 0,
+        }));
+        assert_eq!(
+            world.entity_at(37).map(super::ClientEntity::position),
+            Some((10.0, 20.0, 30.0))
+        );
+        assert!(world.apply_entity_position(EntityPositionInput {
+            entity_id: 37,
+            x: 0.5,
+            y: -1.0,
+            z: 2.0,
+            relative_flags: 0b111,
+        }));
+        assert_eq!(
+            world.entity_at(37).map(super::ClientEntity::position),
+            Some((10.5, 19.0, 32.0))
+        );
+        assert!(!world.apply_entity_position(EntityPositionInput {
+            entity_id: 999,
+            x: 1.0,
+            y: 2.0,
+            z: 3.0,
+            relative_flags: 0,
+        }));
+        assert!(world.apply_entity_move(EntityMoveInput {
+            entity_id: 37,
+            delta_x: 2_048,
+            delta_y: -4_096,
+            delta_z: 0,
+            has_position: true,
+        }));
+        assert_eq!(
+            world.entity_at(37).map(super::ClientEntity::position),
+            Some((11.0, 18.0, 32.0))
+        );
+        assert!(world.apply_entity_move(EntityMoveInput {
+            entity_id: 37,
+            delta_x: 7,
+            delta_y: 8,
+            delta_z: 9,
+            has_position: false,
+        }));
+        assert_eq!(
+            world.entity_at(37).map(super::ClientEntity::position),
+            Some((11.0, 18.0, 32.0))
+        );
 
         assert!(world.apply_entity(EntityInput {
             entity_id: 37,

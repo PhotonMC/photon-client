@@ -46,6 +46,10 @@ pub(crate) const CONFIG_CODE_OF_CONDUCT_PACKET_ID: i32 = 19;
 // occupies id 0 and shifts the listed play clientbound packet ids by one.
 pub(crate) const PLAY_CLIENTBOUND_BUNDLE_DELIMITER_PACKET_ID: i32 = 0;
 pub(crate) const PLAY_CLIENTBOUND_ADD_ENTITY_PACKET_ID: i32 = 1;
+pub(crate) const PLAY_CLIENTBOUND_ENTITY_POSITION_SYNC_PACKET_ID: i32 = 35;
+pub(crate) const PLAY_CLIENTBOUND_MOVE_ENTITY_POS_PACKET_ID: i32 = 53;
+pub(crate) const PLAY_CLIENTBOUND_MOVE_ENTITY_POS_ROT_PACKET_ID: i32 = 54;
+pub(crate) const PLAY_CLIENTBOUND_MOVE_ENTITY_ROT_PACKET_ID: i32 = 56;
 pub(crate) const PLAY_CLIENTBOUND_BLOCK_CHANGED_ACK_PACKET_ID: i32 = 4;
 pub(crate) const PLAY_CLIENTBOUND_BLOCK_DESTRUCTION_PACKET_ID: i32 = 5;
 pub(crate) const PLAY_CLIENTBOUND_BLOCK_ENTITY_DATA_PACKET_ID: i32 = 6;
@@ -60,6 +64,7 @@ pub(crate) const PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID: i32 = 96;
 pub(crate) const PLAY_CLIENTBOUND_REMOVE_ENTITIES_PACKET_ID: i32 = 77;
 pub(crate) const PLAY_CLIENTBOUND_REMOVE_MOB_EFFECT_PACKET_ID: i32 = 78;
 pub(crate) const PLAY_CLIENTBOUND_SET_ENTITY_DATA_PACKET_ID: i32 = 99;
+pub(crate) const PLAY_CLIENTBOUND_TELEPORT_ENTITY_PACKET_ID: i32 = 125;
 pub(crate) const PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID: i32 = 121;
 pub(crate) const PLAY_CLIENTBOUND_KEEP_ALIVE_PACKET_ID: i32 = 44;
 pub(crate) const PLAY_CLIENTBOUND_CHUNK_PACKET_ID: i32 = 45;
@@ -454,6 +459,7 @@ pub(crate) const BLOCK_ENTITY_UPDATE_DRAIN_TIMEOUT: Duration = Duration::from_se
 pub(crate) const ENTITY_ADD_DRAIN_TIMEOUT: Duration = Duration::from_secs(30);
 pub(crate) const ENTITY_REMOVE_DRAIN_TIMEOUT: Duration = Duration::from_secs(30);
 pub(crate) const ENTITY_METADATA_DRAIN_TIMEOUT: Duration = Duration::from_secs(30);
+pub(crate) const ENTITY_POSITION_SYNC_DRAIN_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// Errors raised while driving the initial real-server client session.
 #[derive(Debug)]
@@ -541,6 +547,9 @@ pub struct PlayConnectionTrace {
     pub add_entity_observations: Vec<AddEntityObservation>,
     pub remove_entities_observations: Vec<RemoveEntitiesObservation>,
     pub entity_metadata_observations: Vec<EntityMetadataObservation>,
+    pub entity_position_sync_observations: Vec<EntityPositionSyncObservation>,
+    pub entity_teleport_observations: Vec<EntityTeleportObservation>,
+    pub entity_move_observations: Vec<EntityMoveObservation>,
     pub container_content_observations: Vec<ContainerSetContentObservation>,
     pub container_slot_observations: Vec<ContainerSetSlotObservation>,
     pub cursor_item_observations: Vec<CursorItemObservation>,
@@ -651,6 +660,57 @@ pub struct EntityMetadataObservation {
     pub metadata_length: usize,
     pub applied_to_world: bool,
     pub(crate) metadata: Vec<u8>,
+}
+
+/// Wire-level fields decoded from one clientbound entity-position-sync packet.
+#[derive(Debug, Clone, PartialEq)]
+pub struct EntityPositionSyncObservation {
+    pub entity_id: i32,
+    pub x: f64,
+    pub y: f64,
+    pub z: f64,
+    pub delta_x: f64,
+    pub delta_y: f64,
+    pub delta_z: f64,
+    pub y_rot: f32,
+    pub x_rot: f32,
+    pub on_ground: bool,
+    pub applied_to_world: bool,
+    pub applied_position: Option<(f64, f64, f64)>,
+}
+
+/// Wire-level fields decoded from one clientbound entity-teleport packet.
+#[derive(Debug, Clone, PartialEq)]
+pub struct EntityTeleportObservation {
+    pub entity_id: i32,
+    pub x: f64,
+    pub y: f64,
+    pub z: f64,
+    pub delta_x: f64,
+    pub delta_y: f64,
+    pub delta_z: f64,
+    pub y_rot: f32,
+    pub x_rot: f32,
+    pub relative_flags: i32,
+    pub on_ground: bool,
+    pub applied_to_world: bool,
+    pub applied_position: Option<(f64, f64, f64)>,
+}
+
+/// Wire-level fields decoded from one clientbound relative entity-move packet.
+#[derive(Debug, Clone, PartialEq)]
+pub struct EntityMoveObservation {
+    pub entity_id: i32,
+    pub delta_x: i16,
+    pub delta_y: i16,
+    pub delta_z: i16,
+    pub y_rot: Option<u8>,
+    pub x_rot: Option<u8>,
+    pub has_position: bool,
+    pub has_rotation: bool,
+    pub on_ground: bool,
+    pub applied_to_world: bool,
+    pub applied_position: Option<(f64, f64, f64)>,
 }
 
 /// Wire-level fields decoded from one clientbound container slot update.
@@ -1459,6 +1519,137 @@ pub(crate) fn parse_entity_metadata_packet(
         metadata_length: metadata.len(),
         applied_to_world: false,
         metadata,
+    })
+}
+
+pub(crate) fn parse_entity_position_sync_packet(
+    input: &[u8],
+) -> Result<EntityPositionSyncObservation, ConnectionError> {
+    let mut input = input;
+    let entity_id = read_varint(&mut input, "entity position sync entity id")?;
+    let x = read_f64(&mut input, "entity position sync x")?;
+    let y = read_f64(&mut input, "entity position sync y")?;
+    let z = read_f64(&mut input, "entity position sync z")?;
+    let delta_x = read_f64(&mut input, "entity position sync delta x")?;
+    let delta_y = read_f64(&mut input, "entity position sync delta y")?;
+    let delta_z = read_f64(&mut input, "entity position sync delta z")?;
+    let y_rot = read_f32(&mut input, "entity position sync y rotation")?;
+    let x_rot = read_f32(&mut input, "entity position sync x rotation")?;
+    let on_ground = read_byte(&mut input, "entity position sync on ground")? != 0;
+    if !input.is_empty() {
+        return Err(ConnectionError::Codec(
+            "entity position sync trailing payload",
+        ));
+    }
+    Ok(EntityPositionSyncObservation {
+        entity_id,
+        x,
+        y,
+        z,
+        delta_x,
+        delta_y,
+        delta_z,
+        y_rot,
+        x_rot,
+        on_ground,
+        applied_to_world: false,
+        applied_position: None,
+    })
+}
+
+pub(crate) fn parse_entity_teleport_packet(
+    input: &[u8],
+) -> Result<EntityTeleportObservation, ConnectionError> {
+    let mut input = input;
+    let entity_id = read_varint(&mut input, "entity teleport entity id")?;
+    let x = read_f64(&mut input, "entity teleport x")?;
+    let y = read_f64(&mut input, "entity teleport y")?;
+    let z = read_f64(&mut input, "entity teleport z")?;
+    let delta_x = read_f64(&mut input, "entity teleport delta x")?;
+    let delta_y = read_f64(&mut input, "entity teleport delta y")?;
+    let delta_z = read_f64(&mut input, "entity teleport delta z")?;
+    let y_rot = read_f32(&mut input, "entity teleport y rotation")?;
+    let x_rot = read_f32(&mut input, "entity teleport x rotation")?;
+    let relative_flags = read_i32(&mut input, "entity teleport relative flags")?;
+    let on_ground = read_byte(&mut input, "entity teleport on ground")? != 0;
+    if !input.is_empty() {
+        return Err(ConnectionError::Codec("entity teleport trailing payload"));
+    }
+    Ok(EntityTeleportObservation {
+        entity_id,
+        x,
+        y,
+        z,
+        delta_x,
+        delta_y,
+        delta_z,
+        y_rot,
+        x_rot,
+        relative_flags,
+        on_ground,
+        applied_to_world: false,
+        applied_position: None,
+    })
+}
+
+pub(crate) fn parse_move_entity_pos_packet(
+    input: &[u8],
+) -> Result<EntityMoveObservation, ConnectionError> {
+    parse_move_entity_packet(input, true, false)
+}
+
+pub(crate) fn parse_move_entity_pos_rot_packet(
+    input: &[u8],
+) -> Result<EntityMoveObservation, ConnectionError> {
+    parse_move_entity_packet(input, true, true)
+}
+
+pub(crate) fn parse_move_entity_rot_packet(
+    input: &[u8],
+) -> Result<EntityMoveObservation, ConnectionError> {
+    parse_move_entity_packet(input, false, true)
+}
+
+fn parse_move_entity_packet(
+    input: &[u8],
+    has_position: bool,
+    has_rotation: bool,
+) -> Result<EntityMoveObservation, ConnectionError> {
+    let mut input = input;
+    let entity_id = read_varint(&mut input, "move entity id")?;
+    let (delta_x, delta_y, delta_z) = if has_position {
+        (
+            read_i16(&mut input, "move entity delta x")?,
+            read_i16(&mut input, "move entity delta y")?,
+            read_i16(&mut input, "move entity delta z")?,
+        )
+    } else {
+        (0, 0, 0)
+    };
+    let (y_rot, x_rot) = if has_rotation {
+        (
+            Some(read_byte(&mut input, "move entity y rotation")?),
+            Some(read_byte(&mut input, "move entity x rotation")?),
+        )
+    } else {
+        (None, None)
+    };
+    let on_ground = read_byte(&mut input, "move entity on ground")? != 0;
+    if !input.is_empty() {
+        return Err(ConnectionError::Codec("move entity trailing payload"));
+    }
+    Ok(EntityMoveObservation {
+        entity_id,
+        delta_x,
+        delta_y,
+        delta_z,
+        y_rot,
+        x_rot,
+        has_position,
+        has_rotation,
+        on_ground,
+        applied_to_world: false,
+        applied_position: None,
     })
 }
 
@@ -2333,11 +2524,14 @@ mod tests {
         PLAY_CLIENTBOUND_BLOCK_ENTITY_DATA_PACKET_ID, PLAY_CLIENTBOUND_BLOCK_UPDATE_PACKET_ID,
         PLAY_CLIENTBOUND_CHUNK_PACKET_ID, PLAY_CLIENTBOUND_CONTAINER_SET_CONTENT_PACKET_ID,
         PLAY_CLIENTBOUND_CONTAINER_SET_SLOT_PACKET_ID,
+        PLAY_CLIENTBOUND_ENTITY_POSITION_SYNC_PACKET_ID,
         PLAY_CLIENTBOUND_FORGET_LEVEL_CHUNK_PACKET_ID, PLAY_CLIENTBOUND_KEEP_ALIVE_PACKET_ID,
         PLAY_CLIENTBOUND_LIGHT_UPDATE_PACKET_ID, PLAY_CLIENTBOUND_LOGIN_PACKET_ID,
-        PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID, PLAY_CLIENTBOUND_REMOVE_ENTITIES_PACKET_ID,
-        PLAY_CLIENTBOUND_REMOVE_MOB_EFFECT_PACKET_ID, PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID,
-        PLAY_CLIENTBOUND_SET_ENTITY_DATA_PACKET_ID, PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID,
+        PLAY_CLIENTBOUND_MOVE_ENTITY_POS_PACKET_ID, PLAY_CLIENTBOUND_MOVE_ENTITY_POS_ROT_PACKET_ID,
+        PLAY_CLIENTBOUND_MOVE_ENTITY_ROT_PACKET_ID, PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID,
+        PLAY_CLIENTBOUND_REMOVE_ENTITIES_PACKET_ID, PLAY_CLIENTBOUND_REMOVE_MOB_EFFECT_PACKET_ID,
+        PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID, PLAY_CLIENTBOUND_SET_ENTITY_DATA_PACKET_ID,
+        PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID, PLAY_CLIENTBOUND_TELEPORT_ENTITY_PACKET_ID,
         PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID,
         PLAY_SERVERBOUND_ACCEPT_TELEPORTATION_PACKET_ID,
         PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID,
@@ -2368,10 +2562,13 @@ mod tests {
         pack_block_position, parse_add_entity_packet, parse_block_destruction_packet,
         parse_block_entity_data_packet, parse_block_update_packet, parse_chunk_packet,
         parse_container_set_content_packet, parse_container_set_slot_packet,
-        parse_entity_metadata_packet, parse_forget_level_chunk_packet, parse_light_update_packet,
-        parse_optional_item_stack, parse_player_position_packet, parse_remove_entities_packet,
-        parse_remove_mob_effect_packet, parse_section_data, parse_system_chat_packet,
-        parse_update_mob_effect_packet, resolve_player_position, support_block_position,
+        parse_entity_metadata_packet, parse_entity_position_sync_packet,
+        parse_entity_teleport_packet, parse_forget_level_chunk_packet, parse_light_update_packet,
+        parse_move_entity_pos_packet, parse_move_entity_pos_rot_packet,
+        parse_move_entity_rot_packet, parse_optional_item_stack, parse_player_position_packet,
+        parse_remove_entities_packet, parse_remove_mob_effect_packet, parse_section_data,
+        parse_system_chat_packet, parse_update_mob_effect_packet, resolve_player_position,
+        support_block_position,
     };
 
     #[test]
@@ -2395,6 +2592,10 @@ mod tests {
     #[test]
     fn play_packet_ids_match_java_26_2_dispatch_order() {
         assert_eq!(PLAY_CLIENTBOUND_ADD_ENTITY_PACKET_ID, 1);
+        assert_eq!(PLAY_CLIENTBOUND_ENTITY_POSITION_SYNC_PACKET_ID, 35);
+        assert_eq!(PLAY_CLIENTBOUND_MOVE_ENTITY_POS_PACKET_ID, 53);
+        assert_eq!(PLAY_CLIENTBOUND_MOVE_ENTITY_POS_ROT_PACKET_ID, 54);
+        assert_eq!(PLAY_CLIENTBOUND_MOVE_ENTITY_ROT_PACKET_ID, 56);
         assert_eq!(PLAY_CLIENTBOUND_KEEP_ALIVE_PACKET_ID, 44);
         assert_eq!(PLAY_CLIENTBOUND_CHUNK_PACKET_ID, 45);
         assert_eq!(PLAY_CLIENTBOUND_LOGIN_PACKET_ID, 49);
@@ -2411,6 +2612,7 @@ mod tests {
         assert_eq!(PLAY_CLIENTBOUND_REMOVE_ENTITIES_PACKET_ID, 77);
         assert_eq!(PLAY_CLIENTBOUND_REMOVE_MOB_EFFECT_PACKET_ID, 78);
         assert_eq!(PLAY_CLIENTBOUND_SET_ENTITY_DATA_PACKET_ID, 99);
+        assert_eq!(PLAY_CLIENTBOUND_TELEPORT_ENTITY_PACKET_ID, 125);
         assert_eq!(PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID, 121);
         assert_eq!(PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID, 132);
         assert_eq!(PLAY_SERVERBOUND_ACCEPT_TELEPORTATION_PACKET_ID, 0);
@@ -2803,6 +3005,144 @@ mod tests {
         crate::wire::write_varint(42, &mut missing_marker);
         missing_marker.push(0);
         assert!(parse_entity_metadata_packet(&missing_marker).is_err());
+    }
+
+    #[test]
+    fn entity_teleport_parser_matches_java_position_move_rotation_order() {
+        let mut payload = Vec::new();
+        crate::wire::write_varint(42, &mut payload);
+        for value in [10.5_f64, 20.25, -30.75, 0.125, -0.25, 0.5] {
+            payload.extend_from_slice(&value.to_be_bytes());
+        }
+        payload.extend_from_slice(&45.0_f32.to_be_bytes());
+        payload.extend_from_slice(&(-15.0_f32).to_be_bytes());
+        payload.extend_from_slice(&0b101_i32.to_be_bytes());
+        payload.push(1);
+
+        assert_eq!(
+            parse_entity_teleport_packet(&payload).expect("entity teleport"),
+            super::EntityTeleportObservation {
+                entity_id: 42,
+                x: 10.5,
+                y: 20.25,
+                z: -30.75,
+                delta_x: 0.125,
+                delta_y: -0.25,
+                delta_z: 0.5,
+                y_rot: 45.0,
+                x_rot: -15.0,
+                relative_flags: 0b101,
+                on_ground: true,
+                applied_to_world: false,
+                applied_position: None,
+            }
+        );
+
+        payload.push(0);
+        assert!(parse_entity_teleport_packet(&payload).is_err());
+    }
+
+    #[test]
+    fn entity_position_sync_parser_matches_java_position_move_rotation_without_mask() {
+        let mut payload = Vec::new();
+        crate::wire::write_varint(-7, &mut payload);
+        for value in [1.5_f64, 2.25, -3.75, 0.0, 0.125, -0.5] {
+            payload.extend_from_slice(&value.to_be_bytes());
+        }
+        payload.extend_from_slice(&180.0_f32.to_be_bytes());
+        payload.extend_from_slice(&(-30.0_f32).to_be_bytes());
+        payload.push(0);
+
+        assert_eq!(
+            parse_entity_position_sync_packet(&payload).expect("entity position sync"),
+            super::EntityPositionSyncObservation {
+                entity_id: -7,
+                x: 1.5,
+                y: 2.25,
+                z: -3.75,
+                delta_x: 0.0,
+                delta_y: 0.125,
+                delta_z: -0.5,
+                y_rot: 180.0,
+                x_rot: -30.0,
+                on_ground: false,
+                applied_to_world: false,
+                applied_position: None,
+            }
+        );
+
+        payload.push(0);
+        assert!(parse_entity_position_sync_packet(&payload).is_err());
+    }
+
+    #[test]
+    fn move_entity_parsers_match_java_position_and_rotation_variants() {
+        let mut pos_payload = Vec::new();
+        crate::wire::write_varint(42, &mut pos_payload);
+        for value in [256_i16, -512, 1024] {
+            pos_payload.extend_from_slice(&value.to_be_bytes());
+        }
+        pos_payload.push(1);
+        assert_eq!(
+            parse_move_entity_pos_packet(&pos_payload).expect("move entity position"),
+            super::EntityMoveObservation {
+                entity_id: 42,
+                delta_x: 256,
+                delta_y: -512,
+                delta_z: 1024,
+                y_rot: None,
+                x_rot: None,
+                has_position: true,
+                has_rotation: false,
+                on_ground: true,
+                applied_to_world: false,
+                applied_position: None,
+            }
+        );
+
+        let mut pos_rot_payload = pos_payload.clone();
+        pos_rot_payload.insert(pos_rot_payload.len() - 1, 64);
+        pos_rot_payload.insert(pos_rot_payload.len() - 1, 192);
+        assert_eq!(
+            parse_move_entity_pos_rot_packet(&pos_rot_payload)
+                .expect("move entity position rotation"),
+            super::EntityMoveObservation {
+                entity_id: 42,
+                delta_x: 256,
+                delta_y: -512,
+                delta_z: 1024,
+                y_rot: Some(64),
+                x_rot: Some(192),
+                has_position: true,
+                has_rotation: true,
+                on_ground: true,
+                applied_to_world: false,
+                applied_position: None,
+            }
+        );
+
+        let mut rot_payload = Vec::new();
+        crate::wire::write_varint(42, &mut rot_payload);
+        rot_payload.extend_from_slice(&[64, 192, 0]);
+        assert_eq!(
+            parse_move_entity_rot_packet(&rot_payload).expect("move entity rotation"),
+            super::EntityMoveObservation {
+                entity_id: 42,
+                delta_x: 0,
+                delta_y: 0,
+                delta_z: 0,
+                y_rot: Some(64),
+                x_rot: Some(192),
+                has_position: false,
+                has_rotation: true,
+                on_ground: false,
+                applied_to_world: false,
+                applied_position: None,
+            }
+        );
+
+        pos_payload.push(0);
+        assert!(parse_move_entity_pos_packet(&pos_payload).is_err());
     }
 
     #[test]

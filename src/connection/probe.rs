@@ -14,7 +14,8 @@ use crate::protocol::ConnectionProtocol;
 use crate::resources::KnownPack;
 use crate::wire;
 use crate::world::{
-    BlockEntityInput, EntityInput, LightLayerInput, LightUpdateInput, SectionInput,
+    BlockEntityInput, EntityInput, EntityMoveInput, EntityPositionInput, LightLayerInput,
+    LightUpdateInput, SectionInput,
 };
 
 use super::protocol::*;
@@ -174,6 +175,21 @@ pub fn connect_and_world_entity_metadata_probe(
         username,
         timeout,
         PlayProbeConfig::new(ProbeAction::WorldEntityMetadata),
+    )
+}
+
+/// Connect to a Java-protocol server, keep the loaded world open, and observe
+/// clientbound entity position synchronization without adding movement to the scenario.
+pub fn connect_and_world_entity_position_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeConfig::new(ProbeAction::WorldEntityPosition),
     )
 }
 
@@ -919,6 +935,7 @@ enum ProbeAction {
     WorldEntityAdd,
     WorldEntityRemove,
     WorldEntityMetadata,
+    WorldEntityPosition,
     BlockAction,
     BlockBreak,
     BlockBreakOutOfRange,
@@ -1267,6 +1284,87 @@ fn connect_and_probe_with_mode(
                     .world
                     .apply_entity_metadata(observation.entity_id, &observation.metadata);
                 trace.entity_metadata_observations.push(observation);
+            }
+            PLAY_CLIENTBOUND_ENTITY_POSITION_SYNC_PACKET_ID => {
+                let mut observation = parse_entity_position_sync_packet(payload)?;
+                observation.applied_to_world =
+                    trace.world.apply_entity_position(EntityPositionInput {
+                        entity_id: observation.entity_id,
+                        x: observation.x,
+                        y: observation.y,
+                        z: observation.z,
+                        relative_flags: 0,
+                    });
+                if observation.applied_to_world {
+                    observation.applied_position = trace
+                        .world
+                        .entity_at(observation.entity_id)
+                        .map(|entity| entity.position());
+                }
+                trace.entity_position_sync_observations.push(observation);
+            }
+            PLAY_CLIENTBOUND_TELEPORT_ENTITY_PACKET_ID => {
+                let mut observation = parse_entity_teleport_packet(payload)?;
+                observation.applied_to_world =
+                    trace.world.apply_entity_position(EntityPositionInput {
+                        entity_id: observation.entity_id,
+                        x: observation.x,
+                        y: observation.y,
+                        z: observation.z,
+                        relative_flags: observation.relative_flags,
+                    });
+                if observation.applied_to_world {
+                    observation.applied_position = trace
+                        .world
+                        .entity_at(observation.entity_id)
+                        .map(|entity| entity.position());
+                }
+                trace.entity_teleport_observations.push(observation);
+            }
+            PLAY_CLIENTBOUND_MOVE_ENTITY_POS_PACKET_ID => {
+                let mut observation = parse_move_entity_pos_packet(payload)?;
+                observation.applied_to_world = trace.world.apply_entity_move(EntityMoveInput {
+                    entity_id: observation.entity_id,
+                    delta_x: observation.delta_x,
+                    delta_y: observation.delta_y,
+                    delta_z: observation.delta_z,
+                    has_position: observation.has_position,
+                });
+                if observation.applied_to_world {
+                    observation.applied_position = trace
+                        .world
+                        .entity_at(observation.entity_id)
+                        .map(|entity| entity.position());
+                }
+                trace.entity_move_observations.push(observation);
+            }
+            PLAY_CLIENTBOUND_MOVE_ENTITY_POS_ROT_PACKET_ID => {
+                let mut observation = parse_move_entity_pos_rot_packet(payload)?;
+                observation.applied_to_world = trace.world.apply_entity_move(EntityMoveInput {
+                    entity_id: observation.entity_id,
+                    delta_x: observation.delta_x,
+                    delta_y: observation.delta_y,
+                    delta_z: observation.delta_z,
+                    has_position: observation.has_position,
+                });
+                if observation.applied_to_world {
+                    observation.applied_position = trace
+                        .world
+                        .entity_at(observation.entity_id)
+                        .map(|entity| entity.position());
+                }
+                trace.entity_move_observations.push(observation);
+            }
+            PLAY_CLIENTBOUND_MOVE_ENTITY_ROT_PACKET_ID => {
+                let mut observation = parse_move_entity_rot_packet(payload)?;
+                observation.applied_to_world = trace.world.apply_entity_move(EntityMoveInput {
+                    entity_id: observation.entity_id,
+                    delta_x: observation.delta_x,
+                    delta_y: observation.delta_y,
+                    delta_z: observation.delta_z,
+                    has_position: observation.has_position,
+                });
+                trace.entity_move_observations.push(observation);
             }
             PLAY_CLIENTBOUND_CONTAINER_SET_CONTENT_PACKET_ID => {
                 trace
@@ -2543,6 +2641,7 @@ fn connect_and_probe_with_mode(
                 ProbeAction::WorldEntityAdd => ENTITY_ADD_DRAIN_TIMEOUT,
                 ProbeAction::WorldEntityRemove => ENTITY_REMOVE_DRAIN_TIMEOUT,
                 ProbeAction::WorldEntityMetadata => ENTITY_METADATA_DRAIN_TIMEOUT,
+                ProbeAction::WorldEntityPosition => ENTITY_POSITION_SYNC_DRAIN_TIMEOUT,
                 ProbeAction::SurvivalWaterBucketUseOn | ProbeAction::SurvivalEmptyBucketPickup => {
                     WATER_BUCKET_DRAIN_TIMEOUT
                 }
@@ -2657,6 +2756,7 @@ fn connect_and_probe_with_mode(
             ProbeAction::WorldEntityAdd => ENTITY_ADD_DRAIN_TIMEOUT,
             ProbeAction::WorldEntityRemove => ENTITY_REMOVE_DRAIN_TIMEOUT,
             ProbeAction::WorldEntityMetadata => ENTITY_METADATA_DRAIN_TIMEOUT,
+            ProbeAction::WorldEntityPosition => ENTITY_POSITION_SYNC_DRAIN_TIMEOUT,
             ProbeAction::SurvivalWaterBucketUseOn | ProbeAction::SurvivalEmptyBucketPickup => {
                 WATER_BUCKET_DRAIN_TIMEOUT
             }
