@@ -8,6 +8,37 @@ use crate::math::{mth_lerp_f32, mth_lerp_f64, mth_rot_lerp_f32};
 pub(crate) const PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS: u8 = 1;
 pub(crate) const PLAYER_RESPAWN_KEEP_ENTITY_DATA: u8 = 2;
 const VANILLA_PLAYER_ENTITY_TYPE_ID: i32 = 156;
+const ENTITY_SHARED_FLAGS_DATA_ID: u8 = 0;
+const ENTITY_DATA_SERIALIZER_BYTE_ID: i32 = 0;
+const SHARED_FLAG_ON_FIRE: u8 = 0;
+const SHARED_FLAG_SHIFT_KEY_DOWN: u8 = 1;
+const SHARED_FLAG_SPRINTING: u8 = 3;
+const SHARED_FLAG_SWIMMING: u8 = 4;
+const SHARED_FLAG_INVISIBLE: u8 = 5;
+const SHARED_FLAG_GLOWING: u8 = 6;
+const SHARED_FLAG_FALL_FLYING: u8 = 7;
+
+fn shared_flag_is_set(flags: u8, flag: u8) -> bool {
+    flags & (1_u8 << flag) != 0
+}
+
+fn shared_flags_from_metadata(metadata: &[u8]) -> Option<u8> {
+    if metadata.last() != Some(&255) {
+        return None;
+    }
+    let (&data_id, metadata) = metadata.split_first()?;
+    if data_id != ENTITY_SHARED_FLAGS_DATA_ID {
+        return None;
+    }
+    let mut metadata = metadata;
+    if crate::wire::read_varint(&mut metadata).ok()? != ENTITY_DATA_SERIALIZER_BYTE_ID {
+        return None;
+    }
+    if metadata.len() < 2 {
+        return None;
+    }
+    Some(metadata[0])
+}
 
 /// The vertical bounds used when mapping a chunk packet's section order to Y.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -633,6 +664,7 @@ impl ClientWorld {
             player.motion_z_bits = previous.motion_z_bits;
             player.y_rot_bits = previous.y_rot_bits;
             player.x_rot_bits = previous.x_rot_bits;
+            player.shared_flags = previous.shared_flags;
             player.entity_data = previous.entity_data;
         } else {
             player.y_rot_bits = (-180.0_f32).to_bits();
@@ -1034,24 +1066,32 @@ impl ClientWorld {
                 ticking: ticking || entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID,
                 data: entity.data,
                 metadata: None,
+                shared_flags: 0,
             },
         );
         true
     }
 
     pub(crate) fn apply_entity_metadata(&mut self, entity_id: i32, metadata: &[u8]) -> bool {
+        let shared_flags = shared_flags_from_metadata(metadata);
         if let Some(player) = self
             .local_player
             .as_mut()
             .filter(|player| player.id == entity_id)
         {
             player.entity_data = Some(metadata.to_vec());
+            if let Some(shared_flags) = shared_flags {
+                player.shared_flags = shared_flags;
+            }
             return true;
         }
         let Some(entity) = self.entities.get_mut(&entity_id) else {
             return false;
         };
         entity.metadata = Some(metadata.to_vec());
+        if let Some(shared_flags) = shared_flags {
+            entity.shared_flags = shared_flags;
+        }
         true
     }
 
@@ -1389,6 +1429,7 @@ pub struct ClientEntity {
     ticking: bool,
     pub data: i32,
     metadata: Option<Vec<u8>>,
+    shared_flags: u8,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1542,6 +1583,7 @@ pub struct ClientPlayerState {
     old_y_rot_bits: u32,
     old_x_rot_bits: u32,
     entity_data: Option<Vec<u8>>,
+    shared_flags: u8,
     attributes: Vec<ClientAttributeState>,
     effects: Vec<ClientMobEffectState>,
     health_bits: u32,
@@ -1581,6 +1623,7 @@ impl ClientPlayerState {
             old_y_rot_bits: 0.0_f32.to_bits(),
             old_x_rot_bits: 0.0_f32.to_bits(),
             entity_data: None,
+            shared_flags: 0,
             attributes: Vec::new(),
             effects: Vec::new(),
             health_bits: 20.0_f32.to_bits(),
@@ -1668,6 +1711,38 @@ impl ClientPlayerState {
 
     pub fn entity_data(&self) -> Option<&[u8]> {
         self.entity_data.as_deref()
+    }
+
+    pub fn shared_flags(&self) -> u8 {
+        self.shared_flags
+    }
+
+    pub fn is_on_fire(&self) -> bool {
+        shared_flag_is_set(self.shared_flags, SHARED_FLAG_ON_FIRE)
+    }
+
+    pub fn is_shift_key_down(&self) -> bool {
+        shared_flag_is_set(self.shared_flags, SHARED_FLAG_SHIFT_KEY_DOWN)
+    }
+
+    pub fn is_sprinting(&self) -> bool {
+        shared_flag_is_set(self.shared_flags, SHARED_FLAG_SPRINTING)
+    }
+
+    pub fn is_swimming(&self) -> bool {
+        shared_flag_is_set(self.shared_flags, SHARED_FLAG_SWIMMING)
+    }
+
+    pub fn is_invisible(&self) -> bool {
+        shared_flag_is_set(self.shared_flags, SHARED_FLAG_INVISIBLE)
+    }
+
+    pub fn is_glowing(&self) -> bool {
+        shared_flag_is_set(self.shared_flags, SHARED_FLAG_GLOWING)
+    }
+
+    pub fn is_fall_flying(&self) -> bool {
+        shared_flag_is_set(self.shared_flags, SHARED_FLAG_FALL_FLYING)
     }
 
     pub fn attributes(&self) -> &[ClientAttributeState] {
@@ -1803,6 +1878,38 @@ impl ClientEntity {
 
     pub fn metadata(&self) -> Option<&[u8]> {
         self.metadata.as_deref()
+    }
+
+    pub fn shared_flags(&self) -> u8 {
+        self.shared_flags
+    }
+
+    pub fn is_on_fire(&self) -> bool {
+        shared_flag_is_set(self.shared_flags, SHARED_FLAG_ON_FIRE)
+    }
+
+    pub fn is_shift_key_down(&self) -> bool {
+        shared_flag_is_set(self.shared_flags, SHARED_FLAG_SHIFT_KEY_DOWN)
+    }
+
+    pub fn is_sprinting(&self) -> bool {
+        shared_flag_is_set(self.shared_flags, SHARED_FLAG_SPRINTING)
+    }
+
+    pub fn is_swimming(&self) -> bool {
+        shared_flag_is_set(self.shared_flags, SHARED_FLAG_SWIMMING)
+    }
+
+    pub fn is_invisible(&self) -> bool {
+        shared_flag_is_set(self.shared_flags, SHARED_FLAG_INVISIBLE)
+    }
+
+    pub fn is_glowing(&self) -> bool {
+        shared_flag_is_set(self.shared_flags, SHARED_FLAG_GLOWING)
+    }
+
+    pub fn is_fall_flying(&self) -> bool {
+        shared_flag_is_set(self.shared_flags, SHARED_FLAG_FALL_FLYING)
     }
 }
 
@@ -2727,6 +2834,58 @@ mod tests {
     }
 
     #[test]
+    fn entity_shared_flags_follow_java_byte_metadata_and_preserve_unspecified_values() {
+        let mut world = ClientWorld::default();
+        assert!(world.apply_entity(EntityInput {
+            entity_id: 37,
+            uuid: Uuid::new(1, 2),
+            type_id: 120,
+            x: 1.25,
+            y: 80.0,
+            z: -35.5,
+            movement: (0.0, 0.0, 0.0),
+            rotation: (0.0, 0.0, 0.0),
+            data: 0,
+        }));
+        let all_defined_flags = 0b1111_1011;
+        assert!(world.apply_entity_metadata(
+            37,
+            &[
+                super::ENTITY_SHARED_FLAGS_DATA_ID,
+                super::ENTITY_DATA_SERIALIZER_BYTE_ID as u8,
+                all_defined_flags,
+                255,
+            ],
+        ));
+        let entity = world.entity_at(37).expect("entity with shared flags");
+        assert_eq!(entity.shared_flags(), all_defined_flags);
+        assert!(entity.is_on_fire());
+        assert!(entity.is_shift_key_down());
+        assert!(entity.is_sprinting());
+        assert!(entity.is_swimming());
+        assert!(entity.is_invisible());
+        assert!(entity.is_glowing());
+        assert!(entity.is_fall_flying());
+
+        assert!(world.apply_entity_metadata(37, &[1, 0, 7, 255]));
+        assert_eq!(
+            world.entity_at(37).map(super::ClientEntity::shared_flags),
+            Some(all_defined_flags)
+        );
+
+        assert!(world.apply_entity_metadata(37, &[0, 0, 0, 255]));
+        let entity = world.entity_at(37).expect("cleared shared flags");
+        assert_eq!(entity.shared_flags(), 0);
+        assert!(!entity.is_on_fire());
+        assert!(!entity.is_shift_key_down());
+        assert!(!entity.is_sprinting());
+        assert!(!entity.is_swimming());
+        assert!(!entity.is_invisible());
+        assert!(!entity.is_glowing());
+        assert!(!entity.is_fall_flying());
+    }
+
+    #[test]
     fn player_entities_keep_ticking_after_their_chunk_unloads() {
         let mut world = ClientWorld::default();
         let (blocks, biomes) = section(0, 0);
@@ -2997,7 +3156,7 @@ mod tests {
             (0.125, -0.25, 0.5),
             (135.0, -30.0),
         ));
-        assert!(world.apply_entity_metadata(42, &[1, 0, 255]));
+        assert!(world.apply_entity_metadata(42, &[0, 0, 32, 255]));
 
         assert!(world.recreate_local_player(
             PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS | PLAYER_RESPAWN_KEEP_ENTITY_DATA
@@ -3008,7 +3167,9 @@ mod tests {
         assert_eq!(player.position(), (0.0, 0.0, 0.0));
         assert_eq!(player.motion(), (0.125, -0.25, 0.5));
         assert_eq!(player.rotation(), (135.0, -30.0));
-        assert_eq!(player.entity_data(), Some(&[1, 0, 255][..]));
+        assert_eq!(player.entity_data(), Some(&[0, 0, 32, 255][..]));
+        assert_eq!(player.shared_flags(), 32);
+        assert!(player.is_invisible());
 
         assert!(world.recreate_local_player(0));
         let player = world.local_player().expect("reset local player");
@@ -3017,6 +3178,8 @@ mod tests {
         assert_eq!(player.motion(), (0.0, 0.0, 0.0));
         assert_eq!(player.rotation(), (-180.0, 0.0));
         assert_eq!(player.entity_data(), None);
+        assert_eq!(player.shared_flags(), 0);
+        assert!(!player.is_invisible());
     }
 
     #[test]
