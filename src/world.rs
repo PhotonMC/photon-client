@@ -10,6 +10,7 @@ pub(crate) const PLAYER_RESPAWN_KEEP_ENTITY_DATA: u8 = 2;
 const VANILLA_PLAYER_ENTITY_TYPE_ID: i32 = 156;
 const ENTITY_SHARED_FLAGS_DATA_ID: u8 = 0;
 const ENTITY_AIR_SUPPLY_DATA_ID: u8 = 1;
+const ENTITY_SILENT_DATA_ID: u8 = 4;
 const ENTITY_NO_GRAVITY_DATA_ID: u8 = 5;
 const ENTITY_DATA_SERIALIZER_BYTE_ID: i32 = 0;
 const ENTITY_DATA_SERIALIZER_INT_ID: i32 = 1;
@@ -140,6 +141,10 @@ fn metadata_boolean_value(metadata: &[u8], target_data_id: u8) -> Option<bool> {
 
 fn no_gravity_from_metadata(metadata: &[u8]) -> Option<bool> {
     metadata_boolean_value(metadata, ENTITY_NO_GRAVITY_DATA_ID)
+}
+
+fn silent_from_metadata(metadata: &[u8]) -> Option<bool> {
+    metadata_boolean_value(metadata, ENTITY_SILENT_DATA_ID)
 }
 
 /// The vertical bounds used when mapping a chunk packet's section order to Y.
@@ -769,6 +774,7 @@ impl ClientWorld {
             player.shared_flags = previous.shared_flags;
             player.air_supply = previous.air_supply;
             player.no_gravity = previous.no_gravity;
+            player.silent = previous.silent;
             player.entity_data = previous.entity_data;
         } else {
             player.y_rot_bits = (-180.0_f32).to_bits();
@@ -1173,6 +1179,7 @@ impl ClientWorld {
                 shared_flags: 0,
                 air_supply: DEFAULT_AIR_SUPPLY,
                 no_gravity: false,
+                silent: false,
             },
         );
         true
@@ -1182,6 +1189,7 @@ impl ClientWorld {
         let shared_flags = shared_flags_from_metadata(metadata);
         let air_supply = air_supply_from_metadata(metadata);
         let no_gravity = no_gravity_from_metadata(metadata);
+        let silent = silent_from_metadata(metadata);
         if let Some(player) = self
             .local_player
             .as_mut()
@@ -1197,6 +1205,9 @@ impl ClientWorld {
             if let Some(no_gravity) = no_gravity {
                 player.no_gravity = no_gravity;
             }
+            if let Some(silent) = silent {
+                player.silent = silent;
+            }
             return true;
         }
         let Some(entity) = self.entities.get_mut(&entity_id) else {
@@ -1211,6 +1222,9 @@ impl ClientWorld {
         }
         if let Some(no_gravity) = no_gravity {
             entity.no_gravity = no_gravity;
+        }
+        if let Some(silent) = silent {
+            entity.silent = silent;
         }
         true
     }
@@ -1552,6 +1566,7 @@ pub struct ClientEntity {
     shared_flags: u8,
     air_supply: i32,
     no_gravity: bool,
+    silent: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1708,6 +1723,7 @@ pub struct ClientPlayerState {
     shared_flags: u8,
     air_supply: i32,
     no_gravity: bool,
+    silent: bool,
     attributes: Vec<ClientAttributeState>,
     effects: Vec<ClientMobEffectState>,
     health_bits: u32,
@@ -1750,6 +1766,7 @@ impl ClientPlayerState {
             shared_flags: 0,
             air_supply: DEFAULT_AIR_SUPPLY,
             no_gravity: false,
+            silent: false,
             attributes: Vec::new(),
             effects: Vec::new(),
             health_bits: 20.0_f32.to_bits(),
@@ -1849,6 +1866,10 @@ impl ClientPlayerState {
 
     pub fn is_no_gravity(&self) -> bool {
         self.no_gravity
+    }
+
+    pub fn is_silent(&self) -> bool {
+        self.silent
     }
 
     pub fn is_on_fire(&self) -> bool {
@@ -2024,6 +2045,10 @@ impl ClientEntity {
 
     pub fn is_no_gravity(&self) -> bool {
         self.no_gravity
+    }
+
+    pub fn is_silent(&self) -> bool {
+        self.silent
     }
 
     pub fn is_on_fire(&self) -> bool {
@@ -3129,6 +3154,40 @@ mod tests {
     }
 
     #[test]
+    fn entity_silent_follows_java_boolean_metadata_and_preserves_other_state() {
+        let mut world = ClientWorld::default();
+        assert!(world.apply_entity(EntityInput {
+            entity_id: 37,
+            uuid: Uuid::new(1, 2),
+            type_id: 5,
+            x: 1.25,
+            y: 80.0,
+            z: -35.5,
+            movement: (0.0, 0.0, 0.0),
+            rotation: (0.0, 0.0, 0.0),
+            data: 0,
+        }));
+        assert!(!world.entity_at(37).expect("entity").is_silent());
+
+        let metadata = [4, 8, 1, 255];
+        assert!(world.apply_entity_metadata(37, &metadata));
+        let entity = world.entity_at(37).expect("silent entity");
+        assert!(entity.is_silent());
+        assert!(!entity.is_no_gravity());
+        assert_eq!(entity.air_supply(), 300);
+
+        assert!(world.apply_entity_metadata(37, &[5, 8, 1, 255]));
+        let entity = world.entity_at(37).expect("silent no-gravity entity");
+        assert!(entity.is_silent());
+        assert!(entity.is_no_gravity());
+
+        assert!(world.apply_entity_metadata(37, &[4, 8, 0, 255]));
+        let entity = world.entity_at(37).expect("audible entity");
+        assert!(!entity.is_silent());
+        assert!(entity.is_no_gravity());
+    }
+
+    #[test]
     fn player_entities_keep_ticking_after_their_chunk_unloads() {
         let mut world = ClientWorld::default();
         let (blocks, biomes) = section(0, 0);
@@ -3406,6 +3465,8 @@ mod tests {
         assert!(world.apply_entity_metadata(42, &air_metadata));
         let no_gravity_metadata = [5, 8, 1, 255];
         assert!(world.apply_entity_metadata(42, &no_gravity_metadata));
+        let silent_metadata = [4, 8, 1, 255];
+        assert!(world.apply_entity_metadata(42, &silent_metadata));
 
         assert!(world.recreate_local_player(
             PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS | PLAYER_RESPAWN_KEEP_ENTITY_DATA
@@ -3416,11 +3477,12 @@ mod tests {
         assert_eq!(player.position(), (0.0, 0.0, 0.0));
         assert_eq!(player.motion(), (0.125, -0.25, 0.5));
         assert_eq!(player.rotation(), (135.0, -30.0));
-        assert_eq!(player.entity_data(), Some(no_gravity_metadata.as_slice()));
+        assert_eq!(player.entity_data(), Some(silent_metadata.as_slice()));
         assert_eq!(player.shared_flags(), 32);
         assert!(player.is_invisible());
         assert_eq!(player.air_supply(), 250);
         assert!(player.is_no_gravity());
+        assert!(player.is_silent());
 
         assert!(world.recreate_local_player(0));
         let player = world.local_player().expect("reset local player");
@@ -3433,6 +3495,7 @@ mod tests {
         assert!(!player.is_invisible());
         assert_eq!(player.air_supply(), 300);
         assert!(!player.is_no_gravity());
+        assert!(!player.is_silent());
     }
 
     #[test]
