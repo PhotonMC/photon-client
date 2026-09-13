@@ -42,9 +42,10 @@ belirler; bundle delimiter ID `0` olduğundan bu packet ID `82`'dir.
   time sıfırlanır ve vanilla built-in dimension için section bounds değiştirilir.
 - Dimension key aynı kaldığında mevcut chunk/entity depolaması korunur; bu,
   Java listener'ın yeni `ClientLevel` yaratmadığı dala karşılık gelir.
-- `dataToKeep` kaydedilir. Oyuncunun yeni entity'si, attribute/menu/inventory
-  state'i ve maskenin bu state'lere etkisi henüz `ClientWorld` modelinin parçası
-  değildir.
+- `dataToKeep` kaydedilir. Local player'ın aynı ID ile yeniden kurulması ve bit
+  2 entity state'inin taşınması [P08.h kaydında](client-world-player-respawn-conformance.md)
+  uygulanmıştır; attribute/menu/inventory state'i ve bit 1'in gerçek değer
+  aktarımı hâlâ açık kapsamdır.
 - P08.f kapsamındaki built-in key çözümü, configuration registry'den gelen
   `DimensionType` bounds çözümüyle [P08.g kaydında](client-world-dimension-type-bounds-conformance.md)
   genişletilmiştir. P08.f'in tek başına ölçümü bilinmeyen key için varsayılan
@@ -58,6 +59,9 @@ type ID, seed, debug/flat ve sea level metadata'sını saklar. P08.f ölçümün
 built-in Nether ve End için `min_y=0,height=256`, Overworld için
 `min_y=-64,height=384` bounds'u seçilir; registry öncelikli çözüm P08.g'de
 ayrıca doğrulanır.
+
+Local player ID, generation ve `dataToKeep` bit 2 entity state uygulaması
+ayrıca [P08.h kaydında](client-world-player-respawn-conformance.md) doğrulanır.
 
 Unit testler login/respawn ortak codec sırasını, optional global position'ı,
 keep maskesini, packet trailing-byte reddini ve dimension değişiminde chunk,
@@ -115,7 +119,7 @@ state uygulamasını gösterir; Java client eşitliği iddiası değildir.
 
 ## Açık kapsam
 
-Datapack custom dimension için gerçek bounds çözümü, oyuncu entity'si
-ve `dataToKeep` maskesinin attribute/entity/menu/inventory state'ine uygulanması,
-same-dimension ölüm respawn'ı, portal coordinate scaling, dimension-specific
+Datapack custom dimension için gerçek bounds çözümü, `dataToKeep` maskesinin
+attribute/menu/inventory state'ine uygulanması, same-dimension ölüm respawn'ı,
+portal coordinate scaling, dimension-specific
 environment/render state'i ve `client-parity` karşılaştırması açık kalır.

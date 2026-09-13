@@ -619,6 +619,11 @@ pub struct LoginObservation {
 pub struct RespawnObservation {
     pub spawn_info: SpawnInfoObservation,
     pub data_to_keep: u8,
+    pub local_player_id: Option<i32>,
+    pub local_player_recreated: bool,
+    pub local_player_generation: Option<u64>,
+    pub keep_entity_data: bool,
+    pub keep_attribute_modifiers: bool,
     pub dimension_changed: bool,
     pub cleared_chunk_count: usize,
     pub cleared_entity_count: usize,
@@ -637,6 +642,7 @@ pub struct GlobalPositionObservation {
 pub struct PlayerPositionObservation {
     pub teleport_id: i32,
     pub relative_flags: i32,
+    pub applied_to_world: bool,
 }
 
 /// Wire-level fields decoded from one clientbound block update packet.

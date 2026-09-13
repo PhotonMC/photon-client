@@ -4,6 +4,9 @@ use std::collections::BTreeMap;
 
 use crate::binary::BitSet;
 
+pub(crate) const PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS: u8 = 1;
+pub(crate) const PLAYER_RESPAWN_KEEP_ENTITY_DATA: u8 = 2;
+
 /// The vertical bounds used when mapping a chunk packet's section order to Y.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DimensionBounds {
@@ -78,6 +81,7 @@ pub struct ClientWorld {
     sea_level: i32,
     chunks: BTreeMap<(i32, i32), ClientChunk>,
     entities: BTreeMap<i32, ClientEntity>,
+    local_player: Option<ClientPlayerState>,
     game_time: u64,
 }
 
@@ -99,6 +103,7 @@ impl ClientWorld {
             sea_level: 63,
             chunks: BTreeMap::new(),
             entities: BTreeMap::new(),
+            local_player: None,
             game_time: 0,
         }
     }
@@ -129,6 +134,53 @@ impl ClientWorld {
 
     pub fn sea_level(&self) -> i32 {
         self.sea_level
+    }
+
+    pub fn local_player(&self) -> Option<&ClientPlayerState> {
+        self.local_player.as_ref()
+    }
+
+    pub(crate) fn set_local_player_id(&mut self, player_id: i32) {
+        self.local_player = Some(ClientPlayerState::new(player_id));
+    }
+
+    pub(crate) fn apply_local_player_position(
+        &mut self,
+        position: (f64, f64, f64),
+        motion: (f64, f64, f64),
+        rotation: (f32, f32),
+    ) -> bool {
+        let Some(player) = self.local_player.as_mut() else {
+            return false;
+        };
+        player.x_bits = position.0.to_bits();
+        player.y_bits = position.1.to_bits();
+        player.z_bits = position.2.to_bits();
+        player.motion_x_bits = motion.0.to_bits();
+        player.motion_y_bits = motion.1.to_bits();
+        player.motion_z_bits = motion.2.to_bits();
+        player.y_rot_bits = rotation.0.to_bits();
+        player.x_rot_bits = rotation.1.to_bits();
+        true
+    }
+
+    pub(crate) fn recreate_local_player(&mut self, data_to_keep: u8) -> bool {
+        let Some(previous) = self.local_player.take() else {
+            return false;
+        };
+        let keep_entity_data = data_to_keep & PLAYER_RESPAWN_KEEP_ENTITY_DATA != 0;
+        let mut player = ClientPlayerState::new(previous.id);
+        player.generation = previous.generation.saturating_add(1);
+        if keep_entity_data {
+            player.motion_x_bits = previous.motion_x_bits;
+            player.motion_y_bits = previous.motion_y_bits;
+            player.motion_z_bits = previous.motion_z_bits;
+            player.y_rot_bits = previous.y_rot_bits;
+            player.x_rot_bits = previous.x_rot_bits;
+            player.entity_data = previous.entity_data;
+        }
+        self.local_player = Some(player);
+        true
     }
 
     pub(crate) fn replace_dimension(
@@ -379,6 +431,14 @@ impl ClientWorld {
     }
 
     pub(crate) fn apply_entity_metadata(&mut self, entity_id: i32, metadata: &[u8]) -> bool {
+        if let Some(player) = self
+            .local_player
+            .as_mut()
+            .filter(|player| player.id == entity_id)
+        {
+            player.entity_data = Some(metadata.to_vec());
+            return true;
+        }
         let Some(entity) = self.entities.get_mut(&entity_id) else {
             return false;
         };
@@ -608,6 +668,74 @@ pub struct ClientEntity {
     metadata: Option<Vec<u8>>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClientPlayerState {
+    id: i32,
+    generation: u64,
+    x_bits: u64,
+    y_bits: u64,
+    z_bits: u64,
+    motion_x_bits: u64,
+    motion_y_bits: u64,
+    motion_z_bits: u64,
+    y_rot_bits: u32,
+    x_rot_bits: u32,
+    entity_data: Option<Vec<u8>>,
+}
+
+impl ClientPlayerState {
+    fn new(id: i32) -> Self {
+        Self {
+            id,
+            generation: 0,
+            x_bits: 0.0_f64.to_bits(),
+            y_bits: 0.0_f64.to_bits(),
+            z_bits: 0.0_f64.to_bits(),
+            motion_x_bits: 0.0_f64.to_bits(),
+            motion_y_bits: 0.0_f64.to_bits(),
+            motion_z_bits: 0.0_f64.to_bits(),
+            y_rot_bits: 0.0_f32.to_bits(),
+            x_rot_bits: 0.0_f32.to_bits(),
+            entity_data: None,
+        }
+    }
+
+    pub fn id(&self) -> i32 {
+        self.id
+    }
+
+    pub fn generation(&self) -> u64 {
+        self.generation
+    }
+
+    pub fn position(&self) -> (f64, f64, f64) {
+        (
+            f64::from_bits(self.x_bits),
+            f64::from_bits(self.y_bits),
+            f64::from_bits(self.z_bits),
+        )
+    }
+
+    pub fn motion(&self) -> (f64, f64, f64) {
+        (
+            f64::from_bits(self.motion_x_bits),
+            f64::from_bits(self.motion_y_bits),
+            f64::from_bits(self.motion_z_bits),
+        )
+    }
+
+    pub fn rotation(&self) -> (f32, f32) {
+        (
+            f32::from_bits(self.y_rot_bits),
+            f32::from_bits(self.x_rot_bits),
+        )
+    }
+
+    pub fn entity_data(&self) -> Option<&[u8]> {
+        self.entity_data.as_deref()
+    }
+}
+
 impl ClientEntity {
     pub fn position(&self) -> (f64, f64, f64) {
         (
@@ -828,7 +956,8 @@ mod tests {
     use super::{
         BlockEntityInput, ClientWorld, DimensionBounds, DimensionInput, EntityInput,
         EntityMotionInput, EntityMoveInput, EntityPositionInput, EntityRotationInput,
-        LightLayerInput, LightUpdateInput, SectionInput,
+        LightLayerInput, LightUpdateInput, PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS,
+        PLAYER_RESPAWN_KEEP_ENTITY_DATA, SectionInput,
     };
     use crate::binary::{BitSet, Uuid};
 
@@ -1308,6 +1437,70 @@ mod tests {
         world.tick();
         assert_eq!(world.game_time(), 2);
         assert_eq!(world.loaded_chunk_count(), 0);
+    }
+
+    #[test]
+    fn local_player_respawn_recreates_identity_and_applies_entity_data_mask() {
+        let mut world = ClientWorld::default();
+        world.set_local_player_id(42);
+        assert_eq!(world.local_player().map(|player| player.id()), Some(42));
+        assert_eq!(
+            world.local_player().map(|player| player.generation()),
+            Some(0)
+        );
+
+        assert!(world.apply_local_player_position(
+            (10.5, 64.0, -3.25),
+            (0.125, -0.25, 0.5),
+            (135.0, -30.0),
+        ));
+        assert!(world.apply_entity_metadata(42, &[1, 0, 255]));
+
+        assert!(world.recreate_local_player(
+            PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS | PLAYER_RESPAWN_KEEP_ENTITY_DATA
+        ));
+        let player = world.local_player().expect("respawned local player");
+        assert_eq!(player.id(), 42);
+        assert_eq!(player.generation(), 1);
+        assert_eq!(player.position(), (0.0, 0.0, 0.0));
+        assert_eq!(player.motion(), (0.125, -0.25, 0.5));
+        assert_eq!(player.rotation(), (135.0, -30.0));
+        assert_eq!(player.entity_data(), Some(&[1, 0, 255][..]));
+
+        assert!(world.recreate_local_player(0));
+        let player = world.local_player().expect("reset local player");
+        assert_eq!(player.id(), 42);
+        assert_eq!(player.generation(), 2);
+        assert_eq!(player.motion(), (0.0, 0.0, 0.0));
+        assert_eq!(player.rotation(), (0.0, 0.0));
+        assert_eq!(player.entity_data(), None);
+    }
+
+    #[test]
+    fn changing_dimension_keeps_local_player_identity_until_respawn_replacement() {
+        let mut world = ClientWorld::default();
+        world.set_local_player_id(17);
+        let input = DimensionInput {
+            key: "minecraft:the_nether",
+            dimension_type_id: 3,
+            seed: 776,
+            is_debug: false,
+            is_flat: false,
+            sea_level: 32,
+        };
+
+        assert!(world.replace_dimension(input, DimensionBounds::new(0, 256)));
+        assert_eq!(world.local_player().map(|player| player.id()), Some(17));
+        assert_eq!(
+            world.local_player().map(|player| player.generation()),
+            Some(0)
+        );
+        assert!(world.recreate_local_player(PLAYER_RESPAWN_KEEP_ENTITY_DATA));
+        assert_eq!(world.local_player().map(|player| player.id()), Some(17));
+        assert_eq!(
+            world.local_player().map(|player| player.generation()),
+            Some(1)
+        );
     }
 
     #[test]

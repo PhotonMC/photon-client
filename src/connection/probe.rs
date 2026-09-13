@@ -16,7 +16,7 @@ use crate::wire;
 use crate::world::{
     BlockEntityInput, DimensionBounds, DimensionInput, EntityInput, EntityMotionInput,
     EntityMoveInput, EntityPositionInput, EntityRotationInput, LightLayerInput, LightUpdateInput,
-    SectionInput,
+    PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS, PLAYER_RESPAWN_KEEP_ENTITY_DATA, SectionInput,
 };
 
 use super::protocol::*;
@@ -1733,18 +1733,25 @@ fn connect_and_probe_with_mode(
                     },
                     dimension_bounds_for_spawn_info(&trace, &observation.spawn_info),
                 );
+                trace.world.set_local_player_id(observation.player_id);
                 trace.login_observation = Some(observation);
                 trace.play_login = true;
             }
             PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID => {
                 let packet = parse_player_position_packet(payload)?;
+                let absolute = resolve_player_position(packet, player_position);
+                let applied_to_world = trace.world.apply_local_player_position(
+                    (absolute.0, absolute.1, absolute.2),
+                    (packet.delta_x, packet.delta_y, packet.delta_z),
+                    (absolute.3, absolute.4),
+                );
                 trace
                     .player_position_observations
                     .push(PlayerPositionObservation {
                         teleport_id: packet.teleport_id,
                         relative_flags: packet.relative_flags,
+                        applied_to_world,
                     });
-                let absolute = resolve_player_position(packet, player_position);
                 send_packet(
                     &mut stream,
                     ConnectionProtocol::Play,
@@ -1779,9 +1786,20 @@ fn connect_and_probe_with_mode(
                     },
                     dimension_bounds_for_spawn_info(&trace, &spawn_info),
                 );
+                let local_player_recreated = trace.world.recreate_local_player(data_to_keep);
+                let local_player_id = trace.world.local_player().map(|player| player.id());
+                let local_player_generation =
+                    trace.world.local_player().map(|player| player.generation());
                 trace.respawn_observations.push(RespawnObservation {
                     spawn_info,
                     data_to_keep,
+                    local_player_id,
+                    local_player_recreated,
+                    local_player_generation,
+                    keep_entity_data: data_to_keep & PLAYER_RESPAWN_KEEP_ENTITY_DATA != 0,
+                    keep_attribute_modifiers: data_to_keep
+                        & PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS
+                        != 0,
                     dimension_changed,
                     cleared_chunk_count,
                     cleared_entity_count,
