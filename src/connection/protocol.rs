@@ -729,6 +729,7 @@ pub struct LightUpdateObservation {
     pub block_update_lengths: Vec<usize>,
     pub applied_sky_sections: usize,
     pub applied_block_sections: usize,
+    pub queued_for_chunk: bool,
     pub(crate) light_data: LightUpdateData,
 }
 
@@ -2542,6 +2543,7 @@ pub(crate) fn parse_light_update_packet(
         block_update_lengths,
         applied_sky_sections: 0,
         applied_block_sections: 0,
+        queued_for_chunk: false,
         light_data,
     })
 }

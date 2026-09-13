@@ -1,6 +1,6 @@
 //! Queryable client-side world state built from decoded chunk sections.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, VecDeque};
 
 use crate::binary::BitSet;
 use crate::math::{mth_lerp_f32, mth_lerp_f64, mth_rot_lerp_f32};
@@ -373,6 +373,7 @@ pub struct ClientWorld {
     sea_level: i32,
     dimension_environment: DimensionEnvironment,
     chunks: BTreeMap<(i32, i32), ClientChunk>,
+    pending_light_updates: VecDeque<PendingLightUpdate>,
     entities: BTreeMap<i32, ClientEntity>,
     local_player: Option<ClientPlayerState>,
     game_time: u64,
@@ -398,6 +399,7 @@ impl ClientWorld {
                 "minecraft:overworld",
             ),
             chunks: BTreeMap::new(),
+            pending_light_updates: VecDeque::new(),
             entities: BTreeMap::new(),
             local_player: None,
             game_time: 0,
@@ -732,6 +734,7 @@ impl ClientWorld {
         self.dimension_environment = environment;
         if changed {
             self.chunks.clear();
+            self.pending_light_updates.clear();
             self.entities.clear();
             self.game_time = 0;
         }
@@ -783,6 +786,10 @@ impl ClientWorld {
 
     pub fn loaded_light_section_count(&self) -> usize {
         self.chunks.values().map(|chunk| chunk.lights.len()).sum()
+    }
+
+    pub fn pending_light_update_count(&self) -> usize {
+        self.pending_light_updates.len()
     }
 
     pub fn sky_light_at(&self, x: i32, y: i32, z: i32) -> Option<u8> {
@@ -840,6 +847,42 @@ impl ClientWorld {
         chunk_z: i32,
         updates: LightUpdateInput<'_>,
     ) -> LightApplication {
+        if !self.chunks.contains_key(&(chunk_x, chunk_z)) {
+            let light_section_count = self.dimension.section_count().saturating_add(2);
+            let invalid_sky_updates = count_invalid_light_updates(
+                light_section_count,
+                updates.sky.mask,
+                updates.sky.updates,
+            );
+            let invalid_block_updates = count_invalid_light_updates(
+                light_section_count,
+                updates.block.mask,
+                updates.block.updates,
+            );
+            if invalid_sky_updates != 0 || invalid_block_updates != 0 {
+                return LightApplication {
+                    invalid_sky_updates,
+                    invalid_block_updates,
+                    ..LightApplication::default()
+                };
+            }
+            self.pending_light_updates
+                .push_back(PendingLightUpdate::new(chunk_x, chunk_z, updates));
+            return LightApplication {
+                queued: true,
+                ..LightApplication::default()
+            };
+        }
+
+        self.apply_light_layers(chunk_x, chunk_z, updates)
+    }
+
+    fn apply_light_layers(
+        &mut self,
+        chunk_x: i32,
+        chunk_z: i32,
+        updates: LightUpdateInput<'_>,
+    ) -> LightApplication {
         let Some(chunk) = self.chunks.get_mut(&(chunk_x, chunk_z)) else {
             return LightApplication::default();
         };
@@ -868,6 +911,20 @@ impl ClientWorld {
             applied_block_sections,
             invalid_sky_updates,
             invalid_block_updates,
+            queued: false,
+        }
+    }
+
+    fn apply_pending_light_updates_for(&mut self, chunk_x: i32, chunk_z: i32) {
+        let pending = std::mem::take(&mut self.pending_light_updates);
+        for update in pending {
+            if update.chunk_x == chunk_x && update.chunk_z == chunk_z {
+                let application = self.apply_light_layers(chunk_x, chunk_z, update.as_input());
+                debug_assert_eq!(application.invalid_sky_updates, 0);
+                debug_assert_eq!(application.invalid_block_updates, 0);
+            } else {
+                self.pending_light_updates.push_back(update);
+            }
         }
     }
 
@@ -1181,6 +1238,7 @@ impl ClientWorld {
                 block_entities: BTreeMap::new(),
             },
         );
+        self.apply_pending_light_updates_for(chunk_x, chunk_z);
         for entity in self.entities.values_mut() {
             if entity_chunk_key(entity.position()) == (chunk_x, chunk_z) {
                 entity.ticking = true;
@@ -1751,6 +1809,57 @@ struct ClientLightSection {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+struct PendingLightUpdate {
+    chunk_x: i32,
+    chunk_z: i32,
+    sky: OwnedLightLayerInput,
+    block: OwnedLightLayerInput,
+}
+
+impl PendingLightUpdate {
+    fn new(chunk_x: i32, chunk_z: i32, input: LightUpdateInput<'_>) -> Self {
+        Self {
+            chunk_x,
+            chunk_z,
+            sky: OwnedLightLayerInput::new(input.sky),
+            block: OwnedLightLayerInput::new(input.block),
+        }
+    }
+
+    fn as_input(&self) -> LightUpdateInput<'_> {
+        LightUpdateInput {
+            sky: self.sky.as_input(),
+            block: self.block.as_input(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct OwnedLightLayerInput {
+    mask: BitSet,
+    empty_mask: BitSet,
+    updates: Vec<Vec<u8>>,
+}
+
+impl OwnedLightLayerInput {
+    fn new(input: LightLayerInput<'_>) -> Self {
+        Self {
+            mask: input.mask.clone(),
+            empty_mask: input.empty_mask.clone(),
+            updates: input.updates.to_vec(),
+        }
+    }
+
+    fn as_input(&self) -> LightLayerInput<'_> {
+        LightLayerInput {
+            mask: &self.mask,
+            empty_mask: &self.empty_mask,
+            updates: &self.updates,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct ClientSection {
     non_empty_block_count: i16,
     fluid_count: i16,
@@ -1886,6 +1995,24 @@ pub(crate) struct LightApplication {
     pub(crate) applied_block_sections: usize,
     pub(crate) invalid_sky_updates: usize,
     pub(crate) invalid_block_updates: usize,
+    pub(crate) queued: bool,
+}
+
+fn count_invalid_light_updates(section_count: usize, mask: &BitSet, updates: &[Vec<u8>]) -> usize {
+    let mut update_index = 0;
+    let mut invalid_updates = 0;
+    for section_index in 0..section_count {
+        if mask.contains(section_index as u64) {
+            if updates
+                .get(update_index)
+                .is_none_or(|update| update.len() != 2_048)
+            {
+                invalid_updates += 1;
+            }
+            update_index += 1;
+        }
+    }
+    invalid_updates
 }
 
 fn apply_light_layer(
@@ -2107,6 +2234,69 @@ mod tests {
         assert!(world.unload_chunk(0, 0));
         assert_eq!(world.sky_light_at(0, -64, 0), None);
         assert_eq!(world.loaded_light_section_count(), 0);
+    }
+
+    #[test]
+    fn light_updates_for_unloaded_chunks_wait_in_fifo_until_chunk_load() {
+        let mut world = ClientWorld::default();
+        let mut first_sky = vec![0; 2_048];
+        first_sky[0] = 0x05;
+        let mut second_sky = vec![0; 2_048];
+        second_sky[0] = 0x0a;
+
+        let first_application = world.apply_light_updates(
+            3,
+            -2,
+            LightUpdateInput {
+                sky: LightLayerInput {
+                    mask: &BitSet::from_bits(&[1]),
+                    empty_mask: &BitSet::new(),
+                    updates: &[first_sky],
+                },
+                block: LightLayerInput {
+                    mask: &BitSet::new(),
+                    empty_mask: &BitSet::new(),
+                    updates: &[],
+                },
+            },
+        );
+        let second_application = world.apply_light_updates(
+            3,
+            -2,
+            LightUpdateInput {
+                sky: LightLayerInput {
+                    mask: &BitSet::from_bits(&[1]),
+                    empty_mask: &BitSet::new(),
+                    updates: &[second_sky],
+                },
+                block: LightLayerInput {
+                    mask: &BitSet::new(),
+                    empty_mask: &BitSet::new(),
+                    updates: &[],
+                },
+            },
+        );
+
+        assert!(first_application.queued);
+        assert!(second_application.queued);
+        assert_eq!(world.pending_light_update_count(), 2);
+        assert_eq!(world.sky_light_at(48, -64, -32), None);
+
+        let (blocks, biomes) = section(0, 0);
+        world.replace_chunk(
+            3,
+            -2,
+            [SectionInput {
+                non_empty_block_count: 0,
+                fluid_count: 0,
+                block_states: &blocks,
+                biomes: &biomes,
+            }],
+        );
+
+        assert_eq!(world.pending_light_update_count(), 0);
+        assert_eq!(world.loaded_light_section_count(), 1);
+        assert_eq!(world.sky_light_at(48, -64, -32), Some(10));
     }
 
     #[test]

@@ -1814,6 +1814,7 @@ fn connect_and_probe_with_mode(
                 }
                 observation.applied_sky_sections = application.applied_sky_sections;
                 observation.applied_block_sections = application.applied_block_sections;
+                observation.queued_for_chunk = application.queued;
                 trace.light_update_observations.push(observation);
             }
             PLAY_CLIENTBOUND_CHUNK_BATCH_START_PACKET_ID => {
