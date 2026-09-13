@@ -21,6 +21,7 @@ const ENTITY_HEALTH_DATA_ID: u8 = 9;
 const ENTITY_EFFECT_PARTICLES_DATA_ID: u8 = 10;
 const ENTITY_EFFECT_AMBIENCE_DATA_ID: u8 = 11;
 const ENTITY_ARROW_COUNT_DATA_ID: u8 = 12;
+const ENTITY_STINGER_COUNT_DATA_ID: u8 = 13;
 const ENTITY_SLEEPING_POS_DATA_ID: u8 = 14;
 const ENTITY_MOB_FLAGS_DATA_ID: u8 = 15;
 const ENTITY_DATA_SERIALIZER_BYTE_ID: i32 = 0;
@@ -301,8 +302,16 @@ fn health_from_metadata(metadata: &[u8]) -> Option<f32> {
     metadata_float_value(metadata, ENTITY_HEALTH_DATA_ID)
 }
 
+fn living_count_from_metadata(metadata: &[u8], target_data_id: u8) -> Option<i32> {
+    metadata_int_value(metadata, target_data_id)
+}
+
 fn arrow_count_from_metadata(metadata: &[u8]) -> Option<i32> {
-    metadata_int_value(metadata, ENTITY_ARROW_COUNT_DATA_ID)
+    living_count_from_metadata(metadata, ENTITY_ARROW_COUNT_DATA_ID)
+}
+
+fn stinger_count_from_metadata(metadata: &[u8]) -> Option<i32> {
+    living_count_from_metadata(metadata, ENTITY_STINGER_COUNT_DATA_ID)
 }
 
 fn effect_ambience_from_metadata(metadata: &[u8]) -> Option<bool> {
@@ -1059,6 +1068,7 @@ impl ClientWorld {
             player.shared_flags = previous.shared_flags;
             player.living_flags = previous.living_flags;
             player.arrow_count = previous.arrow_count;
+            player.stinger_count = previous.stinger_count;
             player.effect_ambience = previous.effect_ambience;
             player.effect_particle_type_ids = previous.effect_particle_type_ids;
             player.sleeping_pos = previous.sleeping_pos;
@@ -1476,6 +1486,7 @@ impl ClientWorld {
                 air_supply: DEFAULT_AIR_SUPPLY,
                 health_bits: None,
                 arrow_count: 0,
+                stinger_count: 0,
                 effect_ambience: false,
                 effect_particle_type_ids: Vec::new(),
                 sleeping_pos: None,
@@ -1497,6 +1508,7 @@ impl ClientWorld {
         let air_supply = air_supply_from_metadata(metadata);
         let health = health_from_metadata(metadata);
         let arrow_count = arrow_count_from_metadata(metadata);
+        let stinger_count = stinger_count_from_metadata(metadata);
         let effect_ambience = effect_ambience_from_metadata(metadata);
         let effect_particle_type_ids = effect_particle_type_ids_from_metadata(metadata);
         let sleeping_pos = sleeping_pos_from_metadata(metadata);
@@ -1526,6 +1538,9 @@ impl ClientWorld {
             }
             if let Some(arrow_count) = arrow_count {
                 player.arrow_count = arrow_count;
+            }
+            if let Some(stinger_count) = stinger_count {
+                player.stinger_count = stinger_count;
             }
             if let Some(effect_ambience) = effect_ambience {
                 player.effect_ambience = effect_ambience;
@@ -1577,6 +1592,9 @@ impl ClientWorld {
         }
         if let Some(arrow_count) = arrow_count {
             entity.arrow_count = arrow_count;
+        }
+        if let Some(stinger_count) = stinger_count {
+            entity.stinger_count = stinger_count;
         }
         if let Some(effect_ambience) = effect_ambience {
             entity.effect_ambience = effect_ambience;
@@ -1948,6 +1966,7 @@ pub struct ClientEntity {
     air_supply: i32,
     health_bits: Option<u32>,
     arrow_count: i32,
+    stinger_count: i32,
     effect_ambience: bool,
     effect_particle_type_ids: Vec<i32>,
     sleeping_pos: Option<crate::binary::BlockPos>,
@@ -2113,6 +2132,7 @@ pub struct ClientPlayerState {
     shared_flags: u8,
     living_flags: u8,
     arrow_count: i32,
+    stinger_count: i32,
     effect_ambience: bool,
     effect_particle_type_ids: Vec<i32>,
     sleeping_pos: Option<crate::binary::BlockPos>,
@@ -2165,6 +2185,7 @@ impl ClientPlayerState {
             shared_flags: 0,
             living_flags: 0,
             arrow_count: 0,
+            stinger_count: 0,
             effect_ambience: false,
             effect_particle_type_ids: Vec::new(),
             sleeping_pos: None,
@@ -2373,6 +2394,10 @@ impl ClientPlayerState {
         self.arrow_count
     }
 
+    pub fn stinger_count(&self) -> i32 {
+        self.stinger_count
+    }
+
     pub fn is_effect_ambient(&self) -> bool {
         self.effect_ambience
     }
@@ -2558,6 +2583,10 @@ impl ClientEntity {
 
     pub fn arrow_count(&self) -> i32 {
         self.arrow_count
+    }
+
+    pub fn stinger_count(&self) -> i32 {
+        self.stinger_count
     }
 
     pub fn is_effect_ambient(&self) -> bool {
@@ -4007,6 +4036,80 @@ mod tests {
         assert!(world.recreate_local_player(0));
         assert_eq!(
             world.local_player().map(|player| player.arrow_count()),
+            Some(0)
+        );
+    }
+
+    #[test]
+    fn entity_stinger_count_follows_java_int_metadata_and_preserves_partial_state() {
+        let mut world = ClientWorld::default();
+        assert!(world.apply_entity(EntityInput {
+            entity_id: 37,
+            uuid: Uuid::new(1, 2),
+            type_id: 54,
+            x: 1.25,
+            y: 80.0,
+            z: -35.5,
+            movement: (0.0, 0.0, 0.0),
+            rotation: (0.0, 0.0, 0.0),
+            data: 0,
+        }));
+        assert_eq!(
+            world.entity_at(37).map(super::ClientEntity::stinger_count),
+            Some(0)
+        );
+
+        let mut stinger_metadata = vec![
+            super::ENTITY_STINGER_COUNT_DATA_ID,
+            super::ENTITY_DATA_SERIALIZER_INT_ID as u8,
+        ];
+        crate::wire::write_varint(2, &mut stinger_metadata);
+        stinger_metadata.push(255);
+        assert!(world.apply_entity_metadata(37, &stinger_metadata));
+        assert_eq!(
+            world.entity_at(37).map(super::ClientEntity::stinger_count),
+            Some(2)
+        );
+
+        assert!(world.apply_entity_metadata(37, &[5, 8, 1, 255]));
+        assert_eq!(
+            world.entity_at(37).map(super::ClientEntity::stinger_count),
+            Some(2)
+        );
+
+        assert!(world.apply_entity_metadata(37, &[13, 0, 4, 255]));
+        assert_eq!(
+            world.entity_at(37).map(super::ClientEntity::stinger_count),
+            Some(2)
+        );
+    }
+
+    #[test]
+    fn local_player_stinger_count_metadata_follows_entity_data_keep_respawn() {
+        let mut world = ClientWorld::default();
+        world.set_local_player_id(42);
+
+        let mut stinger_metadata = vec![
+            super::ENTITY_STINGER_COUNT_DATA_ID,
+            super::ENTITY_DATA_SERIALIZER_INT_ID as u8,
+        ];
+        crate::wire::write_varint(4, &mut stinger_metadata);
+        stinger_metadata.push(255);
+        assert!(world.apply_entity_metadata(42, &stinger_metadata));
+        assert_eq!(
+            world.local_player().map(|player| player.stinger_count()),
+            Some(4)
+        );
+
+        assert!(world.recreate_local_player(PLAYER_RESPAWN_KEEP_ENTITY_DATA));
+        assert_eq!(
+            world.local_player().map(|player| player.stinger_count()),
+            Some(4)
+        );
+
+        assert!(world.recreate_local_player(0));
+        assert_eq!(
+            world.local_player().map(|player| player.stinger_count()),
             Some(0)
         );
     }
