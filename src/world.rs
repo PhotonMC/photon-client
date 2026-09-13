@@ -21,12 +21,14 @@ const ENTITY_HEALTH_DATA_ID: u8 = 9;
 const ENTITY_EFFECT_PARTICLES_DATA_ID: u8 = 10;
 const ENTITY_EFFECT_AMBIENCE_DATA_ID: u8 = 11;
 const ENTITY_ARROW_COUNT_DATA_ID: u8 = 12;
+const ENTITY_SLEEPING_POS_DATA_ID: u8 = 14;
 const ENTITY_MOB_FLAGS_DATA_ID: u8 = 15;
 const ENTITY_DATA_SERIALIZER_BYTE_ID: i32 = 0;
 const ENTITY_DATA_SERIALIZER_INT_ID: i32 = 1;
 const ENTITY_DATA_SERIALIZER_FLOAT_ID: i32 = 3;
 const ENTITY_DATA_SERIALIZER_OPTIONAL_COMPONENT_ID: i32 = 6;
 const ENTITY_DATA_SERIALIZER_BOOLEAN_ID: i32 = 8;
+const ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_POS_ID: i32 = 11;
 const ENTITY_DATA_SERIALIZER_PARTICLES_ID: i32 = 17;
 const ENTITY_DATA_SERIALIZER_POSE_ID: i32 = 20;
 const ENTITY_EFFECT_PARTICLE_TYPE_ID: i32 = 28;
@@ -156,6 +158,13 @@ fn skip_metadata_value(metadata: &mut &[u8], serializer_id: i32) -> Option<()> {
             if present != 0 {
                 let component = crate::nbt::read_any_nbt(metadata).ok()?;
                 component.as_ref()?;
+            }
+        }
+        ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_POS_ID => {
+            let (&present, rest) = metadata.split_first()?;
+            *metadata = rest;
+            if present != 0 {
+                crate::binary::read_blockpos(metadata).ok()?;
             }
         }
         ENTITY_DATA_SERIALIZER_PARTICLES_ID => {
@@ -317,6 +326,37 @@ fn effect_particle_type_ids_from_metadata(metadata: &[u8]) -> Option<Vec<i32>> {
                 return None;
             }
             return read_effect_particle_type_ids(&mut metadata);
+        }
+        skip_metadata_value(&mut metadata, serializer_id)?;
+    }
+}
+
+fn sleeping_pos_from_metadata(metadata: &[u8]) -> Option<Option<crate::binary::BlockPos>> {
+    if metadata.last() != Some(&255) {
+        return None;
+    }
+    let mut metadata = metadata;
+    loop {
+        let (&data_id, rest) = metadata.split_first()?;
+        if data_id == 255 {
+            return None;
+        }
+        metadata = rest;
+        let serializer_id = crate::wire::read_varint(&mut metadata).ok()?;
+        if data_id == ENTITY_SLEEPING_POS_DATA_ID {
+            if serializer_id != ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_POS_ID {
+                return None;
+            }
+            let (&present, rest) = metadata.split_first()?;
+            metadata = rest;
+            if present == 0 {
+                return Some(None);
+            }
+            let value = crate::binary::read_blockpos(&mut metadata).ok()?;
+            if metadata.is_empty() {
+                return None;
+            }
+            return Some(Some(value));
         }
         skip_metadata_value(&mut metadata, serializer_id)?;
     }
@@ -1021,6 +1061,7 @@ impl ClientWorld {
             player.arrow_count = previous.arrow_count;
             player.effect_ambience = previous.effect_ambience;
             player.effect_particle_type_ids = previous.effect_particle_type_ids;
+            player.sleeping_pos = previous.sleeping_pos;
             player.air_supply = previous.air_supply;
             player.custom_name_present = previous.custom_name_present;
             player.custom_name_visible = previous.custom_name_visible;
@@ -1437,6 +1478,7 @@ impl ClientWorld {
                 arrow_count: 0,
                 effect_ambience: false,
                 effect_particle_type_ids: Vec::new(),
+                sleeping_pos: None,
                 custom_name_present: false,
                 custom_name_visible: false,
                 no_gravity: false,
@@ -1457,6 +1499,7 @@ impl ClientWorld {
         let arrow_count = arrow_count_from_metadata(metadata);
         let effect_ambience = effect_ambience_from_metadata(metadata);
         let effect_particle_type_ids = effect_particle_type_ids_from_metadata(metadata);
+        let sleeping_pos = sleeping_pos_from_metadata(metadata);
         let custom_name_present = custom_name_present_from_metadata(metadata);
         let custom_name_visible = custom_name_visible_from_metadata(metadata);
         let no_gravity = no_gravity_from_metadata(metadata);
@@ -1489,6 +1532,9 @@ impl ClientWorld {
             }
             if let Some(effect_particle_type_ids) = effect_particle_type_ids.as_ref() {
                 player.effect_particle_type_ids = effect_particle_type_ids.clone();
+            }
+            if let Some(sleeping_pos) = sleeping_pos {
+                player.sleeping_pos = sleeping_pos;
             }
             if let Some(custom_name_present) = custom_name_present {
                 player.custom_name_present = custom_name_present;
@@ -1537,6 +1583,9 @@ impl ClientWorld {
         }
         if let Some(effect_particle_type_ids) = effect_particle_type_ids {
             entity.effect_particle_type_ids = effect_particle_type_ids;
+        }
+        if let Some(sleeping_pos) = sleeping_pos {
+            entity.sleeping_pos = sleeping_pos;
         }
         if let Some(custom_name_present) = custom_name_present {
             entity.custom_name_present = custom_name_present;
@@ -1901,6 +1950,7 @@ pub struct ClientEntity {
     arrow_count: i32,
     effect_ambience: bool,
     effect_particle_type_ids: Vec<i32>,
+    sleeping_pos: Option<crate::binary::BlockPos>,
     custom_name_present: bool,
     custom_name_visible: bool,
     no_gravity: bool,
@@ -2065,6 +2115,7 @@ pub struct ClientPlayerState {
     arrow_count: i32,
     effect_ambience: bool,
     effect_particle_type_ids: Vec<i32>,
+    sleeping_pos: Option<crate::binary::BlockPos>,
     air_supply: i32,
     custom_name_present: bool,
     custom_name_visible: bool,
@@ -2116,6 +2167,7 @@ impl ClientPlayerState {
             arrow_count: 0,
             effect_ambience: false,
             effect_particle_type_ids: Vec::new(),
+            sleeping_pos: None,
             air_supply: DEFAULT_AIR_SUPPLY,
             custom_name_present: false,
             custom_name_visible: false,
@@ -2329,6 +2381,14 @@ impl ClientPlayerState {
         &self.effect_particle_type_ids
     }
 
+    pub fn sleeping_pos(&self) -> Option<crate::binary::BlockPos> {
+        self.sleeping_pos
+    }
+
+    pub fn is_sleeping(&self) -> bool {
+        self.sleeping_pos.is_some()
+    }
+
     pub fn food(&self) -> i32 {
         self.food
     }
@@ -2506,6 +2566,14 @@ impl ClientEntity {
 
     pub fn effect_particle_type_ids(&self) -> &[i32] {
         &self.effect_particle_type_ids
+    }
+
+    pub fn sleeping_pos(&self) -> Option<crate::binary::BlockPos> {
+        self.sleeping_pos
+    }
+
+    pub fn is_sleeping(&self) -> bool {
+        self.sleeping_pos.is_some()
     }
 
     pub fn has_custom_name(&self) -> bool {
@@ -4131,6 +4199,116 @@ mod tests {
                 .expect("reset particle player")
                 .effect_particle_type_ids()
                 .is_empty()
+        );
+    }
+
+    #[test]
+    fn entity_sleeping_position_follows_java_optional_block_pos_metadata() {
+        let mut world = ClientWorld::default();
+        assert!(world.apply_entity(EntityInput {
+            entity_id: 37,
+            uuid: Uuid::new(1, 2),
+            type_id: 54,
+            x: 1.25,
+            y: 80.0,
+            z: -35.5,
+            movement: (0.0, 0.0, 0.0),
+            rotation: (0.0, 0.0, 0.0),
+            data: 0,
+        }));
+        let entity = world.entity_at(37).expect("default sleeping entity");
+        assert_eq!(entity.sleeping_pos(), None);
+        assert!(!entity.is_sleeping());
+
+        let bed = crate::binary::BlockPos::new(-12, 90, 37);
+        let mut sleeping_metadata = vec![
+            super::ENTITY_SLEEPING_POS_DATA_ID,
+            super::ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_POS_ID as u8,
+            1,
+        ];
+        crate::binary::write_blockpos(bed, &mut sleeping_metadata);
+        sleeping_metadata.extend([3, 8, 1, 255]);
+        assert!(world.apply_entity_metadata(37, &sleeping_metadata));
+        let entity = world.entity_at(37).expect("sleeping entity");
+        assert_eq!(entity.sleeping_pos(), Some(bed));
+        assert!(entity.is_sleeping());
+        assert!(entity.is_custom_name_visible());
+
+        assert!(world.apply_entity_metadata(37, &[5, 8, 1, 255]));
+        assert_eq!(
+            world
+                .entity_at(37)
+                .expect("sleeping entity after partial metadata")
+                .sleeping_pos(),
+            Some(bed)
+        );
+
+        assert!(world.apply_entity_metadata(37, &[14, 11, 0, 255]));
+        assert_eq!(
+            world.entity_at(37).expect("awake entity").sleeping_pos(),
+            None
+        );
+
+        let mut wrong_serializer = vec![14, 10, 1];
+        crate::binary::write_blockpos(bed, &mut wrong_serializer);
+        wrong_serializer.push(255);
+        assert!(world.apply_entity_metadata(37, &wrong_serializer));
+        assert_eq!(
+            world
+                .entity_at(37)
+                .expect("entity after wrong serializer")
+                .sleeping_pos(),
+            None
+        );
+
+        assert!(world.apply_entity_metadata(37, &[14, 11, 1, 0, 255]));
+        assert_eq!(
+            world
+                .entity_at(37)
+                .expect("entity after truncated sleeping position")
+                .sleeping_pos(),
+            None
+        );
+    }
+
+    #[test]
+    fn local_player_sleeping_position_follows_entity_data_keep_respawn() {
+        let mut world = ClientWorld::default();
+        world.set_local_player_id(42);
+        let bed = crate::binary::BlockPos::new(14, 90, -23);
+        let mut sleeping_metadata = vec![
+            super::ENTITY_SLEEPING_POS_DATA_ID,
+            super::ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_POS_ID as u8,
+            1,
+        ];
+        crate::binary::write_blockpos(bed, &mut sleeping_metadata);
+        sleeping_metadata.push(255);
+        assert!(world.apply_entity_metadata(42, &sleeping_metadata));
+        assert_eq!(
+            world
+                .local_player()
+                .expect("sleeping player")
+                .sleeping_pos(),
+            Some(bed)
+        );
+        assert!(world.local_player().expect("sleeping player").is_sleeping());
+
+        assert!(world.recreate_local_player(PLAYER_RESPAWN_KEEP_ENTITY_DATA));
+        assert_eq!(
+            world
+                .local_player()
+                .expect("respawned sleeping player")
+                .sleeping_pos(),
+            Some(bed)
+        );
+
+        assert!(world.recreate_local_player(0));
+        assert_eq!(
+            world
+                .local_player()
+                .expect("reset sleeping player")
+                .sleeping_pos(),
+            None
         );
     }
 
