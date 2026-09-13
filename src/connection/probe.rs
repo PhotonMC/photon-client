@@ -90,6 +90,42 @@ pub fn connect_and_move_probe(
     )
 }
 
+/// Connect to a Java-protocol server and send a short movement trace with
+/// changing head rotations so another client can observe a remote player.
+pub fn connect_and_remote_player_head_rotation_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    const YAW_SEQUENCE: &[i16] = &[90, 180, 270];
+
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeConfig::new(ProbeAction::Movement)
+            .with_movement_yaws(YAW_SEQUENCE)
+            .with_movement_pause(Duration::from_millis(500))
+            .with_movement_hold(Duration::from_secs(5)),
+    )
+}
+
+/// Connect to a Java-protocol server and observe a remote player during a
+/// short two-client head-rotation scenario.
+pub fn connect_and_remote_player_head_rotation_observer_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeConfig::new(ProbeAction::WorldEntityAdd)
+            .with_drain_timeout(Duration::from_secs(5)),
+    )
+}
+
 /// Connect to a Java-protocol server, move across the configured view radius,
 /// and observe chunk columns dropped from the client world copy.
 pub fn connect_and_world_chunk_unload_probe(
@@ -1006,6 +1042,10 @@ struct PlayProbeConfig {
     action: ProbeAction,
     select_known_packs: bool,
     use_item_on_delay: Duration,
+    movement_yaws: Option<&'static [i16]>,
+    movement_pause: Duration,
+    movement_hold: Duration,
+    drain_timeout_override: Option<Duration>,
 }
 
 impl PlayProbeConfig {
@@ -1014,6 +1054,10 @@ impl PlayProbeConfig {
             action,
             select_known_packs: true,
             use_item_on_delay: Duration::ZERO,
+            movement_yaws: None,
+            movement_pause: Duration::ZERO,
+            movement_hold: Duration::ZERO,
+            drain_timeout_override: None,
         }
     }
 
@@ -1022,6 +1066,10 @@ impl PlayProbeConfig {
             action,
             select_known_packs: false,
             use_item_on_delay: Duration::ZERO,
+            movement_yaws: None,
+            movement_pause: Duration::ZERO,
+            movement_hold: Duration::ZERO,
+            drain_timeout_override: None,
         }
     }
 
@@ -1030,7 +1078,31 @@ impl PlayProbeConfig {
             action,
             select_known_packs: true,
             use_item_on_delay: delay,
+            movement_yaws: None,
+            movement_pause: Duration::ZERO,
+            movement_hold: Duration::ZERO,
+            drain_timeout_override: None,
         }
+    }
+
+    const fn with_movement_yaws(mut self, yaws: &'static [i16]) -> Self {
+        self.movement_yaws = Some(yaws);
+        self
+    }
+
+    const fn with_movement_pause(mut self, pause: Duration) -> Self {
+        self.movement_pause = pause;
+        self
+    }
+
+    const fn with_movement_hold(mut self, hold: Duration) -> Self {
+        self.movement_hold = hold;
+        self
+    }
+
+    const fn with_drain_timeout(mut self, timeout: Duration) -> Self {
+        self.drain_timeout_override = Some(timeout);
+        self
     }
 }
 
@@ -2087,23 +2159,50 @@ fn connect_and_probe_with_mode(
                 let Some(position) = player_position else {
                     return Err(ConnectionError::Codec("movement probe player position"));
                 };
-                for offset in [0.25_f64, 0.5, 0.75] {
-                    let moved = (
-                        position.0 + offset,
-                        position.1,
-                        position.2,
-                        position.3,
-                        position.4,
-                    );
-                    send_packet(
-                        &mut stream,
-                        ConnectionProtocol::Play,
-                        PLAY_SERVERBOUND_MOVE_PLAYER_POS_ROT_PACKET_ID,
-                        |output| encode_move_player_pos_rot(output, moved, 1),
-                        compression_threshold,
-                    )?;
-                    trace.movement_packets_sent += 1;
-                    player_position = Some(moved);
+                if let Some(yaws) = probe.movement_yaws {
+                    for (index, yaw) in yaws.iter().copied().enumerate() {
+                        if !probe.movement_pause.is_zero() {
+                            std::thread::sleep(probe.movement_pause);
+                        }
+                        let moved = (
+                            position.0 + 0.25 * (index as f64 + 1.0),
+                            position.1,
+                            position.2,
+                            f32::from(yaw),
+                            position.4,
+                        );
+                        send_packet(
+                            &mut stream,
+                            ConnectionProtocol::Play,
+                            PLAY_SERVERBOUND_MOVE_PLAYER_POS_ROT_PACKET_ID,
+                            |output| encode_move_player_pos_rot(output, moved, 1),
+                            compression_threshold,
+                        )?;
+                        trace.movement_packets_sent += 1;
+                        player_position = Some(moved);
+                    }
+                    if !probe.movement_hold.is_zero() {
+                        std::thread::sleep(probe.movement_hold);
+                    }
+                } else {
+                    for offset in [0.25_f64, 0.5, 0.75] {
+                        let moved = (
+                            position.0 + offset,
+                            position.1,
+                            position.2,
+                            position.3,
+                            position.4,
+                        );
+                        send_packet(
+                            &mut stream,
+                            ConnectionProtocol::Play,
+                            PLAY_SERVERBOUND_MOVE_PLAYER_POS_ROT_PACKET_ID,
+                            |output| encode_move_player_pos_rot(output, moved, 1),
+                            compression_threshold,
+                        )?;
+                        trace.movement_packets_sent += 1;
+                        player_position = Some(moved);
+                    }
                 }
             }
             if matches!(
@@ -3093,7 +3192,7 @@ fn connect_and_probe_with_mode(
                 stream.set_read_timeout(Some(Duration::from_millis(100)))?;
             } else {
                 world_ready_drain_started = Some(Instant::now());
-                let drain_timeout = match probe.action {
+                let drain_timeout = probe.drain_timeout_override.unwrap_or(match probe.action {
                     ProbeAction::SurvivalDelayedDestroy => DELAYED_DESTROY_DRAIN_TIMEOUT,
                     ProbeAction::WorldChunkUnload | ProbeAction::WorldEntityTicking => {
                         WORLD_LIFECYCLE_DRAIN_TIMEOUT
@@ -3156,7 +3255,7 @@ fn connect_and_probe_with_mode(
                     }
                     ProbeAction::SurvivalInventorySwapStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
                     _ => WORLD_READY_DRAIN_TIMEOUT,
-                };
+                });
                 let read_timeout = if matches!(
                     probe.action,
                     ProbeAction::WorldChunkUnload | ProbeAction::WorldEntityTicking
@@ -3227,7 +3326,7 @@ fn connect_and_probe_with_mode(
             }
         }
 
-        let drain_timeout = match probe.action {
+        let drain_timeout = probe.drain_timeout_override.unwrap_or(match probe.action {
             ProbeAction::SurvivalDelayedDestroy => DELAYED_DESTROY_DRAIN_TIMEOUT,
             ProbeAction::WorldChunkUnload | ProbeAction::WorldEntityTicking => {
                 WORLD_LIFECYCLE_DRAIN_TIMEOUT
@@ -3279,7 +3378,7 @@ fn connect_and_probe_with_mode(
             ProbeAction::SurvivalInventoryQuickMoveStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
             ProbeAction::SurvivalInventorySwapStateCorrection => CONSUMABLE_DRAIN_TIMEOUT,
             _ => WORLD_READY_DRAIN_TIMEOUT,
-        };
+        });
         if world_ready_drain_started.is_some_and(|started| started.elapsed() >= drain_timeout) {
             if matches!(
                 probe.action,

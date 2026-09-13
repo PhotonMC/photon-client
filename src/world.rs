@@ -35,6 +35,7 @@ const ENTITY_DATA_SERIALIZER_POSE_ID: i32 = 20;
 const ENTITY_EFFECT_PARTICLE_TYPE_ID: i32 = 28;
 const DEFAULT_AIR_SUPPLY: i32 = 300;
 const DEFAULT_TICKS_REQUIRED_TO_FREEZE: i32 = 140;
+const LIVING_ENTITY_HEAD_LERP_STEPS: u8 = 3;
 const LIVING_FLAG_USING_ITEM: u8 = 0;
 const LIVING_FLAG_OFF_HAND: u8 = 1;
 const LIVING_FLAG_SPIN_ATTACK: u8 = 2;
@@ -122,6 +123,17 @@ impl ClientEntityPose {
 
 fn shared_flag_is_set(flags: u8, flag: u8) -> bool {
     flags & (1_u8 << flag) != 0
+}
+
+fn advance_head_rotation(current_bits: &mut u32, target_bits: u32, steps: &mut u8) {
+    if *steps == 0 {
+        return;
+    }
+    let step_count = f32::from(*steps);
+    let current = f32::from_bits(*current_bits);
+    let target = f32::from_bits(target_bits);
+    *current_bits = mth_rot_lerp_f32(1.0 / step_count, current, target).to_bits();
+    *steps -= 1;
 }
 
 fn read_effect_particle_type_ids(metadata: &mut &[u8]) -> Option<Vec<i32>> {
@@ -876,7 +888,13 @@ impl ClientWorld {
     }
 
     pub(crate) fn set_local_player_id(&mut self, player_id: i32) {
-        self.local_player = Some(ClientPlayerState::new(player_id));
+        let mut player = ClientPlayerState::new(player_id);
+        if let Some(entity) = self.entities.get(&player_id) {
+            player.y_head_rot_bits = entity.y_head_rot_bits;
+            player.old_y_head_rot_bits = entity.old_y_head_rot_bits;
+            player.head_rotation_target_bits = entity.y_head_rot_bits;
+        }
+        self.local_player = Some(player);
     }
 
     pub(crate) fn apply_local_player_open_menu(
@@ -1065,6 +1083,10 @@ impl ClientWorld {
             player.motion_z_bits = previous.motion_z_bits;
             player.y_rot_bits = previous.y_rot_bits;
             player.x_rot_bits = previous.x_rot_bits;
+            player.y_head_rot_bits = previous.y_head_rot_bits;
+            player.old_y_head_rot_bits = previous.old_y_head_rot_bits;
+            player.head_rotation_target_bits = previous.head_rotation_target_bits;
+            player.head_lerp_steps = previous.head_lerp_steps;
             player.shared_flags = previous.shared_flags;
             player.living_flags = previous.living_flags;
             player.arrow_count = previous.arrow_count;
@@ -1196,6 +1218,7 @@ impl ClientWorld {
         self.game_time = self.game_time.wrapping_add(1);
         if let Some(player) = self.local_player.as_mut() {
             player.capture_old_transform();
+            player.tick_head_rotation();
             player.tick_count = player.tick_count.wrapping_add(1);
             for effect in &mut player.effects {
                 effect.tick_client();
@@ -1203,6 +1226,7 @@ impl ClientWorld {
         }
         for entity in self.entities.values_mut().filter(|entity| entity.ticking) {
             entity.capture_old_transform();
+            entity.tick_head_rotation();
             entity.tick_count = entity.tick_count.wrapping_add(1);
         }
     }
@@ -1454,6 +1478,7 @@ impl ClientWorld {
     pub(crate) fn apply_entity(&mut self, entity: EntityInput) -> bool {
         let (chunk_x, chunk_z) = entity_chunk_key((entity.x, entity.y, entity.z));
         let ticking = self.contains_chunk(chunk_x, chunk_z);
+        let head_rotation_bits = entity.rotation.2.to_bits();
         self.entities.insert(
             entity.entity_id,
             ClientEntity {
@@ -1475,6 +1500,8 @@ impl ClientWorld {
                 old_x_rot_bits: entity.rotation.1.to_bits(),
                 old_y_rot_bits: entity.rotation.0.to_bits(),
                 old_y_head_rot_bits: entity.rotation.2.to_bits(),
+                head_rotation_target_bits: entity.rotation.2.to_bits(),
+                head_lerp_steps: 0,
                 on_ground: false,
                 always_ticking: entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID,
                 ticking: ticking || entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID,
@@ -1498,6 +1525,16 @@ impl ClientWorld {
                 ticks_frozen: 0,
             },
         );
+        if let Some(player) = self
+            .local_player
+            .as_mut()
+            .filter(|player| player.id == entity.entity_id)
+        {
+            player.y_head_rot_bits = head_rotation_bits;
+            player.old_y_head_rot_bits = head_rotation_bits;
+            player.head_rotation_target_bits = head_rotation_bits;
+            player.head_lerp_steps = 0;
+        }
         true
     }
 
@@ -1645,29 +1682,45 @@ impl ClientWorld {
     }
 
     pub(crate) fn apply_entity_rotation(&mut self, input: EntityRotationInput) -> bool {
-        let Some(entity) = self.entities.get_mut(&input.entity_id) else {
-            return false;
-        };
-        if let Some(y_rot) = input.y_rot {
-            let current = f32::from_bits(entity.y_rot_bits);
-            let value = if input.relative_y_rot {
-                current + y_rot
-            } else {
-                y_rot
+        {
+            let Some(entity) = self.entities.get_mut(&input.entity_id) else {
+                return false;
             };
-            entity.y_rot_bits = (value % 360.0).to_bits();
+            if let Some(y_rot) = input.y_rot {
+                let current = f32::from_bits(entity.y_rot_bits);
+                let value = if input.relative_y_rot {
+                    current + y_rot
+                } else {
+                    y_rot
+                };
+                entity.y_rot_bits = (value % 360.0).to_bits();
+            }
+            if let Some(x_rot) = input.x_rot {
+                let current = f32::from_bits(entity.x_rot_bits);
+                let value = if input.relative_x_rot {
+                    current + x_rot
+                } else {
+                    x_rot
+                };
+                entity.x_rot_bits = (value % 360.0).clamp(-90.0, 90.0).to_bits();
+            }
+            if let Some(y_head_rot) = input.y_head_rot {
+                if entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID {
+                    entity.head_rotation_target_bits = y_head_rot.to_bits();
+                    entity.head_lerp_steps = LIVING_ENTITY_HEAD_LERP_STEPS;
+                } else {
+                    entity.y_head_rot_bits = y_head_rot.to_bits();
+                }
+            }
         }
-        if let Some(x_rot) = input.x_rot {
-            let current = f32::from_bits(entity.x_rot_bits);
-            let value = if input.relative_x_rot {
-                current + x_rot
-            } else {
-                x_rot
-            };
-            entity.x_rot_bits = (value % 360.0).clamp(-90.0, 90.0).to_bits();
-        }
-        if let Some(y_head_rot) = input.y_head_rot {
-            entity.y_head_rot_bits = y_head_rot.to_bits();
+        if let Some(y_head_rot) = input.y_head_rot
+            && let Some(player) = self
+                .local_player
+                .as_mut()
+                .filter(|player| player.id == input.entity_id)
+        {
+            player.head_rotation_target_bits = y_head_rot.to_bits();
+            player.head_lerp_steps = LIVING_ENTITY_HEAD_LERP_STEPS;
         }
         true
     }
@@ -1955,6 +2008,8 @@ pub struct ClientEntity {
     old_x_rot_bits: u32,
     old_y_rot_bits: u32,
     old_y_head_rot_bits: u32,
+    head_rotation_target_bits: u32,
+    head_lerp_steps: u8,
     on_ground: bool,
     always_ticking: bool,
     ticking: bool,
@@ -2128,6 +2183,10 @@ pub struct ClientPlayerState {
     x_rot_bits: u32,
     old_y_rot_bits: u32,
     old_x_rot_bits: u32,
+    y_head_rot_bits: u32,
+    old_y_head_rot_bits: u32,
+    head_rotation_target_bits: u32,
+    head_lerp_steps: u8,
     entity_data: Option<Vec<u8>>,
     shared_flags: u8,
     living_flags: u8,
@@ -2161,6 +2220,15 @@ impl ClientPlayerState {
         self.old_z_bits = self.z_bits;
         self.old_y_rot_bits = self.y_rot_bits;
         self.old_x_rot_bits = self.x_rot_bits;
+        self.old_y_head_rot_bits = self.y_head_rot_bits;
+    }
+
+    fn tick_head_rotation(&mut self) {
+        advance_head_rotation(
+            &mut self.y_head_rot_bits,
+            self.head_rotation_target_bits,
+            &mut self.head_lerp_steps,
+        );
     }
 
     fn new(id: i32) -> Self {
@@ -2181,6 +2249,10 @@ impl ClientPlayerState {
             x_rot_bits: 0.0_f32.to_bits(),
             old_y_rot_bits: 0.0_f32.to_bits(),
             old_x_rot_bits: 0.0_f32.to_bits(),
+            y_head_rot_bits: 0.0_f32.to_bits(),
+            old_y_head_rot_bits: 0.0_f32.to_bits(),
+            head_rotation_target_bits: 0.0_f32.to_bits(),
+            head_lerp_steps: 0,
             entity_data: None,
             shared_flags: 0,
             living_flags: 0,
@@ -2266,6 +2338,25 @@ impl ClientPlayerState {
         (
             f32::from_bits(self.old_y_rot_bits),
             f32::from_bits(self.old_x_rot_bits),
+        )
+    }
+
+    pub fn head_rotation(&self) -> f32 {
+        f32::from_bits(self.y_head_rot_bits)
+    }
+
+    pub fn previous_head_rotation(&self) -> f32 {
+        f32::from_bits(self.old_y_head_rot_bits)
+    }
+
+    pub fn interpolated_head_rotation(&self, partial_tick: f32) -> f32 {
+        if partial_tick == 1.0 {
+            return self.head_rotation();
+        }
+        mth_rot_lerp_f32(
+            partial_tick,
+            self.previous_head_rotation(),
+            self.head_rotation(),
         )
     }
 
@@ -2451,6 +2542,14 @@ impl ClientEntity {
         self.old_x_rot_bits = self.x_rot_bits;
         self.old_y_rot_bits = self.y_rot_bits;
         self.old_y_head_rot_bits = self.y_head_rot_bits;
+    }
+
+    fn tick_head_rotation(&mut self) {
+        advance_head_rotation(
+            &mut self.y_head_rot_bits,
+            self.head_rotation_target_bits,
+            &mut self.head_lerp_steps,
+        );
     }
 
     pub fn tick_count(&self) -> i32 {
@@ -2946,7 +3045,8 @@ mod tests {
         ClientWorld, DimensionBounds, DimensionEnvironment, DimensionInput, EntityInput,
         EntityMotionInput, EntityMoveInput, EntityPositionInput, EntityRotationInput,
         LightLayerInput, LightUpdateInput, PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS,
-        PLAYER_RESPAWN_KEEP_ENTITY_DATA, SectionInput, menu_top_slot_count,
+        PLAYER_RESPAWN_KEEP_ENTITY_DATA, SectionInput, VANILLA_PLAYER_ENTITY_TYPE_ID,
+        menu_top_slot_count,
     };
     use crate::binary::{BitSet, Uuid};
 
@@ -3593,6 +3693,68 @@ mod tests {
         assert!(world.remove_entity(37));
         assert_eq!(world.loaded_entity_count(), 0);
         assert!(!world.remove_entity(37));
+    }
+
+    #[test]
+    fn local_player_head_rotation_follows_entity_packet_and_respawn_keep_data() {
+        let mut world = ClientWorld::default();
+        assert!(world.apply_entity(EntityInput {
+            entity_id: 42,
+            uuid: Uuid::new(1, 2),
+            type_id: VANILLA_PLAYER_ENTITY_TYPE_ID,
+            x: 1.25,
+            y: 80.0,
+            z: -35.5,
+            movement: (0.0, 0.0, 0.0),
+            rotation: (15.0, -10.0, 35.0),
+            data: 0,
+        }));
+        world.set_local_player_id(42);
+        assert_eq!(
+            world.local_player().map(|player| player.head_rotation()),
+            Some(35.0)
+        );
+        assert!(world.apply_entity_rotation(EntityRotationInput {
+            entity_id: 42,
+            y_rot: None,
+            x_rot: None,
+            y_head_rot: Some(135.0),
+            relative_y_rot: false,
+            relative_x_rot: false,
+        }));
+        assert_eq!(
+            world.local_player().map(|player| player.head_rotation()),
+            Some(35.0)
+        );
+        assert_eq!(
+            world.entity_at(42).map(|entity| entity.rotation().2),
+            Some(35.0)
+        );
+        world.tick();
+        assert_eq!(
+            world.entity_at(42).map(|entity| entity.rotation().2),
+            Some(68.333336)
+        );
+        world.tick();
+        world.tick();
+        assert_eq!(
+            world.local_player().map(|player| player.head_rotation()),
+            Some(135.0)
+        );
+        assert_eq!(
+            world.entity_at(42).map(|entity| entity.rotation().2),
+            Some(135.0)
+        );
+        assert!(world.recreate_local_player(PLAYER_RESPAWN_KEEP_ENTITY_DATA));
+        assert_eq!(
+            world.local_player().map(|player| player.head_rotation()),
+            Some(135.0)
+        );
+        assert!(world.recreate_local_player(0));
+        assert_eq!(
+            world.local_player().map(|player| player.head_rotation()),
+            Some(0.0)
+        );
     }
 
     #[test]

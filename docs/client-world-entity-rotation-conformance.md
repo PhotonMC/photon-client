@@ -2,7 +2,9 @@
 
 Bu kayıt, vanilla sunucusundan gelen entity rotation alanlarının parse edilip
 `ClientWorld` global entity map'indeki ham y/x/head rotation state'ine
-uygulanmasını kapsar. Kanıt sınıfı `server-conformance`'dır: Rust packet akışı
+uygulanmasını kapsar. Player/LivingEntity head interpolation davranışı
+[P08.ap kaydında](client-world-entity-player-head-rotation-conformance.md)
+ayrıca ele alınır. Kanıt sınıfı `server-conformance`'dır: Rust packet akışı
 Mojang vanilla 26.2 dedicated server'a bağlanır. Java istemcisiyle aynı girdide
 state karşılaştırılmadığı için bu kayıt `client-parity` değildir.
 
@@ -24,10 +26,12 @@ entity ID ile tek head rotation byte'ı taşır. Bu packet'in clientbound ID'si
 `GameProtocols.java:216` dispatch sırasından `83`'tür.
 
 `ClientPacketListener.java:639-727,729-754,806-823`, mevcut entity'ye sync,
-teleport ve MoveEntity rotation'ını uygular; `handleRotateMob` head rotation'ı
-günceller. `Entity.java:2539-2560`, uygun durumda rotation'ı interpolation
-handler'a verir; bu kayıt yalnız packet değerinin world kopyasına uygulanmasını
-ölçer.
+teleport ve MoveEntity rotation'ını uygular. `ClientPacketListener.java:767-772`
+RotateHead packet'ini entity'nin `lerpHeadTo` yoluna verir; genel Entity bu
+çağrıyı doğrudan head setter'ına, LivingEntity ise üç adımlı hedef state'ine
+bağlar. Bu kayıt Player dışı entity'lerin ham packet uygulamasını ölçer;
+LivingEntity head interpolation [P08.ap](client-world-entity-player-head-rotation-conformance.md)
+kapsamındadır.
 
 ## Sözleşme
 
@@ -39,11 +43,14 @@ handler'a verir; bu kayıt yalnız packet değerinin world kopyasına uygulanmas
 - PositionSync ve Teleport y/x rotation değerlerini mevcut entity'ye uygular.
   Teleport'ta relative Y_ROT/X_ROT bitleri set ise ilgili mevcut değere eklenir
   ve x rotation Java sınırına göre `[-90, 90]` aralığında tutulur.
-- RotateHead packet'i yalnız y head rotation state'ini değiştirir. Bilinmeyen
-  entity ID'si için observation tutulur fakat application sonucu false olur.
-- Bu dilim raw current rotation sorgusunu sağlar. Interpolation history,
-  partial-tick rotation, living entity body/head semantic'leri, finite-value
-  hata yolu ve render state'i uygulanmaz.
+- RotateHead packet'i Player olmayan entity'lerde y head rotation raw current
+  state'ini değiştirir. Player type ID `156` için hedef/sayaç davranışı
+  [P08.ap](client-world-entity-player-head-rotation-conformance.md) kaydındaki
+  LivingEntity sözleşmesidir. Bilinmeyen entity ID'si için observation tutulur
+  fakat application sonucu false olur.
+- Bu dilim raw current rotation sorgusunu ve Player dışı entity uygulamasını
+  sağlar. Partial-tick rotation, living entity body/head semantic'leri,
+  finite-value hata yolu ve render state'i uygulanmaz.
 
 ## Rust doğrulaması
 
@@ -56,8 +63,9 @@ rotation değerlerini ilgili relative flag'lerle birlikte `ClientWorld`'e yazar.
 Unit testleri AddEntity/MoveEntity/RotateHead packed derece dönüşümünü, sync
 ve teleport observation alanlarını, mutlak/göreli rotation uygulamasını ve
 bilinmeyen entity sonucunu kontrol eder. `world_entity_rotation_probe`, canlı
-vanilla oturumunda packet observation ile uygulama anındaki world rotation
-state'ini eşleştirir.
+vanilla oturumunda Player dışı packet observation ile uygulama anındaki world
+rotation state'ini eşleştirir; Player head interpolation testi
+[P08.ap](client-world-entity-player-head-rotation-conformance.md) içindedir.
 
 ## Vanilla server-conformance doğrulaması
 
@@ -105,16 +113,19 @@ Vanilla konsolu `Summoned new Armor Stand` bildirdi. Rust probe çıktısı:
 Probe, başlangıç rotation içeren AddEntity kayıtlarını, rotation içeren tüm
 MoveEntity kayıtlarını ve 2.045 RotateHead kaydının tamamını mevcut world
 entity'lerine uyguladı. Tablodaki örnekler ilk eşleşen observations'tır; sample
-entity ID'si kontrollü armor stand ile eşleştirilmemiştir. Her uygulanan örnekte
-packet değeri ile application anındaki `ClientEntity::rotation()` değeri
-eşleşti. Sonuç vanilla raw entity rotation akışının Rust world kopyasına
-taşındığını gösterir; Java istemcisiyle parity iddiası değildir.
+entity ID'si kontrollü armor stand ile eşleştirilmemiştir. Player dışı entity
+örneklerinde packet değeri ile application anındaki
+`ClientEntity::rotation()` değeri eşleşti; Player head packet'leri yalnız
+uygulama olarak sayılır ve üç adımlı hedef state'i [P08.ap](client-world-entity-player-head-rotation-conformance.md)
+tarafından doğrulanır. Sonuç vanilla raw entity rotation akışının Rust world
+kopyasına taşındığını gösterir; Java istemcisiyle parity iddiası değildir.
 
 ## Açık kapsam
 
-Rotation interpolation history, partial tick ve `rotLerp`, living entity'nin
+Partial tick ve `rotLerp` sorgularının tam client kullanımı, living entity'nin
 body/head ayrımının tick içindeki semantic davranışı, on-ground, motion
 integration, passenger ilişkisi, metadata/equipment, remove/lifecycle, chunk
 unload temizliği, dimension/respawn, render state'i ve oynanabilir istemci
-bağlantısı açık kalır. Bu rotation state'i `server-conformance`
-ilerlemesidir; P08'in `client-parity` kapanışı değildir.
+bağlantısı açık kalır. Player head interpolation [P08.ap](client-world-entity-player-head-rotation-conformance.md)
+ile ayrı `server-conformance` ilerlemesidir; P08'in `client-parity` kapanışı
+değildir.
