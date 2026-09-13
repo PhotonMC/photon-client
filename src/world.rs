@@ -164,6 +164,21 @@ impl ClientWorld {
         true
     }
 
+    pub(crate) fn apply_local_player_health(
+        &mut self,
+        health: f32,
+        food: i32,
+        saturation: f32,
+    ) -> bool {
+        let Some(player) = self.local_player.as_mut() else {
+            return false;
+        };
+        player.health_bits = health.to_bits();
+        player.food = food;
+        player.saturation_bits = saturation.to_bits();
+        true
+    }
+
     pub(crate) fn recreate_local_player(&mut self, data_to_keep: u8) -> bool {
         let Some(previous) = self.local_player.take() else {
             return false;
@@ -862,6 +877,9 @@ pub struct ClientPlayerState {
     entity_data: Option<Vec<u8>>,
     attributes: Vec<ClientAttributeState>,
     effects: Vec<ClientMobEffectState>,
+    health_bits: u32,
+    food: i32,
+    saturation_bits: u32,
 }
 
 impl ClientPlayerState {
@@ -880,6 +898,9 @@ impl ClientPlayerState {
             entity_data: None,
             attributes: Vec::new(),
             effects: Vec::new(),
+            health_bits: 20.0_f32.to_bits(),
+            food: 20,
+            saturation_bits: 5.0_f32.to_bits(),
         }
     }
 
@@ -924,6 +945,18 @@ impl ClientPlayerState {
 
     pub fn effects(&self) -> &[ClientMobEffectState] {
         &self.effects
+    }
+
+    pub fn health(&self) -> f32 {
+        f32::from_bits(self.health_bits)
+    }
+
+    pub fn food(&self) -> i32 {
+        self.food
+    }
+
+    pub fn saturation(&self) -> f32 {
+        f32::from_bits(self.saturation_bits)
     }
 }
 
@@ -1742,6 +1775,29 @@ mod tests {
                 .effects()
                 .is_empty()
         );
+    }
+
+    #[test]
+    fn local_player_health_state_applies_and_resets_with_new_player() {
+        let mut world = ClientWorld::default();
+        assert!(!world.apply_local_player_health(0.0, 0, 0.0));
+        world.set_local_player_id(42);
+        let player = world.local_player().expect("initial local player");
+        assert_eq!(player.health(), 20.0);
+        assert_eq!(player.food(), 20);
+        assert_eq!(player.saturation(), 5.0);
+
+        assert!(world.apply_local_player_health(0.0, 7, 1.5));
+        let player = world.local_player().expect("updated local player");
+        assert_eq!(player.health(), 0.0);
+        assert_eq!(player.food(), 7);
+        assert_eq!(player.saturation(), 1.5);
+
+        assert!(world.recreate_local_player(0));
+        let player = world.local_player().expect("respawned local player");
+        assert_eq!(player.health(), 20.0);
+        assert_eq!(player.food(), 20);
+        assert_eq!(player.saturation(), 5.0);
     }
 
     #[test]

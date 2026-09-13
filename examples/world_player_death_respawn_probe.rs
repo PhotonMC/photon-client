@@ -41,7 +41,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let observed_zero_health = trace
         .health_observations
         .iter()
-        .any(|observation| observation.health == 0.0);
+        .any(|observation| observation.health == 0.0 && observation.applied_to_world);
+    let all_health_updates_applied = trace
+        .health_observations
+        .iter()
+        .all(|observation| observation.applied_to_world);
 
     if !observed_zero_health
         || trace.respawn_command_packets_sent != 1
@@ -53,6 +57,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         || respawn.local_player_id != Some(login.player_id)
         || player.id() != login.player_id
         || player.generation() == 0
+        || !all_health_updates_applied
         || initial_attribute_modifier_count == 0
         || respawn.local_player_attribute_count != initial_attribute_update.attributes.len()
         || respawn.local_player_attribute_modifier_count != 0
@@ -73,6 +78,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         trace.health_observations.len()
     );
     println!("zero_health_observed={observed_zero_health}");
+    println!("all_health_updates_applied={all_health_updates_applied}");
     println!(
         "respawn_command_packets_sent={}",
         trace.respawn_command_packets_sent
@@ -128,6 +134,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .map(|attribute| attribute.modifiers().len())
             .sum::<usize>()
     );
+    println!("local_player_health={}", player.health());
+    println!("local_player_food={}", player.food());
+    println!("local_player_saturation={}", player.saturation());
     println!("world_dimension={}", trace.world.dimension_key());
     println!("world_chunk_count={}", trace.world.loaded_chunk_count());
     println!("world_entity_count={}", trace.world.loaded_entity_count());

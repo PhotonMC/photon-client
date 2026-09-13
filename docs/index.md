@@ -105,6 +105,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P08.j — server-conformance LocalPlayer attribute state'i ve `dataToKeep` bit 1](client-world-player-attributes-conformance.md)
 - [P08.i — server-conformance Aynı dimension ölüm respawn'ı ve `dataToKeep=0`](client-world-player-death-respawn-conformance.md)
 - [P08.k — server-conformance LocalPlayer mob-effect state'i](client-world-player-effects-conformance.md)
+- [P08.l — server-conformance LocalPlayer health, food ve saturation state'i](client-world-player-health-conformance.md)
 - [P08.h — server-conformance LocalPlayer yeniden kurulumu ve `dataToKeep`](client-world-player-respawn-conformance.md)
 - [P08.a/b — server-conformance ClientWorld chunk kopyası ve section cache](client-world-state-conformance.md)
 - [P06.d — Ortak ping/pong ve keep-alive paket sözleşmesi — client-parity birleşik kayıt](common-packet-conformance.md)

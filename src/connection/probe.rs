@@ -1802,7 +1802,12 @@ fn connect_and_probe_with_mode(
                 player_position = Some(absolute);
             }
             PLAY_CLIENTBOUND_SET_HEALTH_PACKET_ID => {
-                let observation = parse_set_health_packet(payload)?;
+                let mut observation = parse_set_health_packet(payload)?;
+                observation.applied_to_world = trace.world.apply_local_player_health(
+                    observation.health,
+                    observation.food,
+                    observation.saturation,
+                );
                 let is_dead = observation.health <= 0.0;
                 trace.health_observations.push(observation);
                 if matches!(probe.action, ProbeAction::WorldPlayerDeathRespawn)

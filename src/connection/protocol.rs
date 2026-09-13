@@ -646,6 +646,7 @@ pub struct HealthObservation {
     pub health: f32,
     pub food: i32,
     pub saturation: f32,
+    pub applied_to_world: bool,
 }
 
 /// Wire-level fields decoded from one clientbound attribute update.
@@ -1543,6 +1544,7 @@ pub(crate) fn parse_set_health_packet(input: &[u8]) -> Result<HealthObservation,
         health: read_f32(&mut input, "set health health")?,
         food: read_varint(&mut input, "set health food")?,
         saturation: read_f32(&mut input, "set health saturation")?,
+        applied_to_world: false,
     };
     if !input.is_empty() {
         return Err(ConnectionError::Codec("set health trailing payload"));
@@ -3225,6 +3227,7 @@ mod tests {
                 health: 0.0,
                 food: 20,
                 saturation: 5.5,
+                applied_to_world: false,
             }
         );
 
