@@ -15,7 +15,7 @@ use crate::resources::KnownPack;
 use crate::wire;
 use crate::world::{
     BlockEntityInput, EntityInput, EntityMotionInput, EntityMoveInput, EntityPositionInput,
-    LightLayerInput, LightUpdateInput, SectionInput,
+    EntityRotationInput, LightLayerInput, LightUpdateInput, SectionInput,
 };
 
 use super::protocol::*;
@@ -1270,8 +1270,13 @@ fn connect_and_probe_with_mode(
                     y: observation.y,
                     z: observation.z,
                     movement: observation.movement,
+                    rotation: (observation.y_rot, observation.x_rot, observation.y_head_rot),
                     data: observation.data,
                 });
+                observation.applied_rotation = trace
+                    .world
+                    .entity_at(observation.entity_id)
+                    .map(|entity| entity.rotation());
                 trace.add_entity_observations.push(observation);
             }
             PLAY_CLIENTBOUND_SET_ENTITY_MOTION_PACKET_ID => {
@@ -1289,6 +1294,25 @@ fn connect_and_probe_with_mode(
                         .map(|entity| entity.motion());
                 }
                 trace.entity_motion_observations.push(observation);
+            }
+            PLAY_CLIENTBOUND_ROTATE_HEAD_PACKET_ID => {
+                let mut observation = parse_rotate_head_packet(payload)?;
+                observation.applied_to_world =
+                    trace.world.apply_entity_rotation(EntityRotationInput {
+                        entity_id: observation.entity_id,
+                        y_rot: None,
+                        x_rot: None,
+                        y_head_rot: Some(observation.y_head_rot),
+                        relative_y_rot: false,
+                        relative_x_rot: false,
+                    });
+                if observation.applied_to_world {
+                    observation.applied_head_rotation = trace
+                        .world
+                        .entity_at(observation.entity_id)
+                        .map(|entity| entity.rotation().2);
+                }
+                trace.entity_head_rotation_observations.push(observation);
             }
             PLAY_CLIENTBOUND_REMOVE_ENTITIES_PACKET_ID => {
                 let mut observation = parse_remove_entities_packet(payload)?;
@@ -1314,10 +1338,22 @@ fn connect_and_probe_with_mode(
                         relative_flags: 0,
                     });
                 if observation.applied_to_world {
+                    trace.world.apply_entity_rotation(EntityRotationInput {
+                        entity_id: observation.entity_id,
+                        y_rot: Some(observation.y_rot),
+                        x_rot: Some(observation.x_rot),
+                        y_head_rot: None,
+                        relative_y_rot: false,
+                        relative_x_rot: false,
+                    });
                     observation.applied_position = trace
                         .world
                         .entity_at(observation.entity_id)
                         .map(|entity| entity.position());
+                    observation.applied_rotation = trace
+                        .world
+                        .entity_at(observation.entity_id)
+                        .map(|entity| entity.rotation());
                 }
                 trace.entity_position_sync_observations.push(observation);
             }
@@ -1332,10 +1368,22 @@ fn connect_and_probe_with_mode(
                         relative_flags: observation.relative_flags,
                     });
                 if observation.applied_to_world {
+                    trace.world.apply_entity_rotation(EntityRotationInput {
+                        entity_id: observation.entity_id,
+                        y_rot: Some(observation.y_rot),
+                        x_rot: Some(observation.x_rot),
+                        y_head_rot: None,
+                        relative_y_rot: observation.relative_flags & (1 << 3) != 0,
+                        relative_x_rot: observation.relative_flags & (1 << 4) != 0,
+                    });
                     observation.applied_position = trace
                         .world
                         .entity_at(observation.entity_id)
                         .map(|entity| entity.position());
+                    observation.applied_rotation = trace
+                        .world
+                        .entity_at(observation.entity_id)
+                        .map(|entity| entity.rotation());
                 }
                 trace.entity_teleport_observations.push(observation);
             }
@@ -1347,12 +1395,18 @@ fn connect_and_probe_with_mode(
                     delta_y: observation.delta_y,
                     delta_z: observation.delta_z,
                     has_position: observation.has_position,
+                    y_rot: observation.y_rot,
+                    x_rot: observation.x_rot,
                 });
                 if observation.applied_to_world {
                     observation.applied_position = trace
                         .world
                         .entity_at(observation.entity_id)
                         .map(|entity| entity.position());
+                    observation.applied_rotation = trace
+                        .world
+                        .entity_at(observation.entity_id)
+                        .map(|entity| entity.rotation());
                 }
                 trace.entity_move_observations.push(observation);
             }
@@ -1364,12 +1418,18 @@ fn connect_and_probe_with_mode(
                     delta_y: observation.delta_y,
                     delta_z: observation.delta_z,
                     has_position: observation.has_position,
+                    y_rot: observation.y_rot,
+                    x_rot: observation.x_rot,
                 });
                 if observation.applied_to_world {
                     observation.applied_position = trace
                         .world
                         .entity_at(observation.entity_id)
                         .map(|entity| entity.position());
+                    observation.applied_rotation = trace
+                        .world
+                        .entity_at(observation.entity_id)
+                        .map(|entity| entity.rotation());
                 }
                 trace.entity_move_observations.push(observation);
             }
@@ -1381,7 +1441,15 @@ fn connect_and_probe_with_mode(
                     delta_y: observation.delta_y,
                     delta_z: observation.delta_z,
                     has_position: observation.has_position,
+                    y_rot: observation.y_rot,
+                    x_rot: observation.x_rot,
                 });
+                if observation.applied_to_world {
+                    observation.applied_rotation = trace
+                        .world
+                        .entity_at(observation.entity_id)
+                        .map(|entity| entity.rotation());
+                }
                 trace.entity_move_observations.push(observation);
             }
             PLAY_CLIENTBOUND_CONTAINER_SET_CONTENT_PACKET_ID => {

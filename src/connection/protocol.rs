@@ -50,6 +50,7 @@ pub(crate) const PLAY_CLIENTBOUND_ENTITY_POSITION_SYNC_PACKET_ID: i32 = 35;
 pub(crate) const PLAY_CLIENTBOUND_MOVE_ENTITY_POS_PACKET_ID: i32 = 53;
 pub(crate) const PLAY_CLIENTBOUND_MOVE_ENTITY_POS_ROT_PACKET_ID: i32 = 54;
 pub(crate) const PLAY_CLIENTBOUND_MOVE_ENTITY_ROT_PACKET_ID: i32 = 56;
+pub(crate) const PLAY_CLIENTBOUND_ROTATE_HEAD_PACKET_ID: i32 = 83;
 pub(crate) const PLAY_CLIENTBOUND_SET_ENTITY_MOTION_PACKET_ID: i32 = 101;
 pub(crate) const PLAY_CLIENTBOUND_BLOCK_CHANGED_ACK_PACKET_ID: i32 = 4;
 pub(crate) const PLAY_CLIENTBOUND_BLOCK_DESTRUCTION_PACKET_ID: i32 = 5;
@@ -547,6 +548,7 @@ pub struct PlayConnectionTrace {
     pub snowball_item_registry_id: Option<i32>,
     pub add_entity_observations: Vec<AddEntityObservation>,
     pub entity_motion_observations: Vec<EntityMotionObservation>,
+    pub entity_head_rotation_observations: Vec<EntityHeadRotationObservation>,
     pub remove_entities_observations: Vec<RemoveEntitiesObservation>,
     pub entity_metadata_observations: Vec<EntityMetadataObservation>,
     pub entity_position_sync_observations: Vec<EntityPositionSyncObservation>,
@@ -646,8 +648,12 @@ pub struct AddEntityObservation {
     pub y: f64,
     pub z: f64,
     pub movement: (f64, f64, f64),
+    pub x_rot: f32,
+    pub y_rot: f32,
+    pub y_head_rot: f32,
     pub data: i32,
     pub applied_to_world: bool,
+    pub applied_rotation: Option<(f32, f32, f32)>,
 }
 
 /// Wire-level fields decoded from one clientbound entity-motion packet.
@@ -659,6 +665,15 @@ pub struct EntityMotionObservation {
     pub z: f64,
     pub applied_to_world: bool,
     pub applied_motion: Option<(f64, f64, f64)>,
+}
+
+/// Wire-level fields decoded from one clientbound head-rotation packet.
+#[derive(Debug, Clone, PartialEq)]
+pub struct EntityHeadRotationObservation {
+    pub entity_id: i32,
+    pub y_head_rot: f32,
+    pub applied_to_world: bool,
+    pub applied_head_rotation: Option<f32>,
 }
 
 /// Wire-level fields decoded from one clientbound remove-entities packet.
@@ -692,6 +707,7 @@ pub struct EntityPositionSyncObservation {
     pub on_ground: bool,
     pub applied_to_world: bool,
     pub applied_position: Option<(f64, f64, f64)>,
+    pub applied_rotation: Option<(f32, f32, f32)>,
 }
 
 /// Wire-level fields decoded from one clientbound entity-teleport packet.
@@ -710,6 +726,7 @@ pub struct EntityTeleportObservation {
     pub on_ground: bool,
     pub applied_to_world: bool,
     pub applied_position: Option<(f64, f64, f64)>,
+    pub applied_rotation: Option<(f32, f32, f32)>,
 }
 
 /// Wire-level fields decoded from one clientbound relative entity-move packet.
@@ -719,13 +736,14 @@ pub struct EntityMoveObservation {
     pub delta_x: i16,
     pub delta_y: i16,
     pub delta_z: i16,
-    pub y_rot: Option<u8>,
-    pub x_rot: Option<u8>,
+    pub y_rot: Option<f32>,
+    pub x_rot: Option<f32>,
     pub has_position: bool,
     pub has_rotation: bool,
     pub on_ground: bool,
     pub applied_to_world: bool,
     pub applied_position: Option<(f64, f64, f64)>,
+    pub applied_rotation: Option<(f32, f32, f32)>,
 }
 
 /// Wire-level fields decoded from one clientbound container slot update.
@@ -1473,13 +1491,9 @@ pub(crate) fn parse_add_entity_packet(
     let y = read_f64(&mut input, "add entity y")?;
     let z = read_f64(&mut input, "add entity z")?;
     let movement = read_lp_vec3(&mut input, "add entity movement")?;
-    for name in [
-        "add entity x rotation",
-        "add entity y rotation",
-        "add entity head rotation",
-    ] {
-        read_byte(&mut input, name)?;
-    }
+    let x_rot = decode_packed_degrees(read_byte(&mut input, "add entity x rotation")?);
+    let y_rot = decode_packed_degrees(read_byte(&mut input, "add entity y rotation")?);
+    let y_head_rot = decode_packed_degrees(read_byte(&mut input, "add entity head rotation")?);
     let data = read_varint(&mut input, "add entity data")?;
     if !input.is_empty() {
         return Err(ConnectionError::Codec("add entity trailing payload"));
@@ -1492,8 +1506,12 @@ pub(crate) fn parse_add_entity_packet(
         y,
         z,
         movement,
+        x_rot,
+        y_rot,
+        y_head_rot,
         data,
         applied_to_world: false,
+        applied_rotation: None,
     })
 }
 
@@ -1513,6 +1531,25 @@ pub(crate) fn parse_set_entity_motion_packet(
         z: movement.2,
         applied_to_world: false,
         applied_motion: None,
+    })
+}
+
+pub(crate) fn parse_rotate_head_packet(
+    input: &[u8],
+) -> Result<EntityHeadRotationObservation, ConnectionError> {
+    let mut input = input;
+    let entity_id = read_varint(&mut input, "entity head rotation entity id")?;
+    let y_head_rot = decode_packed_degrees(read_byte(&mut input, "entity head rotation angle")?);
+    if !input.is_empty() {
+        return Err(ConnectionError::Codec(
+            "entity head rotation trailing payload",
+        ));
+    }
+    Ok(EntityHeadRotationObservation {
+        entity_id,
+        y_head_rot,
+        applied_to_world: false,
+        applied_head_rotation: None,
     })
 }
 
@@ -1588,6 +1625,7 @@ pub(crate) fn parse_entity_position_sync_packet(
         on_ground,
         applied_to_world: false,
         applied_position: None,
+        applied_rotation: None,
     })
 }
 
@@ -1623,6 +1661,7 @@ pub(crate) fn parse_entity_teleport_packet(
         on_ground,
         applied_to_world: false,
         applied_position: None,
+        applied_rotation: None,
     })
 }
 
@@ -1662,8 +1701,14 @@ fn parse_move_entity_packet(
     };
     let (y_rot, x_rot) = if has_rotation {
         (
-            Some(read_byte(&mut input, "move entity y rotation")?),
-            Some(read_byte(&mut input, "move entity x rotation")?),
+            Some(decode_packed_degrees(read_byte(
+                &mut input,
+                "move entity y rotation",
+            )?)),
+            Some(decode_packed_degrees(read_byte(
+                &mut input,
+                "move entity x rotation",
+            )?)),
         )
     } else {
         (None, None)
@@ -1684,6 +1729,7 @@ fn parse_move_entity_packet(
         on_ground,
         applied_to_world: false,
         applied_position: None,
+        applied_rotation: None,
     })
 }
 
@@ -1988,6 +2034,10 @@ pub(crate) fn parse_system_chat_packet(
 fn read_lp_vec3(input: &mut &[u8], name: &'static str) -> Result<(f64, f64, f64), ConnectionError> {
     let movement = crate::binary::read_lp_vec3(input).map_err(|_| ConnectionError::Codec(name))?;
     Ok((movement.x, movement.y, movement.z))
+}
+
+fn decode_packed_degrees(value: u8) -> f32 {
+    i8::from_ne_bytes([value]) as f32 * 360.0 / 256.0
 }
 
 fn read_nbt_bytes(
@@ -2554,9 +2604,10 @@ mod tests {
         PLAY_CLIENTBOUND_MOVE_ENTITY_POS_PACKET_ID, PLAY_CLIENTBOUND_MOVE_ENTITY_POS_ROT_PACKET_ID,
         PLAY_CLIENTBOUND_MOVE_ENTITY_ROT_PACKET_ID, PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID,
         PLAY_CLIENTBOUND_REMOVE_ENTITIES_PACKET_ID, PLAY_CLIENTBOUND_REMOVE_MOB_EFFECT_PACKET_ID,
-        PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID, PLAY_CLIENTBOUND_SET_ENTITY_DATA_PACKET_ID,
-        PLAY_CLIENTBOUND_SET_ENTITY_MOTION_PACKET_ID, PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID,
-        PLAY_CLIENTBOUND_TELEPORT_ENTITY_PACKET_ID, PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID,
+        PLAY_CLIENTBOUND_ROTATE_HEAD_PACKET_ID, PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID,
+        PLAY_CLIENTBOUND_SET_ENTITY_DATA_PACKET_ID, PLAY_CLIENTBOUND_SET_ENTITY_MOTION_PACKET_ID,
+        PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID, PLAY_CLIENTBOUND_TELEPORT_ENTITY_PACKET_ID,
+        PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID,
         PLAY_SERVERBOUND_ACCEPT_TELEPORTATION_PACKET_ID,
         PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID,
         PLAY_SERVERBOUND_CLIENT_TICK_END_PACKET_ID, PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
@@ -2590,9 +2641,9 @@ mod tests {
         parse_entity_teleport_packet, parse_forget_level_chunk_packet, parse_light_update_packet,
         parse_move_entity_pos_packet, parse_move_entity_pos_rot_packet,
         parse_move_entity_rot_packet, parse_optional_item_stack, parse_player_position_packet,
-        parse_remove_entities_packet, parse_remove_mob_effect_packet, parse_section_data,
-        parse_set_entity_motion_packet, parse_system_chat_packet, parse_update_mob_effect_packet,
-        resolve_player_position, support_block_position,
+        parse_remove_entities_packet, parse_remove_mob_effect_packet, parse_rotate_head_packet,
+        parse_section_data, parse_set_entity_motion_packet, parse_system_chat_packet,
+        parse_update_mob_effect_packet, resolve_player_position, support_block_position,
     };
 
     #[test]
@@ -2620,6 +2671,7 @@ mod tests {
         assert_eq!(PLAY_CLIENTBOUND_MOVE_ENTITY_POS_PACKET_ID, 53);
         assert_eq!(PLAY_CLIENTBOUND_MOVE_ENTITY_POS_ROT_PACKET_ID, 54);
         assert_eq!(PLAY_CLIENTBOUND_MOVE_ENTITY_ROT_PACKET_ID, 56);
+        assert_eq!(PLAY_CLIENTBOUND_ROTATE_HEAD_PACKET_ID, 83);
         assert_eq!(PLAY_CLIENTBOUND_SET_ENTITY_MOTION_PACKET_ID, 101);
         assert_eq!(PLAY_CLIENTBOUND_KEEP_ALIVE_PACKET_ID, 44);
         assert_eq!(PLAY_CLIENTBOUND_CHUNK_PACKET_ID, 45);
@@ -2963,7 +3015,7 @@ mod tests {
             payload.extend_from_slice(&value.to_be_bytes());
         }
         payload.push(0);
-        payload.extend_from_slice(&[0, 0, 0]);
+        payload.extend_from_slice(&[64, 192, 32]);
         crate::wire::write_varint(0, &mut payload);
 
         assert_eq!(
@@ -2976,8 +3028,12 @@ mod tests {
                 y: 80.0,
                 z: -35.5,
                 movement: (0.0, 0.0, 0.0),
+                x_rot: 90.0,
+                y_rot: -90.0,
+                y_head_rot: 45.0,
                 data: 0,
                 applied_to_world: false,
+                applied_rotation: None,
             }
         );
     }
@@ -3002,6 +3058,26 @@ mod tests {
 
         payload.push(0);
         assert!(parse_set_entity_motion_packet(&payload).is_err());
+    }
+
+    #[test]
+    fn entity_head_rotation_parser_matches_java_packed_degrees() {
+        let mut payload = Vec::new();
+        crate::wire::write_varint(37, &mut payload);
+        payload.push(64);
+
+        assert_eq!(
+            parse_rotate_head_packet(&payload).expect("rotate head"),
+            super::EntityHeadRotationObservation {
+                entity_id: 37,
+                y_head_rot: 90.0,
+                applied_to_world: false,
+                applied_head_rotation: None,
+            }
+        );
+
+        payload.push(0);
+        assert!(parse_rotate_head_packet(&payload).is_err());
     }
 
     #[test]
@@ -3084,6 +3160,7 @@ mod tests {
                 on_ground: true,
                 applied_to_world: false,
                 applied_position: None,
+                applied_rotation: None,
             }
         );
 
@@ -3117,6 +3194,7 @@ mod tests {
                 on_ground: false,
                 applied_to_world: false,
                 applied_position: None,
+                applied_rotation: None,
             }
         );
 
@@ -3146,6 +3224,7 @@ mod tests {
                 on_ground: true,
                 applied_to_world: false,
                 applied_position: None,
+                applied_rotation: None,
             }
         );
 
@@ -3160,13 +3239,14 @@ mod tests {
                 delta_x: 256,
                 delta_y: -512,
                 delta_z: 1024,
-                y_rot: Some(64),
-                x_rot: Some(192),
+                y_rot: Some(90.0),
+                x_rot: Some(-90.0),
                 has_position: true,
                 has_rotation: true,
                 on_ground: true,
                 applied_to_world: false,
                 applied_position: None,
+                applied_rotation: None,
             }
         );
 
@@ -3180,13 +3260,14 @@ mod tests {
                 delta_x: 0,
                 delta_y: 0,
                 delta_z: 0,
-                y_rot: Some(64),
-                x_rot: Some(192),
+                y_rot: Some(90.0),
+                x_rot: Some(-90.0),
                 has_position: false,
                 has_rotation: true,
                 on_ground: false,
                 applied_to_world: false,
                 applied_position: None,
+                applied_rotation: None,
             }
         );
 

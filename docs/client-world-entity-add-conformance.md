@@ -33,15 +33,15 @@ olan global entity deposu dalıdır.
   Packet gözlemi ve world application sonucu ayrı izlenir.
 - UUID state'i [ayrı P08.e UUID kaydında](client-world-entity-uuid-conformance.md)
   ele alınır. Başlangıç hareketi ve motion packet state'i [ayrı motion kaydında](client-world-entity-motion-conformance.md)
-  ele alınır. Üç rotation değeri,
+  ele alınır. Üç rotation değeri [ayrı rotation kaydında](client-world-entity-rotation-conformance.md),
   metadata/equipment paketleri, remove packet'leri ve entity tick/interpolation
   state'i bu dilimin dışındadır.
 
 ## Rust doğrulaması
 
 `parse_add_entity_packet`, Java alan sırasındaki bütün wire alanlarını tüketir;
-UUID'yi ve başlangıç `LpVec3` hareketini ayrıştırır ve trailing byte'ları
-reddeder. `WorldEntityAdd` probe modu her başarılı add paketini `EntityInput`
+UUID'yi, başlangıç `LpVec3` hareketini ve üç packed rotation değerini ayrıştırır
+ve trailing byte'ları reddeder. `WorldEntityAdd` probe modu her başarılı add paketini `EntityInput`
 olarak `ClientWorld`'e uygular ve observation üzerinde uygulama sonucunu
 işaretler. UUID'nin world state'ine taşınması [ayrı UUID kaydında](client-world-entity-uuid-conformance.md), başlangıç ve canlı motion state'i
 [motion kaydında](client-world-entity-motion-conformance.md) doğrulanır.

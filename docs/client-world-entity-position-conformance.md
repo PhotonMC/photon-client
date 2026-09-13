@@ -42,8 +42,9 @@ etkileri entity sınıfının ayrı state'lerine bağlıdır.
   konum çözümünü etkilemez.
 - World'de bulunmayan entity ID'si için packet observation tutulur fakat
   application sonucu false olur.
-- Bu dilim `ClientWorld` içinde yalnız konum state'ini günceller. Rotation,
-  on-ground, interpolation base/history, passenger ve render state'leri semantic
+- Bu dilim `ClientWorld` içinde konum state'ini günceller. Packet içindeki raw
+  rotation alanlarının world state'ine uygulanması [rotation kaydında](client-world-entity-rotation-conformance.md)
+  ele alınır. On-ground, interpolation base/history, passenger ve render state'leri semantic
   olarak uygulanmaz; raw delta movement state'i [motion kaydında](client-world-entity-motion-conformance.md)
   ele alınır.
 
@@ -113,7 +114,7 @@ gösterir; Java istemcisiyle parity iddiası değildir.
 ## Açık kapsam
 
 Quantized delta base'inin Java render/interpolation state'iyle ayrıştırılması,
-rotation ve head rotation state'i, delta movement integration, on-ground, teleport
+rotation interpolation ve head/body semantic state'i, delta movement integration, on-ground, teleport
 relative rotation/delta bitleri, passenger/vehicle ilişkisi, entity tick/fizik,
 chunk unload temizliği, dimension/respawn, render state'i
 ve oynanabilir istemci bağlantısı açık kalır. Bu konum state'i

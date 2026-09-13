@@ -257,6 +257,9 @@ impl ClientWorld {
                 motion_x_bits: entity.movement.0.to_bits(),
                 motion_y_bits: entity.movement.1.to_bits(),
                 motion_z_bits: entity.movement.2.to_bits(),
+                x_rot_bits: entity.rotation.1.to_bits(),
+                y_rot_bits: entity.rotation.0.to_bits(),
+                y_head_rot_bits: entity.rotation.2.to_bits(),
                 data: entity.data,
                 metadata: None,
             },
@@ -279,6 +282,34 @@ impl ClientWorld {
         entity.motion_x_bits = input.x.to_bits();
         entity.motion_y_bits = input.y.to_bits();
         entity.motion_z_bits = input.z.to_bits();
+        true
+    }
+
+    pub(crate) fn apply_entity_rotation(&mut self, input: EntityRotationInput) -> bool {
+        let Some(entity) = self.entities.get_mut(&input.entity_id) else {
+            return false;
+        };
+        if let Some(y_rot) = input.y_rot {
+            let current = f32::from_bits(entity.y_rot_bits);
+            let value = if input.relative_y_rot {
+                current + y_rot
+            } else {
+                y_rot
+            };
+            entity.y_rot_bits = (value % 360.0).to_bits();
+        }
+        if let Some(x_rot) = input.x_rot {
+            let current = f32::from_bits(entity.x_rot_bits);
+            let value = if input.relative_x_rot {
+                current + x_rot
+            } else {
+                x_rot
+            };
+            entity.x_rot_bits = (value % 360.0).clamp(-90.0, 90.0).to_bits();
+        }
+        if let Some(y_head_rot) = input.y_head_rot {
+            entity.y_head_rot_bits = y_head_rot.to_bits();
+        }
         true
     }
 
@@ -317,6 +348,12 @@ impl ClientWorld {
             entity.x_bits = decode_entity_delta(current.0, input.delta_x);
             entity.y_bits = decode_entity_delta(current.1, input.delta_y);
             entity.z_bits = decode_entity_delta(current.2, input.delta_z);
+        }
+        if let Some(y_rot) = input.y_rot {
+            entity.y_rot_bits = (y_rot % 360.0).to_bits();
+        }
+        if let Some(x_rot) = input.x_rot {
+            entity.x_rot_bits = (x_rot % 360.0).clamp(-90.0, 90.0).to_bits();
         }
         true
     }
@@ -408,6 +445,9 @@ pub struct ClientEntity {
     motion_x_bits: u64,
     motion_y_bits: u64,
     motion_z_bits: u64,
+    x_rot_bits: u32,
+    y_rot_bits: u32,
+    y_head_rot_bits: u32,
     pub data: i32,
     metadata: Option<Vec<u8>>,
 }
@@ -426,6 +466,14 @@ impl ClientEntity {
             f64::from_bits(self.motion_x_bits),
             f64::from_bits(self.motion_y_bits),
             f64::from_bits(self.motion_z_bits),
+        )
+    }
+
+    pub fn rotation(&self) -> (f32, f32, f32) {
+        (
+            f32::from_bits(self.y_rot_bits),
+            f32::from_bits(self.x_rot_bits),
+            f32::from_bits(self.y_head_rot_bits),
         )
     }
 
@@ -489,6 +537,7 @@ pub(crate) struct EntityInput {
     pub(crate) y: f64,
     pub(crate) z: f64,
     pub(crate) movement: (f64, f64, f64),
+    pub(crate) rotation: (f32, f32, f32),
     pub(crate) data: i32,
 }
 
@@ -497,6 +546,15 @@ pub(crate) struct EntityMotionInput {
     pub(crate) x: f64,
     pub(crate) y: f64,
     pub(crate) z: f64,
+}
+
+pub(crate) struct EntityRotationInput {
+    pub(crate) entity_id: i32,
+    pub(crate) y_rot: Option<f32>,
+    pub(crate) x_rot: Option<f32>,
+    pub(crate) y_head_rot: Option<f32>,
+    pub(crate) relative_y_rot: bool,
+    pub(crate) relative_x_rot: bool,
 }
 
 pub(crate) struct EntityPositionInput {
@@ -513,6 +571,8 @@ pub(crate) struct EntityMoveInput {
     pub(crate) delta_y: i16,
     pub(crate) delta_z: i16,
     pub(crate) has_position: bool,
+    pub(crate) y_rot: Option<f32>,
+    pub(crate) x_rot: Option<f32>,
 }
 
 fn decode_entity_delta(base: f64, delta: i16) -> u64 {
@@ -586,7 +646,8 @@ fn apply_light_layer(
 mod tests {
     use super::{
         BlockEntityInput, ClientWorld, DimensionBounds, EntityInput, EntityMotionInput,
-        EntityMoveInput, EntityPositionInput, LightLayerInput, LightUpdateInput, SectionInput,
+        EntityMoveInput, EntityPositionInput, EntityRotationInput, LightLayerInput,
+        LightUpdateInput, SectionInput,
     };
     use crate::binary::{BitSet, Uuid};
 
@@ -824,6 +885,7 @@ mod tests {
             y: 80.0,
             z: -35.5,
             movement: (0.125, -0.25, 0.5),
+            rotation: (12.5, -30.0, 45.0),
             data: 6,
         }));
         assert_eq!(world.loaded_entity_count(), 1);
@@ -840,6 +902,10 @@ mod tests {
         assert_eq!(
             world.entity_at(37).map(super::ClientEntity::motion),
             Some((0.125, -0.25, 0.5))
+        );
+        assert_eq!(
+            world.entity_at(37).map(super::ClientEntity::rotation),
+            Some((12.5, -30.0, 45.0))
         );
         assert_eq!(world.entity_metadata_at(37), None);
         assert!(world.apply_entity_metadata(37, &[1, 0, 255]));
@@ -860,6 +926,38 @@ mod tests {
             x: 1.0,
             y: 2.0,
             z: 3.0,
+        }));
+        assert!(world.apply_entity_rotation(EntityRotationInput {
+            entity_id: 37,
+            y_rot: Some(90.0),
+            x_rot: Some(-15.0),
+            y_head_rot: Some(135.0),
+            relative_y_rot: false,
+            relative_x_rot: false,
+        }));
+        assert_eq!(
+            world.entity_at(37).map(super::ClientEntity::rotation),
+            Some((90.0, -15.0, 135.0))
+        );
+        assert!(world.apply_entity_rotation(EntityRotationInput {
+            entity_id: 37,
+            y_rot: Some(45.0),
+            x_rot: Some(10.0),
+            y_head_rot: None,
+            relative_y_rot: true,
+            relative_x_rot: true,
+        }));
+        assert_eq!(
+            world.entity_at(37).map(super::ClientEntity::rotation),
+            Some((135.0, -5.0, 135.0))
+        );
+        assert!(!world.apply_entity_rotation(EntityRotationInput {
+            entity_id: 999,
+            y_rot: Some(1.0),
+            x_rot: Some(2.0),
+            y_head_rot: Some(3.0),
+            relative_y_rot: false,
+            relative_x_rot: false,
         }));
 
         assert!(world.apply_entity_position(EntityPositionInput {
@@ -897,6 +995,8 @@ mod tests {
             delta_y: -4_096,
             delta_z: 0,
             has_position: true,
+            y_rot: None,
+            x_rot: None,
         }));
         assert_eq!(
             world.entity_at(37).map(super::ClientEntity::position),
@@ -908,6 +1008,8 @@ mod tests {
             delta_y: 8,
             delta_z: 9,
             has_position: false,
+            y_rot: None,
+            x_rot: None,
         }));
         assert_eq!(
             world.entity_at(37).map(super::ClientEntity::position),
@@ -922,6 +1024,7 @@ mod tests {
             y: 65.0,
             z: 2.0,
             movement: (0.0, 0.0, 0.0),
+            rotation: (0.0, 0.0, 0.0),
             data: 0,
         }));
         assert_eq!(world.loaded_entity_count(), 1);

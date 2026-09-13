@@ -92,7 +92,7 @@ kopyasına taşındığını gösterir; Java istemcisiyle parity iddiası değil
 ## Açık kapsam
 
 Motion'in tick entegrasyonu, yerçekimi ve collision, network interpolation,
-rotation/head rotation, on-ground, passenger ilişkisi, metadata/equipment,
+rotation interpolation/head-body semantic state'i, on-ground, passenger ilişkisi, metadata/equipment,
 remove/lifecycle, chunk unload temizliği, dimension/respawn, render state'i
 ve oynanabilir istemci bağlantısı açık kalır. Bu motion state'i
 `server-conformance` ilerlemesidir; P08'in `client-parity` kapanışı değildir.

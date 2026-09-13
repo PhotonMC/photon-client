@@ -83,7 +83,7 @@ gösterir; Java istemcisiyle parity iddiası değildir.
 
 Entity type registry'sinin semantic çözümü, player profile/seen-player map'i,
 metadata/equipment/status, remove/lifecycle, chunk unload temizliği,
-rotation/head rotation, motion tick integration/interpolation, passenger ilişkisi,
+rotation interpolation/head-body semantic state'i, motion tick integration/interpolation, passenger ilişkisi,
 entity tick/fizik, dimension/respawn, render state'i ve oynanabilir istemci
 bağlantısı açık kalır. Bu UUID state'i `server-conformance` ilerlemesidir;
 P08'in `client-parity` kapanışı değildir.
