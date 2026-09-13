@@ -18,6 +18,7 @@ const ENTITY_POSE_DATA_ID: u8 = 6;
 const ENTITY_TICKS_FROZEN_DATA_ID: u8 = 7;
 const ENTITY_LIVING_FLAGS_DATA_ID: u8 = 8;
 const ENTITY_HEALTH_DATA_ID: u8 = 9;
+const ENTITY_ARROW_COUNT_DATA_ID: u8 = 12;
 const ENTITY_MOB_FLAGS_DATA_ID: u8 = 15;
 const ENTITY_DATA_SERIALIZER_BYTE_ID: i32 = 0;
 const ENTITY_DATA_SERIALIZER_INT_ID: i32 = 1;
@@ -264,6 +265,10 @@ fn air_supply_from_metadata(metadata: &[u8]) -> Option<i32> {
 
 fn health_from_metadata(metadata: &[u8]) -> Option<f32> {
     metadata_float_value(metadata, ENTITY_HEALTH_DATA_ID)
+}
+
+fn arrow_count_from_metadata(metadata: &[u8]) -> Option<i32> {
+    metadata_int_value(metadata, ENTITY_ARROW_COUNT_DATA_ID)
 }
 
 fn ticks_frozen_from_metadata(metadata: &[u8]) -> Option<i32> {
@@ -962,6 +967,7 @@ impl ClientWorld {
             player.x_rot_bits = previous.x_rot_bits;
             player.shared_flags = previous.shared_flags;
             player.living_flags = previous.living_flags;
+            player.arrow_count = previous.arrow_count;
             player.air_supply = previous.air_supply;
             player.custom_name_present = previous.custom_name_present;
             player.custom_name_visible = previous.custom_name_visible;
@@ -1375,6 +1381,7 @@ impl ClientWorld {
                 mob_flags: 0,
                 air_supply: DEFAULT_AIR_SUPPLY,
                 health_bits: None,
+                arrow_count: 0,
                 custom_name_present: false,
                 custom_name_visible: false,
                 no_gravity: false,
@@ -1392,6 +1399,7 @@ impl ClientWorld {
         let mob_flags = mob_flags_from_metadata(metadata);
         let air_supply = air_supply_from_metadata(metadata);
         let health = health_from_metadata(metadata);
+        let arrow_count = arrow_count_from_metadata(metadata);
         let custom_name_present = custom_name_present_from_metadata(metadata);
         let custom_name_visible = custom_name_visible_from_metadata(metadata);
         let no_gravity = no_gravity_from_metadata(metadata);
@@ -1415,6 +1423,9 @@ impl ClientWorld {
             }
             if let Some(health) = health {
                 player.health_bits = health.to_bits();
+            }
+            if let Some(arrow_count) = arrow_count {
+                player.arrow_count = arrow_count;
             }
             if let Some(custom_name_present) = custom_name_present {
                 player.custom_name_present = custom_name_present;
@@ -1454,6 +1465,9 @@ impl ClientWorld {
         }
         if let Some(health) = health {
             entity.health_bits = Some(health.to_bits());
+        }
+        if let Some(arrow_count) = arrow_count {
+            entity.arrow_count = arrow_count;
         }
         if let Some(custom_name_present) = custom_name_present {
             entity.custom_name_present = custom_name_present;
@@ -1815,6 +1829,7 @@ pub struct ClientEntity {
     mob_flags: u8,
     air_supply: i32,
     health_bits: Option<u32>,
+    arrow_count: i32,
     custom_name_present: bool,
     custom_name_visible: bool,
     no_gravity: bool,
@@ -1976,6 +1991,7 @@ pub struct ClientPlayerState {
     entity_data: Option<Vec<u8>>,
     shared_flags: u8,
     living_flags: u8,
+    arrow_count: i32,
     air_supply: i32,
     custom_name_present: bool,
     custom_name_visible: bool,
@@ -2024,6 +2040,7 @@ impl ClientPlayerState {
             entity_data: None,
             shared_flags: 0,
             living_flags: 0,
+            arrow_count: 0,
             air_supply: DEFAULT_AIR_SUPPLY,
             custom_name_present: false,
             custom_name_visible: false,
@@ -2225,6 +2242,10 @@ impl ClientPlayerState {
         f32::from_bits(self.health_bits)
     }
 
+    pub fn arrow_count(&self) -> i32 {
+        self.arrow_count
+    }
+
     pub fn food(&self) -> i32 {
         self.food
     }
@@ -2390,6 +2411,10 @@ impl ClientEntity {
 
     pub fn health(&self) -> Option<f32> {
         self.health_bits.map(f32::from_bits)
+    }
+
+    pub fn arrow_count(&self) -> i32 {
+        self.arrow_count
     }
 
     pub fn has_custom_name(&self) -> bool {
@@ -3750,6 +3775,80 @@ mod tests {
         assert_eq!(
             world.local_player().map(|player| player.health()),
             Some(20.0)
+        );
+    }
+
+    #[test]
+    fn entity_arrow_count_follows_java_int_metadata_and_preserves_partial_state() {
+        let mut world = ClientWorld::default();
+        assert!(world.apply_entity(EntityInput {
+            entity_id: 37,
+            uuid: Uuid::new(1, 2),
+            type_id: 54,
+            x: 1.25,
+            y: 80.0,
+            z: -35.5,
+            movement: (0.0, 0.0, 0.0),
+            rotation: (0.0, 0.0, 0.0),
+            data: 0,
+        }));
+        assert_eq!(
+            world.entity_at(37).map(super::ClientEntity::arrow_count),
+            Some(0)
+        );
+
+        let mut arrow_metadata = vec![
+            super::ENTITY_ARROW_COUNT_DATA_ID,
+            super::ENTITY_DATA_SERIALIZER_INT_ID as u8,
+        ];
+        crate::wire::write_varint(3, &mut arrow_metadata);
+        arrow_metadata.push(255);
+        assert!(world.apply_entity_metadata(37, &arrow_metadata));
+        assert_eq!(
+            world.entity_at(37).map(super::ClientEntity::arrow_count),
+            Some(3)
+        );
+
+        assert!(world.apply_entity_metadata(37, &[5, 8, 1, 255]));
+        assert_eq!(
+            world.entity_at(37).map(super::ClientEntity::arrow_count),
+            Some(3)
+        );
+
+        assert!(world.apply_entity_metadata(37, &[12, 0, 7, 255]));
+        assert_eq!(
+            world.entity_at(37).map(super::ClientEntity::arrow_count),
+            Some(3)
+        );
+    }
+
+    #[test]
+    fn local_player_arrow_count_metadata_follows_entity_data_keep_respawn() {
+        let mut world = ClientWorld::default();
+        world.set_local_player_id(42);
+
+        let mut arrow_metadata = vec![
+            super::ENTITY_ARROW_COUNT_DATA_ID,
+            super::ENTITY_DATA_SERIALIZER_INT_ID as u8,
+        ];
+        crate::wire::write_varint(5, &mut arrow_metadata);
+        arrow_metadata.push(255);
+        assert!(world.apply_entity_metadata(42, &arrow_metadata));
+        assert_eq!(
+            world.local_player().map(|player| player.arrow_count()),
+            Some(5)
+        );
+
+        assert!(world.recreate_local_player(PLAYER_RESPAWN_KEEP_ENTITY_DATA));
+        assert_eq!(
+            world.local_player().map(|player| player.arrow_count()),
+            Some(5)
+        );
+
+        assert!(world.recreate_local_player(0));
+        assert_eq!(
+            world.local_player().map(|player| player.arrow_count()),
+            Some(0)
         );
     }
 

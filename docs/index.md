@@ -99,6 +99,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P08.e-entity-add — server-conformance ClientWorld entity add state](client-world-entity-add-conformance.md)
 - [P08.aa — server-conformance Entity air supply semantic state](client-world-entity-air-supply-conformance.md)
 - [P08.y — server-conformance Player entity always-ticking state'i](client-world-entity-always-ticking-conformance.md)
+- [P08.ak — server-conformance Entity living arrow count semantic state](client-world-entity-arrow-count-conformance.md)
 - [P08.af — server-conformance Entity custom-name visibility semantic state](client-world-entity-custom-name-conformance.md)
 - [P08.ag — server-conformance Entity custom-name presence semantic state](client-world-entity-custom-name-presence-conformance.md)
 - [P08.e-entity-ground — server-conformance ClientWorld entity on-ground state](client-world-entity-ground-conformance.md)
