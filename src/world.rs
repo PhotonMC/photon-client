@@ -170,6 +170,196 @@ impl DimensionBounds {
     }
 }
 
+/// The dimension-type fields consumed by the client world and renderer.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DimensionEnvironment {
+    has_fixed_time: bool,
+    has_skylight: bool,
+    has_ceiling: bool,
+    has_ender_dragon_fight: bool,
+    coordinate_scale_bits: u64,
+    logical_height: i32,
+    ambient_light_bits: u32,
+    skybox: DimensionSkybox,
+    cardinal_light_type: CardinalLightType,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct DimensionEnvironmentInput {
+    pub(crate) has_fixed_time: bool,
+    pub(crate) has_skylight: bool,
+    pub(crate) has_ceiling: bool,
+    pub(crate) has_ender_dragon_fight: bool,
+    pub(crate) coordinate_scale: f64,
+    pub(crate) logical_height: i32,
+    pub(crate) ambient_light: f32,
+    pub(crate) skybox: DimensionSkybox,
+    pub(crate) cardinal_light_type: CardinalLightType,
+}
+
+impl DimensionEnvironment {
+    fn new(input: DimensionEnvironmentInput) -> Self {
+        Self {
+            has_fixed_time: input.has_fixed_time,
+            has_skylight: input.has_skylight,
+            has_ceiling: input.has_ceiling,
+            has_ender_dragon_fight: input.has_ender_dragon_fight,
+            coordinate_scale_bits: input.coordinate_scale.to_bits(),
+            logical_height: input.logical_height,
+            ambient_light_bits: input.ambient_light.to_bits(),
+            skybox: input.skybox,
+            cardinal_light_type: input.cardinal_light_type,
+        }
+    }
+
+    pub(crate) fn from_wire(input: DimensionEnvironmentInput, height: i32) -> Option<Self> {
+        if !input.coordinate_scale.is_finite()
+            || !(1.0e-5..=3.0e7).contains(&input.coordinate_scale)
+            || !(0..=height).contains(&input.logical_height)
+        {
+            return None;
+        }
+        Some(Self::new(input))
+    }
+
+    /// Return the default environment for a built-in dimension.
+    pub fn for_builtin_dimension(dimension_key: &str) -> Self {
+        match dimension_key {
+            "minecraft:the_nether" => Self::new(DimensionEnvironmentInput {
+                has_fixed_time: true,
+                has_skylight: false,
+                has_ceiling: true,
+                has_ender_dragon_fight: false,
+                coordinate_scale: 8.0,
+                logical_height: 128,
+                ambient_light: 0.1,
+                skybox: DimensionSkybox::None,
+                cardinal_light_type: CardinalLightType::Nether,
+            }),
+            "minecraft:the_end" => Self::new(DimensionEnvironmentInput {
+                has_fixed_time: true,
+                has_skylight: true,
+                has_ceiling: false,
+                has_ender_dragon_fight: true,
+                coordinate_scale: 1.0,
+                logical_height: 256,
+                ambient_light: 0.25,
+                skybox: DimensionSkybox::End,
+                cardinal_light_type: CardinalLightType::Default,
+            }),
+            "minecraft:overworld_caves" => Self::new(DimensionEnvironmentInput {
+                has_fixed_time: false,
+                has_skylight: true,
+                has_ceiling: true,
+                has_ender_dragon_fight: false,
+                coordinate_scale: 1.0,
+                logical_height: 384,
+                ambient_light: 0.0,
+                skybox: DimensionSkybox::Overworld,
+                cardinal_light_type: CardinalLightType::Default,
+            }),
+            _ => Self::new(DimensionEnvironmentInput {
+                has_fixed_time: false,
+                has_skylight: true,
+                has_ceiling: false,
+                has_ender_dragon_fight: false,
+                coordinate_scale: 1.0,
+                logical_height: 384,
+                ambient_light: 0.0,
+                skybox: DimensionSkybox::Overworld,
+                cardinal_light_type: CardinalLightType::Default,
+            }),
+        }
+    }
+
+    pub fn has_fixed_time(&self) -> bool {
+        self.has_fixed_time
+    }
+
+    pub fn has_skylight(&self) -> bool {
+        self.has_skylight
+    }
+
+    pub fn has_ceiling(&self) -> bool {
+        self.has_ceiling
+    }
+
+    pub fn has_ender_dragon_fight(&self) -> bool {
+        self.has_ender_dragon_fight
+    }
+
+    pub fn coordinate_scale(&self) -> f64 {
+        f64::from_bits(self.coordinate_scale_bits)
+    }
+
+    pub fn logical_height(&self) -> i32 {
+        self.logical_height
+    }
+
+    pub fn ambient_light(&self) -> f32 {
+        f32::from_bits(self.ambient_light_bits)
+    }
+
+    pub fn skybox(&self) -> DimensionSkybox {
+        self.skybox
+    }
+
+    pub fn cardinal_light_type(&self) -> CardinalLightType {
+        self.cardinal_light_type
+    }
+}
+
+/// The skybox selected by Java's dimension type codec.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DimensionSkybox {
+    None,
+    Overworld,
+    End,
+}
+
+impl DimensionSkybox {
+    pub(crate) fn from_wire(value: &str) -> Option<Self> {
+        match value {
+            "none" => Some(Self::None),
+            "overworld" => Some(Self::Overworld),
+            "end" => Some(Self::End),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::None => "none",
+            Self::Overworld => "overworld",
+            Self::End => "end",
+        }
+    }
+}
+
+/// The cardinal-light preset selected by Java's dimension type codec.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CardinalLightType {
+    Default,
+    Nether,
+}
+
+impl CardinalLightType {
+    pub(crate) fn from_wire(value: &str) -> Option<Self> {
+        match value {
+            "default" => Some(Self::Default),
+            "nether" => Some(Self::Nether),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Default => "default",
+            Self::Nether => "nether",
+        }
+    }
+}
+
 /// The client-side copy of the currently loaded world.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ClientWorld {
@@ -180,6 +370,7 @@ pub struct ClientWorld {
     is_debug: bool,
     is_flat: bool,
     sea_level: i32,
+    dimension_environment: DimensionEnvironment,
     chunks: BTreeMap<(i32, i32), ClientChunk>,
     entities: BTreeMap<i32, ClientEntity>,
     local_player: Option<ClientPlayerState>,
@@ -202,6 +393,9 @@ impl ClientWorld {
             is_debug: false,
             is_flat: false,
             sea_level: 63,
+            dimension_environment: DimensionEnvironment::for_builtin_dimension(
+                "minecraft:overworld",
+            ),
             chunks: BTreeMap::new(),
             entities: BTreeMap::new(),
             local_player: None,
@@ -235,6 +429,10 @@ impl ClientWorld {
 
     pub fn sea_level(&self) -> i32 {
         self.sea_level
+    }
+
+    pub fn dimension_environment(&self) -> &DimensionEnvironment {
+        &self.dimension_environment
     }
 
     pub fn local_player(&self) -> Option<&ClientPlayerState> {
@@ -516,10 +714,11 @@ impl ClientWorld {
         true
     }
 
-    pub(crate) fn replace_dimension(
+    pub(crate) fn replace_dimension_with_environment(
         &mut self,
         input: DimensionInput<'_>,
         bounds: DimensionBounds,
+        environment: DimensionEnvironment,
     ) -> bool {
         let changed = self.dimension_key != input.key;
         self.dimension = bounds;
@@ -529,6 +728,7 @@ impl ClientWorld {
         self.is_debug = input.is_debug;
         self.is_flat = input.is_flat;
         self.sea_level = input.sea_level;
+        self.dimension_environment = environment;
         if changed {
             self.chunks.clear();
             self.entities.clear();
@@ -1483,10 +1683,10 @@ fn apply_light_layer(
 mod tests {
     use super::{
         BlockEntityInput, ClientAttributeModifierState, ClientAttributeState, ClientItemStackState,
-        ClientWorld, DimensionBounds, DimensionInput, EntityInput, EntityMotionInput,
-        EntityMoveInput, EntityPositionInput, EntityRotationInput, LightLayerInput,
-        LightUpdateInput, PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS, PLAYER_RESPAWN_KEEP_ENTITY_DATA,
-        SectionInput,
+        ClientWorld, DimensionBounds, DimensionEnvironment, DimensionInput, EntityInput,
+        EntityMotionInput, EntityMoveInput, EntityPositionInput, EntityRotationInput,
+        LightLayerInput, LightUpdateInput, PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS,
+        PLAYER_RESPAWN_KEEP_ENTITY_DATA, SectionInput,
     };
     use crate::binary::{BitSet, Uuid};
 
@@ -2285,7 +2485,11 @@ mod tests {
             sea_level: 32,
         };
 
-        assert!(world.replace_dimension(input, DimensionBounds::new(0, 256)));
+        assert!(world.replace_dimension_with_environment(
+            input,
+            DimensionBounds::new(0, 256),
+            DimensionEnvironment::for_builtin_dimension(input.key),
+        ));
         assert_eq!(world.local_player().map(|player| player.id()), Some(17));
         assert_eq!(
             world.local_player().map(|player| player.generation()),
@@ -2334,7 +2538,11 @@ mod tests {
             is_flat: false,
             sea_level: 32,
         };
-        assert!(world.replace_dimension(input, DimensionBounds::for_builtin_dimension(input.key)));
+        assert!(world.replace_dimension_with_environment(
+            input,
+            DimensionBounds::for_builtin_dimension(input.key),
+            DimensionEnvironment::for_builtin_dimension(input.key),
+        ));
         assert_eq!(world.dimension_key(), "minecraft:the_nether");
         assert_eq!(world.dimension(), DimensionBounds::new(0, 256));
         assert_eq!(world.dimension_type_id(), 1);
@@ -2354,7 +2562,11 @@ mod tests {
                 biomes: &biomes,
             }],
         );
-        assert!(!world.replace_dimension(input, DimensionBounds::for_builtin_dimension(input.key)));
+        assert!(!world.replace_dimension_with_environment(
+            input,
+            DimensionBounds::for_builtin_dimension(input.key),
+            DimensionEnvironment::for_builtin_dimension(input.key),
+        ));
         assert_eq!(world.loaded_chunk_count(), 1);
         assert_eq!(world.loaded_entity_count(), 0);
     }

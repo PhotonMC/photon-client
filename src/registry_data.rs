@@ -4,7 +4,10 @@ use crate::binary;
 use crate::identifier::{self, Identifier};
 use crate::nbt::{self, FieldValue};
 use crate::wire;
-use crate::world::DimensionBounds;
+use crate::world::{
+    CardinalLightType, DimensionBounds, DimensionEnvironment, DimensionEnvironmentInput,
+    DimensionSkybox,
+};
 
 /// Registry-data decoder failures using the runner's error categories.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -63,6 +66,92 @@ impl PackedRegistryEntry {
         DimensionBounds::from_dimension_type(min_y, height)
             .map(Some)
             .ok_or(ReadError::DecoderError)
+    }
+
+    /// Decode the client-consumed environment fields of a serialized DimensionType entry.
+    pub(crate) fn dimension_type_environment(
+        &self,
+    ) -> Result<Option<DimensionEnvironment>, ReadError> {
+        let Some(data) = &self.data else {
+            return Ok(None);
+        };
+        let FieldValue::Compound(fields) = data else {
+            return Err(ReadError::DecoderError);
+        };
+        let bounds = self
+            .dimension_type_bounds()?
+            .ok_or(ReadError::DecoderError)?;
+        let has_fixed_time = match find_field(fields, "has_fixed_time") {
+            None => false,
+            Some(value) => decode_bool(value).ok_or(ReadError::DecoderError)?,
+        };
+        let has_skylight = find_field(fields, "has_skylight")
+            .and_then(decode_bool)
+            .ok_or(ReadError::DecoderError)?;
+        let has_ceiling = find_field(fields, "has_ceiling")
+            .and_then(decode_bool)
+            .ok_or(ReadError::DecoderError)?;
+        let has_ender_dragon_fight = find_field(fields, "has_ender_dragon_fight")
+            .and_then(decode_bool)
+            .ok_or(ReadError::DecoderError)?;
+        let coordinate_scale = match find_field(fields, "coordinate_scale") {
+            Some(FieldValue::Double(value)) => *value,
+            _ => return Err(ReadError::DecoderError),
+        };
+        let logical_height = match find_field(fields, "logical_height") {
+            Some(FieldValue::Int(value)) => *value,
+            _ => return Err(ReadError::DecoderError),
+        };
+        let ambient_light = match find_field(fields, "ambient_light") {
+            Some(FieldValue::Float(value)) => *value,
+            _ => return Err(ReadError::DecoderError),
+        };
+        let skybox = match find_field(fields, "skybox") {
+            None => DimensionSkybox::Overworld,
+            Some(FieldValue::Str(value)) => {
+                DimensionSkybox::from_wire(value).ok_or(ReadError::DecoderError)?
+            }
+            Some(_) => return Err(ReadError::DecoderError),
+        };
+        let cardinal_light_type = match find_field(fields, "cardinal_light") {
+            None => CardinalLightType::Default,
+            Some(FieldValue::Str(value)) => {
+                CardinalLightType::from_wire(value).ok_or(ReadError::DecoderError)?
+            }
+            Some(_) => return Err(ReadError::DecoderError),
+        };
+
+        DimensionEnvironment::from_wire(
+            DimensionEnvironmentInput {
+                has_fixed_time,
+                has_skylight,
+                has_ceiling,
+                has_ender_dragon_fight,
+                coordinate_scale,
+                logical_height,
+                ambient_light,
+                skybox,
+                cardinal_light_type,
+            },
+            bounds.height,
+        )
+        .map(Some)
+        .ok_or(ReadError::DecoderError)
+    }
+}
+
+fn find_field<'a>(fields: &'a [crate::nbt::Field], key: &str) -> Option<&'a FieldValue> {
+    fields
+        .iter()
+        .find(|field| field.key == key)
+        .map(|field| &field.value)
+}
+
+fn decode_bool(value: &FieldValue) -> Option<bool> {
+    match value {
+        FieldValue::Byte(0) => Some(false),
+        FieldValue::Byte(1) => Some(true),
+        _ => None,
     }
 }
 
@@ -165,7 +254,7 @@ mod tests {
     use super::{PackedRegistryEntry, ReadError};
     use crate::identifier::Identifier;
     use crate::nbt::{Field, FieldValue};
-    use crate::world::DimensionBounds;
+    use crate::world::{CardinalLightType, DimensionBounds, DimensionSkybox};
 
     fn dimension_type_data(min_y: i32, height: i32) -> FieldValue {
         FieldValue::Compound(vec![
@@ -176,6 +265,55 @@ mod tests {
             Field {
                 key: "min_y".to_owned(),
                 value: FieldValue::Int(min_y),
+            },
+        ])
+    }
+
+    fn dimension_type_environment_data() -> FieldValue {
+        FieldValue::Compound(vec![
+            Field {
+                key: "ambient_light".to_owned(),
+                value: FieldValue::Float(0.35),
+            },
+            Field {
+                key: "cardinal_light".to_owned(),
+                value: FieldValue::Str("nether".to_owned()),
+            },
+            Field {
+                key: "coordinate_scale".to_owned(),
+                value: FieldValue::Double(2.5),
+            },
+            Field {
+                key: "has_ceiling".to_owned(),
+                value: FieldValue::Byte(1),
+            },
+            Field {
+                key: "has_ender_dragon_fight".to_owned(),
+                value: FieldValue::Byte(1),
+            },
+            Field {
+                key: "has_fixed_time".to_owned(),
+                value: FieldValue::Byte(1),
+            },
+            Field {
+                key: "has_skylight".to_owned(),
+                value: FieldValue::Byte(0),
+            },
+            Field {
+                key: "height".to_owned(),
+                value: FieldValue::Int(192),
+            },
+            Field {
+                key: "logical_height".to_owned(),
+                value: FieldValue::Int(128),
+            },
+            Field {
+                key: "min_y".to_owned(),
+                value: FieldValue::Int(-32),
+            },
+            Field {
+                key: "skybox".to_owned(),
+                value: FieldValue::Str("end".to_owned()),
             },
         ])
     }
@@ -217,5 +355,72 @@ mod tests {
             misaligned.dimension_type_bounds(),
             Err(ReadError::DecoderError)
         );
+    }
+
+    #[test]
+    fn dimension_type_entry_extracts_client_environment_fields() {
+        let entry = PackedRegistryEntry::new(
+            Identifier::parse("p08:test").expect("identifier"),
+            Some(dimension_type_environment_data()),
+        );
+        let environment = entry
+            .dimension_type_environment()
+            .expect("valid environment")
+            .expect("environment data");
+
+        assert!(environment.has_fixed_time());
+        assert!(!environment.has_skylight());
+        assert!(environment.has_ceiling());
+        assert!(environment.has_ender_dragon_fight());
+        assert_eq!(environment.coordinate_scale().to_bits(), 2.5_f64.to_bits());
+        assert_eq!(environment.logical_height(), 128);
+        assert_eq!(environment.ambient_light().to_bits(), 0.35_f32.to_bits());
+        assert_eq!(environment.skybox(), DimensionSkybox::End);
+        assert_eq!(environment.cardinal_light_type(), CardinalLightType::Nether);
+
+        let defaults = PackedRegistryEntry::new(
+            Identifier::parse("p08:defaults").expect("identifier"),
+            Some(FieldValue::Compound(vec![
+                Field {
+                    key: "has_skylight".to_owned(),
+                    value: FieldValue::Byte(1),
+                },
+                Field {
+                    key: "has_ceiling".to_owned(),
+                    value: FieldValue::Byte(0),
+                },
+                Field {
+                    key: "has_ender_dragon_fight".to_owned(),
+                    value: FieldValue::Byte(0),
+                },
+                Field {
+                    key: "coordinate_scale".to_owned(),
+                    value: FieldValue::Double(1.0),
+                },
+                Field {
+                    key: "height".to_owned(),
+                    value: FieldValue::Int(192),
+                },
+                Field {
+                    key: "logical_height".to_owned(),
+                    value: FieldValue::Int(192),
+                },
+                Field {
+                    key: "min_y".to_owned(),
+                    value: FieldValue::Int(-32),
+                },
+                Field {
+                    key: "ambient_light".to_owned(),
+                    value: FieldValue::Float(0.0),
+                },
+            ])),
+        );
+        let defaults = defaults
+            .dimension_type_environment()
+            .expect("valid environment")
+            .expect("environment data");
+        assert!(!defaults.has_fixed_time());
+        assert_eq!(defaults.skybox(), DimensionSkybox::Overworld);
+        assert_eq!(defaults.cardinal_light_type(), CardinalLightType::Default);
     }
 }

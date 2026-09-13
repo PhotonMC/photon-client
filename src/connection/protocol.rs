@@ -15,7 +15,7 @@ use crate::protocol::ConnectionProtocol;
 use crate::wire;
 use crate::world::{
     ClientAttributeModifierState, ClientAttributeState, ClientItemStackState, ClientWorld,
-    DimensionBounds,
+    DimensionBounds, DimensionEnvironment,
 };
 
 pub(crate) const PROTOCOL_VERSION: i32 = 776;
@@ -545,6 +545,7 @@ pub struct PlayConnectionTrace {
     pub registry_packet_count: usize,
     pub registry_entry_count: usize,
     pub dimension_type_registry_bounds: Vec<Option<DimensionBounds>>,
+    pub dimension_type_registry_environments: Vec<Option<DimensionEnvironment>>,
     pub update_tags_packet_count: usize,
     pub play_login: bool,
     pub login_observation: Option<LoginObservation>,

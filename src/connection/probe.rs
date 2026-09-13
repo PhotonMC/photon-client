@@ -14,9 +14,10 @@ use crate::protocol::ConnectionProtocol;
 use crate::resources::KnownPack;
 use crate::wire;
 use crate::world::{
-    BlockEntityInput, DimensionBounds, DimensionInput, EntityInput, EntityMotionInput,
-    EntityMoveInput, EntityPositionInput, EntityRotationInput, LightLayerInput, LightUpdateInput,
-    PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS, PLAYER_RESPAWN_KEEP_ENTITY_DATA, SectionInput,
+    BlockEntityInput, DimensionBounds, DimensionEnvironment, DimensionInput, EntityInput,
+    EntityMotionInput, EntityMoveInput, EntityPositionInput, EntityRotationInput, LightLayerInput,
+    LightUpdateInput, PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS, PLAYER_RESPAWN_KEEP_ENTITY_DATA,
+    SectionInput,
 };
 
 use super::protocol::*;
@@ -1034,6 +1035,17 @@ fn dimension_bounds_for_spawn_info(
         .unwrap_or_else(|| DimensionBounds::for_builtin_dimension(&spawn_info.dimension))
 }
 
+fn dimension_environment_for_spawn_info(
+    trace: &PlayConnectionTrace,
+    spawn_info: &SpawnInfoObservation,
+) -> DimensionEnvironment {
+    usize::try_from(spawn_info.dimension_type_id)
+        .ok()
+        .and_then(|id| trace.dimension_type_registry_environments.get(id))
+        .and_then(|environment| environment.clone())
+        .unwrap_or_else(|| DimensionEnvironment::for_builtin_dimension(&spawn_info.dimension))
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ProbeAction {
     Basic,
@@ -1216,7 +1228,11 @@ fn connect_and_probe_with_mode(
                         let bounds = entry
                             .dimension_type_bounds()
                             .map_err(|_| ConnectionError::Codec("dimension type registry"))?;
+                        let environment = entry
+                            .dimension_type_environment()
+                            .map_err(|_| ConnectionError::Codec("dimension type environment"))?;
                         trace.dimension_type_registry_bounds.push(bounds);
+                        trace.dimension_type_registry_environments.push(environment);
                     }
                 }
             }
@@ -1813,7 +1829,7 @@ fn connect_and_probe_with_mode(
             }
             PLAY_CLIENTBOUND_LOGIN_PACKET_ID => {
                 let observation = parse_login_packet(payload)?;
-                trace.world.replace_dimension(
+                trace.world.replace_dimension_with_environment(
                     DimensionInput {
                         key: &observation.spawn_info.dimension,
                         dimension_type_id: observation.spawn_info.dimension_type_id,
@@ -1823,6 +1839,7 @@ fn connect_and_probe_with_mode(
                         sea_level: observation.spawn_info.sea_level,
                     },
                     dimension_bounds_for_spawn_info(&trace, &observation.spawn_info),
+                    dimension_environment_for_spawn_info(&trace, &observation.spawn_info),
                 );
                 trace.world.set_local_player_id(observation.player_id);
                 trace.login_observation = Some(observation);
@@ -1892,7 +1909,7 @@ fn connect_and_probe_with_mode(
                 let (spawn_info, data_to_keep) = parse_respawn_packet(payload)?;
                 let cleared_chunk_count = trace.world.loaded_chunk_count();
                 let cleared_entity_count = trace.world.loaded_entity_count();
-                let dimension_changed = trace.world.replace_dimension(
+                let dimension_changed = trace.world.replace_dimension_with_environment(
                     DimensionInput {
                         key: &spawn_info.dimension,
                         dimension_type_id: spawn_info.dimension_type_id,
@@ -1902,6 +1919,7 @@ fn connect_and_probe_with_mode(
                         sea_level: spawn_info.sea_level,
                     },
                     dimension_bounds_for_spawn_info(&trace, &spawn_info),
+                    dimension_environment_for_spawn_info(&trace, &spawn_info),
                 );
                 let local_player_recreated = trace.world.recreate_local_player(data_to_keep);
                 let local_player_id = trace.world.local_player().map(|player| player.id());
