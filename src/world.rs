@@ -10,6 +10,7 @@ pub(crate) const PLAYER_RESPAWN_KEEP_ENTITY_DATA: u8 = 2;
 const VANILLA_PLAYER_ENTITY_TYPE_ID: i32 = 156;
 const ENTITY_SHARED_FLAGS_DATA_ID: u8 = 0;
 const ENTITY_AIR_SUPPLY_DATA_ID: u8 = 1;
+const ENTITY_CUSTOM_NAME_DATA_ID: u8 = 2;
 const ENTITY_CUSTOM_NAME_VISIBLE_DATA_ID: u8 = 3;
 const ENTITY_SILENT_DATA_ID: u8 = 4;
 const ENTITY_NO_GRAVITY_DATA_ID: u8 = 5;
@@ -254,6 +255,34 @@ fn silent_from_metadata(metadata: &[u8]) -> Option<bool> {
 
 fn custom_name_visible_from_metadata(metadata: &[u8]) -> Option<bool> {
     metadata_boolean_value(metadata, ENTITY_CUSTOM_NAME_VISIBLE_DATA_ID)
+}
+
+fn custom_name_present_from_metadata(metadata: &[u8]) -> Option<bool> {
+    if metadata.last() != Some(&255) {
+        return None;
+    }
+    let mut metadata = metadata;
+    loop {
+        let (&data_id, rest) = metadata.split_first()?;
+        if data_id == 255 {
+            return None;
+        }
+        metadata = rest;
+        let serializer_id = crate::wire::read_varint(&mut metadata).ok()?;
+        if data_id == ENTITY_CUSTOM_NAME_DATA_ID {
+            if serializer_id != ENTITY_DATA_SERIALIZER_OPTIONAL_COMPONENT_ID {
+                return None;
+            }
+            let (&present, rest) = metadata.split_first()?;
+            metadata = rest;
+            if present == 0 {
+                return Some(false);
+            }
+            let component = crate::nbt::read_any_nbt(&mut metadata).ok()?;
+            return Some(component.is_some());
+        }
+        skip_metadata_value(&mut metadata, serializer_id)?;
+    }
 }
 
 /// The vertical bounds used when mapping a chunk packet's section order to Y.
@@ -882,6 +911,7 @@ impl ClientWorld {
             player.x_rot_bits = previous.x_rot_bits;
             player.shared_flags = previous.shared_flags;
             player.air_supply = previous.air_supply;
+            player.custom_name_present = previous.custom_name_present;
             player.custom_name_visible = previous.custom_name_visible;
             player.no_gravity = previous.no_gravity;
             player.silent = previous.silent;
@@ -1290,6 +1320,7 @@ impl ClientWorld {
                 metadata: None,
                 shared_flags: 0,
                 air_supply: DEFAULT_AIR_SUPPLY,
+                custom_name_present: false,
                 custom_name_visible: false,
                 no_gravity: false,
                 silent: false,
@@ -1303,6 +1334,7 @@ impl ClientWorld {
     pub(crate) fn apply_entity_metadata(&mut self, entity_id: i32, metadata: &[u8]) -> bool {
         let shared_flags = shared_flags_from_metadata(metadata);
         let air_supply = air_supply_from_metadata(metadata);
+        let custom_name_present = custom_name_present_from_metadata(metadata);
         let custom_name_visible = custom_name_visible_from_metadata(metadata);
         let no_gravity = no_gravity_from_metadata(metadata);
         let silent = silent_from_metadata(metadata);
@@ -1319,6 +1351,9 @@ impl ClientWorld {
             }
             if let Some(air_supply) = air_supply {
                 player.air_supply = air_supply;
+            }
+            if let Some(custom_name_present) = custom_name_present {
+                player.custom_name_present = custom_name_present;
             }
             if let Some(custom_name_visible) = custom_name_visible {
                 player.custom_name_visible = custom_name_visible;
@@ -1346,6 +1381,9 @@ impl ClientWorld {
         }
         if let Some(air_supply) = air_supply {
             entity.air_supply = air_supply;
+        }
+        if let Some(custom_name_present) = custom_name_present {
+            entity.custom_name_present = custom_name_present;
         }
         if let Some(custom_name_visible) = custom_name_visible {
             entity.custom_name_visible = custom_name_visible;
@@ -1701,6 +1739,7 @@ pub struct ClientEntity {
     metadata: Option<Vec<u8>>,
     shared_flags: u8,
     air_supply: i32,
+    custom_name_present: bool,
     custom_name_visible: bool,
     no_gravity: bool,
     silent: bool,
@@ -1861,6 +1900,7 @@ pub struct ClientPlayerState {
     entity_data: Option<Vec<u8>>,
     shared_flags: u8,
     air_supply: i32,
+    custom_name_present: bool,
     custom_name_visible: bool,
     no_gravity: bool,
     silent: bool,
@@ -1907,6 +1947,7 @@ impl ClientPlayerState {
             entity_data: None,
             shared_flags: 0,
             air_supply: DEFAULT_AIR_SUPPLY,
+            custom_name_present: false,
             custom_name_visible: false,
             no_gravity: false,
             silent: false,
@@ -2007,6 +2048,10 @@ impl ClientPlayerState {
 
     pub fn air_supply(&self) -> i32 {
         self.air_supply
+    }
+
+    pub fn has_custom_name(&self) -> bool {
+        self.custom_name_present
     }
 
     pub fn is_custom_name_visible(&self) -> bool {
@@ -2215,6 +2260,10 @@ impl ClientEntity {
 
     pub fn air_supply(&self) -> i32 {
         self.air_supply
+    }
+
+    pub fn has_custom_name(&self) -> bool {
+        self.custom_name_present
     }
 
     pub fn is_custom_name_visible(&self) -> bool {
@@ -3443,6 +3492,60 @@ mod tests {
     }
 
     #[test]
+    fn entity_custom_name_presence_follows_java_optional_component_metadata() {
+        let mut world = ClientWorld::default();
+        assert!(world.apply_entity(EntityInput {
+            entity_id: 37,
+            uuid: Uuid::new(1, 2),
+            type_id: 5,
+            x: 1.25,
+            y: 80.0,
+            z: -35.5,
+            movement: (0.0, 0.0, 0.0),
+            rotation: (0.0, 0.0, 0.0),
+            data: 0,
+        }));
+        let entity = world.entity_at(37).expect("default custom-name entity");
+        assert!(!entity.has_custom_name());
+        assert!(!entity.is_custom_name_visible());
+
+        let mut custom_name_metadata = vec![
+            super::ENTITY_CUSTOM_NAME_DATA_ID,
+            super::ENTITY_DATA_SERIALIZER_OPTIONAL_COMPONENT_ID as u8,
+            1,
+        ];
+        crate::nbt::write_any_nbt(
+            Some(&crate::nbt::FieldValue::Str("Display name".to_owned())),
+            &mut custom_name_metadata,
+        );
+        custom_name_metadata.extend([
+            super::ENTITY_CUSTOM_NAME_VISIBLE_DATA_ID,
+            super::ENTITY_DATA_SERIALIZER_BOOLEAN_ID as u8,
+            1,
+            255,
+        ]);
+        assert!(world.apply_entity_metadata(37, &custom_name_metadata));
+        let entity = world.entity_at(37).expect("named entity");
+        assert!(entity.has_custom_name());
+        assert!(entity.is_custom_name_visible());
+        assert!(entity.should_show_name());
+
+        assert!(world.apply_entity_metadata(
+            37,
+            &[
+                super::ENTITY_CUSTOM_NAME_DATA_ID,
+                super::ENTITY_DATA_SERIALIZER_OPTIONAL_COMPONENT_ID as u8,
+                0,
+                255,
+            ],
+        ));
+        let entity = world.entity_at(37).expect("unnamed entity");
+        assert!(!entity.has_custom_name());
+        assert!(entity.is_custom_name_visible());
+        assert!(entity.should_show_name());
+    }
+
+    #[test]
     fn entity_pose_follows_java_pose_metadata_and_maps_unknown_ids_to_standing() {
         let mut world = ClientWorld::default();
         assert!(world.apply_entity(EntityInput {
@@ -3848,6 +3951,13 @@ mod tests {
         assert!(world.apply_entity_metadata(42, &no_gravity_metadata));
         let silent_metadata = [4, 8, 1, 255];
         assert!(world.apply_entity_metadata(42, &silent_metadata));
+        let mut custom_name_metadata = vec![2, 6, 1];
+        crate::nbt::write_any_nbt(
+            Some(&crate::nbt::FieldValue::Str("Player name".to_owned())),
+            &mut custom_name_metadata,
+        );
+        custom_name_metadata.push(255);
+        assert!(world.apply_entity_metadata(42, &custom_name_metadata));
         let custom_name_visible_metadata = [3, 8, 1, 255];
         assert!(world.apply_entity_metadata(42, &custom_name_visible_metadata));
         let pose_metadata = [6, 20, 10, 255];
@@ -3870,6 +3980,7 @@ mod tests {
         assert_eq!(player.air_supply(), 250);
         assert!(player.is_no_gravity());
         assert!(player.is_silent());
+        assert!(player.has_custom_name());
         assert!(player.is_custom_name_visible());
         assert!(player.should_show_name());
         assert_eq!(player.pose(), super::ClientEntityPose::Sitting);
@@ -3888,6 +3999,7 @@ mod tests {
         assert_eq!(player.air_supply(), 300);
         assert!(!player.is_no_gravity());
         assert!(!player.is_silent());
+        assert!(!player.has_custom_name());
         assert!(!player.is_custom_name_visible());
         assert!(player.should_show_name());
         assert_eq!(player.pose(), super::ClientEntityPose::Standing);
