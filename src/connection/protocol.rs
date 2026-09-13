@@ -59,6 +59,7 @@ pub(crate) const PLAY_CLIENTBOUND_CONTAINER_SET_SLOT_PACKET_ID: i32 = 20;
 pub(crate) const PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID: i32 = 96;
 pub(crate) const PLAY_CLIENTBOUND_REMOVE_ENTITIES_PACKET_ID: i32 = 77;
 pub(crate) const PLAY_CLIENTBOUND_REMOVE_MOB_EFFECT_PACKET_ID: i32 = 78;
+pub(crate) const PLAY_CLIENTBOUND_SET_ENTITY_DATA_PACKET_ID: i32 = 99;
 pub(crate) const PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID: i32 = 121;
 pub(crate) const PLAY_CLIENTBOUND_KEEP_ALIVE_PACKET_ID: i32 = 44;
 pub(crate) const PLAY_CLIENTBOUND_CHUNK_PACKET_ID: i32 = 45;
@@ -452,6 +453,7 @@ pub(crate) const LIGHT_UPDATE_DRAIN_TIMEOUT: Duration = Duration::from_secs(30);
 pub(crate) const BLOCK_ENTITY_UPDATE_DRAIN_TIMEOUT: Duration = Duration::from_secs(30);
 pub(crate) const ENTITY_ADD_DRAIN_TIMEOUT: Duration = Duration::from_secs(30);
 pub(crate) const ENTITY_REMOVE_DRAIN_TIMEOUT: Duration = Duration::from_secs(30);
+pub(crate) const ENTITY_METADATA_DRAIN_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// Errors raised while driving the initial real-server client session.
 #[derive(Debug)]
@@ -538,6 +540,7 @@ pub struct PlayConnectionTrace {
     pub snowball_item_registry_id: Option<i32>,
     pub add_entity_observations: Vec<AddEntityObservation>,
     pub remove_entities_observations: Vec<RemoveEntitiesObservation>,
+    pub entity_metadata_observations: Vec<EntityMetadataObservation>,
     pub container_content_observations: Vec<ContainerSetContentObservation>,
     pub container_slot_observations: Vec<ContainerSetSlotObservation>,
     pub cursor_item_observations: Vec<CursorItemObservation>,
@@ -639,6 +642,15 @@ pub struct AddEntityObservation {
 pub struct RemoveEntitiesObservation {
     pub entity_ids: Vec<i32>,
     pub applied_entity_count: usize,
+}
+
+/// Wire-level fields decoded from one clientbound entity-metadata packet.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EntityMetadataObservation {
+    pub entity_id: i32,
+    pub metadata_length: usize,
+    pub applied_to_world: bool,
+    pub(crate) metadata: Vec<u8>,
 }
 
 /// Wire-level fields decoded from one clientbound container slot update.
@@ -1430,6 +1442,23 @@ pub(crate) fn parse_remove_entities_packet(
     Ok(RemoveEntitiesObservation {
         entity_ids,
         applied_entity_count: 0,
+    })
+}
+
+pub(crate) fn parse_entity_metadata_packet(
+    input: &[u8],
+) -> Result<EntityMetadataObservation, ConnectionError> {
+    let mut input = input;
+    let entity_id = read_varint(&mut input, "entity metadata entity id")?;
+    if input.last() != Some(&255) {
+        return Err(ConnectionError::Codec("entity metadata end marker"));
+    }
+    let metadata = input.to_vec();
+    Ok(EntityMetadataObservation {
+        entity_id,
+        metadata_length: metadata.len(),
+        applied_to_world: false,
+        metadata,
     })
 }
 
@@ -2308,7 +2337,8 @@ mod tests {
         PLAY_CLIENTBOUND_LIGHT_UPDATE_PACKET_ID, PLAY_CLIENTBOUND_LOGIN_PACKET_ID,
         PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID, PLAY_CLIENTBOUND_REMOVE_ENTITIES_PACKET_ID,
         PLAY_CLIENTBOUND_REMOVE_MOB_EFFECT_PACKET_ID, PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID,
-        PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID, PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID,
+        PLAY_CLIENTBOUND_SET_ENTITY_DATA_PACKET_ID, PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID,
+        PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID,
         PLAY_SERVERBOUND_ACCEPT_TELEPORTATION_PACKET_ID,
         PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID,
         PLAY_SERVERBOUND_CLIENT_TICK_END_PACKET_ID, PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
@@ -2338,10 +2368,10 @@ mod tests {
         pack_block_position, parse_add_entity_packet, parse_block_destruction_packet,
         parse_block_entity_data_packet, parse_block_update_packet, parse_chunk_packet,
         parse_container_set_content_packet, parse_container_set_slot_packet,
-        parse_forget_level_chunk_packet, parse_light_update_packet, parse_optional_item_stack,
-        parse_player_position_packet, parse_remove_entities_packet, parse_remove_mob_effect_packet,
-        parse_section_data, parse_system_chat_packet, parse_update_mob_effect_packet,
-        resolve_player_position, support_block_position,
+        parse_entity_metadata_packet, parse_forget_level_chunk_packet, parse_light_update_packet,
+        parse_optional_item_stack, parse_player_position_packet, parse_remove_entities_packet,
+        parse_remove_mob_effect_packet, parse_section_data, parse_system_chat_packet,
+        parse_update_mob_effect_packet, resolve_player_position, support_block_position,
     };
 
     #[test]
@@ -2380,6 +2410,7 @@ mod tests {
         assert_eq!(PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID, 96);
         assert_eq!(PLAY_CLIENTBOUND_REMOVE_ENTITIES_PACKET_ID, 77);
         assert_eq!(PLAY_CLIENTBOUND_REMOVE_MOB_EFFECT_PACKET_ID, 78);
+        assert_eq!(PLAY_CLIENTBOUND_SET_ENTITY_DATA_PACKET_ID, 99);
         assert_eq!(PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID, 121);
         assert_eq!(PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID, 132);
         assert_eq!(PLAY_SERVERBOUND_ACCEPT_TELEPORTATION_PACKET_ID, 0);
@@ -2750,6 +2781,28 @@ mod tests {
 
         payload.push(0);
         assert!(parse_remove_entities_packet(&payload).is_err());
+    }
+
+    #[test]
+    fn entity_metadata_parser_keeps_java_end_marker_and_raw_payload() {
+        let mut payload = Vec::new();
+        crate::wire::write_varint(42, &mut payload);
+        payload.extend_from_slice(&[0, 0, 5, 255]);
+
+        assert_eq!(
+            parse_entity_metadata_packet(&payload).expect("entity metadata"),
+            super::EntityMetadataObservation {
+                entity_id: 42,
+                metadata_length: 4,
+                applied_to_world: false,
+                metadata: vec![0, 0, 5, 255],
+            }
+        );
+
+        let mut missing_marker = Vec::new();
+        crate::wire::write_varint(42, &mut missing_marker);
+        missing_marker.push(0);
+        assert!(parse_entity_metadata_packet(&missing_marker).is_err());
     }
 
     #[test]

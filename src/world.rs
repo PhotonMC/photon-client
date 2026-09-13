@@ -113,6 +113,12 @@ impl ClientWorld {
         self.entities.get(&entity_id)
     }
 
+    pub fn entity_metadata_at(&self, entity_id: i32) -> Option<&[u8]> {
+        self.entities
+            .get(&entity_id)
+            .and_then(|entity| entity.metadata())
+    }
+
     pub fn remove_entity(&mut self, entity_id: i32) -> bool {
         self.entities.remove(&entity_id).is_some()
     }
@@ -248,8 +254,17 @@ impl ClientWorld {
                 y_bits: entity.y.to_bits(),
                 z_bits: entity.z.to_bits(),
                 data: entity.data,
+                metadata: None,
             },
         );
+        true
+    }
+
+    pub(crate) fn apply_entity_metadata(&mut self, entity_id: i32, metadata: &[u8]) -> bool {
+        let Some(entity) = self.entities.get_mut(&entity_id) else {
+            return false;
+        };
+        entity.metadata = Some(metadata.to_vec());
         true
     }
 
@@ -337,6 +352,7 @@ pub struct ClientEntity {
     y_bits: u64,
     z_bits: u64,
     pub data: i32,
+    metadata: Option<Vec<u8>>,
 }
 
 impl ClientEntity {
@@ -346,6 +362,10 @@ impl ClientEntity {
             f64::from_bits(self.y_bits),
             f64::from_bits(self.z_bits),
         )
+    }
+
+    pub fn metadata(&self) -> Option<&[u8]> {
+        self.metadata.as_deref()
     }
 }
 
@@ -712,6 +732,10 @@ mod tests {
         );
         assert_eq!(world.entity_at(37).map(|entity| entity.type_id), Some(120));
         assert_eq!(world.entity_at(37).map(|entity| entity.data), Some(6));
+        assert_eq!(world.entity_metadata_at(37), None);
+        assert!(world.apply_entity_metadata(37, &[1, 0, 255]));
+        assert_eq!(world.entity_metadata_at(37), Some(&[1, 0, 255][..]));
+        assert!(!world.apply_entity_metadata(999, &[255]));
 
         assert!(world.apply_entity(EntityInput {
             entity_id: 37,
@@ -727,6 +751,7 @@ mod tests {
             world.entity_at(37).map(super::ClientEntity::position),
             Some((-4.0, 65.0, 2.0))
         );
+        assert_eq!(world.entity_metadata_at(37), None);
         assert!(world.remove_entity(37));
         assert_eq!(world.loaded_entity_count(), 0);
         assert!(!world.remove_entity(37));

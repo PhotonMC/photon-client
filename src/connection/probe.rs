@@ -162,6 +162,21 @@ pub fn connect_and_world_entity_remove_probe(
     )
 }
 
+/// Connect to a Java-protocol server, keep the loaded world open, and observe
+/// clientbound entity metadata without adding movement to the scenario.
+pub fn connect_and_world_entity_metadata_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeConfig::new(ProbeAction::WorldEntityMetadata),
+    )
+}
+
 /// Connect to a Java-protocol server and send a harmless block-action packet after loading.
 pub fn connect_and_action_probe(
     address: SocketAddr,
@@ -903,6 +918,7 @@ enum ProbeAction {
     WorldBlockEntityUpdate,
     WorldEntityAdd,
     WorldEntityRemove,
+    WorldEntityMetadata,
     BlockAction,
     BlockBreak,
     BlockBreakOutOfRange,
@@ -1244,6 +1260,13 @@ fn connect_and_probe_with_mode(
                 observation.applied_entity_count =
                     trace.world.remove_entities(&observation.entity_ids);
                 trace.remove_entities_observations.push(observation);
+            }
+            PLAY_CLIENTBOUND_SET_ENTITY_DATA_PACKET_ID => {
+                let mut observation = parse_entity_metadata_packet(payload)?;
+                observation.applied_to_world = trace
+                    .world
+                    .apply_entity_metadata(observation.entity_id, &observation.metadata);
+                trace.entity_metadata_observations.push(observation);
             }
             PLAY_CLIENTBOUND_CONTAINER_SET_CONTENT_PACKET_ID => {
                 trace
@@ -2519,6 +2542,7 @@ fn connect_and_probe_with_mode(
                 ProbeAction::WorldBlockEntityUpdate => BLOCK_ENTITY_UPDATE_DRAIN_TIMEOUT,
                 ProbeAction::WorldEntityAdd => ENTITY_ADD_DRAIN_TIMEOUT,
                 ProbeAction::WorldEntityRemove => ENTITY_REMOVE_DRAIN_TIMEOUT,
+                ProbeAction::WorldEntityMetadata => ENTITY_METADATA_DRAIN_TIMEOUT,
                 ProbeAction::SurvivalWaterBucketUseOn | ProbeAction::SurvivalEmptyBucketPickup => {
                     WATER_BUCKET_DRAIN_TIMEOUT
                 }
@@ -2632,6 +2656,7 @@ fn connect_and_probe_with_mode(
             ProbeAction::WorldBlockEntityUpdate => BLOCK_ENTITY_UPDATE_DRAIN_TIMEOUT,
             ProbeAction::WorldEntityAdd => ENTITY_ADD_DRAIN_TIMEOUT,
             ProbeAction::WorldEntityRemove => ENTITY_REMOVE_DRAIN_TIMEOUT,
+            ProbeAction::WorldEntityMetadata => ENTITY_METADATA_DRAIN_TIMEOUT,
             ProbeAction::SurvivalWaterBucketUseOn | ProbeAction::SurvivalEmptyBucketPickup => {
                 WATER_BUCKET_DRAIN_TIMEOUT
             }
