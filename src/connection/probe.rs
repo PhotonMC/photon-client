@@ -14,8 +14,8 @@ use crate::protocol::ConnectionProtocol;
 use crate::resources::KnownPack;
 use crate::wire;
 use crate::world::{
-    BlockEntityInput, EntityInput, EntityMoveInput, EntityPositionInput, LightLayerInput,
-    LightUpdateInput, SectionInput,
+    BlockEntityInput, EntityInput, EntityMotionInput, EntityMoveInput, EntityPositionInput,
+    LightLayerInput, LightUpdateInput, SectionInput,
 };
 
 use super::protocol::*;
@@ -1269,9 +1269,26 @@ fn connect_and_probe_with_mode(
                     x: observation.x,
                     y: observation.y,
                     z: observation.z,
+                    movement: observation.movement,
                     data: observation.data,
                 });
                 trace.add_entity_observations.push(observation);
+            }
+            PLAY_CLIENTBOUND_SET_ENTITY_MOTION_PACKET_ID => {
+                let mut observation = parse_set_entity_motion_packet(payload)?;
+                observation.applied_to_world = trace.world.apply_entity_motion(EntityMotionInput {
+                    entity_id: observation.entity_id,
+                    x: observation.x,
+                    y: observation.y,
+                    z: observation.z,
+                });
+                if observation.applied_to_world {
+                    observation.applied_motion = trace
+                        .world
+                        .entity_at(observation.entity_id)
+                        .map(|entity| entity.motion());
+                }
+                trace.entity_motion_observations.push(observation);
             }
             PLAY_CLIENTBOUND_REMOVE_ENTITIES_PACKET_ID => {
                 let mut observation = parse_remove_entities_packet(payload)?;

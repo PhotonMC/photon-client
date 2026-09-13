@@ -254,6 +254,9 @@ impl ClientWorld {
                 x_bits: entity.x.to_bits(),
                 y_bits: entity.y.to_bits(),
                 z_bits: entity.z.to_bits(),
+                motion_x_bits: entity.movement.0.to_bits(),
+                motion_y_bits: entity.movement.1.to_bits(),
+                motion_z_bits: entity.movement.2.to_bits(),
                 data: entity.data,
                 metadata: None,
             },
@@ -266,6 +269,16 @@ impl ClientWorld {
             return false;
         };
         entity.metadata = Some(metadata.to_vec());
+        true
+    }
+
+    pub(crate) fn apply_entity_motion(&mut self, input: EntityMotionInput) -> bool {
+        let Some(entity) = self.entities.get_mut(&input.entity_id) else {
+            return false;
+        };
+        entity.motion_x_bits = input.x.to_bits();
+        entity.motion_y_bits = input.y.to_bits();
+        entity.motion_z_bits = input.z.to_bits();
         true
     }
 
@@ -392,6 +405,9 @@ pub struct ClientEntity {
     x_bits: u64,
     y_bits: u64,
     z_bits: u64,
+    motion_x_bits: u64,
+    motion_y_bits: u64,
+    motion_z_bits: u64,
     pub data: i32,
     metadata: Option<Vec<u8>>,
 }
@@ -402,6 +418,14 @@ impl ClientEntity {
             f64::from_bits(self.x_bits),
             f64::from_bits(self.y_bits),
             f64::from_bits(self.z_bits),
+        )
+    }
+
+    pub fn motion(&self) -> (f64, f64, f64) {
+        (
+            f64::from_bits(self.motion_x_bits),
+            f64::from_bits(self.motion_y_bits),
+            f64::from_bits(self.motion_z_bits),
         )
     }
 
@@ -464,7 +488,15 @@ pub(crate) struct EntityInput {
     pub(crate) x: f64,
     pub(crate) y: f64,
     pub(crate) z: f64,
+    pub(crate) movement: (f64, f64, f64),
     pub(crate) data: i32,
+}
+
+pub(crate) struct EntityMotionInput {
+    pub(crate) entity_id: i32,
+    pub(crate) x: f64,
+    pub(crate) y: f64,
+    pub(crate) z: f64,
 }
 
 pub(crate) struct EntityPositionInput {
@@ -553,8 +585,8 @@ fn apply_light_layer(
 #[cfg(test)]
 mod tests {
     use super::{
-        BlockEntityInput, ClientWorld, DimensionBounds, EntityInput, EntityMoveInput,
-        EntityPositionInput, LightLayerInput, LightUpdateInput, SectionInput,
+        BlockEntityInput, ClientWorld, DimensionBounds, EntityInput, EntityMotionInput,
+        EntityMoveInput, EntityPositionInput, LightLayerInput, LightUpdateInput, SectionInput,
     };
     use crate::binary::{BitSet, Uuid};
 
@@ -791,6 +823,7 @@ mod tests {
             x: 1.25,
             y: 80.0,
             z: -35.5,
+            movement: (0.125, -0.25, 0.5),
             data: 6,
         }));
         assert_eq!(world.loaded_entity_count(), 1);
@@ -804,10 +837,30 @@ mod tests {
             world.entity_at(37).map(|entity| entity.uuid),
             Some(Uuid::new(1, 2))
         );
+        assert_eq!(
+            world.entity_at(37).map(super::ClientEntity::motion),
+            Some((0.125, -0.25, 0.5))
+        );
         assert_eq!(world.entity_metadata_at(37), None);
         assert!(world.apply_entity_metadata(37, &[1, 0, 255]));
         assert_eq!(world.entity_metadata_at(37), Some(&[1, 0, 255][..]));
         assert!(!world.apply_entity_metadata(999, &[255]));
+        assert!(world.apply_entity_motion(EntityMotionInput {
+            entity_id: 37,
+            x: -0.5,
+            y: 0.25,
+            z: 0.75,
+        }));
+        assert_eq!(
+            world.entity_at(37).map(super::ClientEntity::motion),
+            Some((-0.5, 0.25, 0.75))
+        );
+        assert!(!world.apply_entity_motion(EntityMotionInput {
+            entity_id: 999,
+            x: 1.0,
+            y: 2.0,
+            z: 3.0,
+        }));
 
         assert!(world.apply_entity_position(EntityPositionInput {
             entity_id: 37,
@@ -868,6 +921,7 @@ mod tests {
             x: -4.0,
             y: 65.0,
             z: 2.0,
+            movement: (0.0, 0.0, 0.0),
             data: 0,
         }));
         assert_eq!(world.loaded_entity_count(), 1);

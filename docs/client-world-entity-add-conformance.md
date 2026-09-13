@@ -23,7 +23,8 @@ olan global entity deposu dalıdır.
 
 - `ADD_ENTITY` gövdesi entity ID, type registry ID'si, üç f64 konum ve data
   VarInt alanlarını tüketir; UUID, sıkıştırılmış hareket ve rotation alanları
-  da wire sınırını doğrulamak için tüketilir.
+  da wire sınırını doğrulamak için tüketilir ve başlangıç movement değeri
+  [entity motion kaydında](client-world-entity-motion-conformance.md) world state'ine taşınır.
 - `ClientWorld`, entity'yi entity ID ile anahtarlanan global map'e ekler.
   Aynı ID tekrar gelirse kayıt değiştirilir ve benzersiz entity sayısı artmaz.
 - Konumun f64 bitleri korunur; `entity_at` sorgusu type ID, kesin konum ve
@@ -31,17 +32,19 @@ olan global entity deposu dalıdır.
 - Entity ekleme, ilgili chunk'ın `ClientWorld` içinde bulunmasını gerektirmez.
   Packet gözlemi ve world application sonucu ayrı izlenir.
 - UUID state'i [ayrı P08.e UUID kaydında](client-world-entity-uuid-conformance.md)
-  ele alınır. Hareket vektörü, üç rotation değeri, metadata/equipment paketleri,
-  remove packet'leri ve entity tick/interpolation state'i bu dilimin dışındadır.
+  ele alınır. Başlangıç hareketi ve motion packet state'i [ayrı motion kaydında](client-world-entity-motion-conformance.md)
+  ele alınır. Üç rotation değeri,
+  metadata/equipment paketleri, remove packet'leri ve entity tick/interpolation
+  state'i bu dilimin dışındadır.
 
 ## Rust doğrulaması
 
-`parse_add_entity_packet`, Java alan sırasındaki bütün wire alanlarını tüketir
-UUID'yi ayrıştırır ve trailing byte'ları reddeder. `WorldEntityAdd` probe modu
-her başarılı add paketini `EntityInput` olarak `ClientWorld`'e uygular ve
-observation üzerinde uygulama sonucunu işaretler. UUID'nin world state'ine
-taşınması [ayrı UUID kaydında](client-world-entity-uuid-conformance.md)
-doğrulanır.
+`parse_add_entity_packet`, Java alan sırasındaki bütün wire alanlarını tüketir;
+UUID'yi ve başlangıç `LpVec3` hareketini ayrıştırır ve trailing byte'ları
+reddeder. `WorldEntityAdd` probe modu her başarılı add paketini `EntityInput`
+olarak `ClientWorld`'e uygular ve observation üzerinde uygulama sonucunu
+işaretler. UUID'nin world state'ine taşınması [ayrı UUID kaydında](client-world-entity-uuid-conformance.md), başlangıç ve canlı motion state'i
+[motion kaydında](client-world-entity-motion-conformance.md) doğrulanır.
 
 `ClientWorld` unit testi aynı ID ile iki entity eklemesini, map boyutunun sabit
 kalmasını ve son type/position/data state'inin sorgulanmasını kontrol eder.

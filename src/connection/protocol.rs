@@ -50,6 +50,7 @@ pub(crate) const PLAY_CLIENTBOUND_ENTITY_POSITION_SYNC_PACKET_ID: i32 = 35;
 pub(crate) const PLAY_CLIENTBOUND_MOVE_ENTITY_POS_PACKET_ID: i32 = 53;
 pub(crate) const PLAY_CLIENTBOUND_MOVE_ENTITY_POS_ROT_PACKET_ID: i32 = 54;
 pub(crate) const PLAY_CLIENTBOUND_MOVE_ENTITY_ROT_PACKET_ID: i32 = 56;
+pub(crate) const PLAY_CLIENTBOUND_SET_ENTITY_MOTION_PACKET_ID: i32 = 101;
 pub(crate) const PLAY_CLIENTBOUND_BLOCK_CHANGED_ACK_PACKET_ID: i32 = 4;
 pub(crate) const PLAY_CLIENTBOUND_BLOCK_DESTRUCTION_PACKET_ID: i32 = 5;
 pub(crate) const PLAY_CLIENTBOUND_BLOCK_ENTITY_DATA_PACKET_ID: i32 = 6;
@@ -545,6 +546,7 @@ pub struct PlayConnectionTrace {
     pub stone_item_registry_id: Option<i32>,
     pub snowball_item_registry_id: Option<i32>,
     pub add_entity_observations: Vec<AddEntityObservation>,
+    pub entity_motion_observations: Vec<EntityMotionObservation>,
     pub remove_entities_observations: Vec<RemoveEntitiesObservation>,
     pub entity_metadata_observations: Vec<EntityMetadataObservation>,
     pub entity_position_sync_observations: Vec<EntityPositionSyncObservation>,
@@ -643,8 +645,20 @@ pub struct AddEntityObservation {
     pub x: f64,
     pub y: f64,
     pub z: f64,
+    pub movement: (f64, f64, f64),
     pub data: i32,
     pub applied_to_world: bool,
+}
+
+/// Wire-level fields decoded from one clientbound entity-motion packet.
+#[derive(Debug, Clone, PartialEq)]
+pub struct EntityMotionObservation {
+    pub entity_id: i32,
+    pub x: f64,
+    pub y: f64,
+    pub z: f64,
+    pub applied_to_world: bool,
+    pub applied_motion: Option<(f64, f64, f64)>,
 }
 
 /// Wire-level fields decoded from one clientbound remove-entities packet.
@@ -1458,7 +1472,7 @@ pub(crate) fn parse_add_entity_packet(
     let x = read_f64(&mut input, "add entity x")?;
     let y = read_f64(&mut input, "add entity y")?;
     let z = read_f64(&mut input, "add entity z")?;
-    skip_lp_vec3(&mut input)?;
+    let movement = read_lp_vec3(&mut input, "add entity movement")?;
     for name in [
         "add entity x rotation",
         "add entity y rotation",
@@ -1477,8 +1491,28 @@ pub(crate) fn parse_add_entity_packet(
         x,
         y,
         z,
+        movement,
         data,
         applied_to_world: false,
+    })
+}
+
+pub(crate) fn parse_set_entity_motion_packet(
+    input: &[u8],
+) -> Result<EntityMotionObservation, ConnectionError> {
+    let mut input = input;
+    let entity_id = read_varint(&mut input, "entity motion entity id")?;
+    let movement = read_lp_vec3(&mut input, "entity motion movement")?;
+    if !input.is_empty() {
+        return Err(ConnectionError::Codec("entity motion trailing payload"));
+    }
+    Ok(EntityMotionObservation {
+        entity_id,
+        x: movement.0,
+        y: movement.1,
+        z: movement.2,
+        applied_to_world: false,
+        applied_motion: None,
     })
 }
 
@@ -1951,19 +1985,9 @@ pub(crate) fn parse_system_chat_packet(
     })
 }
 
-pub(crate) fn skip_lp_vec3(input: &mut &[u8]) -> Result<(), ConnectionError> {
-    let lowest = read_byte(input, "add entity movement marker")?;
-    if lowest == 0 {
-        return Ok(());
-    }
-    read_byte(input, "add entity movement middle")?;
-    for _ in 0..4 {
-        read_byte(input, "add entity movement high")?;
-    }
-    if lowest & 4 != 0 {
-        read_varint(input, "add entity movement scale")?;
-    }
-    Ok(())
+fn read_lp_vec3(input: &mut &[u8], name: &'static str) -> Result<(f64, f64, f64), ConnectionError> {
+    let movement = crate::binary::read_lp_vec3(input).map_err(|_| ConnectionError::Codec(name))?;
+    Ok((movement.x, movement.y, movement.z))
 }
 
 fn read_nbt_bytes(
@@ -2531,8 +2555,8 @@ mod tests {
         PLAY_CLIENTBOUND_MOVE_ENTITY_ROT_PACKET_ID, PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID,
         PLAY_CLIENTBOUND_REMOVE_ENTITIES_PACKET_ID, PLAY_CLIENTBOUND_REMOVE_MOB_EFFECT_PACKET_ID,
         PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID, PLAY_CLIENTBOUND_SET_ENTITY_DATA_PACKET_ID,
-        PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID, PLAY_CLIENTBOUND_TELEPORT_ENTITY_PACKET_ID,
-        PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID,
+        PLAY_CLIENTBOUND_SET_ENTITY_MOTION_PACKET_ID, PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID,
+        PLAY_CLIENTBOUND_TELEPORT_ENTITY_PACKET_ID, PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID,
         PLAY_SERVERBOUND_ACCEPT_TELEPORTATION_PACKET_ID,
         PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID,
         PLAY_SERVERBOUND_CLIENT_TICK_END_PACKET_ID, PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
@@ -2567,8 +2591,8 @@ mod tests {
         parse_move_entity_pos_packet, parse_move_entity_pos_rot_packet,
         parse_move_entity_rot_packet, parse_optional_item_stack, parse_player_position_packet,
         parse_remove_entities_packet, parse_remove_mob_effect_packet, parse_section_data,
-        parse_system_chat_packet, parse_update_mob_effect_packet, resolve_player_position,
-        support_block_position,
+        parse_set_entity_motion_packet, parse_system_chat_packet, parse_update_mob_effect_packet,
+        resolve_player_position, support_block_position,
     };
 
     #[test]
@@ -2596,6 +2620,7 @@ mod tests {
         assert_eq!(PLAY_CLIENTBOUND_MOVE_ENTITY_POS_PACKET_ID, 53);
         assert_eq!(PLAY_CLIENTBOUND_MOVE_ENTITY_POS_ROT_PACKET_ID, 54);
         assert_eq!(PLAY_CLIENTBOUND_MOVE_ENTITY_ROT_PACKET_ID, 56);
+        assert_eq!(PLAY_CLIENTBOUND_SET_ENTITY_MOTION_PACKET_ID, 101);
         assert_eq!(PLAY_CLIENTBOUND_KEEP_ALIVE_PACKET_ID, 44);
         assert_eq!(PLAY_CLIENTBOUND_CHUNK_PACKET_ID, 45);
         assert_eq!(PLAY_CLIENTBOUND_LOGIN_PACKET_ID, 49);
@@ -2950,10 +2975,33 @@ mod tests {
                 x: 1.25,
                 y: 80.0,
                 z: -35.5,
+                movement: (0.0, 0.0, 0.0),
                 data: 0,
                 applied_to_world: false,
             }
         );
+    }
+
+    #[test]
+    fn entity_motion_parser_matches_java_id_and_packed_vector_order() {
+        let mut payload = Vec::new();
+        crate::wire::write_varint(37, &mut payload);
+        payload.push(0);
+
+        assert_eq!(
+            parse_set_entity_motion_packet(&payload).expect("entity motion"),
+            super::EntityMotionObservation {
+                entity_id: 37,
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+                applied_to_world: false,
+                applied_motion: None,
+            }
+        );
+
+        payload.push(0);
+        assert!(parse_set_entity_motion_packet(&payload).is_err());
     }
 
     #[test]
