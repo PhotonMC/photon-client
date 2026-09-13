@@ -18,6 +18,7 @@ const ENTITY_POSE_DATA_ID: u8 = 6;
 const ENTITY_TICKS_FROZEN_DATA_ID: u8 = 7;
 const ENTITY_LIVING_FLAGS_DATA_ID: u8 = 8;
 const ENTITY_HEALTH_DATA_ID: u8 = 9;
+const ENTITY_MOB_FLAGS_DATA_ID: u8 = 15;
 const ENTITY_DATA_SERIALIZER_BYTE_ID: i32 = 0;
 const ENTITY_DATA_SERIALIZER_INT_ID: i32 = 1;
 const ENTITY_DATA_SERIALIZER_FLOAT_ID: i32 = 3;
@@ -29,6 +30,9 @@ const DEFAULT_TICKS_REQUIRED_TO_FREEZE: i32 = 140;
 const LIVING_FLAG_USING_ITEM: u8 = 0;
 const LIVING_FLAG_OFF_HAND: u8 = 1;
 const LIVING_FLAG_SPIN_ATTACK: u8 = 2;
+const MOB_FLAG_NO_AI: u8 = 0;
+const MOB_FLAG_LEFT_HANDED: u8 = 1;
+const MOB_FLAG_AGGRESSIVE: u8 = 2;
 const SHARED_FLAG_ON_FIRE: u8 = 0;
 const SHARED_FLAG_SHIFT_KEY_DOWN: u8 = 1;
 const SHARED_FLAG_SPRINTING: u8 = 3;
@@ -248,6 +252,10 @@ fn shared_flags_from_metadata(metadata: &[u8]) -> Option<u8> {
 
 fn living_flags_from_metadata(metadata: &[u8]) -> Option<u8> {
     metadata_byte_value(metadata, ENTITY_LIVING_FLAGS_DATA_ID)
+}
+
+fn mob_flags_from_metadata(metadata: &[u8]) -> Option<u8> {
+    metadata_byte_value(metadata, ENTITY_MOB_FLAGS_DATA_ID)
 }
 
 fn air_supply_from_metadata(metadata: &[u8]) -> Option<i32> {
@@ -1364,6 +1372,7 @@ impl ClientWorld {
                 metadata: None,
                 shared_flags: 0,
                 living_flags: 0,
+                mob_flags: 0,
                 air_supply: DEFAULT_AIR_SUPPLY,
                 health_bits: None,
                 custom_name_present: false,
@@ -1380,6 +1389,7 @@ impl ClientWorld {
     pub(crate) fn apply_entity_metadata(&mut self, entity_id: i32, metadata: &[u8]) -> bool {
         let shared_flags = shared_flags_from_metadata(metadata);
         let living_flags = living_flags_from_metadata(metadata);
+        let mob_flags = mob_flags_from_metadata(metadata);
         let air_supply = air_supply_from_metadata(metadata);
         let health = health_from_metadata(metadata);
         let custom_name_present = custom_name_present_from_metadata(metadata);
@@ -1435,6 +1445,9 @@ impl ClientWorld {
         }
         if let Some(living_flags) = living_flags {
             entity.living_flags = living_flags;
+        }
+        if let Some(mob_flags) = mob_flags {
+            entity.mob_flags = mob_flags;
         }
         if let Some(air_supply) = air_supply {
             entity.air_supply = air_supply;
@@ -1799,6 +1812,7 @@ pub struct ClientEntity {
     metadata: Option<Vec<u8>>,
     shared_flags: u8,
     living_flags: u8,
+    mob_flags: u8,
     air_supply: i32,
     health_bits: Option<u32>,
     custom_name_present: bool,
@@ -2340,6 +2354,22 @@ impl ClientEntity {
 
     pub fn living_flags(&self) -> u8 {
         self.living_flags
+    }
+
+    pub fn mob_flags(&self) -> u8 {
+        self.mob_flags
+    }
+
+    pub fn is_no_ai(&self) -> bool {
+        shared_flag_is_set(self.mob_flags, MOB_FLAG_NO_AI)
+    }
+
+    pub fn is_left_handed(&self) -> bool {
+        shared_flag_is_set(self.mob_flags, MOB_FLAG_LEFT_HANDED)
+    }
+
+    pub fn is_aggressive(&self) -> bool {
+        shared_flag_is_set(self.mob_flags, MOB_FLAG_AGGRESSIVE)
     }
 
     pub fn is_using_item(&self) -> bool {
@@ -3816,6 +3846,71 @@ mod tests {
         assert!(!player.is_using_item());
         assert!(!player.used_item_is_off_hand());
         assert!(!player.is_auto_spin_attack());
+    }
+
+    #[test]
+    fn mob_flags_follow_java_byte_metadata_masks_and_preserve_partial_state() {
+        let mut world = ClientWorld::default();
+        assert!(world.apply_entity(EntityInput {
+            entity_id: 37,
+            uuid: Uuid::new(1, 2),
+            type_id: 70,
+            x: 1.25,
+            y: 80.0,
+            z: -35.5,
+            movement: (0.0, 0.0, 0.0),
+            rotation: (0.0, 0.0, 0.0),
+            data: 0,
+        }));
+        let entity = world.entity_at(37).expect("default mob flags entity");
+        assert_eq!(entity.mob_flags(), 0);
+        assert!(!entity.is_no_ai());
+        assert!(!entity.is_left_handed());
+        assert!(!entity.is_aggressive());
+
+        assert!(world.apply_entity_metadata(
+            37,
+            &[
+                super::ENTITY_MOB_FLAGS_DATA_ID,
+                super::ENTITY_DATA_SERIALIZER_BYTE_ID as u8,
+                0b111,
+                255,
+            ],
+        ));
+        let entity = world.entity_at(37).expect("all mob flags entity");
+        assert_eq!(entity.mob_flags(), 0b111);
+        assert!(entity.is_no_ai());
+        assert!(entity.is_left_handed());
+        assert!(entity.is_aggressive());
+
+        assert!(world.apply_entity_metadata(
+            37,
+            &[
+                super::ENTITY_MOB_FLAGS_DATA_ID,
+                super::ENTITY_DATA_SERIALIZER_BYTE_ID as u8,
+                0b001,
+                255,
+            ],
+        ));
+        let entity = world.entity_at(37).expect("no-ai mob flags entity");
+        assert_eq!(entity.mob_flags(), 0b001);
+        assert!(entity.is_no_ai());
+        assert!(!entity.is_left_handed());
+        assert!(!entity.is_aggressive());
+
+        assert!(world.apply_entity_metadata(37, &[5, 8, 1, 255]));
+        let entity = world
+            .entity_at(37)
+            .expect("mob flags after partial metadata");
+        assert_eq!(entity.mob_flags(), 0b001);
+        assert!(entity.is_no_ai());
+        assert!(entity.is_no_gravity());
+
+        assert!(world.apply_entity_metadata(37, &[15, 8, 0, 255]));
+        assert_eq!(
+            world.entity_at(37).map(super::ClientEntity::mob_flags),
+            Some(0b001)
+        );
     }
 
     #[test]
