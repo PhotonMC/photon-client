@@ -1087,6 +1087,40 @@ impl ClientAttributeState {
     pub fn modifiers(&self) -> &[ClientAttributeModifierState] {
         &self.modifiers
     }
+
+    /// Calculate the effective value using Java's AttributeInstance operation order.
+    pub fn effective_value(&self, min_value: f64, max_value: f64) -> f64 {
+        assert!(min_value <= max_value, "attribute range must be ordered");
+
+        let mut base = self.base_value();
+        for modifier in self.modifiers.iter().filter(|modifier| {
+            modifier.operation() == 0 || (modifier.operation() != 1 && modifier.operation() != 2)
+        }) {
+            base += modifier.amount();
+        }
+
+        let mut result = base;
+        for modifier in self
+            .modifiers
+            .iter()
+            .filter(|modifier| modifier.operation() == 1)
+        {
+            result += base * modifier.amount();
+        }
+        for modifier in self
+            .modifiers
+            .iter()
+            .filter(|modifier| modifier.operation() == 2)
+        {
+            result *= 1.0 + modifier.amount();
+        }
+
+        if result.is_nan() {
+            min_value
+        } else {
+            result.clamp(min_value, max_value)
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -2006,6 +2040,44 @@ mod tests {
         let player = world.local_player().expect("modifier-preserving player");
         assert_eq!(player.attributes()[0].base_value(), 3.5);
         assert_eq!(player.attributes()[0].modifiers(), &[modifier]);
+    }
+
+    #[test]
+    fn attribute_effective_value_matches_java_operation_order_and_sanitization() {
+        let attribute = ClientAttributeState::from_wire(
+            26,
+            0.25,
+            vec![
+                ClientAttributeModifierState::from_wire("minecraft:oracle_add".to_owned(), 0.1, 0),
+                ClientAttributeModifierState::from_wire("minecraft:oracle_base".to_owned(), 0.2, 1),
+                ClientAttributeModifierState::from_wire(
+                    "minecraft:oracle_total".to_owned(),
+                    0.5,
+                    2,
+                ),
+            ],
+        );
+        assert_eq!(
+            attribute.effective_value(0.0, 1024.0).to_bits(),
+            0x3fe4_28f5_c28f_5c29
+        );
+
+        let unknown_operation = ClientAttributeState::from_wire(
+            26,
+            1.0,
+            vec![ClientAttributeModifierState::from_wire(
+                "minecraft:oracle_unknown".to_owned(),
+                0.5,
+                255,
+            )],
+        );
+        assert_eq!(unknown_operation.effective_value(0.0, 1024.0), 1.5);
+
+        let clamped = ClientAttributeState::from_wire(26, 2048.0, Vec::new());
+        assert_eq!(clamped.effective_value(0.0, 1024.0), 1024.0);
+
+        let nan = ClientAttributeState::from_wire(26, f64::NAN, Vec::new());
+        assert_eq!(nan.effective_value(0.0, 1024.0), 0.0);
     }
 
     #[test]
