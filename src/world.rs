@@ -7,6 +7,7 @@ use crate::math::{mth_lerp_f32, mth_lerp_f64, mth_rot_lerp_f32};
 
 pub(crate) const PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS: u8 = 1;
 pub(crate) const PLAYER_RESPAWN_KEEP_ENTITY_DATA: u8 = 2;
+const VANILLA_PLAYER_ENTITY_TYPE_ID: i32 = 156;
 
 /// The vertical bounds used when mapping a chunk packet's section order to Y.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -778,7 +779,9 @@ impl ClientWorld {
             .retain(|update| update.chunk_x != chunk_x || update.chunk_z != chunk_z);
         if removed {
             for entity in self.entities.values_mut() {
-                if entity_chunk_key(entity.position()) == (chunk_x, chunk_z) {
+                if !entity.always_ticking
+                    && entity_chunk_key(entity.position()) == (chunk_x, chunk_z)
+                {
                     entity.ticking = false;
                 }
             }
@@ -1027,7 +1030,8 @@ impl ClientWorld {
                 old_y_rot_bits: entity.rotation.0.to_bits(),
                 old_y_head_rot_bits: entity.rotation.2.to_bits(),
                 on_ground: false,
-                ticking,
+                always_ticking: entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID,
+                ticking: ticking || entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID,
                 data: entity.data,
                 metadata: None,
             },
@@ -1129,7 +1133,7 @@ impl ClientWorld {
         entity.x_bits = x.to_bits();
         entity.y_bits = y.to_bits();
         entity.z_bits = z.to_bits();
-        entity.ticking = ticking;
+        entity.ticking = entity.always_ticking || ticking;
         true
     }
 
@@ -1161,7 +1165,7 @@ impl ClientWorld {
             entity.x_bits = x.to_bits();
             entity.y_bits = y.to_bits();
             entity.z_bits = z.to_bits();
-            entity.ticking = ticking.expect("position ticking state");
+            entity.ticking = entity.always_ticking || ticking.expect("position ticking state");
         }
         if let Some(y_rot) = input.y_rot {
             entity.y_rot_bits = (y_rot % 360.0).to_bits();
@@ -1381,6 +1385,7 @@ pub struct ClientEntity {
     old_y_rot_bits: u32,
     old_y_head_rot_bits: u32,
     on_ground: bool,
+    always_ticking: bool,
     ticking: bool,
     pub data: i32,
     metadata: Option<Vec<u8>>,
@@ -1790,6 +1795,10 @@ impl ClientEntity {
 
     pub fn is_ticking(&self) -> bool {
         self.ticking
+    }
+
+    pub fn is_always_ticking(&self) -> bool {
+        self.always_ticking
     }
 
     pub fn metadata(&self) -> Option<&[u8]> {
@@ -2715,6 +2724,50 @@ mod tests {
         assert!(world.remove_entity(37));
         assert_eq!(world.loaded_entity_count(), 0);
         assert!(!world.remove_entity(37));
+    }
+
+    #[test]
+    fn player_entities_keep_ticking_after_their_chunk_unloads() {
+        let mut world = ClientWorld::default();
+        let (blocks, biomes) = section(0, 0);
+        world.replace_chunk(
+            0,
+            -3,
+            [SectionInput {
+                non_empty_block_count: 0,
+                fluid_count: 0,
+                block_states: &blocks,
+                biomes: &biomes,
+            }],
+        );
+        assert!(world.apply_entity(EntityInput {
+            entity_id: 42,
+            uuid: Uuid::new(5, 6),
+            type_id: super::VANILLA_PLAYER_ENTITY_TYPE_ID,
+            x: 1.25,
+            y: 80.0,
+            z: -35.5,
+            movement: (0.0, 0.0, 0.0),
+            rotation: (0.0, 0.0, 0.0),
+            data: 0,
+        }));
+        assert!(
+            world
+                .entity_at(42)
+                .is_some_and(|entity| { entity.is_always_ticking() && entity.is_ticking() })
+        );
+
+        assert!(world.unload_chunk(0, -3));
+        assert!(
+            world
+                .entity_at(42)
+                .is_some_and(|entity| { entity.is_always_ticking() && entity.is_ticking() })
+        );
+        world.tick();
+        assert_eq!(
+            world.entity_at(42).map(super::ClientEntity::tick_count),
+            Some(1)
+        );
     }
 
     #[test]

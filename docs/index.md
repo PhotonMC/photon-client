@@ -97,6 +97,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P08.f — server-conformance ClientWorld dimension ve respawn geçişi](client-world-dimension-respawn-conformance.md)
 - [P08.g — server-conformance Registry’den DimensionType bounds çözümü](client-world-dimension-type-bounds-conformance.md)
 - [P08.e-entity-add — server-conformance ClientWorld entity add state](client-world-entity-add-conformance.md)
+- [P08.y — server-conformance Player entity always-ticking state'i](client-world-entity-always-ticking-conformance.md)
 - [P08.e-entity-ground — server-conformance ClientWorld entity on-ground state](client-world-entity-ground-conformance.md)
 - [P08.e-entity-metadata — server-conformance ClientWorld raw entity metadata](client-world-entity-metadata-conformance.md)
 - [P08.e-entity-motion — server-conformance ClientWorld entity motion state](client-world-entity-motion-conformance.md)
