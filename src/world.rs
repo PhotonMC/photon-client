@@ -1605,11 +1605,14 @@ fn player_inventory_menu_slot(slot: i32) -> Option<i16> {
     }
 }
 
+const VANILLA_MENU_TOP_SLOT_COUNTS: [usize; 25] = [
+    9, 18, 27, 36, 45, 54, 9, 10, 3, 1, 3, 5, 10, 2, 3, 3, 5, 1, 4, 3, 27, 4, 3, 3, 2,
+];
+
 fn menu_top_slot_count(menu_type_id: i32) -> Option<usize> {
-    match menu_type_id {
-        0..=5 => Some((menu_type_id as usize + 1) * 9),
-        _ => None,
-    }
+    usize::try_from(menu_type_id)
+        .ok()
+        .and_then(|id| VANILLA_MENU_TOP_SLOT_COUNTS.get(id).copied())
 }
 
 fn decode_entity_delta(base: f64, delta: i16) -> u64 {
@@ -1686,7 +1689,7 @@ mod tests {
         ClientWorld, DimensionBounds, DimensionEnvironment, DimensionInput, EntityInput,
         EntityMotionInput, EntityMoveInput, EntityPositionInput, EntityRotationInput,
         LightLayerInput, LightUpdateInput, PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS,
-        PLAYER_RESPAWN_KEEP_ENTITY_DATA, SectionInput,
+        PLAYER_RESPAWN_KEEP_ENTITY_DATA, SectionInput, menu_top_slot_count,
     };
     use crate::binary::{BitSet, Uuid};
 
@@ -2470,6 +2473,43 @@ mod tests {
             .local_player()
             .expect("respawned local player without container");
         assert!(player.open_container().is_none());
+    }
+
+    #[test]
+    fn vanilla_menu_registry_slot_counts_cover_all_builtin_menu_types() {
+        let expected = [
+            (0, 9),
+            (1, 18),
+            (2, 27),
+            (3, 36),
+            (4, 45),
+            (5, 54),
+            (6, 9),
+            (7, 10),
+            (8, 3),
+            (9, 1),
+            (10, 3),
+            (11, 5),
+            (12, 10),
+            (13, 2),
+            (14, 3),
+            (15, 3),
+            (16, 5),
+            (17, 1),
+            (18, 4),
+            (19, 3),
+            (20, 27),
+            (21, 4),
+            (22, 3),
+            (23, 3),
+            (24, 2),
+        ];
+
+        for (menu_type_id, slot_count) in expected {
+            assert_eq!(menu_top_slot_count(menu_type_id), Some(slot_count));
+        }
+        assert_eq!(menu_top_slot_count(-1), None);
+        assert_eq!(menu_top_slot_count(25), None);
     }
 
     #[test]

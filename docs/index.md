@@ -90,6 +90,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P08.c-block-entity — server-conformance ClientWorld block entity state](client-world-block-entity-conformance.md)
 - [P08.c — server-conformance ClientWorld block update uygulaması](client-world-block-update-conformance.md)
 - [P08.d — server-conformance ClientWorld chunk unload](client-world-chunk-unload-conformance.md)
+- [P08.r — server-conformance Vanilla container menu slot haritası](client-world-container-menu-map-conformance.md)
 - [P08.o — server-conformance Custom dimension key/type ve registry bounds](client-world-custom-dimension-conformance.md)
 - [P08.q — server-conformance Custom dimension environment alanları](client-world-custom-dimension-environment-conformance.md)
 - [P08.f — server-conformance ClientWorld dimension ve respawn geçişi](client-world-dimension-respawn-conformance.md)
