@@ -34,19 +34,48 @@ impl Default for DimensionBounds {
     }
 }
 
+impl DimensionBounds {
+    /// Return the bounds of one of Java's built-in dimensions.
+    pub fn for_builtin_dimension(dimension_key: &str) -> Self {
+        match dimension_key {
+            "minecraft:overworld" | "minecraft:overworld_caves" => Self::new(-64, 384),
+            "minecraft:the_nether" | "minecraft:the_end" => Self::new(0, 256),
+            _ => Self::default(),
+        }
+    }
+}
+
 /// The client-side copy of the currently loaded world.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ClientWorld {
     dimension: DimensionBounds,
+    dimension_key: String,
+    dimension_type_id: i32,
+    seed: i64,
+    is_debug: bool,
+    is_flat: bool,
+    sea_level: i32,
     chunks: BTreeMap<(i32, i32), ClientChunk>,
     entities: BTreeMap<i32, ClientEntity>,
     game_time: u64,
+}
+
+impl Default for ClientWorld {
+    fn default() -> Self {
+        Self::new(DimensionBounds::default())
+    }
 }
 
 impl ClientWorld {
     pub fn new(dimension: DimensionBounds) -> Self {
         Self {
             dimension,
+            dimension_key: "minecraft:overworld".to_owned(),
+            dimension_type_id: 0,
+            seed: 0,
+            is_debug: false,
+            is_flat: false,
+            sea_level: 63,
             chunks: BTreeMap::new(),
             entities: BTreeMap::new(),
             game_time: 0,
@@ -55,6 +84,51 @@ impl ClientWorld {
 
     pub fn dimension(&self) -> DimensionBounds {
         self.dimension
+    }
+
+    pub fn dimension_key(&self) -> &str {
+        &self.dimension_key
+    }
+
+    pub fn dimension_type_id(&self) -> i32 {
+        self.dimension_type_id
+    }
+
+    pub fn seed(&self) -> i64 {
+        self.seed
+    }
+
+    pub fn is_debug(&self) -> bool {
+        self.is_debug
+    }
+
+    pub fn is_flat(&self) -> bool {
+        self.is_flat
+    }
+
+    pub fn sea_level(&self) -> i32 {
+        self.sea_level
+    }
+
+    pub(crate) fn replace_dimension(
+        &mut self,
+        input: DimensionInput<'_>,
+        bounds: DimensionBounds,
+    ) -> bool {
+        let changed = self.dimension_key != input.key;
+        self.dimension = bounds;
+        self.dimension_key = input.key.to_owned();
+        self.dimension_type_id = input.dimension_type_id;
+        self.seed = input.seed;
+        self.is_debug = input.is_debug;
+        self.is_flat = input.is_flat;
+        self.sea_level = input.sea_level;
+        if changed {
+            self.chunks.clear();
+            self.entities.clear();
+            self.game_time = 0;
+        }
+        changed
     }
 
     pub fn game_time(&self) -> u64 {
@@ -579,6 +653,16 @@ pub(crate) struct SectionInput<'a> {
     pub(crate) biomes: &'a [i32],
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct DimensionInput<'a> {
+    pub(crate) key: &'a str,
+    pub(crate) dimension_type_id: i32,
+    pub(crate) seed: i64,
+    pub(crate) is_debug: bool,
+    pub(crate) is_flat: bool,
+    pub(crate) sea_level: i32,
+}
+
 pub(crate) struct LightUpdateInput<'a> {
     pub(crate) sky: LightLayerInput<'a>,
     pub(crate) block: LightLayerInput<'a>,
@@ -721,9 +805,9 @@ fn apply_light_layer(
 #[cfg(test)]
 mod tests {
     use super::{
-        BlockEntityInput, ClientWorld, DimensionBounds, EntityInput, EntityMotionInput,
-        EntityMoveInput, EntityPositionInput, EntityRotationInput, LightLayerInput,
-        LightUpdateInput, SectionInput,
+        BlockEntityInput, ClientWorld, DimensionBounds, DimensionInput, EntityInput,
+        EntityMotionInput, EntityMoveInput, EntityPositionInput, EntityRotationInput,
+        LightLayerInput, LightUpdateInput, SectionInput,
     };
     use crate::binary::{BitSet, Uuid};
 
@@ -1203,5 +1287,65 @@ mod tests {
         world.tick();
         assert_eq!(world.game_time(), 2);
         assert_eq!(world.loaded_chunk_count(), 0);
+    }
+
+    #[test]
+    fn changing_dimension_replaces_world_storage_and_builtin_bounds() {
+        let (blocks, biomes) = section(7, 8);
+        let mut world = ClientWorld::default();
+        world.replace_chunk(
+            0,
+            0,
+            [SectionInput {
+                non_empty_block_count: 1,
+                fluid_count: 0,
+                block_states: &blocks,
+                biomes: &biomes,
+            }],
+        );
+        assert!(world.apply_entity(EntityInput {
+            entity_id: 9,
+            uuid: Uuid::new(5, 6),
+            type_id: 71,
+            x: 0.0,
+            y: 64.0,
+            z: 0.0,
+            movement: (0.0, 0.0, 0.0),
+            rotation: (0.0, 0.0, 0.0),
+            data: 0,
+        }));
+        world.tick();
+
+        let input = DimensionInput {
+            key: "minecraft:the_nether",
+            dimension_type_id: 1,
+            seed: 776,
+            is_debug: false,
+            is_flat: false,
+            sea_level: 32,
+        };
+        assert!(world.replace_dimension(input, DimensionBounds::for_builtin_dimension(input.key)));
+        assert_eq!(world.dimension_key(), "minecraft:the_nether");
+        assert_eq!(world.dimension(), DimensionBounds::new(0, 256));
+        assert_eq!(world.dimension_type_id(), 1);
+        assert_eq!(world.seed(), 776);
+        assert_eq!(world.sea_level(), 32);
+        assert_eq!(world.loaded_chunk_count(), 0);
+        assert_eq!(world.loaded_entity_count(), 0);
+        assert_eq!(world.game_time(), 0);
+
+        world.replace_chunk(
+            0,
+            0,
+            [SectionInput {
+                non_empty_block_count: 1,
+                fluid_count: 0,
+                block_states: &blocks,
+                biomes: &biomes,
+            }],
+        );
+        assert!(!world.replace_dimension(input, DimensionBounds::for_builtin_dimension(input.key)));
+        assert_eq!(world.loaded_chunk_count(), 1);
+        assert_eq!(world.loaded_entity_count(), 0);
     }
 }

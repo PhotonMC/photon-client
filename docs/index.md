@@ -90,6 +90,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P08.c-block-entity — server-conformance ClientWorld block entity state](client-world-block-entity-conformance.md)
 - [P08.c — server-conformance ClientWorld block update uygulaması](client-world-block-update-conformance.md)
 - [P08.d — server-conformance ClientWorld chunk unload](client-world-chunk-unload-conformance.md)
+- [P08.f — server-conformance ClientWorld dimension ve respawn geçişi](client-world-dimension-respawn-conformance.md)
 - [P08.e-entity-add — server-conformance ClientWorld entity add state](client-world-entity-add-conformance.md)
 - [P08.e-entity-ground — server-conformance ClientWorld entity on-ground state](client-world-entity-ground-conformance.md)
 - [P08.e-entity-metadata — server-conformance ClientWorld raw entity metadata](client-world-entity-metadata-conformance.md)

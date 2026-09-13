@@ -14,8 +14,9 @@ use crate::protocol::ConnectionProtocol;
 use crate::resources::KnownPack;
 use crate::wire;
 use crate::world::{
-    BlockEntityInput, EntityInput, EntityMotionInput, EntityMoveInput, EntityPositionInput,
-    EntityRotationInput, LightLayerInput, LightUpdateInput, SectionInput,
+    BlockEntityInput, DimensionBounds, DimensionInput, EntityInput, EntityMotionInput,
+    EntityMoveInput, EntityPositionInput, EntityRotationInput, LightLayerInput, LightUpdateInput,
+    SectionInput,
 };
 
 use super::protocol::*;
@@ -115,6 +116,21 @@ pub fn connect_and_world_entity_ticking_probe(
         username,
         timeout,
         PlayProbeConfig::new(ProbeAction::WorldEntityTicking),
+    )
+}
+
+/// Connect to a Java-protocol server and observe a controlled dimension change
+/// followed by the client-world replacement from a vanilla respawn packet.
+pub fn connect_and_world_dimension_respawn_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeConfig::new(ProbeAction::WorldDimensionRespawn),
     )
 }
 
@@ -946,6 +962,7 @@ enum ProbeAction {
     Movement,
     WorldChunkUnload,
     WorldEntityTicking,
+    WorldDimensionRespawn,
     WorldLightUpdate,
     WorldBlockEntityUpdate,
     WorldEntityAdd,
@@ -1651,7 +1668,22 @@ fn connect_and_probe_with_mode(
                     compression_threshold,
                 )?;
             }
-            PLAY_CLIENTBOUND_LOGIN_PACKET_ID => trace.play_login = true,
+            PLAY_CLIENTBOUND_LOGIN_PACKET_ID => {
+                let observation = parse_login_packet(payload)?;
+                trace.world.replace_dimension(
+                    DimensionInput {
+                        key: &observation.spawn_info.dimension,
+                        dimension_type_id: observation.spawn_info.dimension_type_id,
+                        seed: observation.spawn_info.seed,
+                        is_debug: observation.spawn_info.is_debug,
+                        is_flat: observation.spawn_info.is_flat,
+                        sea_level: observation.spawn_info.sea_level,
+                    },
+                    DimensionBounds::for_builtin_dimension(&observation.spawn_info.dimension),
+                );
+                trace.login_observation = Some(observation);
+                trace.play_login = true;
+            }
             PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID => {
                 let packet = parse_player_position_packet(payload)?;
                 trace
@@ -1679,6 +1711,30 @@ fn connect_and_probe_with_mode(
                     compression_threshold,
                 )?;
                 player_position = Some(absolute);
+            }
+            PLAY_CLIENTBOUND_RESPAWN_PACKET_ID => {
+                let (spawn_info, data_to_keep) = parse_respawn_packet(payload)?;
+                let cleared_chunk_count = trace.world.loaded_chunk_count();
+                let cleared_entity_count = trace.world.loaded_entity_count();
+                let dimension_changed = trace.world.replace_dimension(
+                    DimensionInput {
+                        key: &spawn_info.dimension,
+                        dimension_type_id: spawn_info.dimension_type_id,
+                        seed: spawn_info.seed,
+                        is_debug: spawn_info.is_debug,
+                        is_flat: spawn_info.is_flat,
+                        sea_level: spawn_info.sea_level,
+                    },
+                    DimensionBounds::for_builtin_dimension(&spawn_info.dimension),
+                );
+                trace.respawn_observations.push(RespawnObservation {
+                    spawn_info,
+                    data_to_keep,
+                    dimension_changed,
+                    cleared_chunk_count,
+                    cleared_entity_count,
+                    applied_to_world: true,
+                });
             }
             PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID => {
                 trace
@@ -2791,6 +2847,7 @@ fn connect_and_probe_with_mode(
                 ProbeAction::WorldChunkUnload | ProbeAction::WorldEntityTicking => {
                     WORLD_LIFECYCLE_DRAIN_TIMEOUT
                 }
+                ProbeAction::WorldDimensionRespawn => DIMENSION_RESPAWN_DRAIN_TIMEOUT,
                 ProbeAction::WorldLightUpdate => LIGHT_UPDATE_DRAIN_TIMEOUT,
                 ProbeAction::WorldBlockEntityUpdate => BLOCK_ENTITY_UPDATE_DRAIN_TIMEOUT,
                 ProbeAction::WorldEntityAdd => ENTITY_ADD_DRAIN_TIMEOUT,
@@ -2912,6 +2969,7 @@ fn connect_and_probe_with_mode(
             ProbeAction::WorldChunkUnload | ProbeAction::WorldEntityTicking => {
                 WORLD_LIFECYCLE_DRAIN_TIMEOUT
             }
+            ProbeAction::WorldDimensionRespawn => DIMENSION_RESPAWN_DRAIN_TIMEOUT,
             ProbeAction::WorldLightUpdate => LIGHT_UPDATE_DRAIN_TIMEOUT,
             ProbeAction::WorldBlockEntityUpdate => BLOCK_ENTITY_UPDATE_DRAIN_TIMEOUT,
             ProbeAction::WorldEntityAdd => ENTITY_ADD_DRAIN_TIMEOUT,

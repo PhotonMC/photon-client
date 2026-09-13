@@ -72,6 +72,7 @@ pub(crate) const PLAY_CLIENTBOUND_KEEP_ALIVE_PACKET_ID: i32 = 44;
 pub(crate) const PLAY_CLIENTBOUND_CHUNK_PACKET_ID: i32 = 45;
 pub(crate) const PLAY_CLIENTBOUND_LOGIN_PACKET_ID: i32 = 49;
 pub(crate) const PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID: i32 = 72;
+pub(crate) const PLAY_CLIENTBOUND_RESPAWN_PACKET_ID: i32 = 82;
 pub(crate) const PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID: i32 = 132;
 pub(crate) const PLAY_SERVERBOUND_ACCEPT_TELEPORTATION_PACKET_ID: i32 = 0;
 pub(crate) const PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID: i32 = 41;
@@ -456,6 +457,7 @@ pub(crate) const WATER_BUCKET_DRAIN_TIMEOUT: Duration = Duration::from_millis(1_
 pub(crate) const CONSUMABLE_DRAIN_TIMEOUT: Duration = Duration::from_millis(2_500);
 pub(crate) const COMPONENT_PREPARATION_DRAIN_TIMEOUT: Duration = Duration::from_secs(30);
 pub(crate) const WORLD_LIFECYCLE_DRAIN_TIMEOUT: Duration = Duration::from_secs(15);
+pub(crate) const DIMENSION_RESPAWN_DRAIN_TIMEOUT: Duration = Duration::from_secs(30);
 pub(crate) const LIGHT_UPDATE_DRAIN_TIMEOUT: Duration = Duration::from_secs(30);
 pub(crate) const BLOCK_ENTITY_UPDATE_DRAIN_TIMEOUT: Duration = Duration::from_secs(30);
 pub(crate) const ENTITY_ADD_DRAIN_TIMEOUT: Duration = Duration::from_secs(30);
@@ -534,6 +536,8 @@ pub struct PlayConnectionTrace {
     pub registry_entry_count: usize,
     pub update_tags_packet_count: usize,
     pub play_login: bool,
+    pub login_observation: Option<LoginObservation>,
+    pub respawn_observations: Vec<RespawnObservation>,
     pub player_position_observations: Vec<PlayerPositionObservation>,
     pub player_loaded_sent: bool,
     pub movement_packets_sent: usize,
@@ -574,6 +578,56 @@ pub struct PlayConnectionTrace {
     pub chunk_batch_finished_count: usize,
     pub chunk_observations: Vec<ChunkPacketObservation>,
     pub world: ClientWorld,
+}
+
+/// Fields shared by the login and respawn spawn-info payloads.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SpawnInfoObservation {
+    pub dimension_type_id: i32,
+    pub dimension: String,
+    pub seed: i64,
+    pub game_type: u8,
+    pub previous_game_type: Option<u8>,
+    pub is_debug: bool,
+    pub is_flat: bool,
+    pub last_death_location: Option<GlobalPositionObservation>,
+    pub portal_cooldown: i32,
+    pub sea_level: i32,
+}
+
+/// The dimension and player-state fields carried by the initial login packet.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LoginObservation {
+    pub player_id: i32,
+    pub hardcore: bool,
+    pub level_count: usize,
+    pub max_players: i32,
+    pub chunk_radius: i32,
+    pub simulation_distance: i32,
+    pub reduced_debug_info: bool,
+    pub show_death_screen: bool,
+    pub do_limited_crafting: bool,
+    pub spawn_info: SpawnInfoObservation,
+    pub online_mode: bool,
+    pub enforces_secure_chat: bool,
+}
+
+/// One clientbound respawn packet plus its client-world transition result.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RespawnObservation {
+    pub spawn_info: SpawnInfoObservation,
+    pub data_to_keep: u8,
+    pub dimension_changed: bool,
+    pub cleared_chunk_count: usize,
+    pub cleared_entity_count: usize,
+    pub applied_to_world: bool,
+}
+
+/// A serialized global position embedded in spawn info.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GlobalPositionObservation {
+    pub dimension: String,
+    pub position: i64,
 }
 
 /// Wire-level fields observed from a clientbound player-position correction.
@@ -1400,6 +1454,90 @@ pub(crate) fn split_packet(body: &[u8]) -> Result<(i32, &[u8]), ConnectionError>
     let mut input = body;
     let packet_id = wire::read_varint(&mut input)?;
     Ok((packet_id, input))
+}
+
+pub(crate) fn parse_login_packet(input: &[u8]) -> Result<LoginObservation, ConnectionError> {
+    let mut input = input;
+    let packet = LoginObservation {
+        player_id: read_i32(&mut input, "login player id")?,
+        hardcore: read_bool(&mut input, "login hardcore")?,
+        level_count: {
+            let count = read_count(&mut input, "login level count")?;
+            for _ in 0..count {
+                read_identifier_string(&mut input, "login level identifier")?;
+            }
+            count
+        },
+        max_players: read_varint(&mut input, "login max players")?,
+        chunk_radius: read_varint(&mut input, "login chunk radius")?,
+        simulation_distance: read_varint(&mut input, "login simulation distance")?,
+        reduced_debug_info: read_bool(&mut input, "login reduced debug info")?,
+        show_death_screen: read_bool(&mut input, "login show death screen")?,
+        do_limited_crafting: read_bool(&mut input, "login limited crafting")?,
+        spawn_info: parse_spawn_info(&mut input)?,
+        online_mode: read_bool(&mut input, "login online mode")?,
+        enforces_secure_chat: read_bool(&mut input, "login secure chat")?,
+    };
+    if !input.is_empty() {
+        return Err(ConnectionError::Codec("login trailing payload"));
+    }
+    Ok(packet)
+}
+
+pub(crate) fn parse_respawn_packet(
+    input: &[u8],
+) -> Result<(SpawnInfoObservation, u8), ConnectionError> {
+    let mut input = input;
+    let spawn_info = parse_spawn_info(&mut input)?;
+    let data_to_keep = read_byte(&mut input, "respawn data to keep")?;
+    if !input.is_empty() {
+        return Err(ConnectionError::Codec("respawn trailing payload"));
+    }
+    Ok((spawn_info, data_to_keep))
+}
+
+fn parse_spawn_info(input: &mut &[u8]) -> Result<SpawnInfoObservation, ConnectionError> {
+    let dimension_type_id = read_varint(input, "spawn dimension type")?;
+    let dimension = read_identifier_string(input, "spawn dimension")?;
+    let seed = read_i64(input, "spawn seed")?;
+    let game_type = read_byte(input, "spawn game type")?;
+    let previous_game_type = match read_byte(input, "spawn previous game type")? {
+        u8::MAX => None,
+        value => Some(value),
+    };
+    let is_debug = read_bool(input, "spawn debug flag")?;
+    let is_flat = read_bool(input, "spawn flat flag")?;
+    let last_death_location = if read_bool(input, "spawn death-location presence")? {
+        Some(GlobalPositionObservation {
+            dimension: read_identifier_string(input, "spawn death-location dimension")?,
+            position: read_i64(input, "spawn death-location position")?,
+        })
+    } else {
+        None
+    };
+    let portal_cooldown = read_varint(input, "spawn portal cooldown")?;
+    let sea_level = read_varint(input, "spawn sea level")?;
+    Ok(SpawnInfoObservation {
+        dimension_type_id,
+        dimension,
+        seed,
+        game_type,
+        previous_game_type,
+        is_debug,
+        is_flat,
+        last_death_location,
+        portal_cooldown,
+        sea_level,
+    })
+}
+
+fn read_identifier_string(
+    input: &mut &[u8],
+    name: &'static str,
+) -> Result<String, ConnectionError> {
+    crate::identifier::read_identifier(input)
+        .map(|identifier| identifier.as_string())
+        .map_err(|_| ConnectionError::Codec(name))
 }
 
 pub(crate) fn parse_block_update_packet(
@@ -2234,6 +2372,21 @@ pub(crate) fn read_byte(input: &mut &[u8], name: &'static str) -> Result<u8, Con
     Ok(byte)
 }
 
+pub(crate) fn read_bool(input: &mut &[u8], name: &'static str) -> Result<bool, ConnectionError> {
+    Ok(read_byte(input, name)? != 0)
+}
+
+pub(crate) fn read_i64(input: &mut &[u8], name: &'static str) -> Result<i64, ConnectionError> {
+    if input.len() < 8 {
+        return Err(ConnectionError::Codec(name));
+    }
+    let (head, rest) = input.split_at(8);
+    *input = rest;
+    Ok(i64::from_be_bytes(
+        head.try_into().expect("checked long length"),
+    ))
+}
+
 pub(crate) fn read_i16(input: &mut &[u8], name: &'static str) -> Result<i16, ConnectionError> {
     if input.len() < 2 {
         return Err(ConnectionError::Codec(name));
@@ -2613,10 +2766,10 @@ mod tests {
         PLAY_CLIENTBOUND_MOVE_ENTITY_POS_PACKET_ID, PLAY_CLIENTBOUND_MOVE_ENTITY_POS_ROT_PACKET_ID,
         PLAY_CLIENTBOUND_MOVE_ENTITY_ROT_PACKET_ID, PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID,
         PLAY_CLIENTBOUND_REMOVE_ENTITIES_PACKET_ID, PLAY_CLIENTBOUND_REMOVE_MOB_EFFECT_PACKET_ID,
-        PLAY_CLIENTBOUND_ROTATE_HEAD_PACKET_ID, PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID,
-        PLAY_CLIENTBOUND_SET_ENTITY_DATA_PACKET_ID, PLAY_CLIENTBOUND_SET_ENTITY_MOTION_PACKET_ID,
-        PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID, PLAY_CLIENTBOUND_TELEPORT_ENTITY_PACKET_ID,
-        PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID,
+        PLAY_CLIENTBOUND_RESPAWN_PACKET_ID, PLAY_CLIENTBOUND_ROTATE_HEAD_PACKET_ID,
+        PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID, PLAY_CLIENTBOUND_SET_ENTITY_DATA_PACKET_ID,
+        PLAY_CLIENTBOUND_SET_ENTITY_MOTION_PACKET_ID, PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID,
+        PLAY_CLIENTBOUND_TELEPORT_ENTITY_PACKET_ID, PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID,
         PLAY_SERVERBOUND_ACCEPT_TELEPORTATION_PACKET_ID,
         PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID,
         PLAY_SERVERBOUND_CLIENT_TICK_END_PACKET_ID, PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
@@ -2648,11 +2801,12 @@ mod tests {
         parse_container_set_content_packet, parse_container_set_slot_packet,
         parse_entity_metadata_packet, parse_entity_position_sync_packet,
         parse_entity_teleport_packet, parse_forget_level_chunk_packet, parse_light_update_packet,
-        parse_move_entity_pos_packet, parse_move_entity_pos_rot_packet,
+        parse_login_packet, parse_move_entity_pos_packet, parse_move_entity_pos_rot_packet,
         parse_move_entity_rot_packet, parse_optional_item_stack, parse_player_position_packet,
-        parse_remove_entities_packet, parse_remove_mob_effect_packet, parse_rotate_head_packet,
-        parse_section_data, parse_set_entity_motion_packet, parse_system_chat_packet,
-        parse_update_mob_effect_packet, resolve_player_position, support_block_position,
+        parse_remove_entities_packet, parse_remove_mob_effect_packet, parse_respawn_packet,
+        parse_rotate_head_packet, parse_section_data, parse_set_entity_motion_packet,
+        parse_system_chat_packet, parse_update_mob_effect_packet, resolve_player_position,
+        support_block_position,
     };
 
     #[test]
@@ -2686,6 +2840,7 @@ mod tests {
         assert_eq!(PLAY_CLIENTBOUND_CHUNK_PACKET_ID, 45);
         assert_eq!(PLAY_CLIENTBOUND_LOGIN_PACKET_ID, 49);
         assert_eq!(PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID, 72);
+        assert_eq!(PLAY_CLIENTBOUND_RESPAWN_PACKET_ID, 82);
         assert_eq!(PLAY_CLIENTBOUND_BLOCK_UPDATE_PACKET_ID, 8);
         assert_eq!(PLAY_CLIENTBOUND_BLOCK_ENTITY_DATA_PACKET_ID, 6);
         assert_eq!(PLAY_CLIENTBOUND_FORGET_LEVEL_CHUNK_PACKET_ID, 37);
@@ -2880,6 +3035,82 @@ mod tests {
             resolve_player_position(packet, Some((10.0, 20.0, 30.0, 350.0, -80.0))),
             (11.25, -63.0, 4.5, 380.0, 20.0)
         );
+    }
+
+    #[test]
+    fn login_and_respawn_parsers_match_java_common_spawn_info_order() {
+        fn append_identifier(output: &mut Vec<u8>, value: &str) {
+            let identifier = crate::identifier::Identifier::parse(value).expect("identifier");
+            crate::identifier::write_identifier(&identifier, output).expect("identifier bytes");
+        }
+
+        fn append_spawn_info(output: &mut Vec<u8>) {
+            crate::wire::write_varint(1, output);
+            append_identifier(output, "minecraft:the_nether");
+            output.extend_from_slice(&0x0102_0304_0506_0708_i64.to_be_bytes());
+            output.push(1);
+            output.push(0);
+            output.push(1);
+            output.push(0);
+            output.push(1);
+            append_identifier(output, "minecraft:overworld");
+            output.extend_from_slice(&pack_block_position((-3, 64, 7)).to_be_bytes());
+            crate::wire::write_varint(42, output);
+            crate::wire::write_varint(32, output);
+        }
+
+        let mut login_payload = Vec::new();
+        login_payload.extend_from_slice(&17_i32.to_be_bytes());
+        login_payload.push(1);
+        crate::wire::write_varint(2, &mut login_payload);
+        append_identifier(&mut login_payload, "minecraft:overworld");
+        append_identifier(&mut login_payload, "minecraft:the_nether");
+        crate::wire::write_varint(20, &mut login_payload);
+        crate::wire::write_varint(5, &mut login_payload);
+        crate::wire::write_varint(6, &mut login_payload);
+        login_payload.push(0);
+        login_payload.push(1);
+        login_payload.push(0);
+        append_spawn_info(&mut login_payload);
+        login_payload.push(0);
+        login_payload.push(1);
+
+        let login = parse_login_packet(&login_payload).expect("login packet");
+        assert_eq!(login.player_id, 17);
+        assert!(login.hardcore);
+        assert_eq!(login.level_count, 2);
+        assert_eq!(login.max_players, 20);
+        assert_eq!(login.chunk_radius, 5);
+        assert_eq!(login.simulation_distance, 6);
+        assert!(login.show_death_screen);
+        assert_eq!(login.spawn_info.dimension_type_id, 1);
+        assert_eq!(login.spawn_info.dimension, "minecraft:the_nether");
+        assert_eq!(login.spawn_info.seed, 0x0102_0304_0506_0708);
+        assert_eq!(login.spawn_info.game_type, 1);
+        assert_eq!(login.spawn_info.previous_game_type, Some(0));
+        assert!(login.spawn_info.is_debug);
+        assert!(!login.spawn_info.is_flat);
+        assert_eq!(login.spawn_info.portal_cooldown, 42);
+        assert_eq!(login.spawn_info.sea_level, 32);
+        assert!(!login.online_mode);
+        assert!(login.enforces_secure_chat);
+        assert_eq!(
+            login.spawn_info.last_death_location,
+            Some(super::GlobalPositionObservation {
+                dimension: "minecraft:overworld".to_owned(),
+                position: pack_block_position((-3, 64, 7)),
+            })
+        );
+
+        let mut respawn_payload = Vec::new();
+        append_spawn_info(&mut respawn_payload);
+        respawn_payload.push(3);
+        let (spawn_info, data_to_keep) = parse_respawn_packet(&respawn_payload).expect("respawn");
+        assert_eq!(spawn_info, login.spawn_info);
+        assert_eq!(data_to_keep, 3);
+
+        respawn_payload.push(0);
+        assert!(parse_respawn_packet(&respawn_payload).is_err());
     }
 
     #[test]
