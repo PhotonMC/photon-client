@@ -3,7 +3,10 @@
 use std::collections::{BTreeMap, VecDeque};
 
 use crate::binary::BitSet;
-use crate::math::{mth_atan2, mth_lerp_f32, mth_lerp_f64, mth_rot_lerp_f32, mth_rot_lerp_f64};
+use crate::math::{
+    mth_atan2, mth_cos_f64, mth_lerp_f32, mth_lerp_f64, mth_rot_lerp_f32, mth_rot_lerp_f64,
+    mth_sin_f64,
+};
 
 pub(crate) const PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS: u8 = 1;
 pub(crate) const PLAYER_RESPAWN_KEEP_ENTITY_DATA: u8 = 2;
@@ -41,6 +44,15 @@ const LIVING_ENTITY_HEAD_LERP_STEPS: u8 = 3;
 const LIVING_ENTITY_POSITION_LERP_STEPS: u8 = 3;
 const REMOTE_PLAYER_MOTION_LERP_STEPS: u8 = 3;
 const ENTITY_INTERPOLATION_DISTANCE_SQR: f64 = 4096.0;
+const ENTITY_RELATIVE_X_FLAG: i32 = 1 << 0;
+const ENTITY_RELATIVE_Y_FLAG: i32 = 1 << 1;
+const ENTITY_RELATIVE_Z_FLAG: i32 = 1 << 2;
+const ENTITY_RELATIVE_Y_ROT_FLAG: i32 = 1 << 3;
+const ENTITY_RELATIVE_X_ROT_FLAG: i32 = 1 << 4;
+const ENTITY_RELATIVE_DELTA_X_FLAG: i32 = 1 << 5;
+const ENTITY_RELATIVE_DELTA_Y_FLAG: i32 = 1 << 6;
+const ENTITY_RELATIVE_DELTA_Z_FLAG: i32 = 1 << 7;
+const ENTITY_RELATIVE_ROTATE_DELTA_FLAG: i32 = 1 << 8;
 const SNOWBALL_GRAVITY: f64 = 0.03;
 const LIVING_FLAG_USING_ITEM: u8 = 0;
 const LIVING_FLAG_OFF_HAND: u8 = 1;
@@ -1917,6 +1929,60 @@ impl ClientWorld {
         )
     }
 
+    pub(crate) fn apply_entity_teleport(&mut self, input: EntityTeleportInput) -> bool {
+        let Some((current_motion, current_y_rot, current_x_rot)) =
+            self.entities.get(&input.entity_id).map(|entity| {
+                (
+                    entity.motion(),
+                    entity.interpolation_rotation().0,
+                    entity.interpolation_rotation().1,
+                )
+            })
+        else {
+            return false;
+        };
+        let target_y_rot = if input.relative_flags & ENTITY_RELATIVE_Y_ROT_FLAG != 0 {
+            current_y_rot + input.y_rot
+        } else {
+            input.y_rot
+        };
+        let target_x_rot = if input.relative_flags & ENTITY_RELATIVE_X_ROT_FLAG != 0 {
+            current_x_rot + input.x_rot
+        } else {
+            input.x_rot
+        }
+        .clamp(-90.0, 90.0);
+        let target_motion = resolve_entity_teleport_motion(
+            current_motion,
+            (current_y_rot, current_x_rot),
+            (target_y_rot, target_x_rot),
+            (input.delta_x, input.delta_y, input.delta_z),
+            input.relative_flags,
+        );
+        let applied = self.apply_entity_position_and_rotation(
+            EntityPositionInput {
+                entity_id: input.entity_id,
+                x: input.x,
+                y: input.y,
+                z: input.z,
+                relative_flags: input.relative_flags,
+            },
+            EntityRotationInput {
+                entity_id: input.entity_id,
+                y_rot: Some(input.y_rot),
+                x_rot: Some(input.x_rot),
+                y_head_rot: None,
+                relative_y_rot: input.relative_flags & ENTITY_RELATIVE_Y_ROT_FLAG != 0,
+                relative_x_rot: input.relative_flags & ENTITY_RELATIVE_X_ROT_FLAG != 0,
+            },
+            EntityPositionUpdateMode::Teleport,
+        );
+        if applied && let Some(entity) = self.entities.get_mut(&input.entity_id) {
+            entity.set_motion_if_finite(target_motion);
+        }
+        applied
+    }
+
     pub(crate) fn apply_entity_move(&mut self, input: EntityMoveInput) -> bool {
         let Some(current) = self
             .entities
@@ -1976,17 +2042,17 @@ impl ClientWorld {
             .get(&input.entity_id)
             .map(|entity| entity.interpolation_position())?;
         let target = (
-            if input.relative_flags & (1 << 0) != 0 {
+            if input.relative_flags & ENTITY_RELATIVE_X_FLAG != 0 {
                 current.0 + input.x
             } else {
                 input.x
             },
-            if input.relative_flags & (1 << 1) != 0 {
+            if input.relative_flags & ENTITY_RELATIVE_Y_FLAG != 0 {
                 current.1 + input.y
             } else {
                 input.y
             },
-            if input.relative_flags & (1 << 2) != 0 {
+            if input.relative_flags & ENTITY_RELATIVE_Z_FLAG != 0 {
                 current.2 + input.z
             } else {
                 input.z
@@ -3028,6 +3094,14 @@ impl ClientEntity {
         )
     }
 
+    fn set_motion_if_finite(&mut self, motion: (f64, f64, f64)) {
+        if motion.0.is_finite() && motion.1.is_finite() && motion.2.is_finite() {
+            self.motion_x_bits = motion.0.to_bits();
+            self.motion_y_bits = motion.1.to_bits();
+            self.motion_z_bits = motion.2.to_bits();
+        }
+    }
+
     pub fn motion_interpolation_target(&self) -> Option<(f64, f64, f64)> {
         (self.motion_lerp_steps > 0).then(|| {
             (
@@ -3394,6 +3468,19 @@ pub(crate) struct EntityPositionInput {
     pub(crate) relative_flags: i32,
 }
 
+pub(crate) struct EntityTeleportInput {
+    pub(crate) entity_id: i32,
+    pub(crate) x: f64,
+    pub(crate) y: f64,
+    pub(crate) z: f64,
+    pub(crate) delta_x: f64,
+    pub(crate) delta_y: f64,
+    pub(crate) delta_z: f64,
+    pub(crate) y_rot: f32,
+    pub(crate) x_rot: f32,
+    pub(crate) relative_flags: i32,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum EntityPositionUpdateMode {
     PositionSync,
@@ -3442,6 +3529,62 @@ fn decode_entity_delta(base: f64, delta: i16) -> u64 {
         let encoded_base = (base * 4096.0 + 0.5).floor() as i64;
         ((encoded_base + i64::from(delta)) as f64 / 4096.0).to_bits()
     }
+}
+
+fn resolve_entity_teleport_motion(
+    current_motion: (f64, f64, f64),
+    current_rotation: (f32, f32),
+    target_rotation: (f32, f32),
+    delta_movement: (f64, f64, f64),
+    relative_flags: i32,
+) -> (f64, f64, f64) {
+    let current_motion = if relative_flags & ENTITY_RELATIVE_ROTATE_DELTA_FLAG != 0 {
+        rotate_entity_motion(current_motion, current_rotation, target_rotation)
+    } else {
+        current_motion
+    };
+    (
+        if relative_flags & ENTITY_RELATIVE_DELTA_X_FLAG != 0 {
+            current_motion.0 + delta_movement.0
+        } else {
+            delta_movement.0
+        },
+        if relative_flags & ENTITY_RELATIVE_DELTA_Y_FLAG != 0 {
+            current_motion.1 + delta_movement.1
+        } else {
+            delta_movement.1
+        },
+        if relative_flags & ENTITY_RELATIVE_DELTA_Z_FLAG != 0 {
+            current_motion.2 + delta_movement.2
+        } else {
+            delta_movement.2
+        },
+    )
+}
+
+fn rotate_entity_motion(
+    current_motion: (f64, f64, f64),
+    current_rotation: (f32, f32),
+    target_rotation: (f32, f32),
+) -> (f64, f64, f64) {
+    let diff_y_rot = current_rotation.0 - target_rotation.0;
+    let diff_x_rot = current_rotation.1 - target_rotation.1;
+    let x_radians = (f64::from(diff_x_rot) * (std::f64::consts::PI / 180.0)) as f32;
+    let y_radians = (f64::from(diff_y_rot) * (std::f64::consts::PI / 180.0)) as f32;
+    let x_cos = f64::from(mth_cos_f64(f64::from(x_radians)));
+    let x_sin = f64::from(mth_sin_f64(f64::from(x_radians)));
+    let x_rotated = (
+        current_motion.0,
+        current_motion.1 * x_cos + current_motion.2 * x_sin,
+        current_motion.2 * x_cos - current_motion.1 * x_sin,
+    );
+    let y_cos = f64::from(mth_cos_f64(f64::from(y_radians)));
+    let y_sin = f64::from(mth_sin_f64(f64::from(y_radians)));
+    (
+        x_rotated.0 * y_cos + x_rotated.2 * y_sin,
+        x_rotated.1,
+        x_rotated.2 * y_cos - x_rotated.0 * y_sin,
+    )
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -3525,14 +3668,18 @@ mod tests {
     use super::{
         BlockEntityInput, ClientAttributeModifierState, ClientAttributeState, ClientItemStackState,
         ClientWorld, DimensionBounds, DimensionEnvironment, DimensionInput,
-        ENTITY_DATA_SERIALIZER_BOOLEAN_ID, ENTITY_NO_GRAVITY_DATA_ID, EntityInput,
+        ENTITY_DATA_SERIALIZER_BOOLEAN_ID, ENTITY_NO_GRAVITY_DATA_ID, ENTITY_RELATIVE_DELTA_X_FLAG,
+        ENTITY_RELATIVE_DELTA_Y_FLAG, ENTITY_RELATIVE_DELTA_Z_FLAG,
+        ENTITY_RELATIVE_ROTATE_DELTA_FLAG, ENTITY_RELATIVE_X_FLAG, ENTITY_RELATIVE_X_ROT_FLAG,
+        ENTITY_RELATIVE_Y_FLAG, ENTITY_RELATIVE_Y_ROT_FLAG, ENTITY_RELATIVE_Z_FLAG, EntityInput,
         EntityMotionInput, EntityMoveInput, EntityPositionInput, EntityPositionUpdateMode,
-        EntityRotationInput, LightLayerInput, LightUpdateInput,
+        EntityRotationInput, EntityTeleportInput, LightLayerInput, LightUpdateInput,
         PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS, PLAYER_RESPAWN_KEEP_ENTITY_DATA, SNOWBALL_GRAVITY,
         SectionInput, VANILLA_PLAYER_ENTITY_TYPE_ID, VANILLA_SNOWBALL_ENTITY_TYPE_ID,
         menu_top_slot_count,
     };
     use crate::binary::{BitSet, Uuid};
+    use crate::math::{mth_cos_f64, mth_sin_f64};
 
     fn section(block_value: i32, biome_value: i32) -> (Vec<i32>, Vec<i32>) {
         let mut blocks = vec![block_value; 4_096];
@@ -5820,6 +5967,111 @@ mod tests {
         assert_eq!(entity.motion(), target);
         assert_eq!(entity.motion_interpolation_target(), None);
         assert_eq!(entity.motion_interpolation_steps(), 0);
+    }
+
+    #[test]
+    fn entity_teleport_applies_relative_delta_motion_and_rotation() {
+        let mut world = ClientWorld::default();
+        assert!(world.apply_entity(EntityInput {
+            entity_id: 37,
+            uuid: Uuid::new(1, 2),
+            type_id: 1,
+            x: 10.0,
+            y: 64.0,
+            z: 20.0,
+            movement: (1.0, 2.0, 3.0),
+            rotation: (0.0, 0.0, 0.0),
+            data: 0,
+        }));
+        let relative_flags = ENTITY_RELATIVE_X_FLAG
+            | ENTITY_RELATIVE_Y_FLAG
+            | ENTITY_RELATIVE_Z_FLAG
+            | ENTITY_RELATIVE_Y_ROT_FLAG
+            | ENTITY_RELATIVE_X_ROT_FLAG
+            | ENTITY_RELATIVE_DELTA_X_FLAG
+            | ENTITY_RELATIVE_DELTA_Y_FLAG
+            | ENTITY_RELATIVE_DELTA_Z_FLAG;
+        assert!(world.apply_entity_teleport(EntityTeleportInput {
+            entity_id: 37,
+            x: 2.0,
+            y: 3.0,
+            z: 4.0,
+            delta_x: 0.25,
+            delta_y: -0.5,
+            delta_z: 0.75,
+            y_rot: 15.0,
+            x_rot: 10.0,
+            relative_flags,
+        }));
+        let entity = world.entity_at(37).expect("relative teleport entity");
+        assert_eq!(entity.position(), (12.0, 67.0, 24.0));
+        assert_eq!(entity.rotation(), (15.0, 10.0, 0.0));
+        assert_eq!(entity.motion(), (1.25, 1.5, 3.75));
+
+        assert!(world.apply_entity(EntityInput {
+            entity_id: 38,
+            uuid: Uuid::new(3, 4),
+            type_id: 1,
+            x: 10.0,
+            y: 64.0,
+            z: 20.0,
+            movement: (1.0, 0.0, 0.0),
+            rotation: (0.0, 0.0, 0.0),
+            data: 0,
+        }));
+        let rotate_flags = ENTITY_RELATIVE_Y_ROT_FLAG
+            | ENTITY_RELATIVE_DELTA_X_FLAG
+            | ENTITY_RELATIVE_DELTA_Z_FLAG
+            | ENTITY_RELATIVE_ROTATE_DELTA_FLAG;
+        assert!(world.apply_entity_teleport(EntityTeleportInput {
+            entity_id: 38,
+            x: 10.0,
+            y: 64.0,
+            z: 20.0,
+            delta_x: 0.0,
+            delta_y: 0.0,
+            delta_z: 0.0,
+            y_rot: 90.0,
+            x_rot: 0.0,
+            relative_flags: rotate_flags,
+        }));
+        let entity = world.entity_at(38).expect("rotated teleport entity");
+        let radians = (f64::from(-90.0_f32) * (std::f64::consts::PI / 180.0)) as f32;
+        let expected_x = f64::from(mth_cos_f64(f64::from(radians)));
+        let expected_z = -f64::from(mth_sin_f64(f64::from(radians)));
+        assert_eq!(entity.rotation(), (90.0, 0.0, 0.0));
+        assert_eq!(entity.motion(), (expected_x, 0.0, expected_z));
+
+        assert!(world.apply_entity(EntityInput {
+            entity_id: 39,
+            uuid: Uuid::new(5, 6),
+            type_id: 1,
+            x: 10.0,
+            y: 64.0,
+            z: 20.0,
+            movement: (0.5, 0.25, -0.75),
+            rotation: (0.0, 0.0, 0.0),
+            data: 0,
+        }));
+        assert!(world.apply_entity_teleport(EntityTeleportInput {
+            entity_id: 39,
+            x: 10.0,
+            y: 64.0,
+            z: 20.0,
+            delta_x: f64::NAN,
+            delta_y: 0.0,
+            delta_z: 0.0,
+            y_rot: 0.0,
+            x_rot: 0.0,
+            relative_flags: ENTITY_RELATIVE_DELTA_X_FLAG,
+        }));
+        assert_eq!(
+            world
+                .entity_at(39)
+                .expect("nonfinite teleport entity")
+                .motion(),
+            (0.5, 0.25, -0.75)
+        );
     }
 
     #[test]

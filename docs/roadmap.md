@@ -95,9 +95,10 @@ section edge case'leri, attribute gameplay etkileri, ışık propagation/queue,
 kalan semantic metadata ve serializer alanları, kalan body/head turn semantiği,
 genel motion integration, gerçek entity tick yürütmesi ve tam entity lifecycle
 hâlâ ön koşuldur. Snowball free-flight tick alt dalı [P08.aq kaydında](client-world-entity-snowball-tick-conformance.md)
-sınırlı olarak, remote Player position interpolation [P08.ar kaydında](client-world-entity-player-interpolation-conformance.md)
-ve uzaklık üstü snap [P08.as kaydında](client-world-entity-player-snap-conformance.md)
-ile motion interpolation [P08.at kaydında](client-world-entity-player-motion-conformance.md)
+sınırlı olarak, remote Player position interpolation [P08.ar kaydında](client-world-entity-player-interpolation-conformance.md),
+uzaklık üstü snap [P08.as kaydında](client-world-entity-player-snap-conformance.md),
+motion interpolation [P08.at kaydında](client-world-entity-player-motion-conformance.md)
+ve teleport delta/relative motion [P08.au kaydında](client-world-entity-teleport-delta-conformance.md)
 `server-conformance` olarak ilerletilmiştir; P08 `client-parity` ile kapanmadan
 bu bağımlılıklar açılmaz.
 

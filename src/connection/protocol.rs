@@ -903,10 +903,12 @@ pub struct EntityTeleportObservation {
     pub x_rot: f32,
     pub relative_flags: i32,
     pub on_ground: bool,
+    pub motion_before: Option<(f64, f64, f64)>,
     pub applied_to_world: bool,
     pub applied_on_ground: Option<bool>,
     pub applied_position: Option<(f64, f64, f64)>,
     pub applied_rotation: Option<(f32, f32, f32)>,
+    pub applied_motion: Option<(f64, f64, f64)>,
 }
 
 /// Wire-level fields decoded from one clientbound relative entity-move packet.
@@ -2042,10 +2044,12 @@ pub(crate) fn parse_entity_teleport_packet(
         x_rot,
         relative_flags,
         on_ground,
+        motion_before: None,
         applied_to_world: false,
         applied_on_ground: None,
         applied_position: None,
         applied_rotation: None,
+        applied_motion: None,
     })
 }
 
@@ -3756,10 +3760,12 @@ mod tests {
                 x_rot: -15.0,
                 relative_flags: 0b101,
                 on_ground: true,
+                motion_before: None,
                 applied_to_world: false,
                 applied_on_ground: None,
                 applied_position: None,
                 applied_rotation: None,
+                applied_motion: None,
             }
         );
 

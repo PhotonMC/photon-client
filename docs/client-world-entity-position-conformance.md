@@ -2,9 +2,11 @@
 
 Bu kayıt, vanilla sunucusundan gelen entity position sync, relative move ve
 entity teleport packet'lerinin `ClientWorld` global entity map'indeki konum
-state'ine taşınmasını kapsar. Kanıt sınıfı `server-conformance`'dır: Rust
-packet akışı Mojang vanilla 26.2 dedicated server'a bağlanır. Java istemcisiyle
-aynı girdide state karşılaştırılmadığı için bu kayıt `client-parity` değildir.
+state'ine taşınmasını kapsar. Teleport packet'inin delta movement ve relative
+delta uygulaması [P08.au kaydında](client-world-entity-teleport-delta-conformance.md)
+ayrıca ele alınır. Kanıt sınıfı `server-conformance`'dır: Rust packet akışı
+Mojang vanilla 26.2 dedicated server'a bağlanır. Java istemcisiyle aynı
+girdide state karşılaştırılmadığı için bu kayıt `client-parity` değildir.
 
 ## Java kaynak incelemesi
 
@@ -25,14 +27,15 @@ alanlarını ve `Relative.SET_STREAM_CODEC` ile dört byte'lık relative maskeyi
 taşır; packet ID'si `125`'tir. `Relative.java:8-114`, X/Y/Z konum bitlerini
 maskenin 0/1/2 bitlerine yerleştirir.
 
-`ClientPacketListener.java:639-727`, position sync ve teleport alanlarını
+`ClientPacketListener.java:666-698,806-826`, position sync ve teleport alanlarını
 mevcut entity'ye uygular; move handler da position codec'ini kullanarak delta
 konumunu çözer. Remote Player için ticking ve `4096.0` squared-distance
 koşulları küçük hedefte interpolation, büyük hedefte snap seçer; bu iki
 davranış [P08.ar](client-world-entity-player-interpolation-conformance.md) ve
 [P08.as](client-world-entity-player-snap-conformance.md) kayıtlarında ayrıdır.
-Java'nın movement ve passenger yan etkileri entity sınıfının ayrı state'lerine
-bağlıdır.
+Teleport relative delta ve hareket dönüşü [P08.au](client-world-entity-teleport-delta-conformance.md)
+kaydında tutulur. Java'nın movement ve passenger yan etkileri entity sınıfının
+ayrı state'lerine bağlıdır.
 
 ## Sözleşme
 
@@ -48,6 +51,9 @@ bağlıdır.
 - Teleport packet'inde X/Y/Z relative bitleri set ise ilgili değer mevcut
   konuma eklenir; bit set değilse değer mutlak kabul edilir. Bilinmeyen bitler
   konum çözümünü etkilemez.
+- Teleport packet'inin delta movement ve relative delta bitleri [P08.au
+  kaydındaki](client-world-entity-teleport-delta-conformance.md) sözleşmeye
+  göre uygulanır.
 - World'de bulunmayan entity ID'si için packet observation tutulur fakat
   application sonucu false olur.
 - Bu dilim `ClientWorld` içinde konum state'ini günceller. Packet içindeki raw
@@ -56,14 +62,16 @@ bağlıdır.
   olarak uygulanmaz; remote Player'ın dar interpolation/snap dalları [P08.ar](client-world-entity-player-interpolation-conformance.md)
   ve [P08.as](client-world-entity-player-snap-conformance.md) kayıtlarında
   ayrıdır. Raw delta movement state'i [motion kaydında](client-world-entity-motion-conformance.md)
-  ele alınır.
+  ele alınır; teleport delta uygulaması [P08.au kaydındadır](client-world-entity-teleport-delta-conformance.md).
 
 ## Rust doğrulaması
 
 `parse_entity_position_sync_packet`, `parse_entity_teleport_packet` ve üç move
 varyant parser'ı Java alan sırasını tüketir ve trailing byte'ları reddeder.
 `ClientWorld`, mutlak/relative konum uygulamasını ve quantized move çözümünü
-sorgulanabilir entity position olarak saklar. Her uygulanan observation, probe
+sorgulanabilir entity position olarak saklar. Teleport dispatch'i delta
+movement'i [P08.au kaydındaki](client-world-entity-teleport-delta-conformance.md)
+uygulama yoluna verir. Her uygulanan observation, probe
 sırasında uygulama anındaki konumu kaydeder; sonradan gelen entity tick'leri
 ile karıştırılmaz. Player type ID `156` için network interpolation hedefi ve
 üç tick ve uzak snap sonucu [P08.ar](client-world-entity-player-interpolation-conformance.md)
@@ -127,8 +135,8 @@ gösterir; Java istemcisiyle parity iddiası değildir.
 ## Açık kapsam
 
 Quantized delta base'inin Java render/interpolation state'iyle ayrıştırılması,
-rotation interpolation ve head/body semantic state'i, delta movement integration, on-ground, teleport
-relative rotation/delta bitleri, generic living interpolation, passenger/vehicle ilişkisi, entity tick/fizik,
+rotation interpolation ve head/body semantic state'i, delta movement integration, on-ground,
+generic living interpolation, passenger/vehicle ilişkisi, entity tick/fizik,
 chunk unload temizliği, dimension/respawn, render state'i
 ve oynanabilir istemci bağlantısı açık kalır. Bu konum state'i
 `server-conformance` ilerlemesidir; P08'in `client-parity` kapanışı değildir.

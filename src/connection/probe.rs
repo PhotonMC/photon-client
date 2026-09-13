@@ -16,7 +16,7 @@ use crate::wire;
 use crate::world::{
     BlockEntityInput, DimensionBounds, DimensionEnvironment, DimensionInput, EntityInput,
     EntityMotionInput, EntityMoveInput, EntityPositionInput, EntityPositionUpdateMode,
-    EntityRotationInput, LightLayerInput, LightUpdateInput,
+    EntityRotationInput, EntityTeleportInput, LightLayerInput, LightUpdateInput,
     PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS, PLAYER_RESPAWN_KEEP_ENTITY_DATA, SectionInput,
     VANILLA_SNOWBALL_ENTITY_TYPE_ID,
 };
@@ -400,6 +400,22 @@ pub fn connect_and_world_entity_position_probe(
         username,
         timeout,
         PlayProbeConfig::new(ProbeAction::WorldEntityPosition),
+    )
+}
+
+/// Connect to a Java-protocol server and keep the loaded world open long enough
+/// to observe an entity teleport packet sent to a riding player.
+pub fn connect_and_world_entity_teleport_delta_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeConfig::new(ProbeAction::WorldEntityPosition)
+            .with_drain_timeout(Duration::from_secs(60)),
     )
 }
 
@@ -1975,6 +1991,10 @@ fn connect_and_probe_with_mode(
             }
             PLAY_CLIENTBOUND_TELEPORT_ENTITY_PACKET_ID => {
                 let mut observation = parse_entity_teleport_packet(payload)?;
+                let motion_before = trace
+                    .world
+                    .entity_at(observation.entity_id)
+                    .map(|entity| entity.motion());
                 let snap_before = if probe.observe_player_position_snap {
                     trace
                         .world
@@ -1989,25 +2009,21 @@ fn connect_and_probe_with_mode(
                 } else {
                     None
                 };
-                observation.applied_to_world = trace.world.apply_entity_position_and_rotation(
-                    EntityPositionInput {
+                observation.applied_to_world =
+                    trace.world.apply_entity_teleport(EntityTeleportInput {
                         entity_id: observation.entity_id,
                         x: observation.x,
                         y: observation.y,
                         z: observation.z,
+                        delta_x: observation.delta_x,
+                        delta_y: observation.delta_y,
+                        delta_z: observation.delta_z,
+                        y_rot: observation.y_rot,
+                        x_rot: observation.x_rot,
                         relative_flags: observation.relative_flags,
-                    },
-                    EntityRotationInput {
-                        entity_id: observation.entity_id,
-                        y_rot: Some(observation.y_rot),
-                        x_rot: Some(observation.x_rot),
-                        y_head_rot: None,
-                        relative_y_rot: observation.relative_flags & (1 << 3) != 0,
-                        relative_x_rot: observation.relative_flags & (1 << 4) != 0,
-                    },
-                    EntityPositionUpdateMode::Teleport,
-                );
+                    });
                 if observation.applied_to_world {
+                    observation.motion_before = motion_before;
                     trace
                         .world
                         .apply_entity_ground_state(observation.entity_id, observation.on_ground);
@@ -2019,6 +2035,10 @@ fn connect_and_probe_with_mode(
                         .world
                         .entity_at(observation.entity_id)
                         .map(|entity| entity.rotation());
+                    observation.applied_motion = trace
+                        .world
+                        .entity_at(observation.entity_id)
+                        .map(|entity| entity.motion());
                     observation.applied_on_ground = trace
                         .world
                         .entity_at(observation.entity_id)
