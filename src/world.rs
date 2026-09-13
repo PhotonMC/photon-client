@@ -12,9 +12,11 @@ const ENTITY_SHARED_FLAGS_DATA_ID: u8 = 0;
 const ENTITY_AIR_SUPPLY_DATA_ID: u8 = 1;
 const ENTITY_SILENT_DATA_ID: u8 = 4;
 const ENTITY_NO_GRAVITY_DATA_ID: u8 = 5;
+const ENTITY_POSE_DATA_ID: u8 = 6;
 const ENTITY_DATA_SERIALIZER_BYTE_ID: i32 = 0;
 const ENTITY_DATA_SERIALIZER_INT_ID: i32 = 1;
 const ENTITY_DATA_SERIALIZER_BOOLEAN_ID: i32 = 8;
+const ENTITY_DATA_SERIALIZER_POSE_ID: i32 = 20;
 const DEFAULT_AIR_SUPPLY: i32 = 300;
 const SHARED_FLAG_ON_FIRE: u8 = 0;
 const SHARED_FLAG_SHIFT_KEY_DOWN: u8 = 1;
@@ -23,6 +25,77 @@ const SHARED_FLAG_SWIMMING: u8 = 4;
 const SHARED_FLAG_INVISIBLE: u8 = 5;
 const SHARED_FLAG_GLOWING: u8 = 6;
 const SHARED_FLAG_FALL_FLYING: u8 = 7;
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum ClientEntityPose {
+    #[default]
+    Standing,
+    FallFlying,
+    Sleeping,
+    Swimming,
+    SpinAttack,
+    Crouching,
+    LongJumping,
+    Dying,
+    Croaking,
+    UsingTongue,
+    Sitting,
+    Roaring,
+    Sniffing,
+    Emerging,
+    Digging,
+    Sliding,
+    Shooting,
+    Inhaling,
+}
+
+impl ClientEntityPose {
+    pub const fn id(self) -> u8 {
+        match self {
+            Self::Standing => 0,
+            Self::FallFlying => 1,
+            Self::Sleeping => 2,
+            Self::Swimming => 3,
+            Self::SpinAttack => 4,
+            Self::Crouching => 5,
+            Self::LongJumping => 6,
+            Self::Dying => 7,
+            Self::Croaking => 8,
+            Self::UsingTongue => 9,
+            Self::Sitting => 10,
+            Self::Roaring => 11,
+            Self::Sniffing => 12,
+            Self::Emerging => 13,
+            Self::Digging => 14,
+            Self::Sliding => 15,
+            Self::Shooting => 16,
+            Self::Inhaling => 17,
+        }
+    }
+
+    fn from_wire_id(id: i32) -> Self {
+        match id {
+            1 => Self::FallFlying,
+            2 => Self::Sleeping,
+            3 => Self::Swimming,
+            4 => Self::SpinAttack,
+            5 => Self::Crouching,
+            6 => Self::LongJumping,
+            7 => Self::Dying,
+            8 => Self::Croaking,
+            9 => Self::UsingTongue,
+            10 => Self::Sitting,
+            11 => Self::Roaring,
+            12 => Self::Sniffing,
+            13 => Self::Emerging,
+            14 => Self::Digging,
+            15 => Self::Sliding,
+            16 => Self::Shooting,
+            17 => Self::Inhaling,
+            _ => Self::Standing,
+        }
+    }
+}
 
 fn shared_flag_is_set(flags: u8, flag: u8) -> bool {
     flags & (1_u8 << flag) != 0
@@ -90,6 +163,41 @@ fn metadata_int_value(metadata: &[u8], target_data_id: u8) -> Option<i32> {
                 metadata = metadata.get(1..)?;
             }
             ENTITY_DATA_SERIALIZER_INT_ID => {
+                crate::wire::read_varint(&mut metadata).ok()?;
+            }
+            _ => return None,
+        }
+    }
+}
+
+fn metadata_pose_value(metadata: &[u8]) -> Option<ClientEntityPose> {
+    if metadata.last() != Some(&255) {
+        return None;
+    }
+    let mut metadata = metadata;
+    loop {
+        let (&data_id, rest) = metadata.split_first()?;
+        if data_id == 255 {
+            return None;
+        }
+        metadata = rest;
+        let serializer_id = crate::wire::read_varint(&mut metadata).ok()?;
+        if data_id == ENTITY_POSE_DATA_ID {
+            if serializer_id != ENTITY_DATA_SERIALIZER_POSE_ID {
+                return None;
+            }
+            let mut value_input = metadata;
+            let value = crate::wire::read_varint(&mut value_input).ok()?;
+            if value_input.is_empty() {
+                return None;
+            }
+            return Some(ClientEntityPose::from_wire_id(value));
+        }
+        match serializer_id {
+            ENTITY_DATA_SERIALIZER_BYTE_ID | ENTITY_DATA_SERIALIZER_BOOLEAN_ID => {
+                metadata = metadata.get(1..)?;
+            }
+            ENTITY_DATA_SERIALIZER_INT_ID | ENTITY_DATA_SERIALIZER_POSE_ID => {
                 crate::wire::read_varint(&mut metadata).ok()?;
             }
             _ => return None,
@@ -775,6 +883,7 @@ impl ClientWorld {
             player.air_supply = previous.air_supply;
             player.no_gravity = previous.no_gravity;
             player.silent = previous.silent;
+            player.pose = previous.pose;
             player.entity_data = previous.entity_data;
         } else {
             player.y_rot_bits = (-180.0_f32).to_bits();
@@ -1180,6 +1289,7 @@ impl ClientWorld {
                 air_supply: DEFAULT_AIR_SUPPLY,
                 no_gravity: false,
                 silent: false,
+                pose: ClientEntityPose::Standing,
             },
         );
         true
@@ -1190,6 +1300,7 @@ impl ClientWorld {
         let air_supply = air_supply_from_metadata(metadata);
         let no_gravity = no_gravity_from_metadata(metadata);
         let silent = silent_from_metadata(metadata);
+        let pose = metadata_pose_value(metadata);
         if let Some(player) = self
             .local_player
             .as_mut()
@@ -1208,6 +1319,9 @@ impl ClientWorld {
             if let Some(silent) = silent {
                 player.silent = silent;
             }
+            if let Some(pose) = pose {
+                player.pose = pose;
+            }
             return true;
         }
         let Some(entity) = self.entities.get_mut(&entity_id) else {
@@ -1225,6 +1339,9 @@ impl ClientWorld {
         }
         if let Some(silent) = silent {
             entity.silent = silent;
+        }
+        if let Some(pose) = pose {
+            entity.pose = pose;
         }
         true
     }
@@ -1567,6 +1684,7 @@ pub struct ClientEntity {
     air_supply: i32,
     no_gravity: bool,
     silent: bool,
+    pose: ClientEntityPose,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1724,6 +1842,7 @@ pub struct ClientPlayerState {
     air_supply: i32,
     no_gravity: bool,
     silent: bool,
+    pose: ClientEntityPose,
     attributes: Vec<ClientAttributeState>,
     effects: Vec<ClientMobEffectState>,
     health_bits: u32,
@@ -1767,6 +1886,7 @@ impl ClientPlayerState {
             air_supply: DEFAULT_AIR_SUPPLY,
             no_gravity: false,
             silent: false,
+            pose: ClientEntityPose::Standing,
             attributes: Vec::new(),
             effects: Vec::new(),
             health_bits: 20.0_f32.to_bits(),
@@ -1870,6 +1990,10 @@ impl ClientPlayerState {
 
     pub fn is_silent(&self) -> bool {
         self.silent
+    }
+
+    pub fn pose(&self) -> ClientEntityPose {
+        self.pose
     }
 
     pub fn is_on_fire(&self) -> bool {
@@ -2049,6 +2173,10 @@ impl ClientEntity {
 
     pub fn is_silent(&self) -> bool {
         self.silent
+    }
+
+    pub fn pose(&self) -> ClientEntityPose {
+        self.pose
     }
 
     pub fn is_on_fire(&self) -> bool {
@@ -3188,6 +3316,72 @@ mod tests {
     }
 
     #[test]
+    fn entity_pose_follows_java_pose_metadata_and_maps_unknown_ids_to_standing() {
+        let mut world = ClientWorld::default();
+        assert!(world.apply_entity(EntityInput {
+            entity_id: 37,
+            uuid: Uuid::new(1, 2),
+            type_id: 5,
+            x: 1.25,
+            y: 80.0,
+            z: -35.5,
+            movement: (0.0, 0.0, 0.0),
+            rotation: (0.0, 0.0, 0.0),
+            data: 0,
+        }));
+        assert_eq!(
+            world.entity_at(37).map(super::ClientEntity::pose),
+            Some(super::ClientEntityPose::Standing)
+        );
+
+        let expected_poses = [
+            super::ClientEntityPose::Standing,
+            super::ClientEntityPose::FallFlying,
+            super::ClientEntityPose::Sleeping,
+            super::ClientEntityPose::Swimming,
+            super::ClientEntityPose::SpinAttack,
+            super::ClientEntityPose::Crouching,
+            super::ClientEntityPose::LongJumping,
+            super::ClientEntityPose::Dying,
+            super::ClientEntityPose::Croaking,
+            super::ClientEntityPose::UsingTongue,
+            super::ClientEntityPose::Sitting,
+            super::ClientEntityPose::Roaring,
+            super::ClientEntityPose::Sniffing,
+            super::ClientEntityPose::Emerging,
+            super::ClientEntityPose::Digging,
+            super::ClientEntityPose::Sliding,
+            super::ClientEntityPose::Shooting,
+            super::ClientEntityPose::Inhaling,
+        ];
+        for (id, expected) in expected_poses.into_iter().enumerate() {
+            let mut metadata = vec![
+                super::ENTITY_POSE_DATA_ID,
+                super::ENTITY_DATA_SERIALIZER_POSE_ID as u8,
+            ];
+            crate::wire::write_varint(id as i32, &mut metadata);
+            metadata.push(255);
+            assert!(world.apply_entity_metadata(37, &metadata));
+            let entity = world.entity_at(37).expect("entity with pose");
+            assert_eq!(entity.pose(), expected);
+            assert_eq!(entity.pose().id(), id as u8);
+        }
+
+        let combined_metadata = [0, 0, 64, 5, 8, 1, 6, 20, 10, 255];
+        assert!(world.apply_entity_metadata(37, &combined_metadata));
+        let entity = world.entity_at(37).expect("combined pose entity");
+        assert_eq!(entity.pose(), super::ClientEntityPose::Sitting);
+        assert!(entity.is_glowing());
+        assert!(entity.is_no_gravity());
+
+        assert!(world.apply_entity_metadata(37, &[6, 20, 99, 255]));
+        let entity = world.entity_at(37).expect("fallback pose entity");
+        assert_eq!(entity.pose(), super::ClientEntityPose::Standing);
+        assert!(entity.is_glowing());
+        assert!(entity.is_no_gravity());
+    }
+
+    #[test]
     fn player_entities_keep_ticking_after_their_chunk_unloads() {
         let mut world = ClientWorld::default();
         let (blocks, biomes) = section(0, 0);
@@ -3467,6 +3661,8 @@ mod tests {
         assert!(world.apply_entity_metadata(42, &no_gravity_metadata));
         let silent_metadata = [4, 8, 1, 255];
         assert!(world.apply_entity_metadata(42, &silent_metadata));
+        let pose_metadata = [6, 20, 10, 255];
+        assert!(world.apply_entity_metadata(42, &pose_metadata));
 
         assert!(world.recreate_local_player(
             PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS | PLAYER_RESPAWN_KEEP_ENTITY_DATA
@@ -3477,12 +3673,13 @@ mod tests {
         assert_eq!(player.position(), (0.0, 0.0, 0.0));
         assert_eq!(player.motion(), (0.125, -0.25, 0.5));
         assert_eq!(player.rotation(), (135.0, -30.0));
-        assert_eq!(player.entity_data(), Some(silent_metadata.as_slice()));
+        assert_eq!(player.entity_data(), Some(pose_metadata.as_slice()));
         assert_eq!(player.shared_flags(), 32);
         assert!(player.is_invisible());
         assert_eq!(player.air_supply(), 250);
         assert!(player.is_no_gravity());
         assert!(player.is_silent());
+        assert_eq!(player.pose(), super::ClientEntityPose::Sitting);
 
         assert!(world.recreate_local_player(0));
         let player = world.local_player().expect("reset local player");
@@ -3496,6 +3693,7 @@ mod tests {
         assert_eq!(player.air_supply(), 300);
         assert!(!player.is_no_gravity());
         assert!(!player.is_silent());
+        assert_eq!(player.pose(), super::ClientEntityPose::Standing);
     }
 
     #[test]
