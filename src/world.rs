@@ -16,8 +16,10 @@ const ENTITY_SILENT_DATA_ID: u8 = 4;
 const ENTITY_NO_GRAVITY_DATA_ID: u8 = 5;
 const ENTITY_POSE_DATA_ID: u8 = 6;
 const ENTITY_TICKS_FROZEN_DATA_ID: u8 = 7;
+const ENTITY_HEALTH_DATA_ID: u8 = 9;
 const ENTITY_DATA_SERIALIZER_BYTE_ID: i32 = 0;
 const ENTITY_DATA_SERIALIZER_INT_ID: i32 = 1;
+const ENTITY_DATA_SERIALIZER_FLOAT_ID: i32 = 3;
 const ENTITY_DATA_SERIALIZER_OPTIONAL_COMPONENT_ID: i32 = 6;
 const ENTITY_DATA_SERIALIZER_BOOLEAN_ID: i32 = 8;
 const ENTITY_DATA_SERIALIZER_POSE_ID: i32 = 20;
@@ -114,6 +116,9 @@ fn skip_metadata_value(metadata: &mut &[u8], serializer_id: i32) -> Option<()> {
         ENTITY_DATA_SERIALIZER_INT_ID | ENTITY_DATA_SERIALIZER_POSE_ID => {
             crate::wire::read_varint(metadata).ok()?;
         }
+        ENTITY_DATA_SERIALIZER_FLOAT_ID => {
+            *metadata = metadata.get(4..)?;
+        }
         ENTITY_DATA_SERIALIZER_OPTIONAL_COMPONENT_ID => {
             let (&present, rest) = metadata.split_first()?;
             *metadata = rest;
@@ -180,6 +185,32 @@ fn metadata_int_value(metadata: &[u8], target_data_id: u8) -> Option<i32> {
     }
 }
 
+fn metadata_float_value(metadata: &[u8], target_data_id: u8) -> Option<f32> {
+    if metadata.last() != Some(&255) {
+        return None;
+    }
+    let mut metadata = metadata;
+    loop {
+        let (&data_id, rest) = metadata.split_first()?;
+        if data_id == 255 {
+            return None;
+        }
+        metadata = rest;
+        let serializer_id = crate::wire::read_varint(&mut metadata).ok()?;
+        if data_id == target_data_id {
+            if serializer_id != ENTITY_DATA_SERIALIZER_FLOAT_ID {
+                return None;
+            }
+            let value = u32::from_be_bytes(metadata.get(..4)?.try_into().ok()?);
+            if metadata.get(4..)?.is_empty() {
+                return None;
+            }
+            return Some(f32::from_bits(value));
+        }
+        skip_metadata_value(&mut metadata, serializer_id)?;
+    }
+}
+
 fn metadata_pose_value(metadata: &[u8]) -> Option<ClientEntityPose> {
     if metadata.last() != Some(&255) {
         return None;
@@ -213,6 +244,10 @@ fn shared_flags_from_metadata(metadata: &[u8]) -> Option<u8> {
 
 fn air_supply_from_metadata(metadata: &[u8]) -> Option<i32> {
     metadata_int_value(metadata, ENTITY_AIR_SUPPLY_DATA_ID)
+}
+
+fn health_from_metadata(metadata: &[u8]) -> Option<f32> {
+    metadata_float_value(metadata, ENTITY_HEALTH_DATA_ID)
 }
 
 fn ticks_frozen_from_metadata(metadata: &[u8]) -> Option<i32> {
@@ -1320,6 +1355,7 @@ impl ClientWorld {
                 metadata: None,
                 shared_flags: 0,
                 air_supply: DEFAULT_AIR_SUPPLY,
+                health_bits: None,
                 custom_name_present: false,
                 custom_name_visible: false,
                 no_gravity: false,
@@ -1334,6 +1370,7 @@ impl ClientWorld {
     pub(crate) fn apply_entity_metadata(&mut self, entity_id: i32, metadata: &[u8]) -> bool {
         let shared_flags = shared_flags_from_metadata(metadata);
         let air_supply = air_supply_from_metadata(metadata);
+        let health = health_from_metadata(metadata);
         let custom_name_present = custom_name_present_from_metadata(metadata);
         let custom_name_visible = custom_name_visible_from_metadata(metadata);
         let no_gravity = no_gravity_from_metadata(metadata);
@@ -1351,6 +1388,9 @@ impl ClientWorld {
             }
             if let Some(air_supply) = air_supply {
                 player.air_supply = air_supply;
+            }
+            if let Some(health) = health {
+                player.health_bits = health.to_bits();
             }
             if let Some(custom_name_present) = custom_name_present {
                 player.custom_name_present = custom_name_present;
@@ -1381,6 +1421,9 @@ impl ClientWorld {
         }
         if let Some(air_supply) = air_supply {
             entity.air_supply = air_supply;
+        }
+        if let Some(health) = health {
+            entity.health_bits = Some(health.to_bits());
         }
         if let Some(custom_name_present) = custom_name_present {
             entity.custom_name_present = custom_name_present;
@@ -1739,6 +1782,7 @@ pub struct ClientEntity {
     metadata: Option<Vec<u8>>,
     shared_flags: u8,
     air_supply: i32,
+    health_bits: Option<u32>,
     custom_name_present: bool,
     custom_name_visible: bool,
     no_gravity: bool,
@@ -2260,6 +2304,10 @@ impl ClientEntity {
 
     pub fn air_supply(&self) -> i32 {
         self.air_supply
+    }
+
+    pub fn health(&self) -> Option<f32> {
+        self.health_bits.map(f32::from_bits)
     }
 
     pub fn has_custom_name(&self) -> bool {
@@ -3543,6 +3591,84 @@ mod tests {
         assert!(!entity.has_custom_name());
         assert!(entity.is_custom_name_visible());
         assert!(entity.should_show_name());
+    }
+
+    #[test]
+    fn entity_health_follows_java_float_metadata_and_preserves_partial_state() {
+        let mut world = ClientWorld::default();
+        assert!(world.apply_entity(EntityInput {
+            entity_id: 37,
+            uuid: Uuid::new(1, 2),
+            type_id: 54,
+            x: 1.25,
+            y: 80.0,
+            z: -35.5,
+            movement: (0.0, 0.0, 0.0),
+            rotation: (0.0, 0.0, 0.0),
+            data: 0,
+        }));
+        assert_eq!(
+            world.entity_at(37).and_then(super::ClientEntity::health),
+            None
+        );
+
+        let mut health_metadata = vec![
+            8,
+            super::ENTITY_DATA_SERIALIZER_BYTE_ID as u8,
+            0,
+            super::ENTITY_HEALTH_DATA_ID,
+            super::ENTITY_DATA_SERIALIZER_FLOAT_ID as u8,
+        ];
+        health_metadata.extend_from_slice(&7.5_f32.to_be_bytes());
+        health_metadata.push(255);
+        assert!(world.apply_entity_metadata(37, &health_metadata));
+        let entity = world.entity_at(37).expect("living entity health");
+        assert_eq!(entity.health(), Some(7.5));
+        assert_eq!(entity.shared_flags(), 0);
+
+        let mut zero_health_metadata = vec![
+            super::ENTITY_HEALTH_DATA_ID,
+            super::ENTITY_DATA_SERIALIZER_FLOAT_ID as u8,
+        ];
+        zero_health_metadata.extend_from_slice(&0.0_f32.to_be_bytes());
+        zero_health_metadata.push(255);
+        assert!(world.apply_entity_metadata(37, &zero_health_metadata));
+        assert_eq!(
+            world.entity_at(37).and_then(super::ClientEntity::health),
+            Some(0.0)
+        );
+
+        assert!(world.apply_entity_metadata(37, &[5, 8, 1, 255]));
+        let entity = world.entity_at(37).expect("health after partial metadata");
+        assert_eq!(entity.health(), Some(0.0));
+        assert!(entity.is_no_gravity());
+    }
+
+    #[test]
+    fn local_player_health_metadata_updates_and_respawn_resets_health() {
+        let mut world = ClientWorld::default();
+        world.set_local_player_id(42);
+
+        let mut health_metadata = vec![
+            8,
+            super::ENTITY_DATA_SERIALIZER_BYTE_ID as u8,
+            0,
+            super::ENTITY_HEALTH_DATA_ID,
+            super::ENTITY_DATA_SERIALIZER_FLOAT_ID as u8,
+        ];
+        health_metadata.extend_from_slice(&7.5_f32.to_be_bytes());
+        health_metadata.push(255);
+        assert!(world.apply_entity_metadata(42, &health_metadata));
+        assert_eq!(
+            world.local_player().map(|player| player.health()),
+            Some(7.5)
+        );
+
+        assert!(world.recreate_local_player(PLAYER_RESPAWN_KEEP_ENTITY_DATA));
+        assert_eq!(
+            world.local_player().map(|player| player.health()),
+            Some(20.0)
+        );
     }
 
     #[test]
