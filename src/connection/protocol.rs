@@ -706,6 +706,7 @@ pub struct EntityPositionSyncObservation {
     pub x_rot: f32,
     pub on_ground: bool,
     pub applied_to_world: bool,
+    pub applied_on_ground: Option<bool>,
     pub applied_position: Option<(f64, f64, f64)>,
     pub applied_rotation: Option<(f32, f32, f32)>,
 }
@@ -725,6 +726,7 @@ pub struct EntityTeleportObservation {
     pub relative_flags: i32,
     pub on_ground: bool,
     pub applied_to_world: bool,
+    pub applied_on_ground: Option<bool>,
     pub applied_position: Option<(f64, f64, f64)>,
     pub applied_rotation: Option<(f32, f32, f32)>,
 }
@@ -742,6 +744,7 @@ pub struct EntityMoveObservation {
     pub has_rotation: bool,
     pub on_ground: bool,
     pub applied_to_world: bool,
+    pub applied_on_ground: Option<bool>,
     pub applied_position: Option<(f64, f64, f64)>,
     pub applied_rotation: Option<(f32, f32, f32)>,
 }
@@ -1624,6 +1627,7 @@ pub(crate) fn parse_entity_position_sync_packet(
         x_rot,
         on_ground,
         applied_to_world: false,
+        applied_on_ground: None,
         applied_position: None,
         applied_rotation: None,
     })
@@ -1660,6 +1664,7 @@ pub(crate) fn parse_entity_teleport_packet(
         relative_flags,
         on_ground,
         applied_to_world: false,
+        applied_on_ground: None,
         applied_position: None,
         applied_rotation: None,
     })
@@ -1728,6 +1733,7 @@ fn parse_move_entity_packet(
         has_rotation,
         on_ground,
         applied_to_world: false,
+        applied_on_ground: None,
         applied_position: None,
         applied_rotation: None,
     })
@@ -3159,6 +3165,7 @@ mod tests {
                 relative_flags: 0b101,
                 on_ground: true,
                 applied_to_world: false,
+                applied_on_ground: None,
                 applied_position: None,
                 applied_rotation: None,
             }
@@ -3193,6 +3200,7 @@ mod tests {
                 x_rot: -30.0,
                 on_ground: false,
                 applied_to_world: false,
+                applied_on_ground: None,
                 applied_position: None,
                 applied_rotation: None,
             }
@@ -3223,6 +3231,7 @@ mod tests {
                 has_rotation: false,
                 on_ground: true,
                 applied_to_world: false,
+                applied_on_ground: None,
                 applied_position: None,
                 applied_rotation: None,
             }
@@ -3245,6 +3254,7 @@ mod tests {
                 has_rotation: true,
                 on_ground: true,
                 applied_to_world: false,
+                applied_on_ground: None,
                 applied_position: None,
                 applied_rotation: None,
             }
@@ -3266,6 +3276,7 @@ mod tests {
                 has_rotation: true,
                 on_ground: false,
                 applied_to_world: false,
+                applied_on_ground: None,
                 applied_position: None,
                 applied_rotation: None,
             }

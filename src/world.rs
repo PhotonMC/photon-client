@@ -260,6 +260,7 @@ impl ClientWorld {
                 x_rot_bits: entity.rotation.1.to_bits(),
                 y_rot_bits: entity.rotation.0.to_bits(),
                 y_head_rot_bits: entity.rotation.2.to_bits(),
+                on_ground: false,
                 data: entity.data,
                 metadata: None,
             },
@@ -282,6 +283,14 @@ impl ClientWorld {
         entity.motion_x_bits = input.x.to_bits();
         entity.motion_y_bits = input.y.to_bits();
         entity.motion_z_bits = input.z.to_bits();
+        true
+    }
+
+    pub(crate) fn apply_entity_ground_state(&mut self, entity_id: i32, on_ground: bool) -> bool {
+        let Some(entity) = self.entities.get_mut(&entity_id) else {
+            return false;
+        };
+        entity.on_ground = on_ground;
         true
     }
 
@@ -448,6 +457,7 @@ pub struct ClientEntity {
     x_rot_bits: u32,
     y_rot_bits: u32,
     y_head_rot_bits: u32,
+    on_ground: bool,
     pub data: i32,
     metadata: Option<Vec<u8>>,
 }
@@ -475,6 +485,10 @@ impl ClientEntity {
             f32::from_bits(self.x_rot_bits),
             f32::from_bits(self.y_head_rot_bits),
         )
+    }
+
+    pub fn on_ground(&self) -> bool {
+        self.on_ground
     }
 
     pub fn metadata(&self) -> Option<&[u8]> {
@@ -907,6 +921,10 @@ mod tests {
             world.entity_at(37).map(super::ClientEntity::rotation),
             Some((12.5, -30.0, 45.0))
         );
+        assert_eq!(
+            world.entity_at(37).map(super::ClientEntity::on_ground),
+            Some(false)
+        );
         assert_eq!(world.entity_metadata_at(37), None);
         assert!(world.apply_entity_metadata(37, &[1, 0, 255]));
         assert_eq!(world.entity_metadata_at(37), Some(&[1, 0, 255][..]));
@@ -927,6 +945,17 @@ mod tests {
             y: 2.0,
             z: 3.0,
         }));
+        assert!(world.apply_entity_ground_state(37, true));
+        assert_eq!(
+            world.entity_at(37).map(super::ClientEntity::on_ground),
+            Some(true)
+        );
+        assert!(world.apply_entity_ground_state(37, false));
+        assert_eq!(
+            world.entity_at(37).map(super::ClientEntity::on_ground),
+            Some(false)
+        );
+        assert!(!world.apply_entity_ground_state(999, true));
         assert!(world.apply_entity_rotation(EntityRotationInput {
             entity_id: 37,
             y_rot: Some(90.0),

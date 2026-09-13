@@ -1346,6 +1346,9 @@ fn connect_and_probe_with_mode(
                         relative_y_rot: false,
                         relative_x_rot: false,
                     });
+                    trace
+                        .world
+                        .apply_entity_ground_state(observation.entity_id, observation.on_ground);
                     observation.applied_position = trace
                         .world
                         .entity_at(observation.entity_id)
@@ -1354,6 +1357,10 @@ fn connect_and_probe_with_mode(
                         .world
                         .entity_at(observation.entity_id)
                         .map(|entity| entity.rotation());
+                    observation.applied_on_ground = trace
+                        .world
+                        .entity_at(observation.entity_id)
+                        .map(|entity| entity.on_ground());
                 }
                 trace.entity_position_sync_observations.push(observation);
             }
@@ -1376,6 +1383,9 @@ fn connect_and_probe_with_mode(
                         relative_y_rot: observation.relative_flags & (1 << 3) != 0,
                         relative_x_rot: observation.relative_flags & (1 << 4) != 0,
                     });
+                    trace
+                        .world
+                        .apply_entity_ground_state(observation.entity_id, observation.on_ground);
                     observation.applied_position = trace
                         .world
                         .entity_at(observation.entity_id)
@@ -1384,6 +1394,10 @@ fn connect_and_probe_with_mode(
                         .world
                         .entity_at(observation.entity_id)
                         .map(|entity| entity.rotation());
+                    observation.applied_on_ground = trace
+                        .world
+                        .entity_at(observation.entity_id)
+                        .map(|entity| entity.on_ground());
                 }
                 trace.entity_teleport_observations.push(observation);
             }
@@ -1399,6 +1413,9 @@ fn connect_and_probe_with_mode(
                     x_rot: observation.x_rot,
                 });
                 if observation.applied_to_world {
+                    trace
+                        .world
+                        .apply_entity_ground_state(observation.entity_id, observation.on_ground);
                     observation.applied_position = trace
                         .world
                         .entity_at(observation.entity_id)
@@ -1407,6 +1424,10 @@ fn connect_and_probe_with_mode(
                         .world
                         .entity_at(observation.entity_id)
                         .map(|entity| entity.rotation());
+                    observation.applied_on_ground = trace
+                        .world
+                        .entity_at(observation.entity_id)
+                        .map(|entity| entity.on_ground());
                 }
                 trace.entity_move_observations.push(observation);
             }
@@ -1422,6 +1443,9 @@ fn connect_and_probe_with_mode(
                     x_rot: observation.x_rot,
                 });
                 if observation.applied_to_world {
+                    trace
+                        .world
+                        .apply_entity_ground_state(observation.entity_id, observation.on_ground);
                     observation.applied_position = trace
                         .world
                         .entity_at(observation.entity_id)
@@ -1430,6 +1454,10 @@ fn connect_and_probe_with_mode(
                         .world
                         .entity_at(observation.entity_id)
                         .map(|entity| entity.rotation());
+                    observation.applied_on_ground = trace
+                        .world
+                        .entity_at(observation.entity_id)
+                        .map(|entity| entity.on_ground());
                 }
                 trace.entity_move_observations.push(observation);
             }
@@ -1445,10 +1473,17 @@ fn connect_and_probe_with_mode(
                     x_rot: observation.x_rot,
                 });
                 if observation.applied_to_world {
+                    trace
+                        .world
+                        .apply_entity_ground_state(observation.entity_id, observation.on_ground);
                     observation.applied_rotation = trace
                         .world
                         .entity_at(observation.entity_id)
                         .map(|entity| entity.rotation());
+                    observation.applied_on_ground = trace
+                        .world
+                        .entity_at(observation.entity_id)
+                        .map(|entity| entity.on_ground());
                 }
                 trace.entity_move_observations.push(observation);
             }
