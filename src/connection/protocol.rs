@@ -13,7 +13,7 @@ use crate::binary::{BitSet, Uuid};
 use crate::frame::{self, FrameError, MAX_FRAME_LENGTH};
 use crate::protocol::ConnectionProtocol;
 use crate::wire;
-use crate::world::ClientWorld;
+use crate::world::{ClientWorld, DimensionBounds};
 
 pub(crate) const PROTOCOL_VERSION: i32 = 776;
 pub(crate) const LOGIN_INTENTION_PACKET_ID: i32 = 0;
@@ -532,8 +532,10 @@ pub struct PlayConnectionTrace {
     pub configuration_finished: bool,
     pub enabled_feature_count: usize,
     pub known_pack_count: usize,
+    pub selected_known_pack_count: usize,
     pub registry_packet_count: usize,
     pub registry_entry_count: usize,
+    pub dimension_type_registry_bounds: Vec<Option<DimensionBounds>>,
     pub update_tags_packet_count: usize,
     pub play_login: bool,
     pub login_observation: Option<LoginObservation>,

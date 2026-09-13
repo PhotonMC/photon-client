@@ -16,6 +16,27 @@ impl DimensionBounds {
         Self { min_y, height }
     }
 
+    pub(crate) fn from_dimension_type(min_y: i32, height: i32) -> Option<Self> {
+        // These limits and alignment checks mirror DimensionType's network codec
+        // and record constructor in the pinned Java reference.
+        const Y_SIZE: i32 = (1 << 12) - 32;
+        const MAX_Y: i32 = (Y_SIZE >> 1) - 1;
+        const MIN_Y: i32 = MAX_Y - Y_SIZE + 1;
+
+        if !(MIN_Y..=MAX_Y).contains(&min_y)
+            || !(16..=Y_SIZE).contains(&height)
+            || height % 16 != 0
+            || min_y % 16 != 0
+        {
+            return None;
+        }
+        let top = min_y.checked_add(height)?;
+        if top > MAX_Y + 1 {
+            return None;
+        }
+        Some(Self::new(min_y, height))
+    }
+
     pub fn section_count(self) -> usize {
         if self.height <= 0 || self.height % 16 != 0 {
             return 0;

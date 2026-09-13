@@ -4,6 +4,7 @@ use crate::binary;
 use crate::identifier::{self, Identifier};
 use crate::nbt::{self, FieldValue};
 use crate::wire;
+use crate::world::DimensionBounds;
 
 /// Registry-data decoder failures using the runner's error categories.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -29,6 +30,39 @@ pub struct PackedRegistryEntry {
 impl PackedRegistryEntry {
     pub fn new(id: Identifier, data: Option<FieldValue>) -> Self {
         Self { id, data }
+    }
+
+    /// Decode the bounds fields used by a serialized DimensionType entry.
+    pub(crate) fn dimension_type_bounds(&self) -> Result<Option<DimensionBounds>, ReadError> {
+        let Some(data) = &self.data else {
+            return Ok(None);
+        };
+        let FieldValue::Compound(fields) = data else {
+            return Err(ReadError::DecoderError);
+        };
+        let min_y = fields
+            .iter()
+            .find_map(|field| match field.key.as_str() {
+                "min_y" => match &field.value {
+                    FieldValue::Int(value) => Some(*value),
+                    _ => None,
+                },
+                _ => None,
+            })
+            .ok_or(ReadError::DecoderError)?;
+        let height = fields
+            .iter()
+            .find_map(|field| match field.key.as_str() {
+                "height" => match &field.value {
+                    FieldValue::Int(value) => Some(*value),
+                    _ => None,
+                },
+                _ => None,
+            })
+            .ok_or(ReadError::DecoderError)?;
+        DimensionBounds::from_dimension_type(min_y, height)
+            .map(Some)
+            .ok_or(ReadError::DecoderError)
     }
 }
 
@@ -123,5 +157,65 @@ fn map_nbt_error(error: nbt::ReadError) -> ReadError {
         nbt::ReadError::DecoderError => ReadError::DecoderError,
         nbt::ReadError::EncoderError => ReadError::EncoderError,
         nbt::ReadError::TooBig => ReadError::TooBig,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{PackedRegistryEntry, ReadError};
+    use crate::identifier::Identifier;
+    use crate::nbt::{Field, FieldValue};
+    use crate::world::DimensionBounds;
+
+    fn dimension_type_data(min_y: i32, height: i32) -> FieldValue {
+        FieldValue::Compound(vec![
+            Field {
+                key: "height".to_owned(),
+                value: FieldValue::Int(height),
+            },
+            Field {
+                key: "min_y".to_owned(),
+                value: FieldValue::Int(min_y),
+            },
+        ])
+    }
+
+    #[test]
+    fn dimension_type_entry_extracts_valid_bounds_and_rejects_invalid_data() {
+        let entry = PackedRegistryEntry::new(
+            Identifier::parse("minecraft:custom").expect("identifier"),
+            Some(dimension_type_data(-32, 128)),
+        );
+        assert_eq!(
+            entry.dimension_type_bounds(),
+            Ok(Some(DimensionBounds::new(-32, 128)))
+        );
+
+        let missing = PackedRegistryEntry::new(
+            Identifier::parse("minecraft:missing").expect("identifier"),
+            None,
+        );
+        assert_eq!(missing.dimension_type_bounds(), Ok(None));
+
+        let invalid = PackedRegistryEntry::new(
+            Identifier::parse("minecraft:invalid").expect("identifier"),
+            Some(FieldValue::Compound(vec![Field {
+                key: "min_y".to_owned(),
+                value: FieldValue::Int(-32),
+            }])),
+        );
+        assert_eq!(
+            invalid.dimension_type_bounds(),
+            Err(ReadError::DecoderError)
+        );
+
+        let misaligned = PackedRegistryEntry::new(
+            Identifier::parse("minecraft:misaligned").expect("identifier"),
+            Some(dimension_type_data(-31, 128)),
+        );
+        assert_eq!(
+            misaligned.dimension_type_bounds(),
+            Err(ReadError::DecoderError)
+        );
     }
 }

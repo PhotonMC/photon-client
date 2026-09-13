@@ -134,6 +134,21 @@ pub fn connect_and_world_dimension_respawn_probe(
     )
 }
 
+/// Connect without selecting local known packs and observe registry-provided
+/// DimensionType bounds during a controlled respawn.
+pub fn connect_and_world_dimension_type_bounds_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeConfig::without_known_packs(ProbeAction::WorldDimensionTypeBounds),
+    )
+}
+
 /// Connect to a Java-protocol server, keep the loaded world open, and observe standalone
 /// clientbound light updates without adding movement to the scenario.
 pub fn connect_and_world_light_update_probe(
@@ -948,12 +963,34 @@ pub fn connect_and_survival_spawn_protection_probe(
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct PlayProbeConfig {
     action: ProbeAction,
+    select_known_packs: bool,
 }
 
 impl PlayProbeConfig {
     const fn new(action: ProbeAction) -> Self {
-        Self { action }
+        Self {
+            action,
+            select_known_packs: true,
+        }
     }
+
+    const fn without_known_packs(action: ProbeAction) -> Self {
+        Self {
+            action,
+            select_known_packs: false,
+        }
+    }
+}
+
+fn dimension_bounds_for_spawn_info(
+    trace: &PlayConnectionTrace,
+    spawn_info: &SpawnInfoObservation,
+) -> DimensionBounds {
+    usize::try_from(spawn_info.dimension_type_id)
+        .ok()
+        .and_then(|id| trace.dimension_type_registry_bounds.get(id))
+        .and_then(|bounds| *bounds)
+        .unwrap_or_else(|| DimensionBounds::for_builtin_dimension(&spawn_info.dimension))
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -963,6 +1000,7 @@ enum ProbeAction {
     WorldChunkUnload,
     WorldEntityTicking,
     WorldDimensionRespawn,
+    WorldDimensionTypeBounds,
     WorldLightUpdate,
     WorldBlockEntityUpdate,
     WorldEntityAdd,
@@ -1131,6 +1169,14 @@ fn connect_and_probe_with_mode(
                         .map_err(|_| ConnectionError::Codec("registry data"))?;
                 trace.registry_packet_count += 1;
                 trace.registry_entry_count += packet.entries.len();
+                if packet.registry.as_string() == "minecraft:dimension_type" {
+                    for entry in packet.entries {
+                        let bounds = entry
+                            .dimension_type_bounds()
+                            .map_err(|_| ConnectionError::Codec("dimension type registry"))?;
+                        trace.dimension_type_registry_bounds.push(bounds);
+                    }
+                }
             }
             CONFIG_UPDATE_TAGS_PACKET_ID => {
                 let mut input = payload;
@@ -1151,13 +1197,19 @@ fn connect_and_probe_with_mode(
                 let packs = KnownPack::decode_list(&mut input, usize::MAX)
                     .map_err(|_| ConnectionError::Codec("clientbound known packs"))?;
                 trace.known_pack_count = packs.len();
+                let selected_packs = if probe.select_known_packs {
+                    packs
+                } else {
+                    Vec::new()
+                };
+                trace.selected_known_pack_count = selected_packs.len();
 
                 send_packet(
                     &mut stream,
                     ConnectionProtocol::Configuration,
                     CONFIG_SERVERBOUND_SELECT_KNOWN_PACKS_PACKET_ID,
                     |output| {
-                        KnownPack::encode_list(&packs, output, MAX_KNOWN_PACKS)
+                        KnownPack::encode_list(&selected_packs, output, MAX_KNOWN_PACKS)
                             .map_err(|_| ConnectionError::Codec("serverbound known packs"))
                     },
                     compression_threshold,
@@ -1679,7 +1731,7 @@ fn connect_and_probe_with_mode(
                         is_flat: observation.spawn_info.is_flat,
                         sea_level: observation.spawn_info.sea_level,
                     },
-                    DimensionBounds::for_builtin_dimension(&observation.spawn_info.dimension),
+                    dimension_bounds_for_spawn_info(&trace, &observation.spawn_info),
                 );
                 trace.login_observation = Some(observation);
                 trace.play_login = true;
@@ -1725,7 +1777,7 @@ fn connect_and_probe_with_mode(
                         is_flat: spawn_info.is_flat,
                         sea_level: spawn_info.sea_level,
                     },
-                    DimensionBounds::for_builtin_dimension(&spawn_info.dimension),
+                    dimension_bounds_for_spawn_info(&trace, &spawn_info),
                 );
                 trace.respawn_observations.push(RespawnObservation {
                     spawn_info,
@@ -2847,7 +2899,9 @@ fn connect_and_probe_with_mode(
                 ProbeAction::WorldChunkUnload | ProbeAction::WorldEntityTicking => {
                     WORLD_LIFECYCLE_DRAIN_TIMEOUT
                 }
-                ProbeAction::WorldDimensionRespawn => DIMENSION_RESPAWN_DRAIN_TIMEOUT,
+                ProbeAction::WorldDimensionRespawn | ProbeAction::WorldDimensionTypeBounds => {
+                    DIMENSION_RESPAWN_DRAIN_TIMEOUT
+                }
                 ProbeAction::WorldLightUpdate => LIGHT_UPDATE_DRAIN_TIMEOUT,
                 ProbeAction::WorldBlockEntityUpdate => BLOCK_ENTITY_UPDATE_DRAIN_TIMEOUT,
                 ProbeAction::WorldEntityAdd => ENTITY_ADD_DRAIN_TIMEOUT,
@@ -2969,7 +3023,9 @@ fn connect_and_probe_with_mode(
             ProbeAction::WorldChunkUnload | ProbeAction::WorldEntityTicking => {
                 WORLD_LIFECYCLE_DRAIN_TIMEOUT
             }
-            ProbeAction::WorldDimensionRespawn => DIMENSION_RESPAWN_DRAIN_TIMEOUT,
+            ProbeAction::WorldDimensionRespawn | ProbeAction::WorldDimensionTypeBounds => {
+                DIMENSION_RESPAWN_DRAIN_TIMEOUT
+            }
             ProbeAction::WorldLightUpdate => LIGHT_UPDATE_DRAIN_TIMEOUT,
             ProbeAction::WorldBlockEntityUpdate => BLOCK_ENTITY_UPDATE_DRAIN_TIMEOUT,
             ProbeAction::WorldEntityAdd => ENTITY_ADD_DRAIN_TIMEOUT,

@@ -45,17 +45,19 @@ belirler; bundle delimiter ID `0` olduğundan bu packet ID `82`'dir.
 - `dataToKeep` kaydedilir. Oyuncunun yeni entity'si, attribute/menu/inventory
   state'i ve maskenin bu state'lere etkisi henüz `ClientWorld` modelinin parçası
   değildir.
-- Built-in olmayan dimension key'leri için gerçek registry `DimensionType`
-  yükseklik çözümü henüz uygulanmadığından bilinmeyen key varsayılan bounds'u
-  kullanır.
+- P08.f kapsamındaki built-in key çözümü, configuration registry'den gelen
+  `DimensionType` bounds çözümüyle [P08.g kaydında](client-world-dimension-type-bounds-conformance.md)
+  genişletilmiştir. P08.f'in tek başına ölçümü bilinmeyen key için varsayılan
+  bounds kullanır.
 
 ## Rust doğrulaması
 
 `parse_login_packet` ve `parse_respawn_packet`, Java ortak spawn alanlarının
 sırasını ve packet sonunu kontrol eder. `ClientWorld` dimension key, dimension
-type ID, seed, debug/flat ve sea level metadata'sını saklar. Built-in Nether ve
-End için `min_y=0,height=256`, Overworld için `min_y=-64,height=384` bounds'u
-seçilir.
+type ID, seed, debug/flat ve sea level metadata'sını saklar. P08.f ölçümünde
+built-in Nether ve End için `min_y=0,height=256`, Overworld için
+`min_y=-64,height=384` bounds'u seçilir; registry öncelikli çözüm P08.g'de
+ayrıca doğrulanır.
 
 Unit testler login/respawn ortak codec sırasını, optional global position'ı,
 keep maskesini, packet trailing-byte reddini ve dimension değişiminde chunk,
@@ -113,7 +115,7 @@ state uygulamasını gösterir; Java client eşitliği iddiası değildir.
 
 ## Açık kapsam
 
-Gerçek dimension type registry verisinden custom bounds çözümü, oyuncu entity'si
+Datapack custom dimension için gerçek bounds çözümü, oyuncu entity'si
 ve `dataToKeep` maskesinin attribute/entity/menu/inventory state'ine uygulanması,
 same-dimension ölüm respawn'ı, portal coordinate scaling, dimension-specific
 environment/render state'i ve `client-parity` karşılaştırması açık kalır.
