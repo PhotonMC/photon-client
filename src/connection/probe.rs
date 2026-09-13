@@ -164,6 +164,43 @@ pub fn connect_and_remote_player_interpolation_observer_probe(
     )
 }
 
+/// Connect to a Java-protocol server and observe a remote Player's three-step
+/// delta-movement interpolation after a clientbound motion packet.
+pub fn connect_and_remote_player_motion_observer_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeConfig::new(ProbeAction::WorldEntityAdd)
+            .with_player_motion_observation()
+            .with_drain_timeout(Duration::from_secs(25)),
+    )
+}
+
+/// Connect to a Java-protocol server and hold a remote Player connection open
+/// while another client triggers a motion update.
+pub fn connect_and_remote_player_motion_mover_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    const YAW_SEQUENCE: &[i16] = &[0];
+
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeConfig::new(ProbeAction::Movement)
+            .with_movement_yaws(YAW_SEQUENCE)
+            .with_movement_pause(Duration::from_millis(500))
+            .with_movement_hold(Duration::from_secs(25)),
+    )
+}
+
 /// Connect to a Java-protocol server and hold a remote Player connection open
 /// while another client triggers a large position update.
 pub fn connect_and_remote_player_position_snap_mover_probe(
@@ -1138,6 +1175,7 @@ struct PlayProbeConfig {
     movement_hold: Duration,
     observe_player_interpolation: bool,
     observe_player_position_snap: bool,
+    observe_player_motion: bool,
     drain_timeout_override: Option<Duration>,
 }
 
@@ -1152,6 +1190,7 @@ impl PlayProbeConfig {
             movement_hold: Duration::ZERO,
             observe_player_interpolation: false,
             observe_player_position_snap: false,
+            observe_player_motion: false,
             drain_timeout_override: None,
         }
     }
@@ -1166,6 +1205,7 @@ impl PlayProbeConfig {
             movement_hold: Duration::ZERO,
             observe_player_interpolation: false,
             observe_player_position_snap: false,
+            observe_player_motion: false,
             drain_timeout_override: None,
         }
     }
@@ -1180,6 +1220,7 @@ impl PlayProbeConfig {
             movement_hold: Duration::ZERO,
             observe_player_interpolation: false,
             observe_player_position_snap: false,
+            observe_player_motion: false,
             drain_timeout_override: None,
         }
     }
@@ -1206,6 +1247,11 @@ impl PlayProbeConfig {
 
     const fn with_player_position_snap_observation(mut self) -> Self {
         self.observe_player_position_snap = true;
+        self
+    }
+
+    const fn with_player_motion_observation(mut self) -> Self {
+        self.observe_player_motion = true;
         self
     }
 
@@ -1264,6 +1310,50 @@ fn observe_player_interpolation(
             target_rotation,
             positions_after_ticks,
             rotations_after_ticks,
+            tick_count: entity.tick_count(),
+        });
+}
+
+fn observe_player_motion_interpolation(
+    trace: &mut PlayConnectionTrace,
+    entity_id: i32,
+    before_motion: (f64, f64, f64),
+    target_motion: (f64, f64, f64),
+) {
+    if !trace.entity_motion_interpolation_observations.is_empty() {
+        return;
+    }
+    let Some(entity) = trace.world.entity_at(entity_id) else {
+        return;
+    };
+    if entity.type_id != 156
+        || before_motion == target_motion
+        || entity.motion_interpolation_target() != Some(target_motion)
+    {
+        return;
+    }
+
+    let applied_motion = entity.motion();
+    let mut motions_after_ticks = Vec::with_capacity(3);
+    for _ in 0..3 {
+        trace.world.tick();
+        let Some(entity) = trace.world.entity_at(entity_id) else {
+            return;
+        };
+        motions_after_ticks.push(entity.motion());
+    }
+    let Some(entity) = trace.world.entity_at(entity_id) else {
+        return;
+    };
+    trace
+        .entity_motion_interpolation_observations
+        .push(EntityMotionInterpolationObservation {
+            entity_id,
+            entity_type_id: entity.type_id,
+            before_motion,
+            target_motion,
+            applied_motion,
+            motions_after_ticks,
             tick_count: entity.tick_count(),
         });
 }
@@ -1758,6 +1848,15 @@ fn connect_and_probe_with_mode(
             }
             PLAY_CLIENTBOUND_SET_ENTITY_MOTION_PACKET_ID => {
                 let mut observation = parse_set_entity_motion_packet(payload)?;
+                let motion_before = if probe.observe_player_motion {
+                    trace
+                        .world
+                        .entity_at(observation.entity_id)
+                        .filter(|entity| entity.type_id == 156)
+                        .map(|entity| entity.motion())
+                } else {
+                    None
+                };
                 observation.applied_to_world = trace.world.apply_entity_motion(EntityMotionInput {
                     entity_id: observation.entity_id,
                     x: observation.x,
@@ -1769,6 +1868,14 @@ fn connect_and_probe_with_mode(
                         .world
                         .entity_at(observation.entity_id)
                         .map(|entity| entity.motion());
+                    if let Some(before_motion) = motion_before {
+                        observe_player_motion_interpolation(
+                            &mut trace,
+                            observation.entity_id,
+                            before_motion,
+                            (observation.x, observation.y, observation.z),
+                        );
+                    }
                 }
                 trace.entity_motion_observations.push(observation);
             }

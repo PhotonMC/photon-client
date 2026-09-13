@@ -17,16 +17,20 @@ koordinat ve gerektiğinde VarInt continuation alanıyla kodlar.
 `ClientboundSetEntityMotionPacket.java:11-30`, entity ID VarInt'i ile aynı
 `LpVec3` vektörünü taşır. `GameProtocols.java:234` bu packet'i clientbound ID
 `101` olarak kaydeder. `ClientPacketListener.java:621-627`, mevcut entity'yi
-bulduğunda `lerpMotion` çağırır; `Entity.java:2644` bu yolu
-`setDeltaMovement`'a yönlendirir.
+bulduğunda `lerpMotion` çağırır; genel `Entity.java:2644` yolu bunu
+`setDeltaMovement`'a yönlendirirken `RemotePlayer.java:12,43-62,72-76` aynı
+çağrıyı üç adımlı hedef motion interpolation'ına çevirir. Remote Player'ın
+update interval'ı `EntityTypes.java:1163-1172` içinde `2` olduğu için bu hedef
+üç world tick'inde uygulanır; ayrıntılı kayıt [P08.at motion interpolation](client-world-entity-player-motion-conformance.md)
+belgesindedir.
 
 ## Sözleşme
 
 - AddEntity'nin packed hareket vektörü Java `LpVec3` alan sırasıyla çözülür ve
   yeni entity'nin başlangıç motion state'i olarak saklanır.
 - Set entity motion packet'i entity ID'sinden sonra packed hareket vektörünü
-  tüketir; mevcut entity varsa üç f64 bileşeni world motion state'inin yerine
-  yazar.
+  tüketir. Player dışı mevcut entity'de üç f64 bileşeni world motion state'inin
+  yerine yazar; remote Player'da aynı değer üç tick'lik hedef state'ine alınır.
 - Bilinmeyen entity ID'si için packet observation tutulur fakat application
   sonucu false olur.
 - Bu dilim raw motion state'ini sorgulanabilir kılar. Type `120` snowball için
@@ -41,8 +45,10 @@ bulduğunda `lerpMotion` çağırır; `Entity.java:2644` bu yolu
 `parse_add_entity_packet`, AddEntity'nin başlangıç `LpVec3` alanını artık
 atlamaz; `binary::read_lp_vec3` ile çözer. `parse_set_entity_motion_packet`
 ID `101` gövdesini aynı codec ile tüketir ve trailing byte'ları reddeder.
-`ClientWorld`, başlangıç movement değerini entity'ye yazar; SetEntityMotion
-observation'ı mevcut entity'nin `motion()` sorgusunu günceller.
+`ClientWorld`, başlangıç movement değerini entity'ye yazar; Player dışı
+SetEntityMotion observation'ı mevcut entity'nin `motion()` sorgusunu anında
+günceller. Remote Player motion interpolation'ı [P08.at kaydında](client-world-entity-player-motion-conformance.md)
+uygulanır ve canlı knockback senaryosuyla ölçülür.
 
 Unit testleri packet ID'sini, sıfır packed vektörün alan sırasını, AddEntity
 başlangıç motion değerini, packet motion replacement'ını ve bilinmeyen ID
@@ -100,5 +106,7 @@ passenger ilişkisi, metadata/equipment, remove/lifecycle, chunk unload temizli�
 dimension/respawn, render state'i ve oynanabilir istemci bağlantısı açık kalır.
 Snowball free-flight alt dalı [P08.aq](client-world-entity-snowball-tick-conformance.md)
 ile, remote Player position interpolation [P08.ar](client-world-entity-player-interpolation-conformance.md)
-ile sınırlı olarak ilerletilmiştir. Bu motion state'i
+ve remote Player motion interpolation [P08.at](client-world-entity-player-motion-conformance.md)
+ile sınırlı olarak ilerletilmiştir. Teleport delta movement, relative delta
+bitleri ve genel entity motion tick'i bu kaydın dışındadır. Bu motion state'i
 `server-conformance` ilerlemesidir; P08'in `client-parity` kapanışı değildir.

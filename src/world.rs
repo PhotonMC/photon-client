@@ -39,6 +39,7 @@ const DEFAULT_AIR_SUPPLY: i32 = 300;
 const DEFAULT_TICKS_REQUIRED_TO_FREEZE: i32 = 140;
 const LIVING_ENTITY_HEAD_LERP_STEPS: u8 = 3;
 const LIVING_ENTITY_POSITION_LERP_STEPS: u8 = 3;
+const REMOTE_PLAYER_MOTION_LERP_STEPS: u8 = 3;
 const ENTITY_INTERPOLATION_DISTANCE_SQR: f64 = 4096.0;
 const SNOWBALL_GRAVITY: f64 = 0.03;
 const LIVING_FLAG_USING_ITEM: u8 = 0;
@@ -1294,6 +1295,9 @@ impl ClientWorld {
                 entity.tick_position_interpolation();
             }
             entity.tick_head_rotation();
+            if entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID {
+                entity.tick_motion_interpolation();
+            }
             if can_tick_snowball {
                 entity.tick_snowball();
             }
@@ -1592,6 +1596,10 @@ impl ClientWorld {
                 motion_x_bits: entity.movement.0.to_bits(),
                 motion_y_bits: entity.movement.1.to_bits(),
                 motion_z_bits: entity.movement.2.to_bits(),
+                motion_lerp_target_x_bits: entity.movement.0.to_bits(),
+                motion_lerp_target_y_bits: entity.movement.1.to_bits(),
+                motion_lerp_target_z_bits: entity.movement.2.to_bits(),
+                motion_lerp_steps: 0,
                 x_rot_bits: entity.rotation.1.to_bits(),
                 y_rot_bits: entity.rotation.0.to_bits(),
                 y_head_rot_bits: entity.rotation.2.to_bits(),
@@ -1766,9 +1774,16 @@ impl ClientWorld {
         let Some(entity) = self.entities.get_mut(&input.entity_id) else {
             return false;
         };
-        entity.motion_x_bits = input.x.to_bits();
-        entity.motion_y_bits = input.y.to_bits();
-        entity.motion_z_bits = input.z.to_bits();
+        if entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID {
+            entity.motion_lerp_target_x_bits = input.x.to_bits();
+            entity.motion_lerp_target_y_bits = input.y.to_bits();
+            entity.motion_lerp_target_z_bits = input.z.to_bits();
+            entity.motion_lerp_steps = REMOTE_PLAYER_MOTION_LERP_STEPS;
+        } else {
+            entity.motion_x_bits = input.x.to_bits();
+            entity.motion_y_bits = input.y.to_bits();
+            entity.motion_z_bits = input.z.to_bits();
+        }
         true
     }
 
@@ -2231,6 +2246,10 @@ pub struct ClientEntity {
     motion_x_bits: u64,
     motion_y_bits: u64,
     motion_z_bits: u64,
+    motion_lerp_target_x_bits: u64,
+    motion_lerp_target_y_bits: u64,
+    motion_lerp_target_z_bits: u64,
+    motion_lerp_steps: u8,
     x_rot_bits: u32,
     y_rot_bits: u32,
     y_head_rot_bits: u32,
@@ -2918,6 +2937,24 @@ impl ClientEntity {
         interpolation.previous_x_rot_bits = new_rotation.1.to_bits();
     }
 
+    fn tick_motion_interpolation(&mut self) {
+        if self.motion_lerp_steps == 0 {
+            return;
+        }
+
+        let steps = f64::from(self.motion_lerp_steps);
+        let current = self.motion();
+        let target = (
+            f64::from_bits(self.motion_lerp_target_x_bits),
+            f64::from_bits(self.motion_lerp_target_y_bits),
+            f64::from_bits(self.motion_lerp_target_z_bits),
+        );
+        self.motion_x_bits = (current.0 + (target.0 - current.0) / steps).to_bits();
+        self.motion_y_bits = (current.1 + (target.1 - current.1) / steps).to_bits();
+        self.motion_z_bits = (current.2 + (target.2 - current.2) / steps).to_bits();
+        self.motion_lerp_steps -= 1;
+    }
+
     fn tick_snowball(&mut self) {
         let air_drag = f64::from(0.99_f32);
         let gravity = if self.no_gravity {
@@ -2989,6 +3026,20 @@ impl ClientEntity {
             f64::from_bits(self.motion_y_bits),
             f64::from_bits(self.motion_z_bits),
         )
+    }
+
+    pub fn motion_interpolation_target(&self) -> Option<(f64, f64, f64)> {
+        (self.motion_lerp_steps > 0).then(|| {
+            (
+                f64::from_bits(self.motion_lerp_target_x_bits),
+                f64::from_bits(self.motion_lerp_target_y_bits),
+                f64::from_bits(self.motion_lerp_target_z_bits),
+            )
+        })
+    }
+
+    pub fn motion_interpolation_steps(&self) -> u8 {
+        self.motion_lerp_steps
     }
 
     pub fn rotation(&self) -> (f32, f32, f32) {
@@ -5707,6 +5758,68 @@ mod tests {
         assert_eq!(third.interpolation_steps(), 0);
         assert_eq!(third.position(), (4.0, 82.0, -34.5));
         assert_eq!(third.rotation(), (10.0, 20.0, 350.0));
+    }
+
+    #[test]
+    fn remote_player_motion_packet_interpolates_for_three_ticks() {
+        let mut world = ClientWorld::default();
+        assert!(world.apply_entity(EntityInput {
+            entity_id: 37,
+            uuid: Uuid::new(1, 2),
+            type_id: VANILLA_PLAYER_ENTITY_TYPE_ID,
+            x: 1.0,
+            y: 80.0,
+            z: -35.5,
+            movement: (0.0, 0.0, 0.0),
+            rotation: (0.0, 0.0, 0.0),
+            data: 0,
+        }));
+
+        let target = (0.3, -0.6, 0.9);
+        assert!(world.apply_entity_motion(EntityMotionInput {
+            entity_id: 37,
+            x: target.0,
+            y: target.1,
+            z: target.2,
+        }));
+        let entity = world.entity_at(37).expect("remote player motion target");
+        assert_eq!(entity.motion(), (0.0, 0.0, 0.0));
+        assert_eq!(entity.motion_interpolation_target(), Some(target));
+        assert_eq!(entity.motion_interpolation_steps(), 3);
+
+        let first = (target.0 / 3.0, target.1 / 3.0, target.2 / 3.0);
+        world.tick();
+        let entity = world
+            .entity_at(37)
+            .expect("first remote player motion step");
+        assert_eq!(entity.motion(), first);
+        assert_eq!(entity.motion_interpolation_steps(), 2);
+
+        let second = (
+            first.0 + (target.0 - first.0) / 2.0,
+            first.1 + (target.1 - first.1) / 2.0,
+            first.2 + (target.2 - first.2) / 2.0,
+        );
+        world.tick();
+        let entity = world
+            .entity_at(37)
+            .expect("second remote player motion step");
+        assert_eq!(entity.motion(), second);
+        assert_eq!(entity.motion_interpolation_steps(), 1);
+
+        let third = (
+            second.0 + (target.0 - second.0),
+            second.1 + (target.1 - second.1),
+            second.2 + (target.2 - second.2),
+        );
+        world.tick();
+        let entity = world
+            .entity_at(37)
+            .expect("final remote player motion step");
+        assert_eq!(entity.motion(), third);
+        assert_eq!(entity.motion(), target);
+        assert_eq!(entity.motion_interpolation_target(), None);
+        assert_eq!(entity.motion_interpolation_steps(), 0);
     }
 
     #[test]
