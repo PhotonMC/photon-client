@@ -111,6 +111,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P08.j — server-conformance LocalPlayer attribute state'i ve `dataToKeep` bit 1](client-world-player-attributes-conformance.md)
 - [P08.n — server-conformance LocalPlayer active container/menu state'i](client-world-player-container-conformance.md)
 - [P08.i — server-conformance Aynı dimension ölüm respawn'ı ve `dataToKeep=0`](client-world-player-death-respawn-conformance.md)
+- [P08.v — server-conformance LocalPlayer mob-effect duration tick'i](client-world-player-effect-tick-conformance.md)
 - [P08.k — server-conformance LocalPlayer mob-effect state'i](client-world-player-effects-conformance.md)
 - [P08.l — server-conformance LocalPlayer health, food ve saturation state'i](client-world-player-health-conformance.md)
 - [P08.m — server-conformance LocalPlayer inventory/container state'i](client-world-player-inventory-conformance.md)

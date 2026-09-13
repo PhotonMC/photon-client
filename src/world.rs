@@ -747,6 +747,9 @@ impl ClientWorld {
         if let Some(player) = self.local_player.as_mut() {
             player.capture_old_transform();
             player.tick_count = player.tick_count.wrapping_add(1);
+            for effect in &mut player.effects {
+                effect.tick_client();
+            }
         }
         for entity in self.entities.values_mut().filter(|entity| entity.ticking) {
             entity.capture_old_transform();
@@ -1380,8 +1383,18 @@ impl ClientMobEffectState {
         self.duration_ticks
     }
 
+    pub fn has_remaining_duration(&self) -> bool {
+        self.duration_ticks == -1 || self.duration_ticks > 0
+    }
+
     pub fn flags(&self) -> u8 {
         self.flags
+    }
+
+    fn tick_client(&mut self) {
+        if self.has_remaining_duration() && self.duration_ticks != -1 {
+            self.duration_ticks -= 1;
+        }
     }
 }
 
@@ -2830,6 +2843,93 @@ mod tests {
                 .expect("respawned local player")
                 .effects()
                 .is_empty()
+        );
+    }
+
+    #[test]
+    fn local_player_mob_effect_durations_tick_without_removing_expired_entries() {
+        let mut world = ClientWorld::default();
+        world.set_local_player_id(42);
+        assert!(world.apply_local_player_mob_effect(42, 18, 0, 2, 0));
+        assert!(world.apply_local_player_mob_effect(42, 19, 0, -1, 0));
+        assert!(world.apply_local_player_mob_effect(42, 20, 0, 0, 0));
+        assert!(world.apply_local_player_mob_effect(42, 21, 0, -2, 0));
+
+        let player = world.local_player().expect("local player effects");
+        assert!(
+            player
+                .effects()
+                .iter()
+                .find(|effect| effect.effect_id() == 18)
+                .is_some_and(|effect| effect.has_remaining_duration())
+        );
+        assert!(
+            player
+                .effects()
+                .iter()
+                .find(|effect| effect.effect_id() == 19)
+                .is_some_and(|effect| effect.has_remaining_duration())
+        );
+        assert!(
+            player
+                .effects()
+                .iter()
+                .find(|effect| effect.effect_id() == 20)
+                .is_some_and(|effect| !effect.has_remaining_duration())
+        );
+
+        world.tick();
+        let player = world
+            .local_player()
+            .expect("local player after first effect tick");
+        assert_eq!(
+            player
+                .effects()
+                .iter()
+                .find(|effect| effect.effect_id() == 18)
+                .map(|effect| effect.duration_ticks()),
+            Some(1)
+        );
+        assert_eq!(
+            player
+                .effects()
+                .iter()
+                .find(|effect| effect.effect_id() == 19)
+                .map(|effect| effect.duration_ticks()),
+            Some(-1)
+        );
+
+        world.tick();
+        let player = world
+            .local_player()
+            .expect("local player after effect expiry");
+        assert_eq!(player.effects().len(), 4);
+        assert_eq!(
+            player
+                .effects()
+                .iter()
+                .find(|effect| effect.effect_id() == 18)
+                .map(|effect| effect.duration_ticks()),
+            Some(0)
+        );
+        assert!(
+            player
+                .effects()
+                .iter()
+                .all(|effect| effect.effect_id() != 18 || !effect.has_remaining_duration())
+        );
+
+        world.tick();
+        let player = world
+            .local_player()
+            .expect("local player after expired effect tick");
+        assert_eq!(
+            player
+                .effects()
+                .iter()
+                .find(|effect| effect.effect_id() == 18)
+                .map(|effect| effect.duration_ticks()),
+            Some(0)
         );
     }
 
