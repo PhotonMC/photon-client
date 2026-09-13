@@ -743,6 +743,12 @@ impl ClientWorld {
 
     pub fn tick(&mut self) {
         self.game_time = self.game_time.wrapping_add(1);
+        if let Some(player) = self.local_player.as_mut() {
+            player.tick_count = player.tick_count.wrapping_add(1);
+        }
+        for entity in self.entities.values_mut().filter(|entity| entity.ticking) {
+            entity.tick_count = entity.tick_count.wrapping_add(1);
+        }
     }
 
     pub fn loaded_chunk_count(&self) -> usize {
@@ -939,6 +945,7 @@ impl ClientWorld {
             ClientEntity {
                 uuid: entity.uuid,
                 type_id: entity.type_id,
+                tick_count: 0,
                 x_bits: entity.x.to_bits(),
                 y_bits: entity.y.to_bits(),
                 z_bits: entity.z.to_bits(),
@@ -1285,6 +1292,7 @@ fn numeric_nbt_value(value: &crate::nbt::FieldValue) -> Option<i32> {
 pub struct ClientEntity {
     pub uuid: crate::binary::Uuid,
     pub type_id: i32,
+    tick_count: i32,
     x_bits: u64,
     y_bits: u64,
     z_bits: u64,
@@ -1426,6 +1434,7 @@ impl ClientAttributeState {
 pub struct ClientPlayerState {
     id: i32,
     generation: u64,
+    tick_count: i32,
     x_bits: u64,
     y_bits: u64,
     z_bits: u64,
@@ -1451,6 +1460,7 @@ impl ClientPlayerState {
         Self {
             id,
             generation: 0,
+            tick_count: 0,
             x_bits: 0.0_f64.to_bits(),
             y_bits: 0.0_f64.to_bits(),
             z_bits: 0.0_f64.to_bits(),
@@ -1478,6 +1488,10 @@ impl ClientPlayerState {
 
     pub fn generation(&self) -> u64 {
         self.generation
+    }
+
+    pub fn tick_count(&self) -> i32 {
+        self.tick_count
     }
 
     pub fn position(&self) -> (f64, f64, f64) {
@@ -1549,6 +1563,10 @@ impl ClientPlayerState {
 }
 
 impl ClientEntity {
+    pub fn tick_count(&self) -> i32 {
+        self.tick_count
+    }
+
     pub fn position(&self) -> (f64, f64, f64) {
         (
             f64::from_bits(self.x_bits),
@@ -2339,6 +2357,93 @@ mod tests {
         world.tick();
         assert_eq!(world.game_time(), 2);
         assert_eq!(world.loaded_chunk_count(), 0);
+    }
+
+    #[test]
+    fn tick_counters_follow_local_player_and_entity_ticking_eligibility() {
+        let mut world = ClientWorld::default();
+        world.set_local_player_id(42);
+        let (blocks, biomes) = section(0, 0);
+        world.replace_chunk(
+            0,
+            -3,
+            [SectionInput {
+                non_empty_block_count: 0,
+                fluid_count: 0,
+                block_states: &blocks,
+                biomes: &biomes,
+            }],
+        );
+        assert!(world.apply_entity(EntityInput {
+            entity_id: 37,
+            uuid: Uuid::new(1, 2),
+            type_id: 120,
+            x: 1.25,
+            y: 80.0,
+            z: -35.5,
+            movement: (0.0, 0.0, 0.0),
+            rotation: (0.0, 0.0, 0.0),
+            data: 0,
+        }));
+        assert_eq!(
+            world.local_player().map(|player| player.tick_count()),
+            Some(0)
+        );
+        assert_eq!(
+            world.entity_at(37).map(super::ClientEntity::tick_count),
+            Some(0)
+        );
+
+        world.tick();
+        assert_eq!(
+            world.local_player().map(|player| player.tick_count()),
+            Some(1)
+        );
+        assert_eq!(
+            world.entity_at(37).map(super::ClientEntity::tick_count),
+            Some(1)
+        );
+
+        assert!(world.unload_chunk(0, -3));
+        world.tick();
+        assert_eq!(
+            world.local_player().map(|player| player.tick_count()),
+            Some(2)
+        );
+        assert_eq!(
+            world.entity_at(37).map(super::ClientEntity::tick_count),
+            Some(1)
+        );
+
+        world.replace_chunk(
+            0,
+            -3,
+            [SectionInput {
+                non_empty_block_count: 0,
+                fluid_count: 0,
+                block_states: &blocks,
+                biomes: &biomes,
+            }],
+        );
+        world.tick();
+        assert_eq!(
+            world.local_player().map(|player| player.tick_count()),
+            Some(3)
+        );
+        assert_eq!(
+            world.entity_at(37).map(super::ClientEntity::tick_count),
+            Some(2)
+        );
+
+        assert!(world.recreate_local_player(0));
+        assert_eq!(
+            world.local_player().map(|player| player.tick_count()),
+            Some(0)
+        );
+        assert_eq!(
+            world.local_player().map(|player| player.generation()),
+            Some(1)
+        );
     }
 
     #[test]

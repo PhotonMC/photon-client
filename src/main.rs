@@ -37,6 +37,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("world_section_count={}", trace.world.loaded_section_count());
     println!("ticks_run={ticks}");
     println!("world_game_time={}", trace.world.game_time());
+    println!(
+        "local_player_tick_count={}",
+        trace
+            .world
+            .local_player()
+            .map(|player| player.tick_count())
+            .unwrap_or(0)
+    );
     println!("rendered_frames=0");
     Ok(())
 }
