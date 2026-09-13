@@ -449,6 +449,7 @@ pub(crate) const COMPONENT_PREPARATION_DRAIN_TIMEOUT: Duration = Duration::from_
 pub(crate) const WORLD_LIFECYCLE_DRAIN_TIMEOUT: Duration = Duration::from_secs(15);
 pub(crate) const LIGHT_UPDATE_DRAIN_TIMEOUT: Duration = Duration::from_secs(30);
 pub(crate) const BLOCK_ENTITY_UPDATE_DRAIN_TIMEOUT: Duration = Duration::from_secs(30);
+pub(crate) const ENTITY_ADD_DRAIN_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// Errors raised while driving the initial real-server client session.
 #[derive(Debug)]
@@ -627,6 +628,7 @@ pub struct AddEntityObservation {
     pub y: f64,
     pub z: f64,
     pub data: i32,
+    pub applied_to_world: bool,
 }
 
 /// Wire-level fields decoded from one clientbound container slot update.
@@ -1394,6 +1396,7 @@ pub(crate) fn parse_add_entity_packet(
         y,
         z,
         data,
+        applied_to_world: false,
     })
 }
 
@@ -2680,6 +2683,7 @@ mod tests {
                 y: 80.0,
                 z: -35.5,
                 data: 0,
+                applied_to_world: false,
             }
         );
     }

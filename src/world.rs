@@ -39,6 +39,7 @@ impl Default for DimensionBounds {
 pub struct ClientWorld {
     dimension: DimensionBounds,
     chunks: BTreeMap<(i32, i32), ClientChunk>,
+    entities: BTreeMap<i32, ClientEntity>,
     game_time: u64,
 }
 
@@ -47,6 +48,7 @@ impl ClientWorld {
         Self {
             dimension,
             chunks: BTreeMap::new(),
+            entities: BTreeMap::new(),
             game_time: 0,
         }
     }
@@ -101,6 +103,14 @@ impl ClientWorld {
     pub fn block_entity_at(&self, x: i32, y: i32, z: i32) -> Option<&ClientBlockEntity> {
         let chunk_key = (x.div_euclid(16), z.div_euclid(16));
         self.chunks.get(&chunk_key)?.block_entities.get(&(x, y, z))
+    }
+
+    pub fn loaded_entity_count(&self) -> usize {
+        self.entities.len()
+    }
+
+    pub fn entity_at(&self, entity_id: i32) -> Option<&ClientEntity> {
+        self.entities.get(&entity_id)
     }
 
     pub(crate) fn apply_light_updates(
@@ -218,6 +228,20 @@ impl ClientWorld {
         true
     }
 
+    pub(crate) fn apply_entity(&mut self, entity: EntityInput) -> bool {
+        self.entities.insert(
+            entity.entity_id,
+            ClientEntity {
+                type_id: entity.type_id,
+                x_bits: entity.x.to_bits(),
+                y_bits: entity.y.to_bits(),
+                z_bits: entity.z.to_bits(),
+                data: entity.data,
+            },
+        );
+        true
+    }
+
     pub fn section_counts_at(
         &self,
         chunk_x: i32,
@@ -295,6 +319,25 @@ pub struct ClientBlockEntity {
     pub tag: Option<Vec<u8>>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClientEntity {
+    pub type_id: i32,
+    x_bits: u64,
+    y_bits: u64,
+    z_bits: u64,
+    pub data: i32,
+}
+
+impl ClientEntity {
+    pub fn position(&self) -> (f64, f64, f64) {
+        (
+            f64::from_bits(self.x_bits),
+            f64::from_bits(self.y_bits),
+            f64::from_bits(self.z_bits),
+        )
+    }
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct ClientChunk {
     sections: BTreeMap<i32, ClientSection>,
@@ -340,6 +383,15 @@ pub(crate) struct BlockEntityInput<'a> {
     pub(crate) z: i32,
     pub(crate) type_id: i32,
     pub(crate) tag: Option<&'a [u8]>,
+}
+
+pub(crate) struct EntityInput {
+    pub(crate) entity_id: i32,
+    pub(crate) type_id: i32,
+    pub(crate) x: f64,
+    pub(crate) y: f64,
+    pub(crate) z: f64,
+    pub(crate) data: i32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -403,8 +455,8 @@ fn apply_light_layer(
 #[cfg(test)]
 mod tests {
     use super::{
-        BlockEntityInput, ClientWorld, DimensionBounds, LightLayerInput, LightUpdateInput,
-        SectionInput,
+        BlockEntityInput, ClientWorld, DimensionBounds, EntityInput, LightLayerInput,
+        LightUpdateInput, SectionInput,
     };
     use crate::binary::BitSet;
 
@@ -629,6 +681,41 @@ mod tests {
         assert!(world.unload_chunk(-1, 2));
         assert_eq!(world.loaded_block_entity_count(), 0);
         assert_eq!(world.block_entity_at(-1, -63, 32), None);
+    }
+
+    #[test]
+    fn entities_are_queryable_and_replaced_by_entity_id() {
+        let mut world = ClientWorld::default();
+        assert!(world.apply_entity(EntityInput {
+            entity_id: 37,
+            type_id: 120,
+            x: 1.25,
+            y: 80.0,
+            z: -35.5,
+            data: 6,
+        }));
+        assert_eq!(world.loaded_entity_count(), 1);
+        assert_eq!(
+            world.entity_at(37).map(super::ClientEntity::position),
+            Some((1.25, 80.0, -35.5))
+        );
+        assert_eq!(world.entity_at(37).map(|entity| entity.type_id), Some(120));
+        assert_eq!(world.entity_at(37).map(|entity| entity.data), Some(6));
+
+        assert!(world.apply_entity(EntityInput {
+            entity_id: 37,
+            type_id: 71,
+            x: -4.0,
+            y: 65.0,
+            z: 2.0,
+            data: 0,
+        }));
+        assert_eq!(world.loaded_entity_count(), 1);
+        assert_eq!(world.entity_at(37).map(|entity| entity.type_id), Some(71));
+        assert_eq!(
+            world.entity_at(37).map(super::ClientEntity::position),
+            Some((-4.0, 65.0, 2.0))
+        );
     }
 
     #[test]

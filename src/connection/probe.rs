@@ -13,7 +13,9 @@ use crate::login::{ClientboundLoginFinishedPacket, ServerboundHelloPacket};
 use crate::protocol::ConnectionProtocol;
 use crate::resources::KnownPack;
 use crate::wire;
-use crate::world::{BlockEntityInput, LightLayerInput, LightUpdateInput, SectionInput};
+use crate::world::{
+    BlockEntityInput, EntityInput, LightLayerInput, LightUpdateInput, SectionInput,
+};
 
 use super::protocol::*;
 use super::session::*;
@@ -127,6 +129,21 @@ pub fn connect_and_world_block_entity_update_probe(
         username,
         timeout,
         PlayProbeConfig::new(ProbeAction::WorldBlockEntityUpdate),
+    )
+}
+
+/// Connect to a Java-protocol server, keep the loaded world open, and observe a
+/// clientbound entity-add packet without adding movement to the scenario.
+pub fn connect_and_world_entity_add_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeConfig::new(ProbeAction::WorldEntityAdd),
     )
 }
 
@@ -869,6 +886,7 @@ enum ProbeAction {
     WorldChunkUnload,
     WorldLightUpdate,
     WorldBlockEntityUpdate,
+    WorldEntityAdd,
     BlockAction,
     BlockBreak,
     BlockBreakOutOfRange,
@@ -1194,9 +1212,16 @@ fn connect_and_probe_with_mode(
 
         match packet_id {
             PLAY_CLIENTBOUND_ADD_ENTITY_PACKET_ID => {
-                trace
-                    .add_entity_observations
-                    .push(parse_add_entity_packet(payload)?);
+                let mut observation = parse_add_entity_packet(payload)?;
+                observation.applied_to_world = trace.world.apply_entity(EntityInput {
+                    entity_id: observation.entity_id,
+                    type_id: observation.entity_type_id,
+                    x: observation.x,
+                    y: observation.y,
+                    z: observation.z,
+                    data: observation.data,
+                });
+                trace.add_entity_observations.push(observation);
             }
             PLAY_CLIENTBOUND_CONTAINER_SET_CONTENT_PACKET_ID => {
                 trace
@@ -2470,6 +2495,7 @@ fn connect_and_probe_with_mode(
                 ProbeAction::WorldChunkUnload => WORLD_LIFECYCLE_DRAIN_TIMEOUT,
                 ProbeAction::WorldLightUpdate => LIGHT_UPDATE_DRAIN_TIMEOUT,
                 ProbeAction::WorldBlockEntityUpdate => BLOCK_ENTITY_UPDATE_DRAIN_TIMEOUT,
+                ProbeAction::WorldEntityAdd => ENTITY_ADD_DRAIN_TIMEOUT,
                 ProbeAction::SurvivalWaterBucketUseOn | ProbeAction::SurvivalEmptyBucketPickup => {
                     WATER_BUCKET_DRAIN_TIMEOUT
                 }
@@ -2581,6 +2607,7 @@ fn connect_and_probe_with_mode(
             ProbeAction::WorldChunkUnload => WORLD_LIFECYCLE_DRAIN_TIMEOUT,
             ProbeAction::WorldLightUpdate => LIGHT_UPDATE_DRAIN_TIMEOUT,
             ProbeAction::WorldBlockEntityUpdate => BLOCK_ENTITY_UPDATE_DRAIN_TIMEOUT,
+            ProbeAction::WorldEntityAdd => ENTITY_ADD_DRAIN_TIMEOUT,
             ProbeAction::SurvivalWaterBucketUseOn | ProbeAction::SurvivalEmptyBucketPickup => {
                 WATER_BUCKET_DRAIN_TIMEOUT
             }
