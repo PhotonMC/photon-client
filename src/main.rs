@@ -37,6 +37,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("world_section_count={}", trace.world.loaded_section_count());
     println!("ticks_run={ticks}");
     println!("world_game_time={}", trace.world.game_time());
+    let local_player_previous_position = trace
+        .world
+        .local_player()
+        .map(|player| player.previous_position())
+        .unwrap_or((0.0, 0.0, 0.0));
+    let local_player_interpolated_position = trace
+        .world
+        .local_player()
+        .map(|player| player.interpolated_position(0.5))
+        .unwrap_or((0.0, 0.0, 0.0));
+    println!("local_player_previous_position={local_player_previous_position:?}");
+    println!("local_player_interpolated_position_half={local_player_interpolated_position:?}");
     println!(
         "local_player_tick_count={}",
         trace

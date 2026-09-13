@@ -3,6 +3,7 @@
 use std::collections::BTreeMap;
 
 use crate::binary::BitSet;
+use crate::math::{mth_lerp_f32, mth_lerp_f64, mth_rot_lerp_f32};
 
 pub(crate) const PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS: u8 = 1;
 pub(crate) const PLAYER_RESPAWN_KEEP_ENTITY_DATA: u8 = 2;
@@ -744,9 +745,11 @@ impl ClientWorld {
     pub fn tick(&mut self) {
         self.game_time = self.game_time.wrapping_add(1);
         if let Some(player) = self.local_player.as_mut() {
+            player.capture_old_transform();
             player.tick_count = player.tick_count.wrapping_add(1);
         }
         for entity in self.entities.values_mut().filter(|entity| entity.ticking) {
+            entity.capture_old_transform();
             entity.tick_count = entity.tick_count.wrapping_add(1);
         }
     }
@@ -949,12 +952,18 @@ impl ClientWorld {
                 x_bits: entity.x.to_bits(),
                 y_bits: entity.y.to_bits(),
                 z_bits: entity.z.to_bits(),
+                old_x_bits: entity.x.to_bits(),
+                old_y_bits: entity.y.to_bits(),
+                old_z_bits: entity.z.to_bits(),
                 motion_x_bits: entity.movement.0.to_bits(),
                 motion_y_bits: entity.movement.1.to_bits(),
                 motion_z_bits: entity.movement.2.to_bits(),
                 x_rot_bits: entity.rotation.1.to_bits(),
                 y_rot_bits: entity.rotation.0.to_bits(),
                 y_head_rot_bits: entity.rotation.2.to_bits(),
+                old_x_rot_bits: entity.rotation.1.to_bits(),
+                old_y_rot_bits: entity.rotation.0.to_bits(),
+                old_y_head_rot_bits: entity.rotation.2.to_bits(),
                 on_ground: false,
                 ticking,
                 data: entity.data,
@@ -1296,12 +1305,18 @@ pub struct ClientEntity {
     x_bits: u64,
     y_bits: u64,
     z_bits: u64,
+    old_x_bits: u64,
+    old_y_bits: u64,
+    old_z_bits: u64,
     motion_x_bits: u64,
     motion_y_bits: u64,
     motion_z_bits: u64,
     x_rot_bits: u32,
     y_rot_bits: u32,
     y_head_rot_bits: u32,
+    old_x_rot_bits: u32,
+    old_y_rot_bits: u32,
+    old_y_head_rot_bits: u32,
     on_ground: bool,
     ticking: bool,
     pub data: i32,
@@ -1438,11 +1453,16 @@ pub struct ClientPlayerState {
     x_bits: u64,
     y_bits: u64,
     z_bits: u64,
+    old_x_bits: u64,
+    old_y_bits: u64,
+    old_z_bits: u64,
     motion_x_bits: u64,
     motion_y_bits: u64,
     motion_z_bits: u64,
     y_rot_bits: u32,
     x_rot_bits: u32,
+    old_y_rot_bits: u32,
+    old_x_rot_bits: u32,
     entity_data: Option<Vec<u8>>,
     attributes: Vec<ClientAttributeState>,
     effects: Vec<ClientMobEffectState>,
@@ -1456,6 +1476,14 @@ pub struct ClientPlayerState {
 }
 
 impl ClientPlayerState {
+    fn capture_old_transform(&mut self) {
+        self.old_x_bits = self.x_bits;
+        self.old_y_bits = self.y_bits;
+        self.old_z_bits = self.z_bits;
+        self.old_y_rot_bits = self.y_rot_bits;
+        self.old_x_rot_bits = self.x_rot_bits;
+    }
+
     fn new(id: i32) -> Self {
         Self {
             id,
@@ -1464,11 +1492,16 @@ impl ClientPlayerState {
             x_bits: 0.0_f64.to_bits(),
             y_bits: 0.0_f64.to_bits(),
             z_bits: 0.0_f64.to_bits(),
+            old_x_bits: 0.0_f64.to_bits(),
+            old_y_bits: 0.0_f64.to_bits(),
+            old_z_bits: 0.0_f64.to_bits(),
             motion_x_bits: 0.0_f64.to_bits(),
             motion_y_bits: 0.0_f64.to_bits(),
             motion_z_bits: 0.0_f64.to_bits(),
             y_rot_bits: 0.0_f32.to_bits(),
             x_rot_bits: 0.0_f32.to_bits(),
+            old_y_rot_bits: 0.0_f32.to_bits(),
+            old_x_rot_bits: 0.0_f32.to_bits(),
             entity_data: None,
             attributes: Vec::new(),
             effects: Vec::new(),
@@ -1502,6 +1535,25 @@ impl ClientPlayerState {
         )
     }
 
+    pub fn previous_position(&self) -> (f64, f64, f64) {
+        (
+            f64::from_bits(self.old_x_bits),
+            f64::from_bits(self.old_y_bits),
+            f64::from_bits(self.old_z_bits),
+        )
+    }
+
+    pub fn interpolated_position(&self, partial_tick: f32) -> (f64, f64, f64) {
+        let partial_tick = f64::from(partial_tick);
+        let current = self.position();
+        let previous = self.previous_position();
+        (
+            mth_lerp_f64(partial_tick, previous.0, current.0),
+            mth_lerp_f64(partial_tick, previous.1, current.1),
+            mth_lerp_f64(partial_tick, previous.2, current.2),
+        )
+    }
+
     pub fn motion(&self) -> (f64, f64, f64) {
         (
             f64::from_bits(self.motion_x_bits),
@@ -1514,6 +1566,25 @@ impl ClientPlayerState {
         (
             f32::from_bits(self.y_rot_bits),
             f32::from_bits(self.x_rot_bits),
+        )
+    }
+
+    pub fn previous_rotation(&self) -> (f32, f32) {
+        (
+            f32::from_bits(self.old_y_rot_bits),
+            f32::from_bits(self.old_x_rot_bits),
+        )
+    }
+
+    pub fn interpolated_rotation(&self, partial_tick: f32) -> (f32, f32) {
+        let current = self.rotation();
+        if partial_tick == 1.0 {
+            return current;
+        }
+        let previous = self.previous_rotation();
+        (
+            mth_rot_lerp_f32(partial_tick, previous.0, current.0),
+            mth_lerp_f32(partial_tick, previous.1, current.1),
         )
     }
 
@@ -1563,6 +1634,15 @@ impl ClientPlayerState {
 }
 
 impl ClientEntity {
+    fn capture_old_transform(&mut self) {
+        self.old_x_bits = self.x_bits;
+        self.old_y_bits = self.y_bits;
+        self.old_z_bits = self.z_bits;
+        self.old_x_rot_bits = self.x_rot_bits;
+        self.old_y_rot_bits = self.y_rot_bits;
+        self.old_y_head_rot_bits = self.y_head_rot_bits;
+    }
+
     pub fn tick_count(&self) -> i32 {
         self.tick_count
     }
@@ -1572,6 +1652,25 @@ impl ClientEntity {
             f64::from_bits(self.x_bits),
             f64::from_bits(self.y_bits),
             f64::from_bits(self.z_bits),
+        )
+    }
+
+    pub fn previous_position(&self) -> (f64, f64, f64) {
+        (
+            f64::from_bits(self.old_x_bits),
+            f64::from_bits(self.old_y_bits),
+            f64::from_bits(self.old_z_bits),
+        )
+    }
+
+    pub fn interpolated_position(&self, partial_tick: f32) -> (f64, f64, f64) {
+        let partial_tick = f64::from(partial_tick);
+        let current = self.position();
+        let previous = self.previous_position();
+        (
+            mth_lerp_f64(partial_tick, previous.0, current.0),
+            mth_lerp_f64(partial_tick, previous.1, current.1),
+            mth_lerp_f64(partial_tick, previous.2, current.2),
         )
     }
 
@@ -1588,6 +1687,27 @@ impl ClientEntity {
             f32::from_bits(self.y_rot_bits),
             f32::from_bits(self.x_rot_bits),
             f32::from_bits(self.y_head_rot_bits),
+        )
+    }
+
+    pub fn previous_rotation(&self) -> (f32, f32, f32) {
+        (
+            f32::from_bits(self.old_y_rot_bits),
+            f32::from_bits(self.old_x_rot_bits),
+            f32::from_bits(self.old_y_head_rot_bits),
+        )
+    }
+
+    pub fn interpolated_rotation(&self, partial_tick: f32) -> (f32, f32, f32) {
+        let current = self.rotation();
+        if partial_tick == 1.0 {
+            return current;
+        }
+        let previous = self.previous_rotation();
+        (
+            mth_rot_lerp_f32(partial_tick, previous.0, current.0),
+            mth_lerp_f32(partial_tick, previous.1, current.1),
+            mth_rot_lerp_f32(partial_tick, previous.2, current.2),
         )
     }
 
@@ -2443,6 +2563,121 @@ mod tests {
         assert_eq!(
             world.local_player().map(|player| player.generation()),
             Some(1)
+        );
+    }
+
+    #[test]
+    fn tick_captures_previous_transform_for_position_and_rotation_interpolation() {
+        let mut world = ClientWorld::default();
+        world.set_local_player_id(42);
+        assert!(world.apply_local_player_position(
+            (10.0, 64.0, -2.0),
+            (0.0, 0.0, 0.0),
+            (350.0, -20.0),
+        ));
+
+        let (blocks, biomes) = section(0, 0);
+        world.replace_chunk(
+            0,
+            -3,
+            [SectionInput {
+                non_empty_block_count: 0,
+                fluid_count: 0,
+                block_states: &blocks,
+                biomes: &biomes,
+            }],
+        );
+        assert!(world.apply_entity(EntityInput {
+            entity_id: 37,
+            uuid: Uuid::new(1, 2),
+            type_id: 120,
+            x: 1.25,
+            y: 80.0,
+            z: -35.5,
+            movement: (0.0, 0.0, 0.0),
+            rotation: (350.0, -20.0, 350.0),
+            data: 0,
+        }));
+
+        world.tick();
+        assert_eq!(
+            world
+                .local_player()
+                .map(super::ClientPlayerState::previous_position),
+            Some((10.0, 64.0, -2.0))
+        );
+        assert_eq!(
+            world
+                .entity_at(37)
+                .map(super::ClientEntity::previous_position),
+            Some((1.25, 80.0, -35.5))
+        );
+
+        assert!(world.apply_local_player_position(
+            (14.0, 68.0, 6.0),
+            (0.0, 0.0, 0.0),
+            (10.0, 20.0),
+        ));
+        let player = world.local_player().expect("local player transform");
+        assert_eq!(player.previous_position(), (10.0, 64.0, -2.0));
+        assert_eq!(player.interpolated_position(0.5), (12.0, 66.0, 2.0));
+        assert_eq!(player.previous_rotation(), (350.0, -20.0));
+        assert_eq!(player.interpolated_rotation(0.5), (360.0, 0.0));
+        assert_eq!(player.interpolated_rotation(1.0), (10.0, 20.0));
+
+        assert!(world.apply_entity_position(EntityPositionInput {
+            entity_id: 37,
+            x: 3.0,
+            y: 82.0,
+            z: -34.5,
+            relative_flags: 0,
+        }));
+        assert!(world.apply_entity_rotation(EntityRotationInput {
+            entity_id: 37,
+            y_rot: Some(10.0),
+            x_rot: Some(20.0),
+            y_head_rot: Some(10.0),
+            relative_y_rot: false,
+            relative_x_rot: false,
+        }));
+        let entity = world.entity_at(37).expect("remote entity transform");
+        assert_eq!(entity.previous_position(), (1.25, 80.0, -35.5));
+        assert_eq!(entity.interpolated_position(0.5), (2.125, 81.0, -35.0));
+        assert_eq!(entity.previous_rotation(), (350.0, -20.0, 350.0));
+        assert_eq!(entity.interpolated_rotation(0.5), (360.0, 0.0, 360.0));
+
+        assert!(world.unload_chunk(0, -3));
+        assert!(world.apply_entity_position(EntityPositionInput {
+            entity_id: 37,
+            x: 4.0,
+            y: 82.0,
+            z: -34.5,
+            relative_flags: 0,
+        }));
+        world.tick();
+        assert_eq!(
+            world
+                .entity_at(37)
+                .map(super::ClientEntity::previous_position),
+            Some((1.25, 80.0, -35.5))
+        );
+
+        world.replace_chunk(
+            0,
+            -3,
+            [SectionInput {
+                non_empty_block_count: 0,
+                fluid_count: 0,
+                block_states: &blocks,
+                biomes: &biomes,
+            }],
+        );
+        world.tick();
+        assert_eq!(
+            world
+                .entity_at(37)
+                .map(super::ClientEntity::previous_position),
+            Some((4.0, 82.0, -34.5))
         );
     }
 
