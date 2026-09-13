@@ -103,6 +103,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P08.e-entity-uuid — server-conformance ClientWorld entity UUID state](client-world-entity-uuid-conformance.md)
 - [P08.c-light — server-conformance ClientWorld ışık state'i](client-world-light-conformance.md)
 - [P08.j — server-conformance LocalPlayer attribute state'i ve `dataToKeep` bit 1](client-world-player-attributes-conformance.md)
+- [P08.n — server-conformance LocalPlayer active container/menu state'i](client-world-player-container-conformance.md)
 - [P08.i — server-conformance Aynı dimension ölüm respawn'ı ve `dataToKeep=0`](client-world-player-death-respawn-conformance.md)
 - [P08.k — server-conformance LocalPlayer mob-effect state'i](client-world-player-effects-conformance.md)
 - [P08.l — server-conformance LocalPlayer health, food ve saturation state'i](client-world-player-health-conformance.md)

@@ -310,6 +310,21 @@ pub fn connect_and_use_item_on_probe(
     )
 }
 
+/// Connect to a Java-protocol server, wait for an externally prepared chest at
+/// the supporting block, and observe its active container menu state.
+pub fn connect_and_world_player_container_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeConfig::with_use_item_on_delay(ProbeAction::UseItemOn, Duration::from_secs(20)),
+    )
+}
+
 /// Connect to a Java-protocol server and use the empty main hand in open space.
 pub fn connect_and_use_item_probe(
     address: SocketAddr,
@@ -979,6 +994,7 @@ pub fn connect_and_survival_spawn_protection_probe(
 struct PlayProbeConfig {
     action: ProbeAction,
     select_known_packs: bool,
+    use_item_on_delay: Duration,
 }
 
 impl PlayProbeConfig {
@@ -986,6 +1002,7 @@ impl PlayProbeConfig {
         Self {
             action,
             select_known_packs: true,
+            use_item_on_delay: Duration::ZERO,
         }
     }
 
@@ -993,6 +1010,15 @@ impl PlayProbeConfig {
         Self {
             action,
             select_known_packs: false,
+            use_item_on_delay: Duration::ZERO,
+        }
+    }
+
+    const fn with_use_item_on_delay(action: ProbeAction, delay: Duration) -> Self {
+        Self {
+            action,
+            select_known_packs: true,
+            use_item_on_delay: delay,
         }
     }
 }
@@ -1600,6 +1626,22 @@ fn connect_and_probe_with_mode(
                         .map(|entity| entity.on_ground());
                 }
                 trace.entity_move_observations.push(observation);
+            }
+            PLAY_CLIENTBOUND_OPEN_SCREEN_PACKET_ID => {
+                let mut observation = parse_open_screen_packet(payload)?;
+                observation.applied_to_world = trace.world.apply_local_player_open_menu(
+                    observation.container_id,
+                    observation.menu_type_id,
+                    &observation.title_nbt,
+                );
+                trace.open_screen_observations.push(observation);
+            }
+            PLAY_CLIENTBOUND_CONTAINER_CLOSE_PACKET_ID => {
+                let mut observation = parse_container_close_packet(payload)?;
+                observation.applied_to_world = trace
+                    .world
+                    .apply_local_player_container_close(observation.container_id);
+                trace.container_close_observations.push(observation);
             }
             PLAY_CLIENTBOUND_CONTAINER_SET_CONTENT_PACKET_ID => {
                 let mut observation = parse_container_set_content_packet(payload)?;
@@ -2317,6 +2359,7 @@ fn connect_and_probe_with_mode(
                 let Some(position) = player_position else {
                     return Err(ConnectionError::Codec("use item on probe player position"));
                 };
+                std::thread::sleep(probe.use_item_on_delay);
                 let target = support_block_position(position);
                 send_packet(
                     &mut stream,

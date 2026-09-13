@@ -93,6 +93,66 @@ impl ClientItemStackState {
     }
 }
 
+/// Raw state for the currently open non-player container menu.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClientContainerState {
+    container_id: i32,
+    menu_type_id: i32,
+    title_nbt: Vec<u8>,
+    slot_count: usize,
+    top_slot_count: Option<usize>,
+    state_id: i32,
+    slots: BTreeMap<i16, Option<ClientItemStackState>>,
+    carried_item: Option<ClientItemStackState>,
+}
+
+impl ClientContainerState {
+    fn new(container_id: i32, menu_type_id: i32, title_nbt: &[u8]) -> Self {
+        Self {
+            container_id,
+            menu_type_id,
+            title_nbt: title_nbt.to_vec(),
+            slot_count: 0,
+            top_slot_count: menu_top_slot_count(menu_type_id),
+            state_id: 0,
+            slots: BTreeMap::new(),
+            carried_item: None,
+        }
+    }
+
+    pub fn container_id(&self) -> i32 {
+        self.container_id
+    }
+
+    pub fn menu_type_id(&self) -> i32 {
+        self.menu_type_id
+    }
+
+    pub fn title_nbt(&self) -> &[u8] {
+        &self.title_nbt
+    }
+
+    pub fn slot_count(&self) -> usize {
+        self.slot_count
+    }
+
+    pub fn top_slot_count(&self) -> Option<usize> {
+        self.top_slot_count
+    }
+
+    pub fn state_id(&self) -> i32 {
+        self.state_id
+    }
+
+    pub fn slot(&self, slot: i16) -> Option<&ClientItemStackState> {
+        self.slots.get(&slot).and_then(Option::as_ref)
+    }
+
+    pub fn carried_item(&self) -> Option<&ClientItemStackState> {
+        self.carried_item.as_ref()
+    }
+}
+
 impl Default for DimensionBounds {
     fn default() -> Self {
         Self::new(-64, 384)
@@ -185,6 +245,35 @@ impl ClientWorld {
         self.local_player = Some(ClientPlayerState::new(player_id));
     }
 
+    pub(crate) fn apply_local_player_open_menu(
+        &mut self,
+        container_id: i32,
+        menu_type_id: i32,
+        title_nbt: &[u8],
+    ) -> bool {
+        let Some(player) = self.local_player.as_mut() else {
+            return false;
+        };
+        player.open_container = Some(ClientContainerState::new(
+            container_id,
+            menu_type_id,
+            title_nbt,
+        ));
+        true
+    }
+
+    pub(crate) fn apply_local_player_container_close(&mut self, _container_id: i32) -> bool {
+        let Some(player) = self.local_player.as_mut() else {
+            return false;
+        };
+        if player.open_container.is_some() {
+            player.open_container = None;
+            true
+        } else {
+            false
+        }
+    }
+
     pub(crate) fn apply_local_player_position(
         &mut self,
         position: (f64, f64, f64),
@@ -227,19 +316,35 @@ impl ClientWorld {
         items: &[Option<ClientItemStackState>],
         carried_item: Option<&ClientItemStackState>,
     ) -> bool {
-        if container_id != 0 {
-            return false;
-        }
         let Some(player) = self.local_player.as_mut() else {
             return false;
         };
-        player.inventory_state_id = state_id;
-        player.inventory_slots = items
+        if container_id == 0 {
+            player.inventory_state_id = state_id;
+            player.inventory_slots = items
+                .iter()
+                .enumerate()
+                .map(|(slot, item)| (slot as i16, item.clone()))
+                .collect();
+            player.carried_item = carried_item.cloned();
+            return true;
+        }
+
+        let Some(container) = player
+            .open_container
+            .as_mut()
+            .filter(|container| container.container_id == container_id)
+        else {
+            return false;
+        };
+        container.state_id = state_id;
+        container.slot_count = items.len();
+        container.slots = items
             .iter()
             .enumerate()
             .map(|(slot, item)| (slot as i16, item.clone()))
             .collect();
-        player.carried_item = carried_item.cloned();
+        container.carried_item = carried_item.cloned();
         true
     }
 
@@ -250,14 +355,24 @@ impl ClientWorld {
         slot: i16,
         item: Option<&ClientItemStackState>,
     ) -> bool {
-        if container_id != 0 {
-            return false;
-        }
         let Some(player) = self.local_player.as_mut() else {
             return false;
         };
-        player.inventory_state_id = state_id;
-        player.inventory_slots.insert(slot, item.cloned());
+        if container_id == 0 {
+            player.inventory_state_id = state_id;
+            player.inventory_slots.insert(slot, item.cloned());
+            return true;
+        }
+
+        let Some(container) = player
+            .open_container
+            .as_mut()
+            .filter(|container| container.container_id == container_id)
+        else {
+            return false;
+        };
+        container.state_id = state_id;
+        container.slots.insert(slot, item.cloned());
         true
     }
 
@@ -268,7 +383,11 @@ impl ClientWorld {
         let Some(player) = self.local_player.as_mut() else {
             return false;
         };
-        player.carried_item = item.cloned();
+        if let Some(container) = player.open_container.as_mut() {
+            container.carried_item = item.cloned();
+        } else {
+            player.carried_item = item.cloned();
+        }
         true
     }
 
@@ -991,6 +1110,7 @@ pub struct ClientPlayerState {
     inventory_state_id: i32,
     inventory_slots: BTreeMap<i16, Option<ClientItemStackState>>,
     carried_item: Option<ClientItemStackState>,
+    open_container: Option<ClientContainerState>,
 }
 
 impl ClientPlayerState {
@@ -1015,6 +1135,7 @@ impl ClientPlayerState {
             inventory_state_id: 0,
             inventory_slots: BTreeMap::new(),
             carried_item: None,
+            open_container: None,
         }
     }
 
@@ -1087,6 +1208,10 @@ impl ClientPlayerState {
 
     pub fn carried_item(&self) -> Option<&ClientItemStackState> {
         self.carried_item.as_ref()
+    }
+
+    pub fn open_container(&self) -> Option<&ClientContainerState> {
+        self.open_container.as_ref()
     }
 }
 
@@ -1242,6 +1367,13 @@ fn player_inventory_menu_slot(slot: i32) -> Option<i16> {
     match slot {
         0..=8 => Some((36 + slot) as i16),
         9..=35 => Some(slot as i16),
+        _ => None,
+    }
+}
+
+fn menu_top_slot_count(menu_type_id: i32) -> Option<usize> {
+    match menu_type_id {
+        0..=5 => Some((menu_type_id as usize + 1) * 9),
         _ => None,
     }
 }
@@ -1999,6 +2131,73 @@ mod tests {
         assert_eq!(player.inventory_slot_count(), 0);
         assert!(player.inventory_slot(36).is_none());
         assert!(player.carried_item().is_none());
+    }
+
+    #[test]
+    fn local_player_container_state_applies_open_content_slot_cursor_close_and_reset() {
+        let mut world = ClientWorld::default();
+        let stone = ClientItemStackState::from_wire(7, 1, vec![], vec![]);
+        let bottle = ClientItemStackState::from_wire(1, 1_149, vec![], vec![]);
+        let title = [10, 0, 0, 0];
+        let mut items = vec![None; 63];
+        items[0] = Some(stone.clone());
+        items[27] = Some(bottle.clone());
+
+        assert!(!world.apply_local_player_open_menu(7, 2, &title));
+        world.set_local_player_id(42);
+        assert!(world.apply_local_player_open_menu(7, 2, &title));
+        assert!(world.apply_local_player_container_content(7, 4, &items, None));
+        let container = world
+            .local_player()
+            .expect("local player with open container")
+            .open_container()
+            .expect("open container");
+        assert_eq!(container.container_id(), 7);
+        assert_eq!(container.menu_type_id(), 2);
+        assert_eq!(container.title_nbt(), title);
+        assert_eq!(container.top_slot_count(), Some(27));
+        assert_eq!(container.slot_count(), 63);
+        assert_eq!(container.state_id(), 4);
+        assert_eq!(container.slot(0), Some(&stone));
+        assert_eq!(container.slot(27), Some(&bottle));
+        assert!(container.carried_item().is_none());
+
+        assert!(world.apply_local_player_container_slot(7, 5, 0, None));
+        assert!(
+            world
+                .local_player()
+                .expect("local player after custom slot update")
+                .open_container()
+                .expect("container after slot update")
+                .slot(0)
+                .is_none()
+        );
+        assert!(world.apply_local_player_carried_item(Some(&stone)));
+        assert_eq!(
+            world
+                .local_player()
+                .expect("local player after custom cursor update")
+                .open_container()
+                .expect("container after cursor update")
+                .carried_item(),
+            Some(&stone)
+        );
+        assert!(world.apply_local_player_container_close(99));
+        assert!(
+            world
+                .local_player()
+                .expect("local player after custom container close")
+                .open_container()
+                .is_none()
+        );
+        assert!(!world.apply_local_player_container_close(7));
+
+        assert!(world.apply_local_player_open_menu(7, 2, &title));
+        assert!(world.recreate_local_player(0));
+        let player = world
+            .local_player()
+            .expect("respawned local player without container");
+        assert!(player.open_container().is_none());
     }
 
     #[test]

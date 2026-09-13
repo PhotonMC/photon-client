@@ -63,8 +63,10 @@ pub(crate) const PLAY_CLIENTBOUND_FORGET_LEVEL_CHUNK_PACKET_ID: i32 = 37;
 pub(crate) const PLAY_CLIENTBOUND_LIGHT_UPDATE_PACKET_ID: i32 = 48;
 pub(crate) const PLAY_CLIENTBOUND_CHUNK_BATCH_FINISHED_PACKET_ID: i32 = 11;
 pub(crate) const PLAY_CLIENTBOUND_CHUNK_BATCH_START_PACKET_ID: i32 = 12;
+pub(crate) const PLAY_CLIENTBOUND_CONTAINER_CLOSE_PACKET_ID: i32 = 17;
 pub(crate) const PLAY_CLIENTBOUND_CONTAINER_SET_CONTENT_PACKET_ID: i32 = 18;
 pub(crate) const PLAY_CLIENTBOUND_CONTAINER_SET_SLOT_PACKET_ID: i32 = 20;
+pub(crate) const PLAY_CLIENTBOUND_OPEN_SCREEN_PACKET_ID: i32 = 59;
 pub(crate) const PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID: i32 = 96;
 pub(crate) const PLAY_CLIENTBOUND_SET_PLAYER_INVENTORY_PACKET_ID: i32 = 108;
 pub(crate) const PLAY_CLIENTBOUND_REMOVE_ENTITIES_PACKET_ID: i32 = 77;
@@ -570,6 +572,8 @@ pub struct PlayConnectionTrace {
     pub entity_position_sync_observations: Vec<EntityPositionSyncObservation>,
     pub entity_teleport_observations: Vec<EntityTeleportObservation>,
     pub entity_move_observations: Vec<EntityMoveObservation>,
+    pub open_screen_observations: Vec<OpenScreenObservation>,
+    pub container_close_observations: Vec<ContainerCloseObservation>,
     pub container_content_observations: Vec<ContainerSetContentObservation>,
     pub container_slot_observations: Vec<ContainerSetSlotObservation>,
     pub cursor_item_observations: Vec<CursorItemObservation>,
@@ -672,6 +676,22 @@ pub struct GlobalPositionObservation {
 pub struct PlayerPositionObservation {
     pub teleport_id: i32,
     pub relative_flags: i32,
+    pub applied_to_world: bool,
+}
+
+/// Wire-level fields decoded from one clientbound open-screen packet.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OpenScreenObservation {
+    pub container_id: i32,
+    pub menu_type_id: i32,
+    pub title_nbt: Vec<u8>,
+    pub applied_to_world: bool,
+}
+
+/// Wire-level fields decoded from one clientbound container-close packet.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ContainerCloseObservation {
+    pub container_id: i32,
     pub applied_to_world: bool,
 }
 
@@ -1558,6 +1578,44 @@ pub(crate) fn parse_respawn_packet(
         return Err(ConnectionError::Codec("respawn trailing payload"));
     }
     Ok((spawn_info, data_to_keep))
+}
+
+pub(crate) fn parse_open_screen_packet(
+    input: &[u8],
+) -> Result<OpenScreenObservation, ConnectionError> {
+    let mut input = input;
+    let container_id = read_varint(&mut input, "open screen container id")?;
+    let menu_type_id = read_varint(&mut input, "open screen menu type")?;
+    let title_input = input;
+    let title = crate::nbt::read_any_nbt(&mut input)
+        .map_err(|_| ConnectionError::Codec("open screen title"))?;
+    if title.is_none() {
+        return Err(ConnectionError::Codec("open screen title"));
+    }
+    let title_length = title_input.len() - input.len();
+    if !input.is_empty() {
+        return Err(ConnectionError::Codec("open screen trailing payload"));
+    }
+    Ok(OpenScreenObservation {
+        container_id,
+        menu_type_id,
+        title_nbt: title_input[..title_length].to_vec(),
+        applied_to_world: false,
+    })
+}
+
+pub(crate) fn parse_container_close_packet(
+    input: &[u8],
+) -> Result<ContainerCloseObservation, ConnectionError> {
+    let mut input = input;
+    let container_id = read_varint(&mut input, "container close id")?;
+    if !input.is_empty() {
+        return Err(ConnectionError::Codec("container close trailing payload"));
+    }
+    Ok(ContainerCloseObservation {
+        container_id,
+        applied_to_world: false,
+    })
 }
 
 pub(crate) fn parse_set_health_packet(input: &[u8]) -> Result<HealthObservation, ConnectionError> {
@@ -2924,20 +2982,21 @@ mod tests {
         InventoryComponentCodec, PLAY_CLIENTBOUND_ADD_ENTITY_PACKET_ID,
         PLAY_CLIENTBOUND_BLOCK_CHANGED_ACK_PACKET_ID, PLAY_CLIENTBOUND_BLOCK_DESTRUCTION_PACKET_ID,
         PLAY_CLIENTBOUND_BLOCK_ENTITY_DATA_PACKET_ID, PLAY_CLIENTBOUND_BLOCK_UPDATE_PACKET_ID,
-        PLAY_CLIENTBOUND_CHUNK_PACKET_ID, PLAY_CLIENTBOUND_CONTAINER_SET_CONTENT_PACKET_ID,
+        PLAY_CLIENTBOUND_CHUNK_PACKET_ID, PLAY_CLIENTBOUND_CONTAINER_CLOSE_PACKET_ID,
+        PLAY_CLIENTBOUND_CONTAINER_SET_CONTENT_PACKET_ID,
         PLAY_CLIENTBOUND_CONTAINER_SET_SLOT_PACKET_ID,
         PLAY_CLIENTBOUND_ENTITY_POSITION_SYNC_PACKET_ID,
         PLAY_CLIENTBOUND_FORGET_LEVEL_CHUNK_PACKET_ID, PLAY_CLIENTBOUND_KEEP_ALIVE_PACKET_ID,
         PLAY_CLIENTBOUND_LIGHT_UPDATE_PACKET_ID, PLAY_CLIENTBOUND_LOGIN_PACKET_ID,
         PLAY_CLIENTBOUND_MOVE_ENTITY_POS_PACKET_ID, PLAY_CLIENTBOUND_MOVE_ENTITY_POS_ROT_PACKET_ID,
-        PLAY_CLIENTBOUND_MOVE_ENTITY_ROT_PACKET_ID, PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID,
-        PLAY_CLIENTBOUND_REMOVE_ENTITIES_PACKET_ID, PLAY_CLIENTBOUND_REMOVE_MOB_EFFECT_PACKET_ID,
-        PLAY_CLIENTBOUND_RESPAWN_PACKET_ID, PLAY_CLIENTBOUND_ROTATE_HEAD_PACKET_ID,
-        PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID, PLAY_CLIENTBOUND_SET_ENTITY_DATA_PACKET_ID,
-        PLAY_CLIENTBOUND_SET_ENTITY_MOTION_PACKET_ID, PLAY_CLIENTBOUND_SET_HEALTH_PACKET_ID,
-        PLAY_CLIENTBOUND_SET_PLAYER_INVENTORY_PACKET_ID, PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID,
-        PLAY_CLIENTBOUND_TELEPORT_ENTITY_PACKET_ID, PLAY_CLIENTBOUND_UPDATE_ATTRIBUTES_PACKET_ID,
-        PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID,
+        PLAY_CLIENTBOUND_MOVE_ENTITY_ROT_PACKET_ID, PLAY_CLIENTBOUND_OPEN_SCREEN_PACKET_ID,
+        PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID, PLAY_CLIENTBOUND_REMOVE_ENTITIES_PACKET_ID,
+        PLAY_CLIENTBOUND_REMOVE_MOB_EFFECT_PACKET_ID, PLAY_CLIENTBOUND_RESPAWN_PACKET_ID,
+        PLAY_CLIENTBOUND_ROTATE_HEAD_PACKET_ID, PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID,
+        PLAY_CLIENTBOUND_SET_ENTITY_DATA_PACKET_ID, PLAY_CLIENTBOUND_SET_ENTITY_MOTION_PACKET_ID,
+        PLAY_CLIENTBOUND_SET_HEALTH_PACKET_ID, PLAY_CLIENTBOUND_SET_PLAYER_INVENTORY_PACKET_ID,
+        PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID, PLAY_CLIENTBOUND_TELEPORT_ENTITY_PACKET_ID,
+        PLAY_CLIENTBOUND_UPDATE_ATTRIBUTES_PACKET_ID, PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID,
         PLAY_SERVERBOUND_ACCEPT_TELEPORTATION_PACKET_ID,
         PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID, PLAY_SERVERBOUND_CLIENT_COMMAND_PACKET_ID,
         PLAY_SERVERBOUND_CLIENT_TICK_END_PACKET_ID, PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
@@ -2966,16 +3025,17 @@ mod tests {
         encode_set_carried_item, encode_stop_destroy_block, encode_use_item, encode_use_item_on,
         encode_use_item_on_hit, pack_block_position, parse_add_entity_packet,
         parse_block_destruction_packet, parse_block_entity_data_packet, parse_block_update_packet,
-        parse_chunk_packet, parse_container_set_content_packet, parse_container_set_slot_packet,
-        parse_cursor_item_packet, parse_entity_metadata_packet, parse_entity_position_sync_packet,
-        parse_entity_teleport_packet, parse_forget_level_chunk_packet, parse_light_update_packet,
-        parse_login_packet, parse_move_entity_pos_packet, parse_move_entity_pos_rot_packet,
-        parse_move_entity_rot_packet, parse_optional_item_stack, parse_player_position_packet,
-        parse_remove_entities_packet, parse_remove_mob_effect_packet, parse_respawn_packet,
-        parse_rotate_head_packet, parse_section_data, parse_set_entity_motion_packet,
-        parse_set_health_packet, parse_set_player_inventory_packet, parse_system_chat_packet,
-        parse_update_attributes_packet, parse_update_mob_effect_packet, resolve_player_position,
-        support_block_position,
+        parse_chunk_packet, parse_container_close_packet, parse_container_set_content_packet,
+        parse_container_set_slot_packet, parse_cursor_item_packet, parse_entity_metadata_packet,
+        parse_entity_position_sync_packet, parse_entity_teleport_packet,
+        parse_forget_level_chunk_packet, parse_light_update_packet, parse_login_packet,
+        parse_move_entity_pos_packet, parse_move_entity_pos_rot_packet,
+        parse_move_entity_rot_packet, parse_open_screen_packet, parse_optional_item_stack,
+        parse_player_position_packet, parse_remove_entities_packet, parse_remove_mob_effect_packet,
+        parse_respawn_packet, parse_rotate_head_packet, parse_section_data,
+        parse_set_entity_motion_packet, parse_set_health_packet, parse_set_player_inventory_packet,
+        parse_system_chat_packet, parse_update_attributes_packet, parse_update_mob_effect_packet,
+        resolve_player_position, support_block_position,
     };
 
     #[test]
@@ -3020,6 +3080,8 @@ mod tests {
         assert_eq!(PLAY_CLIENTBOUND_BLOCK_DESTRUCTION_PACKET_ID, 5);
         assert_eq!(PLAY_CLIENTBOUND_CONTAINER_SET_CONTENT_PACKET_ID, 18);
         assert_eq!(PLAY_CLIENTBOUND_CONTAINER_SET_SLOT_PACKET_ID, 20);
+        assert_eq!(PLAY_CLIENTBOUND_CONTAINER_CLOSE_PACKET_ID, 17);
+        assert_eq!(PLAY_CLIENTBOUND_OPEN_SCREEN_PACKET_ID, 59);
         assert_eq!(PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID, 96);
         assert_eq!(PLAY_CLIENTBOUND_SET_PLAYER_INVENTORY_PACKET_ID, 108);
         assert_eq!(PLAY_CLIENTBOUND_REMOVE_ENTITIES_PACKET_ID, 77);
@@ -4083,6 +4145,40 @@ mod tests {
                     Vec::new(),
                     Vec::new(),
                 )),
+                applied_to_world: false,
+            }
+        );
+    }
+
+    #[test]
+    fn open_screen_and_container_close_parsers_preserve_java_fields() {
+        let title = crate::nbt::FieldValue::Compound(vec![crate::nbt::Field {
+            key: "text".to_owned(),
+            value: crate::nbt::FieldValue::Str("Chest".to_owned()),
+        }]);
+        let mut title_payload = Vec::new();
+        crate::nbt::write_any_nbt(Some(&title), &mut title_payload);
+
+        let mut open_payload = Vec::new();
+        crate::wire::write_varint(7, &mut open_payload);
+        crate::wire::write_varint(2, &mut open_payload);
+        open_payload.extend_from_slice(&title_payload);
+        assert_eq!(
+            parse_open_screen_packet(&open_payload).expect("open screen packet"),
+            super::OpenScreenObservation {
+                container_id: 7,
+                menu_type_id: 2,
+                title_nbt: title_payload,
+                applied_to_world: false,
+            }
+        );
+
+        let mut close_payload = Vec::new();
+        crate::wire::write_varint(7, &mut close_payload);
+        assert_eq!(
+            parse_container_close_packet(&close_payload).expect("container close packet"),
+            super::ContainerCloseObservation {
+                container_id: 7,
                 applied_to_world: false,
             }
         );
