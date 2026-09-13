@@ -39,6 +39,7 @@ const DEFAULT_AIR_SUPPLY: i32 = 300;
 const DEFAULT_TICKS_REQUIRED_TO_FREEZE: i32 = 140;
 const LIVING_ENTITY_HEAD_LERP_STEPS: u8 = 3;
 const LIVING_ENTITY_POSITION_LERP_STEPS: u8 = 3;
+const ENTITY_INTERPOLATION_DISTANCE_SQR: f64 = 4096.0;
 const SNOWBALL_GRAVITY: f64 = 0.03;
 const LIVING_FLAG_USING_ITEM: u8 = 0;
 const LIVING_FLAG_OFF_HAND: u8 = 1;
@@ -153,6 +154,13 @@ struct EntityInterpolationState {
     previous_y_rot_bits: u32,
     previous_x_rot_bits: u32,
     steps: u8,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct ResolvedEntityPosition {
+    current: (f64, f64, f64),
+    target: (f64, f64, f64),
+    ticking: bool,
 }
 
 impl EntityInterpolationState {
@@ -1837,45 +1845,61 @@ impl ClientWorld {
         true
     }
 
+    #[cfg(test)]
     pub(crate) fn apply_entity_position(&mut self, input: EntityPositionInput) -> bool {
-        let Some(current) = self
-            .entities
-            .get(&input.entity_id)
-            .map(|entity| entity.interpolation_position())
-        else {
+        let Some(resolved) = self.resolve_entity_position(&input) else {
             return false;
         };
-        let x = if input.relative_flags & (1 << 0) != 0 {
-            current.0 + input.x
-        } else {
-            input.x
+        self.apply_entity_position_target(
+            input.entity_id,
+            resolved.current,
+            resolved.target,
+            resolved.ticking,
+            None,
+            EntityPositionUpdateMode::PositionSync,
+        )
+    }
+
+    pub(crate) fn apply_entity_position_and_rotation(
+        &mut self,
+        input: EntityPositionInput,
+        rotation: EntityRotationInput,
+        mode: EntityPositionUpdateMode,
+    ) -> bool {
+        let Some(resolved) = self.resolve_entity_position(&input) else {
+            return false;
         };
-        let y = if input.relative_flags & (1 << 1) != 0 {
-            current.1 + input.y
-        } else {
-            input.y
+        let Some(entity) = self.entities.get(&input.entity_id) else {
+            return false;
         };
-        let z = if input.relative_flags & (1 << 2) != 0 {
-            current.2 + input.z
+        let (current_y_rot, current_x_rot) = entity.interpolation_rotation();
+        let target_y_rot = rotation.y_rot.map_or(current_y_rot, |y_rot| {
+            if rotation.relative_y_rot {
+                current_y_rot + y_rot
+            } else {
+                y_rot
+            }
+        });
+        let target_x_rot = rotation.x_rot.map_or(current_x_rot, |x_rot| {
+            if rotation.relative_x_rot {
+                current_x_rot + x_rot
+            } else {
+                x_rot
+            }
+        });
+        let target_x_rot = if mode == EntityPositionUpdateMode::Teleport {
+            target_x_rot.clamp(-90.0, 90.0)
         } else {
-            input.z
+            target_x_rot
         };
-        let (chunk_x, chunk_z) = entity_chunk_key((x, y, z));
-        let ticking = self.contains_chunk(chunk_x, chunk_z);
-        let entity = self
-            .entities
-            .get_mut(&input.entity_id)
-            .expect("entity checked above");
-        if entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID {
-            let (y_rot, x_rot) = entity.interpolation_rotation();
-            entity.interpolate_to((x, y, z), y_rot, x_rot);
-        } else {
-            entity.x_bits = x.to_bits();
-            entity.y_bits = y.to_bits();
-            entity.z_bits = z.to_bits();
-        }
-        entity.ticking = entity.always_ticking || ticking;
-        true
+        self.apply_entity_position_target(
+            input.entity_id,
+            resolved.current,
+            resolved.target,
+            resolved.ticking,
+            Some((target_y_rot, target_x_rot)),
+            mode,
+        )
     }
 
     pub(crate) fn apply_entity_move(&mut self, input: EntityMoveInput) -> bool {
@@ -1925,6 +1949,83 @@ impl ClientWorld {
         if entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID {
             entity.ticking = true;
         }
+        true
+    }
+
+    fn resolve_entity_position(
+        &self,
+        input: &EntityPositionInput,
+    ) -> Option<ResolvedEntityPosition> {
+        let current = self
+            .entities
+            .get(&input.entity_id)
+            .map(|entity| entity.interpolation_position())?;
+        let target = (
+            if input.relative_flags & (1 << 0) != 0 {
+                current.0 + input.x
+            } else {
+                input.x
+            },
+            if input.relative_flags & (1 << 1) != 0 {
+                current.1 + input.y
+            } else {
+                input.y
+            },
+            if input.relative_flags & (1 << 2) != 0 {
+                current.2 + input.z
+            } else {
+                input.z
+            },
+        );
+        let (chunk_x, chunk_z) = entity_chunk_key(target);
+        Some(ResolvedEntityPosition {
+            current,
+            target,
+            ticking: self.contains_chunk(chunk_x, chunk_z),
+        })
+    }
+
+    fn apply_entity_position_target(
+        &mut self,
+        entity_id: i32,
+        current_position: (f64, f64, f64),
+        target_position: (f64, f64, f64),
+        ticking: bool,
+        target_rotation: Option<(f32, f32)>,
+        mode: EntityPositionUpdateMode,
+    ) -> bool {
+        let Some(entity) = self.entities.get_mut(&entity_id) else {
+            return false;
+        };
+        if entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID {
+            let rotation = target_rotation.unwrap_or_else(|| entity.interpolation_rotation());
+            let distance_position = match mode {
+                EntityPositionUpdateMode::PositionSync => entity.position(),
+                EntityPositionUpdateMode::Teleport => current_position,
+            };
+            let delta_x = target_position.0 - distance_position.0;
+            let delta_y = target_position.1 - distance_position.1;
+            let delta_z = target_position.2 - distance_position.2;
+            let can_interpolate = match mode {
+                EntityPositionUpdateMode::PositionSync => entity.ticking,
+                EntityPositionUpdateMode::Teleport => true,
+            } && delta_x * delta_x + delta_y * delta_y + delta_z * delta_z
+                <= ENTITY_INTERPOLATION_DISTANCE_SQR;
+            if can_interpolate {
+                entity.interpolate_to(target_position, rotation.0, rotation.1);
+            } else {
+                entity.snap_to(target_position, rotation.0, rotation.1);
+            }
+        } else {
+            entity.x_bits = target_position.0.to_bits();
+            entity.y_bits = target_position.1.to_bits();
+            entity.z_bits = target_position.2.to_bits();
+            if let Some((y_rot, x_rot)) = target_rotation {
+                entity.y_rot_bits = (y_rot % 360.0).to_bits();
+                entity.x_rot_bits = (x_rot % 360.0).clamp(-90.0, 90.0).to_bits();
+            }
+        }
+        entity.ticking = entity.always_ticking || ticking;
         true
     }
 
@@ -2729,6 +2830,20 @@ impl ClientEntity {
         });
     }
 
+    fn snap_to(&mut self, position: (f64, f64, f64), y_rot: f32, x_rot: f32) {
+        self.x_bits = position.0.to_bits();
+        self.y_bits = position.1.to_bits();
+        self.z_bits = position.2.to_bits();
+        self.y_rot_bits = y_rot.to_bits();
+        self.x_rot_bits = x_rot.to_bits();
+        self.old_x_bits = position.0.to_bits();
+        self.old_y_bits = position.1.to_bits();
+        self.old_z_bits = position.2.to_bits();
+        self.old_y_rot_bits = y_rot.to_bits();
+        self.old_x_rot_bits = x_rot.to_bits();
+        self.interpolation = None;
+    }
+
     fn tick_position_interpolation(&mut self) {
         let current_position = self.position();
         let current_rotation = self.body_rotation();
@@ -3228,6 +3343,12 @@ pub(crate) struct EntityPositionInput {
     pub(crate) relative_flags: i32,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum EntityPositionUpdateMode {
+    PositionSync,
+    Teleport,
+}
+
 pub(crate) struct EntityMoveInput {
     pub(crate) entity_id: i32,
     pub(crate) delta_x: i16,
@@ -3354,10 +3475,11 @@ mod tests {
         BlockEntityInput, ClientAttributeModifierState, ClientAttributeState, ClientItemStackState,
         ClientWorld, DimensionBounds, DimensionEnvironment, DimensionInput,
         ENTITY_DATA_SERIALIZER_BOOLEAN_ID, ENTITY_NO_GRAVITY_DATA_ID, EntityInput,
-        EntityMotionInput, EntityMoveInput, EntityPositionInput, EntityRotationInput,
-        LightLayerInput, LightUpdateInput, PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS,
-        PLAYER_RESPAWN_KEEP_ENTITY_DATA, SNOWBALL_GRAVITY, SectionInput,
-        VANILLA_PLAYER_ENTITY_TYPE_ID, VANILLA_SNOWBALL_ENTITY_TYPE_ID, menu_top_slot_count,
+        EntityMotionInput, EntityMoveInput, EntityPositionInput, EntityPositionUpdateMode,
+        EntityRotationInput, LightLayerInput, LightUpdateInput,
+        PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS, PLAYER_RESPAWN_KEEP_ENTITY_DATA, SNOWBALL_GRAVITY,
+        SectionInput, VANILLA_PLAYER_ENTITY_TYPE_ID, VANILLA_SNOWBALL_ENTITY_TYPE_ID,
+        menu_top_slot_count,
     };
     use crate::binary::{BitSet, Uuid};
 
@@ -5585,6 +5707,118 @@ mod tests {
         assert_eq!(third.interpolation_steps(), 0);
         assert_eq!(third.position(), (4.0, 82.0, -34.5));
         assert_eq!(third.rotation(), (10.0, 20.0, 350.0));
+    }
+
+    #[test]
+    fn remote_player_position_sync_snaps_when_distance_exceeds_java_threshold() {
+        let mut world = ClientWorld::default();
+        let (blocks, biomes) = section(0, 0);
+        world.replace_chunk(
+            0,
+            -3,
+            [SectionInput {
+                non_empty_block_count: 0,
+                fluid_count: 0,
+                block_states: &blocks,
+                biomes: &biomes,
+            }],
+        );
+        assert!(world.apply_entity(EntityInput {
+            entity_id: 37,
+            uuid: Uuid::new(1, 2),
+            type_id: VANILLA_PLAYER_ENTITY_TYPE_ID,
+            x: 1.0,
+            y: 80.0,
+            z: -35.5,
+            movement: (0.0, 0.0, 0.0),
+            rotation: (350.0, -20.0, 350.0),
+            data: 0,
+        }));
+
+        assert!(world.apply_entity_position_and_rotation(
+            EntityPositionInput {
+                entity_id: 37,
+                x: 66.0,
+                y: 80.0,
+                z: -35.5,
+                relative_flags: 0,
+            },
+            EntityRotationInput {
+                entity_id: 37,
+                y_rot: Some(10.0),
+                x_rot: Some(20.0),
+                y_head_rot: None,
+                relative_y_rot: false,
+                relative_x_rot: false,
+            },
+            EntityPositionUpdateMode::PositionSync,
+        ));
+        let entity = world.entity_at(37).expect("snapped remote player");
+        assert_eq!(entity.position(), (66.0, 80.0, -35.5));
+        assert_eq!(entity.previous_position(), (66.0, 80.0, -35.5));
+        assert_eq!(entity.rotation(), (10.0, 20.0, 350.0));
+        assert_eq!(entity.previous_rotation(), (10.0, 20.0, 350.0));
+        assert_eq!(entity.interpolation_steps(), 0);
+        assert_eq!(entity.interpolation_target_position(), None);
+        assert_eq!(entity.interpolation_target_rotation(), None);
+
+        world.tick();
+        let entity = world.entity_at(37).expect("snapped remote player tick");
+        assert_eq!(entity.position(), (66.0, 80.0, -35.5));
+        assert_eq!(entity.previous_position(), (66.0, 80.0, -35.5));
+        assert_eq!(entity.rotation(), (10.0, 20.0, 350.0));
+
+        assert!(world.apply_entity_position_and_rotation(
+            EntityPositionInput {
+                entity_id: 37,
+                x: 130.0,
+                y: 80.0,
+                z: -35.5,
+                relative_flags: 0,
+            },
+            EntityRotationInput {
+                entity_id: 37,
+                y_rot: Some(30.0),
+                x_rot: Some(10.0),
+                y_head_rot: None,
+                relative_y_rot: false,
+                relative_x_rot: false,
+            },
+            EntityPositionUpdateMode::PositionSync,
+        ));
+        let entity = world.entity_at(37).expect("threshold remote player");
+        assert_eq!(entity.position(), (66.0, 80.0, -35.5));
+        assert_eq!(
+            entity.interpolation_target_position(),
+            Some((130.0, 80.0, -35.5))
+        );
+        assert_eq!(entity.interpolation_target_rotation(), Some((30.0, 10.0)));
+        assert_eq!(entity.interpolation_steps(), 3);
+
+        assert!(world.apply_entity_position_and_rotation(
+            EntityPositionInput {
+                entity_id: 37,
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+                relative_flags: 0b111,
+            },
+            EntityRotationInput {
+                entity_id: 37,
+                y_rot: Some(20.0),
+                x_rot: Some(100.0),
+                y_head_rot: None,
+                relative_y_rot: true,
+                relative_x_rot: true,
+            },
+            EntityPositionUpdateMode::Teleport,
+        ));
+        let entity = world.entity_at(37).expect("relative teleport target");
+        assert_eq!(
+            entity.interpolation_target_position(),
+            Some((130.0, 80.0, -35.5))
+        );
+        assert_eq!(entity.interpolation_target_rotation(), Some((50.0, 90.0)));
     }
 
     #[test]

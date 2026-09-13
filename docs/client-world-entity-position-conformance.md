@@ -27,13 +27,21 @@ maskenin 0/1/2 bitlerine yerleştirir.
 
 `ClientPacketListener.java:639-727`, position sync ve teleport alanlarını
 mevcut entity'ye uygular; move handler da position codec'ini kullanarak delta
-konumunu çözer. Java'nın interpolation, rotation, movement ve passenger yan
-etkileri entity sınıfının ayrı state'lerine bağlıdır.
+konumunu çözer. Remote Player için ticking ve `4096.0` squared-distance
+koşulları küçük hedefte interpolation, büyük hedefte snap seçer; bu iki
+davranış [P08.ar](client-world-entity-player-interpolation-conformance.md) ve
+[P08.as](client-world-entity-player-snap-conformance.md) kayıtlarında ayrıdır.
+Java'nın movement ve passenger yan etkileri entity sınıfının ayrı state'lerine
+bağlıdır.
 
 ## Sözleşme
 
 - Position sync konumu mutlak f64 state olarak okunur ve mevcut entity ID'sine
   uygulanır.
+- Remote Player position sync hedefi mevcut raw konumdan `4096.0` squared
+  distance'tan fazla uzaksa position/body rotation aynı uygulamada snap edilir;
+  eşik altı ticking hedef [interpolation kaydındaki](client-world-entity-player-interpolation-conformance.md)
+  üç tick yolunu kullanır.
 - Relative move packet'lerinde signed short delta, Java'nın `Math.round` ile
   4096 ölçekli quantized base hesabına eklenir. Rotation-only kayıt konumu
   değiştirmez.
@@ -45,7 +53,9 @@ etkileri entity sınıfının ayrı state'lerine bağlıdır.
 - Bu dilim `ClientWorld` içinde konum state'ini günceller. Packet içindeki raw
   rotation alanlarının world state'ine uygulanması [rotation kaydında](client-world-entity-rotation-conformance.md)
   ele alınır. On-ground, generic interpolation base/history, passenger ve render state'leri semantic
-  olarak uygulanmaz; raw delta movement state'i [motion kaydında](client-world-entity-motion-conformance.md)
+  olarak uygulanmaz; remote Player'ın dar interpolation/snap dalları [P08.ar](client-world-entity-player-interpolation-conformance.md)
+  ve [P08.as](client-world-entity-player-snap-conformance.md) kayıtlarında
+  ayrıdır. Raw delta movement state'i [motion kaydında](client-world-entity-motion-conformance.md)
   ele alınır.
 
 ## Rust doğrulaması
@@ -56,8 +66,9 @@ varyant parser'ı Java alan sırasını tüketir ve trailing byte'ları reddeder
 sorgulanabilir entity position olarak saklar. Her uygulanan observation, probe
 sırasında uygulama anındaki konumu kaydeder; sonradan gelen entity tick'leri
 ile karıştırılmaz. Player type ID `156` için network interpolation hedefi ve
-üç tick sonucu [P08.ar kaydında](client-world-entity-player-interpolation-conformance.md)
-ayrıca tutulur.
+üç tick ve uzak snap sonucu [P08.ar](client-world-entity-player-interpolation-conformance.md)
+ve [P08.as](client-world-entity-player-snap-conformance.md) kayıtlarında ayrıca
+tutulur.
 
 Unit testleri packet ID'lerini, iki `PositionMoveRotation` alan sırasını, üç
 move wire varyantını, absolute/relative konum çözümünü ve rotation-only

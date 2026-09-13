@@ -58,7 +58,11 @@ kapsamındadır.
 `parse_add_entity_packet` ve MoveEntity parser'ları signed packed byte'ları
 dereceye çevirir. `parse_rotate_head_packet`, clientbound ID `83` gövdesini
 tüketir ve trailing byte'ları reddeder. PositionSync ve Teleport uygulamaları
-rotation değerlerini ilgili relative flag'lerle birlikte `ClientWorld`'e yazar.
+Player dışı entity'lerde rotation değerlerini ilgili relative flag'lerle birlikte
+`ClientWorld`'e yazar; remote Player'da küçük hedef interpolation, büyük hedef
+snap seçimine [P08.ar](client-world-entity-player-interpolation-conformance.md)
+ve [P08.as](client-world-entity-player-snap-conformance.md) kayıtlarındaki
+world işlemi karar verir.
 
 `ClientEntity::rotation()` y, x ve head değerlerini sorgulanabilir kılar.
 Unit testleri AddEntity/MoveEntity/RotateHead packed derece dönüşümünü, sync
@@ -129,6 +133,7 @@ integration, passenger ilişkisi, metadata/equipment, remove/lifecycle, chunk
 unload temizliği, dimension/respawn, render state'i ve oynanabilir istemci
 bağlantısı açık kalır. Snowball free-flight yön rotation'ı [P08.aq](client-world-entity-snowball-tick-conformance.md)
 ile, remote Player body position/rotation interpolation [P08.ar](client-world-entity-player-interpolation-conformance.md)
-ile sınırlı olarak ilerletilmiştir. Player head interpolation [P08.ap](client-world-entity-player-head-rotation-conformance.md)
+ve büyük uzaklık snap [P08.as](client-world-entity-player-snap-conformance.md) ile
+sınırlı olarak ilerletilmiştir. Player head interpolation [P08.ap](client-world-entity-player-head-rotation-conformance.md)
 ile ayrı `server-conformance` ilerlemesidir; P08'in `client-parity` kapanışı
 değildir.

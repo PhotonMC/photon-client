@@ -568,6 +568,7 @@ pub struct PlayConnectionTrace {
     pub add_entity_observations: Vec<AddEntityObservation>,
     pub projectile_tick_observations: Vec<ProjectileTickObservation>,
     pub entity_interpolation_observations: Vec<EntityInterpolationObservation>,
+    pub entity_position_snap_observations: Vec<EntityPositionSnapObservation>,
     pub entity_motion_observations: Vec<EntityMotionObservation>,
     pub entity_head_rotation_observations: Vec<EntityHeadRotationObservation>,
     pub remove_entities_observations: Vec<RemoveEntitiesObservation>,
@@ -801,6 +802,23 @@ pub struct EntityInterpolationObservation {
     pub positions_after_ticks: Vec<(f64, f64, f64)>,
     pub rotations_after_ticks: Vec<(f32, f32)>,
     pub tick_count: i32,
+}
+
+/// One large remote Player position update and its immediate snap state.
+#[derive(Debug, Clone, PartialEq)]
+pub struct EntityPositionSnapObservation {
+    pub packet_kind: &'static str,
+    pub entity_id: i32,
+    pub entity_type_id: i32,
+    pub before_position: (f64, f64, f64),
+    pub target_position: (f64, f64, f64),
+    pub before_rotation: (f32, f32),
+    pub target_rotation: (f32, f32),
+    pub applied_position: (f64, f64, f64),
+    pub applied_rotation: (f32, f32, f32),
+    pub previous_position: (f64, f64, f64),
+    pub previous_rotation: (f32, f32, f32),
+    pub interpolation_steps: u8,
 }
 
 /// Wire-level fields decoded from one clientbound entity-motion packet.

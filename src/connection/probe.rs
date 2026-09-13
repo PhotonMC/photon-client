@@ -15,9 +15,10 @@ use crate::resources::KnownPack;
 use crate::wire;
 use crate::world::{
     BlockEntityInput, DimensionBounds, DimensionEnvironment, DimensionInput, EntityInput,
-    EntityMotionInput, EntityMoveInput, EntityPositionInput, EntityRotationInput, LightLayerInput,
-    LightUpdateInput, PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS, PLAYER_RESPAWN_KEEP_ENTITY_DATA,
-    SectionInput, VANILLA_SNOWBALL_ENTITY_TYPE_ID,
+    EntityMotionInput, EntityMoveInput, EntityPositionInput, EntityPositionUpdateMode,
+    EntityRotationInput, LightLayerInput, LightUpdateInput,
+    PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS, PLAYER_RESPAWN_KEEP_ENTITY_DATA, SectionInput,
+    VANILLA_SNOWBALL_ENTITY_TYPE_ID,
 };
 
 use super::protocol::*;
@@ -160,6 +161,43 @@ pub fn connect_and_remote_player_interpolation_observer_probe(
         PlayProbeConfig::new(ProbeAction::WorldEntityAdd)
             .with_player_interpolation_observation()
             .with_drain_timeout(Duration::from_secs(5)),
+    )
+}
+
+/// Connect to a Java-protocol server and hold a remote Player connection open
+/// while another client triggers a large position update.
+pub fn connect_and_remote_player_position_snap_mover_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    const YAW_SEQUENCE: &[i16] = &[0];
+
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeConfig::new(ProbeAction::Movement)
+            .with_movement_yaws(YAW_SEQUENCE)
+            .with_movement_pause(Duration::from_millis(500))
+            .with_movement_hold(Duration::from_secs(8)),
+    )
+}
+
+/// Connect to a Java-protocol server and observe a remote Player's large
+/// position update being applied as an immediate snap.
+pub fn connect_and_remote_player_position_snap_observer_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeConfig::new(ProbeAction::WorldEntityPosition)
+            .with_player_position_snap_observation()
+            .with_drain_timeout(Duration::from_secs(8)),
     )
 }
 
@@ -1099,6 +1137,7 @@ struct PlayProbeConfig {
     movement_pause: Duration,
     movement_hold: Duration,
     observe_player_interpolation: bool,
+    observe_player_position_snap: bool,
     drain_timeout_override: Option<Duration>,
 }
 
@@ -1112,6 +1151,7 @@ impl PlayProbeConfig {
             movement_pause: Duration::ZERO,
             movement_hold: Duration::ZERO,
             observe_player_interpolation: false,
+            observe_player_position_snap: false,
             drain_timeout_override: None,
         }
     }
@@ -1125,6 +1165,7 @@ impl PlayProbeConfig {
             movement_pause: Duration::ZERO,
             movement_hold: Duration::ZERO,
             observe_player_interpolation: false,
+            observe_player_position_snap: false,
             drain_timeout_override: None,
         }
     }
@@ -1138,6 +1179,7 @@ impl PlayProbeConfig {
             movement_pause: Duration::ZERO,
             movement_hold: Duration::ZERO,
             observe_player_interpolation: false,
+            observe_player_position_snap: false,
             drain_timeout_override: None,
         }
     }
@@ -1159,6 +1201,11 @@ impl PlayProbeConfig {
 
     const fn with_player_interpolation_observation(mut self) -> Self {
         self.observe_player_interpolation = true;
+        self
+    }
+
+    const fn with_player_position_snap_observation(mut self) -> Self {
+        self.observe_player_position_snap = true;
         self
     }
 
@@ -1218,6 +1265,48 @@ fn observe_player_interpolation(
             positions_after_ticks,
             rotations_after_ticks,
             tick_count: entity.tick_count(),
+        });
+}
+
+fn observe_player_position_snap(
+    trace: &mut PlayConnectionTrace,
+    packet_kind: &'static str,
+    entity_id: i32,
+    before_position: (f64, f64, f64),
+    before_rotation: (f32, f32),
+) {
+    if !trace.entity_position_snap_observations.is_empty() {
+        return;
+    }
+    let Some(entity) = trace.world.entity_at(entity_id) else {
+        return;
+    };
+    if entity.type_id != 156 || entity.interpolation_steps() != 0 {
+        return;
+    }
+    let target_position = entity.position();
+    let delta_x = target_position.0 - before_position.0;
+    let delta_y = target_position.1 - before_position.1;
+    let delta_z = target_position.2 - before_position.2;
+    if delta_x * delta_x + delta_y * delta_y + delta_z * delta_z <= 4096.0 {
+        return;
+    }
+    let target_rotation = (entity.rotation().0, entity.rotation().1);
+    trace
+        .entity_position_snap_observations
+        .push(EntityPositionSnapObservation {
+            packet_kind,
+            entity_id,
+            entity_type_id: entity.type_id,
+            before_position,
+            target_position,
+            before_rotation,
+            target_rotation,
+            applied_position: entity.position(),
+            applied_rotation: entity.rotation(),
+            previous_position: entity.previous_position(),
+            previous_rotation: entity.previous_rotation(),
+            interpolation_steps: entity.interpolation_steps(),
         });
 }
 
@@ -1717,23 +1806,39 @@ fn connect_and_probe_with_mode(
             }
             PLAY_CLIENTBOUND_ENTITY_POSITION_SYNC_PACKET_ID => {
                 let mut observation = parse_entity_position_sync_packet(payload)?;
-                observation.applied_to_world =
-                    trace.world.apply_entity_position(EntityPositionInput {
+                let snap_before = if probe.observe_player_position_snap {
+                    trace
+                        .world
+                        .entity_at(observation.entity_id)
+                        .filter(|entity| entity.type_id == 156)
+                        .map(|entity| {
+                            (
+                                entity.position(),
+                                (entity.rotation().0, entity.rotation().1),
+                            )
+                        })
+                } else {
+                    None
+                };
+                observation.applied_to_world = trace.world.apply_entity_position_and_rotation(
+                    EntityPositionInput {
                         entity_id: observation.entity_id,
                         x: observation.x,
                         y: observation.y,
                         z: observation.z,
                         relative_flags: 0,
-                    });
-                if observation.applied_to_world {
-                    trace.world.apply_entity_rotation(EntityRotationInput {
+                    },
+                    EntityRotationInput {
                         entity_id: observation.entity_id,
                         y_rot: Some(observation.y_rot),
                         x_rot: Some(observation.x_rot),
                         y_head_rot: None,
                         relative_y_rot: false,
                         relative_x_rot: false,
-                    });
+                    },
+                    EntityPositionUpdateMode::PositionSync,
+                );
+                if observation.applied_to_world {
                     trace
                         .world
                         .apply_entity_ground_state(observation.entity_id, observation.on_ground);
@@ -1749,28 +1854,53 @@ fn connect_and_probe_with_mode(
                         .world
                         .entity_at(observation.entity_id)
                         .map(|entity| entity.on_ground());
+                    if let Some((before_position, before_rotation)) = snap_before {
+                        observe_player_position_snap(
+                            &mut trace,
+                            "position_sync",
+                            observation.entity_id,
+                            before_position,
+                            before_rotation,
+                        );
+                    }
                 }
                 trace.entity_position_sync_observations.push(observation);
             }
             PLAY_CLIENTBOUND_TELEPORT_ENTITY_PACKET_ID => {
                 let mut observation = parse_entity_teleport_packet(payload)?;
-                observation.applied_to_world =
-                    trace.world.apply_entity_position(EntityPositionInput {
+                let snap_before = if probe.observe_player_position_snap {
+                    trace
+                        .world
+                        .entity_at(observation.entity_id)
+                        .filter(|entity| entity.type_id == 156)
+                        .map(|entity| {
+                            (
+                                entity.position(),
+                                (entity.rotation().0, entity.rotation().1),
+                            )
+                        })
+                } else {
+                    None
+                };
+                observation.applied_to_world = trace.world.apply_entity_position_and_rotation(
+                    EntityPositionInput {
                         entity_id: observation.entity_id,
                         x: observation.x,
                         y: observation.y,
                         z: observation.z,
                         relative_flags: observation.relative_flags,
-                    });
-                if observation.applied_to_world {
-                    trace.world.apply_entity_rotation(EntityRotationInput {
+                    },
+                    EntityRotationInput {
                         entity_id: observation.entity_id,
                         y_rot: Some(observation.y_rot),
                         x_rot: Some(observation.x_rot),
                         y_head_rot: None,
                         relative_y_rot: observation.relative_flags & (1 << 3) != 0,
                         relative_x_rot: observation.relative_flags & (1 << 4) != 0,
-                    });
+                    },
+                    EntityPositionUpdateMode::Teleport,
+                );
+                if observation.applied_to_world {
                     trace
                         .world
                         .apply_entity_ground_state(observation.entity_id, observation.on_ground);
@@ -1786,6 +1916,15 @@ fn connect_and_probe_with_mode(
                         .world
                         .entity_at(observation.entity_id)
                         .map(|entity| entity.on_ground());
+                    if let Some((before_position, before_rotation)) = snap_before {
+                        observe_player_position_snap(
+                            &mut trace,
+                            "teleport",
+                            observation.entity_id,
+                            before_position,
+                            before_rotation,
+                        );
+                    }
                 }
                 trace.entity_teleport_observations.push(observation);
             }

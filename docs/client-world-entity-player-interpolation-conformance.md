@@ -25,9 +25,9 @@ Player tick'inde aynı interpolation sırasını ve network motion yolunu taşı
 varsa hedef kurduğunu, handler yoksa doğrudan setter kullandığını tanımlar.
 `client/multiplayer/ClientPacketListener.java:639-754,806-823`, position sync,
 teleport ve MoveEntity paketlerinde ticking ve uzaklık koşullarına göre bu
-çağrının veya snap yolunun seçildiğini gösterir. Bu dilimin canlı senaryosu,
-üç tick'lik handler dalını açan ticking remote Player'ın küçük MoveEntity
-hareketiyle sınırlıdır.
+çağrının veya snap yolunun seçildiğini gösterir. Küçük hareket interpolation'ı
+bu kaydın canlı senaryosudur; uzaklık eşiğini aşan snap dalı [P08.as kaydında](client-world-entity-player-snap-conformance.md)
+ayrıca tutulur.
 
 `util/Mth.java:558-560,608-613`, position ve rotation lerplerinin işlem
 sırasını; `world/entity/InterpolationHandler.java:81-107`, önceki tick'ten
@@ -46,9 +46,10 @@ güncellenmesini tanımlar.
 - Aynı hedef aktifken yeni bir interpolation başlatılmaz; hedef değişirse
   current state'ten yeni üç adımlı hedef kurulur.
 - Bu kayıt, hareket paketinin ilk üç world tick'inde external movement olmayan
-  yüklü air-cell senaryosunu kapsar. Collision gate'i, büyük uzaklıkta snap,
-  teleport/position-sync dalının tamamı ve genel LivingEntity türleri açık
-  kapsamdır.
+  yüklü air-cell senaryosunu kapsar. Collision gate'i, teleport/position-sync
+  dalının tamamı ve genel LivingEntity türleri açık kapsamdır. Büyük uzaklıkta
+  snap davranışı [P08.as kaydında](client-world-entity-player-snap-conformance.md)
+  izlenir.
 
 ## Rust doğrulaması
 
@@ -57,7 +58,9 @@ interpolation state'i ve kalan adım sayısını saklar. `ClientWorld::tick`,
 remote Player entity'sinde tick sayacından sonra position interpolation'ı,
 ardından mevcut head interpolation'ını yürütür. Packet adapter'ı relative
 MoveEntity, PositionSync ve Teleport konum tabanını aktif Player hedefi üzerinden
-çözer; Player dışı entity'ler önceki raw snap yolunu korur.
+çözer; Player dışı entity'ler önceki raw snap yolunu korur. Büyük uzaklıkta
+PositionSync/Teleport snap seçimi [P08.as kaydında](client-world-entity-player-snap-conformance.md)
+ayrıca uygulanır.
 
 `remote_player_position_interpolation_follows_java_three_step_handler` unit
 testi `(1,80,-35.5)` konumundan `(4,82,-34.5)` konumuna ve `350/-20` body
@@ -113,7 +116,7 @@ Java istemcisiyle parity iddiası değildir.
 
 Genel LivingEntity ve araç/tekne interpolation türleri, packet position codec
 base'inin hızlı arka arkaya güncellemelerde ayrıştırılması, collision kontrolü,
-`4096.0` uzaklık snap dalı, teleport/position-sync özel history düzeltmesi,
+teleport/position-sync özel history düzeltmesinin genişletilmesi,
 external movement delta'sının gerçek collider ile doğrulanması, local player
 input/movement, render partial tick ve Java istemcisiyle `client-parity`
 karşılaştırması açık kalır.
