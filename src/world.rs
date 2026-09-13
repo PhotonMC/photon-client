@@ -113,6 +113,17 @@ impl ClientWorld {
         self.entities.get(&entity_id)
     }
 
+    pub fn remove_entity(&mut self, entity_id: i32) -> bool {
+        self.entities.remove(&entity_id).is_some()
+    }
+
+    pub(crate) fn remove_entities(&mut self, entity_ids: &[i32]) -> usize {
+        entity_ids
+            .iter()
+            .filter(|&&entity_id| self.remove_entity(entity_id))
+            .count()
+    }
+
     pub(crate) fn apply_light_updates(
         &mut self,
         chunk_x: i32,
@@ -716,6 +727,9 @@ mod tests {
             world.entity_at(37).map(super::ClientEntity::position),
             Some((-4.0, 65.0, 2.0))
         );
+        assert!(world.remove_entity(37));
+        assert_eq!(world.loaded_entity_count(), 0);
+        assert!(!world.remove_entity(37));
     }
 
     #[test]

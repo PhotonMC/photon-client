@@ -57,6 +57,7 @@ pub(crate) const PLAY_CLIENTBOUND_CHUNK_BATCH_START_PACKET_ID: i32 = 12;
 pub(crate) const PLAY_CLIENTBOUND_CONTAINER_SET_CONTENT_PACKET_ID: i32 = 18;
 pub(crate) const PLAY_CLIENTBOUND_CONTAINER_SET_SLOT_PACKET_ID: i32 = 20;
 pub(crate) const PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID: i32 = 96;
+pub(crate) const PLAY_CLIENTBOUND_REMOVE_ENTITIES_PACKET_ID: i32 = 77;
 pub(crate) const PLAY_CLIENTBOUND_REMOVE_MOB_EFFECT_PACKET_ID: i32 = 78;
 pub(crate) const PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID: i32 = 121;
 pub(crate) const PLAY_CLIENTBOUND_KEEP_ALIVE_PACKET_ID: i32 = 44;
@@ -450,6 +451,7 @@ pub(crate) const WORLD_LIFECYCLE_DRAIN_TIMEOUT: Duration = Duration::from_secs(1
 pub(crate) const LIGHT_UPDATE_DRAIN_TIMEOUT: Duration = Duration::from_secs(30);
 pub(crate) const BLOCK_ENTITY_UPDATE_DRAIN_TIMEOUT: Duration = Duration::from_secs(30);
 pub(crate) const ENTITY_ADD_DRAIN_TIMEOUT: Duration = Duration::from_secs(30);
+pub(crate) const ENTITY_REMOVE_DRAIN_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// Errors raised while driving the initial real-server client session.
 #[derive(Debug)]
@@ -535,6 +537,7 @@ pub struct PlayConnectionTrace {
     pub stone_item_registry_id: Option<i32>,
     pub snowball_item_registry_id: Option<i32>,
     pub add_entity_observations: Vec<AddEntityObservation>,
+    pub remove_entities_observations: Vec<RemoveEntitiesObservation>,
     pub container_content_observations: Vec<ContainerSetContentObservation>,
     pub container_slot_observations: Vec<ContainerSetSlotObservation>,
     pub cursor_item_observations: Vec<CursorItemObservation>,
@@ -629,6 +632,13 @@ pub struct AddEntityObservation {
     pub z: f64,
     pub data: i32,
     pub applied_to_world: bool,
+}
+
+/// Wire-level fields decoded from one clientbound remove-entities packet.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RemoveEntitiesObservation {
+    pub entity_ids: Vec<i32>,
+    pub applied_entity_count: usize,
 }
 
 /// Wire-level fields decoded from one clientbound container slot update.
@@ -1397,6 +1407,29 @@ pub(crate) fn parse_add_entity_packet(
         z,
         data,
         applied_to_world: false,
+    })
+}
+
+pub(crate) fn parse_remove_entities_packet(
+    input: &[u8],
+) -> Result<RemoveEntitiesObservation, ConnectionError> {
+    let mut input = input;
+    let count = read_varint(&mut input, "remove entities count")?;
+    let mut entity_ids = Vec::new();
+    if count > 0 {
+        let count =
+            usize::try_from(count).map_err(|_| ConnectionError::Codec("remove entities count"))?;
+        entity_ids.reserve(count.min(input.len()));
+        for _ in 0..count {
+            entity_ids.push(read_varint(&mut input, "remove entity id")?);
+        }
+    }
+    if !input.is_empty() {
+        return Err(ConnectionError::Codec("remove entities trailing payload"));
+    }
+    Ok(RemoveEntitiesObservation {
+        entity_ids,
+        applied_entity_count: 0,
     })
 }
 
@@ -2273,9 +2306,9 @@ mod tests {
         PLAY_CLIENTBOUND_CONTAINER_SET_SLOT_PACKET_ID,
         PLAY_CLIENTBOUND_FORGET_LEVEL_CHUNK_PACKET_ID, PLAY_CLIENTBOUND_KEEP_ALIVE_PACKET_ID,
         PLAY_CLIENTBOUND_LIGHT_UPDATE_PACKET_ID, PLAY_CLIENTBOUND_LOGIN_PACKET_ID,
-        PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID, PLAY_CLIENTBOUND_REMOVE_MOB_EFFECT_PACKET_ID,
-        PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID, PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID,
-        PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID,
+        PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID, PLAY_CLIENTBOUND_REMOVE_ENTITIES_PACKET_ID,
+        PLAY_CLIENTBOUND_REMOVE_MOB_EFFECT_PACKET_ID, PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID,
+        PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID, PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID,
         PLAY_SERVERBOUND_ACCEPT_TELEPORTATION_PACKET_ID,
         PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID,
         PLAY_SERVERBOUND_CLIENT_TICK_END_PACKET_ID, PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
@@ -2306,9 +2339,9 @@ mod tests {
         parse_block_entity_data_packet, parse_block_update_packet, parse_chunk_packet,
         parse_container_set_content_packet, parse_container_set_slot_packet,
         parse_forget_level_chunk_packet, parse_light_update_packet, parse_optional_item_stack,
-        parse_player_position_packet, parse_remove_mob_effect_packet, parse_section_data,
-        parse_system_chat_packet, parse_update_mob_effect_packet, resolve_player_position,
-        support_block_position,
+        parse_player_position_packet, parse_remove_entities_packet, parse_remove_mob_effect_packet,
+        parse_section_data, parse_system_chat_packet, parse_update_mob_effect_packet,
+        resolve_player_position, support_block_position,
     };
 
     #[test]
@@ -2345,6 +2378,7 @@ mod tests {
         assert_eq!(PLAY_CLIENTBOUND_CONTAINER_SET_CONTENT_PACKET_ID, 18);
         assert_eq!(PLAY_CLIENTBOUND_CONTAINER_SET_SLOT_PACKET_ID, 20);
         assert_eq!(PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID, 96);
+        assert_eq!(PLAY_CLIENTBOUND_REMOVE_ENTITIES_PACKET_ID, 77);
         assert_eq!(PLAY_CLIENTBOUND_REMOVE_MOB_EFFECT_PACKET_ID, 78);
         assert_eq!(PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID, 121);
         assert_eq!(PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID, 132);
@@ -2686,6 +2720,36 @@ mod tests {
                 applied_to_world: false,
             }
         );
+    }
+
+    #[test]
+    fn remove_entities_parser_matches_java_int_id_list() {
+        let mut payload = Vec::new();
+        crate::wire::write_varint(3, &mut payload);
+        crate::wire::write_varint(37, &mut payload);
+        crate::wire::write_varint(-12, &mut payload);
+        crate::wire::write_varint(0, &mut payload);
+
+        assert_eq!(
+            parse_remove_entities_packet(&payload).expect("remove entities"),
+            super::RemoveEntitiesObservation {
+                entity_ids: vec![37, -12, 0],
+                applied_entity_count: 0,
+            }
+        );
+
+        let mut negative_count = Vec::new();
+        crate::wire::write_varint(-1, &mut negative_count);
+        assert_eq!(
+            parse_remove_entities_packet(&negative_count).expect("negative count"),
+            super::RemoveEntitiesObservation {
+                entity_ids: Vec::new(),
+                applied_entity_count: 0,
+            }
+        );
+
+        payload.push(0);
+        assert!(parse_remove_entities_packet(&payload).is_err());
     }
 
     #[test]
