@@ -9,7 +9,10 @@ pub(crate) const PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS: u8 = 1;
 pub(crate) const PLAYER_RESPAWN_KEEP_ENTITY_DATA: u8 = 2;
 const VANILLA_PLAYER_ENTITY_TYPE_ID: i32 = 156;
 const ENTITY_SHARED_FLAGS_DATA_ID: u8 = 0;
+const ENTITY_AIR_SUPPLY_DATA_ID: u8 = 1;
 const ENTITY_DATA_SERIALIZER_BYTE_ID: i32 = 0;
+const ENTITY_DATA_SERIALIZER_INT_ID: i32 = 1;
+const DEFAULT_AIR_SUPPLY: i32 = 300;
 const SHARED_FLAG_ON_FIRE: u8 = 0;
 const SHARED_FLAG_SHIFT_KEY_DOWN: u8 = 1;
 const SHARED_FLAG_SPRINTING: u8 = 3;
@@ -22,22 +25,81 @@ fn shared_flag_is_set(flags: u8, flag: u8) -> bool {
     flags & (1_u8 << flag) != 0
 }
 
-fn shared_flags_from_metadata(metadata: &[u8]) -> Option<u8> {
+fn metadata_byte_value(metadata: &[u8], target_data_id: u8) -> Option<u8> {
     if metadata.last() != Some(&255) {
         return None;
     }
-    let (&data_id, metadata) = metadata.split_first()?;
-    if data_id != ENTITY_SHARED_FLAGS_DATA_ID {
+    let mut metadata = metadata;
+    loop {
+        let (&data_id, rest) = metadata.split_first()?;
+        if data_id == 255 {
+            return None;
+        }
+        metadata = rest;
+        let serializer_id = crate::wire::read_varint(&mut metadata).ok()?;
+        if data_id == target_data_id {
+            if serializer_id != ENTITY_DATA_SERIALIZER_BYTE_ID {
+                return None;
+            }
+            let (&value, rest) = metadata.split_first()?;
+            if rest.is_empty() {
+                return None;
+            }
+            return Some(value);
+        }
+        match serializer_id {
+            ENTITY_DATA_SERIALIZER_BYTE_ID => {
+                metadata = metadata.get(1..)?;
+            }
+            ENTITY_DATA_SERIALIZER_INT_ID => {
+                crate::wire::read_varint(&mut metadata).ok()?;
+            }
+            _ => return None,
+        }
+    }
+}
+
+fn metadata_int_value(metadata: &[u8], target_data_id: u8) -> Option<i32> {
+    if metadata.last() != Some(&255) {
         return None;
     }
     let mut metadata = metadata;
-    if crate::wire::read_varint(&mut metadata).ok()? != ENTITY_DATA_SERIALIZER_BYTE_ID {
-        return None;
+    loop {
+        let (&data_id, rest) = metadata.split_first()?;
+        if data_id == 255 {
+            return None;
+        }
+        metadata = rest;
+        let serializer_id = crate::wire::read_varint(&mut metadata).ok()?;
+        if data_id == target_data_id {
+            if serializer_id != ENTITY_DATA_SERIALIZER_INT_ID {
+                return None;
+            }
+            let mut value_input = metadata;
+            let value = crate::wire::read_varint(&mut value_input).ok()?;
+            if value_input.is_empty() {
+                return None;
+            }
+            return Some(value);
+        }
+        match serializer_id {
+            ENTITY_DATA_SERIALIZER_BYTE_ID => {
+                metadata = metadata.get(1..)?;
+            }
+            ENTITY_DATA_SERIALIZER_INT_ID => {
+                crate::wire::read_varint(&mut metadata).ok()?;
+            }
+            _ => return None,
+        }
     }
-    if metadata.len() < 2 {
-        return None;
-    }
-    Some(metadata[0])
+}
+
+fn shared_flags_from_metadata(metadata: &[u8]) -> Option<u8> {
+    metadata_byte_value(metadata, ENTITY_SHARED_FLAGS_DATA_ID)
+}
+
+fn air_supply_from_metadata(metadata: &[u8]) -> Option<i32> {
+    metadata_int_value(metadata, ENTITY_AIR_SUPPLY_DATA_ID)
 }
 
 /// The vertical bounds used when mapping a chunk packet's section order to Y.
@@ -665,6 +727,7 @@ impl ClientWorld {
             player.y_rot_bits = previous.y_rot_bits;
             player.x_rot_bits = previous.x_rot_bits;
             player.shared_flags = previous.shared_flags;
+            player.air_supply = previous.air_supply;
             player.entity_data = previous.entity_data;
         } else {
             player.y_rot_bits = (-180.0_f32).to_bits();
@@ -1067,6 +1130,7 @@ impl ClientWorld {
                 data: entity.data,
                 metadata: None,
                 shared_flags: 0,
+                air_supply: DEFAULT_AIR_SUPPLY,
             },
         );
         true
@@ -1074,6 +1138,7 @@ impl ClientWorld {
 
     pub(crate) fn apply_entity_metadata(&mut self, entity_id: i32, metadata: &[u8]) -> bool {
         let shared_flags = shared_flags_from_metadata(metadata);
+        let air_supply = air_supply_from_metadata(metadata);
         if let Some(player) = self
             .local_player
             .as_mut()
@@ -1083,6 +1148,9 @@ impl ClientWorld {
             if let Some(shared_flags) = shared_flags {
                 player.shared_flags = shared_flags;
             }
+            if let Some(air_supply) = air_supply {
+                player.air_supply = air_supply;
+            }
             return true;
         }
         let Some(entity) = self.entities.get_mut(&entity_id) else {
@@ -1091,6 +1159,9 @@ impl ClientWorld {
         entity.metadata = Some(metadata.to_vec());
         if let Some(shared_flags) = shared_flags {
             entity.shared_flags = shared_flags;
+        }
+        if let Some(air_supply) = air_supply {
+            entity.air_supply = air_supply;
         }
         true
     }
@@ -1430,6 +1501,7 @@ pub struct ClientEntity {
     pub data: i32,
     metadata: Option<Vec<u8>>,
     shared_flags: u8,
+    air_supply: i32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1584,6 +1656,7 @@ pub struct ClientPlayerState {
     old_x_rot_bits: u32,
     entity_data: Option<Vec<u8>>,
     shared_flags: u8,
+    air_supply: i32,
     attributes: Vec<ClientAttributeState>,
     effects: Vec<ClientMobEffectState>,
     health_bits: u32,
@@ -1624,6 +1697,7 @@ impl ClientPlayerState {
             old_x_rot_bits: 0.0_f32.to_bits(),
             entity_data: None,
             shared_flags: 0,
+            air_supply: DEFAULT_AIR_SUPPLY,
             attributes: Vec::new(),
             effects: Vec::new(),
             health_bits: 20.0_f32.to_bits(),
@@ -1715,6 +1789,10 @@ impl ClientPlayerState {
 
     pub fn shared_flags(&self) -> u8 {
         self.shared_flags
+    }
+
+    pub fn air_supply(&self) -> i32 {
+        self.air_supply
     }
 
     pub fn is_on_fire(&self) -> bool {
@@ -1882,6 +1960,10 @@ impl ClientEntity {
 
     pub fn shared_flags(&self) -> u8 {
         self.shared_flags
+    }
+
+    pub fn air_supply(&self) -> i32 {
+        self.air_supply
     }
 
     pub fn is_on_fire(&self) -> bool {
@@ -2886,6 +2968,58 @@ mod tests {
     }
 
     #[test]
+    fn entity_air_supply_follows_java_int_metadata_and_preserves_shared_flags() {
+        let mut world = ClientWorld::default();
+        assert!(world.apply_entity(EntityInput {
+            entity_id: 37,
+            uuid: Uuid::new(1, 2),
+            type_id: 120,
+            x: 1.25,
+            y: 80.0,
+            z: -35.5,
+            movement: (0.0, 0.0, 0.0),
+            rotation: (0.0, 0.0, 0.0),
+            data: 0,
+        }));
+        assert_eq!(
+            world.entity_at(37).map(super::ClientEntity::air_supply),
+            Some(300)
+        );
+
+        let mut air_metadata = vec![
+            super::ENTITY_AIR_SUPPLY_DATA_ID,
+            super::ENTITY_DATA_SERIALIZER_INT_ID as u8,
+        ];
+        crate::wire::write_varint(250, &mut air_metadata);
+        air_metadata.push(255);
+        assert!(world.apply_entity_metadata(37, &air_metadata));
+        let entity = world.entity_at(37).expect("entity with air supply");
+        assert_eq!(entity.air_supply(), 250);
+        assert_eq!(entity.shared_flags(), 0);
+
+        let mut combined_metadata = vec![
+            super::ENTITY_SHARED_FLAGS_DATA_ID,
+            super::ENTITY_DATA_SERIALIZER_BYTE_ID as u8,
+            64,
+            super::ENTITY_AIR_SUPPLY_DATA_ID,
+            super::ENTITY_DATA_SERIALIZER_INT_ID as u8,
+        ];
+        crate::wire::write_varint(-1, &mut combined_metadata);
+        combined_metadata.push(255);
+        assert!(world.apply_entity_metadata(37, &combined_metadata));
+        let entity = world.entity_at(37).expect("entity with combined metadata");
+        assert_eq!(entity.air_supply(), -1);
+        assert_eq!(entity.shared_flags(), 64);
+        assert!(entity.is_glowing());
+
+        assert!(world.apply_entity_metadata(37, &[0, 0, 0, 255]));
+        assert_eq!(
+            world.entity_at(37).map(super::ClientEntity::air_supply),
+            Some(-1)
+        );
+    }
+
+    #[test]
     fn player_entities_keep_ticking_after_their_chunk_unloads() {
         let mut world = ClientWorld::default();
         let (blocks, biomes) = section(0, 0);
@@ -3157,6 +3291,10 @@ mod tests {
             (135.0, -30.0),
         ));
         assert!(world.apply_entity_metadata(42, &[0, 0, 32, 255]));
+        let mut air_metadata = vec![1, 1];
+        crate::wire::write_varint(250, &mut air_metadata);
+        air_metadata.push(255);
+        assert!(world.apply_entity_metadata(42, &air_metadata));
 
         assert!(world.recreate_local_player(
             PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS | PLAYER_RESPAWN_KEEP_ENTITY_DATA
@@ -3167,9 +3305,10 @@ mod tests {
         assert_eq!(player.position(), (0.0, 0.0, 0.0));
         assert_eq!(player.motion(), (0.125, -0.25, 0.5));
         assert_eq!(player.rotation(), (135.0, -30.0));
-        assert_eq!(player.entity_data(), Some(&[0, 0, 32, 255][..]));
+        assert_eq!(player.entity_data(), Some(air_metadata.as_slice()));
         assert_eq!(player.shared_flags(), 32);
         assert!(player.is_invisible());
+        assert_eq!(player.air_supply(), 250);
 
         assert!(world.recreate_local_player(0));
         let player = world.local_player().expect("reset local player");
@@ -3180,6 +3319,7 @@ mod tests {
         assert_eq!(player.entity_data(), None);
         assert_eq!(player.shared_flags(), 0);
         assert!(!player.is_invisible());
+        assert_eq!(player.air_supply(), 300);
     }
 
     #[test]
