@@ -103,7 +103,8 @@ değildir.
 ## Açık kapsam
 
 Diğer metadata serializer'larının semantic decode edilmesi, pose/custom name/
-equipment alanları, `onSyncedDataUpdated` yan etkileri, `Add Mob` entity türleri,
-living entity effect state'inin tam istemci kopyası, render davranışı ve
-`client-parity` karşılaştırması açık kalır. Shared flags'in entity-map yolu
-unit test ile kapsanır; canlı koşu local player metadata yolu üzerindedir.
+equipment alanları, entity türüne göre metadata ID doğrulaması,
+`onSyncedDataUpdated` yan etkileri, living entity effect state'inin tam istemci
+kopyası, render davranışı ve `client-parity` karşılaştırması açık kalır. Shared
+flags'in entity-map yolu unit test ile kapsanır; canlı koşu local player
+metadata yolu üzerindedir.
