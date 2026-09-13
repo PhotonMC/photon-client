@@ -52,6 +52,47 @@ impl DimensionBounds {
     }
 }
 
+/// Raw item-stack state retained by the client inventory copy.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClientItemStackState {
+    item_count: i32,
+    item_registry_id: i32,
+    positive_component_type_ids: Vec<i32>,
+    negative_component_type_ids: Vec<i32>,
+}
+
+impl ClientItemStackState {
+    pub(crate) fn from_wire(
+        item_count: i32,
+        item_registry_id: i32,
+        positive_component_type_ids: Vec<i32>,
+        negative_component_type_ids: Vec<i32>,
+    ) -> Self {
+        Self {
+            item_count,
+            item_registry_id,
+            positive_component_type_ids,
+            negative_component_type_ids,
+        }
+    }
+
+    pub fn item_count(&self) -> i32 {
+        self.item_count
+    }
+
+    pub fn item_registry_id(&self) -> i32 {
+        self.item_registry_id
+    }
+
+    pub fn positive_component_type_ids(&self) -> &[i32] {
+        &self.positive_component_type_ids
+    }
+
+    pub fn negative_component_type_ids(&self) -> &[i32] {
+        &self.negative_component_type_ids
+    }
+}
+
 impl Default for DimensionBounds {
     fn default() -> Self {
         Self::new(-64, 384)
@@ -176,6 +217,73 @@ impl ClientWorld {
         player.health_bits = health.to_bits();
         player.food = food;
         player.saturation_bits = saturation.to_bits();
+        true
+    }
+
+    pub(crate) fn apply_local_player_container_content(
+        &mut self,
+        container_id: i32,
+        state_id: i32,
+        items: &[Option<ClientItemStackState>],
+        carried_item: Option<&ClientItemStackState>,
+    ) -> bool {
+        if container_id != 0 {
+            return false;
+        }
+        let Some(player) = self.local_player.as_mut() else {
+            return false;
+        };
+        player.inventory_state_id = state_id;
+        player.inventory_slots = items
+            .iter()
+            .enumerate()
+            .map(|(slot, item)| (slot as i16, item.clone()))
+            .collect();
+        player.carried_item = carried_item.cloned();
+        true
+    }
+
+    pub(crate) fn apply_local_player_container_slot(
+        &mut self,
+        container_id: i32,
+        state_id: i32,
+        slot: i16,
+        item: Option<&ClientItemStackState>,
+    ) -> bool {
+        if container_id != 0 {
+            return false;
+        }
+        let Some(player) = self.local_player.as_mut() else {
+            return false;
+        };
+        player.inventory_state_id = state_id;
+        player.inventory_slots.insert(slot, item.cloned());
+        true
+    }
+
+    pub(crate) fn apply_local_player_carried_item(
+        &mut self,
+        item: Option<&ClientItemStackState>,
+    ) -> bool {
+        let Some(player) = self.local_player.as_mut() else {
+            return false;
+        };
+        player.carried_item = item.cloned();
+        true
+    }
+
+    pub(crate) fn apply_local_player_inventory_slot(
+        &mut self,
+        slot: i32,
+        item: Option<&ClientItemStackState>,
+    ) -> bool {
+        let Some(menu_slot) = player_inventory_menu_slot(slot) else {
+            return false;
+        };
+        let Some(player) = self.local_player.as_mut() else {
+            return false;
+        };
+        player.inventory_slots.insert(menu_slot, item.cloned());
         true
     }
 
@@ -880,6 +988,9 @@ pub struct ClientPlayerState {
     health_bits: u32,
     food: i32,
     saturation_bits: u32,
+    inventory_state_id: i32,
+    inventory_slots: BTreeMap<i16, Option<ClientItemStackState>>,
+    carried_item: Option<ClientItemStackState>,
 }
 
 impl ClientPlayerState {
@@ -901,6 +1012,9 @@ impl ClientPlayerState {
             health_bits: 20.0_f32.to_bits(),
             food: 20,
             saturation_bits: 5.0_f32.to_bits(),
+            inventory_state_id: 0,
+            inventory_slots: BTreeMap::new(),
+            carried_item: None,
         }
     }
 
@@ -957,6 +1071,22 @@ impl ClientPlayerState {
 
     pub fn saturation(&self) -> f32 {
         f32::from_bits(self.saturation_bits)
+    }
+
+    pub fn inventory_state_id(&self) -> i32 {
+        self.inventory_state_id
+    }
+
+    pub fn inventory_slot(&self, slot: i16) -> Option<&ClientItemStackState> {
+        self.inventory_slots.get(&slot).and_then(Option::as_ref)
+    }
+
+    pub fn inventory_slot_count(&self) -> usize {
+        self.inventory_slots.len()
+    }
+
+    pub fn carried_item(&self) -> Option<&ClientItemStackState> {
+        self.carried_item.as_ref()
     }
 }
 
@@ -1108,6 +1238,14 @@ fn entity_chunk_key(position: (f64, f64, f64)) -> (i32, i32) {
     )
 }
 
+fn player_inventory_menu_slot(slot: i32) -> Option<i16> {
+    match slot {
+        0..=8 => Some((36 + slot) as i16),
+        9..=35 => Some(slot as i16),
+        _ => None,
+    }
+}
+
 fn decode_entity_delta(base: f64, delta: i16) -> u64 {
     if delta == 0 {
         base.to_bits()
@@ -1178,10 +1316,11 @@ fn apply_light_layer(
 #[cfg(test)]
 mod tests {
     use super::{
-        BlockEntityInput, ClientAttributeModifierState, ClientAttributeState, ClientWorld,
-        DimensionBounds, DimensionInput, EntityInput, EntityMotionInput, EntityMoveInput,
-        EntityPositionInput, EntityRotationInput, LightLayerInput, LightUpdateInput,
-        PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS, PLAYER_RESPAWN_KEEP_ENTITY_DATA, SectionInput,
+        BlockEntityInput, ClientAttributeModifierState, ClientAttributeState, ClientItemStackState,
+        ClientWorld, DimensionBounds, DimensionInput, EntityInput, EntityMotionInput,
+        EntityMoveInput, EntityPositionInput, EntityRotationInput, LightLayerInput,
+        LightUpdateInput, PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS, PLAYER_RESPAWN_KEEP_ENTITY_DATA,
+        SectionInput,
     };
     use crate::binary::{BitSet, Uuid};
 
@@ -1798,6 +1937,68 @@ mod tests {
         assert_eq!(player.health(), 20.0);
         assert_eq!(player.food(), 20);
         assert_eq!(player.saturation(), 5.0);
+    }
+
+    #[test]
+    fn local_player_inventory_state_applies_slot_cursor_and_respawn_reset() {
+        let mut world = ClientWorld::default();
+        let stone = ClientItemStackState::from_wire(8, 1, vec![], vec![]);
+        let bottle = ClientItemStackState::from_wire(1, 1_149, vec![], vec![]);
+        let mut items = vec![None; 46];
+        items[36] = Some(stone.clone());
+
+        assert!(!world.apply_local_player_container_content(0, 1, &items, Some(&stone),));
+        world.set_local_player_id(42);
+        assert!(world.apply_local_player_container_content(0, 2, &items, Some(&stone),));
+        let player = world.local_player().expect("local player inventory");
+        assert_eq!(player.inventory_state_id(), 2);
+        assert_eq!(player.inventory_slot_count(), 46);
+        assert_eq!(player.inventory_slot(36), Some(&stone));
+        assert_eq!(player.carried_item(), Some(&stone));
+
+        assert!(world.apply_local_player_container_slot(0, 3, 36, Some(&bottle)));
+        assert_eq!(
+            world
+                .local_player()
+                .expect("local player after slot update")
+                .inventory_slot(36),
+            Some(&bottle)
+        );
+        assert_eq!(
+            world
+                .local_player()
+                .expect("local player after slot update")
+                .inventory_state_id(),
+            3
+        );
+
+        assert!(world.apply_local_player_carried_item(None));
+        assert!(
+            world
+                .local_player()
+                .expect("local player after cursor clear")
+                .carried_item()
+                .is_none()
+        );
+
+        assert!(world.apply_local_player_inventory_slot(0, Some(&stone)));
+        assert_eq!(
+            world
+                .local_player()
+                .expect("local player after direct inventory update")
+                .inventory_slot(36),
+            Some(&stone)
+        );
+        assert!(!world.apply_local_player_inventory_slot(36, Some(&bottle)));
+
+        assert!(world.recreate_local_player(0));
+        let player = world
+            .local_player()
+            .expect("respawned local player inventory");
+        assert_eq!(player.inventory_state_id(), 0);
+        assert_eq!(player.inventory_slot_count(), 0);
+        assert!(player.inventory_slot(36).is_none());
+        assert!(player.carried_item().is_none());
     }
 
     #[test]

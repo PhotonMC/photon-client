@@ -45,15 +45,75 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     else {
         return Err("vanilla did not provide an applied local poison removal".into());
     };
+    let Some(initial_content) = trace
+        .container_content_observations
+        .iter()
+        .find(|observation| observation.container_id == 0 && observation.applied_to_world)
+    else {
+        return Err("vanilla did not provide applied player inventory content".into());
+    };
+    let Some(preparation_slot) = trace
+        .container_slot_observations
+        .iter()
+        .find(|observation| {
+            observation.container_id == 0
+                && observation.slot == 36
+                && observation.state_id == 2
+                && observation.item_registry_id == Some(1_412)
+                && observation.applied_to_world
+        })
+    else {
+        return Err("vanilla did not provide an applied honey bottle inventory slot".into());
+    };
+    let Some(remainder_slot) = trace
+        .container_slot_observations
+        .iter()
+        .find(|observation| {
+            observation.container_id == 0
+                && observation.slot == 36
+                && observation.state_id == 3
+                && observation.item_registry_id == Some(1_149)
+                && observation.applied_to_world
+        })
+    else {
+        return Err("vanilla did not provide an applied glass bottle inventory slot".into());
+    };
     if local_update.amplifier != 0
         || local_update.duration_ticks != 1_200
         || local_update.flags != 0b1000
         || !local_remove.applied_to_world
         || !player.effects().is_empty()
+        || initial_content.item_count != 46
+        || initial_content.items.len() != 46
+        || initial_content.items.iter().any(Option::is_some)
+        || initial_content.carried_item.is_some()
+        || preparation_slot.item.as_ref().map(|item| item.item_count()) != Some(1)
+        || preparation_slot
+            .item
+            .as_ref()
+            .map(|item| item.positive_component_type_ids())
+            != Some([17].as_slice())
+        || remainder_slot.item.as_ref().map(|item| item.item_count()) != Some(1)
+        || remainder_slot
+            .item
+            .as_ref()
+            .map(|item| item.positive_component_type_ids())
+            != Some([].as_slice())
+        || player.inventory_state_id() != 3
+        || player.inventory_slot_count() != 46
+        || player
+            .inventory_slot(36)
+            .map(|item| item.item_registry_id())
+            != Some(1_149)
+        || player.carried_item().is_some()
     {
         return Err(format!(
-            "local player poison state did not match the vanilla cleanup flow: update={local_update:?}, remove={local_remove:?}, effects={:?}",
-            player.effects()
+            "local player state did not match the vanilla cleanup flow: update={local_update:?}, remove={local_remove:?}, effects={:?}, content={initial_content:?}, preparation={preparation_slot:?}, remainder={remainder_slot:?}, inventory_state_id={}, inventory_slot_count={}, inventory_slot_36={:?}, carried={:?}",
+            player.effects(),
+            player.inventory_state_id(),
+            player.inventory_slot_count(),
+            player.inventory_slot(36),
+            player.carried_item(),
         )
         .into());
     }
@@ -77,12 +137,33 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
     println!("local_player_effect_count={}", player.effects().len());
     println!(
+        "local_player_inventory_state_id={}",
+        player.inventory_state_id()
+    );
+    println!(
+        "local_player_inventory_slot_count={}",
+        player.inventory_slot_count()
+    );
+    println!(
+        "local_player_inventory_slot_36={:?}",
+        player.inventory_slot(36)
+    );
+    println!("local_player_carried_item={:?}", player.carried_item());
+    println!(
         "container_slot_observations={:?}",
         trace.container_slot_observations
     );
     println!(
         "container_content_observations={:?}",
         trace.container_content_observations
+    );
+    println!(
+        "player_inventory_observations={:?}",
+        trace.player_inventory_observations
+    );
+    println!(
+        "cursor_item_observations={:?}",
+        trace.cursor_item_observations
     );
     println!(
         "block_changed_ack_sequences={:?}",

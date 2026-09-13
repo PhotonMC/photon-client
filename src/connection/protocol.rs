@@ -14,7 +14,8 @@ use crate::frame::{self, FrameError, MAX_FRAME_LENGTH};
 use crate::protocol::ConnectionProtocol;
 use crate::wire;
 use crate::world::{
-    ClientAttributeModifierState, ClientAttributeState, ClientWorld, DimensionBounds,
+    ClientAttributeModifierState, ClientAttributeState, ClientItemStackState, ClientWorld,
+    DimensionBounds,
 };
 
 pub(crate) const PROTOCOL_VERSION: i32 = 776;
@@ -65,6 +66,7 @@ pub(crate) const PLAY_CLIENTBOUND_CHUNK_BATCH_START_PACKET_ID: i32 = 12;
 pub(crate) const PLAY_CLIENTBOUND_CONTAINER_SET_CONTENT_PACKET_ID: i32 = 18;
 pub(crate) const PLAY_CLIENTBOUND_CONTAINER_SET_SLOT_PACKET_ID: i32 = 20;
 pub(crate) const PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID: i32 = 96;
+pub(crate) const PLAY_CLIENTBOUND_SET_PLAYER_INVENTORY_PACKET_ID: i32 = 108;
 pub(crate) const PLAY_CLIENTBOUND_REMOVE_ENTITIES_PACKET_ID: i32 = 77;
 pub(crate) const PLAY_CLIENTBOUND_REMOVE_MOB_EFFECT_PACKET_ID: i32 = 78;
 pub(crate) const PLAY_CLIENTBOUND_SET_ENTITY_DATA_PACKET_ID: i32 = 99;
@@ -571,6 +573,7 @@ pub struct PlayConnectionTrace {
     pub container_content_observations: Vec<ContainerSetContentObservation>,
     pub container_slot_observations: Vec<ContainerSetSlotObservation>,
     pub cursor_item_observations: Vec<CursorItemObservation>,
+    pub player_inventory_observations: Vec<SetPlayerInventoryObservation>,
     pub mob_effect_remove_observations: Vec<MobEffectRemoveObservation>,
     pub mob_effect_update_observations: Vec<MobEffectUpdateObservation>,
     pub system_chat_observations: Vec<SystemChatObservation>,
@@ -851,6 +854,8 @@ pub struct ContainerSetSlotObservation {
     pub item_registry_id: Option<i32>,
     pub positive_component_type_ids: Vec<i32>,
     pub negative_component_type_ids: Vec<i32>,
+    pub item: Option<ClientItemStackState>,
+    pub applied_to_world: bool,
 }
 
 /// Wire-level fields decoded from one clientbound cursor item update.
@@ -860,6 +865,20 @@ pub struct CursorItemObservation {
     pub item_registry_id: Option<i32>,
     pub positive_component_type_ids: Vec<i32>,
     pub negative_component_type_ids: Vec<i32>,
+    pub item: Option<ClientItemStackState>,
+    pub applied_to_world: bool,
+}
+
+/// Wire-level fields decoded from one direct local-player inventory update.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SetPlayerInventoryObservation {
+    pub slot: i32,
+    pub item_count: Option<i32>,
+    pub item_registry_id: Option<i32>,
+    pub positive_component_type_ids: Vec<i32>,
+    pub negative_component_type_ids: Vec<i32>,
+    pub item: Option<ClientItemStackState>,
+    pub applied_to_world: bool,
 }
 
 /// Wire-level fields decoded from one clientbound container content update.
@@ -868,6 +887,7 @@ pub struct ContainerSetContentObservation {
     pub container_id: i32,
     pub state_id: i32,
     pub item_count: usize,
+    pub items: Vec<Option<ClientItemStackState>>,
     pub hotbar_slot_zero_item_count: Option<i32>,
     pub hotbar_slot_zero_item_registry_id: Option<i32>,
     pub hotbar_slot_zero_positive_component_type_ids: Vec<i32>,
@@ -880,6 +900,8 @@ pub struct ContainerSetContentObservation {
     pub carried_item_registry_id: Option<i32>,
     pub carried_positive_component_type_ids: Vec<i32>,
     pub carried_negative_component_type_ids: Vec<i32>,
+    pub carried_item: Option<ClientItemStackState>,
+    pub applied_to_world: bool,
 }
 
 /// Wire-level fields decoded from one clientbound mob-effect removal packet.
@@ -2021,6 +2043,17 @@ struct ParsedItemStackObservation {
     negative_component_type_ids: Vec<i32>,
 }
 
+impl ParsedItemStackObservation {
+    fn client_state(&self) -> Option<ClientItemStackState> {
+        Some(ClientItemStackState::from_wire(
+            self.item_count?,
+            self.item_registry_id?,
+            self.positive_component_type_ids.clone(),
+            self.negative_component_type_ids.clone(),
+        ))
+    }
+}
+
 fn parse_optional_item_stack(
     input: &mut &[u8],
     name: &'static str,
@@ -2172,21 +2205,27 @@ pub(crate) fn parse_container_set_content_packet(
     let mut main_inventory_slot_zero_item_registry_id = None;
     let mut main_inventory_slot_zero_positive_component_type_ids = Vec::new();
     let mut main_inventory_slot_zero_negative_component_type_ids = Vec::new();
+    let mut items = Vec::with_capacity(item_count);
     for slot in 0..item_count {
         let item = parse_optional_item_stack(&mut input, "container content item stack")?;
+        let client_state = item.client_state();
         if slot == 36 {
             hotbar_slot_zero_item_count = item.item_count;
             hotbar_slot_zero_item_registry_id = item.item_registry_id;
-            hotbar_slot_zero_positive_component_type_ids = item.positive_component_type_ids;
-            hotbar_slot_zero_negative_component_type_ids = item.negative_component_type_ids;
+            hotbar_slot_zero_positive_component_type_ids = item.positive_component_type_ids.clone();
+            hotbar_slot_zero_negative_component_type_ids = item.negative_component_type_ids.clone();
         } else if slot == 9 {
             main_inventory_slot_zero_item_count = item.item_count;
             main_inventory_slot_zero_item_registry_id = item.item_registry_id;
-            main_inventory_slot_zero_positive_component_type_ids = item.positive_component_type_ids;
-            main_inventory_slot_zero_negative_component_type_ids = item.negative_component_type_ids;
+            main_inventory_slot_zero_positive_component_type_ids =
+                item.positive_component_type_ids.clone();
+            main_inventory_slot_zero_negative_component_type_ids =
+                item.negative_component_type_ids.clone();
         }
+        items.push(client_state);
     }
     let carried_item = parse_optional_item_stack(&mut input, "container content carried item")?;
+    let carried_client_state = carried_item.client_state();
     if !input.is_empty() {
         return Err(ConnectionError::Codec("container content trailing payload"));
     }
@@ -2194,6 +2233,7 @@ pub(crate) fn parse_container_set_content_packet(
         container_id,
         state_id,
         item_count,
+        items,
         hotbar_slot_zero_item_count,
         hotbar_slot_zero_item_registry_id,
         hotbar_slot_zero_positive_component_type_ids,
@@ -2206,6 +2246,8 @@ pub(crate) fn parse_container_set_content_packet(
         carried_item_registry_id: carried_item.item_registry_id,
         carried_positive_component_type_ids: carried_item.positive_component_type_ids,
         carried_negative_component_type_ids: carried_item.negative_component_type_ids,
+        carried_item: carried_client_state,
+        applied_to_world: false,
     })
 }
 
@@ -2217,6 +2259,7 @@ pub(crate) fn parse_container_set_slot_packet(
     let state_id = read_varint(&mut input, "container slot state id")?;
     let slot = read_i16(&mut input, "container slot index")?;
     let item = parse_optional_item_stack(&mut input, "container slot item stack")?;
+    let client_state = item.client_state();
     if !input.is_empty() {
         return Err(ConnectionError::Codec("container slot trailing payload"));
     }
@@ -2228,6 +2271,8 @@ pub(crate) fn parse_container_set_slot_packet(
         item_registry_id: item.item_registry_id,
         positive_component_type_ids: item.positive_component_type_ids,
         negative_component_type_ids: item.negative_component_type_ids,
+        item: client_state,
+        applied_to_world: false,
     })
 }
 
@@ -2236,6 +2281,7 @@ pub(crate) fn parse_cursor_item_packet(
 ) -> Result<CursorItemObservation, ConnectionError> {
     let mut input = input;
     let item = parse_optional_item_stack(&mut input, "cursor item stack")?;
+    let client_state = item.client_state();
     if !input.is_empty() {
         return Err(ConnectionError::Codec("cursor item trailing payload"));
     }
@@ -2244,6 +2290,29 @@ pub(crate) fn parse_cursor_item_packet(
         item_registry_id: item.item_registry_id,
         positive_component_type_ids: item.positive_component_type_ids,
         negative_component_type_ids: item.negative_component_type_ids,
+        item: client_state,
+        applied_to_world: false,
+    })
+}
+
+pub(crate) fn parse_set_player_inventory_packet(
+    input: &[u8],
+) -> Result<SetPlayerInventoryObservation, ConnectionError> {
+    let mut input = input;
+    let slot = read_varint(&mut input, "player inventory slot")?;
+    let item = parse_optional_item_stack(&mut input, "player inventory item stack")?;
+    let client_state = item.client_state();
+    if !input.is_empty() {
+        return Err(ConnectionError::Codec("player inventory trailing payload"));
+    }
+    Ok(SetPlayerInventoryObservation {
+        slot,
+        item_count: item.item_count,
+        item_registry_id: item.item_registry_id,
+        positive_component_type_ids: item.positive_component_type_ids,
+        negative_component_type_ids: item.negative_component_type_ids,
+        item: client_state,
+        applied_to_world: false,
     })
 }
 
@@ -2866,8 +2935,9 @@ mod tests {
         PLAY_CLIENTBOUND_RESPAWN_PACKET_ID, PLAY_CLIENTBOUND_ROTATE_HEAD_PACKET_ID,
         PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID, PLAY_CLIENTBOUND_SET_ENTITY_DATA_PACKET_ID,
         PLAY_CLIENTBOUND_SET_ENTITY_MOTION_PACKET_ID, PLAY_CLIENTBOUND_SET_HEALTH_PACKET_ID,
-        PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID, PLAY_CLIENTBOUND_TELEPORT_ENTITY_PACKET_ID,
-        PLAY_CLIENTBOUND_UPDATE_ATTRIBUTES_PACKET_ID, PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID,
+        PLAY_CLIENTBOUND_SET_PLAYER_INVENTORY_PACKET_ID, PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID,
+        PLAY_CLIENTBOUND_TELEPORT_ENTITY_PACKET_ID, PLAY_CLIENTBOUND_UPDATE_ATTRIBUTES_PACKET_ID,
+        PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID,
         PLAY_SERVERBOUND_ACCEPT_TELEPORTATION_PACKET_ID,
         PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID, PLAY_SERVERBOUND_CLIENT_COMMAND_PACKET_ID,
         PLAY_SERVERBOUND_CLIENT_TICK_END_PACKET_ID, PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
@@ -2897,14 +2967,15 @@ mod tests {
         encode_use_item_on_hit, pack_block_position, parse_add_entity_packet,
         parse_block_destruction_packet, parse_block_entity_data_packet, parse_block_update_packet,
         parse_chunk_packet, parse_container_set_content_packet, parse_container_set_slot_packet,
-        parse_entity_metadata_packet, parse_entity_position_sync_packet,
+        parse_cursor_item_packet, parse_entity_metadata_packet, parse_entity_position_sync_packet,
         parse_entity_teleport_packet, parse_forget_level_chunk_packet, parse_light_update_packet,
         parse_login_packet, parse_move_entity_pos_packet, parse_move_entity_pos_rot_packet,
         parse_move_entity_rot_packet, parse_optional_item_stack, parse_player_position_packet,
         parse_remove_entities_packet, parse_remove_mob_effect_packet, parse_respawn_packet,
         parse_rotate_head_packet, parse_section_data, parse_set_entity_motion_packet,
-        parse_set_health_packet, parse_system_chat_packet, parse_update_attributes_packet,
-        parse_update_mob_effect_packet, resolve_player_position, support_block_position,
+        parse_set_health_packet, parse_set_player_inventory_packet, parse_system_chat_packet,
+        parse_update_attributes_packet, parse_update_mob_effect_packet, resolve_player_position,
+        support_block_position,
     };
 
     #[test]
@@ -2950,6 +3021,7 @@ mod tests {
         assert_eq!(PLAY_CLIENTBOUND_CONTAINER_SET_CONTENT_PACKET_ID, 18);
         assert_eq!(PLAY_CLIENTBOUND_CONTAINER_SET_SLOT_PACKET_ID, 20);
         assert_eq!(PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID, 96);
+        assert_eq!(PLAY_CLIENTBOUND_SET_PLAYER_INVENTORY_PACKET_ID, 108);
         assert_eq!(PLAY_CLIENTBOUND_REMOVE_ENTITIES_PACKET_ID, 77);
         assert_eq!(PLAY_CLIENTBOUND_REMOVE_MOB_EFFECT_PACKET_ID, 78);
         assert_eq!(PLAY_CLIENTBOUND_SET_ENTITY_DATA_PACKET_ID, 99);
@@ -3754,6 +3826,8 @@ mod tests {
                 item_registry_id: None,
                 positive_component_type_ids: Vec::new(),
                 negative_component_type_ids: Vec::new(),
+                item: None,
+                applied_to_world: false,
             }
         );
     }
@@ -3785,6 +3859,13 @@ mod tests {
                 item_registry_id: Some(1_046),
                 positive_component_type_ids: vec![17],
                 negative_component_type_ids: Vec::new(),
+                item: Some(super::ClientItemStackState::from_wire(
+                    1,
+                    1_046,
+                    vec![17],
+                    Vec::new(),
+                )),
+                applied_to_world: false,
             }
         );
     }
@@ -3815,6 +3896,13 @@ mod tests {
                 item_registry_id: Some(1_089),
                 positive_component_type_ids: vec![23],
                 negative_component_type_ids: Vec::new(),
+                item: Some(super::ClientItemStackState::from_wire(
+                    1,
+                    1_089,
+                    vec![23],
+                    Vec::new(),
+                )),
+                applied_to_world: false,
             }
         );
     }
@@ -3868,6 +3956,13 @@ mod tests {
                 item_registry_id: Some(1_000),
                 positive_component_type_ids: vec![3, 28, 29],
                 negative_component_type_ids: Vec::new(),
+                item: Some(super::ClientItemStackState::from_wire(
+                    1,
+                    1_000,
+                    vec![3, 28, 29],
+                    Vec::new(),
+                )),
+                applied_to_world: false,
             }
         );
     }
@@ -3889,6 +3984,7 @@ mod tests {
                 container_id: 0,
                 state_id: 9,
                 item_count: 37,
+                items: vec![None; 37],
                 hotbar_slot_zero_item_count: None,
                 hotbar_slot_zero_item_registry_id: None,
                 hotbar_slot_zero_positive_component_type_ids: Vec::new(),
@@ -3901,6 +3997,8 @@ mod tests {
                 carried_item_registry_id: None,
                 carried_positive_component_type_ids: Vec::new(),
                 carried_negative_component_type_ids: Vec::new(),
+                carried_item: None,
+                applied_to_world: false,
             }
         );
     }
@@ -3939,6 +4037,54 @@ mod tests {
             observation
                 .main_inventory_slot_zero_negative_component_type_ids
                 .is_empty()
+        );
+        assert_eq!(
+            observation.items[9],
+            Some(super::ClientItemStackState::from_wire(1, 1, vec![], vec![]))
+        );
+        assert_eq!(observation.items.len(), 46);
+        assert!(observation.carried_item.is_none());
+        assert!(!observation.applied_to_world);
+    }
+
+    #[test]
+    fn cursor_and_direct_player_inventory_parsers_match_java_optional_stack_codecs() {
+        let cursor_payload = [0];
+        assert_eq!(
+            parse_cursor_item_packet(&cursor_payload).expect("empty cursor item packet"),
+            super::CursorItemObservation {
+                item_count: None,
+                item_registry_id: None,
+                positive_component_type_ids: Vec::new(),
+                negative_component_type_ids: Vec::new(),
+                item: None,
+                applied_to_world: false,
+            }
+        );
+
+        let mut inventory_payload = Vec::new();
+        crate::wire::write_varint(0, &mut inventory_payload);
+        crate::wire::write_varint(1, &mut inventory_payload);
+        crate::wire::write_varint(1, &mut inventory_payload);
+        crate::wire::write_varint(0, &mut inventory_payload);
+        crate::wire::write_varint(0, &mut inventory_payload);
+        assert_eq!(
+            parse_set_player_inventory_packet(&inventory_payload)
+                .expect("direct player inventory packet"),
+            super::SetPlayerInventoryObservation {
+                slot: 0,
+                item_count: Some(1),
+                item_registry_id: Some(1),
+                positive_component_type_ids: Vec::new(),
+                negative_component_type_ids: Vec::new(),
+                item: Some(super::ClientItemStackState::from_wire(
+                    1,
+                    1,
+                    Vec::new(),
+                    Vec::new(),
+                )),
+                applied_to_world: false,
+            }
         );
     }
 

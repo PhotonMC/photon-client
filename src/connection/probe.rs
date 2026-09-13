@@ -1602,19 +1602,38 @@ fn connect_and_probe_with_mode(
                 trace.entity_move_observations.push(observation);
             }
             PLAY_CLIENTBOUND_CONTAINER_SET_CONTENT_PACKET_ID => {
-                trace
-                    .container_content_observations
-                    .push(parse_container_set_content_packet(payload)?);
+                let mut observation = parse_container_set_content_packet(payload)?;
+                observation.applied_to_world = trace.world.apply_local_player_container_content(
+                    observation.container_id,
+                    observation.state_id,
+                    &observation.items,
+                    observation.carried_item.as_ref(),
+                );
+                trace.container_content_observations.push(observation);
             }
             PLAY_CLIENTBOUND_CONTAINER_SET_SLOT_PACKET_ID => {
-                trace
-                    .container_slot_observations
-                    .push(parse_container_set_slot_packet(payload)?);
+                let mut observation = parse_container_set_slot_packet(payload)?;
+                observation.applied_to_world = trace.world.apply_local_player_container_slot(
+                    observation.container_id,
+                    observation.state_id,
+                    observation.slot,
+                    observation.item.as_ref(),
+                );
+                trace.container_slot_observations.push(observation);
             }
             PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID => {
-                trace
-                    .cursor_item_observations
-                    .push(parse_cursor_item_packet(payload)?);
+                let mut observation = parse_cursor_item_packet(payload)?;
+                observation.applied_to_world = trace
+                    .world
+                    .apply_local_player_carried_item(observation.item.as_ref());
+                trace.cursor_item_observations.push(observation);
+            }
+            PLAY_CLIENTBOUND_SET_PLAYER_INVENTORY_PACKET_ID => {
+                let mut observation = parse_set_player_inventory_packet(payload)?;
+                observation.applied_to_world = trace
+                    .world
+                    .apply_local_player_inventory_slot(observation.slot, observation.item.as_ref());
+                trace.player_inventory_observations.push(observation);
             }
             PLAY_CLIENTBOUND_REMOVE_MOB_EFFECT_PACKET_ID => {
                 let mut observation = parse_remove_mob_effect_packet(payload)?;
