@@ -18,6 +18,7 @@ const ENTITY_POSE_DATA_ID: u8 = 6;
 const ENTITY_TICKS_FROZEN_DATA_ID: u8 = 7;
 const ENTITY_LIVING_FLAGS_DATA_ID: u8 = 8;
 const ENTITY_HEALTH_DATA_ID: u8 = 9;
+const ENTITY_EFFECT_PARTICLES_DATA_ID: u8 = 10;
 const ENTITY_EFFECT_AMBIENCE_DATA_ID: u8 = 11;
 const ENTITY_ARROW_COUNT_DATA_ID: u8 = 12;
 const ENTITY_MOB_FLAGS_DATA_ID: u8 = 15;
@@ -28,6 +29,7 @@ const ENTITY_DATA_SERIALIZER_OPTIONAL_COMPONENT_ID: i32 = 6;
 const ENTITY_DATA_SERIALIZER_BOOLEAN_ID: i32 = 8;
 const ENTITY_DATA_SERIALIZER_PARTICLES_ID: i32 = 17;
 const ENTITY_DATA_SERIALIZER_POSE_ID: i32 = 20;
+const ENTITY_EFFECT_PARTICLE_TYPE_ID: i32 = 28;
 const DEFAULT_AIR_SUPPLY: i32 = 300;
 const DEFAULT_TICKS_REQUIRED_TO_FREEZE: i32 = 140;
 const LIVING_FLAG_USING_ITEM: u8 = 0;
@@ -119,6 +121,24 @@ fn shared_flag_is_set(flags: u8, flag: u8) -> bool {
     flags & (1_u8 << flag) != 0
 }
 
+fn read_effect_particle_type_ids(metadata: &mut &[u8]) -> Option<Vec<i32>> {
+    let count = crate::wire::read_varint(metadata).ok()?;
+    let count = usize::try_from(count).ok()?;
+    if count > metadata.len() {
+        return None;
+    }
+    let mut type_ids = Vec::with_capacity(count);
+    for _ in 0..count {
+        let type_id = crate::wire::read_varint(metadata).ok()?;
+        if type_id != ENTITY_EFFECT_PARTICLE_TYPE_ID {
+            return None;
+        }
+        *metadata = metadata.get(4..)?;
+        type_ids.push(type_id);
+    }
+    Some(type_ids)
+}
+
 fn skip_metadata_value(metadata: &mut &[u8], serializer_id: i32) -> Option<()> {
     match serializer_id {
         ENTITY_DATA_SERIALIZER_BYTE_ID | ENTITY_DATA_SERIALIZER_BOOLEAN_ID => {
@@ -139,10 +159,7 @@ fn skip_metadata_value(metadata: &mut &[u8], serializer_id: i32) -> Option<()> {
             }
         }
         ENTITY_DATA_SERIALIZER_PARTICLES_ID => {
-            let count = crate::wire::read_varint(metadata).ok()?;
-            if count != 0 {
-                return None;
-            }
+            read_effect_particle_type_ids(metadata)?;
         }
         _ => return None,
     }
@@ -281,6 +298,28 @@ fn arrow_count_from_metadata(metadata: &[u8]) -> Option<i32> {
 
 fn effect_ambience_from_metadata(metadata: &[u8]) -> Option<bool> {
     metadata_boolean_value(metadata, ENTITY_EFFECT_AMBIENCE_DATA_ID)
+}
+
+fn effect_particle_type_ids_from_metadata(metadata: &[u8]) -> Option<Vec<i32>> {
+    if metadata.last() != Some(&255) {
+        return None;
+    }
+    let mut metadata = metadata;
+    loop {
+        let (&data_id, rest) = metadata.split_first()?;
+        if data_id == 255 {
+            return None;
+        }
+        metadata = rest;
+        let serializer_id = crate::wire::read_varint(&mut metadata).ok()?;
+        if data_id == ENTITY_EFFECT_PARTICLES_DATA_ID {
+            if serializer_id != ENTITY_DATA_SERIALIZER_PARTICLES_ID {
+                return None;
+            }
+            return read_effect_particle_type_ids(&mut metadata);
+        }
+        skip_metadata_value(&mut metadata, serializer_id)?;
+    }
 }
 
 fn ticks_frozen_from_metadata(metadata: &[u8]) -> Option<i32> {
@@ -981,6 +1020,7 @@ impl ClientWorld {
             player.living_flags = previous.living_flags;
             player.arrow_count = previous.arrow_count;
             player.effect_ambience = previous.effect_ambience;
+            player.effect_particle_type_ids = previous.effect_particle_type_ids;
             player.air_supply = previous.air_supply;
             player.custom_name_present = previous.custom_name_present;
             player.custom_name_visible = previous.custom_name_visible;
@@ -1396,6 +1436,7 @@ impl ClientWorld {
                 health_bits: None,
                 arrow_count: 0,
                 effect_ambience: false,
+                effect_particle_type_ids: Vec::new(),
                 custom_name_present: false,
                 custom_name_visible: false,
                 no_gravity: false,
@@ -1415,6 +1456,7 @@ impl ClientWorld {
         let health = health_from_metadata(metadata);
         let arrow_count = arrow_count_from_metadata(metadata);
         let effect_ambience = effect_ambience_from_metadata(metadata);
+        let effect_particle_type_ids = effect_particle_type_ids_from_metadata(metadata);
         let custom_name_present = custom_name_present_from_metadata(metadata);
         let custom_name_visible = custom_name_visible_from_metadata(metadata);
         let no_gravity = no_gravity_from_metadata(metadata);
@@ -1444,6 +1486,9 @@ impl ClientWorld {
             }
             if let Some(effect_ambience) = effect_ambience {
                 player.effect_ambience = effect_ambience;
+            }
+            if let Some(effect_particle_type_ids) = effect_particle_type_ids.as_ref() {
+                player.effect_particle_type_ids = effect_particle_type_ids.clone();
             }
             if let Some(custom_name_present) = custom_name_present {
                 player.custom_name_present = custom_name_present;
@@ -1489,6 +1534,9 @@ impl ClientWorld {
         }
         if let Some(effect_ambience) = effect_ambience {
             entity.effect_ambience = effect_ambience;
+        }
+        if let Some(effect_particle_type_ids) = effect_particle_type_ids {
+            entity.effect_particle_type_ids = effect_particle_type_ids;
         }
         if let Some(custom_name_present) = custom_name_present {
             entity.custom_name_present = custom_name_present;
@@ -1852,6 +1900,7 @@ pub struct ClientEntity {
     health_bits: Option<u32>,
     arrow_count: i32,
     effect_ambience: bool,
+    effect_particle_type_ids: Vec<i32>,
     custom_name_present: bool,
     custom_name_visible: bool,
     no_gravity: bool,
@@ -2015,6 +2064,7 @@ pub struct ClientPlayerState {
     living_flags: u8,
     arrow_count: i32,
     effect_ambience: bool,
+    effect_particle_type_ids: Vec<i32>,
     air_supply: i32,
     custom_name_present: bool,
     custom_name_visible: bool,
@@ -2065,6 +2115,7 @@ impl ClientPlayerState {
             living_flags: 0,
             arrow_count: 0,
             effect_ambience: false,
+            effect_particle_type_ids: Vec::new(),
             air_supply: DEFAULT_AIR_SUPPLY,
             custom_name_present: false,
             custom_name_visible: false,
@@ -2274,6 +2325,10 @@ impl ClientPlayerState {
         self.effect_ambience
     }
 
+    pub fn effect_particle_type_ids(&self) -> &[i32] {
+        &self.effect_particle_type_ids
+    }
+
     pub fn food(&self) -> i32 {
         self.food
     }
@@ -2447,6 +2502,10 @@ impl ClientEntity {
 
     pub fn is_effect_ambient(&self) -> bool {
         self.effect_ambience
+    }
+
+    pub fn effect_particle_type_ids(&self) -> &[i32] {
+        &self.effect_particle_type_ids
     }
 
     pub fn has_custom_name(&self) -> bool {
@@ -3959,6 +4018,119 @@ mod tests {
                 .local_player()
                 .expect("reset ambient player")
                 .is_effect_ambient()
+        );
+    }
+
+    #[test]
+    fn entity_effect_particle_types_follow_java_particle_list_and_preserve_partial_state() {
+        let mut world = ClientWorld::default();
+        assert!(world.apply_entity(EntityInput {
+            entity_id: 37,
+            uuid: Uuid::new(1, 2),
+            type_id: 54,
+            x: 1.25,
+            y: 80.0,
+            z: -35.5,
+            movement: (0.0, 0.0, 0.0),
+            rotation: (0.0, 0.0, 0.0),
+            data: 0,
+        }));
+        assert!(
+            world
+                .entity_at(37)
+                .expect("entity")
+                .effect_particle_type_ids()
+                .is_empty()
+        );
+
+        let mut particle_metadata = vec![
+            super::ENTITY_EFFECT_PARTICLES_DATA_ID,
+            super::ENTITY_DATA_SERIALIZER_PARTICLES_ID as u8,
+            1,
+        ];
+        crate::wire::write_varint(
+            super::ENTITY_EFFECT_PARTICLE_TYPE_ID,
+            &mut particle_metadata,
+        );
+        particle_metadata.extend_from_slice(&0x1122_3344_i32.to_be_bytes());
+        particle_metadata.extend([11, 8, 0, 255]);
+        assert!(world.apply_entity_metadata(37, &particle_metadata));
+        assert_eq!(
+            world
+                .entity_at(37)
+                .expect("entity with effect particle")
+                .effect_particle_type_ids(),
+            &[super::ENTITY_EFFECT_PARTICLE_TYPE_ID]
+        );
+
+        assert!(world.apply_entity_metadata(37, &[5, 8, 1, 255]));
+        assert_eq!(
+            world
+                .entity_at(37)
+                .expect("entity after partial particle metadata")
+                .effect_particle_type_ids(),
+            &[super::ENTITY_EFFECT_PARTICLE_TYPE_ID]
+        );
+
+        assert!(world.apply_entity_metadata(37, &[10, 0, 1, 255]));
+        assert_eq!(
+            world
+                .entity_at(37)
+                .expect("entity after wrong particle serializer")
+                .effect_particle_type_ids(),
+            &[super::ENTITY_EFFECT_PARTICLE_TYPE_ID]
+        );
+
+        assert!(world.apply_entity_metadata(37, &[10, 17, 1, 0, 255]));
+        assert_eq!(
+            world
+                .entity_at(37)
+                .expect("entity after unsupported particle type")
+                .effect_particle_type_ids(),
+            &[super::ENTITY_EFFECT_PARTICLE_TYPE_ID]
+        );
+    }
+
+    #[test]
+    fn local_player_effect_particle_types_follow_entity_data_keep_respawn() {
+        let mut world = ClientWorld::default();
+        world.set_local_player_id(42);
+        let mut particle_metadata = vec![
+            super::ENTITY_EFFECT_PARTICLES_DATA_ID,
+            super::ENTITY_DATA_SERIALIZER_PARTICLES_ID as u8,
+            1,
+        ];
+        crate::wire::write_varint(
+            super::ENTITY_EFFECT_PARTICLE_TYPE_ID,
+            &mut particle_metadata,
+        );
+        particle_metadata.extend_from_slice(&0x5566_7788_i32.to_be_bytes());
+        particle_metadata.push(255);
+        assert!(world.apply_entity_metadata(42, &particle_metadata));
+        assert_eq!(
+            world
+                .local_player()
+                .expect("particle player")
+                .effect_particle_type_ids(),
+            &[super::ENTITY_EFFECT_PARTICLE_TYPE_ID]
+        );
+
+        assert!(world.recreate_local_player(PLAYER_RESPAWN_KEEP_ENTITY_DATA));
+        assert_eq!(
+            world
+                .local_player()
+                .expect("respawned particle player")
+                .effect_particle_type_ids(),
+            &[super::ENTITY_EFFECT_PARTICLE_TYPE_ID]
+        );
+
+        assert!(world.recreate_local_player(0));
+        assert!(
+            world
+                .local_player()
+                .expect("reset particle player")
+                .effect_particle_type_ids()
+                .is_empty()
         );
     }
 
