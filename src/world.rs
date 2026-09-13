@@ -774,6 +774,8 @@ impl ClientWorld {
 
     pub fn unload_chunk(&mut self, chunk_x: i32, chunk_z: i32) -> bool {
         let removed = self.chunks.remove(&(chunk_x, chunk_z)).is_some();
+        self.pending_light_updates
+            .retain(|update| update.chunk_x != chunk_x || update.chunk_z != chunk_z);
         if removed {
             for entity in self.entities.values_mut() {
                 if entity_chunk_key(entity.position()) == (chunk_x, chunk_z) {
@@ -2297,6 +2299,49 @@ mod tests {
         assert_eq!(world.pending_light_update_count(), 0);
         assert_eq!(world.loaded_light_section_count(), 1);
         assert_eq!(world.sky_light_at(48, -64, -32), Some(10));
+    }
+
+    #[test]
+    fn unloading_a_chunk_discards_pending_light_updates_for_that_chunk() {
+        let mut world = ClientWorld::default();
+        let mut sky = vec![0; 2_048];
+        sky[0] = 0x0f;
+        assert!(
+            world
+                .apply_light_updates(
+                    3,
+                    -2,
+                    LightUpdateInput {
+                        sky: LightLayerInput {
+                            mask: &BitSet::from_bits(&[1]),
+                            empty_mask: &BitSet::new(),
+                            updates: &[sky],
+                        },
+                        block: LightLayerInput {
+                            mask: &BitSet::new(),
+                            empty_mask: &BitSet::new(),
+                            updates: &[],
+                        },
+                    },
+                )
+                .queued
+        );
+        assert_eq!(world.pending_light_update_count(), 1);
+        assert!(!world.unload_chunk(3, -2));
+        assert_eq!(world.pending_light_update_count(), 0);
+
+        let (blocks, biomes) = section(0, 0);
+        world.replace_chunk(
+            3,
+            -2,
+            [SectionInput {
+                non_empty_block_count: 0,
+                fluid_count: 0,
+                block_states: &blocks,
+                biomes: &biomes,
+            }],
+        );
+        assert_eq!(world.sky_light_at(48, -64, -32), None);
     }
 
     #[test]
