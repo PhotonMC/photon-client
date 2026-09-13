@@ -1617,9 +1617,12 @@ fn connect_and_probe_with_mode(
                     .push(parse_cursor_item_packet(payload)?);
             }
             PLAY_CLIENTBOUND_REMOVE_MOB_EFFECT_PACKET_ID => {
-                trace
-                    .mob_effect_remove_observations
-                    .push(parse_remove_mob_effect_packet(payload)?);
+                let mut observation = parse_remove_mob_effect_packet(payload)?;
+                observation.applied_to_world = trace.world.remove_local_player_mob_effect(
+                    observation.entity_id,
+                    observation.effect_registry_id,
+                );
+                trace.mob_effect_remove_observations.push(observation);
             }
             PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID => {
                 trace
@@ -1880,9 +1883,15 @@ fn connect_and_probe_with_mode(
                 trace.attribute_update_observations.push(observation);
             }
             PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID => {
-                trace
-                    .mob_effect_update_observations
-                    .push(parse_update_mob_effect_packet(payload)?);
+                let mut observation = parse_update_mob_effect_packet(payload)?;
+                observation.applied_to_world = trace.world.apply_local_player_mob_effect(
+                    observation.entity_id,
+                    observation.effect_registry_id,
+                    observation.amplifier,
+                    observation.duration_ticks,
+                    observation.flags,
+                );
+                trace.mob_effect_update_observations.push(observation);
             }
             PLAY_CLIENTBOUND_CHUNK_PACKET_ID => {
                 let mut chunk = parse_chunk_packet(payload)?;

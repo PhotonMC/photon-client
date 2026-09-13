@@ -886,6 +886,7 @@ pub struct ContainerSetContentObservation {
 pub struct MobEffectRemoveObservation {
     pub entity_id: i32,
     pub effect_registry_id: i32,
+    pub applied_to_world: bool,
 }
 
 /// Wire-level fields decoded from one clientbound mob-effect update packet.
@@ -896,6 +897,7 @@ pub struct MobEffectUpdateObservation {
     pub amplifier: i32,
     pub duration_ticks: i32,
     pub flags: u8,
+    pub applied_to_world: bool,
 }
 
 /// Wire-level fields decoded from one clientbound system-chat packet.
@@ -1983,6 +1985,7 @@ pub(crate) fn parse_remove_mob_effect_packet(
     Ok(MobEffectRemoveObservation {
         entity_id,
         effect_registry_id,
+        applied_to_world: false,
     })
 }
 
@@ -2004,6 +2007,7 @@ pub(crate) fn parse_update_mob_effect_packet(
         amplifier,
         duration_ticks,
         flags,
+        applied_to_world: false,
     })
 }
 
@@ -3690,6 +3694,7 @@ mod tests {
                 amplifier: 1,
                 duration_ticks: 1_200,
                 flags: 0b1111,
+                applied_to_world: false,
             }
         );
 
@@ -3702,6 +3707,7 @@ mod tests {
             super::MobEffectRemoveObservation {
                 entity_id: 42,
                 effect_registry_id: 19,
+                applied_to_world: false,
             }
         );
     }

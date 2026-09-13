@@ -17,9 +17,50 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &username,
         Duration::from_secs(30),
     )?;
+    let Some(login) = trace.login_observation.as_ref() else {
+        return Err("vanilla did not provide a login packet during the probe".into());
+    };
+    let Some(player) = trace.world.local_player() else {
+        return Err("Rust world did not create a local player state".into());
+    };
+    let Some(local_update) = trace
+        .mob_effect_update_observations
+        .iter()
+        .find(|observation| {
+            observation.entity_id == login.player_id
+                && observation.effect_registry_id == 18
+                && observation.applied_to_world
+        })
+    else {
+        return Err("vanilla did not provide an applied local poison update".into());
+    };
+    let Some(local_remove) = trace
+        .mob_effect_remove_observations
+        .iter()
+        .find(|observation| {
+            observation.entity_id == login.player_id
+                && observation.effect_registry_id == 18
+                && observation.applied_to_world
+        })
+    else {
+        return Err("vanilla did not provide an applied local poison removal".into());
+    };
+    if local_update.amplifier != 0
+        || local_update.duration_ticks != 1_200
+        || local_update.flags != 0b1000
+        || !local_remove.applied_to_world
+        || !player.effects().is_empty()
+    {
+        return Err(format!(
+            "local player poison state did not match the vanilla cleanup flow: update={local_update:?}, remove={local_remove:?}, effects={:?}",
+            player.effects()
+        )
+        .into());
+    }
 
     println!("connection=ok");
     println!("play_login={}", trace.play_login);
+    println!("login_player_id={}", login.player_id);
     println!("player_loaded_sent={}", trace.player_loaded_sent);
     println!(
         "carried_item_packets_sent={}",
@@ -34,6 +75,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "mob_effect_remove_observations={:?}",
         trace.mob_effect_remove_observations
     );
+    println!("local_player_effect_count={}", player.effects().len());
     println!(
         "container_slot_observations={:?}",
         trace.container_slot_observations

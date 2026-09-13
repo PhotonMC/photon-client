@@ -223,6 +223,57 @@ impl ClientWorld {
         true
     }
 
+    pub(crate) fn apply_local_player_mob_effect(
+        &mut self,
+        player_id: i32,
+        effect_id: i32,
+        amplifier: i32,
+        duration_ticks: i32,
+        flags: u8,
+    ) -> bool {
+        let Some(player) = self
+            .local_player
+            .as_mut()
+            .filter(|player| player.id == player_id)
+        else {
+            return false;
+        };
+        let effect = ClientMobEffectState {
+            effect_id,
+            amplifier,
+            duration_ticks,
+            flags,
+        };
+        if let Some(existing) = player
+            .effects
+            .iter_mut()
+            .find(|existing| existing.effect_id == effect_id)
+        {
+            *existing = effect;
+        } else {
+            player.effects.push(effect);
+        }
+        true
+    }
+
+    pub(crate) fn remove_local_player_mob_effect(
+        &mut self,
+        player_id: i32,
+        effect_id: i32,
+    ) -> bool {
+        let Some(player) = self
+            .local_player
+            .as_mut()
+            .filter(|player| player.id == player_id)
+        else {
+            return false;
+        };
+        player
+            .effects
+            .retain(|effect| effect.effect_id != effect_id);
+        true
+    }
+
     pub(crate) fn replace_dimension(
         &mut self,
         input: DimensionInput<'_>,
@@ -744,6 +795,32 @@ pub struct ClientAttributeState {
     modifiers: Vec<ClientAttributeModifierState>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ClientMobEffectState {
+    effect_id: i32,
+    amplifier: i32,
+    duration_ticks: i32,
+    flags: u8,
+}
+
+impl ClientMobEffectState {
+    pub fn effect_id(&self) -> i32 {
+        self.effect_id
+    }
+
+    pub fn amplifier(&self) -> i32 {
+        self.amplifier
+    }
+
+    pub fn duration_ticks(&self) -> i32 {
+        self.duration_ticks
+    }
+
+    pub fn flags(&self) -> u8 {
+        self.flags
+    }
+}
+
 impl ClientAttributeState {
     pub(crate) fn from_wire(
         attribute_id: i32,
@@ -784,6 +861,7 @@ pub struct ClientPlayerState {
     x_rot_bits: u32,
     entity_data: Option<Vec<u8>>,
     attributes: Vec<ClientAttributeState>,
+    effects: Vec<ClientMobEffectState>,
 }
 
 impl ClientPlayerState {
@@ -801,6 +879,7 @@ impl ClientPlayerState {
             x_rot_bits: 0.0_f32.to_bits(),
             entity_data: None,
             attributes: Vec::new(),
+            effects: Vec::new(),
         }
     }
 
@@ -841,6 +920,10 @@ impl ClientPlayerState {
 
     pub fn attributes(&self) -> &[ClientAttributeState] {
         &self.attributes
+    }
+
+    pub fn effects(&self) -> &[ClientMobEffectState] {
+        &self.effects
     }
 }
 
@@ -1619,6 +1702,46 @@ mod tests {
         let player = world.local_player().expect("modifier-preserving player");
         assert_eq!(player.attributes()[0].base_value(), 3.5);
         assert_eq!(player.attributes()[0].modifiers(), &[modifier]);
+    }
+
+    #[test]
+    fn local_player_mob_effects_replace_remove_and_clear_on_respawn() {
+        let mut world = ClientWorld::default();
+        world.set_local_player_id(42);
+
+        assert!(world.apply_local_player_mob_effect(42, 18, 0, 1_200, 0b1000));
+        let player = world.local_player().expect("initial local player");
+        assert_eq!(player.effects().len(), 1);
+        assert_eq!(player.effects()[0].effect_id(), 18);
+        assert_eq!(player.effects()[0].amplifier(), 0);
+        assert_eq!(player.effects()[0].duration_ticks(), 1_200);
+        assert_eq!(player.effects()[0].flags(), 0b1000);
+
+        assert!(world.apply_local_player_mob_effect(42, 18, 1, 60, 0b1111));
+        let player = world.local_player().expect("updated local player");
+        assert_eq!(player.effects().len(), 1);
+        assert_eq!(player.effects()[0].amplifier(), 1);
+        assert_eq!(player.effects()[0].duration_ticks(), 60);
+        assert_eq!(player.effects()[0].flags(), 0b1111);
+
+        assert!(!world.apply_local_player_mob_effect(7, 19, 0, 20, 0));
+        assert!(world.remove_local_player_mob_effect(42, 18));
+        assert!(
+            world
+                .local_player()
+                .expect("local player after removal")
+                .effects()
+                .is_empty()
+        );
+        assert!(world.apply_local_player_mob_effect(42, 18, 0, 1_200, 0b1000));
+        assert!(world.recreate_local_player(PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS));
+        assert!(
+            world
+                .local_player()
+                .expect("respawned local player")
+                .effects()
+                .is_empty()
+        );
     }
 
     #[test]
