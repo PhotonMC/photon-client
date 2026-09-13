@@ -13,11 +13,13 @@ const ENTITY_AIR_SUPPLY_DATA_ID: u8 = 1;
 const ENTITY_SILENT_DATA_ID: u8 = 4;
 const ENTITY_NO_GRAVITY_DATA_ID: u8 = 5;
 const ENTITY_POSE_DATA_ID: u8 = 6;
+const ENTITY_TICKS_FROZEN_DATA_ID: u8 = 7;
 const ENTITY_DATA_SERIALIZER_BYTE_ID: i32 = 0;
 const ENTITY_DATA_SERIALIZER_INT_ID: i32 = 1;
 const ENTITY_DATA_SERIALIZER_BOOLEAN_ID: i32 = 8;
 const ENTITY_DATA_SERIALIZER_POSE_ID: i32 = 20;
 const DEFAULT_AIR_SUPPLY: i32 = 300;
+const DEFAULT_TICKS_REQUIRED_TO_FREEZE: i32 = 140;
 const SHARED_FLAG_ON_FIRE: u8 = 0;
 const SHARED_FLAG_SHIFT_KEY_DOWN: u8 = 1;
 const SHARED_FLAG_SPRINTING: u8 = 3;
@@ -124,10 +126,10 @@ fn metadata_byte_value(metadata: &[u8], target_data_id: u8) -> Option<u8> {
             return Some(value);
         }
         match serializer_id {
-            ENTITY_DATA_SERIALIZER_BYTE_ID => {
+            ENTITY_DATA_SERIALIZER_BYTE_ID | ENTITY_DATA_SERIALIZER_BOOLEAN_ID => {
                 metadata = metadata.get(1..)?;
             }
-            ENTITY_DATA_SERIALIZER_INT_ID => {
+            ENTITY_DATA_SERIALIZER_INT_ID | ENTITY_DATA_SERIALIZER_POSE_ID => {
                 crate::wire::read_varint(&mut metadata).ok()?;
             }
             _ => return None,
@@ -159,10 +161,10 @@ fn metadata_int_value(metadata: &[u8], target_data_id: u8) -> Option<i32> {
             return Some(value);
         }
         match serializer_id {
-            ENTITY_DATA_SERIALIZER_BYTE_ID => {
+            ENTITY_DATA_SERIALIZER_BYTE_ID | ENTITY_DATA_SERIALIZER_BOOLEAN_ID => {
                 metadata = metadata.get(1..)?;
             }
-            ENTITY_DATA_SERIALIZER_INT_ID => {
+            ENTITY_DATA_SERIALIZER_INT_ID | ENTITY_DATA_SERIALIZER_POSE_ID => {
                 crate::wire::read_varint(&mut metadata).ok()?;
             }
             _ => return None,
@@ -211,6 +213,10 @@ fn shared_flags_from_metadata(metadata: &[u8]) -> Option<u8> {
 
 fn air_supply_from_metadata(metadata: &[u8]) -> Option<i32> {
     metadata_int_value(metadata, ENTITY_AIR_SUPPLY_DATA_ID)
+}
+
+fn ticks_frozen_from_metadata(metadata: &[u8]) -> Option<i32> {
+    metadata_int_value(metadata, ENTITY_TICKS_FROZEN_DATA_ID)
 }
 
 fn metadata_boolean_value(metadata: &[u8], target_data_id: u8) -> Option<bool> {
@@ -884,6 +890,7 @@ impl ClientWorld {
             player.no_gravity = previous.no_gravity;
             player.silent = previous.silent;
             player.pose = previous.pose;
+            player.ticks_frozen = previous.ticks_frozen;
             player.entity_data = previous.entity_data;
         } else {
             player.y_rot_bits = (-180.0_f32).to_bits();
@@ -1290,6 +1297,7 @@ impl ClientWorld {
                 no_gravity: false,
                 silent: false,
                 pose: ClientEntityPose::Standing,
+                ticks_frozen: 0,
             },
         );
         true
@@ -1301,6 +1309,7 @@ impl ClientWorld {
         let no_gravity = no_gravity_from_metadata(metadata);
         let silent = silent_from_metadata(metadata);
         let pose = metadata_pose_value(metadata);
+        let ticks_frozen = ticks_frozen_from_metadata(metadata);
         if let Some(player) = self
             .local_player
             .as_mut()
@@ -1322,6 +1331,9 @@ impl ClientWorld {
             if let Some(pose) = pose {
                 player.pose = pose;
             }
+            if let Some(ticks_frozen) = ticks_frozen {
+                player.ticks_frozen = ticks_frozen;
+            }
             return true;
         }
         let Some(entity) = self.entities.get_mut(&entity_id) else {
@@ -1342,6 +1354,9 @@ impl ClientWorld {
         }
         if let Some(pose) = pose {
             entity.pose = pose;
+        }
+        if let Some(ticks_frozen) = ticks_frozen {
+            entity.ticks_frozen = ticks_frozen;
         }
         true
     }
@@ -1685,6 +1700,7 @@ pub struct ClientEntity {
     no_gravity: bool,
     silent: bool,
     pose: ClientEntityPose,
+    ticks_frozen: i32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1843,6 +1859,7 @@ pub struct ClientPlayerState {
     no_gravity: bool,
     silent: bool,
     pose: ClientEntityPose,
+    ticks_frozen: i32,
     attributes: Vec<ClientAttributeState>,
     effects: Vec<ClientMobEffectState>,
     health_bits: u32,
@@ -1887,6 +1904,7 @@ impl ClientPlayerState {
             no_gravity: false,
             silent: false,
             pose: ClientEntityPose::Standing,
+            ticks_frozen: 0,
             attributes: Vec::new(),
             effects: Vec::new(),
             health_bits: 20.0_f32.to_bits(),
@@ -1994,6 +2012,23 @@ impl ClientPlayerState {
 
     pub fn pose(&self) -> ClientEntityPose {
         self.pose
+    }
+
+    pub fn ticks_frozen(&self) -> i32 {
+        self.ticks_frozen
+    }
+
+    pub fn percent_frozen(&self) -> f32 {
+        (self.ticks_frozen.min(DEFAULT_TICKS_REQUIRED_TO_FREEZE) as f32)
+            / DEFAULT_TICKS_REQUIRED_TO_FREEZE as f32
+    }
+
+    pub fn is_fully_frozen(&self) -> bool {
+        self.ticks_frozen >= DEFAULT_TICKS_REQUIRED_TO_FREEZE
+    }
+
+    pub fn is_freezing(&self) -> bool {
+        self.ticks_frozen > 0
     }
 
     pub fn is_on_fire(&self) -> bool {
@@ -2177,6 +2212,23 @@ impl ClientEntity {
 
     pub fn pose(&self) -> ClientEntityPose {
         self.pose
+    }
+
+    pub fn ticks_frozen(&self) -> i32 {
+        self.ticks_frozen
+    }
+
+    pub fn percent_frozen(&self) -> f32 {
+        (self.ticks_frozen.min(DEFAULT_TICKS_REQUIRED_TO_FREEZE) as f32)
+            / DEFAULT_TICKS_REQUIRED_TO_FREEZE as f32
+    }
+
+    pub fn is_fully_frozen(&self) -> bool {
+        self.ticks_frozen >= DEFAULT_TICKS_REQUIRED_TO_FREEZE
+    }
+
+    pub fn is_freezing(&self) -> bool {
+        self.ticks_frozen > 0
     }
 
     pub fn is_on_fire(&self) -> bool {
@@ -3382,6 +3434,66 @@ mod tests {
     }
 
     #[test]
+    fn entity_ticks_frozen_follows_java_int_metadata_and_derived_state() {
+        let mut world = ClientWorld::default();
+        assert!(world.apply_entity(EntityInput {
+            entity_id: 37,
+            uuid: Uuid::new(1, 2),
+            type_id: 1,
+            x: 1.25,
+            y: 80.0,
+            z: -35.5,
+            movement: (0.0, 0.0, 0.0),
+            rotation: (0.0, 0.0, 0.0),
+            data: 0,
+        }));
+        let entity = world.entity_at(37).expect("default freeze entity");
+        assert_eq!(entity.ticks_frozen(), 0);
+        assert_eq!(entity.percent_frozen(), 0.0);
+        assert!(!entity.is_freezing());
+        assert!(!entity.is_fully_frozen());
+
+        let mut partial_metadata = vec![
+            super::ENTITY_TICKS_FROZEN_DATA_ID,
+            super::ENTITY_DATA_SERIALIZER_INT_ID as u8,
+        ];
+        crate::wire::write_varint(70, &mut partial_metadata);
+        partial_metadata.push(255);
+        assert!(world.apply_entity_metadata(37, &partial_metadata));
+        let entity = world.entity_at(37).expect("partially frozen entity");
+        assert_eq!(entity.ticks_frozen(), 70);
+        assert_eq!(entity.percent_frozen(), 0.5);
+        assert!(entity.is_freezing());
+        assert!(!entity.is_fully_frozen());
+
+        let mut combined_metadata = vec![0, 0, 64, 6, 20, 10, 7, 1];
+        crate::wire::write_varint(140, &mut combined_metadata);
+        combined_metadata.push(255);
+        assert!(world.apply_entity_metadata(37, &combined_metadata));
+        let entity = world.entity_at(37).expect("fully frozen entity");
+        assert_eq!(entity.ticks_frozen(), 140);
+        assert_eq!(entity.percent_frozen(), 1.0);
+        assert!(entity.is_freezing());
+        assert!(entity.is_fully_frozen());
+        assert_eq!(entity.pose(), super::ClientEntityPose::Sitting);
+        assert!(entity.is_glowing());
+
+        let mut negative_metadata = vec![
+            super::ENTITY_TICKS_FROZEN_DATA_ID,
+            super::ENTITY_DATA_SERIALIZER_INT_ID as u8,
+        ];
+        crate::wire::write_varint(-1, &mut negative_metadata);
+        negative_metadata.push(255);
+        assert!(world.apply_entity_metadata(37, &negative_metadata));
+        let entity = world.entity_at(37).expect("negative freeze entity");
+        assert_eq!(entity.ticks_frozen(), -1);
+        assert_eq!(entity.percent_frozen(), -1.0 / 140.0);
+        assert!(!entity.is_freezing());
+        assert!(!entity.is_fully_frozen());
+        assert_eq!(entity.pose(), super::ClientEntityPose::Sitting);
+    }
+
+    #[test]
     fn player_entities_keep_ticking_after_their_chunk_unloads() {
         let mut world = ClientWorld::default();
         let (blocks, biomes) = section(0, 0);
@@ -3663,6 +3775,8 @@ mod tests {
         assert!(world.apply_entity_metadata(42, &silent_metadata));
         let pose_metadata = [6, 20, 10, 255];
         assert!(world.apply_entity_metadata(42, &pose_metadata));
+        let ticks_frozen_metadata = [7, 1, 70, 255];
+        assert!(world.apply_entity_metadata(42, &ticks_frozen_metadata));
 
         assert!(world.recreate_local_player(
             PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS | PLAYER_RESPAWN_KEEP_ENTITY_DATA
@@ -3673,13 +3787,15 @@ mod tests {
         assert_eq!(player.position(), (0.0, 0.0, 0.0));
         assert_eq!(player.motion(), (0.125, -0.25, 0.5));
         assert_eq!(player.rotation(), (135.0, -30.0));
-        assert_eq!(player.entity_data(), Some(pose_metadata.as_slice()));
+        assert_eq!(player.entity_data(), Some(ticks_frozen_metadata.as_slice()));
         assert_eq!(player.shared_flags(), 32);
         assert!(player.is_invisible());
         assert_eq!(player.air_supply(), 250);
         assert!(player.is_no_gravity());
         assert!(player.is_silent());
         assert_eq!(player.pose(), super::ClientEntityPose::Sitting);
+        assert_eq!(player.ticks_frozen(), 70);
+        assert!(player.is_freezing());
 
         assert!(world.recreate_local_player(0));
         let player = world.local_player().expect("reset local player");
@@ -3694,6 +3810,8 @@ mod tests {
         assert!(!player.is_no_gravity());
         assert!(!player.is_silent());
         assert_eq!(player.pose(), super::ClientEntityPose::Standing);
+        assert_eq!(player.ticks_frozen(), 0);
+        assert!(!player.is_freezing());
     }
 
     #[test]

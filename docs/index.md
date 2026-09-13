@@ -110,6 +110,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P08.z — server-conformance Entity shared flags semantic state](client-world-entity-shared-flags-conformance.md)
 - [P08.ac — server-conformance Entity silent semantic state](client-world-entity-silent-conformance.md)
 - [P08.e — server-conformance ClientWorld entity ticking eligibility](client-world-entity-ticking-conformance.md)
+- [P08.ae — server-conformance Entity freeze progress semantic state](client-world-entity-ticks-frozen-conformance.md)
 - [P08.u — server-conformance Entity tick transform geçmişi ve interpolation](client-world-entity-transform-conformance.md)
 - [P08.e-entity-uuid — server-conformance ClientWorld entity UUID state](client-world-entity-uuid-conformance.md)
 - [P08.c-light — server-conformance ClientWorld ışık state'i](client-world-light-conformance.md)
