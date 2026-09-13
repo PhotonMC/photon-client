@@ -70,7 +70,9 @@ güncelleyebilir.
 Unit testler packet ID'lerini, health alan sırasını, trailing byte reddini ve
 `PERFORM_RESPAWN` payload'ını doğrular. World testleri maskesiz respawn'da
 nesil artışını, motion/rotation/entity-data temizliğini ve reset yaw'ını
-kontrol eder.
+kontrol eder. Attribute bit 1'in açık/kapalı kopyalama davranışı
+[P08.j kaydında](client-world-player-attributes-conformance.md) unit ve canlı
+koşularla doğrulanır.
 
 ## Vanilla server-conformance doğrulaması
 
@@ -99,29 +101,40 @@ execute as <probe-user> run kill @s
 
 Üç bağımsız vanilla oturumunda gözlenen sonuçlar:
 
-| Gözlem | `P08iA` | `P08iB` | `P08iC` |
-| --- | ---: | ---: | ---: |
-| login player ID | `2404` | `2550` | `2702` |
-| health observation count | `3` | `3` | `3` |
-| zero health observed | `true` | `true` | `true` |
-| respawn command packets sent | `1` | `1` | `1` |
-| respawn packet count | `1` | `1` | `1` |
-| respawn dimension | `minecraft:overworld` | `minecraft:overworld` | `minecraft:overworld` |
-| `data_to_keep` | `0` | `0` | `0` |
-| `keep_entity_data` | `false` | `false` | `false` |
-| `keep_attribute_modifiers` | `false` | `false` | `false` |
-| local player ID after respawn | `2404` | `2550` | `2702` |
-| local player recreated | `true` | `true` | `true` |
-| local player generation | `1` | `1` | `1` |
-| dimension changed | `false` | `false` | `false` |
-| post-correction motion | `(0.0, 0.0, 0.0)` | `(0.0, 0.0, 0.0)` | `(0.0, 0.0, 0.0)` |
+| Gözlem | `P08iA` | `P08iB` | `P08iC` | `P08jD` |
+| --- | ---: | ---: | ---: | ---: |
+| login player ID | `2404` | `2550` | `2702` | `3367` |
+| health observation count | `3` | `3` | `3` | `3` |
+| zero health observed | `true` | `true` | `true` | `true` |
+| respawn command packets sent | `1` | `1` | `1` | `1` |
+| respawn packet count | `1` | `1` | `1` | `1` |
+| respawn dimension | `minecraft:overworld` | `minecraft:overworld` | `minecraft:overworld` | `minecraft:overworld` |
+| `data_to_keep` | `0` | `0` | `0` | `0` |
+| `keep_entity_data` | `false` | `false` | `false` | `false` |
+| `keep_attribute_modifiers` | `false` | `false` | `false` | `false` |
+| initial local player attribute count | — | — | — | `3` |
+| initial local player modifier count | — | — | — | `2` |
+| respawn local player attribute count | — | — | — | `3` |
+| respawn local player modifier count | — | — | — | `0` |
+| final local player attribute count | — | — | — | `3` |
+| final local player modifier count | — | — | — | `2` |
+| local player ID after respawn | `2404` | `2550` | `2702` | `3367` |
+| local player recreated | `true` | `true` | `true` | `true` |
+| local player generation | `1` | `1` | `1` | `1` |
+| dimension changed | `false` | `false` | `false` | `false` |
+| post-correction motion | `(0.0, 0.0, 0.0)` | `(0.0, 0.0, 0.0)` | `(0.0, 0.0, 0.0)` | `(0.0, 0.0, 0.0)` |
 
-Üç koşuda da vanilla, ölüm health packet'inden sonra gönderilen tek
+İlk üç koşuda vanilla, ölüm health packet'inden sonra gönderilen tek
 `PERFORM_RESPAWN` komutunu kabul etti. Respawn aynı `minecraft:overworld`
 key'inde geldi; Rust `ClientWorld` dimension replacement sonucunu `false`
 olarak kaydetti ve local player ID'sini koruyarak nesli `0`'dan `1`'e çıkardı.
 İlk respawn state'i sonraki server correction packet'leriyle güncellendi;
 bu yüzden tabloda correction sonrası motion verisi yer alır.
+
+`P08jD` koşusunda aynı initial snapshot 3 attribute ve 2 modifier içerirken,
+respawn packet'i doğrudan uygulandıktan sonraki state 3 attribute ve 0 modifier
+olarak kaydedildi. Daha sonra gelen server attribute güncellemeleri final state'i
+2 modifier'a çıkardı; ölçüt respawn observation'ının packet anındaki state'idir.
 
 Bu sonuç vanilla sunucusunun Rust paketini kabul ettiğini ve Rust world
 state'inin bu akışa bağlandığını gösterir; Java client eşitliği iddiası

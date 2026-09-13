@@ -23,6 +23,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let Some(player) = trace.world.local_player() else {
         return Err("Rust world did not create a local player state".into());
     };
+    let Some(initial_attribute_update) =
+        trace
+            .attribute_update_observations
+            .iter()
+            .find(|observation| {
+                observation.entity_id == login.player_id && observation.applied_to_world
+            })
+    else {
+        return Err("vanilla did not provide the local player attribute snapshot".into());
+    };
+    let initial_attribute_modifier_count = initial_attribute_update
+        .attributes
+        .iter()
+        .map(|attribute| attribute.modifiers().len())
+        .sum::<usize>();
     let observed_zero_health = trace
         .health_observations
         .iter()
@@ -38,9 +53,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         || respawn.local_player_id != Some(login.player_id)
         || player.id() != login.player_id
         || player.generation() == 0
+        || initial_attribute_modifier_count == 0
+        || respawn.local_player_attribute_count != initial_attribute_update.attributes.len()
+        || respawn.local_player_attribute_modifier_count != 0
     {
         return Err(format!(
-            "same-dimension death respawn did not produce the Java reset state: {respawn:?}, health={:?}, commands={}, player={player:?}",
+            "same-dimension death respawn did not produce the Java reset state: {respawn:?}, initial_attributes={:?}, health={:?}, commands={}, player={player:?}",
+            initial_attribute_update.attributes,
             trace.health_observations,
             trace.respawn_command_packets_sent,
         )
@@ -61,6 +80,34 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("respawn_packet_count={}", trace.respawn_observations.len());
     println!("respawn_dimension={}", respawn.spawn_info.dimension);
     println!("respawn_data_to_keep={}", respawn.data_to_keep);
+    println!(
+        "attribute_update_observation_count={}",
+        trace.attribute_update_observations.len()
+    );
+    println!(
+        "local_player_attribute_update_count={}",
+        trace
+            .attribute_update_observations
+            .iter()
+            .filter(|observation| observation.entity_id == login.player_id)
+            .count()
+    );
+    println!(
+        "initial_local_player_attribute_count={}",
+        initial_attribute_update.attributes.len()
+    );
+    println!(
+        "initial_local_player_attribute_modifier_count={}",
+        initial_attribute_modifier_count
+    );
+    println!(
+        "respawn_local_player_attribute_count={}",
+        respawn.local_player_attribute_count
+    );
+    println!(
+        "respawn_local_player_attribute_modifier_count={}",
+        respawn.local_player_attribute_modifier_count
+    );
     println!("dimension_changed={}", respawn.dimension_changed);
     println!("local_player_id={}", player.id());
     println!("local_player_recreated={}", respawn.local_player_recreated);
@@ -71,6 +118,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!(
         "local_player_entity_data_present={}",
         player.entity_data().is_some()
+    );
+    println!("local_player_attribute_count={}", player.attributes().len());
+    println!(
+        "local_player_attribute_modifier_count={}",
+        player
+            .attributes()
+            .iter()
+            .map(|attribute| attribute.modifiers().len())
+            .sum::<usize>()
     );
     println!("world_dimension={}", trace.world.dimension_key());
     println!("world_chunk_count={}", trace.world.loaded_chunk_count());

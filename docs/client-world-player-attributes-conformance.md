@@ -80,10 +80,18 @@ creative test modu, `view-distance=5`, `simulation-distance=5`,
 
 **Sunucu SHA-1:** `823e2250d24b3ddac457a60c92a6a941943fcd6a`
 
-Probe çalışırken vanilla server konsolunda her oturum için şu komut çalıştırıldı:
+Dimension-respawn probe'ları çalışırken vanilla server konsolunda şu komut
+çalıştırıldı:
 
 ```text
 execute as <probe-user> in minecraft:the_nether run tp @s 0 80 0
+```
+
+`P08jD` death-respawn koşusunda ise aynı-dimension reset için şu komut
+çalıştırıldı:
+
+```text
+execute as P08jD run kill @s
 ```
 
 Rust probe:
@@ -92,33 +100,37 @@ Rust probe:
 cargo run --locked --offline --example world_player_respawn_probe -- 127.0.0.1:25568 <probe-user>
 ```
 
-İki tamamlanmış vanilla oturumunda gözlenen sonuçlar:
+İki dimension-respawn ve bir same-dimension death-respawn koşusunda gözlenen
+sonuçlar:
 
-| Gözlem | `P08jA2` | `P08jB` |
-| --- | ---: | ---: |
-| login player ID | `3165` | `2966` |
-| total attribute update observations | `125` | `64` |
-| local player attribute update count | `1` | `1` |
-| initial local player attribute count | `3` | `3` |
-| initial local player modifier count | `2` | `2` |
-| respawn packet count | `1` | `1` |
-| respawn dimension | `minecraft:the_nether` | `minecraft:the_nether` |
-| `data_to_keep` | `3` | `3` |
-| `keep_attribute_modifiers` | `true` | `true` |
-| respawn local player attribute count | `3` | `3` |
-| respawn local player modifier count | `2` | `2` |
-| local player ID after respawn | `3165` | `2966` |
-| local player generation | `1` | `1` |
-| final local player attribute count | `3` | `3` |
-| final local player modifier count | `2` | `2` |
-| dimension changed | `true` | `true` |
-| final world chunk count | `157` | `157` |
+| Gözlem | `P08jA2` | `P08jB` | `P08jD` |
+| --- | ---: | ---: | ---: |
+| login player ID | `3165` | `2966` | `3367` |
+| total attribute update observations | `125` | `64` | `78` |
+| local player attribute update count | `1` | `1` | `3` |
+| initial local player attribute count | `3` | `3` | `3` |
+| initial local player modifier count | `2` | `2` | `2` |
+| respawn packet count | `1` | `1` | `1` |
+| respawn dimension | `minecraft:the_nether` | `minecraft:the_nether` | `minecraft:overworld` |
+| `data_to_keep` | `3` | `3` | `0` |
+| `keep_attribute_modifiers` | `true` | `true` | `false` |
+| respawn local player attribute count | `3` | `3` | `3` |
+| respawn local player modifier count | `2` | `2` | `0` |
+| local player ID after respawn | `3165` | `2966` | `3367` |
+| local player generation | `1` | `1` | `1` |
+| final local player attribute count | `3` | `3` | `3` |
+| final local player modifier count | `2` | `2` | `2` |
+| dimension changed | `true` | `true` | `false` |
+| final world chunk count | `157` | `157` | `170` |
 
-Her iki oturumda vanilla'nın local player için tek attribute update snapshot'ı
-3 attribute ve toplam 2 modifier içerdi. Respawn packet'i `dataToKeep=3` ile
-geldi; Rust yeni nesli aynı ID ile oluşturdu ve 3 attribute/2 modifier state'ini
-korudu. Toplam packet gözlem sayısının entity yayın sırasına göre değişmesi
-başarı ölçütü yapılmadı.
+`P08jA2` ve `P08jB` oturumlarında vanilla'nın local player için tek attribute
+update snapshot'ı 3 attribute ve toplam 2 modifier içerdi. Respawn packet'i
+`dataToKeep=3` ile geldi; Rust yeni nesli aynı ID ile oluşturdu ve 3
+attribute/2 modifier state'ini korudu. `P08jD` same-dimension death-respawn
+koşusunda `dataToKeep=0` ile attribute sayısı 3 kaldı, modifier sayısı respawn
+anında 0 oldu. Daha sonra vanilla'nın yeniden gönderdiği attribute packet'leri
+final state'i 2 modifier'a taşıdı. Toplam packet gözlem sayısının entity yayın
+sırasına göre değişmesi başarı ölçütü yapılmadı.
 
 Bu sonuç vanilla sunucusunun Rust packet tüketimini ve `ClientWorld` attribute
 state uygulamasını gösterir; Java client eşitliği iddiası değildir.
