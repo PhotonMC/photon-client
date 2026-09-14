@@ -76,22 +76,21 @@ güncellediğini kontrol eder.
 creative test modu, `view-distance=5`, `simulation-distance=5`,
 `127.0.0.1:25568`
 
-Observer oyuncusu yanında no-gravity oak boat ve no-AI/no-gravity/invulnerable
-Zombie oluşturuldu. İlişki packet'inin Rust world kopyasına ulaştığı kontrol
-edildikten sonra probe sağ input snapshot'ı verip bir world tick çalıştırdı.
+Observer oyuncusu yanında no-gravity oak boat oluşturuldu ve oyuncu boat'ın
+controlling passenger'ı yapıldı. İlişki packet'inin Rust world kopyasına
+ulaştığı kontrol edildikten sonra probe sağ input snapshot'ı verip bir world
+tick çalıştırdı.
 Fixture komutları:
 
 ```text
-execute as P08BoatControl85 at @s run summon minecraft:oak_boat ~5 ~ ~ {Tags:["P08BHV85"],NoGravity:1b,Rotation:[0.0f,0.0f]}
-execute as P08BoatControl85 at @s run summon minecraft:zombie ~5 ~ ~ {Tags:["P08BHP85"],NoAI:1b,NoGravity:1b,PersistenceRequired:1b,Invulnerable:1b,Rotation:[0.0f,0.0f]}
-ride @e[type=minecraft:zombie,tag=P08BHP85,limit=1,sort=nearest] dismount
-ride @e[type=minecraft:zombie,tag=P08BHP85,limit=1,sort=nearest] mount @e[type=minecraft:oak_boat,tag=P08BHV85,limit=1,sort=nearest]
+execute as P08Control94 at @s run summon minecraft:oak_boat ~5 ~ ~ {Tags:["P08BHV94"],NoGravity:1b,Rotation:[0.0f,0.0f]}
+ride P08Control94 mount @e[type=minecraft:oak_boat,tag=P08BHV94,limit=1,sort=nearest]
 ```
 
 Çalıştırma:
 
 ```text
-cargo run --locked --offline --example world_entity_passenger_boat_control_probe -- 127.0.0.1:25568 P08BoatControl85
+cargo run --locked --offline --example world_entity_passenger_boat_control_probe -- 127.0.0.1:25568 P08Control94
 ```
 
 Gözlenen sonuç:
@@ -100,28 +99,21 @@ Gözlenen sonuç:
 connection=ok
 play_login=true
 player_loaded_sent=true
-vehicle_id=19021
+vehicle_id=22298
 vehicle_type_id=89
 before_vehicle_rotation=(0.0, 0.0, 0.0)
 after_vehicle_rotation=(1.0, 0.0, 0.0)
 delta_rotation=1
 paddle_state=(true, false)
-passenger_id=19022
-passenger_type_id=151
-before_passenger_rotation=(0.0, 0.0, 0.0)
-after_passenger_rotation=(1.0, 0.0, 1.0)
-after_passenger_previous_rotation=(0.0, 0.0, 0.0)
-after_passenger_body_y_rotation=1
-passenger_position=(27.5, 63.0, -40.5)->(27.5, 63.1875, -40.5)
-world_entity_count=65
+local_player_id=22165
+world_entity_count=174
 world_chunk_count=157
-received_packet_count=10938
+received_packet_count=10966
 ```
 
-Oak boat type `89`, Zombie type `151` ve sıfır başlangıç heading'i doğrulandı.
-Sağ input'ı bir control tick'inde `deltaRotation=1` üretti; boat yaw'ı ve
-living passenger yaw/head/body state'i birlikte `1` oldu. Passenger'ın
-konumu aynı tick'teki oak boat seat y'si olan `+0.1875` ile güncellendi.
+Oak boat type `89` ve local player ID `22165` ile sıfır başlangıç heading'i
+doğrulandı. Sağ input'ı bir control tick'inde `deltaRotation=1`, boat yaw'ı
+`1` ve paddle state'i `(true,false)` üretti.
 Bu gözlem Rust world kopyasının gerçek vanilla entity/passenger akışına
 uyguladığı kaynak türevi dalı gösterir; Java istemcisinin local prediction,
 frame veya paket gönderimiyle tam eşitliği göstermez.
