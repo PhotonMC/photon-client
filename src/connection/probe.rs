@@ -18,7 +18,7 @@ use crate::world::{
     EntityMotionInput, EntityMoveInput, EntityPositionInput, EntityPositionUpdateMode,
     EntityRotationInput, EntityTeleportInput, LightLayerInput, LightUpdateInput,
     PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS, PLAYER_RESPAWN_KEEP_ENTITY_DATA, SectionInput,
-    VANILLA_COW_ENTITY_TYPE_ID, VANILLA_SNOWBALL_ENTITY_TYPE_ID,
+    VANILLA_ARROW_ENTITY_TYPE_ID, VANILLA_COW_ENTITY_TYPE_ID, VANILLA_SNOWBALL_ENTITY_TYPE_ID,
 };
 
 use super::protocol::*;
@@ -642,6 +642,22 @@ pub fn connect_and_world_snowball_tick_probe(
         timeout,
         PlayProbeConfig::new(ProbeAction::WorldSnowballTick)
             .with_drain_timeout(Duration::from_secs(2)),
+    )
+}
+
+/// Connect to a Java-protocol server and apply one free-flight client-world
+/// tick to a freshly added Arrow entity.
+pub fn connect_and_world_arrow_tick_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeConfig::new(ProbeAction::WorldArrowTick)
+            .with_drain_timeout(Duration::from_secs(30)),
     )
 }
 
@@ -1564,6 +1580,7 @@ enum ProbeAction {
     UseItem,
     CreativeSnowballUse,
     WorldSnowballTick,
+    WorldArrowTick,
     SurvivalSnowballUse,
     SurvivalWaterBucketUseOn,
     SurvivalEmptyBucketPickup,
@@ -1606,6 +1623,38 @@ enum ProbeAction {
     SurvivalOakPlanksWoodenAxeBreakStop,
     SurvivalDelayedDestroy,
     SurvivalSpawnProtection,
+}
+
+fn observe_projectile_tick(
+    trace: &mut PlayConnectionTrace,
+    observation: &AddEntityObservation,
+) -> Result<(), ConnectionError> {
+    let entity = trace
+        .world
+        .entity_at(observation.entity_id)
+        .ok_or(ConnectionError::Codec("projectile tick entity"))?;
+    let before_position = entity.position();
+    let before_motion = entity.motion();
+    let before_rotation = entity.rotation();
+    trace.world.tick();
+    let entity = trace
+        .world
+        .entity_at(observation.entity_id)
+        .ok_or(ConnectionError::Codec("projectile tick result"))?;
+    trace
+        .projectile_tick_observations
+        .push(ProjectileTickObservation {
+            entity_id: observation.entity_id,
+            entity_type_id: observation.entity_type_id,
+            before_position,
+            after_position: entity.position(),
+            before_motion,
+            after_motion: entity.motion(),
+            before_rotation,
+            after_rotation: entity.rotation(),
+            tick_count: entity.tick_count(),
+        });
+    Ok(())
 }
 
 fn connect_and_probe_with_mode(
@@ -1933,36 +1982,18 @@ fn connect_and_probe_with_mode(
                     .world
                     .entity_at(observation.entity_id)
                     .map(|entity| entity.rotation());
-                if matches!(probe.action, ProbeAction::WorldSnowballTick)
-                    && trace.use_item_packets_sent > 0
-                    && observation.entity_type_id == VANILLA_SNOWBALL_ENTITY_TYPE_ID
-                    && trace.projectile_tick_observations.is_empty()
-                {
-                    let entity = trace
-                        .world
-                        .entity_at(observation.entity_id)
-                        .ok_or(ConnectionError::Codec("snowball tick entity"))?;
-                    let before_position = entity.position();
-                    let before_motion = entity.motion();
-                    let before_rotation = entity.rotation();
-                    trace.world.tick();
-                    let entity = trace
-                        .world
-                        .entity_at(observation.entity_id)
-                        .ok_or(ConnectionError::Codec("snowball tick result"))?;
-                    trace
-                        .projectile_tick_observations
-                        .push(ProjectileTickObservation {
-                            entity_id: observation.entity_id,
-                            entity_type_id: observation.entity_type_id,
-                            before_position,
-                            after_position: entity.position(),
-                            before_motion,
-                            after_motion: entity.motion(),
-                            before_rotation,
-                            after_rotation: entity.rotation(),
-                            tick_count: entity.tick_count(),
-                        });
+                let should_tick_projectile = match probe.action {
+                    ProbeAction::WorldSnowballTick => {
+                        trace.use_item_packets_sent > 0
+                            && observation.entity_type_id == VANILLA_SNOWBALL_ENTITY_TYPE_ID
+                    }
+                    ProbeAction::WorldArrowTick => {
+                        observation.entity_type_id == VANILLA_ARROW_ENTITY_TYPE_ID
+                    }
+                    _ => false,
+                } && trace.projectile_tick_observations.is_empty();
+                if should_tick_projectile {
+                    observe_projectile_tick(&mut trace, &observation)?;
                 }
                 trace.add_entity_observations.push(observation);
             }

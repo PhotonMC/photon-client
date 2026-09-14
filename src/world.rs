@@ -16,6 +16,7 @@ const VANILLA_SPIDER_ENTITY_TYPE_ID: i32 = 124;
 const VANILLA_ZOMBIE_ENTITY_TYPE_ID: i32 = 151;
 pub(crate) const VANILLA_COW_ENTITY_TYPE_ID: i32 = 30;
 pub(crate) const VANILLA_SNOWBALL_ENTITY_TYPE_ID: i32 = 120;
+pub(crate) const VANILLA_ARROW_ENTITY_TYPE_ID: i32 = 6;
 const VANILLA_LIVING_ENTITY_TYPE_IDS: &[i32] = &[
     2, 4, 5, 7, 10, 11, 14, 16, 17, 19, 20, 21, 22, 26, 27, 28, 30, 31, 32, 35, 36, 38, 40, 41, 42,
     43, 46, 54, 55, 57, 58, 59, 61, 62, 63, 64, 66, 67, 68, 70, 78, 80, 83, 86, 87, 88, 91, 96, 97,
@@ -35,6 +36,8 @@ const VANILLA_BOAT_HALF_WIDTH: f64 = 0.6875;
 const VANILLA_BOAT_HEIGHT: f64 = 0.5625;
 const VANILLA_BOAT_AIR_FRICTION: f32 = 0.9_f32;
 const VANILLA_BOAT_GRAVITY: f64 = 0.04;
+const VANILLA_ARROW_AIR_FRICTION: f32 = 0.99_f32;
+const VANILLA_ARROW_GRAVITY: f64 = 0.05;
 const VANILLA_SPIDER_VEHICLE_ATTACHMENT_Y: f64 = 0.3125;
 const VANILLA_BOAT_PASSENGER_GEOMETRY: &[(i32, f32, f32)] = &[
     (0, VANILLA_BOAT_RIDE_HEIGHT, 0.0),
@@ -1739,6 +1742,10 @@ impl ClientWorld {
             entity.type_id == VANILLA_SNOWBALL_ENTITY_TYPE_ID
                 && self.snowball_path_is_open(entity.position(), entity.motion(), entity.no_gravity)
         });
+        let can_tick_arrow = self.entities.get(&entity_id).is_some_and(|entity| {
+            entity.type_id == VANILLA_ARROW_ENTITY_TYPE_ID
+                && self.arrow_path_is_open(entity.position(), entity.motion())
+        });
         let boat_in_air = boat_is_local_instance_authoritative
             && self
                 .entities
@@ -1771,6 +1778,9 @@ impl ClientWorld {
         }
         if can_tick_snowball {
             entity.tick_snowball();
+        }
+        if can_tick_arrow {
+            entity.tick_arrow();
         }
         if boat_in_air {
             entity.tick_boat_float_in_air();
@@ -1831,6 +1841,28 @@ impl ClientWorld {
             position.0 + motion.0 * air_drag,
             position.1 + (motion.1 - gravity) * air_drag,
             position.2 + motion.2 * air_drag,
+        );
+        let current_block = (
+            position.0.floor() as i32,
+            position.1.floor() as i32,
+            position.2.floor() as i32,
+        );
+        let next_block = (
+            next_position.0.floor() as i32,
+            next_position.1.floor() as i32,
+            next_position.2.floor() as i32,
+        );
+        self.block_state_at(current_block.0, current_block.1, current_block.2)
+            == Some(VANILLA_AIR_BLOCK_STATE_ID)
+            && self.block_state_at(next_block.0, next_block.1, next_block.2)
+                == Some(VANILLA_AIR_BLOCK_STATE_ID)
+    }
+
+    fn arrow_path_is_open(&self, position: (f64, f64, f64), motion: (f64, f64, f64)) -> bool {
+        let next_position = (
+            position.0 + motion.0,
+            position.1 + motion.1,
+            position.2 + motion.2,
         );
         let current_block = (
             position.0.floor() as i32,
@@ -3808,6 +3840,42 @@ impl ClientEntity {
             mth_rot_lerp_f32(0.2_f32, f32::from_bits(self.old_y_rot_bits), target_y_rot).to_bits();
     }
 
+    fn tick_arrow(&mut self) {
+        let current_position = self.position();
+        let current_motion = self.motion();
+        self.x_bits = (current_position.0 + current_motion.0).to_bits();
+        self.y_bits = (current_position.1 + current_motion.1).to_bits();
+        self.z_bits = (current_position.2 + current_motion.2).to_bits();
+
+        const PI_F32: f32 = f32::from_bits(0x4049_0fdb);
+        let horizontal_distance =
+            (current_motion.0 * current_motion.0 + current_motion.2 * current_motion.2).sqrt();
+        let target_x_rot = (mth_atan2(current_motion.1, horizontal_distance) * f64::from(180.0_f32)
+            / f64::from(PI_F32)) as f32;
+        let target_y_rot = (mth_atan2(current_motion.0, current_motion.2) * f64::from(180.0_f32)
+            / f64::from(PI_F32)) as f32;
+        self.x_rot_bits =
+            mth_rot_lerp_f32(0.2_f32, f32::from_bits(self.x_rot_bits), target_x_rot).to_bits();
+        self.y_rot_bits =
+            mth_rot_lerp_f32(0.2_f32, f32::from_bits(self.y_rot_bits), target_y_rot).to_bits();
+
+        let air_friction = f64::from(VANILLA_ARROW_AIR_FRICTION);
+        let motion = (
+            current_motion.0 * air_friction,
+            current_motion.1 * air_friction,
+            current_motion.2 * air_friction,
+        );
+        self.motion_x_bits = motion.0.to_bits();
+        self.motion_y_bits = (motion.1
+            - if self.no_gravity {
+                0.0
+            } else {
+                VANILLA_ARROW_GRAVITY
+            })
+        .to_bits();
+        self.motion_z_bits = motion.2.to_bits();
+    }
+
     fn tick_boat_float_in_air(&mut self) {
         let current_motion = self.motion();
         let vertical_speed = if self.no_gravity {
@@ -4550,9 +4618,9 @@ mod tests {
         EntityMotionInput, EntityMoveInput, EntityPositionInput, EntityPositionUpdateMode,
         EntityRotationInput, EntityTeleportInput, LightLayerInput, LightUpdateInput,
         PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS, PLAYER_RESPAWN_KEEP_ENTITY_DATA, SNOWBALL_GRAVITY,
-        SectionInput, VANILLA_BOAT_PASSENGER_MAX_ROTATION, VANILLA_BREEZE_ENTITY_TYPE_ID,
-        VANILLA_COW_ENTITY_TYPE_ID, VANILLA_LIVING_ENTITY_TYPE_IDS, VANILLA_PLAYER_ENTITY_TYPE_ID,
-        VANILLA_SNOWBALL_ENTITY_TYPE_ID, menu_top_slot_count,
+        SectionInput, VANILLA_ARROW_ENTITY_TYPE_ID, VANILLA_BOAT_PASSENGER_MAX_ROTATION,
+        VANILLA_BREEZE_ENTITY_TYPE_ID, VANILLA_COW_ENTITY_TYPE_ID, VANILLA_LIVING_ENTITY_TYPE_IDS,
+        VANILLA_PLAYER_ENTITY_TYPE_ID, VANILLA_SNOWBALL_ENTITY_TYPE_ID, menu_top_slot_count,
     };
     use crate::binary::{BitSet, Uuid};
     use crate::math::{mth_cos_f64, mth_sin_f64};
@@ -7696,6 +7764,69 @@ mod tests {
         let entity = world.entity_at(38).expect("no-gravity snowball");
         assert_eq!(entity.motion(), (0.0, 0.0, air_drag));
         assert_eq!(entity.position(), (4.0, 1.0, 2.0 + air_drag));
+        assert_eq!(entity.previous_position(), (4.0, 1.0, 2.0));
+        assert_eq!(entity.rotation(), (36.0, 24.0, 0.0));
+    }
+
+    #[test]
+    fn ticking_arrows_applies_java_free_flight_inertia_gravity_and_history() {
+        let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+        let (blocks, biomes) = section(0, 0);
+        world.replace_chunk(
+            0,
+            0,
+            [SectionInput {
+                non_empty_block_count: 0,
+                fluid_count: 0,
+                block_states: &blocks,
+                biomes: &biomes,
+            }],
+        );
+        assert!(world.apply_entity(EntityInput {
+            entity_id: 37,
+            uuid: Uuid::new(1, 2),
+            type_id: VANILLA_ARROW_ENTITY_TYPE_ID,
+            x: 2.0,
+            y: 1.0,
+            z: 2.0,
+            movement: (0.25, 0.5, 0.25),
+            rotation: (10.0, -20.0, 30.0),
+            data: 0,
+        }));
+        assert!(world.apply_entity(EntityInput {
+            entity_id: 38,
+            uuid: Uuid::new(3, 4),
+            type_id: VANILLA_ARROW_ENTITY_TYPE_ID,
+            x: 4.0,
+            y: 1.0,
+            z: 2.0,
+            movement: (0.0, 0.0, 1.0),
+            rotation: (45.0, 30.0, 0.0),
+            data: 0,
+        }));
+        assert!(world.apply_entity_metadata(
+            38,
+            &[
+                ENTITY_NO_GRAVITY_DATA_ID,
+                ENTITY_DATA_SERIALIZER_BOOLEAN_ID as u8,
+                1,
+                255,
+            ],
+        ));
+
+        world.tick();
+
+        let air_drag = f64::from(0.99_f32);
+        let expected_motion = (0.25 * air_drag, 0.5 * air_drag - 0.05, 0.25 * air_drag);
+        let entity = world.entity_at(37).expect("gravity arrow");
+        assert_eq!(entity.previous_position(), (2.0, 1.0, 2.0));
+        assert_eq!(entity.motion(), expected_motion);
+        assert_eq!(entity.position(), (2.0 + 0.25, 1.0 + 0.5, 2.0 + 0.25));
+        assert_eq!(entity.tick_count(), 1);
+
+        let entity = world.entity_at(38).expect("no-gravity arrow");
+        assert_eq!(entity.motion(), (0.0, 0.0, air_drag));
+        assert_eq!(entity.position(), (4.0, 1.0, 3.0));
         assert_eq!(entity.previous_position(), (4.0, 1.0, 2.0));
         assert_eq!(entity.rotation(), (36.0, 24.0, 0.0));
     }
