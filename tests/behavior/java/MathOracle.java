@@ -48,8 +48,9 @@ import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.CollisionGetter;
 import net.minecraft.world.level.EntityGetter;
-import net.minecraft.world.level.block.Rotation;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.SlabBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -3268,6 +3269,32 @@ public final class MathOracle {
                     states.add(state);
                 }
                 result.add("states", states);
+            } else if (kind.equals("client_world_registry_collision")) {
+                SharedConstants.setVersion(TEST_VERSION);
+                Bootstrap.bootStrap();
+                var resolvedStates = new JsonArray();
+                for (var stateEntry : request.getAsJsonArray("state_ids")) {
+                    int requestedStateId = stateEntry.getAsInt();
+                    BlockState state = Block.stateById(requestedStateId);
+                    var stateSnapshot = new JsonObject();
+                    stateSnapshot.addProperty("requested_state_id", requestedStateId);
+                    stateSnapshot.addProperty("resolved_state_id", Block.getId(state));
+                    stateSnapshot.add("collision_shape", snapshot(
+                        state.getCollisionShape(
+                            net.minecraft.world.level.EmptyBlockGetter.INSTANCE,
+                            BlockPos.ZERO)));
+                    resolvedStates.add(stateSnapshot);
+                }
+                AABB testArea = box(request.getAsJsonObject("test_area"));
+                CollisionGetter collision = registryCollisionFixture(
+                    request.getAsJsonArray("placements"));
+                var collisions = new JsonArray();
+                for (VoxelShape shape : collision.getBlockCollisions(null, testArea)) {
+                    collisions.add(snapshot(shape));
+                }
+                result.add("states", resolvedStates);
+                result.add("collisions", collisions);
+                result.addProperty("no_block_collision", collision.noBlockCollision(null, testArea));
             } else if (kind.equals("collect_step_up_heights")) {
                 AABB moving = box(request.getAsJsonObject("moving"));
                 var shapes = new java.util.ArrayList<VoxelShape>();
@@ -4136,6 +4163,64 @@ public final class MathOracle {
             @Override
             public java.util.List<VoxelShape> getEntityCollisions(Entity source, AABB testArea) {
                 return entityGetter.getEntityCollisions(source, testArea);
+            }
+
+            @Override
+            public BlockEntity getBlockEntity(BlockPos pos) {
+                return null;
+            }
+
+            @Override
+            public BlockState getBlockState(BlockPos pos) {
+                return states.getOrDefault(key(pos), Blocks.AIR.defaultBlockState());
+            }
+
+            @Override
+            public FluidState getFluidState(BlockPos pos) {
+                return getBlockState(pos).getFluidState();
+            }
+
+            @Override
+            public int getHeight() {
+                return 384;
+            }
+
+            @Override
+            public int getMinY() {
+                return -64;
+            }
+        };
+    }
+
+    private static CollisionGetter registryCollisionFixture(JsonArray placements) {
+        var states = new java.util.HashMap<String, BlockState>();
+        for (var entry : placements) {
+            JsonObject placement = entry.getAsJsonObject();
+            int x = placement.get("x").getAsInt();
+            int y = placement.get("y").getAsInt();
+            int z = placement.get("z").getAsInt();
+            states.put(
+                x + "," + y + "," + z,
+                Block.stateById(placement.get("state_id").getAsInt()));
+        }
+        return new CollisionGetter() {
+            private String key(BlockPos pos) {
+                return pos.getX() + "," + pos.getY() + "," + pos.getZ();
+            }
+
+            @Override
+            public WorldBorder getWorldBorder() {
+                return null;
+            }
+
+            @Override
+            public BlockGetter getChunkForCollisions(int chunkX, int chunkZ) {
+                return this;
+            }
+
+            @Override
+            public java.util.List<VoxelShape> getEntityCollisions(Entity source, AABB testArea) {
+                return java.util.List.of();
             }
 
             @Override

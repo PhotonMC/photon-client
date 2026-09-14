@@ -4054,6 +4054,17 @@ def math_cases():
                         "center_z": float_bits(0, "f64"),
                         "size": float_bits(40, "f64"), "absolute_max_size": 100}},
            ]}
+    yield {"case_id": "world/client-collision/registry-state-context", "family": "math",
+           "operation": "shape", "kind": "client_world_registry_collision",
+           "state_ids": [0, 1, 13331, 13333, 13335, 99999],
+           "test_area": box_bits(-0.25, -0.25, -0.25, 4.75, 1.25, 1.25),
+           "placements": [
+               {"x": 0, "y": 0, "z": 0, "state_id": 1},
+               {"x": 1, "y": 0, "z": 0, "state_id": 13333},
+               {"x": 2, "y": 0, "z": 0, "state_id": 13331},
+               {"x": 3, "y": 0, "z": 0, "state_id": 13335},
+               {"x": 4, "y": 0, "z": 0, "state_id": 99999},
+           ]}
     yield {"case_id": "shape/collect-block-collisions/empty", "family": "math",
            "operation": "shape", "kind": "collect_block_collisions",
            "box": box_bits(-0.25, -0.25, -0.25, 0.25, 0.25, 0.25),

@@ -1641,6 +1641,114 @@ pub struct ClientBlockCollision {
     pub shape: VoxelShape,
 }
 
+/// A collision-shape descriptor for the pinned built-in block-state subset.
+///
+/// Raw bits keep the descriptor comparable so it can live in `ClientWorld`'s
+/// structural state without making `VoxelShape` part of that state.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ClientBlockStateCollisionShape {
+    Empty,
+    FullBlock,
+    Box {
+        min_x_bits: u64,
+        min_y_bits: u64,
+        min_z_bits: u64,
+        max_x_bits: u64,
+        max_y_bits: u64,
+        max_z_bits: u64,
+    },
+}
+
+impl ClientBlockStateCollisionShape {
+    fn to_voxel_shape(self) -> VoxelShape {
+        match self {
+            Self::Empty => Shapes::empty(),
+            Self::FullBlock => Shapes::block(),
+            Self::Box {
+                min_x_bits,
+                min_y_bits,
+                min_z_bits,
+                max_x_bits,
+                max_y_bits,
+                max_z_bits,
+            } => Shapes::box_shape(
+                f64::from_bits(min_x_bits),
+                f64::from_bits(min_y_bits),
+                f64::from_bits(min_z_bits),
+                f64::from_bits(max_x_bits),
+                f64::from_bits(max_y_bits),
+                f64::from_bits(max_z_bits),
+            )
+            .expect("registered block-state shape bounds must be ordered"),
+        }
+    }
+}
+
+/// Resolve the pinned 26.2 built-in block-state IDs used by the current
+/// ClientWorld collision slice.
+///
+/// Java's complete built-in registry is larger. IDs outside this deliberately
+/// small exact subset follow the `Block.stateById` fallback to air until their
+/// state definition and context branch is implemented.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClientBlockStateRegistry {
+    collision_shapes: BTreeMap<i32, ClientBlockStateCollisionShape>,
+}
+
+impl ClientBlockStateRegistry {
+    pub fn vanilla_26_2() -> Self {
+        let mut collision_shapes = BTreeMap::new();
+        collision_shapes.insert(0, ClientBlockStateCollisionShape::Empty);
+        collision_shapes.insert(1, ClientBlockStateCollisionShape::FullBlock);
+        collision_shapes.insert(
+            13331,
+            ClientBlockStateCollisionShape::Box {
+                min_x_bits: 0.0_f64.to_bits(),
+                min_y_bits: 0.5_f64.to_bits(),
+                min_z_bits: 0.0_f64.to_bits(),
+                max_x_bits: 1.0_f64.to_bits(),
+                max_y_bits: 1.0_f64.to_bits(),
+                max_z_bits: 1.0_f64.to_bits(),
+            },
+        );
+        collision_shapes.insert(
+            13333,
+            ClientBlockStateCollisionShape::Box {
+                min_x_bits: 0.0_f64.to_bits(),
+                min_y_bits: 0.0_f64.to_bits(),
+                min_z_bits: 0.0_f64.to_bits(),
+                max_x_bits: 1.0_f64.to_bits(),
+                max_y_bits: 0.5_f64.to_bits(),
+                max_z_bits: 1.0_f64.to_bits(),
+            },
+        );
+        collision_shapes.insert(13335, ClientBlockStateCollisionShape::FullBlock);
+        Self { collision_shapes }
+    }
+
+    pub fn resolve_state_id(&self, state_id: i32) -> i32 {
+        if self.collision_shapes.contains_key(&state_id) {
+            state_id
+        } else {
+            0
+        }
+    }
+
+    pub fn collision_shape(&self, state_id: i32) -> VoxelShape {
+        self.collision_shapes
+            .get(&self.resolve_state_id(state_id))
+            .expect("the registry must contain its air fallback")
+            .to_voxel_shape()
+    }
+
+    fn collision_shapes(&self) -> BTreeMap<i32, VoxelShape> {
+        self.collision_shapes
+            .iter()
+            .map(|(&state_id, &shape)| (state_id, shape.to_voxel_shape()))
+            .collect()
+    }
+}
+
 /// The client-side copy of the currently loaded world.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ClientWorld {
@@ -1652,6 +1760,7 @@ pub struct ClientWorld {
     is_flat: bool,
     sea_level: i32,
     dimension_environment: DimensionEnvironment,
+    block_state_registry: ClientBlockStateRegistry,
     chunks: BTreeMap<(i32, i32), ClientChunk>,
     pending_light_updates: VecDeque<PendingLightUpdate>,
     entities: BTreeMap<i32, ClientEntity>,
@@ -1679,6 +1788,7 @@ impl ClientWorld {
             dimension_environment: DimensionEnvironment::for_builtin_dimension(
                 "minecraft:overworld",
             ),
+            block_state_registry: ClientBlockStateRegistry::vanilla_26_2(),
             chunks: BTreeMap::new(),
             pending_light_updates: VecDeque::new(),
             entities: BTreeMap::new(),
@@ -1718,6 +1828,10 @@ impl ClientWorld {
 
     pub fn dimension_environment(&self) -> &DimensionEnvironment {
         &self.dimension_environment
+    }
+
+    pub fn block_state_registry(&self) -> &ClientBlockStateRegistry {
+        &self.block_state_registry
     }
 
     pub fn world_border(&self) -> &ClientWorldBorder {
@@ -2967,6 +3081,15 @@ impl ClientWorld {
         }
 
         collisions
+    }
+
+    /// Collect loaded block collisions through the ClientWorld state registry.
+    pub fn collect_registered_block_collision_shapes(
+        &self,
+        bounding_box: Aabb,
+    ) -> Vec<ClientBlockCollision> {
+        let shapes_by_state = self.block_state_registry.collision_shapes();
+        self.collect_block_collision_shapes(bounding_box, &shapes_by_state)
     }
 
     /// Check whether an entity dimensions box fits in loaded block collisions.

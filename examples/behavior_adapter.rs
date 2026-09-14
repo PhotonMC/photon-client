@@ -3599,6 +3599,10 @@ fn block_collision_fixture(
         shapes_by_state.insert(state_id, shape);
     }
 
+    Ok((block_collision_world_fixture(request)?, shapes_by_state))
+}
+
+fn block_collision_world_fixture(request: &Value) -> Result<ClientWorld, String> {
     let mut chunk_blocks = BTreeMap::new();
     for entry in request
         .get("placements")
@@ -3637,7 +3641,7 @@ fn block_collision_fixture(
         );
     }
 
-    Ok((world, shapes_by_state))
+    Ok(world)
 }
 
 fn entity_collision_candidates(
@@ -4573,6 +4577,48 @@ fn shape_result(request: &Value) -> Result<Value, String> {
                 })
                 .collect::<Result<Vec<_>, String>>()?;
             Ok(json!({"states": states}))
+        }
+        "client_world_registry_collision" => {
+            let input = request
+                .as_object()
+                .ok_or("registry collision input must be an object")?;
+            let test_area = aabb_box(
+                input
+                    .get("test_area")
+                    .ok_or("test_area must be an object")?,
+            )?;
+            let world = block_collision_world_fixture(request)?;
+            let states = input
+                .get("state_ids")
+                .ok_or("state_ids must be an array")?
+                .as_array()
+                .ok_or("state_ids must be an array")?
+                .iter()
+                .map(|state_value| {
+                    let requested_state_id = state_value
+                        .as_i64()
+                        .ok_or("state ID must be an integer")?
+                        .try_into()
+                        .map_err(|_| "state ID must fit in i32".to_owned())?;
+                    let registry = world.block_state_registry();
+                    let resolved_state_id = registry.resolve_state_id(requested_state_id);
+                    let collision_shape = registry.collision_shape(requested_state_id);
+                    Ok(json!({
+                        "requested_state_id": requested_state_id,
+                        "resolved_state_id": resolved_state_id,
+                        "collision_shape": shape_snapshot(&collision_shape),
+                    }))
+                })
+                .collect::<Result<Vec<_>, String>>()?;
+            let collisions = world.collect_registered_block_collision_shapes(test_area);
+            Ok(json!({
+                "states": states,
+                "collisions": collisions
+                    .iter()
+                    .map(|collision| shape_snapshot(&collision.shape))
+                    .collect::<Vec<_>>(),
+                "no_block_collision": collisions.is_empty(),
+            }))
         }
         "world_border_collision_shape" => {
             let inputs = request
