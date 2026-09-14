@@ -12,7 +12,71 @@ pub(crate) const PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS: u8 = 1;
 pub(crate) const PLAYER_RESPAWN_KEEP_ENTITY_DATA: u8 = 2;
 const VANILLA_PLAYER_ENTITY_TYPE_ID: i32 = 156;
 pub(crate) const VANILLA_SNOWBALL_ENTITY_TYPE_ID: i32 = 120;
-const VANILLA_BOAT_ENTITY_TYPE_IDS: &[i32] = &[0, 12, 23, 33, 74, 81, 89, 94, 125];
+const VANILLA_BOAT_RIDE_HEIGHT: f32 = 0.5625_f32 / 3.0_f32;
+const VANILLA_RAFT_RIDE_HEIGHT: f32 = 0.5625_f32 * 0.8888889_f32;
+const VANILLA_CHEST_BOAT_PASSENGER_Z_OFFSET: f32 = 0.15_f32;
+const VANILLA_BOAT_PASSENGER_GEOMETRY: &[(i32, f32, f32)] = &[
+    (0, VANILLA_BOAT_RIDE_HEIGHT, 0.0),
+    (
+        1,
+        VANILLA_BOAT_RIDE_HEIGHT,
+        VANILLA_CHEST_BOAT_PASSENGER_Z_OFFSET,
+    ),
+    (
+        8,
+        VANILLA_RAFT_RIDE_HEIGHT,
+        VANILLA_CHEST_BOAT_PASSENGER_Z_OFFSET,
+    ),
+    (9, VANILLA_RAFT_RIDE_HEIGHT, 0.0),
+    (12, VANILLA_BOAT_RIDE_HEIGHT, 0.0),
+    (
+        13,
+        VANILLA_BOAT_RIDE_HEIGHT,
+        VANILLA_CHEST_BOAT_PASSENGER_Z_OFFSET,
+    ),
+    (23, VANILLA_BOAT_RIDE_HEIGHT, 0.0),
+    (
+        24,
+        VANILLA_BOAT_RIDE_HEIGHT,
+        VANILLA_CHEST_BOAT_PASSENGER_Z_OFFSET,
+    ),
+    (33, VANILLA_BOAT_RIDE_HEIGHT, 0.0),
+    (
+        34,
+        VANILLA_BOAT_RIDE_HEIGHT,
+        VANILLA_CHEST_BOAT_PASSENGER_Z_OFFSET,
+    ),
+    (74, VANILLA_BOAT_RIDE_HEIGHT, 0.0),
+    (
+        75,
+        VANILLA_BOAT_RIDE_HEIGHT,
+        VANILLA_CHEST_BOAT_PASSENGER_Z_OFFSET,
+    ),
+    (81, VANILLA_BOAT_RIDE_HEIGHT, 0.0),
+    (
+        82,
+        VANILLA_BOAT_RIDE_HEIGHT,
+        VANILLA_CHEST_BOAT_PASSENGER_Z_OFFSET,
+    ),
+    (89, VANILLA_BOAT_RIDE_HEIGHT, 0.0),
+    (
+        90,
+        VANILLA_BOAT_RIDE_HEIGHT,
+        VANILLA_CHEST_BOAT_PASSENGER_Z_OFFSET,
+    ),
+    (94, VANILLA_BOAT_RIDE_HEIGHT, 0.0),
+    (
+        95,
+        VANILLA_BOAT_RIDE_HEIGHT,
+        VANILLA_CHEST_BOAT_PASSENGER_Z_OFFSET,
+    ),
+    (125, VANILLA_BOAT_RIDE_HEIGHT, 0.0),
+    (
+        126,
+        VANILLA_BOAT_RIDE_HEIGHT,
+        VANILLA_CHEST_BOAT_PASSENGER_Z_OFFSET,
+    ),
+];
 const VANILLA_PLAYER_VEHICLE_ATTACHMENT_Y: f64 = 0.6;
 const VANILLA_AIR_BLOCK_STATE_ID: i32 = 0;
 const ENTITY_SHARED_FLAGS_DATA_ID: u8 = 0;
@@ -1411,21 +1475,27 @@ impl ClientWorld {
         else {
             return;
         };
-        if !VANILLA_BOAT_ENTITY_TYPE_IDS.contains(&vehicle_type_id) {
+        let Some((ride_height, single_passenger_z_offset)) = VANILLA_BOAT_PASSENGER_GEOMETRY
+            .iter()
+            .find(|&&(type_id, _, _)| type_id == vehicle_type_id)
+            .map(|&(_, ride_height, single_passenger_z_offset)| {
+                (f64::from(ride_height), f64::from(single_passenger_z_offset))
+            })
+        else {
             return;
-        }
+        };
 
         let passenger_z_offset = if passenger_count > 1 {
             if passenger_index == 0 { 0.2 } else { -0.6 }
         } else {
-            0.0
+            single_passenger_z_offset
         };
         let radians = f64::from(-vehicle_y_rot * (std::f32::consts::PI / 180.0_f32));
         let rotated_x = passenger_z_offset * f64::from(mth_sin_f64(radians));
         let rotated_z = passenger_z_offset * f64::from(mth_cos_f64(radians));
         let target_position = (
             vehicle_position.0 + rotated_x,
-            vehicle_position.1 + 0.1875 - passenger_vehicle_attachment_y,
+            vehicle_position.1 + ride_height - passenger_vehicle_attachment_y,
             vehicle_position.2 + rotated_z,
         );
         if let Some(passenger) = self.entities.get_mut(&passenger_id) {
@@ -4843,6 +4913,85 @@ mod tests {
         assert!((second.position().0 - 2.6).abs() < 1e-6);
         assert!((second.position().1 - 2.1875).abs() < 1e-6);
         assert!((second.position().2 - 2.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn passenger_tick_positions_all_vanilla_boat_geometry_rows() {
+        let expected_chest_offset = f64::from(0.15_f32);
+        let expected_raft_height = f64::from(0.5625_f32 * 0.8888889_f32);
+        let expected_geometry = [
+            (0, 0.1875, 0.0),
+            (1, 0.1875, expected_chest_offset),
+            (8, expected_raft_height, expected_chest_offset),
+            (9, expected_raft_height, 0.0),
+            (12, 0.1875, 0.0),
+            (13, 0.1875, expected_chest_offset),
+            (23, 0.1875, 0.0),
+            (24, 0.1875, expected_chest_offset),
+            (33, 0.1875, 0.0),
+            (34, 0.1875, expected_chest_offset),
+            (74, 0.1875, 0.0),
+            (75, 0.1875, expected_chest_offset),
+            (81, 0.1875, 0.0),
+            (82, 0.1875, expected_chest_offset),
+            (89, 0.1875, 0.0),
+            (90, 0.1875, expected_chest_offset),
+            (94, 0.1875, 0.0),
+            (95, 0.1875, expected_chest_offset),
+            (125, 0.1875, 0.0),
+            (126, 0.1875, expected_chest_offset),
+        ];
+        for (index, &(vehicle_type_id, ride_height, passenger_z_offset)) in
+            expected_geometry.iter().enumerate()
+        {
+            let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+            let (blocks, biomes) = section(0, 0);
+            world.replace_chunk(
+                0,
+                0,
+                [SectionInput {
+                    non_empty_block_count: 0,
+                    fluid_count: 0,
+                    block_states: &blocks,
+                    biomes: &biomes,
+                }],
+            );
+            let vehicle_id = 1000 + index as i32;
+            let passenger_id = 2000 + index as i32;
+            assert!(world.apply_entity(EntityInput {
+                entity_id: vehicle_id,
+                uuid: Uuid::new(vehicle_id as u64, 0),
+                type_id: vehicle_type_id,
+                x: 2.0,
+                y: 10.0,
+                z: 2.0,
+                movement: (0.0, 0.0, 0.0),
+                rotation: (0.0, 0.0, 0.0),
+                data: 0,
+            }));
+            assert!(world.apply_entity(EntityInput {
+                entity_id: passenger_id,
+                uuid: Uuid::new(passenger_id as u64, 0),
+                type_id: VANILLA_SNOWBALL_ENTITY_TYPE_ID,
+                x: 2.0,
+                y: 12.0,
+                z: 2.0,
+                movement: (0.0, 0.0, 0.0),
+                rotation: (0.0, 0.0, 0.0),
+                data: 0,
+            }));
+            assert!(world.apply_entity_passengers(vehicle_id, &[passenger_id]));
+
+            world.tick();
+
+            let passenger = world
+                .entity_at(passenger_id)
+                .expect("boat geometry passenger");
+            assert_eq!(
+                passenger.position(),
+                (2.0, 10.0 + ride_height, 2.0 + passenger_z_offset)
+            );
+        }
     }
 
     #[test]
