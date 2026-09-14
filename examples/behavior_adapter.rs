@@ -4554,6 +4554,36 @@ fn shape_result(request: &Value) -> Result<Value, String> {
                                 .and_then(Value::as_bool)
                                 .unwrap_or(false),
                         );
+                        if let Some(context) =
+                            entity.get("climbable_context").and_then(Value::as_object)
+                        {
+                            let kind = context
+                                .get("kind")
+                                .and_then(Value::as_str)
+                                .ok_or("climbable context kind must be a string")?;
+                            if kind != "trapdoor_ladder" {
+                                return Err("unknown climbable context kind".to_owned());
+                            }
+                            world.apply_entity_living_climbable_trapdoor_state(
+                                entity_id,
+                                context
+                                    .get("trapdoor_open")
+                                    .and_then(Value::as_bool)
+                                    .unwrap_or(false),
+                                context
+                                    .get("trapdoor_facing")
+                                    .and_then(Value::as_str)
+                                    .ok_or("trapdoor_facing must be a string")?,
+                                context
+                                    .get("below_is_ladder")
+                                    .and_then(Value::as_bool)
+                                    .unwrap_or(true),
+                                context
+                                    .get("ladder_facing")
+                                    .and_then(Value::as_str)
+                                    .ok_or("ladder_facing must be a string")?,
+                            );
+                        }
                     }
                     let source_entity_id = input
                         .get("source_entity_id")

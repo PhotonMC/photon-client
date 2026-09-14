@@ -166,6 +166,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P08.x — server-conformance Chunk unload light queue cleanup'i](client-world-light-queue-cleanup-conformance.md)
 - [P08.w — server-conformance Unloaded chunk light update queue'su](client-world-light-queue-conformance.md)
 - [P09.u — ClientWorld LivingEntity onClimbable pushability gate — client-parity birleşik kayıt](client-world-living-climbable-conformance.md)
+- [P09.w — ClientWorld LivingEntity trapdoor/ladder onClimbable context — client-parity birleşik kayıt](client-world-living-climbable-context-conformance.md)
 - [P09.v — ClientWorld Player flying ability pushability gate — client-parity birleşik kayıt](client-world-living-flying-conformance.md)
 - [P09.t — ClientWorld LivingEntity alive/spectator pushability gates — client-parity birleşik kayıt](client-world-living-pushability-conformance.md)
 - [P09.g — Entity hareket çarpışma bayrakları — client-parity birleşik kayıt](client-world-movement-flags-conformance.md)

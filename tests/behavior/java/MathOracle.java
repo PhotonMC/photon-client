@@ -53,8 +53,10 @@ import net.minecraft.world.level.CollisionGetter;
 import net.minecraft.world.level.EntityGetter;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.LadderBlock;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.SlabBlock;
+import net.minecraft.world.level.block.TrapDoorBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.SlabType;
@@ -3256,6 +3258,9 @@ public final class MathOracle {
                             && entityInput.get("on_climbable").getAsBoolean();
                         boolean flying = entityInput.has("flying")
                             && entityInput.get("flying").getAsBoolean();
+                        JsonObject climbableContext = entityInput.has("climbable_context")
+                            ? entityInput.getAsJsonObject("climbable_context")
+                            : null;
                         boolean collidable = entityInput.has("can_be_collided_with")
                             && entityInput.get("can_be_collided_with").getAsBoolean();
                         boolean sameVehicle = entityInput.has("same_vehicle")
@@ -3269,7 +3274,8 @@ public final class MathOracle {
                             onClimbable,
                             flying,
                             collidable,
-                            sameVehicle);
+                            sameVehicle,
+                            climbableContext);
                         entityStorage.addEntity(entity);
                         entitiesById.put(entityId, entity);
                     }
@@ -3334,7 +3340,8 @@ public final class MathOracle {
                             false,
                             false,
                             collidable,
-                            sameVehicle);
+                            sameVehicle,
+                            null);
                         entityStorage.addEntity(entity);
                         entitiesById.put(entityId, entity);
                         entityTypesById.put(entityId, typeId);
@@ -3404,7 +3411,8 @@ public final class MathOracle {
                                     false,
                                     false,
                                     collidable,
-                                    sameVehicle);
+                                    sameVehicle,
+                                    null);
                                 entityStorage.addEntity(entity);
                                 entitiesById.put(entityId, entity);
                                 entityTypesById.put(entityId, typeId);
@@ -4171,7 +4179,8 @@ public final class MathOracle {
             boolean onClimbable,
             boolean flying,
             boolean collidable,
-            boolean sameVehicle
+            boolean sameVehicle,
+            JsonObject climbableContext
         ) {
             var entityType = BuiltInRegistries.ENTITY_TYPE.byId(typeId);
             if (entityType == null) {
@@ -4184,7 +4193,8 @@ public final class MathOracle {
                     -> MinecartCollisionFixtureEntity.create(boundingBox, position);
                 case 112 -> ShulkerCollisionFixtureEntity.create(boundingBox, sameVehicle, position);
                 case 156 -> PlayerCollisionFixtureEntity.create(
-                    boundingBox, position, spectator, alive, onClimbable, flying);
+                    boundingBox, position, spectator, alive, onClimbable, flying,
+                    climbableContext);
                 default -> create(boundingBox, spectator, collidable, sameVehicle, position, false);
             };
             indexEntity(entity, entityId, position);
@@ -4556,22 +4566,33 @@ public final class MathOracle {
 
     private static final class PlayerCollisionFixtureEntity
         extends net.minecraft.server.level.ServerPlayer {
+        private static final net.minecraft.server.level.ServerLevel CLIMBABLE_LEVEL =
+            ClimbableClientLevelFixture.createClientLevel();
         private boolean spectator;
         private boolean alive;
         private boolean onClimbable;
         private boolean flying;
+        private boolean useClimbableContext;
+        private BlockState inBlockState;
 
         private PlayerCollisionFixtureEntity() {
             super(null, null, null, null);
         }
 
         private static PlayerCollisionFixtureEntity create(AABB boundingBox, Vec3 position) {
-            return create(boundingBox, position, false, true, false, false);
+            return create(boundingBox, position, false, true, false, false, null);
         }
 
         private static PlayerCollisionFixtureEntity create(
             AABB boundingBox, Vec3 position, boolean spectator, boolean alive,
             boolean onClimbable, boolean flying
+        ) {
+            return create(boundingBox, position, spectator, alive, onClimbable, flying, null);
+        }
+
+        private static PlayerCollisionFixtureEntity create(
+            AABB boundingBox, Vec3 position, boolean spectator, boolean alive,
+            boolean onClimbable, boolean flying, JsonObject climbableContext
         ) {
             try {
                 Unsafe unsafe = unsafeInstance();
@@ -4582,13 +4603,43 @@ public final class MathOracle {
                 entity.alive = alive;
                 entity.onClimbable = onClimbable;
                 entity.flying = flying;
+                entity.useClimbableContext = climbableContext != null;
                 entity.setBoundingBox(boundingBox);
                 var field = Entity.class.getDeclaredField("position");
                 unsafe.putObject(entity, unsafe.objectFieldOffset(field), position);
+                if (climbableContext != null) {
+                    entity.inBlockState = createClimbableBlockState(climbableContext);
+                    var abilitiesField = net.minecraft.world.entity.player.Player.class
+                        .getDeclaredField("abilities");
+                    var abilities = new net.minecraft.world.entity.player.Abilities();
+                    abilities.flying = flying;
+                    unsafe.putObject(entity, unsafe.objectFieldOffset(abilitiesField), abilities);
+                }
                 return entity;
             } catch (ReflectiveOperationException error) {
                 throw new IllegalStateException("Unable to allocate player collision fixture entity", error);
             }
+        }
+
+        private static BlockState createClimbableBlockState(JsonObject context) {
+            if (!context.get("kind").getAsString().equals("trapdoor_ladder")) {
+                throw new IllegalArgumentException("Unknown climbable context kind");
+            }
+            boolean open = context.has("trapdoor_open")
+                && context.get("trapdoor_open").getAsBoolean();
+            Direction trapdoorFacing = Direction.valueOf(
+                context.get("trapdoor_facing").getAsString().toUpperCase(Locale.ROOT));
+            Direction ladderFacing = Direction.valueOf(
+                context.get("ladder_facing").getAsString().toUpperCase(Locale.ROOT));
+            boolean belowIsLadder = !context.has("below_is_ladder")
+                || context.get("below_is_ladder").getAsBoolean();
+            BlockState belowState = belowIsLadder
+                ? Blocks.LADDER.defaultBlockState().setValue(LadderBlock.FACING, ladderFacing)
+                : Blocks.AIR.defaultBlockState();
+            ClimbableClientLevelFixture.setBelowState(belowState);
+            return Blocks.OAK_TRAPDOOR.defaultBlockState()
+                .setValue(TrapDoorBlock.OPEN, open)
+                .setValue(TrapDoorBlock.FACING, trapdoorFacing);
         }
 
         @Override
@@ -4608,7 +4659,26 @@ public final class MathOracle {
 
         @Override
         public boolean onClimbable() {
-            return this.flying ? false : this.onClimbable;
+            return this.useClimbableContext
+                ? super.onClimbable()
+                : this.flying ? false : this.onClimbable;
+        }
+
+        @Override
+        public BlockState getInBlockState() {
+            return this.useClimbableContext
+                ? this.inBlockState
+                : Blocks.AIR.defaultBlockState();
+        }
+
+        @Override
+        public boolean isFallFlying() {
+            return false;
+        }
+
+        @Override
+        public net.minecraft.server.level.ServerLevel level() {
+            return CLIMBABLE_LEVEL;
         }
 
         @Override
@@ -4619,6 +4689,35 @@ public final class MathOracle {
         @Override
         public net.minecraft.world.item.ItemStack getMainHandItem() {
             return net.minecraft.world.item.ItemStack.EMPTY;
+        }
+    }
+
+    private static final class ClimbableClientLevelFixture
+        extends net.minecraft.server.level.ServerLevel {
+        private static BlockState belowState;
+
+        private ClimbableClientLevelFixture() {
+            super(null, null, null, null, null, null, false, 0L, null, false);
+        }
+
+        private static net.minecraft.server.level.ServerLevel createClientLevel() {
+            try {
+                return (net.minecraft.server.level.ServerLevel)unsafeInstance()
+                    .allocateInstance(ClimbableClientLevelFixture.class);
+            } catch (InstantiationException error) {
+                throw new IllegalStateException("Unable to allocate climbable level fixture", error);
+            }
+        }
+
+        private static void setBelowState(BlockState state) {
+            belowState = state;
+        }
+
+        @Override
+        public BlockState getBlockState(BlockPos pos) {
+            return pos.getY() == 0 && belowState != null
+                ? belowState
+                : Blocks.AIR.defaultBlockState();
         }
     }
 

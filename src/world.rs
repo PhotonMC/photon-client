@@ -3688,6 +3688,22 @@ impl ClientWorld {
         true
     }
 
+    /// Apply the trapdoor and ladder block context used by LivingEntity.onClimbable.
+    pub fn apply_entity_living_climbable_trapdoor_state(
+        &mut self,
+        entity_id: i32,
+        trapdoor_open: bool,
+        trapdoor_facing: &str,
+        below_is_ladder: bool,
+        ladder_facing: &str,
+    ) -> bool {
+        let Some(entity) = self.entities.get_mut(&entity_id) else {
+            return false;
+        };
+        entity.on_climbable = trapdoor_open && below_is_ladder && trapdoor_facing == ladder_facing;
+        true
+    }
+
     /// Apply the Player ability state used by Java's `Player.onClimbable` gate.
     pub fn apply_entity_player_flying_state(&mut self, entity_id: i32, flying: bool) -> bool {
         let Some(entity) = self.entities.get_mut(&entity_id) else {
@@ -6602,6 +6618,43 @@ mod tests {
         assert!(world.apply_entity_player_flying_state(8, true));
         assert!(!world.no_entity_collision_for_entity(Some(7), test_area));
         assert!(!world.apply_entity_player_flying_state(7, true));
+    }
+
+    #[test]
+    fn indexed_player_collision_respects_trapdoor_ladder_context() {
+        let mut world = ClientWorld::default();
+        for (entity_id, type_id) in [(7, 0), (8, VANILLA_PLAYER_ENTITY_TYPE_ID)] {
+            assert!(world.apply_entity(EntityInput {
+                entity_id,
+                uuid: Uuid::new(entity_id as u64, type_id as u64),
+                type_id,
+                x: 0.5,
+                y: 1.0,
+                z: 0.5,
+                movement: (0.0, 0.0, 0.0),
+                rotation: (0.0, 0.0, 0.0),
+                data: 0,
+            }));
+        }
+        let test_area = Aabb::new(0.0, 0.0, 0.0, 1.0, 3.0, 1.0);
+
+        assert!(world.apply_entity_living_collision_state(8, true, false, false));
+        assert!(
+            world.apply_entity_living_climbable_trapdoor_state(8, true, "north", true, "north")
+        );
+        assert!(world.no_entity_collision_for_entity(Some(7), test_area));
+        assert!(
+            world.apply_entity_living_climbable_trapdoor_state(8, false, "north", true, "north")
+        );
+        assert!(!world.no_entity_collision_for_entity(Some(7), test_area));
+        assert!(
+            world.apply_entity_living_climbable_trapdoor_state(8, true, "north", true, "south")
+        );
+        assert!(!world.no_entity_collision_for_entity(Some(7), test_area));
+        assert!(
+            world.apply_entity_living_climbable_trapdoor_state(8, true, "north", false, "north")
+        );
+        assert!(!world.no_entity_collision_for_entity(Some(7), test_area));
     }
 
     #[test]
