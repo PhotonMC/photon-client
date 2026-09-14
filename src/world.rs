@@ -1878,6 +1878,7 @@ pub struct ClientWorld {
     chunks: BTreeMap<(i32, i32), ClientChunk>,
     pending_light_updates: VecDeque<PendingLightUpdate>,
     entities: BTreeMap<i32, ClientEntity>,
+    entity_sections: BTreeMap<(i32, i32, i32), BTreeSet<i32>>,
     local_player: Option<ClientPlayerState>,
     world_border: ClientWorldBorder,
     game_time: u64,
@@ -1906,6 +1907,7 @@ impl ClientWorld {
             chunks: BTreeMap::new(),
             pending_light_updates: VecDeque::new(),
             entities: BTreeMap::new(),
+            entity_sections: BTreeMap::new(),
             local_player: None,
             world_border: ClientWorldBorder::default(),
             game_time: 0,
@@ -2530,6 +2532,7 @@ impl ClientWorld {
             vehicle_position.1 + ride_height - passenger_vehicle_attachment_y,
             vehicle_position.2 + rotated_z,
         );
+        let previous_entity_position = self.entities.get(&passenger_id).map(ClientEntity::position);
         if let Some(passenger) = self.entities.get_mut(&passenger_id) {
             passenger.set_position(target_position);
         } else if let Some(player) = self
@@ -2538,6 +2541,9 @@ impl ClientWorld {
             .filter(|player| player.id == passenger_id)
         {
             player.set_position(target_position);
+        }
+        if let Some(previous_position) = previous_entity_position {
+            self.update_entity_section(passenger_id, previous_position, target_position);
         }
         self.clamp_entity_passenger_rotation(vehicle_id, passenger_id);
     }
@@ -2679,50 +2685,63 @@ impl ClientWorld {
                 })
             })
             .flatten();
-        let Some(entity) = self.entities.get_mut(&entity_id) else {
+        let Some(previous_position) = self.entities.get(&entity_id).map(ClientEntity::position)
+        else {
             return;
         };
-        entity.capture_old_transform();
-        entity.tick_count = entity.tick_count.wrapping_add(1);
-        if entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID {
-            entity.tick_position_interpolation();
+        {
+            let entity = self
+                .entities
+                .get_mut(&entity_id)
+                .expect("entity position was checked above");
+            entity.capture_old_transform();
+            entity.tick_count = entity.tick_count.wrapping_add(1);
+            if entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID {
+                entity.tick_position_interpolation();
+            }
+            entity.tick_head_rotation();
+            if entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID {
+                entity.tick_motion_interpolation();
+            }
+            if boat_is_non_authoritative {
+                entity.motion_x_bits = 0.0_f64.to_bits();
+                entity.motion_y_bits = 0.0_f64.to_bits();
+                entity.motion_z_bits = 0.0_f64.to_bits();
+            }
+            if can_tick_snowball {
+                entity.tick_snowball();
+            }
+            if can_tick_arrow {
+                entity.tick_arrow();
+            }
+            if is_experience_orb {
+                entity.tick_experience_orb(experience_orb_path_is_open);
+            }
+            if can_tick_primed_tnt {
+                entity.tick_primed_tnt();
+            }
+            if can_tick_falling_block {
+                entity.tick_falling_block();
+            }
+            if can_tick_firework {
+                entity.tick_firework();
+            }
+            if boat_in_air {
+                entity.tick_boat_float_in_air();
+            }
+            if let Some((input, has_passengers)) = boat_control {
+                entity.tick_boat_control(input, has_passengers);
+            }
+            if boat_in_air {
+                entity.move_by_motion();
+            }
         }
-        entity.tick_head_rotation();
-        if entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID {
-            entity.tick_motion_interpolation();
-        }
-        if boat_is_non_authoritative {
-            entity.motion_x_bits = 0.0_f64.to_bits();
-            entity.motion_y_bits = 0.0_f64.to_bits();
-            entity.motion_z_bits = 0.0_f64.to_bits();
-        }
-        if can_tick_snowball {
-            entity.tick_snowball();
-        }
-        if can_tick_arrow {
-            entity.tick_arrow();
-        }
-        if is_experience_orb {
-            entity.tick_experience_orb(experience_orb_path_is_open);
-        }
-        if can_tick_primed_tnt {
-            entity.tick_primed_tnt();
-        }
-        if can_tick_falling_block {
-            entity.tick_falling_block();
-        }
-        if can_tick_firework {
-            entity.tick_firework();
-        }
-        if boat_in_air {
-            entity.tick_boat_float_in_air();
-        }
-        if let Some((input, has_passengers)) = boat_control {
-            entity.tick_boat_control(input, has_passengers);
-        }
-        if boat_in_air {
-            entity.move_by_motion();
-        }
+        let position = self
+            .entities
+            .get(&entity_id)
+            .expect("entity remains after tick")
+            .position();
+        self.update_entity_section(entity_id, previous_position, position);
     }
 
     fn boat_is_in_air(&self, entity: &ClientEntity) -> bool {
@@ -2995,6 +3014,11 @@ impl ClientWorld {
         self.entities.len()
     }
 
+    /// Return the number of non-empty entity sections in the client index.
+    pub fn indexed_entity_section_count(&self) -> usize {
+        self.entity_sections.len()
+    }
+
     pub fn entity_at(&self, entity_id: i32) -> Option<&ClientEntity> {
         self.entities.get(&entity_id)
     }
@@ -3010,12 +3034,29 @@ impl ClientWorld {
     }
 
     pub fn remove_entity(&mut self, entity_id: i32) -> bool {
-        if !self.entities.contains_key(&entity_id) {
+        let Some(position) = self.entities.get(&entity_id).map(ClientEntity::position) else {
             return false;
-        }
+        };
         self.detach_entity_from_vehicle(entity_id);
         self.eject_entity_passengers(entity_id);
+        self.remove_entity_from_section(entity_id, position);
         self.entities.remove(&entity_id).is_some()
+    }
+
+    /// Update one live entity position and its persistent section membership.
+    pub fn update_entity_position(&mut self, entity_id: i32, position: (f64, f64, f64)) -> bool {
+        let Some(previous_position) = self.entities.get(&entity_id).map(ClientEntity::position)
+        else {
+            return false;
+        };
+        let (chunk_x, chunk_z) = entity_chunk_key(position);
+        let ticking = self.contains_chunk(chunk_x, chunk_z);
+        if let Some(entity) = self.entities.get_mut(&entity_id) {
+            entity.set_position(position);
+            entity.ticking = entity.always_ticking || ticking;
+        }
+        self.update_entity_section(entity_id, previous_position, position);
+        true
     }
 
     pub(crate) fn remove_entities(&mut self, entity_ids: &[i32]) -> usize {
@@ -3275,7 +3316,7 @@ impl ClientWorld {
         let source_entity_id = source_entity_id.filter(|entity_id| self.entity_exists(*entity_id));
         let source_type_id = source_entity_id
             .and_then(|entity_id| self.entities.get(&entity_id).map(|entity| entity.type_id));
-        let candidates = self.indexed_entity_collision_candidates(source_entity_id);
+        let candidates = self.indexed_entity_collision_candidates(source_entity_id, bounding_box);
         collect_entity_collision_shapes_for_source(
             source_type_id,
             source_entity_id.is_some(),
@@ -3301,12 +3342,66 @@ impl ClientWorld {
             && self.no_border_collision(source, bounding_box)
     }
 
+    fn add_entity_to_section(&mut self, entity_id: i32, position: (f64, f64, f64)) {
+        self.entity_sections
+            .entry(entity_section_key(position))
+            .or_default()
+            .insert(entity_id);
+    }
+
+    fn remove_entity_from_section(&mut self, entity_id: i32, position: (f64, f64, f64)) {
+        let key = entity_section_key(position);
+        let Some(entity_ids) = self.entity_sections.get_mut(&key) else {
+            return;
+        };
+        entity_ids.remove(&entity_id);
+        if entity_ids.is_empty() {
+            self.entity_sections.remove(&key);
+        }
+    }
+
+    fn update_entity_section(
+        &mut self,
+        entity_id: i32,
+        previous_position: (f64, f64, f64),
+        position: (f64, f64, f64),
+    ) {
+        let previous_key = entity_section_key(previous_position);
+        let key = entity_section_key(position);
+        if previous_key != key {
+            self.remove_entity_from_section(entity_id, previous_position);
+            self.entity_sections
+                .entry(key)
+                .or_default()
+                .insert(entity_id);
+        }
+    }
+
     fn indexed_entity_collision_candidates(
         &self,
         source_entity_id: Option<i32>,
+        bounding_box: Aabb,
     ) -> Vec<ClientEntityCollisionCandidate> {
-        self.entities
-            .values()
+        let mut entity_ids = BTreeSet::new();
+        let x_min = entity_section_coord(bounding_box.min_x - 2.0);
+        let y_min = entity_section_coord(bounding_box.min_y - 4.0);
+        let z_min = entity_section_coord(bounding_box.min_z - 2.0);
+        let x_max = entity_section_coord(bounding_box.max_x + 2.0);
+        let y_max = entity_section_coord(bounding_box.max_y);
+        let z_max = entity_section_coord(bounding_box.max_z + 2.0);
+        for section_x in x_min..=x_max {
+            for section_y in y_min..=y_max {
+                for section_z in z_min..=z_max {
+                    if let Some(ids) = self.entity_sections.get(&(section_x, section_y, section_z))
+                    {
+                        entity_ids.extend(ids.iter().copied());
+                    }
+                }
+            }
+        }
+        entity_ids
+            .into_iter()
+            .filter_map(|entity_id| self.entities.get(&entity_id))
             .filter_map(|entity| {
                 let same_vehicle = source_entity_id.is_some_and(|source_id| {
                     source_id != entity.id()
@@ -3506,6 +3601,7 @@ impl ClientWorld {
                 passenger_ids: Vec::new(),
             },
         );
+        self.add_entity_to_section(entity.entity_id, (entity.x, entity.y, entity.z));
         if let Some(player) = self
             .local_player
             .as_mut()
@@ -3986,10 +4082,10 @@ impl ClientWorld {
     }
 
     pub(crate) fn apply_entity_move(&mut self, input: EntityMoveInput) -> bool {
-        let Some(current) = self
+        let Some((previous_position, current)) = self
             .entities
             .get(&input.entity_id)
-            .map(|entity| entity.interpolation_position())
+            .map(|entity| (entity.position(), entity.interpolation_position()))
         else {
             return false;
         };
@@ -4004,34 +4100,40 @@ impl ClientWorld {
             let (chunk_x, chunk_z) = entity_chunk_key(position);
             self.contains_chunk(chunk_x, chunk_z)
         });
-        let entity = self
-            .entities
-            .get_mut(&input.entity_id)
-            .expect("entity checked above");
-        if entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID {
-            let target_position = new_position.unwrap_or(current);
-            let (current_y_rot, current_x_rot) = entity.interpolation_rotation();
-            let target_y_rot = input.y_rot.unwrap_or(current_y_rot);
-            let target_x_rot = input.x_rot.unwrap_or(current_x_rot);
-            entity.interpolate_to(target_position, target_y_rot, target_x_rot);
-        } else {
-            if input.has_position {
-                let (x, y, z) = new_position.expect("position was requested");
-                entity.x_bits = x.to_bits();
-                entity.y_bits = y.to_bits();
-                entity.z_bits = z.to_bits();
-                entity.ticking = entity.always_ticking || ticking.expect("position ticking state");
+        let position;
+        {
+            let entity = self
+                .entities
+                .get_mut(&input.entity_id)
+                .expect("entity checked above");
+            if entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID {
+                let target_position = new_position.unwrap_or(current);
+                let (current_y_rot, current_x_rot) = entity.interpolation_rotation();
+                let target_y_rot = input.y_rot.unwrap_or(current_y_rot);
+                let target_x_rot = input.x_rot.unwrap_or(current_x_rot);
+                entity.interpolate_to(target_position, target_y_rot, target_x_rot);
+            } else {
+                if input.has_position {
+                    let (x, y, z) = new_position.expect("position was requested");
+                    entity.x_bits = x.to_bits();
+                    entity.y_bits = y.to_bits();
+                    entity.z_bits = z.to_bits();
+                    entity.ticking =
+                        entity.always_ticking || ticking.expect("position ticking state");
+                }
+                if let Some(y_rot) = input.y_rot {
+                    entity.y_rot_bits = (y_rot % 360.0).to_bits();
+                }
+                if let Some(x_rot) = input.x_rot {
+                    entity.x_rot_bits = (x_rot % 360.0).clamp(-90.0, 90.0).to_bits();
+                }
             }
-            if let Some(y_rot) = input.y_rot {
-                entity.y_rot_bits = (y_rot % 360.0).to_bits();
+            if entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID {
+                entity.ticking = true;
             }
-            if let Some(x_rot) = input.x_rot {
-                entity.x_rot_bits = (x_rot % 360.0).clamp(-90.0, 90.0).to_bits();
-            }
+            position = entity.position();
         }
-        if entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID {
-            entity.ticking = true;
-        }
+        self.update_entity_section(input.entity_id, previous_position, position);
         true
     }
 
@@ -4077,38 +4179,49 @@ impl ClientWorld {
         target_rotation: Option<(f32, f32)>,
         mode: EntityPositionUpdateMode,
     ) -> bool {
-        let Some(entity) = self.entities.get_mut(&entity_id) else {
+        let Some(previous_position) = self.entities.get(&entity_id).map(ClientEntity::position)
+        else {
             return false;
         };
-        if entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID {
-            let rotation = target_rotation.unwrap_or_else(|| entity.interpolation_rotation());
-            let distance_position = match mode {
-                EntityPositionUpdateMode::PositionSync => entity.position(),
-                EntityPositionUpdateMode::Teleport => current_position,
-            };
-            let delta_x = target_position.0 - distance_position.0;
-            let delta_y = target_position.1 - distance_position.1;
-            let delta_z = target_position.2 - distance_position.2;
-            let can_interpolate = match mode {
-                EntityPositionUpdateMode::PositionSync => entity.ticking,
-                EntityPositionUpdateMode::Teleport => true,
-            } && delta_x * delta_x + delta_y * delta_y + delta_z * delta_z
-                <= ENTITY_INTERPOLATION_DISTANCE_SQR;
-            if can_interpolate {
-                entity.interpolate_to(target_position, rotation.0, rotation.1);
+        let position;
+        {
+            let entity = self
+                .entities
+                .get_mut(&entity_id)
+                .expect("entity position was checked above");
+            if entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID {
+                let rotation = target_rotation.unwrap_or_else(|| entity.interpolation_rotation());
+                let distance_position = match mode {
+                    EntityPositionUpdateMode::PositionSync => entity.position(),
+                    EntityPositionUpdateMode::Teleport => current_position,
+                };
+                let delta_x = target_position.0 - distance_position.0;
+                let delta_y = target_position.1 - distance_position.1;
+                let delta_z = target_position.2 - distance_position.2;
+                let can_interpolate =
+                    match mode {
+                        EntityPositionUpdateMode::PositionSync => entity.ticking,
+                        EntityPositionUpdateMode::Teleport => true,
+                    } && delta_x * delta_x + delta_y * delta_y + delta_z * delta_z
+                        <= ENTITY_INTERPOLATION_DISTANCE_SQR;
+                if can_interpolate {
+                    entity.interpolate_to(target_position, rotation.0, rotation.1);
+                } else {
+                    entity.snap_to(target_position, rotation.0, rotation.1);
+                }
             } else {
-                entity.snap_to(target_position, rotation.0, rotation.1);
+                entity.x_bits = target_position.0.to_bits();
+                entity.y_bits = target_position.1.to_bits();
+                entity.z_bits = target_position.2.to_bits();
+                if let Some((y_rot, x_rot)) = target_rotation {
+                    entity.y_rot_bits = (y_rot % 360.0).to_bits();
+                    entity.x_rot_bits = (x_rot % 360.0).clamp(-90.0, 90.0).to_bits();
+                }
             }
-        } else {
-            entity.x_bits = target_position.0.to_bits();
-            entity.y_bits = target_position.1.to_bits();
-            entity.z_bits = target_position.2.to_bits();
-            if let Some((y_rot, x_rot)) = target_rotation {
-                entity.y_rot_bits = (y_rot % 360.0).to_bits();
-                entity.x_rot_bits = (x_rot % 360.0).clamp(-90.0, 90.0).to_bits();
-            }
+            entity.ticking = entity.always_ticking || ticking;
+            position = entity.position();
         }
-        entity.ticking = entity.always_ticking || ticking;
+        self.update_entity_section(entity_id, previous_position, position);
         true
     }
 
@@ -5898,6 +6011,18 @@ fn entity_chunk_key(position: (f64, f64, f64)) -> (i32, i32) {
         (position.0.floor() as i32).div_euclid(16),
         (position.2.floor() as i32).div_euclid(16),
     )
+}
+
+fn entity_section_key(position: (f64, f64, f64)) -> (i32, i32, i32) {
+    (
+        entity_section_coord(position.0),
+        entity_section_coord(position.1),
+        entity_section_coord(position.2),
+    )
+}
+
+fn entity_section_coord(position: f64) -> i32 {
+    (position.floor() as i32).div_euclid(16)
 }
 
 fn player_inventory_menu_slot(slot: i32) -> Option<i16> {

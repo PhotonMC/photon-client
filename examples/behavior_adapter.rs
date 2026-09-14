@@ -4582,6 +4582,161 @@ fn shape_result(request: &Value) -> Result<Value, String> {
                 .collect::<Result<Vec<_>, String>>()?;
             Ok(json!({"states": states}))
         }
+        "client_world_entity_section_index" => {
+            let inputs = request
+                .get("inputs")
+                .ok_or("inputs must be an array")?
+                .as_array()
+                .ok_or("inputs must be an array")?;
+            let tracks = inputs
+                .iter()
+                .map(|entry| {
+                    let input = entry
+                        .as_object()
+                        .ok_or("entity section input must be an object")?;
+                    let (mut world, shapes_by_state) = block_collision_fixture(entry)?;
+                    for entity_value in input
+                        .get("entities")
+                        .ok_or("entities must be an array")?
+                        .as_array()
+                        .ok_or("entities must be an array")?
+                    {
+                        let entity = entity_value
+                            .as_object()
+                            .ok_or("indexed entity must be an object")?;
+                        let position =
+                            f64_vec3(entity.get("position").ok_or("position must be an object")?)?;
+                        world.apply_entity(EntityInput {
+                            entity_id: i32_field(entity_value, "entity_id")?,
+                            uuid: Uuid::new(
+                                0,
+                                u64::from(i32_field(entity_value, "entity_id")? as u32),
+                            ),
+                            type_id: i32_field(entity_value, "type_id")?,
+                            x: position.x,
+                            y: position.y,
+                            z: position.z,
+                            movement: (0.0, 0.0, 0.0),
+                            rotation: (0.0, 0.0, 0.0),
+                            data: 0,
+                        });
+                    }
+                    let source_entity_id = input
+                        .get("source_entity_id")
+                        .filter(|value| !value.is_null())
+                        .map(|value| {
+                            value
+                                .as_i64()
+                                .ok_or_else(|| "source_entity_id must be an integer".to_owned())
+                                .and_then(|value| {
+                                    value
+                                        .try_into()
+                                        .map_err(|_| "source_entity_id must fit in i32".to_owned())
+                                })
+                        })
+                        .transpose()?;
+                    let border = input.get("border").ok_or("border must be an object")?;
+                    let size = f64_field(border, "size")?;
+                    world.apply_world_border_initialize(ClientWorldBorderInitialization {
+                        center_x: f64_field(border, "center_x")?,
+                        center_z: f64_field(border, "center_z")?,
+                        old_size: size,
+                        new_size: size,
+                        lerp_time: 0,
+                        absolute_max_size: i32_field(border, "absolute_max_size")?,
+                        warning_blocks: 5,
+                        warning_time: 15,
+                    });
+                    let mut states = Vec::new();
+                    for event_value in input
+                        .get("events")
+                        .ok_or("events must be an array")?
+                        .as_array()
+                        .ok_or("events must be an array")?
+                    {
+                        let event = event_value
+                            .as_object()
+                            .ok_or("entity section event must be an object")?;
+                        match event
+                            .get("op")
+                            .and_then(Value::as_str)
+                            .ok_or("entity section event op must be a string")?
+                        {
+                            "move" => {
+                                let position = f64_vec3(
+                                    event.get("position").ok_or("position must be an object")?,
+                                )?;
+                                let entity_id = i32_field(event_value, "entity_id")?;
+                                if !world.update_entity_position(
+                                    entity_id,
+                                    (position.x, position.y, position.z),
+                                ) {
+                                    return Err("cannot move missing entity".into());
+                                }
+                            }
+                            "remove" => {
+                                world.remove_entity(i32_field(event_value, "entity_id")?);
+                            }
+                            "add" => {
+                                let entity_value =
+                                    event.get("entity").ok_or("add entity must be an object")?;
+                                let entity = entity_value
+                                    .as_object()
+                                    .ok_or("add entity must be an object")?;
+                                let position = f64_vec3(
+                                    entity.get("position").ok_or("position must be an object")?,
+                                )?;
+                                let entity_id = i32_field(entity_value, "entity_id")?;
+                                world.apply_entity(EntityInput {
+                                    entity_id,
+                                    uuid: Uuid::new(0, u64::from(entity_id as u32)),
+                                    type_id: i32_field(entity_value, "type_id")?,
+                                    x: position.x,
+                                    y: position.y,
+                                    z: position.z,
+                                    movement: (0.0, 0.0, 0.0),
+                                    rotation: (0.0, 0.0, 0.0),
+                                    data: 0,
+                                });
+                            }
+                            "query" => {
+                                let test_area = aabb_box(
+                                    event
+                                        .get("test_area")
+                                        .ok_or("test_area must be an object")?,
+                                )?;
+                                states.push(json!({
+                                    "label": event
+                                        .get("label")
+                                        .and_then(Value::as_str)
+                                        .ok_or("label must be a string")?,
+                                    "entity_count": world.loaded_entity_count(),
+                                    "section_count": world.indexed_entity_section_count(),
+                                    "no_entity_collision": world.no_entity_collision_for_entity(
+                                        source_entity_id,
+                                        test_area,
+                                    ),
+                                    "no_collision": world.no_collision_for_entity(
+                                        source_entity_id,
+                                        test_area,
+                                        &shapes_by_state,
+                                    ),
+                                }));
+                            }
+                            _ => return Err("unknown entity section event".into()),
+                        }
+                    }
+                    Ok(json!({
+                        "label": input
+                            .get("label")
+                            .and_then(Value::as_str)
+                            .ok_or("label must be a string")?,
+                        "states": states,
+                    }))
+                })
+                .collect::<Result<Vec<_>, String>>()?;
+            Ok(json!({"tracks": tracks}))
+        }
         "client_world_registry_collision" => {
             let input = request
                 .as_object()

@@ -150,6 +150,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P08.bn-entity-primed-tnt-tick — server-conformance Primed TNT free-flight tick](client-world-entity-primed-tnt-tick-conformance.md)
 - [P08.e-entity-remove — server-conformance ClientWorld entity removal state](client-world-entity-remove-conformance.md)
 - [P08.e-entity-rotation — server-conformance ClientWorld entity rotation state](client-world-entity-rotation-conformance.md)
+- [P09.r — ClientWorld kalıcı entity section index güncellemeleri — client-parity birleşik kayıt](client-world-entity-section-index-conformance.md)
 - [P08.z — server-conformance Entity shared flags semantic state](client-world-entity-shared-flags-conformance.md)
 - [P08.ac — server-conformance Entity silent semantic state](client-world-entity-silent-conformance.md)
 - [P08.an — server-conformance Entity sleeping position semantic state](client-world-entity-sleeping-position-conformance.md)
