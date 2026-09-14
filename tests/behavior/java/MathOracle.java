@@ -3252,6 +3252,8 @@ public final class MathOracle {
                             && entityInput.get("spectator").getAsBoolean();
                         boolean alive = !entityInput.has("alive")
                             || entityInput.get("alive").getAsBoolean();
+                        boolean onClimbable = entityInput.has("on_climbable")
+                            && entityInput.get("on_climbable").getAsBoolean();
                         boolean collidable = entityInput.has("can_be_collided_with")
                             && entityInput.get("can_be_collided_with").getAsBoolean();
                         boolean sameVehicle = entityInput.has("same_vehicle")
@@ -3262,6 +3264,7 @@ public final class MathOracle {
                             position,
                             spectator,
                             alive,
+                            onClimbable,
                             collidable,
                             sameVehicle);
                         entityStorage.addEntity(entity);
@@ -3325,6 +3328,7 @@ public final class MathOracle {
                             position,
                             spectator,
                             alive,
+                            false,
                             collidable,
                             sameVehicle);
                         entityStorage.addEntity(entity);
@@ -3393,6 +3397,7 @@ public final class MathOracle {
                                     position,
                                     spectator,
                                     alive,
+                                    false,
                                     collidable,
                                     sameVehicle);
                                 entityStorage.addEntity(entity);
@@ -4158,6 +4163,7 @@ public final class MathOracle {
             Vec3 position,
             boolean spectator,
             boolean alive,
+            boolean onClimbable,
             boolean collidable,
             boolean sameVehicle
         ) {
@@ -4172,7 +4178,7 @@ public final class MathOracle {
                     -> MinecartCollisionFixtureEntity.create(boundingBox, position);
                 case 112 -> ShulkerCollisionFixtureEntity.create(boundingBox, sameVehicle, position);
                 case 156 -> PlayerCollisionFixtureEntity.create(
-                    boundingBox, position, spectator, alive);
+                    boundingBox, position, spectator, alive, onClimbable);
                 default -> create(boundingBox, spectator, collidable, sameVehicle, position, false);
             };
             indexEntity(entity, entityId, position);
@@ -4546,17 +4552,19 @@ public final class MathOracle {
         extends net.minecraft.server.level.ServerPlayer {
         private boolean spectator;
         private boolean alive;
+        private boolean onClimbable;
 
         private PlayerCollisionFixtureEntity() {
             super(null, null, null, null);
         }
 
         private static PlayerCollisionFixtureEntity create(AABB boundingBox, Vec3 position) {
-            return create(boundingBox, position, false, true);
+            return create(boundingBox, position, false, true, false);
         }
 
         private static PlayerCollisionFixtureEntity create(
-            AABB boundingBox, Vec3 position, boolean spectator, boolean alive
+            AABB boundingBox, Vec3 position, boolean spectator, boolean alive,
+            boolean onClimbable
         ) {
             try {
                 Unsafe unsafe = unsafeInstance();
@@ -4565,6 +4573,7 @@ public final class MathOracle {
                         PlayerCollisionFixtureEntity.class);
                 entity.spectator = spectator;
                 entity.alive = alive;
+                entity.onClimbable = onClimbable;
                 entity.setBoundingBox(boundingBox);
                 var field = Entity.class.getDeclaredField("position");
                 unsafe.putObject(entity, unsafe.objectFieldOffset(field), position);
@@ -4591,7 +4600,7 @@ public final class MathOracle {
 
         @Override
         public boolean onClimbable() {
-            return false;
+            return this.onClimbable;
         }
 
         @Override

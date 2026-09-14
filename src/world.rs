@@ -3624,6 +3624,7 @@ impl ClientWorld {
                 baby: false,
                 alive: true,
                 spectator: false,
+                on_climbable: false,
                 happy_ghast_still_timeout: false,
                 happy_ghast_is_vehicle: false,
                 ticks_frozen: 0,
@@ -3675,12 +3676,14 @@ impl ClientWorld {
         entity_id: i32,
         alive: bool,
         spectator: bool,
+        on_climbable: bool,
     ) -> bool {
         let Some(entity) = self.entities.get_mut(&entity_id) else {
             return false;
         };
         entity.alive = alive;
         entity.spectator = spectator;
+        entity.on_climbable = on_climbable;
         true
     }
 
@@ -4539,6 +4542,7 @@ pub struct ClientEntity {
     baby: bool,
     alive: bool,
     spectator: bool,
+    on_climbable: bool,
     happy_ghast_still_timeout: bool,
     happy_ghast_is_vehicle: bool,
     ticks_frozen: i32,
@@ -5160,6 +5164,7 @@ impl ClientEntity {
         let is_pushable = if is_vanilla_player_entity_type(self.type_id) {
             self.alive
                 && !self.spectator
+                && !self.on_climbable
                 && self
                     .health_bits
                     .is_none_or(|health| f32::from_bits(health) > 0.0)
@@ -6528,11 +6533,36 @@ mod tests {
         let test_area = Aabb::new(0.0, 0.0, 0.0, 1.0, 2.0, 1.0);
 
         assert!(!world.no_entity_collision_for_entity(Some(7), test_area));
-        assert!(world.apply_entity_living_collision_state(8, false, false));
+        assert!(world.apply_entity_living_collision_state(8, false, false, false));
         assert!(world.no_entity_collision_for_entity(Some(7), test_area));
-        assert!(world.apply_entity_living_collision_state(8, true, true));
+        assert!(world.apply_entity_living_collision_state(8, true, true, false));
         assert!(world.no_entity_collision_for_entity(Some(7), test_area));
-        assert!(!world.apply_entity_living_collision_state(999, true, false));
+        assert!(!world.apply_entity_living_collision_state(999, true, false, false));
+    }
+
+    #[test]
+    fn indexed_player_collision_respects_living_climbable_gate() {
+        let mut world = ClientWorld::default();
+        for (entity_id, type_id) in [(7, 0), (8, VANILLA_PLAYER_ENTITY_TYPE_ID)] {
+            assert!(world.apply_entity(EntityInput {
+                entity_id,
+                uuid: Uuid::new(entity_id as u64, type_id as u64),
+                type_id,
+                x: 0.5,
+                y: 0.0,
+                z: 0.5,
+                movement: (0.0, 0.0, 0.0),
+                rotation: (0.0, 0.0, 0.0),
+                data: 0,
+            }));
+        }
+        let test_area = Aabb::new(0.0, 0.0, 0.0, 1.0, 2.0, 1.0);
+
+        assert!(!world.no_entity_collision_for_entity(Some(7), test_area));
+        assert!(world.apply_entity_living_collision_state(8, true, false, true));
+        assert!(world.no_entity_collision_for_entity(Some(7), test_area));
+        assert!(world.apply_entity_living_collision_state(8, true, false, false));
+        assert!(!world.no_entity_collision_for_entity(Some(7), test_area));
     }
 
     #[test]

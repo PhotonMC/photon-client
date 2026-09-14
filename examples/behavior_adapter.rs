@@ -4542,6 +4542,10 @@ fn shape_result(request: &Value) -> Result<Value, String> {
                                 .get("spectator")
                                 .and_then(Value::as_bool)
                                 .unwrap_or(false),
+                            entity
+                                .get("on_climbable")
+                                .and_then(Value::as_bool)
+                                .unwrap_or(false),
                         );
                     }
                     let source_entity_id = input
