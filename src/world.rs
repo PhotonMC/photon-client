@@ -944,6 +944,22 @@ impl ClientEntityDimensions {
     }
 }
 
+/// Resolve Java `LivingEntity.getDimensions` from default dimensions and scales.
+pub fn living_entity_dimensions(
+    pose: ClientEntityPose,
+    default_dimensions: ClientEntityDimensions,
+    age_scale: f32,
+    entity_scale: f32,
+) -> ClientEntityDimensions {
+    if pose == ClientEntityPose::Sleeping {
+        ClientEntityDimensions::fixed(0.2, 0.2).with_eye_height(0.2)
+    } else {
+        default_dimensions
+            .scale(age_scale, age_scale)
+            .scale(entity_scale, entity_scale)
+    }
+}
+
 /// The four movement flags copied by Java's `AbstractBoat.setInput`.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct BoatInput {
@@ -6875,7 +6891,7 @@ mod tests {
         VANILLA_PRIMED_TNT_GRAVITY, VANILLA_SNOWBALL_ENTITY_TYPE_ID, apply_entity_movement_state,
         collect_candidate_step_up_heights, collect_entity_collision_shapes,
         collide_entity_movement, collide_entity_movement_state, is_minor_horizontal_collision,
-        menu_top_slot_count, select_step_up_movement,
+        living_entity_dimensions, menu_top_slot_count, select_step_up_movement,
     };
     use crate::aabb::Aabb;
     use crate::binary::{BitSet, Uuid};
@@ -7556,6 +7572,29 @@ mod tests {
         let unit = ClientEntityDimensions::scalable(1.0, 1.0);
         assert!(world.entity_fits_in_blocks(Vec3::new(1.5, 0.25, 0.5), unit, &shapes));
         assert!(!world.entity_fits_in_blocks(Vec3::new(1.4999997, 0.25, 0.5), unit, &shapes));
+    }
+
+    #[test]
+    fn living_entity_dimensions_follow_sleep_and_scale_branches() {
+        let default_dimensions = ClientEntityDimensions::scalable(0.6, 1.8).with_eye_height(1.62);
+        let regular =
+            living_entity_dimensions(ClientEntityPose::Standing, default_dimensions, 0.5, 1.5);
+        assert_eq!(regular.width().to_bits(), 0x3ee6_6667);
+        assert_eq!(regular.height().to_bits(), 0x3fac_cccc);
+        assert_eq!(regular.eye_height().to_bits(), 0x3f9b_851f);
+
+        let sleeping =
+            living_entity_dimensions(ClientEntityPose::Sleeping, default_dimensions, 0.5, 2.0);
+        assert_eq!(
+            sleeping,
+            ClientEntityDimensions::fixed(0.2, 0.2).with_eye_height(0.2)
+        );
+
+        let fixed = ClientEntityDimensions::fixed(1.0, 2.0).with_eye_height(1.7);
+        assert_eq!(
+            living_entity_dimensions(ClientEntityPose::Crouching, fixed, 0.5, 2.0),
+            fixed
+        );
     }
 
     #[test]

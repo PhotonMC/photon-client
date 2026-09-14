@@ -66,7 +66,8 @@ use voxel_client::world::{
     ClientWorldBorderStatus, ClientWorldCollisionSource, DimensionBounds, EntityInput,
     SectionInput, apply_entity_movement_state, collect_candidate_step_up_heights,
     collect_entity_collision_shapes, collide_entity_movement, collide_entity_movement_state,
-    is_minor_horizontal_collision, select_step_up_movement, world_border_collision_shape,
+    is_minor_horizontal_collision, living_entity_dimensions, select_step_up_movement,
+    world_border_collision_shape,
 };
 
 fn string<'a>(request: &'a Value, name: &str) -> Result<&'a str, String> {
@@ -5504,6 +5505,65 @@ fn shape_result(request: &Value) -> Result<Value, String> {
                 "query": aabb_snapshot(query_box),
                 "fits": world.entity_fits_in_blocks(position, dimensions, &shapes_by_state),
             }))
+        }
+        "living_entity_dimensions_scale" => {
+            let inputs = request
+                .get("inputs")
+                .ok_or("inputs must be an array")?
+                .as_array()
+                .ok_or("inputs must be an array")?;
+            let states = inputs
+                .iter()
+                .map(|value| {
+                    let input = value
+                        .as_object()
+                        .ok_or("living dimensions input must be an object")?;
+                    let pose_id = input
+                        .get("pose_id")
+                        .and_then(Value::as_i64)
+                        .ok_or("pose_id must be an integer")?
+                        .try_into()
+                        .map_err(|_| "pose_id must fit in i32".to_owned())?;
+                    let pose = ClientEntityPose::from_id(pose_id);
+                    let dimension_input = input
+                        .get("default_dimensions")
+                        .ok_or("default_dimensions must be an object")?;
+                    let width = f32_field(dimension_input, "width")?;
+                    let height = f32_field(dimension_input, "height")?;
+                    let fixed = dimension_input
+                        .get("fixed")
+                        .and_then(Value::as_bool)
+                        .unwrap_or(false);
+                    let mut default_dimensions = if fixed {
+                        ClientEntityDimensions::fixed(width, height)
+                    } else {
+                        ClientEntityDimensions::scalable(width, height)
+                    };
+                    if dimension_input.get("eye_height").is_some() {
+                        default_dimensions = default_dimensions
+                            .with_eye_height(f32_field(dimension_input, "eye_height")?);
+                    }
+                    let dimensions = living_entity_dimensions(
+                        pose,
+                        default_dimensions,
+                        f32_field(value, "age_scale")?,
+                        f32_field(value, "entity_scale")?,
+                    );
+                    let position =
+                        f64_vec3(input.get("position").ok_or("position must be an object")?)?;
+                    Ok(json!({
+                        "label": input
+                            .get("label")
+                            .and_then(Value::as_str)
+                            .ok_or("label must be a string")?,
+                        "requested_pose_id": pose_id,
+                        "resolved_pose_id": pose.id(),
+                        "dimensions": entity_dimensions_snapshot(dimensions),
+                        "box": aabb_snapshot(dimensions.make_bounding_box(position)),
+                    }))
+                })
+                .collect::<Result<Vec<_>, String>>()?;
+            Ok(json!({"states": states}))
         }
         "player_pose_dimensions" => {
             let position = f64_vec3(

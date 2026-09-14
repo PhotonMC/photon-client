@@ -3762,6 +3762,38 @@ public final class MathOracle {
                 result.add("box", snapshot(boundingBox));
                 result.add("query", snapshot(query));
                 result.addProperty("fits", collisionGetter.noCollision(null, query));
+            } else if (kind.equals("living_entity_dimensions_scale")) {
+                var states = new JsonArray();
+                for (var entry : request.getAsJsonArray("inputs")) {
+                    JsonObject input = entry.getAsJsonObject();
+                    int requestedPoseId = input.get("pose_id").getAsInt();
+                    Pose pose = Pose.BY_ID.apply(requestedPoseId);
+                    JsonObject dimensionInput = input.getAsJsonObject("default_dimensions");
+                    float width = Oracle.f32(dimensionInput, "width");
+                    float height = Oracle.f32(dimensionInput, "height");
+                    boolean fixed = dimensionInput.has("fixed") && dimensionInput.get("fixed").getAsBoolean();
+                    EntityDimensions defaultDimensions = fixed
+                        ? EntityDimensions.fixed(width, height)
+                        : EntityDimensions.scalable(width, height);
+                    if (dimensionInput.has("eye_height")) {
+                        defaultDimensions = defaultDimensions.withEyeHeight(
+                            Oracle.f32(dimensionInput, "eye_height"));
+                    }
+                    float ageScale = Oracle.f32(input, "age_scale");
+                    float entityScale = Oracle.f32(input, "entity_scale");
+                    EntityDimensions dimensions = pose == Pose.SLEEPING
+                        ? EntityDimensions.fixed(0.2F, 0.2F).withEyeHeight(0.2F)
+                        : defaultDimensions.scale(ageScale).scale(entityScale);
+                    var state = new JsonObject();
+                    state.addProperty("label", input.get("label").getAsString());
+                    state.addProperty("requested_pose_id", requestedPoseId);
+                    state.addProperty("resolved_pose_id", pose.id());
+                    state.add("dimensions", snapshot(dimensions));
+                    state.add("box", snapshot(dimensions.makeBoundingBox(
+                        vec3(input.getAsJsonObject("position")))));
+                    states.add(state);
+                }
+                result.add("states", states);
             } else if (kind.equals("player_pose_dimensions")) {
                 var avatarDimensions = avatarPoseDimensions();
                 Vec3 position = vec3(request.getAsJsonObject("position"));

@@ -168,6 +168,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P09.u — ClientWorld LivingEntity onClimbable pushability gate — client-parity birleşik kayıt](client-world-living-climbable-conformance.md)
 - [P09.w — ClientWorld LivingEntity trapdoor/ladder onClimbable context — client-parity birleşik kayıt](client-world-living-climbable-context-conformance.md)
 - [P09.x — ClientWorld LivingEntity `BlockTags.CLIMBABLE` branch — client-parity birleşik kayıt](client-world-living-climbable-tag-conformance.md)
+- [P09.ae — LivingEntity dimensions scale composition — client-parity birleşik kayıt](client-world-living-dimensions-scale-conformance.md)
 - [P09.v — ClientWorld Player flying ability pushability gate — client-parity birleşik kayıt](client-world-living-flying-conformance.md)
 - [P09.y — ClientWorld LivingEntity `CAN_GLIDE_THROUGH` fall-flying branch — client-parity birleşik kayıt](client-world-living-glide-through-conformance.md)
 - [P09.t — ClientWorld LivingEntity alive/spectator pushability gates — client-parity birleşik kayıt](client-world-living-pushability-conformance.md)
