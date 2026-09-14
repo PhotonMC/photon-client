@@ -1409,6 +1409,26 @@ impl ClientWorld {
         }
     }
 
+    /// Apply Java's `Entity.turn` deltas and notify a boat passenger's vehicle.
+    pub fn turn_entity(&mut self, entity_id: i32, mouse_x: f64, mouse_y: f64) -> bool {
+        let vehicle_id = self.entity_vehicle_id(entity_id);
+        if let Some(entity) = self.entities.get_mut(&entity_id) {
+            entity.turn(mouse_x, mouse_y);
+        } else if let Some(player) = self
+            .local_player
+            .as_mut()
+            .filter(|player| player.id == entity_id)
+        {
+            player.turn(mouse_x, mouse_y);
+        } else {
+            return false;
+        }
+        if let Some(vehicle_id) = vehicle_id {
+            self.clamp_entity_passenger_rotation_after_turn(vehicle_id, entity_id);
+        }
+        true
+    }
+
     fn tick_local_player(&mut self, vehicle_id: Option<i32>) {
         let passenger_ids = {
             let Some(player) = self.local_player.as_mut() else {
@@ -1611,6 +1631,26 @@ impl ClientWorld {
             });
         if let Some(passenger) = self.entities.get_mut(&passenger_id) {
             passenger.clamp_vanilla_boat_passenger_rotation(vehicle_y_rot, animal_rotation_offset);
+        } else if let Some(player) = self
+            .local_player
+            .as_mut()
+            .filter(|player| player.id == passenger_id)
+        {
+            player.clamp_vanilla_boat_passenger_rotation(vehicle_y_rot);
+        }
+    }
+
+    fn clamp_entity_passenger_rotation_after_turn(&mut self, vehicle_id: i32, passenger_id: i32) {
+        let Some(vehicle_y_rot) = self.entities.get(&vehicle_id).and_then(|vehicle| {
+            VANILLA_BOAT_PASSENGER_GEOMETRY
+                .iter()
+                .any(|&(type_id, _, _)| type_id == vehicle.type_id)
+                .then(|| f32::from_bits(vehicle.y_rot_bits))
+        }) else {
+            return;
+        };
+        if let Some(passenger) = self.entities.get_mut(&passenger_id) {
+            passenger.clamp_vanilla_boat_passenger_rotation(vehicle_y_rot, None);
         } else if let Some(player) = self
             .local_player
             .as_mut()
@@ -3019,6 +3059,17 @@ impl ClientPlayerState {
         self.old_y_body_rot_bits = self.y_body_rot_bits;
     }
 
+    fn turn(&mut self, mouse_x: f64, mouse_y: f64) {
+        let x_delta = mouse_y as f32 * 0.15_f32;
+        let y_delta = mouse_x as f32 * 0.15_f32;
+        self.x_rot_bits = (f32::from_bits(self.x_rot_bits) + x_delta).to_bits();
+        self.y_rot_bits = (f32::from_bits(self.y_rot_bits) + y_delta).to_bits();
+        self.x_rot_bits = clamp_f32(f32::from_bits(self.x_rot_bits), -90.0, 90.0).to_bits();
+        self.old_x_rot_bits = (f32::from_bits(self.old_x_rot_bits) + x_delta).to_bits();
+        self.old_y_rot_bits = (f32::from_bits(self.old_y_rot_bits) + y_delta).to_bits();
+        self.old_x_rot_bits = clamp_f32(f32::from_bits(self.old_x_rot_bits), -90.0, 90.0).to_bits();
+    }
+
     fn set_position(&mut self, position: (f64, f64, f64)) {
         self.x_bits = position.0.to_bits();
         self.y_bits = position.1.to_bits();
@@ -3376,6 +3427,17 @@ impl ClientEntity {
         &self.passenger_ids
     }
 
+    fn turn(&mut self, mouse_x: f64, mouse_y: f64) {
+        let x_delta = mouse_y as f32 * 0.15_f32;
+        let y_delta = mouse_x as f32 * 0.15_f32;
+        self.x_rot_bits = (f32::from_bits(self.x_rot_bits) + x_delta).to_bits();
+        self.y_rot_bits = (f32::from_bits(self.y_rot_bits) + y_delta).to_bits();
+        self.x_rot_bits = clamp_f32(f32::from_bits(self.x_rot_bits), -90.0, 90.0).to_bits();
+        self.old_x_rot_bits = (f32::from_bits(self.old_x_rot_bits) + x_delta).to_bits();
+        self.old_y_rot_bits = (f32::from_bits(self.old_y_rot_bits) + y_delta).to_bits();
+        self.old_x_rot_bits = clamp_f32(f32::from_bits(self.old_x_rot_bits), -90.0, 90.0).to_bits();
+    }
+
     fn capture_old_transform(&mut self) {
         self.old_x_bits = self.x_bits;
         self.old_y_bits = self.y_bits;
@@ -3677,6 +3739,7 @@ impl ClientEntity {
         self.old_y_rot_bits = (f32::from_bits(self.old_y_rot_bits) + correction).to_bits();
         self.y_rot_bits = (f32::from_bits(self.y_rot_bits) + correction).to_bits();
         if self.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID
+            || self.type_id == VANILLA_BREEZE_ENTITY_TYPE_ID
             || vanilla_passenger_is_animal(self.type_id)
         {
             self.y_head_rot_bits = self.y_rot_bits;
@@ -5422,6 +5485,89 @@ mod tests {
             assert_eq!(passenger.body_y_rotation(), expected_body);
             assert_eq!(passenger.previous_body_y_rotation(), 170.0);
         }
+    }
+
+    #[test]
+    fn passenger_turn_calls_boat_on_passenger_turned() {
+        let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+        let (blocks, biomes) = section(0, 0);
+        world.replace_chunk(
+            0,
+            0,
+            [SectionInput {
+                non_empty_block_count: 0,
+                fluid_count: 0,
+                block_states: &blocks,
+                biomes: &biomes,
+            }],
+        );
+        for (entity_id, type_id, rotation) in [
+            (37, 89, (0.0, 0.0, 0.0)),
+            (38, VANILLA_PLAYER_ENTITY_TYPE_ID, (168.75, 0.0, 168.75)),
+        ] {
+            assert!(world.apply_entity(EntityInput {
+                entity_id,
+                uuid: Uuid::new(entity_id as u64, 0),
+                type_id,
+                x: 2.0,
+                y: 2.0,
+                z: 2.0,
+                movement: (0.0, 0.0, 0.0),
+                rotation,
+                data: 0,
+            }));
+        }
+        assert!(world.apply_entity_passengers(37, &[38]));
+
+        assert!(world.turn_entity(38, -100.0, 0.0));
+
+        let passenger = world.entity_at(38).expect("Player passenger");
+        assert_eq!(passenger.rotation(), (105.0, 0.0, 105.0));
+        assert_eq!(passenger.previous_rotation(), (105.0, 0.0, 168.75));
+        assert_eq!(passenger.body_y_rotation(), 0.0);
+        assert_eq!(passenger.previous_body_y_rotation(), 168.75);
+        assert_eq!(passenger.position(), (2.0, 2.0, 2.0));
+    }
+
+    #[test]
+    fn passenger_turn_clamps_breeze_despite_boat_turn_exemption() {
+        let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+        let (blocks, biomes) = section(0, 0);
+        world.replace_chunk(
+            0,
+            0,
+            [SectionInput {
+                non_empty_block_count: 0,
+                fluid_count: 0,
+                block_states: &blocks,
+                biomes: &biomes,
+            }],
+        );
+        for (entity_id, type_id, rotation) in [
+            (37, 89, (0.0, 0.0, 0.0)),
+            (38, VANILLA_BREEZE_ENTITY_TYPE_ID, (168.75, 0.0, 168.75)),
+        ] {
+            assert!(world.apply_entity(EntityInput {
+                entity_id,
+                uuid: Uuid::new(entity_id as u64, 0),
+                type_id,
+                x: 2.0,
+                y: 2.0,
+                z: 2.0,
+                movement: (0.0, 0.0, 0.0),
+                rotation,
+                data: 0,
+            }));
+        }
+        assert!(world.apply_entity_passengers(37, &[38]));
+
+        assert!(world.turn_entity(38, -100.0, 0.0));
+
+        let passenger = world.entity_at(38).expect("Breeze passenger");
+        assert_eq!(passenger.rotation(), (105.0, 0.0, 105.0));
+        assert_eq!(passenger.previous_rotation(), (105.0, 0.0, 168.75));
+        assert_eq!(passenger.body_y_rotation(), 0.0);
+        assert_eq!(passenger.previous_body_y_rotation(), 168.75);
     }
 
     #[test]

@@ -95,7 +95,8 @@ gösterir; Java istemcisiyle tam parity iddiası değildir.
 Breeze vehicle attachment/seat position, Breeze AI ve boat dışı turn
 davranışı, dinamik tag çözümü, diğer LivingEntity türleri, nonzero boat
 `deltaRotation`, collision, dismount, render ve Java istemcisiyle
-`client-parity` karşılaştırması açık kalır. Genel boat rotation clamp
-[P08.ba kaydında](client-world-entity-passenger-rotation-conformance.md), seat
-geometry'si [P08.az kaydında](client-world-entity-passenger-boat-family-conformance.md)
+`client-parity` karşılaştırması açık kalır. Breeze'in doğrudan turn callback'i
+[P08.be kaydında](client-world-entity-passenger-turn-conformance.md), genel
+boat rotation clamp [P08.ba kaydında](client-world-entity-passenger-rotation-conformance.md),
+seat geometry'si [P08.az kaydında](client-world-entity-passenger-boat-family-conformance.md)
 izlenir.

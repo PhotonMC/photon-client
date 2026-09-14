@@ -116,9 +116,10 @@ iddiası değildir.
 Bu kayıt pinned Animal türlerinin vehicle attachment ve normal two-passenger
 boat seat offset dalını kapatır. Animal'ın kendi passenger taşıdığı özel
 `PASSENGER` attachment noktaları, custom pose/dimensions, seat collision ve
-dismount, nonzero boat `deltaRotation`, `onPassengerTurned`, nested/lifecycle
-durumları, render ve Java istemcisiyle `client-parity` karşılaştırması açık
-kalır. Chest boat/raft geometrisi [P08.az kaydında](client-world-entity-passenger-boat-family-conformance.md),
+dismount, nonzero boat `deltaRotation`, nested/lifecycle durumları, render ve
+Java istemcisiyle `client-parity` karşılaştırması açık kalır. `onPassengerTurned`
+[P08.be kaydında](client-world-entity-passenger-turn-conformance.md), chest
+boat/raft geometrisi [P08.az kaydında](client-world-entity-passenger-boat-family-conformance.md),
 genel rotation clamp [P08.ba kaydında](client-world-entity-passenger-rotation-conformance.md),
 Breeze istisnası [P08.bb kaydında](client-world-entity-passenger-boat-turn-exemption-conformance.md)
 ve Animal rotation state'i [P08.bc kaydında](client-world-entity-passenger-animal-rotation-conformance.md)

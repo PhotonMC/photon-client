@@ -127,8 +127,11 @@ canlı fixture ile ayrı ayrı doğrulandı.
 
 ## Açık kapsam
 
-Boat input'u ile nonzero `deltaRotation`, remote/local `onPassengerTurned`
-callback'i, animal ikinci passenger body/head rotation offset'i, diğer
-LivingEntity türlerinin body/head state'i, generic passenger seat attachment'ı,
+Boat input'u ile nonzero `deltaRotation`, animal dışındaki diğer LivingEntity
+türlerinin body/head state'i, generic passenger seat attachment'ı,
 dismount/collision, render ve Java istemcisiyle `client-parity` karşılaştırması
-açık kalır. Chest boat/raft geometri [P08.az kaydında](client-world-entity-passenger-boat-family-conformance.md), passenger tick sırası [P08.aw kaydında](client-world-entity-passenger-tick-conformance.md) izlenir.
+açık kalır. `onPassengerTurned` callback'i [P08.be kaydında](client-world-entity-passenger-turn-conformance.md),
+Animal ikinci passenger body/head rotation offset'i [P08.bc kaydında](client-world-entity-passenger-animal-rotation-conformance.md),
+chest boat/raft geometri [P08.az kaydında](client-world-entity-passenger-boat-family-conformance.md)
+ve passenger tick sırası [P08.aw kaydında](client-world-entity-passenger-tick-conformance.md)
+izlenir.
