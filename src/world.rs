@@ -44,6 +44,8 @@ const VANILLA_EXPERIENCE_ORB_GRAVITY: f64 = 0.03;
 pub(crate) const VANILLA_PRIMED_TNT_ENTITY_TYPE_ID: i32 = 133;
 const VANILLA_PRIMED_TNT_AIR_FRICTION: f32 = 0.98_f32;
 const VANILLA_PRIMED_TNT_GRAVITY: f64 = 0.04;
+pub(crate) const VANILLA_FALLING_BLOCK_ENTITY_TYPE_ID: i32 = 51;
+const VANILLA_FALLING_BLOCK_GRAVITY: f64 = 0.04;
 const VANILLA_SPIDER_VEHICLE_ATTACHMENT_Y: f64 = 0.3125;
 const VANILLA_BOAT_PASSENGER_GEOMETRY: &[(i32, f32, f32)] = &[
     (0, VANILLA_BOAT_RIDE_HEIGHT, 0.0),
@@ -1772,6 +1774,14 @@ impl ClientWorld {
                     entity.no_gravity,
                 )
         });
+        let can_tick_falling_block = self.entities.get(&entity_id).is_some_and(|entity| {
+            entity.type_id == VANILLA_FALLING_BLOCK_ENTITY_TYPE_ID
+                && self.falling_block_path_is_open(
+                    entity.position(),
+                    entity.motion(),
+                    entity.no_gravity,
+                )
+        });
         let boat_in_air = boat_is_local_instance_authoritative
             && self
                 .entities
@@ -1813,6 +1823,9 @@ impl ClientWorld {
         }
         if can_tick_primed_tnt {
             entity.tick_primed_tnt();
+        }
+        if can_tick_falling_block {
+            entity.tick_falling_block();
         }
         if boat_in_air {
             entity.tick_boat_float_in_air();
@@ -1957,6 +1970,38 @@ impl ClientWorld {
                     0.0
                 } else {
                     VANILLA_PRIMED_TNT_GRAVITY
+                },
+            position.2 + motion.2,
+        );
+        let current_block = (
+            position.0.floor() as i32,
+            position.1.floor() as i32,
+            position.2.floor() as i32,
+        );
+        let next_block = (
+            next_position.0.floor() as i32,
+            next_position.1.floor() as i32,
+            next_position.2.floor() as i32,
+        );
+        self.block_state_at(current_block.0, current_block.1, current_block.2)
+            == Some(VANILLA_AIR_BLOCK_STATE_ID)
+            && self.block_state_at(next_block.0, next_block.1, next_block.2)
+                == Some(VANILLA_AIR_BLOCK_STATE_ID)
+    }
+
+    fn falling_block_path_is_open(
+        &self,
+        position: (f64, f64, f64),
+        motion: (f64, f64, f64),
+        no_gravity: bool,
+    ) -> bool {
+        let next_position = (
+            position.0 + motion.0,
+            position.1 + motion.1
+                - if no_gravity {
+                    0.0
+                } else {
+                    VANILLA_FALLING_BLOCK_GRAVITY
                 },
             position.2 + motion.2,
         );
@@ -4028,6 +4073,27 @@ impl ClientEntity {
         self.motion_z_bits = (motion.2 * air_friction).to_bits();
     }
 
+    fn tick_falling_block(&mut self) {
+        let current_motion = self.motion();
+        let motion = (
+            current_motion.0,
+            current_motion.1
+                - if self.no_gravity {
+                    0.0
+                } else {
+                    VANILLA_FALLING_BLOCK_GRAVITY
+                },
+            current_motion.2,
+        );
+        let current_position = self.position();
+        self.x_bits = (current_position.0 + motion.0).to_bits();
+        self.y_bits = (current_position.1 + motion.1).to_bits();
+        self.z_bits = (current_position.2 + motion.2).to_bits();
+        self.motion_x_bits = motion.0.to_bits();
+        self.motion_y_bits = motion.1.to_bits();
+        self.motion_z_bits = motion.2.to_bits();
+    }
+
     fn tick_boat_float_in_air(&mut self) {
         let current_motion = self.motion();
         let vertical_speed = if self.no_gravity {
@@ -4772,7 +4838,8 @@ mod tests {
         PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS, PLAYER_RESPAWN_KEEP_ENTITY_DATA, SNOWBALL_GRAVITY,
         SectionInput, VANILLA_ARROW_ENTITY_TYPE_ID, VANILLA_BOAT_PASSENGER_MAX_ROTATION,
         VANILLA_BREEZE_ENTITY_TYPE_ID, VANILLA_COW_ENTITY_TYPE_ID,
-        VANILLA_EXPERIENCE_ORB_ENTITY_TYPE_ID, VANILLA_LIVING_ENTITY_TYPE_IDS,
+        VANILLA_EXPERIENCE_ORB_ENTITY_TYPE_ID, VANILLA_FALLING_BLOCK_ENTITY_TYPE_ID,
+        VANILLA_FALLING_BLOCK_GRAVITY, VANILLA_LIVING_ENTITY_TYPE_IDS,
         VANILLA_PLAYER_ENTITY_TYPE_ID, VANILLA_PRIMED_TNT_AIR_FRICTION,
         VANILLA_PRIMED_TNT_ENTITY_TYPE_ID, VANILLA_PRIMED_TNT_GRAVITY,
         VANILLA_SNOWBALL_ENTITY_TYPE_ID, menu_top_slot_count,
@@ -8097,6 +8164,50 @@ mod tests {
                 gravity_motion.2 * air_drag,
             )
         );
+        assert_eq!(entity.rotation(), (10.0, 20.0, 30.0));
+        assert_eq!(entity.tick_count(), 1);
+    }
+
+    #[test]
+    fn ticking_falling_blocks_applies_gravity_and_move_without_air_drag() {
+        let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+        let (blocks, biomes) = section(0, 0);
+        world.replace_chunk(
+            0,
+            0,
+            [SectionInput {
+                non_empty_block_count: 0,
+                fluid_count: 0,
+                block_states: &blocks,
+                biomes: &biomes,
+            }],
+        );
+        assert!(world.apply_entity(EntityInput {
+            entity_id: 37,
+            uuid: Uuid::new(1, 2),
+            type_id: VANILLA_FALLING_BLOCK_ENTITY_TYPE_ID,
+            x: 2.0,
+            y: 10.0,
+            z: 2.0,
+            movement: (0.25, 0.5, -0.125),
+            rotation: (10.0, 20.0, 30.0),
+            data: 0,
+        }));
+
+        world.tick();
+
+        let gravity_motion = (0.25, 0.5 - VANILLA_FALLING_BLOCK_GRAVITY, -0.125);
+        let entity = world.entity_at(37).expect("falling block after tick");
+        assert_eq!(entity.previous_position(), (2.0, 10.0, 2.0));
+        assert_eq!(
+            entity.position(),
+            (
+                2.0 + gravity_motion.0,
+                10.0 + gravity_motion.1,
+                2.0 + gravity_motion.2,
+            )
+        );
+        assert_eq!(entity.motion(), gravity_motion);
         assert_eq!(entity.rotation(), (10.0, 20.0, 30.0));
         assert_eq!(entity.tick_count(), 1);
     }
