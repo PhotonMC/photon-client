@@ -89,6 +89,7 @@ pub struct ClientEntityCollisionCandidate {
     pub is_source: bool,
     pub spectator: bool,
     pub can_be_collided_with: bool,
+    pub is_pushable: bool,
     pub same_vehicle: bool,
 }
 
@@ -104,6 +105,16 @@ pub fn collect_entity_collision_shapes(
     test_area: Aabb,
     candidates: &[ClientEntityCollisionCandidate],
 ) -> Vec<VoxelShape> {
+    collect_entity_collision_shapes_for_source(None, source_present, test_area, candidates)
+}
+
+/// Collect entity shapes with the source type's Java collision dispatch.
+pub fn collect_entity_collision_shapes_for_source(
+    source_type_id: Option<i32>,
+    source_present: bool,
+    test_area: Aabb,
+    candidates: &[ClientEntityCollisionCandidate],
+) -> Vec<VoxelShape> {
     if test_area.size() < 1.0e-7 {
         return Vec::new();
     }
@@ -115,7 +126,9 @@ pub fn collect_entity_collision_shapes(
             (!source_present || !candidate.is_source)
                 && candidate.bounding_box.intersects(query_area)
                 && !candidate.spectator
-                && candidate.can_be_collided_with
+                && (candidate.can_be_collided_with
+                    || (source_type_id.is_some_and(source_accepts_pushable_entities)
+                        && candidate.is_pushable))
                 && (!source_present || !candidate.same_vehicle)
         })
         .map(|candidate| {
@@ -924,6 +937,20 @@ fn is_vanilla_boat_entity_type(entity_type_id: i32) -> bool {
 
 fn is_vanilla_shulker_entity_type(entity_type_id: i32) -> bool {
     entity_type_id == VANILLA_SHULKER_ENTITY_TYPE_ID
+}
+
+fn is_vanilla_player_entity_type(entity_type_id: i32) -> bool {
+    entity_type_id == VANILLA_PLAYER_ENTITY_TYPE_ID
+}
+
+fn is_vanilla_pushable_entity_type(entity_type_id: i32) -> bool {
+    is_vanilla_boat_entity_type(entity_type_id)
+        || is_vanilla_shulker_entity_type(entity_type_id)
+        || is_vanilla_player_entity_type(entity_type_id)
+}
+
+fn source_accepts_pushable_entities(entity_type_id: i32) -> bool {
+    is_vanilla_boat_entity_type(entity_type_id)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -3246,9 +3273,16 @@ impl ClientWorld {
         bounding_box: Aabb,
     ) -> bool {
         let source_entity_id = source_entity_id.filter(|entity_id| self.entity_exists(*entity_id));
+        let source_type_id = source_entity_id
+            .and_then(|entity_id| self.entities.get(&entity_id).map(|entity| entity.type_id));
         let candidates = self.indexed_entity_collision_candidates(source_entity_id);
-        collect_entity_collision_shapes(source_entity_id.is_some(), bounding_box, &candidates)
-            .is_empty()
+        collect_entity_collision_shapes_for_source(
+            source_type_id,
+            source_entity_id.is_some(),
+            bounding_box,
+            &candidates,
+        )
+        .is_empty()
     }
 
     /// Return whether a query has no collision in the loaded world state.
@@ -4909,6 +4943,8 @@ impl ClientEntity {
             )
         } else if is_vanilla_shulker_entity_type(self.type_id) {
             (1.0, 1.0)
+        } else if is_vanilla_player_entity_type(self.type_id) {
+            (0.6, 1.8)
         } else {
             return None;
         };
@@ -4919,7 +4955,8 @@ impl ClientEntity {
             bounding_box,
             is_source: source_entity_id == Some(self.id),
             spectator: false,
-            can_be_collided_with: true,
+            can_be_collided_with: !is_vanilla_player_entity_type(self.type_id),
+            is_pushable: is_vanilla_pushable_entity_type(self.type_id),
             same_vehicle,
         })
     }
@@ -6139,6 +6176,7 @@ mod tests {
                 is_source: true,
                 spectator: false,
                 can_be_collided_with: true,
+                is_pushable: false,
                 same_vehicle: false,
             },
             ClientEntityCollisionCandidate {
@@ -6146,6 +6184,7 @@ mod tests {
                 is_source: false,
                 spectator: false,
                 can_be_collided_with: true,
+                is_pushable: false,
                 same_vehicle: false,
             },
             ClientEntityCollisionCandidate {
@@ -6153,6 +6192,7 @@ mod tests {
                 is_source: false,
                 spectator: true,
                 can_be_collided_with: true,
+                is_pushable: false,
                 same_vehicle: false,
             },
             ClientEntityCollisionCandidate {
@@ -6160,6 +6200,7 @@ mod tests {
                 is_source: false,
                 spectator: false,
                 can_be_collided_with: false,
+                is_pushable: false,
                 same_vehicle: false,
             },
             ClientEntityCollisionCandidate {
@@ -6167,6 +6208,7 @@ mod tests {
                 is_source: false,
                 spectator: false,
                 can_be_collided_with: true,
+                is_pushable: false,
                 same_vehicle: true,
             },
             ClientEntityCollisionCandidate {
@@ -6174,6 +6216,7 @@ mod tests {
                 is_source: false,
                 spectator: false,
                 can_be_collided_with: true,
+                is_pushable: false,
                 same_vehicle: false,
             },
         ];

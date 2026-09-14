@@ -44,6 +44,7 @@ import net.minecraft.world.entity.EntityDimensions;
 import net.minecraft.world.entity.Pose;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.entity.monster.Shulker;
+import net.minecraft.world.entity.vehicle.boat.Boat;
 import net.minecraft.world.level.BlockCollisions;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.ChunkPos;
@@ -3898,6 +3899,7 @@ public final class MathOracle {
         private boolean spectator;
         private boolean collidable;
         private boolean sameVehicle;
+        private boolean pushable;
 
         private CollisionFixtureEntity(
             AABB boundingBox, boolean spectator, boolean collidable, boolean sameVehicle
@@ -3912,12 +3914,19 @@ public final class MathOracle {
         private static CollisionFixtureEntity create(
             AABB boundingBox, boolean spectator, boolean collidable, boolean sameVehicle
         ) {
-            return create(boundingBox, spectator, collidable, sameVehicle, null);
+            return create(boundingBox, spectator, collidable, sameVehicle, null, false);
         }
 
         private static CollisionFixtureEntity create(
             AABB boundingBox, boolean spectator, boolean collidable, boolean sameVehicle,
             Vec3 position
+        ) {
+            return create(boundingBox, spectator, collidable, sameVehicle, position, false);
+        }
+
+        private static CollisionFixtureEntity create(
+            AABB boundingBox, boolean spectator, boolean collidable, boolean sameVehicle,
+            Vec3 position, boolean pushable
         ) {
             try {
                 Unsafe unsafe = unsafeInstance();
@@ -3926,6 +3935,7 @@ public final class MathOracle {
                 entity.spectator = spectator;
                 entity.collidable = collidable;
                 entity.sameVehicle = sameVehicle;
+                entity.pushable = pushable;
                 entity.setBoundingBox(boundingBox);
                 if (position != null) {
                     var field = Entity.class.getDeclaredField("position");
@@ -3950,9 +3960,11 @@ public final class MathOracle {
                 throw new IllegalArgumentException("Unknown entity type id " + typeId);
             }
             AABB boundingBox = entityType.getDimensions().makeBoundingBox(position);
-            Entity entity = typeId == 112
-                ? ShulkerCollisionFixtureEntity.create(boundingBox, sameVehicle, position)
-                : create(boundingBox, spectator, collidable, sameVehicle, position);
+            Entity entity = switch (typeId) {
+                case 0 -> BoatCollisionFixtureEntity.create(boundingBox, position);
+                case 112 -> ShulkerCollisionFixtureEntity.create(boundingBox, sameVehicle, position);
+                default -> create(boundingBox, spectator, collidable, sameVehicle, position, typeId == 156);
+            };
             indexEntity(entity, entityId, position);
             return entity;
         }
@@ -3999,6 +4011,11 @@ public final class MathOracle {
         }
 
         @Override
+        public boolean isPushable() {
+            return this.pushable;
+        }
+
+        @Override
         public boolean isPassengerOfSameVehicle(Entity other) {
             return other instanceof CollisionFixtureEntity fixture && fixture.sameVehicle;
         }
@@ -4018,6 +4035,36 @@ public final class MathOracle {
 
         @Override
         protected void addAdditionalSaveData(net.minecraft.world.level.storage.ValueOutput output) {
+        }
+    }
+
+    private static final class BoatCollisionFixtureEntity extends Boat {
+        private BoatCollisionFixtureEntity() {
+            super(net.minecraft.world.entity.EntityTypes.OAK_BOAT, null, null);
+        }
+
+        private static BoatCollisionFixtureEntity create(AABB boundingBox, Vec3 position) {
+            try {
+                Unsafe unsafe = unsafeInstance();
+                BoatCollisionFixtureEntity entity =
+                    (BoatCollisionFixtureEntity)unsafe.allocateInstance(BoatCollisionFixtureEntity.class);
+                entity.setBoundingBox(boundingBox);
+                var field = Entity.class.getDeclaredField("position");
+                unsafe.putObject(entity, unsafe.objectFieldOffset(field), position);
+                return entity;
+            } catch (ReflectiveOperationException error) {
+                throw new IllegalStateException("Unable to allocate boat collision fixture entity", error);
+            }
+        }
+
+        @Override
+        public boolean isPassengerOfSameVehicle(Entity other) {
+            return false;
+        }
+
+        @Override
+        public boolean isShiftKeyDown() {
+            return false;
         }
     }
 

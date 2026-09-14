@@ -3675,6 +3675,10 @@ fn entity_collision_candidates(
                     .get("can_be_collided_with")
                     .and_then(Value::as_bool)
                     .unwrap_or(false),
+                is_pushable: candidate
+                    .get("is_pushable")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(false),
                 same_vehicle: candidate
                     .get("same_vehicle")
                     .and_then(Value::as_bool)
