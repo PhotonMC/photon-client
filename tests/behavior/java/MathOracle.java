@@ -2995,6 +2995,55 @@ public final class MathOracle {
                     }
                 }
                 result.add("states", states);
+            } else if (kind.equals("entity_movement_state_retention")) {
+                var states = new JsonArray();
+                for (var entry : request.getAsJsonArray("inputs")) {
+                    JsonObject input = entry.getAsJsonObject();
+                    Vec3 delta = vec3(input.getAsJsonObject("delta"));
+                    AABB moving = box(input.getAsJsonObject("moving"));
+                    var shapes = new java.util.ArrayList<VoxelShape>();
+                    for (var shapeEntry : input.getAsJsonArray("shapes")) {
+                        shapes.add(voxelShape(shapeEntry.getAsJsonObject()));
+                    }
+                    try {
+                        var method = Entity.class.getDeclaredMethod(
+                            "collideWithShapes", Vec3.class, AABB.class, java.util.List.class);
+                        method.setAccessible(true);
+                        var resolved = (Vec3)method.invoke(null, delta, moving, shapes);
+                        boolean xCollision = !Mth.equal(delta.x, resolved.x);
+                        boolean yCollision = delta.y != resolved.y;
+                        boolean zCollision = !Mth.equal(delta.z, resolved.z);
+                        boolean horizontalCollision = xCollision || zCollision;
+                        boolean verticalCollision = input.getAsJsonObject("previous")
+                            .get("vertical_collision").getAsBoolean();
+                        boolean verticalCollisionBelow = input.getAsJsonObject("previous")
+                            .get("vertical_collision_below").getAsBoolean();
+                        boolean onGround = input.getAsJsonObject("previous")
+                            .get("on_ground").getAsBoolean();
+                        boolean movedVertically = Math.abs(delta.y) > 0.0;
+                        boolean authoritative = input.get("authoritative").getAsBoolean();
+                        if (movedVertically || authoritative) {
+                            verticalCollision = yCollision;
+                            verticalCollisionBelow = verticalCollision && delta.y < 0.0;
+                            onGround = verticalCollisionBelow;
+                        }
+                        var state = new JsonObject();
+                        state.addProperty("label", input.get("label").getAsString());
+                        state.add("movement", snapshot(resolved));
+                        state.addProperty("x_collision", xCollision);
+                        state.addProperty("y_collision", yCollision);
+                        state.addProperty("z_collision", zCollision);
+                        state.addProperty("horizontal_collision", horizontalCollision);
+                        state.addProperty("vertical_collision", verticalCollision);
+                        state.addProperty("vertical_collision_below", verticalCollisionBelow);
+                        state.addProperty("on_ground", onGround);
+                        states.add(state);
+                    } catch (ReflectiveOperationException error) {
+                        throw new IllegalStateException(
+                            "Entity movement state retention reflection failed", error);
+                    }
+                }
+                result.add("states", states);
             } else if (kind.equals("entity_collision_shapes")) {
                 var output = System.out;
                 var errorOutput = System.err;

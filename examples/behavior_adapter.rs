@@ -64,9 +64,9 @@ use voxel_client::world::{
     ClientEntityCollisionCandidate, ClientEntityDimensions, ClientEntityPose,
     ClientPlayerPoseInput, ClientWorld, ClientWorldBorder, ClientWorldBorderInitialization,
     ClientWorldBorderStatus, ClientWorldCollisionSource, DimensionBounds, EntityInput,
-    SectionInput, collect_candidate_step_up_heights, collect_entity_collision_shapes,
-    collide_entity_movement, collide_entity_movement_state, is_minor_horizontal_collision,
-    select_step_up_movement, world_border_collision_shape,
+    SectionInput, apply_entity_movement_state, collect_candidate_step_up_heights,
+    collect_entity_collision_shapes, collide_entity_movement, collide_entity_movement_state,
+    is_minor_horizontal_collision, select_step_up_movement, world_border_collision_shape,
 };
 
 fn string<'a>(request: &'a Value, name: &str) -> Result<&'a str, String> {
@@ -4388,6 +4388,79 @@ fn shape_result(request: &Value) -> Result<Value, String> {
                         .map(shape_box)
                         .collect::<Result<Vec<_>, _>>()?;
                     let state = collide_entity_movement_state(movement, moving, &shapes);
+                    Ok(json!({
+                        "label": input
+                            .get("label")
+                            .and_then(Value::as_str)
+                            .ok_or("label must be a string")?,
+                        "movement": vec3_snapshot(state.movement),
+                        "x_collision": state.x_collision,
+                        "y_collision": state.y_collision,
+                        "z_collision": state.z_collision,
+                        "horizontal_collision": state.horizontal_collision,
+                        "vertical_collision": state.vertical_collision,
+                        "vertical_collision_below": state.vertical_collision_below,
+                        "on_ground": state.on_ground,
+                    }))
+                })
+                .collect::<Result<Vec<_>, String>>()?;
+            Ok(json!({"states": states}))
+        }
+        "entity_movement_state_retention" => {
+            let inputs = request
+                .get("inputs")
+                .ok_or("inputs must be an array")?
+                .as_array()
+                .ok_or("inputs must be an array")?;
+            let states = inputs
+                .iter()
+                .map(|entry| {
+                    let input = entry
+                        .as_object()
+                        .ok_or("movement state input must be an object")?;
+                    let delta = f64_vec3(input.get("delta").ok_or("delta must be an object")?)?;
+                    let moving = aabb_box(input.get("moving").ok_or("moving must be an object")?)?;
+                    let shapes = input
+                        .get("shapes")
+                        .ok_or("shapes must be an array")?
+                        .as_array()
+                        .ok_or("shapes must be an array")?
+                        .iter()
+                        .map(shape_box)
+                        .collect::<Result<Vec<_>, _>>()?;
+                    let resolved = collide_entity_movement(delta, moving, &shapes);
+                    let previous_input = input
+                        .get("previous")
+                        .and_then(Value::as_object)
+                        .ok_or("previous must be an object")?;
+                    let previous = voxel_client::world::ClientEntityMovementState {
+                        movement: Vec3::ZERO,
+                        x_collision: false,
+                        y_collision: false,
+                        z_collision: false,
+                        horizontal_collision: false,
+                        vertical_collision: previous_input
+                            .get("vertical_collision")
+                            .and_then(Value::as_bool)
+                            .ok_or("previous.vertical_collision must be a boolean")?,
+                        vertical_collision_below: previous_input
+                            .get("vertical_collision_below")
+                            .and_then(Value::as_bool)
+                            .ok_or("previous.vertical_collision_below must be a boolean")?,
+                        on_ground: previous_input
+                            .get("on_ground")
+                            .and_then(Value::as_bool)
+                            .ok_or("previous.on_ground must be a boolean")?,
+                    };
+                    let state = apply_entity_movement_state(
+                        delta,
+                        resolved,
+                        previous,
+                        input
+                            .get("authoritative")
+                            .and_then(Value::as_bool)
+                            .ok_or("authoritative must be a boolean")?,
+                    );
                     Ok(json!({
                         "label": input
                             .get("label")

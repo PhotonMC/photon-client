@@ -82,6 +82,39 @@ pub fn collide_entity_movement_state(
     }
 }
 
+/// Apply Java `Entity.move` collision fields while retaining vertical state
+/// for a non-authoritative zero-Y movement.
+pub fn apply_entity_movement_state(
+    delta: Vec3,
+    resolved_movement: Vec3,
+    previous: ClientEntityMovementState,
+    is_local_instance_authoritative: bool,
+) -> ClientEntityMovementState {
+    let x_collision = !equal_f64(delta.x, resolved_movement.x);
+    let y_collision = delta.y != resolved_movement.y;
+    let z_collision = !equal_f64(delta.z, resolved_movement.z);
+    let horizontal_collision = x_collision || z_collision;
+    let mut vertical_collision = previous.vertical_collision;
+    let mut vertical_collision_below = previous.vertical_collision_below;
+    let mut on_ground = previous.on_ground;
+    if delta.y.abs() > 0.0 || is_local_instance_authoritative {
+        vertical_collision = y_collision;
+        vertical_collision_below = vertical_collision && delta.y < 0.0;
+        on_ground = vertical_collision_below;
+    }
+
+    ClientEntityMovementState {
+        movement: resolved_movement,
+        x_collision,
+        y_collision,
+        z_collision,
+        horizontal_collision,
+        vertical_collision,
+        vertical_collision_below,
+        on_ground,
+    }
+}
+
 /// Return Java LocalPlayer's minor-horizontal-collision classification.
 ///
 /// LocalPlayer compares the yaw-rotated input vector with the resolved
@@ -6821,9 +6854,9 @@ fn apply_light_layer(
 mod tests {
     use super::{
         BlockEntityInput, BoatInput, ClientAttributeModifierState, ClientAttributeState,
-        ClientEntityCollisionCandidate, ClientEntityDimensions, ClientEntityPose,
-        ClientItemStackState, ClientPlayerPoseInput, ClientWorld, DimensionBounds,
-        DimensionEnvironment, DimensionInput, ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        ClientEntityCollisionCandidate, ClientEntityDimensions, ClientEntityMovementState,
+        ClientEntityPose, ClientItemStackState, ClientPlayerPoseInput, ClientWorld,
+        DimensionBounds, DimensionEnvironment, DimensionInput, ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
         ENTITY_NO_GRAVITY_DATA_ID, ENTITY_RELATIVE_DELTA_X_FLAG, ENTITY_RELATIVE_DELTA_Y_FLAG,
         ENTITY_RELATIVE_DELTA_Z_FLAG, ENTITY_RELATIVE_ROTATE_DELTA_FLAG, ENTITY_RELATIVE_X_FLAG,
         ENTITY_RELATIVE_X_ROT_FLAG, ENTITY_RELATIVE_Y_FLAG, ENTITY_RELATIVE_Y_ROT_FLAG,
@@ -6839,7 +6872,7 @@ mod tests {
         VANILLA_FIREWORK_ROCKET_VERTICAL_ACCELERATION, VANILLA_LIVING_ENTITY_TYPE_IDS,
         VANILLA_MINECART_ENTITY_TYPE_IDS, VANILLA_PLAYER_ENTITY_TYPE_ID,
         VANILLA_PRIMED_TNT_AIR_FRICTION, VANILLA_PRIMED_TNT_ENTITY_TYPE_ID,
-        VANILLA_PRIMED_TNT_GRAVITY, VANILLA_SNOWBALL_ENTITY_TYPE_ID,
+        VANILLA_PRIMED_TNT_GRAVITY, VANILLA_SNOWBALL_ENTITY_TYPE_ID, apply_entity_movement_state,
         collect_candidate_step_up_heights, collect_entity_collision_shapes,
         collide_entity_movement, collide_entity_movement_state, is_minor_horizontal_collision,
         menu_top_slot_count, select_step_up_movement,
@@ -6927,6 +6960,42 @@ mod tests {
         assert!(rising.vertical_collision);
         assert!(!rising.vertical_collision_below);
         assert!(!rising.on_ground);
+    }
+
+    #[test]
+    fn zero_y_remote_movement_retains_vertical_state() {
+        let previous = ClientEntityMovementState {
+            movement: Vec3::ZERO,
+            x_collision: false,
+            y_collision: false,
+            z_collision: false,
+            horizontal_collision: false,
+            vertical_collision: true,
+            vertical_collision_below: true,
+            on_ground: true,
+        };
+        let retained =
+            apply_entity_movement_state(Vec3::new(2.0, 0.0, 0.0), Vec3::ZERO, previous, false);
+        assert!(retained.horizontal_collision);
+        assert!(retained.vertical_collision);
+        assert!(retained.vertical_collision_below);
+        assert!(retained.on_ground);
+
+        let authoritative =
+            apply_entity_movement_state(Vec3::new(2.0, 0.0, 0.0), Vec3::ZERO, previous, true);
+        assert!(!authoritative.vertical_collision);
+        assert!(!authoritative.vertical_collision_below);
+        assert!(!authoritative.on_ground);
+
+        let falling = apply_entity_movement_state(
+            Vec3::new(0.0, -2.0, 0.0),
+            Vec3::new(0.0, -1.0, 0.0),
+            previous,
+            false,
+        );
+        assert!(falling.vertical_collision);
+        assert!(falling.vertical_collision_below);
+        assert!(falling.on_ground);
     }
 
     #[test]
