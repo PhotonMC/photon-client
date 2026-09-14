@@ -37,8 +37,10 @@ import net.minecraft.server.Bootstrap;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.util.SmoothDouble;
+import net.minecraft.world.entity.Avatar;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityDimensions;
+import net.minecraft.world.entity.Pose;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.BlockCollisions;
 import net.minecraft.world.level.BlockGetter;
@@ -3016,6 +3018,23 @@ public final class MathOracle {
                 result.add("box", snapshot(boundingBox));
                 result.add("query", snapshot(query));
                 result.addProperty("fits", collisionGetter.noCollision(null, query));
+            } else if (kind.equals("player_pose_dimensions")) {
+                var avatarDimensions = avatarPoseDimensions();
+                Vec3 position = vec3(request.getAsJsonObject("position"));
+                var poses = new JsonArray();
+                for (var entry : request.getAsJsonArray("pose_ids")) {
+                    int requestedId = entry.getAsInt();
+                    Pose pose = Pose.BY_ID.apply(requestedId);
+                    EntityDimensions dimensions = avatarDimensions.getOrDefault(
+                        pose, avatarDimensions.get(Pose.STANDING));
+                    var poseResult = new JsonObject();
+                    poseResult.addProperty("requested_id", requestedId);
+                    poseResult.addProperty("resolved_id", pose.id());
+                    poseResult.add("dimensions", snapshot(dimensions));
+                    poseResult.add("box", snapshot(dimensions.makeBoundingBox(position)));
+                    poses.add(poseResult);
+                }
+                result.add("poses", poses);
             } else if (kind.equals("clip")) {
                 VoxelShape shape = voxelShape(request.getAsJsonObject("shape"));
                 var events = new JsonArray();
@@ -3543,6 +3562,17 @@ public final class MathOracle {
         };
     }
 
+    @SuppressWarnings("unchecked")
+    private static java.util.Map<Pose, EntityDimensions> avatarPoseDimensions() {
+        try {
+            var field = Avatar.class.getDeclaredField("POSES");
+            field.setAccessible(true);
+            return (java.util.Map<Pose, EntityDimensions>) field.get(null);
+        } catch (ReflectiveOperationException error) {
+            throw new IllegalStateException("Avatar.POSES reflection failed", error);
+        }
+    }
+
     private static AABB box(JsonObject object) {
         return new AABB(f64(object, "min_x"), f64(object, "min_y"), f64(object, "min_z"),
             f64(object, "max_x"), f64(object, "max_y"), f64(object, "max_z"));
@@ -3871,6 +3901,15 @@ public final class MathOracle {
         state.addProperty("max_x", Oracle.bits(box.maxX));
         state.addProperty("max_y", Oracle.bits(box.maxY));
         state.addProperty("max_z", Oracle.bits(box.maxZ));
+        return state;
+    }
+
+    private static JsonObject snapshot(EntityDimensions dimensions) {
+        var state = new JsonObject();
+        state.addProperty("width", Oracle.bits(dimensions.width()));
+        state.addProperty("height", Oracle.bits(dimensions.height()));
+        state.addProperty("eye_height", Oracle.bits(dimensions.eyeHeight()));
+        state.addProperty("fixed", dimensions.fixed());
         return state;
     }
 

@@ -164,6 +164,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P08.k — server-conformance LocalPlayer mob-effect state'i](client-world-player-effects-conformance.md)
 - [P08.l — server-conformance LocalPlayer health, food ve saturation state'i](client-world-player-health-conformance.md)
 - [P08.m — server-conformance LocalPlayer inventory/container state'i](client-world-player-inventory-conformance.md)
+- [P09.e — Oyuncu pose ölçüleri — client-parity birleşik kayıt](client-world-player-pose-dimensions-conformance.md)
 - [P08.h — server-conformance LocalPlayer yeniden kurulumu ve `dataToKeep`](client-world-player-respawn-conformance.md)
 - [P08.a/b — server-conformance ClientWorld chunk kopyası ve section cache](client-world-state-conformance.md)
 - [P09.c — Entity step-up aday yükseklikleri — client-parity birleşik kayıt](client-world-step-up-candidates-conformance.md)

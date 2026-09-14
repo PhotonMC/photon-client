@@ -3943,6 +3943,10 @@ def math_cases():
            "dimensions": {"width": float_bits(1.0), "height": float_bits(1.0)},
            "placements": [{"x": 0, "y": 0, "z": 0, "state_id": 1, "kind": "stone"}],
            "shape_states": [{"state_id": 1, "shape": box_bits(0, 0, 0, 1, 1, 1)}]}
+    yield {"case_id": "shape/player-pose-dimensions/all-poses-and-fallback", "family": "math",
+           "operation": "shape", "kind": "player_pose_dimensions",
+           "position": vector_bits(-2.25, 4.0, 1.75),
+           "pose_ids": list(range(18)) + [-1, 18]}
     yield {"case_id": "random/fork/basic", "family": "math", "operation": "random_fork",
            "seed": "42", "prefix_steps": [],
            "child_steps": [{"op": "nextInt"}, {"op": "nextDouble"}, {"op": "nextLong"}],

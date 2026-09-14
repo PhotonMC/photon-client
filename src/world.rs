@@ -324,6 +324,25 @@ impl ClientEntityPose {
             _ => Self::Standing,
         }
     }
+
+    /// Resolve a wire pose ID with Java's out-of-range standing fallback.
+    pub fn from_id(id: i32) -> Self {
+        Self::from_wire_id(id)
+    }
+
+    /// Return the default Avatar dimensions for this pose at scale one.
+    pub fn player_dimensions(self) -> ClientEntityDimensions {
+        match self {
+            Self::Standing => ClientEntityDimensions::scalable(0.6, 1.8).with_eye_height(1.62),
+            Self::Sleeping => ClientEntityDimensions::fixed(0.2, 0.2).with_eye_height(0.2),
+            Self::FallFlying | Self::Swimming | Self::SpinAttack => {
+                ClientEntityDimensions::scalable(0.6, 0.6).with_eye_height(0.4)
+            }
+            Self::Crouching => ClientEntityDimensions::scalable(0.6, 1.5).with_eye_height(1.27),
+            Self::Dying => ClientEntityDimensions::fixed(0.2, 0.2).with_eye_height(1.62),
+            _ => Self::Standing.player_dimensions(),
+        }
+    }
 }
 
 /// Entity dimensions used to derive Java's feet-origin bounding box.
@@ -3941,6 +3960,11 @@ impl ClientPlayerState {
         self.pose
     }
 
+    /// Return player/Avatar dimensions derived from the current pose.
+    pub fn player_dimensions(&self) -> ClientEntityDimensions {
+        self.pose.player_dimensions()
+    }
+
     pub fn ticks_frozen(&self) -> i32 {
         self.ticks_frozen
     }
@@ -4760,6 +4784,11 @@ impl ClientEntity {
         self.pose
     }
 
+    /// Return player/Avatar dimensions for a remote player entity.
+    pub fn player_dimensions(&self) -> Option<ClientEntityDimensions> {
+        (self.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID).then(|| self.pose.player_dimensions())
+    }
+
     pub fn is_baby(&self) -> bool {
         self.baby
     }
@@ -5153,8 +5182,8 @@ fn apply_light_layer(
 mod tests {
     use super::{
         BlockEntityInput, BoatInput, ClientAttributeModifierState, ClientAttributeState,
-        ClientEntityDimensions, ClientItemStackState, ClientWorld, DimensionBounds,
-        DimensionEnvironment, DimensionInput, ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        ClientEntityDimensions, ClientEntityPose, ClientItemStackState, ClientWorld,
+        DimensionBounds, DimensionEnvironment, DimensionInput, ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
         ENTITY_NO_GRAVITY_DATA_ID, ENTITY_RELATIVE_DELTA_X_FLAG, ENTITY_RELATIVE_DELTA_Y_FLAG,
         ENTITY_RELATIVE_DELTA_Z_FLAG, ENTITY_RELATIVE_ROTATE_DELTA_FLAG, ENTITY_RELATIVE_X_FLAG,
         ENTITY_RELATIVE_X_ROT_FLAG, ENTITY_RELATIVE_Y_FLAG, ENTITY_RELATIVE_Y_ROT_FLAG,
@@ -5319,6 +5348,52 @@ mod tests {
         let unit = ClientEntityDimensions::scalable(1.0, 1.0);
         assert!(world.entity_fits_in_blocks(Vec3::new(1.5, 0.25, 0.5), unit, &shapes));
         assert!(!world.entity_fits_in_blocks(Vec3::new(1.4999997, 0.25, 0.5), unit, &shapes));
+    }
+
+    #[test]
+    fn player_pose_dimensions_follow_avatar_table_and_fallback() {
+        let expected = [
+            (
+                ClientEntityPose::Standing,
+                0.6_f32,
+                1.8_f32,
+                1.62_f32,
+                false,
+            ),
+            (ClientEntityPose::Sleeping, 0.2, 0.2, 0.2, true),
+            (ClientEntityPose::FallFlying, 0.6, 0.6, 0.4, false),
+            (ClientEntityPose::Swimming, 0.6, 0.6, 0.4, false),
+            (ClientEntityPose::SpinAttack, 0.6, 0.6, 0.4, false),
+            (ClientEntityPose::Crouching, 0.6, 1.5, 1.27, false),
+            (ClientEntityPose::Dying, 0.2, 0.2, 1.62, true),
+        ];
+        for (pose, width, height, eye_height, fixed) in expected {
+            let dimensions = pose.player_dimensions();
+            assert_eq!(dimensions.width().to_bits(), width.to_bits());
+            assert_eq!(dimensions.height().to_bits(), height.to_bits());
+            assert_eq!(dimensions.eye_height().to_bits(), eye_height.to_bits());
+            assert_eq!(dimensions.is_fixed(), fixed);
+        }
+
+        for id in [-1, 18] {
+            assert_eq!(ClientEntityPose::from_id(id), ClientEntityPose::from_id(0));
+        }
+        let standing = ClientEntityPose::Standing.player_dimensions();
+        for pose in [
+            ClientEntityPose::LongJumping,
+            ClientEntityPose::Croaking,
+            ClientEntityPose::UsingTongue,
+            ClientEntityPose::Sitting,
+            ClientEntityPose::Roaring,
+            ClientEntityPose::Sniffing,
+            ClientEntityPose::Emerging,
+            ClientEntityPose::Digging,
+            ClientEntityPose::Sliding,
+            ClientEntityPose::Shooting,
+            ClientEntityPose::Inhaling,
+        ] {
+            assert_eq!(pose.player_dimensions(), standing);
+        }
     }
 
     #[test]
@@ -8257,7 +8332,7 @@ mod tests {
         assert!(world.apply_entity(EntityInput {
             entity_id: 37,
             uuid: Uuid::new(1, 2),
-            type_id: 5,
+            type_id: VANILLA_PLAYER_ENTITY_TYPE_ID,
             x: 1.25,
             y: 80.0,
             z: -35.5,
@@ -8301,6 +8376,10 @@ mod tests {
             let entity = world.entity_at(37).expect("entity with pose");
             assert_eq!(entity.pose(), expected);
             assert_eq!(entity.pose().id(), id as u8);
+            assert_eq!(
+                entity.player_dimensions(),
+                Some(expected.player_dimensions())
+            );
         }
 
         let combined_metadata = [0, 0, 64, 5, 8, 1, 6, 20, 10, 255];
@@ -8313,6 +8392,10 @@ mod tests {
         assert!(world.apply_entity_metadata(37, &[6, 20, 99, 255]));
         let entity = world.entity_at(37).expect("fallback pose entity");
         assert_eq!(entity.pose(), super::ClientEntityPose::Standing);
+        assert_eq!(
+            entity.player_dimensions(),
+            Some(super::ClientEntityPose::Standing.player_dimensions())
+        );
         assert!(entity.is_glowing());
         assert!(entity.is_no_gravity());
     }

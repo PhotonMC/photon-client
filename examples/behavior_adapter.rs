@@ -61,7 +61,7 @@ use voxel_client::timer::Timer;
 use voxel_client::utf8;
 use voxel_client::wire::{self, ReadError};
 use voxel_client::world::{
-    ClientEntityDimensions, ClientWorld, DimensionBounds, SectionInput,
+    ClientEntityDimensions, ClientEntityPose, ClientWorld, DimensionBounds, SectionInput,
     collect_candidate_step_up_heights, collide_entity_movement,
 };
 
@@ -3619,6 +3619,15 @@ fn block_collision_fixture(
     Ok((world, shapes_by_state))
 }
 
+fn entity_dimensions_snapshot(value: ClientEntityDimensions) -> Value {
+    json!({
+        "width": format!("{:08x}", value.width().to_bits()),
+        "height": format!("{:08x}", value.height().to_bits()),
+        "eye_height": format!("{:08x}", value.eye_height().to_bits()),
+        "fixed": value.is_fixed(),
+    })
+}
+
 fn shape_snapshot(value: &VoxelShape) -> Value {
     let mut state = json!({
         "empty": value.is_empty(),
@@ -4326,16 +4335,42 @@ fn shape_result(request: &Value) -> Result<Value, String> {
             let query_box = bounding_box.deflate(Shapes::EPSILON);
             let (world, shapes_by_state) = block_collision_fixture(request)?;
             Ok(json!({
-                "dimensions": {
-                    "width": format!("{:08x}", dimensions.width().to_bits()),
-                    "height": format!("{:08x}", dimensions.height().to_bits()),
-                    "eye_height": format!("{:08x}", dimensions.eye_height().to_bits()),
-                    "fixed": dimensions.is_fixed(),
-                },
+                "dimensions": entity_dimensions_snapshot(dimensions),
                 "box": aabb_snapshot(bounding_box),
                 "query": aabb_snapshot(query_box),
                 "fits": world.entity_fits_in_blocks(position, dimensions, &shapes_by_state),
             }))
+        }
+        "player_pose_dimensions" => {
+            let position = f64_vec3(
+                request
+                    .get("position")
+                    .ok_or("position must be an object")?,
+            )?;
+            let pose_ids = request
+                .get("pose_ids")
+                .ok_or("pose_ids must be an array")?
+                .as_array()
+                .ok_or("pose_ids must be an array")?;
+            let poses = pose_ids
+                .iter()
+                .map(|value| {
+                    let requested_id = value
+                        .as_i64()
+                        .ok_or_else(|| "pose ID must be an integer".to_owned())?
+                        .try_into()
+                        .map_err(|_| "pose ID must fit in i32".to_owned())?;
+                    let pose = ClientEntityPose::from_id(requested_id);
+                    let dimensions = pose.player_dimensions();
+                    Ok(json!({
+                        "requested_id": requested_id,
+                        "resolved_id": pose.id(),
+                        "dimensions": entity_dimensions_snapshot(dimensions),
+                        "box": aabb_snapshot(dimensions.make_bounding_box(position)),
+                    }))
+                })
+                .collect::<Result<Vec<_>, String>>()?;
+            Ok(json!({"poses": poses}))
         }
         "clip" => {
             let shape = shape_box(request.get("shape").ok_or("shape must be an object")?)?;
