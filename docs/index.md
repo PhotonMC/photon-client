@@ -111,6 +111,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P08.aj — server-conformance Entity mob flags semantic state](client-world-entity-mob-flags-conformance.md)
 - [P08.e-entity-motion — server-conformance ClientWorld entity motion state](client-world-entity-motion-conformance.md)
 - [P08.ab — server-conformance Entity no-gravity semantic state](client-world-entity-no-gravity-conformance.md)
+- [P08.ay-entity-passenger-player — server-conformance Player vehicle attachment](client-world-entity-passenger-player-conformance.md)
 - [P08.ax-entity-passenger-position — server-conformance `positionRider` tekne koltuğu](client-world-entity-passenger-position-conformance.md)
 - [P08.aw-entity-passenger-tick — server-conformance Passenger tick sırası](client-world-entity-passenger-tick-conformance.md)
 - [P08.av-entity-passengers — server-conformance ClientWorld araç ve yolcu ilişkisi](client-world-entity-passengers-conformance.md)

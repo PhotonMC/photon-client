@@ -13,6 +13,7 @@ pub(crate) const PLAYER_RESPAWN_KEEP_ENTITY_DATA: u8 = 2;
 const VANILLA_PLAYER_ENTITY_TYPE_ID: i32 = 156;
 pub(crate) const VANILLA_SNOWBALL_ENTITY_TYPE_ID: i32 = 120;
 const VANILLA_BOAT_ENTITY_TYPE_IDS: &[i32] = &[0, 12, 23, 33, 74, 81, 89, 94, 125];
+const VANILLA_PLAYER_VEHICLE_ATTACHMENT_Y: f64 = 0.6;
 const VANILLA_AIR_BLOCK_STATE_ID: i32 = 0;
 const ENTITY_SHARED_FLAGS_DATA_ID: u8 = 0;
 const ENTITY_AIR_SUPPLY_DATA_ID: u8 = 1;
@@ -1285,7 +1286,7 @@ impl ClientWorld {
             })
         });
         if !local_player_is_passenger {
-            self.tick_local_player(false);
+            self.tick_local_player(None);
         }
 
         let ticking_entity_ids: Vec<i32> = self
@@ -1299,12 +1300,12 @@ impl ClientWorld {
         }
     }
 
-    fn tick_local_player(&mut self, as_passenger: bool) {
+    fn tick_local_player(&mut self, vehicle_id: Option<i32>) {
         let passenger_ids = {
             let Some(player) = self.local_player.as_mut() else {
                 return;
             };
-            if as_passenger {
+            if vehicle_id.is_some() {
                 player.motion_x_bits = 0.0_f64.to_bits();
                 player.motion_y_bits = 0.0_f64.to_bits();
                 player.motion_z_bits = 0.0_f64.to_bits();
@@ -1320,6 +1321,9 @@ impl ClientWorld {
         let Some(player_id) = self.local_player.as_ref().map(|player| player.id) else {
             return;
         };
+        if let Some(vehicle_id) = vehicle_id {
+            self.position_entity_passenger(vehicle_id, player_id);
+        }
         for passenger_id in passenger_ids {
             self.tick_entity_passenger_tree(player_id, passenger_id);
         }
@@ -1355,7 +1359,7 @@ impl ClientWorld {
             .as_ref()
             .is_some_and(|player| player.id == passenger_id)
         {
-            self.tick_local_player(true);
+            self.tick_local_player(Some(vehicle_id));
         } else if self
             .entities
             .get(&passenger_id)
@@ -1370,12 +1374,20 @@ impl ClientWorld {
             .entities
             .get(&passenger_id)
             .map(|entity| entity.type_id)
+            .or_else(|| {
+                self.local_player
+                    .as_ref()
+                    .filter(|player| player.id == passenger_id)
+                    .map(|_| VANILLA_PLAYER_ENTITY_TYPE_ID)
+            })
         else {
             return;
         };
-        if passenger_type_id != VANILLA_SNOWBALL_ENTITY_TYPE_ID {
-            return;
-        }
+        let passenger_vehicle_attachment_y = match passenger_type_id {
+            VANILLA_PLAYER_ENTITY_TYPE_ID => VANILLA_PLAYER_VEHICLE_ATTACHMENT_Y,
+            VANILLA_SNOWBALL_ENTITY_TYPE_ID => 0.0,
+            _ => return,
+        };
 
         let Some((
             vehicle_type_id,
@@ -1413,11 +1425,17 @@ impl ClientWorld {
         let rotated_z = passenger_z_offset * f64::from(mth_cos_f64(radians));
         let target_position = (
             vehicle_position.0 + rotated_x,
-            vehicle_position.1 + 0.1875,
+            vehicle_position.1 + 0.1875 - passenger_vehicle_attachment_y,
             vehicle_position.2 + rotated_z,
         );
         if let Some(passenger) = self.entities.get_mut(&passenger_id) {
             passenger.set_position(target_position);
+        } else if let Some(player) = self
+            .local_player
+            .as_mut()
+            .filter(|player| player.id == passenger_id)
+        {
+            player.set_position(target_position);
         }
     }
 
@@ -2809,6 +2827,12 @@ impl ClientPlayerState {
         self.old_y_rot_bits = self.y_rot_bits;
         self.old_x_rot_bits = self.x_rot_bits;
         self.old_y_head_rot_bits = self.y_head_rot_bits;
+    }
+
+    fn set_position(&mut self, position: (f64, f64, f64)) {
+        self.x_bits = position.0.to_bits();
+        self.y_bits = position.1.to_bits();
+        self.z_bits = position.2.to_bits();
     }
 
     fn tick_head_rotation(&mut self) {
@@ -4819,6 +4843,81 @@ mod tests {
         assert!((second.position().0 - 2.6).abs() < 1e-6);
         assert!((second.position().1 - 2.1875).abs() < 1e-6);
         assert!((second.position().2 - 2.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn passenger_tick_positions_remote_player_from_vehicle_attachment() {
+        let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+        let (blocks, biomes) = section(0, 0);
+        world.replace_chunk(
+            0,
+            0,
+            [SectionInput {
+                non_empty_block_count: 0,
+                fluid_count: 0,
+                block_states: &blocks,
+                biomes: &biomes,
+            }],
+        );
+        for (entity_id, type_id, position) in [
+            (37, 89, (2.0, 2.0, 2.0)),
+            (38, VANILLA_PLAYER_ENTITY_TYPE_ID, (2.0, 12.0, 2.0)),
+        ] {
+            assert!(world.apply_entity(EntityInput {
+                entity_id,
+                uuid: Uuid::new(entity_id as u64, 0),
+                type_id,
+                x: position.0,
+                y: position.1,
+                z: position.2,
+                movement: (0.0, 0.0, 0.0),
+                rotation: (0.0, 0.0, 0.0),
+                data: 0,
+            }));
+        }
+        assert!(world.apply_entity_passengers(37, &[38]));
+
+        world.tick();
+
+        let passenger = world.entity_at(38).expect("remote player passenger");
+        assert_eq!(passenger.previous_position(), (2.0, 12.0, 2.0));
+        assert_eq!(passenger.position(), (2.0, 1.5875, 2.0));
+    }
+
+    #[test]
+    fn passenger_tick_positions_local_player_from_vehicle_attachment() {
+        let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+        let (blocks, biomes) = section(0, 0);
+        world.replace_chunk(
+            0,
+            0,
+            [SectionInput {
+                non_empty_block_count: 0,
+                fluid_count: 0,
+                block_states: &blocks,
+                biomes: &biomes,
+            }],
+        );
+        assert!(world.apply_entity(EntityInput {
+            entity_id: 37,
+            uuid: Uuid::new(37, 0),
+            type_id: 89,
+            x: 2.0,
+            y: 2.0,
+            z: 2.0,
+            movement: (0.0, 0.0, 0.0),
+            rotation: (0.0, 0.0, 0.0),
+            data: 0,
+        }));
+        world.set_local_player_id(38);
+        assert!(world.apply_local_player_position((2.0, 12.0, 2.0), (0.0, 0.0, 0.0), (0.0, 0.0),));
+        assert!(world.apply_entity_passengers(37, &[38]));
+
+        world.tick();
+
+        let player = world.local_player().expect("local player passenger");
+        assert_eq!(player.previous_position(), (2.0, 12.0, 2.0));
+        assert_eq!(player.position(), (2.0, 1.5875, 2.0));
     }
 
     #[test]
