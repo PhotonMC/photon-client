@@ -3,8 +3,8 @@
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 use crate::math::{
-    MTH_DEG_TO_RAD, Vec3, clamp_f32, clamp_f64, equal_f64, mth_atan2, mth_cos_f64, mth_lerp_f32,
-    mth_lerp_f64, mth_rot_lerp_f32, mth_rot_lerp_f64, mth_sin_f64, wrap_degrees_f32,
+    MTH_DEG_TO_RAD, Vec3, abs_max_f64, clamp_f32, clamp_f64, equal_f64, mth_atan2, mth_cos_f64,
+    mth_lerp_f32, mth_lerp_f64, mth_rot_lerp_f32, mth_rot_lerp_f64, mth_sin_f64, wrap_degrees_f32,
 };
 use crate::{
     aabb::Aabb,
@@ -90,6 +90,12 @@ pub struct ClientEntityCollisionCandidate {
     pub spectator: bool,
     pub can_be_collided_with: bool,
     pub same_vehicle: bool,
+}
+
+/// Position data needed by Java's world-border collision query.
+#[derive(Debug, Clone, Copy)]
+pub struct ClientWorldCollisionSource {
+    pub position: Vec3,
 }
 
 /// Collect entity bounding-box shapes using Java's collision-query policy.
@@ -2973,6 +2979,78 @@ impl ClientWorld {
             .deflate(Shapes::EPSILON);
         self.collect_block_collision_shapes(bounding_box, shapes_by_state)
             .is_empty()
+    }
+
+    /// Return whether the query has no block, entity, or world-border collision.
+    ///
+    /// The order is the same short-circuit order as Java's `CollisionGetter`:
+    /// blocks, then entities, then the border. The source position is optional
+    /// because Java skips the border branch for a null source entity.
+    pub fn no_collision(
+        &self,
+        source: Option<ClientWorldCollisionSource>,
+        bounding_box: Aabb,
+        shapes_by_state: &BTreeMap<i32, VoxelShape>,
+        candidates: &[ClientEntityCollisionCandidate],
+    ) -> bool {
+        self.no_block_collision(bounding_box, shapes_by_state)
+            && self.no_entity_collision(source.is_some(), bounding_box, candidates)
+            && self.no_border_collision(source, bounding_box)
+    }
+
+    /// Return whether the query has no loaded block collision.
+    pub fn no_block_collision(
+        &self,
+        bounding_box: Aabb,
+        shapes_by_state: &BTreeMap<i32, VoxelShape>,
+    ) -> bool {
+        self.collect_block_collision_shapes(bounding_box, shapes_by_state)
+            .is_empty()
+    }
+
+    /// Return whether the query has no entity collision.
+    pub fn no_entity_collision(
+        &self,
+        source_present: bool,
+        bounding_box: Aabb,
+        candidates: &[ClientEntityCollisionCandidate],
+    ) -> bool {
+        collect_entity_collision_shapes(source_present, bounding_box, candidates).is_empty()
+    }
+
+    /// Return whether the query has no collision with the current world border.
+    pub fn no_border_collision(
+        &self,
+        source: Option<ClientWorldCollisionSource>,
+        bounding_box: Aabb,
+    ) -> bool {
+        let Some(source) = source else {
+            return true;
+        };
+
+        let border = &self.world_border;
+        let margin = abs_max_f64(bounding_box.x_size(), bounding_box.z_size()).max(1.0);
+        let min_x = border.min_x(0.0);
+        let max_x = border.max_x(0.0);
+        let min_z = border.min_z(0.0);
+        let max_z = border.max_z(0.0);
+        let distance = (source.position.x - min_x)
+            .min(max_x - source.position.x)
+            .min(source.position.z - min_z)
+            .min(max_z - source.position.z);
+        let inside_close = distance < margin * 2.0
+            && source.position.x >= min_x - margin
+            && source.position.x < max_x + margin
+            && source.position.z >= min_z - margin
+            && source.position.z < max_z + margin;
+        if !inside_close {
+            return true;
+        }
+
+        let border_shape = border.collision_shape();
+        let query_shape = Shapes::create_from_aabb(bounding_box)
+            .expect("ClientWorld collision queries require normalized bounds");
+        !Shapes::join_is_not_empty(&border_shape, &query_shape, BooleanOp::And)
     }
 
     /// Apply a server-verified block-state update to an already loaded section.

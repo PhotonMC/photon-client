@@ -3150,6 +3150,63 @@ public final class MathOracle {
                     tracks.add(states);
                 }
                 result.add("tracks", tracks);
+            } else if (kind.equals("client_world_collision")) {
+                SharedConstants.setVersion(TEST_VERSION);
+                Bootstrap.bootStrap();
+                var states = new JsonArray();
+                for (var entry : request.getAsJsonArray("inputs")) {
+                    JsonObject input = entry.getAsJsonObject();
+                    AABB testArea = box(input.getAsJsonObject("test_area"));
+                    boolean sourcePresent = input.has("source_present")
+                        && input.get("source_present").getAsBoolean();
+                    CollisionFixtureEntity source = null;
+                    if (sourcePresent) {
+                        AABB sourceBox = box(input.getAsJsonObject("source_box"));
+                        JsonObject sourcePosition = input.getAsJsonObject("source_position");
+                        source = CollisionFixtureEntity.create(
+                            sourceBox,
+                            false,
+                            true,
+                            false,
+                            new Vec3(
+                            f64(sourcePosition, "x"),
+                            f64(sourcePosition, "y"),
+                            f64(sourcePosition, "z")
+                            )
+                        );
+                    }
+                    var entities = new java.util.ArrayList<Entity>();
+                    for (var candidateEntry : input.getAsJsonArray("candidates")) {
+                        JsonObject candidate = candidateEntry.getAsJsonObject();
+                        boolean isSource = candidate.has("is_source")
+                            && candidate.get("is_source").getAsBoolean();
+                        entities.add(sourcePresent && isSource
+                            ? source
+                            : CollisionFixtureEntity.create(
+                                box(candidate.getAsJsonObject("box")),
+                                candidate.has("spectator")
+                                    && candidate.get("spectator").getAsBoolean(),
+                                candidate.has("can_be_collided_with")
+                                    && candidate.get("can_be_collided_with").getAsBoolean(),
+                                candidate.has("same_vehicle")
+                                    && candidate.get("same_vehicle").getAsBoolean()));
+                    }
+                    JsonObject borderInput = input.getAsJsonObject("border");
+                    WorldBorder border = new WorldBorder();
+                    border.setCenter(f64(borderInput, "center_x"), f64(borderInput, "center_z"));
+                    border.setAbsoluteMaxSize(borderInput.get("absolute_max_size").getAsInt());
+                    border.setSize(f64(borderInput, "size"));
+                    CollisionGetter collision = collisionFixture(
+                        input.getAsJsonArray("placements"), entities, border);
+                    var state = new JsonObject();
+                    state.addProperty("label", input.get("label").getAsString());
+                    state.addProperty("no_block_collision", collision.noBlockCollision(source, testArea));
+                    state.addProperty("no_entity_collision", collision.noEntityCollision(source, testArea));
+                    state.addProperty("no_border_collision", collision.noBorderCollision(source, testArea));
+                    state.addProperty("no_collision", collision.noCollision(source, testArea));
+                    states.add(state);
+                }
+                result.add("states", states);
             } else if (kind.equals("collect_step_up_heights")) {
                 AABB moving = box(request.getAsJsonObject("moving"));
                 var shapes = new java.util.ArrayList<VoxelShape>();
@@ -3766,6 +3823,13 @@ public final class MathOracle {
         private static CollisionFixtureEntity create(
             AABB boundingBox, boolean spectator, boolean collidable, boolean sameVehicle
         ) {
+            return create(boundingBox, spectator, collidable, sameVehicle, null);
+        }
+
+        private static CollisionFixtureEntity create(
+            AABB boundingBox, boolean spectator, boolean collidable, boolean sameVehicle,
+            Vec3 position
+        ) {
             try {
                 Unsafe unsafe = unsafeInstance();
                 CollisionFixtureEntity entity =
@@ -3774,8 +3838,12 @@ public final class MathOracle {
                 entity.collidable = collidable;
                 entity.sameVehicle = sameVehicle;
                 entity.setBoundingBox(boundingBox);
+                if (position != null) {
+                    var field = Entity.class.getDeclaredField("position");
+                    unsafe.putObject(entity, unsafe.objectFieldOffset(field), position);
+                }
                 return entity;
-            } catch (InstantiationException error) {
+            } catch (ReflectiveOperationException error) {
                 throw new IllegalStateException("Unable to allocate collision fixture entity", error);
             }
         }
@@ -3787,6 +3855,11 @@ public final class MathOracle {
         @Override
         public boolean isSpectator() {
             return this.spectator;
+        }
+
+        @Override
+        public boolean isShiftKeyDown() {
+            return false;
         }
 
         @Override
@@ -3853,6 +3926,12 @@ public final class MathOracle {
     }
 
     private static CollisionGetter collisionFixture(JsonArray placements) {
+        return collisionFixture(placements, java.util.List.of(), null);
+    }
+
+    private static CollisionGetter collisionFixture(
+        JsonArray placements, java.util.List<Entity> entities, WorldBorder worldBorder
+    ) {
         var states = new java.util.HashMap<String, BlockState>();
         for (var entry : placements) {
             JsonObject placement = entry.getAsJsonObject();
@@ -3872,6 +3951,7 @@ public final class MathOracle {
             };
             states.put(x + "," + y + "," + z, state);
         }
+        var entityFixture = new EntityCollisionFixture(entities);
         return new CollisionGetter() {
             private String key(BlockPos pos) {
                 return pos.getX() + "," + pos.getY() + "," + pos.getZ();
@@ -3879,7 +3959,7 @@ public final class MathOracle {
 
             @Override
             public WorldBorder getWorldBorder() {
-                return null;
+                return worldBorder;
             }
 
             @Override
@@ -3889,7 +3969,7 @@ public final class MathOracle {
 
             @Override
             public java.util.List<VoxelShape> getEntityCollisions(Entity source, AABB testArea) {
-                return java.util.List.of();
+                return entityFixture.getEntityCollisions(source, testArea);
             }
 
             @Override

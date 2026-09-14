@@ -63,9 +63,9 @@ use voxel_client::wire::{self, ReadError};
 use voxel_client::world::{
     ClientEntityCollisionCandidate, ClientEntityDimensions, ClientEntityPose,
     ClientPlayerPoseInput, ClientWorld, ClientWorldBorder, ClientWorldBorderInitialization,
-    ClientWorldBorderStatus, DimensionBounds, SectionInput, collect_candidate_step_up_heights,
-    collect_entity_collision_shapes, collide_entity_movement, collide_entity_movement_state,
-    world_border_collision_shape,
+    ClientWorldBorderStatus, ClientWorldCollisionSource, DimensionBounds, SectionInput,
+    collect_candidate_step_up_heights, collect_entity_collision_shapes, collide_entity_movement,
+    collide_entity_movement_state, world_border_collision_shape,
 };
 
 fn string<'a>(request: &'a Value, name: &str) -> Result<&'a str, String> {
@@ -3640,6 +3640,46 @@ fn block_collision_fixture(
     Ok((world, shapes_by_state))
 }
 
+fn entity_collision_candidates(
+    request: &Value,
+) -> Result<Vec<ClientEntityCollisionCandidate>, String> {
+    request
+        .get("candidates")
+        .ok_or("candidates must be an array")?
+        .as_array()
+        .ok_or("candidates must be an array")?
+        .iter()
+        .map(|entry| {
+            let candidate = entry
+                .as_object()
+                .ok_or("entity collision candidate must be an object")?;
+            Ok(ClientEntityCollisionCandidate {
+                bounding_box: aabb_box(
+                    candidate
+                        .get("box")
+                        .ok_or("candidate box must be an object")?,
+                )?,
+                is_source: candidate
+                    .get("is_source")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(false),
+                spectator: candidate
+                    .get("spectator")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(false),
+                can_be_collided_with: candidate
+                    .get("can_be_collided_with")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(false),
+                same_vehicle: candidate
+                    .get("same_vehicle")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(false),
+            })
+        })
+        .collect()
+}
+
 fn entity_dimensions_snapshot(value: ClientEntityDimensions) -> Value {
     json!({
         "width": format!("{:08x}", value.width().to_bits()),
@@ -4367,45 +4407,84 @@ fn shape_result(request: &Value) -> Result<Value, String> {
                     .get("test_area")
                     .ok_or("test_area must be an object")?,
             )?;
-            let candidates = request
-                .get("candidates")
-                .ok_or("candidates must be an array")?
-                .as_array()
-                .ok_or("candidates must be an array")?
-                .iter()
-                .map(|entry| {
-                    let candidate = entry
-                        .as_object()
-                        .ok_or("entity collision candidate must be an object")?;
-                    Ok(ClientEntityCollisionCandidate {
-                        bounding_box: aabb_box(
-                            candidate
-                                .get("box")
-                                .ok_or("candidate box must be an object")?,
-                        )?,
-                        is_source: candidate
-                            .get("is_source")
-                            .and_then(Value::as_bool)
-                            .unwrap_or(false),
-                        spectator: candidate
-                            .get("spectator")
-                            .and_then(Value::as_bool)
-                            .unwrap_or(false),
-                        can_be_collided_with: candidate
-                            .get("can_be_collided_with")
-                            .and_then(Value::as_bool)
-                            .unwrap_or(false),
-                        same_vehicle: candidate
-                            .get("same_vehicle")
-                            .and_then(Value::as_bool)
-                            .unwrap_or(false),
-                    })
-                })
-                .collect::<Result<Vec<_>, String>>()?;
+            let candidates = entity_collision_candidates(request)?;
             let shapes = collect_entity_collision_shapes(source_present, test_area, &candidates);
             Ok(json!({
                 "shapes": shapes.iter().map(shape_snapshot).collect::<Vec<_>>(),
             }))
+        }
+        "client_world_collision" => {
+            let inputs = request
+                .get("inputs")
+                .ok_or("inputs must be an array")?
+                .as_array()
+                .ok_or("inputs must be an array")?;
+            let states = inputs
+                .iter()
+                .map(|entry| {
+                    let input = entry
+                        .as_object()
+                        .ok_or("client world collision input must be an object")?;
+                    let test_area = aabb_box(
+                        input
+                            .get("test_area")
+                            .ok_or("test_area must be an object")?,
+                    )?;
+                    let (world, shapes_by_state) = block_collision_fixture(entry)?;
+                    let source = if input
+                        .get("source_present")
+                        .and_then(Value::as_bool)
+                        .unwrap_or(false)
+                    {
+                        Some(ClientWorldCollisionSource {
+                            position: f64_vec3(
+                                input
+                                    .get("source_position")
+                                    .ok_or("source_position must be an object")?,
+                            )?,
+                        })
+                    } else {
+                        None
+                    };
+                    let border = input.get("border").ok_or("border must be an object")?;
+                    let size = f64_field(border, "size")?;
+                    let mut world = world;
+                    world.apply_world_border_initialize(ClientWorldBorderInitialization {
+                        center_x: f64_field(border, "center_x")?,
+                        center_z: f64_field(border, "center_z")?,
+                        old_size: size,
+                        new_size: size,
+                        lerp_time: 0,
+                        absolute_max_size: i32_field(border, "absolute_max_size")?,
+                        warning_blocks: 5,
+                        warning_time: 15,
+                    });
+                    let candidates = entity_collision_candidates(entry)?;
+                    Ok(json!({
+                        "label": input
+                            .get("label")
+                            .and_then(Value::as_str)
+                            .ok_or("label must be a string")?,
+                        "no_block_collision": world.no_block_collision(
+                            test_area,
+                            &shapes_by_state,
+                        ),
+                        "no_entity_collision": world.no_entity_collision(
+                            source.is_some(),
+                            test_area,
+                            &candidates,
+                        ),
+                        "no_border_collision": world.no_border_collision(source, test_area),
+                        "no_collision": world.no_collision(
+                            source,
+                            test_area,
+                            &shapes_by_state,
+                            &candidates,
+                        ),
+                    }))
+                })
+                .collect::<Result<Vec<_>, String>>()?;
+            Ok(json!({"states": states}))
         }
         "world_border_collision_shape" => {
             let inputs = request

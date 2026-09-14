@@ -95,6 +95,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P09.j — Moving world-border extent — client-parity birleşik kayıt](client-world-border-moving-conformance.md)
 - [P09.k — ClientWorld world-border state — client-parity birleşik kayıt](client-world-border-state-conformance.md)
 - [P08.d — server-conformance ClientWorld chunk unload](client-world-chunk-unload-conformance.md)
+- [P09.l — ClientWorld birleşik collision sources — client-parity birleşik kayıt](client-world-collision-conformance.md)
 - [P09.b — Entity collision movement resolution — client-parity birleşik kayıt](client-world-collision-movement-conformance.md)
 - [P08.r — server-conformance Vanilla container menu slot haritası](client-world-container-menu-map-conformance.md)
 - [P08.o — server-conformance Custom dimension key/type ve registry bounds](client-world-custom-dimension-conformance.md)
