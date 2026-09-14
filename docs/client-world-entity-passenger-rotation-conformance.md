@@ -45,7 +45,7 @@ bu alanları değiştirir.
   passenger ile ölçülür.
 - Passenger seat position, nonzero boat `deltaRotation`, `onPassengerTurned`
   input callback'i, animal ikinci passenger rotation offset'i ve tag
-  istisnası P08.ba'nın dışındadır.
+  istisnası P08.ba'nın dışındadır; Breeze istisnası [P08.bb kaydındadır](client-world-entity-passenger-boat-turn-exemption-conformance.md).
 
 ## Rust doğrulaması
 

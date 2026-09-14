@@ -112,6 +112,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P08.e-entity-motion — server-conformance ClientWorld entity motion state](client-world-entity-motion-conformance.md)
 - [P08.ab — server-conformance Entity no-gravity semantic state](client-world-entity-no-gravity-conformance.md)
 - [P08.az-entity-passenger-boat-family — server-conformance Chest boat ve raft `positionRider`](client-world-entity-passenger-boat-family-conformance.md)
+- [P08.bb-entity-passenger-boat-turn-exemption — server-conformance Breeze `CAN_TURN_IN_BOATS`](client-world-entity-passenger-boat-turn-exemption-conformance.md)
 - [P08.ay-entity-passenger-player — server-conformance Player vehicle attachment](client-world-entity-passenger-player-conformance.md)
 - [P08.ax-entity-passenger-position — server-conformance `positionRider` tekne koltuğu](client-world-entity-passenger-position-conformance.md)
 - [P08.ba-entity-passenger-rotation — server-conformance Boat passenger rotation clamp](client-world-entity-passenger-rotation-conformance.md)
