@@ -2944,6 +2944,42 @@ public final class MathOracle {
                 } catch (ReflectiveOperationException error) {
                     throw new IllegalStateException("Entity.collideWithShapes reflection failed", error);
                 }
+            } else if (kind.equals("entity_movement_state")) {
+                var states = new JsonArray();
+                for (var entry : request.getAsJsonArray("inputs")) {
+                    JsonObject input = entry.getAsJsonObject();
+                    Vec3 movement = vec3(input.getAsJsonObject("movement"));
+                    AABB moving = box(input.getAsJsonObject("moving"));
+                    var shapes = new java.util.ArrayList<VoxelShape>();
+                    for (var shapeEntry : input.getAsJsonArray("shapes")) {
+                        shapes.add(voxelShape(shapeEntry.getAsJsonObject()));
+                    }
+                    try {
+                        var method = Entity.class.getDeclaredMethod(
+                            "collideWithShapes", Vec3.class, AABB.class, java.util.List.class);
+                        method.setAccessible(true);
+                        var resolved = (Vec3) method.invoke(null, movement, moving, shapes);
+                        boolean xCollision = !Mth.equal(movement.x, resolved.x);
+                        boolean yCollision = movement.y != resolved.y;
+                        boolean zCollision = !Mth.equal(movement.z, resolved.z);
+                        boolean horizontalCollision = xCollision || zCollision;
+                        boolean verticalCollisionBelow = yCollision && movement.y < 0.0;
+                        var state = new JsonObject();
+                        state.addProperty("label", input.get("label").getAsString());
+                        state.add("movement", snapshot(resolved));
+                        state.addProperty("x_collision", xCollision);
+                        state.addProperty("y_collision", yCollision);
+                        state.addProperty("z_collision", zCollision);
+                        state.addProperty("horizontal_collision", horizontalCollision);
+                        state.addProperty("vertical_collision", yCollision);
+                        state.addProperty("vertical_collision_below", verticalCollisionBelow);
+                        state.addProperty("on_ground", verticalCollisionBelow);
+                        states.add(state);
+                    } catch (ReflectiveOperationException error) {
+                        throw new IllegalStateException("Entity.collideWithShapes reflection failed", error);
+                    }
+                }
+                result.add("states", states);
             } else if (kind.equals("collect_step_up_heights")) {
                 AABB moving = box(request.getAsJsonObject("moving"));
                 var shapes = new java.util.ArrayList<VoxelShape>();

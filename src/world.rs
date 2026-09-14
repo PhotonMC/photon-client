@@ -3,7 +3,7 @@
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 use crate::math::{
-    MTH_DEG_TO_RAD, Vec3, clamp_f32, mth_atan2, mth_cos_f64, mth_lerp_f32, mth_lerp_f64,
+    MTH_DEG_TO_RAD, Vec3, clamp_f32, equal_f64, mth_atan2, mth_cos_f64, mth_lerp_f32, mth_lerp_f64,
     mth_rot_lerp_f32, mth_rot_lerp_f64, mth_sin_f64, wrap_degrees_f32,
 };
 use crate::{
@@ -37,6 +37,49 @@ pub fn collide_entity_movement(movement: Vec3, bounding_box: Aabb, shapes: &[Vox
         }
     }
     resolved_movement
+}
+
+/// The collision flags produced from one resolved entity movement.
+#[derive(Debug, Clone, Copy)]
+pub struct ClientEntityMovementState {
+    pub movement: Vec3,
+    pub x_collision: bool,
+    pub y_collision: bool,
+    pub z_collision: bool,
+    pub horizontal_collision: bool,
+    pub vertical_collision: bool,
+    pub vertical_collision_below: bool,
+    pub on_ground: bool,
+}
+
+/// Resolve a movement delta and derive Java's base collision flags.
+///
+/// The x/z flags use `Mth.equal`'s strict `1.0E-5` tolerance, while the y
+/// flags use the exact comparison from `Entity.move`. This covers the base
+/// movement result before a caller applies step-up policy or a subclass's
+/// minor-horizontal-collision override.
+pub fn collide_entity_movement_state(
+    movement: Vec3,
+    bounding_box: Aabb,
+    shapes: &[VoxelShape],
+) -> ClientEntityMovementState {
+    let resolved_movement = collide_entity_movement(movement, bounding_box, shapes);
+    let x_collision = !equal_f64(movement.x, resolved_movement.x);
+    let y_collision = movement.y != resolved_movement.y;
+    let z_collision = !equal_f64(movement.z, resolved_movement.z);
+    let horizontal_collision = x_collision || z_collision;
+    let vertical_collision_below = y_collision && movement.y < 0.0;
+
+    ClientEntityMovementState {
+        movement: resolved_movement,
+        x_collision,
+        y_collision,
+        z_collision,
+        horizontal_collision,
+        vertical_collision: y_collision,
+        vertical_collision_below,
+        on_ground: vertical_collision_below,
+    }
 }
 
 fn java_float_compare(first: &f32, second: &f32) -> std::cmp::Ordering {
@@ -5250,7 +5293,7 @@ mod tests {
         VANILLA_PLAYER_ENTITY_TYPE_ID, VANILLA_PRIMED_TNT_AIR_FRICTION,
         VANILLA_PRIMED_TNT_ENTITY_TYPE_ID, VANILLA_PRIMED_TNT_GRAVITY,
         VANILLA_SNOWBALL_ENTITY_TYPE_ID, collect_candidate_step_up_heights,
-        collide_entity_movement, menu_top_slot_count,
+        collide_entity_movement, collide_entity_movement_state, menu_top_slot_count,
     };
     use crate::aabb::Aabb;
     use crate::binary::{BitSet, Uuid};
@@ -5304,6 +5347,35 @@ mod tests {
             (no_collision.x, no_collision.y, no_collision.z),
             (1.25, -2.5, 3.75)
         );
+    }
+
+    #[test]
+    fn collision_state_follows_java_movement_flags() {
+        let moving = Aabb::new(0.25, 2.0, 0.25, 0.75, 3.0, 0.75);
+        let floor = Shapes::box_shape(-1.0, 0.0, -1.0, 2.0, 1.0, 2.0).unwrap();
+        let falling = collide_entity_movement_state(Vec3::new(0.0, -2.0, 0.0), moving, &[floor]);
+        assert_eq!(
+            (falling.movement.x, falling.movement.y, falling.movement.z),
+            (0.0, -1.0, 0.0)
+        );
+        assert!(!falling.x_collision);
+        assert!(falling.y_collision);
+        assert!(!falling.z_collision);
+        assert!(!falling.horizontal_collision);
+        assert!(falling.vertical_collision);
+        assert!(falling.vertical_collision_below);
+        assert!(falling.on_ground);
+
+        let ceiling = Shapes::box_shape(-1.0, 4.0, -1.0, 2.0, 5.0, 2.0).unwrap();
+        let rising = collide_entity_movement_state(Vec3::new(0.0, 2.0, 0.0), moving, &[ceiling]);
+        assert_eq!(
+            (rising.movement.x, rising.movement.y, rising.movement.z),
+            (0.0, 1.0, 0.0)
+        );
+        assert!(!rising.horizontal_collision);
+        assert!(rising.vertical_collision);
+        assert!(!rising.vertical_collision_below);
+        assert!(!rising.on_ground);
     }
 
     #[test]
