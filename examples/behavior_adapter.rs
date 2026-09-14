@@ -63,9 +63,9 @@ use voxel_client::wire::{self, ReadError};
 use voxel_client::world::{
     ClientEntityCollisionCandidate, ClientEntityDimensions, ClientEntityPose,
     ClientPlayerPoseInput, ClientWorld, ClientWorldBorder, ClientWorldBorderInitialization,
-    ClientWorldBorderStatus, ClientWorldCollisionSource, DimensionBounds, SectionInput,
-    collect_candidate_step_up_heights, collect_entity_collision_shapes, collide_entity_movement,
-    collide_entity_movement_state, world_border_collision_shape,
+    ClientWorldBorderStatus, ClientWorldCollisionSource, DimensionBounds, EntityInput,
+    SectionInput, collect_candidate_step_up_heights, collect_entity_collision_shapes,
+    collide_entity_movement, collide_entity_movement_state, world_border_collision_shape,
 };
 
 fn string<'a>(request: &'a Value, name: &str) -> Result<&'a str, String> {
@@ -4480,6 +4480,94 @@ fn shape_result(request: &Value) -> Result<Value, String> {
                             test_area,
                             &shapes_by_state,
                             &candidates,
+                        ),
+                    }))
+                })
+                .collect::<Result<Vec<_>, String>>()?;
+            Ok(json!({"states": states}))
+        }
+        "client_world_indexed_collision" => {
+            let inputs = request
+                .get("inputs")
+                .ok_or("inputs must be an array")?
+                .as_array()
+                .ok_or("inputs must be an array")?;
+            let states = inputs
+                .iter()
+                .map(|entry| {
+                    let input = entry
+                        .as_object()
+                        .ok_or("indexed collision input must be an object")?;
+                    let test_area = aabb_box(
+                        input
+                            .get("test_area")
+                            .ok_or("test_area must be an object")?,
+                    )?;
+                    let (mut world, shapes_by_state) = block_collision_fixture(entry)?;
+                    for entity_value in input
+                        .get("entities")
+                        .ok_or("entities must be an array")?
+                        .as_array()
+                        .ok_or("entities must be an array")?
+                    {
+                        let entity = entity_value
+                            .as_object()
+                            .ok_or("indexed entity must be an object")?;
+                        let entity_id = i32_field(entity_value, "entity_id")?;
+                        let position =
+                            f64_vec3(entity.get("position").ok_or("position must be an object")?)?;
+                        world.apply_entity(EntityInput {
+                            entity_id,
+                            uuid: Uuid::new(0, u64::from(entity_id as u32)),
+                            type_id: i32_field(entity_value, "type_id")?,
+                            x: position.x,
+                            y: position.y,
+                            z: position.z,
+                            movement: (0.0, 0.0, 0.0),
+                            rotation: (0.0, 0.0, 0.0),
+                            data: 0,
+                        });
+                    }
+                    let source_entity_id = input
+                        .get("source_entity_id")
+                        .filter(|value| !value.is_null())
+                        .map(|value| {
+                            value
+                                .as_i64()
+                                .ok_or_else(|| "source_entity_id must be an integer".to_owned())
+                                .and_then(|value| {
+                                    value
+                                        .try_into()
+                                        .map_err(|_| "source_entity_id must fit in i32".to_owned())
+                                })
+                        })
+                        .transpose()?;
+                    let border = input.get("border").ok_or("border must be an object")?;
+                    let size = f64_field(border, "size")?;
+                    world.apply_world_border_initialize(ClientWorldBorderInitialization {
+                        center_x: f64_field(border, "center_x")?,
+                        center_z: f64_field(border, "center_z")?,
+                        old_size: size,
+                        new_size: size,
+                        lerp_time: 0,
+                        absolute_max_size: i32_field(border, "absolute_max_size")?,
+                        warning_blocks: 5,
+                        warning_time: 15,
+                    });
+                    Ok(json!({
+                        "label": input
+                            .get("label")
+                            .and_then(Value::as_str)
+                            .ok_or("label must be a string")?,
+                        "entity_count": world.loaded_entity_count(),
+                        "no_entity_collision": world.no_entity_collision_for_entity(
+                            source_entity_id,
+                            test_area,
+                        ),
+                        "no_collision": world.no_collision_for_entity(
+                            source_entity_id,
+                            test_area,
+                            &shapes_by_state,
                         ),
                     }))
                 })

@@ -33,6 +33,7 @@ import net.minecraft.core.AxisCycle;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.SectionPos;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.Bootstrap;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
@@ -57,6 +58,9 @@ import net.minecraft.world.level.levelgen.PositionalRandomFactory;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.border.WorldBorder;
 import net.minecraft.world.level.material.FluidState;
+import net.minecraft.world.level.entity.LevelCallback;
+import net.minecraft.world.level.entity.LevelEntityGetter;
+import net.minecraft.world.level.entity.TransientEntitySectionManager;
 import net.minecraft.world.level.block.state.properties.AttachFace;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
@@ -3207,6 +3211,63 @@ public final class MathOracle {
                     states.add(state);
                 }
                 result.add("states", states);
+            } else if (kind.equals("client_world_indexed_collision")) {
+                SharedConstants.setVersion(TEST_VERSION);
+                Bootstrap.bootStrap();
+                var states = new JsonArray();
+                for (var entry : request.getAsJsonArray("inputs")) {
+                    JsonObject input = entry.getAsJsonObject();
+                    AABB testArea = box(input.getAsJsonObject("test_area"));
+                    var entityStorage = new TransientEntitySectionManager<Entity>(
+                        Entity.class, new NoopEntityCallbacks());
+                    var entitiesById = new java.util.HashMap<Integer, CollisionFixtureEntity>();
+                    for (var entityEntry : input.getAsJsonArray("entities")) {
+                        JsonObject entityInput = entityEntry.getAsJsonObject();
+                        int entityId = entityInput.get("entity_id").getAsInt();
+                        int typeId = entityInput.get("type_id").getAsInt();
+                        JsonObject positionInput = entityInput.getAsJsonObject("position");
+                        Vec3 position = new Vec3(
+                            f64(positionInput, "x"),
+                            f64(positionInput, "y"),
+                            f64(positionInput, "z"));
+                        boolean spectator = entityInput.has("spectator")
+                            && entityInput.get("spectator").getAsBoolean();
+                        boolean collidable = entityInput.has("can_be_collided_with")
+                            && entityInput.get("can_be_collided_with").getAsBoolean();
+                        boolean sameVehicle = entityInput.has("same_vehicle")
+                            && entityInput.get("same_vehicle").getAsBoolean();
+                        CollisionFixtureEntity entity = CollisionFixtureEntity.createIndexed(
+                            entityId,
+                            typeId,
+                            position,
+                            spectator,
+                            collidable,
+                            sameVehicle);
+                        entityStorage.addEntity(entity);
+                        entitiesById.put(entityId, entity);
+                    }
+                    Integer sourceId = input.has("source_entity_id")
+                        && !input.get("source_entity_id").isJsonNull()
+                        ? input.get("source_entity_id").getAsInt()
+                        : null;
+                    Entity source = sourceId == null ? null : entitiesById.get(sourceId);
+                    JsonObject borderInput = input.getAsJsonObject("border");
+                    WorldBorder border = new WorldBorder();
+                    border.setCenter(f64(borderInput, "center_x"), f64(borderInput, "center_z"));
+                    border.setAbsoluteMaxSize(borderInput.get("absolute_max_size").getAsInt());
+                    border.setSize(f64(borderInput, "size"));
+                    CollisionGetter collision = collisionFixture(
+                        input.getAsJsonArray("placements"),
+                        new IndexedEntityCollisionFixture(entityStorage.getEntityGetter()),
+                        border);
+                    var state = new JsonObject();
+                    state.addProperty("label", input.get("label").getAsString());
+                    state.addProperty("entity_count", entityStorage.count());
+                    state.addProperty("no_entity_collision", collision.noEntityCollision(source, testArea));
+                    state.addProperty("no_collision", collision.noCollision(source, testArea));
+                    states.add(state);
+                }
+                result.add("states", states);
             } else if (kind.equals("collect_step_up_heights")) {
                 AABB moving = box(request.getAsJsonObject("moving"));
                 var shapes = new java.util.ArrayList<VoxelShape>();
@@ -3848,6 +3909,40 @@ public final class MathOracle {
             }
         }
 
+        private static CollisionFixtureEntity createIndexed(
+            int entityId,
+            int typeId,
+            Vec3 position,
+            boolean spectator,
+            boolean collidable,
+            boolean sameVehicle
+        ) {
+            var entityType = BuiltInRegistries.ENTITY_TYPE.byId(typeId);
+            if (entityType == null) {
+                throw new IllegalArgumentException("Unknown entity type id " + typeId);
+            }
+            AABB boundingBox = entityType.getDimensions().makeBoundingBox(position);
+            CollisionFixtureEntity entity = create(
+                boundingBox, spectator, collidable, sameVehicle, position);
+            try {
+                Unsafe unsafe = unsafeInstance();
+                var idField = Entity.class.getDeclaredField("id");
+                unsafe.putInt(entity, unsafe.objectFieldOffset(idField), entityId);
+                entity.uuid = new UUID(0L, Integer.toUnsignedLong(entityId));
+                BlockPos blockPosition = BlockPos.containing(position.x, position.y, position.z);
+                var blockPositionField = Entity.class.getDeclaredField("blockPosition");
+                unsafe.putObject(
+                    entity, unsafe.objectFieldOffset(blockPositionField), blockPosition);
+                var chunkPositionField = Entity.class.getDeclaredField("chunkPosition");
+                unsafe.putObject(
+                    entity, unsafe.objectFieldOffset(chunkPositionField),
+                    ChunkPos.containing(blockPosition));
+                return entity;
+            } catch (ReflectiveOperationException error) {
+                throw new IllegalStateException("Unable to index collision fixture entity", error);
+            }
+        }
+
         @Override
         protected void defineSynchedData(net.minecraft.network.syncher.SynchedEntityData.Builder builder) {
         }
@@ -3890,6 +3985,36 @@ public final class MathOracle {
         }
     }
 
+    private static final class NoopEntityCallbacks implements LevelCallback<Entity> {
+        @Override
+        public void onCreated(Entity entity) {
+        }
+
+        @Override
+        public void onDestroyed(Entity entity) {
+        }
+
+        @Override
+        public void onTickingStart(Entity entity) {
+        }
+
+        @Override
+        public void onTickingEnd(Entity entity) {
+        }
+
+        @Override
+        public void onTrackingStart(Entity entity) {
+        }
+
+        @Override
+        public void onTrackingEnd(Entity entity) {
+        }
+
+        @Override
+        public void onSectionChange(Entity entity) {
+        }
+    }
+
     private static final class EntityCollisionFixture implements EntityGetter {
         private final java.util.List<Entity> entities;
 
@@ -3925,12 +4050,54 @@ public final class MathOracle {
         }
     }
 
+    private static final class IndexedEntityCollisionFixture implements EntityGetter {
+        private final LevelEntityGetter<Entity> entityGetter;
+
+        private IndexedEntityCollisionFixture(LevelEntityGetter<Entity> entityGetter) {
+            this.entityGetter = entityGetter;
+        }
+
+        @Override
+        public java.util.List<Entity> getEntities(
+            Entity except, AABB box, java.util.function.Predicate<? super Entity> selector
+        ) {
+            var result = new java.util.ArrayList<Entity>();
+            this.entityGetter.get(box, entity -> {
+                if (entity != except && selector.test(entity)) {
+                    result.add(entity);
+                }
+            });
+            return result;
+        }
+
+        @Override
+        public <T extends Entity> java.util.List<T> getEntities(
+            net.minecraft.world.level.entity.EntityTypeTest<Entity, T> type,
+            AABB box,
+            java.util.function.Predicate<? super T> selector
+        ) {
+            return java.util.List.of();
+        }
+
+        @Override
+        public java.util.List<? extends net.minecraft.world.entity.player.Player> players() {
+            return java.util.List.of();
+        }
+    }
+
     private static CollisionGetter collisionFixture(JsonArray placements) {
         return collisionFixture(placements, java.util.List.of(), null);
     }
 
     private static CollisionGetter collisionFixture(
         JsonArray placements, java.util.List<Entity> entities, WorldBorder worldBorder
+    ) {
+        return collisionFixture(
+            placements, new EntityCollisionFixture(entities), worldBorder);
+    }
+
+    private static CollisionGetter collisionFixture(
+        JsonArray placements, EntityGetter entityGetter, WorldBorder worldBorder
     ) {
         var states = new java.util.HashMap<String, BlockState>();
         for (var entry : placements) {
@@ -3951,7 +4118,6 @@ public final class MathOracle {
             };
             states.put(x + "," + y + "," + z, state);
         }
-        var entityFixture = new EntityCollisionFixture(entities);
         return new CollisionGetter() {
             private String key(BlockPos pos) {
                 return pos.getX() + "," + pos.getY() + "," + pos.getZ();
@@ -3969,7 +4135,7 @@ public final class MathOracle {
 
             @Override
             public java.util.List<VoxelShape> getEntityCollisions(Entity source, AABB testArea) {
-                return entityFixture.getEntityCollisions(source, testArea);
+                return entityGetter.getEntityCollisions(source, testArea);
             }
 
             @Override

@@ -915,6 +915,12 @@ fn vanilla_boat_max_passengers(vehicle_type_id: i32) -> Option<usize> {
         })
 }
 
+fn is_vanilla_boat_entity_type(entity_type_id: i32) -> bool {
+    VANILLA_BOAT_PASSENGER_GEOMETRY
+        .iter()
+        .any(|&(type_id, _, _)| type_id == entity_type_id)
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct EntityInterpolationState {
     target_x_bits: u64,
@@ -3018,6 +3024,81 @@ impl ClientWorld {
         collect_entity_collision_shapes(source_present, bounding_box, candidates).is_empty()
     }
 
+    /// Return whether a query has no collision with the loaded entity state.
+    ///
+    /// The source ID is resolved against the same entity map that stores live
+    /// positions and passenger links. The current type-backed collider table
+    /// covers vanilla boat families; entity types with Java's base non-collidable
+    /// behavior produce no candidate until their dedicated type branch lands.
+    pub fn no_entity_collision_for_entity(
+        &self,
+        source_entity_id: Option<i32>,
+        bounding_box: Aabb,
+    ) -> bool {
+        let source_entity_id = source_entity_id.filter(|entity_id| self.entity_exists(*entity_id));
+        let candidates = self.indexed_entity_collision_candidates(source_entity_id);
+        collect_entity_collision_shapes(source_entity_id.is_some(), bounding_box, &candidates)
+            .is_empty()
+    }
+
+    /// Return whether a query has no collision in the loaded world state.
+    pub fn no_collision_for_entity(
+        &self,
+        source_entity_id: Option<i32>,
+        bounding_box: Aabb,
+        shapes_by_state: &BTreeMap<i32, VoxelShape>,
+    ) -> bool {
+        let source_entity_id = source_entity_id.filter(|entity_id| self.entity_exists(*entity_id));
+        let source = source_entity_id
+            .and_then(|entity_id| self.entity_position(entity_id))
+            .map(|position| ClientWorldCollisionSource { position });
+        self.no_block_collision(bounding_box, shapes_by_state)
+            && self.no_entity_collision_for_entity(source_entity_id, bounding_box)
+            && self.no_border_collision(source, bounding_box)
+    }
+
+    fn indexed_entity_collision_candidates(
+        &self,
+        source_entity_id: Option<i32>,
+    ) -> Vec<ClientEntityCollisionCandidate> {
+        self.entities
+            .values()
+            .filter_map(|entity| {
+                let same_vehicle = source_entity_id.is_some_and(|source_id| {
+                    source_id != entity.id()
+                        && self.root_vehicle_id(source_id) == self.root_vehicle_id(entity.id())
+                });
+                entity.collision_candidate(source_entity_id, same_vehicle)
+            })
+            .collect()
+    }
+
+    fn root_vehicle_id(&self, entity_id: i32) -> i32 {
+        let mut current = entity_id;
+        let mut visited = BTreeSet::new();
+        while visited.insert(current) {
+            let Some(vehicle_id) = self.entity_vehicle_id(current) else {
+                break;
+            };
+            current = vehicle_id;
+        }
+        current
+    }
+
+    fn entity_position(&self, entity_id: i32) -> Option<Vec3> {
+        if let Some(entity) = self.entities.get(&entity_id) {
+            let (x, y, z) = entity.position();
+            return Some(Vec3::new(x, y, z));
+        }
+        self.local_player
+            .as_ref()
+            .filter(|player| player.id == entity_id)
+            .map(|player| {
+                let (x, y, z) = player.position();
+                Vec3::new(x, y, z)
+            })
+    }
+
     /// Return whether the query has no collision with the current world border.
     pub fn no_border_collision(
         &self,
@@ -3112,7 +3193,7 @@ impl ClientWorld {
         true
     }
 
-    pub(crate) fn apply_entity(&mut self, entity: EntityInput) -> bool {
+    pub fn apply_entity(&mut self, entity: EntityInput) -> bool {
         if self.entities.contains_key(&entity.entity_id) {
             self.remove_entity(entity.entity_id);
         }
@@ -4606,6 +4687,29 @@ impl ClientEntity {
         self.id
     }
 
+    fn collision_candidate(
+        &self,
+        source_entity_id: Option<i32>,
+        same_vehicle: bool,
+    ) -> Option<ClientEntityCollisionCandidate> {
+        if !is_vanilla_boat_entity_type(self.type_id) {
+            return None;
+        }
+        let (x, y, z) = self.position();
+        let bounding_box = ClientEntityDimensions::scalable(
+            (VANILLA_BOAT_HALF_WIDTH * 2.0) as f32,
+            VANILLA_BOAT_HEIGHT as f32,
+        )
+        .make_bounding_box(Vec3::new(x, y, z));
+        Some(ClientEntityCollisionCandidate {
+            bounding_box,
+            is_source: source_entity_id == Some(self.id),
+            spectator: false,
+            can_be_collided_with: true,
+            same_vehicle,
+        })
+    }
+
     pub fn vehicle_id(&self) -> Option<i32> {
         self.vehicle_id
     }
@@ -5473,16 +5577,16 @@ pub(crate) struct BlockEntityInput<'a> {
     pub(crate) tag: Option<&'a [u8]>,
 }
 
-pub(crate) struct EntityInput {
-    pub(crate) entity_id: i32,
-    pub(crate) uuid: crate::binary::Uuid,
-    pub(crate) type_id: i32,
-    pub(crate) x: f64,
-    pub(crate) y: f64,
-    pub(crate) z: f64,
-    pub(crate) movement: (f64, f64, f64),
-    pub(crate) rotation: (f32, f32, f32),
-    pub(crate) data: i32,
+pub struct EntityInput {
+    pub entity_id: i32,
+    pub uuid: crate::binary::Uuid,
+    pub type_id: i32,
+    pub x: f64,
+    pub y: f64,
+    pub z: f64,
+    pub movement: (f64, f64, f64),
+    pub rotation: (f32, f32, f32),
+    pub data: i32,
 }
 
 pub(crate) struct EntityMotionInput {
