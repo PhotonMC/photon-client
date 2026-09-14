@@ -14,14 +14,14 @@ use crate::protocol::ConnectionProtocol;
 use crate::resources::KnownPack;
 use crate::wire;
 use crate::world::{
-    BlockEntityInput, ClientPlayerAbilities, DimensionBounds, DimensionEnvironment, DimensionInput,
-    EntityInput, EntityMotionInput, EntityMoveInput, EntityPositionInput, EntityPositionUpdateMode,
-    EntityRotationInput, EntityTeleportInput, LightLayerInput, LightUpdateInput,
-    PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS, PLAYER_RESPAWN_KEEP_ENTITY_DATA, SectionInput,
-    VANILLA_ARROW_ENTITY_TYPE_ID, VANILLA_COW_ENTITY_TYPE_ID,
-    VANILLA_EXPERIENCE_ORB_ENTITY_TYPE_ID, VANILLA_FALLING_BLOCK_ENTITY_TYPE_ID,
-    VANILLA_FIREWORK_ROCKET_ENTITY_TYPE_ID, VANILLA_PRIMED_TNT_ENTITY_TYPE_ID,
-    VANILLA_SNOWBALL_ENTITY_TYPE_ID,
+    BlockEntityInput, ClientPlayerAbilities, ClientPlayerGameMode, DimensionBounds,
+    DimensionEnvironment, DimensionInput, EntityInput, EntityMotionInput, EntityMoveInput,
+    EntityPositionInput, EntityPositionUpdateMode, EntityRotationInput, EntityTeleportInput,
+    LightLayerInput, LightUpdateInput, PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS,
+    PLAYER_RESPAWN_KEEP_ENTITY_DATA, SectionInput, VANILLA_ARROW_ENTITY_TYPE_ID,
+    VANILLA_COW_ENTITY_TYPE_ID, VANILLA_EXPERIENCE_ORB_ENTITY_TYPE_ID,
+    VANILLA_FALLING_BLOCK_ENTITY_TYPE_ID, VANILLA_FIREWORK_ROCKET_ENTITY_TYPE_ID,
+    VANILLA_PRIMED_TNT_ENTITY_TYPE_ID, VANILLA_SNOWBALL_ENTITY_TYPE_ID,
 };
 
 use super::protocol::*;
@@ -2770,6 +2770,11 @@ fn connect_and_probe_with_mode(
                     dimension_environment_for_spawn_info(&trace, &observation.spawn_info),
                 );
                 trace.world.set_local_player_id(observation.player_id);
+                trace
+                    .world
+                    .apply_local_player_game_mode(ClientPlayerGameMode::from_id(i32::from(
+                        observation.spawn_info.game_type,
+                    )));
                 trace.login_observation = Some(observation);
                 trace.play_login = true;
             }
@@ -2850,6 +2855,11 @@ fn connect_and_probe_with_mode(
                     dimension_environment_for_spawn_info(&trace, &spawn_info),
                 );
                 let local_player_recreated = trace.world.recreate_local_player(data_to_keep);
+                trace
+                    .world
+                    .apply_local_player_game_mode(ClientPlayerGameMode::from_id(i32::from(
+                        spawn_info.game_type,
+                    )));
                 let local_player_id = trace.world.local_player().map(|player| player.id());
                 let local_player_generation =
                     trace.world.local_player().map(|player| player.generation());
@@ -2911,6 +2921,20 @@ fn connect_and_probe_with_mode(
                         packet,
                         applied_to_world,
                     });
+            }
+            PLAY_CLIENTBOUND_GAME_EVENT_PACKET_ID => {
+                let packet = parse_game_event_packet(payload)?;
+                let game_mode = (packet.event_id == GAME_EVENT_CHANGE_GAME_MODE_ID)
+                    .then(|| ClientPlayerGameMode::from_game_event_param(packet.param));
+                let applied_to_world = game_mode
+                    .map(|game_mode| trace.world.apply_local_player_game_mode(game_mode))
+                    .unwrap_or(false);
+                let local_game_mode = trace.world.local_player().map(|player| player.game_mode());
+                trace.game_event_observations.push(GameEventObservation {
+                    packet,
+                    applied_to_world,
+                    local_game_mode,
+                });
             }
             PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID => {
                 let mut observation = parse_update_mob_effect_packet(payload)?;

@@ -14,8 +14,8 @@ use crate::frame::{self, FrameError, MAX_FRAME_LENGTH};
 use crate::protocol::ConnectionProtocol;
 use crate::wire;
 use crate::world::{
-    ClientAttributeModifierState, ClientAttributeState, ClientItemStackState, ClientWorld,
-    DimensionBounds, DimensionEnvironment,
+    ClientAttributeModifierState, ClientAttributeState, ClientItemStackState, ClientPlayerGameMode,
+    ClientWorld, DimensionBounds, DimensionEnvironment,
 };
 
 pub(crate) const PROTOCOL_VERSION: i32 = 776;
@@ -61,6 +61,7 @@ pub(crate) const PLAY_CLIENTBOUND_BLOCK_DESTRUCTION_PACKET_ID: i32 = 5;
 pub(crate) const PLAY_CLIENTBOUND_BLOCK_ENTITY_DATA_PACKET_ID: i32 = 6;
 pub(crate) const PLAY_CLIENTBOUND_BLOCK_UPDATE_PACKET_ID: i32 = 8;
 pub(crate) const PLAY_CLIENTBOUND_FORGET_LEVEL_CHUNK_PACKET_ID: i32 = 37;
+pub(crate) const PLAY_CLIENTBOUND_GAME_EVENT_PACKET_ID: i32 = 38;
 pub(crate) const PLAY_CLIENTBOUND_LIGHT_UPDATE_PACKET_ID: i32 = 48;
 pub(crate) const PLAY_CLIENTBOUND_CHUNK_BATCH_FINISHED_PACKET_ID: i32 = 11;
 pub(crate) const PLAY_CLIENTBOUND_CHUNK_BATCH_START_PACKET_ID: i32 = 12;
@@ -97,6 +98,7 @@ pub(crate) const PLAY_SERVERBOUND_SET_CREATIVE_MODE_SLOT_PACKET_ID: i32 = 56;
 pub(crate) const PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID: i32 = 18;
 pub(crate) const PLAY_SERVERBOUND_USE_ITEM_ON_PACKET_ID: i32 = 66;
 pub(crate) const PLAY_SERVERBOUND_USE_ITEM_PACKET_ID: i32 = 67;
+pub(crate) const GAME_EVENT_CHANGE_GAME_MODE_ID: u8 = 3;
 
 // The pinned vanilla built-in item registry is not sent in configuration registry data.
 // Items.java registers AIR before STONE, so STONE has id 1 in BuiltInRegistries.ITEM.
@@ -555,6 +557,7 @@ pub struct PlayConnectionTrace {
     pub attribute_update_observations: Vec<AttributeUpdateObservation>,
     pub health_observations: Vec<HealthObservation>,
     pub player_abilities_observations: Vec<PlayerAbilitiesObservation>,
+    pub game_event_observations: Vec<GameEventObservation>,
     pub respawn_command_packets_sent: usize,
     pub player_position_observations: Vec<PlayerPositionObservation>,
     pub player_loaded_sent: bool,
@@ -683,6 +686,21 @@ pub struct PlayerAbilitiesPacket {
 pub struct PlayerAbilitiesObservation {
     pub packet: PlayerAbilitiesPacket,
     pub applied_to_world: bool,
+}
+
+/// Wire-level fields decoded from one clientbound game-event packet.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct GameEventPacket {
+    pub event_id: u8,
+    pub param: f32,
+}
+
+/// One clientbound game-event packet and its local game-mode application result.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct GameEventObservation {
+    pub packet: GameEventPacket,
+    pub applied_to_world: bool,
+    pub local_game_mode: Option<ClientPlayerGameMode>,
 }
 
 /// Wire-level fields decoded from one clientbound attribute update.
@@ -1780,6 +1798,18 @@ pub fn parse_player_abilities_packet(
     };
     if !input.is_empty() {
         return Err(ConnectionError::Codec("player abilities trailing payload"));
+    }
+    Ok(packet)
+}
+
+pub fn parse_game_event_packet(input: &[u8]) -> Result<GameEventPacket, ConnectionError> {
+    let mut input = input;
+    let packet = GameEventPacket {
+        event_id: read_byte(&mut input, "game event id")?,
+        param: read_f32(&mut input, "game event parameter")?,
+    };
+    if !input.is_empty() {
+        return Err(ConnectionError::Codec("game event trailing payload"));
     }
     Ok(packet)
 }
@@ -3164,25 +3194,27 @@ pub(crate) fn decode_palette_values(
 #[cfg(test)]
 mod tests {
     use super::{
-        InventoryComponentCodec, PLAY_CLIENTBOUND_ADD_ENTITY_PACKET_ID,
-        PLAY_CLIENTBOUND_BLOCK_CHANGED_ACK_PACKET_ID, PLAY_CLIENTBOUND_BLOCK_DESTRUCTION_PACKET_ID,
-        PLAY_CLIENTBOUND_BLOCK_ENTITY_DATA_PACKET_ID, PLAY_CLIENTBOUND_BLOCK_UPDATE_PACKET_ID,
-        PLAY_CLIENTBOUND_CHUNK_PACKET_ID, PLAY_CLIENTBOUND_CONTAINER_CLOSE_PACKET_ID,
+        GAME_EVENT_CHANGE_GAME_MODE_ID, InventoryComponentCodec,
+        PLAY_CLIENTBOUND_ADD_ENTITY_PACKET_ID, PLAY_CLIENTBOUND_BLOCK_CHANGED_ACK_PACKET_ID,
+        PLAY_CLIENTBOUND_BLOCK_DESTRUCTION_PACKET_ID, PLAY_CLIENTBOUND_BLOCK_ENTITY_DATA_PACKET_ID,
+        PLAY_CLIENTBOUND_BLOCK_UPDATE_PACKET_ID, PLAY_CLIENTBOUND_CHUNK_PACKET_ID,
+        PLAY_CLIENTBOUND_CONTAINER_CLOSE_PACKET_ID,
         PLAY_CLIENTBOUND_CONTAINER_SET_CONTENT_PACKET_ID,
         PLAY_CLIENTBOUND_CONTAINER_SET_SLOT_PACKET_ID,
         PLAY_CLIENTBOUND_ENTITY_POSITION_SYNC_PACKET_ID,
-        PLAY_CLIENTBOUND_FORGET_LEVEL_CHUNK_PACKET_ID, PLAY_CLIENTBOUND_KEEP_ALIVE_PACKET_ID,
-        PLAY_CLIENTBOUND_LIGHT_UPDATE_PACKET_ID, PLAY_CLIENTBOUND_LOGIN_PACKET_ID,
-        PLAY_CLIENTBOUND_MOVE_ENTITY_POS_PACKET_ID, PLAY_CLIENTBOUND_MOVE_ENTITY_POS_ROT_PACKET_ID,
-        PLAY_CLIENTBOUND_MOVE_ENTITY_ROT_PACKET_ID, PLAY_CLIENTBOUND_OPEN_SCREEN_PACKET_ID,
-        PLAY_CLIENTBOUND_PLAYER_ABILITIES_PACKET_ID, PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID,
-        PLAY_CLIENTBOUND_REMOVE_ENTITIES_PACKET_ID, PLAY_CLIENTBOUND_REMOVE_MOB_EFFECT_PACKET_ID,
-        PLAY_CLIENTBOUND_RESPAWN_PACKET_ID, PLAY_CLIENTBOUND_ROTATE_HEAD_PACKET_ID,
-        PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID, PLAY_CLIENTBOUND_SET_ENTITY_DATA_PACKET_ID,
-        PLAY_CLIENTBOUND_SET_ENTITY_MOTION_PACKET_ID, PLAY_CLIENTBOUND_SET_HEALTH_PACKET_ID,
-        PLAY_CLIENTBOUND_SET_PASSENGERS_PACKET_ID, PLAY_CLIENTBOUND_SET_PLAYER_INVENTORY_PACKET_ID,
-        PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID, PLAY_CLIENTBOUND_TELEPORT_ENTITY_PACKET_ID,
-        PLAY_CLIENTBOUND_UPDATE_ATTRIBUTES_PACKET_ID, PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID,
+        PLAY_CLIENTBOUND_FORGET_LEVEL_CHUNK_PACKET_ID, PLAY_CLIENTBOUND_GAME_EVENT_PACKET_ID,
+        PLAY_CLIENTBOUND_KEEP_ALIVE_PACKET_ID, PLAY_CLIENTBOUND_LIGHT_UPDATE_PACKET_ID,
+        PLAY_CLIENTBOUND_LOGIN_PACKET_ID, PLAY_CLIENTBOUND_MOVE_ENTITY_POS_PACKET_ID,
+        PLAY_CLIENTBOUND_MOVE_ENTITY_POS_ROT_PACKET_ID, PLAY_CLIENTBOUND_MOVE_ENTITY_ROT_PACKET_ID,
+        PLAY_CLIENTBOUND_OPEN_SCREEN_PACKET_ID, PLAY_CLIENTBOUND_PLAYER_ABILITIES_PACKET_ID,
+        PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID, PLAY_CLIENTBOUND_REMOVE_ENTITIES_PACKET_ID,
+        PLAY_CLIENTBOUND_REMOVE_MOB_EFFECT_PACKET_ID, PLAY_CLIENTBOUND_RESPAWN_PACKET_ID,
+        PLAY_CLIENTBOUND_ROTATE_HEAD_PACKET_ID, PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID,
+        PLAY_CLIENTBOUND_SET_ENTITY_DATA_PACKET_ID, PLAY_CLIENTBOUND_SET_ENTITY_MOTION_PACKET_ID,
+        PLAY_CLIENTBOUND_SET_HEALTH_PACKET_ID, PLAY_CLIENTBOUND_SET_PASSENGERS_PACKET_ID,
+        PLAY_CLIENTBOUND_SET_PLAYER_INVENTORY_PACKET_ID, PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID,
+        PLAY_CLIENTBOUND_TELEPORT_ENTITY_PACKET_ID, PLAY_CLIENTBOUND_UPDATE_ATTRIBUTES_PACKET_ID,
+        PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID,
         PLAY_SERVERBOUND_ACCEPT_TELEPORTATION_PACKET_ID,
         PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID, PLAY_SERVERBOUND_CLIENT_COMMAND_PACKET_ID,
         PLAY_SERVERBOUND_CLIENT_TICK_END_PACKET_ID, PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
@@ -3214,8 +3246,8 @@ mod tests {
         parse_chunk_packet, parse_container_close_packet, parse_container_set_content_packet,
         parse_container_set_slot_packet, parse_cursor_item_packet, parse_entity_metadata_packet,
         parse_entity_position_sync_packet, parse_entity_teleport_packet,
-        parse_forget_level_chunk_packet, parse_light_update_packet, parse_login_packet,
-        parse_move_entity_pos_packet, parse_move_entity_pos_rot_packet,
+        parse_forget_level_chunk_packet, parse_game_event_packet, parse_light_update_packet,
+        parse_login_packet, parse_move_entity_pos_packet, parse_move_entity_pos_rot_packet,
         parse_move_entity_rot_packet, parse_open_screen_packet, parse_optional_item_stack,
         parse_player_abilities_packet, parse_player_position_packet, parse_remove_entities_packet,
         parse_remove_mob_effect_packet, parse_respawn_packet, parse_rotate_head_packet,
@@ -3263,6 +3295,7 @@ mod tests {
         assert_eq!(PLAY_CLIENTBOUND_BLOCK_UPDATE_PACKET_ID, 8);
         assert_eq!(PLAY_CLIENTBOUND_BLOCK_ENTITY_DATA_PACKET_ID, 6);
         assert_eq!(PLAY_CLIENTBOUND_FORGET_LEVEL_CHUNK_PACKET_ID, 37);
+        assert_eq!(PLAY_CLIENTBOUND_GAME_EVENT_PACKET_ID, 38);
         assert_eq!(PLAY_CLIENTBOUND_LIGHT_UPDATE_PACKET_ID, 48);
         assert_eq!(PLAY_CLIENTBOUND_BLOCK_CHANGED_ACK_PACKET_ID, 4);
         assert_eq!(PLAY_CLIENTBOUND_BLOCK_DESTRUCTION_PACKET_ID, 5);
@@ -3292,6 +3325,7 @@ mod tests {
         assert_eq!(PLAY_SERVERBOUND_SET_CREATIVE_MODE_SLOT_PACKET_ID, 56);
         assert_eq!(PLAY_SERVERBOUND_USE_ITEM_ON_PACKET_ID, 66);
         assert_eq!(PLAY_SERVERBOUND_USE_ITEM_PACKET_ID, 67);
+        assert_eq!(GAME_EVENT_CHANGE_GAME_MODE_ID, 3);
     }
 
     #[test]
@@ -3576,6 +3610,22 @@ mod tests {
         let mut trailing = payload.to_vec();
         trailing.push(0);
         assert!(parse_player_abilities_packet(&trailing).is_err());
+    }
+
+    #[test]
+    fn game_event_parser_matches_java_id_and_float_order() {
+        let payload = [GAME_EVENT_CHANGE_GAME_MODE_ID, 0x3f, 0x80, 0x00, 0x00];
+        assert_eq!(
+            parse_game_event_packet(&payload).expect("game event packet"),
+            super::GameEventPacket {
+                event_id: GAME_EVENT_CHANGE_GAME_MODE_ID,
+                param: 1.0,
+            }
+        );
+
+        let mut trailing = payload.to_vec();
+        trailing.push(0);
+        assert!(parse_game_event_packet(&trailing).is_err());
     }
 
     #[test]

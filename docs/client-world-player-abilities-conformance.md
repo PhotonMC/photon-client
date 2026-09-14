@@ -138,8 +138,9 @@ eşitliği veya oynanabilir istemci kanıtı değildir.
 
 ## Açık kapsam
 
-Packet state'inin local movement tick'inde flying/walking speed, flying ve
-may-fly kararlarına bağlanması; serverbound ability güncellemeleri; tam
-game-mode ve `mayBuild` state'i; uçuş, elytra, input ve kamera davranışları
-açık kalır. Bu kayıt packet decode ve sorgulanabilir local player state'ine
+Packet state'inin local movement tick'inde flying/walking speed ve flying
+kararlarına bağlanması; serverbound ability güncellemeleri; game-mode
+dependent uçuş, elytra, input ve kamera davranışları açık kalır; mode ve
+`mayBuild` state'i [P09.ah kaydında](client-world-player-game-mode-conformance.md)
+bağlandı. Bu kayıt packet decode ve sorgulanabilir local player state'ine
 uygulama ile sınırlıdır.

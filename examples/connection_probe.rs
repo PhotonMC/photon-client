@@ -33,6 +33,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "player_abilities_observations={:?}",
         trace.player_abilities_observations
     );
+    println!(
+        "game_event_observations={:?}",
+        trace.game_event_observations
+    );
     println!("player_loaded_sent={}", trace.player_loaded_sent);
     println!("movement_packets_sent={}", trace.movement_packets_sent);
     println!(

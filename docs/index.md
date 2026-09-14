@@ -182,6 +182,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P08.i — server-conformance Aynı dimension ölüm respawn'ı ve `dataToKeep=0`](client-world-player-death-respawn-conformance.md)
 - [P08.v — server-conformance LocalPlayer mob-effect duration tick'i](client-world-player-effect-tick-conformance.md)
 - [P08.k — server-conformance LocalPlayer mob-effect state'i](client-world-player-effects-conformance.md)
+- [P09.ah — GameType ve local player game-mode state — client-parity birleşik kayıt](client-world-player-game-mode-conformance.md)
 - [P08.l — server-conformance LocalPlayer health, food ve saturation state'i](client-world-player-health-conformance.md)
 - [P08.m — server-conformance LocalPlayer inventory/container state'i](client-world-player-inventory-conformance.md)
 - [P09.e — Oyuncu pose ölçüleri — client-parity birleşik kayıt](client-world-player-pose-dimensions-conformance.md)

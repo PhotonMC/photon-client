@@ -3,8 +3,9 @@
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 use crate::math::{
-    MTH_DEG_TO_RAD, Vec3, abs_max_f64, clamp_f32, clamp_f64, equal_f64, mth_atan2, mth_cos_f64,
-    mth_lerp_f32, mth_lerp_f64, mth_rot_lerp_f32, mth_rot_lerp_f64, mth_sin_f64, wrap_degrees_f32,
+    MTH_DEG_TO_RAD, Vec3, abs_max_f64, clamp_f32, clamp_f64, equal_f64, floor_f32, mth_atan2,
+    mth_cos_f64, mth_lerp_f32, mth_lerp_f64, mth_rot_lerp_f32, mth_rot_lerp_f64, mth_sin_f64,
+    wrap_degrees_f32,
 };
 use crate::{
     aabb::Aabb,
@@ -866,13 +867,103 @@ impl ClientPlayerPoseInput {
     }
 }
 
-/// The six ability values carried by Java's clientbound player-abilities packet.
+/// The four Java game-mode values applied to the local player.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum ClientPlayerGameMode {
+    #[default]
+    Survival,
+    Creative,
+    Adventure,
+    Spectator,
+}
+
+impl ClientPlayerGameMode {
+    /// Resolve Java's continuous id mapping, including its survival fallback.
+    pub fn from_id(id: i32) -> Self {
+        match id {
+            1 => Self::Creative,
+            2 => Self::Adventure,
+            3 => Self::Spectator,
+            _ => Self::Survival,
+        }
+    }
+
+    /// Resolve the parameter used by Java's change-game-mode event.
+    pub fn from_game_event_param(param: f32) -> Self {
+        Self::from_id(floor_f32(param + 0.5_f32))
+    }
+
+    pub fn id(self) -> i32 {
+        match self {
+            Self::Survival => 0,
+            Self::Creative => 1,
+            Self::Adventure => 2,
+            Self::Spectator => 3,
+        }
+    }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Survival => "survival",
+            Self::Creative => "creative",
+            Self::Adventure => "adventure",
+            Self::Spectator => "spectator",
+        }
+    }
+
+    pub fn is_spectator(self) -> bool {
+        matches!(self, Self::Spectator)
+    }
+
+    pub fn is_creative(self) -> bool {
+        matches!(self, Self::Creative)
+    }
+
+    pub fn is_survival(self) -> bool {
+        matches!(self, Self::Survival | Self::Adventure)
+    }
+
+    /// Apply Java `GameType.updatePlayerAbilities` to an existing ability state.
+    ///
+    /// Creative deliberately leaves `flying` unchanged, while the other branches
+    /// set it exactly as the Java game-mode implementation does.
+    pub fn update_player_abilities(
+        self,
+        mut abilities: ClientPlayerAbilities,
+    ) -> ClientPlayerAbilities {
+        match self {
+            Self::Creative => {
+                abilities.may_fly = true;
+                abilities.instabuild = true;
+                abilities.invulnerable = true;
+            }
+            Self::Spectator => {
+                abilities.may_fly = true;
+                abilities.instabuild = false;
+                abilities.invulnerable = true;
+                abilities.flying = true;
+            }
+            Self::Survival | Self::Adventure => {
+                abilities.may_fly = false;
+                abilities.instabuild = false;
+                abilities.invulnerable = false;
+                abilities.flying = false;
+            }
+        }
+        abilities.may_build = !matches!(self, Self::Adventure | Self::Spectator);
+        abilities
+    }
+}
+
+/// The six ability values carried by Java's clientbound player-abilities packet,
+/// plus the local game-mode-derived build permission.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ClientPlayerAbilities {
     invulnerable: bool,
     flying: bool,
     may_fly: bool,
     instabuild: bool,
+    may_build: bool,
     flying_speed_bits: u32,
     walking_speed_bits: u32,
 }
@@ -897,6 +988,7 @@ impl ClientPlayerAbilities {
             flying,
             may_fly,
             instabuild,
+            may_build: true,
             flying_speed_bits: flying_speed.to_bits(),
             walking_speed_bits: walking_speed.to_bits(),
         }
@@ -916,6 +1008,10 @@ impl ClientPlayerAbilities {
 
     pub fn instabuild(self) -> bool {
         self.instabuild
+    }
+
+    pub fn may_build(self) -> bool {
+        self.may_build
     }
 
     pub fn flying_speed(self) -> f32 {
@@ -2661,7 +2757,19 @@ impl ClientWorld {
         let Some(player) = self.local_player.as_mut() else {
             return false;
         };
-        player.abilities = abilities;
+        player.abilities = ClientPlayerAbilities {
+            may_build: player.abilities.may_build,
+            ..abilities
+        };
+        true
+    }
+
+    pub fn apply_local_player_game_mode(&mut self, game_mode: ClientPlayerGameMode) -> bool {
+        let Some(player) = self.local_player.as_mut() else {
+            return false;
+        };
+        player.game_mode = game_mode;
+        player.abilities = game_mode.update_player_abilities(player.abilities);
         true
     }
 
@@ -5384,6 +5492,7 @@ pub struct ClientPlayerState {
     head_rotation_target_bits: u32,
     head_lerp_steps: u8,
     entity_data: Option<Vec<u8>>,
+    game_mode: ClientPlayerGameMode,
     abilities: ClientPlayerAbilities,
     shared_flags: u8,
     living_flags: u8,
@@ -5478,6 +5587,7 @@ impl ClientPlayerState {
             head_rotation_target_bits: 0.0_f32.to_bits(),
             head_lerp_steps: 0,
             entity_data: None,
+            game_mode: ClientPlayerGameMode::default(),
             abilities: ClientPlayerAbilities::default(),
             shared_flags: 0,
             living_flags: 0,
@@ -5632,6 +5742,10 @@ impl ClientPlayerState {
 
     pub fn abilities(&self) -> ClientPlayerAbilities {
         self.abilities
+    }
+
+    pub fn game_mode(&self) -> ClientPlayerGameMode {
+        self.game_mode
     }
 
     pub fn shared_flags(&self) -> u8 {
@@ -6980,8 +7094,8 @@ mod tests {
     use super::{
         BlockEntityInput, BoatInput, ClientAttributeModifierState, ClientAttributeState,
         ClientEntityCollisionCandidate, ClientEntityDimensions, ClientEntityMovementState,
-        ClientEntityPose, ClientItemStackState, ClientPlayerAbilities, ClientPlayerPoseInput,
-        ClientWorld, DimensionBounds, DimensionEnvironment, DimensionInput,
+        ClientEntityPose, ClientItemStackState, ClientPlayerAbilities, ClientPlayerGameMode,
+        ClientPlayerPoseInput, ClientWorld, DimensionBounds, DimensionEnvironment, DimensionInput,
         ENTITY_DATA_SERIALIZER_BOOLEAN_ID, ENTITY_NO_GRAVITY_DATA_ID, ENTITY_RELATIVE_DELTA_X_FLAG,
         ENTITY_RELATIVE_DELTA_Y_FLAG, ENTITY_RELATIVE_DELTA_Z_FLAG,
         ENTITY_RELATIVE_ROTATE_DELTA_FLAG, ENTITY_RELATIVE_X_FLAG, ENTITY_RELATIVE_X_ROT_FLAG,
@@ -7768,6 +7882,80 @@ mod tests {
             world.local_player().map(|player| player.abilities()),
             Some(ClientPlayerAbilities::default())
         );
+    }
+
+    #[test]
+    fn local_player_game_mode_updates_java_abilities_and_build_permission() {
+        let mut world = ClientWorld::default();
+        world.set_local_player_id(42);
+        let initial = ClientPlayerAbilities::new(false, true, false, false, 0.5, 0.25);
+        assert!(world.apply_local_player_abilities(initial));
+
+        assert_eq!(
+            ClientPlayerGameMode::from_game_event_param(1.49),
+            ClientPlayerGameMode::Creative
+        );
+        assert_eq!(
+            ClientPlayerGameMode::from_game_event_param(1.5),
+            ClientPlayerGameMode::Adventure
+        );
+        assert_eq!(
+            ClientPlayerGameMode::from_id(99),
+            ClientPlayerGameMode::Survival
+        );
+
+        assert!(world.apply_local_player_game_mode(ClientPlayerGameMode::Creative));
+        let player = world.local_player().expect("creative local player");
+        assert_eq!(player.game_mode(), ClientPlayerGameMode::Creative);
+        assert!(player.abilities().invulnerable());
+        assert!(player.abilities().flying());
+        assert!(player.abilities().may_fly());
+        assert!(player.abilities().instabuild());
+        assert!(player.abilities().may_build());
+        assert_eq!(
+            player.abilities().flying_speed().to_bits(),
+            0.5_f32.to_bits()
+        );
+        assert_eq!(
+            player.abilities().walking_speed().to_bits(),
+            0.25_f32.to_bits()
+        );
+
+        assert!(world.apply_local_player_game_mode(ClientPlayerGameMode::Spectator));
+        let abilities = world
+            .local_player()
+            .expect("spectator local player")
+            .abilities();
+        assert!(abilities.invulnerable());
+        assert!(abilities.flying());
+        assert!(abilities.may_fly());
+        assert!(!abilities.instabuild());
+        assert!(!abilities.may_build());
+
+        assert!(world.apply_local_player_game_mode(ClientPlayerGameMode::Adventure));
+        let abilities = world
+            .local_player()
+            .expect("adventure local player")
+            .abilities();
+        assert!(!abilities.invulnerable());
+        assert!(!abilities.flying());
+        assert!(!abilities.may_fly());
+        assert!(!abilities.instabuild());
+        assert!(!abilities.may_build());
+
+        assert!(world.apply_local_player_abilities(ClientPlayerAbilities::default()));
+        assert!(
+            !world
+                .local_player()
+                .expect("packet-updated player")
+                .abilities()
+                .may_build()
+        );
+
+        assert!(world.apply_local_player_game_mode(ClientPlayerGameMode::Survival));
+        let player = world.local_player().expect("survival local player");
+        assert_eq!(player.game_mode().id(), 0);
+        assert!(player.abilities().may_build());
     }
 
     #[test]

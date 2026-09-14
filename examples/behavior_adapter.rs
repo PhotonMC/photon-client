@@ -21,7 +21,7 @@ use voxel_client::configuration::{
     ServerboundAcceptCodeOfConductPacket, ServerboundClientInformationPacket,
     ServerboundFinishConfigurationPacket,
 };
-use voxel_client::connection::parse_player_abilities_packet;
+use voxel_client::connection::{parse_game_event_packet, parse_player_abilities_packet};
 use voxel_client::direction::{
     Axis, AxisDirection, Direction, DirectionYRotError, DirectionYRotationError, Plane,
 };
@@ -63,12 +63,13 @@ use voxel_client::utf8;
 use voxel_client::wire::{self, ReadError};
 use voxel_client::world::{
     ClientEntityCollisionCandidate, ClientEntityDimensions, ClientEntityPose,
-    ClientPlayerAbilities, ClientPlayerPoseInput, ClientWorld, ClientWorldBorder,
-    ClientWorldBorderInitialization, ClientWorldBorderStatus, ClientWorldCollisionSource,
-    DimensionBounds, EntityInput, SectionInput, apply_entity_movement_state,
-    collect_candidate_step_up_heights, collect_entity_collision_shapes, collide_entity_movement,
-    collide_entity_movement_state, is_minor_horizontal_collision, living_entity_dimensions,
-    refresh_entity_dimensions, select_step_up_movement, world_border_collision_shape,
+    ClientPlayerAbilities, ClientPlayerGameMode, ClientPlayerPoseInput, ClientWorld,
+    ClientWorldBorder, ClientWorldBorderInitialization, ClientWorldBorderStatus,
+    ClientWorldCollisionSource, DimensionBounds, EntityInput, SectionInput,
+    apply_entity_movement_state, collect_candidate_step_up_heights,
+    collect_entity_collision_shapes, collide_entity_movement, collide_entity_movement_state,
+    is_minor_horizontal_collision, living_entity_dimensions, refresh_entity_dimensions,
+    select_step_up_movement, world_border_collision_shape,
 };
 
 fn string<'a>(request: &'a Value, name: &str) -> Result<&'a str, String> {
@@ -3817,6 +3818,75 @@ fn shape_result(request: &Value) -> Result<Value, String> {
                             .get("label")
                             .and_then(Value::as_str)
                             .ok_or("label must be a string")?,
+                        "invulnerable": abilities.invulnerable(),
+                        "flying": abilities.flying(),
+                        "may_fly": abilities.may_fly(),
+                        "instabuild": abilities.instabuild(),
+                        "flying_speed": format!("{:08x}", abilities.flying_speed().to_bits()),
+                        "walking_speed": format!("{:08x}", abilities.walking_speed().to_bits()),
+                    }))
+                })
+                .collect::<Result<Vec<_>, String>>()?;
+            Ok(json!({"states": states}))
+        }
+        "player_game_mode_event" => {
+            let inputs = request
+                .get("inputs")
+                .ok_or("inputs must be an array")?
+                .as_array()
+                .ok_or("inputs must be an array")?;
+            let states = inputs
+                .iter()
+                .map(|value| {
+                    let input = value
+                        .as_object()
+                        .ok_or("player game mode input must be an object")?;
+                    let bytes = decode_hex(
+                        input
+                            .get("hex")
+                            .and_then(Value::as_str)
+                            .ok_or("hex must be a string")?,
+                    )?;
+                    let packet = parse_game_event_packet(&bytes)
+                        .map_err(|error| format!("game event packet: {error:?}"))?;
+                    if packet.event_id != 3 {
+                        return Err("expected change-game-mode event".into());
+                    }
+                    let flying_speed = input
+                        .get("initial_flying_speed")
+                        .map(|value| f32_value(value, "initial_flying_speed"))
+                        .transpose()?
+                        .unwrap_or(0.05);
+                    let walking_speed = input
+                        .get("initial_walking_speed")
+                        .map(|value| f32_value(value, "initial_walking_speed"))
+                        .transpose()?
+                        .unwrap_or(0.1);
+                    let abilities = ClientPlayerAbilities::new(
+                        false,
+                        input
+                            .get("initial_flying")
+                            .and_then(Value::as_bool)
+                            .unwrap_or(false),
+                        false,
+                        false,
+                        flying_speed,
+                        walking_speed,
+                    );
+                    let mode = ClientPlayerGameMode::from_game_event_param(packet.param);
+                    let abilities = mode.update_player_abilities(abilities);
+                    Ok(json!({
+                        "label": input
+                            .get("label")
+                            .and_then(Value::as_str)
+                            .ok_or("label must be a string")?,
+                        "param": format!("{:08x}", packet.param.to_bits()),
+                        "mode_id": mode.id(),
+                        "mode_name": mode.name(),
+                        "is_spectator": mode.is_spectator(),
+                        "is_creative": mode.is_creative(),
+                        "is_survival": mode.is_survival(),
+                        "may_build": abilities.may_build(),
                         "invulnerable": abilities.invulnerable(),
                         "flying": abilities.flying(),
                         "may_fly": abilities.may_fly(),
