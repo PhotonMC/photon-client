@@ -568,6 +568,7 @@ pub struct PlayConnectionTrace {
     pub snowball_item_registry_id: Option<i32>,
     pub add_entity_observations: Vec<AddEntityObservation>,
     pub projectile_tick_observations: Vec<ProjectileTickObservation>,
+    pub experience_orb_tick_observations: Vec<ExperienceOrbTickObservation>,
     pub entity_interpolation_observations: Vec<EntityInterpolationObservation>,
     pub entity_position_snap_observations: Vec<EntityPositionSnapObservation>,
     pub entity_motion_observations: Vec<EntityMotionObservation>,
@@ -791,6 +792,20 @@ pub struct ProjectileTickObservation {
     pub after_motion: (f64, f64, f64),
     pub before_rotation: (f32, f32, f32),
     pub after_rotation: (f32, f32, f32),
+    pub tick_count: i32,
+}
+
+/// Two client-world ticks applied to a newly added Experience Orb.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ExperienceOrbTickObservation {
+    pub entity_id: i32,
+    pub entity_type_id: i32,
+    pub before_position: (f64, f64, f64),
+    pub after_first_tick_position: (f64, f64, f64),
+    pub after_second_tick_position: (f64, f64, f64),
+    pub before_motion: (f64, f64, f64),
+    pub after_first_tick_motion: (f64, f64, f64),
+    pub after_second_tick_motion: (f64, f64, f64),
     pub tick_count: i32,
 }
 

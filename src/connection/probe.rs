@@ -18,7 +18,8 @@ use crate::world::{
     EntityMotionInput, EntityMoveInput, EntityPositionInput, EntityPositionUpdateMode,
     EntityRotationInput, EntityTeleportInput, LightLayerInput, LightUpdateInput,
     PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS, PLAYER_RESPAWN_KEEP_ENTITY_DATA, SectionInput,
-    VANILLA_ARROW_ENTITY_TYPE_ID, VANILLA_COW_ENTITY_TYPE_ID, VANILLA_SNOWBALL_ENTITY_TYPE_ID,
+    VANILLA_ARROW_ENTITY_TYPE_ID, VANILLA_COW_ENTITY_TYPE_ID,
+    VANILLA_EXPERIENCE_ORB_ENTITY_TYPE_ID, VANILLA_SNOWBALL_ENTITY_TYPE_ID,
 };
 
 use super::protocol::*;
@@ -657,6 +658,22 @@ pub fn connect_and_world_arrow_tick_probe(
         username,
         timeout,
         PlayProbeConfig::new(ProbeAction::WorldArrowTick)
+            .with_drain_timeout(Duration::from_secs(30)),
+    )
+}
+
+/// Connect to a Java-protocol server and apply two client-world ticks to a
+/// freshly added Experience Orb entity.
+pub fn connect_and_world_experience_orb_tick_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeConfig::new(ProbeAction::WorldExperienceOrbTick)
             .with_drain_timeout(Duration::from_secs(30)),
     )
 }
@@ -1581,6 +1598,7 @@ enum ProbeAction {
     CreativeSnowballUse,
     WorldSnowballTick,
     WorldArrowTick,
+    WorldExperienceOrbTick,
     SurvivalSnowballUse,
     SurvivalWaterBucketUseOn,
     SurvivalEmptyBucketPickup,
@@ -1652,6 +1670,44 @@ fn observe_projectile_tick(
             after_motion: entity.motion(),
             before_rotation,
             after_rotation: entity.rotation(),
+            tick_count: entity.tick_count(),
+        });
+    Ok(())
+}
+
+fn observe_experience_orb_tick(
+    trace: &mut PlayConnectionTrace,
+    observation: &AddEntityObservation,
+) -> Result<(), ConnectionError> {
+    let entity = trace
+        .world
+        .entity_at(observation.entity_id)
+        .ok_or(ConnectionError::Codec("experience orb tick entity"))?;
+    let before_position = entity.position();
+    let before_motion = entity.motion();
+    trace.world.tick();
+    let entity = trace
+        .world
+        .entity_at(observation.entity_id)
+        .ok_or(ConnectionError::Codec("experience orb first tick result"))?;
+    let after_first_tick_position = entity.position();
+    let after_first_tick_motion = entity.motion();
+    trace.world.tick();
+    let entity = trace
+        .world
+        .entity_at(observation.entity_id)
+        .ok_or(ConnectionError::Codec("experience orb second tick result"))?;
+    trace
+        .experience_orb_tick_observations
+        .push(ExperienceOrbTickObservation {
+            entity_id: observation.entity_id,
+            entity_type_id: observation.entity_type_id,
+            before_position,
+            after_first_tick_position,
+            after_second_tick_position: entity.position(),
+            before_motion,
+            after_first_tick_motion,
+            after_second_tick_motion: entity.motion(),
             tick_count: entity.tick_count(),
         });
     Ok(())
@@ -1994,6 +2050,12 @@ fn connect_and_probe_with_mode(
                 } && trace.projectile_tick_observations.is_empty();
                 if should_tick_projectile {
                     observe_projectile_tick(&mut trace, &observation)?;
+                }
+                if matches!(probe.action, ProbeAction::WorldExperienceOrbTick)
+                    && observation.entity_type_id == VANILLA_EXPERIENCE_ORB_ENTITY_TYPE_ID
+                    && trace.experience_orb_tick_observations.is_empty()
+                {
+                    observe_experience_orb_tick(&mut trace, &observation)?;
                 }
                 trace.add_entity_observations.push(observation);
             }
