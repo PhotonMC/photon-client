@@ -61,8 +61,8 @@ use voxel_client::timer::Timer;
 use voxel_client::utf8;
 use voxel_client::wire::{self, ReadError};
 use voxel_client::world::{
-    ClientEntityDimensions, ClientEntityPose, ClientWorld, DimensionBounds, SectionInput,
-    collect_candidate_step_up_heights, collide_entity_movement,
+    ClientEntityDimensions, ClientEntityPose, ClientPlayerPoseInput, ClientWorld, DimensionBounds,
+    SectionInput, collect_candidate_step_up_heights, collide_entity_movement,
 };
 
 fn string<'a>(request: &'a Value, name: &str) -> Result<&'a str, String> {
@@ -4371,6 +4371,52 @@ fn shape_result(request: &Value) -> Result<Value, String> {
                 })
                 .collect::<Result<Vec<_>, String>>()?;
             Ok(json!({"poses": poses}))
+        }
+        "player_pose_selection" => {
+            let inputs = request
+                .get("inputs")
+                .ok_or("inputs must be an array")?
+                .as_array()
+                .ok_or("inputs must be an array")?;
+            let selections = inputs
+                .iter()
+                .map(|value| {
+                    let input = value
+                        .as_object()
+                        .ok_or("pose selection input must be an object")?;
+                    let boolean = |name: &str| {
+                        input
+                            .get(name)
+                            .and_then(Value::as_bool)
+                            .ok_or_else(|| format!("{name} must be a boolean"))
+                    };
+                    let pose_input = ClientPlayerPoseInput {
+                        sleeping: boolean("sleeping")?,
+                        swimming: boolean("swimming")?,
+                        fall_flying: boolean("fall_flying")?,
+                        auto_spin_attack: boolean("auto_spin_attack")?,
+                        shift_key_down: boolean("shift_key_down")?,
+                        flying: boolean("flying")?,
+                        spectator: boolean("spectator")?,
+                        passenger: boolean("passenger")?,
+                        swimming_fits: boolean("swimming_fits")?,
+                        desired_fits: boolean("desired_fits")?,
+                        crouching_fits: boolean("crouching_fits")?,
+                    };
+                    let mut selection = json!({
+                        "label": input
+                            .get("label")
+                            .and_then(Value::as_str)
+                            .ok_or("label must be a string")?,
+                        "desired_id": pose_input.desired_pose().id(),
+                    });
+                    if let Some(actual_pose) = pose_input.updated_pose() {
+                        selection["actual_id"] = json!(actual_pose.id());
+                    }
+                    Ok(selection)
+                })
+                .collect::<Result<Vec<_>, String>>()?;
+            Ok(json!({"selections": selections}))
         }
         "clip" => {
             let shape = shape_box(request.get("shape").ok_or("shape must be an object")?)?;

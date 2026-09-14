@@ -3035,6 +3035,53 @@ public final class MathOracle {
                     poses.add(poseResult);
                 }
                 result.add("poses", poses);
+            } else if (kind.equals("player_pose_selection")) {
+                var selections = new JsonArray();
+                for (var entry : request.getAsJsonArray("inputs")) {
+                    var input = entry.getAsJsonObject();
+                    boolean sleeping = input.get("sleeping").getAsBoolean();
+                    boolean swimming = input.get("swimming").getAsBoolean();
+                    boolean fallFlying = input.get("fall_flying").getAsBoolean();
+                    boolean autoSpinAttack = input.get("auto_spin_attack").getAsBoolean();
+                    boolean shiftKeyDown = input.get("shift_key_down").getAsBoolean();
+                    boolean flying = input.get("flying").getAsBoolean();
+                    boolean spectator = input.get("spectator").getAsBoolean();
+                    boolean passenger = input.get("passenger").getAsBoolean();
+                    boolean swimmingFits = input.get("swimming_fits").getAsBoolean();
+                    boolean desiredFits = input.get("desired_fits").getAsBoolean();
+                    boolean crouchingFits = input.get("crouching_fits").getAsBoolean();
+
+                    Pose desiredPose;
+                    if (sleeping) {
+                        desiredPose = Pose.SLEEPING;
+                    } else if (swimming) {
+                        desiredPose = Pose.SWIMMING;
+                    } else if (fallFlying) {
+                        desiredPose = Pose.FALL_FLYING;
+                    } else if (autoSpinAttack) {
+                        desiredPose = Pose.SPIN_ATTACK;
+                    } else {
+                        desiredPose = shiftKeyDown && !flying ? Pose.CROUCHING : Pose.STANDING;
+                    }
+
+                    Pose actualPose = null;
+                    if (swimmingFits) {
+                        if (spectator || passenger || desiredFits) {
+                            actualPose = desiredPose;
+                        } else if (crouchingFits) {
+                            actualPose = Pose.CROUCHING;
+                        } else {
+                            actualPose = Pose.SWIMMING;
+                        }
+                    }
+
+                    var selection = new JsonObject();
+                    selection.addProperty("label", input.get("label").getAsString());
+                    selection.addProperty("desired_id", desiredPose.id());
+                    selection.addProperty("actual_id", actualPose == null ? null : actualPose.id());
+                    selections.add(selection);
+                }
+                result.add("selections", selections);
             } else if (kind.equals("clip")) {
                 VoxelShape shape = voxelShape(request.getAsJsonObject("shape"));
                 var events = new JsonArray();

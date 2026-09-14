@@ -345,6 +345,56 @@ impl ClientEntityPose {
     }
 }
 
+/// Inputs used by Java Player's desired-pose and fit fallback decision.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct ClientPlayerPoseInput {
+    pub sleeping: bool,
+    pub swimming: bool,
+    pub fall_flying: bool,
+    pub auto_spin_attack: bool,
+    pub shift_key_down: bool,
+    pub flying: bool,
+    pub spectator: bool,
+    pub passenger: bool,
+    pub swimming_fits: bool,
+    pub desired_fits: bool,
+    pub crouching_fits: bool,
+}
+
+impl ClientPlayerPoseInput {
+    /// Choose the desired pose using Java Player's branch priority.
+    pub fn desired_pose(self) -> ClientEntityPose {
+        if self.sleeping {
+            ClientEntityPose::Sleeping
+        } else if self.swimming {
+            ClientEntityPose::Swimming
+        } else if self.fall_flying {
+            ClientEntityPose::FallFlying
+        } else if self.auto_spin_attack {
+            ClientEntityPose::SpinAttack
+        } else if self.shift_key_down && !self.flying {
+            ClientEntityPose::Crouching
+        } else {
+            ClientEntityPose::Standing
+        }
+    }
+
+    /// Apply Java Player's swimming gate, fit fallback, and bypass branches.
+    pub fn updated_pose(self) -> Option<ClientEntityPose> {
+        if !self.swimming_fits {
+            return None;
+        }
+        let desired_pose = self.desired_pose();
+        Some(if self.spectator || self.passenger || self.desired_fits {
+            desired_pose
+        } else if self.crouching_fits {
+            ClientEntityPose::Crouching
+        } else {
+            ClientEntityPose::Swimming
+        })
+    }
+}
+
 /// Entity dimensions used to derive Java's feet-origin bounding box.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ClientEntityDimensions {
@@ -5182,16 +5232,16 @@ fn apply_light_layer(
 mod tests {
     use super::{
         BlockEntityInput, BoatInput, ClientAttributeModifierState, ClientAttributeState,
-        ClientEntityDimensions, ClientEntityPose, ClientItemStackState, ClientWorld,
-        DimensionBounds, DimensionEnvironment, DimensionInput, ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-        ENTITY_NO_GRAVITY_DATA_ID, ENTITY_RELATIVE_DELTA_X_FLAG, ENTITY_RELATIVE_DELTA_Y_FLAG,
-        ENTITY_RELATIVE_DELTA_Z_FLAG, ENTITY_RELATIVE_ROTATE_DELTA_FLAG, ENTITY_RELATIVE_X_FLAG,
-        ENTITY_RELATIVE_X_ROT_FLAG, ENTITY_RELATIVE_Y_FLAG, ENTITY_RELATIVE_Y_ROT_FLAG,
-        ENTITY_RELATIVE_Z_FLAG, EntityInput, EntityMotionInput, EntityMoveInput,
-        EntityPositionInput, EntityPositionUpdateMode, EntityRotationInput, EntityTeleportInput,
-        LightLayerInput, LightUpdateInput, PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS,
-        PLAYER_RESPAWN_KEEP_ENTITY_DATA, SNOWBALL_GRAVITY, SectionInput,
-        VANILLA_ARROW_ENTITY_TYPE_ID, VANILLA_BOAT_PASSENGER_MAX_ROTATION,
+        ClientEntityDimensions, ClientEntityPose, ClientItemStackState, ClientPlayerPoseInput,
+        ClientWorld, DimensionBounds, DimensionEnvironment, DimensionInput,
+        ENTITY_DATA_SERIALIZER_BOOLEAN_ID, ENTITY_NO_GRAVITY_DATA_ID, ENTITY_RELATIVE_DELTA_X_FLAG,
+        ENTITY_RELATIVE_DELTA_Y_FLAG, ENTITY_RELATIVE_DELTA_Z_FLAG,
+        ENTITY_RELATIVE_ROTATE_DELTA_FLAG, ENTITY_RELATIVE_X_FLAG, ENTITY_RELATIVE_X_ROT_FLAG,
+        ENTITY_RELATIVE_Y_FLAG, ENTITY_RELATIVE_Y_ROT_FLAG, ENTITY_RELATIVE_Z_FLAG, EntityInput,
+        EntityMotionInput, EntityMoveInput, EntityPositionInput, EntityPositionUpdateMode,
+        EntityRotationInput, EntityTeleportInput, LightLayerInput, LightUpdateInput,
+        PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS, PLAYER_RESPAWN_KEEP_ENTITY_DATA, SNOWBALL_GRAVITY,
+        SectionInput, VANILLA_ARROW_ENTITY_TYPE_ID, VANILLA_BOAT_PASSENGER_MAX_ROTATION,
         VANILLA_BREEZE_ENTITY_TYPE_ID, VANILLA_COW_ENTITY_TYPE_ID,
         VANILLA_EXPERIENCE_ORB_ENTITY_TYPE_ID, VANILLA_FALLING_BLOCK_ENTITY_TYPE_ID,
         VANILLA_FALLING_BLOCK_GRAVITY, VANILLA_FIREWORK_ROCKET_ENTITY_TYPE_ID,
@@ -5393,6 +5443,139 @@ mod tests {
             ClientEntityPose::Inhaling,
         ] {
             assert_eq!(pose.player_dimensions(), standing);
+        }
+    }
+
+    #[test]
+    fn player_pose_selection_follows_java_priority_and_fit_fallbacks() {
+        let cases = [
+            (
+                ClientPlayerPoseInput {
+                    sleeping: true,
+                    swimming: true,
+                    fall_flying: true,
+                    auto_spin_attack: true,
+                    shift_key_down: true,
+                    swimming_fits: true,
+                    desired_fits: true,
+                    crouching_fits: true,
+                    ..ClientPlayerPoseInput::default()
+                },
+                ClientEntityPose::Sleeping,
+                Some(ClientEntityPose::Sleeping),
+            ),
+            (
+                ClientPlayerPoseInput {
+                    swimming: true,
+                    fall_flying: true,
+                    auto_spin_attack: true,
+                    shift_key_down: true,
+                    swimming_fits: true,
+                    desired_fits: true,
+                    crouching_fits: true,
+                    ..ClientPlayerPoseInput::default()
+                },
+                ClientEntityPose::Swimming,
+                Some(ClientEntityPose::Swimming),
+            ),
+            (
+                ClientPlayerPoseInput {
+                    fall_flying: true,
+                    auto_spin_attack: true,
+                    swimming_fits: true,
+                    desired_fits: true,
+                    crouching_fits: true,
+                    ..ClientPlayerPoseInput::default()
+                },
+                ClientEntityPose::FallFlying,
+                Some(ClientEntityPose::FallFlying),
+            ),
+            (
+                ClientPlayerPoseInput {
+                    auto_spin_attack: true,
+                    swimming_fits: true,
+                    desired_fits: true,
+                    crouching_fits: true,
+                    ..ClientPlayerPoseInput::default()
+                },
+                ClientEntityPose::SpinAttack,
+                Some(ClientEntityPose::SpinAttack),
+            ),
+            (
+                ClientPlayerPoseInput {
+                    shift_key_down: true,
+                    swimming_fits: true,
+                    desired_fits: true,
+                    crouching_fits: true,
+                    ..ClientPlayerPoseInput::default()
+                },
+                ClientEntityPose::Crouching,
+                Some(ClientEntityPose::Crouching),
+            ),
+            (
+                ClientPlayerPoseInput {
+                    shift_key_down: true,
+                    flying: true,
+                    swimming_fits: true,
+                    desired_fits: true,
+                    crouching_fits: true,
+                    ..ClientPlayerPoseInput::default()
+                },
+                ClientEntityPose::Standing,
+                Some(ClientEntityPose::Standing),
+            ),
+            (
+                ClientPlayerPoseInput {
+                    swimming_fits: false,
+                    ..ClientPlayerPoseInput::default()
+                },
+                ClientEntityPose::Standing,
+                None,
+            ),
+            (
+                ClientPlayerPoseInput {
+                    swimming_fits: true,
+                    desired_fits: false,
+                    crouching_fits: true,
+                    ..ClientPlayerPoseInput::default()
+                },
+                ClientEntityPose::Standing,
+                Some(ClientEntityPose::Crouching),
+            ),
+            (
+                ClientPlayerPoseInput {
+                    swimming_fits: true,
+                    desired_fits: false,
+                    crouching_fits: false,
+                    ..ClientPlayerPoseInput::default()
+                },
+                ClientEntityPose::Standing,
+                Some(ClientEntityPose::Swimming),
+            ),
+            (
+                ClientPlayerPoseInput {
+                    spectator: true,
+                    swimming_fits: true,
+                    desired_fits: false,
+                    ..ClientPlayerPoseInput::default()
+                },
+                ClientEntityPose::Standing,
+                Some(ClientEntityPose::Standing),
+            ),
+            (
+                ClientPlayerPoseInput {
+                    passenger: true,
+                    swimming_fits: true,
+                    desired_fits: false,
+                    ..ClientPlayerPoseInput::default()
+                },
+                ClientEntityPose::Standing,
+                Some(ClientEntityPose::Standing),
+            ),
+        ];
+        for (input, desired, actual) in cases {
+            assert_eq!(input.desired_pose(), desired);
+            assert_eq!(input.updated_pose(), actual);
         }
     }
 
