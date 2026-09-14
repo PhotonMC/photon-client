@@ -1231,6 +1231,67 @@ def math_cases():
         yield {"case_id": f"keyboard-input/tick/{label}", "family": "math",
                "operation": "keyboard_input", **keys}
 
+    local_player_input_cases = [
+        {
+            "label": "zero-preserves-signed-zero",
+            "x": "80000000", "y": "00000000",
+        },
+        {
+            "label": "axis-applies-base-factor",
+            "x": float_bits(0.0), "y": float_bits(1.0),
+        },
+        {
+            "label": "diagonal-clamps-to-unit-square",
+            "x": float_bits(1.0), "y": float_bits(1.0),
+        },
+        {
+            "label": "short-vector-keeps-scaled-length",
+            "x": float_bits(0.25), "y": float_bits(-0.5),
+        },
+        {
+            "label": "item-use-multiplier",
+            "x": float_bits(1.0), "y": float_bits(0.0),
+            "using_item": True, "item_use_speed_multiplier": float_bits(0.2),
+        },
+        {
+            "label": "item-use-bypassed-in-passenger",
+            "x": float_bits(1.0), "y": float_bits(0.0),
+            "using_item": True, "passenger": True,
+            "item_use_speed_multiplier": float_bits(0.2),
+        },
+        {
+            "label": "sneaking-attribute-factor",
+            "x": float_bits(0.0), "y": float_bits(1.0),
+            "moving_slowly": True, "sneaking_movement_factor": float_bits(0.3),
+        },
+        {
+            "label": "item-and-sneaking-order",
+            "x": float_bits(1.0), "y": float_bits(1.0),
+            "using_item": True, "item_use_speed_multiplier": float_bits(0.5),
+            "moving_slowly": True, "sneaking_movement_factor": float_bits(0.3),
+        },
+        {
+            "label": "zero-item-factor-reaches-square-zero",
+            "x": float_bits(0.25), "y": float_bits(-0.5),
+            "using_item": True, "item_use_speed_multiplier": float_bits(0.0),
+        },
+        {
+            "label": "non-unit-vector-clamps",
+            "x": float_bits(2.0), "y": float_bits(1.0),
+        },
+    ]
+    local_player_input_defaults = {
+        "using_item": False, "passenger": False, "moving_slowly": False,
+        "item_use_speed_multiplier": float_bits(0.2),
+        "sneaking_movement_factor": float_bits(0.3),
+    }
+    local_player_input_inputs = []
+    for values in local_player_input_cases:
+        input_values = {**local_player_input_defaults, **values}
+        local_player_input_inputs.append(input_values)
+    yield {"case_id": "player-input/modify", "family": "math",
+           "operation": "local_player_input", "inputs": local_player_input_inputs}
+
     codec_decodes = {
         "basic": [float_bits(1.25, "f64"), float_bits(-2.5, "f64"), float_bits(3.75, "f64")],
         "zero": [float_bits(0.0, "f64"), float_bits(0.0, "f64"), float_bits(0.0, "f64")],

@@ -28,7 +28,9 @@ use voxel_client::direction::{
 use voxel_client::frame::{self, FrameError, Varint21FrameDecoder};
 use voxel_client::handshake::{self, ClientIntent, ClientIntentionPacket};
 use voxel_client::identifier::Identifier;
-use voxel_client::input::{Input, KeyboardInput};
+use voxel_client::input::{
+    Input, KeyboardInput, LocalPlayerInputModifiers, modify_local_player_input,
+};
 use voxel_client::input_event::{
     CharacterEvent, InputWithModifiers, KeyEvent as InputKeyEvent, MouseButtonEvent,
     MouseButtonInfo, PreeditEvent,
@@ -8122,6 +8124,38 @@ fn math_result(request: &Value) -> Result<Value, String> {
             "key_presses": input_snapshot(keyboard.key_presses),
             "move_vector": vec2_snapshot(keyboard.move_vector()),
         }));
+    }
+    if operation == "local_player_input" {
+        let inputs = request["inputs"]
+            .as_array()
+            .ok_or("inputs must be an array")?;
+        let states = inputs
+            .iter()
+            .map(|input| {
+                let label = string(input, "label")?;
+                let original = Vec2::new(f32_field(input, "x")?, f32_field(input, "y")?);
+                let modifiers = LocalPlayerInputModifiers {
+                    using_item: input["using_item"]
+                        .as_bool()
+                        .ok_or("using_item must be a boolean")?,
+                    passenger: input["passenger"]
+                        .as_bool()
+                        .ok_or("passenger must be a boolean")?,
+                    item_use_speed_multiplier: f32_field(input, "item_use_speed_multiplier")?,
+                    moving_slowly: input["moving_slowly"]
+                        .as_bool()
+                        .ok_or("moving_slowly must be a boolean")?,
+                    sneaking_movement_factor: f32_field(input, "sneaking_movement_factor")?,
+                };
+                let modified = modify_local_player_input(original, modifiers);
+                Ok(json!({
+                    "label": label,
+                    "input": vec2_snapshot(original),
+                    "modified": vec2_snapshot(modified),
+                }))
+            })
+            .collect::<Result<Vec<_>, String>>()?;
+        return Ok(json!({"states": states}));
     }
     if operation == "character_event" {
         return character_event_result(request);

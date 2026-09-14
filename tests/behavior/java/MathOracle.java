@@ -34,7 +34,11 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.AxisCycle;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.Holder;
 import net.minecraft.core.SectionPos;
+import net.minecraft.core.component.DataComponentMap;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.component.PatchedDataComponentMap;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.protocol.game.ClientboundGameEventPacket;
@@ -50,9 +54,13 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Pose;
 import net.minecraft.world.entity.player.Abilities;
 import net.minecraft.world.entity.player.Input;
+import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.monster.Shulker;
 import net.minecraft.world.entity.vehicle.boat.Boat;
 import net.minecraft.world.entity.vehicle.minecart.Minecart;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.component.UseEffects;
 import net.minecraft.world.level.BlockCollisions;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.ChunkPos;
@@ -124,6 +132,42 @@ public final class MathOracle {
             keyboard.tick();
             result.add("key_presses", snapshot(keyboard.keyPresses));
             result.add("move_vector", snapshot(keyboard.getMoveVector()));
+        } else if (operation.equals("local_player_input")) {
+            try {
+                var output = System.out;
+                var errorOutput = System.err;
+                try {
+                    SharedConstants.setVersion(TEST_VERSION);
+                    Bootstrap.bootStrap();
+                } finally {
+                    System.setOut(output);
+                    System.setErr(errorOutput);
+                }
+                Unsafe unsafe = unsafeInstance();
+                var method = LocalPlayer.class.getDeclaredMethod("modifyInput", Vec2.class);
+                method.setAccessible(true);
+                var states = new JsonArray();
+                for (var inputEntry : request.getAsJsonArray("inputs")) {
+                    JsonObject input = inputEntry.getAsJsonObject();
+                    LocalPlayerInputFixture player =
+                        (LocalPlayerInputFixture)unsafe.allocateInstance(LocalPlayerInputFixture.class);
+                    player.usingItem = input.get("using_item").getAsBoolean();
+                    player.passenger = input.get("passenger").getAsBoolean();
+                    player.movingSlowly = input.get("moving_slowly").getAsBoolean();
+                    player.sneakingMovementFactor = Oracle.f32(input, "sneaking_movement_factor");
+                    player.setItemUseSpeed(Oracle.f32(input, "item_use_speed_multiplier"));
+                    Vec2 original = new Vec2(Oracle.f32(input, "x"), Oracle.f32(input, "y"));
+                    Vec2 modified = (Vec2)method.invoke(player, original);
+                    var state = new JsonObject();
+                    state.addProperty("label", input.get("label").getAsString());
+                    state.add("input", snapshot(original));
+                    state.add("modified", snapshot(modified));
+                    states.add(state);
+                }
+                result.add("states", states);
+            } catch (ReflectiveOperationException error) {
+                throw new IllegalStateException("LocalPlayer.modifyInput reflection failed", error);
+            }
         } else if (operation.equals("character_event")) {
             CharacterEvent event = new CharacterEvent(request.get("codepoint").getAsInt());
             result.addProperty("codepoint", event.codepoint());
@@ -6034,6 +6078,50 @@ public final class MathOracle {
             return options;
         } catch (ReflectiveOperationException error) {
             throw new IllegalStateException("Unable to construct controlled keyboard options", error);
+        }
+    }
+
+    private static final class LocalPlayerInputFixture extends LocalPlayer {
+        private boolean usingItem;
+        private boolean passenger;
+        private boolean movingSlowly;
+        private float sneakingMovementFactor;
+
+        private LocalPlayerInputFixture() {
+            super(null, null, null, null, null, Input.EMPTY, false, null);
+        }
+
+        @Override
+        public boolean isUsingItem() {
+            return this.usingItem;
+        }
+
+        @Override
+        public boolean isPassenger() {
+            return this.passenger;
+        }
+
+        @Override
+        public boolean isMovingSlowly() {
+            return this.movingSlowly;
+        }
+
+        @Override
+        public double getAttributeValue(final Holder<Attribute> attribute) {
+            return this.sneakingMovementFactor;
+        }
+
+        private void setItemUseSpeed(final float speed) throws ReflectiveOperationException {
+            var constructor = ItemStack.class.getDeclaredConstructor(
+                Holder.class, int.class, PatchedDataComponentMap.class);
+            constructor.setAccessible(true);
+            this.useItem = constructor.newInstance(
+                Items.APPLE.builtInRegistryHolder(),
+                1,
+                new PatchedDataComponentMap(DataComponentMap.EMPTY));
+            this.useItem.set(
+                DataComponents.USE_EFFECTS,
+                new UseEffects(false, true, speed));
         }
     }
 
