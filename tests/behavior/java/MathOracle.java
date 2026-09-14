@@ -46,6 +46,7 @@ import net.minecraft.world.level.BlockCollisions;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.CollisionGetter;
+import net.minecraft.world.level.EntityGetter;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.SlabBlock;
@@ -2980,6 +2981,44 @@ public final class MathOracle {
                     }
                 }
                 result.add("states", states);
+            } else if (kind.equals("entity_collision_shapes")) {
+                var output = System.out;
+                var errorOutput = System.err;
+                try {
+                    SharedConstants.setVersion(TEST_VERSION);
+                    Bootstrap.bootStrap();
+                } finally {
+                    System.setOut(output);
+                    System.setErr(errorOutput);
+                }
+                AABB testArea = box(request.getAsJsonObject("test_area"));
+                boolean sourcePresent = request.has("source_present")
+                    && request.get("source_present").getAsBoolean();
+                CollisionFixtureEntity source = sourcePresent
+                    ? CollisionFixtureEntity.create(
+                        box(request.getAsJsonObject("source_box")), false, true, false)
+                    : null;
+                var entities = new java.util.ArrayList<Entity>();
+                for (var entry : request.getAsJsonArray("candidates")) {
+                    JsonObject candidate = entry.getAsJsonObject();
+                    boolean isSource = candidate.has("is_source")
+                        && candidate.get("is_source").getAsBoolean();
+                    entities.add(sourcePresent && isSource
+                        ? source
+                        : CollisionFixtureEntity.create(
+                            box(candidate.getAsJsonObject("box")),
+                            candidate.has("spectator") && candidate.get("spectator").getAsBoolean(),
+                            candidate.has("can_be_collided_with")
+                                && candidate.get("can_be_collided_with").getAsBoolean(),
+                            candidate.has("same_vehicle") && candidate.get("same_vehicle").getAsBoolean()));
+                }
+                EntityCollisionFixture collisionFixture = new EntityCollisionFixture(entities);
+                var shapes = collisionFixture.getEntityCollisions(source, testArea);
+                var shapeSnapshots = new JsonArray();
+                for (VoxelShape shape : shapes) {
+                    shapeSnapshots.add(snapshot(shape));
+                }
+                result.add("shapes", shapeSnapshots);
             } else if (kind.equals("collect_step_up_heights")) {
                 AABB moving = box(request.getAsJsonObject("moving"));
                 var shapes = new java.util.ArrayList<VoxelShape>();
@@ -3576,6 +3615,110 @@ public final class MathOracle {
 
     private static double f64(String bits) {
         return Double.longBitsToDouble(Long.parseUnsignedLong(bits, 16));
+    }
+
+    private static final class CollisionFixtureEntity extends Entity {
+        private boolean spectator;
+        private boolean collidable;
+        private boolean sameVehicle;
+
+        private CollisionFixtureEntity(
+            AABB boundingBox, boolean spectator, boolean collidable, boolean sameVehicle
+        ) {
+            super(net.minecraft.world.entity.EntityTypes.ARMOR_STAND, null);
+            this.spectator = spectator;
+            this.collidable = collidable;
+            this.sameVehicle = sameVehicle;
+            this.setBoundingBox(boundingBox);
+        }
+
+        private static CollisionFixtureEntity create(
+            AABB boundingBox, boolean spectator, boolean collidable, boolean sameVehicle
+        ) {
+            try {
+                Unsafe unsafe = unsafeInstance();
+                CollisionFixtureEntity entity =
+                    (CollisionFixtureEntity)unsafe.allocateInstance(CollisionFixtureEntity.class);
+                entity.spectator = spectator;
+                entity.collidable = collidable;
+                entity.sameVehicle = sameVehicle;
+                entity.setBoundingBox(boundingBox);
+                return entity;
+            } catch (InstantiationException error) {
+                throw new IllegalStateException("Unable to allocate collision fixture entity", error);
+            }
+        }
+
+        @Override
+        protected void defineSynchedData(net.minecraft.network.syncher.SynchedEntityData.Builder builder) {
+        }
+
+        @Override
+        public boolean isSpectator() {
+            return this.spectator;
+        }
+
+        @Override
+        public boolean canBeCollidedWith(Entity other) {
+            return this.collidable;
+        }
+
+        @Override
+        public boolean isPassengerOfSameVehicle(Entity other) {
+            return other instanceof CollisionFixtureEntity fixture && fixture.sameVehicle;
+        }
+
+        @Override
+        public boolean hurtServer(
+            net.minecraft.server.level.ServerLevel level,
+            net.minecraft.world.damagesource.DamageSource source,
+            float damage
+        ) {
+            return false;
+        }
+
+        @Override
+        protected void readAdditionalSaveData(net.minecraft.world.level.storage.ValueInput input) {
+        }
+
+        @Override
+        protected void addAdditionalSaveData(net.minecraft.world.level.storage.ValueOutput output) {
+        }
+    }
+
+    private static final class EntityCollisionFixture implements EntityGetter {
+        private final java.util.List<Entity> entities;
+
+        private EntityCollisionFixture(java.util.List<Entity> entities) {
+            this.entities = entities;
+        }
+
+        @Override
+        public java.util.List<Entity> getEntities(
+            Entity except, AABB box, java.util.function.Predicate<? super Entity> selector
+        ) {
+            var result = new java.util.ArrayList<Entity>();
+            for (Entity entity : this.entities) {
+                if (entity != except && entity.getBoundingBox().intersects(box) && selector.test(entity)) {
+                    result.add(entity);
+                }
+            }
+            return result;
+        }
+
+        @Override
+        public <T extends Entity> java.util.List<T> getEntities(
+            net.minecraft.world.level.entity.EntityTypeTest<Entity, T> type,
+            AABB box,
+            java.util.function.Predicate<? super T> selector
+        ) {
+            return java.util.List.of();
+        }
+
+        @Override
+        public java.util.List<? extends net.minecraft.world.entity.player.Player> players() {
+            return java.util.List.of();
+        }
     }
 
     private static CollisionGetter collisionFixture(JsonArray placements) {

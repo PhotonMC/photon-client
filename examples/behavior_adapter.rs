@@ -61,8 +61,9 @@ use voxel_client::timer::Timer;
 use voxel_client::utf8;
 use voxel_client::wire::{self, ReadError};
 use voxel_client::world::{
-    ClientEntityDimensions, ClientEntityPose, ClientPlayerPoseInput, ClientWorld, DimensionBounds,
-    SectionInput, collect_candidate_step_up_heights, collide_entity_movement,
+    ClientEntityCollisionCandidate, ClientEntityDimensions, ClientEntityPose,
+    ClientPlayerPoseInput, ClientWorld, DimensionBounds, SectionInput,
+    collect_candidate_step_up_heights, collect_entity_collision_shapes, collide_entity_movement,
     collide_entity_movement_state,
 };
 
@@ -4298,6 +4299,56 @@ fn shape_result(request: &Value) -> Result<Value, String> {
                 })
                 .collect::<Result<Vec<_>, String>>()?;
             Ok(json!({"states": states}))
+        }
+        "entity_collision_shapes" => {
+            let source_present = request
+                .get("source_present")
+                .and_then(Value::as_bool)
+                .unwrap_or(false);
+            let test_area = aabb_box(
+                request
+                    .get("test_area")
+                    .ok_or("test_area must be an object")?,
+            )?;
+            let candidates = request
+                .get("candidates")
+                .ok_or("candidates must be an array")?
+                .as_array()
+                .ok_or("candidates must be an array")?
+                .iter()
+                .map(|entry| {
+                    let candidate = entry
+                        .as_object()
+                        .ok_or("entity collision candidate must be an object")?;
+                    Ok(ClientEntityCollisionCandidate {
+                        bounding_box: aabb_box(
+                            candidate
+                                .get("box")
+                                .ok_or("candidate box must be an object")?,
+                        )?,
+                        is_source: candidate
+                            .get("is_source")
+                            .and_then(Value::as_bool)
+                            .unwrap_or(false),
+                        spectator: candidate
+                            .get("spectator")
+                            .and_then(Value::as_bool)
+                            .unwrap_or(false),
+                        can_be_collided_with: candidate
+                            .get("can_be_collided_with")
+                            .and_then(Value::as_bool)
+                            .unwrap_or(false),
+                        same_vehicle: candidate
+                            .get("same_vehicle")
+                            .and_then(Value::as_bool)
+                            .unwrap_or(false),
+                    })
+                })
+                .collect::<Result<Vec<_>, String>>()?;
+            let shapes = collect_entity_collision_shapes(source_present, test_area, &candidates);
+            Ok(json!({
+                "shapes": shapes.iter().map(shape_snapshot).collect::<Vec<_>>(),
+            }))
         }
         "collect_step_up_heights" => {
             let moving = aabb_box(request.get("moving").ok_or("moving must be an object")?)?;

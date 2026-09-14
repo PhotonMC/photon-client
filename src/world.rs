@@ -82,6 +82,43 @@ pub fn collide_entity_movement_state(
     }
 }
 
+/// Candidate entity data needed by Java's `EntityGetter` collision query.
+#[derive(Debug, Clone, Copy)]
+pub struct ClientEntityCollisionCandidate {
+    pub bounding_box: Aabb,
+    pub is_source: bool,
+    pub spectator: bool,
+    pub can_be_collided_with: bool,
+    pub same_vehicle: bool,
+}
+
+/// Collect entity bounding-box shapes using Java's collision-query policy.
+pub fn collect_entity_collision_shapes(
+    source_present: bool,
+    test_area: Aabb,
+    candidates: &[ClientEntityCollisionCandidate],
+) -> Vec<VoxelShape> {
+    if test_area.size() < 1.0e-7 {
+        return Vec::new();
+    }
+
+    let query_area = test_area.inflate_all(1.0e-7);
+    candidates
+        .iter()
+        .filter(|candidate| {
+            (!source_present || !candidate.is_source)
+                && candidate.bounding_box.intersects(query_area)
+                && !candidate.spectator
+                && candidate.can_be_collided_with
+                && (!source_present || !candidate.same_vehicle)
+        })
+        .map(|candidate| {
+            Shapes::create_from_aabb(candidate.bounding_box)
+                .expect("entity collision candidates require normalized bounds")
+        })
+        .collect()
+}
+
 fn java_float_compare(first: &f32, second: &f32) -> std::cmp::Ordering {
     match first.partial_cmp(second) {
         Some(std::cmp::Ordering::Less) => std::cmp::Ordering::Less,
@@ -5275,16 +5312,17 @@ fn apply_light_layer(
 mod tests {
     use super::{
         BlockEntityInput, BoatInput, ClientAttributeModifierState, ClientAttributeState,
-        ClientEntityDimensions, ClientEntityPose, ClientItemStackState, ClientPlayerPoseInput,
-        ClientWorld, DimensionBounds, DimensionEnvironment, DimensionInput,
-        ENTITY_DATA_SERIALIZER_BOOLEAN_ID, ENTITY_NO_GRAVITY_DATA_ID, ENTITY_RELATIVE_DELTA_X_FLAG,
-        ENTITY_RELATIVE_DELTA_Y_FLAG, ENTITY_RELATIVE_DELTA_Z_FLAG,
-        ENTITY_RELATIVE_ROTATE_DELTA_FLAG, ENTITY_RELATIVE_X_FLAG, ENTITY_RELATIVE_X_ROT_FLAG,
-        ENTITY_RELATIVE_Y_FLAG, ENTITY_RELATIVE_Y_ROT_FLAG, ENTITY_RELATIVE_Z_FLAG, EntityInput,
-        EntityMotionInput, EntityMoveInput, EntityPositionInput, EntityPositionUpdateMode,
-        EntityRotationInput, EntityTeleportInput, LightLayerInput, LightUpdateInput,
-        PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS, PLAYER_RESPAWN_KEEP_ENTITY_DATA, SNOWBALL_GRAVITY,
-        SectionInput, VANILLA_ARROW_ENTITY_TYPE_ID, VANILLA_BOAT_PASSENGER_MAX_ROTATION,
+        ClientEntityCollisionCandidate, ClientEntityDimensions, ClientEntityPose,
+        ClientItemStackState, ClientPlayerPoseInput, ClientWorld, DimensionBounds,
+        DimensionEnvironment, DimensionInput, ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        ENTITY_NO_GRAVITY_DATA_ID, ENTITY_RELATIVE_DELTA_X_FLAG, ENTITY_RELATIVE_DELTA_Y_FLAG,
+        ENTITY_RELATIVE_DELTA_Z_FLAG, ENTITY_RELATIVE_ROTATE_DELTA_FLAG, ENTITY_RELATIVE_X_FLAG,
+        ENTITY_RELATIVE_X_ROT_FLAG, ENTITY_RELATIVE_Y_FLAG, ENTITY_RELATIVE_Y_ROT_FLAG,
+        ENTITY_RELATIVE_Z_FLAG, EntityInput, EntityMotionInput, EntityMoveInput,
+        EntityPositionInput, EntityPositionUpdateMode, EntityRotationInput, EntityTeleportInput,
+        LightLayerInput, LightUpdateInput, PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS,
+        PLAYER_RESPAWN_KEEP_ENTITY_DATA, SNOWBALL_GRAVITY, SectionInput,
+        VANILLA_ARROW_ENTITY_TYPE_ID, VANILLA_BOAT_PASSENGER_MAX_ROTATION,
         VANILLA_BREEZE_ENTITY_TYPE_ID, VANILLA_COW_ENTITY_TYPE_ID,
         VANILLA_EXPERIENCE_ORB_ENTITY_TYPE_ID, VANILLA_FALLING_BLOCK_ENTITY_TYPE_ID,
         VANILLA_FALLING_BLOCK_GRAVITY, VANILLA_FIREWORK_ROCKET_ENTITY_TYPE_ID,
@@ -5293,7 +5331,8 @@ mod tests {
         VANILLA_PLAYER_ENTITY_TYPE_ID, VANILLA_PRIMED_TNT_AIR_FRICTION,
         VANILLA_PRIMED_TNT_ENTITY_TYPE_ID, VANILLA_PRIMED_TNT_GRAVITY,
         VANILLA_SNOWBALL_ENTITY_TYPE_ID, collect_candidate_step_up_heights,
-        collide_entity_movement, collide_entity_movement_state, menu_top_slot_count,
+        collect_entity_collision_shapes, collide_entity_movement, collide_entity_movement_state,
+        menu_top_slot_count,
     };
     use crate::aabb::Aabb;
     use crate::binary::{BitSet, Uuid};
@@ -5376,6 +5415,69 @@ mod tests {
         assert!(rising.vertical_collision);
         assert!(!rising.vertical_collision_below);
         assert!(!rising.on_ground);
+    }
+
+    #[test]
+    fn entity_collision_collection_follows_java_filter_and_epsilon() {
+        let candidates = [
+            ClientEntityCollisionCandidate {
+                bounding_box: Aabb::new(0.0, 0.0, 0.0, 1.0, 1.0, 1.0),
+                is_source: true,
+                spectator: false,
+                can_be_collided_with: true,
+                same_vehicle: false,
+            },
+            ClientEntityCollisionCandidate {
+                bounding_box: Aabb::new(0.5, 0.0, 0.0, 1.5, 1.0, 1.0),
+                is_source: false,
+                spectator: false,
+                can_be_collided_with: true,
+                same_vehicle: false,
+            },
+            ClientEntityCollisionCandidate {
+                bounding_box: Aabb::new(0.75, 0.0, 0.0, 1.75, 1.0, 1.0),
+                is_source: false,
+                spectator: true,
+                can_be_collided_with: true,
+                same_vehicle: false,
+            },
+            ClientEntityCollisionCandidate {
+                bounding_box: Aabb::new(0.25, 0.0, 0.0, 1.25, 1.0, 1.0),
+                is_source: false,
+                spectator: false,
+                can_be_collided_with: false,
+                same_vehicle: false,
+            },
+            ClientEntityCollisionCandidate {
+                bounding_box: Aabb::new(0.125, 0.0, 0.0, 1.125, 1.0, 1.0),
+                is_source: false,
+                spectator: false,
+                can_be_collided_with: true,
+                same_vehicle: true,
+            },
+            ClientEntityCollisionCandidate {
+                bounding_box: Aabb::new(2.00000005, 0.0, 0.0, 2.5, 1.0, 1.0),
+                is_source: false,
+                spectator: false,
+                can_be_collided_with: true,
+                same_vehicle: false,
+            },
+        ];
+        let test_area = Aabb::new(0.0, 0.0, 0.0, 2.0, 1.0, 1.0);
+        let source_free = collect_entity_collision_shapes(false, test_area, &candidates);
+        assert_eq!(source_free.len(), 4);
+        assert_eq!(source_free[0].bounds(), Some(candidates[0].bounding_box));
+        assert_eq!(source_free[1].bounds(), Some(candidates[1].bounding_box));
+        assert_eq!(source_free[2].bounds(), Some(candidates[4].bounding_box));
+        assert_eq!(source_free[3].bounds(), Some(candidates[5].bounding_box));
+
+        let with_source = collect_entity_collision_shapes(true, test_area, &candidates);
+        assert_eq!(with_source.len(), 2);
+        assert_eq!(with_source[0].bounds(), Some(candidates[1].bounding_box));
+        assert_eq!(with_source[1].bounds(), Some(candidates[5].bounding_box));
+
+        let tiny_area = Aabb::new(0.0, 0.0, 0.0, 0.00000001, 0.00000001, 0.00000001);
+        assert!(collect_entity_collision_shapes(false, tiny_area, &candidates).is_empty());
     }
 
     #[test]
