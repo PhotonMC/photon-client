@@ -136,6 +136,220 @@ pub fn world_border_collision_shape(
     Shapes::join(&Shapes::infinity(), &inner, BooleanOp::OnlyFirst)
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ClientWorldBorderStatus {
+    Stationary,
+    Shrinking,
+    Growing,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ClientWorldBorderExtent {
+    Static {
+        size_bits: u64,
+    },
+    Moving {
+        from_bits: u64,
+        to_bits: u64,
+        duration: i64,
+        progress: i64,
+        size_bits: u64,
+        previous_size_bits: u64,
+    },
+}
+
+/// Model the client-visible Java `WorldBorder` extent state.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ClientWorldBorder {
+    center_x_bits: u64,
+    center_z_bits: u64,
+    absolute_max_size: i32,
+    extent: ClientWorldBorderExtent,
+}
+
+impl ClientWorldBorder {
+    pub fn new(center_x: f64, center_z: f64, absolute_max_size: i32, size: f64) -> Self {
+        Self {
+            center_x_bits: center_x.to_bits(),
+            center_z_bits: center_z.to_bits(),
+            absolute_max_size,
+            extent: ClientWorldBorderExtent::Static {
+                size_bits: size.to_bits(),
+            },
+        }
+    }
+
+    pub fn set_center(&mut self, center_x: f64, center_z: f64) {
+        self.center_x_bits = center_x.to_bits();
+        self.center_z_bits = center_z.to_bits();
+    }
+
+    pub fn set_absolute_max_size(&mut self, absolute_max_size: i32) {
+        self.absolute_max_size = absolute_max_size;
+    }
+
+    pub fn set_size(&mut self, size: f64) {
+        self.extent = ClientWorldBorderExtent::Static {
+            size_bits: size.to_bits(),
+        };
+    }
+
+    pub fn lerp_size_between(&mut self, from: f64, to: f64, duration: i64) {
+        self.extent = if from == to {
+            ClientWorldBorderExtent::Static {
+                size_bits: to.to_bits(),
+            }
+        } else {
+            ClientWorldBorderExtent::Moving {
+                from_bits: from.to_bits(),
+                to_bits: to.to_bits(),
+                duration,
+                progress: duration,
+                size_bits: from.to_bits(),
+                previous_size_bits: from.to_bits(),
+            }
+        };
+    }
+
+    pub fn size(&self) -> f64 {
+        match self.extent {
+            ClientWorldBorderExtent::Static { size_bits }
+            | ClientWorldBorderExtent::Moving { size_bits, .. } => f64::from_bits(size_bits),
+        }
+    }
+
+    pub fn lerp_time(&self) -> i64 {
+        match self.extent {
+            ClientWorldBorderExtent::Static { .. } => 0,
+            ClientWorldBorderExtent::Moving { progress, .. } => progress,
+        }
+    }
+
+    pub fn lerp_target(&self) -> f64 {
+        match self.extent {
+            ClientWorldBorderExtent::Static { size_bits } => f64::from_bits(size_bits),
+            ClientWorldBorderExtent::Moving { to_bits, .. } => f64::from_bits(to_bits),
+        }
+    }
+
+    pub fn status(&self) -> ClientWorldBorderStatus {
+        match self.extent {
+            ClientWorldBorderExtent::Static { .. } => ClientWorldBorderStatus::Stationary,
+            ClientWorldBorderExtent::Moving {
+                from_bits, to_bits, ..
+            } => {
+                if f64::from_bits(to_bits) < f64::from_bits(from_bits) {
+                    ClientWorldBorderStatus::Shrinking
+                } else {
+                    ClientWorldBorderStatus::Growing
+                }
+            }
+        }
+    }
+
+    pub fn min_x(&self, partial_tick: f32) -> f64 {
+        self.edge(self.center_x(), self.effective_size(partial_tick), false)
+    }
+
+    pub fn max_x(&self, partial_tick: f32) -> f64 {
+        self.edge(self.center_x(), self.effective_size(partial_tick), true)
+    }
+
+    pub fn min_z(&self, partial_tick: f32) -> f64 {
+        self.edge(self.center_z(), self.effective_size(partial_tick), false)
+    }
+
+    pub fn max_z(&self, partial_tick: f32) -> f64 {
+        self.edge(self.center_z(), self.effective_size(partial_tick), true)
+    }
+
+    pub fn collision_shape(&self) -> VoxelShape {
+        world_border_collision_shape(
+            self.center_x(),
+            self.center_z(),
+            self.effective_size(0.0),
+            self.absolute_max_size,
+        )
+    }
+
+    pub fn tick(&mut self) {
+        let ClientWorldBorderExtent::Moving {
+            from_bits,
+            to_bits,
+            duration,
+            progress,
+            size_bits,
+            ..
+        } = self.extent
+        else {
+            return;
+        };
+        let progress = progress - 1;
+        let previous_size_bits = size_bits;
+        let size = calculate_world_border_size(
+            f64::from_bits(from_bits),
+            f64::from_bits(to_bits),
+            duration,
+            progress,
+        );
+        self.extent = if progress <= 0 {
+            ClientWorldBorderExtent::Static { size_bits: to_bits }
+        } else {
+            ClientWorldBorderExtent::Moving {
+                from_bits,
+                to_bits,
+                duration,
+                progress,
+                size_bits: size.to_bits(),
+                previous_size_bits,
+            }
+        };
+    }
+
+    fn center_x(&self) -> f64 {
+        f64::from_bits(self.center_x_bits)
+    }
+
+    fn center_z(&self) -> f64 {
+        f64::from_bits(self.center_z_bits)
+    }
+
+    fn effective_size(&self, partial_tick: f32) -> f64 {
+        match self.extent {
+            ClientWorldBorderExtent::Static { size_bits } => f64::from_bits(size_bits),
+            ClientWorldBorderExtent::Moving {
+                size_bits,
+                previous_size_bits,
+                ..
+            } => mth_lerp_f64(
+                f64::from(partial_tick),
+                f64::from_bits(previous_size_bits),
+                f64::from_bits(size_bits),
+            ),
+        }
+    }
+
+    fn edge(&self, center: f64, size: f64, maximum: bool) -> f64 {
+        let absolute_max_size = f64::from(self.absolute_max_size);
+        let half_size = size / 2.0;
+        let value = if maximum {
+            center + half_size
+        } else {
+            center - half_size
+        };
+        clamp_f64(value, -absolute_max_size, absolute_max_size)
+    }
+}
+
+fn calculate_world_border_size(from: f64, to: f64, duration: i64, progress: i64) -> f64 {
+    let progress = (duration as f64 - progress as f64) / duration as f64;
+    if progress < 1.0 {
+        mth_lerp_f64(progress, from, to)
+    } else {
+        to
+    }
+}
+
 fn java_float_compare(first: &f32, second: &f32) -> std::cmp::Ordering {
     match first.partial_cmp(second) {
         Some(std::cmp::Ordering::Less) => std::cmp::Ordering::Less,

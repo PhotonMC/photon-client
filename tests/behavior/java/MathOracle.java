@@ -3031,6 +3031,51 @@ public final class MathOracle {
                     states.add(snapshot(border.getCollisionShape()));
                 }
                 result.add("states", states);
+            } else if (kind.equals("world_border_collision_shape_moving")) {
+                SharedConstants.setVersion(TEST_VERSION);
+                var states = new JsonArray();
+                for (var entry : request.getAsJsonArray("inputs")) {
+                    JsonObject input = entry.getAsJsonObject();
+                    WorldBorder border = new WorldBorder();
+                    border.setCenter(f64(input, "center_x"), f64(input, "center_z"));
+                    border.setAbsoluteMaxSize(input.get("absolute_max_size").getAsInt());
+                    border.lerpSizeBetween(
+                        f64(input, "from"),
+                        f64(input, "to"),
+                        input.get("duration").getAsLong(),
+                        0L
+                    );
+                    var partialTicks = input.getAsJsonArray("partial_ticks");
+                    int tickCount = input.get("tick_count").getAsInt();
+                    var track = new JsonArray();
+                    for (int tick = 0; tick <= tickCount; tick++) {
+                        var samples = new JsonArray();
+                        for (var partialEntry : partialTicks) {
+                            float partialTick = Float.intBitsToFloat(
+                                Integer.parseUnsignedInt(partialEntry.getAsString(), 16));
+                            var sample = new JsonObject();
+                            sample.addProperty("partial_tick", Oracle.bits(partialTick));
+                            sample.addProperty("min_x", Oracle.bits(border.getMinX(partialTick)));
+                            sample.addProperty("max_x", Oracle.bits(border.getMaxX(partialTick)));
+                            sample.addProperty("min_z", Oracle.bits(border.getMinZ(partialTick)));
+                            sample.addProperty("max_z", Oracle.bits(border.getMaxZ(partialTick)));
+                            samples.add(sample);
+                        }
+                        var state = new JsonObject();
+                        state.addProperty("size", Oracle.bits(border.getSize()));
+                        state.addProperty("lerp_time", border.getLerpTime());
+                        state.addProperty("lerp_target", Oracle.bits(border.getLerpTarget()));
+                        state.addProperty("status", border.getStatus().name());
+                        state.add("samples", samples);
+                        state.add("collision_shape", snapshot(border.getCollisionShape()));
+                        track.add(state);
+                        if (tick < tickCount) {
+                            border.tick();
+                        }
+                    }
+                    states.add(track);
+                }
+                result.add("states", states);
             } else if (kind.equals("collect_step_up_heights")) {
                 AABB moving = box(request.getAsJsonObject("moving"));
                 var shapes = new java.util.ArrayList<VoxelShape>();

@@ -62,9 +62,10 @@ use voxel_client::utf8;
 use voxel_client::wire::{self, ReadError};
 use voxel_client::world::{
     ClientEntityCollisionCandidate, ClientEntityDimensions, ClientEntityPose,
-    ClientPlayerPoseInput, ClientWorld, DimensionBounds, SectionInput,
-    collect_candidate_step_up_heights, collect_entity_collision_shapes, collide_entity_movement,
-    collide_entity_movement_state, world_border_collision_shape,
+    ClientPlayerPoseInput, ClientWorld, ClientWorldBorder, ClientWorldBorderStatus,
+    DimensionBounds, SectionInput, collect_candidate_step_up_heights,
+    collect_entity_collision_shapes, collide_entity_movement, collide_entity_movement_state,
+    world_border_collision_shape,
 };
 
 fn string<'a>(request: &'a Value, name: &str) -> Result<&'a str, String> {
@@ -1292,6 +1293,18 @@ fn ping_result(request: &Value) -> Result<Value, String> {
 
 fn f32_field(value: &Value, name: &str) -> Result<f32, String> {
     let text = string(value, name)?;
+    if text.len() != 8 || !text.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+        return Err(format!("{name} must be eight hexadecimal digits"));
+    }
+    u32::from_str_radix(text, 16)
+        .map(f32::from_bits)
+        .map_err(|error| error.to_string())
+}
+
+fn f32_value(value: &Value, name: &str) -> Result<f32, String> {
+    let text = value
+        .as_str()
+        .ok_or_else(|| format!("{name} must be a string"))?;
     if text.len() != 8 || !text.bytes().all(|byte| byte.is_ascii_hexdigit()) {
         return Err(format!("{name} must be eight hexadecimal digits"));
     }
@@ -4389,6 +4402,103 @@ fn shape_result(request: &Value) -> Result<Value, String> {
                         size,
                         absolute_max_size,
                     )))
+                })
+                .collect::<Result<Vec<_>, String>>()?;
+            Ok(json!({"states": states}))
+        }
+        "world_border_collision_shape_moving" => {
+            let inputs = request
+                .get("inputs")
+                .ok_or("inputs must be an array")?
+                .as_array()
+                .ok_or("inputs must be an array")?;
+            let states = inputs
+                .iter()
+                .map(|entry| {
+                    let input = entry
+                        .as_object()
+                        .ok_or("world border input must be an object")?;
+                    let center_x = f64_value(
+                        input
+                            .get("center_x")
+                            .ok_or("center_x must be a bit string")?,
+                        "center_x",
+                    )?;
+                    let center_z = f64_value(
+                        input
+                            .get("center_z")
+                            .ok_or("center_z must be a bit string")?,
+                        "center_z",
+                    )?;
+                    let from = f64_value(
+                        input.get("from").ok_or("from must be a bit string")?,
+                        "from",
+                    )?;
+                    let to = f64_value(
+                        input.get("to").ok_or("to must be a bit string")?,
+                        "to",
+                    )?;
+                    let absolute_max_size = input
+                        .get("absolute_max_size")
+                        .and_then(Value::as_i64)
+                        .and_then(|value| i32::try_from(value).ok())
+                        .ok_or("absolute_max_size must be an i32")?;
+                    let duration = input
+                        .get("duration")
+                        .and_then(Value::as_i64)
+                        .ok_or("duration must be an i64")?;
+                    let tick_count = input
+                        .get("tick_count")
+                        .and_then(Value::as_i64)
+                        .filter(|value| *value >= 0)
+                        .ok_or("tick_count must be a non-negative i64")?;
+                    let partial_ticks = input
+                        .get("partial_ticks")
+                        .ok_or("partial_ticks must be an array")?
+                        .as_array()
+                        .ok_or("partial_ticks must be an array")?
+                        .iter()
+                        .map(|value| f32_value(value, "partial_tick"))
+                        .collect::<Result<Vec<_>, String>>()?;
+                    let mut border = ClientWorldBorder::new(
+                        center_x,
+                        center_z,
+                        absolute_max_size,
+                        from,
+                    );
+                    border.lerp_size_between(from, to, duration);
+                    let mut states = Vec::new();
+                    for tick in 0..=tick_count {
+                        let samples = partial_ticks
+                            .iter()
+                            .map(|partial_tick| {
+                                json!({
+                                    "partial_tick": format!("{:08x}", partial_tick.to_bits()),
+                                    "min_x": format!("{:016x}", border.min_x(*partial_tick).to_bits()),
+                                    "max_x": format!("{:016x}", border.max_x(*partial_tick).to_bits()),
+                                    "min_z": format!("{:016x}", border.min_z(*partial_tick).to_bits()),
+                                    "max_z": format!("{:016x}", border.max_z(*partial_tick).to_bits()),
+                                })
+                            })
+                            .collect::<Vec<_>>();
+                        let status = match border.status() {
+                            ClientWorldBorderStatus::Stationary => "STATIONARY",
+                            ClientWorldBorderStatus::Shrinking => "SHRINKING",
+                            ClientWorldBorderStatus::Growing => "GROWING",
+                        };
+                        states.push(json!({
+                            "size": format!("{:016x}", border.size().to_bits()),
+                            "lerp_time": border.lerp_time(),
+                            "lerp_target": format!("{:016x}", border.lerp_target().to_bits()),
+                            "status": status,
+                            "samples": samples,
+                            "collision_shape": shape_snapshot(&border.collision_shape()),
+                        }));
+                        if tick < tick_count {
+                            border.tick();
+                        }
+                    }
+                    Ok(json!(states))
                 })
                 .collect::<Result<Vec<_>, String>>()?;
             Ok(json!({"states": states}))
