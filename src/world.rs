@@ -3,7 +3,8 @@
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 use crate::input::{
-    LocalPlayerInputModifiers, LocalPlayerInputState,
+    LocalPlayerFluidFallingInput, LocalPlayerInputModifiers, LocalPlayerInputState,
+    adjust_local_player_fluid_falling_movement,
     apply_local_player_input as apply_local_player_input_fields,
 };
 use crate::math::{
@@ -2789,6 +2790,19 @@ impl ClientWorld {
             return false;
         };
         player.apply_input(move_vector, jump_pressed, controlled_camera, modifiers);
+        true
+    }
+
+    /// Apply the fluid falling adjustment to the local player's motion state.
+    pub fn apply_local_player_fluid_falling_adjustment(
+        &mut self,
+        base_gravity: f64,
+        is_falling: bool,
+    ) -> bool {
+        let Some(player) = self.local_player.as_mut() else {
+            return false;
+        };
+        player.apply_fluid_falling_adjustment(base_gravity, is_falling);
         true
     }
 
@@ -5589,6 +5603,20 @@ impl ClientPlayerState {
         self.y_bob_o_bits = applied.y_bob_old.to_bits();
     }
 
+    fn apply_fluid_falling_adjustment(&mut self, base_gravity: f64, is_falling: bool) {
+        let adjusted = adjust_local_player_fluid_falling_movement(LocalPlayerFluidFallingInput {
+            base_gravity,
+            is_falling,
+            sprinting: self.is_sprinting(),
+            movement: Vec3::new(
+                f64::from_bits(self.motion_x_bits),
+                f64::from_bits(self.motion_y_bits),
+                f64::from_bits(self.motion_z_bits),
+            ),
+        });
+        self.motion_y_bits = adjusted.y.to_bits();
+    }
+
     fn capture_old_transform(&mut self) {
         self.old_x_bits = self.x_bits;
         self.old_y_bits = self.y_bits;
@@ -8090,6 +8118,44 @@ mod tests {
         assert_eq!(player.bob().0.to_bits(), 0x3fc0_0000);
         assert_eq!(player.bob().1.to_bits(), 0x40f0_0000);
         assert_eq!(player.previous_bob(), (0.0, 0.0));
+    }
+
+    #[test]
+    fn local_player_fluid_falling_adjustment_updates_motion_and_honors_sprint() {
+        let mut world = ClientWorld::default();
+        world.set_local_player_id(42);
+        assert!(
+            world.apply_local_player_position((0.0, 0.0, 0.0), (0.25, 0.01, -0.5), (0.0, 0.0),)
+        );
+        assert!(world.apply_local_player_fluid_falling_adjustment(0.16, true));
+        assert_eq!(
+            world
+                .local_player()
+                .expect("fluid-adjusted player")
+                .motion()
+                .1
+                .to_bits(),
+            0xbf68_9374_bc6a_7efa,
+        );
+
+        world
+            .local_player
+            .as_mut()
+            .expect("sprint state player")
+            .shared_flags |= 1 << super::SHARED_FLAG_SPRINTING;
+        assert!(
+            world.apply_local_player_position((0.0, 0.0, 0.0), (0.25, 0.01, -0.5), (0.0, 0.0),)
+        );
+        assert!(world.apply_local_player_fluid_falling_adjustment(0.16, true));
+        assert_eq!(
+            world
+                .local_player()
+                .expect("sprinting player")
+                .motion()
+                .1
+                .to_bits(),
+            0x3f84_7ae1_47ae_147b,
+        );
     }
 
     #[test]

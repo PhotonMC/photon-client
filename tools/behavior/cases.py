@@ -1436,6 +1436,73 @@ def math_cases():
     yield {"case_id": "player-sprint/can-start", "family": "math",
            "operation": "local_player_can_start_sprinting", "inputs": local_player_sprint_gate_inputs}
 
+    local_player_fluid_adjustment_cases = [
+        {
+            "label": "zero-gravity-preserves-movement",
+            "base_gravity": float_bits(0.0, "f64"),
+            "is_falling": True,
+            "x": float_bits(-1.25, "f64"),
+            "y": float_bits(-0.005, "f64"),
+            "z": float_bits(2.5, "f64"),
+        },
+        {
+            "label": "sprinting-bypasses-gravity",
+            "sprinting": True,
+            "y": float_bits(-0.2, "f64"),
+        },
+        {
+            "label": "falling-near-custom-gravity-uses-clamp",
+            "base_gravity": float_bits(0.16, "f64"),
+            "is_falling": True,
+            "y": float_bits(0.01, "f64"),
+        },
+        {
+            "label": "falling-outside-custom-gravity-window-uses-subtraction",
+            "base_gravity": float_bits(0.16, "f64"),
+            "is_falling": True,
+            "y": float_bits(0.014, "f64"),
+        },
+        {
+            "label": "rising-uses-gravity-subtraction",
+            "is_falling": False,
+            "y": float_bits(0.3, "f64"),
+        },
+        {
+            "label": "default-gravity-exact-zero",
+            "is_falling": True,
+            "y": float_bits(0.005, "f64"),
+        },
+        {
+            "label": "negative-zero-gravity-preserves-signed-zero",
+            "base_gravity": "8000000000000000",
+            "is_falling": True,
+            "x": "8000000000000000",
+            "y": "8000000000000000",
+            "z": "0000000000000000",
+        },
+        {
+            "label": "falling-custom-gravity-ordinary-subtraction",
+            "base_gravity": float_bits(0.16, "f64"),
+            "is_falling": True,
+            "y": float_bits(-0.2, "f64"),
+        },
+    ]
+    local_player_fluid_adjustment_defaults = {
+        "base_gravity": float_bits(0.08, "f64"),
+        "is_falling": False,
+        "sprinting": False,
+        "x": float_bits(0.125, "f64"),
+        "y": float_bits(-0.05, "f64"),
+        "z": float_bits(-0.25, "f64"),
+    }
+    local_player_fluid_adjustment_inputs = []
+    for values in local_player_fluid_adjustment_cases:
+        input_values = {**local_player_fluid_adjustment_defaults, **values}
+        local_player_fluid_adjustment_inputs.append(input_values)
+    yield {"case_id": "player-movement/fluid-falling-adjustment", "family": "math",
+           "operation": "local_player_fluid_falling_adjustment",
+           "inputs": local_player_fluid_adjustment_inputs}
+
     codec_decodes = {
         "basic": [float_bits(1.25, "f64"), float_bits(-2.5, "f64"), float_bits(3.75, "f64")],
         "zero": [float_bits(0.0, "f64"), float_bits(0.0, "f64"), float_bits(0.0, "f64")],

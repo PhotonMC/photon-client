@@ -29,9 +29,9 @@ use voxel_client::frame::{self, FrameError, Varint21FrameDecoder};
 use voxel_client::handshake::{self, ClientIntent, ClientIntentionPacket};
 use voxel_client::identifier::Identifier;
 use voxel_client::input::{
-    Input, KeyboardInput, LocalPlayerInputModifiers, LocalPlayerInputState,
-    LocalPlayerSprintGateInput, apply_local_player_input, can_start_local_player_sprinting,
-    modify_local_player_input,
+    Input, KeyboardInput, LocalPlayerFluidFallingInput, LocalPlayerInputModifiers,
+    LocalPlayerInputState, LocalPlayerSprintGateInput, adjust_local_player_fluid_falling_movement,
+    apply_local_player_input, can_start_local_player_sprinting, modify_local_player_input,
 };
 use voxel_client::input_event::{
     CharacterEvent, InputWithModifiers, KeyEvent as InputKeyEvent, MouseButtonEvent,
@@ -8258,6 +8258,36 @@ fn math_result(request: &Value) -> Result<Value, String> {
                 Ok(json!({
                     "label": string(input, "label")?,
                     "can_start": can_start_local_player_sprinting(state),
+                }))
+            })
+            .collect::<Result<Vec<_>, String>>()?;
+        return Ok(json!({"states": states}));
+    }
+    if operation == "local_player_fluid_falling_adjustment" {
+        let inputs = request["inputs"]
+            .as_array()
+            .ok_or("inputs must be an array")?;
+        let states = inputs
+            .iter()
+            .map(|input| {
+                let movement =
+                    adjust_local_player_fluid_falling_movement(LocalPlayerFluidFallingInput {
+                        base_gravity: f64_field(input, "base_gravity")?,
+                        is_falling: input["is_falling"]
+                            .as_bool()
+                            .ok_or("is_falling must be a boolean")?,
+                        sprinting: input["sprinting"]
+                            .as_bool()
+                            .ok_or("sprinting must be a boolean")?,
+                        movement: Vec3::new(
+                            f64_field(input, "x")?,
+                            f64_field(input, "y")?,
+                            f64_field(input, "z")?,
+                        ),
+                    });
+                Ok(json!({
+                    "label": string(input, "label")?,
+                    "movement": vec3_snapshot(movement),
                 }))
             })
             .collect::<Result<Vec<_>, String>>()?;

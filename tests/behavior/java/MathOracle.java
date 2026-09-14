@@ -239,6 +239,34 @@ public final class MathOracle {
             } catch (ReflectiveOperationException error) {
                 throw new IllegalStateException("LocalPlayer.canStartSprinting reflection failed", error);
             }
+        } else if (operation.equals("local_player_fluid_falling_adjustment")) {
+            try {
+                Unsafe unsafe = unsafeInstance();
+                var method = LivingEntity.class.getMethod(
+                    "getFluidFallingAdjustedMovement", double.class, boolean.class, Vec3.class);
+                var states = new JsonArray();
+                for (var inputEntry : request.getAsJsonArray("inputs")) {
+                    JsonObject input = inputEntry.getAsJsonObject();
+                    LocalPlayerInputFixture player =
+                        (LocalPlayerInputFixture)unsafe.allocateInstance(LocalPlayerInputFixture.class);
+                    player.sprinting = input.get("sprinting").getAsBoolean();
+                    Vec3 movement = new Vec3(
+                        f64(input, "x"), f64(input, "y"), f64(input, "z"));
+                    Vec3 adjusted = (Vec3)method.invoke(
+                        player,
+                        f64(input, "base_gravity"),
+                        input.get("is_falling").getAsBoolean(),
+                        movement);
+                    var state = new JsonObject();
+                    state.addProperty("label", input.get("label").getAsString());
+                    state.add("movement", snapshot(adjusted));
+                    states.add(state);
+                }
+                result.add("states", states);
+            } catch (ReflectiveOperationException error) {
+                throw new IllegalStateException(
+                    "LivingEntity.getFluidFallingAdjustedMovement reflection failed", error);
+            }
         } else if (operation.equals("character_event")) {
             CharacterEvent event = new CharacterEvent(request.get("codepoint").getAsInt());
             result.addProperty("codepoint", event.codepoint());

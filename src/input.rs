@@ -1,6 +1,6 @@
 //! Keyboard-driven player input for the pinned Java client.
 
-use crate::math::Vec2;
+use crate::math::{Vec2, Vec3};
 
 /// The seven boolean fields sent by the Java player's input record.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -184,6 +184,33 @@ pub fn can_start_local_player_sprinting(state: LocalPlayerSprintGateInput) -> bo
         && !state.slow_due_to_using_item
         && (!state.fall_flying || state.underwater)
         && (!state.moving_slowly || state.underwater)
+}
+
+/// The state consumed by LivingEntity's fluid falling adjustment.
+#[derive(Debug, Clone, Copy)]
+pub struct LocalPlayerFluidFallingInput {
+    pub base_gravity: f64,
+    pub is_falling: bool,
+    pub sprinting: bool,
+    pub movement: Vec3,
+}
+
+/// Apply Java LivingEntity.getFluidFallingAdjustedMovement.
+pub fn adjust_local_player_fluid_falling_movement(state: LocalPlayerFluidFallingInput) -> Vec3 {
+    if state.base_gravity != 0.0 && !state.sprinting {
+        let gravity_step = state.base_gravity / 16.0;
+        let movement_y = if state.is_falling
+            && (state.movement.y - 0.005).abs() >= 0.003
+            && (state.movement.y - gravity_step).abs() < 0.003
+        {
+            -0.003
+        } else {
+            state.movement.y - gravity_step
+        };
+        Vec3::new(state.movement.x, movement_y, state.movement.z)
+    } else {
+        state.movement
+    }
 }
 
 fn modify_input_speed_for_square_movement(input: Vec2) -> Vec2 {
