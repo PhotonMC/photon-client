@@ -18,7 +18,7 @@ use crate::world::{
     EntityMotionInput, EntityMoveInput, EntityPositionInput, EntityPositionUpdateMode,
     EntityRotationInput, EntityTeleportInput, LightLayerInput, LightUpdateInput,
     PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS, PLAYER_RESPAWN_KEEP_ENTITY_DATA, SectionInput,
-    VANILLA_SNOWBALL_ENTITY_TYPE_ID,
+    VANILLA_COW_ENTITY_TYPE_ID, VANILLA_SNOWBALL_ENTITY_TYPE_ID,
 };
 
 use super::protocol::*;
@@ -483,6 +483,22 @@ pub fn connect_and_world_entity_passenger_rotation_probe(
         username,
         timeout,
         PlayProbeConfig::new(ProbeAction::WorldEntityPassengerRotation)
+            .with_drain_timeout(Duration::from_secs(60)),
+    )
+}
+
+/// Connect to a Java-protocol server and observe a full two-passenger boat
+/// tick where the first passenger is a Cow.
+pub fn connect_and_world_entity_passenger_animal_rotation_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeConfig::new(ProbeAction::WorldEntityPassengerAnimalRotation)
             .with_drain_timeout(Duration::from_secs(60)),
     )
 }
@@ -1524,6 +1540,7 @@ enum ProbeAction {
     WorldEntityPassengers,
     WorldEntityPassengerTick,
     WorldEntityPassengerRotation,
+    WorldEntityPassengerAnimalRotation,
     BlockAction,
     BlockBreak,
     BlockBreakOutOfRange,
@@ -2015,14 +2032,26 @@ fn connect_and_probe_with_mode(
                     probe.action,
                     ProbeAction::WorldEntityPassengerTick
                         | ProbeAction::WorldEntityPassengerRotation
+                        | ProbeAction::WorldEntityPassengerAnimalRotation
                 ) && trace.entity_passenger_tick_observations.is_empty()
                     && observation.applied_to_world
+                    && (probe.action != ProbeAction::WorldEntityPassengerAnimalRotation
+                        || observation.passenger_ids.len() == 2)
                 {
-                    let passenger_id = observation
-                        .passenger_ids
-                        .iter()
-                        .copied()
-                        .find(|&id| trace.world.entity_at(id).is_some());
+                    let passenger_id =
+                        if probe.action == ProbeAction::WorldEntityPassengerAnimalRotation {
+                            observation.passenger_ids.iter().copied().find(|&id| {
+                                trace.world.entity_at(id).is_some_and(|entity| {
+                                    entity.type_id == VANILLA_COW_ENTITY_TYPE_ID
+                                })
+                            })
+                        } else {
+                            observation
+                                .passenger_ids
+                                .iter()
+                                .copied()
+                                .find(|&id| trace.world.entity_at(id).is_some())
+                        };
                     if let Some(passenger_id) = passenger_id
                         && let (Some(vehicle), Some(passenger)) = (
                             trace.world.entity_at(observation.vehicle_id),
