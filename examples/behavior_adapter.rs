@@ -4966,6 +4966,67 @@ fn shape_result(request: &Value) -> Result<Value, String> {
                 .collect::<Result<Vec<_>, String>>()?;
             Ok(json!({"tracks": tracks}))
         }
+        "client_world_stair_neighbor_collision" => {
+            let inputs = request
+                .get("inputs")
+                .ok_or("inputs must be an array")?
+                .as_array()
+                .ok_or("inputs must be an array")?;
+            let states = inputs
+                .iter()
+                .map(|entry| {
+                    let input = entry
+                        .as_object()
+                        .ok_or("stair neighbor collision input must be an object")?;
+                    let target = input
+                        .get("target")
+                        .and_then(Value::as_object)
+                        .ok_or("stair target must be an object")?;
+                    let x = i32_field(&Value::Object(target.clone()), "x")?;
+                    let y = i32_field(&Value::Object(target.clone()), "y")?;
+                    let z = i32_field(&Value::Object(target.clone()), "z")?;
+                    let mut world = block_collision_world_fixture(entry)?;
+                    let before_state_id = world
+                        .block_state_at(x, y, z)
+                        .ok_or("stair target must be loaded")?;
+                    if !world.apply_stair_neighbor_shape_update(x, y, z) {
+                        return Err("stair neighbor shape update was not applicable".to_owned());
+                    }
+                    let updated_state_id = world
+                        .block_state_at(x, y, z)
+                        .ok_or("updated stair target must remain loaded")?;
+                    let collision_shape = world
+                        .block_state_registry()
+                        .collision_shape(updated_state_id);
+                    let updated_shape = world
+                        .block_state_registry()
+                        .stair_shape_name(updated_state_id)
+                        .ok_or("updated state must be a supported stair")?;
+                    let test_area = aabb_box(
+                        input
+                            .get("test_area")
+                            .ok_or("test_area must be an object")?,
+                    )?;
+                    let collisions = world.collect_registered_block_collision_shapes(test_area);
+                    Ok(json!({
+                        "label": input
+                            .get("label")
+                            .and_then(Value::as_str)
+                            .ok_or("label must be a string")?,
+                        "before_state_id": before_state_id,
+                        "updated_state_id": updated_state_id,
+                        "updated_shape": updated_shape,
+                        "updated_collision_shape": shape_snapshot(&collision_shape),
+                        "collisions": collisions
+                            .iter()
+                            .map(|collision| shape_snapshot(&collision.shape))
+                            .collect::<Vec<_>>(),
+                        "no_block_collision": collisions.is_empty(),
+                    }))
+                })
+                .collect::<Result<Vec<_>, String>>()?;
+            Ok(json!({"states": states}))
+        }
         "client_world_registry_collision" => {
             let input = request
                 .as_object()

@@ -186,6 +186,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P09.p — ClientWorld shulker collision — client-parity birleşik kayıt](client-world-shulker-collision-conformance.md)
 - [P09.q — ClientWorld source vehicle pushable collision — client-parity birleşik kayıt](client-world-source-vehicle-collision-conformance.md)
 - [P09.o — ClientWorld stair collision shapes — client-parity birleşik kayıt](client-world-stair-collision-conformance.md)
+- [P09.aa — ClientWorld StairBlock komşu shape güncellemesi — client-parity birleşik kayıt](client-world-stair-neighbor-conformance.md)
 - [P08.a/b — server-conformance ClientWorld chunk kopyası ve section cache](client-world-state-conformance.md)
 - [P09.c — Entity step-up aday yükseklikleri — client-parity birleşik kayıt](client-world-step-up-candidates-conformance.md)
 - [P08.t — server-conformance ClientWorld tick sayaçları ve ticking uygunluğu](client-world-tick-conformance.md)

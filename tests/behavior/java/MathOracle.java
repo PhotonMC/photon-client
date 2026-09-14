@@ -56,10 +56,12 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LadderBlock;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.SlabBlock;
+import net.minecraft.world.level.block.StairBlock;
 import net.minecraft.world.level.block.TrapDoorBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.SlabType;
+import net.minecraft.world.level.block.state.properties.StairsShape;
 import net.minecraft.world.level.levelgen.PositionalRandomFactory;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.border.WorldBorder;
@@ -3520,6 +3522,51 @@ public final class MathOracle {
                 result.add("states", resolvedStates);
                 result.add("collisions", collisions);
                 result.addProperty("no_block_collision", collision.noBlockCollision(null, testArea));
+            } else if (kind.equals("client_world_stair_neighbor_collision")) {
+                var output = System.out;
+                var errorOutput = System.err;
+                try {
+                    SharedConstants.setVersion(TEST_VERSION);
+                    Bootstrap.bootStrap();
+                } finally {
+                    System.setOut(output);
+                    System.setErr(errorOutput);
+                }
+                var states = new JsonArray();
+                for (var inputElement : request.getAsJsonArray("inputs")) {
+                    JsonObject input = inputElement.getAsJsonObject();
+                    BlockPos targetPos = blockPos(input.getAsJsonObject("target"));
+                    var stateByPosition = registryStates(input.getAsJsonArray("placements"));
+                    String targetKey = registryKey(targetPos);
+                    BlockState before = stateByPosition.getOrDefault(
+                        targetKey, Blocks.AIR.defaultBlockState());
+                    if (!(before.getBlock() instanceof StairBlock)) {
+                        throw new IllegalArgumentException("stair target must resolve to a stair block");
+                    }
+                    StairsShape updatedShape = stairShape(
+                        before,
+                        registryCollisionFixture(stateByPosition),
+                        targetPos);
+                    BlockState updated = before.setValue(StairBlock.SHAPE, updatedShape);
+                    stateByPosition.put(targetKey, updated);
+                    CollisionGetter collision = registryCollisionFixture(stateByPosition);
+                    AABB testArea = box(input.getAsJsonObject("test_area"));
+                    var collisions = new JsonArray();
+                    for (VoxelShape shape : collision.getBlockCollisions(null, testArea)) {
+                        collisions.add(snapshot(shape));
+                    }
+                    var state = new JsonObject();
+                    state.addProperty("label", input.get("label").getAsString());
+                    state.addProperty("before_state_id", Block.getId(before));
+                    state.addProperty("updated_state_id", Block.getId(updated));
+                    state.addProperty("updated_shape", updatedShape.name().toLowerCase(Locale.ROOT));
+                    state.add("updated_collision_shape", snapshot(
+                        updated.getCollisionShape(net.minecraft.world.level.EmptyBlockGetter.INSTANCE, targetPos)));
+                    state.add("collisions", collisions);
+                    state.addProperty("no_block_collision", collision.noBlockCollision(null, testArea));
+                    states.add(state);
+                }
+                result.add("states", states);
             } else if (kind.equals("collect_step_up_heights")) {
                 AABB moving = box(request.getAsJsonObject("moving"));
                 var shapes = new java.util.ArrayList<VoxelShape>();
@@ -4975,6 +5022,10 @@ public final class MathOracle {
     }
 
     private static CollisionGetter registryCollisionFixture(JsonArray placements) {
+        return registryCollisionFixture(registryStates(placements));
+    }
+
+    private static java.util.Map<String, BlockState> registryStates(JsonArray placements) {
         var states = new java.util.HashMap<String, BlockState>();
         for (var entry : placements) {
             JsonObject placement = entry.getAsJsonObject();
@@ -4985,9 +5036,19 @@ public final class MathOracle {
                 x + "," + y + "," + z,
                 Block.stateById(placement.get("state_id").getAsInt()));
         }
+        return states;
+    }
+
+    private static String registryKey(BlockPos pos) {
+        return pos.getX() + "," + pos.getY() + "," + pos.getZ();
+    }
+
+    private static CollisionGetter registryCollisionFixture(
+        java.util.Map<String, BlockState> states
+    ) {
         return new CollisionGetter() {
             private String key(BlockPos pos) {
-                return pos.getX() + "," + pos.getY() + "," + pos.getZ();
+                return registryKey(pos);
             }
 
             @Override
@@ -5030,6 +5091,19 @@ public final class MathOracle {
                 return -64;
             }
         };
+    }
+
+    private static StairsShape stairShape(
+        BlockState state, BlockGetter level, BlockPos pos
+    ) {
+        try {
+            var method = StairBlock.class.getDeclaredMethod(
+                "getStairsShape", BlockState.class, BlockGetter.class, BlockPos.class);
+            method.setAccessible(true);
+            return (StairsShape) method.invoke(null, state, level, pos);
+        } catch (ReflectiveOperationException error) {
+            throw new IllegalStateException("StairBlock.getStairsShape reflection failed", error);
+        }
     }
 
     @SuppressWarnings("unchecked")

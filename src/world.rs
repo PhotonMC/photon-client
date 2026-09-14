@@ -1754,6 +1754,49 @@ impl ClientBlockStateCollisionShape {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ClientStairsShape {
+    Straight,
+    InnerLeft,
+    InnerRight,
+    OuterLeft,
+    OuterRight,
+}
+
+impl ClientStairsShape {
+    fn name(self) -> &'static str {
+        match self {
+            Self::Straight => "straight",
+            Self::InnerLeft => "inner_left",
+            Self::InnerRight => "inner_right",
+            Self::OuterLeft => "outer_left",
+            Self::OuterRight => "outer_right",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct ClientStairBlockState {
+    facing: Direction,
+    top: bool,
+    shape: ClientStairsShape,
+    waterlogged: bool,
+}
+
+fn client_stair_block_state(
+    facing: Direction,
+    top: bool,
+    shape: ClientStairsShape,
+    waterlogged: bool,
+) -> ClientStairBlockState {
+    ClientStairBlockState {
+        facing,
+        top,
+        shape,
+        waterlogged,
+    }
+}
+
 fn client_block_state_box(
     min_x: f64,
     min_y: f64,
@@ -1781,6 +1824,7 @@ fn client_block_state_box(
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ClientBlockStateRegistry {
     collision_shapes: BTreeMap<i32, ClientBlockStateCollisionShape>,
+    stair_states: BTreeMap<i32, ClientStairBlockState>,
     block_registry_ids_by_state: BTreeMap<i32, i32>,
     climbable_block_registry_ids: BTreeSet<i32>,
     glide_through_block_registry_ids: BTreeSet<i32>,
@@ -1832,6 +1876,7 @@ impl ClientBlockStateRegistry {
                 ],
             },
         );
+        collision_shapes.insert(3917, collision_shapes[&3918].clone());
         collision_shapes.insert(
             3920,
             ClientBlockStateCollisionShape::Boxes {
@@ -1842,6 +1887,28 @@ impl ClientBlockStateRegistry {
                 ],
             },
         );
+        collision_shapes.insert(3919, collision_shapes[&3920].clone());
+        collision_shapes.insert(
+            3922,
+            ClientBlockStateCollisionShape::Boxes {
+                boxes: vec![
+                    client_block_state_box(0.0, 0.0, 0.0, 1.0, 0.5, 1.0),
+                    client_block_state_box(0.0, 0.5, 0.0, 1.0, 1.0, 0.5),
+                    client_block_state_box(0.5, 0.5, 0.5, 1.0, 1.0, 1.0),
+                ],
+            },
+        );
+        collision_shapes.insert(3921, collision_shapes[&3922].clone());
+        collision_shapes.insert(
+            3924,
+            ClientBlockStateCollisionShape::Boxes {
+                boxes: vec![
+                    client_block_state_box(0.0, 0.0, 0.0, 1.0, 0.5, 1.0),
+                    client_block_state_box(0.0, 0.5, 0.0, 0.5, 1.0, 0.5),
+                ],
+            },
+        );
+        collision_shapes.insert(3923, collision_shapes[&3924].clone());
         collision_shapes.insert(
             3926,
             ClientBlockStateCollisionShape::Boxes {
@@ -1851,6 +1918,162 @@ impl ClientBlockStateRegistry {
                 ],
             },
         );
+        collision_shapes.insert(3925, collision_shapes[&3926].clone());
+        collision_shapes.insert(
+            3938,
+            ClientBlockStateCollisionShape::Boxes {
+                boxes: vec![
+                    client_block_state_box(0.0, 0.0, 0.0, 1.0, 0.5, 1.0),
+                    client_block_state_box(0.0, 0.5, 0.5, 1.0, 1.0, 1.0),
+                ],
+            },
+        );
+        collision_shapes.insert(
+            3958,
+            ClientBlockStateCollisionShape::Boxes {
+                boxes: vec![
+                    client_block_state_box(0.0, 0.0, 0.0, 1.0, 0.5, 1.0),
+                    client_block_state_box(0.0, 0.5, 0.0, 0.5, 1.0, 1.0),
+                ],
+            },
+        );
+        collision_shapes.insert(
+            3978,
+            ClientBlockStateCollisionShape::Boxes {
+                boxes: vec![
+                    client_block_state_box(0.0, 0.0, 0.0, 1.0, 0.5, 1.0),
+                    client_block_state_box(0.5, 0.5, 0.0, 1.0, 1.0, 1.0),
+                ],
+            },
+        );
+        let stair_states = BTreeMap::from([
+            (
+                3908,
+                client_stair_block_state(
+                    Direction::North,
+                    true,
+                    ClientStairsShape::Straight,
+                    false,
+                ),
+            ),
+            (
+                3917,
+                client_stair_block_state(
+                    Direction::North,
+                    false,
+                    ClientStairsShape::Straight,
+                    true,
+                ),
+            ),
+            (
+                3918,
+                client_stair_block_state(
+                    Direction::North,
+                    false,
+                    ClientStairsShape::Straight,
+                    false,
+                ),
+            ),
+            (
+                3919,
+                client_stair_block_state(
+                    Direction::North,
+                    false,
+                    ClientStairsShape::InnerLeft,
+                    true,
+                ),
+            ),
+            (
+                3920,
+                client_stair_block_state(
+                    Direction::North,
+                    false,
+                    ClientStairsShape::InnerLeft,
+                    false,
+                ),
+            ),
+            (
+                3921,
+                client_stair_block_state(
+                    Direction::North,
+                    false,
+                    ClientStairsShape::InnerRight,
+                    true,
+                ),
+            ),
+            (
+                3922,
+                client_stair_block_state(
+                    Direction::North,
+                    false,
+                    ClientStairsShape::InnerRight,
+                    false,
+                ),
+            ),
+            (
+                3923,
+                client_stair_block_state(
+                    Direction::North,
+                    false,
+                    ClientStairsShape::OuterLeft,
+                    true,
+                ),
+            ),
+            (
+                3924,
+                client_stair_block_state(
+                    Direction::North,
+                    false,
+                    ClientStairsShape::OuterLeft,
+                    false,
+                ),
+            ),
+            (
+                3925,
+                client_stair_block_state(
+                    Direction::North,
+                    false,
+                    ClientStairsShape::OuterRight,
+                    true,
+                ),
+            ),
+            (
+                3926,
+                client_stair_block_state(
+                    Direction::North,
+                    false,
+                    ClientStairsShape::OuterRight,
+                    false,
+                ),
+            ),
+            (
+                3938,
+                client_stair_block_state(
+                    Direction::South,
+                    false,
+                    ClientStairsShape::Straight,
+                    false,
+                ),
+            ),
+            (
+                3958,
+                client_stair_block_state(
+                    Direction::West,
+                    false,
+                    ClientStairsShape::Straight,
+                    false,
+                ),
+            ),
+            (
+                3978,
+                client_stair_block_state(
+                    Direction::East,
+                    false,
+                    ClientStairsShape::Straight,
+                    false,
+                ),
+            ),
+        ]);
         let mut block_registry_ids_by_state = BTreeMap::from([(0, 0), (1, 1), (8389, 366)]);
         for state_id in 5719..=5726 {
             block_registry_ids_by_state.insert(state_id, 221);
@@ -1859,6 +2082,7 @@ impl ClientBlockStateRegistry {
         let glide_through_block_registry_ids = BTreeSet::from([366]);
         Self {
             collision_shapes,
+            stair_states,
             block_registry_ids_by_state,
             climbable_block_registry_ids,
             glide_through_block_registry_ids,
@@ -1878,6 +2102,93 @@ impl ClientBlockStateRegistry {
             .get(&self.resolve_state_id(state_id))
             .expect("the registry must contain its air fallback")
             .to_voxel_shape()
+    }
+
+    pub fn stair_shape_name(&self, state_id: i32) -> Option<&'static str> {
+        self.stair_states
+            .get(&state_id)
+            .map(|state| state.shape.name())
+    }
+
+    fn stair_shape_update_state_id(
+        &self,
+        state_id: i32,
+        neighbors: &[Option<i32>; 6],
+    ) -> Option<i32> {
+        let state = self.stair_states.get(&state_id)?;
+        let facing = state.facing;
+        let shape = if let Some(behind_id) = neighbors[facing.data3d() as usize]
+            && let Some(behind) = self.stair_states.get(&behind_id)
+            && state.top == behind.top
+            && behind.facing.axis() != facing.axis()
+            && self.stair_can_take_shape(state, neighbors, behind.facing.opposite())
+        {
+            if behind.facing
+                == facing
+                    .counter_clockwise_y()
+                    .expect("stair facing is horizontal")
+            {
+                ClientStairsShape::OuterLeft
+            } else {
+                ClientStairsShape::OuterRight
+            }
+        } else if let Some(front_id) = neighbors[facing.opposite().data3d() as usize]
+            && let Some(front) = self.stair_states.get(&front_id)
+            && state.top == front.top
+            && front.facing.axis() != facing.axis()
+            && self.stair_can_take_shape(state, neighbors, front.facing)
+        {
+            if front.facing
+                == facing
+                    .counter_clockwise_y()
+                    .expect("stair facing is horizontal")
+            {
+                ClientStairsShape::InnerLeft
+            } else {
+                ClientStairsShape::InnerRight
+            }
+        } else {
+            ClientStairsShape::Straight
+        };
+
+        self.stair_state_id_for_shape(state, shape)
+    }
+
+    fn stair_can_take_shape(
+        &self,
+        state: &ClientStairBlockState,
+        neighbors: &[Option<i32>; 6],
+        direction: Direction,
+    ) -> bool {
+        let Some(neighbor_id) = neighbors[direction.data3d() as usize] else {
+            return true;
+        };
+        let Some(neighbor) = self.stair_states.get(&neighbor_id) else {
+            return true;
+        };
+        neighbor.facing != state.facing || neighbor.top != state.top
+    }
+
+    fn stair_state_id_for_shape(
+        &self,
+        state: &ClientStairBlockState,
+        shape: ClientStairsShape,
+    ) -> Option<i32> {
+        if state.facing != Direction::North || state.top {
+            return None;
+        }
+        Some(match (state.waterlogged, shape) {
+            (false, ClientStairsShape::Straight) => 3918,
+            (false, ClientStairsShape::InnerLeft) => 3920,
+            (false, ClientStairsShape::InnerRight) => 3922,
+            (false, ClientStairsShape::OuterLeft) => 3924,
+            (false, ClientStairsShape::OuterRight) => 3926,
+            (true, ClientStairsShape::Straight) => 3917,
+            (true, ClientStairsShape::InnerLeft) => 3919,
+            (true, ClientStairsShape::InnerRight) => 3921,
+            (true, ClientStairsShape::OuterLeft) => 3923,
+            (true, ClientStairsShape::OuterRight) => 3925,
+        })
     }
 
     /// Return whether a pinned 26.2 block-state belongs to BlockTags.CLIMBABLE.
@@ -3577,6 +3888,29 @@ impl ClientWorld {
         };
         *block_state = state_id;
         true
+    }
+
+    /// Apply the horizontal `StairBlock.updateShape` state transition against
+    /// the currently loaded six-neighbor block states.
+    pub fn apply_stair_neighbor_shape_update(&mut self, x: i32, y: i32, z: i32) -> bool {
+        let Some(state_id) = self.block_state_at(x, y, z) else {
+            return false;
+        };
+        let neighbors = [
+            self.block_state_at(x, y - 1, z),
+            self.block_state_at(x, y + 1, z),
+            self.block_state_at(x, y, z - 1),
+            self.block_state_at(x, y, z + 1),
+            self.block_state_at(x - 1, y, z),
+            self.block_state_at(x + 1, y, z),
+        ];
+        let Some(updated_state_id) = self
+            .block_state_registry
+            .stair_shape_update_state_id(state_id, &neighbors)
+        else {
+            return false;
+        };
+        self.update_block_state(x, y, z, updated_state_id)
     }
 
     pub(crate) fn apply_block_entities<'a, I>(
@@ -6882,6 +7216,53 @@ mod tests {
         assert!(world.block_state_registry().is_climbable_state(5720));
         assert!(!world.block_state_registry().is_climbable_state(8389));
         assert!(!world.block_state_registry().is_glide_through_state(8389));
+    }
+
+    #[test]
+    fn client_world_updates_stair_shape_from_loaded_neighbors() {
+        let mut target_blocks = vec![0; 4_096];
+        target_blocks[0] = 3918;
+        let mut north_blocks = vec![0; 4_096];
+        north_blocks[15 * 16] = 3958;
+        let biomes = vec![0; 64];
+        let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+        world.replace_chunk(
+            0,
+            0,
+            [SectionInput {
+                non_empty_block_count: 1,
+                fluid_count: 0,
+                block_states: &target_blocks,
+                biomes: &biomes,
+            }],
+        );
+        world.replace_chunk(
+            0,
+            -1,
+            [SectionInput {
+                non_empty_block_count: 1,
+                fluid_count: 0,
+                block_states: &north_blocks,
+                biomes: &biomes,
+            }],
+        );
+
+        assert!(world.apply_stair_neighbor_shape_update(0, 0, 0));
+        assert_eq!(world.block_state_at(0, 0, 0), Some(3924));
+        assert_eq!(
+            world.block_state_registry().stair_shape_name(3924),
+            Some("outer_left")
+        );
+        assert_eq!(
+            world
+                .block_state_registry()
+                .collision_shape(3924)
+                .to_aabbs(),
+            vec![
+                Aabb::new(0.0, 0.0, 0.0, 1.0, 0.5, 1.0),
+                Aabb::new(0.0, 0.5, 0.0, 0.5, 1.0, 0.5),
+            ]
+        );
     }
 
     #[test]
