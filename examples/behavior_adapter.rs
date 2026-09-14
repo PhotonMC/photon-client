@@ -30,9 +30,10 @@ use voxel_client::handshake::{self, ClientIntent, ClientIntentionPacket};
 use voxel_client::identifier::Identifier;
 use voxel_client::input::{
     Input, KeyboardInput, LocalPlayerClimbableMovementInput, LocalPlayerFluidFallingInput,
-    LocalPlayerInputModifiers, LocalPlayerInputState, LocalPlayerSprintGateInput,
-    adjust_local_player_fluid_falling_movement, apply_local_player_input,
-    can_start_local_player_sprinting, clamp_local_player_climbable_movement,
+    LocalPlayerFrictionInfluencedSpeedInput, LocalPlayerInputModifiers, LocalPlayerInputState,
+    LocalPlayerSprintGateInput, adjust_local_player_fluid_falling_movement,
+    apply_local_player_input, can_start_local_player_sprinting,
+    clamp_local_player_climbable_movement, local_player_friction_influenced_speed,
     modify_local_player_input,
 };
 use voxel_client::input_event::{
@@ -8322,6 +8323,40 @@ fn math_result(request: &Value) -> Result<Value, String> {
                 Ok(json!({
                     "label": string(input, "label")?,
                     "movement": vec3_snapshot(movement),
+                }))
+            })
+            .collect::<Result<Vec<_>, String>>()?;
+        return Ok(json!({"states": states}));
+    }
+    if operation == "local_player_friction_influenced_speed" {
+        let inputs = request["inputs"]
+            .as_array()
+            .ok_or("inputs must be an array")?;
+        let states = inputs
+            .iter()
+            .map(|input| {
+                let speed = local_player_friction_influenced_speed(
+                    LocalPlayerFrictionInfluencedSpeedInput {
+                        on_ground: input["on_ground"]
+                            .as_bool()
+                            .ok_or("on_ground must be a boolean")?,
+                        block_friction: f32_field(input, "block_friction")?,
+                        speed: f32_field(input, "speed")?,
+                        flying: input["flying"]
+                            .as_bool()
+                            .ok_or("flying must be a boolean")?,
+                        flying_speed: f32_field(input, "flying_speed")?,
+                        sprinting: input["sprinting"]
+                            .as_bool()
+                            .ok_or("sprinting must be a boolean")?,
+                        passenger: input["passenger"]
+                            .as_bool()
+                            .ok_or("passenger must be a boolean")?,
+                    },
+                );
+                Ok(json!({
+                    "label": string(input, "label")?,
+                    "speed": format!("{:08x}", speed.to_bits()),
                 }))
             })
             .collect::<Result<Vec<_>, String>>()?;

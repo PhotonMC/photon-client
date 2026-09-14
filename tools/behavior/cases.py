@@ -1558,6 +1558,95 @@ def math_cases():
            "operation": "local_player_climbable_movement",
            "inputs": local_player_climbable_movement_inputs}
 
+    local_player_friction_influenced_speed_cases = [
+        {
+            "label": "ground-at-friction-threshold-keeps-speed",
+            "on_ground": True,
+            "block_friction": float_bits(0.6, "f32"),
+        },
+        {
+            "label": "ground-below-friction-threshold-keeps-speed",
+            "on_ground": True,
+            "block_friction": float_bits(0.5, "f32"),
+        },
+        {
+            "label": "ground-above-friction-threshold-scales-speed",
+            "on_ground": True,
+            "block_friction": float_bits(0.8, "f32"),
+        },
+        {
+            "label": "ground-just-above-friction-threshold-scales-speed",
+            "on_ground": True,
+            "block_friction": float_bits(0.6000001, "f32"),
+            "speed": float_bits(0.125, "f32"),
+        },
+        {
+            "label": "air-without-controlling-player-uses-default-flying-speed",
+            "on_ground": False,
+            "flying": False,
+            "sprinting": False,
+            "passenger": False,
+        },
+        {
+            "label": "air-sprinting-without-flight-uses-sprint-speed",
+            "on_ground": False,
+            "flying": False,
+            "sprinting": True,
+            "passenger": False,
+        },
+        {
+            "label": "air-flying-uses-ability-speed",
+            "on_ground": False,
+            "flying": True,
+            "flying_speed": float_bits(0.07, "f32"),
+            "sprinting": False,
+            "passenger": False,
+        },
+        {
+            "label": "air-flying-sprint-doubles-ability-speed",
+            "on_ground": False,
+            "flying": True,
+            "flying_speed": float_bits(0.07, "f32"),
+            "sprinting": True,
+            "passenger": False,
+        },
+        {
+            "label": "air-flying-passenger-uses-grounded-fallback",
+            "on_ground": False,
+            "flying": True,
+            "sprinting": True,
+            "passenger": True,
+        },
+        {
+            "label": "ground-scaled-speed-preserves-negative-zero",
+            "on_ground": True,
+            "block_friction": float_bits(0.8, "f32"),
+            "speed": "80000000",
+        },
+        {
+            "label": "nan-friction-fails-strict-comparison-and-keeps-speed",
+            "on_ground": True,
+            "block_friction": "7fc00001",
+            "speed": float_bits(0.25, "f32"),
+        },
+    ]
+    local_player_friction_influenced_speed_defaults = {
+        "on_ground": True,
+        "block_friction": float_bits(0.6, "f32"),
+        "speed": float_bits(0.1, "f32"),
+        "flying": False,
+        "flying_speed": float_bits(0.05, "f32"),
+        "sprinting": False,
+        "passenger": False,
+    }
+    local_player_friction_influenced_speed_inputs = []
+    for values in local_player_friction_influenced_speed_cases:
+        input_values = {**local_player_friction_influenced_speed_defaults, **values}
+        local_player_friction_influenced_speed_inputs.append(input_values)
+    yield {"case_id": "player-movement/friction-influenced-speed", "family": "math",
+           "operation": "local_player_friction_influenced_speed",
+           "inputs": local_player_friction_influenced_speed_inputs}
+
     codec_decodes = {
         "basic": [float_bits(1.25, "f64"), float_bits(-2.5, "f64"), float_bits(3.75, "f64")],
         "zero": [float_bits(0.0, "f64"), float_bits(0.0, "f64"), float_bits(0.0, "f64")],

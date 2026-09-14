@@ -242,6 +242,43 @@ pub fn clamp_local_player_climbable_movement(state: LocalPlayerClimbableMovement
     )
 }
 
+/// The state consumed by LivingEntity's friction-influenced speed helper.
+#[derive(Debug, Clone, Copy)]
+pub struct LocalPlayerFrictionInfluencedSpeedInput {
+    pub on_ground: bool,
+    pub block_friction: f32,
+    pub speed: f32,
+    pub flying: bool,
+    pub flying_speed: f32,
+    pub sprinting: bool,
+    pub passenger: bool,
+}
+
+/// Apply Java LivingEntity.getFrictionInfluencedSpeed and getFlyingSpeed.
+pub fn local_player_friction_influenced_speed(
+    state: LocalPlayerFrictionInfluencedSpeedInput,
+) -> f32 {
+    if state.on_ground {
+        if state.block_friction > 0.6_f32 {
+            state.speed
+                * (0.21600002_f32
+                    / (state.block_friction * state.block_friction * state.block_friction))
+        } else {
+            state.speed
+        }
+    } else if state.flying && !state.passenger {
+        if state.sprinting {
+            state.flying_speed * 2.0_f32
+        } else {
+            state.flying_speed
+        }
+    } else if state.sprinting {
+        0.025999999_f32
+    } else {
+        0.02_f32
+    }
+}
+
 fn modify_input_speed_for_square_movement(input: Vec2) -> Vec2 {
     let length = input.length();
     if length <= 0.0 {

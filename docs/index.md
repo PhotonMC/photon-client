@@ -89,6 +89,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P10.b — LocalPlayer applyInput — client-parity birleşik kayıt](client-player-apply-input-conformance.md)
 - [P10.d.1 — LivingEntity climbable movement clamp — client-parity birleşik kayıt](client-player-climbable-movement-conformance.md)
 - [P10.d — LivingEntity fluid falling adjustment — client-parity birleşik kayıt](client-player-fluid-falling-conformance.md)
+- [P10.d.2 — LivingEntity friction-influenced speed — client-parity birleşik kayıt](client-player-friction-speed-conformance.md)
 - [P10.a — LocalPlayer input modifiers — client-parity birleşik kayıt](client-player-input-conformance.md)
 - [P10.c — LocalPlayer canStartSprinting — client-parity birleşik kayıt](client-player-sprint-gate-conformance.md)
 - [P06–P08 — Ölçülebilir istemci giriş ucu — server-conformance birleşik kayıt](client-runtime-conformance.md)

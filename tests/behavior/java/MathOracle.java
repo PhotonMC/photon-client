@@ -294,6 +294,39 @@ public final class MathOracle {
                 throw new IllegalStateException(
                     "LivingEntity.handleOnClimbable reflection failed", error);
             }
+        } else if (operation.equals("local_player_friction_influenced_speed")) {
+            try {
+                Unsafe unsafe = unsafeInstance();
+                var method = LivingEntity.class.getDeclaredMethod(
+                    "getFrictionInfluencedSpeed", float.class);
+                method.setAccessible(true);
+                var states = new JsonArray();
+                for (var inputEntry : request.getAsJsonArray("inputs")) {
+                    JsonObject input = inputEntry.getAsJsonObject();
+                    LocalPlayerInputFixture player =
+                        (LocalPlayerInputFixture)unsafe.allocateInstance(LocalPlayerInputFixture.class);
+                    player.onGroundState = input.get("on_ground").getAsBoolean();
+                    player.configuredSpeed = Oracle.f32(input, "speed");
+                    player.passenger = input.get("passenger").getAsBoolean();
+                    player.sprinting = input.get("sprinting").getAsBoolean();
+                    player.abilities = new Abilities();
+                    player.abilities.flying = input.get("flying").getAsBoolean();
+                    player.abilities.setFlyingSpeed(Oracle.f32(input, "flying_speed"));
+                    var abilitiesField = net.minecraft.world.entity.player.Player.class
+                        .getDeclaredField("abilities");
+                    unsafe.putObject(player, unsafe.objectFieldOffset(abilitiesField), player.abilities);
+                    float speed = (float)method.invoke(
+                        player, Oracle.f32(input, "block_friction"));
+                    var state = new JsonObject();
+                    state.addProperty("label", input.get("label").getAsString());
+                    state.addProperty("speed", Oracle.bits(speed));
+                    states.add(state);
+                }
+                result.add("states", states);
+            } catch (ReflectiveOperationException error) {
+                throw new IllegalStateException(
+                    "LivingEntity.getFrictionInfluencedSpeed reflection failed", error);
+            }
         } else if (operation.equals("character_event")) {
             CharacterEvent event = new CharacterEvent(request.get("codepoint").getAsInt());
             result.addProperty("codepoint", event.codepoint());
@@ -6224,6 +6257,8 @@ public final class MathOracle {
         private boolean onClimbableState;
         private boolean scaffolding;
         private boolean suppressSlidingDownLadder;
+        private boolean onGroundState;
+        private float configuredSpeed;
 
         private LocalPlayerInputFixture() {
             super(null, null, null, null, null, Input.EMPTY, false, null);
@@ -6309,6 +6344,16 @@ public final class MathOracle {
         @Override
         public boolean isSuppressingSlidingDownLadder() {
             return this.suppressSlidingDownLadder;
+        }
+
+        @Override
+        public boolean onGround() {
+            return this.onGroundState;
+        }
+
+        @Override
+        public float getSpeed() {
+            return this.configuredSpeed;
         }
 
         private void configureApplyInput(

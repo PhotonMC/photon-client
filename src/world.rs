@@ -3,10 +3,11 @@
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 use crate::input::{
-    LocalPlayerClimbableMovementInput, LocalPlayerFluidFallingInput, LocalPlayerInputModifiers,
-    LocalPlayerInputState, adjust_local_player_fluid_falling_movement,
+    LocalPlayerClimbableMovementInput, LocalPlayerFluidFallingInput,
+    LocalPlayerFrictionInfluencedSpeedInput, LocalPlayerInputModifiers, LocalPlayerInputState,
+    adjust_local_player_fluid_falling_movement,
     apply_local_player_input as apply_local_player_input_fields,
-    clamp_local_player_climbable_movement,
+    clamp_local_player_climbable_movement, local_player_friction_influenced_speed,
 };
 use crate::math::{
     MTH_DEG_TO_RAD, Vec3, abs_max_f64, clamp_f32, clamp_f64, equal_f64, floor_f32, mth_atan2,
@@ -2832,6 +2833,20 @@ impl ClientWorld {
         true
     }
 
+    /// Apply Java's friction-influenced speed selection to local player state.
+    pub fn apply_local_player_friction_influenced_speed(
+        &mut self,
+        on_ground: bool,
+        block_friction: f32,
+        speed: f32,
+    ) -> bool {
+        let Some(player) = self.local_player.as_mut() else {
+            return false;
+        };
+        player.apply_friction_influenced_speed(on_ground, block_friction, speed);
+        true
+    }
+
     pub(crate) fn apply_local_player_container_content(
         &mut self,
         container_id: i32,
@@ -5540,6 +5555,7 @@ pub struct ClientPlayerState {
     motion_x_bits: u64,
     motion_y_bits: u64,
     motion_z_bits: u64,
+    friction_influenced_speed_bits: u32,
     xxa_bits: u32,
     zza_bits: u32,
     jumping: bool,
@@ -5662,6 +5678,25 @@ impl ClientPlayerState {
         self.motion_z_bits = adjusted.z.to_bits();
     }
 
+    fn apply_friction_influenced_speed(
+        &mut self,
+        on_ground: bool,
+        block_friction: f32,
+        speed: f32,
+    ) {
+        let adjusted =
+            local_player_friction_influenced_speed(LocalPlayerFrictionInfluencedSpeedInput {
+                on_ground,
+                block_friction,
+                speed,
+                flying: self.abilities.flying(),
+                flying_speed: self.abilities.flying_speed(),
+                sprinting: self.is_sprinting(),
+                passenger: self.vehicle_id.is_some(),
+            });
+        self.friction_influenced_speed_bits = adjusted.to_bits();
+    }
+
     fn capture_old_transform(&mut self) {
         self.old_x_bits = self.x_bits;
         self.old_y_bits = self.y_bits;
@@ -5716,6 +5751,7 @@ impl ClientPlayerState {
             motion_x_bits: 0.0_f64.to_bits(),
             motion_y_bits: 0.0_f64.to_bits(),
             motion_z_bits: 0.0_f64.to_bits(),
+            friction_influenced_speed_bits: 0.0_f32.to_bits(),
             xxa_bits: 0.0_f32.to_bits(),
             zza_bits: 0.0_f32.to_bits(),
             jumping: false,
@@ -5820,6 +5856,10 @@ impl ClientPlayerState {
             f64::from_bits(self.motion_y_bits),
             f64::from_bits(self.motion_z_bits),
         )
+    }
+
+    pub fn friction_influenced_speed(&self) -> f32 {
+        f32::from_bits(self.friction_influenced_speed_bits)
     }
 
     pub fn input_impulses(&self) -> crate::math::Vec2 {
@@ -8256,6 +8296,61 @@ mod tests {
                 .1
                 .to_bits(),
             0xbfc3_3333_4000_0000,
+        );
+    }
+
+    #[test]
+    fn local_player_friction_influenced_speed_follows_ground_and_flying_state() {
+        let mut world = ClientWorld::default();
+        world.set_local_player_id(42);
+
+        assert!(world.apply_local_player_friction_influenced_speed(true, 0.6, 0.1));
+        assert_eq!(
+            world
+                .local_player()
+                .expect("threshold player")
+                .friction_influenced_speed()
+                .to_bits(),
+            0x3dcc_cccd,
+        );
+        assert!(world.apply_local_player_friction_influenced_speed(true, 0.8, 0.1));
+        assert_eq!(
+            world
+                .local_player()
+                .expect("friction player")
+                .friction_influenced_speed()
+                .to_bits(),
+            0x3d2c_ccce,
+        );
+
+        {
+            let player = world.local_player.as_mut().expect("flying player");
+            player.abilities = ClientPlayerAbilities::new(false, true, true, false, 0.07, 0.1);
+            player.shared_flags |= 1 << super::SHARED_FLAG_SPRINTING;
+        }
+        assert!(world.apply_local_player_friction_influenced_speed(false, 0.6, 0.1));
+        assert_eq!(
+            world
+                .local_player()
+                .expect("flying player")
+                .friction_influenced_speed()
+                .to_bits(),
+            0x3e0f_5c29,
+        );
+
+        world
+            .local_player
+            .as_mut()
+            .expect("passenger player")
+            .vehicle_id = Some(7);
+        assert!(world.apply_local_player_friction_influenced_speed(false, 0.6, 0.1));
+        assert_eq!(
+            world
+                .local_player()
+                .expect("passenger player")
+                .friction_influenced_speed()
+                .to_bits(),
+            0x3cd4_fdf3,
         );
     }
 
