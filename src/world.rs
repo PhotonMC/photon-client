@@ -31,6 +31,10 @@ const VANILLA_CHEST_BOAT_ENTITY_TYPE_IDS: &[i32] = &[1, 8, 13, 24, 34, 75, 82, 9
 const VANILLA_BOAT_RIDE_HEIGHT: f32 = 0.5625_f32 / 3.0_f32;
 const VANILLA_RAFT_RIDE_HEIGHT: f32 = 0.5625_f32 * 0.8888889_f32;
 const VANILLA_CHEST_BOAT_PASSENGER_Z_OFFSET: f32 = 0.15_f32;
+const VANILLA_BOAT_HALF_WIDTH: f64 = 0.6875;
+const VANILLA_BOAT_HEIGHT: f64 = 0.5625;
+const VANILLA_BOAT_AIR_FRICTION: f32 = 0.9_f32;
+const VANILLA_BOAT_GRAVITY: f64 = 0.04;
 const VANILLA_SPIDER_VEHICLE_ATTACHMENT_Y: f64 = 0.3125;
 const VANILLA_BOAT_PASSENGER_GEOMETRY: &[(i32, f32, f32)] = &[
     (0, VANILLA_BOAT_RIDE_HEIGHT, 0.0),
@@ -1726,6 +1730,11 @@ impl ClientWorld {
             entity.type_id == VANILLA_SNOWBALL_ENTITY_TYPE_ID
                 && self.snowball_path_is_open(entity.position(), entity.motion(), entity.no_gravity)
         });
+        let boat_in_air = self.entities.get(&entity_id).is_some_and(|entity| {
+            vanilla_boat_max_passengers(entity.type_id).is_some()
+                && self.boat_is_local_instance_authoritative(entity)
+                && self.boat_is_in_air(entity)
+        });
         let boat_control = self.entities.get(&entity_id).and_then(|entity| {
             vanilla_boat_max_passengers(entity.type_id)
                 .map(|_| (entity.boat_input, !entity.passenger_ids.is_empty()))
@@ -1745,9 +1754,51 @@ impl ClientWorld {
         if can_tick_snowball {
             entity.tick_snowball();
         }
+        if boat_in_air {
+            entity.tick_boat_float_in_air();
+        }
         if let Some((input, has_passengers)) = boat_control {
             entity.tick_boat_control(input, has_passengers);
         }
+        if boat_in_air {
+            entity.move_by_motion();
+        }
+    }
+
+    fn boat_is_in_air(&self, entity: &ClientEntity) -> bool {
+        let position = entity.position();
+        let min_x = (position.0 - VANILLA_BOAT_HALF_WIDTH).floor() as i32;
+        let max_x = (position.0 + VANILLA_BOAT_HALF_WIDTH).ceil() as i32;
+        let min_y = (position.1 - 0.001).floor() as i32 - 1;
+        let max_y = (position.1 + VANILLA_BOAT_HEIGHT).ceil() as i32 + 1;
+        let min_z = (position.2 - VANILLA_BOAT_HALF_WIDTH).floor() as i32;
+        let max_z = (position.2 + VANILLA_BOAT_HALF_WIDTH).ceil() as i32;
+
+        for x in min_x..max_x {
+            for y in min_y..max_y {
+                for z in min_z..max_z {
+                    let Some((_, fluid_count)) = self.section_counts_at(
+                        x.div_euclid(16),
+                        y.div_euclid(16),
+                        z.div_euclid(16),
+                    ) else {
+                        return false;
+                    };
+                    if fluid_count != 0
+                        || self.block_state_at(x, y, z) != Some(VANILLA_AIR_BLOCK_STATE_ID)
+                    {
+                        return false;
+                    }
+                }
+            }
+        }
+        true
+    }
+
+    fn boat_is_local_instance_authoritative(&self, entity: &ClientEntity) -> bool {
+        self.local_player
+            .as_ref()
+            .is_some_and(|player| entity.passenger_ids.contains(&player.id))
     }
 
     fn snowball_path_is_open(
@@ -3737,6 +3788,34 @@ impl ClientEntity {
             mth_rot_lerp_f32(0.2_f32, f32::from_bits(self.old_x_rot_bits), target_x_rot).to_bits();
         self.y_rot_bits =
             mth_rot_lerp_f32(0.2_f32, f32::from_bits(self.old_y_rot_bits), target_y_rot).to_bits();
+    }
+
+    fn tick_boat_float_in_air(&mut self) {
+        let current_motion = self.motion();
+        let vertical_speed = if self.no_gravity {
+            0.0
+        } else {
+            -VANILLA_BOAT_GRAVITY
+        };
+        let motion = (
+            current_motion.0 * f64::from(VANILLA_BOAT_AIR_FRICTION),
+            current_motion.1 + vertical_speed,
+            current_motion.2 * f64::from(VANILLA_BOAT_AIR_FRICTION),
+        );
+        self.motion_x_bits = motion.0.to_bits();
+        self.motion_y_bits = motion.1.to_bits();
+        self.motion_z_bits = motion.2.to_bits();
+        self.delta_rotation_bits = (f32::from_bits(self.delta_rotation_bits) * 0.9_f32).to_bits();
+    }
+
+    fn move_by_motion(&mut self) {
+        let current_position = self.position();
+        let motion = self.motion();
+        self.set_position((
+            current_position.0 + motion.0,
+            current_position.1 + motion.1,
+            current_position.2 + motion.2,
+        ));
     }
 
     fn tick_boat_control(&mut self, input: BoatInput, has_passengers: bool) {
@@ -5995,6 +6074,61 @@ mod tests {
     }
 
     #[test]
+    fn air_boat_float_applies_java_drag_gravity_and_position_step() {
+        for (name, no_gravity, expected_motion_y, expected_position_y) in [
+            ("falling", false, 0.46_f64, 8.46_f64),
+            ("no_gravity", true, 0.5_f64, 8.5_f64),
+        ] {
+            let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+            let (blocks, biomes) = section(0, 0);
+            world.replace_chunk(
+                0,
+                -1,
+                [SectionInput {
+                    non_empty_block_count: 0,
+                    fluid_count: 0,
+                    block_states: &blocks,
+                    biomes: &biomes,
+                }],
+            );
+            assert!(world.apply_entity(EntityInput {
+                entity_id: 37,
+                uuid: Uuid::new(1, 37),
+                type_id: 89,
+                x: 12.5,
+                y: 8.0,
+                z: -4.25,
+                movement: (0.25, 0.5, -0.75),
+                rotation: (0.0, 0.0, 0.0),
+                data: 0,
+            }));
+            world.set_local_player_id(38);
+            assert!(world.apply_entity_passengers(37, &[38]));
+            if no_gravity {
+                assert!(world.apply_entity_metadata(37, &[ENTITY_NO_GRAVITY_DATA_ID, 8, 1, 255]));
+            }
+
+            world.tick();
+
+            let boat = world.entity_at(37).expect("air boat");
+            assert_eq!(boat.motion().0.to_bits(), 0x3fcc_cccc_c000_0000, "{name}");
+            assert_eq!(
+                boat.motion().1.to_bits(),
+                expected_motion_y.to_bits(),
+                "{name}"
+            );
+            assert_eq!(boat.motion().2.to_bits(), 0xbfe5_9999_9000_0000, "{name}");
+            assert_eq!(boat.position().0.to_bits(), 0x4029_7333_3300_0000, "{name}");
+            assert_eq!(
+                boat.position().1.to_bits(),
+                expected_position_y.to_bits(),
+                "{name}"
+            );
+            assert_eq!(boat.position().2.to_bits(), 0xc013_b333_3200_0000, "{name}");
+        }
+    }
+
+    #[test]
     fn passenger_turn_clamps_every_vanilla_living_entity_body_and_head() {
         let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
         let (blocks, biomes) = section(0, 0);
@@ -6119,6 +6253,7 @@ mod tests {
             data: 0,
         }));
         world.set_local_player_id(38);
+        assert!(world.apply_entity_metadata(37, &[ENTITY_NO_GRAVITY_DATA_ID, 8, 1, 255]));
         assert!(world.apply_local_player_position((2.0, 12.0, 2.0), (0.0, 0.0, 0.0), (0.0, 0.0),));
         assert!(world.apply_entity_passengers(37, &[38]));
 

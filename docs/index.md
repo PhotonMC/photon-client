@@ -100,6 +100,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P08.aa — server-conformance Entity air supply semantic state](client-world-entity-air-supply-conformance.md)
 - [P08.y — server-conformance Player entity always-ticking state'i](client-world-entity-always-ticking-conformance.md)
 - [P08.ak — server-conformance Entity living arrow count semantic state](client-world-entity-arrow-count-conformance.md)
+- [P08.bj-entity-boat-air — server-conformance Local boat `IN_AIR` tick](client-world-entity-boat-air-conformance.md)
 - [P08.bh-entity-boat-control — server-conformance Boat input and `deltaRotation`](client-world-entity-boat-control-conformance.md)
 - [P08.af — server-conformance Entity custom-name visibility semantic state](client-world-entity-custom-name-conformance.md)
 - [P08.ag — server-conformance Entity custom-name presence semantic state](client-world-entity-custom-name-presence-conformance.md)
