@@ -82,6 +82,30 @@ pub fn collide_entity_movement_state(
     }
 }
 
+/// Return Java LocalPlayer's minor-horizontal-collision classification.
+///
+/// LocalPlayer compares the yaw-rotated input vector with the resolved
+/// horizontal movement and accepts only angles below the f32 8-degree
+/// threshold. The input and movement length gates intentionally use the
+/// reference's strict `1.0E-5F` comparison.
+pub fn is_minor_horizontal_collision(y_rot: f32, xxa: f32, zza: f32, movement: Vec3) -> bool {
+    let y_rot_in_radians = y_rot * MTH_DEG_TO_RAD;
+    let y_rot_sin = f64::from(mth_sin_f64(f64::from(y_rot_in_radians)));
+    let y_rot_cos = f64::from(mth_cos_f64(f64::from(y_rot_in_radians)));
+    let global_xa = f64::from(xxa) * y_rot_cos - f64::from(zza) * y_rot_sin;
+    let global_za = f64::from(zza) * y_rot_cos + f64::from(xxa) * y_rot_sin;
+    let input_length_squared = global_xa * global_xa + global_za * global_za;
+    let movement_length_squared = movement.x * movement.x + movement.z * movement.z;
+    let epsilon = f64::from(f32::from_bits(0x3727_c5ac));
+    if input_length_squared >= epsilon && movement_length_squared >= epsilon {
+        let dot_product = global_xa * movement.x + global_za * movement.z;
+        let angle = (dot_product / (input_length_squared * movement_length_squared).sqrt()).acos();
+        angle < f64::from(f32::from_bits(0x3e0e_fa35))
+    } else {
+        false
+    }
+}
+
 /// Candidate entity data needed by Java's `EntityGetter` collision query.
 #[derive(Debug, Clone, Copy)]
 pub struct ClientEntityCollisionCandidate {
@@ -6779,7 +6803,8 @@ mod tests {
         VANILLA_PRIMED_TNT_AIR_FRICTION, VANILLA_PRIMED_TNT_ENTITY_TYPE_ID,
         VANILLA_PRIMED_TNT_GRAVITY, VANILLA_SNOWBALL_ENTITY_TYPE_ID,
         collect_candidate_step_up_heights, collect_entity_collision_shapes,
-        collide_entity_movement, collide_entity_movement_state, menu_top_slot_count,
+        collide_entity_movement, collide_entity_movement_state, is_minor_horizontal_collision,
+        menu_top_slot_count,
     };
     use crate::aabb::Aabb;
     use crate::binary::{BitSet, Uuid};
@@ -6864,6 +6889,35 @@ mod tests {
         assert!(rising.vertical_collision);
         assert!(!rising.vertical_collision_below);
         assert!(!rising.on_ground);
+    }
+
+    #[test]
+    fn local_player_minor_horizontal_collision_follows_java_angle_gate() {
+        assert!(is_minor_horizontal_collision(
+            0.0,
+            0.0,
+            1.0,
+            Vec3::new(0.0, 0.0, 1.0),
+        ));
+        assert!(is_minor_horizontal_collision(
+            0.0,
+            0.0,
+            1.0,
+            Vec3::new(7.9_f64.to_radians().sin(), 0.0, 7.9_f64.to_radians().cos()),
+        ));
+        assert!(!is_minor_horizontal_collision(
+            0.0,
+            0.0,
+            1.0,
+            Vec3::new(8.0_f64.to_radians().sin(), 0.0, 8.0_f64.to_radians().cos()),
+        ));
+        assert!(!is_minor_horizontal_collision(
+            0.0,
+            0.0,
+            0.001,
+            Vec3::new(0.0, 0.0, 1.0),
+        ));
+        assert!(!is_minor_horizontal_collision(0.0, 0.0, 1.0, Vec3::ZERO,));
     }
 
     #[test]

@@ -29,6 +29,7 @@ import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.input.MouseButtonInfo;
 import net.minecraft.client.input.PreeditEvent;
 import net.minecraft.client.player.KeyboardInput;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.AxisCycle;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -41,6 +42,7 @@ import net.minecraft.util.SmoothDouble;
 import net.minecraft.world.entity.Avatar;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityDimensions;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Pose;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.entity.monster.Shulker;
@@ -3567,6 +3569,37 @@ public final class MathOracle {
                     states.add(state);
                 }
                 result.add("states", states);
+            } else if (kind.equals("local_player_minor_horizontal_collision")) {
+                try {
+                    Unsafe unsafe = unsafeInstance();
+                    var method = LocalPlayer.class.getDeclaredMethod(
+                        "isHorizontalCollisionMinor", Vec3.class);
+                    method.setAccessible(true);
+                    var yRotField = Entity.class.getDeclaredField("yRot");
+                    var xxaField = LivingEntity.class.getDeclaredField("xxa");
+                    var zzaField = LivingEntity.class.getDeclaredField("zza");
+                    var states = new JsonArray();
+                    for (var inputEntry : request.getAsJsonArray("inputs")) {
+                        JsonObject input = inputEntry.getAsJsonObject();
+                        LocalPlayer player = (LocalPlayer)unsafe.allocateInstance(LocalPlayer.class);
+                        unsafe.putFloat(player, unsafe.objectFieldOffset(yRotField),
+                            Oracle.f32(input, "y_rot"));
+                        unsafe.putFloat(player, unsafe.objectFieldOffset(xxaField),
+                            Oracle.f32(input, "xxa"));
+                        unsafe.putFloat(player, unsafe.objectFieldOffset(zzaField),
+                            Oracle.f32(input, "zza"));
+                        Vec3 movement = vec3(input.getAsJsonObject("movement"));
+                        var state = new JsonObject();
+                        state.addProperty("label", input.get("label").getAsString());
+                        state.addProperty("minor_horizontal_collision",
+                            (Boolean)method.invoke(player, movement));
+                        states.add(state);
+                    }
+                    result.add("states", states);
+                } catch (ReflectiveOperationException error) {
+                    throw new IllegalStateException(
+                        "LocalPlayer.isHorizontalCollisionMinor reflection failed", error);
+                }
             } else if (kind.equals("collect_step_up_heights")) {
                 AABB moving = box(request.getAsJsonObject("moving"));
                 var shapes = new java.util.ArrayList<VoxelShape>();

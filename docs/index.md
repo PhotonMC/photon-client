@@ -171,6 +171,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P09.v — ClientWorld Player flying ability pushability gate — client-parity birleşik kayıt](client-world-living-flying-conformance.md)
 - [P09.y — ClientWorld LivingEntity `CAN_GLIDE_THROUGH` fall-flying branch — client-parity birleşik kayıt](client-world-living-glide-through-conformance.md)
 - [P09.t — ClientWorld LivingEntity alive/spectator pushability gates — client-parity birleşik kayıt](client-world-living-pushability-conformance.md)
+- [P09.ab — LocalPlayer minor-horizontal collision — client-parity birleşik kayıt](client-world-minor-horizontal-conformance.md)
 - [P09.g — Entity hareket çarpışma bayrakları — client-parity birleşik kayıt](client-world-movement-flags-conformance.md)
 - [P08.p — server-conformance LocalPlayer effective attribute hesabı](client-world-player-attribute-effective-conformance.md)
 - [P08.j — server-conformance LocalPlayer attribute state'i ve `dataToKeep` bit 1](client-world-player-attributes-conformance.md)

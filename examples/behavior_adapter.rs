@@ -65,7 +65,8 @@ use voxel_client::world::{
     ClientPlayerPoseInput, ClientWorld, ClientWorldBorder, ClientWorldBorderInitialization,
     ClientWorldBorderStatus, ClientWorldCollisionSource, DimensionBounds, EntityInput,
     SectionInput, collect_candidate_step_up_heights, collect_entity_collision_shapes,
-    collide_entity_movement, collide_entity_movement_state, world_border_collision_shape,
+    collide_entity_movement, collide_entity_movement_state, is_minor_horizontal_collision,
+    world_border_collision_shape,
 };
 
 fn string<'a>(request: &'a Value, name: &str) -> Result<&'a str, String> {
@@ -5022,6 +5023,42 @@ fn shape_result(request: &Value) -> Result<Value, String> {
                             .map(|collision| shape_snapshot(&collision.shape))
                             .collect::<Vec<_>>(),
                         "no_block_collision": collisions.is_empty(),
+                    }))
+                })
+                .collect::<Result<Vec<_>, String>>()?;
+            Ok(json!({"states": states}))
+        }
+        "local_player_minor_horizontal_collision" => {
+            let inputs = request
+                .get("inputs")
+                .ok_or("inputs must be an array")?
+                .as_array()
+                .ok_or("inputs must be an array")?;
+            let states = inputs
+                .iter()
+                .map(|entry| {
+                    let input = entry
+                        .as_object()
+                        .ok_or("minor collision input must be an object")?;
+                    let movement = f64_vec3(
+                        input
+                            .get("movement")
+                            .ok_or("movement must be an object")?,
+                    )?;
+                    Ok(json!({
+                        "label": input
+                            .get("label")
+                            .and_then(Value::as_str)
+                            .ok_or("label must be a string")?,
+                        "minor_horizontal_collision": is_minor_horizontal_collision(
+                            f32_value(
+                                input.get("y_rot").ok_or("y_rot must be an f32 bit string")?,
+                                "y_rot",
+                            )?,
+                            f32_value(input.get("xxa").ok_or("xxa must be an f32 bit string")?, "xxa")?,
+                            f32_value(input.get("zza").ok_or("zza must be an f32 bit string")?, "zza")?,
+                            movement,
+                        ),
                     }))
                 })
                 .collect::<Result<Vec<_>, String>>()?;
