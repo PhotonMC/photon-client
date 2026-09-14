@@ -4572,6 +4572,7 @@ public final class MathOracle {
         private boolean alive;
         private boolean onClimbable;
         private boolean flying;
+        private boolean fallFlying;
         private boolean useClimbableContext;
         private BlockState inBlockState;
 
@@ -4603,6 +4604,9 @@ public final class MathOracle {
                 entity.alive = alive;
                 entity.onClimbable = onClimbable;
                 entity.flying = flying;
+                entity.fallFlying = climbableContext != null
+                    && climbableContext.has("fall_flying")
+                    && climbableContext.get("fall_flying").getAsBoolean();
                 entity.useClimbableContext = climbableContext != null;
                 entity.setBoundingBox(boundingBox);
                 var field = Entity.class.getDeclaredField("position");
@@ -4645,9 +4649,31 @@ public final class MathOracle {
                 bindClimbableTag(state.getBlock());
                 ClimbableClientLevelFixture.setBelowState(Blocks.AIR.defaultBlockState());
                 return state;
+            } else if (kind.equals("glide_through_tag")) {
+                int stateId = context.get("state_id").getAsInt();
+                BlockState state = Block.stateById(stateId);
+                bindClimbableAndGlideThroughTags(state.getBlock());
+                ClimbableClientLevelFixture.setBelowState(Blocks.AIR.defaultBlockState());
+                return state;
             } else {
                 throw new IllegalArgumentException("Unknown climbable context kind");
             }
+        }
+
+        private static void bindClimbableAndGlideThroughTags(Block block) {
+            java.util.List<net.minecraft.core.Holder<Block>> climbableValues = block == Blocks.VINE
+                ? java.util.List.of(BuiltInRegistries.BLOCK.wrapAsHolder(block))
+                : java.util.List.of();
+            java.util.List<net.minecraft.core.Holder<Block>> glideThroughValues = block == Blocks.VINE
+                ? java.util.List.of(BuiltInRegistries.BLOCK.wrapAsHolder(block))
+                : java.util.List.of();
+            java.util.Map<net.minecraft.tags.TagKey<Block>, java.util.List<net.minecraft.core.Holder<Block>>> tags =
+                java.util.Map.of(
+                    net.minecraft.tags.BlockTags.CLIMBABLE, climbableValues,
+                    net.minecraft.tags.BlockTags.CAN_GLIDE_THROUGH, glideThroughValues);
+            BuiltInRegistries.BLOCK.prepareTagReload(
+                new net.minecraft.tags.TagLoader.LoadResult<>(
+                    net.minecraft.core.registries.Registries.BLOCK, tags)).apply();
         }
 
         private static void bindClimbableTag(Block block) {
@@ -4692,7 +4718,7 @@ public final class MathOracle {
 
         @Override
         public boolean isFallFlying() {
-            return false;
+            return this.fallFlying;
         }
 
         @Override

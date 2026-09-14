@@ -1782,6 +1782,7 @@ fn client_block_state_box(
 pub struct ClientBlockStateRegistry {
     collision_shapes: BTreeMap<i32, ClientBlockStateCollisionShape>,
     climbable_state_ids: BTreeSet<i32>,
+    glide_through_state_ids: BTreeSet<i32>,
 }
 
 impl ClientBlockStateRegistry {
@@ -1849,10 +1850,13 @@ impl ClientBlockStateRegistry {
                 ],
             },
         );
-        let climbable_state_ids = (5719..=5726).collect();
+        let mut climbable_state_ids = (5719..=5726).collect::<BTreeSet<_>>();
+        climbable_state_ids.insert(8389);
+        let glide_through_state_ids = BTreeSet::from([8389]);
         Self {
             collision_shapes,
             climbable_state_ids,
+            glide_through_state_ids,
         }
     }
 
@@ -1874,6 +1878,11 @@ impl ClientBlockStateRegistry {
     /// Return whether a pinned 26.2 block-state belongs to BlockTags.CLIMBABLE.
     pub fn is_climbable_state(&self, state_id: i32) -> bool {
         self.climbable_state_ids.contains(&state_id)
+    }
+
+    /// Return whether a pinned 26.2 block-state belongs to BlockTags.CAN_GLIDE_THROUGH.
+    pub fn is_glide_through_state(&self, state_id: i32) -> bool {
+        self.glide_through_state_ids.contains(&state_id)
     }
 
     fn collision_shapes(&self) -> BTreeMap<i32, VoxelShape> {
@@ -3725,6 +3734,32 @@ impl ClientWorld {
             return false;
         };
         entity.on_climbable = on_climbable;
+        true
+    }
+
+    /// Apply the LivingEntity.onClimbable tag and fall-flying context.
+    pub fn apply_entity_living_climbable_glide_through_state(
+        &mut self,
+        entity_id: i32,
+        state_id: i32,
+        fall_flying: bool,
+    ) -> bool {
+        let is_climbable = self.block_state_registry.is_climbable_state(state_id);
+        let is_glide_through = self.block_state_registry.is_glide_through_state(state_id);
+        let on_climbable = if fall_flying && is_glide_through {
+            false
+        } else {
+            is_climbable
+        };
+        let Some(entity) = self.entities.get_mut(&entity_id) else {
+            return false;
+        };
+        entity.on_climbable = on_climbable;
+        if fall_flying {
+            entity.shared_flags |= 1 << SHARED_FLAG_FALL_FLYING;
+        } else {
+            entity.shared_flags &= !(1 << SHARED_FLAG_FALL_FLYING);
+        }
         true
     }
 
@@ -6710,6 +6745,65 @@ mod tests {
         assert!(!world.no_entity_collision_for_entity(Some(7), test_area));
         assert!(world.apply_entity_living_climbable_block_state(8, 0));
         assert!(!world.no_entity_collision_for_entity(Some(7), test_area));
+    }
+
+    #[test]
+    fn indexed_player_collision_respects_glide_through_tag() {
+        let mut world = ClientWorld::default();
+        for (entity_id, type_id) in [(7, 0), (8, VANILLA_PLAYER_ENTITY_TYPE_ID)] {
+            assert!(world.apply_entity(EntityInput {
+                entity_id,
+                uuid: Uuid::new(entity_id as u64, type_id as u64),
+                type_id,
+                x: 0.5,
+                y: 1.0,
+                z: 0.5,
+                movement: (0.0, 0.0, 0.0),
+                rotation: (0.0, 0.0, 0.0),
+                data: 0,
+            }));
+        }
+        let test_area = Aabb::new(0.0, 0.0, 0.0, 1.0, 3.0, 1.0);
+
+        assert!(world.block_state_registry().is_glide_through_state(8389));
+        assert!(!world.block_state_registry().is_glide_through_state(1));
+        assert!(!world.block_state_registry().is_glide_through_state(99999));
+        assert!(world.apply_entity_living_collision_state(8, true, false, false));
+        assert!(world.apply_entity_living_climbable_glide_through_state(8, 8389, false));
+        assert!(world.no_entity_collision_for_entity(Some(7), test_area));
+        assert!(
+            !world
+                .entity_at(8)
+                .expect("player entity must exist")
+                .is_fall_flying()
+        );
+
+        assert!(world.apply_entity_living_climbable_glide_through_state(8, 8389, true));
+        assert!(!world.no_entity_collision_for_entity(Some(7), test_area));
+        assert!(
+            world
+                .entity_at(8)
+                .expect("player entity must exist")
+                .is_fall_flying()
+        );
+
+        assert!(world.apply_entity_living_climbable_glide_through_state(8, 1, true));
+        assert!(!world.no_entity_collision_for_entity(Some(7), test_area));
+        assert!(
+            world
+                .entity_at(8)
+                .expect("player entity must exist")
+                .is_fall_flying()
+        );
+
+        assert!(world.apply_entity_living_climbable_glide_through_state(8, 8389, false));
+        assert!(world.no_entity_collision_for_entity(Some(7), test_area));
+        assert!(
+            !world
+                .entity_at(8)
+                .expect("player entity must exist")
+                .is_fall_flying()
+        );
     }
 
     #[test]

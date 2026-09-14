@@ -4590,6 +4590,22 @@ fn shape_result(request: &Value) -> Result<Value, String> {
                                     .map_err(|_| "climbable state_id must fit in i32")?;
                                 world
                                     .apply_entity_living_climbable_block_state(entity_id, state_id);
+                            } else if kind == "glide_through_tag" {
+                                let state_id = context
+                                    .get("state_id")
+                                    .and_then(Value::as_i64)
+                                    .ok_or("glide-through state_id must be an integer")?
+                                    .try_into()
+                                    .map_err(|_| "glide-through state_id must fit in i32")?;
+                                let fall_flying = context
+                                    .get("fall_flying")
+                                    .and_then(Value::as_bool)
+                                    .unwrap_or(false);
+                                world.apply_entity_living_climbable_glide_through_state(
+                                    entity_id,
+                                    state_id,
+                                    fall_flying,
+                                );
                             } else {
                                 return Err("unknown climbable context kind".to_owned());
                             }
