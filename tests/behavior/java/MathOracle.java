@@ -3396,6 +3396,55 @@ public final class MathOracle {
                     tracks.add(track);
                 }
                 result.add("tracks", tracks);
+            } else if (kind.equals("client_world_happy_ghast_collision")) {
+                var output = System.out;
+                var errorOutput = System.err;
+                try {
+                    SharedConstants.setVersion(TEST_VERSION);
+                    Bootstrap.bootStrap();
+                } finally {
+                    System.setOut(output);
+                    System.setErr(errorOutput);
+                }
+                var states = new JsonArray();
+                for (var entry : request.getAsJsonArray("inputs")) {
+                    JsonObject input = entry.getAsJsonObject();
+                    var entityStorage = new TransientEntitySectionManager<Entity>(
+                        Entity.class, new NoopEntityCallbacks());
+                    for (var entityEntry : input.getAsJsonArray("entities")) {
+                        Entity entity = CollisionFixtureEntity.createHappyGhastIndexed(
+                            entityEntry.getAsJsonObject());
+                        entityStorage.addEntity(entity);
+                    }
+                    Integer sourceId = input.has("source_entity_id")
+                        && !input.get("source_entity_id").isJsonNull()
+                        ? input.get("source_entity_id").getAsInt()
+                        : null;
+                    Entity source = null;
+                    if (sourceId != null) {
+                        source = entityStorage.getEntityGetter().get(sourceId);
+                        if (source == null) {
+                            throw new IllegalArgumentException("Unknown collision source " + sourceId);
+                        }
+                    }
+                    JsonObject borderInput = input.getAsJsonObject("border");
+                    WorldBorder border = new WorldBorder();
+                    border.setCenter(f64(borderInput, "center_x"), f64(borderInput, "center_z"));
+                    border.setAbsoluteMaxSize(borderInput.get("absolute_max_size").getAsInt());
+                    border.setSize(f64(borderInput, "size"));
+                    CollisionGetter collision = collisionFixture(
+                        input.getAsJsonArray("placements"),
+                        new IndexedEntityCollisionFixture(entityStorage.getEntityGetter()),
+                        border);
+                    AABB testArea = box(input.getAsJsonObject("test_area"));
+                    var state = new JsonObject();
+                    state.addProperty("label", input.get("label").getAsString());
+                    state.addProperty("entity_count", entityStorage.count());
+                    state.addProperty("no_entity_collision", collision.noEntityCollision(source, testArea));
+                    state.addProperty("no_collision", collision.noCollision(source, testArea));
+                    states.add(state);
+                }
+                result.add("states", states);
             } else if (kind.equals("client_world_registry_collision")) {
                 SharedConstants.setVersion(TEST_VERSION);
                 Bootstrap.bootStrap();
@@ -4094,6 +4143,53 @@ public final class MathOracle {
             return entity;
         }
 
+        private static Entity createHappyGhastIndexed(JsonObject input) {
+            int entityId = input.get("entity_id").getAsInt();
+            int typeId = input.get("type_id").getAsInt();
+            Vec3 position = vec3(input.getAsJsonObject("position"));
+            boolean baby = input.has("baby") && input.get("baby").getAsBoolean();
+            boolean alive = !input.has("alive") || input.get("alive").getAsBoolean();
+            boolean stillTimeout = input.has("still_timeout")
+                && input.get("still_timeout").getAsBoolean();
+            boolean vehicle = input.has("is_vehicle")
+                && input.get("is_vehicle").getAsBoolean();
+            boolean spectator = input.has("spectator")
+                && input.get("spectator").getAsBoolean();
+            boolean collidable = input.has("can_be_collided_with")
+                && input.get("can_be_collided_with").getAsBoolean();
+            boolean sameVehicle = input.has("same_vehicle")
+                && input.get("same_vehicle").getAsBoolean();
+            var entityType = BuiltInRegistries.ENTITY_TYPE.byId(typeId);
+            if (entityType == null) {
+                throw new IllegalArgumentException("Unknown entity type id " + typeId);
+            }
+            Entity entity;
+            if (typeId == 58) {
+                EntityDimensions dimensions = entityType.getDimensions();
+                if (baby) {
+                    dimensions = dimensions.scale(0.2375F).withEyeHeight(0.46875F);
+                }
+                entity = HappyGhastCollisionFixtureEntity.create(
+                    dimensions.makeBoundingBox(position), position, baby, alive,
+                    stillTimeout, vehicle);
+            } else if (typeId == 156) {
+                entity = PlayerCollisionFixtureEntity.create(
+                    entityType.getDimensions().makeBoundingBox(position), position);
+            } else if (typeId == 0) {
+                entity = BoatCollisionFixtureEntity.create(
+                    entityType.getDimensions().makeBoundingBox(position), position);
+            } else if (typeId == 112) {
+                entity = ShulkerCollisionFixtureEntity.create(
+                    entityType.getDimensions().makeBoundingBox(position), sameVehicle, position);
+            } else {
+                entity = create(
+                    entityType.getDimensions().makeBoundingBox(position), spectator,
+                    collidable, sameVehicle, position, false);
+            }
+            indexEntity(entity, entityId, position);
+            return entity;
+        }
+
         private static void indexEntity(Entity entity, int entityId, Vec3 position) {
             try {
                 Unsafe unsafe = unsafeInstance();
@@ -4255,6 +4351,152 @@ public final class MathOracle {
 
         @Override
         protected void addAdditionalSaveData(net.minecraft.world.level.storage.ValueOutput output) {
+        }
+    }
+
+    private static final class HappyGhastClientLevelFixture extends net.minecraft.client.multiplayer.ClientLevel {
+        private HappyGhastClientLevelFixture() {
+            super(null, null, null, null, 0, 0, null, false, 0L, 0);
+        }
+
+        @Override
+        public boolean isClientSide() {
+            return true;
+        }
+
+        @Override
+        public net.minecraft.world.flag.FeatureFlagSet enabledFeatures() {
+            return net.minecraft.world.flag.FeatureFlagSet.of();
+        }
+    }
+
+    private static final class HappyGhastCollisionFixtureEntity
+        extends net.minecraft.world.entity.animal.happyghast.HappyGhast {
+        private static final net.minecraft.world.level.Level CLIENT_LEVEL = createClientLevel();
+        private boolean baby;
+        private boolean alive;
+        private boolean stillTimeout;
+        private boolean vehicle;
+
+        private HappyGhastCollisionFixtureEntity() {
+            super(net.minecraft.world.entity.EntityTypes.HAPPY_GHAST, null);
+            this.baby = false;
+            this.alive = true;
+            this.stillTimeout = false;
+            this.vehicle = false;
+        }
+
+        private static net.minecraft.world.level.Level createClientLevel() {
+            try {
+                return (net.minecraft.world.level.Level)unsafeInstance()
+                    .allocateInstance(HappyGhastClientLevelFixture.class);
+            } catch (InstantiationException error) {
+                throw new IllegalStateException("Unable to allocate client level fixture", error);
+            }
+        }
+
+        private static HappyGhastCollisionFixtureEntity create(
+            AABB boundingBox, Vec3 position, boolean baby, boolean alive,
+            boolean stillTimeout, boolean vehicle
+        ) {
+            try {
+                Unsafe unsafe = unsafeInstance();
+                HappyGhastCollisionFixtureEntity entity =
+                    (HappyGhastCollisionFixtureEntity)unsafe.allocateInstance(
+                        HappyGhastCollisionFixtureEntity.class);
+                entity.baby = baby;
+                entity.alive = alive;
+                entity.stillTimeout = stillTimeout;
+                entity.vehicle = vehicle;
+                entity.setBoundingBox(boundingBox);
+                var field = Entity.class.getDeclaredField("position");
+                unsafe.putObject(entity, unsafe.objectFieldOffset(field), position);
+                return entity;
+            } catch (ReflectiveOperationException error) {
+                throw new IllegalStateException("Unable to allocate happy ghast collision fixture entity", error);
+            }
+        }
+
+        @Override
+        public int getAge() {
+            return this.baby ? -1 : 1;
+        }
+
+        @Override
+        public boolean isAlive() {
+            return this.alive;
+        }
+
+        @Override
+        public boolean isOnStillTimeout() {
+            return this.stillTimeout;
+        }
+
+        @Override
+        public boolean isVehicle() {
+            return this.vehicle;
+        }
+
+        @Override
+        public boolean isPushable() {
+            return this.alive;
+        }
+
+        @Override
+        public net.minecraft.world.level.Level level() {
+            return CLIENT_LEVEL;
+        }
+
+        @Override
+        public net.minecraft.world.item.ItemStack getMainHandItem() {
+            return net.minecraft.world.item.ItemStack.EMPTY;
+        }
+
+        @Override
+        public boolean isPassengerOfSameVehicle(Entity other) {
+            return false;
+        }
+
+        @Override
+        public boolean isShiftKeyDown() {
+            return false;
+        }
+    }
+
+    private static final class PlayerCollisionFixtureEntity
+        extends net.minecraft.server.level.ServerPlayer {
+        private PlayerCollisionFixtureEntity() {
+            super(null, null, null, null);
+        }
+
+        private static PlayerCollisionFixtureEntity create(AABB boundingBox, Vec3 position) {
+            try {
+                Unsafe unsafe = unsafeInstance();
+                PlayerCollisionFixtureEntity entity =
+                    (PlayerCollisionFixtureEntity)unsafe.allocateInstance(
+                        PlayerCollisionFixtureEntity.class);
+                entity.setBoundingBox(boundingBox);
+                var field = Entity.class.getDeclaredField("position");
+                unsafe.putObject(entity, unsafe.objectFieldOffset(field), position);
+                return entity;
+            } catch (ReflectiveOperationException error) {
+                throw new IllegalStateException("Unable to allocate player collision fixture entity", error);
+            }
+        }
+
+        @Override
+        public boolean isPassengerOfSameVehicle(Entity other) {
+            return false;
+        }
+
+        @Override
+        public boolean isShiftKeyDown() {
+            return false;
+        }
+
+        @Override
+        public net.minecraft.world.item.ItemStack getMainHandItem() {
+            return net.minecraft.world.item.ItemStack.EMPTY;
         }
     }
 

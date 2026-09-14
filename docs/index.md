@@ -161,6 +161,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P08.ae — server-conformance Entity freeze progress semantic state](client-world-entity-ticks-frozen-conformance.md)
 - [P08.u — server-conformance Entity tick transform geçmişi ve interpolation](client-world-entity-transform-conformance.md)
 - [P08.e-entity-uuid — server-conformance ClientWorld entity UUID state](client-world-entity-uuid-conformance.md)
+- [P09.s — Happy Ghast collider override — client-parity birleşik kayıt](client-world-happy-ghast-collision-conformance.md)
 - [P08.c-light — server-conformance ClientWorld ışık state'i](client-world-light-conformance.md)
 - [P08.x — server-conformance Chunk unload light queue cleanup'i](client-world-light-queue-cleanup-conformance.md)
 - [P08.w — server-conformance Unloaded chunk light update queue'su](client-world-light-queue-conformance.md)

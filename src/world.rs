@@ -473,6 +473,7 @@ const VANILLA_BREEZE_ENTITY_TYPE_ID: i32 = 17;
 const VANILLA_SPIDER_ENTITY_TYPE_ID: i32 = 124;
 const VANILLA_ZOMBIE_ENTITY_TYPE_ID: i32 = 151;
 const VANILLA_SHULKER_ENTITY_TYPE_ID: i32 = 112;
+const VANILLA_HAPPY_GHAST_ENTITY_TYPE_ID: i32 = 58;
 pub(crate) const VANILLA_COW_ENTITY_TYPE_ID: i32 = 30;
 pub(crate) const VANILLA_SNOWBALL_ENTITY_TYPE_ID: i32 = 120;
 pub(crate) const VANILLA_ARROW_ENTITY_TYPE_ID: i32 = 6;
@@ -937,6 +938,10 @@ fn is_vanilla_boat_entity_type(entity_type_id: i32) -> bool {
 
 fn is_vanilla_shulker_entity_type(entity_type_id: i32) -> bool {
     entity_type_id == VANILLA_SHULKER_ENTITY_TYPE_ID
+}
+
+fn is_vanilla_happy_ghast_entity_type(entity_type_id: i32) -> bool {
+    entity_type_id == VANILLA_HAPPY_GHAST_ENTITY_TYPE_ID
 }
 
 fn is_vanilla_player_entity_type(entity_type_id: i32) -> bool {
@@ -3306,8 +3311,9 @@ impl ClientWorld {
     ///
     /// The source ID is resolved against the same entity map that stores live
     /// positions and passenger links. The current type-backed collider table
-    /// covers vanilla boat families; entity types with Java's base non-collidable
-    /// behavior produce no candidate until their dedicated type branch lands.
+    /// covers vanilla boat families and the Happy Ghast's source-aware override;
+    /// entity types with Java's base non-collidable behavior produce no candidate
+    /// until their dedicated type branch lands.
     pub fn no_entity_collision_for_entity(
         &self,
         source_entity_id: Option<i32>,
@@ -3316,7 +3322,14 @@ impl ClientWorld {
         let source_entity_id = source_entity_id.filter(|entity_id| self.entity_exists(*entity_id));
         let source_type_id = source_entity_id
             .and_then(|entity_id| self.entities.get(&entity_id).map(|entity| entity.type_id));
-        let candidates = self.indexed_entity_collision_candidates(source_entity_id, bounding_box);
+        let source_position =
+            source_entity_id.and_then(|entity_id| self.entity_position(entity_id));
+        let candidates = self.indexed_entity_collision_candidates(
+            source_entity_id,
+            source_type_id,
+            source_position,
+            bounding_box,
+        );
         collect_entity_collision_shapes_for_source(
             source_type_id,
             source_entity_id.is_some(),
@@ -3380,6 +3393,8 @@ impl ClientWorld {
     fn indexed_entity_collision_candidates(
         &self,
         source_entity_id: Option<i32>,
+        source_type_id: Option<i32>,
+        source_position: Option<Vec3>,
         bounding_box: Aabb,
     ) -> Vec<ClientEntityCollisionCandidate> {
         let mut entity_ids = BTreeSet::new();
@@ -3407,7 +3422,12 @@ impl ClientWorld {
                     source_id != entity.id()
                         && self.root_vehicle_id(source_id) == self.root_vehicle_id(entity.id())
                 });
-                entity.collision_candidate(source_entity_id, same_vehicle)
+                entity.collision_candidate(
+                    source_entity_id,
+                    source_type_id,
+                    source_position,
+                    same_vehicle,
+                )
             })
             .collect()
     }
@@ -3596,6 +3616,9 @@ impl ClientWorld {
                 silent: false,
                 pose: ClientEntityPose::Standing,
                 baby: false,
+                alive: true,
+                happy_ghast_still_timeout: false,
+                happy_ghast_is_vehicle: false,
                 ticks_frozen: 0,
                 vehicle_id: None,
                 passenger_ids: Vec::new(),
@@ -3614,6 +3637,28 @@ impl ClientWorld {
             player.y_body_rot_bits = entity.rotation.0.to_bits();
             player.old_y_body_rot_bits = entity.rotation.0.to_bits();
         }
+        true
+    }
+
+    /// Apply the collision-relevant Happy Ghast state used by the client query.
+    pub fn apply_happy_ghast_collision_state(
+        &mut self,
+        entity_id: i32,
+        baby: bool,
+        alive: bool,
+        still_timeout: bool,
+        is_vehicle: bool,
+    ) -> bool {
+        let Some(entity) = self.entities.get_mut(&entity_id) else {
+            return false;
+        };
+        if entity.type_id != VANILLA_HAPPY_GHAST_ENTITY_TYPE_ID {
+            return false;
+        }
+        entity.baby = baby;
+        entity.alive = alive;
+        entity.happy_ghast_still_timeout = still_timeout;
+        entity.happy_ghast_is_vehicle = is_vehicle;
         true
     }
 
@@ -4470,6 +4515,9 @@ pub struct ClientEntity {
     silent: bool,
     pose: ClientEntityPose,
     baby: bool,
+    alive: bool,
+    happy_ghast_still_timeout: bool,
+    happy_ghast_is_vehicle: bool,
     ticks_frozen: i32,
     vehicle_id: Option<i32>,
     passenger_ids: Vec<i32>,
@@ -5047,6 +5095,8 @@ impl ClientEntity {
     fn collision_candidate(
         &self,
         source_entity_id: Option<i32>,
+        source_type_id: Option<i32>,
+        source_position: Option<Vec3>,
         same_vehicle: bool,
     ) -> Option<ClientEntityCollisionCandidate> {
         let (width, height) = if is_vanilla_boat_entity_type(self.type_id) {
@@ -5058,18 +5108,36 @@ impl ClientEntity {
             (1.0, 1.0)
         } else if is_vanilla_player_entity_type(self.type_id) {
             (0.6, 1.8)
+        } else if is_vanilla_happy_ghast_entity_type(self.type_id) {
+            (4.0, 4.0)
         } else {
             return None;
         };
         let (x, y, z) = self.position();
-        let bounding_box =
-            ClientEntityDimensions::scalable(width, height).make_bounding_box(Vec3::new(x, y, z));
+        let dimensions = if is_vanilla_happy_ghast_entity_type(self.type_id) && self.baby {
+            ClientEntityDimensions::scalable(width, height).scale(0.2375, 0.2375)
+        } else {
+            ClientEntityDimensions::scalable(width, height)
+        };
+        let bounding_box = dimensions.make_bounding_box(Vec3::new(x, y, z));
+        let can_be_collided_with = if is_vanilla_happy_ghast_entity_type(self.type_id) {
+            !self.baby
+                && self.alive
+                && ((source_type_id == Some(VANILLA_PLAYER_ENTITY_TYPE_ID)
+                    && source_position.is_some_and(|position| position.y >= bounding_box.max_y))
+                    || (source_type_id == Some(VANILLA_HAPPY_GHAST_ENTITY_TYPE_ID)
+                        && self.happy_ghast_is_vehicle)
+                    || self.happy_ghast_still_timeout)
+        } else {
+            !is_vanilla_player_entity_type(self.type_id)
+        };
         Some(ClientEntityCollisionCandidate {
             bounding_box,
             is_source: source_entity_id == Some(self.id),
             spectator: false,
-            can_be_collided_with: !is_vanilla_player_entity_type(self.type_id),
-            is_pushable: is_vanilla_pushable_entity_type(self.type_id),
+            can_be_collided_with,
+            is_pushable: is_vanilla_pushable_entity_type(self.type_id)
+                || (is_vanilla_happy_ghast_entity_type(self.type_id) && self.alive),
             same_vehicle,
         })
     }
