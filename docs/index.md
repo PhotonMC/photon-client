@@ -143,6 +143,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P08.bm-entity-experience-orb-tick — server-conformance Experience Orb client tick](client-world-entity-experience-orb-tick-conformance.md)
 - [P08.bn-entity-primed-tnt-tick — server-conformance Primed TNT free-flight tick](client-world-entity-primed-tnt-tick-conformance.md)
 - [P08.bo-entity-falling-block-tick — server-conformance FallingBlock free-flight tick](client-world-entity-falling-block-tick-conformance.md)
+- [P08.bp-entity-firework-tick — server-conformance Firework Rocket free-flight tick](client-world-entity-firework-tick-conformance.md)
 - [P08.ao — server-conformance Entity living stinger count semantic state](client-world-entity-stinger-count-conformance.md)
 - [P08.au-entity-teleport-motion — server-conformance Teleport delta ve relative motion](client-world-entity-teleport-delta-conformance.md)
 - [P08.e — server-conformance ClientWorld entity ticking eligibility](client-world-entity-ticking-conformance.md)

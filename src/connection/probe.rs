@@ -20,7 +20,8 @@ use crate::world::{
     PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS, PLAYER_RESPAWN_KEEP_ENTITY_DATA, SectionInput,
     VANILLA_ARROW_ENTITY_TYPE_ID, VANILLA_COW_ENTITY_TYPE_ID,
     VANILLA_EXPERIENCE_ORB_ENTITY_TYPE_ID, VANILLA_FALLING_BLOCK_ENTITY_TYPE_ID,
-    VANILLA_PRIMED_TNT_ENTITY_TYPE_ID, VANILLA_SNOWBALL_ENTITY_TYPE_ID,
+    VANILLA_FIREWORK_ROCKET_ENTITY_TYPE_ID, VANILLA_PRIMED_TNT_ENTITY_TYPE_ID,
+    VANILLA_SNOWBALL_ENTITY_TYPE_ID,
 };
 
 use super::protocol::*;
@@ -707,6 +708,22 @@ pub fn connect_and_world_falling_block_tick_probe(
         username,
         timeout,
         PlayProbeConfig::new(ProbeAction::WorldFallingBlockTick)
+            .with_drain_timeout(Duration::from_secs(30)),
+    )
+}
+
+/// Connect to a Java-protocol server and apply one free-flight client-world
+/// tick to a freshly added Firework Rocket entity.
+pub fn connect_and_world_firework_tick_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeConfig::new(ProbeAction::WorldFireworkTick)
             .with_drain_timeout(Duration::from_secs(30)),
     )
 }
@@ -1634,6 +1651,7 @@ enum ProbeAction {
     WorldExperienceOrbTick,
     WorldPrimedTntTick,
     WorldFallingBlockTick,
+    WorldFireworkTick,
     SurvivalSnowballUse,
     SurvivalWaterBucketUseOn,
     SurvivalEmptyBucketPickup,
@@ -2086,6 +2104,9 @@ fn connect_and_probe_with_mode(
                     }
                     ProbeAction::WorldFallingBlockTick => {
                         observation.entity_type_id == VANILLA_FALLING_BLOCK_ENTITY_TYPE_ID
+                    }
+                    ProbeAction::WorldFireworkTick => {
+                        observation.entity_type_id == VANILLA_FIREWORK_ROCKET_ENTITY_TYPE_ID
                     }
                     _ => false,
                 } && trace.world_entity_tick_observations.is_empty();

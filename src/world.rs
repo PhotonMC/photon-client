@@ -46,6 +46,9 @@ const VANILLA_PRIMED_TNT_AIR_FRICTION: f32 = 0.98_f32;
 const VANILLA_PRIMED_TNT_GRAVITY: f64 = 0.04;
 pub(crate) const VANILLA_FALLING_BLOCK_ENTITY_TYPE_ID: i32 = 51;
 const VANILLA_FALLING_BLOCK_GRAVITY: f64 = 0.04;
+pub(crate) const VANILLA_FIREWORK_ROCKET_ENTITY_TYPE_ID: i32 = 53;
+const VANILLA_FIREWORK_ROCKET_HORIZONTAL_ACCELERATION: f64 = 1.15;
+const VANILLA_FIREWORK_ROCKET_VERTICAL_ACCELERATION: f64 = 0.04;
 const VANILLA_SPIDER_VEHICLE_ATTACHMENT_Y: f64 = 0.3125;
 const VANILLA_BOAT_PASSENGER_GEOMETRY: &[(i32, f32, f32)] = &[
     (0, VANILLA_BOAT_RIDE_HEIGHT, 0.0),
@@ -1782,6 +1785,10 @@ impl ClientWorld {
                     entity.no_gravity,
                 )
         });
+        let can_tick_firework = self.entities.get(&entity_id).is_some_and(|entity| {
+            entity.type_id == VANILLA_FIREWORK_ROCKET_ENTITY_TYPE_ID
+                && self.firework_path_is_open(entity.position(), entity.motion())
+        });
         let boat_in_air = boat_is_local_instance_authoritative
             && self
                 .entities
@@ -1826,6 +1833,9 @@ impl ClientWorld {
         }
         if can_tick_falling_block {
             entity.tick_falling_block();
+        }
+        if can_tick_firework {
+            entity.tick_firework();
         }
         if boat_in_air {
             entity.tick_boat_float_in_air();
@@ -2004,6 +2014,33 @@ impl ClientWorld {
                     VANILLA_FALLING_BLOCK_GRAVITY
                 },
             position.2 + motion.2,
+        );
+        let current_block = (
+            position.0.floor() as i32,
+            position.1.floor() as i32,
+            position.2.floor() as i32,
+        );
+        let next_block = (
+            next_position.0.floor() as i32,
+            next_position.1.floor() as i32,
+            next_position.2.floor() as i32,
+        );
+        self.block_state_at(current_block.0, current_block.1, current_block.2)
+            == Some(VANILLA_AIR_BLOCK_STATE_ID)
+            && self.block_state_at(next_block.0, next_block.1, next_block.2)
+                == Some(VANILLA_AIR_BLOCK_STATE_ID)
+    }
+
+    fn firework_path_is_open(&self, position: (f64, f64, f64), motion: (f64, f64, f64)) -> bool {
+        let movement = (
+            motion.0 * VANILLA_FIREWORK_ROCKET_HORIZONTAL_ACCELERATION,
+            motion.1 + VANILLA_FIREWORK_ROCKET_VERTICAL_ACCELERATION,
+            motion.2 * VANILLA_FIREWORK_ROCKET_HORIZONTAL_ACCELERATION,
+        );
+        let next_position = (
+            position.0 + movement.0,
+            position.1 + movement.1,
+            position.2 + movement.2,
         );
         let current_block = (
             position.0.floor() as i32,
@@ -4094,6 +4131,33 @@ impl ClientEntity {
         self.motion_z_bits = motion.2.to_bits();
     }
 
+    fn tick_firework(&mut self) {
+        let current_motion = self.motion();
+        let movement = (
+            current_motion.0 * VANILLA_FIREWORK_ROCKET_HORIZONTAL_ACCELERATION,
+            current_motion.1 + VANILLA_FIREWORK_ROCKET_VERTICAL_ACCELERATION,
+            current_motion.2 * VANILLA_FIREWORK_ROCKET_HORIZONTAL_ACCELERATION,
+        );
+        let current_position = self.position();
+        self.x_bits = (current_position.0 + movement.0).to_bits();
+        self.y_bits = (current_position.1 + movement.1).to_bits();
+        self.z_bits = (current_position.2 + movement.2).to_bits();
+
+        const PI_F32: f32 = f32::from_bits(0x4049_0fdb);
+        let horizontal_distance = (movement.0 * movement.0 + movement.2 * movement.2).sqrt();
+        let target_x_rot = (mth_atan2(movement.1, horizontal_distance) * f64::from(180.0_f32)
+            / f64::from(PI_F32)) as f32;
+        let target_y_rot =
+            (mth_atan2(movement.0, movement.2) * f64::from(180.0_f32) / f64::from(PI_F32)) as f32;
+        self.x_rot_bits =
+            mth_rot_lerp_f32(0.2_f32, f32::from_bits(self.old_x_rot_bits), target_x_rot).to_bits();
+        self.y_rot_bits =
+            mth_rot_lerp_f32(0.2_f32, f32::from_bits(self.old_y_rot_bits), target_y_rot).to_bits();
+        self.motion_x_bits = movement.0.to_bits();
+        self.motion_y_bits = movement.1.to_bits();
+        self.motion_z_bits = movement.2.to_bits();
+    }
+
     fn tick_boat_float_in_air(&mut self) {
         let current_motion = self.motion();
         let vertical_speed = if self.no_gravity {
@@ -4839,13 +4903,15 @@ mod tests {
         SectionInput, VANILLA_ARROW_ENTITY_TYPE_ID, VANILLA_BOAT_PASSENGER_MAX_ROTATION,
         VANILLA_BREEZE_ENTITY_TYPE_ID, VANILLA_COW_ENTITY_TYPE_ID,
         VANILLA_EXPERIENCE_ORB_ENTITY_TYPE_ID, VANILLA_FALLING_BLOCK_ENTITY_TYPE_ID,
-        VANILLA_FALLING_BLOCK_GRAVITY, VANILLA_LIVING_ENTITY_TYPE_IDS,
+        VANILLA_FALLING_BLOCK_GRAVITY, VANILLA_FIREWORK_ROCKET_ENTITY_TYPE_ID,
+        VANILLA_FIREWORK_ROCKET_HORIZONTAL_ACCELERATION,
+        VANILLA_FIREWORK_ROCKET_VERTICAL_ACCELERATION, VANILLA_LIVING_ENTITY_TYPE_IDS,
         VANILLA_PLAYER_ENTITY_TYPE_ID, VANILLA_PRIMED_TNT_AIR_FRICTION,
         VANILLA_PRIMED_TNT_ENTITY_TYPE_ID, VANILLA_PRIMED_TNT_GRAVITY,
         VANILLA_SNOWBALL_ENTITY_TYPE_ID, menu_top_slot_count,
     };
     use crate::binary::{BitSet, Uuid};
-    use crate::math::{mth_cos_f64, mth_sin_f64};
+    use crate::math::{mth_atan2, mth_cos_f64, mth_rot_lerp_f32, mth_sin_f64};
 
     fn section(block_value: i32, biome_value: i32) -> (Vec<i32>, Vec<i32>) {
         let mut blocks = vec![block_value; 4_096];
@@ -8209,6 +8275,61 @@ mod tests {
         );
         assert_eq!(entity.motion(), gravity_motion);
         assert_eq!(entity.rotation(), (10.0, 20.0, 30.0));
+        assert_eq!(entity.tick_count(), 1);
+    }
+
+    #[test]
+    fn ticking_firework_rockets_accelerates_and_rotates_from_free_flight_motion() {
+        let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+        let (blocks, biomes) = section(0, 0);
+        world.replace_chunk(
+            0,
+            0,
+            [SectionInput {
+                non_empty_block_count: 0,
+                fluid_count: 0,
+                block_states: &blocks,
+                biomes: &biomes,
+            }],
+        );
+        assert!(world.apply_entity(EntityInput {
+            entity_id: 37,
+            uuid: Uuid::new(1, 2),
+            type_id: VANILLA_FIREWORK_ROCKET_ENTITY_TYPE_ID,
+            x: 2.0,
+            y: 10.0,
+            z: 2.0,
+            movement: (0.25, 0.5, -0.125),
+            rotation: (10.0, 20.0, 30.0),
+            data: 0,
+        }));
+
+        world.tick();
+
+        let movement = (
+            0.25 * VANILLA_FIREWORK_ROCKET_HORIZONTAL_ACCELERATION,
+            0.5 + VANILLA_FIREWORK_ROCKET_VERTICAL_ACCELERATION,
+            -0.125 * VANILLA_FIREWORK_ROCKET_HORIZONTAL_ACCELERATION,
+        );
+        let horizontal_distance = (movement.0 * movement.0 + movement.2 * movement.2).sqrt();
+        let pi_f32 = f32::from_bits(0x4049_0fdb);
+        let target_x_rotation = (mth_atan2(movement.1, horizontal_distance) * f64::from(180.0_f32)
+            / f64::from(pi_f32)) as f32;
+        let target_y_rotation =
+            (mth_atan2(movement.0, movement.2) * f64::from(180.0_f32) / f64::from(pi_f32)) as f32;
+        let expected_rotation = (
+            mth_rot_lerp_f32(0.2_f32, 10.0, target_y_rotation),
+            mth_rot_lerp_f32(0.2_f32, 20.0, target_x_rotation),
+            30.0,
+        );
+        let entity = world.entity_at(37).expect("firework rocket after tick");
+        assert_eq!(entity.previous_position(), (2.0, 10.0, 2.0));
+        assert_eq!(
+            entity.position(),
+            (2.0 + movement.0, 10.0 + movement.1, 2.0 + movement.2,)
+        );
+        assert_eq!(entity.motion(), movement);
+        assert_eq!(entity.rotation(), expected_rotation);
         assert_eq!(entity.tick_count(), 1);
     }
 
