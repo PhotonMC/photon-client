@@ -3250,6 +3250,8 @@ public final class MathOracle {
                             f64(positionInput, "z"));
                         boolean spectator = entityInput.has("spectator")
                             && entityInput.get("spectator").getAsBoolean();
+                        boolean alive = !entityInput.has("alive")
+                            || entityInput.get("alive").getAsBoolean();
                         boolean collidable = entityInput.has("can_be_collided_with")
                             && entityInput.get("can_be_collided_with").getAsBoolean();
                         boolean sameVehicle = entityInput.has("same_vehicle")
@@ -3259,6 +3261,7 @@ public final class MathOracle {
                             typeId,
                             position,
                             spectator,
+                            alive,
                             collidable,
                             sameVehicle);
                         entityStorage.addEntity(entity);
@@ -3310,6 +3313,8 @@ public final class MathOracle {
                         Vec3 position = vec3(entityInput.getAsJsonObject("position"));
                         boolean spectator = entityInput.has("spectator")
                             && entityInput.get("spectator").getAsBoolean();
+                        boolean alive = !entityInput.has("alive")
+                            || entityInput.get("alive").getAsBoolean();
                         boolean collidable = entityInput.has("can_be_collided_with")
                             && entityInput.get("can_be_collided_with").getAsBoolean();
                         boolean sameVehicle = entityInput.has("same_vehicle")
@@ -3319,6 +3324,7 @@ public final class MathOracle {
                             typeId,
                             position,
                             spectator,
+                            alive,
                             collidable,
                             sameVehicle);
                         entityStorage.addEntity(entity);
@@ -3375,6 +3381,8 @@ public final class MathOracle {
                                 Vec3 position = vec3(entityInput.getAsJsonObject("position"));
                                 boolean spectator = entityInput.has("spectator")
                                     && entityInput.get("spectator").getAsBoolean();
+                                boolean alive = !entityInput.has("alive")
+                                    || entityInput.get("alive").getAsBoolean();
                                 boolean collidable = entityInput.has("can_be_collided_with")
                                     && entityInput.get("can_be_collided_with").getAsBoolean();
                                 boolean sameVehicle = entityInput.has("same_vehicle")
@@ -3384,6 +3392,7 @@ public final class MathOracle {
                                     typeId,
                                     position,
                                     spectator,
+                                    alive,
                                     collidable,
                                     sameVehicle);
                                 entityStorage.addEntity(entity);
@@ -4148,6 +4157,7 @@ public final class MathOracle {
             int typeId,
             Vec3 position,
             boolean spectator,
+            boolean alive,
             boolean collidable,
             boolean sameVehicle
         ) {
@@ -4161,7 +4171,9 @@ public final class MathOracle {
                 case 25, 29, 56, 65, 85, 122, 134
                     -> MinecartCollisionFixtureEntity.create(boundingBox, position);
                 case 112 -> ShulkerCollisionFixtureEntity.create(boundingBox, sameVehicle, position);
-                default -> create(boundingBox, spectator, collidable, sameVehicle, position, typeId == 156);
+                case 156 -> PlayerCollisionFixtureEntity.create(
+                    boundingBox, position, spectator, alive);
+                default -> create(boundingBox, spectator, collidable, sameVehicle, position, false);
             };
             indexEntity(entity, entityId, position);
             return entity;
@@ -4532,16 +4544,27 @@ public final class MathOracle {
 
     private static final class PlayerCollisionFixtureEntity
         extends net.minecraft.server.level.ServerPlayer {
+        private boolean spectator;
+        private boolean alive;
+
         private PlayerCollisionFixtureEntity() {
             super(null, null, null, null);
         }
 
         private static PlayerCollisionFixtureEntity create(AABB boundingBox, Vec3 position) {
+            return create(boundingBox, position, false, true);
+        }
+
+        private static PlayerCollisionFixtureEntity create(
+            AABB boundingBox, Vec3 position, boolean spectator, boolean alive
+        ) {
             try {
                 Unsafe unsafe = unsafeInstance();
                 PlayerCollisionFixtureEntity entity =
                     (PlayerCollisionFixtureEntity)unsafe.allocateInstance(
                         PlayerCollisionFixtureEntity.class);
+                entity.spectator = spectator;
+                entity.alive = alive;
                 entity.setBoundingBox(boundingBox);
                 var field = Entity.class.getDeclaredField("position");
                 unsafe.putObject(entity, unsafe.objectFieldOffset(field), position);
@@ -4553,6 +4576,21 @@ public final class MathOracle {
 
         @Override
         public boolean isPassengerOfSameVehicle(Entity other) {
+            return false;
+        }
+
+        @Override
+        public boolean isAlive() {
+            return this.alive;
+        }
+
+        @Override
+        public boolean isSpectator() {
+            return this.spectator;
+        }
+
+        @Override
+        public boolean onClimbable() {
             return false;
         }
 

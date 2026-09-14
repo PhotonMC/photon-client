@@ -3623,6 +3623,7 @@ impl ClientWorld {
                 pose: ClientEntityPose::Standing,
                 baby: false,
                 alive: true,
+                spectator: false,
                 happy_ghast_still_timeout: false,
                 happy_ghast_is_vehicle: false,
                 ticks_frozen: 0,
@@ -3665,6 +3666,21 @@ impl ClientWorld {
         entity.alive = alive;
         entity.happy_ghast_still_timeout = still_timeout;
         entity.happy_ghast_is_vehicle = is_vehicle;
+        true
+    }
+
+    /// Apply the collision-relevant alive and spectator state of a living entity.
+    pub fn apply_entity_living_collision_state(
+        &mut self,
+        entity_id: i32,
+        alive: bool,
+        spectator: bool,
+    ) -> bool {
+        let Some(entity) = self.entities.get_mut(&entity_id) else {
+            return false;
+        };
+        entity.alive = alive;
+        entity.spectator = spectator;
         true
     }
 
@@ -4522,6 +4538,7 @@ pub struct ClientEntity {
     pose: ClientEntityPose,
     baby: bool,
     alive: bool,
+    spectator: bool,
     happy_ghast_still_timeout: bool,
     happy_ghast_is_vehicle: bool,
     ticks_frozen: i32,
@@ -5140,13 +5157,22 @@ impl ClientEntity {
             is_vanilla_boat_entity_type(self.type_id)
                 || is_vanilla_shulker_entity_type(self.type_id)
         };
+        let is_pushable = if is_vanilla_player_entity_type(self.type_id) {
+            self.alive
+                && !self.spectator
+                && self
+                    .health_bits
+                    .is_none_or(|health| f32::from_bits(health) > 0.0)
+        } else {
+            is_vanilla_pushable_entity_type(self.type_id)
+                || (is_vanilla_happy_ghast_entity_type(self.type_id) && self.alive)
+        };
         Some(ClientEntityCollisionCandidate {
             bounding_box,
             is_source: source_entity_id == Some(self.id),
-            spectator: false,
+            spectator: self.spectator,
             can_be_collided_with,
-            is_pushable: is_vanilla_pushable_entity_type(self.type_id)
-                || (is_vanilla_happy_ghast_entity_type(self.type_id) && self.alive),
+            is_pushable,
             same_vehicle,
         })
     }
@@ -6478,6 +6504,35 @@ mod tests {
                 "boat source should accept minecart type {minecart_type_id}"
             );
         }
+    }
+
+    #[test]
+    fn indexed_player_collision_respects_living_alive_and_spectator_gates() {
+        let add_entity = |world: &mut ClientWorld, entity_id: i32, type_id: i32| {
+            assert!(world.apply_entity(EntityInput {
+                entity_id,
+                uuid: Uuid::new(entity_id as u64, type_id as u64),
+                type_id,
+                x: 0.5,
+                y: 0.0,
+                z: 0.5,
+                movement: (0.0, 0.0, 0.0),
+                rotation: (0.0, 0.0, 0.0),
+                data: 0,
+            }));
+        };
+
+        let mut world = ClientWorld::default();
+        add_entity(&mut world, 7, 0);
+        add_entity(&mut world, 8, VANILLA_PLAYER_ENTITY_TYPE_ID);
+        let test_area = Aabb::new(0.0, 0.0, 0.0, 1.0, 2.0, 1.0);
+
+        assert!(!world.no_entity_collision_for_entity(Some(7), test_area));
+        assert!(world.apply_entity_living_collision_state(8, false, false));
+        assert!(world.no_entity_collision_for_entity(Some(7), test_area));
+        assert!(world.apply_entity_living_collision_state(8, true, true));
+        assert!(world.no_entity_collision_for_entity(Some(7), test_area));
+        assert!(!world.apply_entity_living_collision_state(999, true, false));
     }
 
     #[test]

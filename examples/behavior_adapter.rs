@@ -4535,6 +4535,14 @@ fn shape_result(request: &Value) -> Result<Value, String> {
                             rotation: (0.0, 0.0, 0.0),
                             data: 0,
                         });
+                        world.apply_entity_living_collision_state(
+                            entity_id,
+                            entity.get("alive").and_then(Value::as_bool).unwrap_or(true),
+                            entity
+                                .get("spectator")
+                                .and_then(Value::as_bool)
+                                .unwrap_or(false),
+                        );
                     }
                     let source_entity_id = input
                         .get("source_entity_id")
