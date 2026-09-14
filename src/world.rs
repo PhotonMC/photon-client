@@ -8,7 +8,7 @@ use crate::math::{
 };
 use crate::{
     aabb::Aabb,
-    binary::BitSet,
+    binary::{BitSet, BlockPos},
     direction::Direction,
     shape::{Shapes, VoxelShape},
 };
@@ -1065,6 +1065,13 @@ impl CardinalLightType {
             Self::Nether => "nether",
         }
     }
+}
+
+/// A block collision shape returned in Java's cursor traversal order.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ClientBlockCollision {
+    pub position: BlockPos,
+    pub shape: VoxelShape,
 }
 
 /// The client-side copy of the currently loaded world.
@@ -2279,6 +2286,78 @@ impl ClientWorld {
         section.block_states.get(index).copied()
     }
 
+    /// Collect loaded block collision shapes using Java's `BlockCollisions` traversal.
+    ///
+    /// The caller supplies the local collision shape for each resolved block-state ID.
+    /// Missing chunks, missing shape entries, and empty shapes produce no collision.
+    /// Block-state context rules, entity colliders, and world-border shapes are handled
+    /// by later client-world slices.
+    pub fn collect_block_collision_shapes(
+        &self,
+        bounding_box: Aabb,
+        shapes_by_state: &BTreeMap<i32, VoxelShape>,
+    ) -> Vec<ClientBlockCollision> {
+        let entity_shape = Shapes::create_from_aabb(bounding_box)
+            .expect("ClientWorld collision queries require normalized bounds");
+        let x0 = (bounding_box.min_x - Shapes::EPSILON).floor() as i32 - 1;
+        let x1 = (bounding_box.max_x + Shapes::EPSILON).floor() as i32 + 1;
+        let y0 = (bounding_box.min_y - Shapes::EPSILON).floor() as i32 - 1;
+        let y1 = (bounding_box.max_y + Shapes::EPSILON).floor() as i32 + 1;
+        let z0 = (bounding_box.min_z - Shapes::EPSILON).floor() as i32 - 1;
+        let z1 = (bounding_box.max_z + Shapes::EPSILON).floor() as i32 + 1;
+        let mut collisions = Vec::new();
+
+        // Cursor3D advances x fastest, then y, then z. Its corner cells are skipped.
+        for z in z0..=z1 {
+            for y in y0..=y1 {
+                for x in x0..=x1 {
+                    let cursor_face_type = (x == x0 || x == x1) as u8
+                        + (y == y0 || y == y1) as u8
+                        + (z == z0 || z == z1) as u8;
+                    if cursor_face_type == 3 {
+                        continue;
+                    }
+
+                    let Some(state_id) = self.block_state_at(x, y, z) else {
+                        continue;
+                    };
+                    let Some(local_shape) = shapes_by_state.get(&state_id) else {
+                        continue;
+                    };
+                    let position = BlockPos::new(x, y, z);
+                    let shape = if local_shape.equals_java(&Shapes::block()) {
+                        if !bounding_box.intersects_coords(
+                            f64::from(x),
+                            f64::from(y),
+                            f64::from(z),
+                            f64::from(x.wrapping_add(1)),
+                            f64::from(y.wrapping_add(1)),
+                            f64::from(z.wrapping_add(1)),
+                        ) {
+                            continue;
+                        }
+                        local_shape.move_by_block_pos(position)
+                    } else {
+                        let shape = local_shape.move_by_block_pos(position);
+                        if shape.is_empty()
+                            || !Shapes::join_is_not_empty(
+                                &shape,
+                                &entity_shape,
+                                crate::shape::BooleanOp::And,
+                            )
+                        {
+                            continue;
+                        }
+                        shape
+                    };
+                    collisions.push(ClientBlockCollision { position, shape });
+                }
+            }
+        }
+
+        collisions
+    }
+
     /// Apply a server-verified block-state update to an already loaded section.
     pub(crate) fn update_block_state(&mut self, x: i32, y: i32, z: i32, state_id: i32) -> bool {
         let chunk_key = (x.div_euclid(16), z.div_euclid(16));
@@ -3053,7 +3132,8 @@ impl ClientWorld {
         Some((data[index / 2] >> ((index & 1) * 4)) & 0x0f)
     }
 
-    pub(crate) fn replace_chunk<'a, I>(&mut self, chunk_x: i32, chunk_z: i32, sections: I)
+    /// Replace a loaded chunk with decoded sections in bottom-to-top order.
+    pub fn replace_chunk<'a, I>(&mut self, chunk_x: i32, chunk_z: i32, sections: I)
     where
         I: IntoIterator<Item = SectionInput<'a>>,
     {
@@ -4652,11 +4732,11 @@ struct ClientSection {
     biomes: Vec<i32>,
 }
 
-pub(crate) struct SectionInput<'a> {
-    pub(crate) non_empty_block_count: i16,
-    pub(crate) fluid_count: i16,
-    pub(crate) block_states: &'a [i32],
-    pub(crate) biomes: &'a [i32],
+pub struct SectionInput<'a> {
+    pub non_empty_block_count: i16,
+    pub fluid_count: i16,
+    pub block_states: &'a [i32],
+    pub biomes: &'a [i32],
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -4945,6 +5025,7 @@ mod tests {
     use crate::binary::{BitSet, Uuid};
     use crate::math::{Vec3, mth_atan2, mth_cos_f64, mth_rot_lerp_f32, mth_sin_f64};
     use crate::shape::Shapes;
+    use std::collections::BTreeMap;
 
     fn section(block_value: i32, biome_value: i32) -> (Vec<i32>, Vec<i32>) {
         let mut blocks = vec![block_value; 4_096];
@@ -4991,6 +5072,64 @@ mod tests {
         assert_eq!(
             (no_collision.x, no_collision.y, no_collision.z),
             (1.25, -2.5, 3.75)
+        );
+    }
+
+    #[test]
+    fn block_collision_collection_follows_cursor_order_and_overlap() {
+        let mut blocks = vec![0; 4_096];
+        let set_block = |blocks: &mut [i32], x: usize, y: usize, z: usize, state_id: i32| {
+            blocks[y * 256 + z * 16 + x] = state_id;
+        };
+        set_block(&mut blocks, 0, 0, 0, 1);
+        set_block(&mut blocks, 1, 0, 0, 2);
+        set_block(&mut blocks, 0, 1, 0, 3);
+        set_block(&mut blocks, 0, 0, 1, 99);
+        set_block(&mut blocks, 1, 0, 1, 4);
+
+        let biomes = vec![0; 64];
+        let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+        world.replace_chunk(
+            0,
+            0,
+            [SectionInput {
+                non_empty_block_count: 5,
+                fluid_count: 0,
+                block_states: &blocks,
+                biomes: &biomes,
+            }],
+        );
+        let shapes = BTreeMap::from([
+            (1, Shapes::block()),
+            (2, Shapes::box_shape(0.0, 0.0, 0.0, 1.0, 0.5, 1.0).unwrap()),
+            (3, Shapes::box_shape(0.0, 0.5, 0.0, 1.0, 1.0, 1.0).unwrap()),
+            (4, Shapes::empty()),
+        ]);
+
+        let collisions = world
+            .collect_block_collision_shapes(Aabb::new(0.25, 0.25, 0.25, 1.75, 1.75, 1.75), &shapes);
+        assert_eq!(
+            collisions
+                .iter()
+                .map(|collision| collision.position)
+                .collect::<Vec<_>>(),
+            vec![
+                crate::binary::BlockPos::new(0, 0, 0),
+                crate::binary::BlockPos::new(1, 0, 0),
+                crate::binary::BlockPos::new(0, 1, 0),
+            ]
+        );
+        assert_eq!(
+            collisions[1].shape.to_aabbs(),
+            vec![Aabb::new(1.0, 0.0, 0.0, 2.0, 0.5, 1.0)]
+        );
+        assert!(
+            world
+                .collect_block_collision_shapes(
+                    Aabb::new(2.0, 0.25, 0.25, 3.0, 0.75, 0.75),
+                    &shapes,
+                )
+                .is_empty()
         );
     }
 

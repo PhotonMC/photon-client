@@ -87,6 +87,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P01.c — ChunkPos validity sözleşmesi — client-parity birleşik kayıt](chunkpos-validity-conformance.md)
 - [P05.a — OptionInstance ClampingLazyMaxIntRange sözleşmesi — client-parity birleşik kayıt](clamping-lazy-max-int-range-conformance.md)
 - [P06–P08 — Ölçülebilir istemci giriş ucu — server-conformance birleşik kayıt](client-runtime-conformance.md)
+- [P09.a — ClientWorld blok çarpışma şekli toplama — client-parity birleşik kayıt](client-world-block-collision-conformance.md)
 - [P08.c-block-entity — server-conformance ClientWorld block entity state](client-world-block-entity-conformance.md)
 - [P08.s — server-conformance ClientWorld spawner semantic state](client-world-block-entity-spawner-conformance.md)
 - [P08.c — server-conformance ClientWorld block update uygulaması](client-world-block-update-conformance.md)

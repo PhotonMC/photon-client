@@ -39,10 +39,20 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.util.SmoothDouble;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Input;
+import net.minecraft.world.level.BlockCollisions;
+import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.CollisionGetter;
 import net.minecraft.world.level.block.Rotation;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.SlabBlock;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.SlabType;
 import net.minecraft.world.level.levelgen.PositionalRandomFactory;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
+import net.minecraft.world.level.border.WorldBorder;
+import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.block.state.properties.AttachFace;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
@@ -2931,6 +2941,88 @@ public final class MathOracle {
                 } catch (ReflectiveOperationException error) {
                     throw new IllegalStateException("Entity.collideWithShapes reflection failed", error);
                 }
+            } else if (kind.equals("collect_block_collisions")) {
+                AABB query = box(request.getAsJsonObject("box"));
+                var states = new java.util.HashMap<String, BlockState>();
+                for (var entry : request.getAsJsonArray("placements")) {
+                    JsonObject placement = entry.getAsJsonObject();
+                    int x = placement.get("x").getAsInt();
+                    int y = placement.get("y").getAsInt();
+                    int z = placement.get("z").getAsInt();
+                    BlockState state = switch (placement.get("kind").getAsString()) {
+                        case "air" -> Blocks.AIR.defaultBlockState();
+                        case "stone" -> Blocks.STONE.defaultBlockState();
+                        case "slab_bottom" -> Blocks.OAK_SLAB.defaultBlockState()
+                            .setValue(SlabBlock.TYPE, SlabType.BOTTOM);
+                        case "slab_top" -> Blocks.OAK_SLAB.defaultBlockState()
+                            .setValue(SlabBlock.TYPE, SlabType.TOP);
+                        case "slab_double" -> Blocks.OAK_SLAB.defaultBlockState()
+                            .setValue(SlabBlock.TYPE, SlabType.DOUBLE);
+                        default -> throw new IllegalArgumentException("Unknown collision fixture block");
+                    };
+                    states.put(x + "," + y + "," + z, state);
+                }
+                CollisionGetter collisionGetter = new CollisionGetter() {
+                    private String key(BlockPos pos) {
+                        return pos.getX() + "," + pos.getY() + "," + pos.getZ();
+                    }
+
+                    @Override
+                    public WorldBorder getWorldBorder() {
+                        return null;
+                    }
+
+                    @Override
+                    public BlockGetter getChunkForCollisions(int chunkX, int chunkZ) {
+                        return this;
+                    }
+
+                    @Override
+                    public java.util.List<VoxelShape> getEntityCollisions(Entity source, AABB testArea) {
+                        return java.util.List.of();
+                    }
+
+                    @Override
+                    public BlockEntity getBlockEntity(BlockPos pos) {
+                        return null;
+                    }
+
+                    @Override
+                    public BlockState getBlockState(BlockPos pos) {
+                        return states.getOrDefault(key(pos), Blocks.AIR.defaultBlockState());
+                    }
+
+                    @Override
+                    public FluidState getFluidState(BlockPos pos) {
+                        return getBlockState(pos).getFluidState();
+                    }
+
+                    @Override
+                    public int getHeight() {
+                        return 384;
+                    }
+
+                    @Override
+                    public int getMinY() {
+                        return -64;
+                    }
+                };
+                var collisions = new JsonArray();
+                var iterator = new BlockCollisions<JsonObject>(
+                    collisionGetter,
+                    (Entity)null,
+                    query,
+                    false,
+                    (pos, shape) -> {
+                        var collision = new JsonObject();
+                        collision.add("position", snapshot(pos));
+                        collision.add("shape", snapshot(shape));
+                        return collision;
+                    });
+                while (iterator.hasNext()) {
+                    collisions.add(iterator.next());
+                }
+                result.add("collisions", collisions);
             } else if (kind.equals("clip")) {
                 VoxelShape shape = voxelShape(request.getAsJsonObject("shape"));
                 var events = new JsonArray();

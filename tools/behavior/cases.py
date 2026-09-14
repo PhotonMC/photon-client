@@ -3830,6 +3830,49 @@ def math_cases():
            "kind": "collide_movement", "movement": vector_bits(2, -2, 0),
            "moving": box_bits(0.25, 2, 0.25, 0.75, 3, 0.75),
            "shapes": [box_bits(-1, 0, -1, 2, 1, 2), box_bits(1, 1, -1, 2, 4, 2)]}
+    yield {"case_id": "shape/collect-block-collisions/empty", "family": "math",
+           "operation": "shape", "kind": "collect_block_collisions",
+           "box": box_bits(-0.25, -0.25, -0.25, 0.25, 0.25, 0.25),
+           "placements": [], "shape_states": []}
+    yield {"case_id": "shape/collect-block-collisions/full-and-slabs", "family": "math",
+           "operation": "shape", "kind": "collect_block_collisions",
+           "box": box_bits(0.25, 0.25, 0.25, 2.75, 1.75, 1.75),
+           "placements": [
+               {"x": 0, "y": 0, "z": 0, "state_id": 1, "kind": "stone"},
+               {"x": 1, "y": 0, "z": 0, "state_id": 2, "kind": "slab_bottom"},
+               {"x": 1, "y": 1, "z": 0, "state_id": 3, "kind": "slab_top"},
+               {"x": 2, "y": 0, "z": 0, "state_id": 4, "kind": "slab_double"},
+           ],
+           "shape_states": [
+               {"state_id": 1, "shape": box_bits(0, 0, 0, 1, 1, 1)},
+               {"state_id": 2, "shape": box_bits(0, 0, 0, 1, 0.5, 1)},
+               {"state_id": 3, "shape": box_bits(0, 0.5, 0, 1, 1, 1)},
+               {"state_id": 4, "shape": box_bits(0, 0, 0, 1, 1, 1)},
+           ]}
+    yield {"case_id": "shape/collect-block-collisions/touching-faces", "family": "math",
+           "operation": "shape", "kind": "collect_block_collisions",
+           "box": box_bits(0, 0, 0, 1, 1, 1),
+           "placements": [
+               {"x": 0, "y": 0, "z": 0, "state_id": 2, "kind": "slab_bottom"},
+               {"x": 1, "y": 0, "z": 0, "state_id": 1, "kind": "stone"},
+               {"x": 0, "y": 1, "z": 0, "state_id": 1, "kind": "stone"},
+               {"x": 0, "y": 0, "z": 1, "state_id": 1, "kind": "stone"},
+           ],
+           "shape_states": [
+               {"state_id": 1, "shape": box_bits(0, 0, 0, 1, 1, 1)},
+               {"state_id": 2, "shape": box_bits(0, 0, 0, 1, 0.5, 1)},
+           ]}
+    yield {"case_id": "shape/collect-block-collisions/chunk-boundary", "family": "math",
+           "operation": "shape", "kind": "collect_block_collisions",
+           "box": box_bits(14.25, 0.25, 0.25, 17.75, 1.25, 1.25),
+           "placements": [
+               {"x": 15, "y": 0, "z": 0, "state_id": 1, "kind": "stone"},
+               {"x": 16, "y": 0, "z": 0, "state_id": 3, "kind": "slab_top"},
+           ],
+           "shape_states": [
+               {"state_id": 1, "shape": box_bits(0, 0, 0, 1, 1, 1)},
+               {"state_id": 3, "shape": box_bits(0, 0.5, 0, 1, 1, 1)},
+           ]}
     yield {"case_id": "random/fork/basic", "family": "math", "operation": "random_fork",
            "seed": "42", "prefix_steps": [],
            "child_steps": [{"op": "nextInt"}, {"op": "nextDouble"}, {"op": "nextLong"}],

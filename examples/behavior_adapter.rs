@@ -2,6 +2,7 @@
 
 use serde_json::{Value, json};
 use std::cell::RefCell;
+use std::collections::BTreeMap;
 use std::io::{self, BufRead, Write};
 use std::rc::Rc;
 use voxel_client::aabb::{Aabb, AabbBuilder, AabbBuilderError, BlockHitResult, BoundingBox};
@@ -59,7 +60,7 @@ use voxel_client::tags::{ClientboundUpdateTagsPacket, RegistryTags, TagEntry};
 use voxel_client::timer::Timer;
 use voxel_client::utf8;
 use voxel_client::wire::{self, ReadError};
-use voxel_client::world::collide_entity_movement;
+use voxel_client::world::{ClientWorld, DimensionBounds, SectionInput, collide_entity_movement};
 
 fn string<'a>(request: &'a Value, name: &str) -> Result<&'a str, String> {
     request[name]
@@ -4185,6 +4186,69 @@ fn shape_result(request: &Value) -> Result<Value, String> {
                 .collect::<Result<Vec<_>, _>>()?;
             Ok(json!({
                 "movement": vec3_snapshot(collide_entity_movement(movement, moving, &shapes)),
+            }))
+        }
+        "collect_block_collisions" => {
+            let bounding_box = aabb_box(request.get("box").ok_or("box must be an object")?)?;
+            let mut shapes_by_state = BTreeMap::new();
+            for entry in request
+                .get("shape_states")
+                .ok_or("shape_states must be an array")?
+                .as_array()
+                .ok_or("shape_states must be an array")?
+            {
+                let state_id = i32_field(entry, "state_id")?;
+                let shape = shape_box(entry.get("shape").ok_or("shape must be an object")?)?;
+                shapes_by_state.insert(state_id, shape);
+            }
+
+            let mut chunk_blocks = BTreeMap::new();
+            for entry in request
+                .get("placements")
+                .ok_or("placements must be an array")?
+                .as_array()
+                .ok_or("placements must be an array")?
+            {
+                let x = i32_field(entry, "x")?;
+                let y = i32_field(entry, "y")?;
+                let z = i32_field(entry, "z")?;
+                if !(0..16).contains(&y) {
+                    return Err("collect_block_collisions fixture Y must be in 0..16".into());
+                }
+                let state_id = i32_field(entry, "state_id")?;
+                let blocks = chunk_blocks
+                    .entry((x.div_euclid(16), z.div_euclid(16)))
+                    .or_insert_with(|| vec![0; 4_096]);
+                let local_x = x.rem_euclid(16) as usize;
+                let local_y = y as usize;
+                let local_z = z.rem_euclid(16) as usize;
+                blocks[local_y * 256 + local_z * 16 + local_x] = state_id;
+            }
+
+            let biomes = vec![0; 64];
+            let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+            for ((chunk_x, chunk_z), blocks) in chunk_blocks {
+                world.replace_chunk(
+                    chunk_x,
+                    chunk_z,
+                    [SectionInput {
+                        non_empty_block_count: 0,
+                        fluid_count: 0,
+                        block_states: &blocks,
+                        biomes: &biomes,
+                    }],
+                );
+            }
+
+            let collisions = world.collect_block_collision_shapes(bounding_box, &shapes_by_state);
+            Ok(json!({
+                "collisions": collisions
+                    .iter()
+                    .map(|collision| json!({
+                        "position": blockpos_snapshot(collision.position),
+                        "shape": shape_snapshot(&collision.shape),
+                    }))
+                    .collect::<Vec<_>>(),
             }))
         }
         "clip" => {
