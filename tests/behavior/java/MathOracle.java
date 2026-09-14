@@ -2941,6 +2941,30 @@ public final class MathOracle {
                 } catch (ReflectiveOperationException error) {
                     throw new IllegalStateException("Entity.collideWithShapes reflection failed", error);
                 }
+            } else if (kind.equals("collect_step_up_heights")) {
+                AABB moving = box(request.getAsJsonObject("moving"));
+                var shapes = new java.util.ArrayList<VoxelShape>();
+                for (var entry : request.getAsJsonArray("shapes")) {
+                    shapes.add(voxelShape(entry.getAsJsonObject()));
+                }
+                try {
+                    var method = Entity.class.getDeclaredMethod(
+                        "collectCandidateStepUpHeights", AABB.class, java.util.List.class, float.class, float.class);
+                    method.setAccessible(true);
+                    var candidates = (float[]) method.invoke(
+                        null,
+                        moving,
+                        shapes,
+                        Oracle.f32(request, "max_step_height"),
+                        Oracle.f32(request, "step_height_to_skip"));
+                    var values = new JsonArray();
+                    for (float candidate : candidates) {
+                        values.add(Oracle.bits(candidate));
+                    }
+                    result.add("candidates", values);
+                } catch (ReflectiveOperationException error) {
+                    throw new IllegalStateException("Entity.collectCandidateStepUpHeights reflection failed", error);
+                }
             } else if (kind.equals("collect_block_collisions")) {
                 AABB query = box(request.getAsJsonObject("box"));
                 var states = new java.util.HashMap<String, BlockState>();

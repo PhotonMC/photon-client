@@ -3873,6 +3873,36 @@ def math_cases():
                {"state_id": 1, "shape": box_bits(0, 0, 0, 1, 1, 1)},
                {"state_id": 3, "shape": box_bits(0, 0.5, 0, 1, 1, 1)},
            ]}
+    yield {"case_id": "shape/step-up-candidates/empty", "family": "math",
+           "operation": "shape", "kind": "collect_step_up_heights",
+           "moving": box_bits(0, 2, 0, 1, 3, 1), "max_step_height": float_bits(0.6),
+           "step_height_to_skip": float_bits(0.0), "shapes": []}
+    yield {"case_id": "shape/step-up-candidates/sorted-unique", "family": "math",
+           "operation": "shape", "kind": "collect_step_up_heights",
+           "moving": box_bits(0, 2, 0, 1, 3, 1), "max_step_height": float_bits(0.75),
+           "step_height_to_skip": float_bits(-1.0),
+           "shapes": [box_bits(0, 2.5, 0, 1, 2.75, 1),
+                      box_bits(0, 2.0, 0, 1, 2.5, 1),
+                      box_bits(0, 2.25, 0, 1, 2.5, 1)]}
+    yield {"case_id": "shape/step-up-candidates/negative-skip", "family": "math",
+           "operation": "shape", "kind": "collect_step_up_heights",
+           "moving": box_bits(0, 10, 0, 1, 11, 1), "max_step_height": float_bits(0.5),
+           "step_height_to_skip": float_bits(0.25),
+           "shapes": [box_bits(0, 9, 0, 1, 10.25, 1),
+                      box_bits(0, 10.125, 0, 1, 10.5, 1),
+                      box_bits(0, 10.375, 0, 1, 11, 1)]}
+    yield {"case_id": "shape/step-up-candidates/zero-skipped-and-max-break", "family": "math",
+           "operation": "shape", "kind": "collect_step_up_heights",
+           "moving": box_bits(0, 0, 0, 1, 1, 1), "max_step_height": float_bits(0.5),
+           "step_height_to_skip": float_bits(0.0),
+           "shapes": [box_bits(0, 0, 0, 1, 0.75, 1),
+                      box_bits(0, 0.25, 0, 1, 1, 1)]}
+    yield {"case_id": "shape/step-up-candidates/signed-zero-sort", "family": "math",
+           "operation": "shape", "kind": "collect_step_up_heights",
+           "moving": box_bits(0, 0, 0, 1, 3, 1), "max_step_height": float_bits(2.0),
+           "step_height_to_skip": float_bits(3.0),
+           "shapes": [box_bits(0, -0.0, 0, 1, 2, 1),
+                      box_bits(0, 0.0, 0, 1, 2, 1)]}
     yield {"case_id": "random/fork/basic", "family": "math", "operation": "random_fork",
            "seed": "42", "prefix_steps": [],
            "child_steps": [{"op": "nextInt"}, {"op": "nextDouble"}, {"op": "nextLong"}],

@@ -9,7 +9,7 @@ use crate::math::{
 use crate::{
     aabb::Aabb,
     binary::{BitSet, BlockPos},
-    direction::Direction,
+    direction::{Axis, Direction},
     shape::{Shapes, VoxelShape},
 };
 
@@ -37,6 +37,60 @@ pub fn collide_entity_movement(movement: Vec3, bounding_box: Aabb, shapes: &[Vox
         }
     }
     resolved_movement
+}
+
+fn java_float_compare(first: &f32, second: &f32) -> std::cmp::Ordering {
+    match first.partial_cmp(second) {
+        Some(std::cmp::Ordering::Less) => std::cmp::Ordering::Less,
+        Some(std::cmp::Ordering::Greater) => std::cmp::Ordering::Greater,
+        _ => {
+            let first_bits = if first.is_nan() {
+                0x7fc0_0000_i32
+            } else {
+                first.to_bits() as i32
+            };
+            let second_bits = if second.is_nan() {
+                0x7fc0_0000_i32
+            } else {
+                second.to_bits() as i32
+            };
+            first_bits.cmp(&second_bits)
+        }
+    }
+}
+
+/// Collect the sorted step-up height candidates used by Java entity movement.
+///
+/// The caller supplies the world/entity collider shapes already in world
+/// coordinates. Candidate heights are relative to the moving box's minimum Y;
+/// raw f32 bits are used for set membership just like Java's FloatArraySet.
+pub fn collect_candidate_step_up_heights(
+    bounding_box: Aabb,
+    colliders: &[VoxelShape],
+    max_step_height: f32,
+    step_height_to_skip: f32,
+) -> Vec<f32> {
+    let mut candidates = Vec::with_capacity(4);
+    for collider in colliders {
+        for &coord in collider.coords(Axis::Y) {
+            let relative_coord = (coord - bounding_box.min_y) as f32;
+            if relative_coord.partial_cmp(&0.0) != Some(std::cmp::Ordering::Less)
+                && relative_coord != step_height_to_skip
+            {
+                if relative_coord > max_step_height {
+                    break;
+                }
+                if !candidates
+                    .iter()
+                    .any(|candidate: &f32| candidate.to_bits() == relative_coord.to_bits())
+                {
+                    candidates.push(relative_coord);
+                }
+            }
+        }
+    }
+    candidates.sort_unstable_by(java_float_compare);
+    candidates
 }
 
 pub(crate) const PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS: u8 = 1;
@@ -5019,7 +5073,8 @@ mod tests {
         VANILLA_FIREWORK_ROCKET_VERTICAL_ACCELERATION, VANILLA_LIVING_ENTITY_TYPE_IDS,
         VANILLA_PLAYER_ENTITY_TYPE_ID, VANILLA_PRIMED_TNT_AIR_FRICTION,
         VANILLA_PRIMED_TNT_ENTITY_TYPE_ID, VANILLA_PRIMED_TNT_GRAVITY,
-        VANILLA_SNOWBALL_ENTITY_TYPE_ID, collide_entity_movement, menu_top_slot_count,
+        VANILLA_SNOWBALL_ENTITY_TYPE_ID, collect_candidate_step_up_heights,
+        collide_entity_movement, menu_top_slot_count,
     };
     use crate::aabb::Aabb;
     use crate::binary::{BitSet, Uuid};
@@ -5072,6 +5127,53 @@ mod tests {
         assert_eq!(
             (no_collision.x, no_collision.y, no_collision.z),
             (1.25, -2.5, 3.75)
+        );
+    }
+
+    #[test]
+    fn candidate_step_up_heights_follow_java_filter_and_sort_order() {
+        let colliders = [
+            Shapes::box_shape(0.0, 2.5, 0.0, 1.0, 2.75, 1.0).unwrap(),
+            Shapes::box_shape(0.0, 2.0, 0.0, 1.0, 2.5, 1.0).unwrap(),
+            Shapes::box_shape(0.0, 2.25, 0.0, 1.0, 2.5, 1.0).unwrap(),
+        ];
+        let candidates = collect_candidate_step_up_heights(
+            Aabb::new(0.0, 2.0, 0.0, 1.0, 3.0, 1.0),
+            &colliders,
+            0.75,
+            -1.0,
+        );
+        assert_eq!(
+            candidates
+                .iter()
+                .map(|value| value.to_bits())
+                .collect::<Vec<_>>(),
+            vec![0.0_f32, 0.25, 0.5, 0.75]
+                .into_iter()
+                .map(f32::to_bits)
+                .collect::<Vec<_>>()
+        );
+
+        let filtered = [
+            Shapes::box_shape(0.0, 9.0, 0.0, 1.0, 10.25, 1.0).unwrap(),
+            Shapes::box_shape(0.0, 10.125, 0.0, 1.0, 10.5, 1.0).unwrap(),
+            Shapes::box_shape(0.0, 10.375, 0.0, 1.0, 11.0, 1.0).unwrap(),
+        ];
+        let candidates = collect_candidate_step_up_heights(
+            Aabb::new(0.0, 10.0, 0.0, 1.0, 11.0, 1.0),
+            &filtered,
+            0.5,
+            0.25,
+        );
+        assert_eq!(
+            candidates
+                .iter()
+                .map(|value| value.to_bits())
+                .collect::<Vec<_>>(),
+            vec![0.125_f32, 0.375, 0.5]
+                .into_iter()
+                .map(f32::to_bits)
+                .collect::<Vec<_>>()
         );
     }
 

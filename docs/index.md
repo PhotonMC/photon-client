@@ -165,6 +165,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P08.m — server-conformance LocalPlayer inventory/container state'i](client-world-player-inventory-conformance.md)
 - [P08.h — server-conformance LocalPlayer yeniden kurulumu ve `dataToKeep`](client-world-player-respawn-conformance.md)
 - [P08.a/b — server-conformance ClientWorld chunk kopyası ve section cache](client-world-state-conformance.md)
+- [P09.c — Entity step-up aday yükseklikleri — client-parity birleşik kayıt](client-world-step-up-candidates-conformance.md)
 - [P08.t — server-conformance ClientWorld tick sayaçları ve ticking uygunluğu](client-world-tick-conformance.md)
 - [P06.d — Ortak ping/pong ve keep-alive paket sözleşmesi — client-parity birleşik kayıt](common-packet-conformance.md)
 - [P07 — ClientInformation ve configuration unit packet sözleşmesi — client-parity birleşik kayıt](configuration-client-information-conformance.md)

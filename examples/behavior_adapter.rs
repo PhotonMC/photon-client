@@ -60,7 +60,10 @@ use voxel_client::tags::{ClientboundUpdateTagsPacket, RegistryTags, TagEntry};
 use voxel_client::timer::Timer;
 use voxel_client::utf8;
 use voxel_client::wire::{self, ReadError};
-use voxel_client::world::{ClientWorld, DimensionBounds, SectionInput, collide_entity_movement};
+use voxel_client::world::{
+    ClientWorld, DimensionBounds, SectionInput, collect_candidate_step_up_heights,
+    collide_entity_movement,
+};
 
 fn string<'a>(request: &'a Value, name: &str) -> Result<&'a str, String> {
     request[name]
@@ -4186,6 +4189,29 @@ fn shape_result(request: &Value) -> Result<Value, String> {
                 .collect::<Result<Vec<_>, _>>()?;
             Ok(json!({
                 "movement": vec3_snapshot(collide_entity_movement(movement, moving, &shapes)),
+            }))
+        }
+        "collect_step_up_heights" => {
+            let moving = aabb_box(request.get("moving").ok_or("moving must be an object")?)?;
+            let shapes = request
+                .get("shapes")
+                .ok_or("shapes must be an array")?
+                .as_array()
+                .ok_or("shapes must be an array")?
+                .iter()
+                .map(shape_box)
+                .collect::<Result<Vec<_>, _>>()?;
+            let candidates = collect_candidate_step_up_heights(
+                moving,
+                &shapes,
+                f32_field(request, "max_step_height")?,
+                f32_field(request, "step_height_to_skip")?,
+            );
+            Ok(json!({
+                "candidates": candidates
+                    .into_iter()
+                    .map(|value| format!("{:08x}", value.to_bits()))
+                    .collect::<Vec<_>>(),
             }))
         }
         "collect_block_collisions" => {
