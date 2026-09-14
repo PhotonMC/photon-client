@@ -52,8 +52,10 @@ olarak taşır. `vanilla_boat_max_passengers` normal ve chest boat ailelerinin
 kapasitesini ayırır. Rotation clamp çağrısı hem seat geometry'si olmayan
 Animal passenger fallback'inde hem bilinen passenger konum yolunda çalışır.
 `ClientEntity`, Player ve Animal için living head/body state'ini günceller;
-generic Entity passenger'da mevcut no-op davranışı korur. Bu kayıtta Animal
-vehicle attachment konumu henüz uygulanmaz.
+generic Entity passenger'da mevcut no-op davranışı korur. Animal vehicle
+attachment ve two-passenger seat offset dalı [P08.bd kaydında](client-world-entity-passenger-animal-position-conformance.md)
+ayrı olarak doğrulanmıştır; bu kaydın canlı rotation çıktısı, o konum dalı
+uygulanmadan önce alınmış tarihsel kayıttır.
 
 `passenger_tick_applies_animal_rotation_offset_by_entity_parity_at_capacity`
 tek parametrik testte çift/tek entity ID'lerinin `90/270` dallarını iki
@@ -115,11 +117,11 @@ sayılmaz.
 
 ## Açık kapsam
 
-Animal passenger vehicle attachment noktaları ve iki passenger'da
-`AbstractBoat.getPassengerAttachmentPoint` içindeki `+0.2F` offset'i, farklı
-Animal attachment vector'ları, nonzero `deltaRotation`, `onPassengerTurned`,
-diğer living türleri, collision/dismount, render ve Java istemcisiyle
-`client-parity` karşılaştırması açık kalır. Seat geometry [P08.az kaydında](client-world-entity-passenger-boat-family-conformance.md),
+Animal'ın kendi passenger taşıdığı özel attachment vector'ları, nonzero
+`deltaRotation`, `onPassengerTurned`, diğer living türleri, collision/dismount,
+render ve Java istemcisiyle `client-parity` karşılaştırması açık kalır. Animal
+vehicle attachment ve seat offset [P08.bd kaydında](client-world-entity-passenger-animal-position-conformance.md),
+seat geometry [P08.az kaydında](client-world-entity-passenger-boat-family-conformance.md),
 genel clamp [P08.ba kaydında](client-world-entity-passenger-rotation-conformance.md)
 ve Breeze istisnası [P08.bb kaydında](client-world-entity-passenger-boat-turn-exemption-conformance.md)
 izlenir.

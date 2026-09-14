@@ -1495,6 +1495,7 @@ impl ClientWorld {
         let passenger_vehicle_attachment_y = match passenger_type_id {
             VANILLA_PLAYER_ENTITY_TYPE_ID => VANILLA_PLAYER_VEHICLE_ATTACHMENT_Y,
             VANILLA_SNOWBALL_ENTITY_TYPE_ID => 0.0,
+            _ if vanilla_passenger_is_animal(passenger_type_id) => 0.0,
             _ => {
                 self.clamp_entity_passenger_rotation(vehicle_id, passenger_id);
                 return;
@@ -1534,7 +1535,17 @@ impl ClientWorld {
         };
 
         let passenger_z_offset = if passenger_count > 1 {
-            if passenger_index == 0 { 0.2 } else { -0.6 }
+            let base_offset = if passenger_index == 0 {
+                0.2_f32
+            } else {
+                -0.6_f32
+            };
+            let animal_offset = if vanilla_passenger_is_animal(passenger_type_id) {
+                0.2_f32
+            } else {
+                0.0_f32
+            };
+            f64::from(base_offset + animal_offset)
         } else {
             single_passenger_z_offset
         };
@@ -5324,6 +5335,48 @@ mod tests {
             assert_eq!(passenger.body_y_rotation(), expected_offset);
             assert_eq!(passenger.previous_body_y_rotation(), 170.0);
         }
+    }
+
+    #[test]
+    fn passenger_tick_positions_animal_on_full_boat_seat_offset() {
+        let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+        let (blocks, biomes) = section(0, 0);
+        world.replace_chunk(
+            0,
+            0,
+            [SectionInput {
+                non_empty_block_count: 0,
+                fluid_count: 0,
+                block_states: &blocks,
+                biomes: &biomes,
+            }],
+        );
+        for (entity_id, type_id, position) in [
+            (37, 89, (2.0, 2.0, 2.0)),
+            (38, VANILLA_COW_ENTITY_TYPE_ID, (2.0, 12.0, 2.0)),
+            (41, VANILLA_SNOWBALL_ENTITY_TYPE_ID, (2.0, 12.0, 2.0)),
+        ] {
+            assert!(world.apply_entity(EntityInput {
+                entity_id,
+                uuid: Uuid::new(entity_id as u64, 0),
+                type_id,
+                x: position.0,
+                y: position.1,
+                z: position.2,
+                movement: (0.0, 0.0, 0.0),
+                rotation: (0.0, 0.0, 0.0),
+                data: 0,
+            }));
+        }
+        assert!(world.apply_entity_passengers(37, &[38, 41]));
+
+        world.tick();
+
+        let passenger = world.entity_at(38).expect("Cow passenger");
+        assert_eq!(
+            passenger.position(),
+            (2.0, 2.1875, 2.0 + f64::from(0.2_f32 + 0.2_f32))
+        );
     }
 
     #[test]

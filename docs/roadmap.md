@@ -105,8 +105,9 @@ ve teleport delta/relative motion [P08.au kaydında](client-world-entity-telepor
 [P08.ay kaydında](client-world-entity-passenger-player-conformance.md) ve chest boat/raft geometry
 [P08.az kaydında](client-world-entity-passenger-boat-family-conformance.md) ve boat passenger rotation clamp
 [P08.ba kaydında](client-world-entity-passenger-rotation-conformance.md) ve Breeze `CAN_TURN_IN_BOATS` istisnası
-[P08.bb kaydında](client-world-entity-passenger-boat-turn-exemption-conformance.md) ve Animal passenger rotation offset'i
-[P08.bc kaydında](client-world-entity-passenger-animal-rotation-conformance.md) `server-conformance` olarak ilerletilmiştir; P08 `client-parity` ile kapanmadan
+[P08.bb kaydında](client-world-entity-passenger-boat-turn-exemption-conformance.md), Animal passenger rotation offset'i
+[P08.bc kaydında](client-world-entity-passenger-animal-rotation-conformance.md) ve Animal passenger vehicle attachment/seat offset'i
+[P08.bd kaydında](client-world-entity-passenger-animal-position-conformance.md) `server-conformance` olarak ilerletilmiştir; P08 `client-parity` ile kapanmadan
 bu bağımlılıklar açılmaz.
 
 P12/P13 altında yeni item component varyantı açılmaz; gerekçe ve bağlayıcı

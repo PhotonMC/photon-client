@@ -111,6 +111,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P08.aj — server-conformance Entity mob flags semantic state](client-world-entity-mob-flags-conformance.md)
 - [P08.e-entity-motion — server-conformance ClientWorld entity motion state](client-world-entity-motion-conformance.md)
 - [P08.ab — server-conformance Entity no-gravity semantic state](client-world-entity-no-gravity-conformance.md)
+- [P08.bd-entity-passenger-animal-position — server-conformance Animal passenger `positionRider` seat attachment](client-world-entity-passenger-animal-position-conformance.md)
 - [P08.bc-entity-passenger-animal-rotation — server-conformance Boat `Animal` passenger rotation offset](client-world-entity-passenger-animal-rotation-conformance.md)
 - [P08.az-entity-passenger-boat-family — server-conformance Chest boat ve raft `positionRider`](client-world-entity-passenger-boat-family-conformance.md)
 - [P08.bb-entity-passenger-boat-turn-exemption — server-conformance Breeze `CAN_TURN_IN_BOATS`](client-world-entity-passenger-boat-turn-exemption-conformance.md)
