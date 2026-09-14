@@ -13,6 +13,7 @@ pub(crate) const PLAYER_RESPAWN_KEEP_ENTITY_DATA: u8 = 2;
 const VANILLA_PLAYER_ENTITY_TYPE_ID: i32 = 156;
 const VANILLA_BREEZE_ENTITY_TYPE_ID: i32 = 17;
 const VANILLA_SPIDER_ENTITY_TYPE_ID: i32 = 124;
+const VANILLA_ZOMBIE_ENTITY_TYPE_ID: i32 = 151;
 pub(crate) const VANILLA_COW_ENTITY_TYPE_ID: i32 = 30;
 pub(crate) const VANILLA_SNOWBALL_ENTITY_TYPE_ID: i32 = 120;
 const VANILLA_LIVING_ENTITY_TYPE_IDS: &[i32] = &[
@@ -111,6 +112,7 @@ const ENTITY_ARROW_COUNT_DATA_ID: u8 = 12;
 const ENTITY_STINGER_COUNT_DATA_ID: u8 = 13;
 const ENTITY_SLEEPING_POS_DATA_ID: u8 = 14;
 const ENTITY_MOB_FLAGS_DATA_ID: u8 = 15;
+const VANILLA_ZOMBIE_BABY_DATA_ID: u8 = 16;
 const ENTITY_DATA_SERIALIZER_BYTE_ID: i32 = 0;
 const ENTITY_DATA_SERIALIZER_INT_ID: i32 = 1;
 const ENTITY_DATA_SERIALIZER_FLOAT_ID: i32 = 3;
@@ -281,10 +283,11 @@ fn vanilla_passenger_is_living(passenger_type_id: i32) -> bool {
     VANILLA_LIVING_ENTITY_TYPE_IDS.contains(&passenger_type_id)
 }
 
-fn vanilla_passenger_vehicle_attachment_y(passenger_type_id: i32) -> f64 {
+fn vanilla_passenger_vehicle_attachment_y(passenger_type_id: i32, is_baby: bool) -> f64 {
     match passenger_type_id {
         VANILLA_PLAYER_ENTITY_TYPE_ID => VANILLA_PLAYER_VEHICLE_ATTACHMENT_Y,
         VANILLA_SPIDER_ENTITY_TYPE_ID => VANILLA_SPIDER_VEHICLE_ATTACHMENT_Y,
+        VANILLA_ZOMBIE_ENTITY_TYPE_ID if is_baby => 0.1875,
         _ => 0.0,
     }
 }
@@ -533,6 +536,10 @@ fn stinger_count_from_metadata(metadata: &[u8]) -> Option<i32> {
 
 fn effect_ambience_from_metadata(metadata: &[u8]) -> Option<bool> {
     metadata_boolean_value(metadata, ENTITY_EFFECT_AMBIENCE_DATA_ID)
+}
+
+fn zombie_baby_from_metadata(metadata: &[u8]) -> Option<bool> {
+    metadata_boolean_value(metadata, VANILLA_ZOMBIE_BABY_DATA_ID)
 }
 
 fn effect_particle_type_ids_from_metadata(metadata: &[u8]) -> Option<Vec<i32>> {
@@ -1598,8 +1605,12 @@ impl ClientWorld {
         else {
             return;
         };
+        let passenger_is_baby = self
+            .entities
+            .get(&passenger_id)
+            .is_some_and(|passenger| passenger.baby);
         let passenger_vehicle_attachment_y =
-            vanilla_passenger_vehicle_attachment_y(passenger_type_id);
+            vanilla_passenger_vehicle_attachment_y(passenger_type_id, passenger_is_baby);
 
         let passenger_z_offset = if passenger_count > 1 {
             let base_offset = if passenger_index == 0 {
@@ -2079,6 +2090,7 @@ impl ClientWorld {
                 no_gravity: false,
                 silent: false,
                 pose: ClientEntityPose::Standing,
+                baby: false,
                 ticks_frozen: 0,
                 vehicle_id: None,
                 passenger_ids: Vec::new(),
@@ -2241,6 +2253,7 @@ impl ClientWorld {
         let stinger_count = stinger_count_from_metadata(metadata);
         let effect_ambience = effect_ambience_from_metadata(metadata);
         let effect_particle_type_ids = effect_particle_type_ids_from_metadata(metadata);
+        let zombie_baby = zombie_baby_from_metadata(metadata);
         let sleeping_pos = sleeping_pos_from_metadata(metadata);
         let custom_name_present = custom_name_present_from_metadata(metadata);
         let custom_name_visible = custom_name_visible_from_metadata(metadata);
@@ -2349,6 +2362,11 @@ impl ClientWorld {
         }
         if let Some(pose) = pose {
             entity.pose = pose;
+        }
+        if entity.type_id == VANILLA_ZOMBIE_ENTITY_TYPE_ID
+            && let Some(zombie_baby) = zombie_baby
+        {
+            entity.baby = zombie_baby;
         }
         if let Some(ticks_frozen) = ticks_frozen {
             entity.ticks_frozen = ticks_frozen;
@@ -2926,6 +2944,7 @@ pub struct ClientEntity {
     no_gravity: bool,
     silent: bool,
     pose: ClientEntityPose,
+    baby: bool,
     ticks_frozen: i32,
     vehicle_id: Option<i32>,
     passenger_ids: Vec<i32>,
@@ -4031,6 +4050,10 @@ impl ClientEntity {
 
     pub fn pose(&self) -> ClientEntityPose {
         self.pose
+    }
+
+    pub fn is_baby(&self) -> bool {
+        self.baby
     }
 
     pub fn ticks_frozen(&self) -> i32 {
@@ -5449,6 +5472,63 @@ mod tests {
             assert_eq!(passenger.previous_position(), (2.0, 12.0, 2.0));
             assert_eq!(passenger.position(), (2.0, expected_y, 2.0));
         }
+    }
+
+    #[test]
+    fn passenger_tick_uses_zombie_baby_vehicle_attachment_metadata() {
+        let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+        let (blocks, biomes) = section(0, 0);
+        world.replace_chunk(
+            0,
+            0,
+            [SectionInput {
+                non_empty_block_count: 0,
+                fluid_count: 0,
+                block_states: &blocks,
+                biomes: &biomes,
+            }],
+        );
+        assert!(world.apply_entity(EntityInput {
+            entity_id: 37,
+            uuid: Uuid::new(37, 0),
+            type_id: 89,
+            x: 2.0,
+            y: 2.0,
+            z: 2.0,
+            movement: (0.0, 0.0, 0.0),
+            rotation: (0.0, 0.0, 0.0),
+            data: 0,
+        }));
+        assert!(world.apply_entity(EntityInput {
+            entity_id: 38,
+            uuid: Uuid::new(38, 0),
+            type_id: 151,
+            x: 2.0,
+            y: 12.0,
+            z: 2.0,
+            movement: (0.0, 0.0, 0.0),
+            rotation: (0.0, 0.0, 0.0),
+            data: 0,
+        }));
+        assert!(world.apply_entity_passengers(37, &[38]));
+
+        world.tick();
+        assert_eq!(
+            world.entity_at(38).expect("adult zombie").position(),
+            (2.0, 2.1875, 2.0)
+        );
+
+        assert!(world.apply_entity_metadata(38, &[16, 8, 1, 255]));
+        world.tick();
+        let baby = world.entity_at(38).expect("baby zombie");
+        assert!(baby.is_baby());
+        assert_eq!(baby.position(), (2.0, 2.0, 2.0));
+
+        assert!(world.apply_entity_metadata(38, &[16, 8, 0, 255]));
+        world.tick();
+        let adult = world.entity_at(38).expect("adult zombie after reset");
+        assert!(!adult.is_baby());
+        assert_eq!(adult.position(), (2.0, 2.1875, 2.0));
     }
 
     #[test]
