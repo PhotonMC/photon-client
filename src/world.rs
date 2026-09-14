@@ -3,9 +3,10 @@
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 use crate::input::{
-    LocalPlayerFluidFallingInput, LocalPlayerInputModifiers, LocalPlayerInputState,
-    adjust_local_player_fluid_falling_movement,
+    LocalPlayerClimbableMovementInput, LocalPlayerFluidFallingInput, LocalPlayerInputModifiers,
+    LocalPlayerInputState, adjust_local_player_fluid_falling_movement,
     apply_local_player_input as apply_local_player_input_fields,
+    clamp_local_player_climbable_movement,
 };
 use crate::math::{
     MTH_DEG_TO_RAD, Vec3, abs_max_f64, clamp_f32, clamp_f64, equal_f64, floor_f32, mth_atan2,
@@ -2806,6 +2807,31 @@ impl ClientWorld {
         true
     }
 
+    /// Set local player climbable environment state for the next movement step.
+    pub fn apply_local_player_climbable_state(
+        &mut self,
+        on_climbable: bool,
+        scaffolding: bool,
+        suppress_sliding_down_ladder: bool,
+    ) -> bool {
+        let Some(player) = self.local_player.as_mut() else {
+            return false;
+        };
+        player.on_climbable = on_climbable;
+        player.in_scaffolding = scaffolding;
+        player.suppress_sliding_down_ladder = suppress_sliding_down_ladder;
+        true
+    }
+
+    /// Apply Java's climbable movement clamp to the local player's motion.
+    pub fn apply_local_player_climbable_movement(&mut self) -> bool {
+        let Some(player) = self.local_player.as_mut() else {
+            return false;
+        };
+        player.apply_climbable_movement();
+        true
+    }
+
     pub(crate) fn apply_local_player_container_content(
         &mut self,
         container_id: i32,
@@ -5517,6 +5543,9 @@ pub struct ClientPlayerState {
     xxa_bits: u32,
     zza_bits: u32,
     jumping: bool,
+    on_climbable: bool,
+    in_scaffolding: bool,
+    suppress_sliding_down_ladder: bool,
     x_bob_bits: u32,
     y_bob_bits: u32,
     x_bob_o_bits: u32,
@@ -5617,6 +5646,22 @@ impl ClientPlayerState {
         self.motion_y_bits = adjusted.y.to_bits();
     }
 
+    fn apply_climbable_movement(&mut self) {
+        let adjusted = clamp_local_player_climbable_movement(LocalPlayerClimbableMovementInput {
+            movement: Vec3::new(
+                f64::from_bits(self.motion_x_bits),
+                f64::from_bits(self.motion_y_bits),
+                f64::from_bits(self.motion_z_bits),
+            ),
+            on_climbable: self.on_climbable,
+            scaffolding: self.in_scaffolding,
+            suppress_sliding_down_ladder: self.suppress_sliding_down_ladder,
+        });
+        self.motion_x_bits = adjusted.x.to_bits();
+        self.motion_y_bits = adjusted.y.to_bits();
+        self.motion_z_bits = adjusted.z.to_bits();
+    }
+
     fn capture_old_transform(&mut self) {
         self.old_x_bits = self.x_bits;
         self.old_y_bits = self.y_bits;
@@ -5674,6 +5719,9 @@ impl ClientPlayerState {
             xxa_bits: 0.0_f32.to_bits(),
             zza_bits: 0.0_f32.to_bits(),
             jumping: false,
+            on_climbable: false,
+            in_scaffolding: false,
+            suppress_sliding_down_ladder: false,
             x_bob_bits: 0.0_f32.to_bits(),
             y_bob_bits: 0.0_f32.to_bits(),
             x_bob_o_bits: 0.0_f32.to_bits(),
@@ -5780,6 +5828,10 @@ impl ClientPlayerState {
 
     pub fn is_jumping(&self) -> bool {
         self.jumping
+    }
+
+    pub fn is_on_climbable(&self) -> bool {
+        self.on_climbable
     }
 
     pub fn bob(&self) -> (f32, f32) {
@@ -8155,6 +8207,55 @@ mod tests {
                 .1
                 .to_bits(),
             0x3f84_7ae1_47ae_147b,
+        );
+    }
+
+    #[test]
+    fn local_player_climbable_movement_clamps_and_stops_ladder_slide() {
+        let mut world = ClientWorld::default();
+        world.set_local_player_id(42);
+        assert!(world.apply_local_player_climbable_state(true, false, false));
+        assert!(world.apply_local_player_position((0.0, 0.0, 0.0), (0.4, -0.4, -0.4), (0.0, 0.0),));
+        assert!(world.apply_local_player_climbable_movement());
+        assert!(
+            world
+                .local_player()
+                .expect("climbable player")
+                .is_on_climbable()
+        );
+        assert_eq!(
+            world.local_player().expect("clamped player").motion(),
+            (
+                f64::from_bits(0x3fc3_3333_4000_0000),
+                f64::from_bits(0xbfc3_3333_4000_0000),
+                f64::from_bits(0xbfc3_3333_4000_0000),
+            ),
+        );
+
+        assert!(world.apply_local_player_climbable_state(true, false, true));
+        assert!(world.apply_local_player_position((0.0, 0.0, 0.0), (0.1, -0.1, -0.1), (0.0, 0.0),));
+        assert!(world.apply_local_player_climbable_movement());
+        assert_eq!(
+            world
+                .local_player()
+                .expect("ladder player")
+                .motion()
+                .1
+                .to_bits(),
+            0,
+        );
+
+        assert!(world.apply_local_player_climbable_state(true, true, true));
+        assert!(world.apply_local_player_position((0.0, 0.0, 0.0), (0.4, -0.4, -0.4), (0.0, 0.0),));
+        assert!(world.apply_local_player_climbable_movement());
+        assert_eq!(
+            world
+                .local_player()
+                .expect("scaffolding player")
+                .motion()
+                .1
+                .to_bits(),
+            0xbfc3_3333_4000_0000,
         );
     }
 

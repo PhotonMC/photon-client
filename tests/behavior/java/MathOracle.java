@@ -267,6 +267,33 @@ public final class MathOracle {
                 throw new IllegalStateException(
                     "LivingEntity.getFluidFallingAdjustedMovement reflection failed", error);
             }
+        } else if (operation.equals("local_player_climbable_movement")) {
+            try {
+                Unsafe unsafe = unsafeInstance();
+                var method = LivingEntity.class.getDeclaredMethod("handleOnClimbable", Vec3.class);
+                method.setAccessible(true);
+                var states = new JsonArray();
+                for (var inputEntry : request.getAsJsonArray("inputs")) {
+                    JsonObject input = inputEntry.getAsJsonObject();
+                    LocalPlayerInputFixture player =
+                        (LocalPlayerInputFixture)unsafe.allocateInstance(LocalPlayerInputFixture.class);
+                    player.onClimbableState = input.get("on_climbable").getAsBoolean();
+                    player.scaffolding = input.get("scaffolding").getAsBoolean();
+                    player.suppressSlidingDownLadder =
+                        input.get("suppress_sliding_down_ladder").getAsBoolean();
+                    Vec3 movement = new Vec3(
+                        f64(input, "x"), f64(input, "y"), f64(input, "z"));
+                    Vec3 adjusted = (Vec3)method.invoke(player, movement);
+                    var state = new JsonObject();
+                    state.addProperty("label", input.get("label").getAsString());
+                    state.add("movement", snapshot(adjusted));
+                    states.add(state);
+                }
+                result.add("states", states);
+            } catch (ReflectiveOperationException error) {
+                throw new IllegalStateException(
+                    "LivingEntity.handleOnClimbable reflection failed", error);
+            }
         } else if (operation.equals("character_event")) {
             CharacterEvent event = new CharacterEvent(request.get("codepoint").getAsInt());
             result.addProperty("codepoint", event.codepoint());
@@ -6194,6 +6221,9 @@ public final class MathOracle {
         private boolean fallFlying;
         private boolean underwater;
         private Abilities abilities;
+        private boolean onClimbableState;
+        private boolean scaffolding;
+        private boolean suppressSlidingDownLadder;
 
         private LocalPlayerInputFixture() {
             super(null, null, null, null, null, Input.EMPTY, false, null);
@@ -6262,6 +6292,23 @@ public final class MathOracle {
         @Override
         public boolean isUnderWater() {
             return this.underwater;
+        }
+
+        @Override
+        public boolean onClimbable() {
+            return this.onClimbableState;
+        }
+
+        @Override
+        public BlockState getInBlockState() {
+            return this.scaffolding
+                ? Blocks.SCAFFOLDING.defaultBlockState()
+                : Blocks.AIR.defaultBlockState();
+        }
+
+        @Override
+        public boolean isSuppressingSlidingDownLadder() {
+            return this.suppressSlidingDownLadder;
         }
 
         private void configureApplyInput(

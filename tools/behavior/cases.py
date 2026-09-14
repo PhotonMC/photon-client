@@ -1503,6 +1503,61 @@ def math_cases():
            "operation": "local_player_fluid_falling_adjustment",
            "inputs": local_player_fluid_adjustment_inputs}
 
+    local_player_climbable_movement_cases = [
+        {
+            "label": "not-climbable-preserves-movement",
+            "on_climbable": False,
+        },
+        {
+            "label": "climbable-clamps-horizontal-and-downward",
+            "on_climbable": True,
+        },
+        {
+            "label": "suppressing-player-stops-ladder-slide",
+            "on_climbable": True,
+            "suppress_sliding_down_ladder": True,
+            "x": float_bits(0.1, "f64"),
+            "y": float_bits(-0.1, "f64"),
+            "z": float_bits(-0.1, "f64"),
+        },
+        {
+            "label": "scaffolding-keeps-clamped-downward-motion",
+            "on_climbable": True,
+            "scaffolding": True,
+            "suppress_sliding_down_ladder": True,
+        },
+        {
+            "label": "suppressing-player-keeps-upward-motion",
+            "on_climbable": True,
+            "suppress_sliding_down_ladder": True,
+            "x": float_bits(-0.1, "f64"),
+            "y": float_bits(0.25, "f64"),
+            "z": float_bits(0.1, "f64"),
+        },
+        {
+            "label": "climbable-preserves-signed-zero",
+            "on_climbable": True,
+            "x": "8000000000000000",
+            "y": "8000000000000000",
+            "z": "0000000000000000",
+        },
+    ]
+    local_player_climbable_movement_defaults = {
+        "on_climbable": True,
+        "scaffolding": False,
+        "suppress_sliding_down_ladder": False,
+        "x": float_bits(0.4, "f64"),
+        "y": float_bits(-0.4, "f64"),
+        "z": float_bits(-0.4, "f64"),
+    }
+    local_player_climbable_movement_inputs = []
+    for values in local_player_climbable_movement_cases:
+        input_values = {**local_player_climbable_movement_defaults, **values}
+        local_player_climbable_movement_inputs.append(input_values)
+    yield {"case_id": "player-movement/climbable-movement", "family": "math",
+           "operation": "local_player_climbable_movement",
+           "inputs": local_player_climbable_movement_inputs}
+
     codec_decodes = {
         "basic": [float_bits(1.25, "f64"), float_bits(-2.5, "f64"), float_bits(3.75, "f64")],
         "zero": [float_bits(0.0, "f64"), float_bits(0.0, "f64"), float_bits(0.0, "f64")],

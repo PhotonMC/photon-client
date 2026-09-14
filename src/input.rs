@@ -213,6 +213,35 @@ pub fn adjust_local_player_fluid_falling_movement(state: LocalPlayerFluidFalling
     }
 }
 
+/// The environment state consumed by LivingEntity's climbable movement clamp.
+#[derive(Debug, Clone, Copy)]
+pub struct LocalPlayerClimbableMovementInput {
+    pub movement: Vec3,
+    pub on_climbable: bool,
+    pub scaffolding: bool,
+    pub suppress_sliding_down_ladder: bool,
+}
+
+/// Apply Java LivingEntity.handleOnClimbable to local player motion.
+pub fn clamp_local_player_climbable_movement(state: LocalPlayerClimbableMovementInput) -> Vec3 {
+    if !state.on_climbable {
+        return state.movement;
+    }
+
+    // The Java source passes -0.15F and 0.15F to the double overload, so the
+    // bounds are the f32 values widened to f64.
+    let max = f64::from(0.15_f32);
+    let mut movement_y = java_max_f64(state.movement.y, -max);
+    if movement_y < 0.0 && !state.scaffolding && state.suppress_sliding_down_ladder {
+        movement_y = 0.0;
+    }
+    Vec3::new(
+        java_clamp_f64(state.movement.x, -max, max),
+        movement_y,
+        java_clamp_f64(state.movement.z, -max, max),
+    )
+}
+
 fn modify_input_speed_for_square_movement(input: Vec2) -> Vec2 {
     let length = input.length();
     if length <= 0.0 {
@@ -242,6 +271,38 @@ fn java_min_f32(left: f32, right: f32) -> f32 {
     } else if left == 0.0 && right == 0.0 {
         f32::from_bits(left.to_bits() | right.to_bits())
     } else if left <= right {
+        left
+    } else {
+        right
+    }
+}
+
+fn java_clamp_f64(value: f64, min: f64, max: f64) -> f64 {
+    if value < min {
+        min
+    } else {
+        java_min_f64(value, max)
+    }
+}
+
+fn java_min_f64(left: f64, right: f64) -> f64 {
+    if left.is_nan() || right.is_nan() {
+        f64::NAN
+    } else if left == 0.0 && right == 0.0 {
+        f64::from_bits(left.to_bits() | right.to_bits())
+    } else if left <= right {
+        left
+    } else {
+        right
+    }
+}
+
+fn java_max_f64(left: f64, right: f64) -> f64 {
+    if left.is_nan() || right.is_nan() {
+        f64::NAN
+    } else if left == 0.0 && right == 0.0 {
+        f64::from_bits(left.to_bits() | right.to_bits())
+    } else if left >= right {
         left
     } else {
         right

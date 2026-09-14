@@ -29,9 +29,11 @@ use voxel_client::frame::{self, FrameError, Varint21FrameDecoder};
 use voxel_client::handshake::{self, ClientIntent, ClientIntentionPacket};
 use voxel_client::identifier::Identifier;
 use voxel_client::input::{
-    Input, KeyboardInput, LocalPlayerFluidFallingInput, LocalPlayerInputModifiers,
-    LocalPlayerInputState, LocalPlayerSprintGateInput, adjust_local_player_fluid_falling_movement,
-    apply_local_player_input, can_start_local_player_sprinting, modify_local_player_input,
+    Input, KeyboardInput, LocalPlayerClimbableMovementInput, LocalPlayerFluidFallingInput,
+    LocalPlayerInputModifiers, LocalPlayerInputState, LocalPlayerSprintGateInput,
+    adjust_local_player_fluid_falling_movement, apply_local_player_input,
+    can_start_local_player_sprinting, clamp_local_player_climbable_movement,
+    modify_local_player_input,
 };
 use voxel_client::input_event::{
     CharacterEvent, InputWithModifiers, KeyEvent as InputKeyEvent, MouseButtonEvent,
@@ -8284,6 +8286,38 @@ fn math_result(request: &Value) -> Result<Value, String> {
                             f64_field(input, "y")?,
                             f64_field(input, "z")?,
                         ),
+                    });
+                Ok(json!({
+                    "label": string(input, "label")?,
+                    "movement": vec3_snapshot(movement),
+                }))
+            })
+            .collect::<Result<Vec<_>, String>>()?;
+        return Ok(json!({"states": states}));
+    }
+    if operation == "local_player_climbable_movement" {
+        let inputs = request["inputs"]
+            .as_array()
+            .ok_or("inputs must be an array")?;
+        let states = inputs
+            .iter()
+            .map(|input| {
+                let movement =
+                    clamp_local_player_climbable_movement(LocalPlayerClimbableMovementInput {
+                        movement: Vec3::new(
+                            f64_field(input, "x")?,
+                            f64_field(input, "y")?,
+                            f64_field(input, "z")?,
+                        ),
+                        on_climbable: input["on_climbable"]
+                            .as_bool()
+                            .ok_or("on_climbable must be a boolean")?,
+                        scaffolding: input["scaffolding"]
+                            .as_bool()
+                            .ok_or("scaffolding must be a boolean")?,
+                        suppress_sliding_down_ladder: input["suppress_sliding_down_ladder"]
+                            .as_bool()
+                            .ok_or("suppress_sliding_down_ladder must be a boolean")?,
                     });
                 Ok(json!({
                     "label": string(input, "label")?,
