@@ -4,8 +4,8 @@ use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 use crate::binary::BitSet;
 use crate::math::{
-    mth_atan2, mth_cos_f64, mth_lerp_f32, mth_lerp_f64, mth_rot_lerp_f32, mth_rot_lerp_f64,
-    mth_sin_f64,
+    clamp_f32, mth_atan2, mth_cos_f64, mth_lerp_f32, mth_lerp_f64, mth_rot_lerp_f32,
+    mth_rot_lerp_f64, mth_sin_f64, wrap_degrees_f32,
 };
 
 pub(crate) const PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS: u8 = 1;
@@ -218,6 +218,17 @@ fn advance_head_rotation(current_bits: &mut u32, target_bits: u32, steps: &mut u
     let target = f32::from_bits(target_bits);
     *current_bits = mth_rot_lerp_f32(1.0 / step_count, current, target).to_bits();
     *steps -= 1;
+}
+
+const VANILLA_BOAT_PASSENGER_MAX_ROTATION: f32 = 105.0_f32;
+
+fn vanilla_boat_passenger_rotation_correction(passenger_y_rot: f32, vehicle_y_rot: f32) -> f32 {
+    let delta = wrap_degrees_f32(passenger_y_rot - vehicle_y_rot);
+    clamp_f32(
+        delta,
+        -VANILLA_BOAT_PASSENGER_MAX_ROTATION,
+        VANILLA_BOAT_PASSENGER_MAX_ROTATION,
+    ) - delta
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1016,6 +1027,8 @@ impl ClientWorld {
             player.y_head_rot_bits = entity.y_head_rot_bits;
             player.old_y_head_rot_bits = entity.old_y_head_rot_bits;
             player.head_rotation_target_bits = entity.y_head_rot_bits;
+            player.y_body_rot_bits = entity.y_body_rot_bits;
+            player.old_y_body_rot_bits = entity.old_y_body_rot_bits;
         }
         self.local_player = Some(player);
     }
@@ -1206,6 +1219,10 @@ impl ClientWorld {
             player.motion_z_bits = previous.motion_z_bits;
             player.y_rot_bits = previous.y_rot_bits;
             player.x_rot_bits = previous.x_rot_bits;
+            player.old_y_rot_bits = previous.old_y_rot_bits;
+            player.old_x_rot_bits = previous.old_x_rot_bits;
+            player.y_body_rot_bits = previous.y_body_rot_bits;
+            player.old_y_body_rot_bits = previous.old_y_body_rot_bits;
             player.y_head_rot_bits = previous.y_head_rot_bits;
             player.old_y_head_rot_bits = previous.old_y_head_rot_bits;
             player.head_rotation_target_bits = previous.head_rotation_target_bits;
@@ -1450,7 +1467,10 @@ impl ClientWorld {
         let passenger_vehicle_attachment_y = match passenger_type_id {
             VANILLA_PLAYER_ENTITY_TYPE_ID => VANILLA_PLAYER_VEHICLE_ATTACHMENT_Y,
             VANILLA_SNOWBALL_ENTITY_TYPE_ID => 0.0,
-            _ => return,
+            _ => {
+                self.clamp_entity_passenger_rotation(vehicle_id, passenger_id);
+                return;
+            }
         };
 
         let Some((
@@ -1500,12 +1520,39 @@ impl ClientWorld {
         );
         if let Some(passenger) = self.entities.get_mut(&passenger_id) {
             passenger.set_position(target_position);
+            passenger.clamp_vanilla_boat_passenger_rotation(vehicle_y_rot);
         } else if let Some(player) = self
             .local_player
             .as_mut()
             .filter(|player| player.id == passenger_id)
         {
             player.set_position(target_position);
+            player.clamp_vanilla_boat_passenger_rotation(vehicle_y_rot);
+        }
+    }
+
+    fn clamp_entity_passenger_rotation(&mut self, vehicle_id: i32, passenger_id: i32) {
+        let Some((vehicle_type_id, vehicle_y_rot)) = self
+            .entities
+            .get(&vehicle_id)
+            .map(|vehicle| (vehicle.type_id, f32::from_bits(vehicle.y_rot_bits)))
+        else {
+            return;
+        };
+        if !VANILLA_BOAT_PASSENGER_GEOMETRY
+            .iter()
+            .any(|&(type_id, _, _)| type_id == vehicle_type_id)
+        {
+            return;
+        }
+        if let Some(passenger) = self.entities.get_mut(&passenger_id) {
+            passenger.clamp_vanilla_boat_passenger_rotation(vehicle_y_rot);
+        } else if let Some(player) = self
+            .local_player
+            .as_mut()
+            .filter(|player| player.id == passenger_id)
+        {
+            player.clamp_vanilla_boat_passenger_rotation(vehicle_y_rot);
         }
     }
 
@@ -1838,9 +1885,11 @@ impl ClientWorld {
                 x_rot_bits: entity.rotation.1.to_bits(),
                 y_rot_bits: entity.rotation.0.to_bits(),
                 y_head_rot_bits: entity.rotation.2.to_bits(),
+                y_body_rot_bits: entity.rotation.0.to_bits(),
                 old_x_rot_bits: entity.rotation.1.to_bits(),
                 old_y_rot_bits: entity.rotation.0.to_bits(),
                 old_y_head_rot_bits: entity.rotation.2.to_bits(),
+                old_y_body_rot_bits: entity.rotation.0.to_bits(),
                 head_rotation_target_bits: entity.rotation.2.to_bits(),
                 head_lerp_steps: 0,
                 interpolation: None,
@@ -1878,6 +1927,8 @@ impl ClientWorld {
             player.old_y_head_rot_bits = head_rotation_bits;
             player.head_rotation_target_bits = head_rotation_bits;
             player.head_lerp_steps = 0;
+            player.y_body_rot_bits = entity.rotation.0.to_bits();
+            player.old_y_body_rot_bits = entity.rotation.0.to_bits();
         }
         true
     }
@@ -2676,9 +2727,11 @@ pub struct ClientEntity {
     x_rot_bits: u32,
     y_rot_bits: u32,
     y_head_rot_bits: u32,
+    y_body_rot_bits: u32,
     old_x_rot_bits: u32,
     old_y_rot_bits: u32,
     old_y_head_rot_bits: u32,
+    old_y_body_rot_bits: u32,
     head_rotation_target_bits: u32,
     head_lerp_steps: u8,
     interpolation: Option<EntityInterpolationState>,
@@ -2859,6 +2912,8 @@ pub struct ClientPlayerState {
     old_x_rot_bits: u32,
     y_head_rot_bits: u32,
     old_y_head_rot_bits: u32,
+    y_body_rot_bits: u32,
+    old_y_body_rot_bits: u32,
     head_rotation_target_bits: u32,
     head_lerp_steps: u8,
     entity_data: Option<Vec<u8>>,
@@ -2897,6 +2952,7 @@ impl ClientPlayerState {
         self.old_y_rot_bits = self.y_rot_bits;
         self.old_x_rot_bits = self.x_rot_bits;
         self.old_y_head_rot_bits = self.y_head_rot_bits;
+        self.old_y_body_rot_bits = self.y_body_rot_bits;
     }
 
     fn set_position(&mut self, position: (f64, f64, f64)) {
@@ -2933,6 +2989,8 @@ impl ClientPlayerState {
             old_x_rot_bits: 0.0_f32.to_bits(),
             y_head_rot_bits: 0.0_f32.to_bits(),
             old_y_head_rot_bits: 0.0_f32.to_bits(),
+            y_body_rot_bits: 0.0_f32.to_bits(),
+            old_y_body_rot_bits: 0.0_f32.to_bits(),
             head_rotation_target_bits: 0.0_f32.to_bits(),
             head_lerp_steps: 0,
             entity_data: None,
@@ -3035,6 +3093,25 @@ impl ClientPlayerState {
 
     pub fn head_rotation(&self) -> f32 {
         f32::from_bits(self.y_head_rot_bits)
+    }
+
+    pub fn body_y_rotation(&self) -> f32 {
+        f32::from_bits(self.y_body_rot_bits)
+    }
+
+    pub fn previous_body_y_rotation(&self) -> f32 {
+        f32::from_bits(self.old_y_body_rot_bits)
+    }
+
+    fn clamp_vanilla_boat_passenger_rotation(&mut self, vehicle_y_rot: f32) {
+        let correction = vanilla_boat_passenger_rotation_correction(
+            f32::from_bits(self.y_rot_bits),
+            vehicle_y_rot,
+        );
+        self.old_y_rot_bits = (f32::from_bits(self.old_y_rot_bits) + correction).to_bits();
+        self.y_rot_bits = (f32::from_bits(self.y_rot_bits) + correction).to_bits();
+        self.y_head_rot_bits = self.y_rot_bits;
+        self.y_body_rot_bits = vehicle_y_rot.to_bits();
     }
 
     pub fn previous_head_rotation(&self) -> f32 {
@@ -3242,6 +3319,7 @@ impl ClientEntity {
         self.old_x_rot_bits = self.x_rot_bits;
         self.old_y_rot_bits = self.y_rot_bits;
         self.old_y_head_rot_bits = self.y_head_rot_bits;
+        self.old_y_body_rot_bits = self.y_body_rot_bits;
     }
 
     fn tick_head_rotation(&mut self) {
@@ -3513,6 +3591,27 @@ impl ClientEntity {
             f32::from_bits(self.x_rot_bits),
             f32::from_bits(self.y_head_rot_bits),
         )
+    }
+
+    pub fn body_y_rotation(&self) -> f32 {
+        f32::from_bits(self.y_body_rot_bits)
+    }
+
+    pub fn previous_body_y_rotation(&self) -> f32 {
+        f32::from_bits(self.old_y_body_rot_bits)
+    }
+
+    fn clamp_vanilla_boat_passenger_rotation(&mut self, vehicle_y_rot: f32) {
+        let correction = vanilla_boat_passenger_rotation_correction(
+            f32::from_bits(self.y_rot_bits),
+            vehicle_y_rot,
+        );
+        self.old_y_rot_bits = (f32::from_bits(self.old_y_rot_bits) + correction).to_bits();
+        self.y_rot_bits = (f32::from_bits(self.y_rot_bits) + correction).to_bits();
+        if self.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID {
+            self.y_head_rot_bits = self.y_rot_bits;
+            self.y_body_rot_bits = vehicle_y_rot.to_bits();
+        }
     }
 
     fn body_rotation(&self) -> (f32, f32) {
@@ -5031,6 +5130,91 @@ mod tests {
         let passenger = world.entity_at(38).expect("remote player passenger");
         assert_eq!(passenger.previous_position(), (2.0, 12.0, 2.0));
         assert_eq!(passenger.position(), (2.0, 1.5875, 2.0));
+    }
+
+    #[test]
+    fn passenger_tick_clamps_remote_player_rotation_to_boat_heading() {
+        let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+        let (blocks, biomes) = section(0, 0);
+        world.replace_chunk(
+            0,
+            0,
+            [SectionInput {
+                non_empty_block_count: 0,
+                fluid_count: 0,
+                block_states: &blocks,
+                biomes: &biomes,
+            }],
+        );
+        assert!(world.apply_entity(EntityInput {
+            entity_id: 37,
+            uuid: Uuid::new(37, 0),
+            type_id: 89,
+            x: 2.0,
+            y: 2.0,
+            z: 2.0,
+            movement: (0.0, 0.0, 0.0),
+            rotation: (0.0, 0.0, 0.0),
+            data: 0,
+        }));
+        assert!(world.apply_entity(EntityInput {
+            entity_id: 38,
+            uuid: Uuid::new(38, 0),
+            type_id: VANILLA_PLAYER_ENTITY_TYPE_ID,
+            x: 2.0,
+            y: 12.0,
+            z: 2.0,
+            movement: (0.0, 0.0, 0.0),
+            rotation: (140.0, 0.0, 140.0),
+            data: 0,
+        }));
+        assert!(world.apply_entity_passengers(37, &[38]));
+
+        world.tick();
+
+        let passenger = world.entity_at(38).expect("remote player passenger");
+        assert_eq!(passenger.rotation(), (105.0, 0.0, 105.0));
+        assert_eq!(passenger.previous_rotation(), (105.0, 0.0, 140.0));
+        assert_eq!(passenger.body_y_rotation(), 0.0);
+        assert_eq!(passenger.previous_body_y_rotation(), 140.0);
+    }
+
+    #[test]
+    fn passenger_tick_clamps_boat_rotation_for_passenger_without_seat_geometry() {
+        let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+        let (blocks, biomes) = section(0, 0);
+        world.replace_chunk(
+            0,
+            0,
+            [SectionInput {
+                non_empty_block_count: 0,
+                fluid_count: 0,
+                block_states: &blocks,
+                biomes: &biomes,
+            }],
+        );
+        for (entity_id, type_id, rotation) in
+            [(37, 89, (0.0, 0.0, 0.0)), (38, 71, (170.0, 0.0, 170.0))]
+        {
+            assert!(world.apply_entity(EntityInput {
+                entity_id,
+                uuid: Uuid::new(entity_id as u64, 0),
+                type_id,
+                x: 2.0,
+                y: 2.0,
+                z: 2.0,
+                movement: (0.0, 0.0, 0.0),
+                rotation,
+                data: 0,
+            }));
+        }
+        assert!(world.apply_entity_passengers(37, &[38]));
+
+        world.tick();
+
+        let passenger = world.entity_at(38).expect("generic boat passenger");
+        assert_eq!(passenger.rotation(), (105.0, 0.0, 170.0));
+        assert_eq!(passenger.previous_rotation(), (105.0, 0.0, 170.0));
     }
 
     #[test]

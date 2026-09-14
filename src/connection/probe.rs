@@ -202,6 +202,26 @@ pub fn connect_and_remote_player_motion_mover_probe(
 }
 
 /// Connect to a Java-protocol server and hold a remote Player connection open
+/// while a boat passenger rotation scenario is assembled externally.
+pub fn connect_and_remote_player_passenger_rotation_mover_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    const YAW_SEQUENCE: &[i16] = &[0];
+
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeConfig::new(ProbeAction::Movement)
+            .with_movement_yaws(YAW_SEQUENCE)
+            .with_movement_pause(Duration::from_millis(500))
+            .with_movement_hold(Duration::from_secs(25)),
+    )
+}
+
+/// Connect to a Java-protocol server and hold a remote Player connection open
 /// while another client triggers a large position update.
 pub fn connect_and_remote_player_position_snap_mover_probe(
     address: SocketAddr,
@@ -447,6 +467,22 @@ pub fn connect_and_world_entity_passenger_tick_probe(
         username,
         timeout,
         PlayProbeConfig::new(ProbeAction::WorldEntityPassengerTick)
+            .with_drain_timeout(Duration::from_secs(60)),
+    )
+}
+
+/// Connect to a Java-protocol server and observe a remote Player passenger
+/// after the three client ticks used by its rotation interpolation handler.
+pub fn connect_and_world_entity_passenger_rotation_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeConfig::new(ProbeAction::WorldEntityPassengerRotation)
             .with_drain_timeout(Duration::from_secs(60)),
     )
 }
@@ -1487,6 +1523,7 @@ enum ProbeAction {
     WorldEntityPosition,
     WorldEntityPassengers,
     WorldEntityPassengerTick,
+    WorldEntityPassengerRotation,
     BlockAction,
     BlockBreak,
     BlockBreakOutOfRange,
@@ -1974,8 +2011,11 @@ fn connect_and_probe_with_mode(
                         })
                         .collect();
                 }
-                if matches!(probe.action, ProbeAction::WorldEntityPassengerTick)
-                    && trace.entity_passenger_tick_observations.is_empty()
+                if matches!(
+                    probe.action,
+                    ProbeAction::WorldEntityPassengerTick
+                        | ProbeAction::WorldEntityPassengerRotation
+                ) && trace.entity_passenger_tick_observations.is_empty()
                     && observation.applied_to_world
                 {
                     let passenger_id = observation
@@ -1993,8 +2033,18 @@ fn connect_and_probe_with_mode(
                         let before_passenger_tick_count = passenger.tick_count();
                         let before_passenger_position = passenger.position();
                         let before_passenger_motion = passenger.motion();
+                        let before_passenger_rotation = passenger.rotation();
+                        let before_passenger_body_y_rotation = passenger.body_y_rotation();
                         let passenger_type_id = passenger.type_id;
-                        trace.world.tick();
+                        let tick_count =
+                            if matches!(probe.action, ProbeAction::WorldEntityPassengerRotation) {
+                                3
+                            } else {
+                                1
+                            };
+                        for _ in 0..tick_count {
+                            trace.world.tick();
+                        }
                         let vehicle = trace
                             .world
                             .entity_at(observation.vehicle_id)
@@ -2016,6 +2066,10 @@ fn connect_and_probe_with_mode(
                                 after_passenger_position: passenger.position(),
                                 before_passenger_motion,
                                 after_passenger_motion: passenger.motion(),
+                                before_passenger_rotation,
+                                after_passenger_rotation: passenger.rotation(),
+                                before_passenger_body_y_rotation,
+                                after_passenger_body_y_rotation: passenger.body_y_rotation(),
                             },
                         );
                     }

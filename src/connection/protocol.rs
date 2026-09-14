@@ -888,6 +888,10 @@ pub struct EntityPassengerTickObservation {
     pub after_passenger_position: (f64, f64, f64),
     pub before_passenger_motion: (f64, f64, f64),
     pub after_passenger_motion: (f64, f64, f64),
+    pub before_passenger_rotation: (f32, f32, f32),
+    pub after_passenger_rotation: (f32, f32, f32),
+    pub before_passenger_body_y_rotation: f32,
+    pub after_passenger_body_y_rotation: f32,
 }
 
 /// Wire-level fields decoded from one clientbound entity-metadata packet.

@@ -114,6 +114,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P08.az-entity-passenger-boat-family — server-conformance Chest boat ve raft `positionRider`](client-world-entity-passenger-boat-family-conformance.md)
 - [P08.ay-entity-passenger-player — server-conformance Player vehicle attachment](client-world-entity-passenger-player-conformance.md)
 - [P08.ax-entity-passenger-position — server-conformance `positionRider` tekne koltuğu](client-world-entity-passenger-position-conformance.md)
+- [P08.ba-entity-passenger-rotation — server-conformance Boat passenger rotation clamp](client-world-entity-passenger-rotation-conformance.md)
 - [P08.aw-entity-passenger-tick — server-conformance Passenger tick sırası](client-world-entity-passenger-tick-conformance.md)
 - [P08.av-entity-passengers — server-conformance ClientWorld araç ve yolcu ilişkisi](client-world-entity-passengers-conformance.md)
 - [P08.ap-player-head-rotation — server-conformance Remote Player head rotation interpolation](client-world-entity-player-head-rotation-conformance.md)
