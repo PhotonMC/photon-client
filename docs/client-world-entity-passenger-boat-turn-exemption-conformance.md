@@ -35,10 +35,10 @@ sırasındaki type ID `17` karşılığını verir.
 ## Rust doğrulaması
 
 `VANILLA_BREEZE_ENTITY_TYPE_ID` `17` olarak tanımlanır.
-`position_entity_passenger`, Breeze için rotation clamp fallback'ini atlar;
-diğer tanınmayan passenger türleri için P08.ba'nın generic rotation yolu
-korunur. Breeze seat geometry'si henüz ayrı bir attachment row'u olarak
-uygulanmaz.
+`position_entity_passenger`, Breeze için rotation clamp'ini tag nedeniyle atlar;
+vehicle attachment ve seat konumu ise Java'nın generic default attachment
+yoluyla uygulanır. Default ve Spider özel attachment dalları [P08.bg kaydında](client-world-entity-passenger-generic-position-conformance.md)
+toplanır.
 
 `passenger_tick_leaves_breeze_rotation_unclamped` testi oak boat type `89` ve
 Breeze type `17` için `(170,0,170)` current/previous rotation state'ini bir
@@ -92,10 +92,11 @@ gösterir; Java istemcisiyle tam parity iddiası değildir.
 
 ## Açık kapsam
 
-Breeze vehicle attachment/seat position, Breeze AI ve boat dışı turn
-davranışı, dinamik tag çözümü, nonzero boat `deltaRotation`, collision,
+Breeze AI ve boat dışı turn davranışı, dinamik tag çözümü, nonzero boat
+`deltaRotation`, collision,
 dismount, render ve Java istemcisiyle `client-parity` karşılaştırması açık
-kalır. Animal dışındaki living body/head dispatch'i [P08.bf kaydında](client-world-entity-passenger-living-conformance.md),
+kalır. Breeze default vehicle attachment [P08.bg kaydında](client-world-entity-passenger-generic-position-conformance.md),
+Animal dışındaki living body/head dispatch'i [P08.bf kaydında](client-world-entity-passenger-living-conformance.md),
 Breeze'in doğrudan turn callback'i
 [P08.be kaydında](client-world-entity-passenger-turn-conformance.md), genel
 boat rotation clamp [P08.ba kaydında](client-world-entity-passenger-rotation-conformance.md),

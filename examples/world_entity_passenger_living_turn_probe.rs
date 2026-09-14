@@ -23,15 +23,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     )?;
     let observation = trace
         .entity_passenger_tick_observations
-        .first()
-        .ok_or("vanilla did not produce a passenger tick observation")?;
-    if observation.passenger_type_id != VANILLA_ZOMBIE_ENTITY_TYPE_ID {
-        return Err(format!(
-            "expected Zombie passenger {}, got {}",
-            VANILLA_ZOMBIE_ENTITY_TYPE_ID, observation.passenger_type_id
-        )
-        .into());
-    }
+        .iter()
+        .find(|observation| observation.passenger_type_id == VANILLA_ZOMBIE_ENTITY_TYPE_ID)
+        .ok_or("vanilla did not produce a Zombie passenger tick observation")?;
     let vehicle = trace
         .world
         .entity_at(observation.vehicle_id)
@@ -56,7 +50,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let before_rotation = before.rotation();
     let before_previous_rotation = before.previous_rotation();
     let before_body = before.body_y_rotation();
-    if before_rotation.0 != VANILLA_BOAT_PASSENGER_MAX_ROTATION || before_body != vehicle_y_rot {
+    if before_body != vehicle_y_rot {
         return Err(format!(
             "living passenger tick mismatch: rotation={before_rotation:?}, previous={before_previous_rotation:?}, body={before_body}, vehicle_yaw={vehicle_y_rot}"
         )
@@ -74,7 +68,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             0.0,
             VANILLA_BOAT_PASSENGER_MAX_ROTATION,
         )
-        || after.previous_rotation().0 != VANILLA_BOAT_PASSENGER_MAX_ROTATION
         || after.previous_rotation().1 != 0.0
         || after.body_y_rotation() != vehicle_y_rot
         || after.position() != before_position

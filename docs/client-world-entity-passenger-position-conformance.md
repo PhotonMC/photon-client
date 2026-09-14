@@ -120,10 +120,11 @@ iddiası değildir.
 
 ## Açık kapsam
 
-Player ve living entity vehicle attachment noktaları, chest boat/raft ride
+Pose/scale/dimensions'a bağlı entity vehicle attachment noktaları, chest boat/raft ride
 yükseklikleri, boat `deltaRotation` ve passenger head/body rotation, vehicle
 control, nested passenger geometry, collision ve genel entity lifecycle açık
-kalır. Bu kayıt P08.aw passenger tick sırasını genişletir; ilişki state'i
+kalır. Default Entity ve generic living attachment [P08.bg kaydında](client-world-entity-passenger-generic-position-conformance.md)
+izlenir. Bu kayıt P08.aw passenger tick sırasını genişletir; ilişki state'i
 [P08.av kaydında](client-world-entity-passengers-conformance.md), passenger
 tick/rideTick davranışı [P08.aw kaydında](client-world-entity-passenger-tick-conformance.md)
 izlenir. Java istemcisiyle `client-parity` karşılaştırması ayrıca açıktır.

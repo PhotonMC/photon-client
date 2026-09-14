@@ -103,8 +103,10 @@ değildir.
 
 ## Açık kapsam
 
-`positionRider` ile araç geometrisine göre passenger konumu, boat kontrolü ve
-head/yaw yan etkileri, donmuş entity filtresi, kaldırılmış entity davranışı,
+`positionRider` ile araç geometrisine göre passenger konumu [P08.bg dahil ilgili
+attachment kayıtlarında](client-world-entity-passenger-generic-position-conformance.md),
+boat kontrolü ve head/yaw yan etkileri, donmuş entity filtresi, kaldırılmış
+entity davranışı,
 diğer entity tick gövdeleri, generic motion/physics, collision, passenger
 tick sonrası transform history ve Java istemcisiyle `client-parity`
 karşılaştırması açık kalır.

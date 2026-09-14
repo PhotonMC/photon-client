@@ -60,8 +60,8 @@ type ID `156` için `(140,0,140)` yaw state'ini oak boat yaw `0` ile karşılaş
 ve `(105,0,105)` current rotation, `(105,0,140)` previous rotation, body yaw
 `0` sonucunu kontrol eder.
 
-`passenger_tick_clamps_boat_rotation_for_passenger_without_seat_geometry`
-generic passenger'ın seat geometry olmadan yaw clamp'ını; mevcut
+`passenger_tick_clamps_boat_rotation_for_generic_item_passenger`
+generic Item passenger'ın yaw clamp'ını; vehicle attachment konumu [P08.bg kaydında](client-world-entity-passenger-generic-position-conformance.md), mevcut
 `passenger_tick_positions_*` testleri ise aynı tick sırasındaki position
 uygulamasını korur.
 
@@ -130,7 +130,8 @@ canlı fixture ile ayrı ayrı doğrulandı.
 
 ## Açık kapsam
 
-Boat input'u ile nonzero `deltaRotation`, generic passenger seat attachment'ı,
+Boat input'u ile nonzero `deltaRotation`, pose/scale/dimensions'a bağlı entity
+attachment'ları,
 dismount/collision, render ve Java istemcisiyle `client-parity` karşılaştırması
 açık kalır. Animal dışındaki living body/head state'i [P08.bf kaydında](client-world-entity-passenger-living-conformance.md),
 `onPassengerTurned` callback'i [P08.be kaydında](client-world-entity-passenger-turn-conformance.md),

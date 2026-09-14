@@ -127,9 +127,11 @@ Java istemcisiyle tam parity iddiası değildir.
 
 Chest boat kapasite reddi, çoklu passenger ve animal offset dalı, boat yaw'ın
 seat dışındaki passenger body/head rotation yan etkileri, `deltaRotation`,
-vehicle control, genel entity tick/lifecycle, collision, render ve Java
+vehicle control, pose/scale/dimensions'a bağlı passenger attachment'ları,
+genel entity tick/lifecycle, collision, render ve Java
 istemcisiyle `client-parity` karşılaştırması açık kalır. Normal boat ve
 snowball seat geometry [P08.ax kaydında](client-world-entity-passenger-position-conformance.md),
+default passenger attachment [P08.bg kaydında](client-world-entity-passenger-generic-position-conformance.md),
 Player vehicle attachment [P08.ay kaydında](client-world-entity-passenger-player-conformance.md)
 ve passenger tick/rideTick sırası [P08.aw kaydında](client-world-entity-passenger-tick-conformance.md)
 izlenir.

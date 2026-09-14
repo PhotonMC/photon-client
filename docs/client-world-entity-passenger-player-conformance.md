@@ -92,8 +92,10 @@ Java istemcisiyle tam parity iddiası değildir.
 
 Player'ın crouching/swimming pose dimensions'ı, local player'ın gerçek input ve
 movement yoluyla tekneye binmesi, boat `deltaRotation` ile passenger body/head
-rotation, chest boat/raft geometrisi, generic living attachment, vehicle control,
-collision, render ve Java istemcisiyle `client-parity` karşılaştırması açık kalır.
+rotation, chest boat/raft geometrisi, pose/scale/dimensions'a bağlı generic
+attachment, vehicle control, collision, render ve Java istemcisiyle
+`client-parity` karşılaştırması açık kalır. Default generic attachment [P08.bg kaydında](client-world-entity-passenger-generic-position-conformance.md)
+izlenir.
 Animal dışındaki living body/head dispatch'i [P08.bf kaydında](client-world-entity-passenger-living-conformance.md)
 izlenir. Normal boat ve
 snowball seat geometry [P08.ax kaydında](client-world-entity-passenger-position-conformance.md),

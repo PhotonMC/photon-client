@@ -12,6 +12,7 @@ pub(crate) const PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS: u8 = 1;
 pub(crate) const PLAYER_RESPAWN_KEEP_ENTITY_DATA: u8 = 2;
 const VANILLA_PLAYER_ENTITY_TYPE_ID: i32 = 156;
 const VANILLA_BREEZE_ENTITY_TYPE_ID: i32 = 17;
+const VANILLA_SPIDER_ENTITY_TYPE_ID: i32 = 124;
 pub(crate) const VANILLA_COW_ENTITY_TYPE_ID: i32 = 30;
 pub(crate) const VANILLA_SNOWBALL_ENTITY_TYPE_ID: i32 = 120;
 const VANILLA_LIVING_ENTITY_TYPE_IDS: &[i32] = &[
@@ -29,6 +30,7 @@ const VANILLA_CHEST_BOAT_ENTITY_TYPE_IDS: &[i32] = &[1, 8, 13, 24, 34, 75, 82, 9
 const VANILLA_BOAT_RIDE_HEIGHT: f32 = 0.5625_f32 / 3.0_f32;
 const VANILLA_RAFT_RIDE_HEIGHT: f32 = 0.5625_f32 * 0.8888889_f32;
 const VANILLA_CHEST_BOAT_PASSENGER_Z_OFFSET: f32 = 0.15_f32;
+const VANILLA_SPIDER_VEHICLE_ATTACHMENT_Y: f64 = 0.3125;
 const VANILLA_BOAT_PASSENGER_GEOMETRY: &[(i32, f32, f32)] = &[
     (0, VANILLA_BOAT_RIDE_HEIGHT, 0.0),
     (
@@ -255,6 +257,14 @@ fn vanilla_passenger_is_animal(passenger_type_id: i32) -> bool {
 
 fn vanilla_passenger_is_living(passenger_type_id: i32) -> bool {
     VANILLA_LIVING_ENTITY_TYPE_IDS.contains(&passenger_type_id)
+}
+
+fn vanilla_passenger_vehicle_attachment_y(passenger_type_id: i32) -> f64 {
+    match passenger_type_id {
+        VANILLA_PLAYER_ENTITY_TYPE_ID => VANILLA_PLAYER_VEHICLE_ATTACHMENT_Y,
+        VANILLA_SPIDER_ENTITY_TYPE_ID => VANILLA_SPIDER_VEHICLE_ATTACHMENT_Y,
+        _ => 0.0,
+    }
 }
 
 fn vanilla_boat_max_passengers(vehicle_type_id: i32) -> Option<usize> {
@@ -1523,16 +1533,6 @@ impl ClientWorld {
         else {
             return;
         };
-        let passenger_vehicle_attachment_y = match passenger_type_id {
-            VANILLA_PLAYER_ENTITY_TYPE_ID => VANILLA_PLAYER_VEHICLE_ATTACHMENT_Y,
-            VANILLA_SNOWBALL_ENTITY_TYPE_ID => 0.0,
-            _ if vanilla_passenger_is_animal(passenger_type_id) => 0.0,
-            _ => {
-                self.clamp_entity_passenger_rotation(vehicle_id, passenger_id);
-                return;
-            }
-        };
-
         let Some((
             vehicle_type_id,
             vehicle_position,
@@ -1564,6 +1564,8 @@ impl ClientWorld {
         else {
             return;
         };
+        let passenger_vehicle_attachment_y =
+            vanilla_passenger_vehicle_attachment_y(passenger_type_id);
 
         let passenger_z_offset = if passenger_count > 1 {
             let base_offset = if passenger_index == 0 {
@@ -5281,6 +5283,59 @@ mod tests {
     }
 
     #[test]
+    fn passenger_tick_positions_generic_entity_vehicle_attachment() {
+        for (passenger_id, passenger_type_id, expected_y) in [
+            (38, 71, 2.1875_f64),
+            (39, 151, 2.1875_f64),
+            (40, 124, 1.875_f64),
+        ] {
+            let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+            let (blocks, biomes) = section(0, 0);
+            world.replace_chunk(
+                0,
+                0,
+                [SectionInput {
+                    non_empty_block_count: 0,
+                    fluid_count: 0,
+                    block_states: &blocks,
+                    biomes: &biomes,
+                }],
+            );
+            assert!(world.apply_entity(EntityInput {
+                entity_id: 37,
+                uuid: Uuid::new(37, 0),
+                type_id: 89,
+                x: 2.0,
+                y: 2.0,
+                z: 2.0,
+                movement: (0.0, 0.0, 0.0),
+                rotation: (0.0, 0.0, 0.0),
+                data: 0,
+            }));
+            assert!(world.apply_entity(EntityInput {
+                entity_id: passenger_id,
+                uuid: Uuid::new(passenger_id as u64, 0),
+                type_id: passenger_type_id,
+                x: 2.0,
+                y: 12.0,
+                z: 2.0,
+                movement: (0.0, 0.0, 0.0),
+                rotation: (0.0, 0.0, 0.0),
+                data: 0,
+            }));
+            assert!(world.apply_entity_passengers(37, &[passenger_id]));
+
+            world.tick();
+
+            let passenger = world
+                .entity_at(passenger_id)
+                .expect("generic vehicle passenger");
+            assert_eq!(passenger.previous_position(), (2.0, 12.0, 2.0));
+            assert_eq!(passenger.position(), (2.0, expected_y, 2.0));
+        }
+    }
+
+    #[test]
     fn passenger_tick_clamps_remote_player_rotation_to_boat_heading() {
         let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
         let (blocks, biomes) = section(0, 0);
@@ -5328,7 +5383,7 @@ mod tests {
     }
 
     #[test]
-    fn passenger_tick_clamps_boat_rotation_for_passenger_without_seat_geometry() {
+    fn passenger_tick_clamps_boat_rotation_for_generic_item_passenger() {
         let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
         let (blocks, biomes) = section(0, 0);
         world.replace_chunk(

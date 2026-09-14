@@ -95,11 +95,11 @@ oak boat oluşturuldu. Zombie, summon sırasında boat'a otomatik bağlandığı
 relation paketi ulaştı:
 
 ```text
-cargo run --locked --offline --example world_entity_passenger_living_turn_probe -- 127.0.0.1:25568 P08ZombieTurn74
-execute as P08ZombieTurn74 at @s run summon minecraft:oak_boat ~5 ~ ~ {Tags:["P08BFV74"],NoGravity:1b,Rotation:[0.0f,0.0f]}
-execute as P08ZombieTurn74 at @s run summon minecraft:zombie ~5 ~ ~ {Tags:["P08BFP74"],NoAI:1b,NoGravity:1b,PersistenceRequired:1b,Invulnerable:1b,Rotation:[170.0f,0.0f]}
-ride @e[type=minecraft:zombie,tag=P08BFP74,limit=1,sort=nearest] dismount
-ride @e[type=minecraft:zombie,tag=P08BFP74,limit=1,sort=nearest] mount @e[type=minecraft:oak_boat,tag=P08BFV74,limit=1,sort=nearest]
+cargo run --locked --offline --example world_entity_passenger_living_turn_probe -- 127.0.0.1:25568 P08ZombieTurn78
+execute as P08ZombieTurn78 at @s run summon minecraft:oak_boat ~5 ~ ~ {Tags:["P08BFV78"],NoGravity:1b,Rotation:[0.0f,0.0f]}
+execute as P08ZombieTurn78 at @s run summon minecraft:zombie ~5 ~ ~ {Tags:["P08BFP78"],NoAI:1b,NoGravity:1b,PersistenceRequired:1b,Invulnerable:1b,Rotation:[170.0f,0.0f]}
+ride @e[type=minecraft:zombie,tag=P08BFP78,limit=1,sort=nearest] dismount
+ride @e[type=minecraft:zombie,tag=P08BFP78,limit=1,sort=nearest] mount @e[type=minecraft:oak_boat,tag=P08BFV78,limit=1,sort=nearest]
 ```
 
 Gözlenen sonuç:
@@ -108,39 +108,40 @@ Gözlenen sonuç:
 connection=ok
 play_login=true
 player_loaded_sent=true
-vehicle_id=15529
+vehicle_id=17080
 vehicle_type_id=89
 vehicle_y_rot=0
-passenger_id=15534
+passenger_id=17081
 passenger_type_id=151
-before_rotation=(105.0, 0.0, 104.0625)
+before_rotation=(104.0625, 0.0, 104.0625)
 before_previous_rotation=(105.0, 0.0, 168.75)
 before_body_y_rotation=0
 after_rotation=(105.0, 0.0, 105.0)
-after_previous_rotation=(105.0, 0.0, 168.75)
+after_previous_rotation=(105.9375, 0.0, 168.75)
 after_body_y_rotation=0
-passenger_position=(25.16606102394362, 63.5625, -38.525439994969396)->(25.16606102394362, 63.5625, -38.525439994969396)
+passenger_position=(29.5, 74.1875, -35.5)->(29.5, 74.1875, -35.5)
 passenger_observation_count=1
-world_entity_count=60
+world_entity_count=69
 world_chunk_count=157
-received_packet_count=14968
+received_packet_count=24309
 ```
 
-Oak boat type `89`, Zombie type `151` ve relation state'i alındı. Tick sonrası
-current yaw `105`, body yaw boat yaw'ı `0` oldu. `before_rotation` içindeki
-`104.0625` head değeri remote head interpolation paketinin tick öncesi state'i
-oldu; doğrudan turn callback'i sonrasında head current yaw `105`'e eşitlendi.
-Passenger konumu bu dilimde değişmedi; generic living vehicle attachment
-hesabı ayrı açık kapsamdır. Bu gözlem Rust world kopyasının vanilla
+Oak boat type `89`, Zombie type `151` ve relation state'i alındı. Bu koşuda
+remote interpolation nedeniyle tick sonrası current/head yaw `104.0625` olarak
+gözlendi; doğrudan `turn_entity` callback'i sonrasında head ve current yaw
+`105`'e, body yaw boat yaw'ı `0`'a geldi. Callback sonrası passenger konumu
+seat konumunda sabit kaldı; default vehicle attachment hesabı [P08.bg kaydında](client-world-entity-passenger-generic-position-conformance.md)
+ayrıca kapatıldı. Bu gözlem Rust world kopyasının vanilla
 sunucusundan alınan relation/entity state üzerinde Java kaynaklı living clamp
 dalını uyguladığını gösterir; Java istemcisiyle tam parity iddiası değildir.
 
 ## Açık kapsam
 
-Generic living vehicle attachment ve seat geometry'si, nonzero boat
+Pose/scale/dimensions'a bağlı entity attachment'ları, nonzero boat
 `deltaRotation`, gerçek pencere input callback'i, dismount/collision, nested
 passenger/lifecycle, entity-specific tick/AI, render ve Java istemcisiyle
-`client-parity` karşılaştırması açık kalır. Genel clamp [P08.ba kaydında](client-world-entity-passenger-rotation-conformance.md),
+`client-parity` karşılaştırması açık kalır. Generic vehicle attachment [P08.bg kaydında](client-world-entity-passenger-generic-position-conformance.md),
+genel clamp [P08.ba kaydında](client-world-entity-passenger-rotation-conformance.md),
 Breeze tick istisnası [P08.bb kaydında](client-world-entity-passenger-boat-turn-exemption-conformance.md),
 Animal rotation [P08.bc kaydında](client-world-entity-passenger-animal-rotation-conformance.md),
 Animal seat attachment [P08.bd kaydında](client-world-entity-passenger-animal-position-conformance.md)
