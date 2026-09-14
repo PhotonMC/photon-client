@@ -1,6 +1,6 @@
 //! Queryable client-side world state built from decoded chunk sections.
 
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 use crate::binary::BitSet;
 use crate::math::{
@@ -1262,6 +1262,10 @@ impl ClientWorld {
             self.chunks.clear();
             self.pending_light_updates.clear();
             self.entities.clear();
+            if let Some(player) = self.local_player.as_mut() {
+                player.vehicle_id = None;
+                player.passenger_ids.clear();
+            }
             self.game_time = 0;
         }
         changed
@@ -1420,6 +1424,11 @@ impl ClientWorld {
     }
 
     pub fn remove_entity(&mut self, entity_id: i32) -> bool {
+        if !self.entities.contains_key(&entity_id) {
+            return false;
+        }
+        self.detach_entity_from_vehicle(entity_id);
+        self.eject_entity_passengers(entity_id);
         self.entities.remove(&entity_id).is_some()
     }
 
@@ -1590,6 +1599,9 @@ impl ClientWorld {
     }
 
     pub(crate) fn apply_entity(&mut self, entity: EntityInput) -> bool {
+        if self.entities.contains_key(&entity.entity_id) {
+            self.remove_entity(entity.entity_id);
+        }
         let (chunk_x, chunk_z) = entity_chunk_key((entity.x, entity.y, entity.z));
         let ticking = self.contains_chunk(chunk_x, chunk_z);
         let head_rotation_bits = entity.rotation.2.to_bits();
@@ -1642,6 +1654,8 @@ impl ClientWorld {
                 silent: false,
                 pose: ClientEntityPose::Standing,
                 ticks_frozen: 0,
+                vehicle_id: None,
+                passenger_ids: Vec::new(),
             },
         );
         if let Some(player) = self
@@ -1655,6 +1669,138 @@ impl ClientWorld {
             player.head_lerp_steps = 0;
         }
         true
+    }
+
+    pub(crate) fn apply_entity_passengers(
+        &mut self,
+        vehicle_id: i32,
+        passenger_ids: &[i32],
+    ) -> bool {
+        if !self.entity_exists(vehicle_id) {
+            return false;
+        }
+
+        self.eject_entity_passengers(vehicle_id);
+        for &passenger_id in passenger_ids {
+            if !self.entity_exists(passenger_id)
+                || self.would_create_passenger_cycle(passenger_id, vehicle_id)
+                || self.entity_vehicle_id(passenger_id) == Some(vehicle_id)
+            {
+                continue;
+            }
+            self.detach_entity_from_vehicle(passenger_id);
+            self.set_entity_vehicle_id(passenger_id, Some(vehicle_id));
+            if let Some(vehicle) = self.entities.get_mut(&vehicle_id) {
+                vehicle.passenger_ids.push(passenger_id);
+            } else if let Some(player) = self
+                .local_player
+                .as_mut()
+                .filter(|player| player.id == vehicle_id)
+            {
+                player.passenger_ids.push(passenger_id);
+            }
+        }
+        true
+    }
+
+    fn entity_exists(&self, entity_id: i32) -> bool {
+        self.entities.contains_key(&entity_id)
+            || self
+                .local_player
+                .as_ref()
+                .is_some_and(|player| player.id == entity_id)
+    }
+
+    pub(crate) fn entity_vehicle_id(&self, entity_id: i32) -> Option<i32> {
+        if let Some(entity) = self.entities.get(&entity_id) {
+            return entity.vehicle_id;
+        }
+        self.local_player
+            .as_ref()
+            .filter(|player| player.id == entity_id)
+            .and_then(|player| player.vehicle_id)
+    }
+
+    pub(crate) fn entity_passengers(&self, entity_id: i32) -> Option<&[i32]> {
+        if let Some(entity) = self.entities.get(&entity_id) {
+            return Some(&entity.passenger_ids);
+        }
+        self.local_player
+            .as_ref()
+            .filter(|player| player.id == entity_id)
+            .map(|player| player.passenger_ids.as_slice())
+    }
+
+    fn set_entity_vehicle_id(&mut self, entity_id: i32, vehicle_id: Option<i32>) {
+        if let Some(entity) = self.entities.get_mut(&entity_id) {
+            entity.vehicle_id = vehicle_id;
+        } else if let Some(player) = self
+            .local_player
+            .as_mut()
+            .filter(|player| player.id == entity_id)
+        {
+            player.vehicle_id = vehicle_id;
+        }
+    }
+
+    fn detach_entity_from_vehicle(&mut self, entity_id: i32) {
+        let Some(vehicle_id) = self.entity_vehicle_id(entity_id) else {
+            return;
+        };
+        if let Some(vehicle) = self.entities.get_mut(&vehicle_id) {
+            vehicle
+                .passenger_ids
+                .retain(|&passenger_id| passenger_id != entity_id);
+        } else if let Some(player) = self
+            .local_player
+            .as_mut()
+            .filter(|player| player.id == vehicle_id)
+        {
+            player
+                .passenger_ids
+                .retain(|&passenger_id| passenger_id != entity_id);
+        }
+        self.set_entity_vehicle_id(entity_id, None);
+    }
+
+    fn eject_entity_passengers(&mut self, vehicle_id: i32) {
+        let passengers = if let Some(vehicle) = self.entities.get_mut(&vehicle_id) {
+            Some(std::mem::take(&mut vehicle.passenger_ids))
+        } else if let Some(player) = self
+            .local_player
+            .as_mut()
+            .filter(|player| player.id == vehicle_id)
+        {
+            Some(std::mem::take(&mut player.passenger_ids))
+        } else {
+            None
+        };
+        let Some(passengers) = passengers else {
+            return;
+        };
+        for passenger_id in passengers {
+            if self.entity_vehicle_id(passenger_id) == Some(vehicle_id) {
+                self.set_entity_vehicle_id(passenger_id, None);
+            }
+        }
+    }
+
+    fn would_create_passenger_cycle(&self, passenger_id: i32, vehicle_id: i32) -> bool {
+        if passenger_id == vehicle_id {
+            return true;
+        }
+        let mut visited = BTreeSet::new();
+        let mut current = Some(vehicle_id);
+        while let Some(entity_id) = current {
+            if !visited.insert(entity_id) {
+                return true;
+            }
+            if entity_id == passenger_id {
+                return true;
+            }
+            current = self.entity_vehicle_id(entity_id);
+        }
+        false
     }
 
     pub(crate) fn apply_entity_metadata(&mut self, entity_id: i32, metadata: &[u8]) -> bool {
@@ -2346,6 +2492,8 @@ pub struct ClientEntity {
     silent: bool,
     pose: ClientEntityPose,
     ticks_frozen: i32,
+    vehicle_id: Option<i32>,
+    passenger_ids: Vec<i32>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -2526,6 +2674,8 @@ pub struct ClientPlayerState {
     inventory_slots: BTreeMap<i16, Option<ClientItemStackState>>,
     carried_item: Option<ClientItemStackState>,
     open_container: Option<ClientContainerState>,
+    vehicle_id: Option<i32>,
+    passenger_ids: Vec<i32>,
 }
 
 impl ClientPlayerState {
@@ -2592,11 +2742,21 @@ impl ClientPlayerState {
             inventory_slots: BTreeMap::new(),
             carried_item: None,
             open_container: None,
+            vehicle_id: None,
+            passenger_ids: Vec::new(),
         }
     }
 
     pub fn id(&self) -> i32 {
         self.id
+    }
+
+    pub fn vehicle_id(&self) -> Option<i32> {
+        self.vehicle_id
+    }
+
+    pub fn passenger_ids(&self) -> &[i32] {
+        &self.passenger_ids
     }
 
     pub fn generation(&self) -> u64 {
@@ -2850,6 +3010,14 @@ impl ClientPlayerState {
 }
 
 impl ClientEntity {
+    pub fn vehicle_id(&self) -> Option<i32> {
+        self.vehicle_id
+    }
+
+    pub fn passenger_ids(&self) -> &[i32] {
+        &self.passenger_ids
+    }
+
     fn capture_old_transform(&mut self) {
         self.old_x_bits = self.x_bits;
         self.old_y_bits = self.y_bits;
@@ -4324,6 +4492,51 @@ mod tests {
         assert!(world.remove_entity(37));
         assert_eq!(world.loaded_entity_count(), 0);
         assert!(!world.remove_entity(37));
+    }
+
+    #[test]
+    fn entity_passenger_state_replaces_previous_vehicle_and_cleans_relationships() {
+        let mut world = ClientWorld::default();
+        for entity_id in [37, 38, 39, 40] {
+            assert!(world.apply_entity(EntityInput {
+                entity_id,
+                uuid: Uuid::new(entity_id as u64, 0),
+                type_id: 71,
+                x: 0.0,
+                y: 64.0,
+                z: 0.0,
+                movement: (0.0, 0.0, 0.0),
+                rotation: (0.0, 0.0, 0.0),
+                data: 0,
+            }));
+        }
+        world.set_local_player_id(42);
+
+        assert!(world.apply_entity_passengers(39, &[38]));
+        assert_eq!(world.entity_passengers(39), Some(&[38][..]));
+        assert_eq!(world.entity_vehicle_id(38), Some(39));
+
+        assert!(world.apply_entity_passengers(37, &[38, 39, 999, 38, 42]));
+        assert_eq!(world.entity_passengers(37), Some(&[38, 39, 42][..]));
+        assert_eq!(world.entity_passengers(39), Some(&[][..]));
+        assert_eq!(world.entity_vehicle_id(38), Some(37));
+        assert_eq!(world.entity_vehicle_id(39), Some(37));
+        assert_eq!(world.entity_vehicle_id(42), Some(37));
+        assert!(world.apply_entity_passengers(39, &[37]));
+        assert_eq!(world.entity_passengers(39), Some(&[][..]));
+        assert_eq!(world.entity_passengers(37), Some(&[38, 39, 42][..]));
+
+        assert!(world.apply_entity_passengers(37, &[]));
+        assert_eq!(world.entity_passengers(37), Some(&[][..]));
+        assert_eq!(world.entity_vehicle_id(38), None);
+        assert_eq!(world.entity_vehicle_id(39), None);
+        assert_eq!(world.entity_vehicle_id(42), None);
+        assert!(!world.apply_entity_passengers(999, &[38]));
+
+        assert!(world.apply_entity_passengers(37, &[38]));
+        assert!(world.remove_entity(37));
+        assert_eq!(world.entity_vehicle_id(38), None);
+        assert_eq!(world.entity_at(37), None);
     }
 
     #[test]

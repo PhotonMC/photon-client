@@ -55,6 +55,7 @@ pub(crate) const PLAY_CLIENTBOUND_MOVE_ENTITY_POS_ROT_PACKET_ID: i32 = 54;
 pub(crate) const PLAY_CLIENTBOUND_MOVE_ENTITY_ROT_PACKET_ID: i32 = 56;
 pub(crate) const PLAY_CLIENTBOUND_ROTATE_HEAD_PACKET_ID: i32 = 83;
 pub(crate) const PLAY_CLIENTBOUND_SET_ENTITY_MOTION_PACKET_ID: i32 = 101;
+pub(crate) const PLAY_CLIENTBOUND_SET_PASSENGERS_PACKET_ID: i32 = 107;
 pub(crate) const PLAY_CLIENTBOUND_BLOCK_CHANGED_ACK_PACKET_ID: i32 = 4;
 pub(crate) const PLAY_CLIENTBOUND_BLOCK_DESTRUCTION_PACKET_ID: i32 = 5;
 pub(crate) const PLAY_CLIENTBOUND_BLOCK_ENTITY_DATA_PACKET_ID: i32 = 6;
@@ -573,6 +574,7 @@ pub struct PlayConnectionTrace {
     pub entity_motion_interpolation_observations: Vec<EntityMotionInterpolationObservation>,
     pub entity_head_rotation_observations: Vec<EntityHeadRotationObservation>,
     pub remove_entities_observations: Vec<RemoveEntitiesObservation>,
+    pub entity_passengers_observations: Vec<EntityPassengersObservation>,
     pub entity_metadata_observations: Vec<EntityMetadataObservation>,
     pub entity_position_sync_observations: Vec<EntityPositionSyncObservation>,
     pub entity_teleport_observations: Vec<EntityTeleportObservation>,
@@ -859,6 +861,16 @@ pub struct EntityHeadRotationObservation {
 pub struct RemoveEntitiesObservation {
     pub entity_ids: Vec<i32>,
     pub applied_entity_count: usize,
+}
+
+/// Wire-level fields decoded from one clientbound passenger-list packet.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EntityPassengersObservation {
+    pub vehicle_id: i32,
+    pub passenger_ids: Vec<i32>,
+    pub applied_to_world: bool,
+    pub applied_vehicle_passengers: Option<Vec<i32>>,
+    pub applied_passenger_vehicles: Vec<(i32, Option<i32>)>,
 }
 
 /// Wire-level fields decoded from one clientbound entity-metadata packet.
@@ -1957,6 +1969,36 @@ pub(crate) fn parse_remove_entities_packet(
     Ok(RemoveEntitiesObservation {
         entity_ids,
         applied_entity_count: 0,
+    })
+}
+
+pub(crate) fn parse_set_passengers_packet(
+    input: &[u8],
+) -> Result<EntityPassengersObservation, ConnectionError> {
+    let mut input = input;
+    let vehicle_id = read_varint(&mut input, "set passengers vehicle id")?;
+    let count = read_varint(&mut input, "set passengers count")?;
+    if count < 0 {
+        return Err(ConnectionError::Codec("set passengers count"));
+    }
+    let count =
+        usize::try_from(count).map_err(|_| ConnectionError::Codec("set passengers count"))?;
+    if count > input.len() {
+        return Err(ConnectionError::Codec("set passengers count"));
+    }
+    let mut passenger_ids = Vec::with_capacity(count);
+    for _ in 0..count {
+        passenger_ids.push(read_varint(&mut input, "set passenger id")?);
+    }
+    if !input.is_empty() {
+        return Err(ConnectionError::Codec("set passengers trailing payload"));
+    }
+    Ok(EntityPassengersObservation {
+        vehicle_id,
+        passenger_ids,
+        applied_to_world: false,
+        applied_vehicle_passengers: None,
+        applied_passenger_vehicles: Vec::new(),
     })
 }
 
@@ -3062,9 +3104,10 @@ mod tests {
         PLAY_CLIENTBOUND_REMOVE_MOB_EFFECT_PACKET_ID, PLAY_CLIENTBOUND_RESPAWN_PACKET_ID,
         PLAY_CLIENTBOUND_ROTATE_HEAD_PACKET_ID, PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID,
         PLAY_CLIENTBOUND_SET_ENTITY_DATA_PACKET_ID, PLAY_CLIENTBOUND_SET_ENTITY_MOTION_PACKET_ID,
-        PLAY_CLIENTBOUND_SET_HEALTH_PACKET_ID, PLAY_CLIENTBOUND_SET_PLAYER_INVENTORY_PACKET_ID,
-        PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID, PLAY_CLIENTBOUND_TELEPORT_ENTITY_PACKET_ID,
-        PLAY_CLIENTBOUND_UPDATE_ATTRIBUTES_PACKET_ID, PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID,
+        PLAY_CLIENTBOUND_SET_HEALTH_PACKET_ID, PLAY_CLIENTBOUND_SET_PASSENGERS_PACKET_ID,
+        PLAY_CLIENTBOUND_SET_PLAYER_INVENTORY_PACKET_ID, PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID,
+        PLAY_CLIENTBOUND_TELEPORT_ENTITY_PACKET_ID, PLAY_CLIENTBOUND_UPDATE_ATTRIBUTES_PACKET_ID,
+        PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID,
         PLAY_SERVERBOUND_ACCEPT_TELEPORTATION_PACKET_ID,
         PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID, PLAY_SERVERBOUND_CLIENT_COMMAND_PACKET_ID,
         PLAY_SERVERBOUND_CLIENT_TICK_END_PACKET_ID, PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
@@ -3101,9 +3144,10 @@ mod tests {
         parse_move_entity_rot_packet, parse_open_screen_packet, parse_optional_item_stack,
         parse_player_position_packet, parse_remove_entities_packet, parse_remove_mob_effect_packet,
         parse_respawn_packet, parse_rotate_head_packet, parse_section_data,
-        parse_set_entity_motion_packet, parse_set_health_packet, parse_set_player_inventory_packet,
-        parse_system_chat_packet, parse_update_attributes_packet, parse_update_mob_effect_packet,
-        resolve_player_position, support_block_position,
+        parse_set_entity_motion_packet, parse_set_health_packet, parse_set_passengers_packet,
+        parse_set_player_inventory_packet, parse_system_chat_packet,
+        parse_update_attributes_packet, parse_update_mob_effect_packet, resolve_player_position,
+        support_block_position,
     };
 
     #[test]
@@ -3133,6 +3177,7 @@ mod tests {
         assert_eq!(PLAY_CLIENTBOUND_MOVE_ENTITY_ROT_PACKET_ID, 56);
         assert_eq!(PLAY_CLIENTBOUND_ROTATE_HEAD_PACKET_ID, 83);
         assert_eq!(PLAY_CLIENTBOUND_SET_ENTITY_MOTION_PACKET_ID, 101);
+        assert_eq!(PLAY_CLIENTBOUND_SET_PASSENGERS_PACKET_ID, 107);
         assert_eq!(PLAY_CLIENTBOUND_KEEP_ALIVE_PACKET_ID, 44);
         assert_eq!(PLAY_CLIENTBOUND_CHUNK_PACKET_ID, 45);
         assert_eq!(PLAY_CLIENTBOUND_LOGIN_PACKET_ID, 49);
@@ -3710,6 +3755,45 @@ mod tests {
 
         payload.push(0);
         assert!(parse_remove_entities_packet(&payload).is_err());
+    }
+
+    #[test]
+    fn set_passengers_parser_matches_java_vehicle_and_varint_array_order() {
+        let mut payload = Vec::new();
+        crate::wire::write_varint(37, &mut payload);
+        crate::wire::write_varint(3, &mut payload);
+        crate::wire::write_varint(4, &mut payload);
+        crate::wire::write_varint(128, &mut payload);
+        crate::wire::write_varint(-1, &mut payload);
+
+        assert_eq!(
+            parse_set_passengers_packet(&payload).expect("set passengers"),
+            super::EntityPassengersObservation {
+                vehicle_id: 37,
+                passenger_ids: vec![4, 128, -1],
+                applied_to_world: false,
+                applied_vehicle_passengers: None,
+                applied_passenger_vehicles: Vec::new(),
+            }
+        );
+
+        let mut empty = Vec::new();
+        crate::wire::write_varint(37, &mut empty);
+        crate::wire::write_varint(0, &mut empty);
+        assert_eq!(
+            parse_set_passengers_packet(&empty)
+                .expect("empty set passengers")
+                .passenger_ids,
+            Vec::<i32>::new()
+        );
+
+        let mut negative_count = Vec::new();
+        crate::wire::write_varint(37, &mut negative_count);
+        crate::wire::write_varint(-1, &mut negative_count);
+        assert!(parse_set_passengers_packet(&negative_count).is_err());
+
+        payload.push(0);
+        assert!(parse_set_passengers_packet(&payload).is_err());
     }
 
     #[test]

@@ -111,6 +111,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P08.aj — server-conformance Entity mob flags semantic state](client-world-entity-mob-flags-conformance.md)
 - [P08.e-entity-motion — server-conformance ClientWorld entity motion state](client-world-entity-motion-conformance.md)
 - [P08.ab — server-conformance Entity no-gravity semantic state](client-world-entity-no-gravity-conformance.md)
+- [P08.av-entity-passengers — server-conformance ClientWorld araç ve yolcu ilişkisi](client-world-entity-passengers-conformance.md)
 - [P08.ap-player-head-rotation — server-conformance Remote Player head rotation interpolation](client-world-entity-player-head-rotation-conformance.md)
 - [P08.ar-player-interpolation — server-conformance Remote Player position interpolation](client-world-entity-player-interpolation-conformance.md)
 - [P08.at-player-motion — server-conformance Remote Player motion interpolation](client-world-entity-player-motion-conformance.md)

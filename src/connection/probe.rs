@@ -419,6 +419,22 @@ pub fn connect_and_world_entity_teleport_delta_probe(
     )
 }
 
+/// Connect to a Java-protocol server and keep the loaded world open long enough
+/// to observe clientbound passenger-list updates from an external ride command.
+pub fn connect_and_world_entity_passengers_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeConfig::new(ProbeAction::WorldEntityPassengers)
+            .with_drain_timeout(Duration::from_secs(60)),
+    )
+}
+
 /// Connect to a Java-protocol server and send a harmless block-action packet after loading.
 pub fn connect_and_action_probe(
     address: SocketAddr,
@@ -1453,6 +1469,7 @@ enum ProbeAction {
     WorldEntityRemove,
     WorldEntityMetadata,
     WorldEntityPosition,
+    WorldEntityPassengers,
     BlockAction,
     BlockBreak,
     BlockBreakOutOfRange,
@@ -1919,6 +1936,28 @@ fn connect_and_probe_with_mode(
                 observation.applied_entity_count =
                     trace.world.remove_entities(&observation.entity_ids);
                 trace.remove_entities_observations.push(observation);
+            }
+            PLAY_CLIENTBOUND_SET_PASSENGERS_PACKET_ID => {
+                let mut observation = parse_set_passengers_packet(payload)?;
+                observation.applied_to_world = trace
+                    .world
+                    .apply_entity_passengers(observation.vehicle_id, &observation.passenger_ids);
+                if observation.applied_to_world {
+                    observation.applied_vehicle_passengers = trace
+                        .world
+                        .entity_passengers(observation.vehicle_id)
+                        .map(<[i32]>::to_vec);
+                    observation.applied_passenger_vehicles = observation
+                        .passenger_ids
+                        .iter()
+                        .filter_map(|&passenger_id| {
+                            trace.world.entity_passengers(passenger_id).map(|_| {
+                                (passenger_id, trace.world.entity_vehicle_id(passenger_id))
+                            })
+                        })
+                        .collect();
+                }
+                trace.entity_passengers_observations.push(observation);
             }
             PLAY_CLIENTBOUND_SET_ENTITY_DATA_PACKET_ID => {
                 let mut observation = parse_entity_metadata_packet(payload)?;
