@@ -960,6 +960,40 @@ pub fn living_entity_dimensions(
     }
 }
 
+/// State produced by Java Entity.refreshDimensions before optional server
+/// position correction.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ClientEntityDimensionsRefresh {
+    pub dimensions: ClientEntityDimensions,
+    pub bounding_box: Aabb,
+    pub should_fudge_position: bool,
+}
+
+/// Refresh dimensions at the current position and evaluate Java's resize gate.
+pub fn refresh_entity_dimensions(
+    old_dimensions: ClientEntityDimensions,
+    new_dimensions: ClientEntityDimensions,
+    position: Vec3,
+    level_is_client_side: bool,
+    first_tick: bool,
+    no_physics: bool,
+    is_player: bool,
+) -> ClientEntityDimensionsRefresh {
+    let is_small = new_dimensions.width() <= 4.0 && new_dimensions.height() <= 4.0;
+    let grew = new_dimensions.width() > old_dimensions.width()
+        || new_dimensions.height() > old_dimensions.height();
+    ClientEntityDimensionsRefresh {
+        dimensions: new_dimensions,
+        bounding_box: new_dimensions.make_bounding_box(position),
+        should_fudge_position: !level_is_client_side
+            && !first_tick
+            && !no_physics
+            && is_small
+            && grew
+            && !is_player,
+    }
+}
+
 /// The four movement flags copied by Java's `AbstractBoat.setInput`.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct BoatInput {
@@ -6891,7 +6925,8 @@ mod tests {
         VANILLA_PRIMED_TNT_GRAVITY, VANILLA_SNOWBALL_ENTITY_TYPE_ID, apply_entity_movement_state,
         collect_candidate_step_up_heights, collect_entity_collision_shapes,
         collide_entity_movement, collide_entity_movement_state, is_minor_horizontal_collision,
-        living_entity_dimensions, menu_top_slot_count, select_step_up_movement,
+        living_entity_dimensions, menu_top_slot_count, refresh_entity_dimensions,
+        select_step_up_movement,
     };
     use crate::aabb::Aabb;
     use crate::binary::{BitSet, Uuid};
@@ -7595,6 +7630,50 @@ mod tests {
             living_entity_dimensions(ClientEntityPose::Crouching, fixed, 0.5, 2.0),
             fixed
         );
+    }
+
+    #[test]
+    fn refresh_entity_dimensions_reapplies_box_and_client_gate() {
+        let old_dimensions = ClientEntityDimensions::scalable(0.6, 1.5).with_eye_height(1.27);
+        let new_dimensions = ClientEntityDimensions::scalable(0.6, 1.8).with_eye_height(1.62);
+        let position = Vec3::new(-1.25, 2.0, 3.75);
+        let refreshed = refresh_entity_dimensions(
+            old_dimensions,
+            new_dimensions,
+            position,
+            true,
+            false,
+            false,
+            false,
+        );
+        assert_eq!(refreshed.dimensions, new_dimensions);
+        assert_eq!(
+            refreshed.bounding_box,
+            new_dimensions.make_bounding_box(position)
+        );
+        assert!(!refreshed.should_fudge_position);
+
+        let server_resize = refresh_entity_dimensions(
+            old_dimensions,
+            new_dimensions,
+            position,
+            false,
+            false,
+            false,
+            false,
+        );
+        assert!(server_resize.should_fudge_position);
+
+        let player_resize = refresh_entity_dimensions(
+            old_dimensions,
+            new_dimensions,
+            position,
+            false,
+            false,
+            false,
+            true,
+        );
+        assert!(!player_resize.should_fudge_position);
     }
 
     #[test]

@@ -66,8 +66,8 @@ use voxel_client::world::{
     ClientWorldBorderStatus, ClientWorldCollisionSource, DimensionBounds, EntityInput,
     SectionInput, apply_entity_movement_state, collect_candidate_step_up_heights,
     collect_entity_collision_shapes, collide_entity_movement, collide_entity_movement_state,
-    is_minor_horizontal_collision, living_entity_dimensions, select_step_up_movement,
-    world_border_collision_shape,
+    is_minor_horizontal_collision, living_entity_dimensions, refresh_entity_dimensions,
+    select_step_up_movement, world_border_collision_shape,
 };
 
 fn string<'a>(request: &'a Value, name: &str) -> Result<&'a str, String> {
@@ -5560,6 +5560,79 @@ fn shape_result(request: &Value) -> Result<Value, String> {
                         "resolved_pose_id": pose.id(),
                         "dimensions": entity_dimensions_snapshot(dimensions),
                         "box": aabb_snapshot(dimensions.make_bounding_box(position)),
+                    }))
+                })
+                .collect::<Result<Vec<_>, String>>()?;
+            Ok(json!({"states": states}))
+        }
+        "entity_dimensions_refresh" => {
+            let inputs = request
+                .get("inputs")
+                .ok_or("inputs must be an array")?
+                .as_array()
+                .ok_or("inputs must be an array")?;
+            let states = inputs
+                .iter()
+                .map(|value| {
+                    let input = value
+                        .as_object()
+                        .ok_or("dimensions refresh input must be an object")?;
+                    let dimensions = |name: &str| -> Result<ClientEntityDimensions, String> {
+                        let dimension_input = input
+                            .get(name)
+                            .ok_or_else(|| format!("{name} must be an object"))?;
+                        let width = f32_field(dimension_input, "width")?;
+                        let height = f32_field(dimension_input, "height")?;
+                        let fixed = dimension_input
+                            .get("fixed")
+                            .and_then(Value::as_bool)
+                            .unwrap_or(false);
+                        let dimensions = if fixed {
+                            ClientEntityDimensions::fixed(width, height)
+                        } else {
+                            ClientEntityDimensions::scalable(width, height)
+                        };
+                        Ok(if dimension_input.get("eye_height").is_some() {
+                            dimensions.with_eye_height(f32_field(dimension_input, "eye_height")?)
+                        } else {
+                            dimensions
+                        })
+                    };
+                    let old_dimensions = dimensions("old_dimensions")?;
+                    let new_dimensions = dimensions("new_dimensions")?;
+                    let position =
+                        f64_vec3(input.get("position").ok_or("position must be an object")?)?;
+                    let refreshed = refresh_entity_dimensions(
+                        old_dimensions,
+                        new_dimensions,
+                        position,
+                        input
+                            .get("level_client_side")
+                            .and_then(Value::as_bool)
+                            .ok_or("level_client_side must be a boolean")?,
+                        input
+                            .get("first_tick")
+                            .and_then(Value::as_bool)
+                            .ok_or("first_tick must be a boolean")?,
+                        input
+                            .get("no_physics")
+                            .and_then(Value::as_bool)
+                            .ok_or("no_physics must be a boolean")?,
+                        input
+                            .get("is_player")
+                            .and_then(Value::as_bool)
+                            .ok_or("is_player must be a boolean")?,
+                    );
+                    Ok(json!({
+                        "label": input
+                            .get("label")
+                            .and_then(Value::as_str)
+                            .ok_or("label must be a string")?,
+                        "old_dimensions": entity_dimensions_snapshot(old_dimensions),
+                        "new_dimensions": entity_dimensions_snapshot(refreshed.dimensions),
+                        "position_after_refresh": vec3_snapshot(position),
+                        "bounding_box": aabb_snapshot(refreshed.bounding_box),
+                        "should_fudge_position": refreshed.should_fudge_position,
                     }))
                 })
                 .collect::<Result<Vec<_>, String>>()?;

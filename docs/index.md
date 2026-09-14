@@ -114,6 +114,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P09.h — Entity collision shape collection — client-parity birleşik kayıt](client-world-entity-collision-conformance.md)
 - [P08.af — server-conformance Entity custom-name visibility semantic state](client-world-entity-custom-name-conformance.md)
 - [P08.ag — server-conformance Entity custom-name presence semantic state](client-world-entity-custom-name-presence-conformance.md)
+- [P09.af — Entity dimensions refresh ve client reapply — client-parity birleşik kayıt](client-world-entity-dimensions-refresh-conformance.md)
 - [P08.al — server-conformance Entity effect ambience semantic state](client-world-entity-effect-ambience-conformance.md)
 - [P08.am — server-conformance Entity effect particle type list semantic state](client-world-entity-effect-particles-conformance.md)
 - [P08.bm-entity-experience-orb-tick — server-conformance Experience Orb client tick](client-world-entity-experience-orb-tick-conformance.md)

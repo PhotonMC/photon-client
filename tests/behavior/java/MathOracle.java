@@ -3794,6 +3794,38 @@ public final class MathOracle {
                     states.add(state);
                 }
                 result.add("states", states);
+            } else if (kind.equals("entity_dimensions_refresh")) {
+                var states = new JsonArray();
+                for (var entry : request.getAsJsonArray("inputs")) {
+                    JsonObject input = entry.getAsJsonObject();
+                    JsonObject oldInput = input.getAsJsonObject("old_dimensions");
+                    JsonObject newInput = input.getAsJsonObject("new_dimensions");
+                    EntityDimensions oldDimensions = dimensionsFromInput(oldInput);
+                    EntityDimensions newDimensions = dimensionsFromInput(newInput);
+                    Vec3 position = vec3(input.getAsJsonObject("position"));
+                    boolean levelClientSide = input.get("level_client_side").getAsBoolean();
+                    boolean firstTick = input.get("first_tick").getAsBoolean();
+                    boolean noPhysics = input.get("no_physics").getAsBoolean();
+                    boolean isPlayer = input.get("is_player").getAsBoolean();
+                    boolean isSmall = newDimensions.width() <= 4.0F && newDimensions.height() <= 4.0F;
+                    boolean grew = newDimensions.width() > oldDimensions.width()
+                        || newDimensions.height() > oldDimensions.height();
+                    boolean shouldFudge = !levelClientSide
+                        && !firstTick
+                        && !noPhysics
+                        && isSmall
+                        && grew
+                        && !isPlayer;
+                    var state = new JsonObject();
+                    state.addProperty("label", input.get("label").getAsString());
+                    state.add("old_dimensions", snapshot(oldDimensions));
+                    state.add("new_dimensions", snapshot(newDimensions));
+                    state.add("position_after_refresh", snapshot(position));
+                    state.add("bounding_box", snapshot(newDimensions.makeBoundingBox(position)));
+                    state.addProperty("should_fudge_position", shouldFudge);
+                    states.add(state);
+                }
+                result.add("states", states);
             } else if (kind.equals("player_pose_dimensions")) {
                 var avatarDimensions = avatarPoseDimensions();
                 Vec3 position = vec3(request.getAsJsonObject("position"));
@@ -5599,6 +5631,19 @@ public final class MathOracle {
         state.addProperty("max_y", Oracle.bits(box.maxY));
         state.addProperty("max_z", Oracle.bits(box.maxZ));
         return state;
+    }
+
+    private static EntityDimensions dimensionsFromInput(JsonObject input) {
+        float width = Oracle.f32(input, "width");
+        float height = Oracle.f32(input, "height");
+        boolean fixed = input.has("fixed") && input.get("fixed").getAsBoolean();
+        EntityDimensions dimensions = fixed
+            ? EntityDimensions.fixed(width, height)
+            : EntityDimensions.scalable(width, height);
+        if (input.has("eye_height")) {
+            dimensions = dimensions.withEyeHeight(Oracle.f32(input, "eye_height"));
+        }
+        return dimensions;
     }
 
     private static JsonObject snapshot(EntityDimensions dimensions) {
