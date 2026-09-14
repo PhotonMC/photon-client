@@ -30,18 +30,21 @@ uygulamaz.
 
 ## Rust sözleşmesi ve test-first kanıtı
 
-`ClientWorld::tick_entity_once`, pinned boat type'ı için local Player'ın
-passenger listesinde bulunmasını local instance authority olarak kullanır.
-Authority yoksa boat motion'ı tam sıfıra çekilir; boat input snapshot'ı,
-`deltaRotation`, yaw ve paddle state'i değiştirilmez. Authority olan boat'ın
-control ve `IN_AIR` dalları P08.bh ve P08.bj kayıtlarında tutulur.
+`ClientWorld::tick_entity_once`, pinned boat type'ı için ilk passenger ID'sinin
+local Player olması koşulunu local instance authority olarak kullanır. Authority
+yoksa boat motion'ı tam sıfıra çekilir; boat input snapshot'ı, `deltaRotation`,
+yaw ve paddle state'i değiştirilmez. Authority olan boat'ın control ve
+`IN_AIR` dalları P08.bh ve P08.bj kayıtlarında tutulur.
 
 `remote_boat_tick_does_not_apply_client_control_or_motion` testi önce
 uygulama yazılmadan çalıştırıldı ve sağ input'ın remote boat motion'ını
-değiştirdiğini göstererek başarısız oldu. Authority ayrımı eklendikten sonra
-test; konumun, rotation'ın, `deltaRotation` değerinin ve paddle state'inin
-korunduğunu, motion'ın sıfırlandığını doğrular. Bu kayıtla birlikte lib test
-corpus'u `142 passed; 0 failed` sonucuna ulaştı.
+değiştirdiğini göstererek başarısız oldu. `boat_authority_uses_first_passenger_only`
+testi de local Player ikinci sıradayken aynı control yolunun çalıştığını
+göstererek first-passenger düzeltmesinden önce başarısız oldu. Authority ve
+sıralama ayrımı eklendikten sonra iki test; konumun, rotation'ın,
+`deltaRotation` değerinin ve paddle state'inin korunduğunu, motion'ın
+sıfırlandığını doğrular. Bu kayıtla birlikte lib test corpus'u
+`143 passed; 0 failed` sonucuna ulaştı.
 
 ## Vanilla server-conformance doğrulaması
 
@@ -103,12 +106,14 @@ ilişki doğrulandı. Sağ input sonrasında Rust world kopyası konumu, rotatio
 `deltaRotation` ve paddle state'ini korudu; motion sıfır kaldı. Bu sonuç
 vanilla server'ın remote boat fixture'ını ve bağlı entity akışını kabul eden
 wire tüketimini gösterir; Java istemcisinin tam local/remote prediction ve
-frame parity'sini göstermez.
+frame parity'sini göstermez. Vanilla server'ın `Entity.addPassenger` dalı
+Player passenger'ı ilk sıraya taşıdığı için local Player'ın ikinci sırada
+olduğu malformed client state canlı sunucudan üretilemedi; bu kaynak dalı
+üstteki synthetic Rust testiyle ayrıca korunur.
 
 ## Açık kapsam
 
-İlk living passenger seçiminin tüm sıralama dalları, nested/indirect local
-Player authority'si, boat status/friction ve buoyancy, collision-aware
+Nested/indirect local Player authority'si, boat status/friction ve buoyancy, collision-aware
 `Entity.move`, ortak boat effects/animation tick'i, `ServerboundPaddleBoat` ve
 `ServerboundMoveVehicle` paketleri, diğer vehicle türleri ve Java istemcisiyle
 `client-parity` karşılaştırması açık kalır.

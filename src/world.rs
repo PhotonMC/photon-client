@@ -1816,7 +1816,7 @@ impl ClientWorld {
     fn boat_is_local_instance_authoritative(&self, entity: &ClientEntity) -> bool {
         self.local_player
             .as_ref()
-            .is_some_and(|player| entity.passenger_ids.contains(&player.id))
+            .is_some_and(|player| entity.passenger_ids.first() == Some(&player.id))
     }
 
     fn snowball_path_is_open(
@@ -6199,6 +6199,68 @@ mod tests {
         world.tick();
 
         let boat = world.entity_at(37).expect("remote boat");
+        assert_eq!(boat.position(), (2.0, 12.0, 2.0));
+        assert_eq!(boat.motion(), (0.0, 0.0, 0.0));
+        assert_eq!(boat.rotation(), (0.0, 0.0, 0.0));
+        assert_eq!(boat.boat_delta_rotation(), 0.0);
+        assert_eq!(boat.paddle_state(), (false, false));
+    }
+
+    #[test]
+    fn boat_authority_uses_first_passenger_only() {
+        let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+        let (mut blocks, biomes) = section(0, 0);
+        blocks[12 * 256 + 2 * 16 + 2] = 1;
+        world.replace_chunk(
+            0,
+            0,
+            [SectionInput {
+                non_empty_block_count: 1,
+                fluid_count: 0,
+                block_states: &blocks,
+                biomes: &biomes,
+            }],
+        );
+        assert!(world.apply_entity(EntityInput {
+            entity_id: 37,
+            uuid: Uuid::new(1, 37),
+            type_id: 89,
+            x: 2.0,
+            y: 12.0,
+            z: 2.0,
+            movement: (0.0, 0.0, 0.0),
+            rotation: (0.0, 0.0, 0.0),
+            data: 0,
+        }));
+        assert!(world.apply_entity(EntityInput {
+            entity_id: 38,
+            uuid: Uuid::new(1, 38),
+            type_id: 151,
+            x: 2.0,
+            y: 12.0,
+            z: 2.0,
+            movement: (0.0, 0.0, 0.0),
+            rotation: (0.0, 0.0, 0.0),
+            data: 0,
+        }));
+        assert!(world.apply_entity(EntityInput {
+            entity_id: 39,
+            uuid: Uuid::new(1, 39),
+            type_id: VANILLA_PLAYER_ENTITY_TYPE_ID,
+            x: 2.0,
+            y: 12.0,
+            z: 2.0,
+            movement: (0.0, 0.0, 0.0),
+            rotation: (0.0, 0.0, 0.0),
+            data: 0,
+        }));
+        world.set_local_player_id(39);
+        assert!(world.apply_entity_passengers(37, &[38, 39]));
+        assert!(world.set_boat_input(37, BoatInput::new(false, true, false, false)));
+
+        world.tick();
+
+        let boat = world.entity_at(37).expect("boat");
         assert_eq!(boat.position(), (2.0, 12.0, 2.0));
         assert_eq!(boat.motion(), (0.0, 0.0, 0.0));
         assert_eq!(boat.rotation(), (0.0, 0.0, 0.0));
