@@ -4622,24 +4622,43 @@ public final class MathOracle {
         }
 
         private static BlockState createClimbableBlockState(JsonObject context) {
-            if (!context.get("kind").getAsString().equals("trapdoor_ladder")) {
+            String kind = context.get("kind").getAsString();
+            if (kind.equals("trapdoor_ladder")) {
+                boolean open = context.has("trapdoor_open")
+                    && context.get("trapdoor_open").getAsBoolean();
+                Direction trapdoorFacing = Direction.valueOf(
+                    context.get("trapdoor_facing").getAsString().toUpperCase(Locale.ROOT));
+                Direction ladderFacing = Direction.valueOf(
+                    context.get("ladder_facing").getAsString().toUpperCase(Locale.ROOT));
+                boolean belowIsLadder = !context.has("below_is_ladder")
+                    || context.get("below_is_ladder").getAsBoolean();
+                BlockState belowState = belowIsLadder
+                    ? Blocks.LADDER.defaultBlockState().setValue(LadderBlock.FACING, ladderFacing)
+                    : Blocks.AIR.defaultBlockState();
+                ClimbableClientLevelFixture.setBelowState(belowState);
+                return Blocks.OAK_TRAPDOOR.defaultBlockState()
+                    .setValue(TrapDoorBlock.OPEN, open)
+                    .setValue(TrapDoorBlock.FACING, trapdoorFacing);
+            } else if (kind.equals("climbable_tag")) {
+                int stateId = context.get("state_id").getAsInt();
+                BlockState state = Block.stateById(stateId);
+                bindClimbableTag(state.getBlock());
+                ClimbableClientLevelFixture.setBelowState(Blocks.AIR.defaultBlockState());
+                return state;
+            } else {
                 throw new IllegalArgumentException("Unknown climbable context kind");
             }
-            boolean open = context.has("trapdoor_open")
-                && context.get("trapdoor_open").getAsBoolean();
-            Direction trapdoorFacing = Direction.valueOf(
-                context.get("trapdoor_facing").getAsString().toUpperCase(Locale.ROOT));
-            Direction ladderFacing = Direction.valueOf(
-                context.get("ladder_facing").getAsString().toUpperCase(Locale.ROOT));
-            boolean belowIsLadder = !context.has("below_is_ladder")
-                || context.get("below_is_ladder").getAsBoolean();
-            BlockState belowState = belowIsLadder
-                ? Blocks.LADDER.defaultBlockState().setValue(LadderBlock.FACING, ladderFacing)
-                : Blocks.AIR.defaultBlockState();
-            ClimbableClientLevelFixture.setBelowState(belowState);
-            return Blocks.OAK_TRAPDOOR.defaultBlockState()
-                .setValue(TrapDoorBlock.OPEN, open)
-                .setValue(TrapDoorBlock.FACING, trapdoorFacing);
+        }
+
+        private static void bindClimbableTag(Block block) {
+            java.util.List<net.minecraft.core.Holder<Block>> values = block == Blocks.LADDER
+                ? java.util.List.of(BuiltInRegistries.BLOCK.wrapAsHolder(block))
+                : java.util.List.of();
+            java.util.Map<net.minecraft.tags.TagKey<Block>, java.util.List<net.minecraft.core.Holder<Block>>> tags =
+                java.util.Map.of(net.minecraft.tags.BlockTags.CLIMBABLE, values);
+            BuiltInRegistries.BLOCK.prepareTagReload(
+                new net.minecraft.tags.TagLoader.LoadResult<>(
+                    net.minecraft.core.registries.Registries.BLOCK, tags)).apply();
         }
 
         @Override

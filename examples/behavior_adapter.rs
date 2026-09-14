@@ -4561,28 +4561,38 @@ fn shape_result(request: &Value) -> Result<Value, String> {
                                 .get("kind")
                                 .and_then(Value::as_str)
                                 .ok_or("climbable context kind must be a string")?;
-                            if kind != "trapdoor_ladder" {
+                            if kind == "trapdoor_ladder" {
+                                world.apply_entity_living_climbable_trapdoor_state(
+                                    entity_id,
+                                    context
+                                        .get("trapdoor_open")
+                                        .and_then(Value::as_bool)
+                                        .unwrap_or(false),
+                                    context
+                                        .get("trapdoor_facing")
+                                        .and_then(Value::as_str)
+                                        .ok_or("trapdoor_facing must be a string")?,
+                                    context
+                                        .get("below_is_ladder")
+                                        .and_then(Value::as_bool)
+                                        .unwrap_or(true),
+                                    context
+                                        .get("ladder_facing")
+                                        .and_then(Value::as_str)
+                                        .ok_or("ladder_facing must be a string")?,
+                                );
+                            } else if kind == "climbable_tag" {
+                                let state_id = context
+                                    .get("state_id")
+                                    .and_then(Value::as_i64)
+                                    .ok_or("climbable state_id must be an integer")?
+                                    .try_into()
+                                    .map_err(|_| "climbable state_id must fit in i32")?;
+                                world
+                                    .apply_entity_living_climbable_block_state(entity_id, state_id);
+                            } else {
                                 return Err("unknown climbable context kind".to_owned());
                             }
-                            world.apply_entity_living_climbable_trapdoor_state(
-                                entity_id,
-                                context
-                                    .get("trapdoor_open")
-                                    .and_then(Value::as_bool)
-                                    .unwrap_or(false),
-                                context
-                                    .get("trapdoor_facing")
-                                    .and_then(Value::as_str)
-                                    .ok_or("trapdoor_facing must be a string")?,
-                                context
-                                    .get("below_is_ladder")
-                                    .and_then(Value::as_bool)
-                                    .unwrap_or(true),
-                                context
-                                    .get("ladder_facing")
-                                    .and_then(Value::as_str)
-                                    .ok_or("ladder_facing must be a string")?,
-                            );
                         }
                     }
                     let source_entity_id = input

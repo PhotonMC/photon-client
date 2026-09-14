@@ -1781,6 +1781,7 @@ fn client_block_state_box(
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ClientBlockStateRegistry {
     collision_shapes: BTreeMap<i32, ClientBlockStateCollisionShape>,
+    climbable_state_ids: BTreeSet<i32>,
 }
 
 impl ClientBlockStateRegistry {
@@ -1848,7 +1849,11 @@ impl ClientBlockStateRegistry {
                 ],
             },
         );
-        Self { collision_shapes }
+        let climbable_state_ids = (5719..=5726).collect();
+        Self {
+            collision_shapes,
+            climbable_state_ids,
+        }
     }
 
     pub fn resolve_state_id(&self, state_id: i32) -> i32 {
@@ -1864,6 +1869,11 @@ impl ClientBlockStateRegistry {
             .get(&self.resolve_state_id(state_id))
             .expect("the registry must contain its air fallback")
             .to_voxel_shape()
+    }
+
+    /// Return whether a pinned 26.2 block-state belongs to BlockTags.CLIMBABLE.
+    pub fn is_climbable_state(&self, state_id: i32) -> bool {
+        self.climbable_state_ids.contains(&state_id)
     }
 
     fn collision_shapes(&self) -> BTreeMap<i32, VoxelShape> {
@@ -3701,6 +3711,20 @@ impl ClientWorld {
             return false;
         };
         entity.on_climbable = trapdoor_open && below_is_ladder && trapdoor_facing == ladder_facing;
+        true
+    }
+
+    /// Apply a pinned block-state's BlockTags.CLIMBABLE membership to a living entity.
+    pub fn apply_entity_living_climbable_block_state(
+        &mut self,
+        entity_id: i32,
+        state_id: i32,
+    ) -> bool {
+        let on_climbable = self.block_state_registry.is_climbable_state(state_id);
+        let Some(entity) = self.entities.get_mut(&entity_id) else {
+            return false;
+        };
+        entity.on_climbable = on_climbable;
         true
     }
 
@@ -6654,6 +6678,37 @@ mod tests {
         assert!(
             world.apply_entity_living_climbable_trapdoor_state(8, true, "north", false, "north")
         );
+        assert!(!world.no_entity_collision_for_entity(Some(7), test_area));
+    }
+
+    #[test]
+    fn indexed_player_collision_respects_climbable_block_state_tag() {
+        let mut world = ClientWorld::default();
+        for (entity_id, type_id) in [(7, 0), (8, VANILLA_PLAYER_ENTITY_TYPE_ID)] {
+            assert!(world.apply_entity(EntityInput {
+                entity_id,
+                uuid: Uuid::new(entity_id as u64, type_id as u64),
+                type_id,
+                x: 0.5,
+                y: 1.0,
+                z: 0.5,
+                movement: (0.0, 0.0, 0.0),
+                rotation: (0.0, 0.0, 0.0),
+                data: 0,
+            }));
+        }
+        let test_area = Aabb::new(0.0, 0.0, 0.0, 1.0, 3.0, 1.0);
+
+        assert!(world.block_state_registry().is_climbable_state(5719));
+        assert!(world.block_state_registry().is_climbable_state(5726));
+        assert!(!world.block_state_registry().is_climbable_state(1));
+        assert!(!world.block_state_registry().is_climbable_state(99999));
+        assert!(world.apply_entity_living_collision_state(8, true, false, false));
+        assert!(world.apply_entity_living_climbable_block_state(8, 5720));
+        assert!(world.no_entity_collision_for_entity(Some(7), test_area));
+        assert!(world.apply_entity_living_climbable_block_state(8, 1));
+        assert!(!world.no_entity_collision_for_entity(Some(7), test_area));
+        assert!(world.apply_entity_living_climbable_block_state(8, 0));
         assert!(!world.no_entity_collision_for_entity(Some(7), test_area));
     }
 
