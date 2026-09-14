@@ -99,7 +99,8 @@ sınırlı olarak, remote Player position interpolation [P08.ar kaydında](clien
 uzaklık üstü snap [P08.as kaydında](client-world-entity-player-snap-conformance.md),
 motion interpolation [P08.at kaydında](client-world-entity-player-motion-conformance.md)
 ve teleport delta/relative motion [P08.au kaydında](client-world-entity-teleport-delta-conformance.md), araç/passenger ilişki state'i
-[P08.av kaydında](client-world-entity-passengers-conformance.md) `server-conformance` olarak ilerletilmiştir; P08 `client-parity` ile kapanmadan
+[P08.av kaydında](client-world-entity-passengers-conformance.md) ve passenger tick/rideTick
+[P08.aw kaydında](client-world-entity-passenger-tick-conformance.md) `server-conformance` olarak ilerletilmiştir; P08 `client-parity` ile kapanmadan
 bu bağımlılıklar açılmaz.
 
 P12/P13 altında yeni item component varyantı açılmaz; gerekçe ve bağlayıcı

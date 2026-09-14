@@ -575,6 +575,7 @@ pub struct PlayConnectionTrace {
     pub entity_head_rotation_observations: Vec<EntityHeadRotationObservation>,
     pub remove_entities_observations: Vec<RemoveEntitiesObservation>,
     pub entity_passengers_observations: Vec<EntityPassengersObservation>,
+    pub entity_passenger_tick_observations: Vec<EntityPassengerTickObservation>,
     pub entity_metadata_observations: Vec<EntityMetadataObservation>,
     pub entity_position_sync_observations: Vec<EntityPositionSyncObservation>,
     pub entity_teleport_observations: Vec<EntityTeleportObservation>,
@@ -871,6 +872,22 @@ pub struct EntityPassengersObservation {
     pub applied_to_world: bool,
     pub applied_vehicle_passengers: Option<Vec<i32>>,
     pub applied_passenger_vehicles: Vec<(i32, Option<i32>)>,
+}
+
+/// One client-world tick observed across a vehicle and a known passenger.
+#[derive(Debug, Clone, PartialEq)]
+pub struct EntityPassengerTickObservation {
+    pub vehicle_id: i32,
+    pub passenger_id: i32,
+    pub passenger_type_id: i32,
+    pub before_vehicle_tick_count: i32,
+    pub after_vehicle_tick_count: i32,
+    pub before_passenger_tick_count: i32,
+    pub after_passenger_tick_count: i32,
+    pub before_passenger_position: (f64, f64, f64),
+    pub after_passenger_position: (f64, f64, f64),
+    pub before_passenger_motion: (f64, f64, f64),
+    pub after_passenger_motion: (f64, f64, f64),
 }
 
 /// Wire-level fields decoded from one clientbound entity-metadata packet.

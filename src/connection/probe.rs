@@ -435,6 +435,22 @@ pub fn connect_and_world_entity_passengers_probe(
     )
 }
 
+/// Connect to a Java-protocol server and observe one world tick where a known
+/// projectile is attached as a passenger.
+pub fn connect_and_world_entity_passenger_tick_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeConfig::new(ProbeAction::WorldEntityPassengerTick)
+            .with_drain_timeout(Duration::from_secs(60)),
+    )
+}
+
 /// Connect to a Java-protocol server and send a harmless block-action packet after loading.
 pub fn connect_and_action_probe(
     address: SocketAddr,
@@ -1470,6 +1486,7 @@ enum ProbeAction {
     WorldEntityMetadata,
     WorldEntityPosition,
     WorldEntityPassengers,
+    WorldEntityPassengerTick,
     BlockAction,
     BlockBreak,
     BlockBreakOutOfRange,
@@ -1956,6 +1973,52 @@ fn connect_and_probe_with_mode(
                             })
                         })
                         .collect();
+                }
+                if matches!(probe.action, ProbeAction::WorldEntityPassengerTick)
+                    && trace.entity_passenger_tick_observations.is_empty()
+                    && observation.applied_to_world
+                {
+                    let passenger_id = observation
+                        .passenger_ids
+                        .iter()
+                        .copied()
+                        .find(|&id| trace.world.entity_at(id).is_some());
+                    if let Some(passenger_id) = passenger_id
+                        && let (Some(vehicle), Some(passenger)) = (
+                            trace.world.entity_at(observation.vehicle_id),
+                            trace.world.entity_at(passenger_id),
+                        )
+                    {
+                        let before_vehicle_tick_count = vehicle.tick_count();
+                        let before_passenger_tick_count = passenger.tick_count();
+                        let before_passenger_position = passenger.position();
+                        let before_passenger_motion = passenger.motion();
+                        let passenger_type_id = passenger.type_id;
+                        trace.world.tick();
+                        let vehicle = trace
+                            .world
+                            .entity_at(observation.vehicle_id)
+                            .ok_or(ConnectionError::Codec("passenger tick vehicle"))?;
+                        let passenger = trace
+                            .world
+                            .entity_at(passenger_id)
+                            .ok_or(ConnectionError::Codec("passenger tick entity"))?;
+                        trace.entity_passenger_tick_observations.push(
+                            EntityPassengerTickObservation {
+                                vehicle_id: observation.vehicle_id,
+                                passenger_id,
+                                passenger_type_id,
+                                before_vehicle_tick_count,
+                                after_vehicle_tick_count: vehicle.tick_count(),
+                                before_passenger_tick_count,
+                                after_passenger_tick_count: passenger.tick_count(),
+                                before_passenger_position,
+                                after_passenger_position: passenger.position(),
+                                before_passenger_motion,
+                                after_passenger_motion: passenger.motion(),
+                            },
+                        );
+                    }
                 }
                 trace.entity_passengers_observations.push(observation);
             }

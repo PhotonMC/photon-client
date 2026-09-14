@@ -1277,46 +1277,107 @@ impl ClientWorld {
 
     pub fn tick(&mut self) {
         self.game_time = self.game_time.wrapping_add(1);
-        if let Some(player) = self.local_player.as_mut() {
+        let local_player_is_passenger = self.local_player.as_ref().is_some_and(|player| {
+            self.entity_vehicle_id(player.id).is_some_and(|vehicle_id| {
+                self.entity_passengers(vehicle_id)
+                    .is_some_and(|ids| ids.contains(&player.id))
+            })
+        });
+        if !local_player_is_passenger {
+            self.tick_local_player(false);
+        }
+
+        let ticking_entity_ids: Vec<i32> = self
+            .entities
+            .iter()
+            .filter(|(_, entity)| entity.ticking && entity.vehicle_id.is_none())
+            .map(|(&entity_id, _)| entity_id)
+            .collect();
+        for entity_id in ticking_entity_ids {
+            self.tick_entity_tree(entity_id, false);
+        }
+    }
+
+    fn tick_local_player(&mut self, as_passenger: bool) {
+        let passenger_ids = {
+            let Some(player) = self.local_player.as_mut() else {
+                return;
+            };
+            if as_passenger {
+                player.motion_x_bits = 0.0_f64.to_bits();
+                player.motion_y_bits = 0.0_f64.to_bits();
+                player.motion_z_bits = 0.0_f64.to_bits();
+            }
             player.capture_old_transform();
             player.tick_head_rotation();
             player.tick_count = player.tick_count.wrapping_add(1);
             for effect in &mut player.effects {
                 effect.tick_client();
             }
+            player.passenger_ids.clone()
+        };
+        let Some(player_id) = self.local_player.as_ref().map(|player| player.id) else {
+            return;
+        };
+        for passenger_id in passenger_ids {
+            self.tick_entity_passenger_tree(player_id, passenger_id);
         }
+    }
 
-        let ticking_entity_ids: Vec<i32> = self
+    fn tick_entity_tree(&mut self, entity_id: i32, as_passenger: bool) {
+        if as_passenger && let Some(entity) = self.entities.get_mut(&entity_id) {
+            entity.motion_x_bits = 0.0_f64.to_bits();
+            entity.motion_y_bits = 0.0_f64.to_bits();
+            entity.motion_z_bits = 0.0_f64.to_bits();
+        }
+        self.tick_entity_once(entity_id);
+        let passenger_ids = self
+            .entity_passengers(entity_id)
+            .map(<[i32]>::to_vec)
+            .unwrap_or_default();
+        for passenger_id in passenger_ids {
+            self.tick_entity_passenger_tree(entity_id, passenger_id);
+        }
+    }
+
+    fn tick_entity_passenger_tree(&mut self, vehicle_id: i32, passenger_id: i32) {
+        if self.entity_vehicle_id(passenger_id) != Some(vehicle_id) {
+            return;
+        }
+        if self
+            .local_player
+            .as_ref()
+            .is_some_and(|player| player.id == passenger_id)
+        {
+            self.tick_local_player(true);
+        } else if self
             .entities
-            .iter()
-            .filter(|(_, entity)| entity.ticking)
-            .map(|(&entity_id, _)| entity_id)
-            .collect();
-        for entity_id in ticking_entity_ids {
-            let can_tick_snowball = self.entities.get(&entity_id).is_some_and(|entity| {
-                entity.type_id == VANILLA_SNOWBALL_ENTITY_TYPE_ID
-                    && self.snowball_path_is_open(
-                        entity.position(),
-                        entity.motion(),
-                        entity.no_gravity,
-                    )
-            });
-            let entity = self
-                .entities
-                .get_mut(&entity_id)
-                .expect("ticking entity was collected from the world");
-            entity.capture_old_transform();
-            entity.tick_count = entity.tick_count.wrapping_add(1);
-            if entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID {
-                entity.tick_position_interpolation();
-            }
-            entity.tick_head_rotation();
-            if entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID {
-                entity.tick_motion_interpolation();
-            }
-            if can_tick_snowball {
-                entity.tick_snowball();
-            }
+            .get(&passenger_id)
+            .is_some_and(|entity| entity.ticking || entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID)
+        {
+            self.tick_entity_tree(passenger_id, true);
+        }
+    }
+
+    fn tick_entity_once(&mut self, entity_id: i32) {
+        let can_tick_snowball = self.entities.get(&entity_id).is_some_and(|entity| {
+            entity.type_id == VANILLA_SNOWBALL_ENTITY_TYPE_ID
+                && self.snowball_path_is_open(entity.position(), entity.motion(), entity.no_gravity)
+        });
+        let Some(entity) = self.entities.get_mut(&entity_id) else {
+            return;
+        };
+        entity.capture_old_transform();
+        entity.tick_count = entity.tick_count.wrapping_add(1);
+        if entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID {
+            entity.tick_position_interpolation();
+        }
+        entity.tick_head_rotation();
+        if entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID {
+            entity.tick_motion_interpolation();
+        }
+        if can_tick_snowball {
+            entity.tick_snowball();
         }
     }
 
@@ -4537,6 +4598,55 @@ mod tests {
         assert!(world.remove_entity(37));
         assert_eq!(world.entity_vehicle_id(38), None);
         assert_eq!(world.entity_at(37), None);
+    }
+
+    #[test]
+    fn passenger_tick_uses_ride_tick_motion_reset_before_projectile_tick() {
+        let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+        let (blocks, biomes) = section(0, 0);
+        world.replace_chunk(
+            0,
+            0,
+            [SectionInput {
+                non_empty_block_count: 0,
+                fluid_count: 0,
+                block_states: &blocks,
+                biomes: &biomes,
+            }],
+        );
+        for (entity_id, type_id, motion) in [
+            (37, 71, (0.0, 0.0, 0.0)),
+            (38, VANILLA_SNOWBALL_ENTITY_TYPE_ID, (0.125, 0.0, 0.0)),
+        ] {
+            assert!(world.apply_entity(EntityInput {
+                entity_id,
+                uuid: Uuid::new(entity_id as u64, 0),
+                type_id,
+                x: 2.0,
+                y: 2.0,
+                z: 2.0,
+                movement: motion,
+                rotation: (0.0, 0.0, 0.0),
+                data: 0,
+            }));
+        }
+        assert!(world.apply_entity_passengers(37, &[38]));
+
+        world.tick();
+
+        assert_eq!(
+            world.entity_at(37).map(|entity| entity.tick_count()),
+            Some(1)
+        );
+        let passenger = world.entity_at(38).expect("snowball passenger");
+        assert_eq!(passenger.tick_count(), 1);
+        assert_eq!(passenger.motion().0, 0.0);
+        assert_eq!(passenger.motion().2, 0.0);
+        assert_eq!(
+            passenger.motion().1,
+            -SNOWBALL_GRAVITY * f64::from(0.99_f32)
+        );
+        assert_eq!(passenger.position().0, 2.0);
     }
 
     #[test]
