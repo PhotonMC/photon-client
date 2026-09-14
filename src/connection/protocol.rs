@@ -68,6 +68,7 @@ pub(crate) const PLAY_CLIENTBOUND_CONTAINER_CLOSE_PACKET_ID: i32 = 17;
 pub(crate) const PLAY_CLIENTBOUND_CONTAINER_SET_CONTENT_PACKET_ID: i32 = 18;
 pub(crate) const PLAY_CLIENTBOUND_CONTAINER_SET_SLOT_PACKET_ID: i32 = 20;
 pub(crate) const PLAY_CLIENTBOUND_OPEN_SCREEN_PACKET_ID: i32 = 59;
+pub(crate) const PLAY_CLIENTBOUND_PLAYER_ABILITIES_PACKET_ID: i32 = 64;
 pub(crate) const PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID: i32 = 96;
 pub(crate) const PLAY_CLIENTBOUND_SET_PLAYER_INVENTORY_PACKET_ID: i32 = 108;
 pub(crate) const PLAY_CLIENTBOUND_REMOVE_ENTITIES_PACKET_ID: i32 = 77;
@@ -553,6 +554,7 @@ pub struct PlayConnectionTrace {
     pub respawn_observations: Vec<RespawnObservation>,
     pub attribute_update_observations: Vec<AttributeUpdateObservation>,
     pub health_observations: Vec<HealthObservation>,
+    pub player_abilities_observations: Vec<PlayerAbilitiesObservation>,
     pub respawn_command_packets_sent: usize,
     pub player_position_observations: Vec<PlayerPositionObservation>,
     pub player_loaded_sent: bool,
@@ -662,6 +664,24 @@ pub struct HealthObservation {
     pub health: f32,
     pub food: i32,
     pub saturation: f32,
+    pub applied_to_world: bool,
+}
+
+/// Wire-level values decoded from one clientbound player-abilities packet.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct PlayerAbilitiesPacket {
+    pub invulnerable: bool,
+    pub flying: bool,
+    pub can_fly: bool,
+    pub can_instabuild: bool,
+    pub flying_speed: f32,
+    pub walking_speed: f32,
+}
+
+/// One clientbound player-abilities packet and its local-player application result.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct PlayerAbilitiesObservation {
+    pub packet: PlayerAbilitiesPacket,
     pub applied_to_world: bool,
 }
 
@@ -1741,6 +1761,25 @@ pub(crate) fn parse_set_health_packet(input: &[u8]) -> Result<HealthObservation,
     };
     if !input.is_empty() {
         return Err(ConnectionError::Codec("set health trailing payload"));
+    }
+    Ok(packet)
+}
+
+pub fn parse_player_abilities_packet(
+    input: &[u8],
+) -> Result<PlayerAbilitiesPacket, ConnectionError> {
+    let mut input = input;
+    let flags = read_byte(&mut input, "player abilities flags")?;
+    let packet = PlayerAbilitiesPacket {
+        invulnerable: flags & 0x01 != 0,
+        flying: flags & 0x02 != 0,
+        can_fly: flags & 0x04 != 0,
+        can_instabuild: flags & 0x08 != 0,
+        flying_speed: read_f32(&mut input, "player abilities flying speed")?,
+        walking_speed: read_f32(&mut input, "player abilities walking speed")?,
+    };
+    if !input.is_empty() {
+        return Err(ConnectionError::Codec("player abilities trailing payload"));
     }
     Ok(packet)
 }
@@ -3136,14 +3175,14 @@ mod tests {
         PLAY_CLIENTBOUND_LIGHT_UPDATE_PACKET_ID, PLAY_CLIENTBOUND_LOGIN_PACKET_ID,
         PLAY_CLIENTBOUND_MOVE_ENTITY_POS_PACKET_ID, PLAY_CLIENTBOUND_MOVE_ENTITY_POS_ROT_PACKET_ID,
         PLAY_CLIENTBOUND_MOVE_ENTITY_ROT_PACKET_ID, PLAY_CLIENTBOUND_OPEN_SCREEN_PACKET_ID,
-        PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID, PLAY_CLIENTBOUND_REMOVE_ENTITIES_PACKET_ID,
-        PLAY_CLIENTBOUND_REMOVE_MOB_EFFECT_PACKET_ID, PLAY_CLIENTBOUND_RESPAWN_PACKET_ID,
-        PLAY_CLIENTBOUND_ROTATE_HEAD_PACKET_ID, PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID,
-        PLAY_CLIENTBOUND_SET_ENTITY_DATA_PACKET_ID, PLAY_CLIENTBOUND_SET_ENTITY_MOTION_PACKET_ID,
-        PLAY_CLIENTBOUND_SET_HEALTH_PACKET_ID, PLAY_CLIENTBOUND_SET_PASSENGERS_PACKET_ID,
-        PLAY_CLIENTBOUND_SET_PLAYER_INVENTORY_PACKET_ID, PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID,
-        PLAY_CLIENTBOUND_TELEPORT_ENTITY_PACKET_ID, PLAY_CLIENTBOUND_UPDATE_ATTRIBUTES_PACKET_ID,
-        PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID,
+        PLAY_CLIENTBOUND_PLAYER_ABILITIES_PACKET_ID, PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID,
+        PLAY_CLIENTBOUND_REMOVE_ENTITIES_PACKET_ID, PLAY_CLIENTBOUND_REMOVE_MOB_EFFECT_PACKET_ID,
+        PLAY_CLIENTBOUND_RESPAWN_PACKET_ID, PLAY_CLIENTBOUND_ROTATE_HEAD_PACKET_ID,
+        PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID, PLAY_CLIENTBOUND_SET_ENTITY_DATA_PACKET_ID,
+        PLAY_CLIENTBOUND_SET_ENTITY_MOTION_PACKET_ID, PLAY_CLIENTBOUND_SET_HEALTH_PACKET_ID,
+        PLAY_CLIENTBOUND_SET_PASSENGERS_PACKET_ID, PLAY_CLIENTBOUND_SET_PLAYER_INVENTORY_PACKET_ID,
+        PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID, PLAY_CLIENTBOUND_TELEPORT_ENTITY_PACKET_ID,
+        PLAY_CLIENTBOUND_UPDATE_ATTRIBUTES_PACKET_ID, PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID,
         PLAY_SERVERBOUND_ACCEPT_TELEPORTATION_PACKET_ID,
         PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID, PLAY_SERVERBOUND_CLIENT_COMMAND_PACKET_ID,
         PLAY_SERVERBOUND_CLIENT_TICK_END_PACKET_ID, PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
@@ -3178,10 +3217,10 @@ mod tests {
         parse_forget_level_chunk_packet, parse_light_update_packet, parse_login_packet,
         parse_move_entity_pos_packet, parse_move_entity_pos_rot_packet,
         parse_move_entity_rot_packet, parse_open_screen_packet, parse_optional_item_stack,
-        parse_player_position_packet, parse_remove_entities_packet, parse_remove_mob_effect_packet,
-        parse_respawn_packet, parse_rotate_head_packet, parse_section_data,
-        parse_set_entity_motion_packet, parse_set_health_packet, parse_set_passengers_packet,
-        parse_set_player_inventory_packet, parse_system_chat_packet,
+        parse_player_abilities_packet, parse_player_position_packet, parse_remove_entities_packet,
+        parse_remove_mob_effect_packet, parse_respawn_packet, parse_rotate_head_packet,
+        parse_section_data, parse_set_entity_motion_packet, parse_set_health_packet,
+        parse_set_passengers_packet, parse_set_player_inventory_packet, parse_system_chat_packet,
         parse_update_attributes_packet, parse_update_mob_effect_packet, resolve_player_position,
         support_block_position,
     };
@@ -3231,6 +3270,7 @@ mod tests {
         assert_eq!(PLAY_CLIENTBOUND_CONTAINER_SET_SLOT_PACKET_ID, 20);
         assert_eq!(PLAY_CLIENTBOUND_CONTAINER_CLOSE_PACKET_ID, 17);
         assert_eq!(PLAY_CLIENTBOUND_OPEN_SCREEN_PACKET_ID, 59);
+        assert_eq!(PLAY_CLIENTBOUND_PLAYER_ABILITIES_PACKET_ID, 64);
         assert_eq!(PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID, 96);
         assert_eq!(PLAY_CLIENTBOUND_SET_PLAYER_INVENTORY_PACKET_ID, 108);
         assert_eq!(PLAY_CLIENTBOUND_REMOVE_ENTITIES_PACKET_ID, 77);
@@ -3520,6 +3560,22 @@ mod tests {
         let mut command_payload = Vec::new();
         encode_perform_respawn(&mut command_payload).expect("perform respawn command");
         assert_eq!(command_payload, [0]);
+    }
+
+    #[test]
+    fn player_abilities_parser_matches_java_flag_and_float_order() {
+        let payload = [0xff, 0x3e, 0x4c, 0xcc, 0xcd, 0x3e, 0x99, 0x99, 0x9a];
+        let packet = parse_player_abilities_packet(&payload).expect("player abilities packet");
+        assert!(packet.invulnerable);
+        assert!(packet.flying);
+        assert!(packet.can_fly);
+        assert!(packet.can_instabuild);
+        assert_eq!(packet.flying_speed.to_bits(), 0x3e4c_cccd);
+        assert_eq!(packet.walking_speed.to_bits(), 0x3e99_999a);
+
+        let mut trailing = payload.to_vec();
+        trailing.push(0);
+        assert!(parse_player_abilities_packet(&trailing).is_err());
     }
 
     #[test]

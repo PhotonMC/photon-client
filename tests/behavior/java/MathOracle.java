@@ -2,6 +2,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
+import io.netty.buffer.Unpooled;
 import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.math.OctahedralGroup;
 import com.mojang.serialization.DataResult;
@@ -35,6 +36,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.SectionPos;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.protocol.game.ClientboundPlayerAbilitiesPacket;
 import net.minecraft.server.Bootstrap;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
@@ -44,6 +47,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityDimensions;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Pose;
+import net.minecraft.world.entity.player.Abilities;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.entity.monster.Shulker;
 import net.minecraft.world.entity.vehicle.boat.Boat;
@@ -3826,6 +3830,32 @@ public final class MathOracle {
                     states.add(state);
                 }
                 result.add("states", states);
+            } else if (kind.equals("player_abilities_packet")) {
+                var states = new JsonArray();
+                for (var entry : request.getAsJsonArray("inputs")) {
+                    JsonObject input = entry.getAsJsonObject();
+                    byte[] bytes = hexBytes(input.get("hex").getAsString());
+                    FriendlyByteBuf buffer = new FriendlyByteBuf(Unpooled.wrappedBuffer(bytes));
+                    ClientboundPlayerAbilitiesPacket packet =
+                        ClientboundPlayerAbilitiesPacket.STREAM_CODEC.decode(buffer);
+                    Abilities abilities = new Abilities();
+                    abilities.invulnerable = packet.isInvulnerable();
+                    abilities.flying = packet.isFlying();
+                    abilities.mayfly = packet.canFly();
+                    abilities.instabuild = packet.canInstabuild();
+                    abilities.setFlyingSpeed(packet.getFlyingSpeed());
+                    abilities.setWalkingSpeed(packet.getWalkingSpeed());
+                    var state = new JsonObject();
+                    state.addProperty("label", input.get("label").getAsString());
+                    state.addProperty("invulnerable", abilities.invulnerable);
+                    state.addProperty("flying", abilities.flying);
+                    state.addProperty("may_fly", abilities.mayfly);
+                    state.addProperty("instabuild", abilities.instabuild);
+                    state.addProperty("flying_speed", Oracle.bits(abilities.getFlyingSpeed()));
+                    state.addProperty("walking_speed", Oracle.bits(abilities.getWalkingSpeed()));
+                    states.add(state);
+                }
+                result.add("states", states);
             } else if (kind.equals("player_pose_dimensions")) {
                 var avatarDimensions = avatarPoseDimensions();
                 Vec3 position = vec3(request.getAsJsonObject("position"));
@@ -4348,6 +4378,22 @@ public final class MathOracle {
 
     private static double f64(String bits) {
         return Double.longBitsToDouble(Long.parseUnsignedLong(bits, 16));
+    }
+
+    private static byte[] hexBytes(String value) {
+        if (!value.isEmpty() && (value.length() & 1) != 0) {
+            throw new IllegalArgumentException("hex must contain complete byte pairs");
+        }
+        byte[] bytes = new byte[value.length() / 2];
+        for (int i = 0; i < bytes.length; i++) {
+            int high = Character.digit(value.charAt(i * 2), 16);
+            int low = Character.digit(value.charAt(i * 2 + 1), 16);
+            if (high < 0 || low < 0) {
+                throw new IllegalArgumentException("invalid hex byte");
+            }
+            bytes[i] = (byte)((high << 4) | low);
+        }
+        return bytes;
     }
 
     private static final class CollisionFixtureEntity extends Entity {

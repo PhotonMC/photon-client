@@ -14,8 +14,8 @@ use crate::protocol::ConnectionProtocol;
 use crate::resources::KnownPack;
 use crate::wire;
 use crate::world::{
-    BlockEntityInput, DimensionBounds, DimensionEnvironment, DimensionInput, EntityInput,
-    EntityMotionInput, EntityMoveInput, EntityPositionInput, EntityPositionUpdateMode,
+    BlockEntityInput, ClientPlayerAbilities, DimensionBounds, DimensionEnvironment, DimensionInput,
+    EntityInput, EntityMotionInput, EntityMoveInput, EntityPositionInput, EntityPositionUpdateMode,
     EntityRotationInput, EntityTeleportInput, LightLayerInput, LightUpdateInput,
     PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS, PLAYER_RESPAWN_KEEP_ENTITY_DATA, SectionInput,
     VANILLA_ARROW_ENTITY_TYPE_ID, VANILLA_COW_ENTITY_TYPE_ID,
@@ -2893,6 +2893,24 @@ fn connect_and_probe_with_mode(
                     .world
                     .apply_local_player_attributes(observation.entity_id, &observation.attributes);
                 trace.attribute_update_observations.push(observation);
+            }
+            PLAY_CLIENTBOUND_PLAYER_ABILITIES_PACKET_ID => {
+                let packet = parse_player_abilities_packet(payload)?;
+                let abilities = ClientPlayerAbilities::new(
+                    packet.invulnerable,
+                    packet.flying,
+                    packet.can_fly,
+                    packet.can_instabuild,
+                    packet.flying_speed,
+                    packet.walking_speed,
+                );
+                let applied_to_world = trace.world.apply_local_player_abilities(abilities);
+                trace
+                    .player_abilities_observations
+                    .push(PlayerAbilitiesObservation {
+                        packet,
+                        applied_to_world,
+                    });
             }
             PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID => {
                 let mut observation = parse_update_mob_effect_packet(payload)?;

@@ -5015,6 +5015,15 @@ def math_cases():
                 "level_client_side": False, "first_tick": False, "no_physics": False,
                 "is_player": False},
            ]}
+    yield {"case_id": "shape/player-abilities/clientbound-state", "family": "math",
+           "operation": "shape", "kind": "player_abilities_packet", "inputs": [
+               {"label": "defaults", "hex": "003d4ccccd3dcccccd"},
+               {"label": "invulnerable-only", "hex": "013d4ccccd3dcccccd"},
+               {"label": "flying-and-can-fly", "hex": "063e4ccccd3d4ccccd"},
+               {"label": "instabuild-only", "hex": "083d4ccccd3dcccccd"},
+               {"label": "all-flags-and-unknown-bit", "hex": "ff3e4ccccd3e99999a"},
+               {"label": "raw-speed-bits", "hex": "02800000007fc00001"},
+           ]}
     yield {"case_id": "shape/player-pose-dimensions/all-poses-and-fallback", "family": "math",
            "operation": "shape", "kind": "player_pose_dimensions",
            "position": vector_bits(-2.25, 4.0, 1.75),

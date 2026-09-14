@@ -21,6 +21,7 @@ use voxel_client::configuration::{
     ServerboundAcceptCodeOfConductPacket, ServerboundClientInformationPacket,
     ServerboundFinishConfigurationPacket,
 };
+use voxel_client::connection::parse_player_abilities_packet;
 use voxel_client::direction::{
     Axis, AxisDirection, Direction, DirectionYRotError, DirectionYRotationError, Plane,
 };
@@ -62,12 +63,12 @@ use voxel_client::utf8;
 use voxel_client::wire::{self, ReadError};
 use voxel_client::world::{
     ClientEntityCollisionCandidate, ClientEntityDimensions, ClientEntityPose,
-    ClientPlayerPoseInput, ClientWorld, ClientWorldBorder, ClientWorldBorderInitialization,
-    ClientWorldBorderStatus, ClientWorldCollisionSource, DimensionBounds, EntityInput,
-    SectionInput, apply_entity_movement_state, collect_candidate_step_up_heights,
-    collect_entity_collision_shapes, collide_entity_movement, collide_entity_movement_state,
-    is_minor_horizontal_collision, living_entity_dimensions, refresh_entity_dimensions,
-    select_step_up_movement, world_border_collision_shape,
+    ClientPlayerAbilities, ClientPlayerPoseInput, ClientWorld, ClientWorldBorder,
+    ClientWorldBorderInitialization, ClientWorldBorderStatus, ClientWorldCollisionSource,
+    DimensionBounds, EntityInput, SectionInput, apply_entity_movement_state,
+    collect_candidate_step_up_heights, collect_entity_collision_shapes, collide_entity_movement,
+    collide_entity_movement_state, is_minor_horizontal_collision, living_entity_dimensions,
+    refresh_entity_dimensions, select_step_up_movement, world_border_collision_shape,
 };
 
 fn string<'a>(request: &'a Value, name: &str) -> Result<&'a str, String> {
@@ -3783,6 +3784,50 @@ fn shape_axis_limits_snapshot(value: &VoxelShape) -> Value {
 
 fn shape_result(request: &Value) -> Result<Value, String> {
     match string(request, "kind")? {
+        "player_abilities_packet" => {
+            let inputs = request
+                .get("inputs")
+                .ok_or("inputs must be an array")?
+                .as_array()
+                .ok_or("inputs must be an array")?;
+            let states = inputs
+                .iter()
+                .map(|value| {
+                    let input = value
+                        .as_object()
+                        .ok_or("player abilities input must be an object")?;
+                    let bytes = decode_hex(
+                        input
+                            .get("hex")
+                            .and_then(Value::as_str)
+                            .ok_or("hex must be a string")?,
+                    )?;
+                    let packet = parse_player_abilities_packet(&bytes)
+                        .map_err(|error| format!("player abilities packet: {error:?}"))?;
+                    let abilities = ClientPlayerAbilities::new(
+                        packet.invulnerable,
+                        packet.flying,
+                        packet.can_fly,
+                        packet.can_instabuild,
+                        packet.flying_speed,
+                        packet.walking_speed,
+                    );
+                    Ok(json!({
+                        "label": input
+                            .get("label")
+                            .and_then(Value::as_str)
+                            .ok_or("label must be a string")?,
+                        "invulnerable": abilities.invulnerable(),
+                        "flying": abilities.flying(),
+                        "may_fly": abilities.may_fly(),
+                        "instabuild": abilities.instabuild(),
+                        "flying_speed": format!("{:08x}", abilities.flying_speed().to_bits()),
+                        "walking_speed": format!("{:08x}", abilities.walking_speed().to_bits()),
+                    }))
+                })
+                .collect::<Result<Vec<_>, String>>()?;
+            Ok(json!({"states": states}))
+        }
         "single" => {
             let mut value = shape_box(request.get("box").ok_or("box must be an object")?)?;
             let mut events = vec![shape_snapshot(&value)];

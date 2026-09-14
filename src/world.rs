@@ -866,6 +866,67 @@ impl ClientPlayerPoseInput {
     }
 }
 
+/// The six ability values carried by Java's clientbound player-abilities packet.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ClientPlayerAbilities {
+    invulnerable: bool,
+    flying: bool,
+    may_fly: bool,
+    instabuild: bool,
+    flying_speed_bits: u32,
+    walking_speed_bits: u32,
+}
+
+impl Default for ClientPlayerAbilities {
+    fn default() -> Self {
+        Self::new(false, false, false, false, 0.05, 0.1)
+    }
+}
+
+impl ClientPlayerAbilities {
+    pub fn new(
+        invulnerable: bool,
+        flying: bool,
+        may_fly: bool,
+        instabuild: bool,
+        flying_speed: f32,
+        walking_speed: f32,
+    ) -> Self {
+        Self {
+            invulnerable,
+            flying,
+            may_fly,
+            instabuild,
+            flying_speed_bits: flying_speed.to_bits(),
+            walking_speed_bits: walking_speed.to_bits(),
+        }
+    }
+
+    pub fn invulnerable(self) -> bool {
+        self.invulnerable
+    }
+
+    pub fn flying(self) -> bool {
+        self.flying
+    }
+
+    pub fn may_fly(self) -> bool {
+        self.may_fly
+    }
+
+    pub fn instabuild(self) -> bool {
+        self.instabuild
+    }
+
+    pub fn flying_speed(self) -> f32 {
+        f32::from_bits(self.flying_speed_bits)
+    }
+
+    pub fn walking_speed(self) -> f32 {
+        f32::from_bits(self.walking_speed_bits)
+    }
+}
+
 /// Entity dimensions used to derive Java's feet-origin bounding box.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ClientEntityDimensions {
@@ -2593,6 +2654,14 @@ impl ClientWorld {
         player.health_bits = health.to_bits();
         player.food = food;
         player.saturation_bits = saturation.to_bits();
+        true
+    }
+
+    pub fn apply_local_player_abilities(&mut self, abilities: ClientPlayerAbilities) -> bool {
+        let Some(player) = self.local_player.as_mut() else {
+            return false;
+        };
+        player.abilities = abilities;
         true
     }
 
@@ -5315,6 +5384,7 @@ pub struct ClientPlayerState {
     head_rotation_target_bits: u32,
     head_lerp_steps: u8,
     entity_data: Option<Vec<u8>>,
+    abilities: ClientPlayerAbilities,
     shared_flags: u8,
     living_flags: u8,
     arrow_count: i32,
@@ -5408,6 +5478,7 @@ impl ClientPlayerState {
             head_rotation_target_bits: 0.0_f32.to_bits(),
             head_lerp_steps: 0,
             entity_data: None,
+            abilities: ClientPlayerAbilities::default(),
             shared_flags: 0,
             living_flags: 0,
             arrow_count: 0,
@@ -5557,6 +5628,10 @@ impl ClientPlayerState {
 
     pub fn entity_data(&self) -> Option<&[u8]> {
         self.entity_data.as_deref()
+    }
+
+    pub fn abilities(&self) -> ClientPlayerAbilities {
+        self.abilities
     }
 
     pub fn shared_flags(&self) -> u8 {
@@ -6905,16 +6980,16 @@ mod tests {
     use super::{
         BlockEntityInput, BoatInput, ClientAttributeModifierState, ClientAttributeState,
         ClientEntityCollisionCandidate, ClientEntityDimensions, ClientEntityMovementState,
-        ClientEntityPose, ClientItemStackState, ClientPlayerPoseInput, ClientWorld,
-        DimensionBounds, DimensionEnvironment, DimensionInput, ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-        ENTITY_NO_GRAVITY_DATA_ID, ENTITY_RELATIVE_DELTA_X_FLAG, ENTITY_RELATIVE_DELTA_Y_FLAG,
-        ENTITY_RELATIVE_DELTA_Z_FLAG, ENTITY_RELATIVE_ROTATE_DELTA_FLAG, ENTITY_RELATIVE_X_FLAG,
-        ENTITY_RELATIVE_X_ROT_FLAG, ENTITY_RELATIVE_Y_FLAG, ENTITY_RELATIVE_Y_ROT_FLAG,
-        ENTITY_RELATIVE_Z_FLAG, EntityInput, EntityMotionInput, EntityMoveInput,
-        EntityPositionInput, EntityPositionUpdateMode, EntityRotationInput, EntityTeleportInput,
-        LightLayerInput, LightUpdateInput, PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS,
-        PLAYER_RESPAWN_KEEP_ENTITY_DATA, SNOWBALL_GRAVITY, SectionInput,
-        VANILLA_ARROW_ENTITY_TYPE_ID, VANILLA_BOAT_PASSENGER_MAX_ROTATION,
+        ClientEntityPose, ClientItemStackState, ClientPlayerAbilities, ClientPlayerPoseInput,
+        ClientWorld, DimensionBounds, DimensionEnvironment, DimensionInput,
+        ENTITY_DATA_SERIALIZER_BOOLEAN_ID, ENTITY_NO_GRAVITY_DATA_ID, ENTITY_RELATIVE_DELTA_X_FLAG,
+        ENTITY_RELATIVE_DELTA_Y_FLAG, ENTITY_RELATIVE_DELTA_Z_FLAG,
+        ENTITY_RELATIVE_ROTATE_DELTA_FLAG, ENTITY_RELATIVE_X_FLAG, ENTITY_RELATIVE_X_ROT_FLAG,
+        ENTITY_RELATIVE_Y_FLAG, ENTITY_RELATIVE_Y_ROT_FLAG, ENTITY_RELATIVE_Z_FLAG, EntityInput,
+        EntityMotionInput, EntityMoveInput, EntityPositionInput, EntityPositionUpdateMode,
+        EntityRotationInput, EntityTeleportInput, LightLayerInput, LightUpdateInput,
+        PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS, PLAYER_RESPAWN_KEEP_ENTITY_DATA, SNOWBALL_GRAVITY,
+        SectionInput, VANILLA_ARROW_ENTITY_TYPE_ID, VANILLA_BOAT_PASSENGER_MAX_ROTATION,
         VANILLA_BREEZE_ENTITY_TYPE_ID, VANILLA_COW_ENTITY_TYPE_ID,
         VANILLA_EXPERIENCE_ORB_ENTITY_TYPE_ID, VANILLA_FALLING_BLOCK_ENTITY_TYPE_ID,
         VANILLA_FALLING_BLOCK_GRAVITY, VANILLA_FIREWORK_ROCKET_ENTITY_TYPE_ID,
@@ -7674,6 +7749,25 @@ mod tests {
             true,
         );
         assert!(!player_resize.should_fudge_position);
+    }
+
+    #[test]
+    fn local_player_abilities_apply_packet_values_and_reset_on_respawn() {
+        let mut world = ClientWorld::default();
+        world.set_local_player_id(42);
+        let abilities =
+            ClientPlayerAbilities::new(true, true, true, true, -0.0, f32::from_bits(0x7fc0_0001));
+        assert!(world.apply_local_player_abilities(abilities));
+        assert_eq!(
+            world.local_player().map(|player| player.abilities()),
+            Some(abilities)
+        );
+
+        assert!(world.recreate_local_player(0));
+        assert_eq!(
+            world.local_player().map(|player| player.abilities()),
+            Some(ClientPlayerAbilities::default())
+        );
     }
 
     #[test]
