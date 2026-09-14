@@ -88,6 +88,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P05.a — OptionInstance ClampingLazyMaxIntRange sözleşmesi — client-parity birleşik kayıt](clamping-lazy-max-int-range-conformance.md)
 - [P10.b — LocalPlayer applyInput — client-parity birleşik kayıt](client-player-apply-input-conformance.md)
 - [P10.a — LocalPlayer input modifiers — client-parity birleşik kayıt](client-player-input-conformance.md)
+- [P10.c — LocalPlayer canStartSprinting — client-parity birleşik kayıt](client-player-sprint-gate-conformance.md)
 - [P06–P08 — Ölçülebilir istemci giriş ucu — server-conformance birleşik kayıt](client-runtime-conformance.md)
 - [P09.a — ClientWorld blok çarpışma şekli toplama — client-parity birleşik kayıt](client-world-block-collision-conformance.md)
 - [P08.c-block-entity — server-conformance ClientWorld block entity state](client-world-block-entity-conformance.md)

@@ -1354,6 +1354,88 @@ def math_cases():
     yield {"case_id": "player-input/apply", "family": "math",
            "operation": "local_player_apply_input", "inputs": local_player_apply_input_inputs}
 
+    local_player_sprint_gate_cases = [
+        {
+            "label": "eligible-ground-forward",
+            "move_y": float_bits(1.0),
+        },
+        {
+            "label": "already-sprinting-blocks-start",
+            "sprinting": True,
+        },
+        {
+            "label": "forward-threshold-rejects-zero",
+            "move_y": float_bits(0.0),
+        },
+        {
+            "label": "forward-threshold-rejects-small",
+            "move_y": float_bits(0.00001),
+        },
+        {
+            "label": "mobility-restricted-blocks-start",
+            "mobility_restricted": True,
+        },
+        {
+            "label": "insufficient-food-blocks-start",
+            "enough_food": False,
+        },
+        {
+            "label": "mayfly-allows-insufficient-food",
+            "enough_food": False,
+            "mayfly": True,
+        },
+        {
+            "label": "shallow-water-blocks-ground-start",
+            "shallow_water": True,
+        },
+        {
+            "label": "flying-allows-shallow-water",
+            "shallow_water": True,
+            "flying": True,
+        },
+        {
+            "label": "item-use-blocks-sprint",
+            "using_item": True,
+        },
+        {
+            "label": "fall-flying-blocks-out-of-water",
+            "fall_flying": True,
+        },
+        {
+            "label": "fall-flying-allows-underwater",
+            "fall_flying": True,
+            "underwater": True,
+        },
+        {
+            "label": "moving-slowly-blocks-out-of-water",
+            "moving_slowly": True,
+        },
+        {
+            "label": "moving-slowly-allows-underwater",
+            "moving_slowly": True,
+            "underwater": True,
+        },
+    ]
+    local_player_sprint_gate_defaults = {
+        "move_y": float_bits(1.0),
+        "sprinting": False,
+        "mobility_restricted": False,
+        "enough_food": True,
+        "mayfly": False,
+        "shallow_water": False,
+        "flying": False,
+        "using_item": False,
+        "fall_flying": False,
+        "underwater": False,
+        "moving_slowly": False,
+    }
+    local_player_sprint_gate_inputs = []
+    for values in local_player_sprint_gate_cases:
+        input_values = {**local_player_sprint_gate_defaults, **values}
+        local_player_sprint_gate_inputs.append(input_values)
+    yield {"case_id": "player-sprint/can-start", "family": "math",
+           "operation": "local_player_can_start_sprinting", "inputs": local_player_sprint_gate_inputs}
+
     codec_decodes = {
         "basic": [float_bits(1.25, "f64"), float_bits(-2.5, "f64"), float_bits(3.75, "f64")],
         "zero": [float_bits(0.0, "f64"), float_bits(0.0, "f64"), float_bits(0.0, "f64")],

@@ -158,6 +158,34 @@ pub fn apply_local_player_input(
     }
 }
 
+/// The non-passenger conditions read by LocalPlayer.canStartSprinting.
+#[derive(Debug, Clone, Copy)]
+pub struct LocalPlayerSprintGateInput {
+    pub sprinting: bool,
+    pub forward_impulse: f32,
+    pub mobility_restricted: bool,
+    pub enough_food: bool,
+    pub may_fly: bool,
+    pub shallow_water: bool,
+    pub flying: bool,
+    pub slow_due_to_using_item: bool,
+    pub fall_flying: bool,
+    pub underwater: bool,
+    pub moving_slowly: bool,
+}
+
+/// Apply the non-passenger LocalPlayer.canStartSprinting predicate.
+pub fn can_start_local_player_sprinting(state: LocalPlayerSprintGateInput) -> bool {
+    !state.sprinting
+        && state.forward_impulse > 1.0e-5_f32
+        && !state.mobility_restricted
+        && (state.enough_food || state.may_fly)
+        && (state.flying || !state.shallow_water)
+        && !state.slow_due_to_using_item
+        && (!state.fall_flying || state.underwater)
+        && (!state.moving_slowly || state.underwater)
+}
+
 fn modify_input_speed_for_square_movement(input: Vec2) -> Vec2 {
     let length = input.length();
     if length <= 0.0 {

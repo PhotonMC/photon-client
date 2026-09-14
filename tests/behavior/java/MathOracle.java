@@ -59,6 +59,7 @@ import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.monster.Shulker;
 import net.minecraft.world.entity.vehicle.boat.Boat;
 import net.minecraft.world.entity.vehicle.minecart.Minecart;
+import net.minecraft.world.food.FoodData;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.UseEffects;
@@ -206,6 +207,37 @@ public final class MathOracle {
                 result.add("states", states);
             } catch (ReflectiveOperationException error) {
                 throw new IllegalStateException("LocalPlayer.applyInput reflection failed", error);
+            }
+        } else if (operation.equals("local_player_can_start_sprinting")) {
+            try {
+                Unsafe unsafe = unsafeInstance();
+                var method = LocalPlayer.class.getDeclaredMethod("canStartSprinting");
+                method.setAccessible(true);
+                var states = new JsonArray();
+                for (var inputEntry : request.getAsJsonArray("inputs")) {
+                    JsonObject input = inputEntry.getAsJsonObject();
+                    LocalPlayerInputFixture player =
+                        (LocalPlayerInputFixture)unsafe.allocateInstance(LocalPlayerInputFixture.class);
+                    player.configureSprintGate(
+                        Oracle.f32(input, "move_y"),
+                        input.get("sprinting").getAsBoolean(),
+                        input.get("mobility_restricted").getAsBoolean(),
+                        input.get("enough_food").getAsBoolean(),
+                        input.get("mayfly").getAsBoolean(),
+                        input.get("shallow_water").getAsBoolean(),
+                        input.get("flying").getAsBoolean(),
+                        input.get("using_item").getAsBoolean(),
+                        input.get("fall_flying").getAsBoolean(),
+                        input.get("underwater").getAsBoolean(),
+                        input.get("moving_slowly").getAsBoolean());
+                    var state = new JsonObject();
+                    state.addProperty("label", input.get("label").getAsString());
+                    state.addProperty("can_start", (boolean)method.invoke(player));
+                    states.add(state);
+                }
+                result.add("states", states);
+            } catch (ReflectiveOperationException error) {
+                throw new IllegalStateException("LocalPlayer.canStartSprinting reflection failed", error);
             }
         } else if (operation.equals("character_event")) {
             CharacterEvent event = new CharacterEvent(request.get("codepoint").getAsInt());
@@ -6128,6 +6160,12 @@ public final class MathOracle {
         private boolean controlledCamera;
         private float xRotation;
         private float yRotation;
+        private boolean sprinting;
+        private boolean mobilityRestricted;
+        private boolean shallowWater;
+        private boolean fallFlying;
+        private boolean underwater;
+        private Abilities abilities;
 
         private LocalPlayerInputFixture() {
             super(null, null, null, null, null, Input.EMPTY, false, null);
@@ -6168,6 +6206,36 @@ public final class MathOracle {
             return this.yRotation;
         }
 
+        @Override
+        public boolean isSprinting() {
+            return this.sprinting;
+        }
+
+        @Override
+        public Abilities getAbilities() {
+            return this.abilities;
+        }
+
+        @Override
+        public boolean isMobilityRestricted() {
+            return this.mobilityRestricted;
+        }
+
+        @Override
+        public boolean isInShallowWater() {
+            return this.shallowWater;
+        }
+
+        @Override
+        public boolean isFallFlying() {
+            return this.fallFlying;
+        }
+
+        @Override
+        public boolean isUnderWater() {
+            return this.underwater;
+        }
+
         private void configureApplyInput(
             final float moveX,
             final float moveY,
@@ -6195,6 +6263,37 @@ public final class MathOracle {
             this.xRotation = xRot;
             this.yRotation = yRot;
             this.controlledCamera = controlledCamera;
+        }
+
+        private void configureSprintGate(
+            final float moveY,
+            final boolean sprinting,
+            final boolean mobilityRestricted,
+            final boolean enoughFood,
+            final boolean mayfly,
+            final boolean shallowWater,
+            final boolean flying,
+            final boolean usingItem,
+            final boolean fallFlying,
+            final boolean underwater,
+            final boolean movingSlowly
+        ) throws ReflectiveOperationException {
+            this.input = new FixtureInput(new Vec2(0.0F, moveY), Input.EMPTY);
+            this.sprinting = sprinting;
+            this.mobilityRestricted = mobilityRestricted;
+            this.shallowWater = shallowWater;
+            this.fallFlying = fallFlying;
+            this.underwater = underwater;
+            this.usingItem = usingItem;
+            this.movingSlowly = movingSlowly;
+            this.foodData = new FoodData();
+            this.foodData.setFoodLevel(enoughFood ? 20 : 6);
+            this.abilities = new Abilities();
+            this.abilities.mayfly = mayfly;
+            this.abilities.flying = flying;
+            if (usingItem) {
+                this.setItemUseSpeed(1.0F);
+            }
         }
 
         private void setItemUseSpeed(final float speed) throws ReflectiveOperationException {

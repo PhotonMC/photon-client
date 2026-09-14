@@ -30,7 +30,8 @@ use voxel_client::handshake::{self, ClientIntent, ClientIntentionPacket};
 use voxel_client::identifier::Identifier;
 use voxel_client::input::{
     Input, KeyboardInput, LocalPlayerInputModifiers, LocalPlayerInputState,
-    apply_local_player_input, modify_local_player_input,
+    LocalPlayerSprintGateInput, apply_local_player_input, can_start_local_player_sprinting,
+    modify_local_player_input,
 };
 use voxel_client::input_event::{
     CharacterEvent, InputWithModifiers, KeyEvent as InputKeyEvent, MouseButtonEvent,
@@ -8209,6 +8210,54 @@ fn math_result(request: &Value) -> Result<Value, String> {
                     "y_bob": format!("{:08x}", applied.y_bob.to_bits()),
                     "x_bob_o": format!("{:08x}", applied.x_bob_old.to_bits()),
                     "y_bob_o": format!("{:08x}", applied.y_bob_old.to_bits()),
+                }))
+            })
+            .collect::<Result<Vec<_>, String>>()?;
+        return Ok(json!({"states": states}));
+    }
+    if operation == "local_player_can_start_sprinting" {
+        let inputs = request["inputs"]
+            .as_array()
+            .ok_or("inputs must be an array")?;
+        let states = inputs
+            .iter()
+            .map(|input| {
+                let state = LocalPlayerSprintGateInput {
+                    sprinting: input["sprinting"]
+                        .as_bool()
+                        .ok_or("sprinting must be a boolean")?,
+                    forward_impulse: f32_field(input, "move_y")?,
+                    mobility_restricted: input["mobility_restricted"]
+                        .as_bool()
+                        .ok_or("mobility_restricted must be a boolean")?,
+                    enough_food: input["enough_food"]
+                        .as_bool()
+                        .ok_or("enough_food must be a boolean")?,
+                    may_fly: input["mayfly"]
+                        .as_bool()
+                        .ok_or("mayfly must be a boolean")?,
+                    shallow_water: input["shallow_water"]
+                        .as_bool()
+                        .ok_or("shallow_water must be a boolean")?,
+                    flying: input["flying"]
+                        .as_bool()
+                        .ok_or("flying must be a boolean")?,
+                    slow_due_to_using_item: input["using_item"]
+                        .as_bool()
+                        .ok_or("using_item must be a boolean")?,
+                    fall_flying: input["fall_flying"]
+                        .as_bool()
+                        .ok_or("fall_flying must be a boolean")?,
+                    underwater: input["underwater"]
+                        .as_bool()
+                        .ok_or("underwater must be a boolean")?,
+                    moving_slowly: input["moving_slowly"]
+                        .as_bool()
+                        .ok_or("moving_slowly must be a boolean")?,
+                };
+                Ok(json!({
+                    "label": string(input, "label")?,
+                    "can_start": can_start_local_player_sprinting(state),
                 }))
             })
             .collect::<Result<Vec<_>, String>>()?;
