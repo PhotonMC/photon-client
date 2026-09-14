@@ -126,9 +126,10 @@ dalını uyguladığını gösterir; Java istemcisiyle tam parity iddiası deği
 ## Açık kapsam
 
 Boat input/control kaynaklı nonzero `deltaRotation`, mouse input'un gerçek
-pencere callback'inden `turn_entity` yoluna bağlanması, Animal dışındaki
-living türlerinin özel state'leri, dismount/collision, nested/lifecycle,
-render ve Java istemcisiyle `client-parity` karşılaştırması açık kalır.
+pencere callback'inden `turn_entity` yoluna bağlanması, dismount/collision,
+nested/lifecycle, render ve Java istemcisiyle `client-parity` karşılaştırması
+açık kalır. Animal dışındaki living body/head state'i [P08.bf kaydında](client-world-entity-passenger-living-conformance.md)
+izlenir.
 P08.bb tick exemption [kendi kaydında](client-world-entity-passenger-boat-turn-exemption-conformance.md),
 genel passenger clamp [P08.ba kaydında](client-world-entity-passenger-rotation-conformance.md),
 Animal rotation [P08.bc kaydında](client-world-entity-passenger-animal-rotation-conformance.md)

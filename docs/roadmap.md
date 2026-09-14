@@ -92,7 +92,8 @@ adımlarıyla sorgulanabilir hâle geldi. Bu kanıtlar vanilla 26.2 sunucusuna b
 
 P09 çarpışma, P10 hareket, P14 kamera ve P16 dünya çizimi için palette/empty
 section edge case'leri, attribute gameplay etkileri, ışık propagation/queue,
-kalan semantic metadata ve serializer alanları, kalan body/head turn semantiği,
+kalan semantic metadata ve serializer alanları, generic living attachment,
+nonzero boat `deltaRotation`,
 genel motion integration, gerçek entity tick yürütmesi ve tam entity lifecycle
 hâlâ ön koşuldur. Snowball free-flight tick alt dalı [P08.aq kaydında](client-world-entity-snowball-tick-conformance.md)
 sınırlı olarak, remote Player position interpolation [P08.ar kaydında](client-world-entity-player-interpolation-conformance.md),
@@ -107,8 +108,9 @@ ve teleport delta/relative motion [P08.au kaydında](client-world-entity-telepor
 [P08.ba kaydında](client-world-entity-passenger-rotation-conformance.md) ve Breeze `CAN_TURN_IN_BOATS` istisnası
 [P08.bb kaydında](client-world-entity-passenger-boat-turn-exemption-conformance.md), Animal passenger rotation offset'i
 [P08.bc kaydında](client-world-entity-passenger-animal-rotation-conformance.md) ve Animal passenger vehicle attachment/seat offset'i
-[P08.bd kaydında](client-world-entity-passenger-animal-position-conformance.md), ayrıca `Entity.turn` → boat `onPassengerTurned` callback'i
-[P08.be kaydında](client-world-entity-passenger-turn-conformance.md) `server-conformance` olarak ilerletilmiştir; P08 `client-parity` ile kapanmadan
+[P08.bd kaydında](client-world-entity-passenger-animal-position-conformance.md), `Entity.turn` → boat `onPassengerTurned` callback'i
+[P08.be kaydında](client-world-entity-passenger-turn-conformance.md) ve pinned living body/head dispatch'i
+[P08.bf kaydında](client-world-entity-passenger-living-conformance.md) `server-conformance` olarak ilerletilmiştir; P08 `client-parity` ile kapanmadan
 bu bağımlılıklar açılmaz.
 
 P12/P13 altında yeni item component varyantı açılmaz; gerekçe ve bağlayıcı

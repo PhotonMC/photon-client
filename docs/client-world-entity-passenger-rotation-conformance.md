@@ -75,9 +75,10 @@ uygulamasını korur.
 creative test modu, `view-distance=5`, `simulation-distance=5`,
 `127.0.0.1:25568`
 
-Oak boat ve rotation'ı `170` olan no-gravity armor stand aynı observer
-konumunda oluşturuldu. Armor stand boat seat geometry'si Rust'ta tanınmayan
-generic passenger olarak yalnız rotation branch'ini ölçer:
+Oak boat ve rotation'ı `170` olan no-gravity ArmorStand aynı observer
+konumunda oluşturuldu. Pinned kaynakta ArmorStand'ın doğrudan
+`LivingEntity`'den türediği doğrulandığı için bu fixture generic Entity
+değildir; güncel Rust living type tablosu body/head dispatch'ini de uygular.
 
 ```text
 cargo run --locked --offline --example world_entity_passenger_rotation_clamp_probe -- 127.0.0.1:25568 P08BoatClamp44
@@ -97,7 +98,7 @@ vehicle_type_id=89
 vehicle_y_rot=0
 passenger_id=11371
 passenger_type_id=5
-passenger_rotation=(168.75, 0.0, 168.75)->(105.0, 0.0, 168.75)
+passenger_rotation=(168.75, 0.0, 168.75)->(105.0, 0.0, 105.0)
 passenger_previous_rotation_after_tick=Some((105.0, 0.0, 168.75))
 passenger_observation_count=1
 world_entity_count=32
@@ -105,9 +106,11 @@ world_chunk_count=157
 received_packet_count=15469
 ```
 
-Oak boat type ID `89`, armor stand type ID `5`, current yaw `105` ve
-previous yaw correction sonucu birlikte gözlendi. Head yaw'ın generic
-passenger'da değişmemesi base `Entity` no-op setter davranışıyla uyumludur.
+Oak boat type ID `89`, ArmorStand type ID `5`, current yaw `105` ve previous
+yaw correction sonucu birlikte gözlendi. ArmorStand'ın head yaw'ı `105`'e
+gelerek `LivingEntity` setter dispatch'ini doğruladı; generic Entity no-op
+karşılaştırması P08.bf'nin `Item` type ID `71` kapsamındaki unit testinde
+korunur.
 
 Remote Player probe'u da vanilla oturumunda Player type ID `156` için boat
 ilişkisini, bounded relative yaw'ı ve head/body state'ini ölçtü:
@@ -127,10 +130,10 @@ canlı fixture ile ayrı ayrı doğrulandı.
 
 ## Açık kapsam
 
-Boat input'u ile nonzero `deltaRotation`, animal dışındaki diğer LivingEntity
-türlerinin body/head state'i, generic passenger seat attachment'ı,
+Boat input'u ile nonzero `deltaRotation`, generic passenger seat attachment'ı,
 dismount/collision, render ve Java istemcisiyle `client-parity` karşılaştırması
-açık kalır. `onPassengerTurned` callback'i [P08.be kaydında](client-world-entity-passenger-turn-conformance.md),
+açık kalır. Animal dışındaki living body/head state'i [P08.bf kaydında](client-world-entity-passenger-living-conformance.md),
+`onPassengerTurned` callback'i [P08.be kaydında](client-world-entity-passenger-turn-conformance.md),
 Animal ikinci passenger body/head rotation offset'i [P08.bc kaydında](client-world-entity-passenger-animal-rotation-conformance.md),
 chest boat/raft geometri [P08.az kaydında](client-world-entity-passenger-boat-family-conformance.md)
 ve passenger tick sırası [P08.aw kaydında](client-world-entity-passenger-tick-conformance.md)

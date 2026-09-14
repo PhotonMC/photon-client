@@ -117,7 +117,9 @@ Bu kayıt pinned Animal türlerinin vehicle attachment ve normal two-passenger
 boat seat offset dalını kapatır. Animal'ın kendi passenger taşıdığı özel
 `PASSENGER` attachment noktaları, custom pose/dimensions, seat collision ve
 dismount, nonzero boat `deltaRotation`, nested/lifecycle durumları, render ve
-Java istemcisiyle `client-parity` karşılaştırması açık kalır. `onPassengerTurned`
+Java istemcisiyle `client-parity` karşılaştırması açık kalır. Animal dışındaki
+living body/head dispatch'i [P08.bf kaydında](client-world-entity-passenger-living-conformance.md)
+izlenir. `onPassengerTurned`
 [P08.be kaydında](client-world-entity-passenger-turn-conformance.md), chest
 boat/raft geometrisi [P08.az kaydında](client-world-entity-passenger-boat-family-conformance.md),
 genel rotation clamp [P08.ba kaydında](client-world-entity-passenger-rotation-conformance.md),

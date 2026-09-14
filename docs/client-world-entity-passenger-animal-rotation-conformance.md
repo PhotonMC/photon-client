@@ -118,8 +118,10 @@ sayılmaz.
 ## Açık kapsam
 
 Animal'ın kendi passenger taşıdığı özel attachment vector'ları, nonzero
-`deltaRotation`, `onPassengerTurned`, diğer living türleri, collision/dismount,
-render ve Java istemcisiyle `client-parity` karşılaştırması açık kalır. Animal
+`deltaRotation`, `onPassengerTurned`, collision/dismount, render ve Java
+istemcisiyle `client-parity` karşılaştırması açık kalır. Animal dışındaki
+living body/head dispatch'i [P08.bf kaydında](client-world-entity-passenger-living-conformance.md)
+izlenir. Animal
 vehicle attachment ve seat offset [P08.bd kaydında](client-world-entity-passenger-animal-position-conformance.md),
 seat geometry [P08.az kaydında](client-world-entity-passenger-boat-family-conformance.md),
 genel clamp [P08.ba kaydında](client-world-entity-passenger-rotation-conformance.md)

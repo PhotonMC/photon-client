@@ -14,6 +14,13 @@ const VANILLA_PLAYER_ENTITY_TYPE_ID: i32 = 156;
 const VANILLA_BREEZE_ENTITY_TYPE_ID: i32 = 17;
 pub(crate) const VANILLA_COW_ENTITY_TYPE_ID: i32 = 30;
 pub(crate) const VANILLA_SNOWBALL_ENTITY_TYPE_ID: i32 = 120;
+const VANILLA_LIVING_ENTITY_TYPE_IDS: &[i32] = &[
+    2, 4, 5, 7, 10, 11, 14, 16, 17, 19, 20, 21, 22, 26, 27, 28, 30, 31, 32, 35, 36, 38, 40, 41, 42,
+    43, 46, 54, 55, 57, 58, 59, 61, 62, 63, 64, 66, 67, 68, 70, 78, 80, 83, 86, 87, 88, 91, 96, 97,
+    98, 99, 100, 101, 102, 103, 104, 107, 108, 109, 110, 111, 112, 114, 115, 116, 117, 119, 121,
+    124, 127, 128, 129, 130, 131, 135, 137, 138, 139, 140, 141, 142, 143, 145, 146, 147, 149, 150,
+    151, 152, 153, 154, 155, 156,
+];
 const VANILLA_ANIMAL_ENTITY_TYPE_IDS: &[i32] = &[
     4, 7, 11, 19, 20, 21, 26, 30, 36, 54, 55, 58, 62, 64, 66, 78, 86, 87, 88, 91, 96, 98, 100, 104,
     108, 111, 116, 119, 129, 135, 138, 149, 152, 153,
@@ -244,6 +251,10 @@ fn vanilla_passenger_can_turn_in_boat(passenger_type_id: i32) -> bool {
 
 fn vanilla_passenger_is_animal(passenger_type_id: i32) -> bool {
     VANILLA_ANIMAL_ENTITY_TYPE_IDS.contains(&passenger_type_id)
+}
+
+fn vanilla_passenger_is_living(passenger_type_id: i32) -> bool {
+    VANILLA_LIVING_ENTITY_TYPE_IDS.contains(&passenger_type_id)
 }
 
 fn vanilla_boat_max_passengers(vehicle_type_id: i32) -> Option<usize> {
@@ -3738,10 +3749,7 @@ impl ClientEntity {
         );
         self.old_y_rot_bits = (f32::from_bits(self.old_y_rot_bits) + correction).to_bits();
         self.y_rot_bits = (f32::from_bits(self.y_rot_bits) + correction).to_bits();
-        if self.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID
-            || self.type_id == VANILLA_BREEZE_ENTITY_TYPE_ID
-            || vanilla_passenger_is_animal(self.type_id)
-        {
+        if vanilla_passenger_is_living(self.type_id) {
             self.y_head_rot_bits = self.y_rot_bits;
             self.y_body_rot_bits = vehicle_y_rot.to_bits();
         }
@@ -4304,8 +4312,9 @@ mod tests {
         EntityMotionInput, EntityMoveInput, EntityPositionInput, EntityPositionUpdateMode,
         EntityRotationInput, EntityTeleportInput, LightLayerInput, LightUpdateInput,
         PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS, PLAYER_RESPAWN_KEEP_ENTITY_DATA, SNOWBALL_GRAVITY,
-        SectionInput, VANILLA_BREEZE_ENTITY_TYPE_ID, VANILLA_COW_ENTITY_TYPE_ID,
-        VANILLA_PLAYER_ENTITY_TYPE_ID, VANILLA_SNOWBALL_ENTITY_TYPE_ID, menu_top_slot_count,
+        SectionInput, VANILLA_BOAT_PASSENGER_MAX_ROTATION, VANILLA_BREEZE_ENTITY_TYPE_ID,
+        VANILLA_COW_ENTITY_TYPE_ID, VANILLA_LIVING_ENTITY_TYPE_IDS, VANILLA_PLAYER_ENTITY_TYPE_ID,
+        VANILLA_SNOWBALL_ENTITY_TYPE_ID, menu_top_slot_count,
     };
     use crate::binary::{BitSet, Uuid};
     use crate::math::{mth_cos_f64, mth_sin_f64};
@@ -5354,6 +5363,7 @@ mod tests {
         let passenger = world.entity_at(38).expect("generic boat passenger");
         assert_eq!(passenger.rotation(), (105.0, 0.0, 170.0));
         assert_eq!(passenger.previous_rotation(), (105.0, 0.0, 170.0));
+        assert_eq!(passenger.body_y_rotation(), 170.0);
     }
 
     #[test]
@@ -5568,6 +5578,66 @@ mod tests {
         assert_eq!(passenger.previous_rotation(), (105.0, 0.0, 168.75));
         assert_eq!(passenger.body_y_rotation(), 0.0);
         assert_eq!(passenger.previous_body_y_rotation(), 168.75);
+    }
+
+    #[test]
+    fn passenger_turn_clamps_every_vanilla_living_entity_body_and_head() {
+        let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+        let (blocks, biomes) = section(0, 0);
+        world.replace_chunk(
+            0,
+            0,
+            [SectionInput {
+                non_empty_block_count: 0,
+                fluid_count: 0,
+                block_states: &blocks,
+                biomes: &biomes,
+            }],
+        );
+        assert!(world.apply_entity(EntityInput {
+            entity_id: 37,
+            uuid: Uuid::new(37, 0),
+            type_id: 89,
+            x: 2.0,
+            y: 2.0,
+            z: 2.0,
+            movement: (0.0, 0.0, 0.0),
+            rotation: (0.0, 0.0, 0.0),
+            data: 0,
+        }));
+        for (index, &type_id) in VANILLA_LIVING_ENTITY_TYPE_IDS.iter().enumerate() {
+            let entity_id = 100 + index as i32;
+            assert!(world.apply_entity(EntityInput {
+                entity_id,
+                uuid: Uuid::new(entity_id as u64, 0),
+                type_id,
+                x: 2.0,
+                y: 2.0,
+                z: 2.0,
+                movement: (0.0, 0.0, 0.0),
+                rotation: (168.75, 0.0, 168.75),
+                data: 0,
+            }));
+        }
+        for index in 0..VANILLA_LIVING_ENTITY_TYPE_IDS.len() {
+            let passenger_id = 100 + index as i32;
+            assert!(world.apply_entity_passengers(37, &[passenger_id]));
+            assert!(world.turn_entity(passenger_id, -100.0, 0.0));
+            let passenger = world.entity_at(passenger_id).expect("living passenger");
+            assert_eq!(
+                passenger.rotation(),
+                (
+                    VANILLA_BOAT_PASSENGER_MAX_ROTATION,
+                    0.0,
+                    VANILLA_BOAT_PASSENGER_MAX_ROTATION,
+                )
+            );
+            assert_eq!(
+                passenger.previous_rotation(),
+                (VANILLA_BOAT_PASSENGER_MAX_ROTATION, 0.0, 168.75)
+            );
+            assert_eq!(passenger.body_y_rotation(), 0.0);
+        }
     }
 
     #[test]
