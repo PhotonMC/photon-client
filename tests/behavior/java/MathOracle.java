@@ -3019,6 +3019,18 @@ public final class MathOracle {
                     shapeSnapshots.add(snapshot(shape));
                 }
                 result.add("shapes", shapeSnapshots);
+            } else if (kind.equals("world_border_collision_shape")) {
+                SharedConstants.setVersion(TEST_VERSION);
+                var states = new JsonArray();
+                for (var entry : request.getAsJsonArray("inputs")) {
+                    JsonObject input = entry.getAsJsonObject();
+                    WorldBorder border = new WorldBorder();
+                    border.setCenter(f64(input, "center_x"), f64(input, "center_z"));
+                    border.setAbsoluteMaxSize(input.get("absolute_max_size").getAsInt());
+                    border.setSize(f64(input, "size"));
+                    states.add(snapshot(border.getCollisionShape()));
+                }
+                result.add("states", states);
             } else if (kind.equals("collect_step_up_heights")) {
                 AABB moving = box(request.getAsJsonObject("moving"));
                 var shapes = new java.util.ArrayList<VoxelShape>();

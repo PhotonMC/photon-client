@@ -1543,6 +1543,16 @@ fn index(x: usize, y: usize, z: usize, grid: Grid) -> usize {
 }
 
 fn midpoint(start: f64, end: f64) -> f64 {
+    if start == f64::NEG_INFINITY {
+        return if end == f64::INFINITY {
+            0.0
+        } else {
+            end - end.abs().max(1.0)
+        };
+    }
+    if end == f64::INFINITY {
+        return start + start.abs().max(1.0);
+    }
     start + (end - start) * 0.5
 }
 

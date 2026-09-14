@@ -3890,6 +3890,18 @@ def math_cases():
                {"box": box_bits(2.00000005, 0, 0, 2.5, 1, 1),
                 "can_be_collided_with": True},
            ]}
+    yield {"case_id": "shape/world-border-collision-shape/static-extents", "family": "math",
+           "operation": "shape", "kind": "world_border_collision_shape",
+           "inputs": [
+            {"center_x": float_bits(0.0, "f64"), "center_z": float_bits(0.0, "f64"),
+             "size": float_bits(5.5, "f64"), "absolute_max_size": 100},
+            {"center_x": float_bits(10.25, "f64"), "center_z": float_bits(-4.75, "f64"),
+             "size": float_bits(9.5, "f64"), "absolute_max_size": 100},
+            {"center_x": float_bits(90.0, "f64"), "center_z": float_bits(0.0, "f64"),
+             "size": float_bits(50.0, "f64"), "absolute_max_size": 100},
+            {"center_x": float_bits(0.0, "f64"), "center_z": float_bits(0.0, "f64"),
+             "size": float_bits(300.0, "f64"), "absolute_max_size": 100},
+           ]}
     yield {"case_id": "shape/collect-block-collisions/empty", "family": "math",
            "operation": "shape", "kind": "collect_block_collisions",
            "box": box_bits(-0.25, -0.25, -0.25, 0.25, 0.25, 0.25),

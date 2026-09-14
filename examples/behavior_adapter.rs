@@ -64,7 +64,7 @@ use voxel_client::world::{
     ClientEntityCollisionCandidate, ClientEntityDimensions, ClientEntityPose,
     ClientPlayerPoseInput, ClientWorld, DimensionBounds, SectionInput,
     collect_candidate_step_up_heights, collect_entity_collision_shapes, collide_entity_movement,
-    collide_entity_movement_state,
+    collide_entity_movement_state, world_border_collision_shape,
 };
 
 fn string<'a>(request: &'a Value, name: &str) -> Result<&'a str, String> {
@@ -4349,6 +4349,49 @@ fn shape_result(request: &Value) -> Result<Value, String> {
             Ok(json!({
                 "shapes": shapes.iter().map(shape_snapshot).collect::<Vec<_>>(),
             }))
+        }
+        "world_border_collision_shape" => {
+            let inputs = request
+                .get("inputs")
+                .ok_or("inputs must be an array")?
+                .as_array()
+                .ok_or("inputs must be an array")?;
+            let states = inputs
+                .iter()
+                .map(|entry| {
+                    let input = entry
+                        .as_object()
+                        .ok_or("world border input must be an object")?;
+                    let center_x = f64_value(
+                        input
+                            .get("center_x")
+                            .ok_or("center_x must be a bit string")?,
+                        "center_x",
+                    )?;
+                    let center_z = f64_value(
+                        input
+                            .get("center_z")
+                            .ok_or("center_z must be a bit string")?,
+                        "center_z",
+                    )?;
+                    let size = f64_value(
+                        input.get("size").ok_or("size must be a bit string")?,
+                        "size",
+                    )?;
+                    let absolute_max_size = input
+                        .get("absolute_max_size")
+                        .and_then(Value::as_i64)
+                        .and_then(|value| i32::try_from(value).ok())
+                        .ok_or("absolute_max_size must be an i32")?;
+                    Ok(shape_snapshot(&world_border_collision_shape(
+                        center_x,
+                        center_z,
+                        size,
+                        absolute_max_size,
+                    )))
+                })
+                .collect::<Result<Vec<_>, String>>()?;
+            Ok(json!({"states": states}))
         }
         "collect_step_up_heights" => {
             let moving = aabb_box(request.get("moving").ok_or("moving must be an object")?)?;

@@ -3,14 +3,14 @@
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 use crate::math::{
-    MTH_DEG_TO_RAD, Vec3, clamp_f32, equal_f64, mth_atan2, mth_cos_f64, mth_lerp_f32, mth_lerp_f64,
-    mth_rot_lerp_f32, mth_rot_lerp_f64, mth_sin_f64, wrap_degrees_f32,
+    MTH_DEG_TO_RAD, Vec3, clamp_f32, clamp_f64, equal_f64, mth_atan2, mth_cos_f64, mth_lerp_f32,
+    mth_lerp_f64, mth_rot_lerp_f32, mth_rot_lerp_f64, mth_sin_f64, wrap_degrees_f32,
 };
 use crate::{
     aabb::Aabb,
     binary::{BitSet, BlockPos},
     direction::{Axis, Direction},
-    shape::{Shapes, VoxelShape},
+    shape::{BooleanOp, Shapes, VoxelShape},
 };
 
 /// Resolve one entity movement against already collected world/entity shapes.
@@ -117,6 +117,23 @@ pub fn collect_entity_collision_shapes(
                 .expect("entity collision candidates require normalized bounds")
         })
         .collect()
+}
+
+/// Build Java's static world-border collision shape.
+pub fn world_border_collision_shape(
+    center_x: f64,
+    center_z: f64,
+    size: f64,
+    absolute_max_size: i32,
+) -> VoxelShape {
+    let absolute_max_size = f64::from(absolute_max_size);
+    let min_x = clamp_f64(center_x - size / 2.0, -absolute_max_size, absolute_max_size).floor();
+    let min_z = clamp_f64(center_z - size / 2.0, -absolute_max_size, absolute_max_size).floor();
+    let max_x = clamp_f64(center_x + size / 2.0, -absolute_max_size, absolute_max_size).ceil();
+    let max_z = clamp_f64(center_z + size / 2.0, -absolute_max_size, absolute_max_size).ceil();
+    let inner = Shapes::box_shape(min_x, f64::NEG_INFINITY, min_z, max_x, f64::INFINITY, max_z)
+        .expect("world border bounds must remain ordered");
+    Shapes::join(&Shapes::infinity(), &inner, BooleanOp::OnlyFirst)
 }
 
 fn java_float_compare(first: &f32, second: &f32) -> std::cmp::Ordering {
