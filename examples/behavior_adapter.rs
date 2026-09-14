@@ -4547,6 +4547,13 @@ fn shape_result(request: &Value) -> Result<Value, String> {
                                 .and_then(Value::as_bool)
                                 .unwrap_or(false),
                         );
+                        world.apply_entity_player_flying_state(
+                            entity_id,
+                            entity
+                                .get("flying")
+                                .and_then(Value::as_bool)
+                                .unwrap_or(false),
+                        );
                     }
                     let source_entity_id = input
                         .get("source_entity_id")
