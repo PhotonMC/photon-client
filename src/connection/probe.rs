@@ -19,7 +19,8 @@ use crate::world::{
     EntityRotationInput, EntityTeleportInput, LightLayerInput, LightUpdateInput,
     PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS, PLAYER_RESPAWN_KEEP_ENTITY_DATA, SectionInput,
     VANILLA_ARROW_ENTITY_TYPE_ID, VANILLA_COW_ENTITY_TYPE_ID,
-    VANILLA_EXPERIENCE_ORB_ENTITY_TYPE_ID, VANILLA_SNOWBALL_ENTITY_TYPE_ID,
+    VANILLA_EXPERIENCE_ORB_ENTITY_TYPE_ID, VANILLA_PRIMED_TNT_ENTITY_TYPE_ID,
+    VANILLA_SNOWBALL_ENTITY_TYPE_ID,
 };
 
 use super::protocol::*;
@@ -674,6 +675,22 @@ pub fn connect_and_world_experience_orb_tick_probe(
         username,
         timeout,
         PlayProbeConfig::new(ProbeAction::WorldExperienceOrbTick)
+            .with_drain_timeout(Duration::from_secs(30)),
+    )
+}
+
+/// Connect to a Java-protocol server and apply one free-flight client-world
+/// tick to a freshly added primed TNT entity.
+pub fn connect_and_world_primed_tnt_tick_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeConfig::new(ProbeAction::WorldPrimedTntTick)
             .with_drain_timeout(Duration::from_secs(30)),
     )
 }
@@ -1599,6 +1616,7 @@ enum ProbeAction {
     WorldSnowballTick,
     WorldArrowTick,
     WorldExperienceOrbTick,
+    WorldPrimedTntTick,
     SurvivalSnowballUse,
     SurvivalWaterBucketUseOn,
     SurvivalEmptyBucketPickup,
@@ -1643,14 +1661,14 @@ enum ProbeAction {
     SurvivalSpawnProtection,
 }
 
-fn observe_projectile_tick(
+fn observe_world_entity_tick(
     trace: &mut PlayConnectionTrace,
     observation: &AddEntityObservation,
 ) -> Result<(), ConnectionError> {
     let entity = trace
         .world
         .entity_at(observation.entity_id)
-        .ok_or(ConnectionError::Codec("projectile tick entity"))?;
+        .ok_or(ConnectionError::Codec("world entity tick entity"))?;
     let before_position = entity.position();
     let before_motion = entity.motion();
     let before_rotation = entity.rotation();
@@ -1658,10 +1676,10 @@ fn observe_projectile_tick(
     let entity = trace
         .world
         .entity_at(observation.entity_id)
-        .ok_or(ConnectionError::Codec("projectile tick result"))?;
+        .ok_or(ConnectionError::Codec("world entity tick result"))?;
     trace
-        .projectile_tick_observations
-        .push(ProjectileTickObservation {
+        .world_entity_tick_observations
+        .push(WorldEntityTickObservation {
             entity_id: observation.entity_id,
             entity_type_id: observation.entity_type_id,
             before_position,
@@ -2038,7 +2056,7 @@ fn connect_and_probe_with_mode(
                     .world
                     .entity_at(observation.entity_id)
                     .map(|entity| entity.rotation());
-                let should_tick_projectile = match probe.action {
+                let should_tick_world_entity = match probe.action {
                     ProbeAction::WorldSnowballTick => {
                         trace.use_item_packets_sent > 0
                             && observation.entity_type_id == VANILLA_SNOWBALL_ENTITY_TYPE_ID
@@ -2046,10 +2064,13 @@ fn connect_and_probe_with_mode(
                     ProbeAction::WorldArrowTick => {
                         observation.entity_type_id == VANILLA_ARROW_ENTITY_TYPE_ID
                     }
+                    ProbeAction::WorldPrimedTntTick => {
+                        observation.entity_type_id == VANILLA_PRIMED_TNT_ENTITY_TYPE_ID
+                    }
                     _ => false,
-                } && trace.projectile_tick_observations.is_empty();
-                if should_tick_projectile {
-                    observe_projectile_tick(&mut trace, &observation)?;
+                } && trace.world_entity_tick_observations.is_empty();
+                if should_tick_world_entity {
+                    observe_world_entity_tick(&mut trace, &observation)?;
                 }
                 if matches!(probe.action, ProbeAction::WorldExperienceOrbTick)
                     && observation.entity_type_id == VANILLA_EXPERIENCE_ORB_ENTITY_TYPE_ID

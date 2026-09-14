@@ -18,7 +18,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let trace = connect_and_world_snowball_tick_probe(address, &username, Duration::from_secs(10))?;
 
     let tick = trace
-        .projectile_tick_observations
+        .world_entity_tick_observations
         .first()
         .ok_or("vanilla snowball did not receive a client-world tick")?;
     if tick.entity_type_id != SNOWBALL_ENTITY_TYPE_ID || tick.tick_count != 1 {

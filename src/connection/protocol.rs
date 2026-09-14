@@ -567,7 +567,7 @@ pub struct PlayConnectionTrace {
     pub stone_item_registry_id: Option<i32>,
     pub snowball_item_registry_id: Option<i32>,
     pub add_entity_observations: Vec<AddEntityObservation>,
-    pub projectile_tick_observations: Vec<ProjectileTickObservation>,
+    pub world_entity_tick_observations: Vec<WorldEntityTickObservation>,
     pub experience_orb_tick_observations: Vec<ExperienceOrbTickObservation>,
     pub entity_interpolation_observations: Vec<EntityInterpolationObservation>,
     pub entity_position_snap_observations: Vec<EntityPositionSnapObservation>,
@@ -781,9 +781,9 @@ pub struct AddEntityObservation {
     pub applied_rotation: Option<(f32, f32, f32)>,
 }
 
-/// One client-world tick applied to a supported projectile after its add packet.
+/// One client-world tick applied to a supported world entity after its add packet.
 #[derive(Debug, Clone, PartialEq)]
-pub struct ProjectileTickObservation {
+pub struct WorldEntityTickObservation {
     pub entity_id: i32,
     pub entity_type_id: i32,
     pub before_position: (f64, f64, f64),
