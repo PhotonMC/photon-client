@@ -4065,6 +4065,17 @@ def math_cases():
                {"x": 3, "y": 0, "z": 0, "state_id": 13335},
                {"x": 4, "y": 0, "z": 0, "state_id": 99999},
            ]}
+    yield {"case_id": "world/client-collision/stair-state-shapes", "family": "math",
+           "operation": "shape", "kind": "client_world_registry_collision",
+           "state_ids": [3908, 3918, 3920, 3926, 99999],
+           "test_area": box_bits(-0.25, -0.25, -0.25, 4.75, 1.25, 1.25),
+           "placements": [
+               {"x": 0, "y": 0, "z": 0, "state_id": 3908},
+               {"x": 1, "y": 0, "z": 0, "state_id": 3918},
+               {"x": 2, "y": 0, "z": 0, "state_id": 3920},
+               {"x": 3, "y": 0, "z": 0, "state_id": 3926},
+               {"x": 4, "y": 0, "z": 0, "state_id": 99999},
+           ]}
     yield {"case_id": "shape/collect-block-collisions/empty", "family": "math",
            "operation": "shape", "kind": "collect_block_collisions",
            "box": box_bits(-0.25, -0.25, -0.25, 0.25, 0.25, 0.25),

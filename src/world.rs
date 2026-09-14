@@ -1645,7 +1645,7 @@ pub struct ClientBlockCollision {
 ///
 /// Raw bits keep the descriptor comparable so it can live in `ClientWorld`'s
 /// structural state without making `VoxelShape` part of that state.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ClientBlockStateCollisionShape {
     Empty,
     FullBlock,
@@ -1657,10 +1657,13 @@ pub enum ClientBlockStateCollisionShape {
         max_y_bits: u64,
         max_z_bits: u64,
     },
+    Boxes {
+        boxes: Vec<[u64; 6]>,
+    },
 }
 
 impl ClientBlockStateCollisionShape {
-    fn to_voxel_shape(self) -> VoxelShape {
+    fn to_voxel_shape(&self) -> VoxelShape {
         match self {
             Self::Empty => Shapes::empty(),
             Self::FullBlock => Shapes::block(),
@@ -1672,16 +1675,58 @@ impl ClientBlockStateCollisionShape {
                 max_y_bits,
                 max_z_bits,
             } => Shapes::box_shape(
-                f64::from_bits(min_x_bits),
-                f64::from_bits(min_y_bits),
-                f64::from_bits(min_z_bits),
-                f64::from_bits(max_x_bits),
-                f64::from_bits(max_y_bits),
-                f64::from_bits(max_z_bits),
+                f64::from_bits(*min_x_bits),
+                f64::from_bits(*min_y_bits),
+                f64::from_bits(*min_z_bits),
+                f64::from_bits(*max_x_bits),
+                f64::from_bits(*max_y_bits),
+                f64::from_bits(*max_z_bits),
             )
             .expect("registered block-state shape bounds must be ordered"),
+            Self::Boxes { boxes } => {
+                let mut shape = Shapes::empty();
+                for [
+                    min_x_bits,
+                    min_y_bits,
+                    min_z_bits,
+                    max_x_bits,
+                    max_y_bits,
+                    max_z_bits,
+                ] in boxes
+                {
+                    let box_shape = Shapes::box_shape(
+                        f64::from_bits(*min_x_bits),
+                        f64::from_bits(*min_y_bits),
+                        f64::from_bits(*min_z_bits),
+                        f64::from_bits(*max_x_bits),
+                        f64::from_bits(*max_y_bits),
+                        f64::from_bits(*max_z_bits),
+                    )
+                    .expect("registered block-state shape bounds must be ordered");
+                    shape = Shapes::or(&shape, &box_shape);
+                }
+                shape
+            }
         }
     }
+}
+
+fn client_block_state_box(
+    min_x: f64,
+    min_y: f64,
+    min_z: f64,
+    max_x: f64,
+    max_y: f64,
+    max_z: f64,
+) -> [u64; 6] {
+    [
+        min_x.to_bits(),
+        min_y.to_bits(),
+        min_z.to_bits(),
+        max_x.to_bits(),
+        max_y.to_bits(),
+        max_z.to_bits(),
+    ]
 }
 
 /// Resolve the pinned 26.2 built-in block-state IDs used by the current
@@ -1723,6 +1768,43 @@ impl ClientBlockStateRegistry {
             },
         );
         collision_shapes.insert(13335, ClientBlockStateCollisionShape::FullBlock);
+        collision_shapes.insert(
+            3908,
+            ClientBlockStateCollisionShape::Boxes {
+                boxes: vec![
+                    client_block_state_box(0.0, 0.0, 0.0, 1.0, 1.0, 0.5),
+                    client_block_state_box(0.0, 0.5, 0.5, 1.0, 1.0, 1.0),
+                ],
+            },
+        );
+        collision_shapes.insert(
+            3918,
+            ClientBlockStateCollisionShape::Boxes {
+                boxes: vec![
+                    client_block_state_box(0.0, 0.0, 0.0, 1.0, 0.5, 1.0),
+                    client_block_state_box(0.0, 0.5, 0.0, 1.0, 1.0, 0.5),
+                ],
+            },
+        );
+        collision_shapes.insert(
+            3920,
+            ClientBlockStateCollisionShape::Boxes {
+                boxes: vec![
+                    client_block_state_box(0.0, 0.0, 0.0, 1.0, 0.5, 1.0),
+                    client_block_state_box(0.0, 0.5, 0.0, 0.5, 1.0, 1.0),
+                    client_block_state_box(0.5, 0.5, 0.0, 1.0, 1.0, 0.5),
+                ],
+            },
+        );
+        collision_shapes.insert(
+            3926,
+            ClientBlockStateCollisionShape::Boxes {
+                boxes: vec![
+                    client_block_state_box(0.0, 0.0, 0.0, 1.0, 0.5, 1.0),
+                    client_block_state_box(0.5, 0.5, 0.0, 1.0, 1.0, 0.5),
+                ],
+            },
+        );
         Self { collision_shapes }
     }
 
@@ -1744,7 +1826,7 @@ impl ClientBlockStateRegistry {
     fn collision_shapes(&self) -> BTreeMap<i32, VoxelShape> {
         self.collision_shapes
             .iter()
-            .map(|(&state_id, &shape)| (state_id, shape.to_voxel_shape()))
+            .map(|(&state_id, shape)| (state_id, shape.to_voxel_shape()))
             .collect()
     }
 }
