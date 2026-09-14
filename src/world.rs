@@ -4,8 +4,8 @@ use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 use crate::binary::BitSet;
 use crate::math::{
-    clamp_f32, mth_atan2, mth_cos_f64, mth_lerp_f32, mth_lerp_f64, mth_rot_lerp_f32,
-    mth_rot_lerp_f64, mth_sin_f64, wrap_degrees_f32,
+    MTH_DEG_TO_RAD, clamp_f32, mth_atan2, mth_cos_f64, mth_lerp_f32, mth_lerp_f64,
+    mth_rot_lerp_f32, mth_rot_lerp_f64, mth_sin_f64, wrap_degrees_f32,
 };
 
 pub(crate) const PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS: u8 = 1;
@@ -217,6 +217,28 @@ impl ClientEntityPose {
             16 => Self::Shooting,
             17 => Self::Inhaling,
             _ => Self::Standing,
+        }
+    }
+}
+
+/// The four movement flags copied by Java's `AbstractBoat.setInput`.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct BoatInput {
+    pub left: bool,
+    pub right: bool,
+    pub forward: bool,
+    pub backward: bool,
+}
+
+impl BoatInput {
+    pub const EMPTY: Self = Self::new(false, false, false, false);
+
+    pub const fn new(left: bool, right: bool, forward: bool, backward: bool) -> Self {
+        Self {
+            left,
+            right,
+            forward,
+            backward,
         }
     }
 }
@@ -1450,6 +1472,18 @@ impl ClientWorld {
         true
     }
 
+    /// Copy local player movement flags into a client-authoritative boat.
+    pub fn set_boat_input(&mut self, vehicle_id: i32, input: BoatInput) -> bool {
+        let Some(boat) = self.entities.get_mut(&vehicle_id) else {
+            return false;
+        };
+        if vanilla_boat_max_passengers(boat.type_id).is_none() {
+            return false;
+        }
+        boat.boat_input = input;
+        true
+    }
+
     fn tick_local_player(&mut self, vehicle_id: Option<i32>) {
         let passenger_ids = {
             let Some(player) = self.local_player.as_mut() else {
@@ -1603,11 +1637,12 @@ impl ClientWorld {
     }
 
     fn clamp_entity_passenger_rotation(&mut self, vehicle_id: i32, passenger_id: i32) {
-        let Some((vehicle_type_id, vehicle_y_rot, passenger_count)) =
+        let Some((vehicle_type_id, vehicle_y_rot, delta_rotation, passenger_count)) =
             self.entities.get(&vehicle_id).map(|vehicle| {
                 (
                     vehicle.type_id,
                     f32::from_bits(vehicle.y_rot_bits),
+                    f32::from_bits(vehicle.delta_rotation_bits),
                     vehicle.passenger_ids.len(),
                 )
             })
@@ -1643,12 +1678,14 @@ impl ClientWorld {
                 }
             });
         if let Some(passenger) = self.entities.get_mut(&passenger_id) {
+            passenger.add_vanilla_boat_passenger_rotation(delta_rotation);
             passenger.clamp_vanilla_boat_passenger_rotation(vehicle_y_rot, animal_rotation_offset);
         } else if let Some(player) = self
             .local_player
             .as_mut()
             .filter(|player| player.id == passenger_id)
         {
+            player.add_vanilla_boat_passenger_rotation(delta_rotation);
             player.clamp_vanilla_boat_passenger_rotation(vehicle_y_rot);
         }
     }
@@ -1678,6 +1715,10 @@ impl ClientWorld {
             entity.type_id == VANILLA_SNOWBALL_ENTITY_TYPE_ID
                 && self.snowball_path_is_open(entity.position(), entity.motion(), entity.no_gravity)
         });
+        let boat_control = self.entities.get(&entity_id).and_then(|entity| {
+            vanilla_boat_max_passengers(entity.type_id)
+                .map(|_| (entity.boat_input, !entity.passenger_ids.is_empty()))
+        });
         let Some(entity) = self.entities.get_mut(&entity_id) else {
             return;
         };
@@ -1692,6 +1733,9 @@ impl ClientWorld {
         }
         if can_tick_snowball {
             entity.tick_snowball();
+        }
+        if let Some((input, has_passengers)) = boat_control {
+            entity.tick_boat_control(input, has_passengers);
         }
     }
 
@@ -1983,6 +2027,7 @@ impl ClientWorld {
         self.entities.insert(
             entity.entity_id,
             ClientEntity {
+                id: entity.entity_id,
                 uuid: entity.uuid,
                 type_id: entity.type_id,
                 tick_count: 0,
@@ -2007,6 +2052,10 @@ impl ClientWorld {
                 old_y_rot_bits: entity.rotation.0.to_bits(),
                 old_y_head_rot_bits: entity.rotation.2.to_bits(),
                 old_y_body_rot_bits: entity.rotation.0.to_bits(),
+                delta_rotation_bits: 0.0_f32.to_bits(),
+                boat_input: BoatInput::EMPTY,
+                paddle_left: false,
+                paddle_right: false,
                 head_rotation_target_bits: entity.rotation.2.to_bits(),
                 head_lerp_steps: 0,
                 interpolation: None,
@@ -2825,6 +2874,7 @@ fn numeric_nbt_value(value: &crate::nbt::FieldValue) -> Option<i32> {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ClientEntity {
+    id: i32,
     pub uuid: crate::binary::Uuid,
     pub type_id: i32,
     tick_count: i32,
@@ -2849,6 +2899,10 @@ pub struct ClientEntity {
     old_y_rot_bits: u32,
     old_y_head_rot_bits: u32,
     old_y_body_rot_bits: u32,
+    delta_rotation_bits: u32,
+    boat_input: BoatInput,
+    paddle_left: bool,
+    paddle_right: bool,
     head_rotation_target_bits: u32,
     head_lerp_steps: u8,
     interpolation: Option<EntityInterpolationState>,
@@ -3095,6 +3149,11 @@ impl ClientPlayerState {
             self.head_rotation_target_bits,
             &mut self.head_lerp_steps,
         );
+    }
+
+    fn add_vanilla_boat_passenger_rotation(&mut self, delta_rotation: f32) {
+        self.y_rot_bits = (f32::from_bits(self.y_rot_bits) + delta_rotation).to_bits();
+        self.y_head_rot_bits = (f32::from_bits(self.y_head_rot_bits) + delta_rotation).to_bits();
     }
 
     fn new(id: i32) -> Self {
@@ -3432,6 +3491,10 @@ impl ClientPlayerState {
 }
 
 impl ClientEntity {
+    pub fn id(&self) -> i32 {
+        self.id
+    }
+
     pub fn vehicle_id(&self) -> Option<i32> {
         self.vehicle_id
     }
@@ -3657,6 +3720,43 @@ impl ClientEntity {
             mth_rot_lerp_f32(0.2_f32, f32::from_bits(self.old_y_rot_bits), target_y_rot).to_bits();
     }
 
+    fn tick_boat_control(&mut self, input: BoatInput, has_passengers: bool) {
+        if !has_passengers {
+            return;
+        }
+
+        let mut delta_rotation = f32::from_bits(self.delta_rotation_bits);
+        if input.left {
+            delta_rotation -= 1.0_f32;
+        }
+        if input.right {
+            delta_rotation += 1.0_f32;
+        }
+
+        let mut acceleration = 0.0_f32;
+        if input.right != input.left && !input.forward && !input.backward {
+            acceleration += 0.005_f32;
+        }
+
+        let y_rot = f32::from_bits(self.y_rot_bits) + delta_rotation;
+        if input.forward {
+            acceleration += 0.04_f32;
+        }
+        if input.backward {
+            acceleration -= 0.005_f32;
+        }
+
+        let x_acceleration = mth_sin_f64(f64::from(-y_rot * MTH_DEG_TO_RAD)) * acceleration;
+        let z_acceleration = mth_cos_f64(f64::from(y_rot * MTH_DEG_TO_RAD)) * acceleration;
+        let current_motion = self.motion();
+        self.delta_rotation_bits = delta_rotation.to_bits();
+        self.y_rot_bits = y_rot.to_bits();
+        self.motion_x_bits = (current_motion.0 + f64::from(x_acceleration)).to_bits();
+        self.motion_z_bits = (current_motion.2 + f64::from(z_acceleration)).to_bits();
+        self.paddle_left = (input.right && !input.left) || input.forward;
+        self.paddle_right = (input.left && !input.right) || input.forward;
+    }
+
     fn set_position(&mut self, position: (f64, f64, f64)) {
         self.x_bits = position.0.to_bits();
         self.y_bits = position.1.to_bits();
@@ -3700,6 +3800,14 @@ impl ClientEntity {
             f64::from_bits(self.motion_y_bits),
             f64::from_bits(self.motion_z_bits),
         )
+    }
+
+    pub fn boat_delta_rotation(&self) -> f32 {
+        f32::from_bits(self.delta_rotation_bits)
+    }
+
+    pub fn paddle_state(&self) -> (bool, bool) {
+        (self.paddle_left, self.paddle_right)
     }
 
     fn set_motion_if_finite(&mut self, motion: (f64, f64, f64)) {
@@ -3760,6 +3868,14 @@ impl ClientEntity {
                 (f32::from_bits(self.y_body_rot_bits) + rotation_offset).to_bits();
             self.y_head_rot_bits =
                 (f32::from_bits(self.y_head_rot_bits) + rotation_offset).to_bits();
+        }
+    }
+
+    fn add_vanilla_boat_passenger_rotation(&mut self, delta_rotation: f32) {
+        self.y_rot_bits = (f32::from_bits(self.y_rot_bits) + delta_rotation).to_bits();
+        if vanilla_passenger_is_living(self.type_id) {
+            self.y_head_rot_bits =
+                (f32::from_bits(self.y_head_rot_bits) + delta_rotation).to_bits();
         }
     }
 
@@ -4305,8 +4421,8 @@ fn apply_light_layer(
 #[cfg(test)]
 mod tests {
     use super::{
-        BlockEntityInput, ClientAttributeModifierState, ClientAttributeState, ClientItemStackState,
-        ClientWorld, DimensionBounds, DimensionEnvironment, DimensionInput,
+        BlockEntityInput, BoatInput, ClientAttributeModifierState, ClientAttributeState,
+        ClientItemStackState, ClientWorld, DimensionBounds, DimensionEnvironment, DimensionInput,
         ENTITY_DATA_SERIALIZER_BOOLEAN_ID, ENTITY_NO_GRAVITY_DATA_ID, ENTITY_RELATIVE_DELTA_X_FLAG,
         ENTITY_RELATIVE_DELTA_Y_FLAG, ENTITY_RELATIVE_DELTA_Z_FLAG,
         ENTITY_RELATIVE_ROTATE_DELTA_FLAG, ENTITY_RELATIVE_X_FLAG, ENTITY_RELATIVE_X_ROT_FLAG,
@@ -5633,6 +5749,169 @@ mod tests {
         assert_eq!(passenger.previous_rotation(), (105.0, 0.0, 168.75));
         assert_eq!(passenger.body_y_rotation(), 0.0);
         assert_eq!(passenger.previous_body_y_rotation(), 168.75);
+    }
+
+    #[test]
+    fn boat_control_applies_java_input_delta_and_paddles() {
+        let rows = [
+            (
+                "left",
+                BoatInput::new(true, false, false, false),
+                0xbf80_0000,
+                0x4110_0000,
+                0x3fbf_ccc0_8100_0000,
+                0xbfcf_5e2d_1900_0000,
+                (false, true),
+            ),
+            (
+                "right",
+                BoatInput::new(false, true, false, false),
+                0x3f80_0000,
+                0x4130_0000,
+                0x3fbf_c17d_a440_0000,
+                0xbfcf_5f2b_3300_0000,
+                (true, false),
+            ),
+            (
+                "forward",
+                BoatInput::new(false, false, true, false),
+                0x0000_0000,
+                0x4120_0000,
+                0x3fbe_38e6_d800_0000,
+                0xbfca_f52e_e000_0000,
+                (true, true),
+            ),
+            (
+                "backward",
+                BoatInput::new(false, false, false, true),
+                0x0000_0000,
+                0x4120_0000,
+                0x3fc0_1c71_9280_0000,
+                0xbfd0_50ad_1200_0000,
+                (false, false),
+            ),
+            (
+                "both_turn",
+                BoatInput::new(true, true, false, false),
+                0x0000_0000,
+                0x4120_0000,
+                0x3fc0_0000_0000_0000,
+                0xbfd0_0000_0000_0000,
+                (false, false),
+            ),
+            (
+                "left_forward",
+                BoatInput::new(true, false, true, false),
+                0xbf80_0000,
+                0x4110_0000,
+                0x3fbe_6604_0800_0000,
+                0xbfca_f168_c800_0000,
+                (true, true),
+            ),
+        ];
+
+        for (
+            name,
+            input,
+            expected_delta,
+            expected_yaw,
+            expected_motion_x,
+            expected_motion_z,
+            expected_paddles,
+        ) in rows
+        {
+            let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+            let (blocks, biomes) = section(0, 0);
+            world.replace_chunk(
+                0,
+                0,
+                [SectionInput {
+                    non_empty_block_count: 0,
+                    fluid_count: 0,
+                    block_states: &blocks,
+                    biomes: &biomes,
+                }],
+            );
+            assert!(world.apply_entity(EntityInput {
+                entity_id: 37,
+                uuid: Uuid::new(1, 37),
+                type_id: 89,
+                x: 2.0,
+                y: 12.0,
+                z: 2.0,
+                movement: (0.125, 0.0, -0.25),
+                rotation: (10.0, 0.0, 0.0),
+                data: 0,
+            }));
+            assert!(world.apply_entity(EntityInput {
+                entity_id: 38,
+                uuid: Uuid::new(1, 38),
+                type_id: 71,
+                x: 2.0,
+                y: 12.0,
+                z: 2.0,
+                movement: (0.0, 0.0, 0.0),
+                rotation: (0.0, 0.0, 0.0),
+                data: 0,
+            }));
+            assert!(world.apply_entity_passengers(37, &[38]));
+            assert!(
+                world.set_boat_input(37, input),
+                "{name}: boat input rejected"
+            );
+
+            world.tick();
+
+            let boat = world.entity_at(37).expect("controlled boat");
+            assert_eq!(
+                boat.boat_delta_rotation().to_bits(),
+                expected_delta,
+                "{name}"
+            );
+            assert_eq!(boat.rotation().0.to_bits(), expected_yaw, "{name}");
+            assert_eq!(boat.motion().0.to_bits(), expected_motion_x, "{name}");
+            assert_eq!(boat.motion().2.to_bits(), expected_motion_z, "{name}");
+            assert_eq!(boat.paddle_state(), expected_paddles, "{name}");
+        }
+    }
+
+    #[test]
+    fn boat_control_delta_rotation_reaches_passenger_tick() {
+        let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+        let (blocks, biomes) = section(0, 0);
+        world.replace_chunk(
+            0,
+            0,
+            [SectionInput {
+                non_empty_block_count: 0,
+                fluid_count: 0,
+                block_states: &blocks,
+                biomes: &biomes,
+            }],
+        );
+        for (entity_id, type_id) in [(37, 89), (38, 151)] {
+            assert!(world.apply_entity(EntityInput {
+                entity_id,
+                uuid: Uuid::new(1, entity_id as u64),
+                type_id,
+                x: 2.0,
+                y: 12.0,
+                z: 2.0,
+                movement: (0.0, 0.0, 0.0),
+                rotation: (0.0, 0.0, 0.0),
+                data: 0,
+            }));
+        }
+        assert!(world.apply_entity_passengers(37, &[38]));
+        assert!(world.set_boat_input(37, BoatInput::new(false, true, false, false)));
+
+        world.tick();
+
+        let passenger = world.entity_at(38).expect("living boat passenger");
+        assert_eq!(passenger.rotation(), (1.0, 0.0, 1.0));
+        assert_eq!(passenger.previous_rotation(), (0.0, 0.0, 0.0));
+        assert_eq!(passenger.body_y_rotation(), 1.0);
+        assert_eq!(passenger.position(), (2.0, 12.1875, 2.0));
     }
 
     #[test]

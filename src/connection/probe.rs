@@ -455,6 +455,22 @@ pub fn connect_and_world_entity_passengers_probe(
     )
 }
 
+/// Connect to a Java-protocol server, retain the received passenger relation,
+/// and leave one local boat-control tick to the caller.
+pub fn connect_and_world_entity_passenger_boat_control_probe(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    connect_and_probe_with_mode(
+        address,
+        username,
+        timeout,
+        PlayProbeConfig::new(ProbeAction::WorldEntityPassengers)
+            .with_drain_timeout(Duration::from_secs(30)),
+    )
+}
+
 /// Connect to a Java-protocol server and observe one world tick where a known
 /// projectile is attached as a passenger.
 pub fn connect_and_world_entity_passenger_tick_probe(
