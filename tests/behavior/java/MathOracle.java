@@ -38,6 +38,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.util.SmoothDouble;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityDimensions;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.BlockCollisions;
 import net.minecraft.world.level.BlockGetter;
@@ -2967,70 +2968,7 @@ public final class MathOracle {
                 }
             } else if (kind.equals("collect_block_collisions")) {
                 AABB query = box(request.getAsJsonObject("box"));
-                var states = new java.util.HashMap<String, BlockState>();
-                for (var entry : request.getAsJsonArray("placements")) {
-                    JsonObject placement = entry.getAsJsonObject();
-                    int x = placement.get("x").getAsInt();
-                    int y = placement.get("y").getAsInt();
-                    int z = placement.get("z").getAsInt();
-                    BlockState state = switch (placement.get("kind").getAsString()) {
-                        case "air" -> Blocks.AIR.defaultBlockState();
-                        case "stone" -> Blocks.STONE.defaultBlockState();
-                        case "slab_bottom" -> Blocks.OAK_SLAB.defaultBlockState()
-                            .setValue(SlabBlock.TYPE, SlabType.BOTTOM);
-                        case "slab_top" -> Blocks.OAK_SLAB.defaultBlockState()
-                            .setValue(SlabBlock.TYPE, SlabType.TOP);
-                        case "slab_double" -> Blocks.OAK_SLAB.defaultBlockState()
-                            .setValue(SlabBlock.TYPE, SlabType.DOUBLE);
-                        default -> throw new IllegalArgumentException("Unknown collision fixture block");
-                    };
-                    states.put(x + "," + y + "," + z, state);
-                }
-                CollisionGetter collisionGetter = new CollisionGetter() {
-                    private String key(BlockPos pos) {
-                        return pos.getX() + "," + pos.getY() + "," + pos.getZ();
-                    }
-
-                    @Override
-                    public WorldBorder getWorldBorder() {
-                        return null;
-                    }
-
-                    @Override
-                    public BlockGetter getChunkForCollisions(int chunkX, int chunkZ) {
-                        return this;
-                    }
-
-                    @Override
-                    public java.util.List<VoxelShape> getEntityCollisions(Entity source, AABB testArea) {
-                        return java.util.List.of();
-                    }
-
-                    @Override
-                    public BlockEntity getBlockEntity(BlockPos pos) {
-                        return null;
-                    }
-
-                    @Override
-                    public BlockState getBlockState(BlockPos pos) {
-                        return states.getOrDefault(key(pos), Blocks.AIR.defaultBlockState());
-                    }
-
-                    @Override
-                    public FluidState getFluidState(BlockPos pos) {
-                        return getBlockState(pos).getFluidState();
-                    }
-
-                    @Override
-                    public int getHeight() {
-                        return 384;
-                    }
-
-                    @Override
-                    public int getMinY() {
-                        return -64;
-                    }
-                };
+                CollisionGetter collisionGetter = collisionFixture(request.getAsJsonArray("placements"));
                 var collisions = new JsonArray();
                 var iterator = new BlockCollisions<JsonObject>(
                     collisionGetter,
@@ -3047,6 +2985,37 @@ public final class MathOracle {
                     collisions.add(iterator.next());
                 }
                 result.add("collisions", collisions);
+            } else if (kind.equals("entity_fit")) {
+                JsonObject dimensionInput = request.getAsJsonObject("dimensions");
+                float width = Oracle.f32(dimensionInput, "width");
+                float height = Oracle.f32(dimensionInput, "height");
+                boolean fixed = dimensionInput.has("fixed") && dimensionInput.get("fixed").getAsBoolean();
+                EntityDimensions dimensions = fixed
+                    ? EntityDimensions.fixed(width, height)
+                    : EntityDimensions.scalable(width, height);
+                if (dimensionInput.has("width_scale") || dimensionInput.has("height_scale")) {
+                    float widthScale = dimensionInput.has("width_scale")
+                        ? Oracle.f32(dimensionInput, "width_scale") : 1.0F;
+                    float heightScale = dimensionInput.has("height_scale")
+                        ? Oracle.f32(dimensionInput, "height_scale") : 1.0F;
+                    dimensions = dimensions.scale(widthScale, heightScale);
+                }
+                if (dimensionInput.has("eye_height")) {
+                    dimensions = dimensions.withEyeHeight(Oracle.f32(dimensionInput, "eye_height"));
+                }
+                Vec3 position = vec3(request.getAsJsonObject("position"));
+                AABB boundingBox = dimensions.makeBoundingBox(position);
+                AABB query = boundingBox.deflate(1.0E-7);
+                CollisionGetter collisionGetter = collisionFixture(request.getAsJsonArray("placements"));
+                var dimensionSnapshot = new JsonObject();
+                dimensionSnapshot.addProperty("width", Oracle.bits(dimensions.width()));
+                dimensionSnapshot.addProperty("height", Oracle.bits(dimensions.height()));
+                dimensionSnapshot.addProperty("eye_height", Oracle.bits(dimensions.eyeHeight()));
+                dimensionSnapshot.addProperty("fixed", dimensions.fixed());
+                result.add("dimensions", dimensionSnapshot);
+                result.add("box", snapshot(boundingBox));
+                result.add("query", snapshot(query));
+                result.addProperty("fits", collisionGetter.noCollision(null, query));
             } else if (kind.equals("clip")) {
                 VoxelShape shape = voxelShape(request.getAsJsonObject("shape"));
                 var events = new JsonArray();
@@ -3505,6 +3474,73 @@ public final class MathOracle {
 
     private static double f64(String bits) {
         return Double.longBitsToDouble(Long.parseUnsignedLong(bits, 16));
+    }
+
+    private static CollisionGetter collisionFixture(JsonArray placements) {
+        var states = new java.util.HashMap<String, BlockState>();
+        for (var entry : placements) {
+            JsonObject placement = entry.getAsJsonObject();
+            int x = placement.get("x").getAsInt();
+            int y = placement.get("y").getAsInt();
+            int z = placement.get("z").getAsInt();
+            BlockState state = switch (placement.get("kind").getAsString()) {
+                case "air" -> Blocks.AIR.defaultBlockState();
+                case "stone" -> Blocks.STONE.defaultBlockState();
+                case "slab_bottom" -> Blocks.OAK_SLAB.defaultBlockState()
+                    .setValue(SlabBlock.TYPE, SlabType.BOTTOM);
+                case "slab_top" -> Blocks.OAK_SLAB.defaultBlockState()
+                    .setValue(SlabBlock.TYPE, SlabType.TOP);
+                case "slab_double" -> Blocks.OAK_SLAB.defaultBlockState()
+                    .setValue(SlabBlock.TYPE, SlabType.DOUBLE);
+                default -> throw new IllegalArgumentException("Unknown collision fixture block");
+            };
+            states.put(x + "," + y + "," + z, state);
+        }
+        return new CollisionGetter() {
+            private String key(BlockPos pos) {
+                return pos.getX() + "," + pos.getY() + "," + pos.getZ();
+            }
+
+            @Override
+            public WorldBorder getWorldBorder() {
+                return null;
+            }
+
+            @Override
+            public BlockGetter getChunkForCollisions(int chunkX, int chunkZ) {
+                return this;
+            }
+
+            @Override
+            public java.util.List<VoxelShape> getEntityCollisions(Entity source, AABB testArea) {
+                return java.util.List.of();
+            }
+
+            @Override
+            public BlockEntity getBlockEntity(BlockPos pos) {
+                return null;
+            }
+
+            @Override
+            public BlockState getBlockState(BlockPos pos) {
+                return states.getOrDefault(key(pos), Blocks.AIR.defaultBlockState());
+            }
+
+            @Override
+            public FluidState getFluidState(BlockPos pos) {
+                return getBlockState(pos).getFluidState();
+            }
+
+            @Override
+            public int getHeight() {
+                return 384;
+            }
+
+            @Override
+            public int getMinY() {
+                return -64;
+            }
+        };
     }
 
     private static AABB box(JsonObject object) {

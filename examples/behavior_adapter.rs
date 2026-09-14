@@ -61,8 +61,8 @@ use voxel_client::timer::Timer;
 use voxel_client::utf8;
 use voxel_client::wire::{self, ReadError};
 use voxel_client::world::{
-    ClientWorld, DimensionBounds, SectionInput, collect_candidate_step_up_heights,
-    collide_entity_movement,
+    ClientEntityDimensions, ClientWorld, DimensionBounds, SectionInput,
+    collect_candidate_step_up_heights, collide_entity_movement,
 };
 
 fn string<'a>(request: &'a Value, name: &str) -> Result<&'a str, String> {
@@ -3563,6 +3563,62 @@ fn shape_box(value: &Value) -> Result<VoxelShape, String> {
     .map_err(|_| "shape minimum must not exceed maximum".to_owned())
 }
 
+fn block_collision_fixture(
+    request: &Value,
+) -> Result<(ClientWorld, BTreeMap<i32, VoxelShape>), String> {
+    let mut shapes_by_state = BTreeMap::new();
+    for entry in request
+        .get("shape_states")
+        .ok_or("shape_states must be an array")?
+        .as_array()
+        .ok_or("shape_states must be an array")?
+    {
+        let state_id = i32_field(entry, "state_id")?;
+        let shape = shape_box(entry.get("shape").ok_or("shape must be an object")?)?;
+        shapes_by_state.insert(state_id, shape);
+    }
+
+    let mut chunk_blocks = BTreeMap::new();
+    for entry in request
+        .get("placements")
+        .ok_or("placements must be an array")?
+        .as_array()
+        .ok_or("placements must be an array")?
+    {
+        let x = i32_field(entry, "x")?;
+        let y = i32_field(entry, "y")?;
+        let z = i32_field(entry, "z")?;
+        if !(0..16).contains(&y) {
+            return Err("block collision fixture Y must be in 0..16".into());
+        }
+        let state_id = i32_field(entry, "state_id")?;
+        let blocks = chunk_blocks
+            .entry((x.div_euclid(16), z.div_euclid(16)))
+            .or_insert_with(|| vec![0; 4_096]);
+        let local_x = x.rem_euclid(16) as usize;
+        let local_y = y as usize;
+        let local_z = z.rem_euclid(16) as usize;
+        blocks[local_y * 256 + local_z * 16 + local_x] = state_id;
+    }
+
+    let biomes = vec![0; 64];
+    let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+    for ((chunk_x, chunk_z), blocks) in chunk_blocks {
+        world.replace_chunk(
+            chunk_x,
+            chunk_z,
+            [SectionInput {
+                non_empty_block_count: 0,
+                fluid_count: 0,
+                block_states: &blocks,
+                biomes: &biomes,
+            }],
+        );
+    }
+
+    Ok((world, shapes_by_state))
+}
+
 fn shape_snapshot(value: &VoxelShape) -> Value {
     let mut state = json!({
         "empty": value.is_empty(),
@@ -4216,56 +4272,7 @@ fn shape_result(request: &Value) -> Result<Value, String> {
         }
         "collect_block_collisions" => {
             let bounding_box = aabb_box(request.get("box").ok_or("box must be an object")?)?;
-            let mut shapes_by_state = BTreeMap::new();
-            for entry in request
-                .get("shape_states")
-                .ok_or("shape_states must be an array")?
-                .as_array()
-                .ok_or("shape_states must be an array")?
-            {
-                let state_id = i32_field(entry, "state_id")?;
-                let shape = shape_box(entry.get("shape").ok_or("shape must be an object")?)?;
-                shapes_by_state.insert(state_id, shape);
-            }
-
-            let mut chunk_blocks = BTreeMap::new();
-            for entry in request
-                .get("placements")
-                .ok_or("placements must be an array")?
-                .as_array()
-                .ok_or("placements must be an array")?
-            {
-                let x = i32_field(entry, "x")?;
-                let y = i32_field(entry, "y")?;
-                let z = i32_field(entry, "z")?;
-                if !(0..16).contains(&y) {
-                    return Err("collect_block_collisions fixture Y must be in 0..16".into());
-                }
-                let state_id = i32_field(entry, "state_id")?;
-                let blocks = chunk_blocks
-                    .entry((x.div_euclid(16), z.div_euclid(16)))
-                    .or_insert_with(|| vec![0; 4_096]);
-                let local_x = x.rem_euclid(16) as usize;
-                let local_y = y as usize;
-                let local_z = z.rem_euclid(16) as usize;
-                blocks[local_y * 256 + local_z * 16 + local_x] = state_id;
-            }
-
-            let biomes = vec![0; 64];
-            let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
-            for ((chunk_x, chunk_z), blocks) in chunk_blocks {
-                world.replace_chunk(
-                    chunk_x,
-                    chunk_z,
-                    [SectionInput {
-                        non_empty_block_count: 0,
-                        fluid_count: 0,
-                        block_states: &blocks,
-                        biomes: &biomes,
-                    }],
-                );
-            }
-
+            let (world, shapes_by_state) = block_collision_fixture(request)?;
             let collisions = world.collect_block_collision_shapes(bounding_box, &shapes_by_state);
             Ok(json!({
                 "collisions": collisions
@@ -4275,6 +4282,59 @@ fn shape_result(request: &Value) -> Result<Value, String> {
                         "shape": shape_snapshot(&collision.shape),
                     }))
                     .collect::<Vec<_>>(),
+            }))
+        }
+        "entity_fit" => {
+            let position = f64_vec3(
+                request
+                    .get("position")
+                    .ok_or("position must be an object")?,
+            )?;
+            let dimension_input = request
+                .get("dimensions")
+                .ok_or("dimensions must be an object")?;
+            let width = f32_field(dimension_input, "width")?;
+            let height = f32_field(dimension_input, "height")?;
+            let fixed = dimension_input
+                .get("fixed")
+                .and_then(Value::as_bool)
+                .unwrap_or(false);
+            let mut dimensions = if fixed {
+                ClientEntityDimensions::fixed(width, height)
+            } else {
+                ClientEntityDimensions::scalable(width, height)
+            };
+            if dimension_input.get("width_scale").is_some()
+                || dimension_input.get("height_scale").is_some()
+            {
+                let width_scale = dimension_input
+                    .get("width_scale")
+                    .map(|_| f32_field(dimension_input, "width_scale"))
+                    .transpose()?
+                    .unwrap_or(1.0);
+                let height_scale = dimension_input
+                    .get("height_scale")
+                    .map(|_| f32_field(dimension_input, "height_scale"))
+                    .transpose()?
+                    .unwrap_or(1.0);
+                dimensions = dimensions.scale(width_scale, height_scale);
+            }
+            if dimension_input.get("eye_height").is_some() {
+                dimensions = dimensions.with_eye_height(f32_field(dimension_input, "eye_height")?);
+            }
+            let bounding_box = dimensions.make_bounding_box(position);
+            let query_box = bounding_box.deflate(Shapes::EPSILON);
+            let (world, shapes_by_state) = block_collision_fixture(request)?;
+            Ok(json!({
+                "dimensions": {
+                    "width": format!("{:08x}", dimensions.width().to_bits()),
+                    "height": format!("{:08x}", dimensions.height().to_bits()),
+                    "eye_height": format!("{:08x}", dimensions.eye_height().to_bits()),
+                    "fixed": dimensions.is_fixed(),
+                },
+                "box": aabb_snapshot(bounding_box),
+                "query": aabb_snapshot(query_box),
+                "fits": world.entity_fits_in_blocks(position, dimensions, &shapes_by_state),
             }))
         }
         "clip" => {

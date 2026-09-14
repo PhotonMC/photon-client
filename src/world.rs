@@ -326,6 +326,84 @@ impl ClientEntityPose {
     }
 }
 
+/// Entity dimensions used to derive Java's feet-origin bounding box.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ClientEntityDimensions {
+    width_bits: u32,
+    height_bits: u32,
+    eye_height_bits: u32,
+    fixed: bool,
+}
+
+impl ClientEntityDimensions {
+    /// Create scalable dimensions with Java's default eye-height multiplier.
+    pub fn scalable(width: f32, height: f32) -> Self {
+        Self::from_values(width, height, height * 0.85_f32, false)
+    }
+
+    /// Create dimensions that ignore later scale changes.
+    pub fn fixed(width: f32, height: f32) -> Self {
+        Self::from_values(width, height, height * 0.85_f32, true)
+    }
+
+    fn from_values(width: f32, height: f32, eye_height: f32, fixed: bool) -> Self {
+        Self {
+            width_bits: width.to_bits(),
+            height_bits: height.to_bits(),
+            eye_height_bits: eye_height.to_bits(),
+            fixed,
+        }
+    }
+
+    pub fn width(self) -> f32 {
+        f32::from_bits(self.width_bits)
+    }
+
+    pub fn height(self) -> f32 {
+        f32::from_bits(self.height_bits)
+    }
+
+    pub fn eye_height(self) -> f32 {
+        f32::from_bits(self.eye_height_bits)
+    }
+
+    pub fn is_fixed(self) -> bool {
+        self.fixed
+    }
+
+    /// Apply Java's width/height scale path, including the fixed early return.
+    pub fn scale(self, width_scale: f32, height_scale: f32) -> Self {
+        if !self.fixed && (width_scale != 1.0_f32 || height_scale != 1.0_f32) {
+            Self::from_values(
+                self.width() * width_scale,
+                self.height() * height_scale,
+                self.eye_height() * height_scale,
+                false,
+            )
+        } else {
+            self
+        }
+    }
+
+    pub fn with_eye_height(self, eye_height: f32) -> Self {
+        Self::from_values(self.width(), self.height(), eye_height, self.fixed)
+    }
+
+    /// Make the feet-origin AABB used by `EntityDimensions.makeBoundingBox`.
+    pub fn make_bounding_box(self, position: Vec3) -> Aabb {
+        let half_width = f64::from(self.width() / 2.0_f32);
+        let height = f64::from(self.height());
+        Aabb::new(
+            position.x - half_width,
+            position.y,
+            position.z - half_width,
+            position.x + half_width,
+            position.y + height,
+            position.z + half_width,
+        )
+    }
+}
+
 /// The four movement flags copied by Java's `AbstractBoat.setInput`.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct BoatInput {
@@ -2410,6 +2488,24 @@ impl ClientWorld {
         }
 
         collisions
+    }
+
+    /// Check whether an entity dimensions box fits in loaded block collisions.
+    ///
+    /// Java's player pose check deflates the candidate box by one shape epsilon
+    /// before asking the level for block collisions. Entity and world-border
+    /// collision sources remain caller-owned until their world slices land.
+    pub fn entity_fits_in_blocks(
+        &self,
+        position: Vec3,
+        dimensions: ClientEntityDimensions,
+        shapes_by_state: &BTreeMap<i32, VoxelShape>,
+    ) -> bool {
+        let bounding_box = dimensions
+            .make_bounding_box(position)
+            .deflate(Shapes::EPSILON);
+        self.collect_block_collision_shapes(bounding_box, shapes_by_state)
+            .is_empty()
     }
 
     /// Apply a server-verified block-state update to an already loaded section.
@@ -5057,15 +5153,16 @@ fn apply_light_layer(
 mod tests {
     use super::{
         BlockEntityInput, BoatInput, ClientAttributeModifierState, ClientAttributeState,
-        ClientItemStackState, ClientWorld, DimensionBounds, DimensionEnvironment, DimensionInput,
-        ENTITY_DATA_SERIALIZER_BOOLEAN_ID, ENTITY_NO_GRAVITY_DATA_ID, ENTITY_RELATIVE_DELTA_X_FLAG,
-        ENTITY_RELATIVE_DELTA_Y_FLAG, ENTITY_RELATIVE_DELTA_Z_FLAG,
-        ENTITY_RELATIVE_ROTATE_DELTA_FLAG, ENTITY_RELATIVE_X_FLAG, ENTITY_RELATIVE_X_ROT_FLAG,
-        ENTITY_RELATIVE_Y_FLAG, ENTITY_RELATIVE_Y_ROT_FLAG, ENTITY_RELATIVE_Z_FLAG, EntityInput,
-        EntityMotionInput, EntityMoveInput, EntityPositionInput, EntityPositionUpdateMode,
-        EntityRotationInput, EntityTeleportInput, LightLayerInput, LightUpdateInput,
-        PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS, PLAYER_RESPAWN_KEEP_ENTITY_DATA, SNOWBALL_GRAVITY,
-        SectionInput, VANILLA_ARROW_ENTITY_TYPE_ID, VANILLA_BOAT_PASSENGER_MAX_ROTATION,
+        ClientEntityDimensions, ClientItemStackState, ClientWorld, DimensionBounds,
+        DimensionEnvironment, DimensionInput, ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        ENTITY_NO_GRAVITY_DATA_ID, ENTITY_RELATIVE_DELTA_X_FLAG, ENTITY_RELATIVE_DELTA_Y_FLAG,
+        ENTITY_RELATIVE_DELTA_Z_FLAG, ENTITY_RELATIVE_ROTATE_DELTA_FLAG, ENTITY_RELATIVE_X_FLAG,
+        ENTITY_RELATIVE_X_ROT_FLAG, ENTITY_RELATIVE_Y_FLAG, ENTITY_RELATIVE_Y_ROT_FLAG,
+        ENTITY_RELATIVE_Z_FLAG, EntityInput, EntityMotionInput, EntityMoveInput,
+        EntityPositionInput, EntityPositionUpdateMode, EntityRotationInput, EntityTeleportInput,
+        LightLayerInput, LightUpdateInput, PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS,
+        PLAYER_RESPAWN_KEEP_ENTITY_DATA, SNOWBALL_GRAVITY, SectionInput,
+        VANILLA_ARROW_ENTITY_TYPE_ID, VANILLA_BOAT_PASSENGER_MAX_ROTATION,
         VANILLA_BREEZE_ENTITY_TYPE_ID, VANILLA_COW_ENTITY_TYPE_ID,
         VANILLA_EXPERIENCE_ORB_ENTITY_TYPE_ID, VANILLA_FALLING_BLOCK_ENTITY_TYPE_ID,
         VANILLA_FALLING_BLOCK_GRAVITY, VANILLA_FIREWORK_ROCKET_ENTITY_TYPE_ID,
@@ -5175,6 +5272,53 @@ mod tests {
                 .map(f32::to_bits)
                 .collect::<Vec<_>>()
         );
+    }
+
+    #[test]
+    fn entity_dimensions_and_block_fit_follow_java_epsilon() {
+        let dimensions = ClientEntityDimensions::scalable(0.6, 1.8);
+        assert_eq!(
+            dimensions.eye_height().to_bits(),
+            (1.8_f32 * 0.85).to_bits()
+        );
+        assert_eq!(
+            dimensions.make_bounding_box(Vec3::new(0.5, 0.0, 0.5)),
+            Aabb::new(
+                0.19999998807907104,
+                0.0,
+                0.19999998807907104,
+                0.800000011920929,
+                1.7999999523162842,
+                0.800000011920929,
+            )
+        );
+
+        let scaled = dimensions.scale(0.5, 2.0).with_eye_height(2.75);
+        assert_eq!(scaled.width().to_bits(), (0.6_f32 * 0.5).to_bits());
+        assert_eq!(scaled.height().to_bits(), (1.8_f32 * 2.0).to_bits());
+        assert_eq!(scaled.eye_height().to_bits(), 2.75_f32.to_bits());
+
+        let fixed = ClientEntityDimensions::fixed(1.0, 2.0);
+        assert_eq!(fixed.scale(0.5, 0.5), fixed);
+
+        let mut blocks = vec![0; 4_096];
+        blocks[0] = 1;
+        let biomes = vec![0; 64];
+        let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+        world.replace_chunk(
+            0,
+            0,
+            [SectionInput {
+                non_empty_block_count: 1,
+                fluid_count: 0,
+                block_states: &blocks,
+                biomes: &biomes,
+            }],
+        );
+        let shapes = BTreeMap::from([(1, Shapes::block())]);
+        let unit = ClientEntityDimensions::scalable(1.0, 1.0);
+        assert!(world.entity_fits_in_blocks(Vec3::new(1.5, 0.25, 0.5), unit, &shapes));
+        assert!(!world.entity_fits_in_blocks(Vec3::new(1.4999997, 0.25, 0.5), unit, &shapes));
     }
 
     #[test]
