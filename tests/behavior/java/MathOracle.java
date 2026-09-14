@@ -3624,6 +3624,45 @@ public final class MathOracle {
                 } catch (ReflectiveOperationException error) {
                     throw new IllegalStateException("Entity.collectCandidateStepUpHeights reflection failed", error);
                 }
+            } else if (kind.equals("select_step_up_movement")) {
+                AABB boundingBox = box(request.getAsJsonObject("bounding_box"));
+                AABB groundedBox = box(request.getAsJsonObject("grounded_box"));
+                Vec3 movement = vec3(request.getAsJsonObject("movement"));
+                Vec3 movementStep = vec3(request.getAsJsonObject("movement_step"));
+                var shapes = new java.util.ArrayList<VoxelShape>();
+                for (var entry : request.getAsJsonArray("shapes")) {
+                    shapes.add(voxelShape(entry.getAsJsonObject()));
+                }
+                try {
+                    var candidatesMethod = Entity.class.getDeclaredMethod(
+                        "collectCandidateStepUpHeights", AABB.class, java.util.List.class, float.class, float.class);
+                    var collideMethod = Entity.class.getDeclaredMethod(
+                        "collideWithShapes", Vec3.class, AABB.class, java.util.List.class);
+                    candidatesMethod.setAccessible(true);
+                    collideMethod.setAccessible(true);
+                    var candidates = (float[]) candidatesMethod.invoke(
+                        null,
+                        groundedBox,
+                        shapes,
+                        Oracle.f32(request, "max_step_height"),
+                        Oracle.f32(request, "step_height_to_skip"));
+                    Vec3 selected = movementStep;
+                    for (float candidate : candidates) {
+                        Vec3 stepFromGround = (Vec3)collideMethod.invoke(
+                            null,
+                            new Vec3(movement.x, candidate, movement.z),
+                            groundedBox,
+                            shapes);
+                        if (stepFromGround.horizontalDistanceSqr() > movementStep.horizontalDistanceSqr()) {
+                            double distanceToGround = boundingBox.minY - groundedBox.minY;
+                            selected = stepFromGround.subtract(0.0, distanceToGround, 0.0);
+                            break;
+                        }
+                    }
+                    result.add("movement", snapshot(selected));
+                } catch (ReflectiveOperationException error) {
+                    throw new IllegalStateException("Entity step-up movement selection reflection failed", error);
+                }
             } else if (kind.equals("collect_block_collisions")) {
                 AABB query = box(request.getAsJsonObject("box"));
                 CollisionGetter collisionGetter = collisionFixture(request.getAsJsonArray("placements"));

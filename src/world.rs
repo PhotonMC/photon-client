@@ -490,6 +490,44 @@ pub fn collect_candidate_step_up_heights(
     candidates
 }
 
+/// Select Java's first step-up movement whose horizontal distance exceeds the
+/// ordinary collision result.
+///
+/// Candidate order and collision resolution are delegated to the same helpers
+/// used by the base movement path. The original and grounded boxes remain
+/// separate because Java subtracts their minimum-Y difference only after a
+/// candidate wins.
+pub fn select_step_up_movement(
+    movement: Vec3,
+    movement_step: Vec3,
+    bounding_box: Aabb,
+    grounded_bounding_box: Aabb,
+    colliders: &[VoxelShape],
+    max_step_height: f32,
+    step_height_to_skip: f32,
+) -> Vec3 {
+    let candidates = collect_candidate_step_up_heights(
+        grounded_bounding_box,
+        colliders,
+        max_step_height,
+        step_height_to_skip,
+    );
+    for candidate in candidates {
+        let step_from_ground = collide_entity_movement(
+            Vec3::new(movement.x, f64::from(candidate), movement.z),
+            grounded_bounding_box,
+            colliders,
+        );
+        if step_from_ground.horizontal_distance_squared()
+            > movement_step.horizontal_distance_squared()
+        {
+            let distance_to_ground = bounding_box.min_y - grounded_bounding_box.min_y;
+            return step_from_ground.subtract_components(0.0, distance_to_ground, 0.0);
+        }
+    }
+    movement_step
+}
+
 pub(crate) const PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS: u8 = 1;
 pub(crate) const PLAYER_RESPAWN_KEEP_ENTITY_DATA: u8 = 2;
 const VANILLA_PLAYER_ENTITY_TYPE_ID: i32 = 156;
@@ -6804,7 +6842,7 @@ mod tests {
         VANILLA_PRIMED_TNT_GRAVITY, VANILLA_SNOWBALL_ENTITY_TYPE_ID,
         collect_candidate_step_up_heights, collect_entity_collision_shapes,
         collide_entity_movement, collide_entity_movement_state, is_minor_horizontal_collision,
-        menu_top_slot_count,
+        menu_top_slot_count, select_step_up_movement,
     };
     use crate::aabb::Aabb;
     use crate::binary::{BitSet, Uuid};
@@ -7364,6 +7402,44 @@ mod tests {
                 .map(f32::to_bits)
                 .collect::<Vec<_>>()
         );
+    }
+
+    #[test]
+    fn step_up_selection_uses_first_strictly_longer_candidate() {
+        let low_obstacle = [Shapes::box_shape(1.0, 0.0, 0.0, 2.0, 0.5, 1.0).unwrap()];
+        let selected = select_step_up_movement(
+            Vec3::new(2.0, 0.0, 0.0),
+            Vec3::ZERO,
+            Aabb::new(0.0, 0.0, 0.0, 1.0, 1.0, 1.0),
+            Aabb::new(0.0, 0.0, 0.0, 1.0, 1.0, 1.0),
+            &low_obstacle,
+            0.6,
+            0.0,
+        );
+        assert_eq!((selected.x, selected.y, selected.z), (2.0, 0.5, 0.0));
+
+        let tie = select_step_up_movement(
+            Vec3::new(2.0, 0.0, 0.0),
+            Vec3::new(2.0, 0.0, 0.0),
+            Aabb::new(0.0, 0.0, 0.0, 1.0, 1.0, 1.0),
+            Aabb::new(0.0, 0.0, 0.0, 1.0, 1.0, 1.0),
+            &low_obstacle,
+            0.6,
+            0.0,
+        );
+        assert_eq!((tie.x, tie.y, tie.z), (2.0, 0.0, 0.0));
+
+        let offset = [Shapes::box_shape(1.0, 0.5, 0.0, 2.0, 1.0, 1.0).unwrap()];
+        let corrected = select_step_up_movement(
+            Vec3::new(2.0, -1.0, 0.0),
+            Vec3::new(0.0, -0.5, 0.0),
+            Aabb::new(0.0, 1.0, 0.0, 1.0, 2.0, 1.0),
+            Aabb::new(0.0, 0.5, 0.0, 1.0, 1.5, 1.0),
+            &offset,
+            0.6,
+            -0.5,
+        );
+        assert_eq!((corrected.x, corrected.y, corrected.z), (2.0, 0.0, 0.0));
     }
 
     #[test]

@@ -190,6 +190,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P09.aa — ClientWorld StairBlock komşu shape güncellemesi — client-parity birleşik kayıt](client-world-stair-neighbor-conformance.md)
 - [P08.a/b — server-conformance ClientWorld chunk kopyası ve section cache](client-world-state-conformance.md)
 - [P09.c — Entity step-up aday yükseklikleri — client-parity birleşik kayıt](client-world-step-up-candidates-conformance.md)
+- [P09.ac — Entity step-up candidate movement selection — client-parity birleşik kayıt](client-world-step-up-selection-conformance.md)
 - [P08.t — server-conformance ClientWorld tick sayaçları ve ticking uygunluğu](client-world-tick-conformance.md)
 - [P09.z — ClientWorld `ClientboundUpdateTagsPacket` block tag binding — client-parity birleşik kayıt](client-world-update-tags-conformance.md)
 - [P06.d — Ortak ping/pong ve keep-alive paket sözleşmesi — client-parity birleşik kayıt](common-packet-conformance.md)

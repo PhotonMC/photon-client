@@ -66,7 +66,7 @@ use voxel_client::world::{
     ClientWorldBorderStatus, ClientWorldCollisionSource, DimensionBounds, EntityInput,
     SectionInput, collect_candidate_step_up_heights, collect_entity_collision_shapes,
     collide_entity_movement, collide_entity_movement_state, is_minor_horizontal_collision,
-    world_border_collision_shape,
+    select_step_up_movement, world_border_collision_shape,
 };
 
 fn string<'a>(request: &'a Value, name: &str) -> Result<&'a str, String> {
@@ -5327,8 +5327,48 @@ fn shape_result(request: &Value) -> Result<Value, String> {
                 "candidates": candidates
                     .into_iter()
                     .map(|value| format!("{:08x}", value.to_bits()))
-                    .collect::<Vec<_>>(),
+                .collect::<Vec<_>>(),
             }))
+        }
+        "select_step_up_movement" => {
+            let bounding_box = aabb_box(
+                request
+                    .get("bounding_box")
+                    .ok_or("bounding_box must be an object")?,
+            )?;
+            let grounded_box = aabb_box(
+                request
+                    .get("grounded_box")
+                    .ok_or("grounded_box must be an object")?,
+            )?;
+            let movement = f64_vec3(
+                request
+                    .get("movement")
+                    .ok_or("movement must be an object")?,
+            )?;
+            let movement_step = f64_vec3(
+                request
+                    .get("movement_step")
+                    .ok_or("movement_step must be an object")?,
+            )?;
+            let shapes = request
+                .get("shapes")
+                .ok_or("shapes must be an array")?
+                .as_array()
+                .ok_or("shapes must be an array")?
+                .iter()
+                .map(shape_box)
+                .collect::<Result<Vec<_>, _>>()?;
+            let selected = select_step_up_movement(
+                movement,
+                movement_step,
+                bounding_box,
+                grounded_box,
+                &shapes,
+                f32_field(request, "max_step_height")?,
+                f32_field(request, "step_height_to_skip")?,
+            );
+            Ok(json!({"movement": vec3_snapshot(selected)}))
         }
         "collect_block_collisions" => {
             let bounding_box = aabb_box(request.get("box").ok_or("box must be an object")?)?;
