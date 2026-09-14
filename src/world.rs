@@ -12,6 +12,7 @@ pub(crate) const PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS: u8 = 1;
 pub(crate) const PLAYER_RESPAWN_KEEP_ENTITY_DATA: u8 = 2;
 const VANILLA_PLAYER_ENTITY_TYPE_ID: i32 = 156;
 pub(crate) const VANILLA_SNOWBALL_ENTITY_TYPE_ID: i32 = 120;
+const VANILLA_BOAT_ENTITY_TYPE_IDS: &[i32] = &[0, 12, 23, 33, 74, 81, 89, 94, 125];
 const VANILLA_AIR_BLOCK_STATE_ID: i32 = 0;
 const ENTITY_SHARED_FLAGS_DATA_ID: u8 = 0;
 const ENTITY_AIR_SUPPLY_DATA_ID: u8 = 1;
@@ -1294,7 +1295,7 @@ impl ClientWorld {
             .map(|(&entity_id, _)| entity_id)
             .collect();
         for entity_id in ticking_entity_ids {
-            self.tick_entity_tree(entity_id, false);
+            self.tick_entity_tree(entity_id, None);
         }
     }
 
@@ -1324,13 +1325,18 @@ impl ClientWorld {
         }
     }
 
-    fn tick_entity_tree(&mut self, entity_id: i32, as_passenger: bool) {
-        if as_passenger && let Some(entity) = self.entities.get_mut(&entity_id) {
+    fn tick_entity_tree(&mut self, entity_id: i32, vehicle_id: Option<i32>) {
+        if vehicle_id.is_some()
+            && let Some(entity) = self.entities.get_mut(&entity_id)
+        {
             entity.motion_x_bits = 0.0_f64.to_bits();
             entity.motion_y_bits = 0.0_f64.to_bits();
             entity.motion_z_bits = 0.0_f64.to_bits();
         }
         self.tick_entity_once(entity_id);
+        if let Some(vehicle_id) = vehicle_id {
+            self.position_entity_passenger(vehicle_id, entity_id);
+        }
         let passenger_ids = self
             .entity_passengers(entity_id)
             .map(<[i32]>::to_vec)
@@ -1355,7 +1361,63 @@ impl ClientWorld {
             .get(&passenger_id)
             .is_some_and(|entity| entity.ticking || entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID)
         {
-            self.tick_entity_tree(passenger_id, true);
+            self.tick_entity_tree(passenger_id, Some(vehicle_id));
+        }
+    }
+
+    fn position_entity_passenger(&mut self, vehicle_id: i32, passenger_id: i32) {
+        let Some(passenger_type_id) = self
+            .entities
+            .get(&passenger_id)
+            .map(|entity| entity.type_id)
+        else {
+            return;
+        };
+        if passenger_type_id != VANILLA_SNOWBALL_ENTITY_TYPE_ID {
+            return;
+        }
+
+        let Some((
+            vehicle_type_id,
+            vehicle_position,
+            vehicle_y_rot,
+            passenger_index,
+            passenger_count,
+        )) = self.entities.get(&vehicle_id).and_then(|vehicle| {
+            let passenger_index = vehicle
+                .passenger_ids
+                .iter()
+                .position(|&entity_id| entity_id == passenger_id)?;
+            Some((
+                vehicle.type_id,
+                vehicle.position(),
+                f32::from_bits(vehicle.y_rot_bits),
+                passenger_index,
+                vehicle.passenger_ids.len(),
+            ))
+        })
+        else {
+            return;
+        };
+        if !VANILLA_BOAT_ENTITY_TYPE_IDS.contains(&vehicle_type_id) {
+            return;
+        }
+
+        let passenger_z_offset = if passenger_count > 1 {
+            if passenger_index == 0 { 0.2 } else { -0.6 }
+        } else {
+            0.0
+        };
+        let radians = f64::from(-vehicle_y_rot * (std::f32::consts::PI / 180.0_f32));
+        let rotated_x = passenger_z_offset * f64::from(mth_sin_f64(radians));
+        let rotated_z = passenger_z_offset * f64::from(mth_cos_f64(radians));
+        let target_position = (
+            vehicle_position.0 + rotated_x,
+            vehicle_position.1 + 0.1875,
+            vehicle_position.2 + rotated_z,
+        );
+        if let Some(passenger) = self.entities.get_mut(&passenger_id) {
+            passenger.set_position(target_position);
         }
     }
 
@@ -3284,6 +3346,12 @@ impl ClientEntity {
             mth_rot_lerp_f32(0.2_f32, f32::from_bits(self.old_y_rot_bits), target_y_rot).to_bits();
     }
 
+    fn set_position(&mut self, position: (f64, f64, f64)) {
+        self.x_bits = position.0.to_bits();
+        self.y_bits = position.1.to_bits();
+        self.z_bits = position.2.to_bits();
+    }
+
     pub fn tick_count(&self) -> i32 {
         self.tick_count
     }
@@ -4647,6 +4715,110 @@ mod tests {
             -SNOWBALL_GRAVITY * f64::from(0.99_f32)
         );
         assert_eq!(passenger.position().0, 2.0);
+    }
+
+    #[test]
+    fn passenger_tick_positions_snowball_on_regular_boat_seat() {
+        let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+        let (blocks, biomes) = section(0, 0);
+        world.replace_chunk(
+            0,
+            0,
+            [SectionInput {
+                non_empty_block_count: 0,
+                fluid_count: 0,
+                block_states: &blocks,
+                biomes: &biomes,
+            }],
+        );
+        for (entity_id, type_id, position, motion) in [
+            (37, 89, (2.0, 2.0, 2.0), (0.0, 0.0, 0.0)),
+            (
+                38,
+                VANILLA_SNOWBALL_ENTITY_TYPE_ID,
+                (2.0, 12.0, 2.0),
+                (0.125, 0.0, 0.0),
+            ),
+        ] {
+            assert!(world.apply_entity(EntityInput {
+                entity_id,
+                uuid: Uuid::new(entity_id as u64, 0),
+                type_id,
+                x: position.0,
+                y: position.1,
+                z: position.2,
+                movement: motion,
+                rotation: (0.0, 0.0, 0.0),
+                data: 0,
+            }));
+        }
+        assert!(world.apply_entity_passengers(37, &[38]));
+
+        world.tick();
+
+        let passenger = world.entity_at(38).expect("snowball passenger");
+        assert_eq!(passenger.previous_position(), (2.0, 12.0, 2.0));
+        assert_eq!(passenger.position(), (2.0, 2.1875, 2.0));
+        assert_eq!(passenger.motion().0, 0.0);
+        assert_eq!(
+            passenger.motion().1,
+            -SNOWBALL_GRAVITY * f64::from(0.99_f32)
+        );
+    }
+
+    #[test]
+    fn passenger_tick_positions_multiple_snowballs_by_boat_order() {
+        let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+        let (blocks, biomes) = section(0, 0);
+        world.replace_chunk(
+            0,
+            0,
+            [SectionInput {
+                non_empty_block_count: 0,
+                fluid_count: 0,
+                block_states: &blocks,
+                biomes: &biomes,
+            }],
+        );
+        for (entity_id, type_id, position, rotation) in [
+            (37, 89, (2.0, 2.0, 2.0), (90.0, 0.0, 0.0)),
+            (
+                38,
+                VANILLA_SNOWBALL_ENTITY_TYPE_ID,
+                (2.0, 12.0, 2.0),
+                (0.0, 0.0, 0.0),
+            ),
+            (
+                39,
+                VANILLA_SNOWBALL_ENTITY_TYPE_ID,
+                (2.0, 12.0, 2.0),
+                (0.0, 0.0, 0.0),
+            ),
+        ] {
+            assert!(world.apply_entity(EntityInput {
+                entity_id,
+                uuid: Uuid::new(entity_id as u64, 0),
+                type_id,
+                x: position.0,
+                y: position.1,
+                z: position.2,
+                movement: (0.0, 0.0, 0.0),
+                rotation,
+                data: 0,
+            }));
+        }
+        assert!(world.apply_entity_passengers(37, &[38, 39]));
+
+        world.tick();
+
+        let first = world.entity_at(38).expect("first snowball passenger");
+        let second = world.entity_at(39).expect("second snowball passenger");
+        assert!((first.position().0 - 1.8).abs() < 1e-6);
+        assert!((first.position().1 - 2.1875).abs() < 1e-6);
+        assert!((first.position().2 - 2.0).abs() < 1e-6);
+        assert!((second.position().0 - 2.6).abs() < 1e-6);
+        assert!((second.position().1 - 2.1875).abs() < 1e-6);
+        assert!((second.position().2 - 2.0).abs() < 1e-6);
     }
 
     #[test]
