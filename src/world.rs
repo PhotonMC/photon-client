@@ -490,6 +490,7 @@ const VANILLA_ANIMAL_ENTITY_TYPE_IDS: &[i32] = &[
     108, 111, 116, 119, 129, 135, 138, 149, 152, 153,
 ];
 const VANILLA_CHEST_BOAT_ENTITY_TYPE_IDS: &[i32] = &[1, 8, 13, 24, 34, 75, 82, 90, 95, 126];
+const VANILLA_MINECART_ENTITY_TYPE_IDS: &[i32] = &[25, 29, 56, 65, 85, 122, 134];
 const VANILLA_BOAT_RIDE_HEIGHT: f32 = 0.5625_f32 / 3.0_f32;
 const VANILLA_RAFT_RIDE_HEIGHT: f32 = 0.5625_f32 * 0.8888889_f32;
 const VANILLA_CHEST_BOAT_PASSENGER_Z_OFFSET: f32 = 0.15_f32;
@@ -940,6 +941,10 @@ fn is_vanilla_shulker_entity_type(entity_type_id: i32) -> bool {
     entity_type_id == VANILLA_SHULKER_ENTITY_TYPE_ID
 }
 
+fn is_vanilla_minecart_entity_type(entity_type_id: i32) -> bool {
+    VANILLA_MINECART_ENTITY_TYPE_IDS.contains(&entity_type_id)
+}
+
 fn is_vanilla_happy_ghast_entity_type(entity_type_id: i32) -> bool {
     entity_type_id == VANILLA_HAPPY_GHAST_ENTITY_TYPE_ID
 }
@@ -951,11 +956,12 @@ fn is_vanilla_player_entity_type(entity_type_id: i32) -> bool {
 fn is_vanilla_pushable_entity_type(entity_type_id: i32) -> bool {
     is_vanilla_boat_entity_type(entity_type_id)
         || is_vanilla_shulker_entity_type(entity_type_id)
+        || is_vanilla_minecart_entity_type(entity_type_id)
         || is_vanilla_player_entity_type(entity_type_id)
 }
 
 fn source_accepts_pushable_entities(entity_type_id: i32) -> bool {
-    is_vanilla_boat_entity_type(entity_type_id)
+    is_vanilla_boat_entity_type(entity_type_id) || is_vanilla_minecart_entity_type(entity_type_id)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -3311,9 +3317,9 @@ impl ClientWorld {
     ///
     /// The source ID is resolved against the same entity map that stores live
     /// positions and passenger links. The current type-backed collider table
-    /// covers vanilla boat families and the Happy Ghast's source-aware override;
-    /// entity types with Java's base non-collidable behavior produce no candidate
-    /// until their dedicated type branch lands.
+    /// covers vanilla boat and minecart families and the Happy Ghast's
+    /// source-aware override; entity types with Java's base non-collidable
+    /// behavior produce no candidate until their dedicated type branch lands.
     pub fn no_entity_collision_for_entity(
         &self,
         source_entity_id: Option<i32>,
@@ -5106,6 +5112,8 @@ impl ClientEntity {
             )
         } else if is_vanilla_shulker_entity_type(self.type_id) {
             (1.0, 1.0)
+        } else if is_vanilla_minecart_entity_type(self.type_id) {
+            (0.98, 0.7)
         } else if is_vanilla_player_entity_type(self.type_id) {
             (0.6, 1.8)
         } else if is_vanilla_happy_ghast_entity_type(self.type_id) {
@@ -5129,7 +5137,8 @@ impl ClientEntity {
                         && self.happy_ghast_is_vehicle)
                     || self.happy_ghast_still_timeout)
         } else {
-            !is_vanilla_player_entity_type(self.type_id)
+            is_vanilla_boat_entity_type(self.type_id)
+                || is_vanilla_shulker_entity_type(self.type_id)
         };
         Some(ClientEntityCollisionCandidate {
             bounding_box,
@@ -6272,11 +6281,11 @@ mod tests {
         VANILLA_FALLING_BLOCK_GRAVITY, VANILLA_FIREWORK_ROCKET_ENTITY_TYPE_ID,
         VANILLA_FIREWORK_ROCKET_HORIZONTAL_ACCELERATION,
         VANILLA_FIREWORK_ROCKET_VERTICAL_ACCELERATION, VANILLA_LIVING_ENTITY_TYPE_IDS,
-        VANILLA_PLAYER_ENTITY_TYPE_ID, VANILLA_PRIMED_TNT_AIR_FRICTION,
-        VANILLA_PRIMED_TNT_ENTITY_TYPE_ID, VANILLA_PRIMED_TNT_GRAVITY,
-        VANILLA_SNOWBALL_ENTITY_TYPE_ID, collect_candidate_step_up_heights,
-        collect_entity_collision_shapes, collide_entity_movement, collide_entity_movement_state,
-        menu_top_slot_count,
+        VANILLA_MINECART_ENTITY_TYPE_IDS, VANILLA_PLAYER_ENTITY_TYPE_ID,
+        VANILLA_PRIMED_TNT_AIR_FRICTION, VANILLA_PRIMED_TNT_ENTITY_TYPE_ID,
+        VANILLA_PRIMED_TNT_GRAVITY, VANILLA_SNOWBALL_ENTITY_TYPE_ID,
+        collect_candidate_step_up_heights, collect_entity_collision_shapes,
+        collide_entity_movement, collide_entity_movement_state, menu_top_slot_count,
     };
     use crate::aabb::Aabb;
     use crate::binary::{BitSet, Uuid};
@@ -6428,6 +6437,47 @@ mod tests {
 
         let tiny_area = Aabb::new(0.0, 0.0, 0.0, 0.00000001, 0.00000001, 0.00000001);
         assert!(collect_entity_collision_shapes(false, tiny_area, &candidates).is_empty());
+    }
+
+    #[test]
+    fn indexed_minecart_collision_uses_vehicle_dispatch_for_all_registry_types() {
+        let add_entity = |world: &mut ClientWorld, entity_id: i32, type_id: i32| {
+            assert!(world.apply_entity(EntityInput {
+                entity_id,
+                uuid: Uuid::new(entity_id as u64, type_id as u64),
+                type_id,
+                x: 0.5,
+                y: 0.0,
+                z: 0.5,
+                movement: (0.0, 0.0, 0.0),
+                rotation: (0.0, 0.0, 0.0),
+                data: 0,
+            }));
+        };
+
+        for &minecart_type_id in VANILLA_MINECART_ENTITY_TYPE_IDS {
+            let mut minecart_source_world = ClientWorld::default();
+            add_entity(&mut minecart_source_world, 7, minecart_type_id);
+            add_entity(&mut minecart_source_world, 8, VANILLA_PLAYER_ENTITY_TYPE_ID);
+            assert!(
+                !minecart_source_world.no_entity_collision_for_entity(
+                    Some(7),
+                    Aabb::new(0.0, 0.0, 0.0, 1.0, 2.0, 1.0),
+                ),
+                "minecart source type {minecart_type_id} should accept pushable Player"
+            );
+
+            let mut boat_source_world = ClientWorld::default();
+            add_entity(&mut boat_source_world, 7, 0);
+            add_entity(&mut boat_source_world, 8, minecart_type_id);
+            assert!(
+                !boat_source_world.no_entity_collision_for_entity(
+                    Some(7),
+                    Aabb::new(0.0, 0.0, 0.0, 1.0, 1.0, 1.0),
+                ),
+                "boat source should accept minecart type {minecart_type_id}"
+            );
+        }
     }
 
     #[test]

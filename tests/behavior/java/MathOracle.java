@@ -45,6 +45,7 @@ import net.minecraft.world.entity.Pose;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.entity.monster.Shulker;
 import net.minecraft.world.entity.vehicle.boat.Boat;
+import net.minecraft.world.entity.vehicle.minecart.Minecart;
 import net.minecraft.world.level.BlockCollisions;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.ChunkPos;
@@ -3158,8 +3159,15 @@ public final class MathOracle {
                 }
                 result.add("tracks", tracks);
             } else if (kind.equals("client_world_collision")) {
-                SharedConstants.setVersion(TEST_VERSION);
-                Bootstrap.bootStrap();
+                var output = System.out;
+                var errorOutput = System.err;
+                try {
+                    SharedConstants.setVersion(TEST_VERSION);
+                    Bootstrap.bootStrap();
+                } finally {
+                    System.setOut(output);
+                    System.setErr(errorOutput);
+                }
                 var states = new JsonArray();
                 for (var entry : request.getAsJsonArray("inputs")) {
                     JsonObject input = entry.getAsJsonObject();
@@ -3215,8 +3223,15 @@ public final class MathOracle {
                 }
                 result.add("states", states);
             } else if (kind.equals("client_world_indexed_collision")) {
-                SharedConstants.setVersion(TEST_VERSION);
-                Bootstrap.bootStrap();
+                var output = System.out;
+                var errorOutput = System.err;
+                try {
+                    SharedConstants.setVersion(TEST_VERSION);
+                    Bootstrap.bootStrap();
+                } finally {
+                    System.setOut(output);
+                    System.setErr(errorOutput);
+                }
                 var states = new JsonArray();
                 for (var entry : request.getAsJsonArray("inputs")) {
                     JsonObject input = entry.getAsJsonObject();
@@ -3446,8 +3461,15 @@ public final class MathOracle {
                 }
                 result.add("states", states);
             } else if (kind.equals("client_world_registry_collision")) {
-                SharedConstants.setVersion(TEST_VERSION);
-                Bootstrap.bootStrap();
+                var output = System.out;
+                var errorOutput = System.err;
+                try {
+                    SharedConstants.setVersion(TEST_VERSION);
+                    Bootstrap.bootStrap();
+                } finally {
+                    System.setOut(output);
+                    System.setErr(errorOutput);
+                }
                 var resolvedStates = new JsonArray();
                 for (var stateEntry : request.getAsJsonArray("state_ids")) {
                     int requestedStateId = stateEntry.getAsInt();
@@ -4136,6 +4158,8 @@ public final class MathOracle {
             AABB boundingBox = entityType.getDimensions().makeBoundingBox(position);
             Entity entity = switch (typeId) {
                 case 0 -> BoatCollisionFixtureEntity.create(boundingBox, position);
+                case 25, 29, 56, 65, 85, 122, 134
+                    -> MinecartCollisionFixtureEntity.create(boundingBox, position);
                 case 112 -> ShulkerCollisionFixtureEntity.create(boundingBox, sameVehicle, position);
                 default -> create(boundingBox, spectator, collidable, sameVehicle, position, typeId == 156);
             };
@@ -4279,6 +4303,49 @@ public final class MathOracle {
                 return entity;
             } catch (ReflectiveOperationException error) {
                 throw new IllegalStateException("Unable to allocate boat collision fixture entity", error);
+            }
+        }
+
+        @Override
+        public boolean isPassengerOfSameVehicle(Entity other) {
+            return false;
+        }
+
+        @Override
+        public boolean isShiftKeyDown() {
+            return false;
+        }
+    }
+
+    private static final class MinecartCollisionFixtureEntity extends Minecart {
+        private static final net.minecraft.world.level.Level CLIENT_LEVEL = createClientLevel();
+
+        private MinecartCollisionFixtureEntity() {
+            super(net.minecraft.world.entity.EntityTypes.MINECART, null);
+        }
+
+        private static net.minecraft.world.level.Level createClientLevel() {
+            try {
+                return (net.minecraft.world.level.Level)unsafeInstance()
+                    .allocateInstance(HappyGhastClientLevelFixture.class);
+            } catch (InstantiationException error) {
+                throw new IllegalStateException("Unable to allocate minecart client level fixture", error);
+            }
+        }
+
+        private static MinecartCollisionFixtureEntity create(AABB boundingBox, Vec3 position) {
+            try {
+                Unsafe unsafe = unsafeInstance();
+                MinecartCollisionFixtureEntity entity =
+                    (MinecartCollisionFixtureEntity)unsafe.allocateInstance(MinecartCollisionFixtureEntity.class);
+                var levelField = Entity.class.getDeclaredField("level");
+                unsafe.putObject(entity, unsafe.objectFieldOffset(levelField), CLIENT_LEVEL);
+                entity.setBoundingBox(boundingBox);
+                var field = Entity.class.getDeclaredField("position");
+                unsafe.putObject(entity, unsafe.objectFieldOffset(field), position);
+                return entity;
+            } catch (ReflectiveOperationException error) {
+                throw new IllegalStateException("Unable to allocate minecart collision fixture entity", error);
             }
         }
 
