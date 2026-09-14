@@ -4655,9 +4655,37 @@ public final class MathOracle {
                 bindClimbableAndGlideThroughTags(state.getBlock());
                 ClimbableClientLevelFixture.setBelowState(Blocks.AIR.defaultBlockState());
                 return state;
+            } else if (kind.equals("update_tags_packet")) {
+                int stateId = context.get("state_id").getAsInt();
+                BlockState state = Block.stateById(stateId);
+                applyUpdateTagsPacket(context);
+                ClimbableClientLevelFixture.setBelowState(Blocks.AIR.defaultBlockState());
+                return state;
             } else {
                 throw new IllegalArgumentException("Unknown climbable context kind");
             }
+        }
+
+        private static void applyUpdateTagsPacket(JsonObject context) {
+            java.util.Map<net.minecraft.resources.Identifier, it.unimi.dsi.fastutil.ints.IntList> tags =
+                new java.util.HashMap<>();
+            JsonObject blockTags = context.getAsJsonObject("block_tags");
+            for (var entry : blockTags.entrySet()) {
+                it.unimi.dsi.fastutil.ints.IntList values = new it.unimi.dsi.fastutil.ints.IntArrayList();
+                for (JsonElement value : entry.getValue().getAsJsonArray()) {
+                    values.add(value.getAsInt());
+                }
+                tags.put(net.minecraft.resources.Identifier.parse(entry.getKey()), values);
+            }
+            var networkPayload = new net.minecraft.tags.TagNetworkSerialization.NetworkPayload(tags);
+            java.util.Map<net.minecraft.resources.ResourceKey<? extends net.minecraft.core.Registry<?>>,
+                net.minecraft.tags.TagNetworkSerialization.NetworkPayload> registries =
+                new java.util.HashMap<>();
+            registries.put(BuiltInRegistries.BLOCK.key(), networkPayload);
+            var packet = new net.minecraft.network.protocol.common.ClientboundUpdateTagsPacket(registries);
+            var blockPayload = packet.getTags().get(BuiltInRegistries.BLOCK.key());
+            BuiltInRegistries.BLOCK.prepareTagReload(
+                blockPayload.resolve(BuiltInRegistries.BLOCK)).apply();
         }
 
         private static void bindClimbableAndGlideThroughTags(Block block) {

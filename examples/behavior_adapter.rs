@@ -4606,6 +4606,56 @@ fn shape_result(request: &Value) -> Result<Value, String> {
                                     state_id,
                                     fall_flying,
                                 );
+                            } else if kind == "update_tags_packet" {
+                                let state_id = context
+                                    .get("state_id")
+                                    .and_then(Value::as_i64)
+                                    .ok_or("update-tags state_id must be an integer")?
+                                    .try_into()
+                                    .map_err(|_| "update-tags state_id must fit in i32")?;
+                                let block_tags = context
+                                    .get("block_tags")
+                                    .and_then(Value::as_object)
+                                    .ok_or("block_tags must be an object")?;
+                                let tags = block_tags
+                                    .iter()
+                                    .map(|(tag_id, values)| {
+                                        let values = values
+                                            .as_array()
+                                            .ok_or("block tag values must be an array")?
+                                            .iter()
+                                            .map(|value| {
+                                                value
+                                                    .as_i64()
+                                                    .ok_or("block tag value must be an integer")?
+                                                    .try_into()
+                                                    .map_err(|_| {
+                                                        "block tag value must fit in i32".to_owned()
+                                                    })
+                                            })
+                                            .collect::<Result<Vec<i32>, String>>()?;
+                                        let id = Identifier::parse(tag_id).map_err(|_| {
+                                            "invalid block tag identifier".to_owned()
+                                        })?;
+                                        Ok(TagEntry::new(id, values))
+                                    })
+                                    .collect::<Result<Vec<_>, String>>()?;
+                                let registry = Identifier::parse("minecraft:block")
+                                    .map_err(|_| "invalid block registry identifier".to_owned())?;
+                                let packet =
+                                    ClientboundUpdateTagsPacket::new(vec![RegistryTags::new(
+                                        registry, tags,
+                                    )]);
+                                world.apply_update_tags_packet(&packet);
+                                let fall_flying = context
+                                    .get("fall_flying")
+                                    .and_then(Value::as_bool)
+                                    .unwrap_or(false);
+                                world.apply_entity_living_climbable_glide_through_state(
+                                    entity_id,
+                                    state_id,
+                                    fall_flying,
+                                );
                             } else {
                                 return Err("unknown climbable context kind".to_owned());
                             }

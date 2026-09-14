@@ -1896,8 +1896,9 @@ fn connect_and_probe_with_mode(
             }
             CONFIG_UPDATE_TAGS_PACKET_ID => {
                 let mut input = payload;
-                crate::tags::ClientboundUpdateTagsPacket::decode(&mut input)
+                let packet = crate::tags::ClientboundUpdateTagsPacket::decode(&mut input)
                     .map_err(|_| ConnectionError::Codec("update tags"))?;
+                trace.world.apply_update_tags_packet(&packet);
                 trace.update_tags_packet_count += 1;
             }
             CONFIG_ENABLED_FEATURES_PACKET_ID => {

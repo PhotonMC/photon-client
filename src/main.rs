@@ -35,6 +35,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("world_constructed=true");
     println!("world_chunk_count={}", trace.world.loaded_chunk_count());
     println!("world_section_count={}", trace.world.loaded_section_count());
+    println!(
+        "update_tags_packet_count={}",
+        trace.update_tags_packet_count
+    );
+    println!(
+        "block_tag_vine_climbable={}",
+        trace.world.block_state_registry().is_climbable_state(8389)
+    );
+    println!(
+        "block_tag_vine_glide_through={}",
+        trace
+            .world
+            .block_state_registry()
+            .is_glide_through_state(8389)
+    );
     println!("ticks_run={ticks}");
     println!("world_game_time={}", trace.world.game_time());
     let local_player_previous_position = trace

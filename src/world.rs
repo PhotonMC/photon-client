@@ -1781,8 +1781,9 @@ fn client_block_state_box(
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ClientBlockStateRegistry {
     collision_shapes: BTreeMap<i32, ClientBlockStateCollisionShape>,
-    climbable_state_ids: BTreeSet<i32>,
-    glide_through_state_ids: BTreeSet<i32>,
+    block_registry_ids_by_state: BTreeMap<i32, i32>,
+    climbable_block_registry_ids: BTreeSet<i32>,
+    glide_through_block_registry_ids: BTreeSet<i32>,
 }
 
 impl ClientBlockStateRegistry {
@@ -1850,13 +1851,17 @@ impl ClientBlockStateRegistry {
                 ],
             },
         );
-        let mut climbable_state_ids = (5719..=5726).collect::<BTreeSet<_>>();
-        climbable_state_ids.insert(8389);
-        let glide_through_state_ids = BTreeSet::from([8389]);
+        let mut block_registry_ids_by_state = BTreeMap::from([(0, 0), (1, 1), (8389, 366)]);
+        for state_id in 5719..=5726 {
+            block_registry_ids_by_state.insert(state_id, 221);
+        }
+        let climbable_block_registry_ids = BTreeSet::from([221, 366]);
+        let glide_through_block_registry_ids = BTreeSet::from([366]);
         Self {
             collision_shapes,
-            climbable_state_ids,
-            glide_through_state_ids,
+            block_registry_ids_by_state,
+            climbable_block_registry_ids,
+            glide_through_block_registry_ids,
         }
     }
 
@@ -1877,12 +1882,41 @@ impl ClientBlockStateRegistry {
 
     /// Return whether a pinned 26.2 block-state belongs to BlockTags.CLIMBABLE.
     pub fn is_climbable_state(&self, state_id: i32) -> bool {
-        self.climbable_state_ids.contains(&state_id)
+        self.block_registry_ids_by_state
+            .get(&state_id)
+            .is_some_and(|block_id| self.climbable_block_registry_ids.contains(block_id))
     }
 
     /// Return whether a pinned 26.2 block-state belongs to BlockTags.CAN_GLIDE_THROUGH.
     pub fn is_glide_through_state(&self, state_id: i32) -> bool {
-        self.glide_through_state_ids.contains(&state_id)
+        self.block_registry_ids_by_state
+            .get(&state_id)
+            .is_some_and(|block_id| self.glide_through_block_registry_ids.contains(block_id))
+    }
+
+    fn apply_update_tags(&mut self, registries: &[crate::tags::RegistryTags]) {
+        let Some(block_registry) = registries.iter().find(|registry| {
+            registry.registry.namespace() == "minecraft" && registry.registry.path() == "block"
+        }) else {
+            return;
+        };
+
+        let mut climbable_block_registry_ids = BTreeSet::new();
+        let mut glide_through_block_registry_ids = BTreeSet::new();
+        for tag in &block_registry.tags {
+            let target = if tag.id.namespace() == "minecraft" && tag.id.path() == "climbable" {
+                Some(&mut climbable_block_registry_ids)
+            } else if tag.id.namespace() == "minecraft" && tag.id.path() == "can_glide_through" {
+                Some(&mut glide_through_block_registry_ids)
+            } else {
+                None
+            };
+            if let Some(target) = target {
+                target.extend(tag.values.iter().copied());
+            }
+        }
+        self.climbable_block_registry_ids = climbable_block_registry_ids;
+        self.glide_through_block_registry_ids = glide_through_block_registry_ids;
     }
 
     fn collision_shapes(&self) -> BTreeMap<i32, VoxelShape> {
@@ -1978,6 +2012,12 @@ impl ClientWorld {
 
     pub fn block_state_registry(&self) -> &ClientBlockStateRegistry {
         &self.block_state_registry
+    }
+
+    /// Apply a clientbound common update-tags packet to the world registry copy.
+    pub fn apply_update_tags_packet(&mut self, packet: &crate::tags::ClientboundUpdateTagsPacket) {
+        self.block_state_registry
+            .apply_update_tags(&packet.registries);
     }
 
     pub fn world_border(&self) -> &ClientWorldBorder {
@@ -6409,8 +6449,10 @@ mod tests {
     };
     use crate::aabb::Aabb;
     use crate::binary::{BitSet, Uuid};
+    use crate::identifier::Identifier;
     use crate::math::{Vec3, mth_atan2, mth_cos_f64, mth_rot_lerp_f32, mth_sin_f64};
     use crate::shape::Shapes;
+    use crate::tags::{ClientboundUpdateTagsPacket, RegistryTags, TagEntry};
     use std::collections::BTreeMap;
 
     fn section(block_value: i32, biome_value: i32) -> (Vec<i32>, Vec<i32>) {
@@ -6804,6 +6846,42 @@ mod tests {
                 .expect("player entity must exist")
                 .is_fall_flying()
         );
+    }
+
+    #[test]
+    fn client_world_applies_block_update_tags_to_state_registry() {
+        let mut world = ClientWorld::default();
+        let packet = ClientboundUpdateTagsPacket::new(vec![RegistryTags::new(
+            Identifier::parse("minecraft:block").unwrap(),
+            vec![
+                TagEntry::new(
+                    Identifier::parse("minecraft:climbable").unwrap(),
+                    vec![221, 366],
+                ),
+                TagEntry::new(
+                    Identifier::parse("minecraft:can_glide_through").unwrap(),
+                    vec![366],
+                ),
+            ],
+        )]);
+
+        world.apply_update_tags_packet(&packet);
+        assert!(world.block_state_registry().is_climbable_state(5720));
+        assert!(world.block_state_registry().is_climbable_state(8389));
+        assert!(world.block_state_registry().is_glide_through_state(8389));
+        assert!(!world.block_state_registry().is_glide_through_state(5720));
+
+        let replacement = ClientboundUpdateTagsPacket::new(vec![RegistryTags::new(
+            Identifier::parse("minecraft:block").unwrap(),
+            vec![TagEntry::new(
+                Identifier::parse("minecraft:climbable").unwrap(),
+                vec![221],
+            )],
+        )]);
+        world.apply_update_tags_packet(&replacement);
+        assert!(world.block_state_registry().is_climbable_state(5720));
+        assert!(!world.block_state_registry().is_climbable_state(8389));
+        assert!(!world.block_state_registry().is_glide_through_state(8389));
     }
 
     #[test]
