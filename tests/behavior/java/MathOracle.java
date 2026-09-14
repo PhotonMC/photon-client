@@ -37,6 +37,7 @@ import net.minecraft.server.Bootstrap;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.util.SmoothDouble;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.Rotation;
@@ -2914,6 +2915,22 @@ public final class MathOracle {
                 }
                 result.addProperty("distance", Oracle.bits(Shapes.collide(
                     axis, moving, shapes, f64(request, "distance"))));
+            } else if (kind.equals("collide_movement")) {
+                AABB moving = box(request.getAsJsonObject("moving"));
+                var shapes = new java.util.ArrayList<VoxelShape>();
+                for (var entry : request.getAsJsonArray("shapes")) {
+                    shapes.add(voxelShape(entry.getAsJsonObject()));
+                }
+                try {
+                    var method = Entity.class.getDeclaredMethod(
+                        "collideWithShapes", Vec3.class, AABB.class, java.util.List.class);
+                    method.setAccessible(true);
+                    var resolved = (Vec3) method.invoke(
+                        null, vec3(request.getAsJsonObject("movement")), moving, shapes);
+                    result.add("movement", snapshot(resolved));
+                } catch (ReflectiveOperationException error) {
+                    throw new IllegalStateException("Entity.collideWithShapes reflection failed", error);
+                }
             } else if (kind.equals("clip")) {
                 VoxelShape shape = voxelShape(request.getAsJsonObject("shape"));
                 var events = new JsonArray();

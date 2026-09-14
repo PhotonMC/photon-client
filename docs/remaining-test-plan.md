@@ -29,7 +29,7 @@ Kapsam veya test durumu bu belgede hareketli toplamlarla tutulmaz. Tamamlanan k�
 
 | Bölüm | Engel | İlk senaryolar (engel kalkınca) |
 | --- | --- | --- |
-| P09 çarpışma | P08 dünyası yok | Slab/merdiven/dar köşe/düşük tavan; çözülen delta, on-ground ve step yüksekliği |
+| P09 çarpışma | P09.b'de açık shape listesiyle eksen çözümü [kendi kaydında](client-world-collision-movement-conformance.md) doğrulandı; block-state shape registry/toplama, entity/world-border collider'ları, pose/dimensions, on-ground/flag ve step-up dalları açık | Slab/merdiven/dar köşe/düşük tavan; çözülen delta, on-ground ve step yüksekliği |
 | P10 yerel hareket | P05 + P08 + P09'a bağlı | Tick başına konum/hız/pose; diyagonal, sprint çift basışı, su/buz/merdiven |
 | P11 senkronizasyon | Initial vanilla teleport correction ack ve üç paketlik kontrollü movement probe geçti; P06 + P10'a bağlı Java input/tick hareket senkronizasyonu açık | Eşik altı/üstü hareket paketleri, 20 tick hatırlatması, teleport düzeltmesi |
 | P12 hedefleme/eylem | Blok eylemi ack'i, kırma başlat/iptal/durdur, hardness ve tool progress, menzil reddi, boş-el ve consumable kullanım akışları `server-conformance` sınıfında geçti; kayıtlar kendi parity belgelerindedir. P09–P11'e bağlı genel hedefleme ve `client-parity` karşılaştırması açık | Hit sonucu, istemci tarafı blok/eşya tahmini, iki el önceliği, ack/rollback sırası |

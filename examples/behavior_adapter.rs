@@ -59,6 +59,7 @@ use voxel_client::tags::{ClientboundUpdateTagsPacket, RegistryTags, TagEntry};
 use voxel_client::timer::Timer;
 use voxel_client::utf8;
 use voxel_client::wire::{self, ReadError};
+use voxel_client::world::collide_entity_movement;
 
 fn string<'a>(request: &'a Value, name: &str) -> Result<&'a str, String> {
     request[name]
@@ -4165,6 +4166,25 @@ fn shape_result(request: &Value) -> Result<Value, String> {
                     "{:016x}",
                     Shapes::collide(axis, moving, &shapes, distance).to_bits()
                 ),
+            }))
+        }
+        "collide_movement" => {
+            let movement = f64_vec3(
+                request
+                    .get("movement")
+                    .ok_or("movement must be an object")?,
+            )?;
+            let moving = aabb_box(request.get("moving").ok_or("moving must be an object")?)?;
+            let shapes = request
+                .get("shapes")
+                .ok_or("shapes must be an array")?
+                .as_array()
+                .ok_or("shapes must be an array")?
+                .iter()
+                .map(shape_box)
+                .collect::<Result<Vec<_>, _>>()?;
+            Ok(json!({
+                "movement": vec3_snapshot(collide_entity_movement(movement, moving, &shapes)),
             }))
         }
         "clip" => {

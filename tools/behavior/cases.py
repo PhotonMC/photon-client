@@ -3815,6 +3815,21 @@ def math_cases():
            "moving": box_bits(-2, 0.25, 0.25, -1, 0.75, 0.75), "distance": float_bits(0, "f64")}
     yield {"case_id": "shape/collide-many/empty-list", "family": "math", "operation": "shape", "kind": "collide_many",
            "axis": "z", "shapes": [], "moving": box_bits(0, 0, 2, 1, 1, 3), "distance": float_bits(-4, "f64")}
+    yield {"case_id": "shape/collide-movement/empty", "family": "math", "operation": "shape",
+           "kind": "collide_movement", "movement": vector_bits(1.25, -2.5, 3.75),
+           "moving": box_bits(0, 0, 0, 1, 1, 1), "shapes": []}
+    yield {"case_id": "shape/collide-movement/x-then-z", "family": "math", "operation": "shape",
+           "kind": "collide_movement", "movement": vector_bits(2, 0, 1),
+           "moving": box_bits(0, 0, 0, 1, 1, 1),
+           "shapes": [box_bits(2, 0, 1.5, 3, 1, 2.5), box_bits(1.5, 0, 2, 2.5, 1, 3)]}
+    yield {"case_id": "shape/collide-movement/z-then-x", "family": "math", "operation": "shape",
+           "kind": "collide_movement", "movement": vector_bits(1, 0, 2),
+           "moving": box_bits(0, 0, 0, 1, 1, 1),
+           "shapes": [box_bits(2, 0, 1.5, 3, 1, 2.5), box_bits(1.5, 0, 2, 2.5, 1, 3)]}
+    yield {"case_id": "shape/collide-movement/y-first", "family": "math", "operation": "shape",
+           "kind": "collide_movement", "movement": vector_bits(2, -2, 0),
+           "moving": box_bits(0.25, 2, 0.25, 0.75, 3, 0.75),
+           "shapes": [box_bits(-1, 0, -1, 2, 1, 2), box_bits(1, 1, -1, 2, 4, 2)]}
     yield {"case_id": "random/fork/basic", "family": "math", "operation": "random_fork",
            "seed": "42", "prefix_steps": [],
            "child_steps": [{"op": "nextInt"}, {"op": "nextDouble"}, {"op": "nextLong"}],

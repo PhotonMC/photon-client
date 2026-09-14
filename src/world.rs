@@ -2,11 +2,42 @@
 
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
-use crate::binary::BitSet;
 use crate::math::{
-    MTH_DEG_TO_RAD, clamp_f32, mth_atan2, mth_cos_f64, mth_lerp_f32, mth_lerp_f64,
+    MTH_DEG_TO_RAD, Vec3, clamp_f32, mth_atan2, mth_cos_f64, mth_lerp_f32, mth_lerp_f64,
     mth_rot_lerp_f32, mth_rot_lerp_f64, mth_sin_f64, wrap_degrees_f32,
 };
+use crate::{
+    aabb::Aabb,
+    binary::BitSet,
+    direction::Direction,
+    shape::{Shapes, VoxelShape},
+};
+
+/// Resolve one entity movement against already collected world/entity shapes.
+///
+/// This is the Java `Entity.collideWithShapes` axis-resolution primitive. The
+/// caller owns collider collection and step-up policy; keeping those decisions
+/// outside this helper preserves the reference call order.
+pub fn collide_entity_movement(movement: Vec3, bounding_box: Aabb, shapes: &[VoxelShape]) -> Vec3 {
+    if shapes.is_empty() {
+        return movement;
+    }
+
+    let mut resolved_movement = Vec3::ZERO;
+    for axis in Direction::axis_step_order(movement.x, movement.z) {
+        let axis_movement = movement.get(axis);
+        if axis_movement != 0.0 {
+            let collision = Shapes::collide(
+                axis,
+                bounding_box.move_by_vec3(resolved_movement),
+                shapes,
+                axis_movement,
+            );
+            resolved_movement = resolved_movement.with(axis, collision);
+        }
+    }
+    resolved_movement
+}
 
 pub(crate) const PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS: u8 = 1;
 pub(crate) const PLAYER_RESPAWN_KEEP_ENTITY_DATA: u8 = 2;
@@ -4908,10 +4939,12 @@ mod tests {
         VANILLA_FIREWORK_ROCKET_VERTICAL_ACCELERATION, VANILLA_LIVING_ENTITY_TYPE_IDS,
         VANILLA_PLAYER_ENTITY_TYPE_ID, VANILLA_PRIMED_TNT_AIR_FRICTION,
         VANILLA_PRIMED_TNT_ENTITY_TYPE_ID, VANILLA_PRIMED_TNT_GRAVITY,
-        VANILLA_SNOWBALL_ENTITY_TYPE_ID, menu_top_slot_count,
+        VANILLA_SNOWBALL_ENTITY_TYPE_ID, collide_entity_movement, menu_top_slot_count,
     };
+    use crate::aabb::Aabb;
     use crate::binary::{BitSet, Uuid};
-    use crate::math::{mth_atan2, mth_cos_f64, mth_rot_lerp_f32, mth_sin_f64};
+    use crate::math::{Vec3, mth_atan2, mth_cos_f64, mth_rot_lerp_f32, mth_sin_f64};
+    use crate::shape::Shapes;
 
     fn section(block_value: i32, biome_value: i32) -> (Vec<i32>, Vec<i32>) {
         let mut blocks = vec![block_value; 4_096];
@@ -4928,6 +4961,37 @@ mod tests {
         biomes[4] = 23;
         biomes[63] = 24;
         (blocks, biomes)
+    }
+
+    #[test]
+    fn collide_entity_movement_follows_java_axis_order() {
+        let moving = Aabb::new(0.0, 0.0, 0.0, 1.0, 1.0, 1.0);
+        let x_wall = Shapes::box_shape(2.0, 0.0, 1.5, 3.0, 1.0, 2.5).unwrap();
+        let z_wall = Shapes::box_shape(1.5, 0.0, 2.0, 2.5, 1.0, 3.0).unwrap();
+        let shapes = [x_wall, z_wall];
+
+        let x_first = collide_entity_movement(Vec3::new(2.0, 0.0, 1.0), moving, &shapes);
+        assert_eq!((x_first.x, x_first.y, x_first.z), (2.0, 0.0, 0.5));
+
+        let z_first = collide_entity_movement(Vec3::new(1.0, 0.0, 2.0), moving, &shapes);
+        assert_eq!((z_first.x, z_first.y, z_first.z), (0.5, 0.0, 2.0));
+
+        let y_first_shapes = [
+            Shapes::box_shape(-1.0, 0.0, -1.0, 2.0, 1.0, 2.0).unwrap(),
+            Shapes::box_shape(1.0, 1.0, -1.0, 2.0, 4.0, 2.0).unwrap(),
+        ];
+        let y_first = collide_entity_movement(
+            Vec3::new(2.0, -2.0, 0.0),
+            Aabb::new(0.25, 2.0, 0.25, 0.75, 3.0, 0.75),
+            &y_first_shapes,
+        );
+        assert_eq!((y_first.x, y_first.y, y_first.z), (0.25, -1.0, 0.0));
+
+        let no_collision = collide_entity_movement(Vec3::new(1.25, -2.5, 3.75), moving, &[]);
+        assert_eq!(
+            (no_collision.x, no_collision.y, no_collision.z),
+            (1.25, -2.5, 3.75)
+        );
     }
 
     #[test]
