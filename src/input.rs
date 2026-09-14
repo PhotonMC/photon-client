@@ -102,6 +102,62 @@ pub fn modify_local_player_input(input: Vec2, modifiers: LocalPlayerInputModifie
     modify_input_speed_for_square_movement(modified)
 }
 
+/// The fields written by Java LocalPlayer.applyInput for one tick.
+#[derive(Debug, Clone, Copy)]
+pub struct LocalPlayerAppliedInput {
+    pub movement: Vec2,
+    pub jumping: bool,
+    pub x_bob: f32,
+    pub y_bob: f32,
+    pub x_bob_old: f32,
+    pub y_bob_old: f32,
+}
+
+/// The input and local state snapshot consumed by Java LocalPlayer.applyInput.
+#[derive(Debug, Clone, Copy)]
+pub struct LocalPlayerInputState {
+    pub move_vector: Vec2,
+    pub jump_pressed: bool,
+    pub current_impulses: Vec2,
+    pub current_jumping: bool,
+    pub current_bob: Vec2,
+    pub previous_bob: Vec2,
+    pub rotation: Vec2,
+    pub controlled_camera: bool,
+}
+
+/// Apply Java LocalPlayer.applyInput to the local player's movement fields.
+pub fn apply_local_player_input(
+    state: LocalPlayerInputState,
+    modifiers: LocalPlayerInputModifiers,
+) -> LocalPlayerAppliedInput {
+    if !state.controlled_camera {
+        return LocalPlayerAppliedInput {
+            movement: state.current_impulses.scale(0.98_f32),
+            jumping: state.current_jumping,
+            x_bob: state.current_bob.x,
+            y_bob: state.current_bob.y,
+            x_bob_old: state.previous_bob.x,
+            y_bob_old: state.previous_bob.y,
+        };
+    }
+
+    let modified_input = modify_local_player_input(state.move_vector, modifiers);
+    let bob_delta = Vec2::new(
+        (state.rotation.x - state.current_bob.x) * 0.5_f32,
+        (state.rotation.y - state.current_bob.y) * 0.5_f32,
+    );
+    let next_bob = state.current_bob.add_vec2(bob_delta);
+    LocalPlayerAppliedInput {
+        movement: modified_input,
+        jumping: state.jump_pressed,
+        x_bob: next_bob.x,
+        y_bob: next_bob.y,
+        x_bob_old: state.current_bob.x,
+        y_bob_old: state.current_bob.y,
+    }
+}
+
 fn modify_input_speed_for_square_movement(input: Vec2) -> Vec2 {
     let length = input.length();
     if length <= 0.0 {

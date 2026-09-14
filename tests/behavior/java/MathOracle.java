@@ -29,6 +29,7 @@ import net.minecraft.client.input.InputWithModifiers;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.input.MouseButtonInfo;
 import net.minecraft.client.input.PreeditEvent;
+import net.minecraft.client.player.ClientInput;
 import net.minecraft.client.player.KeyboardInput;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.AxisCycle;
@@ -167,6 +168,44 @@ public final class MathOracle {
                 result.add("states", states);
             } catch (ReflectiveOperationException error) {
                 throw new IllegalStateException("LocalPlayer.modifyInput reflection failed", error);
+            }
+        } else if (operation.equals("local_player_apply_input")) {
+            try {
+                Unsafe unsafe = unsafeInstance();
+                var method = LocalPlayer.class.getMethod("applyInput");
+                var states = new JsonArray();
+                for (var inputEntry : request.getAsJsonArray("inputs")) {
+                    JsonObject input = inputEntry.getAsJsonObject();
+                    LocalPlayerInputFixture player =
+                        (LocalPlayerInputFixture)unsafe.allocateInstance(LocalPlayerInputFixture.class);
+                    player.configureApplyInput(
+                        Oracle.f32(input, "move_x"),
+                        Oracle.f32(input, "move_y"),
+                        input.get("jump").getAsBoolean(),
+                        Oracle.f32(input, "xxa"),
+                        Oracle.f32(input, "zza"),
+                        input.get("jumping").getAsBoolean(),
+                        Oracle.f32(input, "x_bob"),
+                        Oracle.f32(input, "y_bob"),
+                        Oracle.f32(input, "x_bob_o"),
+                        Oracle.f32(input, "y_bob_o"),
+                        Oracle.f32(input, "x_rot"),
+                        Oracle.f32(input, "y_rot"),
+                        input.get("controlled_camera").getAsBoolean());
+                    method.invoke(player);
+                    var state = new JsonObject();
+                    state.addProperty("label", input.get("label").getAsString());
+                    state.add("movement", snapshot(new Vec2(player.xxa, player.zza)));
+                    state.addProperty("jumping", player.isJumping());
+                    state.addProperty("x_bob", Oracle.bits(player.xBob));
+                    state.addProperty("y_bob", Oracle.bits(player.yBob));
+                    state.addProperty("x_bob_o", Oracle.bits(player.xBobO));
+                    state.addProperty("y_bob_o", Oracle.bits(player.yBobO));
+                    states.add(state);
+                }
+                result.add("states", states);
+            } catch (ReflectiveOperationException error) {
+                throw new IllegalStateException("LocalPlayer.applyInput reflection failed", error);
             }
         } else if (operation.equals("character_event")) {
             CharacterEvent event = new CharacterEvent(request.get("codepoint").getAsInt());
@@ -6086,6 +6125,9 @@ public final class MathOracle {
         private boolean passenger;
         private boolean movingSlowly;
         private float sneakingMovementFactor;
+        private boolean controlledCamera;
+        private float xRotation;
+        private float yRotation;
 
         private LocalPlayerInputFixture() {
             super(null, null, null, null, null, Input.EMPTY, false, null);
@@ -6111,6 +6153,50 @@ public final class MathOracle {
             return this.sneakingMovementFactor;
         }
 
+        @Override
+        protected boolean isControlledCamera() {
+            return this.controlledCamera;
+        }
+
+        @Override
+        public float getXRot() {
+            return this.xRotation;
+        }
+
+        @Override
+        public float getYRot() {
+            return this.yRotation;
+        }
+
+        private void configureApplyInput(
+            final float moveX,
+            final float moveY,
+            final boolean jump,
+            final float xxa,
+            final float zza,
+            final boolean jumping,
+            final float xBob,
+            final float yBob,
+            final float xBobO,
+            final float yBobO,
+            final float xRot,
+            final float yRot,
+            final boolean controlledCamera
+        ) {
+            this.input = new FixtureInput(new Vec2(moveX, moveY), new Input(
+                false, false, false, false, jump, false, false));
+            this.xxa = xxa;
+            this.zza = zza;
+            this.jumping = jumping;
+            this.xBob = xBob;
+            this.yBob = yBob;
+            this.xBobO = xBobO;
+            this.yBobO = yBobO;
+            this.xRotation = xRot;
+            this.yRotation = yRot;
+            this.controlledCamera = controlledCamera;
+        }
+
         private void setItemUseSpeed(final float speed) throws ReflectiveOperationException {
             var constructor = ItemStack.class.getDeclaredConstructor(
                 Holder.class, int.class, PatchedDataComponentMap.class);
@@ -6122,6 +6208,13 @@ public final class MathOracle {
             this.useItem.set(
                 DataComponents.USE_EFFECTS,
                 new UseEffects(false, true, speed));
+        }
+    }
+
+    private static final class FixtureInput extends ClientInput {
+        private FixtureInput(final Vec2 moveVector, final Input keyPresses) {
+            this.moveVector = moveVector;
+            this.keyPresses = keyPresses;
         }
     }
 

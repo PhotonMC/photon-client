@@ -1292,6 +1292,68 @@ def math_cases():
     yield {"case_id": "player-input/modify", "family": "math",
            "operation": "local_player_input", "inputs": local_player_input_inputs}
 
+    local_player_apply_input_cases = [
+        {
+            "label": "controlled-axis-updates-impulses-and-bob",
+            "move_x": float_bits(0.0), "move_y": float_bits(1.0),
+            "jump": False, "xxa": float_bits(0.25), "zza": float_bits(-0.5),
+            "jumping": True, "x_bob": float_bits(1.0), "y_bob": float_bits(2.0),
+            "x_bob_o": float_bits(3.0), "y_bob_o": float_bits(4.0),
+            "x_rot": float_bits(10.0), "y_rot": float_bits(20.0),
+            "controlled_camera": True,
+        },
+        {
+            "label": "controlled-diagonal-sets-jumping",
+            "move_x": float_bits(0.6), "move_y": float_bits(0.8),
+            "jump": True, "xxa": float_bits(-1.0), "zza": float_bits(1.0),
+            "jumping": False, "x_bob": float_bits(-2.0), "y_bob": float_bits(4.0),
+            "x_bob_o": float_bits(-3.0), "y_bob_o": float_bits(5.0),
+            "x_rot": float_bits(-30.0), "y_rot": float_bits(60.0),
+            "controlled_camera": True,
+        },
+        {
+            "label": "controlled-zero-preserves-signed-zero",
+            "move_x": "80000000", "move_y": "00000000",
+            "jump": True, "xxa": float_bits(1.0), "zza": float_bits(-1.0),
+            "jumping": False, "x_bob": "80000000", "y_bob": "00000000",
+            "x_bob_o": "80000000", "y_bob_o": "00000000",
+            "x_rot": float_bits(0.0), "y_rot": float_bits(-0.0),
+            "controlled_camera": True,
+        },
+        {
+            "label": "uncontrolled-camera-uses-base-input",
+            "move_x": float_bits(0.0), "move_y": float_bits(1.0),
+            "jump": True, "xxa": float_bits(0.5), "zza": float_bits(-0.25),
+            "jumping": True, "x_bob": float_bits(1.0), "y_bob": float_bits(2.0),
+            "x_bob_o": float_bits(3.0), "y_bob_o": float_bits(4.0),
+            "x_rot": float_bits(10.0), "y_rot": float_bits(20.0),
+            "controlled_camera": False,
+        },
+        {
+            "label": "controlled-overwrites-existing-impulses",
+            "move_x": float_bits(-1.0), "move_y": float_bits(0.0),
+            "jump": False, "xxa": float_bits(2.0), "zza": float_bits(3.0),
+            "jumping": True, "x_bob": float_bits(0.0), "y_bob": float_bits(0.0),
+            "x_bob_o": float_bits(1.0), "y_bob_o": float_bits(1.0),
+            "x_rot": float_bits(0.0), "y_rot": float_bits(0.0),
+            "controlled_camera": True,
+        },
+    ]
+    local_player_apply_input_defaults = {
+        "move_x": float_bits(0.0), "move_y": float_bits(0.0),
+        "jump": False, "xxa": float_bits(0.0), "zza": float_bits(0.0),
+        "jumping": False, "x_bob": float_bits(0.0), "y_bob": float_bits(0.0),
+        "x_bob_o": float_bits(0.0), "y_bob_o": float_bits(0.0),
+        "x_rot": float_bits(0.0), "y_rot": float_bits(0.0),
+        "controlled_camera": True,
+    }
+    local_player_apply_input_inputs = []
+    for values in local_player_apply_input_cases:
+        input_values = {**local_player_apply_input_defaults, **values}
+        local_player_apply_input_inputs.append(input_values)
+    yield {"case_id": "player-input/apply", "family": "math",
+           "operation": "local_player_apply_input", "inputs": local_player_apply_input_inputs}
+
     codec_decodes = {
         "basic": [float_bits(1.25, "f64"), float_bits(-2.5, "f64"), float_bits(3.75, "f64")],
         "zero": [float_bits(0.0, "f64"), float_bits(0.0, "f64"), float_bits(0.0, "f64")],

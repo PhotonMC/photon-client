@@ -29,7 +29,8 @@ use voxel_client::frame::{self, FrameError, Varint21FrameDecoder};
 use voxel_client::handshake::{self, ClientIntent, ClientIntentionPacket};
 use voxel_client::identifier::Identifier;
 use voxel_client::input::{
-    Input, KeyboardInput, LocalPlayerInputModifiers, modify_local_player_input,
+    Input, KeyboardInput, LocalPlayerInputModifiers, LocalPlayerInputState,
+    apply_local_player_input, modify_local_player_input,
 };
 use voxel_client::input_event::{
     CharacterEvent, InputWithModifiers, KeyEvent as InputKeyEvent, MouseButtonEvent,
@@ -8152,6 +8153,62 @@ fn math_result(request: &Value) -> Result<Value, String> {
                     "label": label,
                     "input": vec2_snapshot(original),
                     "modified": vec2_snapshot(modified),
+                }))
+            })
+            .collect::<Result<Vec<_>, String>>()?;
+        return Ok(json!({"states": states}));
+    }
+    if operation == "local_player_apply_input" {
+        let inputs = request["inputs"]
+            .as_array()
+            .ok_or("inputs must be an array")?;
+        let states = inputs
+            .iter()
+            .map(|input| {
+                let label = string(input, "label")?;
+                let applied = apply_local_player_input(
+                    LocalPlayerInputState {
+                        move_vector: Vec2::new(
+                            f32_field(input, "move_x")?,
+                            f32_field(input, "move_y")?,
+                        ),
+                        jump_pressed: input["jump"].as_bool().ok_or("jump must be a boolean")?,
+                        current_impulses: Vec2::new(
+                            f32_field(input, "xxa")?,
+                            f32_field(input, "zza")?,
+                        ),
+                        current_jumping: input["jumping"]
+                            .as_bool()
+                            .ok_or("jumping must be a boolean")?,
+                        current_bob: Vec2::new(
+                            f32_field(input, "x_bob")?,
+                            f32_field(input, "y_bob")?,
+                        ),
+                        previous_bob: Vec2::new(
+                            f32_field(input, "x_bob_o")?,
+                            f32_field(input, "y_bob_o")?,
+                        ),
+                        rotation: Vec2::new(f32_field(input, "x_rot")?, f32_field(input, "y_rot")?),
+                        controlled_camera: input["controlled_camera"]
+                            .as_bool()
+                            .ok_or("controlled_camera must be a boolean")?,
+                    },
+                    LocalPlayerInputModifiers {
+                        using_item: false,
+                        passenger: false,
+                        item_use_speed_multiplier: 0.2,
+                        moving_slowly: false,
+                        sneaking_movement_factor: 0.3,
+                    },
+                );
+                Ok(json!({
+                    "label": label,
+                    "movement": vec2_snapshot(applied.movement),
+                    "jumping": applied.jumping,
+                    "x_bob": format!("{:08x}", applied.x_bob.to_bits()),
+                    "y_bob": format!("{:08x}", applied.y_bob.to_bits()),
+                    "x_bob_o": format!("{:08x}", applied.x_bob_old.to_bits()),
+                    "y_bob_o": format!("{:08x}", applied.y_bob_old.to_bits()),
                 }))
             })
             .collect::<Result<Vec<_>, String>>()?;

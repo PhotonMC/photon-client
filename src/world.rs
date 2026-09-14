@@ -2,6 +2,10 @@
 
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
+use crate::input::{
+    LocalPlayerInputModifiers, LocalPlayerInputState,
+    apply_local_player_input as apply_local_player_input_fields,
+};
 use crate::math::{
     MTH_DEG_TO_RAD, Vec3, abs_max_f64, clamp_f32, clamp_f64, equal_f64, floor_f32, mth_atan2,
     mth_cos_f64, mth_lerp_f32, mth_lerp_f64, mth_rot_lerp_f32, mth_rot_lerp_f64, mth_sin_f64,
@@ -2773,6 +2777,21 @@ impl ClientWorld {
         true
     }
 
+    /// Apply one LocalPlayer input snapshot to its queryable movement state.
+    pub fn apply_local_player_input(
+        &mut self,
+        move_vector: crate::math::Vec2,
+        jump_pressed: bool,
+        controlled_camera: bool,
+        modifiers: LocalPlayerInputModifiers,
+    ) -> bool {
+        let Some(player) = self.local_player.as_mut() else {
+            return false;
+        };
+        player.apply_input(move_vector, jump_pressed, controlled_camera, modifiers);
+        true
+    }
+
     pub(crate) fn apply_local_player_container_content(
         &mut self,
         container_id: i32,
@@ -5481,6 +5500,13 @@ pub struct ClientPlayerState {
     motion_x_bits: u64,
     motion_y_bits: u64,
     motion_z_bits: u64,
+    xxa_bits: u32,
+    zza_bits: u32,
+    jumping: bool,
+    x_bob_bits: u32,
+    y_bob_bits: u32,
+    x_bob_o_bits: u32,
+    y_bob_o_bits: u32,
     y_rot_bits: u32,
     x_rot_bits: u32,
     old_y_rot_bits: u32,
@@ -5522,6 +5548,47 @@ pub struct ClientPlayerState {
 }
 
 impl ClientPlayerState {
+    fn apply_input(
+        &mut self,
+        move_vector: crate::math::Vec2,
+        jump_pressed: bool,
+        controlled_camera: bool,
+        modifiers: LocalPlayerInputModifiers,
+    ) {
+        let applied = apply_local_player_input_fields(
+            LocalPlayerInputState {
+                move_vector,
+                jump_pressed,
+                current_impulses: crate::math::Vec2::new(
+                    f32::from_bits(self.xxa_bits),
+                    f32::from_bits(self.zza_bits),
+                ),
+                current_jumping: self.jumping,
+                current_bob: crate::math::Vec2::new(
+                    f32::from_bits(self.x_bob_bits),
+                    f32::from_bits(self.y_bob_bits),
+                ),
+                previous_bob: crate::math::Vec2::new(
+                    f32::from_bits(self.x_bob_o_bits),
+                    f32::from_bits(self.y_bob_o_bits),
+                ),
+                rotation: crate::math::Vec2::new(
+                    f32::from_bits(self.x_rot_bits),
+                    f32::from_bits(self.y_rot_bits),
+                ),
+                controlled_camera,
+            },
+            modifiers,
+        );
+        self.xxa_bits = applied.movement.x.to_bits();
+        self.zza_bits = applied.movement.y.to_bits();
+        self.jumping = applied.jumping;
+        self.x_bob_bits = applied.x_bob.to_bits();
+        self.y_bob_bits = applied.y_bob.to_bits();
+        self.x_bob_o_bits = applied.x_bob_old.to_bits();
+        self.y_bob_o_bits = applied.y_bob_old.to_bits();
+    }
+
     fn capture_old_transform(&mut self) {
         self.old_x_bits = self.x_bits;
         self.old_y_bits = self.y_bits;
@@ -5576,6 +5643,13 @@ impl ClientPlayerState {
             motion_x_bits: 0.0_f64.to_bits(),
             motion_y_bits: 0.0_f64.to_bits(),
             motion_z_bits: 0.0_f64.to_bits(),
+            xxa_bits: 0.0_f32.to_bits(),
+            zza_bits: 0.0_f32.to_bits(),
+            jumping: false,
+            x_bob_bits: 0.0_f32.to_bits(),
+            y_bob_bits: 0.0_f32.to_bits(),
+            x_bob_o_bits: 0.0_f32.to_bits(),
+            y_bob_o_bits: 0.0_f32.to_bits(),
             y_rot_bits: 0.0_f32.to_bits(),
             x_rot_bits: 0.0_f32.to_bits(),
             old_y_rot_bits: 0.0_f32.to_bits(),
@@ -5669,6 +5743,28 @@ impl ClientPlayerState {
             f64::from_bits(self.motion_x_bits),
             f64::from_bits(self.motion_y_bits),
             f64::from_bits(self.motion_z_bits),
+        )
+    }
+
+    pub fn input_impulses(&self) -> crate::math::Vec2 {
+        crate::math::Vec2::new(f32::from_bits(self.xxa_bits), f32::from_bits(self.zza_bits))
+    }
+
+    pub fn is_jumping(&self) -> bool {
+        self.jumping
+    }
+
+    pub fn bob(&self) -> (f32, f32) {
+        (
+            f32::from_bits(self.x_bob_bits),
+            f32::from_bits(self.y_bob_bits),
+        )
+    }
+
+    pub fn previous_bob(&self) -> (f32, f32) {
+        (
+            f32::from_bits(self.x_bob_o_bits),
+            f32::from_bits(self.y_bob_o_bits),
         )
     }
 
@@ -7120,7 +7216,8 @@ mod tests {
     use crate::aabb::Aabb;
     use crate::binary::{BitSet, Uuid};
     use crate::identifier::Identifier;
-    use crate::math::{Vec3, mth_atan2, mth_cos_f64, mth_rot_lerp_f32, mth_sin_f64};
+    use crate::input::LocalPlayerInputModifiers;
+    use crate::math::{Vec2, Vec3, mth_atan2, mth_cos_f64, mth_rot_lerp_f32, mth_sin_f64};
     use crate::shape::Shapes;
     use crate::tags::{ClientboundUpdateTagsPacket, RegistryTags, TagEntry};
     use std::collections::BTreeMap;
@@ -7956,6 +8053,43 @@ mod tests {
         let player = world.local_player().expect("survival local player");
         assert_eq!(player.game_mode().id(), 0);
         assert!(player.abilities().may_build());
+    }
+
+    #[test]
+    fn local_player_apply_input_updates_queryable_state_and_base_fallback() {
+        let mut world = ClientWorld::default();
+        world.set_local_player_id(42);
+        let modifiers = LocalPlayerInputModifiers {
+            using_item: false,
+            passenger: false,
+            item_use_speed_multiplier: 0.2,
+            moving_slowly: false,
+            sneaking_movement_factor: 0.3,
+        };
+
+        assert!(world.apply_local_player_position((0.0, 0.0, 0.0), (0.0, 0.0, 0.0), (15.0, 3.0),));
+        assert!(world.apply_local_player_input(Vec2::new(0.0, 1.0), true, true, modifiers,));
+        {
+            let player = world.local_player().expect("controlled local player");
+            let impulses = player.input_impulses();
+            assert_eq!(impulses.x.to_bits(), 0.0_f32.to_bits());
+            assert_eq!(impulses.y.to_bits(), 0x3f7a_e148);
+            assert!(player.is_jumping());
+            let bob = player.bob();
+            assert_eq!(bob.0.to_bits(), 0x3fc0_0000);
+            assert_eq!(bob.1.to_bits(), 0x40f0_0000);
+            assert_eq!(player.previous_bob(), (0.0, 0.0));
+        }
+
+        assert!(world.apply_local_player_input(Vec2::ZERO, false, false, modifiers,));
+        let player = world.local_player().expect("fallback local player");
+        let impulses = player.input_impulses();
+        assert_eq!(impulses.x.to_bits(), 0.0_f32.to_bits());
+        assert_eq!(impulses.y.to_bits(), 0x3f75_dcc7);
+        assert!(player.is_jumping());
+        assert_eq!(player.bob().0.to_bits(), 0x3fc0_0000);
+        assert_eq!(player.bob().1.to_bits(), 0x40f0_0000);
+        assert_eq!(player.previous_bob(), (0.0, 0.0));
     }
 
     #[test]
