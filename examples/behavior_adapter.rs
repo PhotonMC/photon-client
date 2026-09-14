@@ -62,8 +62,8 @@ use voxel_client::utf8;
 use voxel_client::wire::{self, ReadError};
 use voxel_client::world::{
     ClientEntityCollisionCandidate, ClientEntityDimensions, ClientEntityPose,
-    ClientPlayerPoseInput, ClientWorld, ClientWorldBorder, ClientWorldBorderStatus,
-    DimensionBounds, SectionInput, collect_candidate_step_up_heights,
+    ClientPlayerPoseInput, ClientWorld, ClientWorldBorder, ClientWorldBorderInitialization,
+    ClientWorldBorderStatus, DimensionBounds, SectionInput, collect_candidate_step_up_heights,
     collect_entity_collision_shapes, collide_entity_movement, collide_entity_movement_state,
     world_border_collision_shape,
 };
@@ -3437,6 +3437,12 @@ fn i32_field(value: &Value, name: &str) -> Result<i32, String> {
         .map_err(|_| format!("{name} must fit in i32"))
 }
 
+fn i64_field(value: &Value, name: &str) -> Result<i64, String> {
+    value[name]
+        .as_i64()
+        .ok_or_else(|| format!("{name} must be an i64"))
+}
+
 fn i32_string_field(value: &Value, name: &str) -> Result<i32, String> {
     string(value, name)?
         .parse::<i32>()
@@ -3652,6 +3658,44 @@ fn shape_snapshot(value: &VoxelShape) -> Value {
         state["bounds"] = aabb_snapshot(bounds);
     }
     state
+}
+
+fn client_world_border_status_snapshot(status: ClientWorldBorderStatus) -> &'static str {
+    match status {
+        ClientWorldBorderStatus::Stationary => "STATIONARY",
+        ClientWorldBorderStatus::Shrinking => "SHRINKING",
+        ClientWorldBorderStatus::Growing => "GROWING",
+    }
+}
+
+fn client_world_border_snapshot(event: &str, game_time: u64, border: &ClientWorldBorder) -> Value {
+    let samples = [0.0_f32, 0.5_f32, 1.0_f32]
+        .into_iter()
+        .map(|partial_tick| {
+            json!({
+                "partial_tick": format!("{:08x}", partial_tick.to_bits()),
+                "min_x": format!("{:016x}", border.min_x(partial_tick).to_bits()),
+                "max_x": format!("{:016x}", border.max_x(partial_tick).to_bits()),
+                "min_z": format!("{:016x}", border.min_z(partial_tick).to_bits()),
+                "max_z": format!("{:016x}", border.max_z(partial_tick).to_bits()),
+            })
+        })
+        .collect::<Vec<_>>();
+    json!({
+        "event": event,
+        "game_time": game_time,
+        "center_x": format!("{:016x}", border.center_x().to_bits()),
+        "center_z": format!("{:016x}", border.center_z().to_bits()),
+        "absolute_max_size": border.absolute_max_size(),
+        "warning_blocks": border.warning_blocks(),
+        "warning_time": border.warning_time(),
+        "size": format!("{:016x}", border.size().to_bits()),
+        "lerp_time": border.lerp_time(),
+        "lerp_target": format!("{:016x}", border.lerp_target().to_bits()),
+        "status": client_world_border_status_snapshot(border.status()),
+        "samples": samples,
+        "collision_shape": shape_snapshot(&border.collision_shape()),
+    })
 }
 
 fn shape_snapshot_with_coords(value: &VoxelShape) -> Value {
@@ -4502,6 +4546,67 @@ fn shape_result(request: &Value) -> Result<Value, String> {
                 })
                 .collect::<Result<Vec<_>, String>>()?;
             Ok(json!({"states": states}))
+        }
+        "client_world_border_state" => {
+            let inputs = request
+                .get("inputs")
+                .ok_or("inputs must be an array")?
+                .as_array()
+                .ok_or("inputs must be an array")?;
+            let tracks = inputs
+                .iter()
+                .map(|entry| {
+                    let events = entry
+                        .get("events")
+                        .ok_or("events must be an array")?
+                        .as_array()
+                        .ok_or("events must be an array")?;
+                    let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+                    let mut states = Vec::new();
+                    for event in events {
+                        let operation = string(event, "op")?;
+                        match operation {
+                            "initialize" => world.apply_world_border_initialize(
+                                ClientWorldBorderInitialization {
+                                    center_x: f64_field(event, "center_x")?,
+                                    center_z: f64_field(event, "center_z")?,
+                                    old_size: f64_field(event, "old_size")?,
+                                    new_size: f64_field(event, "new_size")?,
+                                    lerp_time: i64_field(event, "lerp_time")?,
+                                    absolute_max_size: i32_field(event, "absolute_max_size")?,
+                                    warning_blocks: i32_field(event, "warning_blocks")?,
+                                    warning_time: i32_field(event, "warning_time")?,
+                                },
+                            ),
+                            "center" => world.apply_world_border_center(
+                                f64_field(event, "center_x")?,
+                                f64_field(event, "center_z")?,
+                            ),
+                            "lerp" => world.apply_world_border_lerp_size(
+                                f64_field(event, "old_size")?,
+                                f64_field(event, "new_size")?,
+                                i64_field(event, "lerp_time")?,
+                            ),
+                            "size" => world.apply_world_border_size(f64_field(event, "size")?),
+                            "warning_blocks" => {
+                                world.apply_world_border_warning_blocks(i32_field(event, "value")?)
+                            }
+                            "warning_time" => {
+                                world.apply_world_border_warning_time(i32_field(event, "value")?)
+                            }
+                            "tick" => world.tick(),
+                            _ => return Err(format!("unknown world border event: {operation}")),
+                        }
+                        states.push(client_world_border_snapshot(
+                            operation,
+                            world.game_time(),
+                            world.world_border(),
+                        ));
+                    }
+                    Ok(json!(states))
+                })
+                .collect::<Result<Vec<_>, String>>()?;
+            Ok(json!({"tracks": tracks}))
         }
         "collect_step_up_heights" => {
             let moving = aabb_box(request.get("moving").ok_or("moving must be an object")?)?;

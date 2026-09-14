@@ -164,7 +164,15 @@ pub struct ClientWorldBorder {
     center_x_bits: u64,
     center_z_bits: u64,
     absolute_max_size: i32,
+    warning_blocks: i32,
+    warning_time: i32,
     extent: ClientWorldBorderExtent,
+}
+
+impl Default for ClientWorldBorder {
+    fn default() -> Self {
+        Self::new(0.0, 0.0, 29_999_984, f64::from(5.999997E7_f32))
+    }
 }
 
 impl ClientWorldBorder {
@@ -173,10 +181,32 @@ impl ClientWorldBorder {
             center_x_bits: center_x.to_bits(),
             center_z_bits: center_z.to_bits(),
             absolute_max_size,
+            warning_blocks: 5,
+            warning_time: 15,
             extent: ClientWorldBorderExtent::Static {
                 size_bits: size.to_bits(),
             },
         }
+    }
+
+    pub fn center_x(&self) -> f64 {
+        f64::from_bits(self.center_x_bits)
+    }
+
+    pub fn center_z(&self) -> f64 {
+        f64::from_bits(self.center_z_bits)
+    }
+
+    pub fn absolute_max_size(&self) -> i32 {
+        self.absolute_max_size
+    }
+
+    pub fn warning_blocks(&self) -> i32 {
+        self.warning_blocks
+    }
+
+    pub fn warning_time(&self) -> i32 {
+        self.warning_time
     }
 
     pub fn set_center(&mut self, center_x: f64, center_z: f64) {
@@ -186,6 +216,14 @@ impl ClientWorldBorder {
 
     pub fn set_absolute_max_size(&mut self, absolute_max_size: i32) {
         self.absolute_max_size = absolute_max_size;
+    }
+
+    pub fn set_warning_blocks(&mut self, warning_blocks: i32) {
+        self.warning_blocks = warning_blocks;
+    }
+
+    pub fn set_warning_time(&mut self, warning_time: i32) {
+        self.warning_time = warning_time;
     }
 
     pub fn set_size(&mut self, size: f64) {
@@ -306,14 +344,6 @@ impl ClientWorldBorder {
         };
     }
 
-    fn center_x(&self) -> f64 {
-        f64::from_bits(self.center_x_bits)
-    }
-
-    fn center_z(&self) -> f64 {
-        f64::from_bits(self.center_z_bits)
-    }
-
     fn effective_size(&self, partial_tick: f32) -> f64 {
         match self.extent {
             ClientWorldBorderExtent::Static { size_bits } => f64::from_bits(size_bits),
@@ -339,6 +369,19 @@ impl ClientWorldBorder {
         };
         clamp_f64(value, -absolute_max_size, absolute_max_size)
     }
+}
+
+/// Fields carried by Java's initialize-border packet.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ClientWorldBorderInitialization {
+    pub center_x: f64,
+    pub center_z: f64,
+    pub old_size: f64,
+    pub new_size: f64,
+    pub lerp_time: i64,
+    pub absolute_max_size: i32,
+    pub warning_blocks: i32,
+    pub warning_time: i32,
 }
 
 fn calculate_world_border_size(from: f64, to: f64, duration: i64, progress: i64) -> f64 {
@@ -1601,6 +1644,7 @@ pub struct ClientWorld {
     pending_light_updates: VecDeque<PendingLightUpdate>,
     entities: BTreeMap<i32, ClientEntity>,
     local_player: Option<ClientPlayerState>,
+    world_border: ClientWorldBorder,
     game_time: u64,
 }
 
@@ -1627,6 +1671,7 @@ impl ClientWorld {
             pending_light_updates: VecDeque::new(),
             entities: BTreeMap::new(),
             local_player: None,
+            world_border: ClientWorldBorder::default(),
             game_time: 0,
         }
     }
@@ -1661,6 +1706,46 @@ impl ClientWorld {
 
     pub fn dimension_environment(&self) -> &DimensionEnvironment {
         &self.dimension_environment
+    }
+
+    pub fn world_border(&self) -> &ClientWorldBorder {
+        &self.world_border
+    }
+
+    /// Apply the client listener's initialize-border packet sequence.
+    pub fn apply_world_border_initialize(&mut self, input: ClientWorldBorderInitialization) {
+        self.world_border.set_center(input.center_x, input.center_z);
+        if input.lerp_time > 0 {
+            self.world_border
+                .lerp_size_between(input.old_size, input.new_size, input.lerp_time);
+        } else {
+            self.world_border.set_size(input.new_size);
+        }
+        self.world_border
+            .set_absolute_max_size(input.absolute_max_size);
+        self.world_border.set_warning_blocks(input.warning_blocks);
+        self.world_border.set_warning_time(input.warning_time);
+    }
+
+    pub fn apply_world_border_center(&mut self, center_x: f64, center_z: f64) {
+        self.world_border.set_center(center_x, center_z);
+    }
+
+    pub fn apply_world_border_lerp_size(&mut self, old_size: f64, new_size: f64, lerp_time: i64) {
+        self.world_border
+            .lerp_size_between(old_size, new_size, lerp_time);
+    }
+
+    pub fn apply_world_border_size(&mut self, size: f64) {
+        self.world_border.set_size(size);
+    }
+
+    pub fn apply_world_border_warning_blocks(&mut self, warning_blocks: i32) {
+        self.world_border.set_warning_blocks(warning_blocks);
+    }
+
+    pub fn apply_world_border_warning_time(&mut self, warning_time: i32) {
+        self.world_border.set_warning_time(warning_time);
     }
 
     pub fn local_player(&self) -> Option<&ClientPlayerState> {
@@ -1995,6 +2080,7 @@ impl ClientWorld {
                 player.vehicle_id = None;
                 player.passenger_ids.clear();
             }
+            self.world_border = ClientWorldBorder::default();
             self.game_time = 0;
         }
         changed
@@ -2005,6 +2091,7 @@ impl ClientWorld {
     }
 
     pub fn tick(&mut self) {
+        self.world_border.tick();
         self.game_time = self.game_time.wrapping_add(1);
         let local_player_is_passenger = self.local_player.as_ref().is_some_and(|player| {
             self.entity_vehicle_id(player.id).is_some_and(|vehicle_id| {
