@@ -43,6 +43,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityDimensions;
 import net.minecraft.world.entity.Pose;
 import net.minecraft.world.entity.player.Input;
+import net.minecraft.world.entity.monster.Shulker;
 import net.minecraft.world.level.BlockCollisions;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.ChunkPos;
@@ -3221,7 +3222,7 @@ public final class MathOracle {
                     AABB testArea = box(input.getAsJsonObject("test_area"));
                     var entityStorage = new TransientEntitySectionManager<Entity>(
                         Entity.class, new NoopEntityCallbacks());
-                    var entitiesById = new java.util.HashMap<Integer, CollisionFixtureEntity>();
+                    var entitiesById = new java.util.HashMap<Integer, Entity>();
                     for (var entityEntry : input.getAsJsonArray("entities")) {
                         JsonObject entityInput = entityEntry.getAsJsonObject();
                         int entityId = entityInput.get("entity_id").getAsInt();
@@ -3237,7 +3238,7 @@ public final class MathOracle {
                             && entityInput.get("can_be_collided_with").getAsBoolean();
                         boolean sameVehicle = entityInput.has("same_vehicle")
                             && entityInput.get("same_vehicle").getAsBoolean();
-                        CollisionFixtureEntity entity = CollisionFixtureEntity.createIndexed(
+                        Entity entity = CollisionFixtureEntity.createIndexed(
                             entityId,
                             typeId,
                             position,
@@ -3936,7 +3937,7 @@ public final class MathOracle {
             }
         }
 
-        private static CollisionFixtureEntity createIndexed(
+        private static Entity createIndexed(
             int entityId,
             int typeId,
             Vec3 position,
@@ -3949,13 +3950,22 @@ public final class MathOracle {
                 throw new IllegalArgumentException("Unknown entity type id " + typeId);
             }
             AABB boundingBox = entityType.getDimensions().makeBoundingBox(position);
-            CollisionFixtureEntity entity = create(
-                boundingBox, spectator, collidable, sameVehicle, position);
+            Entity entity = typeId == 112
+                ? ShulkerCollisionFixtureEntity.create(boundingBox, sameVehicle, position)
+                : create(boundingBox, spectator, collidable, sameVehicle, position);
+            indexEntity(entity, entityId, position);
+            return entity;
+        }
+
+        private static void indexEntity(Entity entity, int entityId, Vec3 position) {
             try {
                 Unsafe unsafe = unsafeInstance();
                 var idField = Entity.class.getDeclaredField("id");
                 unsafe.putInt(entity, unsafe.objectFieldOffset(idField), entityId);
-                entity.uuid = new UUID(0L, Integer.toUnsignedLong(entityId));
+                var uuidField = Entity.class.getDeclaredField("uuid");
+                unsafe.putObject(
+                    entity, unsafe.objectFieldOffset(uuidField),
+                    new UUID(0L, Integer.toUnsignedLong(entityId)));
                 BlockPos blockPosition = BlockPos.containing(position.x, position.y, position.z);
                 var blockPositionField = Entity.class.getDeclaredField("blockPosition");
                 unsafe.putObject(
@@ -3964,7 +3974,6 @@ public final class MathOracle {
                 unsafe.putObject(
                     entity, unsafe.objectFieldOffset(chunkPositionField),
                     ChunkPos.containing(blockPosition));
-                return entity;
             } catch (ReflectiveOperationException error) {
                 throw new IllegalStateException("Unable to index collision fixture entity", error);
             }
@@ -3992,6 +4001,67 @@ public final class MathOracle {
         @Override
         public boolean isPassengerOfSameVehicle(Entity other) {
             return other instanceof CollisionFixtureEntity fixture && fixture.sameVehicle;
+        }
+
+        @Override
+        public boolean hurtServer(
+            net.minecraft.server.level.ServerLevel level,
+            net.minecraft.world.damagesource.DamageSource source,
+            float damage
+        ) {
+            return false;
+        }
+
+        @Override
+        protected void readAdditionalSaveData(net.minecraft.world.level.storage.ValueInput input) {
+        }
+
+        @Override
+        protected void addAdditionalSaveData(net.minecraft.world.level.storage.ValueOutput output) {
+        }
+    }
+
+    private static final class ShulkerCollisionFixtureEntity extends Shulker {
+        private boolean sameVehicle;
+
+        private ShulkerCollisionFixtureEntity() {
+            super(net.minecraft.world.entity.EntityTypes.SHULKER, null);
+        }
+
+        private static ShulkerCollisionFixtureEntity create(
+            AABB boundingBox, boolean sameVehicle, Vec3 position
+        ) {
+            try {
+                Unsafe unsafe = unsafeInstance();
+                ShulkerCollisionFixtureEntity entity =
+                    (ShulkerCollisionFixtureEntity)unsafe.allocateInstance(ShulkerCollisionFixtureEntity.class);
+                entity.sameVehicle = sameVehicle;
+                entity.setBoundingBox(boundingBox);
+                var field = Entity.class.getDeclaredField("position");
+                unsafe.putObject(entity, unsafe.objectFieldOffset(field), position);
+                return entity;
+            } catch (ReflectiveOperationException error) {
+                throw new IllegalStateException("Unable to allocate shulker collision fixture entity", error);
+            }
+        }
+
+        @Override
+        public boolean isAlive() {
+            return true;
+        }
+
+        @Override
+        public boolean isPassengerOfSameVehicle(Entity other) {
+            return other instanceof ShulkerCollisionFixtureEntity fixture && fixture.sameVehicle;
+        }
+
+        @Override
+        protected void defineSynchedData(net.minecraft.network.syncher.SynchedEntityData.Builder builder) {
+        }
+
+        @Override
+        public boolean isShiftKeyDown() {
+            return false;
         }
 
         @Override

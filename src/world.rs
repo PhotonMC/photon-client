@@ -459,6 +459,7 @@ const VANILLA_PLAYER_ENTITY_TYPE_ID: i32 = 156;
 const VANILLA_BREEZE_ENTITY_TYPE_ID: i32 = 17;
 const VANILLA_SPIDER_ENTITY_TYPE_ID: i32 = 124;
 const VANILLA_ZOMBIE_ENTITY_TYPE_ID: i32 = 151;
+const VANILLA_SHULKER_ENTITY_TYPE_ID: i32 = 112;
 pub(crate) const VANILLA_COW_ENTITY_TYPE_ID: i32 = 30;
 pub(crate) const VANILLA_SNOWBALL_ENTITY_TYPE_ID: i32 = 120;
 pub(crate) const VANILLA_ARROW_ENTITY_TYPE_ID: i32 = 6;
@@ -919,6 +920,10 @@ fn is_vanilla_boat_entity_type(entity_type_id: i32) -> bool {
     VANILLA_BOAT_PASSENGER_GEOMETRY
         .iter()
         .any(|&(type_id, _, _)| type_id == entity_type_id)
+}
+
+fn is_vanilla_shulker_entity_type(entity_type_id: i32) -> bool {
+    entity_type_id == VANILLA_SHULKER_ENTITY_TYPE_ID
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -4897,15 +4902,19 @@ impl ClientEntity {
         source_entity_id: Option<i32>,
         same_vehicle: bool,
     ) -> Option<ClientEntityCollisionCandidate> {
-        if !is_vanilla_boat_entity_type(self.type_id) {
+        let (width, height) = if is_vanilla_boat_entity_type(self.type_id) {
+            (
+                (VANILLA_BOAT_HALF_WIDTH * 2.0) as f32,
+                VANILLA_BOAT_HEIGHT as f32,
+            )
+        } else if is_vanilla_shulker_entity_type(self.type_id) {
+            (1.0, 1.0)
+        } else {
             return None;
-        }
+        };
         let (x, y, z) = self.position();
-        let bounding_box = ClientEntityDimensions::scalable(
-            (VANILLA_BOAT_HALF_WIDTH * 2.0) as f32,
-            VANILLA_BOAT_HEIGHT as f32,
-        )
-        .make_bounding_box(Vec3::new(x, y, z));
+        let bounding_box =
+            ClientEntityDimensions::scalable(width, height).make_bounding_box(Vec3::new(x, y, z));
         Some(ClientEntityCollisionCandidate {
             bounding_box,
             is_source: source_entity_id == Some(self.id),
