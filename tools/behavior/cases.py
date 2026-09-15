@@ -1467,6 +1467,32 @@ def math_cases():
         ],
     }
 
+    yield {
+        "case_id": "client-world/entity-stinger-count",
+        "family": "math",
+        "operation": "client_world_entity_stinger_count",
+        "entity_id": 37,
+        "entity_type_id": 54,
+        "operations": [
+            {
+                "label": "set-positive-stinger-count",
+                "metadata_hex": "0d0102ff",
+            },
+            {
+                "label": "combined-living-and-negative-stinger-count",
+                "metadata_hex": "0800010d01ffffffff0fff",
+            },
+            {
+                "label": "no-gravity-preserves-stinger-count",
+                "metadata_hex": "050801ff",
+            },
+            {
+                "label": "clear-stinger-count",
+                "metadata_hex": "0d0100ff",
+            },
+        ],
+    }
+
     def attribute_modifier(identifier, amount, operation):
         return {
             "id": identifier,

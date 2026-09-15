@@ -5152,6 +5152,9 @@ public final class MathOracle {
         if (operation.equals("client_world_entity_sleeping_position")) {
             return clientWorldEntitySleepingPositionResult(request);
         }
+        if (operation.equals("client_world_entity_stinger_count")) {
+            return clientWorldEntityStingerCountResult(request);
+        }
         throw new IllegalArgumentException("Unknown client world operation");
     }
 
@@ -6237,6 +6240,47 @@ public final class MathOracle {
             position -> state.add("sleeping_pos", snapshot(position)),
             () -> state.add("sleeping_pos", JsonNull.INSTANCE));
         state.addProperty("is_sleeping", entity.isSleeping());
+        return state;
+    }
+
+    private static JsonObject clientWorldEntityStingerCountResult(JsonObject request) {
+        try {
+            var output = System.out;
+            var errorOutput = System.err;
+            try {
+                SharedConstants.setVersion(TEST_VERSION);
+                Bootstrap.bootStrap();
+            } finally {
+                System.setOut(output);
+                System.setErr(errorOutput);
+            }
+
+            var entity = new LivingFlagsFixtureEntity();
+            var states = new JsonArray();
+            states.add(entityStingerCountState("initial", true, entity));
+            for (JsonElement operationEntry : request.getAsJsonArray("operations")) {
+                JsonObject operation = operationEntry.getAsJsonObject();
+                entity.getEntityData().assignValues(
+                    decodeEntityMetadata(operation.get("metadata_hex").getAsString()));
+                states.add(entityStingerCountState(
+                    operation.get("label").getAsString(), true, entity));
+            }
+            var result = new JsonObject();
+            result.add("states", states);
+            return result;
+        } catch (RuntimeException error) {
+            throw new IllegalStateException("Entity stinger count fixture failed", error);
+        }
+    }
+
+    private static JsonObject entityStingerCountState(
+        String label, boolean accepted, LivingFlagsFixtureEntity entity
+    ) {
+        var state = new JsonObject();
+        state.addProperty("label", label);
+        state.addProperty("accepted", accepted);
+        state.addProperty("stinger_count", entity.getStingerCount());
+        state.addProperty("living_flags", entity.livingFlags());
         return state;
     }
 
