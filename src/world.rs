@@ -10,12 +10,13 @@ use crate::input::{
     LocalPlayerTravelFlyingParameters, LocalPlayerTravelInAirInput,
     LocalPlayerTravelInAirParameters, LocalPlayerTravelInLavaInput,
     LocalPlayerTravelInLavaParameters, LocalPlayerTravelInWaterInput,
-    LocalPlayerTravelInWaterParameters, adjust_local_player_fluid_falling_movement,
+    LocalPlayerTravelInWaterParameters, LocalPlayerUpdateFallFlyingMovementInput,
+    LocalPlayerUpdateFallFlyingMovementParameters, adjust_local_player_fluid_falling_movement,
     apply_local_player_input as apply_local_player_input_fields,
     clamp_local_player_climbable_movement, local_player_friction_influenced_speed,
     local_player_handle_relative_friction, local_player_modified_friction,
     local_player_travel_flying, local_player_travel_in_air, local_player_travel_in_lava,
-    local_player_travel_in_water,
+    local_player_travel_in_water, local_player_update_fall_flying_movement,
 };
 use crate::math::{
     MTH_DEG_TO_RAD, Vec3, abs_max_f64, clamp_f32, clamp_f64, equal_f64, floor_f32, mth_atan2,
@@ -2921,6 +2922,18 @@ impl ClientWorld {
             return false;
         };
         player.apply_travel_in_air(parameters);
+        true
+    }
+
+    /// Apply Java's fall-flying movement update to local player motion.
+    pub fn apply_local_player_update_fall_flying_movement(
+        &mut self,
+        parameters: LocalPlayerUpdateFallFlyingMovementParameters,
+    ) -> bool {
+        let Some(player) = self.local_player.as_mut() else {
+            return false;
+        };
+        player.apply_update_fall_flying_movement(parameters);
         true
     }
 
@@ -5911,6 +5924,26 @@ impl ClientPlayerState {
             air_drag_modifier: parameters.air_drag_modifier,
             omnidirectional_air_mover: parameters.omnidirectional_air_mover,
         });
+        self.motion_x_bits = movement.x.to_bits();
+        self.motion_y_bits = movement.y.to_bits();
+        self.motion_z_bits = movement.z.to_bits();
+    }
+
+    fn apply_update_fall_flying_movement(
+        &mut self,
+        parameters: LocalPlayerUpdateFallFlyingMovementParameters,
+    ) {
+        let movement =
+            local_player_update_fall_flying_movement(LocalPlayerUpdateFallFlyingMovementInput {
+                look_angle: parameters.look_angle,
+                delta_movement: Vec3::new(
+                    f64::from_bits(self.motion_x_bits),
+                    f64::from_bits(self.motion_y_bits),
+                    f64::from_bits(self.motion_z_bits),
+                ),
+                x_rot: parameters.x_rot,
+                gravity: parameters.gravity,
+            });
         self.motion_x_bits = movement.x.to_bits();
         self.motion_y_bits = movement.y.to_bits();
         self.motion_z_bits = movement.z.to_bits();
@@ -8921,6 +8954,82 @@ mod tests {
                 f64::from_bits(0x3fb8_534b_8b3a_e058),
                 0.0,
                 f64::from_bits(0x3fd4_3f05_8e95_6c40),
+            ),
+        );
+    }
+
+    #[test]
+    fn local_player_update_fall_flying_movement_applies_lift_and_alignment() {
+        let mut world = ClientWorld::default();
+        world.set_local_player_id(42);
+        let base = super::LocalPlayerUpdateFallFlyingMovementParameters {
+            look_angle: Vec3::new(0.0, 0.0, 1.0),
+            x_rot: 0.0,
+            gravity: 0.08,
+        };
+
+        assert!(world.apply_local_player_position((0.0, 0.0, 0.0), (0.1, -0.2, 0.3), (0.0, 0.0),));
+        assert!(world.apply_local_player_update_fall_flying_movement(base));
+        assert_eq!(
+            world
+                .local_player()
+                .expect("neutral fall-flying player")
+                .motion(),
+            (
+                f64::from_bits(0x3fb6_cf41_f5c2_8f5c),
+                f64::from_bits(0xbfc8_d64d_872b_020d),
+                f64::from_bits(0x3fd4_5d87_66ee_39ec),
+            ),
+        );
+
+        assert!(world.apply_local_player_position((0.0, 0.0, 0.0), (0.2, -0.4, 0.3), (0.0, 30.0),));
+        assert!(world.apply_local_player_update_fall_flying_movement(
+            super::LocalPlayerUpdateFallFlyingMovementParameters {
+                look_angle: Vec3::new(0.0, -0.5, 0.8660254037844386),
+                x_rot: 30.0,
+                ..base
+            },
+        ));
+        assert_eq!(
+            world.local_player().expect("nose-down player").motion(),
+            (
+                f64::from_bits(0x3fc6_cf41_f5c2_8f5c),
+                f64::from_bits(0xbfd9_3ca9_72a8_945d),
+                f64::from_bits(0x3fd5_4088_ac4b_16c2),
+            ),
+        );
+
+        assert!(world.apply_local_player_position((0.0, 0.0, 0.0), (0.3, 0.1, 0.2), (0.0, -30.0),));
+        assert!(world.apply_local_player_update_fall_flying_movement(
+            super::LocalPlayerUpdateFallFlyingMovementParameters {
+                look_angle: Vec3::new(0.0, 0.5, 0.8660254037844386),
+                x_rot: -30.0,
+                ..base
+            },
+        ));
+        assert_eq!(
+            world.local_player().expect("nose-up player").motion(),
+            (
+                f64::from_bits(0x3fd1_1b71_7851_eb85),
+                f64::from_bits(0x3fb6_1897_eca6_3b6e),
+                f64::from_bits(0x3fca_8e62_5f66_105d),
+            ),
+        );
+
+        assert!(world.apply_local_player_position((0.0, 0.0, 0.0), (0.1, -0.2, 0.3), (0.0, 15.0),));
+        assert!(world.apply_local_player_update_fall_flying_movement(
+            super::LocalPlayerUpdateFallFlyingMovementParameters {
+                look_angle: Vec3::new(0.0, 1.0, 0.0),
+                x_rot: 15.0,
+                ..base
+            },
+        ));
+        assert_eq!(
+            world.local_player().expect("vertical-look player").motion(),
+            (
+                f64::from_bits(0x3fb9_5810_6666_6667),
+                f64::from_bits(0xbfcc_19d9_6ad4_96cc),
+                f64::from_bits(0x3fd3_020c_4ccc_cccd),
             ),
         );
     }

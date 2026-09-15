@@ -34,11 +34,13 @@ use voxel_client::input::{
     LocalPlayerInputModifiers, LocalPlayerInputState, LocalPlayerModifiedFrictionInput,
     LocalPlayerSprintGateInput, LocalPlayerTravelFlyingInput, LocalPlayerTravelInAirInput,
     LocalPlayerTravelInLavaInput, LocalPlayerTravelInWaterInput,
-    adjust_local_player_fluid_falling_movement, apply_local_player_input,
-    can_start_local_player_sprinting, clamp_local_player_climbable_movement,
-    local_player_friction_influenced_speed, local_player_handle_relative_friction,
-    local_player_modified_friction, local_player_travel_flying, local_player_travel_in_air,
-    local_player_travel_in_lava, local_player_travel_in_water, modify_local_player_input,
+    LocalPlayerUpdateFallFlyingMovementInput, adjust_local_player_fluid_falling_movement,
+    apply_local_player_input, can_start_local_player_sprinting,
+    clamp_local_player_climbable_movement, local_player_friction_influenced_speed,
+    local_player_handle_relative_friction, local_player_modified_friction,
+    local_player_travel_flying, local_player_travel_in_air, local_player_travel_in_lava,
+    local_player_travel_in_water, local_player_update_fall_flying_movement,
+    modify_local_player_input,
 };
 use voxel_client::input_event::{
     CharacterEvent, InputWithModifiers, KeyEvent as InputKeyEvent, MouseButtonEvent,
@@ -8624,6 +8626,31 @@ fn math_result(request: &Value) -> Result<Value, String> {
                         .as_bool()
                         .ok_or("omnidirectional_air_mover must be a boolean")?,
                 });
+                Ok(json!({
+                    "label": string(input, "label")?,
+                    "movement": vec3_snapshot(movement),
+                }))
+            })
+            .collect::<Result<Vec<_>, String>>()?;
+        return Ok(json!({"states": states}));
+    }
+    if operation == "local_player_update_fall_flying_movement" {
+        let inputs = request["inputs"]
+            .as_array()
+            .ok_or("inputs must be an array")?;
+        let states = inputs
+            .iter()
+            .map(|input| {
+                let movement = local_player_update_fall_flying_movement(
+                    LocalPlayerUpdateFallFlyingMovementInput {
+                        look_angle: f64_vec3(input.get("look").ok_or("look must be a vector")?)?,
+                        delta_movement: f64_vec3(
+                            input.get("delta").ok_or("delta must be a vector")?,
+                        )?,
+                        x_rot: f32_field(input, "x_rot")?,
+                        gravity: f64_field(input, "gravity")?,
+                    },
+                );
                 Ok(json!({
                     "label": string(input, "label")?,
                     "movement": vec3_snapshot(movement),

@@ -2019,6 +2019,54 @@ def math_cases():
            "operation": "local_player_travel_in_air",
            "inputs": local_player_travel_in_air_inputs}
 
+    local_player_update_fall_flying_cases = [
+        {
+            "label": "neutral-glide-applies-lift-and-drag",
+        },
+        {
+            "label": "nose-down-converts-descending-speed",
+            "look": vector_bits(0.0, -0.5, 0.8660254037844386),
+            "x_rot": float_bits(30.0, "f32"),
+            "delta": vector_bits(0.2, -0.4, 0.3),
+        },
+        {
+            "label": "nose-up-adds-lift",
+            "look": vector_bits(0.0, 0.5, 0.8660254037844386),
+            "x_rot": float_bits(-30.0, "f32"),
+            "delta": vector_bits(0.3, 0.1, 0.2),
+        },
+        {
+            "label": "vertical-look-skips-horizontal-conversion",
+            "look": vector_bits(0.0, 1.0, 0.0),
+            "x_rot": float_bits(15.0, "f32"),
+        },
+        {
+            "label": "zero-gravity-keeps-lift-free-motion",
+            "gravity": float_bits(0.0, "f64"),
+            "look": vector_bits(-0.6, 0.0, 0.8),
+            "x_rot": float_bits(0.0, "f32"),
+        },
+        {
+            "label": "negative-look-direction-aligns-horizontal-motion",
+            "look": vector_bits(-0.6, 0.0, 0.8),
+            "x_rot": float_bits(0.0, "f32"),
+            "delta": vector_bits(0.35, -0.1, -0.25),
+        },
+    ]
+    local_player_update_fall_flying_defaults = {
+        "look": vector_bits(0.0, 0.0, 1.0),
+        "delta": vector_bits(0.1, -0.2, 0.3),
+        "x_rot": float_bits(0.0, "f32"),
+        "gravity": float_bits(0.08, "f64"),
+    }
+    local_player_update_fall_flying_inputs = []
+    for values in local_player_update_fall_flying_cases:
+        input_values = {**local_player_update_fall_flying_defaults, **values}
+        local_player_update_fall_flying_inputs.append(input_values)
+    yield {"case_id": "player-movement/update-fall-flying-movement", "family": "math",
+           "operation": "local_player_update_fall_flying_movement",
+           "inputs": local_player_update_fall_flying_inputs}
+
     codec_decodes = {
         "basic": [float_bits(1.25, "f64"), float_bits(-2.5, "f64"), float_bits(3.75, "f64")],
         "zero": [float_bits(0.0, "f64"), float_bits(0.0, "f64"), float_bits(0.0, "f64")],

@@ -346,6 +346,8 @@ public final class MathOracle {
             return localPlayerHandleRelativeFrictionResult(request);
         } else if (operation.equals("local_player_travel_in_air")) {
             return localPlayerTravelInAirResult(request);
+        } else if (operation.equals("local_player_update_fall_flying_movement")) {
+            return localPlayerUpdateFallFlyingMovementResult(request);
         } else if (operation.equals("character_event")) {
             CharacterEvent event = new CharacterEvent(request.get("codepoint").getAsInt());
             result.addProperty("codepoint", event.codepoint());
@@ -4870,6 +4872,37 @@ public final class MathOracle {
         }
     }
 
+    private static JsonObject localPlayerUpdateFallFlyingMovementResult(JsonObject request) {
+        try {
+            var method = LivingEntity.class.getDeclaredMethod("updateFallFlyingMovement", Vec3.class);
+            method.setAccessible(true);
+            var states = new JsonArray();
+            Unsafe unsafe = unsafeInstance();
+            for (var inputEntry : request.getAsJsonArray("inputs")) {
+                JsonObject input = inputEntry.getAsJsonObject();
+                LocalPlayerInputFixture player =
+                    (LocalPlayerInputFixture)unsafe.allocateInstance(LocalPlayerInputFixture.class);
+                player.configureFallFlyingMovement(
+                    vec3(input.getAsJsonObject("look")),
+                    Oracle.f32(input, "x_rot"),
+                    f64(input, "gravity"));
+                Vec3 movement = (Vec3)method.invoke(
+                    player,
+                    vec3(input.getAsJsonObject("delta")));
+                var state = new JsonObject();
+                state.addProperty("label", input.get("label").getAsString());
+                state.add("movement", snapshot(movement));
+                states.add(state);
+            }
+            var result = new JsonObject();
+            result.add("states", states);
+            return result;
+        } catch (ReflectiveOperationException error) {
+            throw new IllegalStateException(
+                "LivingEntity.updateFallFlyingMovement reflection failed", error);
+        }
+    }
+
     private static double f64(JsonObject object, String name) {
         return f64(object.get(name).getAsString());
     }
@@ -6550,6 +6583,7 @@ public final class MathOracle {
         private int levitationAmplifier;
         private boolean discardFrictionState;
         private boolean omnidirectionalAirMoverState;
+        private Vec3 fallFlyingLookAngle;
 
         private LocalPlayerInputFixture() {
             super(null, null, null, null, null, Input.EMPTY, false, null);
@@ -6602,6 +6636,11 @@ public final class MathOracle {
         @Override
         public float getXRot() {
             return this.xRotation;
+        }
+
+        @Override
+        public Vec3 getLookAngle() {
+            return this.fallFlyingLookAngle;
         }
 
         @Override
@@ -6951,6 +6990,16 @@ public final class MathOracle {
             var position = net.minecraft.world.entity.Entity.class.getDeclaredField("position");
             position.setAccessible(true);
             position.set(this, new Vec3(0.0, currentY, 0.0));
+        }
+
+        private void configureFallFlyingMovement(
+            final Vec3 lookAngle,
+            final float xRot,
+            final double gravity
+        ) {
+            this.fallFlyingLookAngle = lookAngle;
+            this.xRotation = xRot;
+            this.gravity = gravity;
         }
 
         private void setItemUseSpeed(final float speed) throws ReflectiveOperationException {

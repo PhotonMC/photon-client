@@ -88,6 +88,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P05.a — OptionInstance ClampingLazyMaxIntRange sözleşmesi — client-parity birleşik kayıt](clamping-lazy-max-int-range-conformance.md)
 - [P10.b — LocalPlayer applyInput — client-parity birleşik kayıt](client-player-apply-input-conformance.md)
 - [P10.d.1 — LivingEntity climbable movement clamp — client-parity birleşik kayıt](client-player-climbable-movement-conformance.md)
+- [P10.e.5 — LivingEntity updateFallFlyingMovement — client-parity birleşik kayıt](client-player-fall-flying-movement-conformance.md)
 - [P10.d — LivingEntity fluid falling adjustment — client-parity birleşik kayıt](client-player-fluid-falling-conformance.md)
 - [P10.d.2 — LivingEntity friction-influenced speed — client-parity birleşik kayıt](client-player-friction-speed-conformance.md)
 - [P10.e.3 — LivingEntity handleRelativeFrictionAndCalculateMovement — client-parity birleşik kayıt](client-player-handle-relative-friction-conformance.md)

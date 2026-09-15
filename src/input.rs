@@ -483,6 +483,24 @@ pub struct LocalPlayerTravelInAirInput {
     pub omnidirectional_air_mover: bool,
 }
 
+/// The environment state consumed by LivingEntity.updateFallFlyingMovement.
+#[derive(Debug, Clone, Copy)]
+pub struct LocalPlayerUpdateFallFlyingMovementParameters {
+    pub look_angle: Vec3,
+    pub x_rot: f32,
+    pub gravity: f64,
+}
+
+/// The environment and motion state consumed by
+/// LivingEntity.updateFallFlyingMovement.
+#[derive(Debug, Clone, Copy)]
+pub struct LocalPlayerUpdateFallFlyingMovementInput {
+    pub look_angle: Vec3,
+    pub delta_movement: Vec3,
+    pub x_rot: f32,
+    pub gravity: f64,
+}
+
 /// Apply Java LivingEntity.travelInWater with collision and fluid lookup
 /// results supplied by the caller.
 pub fn local_player_travel_in_water(state: LocalPlayerTravelInWaterInput) -> Vec3 {
@@ -694,6 +712,57 @@ pub fn local_player_travel_in_air(state: LocalPlayerTravelInAirInput) -> Vec3 {
     } else {
         original_delta_movement
     }
+}
+
+/// Apply Java LivingEntity.updateFallFlyingMovement with look and gravity
+/// state resolved by the caller.
+pub fn local_player_update_fall_flying_movement(
+    state: LocalPlayerUpdateFallFlyingMovementInput,
+) -> Vec3 {
+    let lean_angle = state.x_rot * MTH_DEG_TO_RAD;
+    let look_horizontal_length =
+        (state.look_angle.x * state.look_angle.x + state.look_angle.z * state.look_angle.z).sqrt();
+    let move_horizontal_length = state.delta_movement.horizontal_distance();
+    let lift_force = f64::from(lean_angle).cos().powi(2);
+    let mut movement =
+        state
+            .delta_movement
+            .add_components(0.0, state.gravity * (-1.0 + lift_force * 0.75), 0.0);
+
+    if movement.y < 0.0 && look_horizontal_length > 0.0 {
+        let convert = movement.y * -0.1 * lift_force;
+        movement = movement.add_components(
+            state.look_angle.x * convert / look_horizontal_length,
+            convert,
+            state.look_angle.z * convert / look_horizontal_length,
+        );
+    }
+
+    if lean_angle < 0.0 && look_horizontal_length > 0.0 {
+        let convert =
+            move_horizontal_length * -f64::from(mth_sin_f64(f64::from(lean_angle))) * 0.04;
+        movement = movement.add_components(
+            -state.look_angle.x * convert / look_horizontal_length,
+            convert * 3.2,
+            -state.look_angle.z * convert / look_horizontal_length,
+        );
+    }
+
+    if look_horizontal_length > 0.0 {
+        movement = movement.add_components(
+            (state.look_angle.x / look_horizontal_length * move_horizontal_length - movement.x)
+                * 0.1,
+            0.0,
+            (state.look_angle.z / look_horizontal_length * move_horizontal_length - movement.z)
+                * 0.1,
+        );
+    }
+
+    movement.multiply_components(
+        f64::from(0.99_f32),
+        f64::from(0.98_f32),
+        f64::from(0.99_f32),
+    )
 }
 
 /// Apply the no-collision movement and drag path of Java LivingEntity.travelFlying.
