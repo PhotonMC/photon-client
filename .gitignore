@@ -12,6 +12,8 @@ test-results/
 *.tar
 *.tar.gz
 *.log
+*.log.gz
+logs/
 .env
 .env.*
 !.env.example

@@ -1,0 +1,180 @@
+//! `ClientWorld` constants layer split out of the former single-file module.
+
+
+
+
+
+
+pub(crate) const PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS: u8 = 1;
+pub(crate) const PLAYER_RESPAWN_KEEP_ENTITY_DATA: u8 = 2;
+pub(crate) const VANILLA_PLAYER_MOVEMENT_SPEED_ATTRIBUTE_ID: i32 = 26;
+pub(crate) const VANILLA_PLAYER_DEFAULT_MOVEMENT_SPEED: f32 = 0.1_f32;
+pub(crate) const VANILLA_PLAYER_SNEAKING_SPEED_ATTRIBUTE_ID: i32 = 31;
+pub(crate) const VANILLA_PLAYER_DEFAULT_SNEAKING_SPEED: f64 = 0.3;
+pub(crate) const VANILLA_PLAYER_SPRINTING_MODIFIER_ID: &str = "minecraft:sprinting";
+pub(crate) const VANILLA_PLAYER_SPRINTING_MODIFIER_AMOUNT: f32 = 0.3_f32;
+pub(crate) const VANILLA_PLAYER_ENTITY_TYPE_ID: i32 = 156;
+pub(crate) const VANILLA_BREEZE_ENTITY_TYPE_ID: i32 = 17;
+pub(crate) const VANILLA_SPIDER_ENTITY_TYPE_ID: i32 = 124;
+pub(crate) const VANILLA_ZOMBIE_ENTITY_TYPE_ID: i32 = 151;
+pub(crate) const VANILLA_SHULKER_ENTITY_TYPE_ID: i32 = 112;
+pub(crate) const VANILLA_HAPPY_GHAST_ENTITY_TYPE_ID: i32 = 58;
+pub(crate) const VANILLA_COW_ENTITY_TYPE_ID: i32 = 30;
+pub(crate) const VANILLA_SNOWBALL_ENTITY_TYPE_ID: i32 = 120;
+pub(crate) const VANILLA_ARROW_ENTITY_TYPE_ID: i32 = 6;
+pub(crate) const VANILLA_EXPERIENCE_ORB_ENTITY_TYPE_ID: i32 = 49;
+pub(crate) const VANILLA_LIVING_ENTITY_TYPE_IDS: &[i32] = &[
+    2, 4, 5, 7, 10, 11, 14, 16, 17, 19, 20, 21, 22, 26, 27, 28, 30, 31, 32, 35, 36, 38, 40, 41, 42,
+    43, 46, 54, 55, 57, 58, 59, 61, 62, 63, 64, 66, 67, 68, 70, 78, 80, 83, 86, 87, 88, 91, 96, 97,
+    98, 99, 100, 101, 102, 103, 104, 107, 108, 109, 110, 111, 112, 114, 115, 116, 117, 119, 121,
+    124, 127, 128, 129, 130, 131, 135, 137, 138, 139, 140, 141, 142, 143, 145, 146, 147, 149, 150,
+    151, 152, 153, 154, 155, 156,
+];
+pub(crate) const VANILLA_ANIMAL_ENTITY_TYPE_IDS: &[i32] = &[
+    4, 7, 11, 19, 20, 21, 26, 30, 36, 54, 55, 58, 62, 64, 66, 78, 86, 87, 88, 91, 96, 98, 100, 104,
+    108, 111, 116, 119, 129, 135, 138, 149, 152, 153,
+];
+pub(crate) const VANILLA_CHEST_BOAT_ENTITY_TYPE_IDS: &[i32] = &[1, 8, 13, 24, 34, 75, 82, 90, 95, 126];
+pub(crate) const VANILLA_MINECART_ENTITY_TYPE_IDS: &[i32] = &[25, 29, 56, 65, 85, 122, 134];
+pub(crate) const VANILLA_BOAT_RIDE_HEIGHT: f32 = 0.5625_f32 / 3.0_f32;
+pub(crate) const VANILLA_RAFT_RIDE_HEIGHT: f32 = 0.5625_f32 * 0.8888889_f32;
+pub(crate) const VANILLA_CHEST_BOAT_PASSENGER_Z_OFFSET: f32 = 0.15_f32;
+pub(crate) const VANILLA_BOAT_HALF_WIDTH: f64 = 0.6875;
+pub(crate) const VANILLA_BOAT_HEIGHT: f64 = 0.5625;
+pub(crate) const VANILLA_BOAT_AIR_FRICTION: f32 = 0.9_f32;
+pub(crate) const VANILLA_BOAT_GRAVITY: f64 = 0.04;
+pub(crate) const VANILLA_ARROW_AIR_FRICTION: f32 = 0.99_f32;
+pub(crate) const VANILLA_ARROW_GRAVITY: f64 = 0.05;
+pub(crate) const PROJECTILE_DEGREES_PER_RADIAN: f64 = 57.2957763671875;
+pub(crate) const VANILLA_EXPERIENCE_ORB_AIR_FRICTION: f32 = 0.98_f32;
+pub(crate) const VANILLA_EXPERIENCE_ORB_GRAVITY: f64 = 0.03;
+pub(crate) const VANILLA_PRIMED_TNT_ENTITY_TYPE_ID: i32 = 133;
+pub(crate) const VANILLA_PRIMED_TNT_AIR_FRICTION: f32 = 0.98_f32;
+pub(crate) const VANILLA_PRIMED_TNT_GRAVITY: f64 = 0.04;
+pub(crate) const VANILLA_FALLING_BLOCK_ENTITY_TYPE_ID: i32 = 51;
+pub(crate) const VANILLA_FALLING_BLOCK_AIR_FRICTION: f32 = 0.98_f32;
+pub(crate) const VANILLA_FALLING_BLOCK_GRAVITY: f64 = 0.04;
+pub(crate) const VANILLA_FIREWORK_ROCKET_ENTITY_TYPE_ID: i32 = 53;
+pub(crate) const VANILLA_FIREWORK_ROCKET_HORIZONTAL_ACCELERATION: f64 = 1.15;
+pub(crate) const VANILLA_FIREWORK_ROCKET_VERTICAL_ACCELERATION: f64 = 0.04;
+pub(crate) const VANILLA_SPIDER_VEHICLE_ATTACHMENT_Y: f64 = 0.3125;
+pub(crate) const VANILLA_BOAT_PASSENGER_GEOMETRY: &[(i32, f32, f32)] = &[
+    (0, VANILLA_BOAT_RIDE_HEIGHT, 0.0),
+    (
+        1,
+        VANILLA_BOAT_RIDE_HEIGHT,
+        VANILLA_CHEST_BOAT_PASSENGER_Z_OFFSET,
+    ),
+    (
+        8,
+        VANILLA_RAFT_RIDE_HEIGHT,
+        VANILLA_CHEST_BOAT_PASSENGER_Z_OFFSET,
+    ),
+    (9, VANILLA_RAFT_RIDE_HEIGHT, 0.0),
+    (12, VANILLA_BOAT_RIDE_HEIGHT, 0.0),
+    (
+        13,
+        VANILLA_BOAT_RIDE_HEIGHT,
+        VANILLA_CHEST_BOAT_PASSENGER_Z_OFFSET,
+    ),
+    (23, VANILLA_BOAT_RIDE_HEIGHT, 0.0),
+    (
+        24,
+        VANILLA_BOAT_RIDE_HEIGHT,
+        VANILLA_CHEST_BOAT_PASSENGER_Z_OFFSET,
+    ),
+    (33, VANILLA_BOAT_RIDE_HEIGHT, 0.0),
+    (
+        34,
+        VANILLA_BOAT_RIDE_HEIGHT,
+        VANILLA_CHEST_BOAT_PASSENGER_Z_OFFSET,
+    ),
+    (74, VANILLA_BOAT_RIDE_HEIGHT, 0.0),
+    (
+        75,
+        VANILLA_BOAT_RIDE_HEIGHT,
+        VANILLA_CHEST_BOAT_PASSENGER_Z_OFFSET,
+    ),
+    (81, VANILLA_BOAT_RIDE_HEIGHT, 0.0),
+    (
+        82,
+        VANILLA_BOAT_RIDE_HEIGHT,
+        VANILLA_CHEST_BOAT_PASSENGER_Z_OFFSET,
+    ),
+    (89, VANILLA_BOAT_RIDE_HEIGHT, 0.0),
+    (
+        90,
+        VANILLA_BOAT_RIDE_HEIGHT,
+        VANILLA_CHEST_BOAT_PASSENGER_Z_OFFSET,
+    ),
+    (94, VANILLA_BOAT_RIDE_HEIGHT, 0.0),
+    (
+        95,
+        VANILLA_BOAT_RIDE_HEIGHT,
+        VANILLA_CHEST_BOAT_PASSENGER_Z_OFFSET,
+    ),
+    (125, VANILLA_BOAT_RIDE_HEIGHT, 0.0),
+    (
+        126,
+        VANILLA_BOAT_RIDE_HEIGHT,
+        VANILLA_CHEST_BOAT_PASSENGER_Z_OFFSET,
+    ),
+];
+pub(crate) const VANILLA_PLAYER_VEHICLE_ATTACHMENT_Y: f64 = 0.6;
+pub(crate) const VANILLA_AIR_BLOCK_STATE_ID: i32 = 0;
+pub(crate) const VANILLA_WATER_BLOCK_STATE_ID: i32 = 86;
+pub(crate) const ENTITY_SHARED_FLAGS_DATA_ID: u8 = 0;
+pub(crate) const ENTITY_AIR_SUPPLY_DATA_ID: u8 = 1;
+pub(crate) const ENTITY_CUSTOM_NAME_DATA_ID: u8 = 2;
+pub(crate) const ENTITY_CUSTOM_NAME_VISIBLE_DATA_ID: u8 = 3;
+pub(crate) const ENTITY_SILENT_DATA_ID: u8 = 4;
+pub(crate) const ENTITY_NO_GRAVITY_DATA_ID: u8 = 5;
+pub(crate) const ENTITY_POSE_DATA_ID: u8 = 6;
+pub(crate) const ENTITY_TICKS_FROZEN_DATA_ID: u8 = 7;
+pub(crate) const ENTITY_LIVING_FLAGS_DATA_ID: u8 = 8;
+pub(crate) const ENTITY_HEALTH_DATA_ID: u8 = 9;
+pub(crate) const ENTITY_EFFECT_PARTICLES_DATA_ID: u8 = 10;
+pub(crate) const ENTITY_EFFECT_AMBIENCE_DATA_ID: u8 = 11;
+pub(crate) const ENTITY_ARROW_COUNT_DATA_ID: u8 = 12;
+pub(crate) const ENTITY_STINGER_COUNT_DATA_ID: u8 = 13;
+pub(crate) const ENTITY_SLEEPING_POS_DATA_ID: u8 = 14;
+pub(crate) const ENTITY_MOB_FLAGS_DATA_ID: u8 = 15;
+pub(crate) const VANILLA_ZOMBIE_BABY_DATA_ID: u8 = 16;
+pub(crate) const ENTITY_DATA_SERIALIZER_BYTE_ID: i32 = 0;
+pub(crate) const ENTITY_DATA_SERIALIZER_INT_ID: i32 = 1;
+pub(crate) const ENTITY_DATA_SERIALIZER_FLOAT_ID: i32 = 3;
+pub(crate) const ENTITY_DATA_SERIALIZER_OPTIONAL_COMPONENT_ID: i32 = 6;
+pub(crate) const ENTITY_DATA_SERIALIZER_BOOLEAN_ID: i32 = 8;
+pub(crate) const ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_POS_ID: i32 = 11;
+pub(crate) const ENTITY_DATA_SERIALIZER_PARTICLES_ID: i32 = 17;
+pub(crate) const ENTITY_DATA_SERIALIZER_POSE_ID: i32 = 20;
+pub(crate) const ENTITY_EFFECT_PARTICLE_TYPE_ID: i32 = 28;
+pub(crate) const DEFAULT_AIR_SUPPLY: i32 = 300;
+pub(crate) const DEFAULT_TICKS_REQUIRED_TO_FREEZE: i32 = 140;
+pub(crate) const LIVING_ENTITY_HEAD_LERP_STEPS: u8 = 3;
+pub(crate) const LIVING_ENTITY_POSITION_LERP_STEPS: u8 = 3;
+pub(crate) const REMOTE_PLAYER_MOTION_LERP_STEPS: u8 = 3;
+pub(crate) const ENTITY_INTERPOLATION_DISTANCE_SQR: f64 = 4096.0;
+pub(crate) const ENTITY_RELATIVE_X_FLAG: i32 = 1 << 0;
+pub(crate) const ENTITY_RELATIVE_Y_FLAG: i32 = 1 << 1;
+pub(crate) const ENTITY_RELATIVE_Z_FLAG: i32 = 1 << 2;
+pub(crate) const ENTITY_RELATIVE_Y_ROT_FLAG: i32 = 1 << 3;
+pub(crate) const ENTITY_RELATIVE_X_ROT_FLAG: i32 = 1 << 4;
+pub(crate) const ENTITY_RELATIVE_DELTA_X_FLAG: i32 = 1 << 5;
+pub(crate) const ENTITY_RELATIVE_DELTA_Y_FLAG: i32 = 1 << 6;
+pub(crate) const ENTITY_RELATIVE_DELTA_Z_FLAG: i32 = 1 << 7;
+pub(crate) const ENTITY_RELATIVE_ROTATE_DELTA_FLAG: i32 = 1 << 8;
+pub(crate) const SNOWBALL_GRAVITY: f64 = 0.03;
+pub(crate) const LIVING_FLAG_USING_ITEM: u8 = 0;
+pub(crate) const LIVING_FLAG_OFF_HAND: u8 = 1;
+pub(crate) const LIVING_FLAG_SPIN_ATTACK: u8 = 2;
+pub(crate) const MOB_FLAG_NO_AI: u8 = 0;
+pub(crate) const MOB_FLAG_LEFT_HANDED: u8 = 1;
+pub(crate) const MOB_FLAG_AGGRESSIVE: u8 = 2;
+pub(crate) const SHARED_FLAG_ON_FIRE: u8 = 0;
+pub(crate) const SHARED_FLAG_SHIFT_KEY_DOWN: u8 = 1;
+pub(crate) const SHARED_FLAG_SPRINTING: u8 = 3;
+pub(crate) const SHARED_FLAG_SWIMMING: u8 = 4;
+pub(crate) const SHARED_FLAG_INVISIBLE: u8 = 5;
+pub(crate) const SHARED_FLAG_GLOWING: u8 = 6;
+pub(crate) const SHARED_FLAG_FALL_FLYING: u8 = 7;

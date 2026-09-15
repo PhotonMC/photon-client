@@ -10,3 +10,12 @@ flate2 = { version = "1.1.10", default-features = false, features = ["rust_backe
 
 [dev-dependencies]
 serde_json = "1.0.151"
+
+# Java integer arithmetic always wraps. Keeping overflow checks on in both
+# profiles makes an unintended wrap a test failure instead of a silent
+# release-only divergence; deliberate wrapping is written with `wrapping_*`.
+[profile.dev]
+overflow-checks = true
+
+[profile.release]
+overflow-checks = true
