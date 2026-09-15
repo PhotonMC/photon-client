@@ -5110,6 +5110,9 @@ public final class MathOracle {
         if (operation.equals("client_world_player_keyboard_input")) {
             return clientWorldPlayerKeyboardInputResult(request);
         }
+        if (operation.equals("client_world_player_tick")) {
+            return clientWorldPlayerTickResult(request);
+        }
         if (operation.equals("client_world_entity_shared_flags")) {
             return clientWorldEntitySharedFlagsResult(request);
         }
@@ -5542,6 +5545,76 @@ public final class MathOracle {
             throw new IllegalStateException(
                 "LocalPlayer keyboard input binding fixture failed", error);
         }
+    }
+
+    private static JsonObject clientWorldPlayerTickResult(JsonObject request) {
+        int playerId = request.get("player_id").getAsInt();
+        JsonObject initialPosition = request.getAsJsonObject("initial_position");
+        JsonObject initialRotation = request.getAsJsonObject("initial_rotation");
+        TickLocalPlayerFixture player = TickLocalPlayerFixture.create(
+            vec3(initialPosition),
+            Oracle.f32(initialRotation, "y"),
+            Oracle.f32(initialRotation, "x"),
+            Oracle.f32(request, "initial_head"));
+        for (JsonElement entry : request.getAsJsonArray("initial_effects")) {
+            player.replaceEffect(entry.getAsJsonObject());
+        }
+
+        var states = new JsonArray();
+        for (JsonElement operationEntry : request.getAsJsonArray("operations")) {
+            JsonObject operation = operationEntry.getAsJsonObject();
+            if (!operation.get("action").getAsString().equals("tick")) {
+                throw new IllegalArgumentException("Unknown player tick action");
+            }
+            player.setFixtureState(
+                vec3(operation.getAsJsonObject("position")),
+                Oracle.f32(operation.getAsJsonObject("rotation"), "y"),
+                Oracle.f32(operation.getAsJsonObject("rotation"), "x"));
+            JsonElement headTarget = operation.get("head_target");
+            if (headTarget != null && !headTarget.isJsonNull()) {
+                player.lerpHeadTo(
+                    Float.intBitsToFloat(Integer.parseUnsignedInt(headTarget.getAsString(), 16)),
+                    3);
+            }
+            for (JsonElement entry : operation.getAsJsonArray("effects")) {
+                player.replaceEffect(entry.getAsJsonObject());
+            }
+            for (int tick = 0; tick < operation.get("ticks").getAsInt(); tick++) {
+                player.tickThroughClientLevel();
+            }
+            states.add(tickLocalPlayerState(operation.get("label").getAsString(), player));
+        }
+        var result = new JsonObject();
+        result.addProperty("player_id", playerId);
+        result.add("states", states);
+        return result;
+    }
+
+    private static JsonObject tickLocalPlayerState(
+        String label, TickLocalPlayerFixture player
+    ) {
+        var state = new JsonObject();
+        state.addProperty("label", label);
+        state.addProperty("tick_count", player.tickCount);
+        state.add("position", snapshot(player.position()));
+        state.add("previous_position", snapshot(player.oldPosition()));
+        state.addProperty("rotation_y", Oracle.bits(player.getYRot()));
+        state.addProperty("rotation_x", Oracle.bits(player.getXRot()));
+        state.addProperty("previous_rotation_y", Oracle.bits(player.yRotO));
+        state.addProperty("previous_rotation_x", Oracle.bits(player.xRotO));
+        state.addProperty("head_rotation", Oracle.bits(player.yHeadRot));
+        state.addProperty("previous_head_rotation", Oracle.bits(player.yHeadRotO));
+        var effects = new JsonArray();
+        for (TickEffect effect : player.effects) {
+            var effectState = new JsonObject();
+            effectState.addProperty("effect_id", effect.effectId);
+            effectState.addProperty("amplifier", effect.value.getAmplifier());
+            effectState.addProperty("duration_ticks", effect.value.getDuration());
+            effectState.addProperty("flags", effect.flags);
+            effects.add(effectState);
+        }
+        state.add("effects", effects);
+        return state;
     }
 
     private static JsonObject clientWorldEntitySharedFlagsResult(JsonObject request) {
@@ -8362,6 +8435,104 @@ public final class MathOracle {
             this.useItem.set(
                 DataComponents.USE_EFFECTS,
                 new UseEffects(false, true, speed));
+        }
+    }
+
+    private static final class TickEffect {
+        private final int effectId;
+        private final MobEffectInstance value;
+        private final int flags;
+
+        private TickEffect(int effectId, MobEffectInstance value, int flags) {
+            this.effectId = effectId;
+            this.value = value;
+            this.flags = flags;
+        }
+    }
+
+    private static final class TickLocalPlayerFixture extends LocalPlayer {
+        private List<TickEffect> effects;
+
+        private TickLocalPlayerFixture() {
+            super(null, null, null, null, null, Input.EMPTY, false, null);
+        }
+
+        private static TickLocalPlayerFixture create(
+            Vec3 position, float yRot, float xRot, float yHeadRot
+        ) {
+            try {
+                Unsafe unsafe = unsafeInstance();
+                TickLocalPlayerFixture player =
+                    (TickLocalPlayerFixture)unsafe.allocateInstance(TickLocalPlayerFixture.class);
+                var typeField = Entity.class.getDeclaredField("type");
+                unsafe.putObject(
+                    player, unsafe.objectFieldOffset(typeField), net.minecraft.world.entity.EntityTypes.PLAYER);
+                var positionField = Entity.class.getDeclaredField("position");
+                unsafe.putObject(player, unsafe.objectFieldOffset(positionField), position);
+                var passengersField = Entity.class.getDeclaredField("passengers");
+                unsafe.putObject(
+                    player,
+                    unsafe.objectFieldOffset(passengersField),
+                    com.google.common.collect.ImmutableList.of());
+                player.setYRot(yRot);
+                player.setXRot(xRot);
+                player.yHeadRot = yHeadRot;
+                player.yHeadRotO = yHeadRot;
+                player.yBodyRot = yRot;
+                player.yBodyRotO = yRot;
+                player.effects = new ArrayList<>();
+                return player;
+            } catch (ReflectiveOperationException error) {
+                throw new IllegalStateException(
+                    "Unable to construct local player tick fixture", error);
+            }
+        }
+
+        private void setFixtureState(Vec3 position, float yRot, float xRot) {
+            try {
+                Unsafe unsafe = unsafeInstance();
+                var positionField = Entity.class.getDeclaredField("position");
+                unsafe.putObject(this, unsafe.objectFieldOffset(positionField), position);
+                this.setYRot(yRot);
+                this.setXRot(xRot);
+            } catch (ReflectiveOperationException error) {
+                throw new IllegalStateException("Unable to update local player tick fixture", error);
+            }
+        }
+
+        private void replaceEffect(JsonObject input) {
+            int effectId = input.get("effect_id").getAsInt();
+            MobEffectInstance value = new MobEffectInstance(
+                MobEffects.SPEED,
+                input.get("duration_ticks").getAsInt(),
+                input.get("amplifier").getAsInt());
+            int flags = input.get("flags").getAsInt();
+            TickEffect replacement = new TickEffect(effectId, value, flags);
+            for (int index = 0; index < this.effects.size(); index++) {
+                if (this.effects.get(index).effectId == effectId) {
+                    this.effects.set(index, replacement);
+                    return;
+                }
+            }
+            this.effects.add(replacement);
+        }
+
+        private void tickThroughClientLevel() {
+            this.setOldPosAndRot();
+            this.tickCount++;
+            this.tick();
+        }
+
+        @Override
+        public void tick() {
+            for (TickEffect effect : this.effects) {
+                effect.value.tickClient();
+            }
+            this.yHeadRotO = this.yHeadRot;
+            if (this.lerpHeadSteps > 0) {
+                this.lerpHeadRotationStep(this.lerpHeadSteps, this.lerpYHeadRot);
+                this.lerpHeadSteps--;
+            }
         }
     }
 

@@ -3462,7 +3462,7 @@ impl ClientWorld {
         true
     }
 
-    pub(crate) fn apply_local_player_mob_effect(
+    pub fn apply_local_player_mob_effect(
         &mut self,
         player_id: i32,
         effect_id: i32,
@@ -3492,6 +3492,17 @@ impl ClientWorld {
         } else {
             player.effects.push(effect);
         }
+        true
+    }
+
+    /// Apply the three-tick head rotation interpolation target used by the
+    /// clientbound rotate-head path for the local player.
+    pub fn apply_local_player_head_rotation(&mut self, y_head_rot: f32) -> bool {
+        let Some(player) = self.local_player.as_mut() else {
+            return false;
+        };
+        player.head_rotation_target_bits = y_head_rot.to_bits();
+        player.head_lerp_steps = LIVING_ENTITY_HEAD_LERP_STEPS;
         true
     }
 

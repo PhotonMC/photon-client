@@ -7221,6 +7221,175 @@ fn client_world_player_keyboard_input_result(request: &Value) -> Result<Value, S
     Ok(json!({"states": states}))
 }
 
+fn client_world_player_tick_state(
+    label: &str,
+    player: &voxel_client::world::ClientPlayerState,
+) -> Value {
+    let position = player.position();
+    let previous_position = player.previous_position();
+    let rotation = player.rotation();
+    let previous_rotation = player.previous_rotation();
+    let effects = player
+        .effects()
+        .iter()
+        .map(|effect| {
+            json!({
+                "effect_id": effect.effect_id(),
+                "amplifier": effect.amplifier(),
+                "duration_ticks": effect.duration_ticks(),
+                "flags": effect.flags(),
+            })
+        })
+        .collect::<Vec<_>>();
+    json!({
+        "label": label,
+        "tick_count": player.tick_count(),
+        "position": vec3_snapshot(Vec3::new(position.0, position.1, position.2)),
+        "previous_position": vec3_snapshot(Vec3::new(
+            previous_position.0,
+            previous_position.1,
+            previous_position.2,
+        )),
+        "rotation_y": format!("{:08x}", rotation.0.to_bits()),
+        "rotation_x": format!("{:08x}", rotation.1.to_bits()),
+        "previous_rotation_y": format!("{:08x}", previous_rotation.0.to_bits()),
+        "previous_rotation_x": format!("{:08x}", previous_rotation.1.to_bits()),
+        "head_rotation": format!("{:08x}", player.head_rotation().to_bits()),
+        "previous_head_rotation": format!("{:08x}", player.previous_head_rotation().to_bits()),
+        "effects": effects,
+    })
+}
+
+fn client_world_player_tick_result(request: &Value) -> Result<Value, String> {
+    let player_id = i32_field(request, "player_id")?;
+    let initial_position = f64_vec3(
+        request
+            .get("initial_position")
+            .ok_or("initial_position must be a vector")?,
+    )?;
+    let initial_rotation = request
+        .get("initial_rotation")
+        .ok_or("initial_rotation must be an object")?;
+    let initial_y_rotation = f32_field(initial_rotation, "y")?;
+    let initial_x_rotation = f32_field(initial_rotation, "x")?;
+    let initial_head = f32_field(request, "initial_head")?;
+
+    let mut world = ClientWorld::new(DimensionBounds::new(0, 256));
+    world.set_local_player_id(player_id);
+    if !world.apply_entity(EntityInput {
+        entity_id: player_id,
+        uuid: Uuid::new(0, u64::from(player_id as u32)),
+        type_id: 156,
+        x: 0.0,
+        y: 0.0,
+        z: 0.0,
+        movement: (0.0, 0.0, 0.0),
+        rotation: (0.0, 0.0, initial_head),
+        data: 0,
+    }) {
+        return Err("unable to initialize local player entity state".into());
+    }
+    if !world.apply_local_player_position(
+        (initial_position.x, initial_position.y, initial_position.z),
+        (0.0, 0.0, 0.0),
+        (initial_y_rotation, initial_x_rotation),
+    ) {
+        return Err("local player is not initialized".into());
+    }
+    for entry in request
+        .get("initial_effects")
+        .ok_or("initial_effects must be an array")?
+        .as_array()
+        .ok_or("initial_effects must be an array")?
+    {
+        let effect = entry
+            .as_object()
+            .ok_or("initial effect must be an object")?;
+        if !world.apply_local_player_mob_effect(
+            player_id,
+            i32_field(entry, "effect_id")?,
+            i32_field(entry, "amplifier")?,
+            i32_field(entry, "duration_ticks")?,
+            effect
+                .get("flags")
+                .and_then(Value::as_u64)
+                .ok_or("flags must be an unsigned integer")?
+                .try_into()
+                .map_err(|_| "flags must fit in a byte")?,
+        ) {
+            return Err("local player effect could not be applied".into());
+        }
+    }
+
+    let operations = request["operations"]
+        .as_array()
+        .ok_or("operations must be an array")?;
+    let mut states = Vec::with_capacity(operations.len());
+    for operation in operations {
+        if string(operation, "action")? != "tick" {
+            return Err("unknown player tick action".into());
+        }
+        let position = f64_vec3(
+            operation
+                .get("position")
+                .ok_or("position must be a vector")?,
+        )?;
+        let rotation = operation
+            .get("rotation")
+            .ok_or("rotation must be an object")?;
+        if !world.apply_local_player_position(
+            (position.x, position.y, position.z),
+            (0.0, 0.0, 0.0),
+            (f32_field(rotation, "y")?, f32_field(rotation, "x")?),
+        ) {
+            return Err("local player is not initialized".into());
+        }
+        if let Some(head_target) = operation
+            .get("head_target")
+            .filter(|value| !value.is_null())
+            && !world.apply_local_player_head_rotation(f32_value(head_target, "head_target")?)
+        {
+            return Err("local player head target could not be applied".into());
+        }
+        for entry in operation
+            .get("effects")
+            .ok_or("effects must be an array")?
+            .as_array()
+            .ok_or("effects must be an array")?
+        {
+            let effect = entry.as_object().ok_or("effect must be an object")?;
+            if !world.apply_local_player_mob_effect(
+                player_id,
+                i32_field(entry, "effect_id")?,
+                i32_field(entry, "amplifier")?,
+                i32_field(entry, "duration_ticks")?,
+                effect
+                    .get("flags")
+                    .and_then(Value::as_u64)
+                    .ok_or("flags must be an unsigned integer")?
+                    .try_into()
+                    .map_err(|_| "flags must fit in a byte")?,
+            ) {
+                return Err("local player effect could not be applied".into());
+            }
+        }
+        let ticks = operation["ticks"]
+            .as_u64()
+            .ok_or("ticks must be an unsigned integer")?;
+        for _ in 0..ticks {
+            world.tick();
+        }
+        let player = world
+            .local_player()
+            .ok_or("local player is not initialized")?;
+        states.push(client_world_player_tick_state(
+            string(operation, "label")?,
+            player,
+        ));
+    }
+    Ok(json!({"player_id": player_id, "states": states}))
+}
+
 fn client_world_entity_shared_flags_state(
     label: &str,
     accepted: bool,
@@ -7531,6 +7700,9 @@ fn math_result(request: &Value) -> Result<Value, String> {
     }
     if operation == "client_world_player_keyboard_input" {
         return client_world_player_keyboard_input_result(request);
+    }
+    if operation == "client_world_player_tick" {
+        return client_world_player_tick_result(request);
     }
     if operation == "client_world_entity_shared_flags" {
         return client_world_entity_shared_flags_result(request);

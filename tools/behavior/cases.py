@@ -1709,6 +1709,83 @@ def math_cases():
         ],
     }
 
+    player_tick_defaults = {
+        "action": "tick",
+        "position": vector_bits(10.0, 64.0, -2.0),
+        "rotation": {
+            "y": float_bits(350.0),
+            "x": float_bits(-20.0),
+        },
+        "ticks": 1,
+        "head_target": None,
+        "effects": [],
+    }
+    player_tick_operations = [
+        {
+            "label": "head-target-and-effect-start",
+            "head_target": float_bits(135.0),
+        },
+        {
+            "label": "position-and-rotation-update-before-tick",
+            "position": vector_bits(14.0, 68.0, 6.0),
+            "rotation": {
+                "y": float_bits(10.0),
+                "x": float_bits(20.0),
+            },
+            "ticks": 0,
+        },
+        {
+            "label": "head-target-reached-after-position-tick",
+            "position": vector_bits(14.0, 68.0, 6.0),
+            "rotation": {
+                "y": float_bits(10.0),
+                "x": float_bits(20.0),
+            },
+            "ticks": 2,
+        },
+        {
+            "label": "effect-replacement-before-tick",
+            "effects": [
+                {
+                    "effect_id": 18,
+                    "amplifier": 1,
+                    "duration_ticks": 2,
+                    "flags": 15,
+                },
+            ],
+        },
+    ]
+    yield {
+        "case_id": "client-world/player-tick-state",
+        "family": "math",
+        "operation": "client_world_player_tick",
+        "player_id": 42,
+        "initial_position": vector_bits(10.0, 64.0, -2.0),
+        "initial_rotation": {
+            "y": float_bits(350.0),
+            "x": float_bits(-20.0),
+        },
+        "initial_head": float_bits(350.0),
+        "initial_effects": [
+            {
+                "effect_id": 18,
+                "amplifier": 0,
+                "duration_ticks": 3,
+                "flags": 8,
+            },
+            {
+                "effect_id": 19,
+                "amplifier": 1,
+                "duration_ticks": -1,
+                "flags": 0,
+            },
+        ],
+        "operations": [
+            {**player_tick_defaults, **operation}
+            for operation in player_tick_operations
+        ],
+    }
+
     def character_event_case(label, codepoint):
         return {
             "case_id": f"character-event/{label}", "family": "math",
