@@ -1385,6 +1385,36 @@ def math_cases():
         ],
     }
 
+    yield {
+        "case_id": "client-world/entity-effect-ambience",
+        "family": "math",
+        "operation": "client_world_entity_effect_ambience",
+        "entity_id": 37,
+        "entity_type_id": 54,
+        "operations": [
+            {
+                "label": "set-effect-ambience",
+                "metadata_hex": "0b0801ff",
+            },
+            {
+                "label": "combined-living-and-effect-ambience",
+                "metadata_hex": "0800010b0801ff",
+            },
+            {
+                "label": "empty-particles-preserves-effect-ambience",
+                "metadata_hex": "0a11000b0801ff",
+            },
+            {
+                "label": "no-gravity-preserves-effect-ambience",
+                "metadata_hex": "050801ff",
+            },
+            {
+                "label": "clear-effect-ambience",
+                "metadata_hex": "0b0800ff",
+            },
+        ],
+    }
+
     def attribute_modifier(identifier, amount, operation):
         return {
             "id": identifier,
