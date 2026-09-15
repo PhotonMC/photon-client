@@ -137,6 +137,19 @@ def capture_window(window_id, destination):
     return destination
 
 
+def install_scene(game_dir, name):
+    """Copy the fixed scene in fresh so a run can never mutate the reference."""
+    fixture = WORK / "scene" / name
+    if not fixture.is_dir():
+        raise Blocked(f"Missing scene fixture: {fixture}; run tools/render/scene.py build")
+    saves = game_dir / "saves" / name
+    if saves.exists():
+        shutil.rmtree(saves)
+    saves.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(fixture, saves)
+    return saves
+
+
 def launch(args):
     cp, pin = classpath()
     if not ASSETS.is_dir():
@@ -146,6 +159,8 @@ def launch(args):
     game_dir = WORK / "gamedir" / args.backend
     run_dir.mkdir(parents=True, exist_ok=True)
     write_options(game_dir)
+    if args.scene:
+        install_scene(game_dir, args.scene)
 
     command = [
         args.java, f"-Xmx{args.heap}", "-cp", cp,
@@ -161,6 +176,8 @@ def launch(args):
         "--height", str(args.height),
         "--graphicsBackend", args.backend,
     ]
+    if args.scene:
+        command += ["--quickPlaySingleplayer", args.scene]
     log_path = run_dir / "client.log"
     with log_path.open("w", encoding="utf-8") as log:
         process = subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT)
@@ -193,9 +210,8 @@ def launch(args):
         "captures": captures,
         "run_dir": str(run_dir.relative_to(ROOT)),
         "pinned_options": len(PINNED_OPTIONS),
-        "scene": "title_screen",
-        "deterministic_scene": False,
-        "note": "Title screen animates; deterministic scene and frame comparison are the next slice",
+        "scene": args.scene or "title_screen",
+        "deterministic_scene": bool(args.scene),
     }
     print(json.dumps(report, sort_keys=True))
     return 0
@@ -215,6 +231,65 @@ def wait_for_backend(log_path, timeout, process):
     raise Failed(f"Client did not report a graphics backend within {timeout}s")
 
 
+def read_png(path):
+    """Decode a capture to raw RGB rows via ImageMagick, which is already a
+    dependency of the capture path."""
+    if not shutil.which("magick"):
+        raise Blocked("ImageMagick 'magick' missing; cannot decode captures")
+    raw = subprocess.run(
+        ["magick", str(path), "-depth", "8", "ppm:-"],
+        capture_output=True, check=True,
+    ).stdout
+    fields, index = [], 0
+    while len(fields) < 4:
+        while raw[index:index + 1].isspace():
+            index += 1
+        if raw[index:index + 1] == b"#":
+            while raw[index:index + 1] != b"\n":
+                index += 1
+            continue
+        end = index
+        while not raw[end:end + 1].isspace():
+            end += 1
+        fields.append(raw[index:end])
+        index = end
+    return int(fields[1]), int(fields[2]), raw[index + 1:]
+
+
+def compare(args):
+    width, height, first = read_png(args.first)
+    other_width, other_height, second = read_png(args.second)
+    if (width, height) != (other_width, other_height):
+        raise Failed(f"Size mismatch: {width}x{height} vs {other_width}x{other_height}")
+    pixels = width * height
+    differing = 0
+    worst = 0
+    total = 0
+    for offset in range(0, pixels * 3, 3):
+        left = first[offset:offset + 3]
+        right = second[offset:offset + 3]
+        if left != right:
+            differing += 1
+            for channel in range(3):
+                delta = abs(left[channel] - right[channel])
+                total += delta
+                worst = max(worst, delta)
+    report = {
+        "command": "compare",
+        "status": "identical" if differing == 0 else "differs",
+        "first": str(args.first),
+        "second": str(args.second),
+        "size": f"{width}x{height}",
+        "pixels": pixels,
+        "differing_pixels": differing,
+        "differing_fraction": round(differing / pixels, 6),
+        "max_channel_delta": worst,
+        "mean_channel_delta": round(total / (pixels * 3), 6),
+    }
+    print(json.dumps(report, sort_keys=True))
+    return 0
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -230,7 +305,14 @@ def main():
     run.add_argument("--java", default="java")
     run.add_argument("--username", default="ParityTest")
     run.add_argument("--asset-index", default="32")
+    run.add_argument("--scene", default=None,
+                     help="fixed scene fixture to load instead of the title screen")
     run.set_defaults(handler=launch)
+    diff = sub.add_parser("compare", help="compare two captures pixel by pixel")
+    diff.add_argument("first", type=Path)
+    diff.add_argument("second", type=Path)
+    diff.set_defaults(handler=compare)
+
     args = parser.parse_args()
     try:
         return args.handler(args)

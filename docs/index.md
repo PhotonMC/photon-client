@@ -538,5 +538,6 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 
 - [P15 — Render yığını kararı: GLFW + Vulkan 1.2 (ash), wgpu değil](render-backend-decision.md)
 - [P15.a.1 — Kontrollü Java istemci koşusu — [altyapı, parity iddiası yok]](render-reference-launch-record.md)
+- [P15.a.2 — Java referansının kendi değişkenliği — [ölçüm, parity iddiası yok]](render-variability-measurement.md)
 - [P15.b — Vulkan backend ve swapchain — [altyapı, parity iddiası yok]](vulkan-backend-record.md)
 - [P05.d.2 — GLFW pencere yüzeyi — [altyapı, parity iddiası yok]](window-surface-record.md)
