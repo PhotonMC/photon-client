@@ -8587,6 +8587,159 @@ fn client_world_entity_passenger_tick_result(request: &Value) -> Result<Value, S
     Ok(json!({"states": states}))
 }
 
+fn client_world_entity_passenger_position_result(request: &Value) -> Result<Value, String> {
+    let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+    let blocks = vec![0; 4_096];
+    let biomes = vec![0; 64];
+    if !world.replace_chunk(
+        0,
+        0,
+        [SectionInput {
+            non_empty_block_count: 0,
+            fluid_count: 0,
+            block_states: &blocks,
+            biomes: &biomes,
+        }],
+    ) {
+        return Err("passenger position fixture chunk was rejected".into());
+    }
+
+    let vehicle = request["vehicle"]
+        .as_object()
+        .ok_or("vehicle must be an object")?;
+    if i32_field(&Value::Object(vehicle.clone()), "type_id")? != 89 {
+        return Err("passenger position fixture requires an oak boat".into());
+    }
+    let vehicle_id = i32_field(&Value::Object(vehicle.clone()), "entity_id")?;
+    let vehicle_position = f64_vec3(
+        vehicle
+            .get("position")
+            .ok_or("passenger position vehicle position must be a vector")?,
+    )?;
+    let vehicle_rotation = vehicle
+        .get("rotation")
+        .ok_or("passenger position vehicle rotation must be an object")?;
+    let vehicle_y_rot = f32_field(vehicle_rotation, "y")?;
+    let mut entity_ids = vec![vehicle_id];
+    for passenger in request["passengers"]
+        .as_array()
+        .ok_or("passengers must be an array")?
+    {
+        let passenger_id = i32_field(passenger, "entity_id")?;
+        if i32_field(passenger, "type_id")? != 120 {
+            return Err("passenger position fixture requires snowball passengers".into());
+        }
+        let position = f64_vec3(
+            passenger
+                .get("position")
+                .ok_or("passenger position must be a vector")?,
+        )?;
+        let movement = f64_vec3(
+            passenger
+                .get("movement")
+                .ok_or("passenger movement must be a vector")?,
+        )?;
+        let rotation = passenger
+            .get("rotation")
+            .ok_or("passenger rotation must be an object")?;
+        if !world.apply_entity(EntityInput {
+            entity_id: passenger_id,
+            uuid: Uuid::new(0, u64::from(passenger_id as u32)),
+            type_id: 120,
+            x: position.x,
+            y: position.y,
+            z: position.z,
+            movement: (movement.x, movement.y, movement.z),
+            rotation: (f32_field(rotation, "y")?, f32_field(rotation, "x")?, 0.0),
+            data: 0,
+        }) {
+            return Err("passenger position fixture entity was rejected".into());
+        }
+        entity_ids.push(passenger_id);
+    }
+    if !world.apply_entity(EntityInput {
+        entity_id: vehicle_id,
+        uuid: Uuid::new(0, u64::from(vehicle_id as u32)),
+        type_id: 89,
+        x: vehicle_position.x,
+        y: vehicle_position.y,
+        z: vehicle_position.z,
+        movement: (0.0, 0.0, 0.0),
+        rotation: (vehicle_y_rot, f32_field(vehicle_rotation, "x")?, 0.0),
+        data: 0,
+    }) {
+        return Err("passenger position vehicle was rejected".into());
+    }
+
+    let passenger_ids = request["initial_passenger_ids"]
+        .as_array()
+        .ok_or("initial_passenger_ids must be an array")?
+        .iter()
+        .map(|value| {
+            value
+                .as_i64()
+                .ok_or_else(|| "initial passenger ID must be an integer".to_owned())
+                .and_then(|value| {
+                    value
+                        .try_into()
+                        .map_err(|_| "initial passenger ID must fit in i32".to_owned())
+                })
+        })
+        .collect::<Result<Vec<i32>, _>>()?;
+    if !world.apply_entity_passengers(vehicle_id, &passenger_ids) {
+        return Err("passenger position fixture relation was rejected".into());
+    }
+
+    let mut states = vec![client_world_entity_tick_state(
+        "initial",
+        true,
+        &entity_ids,
+        &world,
+    )?];
+    for operation in request["operations"]
+        .as_array()
+        .ok_or("operations must be an array")?
+    {
+        match string(operation, "action")? {
+            "tick" => {}
+            "set-passengers-and-tick" => {
+                let passenger_ids = operation["passenger_ids"]
+                    .as_array()
+                    .ok_or("passenger_ids must be an array")?
+                    .iter()
+                    .map(|value| {
+                        value
+                            .as_i64()
+                            .ok_or_else(|| "passenger ID must be an integer".to_owned())
+                            .and_then(|value| {
+                                value
+                                    .try_into()
+                                    .map_err(|_| "passenger ID must fit in i32".to_owned())
+                            })
+                    })
+                    .collect::<Result<Vec<i32>, _>>()?;
+                if !world.apply_entity_passengers(vehicle_id, &passenger_ids) {
+                    return Err("passenger position fixture relation was rejected".into());
+                }
+            }
+            _ => return Err("unknown passenger position action".into()),
+        }
+        let ticks = operation["ticks"]
+            .as_u64()
+            .ok_or("ticks must be an unsigned integer")?;
+        for _ in 0..ticks {
+            world.tick();
+        }
+        states.push(client_world_entity_tick_state(
+            string(operation, "label")?,
+            true,
+            &entity_ids,
+            &world,
+        )?);
+    }
+    Ok(json!({"states": states}))
+}
+
 fn client_world_entity_arrow_tick_result(request: &Value) -> Result<Value, String> {
     client_world_entity_tick_result(request, 6)
 }
@@ -9827,6 +9980,9 @@ fn math_result(request: &Value) -> Result<Value, String> {
     }
     if operation == "client_world_entity_passenger_tick" {
         return client_world_entity_passenger_tick_result(request);
+    }
+    if operation == "client_world_entity_passenger_position" {
+        return client_world_entity_passenger_position_result(request);
     }
     if operation == "client_world_player_sprint_trigger" {
         return client_world_player_sprint_trigger_result(request);

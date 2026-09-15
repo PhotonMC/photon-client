@@ -104,7 +104,7 @@ teleport delta/relative motion [P08.au server-conformance kaydında](client-worl
 ve aynı Java teleport state'i [P08.au.1 client-parity kaydında](client-world-entity-teleport-delta-parity-conformance.md), araç/passenger ilişki state'i
 [P08.av server-conformance kaydında](client-world-entity-passengers-conformance.md) ve aynı Java ilişki state'i [P08.av.1 client-parity kaydında](client-world-entity-passengers-parity-conformance.md), passenger tick/rideTick
 [P08.aw server-conformance kaydında](client-world-entity-passenger-tick-conformance.md) ve aynı Java tick state'i [P08.aw.1 client-parity kaydında](client-world-entity-passenger-tick-parity-conformance.md), passenger seat `positionRider`
-[P08.ax kaydında](client-world-entity-passenger-position-conformance.md) ve Player vehicle attachment
+[P08.ax server-conformance kaydında](client-world-entity-passenger-position-conformance.md) ve aynı Java seat state'i [P08.ax.1 client-parity kaydında](client-world-entity-passenger-position-parity-conformance.md), Player vehicle attachment
 [P08.ay kaydında](client-world-entity-passenger-player-conformance.md) ve chest boat/raft geometry
 [P08.az kaydında](client-world-entity-passenger-boat-family-conformance.md) ve boat passenger rotation clamp
 [P08.ba kaydında](client-world-entity-passenger-rotation-conformance.md) ve Breeze `CAN_TURN_IN_BOATS` istisnası

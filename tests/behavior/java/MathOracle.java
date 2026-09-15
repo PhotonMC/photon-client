@@ -5172,6 +5172,9 @@ public final class MathOracle {
         if (operation.equals("client_world_entity_passenger_tick")) {
             return clientWorldEntityPassengerTickResult(request);
         }
+        if (operation.equals("client_world_entity_passenger_position")) {
+            return clientWorldEntityPassengerPositionResult(request);
+        }
         if (operation.equals("client_world_player_sprint_trigger")) {
             return clientWorldPlayerSprintTriggerResult(request);
         }
@@ -5981,6 +5984,110 @@ public final class MathOracle {
         var result = new JsonObject();
         result.add("states", states);
         return result;
+    }
+
+    private static JsonObject clientWorldEntityPassengerPositionResult(JsonObject request) {
+        JsonObject vehicleInput = request.getAsJsonObject("vehicle");
+        int vehicleId = vehicleInput.get("entity_id").getAsInt();
+        int vehicleTypeId = vehicleInput.get("type_id").getAsInt();
+        if (vehicleTypeId != 89) {
+            throw new IllegalArgumentException("Passenger position fixture requires an oak boat");
+        }
+        PassengerPositionBoatFixture vehicle = PassengerPositionBoatFixture.create(
+            vehicleId,
+            vec3(vehicleInput.getAsJsonObject("position")),
+            Oracle.f32(vehicleInput.getAsJsonObject("rotation"), "y"),
+            vehicleInput.get("no_gravity").getAsBoolean());
+        var passengers = new ArrayList<TickSnowballFixture>();
+        for (JsonElement passengerEntry : request.getAsJsonArray("passengers")) {
+            JsonObject passengerInput = passengerEntry.getAsJsonObject();
+            if (passengerInput.get("type_id").getAsInt() != 120) {
+                throw new IllegalArgumentException(
+                    "Passenger position fixture requires snowball passengers");
+            }
+            passengers.add(TickSnowballFixture.create(
+                passengerInput.get("entity_id").getAsInt(),
+                vec3(passengerInput.getAsJsonObject("position")),
+                vec3(passengerInput.getAsJsonObject("movement")),
+                Oracle.f32(passengerInput.getAsJsonObject("rotation"), "y"),
+                Oracle.f32(passengerInput.getAsJsonObject("rotation"), "x"),
+                passengerInput.get("no_gravity").getAsBoolean()));
+        }
+        vehicle.setFixturePassengers(resolvePassengerIds(
+            passengers, request.getAsJsonArray("initial_passenger_ids")));
+
+        var states = new JsonArray();
+        states.add(passengerPositionState("initial", vehicle, passengers));
+        for (JsonElement operationEntry : request.getAsJsonArray("operations")) {
+            JsonObject operation = operationEntry.getAsJsonObject();
+            String action = operation.get("action").getAsString();
+            if (action.equals("set-passengers-and-tick")) {
+                vehicle.setFixturePassengers(resolvePassengerIds(
+                    passengers, operation.getAsJsonArray("passenger_ids")));
+            } else if (!action.equals("tick")) {
+                throw new IllegalArgumentException("Unknown passenger position action");
+            }
+            for (int tick = 0; tick < operation.get("ticks").getAsInt(); tick++) {
+                tickPassengerPositionTree(vehicle, passengers);
+            }
+            states.add(passengerPositionState(
+                operation.get("label").getAsString(), vehicle, passengers));
+        }
+        var result = new JsonObject();
+        result.add("states", states);
+        return result;
+    }
+
+    private static List<TickSnowballFixture> resolvePassengerIds(
+        List<TickSnowballFixture> passengers, JsonArray passengerIds
+    ) {
+        var resolved = new ArrayList<TickSnowballFixture>();
+        for (JsonElement passengerEntry : passengerIds) {
+            int passengerId = passengerEntry.getAsInt();
+            TickSnowballFixture passenger = passengers.stream()
+                .filter(candidate -> candidate.entityId() == passengerId)
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException(
+                    "Unknown passenger position fixture entity"));
+            resolved.add(passenger);
+        }
+        return resolved;
+    }
+
+    private static void tickPassengerPositionTree(
+        PassengerPositionBoatFixture vehicle,
+        List<TickSnowballFixture> allPassengers
+    ) {
+        vehicle.setOldPosAndRot();
+        vehicle.tickCount++;
+        vehicle.tick();
+        for (Entity passengerEntity : vehicle.getPassengers()) {
+            TickSnowballFixture passenger = (TickSnowballFixture)passengerEntity;
+            passenger.rideTickThroughClientLevel();
+            vehicle.positionRider(passenger);
+        }
+        for (TickSnowballFixture passenger : allPassengers) {
+            if (!vehicle.hasPassenger(passenger)) {
+                passenger.tickThroughClientLevel();
+            }
+        }
+    }
+
+    private static JsonObject passengerPositionState(
+        String label,
+        PassengerPositionBoatFixture vehicle,
+        List<TickSnowballFixture> passengers
+    ) {
+        var state = new JsonObject();
+        state.addProperty("label", label);
+        state.addProperty("accepted", true);
+        var entities = new JsonArray();
+        entities.add(tickEntityState(vehicle));
+        for (TickSnowballFixture passenger : passengers) {
+            entities.add(tickSnowballEntityState(passenger));
+        }
+        state.add("entities", entities);
+        return state;
     }
 
     private static void tickPassengerTree(
@@ -8178,6 +8285,83 @@ public final class MathOracle {
 
         @Override
         protected void addAdditionalSaveData(net.minecraft.world.level.storage.ValueOutput output) {
+        }
+    }
+
+    private static final class PassengerPositionBoatFixture extends Boat {
+        private boolean noGravity;
+
+        private PassengerPositionBoatFixture() {
+            super(null, null, null);
+        }
+
+        private static PassengerPositionBoatFixture create(
+            int entityId, Vec3 position, float yRot, boolean noGravity
+        ) {
+            try {
+                Unsafe unsafe = unsafeInstance();
+                PassengerPositionBoatFixture boat =
+                    (PassengerPositionBoatFixture)unsafe.allocateInstance(
+                        PassengerPositionBoatFixture.class);
+                var idField = Entity.class.getDeclaredField("id");
+                unsafe.putInt(boat, unsafe.objectFieldOffset(idField), entityId);
+                var typeField = Entity.class.getDeclaredField("type");
+                unsafe.putObject(
+                    boat,
+                    unsafe.objectFieldOffset(typeField),
+                    net.minecraft.world.entity.EntityTypes.OAK_BOAT);
+                var levelField = Entity.class.getDeclaredField("level");
+                unsafe.putObject(
+                    boat,
+                    unsafe.objectFieldOffset(levelField),
+                    PassengerRelationFixtureEntity.CLIENT_LEVEL);
+                var dimensionsField = Entity.class.getDeclaredField("dimensions");
+                unsafe.putObject(
+                    boat,
+                    unsafe.objectFieldOffset(dimensionsField),
+                    net.minecraft.world.entity.EntityTypes.OAK_BOAT.getDimensions());
+                var positionField = Entity.class.getDeclaredField("position");
+                unsafe.putObject(boat, unsafe.objectFieldOffset(positionField), position);
+                var passengersField = Entity.class.getDeclaredField("passengers");
+                unsafe.putObject(
+                    boat,
+                    unsafe.objectFieldOffset(passengersField),
+                    com.google.common.collect.ImmutableList.of());
+                boat.noGravity = noGravity;
+                boat.setDeltaMovement(Vec3.ZERO);
+                boat.setYRot(yRot);
+                boat.setXRot(0.0F);
+                boat.yRotO = yRot;
+                boat.xRotO = 0.0F;
+                boat.setOldPosAndRot();
+                return boat;
+            } catch (ReflectiveOperationException error) {
+                throw new IllegalStateException(
+                    "Unable to construct passenger position boat fixture", error);
+            }
+        }
+
+        private void setFixturePassengers(List<TickSnowballFixture> passengers) {
+            try {
+                Unsafe unsafe = unsafeInstance();
+                var passengersField = Entity.class.getDeclaredField("passengers");
+                unsafe.putObject(
+                    this,
+                    unsafe.objectFieldOffset(passengersField),
+                    com.google.common.collect.ImmutableList.copyOf(passengers));
+            } catch (ReflectiveOperationException error) {
+                throw new IllegalStateException(
+                    "Unable to update passenger position fixture relation", error);
+            }
+        }
+
+        @Override
+        public boolean isNoGravity() {
+            return this.noGravity;
+        }
+
+        @Override
+        public void tick() {
         }
     }
 
@@ -10610,6 +10794,8 @@ public final class MathOracle {
             snowball.setDeltaMovement(movement);
             try {
                 Unsafe unsafe = unsafeInstance();
+                var idField = Entity.class.getDeclaredField("id");
+                unsafe.putInt(snowball, unsafe.objectFieldOffset(idField), entityId);
                 var typeField = Entity.class.getDeclaredField("type");
                 unsafe.putObject(
                     snowball, unsafe.objectFieldOffset(typeField),
@@ -10635,6 +10821,16 @@ public final class MathOracle {
         @Override
         public net.minecraft.world.level.Level level() {
             return PassengerRelationFixtureEntity.CLIENT_LEVEL;
+        }
+
+        @Override
+        public void setPos(double x, double y, double z) {
+            this.fixturePosition = new Vec3(x, y, z);
+        }
+
+        @Override
+        public Vec3 getVehicleAttachmentPoint(Entity vehicle) {
+            return Vec3.ZERO;
         }
 
         @Override

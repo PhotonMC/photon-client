@@ -2695,6 +2695,47 @@ def math_cases():
         ],
     }
 
+    yield {
+        "case_id": "client-world/entity-passenger-position",
+        "family": "math",
+        "operation": "client_world_entity_passenger_position",
+        "vehicle": {
+            "entity_id": 37,
+            "type_id": 89,
+            "position": vector_bits(2.0, 2.0, 2.0),
+            "rotation": {"y": float_bits(90.0), "x": float_bits(0.0)},
+            "no_gravity": False,
+        },
+        "passengers": [
+            {
+                "entity_id": 38,
+                "type_id": 120,
+                "position": vector_bits(2.0, 12.0, 2.0),
+                "movement": vector_bits(0.125, 0.0, 0.0),
+                "rotation": {"y": float_bits(10.0), "x": float_bits(-15.0)},
+                "no_gravity": False,
+            },
+            {
+                "entity_id": 39,
+                "type_id": 120,
+                "position": vector_bits(2.0, 12.0, 2.0),
+                "movement": vector_bits(-0.125, 0.0, 0.0),
+                "rotation": {"y": float_bits(-20.0), "x": float_bits(25.0)},
+                "no_gravity": False,
+            },
+        ],
+        "initial_passenger_ids": [38],
+        "operations": [
+            {"action": "tick", "label": "single-seat", "ticks": 1},
+            {
+                "action": "set-passengers-and-tick",
+                "label": "multi-seat",
+                "passenger_ids": [38, 39],
+                "ticks": 1,
+            },
+        ],
+    }
+
     def sprint_key_presses(
         forward=False, backward=False, left=False, right=False,
         jump=False, shift=False, sprint=False,

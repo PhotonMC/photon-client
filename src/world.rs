@@ -1219,13 +1219,21 @@ fn advance_head_rotation(current_bits: &mut u32, target_bits: u32, steps: &mut u
 
 const VANILLA_BOAT_PASSENGER_MAX_ROTATION: f32 = 105.0_f32;
 
-fn vanilla_boat_passenger_rotation_correction(passenger_y_rot: f32, vehicle_y_rot: f32) -> f32 {
+fn vanilla_boat_passenger_rotation_clamped_values(
+    passenger_y_rot: f32,
+    passenger_old_y_rot: f32,
+    vehicle_y_rot: f32,
+) -> (f32, f32) {
     let delta = wrap_degrees_f32(passenger_y_rot - vehicle_y_rot);
-    clamp_f32(
+    let target_delta = clamp_f32(
         delta,
         -VANILLA_BOAT_PASSENGER_MAX_ROTATION,
         VANILLA_BOAT_PASSENGER_MAX_ROTATION,
-    ) - delta
+    );
+    (
+        passenger_old_y_rot + target_delta - delta,
+        passenger_y_rot + target_delta - delta,
+    )
 }
 
 fn vanilla_passenger_can_turn_in_boat(passenger_type_id: i32) -> bool {
@@ -6884,12 +6892,13 @@ impl ClientPlayerState {
     }
 
     fn clamp_vanilla_boat_passenger_rotation(&mut self, vehicle_y_rot: f32) {
-        let correction = vanilla_boat_passenger_rotation_correction(
+        let (old_y_rot, y_rot) = vanilla_boat_passenger_rotation_clamped_values(
             f32::from_bits(self.y_rot_bits),
+            f32::from_bits(self.old_y_rot_bits),
             vehicle_y_rot,
         );
-        self.old_y_rot_bits = (f32::from_bits(self.old_y_rot_bits) + correction).to_bits();
-        self.y_rot_bits = (f32::from_bits(self.y_rot_bits) + correction).to_bits();
+        self.old_y_rot_bits = old_y_rot.to_bits();
+        self.y_rot_bits = y_rot.to_bits();
         self.y_head_rot_bits = self.y_rot_bits;
         self.y_body_rot_bits = vehicle_y_rot.to_bits();
     }
@@ -7697,12 +7706,13 @@ impl ClientEntity {
         vehicle_y_rot: f32,
         animal_rotation_offset: Option<f32>,
     ) {
-        let correction = vanilla_boat_passenger_rotation_correction(
+        let (old_y_rot, y_rot) = vanilla_boat_passenger_rotation_clamped_values(
             f32::from_bits(self.y_rot_bits),
+            f32::from_bits(self.old_y_rot_bits),
             vehicle_y_rot,
         );
-        self.old_y_rot_bits = (f32::from_bits(self.old_y_rot_bits) + correction).to_bits();
-        self.y_rot_bits = (f32::from_bits(self.y_rot_bits) + correction).to_bits();
+        self.old_y_rot_bits = old_y_rot.to_bits();
+        self.y_rot_bits = y_rot.to_bits();
         if vanilla_passenger_is_living(self.type_id) {
             self.y_head_rot_bits = self.y_rot_bits;
             self.y_body_rot_bits = vehicle_y_rot.to_bits();

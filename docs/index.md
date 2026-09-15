@@ -174,6 +174,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P08.bf-entity-passenger-living — server-conformance Boat passenger `LivingEntity` body/head state](client-world-entity-passenger-living-conformance.md)
 - [P08.ay-entity-passenger-player — server-conformance Player vehicle attachment](client-world-entity-passenger-player-conformance.md)
 - [P08.ax-entity-passenger-position — server-conformance `positionRider` tekne koltuğu](client-world-entity-passenger-position-conformance.md)
+- [P08.ax.1 — ClientWorld passenger seat `positionRider` — client-parity](client-world-entity-passenger-position-parity-conformance.md)
 - [P08.ba-entity-passenger-rotation — server-conformance Boat passenger rotation clamp](client-world-entity-passenger-rotation-conformance.md)
 - [P08.aw-entity-passenger-tick — server-conformance Passenger tick sırası](client-world-entity-passenger-tick-conformance.md)
 - [P08.aw.1 — ClientWorld passenger tick and `rideTick` — client-parity](client-world-entity-passenger-tick-parity-conformance.md)
