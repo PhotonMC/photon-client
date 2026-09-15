@@ -1167,6 +1167,28 @@ def math_cases():
         ],
     }
 
+    yield {
+        "case_id": "client-world/entity-shared-flags",
+        "family": "math",
+        "operation": "client_world_entity_shared_flags",
+        "entity_id": 37,
+        "entity_type_id": 120,
+        "operations": [
+            {
+                "label": "all-defined-flags",
+                "metadata_hex": "0000fbff",
+            },
+            {
+                "label": "air-supply-only-preserves-flags",
+                "metadata_hex": "010107ff",
+            },
+            {
+                "label": "clear-shared-flags",
+                "metadata_hex": "000000ff",
+            },
+        ],
+    }
+
     def attribute_modifier(identifier, amount, operation):
         return {
             "id": identifier,

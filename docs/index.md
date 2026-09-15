@@ -169,6 +169,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P08.e-entity-rotation — server-conformance ClientWorld entity rotation state](client-world-entity-rotation-conformance.md)
 - [P09.r — ClientWorld kalıcı entity section index güncellemeleri — client-parity birleşik kayıt](client-world-entity-section-index-conformance.md)
 - [P08.z — server-conformance Entity shared flags semantic state](client-world-entity-shared-flags-conformance.md)
+- [P08.z.1 — ClientWorld entity shared flags metadata — client-parity](client-world-entity-shared-flags-parity-conformance.md)
 - [P08.ac — server-conformance Entity silent semantic state](client-world-entity-silent-conformance.md)
 - [P08.an — server-conformance Entity sleeping position semantic state](client-world-entity-sleeping-position-conformance.md)
 - [P08.aq-snowball-tick — server-conformance Snowball free-flight world tick](client-world-entity-snowball-tick-conformance.md)

@@ -5114,7 +5114,7 @@ impl ClientWorld {
         false
     }
 
-    pub(crate) fn apply_entity_metadata(&mut self, entity_id: i32, metadata: &[u8]) -> bool {
+    pub fn apply_entity_metadata(&mut self, entity_id: i32, metadata: &[u8]) -> bool {
         let shared_flags = shared_flags_from_metadata(metadata);
         let living_flags = living_flags_from_metadata(metadata);
         let mob_flags = mob_flags_from_metadata(metadata);

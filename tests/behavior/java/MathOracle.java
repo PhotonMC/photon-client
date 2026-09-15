@@ -50,8 +50,10 @@ import net.minecraft.core.component.PatchedDataComponentMap;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.protocol.game.ClientboundGameEventPacket;
 import net.minecraft.network.protocol.game.ClientboundPlayerAbilitiesPacket;
+import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.Bootstrap;
 import net.minecraft.data.registries.VanillaRegistries;
 import net.minecraft.tags.TagKey;
@@ -5093,6 +5095,9 @@ public final class MathOracle {
         if (operation.equals("client_world_player_attributes")) {
             return clientWorldPlayerAttributesResult(request);
         }
+        if (operation.equals("client_world_entity_shared_flags")) {
+            return clientWorldEntitySharedFlagsResult(request);
+        }
         throw new IllegalArgumentException("Unknown client world operation");
     }
 
@@ -5194,6 +5199,54 @@ public final class MathOracle {
         } catch (RuntimeException error) {
             throw new IllegalStateException("Player attribute fixture failed", error);
         }
+    }
+
+    private static JsonObject clientWorldEntitySharedFlagsResult(JsonObject request) {
+        try {
+            var output = System.out;
+            var errorOutput = System.err;
+            try {
+                SharedConstants.setVersion(TEST_VERSION);
+                Bootstrap.bootStrap();
+            } finally {
+                System.setOut(output);
+                System.setErr(errorOutput);
+            }
+
+            var entity = new SharedFlagsFixtureEntity();
+            var states = new JsonArray();
+            for (JsonElement operationEntry : request.getAsJsonArray("operations")) {
+                JsonObject operation = operationEntry.getAsJsonObject();
+                entity.getEntityData().assignValues(
+                    decodeEntityMetadata(operation.get("metadata_hex").getAsString()));
+                states.add(sharedFlagsState(
+                    operation.get("label").getAsString(), entity));
+            }
+            var result = new JsonObject();
+            result.add("states", states);
+            return result;
+        } catch (RuntimeException error) {
+            throw new IllegalStateException("Entity shared flags fixture failed", error);
+        }
+    }
+
+    private static JsonObject sharedFlagsState(
+        String label, SharedFlagsFixtureEntity entity
+    ) {
+        int flags = entity.sharedFlags();
+        var state = new JsonObject();
+        state.addProperty("label", label);
+        state.addProperty("accepted", true);
+        state.addProperty("shared_flags", flags);
+        state.addProperty("on_fire", entity.isOnFire());
+        state.addProperty("shift_key_down", entity.isShiftKeyDown());
+        state.addProperty("sprinting", entity.isSprinting());
+        state.addProperty("swimming", entity.isSwimming());
+        state.addProperty("invisible", entity.isInvisible());
+        state.addProperty("glowing", entity.isCurrentlyGlowing());
+        state.addProperty("fall_flying", (flags & (1 << 7)) != 0);
+        state.addProperty("air_supply", entity.getAirSupply());
+        return state;
     }
 
     private static JsonObject clientWorldBlockUpdateResult(JsonObject request) {
@@ -5921,6 +5974,27 @@ public final class MathOracle {
         return bytes;
     }
 
+    private static List<SynchedEntityData.DataValue<?>> decodeEntityMetadata(String value) {
+        RegistryFriendlyByteBuf input = new RegistryFriendlyByteBuf(
+            Unpooled.wrappedBuffer(hexBytes(value)), RegistryAccess.EMPTY);
+        try {
+            var values = new ArrayList<SynchedEntityData.DataValue<?>>();
+            while (input.isReadable()) {
+                int id = input.readUnsignedByte();
+                if (id == 255) {
+                    if (input.isReadable()) {
+                        throw new IllegalArgumentException("metadata has trailing bytes");
+                    }
+                    return values;
+                }
+                values.add(SynchedEntityData.DataValue.read(input, id));
+            }
+            throw new IllegalArgumentException("metadata has no terminator");
+        } finally {
+            input.release();
+        }
+    }
+
     private static final class CollisionFixtureEntity extends Entity {
         private boolean spectator;
         private boolean collidable;
@@ -6271,6 +6345,48 @@ public final class MathOracle {
         @Override
         public net.minecraft.world.flag.FeatureFlagSet enabledFeatures() {
             return net.minecraft.world.flag.FeatureFlagSet.of();
+        }
+    }
+
+    private static final class SharedFlagsFixtureEntity extends Entity {
+        private static final net.minecraft.world.level.Level CLIENT_LEVEL = createClientLevel();
+
+        private SharedFlagsFixtureEntity() {
+            super(net.minecraft.world.entity.EntityTypes.ARMOR_STAND, CLIENT_LEVEL);
+        }
+
+        private static net.minecraft.world.level.Level createClientLevel() {
+            try {
+                return (net.minecraft.world.level.Level)unsafeInstance()
+                    .allocateInstance(HappyGhastClientLevelFixture.class);
+            } catch (InstantiationException error) {
+                throw new IllegalStateException("Unable to allocate metadata client level fixture", error);
+            }
+        }
+
+        private int sharedFlags() {
+            return Byte.toUnsignedInt(this.getEntityData().get(DATA_SHARED_FLAGS_ID));
+        }
+
+        @Override
+        protected void defineSynchedData(net.minecraft.network.syncher.SynchedEntityData.Builder builder) {
+        }
+
+        @Override
+        public boolean hurtServer(
+            net.minecraft.server.level.ServerLevel level,
+            net.minecraft.world.damagesource.DamageSource source,
+            float damage
+        ) {
+            return false;
+        }
+
+        @Override
+        protected void readAdditionalSaveData(net.minecraft.world.level.storage.ValueInput input) {
+        }
+
+        @Override
+        protected void addAdditionalSaveData(net.minecraft.world.level.storage.ValueOutput output) {
         }
     }
 

@@ -78,7 +78,7 @@ use voxel_client::timer::Timer;
 use voxel_client::utf8;
 use voxel_client::wire::{self, ReadError};
 use voxel_client::world::{
-    ClientAttributeModifierState, ClientAttributeState, ClientChunkCacheSnapshot,
+    ClientAttributeModifierState, ClientAttributeState, ClientChunkCacheSnapshot, ClientEntity,
     ClientEntityCollisionCandidate, ClientEntityDimensions, ClientEntityPose,
     ClientPlayerAbilities, ClientPlayerGameMode, ClientPlayerPoseInput, ClientWorld,
     ClientWorldBorder, ClientWorldBorderInitialization, ClientWorldBorderStatus,
@@ -6850,6 +6850,62 @@ fn client_world_player_attributes_result(request: &Value) -> Result<Value, Strin
     Ok(json!({"events": events}))
 }
 
+fn client_world_entity_shared_flags_state(
+    label: &str,
+    accepted: bool,
+    entity: &ClientEntity,
+) -> Value {
+    json!({
+        "label": label,
+        "accepted": accepted,
+        "shared_flags": entity.shared_flags(),
+        "on_fire": entity.is_on_fire(),
+        "shift_key_down": entity.is_shift_key_down(),
+        "sprinting": entity.is_sprinting(),
+        "swimming": entity.is_swimming(),
+        "invisible": entity.is_invisible(),
+        "glowing": entity.is_glowing(),
+        "fall_flying": entity.is_fall_flying(),
+        "air_supply": entity.air_supply(),
+    })
+}
+
+fn client_world_entity_shared_flags_result(request: &Value) -> Result<Value, String> {
+    let entity_id = i32_field(request, "entity_id")?;
+    let mut world = ClientWorld::new(DimensionBounds::default());
+    if !world.apply_entity(EntityInput {
+        entity_id,
+        uuid: Uuid::new(0, u64::from(entity_id as u32)),
+        type_id: i32_field(request, "entity_type_id")?,
+        x: 1.25,
+        y: 80.0,
+        z: -35.5,
+        movement: (0.0, 0.0, 0.0),
+        rotation: (0.0, 0.0, 0.0),
+        data: 0,
+    }) {
+        return Err("shared flags fixture entity was rejected".into());
+    }
+
+    let operations = request["operations"]
+        .as_array()
+        .ok_or("operations must be an array")?;
+    let mut states = Vec::with_capacity(operations.len());
+    for operation in operations {
+        let metadata = decode_hex(string(operation, "metadata_hex")?)?;
+        let accepted = world.apply_entity_metadata(entity_id, &metadata);
+        let entity = world
+            .entity_at(entity_id)
+            .ok_or("shared flags fixture entity disappeared")?;
+        states.push(client_world_entity_shared_flags_state(
+            string(operation, "label")?,
+            accepted,
+            entity,
+        ));
+    }
+    Ok(json!({"states": states}))
+}
+
 fn client_chunk_cache_snapshot_json(snapshot: &ClientChunkCacheSnapshot) -> Value {
     json!({
         "storage_radius": snapshot.storage_radius,
@@ -6983,6 +7039,9 @@ fn math_result(request: &Value) -> Result<Value, String> {
     }
     if operation == "client_world_player_attributes" {
         return client_world_player_attributes_result(request);
+    }
+    if operation == "client_world_entity_shared_flags" {
+        return client_world_entity_shared_flags_result(request);
     }
     if operation == "random" {
         return random_result(request);
