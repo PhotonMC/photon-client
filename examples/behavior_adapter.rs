@@ -76,6 +76,7 @@ use voxel_client::status::{
 use voxel_client::tags::{ClientboundUpdateTagsPacket, RegistryTags, TagEntry};
 use voxel_client::timer::Timer;
 use voxel_client::utf8;
+use voxel_client::window;
 use voxel_client::wire::{self, ReadError};
 use voxel_client::world::{
     BoatInput, ClientAttributeModifierState, ClientAttributeState, ClientChunkCacheSnapshot,
@@ -15112,6 +15113,43 @@ fn nbt_result(request: &Value) -> Result<Value, String> {
     }
 }
 
+fn window_result(request: &Value) -> Result<Value, String> {
+    match string(request, "operation")? {
+        "base_size" => Ok(json!({
+            "base_width": window::BASE_WIDTH,
+            "base_height": window::BASE_HEIGHT,
+        })),
+        "gui_scale" => {
+            let rows = request["rows"]
+                .as_array()
+                .ok_or("window rows must be an array")?;
+            let mut out = Vec::with_capacity(rows.len());
+            for row in rows {
+                let mut scale = window::WindowScale::new(
+                    i32_field(row, "framebuffer_width")?,
+                    i32_field(row, "framebuffer_height")?,
+                );
+                let calculated = scale.calculate_scale(
+                    i32_field(row, "max_scale")?,
+                    row["enforce_unicode"]
+                        .as_bool()
+                        .ok_or("enforce_unicode must be a bool")?,
+                );
+                scale.set_gui_scale(calculated);
+                out.push(json!({
+                    "label": string(row, "label")?,
+                    "calculated_scale": calculated,
+                    "gui_scale": scale.gui_scale(),
+                    "gui_scaled_width": scale.gui_scaled_width(),
+                    "gui_scaled_height": scale.gui_scaled_height(),
+                }));
+            }
+            Ok(json!({"rows": out}))
+        }
+        _ => Err("unknown window operation".into()),
+    }
+}
+
 fn respond(request: Value) -> Result<Value, String> {
     if request["schema_version"].as_u64() != Some(1) {
         return Err("unsupported schema_version".into());
@@ -15125,6 +15163,7 @@ fn respond(request: Value) -> Result<Value, String> {
         "binary" => binary_result(&request)?,
         "nbt" => nbt_result(&request)?,
         "resources" => resources_result(&request)?,
+        "window" => window_result(&request)?,
         _ => return Err("unknown behavior family".into()),
     };
     Ok(json!({"schema_version": 1, "case_id": case_id, "result": result}))

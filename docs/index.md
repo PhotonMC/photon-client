@@ -531,4 +531,9 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P01.b — Vec3 toVector3f sözleşmesi — client-parity birleşik kayıt](vec3-to-vector3f-conformance.md)
 - [P01.b — Vec3 vectorTo sözleşmesi — client-parity birleşik kayıt](vec3-vector-to-conformance.md)
 - [P01.b — Vec3 with sözleşmesi — client-parity birleşik kayıt](vec3-with-conformance.md)
+- [P05.d.1 — Window GUI ölçeği ve ölçekli boyut — client-parity birleşik kayıt](window-gui-scale-conformance.md)
 - [P03.a — Rust VarInt/VarLong davranış dilimi — client-parity kapsam kaydı](wire-conformance.md)
+
+## Diğer referans kayıtları
+
+- [P15 — Render yığını kararı: GLFW + Vulkan 1.2 (ash), wgpu değil](render-backend-decision.md)

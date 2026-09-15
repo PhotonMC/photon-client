@@ -28,5 +28,6 @@ pub mod status;
 pub mod tags;
 pub mod timer;
 pub mod utf8;
+pub mod window;
 pub mod wire;
 pub mod world;
