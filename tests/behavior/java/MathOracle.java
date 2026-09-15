@@ -5146,6 +5146,9 @@ public final class MathOracle {
         if (operation.equals("client_world_entity_effect_ambience")) {
             return clientWorldEntityEffectAmbienceResult(request);
         }
+        if (operation.equals("client_world_entity_effect_particles")) {
+            return clientWorldEntityEffectParticlesResult(request);
+        }
         throw new IllegalArgumentException("Unknown client world operation");
     }
 
@@ -6142,6 +6145,54 @@ public final class MathOracle {
         return state;
     }
 
+    private static JsonObject clientWorldEntityEffectParticlesResult(JsonObject request) {
+        try {
+            var output = System.out;
+            var errorOutput = System.err;
+            try {
+                SharedConstants.setVersion(TEST_VERSION);
+                Bootstrap.bootStrap();
+            } finally {
+                System.setOut(output);
+                System.setErr(errorOutput);
+            }
+
+            var entity = new LivingFlagsFixtureEntity();
+            var states = new JsonArray();
+            states.add(entityEffectParticlesState("initial", true, entity));
+            for (JsonElement operationEntry : request.getAsJsonArray("operations")) {
+                JsonObject operation = operationEntry.getAsJsonObject();
+                entity.getEntityData().assignValues(
+                    decodeEntityMetadata(
+                        operation.get("metadata_hex").getAsString(),
+                        RegistryAccess.fromRegistryOfRegistries(BuiltInRegistries.REGISTRY)));
+                states.add(entityEffectParticlesState(
+                    operation.get("label").getAsString(), true, entity));
+            }
+            var result = new JsonObject();
+            result.add("states", states);
+            return result;
+        } catch (RuntimeException error) {
+            throw new IllegalStateException("Entity effect particles fixture failed", error);
+        }
+    }
+
+    private static JsonObject entityEffectParticlesState(
+        String label, boolean accepted, LivingFlagsFixtureEntity entity
+    ) {
+        var state = new JsonObject();
+        state.addProperty("label", label);
+        state.addProperty("accepted", accepted);
+        state.addProperty("living_flags", entity.livingFlags());
+        state.addProperty("effect_ambience", entity.effectAmbience());
+        var particleTypeIds = new JsonArray();
+        for (int typeId : entity.effectParticleTypeIds()) {
+            particleTypeIds.add(typeId);
+        }
+        state.add("effect_particle_type_ids", particleTypeIds);
+        return state;
+    }
+
     private static JsonObject clientWorldBlockUpdateResult(JsonObject request) {
         try {
             var output = System.out;
@@ -6868,8 +6919,14 @@ public final class MathOracle {
     }
 
     private static List<SynchedEntityData.DataValue<?>> decodeEntityMetadata(String value) {
+        return decodeEntityMetadata(value, RegistryAccess.EMPTY);
+    }
+
+    private static List<SynchedEntityData.DataValue<?>> decodeEntityMetadata(
+        String value, RegistryAccess registryAccess
+    ) {
         RegistryFriendlyByteBuf input = new RegistryFriendlyByteBuf(
-            Unpooled.wrappedBuffer(hexBytes(value)), RegistryAccess.EMPTY);
+            Unpooled.wrappedBuffer(hexBytes(value)), registryAccess);
         try {
             var values = new ArrayList<SynchedEntityData.DataValue<?>>();
             while (input.isReadable()) {
@@ -7285,6 +7342,10 @@ public final class MathOracle {
 
     private static final class LivingFlagsFixtureEntity
         extends net.minecraft.world.entity.decoration.ArmorStand {
+        private static final net.minecraft.network.syncher.EntityDataAccessor<
+            List<net.minecraft.core.particles.ParticleOptions>> EFFECT_PARTICLES_DATA =
+            new net.minecraft.network.syncher.EntityDataAccessor<>(
+                10, net.minecraft.network.syncher.EntityDataSerializers.PARTICLES);
         private static final net.minecraft.network.syncher.EntityDataAccessor<Boolean>
             EFFECT_AMBIENCE_DATA = new net.minecraft.network.syncher.EntityDataAccessor<>(
                 11, net.minecraft.network.syncher.EntityDataSerializers.BOOLEAN);
@@ -7300,6 +7361,12 @@ public final class MathOracle {
 
         private boolean effectAmbience() {
             return this.getEntityData().get(EFFECT_AMBIENCE_DATA);
+        }
+
+        private List<Integer> effectParticleTypeIds() {
+            return this.getEntityData().get(EFFECT_PARTICLES_DATA).stream()
+                .map(particle -> BuiltInRegistries.PARTICLE_TYPE.getId(particle.getType()))
+                .toList();
         }
     }
 

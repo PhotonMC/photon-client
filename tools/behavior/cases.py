@@ -1415,6 +1415,32 @@ def math_cases():
         ],
     }
 
+    yield {
+        "case_id": "client-world/entity-effect-particles",
+        "family": "math",
+        "operation": "client_world_entity_effect_particles",
+        "entity_id": 37,
+        "entity_type_id": 54,
+        "operations": [
+            {
+                "label": "set-one-effect-particle",
+                "metadata_hex": "0a11011c11223344ff",
+            },
+            {
+                "label": "set-two-effect-particles-with-living-flag",
+                "metadata_hex": "0800010a11021c112233441c55667788ff",
+            },
+            {
+                "label": "no-gravity-preserves-effect-particles",
+                "metadata_hex": "050801ff",
+            },
+            {
+                "label": "clear-effect-particles",
+                "metadata_hex": "0a1100ff",
+            },
+        ],
+    }
+
     def attribute_modifier(identifier, amount, operation):
         return {
             "id": identifier,

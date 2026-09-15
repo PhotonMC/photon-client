@@ -143,6 +143,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P08.al — server-conformance Entity effect ambience semantic state](client-world-entity-effect-ambience-conformance.md)
 - [P08.al.1 — ClientWorld entity effect ambience — client-parity](client-world-entity-effect-ambience-parity-conformance.md)
 - [P08.am — server-conformance Entity effect particle type list semantic state](client-world-entity-effect-particles-conformance.md)
+- [P08.am.1 — ClientWorld entity effect particle type list — client-parity](client-world-entity-effect-particles-parity-conformance.md)
 - [P08.bm-entity-experience-orb-tick — server-conformance Experience Orb client tick](client-world-entity-experience-orb-tick-conformance.md)
 - [P08.bo-entity-falling-block-tick — server-conformance FallingBlock free-flight tick](client-world-entity-falling-block-tick-conformance.md)
 - [P08.bp-entity-firework-tick — server-conformance Firework Rocket free-flight tick](client-world-entity-firework-tick-conformance.md)
