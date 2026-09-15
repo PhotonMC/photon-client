@@ -71,7 +71,6 @@ import net.minecraft.world.entity.Pose;
 import net.minecraft.world.entity.item.FallingBlockEntity;
 import net.minecraft.world.entity.item.PrimedTnt;
 import net.minecraft.world.entity.animal.cow.Cow;
-import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.entity.player.Abilities;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.entity.player.Player;
@@ -5199,9 +5198,6 @@ public final class MathOracle {
         if (operation.equals("client_world_entity_passenger_turn")) {
             return clientWorldEntityPassengerTurnResult(request);
         }
-        if (operation.equals("client_world_entity_passenger_living")) {
-            return clientWorldEntityPassengerLivingResult(request);
-        }
         if (operation.equals("client_world_player_sprint_trigger")) {
             return clientWorldPlayerSprintTriggerResult(request);
         }
@@ -6558,69 +6554,6 @@ public final class MathOracle {
             }
             states.add(passengerRotationState(
                 operation.get("label").getAsString(), vehicles, passengers));
-        }
-        var result = new JsonObject();
-        result.add("states", states);
-        return result;
-    }
-
-    private static JsonObject clientWorldEntityPassengerLivingResult(JsonObject request) {
-        var output = System.out;
-        var errorOutput = System.err;
-        try {
-            SharedConstants.setVersion(TEST_VERSION);
-            Bootstrap.bootStrap();
-        } finally {
-            System.setOut(output);
-            System.setErr(errorOutput);
-        }
-
-        JsonObject vehicleInput = request.getAsJsonObject("vehicle");
-        if (vehicleInput.get("type_id").getAsInt() != 89) {
-            throw new IllegalArgumentException(
-                "Passenger living fixture requires an oak boat");
-        }
-        PassengerPositionBoatFixture vehicle = PassengerPositionBoatFixture.create(
-            vehicleInput.get("entity_id").getAsInt(),
-            vec3(vehicleInput.getAsJsonObject("position")),
-            Oracle.f32(vehicleInput.getAsJsonObject("rotation"), "y"),
-            vehicleInput.get("no_gravity").getAsBoolean());
-
-        JsonObject passengerInput = request.getAsJsonObject("passenger");
-        if (passengerInput.get("type_id").getAsInt() != 5) {
-            throw new IllegalArgumentException(
-                "Passenger living fixture requires an Armor Stand passenger");
-        }
-        PassengerPositionArmorStandFixture passenger = PassengerPositionArmorStandFixture.create(
-            passengerInput.get("entity_id").getAsInt(),
-            vec3(passengerInput.getAsJsonObject("position")),
-            vec3(passengerInput.getAsJsonObject("movement")),
-            Oracle.f32(passengerInput.getAsJsonObject("rotation"), "y"),
-            Oracle.f32(passengerInput.getAsJsonObject("rotation"), "x"),
-            passengerInput.get("no_gravity").getAsBoolean(),
-            vehicle);
-        vehicle.setFixturePassengers(List.of(passenger));
-
-        var states = new JsonArray();
-        states.add(passengerRotationState(
-            "initial", List.of(vehicle), List.of(passenger)));
-        for (JsonElement operationEntry : request.getAsJsonArray("operations")) {
-            JsonObject operation = operationEntry.getAsJsonObject();
-            if (!operation.get("action").getAsString().equals("tick")) {
-                throw new IllegalArgumentException("Unknown passenger living action");
-            }
-            for (int tick = 0; tick < operation.get("ticks").getAsInt(); tick++) {
-                vehicle.setOldPosAndRot();
-                vehicle.tickCount++;
-                vehicle.tick();
-                passenger.setOldPosAndRot();
-                passenger.tickCount++;
-                passenger.rideTick();
-            }
-            states.add(passengerRotationState(
-                operation.get("label").getAsString(),
-                List.of(vehicle),
-                List.of(passenger)));
         }
         var result = new JsonObject();
         result.add("states", states);
@@ -9459,89 +9392,6 @@ public final class MathOracle {
             } catch (ReflectiveOperationException error) {
                 throw new IllegalStateException(
                     "Unable to construct passenger Cow rotation fixture", error);
-            }
-        }
-
-        @Override
-        public boolean isNoGravity() {
-            return this.noGravity;
-        }
-
-        @Override
-        public void tick() {
-        }
-    }
-
-    private static final class PassengerPositionArmorStandFixture extends ArmorStand {
-        private boolean noGravity;
-
-        private PassengerPositionArmorStandFixture() {
-            super(null, null);
-        }
-
-        private static PassengerPositionArmorStandFixture create(
-            int entityId, Vec3 position, Vec3 movement,
-            float yRot, float xRot, boolean noGravity, Entity vehicle
-        ) {
-            try {
-                Unsafe unsafe = unsafeInstance();
-                PassengerPositionArmorStandFixture armorStand =
-                    (PassengerPositionArmorStandFixture)unsafe.allocateInstance(
-                        PassengerPositionArmorStandFixture.class);
-                var idField = Entity.class.getDeclaredField("id");
-                unsafe.putInt(armorStand, unsafe.objectFieldOffset(idField), entityId);
-                var typeField = Entity.class.getDeclaredField("type");
-                unsafe.putObject(
-                    armorStand,
-                    unsafe.objectFieldOffset(typeField),
-                    net.minecraft.world.entity.EntityTypes.ARMOR_STAND);
-                var levelField = Entity.class.getDeclaredField("level");
-                unsafe.putObject(
-                    armorStand,
-                    unsafe.objectFieldOffset(levelField),
-                    PassengerRelationFixtureEntity.CLIENT_LEVEL);
-                var dimensionsField = Entity.class.getDeclaredField("dimensions");
-                unsafe.putObject(
-                    armorStand,
-                    unsafe.objectFieldOffset(dimensionsField),
-                    net.minecraft.world.entity.EntityTypes.ARMOR_STAND.getDimensions());
-                var positionField = Entity.class.getDeclaredField("position");
-                unsafe.putObject(armorStand, unsafe.objectFieldOffset(positionField), position);
-                var deltaMovementField = Entity.class.getDeclaredField("deltaMovement");
-                unsafe.putObject(
-                    armorStand, unsafe.objectFieldOffset(deltaMovementField), movement);
-                var blockPositionField = Entity.class.getDeclaredField("blockPosition");
-                unsafe.putObject(
-                    armorStand,
-                    unsafe.objectFieldOffset(blockPositionField),
-                    BlockPos.containing(position.x, position.y, position.z));
-                var chunkPositionField = Entity.class.getDeclaredField("chunkPosition");
-                unsafe.putObject(
-                    armorStand,
-                    unsafe.objectFieldOffset(chunkPositionField),
-                    ChunkPos.containing(BlockPos.containing(position.x, position.y, position.z)));
-                var passengersField = Entity.class.getDeclaredField("passengers");
-                unsafe.putObject(
-                    armorStand,
-                    unsafe.objectFieldOffset(passengersField),
-                    com.google.common.collect.ImmutableList.of());
-                var vehicleField = Entity.class.getDeclaredField("vehicle");
-                unsafe.putObject(armorStand, unsafe.objectFieldOffset(vehicleField), vehicle);
-                armorStand.setLevelCallback(EntityInLevelCallback.NULL);
-                armorStand.noGravity = noGravity;
-                armorStand.setYRot(yRot);
-                armorStand.setXRot(xRot);
-                armorStand.yRotO = yRot;
-                armorStand.xRotO = xRot;
-                armorStand.yHeadRot = yRot;
-                armorStand.yHeadRotO = yRot;
-                armorStand.yBodyRot = yRot;
-                armorStand.yBodyRotO = yRot;
-                armorStand.setOldPosAndRot();
-                return armorStand;
-            } catch (ReflectiveOperationException error) {
-                throw new IllegalStateException(
-                    "Unable to construct passenger Armor Stand living fixture", error);
             }
         }
 
