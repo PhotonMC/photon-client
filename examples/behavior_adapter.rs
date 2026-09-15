@@ -9601,6 +9601,141 @@ fn client_world_entity_passenger_animal_rotation_result(request: &Value) -> Resu
     Ok(json!({"states": states}))
 }
 
+fn client_world_entity_passenger_animal_position_result(request: &Value) -> Result<Value, String> {
+    let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+    let blocks = vec![0; 4_096];
+    let biomes = vec![0; 64];
+    if !world.replace_chunk(
+        0,
+        0,
+        [SectionInput {
+            non_empty_block_count: 0,
+            fluid_count: 0,
+            block_states: &blocks,
+            biomes: &biomes,
+        }],
+    ) {
+        return Err("passenger animal position fixture chunk was rejected".into());
+    }
+
+    let vehicle = request["vehicle"]
+        .as_object()
+        .ok_or("vehicle must be an object")?;
+    let vehicle_id = i32_field(&Value::Object(vehicle.clone()), "entity_id")?;
+    if i32_field(&Value::Object(vehicle.clone()), "type_id")? != 89 {
+        return Err("passenger animal position fixture requires an oak boat".into());
+    }
+    let vehicle_position = f64_vec3(
+        vehicle
+            .get("position")
+            .ok_or("passenger animal position vehicle position must be a vector")?,
+    )?;
+    let vehicle_rotation = vehicle
+        .get("rotation")
+        .ok_or("passenger animal position vehicle rotation must be an object")?;
+    if !world.apply_entity(EntityInput {
+        entity_id: vehicle_id,
+        uuid: Uuid::new(0, u64::from(vehicle_id as u32)),
+        type_id: 89,
+        x: vehicle_position.x,
+        y: vehicle_position.y,
+        z: vehicle_position.z,
+        movement: (0.0, 0.0, 0.0),
+        rotation: (
+            f32_field(vehicle_rotation, "y")?,
+            f32_field(vehicle_rotation, "x")?,
+            0.0,
+        ),
+        data: 0,
+    }) {
+        return Err("passenger animal position vehicle was rejected".into());
+    }
+    if vehicle["no_gravity"]
+        .as_bool()
+        .ok_or("passenger animal position vehicle no_gravity must be a boolean")?
+        && !world.apply_entity_metadata(vehicle_id, &[5, 8, 1, 255])
+    {
+        return Err("passenger animal position vehicle no-gravity was rejected".into());
+    }
+
+    let animal = request["animal"]
+        .as_object()
+        .ok_or("animal must be an object")?;
+    let animal_id = i32_field(&Value::Object(animal.clone()), "entity_id")?;
+    if i32_field(&Value::Object(animal.clone()), "type_id")? != 30 {
+        return Err("passenger animal position fixture requires a Cow".into());
+    }
+    let animal_position = f64_vec3(
+        animal
+            .get("position")
+            .ok_or("passenger animal position animal position must be a vector")?,
+    )?;
+    let animal_movement = f64_vec3(
+        animal
+            .get("movement")
+            .ok_or("passenger animal position animal movement must be a vector")?,
+    )?;
+    let animal_rotation = animal
+        .get("rotation")
+        .ok_or("passenger animal position animal rotation must be an object")?;
+    if !world.apply_entity(EntityInput {
+        entity_id: animal_id,
+        uuid: Uuid::new(0, u64::from(animal_id as u32)),
+        type_id: 30,
+        x: animal_position.x,
+        y: animal_position.y,
+        z: animal_position.z,
+        movement: (animal_movement.x, animal_movement.y, animal_movement.z),
+        rotation: (
+            f32_field(animal_rotation, "y")?,
+            f32_field(animal_rotation, "x")?,
+            f32_field(animal_rotation, "y")?,
+        ),
+        data: 0,
+    }) {
+        return Err("passenger animal position animal was rejected".into());
+    }
+    if animal["no_gravity"]
+        .as_bool()
+        .ok_or("passenger animal position animal no_gravity must be a boolean")?
+        && !world.apply_entity_metadata(animal_id, &[5, 8, 1, 255])
+    {
+        return Err("passenger animal position animal no-gravity was rejected".into());
+    }
+    if !world.apply_entity_passengers(vehicle_id, &[animal_id]) {
+        return Err("passenger animal position relation was rejected".into());
+    }
+
+    let entity_ids = [vehicle_id, animal_id];
+    let mut states = vec![client_world_entity_tick_state(
+        "initial",
+        true,
+        &entity_ids,
+        &world,
+    )?];
+    for operation in request["operations"]
+        .as_array()
+        .ok_or("operations must be an array")?
+    {
+        if string(operation, "action")? != "tick" {
+            return Err("unknown passenger animal position action".into());
+        }
+        let ticks = operation["ticks"]
+            .as_u64()
+            .ok_or("ticks must be an unsigned integer")?;
+        for _ in 0..ticks {
+            world.tick();
+        }
+        states.push(client_world_entity_tick_state(
+            string(operation, "label")?,
+            true,
+            &entity_ids,
+            &world,
+        )?);
+    }
+    Ok(json!({"states": states}))
+}
+
 fn client_world_entity_arrow_tick_result(request: &Value) -> Result<Value, String> {
     client_world_entity_tick_result(request, 6)
 }
@@ -10859,6 +10994,9 @@ fn math_result(request: &Value) -> Result<Value, String> {
     }
     if operation == "client_world_entity_passenger_animal_rotation" {
         return client_world_entity_passenger_animal_rotation_result(request);
+    }
+    if operation == "client_world_entity_passenger_animal_position" {
+        return client_world_entity_passenger_animal_position_result(request);
     }
     if operation == "client_world_player_sprint_trigger" {
         return client_world_player_sprint_trigger_result(request);

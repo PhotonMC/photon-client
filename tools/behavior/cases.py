@@ -2897,6 +2897,30 @@ def math_cases():
         ],
     }
 
+    yield {
+        "case_id": "client-world/entity-passenger-animal-position",
+        "family": "math",
+        "operation": "client_world_entity_passenger_animal_position",
+        "vehicle": {
+            "entity_id": 57,
+            "type_id": 89,
+            "position": vector_bits(2.0, 2.0, 2.0),
+            "rotation": {"y": float_bits(0.0), "x": float_bits(0.0)},
+            "no_gravity": True,
+        },
+        "animal": {
+            "entity_id": 58,
+            "type_id": 30,
+            "position": vector_bits(2.0, 12.0, 2.0),
+            "movement": vector_bits(0.0, 0.0, 0.0),
+            "rotation": {"y": float_bits(170.0), "x": float_bits(0.0)},
+            "no_gravity": True,
+        },
+        "operations": [
+            {"action": "tick", "label": "single-animal-seat", "ticks": 1},
+        ],
+    }
+
     def sprint_key_presses(
         forward=False, backward=False, left=False, right=False,
         jump=False, shift=False, sprint=False,

@@ -5192,6 +5192,9 @@ public final class MathOracle {
         if (operation.equals("client_world_entity_passenger_animal_rotation")) {
             return clientWorldEntityPassengerAnimalRotationResult(request);
         }
+        if (operation.equals("client_world_entity_passenger_animal_position")) {
+            return clientWorldEntityPassengerAnimalPositionResult(request);
+        }
         if (operation.equals("client_world_player_sprint_trigger")) {
             return clientWorldPlayerSprintTriggerResult(request);
         }
@@ -6416,6 +6419,69 @@ public final class MathOracle {
         return result;
     }
 
+    private static JsonObject clientWorldEntityPassengerAnimalPositionResult(
+        JsonObject request
+    ) {
+        var output = System.out;
+        var errorOutput = System.err;
+        try {
+            SharedConstants.setVersion(TEST_VERSION);
+            Bootstrap.bootStrap();
+        } finally {
+            System.setOut(output);
+            System.setErr(errorOutput);
+        }
+
+        JsonObject vehicleInput = request.getAsJsonObject("vehicle");
+        if (vehicleInput.get("type_id").getAsInt() != 89) {
+            throw new IllegalArgumentException(
+                "Passenger animal position fixture requires an oak boat");
+        }
+        PassengerPositionBoatFixture vehicle = PassengerPositionBoatFixture.create(
+            vehicleInput.get("entity_id").getAsInt(),
+            vec3(vehicleInput.getAsJsonObject("position")),
+            Oracle.f32(vehicleInput.getAsJsonObject("rotation"), "y"),
+            vehicleInput.get("no_gravity").getAsBoolean());
+
+        JsonObject animalInput = request.getAsJsonObject("animal");
+        if (animalInput.get("type_id").getAsInt() != 30) {
+            throw new IllegalArgumentException(
+                "Passenger animal position fixture requires a Cow");
+        }
+        PassengerPositionCowFixture animal = PassengerPositionCowFixture.create(
+            animalInput.get("entity_id").getAsInt(),
+            vec3(animalInput.getAsJsonObject("position")),
+            vec3(animalInput.getAsJsonObject("movement")),
+            Oracle.f32(animalInput.getAsJsonObject("rotation"), "y"),
+            Oracle.f32(animalInput.getAsJsonObject("rotation"), "x"),
+            animalInput.get("no_gravity").getAsBoolean(),
+            vehicle);
+        setPassengerPositionFixturePassengers(vehicle, List.of(animal));
+
+        var states = new JsonArray();
+        states.add(passengerAnimalPositionState(
+            "initial", vehicle, animal));
+        for (JsonElement operationEntry : request.getAsJsonArray("operations")) {
+            JsonObject operation = operationEntry.getAsJsonObject();
+            if (!operation.get("action").getAsString().equals("tick")) {
+                throw new IllegalArgumentException("Unknown passenger animal position action");
+            }
+            for (int tick = 0; tick < operation.get("ticks").getAsInt(); tick++) {
+                vehicle.setOldPosAndRot();
+                vehicle.tickCount++;
+                vehicle.tick();
+                animal.setOldPosAndRot();
+                animal.tickCount++;
+                animal.rideTick();
+            }
+            states.add(passengerAnimalPositionState(
+                operation.get("label").getAsString(), vehicle, animal));
+        }
+        var result = new JsonObject();
+        result.add("states", states);
+        return result;
+    }
+
     private static void bindBreezeCanTurnInBoatsTag() {
         java.util.Map<net.minecraft.tags.TagKey<net.minecraft.world.entity.EntityType<?>>,
             java.util.List<net.minecraft.core.Holder<net.minecraft.world.entity.EntityType<?>>>> tags =
@@ -6545,6 +6611,21 @@ public final class MathOracle {
             entities.add(passengerRotationEntityState(animals.get(index)));
             entities.add(tickSnowballEntityState(fillers.get(index)));
         }
+        state.add("entities", entities);
+        return state;
+    }
+
+    private static JsonObject passengerAnimalPositionState(
+        String label,
+        PassengerPositionBoatFixture vehicle,
+        PassengerPositionCowFixture animal
+    ) {
+        var state = new JsonObject();
+        state.addProperty("label", label);
+        state.addProperty("accepted", true);
+        var entities = new JsonArray();
+        entities.add(tickEntityState(vehicle));
+        entities.add(tickEntityState(animal));
         state.add("entities", entities);
         return state;
     }

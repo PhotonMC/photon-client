@@ -166,6 +166,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P08.e-entity-motion — server-conformance ClientWorld entity motion state](client-world-entity-motion-conformance.md)
 - [P08.ab — server-conformance Entity no-gravity semantic state](client-world-entity-no-gravity-conformance.md)
 - [P08.bd-entity-passenger-animal-position — server-conformance Animal passenger `positionRider` seat attachment](client-world-entity-passenger-animal-position-conformance.md)
+- [P08.bd.1 — ClientWorld Animal passenger vehicle attachment — client-parity](client-world-entity-passenger-animal-position-parity-conformance.md)
 - [P08.bc-entity-passenger-animal-rotation — server-conformance Boat `Animal` passenger rotation offset](client-world-entity-passenger-animal-rotation-conformance.md)
 - [P08.bc.1 — ClientWorld Animal passenger rotation offset — client-parity](client-world-entity-passenger-animal-rotation-parity-conformance.md)
 - [P08.bi-entity-passenger-baby-attachment — server-conformance Zombie baby `VEHICLE` attachment](client-world-entity-passenger-baby-attachment-conformance.md)
