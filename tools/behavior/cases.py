@@ -754,6 +754,128 @@ def wire_cases():
 
 
 def math_cases():
+    def varint(value):
+        value &= 0xFFFFFFFF
+        encoded = bytearray()
+        while value & ~0x7F:
+            encoded.append((value & 0x7F) | 0x80)
+            value >>= 7
+        encoded.append(value)
+        return bytes(encoded)
+
+    def sparse_values(entry_count, assignments):
+        values = [0] * entry_count
+        for index, value in assignments.items():
+            if not 0 <= index < entry_count:
+                raise ValueError("palette assignment is outside its container")
+            values[index] = value
+        return values
+
+    def palette_container(bits, palette, values, entry_count, block_states):
+        if bits == 0:
+            if len(palette) != 1:
+                raise ValueError("single-value palette must have one entry")
+            return bytes([bits]) + varint(palette[0])
+
+        is_local = (block_states and bits <= 8) or (not block_states and bits <= 3)
+        storage_bits = 4 if block_states and bits <= 4 else bits
+        encoded = bytearray([bits])
+        if is_local:
+            encoded.extend(varint(len(palette)))
+            for value in palette:
+                encoded.extend(varint(value))
+        elif palette:
+            raise ValueError("global palette must not carry palette entries")
+
+        values_per_long = 64 // storage_bits
+        word_count = (entry_count + values_per_long - 1) // values_per_long
+        mask = (1 << storage_bits) - 1
+        words = [0] * word_count
+        for index, value in enumerate(values):
+            word_index = index // values_per_long
+            offset = (index % values_per_long) * storage_bits
+            words[word_index] |= (value & mask) << offset
+        for word in words:
+            encoded.extend(word.to_bytes(8, "big"))
+        return bytes(encoded)
+
+    def section_hex(
+        non_empty_block_count,
+        fluid_count,
+        block_bits,
+        block_palette,
+        block_values,
+        biome_bits,
+        biome_palette,
+        biome_values,
+    ):
+        encoded = bytearray()
+        encoded.extend(non_empty_block_count.to_bytes(2, "big", signed=True))
+        encoded.extend(fluid_count.to_bytes(2, "big", signed=True))
+        encoded.extend(palette_container(
+            block_bits, block_palette, block_values, 4096, True))
+        encoded.extend(palette_container(
+            biome_bits, biome_palette, biome_values, 64, False))
+        return encoded.hex()
+
+    section_air = section_hex(
+        0, 0, 0, [0], [0] * 4096, 0, [1], [0] * 64)
+    section_linear = section_hex(
+        4,
+        0,
+        4,
+        [0, 1, 2, 3],
+        sparse_values(4096, {0: 1, 1: 2, 17: 3, 255: 1}),
+        2,
+        [0, 1, 2, 3],
+        sparse_values(64, {0: 1, 3: 2, 15: 3, 63: 1}),
+    )
+    section_hash_map = section_hex(
+        4,
+        0,
+        5,
+        [0, 1, 2, 3, 4],
+        sparse_values(4096, {10: 1, 511: 2, 1023: 3, 4095: 4}),
+        3,
+        [0, 1, 2, 3, 4],
+        sparse_values(64, {0: 1, 15: 2, 16: 3, 63: 4}),
+    )
+    section_global = section_hex(
+        6,
+        0,
+        15,
+        [],
+        sparse_values(4096, {6: 1, 7: 2, 8: 3, 63: 1, 64: 2, 4095: 4}),
+        7,
+        [],
+        sparse_values(64, {3: 1, 4: 2, 15: 3, 16: 4, 63: 4}),
+    )
+    yield {
+        "case_id": "client-world/section-read-and-coordinate-lookup",
+        "family": "math",
+        "operation": "client_world_section_lookup",
+        "dimension_min_y": -64,
+        "dimension_height": 384,
+        "tracks": [{
+            "label": "negative-chunk-and-overworld-floor",
+            "chunk_x": -2,
+            "chunk_z": 3,
+            "sections": [section_air, section_linear, section_hash_map, section_global],
+            "queries": [
+                {"label": "air-at-world-floor", "x": -32, "y": -64, "z": 48},
+                {"label": "linear-first-entry", "x": -32, "y": -48, "z": 48},
+                {"label": "linear-local-boundary", "x": -17, "y": -47, "z": 63},
+                {"label": "hash-map-entry", "x": -22, "y": -32, "z": 48},
+                {"label": "hash-map-last-row", "x": -17, "y": -29, "z": 63},
+                {"label": "global-cross-word-start", "x": -17, "y": -16, "z": 51},
+                {"label": "global-cross-word-next", "x": -32, "y": -16, "z": 52},
+                {"label": "global-last-entry", "x": -17, "y": -1, "z": 63},
+                {"label": "outside-chunk", "x": -16, "y": -48, "z": 48},
+                {"label": "outside-loaded-sections", "x": -32, "y": 0, "z": 48},
+            ],
+        }],
+    }
+
     def character_event_case(label, codepoint):
         return {
             "case_id": f"character-event/{label}", "family": "math",

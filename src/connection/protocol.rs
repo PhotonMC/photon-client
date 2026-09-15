@@ -3011,6 +3011,11 @@ pub(crate) fn parse_section_data(
     Ok(sections)
 }
 
+/// Decode the section payload with the same parser used by chunk packets.
+pub fn decode_chunk_section_data(input: &[u8]) -> Result<Vec<ChunkSectionObservation>, String> {
+    parse_section_data(input).map_err(|error| error.to_string())
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct PaletteObservation {
     bits_per_entry: u8,

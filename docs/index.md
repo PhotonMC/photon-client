@@ -202,6 +202,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P09.e — Oyuncu pose ölçüleri — client-parity birleşik kayıt](client-world-player-pose-dimensions-conformance.md)
 - [P09.f — Oyuncu desired pose seçimi — client-parity birleşik kayıt](client-world-player-pose-selection-conformance.md)
 - [P08.h — server-conformance LocalPlayer yeniden kurulumu ve `dataToKeep`](client-world-player-respawn-conformance.md)
+- [P08.a/b — LevelChunkSection storage ve ClientWorld lookup — client-parity birleşik kayıt](client-world-section-parity-conformance.md)
 - [P09.p — ClientWorld shulker collision — client-parity birleşik kayıt](client-world-shulker-collision-conformance.md)
 - [P09.q — ClientWorld source vehicle pushable collision — client-parity birleşik kayıt](client-world-source-vehicle-collision-conformance.md)
 - [P09.o — ClientWorld stair collision shapes — client-parity birleşik kayıt](client-world-stair-collision-conformance.md)

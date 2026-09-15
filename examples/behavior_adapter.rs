@@ -21,7 +21,9 @@ use voxel_client::configuration::{
     ServerboundAcceptCodeOfConductPacket, ServerboundClientInformationPacket,
     ServerboundFinishConfigurationPacket,
 };
-use voxel_client::connection::{parse_game_event_packet, parse_player_abilities_packet};
+use voxel_client::connection::{
+    decode_chunk_section_data, parse_game_event_packet, parse_player_abilities_packet,
+};
 use voxel_client::direction::{
     Axis, AxisDirection, Direction, DirectionYRotError, DirectionYRotationError, Plane,
 };
@@ -6358,8 +6360,100 @@ fn aabb_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"events": events}))
 }
 
+fn client_world_section_lookup_result(request: &Value) -> Result<Value, String> {
+    let min_y = i32_field(request, "dimension_min_y")?;
+    let height = i32_field(request, "dimension_height")?;
+    let min_section_y = min_y.div_euclid(16);
+    let tracks = request["tracks"]
+        .as_array()
+        .ok_or("tracks must be an array")?
+        .iter()
+        .map(|track| {
+            let chunk_x = i32_field(track, "chunk_x")?;
+            let chunk_z = i32_field(track, "chunk_z")?;
+            let section_values = track["sections"]
+                .as_array()
+                .ok_or("sections must be an array")?;
+            let mut section_data = Vec::new();
+            for section in section_values {
+                section_data.extend(decode_hex(
+                    section.as_str().ok_or("section payload must be a string")?,
+                )?);
+            }
+            let observations = decode_chunk_section_data(&section_data)?;
+            if observations.len() != section_values.len() {
+                return Err("section decoder count does not match input".into());
+            }
+
+            let mut world = ClientWorld::new(DimensionBounds::new(min_y, height));
+            world.replace_chunk(
+                chunk_x,
+                chunk_z,
+                observations.iter().map(|section| SectionInput {
+                    non_empty_block_count: section.non_empty_block_count,
+                    fluid_count: section.fluid_count,
+                    block_states: &section.block_state_values,
+                    biomes: &section.biome_values,
+                }),
+            );
+
+            let sections = observations
+                .iter()
+                .enumerate()
+                .map(|(index, section)| {
+                    json!({
+                        "section_y": min_section_y + index as i32,
+                        "non_empty_block_count": section.non_empty_block_count,
+                        "fluid_count": section.fluid_count,
+                        "has_only_air": section.non_empty_block_count == 0,
+                        "has_fluid": section.fluid_count > 0,
+                    })
+                })
+                .collect::<Vec<_>>();
+
+            let queries = track["queries"]
+                .as_array()
+                .ok_or("queries must be an array")?
+                .iter()
+                .map(|query| {
+                    let x = i32_field(query, "x")?;
+                    let y = i32_field(query, "y")?;
+                    let z = i32_field(query, "z")?;
+                    let query_section_y = y.div_euclid(16);
+                    let mut state = json!({
+                        "label": string(query, "label")?,
+                        "section_y": query_section_y,
+                    });
+                    if let Some(block_state_id) = world.block_state_at(x, y, z) {
+                        state["block_state_id"] = json!(block_state_id);
+                    }
+                    if let Some(biome_id) = world.biome_at(x, y, z) {
+                        state["biome_id"] = json!(biome_id);
+                    }
+                    if let Some((non_empty, fluid)) =
+                        world.section_counts_at(x.div_euclid(16), query_section_y, z.div_euclid(16))
+                    {
+                        state["section_counts"] = json!([non_empty, fluid]);
+                    }
+                    Ok(state)
+                })
+                .collect::<Result<Vec<_>, String>>()?;
+
+            Ok(json!({
+                "label": string(track, "label")?,
+                "sections": sections,
+                "queries": queries,
+            }))
+        })
+        .collect::<Result<Vec<_>, String>>()?;
+    Ok(json!({"tracks": tracks}))
+}
+
 fn math_result(request: &Value) -> Result<Value, String> {
     let operation = string(request, "operation")?;
+    if operation == "client_world_section_lookup" {
+        return client_world_section_lookup_result(request);
+    }
     if operation == "random" {
         return random_result(request);
     }

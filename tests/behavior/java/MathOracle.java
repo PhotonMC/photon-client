@@ -7,9 +7,11 @@ import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.math.OctahedralGroup;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.JsonOps;
+import com.mojang.serialization.Lifecycle;
 import it.unimi.dsi.fastutil.longs.LongConsumer;
 import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 import java.util.function.IntPredicate;
@@ -36,15 +38,20 @@ import net.minecraft.core.AxisCycle;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Holder;
+import net.minecraft.core.MappedRegistry;
+import net.minecraft.core.Registry;
+import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.SectionPos;
 import net.minecraft.core.component.DataComponentMap;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.component.PatchedDataComponentMap;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.protocol.game.ClientboundGameEventPacket;
 import net.minecraft.network.protocol.game.ClientboundPlayerAbilitiesPacket;
 import net.minecraft.server.Bootstrap;
+import net.minecraft.data.registries.VanillaRegistries;
 import net.minecraft.tags.TagKey;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
@@ -86,6 +93,8 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.SlabType;
 import net.minecraft.world.level.block.state.properties.StairsShape;
+import net.minecraft.world.level.chunk.LevelChunkSection;
+import net.minecraft.world.level.chunk.PalettedContainerFactory;
 import net.minecraft.world.level.levelgen.PositionalRandomFactory;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.border.WorldBorder;
@@ -350,6 +359,8 @@ public final class MathOracle {
             return localPlayerUpdateFallFlyingMovementResult(request);
         } else if (operation.equals("local_player_travel_dispatch")) {
             return localPlayerTravelDispatchResult(request);
+        } else if (operation.equals("client_world_section_lookup")) {
+            return clientWorldSectionLookupResult(request);
         } else if (operation.equals("character_event")) {
             CharacterEvent event = new CharacterEvent(request.get("codepoint").getAsInt());
             result.addProperty("codepoint", event.codepoint());
@@ -4934,6 +4945,122 @@ public final class MathOracle {
             return result;
         } catch (ReflectiveOperationException error) {
             throw new IllegalStateException("LivingEntity.travel dispatch reflection failed", error);
+        }
+    }
+
+    private static JsonObject clientWorldSectionLookupResult(JsonObject request) {
+        try {
+            var output = System.out;
+            var errorOutput = System.err;
+            try {
+                SharedConstants.setVersion(TEST_VERSION);
+                Bootstrap.bootStrap();
+            } finally {
+                System.setOut(output);
+                System.setErr(errorOutput);
+            }
+
+            int minY = request.get("dimension_min_y").getAsInt();
+            int minSectionY = Math.floorDiv(minY, 16);
+            var vanillaBiomes = VanillaRegistries.createLookup().lookupOrThrow(Registries.BIOME);
+            var biomeRegistry = new MappedRegistry<net.minecraft.world.level.biome.Biome>(
+                Registries.BIOME, Lifecycle.stable());
+            vanillaBiomes.listElements().forEach(holder ->
+                Registry.register(biomeRegistry, holder.key(), holder.value()));
+            biomeRegistry.freeze();
+            var registryAccess = new RegistryAccess.ImmutableRegistryAccess(List.of(biomeRegistry));
+            var containerFactory = PalettedContainerFactory.create(registryAccess);
+            var nonEmptyField = LevelChunkSection.class.getDeclaredField("nonEmptyBlockCount");
+            var fluidField = LevelChunkSection.class.getDeclaredField("fluidCount");
+            nonEmptyField.setAccessible(true);
+            fluidField.setAccessible(true);
+            var tracks = new JsonArray();
+            for (var trackEntry : request.getAsJsonArray("tracks")) {
+                JsonObject track = trackEntry.getAsJsonObject();
+                int chunkX = track.get("chunk_x").getAsInt();
+                int chunkZ = track.get("chunk_z").getAsInt();
+                var sections = new ArrayList<LevelChunkSection>();
+                for (var sectionEntry : track.getAsJsonArray("sections")) {
+                    LevelChunkSection section = new LevelChunkSection(containerFactory);
+                    FriendlyByteBuf buffer = new FriendlyByteBuf(
+                        Unpooled.wrappedBuffer(hexBytes(sectionEntry.getAsString())));
+                    try {
+                        section.read(buffer);
+                        if (buffer.isReadable()) {
+                            throw new IllegalArgumentException("section payload has trailing bytes");
+                        }
+                    } finally {
+                        buffer.release();
+                    }
+                    sections.add(section);
+                }
+
+                var sectionStates = new JsonArray();
+                for (int index = 0; index < sections.size(); index++) {
+                    LevelChunkSection section = sections.get(index);
+                    int nonEmpty = nonEmptyField.getShort(section);
+                    int fluid = fluidField.getShort(section);
+                    var state = new JsonObject();
+                    state.addProperty("section_y", minSectionY + index);
+                    state.addProperty("non_empty_block_count", nonEmpty);
+                    state.addProperty("fluid_count", fluid);
+                    state.addProperty("has_only_air", section.hasOnlyAir());
+                    state.addProperty("has_fluid", section.hasFluid());
+                    sectionStates.add(state);
+                }
+
+                var queries = new JsonArray();
+                for (var queryEntry : track.getAsJsonArray("queries")) {
+                    JsonObject query = queryEntry.getAsJsonObject();
+                    int x = query.get("x").getAsInt();
+                    int y = query.get("y").getAsInt();
+                    int z = query.get("z").getAsInt();
+                    int querySectionY = Math.floorDiv(y, 16);
+                    int sectionIndex = querySectionY - minSectionY;
+                    LevelChunkSection section = Math.floorDiv(x, 16) == chunkX
+                        && Math.floorDiv(z, 16) == chunkZ
+                        && sectionIndex >= 0
+                        && sectionIndex < sections.size()
+                        ? sections.get(sectionIndex)
+                        : null;
+                    var state = new JsonObject();
+                    state.addProperty("label", query.get("label").getAsString());
+                    state.addProperty("section_y", querySectionY);
+                    if (section == null) {
+                        state.add("block_state_id", JsonNull.INSTANCE);
+                        state.add("biome_id", JsonNull.INSTANCE);
+                        state.add("section_counts", JsonNull.INSTANCE);
+                    } else {
+                        int localX = Math.floorMod(x, 16);
+                        int localY = Math.floorMod(y, 16);
+                        int localZ = Math.floorMod(z, 16);
+                        state.addProperty(
+                            "block_state_id",
+                            Block.getId(section.getBlockState(localX, localY, localZ)));
+                        state.addProperty(
+                            "biome_id",
+                            biomeRegistry.getId(
+                                section.getNoiseBiome(localX / 4, localY / 4, localZ / 4).value()));
+                        var counts = new JsonArray();
+                        counts.add(nonEmptyField.getShort(section));
+                        counts.add(fluidField.getShort(section));
+                        state.add("section_counts", counts);
+                    }
+                    queries.add(state);
+                }
+
+                var trackState = new JsonObject();
+                trackState.addProperty("label", track.get("label").getAsString());
+                trackState.add("sections", sectionStates);
+                trackState.add("queries", queries);
+                tracks.add(trackState);
+            }
+            var result = new JsonObject();
+            result.add("tracks", tracks);
+            return result;
+        } catch (ReflectiveOperationException error) {
+            throw new IllegalStateException(
+                "LevelChunkSection.read reflection fixture failed", error);
         }
     }
 
