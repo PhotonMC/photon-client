@@ -95,6 +95,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P10.d.2 — LivingEntity friction-influenced speed — client-parity birleşik kayıt](client-player-friction-speed-conformance.md)
 - [P10.e.3 — LivingEntity handleRelativeFrictionAndCalculateMovement — client-parity birleşik kayıt](client-player-handle-relative-friction-conformance.md)
 - [P10.a — LocalPlayer input modifiers — client-parity birleşik kayıt](client-player-input-conformance.md)
+- [P10.f.4 — KeyboardInput snapshot'ın ClientWorld LocalPlayer state'ine bağlanması — client-parity](client-player-keyboard-input-conformance.md)
 - [P10.d.3 — LivingEntity modified block friction — client-parity birleşik kayıt](client-player-modified-friction-conformance.md)
 - [P10.f.3 — LocalPlayer sneaking speed attribute in input — client-parity](client-player-sneaking-attribute-conformance.md)
 - [P10.f.2 — LocalPlayer sprint transition and movement speed attribute — client-parity](client-player-sprint-attribute-conformance.md)

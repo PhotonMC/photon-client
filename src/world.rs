@@ -3,7 +3,7 @@
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 use crate::input::{
-    LocalPlayerClimbableMovementInput, LocalPlayerFluidFallingInput,
+    Input, KeyboardInput, LocalPlayerClimbableMovementInput, LocalPlayerFluidFallingInput,
     LocalPlayerFrictionInfluencedSpeedInput, LocalPlayerHandleRelativeFrictionInput,
     LocalPlayerHandleRelativeFrictionParameters, LocalPlayerInputModifiers, LocalPlayerInputState,
     LocalPlayerModifiedFrictionInput, LocalPlayerTravelDispatchInput,
@@ -3077,6 +3077,27 @@ impl ClientWorld {
             return false;
         };
         player.apply_input_from_attributes(move_vector, jump_pressed, controlled_camera, modifiers);
+        true
+    }
+
+    /// Sample keyboard input and apply the resulting LocalPlayer input state.
+    pub fn apply_local_player_keyboard_input(
+        &mut self,
+        key_states: Input,
+        controlled_camera: bool,
+        modifiers: LocalPlayerInputModifiers,
+    ) -> bool {
+        let mut keyboard = KeyboardInput::new(key_states);
+        keyboard.tick();
+        let Some(player) = self.local_player.as_mut() else {
+            return false;
+        };
+        player.apply_input_from_attributes(
+            keyboard.move_vector(),
+            keyboard.key_presses.jump,
+            controlled_camera,
+            modifiers,
+        );
         true
     }
 
@@ -8209,7 +8230,7 @@ mod tests {
     use crate::aabb::Aabb;
     use crate::binary::{BitSet, Uuid};
     use crate::identifier::Identifier;
-    use crate::input::LocalPlayerInputModifiers;
+    use crate::input::{Input, LocalPlayerInputModifiers};
     use crate::math::{Vec2, Vec3, mth_atan2, mth_cos_f64, mth_rot_lerp_f32, mth_sin_f64};
     use crate::shape::Shapes;
     use crate::tags::{ClientboundUpdateTagsPacket, RegistryTags, TagEntry};
@@ -9610,6 +9631,63 @@ mod tests {
                 .sneaking_movement_factor_value(),
             0.9,
         );
+    }
+
+    #[test]
+    fn local_player_keyboard_input_binds_keys_before_world_modifiers() {
+        let mut world = ClientWorld::default();
+        world.set_local_player_id(42);
+        let modifiers = LocalPlayerInputModifiers {
+            using_item: false,
+            passenger: false,
+            item_use_speed_multiplier: 0.2,
+            moving_slowly: false,
+            sneaking_movement_factor: 0.0,
+        };
+
+        assert!(world.apply_local_player_keyboard_input(
+            Input::new(true, false, false, false, false, false, false),
+            true,
+            modifiers,
+        ));
+        let player = world.local_player().expect("forward keyboard player");
+        assert_eq!(player.input_impulses().x.to_bits(), 0.0_f32.to_bits());
+        assert_eq!(player.input_impulses().y.to_bits(), 0x3f7a_e148);
+        assert!(!player.is_jumping());
+
+        let custom_attribute = ClientAttributeState::from_wire(
+            super::VANILLA_PLAYER_SNEAKING_SPEED_ATTRIBUTE_ID,
+            0.4,
+            vec![ClientAttributeModifierState::from_wire(
+                "test:keyboard_sneaking_total".to_owned(),
+                0.5,
+                2,
+            )],
+        );
+        assert!(world.apply_local_player_attributes(42, &[custom_attribute]));
+        let sneaking_modifiers = LocalPlayerInputModifiers {
+            moving_slowly: true,
+            ..modifiers
+        };
+        assert!(world.apply_local_player_keyboard_input(
+            Input::new(true, false, true, false, true, false, false),
+            true,
+            sneaking_modifiers,
+        ));
+        let player = world.local_player().expect("diagonal keyboard player");
+        assert_eq!(player.input_impulses().x.to_bits(), 0x3f16_872c);
+        assert_eq!(player.input_impulses().y.to_bits(), 0x3f16_872c);
+        assert!(player.is_jumping());
+
+        assert!(world.apply_local_player_keyboard_input(
+            Input::new(true, true, true, true, true, true, true),
+            true,
+            sneaking_modifiers,
+        ));
+        let player = world.local_player().expect("opposing keyboard player");
+        assert_eq!(player.input_impulses().x.to_bits(), 0.0_f32.to_bits());
+        assert_eq!(player.input_impulses().y.to_bits(), 0.0_f32.to_bits());
+        assert!(player.is_jumping());
     }
 
     #[test]

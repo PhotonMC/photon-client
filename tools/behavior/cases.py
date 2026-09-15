@@ -1618,6 +1618,97 @@ def math_cases():
         ],
     }
 
+    player_keyboard_input_defaults = {
+        "action": "apply_keyboard_input",
+        "player_id": 42,
+        "up": False,
+        "down": False,
+        "left": False,
+        "right": False,
+        "jump": False,
+        "shift": False,
+        "sprint": False,
+        "controlled_camera": True,
+        "using_item": False,
+        "passenger": False,
+        "moving_slowly": False,
+        "item_use_speed_multiplier": float_bits(0.2),
+        "attributes": [],
+    }
+    player_keyboard_input_operations = [
+        {
+            "label": "forward-key-reaches-local-input",
+            "up": True,
+        },
+        {
+            "label": "diagonal-keys-use-sneaking-attribute",
+            "up": True,
+            "left": True,
+            "jump": True,
+            "moving_slowly": True,
+            "attributes": [
+                {
+                    "attribute_id": 31,
+                    "base": float_bits(0.4, "f64"),
+                    "modifiers": [
+                        attribute_modifier("p10:keyboard_sneaking_total", 0.5, 2),
+                    ],
+                },
+            ],
+        },
+        {
+            "label": "opposing-keys-zero-movement",
+            "up": True,
+            "down": True,
+            "left": True,
+            "right": True,
+            "jump": True,
+            "shift": True,
+            "sprint": True,
+            "moving_slowly": True,
+        },
+        {
+            "label": "item-and-sneaking-key-order",
+            "up": True,
+            "right": True,
+            "using_item": True,
+            "item_use_speed_multiplier": float_bits(0.5),
+            "moving_slowly": True,
+            "attributes": [
+                {
+                    "attribute_id": 31,
+                    "base": float_bits(0.4, "f64"),
+                    "modifiers": [
+                        attribute_modifier("p10:keyboard_sneaking_add", 0.1, 0),
+                    ],
+                },
+            ],
+        },
+        {
+            "label": "wrong-player-preserves-key-attribute",
+            "player_id": 99,
+            "up": True,
+            "moving_slowly": True,
+            "attributes": [
+                {
+                    "attribute_id": 31,
+                    "base": float_bits(0.9, "f64"),
+                    "modifiers": [],
+                },
+            ],
+        },
+    ]
+    yield {
+        "case_id": "client-world/player-keyboard-input-binding",
+        "family": "math",
+        "operation": "client_world_player_keyboard_input",
+        "player_id": 42,
+        "operations": [
+            {**player_keyboard_input_defaults, **operation}
+            for operation in player_keyboard_input_operations
+        ],
+    }
+
     def character_event_case(label, codepoint):
         return {
             "case_id": f"character-event/{label}", "family": "math",

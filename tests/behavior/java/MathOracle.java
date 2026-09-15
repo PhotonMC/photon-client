@@ -5107,6 +5107,9 @@ public final class MathOracle {
         if (operation.equals("client_world_player_sneaking_input")) {
             return clientWorldPlayerSneakingInputResult(request);
         }
+        if (operation.equals("client_world_player_keyboard_input")) {
+            return clientWorldPlayerKeyboardInputResult(request);
+        }
         if (operation.equals("client_world_entity_shared_flags")) {
             return clientWorldEntitySharedFlagsResult(request);
         }
@@ -5461,6 +5464,83 @@ public final class MathOracle {
         } catch (ReflectiveOperationException error) {
             throw new IllegalStateException(
                 "LocalPlayer sneaking speed attribute binding fixture failed", error);
+        }
+    }
+
+    private static JsonObject clientWorldPlayerKeyboardInputResult(JsonObject request) {
+        try {
+            var output = System.out;
+            var errorOutput = System.err;
+            try {
+                SharedConstants.setVersion(TEST_VERSION);
+                Bootstrap.bootStrap();
+            } finally {
+                System.setOut(output);
+                System.setErr(errorOutput);
+            }
+
+            int playerId = request.get("player_id").getAsInt();
+            AttributeMap attributes = new AttributeMap(Player.createAttributes().build());
+            SneakingSpeedInputFixture player = SneakingSpeedInputFixture.create(attributes);
+            var states = new JsonArray();
+            for (JsonElement operationEntry : request.getAsJsonArray("operations")) {
+                JsonObject operation = operationEntry.getAsJsonObject();
+                boolean accepted = operation.get("player_id").getAsInt() == playerId;
+                if (accepted) {
+                    for (JsonElement snapshotEntry : operation.getAsJsonArray("attributes")) {
+                        applyPlayerAttributeSnapshot(
+                            attributes, snapshotEntry.getAsJsonObject());
+                    }
+                }
+                Input keys = new Input(
+                    operation.get("up").getAsBoolean(),
+                    operation.get("down").getAsBoolean(),
+                    operation.get("left").getAsBoolean(),
+                    operation.get("right").getAsBoolean(),
+                    operation.get("jump").getAsBoolean(),
+                    operation.get("shift").getAsBoolean(),
+                    operation.get("sprint").getAsBoolean());
+                KeyboardInput keyboard = new KeyboardInput(optionsFor(keys));
+                keyboard.tick();
+                player.configureKeyboardInput(
+                    keyboard,
+                    0.0F,
+                    0.0F,
+                    false,
+                    0.0F,
+                    0.0F,
+                    0.0F,
+                    0.0F,
+                    0.0F,
+                    0.0F,
+                    operation.get("controlled_camera").getAsBoolean(),
+                    operation.get("using_item").getAsBoolean(),
+                    operation.get("passenger").getAsBoolean(),
+                    operation.get("moving_slowly").getAsBoolean());
+                if (operation.get("using_item").getAsBoolean()) {
+                    player.setItemUseSpeed(Oracle.f32(operation, "item_use_speed_multiplier"));
+                }
+                player.applyInput();
+
+                var state = new JsonObject();
+                state.addProperty("label", operation.get("label").getAsString());
+                state.addProperty("accepted", accepted);
+                state.add("key_presses", snapshot(keyboard.keyPresses));
+                state.add("move_vector", snapshot(keyboard.getMoveVector()));
+                state.add("movement", snapshot(new Vec2(player.xxa, player.zza)));
+                state.addProperty("jumping", player.isJumping());
+                state.addProperty("x_bob", Oracle.bits(player.xBob));
+                state.addProperty("y_bob", Oracle.bits(player.yBob));
+                state.addProperty("x_bob_o", Oracle.bits(player.xBobO));
+                state.addProperty("y_bob_o", Oracle.bits(player.yBobO));
+                states.add(state);
+            }
+            var result = new JsonObject();
+            result.add("states", states);
+            return result;
+        } catch (ReflectiveOperationException error) {
+            throw new IllegalStateException(
+                "LocalPlayer keyboard input binding fixture failed", error);
         }
     }
 
@@ -8224,6 +8304,38 @@ public final class MathOracle {
         ) {
             this.input = new FixtureInput(new Vec2(moveX, moveY), new Input(
                 false, false, false, false, jump, false, false));
+            this.xxa = xxa;
+            this.zza = zza;
+            this.jumping = jumping;
+            this.xBob = xBob;
+            this.yBob = yBob;
+            this.xBobO = xBobO;
+            this.yBobO = yBobO;
+            this.xRotation = xRot;
+            this.yRotation = yRot;
+            this.controlledCamera = controlledCamera;
+            this.usingItem = usingItem;
+            this.passenger = passenger;
+            this.movingSlowly = movingSlowly;
+        }
+
+        private void configureKeyboardInput(
+            final KeyboardInput keyboard,
+            final float xxa,
+            final float zza,
+            final boolean jumping,
+            final float xBob,
+            final float yBob,
+            final float xBobO,
+            final float yBobO,
+            final float xRot,
+            final float yRot,
+            final boolean controlledCamera,
+            final boolean usingItem,
+            final boolean passenger,
+            final boolean movingSlowly
+        ) {
+            this.input = keyboard;
             this.xxa = xxa;
             this.zza = zza;
             this.jumping = jumping;
