@@ -384,6 +384,46 @@ pub struct LocalPlayerTravelInLavaInput {
     pub is_falling: bool,
 }
 
+/// The environment state consumed by LivingEntity's relative friction path.
+#[derive(Debug, Clone, Copy)]
+pub struct LocalPlayerHandleRelativeFrictionParameters {
+    pub input: Vec3,
+    pub y_rot: f32,
+    pub on_ground: bool,
+    pub block_friction: f32,
+    pub speed: f32,
+    pub flying_speed: f32,
+    pub flying: bool,
+    pub sprinting: bool,
+    pub passenger: bool,
+    pub on_climbable: bool,
+    pub scaffolding: bool,
+    pub suppress_sliding_down_ladder: bool,
+    pub horizontal_collision: bool,
+    pub jumping: bool,
+}
+
+/// The environment and motion state consumed by LivingEntity's relative
+/// friction path.
+#[derive(Debug, Clone, Copy)]
+pub struct LocalPlayerHandleRelativeFrictionInput {
+    pub input: Vec3,
+    pub delta_movement: Vec3,
+    pub y_rot: f32,
+    pub on_ground: bool,
+    pub block_friction: f32,
+    pub speed: f32,
+    pub flying_speed: f32,
+    pub flying: bool,
+    pub sprinting: bool,
+    pub passenger: bool,
+    pub on_climbable: bool,
+    pub scaffolding: bool,
+    pub suppress_sliding_down_ladder: bool,
+    pub horizontal_collision: bool,
+    pub jumping: bool,
+}
+
 /// Apply Java LivingEntity.travelInWater with collision and fluid lookup
 /// results supplied by the caller.
 pub fn local_player_travel_in_water(state: LocalPlayerTravelInWaterInput) -> Vec3 {
@@ -483,6 +523,47 @@ pub fn local_player_travel_in_lava(state: LocalPlayerTravelInLavaInput) -> Vec3 
         let jump_movement = Vec3::new(movement.x, f64::from(0.3_f32), movement.z);
         if jump_movement.is_finite() {
             movement = jump_movement;
+        }
+    }
+    movement
+}
+
+/// Apply Java LivingEntity.handleRelativeFrictionAndCalculateMovement with
+/// collision movement supplied by the caller as a no-op path.
+pub fn local_player_handle_relative_friction(
+    state: LocalPlayerHandleRelativeFrictionInput,
+) -> Vec3 {
+    let speed = local_player_friction_influenced_speed(LocalPlayerFrictionInfluencedSpeedInput {
+        on_ground: state.on_ground,
+        block_friction: state.block_friction,
+        speed: state.speed,
+        flying: state.flying,
+        flying_speed: state.flying_speed,
+        sprinting: state.sprinting,
+        passenger: state.passenger,
+    });
+    let relative_movement = local_player_relative_movement(state.input, speed, state.y_rot);
+    let moved = state.delta_movement.add_vec3(relative_movement);
+    let mut movement = if moved.is_finite() {
+        moved
+    } else {
+        state.delta_movement
+    };
+
+    let clamped = clamp_local_player_climbable_movement(LocalPlayerClimbableMovementInput {
+        movement,
+        on_climbable: state.on_climbable,
+        scaffolding: state.scaffolding,
+        suppress_sliding_down_ladder: state.suppress_sliding_down_ladder,
+    });
+    if clamped.is_finite() {
+        movement = clamped;
+    }
+
+    if (state.horizontal_collision || state.jumping) && state.on_climbable {
+        let step_movement = Vec3::new(movement.x, 0.2, movement.z);
+        if step_movement.is_finite() {
+            movement = step_movement;
         }
     }
     movement

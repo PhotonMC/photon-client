@@ -30,12 +30,13 @@ use voxel_client::handshake::{self, ClientIntent, ClientIntentionPacket};
 use voxel_client::identifier::Identifier;
 use voxel_client::input::{
     Input, KeyboardInput, LocalPlayerClimbableMovementInput, LocalPlayerFluidFallingInput,
-    LocalPlayerFrictionInfluencedSpeedInput, LocalPlayerInputModifiers, LocalPlayerInputState,
-    LocalPlayerModifiedFrictionInput, LocalPlayerSprintGateInput, LocalPlayerTravelFlyingInput,
-    LocalPlayerTravelInLavaInput, LocalPlayerTravelInWaterInput,
-    adjust_local_player_fluid_falling_movement, apply_local_player_input,
-    can_start_local_player_sprinting, clamp_local_player_climbable_movement,
-    local_player_friction_influenced_speed, local_player_modified_friction,
+    LocalPlayerFrictionInfluencedSpeedInput, LocalPlayerHandleRelativeFrictionInput,
+    LocalPlayerInputModifiers, LocalPlayerInputState, LocalPlayerModifiedFrictionInput,
+    LocalPlayerSprintGateInput, LocalPlayerTravelFlyingInput, LocalPlayerTravelInLavaInput,
+    LocalPlayerTravelInWaterInput, adjust_local_player_fluid_falling_movement,
+    apply_local_player_input, can_start_local_player_sprinting,
+    clamp_local_player_climbable_movement, local_player_friction_influenced_speed,
+    local_player_handle_relative_friction, local_player_modified_friction,
     local_player_travel_flying, local_player_travel_in_lava, local_player_travel_in_water,
     modify_local_player_input,
 };
@@ -8486,6 +8487,59 @@ fn math_result(request: &Value) -> Result<Value, String> {
                         .as_bool()
                         .ok_or("is_falling must be a boolean")?,
                 });
+                Ok(json!({
+                    "label": string(input, "label")?,
+                    "movement": vec3_snapshot(movement),
+                }))
+            })
+            .collect::<Result<Vec<_>, String>>()?;
+        return Ok(json!({"states": states}));
+    }
+    if operation == "local_player_handle_relative_friction" {
+        let inputs = request["inputs"]
+            .as_array()
+            .ok_or("inputs must be an array")?;
+        let states = inputs
+            .iter()
+            .map(|input| {
+                let movement =
+                    local_player_handle_relative_friction(LocalPlayerHandleRelativeFrictionInput {
+                        input: f64_vec3(input.get("input").ok_or("input must be a vector")?)?,
+                        delta_movement: f64_vec3(
+                            input.get("delta").ok_or("delta must be a vector")?,
+                        )?,
+                        y_rot: f32_field(input, "y_rot")?,
+                        on_ground: input["on_ground"]
+                            .as_bool()
+                            .ok_or("on_ground must be a boolean")?,
+                        block_friction: f32_field(input, "block_friction")?,
+                        speed: f32_field(input, "speed")?,
+                        flying_speed: f32_field(input, "flying_speed")?,
+                        flying: input["flying"]
+                            .as_bool()
+                            .ok_or("flying must be a boolean")?,
+                        sprinting: input["sprinting"]
+                            .as_bool()
+                            .ok_or("sprinting must be a boolean")?,
+                        passenger: input["passenger"]
+                            .as_bool()
+                            .ok_or("passenger must be a boolean")?,
+                        on_climbable: input["on_climbable"]
+                            .as_bool()
+                            .ok_or("on_climbable must be a boolean")?,
+                        scaffolding: input["scaffolding"]
+                            .as_bool()
+                            .ok_or("scaffolding must be a boolean")?,
+                        suppress_sliding_down_ladder: input["suppress_sliding_down_ladder"]
+                            .as_bool()
+                            .ok_or("suppress_sliding_down_ladder must be a boolean")?,
+                        horizontal_collision: input["horizontal_collision"]
+                            .as_bool()
+                            .ok_or("horizontal_collision must be a boolean")?,
+                        jumping: input["jumping"]
+                            .as_bool()
+                            .ok_or("jumping must be a boolean")?,
+                    });
                 Ok(json!({
                     "label": string(input, "label")?,
                     "movement": vec3_snapshot(movement),

@@ -340,6 +340,8 @@ public final class MathOracle {
             return localPlayerTravelInWaterResult(request);
         } else if (operation.equals("local_player_travel_in_lava")) {
             return localPlayerTravelInLavaResult(request);
+        } else if (operation.equals("local_player_handle_relative_friction")) {
+            return localPlayerHandleRelativeFrictionResult(request);
         } else if (operation.equals("character_event")) {
             CharacterEvent event = new CharacterEvent(request.get("codepoint").getAsInt());
             result.addProperty("codepoint", event.codepoint());
@@ -4772,6 +4774,49 @@ public final class MathOracle {
         }
     }
 
+    private static JsonObject localPlayerHandleRelativeFrictionResult(JsonObject request) {
+        try {
+            var method = LivingEntity.class.getDeclaredMethod(
+                "handleRelativeFrictionAndCalculateMovement", Vec3.class, float.class);
+            method.setAccessible(true);
+            var states = new JsonArray();
+            Unsafe unsafe = unsafeInstance();
+            for (var inputEntry : request.getAsJsonArray("inputs")) {
+                JsonObject input = inputEntry.getAsJsonObject();
+                LocalPlayerInputFixture player =
+                    (LocalPlayerInputFixture)unsafe.allocateInstance(LocalPlayerInputFixture.class);
+                player.configureHandleRelativeFriction(
+                    input.get("on_ground").getAsBoolean(),
+                    Oracle.f32(input, "speed"),
+                    Oracle.f32(input, "flying_speed"),
+                    input.get("flying").getAsBoolean(),
+                    input.get("sprinting").getAsBoolean(),
+                    input.get("passenger").getAsBoolean(),
+                    input.get("on_climbable").getAsBoolean(),
+                    input.get("scaffolding").getAsBoolean(),
+                    input.get("suppress_sliding_down_ladder").getAsBoolean(),
+                    input.get("horizontal_collision").getAsBoolean(),
+                    input.get("jumping").getAsBoolean(),
+                    Oracle.f32(input, "y_rot"),
+                    vec3(input.getAsJsonObject("delta")));
+                Vec3 movement = (Vec3)method.invoke(
+                    player,
+                    vec3(input.getAsJsonObject("input")),
+                    Oracle.f32(input, "block_friction"));
+                var state = new JsonObject();
+                state.addProperty("label", input.get("label").getAsString());
+                state.add("movement", snapshot(movement));
+                states.add(state);
+            }
+            var result = new JsonObject();
+            result.add("states", states);
+            return result;
+        } catch (ReflectiveOperationException error) {
+            throw new IllegalStateException(
+                "LivingEntity.handleRelativeFrictionAndCalculateMovement reflection failed", error);
+        }
+    }
+
     private static double f64(JsonObject object, String name) {
         return f64(object.get(name).getAsString());
     }
@@ -6682,6 +6727,41 @@ public final class MathOracle {
             var position = net.minecraft.world.entity.Entity.class.getDeclaredField("position");
             position.setAccessible(true);
             position.set(this, new Vec3(0.0, currentY, 0.0));
+        }
+
+        private void configureHandleRelativeFriction(
+            final boolean onGround,
+            final float speed,
+            final float flyingSpeed,
+            final boolean flying,
+            final boolean sprinting,
+            final boolean passenger,
+            final boolean onClimbable,
+            final boolean scaffolding,
+            final boolean suppressSlidingDownLadder,
+            final boolean horizontalCollision,
+            final boolean jumping,
+            final float yRot,
+            final Vec3 deltaMovement
+        ) throws ReflectiveOperationException {
+            this.onGroundState = onGround;
+            this.configuredSpeed = speed;
+            this.abilities = new Abilities();
+            this.abilities.flying = flying;
+            this.abilities.setFlyingSpeed(flyingSpeed);
+            var abilitiesField = net.minecraft.world.entity.player.Player.class
+                .getDeclaredField("abilities");
+            abilitiesField.setAccessible(true);
+            abilitiesField.set(this, this.abilities);
+            this.sprinting = sprinting;
+            this.passenger = passenger;
+            this.onClimbableState = onClimbable;
+            this.scaffolding = scaffolding;
+            this.suppressSlidingDownLadder = suppressSlidingDownLadder;
+            this.horizontalCollision = horizontalCollision;
+            this.jumping = jumping;
+            this.yRotation = yRot;
+            this.travelDeltaMovement = deltaMovement;
         }
 
         private void setItemUseSpeed(final float speed) throws ReflectiveOperationException {

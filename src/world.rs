@@ -4,15 +4,16 @@ use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 use crate::input::{
     LocalPlayerClimbableMovementInput, LocalPlayerFluidFallingInput,
-    LocalPlayerFrictionInfluencedSpeedInput, LocalPlayerInputModifiers, LocalPlayerInputState,
+    LocalPlayerFrictionInfluencedSpeedInput, LocalPlayerHandleRelativeFrictionInput,
+    LocalPlayerHandleRelativeFrictionParameters, LocalPlayerInputModifiers, LocalPlayerInputState,
     LocalPlayerModifiedFrictionInput, LocalPlayerTravelFlyingInput,
     LocalPlayerTravelFlyingParameters, LocalPlayerTravelInLavaInput,
     LocalPlayerTravelInLavaParameters, LocalPlayerTravelInWaterInput,
     LocalPlayerTravelInWaterParameters, adjust_local_player_fluid_falling_movement,
     apply_local_player_input as apply_local_player_input_fields,
     clamp_local_player_climbable_movement, local_player_friction_influenced_speed,
-    local_player_modified_friction, local_player_travel_flying, local_player_travel_in_lava,
-    local_player_travel_in_water,
+    local_player_handle_relative_friction, local_player_modified_friction,
+    local_player_travel_flying, local_player_travel_in_lava, local_player_travel_in_water,
 };
 use crate::math::{
     MTH_DEG_TO_RAD, Vec3, abs_max_f64, clamp_f32, clamp_f64, equal_f64, floor_f32, mth_atan2,
@@ -2894,6 +2895,18 @@ impl ClientWorld {
             return false;
         };
         player.apply_travel_in_lava(parameters);
+        true
+    }
+
+    /// Apply Java's relative friction and climbable movement path to local motion.
+    pub fn apply_local_player_handle_relative_friction(
+        &mut self,
+        parameters: LocalPlayerHandleRelativeFrictionParameters,
+    ) -> bool {
+        let Some(player) = self.local_player.as_mut() else {
+            return false;
+        };
+        player.apply_handle_relative_friction(parameters);
         true
     }
 
@@ -5821,6 +5834,37 @@ impl ClientPlayerState {
         self.motion_z_bits = movement.z.to_bits();
     }
 
+    fn apply_handle_relative_friction(
+        &mut self,
+        parameters: LocalPlayerHandleRelativeFrictionParameters,
+    ) {
+        let movement =
+            local_player_handle_relative_friction(LocalPlayerHandleRelativeFrictionInput {
+                input: parameters.input,
+                delta_movement: Vec3::new(
+                    f64::from_bits(self.motion_x_bits),
+                    f64::from_bits(self.motion_y_bits),
+                    f64::from_bits(self.motion_z_bits),
+                ),
+                y_rot: parameters.y_rot,
+                on_ground: parameters.on_ground,
+                block_friction: parameters.block_friction,
+                speed: parameters.speed,
+                flying_speed: parameters.flying_speed,
+                flying: parameters.flying,
+                sprinting: parameters.sprinting,
+                passenger: parameters.passenger,
+                on_climbable: parameters.on_climbable,
+                scaffolding: parameters.scaffolding,
+                suppress_sliding_down_ladder: parameters.suppress_sliding_down_ladder,
+                horizontal_collision: parameters.horizontal_collision,
+                jumping: parameters.jumping,
+            });
+        self.motion_x_bits = movement.x.to_bits();
+        self.motion_y_bits = movement.y.to_bits();
+        self.motion_z_bits = movement.z.to_bits();
+    }
+
     fn capture_old_transform(&mut self) {
         self.old_x_bits = self.x_bits;
         self.old_y_bits = self.y_bits;
@@ -8634,6 +8678,70 @@ mod tests {
                 f64::from_bits(0x3fa8_534b_8b3a_e058),
                 f64::from_bits(0x3fd3_3333_4000_0000),
                 f64::from_bits(0x3fc4_3f05_8e95_6c40),
+            ),
+        );
+    }
+
+    #[test]
+    fn local_player_handle_relative_friction_applies_climbable_step_state() {
+        let mut world = ClientWorld::default();
+        world.set_local_player_id(42);
+        assert!(world.apply_local_player_position((0.0, 0.0, 0.0), (0.1, -0.2, 0.3), (37.5, 0.0),));
+        assert!(world.apply_local_player_handle_relative_friction(
+            super::LocalPlayerHandleRelativeFrictionParameters {
+                input: Vec3::new(0.3, -0.4, 0.8),
+                y_rot: 37.5,
+                on_ground: false,
+                block_friction: 0.6,
+                speed: 0.1,
+                flying_speed: 0.05,
+                flying: false,
+                sprinting: false,
+                passenger: false,
+                on_climbable: false,
+                scaffolding: false,
+                suppress_sliding_down_ladder: false,
+                horizontal_collision: false,
+                jumping: false,
+            },
+        ));
+        assert_eq!(
+            world.local_player().expect("air relative player").motion(),
+            (
+                f64::from_bits(0x3fb8_534b_8b3a_e058),
+                f64::from_bits(0xbfca_9fbe_7666_6667),
+                f64::from_bits(0x3fd4_3f05_8e95_6c40),
+            ),
+        );
+
+        assert!(world.apply_local_player_position((0.0, 0.0, 0.0), (0.1, -0.2, 0.3), (37.5, 0.0),));
+        assert!(world.apply_local_player_handle_relative_friction(
+            super::LocalPlayerHandleRelativeFrictionParameters {
+                input: Vec3::new(0.3, -0.4, 0.8),
+                y_rot: 37.5,
+                on_ground: false,
+                block_friction: 0.6,
+                speed: 0.1,
+                flying_speed: 0.05,
+                flying: false,
+                sprinting: false,
+                passenger: false,
+                on_climbable: true,
+                scaffolding: false,
+                suppress_sliding_down_ladder: false,
+                horizontal_collision: true,
+                jumping: false,
+            },
+        ));
+        assert_eq!(
+            world
+                .local_player()
+                .expect("climbable relative player")
+                .motion(),
+            (
+                f64::from_bits(0x3fb8_534b_8b3a_e058),
+                f64::from_bits(0x3fc9_9999_9999_999a),
+                f64::from_bits(0x3fc3_3333_4000_0000),
             ),
         );
     }

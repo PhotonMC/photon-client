@@ -1886,6 +1886,62 @@ def math_cases():
            "operation": "local_player_travel_in_lava",
            "inputs": local_player_travel_in_lava_inputs}
 
+    local_player_handle_relative_friction_cases = [
+        {
+            "label": "air-relative-movement-uses-player-flying-speed",
+        },
+        {
+            "label": "ground-friction-speed-enters-relative-movement",
+            "on_ground": True,
+            "block_friction": float_bits(0.8, "f32"),
+            "speed": float_bits(0.12, "f32"),
+        },
+        {
+            "label": "climbable-clamps-delta-before-return",
+            "input": vector_bits(0.0, 0.0, 0.0),
+            "delta": vector_bits(0.4, -0.4, -0.4),
+            "on_climbable": True,
+        },
+        {
+            "label": "horizontal-climbable-collision-sets-step-height",
+            "on_climbable": True,
+            "horizontal_collision": True,
+        },
+        {
+            "label": "jumping-climbable-sets-step-height",
+            "on_climbable": True,
+            "jumping": True,
+        },
+        {
+            "label": "jumping-without-climbable-keeps-motion",
+            "jumping": True,
+        },
+    ]
+    local_player_handle_relative_friction_defaults = {
+        "input": vector_bits(0.3, -0.4, 0.8),
+        "delta": vector_bits(0.1, -0.2, 0.3),
+        "y_rot": float_bits(37.5, "f32"),
+        "on_ground": False,
+        "block_friction": float_bits(0.6, "f32"),
+        "speed": float_bits(0.1, "f32"),
+        "flying_speed": float_bits(0.05, "f32"),
+        "flying": False,
+        "sprinting": False,
+        "passenger": False,
+        "on_climbable": False,
+        "scaffolding": False,
+        "suppress_sliding_down_ladder": False,
+        "horizontal_collision": False,
+        "jumping": False,
+    }
+    local_player_handle_relative_friction_inputs = []
+    for values in local_player_handle_relative_friction_cases:
+        input_values = {**local_player_handle_relative_friction_defaults, **values}
+        local_player_handle_relative_friction_inputs.append(input_values)
+    yield {"case_id": "player-movement/handle-relative-friction", "family": "math",
+           "operation": "local_player_handle_relative_friction",
+           "inputs": local_player_handle_relative_friction_inputs}
+
     codec_decodes = {
         "basic": [float_bits(1.25, "f64"), float_bits(-2.5, "f64"), float_bits(3.75, "f64")],
         "zero": [float_bits(0.0, "f64"), float_bits(0.0, "f64"), float_bits(0.0, "f64")],
