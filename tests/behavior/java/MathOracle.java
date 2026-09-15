@@ -66,7 +66,11 @@ import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.entity.Pose;
 import net.minecraft.world.entity.player.Abilities;
 import net.minecraft.world.entity.player.Input;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.ai.attributes.Attribute;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.entity.ai.attributes.AttributeMap;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffect;
@@ -5086,7 +5090,110 @@ public final class MathOracle {
         if (operation.equals("client_world_light")) {
             return clientWorldLightResult(request);
         }
+        if (operation.equals("client_world_player_attributes")) {
+            return clientWorldPlayerAttributesResult(request);
+        }
         throw new IllegalArgumentException("Unknown client world operation");
+    }
+
+    private static Holder<Attribute> attributeHolder(int attributeId) {
+        Holder<Attribute> holder = BuiltInRegistries.ATTRIBUTE.asHolderIdMap().byId(attributeId);
+        if (holder == null) {
+            throw new IllegalArgumentException("Unknown attribute registry ID: " + attributeId);
+        }
+        return holder;
+    }
+
+    private static void applyPlayerAttributeSnapshot(AttributeMap attributes, JsonObject snapshot) {
+        Holder<Attribute> holder = attributeHolder(snapshot.get("attribute_id").getAsInt());
+        AttributeInstance instance = attributes.getInstance(holder);
+        if (instance == null) {
+            throw new IllegalArgumentException("Player has no requested attribute instance");
+        }
+        instance.setBaseValue(f64(snapshot, "base"));
+        instance.removeModifiers();
+        for (JsonElement modifierEntry : snapshot.getAsJsonArray("modifiers")) {
+            JsonObject modifier = modifierEntry.getAsJsonObject();
+            AttributeModifier.Operation operation = AttributeModifier.Operation.BY_ID.apply(
+                modifier.get("operation").getAsInt());
+            instance.addTransientModifier(new AttributeModifier(
+                net.minecraft.resources.Identifier.parse(modifier.get("id").getAsString()),
+                f64(modifier, "amount"),
+                operation));
+        }
+    }
+
+    private static JsonObject playerAttributeQuery(AttributeMap attributes, JsonObject query) {
+        int attributeId = query.get("attribute_id").getAsInt();
+        AttributeInstance instance = attributes.getInstance(attributeHolder(attributeId));
+        var state = new JsonObject();
+        state.addProperty("label", query.get("label").getAsString());
+        state.addProperty("attribute_id", attributeId);
+        state.addProperty("found", instance != null);
+        if (instance != null) {
+            state.addProperty("base_value", Oracle.bits(instance.getBaseValue()));
+            var modifiers = new ArrayList<>(instance.getModifiers());
+            modifiers.sort((left, right) -> left.id().toString().compareTo(right.id().toString()));
+            var modifierStates = new JsonArray();
+            for (AttributeModifier modifier : modifiers) {
+                var modifierState = new JsonObject();
+                modifierState.addProperty("id", modifier.id().toString());
+                modifierState.addProperty("amount", Oracle.bits(modifier.amount()));
+                modifierState.addProperty("operation", modifier.operation().id());
+                modifierStates.add(modifierState);
+            }
+            state.add("modifiers", modifierStates);
+            state.addProperty("effective_value", Oracle.bits(instance.getValue()));
+        }
+        return state;
+    }
+
+    private static JsonObject clientWorldPlayerAttributesResult(JsonObject request) {
+        try {
+            var output = System.out;
+            var errorOutput = System.err;
+            try {
+                SharedConstants.setVersion(TEST_VERSION);
+                Bootstrap.bootStrap();
+            } finally {
+                System.setOut(output);
+                System.setErr(errorOutput);
+            }
+
+            int playerId = request.get("player_id").getAsInt();
+            AttributeMap attributes = new AttributeMap(Player.createAttributes().build());
+            var events = new JsonArray();
+            for (JsonElement operationEntry : request.getAsJsonArray("operations")) {
+                JsonObject operation = operationEntry.getAsJsonObject();
+                String action = operation.get("action").getAsString();
+                if (!action.equals("apply")) {
+                    throw new IllegalArgumentException("Unknown player attribute action: " + action);
+                }
+                boolean accepted = operation.get("player_id").getAsInt() == playerId;
+                if (accepted) {
+                    for (JsonElement snapshotEntry : operation.getAsJsonArray("attributes")) {
+                        applyPlayerAttributeSnapshot(
+                            attributes, snapshotEntry.getAsJsonObject());
+                    }
+                }
+                var queries = new JsonArray();
+                for (JsonElement queryEntry : operation.getAsJsonArray("queries")) {
+                    queries.add(playerAttributeQuery(
+                        attributes, queryEntry.getAsJsonObject()));
+                }
+                var event = new JsonObject();
+                event.addProperty("action", action);
+                event.addProperty("label", operation.get("label").getAsString());
+                event.addProperty("accepted", accepted);
+                event.add("queries", queries);
+                events.add(event);
+            }
+            var result = new JsonObject();
+            result.add("events", events);
+            return result;
+        } catch (RuntimeException error) {
+            throw new IllegalStateException("Player attribute fixture failed", error);
+        }
     }
 
     private static JsonObject clientWorldBlockUpdateResult(JsonObject request) {

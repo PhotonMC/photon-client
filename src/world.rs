@@ -2946,7 +2946,8 @@ impl ClientWorld {
         self.local_player.as_ref()
     }
 
-    pub(crate) fn set_local_player_id(&mut self, player_id: i32) {
+    /// Create or replace the local player state for a clientbound player ID.
+    pub fn set_local_player_id(&mut self, player_id: i32) {
         let mut player = ClientPlayerState::new(player_id);
         if let Some(entity) = self.entities.get(&player_id) {
             player.y_head_rot_bits = entity.y_head_rot_bits;
@@ -3351,7 +3352,8 @@ impl ClientWorld {
         true
     }
 
-    pub(crate) fn apply_local_player_attributes(
+    /// Apply a clientbound attribute snapshot to the matching local player.
+    pub fn apply_local_player_attributes(
         &mut self,
         player_id: i32,
         attributes: &[ClientAttributeState],
@@ -5888,12 +5890,16 @@ pub struct ClientAttributeModifierState {
 }
 
 impl ClientAttributeModifierState {
-    pub(crate) fn from_wire(id: String, amount: f64, operation: u8) -> Self {
+    pub fn new(id: String, amount: f64, operation: u8) -> Self {
         Self {
             id,
             amount_bits: amount.to_bits(),
             operation,
         }
+    }
+
+    pub(crate) fn from_wire(id: String, amount: f64, operation: u8) -> Self {
+        Self::new(id, amount, operation)
     }
 
     pub fn id(&self) -> &str {
@@ -5953,7 +5959,7 @@ impl ClientMobEffectState {
 }
 
 impl ClientAttributeState {
-    pub(crate) fn from_wire(
+    pub fn new(
         attribute_id: i32,
         base_value: f64,
         modifiers: Vec<ClientAttributeModifierState>,
@@ -5963,6 +5969,14 @@ impl ClientAttributeState {
             base_value_bits: base_value.to_bits(),
             modifiers,
         }
+    }
+
+    pub(crate) fn from_wire(
+        attribute_id: i32,
+        base_value: f64,
+        modifiers: Vec<ClientAttributeModifierState>,
+    ) -> Self {
+        Self::new(attribute_id, base_value, modifiers)
     }
 
     pub fn attribute_id(&self) -> i32 {

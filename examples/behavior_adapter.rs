@@ -78,9 +78,10 @@ use voxel_client::timer::Timer;
 use voxel_client::utf8;
 use voxel_client::wire::{self, ReadError};
 use voxel_client::world::{
-    ClientChunkCacheSnapshot, ClientEntityCollisionCandidate, ClientEntityDimensions,
-    ClientEntityPose, ClientPlayerAbilities, ClientPlayerGameMode, ClientPlayerPoseInput,
-    ClientWorld, ClientWorldBorder, ClientWorldBorderInitialization, ClientWorldBorderStatus,
+    ClientAttributeModifierState, ClientAttributeState, ClientChunkCacheSnapshot,
+    ClientEntityCollisionCandidate, ClientEntityDimensions, ClientEntityPose,
+    ClientPlayerAbilities, ClientPlayerGameMode, ClientPlayerPoseInput, ClientWorld,
+    ClientWorldBorder, ClientWorldBorderInitialization, ClientWorldBorderStatus,
     ClientWorldCollisionSource, DimensionBounds, EntityInput, LightLayerInput, LightUpdateInput,
     SectionInput, apply_entity_movement_state, collect_candidate_step_up_heights,
     collect_entity_collision_shapes, collide_entity_movement, collide_entity_movement_state,
@@ -6719,6 +6720,130 @@ fn client_world_light_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"events": events}))
 }
 
+fn client_attribute_modifier(value: &Value) -> Result<ClientAttributeModifierState, String> {
+    let operation = value["operation"]
+        .as_u64()
+        .ok_or("attribute modifier operation must be an unsigned integer")?
+        .try_into()
+        .map_err(|_| "attribute modifier operation does not fit in u8".to_owned())?;
+    Ok(ClientAttributeModifierState::new(
+        string(value, "id")?.to_owned(),
+        f64_field(value, "amount")?,
+        operation,
+    ))
+}
+
+fn client_attribute_state(value: &Value) -> Result<ClientAttributeState, String> {
+    let modifiers = value["modifiers"]
+        .as_array()
+        .ok_or("attribute modifiers must be an array")?
+        .iter()
+        .map(client_attribute_modifier)
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(ClientAttributeState::new(
+        i32_field(value, "attribute_id")?,
+        f64_field(value, "base")?,
+        modifiers,
+    ))
+}
+
+fn client_attribute_state_json(
+    label: &str,
+    attribute: &ClientAttributeState,
+    min_value: f64,
+    max_value: f64,
+) -> Value {
+    let mut modifiers = attribute.modifiers().iter().collect::<Vec<_>>();
+    modifiers.sort_by(|left, right| left.id().cmp(right.id()));
+    json!({
+        "label": label,
+        "attribute_id": attribute.attribute_id(),
+        "found": true,
+        "base_value": format!("{:016x}", attribute.base_value().to_bits()),
+        "modifiers": modifiers
+            .into_iter()
+            .map(|modifier| json!({
+                "id": modifier.id(),
+                "amount": format!("{:016x}", modifier.amount().to_bits()),
+                "operation": modifier.operation(),
+            }))
+            .collect::<Vec<_>>(),
+        "effective_value": format!(
+            "{:016x}",
+            attribute.effective_value(min_value, max_value).to_bits()
+        ),
+    })
+}
+
+fn client_world_player_attribute_queries(
+    world: &ClientWorld,
+    value: &Value,
+) -> Result<Value, String> {
+    let player = world
+        .local_player()
+        .ok_or("local player is not initialized")?;
+    value
+        .as_array()
+        .ok_or("queries must be an array")?
+        .iter()
+        .map(|query| {
+            let label = string(query, "label")?;
+            let attribute_id = i32_field(query, "attribute_id")?;
+            let min_value = f64_field(query, "min")?;
+            let max_value = f64_field(query, "max")?;
+            let Some(attribute) = player
+                .attributes()
+                .iter()
+                .find(|attribute| attribute.attribute_id() == attribute_id)
+            else {
+                return Ok(json!({
+                    "label": label,
+                    "attribute_id": attribute_id,
+                    "found": false,
+                }));
+            };
+            Ok(client_attribute_state_json(
+                label, attribute, min_value, max_value,
+            ))
+        })
+        .collect::<Result<Vec<_>, String>>()
+        .map(Value::Array)
+}
+
+fn client_world_player_attributes_result(request: &Value) -> Result<Value, String> {
+    let player_id = i32_field(request, "player_id")?;
+    let mut world = ClientWorld::new(DimensionBounds::new(0, 256));
+    world.set_local_player_id(player_id);
+    let operations = request["operations"]
+        .as_array()
+        .ok_or("operations must be an array")?;
+    let mut events = Vec::with_capacity(operations.len());
+
+    for operation in operations {
+        if string(operation, "action")? != "apply" {
+            return Err("unknown player attribute action".into());
+        }
+        let attributes = operation["attributes"]
+            .as_array()
+            .ok_or("attributes must be an array")?
+            .iter()
+            .map(client_attribute_state)
+            .collect::<Result<Vec<_>, _>>()?;
+        let accepted =
+            world.apply_local_player_attributes(i32_field(operation, "player_id")?, &attributes);
+        events.push(json!({
+            "action": string(operation, "action")?,
+            "label": string(operation, "label")?,
+            "accepted": accepted,
+            "queries": client_world_player_attribute_queries(
+                &world,
+                &operation["queries"],
+            )?,
+        }));
+    }
+    Ok(json!({"events": events}))
+}
+
 fn client_chunk_cache_snapshot_json(snapshot: &ClientChunkCacheSnapshot) -> Value {
     json!({
         "storage_radius": snapshot.storage_radius,
@@ -6849,6 +6974,9 @@ fn math_result(request: &Value) -> Result<Value, String> {
     }
     if operation == "client_world_light" {
         return client_world_light_result(request);
+    }
+    if operation == "client_world_player_attributes" {
+        return client_world_player_attributes_result(request);
     }
     if operation == "random" {
         return random_result(request);

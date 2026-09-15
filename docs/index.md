@@ -194,6 +194,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P09.g — Entity hareket çarpışma bayrakları — client-parity birleşik kayıt](client-world-movement-flags-conformance.md)
 - [P09.ag — ClientboundPlayerAbilities packet ve local player state — client-parity birleşik kayıt](client-world-player-abilities-conformance.md)
 - [P08.p — server-conformance LocalPlayer effective attribute hesabı](client-world-player-attribute-effective-conformance.md)
+- [P08.c-attribute.1 — client-parity LocalPlayer attribute snapshot binding](client-world-player-attribute-parity-conformance.md)
 - [P08.j — server-conformance LocalPlayer attribute state'i ve `dataToKeep` bit 1](client-world-player-attributes-conformance.md)
 - [P08.n — server-conformance LocalPlayer active container/menu state'i](client-world-player-container-conformance.md)
 - [P08.i — server-conformance Aynı dimension ölüm respawn'ı ve `dataToKeep=0`](client-world-player-death-respawn-conformance.md)

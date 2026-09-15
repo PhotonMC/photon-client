@@ -1096,6 +1096,109 @@ def math_cases():
         ],
     }
 
+    def attribute_modifier(identifier, amount, operation):
+        return {
+            "id": identifier,
+            "amount": float_bits(amount, "f64"),
+            "operation": operation,
+        }
+
+    yield {
+        "case_id": "client-world/player-attribute-application-and-effective-value",
+        "family": "math",
+        "operation": "client_world_player_attributes",
+        "player_id": 42,
+        "operations": [
+            {
+                "action": "apply",
+                "label": "initial-snapshot",
+                "player_id": 42,
+                "attributes": [
+                    {
+                        "attribute_id": 26,
+                        "base": float_bits(0.25, "f64"),
+                        "modifiers": [
+                            attribute_modifier("p08:oracle_add", 0.1, 0),
+                            attribute_modifier("p08:oracle_base", 0.2, 1),
+                            attribute_modifier("p08:oracle_total", 0.5, 2),
+                        ],
+                    },
+                    {
+                        "attribute_id": 23,
+                        "base": float_bits(40.0, "f64"),
+                        "modifiers": [
+                            attribute_modifier("p08:health_add", 5.0, 0),
+                        ],
+                    },
+                ],
+                "queries": [
+                    {
+                        "label": "movement-speed-effective",
+                        "attribute_id": 26,
+                        "min": float_bits(0.0, "f64"),
+                        "max": float_bits(1024.0, "f64"),
+                    },
+                    {
+                        "label": "max-health-effective",
+                        "attribute_id": 23,
+                        "min": float_bits(1.0, "f64"),
+                        "max": float_bits(1024.0, "f64"),
+                    },
+                ],
+            },
+            {
+                "action": "apply",
+                "label": "movement-speed-replacement",
+                "player_id": 42,
+                "attributes": [
+                    {
+                        "attribute_id": 26,
+                        "base": float_bits(0.5, "f64"),
+                        "modifiers": [
+                            attribute_modifier("p08:replacement", -0.1, 0),
+                        ],
+                    },
+                ],
+                "queries": [
+                    {
+                        "label": "replacement-clears-old-modifiers",
+                        "attribute_id": 26,
+                        "min": float_bits(0.0, "f64"),
+                        "max": float_bits(1024.0, "f64"),
+                    },
+                    {
+                        "label": "unmentioned-attribute-preserved",
+                        "attribute_id": 23,
+                        "min": float_bits(1.0, "f64"),
+                        "max": float_bits(1024.0, "f64"),
+                    },
+                ],
+            },
+            {
+                "action": "apply",
+                "label": "wrong-player-ignored",
+                "player_id": 99,
+                "attributes": [
+                    {
+                        "attribute_id": 26,
+                        "base": float_bits(2.0, "f64"),
+                        "modifiers": [
+                            attribute_modifier("p08:ignored", 1.0, 0),
+                        ],
+                    },
+                ],
+                "queries": [
+                    {
+                        "label": "state-after-wrong-player",
+                        "attribute_id": 26,
+                        "min": float_bits(0.0, "f64"),
+                        "max": float_bits(1024.0, "f64"),
+                    },
+                ],
+            },
+        ],
+    }
+
     def character_event_case(label, codepoint):
         return {
             "case_id": f"character-event/{label}", "family": "math",
