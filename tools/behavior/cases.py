@@ -2167,6 +2167,38 @@ def math_cases():
         ],
     }
 
+    yield {
+        "case_id": "client-world/entity-experience-orb-tick",
+        "family": "math",
+        "operation": "client_world_entity_experience_orb_tick",
+        "entities": [
+            {
+                "entity_id": 37,
+                "position": vector_bits(2.0, 10.0, 2.0),
+                "movement": vector_bits(0.125, 0.25, -0.125),
+                "rotation": {
+                    "y": float_bits(10.0),
+                    "x": float_bits(20.0),
+                },
+                "no_gravity": False,
+            },
+            {
+                "entity_id": 38,
+                "position": vector_bits(4.0, 10.0, 2.0),
+                "movement": vector_bits(0.0, 0.0, 1.0),
+                "rotation": {
+                    "y": float_bits(45.0),
+                    "x": float_bits(30.0),
+                },
+                "no_gravity": True,
+            },
+        ],
+        "operations": [
+            {"action": "tick", "label": "first-client-tick", "ticks": 1},
+            {"action": "tick", "label": "second-client-tick", "ticks": 1},
+        ],
+    }
+
     def sprint_key_presses(
         forward=False, backward=False, left=False, right=False,
         jump=False, shift=False, sprint=False,

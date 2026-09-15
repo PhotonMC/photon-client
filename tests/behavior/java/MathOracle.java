@@ -64,6 +64,7 @@ import net.minecraft.util.SmoothDouble;
 import net.minecraft.world.entity.Avatar;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityDimensions;
+import net.minecraft.world.entity.ExperienceOrb;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.entity.Pose;
@@ -5125,6 +5126,9 @@ public final class MathOracle {
         if (operation.equals("client_world_entity_arrow_tick")) {
             return clientWorldEntityArrowTickResult(request);
         }
+        if (operation.equals("client_world_entity_experience_orb_tick")) {
+            return clientWorldEntityExperienceOrbTickResult(request);
+        }
         if (operation.equals("client_world_player_sprint_trigger")) {
             return clientWorldPlayerSprintTriggerResult(request);
         }
@@ -5792,6 +5796,63 @@ public final class MathOracle {
             entity.addProperty("previous_rotation_y", Oracle.bits(arrow.yRotO));
             entity.addProperty("previous_rotation_x", Oracle.bits(arrow.xRotO));
             entity.addProperty("no_gravity", arrow.noGravity);
+            entities.add(entity);
+        }
+        state.add("entities", entities);
+        return state;
+    }
+
+    private static JsonObject clientWorldEntityExperienceOrbTickResult(JsonObject request) {
+        var orbs = new ArrayList<TickExperienceOrbFixture>();
+        for (JsonElement entry : request.getAsJsonArray("entities")) {
+            JsonObject input = entry.getAsJsonObject();
+            orbs.add(TickExperienceOrbFixture.create(
+                input.get("entity_id").getAsInt(),
+                vec3(input.getAsJsonObject("position")),
+                vec3(input.getAsJsonObject("movement")),
+                Oracle.f32(input.getAsJsonObject("rotation"), "y"),
+                Oracle.f32(input.getAsJsonObject("rotation"), "x"),
+                input.get("no_gravity").getAsBoolean()));
+        }
+
+        var states = new JsonArray();
+        states.add(tickExperienceOrbState("initial", orbs));
+        for (JsonElement entry : request.getAsJsonArray("operations")) {
+            JsonObject operation = entry.getAsJsonObject();
+            if (!operation.get("action").getAsString().equals("tick")) {
+                throw new IllegalArgumentException("Unknown experience orb tick action");
+            }
+            for (int tick = 0; tick < operation.get("ticks").getAsInt(); tick++) {
+                for (TickExperienceOrbFixture orb : orbs) {
+                    orb.tickThroughClientLevel();
+                }
+            }
+            states.add(tickExperienceOrbState(operation.get("label").getAsString(), orbs));
+        }
+        var result = new JsonObject();
+        result.add("states", states);
+        return result;
+    }
+
+    private static JsonObject tickExperienceOrbState(
+        String label, List<TickExperienceOrbFixture> orbs
+    ) {
+        var state = new JsonObject();
+        state.addProperty("label", label);
+        state.addProperty("accepted", true);
+        var entities = new JsonArray();
+        for (TickExperienceOrbFixture orb : orbs) {
+            var entity = new JsonObject();
+            entity.addProperty("entity_id", orb.entityId());
+            entity.addProperty("tick_count", orb.tickCount);
+            entity.add("position", snapshotClip(orb.position()));
+            entity.add("previous_position", snapshotClip(orb.previousPosition()));
+            entity.add("motion", snapshotClip(orb.getDeltaMovement()));
+            entity.addProperty("rotation_y", Oracle.bits(orb.getYRot()));
+            entity.addProperty("rotation_x", Oracle.bits(orb.getXRot()));
+            entity.addProperty("previous_rotation_y", Oracle.bits(orb.yRotO));
+            entity.addProperty("previous_rotation_x", Oracle.bits(orb.xRotO));
+            entity.addProperty("no_gravity", orb.noGravity);
             entities.add(entity);
         }
         state.add("entities", entities);
@@ -9494,6 +9555,74 @@ public final class MathOracle {
             this.setDeltaMovement(this.getDeltaMovement().scale(this.getAirDrag()));
             this.applyGravity();
             this.firstTick = false;
+        }
+    }
+
+    private static final class TickExperienceOrbFixture extends ExperienceOrb {
+        private Vec3 fixturePosition;
+        private Vec3 previousFixturePosition;
+        private int fixtureEntityId;
+        private boolean noGravity;
+
+        private TickExperienceOrbFixture() {
+            super(null, null);
+        }
+
+        private static TickExperienceOrbFixture create(
+            int entityId, Vec3 position, Vec3 movement,
+            float yRot, float xRot, boolean noGravity
+        ) {
+            TickExperienceOrbFixture orb;
+            try {
+                Unsafe unsafe = unsafeInstance();
+                orb = (TickExperienceOrbFixture)unsafe.allocateInstance(
+                    TickExperienceOrbFixture.class);
+            } catch (InstantiationException error) {
+                throw new IllegalStateException(
+                    "Unable to construct experience orb tick fixture", error);
+            }
+            orb.fixtureEntityId = entityId;
+            orb.fixturePosition = position;
+            orb.previousFixturePosition = position;
+            orb.noGravity = noGravity;
+            orb.setYRot(yRot);
+            orb.setXRot(xRot);
+            orb.yRotO = yRot;
+            orb.xRotO = xRot;
+            orb.setDeltaMovement(movement);
+            orb.firstTick = true;
+            return orb;
+        }
+
+        @Override
+        public boolean isNoGravity() {
+            return this.noGravity;
+        }
+
+        private int entityId() {
+            return this.fixtureEntityId;
+        }
+
+        @Override
+        public Vec3 position() {
+            return this.fixturePosition;
+        }
+
+        private Vec3 previousPosition() {
+            return this.previousFixturePosition;
+        }
+
+        private void tickThroughClientLevel() {
+            this.previousFixturePosition = this.fixturePosition;
+            this.setOldRot();
+            this.tickCount++;
+            if (this.firstTick) {
+                this.firstTick = false;
+                return;
+            }
+            this.applyGravity();
+            this.fixturePosition = this.fixturePosition.add(this.getDeltaMovement());
+            this.setDeltaMovement(this.getDeltaMovement().scale(this.getAirDrag()));
         }
     }
 
