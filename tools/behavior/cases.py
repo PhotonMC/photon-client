@@ -1211,6 +1211,28 @@ def math_cases():
         ],
     }
 
+    yield {
+        "case_id": "client-world/entity-pose",
+        "family": "math",
+        "operation": "client_world_entity_pose",
+        "entity_id": 37,
+        "entity_type_id": 120,
+        "operations": [
+            {
+                "label": "set-crouching",
+                "metadata_hex": "061405ff",
+            },
+            {
+                "label": "set-sitting-with-glowing",
+                "metadata_hex": "00004006140aff",
+            },
+            {
+                "label": "unknown-pose-falls-back",
+                "metadata_hex": "061463ff",
+            },
+        ],
+    }
+
     def attribute_modifier(identifier, amount, operation):
         return {
             "id": identifier,

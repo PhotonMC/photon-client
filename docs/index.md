@@ -164,6 +164,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P08.at-player-motion — server-conformance Remote Player motion interpolation](client-world-entity-player-motion-conformance.md)
 - [P08.as-player-snap — server-conformance Remote Player large-position snap](client-world-entity-player-snap-conformance.md)
 - [P08.ad — server-conformance Entity pose semantic state](client-world-entity-pose-conformance.md)
+- [P08.ad.1 — ClientWorld entity pose metadata — client-parity](client-world-entity-pose-parity-conformance.md)
 - [P08.e-entity-position — server-conformance ClientWorld entity position synchronization](client-world-entity-position-conformance.md)
 - [P08.bn-entity-primed-tnt-tick — server-conformance Primed TNT free-flight tick](client-world-entity-primed-tnt-tick-conformance.md)
 - [P08.e-entity-remove — server-conformance ClientWorld entity removal state](client-world-entity-remove-conformance.md)

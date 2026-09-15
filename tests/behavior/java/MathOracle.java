@@ -5101,6 +5101,9 @@ public final class MathOracle {
         if (operation.equals("client_world_entity_air_supply")) {
             return clientWorldEntityAirSupplyResult(request);
         }
+        if (operation.equals("client_world_entity_pose")) {
+            return clientWorldEntityPoseResult(request);
+        }
         throw new IllegalArgumentException("Unknown client world operation");
     }
 
@@ -5290,6 +5293,47 @@ public final class MathOracle {
         state.addProperty("accepted", accepted);
         state.addProperty("shared_flags", entity.sharedFlags());
         state.addProperty("air_supply", entity.getAirSupply());
+        return state;
+    }
+
+    private static JsonObject clientWorldEntityPoseResult(JsonObject request) {
+        try {
+            var output = System.out;
+            var errorOutput = System.err;
+            try {
+                SharedConstants.setVersion(TEST_VERSION);
+                Bootstrap.bootStrap();
+            } finally {
+                System.setOut(output);
+                System.setErr(errorOutput);
+            }
+
+            var entity = new SharedFlagsFixtureEntity();
+            var states = new JsonArray();
+            states.add(entityPoseState("initial", true, entity));
+            for (JsonElement operationEntry : request.getAsJsonArray("operations")) {
+                JsonObject operation = operationEntry.getAsJsonObject();
+                entity.getEntityData().assignValues(
+                    decodeEntityMetadata(operation.get("metadata_hex").getAsString()));
+                states.add(entityPoseState(
+                    operation.get("label").getAsString(), true, entity));
+            }
+            var result = new JsonObject();
+            result.add("states", states);
+            return result;
+        } catch (RuntimeException error) {
+            throw new IllegalStateException("Entity pose fixture failed", error);
+        }
+    }
+
+    private static JsonObject entityPoseState(
+        String label, boolean accepted, SharedFlagsFixtureEntity entity
+    ) {
+        var state = new JsonObject();
+        state.addProperty("label", label);
+        state.addProperty("accepted", accepted);
+        state.addProperty("shared_flags", entity.sharedFlags());
+        state.addProperty("pose_id", entity.getPose().id());
         return state;
     }
 
