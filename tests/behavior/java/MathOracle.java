@@ -5134,6 +5134,9 @@ public final class MathOracle {
         if (operation.equals("client_world_entity_living_flags")) {
             return clientWorldEntityLivingFlagsResult(request);
         }
+        if (operation.equals("client_world_entity_health")) {
+            return clientWorldEntityHealthResult(request);
+        }
         throw new IllegalArgumentException("Unknown client world operation");
     }
 
@@ -5962,6 +5965,46 @@ public final class MathOracle {
         state.addProperty("used_item_is_off_hand", entity.getUsedItemHand()
             == net.minecraft.world.InteractionHand.OFF_HAND);
         state.addProperty("is_auto_spin_attack", entity.isAutoSpinAttack());
+        return state;
+    }
+
+    private static JsonObject clientWorldEntityHealthResult(JsonObject request) {
+        try {
+            var output = System.out;
+            var errorOutput = System.err;
+            try {
+                SharedConstants.setVersion(TEST_VERSION);
+                Bootstrap.bootStrap();
+            } finally {
+                System.setOut(output);
+                System.setErr(errorOutput);
+            }
+
+            var entity = new LivingFlagsFixtureEntity();
+            var states = new JsonArray();
+            for (JsonElement operationEntry : request.getAsJsonArray("operations")) {
+                JsonObject operation = operationEntry.getAsJsonObject();
+                entity.getEntityData().assignValues(
+                    decodeEntityMetadata(operation.get("metadata_hex").getAsString()));
+                states.add(entityHealthState(
+                    operation.get("label").getAsString(), true, entity));
+            }
+            var result = new JsonObject();
+            result.add("states", states);
+            return result;
+        } catch (RuntimeException error) {
+            throw new IllegalStateException("Entity health fixture failed", error);
+        }
+    }
+
+    private static JsonObject entityHealthState(
+        String label, boolean accepted, LivingFlagsFixtureEntity entity
+    ) {
+        var state = new JsonObject();
+        state.addProperty("label", label);
+        state.addProperty("accepted", accepted);
+        state.addProperty("living_flags", entity.livingFlags());
+        state.addProperty("health_bits", Oracle.bits(entity.getHealth()));
         return state;
     }
 

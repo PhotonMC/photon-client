@@ -147,6 +147,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P09.d — Entity dimensions ve bloklara sığma — client-parity birleşik kayıt](client-world-entity-fit-conformance.md)
 - [P08.e-entity-ground — server-conformance ClientWorld entity on-ground state](client-world-entity-ground-conformance.md)
 - [P08.ah — server-conformance Entity living health semantic state](client-world-entity-health-conformance.md)
+- [P08.ah.1 — ClientWorld entity health metadata — client-parity](client-world-entity-health-parity-conformance.md)
 - [P09.m — ClientWorld indexed entity collision — client-parity birleşik kayıt](client-world-entity-index-conformance.md)
 - [P08.ai — server-conformance Entity living flags semantic state](client-world-entity-living-flags-conformance.md)
 - [P08.ai.1 — ClientWorld entity living flags — client-parity](client-world-entity-living-flags-parity-conformance.md)

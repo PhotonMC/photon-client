@@ -1307,6 +1307,32 @@ def math_cases():
         ],
     }
 
+    yield {
+        "case_id": "client-world/entity-health",
+        "family": "math",
+        "operation": "client_world_entity_health",
+        "entity_id": 37,
+        "entity_type_id": 54,
+        "operations": [
+            {
+                "label": "set-health-after-living-flags",
+                "metadata_hex": "080000090340f00000ff",
+            },
+            {
+                "label": "set-zero-health",
+                "metadata_hex": "090300000000ff",
+            },
+            {
+                "label": "no-gravity-preserves-health",
+                "metadata_hex": "050801ff",
+            },
+            {
+                "label": "set-negative-health",
+                "metadata_hex": "0903bf800000ff",
+            },
+        ],
+    }
+
     def attribute_modifier(identifier, amount, operation):
         return {
             "id": identifier,
