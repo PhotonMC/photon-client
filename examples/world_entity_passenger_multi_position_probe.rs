@@ -71,12 +71,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let first_expected = (
         vehicle.x,
         vehicle.y + VANILLA_OAK_BOAT_PASSENGER_RIDE_HEIGHT,
-        vehicle.z + 0.2,
+        vehicle.z + f64::from(0.2_f32),
     );
     let second_expected = (
         vehicle.x,
         vehicle.y + VANILLA_OAK_BOAT_PASSENGER_RIDE_HEIGHT,
-        vehicle.z - 0.6,
+        vehicle.z + f64::from(-0.6_f32),
     );
     if first.position() != first_expected || second.position() != second_expected {
         return Err(format!(
