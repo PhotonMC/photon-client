@@ -6,13 +6,15 @@ use crate::input::{
     Input, KeyboardInput, LocalPlayerClimbableMovementInput, LocalPlayerFluidFallingInput,
     LocalPlayerFrictionInfluencedSpeedInput, LocalPlayerHandleRelativeFrictionInput,
     LocalPlayerHandleRelativeFrictionParameters, LocalPlayerInputModifiers, LocalPlayerInputState,
-    LocalPlayerModifiedFrictionInput, LocalPlayerTravelDispatchInput,
+    LocalPlayerModifiedFrictionInput, LocalPlayerSprintTriggerConditions,
+    LocalPlayerSprintTriggerInput, LocalPlayerTravelDispatchInput,
     LocalPlayerTravelDispatchParameters, LocalPlayerTravelDispatchResult,
     LocalPlayerTravelFlyingInput, LocalPlayerTravelFlyingParameters, LocalPlayerTravelInAirInput,
     LocalPlayerTravelInAirParameters, LocalPlayerTravelInLavaInput,
     LocalPlayerTravelInLavaParameters, LocalPlayerTravelInWaterInput,
     LocalPlayerTravelInWaterParameters, LocalPlayerUpdateFallFlyingMovementInput,
     LocalPlayerUpdateFallFlyingMovementParameters, adjust_local_player_fluid_falling_movement,
+    advance_local_player_sprint_trigger,
     apply_local_player_input as apply_local_player_input_fields,
     clamp_local_player_climbable_movement, local_player_friction_influenced_speed,
     local_player_handle_relative_friction, local_player_modified_friction,
@@ -21,7 +23,7 @@ use crate::input::{
     local_player_update_fall_flying_movement,
 };
 use crate::math::{
-    MTH_DEG_TO_RAD, Vec3, abs_max_f64, clamp_f32, clamp_f64, equal_f64, floor_f32, mth_atan2,
+    MTH_DEG_TO_RAD, Vec2, Vec3, abs_max_f64, clamp_f32, clamp_f64, equal_f64, floor_f32, mth_atan2,
     mth_cos_f64, mth_lerp_f32, mth_lerp_f64, mth_rot_lerp_f32, mth_rot_lerp_f64, mth_sin_f64,
     wrap_degrees_f32,
 };
@@ -3101,6 +3103,37 @@ impl ClientWorld {
         true
     }
 
+    /// Advance LocalPlayer's sprint double-tap window from one input snapshot.
+    pub fn apply_local_player_sprint_trigger(
+        &mut self,
+        current_input: Input,
+        current_move_vector: Vec2,
+        sprint_window: i32,
+        conditions: LocalPlayerSprintTriggerConditions,
+    ) -> bool {
+        let Some(player) = self.local_player.as_mut() else {
+            return false;
+        };
+        let result = advance_local_player_sprint_trigger(LocalPlayerSprintTriggerInput {
+            sprinting: player.is_sprinting(),
+            sprint_trigger_time: player.sprint_trigger_time,
+            sprint_window,
+            previous_input: player.input_key_presses,
+            previous_move_vector: player.input_move_vector(),
+            current_input,
+            current_move_vector,
+            conditions,
+        });
+        player.input_key_presses = current_input;
+        player.input_move_vector_x_bits = current_move_vector.x.to_bits();
+        player.input_move_vector_y_bits = current_move_vector.y.to_bits();
+        player.sprint_trigger_time = result.sprint_trigger_time;
+        if result.sprinting != player.is_sprinting() {
+            player.apply_sprinting(result.sprinting);
+        }
+        true
+    }
+
     /// Apply the fluid falling adjustment to the local player's motion state.
     pub fn apply_local_player_fluid_falling_adjustment(
         &mut self,
@@ -6152,6 +6185,10 @@ pub struct ClientPlayerState {
     modified_friction_bits: u32,
     xxa_bits: u32,
     zza_bits: u32,
+    input_key_presses: Input,
+    input_move_vector_x_bits: u32,
+    input_move_vector_y_bits: u32,
+    sprint_trigger_time: i32,
     jumping: bool,
     on_climbable: bool,
     in_scaffolding: bool,
@@ -6595,6 +6632,10 @@ impl ClientPlayerState {
             modified_friction_bits: 0.0_f32.to_bits(),
             xxa_bits: 0.0_f32.to_bits(),
             zza_bits: 0.0_f32.to_bits(),
+            input_key_presses: Input::EMPTY,
+            input_move_vector_x_bits: 0.0_f32.to_bits(),
+            input_move_vector_y_bits: 0.0_f32.to_bits(),
+            sprint_trigger_time: 0,
             jumping: false,
             on_climbable: false,
             in_scaffolding: false,
@@ -6732,6 +6773,21 @@ impl ClientPlayerState {
 
     pub fn input_impulses(&self) -> crate::math::Vec2 {
         crate::math::Vec2::new(f32::from_bits(self.xxa_bits), f32::from_bits(self.zza_bits))
+    }
+
+    pub fn input_key_presses(&self) -> Input {
+        self.input_key_presses
+    }
+
+    pub fn input_move_vector(&self) -> Vec2 {
+        Vec2::new(
+            f32::from_bits(self.input_move_vector_x_bits),
+            f32::from_bits(self.input_move_vector_y_bits),
+        )
+    }
+
+    pub fn sprint_trigger_time(&self) -> i32 {
+        self.sprint_trigger_time
     }
 
     pub fn is_jumping(&self) -> bool {
@@ -8241,7 +8297,7 @@ mod tests {
     use crate::aabb::Aabb;
     use crate::binary::{BitSet, Uuid};
     use crate::identifier::Identifier;
-    use crate::input::{Input, LocalPlayerInputModifiers};
+    use crate::input::{Input, LocalPlayerInputModifiers, LocalPlayerSprintTriggerConditions};
     use crate::math::{Vec2, Vec3, mth_atan2, mth_cos_f64, mth_rot_lerp_f32, mth_sin_f64};
     use crate::shape::Shapes;
     use crate::tags::{ClientboundUpdateTagsPacket, RegistryTags, TagEntry};
@@ -9557,6 +9613,60 @@ mod tests {
                 .expect("ignored sprint player")
                 .is_sprinting()
         );
+    }
+
+    #[test]
+    fn local_player_sprint_trigger_tracks_previous_input_and_window() {
+        let mut world = ClientWorld::default();
+        world.set_local_player_id(42);
+        let conditions = LocalPlayerSprintTriggerConditions {
+            mobility_restricted: false,
+            enough_food: true,
+            may_fly: false,
+            shallow_water: false,
+            flying: false,
+            slow_due_to_using_item: false,
+            fall_flying: false,
+            underwater: false,
+            moving_slowly: false,
+        };
+        let empty = Input::EMPTY;
+        let forward = Input::new(true, false, false, false, false, false, false);
+
+        assert!(world.apply_local_player_sprint_trigger(empty, Vec2::ZERO, 7, conditions,));
+        assert_eq!(
+            world
+                .local_player()
+                .expect("initial sprint trigger player")
+                .sprint_trigger_time(),
+            0
+        );
+
+        assert!(world.apply_local_player_sprint_trigger(forward, Vec2::UNIT_Y, 7, conditions,));
+        {
+            let player = world.local_player().expect("opened sprint trigger window");
+            assert!(!player.is_sprinting());
+            assert_eq!(player.sprint_trigger_time(), 7);
+            assert_eq!(player.input_key_presses(), forward);
+            assert_eq!(player.input_move_vector().y.to_bits(), 1.0_f32.to_bits());
+        }
+
+        assert!(world.apply_local_player_sprint_trigger(empty, Vec2::ZERO, 7, conditions,));
+        assert_eq!(
+            world
+                .local_player()
+                .expect("held sprint trigger window")
+                .sprint_trigger_time(),
+            6
+        );
+
+        assert!(world.apply_local_player_sprint_trigger(forward, Vec2::UNIT_Y, 7, conditions,));
+        let player = world
+            .local_player()
+            .expect("started sprint from double tap");
+        assert!(player.is_sprinting());
+        assert_eq!(player.sprint_trigger_time(), 5);
+        assert_eq!(player.movement_speed().to_bits(), 0x3e05_1eb9);
     }
 
     #[test]

@@ -5113,6 +5113,9 @@ public final class MathOracle {
         if (operation.equals("client_world_player_tick")) {
             return clientWorldPlayerTickResult(request);
         }
+        if (operation.equals("client_world_player_sprint_trigger")) {
+            return clientWorldPlayerSprintTriggerResult(request);
+        }
         if (operation.equals("client_world_entity_shared_flags")) {
             return clientWorldEntitySharedFlagsResult(request);
         }
@@ -5614,6 +5617,82 @@ public final class MathOracle {
             effects.add(effectState);
         }
         state.add("effects", effects);
+        return state;
+    }
+
+    private static JsonObject clientWorldPlayerSprintTriggerResult(JsonObject request) {
+        try {
+            var output = System.out;
+            var errorOutput = System.err;
+            try {
+                SharedConstants.setVersion(TEST_VERSION);
+                Bootstrap.bootStrap();
+            } finally {
+                System.setOut(output);
+                System.setErr(errorOutput);
+            }
+
+            var canStartSprinting = LocalPlayer.class.getDeclaredMethod("canStartSprinting");
+            canStartSprinting.setAccessible(true);
+            Unsafe unsafe = unsafeInstance();
+            int sprintWindow = request.get("sprint_window").getAsInt();
+            JsonObject conditions = request.getAsJsonObject("conditions");
+            var sequences = new JsonArray();
+            for (JsonElement sequenceEntry : request.getAsJsonArray("sequences")) {
+                JsonObject sequence = sequenceEntry.getAsJsonObject();
+                LocalPlayerInputFixture player =
+                    (LocalPlayerInputFixture)unsafe.allocateInstance(LocalPlayerInputFixture.class);
+                player.configureSprintTrigger(Vec2.ZERO, Input.EMPTY, conditions);
+                var states = new JsonArray();
+                for (JsonElement operationEntry : sequence.getAsJsonArray("operations")) {
+                    JsonObject operation = operationEntry.getAsJsonObject();
+                    player.setSprintTriggerInput(
+                        inputState(operation.getAsJsonObject("key_presses")),
+                        vec2f(operation.getAsJsonObject("move_vector")));
+                    for (int tick = 0; tick < operation.get("ticks").getAsInt(); tick++) {
+                        player.tickSprintTrigger(canStartSprinting, sprintWindow);
+                    }
+                    states.add(sprintTriggerState(operation.get("label").getAsString(), player));
+                }
+                var sequenceState = new JsonObject();
+                sequenceState.addProperty("label", sequence.get("label").getAsString());
+                sequenceState.add("states", states);
+                sequences.add(sequenceState);
+            }
+            var result = new JsonObject();
+            result.addProperty("player_id", request.get("player_id").getAsInt());
+            result.add("sequences", sequences);
+            return result;
+        } catch (ReflectiveOperationException error) {
+            throw new IllegalStateException(
+                "LocalPlayer sprint trigger fixture failed", error);
+        }
+    }
+
+    private static Input inputState(JsonObject value) {
+        return new Input(
+            value.get("forward").getAsBoolean(),
+            value.get("backward").getAsBoolean(),
+            value.get("left").getAsBoolean(),
+            value.get("right").getAsBoolean(),
+            value.get("jump").getAsBoolean(),
+            value.get("shift").getAsBoolean(),
+            value.get("sprint").getAsBoolean());
+    }
+
+    private static Vec2 vec2f(JsonObject value) {
+        return new Vec2(Oracle.f32(value, "x"), Oracle.f32(value, "y"));
+    }
+
+    private static JsonObject sprintTriggerState(
+        String label, LocalPlayerInputFixture player
+    ) {
+        var state = new JsonObject();
+        state.addProperty("label", label);
+        state.addProperty("sprinting", player.isSprinting());
+        state.addProperty("sprint_trigger_time", player.sprintTriggerTime());
+        state.add("key_presses", snapshot(player.input.keyPresses));
+        state.add("move_vector", snapshot(player.input.getMoveVector()));
         return state;
     }
 
@@ -8644,6 +8723,15 @@ public final class MathOracle {
         }
 
         @Override
+        public void setSprinting(final boolean sprinting) {
+            this.sprinting = sprinting;
+        }
+
+        private int sprintTriggerTime() {
+            return this.sprintTriggerTime;
+        }
+
+        @Override
         public Abilities getAbilities() {
             return this.abilities;
         }
@@ -8861,6 +8949,68 @@ public final class MathOracle {
             this.abilities.flying = flying;
             if (usingItem) {
                 this.setItemUseSpeed(1.0F);
+            }
+        }
+
+        private void configureSprintTrigger(
+            final Vec2 initialMoveVector,
+            final Input initialInput,
+            final JsonObject conditions
+        ) throws ReflectiveOperationException {
+            this.input = new FixtureInput(initialMoveVector, initialInput);
+            this.passenger = false;
+            this.sprinting = false;
+            this.sprintTriggerTime = 0;
+            this.mobilityRestricted = conditions.get("mobility_restricted").getAsBoolean();
+            this.shallowWater = conditions.get("shallow_water").getAsBoolean();
+            this.fallFlying = conditions.get("fall_flying").getAsBoolean();
+            this.underwater = conditions.get("underwater").getAsBoolean();
+            this.usingItem = conditions.get("slow_due_to_using_item").getAsBoolean();
+            this.movingSlowly = conditions.get("moving_slowly").getAsBoolean();
+            this.foodData = new FoodData();
+            this.foodData.setFoodLevel(
+                conditions.get("enough_food").getAsBoolean() ? 20 : 6);
+            this.abilities = new Abilities();
+            this.abilities.mayfly = conditions.get("mayfly").getAsBoolean();
+            this.abilities.flying = conditions.get("flying").getAsBoolean();
+            if (this.usingItem) {
+                this.setItemUseSpeed(1.0F);
+            }
+        }
+
+        private void setSprintTriggerInput(final Input input, final Vec2 moveVector) {
+            ((FixtureInput)this.input).setNext(moveVector, input);
+        }
+
+        private void tickSprintTrigger(
+            final java.lang.reflect.Method canStartSprinting,
+            final int sprintWindow
+        ) throws ReflectiveOperationException {
+            if (this.sprintTriggerTime > 0) {
+                this.sprintTriggerTime--;
+            }
+
+            boolean wasShiftKeyDown = this.input.keyPresses.shift();
+            boolean hasForwardImpulse = this.input.hasForwardImpulse();
+            this.input.tick();
+            if (wasShiftKeyDown
+                || this.usingItem && !this.isPassenger()
+                || this.input.keyPresses.backward()) {
+                this.sprintTriggerTime = 0;
+            }
+
+            if ((boolean)canStartSprinting.invoke(this)) {
+                if (!hasForwardImpulse) {
+                    if (this.sprintTriggerTime > 0) {
+                        this.setSprinting(true);
+                    } else {
+                        this.sprintTriggerTime = sprintWindow;
+                    }
+                }
+
+                if (this.input.keyPresses.sprint()) {
+                    this.setSprinting(true);
+                }
             }
         }
 
@@ -9090,9 +9240,25 @@ public final class MathOracle {
     }
 
     private static final class FixtureInput extends ClientInput {
+        private Input nextKeyPresses;
+        private Vec2 nextMoveVector;
+
         private FixtureInput(final Vec2 moveVector, final Input keyPresses) {
             this.moveVector = moveVector;
             this.keyPresses = keyPresses;
+            this.nextMoveVector = moveVector;
+            this.nextKeyPresses = keyPresses;
+        }
+
+        private void setNext(final Vec2 moveVector, final Input keyPresses) {
+            this.nextMoveVector = moveVector;
+            this.nextKeyPresses = keyPresses;
+        }
+
+        @Override
+        public void tick() {
+            this.moveVector = this.nextMoveVector;
+            this.keyPresses = this.nextKeyPresses;
         }
     }
 

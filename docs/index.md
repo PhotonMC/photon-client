@@ -100,6 +100,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P10.f.3 — LocalPlayer sneaking speed attribute in input — client-parity](client-player-sneaking-attribute-conformance.md)
 - [P10.f.2 — LocalPlayer sprint transition and movement speed attribute — client-parity](client-player-sprint-attribute-conformance.md)
 - [P10.c — LocalPlayer canStartSprinting — client-parity birleşik kayıt](client-player-sprint-gate-conformance.md)
+- [P10.g — LocalPlayer sprint trigger window — client-parity birleşik kayıt](client-player-sprint-trigger-conformance.md)
 - [P10.e.6 — LivingEntity travel dispatch — client-parity birleşik kayıt](client-player-travel-dispatch-conformance.md)
 - [P10.d.4 — LivingEntity travelFlying — client-parity birleşik kayıt](client-player-travel-flying-conformance.md)
 - [P10.e.4 — LivingEntity travelInAir — client-parity birleşik kayıt](client-player-travel-in-air-conformance.md)

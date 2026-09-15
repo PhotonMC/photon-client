@@ -1786,6 +1786,148 @@ def math_cases():
         ],
     }
 
+    def sprint_key_presses(
+        forward=False, backward=False, left=False, right=False,
+        jump=False, shift=False, sprint=False,
+    ):
+        return {
+            "forward": forward,
+            "backward": backward,
+            "left": left,
+            "right": right,
+            "jump": jump,
+            "shift": shift,
+            "sprint": sprint,
+        }
+
+    sprint_trigger_conditions = {
+        "mobility_restricted": False,
+        "enough_food": True,
+        "mayfly": False,
+        "shallow_water": False,
+        "flying": False,
+        "slow_due_to_using_item": False,
+        "fall_flying": False,
+        "underwater": False,
+        "moving_slowly": False,
+    }
+
+    sprint_trigger_sequences = [
+        {
+            "label": "double-tap-within-window",
+            "operations": [
+                {
+                    "label": "first-forward-opens-window",
+                    "key_presses": sprint_key_presses(forward=True),
+                    "move_vector": vector2_bits(0.0, 1.0),
+                    "ticks": 1,
+                },
+                {
+                    "label": "release-keeps-window",
+                    "key_presses": sprint_key_presses(),
+                    "move_vector": vector2_bits(0.0, 0.0),
+                    "ticks": 1,
+                },
+                {
+                    "label": "second-forward-starts-sprint",
+                    "key_presses": sprint_key_presses(forward=True),
+                    "move_vector": vector2_bits(0.0, 1.0),
+                    "ticks": 1,
+                },
+            ],
+        },
+        {
+            "label": "window-expiry-and-sprint-key",
+            "operations": [
+                {
+                    "label": "first-forward-opens-window",
+                    "key_presses": sprint_key_presses(forward=True),
+                    "move_vector": vector2_bits(0.0, 1.0),
+                    "ticks": 1,
+                },
+                {
+                    "label": "release-expires-window",
+                    "key_presses": sprint_key_presses(),
+                    "move_vector": vector2_bits(0.0, 0.0),
+                    "ticks": 7,
+                },
+                {
+                    "label": "forward-after-expiry-reopens-window",
+                    "key_presses": sprint_key_presses(forward=True),
+                    "move_vector": vector2_bits(0.0, 1.0),
+                    "ticks": 1,
+                },
+                {
+                    "label": "sprint-key-starts-immediately",
+                    "key_presses": sprint_key_presses(forward=True, sprint=True),
+                    "move_vector": vector2_bits(0.0, 1.0),
+                    "ticks": 1,
+                },
+            ],
+        },
+        {
+            "label": "shift-resets-window",
+            "operations": [
+                {
+                    "label": "first-forward-opens-window",
+                    "key_presses": sprint_key_presses(forward=True),
+                    "move_vector": vector2_bits(0.0, 1.0),
+                    "ticks": 1,
+                },
+                {
+                    "label": "shift-press-is-current-only",
+                    "key_presses": sprint_key_presses(shift=True),
+                    "move_vector": vector2_bits(0.0, 0.0),
+                    "ticks": 1,
+                },
+                {
+                    "label": "previous-shift-clears-window",
+                    "key_presses": sprint_key_presses(),
+                    "move_vector": vector2_bits(0.0, 0.0),
+                    "ticks": 1,
+                },
+                {
+                    "label": "forward-after-shift-opens-new-window",
+                    "key_presses": sprint_key_presses(forward=True),
+                    "move_vector": vector2_bits(0.0, 1.0),
+                    "ticks": 1,
+                },
+            ],
+        },
+        {
+            "label": "backward-resets-window",
+            "operations": [
+                {
+                    "label": "first-forward-opens-window",
+                    "key_presses": sprint_key_presses(forward=True),
+                    "move_vector": vector2_bits(0.0, 1.0),
+                    "ticks": 1,
+                },
+                {
+                    "label": "backward-clears-window",
+                    "key_presses": sprint_key_presses(backward=True),
+                    "move_vector": vector2_bits(0.0, -1.0),
+                    "ticks": 1,
+                },
+                {
+                    "label": "forward-after-backward-opens-new-window",
+                    "key_presses": sprint_key_presses(forward=True),
+                    "move_vector": vector2_bits(0.0, 1.0),
+                    "ticks": 1,
+                },
+            ],
+        },
+    ]
+    yield {
+        "case_id": "client-world/player-sprint-trigger-window",
+        "family": "math",
+        "operation": "client_world_player_sprint_trigger",
+        "player_id": 42,
+        "sprint_window": 7,
+        "conditions": sprint_trigger_conditions,
+        "sequences": sprint_trigger_sequences,
+    }
+
     def character_event_case(label, codepoint):
         return {
             "case_id": f"character-event/{label}", "family": "math",

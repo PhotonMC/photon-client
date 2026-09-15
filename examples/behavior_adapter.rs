@@ -34,7 +34,7 @@ use voxel_client::input::{
     Input, KeyboardInput, LocalPlayerClimbableMovementInput, LocalPlayerFluidFallingInput,
     LocalPlayerFrictionInfluencedSpeedInput, LocalPlayerHandleRelativeFrictionInput,
     LocalPlayerInputModifiers, LocalPlayerInputState, LocalPlayerModifiedFrictionInput,
-    LocalPlayerSprintGateInput, LocalPlayerTravelDispatchInput,
+    LocalPlayerSprintGateInput, LocalPlayerSprintTriggerConditions, LocalPlayerTravelDispatchInput,
     LocalPlayerTravelDispatchParameters, LocalPlayerTravelFlyingInput, LocalPlayerTravelInAirInput,
     LocalPlayerTravelInLavaInput, LocalPlayerTravelInWaterInput,
     LocalPlayerTravelInWaterParameters, LocalPlayerUpdateFallFlyingMovementInput,
@@ -7390,6 +7390,122 @@ fn client_world_player_tick_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"player_id": player_id, "states": states}))
 }
 
+fn sprint_trigger_input(value: &Value) -> Result<Input, String> {
+    Ok(Input::new(
+        value["forward"]
+            .as_bool()
+            .ok_or("forward must be a boolean")?,
+        value["backward"]
+            .as_bool()
+            .ok_or("backward must be a boolean")?,
+        value["left"].as_bool().ok_or("left must be a boolean")?,
+        value["right"].as_bool().ok_or("right must be a boolean")?,
+        value["jump"].as_bool().ok_or("jump must be a boolean")?,
+        value["shift"].as_bool().ok_or("shift must be a boolean")?,
+        value["sprint"]
+            .as_bool()
+            .ok_or("sprint must be a boolean")?,
+    ))
+}
+
+fn sprint_trigger_conditions(value: &Value) -> Result<LocalPlayerSprintTriggerConditions, String> {
+    let boolean = |name: &str| {
+        value[name]
+            .as_bool()
+            .ok_or_else(|| format!("{name} must be a boolean"))
+    };
+    Ok(LocalPlayerSprintTriggerConditions {
+        mobility_restricted: boolean("mobility_restricted")?,
+        enough_food: boolean("enough_food")?,
+        may_fly: boolean("mayfly")?,
+        shallow_water: boolean("shallow_water")?,
+        flying: boolean("flying")?,
+        slow_due_to_using_item: boolean("slow_due_to_using_item")?,
+        fall_flying: boolean("fall_flying")?,
+        underwater: boolean("underwater")?,
+        moving_slowly: boolean("moving_slowly")?,
+    })
+}
+
+fn client_world_player_sprint_trigger_state(
+    label: &str,
+    player: &voxel_client::world::ClientPlayerState,
+) -> Value {
+    json!({
+        "label": label,
+        "sprinting": player.is_sprinting(),
+        "sprint_trigger_time": player.sprint_trigger_time(),
+        "key_presses": input_snapshot(player.input_key_presses()),
+        "move_vector": vec2_snapshot(player.input_move_vector()),
+    })
+}
+
+fn client_world_player_sprint_trigger_result(request: &Value) -> Result<Value, String> {
+    let player_id = i32_field(request, "player_id")?;
+    let sprint_window = i32_field(request, "sprint_window")?;
+    let conditions = sprint_trigger_conditions(
+        request
+            .get("conditions")
+            .ok_or("conditions must be an object")?,
+    )?;
+    let sequences = request["sequences"]
+        .as_array()
+        .ok_or("sequences must be an array")?;
+    let mut sequence_states = Vec::with_capacity(sequences.len());
+
+    for sequence in sequences {
+        let mut world = ClientWorld::new(DimensionBounds::new(0, 256));
+        world.set_local_player_id(player_id);
+        let operations = sequence["operations"]
+            .as_array()
+            .ok_or("operations must be an array")?;
+        let mut states = Vec::with_capacity(operations.len());
+        for operation in operations {
+            let current_input = sprint_trigger_input(
+                operation
+                    .get("key_presses")
+                    .ok_or("key_presses must be an object")?,
+            )?;
+            let move_vector_value = operation
+                .get("move_vector")
+                .ok_or("move_vector must be an object")?;
+            let move_vector = Vec2::new(
+                f32_field(move_vector_value, "x")?,
+                f32_field(move_vector_value, "y")?,
+            );
+            let ticks = operation["ticks"]
+                .as_u64()
+                .ok_or("ticks must be an unsigned integer")?;
+            for _ in 0..ticks {
+                if !world.apply_local_player_sprint_trigger(
+                    current_input,
+                    move_vector,
+                    sprint_window,
+                    conditions,
+                ) {
+                    return Err("local player is not initialized".into());
+                }
+            }
+            let player = world
+                .local_player()
+                .ok_or("local player is not initialized")?;
+            states.push(client_world_player_sprint_trigger_state(
+                string(operation, "label")?,
+                player,
+            ));
+        }
+        sequence_states.push(json!({
+            "label": string(sequence, "label")?,
+            "states": states,
+        }));
+    }
+
+    Ok(json!({
+        "player_id": player_id,
+        "sequences": sequence_states,
+    }))
+}
+
 fn client_world_entity_shared_flags_state(
     label: &str,
     accepted: bool,
@@ -7703,6 +7819,9 @@ fn math_result(request: &Value) -> Result<Value, String> {
     }
     if operation == "client_world_player_tick" {
         return client_world_player_tick_result(request);
+    }
+    if operation == "client_world_player_sprint_trigger" {
+        return client_world_player_sprint_trigger_result(request);
     }
     if operation == "client_world_entity_shared_flags" {
         return client_world_entity_shared_flags_result(request);
