@@ -1838,6 +1838,54 @@ def math_cases():
            "operation": "local_player_travel_in_water",
            "inputs": local_player_travel_in_water_inputs}
 
+    local_player_travel_in_lava_cases = [
+        {
+            "label": "shallow-lava-applies-fluid-drag-falling-and-gravity",
+        },
+        {
+            "label": "deep-lava-uses-half-scale-before-gravity",
+            "shallow_lava": False,
+        },
+        {
+            "label": "zero-gravity-skips-lava-gravity-step",
+            "base_gravity": float_bits(0.0, "f64"),
+        },
+        {
+            "label": "sprinting-bypasses-falling-adjustment-but-keeps-gravity",
+            "sprinting": True,
+        },
+        {
+            "label": "horizontal-fluid-collision-without-free-space-keeps-motion",
+            "horizontal_collision": True,
+            "free_after_jump": False,
+        },
+        {
+            "label": "horizontal-fluid-collision-with-free-space-jumps-out",
+            "horizontal_collision": True,
+            "free_after_jump": True,
+        },
+    ]
+    local_player_travel_in_lava_defaults = {
+        "input": vector_bits(0.3, -0.4, 0.8),
+        "delta": vector_bits(0.1, -0.2, 0.3),
+        "y_rot": float_bits(37.5, "f32"),
+        "sprinting": False,
+        "shallow_lava": True,
+        "horizontal_collision": False,
+        "free_after_jump": False,
+        "base_gravity": float_bits(0.08, "f64"),
+        "is_falling": False,
+        "old_y": float_bits(10.0, "f64"),
+        "current_y": float_bits(10.0, "f64"),
+    }
+    local_player_travel_in_lava_inputs = []
+    for values in local_player_travel_in_lava_cases:
+        input_values = {**local_player_travel_in_lava_defaults, **values}
+        local_player_travel_in_lava_inputs.append(input_values)
+    yield {"case_id": "player-movement/travel-in-lava", "family": "math",
+           "operation": "local_player_travel_in_lava",
+           "inputs": local_player_travel_in_lava_inputs}
+
     codec_decodes = {
         "basic": [float_bits(1.25, "f64"), float_bits(-2.5, "f64"), float_bits(3.75, "f64")],
         "zero": [float_bits(0.0, "f64"), float_bits(0.0, "f64"), float_bits(0.0, "f64")],

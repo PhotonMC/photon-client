@@ -45,6 +45,7 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.protocol.game.ClientboundGameEventPacket;
 import net.minecraft.network.protocol.game.ClientboundPlayerAbilitiesPacket;
 import net.minecraft.server.Bootstrap;
+import net.minecraft.tags.TagKey;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.util.SmoothDouble;
@@ -86,6 +87,7 @@ import net.minecraft.world.level.block.state.properties.StairsShape;
 import net.minecraft.world.level.levelgen.PositionalRandomFactory;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.border.WorldBorder;
+import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.entity.LevelCallback;
 import net.minecraft.world.level.entity.LevelEntityGetter;
@@ -336,6 +338,8 @@ public final class MathOracle {
             return localPlayerTravelFlyingResult(request);
         } else if (operation.equals("local_player_travel_in_water")) {
             return localPlayerTravelInWaterResult(request);
+        } else if (operation.equals("local_player_travel_in_lava")) {
+            return localPlayerTravelInLavaResult(request);
         } else if (operation.equals("character_event")) {
             CharacterEvent event = new CharacterEvent(request.get("codepoint").getAsInt());
             result.addProperty("codepoint", event.codepoint());
@@ -4730,6 +4734,44 @@ public final class MathOracle {
         }
     }
 
+    private static JsonObject localPlayerTravelInLavaResult(JsonObject request) {
+        try {
+            var method = LivingEntity.class.getDeclaredMethod(
+                "travelInLava", Vec3.class, double.class, boolean.class, double.class);
+            method.setAccessible(true);
+            var states = new JsonArray();
+            Unsafe unsafe = unsafeInstance();
+            for (var inputEntry : request.getAsJsonArray("inputs")) {
+                JsonObject input = inputEntry.getAsJsonObject();
+                LocalPlayerInputFixture player =
+                    (LocalPlayerInputFixture)unsafe.allocateInstance(LocalPlayerInputFixture.class);
+                player.configureTravelInLava(
+                    input.get("sprinting").getAsBoolean(),
+                    input.get("shallow_lava").getAsBoolean(),
+                    input.get("horizontal_collision").getAsBoolean(),
+                    input.get("free_after_jump").getAsBoolean(),
+                    Oracle.f32(input, "y_rot"),
+                    f64(input, "current_y"),
+                    vec3(input.getAsJsonObject("delta")));
+                method.invoke(
+                    player,
+                    vec3(input.getAsJsonObject("input")),
+                    f64(input, "base_gravity"),
+                    input.get("is_falling").getAsBoolean(),
+                    f64(input, "old_y"));
+                var state = new JsonObject();
+                state.addProperty("label", input.get("label").getAsString());
+                state.add("movement", snapshot(player.getDeltaMovement()));
+                states.add(state);
+            }
+            var result = new JsonObject();
+            result.add("states", states);
+            return result;
+        } catch (ReflectiveOperationException error) {
+            throw new IllegalStateException("LivingEntity.travelInLava reflection failed", error);
+        }
+    }
+
     private static double f64(JsonObject object, String name) {
         return f64(object.get(name).getAsString());
     }
@@ -6374,6 +6416,7 @@ public final class MathOracle {
         private boolean inLavaState;
         private Vec3 travelDeltaMovement;
         private float waterSlowDown;
+        private boolean shallowLava;
         private boolean dolphinsGrace;
         private boolean freeAfterFluidJump;
 
@@ -6486,6 +6529,11 @@ public final class MathOracle {
         @Override
         public boolean isInLava() {
             return this.inLavaState;
+        }
+
+        @Override
+        protected boolean isInShallowFluid(final TagKey<Fluid> fluidTag) {
+            return this.shallowLava;
         }
 
         @Override
@@ -6608,6 +6656,26 @@ public final class MathOracle {
             this.dolphinsGrace = dolphinsGrace;
             this.horizontalCollision = horizontalCollision;
             this.onClimbableState = onClimbable;
+            this.freeAfterFluidJump = freeAfterJump;
+            this.yRotation = yRot;
+            this.travelDeltaMovement = deltaMovement;
+            var position = net.minecraft.world.entity.Entity.class.getDeclaredField("position");
+            position.setAccessible(true);
+            position.set(this, new Vec3(0.0, currentY, 0.0));
+        }
+
+        private void configureTravelInLava(
+            final boolean sprinting,
+            final boolean shallowLava,
+            final boolean horizontalCollision,
+            final boolean freeAfterJump,
+            final float yRot,
+            final double currentY,
+            final Vec3 deltaMovement
+        ) throws ReflectiveOperationException {
+            this.sprinting = sprinting;
+            this.shallowLava = shallowLava;
+            this.horizontalCollision = horizontalCollision;
             this.freeAfterFluidJump = freeAfterJump;
             this.yRotation = yRot;
             this.travelDeltaMovement = deltaMovement;

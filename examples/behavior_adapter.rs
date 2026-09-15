@@ -32,10 +32,11 @@ use voxel_client::input::{
     Input, KeyboardInput, LocalPlayerClimbableMovementInput, LocalPlayerFluidFallingInput,
     LocalPlayerFrictionInfluencedSpeedInput, LocalPlayerInputModifiers, LocalPlayerInputState,
     LocalPlayerModifiedFrictionInput, LocalPlayerSprintGateInput, LocalPlayerTravelFlyingInput,
-    LocalPlayerTravelInWaterInput, adjust_local_player_fluid_falling_movement,
-    apply_local_player_input, can_start_local_player_sprinting,
-    clamp_local_player_climbable_movement, local_player_friction_influenced_speed,
-    local_player_modified_friction, local_player_travel_flying, local_player_travel_in_water,
+    LocalPlayerTravelInLavaInput, LocalPlayerTravelInWaterInput,
+    adjust_local_player_fluid_falling_movement, apply_local_player_input,
+    can_start_local_player_sprinting, clamp_local_player_climbable_movement,
+    local_player_friction_influenced_speed, local_player_modified_friction,
+    local_player_travel_flying, local_player_travel_in_lava, local_player_travel_in_water,
     modify_local_player_input,
 };
 use voxel_client::input_event::{
@@ -8441,6 +8442,42 @@ fn math_result(request: &Value) -> Result<Value, String> {
                     on_climbable: input["on_climbable"]
                         .as_bool()
                         .ok_or("on_climbable must be a boolean")?,
+                    free_after_jump: input["free_after_jump"]
+                        .as_bool()
+                        .ok_or("free_after_jump must be a boolean")?,
+                    base_gravity: f64_field(input, "base_gravity")?,
+                    is_falling: input["is_falling"]
+                        .as_bool()
+                        .ok_or("is_falling must be a boolean")?,
+                });
+                Ok(json!({
+                    "label": string(input, "label")?,
+                    "movement": vec3_snapshot(movement),
+                }))
+            })
+            .collect::<Result<Vec<_>, String>>()?;
+        return Ok(json!({"states": states}));
+    }
+    if operation == "local_player_travel_in_lava" {
+        let inputs = request["inputs"]
+            .as_array()
+            .ok_or("inputs must be an array")?;
+        let states = inputs
+            .iter()
+            .map(|input| {
+                let movement = local_player_travel_in_lava(LocalPlayerTravelInLavaInput {
+                    input: f64_vec3(input.get("input").ok_or("input must be a vector")?)?,
+                    delta_movement: f64_vec3(input.get("delta").ok_or("delta must be a vector")?)?,
+                    y_rot: f32_field(input, "y_rot")?,
+                    sprinting: input["sprinting"]
+                        .as_bool()
+                        .ok_or("sprinting must be a boolean")?,
+                    shallow_lava: input["shallow_lava"]
+                        .as_bool()
+                        .ok_or("shallow_lava must be a boolean")?,
+                    horizontal_collision: input["horizontal_collision"]
+                        .as_bool()
+                        .ok_or("horizontal_collision must be a boolean")?,
                     free_after_jump: input["free_after_jump"]
                         .as_bool()
                         .ok_or("free_after_jump must be a boolean")?,

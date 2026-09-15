@@ -94,6 +94,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P10.d.3 — LivingEntity modified block friction — client-parity birleşik kayıt](client-player-modified-friction-conformance.md)
 - [P10.c — LocalPlayer canStartSprinting — client-parity birleşik kayıt](client-player-sprint-gate-conformance.md)
 - [P10.d.4 — LivingEntity travelFlying — client-parity birleşik kayıt](client-player-travel-flying-conformance.md)
+- [P10.e.2 — LivingEntity travelInLava — client-parity birleşik kayıt](client-player-travel-in-lava-conformance.md)
 - [P10.e.1 — LivingEntity travelInWater — client-parity birleşik kayıt](client-player-travel-in-water-conformance.md)
 - [P06–P08 — Ölçülebilir istemci giriş ucu — server-conformance birleşik kayıt](client-runtime-conformance.md)
 - [P09.a — ClientWorld blok çarpışma şekli toplama — client-parity birleşik kayıt](client-world-block-collision-conformance.md)

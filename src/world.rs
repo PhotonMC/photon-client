@@ -6,11 +6,13 @@ use crate::input::{
     LocalPlayerClimbableMovementInput, LocalPlayerFluidFallingInput,
     LocalPlayerFrictionInfluencedSpeedInput, LocalPlayerInputModifiers, LocalPlayerInputState,
     LocalPlayerModifiedFrictionInput, LocalPlayerTravelFlyingInput,
-    LocalPlayerTravelFlyingParameters, LocalPlayerTravelInWaterInput,
+    LocalPlayerTravelFlyingParameters, LocalPlayerTravelInLavaInput,
+    LocalPlayerTravelInLavaParameters, LocalPlayerTravelInWaterInput,
     LocalPlayerTravelInWaterParameters, adjust_local_player_fluid_falling_movement,
     apply_local_player_input as apply_local_player_input_fields,
     clamp_local_player_climbable_movement, local_player_friction_influenced_speed,
-    local_player_modified_friction, local_player_travel_flying, local_player_travel_in_water,
+    local_player_modified_friction, local_player_travel_flying, local_player_travel_in_lava,
+    local_player_travel_in_water,
 };
 use crate::math::{
     MTH_DEG_TO_RAD, Vec3, abs_max_f64, clamp_f32, clamp_f64, equal_f64, floor_f32, mth_atan2,
@@ -2880,6 +2882,18 @@ impl ClientWorld {
             return false;
         };
         player.apply_travel_in_water(parameters);
+        true
+    }
+
+    /// Apply Java's resolved-environment travelInLava path to local motion.
+    pub fn apply_local_player_travel_in_lava(
+        &mut self,
+        parameters: LocalPlayerTravelInLavaParameters,
+    ) -> bool {
+        let Some(player) = self.local_player.as_mut() else {
+            return false;
+        };
+        player.apply_travel_in_lava(parameters);
         true
     }
 
@@ -5786,6 +5800,27 @@ impl ClientPlayerState {
         self.motion_z_bits = movement.z.to_bits();
     }
 
+    fn apply_travel_in_lava(&mut self, parameters: LocalPlayerTravelInLavaParameters) {
+        let movement = local_player_travel_in_lava(LocalPlayerTravelInLavaInput {
+            input: parameters.input,
+            delta_movement: Vec3::new(
+                f64::from_bits(self.motion_x_bits),
+                f64::from_bits(self.motion_y_bits),
+                f64::from_bits(self.motion_z_bits),
+            ),
+            y_rot: parameters.y_rot,
+            sprinting: parameters.sprinting,
+            shallow_lava: parameters.shallow_lava,
+            horizontal_collision: parameters.horizontal_collision,
+            free_after_jump: parameters.free_after_jump,
+            base_gravity: parameters.base_gravity,
+            is_falling: parameters.is_falling,
+        });
+        self.motion_x_bits = movement.x.to_bits();
+        self.motion_y_bits = movement.y.to_bits();
+        self.motion_z_bits = movement.z.to_bits();
+    }
+
     fn capture_old_transform(&mut self) {
         self.old_x_bits = self.x_bits;
         self.old_y_bits = self.y_bits;
@@ -8550,6 +8585,55 @@ mod tests {
                 f64::from_bits(0x3fb3_75d6_0dd9_5c2f),
                 f64::from_bits(0x3fd3_3333_4000_0000),
                 f64::from_bits(0x3fd0_326a_dc84_2483),
+            ),
+        );
+    }
+
+    #[test]
+    fn local_player_travel_in_lava_applies_shallow_drag_and_jump_state() {
+        let mut world = ClientWorld::default();
+        world.set_local_player_id(42);
+        assert!(world.apply_local_player_position((0.0, 0.0, 0.0), (0.1, -0.2, 0.3), (37.5, 0.0),));
+        assert!(world.apply_local_player_travel_in_lava(
+            super::LocalPlayerTravelInLavaParameters {
+                input: Vec3::new(0.3, -0.4, 0.8),
+                y_rot: 37.5,
+                sprinting: false,
+                shallow_lava: true,
+                horizontal_collision: false,
+                free_after_jump: false,
+                base_gravity: 0.08,
+                is_falling: false,
+            },
+        ));
+        assert_eq!(
+            world.local_player().expect("plain lava player").motion(),
+            (
+                f64::from_bits(0x3fa8_534b_8b3a_e058),
+                f64::from_bits(0xbfc8_7fcb_973e_ab37),
+                f64::from_bits(0x3fc4_3f05_8e95_6c40),
+            ),
+        );
+
+        assert!(world.apply_local_player_position((0.0, 0.0, 0.0), (0.1, -0.2, 0.3), (37.5, 0.0),));
+        assert!(world.apply_local_player_travel_in_lava(
+            super::LocalPlayerTravelInLavaParameters {
+                input: Vec3::new(0.3, -0.4, 0.8),
+                y_rot: 37.5,
+                sprinting: false,
+                shallow_lava: true,
+                horizontal_collision: true,
+                free_after_jump: true,
+                base_gravity: 0.08,
+                is_falling: false,
+            },
+        ));
+        assert_eq!(
+            world.local_player().expect("jump lava player").motion(),
+            (
+                f64::from_bits(0x3fa8_534b_8b3a_e058),
+                f64::from_bits(0x3fd3_3333_4000_0000),
+                f64::from_bits(0x3fc4_3f05_8e95_6c40),
             ),
         );
     }

@@ -357,6 +357,33 @@ pub struct LocalPlayerTravelInWaterInput {
     pub is_falling: bool,
 }
 
+/// The environment state consumed by LivingEntity.travelInLava.
+#[derive(Debug, Clone, Copy)]
+pub struct LocalPlayerTravelInLavaParameters {
+    pub input: Vec3,
+    pub y_rot: f32,
+    pub sprinting: bool,
+    pub shallow_lava: bool,
+    pub horizontal_collision: bool,
+    pub free_after_jump: bool,
+    pub base_gravity: f64,
+    pub is_falling: bool,
+}
+
+/// The environment and motion state consumed by LivingEntity.travelInLava.
+#[derive(Debug, Clone, Copy)]
+pub struct LocalPlayerTravelInLavaInput {
+    pub input: Vec3,
+    pub delta_movement: Vec3,
+    pub y_rot: f32,
+    pub sprinting: bool,
+    pub shallow_lava: bool,
+    pub horizontal_collision: bool,
+    pub free_after_jump: bool,
+    pub base_gravity: f64,
+    pub is_falling: bool,
+}
+
 /// Apply Java LivingEntity.travelInWater with collision and fluid lookup
 /// results supplied by the caller.
 pub fn local_player_travel_in_water(state: LocalPlayerTravelInWaterInput) -> Vec3 {
@@ -402,6 +429,54 @@ pub fn local_player_travel_in_water(state: LocalPlayerTravelInWaterInput) -> Vec
     });
     if adjusted.is_finite() {
         movement = adjusted;
+    }
+
+    if state.horizontal_collision && state.free_after_jump {
+        let jump_movement = Vec3::new(movement.x, f64::from(0.3_f32), movement.z);
+        if jump_movement.is_finite() {
+            movement = jump_movement;
+        }
+    }
+    movement
+}
+
+/// Apply Java LivingEntity.travelInLava with fluid lookup and collision
+/// results supplied by the caller.
+pub fn local_player_travel_in_lava(state: LocalPlayerTravelInLavaInput) -> Vec3 {
+    let relative_movement = local_player_relative_movement(state.input, 0.02_f32, state.y_rot);
+    let moved = state.delta_movement.add_vec3(relative_movement);
+    let mut movement = if moved.is_finite() {
+        moved
+    } else {
+        state.delta_movement
+    };
+
+    if state.shallow_lava {
+        let scaled = movement.multiply_components(0.5, f64::from(0.8_f32), 0.5);
+        if scaled.is_finite() {
+            movement = scaled;
+        }
+        let adjusted = adjust_local_player_fluid_falling_movement(LocalPlayerFluidFallingInput {
+            base_gravity: state.base_gravity,
+            is_falling: state.is_falling,
+            sprinting: state.sprinting,
+            movement,
+        });
+        if adjusted.is_finite() {
+            movement = adjusted;
+        }
+    } else {
+        let scaled = movement.scale(0.5);
+        if scaled.is_finite() {
+            movement = scaled;
+        }
+    }
+
+    if state.base_gravity != 0.0 {
+        let with_gravity = movement.add_components(0.0, -state.base_gravity / 4.0, 0.0);
+        if with_gravity.is_finite() {
+            movement = with_gravity;
+        }
     }
 
     if state.horizontal_collision && state.free_after_jump {
