@@ -10,6 +10,24 @@ pub const BASE_WIDTH: i32 = 320;
 /// Smallest GUI area the reference keeps addressable at the chosen scale.
 pub const BASE_HEIGHT: i32 = 240;
 
+/// Java `Window.allowedWindowMinSize`.
+///
+/// The reference clamps every requested window extent to at least one pixel
+/// before handing it to GLFW, so a zero or negative request still produces a
+/// creatable window.
+pub fn allowed_window_min_size(size: i32) -> i32 {
+    size.max(1)
+}
+
+/// Java `Window.refreshFramebufferSize` clamping.
+///
+/// Derived from the source, not yet pinned against a running Java window: the
+/// call itself needs a live GLFW surface, so only the clamp is reproduced here.
+/// A zero extent - which GLFW reports for a minimised window - becomes one.
+pub fn framebuffer_extent(reported: i32) -> i32 {
+    if reported > 0 { reported } else { 1 }
+}
+
 /// Framebuffer size plus the GUI scale derived from it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct WindowScale {

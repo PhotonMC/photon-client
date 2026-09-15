@@ -44,7 +44,10 @@ catch-all'ına eklenmek yerine kendi ailesini aldı; gerekçe
 
 ## Girdiler
 
-`window/base-size` sabitleri doğrular. `window/gui-scale` 31 parametrik satır
+`window/base-size` sabitleri doğrular. `window/min-size`,
+`allowedWindowMinSize`'ı sıfır, bir, negatif, `Integer.MIN_VALUE`,
+`Integer.MAX_VALUE` ve referans varsayılanı `854`/`480` ile sürer; referans her
+istenen pencere boyutunu GLFW'ye vermeden önce en az bir piksele kelepçeler. `window/gui-scale` 31 parametrik satır
 taşır: yaygın framebuffer boyutları, base alanının tam ve bir eksik komşuları,
 dejenere boyutlar (`1x1`, `320x2160`, `3840x240`), cap'li ölçekler, unicode
 zorlaması ve bölümün kalan bıraktığı boyutlar.

@@ -15119,6 +15119,17 @@ fn window_result(request: &Value) -> Result<Value, String> {
             "base_width": window::BASE_WIDTH,
             "base_height": window::BASE_HEIGHT,
         })),
+        "min_size" => {
+            let rows = request["rows"].as_array().ok_or("window rows must be an array")?;
+            let mut out = Vec::with_capacity(rows.len());
+            for row in rows {
+                out.push(json!({
+                    "label": string(row, "label")?,
+                    "allowed": window::allowed_window_min_size(i32_field(row, "requested")?),
+                }));
+            }
+            Ok(json!({"rows": out}))
+        }
         "gui_scale" => {
             let rows = request["rows"]
                 .as_array()

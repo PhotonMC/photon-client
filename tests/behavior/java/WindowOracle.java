@@ -19,6 +19,7 @@ public final class WindowOracle {
         return switch (operation) {
             case "gui_scale" -> guiScale(request);
             case "base_size" -> baseSize();
+            case "min_size" -> minSize(request);
             default -> throw new IllegalArgumentException("Unknown window operation: " + operation);
         };
     }
@@ -27,6 +28,23 @@ public final class WindowOracle {
         var result = new JsonObject();
         result.addProperty("base_width", Window.BASE_WIDTH);
         result.addProperty("base_height", Window.BASE_HEIGHT);
+        return result;
+    }
+
+    private static JsonObject minSize(JsonObject request) throws Exception {
+        var method = Window.class.getDeclaredMethod("allowedWindowMinSize", int.class);
+        method.setAccessible(true);
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            int requested = row.get("requested").getAsInt();
+            var entry = new JsonObject();
+            entry.addProperty("label", row.get("label").getAsString());
+            entry.addProperty("allowed", (Integer)method.invoke(null, requested));
+            rows.add(entry);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
         return result;
     }
 

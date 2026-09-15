@@ -537,3 +537,4 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 ## Diğer referans kayıtları
 
 - [P15 — Render yığını kararı: GLFW + Vulkan 1.2 (ash), wgpu değil](render-backend-decision.md)
+- [P05.d.2 — GLFW pencere yüzeyi — [altyapı, parity iddiası yok]](window-surface-record.md)

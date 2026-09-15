@@ -7,6 +7,7 @@ include = ["/Cargo.toml", "/Cargo.lock", "/src/**", "/README.md"]
 
 [dependencies]
 flate2 = { version = "1.1.10", default-features = false, features = ["rust_backend"] }
+glfw = { version = "0.62.0", default-features = false, features = ["raw-window-handle-v0-6", "vulkan", "wayland", "x11", "src-build"] }
 
 [dev-dependencies]
 serde_json = "1.0.151"

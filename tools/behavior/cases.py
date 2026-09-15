@@ -11831,6 +11831,24 @@ def window_cases():
         "operation": "base_size",
     }
 
+    yield {
+        "case_id": "window/min-size",
+        "family": "window",
+        "operation": "min_size",
+        "rows": [
+            {"label": label, "requested": requested}
+            for label, requested in [
+                ("zero", 0),
+                ("one", 1),
+                ("negative", -1),
+                ("min-int", -2147483648),
+                ("default-width", 854),
+                ("default-height", 480),
+                ("max-int", 2147483647),
+            ]
+        ],
+    }
+
     rows = [
         # label, framebuffer width, height, max scale, enforce unicode
         ("auto-1920x1080", 1920, 1080, 0, False),
