@@ -5647,6 +5647,33 @@ impl ClientWorld {
         true
     }
 
+    /// Apply Java's absolute entity position-sync path for a remote entity.
+    pub fn apply_entity_position_sync(
+        &mut self,
+        entity_id: i32,
+        position: (f64, f64, f64),
+        rotation: (f32, f32),
+    ) -> bool {
+        self.apply_entity_position_and_rotation(
+            EntityPositionInput {
+                entity_id,
+                x: position.0,
+                y: position.1,
+                z: position.2,
+                relative_flags: 0,
+            },
+            EntityRotationInput {
+                entity_id,
+                y_rot: Some(rotation.0),
+                x_rot: Some(rotation.1),
+                y_head_rot: None,
+                relative_y_rot: false,
+                relative_x_rot: false,
+            },
+            EntityPositionUpdateMode::PositionSync,
+        )
+    }
+
     fn resolve_entity_position(
         &self,
         input: &EntityPositionInput,
@@ -7233,7 +7260,6 @@ impl ClientEntity {
         self.old_z_bits = position.2.to_bits();
         self.old_y_rot_bits = y_rot.to_bits();
         self.old_x_rot_bits = x_rot.to_bits();
-        self.interpolation = None;
     }
 
     fn tick_position_interpolation(&mut self) {

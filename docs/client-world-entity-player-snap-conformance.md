@@ -31,8 +31,11 @@ sağlar.
 - Player entity type ID `156` için PositionSync hedefi ile mevcut raw position
   arasındaki squared distance `4096.0` değerinden büyükse interpolation başlatılmaz.
 - Büyük güncellemede current position ve body rotation packet hedefi olur;
-  previous position/body rotation aynı hedefe ayarlanır ve aktif interpolation
-  state'i temizlenir.
+  previous position/body rotation aynı hedefe ayarlanır. Java `snapTo`, önceden
+  aktif bir `InterpolationHandler` state'ini kendi içinde iptal etmez; aktif
+  handler olmayan bu canlı senaryoda kalan adım sayısı `0` gözlenmiştir. Bu
+  ayrım [P08.as.1 client-parity kaydında](client-world-entity-player-snap-parity-conformance.md)
+  ölçülür.
 - Eşik değeri aşılmayan ticking Player güncellemesi üç adımlı handler yolunda
   kalır. Eşik karşılaştırması strict `>` şeklindedir; tam `4096.0` değeri
   interpolation tarafındadır.
@@ -45,8 +48,9 @@ sağlar.
 `EntityPositionUpdateMode::PositionSync`, packet'in konum ve body rotation
 uygulamasını tek world işlemi altında yürütür. Player için raw position
 mesafesi eşiği kontrol edilir; snap yolunda current/previous position ve body
-rotation birlikte hedefe yazılır, interpolation state'i silinir. Eşik altı
-path'i P08.ar'daki üç tick testini korur.
+rotation birlikte hedefe yazılır. Önceden aktif Player interpolation state'i
+Java `snapTo` semantiğiyle korunur; aktif state yoksa kalan adım `0` olur. Eşik
+altı path'i P08.ar'daki üç tick testini korur.
 
 `remote_player_position_sync_snaps_when_distance_exceeds_java_threshold`
 unit testi `1.0` konumundan `66.0` konumuna geçişte snap history'sini ve
@@ -103,13 +107,16 @@ received_packet_count=4939
 
 Hedef ile önceki position arasındaki squared distance `6309.0`'dur. Rust
 state'i packet uygulamasında hedefe ulaştı, previous history'yi aynı hedefe
-eşitledi ve kalan interpolation adımını `0` tuttu. Bu kayıt Java istemcisiyle
-frame parity iddiası değildir. `TELEPORT_ENTITY` dalının canlı vanilla
-üretimi bu koşuda oluşmadı; kod ve relative çözümü ayrı unit kapsamındadır.
+eşitledi ve başlangıçta aktif handler olmadığı için kalan interpolation adımı
+`0` kaldı. Önceden aktif handler'ın snap sonrasındaki Java state'i [P08.as.1
+client-parity kaydında](client-world-entity-player-snap-parity-conformance.md)
+ayrıca doğrulanır. Bu kayıt Java istemcisiyle frame parity iddiası değildir.
+`TELEPORT_ENTITY` dalının canlı vanilla üretimi bu koşuda oluşmadı; kod ve
+relative çözümü ayrı unit kapsamındadır.
 
 ## Açık kapsam
 
 Teleport packet'inin canlı snap gözlemi, local player authority, passenger
 history düzeltmesi, collision gate'i, hızlı ardışık packet codec base'i,
 external movement delta'sı, generic LivingEntity türleri, render partial tick
-ve Java istemcisiyle `client-parity` karşılaştırması açık kalır.
+ve Java istemcisiyle ek `client-parity` karşılaştırmaları açık kalır.

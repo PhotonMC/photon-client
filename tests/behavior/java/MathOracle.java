@@ -5157,6 +5157,9 @@ public final class MathOracle {
         if (operation.equals("client_world_entity_player_interpolation")) {
             return clientWorldEntityPlayerInterpolationResult(request);
         }
+        if (operation.equals("client_world_entity_player_snap")) {
+            return clientWorldEntityPlayerSnapResult(request);
+        }
         if (operation.equals("client_world_player_sprint_trigger")) {
             return clientWorldPlayerSprintTriggerResult(request);
         }
@@ -5742,6 +5745,42 @@ public final class MathOracle {
                 }
                 default -> throw new IllegalArgumentException(
                     "Unknown remote player interpolation action");
+            }
+            states.add(remotePlayerInterpolationState(
+                operation.get("label").getAsString(), player));
+        }
+        var result = new JsonObject();
+        result.addProperty("entity_id", entityId);
+        result.add("states", states);
+        return result;
+    }
+
+    private static JsonObject clientWorldEntityPlayerSnapResult(JsonObject request) {
+        int entityId = request.get("entity_id").getAsInt();
+        JsonObject initialPosition = request.getAsJsonObject("initial_position");
+        JsonObject initialRotation = request.getAsJsonObject("initial_rotation");
+        RemotePlayerInterpolationFixture player = RemotePlayerInterpolationFixture.create(
+            vec3(initialPosition),
+            Oracle.f32(initialRotation, "y"),
+            Oracle.f32(initialRotation, "x"),
+            Oracle.f32(request, "initial_head"));
+
+        var states = new JsonArray();
+        states.add(remotePlayerInterpolationState("initial", player));
+        for (JsonElement operationEntry : request.getAsJsonArray("operations")) {
+            JsonObject operation = operationEntry.getAsJsonObject();
+            switch (operation.get("action").getAsString()) {
+                case "position_sync" -> player.applyPositionSync(
+                    vec3(operation.getAsJsonObject("target_position")),
+                    Oracle.f32(operation.getAsJsonObject("rotation"), "y"),
+                    Oracle.f32(operation.getAsJsonObject("rotation"), "x"));
+                case "tick" -> {
+                    for (int tick = 0; tick < operation.get("ticks").getAsInt(); tick++) {
+                        player.tickThroughClientLevel();
+                    }
+                }
+                default -> throw new IllegalArgumentException(
+                    "Unknown remote player snap action");
             }
             states.add(remotePlayerInterpolationState(
                 operation.get("label").getAsString(), player));
@@ -9779,6 +9818,11 @@ public final class MathOracle {
         public boolean noCollision(Entity source, AABB box) {
             return true;
         }
+
+        @Override
+        public boolean isTickingEntity(Entity entity) {
+            return true;
+        }
     }
 
     private static final class RemotePlayerInterpolationFixture extends RemotePlayer {
@@ -9857,6 +9901,16 @@ public final class MathOracle {
             } catch (ReflectiveOperationException error) {
                 throw new IllegalStateException(
                     "Unable to read interpolation step fixture", error);
+            }
+        }
+
+        private void applyPositionSync(Vec3 position, float yRot, float xRot) {
+            boolean withinInterpolationRange = this.position().distanceToSqr(position) <= 4096.0;
+            if (((InterpolationClientLevelFixture)CLIENT_LEVEL).isTickingEntity(this)
+                && withinInterpolationRange) {
+                this.moveOrInterpolateTo(position, yRot, xRot);
+            } else {
+                this.snapTo(position, yRot, xRot);
             }
         }
 

@@ -2478,6 +2478,59 @@ def math_cases():
         ],
     }
 
+    yield {
+        "case_id": "client-world/entity-player-snap",
+        "family": "math",
+        "operation": "client_world_entity_player_snap",
+        "entity_id": 37,
+        "initial_position": vector_bits(1.0, 80.0, -35.5),
+        "initial_rotation": {
+            "y": float_bits(350.0),
+            "x": float_bits(-20.0),
+        },
+        "initial_head": float_bits(350.0),
+        "operations": [
+            {
+                "action": "position_sync",
+                "label": "exact-threshold-interpolates",
+                "target_position": vector_bits(65.0, 80.0, -35.5),
+                "rotation": {
+                    "y": float_bits(10.0),
+                    "x": float_bits(20.0),
+                },
+            },
+            {"action": "tick", "label": "exact-threshold-first-tick", "ticks": 1},
+            {
+                "action": "position_sync",
+                "label": "over-threshold-snaps",
+                "target_position": vector_bits(90.0, 80.0, -35.5),
+                "rotation": {
+                    "y": float_bits(20.0),
+                    "x": float_bits(10.0),
+                },
+            },
+            {
+                "action": "position_sync",
+                "label": "exact-threshold-after-snap",
+                "target_position": vector_bits(154.0, 80.0, -35.5),
+                "rotation": {
+                    "y": float_bits(30.0),
+                    "x": float_bits(5.0),
+                },
+            },
+            {"action": "tick", "label": "boundary-first-tick", "ticks": 1},
+            {
+                "action": "position_sync",
+                "label": "second-over-threshold-snaps",
+                "target_position": vector_bits(219.0, 80.0, -35.5),
+                "rotation": {
+                    "y": float_bits(40.0),
+                    "x": float_bits(-5.0),
+                },
+            },
+        ],
+    }
+
     def sprint_key_presses(
         forward=False, backward=False, left=False, right=False,
         jump=False, shift=False, sprint=False,

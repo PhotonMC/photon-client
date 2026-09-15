@@ -8090,6 +8090,99 @@ fn client_world_entity_player_interpolation_result(request: &Value) -> Result<Va
     Ok(json!({"entity_id": entity_id, "states": states}))
 }
 
+fn client_world_entity_player_snap_result(request: &Value) -> Result<Value, String> {
+    let entity_id = i32_field(request, "entity_id")?;
+    let initial_position = f64_vec3(
+        request
+            .get("initial_position")
+            .ok_or("initial_position must be a vector")?,
+    )?;
+    let initial_rotation = request
+        .get("initial_rotation")
+        .ok_or("initial_rotation must be an object")?;
+    let blocks = vec![0; 4_096];
+    let biomes = vec![0; 64];
+    let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+    for chunk_x in [0, 4, 5, 9, 13] {
+        if !world.replace_chunk(
+            chunk_x,
+            -3,
+            [SectionInput {
+                non_empty_block_count: 0,
+                fluid_count: 0,
+                block_states: &blocks,
+                biomes: &biomes,
+            }],
+        ) {
+            return Err("remote player snap fixture chunk was rejected".into());
+        }
+    }
+    if !world.apply_entity(EntityInput {
+        entity_id,
+        uuid: Uuid::new(0, u64::from(entity_id as u32)),
+        type_id: 156,
+        x: initial_position.x,
+        y: initial_position.y,
+        z: initial_position.z,
+        movement: (0.0, 0.0, 0.0),
+        rotation: (
+            f32_field(initial_rotation, "y")?,
+            f32_field(initial_rotation, "x")?,
+            f32_field(request, "initial_head")?,
+        ),
+        data: 0,
+    }) {
+        return Err("remote player snap fixture was rejected".into());
+    }
+
+    let mut states = vec![client_world_entity_player_interpolation_state(
+        "initial",
+        world
+            .entity_at(entity_id)
+            .ok_or("remote player snap fixture disappeared")?,
+    )];
+    for operation in request["operations"]
+        .as_array()
+        .ok_or("operations must be an array")?
+    {
+        match string(operation, "action")? {
+            "position_sync" => {
+                let target = f64_vec3(
+                    operation
+                        .get("target_position")
+                        .ok_or("target position must be a vector")?,
+                )?;
+                let rotation = operation
+                    .get("rotation")
+                    .ok_or("rotation must be an object")?;
+                if !world.apply_entity_position_sync(
+                    entity_id,
+                    (target.x, target.y, target.z),
+                    (f32_field(rotation, "y")?, f32_field(rotation, "x")?),
+                ) {
+                    return Err("remote player snap position sync was rejected".into());
+                }
+            }
+            "tick" => {
+                let ticks = operation["ticks"]
+                    .as_u64()
+                    .ok_or("ticks must be an unsigned integer")?;
+                for _ in 0..ticks {
+                    world.tick();
+                }
+            }
+            _ => return Err("unknown remote player snap action".into()),
+        }
+        states.push(client_world_entity_player_interpolation_state(
+            string(operation, "label")?,
+            world
+                .entity_at(entity_id)
+                .ok_or("remote player snap fixture disappeared")?,
+        ));
+    }
+    Ok(json!({"entity_id": entity_id, "states": states}))
+}
+
 fn client_world_entity_arrow_tick_result(request: &Value) -> Result<Value, String> {
     client_world_entity_tick_result(request, 6)
 }
@@ -9315,6 +9408,9 @@ fn math_result(request: &Value) -> Result<Value, String> {
     }
     if operation == "client_world_entity_player_interpolation" {
         return client_world_entity_player_interpolation_result(request);
+    }
+    if operation == "client_world_entity_player_snap" {
+        return client_world_entity_player_snap_result(request);
     }
     if operation == "client_world_player_sprint_trigger" {
         return client_world_player_sprint_trigger_result(request);
