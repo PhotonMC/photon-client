@@ -7599,6 +7599,145 @@ fn client_world_entity_tick_result(request: &Value, entity_type_id: i32) -> Resu
     Ok(json!({"states": states}))
 }
 
+fn client_world_entity_ticking_eligibility_state(
+    label: &str,
+    world: &ClientWorld,
+    player_id: i32,
+    remote_entity_id: i32,
+) -> Result<Value, String> {
+    let player = world
+        .local_player()
+        .ok_or("ticking eligibility local player disappeared")?;
+    let remote = world
+        .entity_at(remote_entity_id)
+        .ok_or("ticking eligibility remote entity disappeared")?;
+    Ok(json!({
+        "label": label,
+        "accepted": true,
+        "game_time": world.game_time(),
+        "local_player": {
+            "entity_id": player_id,
+            "tick_count": player.tick_count(),
+            "always_ticking": true,
+            "ticking": true,
+        },
+        "entities": [{
+            "entity_id": remote.id(),
+            "tick_count": remote.tick_count(),
+            "always_ticking": remote.is_always_ticking(),
+            "ticking": remote.is_ticking(),
+        }],
+    }))
+}
+
+fn client_world_entity_ticking_eligibility_result(request: &Value) -> Result<Value, String> {
+    let player = request.get("player").ok_or("player must be an object")?;
+    let player_id = i32_field(player, "entity_id")?;
+    let player_position = f64_vec3(
+        player
+            .get("position")
+            .ok_or("player position must be a vector")?,
+    )?;
+    let remote = request.get("remote").ok_or("remote must be an object")?;
+    let remote_entity_id = i32_field(remote, "entity_id")?;
+    let remote_position = f64_vec3(
+        remote
+            .get("position")
+            .ok_or("remote position must be a vector")?,
+    )?;
+    let remote_type_id = i32_field(remote, "type_id")?;
+
+    let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+    let blocks = vec![0; 4_096];
+    let biomes = vec![0; 64];
+    if !world.replace_chunk(
+        0,
+        -3,
+        [SectionInput {
+            non_empty_block_count: 0,
+            fluid_count: 0,
+            block_states: &blocks,
+            biomes: &biomes,
+        }],
+    ) {
+        return Err("ticking eligibility fixture chunk was rejected".into());
+    }
+    world.set_local_player_id(player_id);
+    if !world.apply_local_player_position(
+        (player_position.x, player_position.y, player_position.z),
+        (0.0, 0.0, 0.0),
+        (0.0, 0.0),
+    ) {
+        return Err("ticking eligibility local player was rejected".into());
+    }
+    if !world.apply_entity(EntityInput {
+        entity_id: remote_entity_id,
+        uuid: Uuid::new(0, u64::from(remote_entity_id as u32)),
+        type_id: remote_type_id,
+        x: remote_position.x,
+        y: remote_position.y,
+        z: remote_position.z,
+        movement: (0.0, 0.0, 0.0),
+        rotation: (0.0, 0.0, 0.0),
+        data: 0,
+    }) {
+        return Err("ticking eligibility remote entity was rejected".into());
+    }
+
+    let mut states = vec![client_world_entity_ticking_eligibility_state(
+        "initial",
+        &world,
+        player_id,
+        remote_entity_id,
+    )?];
+    for operation in request["operations"]
+        .as_array()
+        .ok_or("operations must be an array")?
+    {
+        match string(operation, "action")? {
+            "tick" => {
+                let ticks = operation["ticks"]
+                    .as_u64()
+                    .ok_or("ticks must be an unsigned integer")?;
+                for _ in 0..ticks {
+                    world.tick();
+                }
+            }
+            "unload_chunk" => {
+                let chunk_x = i32_field(operation, "chunk_x")?;
+                let chunk_z = i32_field(operation, "chunk_z")?;
+                if !world.unload_chunk(chunk_x, chunk_z) {
+                    return Err("ticking eligibility chunk unload was rejected".into());
+                }
+            }
+            "load_chunk" => {
+                let chunk_x = i32_field(operation, "chunk_x")?;
+                let chunk_z = i32_field(operation, "chunk_z")?;
+                if !world.replace_chunk(
+                    chunk_x,
+                    chunk_z,
+                    [SectionInput {
+                        non_empty_block_count: 0,
+                        fluid_count: 0,
+                        block_states: &blocks,
+                        biomes: &biomes,
+                    }],
+                ) {
+                    return Err("ticking eligibility chunk reload was rejected".into());
+                }
+            }
+            _ => return Err("unknown ticking eligibility action".into()),
+        }
+        states.push(client_world_entity_ticking_eligibility_state(
+            string(operation, "label")?,
+            &world,
+            player_id,
+            remote_entity_id,
+        )?);
+    }
+    Ok(json!({"states": states}))
+}
+
 fn client_world_entity_snowball_tick_result(request: &Value) -> Result<Value, String> {
     client_world_entity_tick_result(request, 120)
 }
@@ -8819,6 +8958,9 @@ fn math_result(request: &Value) -> Result<Value, String> {
     }
     if operation == "client_world_entity_boat_remote_tick" {
         return client_world_entity_boat_remote_tick_result(request);
+    }
+    if operation == "client_world_entity_ticking_eligibility" {
+        return client_world_entity_ticking_eligibility_result(request);
     }
     if operation == "client_world_player_sprint_trigger" {
         return client_world_player_sprint_trigger_result(request);

@@ -2343,6 +2343,38 @@ def math_cases():
         ],
     }
 
+    yield {
+        "case_id": "client-world/entity-ticking-eligibility",
+        "family": "math",
+        "operation": "client_world_entity_ticking_eligibility",
+        "player": {
+            "entity_id": 42,
+            "position": vector_bits(10.0, 64.0, -2.0),
+        },
+        "remote": {
+            "entity_id": 37,
+            "type_id": 71,
+            "position": vector_bits(1.25, 80.0, -35.5),
+        },
+        "operations": [
+            {"action": "tick", "label": "loaded-first-tick", "ticks": 1},
+            {
+                "action": "unload_chunk",
+                "label": "remote-chunk-unloaded",
+                "chunk_x": 0,
+                "chunk_z": -3,
+            },
+            {"action": "tick", "label": "unloaded-tick", "ticks": 1},
+            {
+                "action": "load_chunk",
+                "label": "remote-chunk-reloaded",
+                "chunk_x": 0,
+                "chunk_z": -3,
+            },
+            {"action": "tick", "label": "reloaded-tick", "ticks": 1},
+        ],
+    }
+
     def sprint_key_presses(
         forward=False, backward=False, left=False, right=False,
         jump=False, shift=False, sprint=False,

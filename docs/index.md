@@ -202,6 +202,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P08.ao.1 — ClientWorld entity living stinger count — client-parity](client-world-entity-stinger-count-parity-conformance.md)
 - [P08.au-entity-teleport-motion — server-conformance Teleport delta ve relative motion](client-world-entity-teleport-delta-conformance.md)
 - [P08.e — server-conformance ClientWorld entity ticking eligibility](client-world-entity-ticking-conformance.md)
+- [P08.t.1 — ClientWorld entity ticking eligibility — client-parity](client-world-entity-ticking-parity-conformance.md)
 - [P08.ae — server-conformance Entity freeze progress semantic state](client-world-entity-ticks-frozen-conformance.md)
 - [P08.ae.1 — ClientWorld entity freeze progress — client-parity](client-world-entity-ticks-frozen-parity-conformance.md)
 - [P08.u — server-conformance Entity tick transform geçmişi ve interpolation](client-world-entity-transform-conformance.md)

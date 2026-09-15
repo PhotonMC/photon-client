@@ -119,6 +119,10 @@ ve teleport delta/relative motion [P08.au kaydında](client-world-entity-telepor
 [P08.bk.1 client-parity kaydında](client-world-entity-boat-remote-authority-parity-conformance.md) doğrulanarak ilerletilmiştir; P08 `client-parity` ile kapanmadan
 bu bağımlılıklar açılmaz.
 
+P08.t.1 ticking eligibility'nin Java istemci state eşleşmesi [kendi
+client-parity kaydında](client-world-entity-ticking-parity-conformance.md)
+doğrulandı; canlı chunk/tick akışı [P08.t server-conformance kaydında](client-world-tick-conformance.md) tutulur.
+
 P12/P13 altında yeni item component varyantı açılmaz; gerekçe ve bağlayıcı
 eylemler [yön düzeltmesi belgesindedir](course-correction-2026-09-12.md).
 Kolay ölçülebilir olduğu için yatay varyant üretmek ilerleme sayılmaz.

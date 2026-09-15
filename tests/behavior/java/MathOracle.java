@@ -5147,6 +5147,9 @@ public final class MathOracle {
         if (operation.equals("client_world_entity_boat_remote_tick")) {
             return clientWorldEntityBoatRemoteTickResult(request);
         }
+        if (operation.equals("client_world_entity_ticking_eligibility")) {
+            return clientWorldEntityTickingEligibilityResult(request);
+        }
         if (operation.equals("client_world_player_sprint_trigger")) {
             return clientWorldPlayerSprintTriggerResult(request);
         }
@@ -6137,6 +6140,57 @@ public final class MathOracle {
         entity.addProperty("paddle_left", boat.paddleLeft);
         entity.addProperty("paddle_right", boat.paddleRight);
         entities.add(entity);
+        state.add("entities", entities);
+        return state;
+    }
+
+    private static JsonObject clientWorldEntityTickingEligibilityResult(JsonObject request) {
+        JsonObject playerInput = request.getAsJsonObject("player");
+        JsonObject remoteInput = request.getAsJsonObject("remote");
+        TickEligibilityFixture fixture = TickEligibilityFixture.create(
+            playerInput.get("entity_id").getAsInt(),
+            remoteInput.get("entity_id").getAsInt());
+
+        var states = new JsonArray();
+        states.add(tickEligibilityState("initial", fixture));
+        for (JsonElement entry : request.getAsJsonArray("operations")) {
+            JsonObject operation = entry.getAsJsonObject();
+            switch (operation.get("action").getAsString()) {
+                case "tick" -> fixture.tick(operation.get("ticks").getAsInt());
+                case "unload_chunk" -> fixture.setRemoteTicking(false);
+                case "load_chunk" -> fixture.setRemoteTicking(true);
+                default -> throw new IllegalArgumentException(
+                    "Unknown entity ticking eligibility action");
+            }
+            states.add(tickEligibilityState(operation.get("label").getAsString(), fixture));
+        }
+        var result = new JsonObject();
+        result.add("states", states);
+        return result;
+    }
+
+    private static JsonObject tickEligibilityState(
+        String label, TickEligibilityFixture fixture
+    ) {
+        var state = new JsonObject();
+        state.addProperty("label", label);
+        state.addProperty("accepted", true);
+        state.addProperty("game_time", fixture.gameTime);
+
+        var player = new JsonObject();
+        player.addProperty("entity_id", fixture.localPlayerId);
+        player.addProperty("tick_count", fixture.localPlayerTickCount);
+        player.addProperty("always_ticking", true);
+        player.addProperty("ticking", true);
+        state.add("local_player", player);
+
+        var entities = new JsonArray();
+        var remote = new JsonObject();
+        remote.addProperty("entity_id", fixture.remoteEntityId);
+        remote.addProperty("tick_count", fixture.remoteTickCount);
+        remote.addProperty("always_ticking", false);
+        remote.addProperty("ticking", fixture.remoteTicking);
+        entities.add(remote);
         state.add("entities", entities);
         return state;
     }
@@ -10210,6 +10264,37 @@ public final class MathOracle {
             this.paddleLeft = this.inputRight && !this.inputLeft || this.inputForward;
             this.paddleRight = this.inputLeft && !this.inputRight || this.inputForward;
             this.fixturePosition = this.fixturePosition.add(this.motion);
+        }
+    }
+
+    private static final class TickEligibilityFixture {
+        private int localPlayerId;
+        private int remoteEntityId;
+        private int localPlayerTickCount;
+        private int remoteTickCount;
+        private long gameTime;
+        private boolean remoteTicking;
+
+        private static TickEligibilityFixture create(int localPlayerId, int remoteEntityId) {
+            TickEligibilityFixture fixture = new TickEligibilityFixture();
+            fixture.localPlayerId = localPlayerId;
+            fixture.remoteEntityId = remoteEntityId;
+            fixture.remoteTicking = true;
+            return fixture;
+        }
+
+        private void tick(int ticks) {
+            for (int tick = 0; tick < ticks; tick++) {
+                this.gameTime++;
+                this.localPlayerTickCount++;
+                if (this.remoteTicking) {
+                    this.remoteTickCount++;
+                }
+            }
+        }
+
+        private void setRemoteTicking(boolean ticking) {
+            this.remoteTicking = ticking;
         }
     }
 
