@@ -68,6 +68,7 @@ import net.minecraft.world.entity.ExperienceOrb;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.entity.Pose;
+import net.minecraft.world.entity.item.PrimedTnt;
 import net.minecraft.world.entity.player.Abilities;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.entity.player.Player;
@@ -5129,6 +5130,9 @@ public final class MathOracle {
         if (operation.equals("client_world_entity_experience_orb_tick")) {
             return clientWorldEntityExperienceOrbTickResult(request);
         }
+        if (operation.equals("client_world_entity_primed_tnt_tick")) {
+            return clientWorldEntityPrimedTntTickResult(request);
+        }
         if (operation.equals("client_world_player_sprint_trigger")) {
             return clientWorldPlayerSprintTriggerResult(request);
         }
@@ -5853,6 +5857,63 @@ public final class MathOracle {
             entity.addProperty("previous_rotation_y", Oracle.bits(orb.yRotO));
             entity.addProperty("previous_rotation_x", Oracle.bits(orb.xRotO));
             entity.addProperty("no_gravity", orb.noGravity);
+            entities.add(entity);
+        }
+        state.add("entities", entities);
+        return state;
+    }
+
+    private static JsonObject clientWorldEntityPrimedTntTickResult(JsonObject request) {
+        var tnts = new ArrayList<TickPrimedTntFixture>();
+        for (JsonElement entry : request.getAsJsonArray("entities")) {
+            JsonObject input = entry.getAsJsonObject();
+            tnts.add(TickPrimedTntFixture.create(
+                input.get("entity_id").getAsInt(),
+                vec3(input.getAsJsonObject("position")),
+                vec3(input.getAsJsonObject("movement")),
+                Oracle.f32(input.getAsJsonObject("rotation"), "y"),
+                Oracle.f32(input.getAsJsonObject("rotation"), "x"),
+                input.get("no_gravity").getAsBoolean()));
+        }
+
+        var states = new JsonArray();
+        states.add(tickPrimedTntState("initial", tnts));
+        for (JsonElement entry : request.getAsJsonArray("operations")) {
+            JsonObject operation = entry.getAsJsonObject();
+            if (!operation.get("action").getAsString().equals("tick")) {
+                throw new IllegalArgumentException("Unknown primed TNT tick action");
+            }
+            for (int tick = 0; tick < operation.get("ticks").getAsInt(); tick++) {
+                for (TickPrimedTntFixture tnt : tnts) {
+                    tnt.tickThroughClientLevel();
+                }
+            }
+            states.add(tickPrimedTntState(operation.get("label").getAsString(), tnts));
+        }
+        var result = new JsonObject();
+        result.add("states", states);
+        return result;
+    }
+
+    private static JsonObject tickPrimedTntState(
+        String label, List<TickPrimedTntFixture> tnts
+    ) {
+        var state = new JsonObject();
+        state.addProperty("label", label);
+        state.addProperty("accepted", true);
+        var entities = new JsonArray();
+        for (TickPrimedTntFixture tnt : tnts) {
+            var entity = new JsonObject();
+            entity.addProperty("entity_id", tnt.entityId());
+            entity.addProperty("tick_count", tnt.tickCount);
+            entity.add("position", snapshotClip(tnt.position()));
+            entity.add("previous_position", snapshotClip(tnt.previousPosition()));
+            entity.add("motion", snapshotClip(tnt.getDeltaMovement()));
+            entity.addProperty("rotation_y", Oracle.bits(tnt.getYRot()));
+            entity.addProperty("rotation_x", Oracle.bits(tnt.getXRot()));
+            entity.addProperty("previous_rotation_y", Oracle.bits(tnt.yRotO));
+            entity.addProperty("previous_rotation_x", Oracle.bits(tnt.xRotO));
+            entity.addProperty("no_gravity", tnt.noGravity);
             entities.add(entity);
         }
         state.add("entities", entities);
@@ -9620,6 +9681,69 @@ public final class MathOracle {
                 this.firstTick = false;
                 return;
             }
+            this.applyGravity();
+            this.fixturePosition = this.fixturePosition.add(this.getDeltaMovement());
+            this.setDeltaMovement(this.getDeltaMovement().scale(this.getAirDrag()));
+        }
+    }
+
+    private static final class TickPrimedTntFixture extends PrimedTnt {
+        private Vec3 fixturePosition;
+        private Vec3 previousFixturePosition;
+        private int fixtureEntityId;
+        private boolean noGravity;
+
+        private TickPrimedTntFixture() {
+            super(null, null);
+        }
+
+        private static TickPrimedTntFixture create(
+            int entityId, Vec3 position, Vec3 movement,
+            float yRot, float xRot, boolean noGravity
+        ) {
+            TickPrimedTntFixture tnt;
+            try {
+                Unsafe unsafe = unsafeInstance();
+                tnt = (TickPrimedTntFixture)unsafe.allocateInstance(
+                    TickPrimedTntFixture.class);
+            } catch (InstantiationException error) {
+                throw new IllegalStateException(
+                    "Unable to construct primed TNT tick fixture", error);
+            }
+            tnt.fixtureEntityId = entityId;
+            tnt.fixturePosition = position;
+            tnt.previousFixturePosition = position;
+            tnt.noGravity = noGravity;
+            tnt.setYRot(yRot);
+            tnt.setXRot(xRot);
+            tnt.yRotO = yRot;
+            tnt.xRotO = xRot;
+            tnt.setDeltaMovement(movement);
+            return tnt;
+        }
+
+        @Override
+        public boolean isNoGravity() {
+            return this.noGravity;
+        }
+
+        private int entityId() {
+            return this.fixtureEntityId;
+        }
+
+        @Override
+        public Vec3 position() {
+            return this.fixturePosition;
+        }
+
+        private Vec3 previousPosition() {
+            return this.previousFixturePosition;
+        }
+
+        private void tickThroughClientLevel() {
+            this.previousFixturePosition = this.fixturePosition;
+            this.setOldRot();
+            this.tickCount++;
             this.applyGravity();
             this.fixturePosition = this.fixturePosition.add(this.getDeltaMovement());
             this.setDeltaMovement(this.getDeltaMovement().scale(this.getAirDrag()));

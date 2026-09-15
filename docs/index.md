@@ -183,6 +183,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P08.ad.1 — ClientWorld entity pose metadata — client-parity](client-world-entity-pose-parity-conformance.md)
 - [P08.e-entity-position — server-conformance ClientWorld entity position synchronization](client-world-entity-position-conformance.md)
 - [P08.bn-entity-primed-tnt-tick — server-conformance Primed TNT free-flight tick](client-world-entity-primed-tnt-tick-conformance.md)
+- [P08.bn.1 — ClientWorld Primed TNT free-flight tick — client-parity](client-world-entity-primed-tnt-tick-parity-conformance.md)
 - [P08.e-entity-remove — server-conformance ClientWorld entity removal state](client-world-entity-remove-conformance.md)
 - [P08.e-entity-rotation — server-conformance ClientWorld entity rotation state](client-world-entity-rotation-conformance.md)
 - [P09.r — ClientWorld kalıcı entity section index güncellemeleri — client-parity birleşik kayıt](client-world-entity-section-index-conformance.md)

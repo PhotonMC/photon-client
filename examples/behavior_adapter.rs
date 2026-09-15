@@ -7611,6 +7611,10 @@ fn client_world_entity_experience_orb_tick_result(request: &Value) -> Result<Val
     client_world_entity_tick_result(request, 49)
 }
 
+fn client_world_entity_primed_tnt_tick_result(request: &Value) -> Result<Value, String> {
+    client_world_entity_tick_result(request, 133)
+}
+
 fn sprint_trigger_input(value: &Value) -> Result<Input, String> {
     Ok(Input::new(
         value["forward"]
@@ -8610,6 +8614,9 @@ fn math_result(request: &Value) -> Result<Value, String> {
     }
     if operation == "client_world_entity_experience_orb_tick" {
         return client_world_entity_experience_orb_tick_result(request);
+    }
+    if operation == "client_world_entity_primed_tnt_tick" {
+        return client_world_entity_primed_tnt_tick_result(request);
     }
     if operation == "client_world_player_sprint_trigger" {
         return client_world_player_sprint_trigger_result(request);
