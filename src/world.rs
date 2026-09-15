@@ -582,6 +582,8 @@ pub fn select_step_up_movement(
 
 pub(crate) const PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS: u8 = 1;
 pub(crate) const PLAYER_RESPAWN_KEEP_ENTITY_DATA: u8 = 2;
+const VANILLA_PLAYER_MOVEMENT_SPEED_ATTRIBUTE_ID: i32 = 26;
+const VANILLA_PLAYER_DEFAULT_MOVEMENT_SPEED: f32 = 0.1_f32;
 const VANILLA_PLAYER_ENTITY_TYPE_ID: i32 = 156;
 const VANILLA_BREEZE_ENTITY_TYPE_ID: i32 = 17;
 const VANILLA_SPIDER_ENTITY_TYPE_ID: i32 = 124;
@@ -3107,6 +3109,20 @@ impl ClientWorld {
             return false;
         };
         player.apply_friction_influenced_speed(on_ground, block_friction, speed);
+        true
+    }
+
+    /// Apply Java's friction-influenced speed using Player.getSpeed's
+    /// movement-speed attribute lookup.
+    pub fn apply_local_player_friction_influenced_speed_from_attributes(
+        &mut self,
+        on_ground: bool,
+        block_friction: f32,
+    ) -> bool {
+        let Some(player) = self.local_player.as_mut() else {
+            return false;
+        };
+        player.apply_friction_influenced_speed_from_attributes(on_ground, block_friction);
         true
     }
 
@@ -6197,6 +6213,15 @@ impl ClientPlayerState {
         self.friction_influenced_speed_bits = adjusted.to_bits();
     }
 
+    fn apply_friction_influenced_speed_from_attributes(
+        &mut self,
+        on_ground: bool,
+        block_friction: f32,
+    ) {
+        let speed = self.movement_speed();
+        self.apply_friction_influenced_speed(on_ground, block_friction, speed);
+    }
+
     fn apply_modified_friction(&mut self, friction: f32, modifier: f32) {
         self.modified_friction_bits =
             local_player_modified_friction(LocalPlayerModifiedFrictionInput { friction, modifier })
@@ -6539,6 +6564,15 @@ impl ClientPlayerState {
 
     pub fn friction_influenced_speed(&self) -> f32 {
         f32::from_bits(self.friction_influenced_speed_bits)
+    }
+
+    /// Return Java Player.getSpeed from the local movement-speed attribute.
+    pub fn movement_speed(&self) -> f32 {
+        self.attributes
+            .iter()
+            .find(|attribute| attribute.attribute_id == VANILLA_PLAYER_MOVEMENT_SPEED_ATTRIBUTE_ID)
+            .map(|attribute| attribute.effective_value(0.0, 1024.0) as f32)
+            .unwrap_or(VANILLA_PLAYER_DEFAULT_MOVEMENT_SPEED)
     }
 
     pub fn modified_friction(&self) -> f32 {
@@ -9071,6 +9105,54 @@ mod tests {
                 .friction_influenced_speed()
                 .to_bits(),
             0x3cd4_fdf3,
+        );
+    }
+
+    #[test]
+    fn local_player_friction_influenced_speed_reads_movement_speed_attribute() {
+        let mut world = ClientWorld::default();
+        world.set_local_player_id(42);
+
+        assert_eq!(
+            world
+                .local_player()
+                .expect("default speed player")
+                .movement_speed(),
+            0.1_f32,
+        );
+        assert!(world.apply_local_player_friction_influenced_speed_from_attributes(true, 0.6));
+        assert_eq!(
+            world
+                .local_player()
+                .expect("default friction speed player")
+                .friction_influenced_speed(),
+            0.1_f32,
+        );
+
+        let attribute = ClientAttributeState::from_wire(
+            super::VANILLA_PLAYER_MOVEMENT_SPEED_ATTRIBUTE_ID,
+            0.25,
+            vec![
+                ClientAttributeModifierState::from_wire("test:add".to_owned(), 0.1, 0),
+                ClientAttributeModifierState::from_wire("test:base".to_owned(), 0.2, 1),
+                ClientAttributeModifierState::from_wire("test:total".to_owned(), 0.5, 2),
+            ],
+        );
+        assert!(world.apply_local_player_attributes(42, &[attribute]));
+        assert_eq!(
+            world
+                .local_player()
+                .expect("attribute speed player")
+                .movement_speed(),
+            0.63_f32,
+        );
+        assert!(world.apply_local_player_friction_influenced_speed_from_attributes(true, 0.8));
+        assert_eq!(
+            world
+                .local_player()
+                .expect("attribute friction speed player")
+                .friction_influenced_speed(),
+            0.63_f32 * (0.21600002_f32 / (0.8_f32 * 0.8_f32 * 0.8_f32)),
         );
     }
 

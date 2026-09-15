@@ -1336,6 +1336,67 @@ def math_cases():
         ],
     }
 
+    yield {
+        "case_id": "client-world/player-attribute-movement-speed-binding",
+        "family": "math",
+        "operation": "client_world_player_movement_speed",
+        "player_id": 42,
+        "operations": [
+            {
+                "label": "default-player-speed",
+                "player_id": 42,
+                "attributes": [],
+                "on_ground": True,
+                "block_friction": float_bits(0.6, "f32"),
+            },
+            {
+                "label": "modified-attribute-ground-speed",
+                "player_id": 42,
+                "attributes": [
+                    {
+                        "attribute_id": 26,
+                        "base": float_bits(0.25, "f64"),
+                        "modifiers": [
+                            attribute_modifier("p10:movement_add", 0.1, 0),
+                            attribute_modifier("p10:movement_base", 0.2, 1),
+                            attribute_modifier("p10:movement_total", 0.5, 2),
+                        ],
+                    },
+                ],
+                "on_ground": True,
+                "block_friction": float_bits(0.8, "f32"),
+            },
+            {
+                "label": "replacement-attribute-ground-speed",
+                "player_id": 42,
+                "attributes": [
+                    {
+                        "attribute_id": 26,
+                        "base": float_bits(0.5, "f64"),
+                        "modifiers": [
+                            attribute_modifier("p10:movement_replacement", -0.1, 0),
+                        ],
+                    },
+                ],
+                "on_ground": True,
+                "block_friction": float_bits(0.6, "f32"),
+            },
+            {
+                "label": "wrong-player-preserves-speed",
+                "player_id": 99,
+                "attributes": [
+                    {
+                        "attribute_id": 26,
+                        "base": float_bits(2.0, "f64"),
+                        "modifiers": [],
+                    },
+                ],
+                "on_ground": True,
+                "block_friction": float_bits(0.6, "f32"),
+            },
+        ],
+    }
+
     def character_event_case(label, codepoint):
         return {
             "case_id": f"character-event/{label}", "family": "math",

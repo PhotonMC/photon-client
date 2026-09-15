@@ -6850,6 +6850,48 @@ fn client_world_player_attributes_result(request: &Value) -> Result<Value, Strin
     Ok(json!({"events": events}))
 }
 
+fn client_world_player_movement_speed_result(request: &Value) -> Result<Value, String> {
+    let player_id = i32_field(request, "player_id")?;
+    let mut world = ClientWorld::new(DimensionBounds::new(0, 256));
+    world.set_local_player_id(player_id);
+    let operations = request["operations"]
+        .as_array()
+        .ok_or("operations must be an array")?;
+    let mut states = Vec::with_capacity(operations.len());
+
+    for operation in operations {
+        let attributes = operation["attributes"]
+            .as_array()
+            .ok_or("attributes must be an array")?
+            .iter()
+            .map(client_attribute_state)
+            .collect::<Result<Vec<_>, _>>()?;
+        let accepted =
+            world.apply_local_player_attributes(i32_field(operation, "player_id")?, &attributes);
+        if !world.apply_local_player_friction_influenced_speed_from_attributes(
+            operation["on_ground"]
+                .as_bool()
+                .ok_or("on_ground must be a boolean")?,
+            f32_field(operation, "block_friction")?,
+        ) {
+            return Err("local player is not initialized".into());
+        }
+        let player = world
+            .local_player()
+            .ok_or("local player is not initialized")?;
+        states.push(json!({
+            "label": string(operation, "label")?,
+            "accepted": accepted,
+            "movement_speed": format!("{:08x}", player.movement_speed().to_bits()),
+            "friction_influenced_speed": format!(
+                "{:08x}",
+                player.friction_influenced_speed().to_bits()
+            ),
+        }));
+    }
+    Ok(json!({"states": states}))
+}
+
 fn client_world_entity_shared_flags_state(
     label: &str,
     accepted: bool,
@@ -7145,6 +7187,9 @@ fn math_result(request: &Value) -> Result<Value, String> {
     }
     if operation == "client_world_player_attributes" {
         return client_world_player_attributes_result(request);
+    }
+    if operation == "client_world_player_movement_speed" {
+        return client_world_player_movement_speed_result(request);
     }
     if operation == "client_world_entity_shared_flags" {
         return client_world_entity_shared_flags_result(request);

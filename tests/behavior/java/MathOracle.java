@@ -5095,6 +5095,9 @@ public final class MathOracle {
         if (operation.equals("client_world_player_attributes")) {
             return clientWorldPlayerAttributesResult(request);
         }
+        if (operation.equals("client_world_player_movement_speed")) {
+            return clientWorldPlayerMovementSpeedResult(request);
+        }
         if (operation.equals("client_world_entity_shared_flags")) {
             return clientWorldEntitySharedFlagsResult(request);
         }
@@ -5204,6 +5207,55 @@ public final class MathOracle {
             return result;
         } catch (RuntimeException error) {
             throw new IllegalStateException("Player attribute fixture failed", error);
+        }
+    }
+
+    private static JsonObject clientWorldPlayerMovementSpeedResult(JsonObject request) {
+        try {
+            var output = System.out;
+            var errorOutput = System.err;
+            try {
+                SharedConstants.setVersion(TEST_VERSION);
+                Bootstrap.bootStrap();
+            } finally {
+                System.setOut(output);
+                System.setErr(errorOutput);
+            }
+
+            int playerId = request.get("player_id").getAsInt();
+            AttributeMap attributes = new AttributeMap(Player.createAttributes().build());
+            AttributeSpeedFixture player = AttributeSpeedFixture.create(attributes);
+            var frictionMethod = LivingEntity.class.getDeclaredMethod(
+                "getFrictionInfluencedSpeed", float.class);
+            frictionMethod.setAccessible(true);
+            var states = new JsonArray();
+            for (JsonElement operationEntry : request.getAsJsonArray("operations")) {
+                JsonObject operation = operationEntry.getAsJsonObject();
+                boolean accepted = operation.get("player_id").getAsInt() == playerId;
+                if (accepted) {
+                    for (JsonElement snapshotEntry : operation.getAsJsonArray("attributes")) {
+                        applyPlayerAttributeSnapshot(
+                            attributes, snapshotEntry.getAsJsonObject());
+                    }
+                }
+                player.onGroundState = operation.get("on_ground").getAsBoolean();
+                float movementSpeed = player.getSpeed();
+                float frictionInfluencedSpeed = (float)frictionMethod.invoke(
+                    player, Oracle.f32(operation, "block_friction"));
+                var state = new JsonObject();
+                state.addProperty("label", operation.get("label").getAsString());
+                state.addProperty("accepted", accepted);
+                state.addProperty("movement_speed", Oracle.bits(movementSpeed));
+                state.addProperty(
+                    "friction_influenced_speed", Oracle.bits(frictionInfluencedSpeed));
+                states.add(state);
+            }
+            var result = new JsonObject();
+            result.add("states", states);
+            return result;
+        } catch (ReflectiveOperationException error) {
+            throw new IllegalStateException(
+                "Player.getSpeed attribute binding fixture failed", error);
         }
     }
 
@@ -7749,6 +7801,33 @@ public final class MathOracle {
             return options;
         } catch (ReflectiveOperationException error) {
             throw new IllegalStateException("Unable to construct controlled keyboard options", error);
+        }
+    }
+
+    private static final class AttributeSpeedFixture extends LocalPlayer {
+        private boolean onGroundState;
+
+        private AttributeSpeedFixture() {
+            super(null, null, null, null, null, Input.EMPTY, false, null);
+        }
+
+        @Override
+        public boolean onGround() {
+            return this.onGroundState;
+        }
+
+        private static AttributeSpeedFixture create(AttributeMap attributes) {
+            try {
+                Unsafe unsafe = unsafeInstance();
+                AttributeSpeedFixture player =
+                    (AttributeSpeedFixture)unsafe.allocateInstance(AttributeSpeedFixture.class);
+                var attributesField = LivingEntity.class.getDeclaredField("attributes");
+                unsafe.putObject(player, unsafe.objectFieldOffset(attributesField), attributes);
+                return player;
+            } catch (ReflectiveOperationException error) {
+                throw new IllegalStateException(
+                    "Unable to construct player attribute speed fixture", error);
+            }
         }
     }
 
