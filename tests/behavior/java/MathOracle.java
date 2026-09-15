@@ -5131,6 +5131,9 @@ public final class MathOracle {
         if (operation.equals("client_world_entity_custom_name")) {
             return clientWorldEntityCustomNameResult(request);
         }
+        if (operation.equals("client_world_entity_living_flags")) {
+            return clientWorldEntityLivingFlagsResult(request);
+        }
         throw new IllegalArgumentException("Unknown client world operation");
     }
 
@@ -5915,6 +5918,50 @@ public final class MathOracle {
         state.addProperty("custom_name_present", entity.hasCustomName());
         state.addProperty("custom_name_visible", entity.isCustomNameVisible());
         state.addProperty("should_show_name", entity.shouldShowName());
+        return state;
+    }
+
+    private static JsonObject clientWorldEntityLivingFlagsResult(JsonObject request) {
+        try {
+            var output = System.out;
+            var errorOutput = System.err;
+            try {
+                SharedConstants.setVersion(TEST_VERSION);
+                Bootstrap.bootStrap();
+            } finally {
+                System.setOut(output);
+                System.setErr(errorOutput);
+            }
+
+            var entity = new LivingFlagsFixtureEntity();
+            var states = new JsonArray();
+            states.add(entityLivingFlagsState("initial", true, entity));
+            for (JsonElement operationEntry : request.getAsJsonArray("operations")) {
+                JsonObject operation = operationEntry.getAsJsonObject();
+                entity.getEntityData().assignValues(
+                    decodeEntityMetadata(operation.get("metadata_hex").getAsString()));
+                states.add(entityLivingFlagsState(
+                    operation.get("label").getAsString(), true, entity));
+            }
+            var result = new JsonObject();
+            result.add("states", states);
+            return result;
+        } catch (RuntimeException error) {
+            throw new IllegalStateException("Entity living flags fixture failed", error);
+        }
+    }
+
+    private static JsonObject entityLivingFlagsState(
+        String label, boolean accepted, LivingFlagsFixtureEntity entity
+    ) {
+        var state = new JsonObject();
+        state.addProperty("label", label);
+        state.addProperty("accepted", accepted);
+        state.addProperty("living_flags", entity.livingFlags());
+        state.addProperty("is_using_item", entity.isUsingItem());
+        state.addProperty("used_item_is_off_hand", entity.getUsedItemHand()
+            == net.minecraft.world.InteractionHand.OFF_HAND);
+        state.addProperty("is_auto_spin_attack", entity.isAutoSpinAttack());
         return state;
     }
 
@@ -7056,6 +7103,18 @@ public final class MathOracle {
 
         @Override
         protected void addAdditionalSaveData(net.minecraft.world.level.storage.ValueOutput output) {
+        }
+    }
+
+    private static final class LivingFlagsFixtureEntity
+        extends net.minecraft.world.entity.decoration.ArmorStand {
+        private LivingFlagsFixtureEntity() {
+            super(net.minecraft.world.entity.EntityTypes.ARMOR_STAND,
+                SharedFlagsFixtureEntity.CLIENT_LEVEL);
+        }
+
+        private int livingFlags() {
+            return Byte.toUnsignedInt(this.getEntityData().get(DATA_LIVING_ENTITY_FLAGS));
         }
     }
 

@@ -149,6 +149,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P08.ah — server-conformance Entity living health semantic state](client-world-entity-health-conformance.md)
 - [P09.m — ClientWorld indexed entity collision — client-parity birleşik kayıt](client-world-entity-index-conformance.md)
 - [P08.ai — server-conformance Entity living flags semantic state](client-world-entity-living-flags-conformance.md)
+- [P08.ai.1 — ClientWorld entity living flags — client-parity](client-world-entity-living-flags-parity-conformance.md)
 - [P08.e-entity-metadata — server-conformance ClientWorld raw entity metadata](client-world-entity-metadata-conformance.md)
 - [P08.aj — server-conformance Entity mob flags semantic state](client-world-entity-mob-flags-conformance.md)
 - [P08.e-entity-motion — server-conformance ClientWorld entity motion state](client-world-entity-motion-conformance.md)
