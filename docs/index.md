@@ -121,6 +121,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P08.g — server-conformance Registry’den DimensionType bounds çözümü](client-world-dimension-type-bounds-conformance.md)
 - [P08.e-entity-add — server-conformance ClientWorld entity add state](client-world-entity-add-conformance.md)
 - [P08.aa — server-conformance Entity air supply semantic state](client-world-entity-air-supply-conformance.md)
+- [P08.aa.1 — ClientWorld entity air supply metadata — client-parity](client-world-entity-air-supply-parity-conformance.md)
 - [P08.y — server-conformance Player entity always-ticking state'i](client-world-entity-always-ticking-conformance.md)
 - [P08.ak — server-conformance Entity living arrow count semantic state](client-world-entity-arrow-count-conformance.md)
 - [P08.bl-entity-arrow-tick — server-conformance Arrow free-flight world tick](client-world-entity-arrow-tick-conformance.md)

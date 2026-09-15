@@ -5098,6 +5098,9 @@ public final class MathOracle {
         if (operation.equals("client_world_entity_shared_flags")) {
             return clientWorldEntitySharedFlagsResult(request);
         }
+        if (operation.equals("client_world_entity_air_supply")) {
+            return clientWorldEntityAirSupplyResult(request);
+        }
         throw new IllegalArgumentException("Unknown client world operation");
     }
 
@@ -5245,6 +5248,47 @@ public final class MathOracle {
         state.addProperty("invisible", entity.isInvisible());
         state.addProperty("glowing", entity.isCurrentlyGlowing());
         state.addProperty("fall_flying", (flags & (1 << 7)) != 0);
+        state.addProperty("air_supply", entity.getAirSupply());
+        return state;
+    }
+
+    private static JsonObject clientWorldEntityAirSupplyResult(JsonObject request) {
+        try {
+            var output = System.out;
+            var errorOutput = System.err;
+            try {
+                SharedConstants.setVersion(TEST_VERSION);
+                Bootstrap.bootStrap();
+            } finally {
+                System.setOut(output);
+                System.setErr(errorOutput);
+            }
+
+            var entity = new SharedFlagsFixtureEntity();
+            var states = new JsonArray();
+            states.add(airSupplyState("initial", true, entity));
+            for (JsonElement operationEntry : request.getAsJsonArray("operations")) {
+                JsonObject operation = operationEntry.getAsJsonObject();
+                entity.getEntityData().assignValues(
+                    decodeEntityMetadata(operation.get("metadata_hex").getAsString()));
+                states.add(airSupplyState(
+                    operation.get("label").getAsString(), true, entity));
+            }
+            var result = new JsonObject();
+            result.add("states", states);
+            return result;
+        } catch (RuntimeException error) {
+            throw new IllegalStateException("Entity air supply fixture failed", error);
+        }
+    }
+
+    private static JsonObject airSupplyState(
+        String label, boolean accepted, SharedFlagsFixtureEntity entity
+    ) {
+        var state = new JsonObject();
+        state.addProperty("label", label);
+        state.addProperty("accepted", accepted);
+        state.addProperty("shared_flags", entity.sharedFlags());
         state.addProperty("air_supply", entity.getAirSupply());
         return state;
     }

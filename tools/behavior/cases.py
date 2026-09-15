@@ -1189,6 +1189,28 @@ def math_cases():
         ],
     }
 
+    yield {
+        "case_id": "client-world/entity-air-supply",
+        "family": "math",
+        "operation": "client_world_entity_air_supply",
+        "entity_id": 37,
+        "entity_type_id": 120,
+        "operations": [
+            {
+                "label": "set-positive-air-supply",
+                "metadata_hex": "0101fa01ff",
+            },
+            {
+                "label": "combined-signed-air-supply",
+                "metadata_hex": "0000400101ffffffff0fff",
+            },
+            {
+                "label": "flags-only-preserves-air-supply",
+                "metadata_hex": "000000ff",
+            },
+        ],
+    }
+
     def attribute_modifier(identifier, amount, operation):
         return {
             "id": identifier,
