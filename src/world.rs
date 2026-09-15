@@ -5537,7 +5537,7 @@ impl ClientWorld {
         )
     }
 
-    pub(crate) fn apply_entity_teleport(&mut self, input: EntityTeleportInput) -> bool {
+    pub fn apply_entity_teleport(&mut self, input: EntityTeleportInput) -> bool {
         let Some((current_motion, current_y_rot, current_x_rot)) =
             self.entities.get(&input.entity_id).map(|entity| {
                 (
@@ -8104,17 +8104,17 @@ pub(crate) struct EntityPositionInput {
     pub(crate) relative_flags: i32,
 }
 
-pub(crate) struct EntityTeleportInput {
-    pub(crate) entity_id: i32,
-    pub(crate) x: f64,
-    pub(crate) y: f64,
-    pub(crate) z: f64,
-    pub(crate) delta_x: f64,
-    pub(crate) delta_y: f64,
-    pub(crate) delta_z: f64,
-    pub(crate) y_rot: f32,
-    pub(crate) x_rot: f32,
-    pub(crate) relative_flags: i32,
+pub struct EntityTeleportInput {
+    pub entity_id: i32,
+    pub x: f64,
+    pub y: f64,
+    pub z: f64,
+    pub delta_x: f64,
+    pub delta_y: f64,
+    pub delta_z: f64,
+    pub y_rot: f32,
+    pub x_rot: f32,
+    pub relative_flags: i32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

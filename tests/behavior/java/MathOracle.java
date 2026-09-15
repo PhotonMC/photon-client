@@ -5163,6 +5163,9 @@ public final class MathOracle {
         if (operation.equals("client_world_entity_player_motion")) {
             return clientWorldEntityPlayerMotionResult(request);
         }
+        if (operation.equals("client_world_entity_teleport")) {
+            return clientWorldEntityTeleportResult(request);
+        }
         if (operation.equals("client_world_player_sprint_trigger")) {
             return clientWorldPlayerSprintTriggerResult(request);
         }
@@ -5829,6 +5832,46 @@ public final class MathOracle {
         return result;
     }
 
+    private static JsonObject clientWorldEntityTeleportResult(JsonObject request) {
+        int entityId = request.get("entity_id").getAsInt();
+        JsonObject initialPosition = request.getAsJsonObject("initial_position");
+        JsonObject initialRotation = request.getAsJsonObject("initial_rotation");
+        RemotePlayerInterpolationFixture player = RemotePlayerInterpolationFixture.create(
+            vec3(initialPosition),
+            Oracle.f32(initialRotation, "y"),
+            Oracle.f32(initialRotation, "x"),
+            Oracle.f32(request, "initial_head"),
+            vec3(request.getAsJsonObject("initial_motion")));
+
+        var states = new JsonArray();
+        states.add(remotePlayerTeleportState("initial", player));
+        for (JsonElement operationEntry : request.getAsJsonArray("operations")) {
+            JsonObject operation = operationEntry.getAsJsonObject();
+            switch (operation.get("action").getAsString()) {
+                case "teleport" -> player.applyTeleport(
+                    vec3(operation.getAsJsonObject("position")),
+                    vec3(operation.getAsJsonObject("delta_motion")),
+                    Oracle.f32(operation.getAsJsonObject("rotation"), "y"),
+                    Oracle.f32(operation.getAsJsonObject("rotation"), "x"),
+                    operation.get("relative_flags").getAsInt(),
+                    true);
+                case "tick" -> {
+                    for (int tick = 0; tick < operation.get("ticks").getAsInt(); tick++) {
+                        player.tickThroughClientLevel();
+                    }
+                }
+                default -> throw new IllegalArgumentException(
+                    "Unknown remote entity teleport action");
+            }
+            states.add(remotePlayerTeleportState(
+                operation.get("label").getAsString(), player));
+        }
+        var result = new JsonObject();
+        result.addProperty("entity_id", entityId);
+        result.add("states", states);
+        return result;
+    }
+
     private static JsonObject remotePlayerInterpolationState(
         String label, RemotePlayerInterpolationFixture player
     ) {
@@ -5875,6 +5918,14 @@ public final class MathOracle {
             state.add("motion_target", JsonNull.INSTANCE);
         }
         state.addProperty("motion_steps", player.motionSteps());
+        return state;
+    }
+
+    private static JsonObject remotePlayerTeleportState(
+        String label, RemotePlayerInterpolationFixture player
+    ) {
+        var state = remotePlayerInterpolationState(label, player);
+        state.add("motion", snapshotClip(player.getDeltaMovement()));
         return state;
     }
 
@@ -10013,6 +10064,40 @@ public final class MathOracle {
                     (target.y - current.y) / steps,
                     (target.z - current.z) / steps));
                 this.setMotionSteps(steps - 1);
+            }
+        }
+
+        private void applyTeleport(
+            Vec3 changePosition, Vec3 changeMotion, float yRot, float xRot,
+            int relativeFlags, boolean interpolate
+        ) {
+            var relatives = net.minecraft.world.entity.Relative.unpack(relativeFlags);
+            var change = new net.minecraft.world.entity.PositionMoveRotation(
+                changePosition, changeMotion, yRot, xRot);
+            var currentValues = net.minecraft.world.entity.PositionMoveRotation.of(this);
+            var newValues = net.minecraft.world.entity.PositionMoveRotation.calculateAbsolute(
+                currentValues, change, relatives);
+            boolean tooBigToInterpolate = currentValues.position().distanceToSqr(
+                newValues.position()) > 4096.0;
+            if (interpolate && !tooBigToInterpolate) {
+                this.moveOrInterpolateTo(
+                    newValues.position(), newValues.yRot(), newValues.xRot());
+                this.setDeltaMovement(newValues.deltaMovement());
+            } else {
+                this.setPos(newValues.position());
+                this.setDeltaMovement(newValues.deltaMovement());
+                this.setYRot(newValues.yRot());
+                this.setXRot(newValues.xRot());
+                var currentInterpolationValues =
+                    new net.minecraft.world.entity.PositionMoveRotation(
+                        this.oldPosition(), Vec3.ZERO, this.yRotO, this.xRotO);
+                var interpolationValues =
+                    net.minecraft.world.entity.PositionMoveRotation.calculateAbsolute(
+                        currentInterpolationValues, change, relatives);
+                this.setOldPosAndRot(
+                    interpolationValues.position(),
+                    interpolationValues.yRot(),
+                    interpolationValues.xRot());
             }
         }
 

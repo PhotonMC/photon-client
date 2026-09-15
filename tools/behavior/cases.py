@@ -2561,6 +2561,57 @@ def math_cases():
         ],
     }
 
+    yield {
+        "case_id": "client-world/entity-teleport",
+        "family": "math",
+        "operation": "client_world_entity_teleport",
+        "entity_id": 37,
+        "initial_position": vector_bits(1.0, 80.0, -35.5),
+        "initial_rotation": {
+            "y": float_bits(30.0),
+            "x": float_bits(-20.0),
+        },
+        "initial_head": float_bits(40.0),
+        "initial_motion": vector_bits(1.0, 2.0, 3.0),
+        "operations": [
+            {
+                "action": "teleport",
+                "label": "relative-all-interpolates",
+                "position": vector_bits(2.0, 3.0, 4.0),
+                "delta_motion": vector_bits(0.25, -0.5, 0.75),
+                "rotation": {
+                    "y": float_bits(15.0),
+                    "x": float_bits(10.0),
+                },
+                "relative_flags": 511,
+            },
+            {"action": "tick", "label": "relative-first-tick", "ticks": 1},
+            {
+                "action": "teleport",
+                "label": "absolute-over-threshold-snaps",
+                "position": vector_bits(100.0, 80.0, -35.5),
+                "delta_motion": vector_bits(0.5, 0.25, -0.75),
+                "rotation": {
+                    "y": float_bits(-170.0),
+                    "x": float_bits(80.0),
+                },
+                "relative_flags": 0,
+            },
+            {
+                "action": "teleport",
+                "label": "relative-after-snap",
+                "position": vector_bits(1.0, 1.0, 1.0),
+                "delta_motion": vector_bits(-0.125, 0.25, 0.5),
+                "rotation": {
+                    "y": float_bits(5.0),
+                    "x": float_bits(-5.0),
+                },
+                "relative_flags": 255,
+            },
+            {"action": "tick", "label": "relative-after-snap-first-tick", "ticks": 1},
+        ],
+    }
+
     def sprint_key_presses(
         forward=False, backward=False, left=False, right=False,
         jump=False, shift=False, sprint=False,

@@ -98,8 +98,10 @@ genel motion integration, gerçek entity tick yürütmesi ve tam entity lifecycl
 hâlâ ön koşuldur. Snowball free-flight tick alt dalı [P08.aq kaydında](client-world-entity-snowball-tick-conformance.md)
 sınırlı olarak, remote Player position interpolation [P08.ar server-conformance kaydında](client-world-entity-player-interpolation-conformance.md) ve aynı Java istemci state'i [P08.ar.1 client-parity kaydında](client-world-entity-player-interpolation-parity-conformance.md),
 uzaklık üstü snap [P08.as server-conformance kaydında](client-world-entity-player-snap-conformance.md) ve aynı Java snap state'i [P08.as.1 client-parity kaydında](client-world-entity-player-snap-parity-conformance.md),
-motion interpolation [P08.at kaydında](client-world-entity-player-motion-conformance.md)
-ve teleport delta/relative motion [P08.au kaydında](client-world-entity-teleport-delta-conformance.md), araç/passenger ilişki state'i
+motion interpolation [P08.at server-conformance kaydında](client-world-entity-player-motion-conformance.md)
+ve aynı Java motion state'i [P08.at.1 client-parity kaydında](client-world-entity-player-motion-parity-conformance.md),
+teleport delta/relative motion [P08.au server-conformance kaydında](client-world-entity-teleport-delta-conformance.md)
+ve aynı Java teleport state'i [P08.au.1 client-parity kaydında](client-world-entity-teleport-delta-parity-conformance.md), araç/passenger ilişki state'i
 [P08.av kaydında](client-world-entity-passengers-conformance.md) ve passenger tick/rideTick
 [P08.aw kaydında](client-world-entity-passenger-tick-conformance.md), passenger seat `positionRider`
 [P08.ax kaydında](client-world-entity-passenger-position-conformance.md) ve Player vehicle attachment
