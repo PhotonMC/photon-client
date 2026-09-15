@@ -144,7 +144,8 @@ fn run_window(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std:
     );
 
     // Placeholder colour: no reference pixel has been compared yet.
-    let captured = backend.capture_frame(CLEAR_COLOUR)?;
+    let colour = clear_colour();
+    let captured = backend.capture_frame(colour)?;
     let mut rendered = 1_u64;
     if let Ok(path) = env::var("VOXEL_CAPTURE_PPM") {
         write_ppm(&path, &captured)?;
@@ -176,7 +177,7 @@ fn run_window(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std:
                 );
             }
         }
-        backend.draw_clear_frame(CLEAR_COLOUR)?;
+        backend.draw_clear_frame(colour)?;
         rendered += 1;
         seen += 1;
         if frames != 0 && seen >= frames {
@@ -191,6 +192,24 @@ fn run_window(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std:
 /// Placeholder clear colour. This is not a reference value: no Java frame has
 /// been captured or compared yet, so nothing about these pixels is parity.
 const CLEAR_COLOUR: [f32; 4] = [0.1, 0.12, 0.16, 1.0];
+
+/// Read the clear colour from `VOXEL_CLEAR_COLOUR` as `r,g,b` in 0..1.
+///
+/// Only scaffolding: it lets a run be identified on screen while the real
+/// pipeline does not exist yet.
+fn clear_colour() -> [f32; 4] {
+    let Ok(raw) = env::var("VOXEL_CLEAR_COLOUR") else {
+        return CLEAR_COLOUR;
+    };
+    let parts: Vec<f32> = raw
+        .split(',')
+        .filter_map(|part| part.trim().parse().ok())
+        .collect();
+    match parts[..] {
+        [red, green, blue] => [red, green, blue, 1.0],
+        _ => CLEAR_COLOUR,
+    }
+}
 
 fn vk_version_major(version: u32) -> u32 {
     version >> 22
