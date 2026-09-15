@@ -32,15 +32,16 @@ use voxel_client::input::{
     Input, KeyboardInput, LocalPlayerClimbableMovementInput, LocalPlayerFluidFallingInput,
     LocalPlayerFrictionInfluencedSpeedInput, LocalPlayerHandleRelativeFrictionInput,
     LocalPlayerInputModifiers, LocalPlayerInputState, LocalPlayerModifiedFrictionInput,
-    LocalPlayerSprintGateInput, LocalPlayerTravelFlyingInput, LocalPlayerTravelInAirInput,
+    LocalPlayerSprintGateInput, LocalPlayerTravelDispatchInput,
+    LocalPlayerTravelDispatchParameters, LocalPlayerTravelFlyingInput, LocalPlayerTravelInAirInput,
     LocalPlayerTravelInLavaInput, LocalPlayerTravelInWaterInput,
     LocalPlayerUpdateFallFlyingMovementInput, adjust_local_player_fluid_falling_movement,
     apply_local_player_input, can_start_local_player_sprinting,
     clamp_local_player_climbable_movement, local_player_friction_influenced_speed,
     local_player_handle_relative_friction, local_player_modified_friction,
-    local_player_travel_flying, local_player_travel_in_air, local_player_travel_in_lava,
-    local_player_travel_in_water, local_player_update_fall_flying_movement,
-    modify_local_player_input,
+    local_player_travel_dispatch, local_player_travel_flying, local_player_travel_in_air,
+    local_player_travel_in_lava, local_player_travel_in_water,
+    local_player_update_fall_flying_movement, modify_local_player_input,
 };
 use voxel_client::input_event::{
     CharacterEvent, InputWithModifiers, KeyEvent as InputKeyEvent, MouseButtonEvent,
@@ -5973,6 +5974,93 @@ fn f64_vec3(value: &Value) -> Result<Vec3, String> {
     ))
 }
 
+fn local_player_travel_dispatch_parameters(
+    input: &Value,
+) -> Result<LocalPlayerTravelDispatchParameters, String> {
+    let levitation_amplifier = i32_field(input, "levitation_amplifier")?;
+    let levitation_amplifier = (levitation_amplifier >= 0).then_some(levitation_amplifier);
+    Ok(LocalPlayerTravelDispatchParameters {
+        input: f64_vec3(input.get("input").ok_or("input must be a vector")?)?,
+        y_rot: f32_field(input, "y_rot")?,
+        x_rot: f32_field(input, "x_rot")?,
+        look_angle: f64_vec3(input.get("look").ok_or("look must be a vector")?)?,
+        in_water: input["in_water"]
+            .as_bool()
+            .ok_or("in_water must be a boolean")?,
+        in_lava: input["in_lava"]
+            .as_bool()
+            .ok_or("in_lava must be a boolean")?,
+        affected_by_fluids: input["affected_by_fluids"]
+            .as_bool()
+            .ok_or("affected_by_fluids must be a boolean")?,
+        can_stand_on_fluid: input["can_stand_on_fluid"]
+            .as_bool()
+            .ok_or("can_stand_on_fluid must be a boolean")?,
+        fall_flying: input["fall_flying"]
+            .as_bool()
+            .ok_or("fall_flying must be a boolean")?,
+        on_climbable: input["on_climbable"]
+            .as_bool()
+            .ok_or("on_climbable must be a boolean")?,
+        sprinting: input["sprinting"]
+            .as_bool()
+            .ok_or("sprinting must be a boolean")?,
+        water_slow_down: f32_field(input, "water_slow_down")?,
+        water_efficiency: f32_field(input, "water_efficiency")?,
+        on_ground: input["on_ground"]
+            .as_bool()
+            .ok_or("on_ground must be a boolean")?,
+        block_friction: f32_field(input, "block_friction")?,
+        speed: f32_field(input, "speed")?,
+        dolphins_grace: input["dolphins_grace"]
+            .as_bool()
+            .ok_or("dolphins_grace must be a boolean")?,
+        horizontal_collision: input["horizontal_collision"]
+            .as_bool()
+            .ok_or("horizontal_collision must be a boolean")?,
+        free_after_jump: input["free_after_jump"]
+            .as_bool()
+            .ok_or("free_after_jump must be a boolean")?,
+        shallow_lava: input["shallow_lava"]
+            .as_bool()
+            .ok_or("shallow_lava must be a boolean")?,
+        flying_speed: f32_field(input, "flying_speed")?,
+        flying: input["flying"]
+            .as_bool()
+            .ok_or("flying must be a boolean")?,
+        passenger: input["passenger"]
+            .as_bool()
+            .ok_or("passenger must be a boolean")?,
+        scaffolding: input["scaffolding"]
+            .as_bool()
+            .ok_or("scaffolding must be a boolean")?,
+        suppress_sliding_down_ladder: input["suppress_sliding_down_ladder"]
+            .as_bool()
+            .ok_or("suppress_sliding_down_ladder must be a boolean")?,
+        jumping: input["jumping"]
+            .as_bool()
+            .ok_or("jumping must be a boolean")?,
+        levitation_amplifier,
+        gravity: f64_field(input, "gravity")?,
+        client_side: input["client_side"]
+            .as_bool()
+            .ok_or("client_side must be a boolean")?,
+        has_chunk_at: input["has_chunk_at"]
+            .as_bool()
+            .ok_or("has_chunk_at must be a boolean")?,
+        current_y: f64_field(input, "current_y")?,
+        min_y: i32_field(input, "min_y")?,
+        should_discard_friction: input["should_discard_friction"]
+            .as_bool()
+            .ok_or("should_discard_friction must be a boolean")?,
+        friction_modifier: f32_field(input, "friction_modifier")?,
+        air_drag_modifier: f32_field(input, "air_drag_modifier")?,
+        omnidirectional_air_mover: input["omnidirectional_air_mover"]
+            .as_bool()
+            .ok_or("omnidirectional_air_mover must be a boolean")?,
+    })
+}
+
 fn clip_snapshot(value: Vec3) -> Value {
     json!({
         "x": format!("{:016x}", value.x.to_bits()),
@@ -8654,6 +8742,27 @@ fn math_result(request: &Value) -> Result<Value, String> {
                 Ok(json!({
                     "label": string(input, "label")?,
                     "movement": vec3_snapshot(movement),
+                }))
+            })
+            .collect::<Result<Vec<_>, String>>()?;
+        return Ok(json!({"states": states}));
+    }
+    if operation == "local_player_travel_dispatch" {
+        let inputs = request["inputs"]
+            .as_array()
+            .ok_or("inputs must be an array")?;
+        let states = inputs
+            .iter()
+            .map(|input| {
+                let result = local_player_travel_dispatch(LocalPlayerTravelDispatchInput {
+                    parameters: local_player_travel_dispatch_parameters(input)?,
+                    delta_movement: f64_vec3(input.get("delta").ok_or("delta must be a vector")?)?,
+                });
+                Ok(json!({
+                    "label": string(input, "label")?,
+                    "mode": result.mode.as_str(),
+                    "fall_flying_climbable_fallback": result.fall_flying_climbable_fallback,
+                    "movement": vec3_snapshot(result.movement),
                 }))
             })
             .collect::<Result<Vec<_>, String>>()?;

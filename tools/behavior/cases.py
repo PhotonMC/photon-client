@@ -2067,6 +2067,101 @@ def math_cases():
            "operation": "local_player_update_fall_flying_movement",
            "inputs": local_player_update_fall_flying_inputs}
 
+    local_player_travel_dispatch_cases = [
+        {
+            "label": "air-is-default-when-no-fluid-or-glide",
+        },
+        {
+            "label": "water-fluid-branch",
+            "in_water": True,
+        },
+        {
+            "label": "lava-fluid-branch",
+            "in_lava": True,
+            "shallow_lava": False,
+        },
+        {
+            "label": "water-wins-over-lava-in-fluid-branch",
+            "in_water": True,
+            "in_lava": True,
+            "water_efficiency": float_bits(0.4, "f32"),
+        },
+        {
+            "label": "unaffected-water-falls-through-to-air",
+            "in_water": True,
+            "affected_by_fluids": False,
+        },
+        {
+            "label": "standing-on-lava-falls-through-to-air",
+            "in_lava": True,
+            "can_stand_on_fluid": True,
+        },
+        {
+            "label": "fall-flying-uses-glide-branch",
+            "fall_flying": True,
+            "look": vector_bits(0.0, -0.35, 0.9367496997597597),
+            "x_rot": float_bits(20.0, "f32"),
+        },
+        {
+            "label": "fall-flying-on-climbable-falls-back-to-air",
+            "fall_flying": True,
+            "on_climbable": True,
+            "on_ground": True,
+        },
+        {
+            "label": "fluid-precedes-fall-flying",
+            "in_water": True,
+            "fall_flying": True,
+        },
+    ]
+    local_player_travel_dispatch_defaults = {
+        "input": vector_bits(0.3, -0.4, 0.8),
+        "delta": vector_bits(0.1, -0.2, 0.3),
+        "y_rot": float_bits(37.5, "f32"),
+        "x_rot": float_bits(0.0, "f32"),
+        "look": vector_bits(0.0, 0.0, 1.0),
+        "in_water": False,
+        "in_lava": False,
+        "affected_by_fluids": True,
+        "can_stand_on_fluid": False,
+        "fall_flying": False,
+        "on_climbable": False,
+        "sprinting": False,
+        "water_slow_down": float_bits(0.8, "f32"),
+        "water_efficiency": float_bits(0.0, "f32"),
+        "on_ground": False,
+        "block_friction": float_bits(0.6, "f32"),
+        "speed": float_bits(0.1, "f32"),
+        "dolphins_grace": False,
+        "horizontal_collision": False,
+        "free_after_jump": False,
+        "shallow_lava": True,
+        "flying_speed": float_bits(0.05, "f32"),
+        "flying": False,
+        "passenger": False,
+        "scaffolding": False,
+        "suppress_sliding_down_ladder": False,
+        "jumping": False,
+        "levitation_amplifier": -1,
+        "gravity": float_bits(0.08, "f64"),
+        "client_side": True,
+        "has_chunk_at": True,
+        "current_y": float_bits(10.0, "f64"),
+        "min_y": -64,
+        "should_discard_friction": False,
+        "friction_modifier": float_bits(1.0, "f32"),
+        "air_drag_modifier": float_bits(0.0, "f32"),
+        "omnidirectional_air_mover": False,
+        "below_block": "air",
+    }
+    local_player_travel_dispatch_inputs = []
+    for values in local_player_travel_dispatch_cases:
+        input_values = {**local_player_travel_dispatch_defaults, **values}
+        local_player_travel_dispatch_inputs.append(input_values)
+    yield {"case_id": "player-movement/travel-dispatch", "family": "math",
+           "operation": "local_player_travel_dispatch",
+           "inputs": local_player_travel_dispatch_inputs}
+
     codec_decodes = {
         "basic": [float_bits(1.25, "f64"), float_bits(-2.5, "f64"), float_bits(3.75, "f64")],
         "zero": [float_bits(0.0, "f64"), float_bits(0.0, "f64"), float_bits(0.0, "f64")],

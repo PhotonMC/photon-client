@@ -95,6 +95,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P10.a — LocalPlayer input modifiers — client-parity birleşik kayıt](client-player-input-conformance.md)
 - [P10.d.3 — LivingEntity modified block friction — client-parity birleşik kayıt](client-player-modified-friction-conformance.md)
 - [P10.c — LocalPlayer canStartSprinting — client-parity birleşik kayıt](client-player-sprint-gate-conformance.md)
+- [P10.e.6 — LivingEntity travel dispatch — client-parity birleşik kayıt](client-player-travel-dispatch-conformance.md)
 - [P10.d.4 — LivingEntity travelFlying — client-parity birleşik kayıt](client-player-travel-flying-conformance.md)
 - [P10.e.4 — LivingEntity travelInAir — client-parity birleşik kayıt](client-player-travel-in-air-conformance.md)
 - [P10.e.2 — LivingEntity travelInLava — client-parity birleşik kayıt](client-player-travel-in-lava-conformance.md)

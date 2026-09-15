@@ -6,8 +6,9 @@ use crate::input::{
     LocalPlayerClimbableMovementInput, LocalPlayerFluidFallingInput,
     LocalPlayerFrictionInfluencedSpeedInput, LocalPlayerHandleRelativeFrictionInput,
     LocalPlayerHandleRelativeFrictionParameters, LocalPlayerInputModifiers, LocalPlayerInputState,
-    LocalPlayerModifiedFrictionInput, LocalPlayerTravelFlyingInput,
-    LocalPlayerTravelFlyingParameters, LocalPlayerTravelInAirInput,
+    LocalPlayerModifiedFrictionInput, LocalPlayerTravelDispatchInput,
+    LocalPlayerTravelDispatchParameters, LocalPlayerTravelDispatchResult,
+    LocalPlayerTravelFlyingInput, LocalPlayerTravelFlyingParameters, LocalPlayerTravelInAirInput,
     LocalPlayerTravelInAirParameters, LocalPlayerTravelInLavaInput,
     LocalPlayerTravelInLavaParameters, LocalPlayerTravelInWaterInput,
     LocalPlayerTravelInWaterParameters, LocalPlayerUpdateFallFlyingMovementInput,
@@ -15,8 +16,9 @@ use crate::input::{
     apply_local_player_input as apply_local_player_input_fields,
     clamp_local_player_climbable_movement, local_player_friction_influenced_speed,
     local_player_handle_relative_friction, local_player_modified_friction,
-    local_player_travel_flying, local_player_travel_in_air, local_player_travel_in_lava,
-    local_player_travel_in_water, local_player_update_fall_flying_movement,
+    local_player_travel_dispatch, local_player_travel_flying, local_player_travel_in_air,
+    local_player_travel_in_lava, local_player_travel_in_water,
+    local_player_update_fall_flying_movement,
 };
 use crate::math::{
     MTH_DEG_TO_RAD, Vec3, abs_max_f64, clamp_f32, clamp_f64, equal_f64, floor_f32, mth_atan2,
@@ -2935,6 +2937,15 @@ impl ClientWorld {
         };
         player.apply_update_fall_flying_movement(parameters);
         true
+    }
+
+    /// Apply Java's top-level travel dispatch to local player motion.
+    pub fn apply_local_player_travel_dispatch(
+        &mut self,
+        parameters: LocalPlayerTravelDispatchParameters,
+    ) -> Option<LocalPlayerTravelDispatchResult> {
+        let player = self.local_player.as_mut()?;
+        Some(player.apply_travel_dispatch(parameters))
     }
 
     pub(crate) fn apply_local_player_container_content(
@@ -5947,6 +5958,23 @@ impl ClientPlayerState {
         self.motion_x_bits = movement.x.to_bits();
         self.motion_y_bits = movement.y.to_bits();
         self.motion_z_bits = movement.z.to_bits();
+    }
+
+    fn apply_travel_dispatch(
+        &mut self,
+        parameters: LocalPlayerTravelDispatchParameters,
+    ) -> LocalPlayerTravelDispatchResult {
+        let result = local_player_travel_dispatch(LocalPlayerTravelDispatchInput {
+            parameters,
+            delta_movement: {
+                let (x, y, z) = self.motion();
+                Vec3::new(x, y, z)
+            },
+        });
+        self.motion_x_bits = result.movement.x.to_bits();
+        self.motion_y_bits = result.movement.y.to_bits();
+        self.motion_z_bits = result.movement.z.to_bits();
+        result
     }
 
     fn capture_old_transform(&mut self) {
@@ -9031,6 +9059,115 @@ mod tests {
                 f64::from_bits(0xbfcc_19d9_6ad4_96cc),
                 f64::from_bits(0x3fd3_020c_4ccc_cccd),
             ),
+        );
+    }
+
+    #[test]
+    fn local_player_travel_dispatch_selects_branch_and_updates_motion() {
+        let mut world = ClientWorld::default();
+        world.set_local_player_id(42);
+        let base = super::LocalPlayerTravelDispatchParameters {
+            input: Vec3::new(0.3, -0.4, 0.8),
+            y_rot: 37.5,
+            x_rot: 0.0,
+            look_angle: Vec3::new(0.0, 0.0, 1.0),
+            in_water: true,
+            in_lava: false,
+            affected_by_fluids: true,
+            can_stand_on_fluid: false,
+            fall_flying: false,
+            on_climbable: false,
+            sprinting: false,
+            water_slow_down: 0.8,
+            water_efficiency: 0.0,
+            on_ground: false,
+            block_friction: 0.6,
+            speed: 0.1,
+            dolphins_grace: false,
+            horizontal_collision: false,
+            free_after_jump: false,
+            shallow_lava: true,
+            flying_speed: 0.05,
+            flying: false,
+            passenger: false,
+            scaffolding: false,
+            suppress_sliding_down_ladder: false,
+            jumping: false,
+            levitation_amplifier: None,
+            gravity: 0.08,
+            client_side: true,
+            has_chunk_at: true,
+            current_y: 10.0,
+            min_y: -64,
+            should_discard_friction: false,
+            friction_modifier: 1.0,
+            air_drag_modifier: 0.0,
+            omnidirectional_air_mover: false,
+        };
+
+        assert!(world.apply_local_player_position((0.0, 0.0, 0.0), (0.1, -0.2, 0.3), (37.5, 0.0),));
+        let result = world
+            .apply_local_player_travel_dispatch(base)
+            .expect("water travel player");
+        assert_eq!(result.mode.as_str(), "water");
+        assert!(!result.fall_flying_climbable_fallback);
+        assert_eq!(
+            world.local_player().expect("water travel state").motion(),
+            (
+                f64::from_bits(0x3fb3_75d6_0dd9_5c2f),
+                f64::from_bits(0xbfc5_f06f_6e48_e8a8),
+                f64::from_bits(0x3fd0_326a_dc84_2483),
+            )
+        );
+
+        assert!(
+            world.apply_local_player_position((0.0, 0.0, 0.0), (0.1, -0.2, 0.3), (37.5, 20.0),)
+        );
+        let result = world
+            .apply_local_player_travel_dispatch(super::LocalPlayerTravelDispatchParameters {
+                in_water: false,
+                fall_flying: true,
+                look_angle: Vec3::new(0.0, -0.35, 0.9367496997597597),
+                x_rot: 20.0,
+                ..base
+            })
+            .expect("fall-flying travel player");
+        assert_eq!(result.mode.as_str(), "fall_flying");
+        assert!(!result.fall_flying_climbable_fallback);
+        assert_eq!(
+            world
+                .local_player()
+                .expect("fall-flying travel state")
+                .motion(),
+            (
+                f64::from_bits(0x3fb6_cf41_f5c2_8f5c),
+                f64::from_bits(0xbfc9_f66e_4480_1f80),
+                f64::from_bits(0x3fd4_4102_0145_8ac7),
+            )
+        );
+
+        assert!(world.apply_local_player_position((0.0, 0.0, 0.0), (0.1, -0.2, 0.3), (37.5, 0.0),));
+        let result = world
+            .apply_local_player_travel_dispatch(super::LocalPlayerTravelDispatchParameters {
+                in_water: false,
+                fall_flying: true,
+                on_climbable: true,
+                on_ground: true,
+                ..base
+            })
+            .expect("climbable travel player");
+        assert_eq!(result.mode.as_str(), "fall_flying");
+        assert!(result.fall_flying_climbable_fallback);
+        assert_eq!(
+            world
+                .local_player()
+                .expect("climbable travel state")
+                .motion(),
+            (
+                f64::from_bits(0x3fa7_127d_9fe6_cb82),
+                f64::from_bits(0xbfcd_70a3_e3d7_0a3e),
+                f64::from_bits(0x3fb7_0a3d_8f5c_2900),
+            )
         );
     }
 

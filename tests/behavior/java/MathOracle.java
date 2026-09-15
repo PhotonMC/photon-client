@@ -348,6 +348,8 @@ public final class MathOracle {
             return localPlayerTravelInAirResult(request);
         } else if (operation.equals("local_player_update_fall_flying_movement")) {
             return localPlayerUpdateFallFlyingMovementResult(request);
+        } else if (operation.equals("local_player_travel_dispatch")) {
+            return localPlayerTravelDispatchResult(request);
         } else if (operation.equals("character_event")) {
             CharacterEvent event = new CharacterEvent(request.get("codepoint").getAsInt());
             result.addProperty("codepoint", event.codepoint());
@@ -4903,6 +4905,38 @@ public final class MathOracle {
         }
     }
 
+    private static JsonObject localPlayerTravelDispatchResult(JsonObject request) {
+        try {
+            var method = LivingEntity.class.getMethod("travel", Vec3.class);
+            var states = new JsonArray();
+            Unsafe unsafe = unsafeInstance();
+            for (var inputEntry : request.getAsJsonArray("inputs")) {
+                JsonObject input = inputEntry.getAsJsonObject();
+                LocalPlayerInputFixture player =
+                    (LocalPlayerInputFixture)unsafe.allocateInstance(LocalPlayerInputFixture.class);
+                player.configureTravelDispatch(input);
+                method.invoke(player, vec3(input.getAsJsonObject("input")));
+                String path = player.travelPath == null ? "air" : player.travelPath;
+                var state = new JsonObject();
+                state.addProperty("label", input.get("label").getAsString());
+                state.addProperty(
+                    "mode",
+                    path.equals("water") ? "water"
+                        : path.equals("lava") ? "lava"
+                        : path.startsWith("fall_flying") ? "fall_flying"
+                        : "air");
+                state.addProperty("fall_flying_climbable_fallback", path.equals("fall_flying_climbable"));
+                state.add("movement", snapshot(player.getDeltaMovement()));
+                states.add(state);
+            }
+            var result = new JsonObject();
+            result.add("states", states);
+            return result;
+        } catch (ReflectiveOperationException error) {
+            throw new IllegalStateException("LivingEntity.travel dispatch reflection failed", error);
+        }
+    }
+
     private static double f64(JsonObject object, String name) {
         return f64(object.get(name).getAsString());
     }
@@ -5610,6 +5644,11 @@ public final class MathOracle {
             return pos.getY() == 0 && belowState != null
                 ? belowState
                 : Blocks.AIR.defaultBlockState();
+        }
+
+        @Override
+        public FluidState getFluidState(BlockPos pos) {
+            return Blocks.AIR.defaultBlockState().getFluidState();
         }
 
         @Override
@@ -6584,6 +6623,9 @@ public final class MathOracle {
         private boolean discardFrictionState;
         private boolean omnidirectionalAirMoverState;
         private Vec3 fallFlyingLookAngle;
+        private boolean affectedByFluidsState;
+        private boolean canStandOnFluidState;
+        private String travelPath;
 
         private LocalPlayerInputFixture() {
             super(null, null, null, null, null, Input.EMPTY, false, null);
@@ -6721,6 +6763,31 @@ public final class MathOracle {
         }
 
         @Override
+        public boolean isAffectedByFluids() {
+            return this.affectedByFluidsState;
+        }
+
+        @Override
+        public boolean isSwimming() {
+            return false;
+        }
+
+        @Override
+        public boolean canStandOnFluid(final FluidState fluid) {
+            return this.canStandOnFluidState;
+        }
+
+        @Override
+        public boolean isVehicle() {
+            return false;
+        }
+
+        @Override
+        public boolean is(final TagKey<net.minecraft.world.entity.EntityType<?>> tag) {
+            return false;
+        }
+
+        @Override
         protected boolean isInShallowFluid(final TagKey<Fluid> fluidTag) {
             return this.shallowLava;
         }
@@ -6766,6 +6833,22 @@ public final class MathOracle {
 
         @Override
         public void move(final MoverType moverType, final Vec3 delta) {
+            if (this.travelPath == null) {
+                this.travelPath = this.fallFlying && !this.onClimbableState
+                    ? "fall_flying"
+                    : "air";
+            }
+        }
+
+        @Override
+        protected void travelInFluid(final Vec3 input) {
+            this.travelPath = this.isInWater() ? "water" : "lava";
+            super.travelInFluid(input);
+        }
+
+        @Override
+        public void stopFallFlying() {
+            this.travelPath = "fall_flying_climbable";
         }
 
         @Override
@@ -7000,6 +7083,48 @@ public final class MathOracle {
             this.fallFlyingLookAngle = lookAngle;
             this.xRotation = xRot;
             this.gravity = gravity;
+        }
+
+        private void configureTravelDispatch(JsonObject input) throws ReflectiveOperationException {
+            configureTravelInAir(
+                input.get("on_ground").getAsBoolean(),
+                input.get("below_block").getAsString(),
+                Oracle.f32(input, "friction_modifier"),
+                Oracle.f32(input, "speed"),
+                Oracle.f32(input, "flying_speed"),
+                input.get("flying").getAsBoolean(),
+                input.get("sprinting").getAsBoolean(),
+                input.get("passenger").getAsBoolean(),
+                input.get("on_climbable").getAsBoolean(),
+                input.get("scaffolding").getAsBoolean(),
+                input.get("suppress_sliding_down_ladder").getAsBoolean(),
+                input.get("horizontal_collision").getAsBoolean(),
+                input.get("jumping").getAsBoolean(),
+                input.get("levitation_amplifier").getAsInt(),
+                f64(input, "gravity"),
+                input.get("should_discard_friction").getAsBoolean(),
+                Oracle.f32(input, "air_drag_modifier"),
+                input.get("omnidirectional_air_mover").getAsBoolean(),
+                input.get("client_side").getAsBoolean(),
+                input.get("has_chunk_at").getAsBoolean(),
+                input.get("min_y").getAsInt(),
+                Oracle.f32(input, "y_rot"),
+                f64(input, "current_y"),
+                vec3(input.getAsJsonObject("delta")));
+            this.inWaterState = input.get("in_water").getAsBoolean();
+            this.inLavaState = input.get("in_lava").getAsBoolean();
+            this.affectedByFluidsState = input.get("affected_by_fluids").getAsBoolean();
+            this.canStandOnFluidState = input.get("can_stand_on_fluid").getAsBoolean();
+            this.sneakingMovementFactor = Oracle.f32(input, "water_efficiency");
+            this.waterSlowDown = Oracle.f32(input, "water_slow_down");
+            this.shallowLava = input.get("shallow_lava").getAsBoolean();
+            this.fallFlying = input.get("fall_flying").getAsBoolean();
+            this.fallFlyingLookAngle = vec3(input.getAsJsonObject("look"));
+            this.xRotation = Oracle.f32(input, "x_rot");
+            this.travelPath = null;
+            var blockPosition = net.minecraft.world.entity.Entity.class.getDeclaredField("blockPosition");
+            blockPosition.setAccessible(true);
+            blockPosition.set(this, BlockPos.ZERO);
         }
 
         private void setItemUseSpeed(final float speed) throws ReflectiveOperationException {

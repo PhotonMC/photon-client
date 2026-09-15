@@ -501,6 +501,82 @@ pub struct LocalPlayerUpdateFallFlyingMovementInput {
     pub gravity: f64,
 }
 
+/// The four top-level branches selected by LivingEntity.travel.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LocalPlayerTravelMode {
+    Water,
+    Lava,
+    FallFlying,
+    Air,
+}
+
+impl LocalPlayerTravelMode {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Water => "water",
+            Self::Lava => "lava",
+            Self::FallFlying => "fall_flying",
+            Self::Air => "air",
+        }
+    }
+}
+
+/// The environment state consumed by LivingEntity.travel dispatch.
+#[derive(Debug, Clone, Copy)]
+pub struct LocalPlayerTravelDispatchParameters {
+    pub input: Vec3,
+    pub y_rot: f32,
+    pub x_rot: f32,
+    pub look_angle: Vec3,
+    pub in_water: bool,
+    pub in_lava: bool,
+    pub affected_by_fluids: bool,
+    pub can_stand_on_fluid: bool,
+    pub fall_flying: bool,
+    pub on_climbable: bool,
+    pub sprinting: bool,
+    pub water_slow_down: f32,
+    pub water_efficiency: f32,
+    pub on_ground: bool,
+    pub block_friction: f32,
+    pub speed: f32,
+    pub dolphins_grace: bool,
+    pub horizontal_collision: bool,
+    pub free_after_jump: bool,
+    pub shallow_lava: bool,
+    pub flying_speed: f32,
+    pub flying: bool,
+    pub passenger: bool,
+    pub scaffolding: bool,
+    pub suppress_sliding_down_ladder: bool,
+    pub jumping: bool,
+    pub levitation_amplifier: Option<i32>,
+    pub gravity: f64,
+    pub client_side: bool,
+    pub has_chunk_at: bool,
+    pub current_y: f64,
+    pub min_y: i32,
+    pub should_discard_friction: bool,
+    pub friction_modifier: f32,
+    pub air_drag_modifier: f32,
+    pub omnidirectional_air_mover: bool,
+}
+
+/// The environment and current motion consumed by LivingEntity.travel dispatch.
+#[derive(Debug, Clone, Copy)]
+pub struct LocalPlayerTravelDispatchInput {
+    pub parameters: LocalPlayerTravelDispatchParameters,
+    pub delta_movement: Vec3,
+}
+
+/// The selected travel branch and resulting no-collision movement.
+#[derive(Debug, Clone, Copy)]
+pub struct LocalPlayerTravelDispatchResult {
+    pub mode: LocalPlayerTravelMode,
+    pub fall_flying_climbable_fallback: bool,
+    pub movement: Vec3,
+}
+
 /// Apply Java LivingEntity.travelInWater with collision and fluid lookup
 /// results supplied by the caller.
 pub fn local_player_travel_in_water(state: LocalPlayerTravelInWaterInput) -> Vec3 {
@@ -763,6 +839,111 @@ pub fn local_player_update_fall_flying_movement(
         f64::from(0.98_f32),
         f64::from(0.99_f32),
     )
+}
+
+/// Apply Java LivingEntity.travel's top-level branch selection and its
+/// resolved no-collision movement path.
+pub fn local_player_travel_dispatch(
+    state: LocalPlayerTravelDispatchInput,
+) -> LocalPlayerTravelDispatchResult {
+    let parameters = state.parameters;
+    let should_travel_in_fluid = (parameters.in_water || parameters.in_lava)
+        && parameters.affected_by_fluids
+        && !parameters.can_stand_on_fluid;
+    let mode = if should_travel_in_fluid {
+        if parameters.in_water {
+            LocalPlayerTravelMode::Water
+        } else {
+            LocalPlayerTravelMode::Lava
+        }
+    } else if parameters.fall_flying {
+        LocalPlayerTravelMode::FallFlying
+    } else {
+        LocalPlayerTravelMode::Air
+    };
+
+    let is_falling = state.delta_movement.y <= 0.0;
+    let air_movement = || {
+        local_player_travel_in_air(LocalPlayerTravelInAirInput {
+            input: parameters.input,
+            delta_movement: state.delta_movement,
+            y_rot: parameters.y_rot,
+            on_ground: parameters.on_ground,
+            block_friction: parameters.block_friction,
+            friction_modifier: parameters.friction_modifier,
+            speed: parameters.speed,
+            flying_speed: parameters.flying_speed,
+            flying: parameters.flying,
+            sprinting: parameters.sprinting,
+            passenger: parameters.passenger,
+            on_climbable: parameters.on_climbable,
+            scaffolding: parameters.scaffolding,
+            suppress_sliding_down_ladder: parameters.suppress_sliding_down_ladder,
+            horizontal_collision: parameters.horizontal_collision,
+            jumping: parameters.jumping,
+            levitation_amplifier: parameters.levitation_amplifier,
+            gravity: parameters.gravity,
+            client_side: parameters.client_side,
+            has_chunk_at: parameters.has_chunk_at,
+            current_y: parameters.current_y,
+            min_y: parameters.min_y,
+            should_discard_friction: parameters.should_discard_friction,
+            air_drag_modifier: parameters.air_drag_modifier,
+            omnidirectional_air_mover: parameters.omnidirectional_air_mover,
+        })
+    };
+    let (fall_flying_climbable_fallback, movement) = match mode {
+        LocalPlayerTravelMode::Water => (
+            false,
+            local_player_travel_in_water(LocalPlayerTravelInWaterInput {
+                input: parameters.input,
+                delta_movement: state.delta_movement,
+                y_rot: parameters.y_rot,
+                sprinting: parameters.sprinting,
+                water_slow_down: parameters.water_slow_down,
+                water_efficiency: parameters.water_efficiency,
+                on_ground: parameters.on_ground,
+                speed: parameters.speed,
+                dolphins_grace: parameters.dolphins_grace,
+                horizontal_collision: parameters.horizontal_collision,
+                on_climbable: parameters.on_climbable,
+                free_after_jump: parameters.free_after_jump,
+                base_gravity: parameters.gravity,
+                is_falling,
+            }),
+        ),
+        LocalPlayerTravelMode::Lava => (
+            false,
+            local_player_travel_in_lava(LocalPlayerTravelInLavaInput {
+                input: parameters.input,
+                delta_movement: state.delta_movement,
+                y_rot: parameters.y_rot,
+                sprinting: parameters.sprinting,
+                shallow_lava: parameters.shallow_lava,
+                horizontal_collision: parameters.horizontal_collision,
+                free_after_jump: parameters.free_after_jump,
+                base_gravity: parameters.gravity,
+                is_falling,
+            }),
+        ),
+        LocalPlayerTravelMode::FallFlying if parameters.on_climbable => (true, air_movement()),
+        LocalPlayerTravelMode::FallFlying => (
+            false,
+            local_player_update_fall_flying_movement(LocalPlayerUpdateFallFlyingMovementInput {
+                look_angle: parameters.look_angle,
+                delta_movement: state.delta_movement,
+                x_rot: parameters.x_rot,
+                gravity: parameters.gravity,
+            }),
+        ),
+        LocalPlayerTravelMode::Air => (false, air_movement()),
+    };
+
+    LocalPlayerTravelDispatchResult {
+        mode,
+        fall_flying_climbable_fallback,
+        movement,
+    }
 }
 
 /// Apply the no-collision movement and drag path of Java LivingEntity.travelFlying.
