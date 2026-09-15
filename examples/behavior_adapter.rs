@@ -7668,6 +7668,64 @@ fn client_world_entity_pose_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"states": states}))
 }
 
+fn client_world_entity_ticks_frozen_state(
+    label: &str,
+    accepted: bool,
+    entity: &ClientEntity,
+) -> Value {
+    json!({
+        "label": label,
+        "accepted": accepted,
+        "shared_flags": entity.shared_flags(),
+        "ticks_frozen": entity.ticks_frozen(),
+        "percent_frozen": format!("{:08x}", entity.percent_frozen().to_bits()),
+        "is_freezing": entity.is_freezing(),
+        "is_fully_frozen": entity.is_fully_frozen(),
+    })
+}
+
+fn client_world_entity_ticks_frozen_result(request: &Value) -> Result<Value, String> {
+    let entity_id = i32_field(request, "entity_id")?;
+    let mut world = ClientWorld::new(DimensionBounds::default());
+    if !world.apply_entity(EntityInput {
+        entity_id,
+        uuid: Uuid::new(0, u64::from(entity_id as u32)),
+        type_id: i32_field(request, "entity_type_id")?,
+        x: 1.25,
+        y: 80.0,
+        z: -35.5,
+        movement: (0.0, 0.0, 0.0),
+        rotation: (0.0, 0.0, 0.0),
+        data: 0,
+    }) {
+        return Err("ticks frozen fixture entity was rejected".into());
+    }
+
+    let operations = request["operations"]
+        .as_array()
+        .ok_or("operations must be an array")?;
+    let mut states = vec![client_world_entity_ticks_frozen_state(
+        "initial",
+        true,
+        world
+            .entity_at(entity_id)
+            .ok_or("ticks frozen fixture entity disappeared")?,
+    )];
+    for operation in operations {
+        let metadata = decode_hex(string(operation, "metadata_hex")?)?;
+        let accepted = world.apply_entity_metadata(entity_id, &metadata);
+        let entity = world
+            .entity_at(entity_id)
+            .ok_or("ticks frozen fixture entity disappeared")?;
+        states.push(client_world_entity_ticks_frozen_state(
+            string(operation, "label")?,
+            accepted,
+            entity,
+        ));
+    }
+    Ok(json!({"states": states}))
+}
+
 fn client_chunk_cache_snapshot_json(snapshot: &ClientChunkCacheSnapshot) -> Value {
     json!({
         "storage_radius": snapshot.storage_radius,
@@ -7831,6 +7889,9 @@ fn math_result(request: &Value) -> Result<Value, String> {
     }
     if operation == "client_world_entity_pose" {
         return client_world_entity_pose_result(request);
+    }
+    if operation == "client_world_entity_ticks_frozen" {
+        return client_world_entity_ticks_frozen_result(request);
     }
     if operation == "random" {
         return random_result(request);

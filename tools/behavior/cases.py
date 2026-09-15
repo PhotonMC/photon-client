@@ -1233,6 +1233,32 @@ def math_cases():
         ],
     }
 
+    yield {
+        "case_id": "client-world/entity-ticks-frozen",
+        "family": "math",
+        "operation": "client_world_entity_ticks_frozen",
+        "entity_id": 37,
+        "entity_type_id": 120,
+        "operations": [
+            {
+                "label": "set-positive-freeze",
+                "metadata_hex": "070146ff",
+            },
+            {
+                "label": "set-full-freeze",
+                "metadata_hex": "07018c01ff",
+            },
+            {
+                "label": "combined-shared-flags-and-negative-freeze",
+                "metadata_hex": "0000400701ffffffff0fff",
+            },
+            {
+                "label": "clear-freeze",
+                "metadata_hex": "070100ff",
+            },
+        ],
+    }
+
     def attribute_modifier(identifier, amount, operation):
         return {
             "id": identifier,
