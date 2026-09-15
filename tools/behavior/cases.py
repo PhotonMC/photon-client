@@ -1765,6 +1765,79 @@ def math_cases():
            "operation": "local_player_travel_flying",
            "inputs": local_player_travel_flying_inputs}
 
+    local_player_travel_in_water_cases = [
+        {
+            "label": "plain-water-applies-drag-and-fluid-gravity",
+        },
+        {
+            "label": "sprinting-uses-sprint-water-slowdown-and-bypasses-gravity",
+            "sprinting": True,
+        },
+        {
+            "label": "ground-water-efficiency-blends-speed-and-drag",
+            "water_efficiency": float_bits(0.6, "f32"),
+            "speed": float_bits(0.12, "f32"),
+        },
+        {
+            "label": "airborne-water-efficiency-is-halved",
+            "water_efficiency": float_bits(0.6, "f32"),
+            "speed": float_bits(0.12, "f32"),
+            "on_ground": False,
+        },
+        {
+            "label": "dolphins-grace-overrides-computed-drag",
+            "water_efficiency": float_bits(0.6, "f32"),
+            "speed": float_bits(0.12, "f32"),
+            "sprinting": True,
+            "dolphins_grace": True,
+        },
+        {
+            "label": "horizontal-climbable-sets-fluid-step",
+            "horizontal_collision": True,
+            "on_climbable": True,
+            "base_gravity": float_bits(0.08, "f64"),
+            "is_falling": True,
+            "free_after_jump": False,
+        },
+        {
+            "label": "free-horizontal-fluid-collision-jumps-out",
+            "horizontal_collision": True,
+            "base_gravity": float_bits(0.08, "f64"),
+            "is_falling": True,
+            "free_after_jump": True,
+        },
+        {
+            "label": "negative-water-efficiency-is-ignored",
+            "water_efficiency": float_bits(-0.5, "f32"),
+            "speed": float_bits(0.12, "f32"),
+        },
+    ]
+    local_player_travel_in_water_defaults = {
+        "input": vector_bits(0.3, -0.4, 0.8),
+        "delta": vector_bits(0.1, -0.2, 0.3),
+        "y_rot": float_bits(37.5, "f32"),
+        "sprinting": False,
+        "water_slow_down": float_bits(0.8, "f32"),
+        "water_efficiency": float_bits(0.0, "f32"),
+        "on_ground": True,
+        "speed": float_bits(0.1, "f32"),
+        "dolphins_grace": False,
+        "horizontal_collision": False,
+        "on_climbable": False,
+        "free_after_jump": False,
+        "base_gravity": float_bits(0.08, "f64"),
+        "is_falling": False,
+        "old_y": float_bits(10.0, "f64"),
+        "current_y": float_bits(10.0, "f64"),
+    }
+    local_player_travel_in_water_inputs = []
+    for values in local_player_travel_in_water_cases:
+        input_values = {**local_player_travel_in_water_defaults, **values}
+        local_player_travel_in_water_inputs.append(input_values)
+    yield {"case_id": "player-movement/travel-in-water", "family": "math",
+           "operation": "local_player_travel_in_water",
+           "inputs": local_player_travel_in_water_inputs}
+
     codec_decodes = {
         "basic": [float_bits(1.25, "f64"), float_bits(-2.5, "f64"), float_bits(3.75, "f64")],
         "zero": [float_bits(0.0, "f64"), float_bits(0.0, "f64"), float_bits(0.0, "f64")],

@@ -6,10 +6,11 @@ use crate::input::{
     LocalPlayerClimbableMovementInput, LocalPlayerFluidFallingInput,
     LocalPlayerFrictionInfluencedSpeedInput, LocalPlayerInputModifiers, LocalPlayerInputState,
     LocalPlayerModifiedFrictionInput, LocalPlayerTravelFlyingInput,
-    LocalPlayerTravelFlyingParameters, adjust_local_player_fluid_falling_movement,
+    LocalPlayerTravelFlyingParameters, LocalPlayerTravelInWaterInput,
+    LocalPlayerTravelInWaterParameters, adjust_local_player_fluid_falling_movement,
     apply_local_player_input as apply_local_player_input_fields,
     clamp_local_player_climbable_movement, local_player_friction_influenced_speed,
-    local_player_modified_friction, local_player_travel_flying,
+    local_player_modified_friction, local_player_travel_flying, local_player_travel_in_water,
 };
 use crate::math::{
     MTH_DEG_TO_RAD, Vec3, abs_max_f64, clamp_f32, clamp_f64, equal_f64, floor_f32, mth_atan2,
@@ -2867,6 +2868,18 @@ impl ClientWorld {
             return false;
         };
         player.apply_travel_flying(parameters);
+        true
+    }
+
+    /// Apply Java's resolved-environment travelInWater path to local motion.
+    pub fn apply_local_player_travel_in_water(
+        &mut self,
+        parameters: LocalPlayerTravelInWaterParameters,
+    ) -> bool {
+        let Some(player) = self.local_player.as_mut() else {
+            return false;
+        };
+        player.apply_travel_in_water(parameters);
         true
     }
 
@@ -5747,6 +5760,32 @@ impl ClientPlayerState {
         self.motion_z_bits = movement.z.to_bits();
     }
 
+    fn apply_travel_in_water(&mut self, parameters: LocalPlayerTravelInWaterParameters) {
+        let movement = local_player_travel_in_water(LocalPlayerTravelInWaterInput {
+            input: parameters.input,
+            delta_movement: Vec3::new(
+                f64::from_bits(self.motion_x_bits),
+                f64::from_bits(self.motion_y_bits),
+                f64::from_bits(self.motion_z_bits),
+            ),
+            y_rot: parameters.y_rot,
+            sprinting: parameters.sprinting,
+            water_slow_down: parameters.water_slow_down,
+            water_efficiency: parameters.water_efficiency,
+            on_ground: parameters.on_ground,
+            speed: parameters.speed,
+            dolphins_grace: parameters.dolphins_grace,
+            horizontal_collision: parameters.horizontal_collision,
+            on_climbable: parameters.on_climbable,
+            free_after_jump: parameters.free_after_jump,
+            base_gravity: parameters.base_gravity,
+            is_falling: parameters.is_falling,
+        });
+        self.motion_x_bits = movement.x.to_bits();
+        self.motion_y_bits = movement.y.to_bits();
+        self.motion_z_bits = movement.z.to_bits();
+    }
+
     fn capture_old_transform(&mut self) {
         self.old_x_bits = self.x_bits;
         self.old_y_bits = self.y_bits;
@@ -8452,6 +8491,65 @@ mod tests {
                 f64::from_bits(0x3fb2_70ca_cee5_eb92),
                 f64::from_bits(0xbfc6_1e4f_7b4a_233a),
                 f64::from_bits(0x3fd1_08ac_bf6e_af6c),
+            ),
+        );
+    }
+
+    #[test]
+    fn local_player_travel_in_water_applies_drag_and_fluid_jump_state() {
+        let mut world = ClientWorld::default();
+        world.set_local_player_id(42);
+        assert!(world.apply_local_player_position((0.0, 0.0, 0.0), (0.1, -0.2, 0.3), (37.5, 0.0),));
+        assert!(world.apply_local_player_travel_in_water(
+            super::LocalPlayerTravelInWaterParameters {
+                input: Vec3::new(0.3, -0.4, 0.8),
+                y_rot: 37.5,
+                sprinting: false,
+                water_slow_down: 0.8,
+                water_efficiency: 0.0,
+                on_ground: true,
+                speed: 0.1,
+                dolphins_grace: false,
+                horizontal_collision: false,
+                on_climbable: false,
+                free_after_jump: false,
+                base_gravity: 0.08,
+                is_falling: false,
+            },
+        ));
+        assert_eq!(
+            world.local_player().expect("plain water player").motion(),
+            (
+                f64::from_bits(0x3fb3_75d6_0dd9_5c2f),
+                f64::from_bits(0xbfc5_f06f_6e48_e8a8),
+                f64::from_bits(0x3fd0_326a_dc84_2483),
+            ),
+        );
+
+        assert!(world.apply_local_player_position((0.0, 0.0, 0.0), (0.1, -0.2, 0.3), (37.5, 0.0),));
+        assert!(world.apply_local_player_travel_in_water(
+            super::LocalPlayerTravelInWaterParameters {
+                input: Vec3::new(0.3, -0.4, 0.8),
+                y_rot: 37.5,
+                sprinting: false,
+                water_slow_down: 0.8,
+                water_efficiency: 0.0,
+                on_ground: true,
+                speed: 0.1,
+                dolphins_grace: false,
+                horizontal_collision: true,
+                on_climbable: false,
+                free_after_jump: true,
+                base_gravity: 0.08,
+                is_falling: true,
+            },
+        ));
+        assert_eq!(
+            world.local_player().expect("jump water player").motion(),
+            (
+                f64::from_bits(0x3fb3_75d6_0dd9_5c2f),
+                f64::from_bits(0x3fd3_3333_4000_0000),
+                f64::from_bits(0x3fd0_326a_dc84_2483),
             ),
         );
     }

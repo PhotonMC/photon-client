@@ -57,6 +57,8 @@ import net.minecraft.world.entity.Pose;
 import net.minecraft.world.entity.player.Abilities;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.entity.ai.attributes.Attribute;
+import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.monster.Shulker;
 import net.minecraft.world.entity.vehicle.boat.Boat;
 import net.minecraft.world.entity.vehicle.minecart.Minecart;
@@ -332,6 +334,8 @@ public final class MathOracle {
             return localPlayerModifiedFrictionResult(request);
         } else if (operation.equals("local_player_travel_flying")) {
             return localPlayerTravelFlyingResult(request);
+        } else if (operation.equals("local_player_travel_in_water")) {
+            return localPlayerTravelInWaterResult(request);
         } else if (operation.equals("character_event")) {
             CharacterEvent event = new CharacterEvent(request.get("codepoint").getAsInt());
             result.addProperty("codepoint", event.codepoint());
@@ -4683,6 +4687,49 @@ public final class MathOracle {
         }
     }
 
+    private static JsonObject localPlayerTravelInWaterResult(JsonObject request) {
+        try {
+            var method = LivingEntity.class.getDeclaredMethod(
+                "travelInWater", Vec3.class, double.class, boolean.class, double.class);
+            method.setAccessible(true);
+            var states = new JsonArray();
+            Unsafe unsafe = unsafeInstance();
+            for (var inputEntry : request.getAsJsonArray("inputs")) {
+                JsonObject input = inputEntry.getAsJsonObject();
+                LocalPlayerInputFixture player =
+                    (LocalPlayerInputFixture)unsafe.allocateInstance(LocalPlayerInputFixture.class);
+                player.configureTravelInWater(
+                    input.get("sprinting").getAsBoolean(),
+                    Oracle.f32(input, "water_slow_down"),
+                    Oracle.f32(input, "water_efficiency"),
+                    input.get("on_ground").getAsBoolean(),
+                    Oracle.f32(input, "speed"),
+                    input.get("dolphins_grace").getAsBoolean(),
+                    input.get("horizontal_collision").getAsBoolean(),
+                    input.get("on_climbable").getAsBoolean(),
+                    input.get("free_after_jump").getAsBoolean(),
+                    Oracle.f32(input, "y_rot"),
+                    f64(input, "current_y"),
+                    vec3(input.getAsJsonObject("delta")));
+                method.invoke(
+                    player,
+                    vec3(input.getAsJsonObject("input")),
+                    f64(input, "base_gravity"),
+                    input.get("is_falling").getAsBoolean(),
+                    f64(input, "old_y"));
+                var state = new JsonObject();
+                state.addProperty("label", input.get("label").getAsString());
+                state.add("movement", snapshot(player.getDeltaMovement()));
+                states.add(state);
+            }
+            var result = new JsonObject();
+            result.add("states", states);
+            return result;
+        } catch (ReflectiveOperationException error) {
+            throw new IllegalStateException("LivingEntity.travelInWater reflection failed", error);
+        }
+    }
+
     private static double f64(JsonObject object, String name) {
         return f64(object.get(name).getAsString());
     }
@@ -6326,6 +6373,9 @@ public final class MathOracle {
         private boolean inWaterState;
         private boolean inLavaState;
         private Vec3 travelDeltaMovement;
+        private float waterSlowDown;
+        private boolean dolphinsGrace;
+        private boolean freeAfterFluidJump;
 
         private LocalPlayerInputFixture() {
             super(null, null, null, null, null, Input.EMPTY, false, null);
@@ -6424,6 +6474,11 @@ public final class MathOracle {
         }
 
         @Override
+        protected float getWaterSlowDown() {
+            return this.waterSlowDown;
+        }
+
+        @Override
         public boolean isInWater() {
             return this.inWaterState;
         }
@@ -6431,6 +6486,11 @@ public final class MathOracle {
         @Override
         public boolean isInLava() {
             return this.inLavaState;
+        }
+
+        @Override
+        public boolean hasEffect(final Holder<MobEffect> effect) {
+            return this.dolphinsGrace && effect == MobEffects.DOLPHINS_GRACE;
         }
 
         @Override
@@ -6447,6 +6507,11 @@ public final class MathOracle {
 
         @Override
         public void move(final MoverType moverType, final Vec3 delta) {
+        }
+
+        @Override
+        public boolean isFree(final double xa, final double ya, final double za) {
+            return this.freeAfterFluidJump;
         }
 
         private void configureApplyInput(
@@ -6519,6 +6584,36 @@ public final class MathOracle {
             this.inLavaState = inLava;
             this.yRotation = yRot;
             this.travelDeltaMovement = deltaMovement;
+        }
+
+        private void configureTravelInWater(
+            final boolean sprinting,
+            final float waterSlowDown,
+            final float waterEfficiency,
+            final boolean onGround,
+            final float speed,
+            final boolean dolphinsGrace,
+            final boolean horizontalCollision,
+            final boolean onClimbable,
+            final boolean freeAfterJump,
+            final float yRot,
+            final double currentY,
+            final Vec3 deltaMovement
+        ) throws ReflectiveOperationException {
+            this.sprinting = sprinting;
+            this.waterSlowDown = waterSlowDown;
+            this.sneakingMovementFactor = waterEfficiency;
+            this.onGroundState = onGround;
+            this.configuredSpeed = speed;
+            this.dolphinsGrace = dolphinsGrace;
+            this.horizontalCollision = horizontalCollision;
+            this.onClimbableState = onClimbable;
+            this.freeAfterFluidJump = freeAfterJump;
+            this.yRotation = yRot;
+            this.travelDeltaMovement = deltaMovement;
+            var position = net.minecraft.world.entity.Entity.class.getDeclaredField("position");
+            position.setAccessible(true);
+            position.set(this, new Vec3(0.0, currentY, 0.0));
         }
 
         private void setItemUseSpeed(final float speed) throws ReflectiveOperationException {

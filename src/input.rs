@@ -320,6 +320,99 @@ pub struct LocalPlayerTravelFlyingInput {
     pub air_speed: f32,
 }
 
+/// The environment state consumed by LivingEntity.travelInWater.
+#[derive(Debug, Clone, Copy)]
+pub struct LocalPlayerTravelInWaterParameters {
+    pub input: Vec3,
+    pub y_rot: f32,
+    pub sprinting: bool,
+    pub water_slow_down: f32,
+    pub water_efficiency: f32,
+    pub on_ground: bool,
+    pub speed: f32,
+    pub dolphins_grace: bool,
+    pub horizontal_collision: bool,
+    pub on_climbable: bool,
+    pub free_after_jump: bool,
+    pub base_gravity: f64,
+    pub is_falling: bool,
+}
+
+/// The environment and motion state consumed by LivingEntity.travelInWater.
+#[derive(Debug, Clone, Copy)]
+pub struct LocalPlayerTravelInWaterInput {
+    pub input: Vec3,
+    pub delta_movement: Vec3,
+    pub y_rot: f32,
+    pub sprinting: bool,
+    pub water_slow_down: f32,
+    pub water_efficiency: f32,
+    pub on_ground: bool,
+    pub speed: f32,
+    pub dolphins_grace: bool,
+    pub horizontal_collision: bool,
+    pub on_climbable: bool,
+    pub free_after_jump: bool,
+    pub base_gravity: f64,
+    pub is_falling: bool,
+}
+
+/// Apply Java LivingEntity.travelInWater with collision and fluid lookup
+/// results supplied by the caller.
+pub fn local_player_travel_in_water(state: LocalPlayerTravelInWaterInput) -> Vec3 {
+    let mut slow_down = if state.sprinting {
+        0.9_f32
+    } else {
+        state.water_slow_down
+    };
+    let mut speed = 0.02_f32;
+    let mut water_walker = state.water_efficiency;
+    if !state.on_ground {
+        water_walker *= 0.5_f32;
+    }
+    if water_walker > 0.0_f32 {
+        slow_down += (0.54600006_f32 - slow_down) * water_walker;
+        speed += (state.speed - speed) * water_walker;
+    }
+    if state.dolphins_grace {
+        slow_down = 0.96_f32;
+    }
+
+    let relative_movement = local_player_relative_movement(state.input, speed, state.y_rot);
+    let moved = state.delta_movement.add_vec3(relative_movement);
+    let moved = if moved.is_finite() {
+        moved
+    } else {
+        state.delta_movement
+    };
+    let mut movement = moved;
+    if state.horizontal_collision && state.on_climbable {
+        movement = Vec3::new(movement.x, 0.2, movement.z);
+    }
+    let scaled = movement.multiply_components(
+        f64::from(slow_down),
+        f64::from(0.8_f32),
+        f64::from(slow_down),
+    );
+    let adjusted = adjust_local_player_fluid_falling_movement(LocalPlayerFluidFallingInput {
+        base_gravity: state.base_gravity,
+        is_falling: state.is_falling,
+        sprinting: state.sprinting,
+        movement: scaled,
+    });
+    if adjusted.is_finite() {
+        movement = adjusted;
+    }
+
+    if state.horizontal_collision && state.free_after_jump {
+        let jump_movement = Vec3::new(movement.x, f64::from(0.3_f32), movement.z);
+        if jump_movement.is_finite() {
+            movement = jump_movement;
+        }
+    }
+    movement
+}
+
 /// Apply the no-collision movement and drag path of Java LivingEntity.travelFlying.
 pub fn local_player_travel_flying(state: LocalPlayerTravelFlyingInput) -> Vec3 {
     let (speed, drag) = if state.in_water {
@@ -330,25 +423,7 @@ pub fn local_player_travel_flying(state: LocalPlayerTravelFlyingInput) -> Vec3 {
         (state.air_speed, f64::from(0.91_f32))
     };
 
-    let input_length_squared = state.input.length_squared();
-    let relative_movement = if input_length_squared < 1.0e-7 {
-        Vec3::ZERO
-    } else {
-        let movement = if input_length_squared > 1.0 {
-            state.input.normalized()
-        } else {
-            state.input
-        }
-        .scale(f64::from(speed));
-        let angle = state.y_rot * MTH_DEG_TO_RAD;
-        let sine = f64::from(mth_sin_f64(f64::from(angle)));
-        let cosine = f64::from(mth_cos_f64(f64::from(angle)));
-        Vec3::new(
-            movement.x * cosine - movement.z * sine,
-            movement.y,
-            movement.z * cosine + movement.x * sine,
-        )
-    };
+    let relative_movement = local_player_relative_movement(state.input, speed, state.y_rot);
 
     let moved = state.delta_movement.add_vec3(relative_movement);
     let moved = if moved.is_finite() {
@@ -357,6 +432,28 @@ pub fn local_player_travel_flying(state: LocalPlayerTravelFlyingInput) -> Vec3 {
         state.delta_movement
     };
     moved.scale(drag)
+}
+
+fn local_player_relative_movement(input: Vec3, speed: f32, y_rot: f32) -> Vec3 {
+    let input_length_squared = input.length_squared();
+    if input_length_squared < 1.0e-7 {
+        Vec3::ZERO
+    } else {
+        let movement = if input_length_squared > 1.0 {
+            input.normalized()
+        } else {
+            input
+        }
+        .scale(f64::from(speed));
+        let angle = y_rot * MTH_DEG_TO_RAD;
+        let sine = f64::from(mth_sin_f64(f64::from(angle)));
+        let cosine = f64::from(mth_cos_f64(f64::from(angle)));
+        Vec3::new(
+            movement.x * cosine - movement.z * sine,
+            movement.y,
+            movement.z * cosine + movement.x * sine,
+        )
+    }
 }
 
 fn modify_input_speed_for_square_movement(input: Vec2) -> Vec2 {
