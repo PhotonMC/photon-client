@@ -5178,6 +5178,9 @@ public final class MathOracle {
         if (operation.equals("client_world_entity_passenger_player_position")) {
             return clientWorldEntityPassengerPlayerPositionResult(request);
         }
+        if (operation.equals("client_world_entity_passenger_boat_family_position")) {
+            return clientWorldEntityPassengerBoatFamilyPositionResult(request);
+        }
         if (operation.equals("client_world_player_sprint_trigger")) {
             return clientWorldPlayerSprintTriggerResult(request);
         }
@@ -6092,6 +6095,81 @@ public final class MathOracle {
         return result;
     }
 
+    private static JsonObject clientWorldEntityPassengerBoatFamilyPositionResult(
+        JsonObject request
+    ) {
+        var vehicles = new ArrayList<net.minecraft.world.entity.vehicle.boat.AbstractBoat>();
+        var passengers = new ArrayList<TickSnowballFixture>();
+        for (JsonElement rowEntry : request.getAsJsonArray("rows")) {
+            JsonObject row = rowEntry.getAsJsonObject();
+            JsonObject vehicleInput = row.getAsJsonObject("vehicle");
+            int vehicleTypeId = vehicleInput.get("type_id").getAsInt();
+            net.minecraft.world.entity.vehicle.boat.AbstractBoat vehicle =
+                createPassengerPositionBoat(
+                    vehicleTypeId,
+                    vehicleInput.get("entity_id").getAsInt(),
+                    vec3(vehicleInput.getAsJsonObject("position")),
+                    Oracle.f32(vehicleInput.getAsJsonObject("rotation"), "y"),
+                    vehicleInput.get("no_gravity").getAsBoolean());
+            JsonObject passengerInput = row.getAsJsonObject("passenger");
+            if (passengerInput.get("type_id").getAsInt() != 120) {
+                throw new IllegalArgumentException(
+                    "Boat family position fixture requires snowball passengers");
+            }
+            TickSnowballFixture passenger = TickSnowballFixture.create(
+                passengerInput.get("entity_id").getAsInt(),
+                vec3(passengerInput.getAsJsonObject("position")),
+                vec3(passengerInput.getAsJsonObject("movement")),
+                Oracle.f32(passengerInput.getAsJsonObject("rotation"), "y"),
+                Oracle.f32(passengerInput.getAsJsonObject("rotation"), "x"),
+                passengerInput.get("no_gravity").getAsBoolean());
+            setPassengerPositionFixturePassengers(vehicle, List.of(passenger));
+            vehicles.add(vehicle);
+            passengers.add(passenger);
+        }
+
+        var states = new JsonArray();
+        states.add(boatFamilyPositionState("initial", vehicles, passengers));
+        for (JsonElement operationEntry : request.getAsJsonArray("operations")) {
+            JsonObject operation = operationEntry.getAsJsonObject();
+            if (!operation.get("action").getAsString().equals("tick")) {
+                throw new IllegalArgumentException("Unknown boat family position action");
+            }
+            for (int tick = 0; tick < operation.get("ticks").getAsInt(); tick++) {
+                for (int index = 0; index < vehicles.size(); index++) {
+                    var vehicle = vehicles.get(index);
+                    vehicle.setOldPosAndRot();
+                    vehicle.tickCount++;
+                    vehicle.tick();
+                    TickSnowballFixture passenger = passengers.get(index);
+                    passenger.rideTickThroughClientLevel();
+                    vehicle.positionRider(passenger);
+                }
+            }
+            states.add(boatFamilyPositionState(
+                operation.get("label").getAsString(), vehicles, passengers));
+        }
+        var result = new JsonObject();
+        result.add("states", states);
+        return result;
+    }
+
+    private static net.minecraft.world.entity.vehicle.boat.AbstractBoat createPassengerPositionBoat(
+        int typeId, int entityId, Vec3 position, float yRot, boolean noGravity
+    ) {
+        return switch (typeId) {
+            case 8 -> PassengerPositionChestRaftFixture.create(
+                entityId, position, yRot, noGravity);
+            case 9 -> PassengerPositionRaftFixture.create(entityId, position, yRot, noGravity);
+            case 89 -> PassengerPositionBoatFixture.create(
+                entityId, position, yRot, noGravity);
+            case 90 -> PassengerPositionChestBoatFixture.create(
+                entityId, position, yRot, noGravity);
+            default -> throw new IllegalArgumentException(
+                "Unknown boat family position vehicle type");
+        };
+    }
+
     private static List<TickSnowballFixture> resolvePassengerIds(
         List<TickSnowballFixture> passengers, JsonArray passengerIds
     ) {
@@ -6155,6 +6233,23 @@ public final class MathOracle {
         var entities = new JsonArray();
         entities.add(tickEntityState(vehicle));
         entities.add(tickEntityState(passenger));
+        state.add("entities", entities);
+        return state;
+    }
+
+    private static JsonObject boatFamilyPositionState(
+        String label,
+        List<net.minecraft.world.entity.vehicle.boat.AbstractBoat> vehicles,
+        List<TickSnowballFixture> passengers
+    ) {
+        var state = new JsonObject();
+        state.addProperty("label", label);
+        state.addProperty("accepted", true);
+        var entities = new JsonArray();
+        for (int index = 0; index < vehicles.size(); index++) {
+            entities.add(tickEntityState(vehicles.get(index)));
+            entities.add(tickSnowballEntityState(passengers.get(index)));
+        }
         state.add("entities", entities);
         return state;
     }
@@ -8357,6 +8452,70 @@ public final class MathOracle {
         }
     }
 
+    private static void initializePassengerPositionVehicle(
+        Entity vehicle,
+        int entityId,
+        net.minecraft.world.entity.EntityType<?> type,
+        Vec3 position,
+        float yRot
+    ) throws ReflectiveOperationException {
+        Unsafe unsafe = unsafeInstance();
+        var idField = Entity.class.getDeclaredField("id");
+        unsafe.putInt(vehicle, unsafe.objectFieldOffset(idField), entityId);
+        var typeField = Entity.class.getDeclaredField("type");
+        unsafe.putObject(vehicle, unsafe.objectFieldOffset(typeField), type);
+        var levelField = Entity.class.getDeclaredField("level");
+        unsafe.putObject(
+            vehicle,
+            unsafe.objectFieldOffset(levelField),
+            PassengerRelationFixtureEntity.CLIENT_LEVEL);
+        var dimensionsField = Entity.class.getDeclaredField("dimensions");
+        unsafe.putObject(
+            vehicle,
+            unsafe.objectFieldOffset(dimensionsField),
+            type.getDimensions());
+        var positionField = Entity.class.getDeclaredField("position");
+        unsafe.putObject(vehicle, unsafe.objectFieldOffset(positionField), position);
+        var blockPositionField = Entity.class.getDeclaredField("blockPosition");
+        unsafe.putObject(
+            vehicle,
+            unsafe.objectFieldOffset(blockPositionField),
+            BlockPos.containing(position.x, position.y, position.z));
+        var chunkPositionField = Entity.class.getDeclaredField("chunkPosition");
+        unsafe.putObject(
+            vehicle,
+            unsafe.objectFieldOffset(chunkPositionField),
+            ChunkPos.containing(BlockPos.containing(position.x, position.y, position.z)));
+        var passengersField = Entity.class.getDeclaredField("passengers");
+        unsafe.putObject(
+            vehicle,
+            unsafe.objectFieldOffset(passengersField),
+            com.google.common.collect.ImmutableList.of());
+        vehicle.setLevelCallback(EntityInLevelCallback.NULL);
+        vehicle.setDeltaMovement(Vec3.ZERO);
+        vehicle.setYRot(yRot);
+        vehicle.setXRot(0.0F);
+        vehicle.yRotO = yRot;
+        vehicle.xRotO = 0.0F;
+        vehicle.setOldPosAndRot();
+    }
+
+    private static void setPassengerPositionFixturePassengers(
+        Entity vehicle, List<? extends Entity> passengers
+    ) {
+        try {
+            Unsafe unsafe = unsafeInstance();
+            var passengersField = Entity.class.getDeclaredField("passengers");
+            unsafe.putObject(
+                vehicle,
+                unsafe.objectFieldOffset(passengersField),
+                com.google.common.collect.ImmutableList.copyOf(passengers));
+        } catch (ReflectiveOperationException error) {
+            throw new IllegalStateException(
+                "Unable to update passenger position fixture relation", error);
+        }
+    }
+
     private static final class PassengerPositionBoatFixture extends Boat {
         private boolean noGravity;
 
@@ -8372,37 +8531,13 @@ public final class MathOracle {
                 PassengerPositionBoatFixture boat =
                     (PassengerPositionBoatFixture)unsafe.allocateInstance(
                         PassengerPositionBoatFixture.class);
-                var idField = Entity.class.getDeclaredField("id");
-                unsafe.putInt(boat, unsafe.objectFieldOffset(idField), entityId);
-                var typeField = Entity.class.getDeclaredField("type");
-                unsafe.putObject(
+                initializePassengerPositionVehicle(
                     boat,
-                    unsafe.objectFieldOffset(typeField),
-                    net.minecraft.world.entity.EntityTypes.OAK_BOAT);
-                var levelField = Entity.class.getDeclaredField("level");
-                unsafe.putObject(
-                    boat,
-                    unsafe.objectFieldOffset(levelField),
-                    PassengerRelationFixtureEntity.CLIENT_LEVEL);
-                var dimensionsField = Entity.class.getDeclaredField("dimensions");
-                unsafe.putObject(
-                    boat,
-                    unsafe.objectFieldOffset(dimensionsField),
-                    net.minecraft.world.entity.EntityTypes.OAK_BOAT.getDimensions());
-                var positionField = Entity.class.getDeclaredField("position");
-                unsafe.putObject(boat, unsafe.objectFieldOffset(positionField), position);
-                var passengersField = Entity.class.getDeclaredField("passengers");
-                unsafe.putObject(
-                    boat,
-                    unsafe.objectFieldOffset(passengersField),
-                    com.google.common.collect.ImmutableList.of());
+                    entityId,
+                    net.minecraft.world.entity.EntityTypes.OAK_BOAT,
+                    position,
+                    yRot);
                 boat.noGravity = noGravity;
-                boat.setDeltaMovement(Vec3.ZERO);
-                boat.setYRot(yRot);
-                boat.setXRot(0.0F);
-                boat.yRotO = yRot;
-                boat.xRotO = 0.0F;
-                boat.setOldPosAndRot();
                 return boat;
             } catch (ReflectiveOperationException error) {
                 throw new IllegalStateException(
@@ -8411,16 +8546,126 @@ public final class MathOracle {
         }
 
         private void setFixturePassengers(List<? extends Entity> passengers) {
+            setPassengerPositionFixturePassengers(this, passengers);
+        }
+
+        @Override
+        public boolean isNoGravity() {
+            return this.noGravity;
+        }
+
+        @Override
+        public void tick() {
+        }
+    }
+
+    private static final class PassengerPositionChestBoatFixture
+        extends net.minecraft.world.entity.vehicle.boat.ChestBoat {
+        private boolean noGravity;
+
+        private PassengerPositionChestBoatFixture() {
+            super(null, null, null);
+        }
+
+        private static PassengerPositionChestBoatFixture create(
+            int entityId, Vec3 position, float yRot, boolean noGravity
+        ) {
             try {
                 Unsafe unsafe = unsafeInstance();
-                var passengersField = Entity.class.getDeclaredField("passengers");
-                unsafe.putObject(
-                    this,
-                    unsafe.objectFieldOffset(passengersField),
-                    com.google.common.collect.ImmutableList.copyOf(passengers));
+                PassengerPositionChestBoatFixture boat =
+                    (PassengerPositionChestBoatFixture)unsafe.allocateInstance(
+                        PassengerPositionChestBoatFixture.class);
+                initializePassengerPositionVehicle(
+                    boat,
+                    entityId,
+                    net.minecraft.world.entity.EntityTypes.OAK_CHEST_BOAT,
+                    position,
+                    yRot);
+                boat.noGravity = noGravity;
+                return boat;
             } catch (ReflectiveOperationException error) {
                 throw new IllegalStateException(
-                    "Unable to update passenger position fixture relation", error);
+                    "Unable to construct passenger position chest boat fixture", error);
+            }
+        }
+
+        @Override
+        public boolean isNoGravity() {
+            return this.noGravity;
+        }
+
+        @Override
+        public void tick() {
+        }
+    }
+
+    private static final class PassengerPositionRaftFixture
+        extends net.minecraft.world.entity.vehicle.boat.Raft {
+        private boolean noGravity;
+
+        private PassengerPositionRaftFixture() {
+            super(null, null, null);
+        }
+
+        private static PassengerPositionRaftFixture create(
+            int entityId, Vec3 position, float yRot, boolean noGravity
+        ) {
+            try {
+                Unsafe unsafe = unsafeInstance();
+                PassengerPositionRaftFixture raft =
+                    (PassengerPositionRaftFixture)unsafe.allocateInstance(
+                        PassengerPositionRaftFixture.class);
+                initializePassengerPositionVehicle(
+                    raft,
+                    entityId,
+                    net.minecraft.world.entity.EntityTypes.BAMBOO_RAFT,
+                    position,
+                    yRot);
+                raft.noGravity = noGravity;
+                return raft;
+            } catch (ReflectiveOperationException error) {
+                throw new IllegalStateException(
+                    "Unable to construct passenger position raft fixture", error);
+            }
+        }
+
+        @Override
+        public boolean isNoGravity() {
+            return this.noGravity;
+        }
+
+        @Override
+        public void tick() {
+        }
+    }
+
+    private static final class PassengerPositionChestRaftFixture
+        extends net.minecraft.world.entity.vehicle.boat.ChestRaft {
+        private boolean noGravity;
+
+        private PassengerPositionChestRaftFixture() {
+            super(null, null, null);
+        }
+
+        private static PassengerPositionChestRaftFixture create(
+            int entityId, Vec3 position, float yRot, boolean noGravity
+        ) {
+            try {
+                Unsafe unsafe = unsafeInstance();
+                PassengerPositionChestRaftFixture raft =
+                    (PassengerPositionChestRaftFixture)unsafe.allocateInstance(
+                        PassengerPositionChestRaftFixture.class);
+                initializePassengerPositionVehicle(
+                    raft,
+                    entityId,
+                    net.minecraft.world.entity.EntityTypes.BAMBOO_CHEST_RAFT,
+                    position,
+                    yRot);
+                raft.noGravity = noGravity;
+                return raft;
+            } catch (ReflectiveOperationException error) {
+                throw new IllegalStateException(
+                    "Unable to construct passenger position chest raft fixture", error);
             }
         }
 

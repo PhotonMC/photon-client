@@ -2760,6 +2760,42 @@ def math_cases():
         ],
     }
 
+    boat_family_rows = [
+        ("oak-boat", 37, 89, 38),
+        ("oak-chest-boat", 39, 90, 40),
+        ("bamboo-raft", 41, 9, 42),
+        ("bamboo-chest-raft", 43, 8, 44),
+    ]
+    yield {
+        "case_id": "client-world/entity-passenger-boat-family-position",
+        "family": "math",
+        "operation": "client_world_entity_passenger_boat_family_position",
+        "rows": [
+            {
+                "label": label,
+                "vehicle": {
+                    "entity_id": vehicle_id,
+                    "type_id": vehicle_type_id,
+                    "position": vector_bits(2.0, 10.0, 2.0),
+                    "rotation": {"y": float_bits(90.0), "x": float_bits(0.0)},
+                    "no_gravity": False,
+                },
+                "passenger": {
+                    "entity_id": passenger_id,
+                    "type_id": 120,
+                    "position": vector_bits(2.0, 12.0, 2.0),
+                    "movement": vector_bits(0.125, 0.0, 0.0),
+                    "rotation": {"y": float_bits(10.0), "x": float_bits(-15.0)},
+                    "no_gravity": False,
+                },
+            }
+            for label, vehicle_id, vehicle_type_id, passenger_id in boat_family_rows
+        ],
+        "operations": [
+            {"action": "tick", "label": "family-seat", "ticks": 1},
+        ],
+    }
+
     def sprint_key_presses(
         forward=False, backward=False, left=False, right=False,
         jump=False, shift=False, sprint=False,
