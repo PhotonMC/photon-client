@@ -1,6 +1,6 @@
 //! Keyboard-driven player input for the pinned Java client.
 
-use crate::math::{Vec2, Vec3};
+use crate::math::{Vec2, Vec3, clamp_f32};
 
 /// The seven boolean fields sent by the Java player's input record.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -277,6 +277,22 @@ pub fn local_player_friction_influenced_speed(
     } else {
         0.02_f32
     }
+}
+
+/// The block friction and attribute modifier consumed by LivingEntity travel.
+#[derive(Debug, Clone, Copy)]
+pub struct LocalPlayerModifiedFrictionInput {
+    pub friction: f32,
+    pub modifier: f32,
+}
+
+/// Apply Java LivingEntity.computeModifiedFriction.
+pub fn local_player_modified_friction(state: LocalPlayerModifiedFrictionInput) -> f32 {
+    clamp_f32(
+        1.0_f32 - (1.0_f32 - state.friction) * state.modifier,
+        0.0_f32,
+        1.0_f32,
+    )
 }
 
 fn modify_input_speed_for_square_movement(input: Vec2) -> Vec2 {

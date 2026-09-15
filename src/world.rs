@@ -5,9 +5,10 @@ use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use crate::input::{
     LocalPlayerClimbableMovementInput, LocalPlayerFluidFallingInput,
     LocalPlayerFrictionInfluencedSpeedInput, LocalPlayerInputModifiers, LocalPlayerInputState,
-    adjust_local_player_fluid_falling_movement,
+    LocalPlayerModifiedFrictionInput, adjust_local_player_fluid_falling_movement,
     apply_local_player_input as apply_local_player_input_fields,
     clamp_local_player_climbable_movement, local_player_friction_influenced_speed,
+    local_player_modified_friction,
 };
 use crate::math::{
     MTH_DEG_TO_RAD, Vec3, abs_max_f64, clamp_f32, clamp_f64, equal_f64, floor_f32, mth_atan2,
@@ -2847,6 +2848,15 @@ impl ClientWorld {
         true
     }
 
+    /// Apply Java's modified block friction to local player state.
+    pub fn apply_local_player_modified_friction(&mut self, friction: f32, modifier: f32) -> bool {
+        let Some(player) = self.local_player.as_mut() else {
+            return false;
+        };
+        player.apply_modified_friction(friction, modifier);
+        true
+    }
+
     pub(crate) fn apply_local_player_container_content(
         &mut self,
         container_id: i32,
@@ -5556,6 +5566,7 @@ pub struct ClientPlayerState {
     motion_y_bits: u64,
     motion_z_bits: u64,
     friction_influenced_speed_bits: u32,
+    modified_friction_bits: u32,
     xxa_bits: u32,
     zza_bits: u32,
     jumping: bool,
@@ -5697,6 +5708,12 @@ impl ClientPlayerState {
         self.friction_influenced_speed_bits = adjusted.to_bits();
     }
 
+    fn apply_modified_friction(&mut self, friction: f32, modifier: f32) {
+        self.modified_friction_bits =
+            local_player_modified_friction(LocalPlayerModifiedFrictionInput { friction, modifier })
+                .to_bits();
+    }
+
     fn capture_old_transform(&mut self) {
         self.old_x_bits = self.x_bits;
         self.old_y_bits = self.y_bits;
@@ -5752,6 +5769,7 @@ impl ClientPlayerState {
             motion_y_bits: 0.0_f64.to_bits(),
             motion_z_bits: 0.0_f64.to_bits(),
             friction_influenced_speed_bits: 0.0_f32.to_bits(),
+            modified_friction_bits: 0.0_f32.to_bits(),
             xxa_bits: 0.0_f32.to_bits(),
             zza_bits: 0.0_f32.to_bits(),
             jumping: false,
@@ -5860,6 +5878,10 @@ impl ClientPlayerState {
 
     pub fn friction_influenced_speed(&self) -> f32 {
         f32::from_bits(self.friction_influenced_speed_bits)
+    }
+
+    pub fn modified_friction(&self) -> f32 {
+        f32::from_bits(self.modified_friction_bits)
     }
 
     pub fn input_impulses(&self) -> crate::math::Vec2 {
@@ -8351,6 +8373,40 @@ mod tests {
                 .friction_influenced_speed()
                 .to_bits(),
             0x3cd4_fdf3,
+        );
+    }
+
+    #[test]
+    fn local_player_modified_friction_applies_formula_and_clamps_bounds() {
+        let mut world = ClientWorld::default();
+        world.set_local_player_id(42);
+
+        assert!(world.apply_local_player_modified_friction(0.8, 1.0));
+        assert_eq!(
+            world
+                .local_player()
+                .expect("unit modifier player")
+                .modified_friction()
+                .to_bits(),
+            0x3f4c_cccd,
+        );
+        assert!(world.apply_local_player_modified_friction(0.8, 2.0));
+        assert_eq!(
+            world
+                .local_player()
+                .expect("double modifier player")
+                .modified_friction()
+                .to_bits(),
+            0x3f19_999a,
+        );
+        assert!(world.apply_local_player_modified_friction(0.2, 2.0));
+        assert_eq!(
+            world
+                .local_player()
+                .expect("clamped modifier player")
+                .modified_friction()
+                .to_bits(),
+            0,
         );
     }
 

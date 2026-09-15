@@ -1647,6 +1647,60 @@ def math_cases():
            "operation": "local_player_friction_influenced_speed",
            "inputs": local_player_friction_influenced_speed_inputs}
 
+    local_player_modified_friction_cases = [
+        {
+            "label": "unit-modifier-keeps-block-friction",
+            "friction": float_bits(0.8, "f32"),
+            "modifier": float_bits(1.0, "f32"),
+        },
+        {
+            "label": "zero-modifier-reaches-one",
+            "friction": float_bits(0.8, "f32"),
+            "modifier": float_bits(0.0, "f32"),
+        },
+        {
+            "label": "double-modifier-reduces-friction",
+            "friction": float_bits(0.8, "f32"),
+            "modifier": float_bits(2.0, "f32"),
+        },
+        {
+            "label": "negative-modifier-clamps-high",
+            "friction": float_bits(0.8, "f32"),
+            "modifier": float_bits(-1.0, "f32"),
+        },
+        {
+            "label": "large-modifier-clamps-low",
+            "friction": float_bits(0.2, "f32"),
+            "modifier": float_bits(2.0, "f32"),
+        },
+        {
+            "label": "zero-friction-with-unit-modifier",
+            "friction": float_bits(0.0, "f32"),
+            "modifier": float_bits(1.0, "f32"),
+        },
+        {
+            "label": "full-friction-ignores-modifier",
+            "friction": float_bits(1.0, "f32"),
+            "modifier": float_bits(3.0, "f32"),
+        },
+        {
+            "label": "nan-friction-propagates-through-clamp",
+            "friction": "7fc01234",
+            "modifier": float_bits(1.0, "f32"),
+        },
+    ]
+    local_player_modified_friction_defaults = {
+        "friction": float_bits(0.6, "f32"),
+        "modifier": float_bits(1.0, "f32"),
+    }
+    local_player_modified_friction_inputs = []
+    for values in local_player_modified_friction_cases:
+        input_values = {**local_player_modified_friction_defaults, **values}
+        local_player_modified_friction_inputs.append(input_values)
+    yield {"case_id": "player-movement/modified-friction", "family": "math",
+           "operation": "local_player_modified_friction",
+           "inputs": local_player_modified_friction_inputs}
+
     codec_decodes = {
         "basic": [float_bits(1.25, "f64"), float_bits(-2.5, "f64"), float_bits(3.75, "f64")],
         "zero": [float_bits(0.0, "f64"), float_bits(0.0, "f64"), float_bits(0.0, "f64")],

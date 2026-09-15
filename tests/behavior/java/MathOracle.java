@@ -327,6 +327,8 @@ public final class MathOracle {
                 throw new IllegalStateException(
                     "LivingEntity.getFrictionInfluencedSpeed reflection failed", error);
             }
+        } else if (operation.equals("local_player_modified_friction")) {
+            return localPlayerModifiedFrictionResult(request);
         } else if (operation.equals("character_event")) {
             CharacterEvent event = new CharacterEvent(request.get("codepoint").getAsInt());
             result.addProperty("codepoint", event.codepoint());
@@ -4617,6 +4619,30 @@ public final class MathOracle {
             }
         }
         return result;
+    }
+
+    private static JsonObject localPlayerModifiedFrictionResult(JsonObject request) {
+        try {
+            var method = LivingEntity.class.getDeclaredMethod(
+                "computeModifiedFriction", float.class, float.class);
+            method.setAccessible(true);
+            var states = new JsonArray();
+            for (var inputEntry : request.getAsJsonArray("inputs")) {
+                JsonObject input = inputEntry.getAsJsonObject();
+                float friction = (float)method.invoke(
+                    null, Oracle.f32(input, "friction"), Oracle.f32(input, "modifier"));
+                var state = new JsonObject();
+                state.addProperty("label", input.get("label").getAsString());
+                state.addProperty("friction", Oracle.bits(friction));
+                states.add(state);
+            }
+            var result = new JsonObject();
+            result.add("states", states);
+            return result;
+        } catch (ReflectiveOperationException error) {
+            throw new IllegalStateException(
+                "LivingEntity.computeModifiedFriction reflection failed", error);
+        }
     }
 
     private static double f64(JsonObject object, String name) {
