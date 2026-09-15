@@ -68,6 +68,7 @@ import net.minecraft.world.entity.ExperienceOrb;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.entity.Pose;
+import net.minecraft.world.entity.item.FallingBlockEntity;
 import net.minecraft.world.entity.item.PrimedTnt;
 import net.minecraft.world.entity.player.Abilities;
 import net.minecraft.world.entity.player.Input;
@@ -5133,6 +5134,9 @@ public final class MathOracle {
         if (operation.equals("client_world_entity_primed_tnt_tick")) {
             return clientWorldEntityPrimedTntTickResult(request);
         }
+        if (operation.equals("client_world_entity_falling_block_tick")) {
+            return clientWorldEntityFallingBlockTickResult(request);
+        }
         if (operation.equals("client_world_player_sprint_trigger")) {
             return clientWorldPlayerSprintTriggerResult(request);
         }
@@ -5914,6 +5918,63 @@ public final class MathOracle {
             entity.addProperty("previous_rotation_y", Oracle.bits(tnt.yRotO));
             entity.addProperty("previous_rotation_x", Oracle.bits(tnt.xRotO));
             entity.addProperty("no_gravity", tnt.noGravity);
+            entities.add(entity);
+        }
+        state.add("entities", entities);
+        return state;
+    }
+
+    private static JsonObject clientWorldEntityFallingBlockTickResult(JsonObject request) {
+        var fallingBlocks = new ArrayList<TickFallingBlockFixture>();
+        for (JsonElement entry : request.getAsJsonArray("entities")) {
+            JsonObject input = entry.getAsJsonObject();
+            fallingBlocks.add(TickFallingBlockFixture.create(
+                input.get("entity_id").getAsInt(),
+                vec3(input.getAsJsonObject("position")),
+                vec3(input.getAsJsonObject("movement")),
+                Oracle.f32(input.getAsJsonObject("rotation"), "y"),
+                Oracle.f32(input.getAsJsonObject("rotation"), "x"),
+                input.get("no_gravity").getAsBoolean()));
+        }
+
+        var states = new JsonArray();
+        states.add(tickFallingBlockState("initial", fallingBlocks));
+        for (JsonElement entry : request.getAsJsonArray("operations")) {
+            JsonObject operation = entry.getAsJsonObject();
+            if (!operation.get("action").getAsString().equals("tick")) {
+                throw new IllegalArgumentException("Unknown falling block tick action");
+            }
+            for (int tick = 0; tick < operation.get("ticks").getAsInt(); tick++) {
+                for (TickFallingBlockFixture fallingBlock : fallingBlocks) {
+                    fallingBlock.tickThroughClientLevel();
+                }
+            }
+            states.add(tickFallingBlockState(operation.get("label").getAsString(), fallingBlocks));
+        }
+        var result = new JsonObject();
+        result.add("states", states);
+        return result;
+    }
+
+    private static JsonObject tickFallingBlockState(
+        String label, List<TickFallingBlockFixture> fallingBlocks
+    ) {
+        var state = new JsonObject();
+        state.addProperty("label", label);
+        state.addProperty("accepted", true);
+        var entities = new JsonArray();
+        for (TickFallingBlockFixture fallingBlock : fallingBlocks) {
+            var entity = new JsonObject();
+            entity.addProperty("entity_id", fallingBlock.entityId());
+            entity.addProperty("tick_count", fallingBlock.tickCount);
+            entity.add("position", snapshotClip(fallingBlock.position()));
+            entity.add("previous_position", snapshotClip(fallingBlock.previousPosition()));
+            entity.add("motion", snapshotClip(fallingBlock.getDeltaMovement()));
+            entity.addProperty("rotation_y", Oracle.bits(fallingBlock.getYRot()));
+            entity.addProperty("rotation_x", Oracle.bits(fallingBlock.getXRot()));
+            entity.addProperty("previous_rotation_y", Oracle.bits(fallingBlock.yRotO));
+            entity.addProperty("previous_rotation_x", Oracle.bits(fallingBlock.xRotO));
+            entity.addProperty("no_gravity", fallingBlock.noGravity);
             entities.add(entity);
         }
         state.add("entities", entities);
@@ -9744,6 +9805,70 @@ public final class MathOracle {
             this.previousFixturePosition = this.fixturePosition;
             this.setOldRot();
             this.tickCount++;
+            this.applyGravity();
+            this.fixturePosition = this.fixturePosition.add(this.getDeltaMovement());
+            this.setDeltaMovement(this.getDeltaMovement().scale(this.getAirDrag()));
+        }
+    }
+
+    private static final class TickFallingBlockFixture extends FallingBlockEntity {
+        private Vec3 fixturePosition;
+        private Vec3 previousFixturePosition;
+        private int fixtureEntityId;
+        private boolean noGravity;
+
+        private TickFallingBlockFixture() {
+            super(null, null);
+        }
+
+        private static TickFallingBlockFixture create(
+            int entityId, Vec3 position, Vec3 movement,
+            float yRot, float xRot, boolean noGravity
+        ) {
+            TickFallingBlockFixture fallingBlock;
+            try {
+                Unsafe unsafe = unsafeInstance();
+                fallingBlock = (TickFallingBlockFixture)unsafe.allocateInstance(
+                    TickFallingBlockFixture.class);
+            } catch (InstantiationException error) {
+                throw new IllegalStateException(
+                    "Unable to construct falling block tick fixture", error);
+            }
+            fallingBlock.fixtureEntityId = entityId;
+            fallingBlock.fixturePosition = position;
+            fallingBlock.previousFixturePosition = position;
+            fallingBlock.noGravity = noGravity;
+            fallingBlock.setYRot(yRot);
+            fallingBlock.setXRot(xRot);
+            fallingBlock.yRotO = yRot;
+            fallingBlock.xRotO = xRot;
+            fallingBlock.setDeltaMovement(movement);
+            return fallingBlock;
+        }
+
+        @Override
+        public boolean isNoGravity() {
+            return this.noGravity;
+        }
+
+        private int entityId() {
+            return this.fixtureEntityId;
+        }
+
+        @Override
+        public Vec3 position() {
+            return this.fixturePosition;
+        }
+
+        private Vec3 previousPosition() {
+            return this.previousFixturePosition;
+        }
+
+        private void tickThroughClientLevel() {
+            this.previousFixturePosition = this.fixturePosition;
+            this.setOldRot();
+            this.tickCount++;
+            this.time++;
             this.applyGravity();
             this.fixturePosition = this.fixturePosition.add(this.getDeltaMovement());
             this.setDeltaMovement(this.getDeltaMovement().scale(this.getAirDrag()));

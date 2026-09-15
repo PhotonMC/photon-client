@@ -6,6 +6,7 @@ use voxel_client::connection::connect_and_world_falling_block_tick_probe;
 
 const FALLING_BLOCK_ENTITY_TYPE_ID: i32 = 51;
 const FALLING_BLOCK_GRAVITY: f64 = 0.04;
+const FALLING_BLOCK_AIR_FRICTION: f64 = 0.98_f32 as f64;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut args = env::args().skip(1);
@@ -49,12 +50,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         tick.before_position.1 + gravity_motion.1,
         tick.before_position.2 + gravity_motion.2,
     );
+    let expected_motion = (
+        gravity_motion.0 * FALLING_BLOCK_AIR_FRICTION,
+        gravity_motion.1 * FALLING_BLOCK_AIR_FRICTION,
+        gravity_motion.2 * FALLING_BLOCK_AIR_FRICTION,
+    );
     if tick.after_position != expected_position
-        || tick.after_motion != gravity_motion
+        || tick.after_motion != expected_motion
         || tick.after_rotation != tick.before_rotation
     {
         return Err(format!(
-            "FallingBlock free-flight tick mismatch: before_position={:?}, after_position={:?}, expected_position={expected_position:?}, before_motion={:?}, after_motion={:?}, expected_motion={gravity_motion:?}, before_rotation={:?}, after_rotation={:?}",
+            "FallingBlock free-flight tick mismatch: before_position={:?}, after_position={:?}, expected_position={expected_position:?}, before_motion={:?}, after_motion={:?}, expected_motion={expected_motion:?}, before_rotation={:?}, after_rotation={:?}",
             tick.before_position,
             tick.after_position,
             tick.before_motion,

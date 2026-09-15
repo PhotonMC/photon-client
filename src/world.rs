@@ -629,6 +629,7 @@ pub(crate) const VANILLA_PRIMED_TNT_ENTITY_TYPE_ID: i32 = 133;
 const VANILLA_PRIMED_TNT_AIR_FRICTION: f32 = 0.98_f32;
 const VANILLA_PRIMED_TNT_GRAVITY: f64 = 0.04;
 pub(crate) const VANILLA_FALLING_BLOCK_ENTITY_TYPE_ID: i32 = 51;
+const VANILLA_FALLING_BLOCK_AIR_FRICTION: f32 = 0.98_f32;
 const VANILLA_FALLING_BLOCK_GRAVITY: f64 = 0.04;
 pub(crate) const VANILLA_FIREWORK_ROCKET_ENTITY_TYPE_ID: i32 = 53;
 const VANILLA_FIREWORK_ROCKET_HORIZONTAL_ACCELERATION: f64 = 1.15;
@@ -7461,9 +7462,11 @@ impl ClientEntity {
         self.x_bits = (current_position.0 + motion.0).to_bits();
         self.y_bits = (current_position.1 + motion.1).to_bits();
         self.z_bits = (current_position.2 + motion.2).to_bits();
-        self.motion_x_bits = motion.0.to_bits();
-        self.motion_y_bits = motion.1.to_bits();
-        self.motion_z_bits = motion.2.to_bits();
+
+        let air_friction = f64::from(VANILLA_FALLING_BLOCK_AIR_FRICTION);
+        self.motion_x_bits = (motion.0 * air_friction).to_bits();
+        self.motion_y_bits = (motion.1 * air_friction).to_bits();
+        self.motion_z_bits = (motion.2 * air_friction).to_bits();
     }
 
     fn tick_firework(&mut self) {
@@ -8301,9 +8304,9 @@ mod tests {
         PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS, PLAYER_RESPAWN_KEEP_ENTITY_DATA, SNOWBALL_GRAVITY,
         SectionInput, VANILLA_ARROW_ENTITY_TYPE_ID, VANILLA_BOAT_PASSENGER_MAX_ROTATION,
         VANILLA_BREEZE_ENTITY_TYPE_ID, VANILLA_COW_ENTITY_TYPE_ID,
-        VANILLA_EXPERIENCE_ORB_ENTITY_TYPE_ID, VANILLA_FALLING_BLOCK_ENTITY_TYPE_ID,
-        VANILLA_FALLING_BLOCK_GRAVITY, VANILLA_FIREWORK_ROCKET_ENTITY_TYPE_ID,
-        VANILLA_FIREWORK_ROCKET_HORIZONTAL_ACCELERATION,
+        VANILLA_EXPERIENCE_ORB_ENTITY_TYPE_ID, VANILLA_FALLING_BLOCK_AIR_FRICTION,
+        VANILLA_FALLING_BLOCK_ENTITY_TYPE_ID, VANILLA_FALLING_BLOCK_GRAVITY,
+        VANILLA_FIREWORK_ROCKET_ENTITY_TYPE_ID, VANILLA_FIREWORK_ROCKET_HORIZONTAL_ACCELERATION,
         VANILLA_FIREWORK_ROCKET_VERTICAL_ACCELERATION, VANILLA_LIVING_ENTITY_TYPE_IDS,
         VANILLA_MINECART_ENTITY_TYPE_IDS, VANILLA_PLAYER_ENTITY_TYPE_ID,
         VANILLA_PRIMED_TNT_AIR_FRICTION, VANILLA_PRIMED_TNT_ENTITY_TYPE_ID,
@@ -13875,7 +13878,7 @@ mod tests {
     }
 
     #[test]
-    fn ticking_falling_blocks_applies_gravity_and_move_without_air_drag() {
+    fn ticking_falling_blocks_applies_gravity_and_air_drag_after_move() {
         let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
         let (blocks, biomes) = section(0, 0);
         world.replace_chunk(
@@ -13913,7 +13916,15 @@ mod tests {
                 2.0 + gravity_motion.2,
             )
         );
-        assert_eq!(entity.motion(), gravity_motion);
+        let air_drag = f64::from(VANILLA_FALLING_BLOCK_AIR_FRICTION);
+        assert_eq!(
+            entity.motion(),
+            (
+                gravity_motion.0 * air_drag,
+                gravity_motion.1 * air_drag,
+                gravity_motion.2 * air_drag,
+            )
+        );
         assert_eq!(entity.rotation(), (10.0, 20.0, 30.0));
         assert_eq!(entity.tick_count(), 1);
     }

@@ -14,9 +14,10 @@ protocol type ID `51` ile tanımlar. `ClientLevel.java:467-472`, uygun root
 entity için eski transform'un saklanmasını, tick sayacının artırılmasını ve
 entity `tick()` gövdesinin çağrılmasını belirler.
 
-`FallingBlockEntity.java:142-155`, varsayılan gravity'nin `0.04` olduğunu ve
+`FallingBlockEntity.java:142-157`, varsayılan gravity'nin `0.04` olduğunu ve
 tick'te önce gravity uygulanıp sonra delta movement ile hareket edildiğini
-belirler. Bu client dalında hareketten sonra air drag uygulanmaz.
+belirler. `FallingBlockEntity.java:247-249`, hareketten sonra inherited
+`0.98F` air drag uygulanmasını sürdürür.
 `Entity.java:1510-1529`, `NoGravity` açıkken gravity değerinin sıfırlanmasını
 tanımlar. `FallingBlockEntity.java:158-245`, yere ulaşma, block-state yerleştirme,
 drop ve server-side lifecycle davranışlarını ayrı bir server dalında yürütür.
@@ -32,9 +33,8 @@ drop ve server-side lifecycle davranışlarını ayrı bir server dalında yür�
   artırılır.
 - `NoGravity=false` ise önce hareketin Y bileşeninden `0.04` çıkarılır; entity
   bu güncellenmiş hareketle konum alır.
-- Konum adımından sonra movement bileşenleri değişmeden kalır; bu client
-  free-flight dalında FallingBlock için air drag uygulanmaz ve rotasyon
-  değişmez.
+- Konum adımından sonra movement bileşenleri Java f32 `0.98F` değerinin f64
+  işlemine genişletilmiş karşılığıyla çarpılır ve rotasyon değişmez.
 - Block-state çözümü ve air-state discard, block/entity collision, fluid/block
   effects, portal, yere oturma, bounce, block placement, drop/removal,
   renderer state'i ve Java client parity'si bu kaydın dışındadır.
@@ -43,8 +43,8 @@ drop ve server-side lifecycle davranışlarını ayrı bir server dalında yür�
 
 `ClientWorld::tick`, FallingBlock için mevcut ve gravity sonrası geçiş
 hücrelerini vanilla air state ile sınırlar. `ClientEntity::tick_falling_block`,
-Java'nın gravity → position sırasını uygular ve gravity sonrası hareketi
-korur. Generic `world_entity_tick_observations` kaydı AddEntity başlangıç
+Java'nın gravity → position → air drag sırasını uygular. Generic
+`world_entity_tick_observations` kaydı AddEntity başlangıç
 state'ini ve tek tick sonucunu taşır.
 
 Unit testi önce implementasyon olmadan beklenen hareket farkını kırmızıya
@@ -96,15 +96,18 @@ world_chunk_count=157
 received_packet_count=13172
 ```
 
-Canlı AddEntity movement'i sıfırdı. Tek tick'te position Y değeri `0.04`
-azaldı; hareket Y değeri `-0.04` olarak kaldı. Bu, FallingBlock client
-free-flight dalındaki gravity → move sırasını ve air drag uygulanmadığını
-gösterir. Entity ID, dünya entity sayısı ve packet sayısı canlı oturum
+Canlı AddEntity movement'i sıfırdı. Bu tarihsel `server-conformance` çıktısı,
+P08.bo.1 Java parity düzeltmesinden önceki Rust probe beklentisini taşıdığı için
+`after_tick_motion=-0.04` değerini gösterir; canlı sunucu wire kabulü Java
+client tick state'ini doğrulamaz. Güncel Java gravity → move → air drag sırası
+ve Rust eşleşmesi [P08.bo.1 parity kaydında](client-world-entity-falling-block-tick-parity-conformance.md)
+tutulur. Entity ID, dünya entity sayısı ve packet sayısı canlı oturum
 state'ine bağlıdır.
 
 ## Açık kapsam
 
 FallingBlock block-state/metadata çözümü, collision ve fluid etkileri,
 server-side yere oturma ve block placement, bounce/drop/removal lifecycle'ı,
-block entity verisi, renderer ve Java client parity'si açık kalır. P08'in
-`client-parity` kapanışı da henüz yoktur.
+block entity verisi ve renderer açık kalır. Dar free-flight hareket dalının
+Java client parity'si [P08.bo.1 parity kaydında](client-world-entity-falling-block-tick-parity-conformance.md)
+tutulur; P08'in geneli `client-parity` ile kapanmış değildir.
