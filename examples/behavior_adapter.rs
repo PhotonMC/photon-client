@@ -6965,6 +6965,80 @@ fn client_world_player_attribute_water_result(request: &Value) -> Result<Value, 
     Ok(json!({"states": states}))
 }
 
+fn client_world_player_sprint_attribute_state(
+    label: &str,
+    accepted: bool,
+    player: &voxel_client::world::ClientPlayerState,
+) -> Value {
+    let attribute = player
+        .attributes()
+        .iter()
+        .find(|attribute| attribute.attribute_id() == 26);
+    let base_value = attribute.map_or(0.1, |attribute| attribute.base_value());
+    let mut modifiers = attribute.map_or_else(Vec::new, |attribute| {
+        attribute.modifiers().iter().collect::<Vec<_>>()
+    });
+    modifiers.sort_by(|left, right| left.id().cmp(right.id()));
+    json!({
+        "label": label,
+        "accepted": accepted,
+        "sprinting": player.is_sprinting(),
+        "base_value": format!("{:016x}", base_value.to_bits()),
+        "modifiers": modifiers
+            .into_iter()
+            .map(|modifier| json!({
+                "id": modifier.id(),
+                "amount": format!("{:016x}", modifier.amount().to_bits()),
+                "operation": modifier.operation(),
+            }))
+            .collect::<Vec<_>>(),
+        "movement_speed": format!("{:08x}", player.movement_speed().to_bits()),
+    })
+}
+
+fn client_world_player_sprint_attribute_result(request: &Value) -> Result<Value, String> {
+    let player_id = i32_field(request, "player_id")?;
+    let mut world = ClientWorld::new(DimensionBounds::new(0, 256));
+    world.set_local_player_id(player_id);
+    let operations = request["operations"]
+        .as_array()
+        .ok_or("operations must be an array")?;
+    let mut states = Vec::with_capacity(operations.len());
+
+    for operation in operations {
+        if string(operation, "action")? != "set_sprinting" {
+            return Err("unknown player sprint action".into());
+        }
+        let attributes = operation["attributes"]
+            .as_array()
+            .ok_or("attributes must be an array")?
+            .iter()
+            .map(client_attribute_state)
+            .collect::<Result<Vec<_>, _>>()?;
+        let operation_player_id = i32_field(operation, "player_id")?;
+        let accepted = world.apply_local_player_attributes(operation_player_id, &attributes);
+        if accepted
+            && !world.apply_local_player_sprinting(
+                operation_player_id,
+                operation["sprinting"]
+                    .as_bool()
+                    .ok_or("sprinting must be a boolean")?,
+            )
+        {
+            return Err("local player is not initialized".into());
+        }
+        let player = world
+            .local_player()
+            .ok_or("local player is not initialized")?;
+        states.push(client_world_player_sprint_attribute_state(
+            string(operation, "label")?,
+            accepted,
+            player,
+        ));
+    }
+    Ok(json!({"states": states}))
+}
+
 fn client_world_entity_shared_flags_state(
     label: &str,
     accepted: bool,
@@ -7266,6 +7340,9 @@ fn math_result(request: &Value) -> Result<Value, String> {
     }
     if operation == "client_world_player_attribute_water" {
         return client_world_player_attribute_water_result(request);
+    }
+    if operation == "client_world_player_sprint_attribute" {
+        return client_world_player_sprint_attribute_result(request);
     }
     if operation == "client_world_entity_shared_flags" {
         return client_world_entity_shared_flags_result(request);

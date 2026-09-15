@@ -584,6 +584,8 @@ pub(crate) const PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS: u8 = 1;
 pub(crate) const PLAYER_RESPAWN_KEEP_ENTITY_DATA: u8 = 2;
 const VANILLA_PLAYER_MOVEMENT_SPEED_ATTRIBUTE_ID: i32 = 26;
 const VANILLA_PLAYER_DEFAULT_MOVEMENT_SPEED: f32 = 0.1_f32;
+const VANILLA_PLAYER_SPRINTING_MODIFIER_ID: &str = "minecraft:sprinting";
+const VANILLA_PLAYER_SPRINTING_MODIFIER_AMOUNT: f32 = 0.3_f32;
 const VANILLA_PLAYER_ENTITY_TYPE_ID: i32 = 156;
 const VANILLA_BREEZE_ENTITY_TYPE_ID: i32 = 17;
 const VANILLA_SPIDER_ENTITY_TYPE_ID: i32 = 124;
@@ -3405,6 +3407,19 @@ impl ClientWorld {
                 player.attributes.push(attribute.clone());
             }
         }
+        true
+    }
+
+    /// Apply Java LivingEntity.setSprinting to the local player state.
+    pub fn apply_local_player_sprinting(&mut self, player_id: i32, sprinting: bool) -> bool {
+        let Some(player) = self
+            .local_player
+            .as_mut()
+            .filter(|player| player.id == player_id)
+        else {
+            return false;
+        };
+        player.apply_sprinting(sprinting);
         true
     }
 
@@ -6293,6 +6308,44 @@ impl ClientPlayerState {
     ) {
         parameters.speed = self.movement_speed();
         self.apply_travel_in_water(parameters);
+    }
+
+    fn apply_sprinting(&mut self, sprinting: bool) {
+        if sprinting {
+            self.shared_flags |= 1_u8 << SHARED_FLAG_SPRINTING;
+        } else {
+            self.shared_flags &= !(1_u8 << SHARED_FLAG_SPRINTING);
+        }
+
+        let Some(attribute) = self
+            .attributes
+            .iter_mut()
+            .find(|attribute| attribute.attribute_id == VANILLA_PLAYER_MOVEMENT_SPEED_ATTRIBUTE_ID)
+        else {
+            if sprinting {
+                self.attributes.push(ClientAttributeState::new(
+                    VANILLA_PLAYER_MOVEMENT_SPEED_ATTRIBUTE_ID,
+                    f64::from(VANILLA_PLAYER_DEFAULT_MOVEMENT_SPEED),
+                    vec![ClientAttributeModifierState::new(
+                        VANILLA_PLAYER_SPRINTING_MODIFIER_ID.to_owned(),
+                        f64::from(VANILLA_PLAYER_SPRINTING_MODIFIER_AMOUNT),
+                        2,
+                    )],
+                ));
+            }
+            return;
+        };
+
+        attribute
+            .modifiers
+            .retain(|modifier| modifier.id() != VANILLA_PLAYER_SPRINTING_MODIFIER_ID);
+        if sprinting {
+            attribute.modifiers.push(ClientAttributeModifierState::new(
+                VANILLA_PLAYER_SPRINTING_MODIFIER_ID.to_owned(),
+                f64::from(VANILLA_PLAYER_SPRINTING_MODIFIER_AMOUNT),
+                2,
+            ));
+        }
     }
 
     fn apply_travel_in_lava(&mut self, parameters: LocalPlayerTravelInLavaParameters) {
@@ -9331,6 +9384,101 @@ mod tests {
                 f64::from_bits(0xbfd2_771c_a860_5686),
                 f64::from_bits(0x3fd9_8280_957d_57d7),
             ),
+        );
+    }
+
+    #[test]
+    fn local_player_sprinting_updates_shared_flag_and_movement_speed_modifier() {
+        let mut world = ClientWorld::default();
+        world.set_local_player_id(42);
+
+        assert!(!world.apply_local_player_sprinting(99, true));
+        assert!(world.apply_local_player_sprinting(42, true));
+        {
+            let player = world.local_player().expect("default sprint player");
+            assert!(player.is_sprinting());
+            assert_eq!(player.movement_speed().to_bits(), 0x3e05_1eb9);
+            let attribute = player
+                .attributes()
+                .iter()
+                .find(|attribute| {
+                    attribute.attribute_id() == super::VANILLA_PLAYER_MOVEMENT_SPEED_ATTRIBUTE_ID
+                })
+                .expect("default movement speed attribute");
+            assert_eq!(
+                attribute.base_value(),
+                f64::from(super::VANILLA_PLAYER_DEFAULT_MOVEMENT_SPEED)
+            );
+            assert_eq!(attribute.modifiers().len(), 1);
+            assert_eq!(
+                attribute.modifiers()[0].id(),
+                super::VANILLA_PLAYER_SPRINTING_MODIFIER_ID
+            );
+            assert_eq!(attribute.modifiers()[0].operation(), 2);
+        }
+
+        assert!(world.apply_local_player_sprinting(42, true));
+        assert_eq!(
+            world
+                .local_player()
+                .expect("repeated sprint player")
+                .attributes()[0]
+                .modifiers()
+                .len(),
+            1
+        );
+
+        let custom_attribute = ClientAttributeState::from_wire(
+            super::VANILLA_PLAYER_MOVEMENT_SPEED_ATTRIBUTE_ID,
+            0.25,
+            vec![ClientAttributeModifierState::from_wire(
+                "test:custom_speed".to_owned(),
+                0.2,
+                2,
+            )],
+        );
+        assert!(world.apply_local_player_attributes(42, &[custom_attribute]));
+        assert!(world.apply_local_player_sprinting(42, true));
+        {
+            let player = world.local_player().expect("custom sprint player");
+            assert!(player.is_sprinting());
+            assert_eq!(player.movement_speed().to_bits(), 0x3ec7_ae15);
+            let attribute = &player.attributes()[0];
+            assert_eq!(attribute.modifiers().len(), 2);
+            assert!(
+                attribute
+                    .modifiers()
+                    .iter()
+                    .any(|modifier| modifier.id() == "test:custom_speed")
+            );
+            assert_eq!(
+                attribute
+                    .modifiers()
+                    .iter()
+                    .filter(|modifier| {
+                        modifier.id() == super::VANILLA_PLAYER_SPRINTING_MODIFIER_ID
+                    })
+                    .count(),
+                1
+            );
+        }
+
+        assert!(world.apply_local_player_sprinting(42, false));
+        let player = world.local_player().expect("stopped sprint player");
+        assert!(!player.is_sprinting());
+        assert_eq!(player.movement_speed(), 0.3_f32);
+        assert!(
+            player.attributes()[0]
+                .modifiers()
+                .iter()
+                .all(|modifier| modifier.id() != super::VANILLA_PLAYER_SPRINTING_MODIFIER_ID)
+        );
+        assert!(!world.apply_local_player_sprinting(99, true));
+        assert!(
+            !world
+                .local_player()
+                .expect("ignored sprint player")
+                .is_sprinting()
         );
     }
 

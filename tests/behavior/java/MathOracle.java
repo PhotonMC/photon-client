@@ -5101,6 +5101,9 @@ public final class MathOracle {
         if (operation.equals("client_world_player_attribute_water")) {
             return clientWorldPlayerAttributeWaterResult(request);
         }
+        if (operation.equals("client_world_player_sprint_attribute")) {
+            return clientWorldPlayerSprintAttributeResult(request);
+        }
         if (operation.equals("client_world_entity_shared_flags")) {
             return clientWorldEntitySharedFlagsResult(request);
         }
@@ -5321,6 +5324,71 @@ public final class MathOracle {
             throw new IllegalStateException(
                 "Player attribute water travel fixture failed", error);
         }
+    }
+
+    private static JsonObject clientWorldPlayerSprintAttributeResult(JsonObject request) {
+        try {
+            var output = System.out;
+            var errorOutput = System.err;
+            try {
+                SharedConstants.setVersion(TEST_VERSION);
+                Bootstrap.bootStrap();
+            } finally {
+                System.setOut(output);
+                System.setErr(errorOutput);
+            }
+
+            int playerId = request.get("player_id").getAsInt();
+            AttributeMap attributes = new AttributeMap(Player.createAttributes().build());
+            SprintAttributeFixture player = SprintAttributeFixture.create(attributes);
+            var states = new JsonArray();
+            for (JsonElement operationEntry : request.getAsJsonArray("operations")) {
+                JsonObject operation = operationEntry.getAsJsonObject();
+                boolean accepted = operation.get("player_id").getAsInt() == playerId;
+                if (accepted) {
+                    for (JsonElement snapshotEntry : operation.getAsJsonArray("attributes")) {
+                        applyPlayerAttributeSnapshot(
+                            attributes, snapshotEntry.getAsJsonObject());
+                    }
+                    player.setSprinting(operation.get("sprinting").getAsBoolean());
+                }
+                states.add(playerSprintAttributeState(
+                    operation.get("label").getAsString(), accepted, player));
+            }
+            var result = new JsonObject();
+            result.add("states", states);
+            return result;
+        } catch (RuntimeException error) {
+            throw new IllegalStateException(
+                "LivingEntity.setSprinting attribute binding fixture failed", error);
+        }
+    }
+
+    private static JsonObject playerSprintAttributeState(
+        String label, boolean accepted, SprintAttributeFixture player
+    ) {
+        AttributeInstance speed = player.getAttribute(Attributes.MOVEMENT_SPEED);
+        if (speed == null) {
+            throw new IllegalStateException("Player movement speed attribute is missing");
+        }
+        var state = new JsonObject();
+        state.addProperty("label", label);
+        state.addProperty("accepted", accepted);
+        state.addProperty("sprinting", player.isSprinting());
+        state.addProperty("base_value", Oracle.bits(speed.getBaseValue()));
+        var modifiers = new ArrayList<>(speed.getModifiers());
+        modifiers.sort((left, right) -> left.id().toString().compareTo(right.id().toString()));
+        var modifierStates = new JsonArray();
+        for (AttributeModifier modifier : modifiers) {
+            var modifierState = new JsonObject();
+            modifierState.addProperty("id", modifier.id().toString());
+            modifierState.addProperty("amount", Oracle.bits(modifier.amount()));
+            modifierState.addProperty("operation", modifier.operation().id());
+            modifierStates.add(modifierState);
+        }
+        state.add("modifiers", modifierStates);
+        state.addProperty("movement_speed", Oracle.bits(player.getSpeed()));
+        return state;
     }
 
     private static JsonObject clientWorldEntitySharedFlagsResult(JsonObject request) {
@@ -7977,6 +8045,32 @@ public final class MathOracle {
             } catch (ReflectiveOperationException error) {
                 throw new IllegalStateException(
                     "Unable to construct player attribute speed fixture", error);
+            }
+        }
+    }
+
+    private static final class SprintAttributeFixture extends LocalPlayer {
+        private SprintAttributeFixture() {
+            super(null, null, null, null, null, Input.EMPTY, false, null);
+        }
+
+        private static SprintAttributeFixture create(AttributeMap attributes) {
+            try {
+                Unsafe unsafe = unsafeInstance();
+                SprintAttributeFixture player =
+                    (SprintAttributeFixture)unsafe.allocateInstance(SprintAttributeFixture.class);
+                var attributesField = LivingEntity.class.getDeclaredField("attributes");
+                unsafe.putObject(player, unsafe.objectFieldOffset(attributesField), attributes);
+                SharedFlagsFixtureEntity entityDataFixture = new SharedFlagsFixtureEntity();
+                var entityDataField = Entity.class.getDeclaredField("entityData");
+                unsafe.putObject(
+                    player,
+                    unsafe.objectFieldOffset(entityDataField),
+                    entityDataFixture.getEntityData());
+                return player;
+            } catch (ReflectiveOperationException error) {
+                throw new IllegalStateException(
+                    "Unable to construct player sprint attribute fixture", error);
             }
         }
     }

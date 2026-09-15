@@ -1471,6 +1471,65 @@ def math_cases():
         ],
     }
 
+    player_sprint_attribute_operations = [
+        {
+            "label": "default-start-sprinting",
+            "player_id": 42,
+            "action": "set_sprinting",
+            "sprinting": True,
+            "attributes": [],
+        },
+        {
+            "label": "repeated-start-sprinting",
+            "player_id": 42,
+            "action": "set_sprinting",
+            "sprinting": True,
+            "attributes": [],
+        },
+        {
+            "label": "custom-speed-start-sprinting",
+            "player_id": 42,
+            "action": "set_sprinting",
+            "sprinting": True,
+            "attributes": [
+                {
+                    "attribute_id": 26,
+                    "base": float_bits(0.25, "f64"),
+                    "modifiers": [
+                        attribute_modifier("p10:sprint_custom", 0.2, 2),
+                    ],
+                },
+            ],
+        },
+        {
+            "label": "stop-sprinting-removes-modifier",
+            "player_id": 42,
+            "action": "set_sprinting",
+            "sprinting": False,
+            "attributes": [],
+        },
+        {
+            "label": "wrong-player-preserves-stopped-state",
+            "player_id": 99,
+            "action": "set_sprinting",
+            "sprinting": True,
+            "attributes": [
+                {
+                    "attribute_id": 26,
+                    "base": float_bits(2.0, "f64"),
+                    "modifiers": [],
+                },
+            ],
+        },
+    ]
+    yield {
+        "case_id": "client-world/player-sprint-transition-attribute-binding",
+        "family": "math",
+        "operation": "client_world_player_sprint_attribute",
+        "player_id": 42,
+        "operations": player_sprint_attribute_operations,
+    }
+
     def character_event_case(label, codepoint):
         return {
             "case_id": f"character-event/{label}", "family": "math",
