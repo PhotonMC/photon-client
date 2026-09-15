@@ -37,12 +37,12 @@ use voxel_client::input::{
     LocalPlayerSprintGateInput, LocalPlayerTravelDispatchInput,
     LocalPlayerTravelDispatchParameters, LocalPlayerTravelFlyingInput, LocalPlayerTravelInAirInput,
     LocalPlayerTravelInLavaInput, LocalPlayerTravelInWaterInput,
-    LocalPlayerUpdateFallFlyingMovementInput, adjust_local_player_fluid_falling_movement,
-    apply_local_player_input, can_start_local_player_sprinting,
-    clamp_local_player_climbable_movement, local_player_friction_influenced_speed,
-    local_player_handle_relative_friction, local_player_modified_friction,
-    local_player_travel_dispatch, local_player_travel_flying, local_player_travel_in_air,
-    local_player_travel_in_lava, local_player_travel_in_water,
+    LocalPlayerTravelInWaterParameters, LocalPlayerUpdateFallFlyingMovementInput,
+    adjust_local_player_fluid_falling_movement, apply_local_player_input,
+    can_start_local_player_sprinting, clamp_local_player_climbable_movement,
+    local_player_friction_influenced_speed, local_player_handle_relative_friction,
+    local_player_modified_friction, local_player_travel_dispatch, local_player_travel_flying,
+    local_player_travel_in_air, local_player_travel_in_lava, local_player_travel_in_water,
     local_player_update_fall_flying_movement, modify_local_player_input,
 };
 use voxel_client::input_event::{
@@ -6892,6 +6892,79 @@ fn client_world_player_movement_speed_result(request: &Value) -> Result<Value, S
     Ok(json!({"states": states}))
 }
 
+fn client_world_player_attribute_water_result(request: &Value) -> Result<Value, String> {
+    let player_id = i32_field(request, "player_id")?;
+    let mut world = ClientWorld::new(DimensionBounds::new(0, 256));
+    world.set_local_player_id(player_id);
+    let operations = request["operations"]
+        .as_array()
+        .ok_or("operations must be an array")?;
+    let mut states = Vec::with_capacity(operations.len());
+
+    for operation in operations {
+        let attributes = operation["attributes"]
+            .as_array()
+            .ok_or("attributes must be an array")?
+            .iter()
+            .map(client_attribute_state)
+            .collect::<Result<Vec<_>, _>>()?;
+        let accepted =
+            world.apply_local_player_attributes(i32_field(operation, "player_id")?, &attributes);
+        let delta = f64_vec3(operation.get("delta").ok_or("delta must be a vector")?)?;
+        let y_rot = f32_field(operation, "y_rot")?;
+        if !world.apply_local_player_position(
+            (0.0, f64_field(operation, "current_y")?, 0.0),
+            (delta.x, delta.y, delta.z),
+            (y_rot, 0.0),
+        ) {
+            return Err("local player is not initialized".into());
+        }
+        let parameters = LocalPlayerTravelInWaterParameters {
+            input: f64_vec3(operation.get("input").ok_or("input must be a vector")?)?,
+            y_rot,
+            sprinting: operation["sprinting"]
+                .as_bool()
+                .ok_or("sprinting must be a boolean")?,
+            water_slow_down: f32_field(operation, "water_slow_down")?,
+            water_efficiency: f32_field(operation, "water_efficiency")?,
+            on_ground: operation["on_ground"]
+                .as_bool()
+                .ok_or("on_ground must be a boolean")?,
+            speed: 0.0,
+            dolphins_grace: operation["dolphins_grace"]
+                .as_bool()
+                .ok_or("dolphins_grace must be a boolean")?,
+            horizontal_collision: operation["horizontal_collision"]
+                .as_bool()
+                .ok_or("horizontal_collision must be a boolean")?,
+            on_climbable: operation["on_climbable"]
+                .as_bool()
+                .ok_or("on_climbable must be a boolean")?,
+            free_after_jump: operation["free_after_jump"]
+                .as_bool()
+                .ok_or("free_after_jump must be a boolean")?,
+            base_gravity: f64_field(operation, "base_gravity")?,
+            is_falling: operation["is_falling"]
+                .as_bool()
+                .ok_or("is_falling must be a boolean")?,
+        };
+        if !world.apply_local_player_travel_in_water_from_attributes(parameters) {
+            return Err("local player is not initialized".into());
+        }
+        let player = world
+            .local_player()
+            .ok_or("local player is not initialized")?;
+        let motion = player.motion();
+        states.push(json!({
+            "label": string(operation, "label")?,
+            "accepted": accepted,
+            "movement_speed": format!("{:08x}", player.movement_speed().to_bits()),
+            "movement": vec3_snapshot(Vec3::new(motion.0, motion.1, motion.2)),
+        }));
+    }
+    Ok(json!({"states": states}))
+}
+
 fn client_world_entity_shared_flags_state(
     label: &str,
     accepted: bool,
@@ -7190,6 +7263,9 @@ fn math_result(request: &Value) -> Result<Value, String> {
     }
     if operation == "client_world_player_movement_speed" {
         return client_world_player_movement_speed_result(request);
+    }
+    if operation == "client_world_player_attribute_water" {
+        return client_world_player_attribute_water_result(request);
     }
     if operation == "client_world_entity_shared_flags" {
         return client_world_entity_shared_flags_result(request);

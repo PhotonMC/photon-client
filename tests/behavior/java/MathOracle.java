@@ -5098,6 +5098,9 @@ public final class MathOracle {
         if (operation.equals("client_world_player_movement_speed")) {
             return clientWorldPlayerMovementSpeedResult(request);
         }
+        if (operation.equals("client_world_player_attribute_water")) {
+            return clientWorldPlayerAttributeWaterResult(request);
+        }
         if (operation.equals("client_world_entity_shared_flags")) {
             return clientWorldEntitySharedFlagsResult(request);
         }
@@ -5256,6 +5259,67 @@ public final class MathOracle {
         } catch (ReflectiveOperationException error) {
             throw new IllegalStateException(
                 "Player.getSpeed attribute binding fixture failed", error);
+        }
+    }
+
+    private static JsonObject clientWorldPlayerAttributeWaterResult(JsonObject request) {
+        try {
+            var output = System.out;
+            var errorOutput = System.err;
+            try {
+                SharedConstants.setVersion(TEST_VERSION);
+                Bootstrap.bootStrap();
+            } finally {
+                System.setOut(output);
+                System.setErr(errorOutput);
+            }
+
+            int playerId = request.get("player_id").getAsInt();
+            AttributeMap attributes = new AttributeMap(Player.createAttributes().build());
+            AttributeSpeedFixture player = AttributeSpeedFixture.create(attributes);
+            var states = new JsonArray();
+            for (JsonElement operationEntry : request.getAsJsonArray("operations")) {
+                JsonObject operation = operationEntry.getAsJsonObject();
+                boolean accepted = operation.get("player_id").getAsInt() == playerId;
+                if (accepted) {
+                    for (JsonElement snapshotEntry : operation.getAsJsonArray("attributes")) {
+                        applyPlayerAttributeSnapshot(
+                            attributes, snapshotEntry.getAsJsonObject());
+                    }
+                }
+                player.configureTravelInWater(
+                    operation.get("sprinting").getAsBoolean(),
+                    Oracle.f32(operation, "water_slow_down"),
+                    Oracle.f32(operation, "water_efficiency"),
+                    operation.get("on_ground").getAsBoolean(),
+                    operation.get("dolphins_grace").getAsBoolean(),
+                    operation.get("horizontal_collision").getAsBoolean(),
+                    operation.get("on_climbable").getAsBoolean(),
+                    operation.get("free_after_jump").getAsBoolean(),
+                    Oracle.f32(operation, "y_rot"),
+                    vec3(operation.getAsJsonObject("delta")));
+                var travelMethod = LivingEntity.class.getDeclaredMethod(
+                    "travelInWater", Vec3.class, double.class, boolean.class, double.class);
+                travelMethod.setAccessible(true);
+                travelMethod.invoke(
+                    player,
+                    vec3(operation.getAsJsonObject("input")),
+                    f64(operation, "base_gravity"),
+                    operation.get("is_falling").getAsBoolean(),
+                    f64(operation, "old_y"));
+                var state = new JsonObject();
+                state.addProperty("label", operation.get("label").getAsString());
+                state.addProperty("accepted", accepted);
+                state.addProperty("movement_speed", Oracle.bits(player.getSpeed()));
+                state.add("movement", snapshot(player.getDeltaMovement()));
+                states.add(state);
+            }
+            var result = new JsonObject();
+            result.add("states", states);
+            return result;
+        } catch (ReflectiveOperationException error) {
+            throw new IllegalStateException(
+                "Player attribute water travel fixture failed", error);
         }
     }
 
@@ -7806,6 +7870,14 @@ public final class MathOracle {
 
     private static final class AttributeSpeedFixture extends LocalPlayer {
         private boolean onGroundState;
+        private boolean sprinting;
+        private float waterSlowDown;
+        private float waterEfficiency;
+        private boolean dolphinsGrace;
+        private boolean onClimbableState;
+        private boolean freeAfterFluidJump;
+        private float yRotation;
+        private Vec3 travelDeltaMovement;
 
         private AttributeSpeedFixture() {
             super(null, null, null, null, null, Input.EMPTY, false, null);
@@ -7814,6 +7886,84 @@ public final class MathOracle {
         @Override
         public boolean onGround() {
             return this.onGroundState;
+        }
+
+        @Override
+        public boolean isSprinting() {
+            return this.sprinting;
+        }
+
+        @Override
+        protected float getWaterSlowDown() {
+            return this.waterSlowDown;
+        }
+
+        @Override
+        public double getAttributeValue(final Holder<Attribute> attribute) {
+            if (attribute == Attributes.WATER_MOVEMENT_EFFICIENCY) {
+                return this.waterEfficiency;
+            }
+            return super.getAttributeValue(attribute);
+        }
+
+        @Override
+        public boolean hasEffect(final Holder<MobEffect> effect) {
+            return this.dolphinsGrace && effect == MobEffects.DOLPHINS_GRACE;
+        }
+
+        @Override
+        public boolean onClimbable() {
+            return this.onClimbableState;
+        }
+
+        @Override
+        public float getYRot() {
+            return this.yRotation;
+        }
+
+        @Override
+        public Vec3 getDeltaMovement() {
+            return this.travelDeltaMovement;
+        }
+
+        @Override
+        public void setDeltaMovement(final Vec3 deltaMovement) {
+            if (deltaMovement.isFinite()) {
+                this.travelDeltaMovement = deltaMovement;
+            }
+        }
+
+        @Override
+        public void move(final MoverType moverType, final Vec3 delta) {
+        }
+
+        @Override
+        public boolean isFree(final double xa, final double ya, final double za) {
+            return this.freeAfterFluidJump;
+        }
+
+        private void configureTravelInWater(
+            final boolean sprinting,
+            final float waterSlowDown,
+            final float waterEfficiency,
+            final boolean onGround,
+            final boolean dolphinsGrace,
+            final boolean horizontalCollision,
+            final boolean onClimbable,
+            final boolean freeAfterJump,
+            final float yRot,
+            final Vec3 deltaMovement
+        ) {
+            this.sprinting = sprinting;
+            this.waterSlowDown = waterSlowDown;
+            this.waterEfficiency = waterEfficiency;
+            this.onGroundState = onGround;
+            this.dolphinsGrace = dolphinsGrace;
+            this.horizontalCollision = horizontalCollision;
+            this.onClimbableState = onClimbable;
+            this.freeAfterFluidJump = freeAfterJump;
+            this.yRotation = yRot;
+            this.travelDeltaMovement = deltaMovement;
         }
 
         private static AttributeSpeedFixture create(AttributeMap attributes) {

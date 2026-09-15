@@ -1397,6 +1397,80 @@ def math_cases():
         ],
     }
 
+    player_attribute_water_defaults = {
+        "input": vector_bits(0.3, -0.4, 0.8),
+        "delta": vector_bits(0.1, -0.2, 0.3),
+        "y_rot": float_bits(37.5, "f32"),
+        "sprinting": False,
+        "water_slow_down": float_bits(0.8, "f32"),
+        "water_efficiency": float_bits(0.6, "f32"),
+        "on_ground": True,
+        "dolphins_grace": False,
+        "horizontal_collision": False,
+        "on_climbable": False,
+        "free_after_jump": False,
+        "base_gravity": float_bits(0.08, "f64"),
+        "is_falling": False,
+        "old_y": float_bits(10.0, "f64"),
+        "current_y": float_bits(10.0, "f64"),
+    }
+    player_attribute_water_operations = [
+        {
+            "label": "default-speed-enters-water-efficiency",
+            "player_id": 42,
+            "attributes": [],
+        },
+        {
+            "label": "modified-speed-enters-water-efficiency",
+            "player_id": 42,
+            "attributes": [
+                {
+                    "attribute_id": 26,
+                    "base": float_bits(0.25, "f64"),
+                    "modifiers": [
+                        attribute_modifier("p10:water_add", 0.1, 0),
+                        attribute_modifier("p10:water_base", 0.2, 1),
+                        attribute_modifier("p10:water_total", 0.5, 2),
+                    ],
+                },
+            ],
+        },
+        {
+            "label": "replacement-speed-enters-water-efficiency",
+            "player_id": 42,
+            "attributes": [
+                {
+                    "attribute_id": 26,
+                    "base": float_bits(0.5, "f64"),
+                    "modifiers": [
+                        attribute_modifier("p10:water_replacement", -0.1, 0),
+                    ],
+                },
+            ],
+        },
+        {
+            "label": "wrong-player-preserves-water-speed",
+            "player_id": 99,
+            "attributes": [
+                {
+                    "attribute_id": 26,
+                    "base": float_bits(2.0, "f64"),
+                    "modifiers": [],
+                },
+            ],
+        },
+    ]
+    yield {
+        "case_id": "client-world/player-attribute-water-travel-binding",
+        "family": "math",
+        "operation": "client_world_player_attribute_water",
+        "player_id": 42,
+        "operations": [
+            {**player_attribute_water_defaults, **operation}
+            for operation in player_attribute_water_operations
+        ],
+    }
+
     def character_event_case(label, codepoint):
         return {
             "case_id": f"character-event/{label}", "family": "math",

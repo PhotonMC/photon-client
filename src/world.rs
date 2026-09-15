@@ -2990,7 +2990,7 @@ impl ClientWorld {
         }
     }
 
-    pub(crate) fn apply_local_player_position(
+    pub fn apply_local_player_position(
         &mut self,
         position: (f64, f64, f64),
         motion: (f64, f64, f64),
@@ -3156,6 +3156,19 @@ impl ClientWorld {
             return false;
         };
         player.apply_travel_in_water(parameters);
+        true
+    }
+
+    /// Apply Java's travelInWater path using Player.getSpeed's movement-speed
+    /// attribute lookup.
+    pub fn apply_local_player_travel_in_water_from_attributes(
+        &mut self,
+        parameters: LocalPlayerTravelInWaterParameters,
+    ) -> bool {
+        let Some(player) = self.local_player.as_mut() else {
+            return false;
+        };
+        player.apply_travel_in_water_from_attributes(parameters);
         true
     }
 
@@ -6274,6 +6287,14 @@ impl ClientPlayerState {
         self.motion_z_bits = movement.z.to_bits();
     }
 
+    fn apply_travel_in_water_from_attributes(
+        &mut self,
+        mut parameters: LocalPlayerTravelInWaterParameters,
+    ) {
+        parameters.speed = self.movement_speed();
+        self.apply_travel_in_water(parameters);
+    }
+
     fn apply_travel_in_lava(&mut self, parameters: LocalPlayerTravelInLavaParameters) {
         let movement = local_player_travel_in_lava(LocalPlayerTravelInLavaInput {
             input: parameters.input,
@@ -9258,6 +9279,57 @@ mod tests {
                 f64::from_bits(0x3fb3_75d6_0dd9_5c2f),
                 f64::from_bits(0x3fd3_3333_4000_0000),
                 f64::from_bits(0x3fd0_326a_dc84_2483),
+            ),
+        );
+    }
+
+    #[test]
+    fn local_player_travel_in_water_reads_movement_speed_attribute() {
+        let mut world = ClientWorld::default();
+        world.set_local_player_id(42);
+        let attribute = ClientAttributeState::from_wire(
+            super::VANILLA_PLAYER_MOVEMENT_SPEED_ATTRIBUTE_ID,
+            0.25,
+            vec![
+                ClientAttributeModifierState::from_wire("test:add".to_owned(), 0.1, 0),
+                ClientAttributeModifierState::from_wire("test:base".to_owned(), 0.2, 1),
+                ClientAttributeModifierState::from_wire("test:total".to_owned(), 0.5, 2),
+            ],
+        );
+        assert!(world.apply_local_player_attributes(42, &[attribute]));
+        assert_eq!(
+            world
+                .local_player()
+                .expect("water attribute player")
+                .movement_speed(),
+            0.63_f32,
+        );
+        assert!(
+            world.apply_local_player_position((0.0, 10.0, 0.0), (0.1, -0.2, 0.3), (37.5, 0.0),)
+        );
+        assert!(world.apply_local_player_travel_in_water_from_attributes(
+            super::LocalPlayerTravelInWaterParameters {
+                input: Vec3::new(0.3, -0.4, 0.8),
+                y_rot: 37.5,
+                sprinting: false,
+                water_slow_down: 0.8,
+                water_efficiency: 0.6,
+                on_ground: true,
+                speed: 0.0,
+                dolphins_grace: false,
+                horizontal_collision: false,
+                on_climbable: false,
+                free_after_jump: false,
+                base_gravity: 0.08,
+                is_falling: false,
+            },
+        ));
+        assert_eq!(
+            world.local_player().expect("water motion player").motion(),
+            (
+                f64::from_bits(0x3f64_b75e_6f6b_cd91),
+                f64::from_bits(0xbfd2_771c_a860_5686),
+                f64::from_bits(0x3fd9_8280_957d_57d7),
             ),
         );
     }

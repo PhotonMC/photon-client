@@ -88,6 +88,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P05.a — OptionInstance ClampingLazyMaxIntRange sözleşmesi — client-parity birleşik kayıt](clamping-lazy-max-int-range-conformance.md)
 - [P10.b — LocalPlayer applyInput — client-parity birleşik kayıt](client-player-apply-input-conformance.md)
 - [P10.f — LocalPlayer movement speed attribute binding — client-parity](client-player-attribute-speed-conformance.md)
+- [P10.f.1 — LocalPlayer movement speed attribute in water travel — client-parity](client-player-attribute-water-conformance.md)
 - [P10.d.1 — LivingEntity climbable movement clamp — client-parity birleşik kayıt](client-player-climbable-movement-conformance.md)
 - [P10.e.5 — LivingEntity updateFallFlyingMovement — client-parity birleşik kayıt](client-player-fall-flying-movement-conformance.md)
 - [P10.d — LivingEntity fluid falling adjustment — client-parity birleşik kayıt](client-player-fluid-falling-conformance.md)
