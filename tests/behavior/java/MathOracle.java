@@ -79,6 +79,7 @@ import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.monster.Shulker;
+import net.minecraft.world.entity.projectile.arrow.Arrow;
 import net.minecraft.world.entity.projectile.throwableitemprojectile.Snowball;
 import net.minecraft.world.entity.vehicle.boat.Boat;
 import net.minecraft.world.entity.vehicle.minecart.Minecart;
@@ -5121,6 +5122,9 @@ public final class MathOracle {
         if (operation.equals("client_world_entity_snowball_tick")) {
             return clientWorldEntitySnowballTickResult(request);
         }
+        if (operation.equals("client_world_entity_arrow_tick")) {
+            return clientWorldEntityArrowTickResult(request);
+        }
         if (operation.equals("client_world_player_sprint_trigger")) {
             return clientWorldPlayerSprintTriggerResult(request);
         }
@@ -5731,6 +5735,63 @@ public final class MathOracle {
             entity.addProperty("previous_rotation_y", Oracle.bits(snowball.yRotO));
             entity.addProperty("previous_rotation_x", Oracle.bits(snowball.xRotO));
             entity.addProperty("no_gravity", snowball.noGravity);
+            entities.add(entity);
+        }
+        state.add("entities", entities);
+        return state;
+    }
+
+    private static JsonObject clientWorldEntityArrowTickResult(JsonObject request) {
+        var arrows = new ArrayList<TickArrowFixture>();
+        for (JsonElement entry : request.getAsJsonArray("entities")) {
+            JsonObject input = entry.getAsJsonObject();
+            arrows.add(TickArrowFixture.create(
+                input.get("entity_id").getAsInt(),
+                vec3(input.getAsJsonObject("position")),
+                vec3(input.getAsJsonObject("movement")),
+                Oracle.f32(input.getAsJsonObject("rotation"), "y"),
+                Oracle.f32(input.getAsJsonObject("rotation"), "x"),
+                input.get("no_gravity").getAsBoolean()));
+        }
+
+        var states = new JsonArray();
+        states.add(tickArrowState("initial", arrows));
+        for (JsonElement entry : request.getAsJsonArray("operations")) {
+            JsonObject operation = entry.getAsJsonObject();
+            if (!operation.get("action").getAsString().equals("tick")) {
+                throw new IllegalArgumentException("Unknown arrow tick action");
+            }
+            for (int tick = 0; tick < operation.get("ticks").getAsInt(); tick++) {
+                for (TickArrowFixture arrow : arrows) {
+                    arrow.tickThroughClientLevel();
+                }
+            }
+            states.add(tickArrowState(operation.get("label").getAsString(), arrows));
+        }
+        var result = new JsonObject();
+        result.add("states", states);
+        return result;
+    }
+
+    private static JsonObject tickArrowState(
+        String label, List<TickArrowFixture> arrows
+    ) {
+        var state = new JsonObject();
+        state.addProperty("label", label);
+        state.addProperty("accepted", true);
+        var entities = new JsonArray();
+        for (TickArrowFixture arrow : arrows) {
+            var entity = new JsonObject();
+            entity.addProperty("entity_id", arrow.entityId());
+            entity.addProperty("tick_count", arrow.tickCount);
+            entity.add("position", snapshotClip(arrow.position()));
+            entity.add("previous_position", snapshotClip(arrow.previousPosition()));
+            entity.add("motion", snapshotClip(arrow.getDeltaMovement()));
+            entity.addProperty("rotation_y", Oracle.bits(arrow.getYRot()));
+            entity.addProperty("rotation_x", Oracle.bits(arrow.getXRot()));
+            entity.addProperty("previous_rotation_y", Oracle.bits(arrow.yRotO));
+            entity.addProperty("previous_rotation_x", Oracle.bits(arrow.xRotO));
+            entity.addProperty("no_gravity", arrow.noGravity);
             entities.add(entity);
         }
         state.add("entities", entities);
@@ -9364,6 +9425,74 @@ public final class MathOracle {
             this.setDeltaMovement(movement.scale(this.getAirDrag()));
             this.fixturePosition = this.fixturePosition.add(this.getDeltaMovement());
             this.updateRotation();
+            this.firstTick = false;
+        }
+    }
+
+    private static final class TickArrowFixture extends Arrow {
+        private Vec3 fixturePosition;
+        private Vec3 previousFixturePosition;
+        private int fixtureEntityId;
+        private boolean noGravity;
+
+        private TickArrowFixture() {
+            super(null, null);
+        }
+
+        private static TickArrowFixture create(
+            int entityId, Vec3 position, Vec3 movement,
+            float yRot, float xRot, boolean noGravity
+        ) {
+            TickArrowFixture arrow;
+            try {
+                Unsafe unsafe = unsafeInstance();
+                arrow = (TickArrowFixture)unsafe.allocateInstance(TickArrowFixture.class);
+            } catch (InstantiationException error) {
+                throw new IllegalStateException(
+                    "Unable to construct arrow tick fixture", error);
+            }
+            arrow.fixtureEntityId = entityId;
+            arrow.fixturePosition = position;
+            arrow.previousFixturePosition = position;
+            arrow.noGravity = noGravity;
+            arrow.setYRot(yRot);
+            arrow.setXRot(xRot);
+            arrow.yRotO = yRot;
+            arrow.xRotO = xRot;
+            arrow.setDeltaMovement(movement);
+            return arrow;
+        }
+
+        @Override
+        public boolean isNoGravity() {
+            return this.noGravity;
+        }
+
+        private int entityId() {
+            return this.fixtureEntityId;
+        }
+
+        public Vec3 position() {
+            return this.fixturePosition;
+        }
+
+        private Vec3 previousPosition() {
+            return this.previousFixturePosition;
+        }
+
+        private void tickThroughClientLevel() {
+            this.previousFixturePosition = this.fixturePosition;
+            this.setOldRot();
+            this.tickCount++;
+            Vec3 movement = this.getDeltaMovement();
+            this.fixturePosition = this.fixturePosition.add(movement);
+            float yRot = (float)(Mth.atan2(movement.x, movement.z) * 57.2957763671875);
+            float xRot = (float)(Mth.atan2(movement.y, movement.horizontalDistance())
+                * 57.2957763671875);
+            this.setXRot(lerpRotation(this.getXRot(), xRot));
+            this.setYRot(lerpRotation(this.getYRot(), yRot));
+            this.setDeltaMovement(this.getDeltaMovement().scale(this.getAirDrag()));
+            this.applyGravity();
             this.firstTick = false;
         }
     }

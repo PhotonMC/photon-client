@@ -132,6 +132,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P08.ak — server-conformance Entity living arrow count semantic state](client-world-entity-arrow-count-conformance.md)
 - [P08.ak.1 — ClientWorld entity living arrow count — client-parity](client-world-entity-arrow-count-parity-conformance.md)
 - [P08.bl-entity-arrow-tick — server-conformance Arrow free-flight world tick](client-world-entity-arrow-tick-conformance.md)
+- [P08.bl.1 — ClientWorld Arrow free-flight tick — client-parity](client-world-entity-arrow-tick-parity-conformance.md)
 - [P08.bj-entity-boat-air — server-conformance Local boat `IN_AIR` tick](client-world-entity-boat-air-conformance.md)
 - [P08.bh-entity-boat-control — server-conformance Boat input and `deltaRotation`](client-world-entity-boat-control-conformance.md)
 - [P08.bk-entity-boat-authority — server-conformance Remote boat authority branch](client-world-entity-boat-remote-authority-conformance.md)

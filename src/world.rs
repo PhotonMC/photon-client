@@ -622,6 +622,7 @@ const VANILLA_BOAT_AIR_FRICTION: f32 = 0.9_f32;
 const VANILLA_BOAT_GRAVITY: f64 = 0.04;
 const VANILLA_ARROW_AIR_FRICTION: f32 = 0.99_f32;
 const VANILLA_ARROW_GRAVITY: f64 = 0.05;
+const PROJECTILE_DEGREES_PER_RADIAN: f64 = 57.2957763671875;
 const VANILLA_EXPERIENCE_ORB_AIR_FRICTION: f32 = 0.98_f32;
 const VANILLA_EXPERIENCE_ORB_GRAVITY: f64 = 0.03;
 pub(crate) const VANILLA_PRIMED_TNT_ENTITY_TYPE_ID: i32 = 133;
@@ -7343,10 +7344,10 @@ impl ClientEntity {
         self.y_bits = (current_position.1 + motion.1).to_bits();
         self.z_bits = (current_position.2 + motion.2).to_bits();
 
-        const DEGREES_PER_RADIAN: f64 = 57.2957763671875;
         let horizontal_distance = (motion.0 * motion.0 + motion.2 * motion.2).sqrt();
-        let target_x_rot = (mth_atan2(motion.1, horizontal_distance) * DEGREES_PER_RADIAN) as f32;
-        let target_y_rot = (mth_atan2(motion.0, motion.2) * DEGREES_PER_RADIAN) as f32;
+        let target_x_rot =
+            (mth_atan2(motion.1, horizontal_distance) * PROJECTILE_DEGREES_PER_RADIAN) as f32;
+        let target_y_rot = (mth_atan2(motion.0, motion.2) * PROJECTILE_DEGREES_PER_RADIAN) as f32;
         self.x_rot_bits =
             projectile_lerp_rotation_f32(f32::from_bits(self.old_x_rot_bits), target_x_rot)
                 .to_bits();
@@ -7362,13 +7363,12 @@ impl ClientEntity {
         self.y_bits = (current_position.1 + current_motion.1).to_bits();
         self.z_bits = (current_position.2 + current_motion.2).to_bits();
 
-        const PI_F32: f32 = f32::from_bits(0x4049_0fdb);
         let horizontal_distance =
             (current_motion.0 * current_motion.0 + current_motion.2 * current_motion.2).sqrt();
-        let target_x_rot = (mth_atan2(current_motion.1, horizontal_distance) * f64::from(180.0_f32)
-            / f64::from(PI_F32)) as f32;
-        let target_y_rot = (mth_atan2(current_motion.0, current_motion.2) * f64::from(180.0_f32)
-            / f64::from(PI_F32)) as f32;
+        let target_x_rot = (mth_atan2(current_motion.1, horizontal_distance)
+            * PROJECTILE_DEGREES_PER_RADIAN) as f32;
+        let target_y_rot =
+            (mth_atan2(current_motion.0, current_motion.2) * PROJECTILE_DEGREES_PER_RADIAN) as f32;
         self.x_rot_bits =
             projectile_lerp_rotation_f32(f32::from_bits(self.x_rot_bits), target_x_rot).to_bits();
         self.y_rot_bits =
