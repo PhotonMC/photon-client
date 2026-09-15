@@ -58,6 +58,8 @@ import net.minecraft.world.entity.Pose;
 import net.minecraft.world.entity.player.Abilities;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.entity.ai.attributes.Attribute;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.monster.Shulker;
@@ -342,6 +344,8 @@ public final class MathOracle {
             return localPlayerTravelInLavaResult(request);
         } else if (operation.equals("local_player_handle_relative_friction")) {
             return localPlayerHandleRelativeFrictionResult(request);
+        } else if (operation.equals("local_player_travel_in_air")) {
+            return localPlayerTravelInAirResult(request);
         } else if (operation.equals("character_event")) {
             CharacterEvent event = new CharacterEvent(request.get("codepoint").getAsInt());
             result.addProperty("codepoint", event.codepoint());
@@ -4817,6 +4821,55 @@ public final class MathOracle {
         }
     }
 
+    private static JsonObject localPlayerTravelInAirResult(JsonObject request) {
+        try {
+            var method = LivingEntity.class.getDeclaredMethod("travelInAir", Vec3.class);
+            method.setAccessible(true);
+            var states = new JsonArray();
+            Unsafe unsafe = unsafeInstance();
+            for (var inputEntry : request.getAsJsonArray("inputs")) {
+                JsonObject input = inputEntry.getAsJsonObject();
+                LocalPlayerInputFixture player =
+                    (LocalPlayerInputFixture)unsafe.allocateInstance(LocalPlayerInputFixture.class);
+                player.configureTravelInAir(
+                    input.get("on_ground").getAsBoolean(),
+                    input.get("below_block").getAsString(),
+                    Oracle.f32(input, "friction_modifier"),
+                    Oracle.f32(input, "speed"),
+                    Oracle.f32(input, "flying_speed"),
+                    input.get("flying").getAsBoolean(),
+                    input.get("sprinting").getAsBoolean(),
+                    input.get("passenger").getAsBoolean(),
+                    input.get("on_climbable").getAsBoolean(),
+                    input.get("scaffolding").getAsBoolean(),
+                    input.get("suppress_sliding_down_ladder").getAsBoolean(),
+                    input.get("horizontal_collision").getAsBoolean(),
+                    input.get("jumping").getAsBoolean(),
+                    input.get("levitation_amplifier").getAsInt(),
+                    f64(input, "gravity"),
+                    input.get("should_discard_friction").getAsBoolean(),
+                    Oracle.f32(input, "air_drag_modifier"),
+                    input.get("omnidirectional_air_mover").getAsBoolean(),
+                    input.get("client_side").getAsBoolean(),
+                    input.get("has_chunk_at").getAsBoolean(),
+                    input.get("min_y").getAsInt(),
+                    Oracle.f32(input, "y_rot"),
+                    f64(input, "current_y"),
+                    vec3(input.getAsJsonObject("delta")));
+                method.invoke(player, vec3(input.getAsJsonObject("input")));
+                var state = new JsonObject();
+                state.addProperty("label", input.get("label").getAsString());
+                state.add("movement", snapshot(player.getDeltaMovement()));
+                states.add(state);
+            }
+            var result = new JsonObject();
+            result.add("states", states);
+            return result;
+        } catch (ReflectiveOperationException error) {
+            throw new IllegalStateException("LivingEntity.travelInAir reflection failed", error);
+        }
+    }
+
     private static double f64(JsonObject object, String name) {
         return f64(object.get(name).getAsString());
     }
@@ -5491,6 +5544,9 @@ public final class MathOracle {
     private static final class ClimbableClientLevelFixture
         extends net.minecraft.server.level.ServerLevel {
         private static BlockState belowState;
+        private static boolean clientSide;
+        private static boolean hasChunk = true;
+        private static int minY = -64;
 
         private ClimbableClientLevelFixture() {
             super(null, null, null, null, null, null, false, 0L, null, false);
@@ -5509,11 +5565,33 @@ public final class MathOracle {
             belowState = state;
         }
 
+        private static void setTravelState(
+            boolean clientSideState, boolean hasChunkState, int minimumY) {
+            clientSide = clientSideState;
+            hasChunk = hasChunkState;
+            minY = minimumY;
+        }
+
         @Override
         public BlockState getBlockState(BlockPos pos) {
             return pos.getY() == 0 && belowState != null
                 ? belowState
                 : Blocks.AIR.defaultBlockState();
+        }
+
+        @Override
+        public boolean isClientSide() {
+            return clientSide;
+        }
+
+        @Override
+        public boolean hasChunkAt(BlockPos pos) {
+            return hasChunk;
+        }
+
+        @Override
+        public int getMinY() {
+            return minY;
         }
     }
 
@@ -6439,6 +6517,8 @@ public final class MathOracle {
     }
 
     private static final class LocalPlayerInputFixture extends LocalPlayer {
+        private static final net.minecraft.server.level.ServerLevel TRAVEL_LEVEL =
+            ClimbableClientLevelFixture.createClientLevel();
         private boolean usingItem;
         private boolean passenger;
         private boolean movingSlowly;
@@ -6464,6 +6544,12 @@ public final class MathOracle {
         private boolean shallowLava;
         private boolean dolphinsGrace;
         private boolean freeAfterFluidJump;
+        private double frictionModifier;
+        private double airDragModifier;
+        private double gravity;
+        private int levitationAmplifier;
+        private boolean discardFrictionState;
+        private boolean omnidirectionalAirMoverState;
 
         private LocalPlayerInputFixture() {
             super(null, null, null, null, null, Input.EMPTY, false, null);
@@ -6486,7 +6572,26 @@ public final class MathOracle {
 
         @Override
         public double getAttributeValue(final Holder<Attribute> attribute) {
+            if (attribute == Attributes.FRICTION_MODIFIER) {
+                return this.frictionModifier;
+            }
+            if (attribute == Attributes.AIR_DRAG_MODIFIER) {
+                return this.airDragModifier;
+            }
+            if (attribute == Attributes.GRAVITY) {
+                return this.gravity;
+            }
             return this.sneakingMovementFactor;
+        }
+
+        @Override
+        public net.minecraft.server.level.ServerLevel level() {
+            return TRAVEL_LEVEL;
+        }
+
+        @Override
+        public BlockPos getBlockPosBelowThatAffectsMyMovement() {
+            return BlockPos.ZERO;
         }
 
         @Override
@@ -6584,6 +6689,28 @@ public final class MathOracle {
         @Override
         public boolean hasEffect(final Holder<MobEffect> effect) {
             return this.dolphinsGrace && effect == MobEffects.DOLPHINS_GRACE;
+        }
+
+        @Override
+        public MobEffectInstance getEffect(final Holder<MobEffect> effect) {
+            return effect == MobEffects.LEVITATION && this.levitationAmplifier >= 0
+                ? new MobEffectInstance(MobEffects.LEVITATION, 20, this.levitationAmplifier)
+                : null;
+        }
+
+        @Override
+        public boolean shouldDiscardFriction() {
+            return this.discardFrictionState;
+        }
+
+        @Override
+        protected boolean omnidirectionalAirMover() {
+            return this.omnidirectionalAirMoverState;
+        }
+
+        @Override
+        protected double getEffectiveGravity() {
+            return this.gravity;
         }
 
         @Override
@@ -6762,6 +6889,68 @@ public final class MathOracle {
             this.jumping = jumping;
             this.yRotation = yRot;
             this.travelDeltaMovement = deltaMovement;
+        }
+
+        private void configureTravelInAir(
+            final boolean onGround,
+            final String belowBlock,
+            final float frictionModifier,
+            final float speed,
+            final float flyingSpeed,
+            final boolean flying,
+            final boolean sprinting,
+            final boolean passenger,
+            final boolean onClimbable,
+            final boolean scaffolding,
+            final boolean suppressSlidingDownLadder,
+            final boolean horizontalCollision,
+            final boolean jumping,
+            final int levitationAmplifier,
+            final double gravity,
+            final boolean discardFriction,
+            final float airDragModifier,
+            final boolean omnidirectionalAirMover,
+            final boolean clientSide,
+            final boolean hasChunkAt,
+            final int minY,
+            final float yRot,
+            final double currentY,
+            final Vec3 deltaMovement
+        ) throws ReflectiveOperationException {
+            this.onGroundState = onGround;
+            this.configuredSpeed = speed;
+            this.abilities = new Abilities();
+            this.abilities.flying = flying;
+            this.abilities.setFlyingSpeed(flyingSpeed);
+            var abilitiesField = net.minecraft.world.entity.player.Player.class
+                .getDeclaredField("abilities");
+            abilitiesField.setAccessible(true);
+            abilitiesField.set(this, this.abilities);
+            this.sprinting = sprinting;
+            this.passenger = passenger;
+            this.onClimbableState = onClimbable;
+            this.scaffolding = scaffolding;
+            this.suppressSlidingDownLadder = suppressSlidingDownLadder;
+            this.horizontalCollision = horizontalCollision;
+            this.jumping = jumping;
+            this.frictionModifier = frictionModifier;
+            this.airDragModifier = airDragModifier;
+            this.gravity = gravity;
+            this.levitationAmplifier = levitationAmplifier;
+            this.discardFrictionState = discardFriction;
+            this.omnidirectionalAirMoverState = omnidirectionalAirMover;
+            this.yRotation = yRot;
+            this.travelDeltaMovement = deltaMovement;
+            ClimbableClientLevelFixture.setTravelState(clientSide, hasChunkAt, minY);
+            ClimbableClientLevelFixture.setBelowState(switch (belowBlock) {
+                case "air" -> Blocks.AIR.defaultBlockState();
+                case "ice" -> Blocks.ICE.defaultBlockState();
+                case "slime" -> Blocks.SLIME_BLOCK.defaultBlockState();
+                default -> throw new IllegalArgumentException("Unknown travel air block");
+            });
+            var position = net.minecraft.world.entity.Entity.class.getDeclaredField("position");
+            position.setAccessible(true);
+            position.set(this, new Vec3(0.0, currentY, 0.0));
         }
 
         private void setItemUseSpeed(final float speed) throws ReflectiveOperationException {

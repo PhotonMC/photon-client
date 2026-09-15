@@ -424,6 +424,65 @@ pub struct LocalPlayerHandleRelativeFrictionInput {
     pub jumping: bool,
 }
 
+/// The environment state consumed by LivingEntity.travelInAir.
+#[derive(Debug, Clone, Copy)]
+pub struct LocalPlayerTravelInAirParameters {
+    pub input: Vec3,
+    pub y_rot: f32,
+    pub on_ground: bool,
+    pub block_friction: f32,
+    pub friction_modifier: f32,
+    pub speed: f32,
+    pub flying_speed: f32,
+    pub flying: bool,
+    pub sprinting: bool,
+    pub passenger: bool,
+    pub on_climbable: bool,
+    pub scaffolding: bool,
+    pub suppress_sliding_down_ladder: bool,
+    pub horizontal_collision: bool,
+    pub jumping: bool,
+    pub levitation_amplifier: Option<i32>,
+    pub gravity: f64,
+    pub client_side: bool,
+    pub has_chunk_at: bool,
+    pub current_y: f64,
+    pub min_y: i32,
+    pub should_discard_friction: bool,
+    pub air_drag_modifier: f32,
+    pub omnidirectional_air_mover: bool,
+}
+
+/// The environment and motion state consumed by LivingEntity.travelInAir.
+#[derive(Debug, Clone, Copy)]
+pub struct LocalPlayerTravelInAirInput {
+    pub input: Vec3,
+    pub delta_movement: Vec3,
+    pub y_rot: f32,
+    pub on_ground: bool,
+    pub block_friction: f32,
+    pub friction_modifier: f32,
+    pub speed: f32,
+    pub flying_speed: f32,
+    pub flying: bool,
+    pub sprinting: bool,
+    pub passenger: bool,
+    pub on_climbable: bool,
+    pub scaffolding: bool,
+    pub suppress_sliding_down_ladder: bool,
+    pub horizontal_collision: bool,
+    pub jumping: bool,
+    pub levitation_amplifier: Option<i32>,
+    pub gravity: f64,
+    pub client_side: bool,
+    pub has_chunk_at: bool,
+    pub current_y: f64,
+    pub min_y: i32,
+    pub should_discard_friction: bool,
+    pub air_drag_modifier: f32,
+    pub omnidirectional_air_mover: bool,
+}
+
 /// Apply Java LivingEntity.travelInWater with collision and fluid lookup
 /// results supplied by the caller.
 pub fn local_player_travel_in_water(state: LocalPlayerTravelInWaterInput) -> Vec3 {
@@ -567,6 +626,74 @@ pub fn local_player_handle_relative_friction(
         }
     }
     movement
+}
+
+/// Apply Java LivingEntity.travelInAir with block, effect, and level state
+/// resolved by the caller.
+pub fn local_player_travel_in_air(state: LocalPlayerTravelInAirInput) -> Vec3 {
+    let original_delta_movement = state.delta_movement;
+    let block_friction = if state.on_ground {
+        local_player_modified_friction(LocalPlayerModifiedFrictionInput {
+            friction: state.block_friction,
+            modifier: state.friction_modifier,
+        })
+    } else {
+        1.0_f32
+    };
+    let movement = local_player_handle_relative_friction(LocalPlayerHandleRelativeFrictionInput {
+        input: state.input,
+        delta_movement: state.delta_movement,
+        y_rot: state.y_rot,
+        on_ground: state.on_ground,
+        block_friction,
+        speed: state.speed,
+        flying_speed: state.flying_speed,
+        flying: state.flying,
+        sprinting: state.sprinting,
+        passenger: state.passenger,
+        on_climbable: state.on_climbable,
+        scaffolding: state.scaffolding,
+        suppress_sliding_down_ladder: state.suppress_sliding_down_ladder,
+        horizontal_collision: state.horizontal_collision,
+        jumping: state.jumping,
+    });
+    let movement_y = if let Some(amplifier) = state.levitation_amplifier {
+        movement.y + (0.05 * (f64::from(amplifier) + 1.0) - movement.y) * 0.2
+    } else if !state.client_side || state.has_chunk_at {
+        movement.y - state.gravity
+    } else if state.current_y > f64::from(state.min_y) {
+        -0.1
+    } else {
+        0.0
+    };
+
+    let candidate = if state.should_discard_friction {
+        Vec3::new(movement.x, movement_y, movement.z)
+    } else {
+        let air_drag = local_player_modified_friction(LocalPlayerModifiedFrictionInput {
+            friction: 0.91_f32,
+            modifier: state.air_drag_modifier,
+        });
+        let friction = block_friction * air_drag;
+        let vertical_friction = if state.omnidirectional_air_mover {
+            air_drag
+        } else {
+            local_player_modified_friction(LocalPlayerModifiedFrictionInput {
+                friction: 0.98_f32,
+                modifier: state.air_drag_modifier,
+            })
+        };
+        Vec3::new(
+            movement.x * f64::from(friction),
+            movement_y * f64::from(vertical_friction),
+            movement.z * f64::from(friction),
+        )
+    };
+    if candidate.is_finite() {
+        candidate
+    } else {
+        original_delta_movement
+    }
 }
 
 /// Apply the no-collision movement and drag path of Java LivingEntity.travelFlying.

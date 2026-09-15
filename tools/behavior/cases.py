@@ -1942,6 +1942,83 @@ def math_cases():
            "operation": "local_player_handle_relative_friction",
            "inputs": local_player_handle_relative_friction_inputs}
 
+    local_player_travel_in_air_cases = [
+        {
+            "label": "air-travel-applies-server-gravity-and-drag",
+        },
+        {
+            "label": "ground-travel-uses-below-block-friction",
+            "on_ground": True,
+            "below_block": "ice",
+            "block_friction": float_bits(0.98, "f32"),
+            "speed": float_bits(0.12, "f32"),
+        },
+        {
+            "label": "levitation-replaces-gravity-with-effect-target",
+            "levitation_amplifier": 2,
+        },
+        {
+            "label": "discard-friction-keeps-relative-horizontal-motion",
+            "should_discard_friction": True,
+            "air_drag_modifier": float_bits(0.2, "f32"),
+        },
+        {
+            "label": "omnidirectional-air-mover-uses-horizontal-drag-vertically",
+            "omnidirectional_air_mover": True,
+            "air_drag_modifier": float_bits(0.2, "f32"),
+        },
+        {
+            "label": "air-drag-attribute-modifies-horizontal-and-vertical",
+            "air_drag_modifier": float_bits(0.2, "f32"),
+        },
+        {
+            "label": "client-unloaded-above-min-y-uses-fallback-vertical-speed",
+            "client_side": True,
+            "has_chunk_at": False,
+        },
+        {
+            "label": "client-unloaded-at-min-y-zeroes-vertical-speed",
+            "client_side": True,
+            "has_chunk_at": False,
+            "current_y": float_bits(-64.0, "f64"),
+        },
+    ]
+    local_player_travel_in_air_defaults = {
+        "input": vector_bits(0.3, -0.4, 0.8),
+        "delta": vector_bits(0.1, -0.2, 0.3),
+        "y_rot": float_bits(37.5, "f32"),
+        "on_ground": False,
+        "below_block": "air",
+        "block_friction": float_bits(0.6, "f32"),
+        "friction_modifier": float_bits(1.0, "f32"),
+        "speed": float_bits(0.1, "f32"),
+        "flying_speed": float_bits(0.05, "f32"),
+        "flying": False,
+        "sprinting": False,
+        "passenger": False,
+        "on_climbable": False,
+        "scaffolding": False,
+        "suppress_sliding_down_ladder": False,
+        "horizontal_collision": False,
+        "jumping": False,
+        "levitation_amplifier": -1,
+        "gravity": float_bits(0.08, "f64"),
+        "should_discard_friction": False,
+        "air_drag_modifier": float_bits(0.0, "f32"),
+        "omnidirectional_air_mover": False,
+        "client_side": False,
+        "has_chunk_at": True,
+        "min_y": -64,
+        "current_y": float_bits(10.0, "f64"),
+    }
+    local_player_travel_in_air_inputs = []
+    for values in local_player_travel_in_air_cases:
+        input_values = {**local_player_travel_in_air_defaults, **values}
+        local_player_travel_in_air_inputs.append(input_values)
+    yield {"case_id": "player-movement/travel-in-air", "family": "math",
+           "operation": "local_player_travel_in_air",
+           "inputs": local_player_travel_in_air_inputs}
+
     codec_decodes = {
         "basic": [float_bits(1.25, "f64"), float_bits(-2.5, "f64"), float_bits(3.75, "f64")],
         "zero": [float_bits(0.0, "f64"), float_bits(0.0, "f64"), float_bits(0.0, "f64")],

@@ -7,13 +7,15 @@ use crate::input::{
     LocalPlayerFrictionInfluencedSpeedInput, LocalPlayerHandleRelativeFrictionInput,
     LocalPlayerHandleRelativeFrictionParameters, LocalPlayerInputModifiers, LocalPlayerInputState,
     LocalPlayerModifiedFrictionInput, LocalPlayerTravelFlyingInput,
-    LocalPlayerTravelFlyingParameters, LocalPlayerTravelInLavaInput,
+    LocalPlayerTravelFlyingParameters, LocalPlayerTravelInAirInput,
+    LocalPlayerTravelInAirParameters, LocalPlayerTravelInLavaInput,
     LocalPlayerTravelInLavaParameters, LocalPlayerTravelInWaterInput,
     LocalPlayerTravelInWaterParameters, adjust_local_player_fluid_falling_movement,
     apply_local_player_input as apply_local_player_input_fields,
     clamp_local_player_climbable_movement, local_player_friction_influenced_speed,
     local_player_handle_relative_friction, local_player_modified_friction,
-    local_player_travel_flying, local_player_travel_in_lava, local_player_travel_in_water,
+    local_player_travel_flying, local_player_travel_in_air, local_player_travel_in_lava,
+    local_player_travel_in_water,
 };
 use crate::math::{
     MTH_DEG_TO_RAD, Vec3, abs_max_f64, clamp_f32, clamp_f64, equal_f64, floor_f32, mth_atan2,
@@ -2907,6 +2909,18 @@ impl ClientWorld {
             return false;
         };
         player.apply_handle_relative_friction(parameters);
+        true
+    }
+
+    /// Apply Java's resolved-environment travelInAir path to local motion.
+    pub fn apply_local_player_travel_in_air(
+        &mut self,
+        parameters: LocalPlayerTravelInAirParameters,
+    ) -> bool {
+        let Some(player) = self.local_player.as_mut() else {
+            return false;
+        };
+        player.apply_travel_in_air(parameters);
         true
     }
 
@@ -5865,6 +5879,43 @@ impl ClientPlayerState {
         self.motion_z_bits = movement.z.to_bits();
     }
 
+    fn apply_travel_in_air(&mut self, parameters: LocalPlayerTravelInAirParameters) {
+        let movement = local_player_travel_in_air(LocalPlayerTravelInAirInput {
+            input: parameters.input,
+            delta_movement: Vec3::new(
+                f64::from_bits(self.motion_x_bits),
+                f64::from_bits(self.motion_y_bits),
+                f64::from_bits(self.motion_z_bits),
+            ),
+            y_rot: parameters.y_rot,
+            on_ground: parameters.on_ground,
+            block_friction: parameters.block_friction,
+            friction_modifier: parameters.friction_modifier,
+            speed: parameters.speed,
+            flying_speed: parameters.flying_speed,
+            flying: parameters.flying,
+            sprinting: parameters.sprinting,
+            passenger: parameters.passenger,
+            on_climbable: parameters.on_climbable,
+            scaffolding: parameters.scaffolding,
+            suppress_sliding_down_ladder: parameters.suppress_sliding_down_ladder,
+            horizontal_collision: parameters.horizontal_collision,
+            jumping: parameters.jumping,
+            levitation_amplifier: parameters.levitation_amplifier,
+            gravity: parameters.gravity,
+            client_side: parameters.client_side,
+            has_chunk_at: parameters.has_chunk_at,
+            current_y: parameters.current_y,
+            min_y: parameters.min_y,
+            should_discard_friction: parameters.should_discard_friction,
+            air_drag_modifier: parameters.air_drag_modifier,
+            omnidirectional_air_mover: parameters.omnidirectional_air_mover,
+        });
+        self.motion_x_bits = movement.x.to_bits();
+        self.motion_y_bits = movement.y.to_bits();
+        self.motion_z_bits = movement.z.to_bits();
+    }
+
     fn capture_old_transform(&mut self) {
         self.old_x_bits = self.x_bits;
         self.old_y_bits = self.y_bits;
@@ -8742,6 +8793,134 @@ mod tests {
                 f64::from_bits(0x3fb8_534b_8b3a_e058),
                 f64::from_bits(0x3fc9_9999_9999_999a),
                 f64::from_bits(0x3fc3_3333_4000_0000),
+            ),
+        );
+    }
+
+    #[test]
+    fn local_player_travel_in_air_applies_gravity_drag_and_client_fallbacks() {
+        let mut world = ClientWorld::default();
+        world.set_local_player_id(42);
+        let base = super::LocalPlayerTravelInAirParameters {
+            input: Vec3::new(0.3, -0.4, 0.8),
+            y_rot: 37.5,
+            on_ground: false,
+            block_friction: 0.6,
+            friction_modifier: 1.0,
+            speed: 0.1,
+            flying_speed: 0.05,
+            flying: false,
+            sprinting: false,
+            passenger: false,
+            on_climbable: false,
+            scaffolding: false,
+            suppress_sliding_down_ladder: false,
+            horizontal_collision: false,
+            jumping: false,
+            levitation_amplifier: None,
+            gravity: 0.08,
+            client_side: false,
+            has_chunk_at: true,
+            current_y: 10.0,
+            min_y: -64,
+            should_discard_friction: false,
+            air_drag_modifier: 0.0,
+            omnidirectional_air_mover: false,
+        };
+
+        assert!(world.apply_local_player_position((0.0, 0.0, 0.0), (0.1, -0.2, 0.3), (37.5, 0.0),));
+        assert!(world.apply_local_player_travel_in_air(base));
+        assert_eq!(
+            world.local_player().expect("air travel player").motion(),
+            (
+                f64::from_bits(0x3fb8_534b_8b3a_e058),
+                f64::from_bits(0xbfd2_6e97_8d1e_b852),
+                f64::from_bits(0x3fd4_3f05_8e95_6c40),
+            ),
+        );
+
+        assert!(world.apply_local_player_position((0.0, 0.0, 0.0), (0.1, -0.2, 0.3), (37.5, 0.0),));
+        assert!(
+            world.apply_local_player_travel_in_air(super::LocalPlayerTravelInAirParameters {
+                on_ground: true,
+                block_friction: 0.98,
+                speed: 0.12,
+                ..base
+            })
+        );
+        assert_eq!(
+            world
+                .local_player()
+                .expect("ground air travel player")
+                .motion(),
+            (
+                f64::from_bits(0x3fb7_5e33_31f6_ae51),
+                f64::from_bits(0xbfd2_a000_ceb8_51ec),
+                f64::from_bits(0x3fd4_3a4e_078d_2fbb),
+            ),
+        );
+
+        assert!(world.apply_local_player_position((0.0, 0.0, 0.0), (0.1, -0.2, 0.3), (37.5, 0.0),));
+        assert!(
+            world.apply_local_player_travel_in_air(super::LocalPlayerTravelInAirParameters {
+                levitation_amplifier: Some(2),
+                ..base
+            })
+        );
+        assert_eq!(
+            world
+                .local_player()
+                .expect("levitating air travel player")
+                .motion(),
+            (
+                f64::from_bits(0x3fb8_534b_8b3a_e058),
+                f64::from_bits(0xbfc1_758e_2147_ae14),
+                f64::from_bits(0x3fd4_3f05_8e95_6c40),
+            ),
+        );
+
+        assert!(world.apply_local_player_position((0.0, 0.0, 0.0), (0.1, -0.2, 0.3), (37.5, 0.0),));
+        assert!(
+            world.apply_local_player_travel_in_air(super::LocalPlayerTravelInAirParameters {
+                client_side: true,
+                has_chunk_at: false,
+                ..base
+            })
+        );
+        assert_eq!(
+            world
+                .local_player()
+                .expect("unloaded air travel player")
+                .motion(),
+            (
+                f64::from_bits(0x3fb8_534b_8b3a_e058),
+                f64::from_bits(0xbfb9_9999_9999_999a),
+                f64::from_bits(0x3fd4_3f05_8e95_6c40),
+            ),
+        );
+
+        assert!(world.apply_local_player_position(
+            (0.0, -64.0, 0.0),
+            (0.1, -0.2, 0.3),
+            (37.5, 0.0),
+        ));
+        assert!(
+            world.apply_local_player_travel_in_air(super::LocalPlayerTravelInAirParameters {
+                current_y: -64.0,
+                client_side: true,
+                has_chunk_at: false,
+                ..base
+            })
+        );
+        assert_eq!(
+            world
+                .local_player()
+                .expect("min-y air travel player")
+                .motion(),
+            (
+                f64::from_bits(0x3fb8_534b_8b3a_e058),
+                0.0,
+                f64::from_bits(0x3fd4_3f05_8e95_6c40),
             ),
         );
     }
