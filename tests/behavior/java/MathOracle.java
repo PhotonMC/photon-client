@@ -5175,6 +5175,9 @@ public final class MathOracle {
         if (operation.equals("client_world_entity_passenger_position")) {
             return clientWorldEntityPassengerPositionResult(request);
         }
+        if (operation.equals("client_world_entity_passenger_player_position")) {
+            return clientWorldEntityPassengerPlayerPositionResult(request);
+        }
         if (operation.equals("client_world_player_sprint_trigger")) {
             return clientWorldPlayerSprintTriggerResult(request);
         }
@@ -6038,6 +6041,57 @@ public final class MathOracle {
         return result;
     }
 
+    private static JsonObject clientWorldEntityPassengerPlayerPositionResult(JsonObject request) {
+        JsonObject vehicleInput = request.getAsJsonObject("vehicle");
+        int vehicleId = vehicleInput.get("entity_id").getAsInt();
+        if (vehicleInput.get("type_id").getAsInt() != 89) {
+            throw new IllegalArgumentException("Passenger player position fixture requires an oak boat");
+        }
+        PassengerPositionBoatFixture vehicle = PassengerPositionBoatFixture.create(
+            vehicleId,
+            vec3(vehicleInput.getAsJsonObject("position")),
+            Oracle.f32(vehicleInput.getAsJsonObject("rotation"), "y"),
+            vehicleInput.get("no_gravity").getAsBoolean());
+        JsonObject passengerInput = request.getAsJsonObject("passenger");
+        if (passengerInput.get("type_id").getAsInt() != 156) {
+            throw new IllegalArgumentException(
+                "Passenger player position fixture requires a Player passenger");
+        }
+        PassengerPositionPlayerFixture passenger = PassengerPositionPlayerFixture.create(
+            passengerInput.get("entity_id").getAsInt(),
+            vec3(passengerInput.getAsJsonObject("position")),
+            vec3(passengerInput.getAsJsonObject("movement")),
+            Oracle.f32(passengerInput.getAsJsonObject("rotation"), "y"),
+            Oracle.f32(passengerInput.getAsJsonObject("rotation"), "x"),
+            passengerInput.get("no_gravity").getAsBoolean(),
+            vehicle);
+        vehicle.setFixturePassengers(List.of(passenger));
+
+        var states = new JsonArray();
+        states.add(passengerPlayerPositionState("initial", vehicle, passenger));
+        for (JsonElement operationEntry : request.getAsJsonArray("operations")) {
+            JsonObject operation = operationEntry.getAsJsonObject();
+            if (!operation.get("action").getAsString().equals("tick")) {
+                throw new IllegalArgumentException("Unknown passenger player position action");
+            }
+            for (int tick = 0; tick < operation.get("ticks").getAsInt(); tick++) {
+                vehicle.setOldPosAndRot();
+                vehicle.tickCount++;
+                vehicle.tick();
+                if (vehicle.hasPassenger(passenger)) {
+                    passenger.setOldPosAndRot();
+                    passenger.tickCount++;
+                    passenger.rideTick();
+                }
+            }
+            states.add(passengerPlayerPositionState(
+                operation.get("label").getAsString(), vehicle, passenger));
+        }
+        var result = new JsonObject();
+        result.add("states", states);
+        return result;
+    }
+
     private static List<TickSnowballFixture> resolvePassengerIds(
         List<TickSnowballFixture> passengers, JsonArray passengerIds
     ) {
@@ -6086,6 +6140,21 @@ public final class MathOracle {
         for (TickSnowballFixture passenger : passengers) {
             entities.add(tickSnowballEntityState(passenger));
         }
+        state.add("entities", entities);
+        return state;
+    }
+
+    private static JsonObject passengerPlayerPositionState(
+        String label,
+        PassengerPositionBoatFixture vehicle,
+        PassengerPositionPlayerFixture passenger
+    ) {
+        var state = new JsonObject();
+        state.addProperty("label", label);
+        state.addProperty("accepted", true);
+        var entities = new JsonArray();
+        entities.add(tickEntityState(vehicle));
+        entities.add(tickEntityState(passenger));
         state.add("entities", entities);
         return state;
     }
@@ -8341,7 +8410,7 @@ public final class MathOracle {
             }
         }
 
-        private void setFixturePassengers(List<TickSnowballFixture> passengers) {
+        private void setFixturePassengers(List<? extends Entity> passengers) {
             try {
                 Unsafe unsafe = unsafeInstance();
                 var passengersField = Entity.class.getDeclaredField("passengers");
@@ -8362,6 +8431,98 @@ public final class MathOracle {
 
         @Override
         public void tick() {
+        }
+    }
+
+    private static final class PassengerPositionPlayerFixture extends RemotePlayer {
+        private boolean noGravity;
+
+        private PassengerPositionPlayerFixture() {
+            super(null, null);
+        }
+
+        private static PassengerPositionPlayerFixture create(
+            int entityId, Vec3 position, Vec3 movement,
+            float yRot, float xRot, boolean noGravity, Entity vehicle
+        ) {
+            try {
+                Unsafe unsafe = unsafeInstance();
+                PassengerPositionPlayerFixture player =
+                    (PassengerPositionPlayerFixture)unsafe.allocateInstance(
+                        PassengerPositionPlayerFixture.class);
+                var idField = Entity.class.getDeclaredField("id");
+                unsafe.putInt(player, unsafe.objectFieldOffset(idField), entityId);
+                var typeField = Entity.class.getDeclaredField("type");
+                unsafe.putObject(
+                    player,
+                    unsafe.objectFieldOffset(typeField),
+                    net.minecraft.world.entity.EntityTypes.PLAYER);
+                var levelField = Entity.class.getDeclaredField("level");
+                unsafe.putObject(
+                    player,
+                    unsafe.objectFieldOffset(levelField),
+                    PassengerRelationFixtureEntity.CLIENT_LEVEL);
+                var dimensionsField = Entity.class.getDeclaredField("dimensions");
+                unsafe.putObject(
+                    player,
+                    unsafe.objectFieldOffset(dimensionsField),
+                    net.minecraft.world.entity.EntityTypes.PLAYER.getDimensions());
+                var positionField = Entity.class.getDeclaredField("position");
+                unsafe.putObject(player, unsafe.objectFieldOffset(positionField), position);
+                var deltaMovementField = Entity.class.getDeclaredField("deltaMovement");
+                unsafe.putObject(
+                    player, unsafe.objectFieldOffset(deltaMovementField), movement);
+                var blockPositionField = Entity.class.getDeclaredField("blockPosition");
+                unsafe.putObject(
+                    player,
+                    unsafe.objectFieldOffset(blockPositionField),
+                    BlockPos.containing(position.x, position.y, position.z));
+                var chunkPositionField = Entity.class.getDeclaredField("chunkPosition");
+                unsafe.putObject(
+                    player,
+                    unsafe.objectFieldOffset(chunkPositionField),
+                    ChunkPos.containing(BlockPos.containing(position.x, position.y, position.z)));
+                var passengersField = Entity.class.getDeclaredField("passengers");
+                unsafe.putObject(
+                    player,
+                    unsafe.objectFieldOffset(passengersField),
+                    com.google.common.collect.ImmutableList.of());
+                var vehicleField = Entity.class.getDeclaredField("vehicle");
+                unsafe.putObject(player, unsafe.objectFieldOffset(vehicleField), vehicle);
+                player.setLevelCallback(EntityInLevelCallback.NULL);
+                player.noGravity = noGravity;
+                player.setYRot(yRot);
+                player.setXRot(xRot);
+                player.yRotO = yRot;
+                player.xRotO = xRot;
+                player.yHeadRot = yRot;
+                player.yHeadRotO = yRot;
+                player.yBodyRot = yRot;
+                player.yBodyRotO = yRot;
+                player.setOldPosAndRot();
+                return player;
+            } catch (ReflectiveOperationException error) {
+                throw new IllegalStateException(
+                    "Unable to construct passenger player position fixture", error);
+            }
+        }
+
+        @Override
+        public boolean isNoGravity() {
+            return this.noGravity;
+        }
+
+        @Override
+        public void tick() {
+        }
+
+        @Override
+        public void rideTick() {
+            this.setDeltaMovement(Vec3.ZERO);
+            this.tick();
+            if (this.isPassenger()) {
+                this.getVehicle().positionRider(this);
+            }
         }
     }
 
