@@ -5591,7 +5591,7 @@ impl ClientWorld {
         applied
     }
 
-    pub(crate) fn apply_entity_move(&mut self, input: EntityMoveInput) -> bool {
+    pub fn apply_entity_move(&mut self, input: EntityMoveInput) -> bool {
         let Some((previous_position, current)) = self
             .entities
             .get(&input.entity_id)
@@ -8097,14 +8097,14 @@ pub(crate) enum EntityPositionUpdateMode {
     Teleport,
 }
 
-pub(crate) struct EntityMoveInput {
-    pub(crate) entity_id: i32,
-    pub(crate) delta_x: i16,
-    pub(crate) delta_y: i16,
-    pub(crate) delta_z: i16,
-    pub(crate) has_position: bool,
-    pub(crate) y_rot: Option<f32>,
-    pub(crate) x_rot: Option<f32>,
+pub struct EntityMoveInput {
+    pub entity_id: i32,
+    pub delta_x: i16,
+    pub delta_y: i16,
+    pub delta_z: i16,
+    pub has_position: bool,
+    pub y_rot: Option<f32>,
+    pub x_rot: Option<f32>,
 }
 
 fn entity_chunk_key(position: (f64, f64, f64)) -> (i32, i32) {

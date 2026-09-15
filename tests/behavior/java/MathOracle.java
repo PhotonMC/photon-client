@@ -123,6 +123,7 @@ import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.level.entity.LevelCallback;
 import net.minecraft.world.level.entity.LevelEntityGetter;
+import net.minecraft.world.level.entity.EntityInLevelCallback;
 import net.minecraft.world.level.entity.TransientEntitySectionManager;
 import net.minecraft.world.level.block.state.properties.AttachFace;
 import net.minecraft.world.phys.AABB;
@@ -5153,6 +5154,9 @@ public final class MathOracle {
         if (operation.equals("client_world_entity_transform_history")) {
             return clientWorldEntityTransformHistoryResult(request);
         }
+        if (operation.equals("client_world_entity_player_interpolation")) {
+            return clientWorldEntityPlayerInterpolationResult(request);
+        }
         if (operation.equals("client_world_player_sprint_trigger")) {
             return clientWorldPlayerSprintTriggerResult(request);
         }
@@ -5709,6 +5713,72 @@ public final class MathOracle {
         state.addProperty("head_target", Oracle.bits(player.headTarget()));
         state.addProperty("head_lerp_steps", player.headSteps());
         state.addProperty("body_rotation_y", Oracle.bits(player.yBodyRot));
+        return state;
+    }
+
+    private static JsonObject clientWorldEntityPlayerInterpolationResult(JsonObject request) {
+        int entityId = request.get("entity_id").getAsInt();
+        JsonObject initialPosition = request.getAsJsonObject("initial_position");
+        JsonObject initialRotation = request.getAsJsonObject("initial_rotation");
+        RemotePlayerInterpolationFixture player = RemotePlayerInterpolationFixture.create(
+            vec3(initialPosition),
+            Oracle.f32(initialRotation, "y"),
+            Oracle.f32(initialRotation, "x"),
+            Oracle.f32(request, "initial_head"));
+
+        var states = new JsonArray();
+        states.add(remotePlayerInterpolationState("initial", player));
+        for (JsonElement operationEntry : request.getAsJsonArray("operations")) {
+            JsonObject operation = operationEntry.getAsJsonObject();
+            switch (operation.get("action").getAsString()) {
+                case "move" -> player.moveOrInterpolateTo(
+                    vec3(operation.getAsJsonObject("target_position")),
+                    Oracle.f32(operation.getAsJsonObject("rotation"), "y"),
+                    Oracle.f32(operation.getAsJsonObject("rotation"), "x"));
+                case "tick" -> {
+                    for (int tick = 0; tick < operation.get("ticks").getAsInt(); tick++) {
+                        player.tickThroughClientLevel();
+                    }
+                }
+                default -> throw new IllegalArgumentException(
+                    "Unknown remote player interpolation action");
+            }
+            states.add(remotePlayerInterpolationState(
+                operation.get("label").getAsString(), player));
+        }
+        var result = new JsonObject();
+        result.addProperty("entity_id", entityId);
+        result.add("states", states);
+        return result;
+    }
+
+    private static JsonObject remotePlayerInterpolationState(
+        String label, RemotePlayerInterpolationFixture player
+    ) {
+        var state = new JsonObject();
+        state.addProperty("label", label);
+        state.addProperty("accepted", true);
+        state.addProperty("tick_count", player.tickCount);
+        state.add("position", snapshotClip(player.position()));
+        state.add("previous_position", snapshotClip(player.oldPosition()));
+        state.addProperty("rotation_y", Oracle.bits(player.getYRot()));
+        state.addProperty("rotation_x", Oracle.bits(player.getXRot()));
+        state.addProperty("previous_rotation_y", Oracle.bits(player.yRotO));
+        state.addProperty("previous_rotation_x", Oracle.bits(player.xRotO));
+        var interpolation = player.getInterpolation();
+        boolean active = interpolation.hasActiveInterpolation();
+        state.addProperty("interpolation_active", active);
+        if (active) {
+            state.add("interpolation_target_position", snapshotClip(interpolation.position()));
+            var targetRotation = new JsonObject();
+            targetRotation.addProperty("y", Oracle.bits(interpolation.yRot()));
+            targetRotation.addProperty("x", Oracle.bits(interpolation.xRot()));
+            state.add("interpolation_target_rotation", targetRotation);
+        } else {
+            state.add("interpolation_target_position", JsonNull.INSTANCE);
+            state.add("interpolation_target_rotation", JsonNull.INSTANCE);
+        }
+        state.addProperty("interpolation_steps", player.interpolationSteps());
         return state;
     }
 
@@ -9686,6 +9756,138 @@ public final class MathOracle {
             this.useItem.set(
                 DataComponents.USE_EFFECTS,
                 new UseEffects(false, true, speed));
+        }
+    }
+
+    private static final class InterpolationClientLevelFixture
+        extends net.minecraft.client.multiplayer.ClientLevel {
+        private InterpolationClientLevelFixture() {
+            super(null, null, null, null, 0, 0, null, false, 0L, 0);
+        }
+
+        @Override
+        public boolean isClientSide() {
+            return true;
+        }
+
+        @Override
+        public net.minecraft.world.flag.FeatureFlagSet enabledFeatures() {
+            return net.minecraft.world.flag.FeatureFlagSet.of();
+        }
+
+        @Override
+        public boolean noCollision(Entity source, AABB box) {
+            return true;
+        }
+    }
+
+    private static final class RemotePlayerInterpolationFixture extends RemotePlayer {
+        private static final net.minecraft.world.level.Level CLIENT_LEVEL = createClientLevel();
+
+        private RemotePlayerInterpolationFixture() {
+            super(null, null);
+        }
+
+        private static net.minecraft.world.level.Level createClientLevel() {
+            try {
+                return (net.minecraft.world.level.Level)unsafeInstance()
+                    .allocateInstance(InterpolationClientLevelFixture.class);
+            } catch (InstantiationException error) {
+                throw new IllegalStateException(
+                    "Unable to allocate interpolation client level fixture", error);
+            }
+        }
+
+        private static RemotePlayerInterpolationFixture create(
+            Vec3 position, float yRot, float xRot, float yHeadRot
+        ) {
+            try {
+                Unsafe unsafe = unsafeInstance();
+                RemotePlayerInterpolationFixture player =
+                    (RemotePlayerInterpolationFixture)unsafe.allocateInstance(
+                        RemotePlayerInterpolationFixture.class);
+                var typeField = Entity.class.getDeclaredField("type");
+                unsafe.putObject(
+                    player, unsafe.objectFieldOffset(typeField),
+                    net.minecraft.world.entity.EntityTypes.PLAYER);
+                var positionField = Entity.class.getDeclaredField("position");
+                unsafe.putObject(player, unsafe.objectFieldOffset(positionField), position);
+                var blockPositionField = Entity.class.getDeclaredField("blockPosition");
+                unsafe.putObject(
+                    player, unsafe.objectFieldOffset(blockPositionField),
+                    BlockPos.containing(position.x, position.y, position.z));
+                var chunkPositionField = Entity.class.getDeclaredField("chunkPosition");
+                unsafe.putObject(
+                    player, unsafe.objectFieldOffset(chunkPositionField),
+                    ChunkPos.containing(BlockPos.containing(position.x, position.y, position.z)));
+                var passengersField = Entity.class.getDeclaredField("passengers");
+                unsafe.putObject(
+                    player,
+                    unsafe.objectFieldOffset(passengersField),
+                    com.google.common.collect.ImmutableList.of());
+                player.setLevelCallback(EntityInLevelCallback.NULL);
+                var interpolationField = LivingEntity.class.getDeclaredField("interpolation");
+                unsafe.putObject(
+                    player,
+                    unsafe.objectFieldOffset(interpolationField),
+                    new net.minecraft.world.entity.InterpolationHandler(player));
+                player.setYRot(yRot);
+                player.setXRot(xRot);
+                player.yHeadRot = yHeadRot;
+                player.yHeadRotO = yHeadRot;
+                player.yBodyRot = yRot;
+                player.yBodyRotO = yRot;
+                player.setOldPosAndRot();
+                return player;
+            } catch (ReflectiveOperationException error) {
+                throw new IllegalStateException(
+                    "Unable to construct remote player interpolation fixture", error);
+            }
+        }
+
+        private int interpolationSteps() {
+            try {
+                var dataField = net.minecraft.world.entity.InterpolationHandler.class
+                    .getDeclaredField("interpolationData");
+                dataField.setAccessible(true);
+                Object data = dataField.get(this.getInterpolation());
+                var stepsField = data.getClass().getDeclaredField("steps");
+                stepsField.setAccessible(true);
+                return stepsField.getInt(data);
+            } catch (ReflectiveOperationException error) {
+                throw new IllegalStateException(
+                    "Unable to read interpolation step fixture", error);
+            }
+        }
+
+        private void tickThroughClientLevel() {
+            this.setOldPosAndRot();
+            this.tickCount++;
+            if (this.isInterpolating()) {
+                this.getInterpolation().interpolate();
+            }
+        }
+
+        @Override
+        protected AABB makeBoundingBox(Vec3 position) {
+            return AABB.ofSize(position, 0.6, 1.8, 0.6);
+        }
+
+        @Override
+        public net.minecraft.world.level.Level level() {
+            return CLIENT_LEVEL;
+        }
+
+        @Override
+        protected void updateSwingTime() {
+        }
+
+        @Override
+        protected void updateBob() {
+        }
+
+        @Override
+        protected void pushEntities() {
         }
     }
 

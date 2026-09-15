@@ -2429,6 +2429,55 @@ def math_cases():
         ],
     }
 
+    yield {
+        "case_id": "client-world/entity-player-interpolation",
+        "family": "math",
+        "operation": "client_world_entity_player_interpolation",
+        "entity_id": 37,
+        "initial_position": vector_bits(1.0, 80.0, -35.5),
+        "initial_rotation": {
+            "y": float_bits(350.0),
+            "x": float_bits(-20.0),
+        },
+        "initial_head": float_bits(350.0),
+        "operations": [
+            {
+                "action": "move",
+                "label": "packet-target-starts-interpolation",
+                "delta": {"x": 12288, "y": 8192, "z": 4096},
+                "target_position": vector_bits(4.0, 82.0, -34.5),
+                "rotation": {
+                    "y": float_bits(10.0),
+                    "x": float_bits(20.0),
+                },
+            },
+            {"action": "tick", "label": "first-interpolation-tick", "ticks": 1},
+            {
+                "action": "move",
+                "label": "same-target-keeps-remaining-steps",
+                "delta": {"x": 0, "y": 0, "z": 0},
+                "target_position": vector_bits(4.0, 82.0, -34.5),
+                "rotation": {
+                    "y": float_bits(10.0),
+                    "x": float_bits(20.0),
+                },
+            },
+            {"action": "tick", "label": "second-interpolation-tick", "ticks": 1},
+            {
+                "action": "move",
+                "label": "changed-target-restarts-interpolation",
+                "delta": {"x": 4096, "y": -4096, "z": 4096},
+                "target_position": vector_bits(5.0, 81.0, -33.5),
+                "rotation": {
+                    "y": float_bits(190.0),
+                    "x": float_bits(-10.0),
+                },
+            },
+            {"action": "tick", "label": "replacement-first-tick", "ticks": 1},
+            {"action": "tick", "label": "replacement-final-two-ticks", "ticks": 2},
+        ],
+    }
+
     def sprint_key_presses(
         forward=False, backward=False, left=False, right=False,
         jump=False, shift=False, sprint=False,
