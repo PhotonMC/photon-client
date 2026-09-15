@@ -115,7 +115,8 @@ ve teleport delta/relative motion [P08.au kaydında](client-world-entity-telepor
 [P08.bh kaydında](client-world-entity-boat-control-conformance.md) ve Zombie baby `VEHICLE` attachment
 [P08.bi kaydında](client-world-entity-passenger-baby-attachment-conformance.md), local boat `IN_AIR` tick'i
 [P08.bj kaydında](client-world-entity-boat-air-conformance.md) ve remote boat authority dalı
-[P08.bk kaydında](client-world-entity-boat-remote-authority-conformance.md) `server-conformance` olarak ilerletilmiştir; P08 `client-parity` ile kapanmadan
+[P08.bk kaydında](client-world-entity-boat-remote-authority-conformance.md) `server-conformance`, aynı remote authority state'i ise
+[P08.bk.1 client-parity kaydında](client-world-entity-boat-remote-authority-parity-conformance.md) doğrulanarak ilerletilmiştir; P08 `client-parity` ile kapanmadan
 bu bağımlılıklar açılmaz.
 
 P12/P13 altında yeni item component varyantı açılmaz; gerekçe ve bağlayıcı

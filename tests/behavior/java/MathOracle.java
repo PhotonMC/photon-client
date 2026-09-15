@@ -5144,6 +5144,9 @@ public final class MathOracle {
         if (operation.equals("client_world_entity_boat_air_tick")) {
             return clientWorldEntityBoatAirTickResult(request);
         }
+        if (operation.equals("client_world_entity_boat_remote_tick")) {
+            return clientWorldEntityBoatRemoteTickResult(request);
+        }
         if (operation.equals("client_world_player_sprint_trigger")) {
             return clientWorldPlayerSprintTriggerResult(request);
         }
@@ -6055,6 +6058,7 @@ public final class MathOracle {
             Oracle.f32(boatInput.getAsJsonObject("rotation"), "y"),
             Oracle.f32(boatInput.getAsJsonObject("rotation"), "x"),
             boatInput.get("no_gravity").getAsBoolean(),
+            true,
             input.get("left").getAsBoolean(),
             input.get("right").getAsBoolean(),
             input.get("forward").getAsBoolean(),
@@ -6072,6 +6076,39 @@ public final class MathOracle {
                 }
                 case "set_no_gravity" -> boat.setNoGravity(operation.get("value").getAsBoolean());
                 default -> throw new IllegalArgumentException("Unknown boat air tick action");
+            }
+            states.add(tickBoatState(operation.get("label").getAsString(), boat));
+        }
+        var result = new JsonObject();
+        result.add("states", states);
+        return result;
+    }
+
+    private static JsonObject clientWorldEntityBoatRemoteTickResult(JsonObject request) {
+        JsonObject input = request.getAsJsonObject("input");
+        JsonObject boatInput = request.getAsJsonObject("boat");
+        TickBoatFixture boat = TickBoatFixture.create(
+            boatInput.get("entity_id").getAsInt(),
+            vec3(boatInput.getAsJsonObject("position")),
+            vec3(boatInput.getAsJsonObject("movement")),
+            Oracle.f32(boatInput.getAsJsonObject("rotation"), "y"),
+            Oracle.f32(boatInput.getAsJsonObject("rotation"), "x"),
+            boatInput.get("no_gravity").getAsBoolean(),
+            false,
+            input.get("left").getAsBoolean(),
+            input.get("right").getAsBoolean(),
+            input.get("forward").getAsBoolean(),
+            input.get("backward").getAsBoolean());
+
+        var states = new JsonArray();
+        states.add(tickBoatState("initial", boat));
+        for (JsonElement entry : request.getAsJsonArray("operations")) {
+            JsonObject operation = entry.getAsJsonObject();
+            if (!operation.get("action").getAsString().equals("tick")) {
+                throw new IllegalArgumentException("Unknown boat remote tick action");
+            }
+            for (int tick = 0; tick < operation.get("ticks").getAsInt(); tick++) {
+                boat.tickThroughClientLevel();
             }
             states.add(tickBoatState(operation.get("label").getAsString(), boat));
         }
@@ -10078,6 +10115,7 @@ public final class MathOracle {
         private float xRotO;
         private float deltaRotation;
         private boolean noGravity;
+        private boolean localAuthority;
         private boolean inputLeft;
         private boolean inputRight;
         private boolean inputForward;
@@ -10088,6 +10126,7 @@ public final class MathOracle {
         private static TickBoatFixture create(
             int entityId, Vec3 position, Vec3 movement,
             float yRot, float xRot, boolean noGravity,
+            boolean localAuthority,
             boolean inputLeft, boolean inputRight,
             boolean inputForward, boolean inputBackward
         ) {
@@ -10101,6 +10140,7 @@ public final class MathOracle {
             boat.yRotO = yRot;
             boat.xRotO = xRot;
             boat.noGravity = noGravity;
+            boat.localAuthority = localAuthority;
             boat.inputLeft = inputLeft;
             boat.inputRight = inputRight;
             boat.inputForward = inputForward;
@@ -10129,6 +10169,11 @@ public final class MathOracle {
             this.yRotO = this.yRot;
             this.xRotO = this.xRot;
             this.tickCount++;
+
+            if (!this.localAuthority) {
+                this.motion = Vec3.ZERO;
+                return;
+            }
 
             float invFriction = 0.9F;
             double verticalSpeed = this.noGravity ? 0.0 : -0.04;

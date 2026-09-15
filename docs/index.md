@@ -137,6 +137,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P08.bj.1 — ClientWorld local boat `IN_AIR` tick — client-parity](client-world-entity-boat-air-parity-conformance.md)
 - [P08.bh-entity-boat-control — server-conformance Boat input and `deltaRotation`](client-world-entity-boat-control-conformance.md)
 - [P08.bk-entity-boat-authority — server-conformance Remote boat authority branch](client-world-entity-boat-remote-authority-conformance.md)
+- [P08.bk.1 — ClientWorld remote boat authority — client-parity](client-world-entity-boat-remote-authority-parity-conformance.md)
 - [P09.h — Entity collision shape collection — client-parity birleşik kayıt](client-world-entity-collision-conformance.md)
 - [P08.af — server-conformance Entity custom-name visibility semantic state](client-world-entity-custom-name-conformance.md)
 - [P08.ag — server-conformance Entity custom-name presence semantic state](client-world-entity-custom-name-presence-conformance.md)

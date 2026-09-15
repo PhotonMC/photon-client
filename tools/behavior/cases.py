@@ -2313,6 +2313,36 @@ def math_cases():
         ],
     }
 
+    yield {
+        "case_id": "client-world/entity-boat-remote-tick",
+        "family": "math",
+        "operation": "client_world_entity_boat_remote_tick",
+        "passenger": {
+            "entity_id": 38,
+            "type_id": 151,
+        },
+        "boat": {
+            "entity_id": 37,
+            "position": vector_bits(2.0, 12.0, 2.0),
+            "movement": vector_bits(0.25, 0.5, -0.75),
+            "rotation": {
+                "y": float_bits(10.0),
+                "x": float_bits(-20.0),
+            },
+            "no_gravity": False,
+        },
+        "input": {
+            "left": False,
+            "right": True,
+            "forward": True,
+            "backward": False,
+        },
+        "operations": [
+            {"action": "tick", "label": "remote-first-tick", "ticks": 1},
+            {"action": "tick", "label": "remote-second-tick", "ticks": 1},
+        ],
+    }
+
     def sprint_key_presses(
         forward=False, backward=False, left=False, right=False,
         jump=False, shift=False, sprint=False,

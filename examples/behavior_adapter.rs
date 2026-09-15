@@ -7623,14 +7623,14 @@ fn client_world_entity_firework_tick_result(request: &Value) -> Result<Value, St
     client_world_entity_tick_result(request, 53)
 }
 
-fn client_world_entity_boat_air_tick_state(
+fn client_world_entity_boat_tick_state(
     label: &str,
     world: &ClientWorld,
     entity_id: i32,
 ) -> Result<Value, String> {
     let entity = world
         .entity_at(entity_id)
-        .ok_or_else(|| "boat air tick fixture entity disappeared".to_owned())?;
+        .ok_or_else(|| "boat tick fixture entity disappeared".to_owned())?;
     let rotation = entity.rotation();
     let previous_rotation = entity.previous_rotation();
     Ok(json!({
@@ -7655,7 +7655,28 @@ fn client_world_entity_boat_air_tick_state(
 }
 
 fn client_world_entity_boat_air_tick_result(request: &Value) -> Result<Value, String> {
-    let player_id = i32_field(request, "player_id")?;
+    client_world_entity_boat_tick_result(request, true)
+}
+
+fn client_world_entity_boat_remote_tick_result(request: &Value) -> Result<Value, String> {
+    client_world_entity_boat_tick_result(request, false)
+}
+
+fn client_world_entity_boat_tick_result(
+    request: &Value,
+    local_authority: bool,
+) -> Result<Value, String> {
+    let (passenger_id, passenger_type_id) = if local_authority {
+        (i32_field(request, "player_id")?, 156)
+    } else {
+        let passenger = request
+            .get("passenger")
+            .ok_or("passenger must be an object")?;
+        (
+            i32_field(passenger, "entity_id")?,
+            i32_field(passenger, "type_id")?,
+        )
+    };
     let boat = request.get("boat").ok_or("boat must be an object")?;
     let boat_entity_id = i32_field(boat, "entity_id")?;
     let position = f64_vec3(
@@ -7717,9 +7738,9 @@ fn client_world_entity_boat_air_tick_result(request: &Value) -> Result<Value, St
         return Err("boat air tick fixture entity was rejected".into());
     }
     if !world.apply_entity(EntityInput {
-        entity_id: player_id,
-        uuid: Uuid::new(0, u64::from(player_id as u32)),
-        type_id: 156,
+        entity_id: passenger_id,
+        uuid: Uuid::new(0, u64::from(passenger_id as u32)),
+        type_id: passenger_type_id,
         x: position.x,
         y: position.y,
         z: position.z,
@@ -7727,20 +7748,22 @@ fn client_world_entity_boat_air_tick_result(request: &Value) -> Result<Value, St
         rotation: (0.0, 0.0, 0.0),
         data: 0,
     }) {
-        return Err("boat air tick fixture player was rejected".into());
+        return Err("boat tick fixture passenger was rejected".into());
     }
-    world.set_local_player_id(player_id);
-    if !world.apply_entity_passengers(boat_entity_id, &[player_id]) {
-        return Err("boat air tick fixture passenger relation was rejected".into());
+    if local_authority {
+        world.set_local_player_id(passenger_id);
+    }
+    if !world.apply_entity_passengers(boat_entity_id, &[passenger_id]) {
+        return Err("boat tick fixture passenger relation was rejected".into());
     }
     if !world.set_boat_input(boat_entity_id, boat_input) {
-        return Err("boat air tick fixture input was rejected".into());
+        return Err("boat tick fixture input was rejected".into());
     }
     if no_gravity && !world.apply_entity_metadata(boat_entity_id, &[5, 8, 1, 255]) {
-        return Err("boat air tick fixture no-gravity metadata was rejected".into());
+        return Err("boat tick fixture no-gravity metadata was rejected".into());
     }
 
-    let mut states = vec![client_world_entity_boat_air_tick_state(
+    let mut states = vec![client_world_entity_boat_tick_state(
         "initial",
         &world,
         boat_entity_id,
@@ -7768,12 +7791,12 @@ fn client_world_entity_boat_air_tick_result(request: &Value) -> Result<Value, St
                     &[5, 8, 0, 255]
                 };
                 if !world.apply_entity_metadata(boat_entity_id, metadata) {
-                    return Err("boat air tick fixture no-gravity update was rejected".into());
+                    return Err("boat tick fixture no-gravity update was rejected".into());
                 }
             }
-            _ => return Err("unknown boat air tick action".into()),
+            _ => return Err("unknown boat tick action".into()),
         }
-        states.push(client_world_entity_boat_air_tick_state(
+        states.push(client_world_entity_boat_tick_state(
             string(operation, "label")?,
             &world,
             boat_entity_id,
@@ -8793,6 +8816,9 @@ fn math_result(request: &Value) -> Result<Value, String> {
     }
     if operation == "client_world_entity_boat_air_tick" {
         return client_world_entity_boat_air_tick_result(request);
+    }
+    if operation == "client_world_entity_boat_remote_tick" {
+        return client_world_entity_boat_remote_tick_result(request);
     }
     if operation == "client_world_player_sprint_trigger" {
         return client_world_player_sprint_trigger_result(request);
