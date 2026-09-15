@@ -173,6 +173,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P08.be-entity-passenger-turn — server-conformance `Entity.turn` ve boat `onPassengerTurned`](client-world-entity-passenger-turn-conformance.md)
 - [P08.av-entity-passengers — server-conformance ClientWorld araç ve yolcu ilişkisi](client-world-entity-passengers-conformance.md)
 - [P08.ap-player-head-rotation — server-conformance Remote Player head rotation interpolation](client-world-entity-player-head-rotation-conformance.md)
+- [P08.ap.1 — ClientWorld remote Player head rotation — client-parity](client-world-entity-player-head-rotation-parity-conformance.md)
 - [P08.ar-player-interpolation — server-conformance Remote Player position interpolation](client-world-entity-player-interpolation-conformance.md)
 - [P08.at-player-motion — server-conformance Remote Player motion interpolation](client-world-entity-player-motion-conformance.md)
 - [P08.as-player-snap — server-conformance Remote Player large-position snap](client-world-entity-player-snap-conformance.md)

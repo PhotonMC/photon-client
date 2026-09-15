@@ -2046,6 +2046,63 @@ def math_cases():
         ],
     }
 
+    remote_player_head_defaults = {
+        "action": "rotate_head",
+        "head_target": None,
+        "ticks": 0,
+    }
+    remote_player_head_operations = [
+        {
+            "label": "packet-target-wraps-across-zero",
+            "head_target": float_bits(10.0),
+        },
+        {
+            "label": "first-tick-uses-shortest-path",
+            "ticks": 1,
+        },
+        {
+            "label": "second-tick-before-replacement",
+            "ticks": 1,
+        },
+        {
+            "label": "new-packet-restarts-three-step-target",
+            "head_target": float_bits(-180.0),
+        },
+        {
+            "label": "replacement-first-tick",
+            "ticks": 1,
+        },
+        {
+            "label": "replacement-reaches-after-two-more-ticks",
+            "ticks": 2,
+        },
+        {
+            "label": "negative-packet-target-starts-new-interpolation",
+            "head_target": float_bits(-90.0),
+        },
+        {
+            "label": "negative-target-reaches-after-three-ticks",
+            "ticks": 3,
+        },
+    ]
+    yield {
+        "case_id": "client-world/entity-player-head-rotation",
+        "family": "math",
+        "operation": "client_world_entity_player_head_rotation",
+        "entity_id": 77,
+        "entity_type_id": 156,
+        "initial_position": vector_bits(10.0, 64.0, -2.0),
+        "initial_rotation": {
+            "y": float_bits(15.0),
+            "x": float_bits(-10.0),
+        },
+        "initial_head": float_bits(350.0),
+        "operations": [
+            {**remote_player_head_defaults, **operation}
+            for operation in remote_player_head_operations
+        ],
+    }
+
     def sprint_key_presses(
         forward=False, backward=False, left=False, right=False,
         jump=False, shift=False, sprint=False,

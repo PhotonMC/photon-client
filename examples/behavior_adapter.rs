@@ -7390,6 +7390,92 @@ fn client_world_player_tick_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"player_id": player_id, "states": states}))
 }
 
+fn client_world_entity_player_head_rotation_state(
+    label: &str,
+    accepted: bool,
+    entity: &ClientEntity,
+) -> Value {
+    let rotation = entity.rotation();
+    let previous_rotation = entity.previous_rotation();
+    json!({
+        "label": label,
+        "accepted": accepted,
+        "head_rotation": format!("{:08x}", rotation.2.to_bits()),
+        "previous_head_rotation": format!("{:08x}", previous_rotation.2.to_bits()),
+        "head_target": format!("{:08x}", entity.head_rotation_target().to_bits()),
+        "head_lerp_steps": entity.head_rotation_lerp_steps(),
+        "body_rotation_y": format!("{:08x}", entity.body_y_rotation().to_bits()),
+    })
+}
+
+fn client_world_entity_player_head_rotation_result(request: &Value) -> Result<Value, String> {
+    let entity_id = i32_field(request, "entity_id")?;
+    let initial_position = f64_vec3(
+        request
+            .get("initial_position")
+            .ok_or("initial_position must be a vector")?,
+    )?;
+    let initial_rotation = request
+        .get("initial_rotation")
+        .ok_or("initial_rotation must be an object")?;
+    let initial_head = f32_field(request, "initial_head")?;
+    let mut world = ClientWorld::new(DimensionBounds::default());
+    if !world.apply_entity(EntityInput {
+        entity_id,
+        uuid: Uuid::new(0, u64::from(entity_id as u32)),
+        type_id: i32_field(request, "entity_type_id")?,
+        x: initial_position.x,
+        y: initial_position.y,
+        z: initial_position.z,
+        movement: (0.0, 0.0, 0.0),
+        rotation: (
+            f32_field(initial_rotation, "y")?,
+            f32_field(initial_rotation, "x")?,
+            initial_head,
+        ),
+        data: 0,
+    }) {
+        return Err("remote player head fixture entity was rejected".into());
+    }
+
+    let entity = world
+        .entity_at(entity_id)
+        .ok_or("remote player head fixture entity disappeared")?;
+    let mut states = vec![client_world_entity_player_head_rotation_state(
+        "initial", true, entity,
+    )];
+    for operation in request["operations"]
+        .as_array()
+        .ok_or("operations must be an array")?
+    {
+        if string(operation, "action")? != "rotate_head" {
+            return Err("unknown remote player head action".into());
+        }
+        if let Some(head_target) = operation
+            .get("head_target")
+            .filter(|value| !value.is_null())
+            && !world.apply_entity_head_rotation(entity_id, f32_value(head_target, "head_target")?)
+        {
+            return Err("remote player head target could not be applied".into());
+        }
+        let ticks = operation["ticks"]
+            .as_u64()
+            .ok_or("ticks must be an unsigned integer")?;
+        for _ in 0..ticks {
+            world.tick();
+        }
+        let entity = world
+            .entity_at(entity_id)
+            .ok_or("remote player head fixture entity disappeared")?;
+        states.push(client_world_entity_player_head_rotation_state(
+            string(operation, "label")?,
+            true,
+            entity,
+        ));
+    }
+    Ok(json!({"entity_id": entity_id, "states": states}))
+}
+
 fn sprint_trigger_input(value: &Value) -> Result<Input, String> {
     Ok(Input::new(
         value["forward"]
@@ -8377,6 +8463,9 @@ fn math_result(request: &Value) -> Result<Value, String> {
     }
     if operation == "client_world_player_tick" {
         return client_world_player_tick_result(request);
+    }
+    if operation == "client_world_entity_player_head_rotation" {
+        return client_world_entity_player_head_rotation_result(request);
     }
     if operation == "client_world_player_sprint_trigger" {
         return client_world_player_sprint_trigger_result(request);

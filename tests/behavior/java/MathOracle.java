@@ -36,6 +36,7 @@ import net.minecraft.client.input.PreeditEvent;
 import net.minecraft.client.player.ClientInput;
 import net.minecraft.client.player.KeyboardInput;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.client.player.RemotePlayer;
 import net.minecraft.core.AxisCycle;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -5113,6 +5114,9 @@ public final class MathOracle {
         if (operation.equals("client_world_player_tick")) {
             return clientWorldPlayerTickResult(request);
         }
+        if (operation.equals("client_world_entity_player_head_rotation")) {
+            return clientWorldEntityPlayerHeadRotationResult(request);
+        }
         if (operation.equals("client_world_player_sprint_trigger")) {
             return clientWorldPlayerSprintTriggerResult(request);
         }
@@ -5621,6 +5625,55 @@ public final class MathOracle {
         result.addProperty("player_id", playerId);
         result.add("states", states);
         return result;
+    }
+
+    private static JsonObject clientWorldEntityPlayerHeadRotationResult(JsonObject request) {
+        int entityId = request.get("entity_id").getAsInt();
+        JsonObject initialPosition = request.getAsJsonObject("initial_position");
+        JsonObject initialRotation = request.getAsJsonObject("initial_rotation");
+        TickRemotePlayerFixture player = TickRemotePlayerFixture.create(
+            vec3(initialPosition),
+            Oracle.f32(initialRotation, "y"),
+            Oracle.f32(initialRotation, "x"),
+            Oracle.f32(request, "initial_head"));
+
+        var states = new JsonArray();
+        states.add(tickRemotePlayerHeadState("initial", true, player));
+        for (JsonElement operationEntry : request.getAsJsonArray("operations")) {
+            JsonObject operation = operationEntry.getAsJsonObject();
+            if (!operation.get("action").getAsString().equals("rotate_head")) {
+                throw new IllegalArgumentException("Unknown remote player head action");
+            }
+            JsonElement headTarget = operation.get("head_target");
+            if (headTarget != null && !headTarget.isJsonNull()) {
+                player.lerpHeadTo(
+                    Float.intBitsToFloat(Integer.parseUnsignedInt(headTarget.getAsString(), 16)),
+                    3);
+            }
+            for (int tick = 0; tick < operation.get("ticks").getAsInt(); tick++) {
+                player.tickThroughClientLevel();
+            }
+            states.add(tickRemotePlayerHeadState(
+                operation.get("label").getAsString(), true, player));
+        }
+        var result = new JsonObject();
+        result.addProperty("entity_id", entityId);
+        result.add("states", states);
+        return result;
+    }
+
+    private static JsonObject tickRemotePlayerHeadState(
+        String label, boolean accepted, TickRemotePlayerFixture player
+    ) {
+        var state = new JsonObject();
+        state.addProperty("label", label);
+        state.addProperty("accepted", accepted);
+        state.addProperty("head_rotation", Oracle.bits(player.yHeadRot));
+        state.addProperty("previous_head_rotation", Oracle.bits(player.yHeadRotO));
+        state.addProperty("head_target", Oracle.bits(player.headTarget()));
+        state.addProperty("head_lerp_steps", player.headSteps());
+        state.addProperty("body_rotation_y", Oracle.bits(player.yBodyRot));
+        return state;
     }
 
     private static JsonObject tickLocalPlayerState(
@@ -9120,6 +9173,73 @@ public final class MathOracle {
                 this.lerpHeadRotationStep(this.lerpHeadSteps, this.lerpYHeadRot);
                 this.lerpHeadSteps--;
             }
+        }
+    }
+
+    private static final class TickRemotePlayerFixture extends RemotePlayer {
+        private TickRemotePlayerFixture() {
+            super(null, null);
+        }
+
+        private static TickRemotePlayerFixture create(
+            Vec3 position, float yRot, float xRot, float yHeadRot
+        ) {
+            try {
+                Unsafe unsafe = unsafeInstance();
+                TickRemotePlayerFixture player =
+                    (TickRemotePlayerFixture)unsafe.allocateInstance(TickRemotePlayerFixture.class);
+                var typeField = Entity.class.getDeclaredField("type");
+                unsafe.putObject(
+                    player, unsafe.objectFieldOffset(typeField), net.minecraft.world.entity.EntityTypes.PLAYER);
+                var positionField = Entity.class.getDeclaredField("position");
+                unsafe.putObject(player, unsafe.objectFieldOffset(positionField), position);
+                var passengersField = Entity.class.getDeclaredField("passengers");
+                unsafe.putObject(
+                    player,
+                    unsafe.objectFieldOffset(passengersField),
+                    com.google.common.collect.ImmutableList.of());
+                player.setYRot(yRot);
+                player.setXRot(xRot);
+                player.yHeadRot = yHeadRot;
+                player.yHeadRotO = yHeadRot;
+                player.yBodyRot = yRot;
+                player.yBodyRotO = yRot;
+                player.lerpYHeadRot = yHeadRot;
+                return player;
+            } catch (ReflectiveOperationException error) {
+                throw new IllegalStateException(
+                    "Unable to construct remote player head fixture", error);
+            }
+        }
+
+        private float headTarget() {
+            return (float)this.lerpYHeadRot;
+        }
+
+        private int headSteps() {
+            return this.lerpHeadSteps;
+        }
+
+        private void tickThroughClientLevel() {
+            this.setOldPosAndRot();
+            this.tickCount++;
+            this.yHeadRotO = this.yHeadRot;
+            if (this.lerpHeadSteps > 0) {
+                this.lerpHeadRotationStep(this.lerpHeadSteps, this.lerpYHeadRot);
+                this.lerpHeadSteps--;
+            }
+        }
+
+        @Override
+        protected void updateSwingTime() {
+        }
+
+        @Override
+        protected void updateBob() {
+        }
+
+        @Override
+        protected void pushEntities() {
         }
     }
 

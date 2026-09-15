@@ -1208,10 +1208,10 @@ fn advance_head_rotation(current_bits: &mut u32, target_bits: u32, steps: &mut u
     if *steps == 0 {
         return;
     }
-    let step_count = f32::from(*steps);
-    let current = f32::from_bits(*current_bits);
-    let target = f32::from_bits(target_bits);
-    *current_bits = mth_rot_lerp_f32(1.0 / step_count, current, target).to_bits();
+    let step_count = f64::from(*steps);
+    let current = f64::from(f32::from_bits(*current_bits));
+    let target = f64::from(f32::from_bits(target_bits));
+    *current_bits = (mth_rot_lerp_f64(1.0 / step_count, current, target) as f32).to_bits();
     *steps -= 1;
 }
 
@@ -3539,6 +3539,29 @@ impl ClientWorld {
         true
     }
 
+    /// Apply the three-tick head rotation interpolation target from a
+    /// clientbound RotateHead packet to an entity in the client world.
+    pub fn apply_entity_head_rotation(&mut self, entity_id: i32, y_head_rot: f32) -> bool {
+        let Some(entity) = self.entities.get_mut(&entity_id) else {
+            return false;
+        };
+        if entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID {
+            entity.head_rotation_target_bits = y_head_rot.to_bits();
+            entity.head_lerp_steps = LIVING_ENTITY_HEAD_LERP_STEPS;
+        } else {
+            entity.y_head_rot_bits = y_head_rot.to_bits();
+        }
+        if let Some(player) = self
+            .local_player
+            .as_mut()
+            .filter(|player| player.id == entity_id)
+        {
+            player.head_rotation_target_bits = y_head_rot.to_bits();
+            player.head_lerp_steps = LIVING_ENTITY_HEAD_LERP_STEPS;
+        }
+        true
+    }
+
     pub(crate) fn remove_local_player_mob_effect(
         &mut self,
         player_id: i32,
@@ -5441,23 +5464,11 @@ impl ClientWorld {
                     entity.x_rot_bits = (value % 360.0).clamp(-90.0, 90.0).to_bits();
                 }
             }
-            if let Some(y_head_rot) = input.y_head_rot {
-                if entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID {
-                    entity.head_rotation_target_bits = y_head_rot.to_bits();
-                    entity.head_lerp_steps = LIVING_ENTITY_HEAD_LERP_STEPS;
-                } else {
-                    entity.y_head_rot_bits = y_head_rot.to_bits();
-                }
-            }
         }
         if let Some(y_head_rot) = input.y_head_rot
-            && let Some(player) = self
-                .local_player
-                .as_mut()
-                .filter(|player| player.id == input.entity_id)
+            && !self.apply_entity_head_rotation(input.entity_id, y_head_rot)
         {
-            player.head_rotation_target_bits = y_head_rot.to_bits();
-            player.head_lerp_steps = LIVING_ENTITY_HEAD_LERP_STEPS;
+            return false;
         }
         true
     }
@@ -7628,6 +7639,14 @@ impl ClientEntity {
             f32::from_bits(self.x_rot_bits),
             f32::from_bits(self.y_head_rot_bits),
         )
+    }
+
+    pub fn head_rotation_target(&self) -> f32 {
+        f32::from_bits(self.head_rotation_target_bits)
+    }
+
+    pub fn head_rotation_lerp_steps(&self) -> u8 {
+        self.head_lerp_steps
     }
 
     pub fn body_y_rotation(&self) -> f32 {
