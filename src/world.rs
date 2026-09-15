@@ -5636,23 +5636,37 @@ impl ClientWorld {
         I: IntoIterator<Item = SectionInput<'a>>,
     {
         let section_base_y = self.dimension.min_section_y();
+        let sections = sections
+            .into_iter()
+            .enumerate()
+            .map(|(index, input)| {
+                (
+                    section_base_y + index as i32,
+                    ClientSection {
+                        non_empty_block_count: input.non_empty_block_count,
+                        fluid_count: input.fluid_count,
+                        block_states: input.block_states.to_vec(),
+                        biomes: input.biomes.to_vec(),
+                    },
+                )
+            })
+            .collect::<BTreeMap<_, _>>();
+        let lights = sections
+            .iter()
+            .filter(|(_, section)| !section.has_only_air())
+            .map(|(&section_y, _)| {
+                (
+                    section_y,
+                    ClientLightSection {
+                        sky: Some(vec![0; 2_048]),
+                        block: Some(vec![0; 2_048]),
+                    },
+                )
+            })
+            .collect();
         let new_chunk = ClientChunk {
-            sections: sections
-                .into_iter()
-                .enumerate()
-                .map(|(index, input)| {
-                    (
-                        section_base_y + index as i32,
-                        ClientSection {
-                            non_empty_block_count: input.non_empty_block_count,
-                            fluid_count: input.fluid_count,
-                            block_states: input.block_states.to_vec(),
-                            biomes: input.biomes.to_vec(),
-                        },
-                    )
-                })
-                .collect(),
-            lights: BTreeMap::new(),
+            sections,
+            lights,
             block_entities: BTreeMap::new(),
         };
         let new_section_statuses = new_chunk

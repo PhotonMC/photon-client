@@ -6586,10 +6586,11 @@ fn client_world_light_queries(world: &ClientWorld, value: &Value) -> Result<Valu
                 "block" => world.block_light_at(x, y, z),
                 _ => return Err(format!("unknown light layer: {layer}")),
             };
-            Ok(json!({
-                "label": string(query, "label")?,
-                "value": light,
-            }))
+            let mut state = json!({"label": string(query, "label")?});
+            if let Some(light) = light {
+                state["value"] = json!(light);
+            }
+            Ok(state)
         })
         .collect::<Result<Vec<_>, String>>()
         .map(Value::Array)
@@ -6704,6 +6705,11 @@ fn client_world_light_result(request: &Value) -> Result<Value, String> {
                     return Err("light test chunk was rejected".into());
                 }
                 event["stored"] = json!(world.loaded_light_section_count() != 0);
+            }
+            "unload" => {
+                let chunk_x = i32_field(operation, "chunk_x")?;
+                let chunk_z = i32_field(operation, "chunk_z")?;
+                world.unload_chunk(chunk_x, chunk_z);
             }
             _ => return Err(format!("unknown client world light action: {action}")),
         }

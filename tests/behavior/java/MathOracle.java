@@ -5559,8 +5559,27 @@ public final class MathOracle {
                         "stored",
                         engine.getLayerListener(LightLayer.SKY).getDataLayerData(
                             SectionPos.of(chunkX, minSectionY, chunkZ)) != null
-                            || engine.getLayerListener(LightLayer.BLOCK).getDataLayerData(
-                                SectionPos.of(chunkX, minSectionY, chunkZ)) != null);
+                        || engine.getLayerListener(LightLayer.BLOCK).getDataLayerData(
+                            SectionPos.of(chunkX, minSectionY, chunkZ)) != null);
+                } else if (action.equals("unload")) {
+                    int chunkX = operation.get("chunk_x").getAsInt();
+                    int chunkZ = operation.get("chunk_z").getAsInt();
+                    ChunkPos chunkPos = new ChunkPos(chunkX, chunkZ);
+                    engine.setLightEnabled(chunkPos, false);
+                    for (int sectionY = engine.getMinLightSection();
+                         sectionY < engine.getMaxLightSection(); sectionY++) {
+                        SectionPos sectionPos = SectionPos.of(chunkPos, sectionY);
+                        engine.queueSectionData(LightLayer.BLOCK, sectionPos, null);
+                        engine.queueSectionData(LightLayer.SKY, sectionPos, null);
+                    }
+                    int minSectionY = Math.floorDiv(minY, 16);
+                    int maxSectionY = Math.floorDiv(minY + height - 1, 16);
+                    for (int sectionY = minSectionY; sectionY <= maxSectionY; sectionY++) {
+                        engine.updateSectionStatus(
+                            SectionPos.of(chunkPos, sectionY), true);
+                    }
+                    engine.runLightUpdates();
+                    targetLoaded = false;
                 } else {
                     throw new IllegalArgumentException("Unknown client world light action: " + action);
                 }

@@ -1096,6 +1096,77 @@ def math_cases():
         ],
     }
 
+    yield {
+        "case_id": "client-world/light-unload-removal",
+        "family": "math",
+        "operation": "client_world_light",
+        "dimension_min_y": -64,
+        "dimension_height": 384,
+        "operations": [
+            {
+                "action": "apply",
+                "label": "queue-before-unload",
+                "chunk_x": -2,
+                "chunk_z": 3,
+                "sky_mask": [1],
+                "sky_empty_mask": [],
+                "sky_updates": [light_layer_hex(0x0F)],
+                "block_mask": [1],
+                "block_empty_mask": [],
+                "block_updates": [light_layer_hex(0xA6)],
+                "queries": [],
+            },
+            {
+                "action": "unload",
+                "label": "forget-clears-queued-light",
+                "chunk_x": -2,
+                "chunk_z": 3,
+                "queries": [
+                    {"label": "sky-after-forget", "layer": "sky", "x": -32, "y": -64, "z": 48},
+                    {"label": "block-after-forget", "layer": "block", "x": -32, "y": -64, "z": 48},
+                ],
+            },
+            {
+                "action": "load",
+                "label": "load-after-queued-cleanup",
+                "chunk_x": -2,
+                "chunk_z": 3,
+                "section_count": 1,
+                "non_empty_sections": [0],
+                "queries": [
+                    {"label": "sky-not-republished", "layer": "sky", "x": -32, "y": -64, "z": 48},
+                    {"label": "block-not-republished", "layer": "block", "x": -32, "y": -64, "z": 48},
+                ],
+            },
+            {
+                "action": "apply",
+                "label": "loaded-light-before-unload",
+                "chunk_x": -2,
+                "chunk_z": 3,
+                "sky_mask": [1],
+                "sky_empty_mask": [],
+                "sky_updates": [light_layer_hex(0x26)],
+                "block_mask": [1],
+                "block_empty_mask": [],
+                "block_updates": [light_layer_hex(0x37)],
+                "queries": [
+                    {"label": "sky-loaded", "layer": "sky", "x": -32, "y": -64, "z": 48},
+                    {"label": "block-loaded", "layer": "block", "x": -32, "y": -64, "z": 48},
+                ],
+            },
+            {
+                "action": "unload",
+                "label": "forget-clears-loaded-light",
+                "chunk_x": -2,
+                "chunk_z": 3,
+                "queries": [
+                    {"label": "sky-after-loaded-forget", "layer": "sky", "x": -32, "y": -64, "z": 48},
+                    {"label": "block-after-loaded-forget", "layer": "block", "x": -32, "y": -64, "z": 48},
+                ],
+            },
+        ],
+    }
+
     def attribute_modifier(identifier, amount, operation):
         return {
             "id": identifier,
