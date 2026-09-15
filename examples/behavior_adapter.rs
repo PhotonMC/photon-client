@@ -8109,6 +8109,68 @@ fn client_world_entity_effect_particles_result(request: &Value) -> Result<Value,
     Ok(json!({"states": states}))
 }
 
+fn client_world_entity_sleeping_position_state(
+    label: &str,
+    accepted: bool,
+    entity: &ClientEntity,
+) -> Value {
+    let mut state = json!({
+        "label": label,
+        "accepted": accepted,
+        "living_flags": entity.living_flags(),
+        "is_sleeping": entity.is_sleeping(),
+    });
+    if let Some(position) = entity.sleeping_pos() {
+        state
+            .as_object_mut()
+            .expect("sleeping position state object")
+            .insert("sleeping_pos".into(), blockpos_snapshot(position));
+    }
+    state
+}
+
+fn client_world_entity_sleeping_position_result(request: &Value) -> Result<Value, String> {
+    let entity_id = i32_field(request, "entity_id")?;
+    let mut world = ClientWorld::new(DimensionBounds::default());
+    if !world.apply_entity(EntityInput {
+        entity_id,
+        uuid: Uuid::new(0, u64::from(entity_id as u32)),
+        type_id: i32_field(request, "entity_type_id")?,
+        x: 1.25,
+        y: 80.0,
+        z: -35.5,
+        movement: (0.0, 0.0, 0.0),
+        rotation: (0.0, 0.0, 0.0),
+        data: 0,
+    }) {
+        return Err("sleeping position fixture entity was rejected".into());
+    }
+
+    let operations = request["operations"]
+        .as_array()
+        .ok_or("operations must be an array")?;
+    let mut states = vec![client_world_entity_sleeping_position_state(
+        "initial",
+        true,
+        world
+            .entity_at(entity_id)
+            .ok_or("sleeping position fixture entity disappeared")?,
+    )];
+    for operation in operations {
+        let metadata = decode_hex(string(operation, "metadata_hex")?)?;
+        let accepted = world.apply_entity_metadata(entity_id, &metadata);
+        let entity = world
+            .entity_at(entity_id)
+            .ok_or("sleeping position fixture entity disappeared")?;
+        states.push(client_world_entity_sleeping_position_state(
+            string(operation, "label")?,
+            accepted,
+            entity,
+        ));
+    }
+    Ok(json!({"states": states}))
+}
+
 fn client_chunk_cache_snapshot_json(snapshot: &ClientChunkCacheSnapshot) -> Value {
     json!({
         "storage_radius": snapshot.storage_radius,
@@ -8296,6 +8358,9 @@ fn math_result(request: &Value) -> Result<Value, String> {
     }
     if operation == "client_world_entity_effect_particles" {
         return client_world_entity_effect_particles_result(request);
+    }
+    if operation == "client_world_entity_sleeping_position" {
+        return client_world_entity_sleeping_position_result(request);
     }
     if operation == "random" {
         return random_result(request);

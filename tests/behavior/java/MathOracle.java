@@ -5149,6 +5149,9 @@ public final class MathOracle {
         if (operation.equals("client_world_entity_effect_particles")) {
             return clientWorldEntityEffectParticlesResult(request);
         }
+        if (operation.equals("client_world_entity_sleeping_position")) {
+            return clientWorldEntitySleepingPositionResult(request);
+        }
         throw new IllegalArgumentException("Unknown client world operation");
     }
 
@@ -6190,6 +6193,50 @@ public final class MathOracle {
             particleTypeIds.add(typeId);
         }
         state.add("effect_particle_type_ids", particleTypeIds);
+        return state;
+    }
+
+    private static JsonObject clientWorldEntitySleepingPositionResult(JsonObject request) {
+        try {
+            var output = System.out;
+            var errorOutput = System.err;
+            try {
+                SharedConstants.setVersion(TEST_VERSION);
+                Bootstrap.bootStrap();
+            } finally {
+                System.setOut(output);
+                System.setErr(errorOutput);
+            }
+
+            var entity = new LivingFlagsFixtureEntity();
+            var states = new JsonArray();
+            states.add(entitySleepingPositionState("initial", true, entity));
+            for (JsonElement operationEntry : request.getAsJsonArray("operations")) {
+                JsonObject operation = operationEntry.getAsJsonObject();
+                entity.getEntityData().assignValues(
+                    decodeEntityMetadata(operation.get("metadata_hex").getAsString()));
+                states.add(entitySleepingPositionState(
+                    operation.get("label").getAsString(), true, entity));
+            }
+            var result = new JsonObject();
+            result.add("states", states);
+            return result;
+        } catch (RuntimeException error) {
+            throw new IllegalStateException("Entity sleeping position fixture failed", error);
+        }
+    }
+
+    private static JsonObject entitySleepingPositionState(
+        String label, boolean accepted, LivingFlagsFixtureEntity entity
+    ) {
+        var state = new JsonObject();
+        state.addProperty("label", label);
+        state.addProperty("accepted", accepted);
+        state.addProperty("living_flags", entity.livingFlags());
+        entity.getSleepingPos().ifPresentOrElse(
+            position -> state.add("sleeping_pos", snapshot(position)),
+            () -> state.add("sleeping_pos", JsonNull.INSTANCE));
+        state.addProperty("is_sleeping", entity.isSleeping());
         return state;
     }
 

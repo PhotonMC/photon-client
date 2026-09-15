@@ -1441,6 +1441,32 @@ def math_cases():
         ],
     }
 
+    yield {
+        "case_id": "client-world/entity-sleeping-position",
+        "family": "math",
+        "operation": "client_world_entity_sleeping_position",
+        "entity_id": 37,
+        "entity_type_id": 54,
+        "operations": [
+            {
+                "label": "set-positive-sleeping-position",
+                "metadata_hex": "0e0b01000003bffffe905aff",
+            },
+            {
+                "label": "combined-living-and-negative-sleeping-position",
+                "metadata_hex": "0800010e0b01ffff0000007fffc0ff",
+            },
+            {
+                "label": "no-gravity-preserves-sleeping-position",
+                "metadata_hex": "050801ff",
+            },
+            {
+                "label": "clear-sleeping-position",
+                "metadata_hex": "0e0b00ff",
+            },
+        ],
+    }
+
     def attribute_modifier(identifier, amount, operation):
         return {
             "id": identifier,
