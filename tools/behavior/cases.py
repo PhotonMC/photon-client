@@ -1530,6 +1530,94 @@ def math_cases():
         "operations": player_sprint_attribute_operations,
     }
 
+    player_sneaking_input_defaults = {
+        "action": "apply_input",
+        "player_id": 42,
+        "move_x": float_bits(0.0),
+        "move_y": float_bits(1.0),
+        "jump": False,
+        "xxa": float_bits(0.0),
+        "zza": float_bits(0.0),
+        "jumping": False,
+        "x_bob": float_bits(0.0),
+        "y_bob": float_bits(0.0),
+        "x_bob_o": float_bits(0.0),
+        "y_bob_o": float_bits(0.0),
+        "x_rot": float_bits(0.0),
+        "y_rot": float_bits(0.0),
+        "controlled_camera": True,
+        "using_item": False,
+        "passenger": False,
+        "moving_slowly": True,
+        "item_use_speed_multiplier": float_bits(0.2),
+    }
+    player_sneaking_input_operations = [
+        {
+            "label": "default-sneaking-speed",
+            "attributes": [],
+        },
+        {
+            "label": "custom-sneaking-speed",
+            "attributes": [
+                {
+                    "attribute_id": 31,
+                    "base": float_bits(0.5, "f64"),
+                    "modifiers": [
+                        attribute_modifier("p10:sneaking_total", 0.5, 2),
+                    ],
+                },
+            ],
+        },
+        {
+            "label": "item-and-sneaking-attribute-order",
+            "move_x": float_bits(1.0),
+            "move_y": float_bits(1.0),
+            "using_item": True,
+            "item_use_speed_multiplier": float_bits(0.5),
+            "attributes": [
+                {
+                    "attribute_id": 31,
+                    "base": float_bits(0.4, "f64"),
+                    "modifiers": [
+                        attribute_modifier("p10:sneaking_add", 0.1, 0),
+                    ],
+                },
+            ],
+        },
+        {
+            "label": "non-slow-input-ignores-sneaking-speed",
+            "moving_slowly": False,
+            "attributes": [
+                {
+                    "attribute_id": 31,
+                    "base": float_bits(0.9, "f64"),
+                    "modifiers": [],
+                },
+            ],
+        },
+        {
+            "label": "wrong-player-preserves-sneaking-speed",
+            "player_id": 99,
+            "attributes": [
+                {
+                    "attribute_id": 31,
+                    "base": float_bits(0.8, "f64"),
+                    "modifiers": [],
+                },
+            ],
+        },
+    ]
+    yield {
+        "case_id": "client-world/player-sneaking-speed-input-binding",
+        "family": "math",
+        "operation": "client_world_player_sneaking_input",
+        "player_id": 42,
+        "operations": [
+            {**player_sneaking_input_defaults, **operation}
+            for operation in player_sneaking_input_operations
+        ],
+    }
+
     def character_event_case(label, codepoint):
         return {
             "case_id": f"character-event/{label}", "family": "math",

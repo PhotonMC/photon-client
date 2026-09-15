@@ -584,6 +584,8 @@ pub(crate) const PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS: u8 = 1;
 pub(crate) const PLAYER_RESPAWN_KEEP_ENTITY_DATA: u8 = 2;
 const VANILLA_PLAYER_MOVEMENT_SPEED_ATTRIBUTE_ID: i32 = 26;
 const VANILLA_PLAYER_DEFAULT_MOVEMENT_SPEED: f32 = 0.1_f32;
+const VANILLA_PLAYER_SNEAKING_SPEED_ATTRIBUTE_ID: i32 = 31;
+const VANILLA_PLAYER_DEFAULT_SNEAKING_SPEED: f64 = 0.3;
 const VANILLA_PLAYER_SPRINTING_MODIFIER_ID: &str = "minecraft:sprinting";
 const VANILLA_PLAYER_SPRINTING_MODIFIER_AMOUNT: f32 = 0.3_f32;
 const VANILLA_PLAYER_ENTITY_TYPE_ID: i32 = 156;
@@ -3059,6 +3061,22 @@ impl ClientWorld {
             return false;
         };
         player.apply_input(move_vector, jump_pressed, controlled_camera, modifiers);
+        true
+    }
+
+    /// Apply LocalPlayer input while resolving the sneaking factor from its
+    /// current movement attribute state.
+    pub fn apply_local_player_input_from_attributes(
+        &mut self,
+        move_vector: crate::math::Vec2,
+        jump_pressed: bool,
+        controlled_camera: bool,
+        modifiers: LocalPlayerInputModifiers,
+    ) -> bool {
+        let Some(player) = self.local_player.as_mut() else {
+            return false;
+        };
+        player.apply_input_from_attributes(move_vector, jump_pressed, controlled_camera, modifiers);
         true
     }
 
@@ -6192,6 +6210,19 @@ impl ClientPlayerState {
         self.y_bob_o_bits = applied.y_bob_old.to_bits();
     }
 
+    fn apply_input_from_attributes(
+        &mut self,
+        move_vector: crate::math::Vec2,
+        jump_pressed: bool,
+        controlled_camera: bool,
+        mut modifiers: LocalPlayerInputModifiers,
+    ) {
+        if controlled_camera && modifiers.moving_slowly && move_vector.length_squared() != 0.0 {
+            modifiers.sneaking_movement_factor = self.sneaking_movement_factor();
+        }
+        self.apply_input(move_vector, jump_pressed, controlled_camera, modifiers);
+    }
+
     fn apply_fluid_falling_adjustment(&mut self, base_gravity: f64, is_falling: bool) {
         let adjusted = adjust_local_player_fluid_falling_movement(LocalPlayerFluidFallingInput {
             base_gravity,
@@ -6647,6 +6678,20 @@ impl ClientPlayerState {
             .find(|attribute| attribute.attribute_id == VANILLA_PLAYER_MOVEMENT_SPEED_ATTRIBUTE_ID)
             .map(|attribute| attribute.effective_value(0.0, 1024.0) as f32)
             .unwrap_or(VANILLA_PLAYER_DEFAULT_MOVEMENT_SPEED)
+    }
+
+    /// Return Java's effective LocalPlayer sneaking-speed attribute value.
+    pub fn sneaking_movement_factor_value(&self) -> f64 {
+        self.attributes
+            .iter()
+            .find(|attribute| attribute.attribute_id == VANILLA_PLAYER_SNEAKING_SPEED_ATTRIBUTE_ID)
+            .map(|attribute| attribute.effective_value(0.0, 1.0))
+            .unwrap_or(VANILLA_PLAYER_DEFAULT_SNEAKING_SPEED)
+    }
+
+    /// Return the f32 value used by LocalPlayer.modifyInput.
+    pub fn sneaking_movement_factor(&self) -> f32 {
+        self.sneaking_movement_factor_value() as f32
     }
 
     pub fn modified_friction(&self) -> f32 {
@@ -9479,6 +9524,91 @@ mod tests {
                 .local_player()
                 .expect("ignored sprint player")
                 .is_sprinting()
+        );
+    }
+
+    #[test]
+    fn local_player_input_reads_sneaking_speed_attribute() {
+        let mut world = ClientWorld::default();
+        world.set_local_player_id(42);
+        let modifiers = || LocalPlayerInputModifiers {
+            using_item: false,
+            passenger: false,
+            item_use_speed_multiplier: 0.2,
+            moving_slowly: true,
+            sneaking_movement_factor: 0.0,
+        };
+
+        assert!(world.apply_local_player_input_from_attributes(
+            Vec2::new(0.0, 1.0),
+            false,
+            true,
+            modifiers(),
+        ));
+        let player = world.local_player().expect("default sneaking player");
+        assert_eq!(
+            player.sneaking_movement_factor_value().to_bits(),
+            0x3fd3_3333_3333_3333
+        );
+        assert_eq!(player.input_impulses().y.to_bits(), 0x3e96_872c);
+
+        let custom_attribute = ClientAttributeState::from_wire(
+            super::VANILLA_PLAYER_SNEAKING_SPEED_ATTRIBUTE_ID,
+            0.5,
+            vec![ClientAttributeModifierState::from_wire(
+                "test:sneaking_total".to_owned(),
+                0.5,
+                2,
+            )],
+        );
+        assert!(world.apply_local_player_attributes(42, &[custom_attribute]));
+        assert!(world.apply_local_player_input_from_attributes(
+            Vec2::new(0.0, 1.0),
+            false,
+            true,
+            modifiers(),
+        ));
+        let player = world.local_player().expect("custom sneaking player");
+        assert_eq!(player.sneaking_movement_factor_value(), 0.75);
+        assert_eq!(player.input_impulses().y.to_bits(), 0x3f3c_28f6);
+
+        let replacement_attribute = ClientAttributeState::from_wire(
+            super::VANILLA_PLAYER_SNEAKING_SPEED_ATTRIBUTE_ID,
+            0.9,
+            Vec::new(),
+        );
+        assert!(world.apply_local_player_attributes(42, &[replacement_attribute]));
+        let non_slow_modifiers = LocalPlayerInputModifiers {
+            moving_slowly: false,
+            ..modifiers()
+        };
+        assert!(world.apply_local_player_input_from_attributes(
+            Vec2::new(0.0, 1.0),
+            false,
+            true,
+            non_slow_modifiers,
+        ));
+        let player = world.local_player().expect("non-slow sneaking player");
+        assert_eq!(player.input_impulses().y.to_bits(), 0x3f7a_e148);
+
+        let wrong_attribute = ClientAttributeState::from_wire(
+            super::VANILLA_PLAYER_SNEAKING_SPEED_ATTRIBUTE_ID,
+            0.8,
+            Vec::new(),
+        );
+        assert!(!world.apply_local_player_attributes(99, &[wrong_attribute]));
+        assert!(world.apply_local_player_input_from_attributes(
+            Vec2::new(0.0, 1.0),
+            false,
+            true,
+            modifiers(),
+        ));
+        assert_eq!(
+            world
+                .local_player()
+                .expect("ignored sneaking attribute player")
+                .sneaking_movement_factor_value(),
+            0.9,
         );
     }
 

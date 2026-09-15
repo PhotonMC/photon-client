@@ -7039,6 +7039,87 @@ fn client_world_player_sprint_attribute_result(request: &Value) -> Result<Value,
     Ok(json!({"states": states}))
 }
 
+fn client_world_player_sneaking_input_state(
+    label: &str,
+    accepted: bool,
+    player: &voxel_client::world::ClientPlayerState,
+) -> Value {
+    let bob = player.bob();
+    let previous_bob = player.previous_bob();
+    json!({
+        "label": label,
+        "accepted": accepted,
+        "sneaking_speed": format!("{:016x}", player.sneaking_movement_factor_value().to_bits()),
+        "movement": vec2_snapshot(player.input_impulses()),
+        "jumping": player.is_jumping(),
+        "x_bob": format!("{:08x}", bob.0.to_bits()),
+        "y_bob": format!("{:08x}", bob.1.to_bits()),
+        "x_bob_o": format!("{:08x}", previous_bob.0.to_bits()),
+        "y_bob_o": format!("{:08x}", previous_bob.1.to_bits()),
+    })
+}
+
+fn client_world_player_sneaking_input_result(request: &Value) -> Result<Value, String> {
+    let player_id = i32_field(request, "player_id")?;
+    let mut world = ClientWorld::new(DimensionBounds::new(0, 256));
+    world.set_local_player_id(player_id);
+    let operations = request["operations"]
+        .as_array()
+        .ok_or("operations must be an array")?;
+    let mut states = Vec::with_capacity(operations.len());
+
+    for operation in operations {
+        if string(operation, "action")? != "apply_input" {
+            return Err("unknown player sneaking input action".into());
+        }
+        let attributes = operation["attributes"]
+            .as_array()
+            .ok_or("attributes must be an array")?
+            .iter()
+            .map(client_attribute_state)
+            .collect::<Result<Vec<_>, _>>()?;
+        let operation_player_id = i32_field(operation, "player_id")?;
+        let accepted = world.apply_local_player_attributes(operation_player_id, &attributes);
+        let modifiers = LocalPlayerInputModifiers {
+            using_item: operation["using_item"]
+                .as_bool()
+                .ok_or("using_item must be a boolean")?,
+            passenger: operation["passenger"]
+                .as_bool()
+                .ok_or("passenger must be a boolean")?,
+            item_use_speed_multiplier: f32_field(operation, "item_use_speed_multiplier")?,
+            moving_slowly: operation["moving_slowly"]
+                .as_bool()
+                .ok_or("moving_slowly must be a boolean")?,
+            sneaking_movement_factor: 0.3,
+        };
+        if !world.apply_local_player_input_from_attributes(
+            Vec2::new(
+                f32_field(operation, "move_x")?,
+                f32_field(operation, "move_y")?,
+            ),
+            operation["jump"]
+                .as_bool()
+                .ok_or("jump must be a boolean")?,
+            operation["controlled_camera"]
+                .as_bool()
+                .ok_or("controlled_camera must be a boolean")?,
+            modifiers,
+        ) {
+            return Err("local player is not initialized".into());
+        }
+        let player = world
+            .local_player()
+            .ok_or("local player is not initialized")?;
+        states.push(client_world_player_sneaking_input_state(
+            string(operation, "label")?,
+            accepted,
+            player,
+        ));
+    }
+    Ok(json!({"states": states}))
+}
+
 fn client_world_entity_shared_flags_state(
     label: &str,
     accepted: bool,
@@ -7343,6 +7424,9 @@ fn math_result(request: &Value) -> Result<Value, String> {
     }
     if operation == "client_world_player_sprint_attribute" {
         return client_world_player_sprint_attribute_result(request);
+    }
+    if operation == "client_world_player_sneaking_input" {
+        return client_world_player_sneaking_input_result(request);
     }
     if operation == "client_world_entity_shared_flags" {
         return client_world_entity_shared_flags_result(request);

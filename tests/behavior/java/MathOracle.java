@@ -5104,6 +5104,9 @@ public final class MathOracle {
         if (operation.equals("client_world_player_sprint_attribute")) {
             return clientWorldPlayerSprintAttributeResult(request);
         }
+        if (operation.equals("client_world_player_sneaking_input")) {
+            return clientWorldPlayerSneakingInputResult(request);
+        }
         if (operation.equals("client_world_entity_shared_flags")) {
             return clientWorldEntitySharedFlagsResult(request);
         }
@@ -5389,6 +5392,76 @@ public final class MathOracle {
         state.add("modifiers", modifierStates);
         state.addProperty("movement_speed", Oracle.bits(player.getSpeed()));
         return state;
+    }
+
+    private static JsonObject clientWorldPlayerSneakingInputResult(JsonObject request) {
+        try {
+            var output = System.out;
+            var errorOutput = System.err;
+            try {
+                SharedConstants.setVersion(TEST_VERSION);
+                Bootstrap.bootStrap();
+            } finally {
+                System.setOut(output);
+                System.setErr(errorOutput);
+            }
+
+            int playerId = request.get("player_id").getAsInt();
+            AttributeMap attributes = new AttributeMap(Player.createAttributes().build());
+            SneakingSpeedInputFixture player = SneakingSpeedInputFixture.create(attributes);
+            var states = new JsonArray();
+            for (JsonElement operationEntry : request.getAsJsonArray("operations")) {
+                JsonObject operation = operationEntry.getAsJsonObject();
+                boolean accepted = operation.get("player_id").getAsInt() == playerId;
+                if (accepted) {
+                    for (JsonElement snapshotEntry : operation.getAsJsonArray("attributes")) {
+                        applyPlayerAttributeSnapshot(
+                            attributes, snapshotEntry.getAsJsonObject());
+                    }
+                }
+                player.configureApplyInput(
+                    Oracle.f32(operation, "move_x"),
+                    Oracle.f32(operation, "move_y"),
+                    operation.get("jump").getAsBoolean(),
+                    Oracle.f32(operation, "xxa"),
+                    Oracle.f32(operation, "zza"),
+                    operation.get("jumping").getAsBoolean(),
+                    Oracle.f32(operation, "x_bob"),
+                    Oracle.f32(operation, "y_bob"),
+                    Oracle.f32(operation, "x_bob_o"),
+                    Oracle.f32(operation, "y_bob_o"),
+                    Oracle.f32(operation, "x_rot"),
+                    Oracle.f32(operation, "y_rot"),
+                    operation.get("controlled_camera").getAsBoolean(),
+                    operation.get("using_item").getAsBoolean(),
+                    operation.get("passenger").getAsBoolean(),
+                    operation.get("moving_slowly").getAsBoolean());
+                if (operation.get("using_item").getAsBoolean()) {
+                    player.setItemUseSpeed(Oracle.f32(operation, "item_use_speed_multiplier"));
+                }
+                player.applyInput();
+
+                var state = new JsonObject();
+                state.addProperty("label", operation.get("label").getAsString());
+                state.addProperty("accepted", accepted);
+                state.addProperty(
+                    "sneaking_speed",
+                    Oracle.bits(player.getAttributeValue(Attributes.SNEAKING_SPEED)));
+                state.add("movement", snapshot(new Vec2(player.xxa, player.zza)));
+                state.addProperty("jumping", player.isJumping());
+                state.addProperty("x_bob", Oracle.bits(player.xBob));
+                state.addProperty("y_bob", Oracle.bits(player.yBob));
+                state.addProperty("x_bob_o", Oracle.bits(player.xBobO));
+                state.addProperty("y_bob_o", Oracle.bits(player.yBobO));
+                states.add(state);
+            }
+            var result = new JsonObject();
+            result.add("states", states);
+            return result;
+        } catch (ReflectiveOperationException error) {
+            throw new IllegalStateException(
+                "LocalPlayer sneaking speed attribute binding fixture failed", error);
+        }
     }
 
     private static JsonObject clientWorldEntitySharedFlagsResult(JsonObject request) {
@@ -8072,6 +8145,111 @@ public final class MathOracle {
                 throw new IllegalStateException(
                     "Unable to construct player sprint attribute fixture", error);
             }
+        }
+    }
+
+    private static final class SneakingSpeedInputFixture extends LocalPlayer {
+        private boolean usingItem;
+        private boolean passenger;
+        private boolean movingSlowly;
+        private boolean controlledCamera;
+        private float xRotation;
+        private float yRotation;
+
+        private SneakingSpeedInputFixture() {
+            super(null, null, null, null, null, Input.EMPTY, false, null);
+        }
+
+        private static SneakingSpeedInputFixture create(AttributeMap attributes) {
+            try {
+                Unsafe unsafe = unsafeInstance();
+                SneakingSpeedInputFixture player =
+                    (SneakingSpeedInputFixture)unsafe.allocateInstance(SneakingSpeedInputFixture.class);
+                var attributesField = LivingEntity.class.getDeclaredField("attributes");
+                unsafe.putObject(player, unsafe.objectFieldOffset(attributesField), attributes);
+                return player;
+            } catch (ReflectiveOperationException error) {
+                throw new IllegalStateException(
+                    "Unable to construct player sneaking speed fixture", error);
+            }
+        }
+
+        @Override
+        public boolean isUsingItem() {
+            return this.usingItem;
+        }
+
+        @Override
+        public boolean isPassenger() {
+            return this.passenger;
+        }
+
+        @Override
+        public boolean isMovingSlowly() {
+            return this.movingSlowly;
+        }
+
+        @Override
+        protected boolean isControlledCamera() {
+            return this.controlledCamera;
+        }
+
+        @Override
+        public float getXRot() {
+            return this.xRotation;
+        }
+
+        @Override
+        public float getYRot() {
+            return this.yRotation;
+        }
+
+        private void configureApplyInput(
+            final float moveX,
+            final float moveY,
+            final boolean jump,
+            final float xxa,
+            final float zza,
+            final boolean jumping,
+            final float xBob,
+            final float yBob,
+            final float xBobO,
+            final float yBobO,
+            final float xRot,
+            final float yRot,
+            final boolean controlledCamera,
+            final boolean usingItem,
+            final boolean passenger,
+            final boolean movingSlowly
+        ) {
+            this.input = new FixtureInput(new Vec2(moveX, moveY), new Input(
+                false, false, false, false, jump, false, false));
+            this.xxa = xxa;
+            this.zza = zza;
+            this.jumping = jumping;
+            this.xBob = xBob;
+            this.yBob = yBob;
+            this.xBobO = xBobO;
+            this.yBobO = yBobO;
+            this.xRotation = xRot;
+            this.yRotation = yRot;
+            this.controlledCamera = controlledCamera;
+            this.usingItem = usingItem;
+            this.passenger = passenger;
+            this.movingSlowly = movingSlowly;
+        }
+
+        private void setItemUseSpeed(final float speed) throws ReflectiveOperationException {
+            var constructor = ItemStack.class.getDeclaredConstructor(
+                Holder.class, int.class, PatchedDataComponentMap.class);
+            constructor.setAccessible(true);
+            this.useItem = constructor.newInstance(
+                Items.APPLE.builtInRegistryHolder(),
+                1,
+                new PatchedDataComponentMap(DataComponentMap.EMPTY));
+            this.useItem.set(
+                DataComponents.USE_EFFECTS,
+                new UseEffects(false, true, speed));
         }
     }
 

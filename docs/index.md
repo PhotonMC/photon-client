@@ -96,6 +96,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P10.e.3 — LivingEntity handleRelativeFrictionAndCalculateMovement — client-parity birleşik kayıt](client-player-handle-relative-friction-conformance.md)
 - [P10.a — LocalPlayer input modifiers — client-parity birleşik kayıt](client-player-input-conformance.md)
 - [P10.d.3 — LivingEntity modified block friction — client-parity birleşik kayıt](client-player-modified-friction-conformance.md)
+- [P10.f.3 — LocalPlayer sneaking speed attribute in input — client-parity](client-player-sneaking-attribute-conformance.md)
 - [P10.f.2 — LocalPlayer sprint transition and movement speed attribute — client-parity](client-player-sprint-attribute-conformance.md)
 - [P10.c — LocalPlayer canStartSprinting — client-parity birleşik kayıt](client-player-sprint-gate-conformance.md)
 - [P10.e.6 — LivingEntity travel dispatch — client-parity birleşik kayıt](client-player-travel-dispatch-conformance.md)
