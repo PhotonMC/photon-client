@@ -2855,6 +2855,48 @@ def math_cases():
         ],
     }
 
+    animal_rotation_rows = [
+        ("even-animal", 51, 52, 53),
+        ("odd-animal", 54, 55, 56),
+    ]
+    yield {
+        "case_id": "client-world/entity-passenger-animal-rotation",
+        "family": "math",
+        "operation": "client_world_entity_passenger_animal_rotation",
+        "rows": [
+            {
+                "label": label,
+                "vehicle": {
+                    "entity_id": vehicle_id,
+                    "type_id": 89,
+                    "position": vector_bits(2.0, 2.0, 2.0),
+                    "rotation": {"y": float_bits(0.0), "x": float_bits(0.0)},
+                    "no_gravity": True,
+                },
+                "animal": {
+                    "entity_id": animal_id,
+                    "type_id": 30,
+                    "position": vector_bits(2.0, 12.0, 2.0),
+                    "movement": vector_bits(0.0, 0.0, 0.0),
+                    "rotation": {"y": float_bits(170.0), "x": float_bits(0.0)},
+                    "no_gravity": True,
+                },
+                "filler": {
+                    "entity_id": filler_id,
+                    "type_id": 120,
+                    "position": vector_bits(2.0, 12.0, 2.0),
+                    "movement": vector_bits(0.0, 0.0, 0.0),
+                    "rotation": {"y": float_bits(0.0), "x": float_bits(0.0)},
+                    "no_gravity": True,
+                },
+            }
+            for label, vehicle_id, animal_id, filler_id in animal_rotation_rows
+        ],
+        "operations": [
+            {"action": "tick", "label": "animal-capacity-offset", "ticks": 1},
+        ],
+    }
+
     def sprint_key_presses(
         forward=False, backward=False, left=False, right=False,
         jump=False, shift=False, sprint=False,
