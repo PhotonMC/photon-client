@@ -5128,6 +5128,9 @@ public final class MathOracle {
         if (operation.equals("client_world_entity_ticks_frozen")) {
             return clientWorldEntityTicksFrozenResult(request);
         }
+        if (operation.equals("client_world_entity_custom_name")) {
+            return clientWorldEntityCustomNameResult(request);
+        }
         throw new IllegalArgumentException("Unknown client world operation");
     }
 
@@ -5870,6 +5873,48 @@ public final class MathOracle {
         state.addProperty("percent_frozen", Oracle.bits(entity.getPercentFrozen()));
         state.addProperty("is_freezing", entity.isFreezing());
         state.addProperty("is_fully_frozen", entity.isFullyFrozen());
+        return state;
+    }
+
+    private static JsonObject clientWorldEntityCustomNameResult(JsonObject request) {
+        try {
+            var output = System.out;
+            var errorOutput = System.err;
+            try {
+                SharedConstants.setVersion(TEST_VERSION);
+                Bootstrap.bootStrap();
+            } finally {
+                System.setOut(output);
+                System.setErr(errorOutput);
+            }
+
+            var entity = new SharedFlagsFixtureEntity();
+            var states = new JsonArray();
+            states.add(entityCustomNameState("initial", true, entity));
+            for (JsonElement operationEntry : request.getAsJsonArray("operations")) {
+                JsonObject operation = operationEntry.getAsJsonObject();
+                entity.getEntityData().assignValues(
+                    decodeEntityMetadata(operation.get("metadata_hex").getAsString()));
+                states.add(entityCustomNameState(
+                    operation.get("label").getAsString(), true, entity));
+            }
+            var result = new JsonObject();
+            result.add("states", states);
+            return result;
+        } catch (RuntimeException error) {
+            throw new IllegalStateException("Entity custom name fixture failed", error);
+        }
+    }
+
+    private static JsonObject entityCustomNameState(
+        String label, boolean accepted, SharedFlagsFixtureEntity entity
+    ) {
+        var state = new JsonObject();
+        state.addProperty("label", label);
+        state.addProperty("accepted", accepted);
+        state.addProperty("custom_name_present", entity.hasCustomName());
+        state.addProperty("custom_name_visible", entity.isCustomNameVisible());
+        state.addProperty("should_show_name", entity.shouldShowName());
         return state;
     }
 

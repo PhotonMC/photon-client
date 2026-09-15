@@ -1259,6 +1259,32 @@ def math_cases():
         ],
     }
 
+    yield {
+        "case_id": "client-world/entity-custom-name",
+        "family": "math",
+        "operation": "client_world_entity_custom_name",
+        "entity_id": 37,
+        "entity_type_id": 120,
+        "operations": [
+            {
+                "label": "set-custom-name",
+                "metadata_hex": "02060108000c446973706c6179206e616d65ff",
+            },
+            {
+                "label": "set-visible-only",
+                "metadata_hex": "030801ff",
+            },
+            {
+                "label": "clear-custom-name",
+                "metadata_hex": "020600ff",
+            },
+            {
+                "label": "restore-hidden-custom-name",
+                "metadata_hex": "02060108000c446973706c6179206e616d65030800ff",
+            },
+        ],
+    }
+
     def attribute_modifier(identifier, amount, operation):
         return {
             "id": identifier,
