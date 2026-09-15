@@ -10,6 +10,7 @@ import com.mojang.serialization.JsonOps;
 import com.mojang.serialization.Lifecycle;
 import it.unimi.dsi.fastutil.longs.LongConsumer;
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Locale;
@@ -83,6 +84,7 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.CollisionGetter;
 import net.minecraft.world.level.EntityGetter;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LadderBlock;
@@ -95,12 +97,17 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.SlabType;
 import net.minecraft.world.level.block.state.properties.StairsShape;
 import net.minecraft.world.level.chunk.LevelChunkSection;
+import net.minecraft.world.level.chunk.DataLayer;
+import net.minecraft.world.level.chunk.LightChunk;
+import net.minecraft.world.level.chunk.LightChunkGetter;
 import net.minecraft.world.level.chunk.PalettedContainerFactory;
+import net.minecraft.world.level.lighting.LevelLightEngine;
 import net.minecraft.world.level.levelgen.PositionalRandomFactory;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.border.WorldBorder;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.FluidState;
+import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.level.entity.LevelCallback;
 import net.minecraft.world.level.entity.LevelEntityGetter;
 import net.minecraft.world.level.entity.TransientEntitySectionManager;
@@ -5076,6 +5083,9 @@ public final class MathOracle {
         if (operation.equals("client_world_block_update")) {
             return clientWorldBlockUpdateResult(request);
         }
+        if (operation.equals("client_world_light")) {
+            return clientWorldLightResult(request);
+        }
         throw new IllegalArgumentException("Unknown client world operation");
     }
 
@@ -5219,6 +5229,246 @@ public final class MathOracle {
         } catch (ReflectiveOperationException error) {
             throw new IllegalStateException(
                 "LevelChunkSection.setBlockState reflection fixture failed", error);
+        }
+    }
+
+    private static final class LightEngineFixture implements LightChunkGetter {
+        private final BlockGetter level;
+
+        private LightEngineFixture(int minY, int height) {
+            this.level = new BlockGetter() {
+                @Override
+                public int getHeight() {
+                    return height;
+                }
+
+                @Override
+                public int getMinY() {
+                    return minY;
+                }
+
+                @Override
+                public BlockEntity getBlockEntity(BlockPos pos) {
+                    return null;
+                }
+
+                @Override
+                public BlockState getBlockState(BlockPos pos) {
+                    return Blocks.AIR.defaultBlockState();
+                }
+
+                @Override
+                public FluidState getFluidState(BlockPos pos) {
+                    return Fluids.EMPTY.defaultFluidState();
+                }
+            };
+        }
+
+        @Override
+        public LightChunk getChunkForLighting(int x, int z) {
+            return null;
+        }
+
+        @Override
+        public BlockGetter getLevel() {
+            return this.level;
+        }
+    }
+
+    private static BitSet lightBitSet(JsonObject object, String name) {
+        var bits = new BitSet();
+        for (JsonElement entry : object.getAsJsonArray(name)) {
+            bits.set(entry.getAsInt());
+        }
+        return bits;
+    }
+
+    private static int queueLightLayer(
+        LevelLightEngine engine,
+        int chunkX,
+        int chunkZ,
+        int minLightSection,
+        LightLayer layer,
+        BitSet mask,
+        BitSet emptyMask,
+        JsonArray updates
+    ) {
+        int updateIndex = 0;
+        int applied = 0;
+        for (int sectionIndex = 0; sectionIndex < engine.getLightSectionCount(); sectionIndex++) {
+            boolean hasData = mask.get(sectionIndex);
+            boolean hasEmpty = emptyMask.get(sectionIndex);
+            if (!hasData && !hasEmpty) {
+                continue;
+            }
+
+            DataLayer data;
+            if (hasData) {
+                if (updateIndex >= updates.size()) {
+                    throw new IllegalArgumentException("light update data is shorter than its mask");
+                }
+                data = new DataLayer(hexBytes(updates.get(updateIndex++).getAsString()));
+            } else {
+                data = new DataLayer();
+            }
+            engine.queueSectionData(
+                layer,
+                SectionPos.of(chunkX, minLightSection + sectionIndex, chunkZ),
+                data
+            );
+            applied++;
+        }
+        return applied;
+    }
+
+    private static int lightDataValue(
+        LevelLightEngine engine, LightLayer layer, int x, int y, int z
+    ) {
+        SectionPos section = SectionPos.of(
+            Math.floorDiv(x, 16), Math.floorDiv(y, 16), Math.floorDiv(z, 16));
+        DataLayer data = engine.getLayerListener(layer).getDataLayerData(section);
+        if (data == null) {
+            return -1;
+        }
+        return data.get(Math.floorMod(x, 16), Math.floorMod(y, 16), Math.floorMod(z, 16));
+    }
+
+    private static boolean hasLightData(
+        LevelLightEngine engine,
+        LightLayer layer,
+        int chunkX,
+        int chunkZ,
+        int minLightSection,
+        BitSet mask,
+        BitSet emptyMask
+    ) {
+        for (int sectionIndex = 0; sectionIndex < engine.getLightSectionCount(); sectionIndex++) {
+            if ((mask.get(sectionIndex) || emptyMask.get(sectionIndex))
+                && engine.getLayerListener(layer).getDataLayerData(
+                    SectionPos.of(chunkX, minLightSection + sectionIndex, chunkZ)) != null) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static JsonArray lightQueries(LevelLightEngine engine, JsonArray queryEntries) {
+        var queries = new JsonArray();
+        for (JsonElement queryEntry : queryEntries) {
+            JsonObject query = queryEntry.getAsJsonObject();
+            String layerName = query.get("layer").getAsString();
+            LightLayer layer = switch (layerName) {
+                case "sky" -> LightLayer.SKY;
+                case "block" -> LightLayer.BLOCK;
+                default -> throw new IllegalArgumentException("Unknown light layer: " + layerName);
+            };
+            int value = lightDataValue(
+                engine,
+                layer,
+                query.get("x").getAsInt(),
+                query.get("y").getAsInt(),
+                query.get("z").getAsInt()
+            );
+            var state = new JsonObject();
+            state.addProperty("label", query.get("label").getAsString());
+            if (value < 0) {
+                state.add("value", JsonNull.INSTANCE);
+            } else {
+                state.addProperty("value", value);
+            }
+            queries.add(state);
+        }
+        return queries;
+    }
+
+    private static JsonObject clientWorldLightResult(JsonObject request) {
+        try {
+            var output = System.out;
+            var errorOutput = System.err;
+            try {
+                SharedConstants.setVersion(TEST_VERSION);
+                Bootstrap.bootStrap();
+            } finally {
+                System.setOut(output);
+                System.setErr(errorOutput);
+            }
+
+            int minY = request.get("dimension_min_y").getAsInt();
+            int height = request.get("dimension_height").getAsInt();
+            var engine = new LevelLightEngine(new LightEngineFixture(minY, height), true, true);
+            int minLightSection = engine.getMinLightSection();
+            var events = new JsonArray();
+            boolean targetLoaded = false;
+            for (JsonElement operationEntry : request.getAsJsonArray("operations")) {
+                JsonObject operation = operationEntry.getAsJsonObject();
+                String action = operation.get("action").getAsString();
+                var event = new JsonObject();
+                event.addProperty("action", action);
+                event.addProperty("label", operation.get("label").getAsString());
+                event.addProperty("queued_for_unloaded_chunk", false);
+                event.addProperty("stored", false);
+                event.addProperty("applied_sky_sections", 0);
+                event.addProperty("applied_block_sections", 0);
+
+                if (action.equals("apply")) {
+                    int chunkX = operation.get("chunk_x").getAsInt();
+                    int chunkZ = operation.get("chunk_z").getAsInt();
+                    BitSet skyMask = lightBitSet(operation, "sky_mask");
+                    BitSet skyEmptyMask = lightBitSet(operation, "sky_empty_mask");
+                    BitSet blockMask = lightBitSet(operation, "block_mask");
+                    BitSet blockEmptyMask = lightBitSet(operation, "block_empty_mask");
+                    int appliedSky = queueLightLayer(
+                        engine, chunkX, chunkZ, minLightSection, LightLayer.SKY,
+                        skyMask, skyEmptyMask, operation.getAsJsonArray("sky_updates"));
+                    int appliedBlock = queueLightLayer(
+                        engine, chunkX, chunkZ, minLightSection, LightLayer.BLOCK,
+                        blockMask, blockEmptyMask, operation.getAsJsonArray("block_updates"));
+                    engine.setLightEnabled(new ChunkPos(chunkX, chunkZ), true);
+                    engine.runLightUpdates();
+                    event.addProperty("queued_for_unloaded_chunk", !targetLoaded);
+                    event.addProperty(
+                        "stored",
+                        hasLightData(engine, LightLayer.SKY, chunkX, chunkZ,
+                            minLightSection, skyMask, skyEmptyMask)
+                            || hasLightData(engine, LightLayer.BLOCK, chunkX, chunkZ,
+                                minLightSection, blockMask, blockEmptyMask));
+                    event.addProperty("applied_sky_sections", appliedSky);
+                    event.addProperty("applied_block_sections", appliedBlock);
+                } else if (action.equals("load")) {
+                    int chunkX = operation.get("chunk_x").getAsInt();
+                    int chunkZ = operation.get("chunk_z").getAsInt();
+                    int sectionCount = operation.get("section_count").getAsInt();
+                    BitSet nonEmptySections = lightBitSet(operation, "non_empty_sections");
+                    int minSectionY = Math.floorDiv(minY, 16);
+                    for (int sectionIndex = 0; sectionIndex < sectionCount; sectionIndex++) {
+                        engine.updateSectionStatus(
+                            SectionPos.of(chunkX, minSectionY + sectionIndex, chunkZ),
+                            !nonEmptySections.get(sectionIndex)
+                        );
+                    }
+                    engine.runLightUpdates();
+                    targetLoaded = true;
+                    event.addProperty(
+                        "stored",
+                        engine.getLayerListener(LightLayer.SKY).getDataLayerData(
+                            SectionPos.of(chunkX, minSectionY, chunkZ)) != null
+                            || engine.getLayerListener(LightLayer.BLOCK).getDataLayerData(
+                                SectionPos.of(chunkX, minSectionY, chunkZ)) != null);
+                } else {
+                    throw new IllegalArgumentException("Unknown client world light action: " + action);
+                }
+
+                JsonArray queryEntries = operation.has("queries")
+                    ? operation.getAsJsonArray("queries")
+                    : new JsonArray();
+                event.add("queries", lightQueries(engine, queryEntries));
+                events.add(event);
+            }
+            var result = new JsonObject();
+            result.add("events", events);
+            return result;
+        } catch (RuntimeException error) {
+            throw new IllegalStateException("LevelLightEngine light queue fixture failed", error);
         }
     }
 

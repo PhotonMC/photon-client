@@ -182,6 +182,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P08.c-light — server-conformance ClientWorld ışık state'i](client-world-light-conformance.md)
 - [P08.x — server-conformance Chunk unload light queue cleanup'i](client-world-light-queue-cleanup-conformance.md)
 - [P08.w — server-conformance Unloaded chunk light update queue'su](client-world-light-queue-conformance.md)
+- [P08.c-light.1 — ClientWorld ışık kuyruğu ve section yayını — client-parity](client-world-light-queue-parity-conformance.md)
 - [P09.u — ClientWorld LivingEntity onClimbable pushability gate — client-parity birleşik kayıt](client-world-living-climbable-conformance.md)
 - [P09.w — ClientWorld LivingEntity trapdoor/ladder onClimbable context — client-parity birleşik kayıt](client-world-living-climbable-context-conformance.md)
 - [P09.x — ClientWorld LivingEntity `BlockTags.CLIMBABLE` branch — client-parity birleşik kayıt](client-world-living-climbable-tag-conformance.md)

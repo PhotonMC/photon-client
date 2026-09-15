@@ -8,7 +8,7 @@ use std::rc::Rc;
 use voxel_client::aabb::{Aabb, AabbBuilder, AabbBuilderError, BlockHitResult, BoundingBox};
 use voxel_client::axis_cycle::AxisCycle;
 use voxel_client::binary::{
-    self, BlockPos, BlockRotation, ChunkPos, MutableBlockPos, SectionPos, Uuid,
+    self, BitSet, BlockPos, BlockRotation, ChunkPos, MutableBlockPos, SectionPos, Uuid,
 };
 use voxel_client::common::{
     ClientboundKeepAlivePacket, ClientboundPingPacket, ServerboundKeepAlivePacket,
@@ -81,8 +81,8 @@ use voxel_client::world::{
     ClientChunkCacheSnapshot, ClientEntityCollisionCandidate, ClientEntityDimensions,
     ClientEntityPose, ClientPlayerAbilities, ClientPlayerGameMode, ClientPlayerPoseInput,
     ClientWorld, ClientWorldBorder, ClientWorldBorderInitialization, ClientWorldBorderStatus,
-    ClientWorldCollisionSource, DimensionBounds, EntityInput, SectionInput,
-    apply_entity_movement_state, collect_candidate_step_up_heights,
+    ClientWorldCollisionSource, DimensionBounds, EntityInput, LightLayerInput, LightUpdateInput,
+    SectionInput, apply_entity_movement_state, collect_candidate_step_up_heights,
     collect_entity_collision_shapes, collide_entity_movement, collide_entity_movement_state,
     is_minor_horizontal_collision, living_entity_dimensions, refresh_entity_dimensions,
     select_step_up_movement, world_border_collision_shape,
@@ -6542,6 +6542,183 @@ fn client_world_block_update_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"events": events}))
 }
 
+fn light_bitset_field(value: &Value, name: &str) -> Result<BitSet, String> {
+    let bits = value[name]
+        .as_array()
+        .ok_or_else(|| format!("{name} must be an array"))?
+        .iter()
+        .map(|bit| {
+            bit.as_u64()
+                .ok_or_else(|| format!("{name} entries must be unsigned integers"))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(BitSet::from_bits(&bits))
+}
+
+fn light_updates_field(value: &Value, name: &str) -> Result<Vec<Vec<u8>>, String> {
+    value[name]
+        .as_array()
+        .ok_or_else(|| format!("{name} must be an array"))?
+        .iter()
+        .map(|update| {
+            decode_hex(
+                update
+                    .as_str()
+                    .ok_or_else(|| format!("{name} entries must be hexadecimal strings"))?,
+            )
+        })
+        .collect()
+}
+
+fn client_world_light_queries(world: &ClientWorld, value: &Value) -> Result<Value, String> {
+    value
+        .as_array()
+        .ok_or("queries must be an array")?
+        .iter()
+        .map(|query| {
+            let layer = string(query, "layer")?;
+            let x = i32_field(query, "x")?;
+            let y = i32_field(query, "y")?;
+            let z = i32_field(query, "z")?;
+            let light = match layer {
+                "sky" => world.sky_light_at(x, y, z),
+                "block" => world.block_light_at(x, y, z),
+                _ => return Err(format!("unknown light layer: {layer}")),
+            };
+            Ok(json!({
+                "label": string(query, "label")?,
+                "value": light,
+            }))
+        })
+        .collect::<Result<Vec<_>, String>>()
+        .map(Value::Array)
+}
+
+fn client_world_light_result(request: &Value) -> Result<Value, String> {
+    let min_y = i32_field(request, "dimension_min_y")?;
+    let height = i32_field(request, "dimension_height")?;
+    let mut world = ClientWorld::new(DimensionBounds::new(min_y, height));
+    let operations = request["operations"]
+        .as_array()
+        .ok_or("operations must be an array")?;
+    let mut events = Vec::with_capacity(operations.len());
+
+    for operation in operations {
+        let action = string(operation, "action")?;
+        let label = string(operation, "label")?;
+        let mut event = json!({
+            "action": action,
+            "label": label,
+            "queued_for_unloaded_chunk": false,
+            "stored": false,
+            "applied_sky_sections": 0,
+            "applied_block_sections": 0,
+            "queries": [],
+        });
+
+        match action {
+            "apply" => {
+                let chunk_x = i32_field(operation, "chunk_x")?;
+                let chunk_z = i32_field(operation, "chunk_z")?;
+                let sky_mask = light_bitset_field(operation, "sky_mask")?;
+                let sky_empty_mask = light_bitset_field(operation, "sky_empty_mask")?;
+                let sky_updates = light_updates_field(operation, "sky_updates")?;
+                let block_mask = light_bitset_field(operation, "block_mask")?;
+                let block_empty_mask = light_bitset_field(operation, "block_empty_mask")?;
+                let block_updates = light_updates_field(operation, "block_updates")?;
+                let application = world.apply_light_updates(
+                    chunk_x,
+                    chunk_z,
+                    LightUpdateInput {
+                        sky: LightLayerInput {
+                            mask: &sky_mask,
+                            empty_mask: &sky_empty_mask,
+                            updates: &sky_updates,
+                        },
+                        block: LightLayerInput {
+                            mask: &block_mask,
+                            empty_mask: &block_empty_mask,
+                            updates: &block_updates,
+                        },
+                    },
+                );
+                if application.invalid_sky_updates != 0 || application.invalid_block_updates != 0 {
+                    return Err("light update data layer is not 2048 bytes".into());
+                }
+                event["queued_for_unloaded_chunk"] = json!(application.queued);
+                event["stored"] = json!(
+                    application.queued
+                        || application.applied_sky_sections != 0
+                        || application.applied_block_sections != 0
+                );
+                event["applied_sky_sections"] = json!(application.applied_sky_sections);
+                event["applied_block_sections"] = json!(application.applied_block_sections);
+            }
+            "load" => {
+                let chunk_x = i32_field(operation, "chunk_x")?;
+                let chunk_z = i32_field(operation, "chunk_z")?;
+                let section_count = operation["section_count"]
+                    .as_u64()
+                    .ok_or("section_count must be an unsigned integer")?
+                    .try_into()
+                    .map_err(|_| "section_count does not fit in usize")?;
+                let non_empty_sections = operation["non_empty_sections"]
+                    .as_array()
+                    .ok_or("non_empty_sections must be an array")?
+                    .iter()
+                    .map(|index| {
+                        index
+                            .as_u64()
+                            .ok_or_else(|| {
+                                "non_empty_sections entries must be unsigned integers".to_owned()
+                            })?
+                            .try_into()
+                            .map_err(|_| "non_empty section index does not fit in usize".to_owned())
+                    })
+                    .collect::<Result<Vec<usize>, String>>()?;
+                let mut block_sections = Vec::with_capacity(section_count);
+                let mut biome_sections = Vec::with_capacity(section_count);
+                for index in 0..section_count {
+                    let non_empty = non_empty_sections.contains(&index);
+                    let mut blocks = vec![0; 4_096];
+                    if non_empty {
+                        blocks[0] = 1;
+                    }
+                    block_sections.push(blocks);
+                    biome_sections.push(vec![0; 64]);
+                }
+                if !world.replace_chunk(
+                    chunk_x,
+                    chunk_z,
+                    block_sections
+                        .iter()
+                        .zip(&biome_sections)
+                        .map(|(blocks, biomes)| SectionInput {
+                            non_empty_block_count: if blocks[0] == 0 { 0 } else { 1 },
+                            fluid_count: 0,
+                            block_states: blocks,
+                            biomes,
+                        }),
+                ) {
+                    return Err("light test chunk was rejected".into());
+                }
+                event["stored"] = json!(world.loaded_light_section_count() != 0);
+            }
+            _ => return Err(format!("unknown client world light action: {action}")),
+        }
+
+        event["queries"] = client_world_light_queries(
+            &world,
+            operation
+                .get("queries")
+                .unwrap_or(&Value::Array(Vec::new())),
+        )?;
+        events.push(event);
+    }
+
+    Ok(json!({"events": events}))
+}
+
 fn client_chunk_cache_snapshot_json(snapshot: &ClientChunkCacheSnapshot) -> Value {
     json!({
         "storage_radius": snapshot.storage_radius,
@@ -6669,6 +6846,9 @@ fn math_result(request: &Value) -> Result<Value, String> {
     }
     if operation == "client_world_block_update" {
         return client_world_block_update_result(request);
+    }
+    if operation == "client_world_light" {
+        return client_world_light_result(request);
     }
     if operation == "random" {
         return random_result(request);

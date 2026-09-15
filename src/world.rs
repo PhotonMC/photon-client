@@ -4255,7 +4255,9 @@ impl ClientWorld {
             .count()
     }
 
-    pub(crate) fn apply_light_updates(
+    /// Apply clientbound light layers to a loaded chunk or retain them until
+    /// the addressed chunk is installed in the client world.
+    pub fn apply_light_updates(
         &mut self,
         chunk_x: i32,
         chunk_z: i32,
@@ -4282,9 +4284,21 @@ impl ClientWorld {
                     ..LightApplication::default()
                 };
             }
+            let applied_sky_sections = count_light_sections(
+                light_section_count,
+                updates.sky.mask,
+                updates.sky.empty_mask,
+            );
+            let applied_block_sections = count_light_sections(
+                light_section_count,
+                updates.block.mask,
+                updates.block.empty_mask,
+            );
             self.pending_light_updates
                 .push_back(PendingLightUpdate::new(chunk_x, chunk_z, updates));
             return LightApplication {
+                applied_sky_sections,
+                applied_block_sections,
                 queued: true,
                 ..LightApplication::default()
             };
@@ -7712,15 +7726,15 @@ pub(crate) struct DimensionInput<'a> {
     pub(crate) sea_level: i32,
 }
 
-pub(crate) struct LightUpdateInput<'a> {
-    pub(crate) sky: LightLayerInput<'a>,
-    pub(crate) block: LightLayerInput<'a>,
+pub struct LightUpdateInput<'a> {
+    pub sky: LightLayerInput<'a>,
+    pub block: LightLayerInput<'a>,
 }
 
-pub(crate) struct LightLayerInput<'a> {
-    pub(crate) mask: &'a BitSet,
-    pub(crate) empty_mask: &'a BitSet,
-    pub(crate) updates: &'a [Vec<u8>],
+pub struct LightLayerInput<'a> {
+    pub mask: &'a BitSet,
+    pub empty_mask: &'a BitSet,
+    pub updates: &'a [Vec<u8>],
 }
 
 pub(crate) struct BlockEntityInput<'a> {
@@ -7905,12 +7919,12 @@ enum LightLayer {
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub(crate) struct LightApplication {
-    pub(crate) applied_sky_sections: usize,
-    pub(crate) applied_block_sections: usize,
-    pub(crate) invalid_sky_updates: usize,
-    pub(crate) invalid_block_updates: usize,
-    pub(crate) queued: bool,
+pub struct LightApplication {
+    pub applied_sky_sections: usize,
+    pub applied_block_sections: usize,
+    pub invalid_sky_updates: usize,
+    pub invalid_block_updates: usize,
+    pub queued: bool,
 }
 
 fn count_invalid_light_updates(section_count: usize, mask: &BitSet, updates: &[Vec<u8>]) -> usize {
@@ -7928,6 +7942,15 @@ fn count_invalid_light_updates(section_count: usize, mask: &BitSet, updates: &[V
         }
     }
     invalid_updates
+}
+
+fn count_light_sections(section_count: usize, mask: &BitSet, empty_mask: &BitSet) -> usize {
+    (0..section_count)
+        .filter(|section_index| {
+            let bit = *section_index as u64;
+            mask.contains(bit) || empty_mask.contains(bit)
+        })
+        .count()
 }
 
 fn apply_light_layer(

@@ -1021,6 +1021,81 @@ def math_cases():
         ],
     }
 
+    def light_layer_hex(value):
+        layer = bytearray(2048)
+        layer[0] = value
+        return layer.hex()
+
+    yield {
+        "case_id": "client-world/light-update-queue-and-publication",
+        "family": "math",
+        "operation": "client_world_light",
+        "dimension_min_y": -64,
+        "dimension_height": 384,
+        "operations": [
+            {
+                "action": "apply",
+                "label": "queue-first-unloaded",
+                "chunk_x": -2,
+                "chunk_z": 3,
+                "sky_mask": [1],
+                "sky_empty_mask": [2],
+                "sky_updates": [light_layer_hex(0xA5)],
+                "block_mask": [1],
+                "block_empty_mask": [2],
+                "block_updates": [light_layer_hex(0xB6)],
+                "queries": [],
+            },
+            {
+                "action": "apply",
+                "label": "queue-second-replaces-first",
+                "chunk_x": -2,
+                "chunk_z": 3,
+                "sky_mask": [1],
+                "sky_empty_mask": [2],
+                "sky_updates": [light_layer_hex(0x3C)],
+                "block_mask": [1],
+                "block_empty_mask": [2],
+                "block_updates": [light_layer_hex(0x4D)],
+                "queries": [],
+            },
+            {
+                "action": "load",
+                "label": "load-and-publish",
+                "chunk_x": -2,
+                "chunk_z": 3,
+                "section_count": 1,
+                "non_empty_sections": [0],
+                "queries": [
+                    {"label": "sky-low", "layer": "sky", "x": -32, "y": -64, "z": 48},
+                    {"label": "sky-high-nibble", "layer": "sky", "x": -31, "y": -64, "z": 48},
+                    {"label": "block-low", "layer": "block", "x": -32, "y": -64, "z": 48},
+                    {"label": "block-high-nibble", "layer": "block", "x": -31, "y": -64, "z": 48},
+                    {"label": "empty-sky-section", "layer": "sky", "x": -32, "y": -48, "z": 48},
+                    {"label": "empty-block-section", "layer": "block", "x": -32, "y": -48, "z": 48},
+                ],
+            },
+            {
+                "action": "apply",
+                "label": "replace-loaded-layer",
+                "chunk_x": -2,
+                "chunk_z": 3,
+                "sky_mask": [1],
+                "sky_empty_mask": [],
+                "sky_updates": [light_layer_hex(0x2E)],
+                "block_mask": [1],
+                "block_empty_mask": [],
+                "block_updates": [light_layer_hex(0x7F)],
+                "queries": [
+                    {"label": "updated-sky-low", "layer": "sky", "x": -32, "y": -64, "z": 48},
+                    {"label": "updated-sky-high-nibble", "layer": "sky", "x": -31, "y": -64, "z": 48},
+                    {"label": "updated-block-low", "layer": "block", "x": -32, "y": -64, "z": 48},
+                    {"label": "updated-block-high-nibble", "layer": "block", "x": -31, "y": -64, "z": 48},
+                ],
+            },
+        ],
+    }
+
     def character_event_case(label, codepoint):
         return {
             "case_id": f"character-event/{label}", "family": "math",
