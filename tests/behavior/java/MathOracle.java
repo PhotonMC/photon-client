@@ -82,6 +82,7 @@ import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.monster.Shulker;
+import net.minecraft.world.entity.monster.breeze.Breeze;
 import net.minecraft.world.entity.projectile.FireworkRocketEntity;
 import net.minecraft.world.entity.projectile.arrow.Arrow;
 import net.minecraft.world.entity.projectile.throwableitemprojectile.Snowball;
@@ -5184,6 +5185,9 @@ public final class MathOracle {
         if (operation.equals("client_world_entity_passenger_rotation")) {
             return clientWorldEntityPassengerRotationResult(request);
         }
+        if (operation.equals("client_world_entity_passenger_boat_turn_exemption")) {
+            return clientWorldEntityPassengerBoatTurnExemptionResult(request);
+        }
         if (operation.equals("client_world_player_sprint_trigger")) {
             return clientWorldPlayerSprintTriggerResult(request);
         }
@@ -6251,6 +6255,85 @@ public final class MathOracle {
         return result;
     }
 
+    private static JsonObject clientWorldEntityPassengerBoatTurnExemptionResult(
+        JsonObject request
+    ) {
+        var output = System.out;
+        var errorOutput = System.err;
+        try {
+            SharedConstants.setVersion(TEST_VERSION);
+            Bootstrap.bootStrap();
+        } finally {
+            System.setOut(output);
+            System.setErr(errorOutput);
+        }
+        bindBreezeCanTurnInBoatsTag();
+
+        JsonObject vehicleInput = request.getAsJsonObject("vehicle");
+        if (vehicleInput.get("type_id").getAsInt() != 89) {
+            throw new IllegalArgumentException(
+                "Passenger boat turn exemption fixture requires an oak boat");
+        }
+        PassengerPositionBoatFixture vehicle = PassengerPositionBoatFixture.create(
+            vehicleInput.get("entity_id").getAsInt(),
+            vec3(vehicleInput.getAsJsonObject("position")),
+            Oracle.f32(vehicleInput.getAsJsonObject("rotation"), "y"),
+            vehicleInput.get("no_gravity").getAsBoolean());
+
+        JsonObject passengerInput = request.getAsJsonObject("passenger");
+        if (passengerInput.get("type_id").getAsInt() != 17) {
+            throw new IllegalArgumentException(
+                "Passenger boat turn exemption fixture requires a Breeze");
+        }
+        PassengerPositionBreezeFixture passenger = PassengerPositionBreezeFixture.create(
+            passengerInput.get("entity_id").getAsInt(),
+            vec3(passengerInput.getAsJsonObject("position")),
+            vec3(passengerInput.getAsJsonObject("movement")),
+            Oracle.f32(passengerInput.getAsJsonObject("rotation"), "y"),
+            Oracle.f32(passengerInput.getAsJsonObject("rotation"), "x"),
+            passengerInput.get("no_gravity").getAsBoolean(),
+            vehicle);
+        setPassengerPositionFixturePassengers(vehicle, List.of(passenger));
+
+        var states = new JsonArray();
+        states.add(passengerRotationState(
+            "initial", List.of(vehicle), List.of(passenger)));
+        for (JsonElement operationEntry : request.getAsJsonArray("operations")) {
+            JsonObject operation = operationEntry.getAsJsonObject();
+            if (!operation.get("action").getAsString().equals("tick")) {
+                throw new IllegalArgumentException("Unknown passenger boat turn action");
+            }
+            for (int tick = 0; tick < operation.get("ticks").getAsInt(); tick++) {
+                vehicle.setOldPosAndRot();
+                vehicle.tickCount++;
+                vehicle.tick();
+                passenger.setOldPosAndRot();
+                passenger.tickCount++;
+                passenger.rideTick();
+            }
+            states.add(passengerRotationState(
+                operation.get("label").getAsString(),
+                List.of(vehicle),
+                List.of(passenger)));
+        }
+        var result = new JsonObject();
+        result.add("states", states);
+        return result;
+    }
+
+    private static void bindBreezeCanTurnInBoatsTag() {
+        java.util.Map<net.minecraft.tags.TagKey<net.minecraft.world.entity.EntityType<?>>,
+            java.util.List<net.minecraft.core.Holder<net.minecraft.world.entity.EntityType<?>>>> tags =
+            java.util.Map.of(
+                net.minecraft.tags.EntityTypeTags.CAN_TURN_IN_BOATS,
+                java.util.List.of(
+                    BuiltInRegistries.ENTITY_TYPE.wrapAsHolder(
+                        net.minecraft.world.entity.EntityTypes.BREEZE)));
+        BuiltInRegistries.ENTITY_TYPE.prepareTagReload(
+            new net.minecraft.tags.TagLoader.LoadResult<>(
+                net.minecraft.core.registries.Registries.ENTITY_TYPE, tags)).apply();
+    }
+
     private static List<TickSnowballFixture> resolvePassengerIds(
         List<TickSnowballFixture> passengers, JsonArray passengerIds
     ) {
@@ -6357,11 +6440,11 @@ public final class MathOracle {
             return tickSnowballEntityState(snowball);
         }
         var state = tickEntityState(entity);
-        if (entity instanceof Player player) {
-            state.addProperty("head_rotation", Oracle.bits(player.yHeadRot));
-            state.addProperty("previous_head_rotation", Oracle.bits(player.yHeadRotO));
-            state.addProperty("body_rotation_y", Oracle.bits(player.yBodyRot));
-            state.addProperty("previous_body_rotation_y", Oracle.bits(player.yBodyRotO));
+        if (entity instanceof LivingEntity living) {
+            state.addProperty("head_rotation", Oracle.bits(living.yHeadRot));
+            state.addProperty("previous_head_rotation", Oracle.bits(living.yHeadRotO));
+            state.addProperty("body_rotation_y", Oracle.bits(living.yBodyRot));
+            state.addProperty("previous_body_rotation_y", Oracle.bits(living.yBodyRotO));
         }
         return state;
     }
@@ -8881,6 +8964,90 @@ public final class MathOracle {
                 this.getVehicle().positionRider(this);
             }
         }
+    }
+
+    private static final class PassengerPositionBreezeFixture extends Breeze {
+        private boolean noGravity;
+
+        private PassengerPositionBreezeFixture() {
+            super(null, null);
+        }
+
+        private static PassengerPositionBreezeFixture create(
+            int entityId, Vec3 position, Vec3 movement,
+            float yRot, float xRot, boolean noGravity, Entity vehicle
+        ) {
+            try {
+                Unsafe unsafe = unsafeInstance();
+                PassengerPositionBreezeFixture breeze =
+                    (PassengerPositionBreezeFixture)unsafe.allocateInstance(
+                        PassengerPositionBreezeFixture.class);
+                var idField = Entity.class.getDeclaredField("id");
+                unsafe.putInt(breeze, unsafe.objectFieldOffset(idField), entityId);
+                var typeField = Entity.class.getDeclaredField("type");
+                unsafe.putObject(
+                    breeze,
+                    unsafe.objectFieldOffset(typeField),
+                    net.minecraft.world.entity.EntityTypes.BREEZE);
+                var levelField = Entity.class.getDeclaredField("level");
+                unsafe.putObject(
+                    breeze,
+                    unsafe.objectFieldOffset(levelField),
+                    PassengerRelationFixtureEntity.CLIENT_LEVEL);
+                var dimensionsField = Entity.class.getDeclaredField("dimensions");
+                unsafe.putObject(
+                    breeze,
+                    unsafe.objectFieldOffset(dimensionsField),
+                    net.minecraft.world.entity.EntityTypes.BREEZE.getDimensions());
+                var positionField = Entity.class.getDeclaredField("position");
+                unsafe.putObject(breeze, unsafe.objectFieldOffset(positionField), position);
+                var deltaMovementField = Entity.class.getDeclaredField("deltaMovement");
+                unsafe.putObject(
+                    breeze, unsafe.objectFieldOffset(deltaMovementField), movement);
+                var blockPositionField = Entity.class.getDeclaredField("blockPosition");
+                unsafe.putObject(
+                    breeze,
+                    unsafe.objectFieldOffset(blockPositionField),
+                    BlockPos.containing(position.x, position.y, position.z));
+                var chunkPositionField = Entity.class.getDeclaredField("chunkPosition");
+                unsafe.putObject(
+                    breeze,
+                    unsafe.objectFieldOffset(chunkPositionField),
+                    ChunkPos.containing(BlockPos.containing(position.x, position.y, position.z)));
+                var passengersField = Entity.class.getDeclaredField("passengers");
+                unsafe.putObject(
+                    breeze,
+                    unsafe.objectFieldOffset(passengersField),
+                    com.google.common.collect.ImmutableList.of());
+                var vehicleField = Entity.class.getDeclaredField("vehicle");
+                unsafe.putObject(breeze, unsafe.objectFieldOffset(vehicleField), vehicle);
+                breeze.setLevelCallback(EntityInLevelCallback.NULL);
+                breeze.noGravity = noGravity;
+                breeze.setYRot(yRot);
+                breeze.setXRot(xRot);
+                breeze.yRotO = yRot;
+                breeze.xRotO = xRot;
+                breeze.yHeadRot = yRot;
+                breeze.yHeadRotO = yRot;
+                breeze.yBodyRot = yRot;
+                breeze.yBodyRotO = yRot;
+                breeze.setOldPosAndRot();
+                return breeze;
+            } catch (ReflectiveOperationException error) {
+                throw new IllegalStateException(
+                    "Unable to construct passenger Breeze turn exemption fixture", error);
+            }
+        }
+
+        @Override
+        public boolean isNoGravity() {
+            return this.noGravity;
+        }
+
+        @Override
+        public void tick() {
+        }
+
     }
 
     private static final class CollisionFixtureEntity extends Entity {

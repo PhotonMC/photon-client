@@ -171,6 +171,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P08.az-entity-passenger-boat-family — server-conformance Chest boat ve raft `positionRider`](client-world-entity-passenger-boat-family-conformance.md)
 - [P08.az.1 — ClientWorld boat family passenger geometry — client-parity](client-world-entity-passenger-boat-family-position-parity-conformance.md)
 - [P08.bb-entity-passenger-boat-turn-exemption — server-conformance Breeze `CAN_TURN_IN_BOATS`](client-world-entity-passenger-boat-turn-exemption-conformance.md)
+- [P08.bb.1 — ClientWorld Breeze boat turn exemption — client-parity](client-world-entity-passenger-boat-turn-exemption-parity-conformance.md)
 - [P08.bg-entity-passenger-generic-position — server-conformance Default vehicle attachment](client-world-entity-passenger-generic-position-conformance.md)
 - [P08.bf-entity-passenger-living — server-conformance Boat passenger `LivingEntity` body/head state](client-world-entity-passenger-living-conformance.md)
 - [P08.ay-entity-passenger-player — server-conformance Player vehicle attachment](client-world-entity-passenger-player-conformance.md)
