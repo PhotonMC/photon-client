@@ -1701,6 +1701,70 @@ def math_cases():
            "operation": "local_player_modified_friction",
            "inputs": local_player_modified_friction_inputs}
 
+    local_player_travel_flying_cases = [
+        {
+            "label": "air-branch-rotates-and-drags",
+        },
+        {
+            "label": "water-branch-uses-water-speed",
+            "in_water": True,
+            "water_speed": float_bits(0.04, "f32"),
+        },
+        {
+            "label": "lava-branch-uses-lava-speed",
+            "in_lava": True,
+            "lava_speed": float_bits(0.06, "f32"),
+        },
+        {
+            "label": "water-wins-over-lava",
+            "in_water": True,
+            "in_lava": True,
+            "water_speed": float_bits(0.04, "f32"),
+            "lava_speed": float_bits(0.06, "f32"),
+        },
+        {
+            "label": "long-input-normalizes-before-speed",
+            "input": vector_bits(1.0, 2.0, 2.0),
+            "delta": vector_bits(-0.25, 0.125, 0.5),
+            "y_rot": float_bits(-120.0, "f32"),
+            "air_speed": float_bits(0.07, "f32"),
+        },
+        {
+            "label": "subthreshold-input-skips-relative-movement",
+            "input": vector_bits(0.0001, 0.0, 0.0),
+            "delta": vector_bits(0.1, -0.2, 0.3),
+        },
+        {
+            "label": "zero-input-preserves-signed-motion",
+            "input": vector_bits(-0.0, 0.0, -0.0),
+            "delta": vector_bits(-0.0, 0.125, -0.25),
+            "y_rot": float_bits(90.0, "f32"),
+        },
+        {
+            "label": "nonfinite-relative-delta-is-rejected",
+            "input": {"x": "7ff8000000000001", "y": float_bits(0.0, "f64"),
+                      "z": float_bits(0.0, "f64")},
+            "delta": vector_bits(0.1, -0.2, 0.3),
+        },
+    ]
+    local_player_travel_flying_defaults = {
+        "input": vector_bits(0.3, -0.4, 0.8),
+        "delta": vector_bits(0.1, -0.2, 0.3),
+        "y_rot": float_bits(37.5, "f32"),
+        "in_water": False,
+        "in_lava": False,
+        "water_speed": float_bits(0.02, "f32"),
+        "lava_speed": float_bits(0.03, "f32"),
+        "air_speed": float_bits(0.04, "f32"),
+    }
+    local_player_travel_flying_inputs = []
+    for values in local_player_travel_flying_cases:
+        input_values = {**local_player_travel_flying_defaults, **values}
+        local_player_travel_flying_inputs.append(input_values)
+    yield {"case_id": "player-movement/travel-flying", "family": "math",
+           "operation": "local_player_travel_flying",
+           "inputs": local_player_travel_flying_inputs}
+
     codec_decodes = {
         "basic": [float_bits(1.25, "f64"), float_bits(-2.5, "f64"), float_bits(3.75, "f64")],
         "zero": [float_bits(0.0, "f64"), float_bits(0.0, "f64"), float_bits(0.0, "f64")],

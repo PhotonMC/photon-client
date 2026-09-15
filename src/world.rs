@@ -5,10 +5,11 @@ use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use crate::input::{
     LocalPlayerClimbableMovementInput, LocalPlayerFluidFallingInput,
     LocalPlayerFrictionInfluencedSpeedInput, LocalPlayerInputModifiers, LocalPlayerInputState,
-    LocalPlayerModifiedFrictionInput, adjust_local_player_fluid_falling_movement,
+    LocalPlayerModifiedFrictionInput, LocalPlayerTravelFlyingInput,
+    LocalPlayerTravelFlyingParameters, adjust_local_player_fluid_falling_movement,
     apply_local_player_input as apply_local_player_input_fields,
     clamp_local_player_climbable_movement, local_player_friction_influenced_speed,
-    local_player_modified_friction,
+    local_player_modified_friction, local_player_travel_flying,
 };
 use crate::math::{
     MTH_DEG_TO_RAD, Vec3, abs_max_f64, clamp_f32, clamp_f64, equal_f64, floor_f32, mth_atan2,
@@ -2854,6 +2855,18 @@ impl ClientWorld {
             return false;
         };
         player.apply_modified_friction(friction, modifier);
+        true
+    }
+
+    /// Apply Java's no-collision travelFlying path to local player motion.
+    pub fn apply_local_player_travel_flying(
+        &mut self,
+        parameters: LocalPlayerTravelFlyingParameters,
+    ) -> bool {
+        let Some(player) = self.local_player.as_mut() else {
+            return false;
+        };
+        player.apply_travel_flying(parameters);
         true
     }
 
@@ -5714,6 +5727,26 @@ impl ClientPlayerState {
                 .to_bits();
     }
 
+    fn apply_travel_flying(&mut self, parameters: LocalPlayerTravelFlyingParameters) {
+        let movement = local_player_travel_flying(LocalPlayerTravelFlyingInput {
+            input: parameters.input,
+            delta_movement: Vec3::new(
+                f64::from_bits(self.motion_x_bits),
+                f64::from_bits(self.motion_y_bits),
+                f64::from_bits(self.motion_z_bits),
+            ),
+            y_rot: parameters.y_rot,
+            in_water: parameters.in_water,
+            in_lava: parameters.in_lava,
+            water_speed: parameters.water_speed,
+            lava_speed: parameters.lava_speed,
+            air_speed: parameters.air_speed,
+        });
+        self.motion_x_bits = movement.x.to_bits();
+        self.motion_y_bits = movement.y.to_bits();
+        self.motion_z_bits = movement.z.to_bits();
+    }
+
     fn capture_old_transform(&mut self) {
         self.old_x_bits = self.x_bits;
         self.old_y_bits = self.y_bits;
@@ -8373,6 +8406,53 @@ mod tests {
                 .friction_influenced_speed()
                 .to_bits(),
             0x3cd4_fdf3,
+        );
+    }
+
+    #[test]
+    fn local_player_travel_flying_rotates_input_and_applies_environment_drag() {
+        let mut world = ClientWorld::default();
+        world.set_local_player_id(42);
+        assert!(world.apply_local_player_position((0.0, 0.0, 0.0), (0.1, -0.2, 0.3), (37.5, 0.0),));
+        assert!(
+            world.apply_local_player_travel_flying(super::LocalPlayerTravelFlyingParameters {
+                input: Vec3::new(0.3, -0.4, 0.8),
+                y_rot: 37.5,
+                in_water: false,
+                in_lava: false,
+                water_speed: 0.02,
+                lava_speed: 0.03,
+                air_speed: 0.04,
+            },)
+        );
+        assert_eq!(
+            world.local_player().expect("air travel player").motion(),
+            (
+                f64::from_bits(0x3fb4_f9e6_b6a5_183a),
+                f64::from_bits(0xbfc9_28e0_d551_2ec7),
+                f64::from_bits(0x3fd3_6044_84ad_cf07),
+            ),
+        );
+
+        assert!(world.apply_local_player_position((0.0, 0.0, 0.0), (0.1, -0.2, 0.3), (37.5, 0.0),));
+        assert!(
+            world.apply_local_player_travel_flying(super::LocalPlayerTravelFlyingParameters {
+                input: Vec3::new(0.3, -0.4, 0.8),
+                y_rot: 37.5,
+                in_water: true,
+                in_lava: false,
+                water_speed: 0.04,
+                lava_speed: 0.06,
+                air_speed: 0.07,
+            },)
+        );
+        assert_eq!(
+            world.local_player().expect("water travel player").motion(),
+            (
+                f64::from_bits(0x3fb2_70ca_cee5_eb92),
+                f64::from_bits(0xbfc6_1e4f_7b4a_233a),
+                f64::from_bits(0x3fd1_08ac_bf6e_af6c),
+            ),
         );
     }
 

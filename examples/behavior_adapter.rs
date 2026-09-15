@@ -31,11 +31,11 @@ use voxel_client::identifier::Identifier;
 use voxel_client::input::{
     Input, KeyboardInput, LocalPlayerClimbableMovementInput, LocalPlayerFluidFallingInput,
     LocalPlayerFrictionInfluencedSpeedInput, LocalPlayerInputModifiers, LocalPlayerInputState,
-    LocalPlayerModifiedFrictionInput, LocalPlayerSprintGateInput,
+    LocalPlayerModifiedFrictionInput, LocalPlayerSprintGateInput, LocalPlayerTravelFlyingInput,
     adjust_local_player_fluid_falling_movement, apply_local_player_input,
     can_start_local_player_sprinting, clamp_local_player_climbable_movement,
     local_player_friction_influenced_speed, local_player_modified_friction,
-    modify_local_player_input,
+    local_player_travel_flying, modify_local_player_input,
 };
 use voxel_client::input_event::{
     CharacterEvent, InputWithModifiers, KeyEvent as InputKeyEvent, MouseButtonEvent,
@@ -8377,6 +8377,35 @@ fn math_result(request: &Value) -> Result<Value, String> {
                 Ok(json!({
                     "label": string(input, "label")?,
                     "friction": format!("{:08x}", friction.to_bits()),
+                }))
+            })
+            .collect::<Result<Vec<_>, String>>()?;
+        return Ok(json!({"states": states}));
+    }
+    if operation == "local_player_travel_flying" {
+        let inputs = request["inputs"]
+            .as_array()
+            .ok_or("inputs must be an array")?;
+        let states = inputs
+            .iter()
+            .map(|input| {
+                let movement = local_player_travel_flying(LocalPlayerTravelFlyingInput {
+                    input: f64_vec3(input.get("input").ok_or("input must be a vector")?)?,
+                    delta_movement: f64_vec3(input.get("delta").ok_or("delta must be a vector")?)?,
+                    y_rot: f32_field(input, "y_rot")?,
+                    in_water: input["in_water"]
+                        .as_bool()
+                        .ok_or("in_water must be a boolean")?,
+                    in_lava: input["in_lava"]
+                        .as_bool()
+                        .ok_or("in_lava must be a boolean")?,
+                    water_speed: f32_field(input, "water_speed")?,
+                    lava_speed: f32_field(input, "lava_speed")?,
+                    air_speed: f32_field(input, "air_speed")?,
+                });
+                Ok(json!({
+                    "label": string(input, "label")?,
+                    "movement": vec3_snapshot(movement),
                 }))
             })
             .collect::<Result<Vec<_>, String>>()?;

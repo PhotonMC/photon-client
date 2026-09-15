@@ -1,6 +1,6 @@
 //! Keyboard-driven player input for the pinned Java client.
 
-use crate::math::{Vec2, Vec3, clamp_f32};
+use crate::math::{MTH_DEG_TO_RAD, Vec2, Vec3, clamp_f32, mth_cos_f64, mth_sin_f64};
 
 /// The seven boolean fields sent by the Java player's input record.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -293,6 +293,70 @@ pub fn local_player_modified_friction(state: LocalPlayerModifiedFrictionInput) -
         0.0_f32,
         1.0_f32,
     )
+}
+
+/// The environment state consumed by LivingEntity.travelFlying.
+#[derive(Debug, Clone, Copy)]
+pub struct LocalPlayerTravelFlyingParameters {
+    pub input: Vec3,
+    pub y_rot: f32,
+    pub in_water: bool,
+    pub in_lava: bool,
+    pub water_speed: f32,
+    pub lava_speed: f32,
+    pub air_speed: f32,
+}
+
+/// The environment and motion state consumed by LivingEntity.travelFlying.
+#[derive(Debug, Clone, Copy)]
+pub struct LocalPlayerTravelFlyingInput {
+    pub input: Vec3,
+    pub delta_movement: Vec3,
+    pub y_rot: f32,
+    pub in_water: bool,
+    pub in_lava: bool,
+    pub water_speed: f32,
+    pub lava_speed: f32,
+    pub air_speed: f32,
+}
+
+/// Apply the no-collision movement and drag path of Java LivingEntity.travelFlying.
+pub fn local_player_travel_flying(state: LocalPlayerTravelFlyingInput) -> Vec3 {
+    let (speed, drag) = if state.in_water {
+        (state.water_speed, f64::from(0.8_f32))
+    } else if state.in_lava {
+        (state.lava_speed, 0.5)
+    } else {
+        (state.air_speed, f64::from(0.91_f32))
+    };
+
+    let input_length_squared = state.input.length_squared();
+    let relative_movement = if input_length_squared < 1.0e-7 {
+        Vec3::ZERO
+    } else {
+        let movement = if input_length_squared > 1.0 {
+            state.input.normalized()
+        } else {
+            state.input
+        }
+        .scale(f64::from(speed));
+        let angle = state.y_rot * MTH_DEG_TO_RAD;
+        let sine = f64::from(mth_sin_f64(f64::from(angle)));
+        let cosine = f64::from(mth_cos_f64(f64::from(angle)));
+        Vec3::new(
+            movement.x * cosine - movement.z * sine,
+            movement.y,
+            movement.z * cosine + movement.x * sine,
+        )
+    };
+
+    let moved = state.delta_movement.add_vec3(relative_movement);
+    let moved = if moved.is_finite() {
+        moved
+    } else {
+        state.delta_movement
+    };
+    moved.scale(drag)
 }
 
 fn modify_input_speed_for_square_movement(input: Vec2) -> Vec2 {
