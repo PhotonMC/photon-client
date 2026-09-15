@@ -876,6 +876,78 @@ def math_cases():
         }],
     }
 
+    cache_air = section_hex(
+        0, 0, 0, [0], [0] * 4096, 0, [1], [0] * 64)
+    cache_non_empty = [0] * 4096
+    cache_non_empty[0] = 1
+    cache_non_empty = section_hex(
+        1, 0, 1, [0, 1], cache_non_empty, 0, [1], [0] * 64)
+    cache_fluid = [0] * 4096
+    cache_fluid[4095] = 1
+    cache_fluid = section_hex(
+        1, 1, 1, [0, 1], cache_fluid, 0, [1], [0] * 64)
+    yield {
+        "case_id": "client-world/chunk-cache-lifecycle",
+        "family": "math",
+        "operation": "client_world_chunk_cache",
+        "dimension_min_y": -64,
+        "server_view_radius": 0,
+        "operations": [
+            {
+                "action": "replace",
+                "chunk_x": 0,
+                "chunk_z": 0,
+                "sections": [cache_air, cache_non_empty],
+                "checks": [
+                    {"x": -5, "z": -5},
+                    {"x": -6, "z": 0},
+                    {"x": 5, "z": 5},
+                ],
+            },
+            {
+                "action": "replace",
+                "chunk_x": 0,
+                "chunk_z": 0,
+                "sections": [cache_non_empty, cache_air],
+                "checks": [{"x": 0, "z": 0}],
+            },
+            {"action": "flip", "checks": []},
+            {"action": "center", "chunk_x": 8, "chunk_z": 0, "checks": [
+                {"x": 8, "z": 0},
+                {"x": 2, "z": 0},
+                {"x": 14, "z": 0},
+            ]},
+            {
+                "action": "replace",
+                "chunk_x": 11,
+                "chunk_z": 0,
+                "sections": [cache_air, cache_fluid],
+                "checks": [{"x": 11, "z": 0}, {"x": 0, "z": 0}],
+            },
+            {"action": "drop", "chunk_x": 0, "chunk_z": 0, "checks": []},
+            {"action": "drop", "chunk_x": 11, "chunk_z": 0, "checks": []},
+            {
+                "action": "replace",
+                "chunk_x": 8,
+                "chunk_z": 1,
+                "sections": [cache_air],
+                "checks": [{"x": 8, "z": 1}],
+            },
+            {"action": "radius", "server_view_radius": 1, "checks": []},
+            {"action": "radius", "server_view_radius": 6, "checks": [
+                {"x": -1, "z": 0},
+                {"x": 17, "z": 1},
+                {"x": 18, "z": 1},
+            ]},
+            {"action": "section_emptiness", "section_x": 8, "section_y": -4,
+             "section_z": 1, "empty": False, "checks": []},
+            {"action": "section_emptiness", "section_x": 99, "section_y": 0,
+             "section_z": 99, "empty": True, "checks": []},
+            {"action": "flip", "checks": []},
+            {"action": "drop", "chunk_x": 18, "chunk_z": 1, "checks": []},
+        ],
+    }
+
     def character_event_case(label, codepoint):
         return {
             "case_id": f"character-event/{label}", "family": "math",

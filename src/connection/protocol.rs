@@ -63,6 +63,8 @@ pub(crate) const PLAY_CLIENTBOUND_BLOCK_UPDATE_PACKET_ID: i32 = 8;
 pub(crate) const PLAY_CLIENTBOUND_FORGET_LEVEL_CHUNK_PACKET_ID: i32 = 37;
 pub(crate) const PLAY_CLIENTBOUND_GAME_EVENT_PACKET_ID: i32 = 38;
 pub(crate) const PLAY_CLIENTBOUND_LIGHT_UPDATE_PACKET_ID: i32 = 48;
+pub(crate) const PLAY_CLIENTBOUND_SET_CHUNK_CACHE_CENTER_PACKET_ID: i32 = 94;
+pub(crate) const PLAY_CLIENTBOUND_SET_CHUNK_CACHE_RADIUS_PACKET_ID: i32 = 95;
 pub(crate) const PLAY_CLIENTBOUND_CHUNK_BATCH_FINISHED_PACKET_ID: i32 = 11;
 pub(crate) const PLAY_CLIENTBOUND_CHUNK_BATCH_START_PACKET_ID: i32 = 12;
 pub(crate) const PLAY_CLIENTBOUND_CONTAINER_CLOSE_PACKET_ID: i32 = 17;
@@ -2794,6 +2796,31 @@ pub(crate) fn parse_forget_level_chunk_packet(
     Ok((packed as i32, (packed >> 32) as i32))
 }
 
+pub(crate) fn parse_set_chunk_cache_radius_packet(
+    mut input: &[u8],
+) -> Result<i32, ConnectionError> {
+    let radius = read_varint(&mut input, "chunk cache radius")?;
+    if !input.is_empty() {
+        return Err(ConnectionError::Codec(
+            "chunk cache radius trailing payload",
+        ));
+    }
+    Ok(radius)
+}
+
+pub(crate) fn parse_set_chunk_cache_center_packet(
+    mut input: &[u8],
+) -> Result<(i32, i32), ConnectionError> {
+    let x = read_varint(&mut input, "chunk cache center x")?;
+    let z = read_varint(&mut input, "chunk cache center z")?;
+    if !input.is_empty() {
+        return Err(ConnectionError::Codec(
+            "chunk cache center trailing payload",
+        ));
+    }
+    Ok((x, z))
+}
+
 pub(crate) fn read_varint(input: &mut &[u8], name: &'static str) -> Result<i32, ConnectionError> {
     wire::read_varint(input).map_err(|_| ConnectionError::Codec(name))
 }
@@ -3214,12 +3241,13 @@ mod tests {
         PLAY_CLIENTBOUND_OPEN_SCREEN_PACKET_ID, PLAY_CLIENTBOUND_PLAYER_ABILITIES_PACKET_ID,
         PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID, PLAY_CLIENTBOUND_REMOVE_ENTITIES_PACKET_ID,
         PLAY_CLIENTBOUND_REMOVE_MOB_EFFECT_PACKET_ID, PLAY_CLIENTBOUND_RESPAWN_PACKET_ID,
-        PLAY_CLIENTBOUND_ROTATE_HEAD_PACKET_ID, PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID,
-        PLAY_CLIENTBOUND_SET_ENTITY_DATA_PACKET_ID, PLAY_CLIENTBOUND_SET_ENTITY_MOTION_PACKET_ID,
-        PLAY_CLIENTBOUND_SET_HEALTH_PACKET_ID, PLAY_CLIENTBOUND_SET_PASSENGERS_PACKET_ID,
-        PLAY_CLIENTBOUND_SET_PLAYER_INVENTORY_PACKET_ID, PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID,
-        PLAY_CLIENTBOUND_TELEPORT_ENTITY_PACKET_ID, PLAY_CLIENTBOUND_UPDATE_ATTRIBUTES_PACKET_ID,
-        PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID,
+        PLAY_CLIENTBOUND_ROTATE_HEAD_PACKET_ID, PLAY_CLIENTBOUND_SET_CHUNK_CACHE_CENTER_PACKET_ID,
+        PLAY_CLIENTBOUND_SET_CHUNK_CACHE_RADIUS_PACKET_ID,
+        PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID, PLAY_CLIENTBOUND_SET_ENTITY_DATA_PACKET_ID,
+        PLAY_CLIENTBOUND_SET_ENTITY_MOTION_PACKET_ID, PLAY_CLIENTBOUND_SET_HEALTH_PACKET_ID,
+        PLAY_CLIENTBOUND_SET_PASSENGERS_PACKET_ID, PLAY_CLIENTBOUND_SET_PLAYER_INVENTORY_PACKET_ID,
+        PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID, PLAY_CLIENTBOUND_TELEPORT_ENTITY_PACKET_ID,
+        PLAY_CLIENTBOUND_UPDATE_ATTRIBUTES_PACKET_ID, PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID,
         PLAY_SERVERBOUND_ACCEPT_TELEPORTATION_PACKET_ID,
         PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID, PLAY_SERVERBOUND_CLIENT_COMMAND_PACKET_ID,
         PLAY_SERVERBOUND_CLIENT_TICK_END_PACKET_ID, PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
@@ -3256,10 +3284,11 @@ mod tests {
         parse_move_entity_rot_packet, parse_open_screen_packet, parse_optional_item_stack,
         parse_player_abilities_packet, parse_player_position_packet, parse_remove_entities_packet,
         parse_remove_mob_effect_packet, parse_respawn_packet, parse_rotate_head_packet,
-        parse_section_data, parse_set_entity_motion_packet, parse_set_health_packet,
-        parse_set_passengers_packet, parse_set_player_inventory_packet, parse_system_chat_packet,
-        parse_update_attributes_packet, parse_update_mob_effect_packet, resolve_player_position,
-        support_block_position,
+        parse_section_data, parse_set_chunk_cache_center_packet,
+        parse_set_chunk_cache_radius_packet, parse_set_entity_motion_packet,
+        parse_set_health_packet, parse_set_passengers_packet, parse_set_player_inventory_packet,
+        parse_system_chat_packet, parse_update_attributes_packet, parse_update_mob_effect_packet,
+        resolve_player_position, support_block_position,
     };
 
     #[test]
@@ -3302,6 +3331,8 @@ mod tests {
         assert_eq!(PLAY_CLIENTBOUND_FORGET_LEVEL_CHUNK_PACKET_ID, 37);
         assert_eq!(PLAY_CLIENTBOUND_GAME_EVENT_PACKET_ID, 38);
         assert_eq!(PLAY_CLIENTBOUND_LIGHT_UPDATE_PACKET_ID, 48);
+        assert_eq!(PLAY_CLIENTBOUND_SET_CHUNK_CACHE_CENTER_PACKET_ID, 94);
+        assert_eq!(PLAY_CLIENTBOUND_SET_CHUNK_CACHE_RADIUS_PACKET_ID, 95);
         assert_eq!(PLAY_CLIENTBOUND_BLOCK_CHANGED_ACK_PACKET_ID, 4);
         assert_eq!(PLAY_CLIENTBOUND_BLOCK_DESTRUCTION_PACKET_ID, 5);
         assert_eq!(PLAY_CLIENTBOUND_CONTAINER_SET_CONTENT_PACKET_ID, 18);
@@ -3744,6 +3775,27 @@ mod tests {
         let mut trailing = packed.to_be_bytes().to_vec();
         trailing.push(0);
         assert!(parse_forget_level_chunk_packet(&trailing).is_err());
+    }
+
+    #[test]
+    fn chunk_cache_center_and_radius_parsers_match_varint_payloads() {
+        let mut center = Vec::new();
+        crate::wire::write_varint(-12, &mut center);
+        crate::wire::write_varint(37, &mut center);
+        assert_eq!(
+            parse_set_chunk_cache_center_packet(&center).expect("chunk cache center"),
+            (-12, 37)
+        );
+
+        let mut radius = Vec::new();
+        crate::wire::write_varint(6, &mut radius);
+        assert_eq!(
+            parse_set_chunk_cache_radius_packet(&radius).expect("chunk cache radius"),
+            6
+        );
+
+        radius.push(0);
+        assert!(parse_set_chunk_cache_radius_packet(&radius).is_err());
     }
 
     #[test]

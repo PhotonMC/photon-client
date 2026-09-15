@@ -2708,6 +2708,14 @@ fn connect_and_probe_with_mode(
                         stopped_entity_count: tracked_entity_count - ticking_entity_count,
                     });
             }
+            PLAY_CLIENTBOUND_SET_CHUNK_CACHE_RADIUS_PACKET_ID => {
+                let radius = parse_set_chunk_cache_radius_packet(payload)?;
+                trace.world.update_chunk_cache_radius(radius);
+            }
+            PLAY_CLIENTBOUND_SET_CHUNK_CACHE_CENTER_PACKET_ID => {
+                let (x, z) = parse_set_chunk_cache_center_packet(payload)?;
+                trace.world.update_chunk_cache_center(x, z);
+            }
             PLAY_CLIENTBOUND_LIGHT_UPDATE_PACKET_ID => {
                 let mut observation = parse_light_update_packet(payload)?;
                 let application = trace.world.apply_light_updates(
@@ -2769,6 +2777,7 @@ fn connect_and_probe_with_mode(
                     dimension_bounds_for_spawn_info(&trace, &observation.spawn_info),
                     dimension_environment_for_spawn_info(&trace, &observation.spawn_info),
                 );
+                trace.world.configure_chunk_cache(observation.chunk_radius);
                 trace.world.set_local_player_id(observation.player_id);
                 trace
                     .world

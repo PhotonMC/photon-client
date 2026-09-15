@@ -109,6 +109,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P09.i — Statik world-border collision shape — client-parity birleşik kayıt](client-world-border-collision-conformance.md)
 - [P09.j — Moving world-border extent — client-parity birleşik kayıt](client-world-border-moving-conformance.md)
 - [P09.k — ClientWorld world-border state — client-parity birleşik kayıt](client-world-border-state-conformance.md)
+- [P08.d — ClientChunkCache yaşam döngüsü — client-parity birleşik kayıt](client-world-chunk-cache-parity-conformance.md)
 - [P08.d — server-conformance ClientWorld chunk unload](client-world-chunk-unload-conformance.md)
 - [P09.l — ClientWorld birleşik collision sources — client-parity birleşik kayıt](client-world-collision-conformance.md)
 - [P09.b — Entity collision movement resolution — client-parity birleşik kayıt](client-world-collision-movement-conformance.md)

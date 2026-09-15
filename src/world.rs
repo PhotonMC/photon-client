@@ -1689,6 +1689,152 @@ impl DimensionBounds {
     }
 }
 
+/// The observable state of the Java client chunk cache.
+///
+/// The cache owns a bounded ring of chunk slots, while the world owns the
+/// decoded chunk data. Keeping this snapshot separate lets behavior tests
+/// inspect the cache lifecycle without exposing its slot implementation.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClientChunkCacheSnapshot {
+    pub storage_radius: i32,
+    pub view_range: i32,
+    pub view_center_x: i32,
+    pub view_center_z: i32,
+    pub loaded_chunks: Vec<(i32, i32)>,
+    pub added_empty_sections: Vec<i64>,
+    pub removed_empty_sections: Vec<i64>,
+    pub added_loaded_chunks: Vec<(i32, i32)>,
+    pub removed_loaded_chunks: Vec<(i32, i32)>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ClientChunkCacheState {
+    server_view_radius: i32,
+    storage_radius: i32,
+    view_range: i32,
+    view_center_x: i32,
+    view_center_z: i32,
+    slots: BTreeMap<usize, (i32, i32)>,
+    updating_sets_index: usize,
+    added_empty_sections: [BTreeSet<i64>; 2],
+    removed_empty_sections: [BTreeSet<i64>; 2],
+    added_loaded_chunks: [BTreeSet<(i32, i32)>; 2],
+    removed_loaded_chunks: [BTreeSet<(i32, i32)>; 2],
+}
+
+impl ClientChunkCacheState {
+    fn new(server_view_radius: i32) -> Self {
+        let storage_radius = server_view_radius.max(2) + 3;
+        let view_range = storage_radius * 2 + 1;
+        Self {
+            server_view_radius,
+            storage_radius,
+            view_range,
+            view_center_x: 0,
+            view_center_z: 0,
+            slots: BTreeMap::new(),
+            updating_sets_index: 0,
+            added_empty_sections: std::array::from_fn(|_| BTreeSet::new()),
+            removed_empty_sections: std::array::from_fn(|_| BTreeSet::new()),
+            added_loaded_chunks: std::array::from_fn(|_| BTreeSet::new()),
+            removed_loaded_chunks: std::array::from_fn(|_| BTreeSet::new()),
+        }
+    }
+
+    fn in_range(&self, chunk_x: i32, chunk_z: i32) -> bool {
+        (i64::from(chunk_x) - i64::from(self.view_center_x)).abs() <= i64::from(self.storage_radius)
+            && (i64::from(chunk_z) - i64::from(self.view_center_z)).abs()
+                <= i64::from(self.storage_radius)
+    }
+
+    fn index(&self, chunk_x: i32, chunk_z: i32) -> usize {
+        let range = i64::from(self.view_range);
+        let x = i64::from(chunk_x).rem_euclid(range);
+        let z = i64::from(chunk_z).rem_euclid(range);
+        (z * range + x) as usize
+    }
+
+    fn section_node(chunk_x: i32, section_y: i32, chunk_z: i32) -> i64 {
+        let x = (chunk_x as u64) & 0x3f_ffff;
+        let y = (section_y as u64) & 0x0f_ffff;
+        let z = (chunk_z as u64) & 0x3f_ffff;
+        ((x << 42) | (z << 20) | y) as i64
+    }
+
+    fn on_chunk_removed(
+        &mut self,
+        chunk_x: i32,
+        chunk_z: i32,
+        section_ys: impl IntoIterator<Item = i32>,
+    ) {
+        let index = self.updating_sets_index;
+        self.removed_loaded_chunks[index].insert((chunk_x, chunk_z));
+        for section_y in section_ys {
+            self.removed_empty_sections[index]
+                .insert(Self::section_node(chunk_x, section_y, chunk_z));
+        }
+    }
+
+    fn on_chunk_added(
+        &mut self,
+        chunk_x: i32,
+        chunk_z: i32,
+        sections: impl IntoIterator<Item = (i32, bool)>,
+    ) {
+        let index = self.updating_sets_index;
+        self.added_loaded_chunks[index].insert((chunk_x, chunk_z));
+        for (section_y, has_only_air) in sections {
+            if has_only_air {
+                self.added_empty_sections[index]
+                    .insert(Self::section_node(chunk_x, section_y, chunk_z));
+            }
+        }
+    }
+
+    fn refresh_empty_sections(
+        &mut self,
+        chunk_x: i32,
+        chunk_z: i32,
+        sections: impl IntoIterator<Item = (i32, bool)>,
+    ) {
+        let index = self.updating_sets_index;
+        for (section_y, has_only_air) in sections {
+            let node = Self::section_node(chunk_x, section_y, chunk_z);
+            if has_only_air {
+                self.added_empty_sections[index].insert(node);
+            } else {
+                self.removed_empty_sections[index].insert(node);
+            }
+        }
+    }
+
+    fn on_section_emptiness_changed(
+        &mut self,
+        section_x: i32,
+        section_y: i32,
+        section_z: i32,
+        empty: bool,
+    ) {
+        if !self.in_range(section_x, section_z) {
+            return;
+        }
+        let node = Self::section_node(section_x, section_y, section_z);
+        if empty {
+            self.added_empty_sections[self.updating_sets_index].insert(node);
+        } else {
+            self.removed_empty_sections[self.updating_sets_index].insert(node);
+        }
+    }
+
+    fn flip_update_tracking_sets(&mut self) {
+        self.updating_sets_index = (self.updating_sets_index + 1) % 2;
+        self.added_empty_sections[self.updating_sets_index].clear();
+        self.removed_empty_sections[self.updating_sets_index].clear();
+        self.added_loaded_chunks[self.updating_sets_index].clear();
+        self.removed_loaded_chunks[self.updating_sets_index].clear();
+    }
+}
+
 /// Raw item-stack state retained by the client inventory copy.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ClientItemStackState {
@@ -2571,6 +2717,7 @@ pub struct ClientWorld {
     dimension_environment: DimensionEnvironment,
     block_state_registry: ClientBlockStateRegistry,
     chunks: BTreeMap<(i32, i32), ClientChunk>,
+    chunk_cache: Option<ClientChunkCacheState>,
     pending_light_updates: VecDeque<PendingLightUpdate>,
     entities: BTreeMap<i32, ClientEntity>,
     entity_sections: BTreeMap<(i32, i32, i32), BTreeSet<i32>>,
@@ -2600,6 +2747,7 @@ impl ClientWorld {
             ),
             block_state_registry: ClientBlockStateRegistry::vanilla_26_2(),
             chunks: BTreeMap::new(),
+            chunk_cache: None,
             pending_light_updates: VecDeque::new(),
             entities: BTreeMap::new(),
             entity_sections: BTreeMap::new(),
@@ -2643,6 +2791,108 @@ impl ClientWorld {
 
     pub fn block_state_registry(&self) -> &ClientBlockStateRegistry {
         &self.block_state_registry
+    }
+
+    /// Create the bounded chunk cache used by a Java client level.
+    pub fn configure_chunk_cache(&mut self, server_view_radius: i32) {
+        self.chunks.clear();
+        self.pending_light_updates.clear();
+        self.chunk_cache = Some(ClientChunkCacheState::new(server_view_radius));
+    }
+
+    /// Return the Java cache range and ring index for a chunk coordinate.
+    pub fn chunk_cache_location(&self, chunk_x: i32, chunk_z: i32) -> Option<(bool, usize)> {
+        self.chunk_cache.as_ref().map(|cache| {
+            (
+                cache.in_range(chunk_x, chunk_z),
+                cache.index(chunk_x, chunk_z),
+            )
+        })
+    }
+
+    /// Move the Java client chunk-cache view center without evicting slots.
+    pub fn update_chunk_cache_center(&mut self, chunk_x: i32, chunk_z: i32) {
+        if let Some(cache) = self.chunk_cache.as_mut() {
+            cache.view_center_x = chunk_x;
+            cache.view_center_z = chunk_z;
+        }
+    }
+
+    /// Resize the Java client chunk cache and retain chunks in the new range.
+    pub fn update_chunk_cache_radius(&mut self, server_view_radius: i32) {
+        let Some(cache) = self.chunk_cache.as_mut() else {
+            return;
+        };
+        let new_storage_radius = server_view_radius.max(2) + 3;
+        cache.server_view_radius = server_view_radius;
+        if cache.storage_radius == new_storage_radius {
+            return;
+        }
+
+        let mut new_cache = ClientChunkCacheState::new(server_view_radius);
+        new_cache.view_center_x = cache.view_center_x;
+        new_cache.view_center_z = cache.view_center_z;
+        let retained = self
+            .chunks
+            .iter()
+            .filter(|&(&(chunk_x, chunk_z), _)| new_cache.in_range(chunk_x, chunk_z))
+            .map(|(&(chunk_x, chunk_z), chunk)| ((chunk_x, chunk_z), chunk.clone()))
+            .collect::<Vec<_>>();
+        self.chunks.clear();
+        for ((chunk_x, chunk_z), chunk) in retained {
+            let index = new_cache.index(chunk_x, chunk_z);
+            new_cache.slots.insert(index, (chunk_x, chunk_z));
+            new_cache.on_chunk_added(
+                chunk_x,
+                chunk_z,
+                chunk
+                    .sections
+                    .iter()
+                    .map(|(&section_y, section)| (section_y, section.has_only_air())),
+            );
+            self.chunks.insert((chunk_x, chunk_z), chunk);
+        }
+        self.chunk_cache = Some(new_cache);
+    }
+
+    /// Apply the cache's section-emptiness notification path.
+    pub fn update_chunk_section_emptiness(
+        &mut self,
+        section_x: i32,
+        section_y: i32,
+        section_z: i32,
+        empty: bool,
+    ) {
+        if let Some(cache) = self.chunk_cache.as_mut() {
+            cache.on_section_emptiness_changed(section_x, section_y, section_z, empty);
+        }
+    }
+
+    /// Swap the Java cache's double-buffered update sets.
+    pub fn flip_chunk_cache_update_sets(&mut self) {
+        if let Some(cache) = self.chunk_cache.as_mut() {
+            cache.flip_update_tracking_sets();
+        }
+    }
+
+    /// Snapshot the loaded chunks and cache update sets in deterministic order.
+    pub fn client_chunk_cache_snapshot(&self) -> Option<ClientChunkCacheSnapshot> {
+        let cache = self.chunk_cache.as_ref()?;
+        let index = cache.updating_sets_index;
+        Some(ClientChunkCacheSnapshot {
+            storage_radius: cache.storage_radius,
+            view_range: cache.view_range,
+            view_center_x: cache.view_center_x,
+            view_center_z: cache.view_center_z,
+            loaded_chunks: self.chunks.keys().copied().collect(),
+            added_empty_sections: cache.added_empty_sections[index].iter().copied().collect(),
+            removed_empty_sections: cache.removed_empty_sections[index]
+                .iter()
+                .copied()
+                .collect(),
+            added_loaded_chunks: cache.added_loaded_chunks[index].iter().copied().collect(),
+            removed_loaded_chunks: cache.removed_loaded_chunks[index].iter().copied().collect(),
+        })
     }
 
     /// Apply a clientbound common update-tags packet to the world registry copy.
@@ -3193,7 +3443,12 @@ impl ClientWorld {
         self.sea_level = input.sea_level;
         self.dimension_environment = environment;
         if changed {
+            let server_view_radius = self
+                .chunk_cache
+                .as_ref()
+                .map(|cache| cache.server_view_radius);
             self.chunks.clear();
+            self.chunk_cache = server_view_radius.map(ClientChunkCacheState::new);
             self.pending_light_updates.clear();
             self.entities.clear();
             if let Some(player) = self.local_player.as_mut() {
@@ -3840,11 +4095,64 @@ impl ClientWorld {
         self.chunks.values().map(|chunk| chunk.sections.len()).sum()
     }
 
+    fn cached_chunk_is_current(&self, chunk_x: i32, chunk_z: i32) -> bool {
+        let Some(cache) = self.chunk_cache.as_ref() else {
+            return true;
+        };
+        cache.in_range(chunk_x, chunk_z)
+            && cache.slots.get(&cache.index(chunk_x, chunk_z)) == Some(&(chunk_x, chunk_z))
+    }
+
+    fn chunk_for_query(&self, chunk_x: i32, chunk_z: i32) -> Option<&ClientChunk> {
+        self.cached_chunk_is_current(chunk_x, chunk_z)
+            .then(|| self.chunks.get(&(chunk_x, chunk_z)))
+            .flatten()
+    }
+
+    fn chunk_for_update(&mut self, chunk_x: i32, chunk_z: i32) -> Option<&mut ClientChunk> {
+        if !self.cached_chunk_is_current(chunk_x, chunk_z) {
+            return None;
+        }
+        self.chunks.get_mut(&(chunk_x, chunk_z))
+    }
+
     pub fn contains_chunk(&self, chunk_x: i32, chunk_z: i32) -> bool {
-        self.chunks.contains_key(&(chunk_x, chunk_z))
+        self.chunk_for_query(chunk_x, chunk_z).is_some()
     }
 
     pub fn unload_chunk(&mut self, chunk_x: i32, chunk_z: i32) -> bool {
+        if let Some(cache) = self.chunk_cache.as_ref() {
+            if !cache.in_range(chunk_x, chunk_z) {
+                return false;
+            }
+            let index = cache.index(chunk_x, chunk_z);
+            if cache.slots.get(&index) != Some(&(chunk_x, chunk_z)) {
+                return false;
+            }
+            let removed = self.chunks.remove(&(chunk_x, chunk_z));
+            if let Some(chunk) = removed.as_ref() {
+                let section_ys = chunk.sections.keys().copied().collect::<Vec<_>>();
+                let cache = self
+                    .chunk_cache
+                    .as_mut()
+                    .expect("chunk cache exists during unload");
+                cache.slots.remove(&index);
+                cache.on_chunk_removed(chunk_x, chunk_z, section_ys);
+            }
+            self.pending_light_updates
+                .retain(|update| update.chunk_x != chunk_x || update.chunk_z != chunk_z);
+            if removed.is_some() {
+                for entity in self.entities.values_mut() {
+                    if !entity.always_ticking
+                        && entity_chunk_key(entity.position()) == (chunk_x, chunk_z)
+                    {
+                        entity.ticking = false;
+                    }
+                }
+            }
+            return removed.is_some();
+        }
+
         let removed = self.chunks.remove(&(chunk_x, chunk_z)).is_some();
         self.pending_light_updates
             .retain(|update| update.chunk_x != chunk_x || update.chunk_z != chunk_z);
@@ -3885,7 +4193,9 @@ impl ClientWorld {
 
     pub fn block_entity_at(&self, x: i32, y: i32, z: i32) -> Option<&ClientBlockEntity> {
         let chunk_key = (x.div_euclid(16), z.div_euclid(16));
-        self.chunks.get(&chunk_key)?.block_entities.get(&(x, y, z))
+        self.chunk_for_query(chunk_key.0, chunk_key.1)?
+            .block_entities
+            .get(&(x, y, z))
     }
 
     pub fn loaded_entity_count(&self) -> usize {
@@ -3950,7 +4260,9 @@ impl ClientWorld {
         chunk_z: i32,
         updates: LightUpdateInput<'_>,
     ) -> LightApplication {
-        if !self.chunks.contains_key(&(chunk_x, chunk_z)) {
+        if !self.cached_chunk_is_current(chunk_x, chunk_z)
+            || !self.chunks.contains_key(&(chunk_x, chunk_z))
+        {
             let light_section_count = self.dimension.section_count().saturating_add(2);
             let invalid_sky_updates = count_invalid_light_updates(
                 light_section_count,
@@ -3986,11 +4298,11 @@ impl ClientWorld {
         chunk_z: i32,
         updates: LightUpdateInput<'_>,
     ) -> LightApplication {
-        let Some(chunk) = self.chunks.get_mut(&(chunk_x, chunk_z)) else {
-            return LightApplication::default();
-        };
         let min_light_section_y = self.dimension.min_section_y() - 1;
         let light_section_count = self.dimension.section_count().saturating_add(2);
+        let Some(chunk) = self.chunk_for_update(chunk_x, chunk_z) else {
+            return LightApplication::default();
+        };
         let (applied_sky_sections, invalid_sky_updates) = apply_light_layer(
             &mut chunk.lights,
             min_light_section_y,
@@ -4034,7 +4346,7 @@ impl ClientWorld {
     /// Return the resolved global block-state ID at a world coordinate.
     pub fn block_state_at(&self, x: i32, y: i32, z: i32) -> Option<i32> {
         let chunk_key = (x.div_euclid(16), z.div_euclid(16));
-        let chunk = self.chunks.get(&chunk_key)?;
+        let chunk = self.chunk_for_query(chunk_key.0, chunk_key.1)?;
         let section_y = y.div_euclid(16);
         let section = chunk.sections.get(&section_y)?;
         let local_x = x.rem_euclid(16) as usize;
@@ -4369,7 +4681,7 @@ impl ClientWorld {
     /// Apply a server-verified block-state update to an already loaded section.
     pub(crate) fn update_block_state(&mut self, x: i32, y: i32, z: i32, state_id: i32) -> bool {
         let chunk_key = (x.div_euclid(16), z.div_euclid(16));
-        let Some(chunk) = self.chunks.get_mut(&chunk_key) else {
+        let Some(chunk) = self.chunk_for_update(chunk_key.0, chunk_key.1) else {
             return false;
         };
         let section_y = y.div_euclid(16);
@@ -4419,7 +4731,7 @@ impl ClientWorld {
     where
         I: IntoIterator<Item = BlockEntityInput<'a>>,
     {
-        let Some(chunk) = self.chunks.get_mut(&(chunk_x, chunk_z)) else {
+        let Some(chunk) = self.chunk_for_update(chunk_x, chunk_z) else {
             return 0;
         };
         let mut applied = 0;
@@ -4438,7 +4750,7 @@ impl ClientWorld {
 
     pub(crate) fn apply_block_entity_update(&mut self, entity: BlockEntityInput<'_>) -> bool {
         let chunk_key = (entity.x.div_euclid(16), entity.z.div_euclid(16));
-        let Some(chunk) = self.chunks.get_mut(&chunk_key) else {
+        let Some(chunk) = self.chunk_for_update(chunk_key.0, chunk_key.1) else {
             return false;
         };
         chunk.block_entities.insert(
@@ -5260,7 +5572,7 @@ impl ClientWorld {
         section_y: i32,
         chunk_z: i32,
     ) -> Option<(i16, i16)> {
-        let chunk = self.chunks.get(&(chunk_x, chunk_z))?;
+        let chunk = self.chunk_for_query(chunk_x, chunk_z)?;
         let section = chunk.sections.get(&section_y)?;
         Some((section.non_empty_block_count, section.fluid_count))
     }
@@ -5268,7 +5580,7 @@ impl ClientWorld {
     /// Return the resolved biome registry ID at a world coordinate.
     pub fn biome_at(&self, x: i32, y: i32, z: i32) -> Option<i32> {
         let chunk_key = (x.div_euclid(16), z.div_euclid(16));
-        let chunk = self.chunks.get(&chunk_key)?;
+        let chunk = self.chunk_for_query(chunk_key.0, chunk_key.1)?;
         let section_y = y.div_euclid(16);
         let section = chunk.sections.get(&section_y)?;
         let local_x = x.rem_euclid(16) as usize / 4;
@@ -5280,7 +5592,7 @@ impl ClientWorld {
 
     fn light_at(&self, layer: LightLayer, x: i32, y: i32, z: i32) -> Option<u8> {
         let chunk_key = (x.div_euclid(16), z.div_euclid(16));
-        let chunk = self.chunks.get(&chunk_key)?;
+        let chunk = self.chunk_for_query(chunk_key.0, chunk_key.1)?;
         let section_y = y.div_euclid(16);
         let section = chunk.lights.get(&section_y)?;
         let data = match layer {
@@ -5295,40 +5607,76 @@ impl ClientWorld {
     }
 
     /// Replace a loaded chunk with decoded sections in bottom-to-top order.
-    pub fn replace_chunk<'a, I>(&mut self, chunk_x: i32, chunk_z: i32, sections: I)
+    pub fn replace_chunk<'a, I>(&mut self, chunk_x: i32, chunk_z: i32, sections: I) -> bool
     where
         I: IntoIterator<Item = SectionInput<'a>>,
     {
         let section_base_y = self.dimension.min_section_y();
-        let sections = sections
-            .into_iter()
-            .enumerate()
-            .map(|(index, input)| {
-                (
-                    section_base_y + index as i32,
-                    ClientSection {
-                        non_empty_block_count: input.non_empty_block_count,
-                        fluid_count: input.fluid_count,
-                        block_states: input.block_states.to_vec(),
-                        biomes: input.biomes.to_vec(),
-                    },
-                )
-            })
-            .collect();
-        self.chunks.insert(
-            (chunk_x, chunk_z),
-            ClientChunk {
-                sections,
-                lights: BTreeMap::new(),
-                block_entities: BTreeMap::new(),
-            },
-        );
+        let new_chunk = ClientChunk {
+            sections: sections
+                .into_iter()
+                .enumerate()
+                .map(|(index, input)| {
+                    (
+                        section_base_y + index as i32,
+                        ClientSection {
+                            non_empty_block_count: input.non_empty_block_count,
+                            fluid_count: input.fluid_count,
+                            block_states: input.block_states.to_vec(),
+                            biomes: input.biomes.to_vec(),
+                        },
+                    )
+                })
+                .collect(),
+            lights: BTreeMap::new(),
+            block_entities: BTreeMap::new(),
+        };
+        let new_section_statuses = new_chunk
+            .sections
+            .iter()
+            .map(|(&section_y, section)| (section_y, section.has_only_air()))
+            .collect::<Vec<_>>();
+
+        if let Some(cache) = self.chunk_cache.as_ref() {
+            if !cache.in_range(chunk_x, chunk_z) {
+                return false;
+            }
+            let index = cache.index(chunk_x, chunk_z);
+            let current_chunk = cache.slots.get(&index).copied();
+            if current_chunk == Some((chunk_x, chunk_z)) {
+                self.chunks.insert((chunk_x, chunk_z), new_chunk);
+                self.chunk_cache
+                    .as_mut()
+                    .expect("chunk cache exists during refresh")
+                    .refresh_empty_sections(chunk_x, chunk_z, new_section_statuses);
+            } else {
+                if let Some((old_x, old_z)) = current_chunk
+                    && let Some(old_chunk) = self.chunks.remove(&(old_x, old_z))
+                {
+                    let old_section_ys = old_chunk.sections.keys().copied().collect::<Vec<_>>();
+                    self.chunk_cache
+                        .as_mut()
+                        .expect("chunk cache exists during replacement")
+                        .on_chunk_removed(old_x, old_z, old_section_ys);
+                }
+                self.chunks.insert((chunk_x, chunk_z), new_chunk);
+                let cache = self
+                    .chunk_cache
+                    .as_mut()
+                    .expect("chunk cache exists during insertion");
+                cache.slots.insert(index, (chunk_x, chunk_z));
+                cache.on_chunk_added(chunk_x, chunk_z, new_section_statuses);
+            }
+        } else {
+            self.chunks.insert((chunk_x, chunk_z), new_chunk);
+        }
         self.apply_pending_light_updates_for(chunk_x, chunk_z);
         for entity in self.entities.values_mut() {
             if entity_chunk_key(entity.position()) == (chunk_x, chunk_z) {
                 entity.ticking = true;
             }
         }
+        true
     }
 }
 
@@ -7309,6 +7657,12 @@ struct ClientSection {
     fluid_count: i16,
     block_states: Vec<i32>,
     biomes: Vec<i32>,
+}
+
+impl ClientSection {
+    fn has_only_air(&self) -> bool {
+        self.non_empty_block_count == 0
+    }
 }
 
 pub struct SectionInput<'a> {
@@ -9471,6 +9825,41 @@ mod tests {
         assert_eq!(world.biome_at(-4, -64, 32), Some(22));
         assert_eq!(world.biome_at(-16, -64, 36), Some(23));
         assert_eq!(world.biome_at(-1, -49, 47), Some(24));
+    }
+
+    #[test]
+    fn chunk_cache_hides_stale_slots_from_world_queries() {
+        let (blocks, biomes) = section(7, 8);
+        let mut world = ClientWorld::new(DimensionBounds::new(-64, 384));
+        world.configure_chunk_cache(0);
+        assert!(world.replace_chunk(
+            0,
+            0,
+            [SectionInput {
+                non_empty_block_count: 6,
+                fluid_count: 1,
+                block_states: &blocks,
+                biomes: &biomes,
+            }],
+        ));
+
+        assert!(world.contains_chunk(0, 0));
+        assert_eq!(world.block_state_at(0, -64, 0), Some(11));
+        assert_eq!(world.section_counts_at(0, -4, 0), Some((6, 1)));
+        assert_eq!(world.biome_at(0, -64, 0), Some(21));
+        assert!(world.update_block_state(0, -64, 0, 86));
+
+        world.update_chunk_cache_center(8, 0);
+        assert_eq!(world.loaded_chunk_count(), 1);
+        assert!(!world.contains_chunk(0, 0));
+        assert_eq!(world.block_state_at(0, -64, 0), None);
+        assert_eq!(world.section_counts_at(0, -4, 0), None);
+        assert_eq!(world.biome_at(0, -64, 0), None);
+        assert!(!world.update_block_state(0, -64, 0, 87));
+
+        world.update_chunk_cache_center(0, 0);
+        assert!(world.contains_chunk(0, 0));
+        assert_eq!(world.block_state_at(0, -64, 0), Some(86));
     }
 
     #[test]
