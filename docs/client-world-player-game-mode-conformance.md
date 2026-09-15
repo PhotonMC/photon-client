@@ -111,33 +111,47 @@ python3 tools/behavior/run.py compare --family math --jdk-home /usr/lib/jvm/java
 
 Mojang vanilla 26.2 dedicated server JAR'ı
 `823e2250d24b3ddac457a60c92a6a941943fcd6a` SHA-1'iyle doğrulandı. Sunucu,
-offline ve yalnızca `127.0.0.1:25568` üzerinde, seed `776`, creative,
-peaceful, view/simulation distance `5` ayarlarıyla geçici
-`/tmp/voxel-vanilla-26.2-test` dizininde çalıştırıldı. JAR, dünya ve loglar
-depoya alınmadı.
+offline, seed `776`, creative, peaceful, view/simulation distance `5` ve
+`127.0.0.1:25571` ayarlarıyla geçici
+`/tmp/voxel-vanilla-26.2-test-run-0915-attribute` dizininde çalıştırıldı. Bu
+koşuda `connection_probe` yerine uzun yaşayan metadata drain yolu, login
+sonrası sunucu konsolu komutlarını alabilmek için kullanıldı; JAR, dünya ve
+loglar depoya alınmadı.
 
 ```text
-cargo run --locked --offline --example connection_probe -- 127.0.0.1:25568 GameModeProbe2
+gamemode survival ModeObs959
+gamemode adventure ModeObs959
+gamemode spectator ModeObs959
+gamemode creative ModeObs959
+
+cargo run --locked --offline --example world_player_game_mode_probe -- \
+  127.0.0.1:25571 ModeObs959
 ```
 
-Gözlenen Rust trace özeti:
+İki bağımsız geçerli koşuda Rust trace'i aynı kabul alanlarını verdi. Son
+koşunun özeti:
 
 ```text
 connection=ok
 play_login=true
-player_abilities_observations=[PlayerAbilitiesObservation { packet: PlayerAbilitiesPacket { invulnerable: true, flying: false, can_fly: true, can_instabuild: true, flying_speed: 0.05, walking_speed: 0.1 }, applied_to_world: true }]
-game_event_observations=[GameEventObservation { packet: GameEventPacket { event_id: 13, param: 0.0 }, applied_to_world: false, local_game_mode: Some(Creative) }]
-world_chunk_count=24
-world_section_count=576
+player_loaded_sent=true
+change_game_mode_event_count=4
+change_game_mode_events=0.0→survival, 2.0→adventure, 3.0→spectator, 1.0→creative
+player_abilities_packet_count=9
+player_abilities_applied_count=9
+final_game_mode=creative
+final_abilities=invulnerable:true, flying:false, may_fly:true, instabuild:true, may_build:true, flying_speed:0.05, walking_speed:0.1
+world_chunk_count=157
 ```
 
-Resmi sunucunun kısa login oturumunda aldığı game-event `LEVEL_CHUNKS_LOAD_START`
-event'idir; `CHANGE_GAME_MODE` event'i bu oturumda üretilmediği için canlı
-koşu bu dal için sentetik parity capture'ının yerine geçirilmez. Koşu, vanilla
-server'ın Rust paketini kabul ettiğini, login game type'ının local world state'e
-uygulandığını ve bilinmeyen game-event dalının state'i bozmadan tüketildiğini
-gösterir. `server-conformance` sonucu Java istemcisiyle aynı girdide davranış
-eşitliği veya oynanabilir istemci kanıtı değildir.
+Vanilla gerçek `CHANGE_GAME_MODE` packet'larını event parametreleri `0, 2, 3,
+1` sırasıyla gönderdi; Rust parser ve `ClientWorld` mode state'i dört event'i
+de sırayla uyguladı. Her mode değişimiyle gelen abilities packet'ları da world
+state'ine uygulandı. Final creative packet'ı `flying=false` bırakırken creative
+yetkilerini açık taşıdı; bu, event state'i ile ayrı abilities packet state'inin
+aynı oturumdaki sırasını görünür kılar. Bu sonuç `server-conformance`'tır;
+Java istemcisiyle aynı girdide davranış eşitliği veya oynanabilir istemci kanıtı
+değildir.
 
 ## Açık kapsam
 
