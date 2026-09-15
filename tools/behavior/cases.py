@@ -1359,6 +1359,32 @@ def math_cases():
         ],
     }
 
+    yield {
+        "case_id": "client-world/entity-arrow-count",
+        "family": "math",
+        "operation": "client_world_entity_arrow_count",
+        "entity_id": 37,
+        "entity_type_id": 54,
+        "operations": [
+            {
+                "label": "set-positive-arrow-count",
+                "metadata_hex": "0c0107ff",
+            },
+            {
+                "label": "combined-living-and-negative-arrow-count",
+                "metadata_hex": "0800010c01ffffffff0fff",
+            },
+            {
+                "label": "no-gravity-preserves-arrow-count",
+                "metadata_hex": "050801ff",
+            },
+            {
+                "label": "clear-arrow-count",
+                "metadata_hex": "0c0100ff",
+            },
+        ],
+    }
+
     def attribute_modifier(identifier, amount, operation):
         return {
             "id": identifier,

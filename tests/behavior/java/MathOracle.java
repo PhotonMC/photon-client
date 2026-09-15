@@ -5140,6 +5140,9 @@ public final class MathOracle {
         if (operation.equals("client_world_entity_mob_flags")) {
             return clientWorldEntityMobFlagsResult(request);
         }
+        if (operation.equals("client_world_entity_arrow_count")) {
+            return clientWorldEntityArrowCountResult(request);
+        }
         throw new IllegalArgumentException("Unknown client world operation");
     }
 
@@ -6051,6 +6054,47 @@ public final class MathOracle {
         state.addProperty("is_no_ai", entity.isNoAi());
         state.addProperty("is_left_handed", entity.isLeftHanded());
         state.addProperty("is_aggressive", entity.isAggressive());
+        return state;
+    }
+
+    private static JsonObject clientWorldEntityArrowCountResult(JsonObject request) {
+        try {
+            var output = System.out;
+            var errorOutput = System.err;
+            try {
+                SharedConstants.setVersion(TEST_VERSION);
+                Bootstrap.bootStrap();
+            } finally {
+                System.setOut(output);
+                System.setErr(errorOutput);
+            }
+
+            var entity = new LivingFlagsFixtureEntity();
+            var states = new JsonArray();
+            states.add(entityArrowCountState("initial", true, entity));
+            for (JsonElement operationEntry : request.getAsJsonArray("operations")) {
+                JsonObject operation = operationEntry.getAsJsonObject();
+                entity.getEntityData().assignValues(
+                    decodeEntityMetadata(operation.get("metadata_hex").getAsString()));
+                states.add(entityArrowCountState(
+                    operation.get("label").getAsString(), true, entity));
+            }
+            var result = new JsonObject();
+            result.add("states", states);
+            return result;
+        } catch (RuntimeException error) {
+            throw new IllegalStateException("Entity arrow count fixture failed", error);
+        }
+    }
+
+    private static JsonObject entityArrowCountState(
+        String label, boolean accepted, LivingFlagsFixtureEntity entity
+    ) {
+        var state = new JsonObject();
+        state.addProperty("label", label);
+        state.addProperty("accepted", accepted);
+        state.addProperty("arrow_count", entity.getArrowCount());
+        state.addProperty("living_flags", entity.livingFlags());
         return state;
     }
 
