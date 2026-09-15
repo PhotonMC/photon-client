@@ -5160,6 +5160,9 @@ public final class MathOracle {
         if (operation.equals("client_world_entity_player_snap")) {
             return clientWorldEntityPlayerSnapResult(request);
         }
+        if (operation.equals("client_world_entity_player_motion")) {
+            return clientWorldEntityPlayerMotionResult(request);
+        }
         if (operation.equals("client_world_player_sprint_trigger")) {
             return clientWorldPlayerSprintTriggerResult(request);
         }
@@ -5791,6 +5794,41 @@ public final class MathOracle {
         return result;
     }
 
+    private static JsonObject clientWorldEntityPlayerMotionResult(JsonObject request) {
+        int entityId = request.get("entity_id").getAsInt();
+        JsonObject initialPosition = request.getAsJsonObject("initial_position");
+        JsonObject initialRotation = request.getAsJsonObject("initial_rotation");
+        RemotePlayerInterpolationFixture player = RemotePlayerInterpolationFixture.create(
+            vec3(initialPosition),
+            Oracle.f32(initialRotation, "y"),
+            Oracle.f32(initialRotation, "x"),
+            Oracle.f32(request, "initial_head"),
+            vec3(request.getAsJsonObject("initial_motion")));
+
+        var states = new JsonArray();
+        states.add(remotePlayerMotionState("initial", player));
+        for (JsonElement operationEntry : request.getAsJsonArray("operations")) {
+            JsonObject operation = operationEntry.getAsJsonObject();
+            switch (operation.get("action").getAsString()) {
+                case "motion" -> player.lerpMotion(
+                    vec3(operation.getAsJsonObject("target_motion")));
+                case "tick" -> {
+                    for (int tick = 0; tick < operation.get("ticks").getAsInt(); tick++) {
+                        player.tickThroughRemotePlayer();
+                    }
+                }
+                default -> throw new IllegalArgumentException(
+                    "Unknown remote player motion action");
+            }
+            states.add(remotePlayerMotionState(
+                operation.get("label").getAsString(), player));
+        }
+        var result = new JsonObject();
+        result.addProperty("entity_id", entityId);
+        result.add("states", states);
+        return result;
+    }
+
     private static JsonObject remotePlayerInterpolationState(
         String label, RemotePlayerInterpolationFixture player
     ) {
@@ -5818,6 +5856,25 @@ public final class MathOracle {
             state.add("interpolation_target_rotation", JsonNull.INSTANCE);
         }
         state.addProperty("interpolation_steps", player.interpolationSteps());
+        return state;
+    }
+
+    private static JsonObject remotePlayerMotionState(
+        String label, RemotePlayerInterpolationFixture player
+    ) {
+        var state = new JsonObject();
+        state.addProperty("label", label);
+        state.addProperty("accepted", true);
+        state.addProperty("tick_count", player.tickCount);
+        state.add("position", snapshotClip(player.position()));
+        state.add("previous_position", snapshotClip(player.oldPosition()));
+        state.add("motion", snapshotClip(player.getDeltaMovement()));
+        if (player.motionSteps() > 0) {
+            state.add("motion_target", snapshotClip(player.motionTarget()));
+        } else {
+            state.add("motion_target", JsonNull.INSTANCE);
+        }
+        state.addProperty("motion_steps", player.motionSteps());
         return state;
     }
 
@@ -9845,6 +9902,12 @@ public final class MathOracle {
         private static RemotePlayerInterpolationFixture create(
             Vec3 position, float yRot, float xRot, float yHeadRot
         ) {
+            return create(position, yRot, xRot, yHeadRot, Vec3.ZERO);
+        }
+
+        private static RemotePlayerInterpolationFixture create(
+            Vec3 position, float yRot, float xRot, float yHeadRot, Vec3 initialMotion
+        ) {
             try {
                 Unsafe unsafe = unsafeInstance();
                 RemotePlayerInterpolationFixture player =
@@ -9856,6 +9919,9 @@ public final class MathOracle {
                     net.minecraft.world.entity.EntityTypes.PLAYER);
                 var positionField = Entity.class.getDeclaredField("position");
                 unsafe.putObject(player, unsafe.objectFieldOffset(positionField), position);
+                var deltaMovementField = Entity.class.getDeclaredField("deltaMovement");
+                unsafe.putObject(
+                    player, unsafe.objectFieldOffset(deltaMovementField), initialMotion);
                 var blockPositionField = Entity.class.getDeclaredField("blockPosition");
                 unsafe.putObject(
                     player, unsafe.objectFieldOffset(blockPositionField),
@@ -9904,6 +9970,52 @@ public final class MathOracle {
             }
         }
 
+        private Vec3 motionTarget() {
+            try {
+                var targetField = RemotePlayer.class.getDeclaredField("lerpDeltaMovement");
+                targetField.setAccessible(true);
+                return (Vec3)targetField.get(this);
+            } catch (ReflectiveOperationException error) {
+                throw new IllegalStateException(
+                    "Unable to read remote player motion target fixture", error);
+            }
+        }
+
+        private int motionSteps() {
+            try {
+                var stepsField = RemotePlayer.class.getDeclaredField("lerpDeltaMovementSteps");
+                stepsField.setAccessible(true);
+                return stepsField.getInt(this);
+            } catch (ReflectiveOperationException error) {
+                throw new IllegalStateException(
+                    "Unable to read remote player motion steps fixture", error);
+            }
+        }
+
+        private void setMotionSteps(int steps) {
+            try {
+                var stepsField = RemotePlayer.class.getDeclaredField("lerpDeltaMovementSteps");
+                stepsField.setAccessible(true);
+                stepsField.setInt(this, steps);
+            } catch (ReflectiveOperationException error) {
+                throw new IllegalStateException(
+                    "Unable to write remote player motion steps fixture", error);
+            }
+        }
+
+        private void tickRemotePlayerMotion() {
+            int steps = this.motionSteps();
+            if (steps > 0) {
+                Vec3 target = this.motionTarget();
+                Vec3 current = this.getDeltaMovement();
+                this.addDeltaMovement(new Vec3(
+                    (target.x - current.x) / steps,
+                    (target.y - current.y) / steps,
+                    (target.z - current.z) / steps));
+                this.setMotionSteps(steps - 1);
+            }
+        }
+
         private void applyPositionSync(Vec3 position, float yRot, float xRot) {
             boolean withinInterpolationRange = this.position().distanceToSqr(position) <= 4096.0;
             if (((InterpolationClientLevelFixture)CLIENT_LEVEL).isTickingEntity(this)
@@ -9920,6 +10032,12 @@ public final class MathOracle {
             if (this.isInterpolating()) {
                 this.getInterpolation().interpolate();
             }
+        }
+
+        private void tickThroughRemotePlayer() {
+            this.setOldPosAndRot();
+            this.tickCount++;
+            this.tickRemotePlayerMotion();
         }
 
         @Override

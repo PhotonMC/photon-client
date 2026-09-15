@@ -5402,7 +5402,7 @@ impl ClientWorld {
         true
     }
 
-    pub(crate) fn apply_entity_motion(&mut self, input: EntityMotionInput) -> bool {
+    pub fn apply_entity_motion(&mut self, input: EntityMotionInput) -> bool {
         let Some(entity) = self.entities.get_mut(&input.entity_id) else {
             return false;
         };
@@ -8080,11 +8080,11 @@ pub struct EntityInput {
     pub data: i32,
 }
 
-pub(crate) struct EntityMotionInput {
-    pub(crate) entity_id: i32,
-    pub(crate) x: f64,
-    pub(crate) y: f64,
-    pub(crate) z: f64,
+pub struct EntityMotionInput {
+    pub entity_id: i32,
+    pub x: f64,
+    pub y: f64,
+    pub z: f64,
 }
 
 pub(crate) struct EntityRotationInput {

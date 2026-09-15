@@ -82,11 +82,11 @@ use voxel_client::world::{
     ClientEntity, ClientEntityCollisionCandidate, ClientEntityDimensions, ClientEntityPose,
     ClientPlayerAbilities, ClientPlayerGameMode, ClientPlayerPoseInput, ClientWorld,
     ClientWorldBorder, ClientWorldBorderInitialization, ClientWorldBorderStatus,
-    ClientWorldCollisionSource, DimensionBounds, EntityInput, EntityMoveInput, LightLayerInput,
-    LightUpdateInput, SectionInput, apply_entity_movement_state, collect_candidate_step_up_heights,
-    collect_entity_collision_shapes, collide_entity_movement, collide_entity_movement_state,
-    is_minor_horizontal_collision, living_entity_dimensions, refresh_entity_dimensions,
-    select_step_up_movement, world_border_collision_shape,
+    ClientWorldCollisionSource, DimensionBounds, EntityInput, EntityMotionInput, EntityMoveInput,
+    LightLayerInput, LightUpdateInput, SectionInput, apply_entity_movement_state,
+    collect_candidate_step_up_heights, collect_entity_collision_shapes, collide_entity_movement,
+    collide_entity_movement_state, is_minor_horizontal_collision, living_entity_dimensions,
+    refresh_entity_dimensions, select_step_up_movement, world_border_collision_shape,
 };
 
 fn string<'a>(request: &'a Value, name: &str) -> Result<&'a str, String> {
@@ -8183,6 +8183,105 @@ fn client_world_entity_player_snap_result(request: &Value) -> Result<Value, Stri
     Ok(json!({"entity_id": entity_id, "states": states}))
 }
 
+fn client_world_entity_player_motion_state(label: &str, entity: &ClientEntity) -> Value {
+    let position = entity.position();
+    let previous_position = entity.previous_position();
+    let motion = entity.motion();
+    let mut state = json!({
+        "label": label,
+        "accepted": true,
+        "tick_count": entity.tick_count(),
+        "position": client_world_entity_tick_vector(position),
+        "previous_position": client_world_entity_tick_vector(previous_position),
+        "motion": client_world_entity_tick_vector(motion),
+        "motion_steps": entity.motion_interpolation_steps(),
+    });
+    if let Some(target_motion) = entity.motion_interpolation_target() {
+        state["motion_target"] = client_world_entity_tick_vector(target_motion);
+    }
+    state
+}
+
+fn client_world_entity_player_motion_result(request: &Value) -> Result<Value, String> {
+    let entity_id = i32_field(request, "entity_id")?;
+    let initial_position = f64_vec3(
+        request
+            .get("initial_position")
+            .ok_or("initial_position must be a vector")?,
+    )?;
+    let initial_rotation = request
+        .get("initial_rotation")
+        .ok_or("initial_rotation must be an object")?;
+    let initial_motion = f64_vec3(
+        request
+            .get("initial_motion")
+            .ok_or("initial_motion must be a vector")?,
+    )?;
+    let mut world = ClientWorld::new(DimensionBounds::default());
+    if !world.apply_entity(EntityInput {
+        entity_id,
+        uuid: Uuid::new(0, u64::from(entity_id as u32)),
+        type_id: 156,
+        x: initial_position.x,
+        y: initial_position.y,
+        z: initial_position.z,
+        movement: (initial_motion.x, initial_motion.y, initial_motion.z),
+        rotation: (
+            f32_field(initial_rotation, "y")?,
+            f32_field(initial_rotation, "x")?,
+            f32_field(request, "initial_head")?,
+        ),
+        data: 0,
+    }) {
+        return Err("remote player motion fixture was rejected".into());
+    }
+
+    let mut states = vec![client_world_entity_player_motion_state(
+        "initial",
+        world
+            .entity_at(entity_id)
+            .ok_or("remote player motion fixture disappeared")?,
+    )];
+    for operation in request["operations"]
+        .as_array()
+        .ok_or("operations must be an array")?
+    {
+        match string(operation, "action")? {
+            "motion" => {
+                let target = f64_vec3(
+                    operation
+                        .get("target_motion")
+                        .ok_or("target motion must be a vector")?,
+                )?;
+                if !world.apply_entity_motion(EntityMotionInput {
+                    entity_id,
+                    x: target.x,
+                    y: target.y,
+                    z: target.z,
+                }) {
+                    return Err("remote player motion was rejected".into());
+                }
+            }
+            "tick" => {
+                let ticks = operation["ticks"]
+                    .as_u64()
+                    .ok_or("ticks must be an unsigned integer")?;
+                for _ in 0..ticks {
+                    world.tick();
+                }
+            }
+            _ => return Err("unknown remote player motion action".into()),
+        }
+        states.push(client_world_entity_player_motion_state(
+            string(operation, "label")?,
+            world
+                .entity_at(entity_id)
+                .ok_or("remote player motion fixture disappeared")?,
+        ));
+    }
+    Ok(json!({"entity_id": entity_id, "states": states}))
+}
+
 fn client_world_entity_arrow_tick_result(request: &Value) -> Result<Value, String> {
     client_world_entity_tick_result(request, 6)
 }
@@ -9411,6 +9510,9 @@ fn math_result(request: &Value) -> Result<Value, String> {
     }
     if operation == "client_world_entity_player_snap" {
         return client_world_entity_player_snap_result(request);
+    }
+    if operation == "client_world_entity_player_motion" {
+        return client_world_entity_player_motion_result(request);
     }
     if operation == "client_world_player_sprint_trigger" {
         return client_world_player_sprint_trigger_result(request);

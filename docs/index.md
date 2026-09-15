@@ -183,6 +183,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P08.ar-player-interpolation — server-conformance Remote Player position interpolation](client-world-entity-player-interpolation-conformance.md)
 - [P08.ar.1 — ClientWorld remote Player position interpolation — client-parity](client-world-entity-player-interpolation-parity-conformance.md)
 - [P08.at-player-motion — server-conformance Remote Player motion interpolation](client-world-entity-player-motion-conformance.md)
+- [P08.at.1 — ClientWorld remote Player motion interpolation — client-parity](client-world-entity-player-motion-parity-conformance.md)
 - [P08.as-player-snap — server-conformance Remote Player large-position snap](client-world-entity-player-snap-conformance.md)
 - [P08.as.1 — ClientWorld remote Player large-position snap — client-parity](client-world-entity-player-snap-parity-conformance.md)
 - [P08.ad — server-conformance Entity pose semantic state](client-world-entity-pose-conformance.md)

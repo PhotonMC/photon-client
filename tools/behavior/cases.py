@@ -2531,6 +2531,36 @@ def math_cases():
         ],
     }
 
+    yield {
+        "case_id": "client-world/entity-player-motion",
+        "family": "math",
+        "operation": "client_world_entity_player_motion",
+        "entity_id": 37,
+        "initial_position": vector_bits(1.0, 80.0, -35.5),
+        "initial_rotation": {
+            "y": float_bits(350.0),
+            "x": float_bits(-20.0),
+        },
+        "initial_head": float_bits(350.0),
+        "initial_motion": vector_bits(0.125, 0.25, -0.375),
+        "operations": [
+            {
+                "action": "motion",
+                "label": "packet-target-keeps-current-motion",
+                "target_motion": vector_bits(0.875, -0.5, 0.625),
+            },
+            {"action": "tick", "label": "first-motion-tick", "ticks": 1},
+            {"action": "tick", "label": "second-motion-tick", "ticks": 1},
+            {
+                "action": "motion",
+                "label": "replacement-target-resets-three-steps",
+                "target_motion": vector_bits(-0.375, 0.75, 1.125),
+            },
+            {"action": "tick", "label": "replacement-first-tick", "ticks": 1},
+            {"action": "tick", "label": "replacement-final-two-ticks", "ticks": 2},
+        ],
+    }
+
     def sprint_key_presses(
         forward=False, backward=False, left=False, right=False,
         jump=False, shift=False, sprint=False,
