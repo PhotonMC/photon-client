@@ -7481,16 +7481,17 @@ impl ClientEntity {
         self.y_bits = (current_position.1 + movement.1).to_bits();
         self.z_bits = (current_position.2 + movement.2).to_bits();
 
-        const PI_F32: f32 = f32::from_bits(0x4049_0fdb);
         let horizontal_distance = (movement.0 * movement.0 + movement.2 * movement.2).sqrt();
-        let target_x_rot = (mth_atan2(movement.1, horizontal_distance) * f64::from(180.0_f32)
-            / f64::from(PI_F32)) as f32;
+        let target_x_rot =
+            (mth_atan2(movement.1, horizontal_distance) * PROJECTILE_DEGREES_PER_RADIAN) as f32;
         let target_y_rot =
-            (mth_atan2(movement.0, movement.2) * f64::from(180.0_f32) / f64::from(PI_F32)) as f32;
+            (mth_atan2(movement.0, movement.2) * PROJECTILE_DEGREES_PER_RADIAN) as f32;
         self.x_rot_bits =
-            mth_rot_lerp_f32(0.2_f32, f32::from_bits(self.old_x_rot_bits), target_x_rot).to_bits();
+            projectile_lerp_rotation_f32(f32::from_bits(self.old_x_rot_bits), target_x_rot)
+                .to_bits();
         self.y_rot_bits =
-            mth_rot_lerp_f32(0.2_f32, f32::from_bits(self.old_y_rot_bits), target_y_rot).to_bits();
+            projectile_lerp_rotation_f32(f32::from_bits(self.old_y_rot_bits), target_y_rot)
+                .to_bits();
         self.motion_x_bits = movement.0.to_bits();
         self.motion_y_bits = movement.1.to_bits();
         self.motion_z_bits = movement.2.to_bits();
@@ -8301,8 +8302,9 @@ mod tests {
         ENTITY_RELATIVE_Y_FLAG, ENTITY_RELATIVE_Y_ROT_FLAG, ENTITY_RELATIVE_Z_FLAG, EntityInput,
         EntityMotionInput, EntityMoveInput, EntityPositionInput, EntityPositionUpdateMode,
         EntityRotationInput, EntityTeleportInput, LightLayerInput, LightUpdateInput,
-        PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS, PLAYER_RESPAWN_KEEP_ENTITY_DATA, SNOWBALL_GRAVITY,
-        SectionInput, VANILLA_ARROW_ENTITY_TYPE_ID, VANILLA_BOAT_PASSENGER_MAX_ROTATION,
+        PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS, PLAYER_RESPAWN_KEEP_ENTITY_DATA,
+        PROJECTILE_DEGREES_PER_RADIAN, SNOWBALL_GRAVITY, SectionInput,
+        VANILLA_ARROW_ENTITY_TYPE_ID, VANILLA_BOAT_PASSENGER_MAX_ROTATION,
         VANILLA_BREEZE_ENTITY_TYPE_ID, VANILLA_COW_ENTITY_TYPE_ID,
         VANILLA_EXPERIENCE_ORB_ENTITY_TYPE_ID, VANILLA_FALLING_BLOCK_AIR_FRICTION,
         VANILLA_FALLING_BLOCK_ENTITY_TYPE_ID, VANILLA_FALLING_BLOCK_GRAVITY,
@@ -8320,7 +8322,9 @@ mod tests {
     use crate::binary::{BitSet, Uuid};
     use crate::identifier::Identifier;
     use crate::input::{Input, LocalPlayerInputModifiers, LocalPlayerSprintTriggerConditions};
-    use crate::math::{Vec2, Vec3, mth_atan2, mth_cos_f64, mth_rot_lerp_f32, mth_sin_f64};
+    use crate::math::{
+        Vec2, Vec3, mth_atan2, mth_cos_f64, mth_sin_f64, projectile_lerp_rotation_f32,
+    };
     use crate::shape::Shapes;
     use crate::tags::{ClientboundUpdateTagsPacket, RegistryTags, TagEntry};
     use std::collections::BTreeMap;
@@ -13963,14 +13967,13 @@ mod tests {
             -0.125 * VANILLA_FIREWORK_ROCKET_HORIZONTAL_ACCELERATION,
         );
         let horizontal_distance = (movement.0 * movement.0 + movement.2 * movement.2).sqrt();
-        let pi_f32 = f32::from_bits(0x4049_0fdb);
-        let target_x_rotation = (mth_atan2(movement.1, horizontal_distance) * f64::from(180.0_f32)
-            / f64::from(pi_f32)) as f32;
+        let target_x_rotation =
+            (mth_atan2(movement.1, horizontal_distance) * PROJECTILE_DEGREES_PER_RADIAN) as f32;
         let target_y_rotation =
-            (mth_atan2(movement.0, movement.2) * f64::from(180.0_f32) / f64::from(pi_f32)) as f32;
+            (mth_atan2(movement.0, movement.2) * PROJECTILE_DEGREES_PER_RADIAN) as f32;
         let expected_rotation = (
-            mth_rot_lerp_f32(0.2_f32, 10.0, target_y_rotation),
-            mth_rot_lerp_f32(0.2_f32, 20.0, target_x_rotation),
+            projectile_lerp_rotation_f32(10.0, target_y_rotation),
+            projectile_lerp_rotation_f32(20.0, target_x_rotation),
             30.0,
         );
         let entity = world.entity_at(37).expect("firework rocket after tick");

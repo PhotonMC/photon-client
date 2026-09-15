@@ -82,6 +82,7 @@ import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.monster.Shulker;
+import net.minecraft.world.entity.projectile.FireworkRocketEntity;
 import net.minecraft.world.entity.projectile.arrow.Arrow;
 import net.minecraft.world.entity.projectile.throwableitemprojectile.Snowball;
 import net.minecraft.world.entity.vehicle.boat.Boat;
@@ -5137,6 +5138,9 @@ public final class MathOracle {
         if (operation.equals("client_world_entity_falling_block_tick")) {
             return clientWorldEntityFallingBlockTickResult(request);
         }
+        if (operation.equals("client_world_entity_firework_tick")) {
+            return clientWorldEntityFireworkTickResult(request);
+        }
         if (operation.equals("client_world_player_sprint_trigger")) {
             return clientWorldPlayerSprintTriggerResult(request);
         }
@@ -5975,6 +5979,63 @@ public final class MathOracle {
             entity.addProperty("previous_rotation_y", Oracle.bits(fallingBlock.yRotO));
             entity.addProperty("previous_rotation_x", Oracle.bits(fallingBlock.xRotO));
             entity.addProperty("no_gravity", fallingBlock.noGravity);
+            entities.add(entity);
+        }
+        state.add("entities", entities);
+        return state;
+    }
+
+    private static JsonObject clientWorldEntityFireworkTickResult(JsonObject request) {
+        var fireworks = new ArrayList<TickFireworkRocketFixture>();
+        for (JsonElement entry : request.getAsJsonArray("entities")) {
+            JsonObject input = entry.getAsJsonObject();
+            fireworks.add(TickFireworkRocketFixture.create(
+                input.get("entity_id").getAsInt(),
+                vec3(input.getAsJsonObject("position")),
+                vec3(input.getAsJsonObject("movement")),
+                Oracle.f32(input.getAsJsonObject("rotation"), "y"),
+                Oracle.f32(input.getAsJsonObject("rotation"), "x"),
+                input.get("no_gravity").getAsBoolean()));
+        }
+
+        var states = new JsonArray();
+        states.add(tickFireworkState("initial", fireworks));
+        for (JsonElement entry : request.getAsJsonArray("operations")) {
+            JsonObject operation = entry.getAsJsonObject();
+            if (!operation.get("action").getAsString().equals("tick")) {
+                throw new IllegalArgumentException("Unknown firework tick action");
+            }
+            for (int tick = 0; tick < operation.get("ticks").getAsInt(); tick++) {
+                for (TickFireworkRocketFixture firework : fireworks) {
+                    firework.tickThroughClientLevel();
+                }
+            }
+            states.add(tickFireworkState(operation.get("label").getAsString(), fireworks));
+        }
+        var result = new JsonObject();
+        result.add("states", states);
+        return result;
+    }
+
+    private static JsonObject tickFireworkState(
+        String label, List<TickFireworkRocketFixture> fireworks
+    ) {
+        var state = new JsonObject();
+        state.addProperty("label", label);
+        state.addProperty("accepted", true);
+        var entities = new JsonArray();
+        for (TickFireworkRocketFixture firework : fireworks) {
+            var entity = new JsonObject();
+            entity.addProperty("entity_id", firework.entityId());
+            entity.addProperty("tick_count", firework.tickCount);
+            entity.add("position", snapshotClip(firework.position()));
+            entity.add("previous_position", snapshotClip(firework.previousPosition()));
+            entity.add("motion", snapshotClip(firework.getDeltaMovement()));
+            entity.addProperty("rotation_y", Oracle.bits(firework.getYRot()));
+            entity.addProperty("rotation_x", Oracle.bits(firework.getXRot()));
+            entity.addProperty("previous_rotation_y", Oracle.bits(firework.yRotO));
+            entity.addProperty("previous_rotation_x", Oracle.bits(firework.xRotO));
+            entity.addProperty("no_gravity", firework.noGravity);
             entities.add(entity);
         }
         state.add("entities", entities);
@@ -9872,6 +9933,74 @@ public final class MathOracle {
             this.applyGravity();
             this.fixturePosition = this.fixturePosition.add(this.getDeltaMovement());
             this.setDeltaMovement(this.getDeltaMovement().scale(this.getAirDrag()));
+        }
+    }
+
+    private static final class TickFireworkRocketFixture extends FireworkRocketEntity {
+        private Vec3 fixturePosition;
+        private Vec3 previousFixturePosition;
+        private int fixtureEntityId;
+        private boolean noGravity;
+
+        private TickFireworkRocketFixture() {
+            super(null, null);
+        }
+
+        private static TickFireworkRocketFixture create(
+            int entityId, Vec3 position, Vec3 movement,
+            float yRot, float xRot, boolean noGravity
+        ) {
+            TickFireworkRocketFixture firework;
+            try {
+                Unsafe unsafe = unsafeInstance();
+                firework = (TickFireworkRocketFixture)unsafe.allocateInstance(
+                    TickFireworkRocketFixture.class);
+            } catch (InstantiationException error) {
+                throw new IllegalStateException(
+                    "Unable to construct firework tick fixture", error);
+            }
+            firework.fixtureEntityId = entityId;
+            firework.fixturePosition = position;
+            firework.previousFixturePosition = position;
+            firework.noGravity = noGravity;
+            firework.setYRot(yRot);
+            firework.setXRot(xRot);
+            firework.yRotO = yRot;
+            firework.xRotO = xRot;
+            firework.setDeltaMovement(movement);
+            return firework;
+        }
+
+        @Override
+        public boolean isNoGravity() {
+            return this.noGravity;
+        }
+
+        private int entityId() {
+            return this.fixtureEntityId;
+        }
+
+        @Override
+        public Vec3 position() {
+            return this.fixturePosition;
+        }
+
+        private Vec3 previousPosition() {
+            return this.previousFixturePosition;
+        }
+
+        private void tickThroughClientLevel() {
+            this.previousFixturePosition = this.fixturePosition;
+            this.setOldRot();
+            this.tickCount++;
+            this.setDeltaMovement(
+                this.getDeltaMovement()
+                    .multiply(1.15, 1.0, 1.15)
+                    .add(0.0, 0.04, 0.0));
+            Vec3 movement = this.getDeltaMovement();
+            this.fixturePosition = this.fixturePosition.add(movement);
+            this.setDeltaMovement(movement);
+            this.updateRotation();
         }
     }
 

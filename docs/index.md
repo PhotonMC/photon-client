@@ -150,6 +150,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P08.bo-entity-falling-block-tick — server-conformance FallingBlock free-flight tick](client-world-entity-falling-block-tick-conformance.md)
 - [P08.bo.1 — ClientWorld FallingBlock free-flight tick — client-parity](client-world-entity-falling-block-tick-parity-conformance.md)
 - [P08.bp-entity-firework-tick — server-conformance Firework Rocket free-flight tick](client-world-entity-firework-tick-conformance.md)
+- [P08.bp.1 — ClientWorld Firework Rocket free-flight tick — client-parity](client-world-entity-firework-tick-parity-conformance.md)
 - [P09.d — Entity dimensions ve bloklara sığma — client-parity birleşik kayıt](client-world-entity-fit-conformance.md)
 - [P08.e-entity-ground — server-conformance ClientWorld entity on-ground state](client-world-entity-ground-conformance.md)
 - [P08.ah — server-conformance Entity living health semantic state](client-world-entity-health-conformance.md)

@@ -2263,6 +2263,28 @@ def math_cases():
         ],
     }
 
+    yield {
+        "case_id": "client-world/entity-firework-tick",
+        "family": "math",
+        "operation": "client_world_entity_firework_tick",
+        "entities": [
+            {
+                "entity_id": 37,
+                "position": vector_bits(2.0, 10.0, 2.0),
+                "movement": vector_bits(0.25, 0.5, 0.125),
+                "rotation": {
+                    "y": float_bits(355.0),
+                    "x": float_bits(-20.0),
+                },
+                "no_gravity": False,
+            },
+        ],
+        "operations": [
+            {"action": "tick", "label": "first-air-tick", "ticks": 1},
+            {"action": "tick", "label": "second-air-tick", "ticks": 1},
+        ],
+    }
+
     def sprint_key_presses(
         forward=False, backward=False, left=False, right=False,
         jump=False, shift=False, sprint=False,
