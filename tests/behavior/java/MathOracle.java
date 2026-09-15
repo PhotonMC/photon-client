@@ -5195,6 +5195,9 @@ public final class MathOracle {
         if (operation.equals("client_world_entity_passenger_animal_position")) {
             return clientWorldEntityPassengerAnimalPositionResult(request);
         }
+        if (operation.equals("client_world_entity_passenger_turn")) {
+            return clientWorldEntityPassengerTurnResult(request);
+        }
         if (operation.equals("client_world_player_sprint_trigger")) {
             return clientWorldPlayerSprintTriggerResult(request);
         }
@@ -6476,6 +6479,81 @@ public final class MathOracle {
             }
             states.add(passengerAnimalPositionState(
                 operation.get("label").getAsString(), vehicle, animal));
+        }
+        var result = new JsonObject();
+        result.add("states", states);
+        return result;
+    }
+
+    private static JsonObject clientWorldEntityPassengerTurnResult(JsonObject request) {
+        var output = System.out;
+        var errorOutput = System.err;
+        try {
+            SharedConstants.setVersion(TEST_VERSION);
+            Bootstrap.bootStrap();
+        } finally {
+            System.setOut(output);
+            System.setErr(errorOutput);
+        }
+        var vehicles = new ArrayList<PassengerPositionBoatFixture>();
+        var passengers = new ArrayList<Entity>();
+        for (JsonElement rowEntry : request.getAsJsonArray("rows")) {
+            JsonObject row = rowEntry.getAsJsonObject();
+            JsonObject vehicleInput = row.getAsJsonObject("vehicle");
+            if (vehicleInput.get("type_id").getAsInt() != 89) {
+                throw new IllegalArgumentException(
+                    "Passenger turn fixture requires an oak boat");
+            }
+            PassengerPositionBoatFixture vehicle = PassengerPositionBoatFixture.create(
+                vehicleInput.get("entity_id").getAsInt(),
+                vec3(vehicleInput.getAsJsonObject("position")),
+                Oracle.f32(vehicleInput.getAsJsonObject("rotation"), "y"),
+                vehicleInput.get("no_gravity").getAsBoolean());
+
+            JsonObject passengerInput = row.getAsJsonObject("passenger");
+            int passengerTypeId = passengerInput.get("type_id").getAsInt();
+            Entity passenger;
+            if (passengerTypeId == 156) {
+                passenger = PassengerPositionPlayerFixture.create(
+                    passengerInput.get("entity_id").getAsInt(),
+                    vec3(passengerInput.getAsJsonObject("position")),
+                    vec3(passengerInput.getAsJsonObject("movement")),
+                    Oracle.f32(passengerInput.getAsJsonObject("rotation"), "y"),
+                    Oracle.f32(passengerInput.getAsJsonObject("rotation"), "x"),
+                    passengerInput.get("no_gravity").getAsBoolean(),
+                    vehicle);
+            } else if (passengerTypeId == 17) {
+                passenger = PassengerPositionBreezeFixture.create(
+                    passengerInput.get("entity_id").getAsInt(),
+                    vec3(passengerInput.getAsJsonObject("position")),
+                    vec3(passengerInput.getAsJsonObject("movement")),
+                    Oracle.f32(passengerInput.getAsJsonObject("rotation"), "y"),
+                    Oracle.f32(passengerInput.getAsJsonObject("rotation"), "x"),
+                    passengerInput.get("no_gravity").getAsBoolean(),
+                    vehicle);
+            } else {
+                throw new IllegalArgumentException(
+                    "Passenger turn fixture requires a Player or Breeze passenger");
+            }
+            setPassengerPositionFixturePassengers(vehicle, List.of(passenger));
+            vehicles.add(vehicle);
+            passengers.add(passenger);
+        }
+
+        var states = new JsonArray();
+        states.add(passengerRotationState("initial", vehicles, passengers));
+        for (JsonElement operationEntry : request.getAsJsonArray("operations")) {
+            JsonObject operation = operationEntry.getAsJsonObject();
+            if (!operation.get("action").getAsString().equals("turn")) {
+                throw new IllegalArgumentException("Unknown passenger turn action");
+            }
+            double mouseX = operation.get("mouse_x").getAsDouble();
+            double mouseY = operation.get("mouse_y").getAsDouble();
+            for (Entity passenger : passengers) {
+                passenger.turn(mouseX, mouseY);
+            }
+            states.add(passengerRotationState(
+                operation.get("label").getAsString(), vehicles, passengers));
         }
         var result = new JsonObject();
         result.add("states", states);

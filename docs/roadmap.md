@@ -111,7 +111,7 @@ ve aynı Java teleport state'i [P08.au.1 client-parity kaydında](client-world-e
 [P08.bb server-conformance kaydında](client-world-entity-passenger-boat-turn-exemption-conformance.md) ve aynı Java Breeze exemption state'i [P08.bb.1 client-parity kaydında](client-world-entity-passenger-boat-turn-exemption-parity-conformance.md), Animal passenger rotation offset'i
 [P08.bc server-conformance kaydında](client-world-entity-passenger-animal-rotation-conformance.md) ve aynı Java Animal rotation state'i [P08.bc.1 client-parity kaydında](client-world-entity-passenger-animal-rotation-parity-conformance.md), Animal passenger vehicle attachment/seat offset'i
 [P08.bd server-conformance kaydında](client-world-entity-passenger-animal-position-conformance.md) ve aynı Java single-passenger state'i [P08.bd.1 client-parity kaydında](client-world-entity-passenger-animal-position-parity-conformance.md), `Entity.turn` → boat `onPassengerTurned` callback'i
-[P08.be kaydında](client-world-entity-passenger-turn-conformance.md), pinned living body/head dispatch'i
+[P08.be server-conformance kaydında](client-world-entity-passenger-turn-conformance.md) ve aynı Java direct-turn state'i [P08.be.1 client-parity kaydında](client-world-entity-passenger-turn-parity-conformance.md), pinned living body/head dispatch'i
 [P08.bf kaydında](client-world-entity-passenger-living-conformance.md), default vehicle attachment
 [P08.bg kaydında](client-world-entity-passenger-generic-position-conformance.md), boat input/nonzero `deltaRotation`
 [P08.bh kaydında](client-world-entity-boat-control-conformance.md) ve Zombie baby `VEHICLE` attachment
