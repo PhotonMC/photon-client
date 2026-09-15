@@ -25,7 +25,7 @@ use crate::input::{
 use crate::math::{
     MTH_DEG_TO_RAD, Vec2, Vec3, abs_max_f64, clamp_f32, clamp_f64, equal_f64, floor_f32, mth_atan2,
     mth_cos_f64, mth_lerp_f32, mth_lerp_f64, mth_rot_lerp_f32, mth_rot_lerp_f64, mth_sin_f64,
-    wrap_degrees_f32,
+    projectile_lerp_rotation_f32, wrap_degrees_f32,
 };
 use crate::{
     aabb::Aabb,
@@ -7343,16 +7343,16 @@ impl ClientEntity {
         self.y_bits = (current_position.1 + motion.1).to_bits();
         self.z_bits = (current_position.2 + motion.2).to_bits();
 
-        const PI_F32: f32 = f32::from_bits(0x4049_0fdb);
+        const DEGREES_PER_RADIAN: f64 = 57.2957763671875;
         let horizontal_distance = (motion.0 * motion.0 + motion.2 * motion.2).sqrt();
-        let target_x_rot = (mth_atan2(motion.1, horizontal_distance) * f64::from(180.0_f32)
-            / f64::from(PI_F32)) as f32;
-        let target_y_rot =
-            (mth_atan2(motion.0, motion.2) * f64::from(180.0_f32) / f64::from(PI_F32)) as f32;
+        let target_x_rot = (mth_atan2(motion.1, horizontal_distance) * DEGREES_PER_RADIAN) as f32;
+        let target_y_rot = (mth_atan2(motion.0, motion.2) * DEGREES_PER_RADIAN) as f32;
         self.x_rot_bits =
-            mth_rot_lerp_f32(0.2_f32, f32::from_bits(self.old_x_rot_bits), target_x_rot).to_bits();
+            projectile_lerp_rotation_f32(f32::from_bits(self.old_x_rot_bits), target_x_rot)
+                .to_bits();
         self.y_rot_bits =
-            mth_rot_lerp_f32(0.2_f32, f32::from_bits(self.old_y_rot_bits), target_y_rot).to_bits();
+            projectile_lerp_rotation_f32(f32::from_bits(self.old_y_rot_bits), target_y_rot)
+                .to_bits();
     }
 
     fn tick_arrow(&mut self) {
@@ -7370,9 +7370,9 @@ impl ClientEntity {
         let target_y_rot = (mth_atan2(current_motion.0, current_motion.2) * f64::from(180.0_f32)
             / f64::from(PI_F32)) as f32;
         self.x_rot_bits =
-            mth_rot_lerp_f32(0.2_f32, f32::from_bits(self.x_rot_bits), target_x_rot).to_bits();
+            projectile_lerp_rotation_f32(f32::from_bits(self.x_rot_bits), target_x_rot).to_bits();
         self.y_rot_bits =
-            mth_rot_lerp_f32(0.2_f32, f32::from_bits(self.y_rot_bits), target_y_rot).to_bits();
+            projectile_lerp_rotation_f32(f32::from_bits(self.y_rot_bits), target_y_rot).to_bits();
 
         let air_friction = f64::from(VANILLA_ARROW_AIR_FRICTION);
         let motion = (

@@ -1388,6 +1388,18 @@ pub fn mth_rot_lerp_f32(alpha: f32, from: f32, to: f32) -> f32 {
     from + alpha * wrap_degrees_f32(to - from)
 }
 
+/// Return Java `Projectile.lerpRotation(float, float)` in source order.
+pub fn projectile_lerp_rotation_f32(from: f32, to: f32) -> f32 {
+    let mut from = from;
+    while to - from < -180.0_f32 {
+        from -= 360.0_f32;
+    }
+    while to - from >= 180.0_f32 {
+        from += 360.0_f32;
+    }
+    mth_lerp_f32(0.2_f32, from, to)
+}
+
 /// Return Java `Mth.rotLerp(double, double, double)` in source order.
 pub fn mth_rot_lerp_f64(alpha: f64, from: f64, to: f64) -> f64 {
     from + alpha * wrap_degrees_f64(to - from)

@@ -190,6 +190,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P08.an — server-conformance Entity sleeping position semantic state](client-world-entity-sleeping-position-conformance.md)
 - [P08.an.1 — ClientWorld entity sleeping position — client-parity](client-world-entity-sleeping-position-parity-conformance.md)
 - [P08.aq-snowball-tick — server-conformance Snowball free-flight world tick](client-world-entity-snowball-tick-conformance.md)
+- [P08.aq.1 — ClientWorld Snowball free-flight tick — client-parity](client-world-entity-snowball-tick-parity-conformance.md)
 - [P08.ao — server-conformance Entity living stinger count semantic state](client-world-entity-stinger-count-conformance.md)
 - [P08.ao.1 — ClientWorld entity living stinger count — client-parity](client-world-entity-stinger-count-parity-conformance.md)
 - [P08.au-entity-teleport-motion — server-conformance Teleport delta ve relative motion](client-world-entity-teleport-delta-conformance.md)

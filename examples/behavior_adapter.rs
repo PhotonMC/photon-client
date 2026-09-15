@@ -7476,6 +7476,129 @@ fn client_world_entity_player_head_rotation_result(request: &Value) -> Result<Va
     Ok(json!({"entity_id": entity_id, "states": states}))
 }
 
+fn client_world_entity_snowball_tick_vector(vector: (f64, f64, f64)) -> Value {
+    json!({
+        "x": format!("{:016x}", vector.0.to_bits()),
+        "y": format!("{:016x}", vector.1.to_bits()),
+        "z": format!("{:016x}", vector.2.to_bits()),
+    })
+}
+
+fn client_world_entity_snowball_tick_state(
+    label: &str,
+    accepted: bool,
+    entity_ids: &[i32],
+    world: &ClientWorld,
+) -> Result<Value, String> {
+    let entities = entity_ids
+        .iter()
+        .map(|entity_id| {
+            let entity = world
+                .entity_at(*entity_id)
+                .ok_or_else(|| "snowball tick fixture entity disappeared".to_owned())?;
+            let rotation = entity.rotation();
+            let previous_rotation = entity.previous_rotation();
+            Ok(json!({
+                "entity_id": entity.id(),
+                "tick_count": entity.tick_count(),
+                "position": client_world_entity_snowball_tick_vector(entity.position()),
+                "previous_position": client_world_entity_snowball_tick_vector(
+                    entity.previous_position()
+                ),
+                "motion": client_world_entity_snowball_tick_vector(entity.motion()),
+                "rotation_y": format!("{:08x}", rotation.0.to_bits()),
+                "rotation_x": format!("{:08x}", rotation.1.to_bits()),
+                "previous_rotation_y": format!("{:08x}", previous_rotation.0.to_bits()),
+                "previous_rotation_x": format!("{:08x}", previous_rotation.1.to_bits()),
+                "no_gravity": entity.is_no_gravity(),
+            }))
+        })
+        .collect::<Result<Vec<_>, String>>()?;
+    Ok(json!({
+        "label": label,
+        "accepted": accepted,
+        "entities": entities,
+    }))
+}
+
+fn client_world_entity_snowball_tick_result(request: &Value) -> Result<Value, String> {
+    let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+    let blocks = vec![0; 4_096];
+    let biomes = vec![0; 64];
+    if !world.replace_chunk(
+        0,
+        0,
+        [SectionInput {
+            non_empty_block_count: 0,
+            fluid_count: 0,
+            block_states: &blocks,
+            biomes: &biomes,
+        }],
+    ) {
+        return Err("snowball tick fixture chunk was rejected".into());
+    }
+
+    let input_entities = request["entities"]
+        .as_array()
+        .ok_or("entities must be an array")?;
+    let mut entity_ids = Vec::with_capacity(input_entities.len());
+    for entry in input_entities {
+        let entity_id = i32_field(entry, "entity_id")?;
+        let position = f64_vec3(entry.get("position").ok_or("position must be a vector")?)?;
+        let movement = f64_vec3(entry.get("movement").ok_or("movement must be a vector")?)?;
+        let rotation = entry.get("rotation").ok_or("rotation must be an object")?;
+        if !world.apply_entity(EntityInput {
+            entity_id,
+            uuid: Uuid::new(0, u64::from(entity_id as u32)),
+            type_id: 120,
+            x: position.x,
+            y: position.y,
+            z: position.z,
+            movement: (movement.x, movement.y, movement.z),
+            rotation: (f32_field(rotation, "y")?, f32_field(rotation, "x")?, 0.0),
+            data: 0,
+        }) {
+            return Err("snowball tick fixture entity was rejected".into());
+        }
+        if entry["no_gravity"]
+            .as_bool()
+            .ok_or("no_gravity must be a boolean")?
+            && !world.apply_entity_metadata(entity_id, &[5, 8, 1, 255])
+        {
+            return Err("snowball tick no-gravity metadata was rejected".into());
+        }
+        entity_ids.push(entity_id);
+    }
+
+    let mut states = vec![client_world_entity_snowball_tick_state(
+        "initial",
+        true,
+        &entity_ids,
+        &world,
+    )?];
+    for operation in request["operations"]
+        .as_array()
+        .ok_or("operations must be an array")?
+    {
+        if string(operation, "action")? != "tick" {
+            return Err("unknown snowball tick action".into());
+        }
+        let ticks = operation["ticks"]
+            .as_u64()
+            .ok_or("ticks must be an unsigned integer")?;
+        for _ in 0..ticks {
+            world.tick();
+        }
+        states.push(client_world_entity_snowball_tick_state(
+            string(operation, "label")?,
+            true,
+            &entity_ids,
+            &world,
+        )?);
+    }
+    Ok(json!({"states": states}))
+}
+
 fn sprint_trigger_input(value: &Value) -> Result<Input, String> {
     Ok(Input::new(
         value["forward"]
@@ -8466,6 +8589,9 @@ fn math_result(request: &Value) -> Result<Value, String> {
     }
     if operation == "client_world_entity_player_head_rotation" {
         return client_world_entity_player_head_rotation_result(request);
+    }
+    if operation == "client_world_entity_snowball_tick" {
+        return client_world_entity_snowball_tick_result(request);
     }
     if operation == "client_world_player_sprint_trigger" {
         return client_world_player_sprint_trigger_result(request);

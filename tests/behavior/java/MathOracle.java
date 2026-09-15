@@ -79,6 +79,7 @@ import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.monster.Shulker;
+import net.minecraft.world.entity.projectile.throwableitemprojectile.Snowball;
 import net.minecraft.world.entity.vehicle.boat.Boat;
 import net.minecraft.world.entity.vehicle.minecart.Minecart;
 import net.minecraft.world.food.FoodData;
@@ -5117,6 +5118,9 @@ public final class MathOracle {
         if (operation.equals("client_world_entity_player_head_rotation")) {
             return clientWorldEntityPlayerHeadRotationResult(request);
         }
+        if (operation.equals("client_world_entity_snowball_tick")) {
+            return clientWorldEntitySnowballTickResult(request);
+        }
         if (operation.equals("client_world_player_sprint_trigger")) {
             return clientWorldPlayerSprintTriggerResult(request);
         }
@@ -5673,6 +5677,63 @@ public final class MathOracle {
         state.addProperty("head_target", Oracle.bits(player.headTarget()));
         state.addProperty("head_lerp_steps", player.headSteps());
         state.addProperty("body_rotation_y", Oracle.bits(player.yBodyRot));
+        return state;
+    }
+
+    private static JsonObject clientWorldEntitySnowballTickResult(JsonObject request) {
+        var snowballs = new ArrayList<TickSnowballFixture>();
+        for (JsonElement entry : request.getAsJsonArray("entities")) {
+            JsonObject input = entry.getAsJsonObject();
+            snowballs.add(TickSnowballFixture.create(
+                input.get("entity_id").getAsInt(),
+                vec3(input.getAsJsonObject("position")),
+                vec3(input.getAsJsonObject("movement")),
+                Oracle.f32(input.getAsJsonObject("rotation"), "y"),
+                Oracle.f32(input.getAsJsonObject("rotation"), "x"),
+                input.get("no_gravity").getAsBoolean()));
+        }
+
+        var states = new JsonArray();
+        states.add(tickSnowballState("initial", snowballs));
+        for (JsonElement entry : request.getAsJsonArray("operations")) {
+            JsonObject operation = entry.getAsJsonObject();
+            if (!operation.get("action").getAsString().equals("tick")) {
+                throw new IllegalArgumentException("Unknown snowball tick action");
+            }
+            for (int tick = 0; tick < operation.get("ticks").getAsInt(); tick++) {
+                for (TickSnowballFixture snowball : snowballs) {
+                    snowball.tickThroughClientLevel();
+                }
+            }
+            states.add(tickSnowballState(operation.get("label").getAsString(), snowballs));
+        }
+        var result = new JsonObject();
+        result.add("states", states);
+        return result;
+    }
+
+    private static JsonObject tickSnowballState(
+        String label, List<TickSnowballFixture> snowballs
+    ) {
+        var state = new JsonObject();
+        state.addProperty("label", label);
+        state.addProperty("accepted", true);
+        var entities = new JsonArray();
+        for (TickSnowballFixture snowball : snowballs) {
+            var entity = new JsonObject();
+            entity.addProperty("entity_id", snowball.entityId());
+            entity.addProperty("tick_count", snowball.tickCount);
+            entity.add("position", snapshotClip(snowball.position()));
+            entity.add("previous_position", snapshotClip(snowball.previousPosition()));
+            entity.add("motion", snapshotClip(snowball.getDeltaMovement()));
+            entity.addProperty("rotation_y", Oracle.bits(snowball.getYRot()));
+            entity.addProperty("rotation_x", Oracle.bits(snowball.getXRot()));
+            entity.addProperty("previous_rotation_y", Oracle.bits(snowball.yRotO));
+            entity.addProperty("previous_rotation_x", Oracle.bits(snowball.xRotO));
+            entity.addProperty("no_gravity", snowball.noGravity);
+            entities.add(entity);
+        }
+        state.add("entities", entities);
         return state;
     }
 
@@ -9240,6 +9301,70 @@ public final class MathOracle {
 
         @Override
         protected void pushEntities() {
+        }
+    }
+
+    private static final class TickSnowballFixture extends Snowball {
+        private Vec3 fixturePosition;
+        private Vec3 previousFixturePosition;
+        private int fixtureEntityId;
+        private boolean noGravity;
+
+        private TickSnowballFixture() {
+            super(null, null);
+        }
+
+        private static TickSnowballFixture create(
+            int entityId, Vec3 position, Vec3 movement,
+            float yRot, float xRot, boolean noGravity
+        ) {
+            TickSnowballFixture snowball;
+            try {
+                Unsafe unsafe = unsafeInstance();
+                snowball = (TickSnowballFixture)unsafe.allocateInstance(TickSnowballFixture.class);
+            } catch (InstantiationException error) {
+                throw new IllegalStateException(
+                    "Unable to construct snowball tick fixture", error);
+            }
+            snowball.fixtureEntityId = entityId;
+            snowball.fixturePosition = position;
+            snowball.previousFixturePosition = position;
+            snowball.noGravity = noGravity;
+            snowball.setYRot(yRot);
+            snowball.setXRot(xRot);
+            snowball.yRotO = yRot;
+            snowball.xRotO = xRot;
+            snowball.setDeltaMovement(movement);
+            return snowball;
+        }
+
+        @Override
+        public boolean isNoGravity() {
+            return this.noGravity;
+        }
+
+        private int entityId() {
+            return this.fixtureEntityId;
+        }
+
+        public Vec3 position() {
+            return this.fixturePosition;
+        }
+
+        private Vec3 previousPosition() {
+            return this.previousFixturePosition;
+        }
+
+        private void tickThroughClientLevel() {
+            this.previousFixturePosition = this.fixturePosition;
+            this.setOldRot();
+            this.tickCount++;
+            this.applyGravity();
+            Vec3 movement = this.getDeltaMovement();
+            this.setDeltaMovement(movement.scale(this.getAirDrag()));
+            this.fixturePosition = this.fixturePosition.add(this.getDeltaMovement());
+            this.updateRotation();
+            this.firstTick = false;
         }
     }
 
