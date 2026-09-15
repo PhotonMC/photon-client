@@ -5137,6 +5137,9 @@ public final class MathOracle {
         if (operation.equals("client_world_entity_health")) {
             return clientWorldEntityHealthResult(request);
         }
+        if (operation.equals("client_world_entity_mob_flags")) {
+            return clientWorldEntityMobFlagsResult(request);
+        }
         throw new IllegalArgumentException("Unknown client world operation");
     }
 
@@ -6005,6 +6008,49 @@ public final class MathOracle {
         state.addProperty("accepted", accepted);
         state.addProperty("living_flags", entity.livingFlags());
         state.addProperty("health_bits", Oracle.bits(entity.getHealth()));
+        return state;
+    }
+
+    private static JsonObject clientWorldEntityMobFlagsResult(JsonObject request) {
+        try {
+            var output = System.out;
+            var errorOutput = System.err;
+            try {
+                SharedConstants.setVersion(TEST_VERSION);
+                Bootstrap.bootStrap();
+            } finally {
+                System.setOut(output);
+                System.setErr(errorOutput);
+            }
+
+            var entity = new MobFlagsFixtureEntity();
+            var states = new JsonArray();
+            states.add(entityMobFlagsState("initial", true, entity));
+            for (JsonElement operationEntry : request.getAsJsonArray("operations")) {
+                JsonObject operation = operationEntry.getAsJsonObject();
+                entity.getEntityData().assignValues(
+                    decodeEntityMetadata(operation.get("metadata_hex").getAsString()));
+                states.add(entityMobFlagsState(
+                    operation.get("label").getAsString(), true, entity));
+            }
+            var result = new JsonObject();
+            result.add("states", states);
+            return result;
+        } catch (RuntimeException error) {
+            throw new IllegalStateException("Entity mob flags fixture failed", error);
+        }
+    }
+
+    private static JsonObject entityMobFlagsState(
+        String label, boolean accepted, MobFlagsFixtureEntity entity
+    ) {
+        var state = new JsonObject();
+        state.addProperty("label", label);
+        state.addProperty("accepted", accepted);
+        state.addProperty("mob_flags", entity.mobFlags());
+        state.addProperty("is_no_ai", entity.isNoAi());
+        state.addProperty("is_left_handed", entity.isLeftHanded());
+        state.addProperty("is_aggressive", entity.isAggressive());
         return state;
     }
 
@@ -7158,6 +7204,20 @@ public final class MathOracle {
 
         private int livingFlags() {
             return Byte.toUnsignedInt(this.getEntityData().get(DATA_LIVING_ENTITY_FLAGS));
+        }
+    }
+
+    private static final class MobFlagsFixtureEntity
+        extends net.minecraft.world.entity.animal.golem.IronGolem {
+        private MobFlagsFixtureEntity() {
+            super(net.minecraft.world.entity.EntityTypes.IRON_GOLEM,
+                SharedFlagsFixtureEntity.CLIENT_LEVEL);
+        }
+
+        private int mobFlags() {
+            return (this.isNoAi() ? 1 : 0)
+                | (this.isLeftHanded() ? 2 : 0)
+                | (this.isAggressive() ? 4 : 0);
         }
     }
 

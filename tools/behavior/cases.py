@@ -1333,6 +1333,32 @@ def math_cases():
         ],
     }
 
+    yield {
+        "case_id": "client-world/entity-mob-flags",
+        "family": "math",
+        "operation": "client_world_entity_mob_flags",
+        "entity_id": 37,
+        "entity_type_id": 70,
+        "operations": [
+            {
+                "label": "set-all-mob-flags",
+                "metadata_hex": "0f0007ff",
+            },
+            {
+                "label": "combined-shared-air-and-mob",
+                "metadata_hex": "0000400101070f0002ff",
+            },
+            {
+                "label": "no-gravity-preserves-mob",
+                "metadata_hex": "050801ff",
+            },
+            {
+                "label": "clear-mob-flags",
+                "metadata_hex": "0f0000ff",
+            },
+        ],
+    }
+
     def attribute_modifier(identifier, amount, operation):
         return {
             "id": identifier,

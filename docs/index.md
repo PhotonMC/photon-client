@@ -153,6 +153,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P08.ai.1 — ClientWorld entity living flags — client-parity](client-world-entity-living-flags-parity-conformance.md)
 - [P08.e-entity-metadata — server-conformance ClientWorld raw entity metadata](client-world-entity-metadata-conformance.md)
 - [P08.aj — server-conformance Entity mob flags semantic state](client-world-entity-mob-flags-conformance.md)
+- [P08.aj.1 — ClientWorld entity mob flags — client-parity](client-world-entity-mob-flags-parity-conformance.md)
 - [P08.e-entity-motion — server-conformance ClientWorld entity motion state](client-world-entity-motion-conformance.md)
 - [P08.ab — server-conformance Entity no-gravity semantic state](client-world-entity-no-gravity-conformance.md)
 - [P08.bd-entity-passenger-animal-position — server-conformance Animal passenger `positionRider` seat attachment](client-world-entity-passenger-animal-position-conformance.md)
