@@ -106,6 +106,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P08.s — server-conformance ClientWorld spawner semantic state](client-world-block-entity-spawner-conformance.md)
 - [P09.n — ClientWorld block-state registry/context — client-parity birleşik kayıt](client-world-block-state-registry-conformance.md)
 - [P08.c — server-conformance ClientWorld block update uygulaması](client-world-block-update-conformance.md)
+- [P08.c.1 — ClientWorld block update ve section sayaçları — client-parity](client-world-block-update-parity-conformance.md)
 - [P09.i — Statik world-border collision shape — client-parity birleşik kayıt](client-world-border-collision-conformance.md)
 - [P09.j — Moving world-border extent — client-parity birleşik kayıt](client-world-border-moving-conformance.md)
 - [P09.k — ClientWorld world-border state — client-parity birleşik kayıt](client-world-border-state-conformance.md)

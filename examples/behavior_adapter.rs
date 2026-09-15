@@ -6449,6 +6449,99 @@ fn client_world_section_lookup_result(request: &Value) -> Result<Value, String> 
     Ok(json!({"tracks": tracks}))
 }
 
+fn client_world_block_update_result(request: &Value) -> Result<Value, String> {
+    let min_y = i32_field(request, "dimension_min_y")?;
+    let height = i32_field(request, "dimension_height")?;
+    let chunk_x = i32_field(request, "chunk_x")?;
+    let chunk_z = i32_field(request, "chunk_z")?;
+    let section_values = request["sections"]
+        .as_array()
+        .ok_or("sections must be an array")?;
+    let mut section_data = Vec::new();
+    for section in section_values {
+        section_data.extend(decode_hex(
+            section.as_str().ok_or("section payload must be a string")?,
+        )?);
+    }
+    let observations = decode_chunk_section_data(&section_data)?;
+    if observations.len() != section_values.len() {
+        return Err("section decoder count does not match input".into());
+    }
+
+    let mut world = ClientWorld::new(DimensionBounds::new(min_y, height));
+    if !world.replace_chunk(
+        chunk_x,
+        chunk_z,
+        observations.iter().map(|section| SectionInput {
+            non_empty_block_count: section.non_empty_block_count,
+            fluid_count: section.fluid_count,
+            block_states: &section.block_state_values,
+            biomes: &section.biome_values,
+        }),
+    ) {
+        return Err("initial chunk was rejected".into());
+    }
+
+    let updates = request["updates"]
+        .as_array()
+        .ok_or("updates must be an array")?;
+    let mut events = Vec::with_capacity(updates.len());
+    for update in updates {
+        let x = i32_field(update, "x")?;
+        let y = i32_field(update, "y")?;
+        let z = i32_field(update, "z")?;
+        let previous_state_id = world.block_state_at(x, y, z);
+        let accepted = world.update_block_state(x, y, z, i32_field(update, "state_id")?);
+        let mut state = json!({
+            "label": string(update, "label")?,
+            "accepted": accepted,
+        });
+        if accepted {
+            let updated_state_id = world
+                .block_state_at(x, y, z)
+                .ok_or("accepted block update has no state")?;
+            let section_counts = world
+                .section_counts_at(x.div_euclid(16), y.div_euclid(16), z.div_euclid(16))
+                .ok_or("accepted block update has no section counts")?;
+            state["previous_state_id"] =
+                json!(previous_state_id.ok_or("accepted block update has no previous state")?);
+            state["updated_state_id"] = json!(updated_state_id);
+            state["section_counts"] = json!([section_counts.0, section_counts.1]);
+            state["has_only_air"] = json!(section_counts.0 == 0);
+            state["has_fluid"] = json!(section_counts.1 > 0);
+        }
+
+        let queries = update["queries"]
+            .as_array()
+            .ok_or("queries must be an array")?
+            .iter()
+            .map(|query| {
+                let query_x = i32_field(query, "x")?;
+                let query_y = i32_field(query, "y")?;
+                let query_z = i32_field(query, "z")?;
+                let mut query_state = json!({
+                    "label": string(query, "label")?,
+                    "section_y": query_y.div_euclid(16),
+                });
+                if let Some(block_state_id) = world.block_state_at(query_x, query_y, query_z) {
+                    query_state["block_state_id"] = json!(block_state_id);
+                }
+                if let Some((non_empty, fluid)) = world.section_counts_at(
+                    query_x.div_euclid(16),
+                    query_y.div_euclid(16),
+                    query_z.div_euclid(16),
+                ) {
+                    query_state["section_counts"] = json!([non_empty, fluid]);
+                }
+                Ok(query_state)
+            })
+            .collect::<Result<Vec<_>, String>>()?;
+        state["queries"] = json!(queries);
+        events.push(state);
+    }
+    Ok(json!({"events": events}))
+}
+
 fn client_chunk_cache_snapshot_json(snapshot: &ClientChunkCacheSnapshot) -> Value {
     json!({
         "storage_radius": snapshot.storage_radius,
@@ -6573,6 +6666,9 @@ fn math_result(request: &Value) -> Result<Value, String> {
     }
     if operation == "client_world_chunk_cache" {
         return client_world_chunk_cache_result(request);
+    }
+    if operation == "client_world_block_update" {
+        return client_world_block_update_result(request);
     }
     if operation == "random" {
         return random_result(request);

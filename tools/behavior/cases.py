@@ -948,6 +948,79 @@ def math_cases():
         ],
     }
 
+    block_update_values = [0] * 4096
+    block_update_section = section_hex(
+        0, 0, 1, [0, 1], block_update_values, 0, [1], [0] * 64)
+    yield {
+        "case_id": "client-world/block-update-section-counters",
+        "family": "math",
+        "operation": "client_world_block_update",
+        "dimension_min_y": -64,
+        "dimension_height": 384,
+        "chunk_x": -2,
+        "chunk_z": 3,
+        "sections": [block_update_section],
+        "updates": [
+            {
+                "label": "same-air-empty-rejected",
+                "x": -32, "y": -64, "z": 48, "state_id": 0,
+                "queries": [
+                    {"label": "unchanged-cell", "x": -32, "y": -64, "z": 48},
+                ],
+            },
+            {
+                "label": "air-to-stone",
+                "x": -32, "y": -64, "z": 48, "state_id": 1,
+                "queries": [
+                    {"label": "updated-cell", "x": -32, "y": -64, "z": 48},
+                    {"label": "section-edge", "x": -17, "y": -49, "z": 63},
+                ],
+            },
+            {
+                "label": "stone-to-water",
+                "x": -32, "y": -64, "z": 48, "state_id": 86,
+                "queries": [
+                    {"label": "updated-cell", "x": -32, "y": -64, "z": 48},
+                ],
+            },
+            {
+                "label": "water-to-air",
+                "x": -32, "y": -64, "z": 48, "state_id": 0,
+                "queries": [
+                    {"label": "updated-cell", "x": -32, "y": -64, "z": 48},
+                ],
+            },
+            {
+                "label": "air-to-stone-at-negative-edge",
+                "x": -17, "y": -49, "z": 63, "state_id": 1,
+                "queries": [
+                    {"label": "updated-cell", "x": -17, "y": -49, "z": 63},
+                ],
+            },
+            {
+                "label": "same-state-stone",
+                "x": -17, "y": -49, "z": 63, "state_id": 1,
+                "queries": [
+                    {"label": "updated-cell", "x": -17, "y": -49, "z": 63},
+                ],
+            },
+            {
+                "label": "missing-section-rejected",
+                "x": -32, "y": -48, "z": 48, "state_id": 1,
+                "queries": [
+                    {"label": "missing-section", "x": -32, "y": -48, "z": 48},
+                ],
+            },
+            {
+                "label": "outside-chunk-rejected",
+                "x": -16, "y": -64, "z": 48, "state_id": 1,
+                "queries": [
+                    {"label": "outside-chunk", "x": -16, "y": -64, "z": 48},
+                ],
+            },
+        ],
+    }
+
     def character_event_case(label, codepoint):
         return {
             "case_id": f"character-event/{label}", "family": "math",

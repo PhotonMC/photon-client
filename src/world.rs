@@ -689,6 +689,7 @@ const VANILLA_BOAT_PASSENGER_GEOMETRY: &[(i32, f32, f32)] = &[
 ];
 const VANILLA_PLAYER_VEHICLE_ATTACHMENT_Y: f64 = 0.6;
 const VANILLA_AIR_BLOCK_STATE_ID: i32 = 0;
+const VANILLA_WATER_BLOCK_STATE_ID: i32 = 86;
 const ENTITY_SHARED_FLAGS_DATA_ID: u8 = 0;
 const ENTITY_AIR_SUPPLY_DATA_ID: u8 = 1;
 const ENTITY_CUSTOM_NAME_DATA_ID: u8 = 2;
@@ -4679,7 +4680,7 @@ impl ClientWorld {
     }
 
     /// Apply a server-verified block-state update to an already loaded section.
-    pub(crate) fn update_block_state(&mut self, x: i32, y: i32, z: i32, state_id: i32) -> bool {
+    pub fn update_block_state(&mut self, x: i32, y: i32, z: i32, state_id: i32) -> bool {
         let chunk_key = (x.div_euclid(16), z.div_euclid(16));
         let Some(chunk) = self.chunk_for_update(chunk_key.0, chunk_key.1) else {
             return false;
@@ -4692,11 +4693,15 @@ impl ClientWorld {
         let local_y = y.rem_euclid(16) as usize;
         let local_z = z.rem_euclid(16) as usize;
         let index = local_y * 256 + local_z * 16 + local_x;
-        let Some(block_state) = section.block_states.get_mut(index) else {
+        let Some(previous_state_id) = section.block_states.get(index).copied() else {
             return false;
         };
-        *block_state = state_id;
-        true
+        if (section.has_only_air() && state_id == VANILLA_AIR_BLOCK_STATE_ID)
+            || previous_state_id == state_id
+        {
+            return false;
+        }
+        section.set_block_state(index, state_id).is_some()
     }
 
     /// Apply the horizontal `StairBlock.updateShape` state transition against
@@ -4719,6 +4724,9 @@ impl ClientWorld {
         else {
             return false;
         };
+        if updated_state_id == state_id {
+            return true;
+        }
         self.update_block_state(x, y, z, updated_state_id)
     }
 
@@ -7662,6 +7670,28 @@ struct ClientSection {
 impl ClientSection {
     fn has_only_air(&self) -> bool {
         self.non_empty_block_count == 0
+    }
+
+    fn set_block_state(&mut self, index: usize, state_id: i32) -> Option<i32> {
+        // The complete block-state registry is still open; this slice has the
+        // exact air/non-air and source-water classifications used by its
+        // pinned update trace.
+        let block_state = self.block_states.get_mut(index)?;
+        let previous_state_id = *block_state;
+        if previous_state_id != VANILLA_AIR_BLOCK_STATE_ID {
+            self.non_empty_block_count -= 1;
+            if previous_state_id == VANILLA_WATER_BLOCK_STATE_ID {
+                self.fluid_count -= 1;
+            }
+        }
+        if state_id != VANILLA_AIR_BLOCK_STATE_ID {
+            self.non_empty_block_count += 1;
+            if state_id == VANILLA_WATER_BLOCK_STATE_ID {
+                self.fluid_count += 1;
+            }
+        }
+        *block_state = state_id;
+        Some(previous_state_id)
     }
 }
 
