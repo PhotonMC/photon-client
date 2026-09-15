@@ -47,7 +47,9 @@ birebir eşleşen kurallardan üretilmiştir.
   hiçbir kare sunulmadığı için Wayland compositor'ü yüzeyi map etmez; GLFW
   kendi `visible` bayrağını `true` bildirse de ekranda bir şey görünmez. Görünür
   çıktı Vulkan swapchain dilimini (P15.b) gerektirir ve o dilimden önce
-  "pencere çalışıyor" görsel olarak gösterilemez.
+  "pencere çalışıyor" görsel olarak gösterilemez. **Bu madde
+  [P15.b kaydıyla](vulkan-backend-record.md) kapandı**: ilk kare sunulduğunda
+  pencere göründü.
 - **Monitör ortalama, `setMode` ve fullscreen geçişleri** yalnızca kaynaktan
   türetildi; çalışan Java penceresiyle karşılaştırılmadı. `refreshFramebufferSize`
   kelepçesi de bu durumdadır.

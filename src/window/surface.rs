@@ -156,6 +156,28 @@ impl WindowSurface {
         seen
     }
 
+    /// Window position in screen coordinates, as the reference tracks it.
+    pub fn position(&self) -> (i32, i32) {
+        self.window.get_pos()
+    }
+
+    /// Raw handles for surface creation, valid while this window is alive.
+    pub fn raw_handles(
+        &self,
+    ) -> Result<
+        (
+            raw_window_handle::RawDisplayHandle,
+            raw_window_handle::RawWindowHandle,
+        ),
+        raw_window_handle::HandleError,
+    > {
+        use raw_window_handle::{HasDisplayHandle as _, HasWindowHandle as _};
+        Ok((
+            self.window.display_handle()?.as_raw(),
+            self.window.window_handle()?.as_raw(),
+        ))
+    }
+
     /// Block until at least one event arrives, then drain as `poll` does.
     pub fn wait(&mut self) -> Vec<glfw::WindowEvent> {
         self.glfw.wait_events();

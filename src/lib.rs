@@ -19,6 +19,7 @@ pub mod nbt;
 pub mod option;
 pub mod protocol;
 pub mod random;
+pub mod render;
 pub mod registry_data;
 pub mod resources;
 pub mod scroll;
