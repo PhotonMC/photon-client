@@ -140,3 +140,48 @@ Sıradaki ajan bu maddeleri sırayla uygular; her madde ayrı commit'tir.
 Geçen probe sayısı ilerleme ölçütü değildir. Ölçüt, kritik yolda kapatılan
 bölüm ve çalıştırılabilir istemci yüzeyidir. Aynı kod yolunun yeni sabit
 varyantı ilerleme olarak raporlanmaz.
+
+## 2026-09-15 uygulama durumu
+
+Bağlayıcı eylemlerin karşılığı:
+
+| Eylem | Durum |
+| --- | --- |
+| 1. Component varyant serisi durduruldu | Uygulandı; 68 kayıt tek belgede |
+| 2. `src/connection.rs` bölünmesi | Uygulandı; `mod/session/protocol/probe` + protokol testleri ayrı dosyada |
+| 3. Kritik yol: istemci dünya kopyası | `ClientWorld` kuruldu; bölüm hâlâ `client-parity` ile kapanmadı |
+| 4. Belge protokolü sadeleşmesi | Uygulandı; contract+parity birleşti, `docs/index.md` üretiliyor |
+| 5. `src/main.rs` ölçülebilir uç nokta | Uygulandı |
+
+Bu turda ek olarak yapılanlar:
+
+- `src/world.rs` (15.176 satır) konu modüllerine bölündü; `ClientWorld`
+  entegrasyon testleri kendi dosyasına taşındı.
+- Yedi özdeş metadata tarayıcısı tek alan bulucuya, altı `*_path_is_open`
+  yardımcısı tek hava kontrolü artı adım tablosuna indirildi; entity tick
+  dispatch'i aynı entity'yi on kez yerine bir kez okuyor.
+- Kalan `floor`/`ceil` daraltmaları oracle ile doğrulanmış `math` yardımcılarına
+  bağlandı.
+- `overflow-checks` her iki profilde açıldı: Java'nın sarma semantiği kasıtlıysa
+  `wrapping_*` ile yazılır, değilse test kırılır.
+- `tools/check-doc-cells.py` eklendi; roadmap ve plan hücrelerinin yeniden
+  senaryo listesine dönüşmesini engeller.
+
+Bu turda geri alınan iş: `client-world/entity-passenger-living` client-parity
+bağlaması (`test: bind animal passenger rotation parity`) `body_rotation_y`
+alanında Java'dan ayrıştığı için geri alındı. P08.bf `server-conformance` kaydı
+geçerliliğini korur; aynı dilimin `client-parity` bağlaması açık iştir ve
+Java `AbstractBoat.clampRotation` body yaw dalının yeniden incelenmesini
+gerektirir.
+
+## Açık kalan yapısal iş
+
+**Oracle aile taksonomisi.** `math` ailesi 3.875 case'in yaklaşık dörtte üçünü
+ve otuzdan fazla konu önekini taşıyor; `MathOracle.java` buna karşılık on iki
+bin satırın üzerinde. `tests/behavior/reference.json` aile başına tek Java
+kaynağı bağladığı için dosya bölmesi ile aile bölmesi aynı iştir. Aile seçimi
+referans kimliğinin parçası olduğundan, entity case'i eklemek saf `Mth`
+capture'ını da geçersiz kılıyor. Sıradaki yapısal dilim `entity`, `world` ve
+`input` ailelerini ayırmak, `MathOracle.java`'yı aynı sınırla parçalamak ve tek
+seferlik tam `capture` almaktır. Bu iş render başlangıcıyla aynı commit'e
+karıştırılmaz.
