@@ -178,6 +178,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P08.ax-entity-passenger-position — server-conformance `positionRider` tekne koltuğu](client-world-entity-passenger-position-conformance.md)
 - [P08.ax.1 — ClientWorld passenger seat `positionRider` — client-parity](client-world-entity-passenger-position-parity-conformance.md)
 - [P08.ba-entity-passenger-rotation — server-conformance Boat passenger rotation clamp](client-world-entity-passenger-rotation-conformance.md)
+- [P08.ba.1 — ClientWorld boat passenger rotation clamp — client-parity](client-world-entity-passenger-rotation-parity-conformance.md)
 - [P08.aw-entity-passenger-tick — server-conformance Passenger tick sırası](client-world-entity-passenger-tick-conformance.md)
 - [P08.aw.1 — ClientWorld passenger tick and `rideTick` — client-parity](client-world-entity-passenger-tick-parity-conformance.md)
 - [P08.be-entity-passenger-turn — server-conformance `Entity.turn` ve boat `onPassengerTurned`](client-world-entity-passenger-turn-conformance.md)

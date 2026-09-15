@@ -5181,6 +5181,9 @@ public final class MathOracle {
         if (operation.equals("client_world_entity_passenger_boat_family_position")) {
             return clientWorldEntityPassengerBoatFamilyPositionResult(request);
         }
+        if (operation.equals("client_world_entity_passenger_rotation")) {
+            return clientWorldEntityPassengerRotationResult(request);
+        }
         if (operation.equals("client_world_player_sprint_trigger")) {
             return clientWorldPlayerSprintTriggerResult(request);
         }
@@ -6170,6 +6173,84 @@ public final class MathOracle {
         };
     }
 
+    private static JsonObject clientWorldEntityPassengerRotationResult(JsonObject request) {
+        var vehicles = new ArrayList<PassengerPositionBoatFixture>();
+        var passengers = new ArrayList<Entity>();
+        for (JsonElement rowEntry : request.getAsJsonArray("rows")) {
+            JsonObject row = rowEntry.getAsJsonObject();
+            JsonObject vehicleInput = row.getAsJsonObject("vehicle");
+            if (vehicleInput.get("type_id").getAsInt() != 89) {
+                throw new IllegalArgumentException(
+                    "Passenger rotation fixture requires an oak boat");
+            }
+            PassengerPositionBoatFixture vehicle = PassengerPositionBoatFixture.create(
+                vehicleInput.get("entity_id").getAsInt(),
+                vec3(vehicleInput.getAsJsonObject("position")),
+                Oracle.f32(vehicleInput.getAsJsonObject("rotation"), "y"),
+                vehicleInput.get("no_gravity").getAsBoolean());
+            JsonObject passengerInput = row.getAsJsonObject("passenger");
+            int passengerTypeId = passengerInput.get("type_id").getAsInt();
+            Entity passenger;
+            if (passengerTypeId == 120) {
+                passenger = TickSnowballFixture.create(
+                    passengerInput.get("entity_id").getAsInt(),
+                    vec3(passengerInput.getAsJsonObject("position")),
+                    vec3(passengerInput.getAsJsonObject("movement")),
+                    Oracle.f32(passengerInput.getAsJsonObject("rotation"), "y"),
+                    Oracle.f32(passengerInput.getAsJsonObject("rotation"), "x"),
+                    passengerInput.get("no_gravity").getAsBoolean());
+            } else if (passengerTypeId == 156) {
+                passenger = PassengerPositionPlayerFixture.create(
+                    passengerInput.get("entity_id").getAsInt(),
+                    vec3(passengerInput.getAsJsonObject("position")),
+                    vec3(passengerInput.getAsJsonObject("movement")),
+                    Oracle.f32(passengerInput.getAsJsonObject("rotation"), "y"),
+                    Oracle.f32(passengerInput.getAsJsonObject("rotation"), "x"),
+                    passengerInput.get("no_gravity").getAsBoolean(),
+                    vehicle);
+            } else {
+                throw new IllegalArgumentException(
+                    "Passenger rotation fixture requires snowball or Player passengers");
+            }
+            setPassengerPositionFixturePassengers(vehicle, List.of(passenger));
+            vehicles.add(vehicle);
+            passengers.add(passenger);
+        }
+
+        var states = new JsonArray();
+        states.add(passengerRotationState("initial", vehicles, passengers));
+        for (JsonElement operationEntry : request.getAsJsonArray("operations")) {
+            JsonObject operation = operationEntry.getAsJsonObject();
+            if (!operation.get("action").getAsString().equals("tick")) {
+                throw new IllegalArgumentException("Unknown passenger rotation action");
+            }
+            for (int tick = 0; tick < operation.get("ticks").getAsInt(); tick++) {
+                for (int index = 0; index < vehicles.size(); index++) {
+                    PassengerPositionBoatFixture vehicle = vehicles.get(index);
+                    vehicle.setOldPosAndRot();
+                    vehicle.tickCount++;
+                    vehicle.tick();
+                    Entity passenger = passengers.get(index);
+                    if (passenger instanceof TickSnowballFixture snowball) {
+                        snowball.rideTickThroughClientLevel();
+                        vehicle.positionRider(passenger);
+                    } else if (passenger instanceof PassengerPositionPlayerFixture player) {
+                        player.setOldPosAndRot();
+                        player.tickCount++;
+                        player.rideTick();
+                    } else {
+                        throw new IllegalStateException("Unknown passenger rotation fixture");
+                    }
+                }
+            }
+            states.add(passengerRotationState(
+                operation.get("label").getAsString(), vehicles, passengers));
+        }
+        var result = new JsonObject();
+        result.add("states", states);
+        return result;
+    }
+
     private static List<TickSnowballFixture> resolvePassengerIds(
         List<TickSnowballFixture> passengers, JsonArray passengerIds
     ) {
@@ -6251,6 +6332,37 @@ public final class MathOracle {
             entities.add(tickSnowballEntityState(passengers.get(index)));
         }
         state.add("entities", entities);
+        return state;
+    }
+
+    private static JsonObject passengerRotationState(
+        String label,
+        List<PassengerPositionBoatFixture> vehicles,
+        List<Entity> passengers
+    ) {
+        var state = new JsonObject();
+        state.addProperty("label", label);
+        state.addProperty("accepted", true);
+        var entities = new JsonArray();
+        for (int index = 0; index < vehicles.size(); index++) {
+            entities.add(tickEntityState(vehicles.get(index)));
+            entities.add(passengerRotationEntityState(passengers.get(index)));
+        }
+        state.add("entities", entities);
+        return state;
+    }
+
+    private static JsonObject passengerRotationEntityState(Entity entity) {
+        if (entity instanceof TickSnowballFixture snowball) {
+            return tickSnowballEntityState(snowball);
+        }
+        var state = tickEntityState(entity);
+        if (entity instanceof Player player) {
+            state.addProperty("head_rotation", Oracle.bits(player.yHeadRot));
+            state.addProperty("previous_head_rotation", Oracle.bits(player.yHeadRotO));
+            state.addProperty("body_rotation_y", Oracle.bits(player.yBodyRot));
+            state.addProperty("previous_body_rotation_y", Oracle.bits(player.yBodyRotO));
+        }
         return state;
     }
 

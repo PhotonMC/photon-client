@@ -2796,6 +2796,41 @@ def math_cases():
         ],
     }
 
+    rotation_rows = [
+        ("snowball-clamp", 45, 120, 46, 170.0),
+        ("player-clamp", 47, 156, 48, 140.0),
+    ]
+    yield {
+        "case_id": "client-world/entity-passenger-rotation",
+        "family": "math",
+        "operation": "client_world_entity_passenger_rotation",
+        "rows": [
+            {
+                "label": label,
+                "vehicle": {
+                    "entity_id": vehicle_id,
+                    "type_id": 89,
+                    "position": vector_bits(2.0, 2.0, 2.0),
+                    "rotation": {"y": float_bits(0.0), "x": float_bits(0.0)},
+                    "no_gravity": True,
+                },
+                "passenger": {
+                    "entity_id": passenger_id,
+                    "type_id": passenger_type_id,
+                    "position": vector_bits(2.0, 12.0, 2.0),
+                    "movement": vector_bits(0.0, 0.0, 0.0),
+                    "rotation": {"y": float_bits(passenger_yaw), "x": float_bits(0.0)},
+                    "no_gravity": True,
+                },
+            }
+            for label, vehicle_id, passenger_type_id, passenger_id, passenger_yaw
+            in rotation_rows
+        ],
+        "operations": [
+            {"action": "tick", "label": "clamp", "ticks": 1},
+        ],
+    }
+
     def sprint_key_presses(
         forward=False, backward=False, left=False, right=False,
         jump=False, shift=False, sprint=False,

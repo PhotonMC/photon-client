@@ -9028,6 +9028,204 @@ fn client_world_entity_passenger_boat_family_position_result(
     Ok(json!({"states": states}))
 }
 
+fn client_world_entity_passenger_rotation_state(
+    label: &str,
+    entity_ids: &[i32],
+    passenger_type_ids: &[i32],
+    world: &ClientWorld,
+) -> Result<Value, String> {
+    let mut state = client_world_entity_tick_state(label, true, entity_ids, world)?;
+    let entities = state["entities"]
+        .as_array_mut()
+        .ok_or("passenger rotation state entities must be an array")?;
+    for (index, passenger_type_id) in passenger_type_ids.iter().enumerate() {
+        if *passenger_type_id != 156 {
+            continue;
+        }
+        let entity_id = entity_ids
+            .get(index * 2 + 1)
+            .ok_or("passenger rotation state entity list is incomplete")?;
+        let passenger = world
+            .entity_at(*entity_id)
+            .ok_or("passenger rotation fixture entity disappeared")?;
+        let rotation = passenger.rotation();
+        let previous_rotation = passenger.previous_rotation();
+        let entity = entities
+            .get_mut(index * 2 + 1)
+            .and_then(Value::as_object_mut)
+            .ok_or("passenger rotation state passenger is not an object")?;
+        entity.insert(
+            "head_rotation".into(),
+            json!(format!("{:08x}", rotation.2.to_bits())),
+        );
+        entity.insert(
+            "previous_head_rotation".into(),
+            json!(format!("{:08x}", previous_rotation.2.to_bits())),
+        );
+        entity.insert(
+            "body_rotation_y".into(),
+            json!(format!("{:08x}", passenger.body_y_rotation().to_bits())),
+        );
+        entity.insert(
+            "previous_body_rotation_y".into(),
+            json!(format!(
+                "{:08x}",
+                passenger.previous_body_y_rotation().to_bits()
+            )),
+        );
+    }
+    Ok(state)
+}
+
+fn client_world_entity_passenger_rotation_result(request: &Value) -> Result<Value, String> {
+    let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+    let blocks = vec![0; 4_096];
+    let biomes = vec![0; 64];
+    if !world.replace_chunk(
+        0,
+        0,
+        [SectionInput {
+            non_empty_block_count: 0,
+            fluid_count: 0,
+            block_states: &blocks,
+            biomes: &biomes,
+        }],
+    ) {
+        return Err("passenger rotation fixture chunk was rejected".into());
+    }
+
+    let rows = request["rows"].as_array().ok_or("rows must be an array")?;
+    let mut entity_ids = Vec::with_capacity(rows.len() * 2);
+    let mut passenger_type_ids = Vec::with_capacity(rows.len());
+    for row in rows {
+        let vehicle = row
+            .get("vehicle")
+            .and_then(Value::as_object)
+            .ok_or("passenger rotation vehicle must be an object")?;
+        let vehicle_id = i32_field(&Value::Object(vehicle.clone()), "entity_id")?;
+        if i32_field(&Value::Object(vehicle.clone()), "type_id")? != 89 {
+            return Err("passenger rotation fixture requires an oak boat".into());
+        }
+        let vehicle_position = f64_vec3(
+            vehicle
+                .get("position")
+                .ok_or("passenger rotation vehicle position must be a vector")?,
+        )?;
+        let vehicle_rotation = vehicle
+            .get("rotation")
+            .ok_or("passenger rotation vehicle rotation must be an object")?;
+        let vehicle_no_gravity = vehicle
+            .get("no_gravity")
+            .and_then(Value::as_bool)
+            .ok_or("passenger rotation vehicle no_gravity must be a boolean")?;
+        if !world.apply_entity(EntityInput {
+            entity_id: vehicle_id,
+            uuid: Uuid::new(0, u64::from(vehicle_id as u32)),
+            type_id: 89,
+            x: vehicle_position.x,
+            y: vehicle_position.y,
+            z: vehicle_position.z,
+            movement: (0.0, 0.0, 0.0),
+            rotation: (
+                f32_field(vehicle_rotation, "y")?,
+                f32_field(vehicle_rotation, "x")?,
+                0.0,
+            ),
+            data: 0,
+        }) {
+            return Err("passenger rotation vehicle was rejected".into());
+        }
+        if vehicle_no_gravity && !world.apply_entity_metadata(vehicle_id, &[5, 8, 1, 255]) {
+            return Err("passenger rotation vehicle no-gravity was rejected".into());
+        }
+
+        let passenger = row
+            .get("passenger")
+            .and_then(Value::as_object)
+            .ok_or("passenger rotation passenger must be an object")?;
+        let passenger_id = i32_field(&Value::Object(passenger.clone()), "entity_id")?;
+        let passenger_type_id = i32_field(&Value::Object(passenger.clone()), "type_id")?;
+        if !matches!(passenger_type_id, 120 | 156) {
+            return Err("passenger rotation fixture requires snowball or Player passengers".into());
+        }
+        let passenger_position = f64_vec3(
+            passenger
+                .get("position")
+                .ok_or("passenger rotation position must be a vector")?,
+        )?;
+        let passenger_movement = f64_vec3(
+            passenger
+                .get("movement")
+                .ok_or("passenger rotation movement must be a vector")?,
+        )?;
+        let passenger_rotation = passenger
+            .get("rotation")
+            .ok_or("passenger rotation passenger rotation must be an object")?;
+        let passenger_no_gravity = passenger
+            .get("no_gravity")
+            .and_then(Value::as_bool)
+            .ok_or("passenger rotation passenger no_gravity must be a boolean")?;
+        if !world.apply_entity(EntityInput {
+            entity_id: passenger_id,
+            uuid: Uuid::new(0, u64::from(passenger_id as u32)),
+            type_id: passenger_type_id,
+            x: passenger_position.x,
+            y: passenger_position.y,
+            z: passenger_position.z,
+            movement: (
+                passenger_movement.x,
+                passenger_movement.y,
+                passenger_movement.z,
+            ),
+            rotation: (
+                f32_field(passenger_rotation, "y")?,
+                f32_field(passenger_rotation, "x")?,
+                f32_field(passenger_rotation, "y")?,
+            ),
+            data: 0,
+        }) {
+            return Err("passenger rotation passenger was rejected".into());
+        }
+        if passenger_no_gravity && !world.apply_entity_metadata(passenger_id, &[5, 8, 1, 255]) {
+            return Err("passenger rotation passenger no-gravity was rejected".into());
+        }
+        if !world.apply_entity_passengers(vehicle_id, &[passenger_id]) {
+            return Err("passenger rotation relation was rejected".into());
+        }
+        entity_ids.push(vehicle_id);
+        entity_ids.push(passenger_id);
+        passenger_type_ids.push(passenger_type_id);
+    }
+
+    let mut states = vec![client_world_entity_passenger_rotation_state(
+        "initial",
+        &entity_ids,
+        &passenger_type_ids,
+        &world,
+    )?];
+    for operation in request["operations"]
+        .as_array()
+        .ok_or("operations must be an array")?
+    {
+        if string(operation, "action")? != "tick" {
+            return Err("unknown passenger rotation action".into());
+        }
+        let ticks = operation["ticks"]
+            .as_u64()
+            .ok_or("ticks must be an unsigned integer")?;
+        for _ in 0..ticks {
+            world.tick();
+        }
+        states.push(client_world_entity_passenger_rotation_state(
+            string(operation, "label")?,
+            &entity_ids,
+            &passenger_type_ids,
+            &world,
+        )?);
+    }
+    Ok(json!({"states": states}))
+}
+
 fn client_world_entity_arrow_tick_result(request: &Value) -> Result<Value, String> {
     client_world_entity_tick_result(request, 6)
 }
@@ -10277,6 +10475,9 @@ fn math_result(request: &Value) -> Result<Value, String> {
     }
     if operation == "client_world_entity_passenger_boat_family_position" {
         return client_world_entity_passenger_boat_family_position_result(request);
+    }
+    if operation == "client_world_entity_passenger_rotation" {
+        return client_world_entity_passenger_rotation_result(request);
     }
     if operation == "client_world_player_sprint_trigger" {
         return client_world_player_sprint_trigger_result(request);

@@ -107,7 +107,7 @@ ve aynı Java teleport state'i [P08.au.1 client-parity kaydında](client-world-e
 [P08.ax server-conformance kaydında](client-world-entity-passenger-position-conformance.md) ve aynı Java seat state'i [P08.ax.1 client-parity kaydında](client-world-entity-passenger-position-parity-conformance.md), Player vehicle attachment
 [P08.ay server-conformance kaydında](client-world-entity-passenger-player-conformance.md) ve aynı remote Player state'i [P08.ay.1 client-parity kaydında](client-world-entity-passenger-player-position-parity-conformance.md), chest boat/raft geometry
 [P08.az server-conformance kaydında](client-world-entity-passenger-boat-family-conformance.md) ve aynı dört family state'i [P08.az.1 client-parity kaydında](client-world-entity-passenger-boat-family-position-parity-conformance.md), boat passenger rotation clamp
-[P08.ba kaydında](client-world-entity-passenger-rotation-conformance.md) ve Breeze `CAN_TURN_IN_BOATS` istisnası
+[P08.ba server-conformance kaydında](client-world-entity-passenger-rotation-conformance.md) ve aynı Java clamp state'i [P08.ba.1 client-parity kaydında](client-world-entity-passenger-rotation-parity-conformance.md), Breeze `CAN_TURN_IN_BOATS` istisnası
 [P08.bb kaydında](client-world-entity-passenger-boat-turn-exemption-conformance.md), Animal passenger rotation offset'i
 [P08.bc kaydında](client-world-entity-passenger-animal-rotation-conformance.md) ve Animal passenger vehicle attachment/seat offset'i
 [P08.bd kaydında](client-world-entity-passenger-animal-position-conformance.md), `Entity.turn` → boat `onPassengerTurned` callback'i
