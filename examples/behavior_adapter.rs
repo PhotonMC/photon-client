@@ -8491,6 +8491,102 @@ fn client_world_entity_passengers_result(request: &Value) -> Result<Value, Strin
     Ok(json!({"states": states}))
 }
 
+fn client_world_entity_passenger_tick_result(request: &Value) -> Result<Value, String> {
+    let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+    let blocks = vec![0; 4_096];
+    let biomes = vec![0; 64];
+    if !world.replace_chunk(
+        0,
+        0,
+        [SectionInput {
+            non_empty_block_count: 0,
+            fluid_count: 0,
+            block_states: &blocks,
+            biomes: &biomes,
+        }],
+    ) {
+        return Err("passenger tick fixture chunk was rejected".into());
+    }
+
+    let vehicle = request["vehicle"]
+        .as_object()
+        .ok_or("vehicle must be an object")?;
+    let passenger = request["passenger"]
+        .as_object()
+        .ok_or("passenger must be an object")?;
+    let root = request["root_entity"]
+        .as_object()
+        .ok_or("root_entity must be an object")?;
+    let vehicle_id = i32_field(&Value::Object(vehicle.clone()), "entity_id")?;
+    let passenger_id = i32_field(&Value::Object(passenger.clone()), "entity_id")?;
+    let root_id = i32_field(&Value::Object(root.clone()), "entity_id")?;
+    let entity_ids = [vehicle_id, passenger_id, root_id];
+
+    for input in [vehicle, passenger, root] {
+        let entity_id = i32_field(&Value::Object(input.clone()), "entity_id")?;
+        let type_id = i32_field(&Value::Object(input.clone()), "type_id")?;
+        let position = f64_vec3(
+            input
+                .get("position")
+                .ok_or("passenger tick position must be a vector")?,
+        )?;
+        let movement = input
+            .get("movement")
+            .map(f64_vec3)
+            .transpose()?
+            .unwrap_or(Vec3::new(0.0, 0.0, 0.0));
+        let rotation = if let Some(value) = input.get("rotation") {
+            (f32_field(value, "y")?, f32_field(value, "x")?, 0.0)
+        } else {
+            (0.0, 0.0, 0.0)
+        };
+        if !world.apply_entity(EntityInput {
+            entity_id,
+            uuid: Uuid::new(0, u64::from(entity_id as u32)),
+            type_id,
+            x: position.x,
+            y: position.y,
+            z: position.z,
+            movement: (movement.x, movement.y, movement.z),
+            rotation,
+            data: 0,
+        }) {
+            return Err("passenger tick fixture entity was rejected".into());
+        }
+    }
+    if !world.apply_entity_passengers(vehicle_id, &[passenger_id]) {
+        return Err("passenger tick fixture relation was rejected".into());
+    }
+
+    let mut states = vec![client_world_entity_tick_state(
+        "initial",
+        true,
+        &entity_ids,
+        &world,
+    )?];
+    for operation in request["operations"]
+        .as_array()
+        .ok_or("operations must be an array")?
+    {
+        if string(operation, "action")? != "tick" {
+            return Err("unknown passenger tick action".into());
+        }
+        let ticks = operation["ticks"]
+            .as_u64()
+            .ok_or("ticks must be an unsigned integer")?;
+        for _ in 0..ticks {
+            world.tick();
+        }
+        states.push(client_world_entity_tick_state(
+            string(operation, "label")?,
+            true,
+            &entity_ids,
+            &world,
+        )?);
+    }
+    Ok(json!({"states": states}))
+}
+
 fn client_world_entity_arrow_tick_result(request: &Value) -> Result<Value, String> {
     client_world_entity_tick_result(request, 6)
 }
@@ -9728,6 +9824,9 @@ fn math_result(request: &Value) -> Result<Value, String> {
     }
     if operation == "client_world_entity_passengers" {
         return client_world_entity_passengers_result(request);
+    }
+    if operation == "client_world_entity_passenger_tick" {
+        return client_world_entity_passenger_tick_result(request);
     }
     if operation == "client_world_player_sprint_trigger" {
         return client_world_player_sprint_trigger_result(request);

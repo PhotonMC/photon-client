@@ -5169,6 +5169,9 @@ public final class MathOracle {
         if (operation.equals("client_world_entity_passengers")) {
             return clientWorldEntityPassengersResult(request);
         }
+        if (operation.equals("client_world_entity_passenger_tick")) {
+            return clientWorldEntityPassengerTickResult(request);
+        }
         if (operation.equals("client_world_player_sprint_trigger")) {
             return clientWorldPlayerSprintTriggerResult(request);
         }
@@ -5933,6 +5936,112 @@ public final class MathOracle {
             }
         }
         return null;
+    }
+
+    private static JsonObject clientWorldEntityPassengerTickResult(JsonObject request) {
+        JsonObject vehicleInput = request.getAsJsonObject("vehicle");
+        JsonObject passengerInput = request.getAsJsonObject("passenger");
+        JsonObject rootInput = request.getAsJsonObject("root_entity");
+        int vehicleId = vehicleInput.get("entity_id").getAsInt();
+        int passengerId = passengerInput.get("entity_id").getAsInt();
+
+        PassengerRelationFixtureEntity vehicle = PassengerRelationFixtureEntity.create(
+            vehicleId, vec3(vehicleInput.getAsJsonObject("position")));
+        TickSnowballFixture passenger = TickSnowballFixture.create(
+            passengerId,
+            vec3(passengerInput.getAsJsonObject("position")),
+            vec3(passengerInput.getAsJsonObject("movement")),
+            Oracle.f32(passengerInput.getAsJsonObject("rotation"), "y"),
+            Oracle.f32(passengerInput.getAsJsonObject("rotation"), "x"),
+            passengerInput.get("no_gravity").getAsBoolean());
+        TickSnowballFixture root = TickSnowballFixture.create(
+            rootInput.get("entity_id").getAsInt(),
+            vec3(rootInput.getAsJsonObject("position")),
+            vec3(rootInput.getAsJsonObject("movement")),
+            Oracle.f32(rootInput.getAsJsonObject("rotation"), "y"),
+            Oracle.f32(rootInput.getAsJsonObject("rotation"), "x"),
+            rootInput.get("no_gravity").getAsBoolean());
+        if (!passenger.startRiding(vehicle, true, false)) {
+            throw new IllegalArgumentException("Passenger tick fixture relation was rejected");
+        }
+
+        var states = new JsonArray();
+        states.add(passengerTickState("initial", vehicle, passenger, root));
+        for (JsonElement operationEntry : request.getAsJsonArray("operations")) {
+            JsonObject operation = operationEntry.getAsJsonObject();
+            if (!operation.get("action").getAsString().equals("tick")) {
+                throw new IllegalArgumentException("Unknown passenger tick action");
+            }
+            for (int tick = 0; tick < operation.get("ticks").getAsInt(); tick++) {
+                tickPassengerTree(vehicle, passenger, root);
+            }
+            states.add(passengerTickState(
+                operation.get("label").getAsString(), vehicle, passenger, root));
+        }
+        var result = new JsonObject();
+        result.add("states", states);
+        return result;
+    }
+
+    private static void tickPassengerTree(
+        PassengerRelationFixtureEntity vehicle,
+        TickSnowballFixture passenger,
+        TickSnowballFixture root
+    ) {
+        vehicle.setOldPosAndRot();
+        vehicle.tickCount++;
+        vehicle.tick();
+        if (!passenger.isRemoved() && passenger.getVehicle() == vehicle) {
+            passenger.rideTickThroughClientLevel();
+        }
+        root.tickThroughClientLevel();
+    }
+
+    private static JsonObject passengerTickState(
+        String label,
+        PassengerRelationFixtureEntity vehicle,
+        TickSnowballFixture passenger,
+        TickSnowballFixture root
+    ) {
+        var state = new JsonObject();
+        state.addProperty("label", label);
+        state.addProperty("accepted", true);
+        var entities = new JsonArray();
+        entities.add(tickEntityState(vehicle));
+        entities.add(tickSnowballEntityState(passenger));
+        entities.add(tickSnowballEntityState(root));
+        state.add("entities", entities);
+        return state;
+    }
+
+    private static JsonObject tickEntityState(Entity entity) {
+        var state = new JsonObject();
+        state.addProperty("entity_id", entity.getId());
+        state.addProperty("tick_count", entity.tickCount);
+        state.add("position", snapshotClip(entity.position()));
+        state.add("previous_position", snapshotClip(entity.oldPosition()));
+        state.add("motion", snapshotClip(entity.getDeltaMovement()));
+        state.addProperty("rotation_y", Oracle.bits(entity.getYRot()));
+        state.addProperty("rotation_x", Oracle.bits(entity.getXRot()));
+        state.addProperty("previous_rotation_y", Oracle.bits(entity.yRotO));
+        state.addProperty("previous_rotation_x", Oracle.bits(entity.xRotO));
+        state.addProperty("no_gravity", entity.isNoGravity());
+        return state;
+    }
+
+    private static JsonObject tickSnowballEntityState(TickSnowballFixture snowball) {
+        var state = new JsonObject();
+        state.addProperty("entity_id", snowball.entityId());
+        state.addProperty("tick_count", snowball.tickCount);
+        state.add("position", snapshotClip(snowball.position()));
+        state.add("previous_position", snapshotClip(snowball.previousPosition()));
+        state.add("motion", snapshotClip(snowball.getDeltaMovement()));
+        state.addProperty("rotation_y", Oracle.bits(snowball.getYRot()));
+        state.addProperty("rotation_x", Oracle.bits(snowball.getXRot()));
+        state.addProperty("previous_rotation_y", Oracle.bits(snowball.yRotO));
+        state.addProperty("previous_rotation_x", Oracle.bits(snowball.xRotO));
+        state.addProperty("no_gravity", snowball.noGravity);
+        return state;
     }
 
     private static JsonObject passengerRelationState(
@@ -8024,10 +8133,16 @@ public final class MathOracle {
         }
 
         private static PassengerRelationFixtureEntity create(int entityId) {
+            return create(entityId, Vec3.ZERO);
+        }
+
+        private static PassengerRelationFixtureEntity create(int entityId, Vec3 position) {
             try {
                 PassengerRelationFixtureEntity entity = new PassengerRelationFixtureEntity();
                 var idField = Entity.class.getDeclaredField("id");
                 unsafeInstance().putInt(entity, unsafeInstance().objectFieldOffset(idField), entityId);
+                entity.setPos(position);
+                entity.setOldPosAndRot();
                 return entity;
             } catch (ReflectiveOperationException error) {
                 throw new IllegalStateException(
@@ -8042,6 +8157,10 @@ public final class MathOracle {
         @Override
         public boolean isShiftKeyDown() {
             return false;
+        }
+
+        @Override
+        public void tick() {
         }
 
         @Override
@@ -10489,7 +10608,37 @@ public final class MathOracle {
             snowball.yRotO = yRot;
             snowball.xRotO = xRot;
             snowball.setDeltaMovement(movement);
+            try {
+                Unsafe unsafe = unsafeInstance();
+                var typeField = Entity.class.getDeclaredField("type");
+                unsafe.putObject(
+                    snowball, unsafe.objectFieldOffset(typeField),
+                    net.minecraft.world.entity.EntityTypes.SNOWBALL);
+                var levelField = Entity.class.getDeclaredField("level");
+                unsafe.putObject(
+                    snowball, unsafe.objectFieldOffset(levelField),
+                    PassengerRelationFixtureEntity.CLIENT_LEVEL);
+                var positionField = Entity.class.getDeclaredField("position");
+                unsafe.putObject(snowball, unsafe.objectFieldOffset(positionField), position);
+                var passengersField = Entity.class.getDeclaredField("passengers");
+                unsafe.putObject(
+                    snowball,
+                    unsafe.objectFieldOffset(passengersField),
+                    com.google.common.collect.ImmutableList.of());
+            } catch (ReflectiveOperationException error) {
+                throw new IllegalStateException(
+                    "Unable to initialize snowball relation fixture", error);
+            }
             return snowball;
+        }
+
+        @Override
+        public net.minecraft.world.level.Level level() {
+            return PassengerRelationFixtureEntity.CLIENT_LEVEL;
+        }
+
+        @Override
+        public void setPose(Pose pose) {
         }
 
         @Override
@@ -10513,6 +10662,19 @@ public final class MathOracle {
             this.previousFixturePosition = this.fixturePosition;
             this.setOldRot();
             this.tickCount++;
+            this.applyGravity();
+            Vec3 movement = this.getDeltaMovement();
+            this.setDeltaMovement(movement.scale(this.getAirDrag()));
+            this.fixturePosition = this.fixturePosition.add(this.getDeltaMovement());
+            this.updateRotation();
+            this.firstTick = false;
+        }
+
+        private void rideTickThroughClientLevel() {
+            this.previousFixturePosition = this.fixturePosition;
+            this.setOldRot();
+            this.tickCount++;
+            this.setDeltaMovement(Vec3.ZERO);
             this.applyGravity();
             Vec3 movement = this.getDeltaMovement();
             this.setDeltaMovement(movement.scale(this.getAirDrag()));

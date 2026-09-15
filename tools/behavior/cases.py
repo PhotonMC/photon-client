@@ -2664,6 +2664,37 @@ def math_cases():
         ],
     }
 
+    yield {
+        "case_id": "client-world/entity-passenger-tick",
+        "family": "math",
+        "operation": "client_world_entity_passenger_tick",
+        "vehicle": {
+            "entity_id": 37,
+            "type_id": 71,
+            "position": vector_bits(2.0, 2.0, 2.0),
+        },
+        "passenger": {
+            "entity_id": 38,
+            "type_id": 120,
+            "position": vector_bits(2.0, 2.0, 2.0),
+            "movement": vector_bits(0.125, 0.0, 0.0),
+            "rotation": {"y": float_bits(10.0), "x": float_bits(-15.0)},
+            "no_gravity": False,
+        },
+        "root_entity": {
+            "entity_id": 39,
+            "type_id": 120,
+            "position": vector_bits(5.0, 2.0, 2.0),
+            "movement": vector_bits(0.125, 0.0, 0.0),
+            "rotation": {"y": float_bits(10.0), "x": float_bits(-15.0)},
+            "no_gravity": False,
+        },
+        "operations": [
+            {"action": "tick", "label": "passenger-reset-first-tick", "ticks": 1},
+            {"action": "tick", "label": "passenger-reset-second-tick", "ticks": 1},
+        ],
+    }
+
     def sprint_key_presses(
         forward=False, backward=False, left=False, right=False,
         jump=False, shift=False, sprint=False,
