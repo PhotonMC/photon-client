@@ -102,7 +102,7 @@ motion interpolation [P08.at server-conformance kaydında](client-world-entity-p
 ve aynı Java motion state'i [P08.at.1 client-parity kaydında](client-world-entity-player-motion-parity-conformance.md),
 teleport delta/relative motion [P08.au server-conformance kaydında](client-world-entity-teleport-delta-conformance.md)
 ve aynı Java teleport state'i [P08.au.1 client-parity kaydında](client-world-entity-teleport-delta-parity-conformance.md), araç/passenger ilişki state'i
-[P08.av kaydında](client-world-entity-passengers-conformance.md) ve passenger tick/rideTick
+[P08.av server-conformance kaydında](client-world-entity-passengers-conformance.md) ve aynı Java ilişki state'i [P08.av.1 client-parity kaydında](client-world-entity-passengers-parity-conformance.md), passenger tick/rideTick
 [P08.aw kaydında](client-world-entity-passenger-tick-conformance.md), passenger seat `positionRider`
 [P08.ax kaydında](client-world-entity-passenger-position-conformance.md) ve Player vehicle attachment
 [P08.ay kaydında](client-world-entity-passenger-player-conformance.md) ve chest boat/raft geometry

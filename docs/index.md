@@ -178,6 +178,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P08.aw-entity-passenger-tick — server-conformance Passenger tick sırası](client-world-entity-passenger-tick-conformance.md)
 - [P08.be-entity-passenger-turn — server-conformance `Entity.turn` ve boat `onPassengerTurned`](client-world-entity-passenger-turn-conformance.md)
 - [P08.av-entity-passengers — server-conformance ClientWorld araç ve yolcu ilişkisi](client-world-entity-passengers-conformance.md)
+- [P08.av.1 — ClientWorld entity passenger relationships — client-parity](client-world-entity-passengers-parity-conformance.md)
 - [P08.ap-player-head-rotation — server-conformance Remote Player head rotation interpolation](client-world-entity-player-head-rotation-conformance.md)
 - [P08.ap.1 — ClientWorld remote Player head rotation — client-parity](client-world-entity-player-head-rotation-parity-conformance.md)
 - [P08.ar-player-interpolation — server-conformance Remote Player position interpolation](client-world-entity-player-interpolation-conformance.md)

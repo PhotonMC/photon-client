@@ -2612,6 +2612,58 @@ def math_cases():
         ],
     }
 
+    yield {
+        "case_id": "client-world/entity-passengers",
+        "family": "math",
+        "operation": "client_world_entity_passengers",
+        "entities": [
+            {"entity_id": 37, "type_id": 89},
+            {"entity_id": 38, "type_id": 120},
+            {"entity_id": 39, "type_id": 89},
+            {"entity_id": 40, "type_id": 71},
+            {"entity_id": 41, "type_id": 120},
+            {"entity_id": 42, "type_id": 156},
+        ],
+        "initial_links": [
+            {"vehicle_id": 39, "passenger_ids": [38]},
+            {"vehicle_id": 37, "passenger_ids": [40]},
+            {"vehicle_id": 40, "passenger_ids": [41]},
+        ],
+        "operations": [
+            {
+                "label": "replacement-reparent-duplicate-unknown",
+                "vehicle_id": 37,
+                "passenger_ids": [38, 39, 999, 38, 42],
+            },
+            {
+                "label": "cycle-rejected-after-reparent",
+                "vehicle_id": 39,
+                "passenger_ids": [37],
+            },
+            {"label": "empty-replacement", "vehicle_id": 37, "passenger_ids": []},
+            {
+                "label": "unknown-vehicle-ignored",
+                "vehicle_id": 999,
+                "passenger_ids": [38],
+            },
+            {
+                "label": "nested-relation-order",
+                "vehicle_id": 40,
+                "passenger_ids": [37, 42],
+            },
+            {
+                "label": "cycle-keeps-existing-links",
+                "vehicle_id": 37,
+                "passenger_ids": [38, 40],
+            },
+            {
+                "label": "nested-replacement",
+                "vehicle_id": 40,
+                "passenger_ids": [41],
+            },
+        ],
+    }
+
     def sprint_key_presses(
         forward=False, backward=False, left=False, right=False,
         jump=False, shift=False, sprint=False,

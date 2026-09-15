@@ -8383,6 +8383,114 @@ fn client_world_entity_teleport_result(request: &Value) -> Result<Value, String>
     Ok(json!({"entity_id": entity_id, "states": states}))
 }
 
+fn client_world_entity_passengers_state(
+    label: &str,
+    accepted: bool,
+    world: &ClientWorld,
+    entity_ids: &[i32],
+) -> Result<Value, String> {
+    let mut entities = Vec::with_capacity(entity_ids.len());
+    for &entity_id in entity_ids {
+        let entity = world
+            .entity_at(entity_id)
+            .ok_or("passenger relation fixture entity disappeared")?;
+        let mut state = json!({
+            "entity_id": entity_id,
+            "passenger_ids": entity.passenger_ids(),
+        });
+        if let Some(vehicle_id) = entity.vehicle_id() {
+            state["vehicle_id"] = json!(vehicle_id);
+        }
+        entities.push(state);
+    }
+    Ok(json!({
+        "label": label,
+        "accepted": accepted,
+        "entities": entities,
+    }))
+}
+
+fn client_world_entity_passengers_result(request: &Value) -> Result<Value, String> {
+    let entity_entries = request["entities"]
+        .as_array()
+        .ok_or("entities must be an array")?;
+    let entity_ids: Vec<i32> = entity_entries
+        .iter()
+        .map(|entity| i32_field(entity, "entity_id"))
+        .collect::<Result<_, _>>()?;
+    let mut world = ClientWorld::new(DimensionBounds::default());
+    for entity in entity_entries {
+        let entity_id = i32_field(entity, "entity_id")?;
+        let type_id = i32_field(entity, "type_id")?;
+        if !world.apply_entity(EntityInput {
+            entity_id,
+            uuid: Uuid::new(0, u64::from(entity_id as u32)),
+            type_id,
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+            movement: (0.0, 0.0, 0.0),
+            rotation: (0.0, 0.0, 0.0),
+            data: 0,
+        }) {
+            return Err("passenger relation fixture entity was rejected".into());
+        }
+    }
+
+    for link in request["initial_links"]
+        .as_array()
+        .ok_or("initial_links must be an array")?
+    {
+        let vehicle_id = i32_field(link, "vehicle_id")?;
+        let passenger_ids = link["passenger_ids"]
+            .as_array()
+            .ok_or("initial passenger_ids must be an array")?
+            .iter()
+            .map(|passenger| {
+                passenger
+                    .as_i64()
+                    .and_then(|value| i32::try_from(value).ok())
+                    .ok_or("initial passenger ID must be a 32-bit integer".to_owned())
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        if !world.apply_entity_passengers(vehicle_id, &passenger_ids) {
+            return Err("initial passenger relation was rejected".into());
+        }
+    }
+
+    let mut states = vec![client_world_entity_passengers_state(
+        "initial",
+        true,
+        &world,
+        &entity_ids,
+    )?];
+    for operation in request["operations"]
+        .as_array()
+        .ok_or("operations must be an array")?
+    {
+        let vehicle_id = i32_field(operation, "vehicle_id")?;
+        let passenger_ids = operation["passenger_ids"]
+            .as_array()
+            .ok_or("passenger_ids must be an array")?
+            .iter()
+            .map(|passenger| {
+                passenger
+                    .as_i64()
+                    .and_then(|value| i32::try_from(value).ok())
+                    .ok_or("passenger ID must be a 32-bit integer".to_owned())
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        let accepted = world.apply_entity_passengers(vehicle_id, &passenger_ids);
+        states.push(client_world_entity_passengers_state(
+            string(operation, "label")?,
+            accepted,
+            &world,
+            &entity_ids,
+        )?);
+    }
+    Ok(json!({"states": states}))
+}
+
 fn client_world_entity_arrow_tick_result(request: &Value) -> Result<Value, String> {
     client_world_entity_tick_result(request, 6)
 }
@@ -9617,6 +9725,9 @@ fn math_result(request: &Value) -> Result<Value, String> {
     }
     if operation == "client_world_entity_teleport" {
         return client_world_entity_teleport_result(request);
+    }
+    if operation == "client_world_entity_passengers" {
+        return client_world_entity_passengers_result(request);
     }
     if operation == "client_world_player_sprint_trigger" {
         return client_world_player_sprint_trigger_result(request);

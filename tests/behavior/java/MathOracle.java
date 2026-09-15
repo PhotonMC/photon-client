@@ -5166,6 +5166,9 @@ public final class MathOracle {
         if (operation.equals("client_world_entity_teleport")) {
             return clientWorldEntityTeleportResult(request);
         }
+        if (operation.equals("client_world_entity_passengers")) {
+            return clientWorldEntityPassengersResult(request);
+        }
         if (operation.equals("client_world_player_sprint_trigger")) {
             return clientWorldPlayerSprintTriggerResult(request);
         }
@@ -5870,6 +5873,92 @@ public final class MathOracle {
         result.addProperty("entity_id", entityId);
         result.add("states", states);
         return result;
+    }
+
+    private static JsonObject clientWorldEntityPassengersResult(JsonObject request) {
+        var entities = new ArrayList<PassengerRelationFixtureEntity>();
+        for (JsonElement entityEntry : request.getAsJsonArray("entities")) {
+            JsonObject entity = entityEntry.getAsJsonObject();
+            entities.add(PassengerRelationFixtureEntity.create(entity.get("entity_id").getAsInt()));
+        }
+
+        for (JsonElement linkEntry : request.getAsJsonArray("initial_links")) {
+            JsonObject link = linkEntry.getAsJsonObject();
+            PassengerRelationFixtureEntity vehicle = passengerRelationEntity(
+                entities, link.get("vehicle_id").getAsInt());
+            if (vehicle == null) {
+                throw new IllegalArgumentException("Unknown initial passenger vehicle");
+            }
+            for (JsonElement passengerEntry : link.getAsJsonArray("passenger_ids")) {
+                PassengerRelationFixtureEntity passenger = passengerRelationEntity(
+                    entities, passengerEntry.getAsInt());
+                if (passenger == null || !passenger.startRiding(vehicle, true, false)) {
+                    throw new IllegalArgumentException("Invalid initial passenger relation");
+                }
+            }
+        }
+
+        var states = new JsonArray();
+        states.add(passengerRelationState("initial", true, entities));
+        for (JsonElement operationEntry : request.getAsJsonArray("operations")) {
+            JsonObject operation = operationEntry.getAsJsonObject();
+            PassengerRelationFixtureEntity vehicle = passengerRelationEntity(
+                entities, operation.get("vehicle_id").getAsInt());
+            boolean accepted = vehicle != null;
+            if (vehicle != null) {
+                vehicle.ejectPassengers();
+                for (JsonElement passengerEntry : operation.getAsJsonArray("passenger_ids")) {
+                    PassengerRelationFixtureEntity passenger = passengerRelationEntity(
+                        entities, passengerEntry.getAsInt());
+                    if (passenger != null) {
+                        passenger.startRiding(vehicle, true, false);
+                    }
+                }
+            }
+            states.add(passengerRelationState(
+                operation.get("label").getAsString(), accepted, entities));
+        }
+
+        var result = new JsonObject();
+        result.add("states", states);
+        return result;
+    }
+
+    private static PassengerRelationFixtureEntity passengerRelationEntity(
+        List<PassengerRelationFixtureEntity> entities, int entityId
+    ) {
+        for (PassengerRelationFixtureEntity entity : entities) {
+            if (entity.getId() == entityId) {
+                return entity;
+            }
+        }
+        return null;
+    }
+
+    private static JsonObject passengerRelationState(
+        String label, boolean accepted, List<PassengerRelationFixtureEntity> entities
+    ) {
+        var state = new JsonObject();
+        state.addProperty("label", label);
+        state.addProperty("accepted", accepted);
+        var snapshots = new JsonArray();
+        for (PassengerRelationFixtureEntity entity : entities) {
+            var snapshot = new JsonObject();
+            snapshot.addProperty("entity_id", entity.getId());
+            if (entity.getVehicle() == null) {
+                snapshot.add("vehicle_id", JsonNull.INSTANCE);
+            } else {
+                snapshot.addProperty("vehicle_id", entity.getVehicle().getId());
+            }
+            var passengerIds = new JsonArray();
+            for (Entity passenger : entity.getPassengers()) {
+                passengerIds.add(passenger.getId());
+            }
+            snapshot.add("passenger_ids", passengerIds);
+            snapshots.add(snapshot);
+        }
+        state.add("entities", snapshots);
+        return state;
     }
 
     private static JsonObject remotePlayerInterpolationState(
@@ -7914,6 +8003,62 @@ public final class MathOracle {
             throw new IllegalArgumentException("metadata has no terminator");
         } finally {
             input.release();
+        }
+    }
+
+    private static final class PassengerRelationFixtureEntity extends Entity {
+        private static final net.minecraft.world.level.Level CLIENT_LEVEL = createClientLevel();
+
+        private PassengerRelationFixtureEntity() {
+            super(net.minecraft.world.entity.EntityTypes.ARMOR_STAND, CLIENT_LEVEL);
+        }
+
+        private static net.minecraft.world.level.Level createClientLevel() {
+            try {
+                return (net.minecraft.world.level.Level)unsafeInstance()
+                    .allocateInstance(InterpolationClientLevelFixture.class);
+            } catch (InstantiationException error) {
+                throw new IllegalStateException(
+                    "Unable to allocate passenger relation client level fixture", error);
+            }
+        }
+
+        private static PassengerRelationFixtureEntity create(int entityId) {
+            try {
+                PassengerRelationFixtureEntity entity = new PassengerRelationFixtureEntity();
+                var idField = Entity.class.getDeclaredField("id");
+                unsafeInstance().putInt(entity, unsafeInstance().objectFieldOffset(idField), entityId);
+                return entity;
+            } catch (ReflectiveOperationException error) {
+                throw new IllegalStateException(
+                    "Unable to construct passenger relation fixture entity", error);
+            }
+        }
+
+        @Override
+        protected void defineSynchedData(net.minecraft.network.syncher.SynchedEntityData.Builder builder) {
+        }
+
+        @Override
+        public boolean isShiftKeyDown() {
+            return false;
+        }
+
+        @Override
+        public boolean hurtServer(
+            net.minecraft.server.level.ServerLevel level,
+            net.minecraft.world.damagesource.DamageSource source,
+            float damage
+        ) {
+            return false;
+        }
+
+        @Override
+        protected void readAdditionalSaveData(net.minecraft.world.level.storage.ValueInput input) {
+        }
+
+        @Override
+        protected void addAdditionalSaveData(net.minecraft.world.level.storage.ValueOutput output) {
         }
     }
 
