@@ -5141,6 +5141,9 @@ public final class MathOracle {
         if (operation.equals("client_world_entity_firework_tick")) {
             return clientWorldEntityFireworkTickResult(request);
         }
+        if (operation.equals("client_world_entity_boat_air_tick")) {
+            return clientWorldEntityBoatAirTickResult(request);
+        }
         if (operation.equals("client_world_player_sprint_trigger")) {
             return clientWorldPlayerSprintTriggerResult(request);
         }
@@ -6038,6 +6041,65 @@ public final class MathOracle {
             entity.addProperty("no_gravity", firework.noGravity);
             entities.add(entity);
         }
+        state.add("entities", entities);
+        return state;
+    }
+
+    private static JsonObject clientWorldEntityBoatAirTickResult(JsonObject request) {
+        JsonObject input = request.getAsJsonObject("input");
+        JsonObject boatInput = request.getAsJsonObject("boat");
+        TickBoatFixture boat = TickBoatFixture.create(
+            boatInput.get("entity_id").getAsInt(),
+            vec3(boatInput.getAsJsonObject("position")),
+            vec3(boatInput.getAsJsonObject("movement")),
+            Oracle.f32(boatInput.getAsJsonObject("rotation"), "y"),
+            Oracle.f32(boatInput.getAsJsonObject("rotation"), "x"),
+            boatInput.get("no_gravity").getAsBoolean(),
+            input.get("left").getAsBoolean(),
+            input.get("right").getAsBoolean(),
+            input.get("forward").getAsBoolean(),
+            input.get("backward").getAsBoolean());
+
+        var states = new JsonArray();
+        states.add(tickBoatState("initial", boat));
+        for (JsonElement entry : request.getAsJsonArray("operations")) {
+            JsonObject operation = entry.getAsJsonObject();
+            switch (operation.get("action").getAsString()) {
+                case "tick" -> {
+                    for (int tick = 0; tick < operation.get("ticks").getAsInt(); tick++) {
+                        boat.tickThroughClientLevel();
+                    }
+                }
+                case "set_no_gravity" -> boat.setNoGravity(operation.get("value").getAsBoolean());
+                default -> throw new IllegalArgumentException("Unknown boat air tick action");
+            }
+            states.add(tickBoatState(operation.get("label").getAsString(), boat));
+        }
+        var result = new JsonObject();
+        result.add("states", states);
+        return result;
+    }
+
+    private static JsonObject tickBoatState(String label, TickBoatFixture boat) {
+        var state = new JsonObject();
+        state.addProperty("label", label);
+        state.addProperty("accepted", true);
+        var entities = new JsonArray();
+        var entity = new JsonObject();
+        entity.addProperty("entity_id", boat.entityId());
+        entity.addProperty("tick_count", boat.tickCount);
+        entity.add("position", snapshotClip(boat.position()));
+        entity.add("previous_position", snapshotClip(boat.previousPosition()));
+        entity.add("motion", snapshotClip(boat.motion));
+        entity.addProperty("rotation_y", Oracle.bits(boat.yRot));
+        entity.addProperty("rotation_x", Oracle.bits(boat.xRot));
+        entity.addProperty("previous_rotation_y", Oracle.bits(boat.yRotO));
+        entity.addProperty("previous_rotation_x", Oracle.bits(boat.xRotO));
+        entity.addProperty("no_gravity", boat.noGravity);
+        entity.addProperty("delta_rotation", Oracle.bits(boat.deltaRotation));
+        entity.addProperty("paddle_left", boat.paddleLeft);
+        entity.addProperty("paddle_right", boat.paddleRight);
+        entities.add(entity);
         state.add("entities", entities);
         return state;
     }
@@ -10001,6 +10063,108 @@ public final class MathOracle {
             this.fixturePosition = this.fixturePosition.add(movement);
             this.setDeltaMovement(movement);
             this.updateRotation();
+        }
+    }
+
+    private static final class TickBoatFixture {
+        private Vec3 fixturePosition;
+        private Vec3 previousFixturePosition;
+        private Vec3 motion;
+        private int fixtureEntityId;
+        private int tickCount;
+        private float yRot;
+        private float xRot;
+        private float yRotO;
+        private float xRotO;
+        private float deltaRotation;
+        private boolean noGravity;
+        private boolean inputLeft;
+        private boolean inputRight;
+        private boolean inputForward;
+        private boolean inputBackward;
+        private boolean paddleLeft;
+        private boolean paddleRight;
+
+        private static TickBoatFixture create(
+            int entityId, Vec3 position, Vec3 movement,
+            float yRot, float xRot, boolean noGravity,
+            boolean inputLeft, boolean inputRight,
+            boolean inputForward, boolean inputBackward
+        ) {
+            TickBoatFixture boat = new TickBoatFixture();
+            boat.fixtureEntityId = entityId;
+            boat.fixturePosition = position;
+            boat.previousFixturePosition = position;
+            boat.motion = movement;
+            boat.yRot = yRot;
+            boat.xRot = xRot;
+            boat.yRotO = yRot;
+            boat.xRotO = xRot;
+            boat.noGravity = noGravity;
+            boat.inputLeft = inputLeft;
+            boat.inputRight = inputRight;
+            boat.inputForward = inputForward;
+            boat.inputBackward = inputBackward;
+            return boat;
+        }
+
+        private int entityId() {
+            return this.fixtureEntityId;
+        }
+
+        private Vec3 position() {
+            return this.fixturePosition;
+        }
+
+        private Vec3 previousPosition() {
+            return this.previousFixturePosition;
+        }
+
+        private void setNoGravity(boolean noGravity) {
+            this.noGravity = noGravity;
+        }
+
+        private void tickThroughClientLevel() {
+            this.previousFixturePosition = this.fixturePosition;
+            this.yRotO = this.yRot;
+            this.xRotO = this.xRot;
+            this.tickCount++;
+
+            float invFriction = 0.9F;
+            double verticalSpeed = this.noGravity ? 0.0 : -0.04;
+            this.motion = new Vec3(
+                this.motion.x * invFriction,
+                this.motion.y + verticalSpeed,
+                this.motion.z * invFriction);
+            this.deltaRotation *= invFriction;
+
+            float acceleration = 0.0F;
+            if (this.inputLeft) {
+                this.deltaRotation--;
+            }
+            if (this.inputRight) {
+                this.deltaRotation++;
+            }
+            if (this.inputRight != this.inputLeft
+                && !this.inputForward && !this.inputBackward) {
+                acceleration += 0.005F;
+            }
+
+            this.yRot += this.deltaRotation;
+            if (this.inputForward) {
+                acceleration += 0.04F;
+            }
+            if (this.inputBackward) {
+                acceleration -= 0.005F;
+            }
+
+            this.motion = this.motion.add(
+                Mth.sin(-this.yRot * Mth.DEG_TO_RAD) * acceleration,
+                0.0,
+                Mth.cos(this.yRot * Mth.DEG_TO_RAD) * acceleration);
+            this.paddleLeft = this.inputRight && !this.inputLeft || this.inputForward;
+            this.paddleRight = this.inputLeft && !this.inputRight || this.inputForward;
+            this.fixturePosition = this.fixturePosition.add(this.motion);
         }
     }
 

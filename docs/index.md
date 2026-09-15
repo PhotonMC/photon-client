@@ -134,6 +134,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P08.bl-entity-arrow-tick — server-conformance Arrow free-flight world tick](client-world-entity-arrow-tick-conformance.md)
 - [P08.bl.1 — ClientWorld Arrow free-flight tick — client-parity](client-world-entity-arrow-tick-parity-conformance.md)
 - [P08.bj-entity-boat-air — server-conformance Local boat `IN_AIR` tick](client-world-entity-boat-air-conformance.md)
+- [P08.bj.1 — ClientWorld local boat `IN_AIR` tick — client-parity](client-world-entity-boat-air-parity-conformance.md)
 - [P08.bh-entity-boat-control — server-conformance Boat input and `deltaRotation`](client-world-entity-boat-control-conformance.md)
 - [P08.bk-entity-boat-authority — server-conformance Remote boat authority branch](client-world-entity-boat-remote-authority-conformance.md)
 - [P09.h — Entity collision shape collection — client-parity birleşik kayıt](client-world-entity-collision-conformance.md)

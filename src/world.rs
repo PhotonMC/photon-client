@@ -5134,11 +5134,8 @@ impl ClientWorld {
         true
     }
 
-    pub(crate) fn apply_entity_passengers(
-        &mut self,
-        vehicle_id: i32,
-        passenger_ids: &[i32],
-    ) -> bool {
+    /// Apply a clientbound vehicle and ordered passenger relationship.
+    pub fn apply_entity_passengers(&mut self, vehicle_id: i32, passenger_ids: &[i32]) -> bool {
         if !self.entity_exists(vehicle_id) {
             return false;
         }

@@ -2285,6 +2285,34 @@ def math_cases():
         ],
     }
 
+    yield {
+        "case_id": "client-world/entity-boat-air-tick",
+        "family": "math",
+        "operation": "client_world_entity_boat_air_tick",
+        "player_id": 38,
+        "boat": {
+            "entity_id": 37,
+            "position": vector_bits(2.0, 10.0, 2.0),
+            "movement": vector_bits(0.25, 0.5, -0.75),
+            "rotation": {
+                "y": float_bits(10.0),
+                "x": float_bits(-20.0),
+            },
+            "no_gravity": False,
+        },
+        "input": {
+            "left": False,
+            "right": True,
+            "forward": True,
+            "backward": False,
+        },
+        "operations": [
+            {"action": "tick", "label": "air-gravity-control", "ticks": 1},
+            {"action": "set_no_gravity", "label": "enable-no-gravity", "value": True},
+            {"action": "tick", "label": "air-no-gravity-control", "ticks": 1},
+        ],
+    }
+
     def sprint_key_presses(
         forward=False, backward=False, left=False, right=False,
         jump=False, shift=False, sprint=False,

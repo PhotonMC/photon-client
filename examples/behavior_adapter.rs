@@ -78,8 +78,8 @@ use voxel_client::timer::Timer;
 use voxel_client::utf8;
 use voxel_client::wire::{self, ReadError};
 use voxel_client::world::{
-    ClientAttributeModifierState, ClientAttributeState, ClientChunkCacheSnapshot, ClientEntity,
-    ClientEntityCollisionCandidate, ClientEntityDimensions, ClientEntityPose,
+    BoatInput, ClientAttributeModifierState, ClientAttributeState, ClientChunkCacheSnapshot,
+    ClientEntity, ClientEntityCollisionCandidate, ClientEntityDimensions, ClientEntityPose,
     ClientPlayerAbilities, ClientPlayerGameMode, ClientPlayerPoseInput, ClientWorld,
     ClientWorldBorder, ClientWorldBorderInitialization, ClientWorldBorderStatus,
     ClientWorldCollisionSource, DimensionBounds, EntityInput, LightLayerInput, LightUpdateInput,
@@ -7623,6 +7623,165 @@ fn client_world_entity_firework_tick_result(request: &Value) -> Result<Value, St
     client_world_entity_tick_result(request, 53)
 }
 
+fn client_world_entity_boat_air_tick_state(
+    label: &str,
+    world: &ClientWorld,
+    entity_id: i32,
+) -> Result<Value, String> {
+    let entity = world
+        .entity_at(entity_id)
+        .ok_or_else(|| "boat air tick fixture entity disappeared".to_owned())?;
+    let rotation = entity.rotation();
+    let previous_rotation = entity.previous_rotation();
+    Ok(json!({
+        "label": label,
+        "accepted": true,
+        "entities": [{
+            "entity_id": entity.id(),
+            "tick_count": entity.tick_count(),
+            "position": client_world_entity_tick_vector(entity.position()),
+            "previous_position": client_world_entity_tick_vector(entity.previous_position()),
+            "motion": client_world_entity_tick_vector(entity.motion()),
+            "rotation_y": format!("{:08x}", rotation.0.to_bits()),
+            "rotation_x": format!("{:08x}", rotation.1.to_bits()),
+            "previous_rotation_y": format!("{:08x}", previous_rotation.0.to_bits()),
+            "previous_rotation_x": format!("{:08x}", previous_rotation.1.to_bits()),
+            "no_gravity": entity.is_no_gravity(),
+            "delta_rotation": format!("{:08x}", entity.boat_delta_rotation().to_bits()),
+            "paddle_left": entity.paddle_state().0,
+            "paddle_right": entity.paddle_state().1,
+        }],
+    }))
+}
+
+fn client_world_entity_boat_air_tick_result(request: &Value) -> Result<Value, String> {
+    let player_id = i32_field(request, "player_id")?;
+    let boat = request.get("boat").ok_or("boat must be an object")?;
+    let boat_entity_id = i32_field(boat, "entity_id")?;
+    let position = f64_vec3(
+        boat.get("position")
+            .ok_or("boat position must be a vector")?,
+    )?;
+    let movement = f64_vec3(
+        boat.get("movement")
+            .ok_or("boat movement must be a vector")?,
+    )?;
+    let rotation = boat
+        .get("rotation")
+        .ok_or("boat rotation must be an object")?;
+    let no_gravity = boat["no_gravity"]
+        .as_bool()
+        .ok_or("boat no_gravity must be a boolean")?;
+    let input = request.get("input").ok_or("input must be an object")?;
+    let boat_input = BoatInput::new(
+        input["left"]
+            .as_bool()
+            .ok_or("input left must be a boolean")?,
+        input["right"]
+            .as_bool()
+            .ok_or("input right must be a boolean")?,
+        input["forward"]
+            .as_bool()
+            .ok_or("input forward must be a boolean")?,
+        input["backward"]
+            .as_bool()
+            .ok_or("input backward must be a boolean")?,
+    );
+
+    let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+    let blocks = vec![0; 4_096];
+    let biomes = vec![0; 64];
+    if !world.replace_chunk(
+        0,
+        0,
+        [SectionInput {
+            non_empty_block_count: 0,
+            fluid_count: 0,
+            block_states: &blocks,
+            biomes: &biomes,
+        }],
+    ) {
+        return Err("boat air tick fixture chunk was rejected".into());
+    }
+    if !world.apply_entity(EntityInput {
+        entity_id: boat_entity_id,
+        uuid: Uuid::new(0, u64::from(boat_entity_id as u32)),
+        type_id: 89,
+        x: position.x,
+        y: position.y,
+        z: position.z,
+        movement: (movement.x, movement.y, movement.z),
+        rotation: (f32_field(rotation, "y")?, f32_field(rotation, "x")?, 0.0),
+        data: 0,
+    }) {
+        return Err("boat air tick fixture entity was rejected".into());
+    }
+    if !world.apply_entity(EntityInput {
+        entity_id: player_id,
+        uuid: Uuid::new(0, u64::from(player_id as u32)),
+        type_id: 156,
+        x: position.x,
+        y: position.y,
+        z: position.z,
+        movement: (0.0, 0.0, 0.0),
+        rotation: (0.0, 0.0, 0.0),
+        data: 0,
+    }) {
+        return Err("boat air tick fixture player was rejected".into());
+    }
+    world.set_local_player_id(player_id);
+    if !world.apply_entity_passengers(boat_entity_id, &[player_id]) {
+        return Err("boat air tick fixture passenger relation was rejected".into());
+    }
+    if !world.set_boat_input(boat_entity_id, boat_input) {
+        return Err("boat air tick fixture input was rejected".into());
+    }
+    if no_gravity && !world.apply_entity_metadata(boat_entity_id, &[5, 8, 1, 255]) {
+        return Err("boat air tick fixture no-gravity metadata was rejected".into());
+    }
+
+    let mut states = vec![client_world_entity_boat_air_tick_state(
+        "initial",
+        &world,
+        boat_entity_id,
+    )?];
+    for operation in request["operations"]
+        .as_array()
+        .ok_or("operations must be an array")?
+    {
+        match string(operation, "action")? {
+            "tick" => {
+                let ticks = operation["ticks"]
+                    .as_u64()
+                    .ok_or("ticks must be an unsigned integer")?;
+                for _ in 0..ticks {
+                    world.tick();
+                }
+            }
+            "set_no_gravity" => {
+                let value = operation["value"]
+                    .as_bool()
+                    .ok_or("no-gravity value must be a boolean")?;
+                let metadata = if value {
+                    &[5, 8, 1, 255]
+                } else {
+                    &[5, 8, 0, 255]
+                };
+                if !world.apply_entity_metadata(boat_entity_id, metadata) {
+                    return Err("boat air tick fixture no-gravity update was rejected".into());
+                }
+            }
+            _ => return Err("unknown boat air tick action".into()),
+        }
+        states.push(client_world_entity_boat_air_tick_state(
+            string(operation, "label")?,
+            &world,
+            boat_entity_id,
+        )?);
+    }
+    Ok(json!({"states": states}))
+}
+
 fn sprint_trigger_input(value: &Value) -> Result<Input, String> {
     Ok(Input::new(
         value["forward"]
@@ -8631,6 +8790,9 @@ fn math_result(request: &Value) -> Result<Value, String> {
     }
     if operation == "client_world_entity_firework_tick" {
         return client_world_entity_firework_tick_result(request);
+    }
+    if operation == "client_world_entity_boat_air_tick" {
+        return client_world_entity_boat_air_tick_result(request);
     }
     if operation == "client_world_player_sprint_trigger" {
         return client_world_player_sprint_trigger_result(request);
