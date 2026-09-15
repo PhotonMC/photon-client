@@ -2375,6 +2375,60 @@ def math_cases():
         ],
     }
 
+    yield {
+        "case_id": "client-world/entity-transform-history",
+        "family": "math",
+        "operation": "client_world_entity_transform_history",
+        "player": {
+            "entity_id": 42,
+            "position": vector_bits(10.0, 64.0, -2.0),
+            "rotation": {
+                "y": float_bits(350.0),
+                "x": float_bits(-20.0),
+            },
+        },
+        "entity": {
+            "entity_id": 37,
+            "type_id": 151,
+            "position": vector_bits(1.25, 80.0, -35.5),
+            "rotation": {
+                "y": float_bits(350.0),
+                "x": float_bits(-20.0),
+                "head": float_bits(350.0),
+            },
+        },
+        "operations": [
+            {"action": "tick", "label": "snapshot-initial", "ticks": 1},
+            {
+                "action": "update",
+                "label": "updated-transform",
+                "player": {
+                    "position": vector_bits(14.0, 68.0, 6.0),
+                    "rotation": {
+                        "y": float_bits(10.0),
+                        "x": float_bits(20.0),
+                    },
+                },
+                "entity": {
+                    "position": vector_bits(3.0, 82.0, -34.5),
+                    "head": float_bits(10.0),
+                },
+                "partial_tick": float_bits(0.5),
+            },
+            {
+                "action": "sample",
+                "label": "partial-one",
+                "partial_tick": float_bits(1.0),
+            },
+            {
+                "action": "tick",
+                "label": "snapshot-updated",
+                "ticks": 1,
+                "partial_tick": float_bits(0.5),
+            },
+        ],
+    }
+
     def sprint_key_presses(
         forward=False, backward=False, left=False, right=False,
         jump=False, shift=False, sprint=False,

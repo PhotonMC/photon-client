@@ -3007,6 +3007,7 @@ impl ClientWorld {
         let Some(player) = self.local_player.as_mut() else {
             return false;
         };
+        let initialize_transform_history = player.tick_count == 0;
         player.x_bits = position.0.to_bits();
         player.y_bits = position.1.to_bits();
         player.z_bits = position.2.to_bits();
@@ -3015,6 +3016,13 @@ impl ClientWorld {
         player.motion_z_bits = motion.2.to_bits();
         player.y_rot_bits = rotation.0.to_bits();
         player.x_rot_bits = rotation.1.to_bits();
+        if initialize_transform_history {
+            player.old_x_bits = player.x_bits;
+            player.old_y_bits = player.y_bits;
+            player.old_z_bits = player.z_bits;
+            player.old_y_rot_bits = player.y_rot_bits;
+            player.old_x_rot_bits = player.x_rot_bits;
+        }
         true
     }
 
@@ -14080,6 +14088,18 @@ mod tests {
             (0.0, 0.0, 0.0),
             (350.0, -20.0),
         ));
+        assert_eq!(
+            world
+                .local_player()
+                .map(super::ClientPlayerState::previous_position),
+            Some((10.0, 64.0, -2.0))
+        );
+        assert_eq!(
+            world
+                .local_player()
+                .map(super::ClientPlayerState::previous_rotation),
+            Some((350.0, -20.0))
+        );
 
         let (blocks, biomes) = section(0, 0);
         world.replace_chunk(

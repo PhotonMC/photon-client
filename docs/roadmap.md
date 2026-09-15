@@ -123,6 +123,11 @@ P08.t.1 ticking eligibility'nin Java istemci state eşleşmesi [kendi
 client-parity kaydında](client-world-entity-ticking-parity-conformance.md)
 doğrulandı; canlı chunk/tick akışı [P08.t server-conformance kaydında](client-world-tick-conformance.md) tutulur.
 
+P08.u.1 transform history ve position/body/head interpolation state'i [kendi
+client-parity kaydında](client-world-entity-transform-parity-conformance.md)
+doğrulandı; vanilla bağlantı kanıtı [P08.u server-conformance kaydında](client-world-entity-transform-conformance.md)
+tutulur.
+
 P12/P13 altında yeni item component varyantı açılmaz; gerekçe ve bağlayıcı
 eylemler [yön düzeltmesi belgesindedir](course-correction-2026-09-12.md).
 Kolay ölçülebilir olduğu için yatay varyant üretmek ilerleme sayılmaz.
