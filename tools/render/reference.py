@@ -126,6 +126,30 @@ def find_window(timeout):
     raise Failed(f"Client window did not appear within {timeout}s")
 
 
+def send_keys(window_id, keys):
+    """Send a real key chord to the client window.
+
+    The client runs under XWayland, so XTEST input reaches it the way a user's
+    would. Synthetic XSendEvent keys are ignored by GLFW, which is why the
+    window is activated first and the chord goes through the test extension.
+    """
+    subprocess.run(
+        ["xdotool", "windowactivate", "--sync", window_id],
+        capture_output=True, check=True,
+    )
+    time.sleep(0.4)
+    for hold, tap in keys:
+        # Held as a real chord: sending F3 and A as separate taps lets the game
+        # read A as strafe-left, which moves a spectator and silently changes
+        # the camera the whole measurement depends on.
+        subprocess.run(["xdotool", "keydown", hold], capture_output=True, check=True)
+        time.sleep(0.2)
+        subprocess.run(["xdotool", "key", tap], capture_output=True, check=True)
+        time.sleep(0.2)
+        subprocess.run(["xdotool", "keyup", hold], capture_output=True, check=True)
+        time.sleep(0.4)
+
+
 def capture_window(window_id, destination):
     if not shutil.which("import"):
         raise Blocked("ImageMagick 'import' missing; cannot capture the window")
@@ -185,6 +209,12 @@ def launch(args):
             backend, drivers = wait_for_backend(log_path, args.ready_timeout, process)
             window_id = find_window(args.ready_timeout)
             time.sleep(args.settle)
+            if args.reload_chunks:
+                # F3+A forces every loaded chunk to re-mesh. If the cross-run
+                # difference comes from meshes baked before lighting settled,
+                # this is what removes it.
+                send_keys(window_id, [("F3", "a")])
+                time.sleep(args.reload_settle)
             captures = []
             for index in range(args.captures):
                 target = run_dir / f"frame-{index:02d}.png"
@@ -212,6 +242,7 @@ def launch(args):
         "pinned_options": len(PINNED_OPTIONS),
         "scene": args.scene or "title_screen",
         "deterministic_scene": bool(args.scene),
+        "reload_chunks": bool(args.reload_chunks),
     }
     print(json.dumps(report, sort_keys=True))
     return 0
@@ -305,6 +336,9 @@ def main():
     run.add_argument("--java", default="java")
     run.add_argument("--username", default="ParityTest")
     run.add_argument("--asset-index", default="32")
+    run.add_argument("--reload-chunks", action="store_true",
+                     help="force a chunk re-mesh (F3+A) before capturing")
+    run.add_argument("--reload-settle", type=float, default=6.0)
     run.add_argument("--scene", default=None,
                      help="fixed scene fixture to load instead of the title screen")
     run.set_defaults(handler=launch)

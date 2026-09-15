@@ -73,14 +73,51 @@ ezici çoğunluğu tam `0`, kalanı `±1` çıkmıştı. Bu haliyle
 açıklanamaz. Bu piksellerin nerede olduğu ve neden ayrıştığı açıklanmadan
 "iki backend eşdeğerdir" denemez.
 
+## Sapmanın sebebi: ışık oturmadan derlenen chunk mesh'leri
+
+Farkın **nerede** olduğu sebebi verdi. Kareyi 6x4 bölgeye bölüp ortalama mutlak
+farka bakınca alt sıra — glowstone zemin — her ölçümde tam `0.00` çıkıyor;
+fark yalnızca duvarlarda. Yani ışık **kaynağı** birebir aynı, **yayılan** ışık
+değişiyor. İstemci chunk mesh'ine ışık değerlerini pişirdiği için, mesh ışık
+yayılımı tamamlanmadan derlendiğinde sonuç kalıcı olarak farklı kalıyor ve
+hiçbir şey yeniden derlemeyi tetiklemediği için koşu boyunca öyle duruyor. Bu,
+koşu içi kararlılık ile koşular arası sapmanın neden bir arada olduğunu
+açıklıyor.
+
+Test: yakalamadan önce `F3+A` ile bütün chunk'ları yeniden derletmek.
+
+| Koşul | Koşular arası max kanal | Ortalama kanal |
+| --- | ---: | ---: |
+| Yeniden derleme yok (3 koşu) | `7` | `1.29`–`1.37` |
+| Yeniden derleme, 6 s bekleme (3 koşu) | `2` | `0.13`–`0.32` |
+| Yeniden derleme, 20 s bekleme (2 koşu) | `4` | `0.82` |
+
+İki durumlu `~1.35` sapma kayboluyor. Zemin bölgeleri yine tam `0.00` kalıyor,
+yani kamera kaymadı.
+
+Bekleme süresini uzatmak **iyileştirmiyor**; 20 saniyede sonuç 6 saniyedekinden
+kötü çıktı. Buradan iki şey çıkar: stale baked lighting farkın büyük bileşeni
+ama tamamı değil, ve kalan bileşen zamanla yakınsamıyor. Örneklem küçüktür
+(koşul başına iki-üç koşu), bu yüzden `2` ile `4` arasındaki fark tek başına
+anlamlı sayılmamalıdır.
+
+### Tuş enjeksiyonunda yakalanan tuzak
+
+`F3+A` ilk denemede iki ayrı tuş vuruşu olarak gönderildi. Oyun `A`'yı spectator
+sola kaydırma olarak okudu; kamera yer değiştirdi ve karşılaştırma ortalaması
+`24.9`'a fırladı. Akor, `F3` basılı tutulup `A`'ya basılarak gönderilince sorun
+kalktı. Sabit kameraya dayanan bir ölçümde tuş göndermek, tuşun oyun içi
+anlamını hesaba katmadan yapılamaz.
+
 ## Bundan çıkan kural
 
 Tek bir Java koşusuna karşı **bit-bit piksel eşitliği hedeflenemez**, çünkü
 referans kendisiyle bile bit-bit örtüşmüyor. Render dilimleri için sıra şudur:
 
-1. Koşular arası iki durumlu sapmanın sebebi bulunup giderilmeli. Sistematik
-   olduğu için giderilebilir olma ihtimali yüksek; giderilemezse tolerans onun
-   üstünde tanımlanmak zorunda kalır.
+1. İki durumlu sapmanın sebebi bulundu ve büyük ölçüde giderildi: chunk
+   mesh'leri ışık yayılımı tamamlanmadan derleniyor. Yakalamadan önce zorunlu
+   yeniden derleme tabanı `7`'den `2`–`4`'e indiriyor. Kalan bileşen hâlâ
+   açıklanmadı ve beklemekle kapanmıyor.
 2. OpenGL↔Vulkan izole büyük farkların kaynağı açıklanmalı.
 3. Ancak bundan sonra bir render karşılaştırma ölçütü yazılabilir.
 
