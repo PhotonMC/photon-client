@@ -158,7 +158,57 @@ fn run_window(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std:
     // Assets come from a folder the user names; nothing is bundled. With a
     // folder and a model name the probe draws that model; with neither it
     // falls back to its own cube and checkerboard, and says which it used.
-    let (mesh, texture_levels) = match (env::var("VOXEL_ASSETS"), env::var("VOXEL_MODEL")) {
+    //
+    // A block name takes the longer road: its blockstate file is read, the
+    // variant its properties select is taken, and the model and rotation come
+    // from there rather than from the environment.
+    let chosen = match (env::var("VOXEL_BLOCK"), env::var("VOXEL_ASSETS")) {
+        (Ok(block), Ok(root)) => {
+            let source = FolderAssets {
+                root: std::path::PathBuf::from(&root),
+            };
+            let name = voxel_client::identifier::Identifier::parse(&block)
+                .map_err(|error| format!("{block}: {error:?}"))?;
+            let text = render::AssetSource::block_state(&source, &name)
+                .ok_or_else(|| format!("{block}: no blockstate file"))?;
+            let file = render::parse_block_state(&text)
+                .ok_or_else(|| format!("{block}: blockstate file was refused"))?;
+            let properties =
+                render::blockstate::parse_properties(&env::var("VOXEL_STATE").unwrap_or_default());
+            let variants = file.variants_for(&properties);
+            let variant = variants
+                .first()
+                .ok_or_else(|| format!("{block}: no variant matches those properties"))?;
+            println!("block={block}");
+            println!("block_parts={}", variants.len());
+            println!(
+                "block_variant={} x{} y{} z{} uvlock={}",
+                variant.model.as_string(),
+                variant.x.degrees(),
+                variant.y.degrees(),
+                variant.z.degrees(),
+                variant.uvlock
+            );
+            // UV lock is parsed but not applied yet, so say so rather than
+            // drawing something quietly wrong.
+            if variant.uvlock {
+                println!("block_warning=uvlock requested but not applied");
+            }
+            Some((
+                root,
+                variant.model.as_string(),
+                variant.x.degrees(),
+                variant.y.degrees(),
+                variant.z.degrees(),
+            ))
+        }
+        _ => None,
+    };
+    let (assets, model_name) = match &chosen {
+        Some((root, model, ..)) => (Ok(root.clone()), Ok(model.clone())),
+        None => (env::var("VOXEL_ASSETS"), env::var("VOXEL_MODEL")),
+    };
+    let (mesh, texture_levels) = match (assets, model_name) {
         (Ok(root), Ok(name)) => {
             let source = FolderAssets {
                 root: std::path::PathBuf::from(&root),
@@ -176,21 +226,27 @@ fn run_window(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std:
                 .unwrap_or(4);
             let atlas = render::build_atlas(&source, &model, 2048, requested)
                 .map_err(|error| format!("{name}: {error:?}"))?;
-            // A blockstate variant turns its model in quarter turns; the
-            // probe takes them directly since variant selection is not built.
-            let rotate_x: i32 = env::var("VOXEL_ROTATE_X")
-                .ok()
-                .map(|value| value.parse())
-                .transpose()?
-                .unwrap_or(0);
-            let rotate_y: i32 = env::var("VOXEL_ROTATE_Y")
-                .ok()
-                .map(|value| value.parse())
-                .transpose()?
-                .unwrap_or(0);
-            let state = voxel_client::render::rotation::model_state_transform(rotate_x, rotate_y)
-                .ok_or("variant rotation must be a multiple of ninety")?;
-            let identity = rotate_x % 360 == 0 && rotate_y % 360 == 0;
+            // A blockstate variant turns its model in quarter turns. When a
+            // block was named the turns come from the variant it selected;
+            // otherwise the probe takes them directly.
+            let angle = |name: &str, from_variant: Option<i32>| -> Result<i32, String> {
+                match from_variant {
+                    Some(degrees) => Ok(degrees),
+                    None => env::var(name)
+                        .ok()
+                        .map(|value| value.parse::<i32>())
+                        .transpose()
+                        .map_err(|error| format!("{name}: {error}"))
+                        .map(|parsed| parsed.unwrap_or(0)),
+                }
+            };
+            let rotate_x = angle("VOXEL_ROTATE_X", chosen.as_ref().map(|c| c.2))?;
+            let rotate_y = angle("VOXEL_ROTATE_Y", chosen.as_ref().map(|c| c.3))?;
+            let rotate_z = angle("VOXEL_ROTATE_Z", chosen.as_ref().map(|c| c.4))?;
+            let state =
+                voxel_client::render::rotation::model_state_transform(rotate_x, rotate_y, rotate_z)
+                    .ok_or("variant rotation must be a multiple of ninety")?;
+            let identity = rotate_x % 360 == 0 && rotate_y % 360 == 0 && rotate_z % 360 == 0;
             // Outside a world a block's tint is a fixed value per block, so
             // the probe resolves the first slot from the block's name and
             // leaves the rest untinted.
@@ -200,7 +256,7 @@ fn run_window(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std:
             let mesh = render::build_mesh(&model, &atlas, (!identity).then_some(&state), &tints)
                 .map_err(|error| format!("{name}: {error:?}"))?;
             println!("model_tints={}", tints.len());
-            println!("model_rotation={rotate_x},{rotate_y}");
+            println!("model_rotation={rotate_x},{rotate_y},{rotate_z}");
             println!("model_source={name}");
             println!("model_elements={}", model.elements.len());
             println!("model_sprites={}", atlas.sprites.len());
@@ -222,7 +278,7 @@ fn run_window(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std:
         _ => {
             println!("model_source=built-in cube and checkerboard");
             let (rgba, size) = checkerboard();
-            println!("model_rotation=0,0");
+            println!("model_rotation=0,0,0");
             let mesh = render::full_cube(render::SpriteRect {
                 min_u: 0.0,
                 min_v: 0.0,
@@ -410,6 +466,12 @@ impl render::AssetSource for FolderAssets {
 
     fn texture(&self, name: &voxel_client::identifier::Identifier) -> Option<Vec<u8>> {
         std::fs::read(self.path(name, "textures", ".png")).ok()
+    }
+
+    fn block_state(&self, name: &voxel_client::identifier::Identifier) -> Option<String> {
+        // A blockstate file sits in its own directory, named after the block
+        // rather than after a model.
+        std::fs::read_to_string(self.path(name, "blockstates", ".json")).ok()
     }
 
     fn texture_metadata(

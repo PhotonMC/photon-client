@@ -1,5 +1,8 @@
 # P16.l — Blockstate varyant döndürmesi — [client-parity] birleşik kayıt
 
+> Üçüncü eksen (`z`) bu kayıtta yoktu; [P16.p](blockstate-conformance.md) ile
+> eklendi ve `model_state_transform` artık üç açı alıyor.
+
 **Tarih:** 2026-09-26 · **Referans:** Java Edition 26.2 / protokol 776 / Java 25
 
 Kanıt sınıfı `client-parity`'dir: aynı `x` ve `y` çeyrek turları pinned

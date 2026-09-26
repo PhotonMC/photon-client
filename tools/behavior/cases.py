@@ -12696,8 +12696,107 @@ def model_cases():
                 "label": f"x{x}-y{y}",
                 "x": x,
                 "y": y,
+                "z": 0,
                 "uvlock": False,
             })
+    # The third axis on its own, and combined with the other two, because the
+    # group composition is not commutative.
+    for z in (90, 180, 270):
+        state_rows.append({"label": f"z{z}", "x": 0, "y": 0, "z": z, "uvlock": False})
+    for x in (0, 90, 180, 270):
+        for y in (0, 90, 180, 270):
+            for z in (90, 180, 270):
+                state_rows.append({
+                    "label": f"x{x}-y{y}-z{z}",
+                    "x": x,
+                    "y": y,
+                    "z": z,
+                    "uvlock": False,
+                })
+
+    blockstate_texts = [
+        # The plain shape: one key, one model.
+        ("single", '{"variants": {"": {"model": "minecraft:block/stone"}}}'),
+        ("property-key", '{"variants": {"facing=north": {"model": "minecraft:block/furnace"}}}'),
+        ("rotation", '{"variants": {"": {"model": "minecraft:block/stairs",'
+                     ' "x": 90, "y": 180, "z": 270, "uvlock": true}}}'),
+        # Angles are taken modulo a full turn before the quadrant is chosen.
+        ("rotation-wrapped", '{"variants": {"": {"model": "minecraft:block/a",'
+                             ' "x": 450, "y": -90}}}'),
+        ("rotation-bad", '{"variants": {"": {"model": "minecraft:block/a", "x": 45}}}'),
+        # A list is a weighted choice; the weight defaults to one.
+        ("weighted", '{"variants": {"": [{"model": "minecraft:block/a"},'
+                     ' {"model": "minecraft:block/b", "weight": 3}]}}'),
+        ("weighted-zero", '{"variants": {"": [{"model": "minecraft:block/a", "weight": 0}]}}'),
+        ("weighted-negative",
+         '{"variants": {"": [{"model": "minecraft:block/a", "weight": -1}]}}'),
+        ("weighted-empty", '{"variants": {"": []}}'),
+        ("several-keys", '{"variants": {"half=bottom": {"model": "minecraft:block/a"},'
+                         ' "half=top": {"model": "minecraft:block/b"}}}'),
+        # A model name is required and must be a valid identifier.
+        ("no-model", '{"variants": {"": {}}}'),
+        ("bad-model", '{"variants": {"": {"model": "Not An Id"}}}'),
+        ("empty-variants", '{"variants": {}}'),
+        ("neither", "{}"),
+        ("both", '{"variants": {"": {"model": "minecraft:block/a"}},'
+                 ' "multipart": [{"apply": {"model": "minecraft:block/b"}}]}'),
+        # Multipart: a condition is optional, and its two forms nest.
+        ("multipart-plain", '{"multipart": [{"apply": {"model": "minecraft:block/a"}}]}'),
+        ("multipart-when", '{"multipart": [{"when": {"north": "true"},'
+                           ' "apply": {"model": "minecraft:block/a"}}]}'),
+        ("multipart-multi-term", '{"multipart": [{"when": {"facing": "north|south"},'
+                                 ' "apply": {"model": "minecraft:block/a"}}]}'),
+        ("multipart-negated", '{"multipart": [{"when": {"facing": "!north"},'
+                              ' "apply": {"model": "minecraft:block/a"}}]}'),
+        ("multipart-or", '{"multipart": [{"when": {"OR": [{"north": "true"},'
+                         ' {"south": "true"}]}, "apply": {"model": "minecraft:block/a"}}]}'),
+        ("multipart-and", '{"multipart": [{"when": {"AND": [{"north": "true"},'
+                          ' {"south": "true"}]}, "apply": {"model": "minecraft:block/a"}}]}'),
+        ("multipart-nested", '{"multipart": [{"when": {"OR": [{"north": "true"},'
+                             ' {"AND": [{"south": "true"}, {"east": "false"}]}]},'
+                             ' "apply": {"model": "minecraft:block/a"}}]}'),
+        # A number or a boolean in a term is taken as its text.
+        ("multipart-boolean", '{"multipart": [{"when": {"north": true},'
+                              ' "apply": {"model": "minecraft:block/a"}}]}'),
+        ("multipart-number", '{"multipart": [{"when": {"level": 3},'
+                             ' "apply": {"model": "minecraft:block/a"}}]}'),
+        ("multipart-float", '{"multipart": [{"when": {"level": 3.5},'
+                            ' "apply": {"model": "minecraft:block/a"}}]}'),
+        # Empty terms and empty maps are refused.
+        ("multipart-empty-term", '{"multipart": [{"when": {"facing": ""},'
+                                 ' "apply": {"model": "minecraft:block/a"}}]}'),
+        ("multipart-empty-piece", '{"multipart": [{"when": {"facing": "north|"},'
+                                  ' "apply": {"model": "minecraft:block/a"}}]}'),
+        ("multipart-empty-when", '{"multipart": [{"when": {},'
+                                 ' "apply": {"model": "minecraft:block/a"}}]}'),
+        ("multipart-empty", '{"multipart": []}'),
+        ("multipart-no-apply", '{"multipart": [{"when": {"north": "true"}}]}'),
+        # A combiner holds exactly one operation.
+        ("multipart-two-operations", '{"multipart": [{"when": {"OR": [{"north": "true"}],'
+                                     ' "AND": [{"south": "true"}]},'
+                                     ' "apply": {"model": "minecraft:block/a"}}]}'),
+        ("multipart-lowercase-operation", '{"multipart": [{"when": {"or": [{"north": "true"}]},'
+                                          ' "apply": {"model": "minecraft:block/a"}}]}'),
+        # An operation alongside a property: does the combiner take the one
+        # key it knows and drop the rest, or refuse the whole condition?
+        ("multipart-operation-and-property",
+         '{"multipart": [{"when": {"OR": [{"north": "true"}], "north": "true"},'
+         ' "apply": {"model": "minecraft:block/a"}}]}'),
+        ("multipart-empty-operation-list",
+         '{"multipart": [{"when": {"AND": []}, "apply": {"model": "minecraft:block/a"}}]}'),
+        # The selector string is not validated while parsing, only later when
+        # it meets a state definition.
+        ("nonsense-selector", '{"variants": {"=,,=nope": {"model": "minecraft:block/a"}}}'),
+        ("multipart-weighted", '{"multipart": [{"apply": [{"model": "minecraft:block/a"},'
+                               ' {"model": "minecraft:block/b", "weight": 2}]}]}'),
+        ("not-an-object", "[]"),
+    ]
+    yield {
+        "case_id": "model/blockstate-parse",
+        "family": "model",
+        "operation": "blockstate_parse",
+        "rows": [{"label": label, "json": text} for label, text in blockstate_texts],
+    }
 
     yield {
         "case_id": "model/model-state",

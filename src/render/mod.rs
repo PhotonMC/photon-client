@@ -3,6 +3,7 @@
 //! `docs/render-backend-decision.md`.
 
 pub mod atlas;
+pub mod blockstate;
 pub mod geometry;
 pub mod mipmap;
 pub mod model;
@@ -15,6 +16,10 @@ pub mod tint;
 pub mod vulkan;
 
 pub use atlas::{AtlasSprite, SpriteEntry, SpritePlacement, StitchError, Stitcher};
+pub use blockstate::{
+    BlockStateFile, Condition, Operation, Quadrant as VariantQuadrant, Selector, Term, Variant,
+    parse_block_state,
+};
 pub use geometry::{
     FaceUvs, Quadrant, WindingError, closest_direction, default_face_uv, face_vertex_uv,
     face_vertices, recalculate_winding, triangle_normal,

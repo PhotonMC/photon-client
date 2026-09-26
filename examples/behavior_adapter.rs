@@ -15676,9 +15676,11 @@ fn model_state_result(request: &Value) -> Result<Value, String> {
     let mut out = Vec::with_capacity(rows.len());
     for row in rows {
         let label = string(row, "label")?;
-        let Some(transform) =
-            rotation::model_state_transform(i32_field(row, "x")?, i32_field(row, "y")?)
-        else {
+        let Some(transform) = rotation::model_state_transform(
+            i32_field(row, "x")?,
+            i32_field(row, "y")?,
+            i32_field(row, "z")?,
+        ) else {
             out.push(json!({"label": label, "outcome": "rejected"}));
             continue;
         };
@@ -15712,7 +15714,99 @@ fn model_state_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+fn describe_variants(variants: &[render::Variant]) -> Value {
+    Value::Array(
+        variants
+            .iter()
+            .map(|variant| {
+                json!({
+                    "model": variant.model.as_string(),
+                    "x": variant.x.name(),
+                    "y": variant.y.name(),
+                    "z": variant.z.name(),
+                    "uvlock": variant.uvlock,
+                    "weight": variant.weight,
+                })
+            })
+            .collect::<Vec<_>>(),
+    )
+}
+
+fn describe_condition(condition: &render::Condition) -> Value {
+    match condition {
+        render::Condition::KeyValue(tests) => {
+            let mut described = serde_json::Map::new();
+            for (property, terms) in tests {
+                described.insert(
+                    property.clone(),
+                    Value::Array(
+                        terms
+                            .iter()
+                            .map(|term| json!({"value": term.value, "negated": term.negated}))
+                            .collect(),
+                    ),
+                );
+            }
+            json!({"kind": "key_value", "tests": Value::Object(described)})
+        }
+        render::Condition::Combined { operation, terms } => json!({
+            "kind": "combined",
+            "operation": operation.name(),
+            "terms": terms.iter().map(describe_condition).collect::<Vec<_>>(),
+        }),
+    }
+}
+
+fn model_blockstate_result(request: &Value) -> Result<Value, String> {
+    let rows = request["rows"]
+        .as_array()
+        .ok_or("model rows must be an array")?;
+    let mut out = Vec::with_capacity(rows.len());
+    for row in rows {
+        let label = string(row, "label")?;
+        match render::parse_block_state(string(row, "json")?) {
+            None => out.push(json!({"label": label, "outcome": "rejected"})),
+            Some(file) => {
+                let mut described = serde_json::Map::new();
+                described.insert("label".into(), json!(label));
+                described.insert("outcome".into(), json!("parsed"));
+                if let Some(variants) = &file.variants {
+                    let mut listed = serde_json::Map::new();
+                    for (key, value) in variants {
+                        listed.insert(key.clone(), describe_variants(value));
+                    }
+                    described.insert("variants".into(), Value::Object(listed));
+                }
+                if let Some(multipart) = &file.multipart {
+                    described.insert(
+                        "multipart".into(),
+                        Value::Array(
+                            multipart
+                                .iter()
+                                .map(|selector| {
+                                    let mut piece = serde_json::Map::new();
+                                    if let Some(condition) = &selector.condition {
+                                        piece.insert("when".into(), describe_condition(condition));
+                                    }
+                                    piece
+                                        .insert("apply".into(), describe_variants(&selector.apply));
+                                    Value::Object(piece)
+                                })
+                                .collect(),
+                        ),
+                    );
+                }
+                out.push(Value::Object(described));
+            }
+        }
+    }
+    Ok(json!({"rows": out}))
+}
+
 fn model_result(request: &Value) -> Result<Value, String> {
+    if string(request, "operation")? == "blockstate_parse" {
+        return model_blockstate_result(request);
+    }
     if string(request, "operation")? == "model_state" {
         return model_state_result(request);
     }

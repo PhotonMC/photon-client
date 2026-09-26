@@ -233,21 +233,24 @@ pub fn rotate_vertex(vertex: [f32; 3], origin: [f32; 3], matrix: &Matrix4) -> [f
 
 /// A blockstate variant's whole-model rotation.
 ///
-/// A variant may turn its model by quarter turns about X and then Y. The
+/// A variant may turn its model by quarter turns about all three axes. The
 /// reference composes these through its cube symmetry group, whose matrices
 /// hold only zero and plus or minus one, so the composition here is exact and
 /// needs no trigonometry.
-pub fn model_state_transform(x_degrees: i32, y_degrees: i32) -> Option<Matrix4> {
-    let x_quarters = quarter_turns(x_degrees)?;
-    let y_quarters = quarter_turns(y_degrees)?;
+///
+/// The order is not free: X is applied first, then Y wraps around it, then Z
+/// wraps around both. The group is not commutative, so swapping two of them
+/// gives a different orientation.
+pub fn model_state_transform(x_degrees: i32, y_degrees: i32, z_degrees: i32) -> Option<Matrix4> {
     let mut result = IDENTITY;
-    // X is applied first and Y wraps around it, matching how the reference
-    // composes the two group elements.
-    for _ in 0..x_quarters {
-        result = exact_multiply(&ROTATE_X_QUARTER, &result);
-    }
-    for _ in 0..y_quarters {
-        result = exact_multiply(&ROTATE_Y_QUARTER, &result);
+    for (degrees, generator) in [
+        (x_degrees, &ROTATE_X_QUARTER),
+        (y_degrees, &ROTATE_Y_QUARTER),
+        (z_degrees, &ROTATE_Z_QUARTER),
+    ] {
+        for _ in 0..quarter_turns(degrees)? {
+            result = exact_multiply(generator, &result);
+        }
     }
     Some(result)
 }
@@ -268,6 +271,14 @@ const ROTATE_X_QUARTER: Matrix4 = [
     [1.0, 0.0, 0.0, 0.0],
     [0.0, 0.0, -1.0, 0.0],
     [0.0, 1.0, 0.0, 0.0],
+    [0.0, 0.0, 0.0, 1.0],
+];
+
+/// One quarter turn about Z, taking `(x, y, z)` to `(-y, x, z)`.
+const ROTATE_Z_QUARTER: Matrix4 = [
+    [0.0, -1.0, 0.0, 0.0],
+    [1.0, 0.0, 0.0, 0.0],
+    [0.0, 0.0, 1.0, 0.0],
     [0.0, 0.0, 0.0, 1.0],
 ];
 

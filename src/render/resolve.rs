@@ -33,6 +33,14 @@ pub trait AssetSource {
     fn model(&self, name: &Identifier) -> Option<String>;
     /// The bytes of one texture, by the name a texture slot uses for it.
     fn texture(&self, name: &Identifier) -> Option<Vec<u8>>;
+    /// The text of one block's blockstate file, by the block's name.
+    ///
+    /// A block that has none cannot be drawn, which is a caller's concern
+    /// rather than an error here.
+    fn block_state(&self, _name: &Identifier) -> Option<String> {
+        None
+    }
+
     /// The texture section of one sprite's metadata, if the sprite has one.
     ///
     /// Absent metadata is not an error: every field has a default, and the

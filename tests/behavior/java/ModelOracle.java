@@ -28,12 +28,119 @@ public final class ModelOracle {
                 case "face_uv_rotation" -> rows.add(uvRotation(element.getAsJsonObject()));
                 case "parse_model" -> rows.add(parseModel(element.getAsJsonObject()));
                 case "model_state" -> rows.add(modelState(element.getAsJsonObject()));
+                case "blockstate_parse" -> rows.add(blockstate(element.getAsJsonObject()));
                 default -> throw new IllegalArgumentException("Unknown model operation: " + operation);
             }
         }
         var result = new JsonObject();
         result.add("rows", rows);
         return result;
+    }
+
+    /**
+     * One blockstate file, read through the dispatcher's codec.
+     *
+     * Only the parse is driven here. Turning a selector into a predicate needs
+     * the block's state definition, which needs the registry.
+     */
+    private static JsonObject blockstate(JsonObject row) {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        try {
+            var json = com.google.gson.JsonParser.parseString(row.get("json").getAsString());
+            var parsed = net.minecraft.client.renderer.block.dispatch.BlockStateModelDispatcher.CODEC
+                .parse(com.mojang.serialization.JsonOps.INSTANCE, json)
+                .getOrThrow();
+            entry.addProperty("outcome", "parsed");
+            if (parsed.simpleModels().isPresent()) {
+                var models = parsed.simpleModels().get().models();
+                var variants = new JsonObject();
+                // The codec builds an unordered map, so the keys are sorted
+                // here to make the comparison deterministic.
+                for (String key : new java.util.TreeSet<>(models.keySet())) {
+                    variants.add(key, describeUnbaked(models.get(key)));
+                }
+                entry.add("variants", variants);
+            }
+            if (parsed.multiPart().isPresent()) {
+                var selectors = new JsonArray();
+                for (var selector : parsed.multiPart().get().selectors()) {
+                    var described = new JsonObject();
+                    described.add("when", selector.condition()
+                        .map(ModelOracle::describeCondition)
+                        .orElse(null));
+                    described.add("apply", describeUnbaked(selector.variant()));
+                    selectors.add(described);
+                }
+                entry.add("multipart", selectors);
+            }
+        } catch (Exception failure) {
+            entry.addProperty("outcome", "rejected");
+        }
+        return entry;
+    }
+
+    /** A variant or a weighted list of them, flattened to one array. */
+    private static JsonArray describeUnbaked(
+        net.minecraft.client.renderer.block.dispatch.BlockStateModel.Unbaked unbaked) {
+        var out = new JsonArray();
+        if (unbaked instanceof net.minecraft.client.renderer.block.dispatch
+                .SingleVariant.Unbaked single) {
+            out.add(describeVariant(single.variant(), 1));
+            return out;
+        }
+        var weighted = (net.minecraft.client.renderer.block.dispatch
+            .WeightedVariants.Unbaked) unbaked;
+        for (var element : weighted.entries().unwrap()) {
+            var single = (net.minecraft.client.renderer.block.dispatch
+                .SingleVariant.Unbaked) element.value();
+            out.add(describeVariant(single.variant(), element.weight()));
+        }
+        return out;
+    }
+
+    private static JsonObject describeVariant(
+        net.minecraft.client.renderer.block.dispatch.Variant variant, int weight) {
+        var described = new JsonObject();
+        described.addProperty("model", variant.modelLocation().toString());
+        described.addProperty("x", variant.modelState().x().name());
+        described.addProperty("y", variant.modelState().y().name());
+        described.addProperty("z", variant.modelState().z().name());
+        described.addProperty("uvlock", variant.modelState().uvLock());
+        described.addProperty("weight", weight);
+        return described;
+    }
+
+    private static JsonObject describeCondition(
+        net.minecraft.client.renderer.block.dispatch.multipart.Condition condition) {
+        var described = new JsonObject();
+        if (condition instanceof net.minecraft.client.renderer.block.dispatch.multipart
+                .KeyValueCondition keyValue) {
+            described.addProperty("kind", "key_value");
+            var tests = new JsonObject();
+            for (String key : new java.util.TreeSet<>(keyValue.tests().keySet())) {
+                var terms = new JsonArray();
+                for (var term : keyValue.tests().get(key).entries()) {
+                    var described_term = new JsonObject();
+                    described_term.addProperty("value", term.value());
+                    described_term.addProperty("negated", term.negated());
+                    terms.add(described_term);
+                }
+                tests.add(key, terms);
+            }
+            described.add("tests", tests);
+            return described;
+        }
+        var combined = (net.minecraft.client.renderer.block.dispatch.multipart
+            .CombinedCondition) condition;
+        described.addProperty("kind", "combined");
+        described.addProperty("operation", combined.operation().getSerializedName());
+        var terms = new JsonArray();
+        for (var term : combined.terms()) {
+            terms.add(describeCondition(term));
+        }
+        described.add("terms", terms);
+        return described;
     }
 
     /** Corner layout and default texture mapping for one cuboid face. */
@@ -86,8 +193,11 @@ public final class ModelOracle {
         entry.addProperty("label", row.get("label").getAsString());
         var xQuadrant = com.mojang.math.Quadrant.parseJson(row.get("x").getAsInt());
         var yQuadrant = com.mojang.math.Quadrant.parseJson(row.get("y").getAsInt());
+        var zQuadrant = com.mojang.math.Quadrant.parseJson(row.get("z").getAsInt());
         boolean uvLock = row.get("uvlock").getAsBoolean();
-        var group = com.mojang.math.Quadrant.fromXYAngles(xQuadrant, yQuadrant);
+        // A variant may turn about all three axes, and the dispatcher always
+        // goes through the three-axis composition even when z is zero.
+        var group = com.mojang.math.Quadrant.fromXYZAngles(xQuadrant, yQuadrant, zQuadrant);
         var rotation = net.minecraft.client.renderer.block.dispatch.BlockModelRotation.get(group);
         net.minecraft.client.renderer.block.dispatch.ModelState state =
             uvLock ? rotation.withUvLock() : rotation;
