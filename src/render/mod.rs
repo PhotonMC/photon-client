@@ -11,6 +11,7 @@ pub mod resolve;
 pub mod rotation;
 pub mod scene;
 pub mod texture_metadata;
+pub mod tint;
 pub mod vulkan;
 
 pub use atlas::{AtlasSprite, SpriteEntry, SpritePlacement, StitchError, Stitcher};
@@ -36,4 +37,8 @@ pub use rotation::{
 };
 pub use scene::{Mesh, SpriteRect, Vertex, full_cube};
 pub use texture_metadata::TextureMetadata;
+pub use tint::{
+    ColourMap, ColourMapOutOfBounds, FOLIAGE_MANGROVE, LILY_PAD_IN_WORLD, colour_map_lookup,
+    constant_tint, multiply,
+};
 pub use vulkan::{CapturedFrame, VulkanBackend, VulkanError};

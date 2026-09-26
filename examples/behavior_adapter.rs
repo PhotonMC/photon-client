@@ -15977,6 +15977,92 @@ fn image_sprite_uv_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+fn image_colour_map_result(request: &Value) -> Result<Value, String> {
+    let bytes = hex_bytes(string(request, "colour_map")?)?;
+    let map = render::decode_rgba(&bytes).map_err(|_| "colour map did not decode")?;
+    // The reference reads the map as packed colours, not as bytes.
+    let pixels: Vec<u32> = map
+        .rgba
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .map(|texel| {
+            (u32::from(texel[3]) << 24)
+                | (u32::from(texel[0]) << 16)
+                | (u32::from(texel[1]) << 8)
+                | u32::from(texel[2])
+        })
+        .collect();
+    let rows = request["rows"]
+        .as_array()
+        .ok_or("image rows must be an array")?;
+    let mut out = Vec::with_capacity(rows.len());
+    for row in rows {
+        let label = string(row, "label")?;
+        let kind = match string(row, "kind")? {
+            "grass" => render::ColourMap::Grass,
+            "foliage" => render::ColourMap::Foliage,
+            "dry_foliage" => render::ColourMap::DryFoliage,
+            other => return Err(format!("unknown colour map kind: {other}")),
+        };
+        let read = |name: &str| -> Result<f64, String> {
+            let bits = u64::from_str_radix(string(row, name)?, 16)
+                .map_err(|error| format!("{name}: {error}"))?;
+            Ok(f64::from_bits(bits))
+        };
+        match render::colour_map_lookup(kind, &pixels, read("temperature")?, read("rain")?) {
+            Err(_) => out.push(json!({"label": label, "outcome": "out_of_bounds"})),
+            Ok(colour) => out.push(json!({
+                "label": label,
+                "outcome": "resolved",
+                "colour": format!("{colour:08x}"),
+            })),
+        }
+    }
+    Ok(json!({"rows": out}))
+}
+
+fn image_argb_multiply_result(request: &Value) -> Result<Value, String> {
+    let rows = request["rows"]
+        .as_array()
+        .ok_or("image rows must be an array")?;
+    let mut out = Vec::with_capacity(rows.len());
+    for row in rows {
+        let read = |name: &str| -> Result<u32, String> {
+            u32::from_str_radix(string(row, name)?, 16).map_err(|error| format!("{name}: {error}"))
+        };
+        out.push(json!({
+            "label": string(row, "label")?,
+            "outcome": "multiplied",
+            "colour": format!("{:08x}", render::multiply(read("lhs")?, read("rhs")?)),
+        }));
+    }
+    Ok(json!({"rows": out}))
+}
+
+fn image_tint_constants_result(request: &Value) -> Result<Value, String> {
+    let rows = request["rows"]
+        .as_array()
+        .ok_or("image rows must be an array")?;
+    let mut out = Vec::with_capacity(rows.len());
+    for row in rows {
+        out.push(json!({
+            "label": string(row, "label")?,
+            "outcome": "listed",
+            "values": {
+                "foliage_default": format!("{:08x}", render::ColourMap::Foliage.default_colour()),
+                "foliage_evergreen": format!("{:08x}", render::constant_tint("spruce_leaves").unwrap_or(0)),
+                "foliage_birch": format!("{:08x}", render::constant_tint("birch_leaves").unwrap_or(0)),
+                "foliage_mangrove": format!("{:08x}", render::FOLIAGE_MANGROVE),
+                "dry_foliage_default": format!("{:08x}", render::ColourMap::DryFoliage.default_colour()),
+                "lily_pad_in_hand": format!("{:08x}", render::constant_tint("lily_pad").unwrap_or(0)),
+                "lily_pad_in_world": format!("{:08x}", render::LILY_PAD_IN_WORLD),
+            },
+        }));
+    }
+    Ok(json!({"rows": out}))
+}
+
 fn image_result(request: &Value) -> Result<Value, String> {
     if string(request, "operation")? == "srgb_tables" {
         return image_tables_result(request);
@@ -15992,6 +16078,15 @@ fn image_result(request: &Value) -> Result<Value, String> {
     }
     if string(request, "operation")? == "sprite_uv" {
         return image_sprite_uv_result(request);
+    }
+    if string(request, "operation")? == "colour_map" {
+        return image_colour_map_result(request);
+    }
+    if string(request, "operation")? == "argb_multiply" {
+        return image_argb_multiply_result(request);
+    }
+    if string(request, "operation")? == "tint_constants" {
+        return image_tint_constants_result(request);
     }
     if string(request, "operation")? != "png_decode" {
         return Err("unknown image operation".into());

@@ -340,6 +340,7 @@ pub fn build_mesh(
     model: &ResolvedModel,
     atlas: &BuiltAtlas,
     model_state: Option<&crate::render::rotation::Matrix4>,
+    tints: &[u32],
 ) -> Result<Mesh, ResolveError> {
     let mut mesh = Mesh::default();
     for element in &model.elements {
@@ -363,6 +364,19 @@ pub fn build_mesh(
             } else {
                 1.0
             };
+            // A face names a tint slot rather than a colour. A slot the
+            // caller did not resolve leaves the face untinted, which is what
+            // the reference does when a block has no source for that layer.
+            let tint = usize::try_from(face.tint_index)
+                .ok()
+                .and_then(|slot| tints.get(slot).copied())
+                .unwrap_or(0xFFFF_FFFF);
+            let tint = [
+                ((tint >> 16) & 0xFF) as f32 / 255.0,
+                ((tint >> 8) & 0xFF) as f32 / 255.0,
+                (tint & 0xFF) as f32 / 255.0,
+                ((tint >> 24) & 0xFF) as f32 / 255.0,
+            ];
             let base = mesh.vertices.len() as u32;
             for (slot, position) in positions.into_iter().enumerate() {
                 let mut rotated = match &element.rotation {
@@ -382,6 +396,7 @@ pub fn build_mesh(
                         rect[1] + (rect[3] - rect[1]) * v,
                     ],
                     shade,
+                    tint,
                 });
             }
             mesh.indices

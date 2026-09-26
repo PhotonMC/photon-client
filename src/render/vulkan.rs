@@ -26,12 +26,15 @@ layout(push_constant) uniform Push { mat4 view_projection; } push;
 layout(location = 0) in vec3 in_position;
 layout(location = 1) in vec2 in_uv;
 layout(location = 2) in float in_shade;
+layout(location = 3) in vec4 in_tint;
 layout(location = 0) out vec2 out_uv;
 layout(location = 1) out float out_shade;
+layout(location = 2) out vec4 out_tint;
 void main() {
     gl_Position = push.view_projection * vec4(in_position, 1.0);
     out_uv = in_uv;
     out_shade = in_shade;
+    out_tint = in_tint;
 }
 ";
 
@@ -39,9 +42,10 @@ const FRAGMENT_SHADER: &str = r"#version 450
 layout(set = 0, binding = 0) uniform sampler2D atlas;
 layout(location = 0) in vec2 in_uv;
 layout(location = 1) in float in_shade;
+layout(location = 2) in vec4 in_tint;
 layout(location = 0) out vec4 out_colour;
 void main() {
-    vec4 texel = texture(atlas, in_uv);
+    vec4 texel = texture(atlas, in_uv) * in_tint;
     if (texel.a < 0.1) { discard; }
     out_colour = vec4(texel.rgb * in_shade, texel.a);
 }
@@ -674,6 +678,11 @@ impl VulkanBackend {
                     .binding(0)
                     .format(vk::Format::R32_SFLOAT)
                     .offset(20),
+                vk::VertexInputAttributeDescription::default()
+                    .location(3)
+                    .binding(0)
+                    .format(vk::Format::R32G32B32A32_SFLOAT)
+                    .offset(24),
             ];
             let vertex_input = vk::PipelineVertexInputStateCreateInfo::default()
                 .vertex_binding_descriptions(&bindings)

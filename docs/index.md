@@ -325,6 +325,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P01 — Math ailesi doğrulaması — client-parity kapsam kaydı](math-conformance.md)
 - [P16.m — Mip seviyesi üretimi, cutout stratejileri ve sRGB tabloları — client-parity birleşik kayıt](mipmap-conformance.md)
 - [P16.n — Atlas yerleşimi, dolgu ve mip yüklemesi — karışık kanıt kaydı](atlas-layout-and-mip-upload.md)
+- [P16.o — Blok tonlaması — client-parity kayıt](block-tint-conformance.md)
 - [P16.j — Model dosyası ayrıştırma — client-parity birleşik kayıt](model-file-parse-conformance.md)
 - [P16.l — Blockstate varyant döndürmesi — client-parity birleşik kayıt](model-state-conformance.md)
 - [P16.c — Model texture slot çözümü — client-parity birleşik kayıt](model-texture-slots-conformance.md)

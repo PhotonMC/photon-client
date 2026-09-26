@@ -191,8 +191,15 @@ fn run_window(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std:
             let state = voxel_client::render::rotation::model_state_transform(rotate_x, rotate_y)
                 .ok_or("variant rotation must be a multiple of ninety")?;
             let identity = rotate_x % 360 == 0 && rotate_y % 360 == 0;
-            let mesh = render::build_mesh(&model, &atlas, (!identity).then_some(&state))
+            // Outside a world a block's tint is a fixed value per block, so
+            // the probe resolves the first slot from the block's name and
+            // leaves the rest untinted.
+            let tints =
+                render::constant_tint(identifier.path().strip_prefix("block/").unwrap_or(""))
+                    .map_or_else(Vec::new, |colour| vec![colour]);
+            let mesh = render::build_mesh(&model, &atlas, (!identity).then_some(&state), &tints)
                 .map_err(|error| format!("{name}: {error:?}"))?;
+            println!("model_tints={}", tints.len());
             println!("model_rotation={rotate_x},{rotate_y}");
             println!("model_source={name}");
             println!("model_elements={}", model.elements.len());

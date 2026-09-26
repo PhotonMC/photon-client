@@ -12329,6 +12329,80 @@ def image_cases():
         ],
     }
 
+    # The biome tints index a 256x256 colour map by temperature and rainfall.
+    # A synthetic map keeps the case self-contained; what is being pinned is
+    # the indexing, not the game's own artwork.
+    colour_map_png = _encode_png(
+        256, 256, 6, 8,
+        [bytes(b for x in range(256) for b in (x, y, (x * y) % 256, 255)) for y in range(256)],
+        None, None, [0] * 256,
+    ).hex()
+    colour_map_rows = [
+        ("grass/default", "grass", 0.5, 1.0),
+        ("grass/cold-wet", "grass", 0.0, 1.0),
+        ("grass/hot-dry", "grass", 1.0, 0.0),
+        ("grass/hot-wet", "grass", 1.0, 1.0),
+        ("grass/mid", "grass", 0.8, 0.4),
+        ("foliage/default", "foliage", 0.5, 1.0),
+        ("foliage/plains", "foliage", 0.8, 0.4),
+        ("dry-foliage/default", "dry_foliage", 0.5, 1.0),
+        # Rain is scaled by temperature first, so the same rain lands elsewhere
+        # at a different temperature.
+        ("grass/rain-scaling", "grass", 0.25, 1.0),
+        # The truncation is toward zero, so a fraction of a step is dropped.
+        ("grass/just-under-a-step", "grass", 0.5 + 1.0 / 512.0, 1.0),
+        # The lookup guards the upper bound but not the lower one.
+        ("grass/above-one", "grass", 1.5, 1.0),
+        ("grass/below-zero", "grass", -0.5, 1.0),
+        ("grass/negative-rain", "grass", 0.5, -1.0),
+    ]
+    yield {
+        "case_id": "image/colour-map",
+        "family": "image",
+        "operation": "colour_map",
+        "colour_map": colour_map_png,
+        "rows": [
+            {
+                "label": label,
+                "kind": kind,
+                "temperature": float_bits(temperature, "f64"),
+                "rain": float_bits(rain, "f64"),
+            }
+            for label, kind, temperature, rain in colour_map_rows
+        ],
+    }
+
+    # How a tint folds into a quad's colour: per channel, with an integer
+    # division, and with white on either side short-circuiting.
+    multiply_rows = [
+        ("white-left", "ffffffff", "ff48b518"),
+        ("white-right", "ff48b518", "ffffffff"),
+        ("both-white", "ffffffff", "ffffffff"),
+        ("foliage-on-grey", "ff48b518", "ff808080"),
+        ("halves", "80808080", "80808080"),
+        ("black", "ff000000", "ff48b518"),
+        ("one-each", "01010101", "01010101"),
+        # The top byte is unsigned, so a full alpha survives the divide.
+        ("full-alpha", "ff010203", "ff040506"),
+        ("max", "fefefefe", "fefefefe"),
+    ]
+    yield {
+        "case_id": "image/argb-multiply",
+        "family": "image",
+        "operation": "argb_multiply",
+        "rows": [
+            {"label": label, "lhs": lhs, "rhs": rhs}
+            for label, lhs, rhs in multiply_rows
+        ],
+    }
+
+    yield {
+        "case_id": "image/tint-constants",
+        "family": "image",
+        "operation": "tint_constants",
+        "rows": [{"label": "constants"}],
+    }
+
     yield {
         "case_id": "image/png-decode",
         "family": "image",

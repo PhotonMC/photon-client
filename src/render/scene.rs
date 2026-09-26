@@ -20,6 +20,10 @@ pub struct Vertex {
     pub uv: [f32; 2],
     /// Flat face shade, the only lighting this scaffolding applies.
     pub shade: f32,
+    /// The tint the texel is multiplied by, white when the face has no tint
+    /// slot. The reference folds the tint into the quad's colour before the
+    /// shader sees it, so it rides along with the vertex here too.
+    pub tint: [f32; 4],
 }
 
 /// Vertices and indices for one cube.
@@ -79,6 +83,7 @@ pub fn full_cube(sprite: SpriteRect) -> Mesh {
                     sprite.min_v + (sprite.max_v - sprite.min_v) * v,
                 ],
                 shade: SHADE[face_index],
+                tint: [1.0; 4],
             });
         }
         mesh.indices

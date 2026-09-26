@@ -17,6 +17,9 @@ public final class ImageOracle {
                 case "compute_transparency" -> rows.add(transparency(element.getAsJsonObject()));
                 case "texture_metadata" -> rows.add(textureMetadata(element.getAsJsonObject()));
                 case "sprite_uv" -> rows.add(spriteUv(element.getAsJsonObject()));
+                case "colour_map" -> rows.add(colourMap(request, element.getAsJsonObject()));
+                case "argb_multiply" -> rows.add(argbMultiply(element.getAsJsonObject()));
+                case "tint_constants" -> rows.add(tintConstants(element.getAsJsonObject()));
                 default -> throw new IllegalArgumentException("Unknown image operation: " + operation);
             }
         }
@@ -130,6 +133,87 @@ public final class ImageOracle {
             }
             entry.add("interpolated", interpolated);
         }
+        return entry;
+    }
+
+    /** The colour map the three biome tints index, loaded once per request. */
+    private static int[] colourMapPixels(JsonObject request) throws Exception {
+        var bytes = HexFormat.of().parseHex(request.get("colour_map").getAsString());
+        try (var image = NativeImage.read(new ByteArrayInputStream(bytes))) {
+            return image.makePixelArray();
+        }
+    }
+
+    /** One biome tint looked up by temperature and rainfall. */
+    private static JsonObject colourMap(JsonObject request, JsonObject row) throws Exception {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        double temperature = Double.longBitsToDouble(
+            Long.parseUnsignedLong(row.get("temperature").getAsString(), 16));
+        double rain = Double.longBitsToDouble(
+            Long.parseUnsignedLong(row.get("rain").getAsString(), 16));
+        var pixels = colourMapPixels(request);
+        net.minecraft.world.level.GrassColor.init(pixels);
+        net.minecraft.world.level.FoliageColor.init(pixels);
+        net.minecraft.world.level.DryFoliageColor.init(pixels);
+        try {
+            int colour = switch (row.get("kind").getAsString()) {
+                case "grass" -> net.minecraft.world.level.GrassColor.get(temperature, rain);
+                case "foliage" -> net.minecraft.world.level.FoliageColor.get(temperature, rain);
+                case "dry_foliage" ->
+                    net.minecraft.world.level.DryFoliageColor.get(temperature, rain);
+                default -> throw new IllegalArgumentException("Unknown colour map kind");
+            };
+            entry.addProperty("outcome", "resolved");
+            entry.addProperty("colour", String.format(java.util.Locale.ROOT, "%08x", colour));
+        } catch (IndexOutOfBoundsException failure) {
+            // The lookup guards the upper bound but not the lower one, so a
+            // temperature above one indexes before the start of the map.
+            entry.addProperty("outcome", "out_of_bounds");
+        }
+        return entry;
+    }
+
+    /** How a tint is folded into a quad's colour. */
+    private static JsonObject argbMultiply(JsonObject row) {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        int lhs = Integer.parseUnsignedInt(row.get("lhs").getAsString(), 16);
+        int rhs = Integer.parseUnsignedInt(row.get("rhs").getAsString(), 16);
+        entry.addProperty("outcome", "multiplied");
+        entry.addProperty("colour", String.format(java.util.Locale.ROOT, "%08x",
+            net.minecraft.util.ARGB.multiply(lhs, rhs)));
+        return entry;
+    }
+
+    /** The fixed tints, which are what a block drawn outside a world uses. */
+    private static JsonObject tintConstants(JsonObject row) {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        entry.addProperty("outcome", "listed");
+        var values = new JsonObject();
+        values.addProperty("foliage_default",
+            String.format(java.util.Locale.ROOT, "%08x",
+                net.minecraft.world.level.FoliageColor.FOLIAGE_DEFAULT));
+        values.addProperty("foliage_evergreen",
+            String.format(java.util.Locale.ROOT, "%08x",
+                net.minecraft.world.level.FoliageColor.FOLIAGE_EVERGREEN));
+        values.addProperty("foliage_birch",
+            String.format(java.util.Locale.ROOT, "%08x",
+                net.minecraft.world.level.FoliageColor.FOLIAGE_BIRCH));
+        values.addProperty("foliage_mangrove",
+            String.format(java.util.Locale.ROOT, "%08x",
+                net.minecraft.world.level.FoliageColor.FOLIAGE_MANGROVE));
+        values.addProperty("dry_foliage_default",
+            String.format(java.util.Locale.ROOT, "%08x",
+                net.minecraft.world.level.DryFoliageColor.FOLIAGE_DRY_DEFAULT));
+        values.addProperty("lily_pad_in_hand",
+            String.format(java.util.Locale.ROOT, "%08x",
+                net.minecraft.client.color.block.BlockColors.LILY_PAD_DEFAULT));
+        values.addProperty("lily_pad_in_world",
+            String.format(java.util.Locale.ROOT, "%08x",
+                net.minecraft.client.color.block.BlockColors.LILY_PAD_IN_WORLD));
+        entry.add("values", values);
         return entry;
     }
 
