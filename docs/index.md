@@ -44,6 +44,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P01.d — AABB sizes sözleşmesi — client-parity birleşik kayıt](aabb-sizes-conformance.md)
 - [P01.d — AABB toString sözleşmesi — client-parity birleşik kayıt](aabb-to-string-conformance.md)
 - [P05.a — OptionInstance AltEnum sözleşmesi — client-parity birleşik kayıt](alt-enum-conformance.md)
+- [P16.a — Texture atlas paketleyici — client-parity birleşik kayıt](atlas-stitcher-conformance.md)
 - [P01.c — AxisCycle sözleşmesi — client-parity birleşik kayıt](axis-cycle-conformance.md)
 - [P03.b — Vec3 stream codec, LP Vec3 stream codec, UUID, BlockPos, SectionPos, ChunkPos, long array ve BitSet referans sözleşmesi — client-parity birleşik kayıt](binary-conformance.md)
 - [P12 — Blok eylemi sequence ACK sözleşmesi — server-conformance birleşik kayıt](block-action-conformance.md)

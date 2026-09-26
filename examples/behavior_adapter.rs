@@ -76,6 +76,7 @@ use voxel_client::status::{
 use voxel_client::tags::{ClientboundUpdateTagsPacket, RegistryTags, TagEntry};
 use voxel_client::timer::Timer;
 use voxel_client::utf8;
+use voxel_client::render;
 use voxel_client::window;
 use voxel_client::wire::{self, ReadError};
 use voxel_client::world::{
@@ -15113,6 +15114,58 @@ fn nbt_result(request: &Value) -> Result<Value, String> {
     }
 }
 
+fn atlas_result(request: &Value) -> Result<Value, String> {
+    if string(request, "operation")? != "stitch" {
+        return Err("unknown atlas operation".into());
+    }
+    let rows = request["rows"].as_array().ok_or("atlas rows must be an array")?;
+    let mut out = Vec::with_capacity(rows.len());
+    for row in rows {
+        let mut stitcher = render::Stitcher::new(
+            i32_field(row, "max_width")?,
+            i32_field(row, "max_height")?,
+            i32_field(row, "mip_level")?,
+            i32_field(row, "anisotropy_bit")?,
+        );
+        let sprites = row["sprites"].as_array().ok_or("sprites must be an array")?;
+        for sprite in sprites {
+            let name = Identifier::parse(string(sprite, "name")?)
+                .map_err(|error| format!("sprite name: {error:?}"))?;
+            stitcher.register_sprite(render::SpriteEntry {
+                width: i32_field(sprite, "width")?,
+                height: i32_field(sprite, "height")?,
+                name,
+            });
+        }
+        let label = string(row, "label")?;
+        match stitcher.stitch() {
+            Err(_) => out.push(json!({"label": label, "outcome": "stitch_failed"})),
+            Ok(()) => {
+                let placements: Vec<Value> = stitcher
+                    .placements()
+                    .into_iter()
+                    .map(|placement| {
+                        json!({
+                            "name": placement.name.as_string(),
+                            "x": placement.x,
+                            "y": placement.y,
+                            "padding": placement.padding,
+                        })
+                    })
+                    .collect();
+                out.push(json!({
+                    "label": label,
+                    "outcome": "stitched",
+                    "width": stitcher.width(),
+                    "height": stitcher.height(),
+                    "placements": placements,
+                }));
+            }
+        }
+    }
+    Ok(json!({"rows": out}))
+}
+
 fn window_result(request: &Value) -> Result<Value, String> {
     match string(request, "operation")? {
         "base_size" => Ok(json!({
@@ -15175,6 +15228,7 @@ fn respond(request: Value) -> Result<Value, String> {
         "nbt" => nbt_result(&request)?,
         "resources" => resources_result(&request)?,
         "window" => window_result(&request)?,
+        "atlas" => atlas_result(&request)?,
         _ => return Err("unknown behavior family".into()),
     };
     Ok(json!({"schema_version": 1, "case_id": case_id, "result": result}))
