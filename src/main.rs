@@ -173,8 +173,35 @@ fn run_window(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std:
                 .ok_or_else(|| format!("{block}: no blockstate file"))?;
             let file = render::parse_block_state(&text)
                 .ok_or_else(|| format!("{block}: blockstate file was refused"))?;
-            let properties =
+            // The registry says which properties the block has and what they
+            // may hold, so a typo is caught here rather than silently picking
+            // the wrong variant.
+            let definition = voxel_client::world::block_registry::block(&name.as_string())
+                .ok_or_else(|| format!("{block}: not in the block registry"))?;
+            let mut properties =
                 render::blockstate::parse_properties(&env::var("VOXEL_STATE").unwrap_or_default());
+            for (key, value) in &properties {
+                let property = definition
+                    .properties
+                    .iter()
+                    .map(|index| &voxel_client::world::block_registry::PROPERTIES[*index as usize])
+                    .find(|property| property.name == key)
+                    .ok_or_else(|| format!("{block}: no property named {key}"))?;
+                if !property.values.contains(&value.as_str()) {
+                    return Err(format!("{block}: {key} cannot be {value}").into());
+                }
+            }
+            // A property the caller left out keeps the default state's value,
+            // which is what a blockstate selector expects to find.
+            for (slot, index) in definition.properties.iter().enumerate() {
+                let property = &voxel_client::world::block_registry::PROPERTIES[*index as usize];
+                properties
+                    .entry(property.name.to_owned())
+                    .or_insert_with(|| {
+                        property.values[usize::from(definition.default[slot])].to_owned()
+                    });
+            }
+            println!("block_state_id={:?}", definition.state_id(&properties));
             let variants = file.variants_for(&properties);
             let variant = variants
                 .first()
@@ -196,6 +223,7 @@ fn run_window(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std:
                 variant.y.degrees(),
                 variant.z.degrees(),
                 variant.uvlock,
+                name.as_string(),
             ))
         }
         _ => None,
@@ -243,12 +271,13 @@ fn run_window(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std:
                 voxel_client::render::rotation::model_state_transform(rotate_x, rotate_y, rotate_z)
                     .ok_or("variant rotation must be a multiple of ninety")?;
             let identity = rotate_x % 360 == 0 && rotate_y % 360 == 0 && rotate_z % 360 == 0;
-            // Outside a world a block's tint is a fixed value per block, so
-            // the probe resolves the first slot from the block's name and
-            // leaves the rest untinted.
-            let tints =
-                render::constant_tint(identifier.path().strip_prefix("block/").unwrap_or(""))
-                    .map_or_else(Vec::new, |colour| vec![colour]);
+            // Outside a world a block's tints are fixed per block, so they
+            // come from the registry rather than from the world. A model drawn
+            // by name rather than by block has none.
+            let tints: Vec<u32> = chosen
+                .as_ref()
+                .map(|c| render::constant_tints(&c.6).to_vec())
+                .unwrap_or_default();
             // A variant may lock its UVs, which turns each face's texture
             // coordinate back by as much as the model turned.
             let uv_lock = chosen.as_ref().is_some_and(|c| c.5);

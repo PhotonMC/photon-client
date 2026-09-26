@@ -8,6 +8,26 @@ import java.util.Locale;
 
 /** Test glue only: invokes the original JAR; never implements game algorithms. */
 public final class Oracle {
+    /**
+     * The stream records go to.
+     *
+     * A family that bootstraps the game's registries replaces `System.out`
+     * with one that feeds the logger. That family puts it back, but holding
+     * the original here means a record can never be swallowed even if one
+     * forgets to.
+     */
+    private static final java.io.PrintStream OUT = System.out;
+
+    /**
+     * The version every bootstrapping family installs.
+     *
+     * `SharedConstants.setVersion` refuses a second, different instance, so
+     * the families that bootstrap have to agree on one object rather than each
+     * building its own.
+     */
+    static final net.minecraft.WorldVersion TEST_VERSION =
+        net.minecraft.DetectedVersion.createBuiltIn("26.2", "26.2");
+
     public static void main(String[] args) throws Exception {
         Locale.setDefault(Locale.ROOT);
         var gson = new Gson();
@@ -30,6 +50,7 @@ public final class Oracle {
                     case "image" -> "ImageOracle";
                     case "model" -> "ModelOracle";
                     case "json" -> "JsonOracle";
+                    case "block" -> "BlockOracle";
                     default -> throw new IllegalArgumentException("Unknown scenario family");
                 };
                 var response = new JsonObject();
@@ -43,7 +64,7 @@ public final class Oracle {
                     response.add("diagnostics", diagnostics);
                 }
                 response.add("result", result);
-                System.out.println(gson.toJson(response));
+                OUT.println(gson.toJson(response));
             }
         }
     }

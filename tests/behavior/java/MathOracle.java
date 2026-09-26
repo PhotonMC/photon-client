@@ -142,7 +142,8 @@ import org.joml.Vector2i;
 import sun.misc.Unsafe;
 
 public final class MathOracle {
-    private static final WorldVersion TEST_VERSION = DetectedVersion.createBuiltIn("26.2", "26.2");
+    // Shared with the other bootstrapping families; see Oracle.
+    private static final WorldVersion TEST_VERSION = Oracle.TEST_VERSION;
 
     public static JsonObject run(JsonObject request) {
         String operation = request.get("operation").getAsString();

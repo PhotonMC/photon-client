@@ -66,19 +66,13 @@ Koşu: `python3 tools/behavior/run.py capture --family image` ardından
 `compare --family image --adapter target/debug/examples/behavior_adapter`
 → `parity_passed`.
 
-## Pinlenmemiş olan: blok → tonlama tablosu
+## Blok → tonlama tablosu
 
-`BlockColors.createDefault` hangi bloğun hangi kaynağı kullandığını söyler.
-Bu tabloyu referansın kendisinden sormak kayıt defteri (`Bootstrap.bootStrap`)
-gerektiriyor; denendi ve oracle sürecini düşürdü, bu yüzden geri alındı.
-
-Tablo bu yüzden `BlockColors.createDefault` kaynağından okunarak yazıldı ve
-**pinlenmemiştir**. Taşıdığı bütün değerler pinli adlandırılmış sabitlerdir;
-tonlaması adlandırılmamış çıplak bir sayı olan bloklar (yapışık kavun ve
-balkabağı sapları) tahmin yürütmemek için tablonun dışında bırakıldı.
-
-`cherry_leaves`, `pale_oak_leaves` ve `azalea_leaves` tabloda yok çünkü
-referansta da yok: renkleri kendi dokularında.
+Bu kayıt yazıldığında tablo pinlenmemişti; kayıt defterini sormak denenmiş ve
+oracle sürecini düşürmüştü. Teşhis yanlıştı ve
+[P16.s](block-registry-conformance.md) ile düzeltildi: tablo artık referansın
+kendi kayıt defterinden okunuyor ve her koşuda karşılaştırılıyor. Daha önce
+tahmin yürütmemek için dışarıda bırakılan yapışık sap blokları da içeride.
 
 ## Çizime bağlanması
 

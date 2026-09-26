@@ -13062,6 +13062,26 @@ def json_cases():
         ],
     }
 
+def block_cases():
+    """The block registry, read from the reference rather than rebuilt.
+
+    The input is tiny because the oracle enumerates the registry itself; the
+    expected output is the whole table, which is what the Rust side has to
+    reproduce."""
+    yield {
+        "case_id": "block/state-definitions",
+        "family": "block",
+        "operation": "state_definitions",
+        "rows": [{"label": "registry"}],
+    }
+    yield {
+        "case_id": "block/tints",
+        "family": "block",
+        "operation": "block_tints",
+        "rows": [{"label": "registry"}],
+    }
+
+
 def build_cases(families):
     generators = {"wire": wire_cases, "math": math_cases, "timer": timer_cases, "utf8": utf8_cases,
                   "binary": binary_cases, "nbt": nbt_cases, "resources": resources_cases,
@@ -13069,7 +13089,8 @@ def build_cases(families):
                   "atlas": atlas_cases,
                   "image": image_cases,
                   "model": model_cases,
-                  "json": json_cases}
+                  "json": json_cases,
+                  "block": block_cases}
     cases = [dict(schema_version=1, **case)
              for family in sorted(families) for case in generators[family]()]
     ids = [case["case_id"] for case in cases]

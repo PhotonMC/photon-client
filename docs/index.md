@@ -329,6 +329,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P16.p — Blockstate dosyaları ve üç eksenli varyant dönüşü — karışık kanıt kaydı](blockstate-conformance.md)
 - [P16.q — UV kilidi — client-parity kayıt](uv-lock-conformance.md)
 - [P16.r — Yüz gizleme (cullface) — karışık kanıt kaydı](cullface-conformance.md)
+- [P16.s — Blok kayıt defteri — client-parity kayıt](block-registry-conformance.md)
 - [P16.j — Model dosyası ayrıştırma — client-parity birleşik kayıt](model-file-parse-conformance.md)
 - [P16.l — Blockstate varyant döndürmesi — client-parity birleşik kayıt](model-state-conformance.md)
 - [P16.c — Model texture slot çözümü — client-parity birleşik kayıt](model-texture-slots-conformance.md)

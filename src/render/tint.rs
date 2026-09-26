@@ -84,25 +84,14 @@ pub fn colour_map_lookup(
     Ok(pixels[index as usize])
 }
 
-/// The fixed colour a block's tint slot takes outside a world.
+/// The fixed colours a block's tint slots take outside a world.
 ///
-/// These are the `color(state)` side of the reference's tint sources, which
-/// is the side a block drawn on its own uses. The biome-averaged side needs a
-/// world to read from and is not built yet.
+/// These are the `color(state)` side of the reference's tint sources, which is
+/// the side a block drawn on its own uses. The table is the reference's own,
+/// read from its registry and compared on every parity run, so a block with no
+/// tint source comes back with no layers rather than with a guess.
 ///
-/// Every value here is one of the pinned named constants. The table that maps
-/// a block to one of them is read from `BlockColors.createDefault` and is not
-/// itself pinned, because asking the reference for it needs its registry
-/// bootstrap; the blocks whose tint is a bare literal rather than a named
-/// constant are left out rather than guessed at.
-pub fn constant_tint(block_path: &str) -> Option<u32> {
-    Some(match block_path {
-        "spruce_leaves" => 0xFF61_9961,
-        "birch_leaves" => 0xFF80_A755,
-        "oak_leaves" | "jungle_leaves" | "acacia_leaves" | "dark_oak_leaves" | "vine"
-        | "mangrove_leaves" => 0xFF48_B518,
-        "leaf_litter" => 0xFF5C_3C32,
-        "lily_pad" => 0xFF71_C35C,
-        _ => return None,
-    })
+/// The biome-averaged side needs a world to read from and is not built yet.
+pub fn constant_tints(block_name: &str) -> &'static [u32] {
+    crate::world::block_registry::tints(block_name)
 }

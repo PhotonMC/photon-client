@@ -3033,5 +3033,7 @@ impl ClientWorld {
     }
 }
 
+pub mod block_registry;
+
 #[cfg(test)]
 mod tests;

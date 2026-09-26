@@ -16245,14 +16245,97 @@ fn image_tint_constants_result(request: &Value) -> Result<Value, String> {
             "outcome": "listed",
             "values": {
                 "foliage_default": format!("{:08x}", render::ColourMap::Foliage.default_colour()),
-                "foliage_evergreen": format!("{:08x}", render::constant_tint("spruce_leaves").unwrap_or(0)),
-                "foliage_birch": format!("{:08x}", render::constant_tint("birch_leaves").unwrap_or(0)),
+                "foliage_evergreen": format!("{:08x}", render::constant_tints("minecraft:spruce_leaves")[0]),
+                "foliage_birch": format!("{:08x}", render::constant_tints("minecraft:birch_leaves")[0]),
                 "foliage_mangrove": format!("{:08x}", render::FOLIAGE_MANGROVE),
                 "dry_foliage_default": format!("{:08x}", render::ColourMap::DryFoliage.default_colour()),
-                "lily_pad_in_hand": format!("{:08x}", render::constant_tint("lily_pad").unwrap_or(0)),
+                "lily_pad_in_hand": format!("{:08x}", render::constant_tints("minecraft:lily_pad")[0]),
                 "lily_pad_in_world": format!("{:08x}", render::LILY_PAD_IN_WORLD),
             },
         }));
+    }
+    Ok(json!({"rows": out}))
+}
+
+fn block_result(request: &Value) -> Result<Value, String> {
+    use voxel_client::world::block_registry as registry;
+    let operation = string(request, "operation")?;
+    let rows = request["rows"]
+        .as_array()
+        .ok_or("block rows must be an array")?;
+    let mut out = Vec::with_capacity(rows.len());
+    for row in rows {
+        let label = string(row, "label")?;
+        match operation {
+            "state_definitions" => {
+                let blocks: Vec<Value> = registry::BLOCKS
+                    .iter()
+                    .enumerate()
+                    .map(|(id, block)| {
+                        let properties: Vec<Value> = block
+                            .properties
+                            .iter()
+                            .map(|index| {
+                                let property = &registry::PROPERTIES[usize::from(*index)];
+                                json!({
+                                    "name": property.name,
+                                    "kind": match property.kind {
+                                        registry::PropertyKind::Boolean => "boolean",
+                                        registry::PropertyKind::Integer => "integer",
+                                        registry::PropertyKind::Enum => "enum",
+                                    },
+                                    "values": property.values,
+                                })
+                            })
+                            .collect();
+                        let defaults: Vec<Value> = block
+                            .properties
+                            .iter()
+                            .zip(block.default)
+                            .map(|(index, chosen)| {
+                                let property = &registry::PROPERTIES[usize::from(*index)];
+                                json!(property.values[usize::from(*chosen)])
+                            })
+                            .collect();
+                        json!({
+                            "name": block.name,
+                            "id": id,
+                            "properties": properties,
+                            "default": defaults,
+                            "state_count": block.state_count,
+                            "first_state_id": block.first_state_id,
+                            "default_state_id": block.default_state_id(),
+                        })
+                    })
+                    .collect();
+                out.push(json!({
+                    "label": label,
+                    "outcome": "listed",
+                    "block_count": registry::BLOCKS.len(),
+                    "state_count": registry::BLOCKS
+                        .iter()
+                        .map(|block| u32::from(block.state_count))
+                        .sum::<u32>(),
+                    "blocks": blocks,
+                }));
+            }
+            "block_tints" => {
+                let tinted: Vec<Value> = registry::TINTS
+                    .iter()
+                    .map(|(name, layers)| {
+                        json!({
+                            "name": name,
+                            "layers": layers
+                                .iter()
+                                .map(|colour| format!("{colour:08x}"))
+                                .collect::<Vec<_>>(),
+                        })
+                    })
+                    .collect();
+                out.push(json!({"label": label, "outcome": "listed", "tinted": tinted}));
+            }
+            other => return Err(format!("unknown block operation: {other}")),
+        }
     }
     Ok(json!({"rows": out}))
 }
@@ -16437,6 +16520,7 @@ fn respond(request: Value) -> Result<Value, String> {
         "resources" => resources_result(&request)?,
         "window" => window_result(&request)?,
         "atlas" => atlas_result(&request)?,
+        "block" => block_result(&request)?,
         "image" => image_result(&request)?,
         "model" => model_result(&request)?,
         "json" => json_result(&request)?,
