@@ -96,7 +96,11 @@ def preflight(families, runtime, jdk_home, run_dir):
             raise Blocked(f"Expected {name} {pin['java_major']}; got {version}")
         versions[name] = version
     sources = [SPEC / "java/Oracle.java"] + [SPEC / "java" / pin["families"][f]["source"] for f in sorted(families)]
-    if "math" in families:
+    # The math family calls one LWJGL helper and would otherwise need natives,
+    # so it compiles a stub. Compiled classes come before the jars, so that stub
+    # would also shadow the real class for any family that pulls LWJGL in for
+    # real; in that case the real one is already available and wins.
+    if "math" in families and "org.lwjgl:lwjgl" not in keys:
         sources.append(SPEC / "java/org/lwjgl/system/MemoryUtil.java")
     identity = {
         "schema_version": 1, "minecraft_version": pin["version"], "protocol": pin["protocol"],

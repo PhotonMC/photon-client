@@ -11984,11 +11984,176 @@ def atlas_cases():
         "rows": rows,
     }
 
+
+def _png_chunk(kind, payload):
+    import struct, zlib
+    return (struct.pack(">I", len(payload)) + kind + payload
+            + struct.pack(">I", zlib.crc32(kind + payload) & 0xFFFFFFFF))
+
+
+def _encode_png(width, height, colour_type, bit_depth, rows, palette=None,
+                transparency=None, filters=None):
+    """Build a synthetic PNG. Original content, so the corpus stays traceable.
+
+    `rows` holds the raw sample bytes per scanline, unfiltered; `filters` picks
+    the filter byte for each row so every filter type can be exercised.
+    """
+    import struct, zlib
+    header = struct.pack(">IIBBBBB", width, height, bit_depth, colour_type, 0, 0, 0)
+    chunks = [_png_chunk(b"IHDR", header)]
+    if palette is not None:
+        chunks.append(_png_chunk(b"PLTE", bytes(palette)))
+    if transparency is not None:
+        chunks.append(_png_chunk(b"tRNS", bytes(transparency)))
+
+    filters = filters or [0] * height
+    stride = len(rows[0])
+    raw = bytearray()
+    previous = bytes(stride)
+    # Sample width in bytes, used by Sub/Average/Paeth; sub-byte depths use 1.
+    sample = max(1, (bit_depth * {0: 1, 2: 3, 3: 1, 4: 2, 6: 4}[colour_type]) // 8)
+    for row, kind in zip(rows, filters):
+        raw.append(kind)
+        line = bytearray(len(row))
+        for index, value in enumerate(row):
+            left = row[index - sample] if index >= sample else 0
+            up = previous[index]
+            up_left = previous[index - sample] if index >= sample else 0
+            if kind == 0:
+                line[index] = value
+            elif kind == 1:
+                line[index] = (value - left) & 0xFF
+            elif kind == 2:
+                line[index] = (value - up) & 0xFF
+            elif kind == 3:
+                line[index] = (value - (left + up) // 2) & 0xFF
+            else:
+                estimate = left + up - up_left
+                to_left = abs(estimate - left)
+                to_up = abs(estimate - up)
+                to_up_left = abs(estimate - up_left)
+                if to_left <= to_up and to_left <= to_up_left:
+                    best = left
+                elif to_up <= to_up_left:
+                    best = up
+                else:
+                    best = up_left
+                line[index] = (value - best) & 0xFF
+        raw.extend(line)
+        previous = bytes(row)
+    chunks.append(_png_chunk(b"IDAT", zlib.compress(bytes(raw), 9)))
+    chunks.append(_png_chunk(b"IEND", b""))
+    return b"\x89PNG\r\n\x1a\n" + b"".join(chunks)
+
+
+def image_cases():
+    """Java `NativeImage.read`: every PNG colour type reduced to RGBA8.
+
+    The reference hands the bytes to stb with four components requested, so
+    grayscale, palette and RGB all come back as RGBA and 16-bit samples are cut
+    to their high byte. The inputs below cover each colour type, both bit
+    depths, all five row filters and the transparency chunk.
+    """
+    def rgba_rows(width, height):
+        return [bytes(b for x in range(width)
+                      for b in ((x * 17 + y) % 256, (y * 23 + x) % 256,
+                                ((x + y) * 5) % 256, (255 - x * 9) % 256))
+                for y in range(height)]
+
+    def rgb_rows(width, height):
+        return [bytes(b for x in range(width)
+                      for b in ((x * 31 + y) % 256, (y * 13) % 256, (x * y) % 256))
+                for y in range(height)]
+
+    def gray_rows(width, height):
+        return [bytes((x * 37 + y * 11) % 256 for x in range(width))
+                for y in range(height)]
+
+    def gray_alpha_rows(width, height):
+        return [bytes(b for x in range(width)
+                      for b in ((x * 37 + y * 11) % 256, (x * 40) % 256))
+                for y in range(height)]
+
+    def indexed_rows(width, height, count):
+        return [bytes((x + y) % count for x in range(width)) for y in range(height)]
+
+    def rgba16_rows(width, height):
+        return [bytes(b for x in range(width)
+                      for channel in ((x * 257 + y) % 65536, (y * 999) % 65536,
+                                      (x * y * 13) % 65536, 65535 - (x * 1234) % 65536)
+                      for b in (channel >> 8, channel & 0xFF))
+                for y in range(height)]
+
+    def packed_rows(width, height, bit_depth, value_at):
+        """Pack samples most significant bits first, padding each row."""
+        rows = []
+        for y in range(height):
+            bits = []
+            for x in range(width):
+                value = value_at(x, y) & ((1 << bit_depth) - 1)
+                bits.extend((value >> (bit_depth - 1 - b)) & 1 for b in range(bit_depth))
+            while len(bits) % 8:
+                bits.append(0)
+            rows.append(bytes(
+                sum(bit << (7 - offset) for offset, bit in enumerate(bits[base:base + 8]))
+                for base in range(0, len(bits), 8)
+            ))
+        return rows
+
+    palette = [c for index in range(4)
+               for c in (index * 60 % 256, 255 - index * 40 % 256, index * 85 % 256)]
+
+    rows = [
+        ("rgba8-filter-none", 4, 4, 6, 8, rgba_rows(4, 4), None, None, [0, 0, 0, 0]),
+        ("rgba8-filter-sub", 4, 4, 6, 8, rgba_rows(4, 4), None, None, [1, 1, 1, 1]),
+        ("rgba8-filter-up", 4, 4, 6, 8, rgba_rows(4, 4), None, None, [0, 2, 2, 2]),
+        ("rgba8-filter-average", 4, 4, 6, 8, rgba_rows(4, 4), None, None, [0, 3, 3, 3]),
+        ("rgba8-filter-paeth", 4, 4, 6, 8, rgba_rows(4, 4), None, None, [0, 4, 4, 4]),
+        ("rgba8-mixed-filters", 6, 5, 6, 8, rgba_rows(6, 5), None, None, [0, 1, 2, 3, 4]),
+        ("rgb8", 4, 4, 2, 8, rgb_rows(4, 4), None, None, [0, 1, 2, 4]),
+        ("gray8", 4, 4, 0, 8, gray_rows(4, 4), None, None, [0, 1, 2, 4]),
+        ("gray-alpha8", 4, 4, 4, 8, gray_alpha_rows(4, 4), None, None, [0, 1, 2, 4]),
+        ("indexed", 4, 4, 3, 8, indexed_rows(4, 4, 4), palette, None, [0, 1, 2, 4]),
+        ("indexed-trns", 4, 4, 3, 8, indexed_rows(4, 4, 4), palette, [0, 80, 170, 255], [0] * 4),
+        ("gray1", 8, 4, 0, 1, packed_rows(8, 4, 1, lambda x, y: (x + y) % 2), None, None, [0, 1, 2, 4]),
+        ("gray2", 8, 4, 0, 2, packed_rows(8, 4, 2, lambda x, y: (x + y) % 4), None, None, [0, 1, 2, 4]),
+        ("gray4", 8, 4, 0, 4, packed_rows(8, 4, 4, lambda x, y: (x * 3 + y) % 16), None, None, [0, 1, 2, 4]),
+        ("indexed1", 8, 4, 3, 1, packed_rows(8, 4, 1, lambda x, y: (x + y) % 2), palette, None, [0, 1, 2, 4]),
+        ("indexed2", 8, 4, 3, 2, packed_rows(8, 4, 2, lambda x, y: (x + y) % 4), palette, None, [0, 1, 2, 4]),
+        ("indexed4", 8, 4, 3, 4, packed_rows(8, 4, 4, lambda x, y: (x + y) % 4), palette, None, [0, 1, 2, 4]),
+        ("indexed4-trns", 8, 4, 3, 4, packed_rows(8, 4, 4, lambda x, y: (x + y) % 4), palette, [0, 80, 170, 255], [0, 1, 2, 4]),
+        ("gray1-odd-width", 5, 3, 0, 1, packed_rows(5, 3, 1, lambda x, y: (x * y) % 2), None, None, [0, 1, 4]),
+        ("indexed2-odd-width", 3, 3, 3, 2, packed_rows(3, 3, 2, lambda x, y: (x + 2 * y) % 4), palette, None, [0, 1, 4]),
+        ("gray8-trns", 4, 4, 0, 8, gray_rows(4, 4), None, [0, 0], [0, 1, 2, 4]),
+        ("gray8-trns-hit", 4, 4, 0, 8, [bytes([0, 37, 74, 111]) for _ in range(4)], None, [0, 0], [0] * 4),
+        ("gray2-trns", 8, 4, 0, 2, packed_rows(8, 4, 2, lambda x, y: (x + y) % 4), None, [0, 0], [0, 1, 2, 4]),
+        ("gray1-trns", 8, 4, 0, 1, packed_rows(8, 4, 1, lambda x, y: (x + y) % 2), None, [0, 1], [0, 1, 2, 4]),
+        ("rgb8-trns", 4, 4, 2, 8, rgb_rows(4, 4), None, [0, 0, 0, 0, 0, 0], [0, 1, 2, 4]),
+        ("rgba16", 3, 3, 6, 16, rgba16_rows(3, 3), None, None, [0, 1, 4]),
+        ("single-pixel", 1, 1, 6, 8, rgba_rows(1, 1), None, None, [0]),
+        ("tall", 2, 8, 6, 8, rgba_rows(2, 8), None, None, [0, 1, 2, 3, 4, 1, 2, 3]),
+        ("wide", 8, 2, 6, 8, rgba_rows(8, 2), None, None, [4, 3]),
+    ]
+
+    yield {
+        "case_id": "image/png-decode",
+        "family": "image",
+        "operation": "png_decode",
+        "rows": [
+            {
+                "label": label,
+                "png": _encode_png(w, h, ct, bd, data, pal, trns, flt).hex(),
+            }
+            for label, w, h, ct, bd, data, pal, trns, flt in rows
+        ],
+    }
+
 def build_cases(families):
     generators = {"wire": wire_cases, "math": math_cases, "timer": timer_cases, "utf8": utf8_cases,
                   "binary": binary_cases, "nbt": nbt_cases, "resources": resources_cases,
                   "window": window_cases,
-                  "atlas": atlas_cases}
+                  "atlas": atlas_cases,
+                  "image": image_cases}
     cases = [dict(schema_version=1, **case)
              for family in sorted(families) for case in generators[family]()]
     ids = [case["case_id"] for case in cases]

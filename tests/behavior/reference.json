@@ -29,9 +29,17 @@
       "file": "datafixerupper-10.0.21.jar",
       "sha1": "b6b2ae770c02e0c1eb90f9985b151e9085a38d0b"
     },
+    "com.mojang:jtracy": {
+      "file": "jtracy-1.0.37.jar",
+      "sha1": "a3fb649b2e2b2288d2978f0b0bc3d83f62809d1e"
+    },
     "com.mojang:logging": {
       "file": "logging-1.7.12.jar",
       "sha1": "351cea64a5233361327d8d54c44277041beed97f"
+    },
+    "commons-io:commons-io": {
+      "file": "commons-io-2.20.0.jar",
+      "sha1": "36f3474daec2849c149e877614e7f979b2082cd2"
     },
     "io.netty:netty-buffer": {
       "file": "netty-buffer-4.2.15.Final.jar",
@@ -72,6 +80,18 @@
     "org.lwjgl:lwjgl-glfw": {
       "file": "lwjgl-glfw-3.4.1.jar",
       "sha1": "a782b1ddd175c9107bf300fd92920579ea65e2a4"
+    },
+    "org.lwjgl:lwjgl-natives-linux": {
+      "file": "lwjgl-3.4.1-natives-linux.jar",
+      "sha1": "2734e106bd95db49fe0da8cf8bf7fd96475c436c"
+    },
+    "org.lwjgl:lwjgl-stb": {
+      "file": "lwjgl-stb-3.4.1.jar",
+      "sha1": "f077c3dafc31924fbe8acb0b913f08977ba27f8e"
+    },
+    "org.lwjgl:lwjgl-stb-natives-linux": {
+      "file": "lwjgl-stb-3.4.1-natives-linux.jar",
+      "sha1": "7e1cfae909da6c68f3cb6073a9bfeb6c90e82a57"
     },
     "org.slf4j:slf4j-api": {
       "file": "slf4j-api-2.0.17.jar",
@@ -115,6 +135,33 @@
         "org.joml:joml",
         "org.apache.commons:commons-lang3",
         "com.mojang:authlib"
+      ]
+    },
+    "image": {
+      "source": "ImageOracle.java",
+      "libraries": [
+        "com.google.code.gson:gson",
+        "com.google.guava:failureaccess",
+        "com.google.guava:guava",
+        "com.mojang:authlib",
+        "com.mojang:brigadier",
+        "com.mojang:datafixerupper",
+        "com.mojang:jtracy",
+        "com.mojang:logging",
+        "commons-io:commons-io",
+        "io.netty:netty-buffer",
+        "io.netty:netty-codec-base",
+        "io.netty:netty-common",
+        "it.unimi.dsi:fastutil",
+        "org.apache.commons:commons-lang3",
+        "org.joml:joml",
+        "org.jspecify:jspecify",
+        "org.lwjgl:lwjgl",
+        "org.lwjgl:lwjgl-glfw",
+        "org.lwjgl:lwjgl-natives-linux",
+        "org.lwjgl:lwjgl-stb",
+        "org.lwjgl:lwjgl-stb-natives-linux",
+        "org.slf4j:slf4j-api"
       ]
     },
     "math": {

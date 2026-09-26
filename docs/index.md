@@ -374,6 +374,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P03.c — NBT referans sözleşmesi (bileşikler, listeler, diziler) — client-parity birleşik kayıt](nbt-conformance.md)
 - [P05.a — OptionInstance value set sözleşmesi — client-parity birleşik kayıt](option-values-conformance.md)
 - [P08/P11 — İlk oyuncu konumu düzeltmesi sözleşmesi — server-conformance birleşik kayıt](player-position-conformance.md)
+- [P16.b — PNG çözme ve RGBA8'e indirgeme — client-parity birleşik kayıt](png-decode-conformance.md)
 - [P05.b — PreeditEvent callback sözleşmesi — client-parity birleşik kayıt](preedit-event-conformance.md)
 - [P06/P07 — Protocol phase ve packet flow metadata sözleşmesi — client-parity birleşik kayıt](protocol-metadata-conformance.md)
 - [P01.d/e — Random ve AABB referans sözleşmesi — client-parity birleşik kayıt](random-aabb-conformance.md)

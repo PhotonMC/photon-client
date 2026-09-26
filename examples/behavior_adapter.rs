@@ -15114,6 +15114,39 @@ fn nbt_result(request: &Value) -> Result<Value, String> {
     }
 }
 
+fn image_result(request: &Value) -> Result<Value, String> {
+    if string(request, "operation")? != "png_decode" {
+        return Err("unknown image operation".into());
+    }
+    let rows = request["rows"].as_array().ok_or("image rows must be an array")?;
+    let mut out = Vec::with_capacity(rows.len());
+    for row in rows {
+        let label = string(row, "label")?;
+        let hex = string(row, "png")?;
+        let bytes: Vec<u8> = (0..hex.len() / 2)
+            .map(|index| u8::from_str_radix(&hex[index * 2..index * 2 + 2], 16))
+            .collect::<Result<_, _>>()
+            .map_err(|error| format!("png hex: {error}"))?;
+        match render::decode_rgba(&bytes) {
+            Err(_) => out.push(json!({"label": label, "outcome": "decode_failed"})),
+            Ok(image) => {
+                let mut encoded = String::with_capacity(image.rgba.len() * 2);
+                for byte in &image.rgba {
+                    encoded.push_str(&format!("{byte:02x}"));
+                }
+                out.push(json!({
+                    "label": label,
+                    "outcome": "decoded",
+                    "width": image.width,
+                    "height": image.height,
+                    "rgba": encoded,
+                }));
+            }
+        }
+    }
+    Ok(json!({"rows": out}))
+}
+
 fn atlas_result(request: &Value) -> Result<Value, String> {
     if string(request, "operation")? != "stitch" {
         return Err("unknown atlas operation".into());
@@ -15229,6 +15262,7 @@ fn respond(request: Value) -> Result<Value, String> {
         "resources" => resources_result(&request)?,
         "window" => window_result(&request)?,
         "atlas" => atlas_result(&request)?,
+        "image" => image_result(&request)?,
         _ => return Err("unknown behavior family".into()),
     };
     Ok(json!({"schema_version": 1, "case_id": case_id, "result": result}))

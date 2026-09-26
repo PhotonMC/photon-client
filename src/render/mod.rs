@@ -3,7 +3,9 @@
 //! `docs/render-backend-decision.md`.
 
 pub mod atlas;
+pub mod png;
 pub mod vulkan;
 
 pub use atlas::{SpriteEntry, SpritePlacement, StitchError, Stitcher};
+pub use png::{DecodedImage, PngError, decode_rgba};
 pub use vulkan::{CapturedFrame, VulkanBackend, VulkanError};
