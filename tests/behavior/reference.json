@@ -164,6 +164,12 @@
         "org.slf4j:slf4j-api"
       ]
     },
+    "json": {
+      "source": "JsonOracle.java",
+      "libraries": [
+        "com.google.code.gson:gson"
+      ]
+    },
     "math": {
       "source": "MathOracle.java",
       "libraries": [

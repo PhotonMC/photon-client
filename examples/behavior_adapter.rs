@@ -15114,6 +15114,87 @@ fn nbt_result(request: &Value) -> Result<Value, String> {
     }
 }
 
+/// The same deterministic rendering the oracle writes, so the comparison sees
+/// shape, order, number literals and string code units.
+fn json_canonical(value: &voxel_client::json::JsonValue, out: &mut String) {
+    use voxel_client::json::JsonValue;
+    let write_string = |units: &[u16], out: &mut String| {
+        out.push('s');
+        for unit in units {
+            out.push_str(&format!("{unit:04x}"));
+        }
+        out.push(';');
+    };
+    match value {
+        JsonValue::Null => out.push_str("null"),
+        JsonValue::Bool(true) => out.push_str("true"),
+        JsonValue::Bool(false) => out.push_str("false"),
+        JsonValue::Number(literal) => {
+            out.push('n');
+            out.push_str(literal);
+        }
+        JsonValue::String(units) => write_string(units, out),
+        JsonValue::Array(items) => {
+            out.push('[');
+            for (index, item) in items.iter().enumerate() {
+                if index > 0 {
+                    out.push(',');
+                }
+                json_canonical(item, out);
+            }
+            out.push(']');
+        }
+        JsonValue::Object(object) => {
+            out.push('{');
+            for (index, (key, item)) in object.entries().enumerate() {
+                if index > 0 {
+                    out.push(',');
+                }
+                write_string(key, out);
+                out.push(':');
+                json_canonical(item, out);
+            }
+            out.push('}');
+        }
+    }
+}
+
+fn json_result(request: &Value) -> Result<Value, String> {
+    if string(request, "operation")? != "parse" {
+        return Err("unknown json operation".into());
+    }
+    let rows = request["rows"].as_array().ok_or("json rows must be an array")?;
+    let mut out = Vec::with_capacity(rows.len());
+    for row in rows {
+        let label = string(row, "label")?;
+        let hex = string(row, "text")?;
+        let bytes: Vec<u8> = (0..hex.len() / 2)
+            .map(|index| u8::from_str_radix(&hex[index * 2..index * 2 + 2], 16))
+            .collect::<Result<_, _>>()
+            .map_err(|error| format!("text hex: {error}"))?;
+        let text = match core::str::from_utf8(&bytes) {
+            Ok(text) => text,
+            Err(_) => {
+                out.push(json!({"label": label, "outcome": "rejected"}));
+                continue;
+            }
+        };
+        match voxel_client::json::parse(text) {
+            Err(_) => out.push(json!({"label": label, "outcome": "rejected"})),
+            Ok(value) => {
+                let mut canonical = String::new();
+                json_canonical(&value, &mut canonical);
+                out.push(json!({
+                    "label": label,
+                    "outcome": "parsed",
+                    "canonical": canonical,
+                }));
+            }
+        }
+    }
+    Ok(json!({"rows": out}))
+}
+
 fn model_result(request: &Value) -> Result<Value, String> {
     if string(request, "operation")? != "texture_slots" {
         return Err("unknown model operation".into());
@@ -15318,6 +15399,7 @@ fn respond(request: Value) -> Result<Value, String> {
         "atlas" => atlas_result(&request)?,
         "image" => image_result(&request)?,
         "model" => model_result(&request)?,
+        "json" => json_result(&request)?,
         _ => return Err("unknown behavior family".into()),
     };
     Ok(json!({"schema_version": 1, "case_id": case_id, "result": result}))

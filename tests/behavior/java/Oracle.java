@@ -29,6 +29,7 @@ public final class Oracle {
                     case "atlas" -> "AtlasOracle";
                     case "image" -> "ImageOracle";
                     case "model" -> "ModelOracle";
+                    case "json" -> "JsonOracle";
                     default -> throw new IllegalArgumentException("Unknown scenario family");
                 };
                 var response = new JsonObject();

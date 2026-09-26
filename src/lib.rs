@@ -12,6 +12,7 @@ pub mod handshake;
 pub mod identifier;
 pub mod input;
 pub mod input_event;
+pub mod json;
 pub mod key_mapping;
 pub mod login;
 pub mod math;
