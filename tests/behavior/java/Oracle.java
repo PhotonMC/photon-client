@@ -28,6 +28,7 @@ public final class Oracle {
                     case "window" -> "WindowOracle";
                     case "atlas" -> "AtlasOracle";
                     case "image" -> "ImageOracle";
+                    case "model" -> "ModelOracle";
                     default -> throw new IllegalArgumentException("Unknown scenario family");
                 };
                 var response = new JsonObject();

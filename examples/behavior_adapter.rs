@@ -15114,6 +15114,60 @@ fn nbt_result(request: &Value) -> Result<Value, String> {
     }
 }
 
+fn model_result(request: &Value) -> Result<Value, String> {
+    if string(request, "operation")? != "texture_slots" {
+        return Err("unknown model operation".into());
+    }
+    let rows = request["rows"].as_array().ok_or("model rows must be an array")?;
+    let probes = [
+        "all", "top", "bottom", "side", "north", "particle", "missing", "#all", "#top",
+    ];
+    let mut out = Vec::with_capacity(rows.len());
+    for row in rows {
+        let mut resolver = render::TextureSlotsResolver::new();
+        let chain = row["chain"].as_array().ok_or("chain must be an array")?;
+        for level in chain {
+            let slots = level.as_array().ok_or("chain level must be an array")?;
+            let mut entries = Vec::with_capacity(slots.len());
+            for slot in slots {
+                let name = string(slot, "slot")?;
+                let contents = if slot.get("raw").is_some() {
+                    render::SlotContents::parse_string(string(slot, "raw")?)
+                        .map_err(|error| format!("texture value: {error:?}"))?
+                } else {
+                    render::SlotContents::Value(render::Material {
+                        sprite: Identifier::parse(string(slot, "sprite")?)
+                            .map_err(|error| format!("sprite: {error:?}"))?,
+                        force_translucent: slot["force_translucent"]
+                            .as_bool()
+                            .ok_or("force_translucent must be a bool")?,
+                    })
+                };
+                entries.push((name.to_owned(), contents));
+            }
+            resolver.add_last(render::TextureSlotsData::from_entries(entries));
+        }
+        let resolved = resolver.resolve();
+        let mut lookups = Vec::new();
+        for probe in probes {
+            if let Some(material) = resolved.material(probe) {
+                lookups.push(json!({
+                    "probe": probe,
+                    "sprite": material.sprite.as_string(),
+                    "force_translucent": material.force_translucent,
+                }));
+            }
+        }
+        lookups.sort_by(|left, right| left["probe"].as_str().cmp(&right["probe"].as_str()));
+        out.push(json!({
+            "label": string(row, "label")?,
+            "outcome": "resolved",
+            "lookups": lookups,
+        }));
+    }
+    Ok(json!({"rows": out}))
+}
+
 fn image_result(request: &Value) -> Result<Value, String> {
     if string(request, "operation")? != "png_decode" {
         return Err("unknown image operation".into());
@@ -15263,6 +15317,7 @@ fn respond(request: Value) -> Result<Value, String> {
         "window" => window_result(&request)?,
         "atlas" => atlas_result(&request)?,
         "image" => image_result(&request)?,
+        "model" => model_result(&request)?,
         _ => return Err("unknown behavior family".into()),
     };
     Ok(json!({"schema_version": 1, "case_id": case_id, "result": result}))

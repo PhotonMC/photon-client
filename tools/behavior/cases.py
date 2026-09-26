@@ -12148,12 +12148,91 @@ def image_cases():
         ],
     }
 
+
+def model_cases():
+    """Java `TextureSlots`: how a model's texture variables resolve.
+
+    A model's texture map may name a sprite directly or point at another slot
+    with a leading `#`. The chain is walked child first, but applied parent
+    first, so a child overrides its parent; a reference clears an inherited
+    value and a value clears an inherited reference. References then resolve to
+    a fixed point, and anything still dangling is dropped rather than failing.
+    """
+    def ref(slot, target):
+        return {"slot": slot, "raw": "#" + target}
+
+    def raw(slot, value):
+        return {"slot": slot, "raw": value}
+
+    def value(slot, sprite, force_translucent=False):
+        return {"slot": slot, "sprite": sprite, "force_translucent": force_translucent}
+
+    stone = "minecraft:block/stone"
+    dirt = "minecraft:block/dirt"
+    oak = "minecraft:block/oak_planks"
+
+    rows = [
+        ("empty", []),
+        ("single-value", [[raw("all", stone)]]),
+        ("object-form", [[value("all", stone, True)]]),
+        # A child naming a sprite wins over the parent's sprite.
+        ("child-overrides-parent", [[raw("all", dirt)], [raw("all", stone)]]),
+        # cube_all shape: parent points every face at #all, child fills it in.
+        ("cube-all", [
+            [raw("all", stone)],
+            [ref("top", "all"), ref("bottom", "all"), ref("side", "all"),
+             ref("particle", "all")],
+        ]),
+        # The reference target itself arrives from a grandparent.
+        ("three-level", [
+            [raw("all", oak)],
+            [ref("side", "all")],
+            [ref("north", "side"), ref("particle", "side")],
+        ]),
+        # A chain of references collapsing to one sprite.
+        ("reference-chain", [[raw("all", stone)],
+                             [ref("top", "all")],
+                             [ref("side", "top")],
+                             [ref("north", "side")]]),
+        # A child reference replaces an inherited concrete value.
+        ("reference-clears-value", [[ref("all", "side")],
+                                    [raw("all", stone), raw("side", dirt)]]),
+        # A child value replaces an inherited reference.
+        ("value-clears-reference", [[raw("all", stone)],
+                                    [ref("all", "side"), raw("side", dirt)]]),
+        # Nothing to point at: the slot is dropped, not an error.
+        ("dangling-reference", [[ref("top", "nothing")]]),
+        ("self-reference", [[ref("top", "top")]]),
+        ("cycle", [[ref("top", "side"), ref("side", "top")]]),
+        # A cycle next to a resolvable reference: only the good one survives.
+        ("cycle-plus-resolvable", [[raw("all", stone)],
+                                   [ref("top", "side"), ref("side", "top"),
+                                    ref("bottom", "all")]]),
+        ("force-translucent-inherited", [[value("all", stone, True)],
+                                         [ref("side", "all")]]),
+        ("mixed-levels", [
+            [raw("all", stone), value("particle", dirt, True)],
+            [ref("top", "all"), raw("bottom", oak)],
+            [ref("side", "bottom"), ref("north", "missing")],
+        ]),
+        # Same slot named at every level: the deepest child still wins.
+        ("deep-override", [[raw("all", oak)], [raw("all", dirt)], [raw("all", stone)]]),
+    ]
+
+    yield {
+        "case_id": "model/texture-slots",
+        "family": "model",
+        "operation": "texture_slots",
+        "rows": [{"label": label, "chain": chain} for label, chain in rows],
+    }
+
 def build_cases(families):
     generators = {"wire": wire_cases, "math": math_cases, "timer": timer_cases, "utf8": utf8_cases,
                   "binary": binary_cases, "nbt": nbt_cases, "resources": resources_cases,
                   "window": window_cases,
                   "atlas": atlas_cases,
-                  "image": image_cases}
+                  "image": image_cases,
+                  "model": model_cases}
     cases = [dict(schema_version=1, **case)
              for family in sorted(families) for case in generators[family]()]
     ids = [case["case_id"] for case in cases]

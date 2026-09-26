@@ -319,6 +319,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P05.a — OptionInstance IntRange.xmap sözleşmesi — client-parity birleşik kayıt](mapped-int-range-conformance.md)
 - [P05.a — OptionInstance UnitDouble.xmap sözleşmesi — client-parity birleşik kayıt](mapped-unit-double-conformance.md)
 - [P01 — Math ailesi doğrulaması — client-parity kapsam kaydı](math-conformance.md)
+- [P16.c — Model texture slot çözümü — client-parity birleşik kayıt](model-texture-slots-conformance.md)
 - [P11 — Kontrollü oyuncu hareketi probe sözleşmesi — server-conformance birleşik kayıt](movement-probe-conformance.md)
 - [Mth absMax davranış sözleşmesi — client-parity birleşik kayıt](mth-abs-max-conformance.md)
 - [Mth açı yaklaşım davranış sözleşmesi — client-parity birleşik kayıt](mth-angle-approach-conformance.md)
