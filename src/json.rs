@@ -333,3 +333,112 @@ impl<'a> Reader<'a> {
         Ok(JsonValue::Number(literal.to_owned()))
     }
 }
+
+/// A number literal split into sign, digits and a power of ten.
+struct DecimalLiteral {
+    negative: bool,
+    /// Significant digits with the decimal point removed.
+    digits: String,
+    /// How many places the point moves right; negative drops digits.
+    exponent: i64,
+}
+
+impl DecimalLiteral {
+    /// Split a literal that already parsed as JSON, so the grammar is known good.
+    fn split(literal: &str) -> Option<Self> {
+        let (negative, rest) = match literal.strip_prefix('-') {
+            Some(rest) => (true, rest),
+            None => (false, literal),
+        };
+        let (mantissa, exponent_text) = match rest.find(['e', 'E']) {
+            Some(index) => (&rest[..index], Some(&rest[index + 1..])),
+            None => (rest, None),
+        };
+        let (integer, fraction) = match mantissa.find('.') {
+            Some(index) => (&mantissa[..index], &mantissa[index + 1..]),
+            None => (mantissa, ""),
+        };
+        let written_exponent = match exponent_text {
+            Some(text) => text.strip_prefix('+').unwrap_or(text).parse::<i64>().ok()?,
+            None => 0,
+        };
+        Some(Self {
+            negative,
+            digits: format!("{integer}{fraction}"),
+            // Every fraction digit already moved the point one place left.
+            exponent: written_exponent - fraction.len() as i64,
+        })
+    }
+
+    /// The integer value truncated toward zero, modulo 2^64.
+    ///
+    /// The reference reaches the same place by three different routes - a
+    /// direct int parse, a long parse narrowed by a cast, or a big decimal
+    /// whose low bits are taken - and all three amount to this.
+    fn truncated_low_bits(&self) -> u64 {
+        let mut magnitude: u64 = 0;
+        let kept: &str = if self.exponent >= 0 {
+            &self.digits
+        } else {
+            // A negative exponent drops that many digits from the right, which
+            // is what truncating toward zero does to the written value.
+            let keep = self.digits.len() as i64 + self.exponent;
+            if keep <= 0 {
+                return 0;
+            }
+            &self.digits[..keep as usize]
+        };
+        for digit in kept.bytes() {
+            magnitude = magnitude
+                .wrapping_mul(10)
+                .wrapping_add(u64::from(digit - b'0'));
+        }
+        for _ in 0..self.exponent.max(0) {
+            magnitude = magnitude.wrapping_mul(10);
+        }
+        if self.negative {
+            magnitude.wrapping_neg()
+        } else {
+            magnitude
+        }
+    }
+}
+
+impl JsonValue {
+    /// Java `JsonPrimitive.getAsInt` for a parsed number.
+    ///
+    /// The value is truncated toward zero and then narrowed to 32 bits, so a
+    /// literal past the range wraps rather than saturating.
+    pub fn as_i32(&self) -> Option<i32> {
+        let Self::Number(literal) = self else {
+            return None;
+        };
+        let split = DecimalLiteral::split(literal)?;
+        Some(split.truncated_low_bits() as i32)
+    }
+
+    /// Java `JsonPrimitive.getAsLong` for a parsed number.
+    pub fn as_i64(&self) -> Option<i64> {
+        let Self::Number(literal) = self else {
+            return None;
+        };
+        let split = DecimalLiteral::split(literal)?;
+        Some(split.truncated_low_bits() as i64)
+    }
+
+    /// Java `JsonPrimitive.getAsFloat`, which overflows to infinity.
+    pub fn as_f32(&self) -> Option<f32> {
+        let Self::Number(literal) = self else {
+            return None;
+        };
+        literal.parse::<f32>().ok()
+    }
+
+    /// Java `JsonPrimitive.getAsDouble`, which overflows to infinity.
+    pub fn as_f64(&self) -> Option<f64> {
+        let Self::Number(literal) = self else {
+            return None;
+        };
+        literal.parse::<f64>().ok()
+    }
+}

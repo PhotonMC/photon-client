@@ -1,4 +1,4 @@
-# P16.d — Strict JSON ayrıştırma — [client-parity] birleşik kayıt
+# P16.d — Strict JSON ayrıştırma ve sayı dönüşümü — [client-parity] birleşik kayıt
 
 **Tarih:** 2026-09-26 · **Referans:** Java Edition 26.2 / protokol 776 / Java 25
 
@@ -70,11 +70,37 @@ Sentetik kapsam geçtikten sonra iki yerel kontrol yapıldı (izlenmeyen):
 - Rastgele seçilen **400 gerçek dosya** hem Java oracle'ına hem Rust'a verildi;
   kanonik çıktılar **400/400 birebir** eşleşti.
 
+## Sayı dönüşümü
+
+`json/number` 61 literali dört tipe çevirip karşılaştırır. Sonuçlar tahmin
+edilebilir değildir ve hiçbiri tesadüf değildir:
+
+| Literal | `int` | `long` | `float` |
+| --- | ---: | ---: | --- |
+| `2147483648` | `-2147483648` | `2147483648` | `2147483648.0` |
+| `9223372036854775807` | `-1` | `9223372036854775807` | — |
+| `9223372036854775808` | `0` | `-9223372036854775808` | — |
+| `1e38` | `0` | `687399551400673280` | `9.99999968e37` |
+| `1.5` | `1` | `1` | `1.5` |
+| `-2.5` | `-2` | `-2` | `-2.5` |
+| `16777217` | `16777217` | `16777217` | `16777216.0` |
+| `3.4028235e38` | `-2147483648` | — | son sonlu float |
+| `3.4028236e38` | `0` | — | `inf` |
+| `1e-46` | `0` | `0` | `0.0` |
+
+Referans tam sayıya üç ayrı yoldan varır — doğrudan `int` ayrıştırma, `long`
+ayrıştırıp daraltma, ya da büyük ondalıktan düşük bitleri alma — ve üçü de aynı
+kurala indirgenir: **sıfıra doğru kırp, düşük 32 (veya 64) biti al.** Taşan bir
+literal doygunlaşmaz, sarar. Modül bunu basamak dizisi üzerinde modüler
+aritmetikle yapar; büyük ondalık sayı tipi gerektirmez.
+
+Kayan noktada davranış ayrı: taşma sonsuza gider, `float` aralığının altı
+sıfıra iner ve `16777217` gibi bir tam sayı en yakın temsil edilebilir değere
+yuvarlanır.
+
 ## Açık kapsam
 
-Bu kayıt yalnızca ayrıştırmadır. `GsonHelper`'ın tip dönüştürücüleri
-(`getAsInt`, `getAsFloat`, eksik alan varsayılanları, tip uyuşmazlığında
-üretilen hatalar) ve saklanan literalden sayıya dönüşüm ayrı bir dilimdir;
-Java'nın `LazilyParsedNumber` davranışı orada sabitlenecektir. Geçersiz UTF-8
-baytlarının davranışı da sınanmadı: referans metni dosyadan zaten çözülmüş
-alır, bu yüzden çözme sınırı bu kaydın dışındadır.
+`GsonHelper`'ın alan düzeyindeki yardımcıları (`getAsInt(object, name)`, eksik
+alan varsayılanları, tip uyuşmazlığında üretilen hata metinleri) bu kaydın
+dışındadır. Geçersiz UTF-8 baytlarının davranışı da sınanmadı: referans metni
+dosyadan zaten çözülmüş alır, bu yüzden çözme sınırı bu kaydın dışındadır.

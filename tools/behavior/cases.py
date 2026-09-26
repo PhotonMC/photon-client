@@ -12295,6 +12295,35 @@ def json_cases():
         ("double-comma", "[1,,2]"),
     ]
 
+    literals = [
+        # plain integers, including the boundaries of each width
+        "0", "-0", "1", "-1", "42", "2147483647", "-2147483648",
+        "2147483648", "-2147483649", "9223372036854775807", "-9223372036854775808",
+        "9223372036854775808", "9007199254740993", "123456789012345678901234567890",
+        # decimals, where an integer request has to drop the fraction
+        "1.0", "1.5", "-1.5", "0.0", "-0.0", "2.5", "-2.5", "0.1",
+        "16.0", "0.0625", "-0.0625", "1.9999999", "2147483647.5",
+        # exponents, including values that overflow one width but not another
+        "1e0", "1E0", "1e1", "1e-1", "1e10", "1e38", "1e39", "1e308", "1e309",
+        "1e400", "-1e400", "1e-45", "1e-46", "1e-324", "3.4028235e38",
+        "3.4028236e38", "1.7976931348623157e308",
+        # the smallest steps a float can still tell apart
+        "0.1000000014901161", "16777217", "16777216",
+        # an exponent that moves the point back across the digits
+        "12345e-3", "12345e-5", "12345e-6", "0.0000001e10", "123e20",
+        "1e18", "1e19", "1e20", "999999999999999999999e-3",
+        # long digit strings, where the low bits have to survive the wrap
+        "18446744073709551616", "18446744073709551617",
+        "340282366920938463463374607431768211456",
+        "-123456789012345678901234567890", "-9007199254740993",
+    ]
+    yield {
+        "case_id": "json/number",
+        "family": "json",
+        "operation": "number",
+        "rows": [{"label": literal, "literal": literal} for literal in literals],
+    }
+
     yield {
         "case_id": "json/parse",
         "family": "json",

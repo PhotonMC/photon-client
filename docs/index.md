@@ -308,7 +308,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P06–P08 — İlk gerçek oyun oturumu sözleşmesi — server-conformance birleşik kayıt](game-connection-conformance.md)
 - [P06.b — Handshake intention codec sözleşmesi — client-parity birleşik kayıt](handshake-intention-conformance.md)
 - [P05.b — InputWithModifiers ve event kayıtları sözleşmesi — client-parity birleşik kayıt](input-events-conformance.md)
-- [P16.d — Strict JSON ayrıştırma — client-parity birleşik kayıt](json-parse-conformance.md)
+- [P16.d — Strict JSON ayrıştırma ve sayı dönüşümü — client-parity birleşik kayıt](json-parse-conformance.md)
 - [P05.b — KeyMapping sözleşmesi — client-parity birleşik kayıt](key-mapping-conformance.md)
 - [P05.c — KeyboardInput sözleşmesi — client-parity birleşik kayıt](keyboard-input-conformance.md)
 - [P05.a — OptionInstance LazyEnum sözleşmesi — client-parity birleşik kayıt](lazy-enum-conformance.md)

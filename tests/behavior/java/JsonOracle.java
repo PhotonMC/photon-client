@@ -14,16 +14,51 @@ public final class JsonOracle {
 
     public static JsonObject run(JsonObject request) {
         String operation = request.get("operation").getAsString();
-        if (!operation.equals("parse")) {
-            throw new IllegalArgumentException("Unknown json operation: " + operation);
-        }
         var rows = new JsonArray();
         for (var element : request.get("rows").getAsJsonArray()) {
-            rows.add(parse(element.getAsJsonObject()));
+            switch (operation) {
+                case "parse" -> rows.add(parse(element.getAsJsonObject()));
+                case "number" -> rows.add(number(element.getAsJsonObject()));
+                default -> throw new IllegalArgumentException("Unknown json operation: " + operation);
+            }
         }
         var result = new JsonObject();
         result.add("rows", rows);
         return result;
+    }
+
+    /** What the reference turns one number literal into, per requested type. */
+    private static JsonObject number(JsonObject row) {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        String literal = row.get("literal").getAsString();
+        JsonElement parsed;
+        try {
+            JsonReader reader = new JsonReader(new StringReader(literal));
+            reader.setStrictness(Strictness.STRICT);
+            parsed = GSON.getAdapter(JsonElement.class).read(reader);
+        } catch (Exception error) {
+            entry.addProperty("outcome", "rejected");
+            return entry;
+        }
+        var primitive = parsed.getAsJsonPrimitive();
+        entry.addProperty("outcome", "converted");
+        entry.addProperty("literal", primitive.getAsString());
+        entry.addProperty("as_int", conversion(() -> String.valueOf(primitive.getAsInt())));
+        entry.addProperty("as_long", conversion(() -> String.valueOf(primitive.getAsLong())));
+        entry.addProperty("as_float", conversion(
+            () -> String.format(java.util.Locale.ROOT, "%08x", Float.floatToRawIntBits(primitive.getAsFloat()))));
+        entry.addProperty("as_double", conversion(
+            () -> String.format(java.util.Locale.ROOT, "%016x", Double.doubleToRawLongBits(primitive.getAsDouble()))));
+        return entry;
+    }
+
+    private static String conversion(java.util.function.Supplier<String> supplier) {
+        try {
+            return supplier.get();
+        } catch (RuntimeException error) {
+            return "error";
+        }
     }
 
     private static JsonObject parse(JsonObject row) {

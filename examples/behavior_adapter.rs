@@ -15159,7 +15159,42 @@ fn json_canonical(value: &voxel_client::json::JsonValue, out: &mut String) {
     }
 }
 
+fn json_number_result(request: &Value) -> Result<Value, String> {
+    use voxel_client::json::JsonValue;
+    let rows = request["rows"].as_array().ok_or("json rows must be an array")?;
+    let mut out = Vec::with_capacity(rows.len());
+    for row in rows {
+        let label = string(row, "label")?;
+        let literal = string(row, "literal")?;
+        let Ok(value) = voxel_client::json::parse(literal) else {
+            out.push(json!({"label": label, "outcome": "rejected"}));
+            continue;
+        };
+        let JsonValue::Number(kept) = &value else {
+            out.push(json!({"label": label, "outcome": "rejected"}));
+            continue;
+        };
+        out.push(json!({
+            "label": label,
+            "outcome": "converted",
+            "literal": kept,
+            "as_int": value.as_i32().map_or("error".to_owned(), |v| v.to_string()),
+            "as_long": value.as_i64().map_or("error".to_owned(), |v| v.to_string()),
+            "as_float": value
+                .as_f32()
+                .map_or("error".to_owned(), |v| format!("{:08x}", v.to_bits())),
+            "as_double": value
+                .as_f64()
+                .map_or("error".to_owned(), |v| format!("{:016x}", v.to_bits())),
+        }));
+    }
+    Ok(json!({"rows": out}))
+}
+
 fn json_result(request: &Value) -> Result<Value, String> {
+    if string(request, "operation")? == "number" {
+        return json_number_result(request);
+    }
     if string(request, "operation")? != "parse" {
         return Err("unknown json operation".into());
     }
