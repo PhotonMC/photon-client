@@ -44,10 +44,21 @@ Koşu: `python3 tools/behavior/run.py capture --family model` ardından
 
 ## Açık kapsam
 
-**UV kilidi bu kaydın dışındadır.** Kilitli yüz dönüşümleri kuaterniyondan
-kurulan bir tablo üzerinden geçer, normali dönüştürüp en yakın yönü bulur ve
-ters dönüşümle bileştirir; o yol kendi dilimini hak eder ve buradaki tam sayı
-güvencesini taşımaz.
+**UV kilidi bu kaydın dışındadır ve neden dışarıda kaldığı ölçüldü.**
+
+Kilitli yüz dönüşümleri altı sabit tablodan geçer. Bu tablolar kuaterniyondan
+matris kurularak bir kez hesaplanır ve **tam sayı değildir**: probe edildiğinde
+`0.99999994` ve `-1.000000119` gibi değerler taşıdıkları görüldü. Yani bu yol,
+bu kaydın dayandığı tam sayı güvencesinin tersine, kayan nokta hatası biriktirir
+ve birebir yeniden üretilmesi matris kütüphanesinin `rotate(Quaternionfc)`,
+`mul` ve `invertAffine` formüllerinin harfiyen aynısını gerektirir. O
+formüllerin kaynağı yerel referansta bulunmadığı için tahmin yürütmek yerine
+dilim açık bırakıldı.
+
+Yol ayrıca `getFaceTransformation` içinde normali dönüştürüp en yakın yönü
+seçer; o adım da kendi başına sabitlenmelidir. UV kilidi uygulanmadan merdiven
+ve çit gibi bloklar döndürüldüklerinde dokularını modelle birlikte çevirir,
+yani yanlış çizilir.
 
 Varyant seçiminin kendisi de açıktır: `blockstates/` dosyasından blok
 durumuna göre varyant seçmek referansta blok registry'sine bağlıdır. Bu kayıt

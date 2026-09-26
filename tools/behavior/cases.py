@@ -12421,8 +12421,7 @@ def model_cases():
     ]
 
     state_rows = []
-    # UV lock is left out: its face transforms go through a quaternion path
-    # that needs its own slice, and no plain rotation touches it.
+    # UV lock is left out; the reason is recorded in the slice document.
     for x in (0, 90, 180, 270, 360, -90, -180, 450):
         for y in (0, 90, 180, 270, 360, -90, -180, 450):
             state_rows.append({
