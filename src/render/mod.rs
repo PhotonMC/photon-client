@@ -6,6 +6,7 @@ pub mod atlas;
 pub mod geometry;
 pub mod model;
 pub mod png;
+pub mod resolve;
 pub mod rotation;
 pub mod scene;
 pub mod vulkan;
@@ -21,6 +22,7 @@ pub use model::{
     parse_model,
 };
 pub use scene::{Mesh, SpriteRect, Vertex, full_cube};
+pub use resolve::{AssetSource, BuiltAtlas, ResolveError, ResolvedModel, build_atlas, build_mesh, resolve_model};
 pub use rotation::{
     Matrix4, RotationAxis, element_transform, euler_element_transform, rotate_vertex,
 };

@@ -143,30 +143,45 @@ fn run_window(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std:
         described.extent.width, described.extent.height
     );
 
-    // A texture is read from a folder the user points at; nothing is bundled.
-    // Without one the probe falls back to its own checkerboard so it still
-    // runs, and says which it used.
-    let (texture, texture_width, texture_height, source) = match env::var("VOXEL_TEXTURE") {
-        Ok(path) => {
-            let bytes = std::fs::read(&path)?;
-            let image = render::decode_rgba(&bytes)
-                .map_err(|error| format!("{path}: {error:?}"))?;
-            (image.rgba, image.width, image.height, path)
+    // Assets come from a folder the user names; nothing is bundled. With a
+    // folder and a model name the probe draws that model; with neither it
+    // falls back to its own cube and checkerboard, and says which it used.
+    let (mesh, texture, texture_width, texture_height) = match (
+        env::var("VOXEL_ASSETS"),
+        env::var("VOXEL_MODEL"),
+    ) {
+        (Ok(root), Ok(name)) => {
+            let source = FolderAssets {
+                root: std::path::PathBuf::from(&root),
+            };
+            let identifier = voxel_client::identifier::Identifier::parse(&name)
+                .map_err(|error| format!("{name}: {error:?}"))?;
+            let model = render::resolve_model(&source, &identifier)
+                .map_err(|error| format!("{name}: {error:?}"))?;
+            let atlas = render::build_atlas(&source, &model, 2048, 0)
+                .map_err(|error| format!("{name}: {error:?}"))?;
+            let mesh = render::build_mesh(&model, &atlas)
+                .map_err(|error| format!("{name}: {error:?}"))?;
+            println!("model_source={name}");
+            println!("model_elements={}", model.elements.len());
+            println!("model_sprites={}", atlas.sprites.len());
+            println!("model_ambient_occlusion={}", model.ambient_occlusion);
+            println!("atlas_size={}x{}", atlas.width, atlas.height);
+            (mesh, atlas.rgba, atlas.width, atlas.height)
         }
-        Err(_) => {
+        _ => {
+            println!("model_source=built-in cube and checkerboard");
             let (rgba, size) = checkerboard();
-            (rgba, size, size, "built-in checkerboard".to_owned())
+            let mesh = render::full_cube(render::SpriteRect {
+                min_u: 0.0,
+                min_v: 0.0,
+                max_u: 1.0,
+                max_v: 1.0,
+            });
+            (mesh, rgba, size, size)
         }
     };
-    println!("texture_source={source}");
     println!("texture_size={texture_width}x{texture_height}");
-
-    let mesh = render::full_cube(render::SpriteRect {
-        min_u: 0.0,
-        min_v: 0.0,
-        max_u: 1.0,
-        max_v: 1.0,
-    });
     backend.load_scene(&mesh, &texture, texture_width, texture_height)?;
     println!("mesh_vertices={}", mesh.vertices.len());
     println!("mesh_indices={}", mesh.indices.len());
@@ -298,4 +313,34 @@ fn checkerboard() -> (Vec<u8>, u32) {
         }
     }
     (rgba, SIZE)
+}
+
+/// Read models and textures from a folder laid out like the game's assets.
+struct FolderAssets {
+    root: std::path::PathBuf,
+}
+
+impl FolderAssets {
+    /// The layout the game's asset tree uses: namespace, kind, then the name.
+    fn path(
+        &self,
+        name: &voxel_client::identifier::Identifier,
+        kind: &str,
+        extension: &str,
+    ) -> std::path::PathBuf {
+        self.root.join(name.namespace()).join(kind).join(format!(
+            "{}{extension}",
+            name.path().replace('/', std::path::MAIN_SEPARATOR_STR)
+        ))
+    }
+}
+
+impl render::AssetSource for FolderAssets {
+    fn model(&self, name: &voxel_client::identifier::Identifier) -> Option<String> {
+        std::fs::read_to_string(self.path(name, "models", ".json")).ok()
+    }
+
+    fn texture(&self, name: &voxel_client::identifier::Identifier) -> Option<Vec<u8>> {
+        std::fs::read(self.path(name, "textures", ".png")).ok()
+    }
 }

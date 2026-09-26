@@ -545,6 +545,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 
 ## Diğer referans kayıtları
 
+- [P16.k — Model çözümü ve gerçek blok çizimi — [karma: pinlenmiş parçalar, pinlenmemiş birleştirme]](model-resolution-record.md)
 - [P15 — Render yığını kararı: GLFW + Vulkan 1.2 (ash), wgpu değil](render-backend-decision.md)
 - [P15.a.1 — Kontrollü Java istemci koşusu — [altyapı, parity iddiası yok]](render-reference-launch-record.md)
 - [P15.a.2 — Java referansının kendi değişkenliği — [ölçüm, parity iddiası yok]](render-variability-measurement.md)
