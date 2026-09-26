@@ -324,6 +324,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P05.a — OptionInstance UnitDouble.xmap sözleşmesi — client-parity birleşik kayıt](mapped-unit-double-conformance.md)
 - [P01 — Math ailesi doğrulaması — client-parity kapsam kaydı](math-conformance.md)
 - [P16.j — Model dosyası ayrıştırma — client-parity birleşik kayıt](model-file-parse-conformance.md)
+- [P16.l — Blockstate varyant döndürmesi — client-parity birleşik kayıt](model-state-conformance.md)
 - [P16.c — Model texture slot çözümü — client-parity birleşik kayıt](model-texture-slots-conformance.md)
 - [P11 — Kontrollü oyuncu hareketi probe sözleşmesi — server-conformance birleşik kayıt](movement-probe-conformance.md)
 - [Mth absMax davranış sözleşmesi — client-parity birleşik kayıt](mth-abs-max-conformance.md)

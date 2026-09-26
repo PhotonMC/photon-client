@@ -15632,7 +15632,52 @@ fn model_parse_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+fn model_state_result(request: &Value) -> Result<Value, String> {
+    use voxel_client::render::rotation;
+    let rows = request["rows"].as_array().ok_or("model rows must be an array")?;
+    let mut out = Vec::with_capacity(rows.len());
+    for row in rows {
+        let label = string(row, "label")?;
+        let Some(transform) =
+            rotation::model_state_transform(i32_field(row, "x")?, i32_field(row, "y")?)
+        else {
+            out.push(json!({"label": label, "outcome": "rejected"}));
+            continue;
+        };
+        let mut matrix = Vec::with_capacity(16);
+        for column in &transform {
+            for value in column {
+                matrix.push(json!(format!("{:08x}", value.to_bits())));
+            }
+        }
+        // Without UV lock the reference leaves every face transform at
+        // identity, so the faces are reported from the same constant.
+        let identity: Vec<Value> = (0..16)
+            .map(|index| {
+                let value = if index % 5 == 0 { 1.0_f32 } else { 0.0_f32 };
+                json!(format!("{:08x}", value.to_bits()))
+            })
+            .collect();
+        let faces: Vec<Value> = ["down", "up", "north", "south", "west", "east"]
+            .iter()
+            .map(|face| {
+                json!({"face": face, "forward": identity.clone(), "inverse": identity.clone()})
+            })
+            .collect();
+        out.push(json!({
+            "label": label,
+            "outcome": "resolved",
+            "transformation": matrix,
+            "faces": faces,
+        }));
+    }
+    Ok(json!({"rows": out}))
+}
+
 fn model_result(request: &Value) -> Result<Value, String> {
+    if string(request, "operation")? == "model_state" {
+        return model_state_result(request);
+    }
     if string(request, "operation")? == "parse_model" {
         return model_parse_result(request);
     }

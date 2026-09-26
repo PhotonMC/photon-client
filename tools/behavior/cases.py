@@ -12420,6 +12420,25 @@ def model_cases():
         ("trailing-comma", '{"elements":[],}'),
     ]
 
+    state_rows = []
+    # UV lock is left out: its face transforms go through a quaternion path
+    # that needs its own slice, and no plain rotation touches it.
+    for x in (0, 90, 180, 270, 360, -90, -180, 450):
+        for y in (0, 90, 180, 270, 360, -90, -180, 450):
+            state_rows.append({
+                "label": f"x{x}-y{y}",
+                "x": x,
+                "y": y,
+                "uvlock": False,
+            })
+
+    yield {
+        "case_id": "model/model-state",
+        "family": "model",
+        "operation": "model_state",
+        "rows": state_rows,
+    }
+
     yield {
         "case_id": "model/parse-model",
         "family": "model",

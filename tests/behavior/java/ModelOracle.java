@@ -27,6 +27,7 @@ public final class ModelOracle {
                 case "euler_rotation" -> rows.add(euler(element.getAsJsonObject()));
                 case "face_uv_rotation" -> rows.add(uvRotation(element.getAsJsonObject()));
                 case "parse_model" -> rows.add(parseModel(element.getAsJsonObject()));
+                case "model_state" -> rows.add(modelState(element.getAsJsonObject()));
                 default -> throw new IllegalArgumentException("Unknown model operation: " + operation);
             }
         }
@@ -77,6 +78,43 @@ public final class ModelOracle {
         }
         entry.add("corners", corners);
         return entry;
+    }
+
+    /** The transform a blockstate variant's x/y rotation produces. */
+    private static JsonObject modelState(JsonObject row) {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        var xQuadrant = com.mojang.math.Quadrant.parseJson(row.get("x").getAsInt());
+        var yQuadrant = com.mojang.math.Quadrant.parseJson(row.get("y").getAsInt());
+        boolean uvLock = row.get("uvlock").getAsBoolean();
+        var group = com.mojang.math.Quadrant.fromXYAngles(xQuadrant, yQuadrant);
+        var rotation = net.minecraft.client.renderer.block.dispatch.BlockModelRotation.get(group);
+        net.minecraft.client.renderer.block.dispatch.ModelState state =
+            uvLock ? rotation.withUvLock() : rotation;
+
+        entry.addProperty("outcome", "resolved");
+        entry.add("transformation", matrixBits(state.transformation().getMatrix()));
+        var faces = new JsonArray();
+        for (var face : net.minecraft.core.Direction.values()) {
+            var described = new JsonObject();
+            described.addProperty("face", face.getName());
+            described.add("forward", matrixBits(state.faceTransformation(face)));
+            described.add("inverse", matrixBits(state.inverseFaceTransformation(face)));
+            faces.add(described);
+        }
+        entry.add("faces", faces);
+        return entry;
+    }
+
+    private static JsonArray matrixBits(org.joml.Matrix4fc matrix) {
+        var out = new JsonArray();
+        for (int column = 0; column < 4; column++) {
+            for (int rowIndex = 0; rowIndex < 4; rowIndex++) {
+                out.add(String.format(java.util.Locale.ROOT, "%08x",
+                    Float.floatToRawIntBits(matrix.get(column, rowIndex))));
+            }
+        }
+        return out;
     }
 
     /** A whole model file, read through the reference's own configuration. */

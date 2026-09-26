@@ -24,7 +24,7 @@ pub use model::{
 pub use scene::{Mesh, SpriteRect, Vertex, full_cube};
 pub use resolve::{AssetSource, BuiltAtlas, ResolveError, ResolvedModel, build_atlas, build_mesh, resolve_model};
 pub use rotation::{
-    Matrix4, RotationAxis, element_transform, euler_element_transform, rotate_vertex,
+    Matrix4, RotationAxis, element_transform, euler_element_transform, model_state_transform, rotate_vertex,
 };
 pub use png::{DecodedImage, PngError, decode_rgba};
 pub use vulkan::{CapturedFrame, VulkanBackend, VulkanError};

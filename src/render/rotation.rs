@@ -230,3 +230,58 @@ pub fn rotate_vertex(vertex: [f32; 3], origin: [f32; 3], matrix: &Matrix4) -> [f
         transformed[2] + origin[2],
     ]
 }
+
+/// A blockstate variant's whole-model rotation.
+///
+/// A variant may turn its model by quarter turns about X and then Y. The
+/// reference composes these through its cube symmetry group, whose matrices
+/// hold only zero and plus or minus one, so the composition here is exact and
+/// needs no trigonometry.
+pub fn model_state_transform(x_degrees: i32, y_degrees: i32) -> Option<Matrix4> {
+    let x_quarters = quarter_turns(x_degrees)?;
+    let y_quarters = quarter_turns(y_degrees)?;
+    let mut result = IDENTITY;
+    // X is applied first and Y wraps around it, matching how the reference
+    // composes the two group elements.
+    for _ in 0..x_quarters {
+        result = exact_multiply(&ROTATE_X_QUARTER, &result);
+    }
+    for _ in 0..y_quarters {
+        result = exact_multiply(&ROTATE_Y_QUARTER, &result);
+    }
+    Some(result)
+}
+
+/// How many quarter turns an angle names, or nothing if it is not a multiple.
+fn quarter_turns(degrees: i32) -> Option<u32> {
+    match crate::math::positive_modulo_i32(degrees, 360) {
+        0 => Some(0),
+        90 => Some(1),
+        180 => Some(2),
+        270 => Some(3),
+        _ => None,
+    }
+}
+
+/// One quarter turn about X, taking `(x, y, z)` to `(x, z, -y)`.
+const ROTATE_X_QUARTER: Matrix4 = [
+    [1.0, 0.0, 0.0, 0.0],
+    [0.0, 0.0, -1.0, 0.0],
+    [0.0, 1.0, 0.0, 0.0],
+    [0.0, 0.0, 0.0, 1.0],
+];
+
+/// One quarter turn about Y, taking `(x, y, z)` to `(-z, y, x)`.
+const ROTATE_Y_QUARTER: Matrix4 = [
+    [0.0, 0.0, 1.0, 0.0],
+    [0.0, 1.0, 0.0, 0.0],
+    [-1.0, 0.0, 0.0, 0.0],
+    [0.0, 0.0, 0.0, 1.0],
+];
+
+/// Column-major product over values that are only zero and plus or minus one.
+fn exact_multiply(left: &Matrix4, right: &Matrix4) -> Matrix4 {
+    std::array::from_fn(|column| {
+        std::array::from_fn(|row| (0..4).map(|k| left[k][row] * right[column][k]).sum())
+    })
+}
