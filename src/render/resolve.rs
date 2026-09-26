@@ -192,14 +192,30 @@ pub fn build_atlas(
     max_size: i32,
     mip_level: i32,
 ) -> Result<BuiltAtlas, ResolveError> {
+    build_atlas_for(source, std::slice::from_ref(&model), max_size, mip_level)
+}
+
+/// Pack every texture a whole set of models uses into one atlas.
+///
+/// A world draws many models at once and they have to share one atlas, both
+/// because the reference stitches one and because a draw call binds one
+/// texture.
+pub fn build_atlas_for(
+    source: &impl AssetSource,
+    models: &[&ResolvedModel],
+    max_size: i32,
+    mip_level: i32,
+) -> Result<BuiltAtlas, ResolveError> {
     let mut wanted: BTreeMap<String, Material> = BTreeMap::new();
-    for element in &model.elements {
-        for (_, face) in &element.faces {
-            let material = model
-                .textures
-                .material(&face.texture)
-                .ok_or_else(|| ResolveError::UnresolvedTexture(face.texture.clone()))?;
-            wanted.insert(material.sprite.as_string(), material.clone());
+    for model in models {
+        for element in &model.elements {
+            for (_, face) in &element.faces {
+                let material = model
+                    .textures
+                    .material(&face.texture)
+                    .ok_or_else(|| ResolveError::UnresolvedTexture(face.texture.clone()))?;
+                wanted.insert(material.sprite.as_string(), material.clone());
+            }
         }
     }
 

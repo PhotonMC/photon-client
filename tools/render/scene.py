@@ -410,6 +410,61 @@ def wait_for(log_path, needle, timeout, process, poll=0.5):
     raise Failed(f"Server never printed {needle!r} within {timeout}s")
 
 
+def serve(args):
+    """Run the pinned server on the built scene and leave it up.
+
+    Nothing about the world is generated here; the fixture is copied in so the
+    server serves exactly the scene `build` produced. Offline mode is already
+    on in the pinned properties, so a client joins without an account."""
+    check_server()
+    name = level_name(args.scene)
+    fixture = WORK / "scene" / name
+    if not fixture.is_dir():
+        raise Blocked(f"No fixture for {args.scene}; run `build` first")
+
+    run = WORK / f"serve-{args.scene}"
+    if run.exists():
+        shutil.rmtree(run)
+    run.mkdir(parents=True)
+    (run / "eula.txt").write_text("eula=true\n", encoding="utf-8")
+    (run / "server.properties").write_text(
+        server_properties(args.scene, args.port), encoding="utf-8",
+    )
+    shutil.copytree(fixture, run / name)
+
+    log_path = run / "serve.log"
+    with log_path.open("w", encoding="utf-8") as log:
+        process = subprocess.Popen(
+            [args.java, f"-Xmx{args.heap}", "-jar", str(SERVER_JAR), "nogui"],
+            cwd=run, stdin=subprocess.PIPE,
+            stdout=log, stderr=subprocess.STDOUT, text=True,
+        )
+        try:
+            wait_for(log_path, 'Done (', args.timeout, process)
+            print(json.dumps({
+                "command": "serve",
+                "status": "listening",
+                "scene": args.scene,
+                "level_name": name,
+                "port": args.port,
+                "pid": process.pid,
+                "log": str(log_path.relative_to(ROOT)),
+            }, sort_keys=True), flush=True)
+            if args.seconds:
+                time.sleep(args.seconds)
+            else:
+                process.wait()
+        finally:
+            if process.poll() is None:
+                try:
+                    process.stdin.write("stop\n")
+                    process.stdin.flush()
+                    process.wait(timeout=60)
+                except Exception:
+                    process.kill()
+    return 0
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -432,6 +487,16 @@ def main():
     put.add_argument("--heap", default="2G")
     put.add_argument("--timeout", type=float, default=180.0)
     put.set_defaults(handler=place)
+
+    up = sub.add_parser("serve", help="run the pinned server on the built scene")
+    up.add_argument("--scene", choices=sorted(SCENES), default=DEFAULT_SCENE)
+    up.add_argument("--port", type=int, default=25599)
+    up.add_argument("--java", default="java")
+    up.add_argument("--heap", default="2G")
+    up.add_argument("--timeout", type=float, default=300.0)
+    up.add_argument("--seconds", type=float, default=0.0,
+                    help="stop after this long; zero runs until killed")
+    up.set_defaults(handler=serve)
 
     args = parser.parse_args()
     try:

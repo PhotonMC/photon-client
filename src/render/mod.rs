@@ -15,6 +15,7 @@ pub mod texture_metadata;
 pub mod tint;
 mod uv_lock_table;
 pub mod vulkan;
+pub mod world_mesh;
 
 pub use atlas::{AtlasSprite, SpriteEntry, SpritePlacement, StitchError, Stitcher};
 pub use blockstate::{
@@ -35,7 +36,8 @@ pub use model::{
 };
 pub use png::{DecodedImage, PngError, decode_rgba};
 pub use resolve::{
-    AssetSource, BuiltAtlas, ResolveError, ResolvedModel, build_atlas, build_mesh, resolve_model,
+    AssetSource, BuiltAtlas, ResolveError, ResolvedModel, build_atlas, build_atlas_for, build_mesh,
+    resolve_model,
 };
 pub use rotation::{
     Matrix4, RotationAxis, element_transform, euler_element_transform, model_state_transform,
@@ -48,3 +50,4 @@ pub use tint::{
     constant_tints, multiply,
 };
 pub use vulkan::{CapturedFrame, VulkanBackend, VulkanError};
+pub use world_mesh::{WorldMesh, build_world_mesh};

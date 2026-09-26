@@ -9212,14 +9212,21 @@ impl BlockDefinition {
     }
 }
 
-/// Which block a state number belongs to, and how far into it the state sits.
-pub fn block_for_state(state_id: u32) -> Option<(&'static BlockDefinition, u32)> {
+/// Which block a state number belongs to, by index, and how far into it the
+/// state sits.
+pub fn block_index_for_state(state_id: u32) -> Option<(usize, u32)> {
     // The numbers run contiguously in registry order, so a binary search over
     // the starting numbers finds the owner without a table of every state.
     let found = BLOCKS.partition_point(|block| block.first_state_id <= state_id);
-    let block = BLOCKS.get(found.checked_sub(1)?)?;
-    let offset = state_id - block.first_state_id;
-    (offset < u32::from(block.state_count)).then_some((block, offset))
+    let index = found.checked_sub(1)?;
+    let offset = state_id - BLOCKS[index].first_state_id;
+    (offset < u32::from(BLOCKS[index].state_count)).then_some((index, offset))
+}
+
+/// Which block a state number belongs to, and how far into it the state sits.
+pub fn block_for_state(state_id: u32) -> Option<(&'static BlockDefinition, u32)> {
+    let (index, offset) = block_index_for_state(state_id)?;
+    Some((&BLOCKS[index], offset))
 }
 
 #[cfg(test)]
