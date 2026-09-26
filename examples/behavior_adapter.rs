@@ -122,6 +122,13 @@ fn hex(bytes: &[u8]) -> String {
     bytes.iter().map(|byte| format!("{byte:02x}")).collect()
 }
 
+fn hex_bytes(text: &str) -> Result<Vec<u8>, String> {
+    (0..text.len() / 2)
+        .map(|index| u8::from_str_radix(&text[index * 2..index * 2 + 2], 16))
+        .collect::<Result<_, _>>()
+        .map_err(|error| format!("hex: {error}"))
+}
+
 fn read(input: &mut &[u8], wide: bool) -> Result<i64, ReadError> {
     if wide {
         wire::read_varlong(input)
@@ -15864,12 +15871,127 @@ fn image_mip_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+fn image_transparency_result(request: &Value) -> Result<Value, String> {
+    let rows = request["rows"]
+        .as_array()
+        .ok_or("image rows must be an array")?;
+    let mut out = Vec::with_capacity(rows.len());
+    for row in rows {
+        let label = string(row, "label")?;
+        let bytes = hex_bytes(string(row, "png")?)?;
+        match render::decode_rgba(&bytes) {
+            Err(_) => out.push(json!({"label": label, "outcome": "failed"})),
+            Ok(image) => {
+                let measured = render::compute_transparency(&image);
+                out.push(json!({
+                    "label": label,
+                    "outcome": "measured",
+                    "transparent": measured.has_transparent,
+                    "translucent": measured.has_translucent,
+                    "opaque": measured.is_opaque(),
+                }));
+            }
+        }
+    }
+    Ok(json!({"rows": out}))
+}
+
+fn image_texture_metadata_result(request: &Value) -> Result<Value, String> {
+    let rows = request["rows"]
+        .as_array()
+        .ok_or("image rows must be an array")?;
+    let mut out = Vec::with_capacity(rows.len());
+    for row in rows {
+        let label = string(row, "label")?;
+        let parsed = voxel_client::json::parse(string(row, "json")?)
+            .ok()
+            .and_then(|value| match value {
+                voxel_client::json::JsonValue::Object(object) => {
+                    render::TextureMetadata::parse(&object)
+                }
+                _ => None,
+            });
+        match parsed {
+            None => out.push(json!({"label": label, "outcome": "rejected"})),
+            Some(metadata) => out.push(json!({
+                "label": label,
+                "outcome": "parsed",
+                "blur": metadata.blur,
+                "clamp": metadata.clamp,
+                "strategy": metadata.mipmap_strategy.name(),
+                "bias": format!("{:08x}", metadata.alpha_cutoff_bias.to_bits()),
+            })),
+        }
+    }
+    Ok(json!({"rows": out}))
+}
+
+fn image_sprite_uv_result(request: &Value) -> Result<Value, String> {
+    let rows = request["rows"]
+        .as_array()
+        .ok_or("image rows must be an array")?;
+    let mut out = Vec::with_capacity(rows.len());
+    for row in rows {
+        let label = string(row, "label")?;
+        let width = i32_field(row, "width")?;
+        let height = i32_field(row, "height")?;
+        let placement = render::SpritePlacement {
+            name: voxel_client::identifier::Identifier::parse("minecraft:block/parity")
+                .map_err(|_| "sprite name")?,
+            x: i32_field(row, "x")?,
+            y: i32_field(row, "y")?,
+            padding: i32_field(row, "padding")?,
+        };
+        let sprite = render::AtlasSprite::new(
+            &placement,
+            width,
+            height,
+            i32_field(row, "atlas_width")?,
+            i32_field(row, "atlas_height")?,
+        );
+        let mut interpolated = Vec::new();
+        for offset in row["offsets"]
+            .as_array()
+            .ok_or("offsets must be an array")?
+        {
+            let bits = u32::from_str_radix(offset.as_str().ok_or("offset must be a string")?, 16)
+                .map_err(|error| format!("offset: {error}"))?;
+            let offset = f32::from_bits(bits);
+            interpolated.push(json!({
+                "u": format!("{:08x}", sprite.u(offset).to_bits()),
+                "v": format!("{:08x}", sprite.v(offset).to_bits()),
+            }));
+        }
+        out.push(json!({
+            "label": label,
+            "outcome": "placed",
+            "x": sprite.x,
+            "y": sprite.y,
+            "u0": format!("{:08x}", sprite.u0.to_bits()),
+            "u1": format!("{:08x}", sprite.u1.to_bits()),
+            "v0": format!("{:08x}", sprite.v0.to_bits()),
+            "v1": format!("{:08x}", sprite.v1.to_bits()),
+            "interpolated": interpolated,
+        }));
+    }
+    Ok(json!({"rows": out}))
+}
+
 fn image_result(request: &Value) -> Result<Value, String> {
     if string(request, "operation")? == "srgb_tables" {
         return image_tables_result(request);
     }
     if string(request, "operation")? == "mip_levels" {
         return image_mip_result(request);
+    }
+    if string(request, "operation")? == "compute_transparency" {
+        return image_transparency_result(request);
+    }
+    if string(request, "operation")? == "texture_metadata" {
+        return image_texture_metadata_result(request);
+    }
+    if string(request, "operation")? == "sprite_uv" {
+        return image_sprite_uv_result(request);
     }
     if string(request, "operation")? != "png_decode" {
         return Err("unknown image operation".into());

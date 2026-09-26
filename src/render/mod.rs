@@ -10,15 +10,17 @@ pub mod png;
 pub mod resolve;
 pub mod rotation;
 pub mod scene;
+pub mod texture_metadata;
 pub mod vulkan;
 
-pub use atlas::{SpriteEntry, SpritePlacement, StitchError, Stitcher};
+pub use atlas::{AtlasSprite, SpriteEntry, SpritePlacement, StitchError, Stitcher};
 pub use geometry::{
     FaceUvs, Quadrant, WindingError, closest_direction, default_face_uv, face_vertex_uv,
     face_vertices, recalculate_winding, triangle_normal,
 };
 pub use mipmap::{
-    MipmapStrategy, SrgbTables, Transparency, generate_mip_levels, generate_mip_levels_with,
+    MipmapStrategy, SrgbTables, Transparency, compute_transparency, generate_mip_levels,
+    generate_mip_levels_with,
 };
 pub use model::{
     CuboidModel, ElementRotation, GuiLight, Material, ModelElement, ModelFace, ModelParseError,
@@ -33,4 +35,5 @@ pub use rotation::{
     rotate_vertex,
 };
 pub use scene::{Mesh, SpriteRect, Vertex, full_cube};
+pub use texture_metadata::TextureMetadata;
 pub use vulkan::{CapturedFrame, VulkanBackend, VulkanError};

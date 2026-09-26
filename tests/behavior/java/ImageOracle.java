@@ -6,7 +6,7 @@ import java.util.HexFormat;
 
 /** Test glue only: decodes through the original NativeImage, never its own PNG reader. */
 public final class ImageOracle {
-    public static JsonObject run(JsonObject request) {
+    public static JsonObject run(JsonObject request) throws Exception {
         String operation = request.get("operation").getAsString();
         var rows = new JsonArray();
         for (var element : request.get("rows").getAsJsonArray()) {
@@ -14,6 +14,9 @@ public final class ImageOracle {
                 case "png_decode" -> rows.add(decode(element.getAsJsonObject()));
                 case "srgb_tables" -> rows.add(srgbTables(element.getAsJsonObject()));
                 case "mip_levels" -> rows.add(mipLevels(element.getAsJsonObject()));
+                case "compute_transparency" -> rows.add(transparency(element.getAsJsonObject()));
+                case "texture_metadata" -> rows.add(textureMetadata(element.getAsJsonObject()));
+                case "sprite_uv" -> rows.add(spriteUv(element.getAsJsonObject()));
                 default -> throw new IllegalArgumentException("Unknown image operation: " + operation);
             }
         }
@@ -39,6 +42,94 @@ public final class ImageOracle {
                 net.minecraft.util.ARGB.linearToSrgbChannel(i / 1023.0F)));
         }
         entry.addProperty("linear_to_srgb", back.toString());
+        return entry;
+    }
+
+    /** What the atlas measures from a sprite's pixels to resolve AUTO. */
+    private static JsonObject transparency(JsonObject row) {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        var bytes = HexFormat.of().parseHex(row.get("png").getAsString());
+        try (var image = NativeImage.read(new ByteArrayInputStream(bytes))) {
+            var measured = image.computeTransparency();
+            entry.addProperty("outcome", "measured");
+            entry.addProperty("transparent", measured.hasTransparent());
+            entry.addProperty("translucent", measured.hasTranslucent());
+            entry.addProperty("opaque", measured.isOpaque());
+        } catch (Exception failure) {
+            entry.addProperty("outcome", "failed");
+        }
+        return entry;
+    }
+
+    /** The texture section of a sprite's .mcmeta, which carries the strategy. */
+    private static JsonObject textureMetadata(JsonObject row) {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        try {
+            var json = com.google.gson.JsonParser.parseString(row.get("json").getAsString());
+            var parsed = net.minecraft.client.resources.metadata.texture.TextureMetadataSection.CODEC
+                .parse(com.mojang.serialization.JsonOps.INSTANCE, json)
+                .getOrThrow();
+            entry.addProperty("outcome", "parsed");
+            entry.addProperty("blur", parsed.blur());
+            entry.addProperty("clamp", parsed.clamp());
+            entry.addProperty("strategy", parsed.mipmapStrategy().getSerializedName());
+            entry.addProperty("bias", String.format(java.util.Locale.ROOT, "%08x",
+                Float.floatToRawIntBits(parsed.alphaCutoffBias())));
+        } catch (Exception failure) {
+            entry.addProperty("outcome", "rejected");
+        }
+        return entry;
+    }
+
+    /**
+     * Where a stitched sprite's texels land in the atlas.
+     *
+     * The constructor is protected and the class needs no GPU, so this opens
+     * it rather than reimplementing the four divisions it performs.
+     */
+    private static JsonObject spriteUv(JsonObject row) throws Exception {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        int width = row.get("width").getAsInt();
+        int height = row.get("height").getAsInt();
+        try (var image = new NativeImage(width, height, false)) {
+            var contents = new net.minecraft.client.renderer.texture.SpriteContents(
+                net.minecraft.resources.Identifier.parse("minecraft:block/parity"),
+                new net.minecraft.client.resources.metadata.animation.FrameSize(width, height),
+                image);
+            var constructor = net.minecraft.client.renderer.texture.TextureAtlasSprite.class
+                .getDeclaredConstructor(net.minecraft.resources.Identifier.class,
+                    net.minecraft.client.renderer.texture.SpriteContents.class,
+                    int.class, int.class, int.class, int.class, int.class);
+            constructor.setAccessible(true);
+            var sprite = constructor.newInstance(
+                net.minecraft.resources.Identifier.parse("minecraft:textures/atlas/parity.png"),
+                contents,
+                row.get("atlas_width").getAsInt(),
+                row.get("atlas_height").getAsInt(),
+                row.get("x").getAsInt(),
+                row.get("y").getAsInt(),
+                row.get("padding").getAsInt());
+            entry.addProperty("outcome", "placed");
+            entry.addProperty("x", sprite.getX());
+            entry.addProperty("y", sprite.getY());
+            entry.addProperty("u0", Oracle.bits(sprite.getU0()));
+            entry.addProperty("u1", Oracle.bits(sprite.getU1()));
+            entry.addProperty("v0", Oracle.bits(sprite.getV0()));
+            entry.addProperty("v1", Oracle.bits(sprite.getV1()));
+            var interpolated = new JsonArray();
+            for (var offsetElement : row.get("offsets").getAsJsonArray()) {
+                float offset = Float.intBitsToFloat(
+                    Integer.parseUnsignedInt(offsetElement.getAsString(), 16));
+                var pair = new JsonObject();
+                pair.addProperty("u", Oracle.bits(sprite.getU(offset)));
+                pair.addProperty("v", Oracle.bits(sprite.getV(offset)));
+                interpolated.add(pair);
+            }
+            entry.add("interpolated", interpolated);
+        }
         return entry;
     }
 

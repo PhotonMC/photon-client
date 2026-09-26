@@ -12234,6 +12234,101 @@ def image_cases():
         ],
     }
 
+    # What the atlas measures from a sprite's pixels to resolve AUTO. The scan
+    # separates fully transparent from partly transparent, and a texture can be
+    # both at once.
+    transparency_rows = [
+        ("opaque", 8, 8, [bytes([10, 20, 30, 255] * 8) for _ in range(8)]),
+        ("transparent", 8, 8, clear_rows(8, 8)),
+        ("cutout", 16, 16, cutout_rows(16, 16)),
+        ("translucent", 8, 8, [bytes([10, 20, 30, 128] * 8) for _ in range(8)]),
+        ("both", 8, 8, [bytes([10, 20, 30, 0 if y % 2 else 128] * 8) for y in range(8)]),
+        # 254 counts as partly transparent; only exactly 255 is opaque.
+        ("almost-opaque", 8, 8, [bytes([10, 20, 30, 254] * 8) for _ in range(8)]),
+        ("single-hole", 8, 8, [bytes(b for x in range(8)
+                                    for b in (10, 20, 30, 0 if (x, y) == (3, 5) else 255))
+                               for y in range(8)]),
+    ]
+    yield {
+        "case_id": "image/compute-transparency",
+        "family": "image",
+        "operation": "compute_transparency",
+        "rows": [
+            {
+                "label": label,
+                "png": _encode_png(w, h, 6, 8, data, None, None, [0] * h).hex(),
+            }
+            for label, w, h, data in transparency_rows
+        ],
+    }
+
+    # The texture section of a sprite's .mcmeta. Every field is optional, so
+    # what an absent field falls back to is the substance here.
+    metadata_rows = [
+        ("empty", "{}"),
+        ("blur", '{"blur": true}'),
+        ("clamp", '{"clamp": true}'),
+        ("strategy-mean", '{"mipmap_strategy": "mean"}'),
+        ("strategy-cutout", '{"mipmap_strategy": "cutout"}'),
+        ("strategy-strict", '{"mipmap_strategy": "strict_cutout"}'),
+        ("strategy-dark", '{"mipmap_strategy": "dark_cutout"}'),
+        ("strategy-auto", '{"mipmap_strategy": "auto"}'),
+        ("bias", '{"alpha_cutoff_bias": 0.25}'),
+        ("bias-negative", '{"alpha_cutoff_bias": -0.5}'),
+        ("bias-integer", '{"alpha_cutoff_bias": 1}'),
+        ("all", '{"blur": true, "clamp": true, "mipmap_strategy": "dark_cutout",'
+                ' "alpha_cutoff_bias": 0.125}'),
+        # Names the enum does not carry, and shapes the codec does not take.
+        ("strategy-unknown", '{"mipmap_strategy": "smooth"}'),
+        ("strategy-uppercase", '{"mipmap_strategy": "MEAN"}'),
+        ("strategy-number", '{"mipmap_strategy": 1}'),
+        ("blur-string", '{"blur": "true"}'),
+        ("bias-string", '{"alpha_cutoff_bias": "0.25"}'),
+        ("unknown-field", '{"unexpected": 1}'),
+        ("array", "[]"),
+        ("string", '"texture"'),
+    ]
+    yield {
+        "case_id": "image/texture-metadata",
+        "family": "image",
+        "operation": "texture_metadata",
+        "rows": [{"label": label, "json": text} for label, text in metadata_rows],
+    }
+
+    # Where a stitched sprite's texels land. The packer hands back the padded
+    # slot's origin, not the sprite's own, so the padding has to be added back
+    # before anything is written or any UV is taken.
+    sprite_uv_rows = [
+        ("origin", 16, 16, 256, 256, 0, 0, 0),
+        ("padded", 16, 16, 256, 256, 0, 0, 1),
+        ("offset", 16, 16, 256, 256, 18, 36, 1),
+        ("mip-padding", 16, 16, 256, 256, 32, 64, 4),
+        ("anisotropic-padding", 16, 16, 512, 512, 64, 128, 16),
+        ("oblong", 8, 32, 128, 512, 10, 40, 2),
+        # An atlas whose side is not a power of two still divides exactly.
+        ("odd-atlas", 16, 16, 300, 200, 20, 30, 1),
+    ]
+    offsets = [float_bits(value) for value in (0.0, 0.25, 0.5, 1.0, -0.5, 1.5)]
+    yield {
+        "case_id": "image/sprite-uv",
+        "family": "image",
+        "operation": "sprite_uv",
+        "rows": [
+            {
+                "label": label,
+                "width": w,
+                "height": h,
+                "atlas_width": atlas_w,
+                "atlas_height": atlas_h,
+                "x": x,
+                "y": y,
+                "padding": padding,
+                "offsets": offsets,
+            }
+            for label, w, h, atlas_w, atlas_h, x, y, padding in sprite_uv_rows
+        ],
+    }
+
     yield {
         "case_id": "image/png-decode",
         "family": "image",

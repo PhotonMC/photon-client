@@ -158,59 +158,85 @@ fn run_window(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std:
     // Assets come from a folder the user names; nothing is bundled. With a
     // folder and a model name the probe draws that model; with neither it
     // falls back to its own cube and checkerboard, and says which it used.
-    let (mesh, texture, texture_width, texture_height) =
-        match (env::var("VOXEL_ASSETS"), env::var("VOXEL_MODEL")) {
-            (Ok(root), Ok(name)) => {
-                let source = FolderAssets {
-                    root: std::path::PathBuf::from(&root),
-                };
-                let identifier = voxel_client::identifier::Identifier::parse(&name)
-                    .map_err(|error| format!("{name}: {error:?}"))?;
-                let model = render::resolve_model(&source, &identifier)
-                    .map_err(|error| format!("{name}: {error:?}"))?;
-                let atlas = render::build_atlas(&source, &model, 2048, 0)
-                    .map_err(|error| format!("{name}: {error:?}"))?;
-                // A blockstate variant turns its model in quarter turns; the
-                // probe takes them directly since variant selection is not built.
-                let rotate_x: i32 = env::var("VOXEL_ROTATE_X")
-                    .ok()
-                    .map(|value| value.parse())
-                    .transpose()?
-                    .unwrap_or(0);
-                let rotate_y: i32 = env::var("VOXEL_ROTATE_Y")
-                    .ok()
-                    .map(|value| value.parse())
-                    .transpose()?
-                    .unwrap_or(0);
-                let state =
-                    voxel_client::render::rotation::model_state_transform(rotate_x, rotate_y)
-                        .ok_or("variant rotation must be a multiple of ninety")?;
-                let identity = rotate_x % 360 == 0 && rotate_y % 360 == 0;
-                let mesh = render::build_mesh(&model, &atlas, (!identity).then_some(&state))
-                    .map_err(|error| format!("{name}: {error:?}"))?;
-                println!("model_rotation={rotate_x},{rotate_y}");
-                println!("model_source={name}");
-                println!("model_elements={}", model.elements.len());
-                println!("model_sprites={}", atlas.sprites.len());
-                println!("model_ambient_occlusion={}", model.ambient_occlusion);
-                println!("atlas_size={}x{}", atlas.width, atlas.height);
-                (mesh, atlas.rgba, atlas.width, atlas.height)
+    let (mesh, texture_levels) = match (env::var("VOXEL_ASSETS"), env::var("VOXEL_MODEL")) {
+        (Ok(root), Ok(name)) => {
+            let source = FolderAssets {
+                root: std::path::PathBuf::from(&root),
+            };
+            let identifier = voxel_client::identifier::Identifier::parse(&name)
+                .map_err(|error| format!("{name}: {error:?}"))?;
+            let model = render::resolve_model(&source, &identifier)
+                .map_err(|error| format!("{name}: {error:?}"))?;
+            // The reference's own default is four levels, lowered when a
+            // sprite in the set is too small or not a clean multiple.
+            let requested: i32 = env::var("VOXEL_MIP_LEVELS")
+                .ok()
+                .map(|value| value.parse())
+                .transpose()?
+                .unwrap_or(4);
+            let atlas = render::build_atlas(&source, &model, 2048, requested)
+                .map_err(|error| format!("{name}: {error:?}"))?;
+            // A blockstate variant turns its model in quarter turns; the
+            // probe takes them directly since variant selection is not built.
+            let rotate_x: i32 = env::var("VOXEL_ROTATE_X")
+                .ok()
+                .map(|value| value.parse())
+                .transpose()?
+                .unwrap_or(0);
+            let rotate_y: i32 = env::var("VOXEL_ROTATE_Y")
+                .ok()
+                .map(|value| value.parse())
+                .transpose()?
+                .unwrap_or(0);
+            let state = voxel_client::render::rotation::model_state_transform(rotate_x, rotate_y)
+                .ok_or("variant rotation must be a multiple of ninety")?;
+            let identity = rotate_x % 360 == 0 && rotate_y % 360 == 0;
+            let mesh = render::build_mesh(&model, &atlas, (!identity).then_some(&state))
+                .map_err(|error| format!("{name}: {error:?}"))?;
+            println!("model_rotation={rotate_x},{rotate_y}");
+            println!("model_source={name}");
+            println!("model_elements={}", model.elements.len());
+            println!("model_sprites={}", atlas.sprites.len());
+            println!("model_ambient_occlusion={}", model.ambient_occlusion);
+            println!("atlas_size={}x{}", atlas.width, atlas.height);
+            println!("atlas_mip_levels={}", atlas.levels.len());
+            println!("atlas_mip_requested={requested}");
+            // Each level can be written out, which is how the padding fill
+            // and the halving get looked at rather than assumed.
+            if let Ok(prefix) = env::var("VOXEL_ATLAS_DUMP") {
+                for (level, image) in atlas.levels.iter().enumerate() {
+                    let path = format!("{prefix}{level}.ppm");
+                    write_image_ppm(&path, image)?;
+                    println!("atlas_level_{level}={}x{}", image.width, image.height);
+                }
             }
-            _ => {
-                println!("model_source=built-in cube and checkerboard");
-                let (rgba, size) = checkerboard();
-                println!("model_rotation=0,0");
-                let mesh = render::full_cube(render::SpriteRect {
-                    min_u: 0.0,
-                    min_v: 0.0,
-                    max_u: 1.0,
-                    max_v: 1.0,
-                });
-                (mesh, rgba, size, size)
-            }
-        };
-    println!("texture_size={texture_width}x{texture_height}");
-    backend.load_scene(&mesh, &texture, texture_width, texture_height)?;
+            (mesh, atlas.levels)
+        }
+        _ => {
+            println!("model_source=built-in cube and checkerboard");
+            let (rgba, size) = checkerboard();
+            println!("model_rotation=0,0");
+            let mesh = render::full_cube(render::SpriteRect {
+                min_u: 0.0,
+                min_v: 0.0,
+                max_u: 1.0,
+                max_v: 1.0,
+            });
+            (
+                mesh,
+                vec![render::DecodedImage {
+                    width: size,
+                    height: size,
+                    rgba,
+                }],
+            )
+        }
+    };
+    println!(
+        "texture_size={}x{}",
+        texture_levels[0].width, texture_levels[0].height
+    );
+    backend.load_scene(&mesh, &texture_levels)?;
     println!("mesh_vertices={}", mesh.vertices.len());
     println!("mesh_indices={}", mesh.indices.len());
 
@@ -310,6 +336,20 @@ fn write_ppm(
     Ok(())
 }
 
+fn write_image_ppm(
+    path: &str,
+    image: &render::DecodedImage,
+) -> Result<(), Box<dyn std::error::Error>> {
+    use std::io::Write as _;
+    let mut out = std::io::BufWriter::new(std::fs::File::create(path)?);
+    write!(out, "P6\n{} {}\n255\n", image.width, image.height)?;
+    for pixel in image.rgba.as_chunks::<4>().0 {
+        out.write_all(&pixel[..3])?;
+    }
+    out.flush()?;
+    Ok(())
+}
+
 /// View-projection for the probe's camera, orbiting the block.
 ///
 /// None of this matches the reference: the client's own camera arrives with
@@ -363,5 +403,20 @@ impl render::AssetSource for FolderAssets {
 
     fn texture(&self, name: &voxel_client::identifier::Identifier) -> Option<Vec<u8>> {
         std::fs::read(self.path(name, "textures", ".png")).ok()
+    }
+
+    fn texture_metadata(
+        &self,
+        name: &voxel_client::identifier::Identifier,
+    ) -> Option<render::TextureMetadata> {
+        // A sprite's metadata file sits next to its texture with a second
+        // extension, and the mip strategy is one section inside it.
+        let text = std::fs::read_to_string(self.path(name, "textures", ".png.mcmeta")).ok()?;
+        match voxel_client::json::parse(&text).ok()? {
+            voxel_client::json::JsonValue::Object(object) => {
+                render::TextureMetadata::parse(object.object("texture")?)
+            }
+            _ => None,
+        }
     }
 }

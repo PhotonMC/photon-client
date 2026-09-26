@@ -23,9 +23,10 @@ pub struct SpriteEntry {
 pub struct SpritePlacement {
     /// The sprite's name.
     pub name: Identifier,
-    /// Left edge in atlas texels, padding already applied.
+    /// Left edge of the padded slot in atlas texels; the sprite's own texels
+    /// start one padding further in.
     pub x: i32,
-    /// Top edge in atlas texels, padding already applied.
+    /// Top edge of the padded slot in atlas texels, likewise.
     pub y: i32,
     /// Padding the packer reserved around every sprite.
     pub padding: i32,
@@ -314,4 +315,75 @@ fn smallest_fitting_min_texel(input: i32, max_mip_level: i32) -> i32 {
         1
     };
     ((input >> max_mip_level) + rounded) << max_mip_level
+}
+
+/// A stitched sprite's place in the finished atlas.
+///
+/// The packer hands back the padded slot's origin, not the sprite's own, so
+/// the padding has to be added back before anything is written or any UV is
+/// taken. Getting this wrong shifts every texture by one texel, which is easy
+/// to miss because the shift is the same for the write and for the UV.
+#[derive(Clone, Debug, PartialEq)]
+pub struct AtlasSprite {
+    /// The sprite's name.
+    pub name: Identifier,
+    /// Left edge of the padded slot in atlas texels.
+    pub x: i32,
+    /// Top edge of the padded slot in atlas texels.
+    pub y: i32,
+    /// Padding reserved on each side.
+    pub padding: i32,
+    /// Sprite width in texels, without the padding.
+    pub width: i32,
+    /// Sprite height in texels, without the padding.
+    pub height: i32,
+    /// Left edge in atlas coordinates.
+    pub u0: f32,
+    /// Right edge in atlas coordinates.
+    pub u1: f32,
+    /// Top edge in atlas coordinates.
+    pub v0: f32,
+    /// Bottom edge in atlas coordinates.
+    pub v1: f32,
+}
+
+impl AtlasSprite {
+    /// Place one stitched sprite in an atlas of the given size.
+    pub fn new(
+        placement: &SpritePlacement,
+        width: i32,
+        height: i32,
+        atlas_width: i32,
+        atlas_height: i32,
+    ) -> Self {
+        let padded_x = placement.x + placement.padding;
+        let padded_y = placement.y + placement.padding;
+        Self {
+            name: placement.name.clone(),
+            x: placement.x,
+            y: placement.y,
+            padding: placement.padding,
+            width,
+            height,
+            u0: padded_x as f32 / atlas_width as f32,
+            u1: (padded_x + width) as f32 / atlas_width as f32,
+            v0: padded_y as f32 / atlas_height as f32,
+            v1: (padded_y + height) as f32 / atlas_height as f32,
+        }
+    }
+
+    /// Interpolate across the sprite, as a model's face UV does.
+    ///
+    /// The span is taken once and then scaled, so an offset outside zero to
+    /// one runs off the sprite rather than being clamped.
+    pub fn u(&self, offset: f32) -> f32 {
+        let span = self.u1 - self.u0;
+        self.u0 + span * offset
+    }
+
+    /// The same across the other axis.
+    pub fn v(&self, offset: f32) -> f32 {
+        let span = self.v1 - self.v0;
+        self.v0 + span * offset
+    }
 }

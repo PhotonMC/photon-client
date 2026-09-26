@@ -98,11 +98,10 @@ Koşu: `python3 tools/behavior/run.py capture --family image` ardından
 
 ## Açık kapsam
 
-Beş stratejinin hepsi kapsanmıştır. Açık kalan, stratejinin **nereden
-geldiği**: gerçek sprite'lar bunu doku meta verisinden okur ve `AUTO` için
-gereken `Transparency` atlas yüklemesi sırasında piksellerden ölçülür; iki yol
-da henüz bağlı değil, testler stratejiyi ve saydamlığı doğrudan veriyor.
+Beş stratejinin hepsi kapsanmıştır ve stratejinin geldiği iki yol da artık
+bağlı: sprite meta verisi ve piksellerden ölçülen saydamlık
+[atlas kaydında](atlas-layout-and-mip-upload.md) pinlendi, `build_atlas` ikisini
+de okuyor. Üretilen seviyeler GPU'ya da yükleniyor.
 
-Üretilen mip seviyeleri henüz GPU'ya yüklenmiyor: [çizim yolu](textured-cube-record.md)
-atlası tek seviyeyle yüklüyor. Atlas paketleyicinin ayırdığı dolgu mip
-seviyesine göre büyüdüğü için ikisi birlikte bağlanmalıdır.
+Açık kalan, GPU'nun hangi seviyeyi seçtiği: sondanın kamerası küpü büyüttüğü
+için her karede seviye sıfır baskın.

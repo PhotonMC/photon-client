@@ -16,6 +16,7 @@ use std::ffi::{CStr, CString};
 
 use ash::vk;
 
+use crate::render::png::DecodedImage;
 use crate::render::scene::{Mesh, Vertex};
 
 /// Scaffolding shaders. These are this project's own, not the reference's:
@@ -85,6 +86,8 @@ pub enum VulkanError {
     NoSuitableDevice,
     /// The surface offered no format the reference would accept.
     NoSuitableSurfaceFormat,
+    /// The scene was handed an atlas with no levels at all.
+    NoAtlasLevels,
 }
 
 impl std::fmt::Display for VulkanError {
@@ -98,6 +101,7 @@ impl std::fmt::Display for VulkanError {
             Self::NoSuitableSurfaceFormat => {
                 formatter.write_str("surface offers no accepted format in sRGB non-linear space")
             }
+            Self::NoAtlasLevels => formatter.write_str("atlas has no mip levels to upload"),
         }
     }
 }
@@ -750,9 +754,7 @@ impl VulkanBackend {
     pub fn load_scene(
         &mut self,
         mesh: &Mesh,
-        texture_rgba: &[u8],
-        texture_width: u32,
-        texture_height: u32,
+        texture_levels: &[DecodedImage],
     ) -> Result<(), VulkanError> {
         unsafe {
             self.destroy_scene();
@@ -771,19 +773,34 @@ impl VulkanBackend {
             let (index_buffer, index_memory) =
                 self.upload_buffer(vk::BufferUsageFlags::INDEX_BUFFER, index_bytes)?;
 
-            let (texture, texture_memory, texture_view) =
-                self.upload_texture(texture_rgba, texture_width, texture_height)?;
+            let (texture, texture_memory, texture_view) = self.upload_texture(texture_levels)?;
+            // These are the reference's own values for the terrain sampler,
+            // read from `LevelRenderer`'s chunk layer sampler and from the
+            // Vulkan sampler it builds. Both filters are linear, which reads
+            // as a surprise for a game of pixel art but is consistent with the
+            // atlas reserving padding around every sprite: with nearest
+            // sampling that padding would have nothing to do. At a one to one
+            // texel ratio linear sampling lands on the texel centre anyway, so
+            // the blocky look survives; it softens only under magnification.
             let sampler = self
                 .device
                 .create_sampler(
                     &vk::SamplerCreateInfo::default()
-                        // Block textures are pixel art; smoothing them would be
-                        // the first visible departure from the reference.
-                        .mag_filter(vk::Filter::NEAREST)
-                        .min_filter(vk::Filter::NEAREST)
+                        .mag_filter(vk::Filter::LINEAR)
+                        .min_filter(vk::Filter::LINEAR)
+                        .mipmap_mode(vk::SamplerMipmapMode::LINEAR)
                         .address_mode_u(vk::SamplerAddressMode::CLAMP_TO_EDGE)
                         .address_mode_v(vk::SamplerAddressMode::CLAMP_TO_EDGE)
-                        .address_mode_w(vk::SamplerAddressMode::CLAMP_TO_EDGE),
+                        // The reference leaves the third axis at the default,
+                        // which is repeat, and never samples it.
+                        .address_mode_w(vk::SamplerAddressMode::REPEAT)
+                        .mip_lod_bias(0.0)
+                        .min_lod(0.0)
+                        // An unbounded maximum, which the reference spells as
+                        // one thousand.
+                        .max_lod(1000.0)
+                        .anisotropy_enable(false)
+                        .max_anisotropy(1.0),
                     None,
                 )
                 .map_err(|result| VulkanError::Call("vkCreateSampler", result))?;
@@ -910,13 +927,18 @@ impl VulkanBackend {
 
     unsafe fn upload_texture(
         &self,
-        rgba: &[u8],
-        width: u32,
-        height: u32,
+        levels: &[DecodedImage],
     ) -> Result<(vk::Image, vk::DeviceMemory, vk::ImageView), VulkanError> {
         unsafe {
+            let base = levels.first().ok_or(VulkanError::NoAtlasLevels)?;
+            let mut staged = Vec::new();
+            let mut offsets = Vec::with_capacity(levels.len());
+            for level in levels {
+                offsets.push(staged.len() as u64);
+                staged.extend_from_slice(&level.rgba);
+            }
             let (staging, staging_memory) =
-                self.upload_buffer(vk::BufferUsageFlags::TRANSFER_SRC, rgba)?;
+                self.upload_buffer(vk::BufferUsageFlags::TRANSFER_SRC, &staged)?;
             let format = vk::Format::R8G8B8A8_UNORM;
             let image = self
                 .device
@@ -925,11 +947,11 @@ impl VulkanBackend {
                         .image_type(vk::ImageType::TYPE_2D)
                         .format(format)
                         .extent(vk::Extent3D {
-                            width,
-                            height,
+                            width: base.width,
+                            height: base.height,
                             depth: 1,
                         })
-                        .mip_levels(1)
+                        .mip_levels(levels.len() as u32)
                         .array_layers(1)
                         .samples(vk::SampleCountFlags::TYPE_1)
                         .tiling(vk::ImageTiling::OPTIMAL)
@@ -947,8 +969,30 @@ impl VulkanBackend {
 
             let range = vk::ImageSubresourceRange::default()
                 .aspect_mask(vk::ImageAspectFlags::COLOR)
-                .level_count(1)
+                .level_count(levels.len() as u32)
                 .layer_count(1);
+            // Every level is already built on the processor, so nothing is
+            // blitted here: each one is its own copy out of the staging buffer.
+            let regions: Vec<vk::BufferImageCopy> = levels
+                .iter()
+                .zip(&offsets)
+                .enumerate()
+                .map(|(level, (image, offset))| {
+                    vk::BufferImageCopy::default()
+                        .buffer_offset(*offset)
+                        .image_subresource(
+                            vk::ImageSubresourceLayers::default()
+                                .aspect_mask(vk::ImageAspectFlags::COLOR)
+                                .mip_level(level as u32)
+                                .layer_count(1),
+                        )
+                        .image_extent(vk::Extent3D {
+                            width: image.width,
+                            height: image.height,
+                            depth: 1,
+                        })
+                })
+                .collect();
             self.run_once(|command| {
                 transition(
                     &self.device,
@@ -958,23 +1002,12 @@ impl VulkanBackend {
                     vk::ImageLayout::UNDEFINED,
                     vk::ImageLayout::TRANSFER_DST_OPTIMAL,
                 );
-                let region = vk::BufferImageCopy::default()
-                    .image_subresource(
-                        vk::ImageSubresourceLayers::default()
-                            .aspect_mask(vk::ImageAspectFlags::COLOR)
-                            .layer_count(1),
-                    )
-                    .image_extent(vk::Extent3D {
-                        width,
-                        height,
-                        depth: 1,
-                    });
                 self.device.cmd_copy_buffer_to_image(
                     command,
                     staging,
                     image,
                     vk::ImageLayout::TRANSFER_DST_OPTIMAL,
-                    &[region],
+                    &regions,
                 );
                 transition(
                     &self.device,

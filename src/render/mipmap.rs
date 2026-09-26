@@ -195,6 +195,30 @@ impl Transparency {
             has_translucent,
         }
     }
+
+    /// Neither kind of transparency is present.
+    pub fn is_opaque(self) -> bool {
+        !self.has_transparent && !self.has_translucent
+    }
+}
+
+/// Measure a sprite's transparency from its texels, which is what resolves a
+/// sprite's `Auto` strategy.
+///
+/// The two flags are independent and a texture can raise both. Only an alpha
+/// of exactly zero counts as transparent and only exactly full counts as
+/// opaque, so a single texel one short of full makes the whole sprite
+/// translucent.
+pub fn compute_transparency(image: &DecodedImage) -> Transparency {
+    let mut transparency = Transparency::NONE;
+    for texel in image.rgba.as_chunks::<4>().0 {
+        match texel[3] {
+            0 => transparency.has_transparent = true,
+            255 => {}
+            _ => transparency.has_translucent = true,
+        }
+    }
+    transparency
 }
 
 /// The alpha a texel needs to count as covered under the plain cutout.

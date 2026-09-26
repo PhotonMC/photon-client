@@ -10,14 +10,16 @@
 use std::collections::BTreeMap;
 
 use crate::identifier::Identifier;
-use crate::render::atlas::{SpriteEntry, Stitcher};
+use crate::render::atlas::{AtlasSprite, SpriteEntry, Stitcher};
 use crate::render::geometry::{default_face_uv, face_vertex_uv, face_vertices};
+use crate::render::mipmap::{compute_transparency, generate_mip_levels_with};
 use crate::render::model::{
     CuboidModel, GuiLight, Material, ModelElement, TextureSlots, TextureSlotsResolver, parse_model,
 };
-use crate::render::png::decode_rgba;
+use crate::render::png::{DecodedImage, decode_rgba};
 use crate::render::rotation::rotate_vertex;
 use crate::render::scene::{Mesh, Vertex};
+use crate::render::texture_metadata::TextureMetadata;
 
 /// Where model and texture files come from.
 ///
@@ -31,6 +33,13 @@ pub trait AssetSource {
     fn model(&self, name: &Identifier) -> Option<String>;
     /// The bytes of one texture, by the name a texture slot uses for it.
     fn texture(&self, name: &Identifier) -> Option<Vec<u8>>;
+    /// The texture section of one sprite's metadata, if the sprite has one.
+    ///
+    /// Absent metadata is not an error: every field has a default, and the
+    /// default mip strategy decides itself from the sprite's texels.
+    fn texture_metadata(&self, _name: &Identifier) -> Option<TextureMetadata> {
+        None
+    }
 }
 
 /// What resolution could not find.
@@ -124,14 +133,45 @@ pub fn resolve_model(
 /// An atlas built from the sprites one model needs.
 #[derive(Debug, Clone)]
 pub struct BuiltAtlas {
-    /// Atlas width in texels.
+    /// Atlas width in texels at level zero.
     pub width: u32,
-    /// Atlas height in texels.
+    /// Atlas height in texels at level zero.
     pub height: u32,
-    /// Row-major RGBA8 texels.
+    /// Row-major RGBA8 texels of level zero, kept for callers that take one
+    /// level.
     pub rgba: Vec<u8>,
+    /// Every mip level, level zero first, each half the previous one.
+    pub levels: Vec<DecodedImage>,
     /// Where each sprite landed, in normalised coordinates.
     pub sprites: BTreeMap<String, [f32; 4]>,
+}
+
+/// How many mip levels a sprite set can actually carry.
+///
+/// A level halves both axes, so a sprite can only be halved as many times as
+/// its size allows. The reference takes the smallest side across the whole set
+/// and also the lowest set bit of every side, because a sprite whose side is
+/// not a multiple of the level's texel size cannot be halved cleanly either.
+/// Whichever is smaller decides, and the request is never exceeded.
+pub fn effective_mip_level(sprites: &[(i32, i32)], max_mip_level: i32) -> i32 {
+    let mut min_texel_size = i32::MAX;
+    // Java masks a shift count to five bits, so an absurd request wraps here
+    // rather than overflowing.
+    let mut lowest_one_bit = 1_i32.wrapping_shl(max_mip_level as u32);
+    for (width, height) in sprites {
+        min_texel_size = min_texel_size.min(*width.min(height));
+        let lowest = (width & width.wrapping_neg()).min(height & height.wrapping_neg());
+        if lowest < lowest_one_bit {
+            lowest_one_bit = lowest;
+        }
+    }
+    let min_size = min_texel_size.min(lowest_one_bit);
+    let min_power_of_two = crate::math::log2(min_size);
+    if min_power_of_two < max_mip_level {
+        min_power_of_two
+    } else {
+        max_mip_level
+    }
 }
 
 /// Pack every texture a resolved model uses into one atlas.
@@ -156,53 +196,138 @@ pub fn build_atlas(
     }
 
     let mut decoded = BTreeMap::new();
-    let mut stitcher = Stitcher::new(max_size, max_size, mip_level, 0);
     for (key, material) in &wanted {
         let bytes = source
             .texture(&material.sprite)
             .ok_or_else(|| ResolveError::BadTexture(key.clone()))?;
         let image = decode_rgba(&bytes).map_err(|_| ResolveError::BadTexture(key.clone()))?;
+        let metadata = source
+            .texture_metadata(&material.sprite)
+            .unwrap_or_default();
+        decoded.insert(key.clone(), (image, metadata));
+    }
+    // The level is settled before packing, because the padding the packer
+    // reserves is one texel of the deepest level on each side.
+    let sizes: Vec<(i32, i32)> = decoded
+        .values()
+        .map(|(image, _)| (image.width as i32, image.height as i32))
+        .collect();
+    let mip_level = effective_mip_level(&sizes, mip_level.max(0));
+    let mut stitcher = Stitcher::new(max_size, max_size, mip_level, 0);
+    for material in wanted.values() {
+        let Some((image, _)) = decoded.get(&material.sprite.as_string()) else {
+            continue;
+        };
         stitcher.register_sprite(SpriteEntry {
             width: image.width as i32,
             height: image.height as i32,
             name: material.sprite.clone(),
         });
-        decoded.insert(key.clone(), image);
     }
     stitcher.stitch().map_err(|_| ResolveError::AtlasFull)?;
 
     let width = stitcher.width().max(1) as u32;
     let height = stitcher.height().max(1) as u32;
-    let mut rgba = vec![0_u8; (width * height * 4) as usize];
+    // Every sprite's levels are built first, because the level count is the
+    // same for the whole atlas and each sprite's level N goes into atlas
+    // level N.
+    let level_count = mip_level.max(0) as u32;
     let mut sprites = BTreeMap::new();
+    let mut levels: Vec<DecodedImage> = (0..=level_count)
+        .map(|level| {
+            let level_width = (width >> level).max(1);
+            let level_height = (height >> level).max(1);
+            DecodedImage {
+                width: level_width,
+                height: level_height,
+                rgba: vec![0_u8; (level_width * level_height * 4) as usize],
+            }
+        })
+        .collect();
     for placement in stitcher.placements() {
         let key = placement.name.as_string();
-        let Some(image) = decoded.get(&key) else {
+        let Some((image, metadata)) = decoded.get(&key) else {
             continue;
         };
-        for row in 0..image.height {
-            let target = ((placement.y as u32 + row) * width + placement.x as u32) as usize * 4;
-            let source_row = (row * image.width) as usize * 4;
-            let span = (image.width * 4) as usize;
-            rgba[target..target + span].copy_from_slice(&image.rgba[source_row..source_row + span]);
-        }
-        sprites.insert(
-            key,
-            [
-                placement.x as f32 / width as f32,
-                placement.y as f32 / height as f32,
-                (placement.x as u32 + image.width) as f32 / width as f32,
-                (placement.y as u32 + image.height) as f32 / height as f32,
-            ],
+        let sprite = AtlasSprite::new(
+            &placement,
+            image.width as i32,
+            image.height as i32,
+            width as i32,
+            height as i32,
         );
+        let mips = generate_mip_levels_with(
+            placement.name.path(),
+            image,
+            level_count,
+            metadata.mipmap_strategy,
+            metadata.alpha_cutoff_bias,
+            compute_transparency(image),
+        );
+        for (level, mip) in mips.iter().enumerate() {
+            let shift = level as u32;
+            blit_sprite(
+                &mut levels[level],
+                mip,
+                (placement.x as u32 + placement.padding as u32) >> shift,
+                (placement.y as u32 + placement.padding as u32) >> shift,
+                placement.padding.max(0) as u32 >> shift,
+            );
+        }
+        sprites.insert(key, [sprite.u0, sprite.v0, sprite.u1, sprite.v1]);
     }
+    let rgba = levels[0].rgba.clone();
 
     Ok(BuiltAtlas {
         width,
         height,
         rgba,
+        levels,
         sprites,
     })
+}
+
+/// Write one sprite level into one atlas level, extending its edge texels into
+/// the padding around it.
+///
+/// The reference fills the atlas with a draw per sprite whose quad covers the
+/// padded slot and whose texture coordinates run from `-padding/width` to
+/// `1 + padding/width`, sampled at the nearest texel with clamping at the
+/// sprite's edge. Working that through, atlas texel `i` of the slot reads
+/// sprite texel `i - padding` clamped into range, so the padding carries the
+/// edge texel repeated — which is the point, since it is what a sampler reads
+/// when a face lands right on the sprite's border.
+fn blit_sprite(
+    target: &mut DecodedImage,
+    sprite: &DecodedImage,
+    origin_x: u32,
+    origin_y: u32,
+    padding: u32,
+) {
+    if sprite.width == 0 || sprite.height == 0 {
+        return;
+    }
+    let start_x = origin_x.saturating_sub(padding);
+    let start_y = origin_y.saturating_sub(padding);
+    let span_x = sprite.width + padding * 2;
+    let span_y = sprite.height + padding * 2;
+    for row in 0..span_y {
+        let target_y = start_y + row;
+        if target_y >= target.height {
+            break;
+        }
+        let source_y = row.saturating_sub(padding).min(sprite.height - 1);
+        for column in 0..span_x {
+            let target_x = start_x + column;
+            if target_x >= target.width {
+                break;
+            }
+            let source_x = column.saturating_sub(padding).min(sprite.width - 1);
+            let from = ((source_y * sprite.width) + source_x) as usize * 4;
+            let to = ((target_y * target.width) + target_x) as usize * 4;
+            target.rgba[to..to + 4].copy_from_slice(&sprite.rgba[from..from + 4]);
+        }
+    }
 }
 
 /// Build the mesh for a resolved model against a packed atlas.
@@ -275,5 +400,81 @@ fn face_shade(facing: crate::direction::Direction) -> f32 {
         Direction::Down => 0.5,
         Direction::North | Direction::South => 0.8,
         Direction::West | Direction::East => 0.6,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A solid image with one distinguishable column, so a shift shows up.
+    fn ramp(width: u32, height: u32) -> DecodedImage {
+        let mut rgba = Vec::with_capacity((width * height * 4) as usize);
+        for y in 0..height {
+            for x in 0..width {
+                rgba.extend_from_slice(&[x as u8, y as u8, 7, 255]);
+            }
+        }
+        DecodedImage {
+            width,
+            height,
+            rgba,
+        }
+    }
+
+    fn texel(image: &DecodedImage, x: u32, y: u32) -> [u8; 4] {
+        let index = ((y * image.width) + x) as usize * 4;
+        image.rgba[index..index + 4].try_into().unwrap()
+    }
+
+    #[test]
+    fn blit_places_the_sprite_past_its_padding() {
+        let sprite = ramp(4, 4);
+        let mut target = DecodedImage {
+            width: 16,
+            height: 16,
+            rgba: vec![0; 16 * 16 * 4],
+        };
+        blit_sprite(&mut target, &sprite, 5, 5, 2);
+        assert_eq!(texel(&target, 5, 5), [0, 0, 7, 255]);
+        assert_eq!(texel(&target, 8, 8), [3, 3, 7, 255]);
+    }
+
+    #[test]
+    fn blit_repeats_the_edge_texel_through_the_padding() {
+        let sprite = ramp(4, 4);
+        let mut target = DecodedImage {
+            width: 16,
+            height: 16,
+            rgba: vec![0; 16 * 16 * 4],
+        };
+        blit_sprite(&mut target, &sprite, 5, 5, 2);
+        // Left of the sprite the first column repeats, right of it the last.
+        assert_eq!(texel(&target, 3, 5), [0, 0, 7, 255]);
+        assert_eq!(texel(&target, 4, 5), [0, 0, 7, 255]);
+        assert_eq!(texel(&target, 9, 5), [3, 0, 7, 255]);
+        assert_eq!(texel(&target, 10, 5), [3, 0, 7, 255]);
+        // The corner carries the corner texel, not a blend of two edges.
+        assert_eq!(texel(&target, 3, 3), [0, 0, 7, 255]);
+        assert_eq!(texel(&target, 10, 10), [3, 3, 7, 255]);
+        // One texel further out is untouched.
+        assert_eq!(texel(&target, 2, 5), [0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn mip_level_is_clamped_by_the_smallest_sprite() {
+        // Four levels need a side of at least sixteen.
+        assert_eq!(effective_mip_level(&[(16, 16)], 4), 4);
+        assert_eq!(effective_mip_level(&[(8, 8)], 4), 3);
+        assert_eq!(effective_mip_level(&[(16, 16), (4, 4)], 4), 2);
+        // A side that is not a clean multiple limits it by its lowest set bit,
+        // not by its size.
+        assert_eq!(effective_mip_level(&[(48, 48)], 4), 4);
+        assert_eq!(effective_mip_level(&[(24, 24)], 4), 3);
+        assert_eq!(effective_mip_level(&[(12, 12)], 4), 2);
+        // An empty set has nothing to limit it.
+        assert_eq!(effective_mip_level(&[], 4), 4);
+        // The request is a ceiling, never raised.
+        assert_eq!(effective_mip_level(&[(256, 256)], 2), 2);
     }
 }
