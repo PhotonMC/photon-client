@@ -76,8 +76,7 @@ Blockstate dosyası okunuyor, özellikler varyantı seçiyor, model ve dönüş
 oradan geliyor. `facing=east` dönüşsüz çıkıyor (modelin kendi yönü),
 `facing=north` `y=270` ve `uvlock` istiyor.
 
-UV kilidi hâlâ uygulanmıyor. Sessizce yanlış çizmemek için seçilen varyant
-kilit isterse sonda `block_warning` satırı basıyor.
+Seçilen varyantın UV kilidi de uygulanıyor; bkz. [P16.q](uv-lock-conformance.md).
 
 ## Açık kapsam
 

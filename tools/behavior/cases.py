@@ -12699,6 +12699,20 @@ def model_cases():
                 "z": 0,
                 "uvlock": False,
             })
+    # With UV lock on, the face transformations stop being identity and come
+    # from a table the reference builds once from quaternions. Every quadrant
+    # combination is driven, because the table is keyed by the composed group
+    # and several combinations land on the same element.
+    for x in (0, 90, 180, 270):
+        for y in (0, 90, 180, 270):
+            for z in (0, 90, 180, 270):
+                state_rows.append({
+                    "label": f"uvlock-x{x}-y{y}-z{z}",
+                    "x": x,
+                    "y": y,
+                    "z": z,
+                    "uvlock": True,
+                })
     # The third axis on its own, and combined with the other two, because the
     # group composition is not commutative.
     for z in (90, 180, 270):
@@ -12791,6 +12805,43 @@ def model_cases():
                                ' {"model": "minecraft:block/b", "weight": 2}]}]}'),
         ("not-an-object", "[]"),
     ]
+    # What a UV-locked face does to a texture coordinate. Every rotation and
+    # every face is driven, because the tables differ per pair, and the sample
+    # coordinates include the corners, the centre and points off the face.
+    uv_lock_rows = []
+    faces = ("down", "up", "north", "south", "west", "east")
+    samples = (0.0, 1.0, 0.5, 0.25, 0.125, -0.5, 1.5)
+    for x in (0, 90, 180, 270):
+        for y in (0, 90, 180, 270):
+            for facing in faces:
+                for u in samples:
+                    uv_lock_rows.append({
+                        "label": f"x{x}-y{y}-{facing}-u{u}",
+                        "x": x, "y": y, "z": 0, "uvlock": True, "facing": facing,
+                        "u": float_bits(u), "v": float_bits(0.375),
+                    })
+    # The third axis, and the unlocked case where the coordinate passes
+    # through untouched.
+    for z in (90, 180, 270):
+        for facing in faces:
+            uv_lock_rows.append({
+                "label": f"z{z}-{facing}",
+                "x": 0, "y": 0, "z": z, "uvlock": True, "facing": facing,
+                "u": float_bits(0.25), "v": float_bits(0.375),
+            })
+    for facing in faces:
+        uv_lock_rows.append({
+            "label": f"unlocked-{facing}",
+            "x": 90, "y": 180, "z": 0, "uvlock": False, "facing": facing,
+            "u": float_bits(0.25), "v": float_bits(0.375),
+        })
+    yield {
+        "case_id": "model/uv-lock",
+        "family": "model",
+        "operation": "uv_lock",
+        "rows": uv_lock_rows,
+    }
+
     yield {
         "case_id": "model/blockstate-parse",
         "family": "model",

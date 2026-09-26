@@ -13,6 +13,7 @@ pub mod rotation;
 pub mod scene;
 pub mod texture_metadata;
 pub mod tint;
+mod uv_lock_table;
 pub mod vulkan;
 
 pub use atlas::{AtlasSprite, SpriteEntry, SpritePlacement, StitchError, Stitcher};

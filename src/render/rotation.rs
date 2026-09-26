@@ -296,3 +296,111 @@ fn exact_multiply(left: &Matrix4, right: &Matrix4) -> Matrix4 {
         std::array::from_fn(|row| (0..4).map(|k| left[k][row] * right[column][k]).sum())
     })
 }
+
+/// One matrix from the pinned UV lock tables, as sixteen floats flattened
+/// column by column.
+pub type FlatMatrix = [f32; 16];
+
+/// The identity, in the same flattened form.
+pub const FLAT_IDENTITY: FlatMatrix = [
+    1.0, 0.0, 0.0, 0.0, //
+    0.0, 1.0, 0.0, 0.0, //
+    0.0, 0.0, 1.0, 0.0, //
+    0.0, 0.0, 0.0, 1.0,
+];
+
+/// Flatten a transform column by column, as the reference's matrix library
+/// stores one.
+pub fn flatten(matrix: &Matrix4) -> FlatMatrix {
+    let mut out = [0.0_f32; 16];
+    for (column, values) in matrix.iter().enumerate() {
+        out[column * 4..column * 4 + 4].copy_from_slice(values);
+    }
+    out
+}
+
+fn table_value(index: u8) -> f32 {
+    f32::from_bits(crate::render::uv_lock_table::VALUES[usize::from(index)])
+}
+
+/// The inverse face transform a UV-locked variant applies to one face.
+///
+/// Without UV lock every face is left at identity. With it on, the transform
+/// comes from the pinned table for the rotation, which is looked up by the
+/// whole-model transform the three angles compose to.
+pub fn inverse_face_transform(
+    x_degrees: i32,
+    y_degrees: i32,
+    z_degrees: i32,
+    facing: crate::direction::Direction,
+    uv_lock: bool,
+) -> Option<FlatMatrix> {
+    let transform = flatten(&model_state_transform(x_degrees, y_degrees, z_degrees)?);
+    if !uv_lock {
+        return Some(FLAT_IDENTITY);
+    }
+    let entry = find_entry(&transform)?;
+    let face = entry.inverse_faces[facing as usize];
+    Some(std::array::from_fn(|slot| table_value(face[slot])))
+}
+
+/// The forward face transform, which the reference computes on the way to the
+/// inverse above. Nothing in the baking path reads it; it is here so the
+/// pinned table is compared whole rather than half.
+pub fn face_transform(
+    x_degrees: i32,
+    y_degrees: i32,
+    z_degrees: i32,
+    facing: crate::direction::Direction,
+    uv_lock: bool,
+) -> Option<FlatMatrix> {
+    let transform = flatten(&model_state_transform(x_degrees, y_degrees, z_degrees)?);
+    if !uv_lock {
+        return Some(FLAT_IDENTITY);
+    }
+    let entry = find_entry(&transform)?;
+    let face = entry.faces[facing as usize];
+    Some(std::array::from_fn(|slot| table_value(face[slot])))
+}
+
+/// The table entry for one whole-model transform.
+fn find_entry(transform: &FlatMatrix) -> Option<&'static crate::render::uv_lock_table::Entry> {
+    crate::render::uv_lock_table::TABLE.iter().find(|entry| {
+        entry
+            .transform
+            .iter()
+            .zip(transform)
+            .all(|(index, value)| table_value(*index) == *value)
+    })
+}
+
+/// Whether a flattened transform is the identity.
+///
+/// The comparison is by value rather than by bits, and both halves of that
+/// matter. A negative zero counts as zero, which several of the tables carry
+/// and the reference still calls identity. A value a hair away from one does
+/// *not* count, so those tables take the transforming path and shift the
+/// texture coordinate slightly rather than passing it through.
+pub fn is_flat_identity(matrix: &FlatMatrix) -> bool {
+    matrix
+        .iter()
+        .zip(&FLAT_IDENTITY)
+        .all(|(value, expected)| value == expected)
+}
+
+/// Apply a face's UV transform to one texture coordinate.
+///
+/// The coordinate is moved to the face's centre before the transform and back
+/// afterwards, because the transform turns about the origin.
+pub fn transform_face_uv(matrix: &FlatMatrix, u: f32, v: f32) -> (f32, f32) {
+    if is_flat_identity(matrix) {
+        return (u, v);
+    }
+    let x = u - 0.5;
+    let y = v - 0.5;
+    // Column major: the entry for column c and row r sits at c * 4 + r, and a
+    // position is transformed with the translation column added in.
+    let transformed_u = matrix[0] * x + matrix[4] * y + matrix[12];
+    let transformed_v = matrix[1] * x + matrix[5] * y + matrix[13];
+    (transformed_u + 0.5, transformed_v + 0.5)
+}

@@ -15690,25 +15690,77 @@ fn model_state_result(request: &Value) -> Result<Value, String> {
                 matrix.push(json!(format!("{:08x}", value.to_bits())));
             }
         }
-        // Without UV lock the reference leaves every face transform at
-        // identity, so the faces are reported from the same constant.
-        let identity: Vec<Value> = (0..16)
-            .map(|index| {
-                let value = if index % 5 == 0 { 1.0_f32 } else { 0.0_f32 };
-                json!(format!("{:08x}", value.to_bits()))
-            })
-            .collect();
-        let faces: Vec<Value> = ["down", "up", "north", "south", "west", "east"]
-            .iter()
-            .map(|face| {
-                json!({"face": face, "forward": identity.clone(), "inverse": identity.clone()})
-            })
-            .collect();
+        let uv_lock = row["uvlock"].as_bool().ok_or("uvlock must be a boolean")?;
+        let (x, y, z) = (
+            i32_field(row, "x")?,
+            i32_field(row, "y")?,
+            i32_field(row, "z")?,
+        );
+        let flat = |matrix: rotation::FlatMatrix| -> Vec<Value> {
+            matrix
+                .iter()
+                .map(|value| json!(format!("{:08x}", value.to_bits())))
+                .collect()
+        };
+        let mut faces = Vec::with_capacity(6);
+        for facing in [
+            voxel_client::direction::Direction::Down,
+            voxel_client::direction::Direction::Up,
+            voxel_client::direction::Direction::North,
+            voxel_client::direction::Direction::South,
+            voxel_client::direction::Direction::West,
+            voxel_client::direction::Direction::East,
+        ] {
+            let forward = rotation::face_transform(x, y, z, facing, uv_lock)
+                .ok_or("no face transform for that rotation")?;
+            let inverse = rotation::inverse_face_transform(x, y, z, facing, uv_lock)
+                .ok_or("no inverse face transform for that rotation")?;
+            faces.push(json!({
+                "face": facing.name(),
+                "forward": flat(forward),
+                "inverse": flat(inverse),
+            }));
+        }
         out.push(json!({
             "label": label,
             "outcome": "resolved",
             "transformation": matrix,
             "faces": faces,
+        }));
+    }
+    Ok(json!({"rows": out}))
+}
+
+fn model_uv_lock_result(request: &Value) -> Result<Value, String> {
+    use voxel_client::direction::Direction;
+    use voxel_client::render::rotation;
+    let rows = request["rows"]
+        .as_array()
+        .ok_or("model rows must be an array")?;
+    let mut out = Vec::with_capacity(rows.len());
+    for row in rows {
+        let facing = Direction::from_name(string(row, "facing")?).ok_or("unknown facing")?;
+        let matrix = rotation::inverse_face_transform(
+            i32_field(row, "x")?,
+            i32_field(row, "y")?,
+            i32_field(row, "z")?,
+            facing,
+            row["uvlock"].as_bool().ok_or("uvlock must be a boolean")?,
+        )
+        .ok_or("no face transform for that rotation")?;
+        let read = |name: &str| -> Result<f32, String> {
+            Ok(f32::from_bits(
+                u32::from_str_radix(string(row, name)?, 16)
+                    .map_err(|error| format!("{name}: {error}"))?,
+            ))
+        };
+        let (u, v) = rotation::transform_face_uv(&matrix, read("u")?, read("v")?);
+        out.push(json!({
+            "label": string(row, "label")?,
+            "outcome": "transformed",
+            "identity": rotation::is_flat_identity(&matrix),
+            "u": format!("{:08x}", u.to_bits()),
+            "v": format!("{:08x}", v.to_bits()),
         }));
     }
     Ok(json!({"rows": out}))
@@ -15804,6 +15856,9 @@ fn model_blockstate_result(request: &Value) -> Result<Value, String> {
 }
 
 fn model_result(request: &Value) -> Result<Value, String> {
+    if string(request, "operation")? == "uv_lock" {
+        return model_uv_lock_result(request);
+    }
     if string(request, "operation")? == "blockstate_parse" {
         return model_blockstate_result(request);
     }

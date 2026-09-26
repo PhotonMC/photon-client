@@ -349,6 +349,7 @@ pub fn build_mesh(
     atlas: &BuiltAtlas,
     model_state: Option<&crate::render::rotation::Matrix4>,
     tints: &[u32],
+    uv_transform: impl Fn(crate::direction::Direction) -> crate::render::rotation::FlatMatrix,
 ) -> Result<Mesh, ResolveError> {
     let mut mesh = Mesh::default();
     for element in &model.elements {
@@ -385,6 +386,7 @@ pub fn build_mesh(
                 (tint & 0xFF) as f32 / 255.0,
                 ((tint >> 24) & 0xFF) as f32 / 255.0,
             ];
+            let face_uv = uv_transform(*facing);
             let base = mesh.vertices.len() as u32;
             for (slot, position) in positions.into_iter().enumerate() {
                 let mut rotated = match &element.rotation {
@@ -396,7 +398,12 @@ pub fn build_mesh(
                 if let Some(state) = model_state {
                     rotated = rotate_vertex(rotated, BLOCK_CENTRE, state);
                 }
+                // UV lock turns the texture coordinate back by as much as the
+                // model turned, so the texture keeps its world orientation.
+                // Without it the transform is identity and the coordinate
+                // passes through.
                 let (u, v) = face_vertex_uv(uvs, face.rotation, slot as u32);
+                let (u, v) = crate::render::rotation::transform_face_uv(&face_uv, u, v);
                 mesh.vertices.push(Vertex {
                     position: rotated,
                     uv: [

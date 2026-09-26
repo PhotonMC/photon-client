@@ -189,17 +189,13 @@ fn run_window(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std:
                 variant.z.degrees(),
                 variant.uvlock
             );
-            // UV lock is parsed but not applied yet, so say so rather than
-            // drawing something quietly wrong.
-            if variant.uvlock {
-                println!("block_warning=uvlock requested but not applied");
-            }
             Some((
                 root,
                 variant.model.as_string(),
                 variant.x.degrees(),
                 variant.y.degrees(),
                 variant.z.degrees(),
+                variant.uvlock,
             ))
         }
         _ => None,
@@ -253,8 +249,24 @@ fn run_window(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std:
             let tints =
                 render::constant_tint(identifier.path().strip_prefix("block/").unwrap_or(""))
                     .map_or_else(Vec::new, |colour| vec![colour]);
-            let mesh = render::build_mesh(&model, &atlas, (!identity).then_some(&state), &tints)
-                .map_err(|error| format!("{name}: {error:?}"))?;
+            // A variant may lock its UVs, which turns each face's texture
+            // coordinate back by as much as the model turned.
+            let uv_lock = chosen.as_ref().is_some_and(|c| c.5);
+            let uv_transform = |facing| {
+                voxel_client::render::rotation::inverse_face_transform(
+                    rotate_x, rotate_y, rotate_z, facing, uv_lock,
+                )
+                .unwrap_or(voxel_client::render::rotation::FLAT_IDENTITY)
+            };
+            let mesh = render::build_mesh(
+                &model,
+                &atlas,
+                (!identity).then_some(&state),
+                &tints,
+                uv_transform,
+            )
+            .map_err(|error| format!("{name}: {error:?}"))?;
+            println!("model_uvlock={uv_lock}");
             println!("model_tints={}", tints.len());
             println!("model_rotation={rotate_x},{rotate_y},{rotate_z}");
             println!("model_source={name}");

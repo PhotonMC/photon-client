@@ -29,6 +29,7 @@ public final class ModelOracle {
                 case "parse_model" -> rows.add(parseModel(element.getAsJsonObject()));
                 case "model_state" -> rows.add(modelState(element.getAsJsonObject()));
                 case "blockstate_parse" -> rows.add(blockstate(element.getAsJsonObject()));
+                case "uv_lock" -> rows.add(uvLock(element.getAsJsonObject()));
                 default -> throw new IllegalArgumentException("Unknown model operation: " + operation);
             }
         }
@@ -213,6 +214,46 @@ public final class ModelOracle {
             faces.add(described);
         }
         entry.add("faces", faces);
+        return entry;
+    }
+
+    /**
+     * What a UV-locked face does to one texture coordinate.
+     *
+     * The matrix, the identity test and the transform are the reference's
+     * own. The only thing written out here is the half-unit shift to the
+     * face's centre and back, which is two additions read from `FaceBakery`.
+     */
+    private static JsonObject uvLock(JsonObject row) {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        var xQuadrant = com.mojang.math.Quadrant.parseJson(row.get("x").getAsInt());
+        var yQuadrant = com.mojang.math.Quadrant.parseJson(row.get("y").getAsInt());
+        var zQuadrant = com.mojang.math.Quadrant.parseJson(row.get("z").getAsInt());
+        var group = com.mojang.math.Quadrant.fromXYZAngles(xQuadrant, yQuadrant, zQuadrant);
+        var rotation = net.minecraft.client.renderer.block.dispatch.BlockModelRotation.get(group);
+        net.minecraft.client.renderer.block.dispatch.ModelState state =
+            row.get("uvlock").getAsBoolean() ? rotation.withUvLock() : rotation;
+        var facing = net.minecraft.core.Direction.byName(row.get("facing").getAsString());
+        var uvTransform = state.inverseFaceTransformation(facing);
+        float rawU = Oracle.f32(row, "u");
+        float rawV = Oracle.f32(row, "v");
+        boolean identity = com.mojang.math.MatrixUtil.isIdentity(uvTransform);
+        float transformedU;
+        float transformedV;
+        if (identity) {
+            transformedU = rawU;
+            transformedV = rawV;
+        } else {
+            var transformed = uvTransform.transformPosition(
+                new org.joml.Vector3f(rawU - 0.5F, rawV - 0.5F, 0.0F));
+            transformedU = transformed.x + 0.5F;
+            transformedV = transformed.y + 0.5F;
+        }
+        entry.addProperty("outcome", "transformed");
+        entry.addProperty("identity", identity);
+        entry.addProperty("u", Oracle.bits(transformedU));
+        entry.addProperty("v", Oracle.bits(transformedV));
         return entry;
     }
 
