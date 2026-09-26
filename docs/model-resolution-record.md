@@ -18,6 +18,7 @@ araya getiren zincir yürüme ise pinlenmemiştir.
 | Yüz köşeleri ve varsayılan UV | [P16.e](face-geometry-conformance.md) |
 | Element döndürmesi | [P16.g](element-rotation-conformance.md) |
 | Yüz UV döndürmesi | [P16.i](face-uv-rotation-conformance.md) |
+| Varyant döndürmesi | [P16.l](model-state-conformance.md) |
 
 ## Pinlenmemiş olan
 
@@ -39,6 +40,7 @@ gölge bu projenin kendi uydurmasıdır. Ayrıntılar
 ```text
 VOXEL_ASSETS=/kullanıcının/asset/klasörü \
 VOXEL_MODEL=minecraft:block/oak_stairs \
+VOXEL_ROTATE_Y=90 \
 cargo run -- window 854 480
 ```
 
@@ -62,10 +64,11 @@ dört ayrı dokuyu tek atlasa paketler; `lantern` döndürülmüş elementler ta
 
 - **`cullface` uygulanmıyor.** Ayrıştırılıyor ve saklanıyor, fakat çizimde
   kullanılmıyor, yani komşusu olmayan bir blokta bile iç yüzler çiziliyor.
-- **Blockstate varyant seçimi yok.** Model adı doğrudan veriliyor; gerçek
-  istemci `blockstates/` dosyasından varyant seçer ve ona bir döndürme uygular.
-- **Model durumu dönüşümü yok**, yani varyantın `x`/`y` döndürmesi
-  uygulanmıyor.
+- **Blockstate varyant seçimi yok.** Model adı ve döndürme doğrudan veriliyor;
+  gerçek istemci `blockstates/` dosyasından blok durumuna göre varyant seçer.
+  Seçilen varyantın döndürmesi [pinlendi](model-state-conformance.md) ve
+  uygulanıyor; `VOXEL_ROTATE_X` ve `VOXEL_ROTATE_Y` ile sürülebilir.
+- **UV kilidi yok.**
 - **`display` dönüşümleri ayrıştırılmıyor.**
 - **Tint uygulanmıyor.** `tintindex` okunuyor ama renk çarpanı yok, bu yüzden
   çim ve yaprak gibi bloklar gri çizilir.

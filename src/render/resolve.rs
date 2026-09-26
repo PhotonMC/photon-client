@@ -50,6 +50,9 @@ pub enum ResolveError {
     AtlasFull,
 }
 
+/// The point a variant's rotation turns about.
+const BLOCK_CENTRE: [f32; 3] = [0.5, 0.5, 0.5];
+
 /// How deep a parent chain may go before it is treated as broken.
 const MAX_CHAIN: usize = 64;
 
@@ -206,10 +209,15 @@ pub fn build_atlas(
 
 /// Build the mesh for a resolved model against a packed atlas.
 ///
-/// Corner positions, default UVs, element rotation and UV rotation all come
-/// from the pinned paths; the only thing added here is the per-face shade,
-/// which is this module's own and matches nothing in the reference.
-pub fn build_mesh(model: &ResolvedModel, atlas: &BuiltAtlas) -> Result<Mesh, ResolveError> {
+/// Corner positions, default UVs, element rotation, the variant's whole-model
+/// rotation and UV rotation all come from the pinned paths; the only thing
+/// added here is the per-face shade, which is this module's own and matches
+/// nothing in the reference.
+pub fn build_mesh(
+    model: &ResolvedModel,
+    atlas: &BuiltAtlas,
+    model_state: Option<&crate::render::rotation::Matrix4>,
+) -> Result<Mesh, ResolveError> {
     let mut mesh = Mesh::default();
     for element in &model.elements {
         for (facing, face) in &element.faces {
@@ -234,10 +242,15 @@ pub fn build_mesh(model: &ResolvedModel, atlas: &BuiltAtlas) -> Result<Mesh, Res
             };
             let base = mesh.vertices.len() as u32;
             for (slot, position) in positions.into_iter().enumerate() {
-                let rotated = match &element.rotation {
+                let mut rotated = match &element.rotation {
                     Some(rotation) => rotate_vertex(position, rotation.origin, &rotation.transform),
                     None => position,
                 };
+                // The variant's rotation comes after the element's and turns
+                // about the block's centre, as the reference orders them.
+                if let Some(state) = model_state {
+                    rotated = rotate_vertex(rotated, BLOCK_CENTRE, state);
+                }
                 let (u, v) = face_vertex_uv(uvs, face.rotation, slot as u32);
                 mesh.vertices.push(Vertex {
                     position: rotated,

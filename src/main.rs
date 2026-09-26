@@ -160,8 +160,24 @@ fn run_window(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std:
                 .map_err(|error| format!("{name}: {error:?}"))?;
             let atlas = render::build_atlas(&source, &model, 2048, 0)
                 .map_err(|error| format!("{name}: {error:?}"))?;
-            let mesh = render::build_mesh(&model, &atlas)
+            // A blockstate variant turns its model in quarter turns; the
+            // probe takes them directly since variant selection is not built.
+            let rotate_x: i32 = env::var("VOXEL_ROTATE_X")
+                .ok()
+                .map(|value| value.parse())
+                .transpose()?
+                .unwrap_or(0);
+            let rotate_y: i32 = env::var("VOXEL_ROTATE_Y")
+                .ok()
+                .map(|value| value.parse())
+                .transpose()?
+                .unwrap_or(0);
+            let state = voxel_client::render::rotation::model_state_transform(rotate_x, rotate_y)
+                .ok_or("variant rotation must be a multiple of ninety")?;
+            let identity = rotate_x % 360 == 0 && rotate_y % 360 == 0;
+            let mesh = render::build_mesh(&model, &atlas, (!identity).then_some(&state))
                 .map_err(|error| format!("{name}: {error:?}"))?;
+            println!("model_rotation={rotate_x},{rotate_y}");
             println!("model_source={name}");
             println!("model_elements={}", model.elements.len());
             println!("model_sprites={}", atlas.sprites.len());
@@ -172,6 +188,7 @@ fn run_window(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std:
         _ => {
             println!("model_source=built-in cube and checkerboard");
             let (rgba, size) = checkerboard();
+            println!("model_rotation=0,0");
             let mesh = render::full_cube(render::SpriteRect {
                 min_u: 0.0,
                 min_v: 0.0,
