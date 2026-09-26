@@ -185,7 +185,7 @@ pub fn closest_direction(normal: [f32; 3]) -> Option<Direction> {
 }
 
 /// The unit vector pointing along one direction.
-fn direction_unit(direction: Direction) -> [f32; 3] {
+pub(crate) fn direction_unit(direction: Direction) -> [f32; 3] {
     match direction {
         Direction::Down => [0.0, -1.0, 0.0],
         Direction::Up => [0.0, 1.0, 0.0],
@@ -309,4 +309,35 @@ pub fn face_vertex_uv(uvs: FaceUvs, rotation: Quadrant, vertex: u32) -> (f32, f3
         uvs.min_v
     };
     (u / 16.0, v / 16.0)
+}
+
+/// Java `Direction.getApproximateNearest`: which face a vector points at.
+///
+/// This is not the same search as [`closest_direction`]. The bar starts at
+/// Java's smallest positive float rather than at zero, and there is no
+/// fallback to nothing: a vector whose every dot product falls below the bar —
+/// the zero vector, or one with a NaN in it — comes back as north, because
+/// that is what the search was holding before it began.
+pub fn approximate_nearest_direction(vector: [f32; 3]) -> Direction {
+    const CANDIDATES: [Direction; 6] = [
+        Direction::Down,
+        Direction::Up,
+        Direction::North,
+        Direction::South,
+        Direction::West,
+        Direction::East,
+    ];
+    let mut result = Direction::North;
+    // Java's smallest positive float, which is subnormal and so is not the
+    // same as Rust's smallest *normal* positive.
+    let mut highest = f32::from_bits(1);
+    for candidate in CANDIDATES {
+        let unit = direction_unit(candidate);
+        let product = vector[0] * unit[0] + vector[1] * unit[1] + vector[2] * unit[2];
+        if product > highest {
+            highest = product;
+            result = candidate;
+        }
+    }
+    result
 }

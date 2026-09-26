@@ -404,3 +404,30 @@ pub fn transform_face_uv(matrix: &FlatMatrix, u: f32, v: f32) -> (f32, f32) {
     let transformed_v = matrix[1] * x + matrix[5] * y + matrix[13];
     (transformed_u + 0.5, transformed_v + 0.5)
 }
+
+/// Where a face's cullface direction lands once the variant is turned.
+///
+/// A face names the side it hides behind in the model's own frame. Turning the
+/// model turns that side too, so the neighbour to test against is found by
+/// pushing the direction's normal through the transform and taking the face it
+/// ends up pointing at.
+pub fn rotate_cull_direction(
+    x_degrees: i32,
+    y_degrees: i32,
+    z_degrees: i32,
+    facing: crate::direction::Direction,
+) -> Option<crate::direction::Direction> {
+    Some(rotate_direction(
+        &model_state_transform(x_degrees, y_degrees, z_degrees)?,
+        facing,
+    ))
+}
+
+/// The same, given the transform directly.
+pub fn rotate_direction(
+    matrix: &Matrix4,
+    facing: crate::direction::Direction,
+) -> crate::direction::Direction {
+    let unit = crate::render::geometry::direction_unit(facing);
+    crate::render::geometry::approximate_nearest_direction(transform_direction(matrix, unit))
+}

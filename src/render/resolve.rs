@@ -350,10 +350,25 @@ pub fn build_mesh(
     model_state: Option<&crate::render::rotation::Matrix4>,
     tints: &[u32],
     uv_transform: impl Fn(crate::direction::Direction) -> crate::render::rotation::FlatMatrix,
+    occluded: impl Fn(crate::direction::Direction) -> bool,
 ) -> Result<Mesh, ResolveError> {
     let mut mesh = Mesh::default();
     for element in &model.elements {
         for (facing, face) in &element.faces {
+            // A face may name the side it hides behind. The reference sorts
+            // quads into one bucket per such side plus one for the rest, and
+            // skips a bucket when the neighbour on that side covers it.
+            if let Some(cull) = face.cull_for_direction {
+                // The side is named in the model's own frame, so the variant's
+                // rotation has to be applied before the neighbour is asked.
+                let cull = match model_state {
+                    Some(state) => crate::render::rotation::rotate_direction(state, cull),
+                    None => cull,
+                };
+                if occluded(cull) {
+                    continue;
+                }
+            }
             let material = model
                 .textures
                 .material(&face.texture)

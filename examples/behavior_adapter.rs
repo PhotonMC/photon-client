@@ -15856,6 +15856,51 @@ fn model_blockstate_result(request: &Value) -> Result<Value, String> {
 }
 
 fn model_result(request: &Value) -> Result<Value, String> {
+    if string(request, "operation")? == "nearest_direction" {
+        let rows = request["rows"]
+            .as_array()
+            .ok_or("model rows must be an array")?;
+        let mut out = Vec::with_capacity(rows.len());
+        for row in rows {
+            let read = |name: &str| -> Result<f32, String> {
+                Ok(f32::from_bits(
+                    u32::from_str_radix(string(row, name)?, 16)
+                        .map_err(|error| format!("{name}: {error}"))?,
+                ))
+            };
+            let vector = [read("x")?, read("y")?, read("z")?];
+            out.push(json!({
+                "label": string(row, "label")?,
+                "outcome": "resolved",
+                "direction": render::approximate_nearest_direction(vector).name(),
+            }));
+        }
+        return Ok(json!({"rows": out}));
+    }
+    if string(request, "operation")? == "cull_rotation" {
+        use voxel_client::direction::Direction;
+        use voxel_client::render::rotation;
+        let rows = request["rows"]
+            .as_array()
+            .ok_or("model rows must be an array")?;
+        let mut out = Vec::with_capacity(rows.len());
+        for row in rows {
+            let facing = Direction::from_name(string(row, "facing")?).ok_or("unknown facing")?;
+            let rotated = rotation::rotate_cull_direction(
+                i32_field(row, "x")?,
+                i32_field(row, "y")?,
+                i32_field(row, "z")?,
+                facing,
+            )
+            .ok_or("rotation must be a multiple of ninety")?;
+            out.push(json!({
+                "label": string(row, "label")?,
+                "outcome": "resolved",
+                "direction": rotated.name(),
+            }));
+        }
+        return Ok(json!({"rows": out}));
+    }
     if string(request, "operation")? == "uv_lock" {
         return model_uv_lock_result(request);
     }

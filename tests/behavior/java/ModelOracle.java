@@ -30,6 +30,8 @@ public final class ModelOracle {
                 case "model_state" -> rows.add(modelState(element.getAsJsonObject()));
                 case "blockstate_parse" -> rows.add(blockstate(element.getAsJsonObject()));
                 case "uv_lock" -> rows.add(uvLock(element.getAsJsonObject()));
+                case "nearest_direction" -> rows.add(nearestDirection(element.getAsJsonObject()));
+                case "cull_rotation" -> rows.add(cullRotation(element.getAsJsonObject()));
                 default -> throw new IllegalArgumentException("Unknown model operation: " + operation);
             }
         }
@@ -254,6 +256,32 @@ public final class ModelOracle {
         entry.addProperty("identity", identity);
         entry.addProperty("u", Oracle.bits(transformedU));
         entry.addProperty("v", Oracle.bits(transformedV));
+        return entry;
+    }
+
+    /** Which face a vector points at, as the cullface rotation asks. */
+    private static JsonObject nearestDirection(JsonObject row) {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        entry.addProperty("outcome", "resolved");
+        entry.addProperty("direction", net.minecraft.core.Direction.getApproximateNearest(
+            Oracle.f32(row, "x"), Oracle.f32(row, "y"), Oracle.f32(row, "z")).getName());
+        return entry;
+    }
+
+    /** Where a face's cullface direction lands once the variant is turned. */
+    private static JsonObject cullRotation(JsonObject row) {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        var group = com.mojang.math.Quadrant.fromXYZAngles(
+            com.mojang.math.Quadrant.parseJson(row.get("x").getAsInt()),
+            com.mojang.math.Quadrant.parseJson(row.get("y").getAsInt()),
+            com.mojang.math.Quadrant.parseJson(row.get("z").getAsInt()));
+        var rotation = net.minecraft.client.renderer.block.dispatch.BlockModelRotation.get(group);
+        var facing = net.minecraft.core.Direction.byName(row.get("facing").getAsString());
+        entry.addProperty("outcome", "resolved");
+        entry.addProperty("direction", net.minecraft.core.Direction
+            .rotate(rotation.transformation().getMatrix(), facing).getName());
         return entry;
     }
 

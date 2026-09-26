@@ -22,8 +22,8 @@ pub use blockstate::{
     parse_block_state,
 };
 pub use geometry::{
-    FaceUvs, Quadrant, WindingError, closest_direction, default_face_uv, face_vertex_uv,
-    face_vertices, recalculate_winding, triangle_normal,
+    FaceUvs, Quadrant, WindingError, approximate_nearest_direction, closest_direction,
+    default_face_uv, face_vertex_uv, face_vertices, recalculate_winding, triangle_normal,
 };
 pub use mipmap::{
     MipmapStrategy, SrgbTables, Transparency, compute_transparency, generate_mip_levels,

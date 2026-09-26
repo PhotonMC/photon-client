@@ -12835,6 +12835,52 @@ def model_cases():
             "x": 90, "y": 180, "z": 0, "uvlock": False, "facing": facing,
             "u": float_bits(0.25), "v": float_bits(0.375),
         })
+    # Which face a vector points at. The search starts at north with the
+    # smallest positive float as the bar, so a vector with no positive
+    # component at all comes back north rather than as nothing.
+    nearest_rows = [
+        ("down", 0.0, -1.0, 0.0), ("up", 0.0, 1.0, 0.0),
+        ("north", 0.0, 0.0, -1.0), ("south", 0.0, 0.0, 1.0),
+        ("west", -1.0, 0.0, 0.0), ("east", 1.0, 0.0, 0.0),
+        ("zero", 0.0, 0.0, 0.0),
+        ("all-negative", -1.0, -1.0, -1.0),
+        ("diagonal", 1.0, 1.0, 0.0),
+        ("tie-up-east", 1.0, 1.0, 1.0),
+        ("tiny-positive", 1e-44, 0.0, 0.0),
+        ("below-the-bar", 1e-46, 0.0, 0.0),
+        ("negative-zero", -0.0, -0.0, -0.0),
+        ("nan", float("nan"), 0.0, 0.0),
+        ("infinity", float("inf"), 0.0, 0.0),
+        ("negative-infinity", float("-inf"), 0.0, 0.0),
+        ("mixed", 0.5, -0.9, 0.2),
+    ]
+    yield {
+        "case_id": "model/nearest-direction",
+        "family": "model",
+        "operation": "nearest_direction",
+        "rows": [
+            {"label": label, "x": float_bits(x), "y": float_bits(y), "z": float_bits(z)}
+            for label, x, y, z in nearest_rows
+        ],
+    }
+
+    # Where a face's cullface direction lands once the variant is turned.
+    cull_rows = []
+    for x in (0, 90, 180, 270):
+        for y in (0, 90, 180, 270):
+            for z in (0, 90, 180, 270):
+                for facing in ("down", "up", "north", "south", "west", "east"):
+                    cull_rows.append({
+                        "label": f"x{x}-y{y}-z{z}-{facing}",
+                        "x": x, "y": y, "z": z, "facing": facing,
+                    })
+    yield {
+        "case_id": "model/cull-rotation",
+        "family": "model",
+        "operation": "cull_rotation",
+        "rows": cull_rows,
+    }
+
     yield {
         "case_id": "model/uv-lock",
         "family": "model",

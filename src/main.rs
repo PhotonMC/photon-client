@@ -258,15 +258,58 @@ fn run_window(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std:
                 )
                 .unwrap_or(voxel_client::render::rotation::FLAT_IDENTITY)
             };
-            let mesh = render::build_mesh(
-                &model,
-                &atlas,
-                (!identity).then_some(&state),
-                &tints,
-                uv_transform,
-            )
-            .map_err(|error| format!("{name}: {error:?}"))?;
+            // A grid repeats the block, so the faces between two of them can
+            // be dropped. That is the smallest scene where culling does any
+            // work at all.
+            let grid: u32 = env::var("VOXEL_GRID")
+                .ok()
+                .map(|value| value.parse())
+                .transpose()?
+                .unwrap_or(1);
+            let mut mesh = render::Mesh::default();
+            for cell_x in 0..grid {
+                for cell_y in 0..grid {
+                    for cell_z in 0..grid {
+                        let cell = [cell_x, cell_y, cell_z];
+                        let occluded = |facing: voxel_client::direction::Direction| {
+                            let (step_x, step_y, step_z) = facing.step();
+                            [step_x, step_y, step_z]
+                                .into_iter()
+                                .enumerate()
+                                .all(|(axis, step)| {
+                                    let moved = cell[axis] as i32 + step;
+                                    moved >= 0 && moved < grid as i32
+                                })
+                        };
+                        let part = render::build_mesh(
+                            &model,
+                            &atlas,
+                            (!identity).then_some(&state),
+                            &tints,
+                            uv_transform,
+                            occluded,
+                        )
+                        .map_err(|error| format!("{name}: {error:?}"))?;
+                        let centre = (grid as f32 - 1.0) / 2.0;
+                        let offset = [
+                            cell_x as f32 - centre,
+                            cell_y as f32 - centre,
+                            cell_z as f32 - centre,
+                        ];
+                        let base = mesh.vertices.len() as u32;
+                        for mut vertex in part.vertices {
+                            for (position, shift) in vertex.position.iter_mut().zip(offset) {
+                                *position += shift;
+                            }
+                            mesh.vertices.push(vertex);
+                        }
+                        mesh.indices
+                            .extend(part.indices.into_iter().map(|index| index + base));
+                    }
+                }
+            }
             println!("model_uvlock={uv_lock}");
+            println!("model_grid={grid}");
             println!("model_tints={}", tints.len());
             println!("model_rotation={rotate_x},{rotate_y},{rotate_z}");
             println!("model_source={name}");
@@ -430,8 +473,18 @@ fn write_image_ppm(
 /// None of this matches the reference: the client's own camera arrives with
 /// P14, and until then these numbers exist only to make the cube visible.
 fn camera(aspect: f32, angle: f32) -> [[f32; 4]; 4] {
-    let radius = 2.4_f32;
-    let eye = [0.5 + radius * angle.cos(), 1.4, 0.5 + radius * angle.sin()];
+    // The scene grows with the grid, so the eye pulls back with it.
+    let grid = env::var("VOXEL_GRID")
+        .ok()
+        .and_then(|value| value.parse::<f32>().ok())
+        .unwrap_or(1.0)
+        .max(1.0);
+    let radius = 2.4_f32 * grid;
+    let eye = [
+        0.5 + radius * angle.cos(),
+        1.4 * grid,
+        0.5 + radius * angle.sin(),
+    ];
     let view = render::scene::look_at(eye, [0.5, 0.5, 0.5], [0.0, 1.0, 0.0]);
     let projection = render::scene::perspective(70.0_f32.to_radians(), aspect, 0.05, 100.0);
     render::scene::multiply(projection, view)
