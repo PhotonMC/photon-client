@@ -32,7 +32,22 @@ SERVER_JAR = RUNTIME / "server-26.2.jar"
 SERVER_SHA1 = "823e2250d24b3ddac457a60c92a6a941943fcd6a"
 
 SEED = "776"
-LEVEL_NAME = "parity-room"
+
+# Two scenes on purpose. `room` has a single light source and lit-by-propagation
+# walls, which is where the cross-run difference lives. `emissive` makes every
+# visible surface a light source, so there is nothing left to propagate; what
+# still differs there is independent of the lighting bake.
+SCENES = {
+    "room": {
+        "shell": "minecraft:stone",
+        "floor": "minecraft:glowstone",
+    },
+    "emissive": {
+        "shell": "minecraft:glowstone",
+        "floor": "minecraft:glowstone",
+    },
+}
+DEFAULT_SCENE = "room"
 
 # A sealed stone shell with a lit floor. No sky, no weather, no water, no
 # entities: the only thing left that can differ between runs is the renderer
@@ -60,8 +75,8 @@ BUILD_COMMANDS = [
     "time set noon",
     "weather clear",
     "defaultgamemode spectator",
-    "fill -6 94 -6 6 106 6 minecraft:stone hollow",
-    "fill -5 95 -5 5 95 5 minecraft:glowstone",
+    "fill -6 94 -6 6 106 6 {shell} hollow",
+    "fill -5 95 -5 5 95 5 {floor}",
     "fill -5 96 -5 5 96 5 minecraft:air",
     "setblock -3 97 -3 minecraft:oak_planks",
     "setblock 3 97 3 minecraft:iron_block",
@@ -75,7 +90,6 @@ BUILD_COMMANDS = [
 
 SERVER_PROPERTIES = {
     "level-seed": SEED,
-    "level-name": LEVEL_NAME,
     "online-mode": "false",
     "spawn-protection": "0",
     "view-distance": "8",
@@ -97,6 +111,23 @@ class Blocked(Exception):
 
 class Failed(Exception):
     pass
+
+
+def level_name(scene):
+    return f"parity-{scene}"
+
+
+def build_commands(scene):
+    materials = SCENES[scene]
+    return [line.format(**materials) for line in BUILD_COMMANDS]
+
+
+def server_properties(scene, port=None):
+    properties = dict(SERVER_PROPERTIES)
+    properties["level-name"] = level_name(scene)
+    if port is not None:
+        properties["server-port"] = str(port)
+    return "\n".join(f"{key}={value}" for key, value in sorted(properties.items())) + "\n"
 
 
 def check_server():
@@ -236,18 +267,15 @@ def seed_player(args, fixture):
     """
     if not args.probe.is_file():
         raise Blocked(f"Missing probe binary: {args.probe}; run cargo build --release")
-    staging = WORK / "scene-seed"
+    staging = WORK / f"scene-seed-{args.scene}"
     if staging.exists():
         shutil.rmtree(staging)
     staging.mkdir(parents=True)
     (staging / "eula.txt").write_text("eula=true\n", encoding="utf-8")
-    properties = dict(SERVER_PROPERTIES)
-    properties["server-port"] = str(args.port)
     (staging / "server.properties").write_text(
-        "\n".join(f"{key}={value}" for key, value in sorted(properties.items())) + "\n",
-        encoding="utf-8",
+        server_properties(args.scene, args.port), encoding="utf-8",
     )
-    shutil.copytree(fixture, staging / LEVEL_NAME)
+    shutil.copytree(fixture, staging / level_name(args.scene))
 
     log_path = staging / "seed.log"
     with log_path.open("w", encoding="utf-8") as log:
@@ -271,7 +299,7 @@ def seed_player(args, fixture):
             process.kill()
             raise
 
-    produced = staging / LEVEL_NAME
+    produced = staging / level_name(args.scene)
     shutil.rmtree(fixture)
     shutil.copytree(produced, fixture)
 
@@ -283,7 +311,7 @@ def place(args):
     fields in it so every later run starts from the identical viewpoint.
     """
     check_server()
-    fixture = WORK / "scene" / LEVEL_NAME
+    fixture = WORK / "scene" / level_name(args.scene)
     if not fixture.is_dir():
         raise Blocked(f"Missing fixture: {fixture}; run build first")
     players = sorted(fixture.rglob("players/data/*.dat"))
@@ -297,7 +325,7 @@ def place(args):
     report = {
         "command": "place",
         "status": "player_pinned",
-        "level_name": LEVEL_NAME,
+        "level_name": level_name(args.scene),
         "position": list(PLAYER_POS),
         "motion": [0.0, 0.0, 0.0],
         "rotation": list(PLAYER_ROTATION),
@@ -310,18 +338,18 @@ def place(args):
 
 def build(args):
     check_server()
-    fixture = WORK / "scene" / LEVEL_NAME
+    name = level_name(args.scene)
+    fixture = WORK / "scene" / name
     if fixture.exists() and not args.force:
         raise Blocked(f"Fixture already exists: {fixture} (use --force to rebuild)")
 
-    staging = WORK / "scene-build"
+    staging = WORK / f"scene-build-{args.scene}"
     if staging.exists():
         shutil.rmtree(staging)
     staging.mkdir(parents=True)
     (staging / "eula.txt").write_text("eula=true\n", encoding="utf-8")
     (staging / "server.properties").write_text(
-        "\n".join(f"{key}={value}" for key, value in sorted(SERVER_PROPERTIES.items())) + "\n",
-        encoding="utf-8",
+        server_properties(args.scene), encoding="utf-8",
     )
 
     command = [args.java, f"-Xmx{args.heap}", "-jar", str(SERVER_JAR), "nogui"]
@@ -334,7 +362,7 @@ def build(args):
         try:
             wait_for(log_path, 'Done (', args.timeout, process)
             time.sleep(args.settle)
-            for line in BUILD_COMMANDS:
+            for line in build_commands(args.scene):
                 process.stdin.write(line + "\n")
                 process.stdin.flush()
                 time.sleep(args.step_delay)
@@ -348,7 +376,7 @@ def build(args):
     if process.returncode != 0:
         raise Failed(f"Server exited {process.returncode}; see {log_path}")
 
-    generated = staging / LEVEL_NAME
+    generated = staging / name
     if not generated.is_dir():
         raise Failed(f"Server produced no world at {generated}")
     fixture.parent.mkdir(parents=True, exist_ok=True)
@@ -359,10 +387,11 @@ def build(args):
     report = {
         "command": "build",
         "status": "scene_ready",
-        "level_name": LEVEL_NAME,
+        "level_name": name,
+        "scene": args.scene,
         "seed": SEED,
         "fixture": str(fixture.relative_to(ROOT)),
-        "commands": len(BUILD_COMMANDS),
+        "commands": len(build_commands(args.scene)),
         "region_files": len(list(fixture.rglob("region/*.mca"))),
         "fixture_bytes": sum(f.stat().st_size for f in fixture.rglob("*") if f.is_file()),
     }
@@ -385,6 +414,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
     make = sub.add_parser("build", help="generate the fixed scene fixture")
+    make.add_argument("--scene", choices=sorted(SCENES), default=DEFAULT_SCENE)
     make.add_argument("--force", action="store_true")
     make.add_argument("--java", default="java")
     make.add_argument("--heap", default="2G")
@@ -394,6 +424,7 @@ def main():
     make.set_defaults(handler=build)
 
     put = sub.add_parser("place", help="pin the player camera inside the built scene")
+    put.add_argument("--scene", choices=sorted(SCENES), default=DEFAULT_SCENE)
     put.add_argument("--user", default="ParityTest")
     put.add_argument("--port", type=int, default=25599)
     put.add_argument("--probe", type=Path, default=ROOT / "target/release/voxel-client")

@@ -133,6 +133,50 @@ koşusunun benzer biçimde etkilenmiş olmasına dayanıyordu; **geri alınmış
 Sebep hipotezi mekânsal kanıtla ayakta duruyor, ama giderilebilirliği
 gösterilmedi.
 
+### Hipotez ikinci yolla doğrulandı: varyans yayılım miktarıyla ölçekleniyor
+
+Tuş enjeksiyonu güvenilmez olduğu için hipotez sahneyi değiştirerek sınandı.
+`emissive` sahnesi odanın kabuğunu da `glowstone` yapar: her görünür yüzey ışık
+kaynağıdır, yayılacak gradyan neredeyse kalmaz. Aynı çalıştırıcı, aynı sabit
+kamera, tuş gönderilmeden üç koşu:
+
+| Sahne | Farklı piksel | Max kanal | Ortalama kanal |
+| --- | ---: | ---: | ---: |
+| `room` (tek ışık kaynağı, yayılımla aydınlanan duvarlar) | %71 | `7` | `1.29`–`1.37` |
+| `emissive` (her yüzey ışık kaynağı) | %10–11 | `3`–`7` | `0.11`–`0.31` |
+| `emissive`, ambient occlusion kapalı | %3–11 | `1`–`6` | `0.01`–`0.26` |
+
+Yayılım azaldıkça varyans azalıyor: farklı piksel oranı yedi kat, ortalama
+kanal farkı beş kat düştü. Ambient occlusion'ı kapatmak ek kazanç vermedi, yani
+kalan bileşen AO değil.
+
+Kalan farkın yeri de aynı yöne işaret ediyor. `emissive` + AO kapalı durumda
+bölgesel harita merkezde ve üst/alt şeritlerde tam `0.00`, fark yalnızca sol ve
+sağ kenarlarda:
+
+```
+ 0.00  0.00  0.00  0.00  0.00  0.00
+ 1.44  0.30  0.00  0.00  0.10  0.54
+ 2.16  0.44  0.00  0.00  0.18  0.90
+ 0.00  0.00  0.00  0.00  0.00  0.00
+```
+
+Bunlar odanın köşeleri: duvarların hepsi ışık kaynağı olsa da köşedeki hava
+bloklarının ışık seviyesi hâlâ yayılımla belirleniyor. Ayrışan pikseller
+eşleşenlerden daha karanlık (ortalama `97.5` karşı `130.9`), yani gradyanın
+olduğu yerde.
+
+Böylece sebep iki bağımsız yolla doğrulanmış oldu: farkın **yeri** (ışık kaynağı
+bit-bit aynı, yayılımla aydınlanan yüzeyler değil) ve farkın **büyüklüğünün
+sahnedeki yayılım miktarıyla ölçeklenmesi**. Hiçbiri tuş enjeksiyonuna
+dayanmıyor.
+
+**Giderilmedi.** Kamerayı bozmadan chunk yeniden derlemesini tetikleyen bir yol
+bulunmadıkça, ya yayılımın tamamlandığını gösteren bir bekleme koşulu bulunmalı
+ya da tolerans sahnenin aydınlatma karmaşıklığına bağlı olarak tanımlanmalı.
+İkincisi [davranış testi sözleşmesinin](behavior-testing.md) "evrensel epsilon
+varsayma" kuralıyla ancak gerekçesi ve sınırı yazılırsa bağdaşır.
+
 ## OpenGL ↔ Vulkan farkı: 22 piksel, deterministik
 
 `delta > 8` olan pikseller sayıldığında tablo nettir:

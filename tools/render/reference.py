@@ -98,9 +98,20 @@ def classpath():
     return os.pathsep.join([str(client), *(str(jar) for jar in usable)]), pin
 
 
-def write_options(game_dir):
+def write_options(game_dir, overrides=()):
+    """Write the pinned options, plus any experiment overrides.
+
+    Overrides exist so a single setting can be isolated without editing the
+    pinned set; every run reports which ones were applied.
+    """
     game_dir.mkdir(parents=True, exist_ok=True)
-    lines = [f"{key}:{value}" for key, value in sorted(PINNED_OPTIONS.items())]
+    options = dict(PINNED_OPTIONS)
+    for override in overrides:
+        key, _, value = override.partition("=")
+        if not key or not value:
+            raise Blocked(f"Malformed option override: {override!r} (expected key=value)")
+        options[key] = value
+    lines = [f"{key}:{value}" for key, value in sorted(options.items())]
     (game_dir / "options.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
@@ -182,7 +193,7 @@ def launch(args):
     run_dir = WORK / "runs" / f"{args.backend}-{run_id}"
     game_dir = WORK / "gamedir" / args.backend
     run_dir.mkdir(parents=True, exist_ok=True)
-    write_options(game_dir)
+    write_options(game_dir, args.set_option)
     if args.scene:
         install_scene(game_dir, args.scene)
 
@@ -252,6 +263,7 @@ def launch(args):
         "captures": captures,
         "run_dir": str(run_dir.relative_to(ROOT)),
         "pinned_options": len(PINNED_OPTIONS),
+        "option_overrides": list(args.set_option),
         "scene": args.scene or "title_screen",
         "deterministic_scene": bool(args.scene),
         "reload_chunks": bool(args.reload_chunks),
@@ -372,6 +384,8 @@ def main():
     run.add_argument("--java", default="java")
     run.add_argument("--username", default="ParityTest")
     run.add_argument("--asset-index", default="32")
+    run.add_argument("--set-option", action="append", default=[], metavar="KEY=VALUE",
+                     help="override one pinned option for this run")
     run.add_argument("--reload-chunks", action="store_true",
                      help="force a chunk re-mesh (F3+A) before capturing")
     run.add_argument("--reload-settle", type=float, default=6.0)
