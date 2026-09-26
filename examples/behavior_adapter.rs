@@ -15230,7 +15230,69 @@ fn json_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+fn model_geometry_result(request: &Value) -> Result<Value, String> {
+    let rows = request["rows"].as_array().ok_or("model rows must be an array")?;
+    let mut out = Vec::with_capacity(rows.len());
+    for row in rows {
+        let label = string(row, "label")?;
+        let read = |key: &str| -> Result<[f32; 3], String> {
+            let array = row[key].as_array().ok_or("vector must be an array")?;
+            let mut value = [0.0_f32; 3];
+            for (slot, item) in value.iter_mut().zip(array) {
+                let hex = item.as_str().ok_or("vector element must be a string")?;
+                *slot = f32::from_bits(
+                    u32::from_str_radix(hex, 16).map_err(|error| format!("vector: {error}"))?,
+                );
+            }
+            Ok(value)
+        };
+        let from = read("from")?;
+        let to = read("to")?;
+        let Some(facing) = direction_by_name(string(row, "facing")?) else {
+            out.push(json!({"label": label, "outcome": "unknown_facing"}));
+            continue;
+        };
+        let uvs = render::default_face_uv(from, to, facing);
+        let corners: Vec<Value> = render::face_vertices(from, to, facing)
+            .iter()
+            .map(|vertex| {
+                json!({
+                    "x": format!("{:08x}", vertex[0].to_bits()),
+                    "y": format!("{:08x}", vertex[1].to_bits()),
+                    "z": format!("{:08x}", vertex[2].to_bits()),
+                })
+            })
+            .collect();
+        out.push(json!({
+            "label": label,
+            "outcome": "baked",
+            "min_u": format!("{:08x}", uvs.min_u.to_bits()),
+            "min_v": format!("{:08x}", uvs.min_v.to_bits()),
+            "max_u": format!("{:08x}", uvs.max_u.to_bits()),
+            "max_v": format!("{:08x}", uvs.max_v.to_bits()),
+            "corners": corners,
+        }));
+    }
+    Ok(json!({"rows": out}))
+}
+
+fn direction_by_name(name: &str) -> Option<voxel_client::direction::Direction> {
+    use voxel_client::direction::Direction;
+    Some(match name {
+        "down" => Direction::Down,
+        "up" => Direction::Up,
+        "north" => Direction::North,
+        "south" => Direction::South,
+        "west" => Direction::West,
+        "east" => Direction::East,
+        _ => return None,
+    })
+}
+
 fn model_result(request: &Value) -> Result<Value, String> {
+    if string(request, "operation")? == "face_geometry" {
+        return model_geometry_result(request);
+    }
     if string(request, "operation")? != "texture_slots" {
         return Err("unknown model operation".into());
     }

@@ -16,16 +16,76 @@ public final class ModelOracle {
 
     public static JsonObject run(JsonObject request) {
         String operation = request.get("operation").getAsString();
-        if (!operation.equals("texture_slots")) {
-            throw new IllegalArgumentException("Unknown model operation: " + operation);
-        }
         var rows = new JsonArray();
         for (var element : request.get("rows").getAsJsonArray()) {
-            rows.add(resolve(element.getAsJsonObject()));
+            switch (operation) {
+                case "texture_slots" -> rows.add(resolve(element.getAsJsonObject()));
+                case "face_geometry" -> rows.add(geometry(element.getAsJsonObject()));
+                default -> throw new IllegalArgumentException("Unknown model operation: " + operation);
+            }
         }
         var result = new JsonObject();
         result.add("rows", rows);
         return result;
+    }
+
+    /** Corner layout and default texture mapping for one cuboid face. */
+    private static JsonObject geometry(JsonObject row) {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        var from = vector(row.get("from").getAsJsonArray());
+        var to = vector(row.get("to").getAsJsonArray());
+        var facing = net.minecraft.core.Direction.byName(row.get("facing").getAsString());
+        if (facing == null) {
+            entry.addProperty("outcome", "unknown_facing");
+            return entry;
+        }
+        entry.addProperty("outcome", "baked");
+
+        try {
+            var method = net.minecraft.client.resources.model.cuboid.FaceBakery.class
+                .getDeclaredMethod("defaultFaceUV", org.joml.Vector3fc.class,
+                                   org.joml.Vector3fc.class, net.minecraft.core.Direction.class);
+            method.setAccessible(true);
+            var uvs = method.invoke(null, from, to, facing);
+            var uvClass = uvs.getClass();
+            entry.addProperty("min_u", bits(uvClass, uvs, "minU"));
+            entry.addProperty("min_v", bits(uvClass, uvs, "minV"));
+            entry.addProperty("max_u", bits(uvClass, uvs, "maxU"));
+            entry.addProperty("max_v", bits(uvClass, uvs, "maxV"));
+        } catch (ReflectiveOperationException error) {
+            throw new IllegalStateException("default face UV unavailable", error);
+        }
+
+        var info = net.minecraft.client.renderer.FaceInfo.fromFacing(facing);
+        var corners = new JsonArray();
+        for (int index = 0; index < 4; index++) {
+            // The bakery divides by 16 right after selecting the corner; the
+            // division is kept here so the comparison covers it.
+            var vertex = info.getVertexInfo(index).select(from, to).div(16.0F);
+            var corner = new JsonObject();
+            corner.addProperty("x", String.format(java.util.Locale.ROOT, "%08x", Float.floatToRawIntBits(vertex.x())));
+            corner.addProperty("y", String.format(java.util.Locale.ROOT, "%08x", Float.floatToRawIntBits(vertex.y())));
+            corner.addProperty("z", String.format(java.util.Locale.ROOT, "%08x", Float.floatToRawIntBits(vertex.z())));
+            corners.add(corner);
+        }
+        entry.add("corners", corners);
+        return entry;
+    }
+
+    private static String bits(Class<?> owner, Object instance, String accessor) throws ReflectiveOperationException {
+        var method = owner.getMethod(accessor);
+        method.setAccessible(true);
+        float value = (Float)method.invoke(instance);
+        return String.format(java.util.Locale.ROOT, "%08x", Float.floatToRawIntBits(value));
+    }
+
+    private static org.joml.Vector3f vector(JsonArray array) {
+        return new org.joml.Vector3f(
+            Float.intBitsToFloat(Integer.parseUnsignedInt(array.get(0).getAsString(), 16)),
+            Float.intBitsToFloat(Integer.parseUnsignedInt(array.get(1).getAsString(), 16)),
+            Float.intBitsToFloat(Integer.parseUnsignedInt(array.get(2).getAsString(), 16))
+        );
     }
 
     private static JsonObject resolve(JsonObject row) {

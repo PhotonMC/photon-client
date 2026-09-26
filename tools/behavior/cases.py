@@ -12219,6 +12219,44 @@ def model_cases():
         ("deep-override", [[raw("all", oak)], [raw("all", dirt)], [raw("all", stone)]]),
     ]
 
+    def bits(value):
+        import struct
+        return f"{struct.unpack('>I', struct.pack('>f', value))[0]:08x}"
+
+    def box(from_xyz, to_xyz):
+        return ([bits(v) for v in from_xyz], [bits(v) for v in to_xyz])
+
+    facings = ["down", "up", "north", "south", "west", "east"]
+    boxes = [
+        ("full", (0.0, 0.0, 0.0), (16.0, 16.0, 16.0)),
+        ("slab", (0.0, 0.0, 0.0), (16.0, 8.0, 16.0)),
+        ("offset", (2.0, 3.0, 4.0), (14.0, 13.0, 12.0)),
+        ("thin", (7.5, 0.0, 7.5), (8.5, 16.0, 8.5)),
+        ("degenerate", (4.0, 4.0, 4.0), (4.0, 12.0, 12.0)),
+        # The element grammar allows reaching outside the block.
+        ("oversized", (-16.0, -16.0, -16.0), (32.0, 32.0, 32.0)),
+        ("fractional", (0.5, 1.25, 2.125), (15.5, 14.75, 13.875)),
+        # Inverted bounds are not rejected by the corner layout itself.
+        ("inverted", (12.0, 12.0, 12.0), (4.0, 4.0, 4.0)),
+    ]
+    geometry_rows = []
+    for name, from_xyz, to_xyz in boxes:
+        from_bits, to_bits = box(from_xyz, to_xyz)
+        for facing in facings:
+            geometry_rows.append({
+                "label": f"{name}-{facing}",
+                "from": from_bits,
+                "to": to_bits,
+                "facing": facing,
+            })
+
+    yield {
+        "case_id": "model/face-geometry",
+        "family": "model",
+        "operation": "face_geometry",
+        "rows": geometry_rows,
+    }
+
     yield {
         "case_id": "model/texture-slots",
         "family": "model",
