@@ -16,10 +16,48 @@ use std::ffi::{CStr, CString};
 
 use ash::vk;
 
+use crate::render::scene::{Mesh, Vertex};
+
+/// Scaffolding shaders. These are this project's own, not the reference's:
+/// they exist to prove the pipeline works, and carry no parity claim.
+const VERTEX_SHADER: &str = r"#version 450
+layout(push_constant) uniform Push { mat4 view_projection; } push;
+layout(location = 0) in vec3 in_position;
+layout(location = 1) in vec2 in_uv;
+layout(location = 2) in float in_shade;
+layout(location = 0) out vec2 out_uv;
+layout(location = 1) out float out_shade;
+void main() {
+    gl_Position = push.view_projection * vec4(in_position, 1.0);
+    out_uv = in_uv;
+    out_shade = in_shade;
+}
+";
+
+const FRAGMENT_SHADER: &str = r"#version 450
+layout(set = 0, binding = 0) uniform sampler2D atlas;
+layout(location = 0) in vec2 in_uv;
+layout(location = 1) in float in_shade;
+layout(location = 0) out vec4 out_colour;
+void main() {
+    vec4 texel = texture(atlas, in_uv);
+    if (texel.a < 0.1) { discard; }
+    out_colour = vec4(texel.rgb * in_shade, texel.a);
+}
+";
+
 /// Instance API version the reference asks for.
 const API_VERSION: u32 = vk::API_VERSION_1_2;
 /// Lowest device API version the reference's feature query accepts.
 const MINIMUM_DEVICE_API_VERSION: u32 = vk::API_VERSION_1_1;
+/// No transform, for the frame paths that draw nothing.
+const IDENTITY: [[f32; 4]; 4] = [
+    [1.0, 0.0, 0.0, 0.0],
+    [0.0, 1.0, 0.0, 0.0],
+    [0.0, 0.0, 1.0, 0.0],
+    [0.0, 0.0, 0.0, 1.0],
+];
+
 /// Swapchain images the reference requests, clamped up by surface capabilities.
 const REQUESTED_IMAGE_COUNT: u32 = 3;
 
@@ -83,6 +121,32 @@ pub struct BackendDescription {
     pub extent: vk::Extent2D,
 }
 
+/// Depth attachment matching the swapchain extent.
+struct DepthTarget {
+    image: vk::Image,
+    memory: vk::DeviceMemory,
+    view: vk::ImageView,
+    format: vk::Format,
+}
+
+/// Everything needed to draw one textured mesh.
+struct SceneResources {
+    vertex_buffer: vk::Buffer,
+    vertex_memory: vk::DeviceMemory,
+    index_buffer: vk::Buffer,
+    index_memory: vk::DeviceMemory,
+    index_count: u32,
+    texture: vk::Image,
+    texture_memory: vk::DeviceMemory,
+    texture_view: vk::ImageView,
+    sampler: vk::Sampler,
+    descriptor_pool: vk::DescriptorPool,
+    descriptor_layout: vk::DescriptorSetLayout,
+    descriptor_set: vk::DescriptorSet,
+    pipeline_layout: vk::PipelineLayout,
+    pipeline: vk::Pipeline,
+}
+
 /// One frame read back from the swapchain, as tightly packed RGBA8 rows.
 #[derive(Debug, Clone)]
 pub struct CapturedFrame {
@@ -100,15 +164,22 @@ pub struct VulkanBackend {
     instance: ash::Instance,
     surface_instance: ash::khr::surface::Instance,
     surface: vk::SurfaceKHR,
+    physical_device: vk::PhysicalDevice,
     device: ash::Device,
     queue: vk::Queue,
     swapchain_device: ash::khr::swapchain::Device,
+    // The instance targets Vulkan 1.2, where dynamic rendering is still an
+    // extension, so its entry points come from the KHR loader rather than core.
+    dynamic_rendering: ash::khr::dynamic_rendering::Device,
     swapchain: vk::SwapchainKHR,
     images: Vec<vk::Image>,
+    image_views: Vec<vk::ImageView>,
     command_pool: vk::CommandPool,
     command_buffer: vk::CommandBuffer,
     readback_buffer: vk::Buffer,
     readback_memory: vk::DeviceMemory,
+    depth: Option<DepthTarget>,
+    scene: Option<SceneResources>,
     image_available: vk::Semaphore,
     render_finished: Vec<vk::Semaphore>,
     in_flight: vk::Fence,
@@ -211,6 +282,7 @@ impl VulkanBackend {
             let extent = clamp_extent(&capabilities, width, height);
 
             let swapchain_device = ash::khr::swapchain::Device::new(&instance, &device);
+            let dynamic_rendering = ash::khr::dynamic_rendering::Device::new(&instance, &device);
             let swapchain_info = vk::SwapchainCreateInfoKHR::default()
                 .surface(surface)
                 .min_image_count(REQUESTED_IMAGE_COUNT.max(capabilities.min_image_count))
@@ -230,6 +302,27 @@ impl VulkanBackend {
             let images = swapchain_device
                 .get_swapchain_images(swapchain)
                 .map_err(|result| VulkanError::Call("vkGetSwapchainImagesKHR", result))?;
+
+            let mut image_views = Vec::with_capacity(images.len());
+            for image in &images {
+                image_views.push(
+                    device
+                        .create_image_view(
+                            &vk::ImageViewCreateInfo::default()
+                                .image(*image)
+                                .view_type(vk::ImageViewType::TYPE_2D)
+                                .format(surface_format)
+                                .subresource_range(
+                                    vk::ImageSubresourceRange::default()
+                                        .aspect_mask(vk::ImageAspectFlags::COLOR)
+                                        .level_count(1)
+                                        .layer_count(1),
+                                ),
+                            None,
+                        )
+                        .map_err(|result| VulkanError::Call("vkCreateImageView", result))?,
+                );
+            }
 
             let command_pool = device
                 .create_command_pool(
@@ -320,20 +413,612 @@ impl VulkanBackend {
                 instance,
                 surface_instance,
                 surface,
+                physical_device,
                 device,
                 queue,
                 swapchain_device,
+                dynamic_rendering,
                 swapchain,
                 images,
+                image_views,
                 command_pool,
                 command_buffer,
                 readback_buffer,
                 readback_memory,
+                depth: None,
+                scene: None,
                 image_available,
                 render_finished,
                 in_flight,
                 description,
             })
+        }
+    }
+
+
+    /// Allocate a buffer and fill it from host memory.
+    unsafe fn upload_buffer(
+        &self,
+        usage: vk::BufferUsageFlags,
+        bytes: &[u8],
+    ) -> Result<(vk::Buffer, vk::DeviceMemory), VulkanError> {
+        unsafe {
+            let buffer = self
+                .device
+                .create_buffer(
+                    &vk::BufferCreateInfo::default()
+                        .size(bytes.len() as u64)
+                        .usage(usage)
+                        .sharing_mode(vk::SharingMode::EXCLUSIVE),
+                    None,
+                )
+                .map_err(|result| VulkanError::Call("vkCreateBuffer", result))?;
+            let requirements = self.device.get_buffer_memory_requirements(buffer);
+            let memory = self.allocate(
+                requirements,
+                vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
+            )?;
+            self.device
+                .bind_buffer_memory(buffer, memory, 0)
+                .map_err(|result| VulkanError::Call("vkBindBufferMemory", result))?;
+            let mapped = self
+                .device
+                .map_memory(memory, 0, bytes.len() as u64, vk::MemoryMapFlags::empty())
+                .map_err(|result| VulkanError::Call("vkMapMemory", result))?
+                .cast::<u8>();
+            std::ptr::copy_nonoverlapping(bytes.as_ptr(), mapped, bytes.len());
+            self.device.unmap_memory(memory);
+            Ok((buffer, memory))
+        }
+    }
+
+    /// Find a memory type matching the requirements and properties.
+    unsafe fn allocate(
+        &self,
+        requirements: vk::MemoryRequirements,
+        properties: vk::MemoryPropertyFlags,
+    ) -> Result<vk::DeviceMemory, VulkanError> {
+        unsafe {
+            let available = self
+                .instance
+                .get_physical_device_memory_properties(self.physical_device);
+            let index = (0..available.memory_type_count)
+                .find(|index| {
+                    requirements.memory_type_bits & (1 << index) != 0
+                        && available.memory_types[*index as usize]
+                            .property_flags
+                            .contains(properties)
+                })
+                .ok_or(VulkanError::NoSuitableDevice)?;
+            self.device
+                .allocate_memory(
+                    &vk::MemoryAllocateInfo::default()
+                        .allocation_size(requirements.size)
+                        .memory_type_index(index),
+                    None,
+                )
+                .map_err(|result| VulkanError::Call("vkAllocateMemory", result))
+        }
+    }
+
+    /// Run one command buffer to completion, for setup work.
+    unsafe fn run_once(
+        &self,
+        record: impl FnOnce(vk::CommandBuffer),
+    ) -> Result<(), VulkanError> {
+        unsafe {
+            let buffer = self
+                .device
+                .allocate_command_buffers(
+                    &vk::CommandBufferAllocateInfo::default()
+                        .command_pool(self.command_pool)
+                        .level(vk::CommandBufferLevel::PRIMARY)
+                        .command_buffer_count(1),
+                )
+                .map_err(|result| VulkanError::Call("vkAllocateCommandBuffers", result))?[0];
+            self.device
+                .begin_command_buffer(
+                    buffer,
+                    &vk::CommandBufferBeginInfo::default()
+                        .flags(vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT),
+                )
+                .map_err(|result| VulkanError::Call("vkBeginCommandBuffer", result))?;
+            record(buffer);
+            self.device
+                .end_command_buffer(buffer)
+                .map_err(|result| VulkanError::Call("vkEndCommandBuffer", result))?;
+            let buffers = [buffer];
+            let submit = vk::SubmitInfo::default().command_buffers(&buffers);
+            self.device
+                .queue_submit(self.queue, &[submit], vk::Fence::null())
+                .map_err(|result| VulkanError::Call("vkQueueSubmit", result))?;
+            self.device
+                .queue_wait_idle(self.queue)
+                .map_err(|result| VulkanError::Call("vkQueueWaitIdle", result))?;
+            self.device.free_command_buffers(self.command_pool, &buffers);
+            Ok(())
+        }
+    }
+
+
+
+    /// Record the draw for one swapchain image.
+    unsafe fn record_scene(&self, index: usize, view_projection: [[f32; 4]; 4]) {
+        unsafe {
+            let (Some(scene), Some(depth)) = (self.scene.as_ref(), self.depth.as_ref()) else {
+                return;
+            };
+            let colour_attachment = [vk::RenderingAttachmentInfo::default()
+                .image_view(self.image_views[index])
+                .image_layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
+                // The clear already happened, so the colour target is loaded.
+                .load_op(vk::AttachmentLoadOp::LOAD)
+                .store_op(vk::AttachmentStoreOp::STORE)];
+            let depth_attachment = vk::RenderingAttachmentInfo::default()
+                .image_view(depth.view)
+                .image_layout(vk::ImageLayout::DEPTH_ATTACHMENT_OPTIMAL)
+                .load_op(vk::AttachmentLoadOp::CLEAR)
+                .store_op(vk::AttachmentStoreOp::DONT_CARE)
+                .clear_value(vk::ClearValue {
+                    depth_stencil: vk::ClearDepthStencilValue {
+                        depth: 1.0,
+                        stencil: 0,
+                    },
+                });
+            let rendering = vk::RenderingInfo::default()
+                .render_area(vk::Rect2D::default().extent(self.description.extent))
+                .layer_count(1)
+                .color_attachments(&colour_attachment)
+                .depth_attachment(&depth_attachment);
+            self.dynamic_rendering
+                .cmd_begin_rendering(self.command_buffer, &rendering);
+            self.device.cmd_bind_pipeline(
+                self.command_buffer,
+                vk::PipelineBindPoint::GRAPHICS,
+                scene.pipeline,
+            );
+            self.device.cmd_bind_descriptor_sets(
+                self.command_buffer,
+                vk::PipelineBindPoint::GRAPHICS,
+                scene.pipeline_layout,
+                0,
+                &[scene.descriptor_set],
+                &[],
+            );
+            let matrix: [f32; 16] = std::array::from_fn(|i| view_projection[i / 4][i % 4]);
+            self.device.cmd_push_constants(
+                self.command_buffer,
+                scene.pipeline_layout,
+                vk::ShaderStageFlags::VERTEX,
+                0,
+                std::slice::from_raw_parts(matrix.as_ptr().cast::<u8>(), 64),
+            );
+            self.device
+                .cmd_bind_vertex_buffers(self.command_buffer, 0, &[scene.vertex_buffer], &[0]);
+            self.device.cmd_bind_index_buffer(
+                self.command_buffer,
+                scene.index_buffer,
+                0,
+                vk::IndexType::UINT32,
+            );
+            self.device
+                .cmd_draw_indexed(self.command_buffer, scene.index_count, 1, 0, 0, 0);
+            self.dynamic_rendering.cmd_end_rendering(self.command_buffer);
+        }
+    }
+
+    /// Compile the shaders and build the graphics pipeline.
+    ///
+    /// Dynamic rendering is used rather than a render pass object, which is
+    /// the extension the reference already requires of every device it picks.
+    unsafe fn create_pipeline(
+        &self,
+        descriptor_layout: vk::DescriptorSetLayout,
+    ) -> Result<(vk::PipelineLayout, vk::Pipeline), VulkanError> {
+        unsafe {
+            let compiler = shaderc::Compiler::new()
+                .map_err(|error| VulkanError::Loader(error.to_string()))?;
+            let compile = |source: &str, kind, name: &str| -> Result<Vec<u32>, VulkanError> {
+                compiler
+                    .compile_into_spirv(source, kind, name, "main", None)
+                    .map(|artifact| artifact.as_binary().to_vec())
+                    .map_err(|error| VulkanError::Loader(error.to_string()))
+            };
+            let vertex_code = compile(VERTEX_SHADER, shaderc::ShaderKind::Vertex, "cube.vert")?;
+            let fragment_code =
+                compile(FRAGMENT_SHADER, shaderc::ShaderKind::Fragment, "cube.frag")?;
+            let make_module = |code: &[u32]| -> Result<vk::ShaderModule, VulkanError> {
+                self.device
+                    .create_shader_module(&vk::ShaderModuleCreateInfo::default().code(code), None)
+                    .map_err(|result| VulkanError::Call("vkCreateShaderModule", result))
+            };
+            let vertex_module = make_module(&vertex_code)?;
+            let fragment_module = make_module(&fragment_code)?;
+
+            let entry = CString::new("main").expect("static name");
+            let stages = [
+                vk::PipelineShaderStageCreateInfo::default()
+                    .stage(vk::ShaderStageFlags::VERTEX)
+                    .module(vertex_module)
+                    .name(&entry),
+                vk::PipelineShaderStageCreateInfo::default()
+                    .stage(vk::ShaderStageFlags::FRAGMENT)
+                    .module(fragment_module)
+                    .name(&entry),
+            ];
+
+            let bindings = [vk::VertexInputBindingDescription::default()
+                .binding(0)
+                .stride(std::mem::size_of::<Vertex>() as u32)
+                .input_rate(vk::VertexInputRate::VERTEX)];
+            let attributes = [
+                vk::VertexInputAttributeDescription::default()
+                    .location(0)
+                    .binding(0)
+                    .format(vk::Format::R32G32B32_SFLOAT)
+                    .offset(0),
+                vk::VertexInputAttributeDescription::default()
+                    .location(1)
+                    .binding(0)
+                    .format(vk::Format::R32G32_SFLOAT)
+                    .offset(12),
+                vk::VertexInputAttributeDescription::default()
+                    .location(2)
+                    .binding(0)
+                    .format(vk::Format::R32_SFLOAT)
+                    .offset(20),
+            ];
+            let vertex_input = vk::PipelineVertexInputStateCreateInfo::default()
+                .vertex_binding_descriptions(&bindings)
+                .vertex_attribute_descriptions(&attributes);
+            let assembly = vk::PipelineInputAssemblyStateCreateInfo::default()
+                .topology(vk::PrimitiveTopology::TRIANGLE_LIST);
+            let viewports = [vk::Viewport::default()
+                .width(self.description.extent.width as f32)
+                .height(self.description.extent.height as f32)
+                .max_depth(1.0)];
+            let scissors = [vk::Rect2D::default().extent(self.description.extent)];
+            let viewport_state = vk::PipelineViewportStateCreateInfo::default()
+                .viewports(&viewports)
+                .scissors(&scissors);
+            let raster = vk::PipelineRasterizationStateCreateInfo::default()
+                .polygon_mode(vk::PolygonMode::FILL)
+                .cull_mode(vk::CullModeFlags::BACK)
+                .front_face(vk::FrontFace::COUNTER_CLOCKWISE)
+                .line_width(1.0);
+            let multisample = vk::PipelineMultisampleStateCreateInfo::default()
+                .rasterization_samples(vk::SampleCountFlags::TYPE_1);
+            let depth_state = vk::PipelineDepthStencilStateCreateInfo::default()
+                .depth_test_enable(true)
+                .depth_write_enable(true)
+                .depth_compare_op(vk::CompareOp::LESS);
+            let blends = [vk::PipelineColorBlendAttachmentState::default()
+                .color_write_mask(vk::ColorComponentFlags::RGBA)];
+            let blend = vk::PipelineColorBlendStateCreateInfo::default().attachments(&blends);
+
+            let push_ranges = [vk::PushConstantRange::default()
+                .stage_flags(vk::ShaderStageFlags::VERTEX)
+                .size(64)];
+            let set_layouts = [descriptor_layout];
+            let pipeline_layout = self
+                .device
+                .create_pipeline_layout(
+                    &vk::PipelineLayoutCreateInfo::default()
+                        .set_layouts(&set_layouts)
+                        .push_constant_ranges(&push_ranges),
+                    None,
+                )
+                .map_err(|result| VulkanError::Call("vkCreatePipelineLayout", result))?;
+
+            let colour_formats = [self.description.surface_format];
+            let mut rendering = vk::PipelineRenderingCreateInfo::default()
+                .color_attachment_formats(&colour_formats)
+                .depth_attachment_format(
+                    self.depth.as_ref().map_or(vk::Format::UNDEFINED, |d| d.format),
+                );
+            let create = vk::GraphicsPipelineCreateInfo::default()
+                .stages(&stages)
+                .vertex_input_state(&vertex_input)
+                .input_assembly_state(&assembly)
+                .viewport_state(&viewport_state)
+                .rasterization_state(&raster)
+                .multisample_state(&multisample)
+                .depth_stencil_state(&depth_state)
+                .color_blend_state(&blend)
+                .layout(pipeline_layout)
+                .push_next(&mut rendering);
+            let pipeline = self
+                .device
+                .create_graphics_pipelines(vk::PipelineCache::null(), &[create], None)
+                .map_err(|(_, result)| VulkanError::Call("vkCreateGraphicsPipelines", result))?[0];
+
+            self.device.destroy_shader_module(vertex_module, None);
+            self.device.destroy_shader_module(fragment_module, None);
+            Ok((pipeline_layout, pipeline))
+        }
+    }
+
+    /// Build the depth target, texture, buffers and pipeline for one mesh.
+    ///
+    /// Shaders are compiled here with shaderc, which is the library the
+    /// reference's Vulkan backend uses; the GLSL itself is this project's own.
+    pub fn load_scene(
+        &mut self,
+        mesh: &Mesh,
+        texture_rgba: &[u8],
+        texture_width: u32,
+        texture_height: u32,
+    ) -> Result<(), VulkanError> {
+        unsafe {
+            self.destroy_scene();
+            self.depth = Some(self.create_depth_target()?);
+
+            let vertex_bytes = std::slice::from_raw_parts(
+                mesh.vertices.as_ptr().cast::<u8>(),
+                std::mem::size_of_val(mesh.vertices.as_slice()),
+            );
+            let (vertex_buffer, vertex_memory) =
+                self.upload_buffer(vk::BufferUsageFlags::VERTEX_BUFFER, vertex_bytes)?;
+            let index_bytes = std::slice::from_raw_parts(
+                mesh.indices.as_ptr().cast::<u8>(),
+                std::mem::size_of_val(mesh.indices.as_slice()),
+            );
+            let (index_buffer, index_memory) =
+                self.upload_buffer(vk::BufferUsageFlags::INDEX_BUFFER, index_bytes)?;
+
+            let (texture, texture_memory, texture_view) =
+                self.upload_texture(texture_rgba, texture_width, texture_height)?;
+            let sampler = self
+                .device
+                .create_sampler(
+                    &vk::SamplerCreateInfo::default()
+                        // Block textures are pixel art; smoothing them would be
+                        // the first visible departure from the reference.
+                        .mag_filter(vk::Filter::NEAREST)
+                        .min_filter(vk::Filter::NEAREST)
+                        .address_mode_u(vk::SamplerAddressMode::CLAMP_TO_EDGE)
+                        .address_mode_v(vk::SamplerAddressMode::CLAMP_TO_EDGE)
+                        .address_mode_w(vk::SamplerAddressMode::CLAMP_TO_EDGE),
+                    None,
+                )
+                .map_err(|result| VulkanError::Call("vkCreateSampler", result))?;
+
+            let bindings = [vk::DescriptorSetLayoutBinding::default()
+                .binding(0)
+                .descriptor_type(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
+                .descriptor_count(1)
+                .stage_flags(vk::ShaderStageFlags::FRAGMENT)];
+            let descriptor_layout = self
+                .device
+                .create_descriptor_set_layout(
+                    &vk::DescriptorSetLayoutCreateInfo::default().bindings(&bindings),
+                    None,
+                )
+                .map_err(|result| VulkanError::Call("vkCreateDescriptorSetLayout", result))?;
+            let sizes = [vk::DescriptorPoolSize::default()
+                .ty(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
+                .descriptor_count(1)];
+            let descriptor_pool = self
+                .device
+                .create_descriptor_pool(
+                    &vk::DescriptorPoolCreateInfo::default().max_sets(1).pool_sizes(&sizes),
+                    None,
+                )
+                .map_err(|result| VulkanError::Call("vkCreateDescriptorPool", result))?;
+            let layouts = [descriptor_layout];
+            let descriptor_set = self
+                .device
+                .allocate_descriptor_sets(
+                    &vk::DescriptorSetAllocateInfo::default()
+                        .descriptor_pool(descriptor_pool)
+                        .set_layouts(&layouts),
+                )
+                .map_err(|result| VulkanError::Call("vkAllocateDescriptorSets", result))?[0];
+            let image_info = [vk::DescriptorImageInfo::default()
+                .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
+                .image_view(texture_view)
+                .sampler(sampler)];
+            let write = vk::WriteDescriptorSet::default()
+                .dst_set(descriptor_set)
+                .dst_binding(0)
+                .descriptor_type(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
+                .image_info(&image_info);
+            self.device.update_descriptor_sets(&[write], &[]);
+
+            let (pipeline_layout, pipeline) = self.create_pipeline(descriptor_layout)?;
+
+            self.scene = Some(SceneResources {
+                vertex_buffer,
+                vertex_memory,
+                index_buffer,
+                index_memory,
+                index_count: mesh.indices.len() as u32,
+                texture,
+                texture_memory,
+                texture_view,
+                sampler,
+                descriptor_pool,
+                descriptor_layout,
+                descriptor_set,
+                pipeline_layout,
+                pipeline,
+            });
+            Ok(())
+        }
+    }
+
+    unsafe fn create_depth_target(&self) -> Result<DepthTarget, VulkanError> {
+        unsafe {
+            let format = vk::Format::D32_SFLOAT;
+            let image = self
+                .device
+                .create_image(
+                    &vk::ImageCreateInfo::default()
+                        .image_type(vk::ImageType::TYPE_2D)
+                        .format(format)
+                        .extent(vk::Extent3D {
+                            width: self.description.extent.width,
+                            height: self.description.extent.height,
+                            depth: 1,
+                        })
+                        .mip_levels(1)
+                        .array_layers(1)
+                        .samples(vk::SampleCountFlags::TYPE_1)
+                        .tiling(vk::ImageTiling::OPTIMAL)
+                        .usage(vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT)
+                        .sharing_mode(vk::SharingMode::EXCLUSIVE)
+                        .initial_layout(vk::ImageLayout::UNDEFINED),
+                    None,
+                )
+                .map_err(|result| VulkanError::Call("vkCreateImage", result))?;
+            let requirements = self.device.get_image_memory_requirements(image);
+            let memory = self.allocate(requirements, vk::MemoryPropertyFlags::DEVICE_LOCAL)?;
+            self.device
+                .bind_image_memory(image, memory, 0)
+                .map_err(|result| VulkanError::Call("vkBindImageMemory", result))?;
+            let view = self
+                .device
+                .create_image_view(
+                    &vk::ImageViewCreateInfo::default()
+                        .image(image)
+                        .view_type(vk::ImageViewType::TYPE_2D)
+                        .format(format)
+                        .subresource_range(
+                            vk::ImageSubresourceRange::default()
+                                .aspect_mask(vk::ImageAspectFlags::DEPTH)
+                                .level_count(1)
+                                .layer_count(1),
+                        ),
+                    None,
+                )
+                .map_err(|result| VulkanError::Call("vkCreateImageView", result))?;
+            Ok(DepthTarget {
+                image,
+                memory,
+                view,
+                format,
+            })
+        }
+    }
+
+    unsafe fn upload_texture(
+        &self,
+        rgba: &[u8],
+        width: u32,
+        height: u32,
+    ) -> Result<(vk::Image, vk::DeviceMemory, vk::ImageView), VulkanError> {
+        unsafe {
+            let (staging, staging_memory) =
+                self.upload_buffer(vk::BufferUsageFlags::TRANSFER_SRC, rgba)?;
+            let format = vk::Format::R8G8B8A8_UNORM;
+            let image = self
+                .device
+                .create_image(
+                    &vk::ImageCreateInfo::default()
+                        .image_type(vk::ImageType::TYPE_2D)
+                        .format(format)
+                        .extent(vk::Extent3D {
+                            width,
+                            height,
+                            depth: 1,
+                        })
+                        .mip_levels(1)
+                        .array_layers(1)
+                        .samples(vk::SampleCountFlags::TYPE_1)
+                        .tiling(vk::ImageTiling::OPTIMAL)
+                        .usage(vk::ImageUsageFlags::TRANSFER_DST | vk::ImageUsageFlags::SAMPLED)
+                        .sharing_mode(vk::SharingMode::EXCLUSIVE)
+                        .initial_layout(vk::ImageLayout::UNDEFINED),
+                    None,
+                )
+                .map_err(|result| VulkanError::Call("vkCreateImage", result))?;
+            let requirements = self.device.get_image_memory_requirements(image);
+            let memory = self.allocate(requirements, vk::MemoryPropertyFlags::DEVICE_LOCAL)?;
+            self.device
+                .bind_image_memory(image, memory, 0)
+                .map_err(|result| VulkanError::Call("vkBindImageMemory", result))?;
+
+            let range = vk::ImageSubresourceRange::default()
+                .aspect_mask(vk::ImageAspectFlags::COLOR)
+                .level_count(1)
+                .layer_count(1);
+            self.run_once(|command| {
+                transition(
+                    &self.device,
+                    command,
+                    image,
+                    range,
+                    vk::ImageLayout::UNDEFINED,
+                    vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+                );
+                let region = vk::BufferImageCopy::default()
+                    .image_subresource(
+                        vk::ImageSubresourceLayers::default()
+                            .aspect_mask(vk::ImageAspectFlags::COLOR)
+                            .layer_count(1),
+                    )
+                    .image_extent(vk::Extent3D {
+                        width,
+                        height,
+                        depth: 1,
+                    });
+                self.device.cmd_copy_buffer_to_image(
+                    command,
+                    staging,
+                    image,
+                    vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+                    &[region],
+                );
+                transition(
+                    &self.device,
+                    command,
+                    image,
+                    range,
+                    vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+                    vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+                );
+            })?;
+            self.device.destroy_buffer(staging, None);
+            self.device.free_memory(staging_memory, None);
+
+            let view = self
+                .device
+                .create_image_view(
+                    &vk::ImageViewCreateInfo::default()
+                        .image(image)
+                        .view_type(vk::ImageViewType::TYPE_2D)
+                        .format(format)
+                        .subresource_range(range),
+                    None,
+                )
+                .map_err(|result| VulkanError::Call("vkCreateImageView", result))?;
+            Ok((image, memory, view))
+        }
+    }
+
+    unsafe fn destroy_scene(&mut self) {
+        unsafe {
+            let _ = self.device.device_wait_idle();
+            if let Some(scene) = self.scene.take() {
+                self.device.destroy_pipeline(scene.pipeline, None);
+                self.device.destroy_pipeline_layout(scene.pipeline_layout, None);
+                self.device.destroy_descriptor_pool(scene.descriptor_pool, None);
+                self.device
+                    .destroy_descriptor_set_layout(scene.descriptor_layout, None);
+                self.device.destroy_sampler(scene.sampler, None);
+                self.device.destroy_image_view(scene.texture_view, None);
+                self.device.destroy_image(scene.texture, None);
+                self.device.free_memory(scene.texture_memory, None);
+                self.device.destroy_buffer(scene.index_buffer, None);
+                self.device.free_memory(scene.index_memory, None);
+                self.device.destroy_buffer(scene.vertex_buffer, None);
+                self.device.free_memory(scene.vertex_memory, None);
+            }
+            if let Some(depth) = self.depth.take() {
+                self.device.destroy_image_view(depth.view, None);
+                self.device.destroy_image(depth.image, None);
+                self.device.free_memory(depth.memory, None);
+            }
         }
     }
 
@@ -346,7 +1031,30 @@ impl VulkanBackend {
     ///
     /// The colour is a placeholder: no reference pixel has been compared yet.
     pub fn draw_clear_frame(&mut self, colour: [f32; 4]) -> Result<(), VulkanError> {
-        self.render_frame(colour, false).map(|_| ())
+        self.render_frame(colour, false, IDENTITY).map(|_| ())
+    }
+
+    /// Draw the loaded scene under one view-projection matrix.
+    pub fn draw_scene(
+        &mut self,
+        colour: [f32; 4],
+        view_projection: [[f32; 4]; 4],
+    ) -> Result<(), VulkanError> {
+        self.render_frame(colour, false, view_projection).map(|_| ())
+    }
+
+    /// Draw the loaded scene and read the presented image back.
+    pub fn capture_scene(
+        &mut self,
+        colour: [f32; 4],
+        view_projection: [[f32; 4]; 4],
+    ) -> Result<CapturedFrame, VulkanError> {
+        let pixels = self.render_frame(colour, true, view_projection)?;
+        Ok(CapturedFrame {
+            width: self.description.extent.width,
+            height: self.description.extent.height,
+            rgba: pixels.unwrap_or_default(),
+        })
     }
 
     /// Render one frame and read the presented image back as RGBA8 rows.
@@ -355,7 +1063,7 @@ impl VulkanBackend {
     /// the image the compositor receives rather than re-rendering into an
     /// offscreen target.
     pub fn capture_frame(&mut self, colour: [f32; 4]) -> Result<CapturedFrame, VulkanError> {
-        let pixels = self.render_frame(colour, true)?;
+        let pixels = self.render_frame(colour, true, IDENTITY)?;
         Ok(CapturedFrame {
             width: self.description.extent.width,
             height: self.description.extent.height,
@@ -367,6 +1075,7 @@ impl VulkanBackend {
         &mut self,
         colour: [f32; 4],
         capture: bool,
+        view_projection: [[f32; 4]; 4],
     ) -> Result<Option<Vec<u8>>, VulkanError> {
         unsafe {
             self.device
@@ -416,6 +1125,26 @@ impl VulkanBackend {
                 &vk::ClearColorValue { float32: colour },
                 &[range],
             );
+
+            if self.scene.is_some() {
+                transition(
+                    &self.device,
+                    self.command_buffer,
+                    image,
+                    range,
+                    vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+                    vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
+                );
+                self.record_scene(index as usize, view_projection);
+                transition(
+                    &self.device,
+                    self.command_buffer,
+                    image,
+                    range,
+                    vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
+                    vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+                );
+            }
             if capture {
                 transition(
                     &self.device,
@@ -525,6 +1254,10 @@ impl Drop for VulkanBackend {
     fn drop(&mut self) {
         unsafe {
             let _ = self.device.device_wait_idle();
+            self.destroy_scene();
+            for view in self.image_views.drain(..) {
+                self.device.destroy_image_view(view, None);
+            }
             for semaphore in self.render_finished.drain(..) {
                 self.device.destroy_semaphore(semaphore, None);
             }

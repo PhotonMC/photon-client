@@ -6,10 +6,12 @@ pub mod atlas;
 pub mod geometry;
 pub mod model;
 pub mod png;
+pub mod scene;
 pub mod vulkan;
 
 pub use atlas::{SpriteEntry, SpritePlacement, StitchError, Stitcher};
 pub use geometry::{FaceUvs, default_face_uv, face_vertices};
 pub use model::{Material, SlotContents, TextureSlots, TextureSlotsData, TextureSlotsResolver};
+pub use scene::{Mesh, SpriteRect, Vertex, full_cube};
 pub use png::{DecodedImage, PngError, decode_rgba};
 pub use vulkan::{CapturedFrame, VulkanBackend, VulkanError};

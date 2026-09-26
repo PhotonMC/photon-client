@@ -3,7 +3,7 @@ use std::net::SocketAddr;
 use std::time::Duration;
 
 use voxel_client::connection::connect_and_probe;
-use voxel_client::render::VulkanBackend;
+use voxel_client::render::{self, VulkanBackend};
 use voxel_client::window::{DisplayData, WindowSurface};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -143,9 +143,38 @@ fn run_window(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std:
         described.extent.width, described.extent.height
     );
 
-    // Placeholder colour: no reference pixel has been compared yet.
+    // A texture is read from a folder the user points at; nothing is bundled.
+    // Without one the probe falls back to its own checkerboard so it still
+    // runs, and says which it used.
+    let (texture, texture_width, texture_height, source) = match env::var("VOXEL_TEXTURE") {
+        Ok(path) => {
+            let bytes = std::fs::read(&path)?;
+            let image = render::decode_rgba(&bytes)
+                .map_err(|error| format!("{path}: {error:?}"))?;
+            (image.rgba, image.width, image.height, path)
+        }
+        Err(_) => {
+            let (rgba, size) = checkerboard();
+            (rgba, size, size, "built-in checkerboard".to_owned())
+        }
+    };
+    println!("texture_source={source}");
+    println!("texture_size={texture_width}x{texture_height}");
+
+    let mesh = render::full_cube(render::SpriteRect {
+        min_u: 0.0,
+        min_v: 0.0,
+        max_u: 1.0,
+        max_v: 1.0,
+    });
+    backend.load_scene(&mesh, &texture, texture_width, texture_height)?;
+    println!("mesh_vertices={}", mesh.vertices.len());
+    println!("mesh_indices={}", mesh.indices.len());
+
     let colour = clear_colour();
-    let captured = backend.capture_frame(colour)?;
+    let aspect = scale.framebuffer_width() as f32 / scale.framebuffer_height() as f32;
+    let view_projection = camera(aspect, 0.0);
+    let captured = backend.capture_scene(colour, view_projection)?;
     let mut rendered = 1_u64;
     if let Ok(path) = env::var("VOXEL_CAPTURE_PPM") {
         write_ppm(&path, &captured)?;
@@ -177,7 +206,7 @@ fn run_window(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std:
                 );
             }
         }
-        backend.draw_clear_frame(colour)?;
+        backend.draw_scene(colour, camera(aspect, rendered as f32 * 0.02))?;
         rendered += 1;
         seen += 1;
         if frames != 0 && seen >= frames {
@@ -239,4 +268,34 @@ fn write_ppm(
     }
     out.flush()?;
     Ok(())
+}
+
+/// View-projection for the probe's camera, orbiting the block.
+///
+/// None of this matches the reference: the client's own camera arrives with
+/// P14, and until then these numbers exist only to make the cube visible.
+fn camera(aspect: f32, angle: f32) -> [[f32; 4]; 4] {
+    let radius = 2.4_f32;
+    let eye = [
+        0.5 + radius * angle.cos(),
+        1.4,
+        0.5 + radius * angle.sin(),
+    ];
+    let view = render::scene::look_at(eye, [0.5, 0.5, 0.5], [0.0, 1.0, 0.0]);
+    let projection = render::scene::perspective(70.0_f32.to_radians(), aspect, 0.05, 100.0);
+    render::scene::multiply(projection, view)
+}
+
+/// A fallback texture so the probe runs with no assets present.
+fn checkerboard() -> (Vec<u8>, u32) {
+    const SIZE: u32 = 16;
+    let mut rgba = Vec::with_capacity((SIZE * SIZE * 4) as usize);
+    for y in 0..SIZE {
+        for x in 0..SIZE {
+            let light = (x / 2 + y / 2) % 2 == 0;
+            let shade = if light { 200 } else { 120 };
+            rgba.extend_from_slice(&[shade, shade / 2 + 60, 90, 255]);
+        }
+    }
+    (rgba, SIZE)
 }
