@@ -323,6 +323,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P05.a — OptionInstance IntRange.xmap sözleşmesi — client-parity birleşik kayıt](mapped-int-range-conformance.md)
 - [P05.a — OptionInstance UnitDouble.xmap sözleşmesi — client-parity birleşik kayıt](mapped-unit-double-conformance.md)
 - [P01 — Math ailesi doğrulaması — client-parity kapsam kaydı](math-conformance.md)
+- [P16.m — Mip seviyesi üretimi ve sRGB tabloları — client-parity birleşik kayıt](mipmap-conformance.md)
 - [P16.j — Model dosyası ayrıştırma — client-parity birleşik kayıt](model-file-parse-conformance.md)
 - [P16.l — Blockstate varyant döndürmesi — client-parity birleşik kayıt](model-state-conformance.md)
 - [P16.c — Model texture slot çözümü — client-parity birleşik kayıt](model-texture-slots-conformance.md)

@@ -15749,7 +15749,68 @@ fn model_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+fn image_tables_result(request: &Value) -> Result<Value, String> {
+    let tables = render::SrgbTables::new();
+    let mut forward = String::with_capacity(256 * 4);
+    for channel in 0..=255_u8 {
+        forward.push_str(&format!("{:04x}", tables.to_linear(channel)));
+    }
+    let mut backward = String::with_capacity(1024 * 2);
+    for step in 0..1024_u16 {
+        backward.push_str(&format!("{:02x}", tables.to_srgb(step)));
+    }
+    let rows = request["rows"].as_array().ok_or("image rows must be an array")?;
+    let label = string(&rows[0], "label")?;
+    Ok(json!({"rows": [{
+        "label": label,
+        "outcome": "listed",
+        "srgb_to_linear": forward,
+        "linear_to_srgb": backward,
+    }]}))
+}
+
+fn image_mip_result(request: &Value) -> Result<Value, String> {
+    let rows = request["rows"].as_array().ok_or("image rows must be an array")?;
+    let mut out = Vec::with_capacity(rows.len());
+    for row in rows {
+        let label = string(row, "label")?;
+        let hex = string(row, "png")?;
+        let bytes: Vec<u8> = (0..hex.len() / 2)
+            .map(|index| u8::from_str_radix(&hex[index * 2..index * 2 + 2], 16))
+            .collect::<Result<_, _>>()
+            .map_err(|error| format!("png hex: {error}"))?;
+        let levels = i32_field(row, "levels")?;
+        let Ok(image) = render::decode_rgba(&bytes) else {
+            out.push(json!({"label": label, "outcome": "failed"}));
+            continue;
+        };
+        let generated = render::generate_mip_levels(&image, levels.max(0) as u32);
+        let described: Vec<Value> = generated
+            .iter()
+            .map(|level| {
+                let mut encoded = String::with_capacity(level.rgba.len() * 2);
+                for byte in &level.rgba {
+                    encoded.push_str(&format!("{byte:02x}"));
+                }
+                json!({"width": level.width, "height": level.height, "rgba": encoded})
+            })
+            .collect();
+        out.push(json!({
+            "label": label,
+            "outcome": "generated",
+            "levels": described,
+        }));
+    }
+    Ok(json!({"rows": out}))
+}
+
 fn image_result(request: &Value) -> Result<Value, String> {
+    if string(request, "operation")? == "srgb_tables" {
+        return image_tables_result(request);
+    }
+    if string(request, "operation")? == "mip_levels" {
+        return image_mip_result(request);
+    }
     if string(request, "operation")? != "png_decode" {
         return Err("unknown image operation".into());
     }

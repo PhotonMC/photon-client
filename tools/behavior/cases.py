@@ -12136,6 +12136,52 @@ def image_cases():
     ]
 
     yield {
+        "case_id": "image/srgb-tables",
+        "family": "image",
+        "operation": "srgb_tables",
+        "rows": [{"label": "tables"}],
+    }
+
+    def gradient_rows(width, height):
+        return [bytes(b for x in range(width)
+                      for b in ((x * 255 // max(width - 1, 1)),
+                                (y * 255 // max(height - 1, 1)),
+                                ((x + y) * 255 // max(width + height - 2, 1)),
+                                255))
+                for y in range(height)]
+
+    def noisy_rows(width, height):
+        state = [12345]
+        def step():
+            state[0] = (state[0] * 1103515245 + 12345) & 0x7FFFFFFF
+            return (state[0] >> 16) & 0xFF
+        return [bytes(step() for _ in range(width * 4)) for _ in range(height)]
+
+    mip_rows = [
+        ("gradient-16", 16, 16, gradient_rows(16, 16), 4),
+        ("gradient-8", 8, 8, gradient_rows(8, 8), 3),
+        ("noisy-16", 16, 16, noisy_rows(16, 16), 4),
+        ("noisy-32", 32, 32, noisy_rows(32, 32), 4),
+        ("flat-4", 4, 4, [bytes([200, 100, 50, 255]) * 4 for _ in range(4)], 2),
+        # A single level requested means the source comes back untouched.
+        ("no-mips", 16, 16, gradient_rows(16, 16), 0),
+    ]
+    yield {
+        "case_id": "image/mip-levels",
+        "family": "image",
+        "operation": "mip_levels",
+        "rows": [
+            {
+                "label": label,
+                "name": "minecraft:block/parity",
+                "levels": levels,
+                "png": _encode_png(w, h, 6, 8, data, None, None, [0] * h).hex(),
+            }
+            for label, w, h, data, levels in mip_rows
+        ],
+    }
+
+    yield {
         "case_id": "image/png-decode",
         "family": "image",
         "operation": "png_decode",

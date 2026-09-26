@@ -4,6 +4,7 @@
 
 pub mod atlas;
 pub mod geometry;
+pub mod mipmap;
 pub mod model;
 pub mod png;
 pub mod resolve;
@@ -16,6 +17,7 @@ pub use geometry::{
     FaceUvs, Quadrant, WindingError, closest_direction, default_face_uv, face_vertex_uv,
     face_vertices, recalculate_winding, triangle_normal,
 };
+pub use mipmap::{SrgbTables, generate_mip_levels};
 pub use model::{
     CuboidModel, ElementRotation, GuiLight, Material, ModelElement, ModelFace,
     ModelParseError, SlotContents, TextureSlots, TextureSlotsData, TextureSlotsResolver,
