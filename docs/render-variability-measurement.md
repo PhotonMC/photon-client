@@ -73,52 +73,111 @@ ezici çoğunluğu tam `0`, kalanı `±1` çıkmıştı. Bu haliyle
 açıklanamaz. Bu piksellerin nerede olduğu ve neden ayrıştığı açıklanmadan
 "iki backend eşdeğerdir" denemez.
 
-## Sapmanın sebebi: ışık oturmadan derlenen chunk mesh'leri
+## Sapma nerede: dolaylı aydınlanan yüzeylerde
 
-Farkın **nerede** olduğu sebebi verdi. Kareyi 6x4 bölgeye bölüp ortalama mutlak
-farka bakınca alt sıra — glowstone zemin — her ölçümde tam `0.00` çıkıyor;
-fark yalnızca duvarlarda. Yani ışık **kaynağı** birebir aynı, **yayılan** ışık
-değişiyor. İstemci chunk mesh'ine ışık değerlerini pişirdiği için, mesh ışık
-yayılımı tamamlanmadan derlendiğinde sonuç kalıcı olarak farklı kalıyor ve
-hiçbir şey yeniden derlemeyi tetiklemediği için koşu boyunca öyle duruyor. Bu,
-koşu içi kararlılık ile koşular arası sapmanın neden bir arada olduğunu
-açıklıyor.
+Farkın **nerede** olduğu sebebe işaret ediyor. Kareyi 6x4 bölgeye bölüp
+ortalama mutlak farka bakınca alt sıra — glowstone zemin — her ölçümde tam
+`0.00` çıkıyor; fark yalnızca duvarlarda:
 
-Test: yakalamadan önce `F3+A` ile bütün chunk'ları yeniden derletmek.
+```
+ 0.96  1.48  1.57  1.57  1.48  0.97
+ 2.53  2.57  2.58  2.57  2.36  1.52
+ 2.62  1.67  1.56  1.56  1.40  1.18
+ 0.00  0.00  0.00  0.00  0.00  0.00   <- glowstone zemin
+```
 
-| Koşul | Koşular arası max kanal | Ortalama kanal |
+Işık **kaynağı** birebir aynı, **yayılan** ışık değişiyor. İstemci ışık
+değerlerini chunk mesh'ine pişirdiği için, mesh ışık yayılımı tamamlanmadan
+derlendiğinde sonuç kalıcı olarak farklı kalır ve hiçbir şey yeniden derlemeyi
+tetiklemediği için koşu boyunca öyle durur. Bu, koşu içi kararlılık ile
+koşular arası sapmanın neden bir arada olduğunu açıklayan tutarlı bir
+hipotezdir. Bu ölçüm tuş enjeksiyonu içermez; mekânsal kanıt sağlamdır.
+
+### Hipotez sınandı ve doğrulanamadı
+
+Yakalamadan önce `F3+A` ile bütün chunk'ları yeniden derletmek hipotezin
+doğrudan testidir. **Test sonuç vermedi**, çünkü testin kendisi ölçümü bozuyor.
+
+Tuşu iletmek için pencerenin öne alınması gerekiyor ve bu, görüşü bir derecenin
+altında döndürebiliyor. Bölge ortalamaları ve ufuk satırı bu dönüşü
+**yakalamıyor**: dört koşuda zemin sınırı satırı `474`, duvar ve zemin bölge
+ortalamaları birbirine yakın kaldı. Yakalayan şey zemin dokusunun yatay fazı:
+
+| Koşu | `y=400` parlak tepe x'leri |
+| --- | --- |
+| GL, yeniden derleme yok | `41, 66, 140, 165, 239, 264` |
+| GL, yeniden derlemeli | `41, 66, 140, 165, 239, 264` |
+| VK, yeniden derleme yok | `41, 66, 140, 165, 239, 264` |
+| VK, yeniden derlemeli | `43, 75, 174, 273, 362, 365` |
+
+Son satırdaki koşuda kamera oynamış; o kare başka hiçbir kareyle
+karşılaştırılamaz. Çalıştırıcı artık bu parmak izini yeniden derlemenin iki
+yanında alıyor ve değişmişse koşuyu reddediyor. Dört Vulkan denemesinden biri
+bu şekilde reddedildi.
+
+Kamera koruması açıkken üç Vulkan koşusu:
+
+| Karşılaştırma | Max kanal | Ortalama kanal |
 | --- | ---: | ---: |
-| Yeniden derleme yok (3 koşu) | `7` | `1.29`–`1.37` |
-| Yeniden derleme, 6 s bekleme (3 koşu) | `2` | `0.13`–`0.32` |
-| Yeniden derleme, 20 s bekleme (2 koşu) | `4` | `0.82` |
+| A ↔ B | `4` | `0.64` |
+| A ↔ C | `8` | `1.63` |
+| B ↔ C | `5` | `0.99` |
 
-İki durumlu `~1.35` sapma kayboluyor. Zemin bölgeleri yine tam `0.00` kalıyor,
-yani kamera kaymadı.
+Yeniden derleme olmayan Vulkan koşularındaki `6` / `1.29` ile aynı
+mertebede, bir çiftte daha kötü. **Zorunlu yeniden derleme koşular arası
+sapmayı güvenilir biçimde azaltmıyor.**
 
-Bekleme süresini uzatmak **iyileştirmiyor**; 20 saniyede sonuç 6 saniyedekinden
-kötü çıktı. Buradan iki şey çıkar: stale baked lighting farkın büyük bileşeni
-ama tamamı değil, ve kalan bileşen zamanla yakınsamıyor. Örneklem küçüktür
-(koşul başına iki-üç koşu), bu yüzden `2` ile `4` arasındaki fark tek başına
-anlamlı sayılmamalıdır.
+Bu kaydın önceki sürümü, yeniden derlemenin tabanı `7`'den `2`'ye indirdiğini
+bildiriyordu. O ölçüm kamera korumasından önce alınmıştı ve üç OpenGL
+koşusunun benzer biçimde etkilenmiş olmasına dayanıyordu; **geri alınmıştır**.
+Sebep hipotezi mekânsal kanıtla ayakta duruyor, ama giderilebilirliği
+gösterilmedi.
 
-### Tuş enjeksiyonunda yakalanan tuzak
+## OpenGL ↔ Vulkan farkı: 22 piksel, deterministik
 
-`F3+A` ilk denemede iki ayrı tuş vuruşu olarak gönderildi. Oyun `A`'yı spectator
-sola kaydırma olarak okudu; kamera yer değiştirdi ve karşılaştırma ortalaması
-`24.9`'a fırladı. Akor, `F3` basılı tutulup `A`'ya basılarak gönderilince sorun
-kalktı. Sabit kameraya dayanan bir ölçümde tuş göndermek, tuşun oyun içi
-anlamını hesaba katmadan yapılamaz.
+`delta > 8` olan pikseller sayıldığında tablo nettir:
+
+| Karşılaştırma | `delta > 8` piksel |
+| --- | ---: |
+| GL R1 ↔ GL R2 | `0` |
+| GL R1 ↔ GL R3 | `0` |
+| VK V1 ↔ VK V2 | `0` |
+| GL R1 ↔ VK V1 | `22` |
+
+Her backend bu piksellerde kendisiyle tutarlı; ayrışma yalnızca backend'ler
+arasında. Yani gürültü değil, tekrarlanabilir bir fark. Yirmi iki pikselin on
+ikisi tek satırda (`y=361`) ve `75` piksel düzenli aralıkta duruyor — zeminin
+neredeyse kenarından görüldüğü satır. Değerler aynı dokunun komşu iki texel'i:
+
+```
+(389,361)  gl=[117, 78, 41]   vk=[248,228,184]
+(464,361)  gl=[248,228,184]   vk=[117, 78, 41]
+```
+
+Yön dönüşümlü. Bu, farklı bir aydınlatma veya geometri modeli değil, sıyırma
+açısında texel sınırına denk gelen örneklemenin iki backend'de farklı
+yuvarlanmasıdır.
+
+**Karar için anlamı:** Vulkan hedeflemek, bu sahnede Java'nın varsayılan
+OpenGL yapılandırmasından `22` pikselde kalıcı olarak ayrılmak demektir.
+Ortalamada bedeli yok, ama sıfır da değil. [Backend kararında](render-backend-decision.md)
+yazılan "pinned referans yapılandırması `preferredGraphicsBackend=vulkan`
+olmalıdır" şartı artık varsayım değil, ölçülmüş bir gerekliliktir.
 
 ## Bundan çıkan kural
 
 Tek bir Java koşusuna karşı **bit-bit piksel eşitliği hedeflenemez**, çünkü
 referans kendisiyle bile bit-bit örtüşmüyor. Render dilimleri için sıra şudur:
 
-1. İki durumlu sapmanın sebebi bulundu ve büyük ölçüde giderildi: chunk
-   mesh'leri ışık yayılımı tamamlanmadan derleniyor. Yakalamadan önce zorunlu
-   yeniden derleme tabanı `7`'den `2`–`4`'e indiriyor. Kalan bileşen hâlâ
-   açıklanmadı ve beklemekle kapanmıyor.
-2. OpenGL↔Vulkan izole büyük farkların kaynağı açıklanmalı.
+1. Sapmanın yeri kesin (dolaylı aydınlanan yüzeyler) ve hipotez tutarlı, ama
+   **giderilmedi**. Zorunlu yeniden derleme işe yaramıyor ve tuş enjeksiyonu
+   kamerayı bozabildiği için bu yolla sınanamıyor. Kamerayı hiç kıpırdatmayan
+   bir yeniden derleme tetiği ya da ışık yayılımının bittiğini logdan okuyacak
+   bir bekleme koşulu gerekiyor.
+2. OpenGL↔Vulkan izole farkların kaynağı açıklandı: sıyırma açısında texel
+   sınırı yuvarlaması, `22` piksel, backend başına deterministik. Kapsam
+   genişletilmeli — başka sahne, çözünürlük ve mipmap ayarında kaç piksel
+   olduğu ölçülmedi.
 3. Ancak bundan sonra bir render karşılaştırma ölçütü yazılabilir.
 
 Bu ölçüm üç OpenGL ve iki Vulkan koşusundan gelir; tek makine, tek sürücü, tek

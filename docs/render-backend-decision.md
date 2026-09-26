@@ -64,7 +64,9 @@ Referansın varsayılanı OpenGL olduğundan, pinned referans yapılandırması
 açıkça yazılmalıdır: karşılaştırma `preferredGraphicsBackend=vulkan` ile
 çalışan Java istemcisine karşı yapılır. Bu meşru bir referans yapılandırmasıdır,
 ancak varsayılan değildir ve [referans envanterine](reference-baseline.md)
-kaydedilmeden eşitlik iddiası kurulamaz.
+kaydedilmeden eşitlik iddiası kurulamaz. Ölçülen `22` piksellik fark bu şartın
+gerekçesidir: yapılandırma yazılmazsa o pikseller sessiz bir eşitlik açığı
+olarak kalır.
 
 ## Karar öncesi ölçülmesi gereken
 
@@ -78,6 +80,15 @@ ilk dilimdir ve iki şeyi ölçer:
 (2) sıfırsa backend seçimi gözlemsel olarak bedelsizdir. Sıfır değilse hangi
 backend'e karşı eşitlik iddia ettiğimiz her render kaydında açıkça yazılır.
 Bu ölçüm yapılmadan hiçbir render dilimi `client-parity` sayılmaz.
+
+**Ölçümün ilk sonucu geldi.** [P15.a.2 kaydı](render-variability-measurement.md)
+sabit bir sahnede iki backend'i karşılaştırdı: ortalama kanal farkı bir
+seviyenin altında, ancak `delta > 8` olan **22 piksel** var ve bunlar backend
+başına deterministik (aynı backend'in iki koşusunda `0`). Sıyırma açısında
+texel sınırı yuvarlamasından geliyorlar. Yani (2) sıfır değildir: Vulkan
+hedeflemek, bu sahnede Java'nın varsayılan OpenGL yapılandırmasından kalıcı
+olarak `22` pikselde ayrılmak demektir. Aşağıdaki "pinned referans
+yapılandırması" şartı bu yüzden zorunludur.
 
 ## Bağımlılık eklenmesi
 

@@ -209,12 +209,24 @@ def launch(args):
             backend, drivers = wait_for_backend(log_path, args.ready_timeout, process)
             window_id = find_window(args.ready_timeout)
             time.sleep(args.settle)
+            camera_before = None
             if args.reload_chunks:
-                # F3+A forces every loaded chunk to re-mesh. If the cross-run
-                # difference comes from meshes baked before lighting settled,
-                # this is what removes it.
+                # F3+A forces every loaded chunk to re-mesh. Activating the
+                # window to deliver it can rotate the view, so the camera is
+                # fingerprinted on both sides and the run is rejected if it
+                # moved - a moved camera silently invalidates the measurement.
+                probe_frame = run_dir / "camera-before.png"
+                capture_window(window_id, probe_frame)
+                camera_before = camera_signature(probe_frame)
                 send_keys(window_id, [("F3", "a")])
                 time.sleep(args.reload_settle)
+            if camera_before is not None:
+                probe_frame = run_dir / "camera-after.png"
+                capture_window(window_id, probe_frame)
+                camera_after = camera_signature(probe_frame)
+                camera_stable = camera_before == camera_after
+            else:
+                camera_stable = True
             captures = []
             for index in range(args.captures):
                 target = run_dir / f"frame-{index:02d}.png"
@@ -243,8 +255,14 @@ def launch(args):
         "scene": args.scene or "title_screen",
         "deterministic_scene": bool(args.scene),
         "reload_chunks": bool(args.reload_chunks),
+        "camera_stable": camera_stable,
     }
     print(json.dumps(report, sort_keys=True))
+    if not camera_stable:
+        raise Failed(
+            "Camera moved while forcing the chunk re-mesh; this run cannot be "
+            "compared against others"
+        )
     return 0
 
 
@@ -285,6 +303,24 @@ def read_png(path):
         fields.append(raw[index:end])
         index = end
     return int(fields[1]), int(fields[2]), raw[index + 1:]
+
+
+def camera_signature(path, row=400, threshold=200):
+    """Positions of the bright texture peaks along one scanline.
+
+    Any camera movement changes where the floor pattern lands, including the
+    sub-degree rotation a window activation can inject. Region averages and the
+    horizon row both survive such a rotation, so this phase is what actually
+    detects it.
+    """
+    width, _, pixels = read_png(path)
+    row_values = [pixels[(row * width + x) * 3] for x in range(width)]
+    return [
+        x for x in range(2, width - 2)
+        if row_values[x] > threshold
+        and row_values[x] >= row_values[x - 1]
+        and row_values[x] > row_values[x + 1]
+    ]
 
 
 def compare(args):
