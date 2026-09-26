@@ -1,7 +1,5 @@
 //! `ClientWorld` block_state layer split out of the former single-file module.
 
-
-
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::{
@@ -9,7 +7,6 @@ use crate::{
     direction::Direction,
     shape::{Shapes, VoxelShape},
 };
-
 
 /// A block collision shape returned in Java's cursor traversal order.
 #[derive(Debug, Clone, PartialEq)]

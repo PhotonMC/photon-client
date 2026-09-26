@@ -52,7 +52,9 @@ pub fn decode_rgba(bytes: &[u8]) -> Result<DecodedImage, PngError> {
 
     while cursor + 8 <= bytes.len() {
         let length = u32::from_be_bytes(
-            bytes[cursor..cursor + 4].try_into().map_err(|_| PngError::Truncated)?,
+            bytes[cursor..cursor + 4]
+                .try_into()
+                .map_err(|_| PngError::Truncated)?,
         ) as usize;
         let kind: [u8; 4] = bytes[cursor + 4..cursor + 8]
             .try_into()
@@ -64,7 +66,9 @@ pub fn decode_rgba(bytes: &[u8]) -> Result<DecodedImage, PngError> {
         }
         let body = &bytes[body_start..body_end];
         let stored = u32::from_be_bytes(
-            bytes[body_end..body_end + 4].try_into().map_err(|_| PngError::Truncated)?,
+            bytes[body_end..body_end + 4]
+                .try_into()
+                .map_err(|_| PngError::Truncated)?,
         );
         if crc32(&kind, body) != stored {
             return Err(PngError::Checksum);
@@ -264,7 +268,12 @@ impl Header {
             }
             4 => {
                 let grey = self.scale_sample(self.raw_sample(pixel, 0));
-                [grey, grey, grey, self.scale_sample(self.raw_sample(pixel, 1))]
+                [
+                    grey,
+                    grey,
+                    grey,
+                    self.scale_sample(self.raw_sample(pixel, 1)),
+                ]
             }
             _ => [
                 self.scale_sample(self.raw_sample(pixel, 0)),
@@ -296,7 +305,11 @@ fn unfilter(
             } else {
                 0
             };
-            let up = if row > 0 { out[(row - 1) * stride + index] } else { 0 };
+            let up = if row > 0 {
+                out[(row - 1) * stride + index]
+            } else {
+                0
+            };
             let up_left = if row > 0 && index >= bytes_per_pixel {
                 out[(row - 1) * stride + index - bytes_per_pixel]
             } else {

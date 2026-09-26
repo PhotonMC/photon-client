@@ -1,16 +1,13 @@
 //! `ClientWorld` entity layer split out of the former single-file module.
 
-
 use super::*;
 
-
-use crate::math::{
-    MTH_DEG_TO_RAD, Vec3, clamp_f32, mth_atan2,
-    mth_cos_f64, mth_lerp_f32, mth_lerp_f64, mth_rot_lerp_f32, mth_rot_lerp_f64, mth_sin_f64,
-    projectile_lerp_rotation_f32, wrap_degrees_f32,
-};
 use crate::aabb::Aabb;
-
+use crate::math::{
+    MTH_DEG_TO_RAD, Vec3, clamp_f32, mth_atan2, mth_cos_f64, mth_lerp_f32, mth_lerp_f64,
+    mth_rot_lerp_f32, mth_rot_lerp_f64, mth_sin_f64, projectile_lerp_rotation_f32,
+    wrap_degrees_f32,
+};
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum ClientEntityPose {

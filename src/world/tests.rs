@@ -6,34 +6,30 @@ use super::{
     ClientEntityPose, ClientItemStackState, ClientPlayerAbilities, ClientPlayerGameMode,
     ClientPlayerPoseInput, ClientWorld, DimensionBounds, DimensionEnvironment, DimensionInput,
     ENTITY_DATA_SERIALIZER_BOOLEAN_ID, ENTITY_NO_GRAVITY_DATA_ID, ENTITY_RELATIVE_DELTA_X_FLAG,
-    ENTITY_RELATIVE_DELTA_Y_FLAG, ENTITY_RELATIVE_DELTA_Z_FLAG,
-    ENTITY_RELATIVE_ROTATE_DELTA_FLAG, ENTITY_RELATIVE_X_FLAG, ENTITY_RELATIVE_X_ROT_FLAG,
-    ENTITY_RELATIVE_Y_FLAG, ENTITY_RELATIVE_Y_ROT_FLAG, ENTITY_RELATIVE_Z_FLAG, EntityInput,
-    EntityMotionInput, EntityMoveInput, EntityPositionInput, EntityPositionUpdateMode,
-    EntityRotationInput, EntityTeleportInput, LightLayerInput, LightUpdateInput,
+    ENTITY_RELATIVE_DELTA_Y_FLAG, ENTITY_RELATIVE_DELTA_Z_FLAG, ENTITY_RELATIVE_ROTATE_DELTA_FLAG,
+    ENTITY_RELATIVE_X_FLAG, ENTITY_RELATIVE_X_ROT_FLAG, ENTITY_RELATIVE_Y_FLAG,
+    ENTITY_RELATIVE_Y_ROT_FLAG, ENTITY_RELATIVE_Z_FLAG, EntityInput, EntityMotionInput,
+    EntityMoveInput, EntityPositionInput, EntityPositionUpdateMode, EntityRotationInput,
+    EntityTeleportInput, LightLayerInput, LightUpdateInput,
     PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS, PLAYER_RESPAWN_KEEP_ENTITY_DATA,
-    PROJECTILE_DEGREES_PER_RADIAN, SNOWBALL_GRAVITY, SectionInput,
-    VANILLA_ARROW_ENTITY_TYPE_ID, VANILLA_BOAT_PASSENGER_MAX_ROTATION,
-    VANILLA_BREEZE_ENTITY_TYPE_ID, VANILLA_COW_ENTITY_TYPE_ID,
+    PROJECTILE_DEGREES_PER_RADIAN, SNOWBALL_GRAVITY, SectionInput, VANILLA_ARROW_ENTITY_TYPE_ID,
+    VANILLA_BOAT_PASSENGER_MAX_ROTATION, VANILLA_BREEZE_ENTITY_TYPE_ID, VANILLA_COW_ENTITY_TYPE_ID,
     VANILLA_EXPERIENCE_ORB_ENTITY_TYPE_ID, VANILLA_FALLING_BLOCK_AIR_FRICTION,
     VANILLA_FALLING_BLOCK_ENTITY_TYPE_ID, VANILLA_FALLING_BLOCK_GRAVITY,
     VANILLA_FIREWORK_ROCKET_ENTITY_TYPE_ID, VANILLA_FIREWORK_ROCKET_HORIZONTAL_ACCELERATION,
     VANILLA_FIREWORK_ROCKET_VERTICAL_ACCELERATION, VANILLA_LIVING_ENTITY_TYPE_IDS,
     VANILLA_MINECART_ENTITY_TYPE_IDS, VANILLA_PLAYER_ENTITY_TYPE_ID,
-    VANILLA_PRIMED_TNT_AIR_FRICTION, VANILLA_PRIMED_TNT_ENTITY_TYPE_ID,
-    VANILLA_PRIMED_TNT_GRAVITY, VANILLA_SNOWBALL_ENTITY_TYPE_ID, apply_entity_movement_state,
-    collect_candidate_step_up_heights, collect_entity_collision_shapes,
-    collide_entity_movement, collide_entity_movement_state, is_minor_horizontal_collision,
-    living_entity_dimensions, menu_top_slot_count, refresh_entity_dimensions,
-    select_step_up_movement,
+    VANILLA_PRIMED_TNT_AIR_FRICTION, VANILLA_PRIMED_TNT_ENTITY_TYPE_ID, VANILLA_PRIMED_TNT_GRAVITY,
+    VANILLA_SNOWBALL_ENTITY_TYPE_ID, apply_entity_movement_state,
+    collect_candidate_step_up_heights, collect_entity_collision_shapes, collide_entity_movement,
+    collide_entity_movement_state, is_minor_horizontal_collision, living_entity_dimensions,
+    menu_top_slot_count, refresh_entity_dimensions, select_step_up_movement,
 };
 use crate::aabb::Aabb;
 use crate::binary::{BitSet, Uuid};
 use crate::identifier::Identifier;
 use crate::input::{Input, LocalPlayerInputModifiers, LocalPlayerSprintTriggerConditions};
-use crate::math::{
-    Vec2, Vec3, mth_atan2, mth_cos_f64, mth_sin_f64, projectile_lerp_rotation_f32,
-};
+use crate::math::{Vec2, Vec3, mth_atan2, mth_cos_f64, mth_sin_f64, projectile_lerp_rotation_f32};
 use crate::shape::Shapes;
 use crate::tags::{ClientboundUpdateTagsPacket, RegistryTags, TagEntry};
 use std::collections::BTreeMap;
@@ -270,10 +266,8 @@ fn indexed_minecart_collision_uses_vehicle_dispatch_for_all_registry_types() {
         add_entity(&mut minecart_source_world, 7, minecart_type_id);
         add_entity(&mut minecart_source_world, 8, VANILLA_PLAYER_ENTITY_TYPE_ID);
         assert!(
-            !minecart_source_world.no_entity_collision_for_entity(
-                Some(7),
-                Aabb::new(0.0, 0.0, 0.0, 1.0, 2.0, 1.0),
-            ),
+            !minecart_source_world
+                .no_entity_collision_for_entity(Some(7), Aabb::new(0.0, 0.0, 0.0, 1.0, 2.0, 1.0),),
             "minecart source type {minecart_type_id} should accept pushable Player"
         );
 
@@ -281,10 +275,8 @@ fn indexed_minecart_collision_uses_vehicle_dispatch_for_all_registry_types() {
         add_entity(&mut boat_source_world, 7, 0);
         add_entity(&mut boat_source_world, 8, minecart_type_id);
         assert!(
-            !boat_source_world.no_entity_collision_for_entity(
-                Some(7),
-                Aabb::new(0.0, 0.0, 0.0, 1.0, 1.0, 1.0),
-            ),
+            !boat_source_world
+                .no_entity_collision_for_entity(Some(7), Aabb::new(0.0, 0.0, 0.0, 1.0, 1.0, 1.0),),
             "boat source should accept minecart type {minecart_type_id}"
         );
     }
@@ -388,21 +380,13 @@ fn indexed_player_collision_respects_trapdoor_ladder_context() {
     let test_area = Aabb::new(0.0, 0.0, 0.0, 1.0, 3.0, 1.0);
 
     assert!(world.apply_entity_living_collision_state(8, true, false, false));
-    assert!(
-        world.apply_entity_living_climbable_trapdoor_state(8, true, "north", true, "north")
-    );
+    assert!(world.apply_entity_living_climbable_trapdoor_state(8, true, "north", true, "north"));
     assert!(world.no_entity_collision_for_entity(Some(7), test_area));
-    assert!(
-        world.apply_entity_living_climbable_trapdoor_state(8, false, "north", true, "north")
-    );
+    assert!(world.apply_entity_living_climbable_trapdoor_state(8, false, "north", true, "north"));
     assert!(!world.no_entity_collision_for_entity(Some(7), test_area));
-    assert!(
-        world.apply_entity_living_climbable_trapdoor_state(8, true, "north", true, "south")
-    );
+    assert!(world.apply_entity_living_climbable_trapdoor_state(8, true, "north", true, "south"));
     assert!(!world.no_entity_collision_for_entity(Some(7), test_area));
-    assert!(
-        world.apply_entity_living_climbable_trapdoor_state(8, true, "north", false, "north")
-    );
+    assert!(world.apply_entity_living_climbable_trapdoor_state(8, true, "north", false, "north"));
     assert!(!world.no_entity_collision_for_entity(Some(7), test_area));
 }
 
@@ -912,9 +896,7 @@ fn local_player_apply_input_updates_queryable_state_and_base_fallback() {
 fn local_player_fluid_falling_adjustment_updates_motion_and_honors_sprint() {
     let mut world = ClientWorld::default();
     world.set_local_player_id(42);
-    assert!(
-        world.apply_local_player_position((0.0, 0.0, 0.0), (0.25, 0.01, -0.5), (0.0, 0.0),)
-    );
+    assert!(world.apply_local_player_position((0.0, 0.0, 0.0), (0.25, 0.01, -0.5), (0.0, 0.0),));
     assert!(world.apply_local_player_fluid_falling_adjustment(0.16, true));
     assert_eq!(
         world
@@ -931,9 +913,7 @@ fn local_player_fluid_falling_adjustment_updates_motion_and_honors_sprint() {
         .as_mut()
         .expect("sprint state player")
         .shared_flags |= 1 << super::SHARED_FLAG_SPRINTING;
-    assert!(
-        world.apply_local_player_position((0.0, 0.0, 0.0), (0.25, 0.01, -0.5), (0.0, 0.0),)
-    );
+    assert!(world.apply_local_player_position((0.0, 0.0, 0.0), (0.25, 0.01, -0.5), (0.0, 0.0),));
     assert!(world.apply_local_player_fluid_falling_adjustment(0.16, true));
     assert_eq!(
         world
@@ -1150,8 +1130,8 @@ fn local_player_travel_in_water_applies_drag_and_fluid_jump_state() {
     let mut world = ClientWorld::default();
     world.set_local_player_id(42);
     assert!(world.apply_local_player_position((0.0, 0.0, 0.0), (0.1, -0.2, 0.3), (37.5, 0.0),));
-    assert!(world.apply_local_player_travel_in_water(
-        super::LocalPlayerTravelInWaterParameters {
+    assert!(
+        world.apply_local_player_travel_in_water(super::LocalPlayerTravelInWaterParameters {
             input: Vec3::new(0.3, -0.4, 0.8),
             y_rot: 37.5,
             sprinting: false,
@@ -1165,8 +1145,8 @@ fn local_player_travel_in_water_applies_drag_and_fluid_jump_state() {
             free_after_jump: false,
             base_gravity: 0.08,
             is_falling: false,
-        },
-    ));
+        },)
+    );
     assert_eq!(
         world.local_player().expect("plain water player").motion(),
         (
@@ -1177,8 +1157,8 @@ fn local_player_travel_in_water_applies_drag_and_fluid_jump_state() {
     );
 
     assert!(world.apply_local_player_position((0.0, 0.0, 0.0), (0.1, -0.2, 0.3), (37.5, 0.0),));
-    assert!(world.apply_local_player_travel_in_water(
-        super::LocalPlayerTravelInWaterParameters {
+    assert!(
+        world.apply_local_player_travel_in_water(super::LocalPlayerTravelInWaterParameters {
             input: Vec3::new(0.3, -0.4, 0.8),
             y_rot: 37.5,
             sprinting: false,
@@ -1192,8 +1172,8 @@ fn local_player_travel_in_water_applies_drag_and_fluid_jump_state() {
             free_after_jump: true,
             base_gravity: 0.08,
             is_falling: true,
-        },
-    ));
+        },)
+    );
     assert_eq!(
         world.local_player().expect("jump water player").motion(),
         (
@@ -1225,9 +1205,7 @@ fn local_player_travel_in_water_reads_movement_speed_attribute() {
             .movement_speed(),
         0.63_f32,
     );
-    assert!(
-        world.apply_local_player_position((0.0, 10.0, 0.0), (0.1, -0.2, 0.3), (37.5, 0.0),)
-    );
+    assert!(world.apply_local_player_position((0.0, 10.0, 0.0), (0.1, -0.2, 0.3), (37.5, 0.0),));
     assert!(world.apply_local_player_travel_in_water_from_attributes(
         super::LocalPlayerTravelInWaterParameters {
             input: Vec3::new(0.3, -0.4, 0.8),
@@ -1323,9 +1301,7 @@ fn local_player_sprinting_updates_shared_flag_and_movement_speed_modifier() {
             attribute
                 .modifiers()
                 .iter()
-                .filter(|modifier| {
-                    modifier.id() == super::VANILLA_PLAYER_SPRINTING_MODIFIER_ID
-                })
+                .filter(|modifier| { modifier.id() == super::VANILLA_PLAYER_SPRINTING_MODIFIER_ID })
                 .count(),
             1
         );
@@ -1551,8 +1527,8 @@ fn local_player_travel_in_lava_applies_shallow_drag_and_jump_state() {
     let mut world = ClientWorld::default();
     world.set_local_player_id(42);
     assert!(world.apply_local_player_position((0.0, 0.0, 0.0), (0.1, -0.2, 0.3), (37.5, 0.0),));
-    assert!(world.apply_local_player_travel_in_lava(
-        super::LocalPlayerTravelInLavaParameters {
+    assert!(
+        world.apply_local_player_travel_in_lava(super::LocalPlayerTravelInLavaParameters {
             input: Vec3::new(0.3, -0.4, 0.8),
             y_rot: 37.5,
             sprinting: false,
@@ -1561,8 +1537,8 @@ fn local_player_travel_in_lava_applies_shallow_drag_and_jump_state() {
             free_after_jump: false,
             base_gravity: 0.08,
             is_falling: false,
-        },
-    ));
+        },)
+    );
     assert_eq!(
         world.local_player().expect("plain lava player").motion(),
         (
@@ -1573,8 +1549,8 @@ fn local_player_travel_in_lava_applies_shallow_drag_and_jump_state() {
     );
 
     assert!(world.apply_local_player_position((0.0, 0.0, 0.0), (0.1, -0.2, 0.3), (37.5, 0.0),));
-    assert!(world.apply_local_player_travel_in_lava(
-        super::LocalPlayerTravelInLavaParameters {
+    assert!(
+        world.apply_local_player_travel_in_lava(super::LocalPlayerTravelInLavaParameters {
             input: Vec3::new(0.3, -0.4, 0.8),
             y_rot: 37.5,
             sprinting: false,
@@ -1583,8 +1559,8 @@ fn local_player_travel_in_lava_applies_shallow_drag_and_jump_state() {
             free_after_jump: true,
             base_gravity: 0.08,
             is_falling: false,
-        },
-    ));
+        },)
+    );
     assert_eq!(
         world.local_player().expect("jump lava player").motion(),
         (
@@ -1761,11 +1737,7 @@ fn local_player_travel_in_air_applies_gravity_drag_and_client_fallbacks() {
         ),
     );
 
-    assert!(world.apply_local_player_position(
-        (0.0, -64.0, 0.0),
-        (0.1, -0.2, 0.3),
-        (37.5, 0.0),
-    ));
+    assert!(world.apply_local_player_position((0.0, -64.0, 0.0), (0.1, -0.2, 0.3), (37.5, 0.0),));
     assert!(
         world.apply_local_player_travel_in_air(super::LocalPlayerTravelInAirParameters {
             current_y: -64.0,
@@ -1921,9 +1893,7 @@ fn local_player_travel_dispatch_selects_branch_and_updates_motion() {
         )
     );
 
-    assert!(
-        world.apply_local_player_position((0.0, 0.0, 0.0), (0.1, -0.2, 0.3), (37.5, 20.0),)
-    );
+    assert!(world.apply_local_player_position((0.0, 0.0, 0.0), (0.1, -0.2, 0.3), (37.5, 20.0),));
     let result = world
         .apply_local_player_travel_dispatch(super::LocalPlayerTravelDispatchParameters {
             in_water: false,
@@ -2235,10 +2205,7 @@ fn block_collision_collection_follows_cursor_order_and_overlap() {
     );
     assert!(
         world
-            .collect_block_collision_shapes(
-                Aabb::new(2.0, 0.25, 0.25, 3.0, 0.75, 0.75),
-                &shapes,
-            )
+            .collect_block_collision_shapes(Aabb::new(2.0, 0.25, 0.25, 3.0, 0.75, 0.75), &shapes,)
             .is_empty()
     );
 }
@@ -3393,8 +3360,7 @@ fn passenger_tick_clamps_boat_rotation_for_generic_item_passenger() {
             biomes: &biomes,
         }],
     );
-    for (entity_id, type_id, rotation) in
-        [(37, 89, (0.0, 0.0, 0.0)), (38, 71, (170.0, 0.0, 170.0))]
+    for (entity_id, type_id, rotation) in [(37, 89, (0.0, 0.0, 0.0)), (38, 71, (170.0, 0.0, 170.0))]
     {
         assert!(world.apply_entity(EntityInput {
             entity_id,
@@ -5787,11 +5753,9 @@ fn tick_counters_follow_local_player_and_entity_ticking_eligibility() {
 fn tick_captures_previous_transform_for_position_and_rotation_interpolation() {
     let mut world = ClientWorld::default();
     world.set_local_player_id(42);
-    assert!(world.apply_local_player_position(
-        (10.0, 64.0, -2.0),
-        (0.0, 0.0, 0.0),
-        (350.0, -20.0),
-    ));
+    assert!(
+        world.apply_local_player_position((10.0, 64.0, -2.0), (0.0, 0.0, 0.0), (350.0, -20.0),)
+    );
     assert_eq!(
         world
             .local_player()
@@ -5842,11 +5806,7 @@ fn tick_captures_previous_transform_for_position_and_rotation_interpolation() {
         Some((1.25, 80.0, -35.5))
     );
 
-    assert!(world.apply_local_player_position(
-        (14.0, 68.0, 6.0),
-        (0.0, 0.0, 0.0),
-        (10.0, 20.0),
-    ));
+    assert!(world.apply_local_player_position((14.0, 68.0, 6.0), (0.0, 0.0, 0.0), (10.0, 20.0),));
     let player = world.local_player().expect("local player transform");
     assert_eq!(player.previous_position(), (10.0, 64.0, -2.0));
     assert_eq!(player.interpolated_position(0.5), (12.0, 66.0, 2.0));
@@ -6397,11 +6357,7 @@ fn attribute_effective_value_matches_java_operation_order_and_sanitization() {
         vec![
             ClientAttributeModifierState::from_wire("minecraft:oracle_add".to_owned(), 0.1, 0),
             ClientAttributeModifierState::from_wire("minecraft:oracle_base".to_owned(), 0.2, 1),
-            ClientAttributeModifierState::from_wire(
-                "minecraft:oracle_total".to_owned(),
-                0.5,
-                2,
-            ),
+            ClientAttributeModifierState::from_wire("minecraft:oracle_total".to_owned(), 0.5, 2),
         ],
     );
     assert_eq!(

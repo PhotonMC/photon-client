@@ -50,13 +50,18 @@ public final class ImageOracle {
         int levels = row.get("levels").getAsInt();
         try (var stream = new ByteArrayInputStream(bytes);
              NativeImage image = NativeImage.read(stream)) {
+            var strategy = net.minecraft.client.renderer.texture.MipmapStrategy
+                .valueOf(row.get("strategy").getAsString());
+            float bias = Float.intBitsToFloat(
+                Integer.parseUnsignedInt(row.get("bias").getAsString(), 16));
             var mips = net.minecraft.client.renderer.texture.MipmapGenerator.generateMipLevels(
                 net.minecraft.resources.Identifier.parse(row.get("name").getAsString()),
                 new NativeImage[] {image},
                 levels,
-                net.minecraft.client.renderer.texture.MipmapStrategy.MEAN,
-                0.0F,
-                com.mojang.blaze3d.platform.Transparency.NONE);
+                strategy,
+                bias,
+                com.mojang.blaze3d.platform.Transparency.of(
+                    row.get("transparent").getAsBoolean(), row.get("translucent").getAsBoolean()));
             entry.addProperty("outcome", "generated");
             var described = new JsonArray();
             for (NativeImage mip : mips) {

@@ -7,5 +7,7 @@
 pub mod scale;
 pub mod surface;
 
-pub use scale::{BASE_HEIGHT, BASE_WIDTH, WindowScale, allowed_window_min_size, framebuffer_extent};
+pub use scale::{
+    BASE_HEIGHT, BASE_WIDTH, WindowScale, allowed_window_min_size, framebuffer_extent,
+};
 pub use surface::{DisplayData, WindowSurface, WindowSurfaceError};

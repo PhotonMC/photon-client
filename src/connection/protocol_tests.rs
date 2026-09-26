@@ -1,14 +1,12 @@
 //! Wire-level protocol tests for the play/status packet codecs.
 
 use super::{
-    GAME_EVENT_CHANGE_GAME_MODE_ID, InventoryComponentCodec,
-    PLAY_CLIENTBOUND_ADD_ENTITY_PACKET_ID, PLAY_CLIENTBOUND_BLOCK_CHANGED_ACK_PACKET_ID,
-    PLAY_CLIENTBOUND_BLOCK_DESTRUCTION_PACKET_ID, PLAY_CLIENTBOUND_BLOCK_ENTITY_DATA_PACKET_ID,
-    PLAY_CLIENTBOUND_BLOCK_UPDATE_PACKET_ID, PLAY_CLIENTBOUND_CHUNK_PACKET_ID,
-    PLAY_CLIENTBOUND_CONTAINER_CLOSE_PACKET_ID,
+    GAME_EVENT_CHANGE_GAME_MODE_ID, InventoryComponentCodec, PLAY_CLIENTBOUND_ADD_ENTITY_PACKET_ID,
+    PLAY_CLIENTBOUND_BLOCK_CHANGED_ACK_PACKET_ID, PLAY_CLIENTBOUND_BLOCK_DESTRUCTION_PACKET_ID,
+    PLAY_CLIENTBOUND_BLOCK_ENTITY_DATA_PACKET_ID, PLAY_CLIENTBOUND_BLOCK_UPDATE_PACKET_ID,
+    PLAY_CLIENTBOUND_CHUNK_PACKET_ID, PLAY_CLIENTBOUND_CONTAINER_CLOSE_PACKET_ID,
     PLAY_CLIENTBOUND_CONTAINER_SET_CONTENT_PACKET_ID,
-    PLAY_CLIENTBOUND_CONTAINER_SET_SLOT_PACKET_ID,
-    PLAY_CLIENTBOUND_ENTITY_POSITION_SYNC_PACKET_ID,
+    PLAY_CLIENTBOUND_CONTAINER_SET_SLOT_PACKET_ID, PLAY_CLIENTBOUND_ENTITY_POSITION_SYNC_PACKET_ID,
     PLAY_CLIENTBOUND_FORGET_LEVEL_CHUNK_PACKET_ID, PLAY_CLIENTBOUND_GAME_EVENT_PACKET_ID,
     PLAY_CLIENTBOUND_KEEP_ALIVE_PACKET_ID, PLAY_CLIENTBOUND_LIGHT_UPDATE_PACKET_ID,
     PLAY_CLIENTBOUND_LOGIN_PACKET_ID, PLAY_CLIENTBOUND_MOVE_ENTITY_POS_PACKET_ID,
@@ -17,41 +15,37 @@ use super::{
     PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID, PLAY_CLIENTBOUND_REMOVE_ENTITIES_PACKET_ID,
     PLAY_CLIENTBOUND_REMOVE_MOB_EFFECT_PACKET_ID, PLAY_CLIENTBOUND_RESPAWN_PACKET_ID,
     PLAY_CLIENTBOUND_ROTATE_HEAD_PACKET_ID, PLAY_CLIENTBOUND_SET_CHUNK_CACHE_CENTER_PACKET_ID,
-    PLAY_CLIENTBOUND_SET_CHUNK_CACHE_RADIUS_PACKET_ID,
-    PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID, PLAY_CLIENTBOUND_SET_ENTITY_DATA_PACKET_ID,
-    PLAY_CLIENTBOUND_SET_ENTITY_MOTION_PACKET_ID, PLAY_CLIENTBOUND_SET_HEALTH_PACKET_ID,
-    PLAY_CLIENTBOUND_SET_PASSENGERS_PACKET_ID, PLAY_CLIENTBOUND_SET_PLAYER_INVENTORY_PACKET_ID,
-    PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID, PLAY_CLIENTBOUND_TELEPORT_ENTITY_PACKET_ID,
-    PLAY_CLIENTBOUND_UPDATE_ATTRIBUTES_PACKET_ID, PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID,
-    PLAY_SERVERBOUND_ACCEPT_TELEPORTATION_PACKET_ID,
+    PLAY_CLIENTBOUND_SET_CHUNK_CACHE_RADIUS_PACKET_ID, PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID,
+    PLAY_CLIENTBOUND_SET_ENTITY_DATA_PACKET_ID, PLAY_CLIENTBOUND_SET_ENTITY_MOTION_PACKET_ID,
+    PLAY_CLIENTBOUND_SET_HEALTH_PACKET_ID, PLAY_CLIENTBOUND_SET_PASSENGERS_PACKET_ID,
+    PLAY_CLIENTBOUND_SET_PLAYER_INVENTORY_PACKET_ID, PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID,
+    PLAY_CLIENTBOUND_TELEPORT_ENTITY_PACKET_ID, PLAY_CLIENTBOUND_UPDATE_ATTRIBUTES_PACKET_ID,
+    PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID, PLAY_SERVERBOUND_ACCEPT_TELEPORTATION_PACKET_ID,
     PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID, PLAY_SERVERBOUND_CLIENT_COMMAND_PACKET_ID,
     PLAY_SERVERBOUND_CLIENT_TICK_END_PACKET_ID, PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
     PLAY_SERVERBOUND_KEEP_ALIVE_PACKET_ID, PLAY_SERVERBOUND_MOVE_PLAYER_POS_ROT_PACKET_ID,
     PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID, PLAY_SERVERBOUND_PLAYER_LOADED_PACKET_ID,
-    PLAY_SERVERBOUND_SET_CARRIED_ITEM_PACKET_ID,
-    PLAY_SERVERBOUND_SET_CREATIVE_MODE_SLOT_PACKET_ID, PLAY_SERVERBOUND_USE_ITEM_ON_PACKET_ID,
-    PLAY_SERVERBOUND_USE_ITEM_PACKET_ID, STATUS_CLIENTBOUND_PONG_RESPONSE_PACKET_ID,
-    STATUS_CLIENTBOUND_RESPONSE_PACKET_ID, STATUS_SERVERBOUND_PING_REQUEST_PACKET_ID,
-    STATUS_SERVERBOUND_REQUEST_PACKET_ID, VANILLA_ITEM_COMPONENT_CONFORMANCE,
-    decode_packet_frame, encode_abort_destroy_block, encode_creative_item_slot,
-    encode_creative_stone_slot, encode_inventory_click_with_input,
-    encode_inventory_drag_empty_cancel_state_correction,
-    encode_inventory_pickup_state_correction,
+    PLAY_SERVERBOUND_SET_CARRIED_ITEM_PACKET_ID, PLAY_SERVERBOUND_SET_CREATIVE_MODE_SLOT_PACKET_ID,
+    PLAY_SERVERBOUND_USE_ITEM_ON_PACKET_ID, PLAY_SERVERBOUND_USE_ITEM_PACKET_ID,
+    STATUS_CLIENTBOUND_PONG_RESPONSE_PACKET_ID, STATUS_CLIENTBOUND_RESPONSE_PACKET_ID,
+    STATUS_SERVERBOUND_PING_REQUEST_PACKET_ID, STATUS_SERVERBOUND_REQUEST_PACKET_ID,
+    VANILLA_ITEM_COMPONENT_CONFORMANCE, decode_packet_frame, encode_abort_destroy_block,
+    encode_creative_item_slot, encode_creative_stone_slot, encode_inventory_click_with_input,
+    encode_inventory_drag_empty_cancel_state_correction, encode_inventory_pickup_state_correction,
     encode_inventory_pickup_with_component_hash_prediction,
     encode_inventory_pickup_with_component_spec_prediction,
     encode_inventory_pickup_with_partial_changed_slot_prediction,
-    encode_inventory_pickup_with_prediction,
-    encode_inventory_pickup_with_wrong_both_prediction,
+    encode_inventory_pickup_with_prediction, encode_inventory_pickup_with_wrong_both_prediction,
     encode_inventory_pickup_with_wrong_carried_prediction,
     encode_inventory_pickup_with_wrong_slot_prediction,
     encode_inventory_quick_move_state_correction,
     encode_inventory_secondary_pickup_state_correction, encode_inventory_swap_state_correction,
     encode_inventory_throw_all_state_correction, encode_inventory_throw_one_state_correction,
-    encode_packet_frame, encode_perform_respawn, encode_release_use_item,
-    encode_set_carried_item, encode_stop_destroy_block, encode_use_item, encode_use_item_on,
-    encode_use_item_on_hit, pack_block_position, parse_add_entity_packet,
-    parse_block_destruction_packet, parse_block_entity_data_packet, parse_block_update_packet,
-    parse_chunk_packet, parse_container_close_packet, parse_container_set_content_packet,
+    encode_packet_frame, encode_perform_respawn, encode_release_use_item, encode_set_carried_item,
+    encode_stop_destroy_block, encode_use_item, encode_use_item_on, encode_use_item_on_hit,
+    pack_block_position, parse_add_entity_packet, parse_block_destruction_packet,
+    parse_block_entity_data_packet, parse_block_update_packet, parse_chunk_packet,
+    parse_container_close_packet, parse_container_set_content_packet,
     parse_container_set_slot_packet, parse_cursor_item_packet, parse_entity_metadata_packet,
     parse_entity_position_sync_packet, parse_entity_teleport_packet,
     parse_forget_level_chunk_packet, parse_game_event_packet, parse_light_update_packet,
@@ -59,11 +53,10 @@ use super::{
     parse_move_entity_rot_packet, parse_open_screen_packet, parse_optional_item_stack,
     parse_player_abilities_packet, parse_player_position_packet, parse_remove_entities_packet,
     parse_remove_mob_effect_packet, parse_respawn_packet, parse_rotate_head_packet,
-    parse_section_data, parse_set_chunk_cache_center_packet,
-    parse_set_chunk_cache_radius_packet, parse_set_entity_motion_packet,
-    parse_set_health_packet, parse_set_passengers_packet, parse_set_player_inventory_packet,
-    parse_system_chat_packet, parse_update_attributes_packet, parse_update_mob_effect_packet,
-    resolve_player_position, support_block_position,
+    parse_section_data, parse_set_chunk_cache_center_packet, parse_set_chunk_cache_radius_packet,
+    parse_set_entity_motion_packet, parse_set_health_packet, parse_set_passengers_packet,
+    parse_set_player_inventory_packet, parse_system_chat_packet, parse_update_attributes_packet,
+    parse_update_mob_effect_packet, resolve_player_position, support_block_position,
 };
 
 #[test]
@@ -456,8 +449,7 @@ fn update_attributes_parser_matches_java_snapshot_and_modifier_order() {
     payload.extend_from_slice(&0.25_f64.to_be_bytes());
     payload.push(2);
 
-    let observation =
-        parse_update_attributes_packet(&payload).expect("update attributes packet");
+    let observation = parse_update_attributes_packet(&payload).expect("update attributes packet");
     assert_eq!(observation.entity_id, 42);
     assert!(!observation.applied_to_world);
     assert_eq!(observation.attributes.len(), 1);
@@ -897,8 +889,7 @@ fn move_entity_parsers_match_java_position_and_rotation_variants() {
     pos_rot_payload.insert(pos_rot_payload.len() - 1, 64);
     pos_rot_payload.insert(pos_rot_payload.len() - 1, 192);
     assert_eq!(
-        parse_move_entity_pos_rot_packet(&pos_rot_payload)
-            .expect("move entity position rotation"),
+        parse_move_entity_pos_rot_packet(&pos_rot_payload).expect("move entity position rotation"),
         super::EntityMoveObservation {
             entity_id: 42,
             delta_x: 256,
@@ -1076,8 +1067,7 @@ fn container_slot_parser_skips_food_component() {
     payload.push(1);
 
     assert_eq!(
-        parse_container_set_slot_packet(&payload)
-            .expect("food component-bearing container slot"),
+        parse_container_set_slot_packet(&payload).expect("food component-bearing container slot"),
         super::ContainerSetSlotObservation {
             container_id: 0,
             state_id: 10,
@@ -1457,8 +1447,7 @@ fn inventory_secondary_pickup_encoder_keeps_secondary_button() {
 #[test]
 fn inventory_throw_encoder_keeps_throw_input_id() {
     let mut payload = Vec::new();
-    encode_inventory_throw_one_state_correction(&mut payload, 0)
-        .expect("inventory throw packet");
+    encode_inventory_throw_one_state_correction(&mut payload, 0).expect("inventory throw packet");
 
     let mut input = payload.as_slice();
     assert_eq!(
@@ -1878,8 +1867,8 @@ fn write_component_fixture(codec: InventoryComponentCodec, output: &mut Vec<u8>)
         InventoryComponentCodec::Byte => output.push(0),
         InventoryComponentCodec::Int => output.extend_from_slice(&0_i32.to_be_bytes()),
         InventoryComponentCodec::Identifier => {
-            let identifier = crate::identifier::Identifier::parse("minecraft:test")
-                .expect("identifier fixture");
+            let identifier =
+                crate::identifier::Identifier::parse("minecraft:test").expect("identifier fixture");
             crate::identifier::write_identifier(&identifier, output)
                 .expect("identifier fixture encoding");
         }

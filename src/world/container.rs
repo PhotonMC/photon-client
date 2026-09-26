@@ -1,10 +1,6 @@
 //! `ClientWorld` container layer split out of the former single-file module.
 
-
-
 use std::collections::BTreeMap;
-
-
 
 /// Raw item-stack state retained by the client inventory copy.
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -84,8 +84,7 @@ pub fn resolve_model(
         let text = source
             .model(&current)
             .ok_or_else(|| ResolveError::MissingModel(current.as_string()))?;
-        let parsed =
-            parse_model(&text).map_err(|_| ResolveError::BadModel(current.as_string()))?;
+        let parsed = parse_model(&text).map_err(|_| ResolveError::BadModel(current.as_string()))?;
         next = parsed.parent.clone();
         seen.push(current);
         chain.push(parsed);
@@ -185,8 +184,7 @@ pub fn build_atlas(
             let target = ((placement.y as u32 + row) * width + placement.x as u32) as usize * 4;
             let source_row = (row * image.width) as usize * 4;
             let span = (image.width * 4) as usize;
-            rgba[target..target + span]
-                .copy_from_slice(&image.rgba[source_row..source_row + span]);
+            rgba[target..target + span].copy_from_slice(&image.rgba[source_row..source_row + span]);
         }
         sprites.insert(
             key,

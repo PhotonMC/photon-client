@@ -12157,14 +12157,63 @@ def image_cases():
             return (state[0] >> 16) & 0xFF
         return [bytes(step() for _ in range(width * 4)) for _ in range(height)]
 
+    def cutout_rows(width, height):
+        """A shape with hard transparent edges, like a plant or a leaf."""
+        rows = []
+        for y in range(height):
+            row = bytearray()
+            for x in range(width):
+                inside = abs(x - width // 2) + abs(y - height // 2) < width // 3
+                row += bytes([(x * 13) % 256, (y * 29) % 256, 180, 255 if inside else 0])
+            rows.append(bytes(row))
+        return rows
+
+    def soft_alpha_rows(width, height):
+        """Alpha that ramps rather than jumping, so the coverage search has to
+        converge on a scale instead of reproducing one exactly."""
+        return [bytes(b for x in range(width)
+                      for b in (200, 120, 60, (x * 255) // max(width - 1, 1)))
+                for _ in range(height)]
+
+    def clear_rows(width, height):
+        """No opaque texel at all, which leaves the fill with no colour to
+        spread and the dark fill with no darkest colour to find."""
+        return [bytes([90, 140, 200, 0] * width) for _ in range(height)]
+
+    # label, width, height, texels, levels, strategy, bias, path, transparency
     mip_rows = [
-        ("gradient-16", 16, 16, gradient_rows(16, 16), 4),
-        ("gradient-8", 8, 8, gradient_rows(8, 8), 3),
-        ("noisy-16", 16, 16, noisy_rows(16, 16), 4),
-        ("noisy-32", 32, 32, noisy_rows(32, 32), 4),
-        ("flat-4", 4, 4, [bytes([200, 100, 50, 255]) * 4 for _ in range(4)], 2),
+        ("gradient-16", 16, 16, gradient_rows(16, 16), 4, "MEAN", 0.0, "block/parity", (False, False)),
+        ("gradient-8", 8, 8, gradient_rows(8, 8), 3, "MEAN", 0.0, "block/parity", (False, False)),
+        ("noisy-16", 16, 16, noisy_rows(16, 16), 4, "MEAN", 0.0, "block/parity", (False, False)),
+        ("noisy-32", 32, 32, noisy_rows(32, 32), 4, "MEAN", 0.0, "block/parity", (False, False)),
+        ("flat-4", 4, 4, [bytes([200, 100, 50, 255]) * 4 for _ in range(4)], 2, "MEAN", 0.0,
+         "block/parity", (False, False)),
         # A single level requested means the source comes back untouched.
-        ("no-mips", 16, 16, gradient_rows(16, 16), 0),
+        ("no-mips", 16, 16, gradient_rows(16, 16), 0, "MEAN", 0.0, "block/parity", (False, False)),
+        # The cutout strategies spread colour into the transparent area before
+        # halving, then rescale alpha so the visible area keeps its size.
+        ("cutout-16", 16, 16, cutout_rows(16, 16), 4, "CUTOUT", 0.0, "block/parity", (False, False)),
+        ("cutout-32", 32, 32, cutout_rows(32, 32), 4, "CUTOUT", 0.0, "block/parity", (False, False)),
+        # A stricter reference alpha moves the coverage the search aims at.
+        ("strict-cutout-16", 16, 16, cutout_rows(16, 16), 4, "STRICT_CUTOUT", 0.0,
+         "block/parity", (False, False)),
+        ("cutout-bias", 16, 16, cutout_rows(16, 16), 4, "CUTOUT", 0.1, "block/parity", (False, False)),
+        ("cutout-soft", 16, 16, soft_alpha_rows(16, 16), 4, "CUTOUT", 0.0, "block/parity", (False, False)),
+        ("dark-cutout-16", 16, 16, cutout_rows(16, 16), 4, "DARK_CUTOUT", 0.0,
+         "block/parity", (False, False)),
+        # Filling is skipped for item textures, so level zero keeps its holes.
+        ("cutout-item", 16, 16, cutout_rows(16, 16), 4, "CUTOUT", 0.0, "item/parity", (False, False)),
+        # Asking for no mips still fills, because that runs before the early exit.
+        ("cutout-no-mips", 16, 16, cutout_rows(16, 16), 0, "CUTOUT", 0.0, "block/parity", (False, False)),
+        ("dark-cutout-no-mips", 16, 16, cutout_rows(16, 16), 0, "DARK_CUTOUT", 0.0,
+         "block/parity", (False, False)),
+        ("cutout-clear", 8, 8, clear_rows(8, 8), 3, "CUTOUT", 0.0, "block/parity", (False, False)),
+        ("dark-cutout-clear", 8, 8, clear_rows(8, 8), 3, "DARK_CUTOUT", 0.0,
+         "block/parity", (False, False)),
+        # AUTO picks its strategy from the transparency it is told about.
+        ("auto-opaque", 16, 16, cutout_rows(16, 16), 4, "AUTO", 0.0, "block/parity", (False, False)),
+        ("auto-transparent", 16, 16, cutout_rows(16, 16), 4, "AUTO", 0.0, "block/parity", (True, False)),
+        ("auto-translucent", 16, 16, cutout_rows(16, 16), 4, "AUTO", 0.0, "block/parity", (False, True)),
     ]
     yield {
         "case_id": "image/mip-levels",
@@ -12173,11 +12222,15 @@ def image_cases():
         "rows": [
             {
                 "label": label,
-                "name": "minecraft:block/parity",
+                "name": f"minecraft:{path}",
                 "levels": levels,
+                "strategy": strategy,
+                "bias": float_bits(bias),
+                "transparent": transparency[0],
+                "translucent": transparency[1],
                 "png": _encode_png(w, h, 6, 8, data, None, None, [0] * h).hex(),
             }
-            for label, w, h, data, levels in mip_rows
+            for label, w, h, data, levels, strategy, bias, path, transparency in mip_rows
         ],
     }
 

@@ -1,12 +1,10 @@
 //! `ClientWorld` chunk layer split out of the former single-file module.
 
-
 use super::*;
 
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::binary::BitSet;
-
 
 /// The observable state of the Java client chunk cache.
 ///
@@ -295,7 +293,11 @@ pub struct LightApplication {
     pub queued: bool,
 }
 
-pub(crate) fn count_invalid_light_updates(section_count: usize, mask: &BitSet, updates: &[Vec<u8>]) -> usize {
+pub(crate) fn count_invalid_light_updates(
+    section_count: usize,
+    mask: &BitSet,
+    updates: &[Vec<u8>],
+) -> usize {
     let mut update_index = 0;
     let mut invalid_updates = 0;
     for section_index in 0..section_count {
@@ -312,7 +314,11 @@ pub(crate) fn count_invalid_light_updates(section_count: usize, mask: &BitSet, u
     invalid_updates
 }
 
-pub(crate) fn count_light_sections(section_count: usize, mask: &BitSet, empty_mask: &BitSet) -> usize {
+pub(crate) fn count_light_sections(
+    section_count: usize,
+    mask: &BitSet,
+    empty_mask: &BitSet,
+) -> usize {
     (0..section_count)
         .filter(|section_index| {
             let bit = *section_index as u64;

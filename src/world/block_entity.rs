@@ -1,10 +1,5 @@
 //! `ClientWorld` block_entity layer split out of the former single-file module.
 
-
-
-
-
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ClientSpawnerState {
     pub(crate) delay: i32,

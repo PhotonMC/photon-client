@@ -260,7 +260,10 @@ impl<'a> Reader<'a> {
                 _ => {
                     let rest = &self.bytes[self.offset..];
                     let text = core::str::from_utf8(rest).map_err(|_| self.fail("invalid text"))?;
-                    let character = text.chars().next().ok_or_else(|| self.fail("invalid text"))?;
+                    let character = text
+                        .chars()
+                        .next()
+                        .ok_or_else(|| self.fail("invalid text"))?;
                     let mut buffer = [0_u16; 2];
                     units.extend_from_slice(character.encode_utf16(&mut buffer));
                     self.offset += character.len_utf8();

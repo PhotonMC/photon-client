@@ -108,12 +108,7 @@ pub fn look_at(eye: [f32; 3], target: [f32; 3], up: [f32; 3]) -> [[f32; 4]; 4] {
         [right[0], true_up[0], -forward[0], 0.0],
         [right[1], true_up[1], -forward[1], 0.0],
         [right[2], true_up[2], -forward[2], 0.0],
-        [
-            -dot(right, eye),
-            -dot(true_up, eye),
-            dot(forward, eye),
-            1.0,
-        ],
+        [-dot(right, eye), -dot(true_up, eye), dot(forward, eye), 1.0],
     ]
 }
 

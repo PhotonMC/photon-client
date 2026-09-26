@@ -1,14 +1,9 @@
 //! `ClientWorld` border layer split out of the former single-file module.
 
-
 use super::*;
 
-
-use crate::math::{
-    clamp_f64, mth_lerp_f64,
-};
+use crate::math::{clamp_f64, mth_lerp_f64};
 use crate::shape::VoxelShape;
-
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ClientWorldBorderStatus {

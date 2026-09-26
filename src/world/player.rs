@@ -1,6 +1,5 @@
 //! `ClientWorld` player layer split out of the former single-file module.
 
-
 use super::*;
 
 use std::collections::BTreeMap;
@@ -23,10 +22,7 @@ use crate::input::{
     local_player_travel_in_lava, local_player_travel_in_water,
     local_player_update_fall_flying_movement,
 };
-use crate::math::{
-    Vec2, Vec3, clamp_f32, floor_f32, mth_lerp_f32, mth_lerp_f64, mth_rot_lerp_f32,
-};
-
+use crate::math::{Vec2, Vec3, clamp_f32, floor_f32, mth_lerp_f32, mth_lerp_f64, mth_rot_lerp_f32};
 
 /// Inputs used by Java Player's desired-pose and fit fallback decision.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]

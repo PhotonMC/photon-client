@@ -86,9 +86,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// until the Vulkan backend lands. `frames` bounds the loop so the probe can be
 /// run non-interactively; `0` keeps it open until the window is closed.
 fn run_window(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::error::Error>> {
-    let width: i32 = args.next().map(|value| value.parse()).transpose()?.unwrap_or(854);
-    let height: i32 = args.next().map(|value| value.parse()).transpose()?.unwrap_or(480);
-    let frames: u64 = args.next().map(|value| value.parse()).transpose()?.unwrap_or(0);
+    let width: i32 = args
+        .next()
+        .map(|value| value.parse())
+        .transpose()?
+        .unwrap_or(854);
+    let height: i32 = args
+        .next()
+        .map(|value| value.parse())
+        .transpose()?
+        .unwrap_or(480);
+    let frames: u64 = args
+        .next()
+        .map(|value| value.parse())
+        .transpose()?
+        .unwrap_or(0);
 
     let display = DisplayData {
         width,
@@ -146,58 +158,57 @@ fn run_window(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std:
     // Assets come from a folder the user names; nothing is bundled. With a
     // folder and a model name the probe draws that model; with neither it
     // falls back to its own cube and checkerboard, and says which it used.
-    let (mesh, texture, texture_width, texture_height) = match (
-        env::var("VOXEL_ASSETS"),
-        env::var("VOXEL_MODEL"),
-    ) {
-        (Ok(root), Ok(name)) => {
-            let source = FolderAssets {
-                root: std::path::PathBuf::from(&root),
-            };
-            let identifier = voxel_client::identifier::Identifier::parse(&name)
-                .map_err(|error| format!("{name}: {error:?}"))?;
-            let model = render::resolve_model(&source, &identifier)
-                .map_err(|error| format!("{name}: {error:?}"))?;
-            let atlas = render::build_atlas(&source, &model, 2048, 0)
-                .map_err(|error| format!("{name}: {error:?}"))?;
-            // A blockstate variant turns its model in quarter turns; the
-            // probe takes them directly since variant selection is not built.
-            let rotate_x: i32 = env::var("VOXEL_ROTATE_X")
-                .ok()
-                .map(|value| value.parse())
-                .transpose()?
-                .unwrap_or(0);
-            let rotate_y: i32 = env::var("VOXEL_ROTATE_Y")
-                .ok()
-                .map(|value| value.parse())
-                .transpose()?
-                .unwrap_or(0);
-            let state = voxel_client::render::rotation::model_state_transform(rotate_x, rotate_y)
-                .ok_or("variant rotation must be a multiple of ninety")?;
-            let identity = rotate_x % 360 == 0 && rotate_y % 360 == 0;
-            let mesh = render::build_mesh(&model, &atlas, (!identity).then_some(&state))
-                .map_err(|error| format!("{name}: {error:?}"))?;
-            println!("model_rotation={rotate_x},{rotate_y}");
-            println!("model_source={name}");
-            println!("model_elements={}", model.elements.len());
-            println!("model_sprites={}", atlas.sprites.len());
-            println!("model_ambient_occlusion={}", model.ambient_occlusion);
-            println!("atlas_size={}x{}", atlas.width, atlas.height);
-            (mesh, atlas.rgba, atlas.width, atlas.height)
-        }
-        _ => {
-            println!("model_source=built-in cube and checkerboard");
-            let (rgba, size) = checkerboard();
-            println!("model_rotation=0,0");
-            let mesh = render::full_cube(render::SpriteRect {
-                min_u: 0.0,
-                min_v: 0.0,
-                max_u: 1.0,
-                max_v: 1.0,
-            });
-            (mesh, rgba, size, size)
-        }
-    };
+    let (mesh, texture, texture_width, texture_height) =
+        match (env::var("VOXEL_ASSETS"), env::var("VOXEL_MODEL")) {
+            (Ok(root), Ok(name)) => {
+                let source = FolderAssets {
+                    root: std::path::PathBuf::from(&root),
+                };
+                let identifier = voxel_client::identifier::Identifier::parse(&name)
+                    .map_err(|error| format!("{name}: {error:?}"))?;
+                let model = render::resolve_model(&source, &identifier)
+                    .map_err(|error| format!("{name}: {error:?}"))?;
+                let atlas = render::build_atlas(&source, &model, 2048, 0)
+                    .map_err(|error| format!("{name}: {error:?}"))?;
+                // A blockstate variant turns its model in quarter turns; the
+                // probe takes them directly since variant selection is not built.
+                let rotate_x: i32 = env::var("VOXEL_ROTATE_X")
+                    .ok()
+                    .map(|value| value.parse())
+                    .transpose()?
+                    .unwrap_or(0);
+                let rotate_y: i32 = env::var("VOXEL_ROTATE_Y")
+                    .ok()
+                    .map(|value| value.parse())
+                    .transpose()?
+                    .unwrap_or(0);
+                let state =
+                    voxel_client::render::rotation::model_state_transform(rotate_x, rotate_y)
+                        .ok_or("variant rotation must be a multiple of ninety")?;
+                let identity = rotate_x % 360 == 0 && rotate_y % 360 == 0;
+                let mesh = render::build_mesh(&model, &atlas, (!identity).then_some(&state))
+                    .map_err(|error| format!("{name}: {error:?}"))?;
+                println!("model_rotation={rotate_x},{rotate_y}");
+                println!("model_source={name}");
+                println!("model_elements={}", model.elements.len());
+                println!("model_sprites={}", atlas.sprites.len());
+                println!("model_ambient_occlusion={}", model.ambient_occlusion);
+                println!("atlas_size={}x{}", atlas.width, atlas.height);
+                (mesh, atlas.rgba, atlas.width, atlas.height)
+            }
+            _ => {
+                println!("model_source=built-in cube and checkerboard");
+                let (rgba, size) = checkerboard();
+                println!("model_rotation=0,0");
+                let mesh = render::full_cube(render::SpriteRect {
+                    min_u: 0.0,
+                    min_v: 0.0,
+                    max_u: 1.0,
+                    max_v: 1.0,
+                });
+                (mesh, rgba, size, size)
+            }
+        };
     println!("texture_size={texture_width}x{texture_height}");
     backend.load_scene(&mesh, &texture, texture_width, texture_height)?;
     println!("mesh_vertices={}", mesh.vertices.len());
@@ -211,10 +222,7 @@ fn run_window(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std:
     if let Ok(path) = env::var("VOXEL_CAPTURE_PPM") {
         write_ppm(&path, &captured)?;
         println!("captured_frame={path}");
-        println!(
-            "captured_size={}x{}",
-            captured.width, captured.height
-        );
+        println!("captured_size={}x{}", captured.width, captured.height);
     }
 
     let mut seen = 0_u64;
@@ -308,11 +316,7 @@ fn write_ppm(
 /// P14, and until then these numbers exist only to make the cube visible.
 fn camera(aspect: f32, angle: f32) -> [[f32; 4]; 4] {
     let radius = 2.4_f32;
-    let eye = [
-        0.5 + radius * angle.cos(),
-        1.4,
-        0.5 + radius * angle.sin(),
-    ];
+    let eye = [0.5 + radius * angle.cos(), 1.4, 0.5 + radius * angle.sin()];
     let view = render::scene::look_at(eye, [0.5, 0.5, 0.5], [0.0, 1.0, 0.0]);
     let projection = render::scene::perspective(70.0_f32.to_radians(), aspect, 0.05, 100.0);
     render::scene::multiply(projection, view)

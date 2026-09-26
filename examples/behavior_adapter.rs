@@ -62,6 +62,7 @@ use voxel_client::option::{
 use voxel_client::protocol::{ConnectionProtocol, PacketFlow};
 use voxel_client::random::RandomSource;
 use voxel_client::registry_data::{ClientboundRegistryDataPacket, PackedRegistryEntry};
+use voxel_client::render;
 use voxel_client::resources::{
     self, AssetIndex, AssetResolution, KnownPack, KnownPackCodecError, KnownPackListCodecError,
     PackCompatibility, PackFormat, ReloadableResourceManager, ResourcePack, ResourcePackStack,
@@ -76,7 +77,6 @@ use voxel_client::status::{
 use voxel_client::tags::{ClientboundUpdateTagsPacket, RegistryTags, TagEntry};
 use voxel_client::timer::Timer;
 use voxel_client::utf8;
-use voxel_client::render;
 use voxel_client::window;
 use voxel_client::wire::{self, ReadError};
 use voxel_client::world::{
@@ -15161,7 +15161,9 @@ fn json_canonical(value: &voxel_client::json::JsonValue, out: &mut String) {
 
 fn json_number_result(request: &Value) -> Result<Value, String> {
     use voxel_client::json::JsonValue;
-    let rows = request["rows"].as_array().ok_or("json rows must be an array")?;
+    let rows = request["rows"]
+        .as_array()
+        .ok_or("json rows must be an array")?;
     let mut out = Vec::with_capacity(rows.len());
     for row in rows {
         let label = string(row, "label")?;
@@ -15198,7 +15200,9 @@ fn json_result(request: &Value) -> Result<Value, String> {
     if string(request, "operation")? != "parse" {
         return Err("unknown json operation".into());
     }
-    let rows = request["rows"].as_array().ok_or("json rows must be an array")?;
+    let rows = request["rows"]
+        .as_array()
+        .ok_or("json rows must be an array")?;
     let mut out = Vec::with_capacity(rows.len());
     for row in rows {
         let label = string(row, "label")?;
@@ -15231,7 +15235,9 @@ fn json_result(request: &Value) -> Result<Value, String> {
 }
 
 fn model_geometry_result(request: &Value) -> Result<Value, String> {
-    let rows = request["rows"].as_array().ok_or("model rows must be an array")?;
+    let rows = request["rows"]
+        .as_array()
+        .ok_or("model rows must be an array")?;
     let mut out = Vec::with_capacity(rows.len());
     for row in rows {
         let label = string(row, "label")?;
@@ -15291,7 +15297,9 @@ fn direction_by_name(name: &str) -> Option<voxel_client::direction::Direction> {
 
 fn model_rotation_result(request: &Value) -> Result<Value, String> {
     use voxel_client::render::rotation;
-    let rows = request["rows"].as_array().ok_or("model rows must be an array")?;
+    let rows = request["rows"]
+        .as_array()
+        .ok_or("model rows must be an array")?;
     let mut out = Vec::with_capacity(rows.len());
     for row in rows {
         let label = string(row, "label")?;
@@ -15361,11 +15369,15 @@ fn model_rotation_result(request: &Value) -> Result<Value, String> {
 }
 
 fn model_winding_result(request: &Value) -> Result<Value, String> {
-    let rows = request["rows"].as_array().ok_or("model rows must be an array")?;
+    let rows = request["rows"]
+        .as_array()
+        .ok_or("model rows must be an array")?;
     let mut out = Vec::with_capacity(rows.len());
     for row in rows {
         let label = string(row, "label")?;
-        let given = row["corners"].as_array().ok_or("corners must be an array")?;
+        let given = row["corners"]
+            .as_array()
+            .ok_or("corners must be an array")?;
         let mut positions = [[0.0_f32; 3]; 4];
         for (slot, item) in positions.iter_mut().zip(given) {
             let array = item.as_array().ok_or("corner must be an array")?;
@@ -15381,9 +15393,18 @@ fn model_winding_result(request: &Value) -> Result<Value, String> {
         let mut entry = serde_json::Map::new();
         entry.insert("label".into(), json!(label));
         entry.insert("outcome".into(), json!("wound"));
-        entry.insert("normal_x".into(), json!(format!("{:08x}", normal[0].to_bits())));
-        entry.insert("normal_y".into(), json!(format!("{:08x}", normal[1].to_bits())));
-        entry.insert("normal_z".into(), json!(format!("{:08x}", normal[2].to_bits())));
+        entry.insert(
+            "normal_x".into(),
+            json!(format!("{:08x}", normal[0].to_bits())),
+        );
+        entry.insert(
+            "normal_y".into(),
+            json!(format!("{:08x}", normal[1].to_bits())),
+        );
+        entry.insert(
+            "normal_z".into(),
+            json!(format!("{:08x}", normal[2].to_bits())),
+        );
 
         match render::closest_direction(normal) {
             None => {
@@ -15432,7 +15453,9 @@ fn direction_name(direction: voxel_client::direction::Direction) -> &'static str
 
 fn model_euler_result(request: &Value) -> Result<Value, String> {
     use voxel_client::render::rotation;
-    let rows = request["rows"].as_array().ok_or("model rows must be an array")?;
+    let rows = request["rows"]
+        .as_array()
+        .ok_or("model rows must be an array")?;
     let mut out = Vec::with_capacity(rows.len());
     for row in rows {
         let read = |key: &str| -> Result<f32, String> {
@@ -15463,7 +15486,9 @@ fn model_euler_result(request: &Value) -> Result<Value, String> {
 }
 
 fn model_uv_rotation_result(request: &Value) -> Result<Value, String> {
-    let rows = request["rows"].as_array().ok_or("model rows must be an array")?;
+    let rows = request["rows"]
+        .as_array()
+        .ok_or("model rows must be an array")?;
     let mut out = Vec::with_capacity(rows.len());
     for row in rows {
         let label = string(row, "label")?;
@@ -15507,7 +15532,9 @@ fn model_uv_rotation_result(request: &Value) -> Result<Value, String> {
 
 fn model_parse_result(request: &Value) -> Result<Value, String> {
     use voxel_client::render::model;
-    let rows = request["rows"].as_array().ok_or("model rows must be an array")?;
+    let rows = request["rows"]
+        .as_array()
+        .ok_or("model rows must be an array")?;
     let mut out = Vec::with_capacity(rows.len());
     for row in rows {
         let label = string(row, "label")?;
@@ -15578,10 +15605,12 @@ fn model_parse_result(request: &Value) -> Result<Value, String> {
                     })
                     .collect();
                 let bits = |vector: [f32; 3]| {
-                    json!(vector
-                        .iter()
-                        .map(|axis| format!("{:08x}", axis.to_bits()))
-                        .collect::<Vec<_>>())
+                    json!(
+                        vector
+                            .iter()
+                            .map(|axis| format!("{:08x}", axis.to_bits()))
+                            .collect::<Vec<_>>()
+                    )
                 };
                 json!({
                     "from": bits(element.from),
@@ -15634,7 +15663,9 @@ fn model_parse_result(request: &Value) -> Result<Value, String> {
 
 fn model_state_result(request: &Value) -> Result<Value, String> {
     use voxel_client::render::rotation;
-    let rows = request["rows"].as_array().ok_or("model rows must be an array")?;
+    let rows = request["rows"]
+        .as_array()
+        .ok_or("model rows must be an array")?;
     let mut out = Vec::with_capacity(rows.len());
     for row in rows {
         let label = string(row, "label")?;
@@ -15699,7 +15730,9 @@ fn model_result(request: &Value) -> Result<Value, String> {
     if string(request, "operation")? != "texture_slots" {
         return Err("unknown model operation".into());
     }
-    let rows = request["rows"].as_array().ok_or("model rows must be an array")?;
+    let rows = request["rows"]
+        .as_array()
+        .ok_or("model rows must be an array")?;
     let probes = [
         "all", "top", "bottom", "side", "north", "particle", "missing", "#all", "#top",
     ];
@@ -15759,7 +15792,9 @@ fn image_tables_result(request: &Value) -> Result<Value, String> {
     for step in 0..1024_u16 {
         backward.push_str(&format!("{:02x}", tables.to_srgb(step)));
     }
-    let rows = request["rows"].as_array().ok_or("image rows must be an array")?;
+    let rows = request["rows"]
+        .as_array()
+        .ok_or("image rows must be an array")?;
     let label = string(&rows[0], "label")?;
     Ok(json!({"rows": [{
         "label": label,
@@ -15770,7 +15805,9 @@ fn image_tables_result(request: &Value) -> Result<Value, String> {
 }
 
 fn image_mip_result(request: &Value) -> Result<Value, String> {
-    let rows = request["rows"].as_array().ok_or("image rows must be an array")?;
+    let rows = request["rows"]
+        .as_array()
+        .ok_or("image rows must be an array")?;
     let mut out = Vec::with_capacity(rows.len());
     for row in rows {
         let label = string(row, "label")?;
@@ -15784,7 +15821,30 @@ fn image_mip_result(request: &Value) -> Result<Value, String> {
             out.push(json!({"label": label, "outcome": "failed"}));
             continue;
         };
-        let generated = render::generate_mip_levels(&image, levels.max(0) as u32);
+        let name = string(row, "name")?;
+        let path = name.split_once(':').map_or(name, |(_, path)| path);
+        let strategy = render::MipmapStrategy::parse(&string(row, "strategy")?.to_lowercase())
+            .ok_or("unknown mipmap strategy")?;
+        let bias = f32::from_bits(
+            u32::from_str_radix(string(row, "bias")?, 16)
+                .map_err(|error| format!("mipmap bias: {error}"))?,
+        );
+        let transparency = render::Transparency::of(
+            row["transparent"]
+                .as_bool()
+                .ok_or("transparent must be a boolean")?,
+            row["translucent"]
+                .as_bool()
+                .ok_or("translucent must be a boolean")?,
+        );
+        let generated = render::generate_mip_levels_with(
+            path,
+            &image,
+            levels.max(0) as u32,
+            strategy,
+            bias,
+            transparency,
+        );
         let described: Vec<Value> = generated
             .iter()
             .map(|level| {
@@ -15814,7 +15874,9 @@ fn image_result(request: &Value) -> Result<Value, String> {
     if string(request, "operation")? != "png_decode" {
         return Err("unknown image operation".into());
     }
-    let rows = request["rows"].as_array().ok_or("image rows must be an array")?;
+    let rows = request["rows"]
+        .as_array()
+        .ok_or("image rows must be an array")?;
     let mut out = Vec::with_capacity(rows.len());
     for row in rows {
         let label = string(row, "label")?;
@@ -15847,7 +15909,9 @@ fn atlas_result(request: &Value) -> Result<Value, String> {
     if string(request, "operation")? != "stitch" {
         return Err("unknown atlas operation".into());
     }
-    let rows = request["rows"].as_array().ok_or("atlas rows must be an array")?;
+    let rows = request["rows"]
+        .as_array()
+        .ok_or("atlas rows must be an array")?;
     let mut out = Vec::with_capacity(rows.len());
     for row in rows {
         let mut stitcher = render::Stitcher::new(
@@ -15856,7 +15920,9 @@ fn atlas_result(request: &Value) -> Result<Value, String> {
             i32_field(row, "mip_level")?,
             i32_field(row, "anisotropy_bit")?,
         );
-        let sprites = row["sprites"].as_array().ok_or("sprites must be an array")?;
+        let sprites = row["sprites"]
+            .as_array()
+            .ok_or("sprites must be an array")?;
         for sprite in sprites {
             let name = Identifier::parse(string(sprite, "name")?)
                 .map_err(|error| format!("sprite name: {error:?}"))?;
@@ -15902,7 +15968,9 @@ fn window_result(request: &Value) -> Result<Value, String> {
             "base_height": window::BASE_HEIGHT,
         })),
         "min_size" => {
-            let rows = request["rows"].as_array().ok_or("window rows must be an array")?;
+            let rows = request["rows"]
+                .as_array()
+                .ok_or("window rows must be an array")?;
             let mut out = Vec::with_capacity(rows.len());
             for row in rows {
                 out.push(json!({

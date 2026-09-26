@@ -1,19 +1,13 @@
 //! `ClientWorld` collision layer split out of the former single-file module.
 
-
 use super::*;
 
-
-use crate::math::{
-    MTH_DEG_TO_RAD, Vec3, clamp_f64, equal_f64,
-    mth_cos_f64, mth_sin_f64,
-};
+use crate::math::{MTH_DEG_TO_RAD, Vec3, clamp_f64, equal_f64, mth_cos_f64, mth_sin_f64};
 use crate::{
     aabb::Aabb,
     direction::{Axis, Direction},
     shape::{BooleanOp, Shapes, VoxelShape},
 };
-
 
 /// Resolve one entity movement against already collected world/entity shapes.
 ///

@@ -1,10 +1,5 @@
 //! `ClientWorld` constants layer split out of the former single-file module.
 
-
-
-
-
-
 pub(crate) const PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS: u8 = 1;
 pub(crate) const PLAYER_RESPAWN_KEEP_ENTITY_DATA: u8 = 2;
 pub(crate) const VANILLA_PLAYER_MOVEMENT_SPEED_ATTRIBUTE_ID: i32 = 26;
@@ -34,7 +29,8 @@ pub(crate) const VANILLA_ANIMAL_ENTITY_TYPE_IDS: &[i32] = &[
     4, 7, 11, 19, 20, 21, 26, 30, 36, 54, 55, 58, 62, 64, 66, 78, 86, 87, 88, 91, 96, 98, 100, 104,
     108, 111, 116, 119, 129, 135, 138, 149, 152, 153,
 ];
-pub(crate) const VANILLA_CHEST_BOAT_ENTITY_TYPE_IDS: &[i32] = &[1, 8, 13, 24, 34, 75, 82, 90, 95, 126];
+pub(crate) const VANILLA_CHEST_BOAT_ENTITY_TYPE_IDS: &[i32] =
+    &[1, 8, 13, 24, 34, 75, 82, 90, 95, 126];
 pub(crate) const VANILLA_MINECART_ENTITY_TYPE_IDS: &[i32] = &[25, 29, 56, 65, 85, 122, 134];
 pub(crate) const VANILLA_BOAT_RIDE_HEIGHT: f32 = 0.5625_f32 / 3.0_f32;
 pub(crate) const VANILLA_RAFT_RIDE_HEIGHT: f32 = 0.5625_f32 * 0.8888889_f32;

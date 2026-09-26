@@ -200,14 +200,14 @@ impl VulkanBackend {
         height: u32,
     ) -> Result<Self, VulkanError> {
         unsafe {
-            let entry = ash::Entry::load().map_err(|error| VulkanError::Loader(error.to_string()))?;
+            let entry =
+                ash::Entry::load().map_err(|error| VulkanError::Loader(error.to_string()))?;
 
             // The reference takes its instance extensions from GLFW and names
             // the application the same way on every run.
-            let mut extensions =
-                ash_window::enumerate_required_extensions(display_handle)
-                    .map_err(|result| VulkanError::Call("enumerate surface extensions", result))?
-                    .to_vec();
+            let mut extensions = ash_window::enumerate_required_extensions(display_handle)
+                .map_err(|result| VulkanError::Call("enumerate surface extensions", result))?
+                .to_vec();
             extensions.retain(|name| !name.is_null());
 
             let application_name = CString::new("Minecraft Java Edition").expect("static name");
@@ -243,8 +243,8 @@ impl VulkanBackend {
 
             // The reference enables these by name; the ones that gate rendering
             // are requested here so device selection matches what it would pick.
-            let mut features_11 = vk::PhysicalDeviceVulkan11Features::default()
-                .shader_draw_parameters(true);
+            let mut features_11 =
+                vk::PhysicalDeviceVulkan11Features::default().shader_draw_parameters(true);
             let mut features_12 = vk::PhysicalDeviceVulkan12Features::default()
                 .timeline_semaphore(true)
                 .host_query_reset(true);
@@ -274,11 +274,12 @@ impl VulkanBackend {
                 .map_err(|result| VulkanError::Call("vkCreateDevice", result))?;
             let queue = device.get_device_queue(queue_family, 0);
 
-            let surface_format =
-                pick_surface_format(&surface_instance, physical_device, surface)?;
+            let surface_format = pick_surface_format(&surface_instance, physical_device, surface)?;
             let capabilities = surface_instance
                 .get_physical_device_surface_capabilities(physical_device, surface)
-                .map_err(|result| VulkanError::Call("vkGetPhysicalDeviceSurfaceCapabilities", result))?;
+                .map_err(|result| {
+                    VulkanError::Call("vkGetPhysicalDeviceSurfaceCapabilities", result)
+                })?;
             let extent = clamp_extent(&capabilities, width, height);
 
             let swapchain_device = ash::khr::swapchain::Device::new(&instance, &device);
@@ -290,7 +291,9 @@ impl VulkanBackend {
                 .image_color_space(vk::ColorSpaceKHR::SRGB_NONLINEAR)
                 .image_extent(extent)
                 .image_array_layers(1)
-                .image_usage(vk::ImageUsageFlags::COLOR_ATTACHMENT | vk::ImageUsageFlags::TRANSFER_DST)
+                .image_usage(
+                    vk::ImageUsageFlags::COLOR_ATTACHMENT | vk::ImageUsageFlags::TRANSFER_DST,
+                )
                 .image_sharing_mode(vk::SharingMode::EXCLUSIVE)
                 .pre_transform(capabilities.current_transform)
                 .composite_alpha(vk::CompositeAlphaFlagsKHR::OPAQUE)
@@ -435,7 +438,6 @@ impl VulkanBackend {
         }
     }
 
-
     /// Allocate a buffer and fill it from host memory.
     unsafe fn upload_buffer(
         &self,
@@ -502,10 +504,7 @@ impl VulkanBackend {
     }
 
     /// Run one command buffer to completion, for setup work.
-    unsafe fn run_once(
-        &self,
-        record: impl FnOnce(vk::CommandBuffer),
-    ) -> Result<(), VulkanError> {
+    unsafe fn run_once(&self, record: impl FnOnce(vk::CommandBuffer)) -> Result<(), VulkanError> {
         unsafe {
             let buffer = self
                 .device
@@ -535,12 +534,11 @@ impl VulkanBackend {
             self.device
                 .queue_wait_idle(self.queue)
                 .map_err(|result| VulkanError::Call("vkQueueWaitIdle", result))?;
-            self.device.free_command_buffers(self.command_pool, &buffers);
+            self.device
+                .free_command_buffers(self.command_pool, &buffers);
             Ok(())
         }
     }
-
-
 
     /// Record the draw for one swapchain image.
     unsafe fn record_scene(&self, index: usize, view_projection: [[f32; 4]; 4]) {
@@ -593,8 +591,12 @@ impl VulkanBackend {
                 0,
                 std::slice::from_raw_parts(matrix.as_ptr().cast::<u8>(), 64),
             );
-            self.device
-                .cmd_bind_vertex_buffers(self.command_buffer, 0, &[scene.vertex_buffer], &[0]);
+            self.device.cmd_bind_vertex_buffers(
+                self.command_buffer,
+                0,
+                &[scene.vertex_buffer],
+                &[0],
+            );
             self.device.cmd_bind_index_buffer(
                 self.command_buffer,
                 scene.index_buffer,
@@ -603,7 +605,8 @@ impl VulkanBackend {
             );
             self.device
                 .cmd_draw_indexed(self.command_buffer, scene.index_count, 1, 0, 0, 0);
-            self.dynamic_rendering.cmd_end_rendering(self.command_buffer);
+            self.dynamic_rendering
+                .cmd_end_rendering(self.command_buffer);
         }
     }
 
@@ -616,8 +619,8 @@ impl VulkanBackend {
         descriptor_layout: vk::DescriptorSetLayout,
     ) -> Result<(vk::PipelineLayout, vk::Pipeline), VulkanError> {
         unsafe {
-            let compiler = shaderc::Compiler::new()
-                .map_err(|error| VulkanError::Loader(error.to_string()))?;
+            let compiler =
+                shaderc::Compiler::new().map_err(|error| VulkanError::Loader(error.to_string()))?;
             let compile = |source: &str, kind, name: &str| -> Result<Vec<u32>, VulkanError> {
                 compiler
                     .compile_into_spirv(source, kind, name, "main", None)
@@ -714,7 +717,9 @@ impl VulkanBackend {
             let mut rendering = vk::PipelineRenderingCreateInfo::default()
                 .color_attachment_formats(&colour_formats)
                 .depth_attachment_format(
-                    self.depth.as_ref().map_or(vk::Format::UNDEFINED, |d| d.format),
+                    self.depth
+                        .as_ref()
+                        .map_or(vk::Format::UNDEFINED, |d| d.format),
                 );
             let create = vk::GraphicsPipelineCreateInfo::default()
                 .stages(&stages)
@@ -801,7 +806,9 @@ impl VulkanBackend {
             let descriptor_pool = self
                 .device
                 .create_descriptor_pool(
-                    &vk::DescriptorPoolCreateInfo::default().max_sets(1).pool_sizes(&sizes),
+                    &vk::DescriptorPoolCreateInfo::default()
+                        .max_sets(1)
+                        .pool_sizes(&sizes),
                     None,
                 )
                 .map_err(|result| VulkanError::Call("vkCreateDescriptorPool", result))?;
@@ -1001,8 +1008,10 @@ impl VulkanBackend {
             let _ = self.device.device_wait_idle();
             if let Some(scene) = self.scene.take() {
                 self.device.destroy_pipeline(scene.pipeline, None);
-                self.device.destroy_pipeline_layout(scene.pipeline_layout, None);
-                self.device.destroy_descriptor_pool(scene.descriptor_pool, None);
+                self.device
+                    .destroy_pipeline_layout(scene.pipeline_layout, None);
+                self.device
+                    .destroy_descriptor_pool(scene.descriptor_pool, None);
                 self.device
                     .destroy_descriptor_set_layout(scene.descriptor_layout, None);
                 self.device.destroy_sampler(scene.sampler, None);
@@ -1040,7 +1049,8 @@ impl VulkanBackend {
         colour: [f32; 4],
         view_projection: [[f32; 4]; 4],
     ) -> Result<(), VulkanError> {
-        self.render_frame(colour, false, view_projection).map(|_| ())
+        self.render_frame(colour, false, view_projection)
+            .map(|_| ())
     }
 
     /// Draw the loaded scene and read the presented image back.
@@ -1215,7 +1225,9 @@ impl VulkanBackend {
                 .swapchains(&swapchains)
                 .image_indices(&indices);
             match self.swapchain_device.queue_present(self.queue, &present) {
-                Ok(_) | Err(vk::Result::ERROR_OUT_OF_DATE_KHR) | Err(vk::Result::SUBOPTIMAL_KHR) => {}
+                Ok(_)
+                | Err(vk::Result::ERROR_OUT_OF_DATE_KHR)
+                | Err(vk::Result::SUBOPTIMAL_KHR) => {}
                 Err(result) => return Err(VulkanError::Call("vkQueuePresentKHR", result)),
             }
 
@@ -1266,7 +1278,8 @@ impl Drop for VulkanBackend {
             self.device.destroy_command_pool(self.command_pool, None);
             self.device.destroy_buffer(self.readback_buffer, None);
             self.device.free_memory(self.readback_memory, None);
-            self.swapchain_device.destroy_swapchain(self.swapchain, None);
+            self.swapchain_device
+                .destroy_swapchain(self.swapchain, None);
             self.device.destroy_device(None);
             self.surface_instance.destroy_surface(self.surface, None);
             self.instance.destroy_instance(None);
@@ -1331,14 +1344,15 @@ unsafe fn select_physical_device(
                 continue;
             };
             let has_all = REQUIRED_DEVICE_EXTENSIONS.iter().all(|required| {
-                extensions.iter().any(|available| {
-                    CStr::from_ptr(available.extension_name.as_ptr()) == *required
-                })
+                extensions
+                    .iter()
+                    .any(|available| CStr::from_ptr(available.extension_name.as_ptr()) == *required)
             });
             if !has_all {
                 continue;
             }
-            let Some(queue_family) = graphics_present_family(instance, surface_instance, surface, device)
+            let Some(queue_family) =
+                graphics_present_family(instance, surface_instance, surface, device)
             else {
                 continue;
             };
@@ -1403,7 +1417,11 @@ unsafe fn pick_surface_format(
 }
 
 /// Keep the requested size inside what the surface reports it can present.
-fn clamp_extent(capabilities: &vk::SurfaceCapabilitiesKHR, width: u32, height: u32) -> vk::Extent2D {
+fn clamp_extent(
+    capabilities: &vk::SurfaceCapabilitiesKHR,
+    width: u32,
+    height: u32,
+) -> vk::Extent2D {
     if capabilities.current_extent.width != u32::MAX {
         return capabilities.current_extent;
     }

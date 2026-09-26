@@ -1,10 +1,6 @@
 //! `ClientWorld` metadata layer split out of the former single-file module.
 
-
 use super::*;
-
-
-
 
 pub(crate) fn read_effect_particle_type_ids(metadata: &mut &[u8]) -> Option<Vec<i32>> {
     let count = crate::wire::read_varint(metadata).ok()?;
@@ -211,8 +207,7 @@ pub(crate) fn effect_particle_type_ids_from_metadata(metadata: &[u8]) -> Option<
 pub(crate) fn sleeping_pos_from_metadata(
     metadata: &[u8],
 ) -> Option<Option<crate::binary::BlockPos>> {
-    let (serializer_id, value_input) =
-        find_metadata_field(metadata, ENTITY_SLEEPING_POS_DATA_ID)?;
+    let (serializer_id, value_input) = find_metadata_field(metadata, ENTITY_SLEEPING_POS_DATA_ID)?;
     if serializer_id != ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_POS_ID {
         return None;
     }

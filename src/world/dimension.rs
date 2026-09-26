@@ -1,10 +1,5 @@
 //! `ClientWorld` dimension layer split out of the former single-file module.
 
-
-
-
-
-
 /// The vertical bounds used when mapping a chunk packet's section order to Y.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DimensionBounds {

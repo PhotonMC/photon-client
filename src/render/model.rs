@@ -514,7 +514,9 @@ fn parse_face(face: &JsonObject) -> Result<ModelFace, ModelParseError> {
         .text("texture")
         .ok_or_else(|| reject("face needs a texture"))?;
     let uvs = if face.has("uv") {
-        let array = face.array("uv").ok_or_else(|| reject("uv must be an array"))?;
+        let array = face
+            .array("uv")
+            .ok_or_else(|| reject("uv must be an array"))?;
         if array.len() != 4 {
             return Err(reject("expected four uv values"));
         }
@@ -537,7 +539,8 @@ fn parse_face(face: &JsonObject) -> Result<ModelFace, ModelParseError> {
     } else {
         0
     };
-    let rotation = Quadrant::from_degrees(degrees).ok_or_else(|| reject("invalid face rotation"))?;
+    let rotation =
+        Quadrant::from_degrees(degrees).ok_or_else(|| reject("invalid face rotation"))?;
 
     Ok(ModelFace {
         cull_for_direction,

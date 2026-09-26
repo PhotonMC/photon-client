@@ -3,50 +3,43 @@
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 use crate::input::{
-    Input, KeyboardInput,
-    LocalPlayerHandleRelativeFrictionParameters, LocalPlayerInputModifiers, LocalPlayerSprintTriggerConditions,
-    LocalPlayerSprintTriggerInput,
-    LocalPlayerTravelDispatchParameters, LocalPlayerTravelDispatchResult, LocalPlayerTravelFlyingParameters,
-    LocalPlayerTravelInAirParameters,
-    LocalPlayerTravelInLavaParameters,
-    LocalPlayerTravelInWaterParameters,
-    LocalPlayerUpdateFallFlyingMovementParameters,
-    advance_local_player_sprint_trigger,
+    Input, KeyboardInput, LocalPlayerHandleRelativeFrictionParameters, LocalPlayerInputModifiers,
+    LocalPlayerSprintTriggerConditions, LocalPlayerSprintTriggerInput,
+    LocalPlayerTravelDispatchParameters, LocalPlayerTravelDispatchResult,
+    LocalPlayerTravelFlyingParameters, LocalPlayerTravelInAirParameters,
+    LocalPlayerTravelInLavaParameters, LocalPlayerTravelInWaterParameters,
+    LocalPlayerUpdateFallFlyingMovementParameters, advance_local_player_sprint_trigger,
 };
-use crate::math::{
-    Vec2, Vec3, abs_max_f64,
-    mth_cos_f64, mth_sin_f64,
-};
+use crate::math::{Vec2, Vec3, abs_max_f64, mth_cos_f64, mth_sin_f64};
 use crate::{
     aabb::Aabb,
     binary::BlockPos,
     shape::{BooleanOp, Shapes, VoxelShape},
 };
 
-
-mod collision;
-mod border;
-mod constants;
-mod entity;
-mod player;
-mod metadata;
-mod dimension;
-mod chunk;
-mod container;
-mod block_state;
 mod block_entity;
+mod block_state;
+mod border;
+mod chunk;
+mod collision;
+mod constants;
+mod container;
+mod dimension;
+mod entity;
+mod metadata;
+mod player;
 
-pub use collision::*;
-pub use border::*;
-pub(crate) use constants::*;
-pub use entity::*;
-pub use player::*;
-pub(crate) use metadata::*;
-pub use dimension::*;
-pub use chunk::*;
-pub use container::*;
-pub use block_state::*;
 pub use block_entity::*;
+pub use block_state::*;
+pub use border::*;
+pub use chunk::*;
+pub use collision::*;
+pub(crate) use constants::*;
+pub use container::*;
+pub use dimension::*;
+pub use entity::*;
+pub(crate) use metadata::*;
+pub use player::*;
 
 /// The client-side copy of the currently loaded world.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1276,10 +1269,10 @@ impl ClientWorld {
                 kind,
                 path_open,
                 authoritative && self.boat_is_in_air(entity),
-                authoritative
-                    .then_some((entity.boat_input, !entity.passenger_ids.is_empty())),
+                authoritative.then_some((entity.boat_input, !entity.passenger_ids.is_empty())),
             )
-        }) else {
+        })
+        else {
             return;
         };
 
