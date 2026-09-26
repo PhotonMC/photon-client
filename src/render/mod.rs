@@ -12,8 +12,8 @@ pub mod vulkan;
 
 pub use atlas::{SpriteEntry, SpritePlacement, StitchError, Stitcher};
 pub use geometry::{
-    FaceUvs, WindingError, closest_direction, default_face_uv, face_vertices,
-    recalculate_winding, triangle_normal,
+    FaceUvs, Quadrant, WindingError, closest_direction, default_face_uv, face_vertex_uv,
+    face_vertices, recalculate_winding, triangle_normal,
 };
 pub use model::{Material, SlotContents, TextureSlots, TextureSlotsData, TextureSlotsResolver};
 pub use scene::{Mesh, SpriteRect, Vertex, full_cube};

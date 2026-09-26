@@ -12327,6 +12327,32 @@ def model_cases():
                 "rescale": rescale,
             })
 
+    uv_rows = []
+    uv_sets = [
+        ("full", (0.0, 0.0, 16.0, 16.0)),
+        ("partial", (2.0, 4.0, 14.0, 12.0)),
+        # A flipped rectangle, which models use to mirror a texture.
+        ("flipped-u", (16.0, 0.0, 0.0, 16.0)),
+        ("flipped-both", (16.0, 16.0, 0.0, 0.0)),
+        ("fractional", (0.5, 1.25, 15.5, 14.75)),
+    ]
+    # Accepted rotations, values that wrap onto them, and values that do not.
+    degrees_list = [0, 90, 180, 270, 360, 450, -90, -180, -270, -360, 720, 45, 30, 1, -45, 100]
+    for name, uvs in uv_sets:
+        for degrees in degrees_list:
+            uv_rows.append({
+                "label": f"{name}-{degrees}",
+                "uvs": [bits(v) for v in uvs],
+                "degrees": degrees,
+            })
+
+    yield {
+        "case_id": "model/face-uv-rotation",
+        "family": "model",
+        "operation": "face_uv_rotation",
+        "rows": uv_rows,
+    }
+
     yield {
         "case_id": "model/euler-rotation",
         "family": "model",

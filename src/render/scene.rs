@@ -8,7 +8,7 @@
 //! match nothing in the reference yet.
 
 use crate::direction::Direction;
-use crate::render::geometry::{default_face_uv, face_vertices};
+use crate::render::geometry::{Quadrant, default_face_uv, face_vertex_uv, face_vertices};
 
 /// One vertex as the shaders expect it.
 #[derive(Debug, Clone, Copy)]
@@ -67,21 +67,16 @@ pub fn full_cube(sprite: SpriteRect) -> Mesh {
     for (face_index, facing) in FACES.into_iter().enumerate() {
         let positions = face_vertices(from, to, facing);
         let uvs = default_face_uv(from, to, facing);
-        // The four corners walk the rectangle in the reference's winding order:
-        // top-left, bottom-left, bottom-right, top-right.
-        let corners = [
-            (uvs.min_u, uvs.min_v),
-            (uvs.min_u, uvs.max_v),
-            (uvs.max_u, uvs.max_v),
-            (uvs.max_u, uvs.min_v),
-        ];
         let base = mesh.vertices.len() as u32;
-        for (position, (u, v)) in positions.into_iter().zip(corners) {
+        for (slot, position) in positions.into_iter().enumerate() {
+            // The per-vertex corner and the unrotated case both come from the
+            // pinned face UV table rather than being written out here.
+            let (u, v) = face_vertex_uv(uvs, Quadrant::R0, slot as u32);
             mesh.vertices.push(Vertex {
                 position,
                 uv: [
-                    sprite.min_u + (sprite.max_u - sprite.min_u) * (u / 16.0),
-                    sprite.min_v + (sprite.max_v - sprite.min_v) * (v / 16.0),
+                    sprite.min_u + (sprite.max_u - sprite.min_u) * u,
+                    sprite.min_v + (sprite.max_v - sprite.min_v) * v,
                 ],
                 shade: SHADE[face_index],
             });

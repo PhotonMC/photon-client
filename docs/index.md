@@ -306,6 +306,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P16.g — Element döndürmesi — client-parity birleşik kayıt](element-rotation-conformance.md)
 - [P07.a — Enabled features packet sözleşmesi — client-parity birleşik kayıt](enabled-features-conformance.md)
 - [P16.e — Cuboid yüz geometrisi — client-parity birleşik kayıt](face-geometry-conformance.md)
+- [P16.i — Yüz UV döndürmesi — client-parity birleşik kayıt](face-uv-rotation-conformance.md)
 - [P06.a — VarInt21 frame sınırı sözleşmesi — client-parity birleşik kayıt](frame-conformance.md)
 - [P06–P08 — İlk gerçek oyun oturumu sözleşmesi — server-conformance birleşik kayıt](game-connection-conformance.md)
 - [P06.b — Handshake intention codec sözleşmesi — client-parity birleşik kayıt](handshake-intention-conformance.md)

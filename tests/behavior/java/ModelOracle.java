@@ -24,6 +24,7 @@ public final class ModelOracle {
                 case "element_rotation" -> rows.add(rotation(element.getAsJsonObject()));
                 case "quad_winding" -> rows.add(winding(element.getAsJsonObject()));
                 case "euler_rotation" -> rows.add(euler(element.getAsJsonObject()));
+                case "face_uv_rotation" -> rows.add(uvRotation(element.getAsJsonObject()));
                 default -> throw new IllegalArgumentException("Unknown model operation: " + operation);
             }
         }
@@ -73,6 +74,40 @@ public final class ModelOracle {
             corners.add(corner);
         }
         entry.add("corners", corners);
+        return entry;
+    }
+
+    /** The per-vertex texture coordinates for one face rotation. */
+    private static JsonObject uvRotation(JsonObject row) {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        int degrees = row.get("degrees").getAsInt();
+        com.mojang.math.Quadrant quadrant;
+        try {
+            quadrant = com.mojang.math.Quadrant.parseJson(degrees);
+        } catch (RuntimeException error) {
+            entry.addProperty("outcome", "rejected");
+            return entry;
+        }
+        var values = row.get("uvs").getAsJsonArray();
+        var uvs = new net.minecraft.client.resources.model.cuboid.CuboidFace.UVs(
+            Float.intBitsToFloat(Integer.parseUnsignedInt(values.get(0).getAsString(), 16)),
+            Float.intBitsToFloat(Integer.parseUnsignedInt(values.get(1).getAsString(), 16)),
+            Float.intBitsToFloat(Integer.parseUnsignedInt(values.get(2).getAsString(), 16)),
+            Float.intBitsToFloat(Integer.parseUnsignedInt(values.get(3).getAsString(), 16))
+        );
+        entry.addProperty("outcome", "rotated");
+        entry.addProperty("shift", quadrant.shift);
+        var pairs = new JsonArray();
+        for (int vertex = 0; vertex < 4; vertex++) {
+            var pair = new JsonObject();
+            pair.addProperty("u", String.format(java.util.Locale.ROOT, "%08x", Float.floatToRawIntBits(
+                net.minecraft.client.resources.model.cuboid.CuboidFace.getU(uvs, quadrant, vertex))));
+            pair.addProperty("v", String.format(java.util.Locale.ROOT, "%08x", Float.floatToRawIntBits(
+                net.minecraft.client.resources.model.cuboid.CuboidFace.getV(uvs, quadrant, vertex))));
+            pairs.add(pair);
+        }
+        entry.add("pairs", pairs);
         return entry;
     }
 

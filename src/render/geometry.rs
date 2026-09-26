@@ -244,3 +244,69 @@ pub fn recalculate_winding(
     }
     Ok(())
 }
+
+/// A face's texture rotation, which the model gives in degrees.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Quadrant {
+    /// No rotation.
+    R0,
+    /// A quarter turn.
+    R90,
+    /// A half turn.
+    R180,
+    /// Three quarters.
+    R270,
+}
+
+impl Quadrant {
+    /// Java `Quadrant.parseJson`.
+    ///
+    /// The angle wraps into a positive range first, so a negative or
+    /// over-full turn still names a quadrant; anything that is not a multiple
+    /// of ninety is rejected rather than rounded.
+    pub fn from_degrees(degrees: i32) -> Option<Self> {
+        match crate::math::positive_modulo_i32(degrees, 360) {
+            0 => Some(Self::R0),
+            90 => Some(Self::R90),
+            180 => Some(Self::R180),
+            270 => Some(Self::R270),
+            _ => None,
+        }
+    }
+
+    /// How many vertex slots the rotation advances by.
+    pub fn shift(self) -> u32 {
+        match self {
+            Self::R0 => 0,
+            Self::R90 => 1,
+            Self::R180 => 2,
+            Self::R270 => 3,
+        }
+    }
+
+    /// Java `Quadrant.rotateVertexIndex`.
+    fn rotate_vertex_index(self, index: u32) -> u32 {
+        (index + self.shift()) % 4
+    }
+}
+
+/// The texture coordinate one face vertex reads, in atlas sixteenths scaled to
+/// the unit square.
+///
+/// The rectangle's corners map to vertex slots in a fixed order - the first two
+/// take the low `u`, the first and last take the low `v` - and the rotation
+/// picks which slot each vertex reads.
+pub fn face_vertex_uv(uvs: FaceUvs, rotation: Quadrant, vertex: u32) -> (f32, f32) {
+    let index = rotation.rotate_vertex_index(vertex);
+    let u = if index != 0 && index != 1 {
+        uvs.max_u
+    } else {
+        uvs.min_u
+    };
+    let v = if index != 0 && index != 3 {
+        uvs.max_v
+    } else {
+        uvs.min_v
+    };
+    (u / 16.0, v / 16.0)
+}

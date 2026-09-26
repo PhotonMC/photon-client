@@ -15462,7 +15462,53 @@ fn model_euler_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+fn model_uv_rotation_result(request: &Value) -> Result<Value, String> {
+    let rows = request["rows"].as_array().ok_or("model rows must be an array")?;
+    let mut out = Vec::with_capacity(rows.len());
+    for row in rows {
+        let label = string(row, "label")?;
+        let degrees = i32_field(row, "degrees")?;
+        let Some(rotation) = render::Quadrant::from_degrees(degrees) else {
+            out.push(json!({"label": label, "outcome": "rejected"}));
+            continue;
+        };
+        let values = row["uvs"].as_array().ok_or("uvs must be an array")?;
+        let mut parsed = [0.0_f32; 4];
+        for (slot, item) in parsed.iter_mut().zip(values) {
+            let hex = item.as_str().ok_or("uv element must be a string")?;
+            *slot = f32::from_bits(
+                u32::from_str_radix(hex, 16).map_err(|error| format!("uv: {error}"))?,
+            );
+        }
+        let uvs = render::FaceUvs {
+            min_u: parsed[0],
+            min_v: parsed[1],
+            max_u: parsed[2],
+            max_v: parsed[3],
+        };
+        let pairs: Vec<Value> = (0..4)
+            .map(|vertex| {
+                let (u, v) = render::face_vertex_uv(uvs, rotation, vertex);
+                json!({
+                    "u": format!("{:08x}", u.to_bits()),
+                    "v": format!("{:08x}", v.to_bits()),
+                })
+            })
+            .collect();
+        out.push(json!({
+            "label": label,
+            "outcome": "rotated",
+            "shift": rotation.shift(),
+            "pairs": pairs,
+        }));
+    }
+    Ok(json!({"rows": out}))
+}
+
 fn model_result(request: &Value) -> Result<Value, String> {
+    if string(request, "operation")? == "face_uv_rotation" {
+        return model_uv_rotation_result(request);
+    }
     if string(request, "operation")? == "euler_rotation" {
         return model_euler_result(request);
     }
