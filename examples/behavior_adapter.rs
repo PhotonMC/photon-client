@@ -15505,7 +15505,137 @@ fn model_uv_rotation_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+fn model_parse_result(request: &Value) -> Result<Value, String> {
+    use voxel_client::render::model;
+    let rows = request["rows"].as_array().ok_or("model rows must be an array")?;
+    let mut out = Vec::with_capacity(rows.len());
+    for row in rows {
+        let label = string(row, "label")?;
+        let hex = string(row, "text")?;
+        let bytes: Vec<u8> = (0..hex.len() / 2)
+            .map(|index| u8::from_str_radix(&hex[index * 2..index * 2 + 2], 16))
+            .collect::<Result<_, _>>()
+            .map_err(|error| format!("text hex: {error}"))?;
+        let Ok(text) = core::str::from_utf8(&bytes) else {
+            out.push(json!({"label": label, "outcome": "rejected"}));
+            continue;
+        };
+        let parsed = match model::parse_model(text) {
+            Err(_) => {
+                out.push(json!({"label": label, "outcome": "rejected"}));
+                continue;
+            }
+            Ok(parsed) => parsed,
+        };
+
+        let slots: Vec<Value> = parsed
+            .texture_slots
+            .entries()
+            .map(|(slot, contents)| match contents {
+                model::SlotContents::Reference(target) => json!({
+                    "slot": slot, "kind": "Reference", "target": target,
+                }),
+                model::SlotContents::Value(material) => json!({
+                    "slot": slot,
+                    "kind": "Value",
+                    "sprite": material.sprite.as_string(),
+                    "force_translucent": material.force_translucent,
+                }),
+            })
+            .collect();
+
+        let elements: Vec<Value> = parsed
+            .elements
+            .as_deref()
+            .unwrap_or(&[])
+            .iter()
+            .map(|element| {
+                let mut faces: Vec<&(voxel_client::direction::Direction, model::ModelFace)> =
+                    element.faces.iter().collect();
+                // The oracle reads faces out of a map keyed by direction name.
+                faces.sort_by_key(|(direction, _)| direction_name(*direction));
+                let described_faces: Vec<Value> = faces
+                    .iter()
+                    .map(|(direction, face)| {
+                        json!({
+                            "direction": direction_name(*direction),
+                            "cullface": face
+                                .cull_for_direction
+                                .map_or("none", direction_name),
+                            "tint_index": face.tint_index,
+                            "texture": face.texture,
+                            "uv_rotation": face.rotation.shift(),
+                            "uvs": match face.uvs {
+                                None => json!("none"),
+                                Some(uvs) => json!([
+                                    format!("{:08x}", uvs.min_u.to_bits()),
+                                    format!("{:08x}", uvs.min_v.to_bits()),
+                                    format!("{:08x}", uvs.max_u.to_bits()),
+                                    format!("{:08x}", uvs.max_v.to_bits()),
+                                ]),
+                            },
+                        })
+                    })
+                    .collect();
+                let bits = |vector: [f32; 3]| {
+                    json!(vector
+                        .iter()
+                        .map(|axis| format!("{:08x}", axis.to_bits()))
+                        .collect::<Vec<_>>())
+                };
+                json!({
+                    "from": bits(element.from),
+                    "to": bits(element.to),
+                    "shade": element.shade,
+                    "light_emission": element.light_emission,
+                    "rotation": match &element.rotation {
+                        None => json!("none"),
+                        Some(rotation) => {
+                            let mut matrix = Vec::with_capacity(16);
+                            for column in &rotation.transform {
+                                for value in column {
+                                    matrix.push(json!(format!("{:08x}", value.to_bits())));
+                                }
+                            }
+                            json!({
+                                "origin": bits(rotation.origin),
+                                "rescale": rotation.rescale,
+                                "transform": matrix,
+                            })
+                        }
+                    },
+                    "faces": described_faces,
+                })
+            })
+            .collect();
+
+        out.push(json!({
+            "label": label,
+            "outcome": "parsed",
+            "parent": parsed
+                .parent
+                .as_ref()
+                .map_or("none".to_owned(), |name| name.as_string()),
+            "ambient_occlusion": parsed
+                .ambient_occlusion
+                .map_or("unset".to_owned(), |value| value.to_string()),
+            "gui_light": match parsed.gui_light {
+                None => "unset",
+                Some(model::GuiLight::Front) => "FRONT",
+                Some(model::GuiLight::Side) => "SIDE",
+            },
+            "texture_slots": slots,
+            "has_geometry": parsed.elements.is_some(),
+            "elements": elements,
+        }));
+    }
+    Ok(json!({"rows": out}))
+}
+
 fn model_result(request: &Value) -> Result<Value, String> {
+    if string(request, "operation")? == "parse_model" {
+        return model_parse_result(request);
+    }
     if string(request, "operation")? == "face_uv_rotation" {
         return model_uv_rotation_result(request);
     }

@@ -3,6 +3,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.HexFormat;
 import java.util.TreeMap;
 import net.minecraft.client.resources.model.ModelDebugName;
 import net.minecraft.client.resources.model.sprite.Material;
@@ -25,6 +26,7 @@ public final class ModelOracle {
                 case "quad_winding" -> rows.add(winding(element.getAsJsonObject()));
                 case "euler_rotation" -> rows.add(euler(element.getAsJsonObject()));
                 case "face_uv_rotation" -> rows.add(uvRotation(element.getAsJsonObject()));
+                case "parse_model" -> rows.add(parseModel(element.getAsJsonObject()));
                 default -> throw new IllegalArgumentException("Unknown model operation: " + operation);
             }
         }
@@ -75,6 +77,129 @@ public final class ModelOracle {
         }
         entry.add("corners", corners);
         return entry;
+    }
+
+    /** A whole model file, read through the reference's own configuration. */
+    private static JsonObject parseModel(JsonObject row) {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        String text = new String(
+            HexFormat.of().parseHex(row.get("text").getAsString()),
+            java.nio.charset.StandardCharsets.UTF_8);
+        net.minecraft.client.resources.model.cuboid.CuboidModel model;
+        try {
+            model = net.minecraft.client.resources.model.cuboid.CuboidModel
+                .fromStream(new java.io.StringReader(text));
+        } catch (RuntimeException error) {
+            entry.addProperty("outcome", "rejected");
+            return entry;
+        }
+        entry.addProperty("outcome", "parsed");
+        entry.addProperty("parent", model.parent() == null ? "none" : model.parent().toString());
+        entry.addProperty("ambient_occlusion",
+            model.ambientOcclusion() == null ? "unset" : model.ambientOcclusion().toString());
+        entry.addProperty("gui_light", model.guiLight() == null ? "unset" : model.guiLight().name());
+
+        var slots = new JsonArray();
+        var slotValues = new java.util.TreeMap<>(model.textureSlots().values());
+        for (var slot : slotValues.entrySet()) {
+            var described = new JsonObject();
+            described.addProperty("slot", slot.getKey());
+            Object contents = slot.getValue();
+            String kind = contents.getClass().getSimpleName();
+            described.addProperty("kind", kind);
+            try {
+                if (kind.equals("Reference")) {
+                    var target = contents.getClass().getDeclaredMethod("target");
+                    target.setAccessible(true);
+                    described.addProperty("target", (String)target.invoke(contents));
+                } else {
+                    var material = contents.getClass().getDeclaredMethod("material");
+                    material.setAccessible(true);
+                    var value = (net.minecraft.client.resources.model.sprite.Material)
+                        material.invoke(contents);
+                    described.addProperty("sprite", value.sprite().toString());
+                    described.addProperty("force_translucent", value.forceTranslucent());
+                }
+            } catch (ReflectiveOperationException error) {
+                throw new IllegalStateException("texture slot internals unavailable", error);
+            }
+            slots.add(described);
+        }
+        entry.add("texture_slots", slots);
+
+        var elements = new JsonArray();
+        if (model.geometry() instanceof net.minecraft.client.resources.model.cuboid
+                .UnbakedCuboidGeometry geometry) {
+            for (var element : geometry.elements()) {
+                elements.add(describeElement(element));
+            }
+            entry.addProperty("has_geometry", true);
+        } else {
+            entry.addProperty("has_geometry", false);
+        }
+        entry.add("elements", elements);
+        return entry;
+    }
+
+    private static JsonObject describeElement(
+            net.minecraft.client.resources.model.cuboid.CuboidModelElement element) {
+        var described = new JsonObject();
+        described.add("from", vectorBits(element.from()));
+        described.add("to", vectorBits(element.to()));
+        described.addProperty("shade", element.shade());
+        described.addProperty("light_emission", element.lightEmission());
+        var rotation = element.rotation();
+        if (rotation == null) {
+            described.addProperty("rotation", "none");
+        } else {
+            var described_rotation = new JsonObject();
+            described_rotation.add("origin", vectorBits(rotation.origin()));
+            described_rotation.addProperty("rescale", rotation.rescale());
+            var matrix = new JsonArray();
+            for (int column = 0; column < 4; column++) {
+                for (int rowIndex = 0; rowIndex < 4; rowIndex++) {
+                    matrix.add(String.format(java.util.Locale.ROOT, "%08x",
+                        Float.floatToRawIntBits(rotation.transform().get(column, rowIndex))));
+                }
+            }
+            described_rotation.add("transform", matrix);
+            described.add("rotation", described_rotation);
+        }
+        var faces = new JsonArray();
+        var ordered = new java.util.TreeMap<String, net.minecraft.client.resources.model.cuboid.CuboidFace>();
+        element.faces().forEach((direction, face) -> ordered.put(direction.getName(), face));
+        for (var face : ordered.entrySet()) {
+            var describedFace = new JsonObject();
+            describedFace.addProperty("direction", face.getKey());
+            var value = face.getValue();
+            describedFace.addProperty("cullface",
+                value.cullForDirection() == null ? "none" : value.cullForDirection().getName());
+            describedFace.addProperty("tint_index", value.tintIndex());
+            describedFace.addProperty("texture", value.texture());
+            describedFace.addProperty("uv_rotation", value.rotation().shift);
+            if (value.uvs() == null) {
+                describedFace.addProperty("uvs", "none");
+            } else {
+                var uvs = new JsonArray();
+                uvs.add(String.format(java.util.Locale.ROOT, "%08x", Float.floatToRawIntBits(value.uvs().minU())));
+                uvs.add(String.format(java.util.Locale.ROOT, "%08x", Float.floatToRawIntBits(value.uvs().minV())));
+                uvs.add(String.format(java.util.Locale.ROOT, "%08x", Float.floatToRawIntBits(value.uvs().maxU())));
+                uvs.add(String.format(java.util.Locale.ROOT, "%08x", Float.floatToRawIntBits(value.uvs().maxV())));
+                describedFace.add("uvs", uvs);
+            }
+            faces.add(describedFace);
+        }
+        described.add("faces", faces);
+        return described;
+    }
+
+    private static JsonArray vectorBits(org.joml.Vector3fc value) {
+        var array = new JsonArray();
+        array.add(String.format(java.util.Locale.ROOT, "%08x", Float.floatToRawIntBits(value.x())));
+        array.add(String.format(java.util.Locale.ROOT, "%08x", Float.floatToRawIntBits(value.y())));
+        array.add(String.format(java.util.Locale.ROOT, "%08x", Float.floatToRawIntBits(value.z())));
+        return array;
     }
 
     /** The per-vertex texture coordinates for one face rotation. */

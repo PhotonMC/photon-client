@@ -442,3 +442,64 @@ impl JsonValue {
         literal.parse::<f64>().ok()
     }
 }
+
+/// Typed field access mirroring the reference's JSON helper.
+///
+/// The reference distinguishes a missing field, a field of the wrong shape and
+/// a field it can convert, and the model parser depends on all three, so these
+/// return `None` where the reference would raise.
+impl JsonObject {
+    /// A field that must be an object.
+    pub fn object(&self, key: &str) -> Option<&JsonObject> {
+        match self.get_str(key)? {
+            JsonValue::Object(object) => Some(object),
+            _ => None,
+        }
+    }
+
+    /// A field that must be an array.
+    pub fn array(&self, key: &str) -> Option<&[JsonValue]> {
+        match self.get_str(key)? {
+            JsonValue::Array(items) => Some(items),
+            _ => None,
+        }
+    }
+
+    /// A field that must be a string, decoded to Rust text.
+    ///
+    /// A key holding an unpaired surrogate has no Rust text, and the reference
+    /// has no such name either, so it reads as absent.
+    pub fn text(&self, key: &str) -> Option<String> {
+        match self.get_str(key)? {
+            JsonValue::String(units) => String::from_utf16(units).ok(),
+            _ => None,
+        }
+    }
+
+    /// A field that must be a number, read as `f32` the way the reference does.
+    pub fn f32(&self, key: &str) -> Option<f32> {
+        self.get_str(key)?.as_f32()
+    }
+
+    /// A field that must be a number, read as `i32`.
+    pub fn i32(&self, key: &str) -> Option<i32> {
+        self.get_str(key)?.as_i32()
+    }
+
+    /// A field that must be a boolean.
+    ///
+    /// Only a real boolean counts; the reference's own guards check this
+    /// before converting, so a number in a boolean slot is a rejection rather
+    /// than a coercion.
+    pub fn bool(&self, key: &str) -> Option<bool> {
+        match self.get_str(key)? {
+            JsonValue::Bool(value) => Some(*value),
+            _ => None,
+        }
+    }
+
+    /// Whether the field is present at all.
+    pub fn has(&self, key: &str) -> bool {
+        self.get_str(key).is_some()
+    }
+}

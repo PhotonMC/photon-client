@@ -12346,6 +12346,90 @@ def model_cases():
                 "degrees": degrees,
             })
 
+    cube_all = (
+        '{"parent":"minecraft:block/cube_all",'
+        '"textures":{"all":"minecraft:block/stone"}}'
+    )
+    full_element = (
+        '{"elements":[{"from":[0,0,0],"to":[16,16,16],'
+        '"faces":{"down":{"texture":"#all","cullface":"down"},'
+        '"up":{"texture":"#all","cullface":"up"},'
+        '"north":{"texture":"#all","cullface":"north"},'
+        '"south":{"texture":"#all","cullface":"south"},'
+        '"west":{"texture":"#all","cullface":"west"},'
+        '"east":{"texture":"#all","cullface":"east"}}}]}'
+    )
+    model_texts = [
+        ("empty-object", "{}"),
+        ("parent-only", cube_all),
+        ("full-cube", full_element),
+        ("ambient-occlusion-false", '{"ambientocclusion":false,' + full_element[1:]),
+        ("gui-light-front", '{"gui_light":"front",' + full_element[1:]),
+        # A face may carry its own uv rectangle, a tint and a rotation.
+        ("face-detail", '{"elements":[{"from":[0,0,0],"to":[16,16,16],'
+                        '"faces":{"up":{"texture":"#t","uv":[1,2,15,14],'
+                        '"tintindex":3,"rotation":270}}}]}'),
+        # Rotation blocks, both spellings.
+        ("rotation-axis", '{"elements":[{"from":[0,0,0],"to":[16,16,16],'
+                          '"rotation":{"origin":[8,8,8],"axis":"y","angle":22.5,"rescale":true},'
+                          '"faces":{"up":{"texture":"#t"}}}]}'),
+        ("rotation-euler", '{"elements":[{"from":[0,0,0],"to":[16,16,16],'
+                           '"rotation":{"origin":[0,8,16],"x":22.5,"y":45,"z":0},'
+                           '"faces":{"up":{"texture":"#t"}}}]}'),
+        ("shade-false", '{"elements":[{"from":[0,0,0],"to":[16,16,16],"shade":false,'
+                        '"faces":{"up":{"texture":"#t"}}}]}'),
+        ("light-emission", '{"elements":[{"from":[0,0,0],"to":[16,16,16],"light_emission":15,'
+                           '"faces":{"up":{"texture":"#t"}}}]}'),
+        # The element grammar permits reaching outside the block, up to a limit.
+        ("bounds-edge", '{"elements":[{"from":[-16,-16,-16],"to":[32,32,32],'
+                        '"faces":{"up":{"texture":"#t"}}}]}'),
+        ("textures-mixed", '{"textures":{"all":"minecraft:block/stone","side":"#all",'
+                           '"particle":{"sprite":"minecraft:block/dirt","force_translucent":true}}}'),
+        ("multiple-elements", '{"elements":[' +
+            '{"from":[0,0,0],"to":[16,8,16],"faces":{"up":{"texture":"#a"}}},' +
+            '{"from":[0,8,0],"to":[16,16,16],"faces":{"down":{"texture":"#b"}}}]}'),
+    ]
+    rejected_models = [
+        ("bounds-too-low", '{"elements":[{"from":[-17,0,0],"to":[16,16,16],'
+                           '"faces":{"up":{"texture":"#t"}}}]}'),
+        ("bounds-too-high", '{"elements":[{"from":[0,0,0],"to":[33,16,16],'
+                            '"faces":{"up":{"texture":"#t"}}}]}'),
+        ("short-vector", '{"elements":[{"from":[0,0],"to":[16,16,16],'
+                         '"faces":{"up":{"texture":"#t"}}}]}'),
+        ("no-faces", '{"elements":[{"from":[0,0,0],"to":[16,16,16],"faces":{}}]}'),
+        ("unknown-facing", '{"elements":[{"from":[0,0,0],"to":[16,16,16],'
+                           '"faces":{"sideways":{"texture":"#t"}}}]}'),
+        ("shade-not-boolean", '{"elements":[{"from":[0,0,0],"to":[16,16,16],"shade":1,'
+                              '"faces":{"up":{"texture":"#t"}}}]}'),
+        ("light-emission-high", '{"elements":[{"from":[0,0,0],"to":[16,16,16],'
+                                '"light_emission":16,"faces":{"up":{"texture":"#t"}}}]}'),
+        ("light-emission-negative", '{"elements":[{"from":[0,0,0],"to":[16,16,16],'
+                                    '"light_emission":-1,"faces":{"up":{"texture":"#t"}}}]}'),
+        ("rotation-empty", '{"elements":[{"from":[0,0,0],"to":[16,16,16],'
+                           '"rotation":{"origin":[8,8,8]},"faces":{"up":{"texture":"#t"}}}]}'),
+        ("rotation-bad-axis", '{"elements":[{"from":[0,0,0],"to":[16,16,16],'
+                              '"rotation":{"origin":[8,8,8],"axis":"w","angle":22.5},'
+                              '"faces":{"up":{"texture":"#t"}}}]}'),
+        ("uv-short", '{"elements":[{"from":[0,0,0],"to":[16,16,16],'
+                     '"faces":{"up":{"texture":"#t","uv":[1,2,3]}}}]}'),
+        ("face-rotation-invalid", '{"elements":[{"from":[0,0,0],"to":[16,16,16],'
+                                  '"faces":{"up":{"texture":"#t","rotation":45}}}]}'),
+        ("missing-texture", '{"elements":[{"from":[0,0,0],"to":[16,16,16],'
+                            '"faces":{"up":{}}}]}'),
+        ("not-an-object", "[]"),
+        ("trailing-comma", '{"elements":[],}'),
+    ]
+
+    yield {
+        "case_id": "model/parse-model",
+        "family": "model",
+        "operation": "parse_model",
+        "rows": [
+            {"label": label, "text": text.encode("utf-8").hex()}
+            for label, text in model_texts + rejected_models
+        ],
+    }
+
     yield {
         "case_id": "model/face-uv-rotation",
         "family": "model",
