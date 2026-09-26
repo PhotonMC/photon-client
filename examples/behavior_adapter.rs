@@ -15289,7 +15289,81 @@ fn direction_by_name(name: &str) -> Option<voxel_client::direction::Direction> {
     })
 }
 
+fn model_rotation_result(request: &Value) -> Result<Value, String> {
+    use voxel_client::render::rotation;
+    let rows = request["rows"].as_array().ok_or("model rows must be an array")?;
+    let mut out = Vec::with_capacity(rows.len());
+    for row in rows {
+        let label = string(row, "label")?;
+        let read = |key: &str| -> Result<[f32; 3], String> {
+            let array = row[key].as_array().ok_or("vector must be an array")?;
+            let mut value = [0.0_f32; 3];
+            for (slot, item) in value.iter_mut().zip(array) {
+                let hex = item.as_str().ok_or("vector element must be a string")?;
+                *slot = f32::from_bits(
+                    u32::from_str_radix(hex, 16).map_err(|error| format!("vector: {error}"))?,
+                );
+            }
+            Ok(value)
+        };
+        let from = read("from")?;
+        let to = read("to")?;
+        let mut origin = read("origin")?;
+        // The deserializer scales the origin into block units before use.
+        for axis in origin.iter_mut() {
+            *axis *= 0.0625;
+        }
+        let angle = f32::from_bits(
+            u32::from_str_radix(string(row, "angle")?, 16)
+                .map_err(|error| format!("angle: {error}"))?,
+        );
+        let axis = match string(row, "axis")? {
+            "x" => rotation::RotationAxis::X,
+            "y" => rotation::RotationAxis::Y,
+            "z" => rotation::RotationAxis::Z,
+            _ => {
+                out.push(json!({"label": label, "outcome": "unknown_input"}));
+                continue;
+            }
+        };
+        let Some(facing) = direction_by_name(string(row, "facing")?) else {
+            out.push(json!({"label": label, "outcome": "unknown_input"}));
+            continue;
+        };
+        let rescale = row["rescale"].as_bool().ok_or("rescale must be a bool")?;
+
+        let transform = rotation::element_transform(axis, angle, rescale);
+        let mut matrix = Vec::with_capacity(16);
+        for column in &transform {
+            for value in column {
+                matrix.push(json!(format!("{:08x}", value.to_bits())));
+            }
+        }
+        let corners: Vec<Value> = render::face_vertices(from, to, facing)
+            .iter()
+            .map(|vertex| {
+                let rotated = rotation::rotate_vertex(*vertex, origin, &transform);
+                json!({
+                    "x": format!("{:08x}", rotated[0].to_bits()),
+                    "y": format!("{:08x}", rotated[1].to_bits()),
+                    "z": format!("{:08x}", rotated[2].to_bits()),
+                })
+            })
+            .collect();
+        out.push(json!({
+            "label": label,
+            "outcome": "rotated",
+            "transform": matrix,
+            "corners": corners,
+        }));
+    }
+    Ok(json!({"rows": out}))
+}
+
 fn model_result(request: &Value) -> Result<Value, String> {
+    if string(request, "operation")? == "element_rotation" {
+        return model_rotation_result(request);
+    }
     if string(request, "operation")? == "face_geometry" {
         return model_geometry_result(request);
     }

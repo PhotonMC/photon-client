@@ -21,6 +21,7 @@ public final class ModelOracle {
             switch (operation) {
                 case "texture_slots" -> rows.add(resolve(element.getAsJsonObject()));
                 case "face_geometry" -> rows.add(geometry(element.getAsJsonObject()));
+                case "element_rotation" -> rows.add(rotation(element.getAsJsonObject()));
                 default -> throw new IllegalArgumentException("Unknown model operation: " + operation);
             }
         }
@@ -63,6 +64,59 @@ public final class ModelOracle {
             // The bakery divides by 16 right after selecting the corner; the
             // division is kept here so the comparison covers it.
             var vertex = info.getVertexInfo(index).select(from, to).div(16.0F);
+            var corner = new JsonObject();
+            corner.addProperty("x", String.format(java.util.Locale.ROOT, "%08x", Float.floatToRawIntBits(vertex.x())));
+            corner.addProperty("y", String.format(java.util.Locale.ROOT, "%08x", Float.floatToRawIntBits(vertex.y())));
+            corner.addProperty("z", String.format(java.util.Locale.ROOT, "%08x", Float.floatToRawIntBits(vertex.z())));
+            corners.add(corner);
+        }
+        entry.add("corners", corners);
+        return entry;
+    }
+
+    /** The four face corners after one element rotation. */
+    private static JsonObject rotation(JsonObject row) {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        var from = vector(row.get("from").getAsJsonArray());
+        var to = vector(row.get("to").getAsJsonArray());
+        var facing = net.minecraft.core.Direction.byName(row.get("facing").getAsString());
+        var origin = vector(row.get("origin").getAsJsonArray());
+        // The deserializer scales the origin into block units before use.
+        origin.mul(0.0625F);
+        float angle = Float.intBitsToFloat(
+            Integer.parseUnsignedInt(row.get("angle").getAsString(), 16));
+        var axis = net.minecraft.core.Direction.Axis.byName(row.get("axis").getAsString());
+        boolean rescale = row.get("rescale").getAsBoolean();
+        if (facing == null || axis == null) {
+            entry.addProperty("outcome", "unknown_input");
+            return entry;
+        }
+
+        var value = new net.minecraft.client.resources.model.cuboid.CuboidRotation
+            .SingleAxisRotation(axis, angle);
+        var elementRotation = new net.minecraft.client.resources.model.cuboid.CuboidRotation(
+            origin, value, rescale);
+        var transform = elementRotation.transform();
+
+        entry.addProperty("outcome", "rotated");
+        var matrix = new JsonArray();
+        for (int column = 0; column < 4; column++) {
+            for (int rowIndex = 0; rowIndex < 4; rowIndex++) {
+                matrix.add(String.format(java.util.Locale.ROOT, "%08x",
+                    Float.floatToRawIntBits(transform.get(column, rowIndex))));
+            }
+        }
+        entry.add("transform", matrix);
+
+        var info = net.minecraft.client.renderer.FaceInfo.fromFacing(facing);
+        var corners = new JsonArray();
+        for (int index = 0; index < 4; index++) {
+            var vertex = info.getVertexInfo(index).select(from, to).div(16.0F);
+            // Java's rotateVertexBy: move to the origin, transform, move back.
+            vertex.sub(origin);
+            transform.transformPosition(vertex);
+            vertex.add(origin);
             var corner = new JsonObject();
             corner.addProperty("x", String.format(java.util.Locale.ROOT, "%08x", Float.floatToRawIntBits(vertex.x())));
             corner.addProperty("y", String.format(java.util.Locale.ROOT, "%08x", Float.floatToRawIntBits(vertex.y())));

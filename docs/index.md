@@ -303,6 +303,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P01.c — Direction unit-vectors referans sözleşmesi — client-parity birleşik kayıt](direction-unit-vectors-conformance.md)
 - [P01.c — Direction y-rotation referans sözleşmesi — client-parity birleşik kayıt](direction-y-rot-conformance.md)
 - [P01.c — Direction y-rotation referans sözleşmesi — client-parity birleşik kayıt](direction-y-rotation-conformance.md)
+- [P16.g — Element döndürmesi — client-parity birleşik kayıt](element-rotation-conformance.md)
 - [P07.a — Enabled features packet sözleşmesi — client-parity birleşik kayıt](enabled-features-conformance.md)
 - [P16.e — Cuboid yüz geometrisi — client-parity birleşik kayıt](face-geometry-conformance.md)
 - [P06.a — VarInt21 frame sınırı sözleşmesi — client-parity birleşik kayıt](frame-conformance.md)

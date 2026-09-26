@@ -12250,6 +12250,44 @@ def model_cases():
                 "facing": facing,
             })
 
+    rotation_rows = []
+    # The angles real models use, plus values the grammar allows but no
+    # vanilla model writes.
+    angles = [0.0, 22.5, -22.5, 45.0, -45.0, 90.0, 180.0, 270.0, 360.0, 30.0, -7.5]
+    for axis in ("x", "y", "z"):
+        for angle in angles:
+            for rescale in (False, True):
+                rotation_rows.append({
+                    "label": f"{axis}-{angle}-{'rescale' if rescale else 'plain'}",
+                    "from": [bits(v) for v in (0.0, 0.0, 0.0)],
+                    "to": [bits(v) for v in (16.0, 16.0, 16.0)],
+                    "facing": "up",
+                    "origin": [bits(v) for v in (8.0, 8.0, 8.0)],
+                    "axis": axis,
+                    "angle": bits(angle),
+                    "rescale": rescale,
+                })
+    # A non-centred origin and a partial box, which is what stairs and torches
+    # actually look like.
+    for facing in ("down", "north", "east"):
+        rotation_rows.append({
+            "label": f"offset-origin-{facing}",
+            "from": [bits(v) for v in (4.0, 0.0, 4.0)],
+            "to": [bits(v) for v in (12.0, 10.0, 12.0)],
+            "facing": facing,
+            "origin": [bits(v) for v in (0.0, 8.0, 16.0)],
+            "axis": "y",
+            "angle": bits(22.5),
+            "rescale": True,
+        })
+
+    yield {
+        "case_id": "model/element-rotation",
+        "family": "model",
+        "operation": "element_rotation",
+        "rows": rotation_rows,
+    }
+
     yield {
         "case_id": "model/face-geometry",
         "family": "model",
