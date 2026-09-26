@@ -12281,6 +12281,40 @@ def model_cases():
             "rescale": True,
         })
 
+    def corner(x, y, z):
+        return [bits(x), bits(y), bits(z)]
+
+    winding_rows = [
+        # A full-block face in the reference's own corner order for each side.
+        ("up-ordered", [corner(0, 1, 0), corner(0, 1, 1), corner(1, 1, 1), corner(1, 1, 0)]),
+        ("down-ordered", [corner(0, 0, 1), corner(0, 0, 0), corner(1, 0, 0), corner(1, 0, 1)]),
+        ("north-ordered", [corner(1, 1, 0), corner(1, 0, 0), corner(0, 0, 0), corner(0, 1, 0)]),
+        ("south-ordered", [corner(0, 1, 1), corner(0, 0, 1), corner(1, 0, 1), corner(1, 1, 1)]),
+        ("west-ordered", [corner(0, 1, 0), corner(0, 0, 0), corner(0, 0, 1), corner(0, 1, 1)]),
+        ("east-ordered", [corner(1, 1, 1), corner(1, 0, 1), corner(1, 0, 0), corner(1, 1, 0)]),
+        # The same face wound backwards: the normal flips and so does the
+        # direction the bakery settles on.
+        ("up-reversed", [corner(1, 1, 0), corner(1, 1, 1), corner(0, 1, 1), corner(0, 1, 0)]),
+        # Shuffled corners of a real face, which is what a rotation leaves
+        # behind and what the rewind exists to repair.
+        ("up-shuffled", [corner(1, 1, 1), corner(0, 1, 0), corner(1, 1, 0), corner(0, 1, 1)]),
+        # A partial box rather than the whole block.
+        ("slab-top", [corner(0, 0.5, 0), corner(0, 0.5, 1), corner(1, 0.5, 1), corner(1, 0.5, 0)]),
+        # Degenerate input: all four corners equal, so the normal is not finite.
+        ("degenerate", [corner(0.5, 0.5, 0.5)] * 4),
+        # Collinear corners, another way to lose the normal.
+        ("collinear", [corner(0, 0, 0), corner(1, 0, 0), corner(2, 0, 0), corner(3, 0, 0)]),
+        # A diagonal quad, whose nearest direction is not exact.
+        ("diagonal", [corner(0, 0, 0), corner(1, 0, 0), corner(1, 1, 1), corner(0, 1, 1)]),
+    ]
+
+    yield {
+        "case_id": "model/quad-winding",
+        "family": "model",
+        "operation": "quad_winding",
+        "rows": [{"label": label, "corners": corners} for label, corners in winding_rows],
+    }
+
     yield {
         "case_id": "model/element-rotation",
         "family": "model",

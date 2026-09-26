@@ -22,6 +22,7 @@ public final class ModelOracle {
                 case "texture_slots" -> rows.add(resolve(element.getAsJsonObject()));
                 case "face_geometry" -> rows.add(geometry(element.getAsJsonObject()));
                 case "element_rotation" -> rows.add(rotation(element.getAsJsonObject()));
+                case "quad_winding" -> rows.add(winding(element.getAsJsonObject()));
                 default -> throw new IllegalArgumentException("Unknown model operation: " + operation);
             }
         }
@@ -71,6 +72,63 @@ public final class ModelOracle {
             corners.add(corner);
         }
         entry.add("corners", corners);
+        return entry;
+    }
+
+    /** Normal, chosen direction and vertex order for four given corners. */
+    private static JsonObject winding(JsonObject row) {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        var given = row.get("corners").getAsJsonArray();
+        var positions = new org.joml.Vector3fc[4];
+        for (int index = 0; index < 4; index++) {
+            positions[index] = vector(given.get(index).getAsJsonArray());
+        }
+
+        var normal = new org.joml.Vector3f();
+        org.joml.GeometryUtils.normal(positions[0], positions[1], positions[2], normal);
+        entry.addProperty("outcome", "wound");
+        entry.addProperty("normal_x", String.format(java.util.Locale.ROOT, "%08x", Float.floatToRawIntBits(normal.x())));
+        entry.addProperty("normal_y", String.format(java.util.Locale.ROOT, "%08x", Float.floatToRawIntBits(normal.y())));
+        entry.addProperty("normal_z", String.format(java.util.Locale.ROOT, "%08x", Float.floatToRawIntBits(normal.z())));
+
+        try {
+            var bakery = net.minecraft.client.resources.model.cuboid.FaceBakery.class;
+            var findClosest = bakery.getDeclaredMethod("findClosestDirection", org.joml.Vector3f.class);
+            findClosest.setAccessible(true);
+            var chosen = (net.minecraft.core.Direction)findClosest.invoke(null, normal);
+            entry.addProperty("direction", chosen == null ? "none" : chosen.getName());
+
+            if (chosen != null) {
+                var uvs = new long[] {10L, 20L, 30L, 40L};
+                var rewind = bakery.getDeclaredMethod("recalculateWinding",
+                    org.joml.Vector3fc[].class, long[].class, net.minecraft.core.Direction.class);
+                rewind.setAccessible(true);
+                try {
+                    rewind.invoke(null, positions, uvs, chosen);
+                    var wound = new JsonArray();
+                    for (int index = 0; index < 4; index++) {
+                        var corner = new JsonObject();
+                        corner.addProperty("x", String.format(java.util.Locale.ROOT, "%08x", Float.floatToRawIntBits(positions[index].x())));
+                        corner.addProperty("y", String.format(java.util.Locale.ROOT, "%08x", Float.floatToRawIntBits(positions[index].y())));
+                        corner.addProperty("z", String.format(java.util.Locale.ROOT, "%08x", Float.floatToRawIntBits(positions[index].z())));
+                        wound.add(corner);
+                    }
+                    entry.add("wound", wound);
+                    var uvOrder = new JsonArray();
+                    for (long value : uvs) {
+                        uvOrder.add(value);
+                    }
+                    entry.add("uv_order", uvOrder);
+                } catch (java.lang.reflect.InvocationTargetException failure) {
+                    // The reference throws when no vertex matches a corner of
+                    // the bounding box, which a non-axis-aligned quad hits.
+                    entry.addProperty("winding", "no_matching_vertex");
+                }
+            }
+        } catch (ReflectiveOperationException error) {
+            throw new IllegalStateException("face bakery internals unavailable", error);
+        }
         return entry;
     }
 

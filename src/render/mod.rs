@@ -11,7 +11,10 @@ pub mod scene;
 pub mod vulkan;
 
 pub use atlas::{SpriteEntry, SpritePlacement, StitchError, Stitcher};
-pub use geometry::{FaceUvs, default_face_uv, face_vertices};
+pub use geometry::{
+    FaceUvs, WindingError, closest_direction, default_face_uv, face_vertices,
+    recalculate_winding, triangle_normal,
+};
 pub use model::{Material, SlotContents, TextureSlots, TextureSlotsData, TextureSlotsResolver};
 pub use scene::{Mesh, SpriteRect, Vertex, full_cube};
 pub use rotation::{Matrix4, RotationAxis, element_transform, rotate_vertex};

@@ -15360,7 +15360,80 @@ fn model_rotation_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+fn model_winding_result(request: &Value) -> Result<Value, String> {
+    let rows = request["rows"].as_array().ok_or("model rows must be an array")?;
+    let mut out = Vec::with_capacity(rows.len());
+    for row in rows {
+        let label = string(row, "label")?;
+        let given = row["corners"].as_array().ok_or("corners must be an array")?;
+        let mut positions = [[0.0_f32; 3]; 4];
+        for (slot, item) in positions.iter_mut().zip(given) {
+            let array = item.as_array().ok_or("corner must be an array")?;
+            for (axis, value) in slot.iter_mut().zip(array) {
+                let hex = value.as_str().ok_or("corner element must be a string")?;
+                *axis = f32::from_bits(
+                    u32::from_str_radix(hex, 16).map_err(|error| format!("corner: {error}"))?,
+                );
+            }
+        }
+
+        let normal = render::triangle_normal(positions[0], positions[1], positions[2]);
+        let mut entry = serde_json::Map::new();
+        entry.insert("label".into(), json!(label));
+        entry.insert("outcome".into(), json!("wound"));
+        entry.insert("normal_x".into(), json!(format!("{:08x}", normal[0].to_bits())));
+        entry.insert("normal_y".into(), json!(format!("{:08x}", normal[1].to_bits())));
+        entry.insert("normal_z".into(), json!(format!("{:08x}", normal[2].to_bits())));
+
+        match render::closest_direction(normal) {
+            None => {
+                entry.insert("direction".into(), json!("none"));
+            }
+            Some(direction) => {
+                entry.insert("direction".into(), json!(direction_name(direction)));
+                let mut payloads = [10_u64, 20, 30, 40];
+                match render::recalculate_winding(&mut positions, &mut payloads, direction) {
+                    Err(_) => {
+                        entry.insert("winding".into(), json!("no_matching_vertex"));
+                    }
+                    Ok(()) => {
+                        let wound: Vec<Value> = positions
+                            .iter()
+                            .map(|vertex| {
+                                json!({
+                                    "x": format!("{:08x}", vertex[0].to_bits()),
+                                    "y": format!("{:08x}", vertex[1].to_bits()),
+                                    "z": format!("{:08x}", vertex[2].to_bits()),
+                                })
+                            })
+                            .collect();
+                        entry.insert("wound".into(), json!(wound));
+                        entry.insert("uv_order".into(), json!(payloads.to_vec()));
+                    }
+                }
+            }
+        }
+        out.push(Value::Object(entry));
+    }
+    Ok(json!({"rows": out}))
+}
+
+fn direction_name(direction: voxel_client::direction::Direction) -> &'static str {
+    use voxel_client::direction::Direction;
+    match direction {
+        Direction::Down => "down",
+        Direction::Up => "up",
+        Direction::North => "north",
+        Direction::South => "south",
+        Direction::West => "west",
+        Direction::East => "east",
+    }
+}
+
 fn model_result(request: &Value) -> Result<Value, String> {
+    if string(request, "operation")? == "quad_winding" {
+        return model_winding_result(request);
+    }
     if string(request, "operation")? == "element_rotation" {
         return model_rotation_result(request);
     }

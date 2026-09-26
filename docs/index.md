@@ -381,6 +381,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P16.b — PNG çözme ve RGBA8'e indirgeme — client-parity birleşik kayıt](png-decode-conformance.md)
 - [P05.b — PreeditEvent callback sözleşmesi — client-parity birleşik kayıt](preedit-event-conformance.md)
 - [P06/P07 — Protocol phase ve packet flow metadata sözleşmesi — client-parity birleşik kayıt](protocol-metadata-conformance.md)
+- [P16.h — Quad normali, yön seçimi ve winding — client-parity birleşik kayıt](quad-winding-conformance.md)
 - [P01.d/e — Random ve AABB referans sözleşmesi — client-parity birleşik kayıt](random-aabb-conformance.md)
 - [P01.e — `fork` ve positional random referans sözleşmesi — client-parity birleşik kayıt](random-fork-conformance.md)
 - [P01.e — `nextGaussian` referans sözleşmesi — client-parity birleşik kayıt](random-gaussian-conformance.md)

@@ -125,3 +125,122 @@ pub fn face_vertices(from: [f32; 3], to: [f32; 3], facing: Direction) -> [[f32; 
     }
     out
 }
+
+/// Why a quad's winding could not be repaired.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct WindingError;
+
+/// The triangle normal for three corners, as the reference's maths library
+/// computes it: the cross product of the two edges leaving the first corner,
+/// then normalised.
+///
+/// The component order is kept because it decides the sign of a zero, and a
+/// degenerate triangle divides by zero and yields `NaN` rather than failing.
+pub fn triangle_normal(p0: [f32; 3], p1: [f32; 3], p2: [f32; 3]) -> [f32; 3] {
+    let a = [p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2]];
+    let b = [p2[0] - p0[0], p2[1] - p0[1], p2[2] - p0[2]];
+    let mut normal = [
+        a[1] * b[2] - a[2] * b[1],
+        a[2] * b[0] - a[0] * b[2],
+        a[0] * b[1] - a[1] * b[0],
+    ];
+    // The reference's inverse square root takes the root in double and the
+    // reciprocal in float.
+    let length_squared = normal[0] * normal[0] + normal[1] * normal[1] + normal[2] * normal[2];
+    let inverse_length = 1.0_f32 / (f64::from(length_squared).sqrt() as f32);
+    for component in normal.iter_mut() {
+        *component *= inverse_length;
+    }
+    normal
+}
+
+/// Java `FaceBakery.findClosestDirection`.
+///
+/// A non-finite normal has no direction at all. Otherwise the best candidate is
+/// the one with the largest strictly positive dot product, so a face exactly
+/// edge-on to an axis never claims it, and ties keep the earlier direction.
+pub fn closest_direction(normal: [f32; 3]) -> Option<Direction> {
+    if !normal.iter().all(|component| component.is_finite()) {
+        return None;
+    }
+    const CANDIDATES: [Direction; 6] = [
+        Direction::Down,
+        Direction::Up,
+        Direction::North,
+        Direction::South,
+        Direction::West,
+        Direction::East,
+    ];
+    let mut best = None;
+    let mut closest = 0.0_f32;
+    for candidate in CANDIDATES {
+        let unit = direction_unit(candidate);
+        let product = normal[0] * unit[0] + normal[1] * unit[1] + normal[2] * unit[2];
+        if product >= 0.0 && product > closest {
+            closest = product;
+            best = Some(candidate);
+        }
+    }
+    best
+}
+
+/// The unit vector pointing along one direction.
+fn direction_unit(direction: Direction) -> [f32; 3] {
+    match direction {
+        Direction::Down => [0.0, -1.0, 0.0],
+        Direction::Up => [0.0, 1.0, 0.0],
+        Direction::North => [0.0, 0.0, -1.0],
+        Direction::South => [0.0, 0.0, 1.0],
+        Direction::West => [-1.0, 0.0, 0.0],
+        Direction::East => [1.0, 0.0, 0.0],
+    }
+}
+
+/// Java `FaceBakery.recalculateWinding`.
+///
+/// After a rotation the four corners may be in any order. This puts them back
+/// into the order the given direction expects, by finding which corner of the
+/// quad's own bounding box each slot wants and swapping it into place. A quad
+/// whose corners are not corners of that box - anything not axis aligned - has
+/// no such vertex, and the reference raises rather than guessing.
+pub fn recalculate_winding(
+    positions: &mut [[f32; 3]; 4],
+    payloads: &mut [u64; 4],
+    direction: Direction,
+) -> Result<(), WindingError> {
+    // The reference seeds the search with these sentinels rather than with the
+    // first vertex, so a quad outside them would not be bounded.
+    let mut minimum = [999.0_f32; 3];
+    let mut maximum = [-999.0_f32; 3];
+    for position in positions.iter() {
+        for axis in 0..3 {
+            if position[axis] < minimum[axis] {
+                minimum[axis] = position[axis];
+            }
+            if position[axis] > maximum[axis] {
+                maximum[axis] = position[axis];
+            }
+        }
+    }
+
+    let corners = face_corners(direction);
+    for (slot, selectors) in corners.iter().enumerate() {
+        let wanted: [f32; 3] = std::array::from_fn(|axis| match selectors[axis] {
+            Extent::MinX => minimum[0],
+            Extent::MinY => minimum[1],
+            Extent::MinZ => minimum[2],
+            Extent::MaxX => maximum[0],
+            Extent::MaxY => maximum[1],
+            Extent::MaxZ => maximum[2],
+        });
+        let found = (slot..4).find(|index| positions[*index] == wanted);
+        let Some(found) = found else {
+            return Err(WindingError);
+        };
+        if found != slot {
+            positions.swap(found, slot);
+            payloads.swap(found, slot);
+        }
+    }
+    Ok(())
+}
