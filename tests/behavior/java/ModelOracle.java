@@ -23,6 +23,7 @@ public final class ModelOracle {
                 case "face_geometry" -> rows.add(geometry(element.getAsJsonObject()));
                 case "element_rotation" -> rows.add(rotation(element.getAsJsonObject()));
                 case "quad_winding" -> rows.add(winding(element.getAsJsonObject()));
+                case "euler_rotation" -> rows.add(euler(element.getAsJsonObject()));
                 default -> throw new IllegalArgumentException("Unknown model operation: " + operation);
             }
         }
@@ -72,6 +73,31 @@ public final class ModelOracle {
             corners.add(corner);
         }
         entry.add("corners", corners);
+        return entry;
+    }
+
+    /** The transform an element's three-axis rotation block produces. */
+    private static JsonObject euler(JsonObject row) {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        float x = Float.intBitsToFloat(Integer.parseUnsignedInt(row.get("x").getAsString(), 16));
+        float y = Float.intBitsToFloat(Integer.parseUnsignedInt(row.get("y").getAsString(), 16));
+        float z = Float.intBitsToFloat(Integer.parseUnsignedInt(row.get("z").getAsString(), 16));
+        boolean rescale = row.get("rescale").getAsBoolean();
+        var origin = new org.joml.Vector3f(0.5F, 0.5F, 0.5F);
+        var value = new net.minecraft.client.resources.model.cuboid.CuboidRotation
+            .EulerXYZRotation(x, y, z);
+        var transform = new net.minecraft.client.resources.model.cuboid.CuboidRotation(
+            origin, value, rescale).transform();
+        entry.addProperty("outcome", "rotated");
+        var matrix = new JsonArray();
+        for (int column = 0; column < 4; column++) {
+            for (int rowIndex = 0; rowIndex < 4; rowIndex++) {
+                matrix.add(String.format(java.util.Locale.ROOT, "%08x",
+                    Float.floatToRawIntBits(transform.get(column, rowIndex))));
+            }
+        }
+        entry.add("transform", matrix);
         return entry;
     }
 

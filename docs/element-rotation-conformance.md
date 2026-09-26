@@ -58,11 +58,27 @@ Koşu: `python3 tools/behavior/run.py capture --family model` ardından
 `compare --family model --adapter target/release/examples/behavior_adapter`
 → `parity_passed`.
 
+## Üç eksenli döndürme
+
+`EulerXYZRotation`, `x`/`y`/`z` alanlarıyla verilen döndürmeyi referansın
+matris kütüphanesindeki `rotationZYX` ile kurar. Bu, üç ayrı döndürme
+matrisinin çarpımı **değildir**: kütüphane bazı elemanları bir toplamdan
+türetmek yerine doğrudan negatiflenmiş sinüsten yazar.
+
+Bu gözlenebilir bir farktır. İlk implementasyon cebirsel olarak doğru olan
+`Rz · Ry · Rx` çarpımıydı ve tek bir elemanda ayrıştı: `Y` etrafında sıfır
+döndürmede referans `m02` için **negatif sıfır** verirken çarpım pozitif sıfır
+üretiyordu. Modül bu yüzden eleman sırasını cebire değil kütüphaneye göre
+izler.
+
+`model/euler-rotation` 32 satır taşır: tek eksen, iki eksen ve üç eksen
+bileşimleri, çeyrek turlar, tam turlar, negatif açılar ve gerçek modellerde
+bulunmayan açılar; her biri rescale açık ve kapalı. Java ve Rust her satırda on
+altı matris elemanını bit düzeyinde aynı verdi.
+
 ## Açık kapsam
 
-`EulerXYZRotation` (`x`/`y`/`z` alanlarıyla verilen üç eksenli döndürme) bu
-kaydın dışındadır; referansın matris kütüphanesindeki `rotationZYX` sırası ve
-onun kendi kosinüs türetmesi ayrıca sabitlenmelidir. Model durumu dönüşümü
+Model durumu dönüşümü
 (blockstate varyantının `x`/`y` döndürmesi), UV döndürme çeyrekleri,
 `calculateFacing` ile normalden yön seçimi ve `recalculateWinding` köşe
 yeniden sıralaması da açıktır.

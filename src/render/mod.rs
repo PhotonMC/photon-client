@@ -17,6 +17,8 @@ pub use geometry::{
 };
 pub use model::{Material, SlotContents, TextureSlots, TextureSlotsData, TextureSlotsResolver};
 pub use scene::{Mesh, SpriteRect, Vertex, full_cube};
-pub use rotation::{Matrix4, RotationAxis, element_transform, rotate_vertex};
+pub use rotation::{
+    Matrix4, RotationAxis, element_transform, euler_element_transform, rotate_vertex,
+};
 pub use png::{DecodedImage, PngError, decode_rgba};
 pub use vulkan::{CapturedFrame, VulkanBackend, VulkanError};

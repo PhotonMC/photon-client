@@ -139,6 +139,70 @@ fn scale_columns(matrix: &mut Matrix4, factors: [f32; 3]) {
     }
 }
 
+/// A three-axis rotation, as the reference's `rotationZYX` composes it.
+///
+/// The composition is fused rather than three matrix products: the library
+/// writes some elements straight from a negated sine instead of deriving them
+/// through a sum. That is observable - a zero rotation about Y puts a
+/// **negative zero** where a product of three rotations would leave positive
+/// zero - so the element order here follows the library rather than the algebra.
+pub fn euler_rotation(x_degrees: f32, y_degrees: f32, z_degrees: f32) -> Matrix4 {
+    // Each angle is converted separately with the narrowed factor.
+    let angle_x = x_degrees * DEGREES_TO_RADIANS;
+    let angle_y = y_degrees * DEGREES_TO_RADIANS;
+    let angle_z = z_degrees * DEGREES_TO_RADIANS;
+    let sin_x = sin(angle_x);
+    let cos_x = cos_from_sin(sin_x, angle_x);
+    let sin_y = sin(angle_y);
+    let cos_y = cos_from_sin(sin_y, angle_y);
+    let sin_z = sin(angle_z);
+    let cos_z = cos_from_sin(sin_z, angle_z);
+    let neg_sin_x = -sin_x;
+    let neg_sin_y = -sin_y;
+    let neg_sin_z = -sin_z;
+
+    // The Z rotation, kept as scalars.
+    let z00 = cos_z;
+    let z01 = sin_z;
+    let z10 = neg_sin_z;
+    let z11 = cos_z;
+    // Folded through the Y rotation.
+    let y20 = z00 * sin_y;
+    let y21 = z01 * sin_y;
+    let y22 = cos_y;
+
+    let mut matrix = [[0.0_f32; 4]; 4];
+    matrix[0][0] = z00 * cos_y;
+    matrix[0][1] = z01 * cos_y;
+    matrix[0][2] = neg_sin_y;
+    matrix[0][3] = 0.0;
+    matrix[1][0] = z10 * cos_x + y20 * sin_x;
+    matrix[1][1] = z11 * cos_x + y21 * sin_x;
+    matrix[1][2] = y22 * sin_x;
+    matrix[1][3] = 0.0;
+    matrix[2][0] = z10 * neg_sin_x + y20 * cos_x;
+    matrix[2][1] = z11 * neg_sin_x + y21 * cos_x;
+    matrix[2][2] = y22 * cos_x;
+    matrix[2][3] = 0.0;
+    matrix[3] = [0.0, 0.0, 0.0, 1.0];
+    matrix
+}
+
+/// Java `CuboidRotation`'s transform for a three-axis rotation block.
+pub fn euler_element_transform(
+    x_degrees: f32,
+    y_degrees: f32,
+    z_degrees: f32,
+    rescale: bool,
+) -> Matrix4 {
+    let mut matrix = euler_rotation(x_degrees, y_degrees, z_degrees);
+    if rescale && !is_identity(&matrix) {
+        let factors = rescale_factors(&matrix);
+        scale_columns(&mut matrix, factors);
+    }
+    matrix
+}
+
 /// Java `CuboidRotation`'s transform: the axis rotation, rescaled if asked.
 ///
 /// The rescale is skipped when the rotation came out as the identity, so a zero

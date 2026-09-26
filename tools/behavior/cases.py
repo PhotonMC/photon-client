@@ -12308,6 +12308,32 @@ def model_cases():
         ("diagonal", [corner(0, 0, 0), corner(1, 0, 0), corner(1, 1, 1), corner(0, 1, 1)]),
     ]
 
+    euler_rows = []
+    triples = [
+        (0.0, 0.0, 0.0),
+        (22.5, 0.0, 0.0), (0.0, 22.5, 0.0), (0.0, 0.0, 22.5),
+        (90.0, 0.0, 0.0), (0.0, 90.0, 0.0), (0.0, 0.0, 90.0),
+        (22.5, 45.0, 0.0), (0.0, 22.5, 45.0), (45.0, 0.0, 22.5),
+        (22.5, 22.5, 22.5), (45.0, 45.0, 45.0), (90.0, 90.0, 90.0),
+        (-22.5, 30.0, -7.5), (180.0, 90.0, -45.0), (360.0, 360.0, 360.0),
+    ]
+    for x, y, z in triples:
+        for rescale in (False, True):
+            euler_rows.append({
+                "label": f"{x}-{y}-{z}-{'rescale' if rescale else 'plain'}",
+                "x": bits(x),
+                "y": bits(y),
+                "z": bits(z),
+                "rescale": rescale,
+            })
+
+    yield {
+        "case_id": "model/euler-rotation",
+        "family": "model",
+        "operation": "euler_rotation",
+        "rows": euler_rows,
+    }
+
     yield {
         "case_id": "model/quad-winding",
         "family": "model",

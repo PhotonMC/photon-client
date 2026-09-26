@@ -15430,7 +15430,42 @@ fn direction_name(direction: voxel_client::direction::Direction) -> &'static str
     }
 }
 
+fn model_euler_result(request: &Value) -> Result<Value, String> {
+    use voxel_client::render::rotation;
+    let rows = request["rows"].as_array().ok_or("model rows must be an array")?;
+    let mut out = Vec::with_capacity(rows.len());
+    for row in rows {
+        let read = |key: &str| -> Result<f32, String> {
+            Ok(f32::from_bits(
+                u32::from_str_radix(string(row, key)?, 16)
+                    .map_err(|error| format!("{key}: {error}"))?,
+            ))
+        };
+        let transform = rotation::euler_element_transform(
+            read("x")?,
+            read("y")?,
+            read("z")?,
+            row["rescale"].as_bool().ok_or("rescale must be a bool")?,
+        );
+        let mut matrix = Vec::with_capacity(16);
+        for column in &transform {
+            for value in column {
+                matrix.push(json!(format!("{:08x}", value.to_bits())));
+            }
+        }
+        out.push(json!({
+            "label": string(row, "label")?,
+            "outcome": "rotated",
+            "transform": matrix,
+        }));
+    }
+    Ok(json!({"rows": out}))
+}
+
 fn model_result(request: &Value) -> Result<Value, String> {
+    if string(request, "operation")? == "euler_rotation" {
+        return model_euler_result(request);
+    }
     if string(request, "operation")? == "quad_winding" {
         return model_winding_result(request);
     }
