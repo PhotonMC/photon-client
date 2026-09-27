@@ -58,6 +58,7 @@ public final class BlockOracle {
                 case "state_definitions" -> rows.add(stateDefinitions(element.getAsJsonObject()));
                 case "block_tints" -> rows.add(blockTints(element.getAsJsonObject()));
                 case "face_occlusion" -> rows.add(faceOcclusion(element.getAsJsonObject()));
+                case "collision_shapes" -> rows.add(collisionShapes(element.getAsJsonObject()));
                 default -> throw new IllegalArgumentException("Unknown block operation: " + operation);
             }
         }
@@ -272,6 +273,80 @@ public final class BlockOracle {
             }
         }
         entry.addProperty("skip_is_state_dependent", stateDependent);
+        return entry;
+    }
+
+    /**
+     * Every state's collision shape, as the world's collision walk asks for it
+     * with no entity in the question.
+     *
+     * Shapes are keyed by their boxes rather than by object, because the
+     * reference hands back fresh instances. A block is also reported with
+     * whether its shape moves with its position (a random offset) and whether
+     * the reference calls it dynamic, since for those the table is only the
+     * starting point.
+     */
+    private static JsonObject collisionShapes(JsonObject row) {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        entry.addProperty("outcome", "listed");
+        var registry = net.minecraft.core.registries.BuiltInRegistries.BLOCK;
+        var getter = net.minecraft.world.level.EmptyBlockGetter.INSTANCE;
+        var context = net.minecraft.world.phys.shapes.CollisionContext.empty();
+        var elsewhere = new net.minecraft.core.BlockPos[] {
+            new net.minecraft.core.BlockPos(13, 70, -7),
+            new net.minecraft.core.BlockPos(-200, 5, 999),
+            new net.minecraft.core.BlockPos(1, 1, 1),
+            new net.minecraft.core.BlockPos(-3, 64, 12),
+        };
+        var shapeIds = new java.util.LinkedHashMap<String, Integer>();
+        var shapes = new JsonArray();
+        var blocks = new JsonArray();
+        for (var block : registry) {
+            var perState = new JsonArray();
+            boolean moves = false;
+            for (var state : block.getStateDefinition().getPossibleStates()) {
+                var shape = state.getCollisionShape(
+                    getter, net.minecraft.core.BlockPos.ZERO, context);
+                var boxes = shape.toAabbs();
+                String key = boxes.toString();
+                Integer id = shapeIds.get(key);
+                if (id == null) {
+                    id = shapeIds.size();
+                    shapeIds.put(key, id);
+                    var described = new JsonArray();
+                    for (var box : boxes) {
+                        var bounds = new JsonArray();
+                        bounds.add(Oracle.bits(box.minX));
+                        bounds.add(Oracle.bits(box.minY));
+                        bounds.add(Oracle.bits(box.minZ));
+                        bounds.add(Oracle.bits(box.maxX));
+                        bounds.add(Oracle.bits(box.maxY));
+                        bounds.add(Oracle.bits(box.maxZ));
+                        described.add(bounds);
+                    }
+                    shapes.add(described);
+                }
+                perState.add(id);
+                for (var pos : elsewhere) {
+                    if (!state.getCollisionShape(getter, pos, context).toAabbs().equals(boxes)) {
+                        moves = true;
+                    }
+                }
+            }
+            var distinct = new java.util.LinkedHashSet<com.google.gson.JsonElement>();
+            perState.forEach(distinct::add);
+            var described = new JsonObject();
+            described.addProperty("name", registry.getKey(block).toString());
+            var listed = new JsonArray();
+            (distinct.size() == 1 ? distinct : perState).forEach(listed::add);
+            described.add("shapes", listed);
+            described.addProperty("position_dependent", moves);
+            described.addProperty("dynamic", block.hasDynamicShape());
+            blocks.add(described);
+        }
+        entry.add("shapes", shapes);
+        entry.add("blocks", blocks);
         return entry;
     }
 

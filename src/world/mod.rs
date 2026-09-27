@@ -18,7 +18,7 @@ use crate::{
 };
 
 mod block_entity;
-mod block_state;
+pub mod block_state;
 mod border;
 mod chunk;
 mod collision;
@@ -1687,6 +1687,17 @@ impl ClientWorld {
         bounding_box: Aabb,
         shapes_by_state: &BTreeMap<i32, VoxelShape>,
     ) -> Vec<ClientBlockCollision> {
+        self.collect_block_collisions_with(bounding_box, |state_id| {
+            shapes_by_state.get(&state_id).cloned()
+        })
+    }
+
+    /// The collision walk, asking `shape_of` for each state it meets.
+    fn collect_block_collisions_with(
+        &self,
+        bounding_box: Aabb,
+        shape_of: impl Fn(i32) -> Option<VoxelShape>,
+    ) -> Vec<ClientBlockCollision> {
         let entity_shape = Shapes::create_from_aabb(bounding_box)
             .expect("ClientWorld collision queries require normalized bounds");
         let x0 = crate::math::floor_f64(bounding_box.min_x - Shapes::EPSILON) - 1;
@@ -1711,7 +1722,7 @@ impl ClientWorld {
                     let Some(state_id) = self.block_state_at(x, y, z) else {
                         continue;
                     };
-                    let Some(local_shape) = shapes_by_state.get(&state_id) else {
+                    let Some(local_shape) = shape_of(state_id) else {
                         continue;
                     };
                     let position = BlockPos::new(x, y, z);
@@ -1753,8 +1764,10 @@ impl ClientWorld {
         &self,
         bounding_box: Aabb,
     ) -> Vec<ClientBlockCollision> {
-        let shapes_by_state = self.block_state_registry.collision_shapes();
-        self.collect_block_collision_shapes(bounding_box, &shapes_by_state)
+        let registry = &self.block_state_registry;
+        self.collect_block_collisions_with(bounding_box, |state_id| {
+            Some(registry.collision_shape(state_id))
+        })
     }
 
     /// Check whether an entity dimensions box fits in loaded block collisions.
@@ -3033,6 +3046,7 @@ impl ClientWorld {
     }
 }
 
+pub mod block_collision_table;
 pub mod block_registry;
 
 #[cfg(test)]

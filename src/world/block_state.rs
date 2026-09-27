@@ -15,76 +15,6 @@ pub struct ClientBlockCollision {
     pub shape: VoxelShape,
 }
 
-/// A collision-shape descriptor for the pinned built-in block-state subset.
-///
-/// Raw bits keep the descriptor comparable so it can live in `ClientWorld`'s
-/// structural state without making `VoxelShape` part of that state.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ClientBlockStateCollisionShape {
-    Empty,
-    FullBlock,
-    Box {
-        min_x_bits: u64,
-        min_y_bits: u64,
-        min_z_bits: u64,
-        max_x_bits: u64,
-        max_y_bits: u64,
-        max_z_bits: u64,
-    },
-    Boxes {
-        boxes: Vec<[u64; 6]>,
-    },
-}
-
-impl ClientBlockStateCollisionShape {
-    pub(crate) fn to_voxel_shape(&self) -> VoxelShape {
-        match self {
-            Self::Empty => Shapes::empty(),
-            Self::FullBlock => Shapes::block(),
-            Self::Box {
-                min_x_bits,
-                min_y_bits,
-                min_z_bits,
-                max_x_bits,
-                max_y_bits,
-                max_z_bits,
-            } => Shapes::box_shape(
-                f64::from_bits(*min_x_bits),
-                f64::from_bits(*min_y_bits),
-                f64::from_bits(*min_z_bits),
-                f64::from_bits(*max_x_bits),
-                f64::from_bits(*max_y_bits),
-                f64::from_bits(*max_z_bits),
-            )
-            .expect("registered block-state shape bounds must be ordered"),
-            Self::Boxes { boxes } => {
-                let mut shape = Shapes::empty();
-                for [
-                    min_x_bits,
-                    min_y_bits,
-                    min_z_bits,
-                    max_x_bits,
-                    max_y_bits,
-                    max_z_bits,
-                ] in boxes
-                {
-                    let box_shape = Shapes::box_shape(
-                        f64::from_bits(*min_x_bits),
-                        f64::from_bits(*min_y_bits),
-                        f64::from_bits(*min_z_bits),
-                        f64::from_bits(*max_x_bits),
-                        f64::from_bits(*max_y_bits),
-                        f64::from_bits(*max_z_bits),
-                    )
-                    .expect("registered block-state shape bounds must be ordered");
-                    shape = Shapes::or(&shape, &box_shape);
-                }
-                shape
-            }
-        }
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum ClientStairsShape {
     Straight,
@@ -128,24 +58,6 @@ pub(crate) fn client_stair_block_state(
     }
 }
 
-pub(crate) fn client_block_state_box(
-    min_x: f64,
-    min_y: f64,
-    min_z: f64,
-    max_x: f64,
-    max_y: f64,
-    max_z: f64,
-) -> [u64; 6] {
-    [
-        min_x.to_bits(),
-        min_y.to_bits(),
-        min_z.to_bits(),
-        max_x.to_bits(),
-        max_y.to_bits(),
-        max_z.to_bits(),
-    ]
-}
-
 /// Resolve the pinned 26.2 built-in block-state IDs used by the current
 /// ClientWorld collision slice.
 ///
@@ -154,129 +66,13 @@ pub(crate) fn client_block_state_box(
 /// state definition and context branch is implemented.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ClientBlockStateRegistry {
-    pub(crate) collision_shapes: BTreeMap<i32, ClientBlockStateCollisionShape>,
     pub(crate) stair_states: BTreeMap<i32, ClientStairBlockState>,
-    pub(crate) block_registry_ids_by_state: BTreeMap<i32, i32>,
     pub(crate) climbable_block_registry_ids: BTreeSet<i32>,
     pub(crate) glide_through_block_registry_ids: BTreeSet<i32>,
 }
 
 impl ClientBlockStateRegistry {
     pub fn vanilla_26_2() -> Self {
-        let mut collision_shapes = BTreeMap::new();
-        collision_shapes.insert(0, ClientBlockStateCollisionShape::Empty);
-        collision_shapes.insert(1, ClientBlockStateCollisionShape::FullBlock);
-        collision_shapes.insert(
-            13331,
-            ClientBlockStateCollisionShape::Box {
-                min_x_bits: 0.0_f64.to_bits(),
-                min_y_bits: 0.5_f64.to_bits(),
-                min_z_bits: 0.0_f64.to_bits(),
-                max_x_bits: 1.0_f64.to_bits(),
-                max_y_bits: 1.0_f64.to_bits(),
-                max_z_bits: 1.0_f64.to_bits(),
-            },
-        );
-        collision_shapes.insert(
-            13333,
-            ClientBlockStateCollisionShape::Box {
-                min_x_bits: 0.0_f64.to_bits(),
-                min_y_bits: 0.0_f64.to_bits(),
-                min_z_bits: 0.0_f64.to_bits(),
-                max_x_bits: 1.0_f64.to_bits(),
-                max_y_bits: 0.5_f64.to_bits(),
-                max_z_bits: 1.0_f64.to_bits(),
-            },
-        );
-        collision_shapes.insert(13335, ClientBlockStateCollisionShape::FullBlock);
-        collision_shapes.insert(
-            3908,
-            ClientBlockStateCollisionShape::Boxes {
-                boxes: vec![
-                    client_block_state_box(0.0, 0.0, 0.0, 1.0, 1.0, 0.5),
-                    client_block_state_box(0.0, 0.5, 0.5, 1.0, 1.0, 1.0),
-                ],
-            },
-        );
-        collision_shapes.insert(
-            3918,
-            ClientBlockStateCollisionShape::Boxes {
-                boxes: vec![
-                    client_block_state_box(0.0, 0.0, 0.0, 1.0, 0.5, 1.0),
-                    client_block_state_box(0.0, 0.5, 0.0, 1.0, 1.0, 0.5),
-                ],
-            },
-        );
-        collision_shapes.insert(3917, collision_shapes[&3918].clone());
-        collision_shapes.insert(
-            3920,
-            ClientBlockStateCollisionShape::Boxes {
-                boxes: vec![
-                    client_block_state_box(0.0, 0.0, 0.0, 1.0, 0.5, 1.0),
-                    client_block_state_box(0.0, 0.5, 0.0, 0.5, 1.0, 1.0),
-                    client_block_state_box(0.5, 0.5, 0.0, 1.0, 1.0, 0.5),
-                ],
-            },
-        );
-        collision_shapes.insert(3919, collision_shapes[&3920].clone());
-        collision_shapes.insert(
-            3922,
-            ClientBlockStateCollisionShape::Boxes {
-                boxes: vec![
-                    client_block_state_box(0.0, 0.0, 0.0, 1.0, 0.5, 1.0),
-                    client_block_state_box(0.0, 0.5, 0.0, 1.0, 1.0, 0.5),
-                    client_block_state_box(0.5, 0.5, 0.5, 1.0, 1.0, 1.0),
-                ],
-            },
-        );
-        collision_shapes.insert(3921, collision_shapes[&3922].clone());
-        collision_shapes.insert(
-            3924,
-            ClientBlockStateCollisionShape::Boxes {
-                boxes: vec![
-                    client_block_state_box(0.0, 0.0, 0.0, 1.0, 0.5, 1.0),
-                    client_block_state_box(0.0, 0.5, 0.0, 0.5, 1.0, 0.5),
-                ],
-            },
-        );
-        collision_shapes.insert(3923, collision_shapes[&3924].clone());
-        collision_shapes.insert(
-            3926,
-            ClientBlockStateCollisionShape::Boxes {
-                boxes: vec![
-                    client_block_state_box(0.0, 0.0, 0.0, 1.0, 0.5, 1.0),
-                    client_block_state_box(0.5, 0.5, 0.0, 1.0, 1.0, 0.5),
-                ],
-            },
-        );
-        collision_shapes.insert(3925, collision_shapes[&3926].clone());
-        collision_shapes.insert(
-            3938,
-            ClientBlockStateCollisionShape::Boxes {
-                boxes: vec![
-                    client_block_state_box(0.0, 0.0, 0.0, 1.0, 0.5, 1.0),
-                    client_block_state_box(0.0, 0.5, 0.5, 1.0, 1.0, 1.0),
-                ],
-            },
-        );
-        collision_shapes.insert(
-            3958,
-            ClientBlockStateCollisionShape::Boxes {
-                boxes: vec![
-                    client_block_state_box(0.0, 0.0, 0.0, 1.0, 0.5, 1.0),
-                    client_block_state_box(0.0, 0.5, 0.0, 0.5, 1.0, 1.0),
-                ],
-            },
-        );
-        collision_shapes.insert(
-            3978,
-            ClientBlockStateCollisionShape::Boxes {
-                boxes: vec![
-                    client_block_state_box(0.0, 0.0, 0.0, 1.0, 0.5, 1.0),
-                    client_block_state_box(0.5, 0.5, 0.0, 1.0, 1.0, 1.0),
-                ],
-            },
-        );
         let stair_states = BTreeMap::from([
             (
                 3908,
@@ -405,34 +201,30 @@ impl ClientBlockStateRegistry {
                 ),
             ),
         ]);
-        let mut block_registry_ids_by_state = BTreeMap::from([(0, 0), (1, 1), (8389, 366)]);
-        for state_id in 5719..=5726 {
-            block_registry_ids_by_state.insert(state_id, 221);
-        }
         let climbable_block_registry_ids = BTreeSet::from([221, 366]);
         let glide_through_block_registry_ids = BTreeSet::from([366]);
         Self {
-            collision_shapes,
             stair_states,
-            block_registry_ids_by_state,
             climbable_block_registry_ids,
             glide_through_block_registry_ids,
         }
     }
 
+    /// Java `Block.stateById`: a number outside the registry reads as air.
     pub fn resolve_state_id(&self, state_id: i32) -> i32 {
-        if self.collision_shapes.contains_key(&state_id) {
-            state_id
-        } else {
-            0
+        match u32::try_from(state_id) {
+            Ok(id) if crate::world::block_registry::block_for_state(id).is_some() => state_id,
+            _ => 0,
         }
     }
 
+    /// The shape a state blocks movement with, when no entity is asking.
+    ///
+    /// This is the pinned table for every state the registry has. A handful of
+    /// blocks are flagged there as depending on their position or on the
+    /// asking entity; see [`crate::world::block_collision_table`].
     pub fn collision_shape(&self, state_id: i32) -> VoxelShape {
-        self.collision_shapes
-            .get(&self.resolve_state_id(state_id))
-            .expect("the registry must contain its air fallback")
-            .to_voxel_shape()
+        table_collision_shape(self.resolve_state_id(state_id) as u32)
     }
 
     pub fn stair_shape_name(&self, state_id: i32) -> Option<&'static str> {
@@ -522,18 +314,25 @@ impl ClientBlockStateRegistry {
         })
     }
 
-    /// Return whether a pinned 26.2 block-state belongs to BlockTags.CLIMBABLE.
-    pub fn is_climbable_state(&self, state_id: i32) -> bool {
-        self.block_registry_ids_by_state
-            .get(&state_id)
-            .is_some_and(|block_id| self.climbable_block_registry_ids.contains(block_id))
+    /// The registry number of the block a state belongs to.
+    ///
+    /// The pinned registry numbers blocks in the same order it numbers their
+    /// states, so the block's position in it is its registry number.
+    pub fn block_registry_id(&self, state_id: i32) -> Option<i32> {
+        let id = u32::try_from(state_id).ok()?;
+        crate::world::block_registry::block_index_for_state(id).map(|(index, _)| index as i32)
     }
 
-    /// Return whether a pinned 26.2 block-state belongs to BlockTags.CAN_GLIDE_THROUGH.
+    /// Return whether a block-state belongs to BlockTags.CLIMBABLE.
+    pub fn is_climbable_state(&self, state_id: i32) -> bool {
+        self.block_registry_id(state_id)
+            .is_some_and(|block_id| self.climbable_block_registry_ids.contains(&block_id))
+    }
+
+    /// Return whether a block-state belongs to BlockTags.CAN_GLIDE_THROUGH.
     pub fn is_glide_through_state(&self, state_id: i32) -> bool {
-        self.block_registry_ids_by_state
-            .get(&state_id)
-            .is_some_and(|block_id| self.glide_through_block_registry_ids.contains(block_id))
+        self.block_registry_id(state_id)
+            .is_some_and(|block_id| self.glide_through_block_registry_ids.contains(&block_id))
     }
 
     pub(crate) fn apply_update_tags(&mut self, registries: &[crate::tags::RegistryTags]) {
@@ -560,11 +359,55 @@ impl ClientBlockStateRegistry {
         self.climbable_block_registry_ids = climbable_block_registry_ids;
         self.glide_through_block_registry_ids = glide_through_block_registry_ids;
     }
+}
 
-    pub(crate) fn collision_shapes(&self) -> BTreeMap<i32, VoxelShape> {
-        self.collision_shapes
+/// The distinct shapes of the pinned table, built once.
+fn table_shapes() -> &'static [VoxelShape] {
+    static BUILT: std::sync::OnceLock<Vec<VoxelShape>> = std::sync::OnceLock::new();
+    BUILT.get_or_init(|| {
+        crate::world::block_collision_table::SHAPES
             .iter()
-            .map(|(&state_id, shape)| (state_id, shape.to_voxel_shape()))
+            .map(|boxes| shape_from_boxes(boxes))
             .collect()
+    })
+}
+
+/// Rebuild a shape from the boxes the reference reported for it.
+///
+/// A single whole-block box is the reference's own full-block shape rather
+/// than a box that happens to fill the block, because the collision walk
+/// tests for that shape by identity and takes a shortcut when it finds it.
+fn shape_from_boxes(boxes: &[crate::world::block_collision_table::ShapeBox]) -> VoxelShape {
+    let full = [0.0_f64, 0.0, 0.0, 1.0, 1.0, 1.0].map(f64::to_bits);
+    if boxes.len() == 1 && boxes[0] == full {
+        return Shapes::block();
     }
+    let mut shape = Shapes::empty();
+    for bounds in boxes {
+        let [min_x, min_y, min_z, max_x, max_y, max_z] = bounds.map(f64::from_bits);
+        let part = Shapes::box_shape(min_x, min_y, min_z, max_x, max_y, max_z)
+            .expect("the reference's boxes are ordered");
+        shape = Shapes::or(&shape, &part);
+    }
+    shape
+}
+
+/// The rebuilt shape for one entry of the table, for the parity adapter.
+pub fn table_shape(index: usize) -> Option<VoxelShape> {
+    table_shapes().get(index).cloned()
+}
+
+/// The table's shape for one state; a state outside the registry is air.
+pub(crate) fn table_collision_shape(state_id: u32) -> VoxelShape {
+    let Some((index, offset)) = crate::world::block_registry::block_index_for_state(state_id)
+    else {
+        return Shapes::empty();
+    };
+    let shapes = crate::world::block_collision_table::BLOCKS[index].shapes;
+    let shape = if shapes.len() == 1 {
+        shapes[0]
+    } else {
+        shapes[offset as usize]
+    };
+    table_shapes()[usize::from(shape)].clone()
 }

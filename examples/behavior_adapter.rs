@@ -16319,6 +16319,50 @@ fn block_result(request: &Value) -> Result<Value, String> {
                     "blocks": blocks,
                 }));
             }
+            "collision_shapes" => {
+                use voxel_client::world::block_collision_table as table;
+                // The boxes come from the rebuilt shapes, not straight from the
+                // table, so the comparison also checks that rebuilding a shape
+                // from its boxes merges them the way the reference does.
+                let mut shapes = Vec::with_capacity(table::SHAPES.len());
+                for index in 0..table::SHAPES.len() {
+                    let shape = voxel_client::world::block_state::table_shape(index)
+                        .ok_or("table shape out of range")?;
+                    let boxes: Vec<Value> = shape
+                        .to_aabbs()
+                        .iter()
+                        .map(|aabb| {
+                            json!([
+                                format!("{:016x}", aabb.min_x.to_bits()),
+                                format!("{:016x}", aabb.min_y.to_bits()),
+                                format!("{:016x}", aabb.min_z.to_bits()),
+                                format!("{:016x}", aabb.max_x.to_bits()),
+                                format!("{:016x}", aabb.max_y.to_bits()),
+                                format!("{:016x}", aabb.max_z.to_bits()),
+                            ])
+                        })
+                        .collect();
+                    shapes.push(Value::Array(boxes));
+                }
+                let blocks: Vec<Value> = registry::BLOCKS
+                    .iter()
+                    .zip(table::BLOCKS.iter())
+                    .map(|(block, collision)| {
+                        json!({
+                            "name": block.name,
+                            "shapes": collision.shapes,
+                            "position_dependent": collision.position_dependent,
+                            "dynamic": collision.dynamic,
+                        })
+                    })
+                    .collect();
+                out.push(json!({
+                    "label": label,
+                    "outcome": "listed",
+                    "shapes": shapes,
+                    "blocks": blocks,
+                }));
+            }
             "block_tints" => {
                 let tinted: Vec<Value> = registry::TINTS
                     .iter()
