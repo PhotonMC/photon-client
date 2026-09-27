@@ -238,6 +238,34 @@
         "org.jspecify:jspecify"
       ]
     },
+    "movement": {
+      "source": "MovementOracle.java",
+      "libraries": [
+        "com.google.code.gson:gson",
+        "com.google.guava:failureaccess",
+        "com.google.guava:guava",
+        "com.mojang:authlib",
+        "com.mojang:brigadier",
+        "com.mojang:datafixerupper",
+        "com.mojang:jtracy",
+        "com.mojang:logging",
+        "commons-io:commons-io",
+        "io.netty:netty-buffer",
+        "io.netty:netty-codec-base",
+        "io.netty:netty-common",
+        "io.netty:netty-transport",
+        "it.unimi.dsi:fastutil",
+        "org.apache.commons:commons-lang3",
+        "org.joml:joml",
+        "org.jspecify:jspecify",
+        "org.lwjgl:lwjgl",
+        "org.lwjgl:lwjgl-glfw",
+        "org.lwjgl:lwjgl-natives-linux",
+        "org.lwjgl:lwjgl-stb",
+        "org.lwjgl:lwjgl-stb-natives-linux",
+        "org.slf4j:slf4j-api"
+      ]
+    },
     "nbt": {
       "source": "NbtOracle.java",
       "libraries": [

@@ -1,377 +1,90 @@
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Holder;
-import net.minecraft.core.RegistryAccess;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.dimension.DimensionType;
-import net.minecraft.world.phys.Vec3;
 
 /**
- * Test glue only: runs the original movement code in a world the test builds.
+ * Test glue only: runs the original client player in a world the test builds.
  *
- * <p>Everything the reference decides stays the reference's. What this file
- * supplies is a place to decide it in: a {@link Level} whose blocks come from
- * the scenario rather than from a save, and whose collision walk hands back
- * that same storage. The movement code, the collision gathering, the shape
- * lookup and the resolution are all the original.
+ * <p>The player here is the reference's own {@code LocalPlayer}, in the
+ * reference's own {@code ClientLevel}, with the reference's own keyboard
+ * input. Registries and tags come from the vanilla data pack through the same
+ * loading path the server uses, and chunks arrive through the client chunk
+ * cache's packet entry point. What this file supplies is only what a headless
+ * run has no other way to get: the game singleton, an options object, a
+ * connection that records what it is asked to send rather than sending it,
+ * and a sound manager that plays nothing.
  */
 public final class MovementOracle {
     private static boolean bootstrapped;
+    private static net.minecraft.core.RegistryAccess.Frozen registries;
+    private static sun.misc.Unsafe unsafe;
 
-    /**
-     * Bring up the registries once, keeping the streams the oracle writes to.
-     *
-     * The bootstrap redirects them into the game's logger at the end, which
-     * would swallow every record written afterwards.
-     */
-    private static synchronized void bootstrap() {
+    /** Records what the player sends instead of putting it on a wire. */
+    static final class CapturingConnection extends net.minecraft.network.Connection {
+        final java.util.List<net.minecraft.network.protocol.Packet<?>> sent =
+            new java.util.ArrayList<>();
+
+        CapturingConnection() {
+            super(net.minecraft.network.protocol.PacketFlow.CLIENTBOUND);
+        }
+
+        @Override
+        public void send(net.minecraft.network.protocol.Packet<?> packet) {
+            this.sent.add(packet);
+        }
+    }
+
+    /** Swallows sounds: movement plays step sounds, and there is no speaker. */
+    static final class SilentSoundManager extends net.minecraft.client.sounds.SoundManager {
+        private SilentSoundManager() {
+            super(null);
+        }
+
+        @Override
+        public net.minecraft.client.sounds.SoundEngine.PlayResult play(
+            net.minecraft.client.resources.sounds.SoundInstance instance) {
+            return net.minecraft.client.sounds.SoundEngine.PlayResult.NOT_STARTED;
+        }
+
+        @Override
+        public void playDelayed(
+            net.minecraft.client.resources.sounds.SoundInstance instance, int delay) {}
+    }
+
+    private static void setField(Object target, String name, Object value) throws Exception {
+        Class<?> type = target.getClass();
+        while (type != null) {
+            try {
+                var field = type.getDeclaredField(name);
+                field.setAccessible(true);
+                field.set(target, value);
+                return;
+            } catch (NoSuchFieldException missing) {
+                type = type.getSuperclass();
+            }
+        }
+        throw new NoSuchFieldException(name);
+    }
+
+    /** Bring the game up once, with the vanilla data pack's registries and tags. */
+    private static synchronized void bootstrap() throws Exception {
         if (bootstrapped) {
             return;
         }
-        var out = System.out;
-        var err = System.err;
-        try {
-            net.minecraft.SharedConstants.setVersion(Oracle.TEST_VERSION);
-            net.minecraft.server.Bootstrap.bootStrap();
-        } finally {
-            System.setOut(out);
-            System.setErr(err);
-        }
+        registries = Oracle.vanillaRegistries();
+        var unsafeField = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
+        unsafeField.setAccessible(true);
+        unsafe = (sun.misc.Unsafe) unsafeField.get(null);
         bootstrapped = true;
     }
 
-    /** Copy one registry the vanilla lookup carries into a frozen one. */
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    private static <T> net.minecraft.core.Registry<T> copyRegistry(
-        net.minecraft.core.HolderLookup.Provider provider,
-        net.minecraft.resources.ResourceKey<? extends net.minecraft.core.Registry<? extends T>> key) {
-        var target = new net.minecraft.core.MappedRegistry<T>(
-            (net.minecraft.resources.ResourceKey) key,
-            com.mojang.serialization.Lifecycle.stable());
-        provider.lookupOrThrow(key)
-            .listElements()
-            .forEach(holder -> net.minecraft.core.Registry.register(
-                target, (net.minecraft.resources.ResourceKey) holder.key(), holder.value()));
-        target.freeze();
-        return target;
-    }
-
-    /** The level data a fixture world needs; none of it is read. */
-    record FixtureData() implements net.minecraft.world.level.storage.WritableLevelData {
-        public void setSpawn(net.minecraft.world.level.storage.LevelData.RespawnData data) {}
-
-        public net.minecraft.world.level.storage.LevelData.RespawnData getRespawnData() {
-            return net.minecraft.world.level.storage.LevelData.RespawnData.DEFAULT;
-        }
-
-        public long getGameTime() {
-            return 0L;
-        }
-
-        public boolean isHardcore() {
-            return false;
-        }
-
-        public net.minecraft.world.Difficulty getDifficulty() {
-            return net.minecraft.world.Difficulty.PEACEFUL;
-        }
-
-        public boolean isDifficultyLocked() {
-            return false;
-        }
-    }
-
-    /** Build an empty fixture world. */
-    private static FixtureLevel newLevel(boolean clientSide) {
-        var lookup = net.minecraft.data.registries.VanillaRegistries.createLookup();
-        var registries = new java.util.LinkedHashMap<
-            net.minecraft.resources.ResourceKey<?>, net.minecraft.core.Registry<?>>();
-        net.minecraft.core.registries.BuiltInRegistries.REGISTRY
-            .forEach(registry -> registries.put(registry.key(), registry));
-        // A datapack registry the lookup carries wins over a built-in one of
-        // the same name, because that is the one holding the vanilla content.
-        lookup.listRegistryKeys().forEach(key -> {
-            var copied = copyRegistry(lookup, key);
-            registries.put(copied.key(), copied);
-        });
-        var access = new RegistryAccess.ImmutableRegistryAccess(
-            new java.util.ArrayList<>(registries.values()));
-        var dimensionType = lookup.lookupOrThrow(Registries.DIMENSION_TYPE)
-            .getOrThrow(net.minecraft.world.level.dimension.BuiltinDimensionTypes.OVERWORLD);
-        return new FixtureLevel(new FixtureData(), access, dimensionType, clientSide);
-    }
-
-    /** A world backed by a flat block map, so a scenario can describe one. */
-    static final class FixtureLevel extends Level {
-
-        private final java.util.Map<Long, BlockState> blocks = new java.util.HashMap<>();
-        private final BlockState air;
-
-        public FixtureLevel(
-            net.minecraft.world.level.storage.WritableLevelData data,
-            RegistryAccess access,
-            Holder<DimensionType> dimensionType,
-            boolean clientSide) {
-            super(data, Level.OVERWORLD, access, dimensionType, clientSide, false, 0L, 1000000);
-            this.air = net.minecraft.world.level.block.Blocks.AIR.defaultBlockState();
-        }
-
-        public void put(BlockPos pos, BlockState state) {
-            this.blocks.put(pos.asLong(), state);
-        }
-
-        @Override
-        public BlockState getBlockState(BlockPos pos) {
-            return this.blocks.getOrDefault(pos.asLong(), this.air);
-        }
-
-        /// The fixture stores blocks flat rather than in chunks, so anything
-        /// that asks for a chunk is told there is none. The one caller that
-        /// matters here is the fluid interaction check, which reads that as
-        /// "no fluid" — true for these scenarios, and the reason a water or
-        /// lava scenario cannot use this fixture as it stands.
-        @Override
-        public net.minecraft.world.level.chunk.@org.jspecify.annotations.Nullable ChunkAccess
-            getChunk(int x, int z, net.minecraft.world.level.chunk.status.ChunkStatus status,
-                boolean requireChunk) {
-            return null;
-        }
-
-        /// The collision walk asks for a chunk to read blocks from. The fixture
-        /// stores its blocks flat, so it hands back itself: the walk, the shape
-        /// lookup and the resolution all stay the reference's.
-        @Override
-        public net.minecraft.world.level.BlockGetter getChunkForCollisions(int chunkX, int chunkZ) {
-            return this;
-        }
-
-        @Override
-        public net.minecraft.world.level.material.FluidState getFluidState(BlockPos pos) {
-            return getBlockState(pos).getFluidState();
-        }
-
-        @Override
-        public void sendBlockUpdated(BlockPos pos, BlockState old, BlockState current, int flags) {}
-
-        @Override
-        public String gatherChunkSourceStats() {
-            return "fixture";
-        }
-
-        // Everything below is a stub: the movement paths under test never reach
-        // any of it, and a fixture that pretended to implement them would be
-        // reimplementing the game rather than hosting it.
-        private static <T> T unused() {
-            throw new UnsupportedOperationException("not part of the movement fixture");
-        }
-
-        @Override
-        public void playSeededSound(
-            net.minecraft.world.entity.@org.jspecify.annotations.Nullable Entity entity,
-            double x, double y, double z,
-            Holder<net.minecraft.sounds.SoundEvent> sound,
-            net.minecraft.sounds.SoundSource source,
-            float volume, float pitch, long seed) {}
-
-        @Override
-        public void playSeededSound(
-            net.minecraft.world.entity.@org.jspecify.annotations.Nullable Entity entity,
-            net.minecraft.world.entity.Entity target,
-            Holder<net.minecraft.sounds.SoundEvent> sound,
-            net.minecraft.sounds.SoundSource source,
-            float volume, float pitch, long seed) {}
-
-        @Override
-        public void explode(
-            net.minecraft.world.entity.@org.jspecify.annotations.Nullable Entity source,
-            net.minecraft.world.damagesource.@org.jspecify.annotations.Nullable DamageSource damage,
-            net.minecraft.world.level.@org.jspecify.annotations.Nullable ExplosionDamageCalculator calculator,
-            double x, double y, double z, float radius, boolean fire,
-            Level.ExplosionInteraction interaction,
-            net.minecraft.core.particles.ParticleOptions small,
-            net.minecraft.core.particles.ParticleOptions large,
-            net.minecraft.util.random.WeightedList<
-                net.minecraft.core.particles.ExplosionParticleInfo> blockParticles,
-            Holder<net.minecraft.sounds.SoundEvent> sound) {}
-
-        @Override
-        public void setRespawnData(net.minecraft.world.level.storage.LevelData.RespawnData data) {}
-
-        @Override
-        public net.minecraft.world.level.storage.LevelData.RespawnData getRespawnData() {
-            return unused();
-        }
-
-        @Override
-        public net.minecraft.world.entity.@org.jspecify.annotations.Nullable Entity getEntity(int id) {
-            return null;
-        }
-
-        @Override
-        public java.util.Collection<net.minecraft.world.entity.boss.enderdragon.EnderDragonPart> dragonParts() {
-            return java.util.List.of();
-        }
-
-        @Override
-        public net.minecraft.world.TickRateManager tickRateManager() {
-            return unused();
-        }
-
-        @Override
-        public net.minecraft.world.level.saveddata.maps.@org.jspecify.annotations.Nullable MapItemSavedData
-            getMapData(net.minecraft.world.level.saveddata.maps.MapId id) {
-            return null;
-        }
-
-        @Override
-        public void destroyBlockProgress(int id, BlockPos pos, int progress) {}
-
-        @Override
-        public net.minecraft.world.scores.Scoreboard getScoreboard() {
-            return unused();
-        }
-
-        @Override
-        public net.minecraft.world.item.crafting.RecipeAccess recipeAccess() {
-            return unused();
-        }
-
-        /// No entities: the movement fixture is one entity against blocks, so the
-        /// entity collision pass finds nothing and the block pass is what is
-        /// being exercised.
-        private final net.minecraft.world.level.entity.LevelEntityGetter<
-            net.minecraft.world.entity.Entity> noEntities =
-            new net.minecraft.world.level.entity.LevelEntityGetter<>() {
-                @Override
-                public net.minecraft.world.entity.@org.jspecify.annotations.Nullable Entity get(int id) {
-                    return null;
-                }
-
-                @Override
-                public net.minecraft.world.entity.@org.jspecify.annotations.Nullable Entity get(
-                    java.util.UUID id) {
-                    return null;
-                }
-
-                @Override
-                public Iterable<net.minecraft.world.entity.Entity> getAll() {
-                    return java.util.List.of();
-                }
-
-                @Override
-                public <U extends net.minecraft.world.entity.Entity> void get(
-                    net.minecraft.world.level.entity.EntityTypeTest<
-                        net.minecraft.world.entity.Entity, U> type,
-                    net.minecraft.util.AbortableIterationConsumer<U> consumer) {}
-
-                @Override
-                public void get(
-                    net.minecraft.world.phys.AABB box,
-                    java.util.function.Consumer<net.minecraft.world.entity.Entity> output) {}
-
-                @Override
-                public <U extends net.minecraft.world.entity.Entity> void get(
-                    net.minecraft.world.level.entity.EntityTypeTest<
-                        net.minecraft.world.entity.Entity, U> type,
-                    net.minecraft.world.phys.AABB box,
-                    net.minecraft.util.AbortableIterationConsumer<U> consumer) {}
-            };
-
-        @Override
-        protected net.minecraft.world.level.entity.LevelEntityGetter<net.minecraft.world.entity.Entity>
-            getEntities() {
-            return this.noEntities;
-        }
-
-        @Override
-        public net.minecraft.world.clock.ClockManager clockManager() {
-            return unused();
-        }
-
-        @Override
-        public net.minecraft.world.attribute.EnvironmentAttributeSystem environmentAttributes() {
-            return unused();
-        }
-
-        @Override
-        public net.minecraft.world.item.alchemy.PotionBrewing potionBrewing() {
-            return unused();
-        }
-
-        @Override
-        public net.minecraft.world.level.block.entity.FuelValues fuelValues() {
-            return unused();
-        }
-
-        @Override
-        public net.minecraft.world.level.chunk.ChunkSource getChunkSource() {
-            return unused();
-        }
-
-        @Override
-        public java.util.List<? extends net.minecraft.world.entity.player.Player> players() {
-            return java.util.List.of();
-        }
-
-        @Override
-        public net.minecraft.world.ticks.LevelTickAccess<
-            net.minecraft.world.level.block.Block> getBlockTicks() {
-            return net.minecraft.world.ticks.BlackholeTickAccess.emptyLevelList();
-        }
-
-        @Override
-        public net.minecraft.world.ticks.LevelTickAccess<
-            net.minecraft.world.level.material.Fluid> getFluidTicks() {
-            return net.minecraft.world.ticks.BlackholeTickAccess.emptyLevelList();
-        }
-
-        private final net.minecraft.world.level.border.WorldBorder border =
-            new net.minecraft.world.level.border.WorldBorder();
-
-        @Override
-        public net.minecraft.world.level.border.WorldBorder getWorldBorder() {
-            return this.border;
-        }
-
-        @Override
-        public Holder<net.minecraft.world.level.biome.Biome> getUncachedNoiseBiome(int x, int y, int z) {
-            return this.registryAccess()
-                .lookupOrThrow(Registries.BIOME)
-                .getOrThrow(net.minecraft.world.level.biome.Biomes.PLAINS);
-        }
-
-        @Override
-        public int getSeaLevel() {
-            return 63;
-        }
-
-        @Override
-        public net.minecraft.world.flag.FeatureFlagSet enabledFeatures() {
-            return net.minecraft.world.flag.FeatureFlags.VANILLA_SET;
-        }
-
-        @Override
-        public void levelEvent(
-            net.minecraft.world.entity.@org.jspecify.annotations.Nullable Entity entity,
-            int type, BlockPos pos, int data) {}
-
-        @Override
-        public void gameEvent(
-            Holder<net.minecraft.world.level.gameevent.GameEvent> event,
-            net.minecraft.world.phys.Vec3 position,
-            net.minecraft.world.level.gameevent.GameEvent.Context context) {}
-    }
-
-    public static JsonObject run(JsonObject request) {
+    public static JsonObject run(JsonObject request) throws Exception {
         bootstrap();
         String operation = request.get("operation").getAsString();
         var rows = new JsonArray();
         for (var element : request.get("rows").getAsJsonArray()) {
             switch (operation) {
-                case "entity_move" -> rows.add(entityMove(element.getAsJsonObject()));
+                case "local_player_ticks" -> rows.add(localPlayerTicks(element.getAsJsonObject()));
                 default -> throw new IllegalArgumentException(
                     "Unknown movement operation: " + operation);
             }
@@ -381,74 +94,221 @@ public final class MovementOracle {
         return result;
     }
 
+    private static net.minecraft.world.level.block.state.BlockState state(JsonObject described) {
+        var block = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getValue(
+            net.minecraft.resources.Identifier.parse(described.get("block").getAsString()));
+        var state = block.defaultBlockState();
+        if (described.has("properties")) {
+            for (var entry : described.getAsJsonObject("properties").entrySet()) {
+                state = withProperty(state, entry.getKey(), entry.getValue().getAsString());
+            }
+        }
+        return state;
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static net.minecraft.world.level.block.state.BlockState withProperty(
+        net.minecraft.world.level.block.state.BlockState state, String name, String value) {
+        var property = state.getBlock().getStateDefinition().getProperty(name);
+        if (property == null) {
+            throw new IllegalArgumentException("No property " + name);
+        }
+        var parsed = property.getValue(value)
+            .orElseThrow(() -> new IllegalArgumentException("Bad value " + value));
+        return state.setValue((net.minecraft.world.level.block.state.properties.Property) property,
+            (Comparable) parsed);
+    }
+
     /**
-     * Step one entity through a scene with `Entity.move`, tick by tick.
+     * Step the reference's own player through a scene, tick by tick.
      *
-     * The whole composition runs: the edge back-off, the collision gathering
-     * and resolution, the four collision flags, the ground test, the bounce
-     * and the block speed factor.
+     * The keys held and the look direction are set before each tick, exactly
+     * where the game's frame loop would have left them; then the level ticks
+     * the player the way it ticks every entity. After every tick the position, the motion, the flags
+     * and every packet the player asked to send are reported, the packets as
+     * the bytes their own codec writes.
      */
-    private static JsonObject entityMove(JsonObject row) {
+    private static JsonObject localPlayerTicks(JsonObject row) throws Exception {
         var entry = new JsonObject();
         entry.addProperty("label", row.get("label").getAsString());
-        // Whether the world is a client's changes `move` itself: on a client
-        // only the locally authoritative entity — the player — runs the fall
-        // damage check and the bounce, so a scenario says which side it is.
-        var level = newLevel(row.get("client_side").getAsBoolean());
+
+        var listener = (net.minecraft.client.multiplayer.ClientPacketListener)
+            unsafe.allocateInstance(net.minecraft.client.multiplayer.ClientPacketListener.class);
+        setField(listener, "registryAccess", registries);
+        setField(listener, "clockManager", new net.minecraft.client.ClientClockManager());
+        setField(listener, "localGameProfile", new com.mojang.authlib.GameProfile(
+            java.util.UUID.nameUUIDFromBytes(new byte[] {1}), "Parity"));
+        var wire = new CapturingConnection();
+        setField(listener, "connection", wire);
+        setField(listener, "clientLoaded", true);
+
+        var dimensionType = registries.lookupOrThrow(
+            net.minecraft.core.registries.Registries.DIMENSION_TYPE).getOrThrow(
+            net.minecraft.world.level.dimension.BuiltinDimensionTypes.OVERWORLD);
+        var level = new net.minecraft.client.multiplayer.ClientLevel(
+            listener,
+            new net.minecraft.client.multiplayer.ClientLevel.ClientLevelData(
+                net.minecraft.world.Difficulty.PEACEFUL, false, false),
+            net.minecraft.world.level.Level.OVERWORLD, dimensionType, 8, 8, null, false, 0L, 63);
+
+        var minecraft = (net.minecraft.client.Minecraft)
+            unsafe.allocateInstance(net.minecraft.client.Minecraft.class);
+        var instanceField = net.minecraft.client.Minecraft.class.getDeclaredField("instance");
+        instanceField.setAccessible(true);
+        instanceField.set(null, minecraft);
+        setField(level, "minecraft", minecraft);
+        var workDir = java.nio.file.Files.createTempDirectory("oracle-options").toFile();
+        var options = new net.minecraft.client.Options(minecraft, workDir);
+        options.autoJump().set(row.get("auto_jump").getAsBoolean());
+        setField(minecraft, "options", options);
+        setField(minecraft, "gui", unsafe.allocateInstance(net.minecraft.client.gui.Gui.class));
+        setField(minecraft, "tutorial", new net.minecraft.client.tutorial.Tutorial(minecraft, options));
+        setField(minecraft, "soundManager", unsafe.allocateInstance(SilentSoundManager.class));
+
+        // Chunks go in through the client cache's packet entry point, as the
+        // sections the reference's own section code builds and writes.
+        var blocks = new java.util.HashMap<Long, net.minecraft.world.level.block.state.BlockState>();
         for (var element : row.get("blocks").getAsJsonArray()) {
             var described = element.getAsJsonObject();
-            var block = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getValue(
-                net.minecraft.resources.Identifier.parse(described.get("block").getAsString()));
-            level.put(
-                new BlockPos(
-                    described.get("x").getAsInt(),
-                    described.get("y").getAsInt(),
-                    described.get("z").getAsInt()),
-                block.defaultBlockState());
+            blocks.put(BlockPos.asLong(described.get("x").getAsInt(), described.get("y").getAsInt(),
+                described.get("z").getAsInt()), state(described));
+        }
+        int radius = row.get("chunk_radius").getAsInt();
+        for (int chunkX = -radius; chunkX <= radius; chunkX++) {
+            for (int chunkZ = -radius; chunkZ <= radius; chunkZ++) {
+                var buffer = new net.minecraft.network.FriendlyByteBuf(io.netty.buffer.Unpooled.buffer());
+                for (int index = 0; index < level.getSectionsCount(); index++) {
+                    var section = new net.minecraft.world.level.chunk.LevelChunkSection(
+                        level.palettedContainerFactory());
+                    int sectionMinY = level.getMinY() + index * 16;
+                    for (int x = 0; x < 16; x++) {
+                        for (int y = 0; y < 16; y++) {
+                            for (int z = 0; z < 16; z++) {
+                                var state = blocks.get(BlockPos.asLong(
+                                    chunkX * 16 + x, sectionMinY + y, chunkZ * 16 + z));
+                                if (state != null) {
+                                    section.setBlockState(x, y, z, state);
+                                }
+                            }
+                        }
+                    }
+                    section.write(buffer);
+                }
+                level.getChunkSource().replaceWithPacketData(
+                    chunkX, chunkZ, buffer, java.util.Map.of(), output -> {});
+            }
         }
 
-        var type = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getValue(
-            net.minecraft.resources.Identifier.parse(row.get("entity").getAsString()));
-        var entity = type.create(level, net.minecraft.world.entity.EntitySpawnReason.LOAD);
-        if (entity == null) {
-            entry.addProperty("outcome", "no_entity");
-            return entry;
-        }
-        entity.setPos(
-            Oracle.f64(row, "x"), Oracle.f64(row, "y"), Oracle.f64(row, "z"));
-        entity.setDeltaMovement(Vec3.ZERO);
-        entity.setOnGround(row.get("on_ground").getAsBoolean());
-        if (row.get("shift_key_down").getAsBoolean() && entity instanceof
-            net.minecraft.world.entity.player.Player player) {
-            player.setShiftKeyDown(true);
-        }
+        var player = new net.minecraft.client.player.LocalPlayer(
+            minecraft, level, listener, null, null,
+            net.minecraft.world.entity.player.Input.EMPTY, false, null);
+        // The server hands out the entity id at login; the scenario names it,
+        // because the sprint command packet carries it.
+        player.setId(row.get("entity_id").getAsInt());
+        setField(minecraft, "player", player);
+        var info = new net.minecraft.client.multiplayer.PlayerInfo(listener.getLocalGameProfile(), false);
+        var gameType = net.minecraft.world.level.GameType.byName(row.get("game_mode").getAsString());
+        var setMode = net.minecraft.client.multiplayer.PlayerInfo.class.getDeclaredMethod(
+            "setGameMode", net.minecraft.world.level.GameType.class);
+        setMode.setAccessible(true);
+        setMode.invoke(info, gameType);
+        setField(player, "playerInfo", info);
+        var gameMode = new net.minecraft.client.multiplayer.MultiPlayerGameMode(minecraft, listener);
+        gameMode.setLocalMode(gameType);
+        gameMode.adjustPlayer(player);
+        setField(minecraft, "gameMode", gameMode);
+        var renderer = unsafe.allocateInstance(net.minecraft.client.renderer.GameRenderer.class);
+        var camera = new net.minecraft.client.Camera();
+        setField(renderer, "mainCamera", camera);
+        setField(minecraft, "gameRenderer", renderer);
+        camera.setEntity(player);
+        player.input = new net.minecraft.client.player.KeyboardInput(options);
+        player.snapTo(
+            Oracle.f64(row, "x"), Oracle.f64(row, "y"), Oracle.f64(row, "z"),
+            Oracle.f32(row, "y_rot"), Oracle.f32(row, "x_rot"));
 
         var ticks = new JsonArray();
         for (var element : row.get("ticks").getAsJsonArray()) {
-            var step = element.getAsJsonObject();
-            var delta = new Vec3(
-                Oracle.f64(step, "dx"), Oracle.f64(step, "dy"), Oracle.f64(step, "dz"));
-            if (step.get("accumulate").getAsBoolean()) {
-                entity.setDeltaMovement(entity.getDeltaMovement().add(delta));
-                delta = entity.getDeltaMovement();
+            var input = element.getAsJsonObject();
+            options.keyUp.setDown(input.get("forward").getAsBoolean());
+            options.keyDown.setDown(input.get("backward").getAsBoolean());
+            options.keyLeft.setDown(input.get("left").getAsBoolean());
+            options.keyRight.setDown(input.get("right").getAsBoolean());
+            options.keyJump.setDown(input.get("jump").getAsBoolean());
+            options.keyShift.setDown(input.get("sneak").getAsBoolean());
+            options.keySprint.setDown(input.get("sprint").getAsBoolean());
+            if (input.has("y_rot")) {
+                player.setYRot(Oracle.f32(input, "y_rot"));
             }
-            entity.move(net.minecraft.world.entity.MoverType.SELF, delta);
-            var described = new JsonObject();
-            described.addProperty("x", Oracle.bits(entity.getX()));
-            described.addProperty("y", Oracle.bits(entity.getY()));
-            described.addProperty("z", Oracle.bits(entity.getZ()));
-            described.addProperty("motion_x", Oracle.bits(entity.getDeltaMovement().x));
-            described.addProperty("motion_y", Oracle.bits(entity.getDeltaMovement().y));
-            described.addProperty("motion_z", Oracle.bits(entity.getDeltaMovement().z));
-            described.addProperty("on_ground", entity.onGround());
-            described.addProperty("horizontal_collision", entity.horizontalCollision);
-            described.addProperty("vertical_collision", entity.verticalCollision);
-            described.addProperty("vertical_collision_below", entity.verticalCollisionBelow);
-            described.addProperty("minor_horizontal_collision", entity.minorHorizontalCollision);
-            ticks.add(described);
+            if (input.has("x_rot")) {
+                player.setXRot(Oracle.f32(input, "x_rot"));
+            }
+            wire.sent.clear();
+            // The level ticks its entities, not the entity itself: it saves
+            // the old position and rotation and counts the tick first, and
+            // both are read during the tick.
+            level.tickNonPassenger(player);
+            ticks.add(describe(player, wire.sent));
         }
-        entry.addProperty("outcome", "moved");
+        entry.addProperty("outcome", "ticked");
         entry.add("ticks", ticks);
         return entry;
+    }
+
+    private static JsonObject describe(
+        net.minecraft.client.player.LocalPlayer player,
+        java.util.List<net.minecraft.network.protocol.Packet<?>> sent) throws Exception {
+        var tick = new JsonObject();
+        tick.addProperty("x", Oracle.bits(player.getX()));
+        tick.addProperty("y", Oracle.bits(player.getY()));
+        tick.addProperty("z", Oracle.bits(player.getZ()));
+        tick.addProperty("motion_x", Oracle.bits(player.getDeltaMovement().x));
+        tick.addProperty("motion_y", Oracle.bits(player.getDeltaMovement().y));
+        tick.addProperty("motion_z", Oracle.bits(player.getDeltaMovement().z));
+        tick.addProperty("y_rot", Oracle.bits(player.getYRot()));
+        tick.addProperty("x_rot", Oracle.bits(player.getXRot()));
+        tick.addProperty("on_ground", player.onGround());
+        tick.addProperty("horizontal_collision", player.horizontalCollision);
+        tick.addProperty("vertical_collision", player.verticalCollision);
+        tick.addProperty("minor_horizontal_collision", player.minorHorizontalCollision);
+        tick.addProperty("sprinting", player.isSprinting());
+        tick.addProperty("shift_key_down", player.isShiftKeyDown());
+        tick.addProperty("pose", player.getPose().name());
+        tick.addProperty("fall_distance", Oracle.bits(player.fallDistance));
+        tick.addProperty("flying", player.getAbilities().flying);
+        var packets = new JsonArray();
+        for (var packet : sent) {
+            var described = new JsonObject();
+            described.addProperty("type", packet.type().id().toString());
+            described.addProperty("bytes", encode(packet));
+            packets.add(described);
+        }
+        tick.add("sent", packets);
+        return tick;
+    }
+
+    /** A packet as the bytes its own codec writes, without the packet id. */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static String encode(net.minecraft.network.protocol.Packet<?> packet) throws Exception {
+        Class<?> type = packet.getClass();
+        java.lang.reflect.Field codecField = null;
+        while (type != null && codecField == null) {
+            try {
+                codecField = type.getDeclaredField("STREAM_CODEC");
+            } catch (NoSuchFieldException missing) {
+                type = type.getSuperclass();
+            }
+        }
+        if (codecField == null) {
+            throw new IllegalStateException("No codec on " + packet.getClass());
+        }
+        codecField.setAccessible(true);
+        var codec = (net.minecraft.network.codec.StreamCodec) codecField.get(null);
+        var buffer = new net.minecraft.network.RegistryFriendlyByteBuf(
+            io.netty.buffer.Unpooled.buffer(), registries);
+        codec.encode(buffer, packet);
+        var bytes = new byte[buffer.readableBytes()];
+        buffer.readBytes(bytes);
+        return java.util.HexFormat.of().formatHex(bytes);
     }
 }

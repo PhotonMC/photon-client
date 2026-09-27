@@ -16,15 +16,9 @@ public final class BlockOracle {
         if (bootstrapped) {
             return;
         }
-        var out = System.out;
-        var err = System.err;
-        try {
-            net.minecraft.SharedConstants.setVersion(Oracle.TEST_VERSION);
-            net.minecraft.server.Bootstrap.bootStrap();
-        } finally {
-            System.setOut(out);
-            System.setErr(err);
-        }
+        // Tags matter here: movement reads the climbable, fence and wall tags,
+        // and unbound tags would read as empty rather than as vanilla.
+        Oracle.vanillaRegistries();
         bootstrapped = true;
         // The grass and foliage tints read a colour map the game loads from
         // its own assets. Headless, that map is all zeroes, so those tints
@@ -59,6 +53,7 @@ public final class BlockOracle {
                 case "block_tints" -> rows.add(blockTints(element.getAsJsonObject()));
                 case "face_occlusion" -> rows.add(faceOcclusion(element.getAsJsonObject()));
                 case "collision_shapes" -> rows.add(collisionShapes(element.getAsJsonObject()));
+                case "movement_properties" -> rows.add(movementProperties(element.getAsJsonObject()));
                 default -> throw new IllegalArgumentException("Unknown block operation: " + operation);
             }
         }
@@ -346,6 +341,68 @@ public final class BlockOracle {
             blocks.add(described);
         }
         entry.add("shapes", shapes);
+        entry.add("blocks", blocks);
+        return entry;
+    }
+
+    /**
+     * What each block contributes to movement beyond its shape: the three
+     * factors, the bounce, the tags and classes the movement code tests, and
+     * for every state the fluid it holds.
+     *
+     * Tags are the vanilla data pack's, loaded the way the server loads them.
+     * A real client learns them from the server's tag packet; these are what a
+     * vanilla server sends.
+     */
+    private static JsonObject movementProperties(JsonObject row) {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        entry.addProperty("outcome", "listed");
+        var registry = net.minecraft.core.registries.BuiltInRegistries.BLOCK;
+        var blocks = new JsonArray();
+        for (var block : registry) {
+            var state = block.defaultBlockState();
+            var described = new JsonObject();
+            described.addProperty("name", registry.getKey(block).toString());
+            described.addProperty("friction", Oracle.bits(block.getFriction()));
+            described.addProperty("speed_factor", Oracle.bits(block.getSpeedFactor()));
+            described.addProperty("jump_factor", Oracle.bits(block.getJumpFactor()));
+            described.addProperty("bounce_restitution", Oracle.bits(block.getBounceRestitution()));
+            described.addProperty("climbable", state.is(net.minecraft.tags.BlockTags.CLIMBABLE));
+            described.addProperty("fence", state.is(net.minecraft.tags.BlockTags.FENCES));
+            described.addProperty("wall", state.is(net.minecraft.tags.BlockTags.WALLS));
+            described.addProperty("can_glide_through",
+                state.is(net.minecraft.tags.BlockTags.CAN_GLIDE_THROUGH));
+            described.addProperty("suppresses_bounce",
+                state.is(net.minecraft.tags.BlockTags.SUPPRESSES_BOUNCE));
+            described.addProperty("fence_gate",
+                block instanceof net.minecraft.world.level.block.FenceGateBlock);
+            described.addProperty("trapdoor",
+                block instanceof net.minecraft.world.level.block.TrapDoorBlock);
+            described.addProperty("ladder",
+                block instanceof net.minecraft.world.level.block.LadderBlock);
+            var fluids = new JsonArray();
+            var distinct = new java.util.LinkedHashSet<String>();
+            var perState = new java.util.ArrayList<String>();
+            for (var possible : block.getStateDefinition().getPossibleStates()) {
+                var fluid = possible.getFluidState();
+                // The last field is whether the state suffocates, which is what
+                // the player's push out of a wall asks of each block.
+                String key = net.minecraft.core.registries.BuiltInRegistries.FLUID
+                    .getKey(fluid.getType()) + "|" + fluid.getAmount() + "|"
+                    + (fluid.isEmpty() ? false : fluid.getValue(
+                        net.minecraft.world.level.material.FlowingFluid.FALLING))
+                    + "|" + Oracle.bits(fluid.getOwnHeight()) + "|" + fluid.isSource()
+                    + "|" + possible.isSuffocating(
+                        net.minecraft.world.level.EmptyBlockGetter.INSTANCE,
+                        net.minecraft.core.BlockPos.ZERO);
+                perState.add(key);
+                distinct.add(key);
+            }
+            (distinct.size() == 1 ? distinct : perState).forEach(fluids::add);
+            described.add("fluids", fluids);
+            blocks.add(described);
+        }
         entry.add("blocks", blocks);
         return entry;
     }

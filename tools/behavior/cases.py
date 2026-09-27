@@ -13081,6 +13081,12 @@ def block_cases():
         "rows": [{"label": "registry"}],
     }
     yield {
+        "case_id": "block/movement-properties",
+        "family": "block",
+        "operation": "movement_properties",
+        "rows": [{"label": "registry"}],
+    }
+    yield {
         "case_id": "block/tints",
         "family": "block",
         "operation": "block_tints",
@@ -13089,110 +13095,119 @@ def block_cases():
 
 
 def movement_cases():
-    """`Entity.move` run as a whole, in a world the scenario describes.
+    """The reference's own client player, ticked through scenes.
 
-    Each row is a scene plus a list of per-tick deltas; the expected output is
-    the position, the motion and the four collision flags after every tick.
-    Pinning the composition matters as much as pinning its parts: the order
-    the flags are computed in, and the rounding between the steps, are what a
-    reimplementation gets wrong."""
+    Each row is a scene, a start pose and the keys held on every tick. The
+    expected output is everything the tick leaves behind — position, motion,
+    the collision flags, the pose — and every packet the player asked to
+    send, as the bytes the packet's own codec writes. This is the whole
+    client tick, not its parts: input, `aiStep`, `travel`, `move` and the
+    position packets, in the order the reference runs them."""
 
-    def floor(y, block="minecraft:stone", extent=4):
+    def floor(y=63, block="minecraft:stone", low=-16, high=31):
         return [{"x": x, "y": y, "z": z, "block": block}
-                for x in range(-extent, extent + 1)
-                for z in range(-extent, extent + 1)]
+                for x in range(low, high + 1) for z in range(low, high + 1)]
 
-    def column(x, z, low, high, block="minecraft:stone"):
-        return [{"x": x, "y": y, "z": z, "block": block} for y in range(low, high + 1)]
+    def column(x, z, low, high, block="minecraft:stone", properties=None):
+        out = []
+        for y in range(low, high + 1):
+            placed = {"x": x, "y": y, "z": z, "block": block}
+            if properties:
+                placed["properties"] = properties
+            out.append(placed)
+        return out
 
-    def gravity_ticks(count):
-        """What a falling entity does: gravity in, drag applied, then move."""
-        return [{"dx": float_bits(0.0, "f64"), "dy": float_bits(-0.08, "f64"),
-                 "dz": float_bits(0.0, "f64"), "accumulate": True}
-                for _ in range(count)]
+    def keys(count, **held):
+        tick = {name: held.get(name, False)
+                for name in ("forward", "backward", "left", "right", "jump", "sneak", "sprint")}
+        return [dict(tick) for _ in range(count)]
 
-    def push_ticks(count, dx, dz=0.0):
-        """A fresh delta every tick, so what `move` left behind is discarded."""
-        return [{"dx": float_bits(dx, "f64"), "dy": float_bits(0.0, "f64"),
-                 "dz": float_bits(dz, "f64"), "accumulate": False}
-                for _ in range(count)]
+    def turned(ticks, y_rot=None, x_rot=None):
+        for tick in ticks:
+            if y_rot is not None:
+                tick["y_rot"] = float_bits(y_rot)
+            if x_rot is not None:
+                tick["x_rot"] = float_bits(x_rot)
+        return ticks
 
-    def carried_ticks(count, dx):
-        """One push, then nothing: the motion `move` leaves behind carries on,
-        which is what a block's speed factor acts on."""
-        return ([{"dx": float_bits(dx, "f64"), "dy": float_bits(0.0, "f64"),
-                  "dz": float_bits(0.0, "f64"), "accumulate": True}]
-                + [{"dx": float_bits(0.0, "f64"), "dy": float_bits(0.0, "f64"),
-                    "dz": float_bits(0.0, "f64"), "accumulate": True}
-                   for _ in range(count - 1)])
+    def scene(label, blocks, ticks, start=(0.5, 64.0, 0.5), y_rot=0.0, x_rot=0.0,
+              game_mode="survival", auto_jump=False):
+        return {
+            "label": label,
+            "blocks": blocks,
+            "chunk_radius": 1,
+            "entity_id": 7,
+            "x": float_bits(start[0], "f64"),
+            "y": float_bits(start[1], "f64"),
+            "z": float_bits(start[2], "f64"),
+            "y_rot": float_bits(y_rot),
+            "x_rot": float_bits(x_rot),
+            "game_mode": game_mode,
+            "auto_jump": auto_jump,
+            "ticks": ticks,
+        }
 
-    # The side matters: on a client only the locally authoritative entity runs
-    # the whole of `move`, so a plain entity there skips the bounce and the
-    # fall damage check. Both sides are driven.
+    wall = [b for x in range(-3, 4) for b in column(x, 4, 64, 66)]
+    slab_step = [{"x": x, "y": 64, "z": z, "block": "minecraft:stone_slab"}
+                 for x in range(-3, 4) for z in range(3, 8)]
+    block_step = [b for x in range(-3, 4) for z in range(3, 8) for b in column(x, z, 64, 64)]
+    ledge = [{"x": x, "y": 63, "z": z, "block": "minecraft:stone"}
+             for x in range(-3, 4) for z in range(-3, 2)]
+    ladder = column(0, 1, 64, 70, "minecraft:ladder", {"facing": "north"})
+    ladder_wall = column(0, 2, 64, 70)
+    pool = [{"x": x, "y": y, "z": z, "block": "minecraft:water"}
+            for x in range(-6, 7) for z in range(-6, 7) for y in range(64, 67)]
+
     rows = [
-        # Falling onto a floor: the tick it lands on is where the flags flip.
-        ("fall-onto-floor", "minecraft:armor_stand", floor(63), (0.5, 70.0, 0.5),
-         False, False, gravity_ticks(40)),
-        # Landing from just above, so the very first tick collides.
-        ("land-immediately", "minecraft:armor_stand", floor(63), (0.5, 64.05, 0.5),
-         False, False, gravity_ticks(4)),
-        # Walking into a wall stops flush against it.
-        ("walk-into-wall", "minecraft:armor_stand",
-         floor(63) + column(2, 0, 64, 66), (0.5, 64.0, 0.5), True, False, push_ticks(20, 0.2)),
-        # A diagonal into a real inside corner: two walls, not two posts, so
-        # the entity cannot slip between them.
-        ("walk-into-corner", "minecraft:armor_stand",
-         floor(63)
-         + [b for z in range(-2, 3) for b in column(2, z, 64, 66)]
-         + [b for x in range(-2, 3) for b in column(x, 2, 64, 66)],
-         (0.5, 64.0, 0.5), True, False, push_ticks(20, 0.2, 0.2)),
-        # A single block step: the resolution does not climb it on its own.
-        ("walk-into-step", "minecraft:armor_stand",
-         floor(63) + column(2, 0, 64, 64), (0.5, 64.0, 0.5), True, False, push_ticks(20, 0.2)),
-        # Nothing underneath: the flags stay clear the whole way down.
-        ("fall-forever", "minecraft:armor_stand", [], (0.5, 70.0, 0.5),
-         False, False, gravity_ticks(10)),
-        # A slab floor, so the landing height is not a whole number.
-        ("land-on-slab", "minecraft:armor_stand", floor(63) +
-         [{"x": x, "y": 64, "z": z, "block": "minecraft:stone_slab"}
-          for x in range(-2, 3) for z in range(-2, 3)],
-         (0.5, 70.0, 0.5), False, False, gravity_ticks(40)),
-        # Honey applies a speed factor to the motion `move` leaves behind, so
-        # it only shows when the motion carries from tick to tick.
-        ("walk-on-honey", "minecraft:armor_stand", floor(63, "minecraft:honey_block"),
-         (0.5, 64.0, 0.5), True, False, carried_ticks(12, 0.2)),
-        ("walk-on-stone-carried", "minecraft:armor_stand", floor(63),
-         (0.5, 64.0, 0.5), True, False, carried_ticks(12, 0.2)),
-        # Landing on slime, on the side where the bounce actually runs.
-        ("land-on-slime", "minecraft:armor_stand", floor(63, "minecraft:slime_block"),
-         (0.5, 70.0, 0.5), False, False, gravity_ticks(40)),
-        # The same scene on a client, where a plain entity skips the bounce.
-        ("land-on-slime-clientside", "minecraft:armor_stand",
-         floor(63, "minecraft:slime_block"), (0.5, 70.0, 0.5), False, False,
-         gravity_ticks(40)),
-        # An entity moved by nothing still runs the whole path.
-        ("zero-delta", "minecraft:armor_stand", floor(63), (0.5, 64.0, 0.5),
-         True, False, push_ticks(3, 0.0)),
+        scene("stand-still", floor(), keys(6)),
+        scene("walk-forward", floor(), keys(20, forward=True)),
+        scene("walk-backward", floor(), keys(12, backward=True)),
+        scene("strafe-left", floor(), keys(12, left=True)),
+        scene("walk-diagonal", floor(), keys(12, forward=True, right=True)),
+        scene("walk-turned-45", floor(), keys(12, forward=True), y_rot=45.0),
+        scene("walk-then-turn", floor(),
+              keys(6, forward=True) + turned(keys(8, forward=True), y_rot=90.0)),
+        scene("walk-then-stop", floor(), keys(8, forward=True) + keys(10)),
+        scene("sprint", floor(), keys(20, forward=True, sprint=True)),
+        scene("sprint-then-release", floor(),
+              keys(10, forward=True, sprint=True) + keys(6, forward=True)),
+        scene("sneak-walk", floor(), keys(14, forward=True, sneak=True)),
+        scene("jump-once", floor(), keys(1, jump=True) + keys(14)),
+        scene("jump-held", floor(), keys(30, jump=True)),
+        scene("walk-jump", floor(), keys(20, forward=True, jump=True)),
+        scene("sprint-jump", floor(), keys(24, forward=True, sprint=True, jump=True)),
+        scene("walk-into-wall", floor() + wall, keys(20, forward=True)),
+        scene("step-onto-slab", floor() + slab_step, keys(16, forward=True)),
+        scene("walk-into-block-step", floor() + block_step, keys(16, forward=True)),
+        scene("jump-onto-block", floor() + block_step,
+              keys(4, forward=True) + keys(10, forward=True, jump=True)),
+        scene("fall-onto-floor", floor(), keys(30), start=(0.5, 72.0, 0.5)),
+        scene("walk-off-ledge", ledge, keys(20, forward=True)),
+        scene("sneak-at-ledge", ledge, keys(24, forward=True, sneak=True)),
+        scene("walk-on-ice", floor(block="minecraft:ice"), keys(10, forward=True) + keys(12)),
+        scene("walk-on-soul-sand", floor(block="minecraft:soul_sand"), keys(16, forward=True)),
+        scene("land-on-slime", floor(block="minecraft:slime_block"), keys(40),
+              start=(0.5, 72.0, 0.5)),
+        scene("walk-on-honey", floor(block="minecraft:honey_block"), keys(16, forward=True)),
+        scene("climb-ladder", floor() + ladder + ladder_wall,
+              keys(30, forward=True), y_rot=0.0),
+        scene("swim", floor(block="minecraft:stone") + pool, keys(20, forward=True),
+              start=(0.5, 65.0, 0.5)),
+        scene("swim-up", floor(block="minecraft:stone") + pool, keys(20, jump=True),
+              start=(0.5, 64.2, 0.5)),
+        scene("auto-jump", floor() + block_step, keys(20, forward=True), auto_jump=True),
+        scene("look-down-walk", floor(), turned(keys(10, forward=True), x_rot=90.0)),
+        scene("creative-double-jump-fly", floor(),
+              keys(1, jump=True) + keys(2) + keys(1, jump=True) + keys(10, jump=True)
+              + keys(10, forward=True), game_mode="creative"),
+        scene("spectator-float", floor(), keys(10, forward=True, jump=True),
+              game_mode="spectator"),
     ]
     yield {
-        "case_id": "movement/entity-move",
+        "case_id": "movement/local-player-ticks",
         "family": "movement",
-        "operation": "entity_move",
-        "rows": [
-            {
-                "label": label,
-                "entity": entity,
-                "blocks": blocks,
-                "x": float_bits(position[0], "f64"),
-                "y": float_bits(position[1], "f64"),
-                "z": float_bits(position[2], "f64"),
-                "on_ground": on_ground,
-                "shift_key_down": shift,
-                "client_side": label.endswith("-clientside"),
-                "ticks": ticks,
-            }
-            for label, entity, blocks, position, on_ground, shift, ticks in rows
-        ],
+        "operation": "local_player_ticks",
+        "rows": rows,
     }
 
 
@@ -13204,7 +13219,8 @@ def build_cases(families):
                   "image": image_cases,
                   "model": model_cases,
                   "json": json_cases,
-                  "block": block_cases}
+                  "block": block_cases,
+                  "movement": movement_cases}
     cases = [dict(schema_version=1, **case)
              for family in sorted(families) for case in generators[family]()]
     ids = [case["case_id"] for case in cases]

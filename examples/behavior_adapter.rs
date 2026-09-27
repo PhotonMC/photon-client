@@ -16363,6 +16363,56 @@ fn block_result(request: &Value) -> Result<Value, String> {
                     "blocks": blocks,
                 }));
             }
+            "movement_properties" => {
+                use voxel_client::world::block_movement_table as table;
+                let fluid_name = |kind: table::FluidKind| match kind {
+                    table::FluidKind::Empty => "minecraft:empty",
+                    table::FluidKind::Water => "minecraft:water",
+                    table::FluidKind::FlowingWater => "minecraft:flowing_water",
+                    table::FluidKind::Lava => "minecraft:lava",
+                    table::FluidKind::FlowingLava => "minecraft:flowing_lava",
+                };
+                let blocks: Vec<Value> = registry::BLOCKS
+                    .iter()
+                    .zip(table::BLOCKS.iter())
+                    .map(|(block, movement)| {
+                        let has = |flag: u16| movement.flags & flag != 0;
+                        let fluids: Vec<String> = movement
+                            .states
+                            .iter()
+                            .map(|index| {
+                                let traits = &table::STATE_TRAITS[usize::from(*index)];
+                                format!(
+                                    "{}|{}|{}|{:08x}|{}|{}",
+                                    fluid_name(traits.fluid),
+                                    traits.amount,
+                                    traits.falling,
+                                    traits.own_height,
+                                    traits.source,
+                                    traits.suffocating
+                                )
+                            })
+                            .collect();
+                        json!({
+                            "name": block.name,
+                            "friction": format!("{:08x}", movement.friction),
+                            "speed_factor": format!("{:08x}", movement.speed_factor),
+                            "jump_factor": format!("{:08x}", movement.jump_factor),
+                            "bounce_restitution": format!("{:08x}", movement.bounce_restitution),
+                            "climbable": has(table::flag::CLIMBABLE),
+                            "fence": has(table::flag::FENCE),
+                            "wall": has(table::flag::WALL),
+                            "can_glide_through": has(table::flag::CAN_GLIDE_THROUGH),
+                            "suppresses_bounce": has(table::flag::SUPPRESSES_BOUNCE),
+                            "fence_gate": has(table::flag::FENCE_GATE),
+                            "trapdoor": has(table::flag::TRAPDOOR),
+                            "ladder": has(table::flag::LADDER),
+                            "fluids": fluids,
+                        })
+                    })
+                    .collect();
+                out.push(json!({"label": label, "outcome": "listed", "blocks": blocks}));
+            }
             "block_tints" => {
                 let tinted: Vec<Value> = registry::TINTS
                     .iter()

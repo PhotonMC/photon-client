@@ -1053,7 +1053,7 @@ pub fn local_player_travel_flying(state: LocalPlayerTravelFlyingInput) -> Vec3 {
     moved.scale(drag)
 }
 
-fn local_player_relative_movement(input: Vec3, speed: f32, y_rot: f32) -> Vec3 {
+pub(crate) fn local_player_relative_movement(input: Vec3, speed: f32, y_rot: f32) -> Vec3 {
     let input_length_squared = input.length_squared();
     if input_length_squared < 1.0e-7 {
         Vec3::ZERO
