@@ -50,5 +50,14 @@ barışçıl ve `server-port=25600` içeriyor.
   Yüz gizleme artık komşunun çarpışma şekli tam blok olduğunda yüz atıyor;
   suyun altındaki zemin ve çiçek yanındaki yüzler görünüyor, ama referansın
   yüz yüze örtülme kuralı hâlâ uygulanmıyor.
+- Su ve lav referansın sıvı çizicisinin mantığıyla çiziliyor: köşe
+  yükseklikleri, akış yönüne dönen akış dokusu, aynı sıvıya bakan yüzün
+  atılması, arkadan görünen yüzey. Farklar: komşunun örtme şekli ve
+  katılığı çarpışma şekli tam blok mu diye yaklaşıklanıyor, su rengi biyom
+  yerine varsayılan biyomun rengi, yarı saydam yüzler sıralanmıyor, cam ve
+  yaprak yanındaki su kaplama dokusu yok, ışık yok.
+- Animasyonlu dokular (su, deniz otu, yosun, lav) atlasa ilk kareleriyle
+  giriyor; referansın kare boyutu kuralı uygulanıyor ama animasyon
+  oynatılmıyor.
 - Kare zamanlaması referansın zamanlayıcısı değil; tick'ler 50 ms birikimle
   sürülüyor.

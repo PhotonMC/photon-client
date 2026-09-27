@@ -610,6 +610,19 @@ impl render::AssetSource for FolderAssets {
             _ => None,
         }
     }
+
+    fn texture_animation(
+        &self,
+        name: &voxel_client::identifier::Identifier,
+    ) -> Option<render::AnimationFrames> {
+        let text = std::fs::read_to_string(self.path(name, "textures", ".png.mcmeta")).ok()?;
+        match voxel_client::json::parse(&text).ok()? {
+            voxel_client::json::JsonValue::Object(object) => {
+                render::AnimationFrames::parse(object.object("animation")?)
+            }
+            _ => None,
+        }
+    }
 }
 
 /// Join a server, wait for the chunks around the player, and build one mesh
@@ -782,7 +795,7 @@ impl HeldKeys {
 
 /// A scripted run: keys held for so many ticks, and turns applied between.
 struct Script {
-    steps: Vec<(HeldKeys, u32, f64)>,
+    steps: Vec<(HeldKeys, u32, f64, f64)>,
     index: usize,
     ticks_in_step: u32,
 }
@@ -799,7 +812,14 @@ impl Script {
         {
             if let Some(degrees) = step.strip_prefix("turn:") {
                 let degrees: f64 = degrees.parse().map_err(|_| format!("bad turn {degrees}"))?;
-                steps.push((HeldKeys::default(), 0, degrees));
+                steps.push((HeldKeys::default(), 0, degrees, 0.0));
+                continue;
+            }
+            if let Some(degrees) = step.strip_prefix("pitch:") {
+                let degrees: f64 = degrees
+                    .parse()
+                    .map_err(|_| format!("bad pitch {degrees}"))?;
+                steps.push((HeldKeys::default(), 0, 0.0, degrees));
                 continue;
             }
             let (keys, count) = step
@@ -808,7 +828,7 @@ impl Script {
             let count: u32 = count
                 .parse()
                 .map_err(|_| format!("bad tick count {count}"))?;
-            steps.push((HeldKeys::parse(keys)?, count, 0.0));
+            steps.push((HeldKeys::parse(keys)?, count, 0.0, 0.0));
         }
         Ok(Self {
             steps,
@@ -817,13 +837,16 @@ impl Script {
         })
     }
 
-    /// The keys for the next tick and a turn to apply first, or nothing once done.
-    fn next(&mut self) -> Option<(HeldKeys, f64)> {
+    /// The keys for the next tick and a turn and pitch to apply first, or
+    /// nothing once done.
+    fn next(&mut self) -> Option<(HeldKeys, f64, f64)> {
         let mut turn = 0.0;
+        let mut pitch = 0.0;
         loop {
-            let (keys, count, degrees) = *self.steps.get(self.index)?;
+            let (keys, count, degrees, tilt) = *self.steps.get(self.index)?;
             if count == 0 {
                 turn += degrees;
+                pitch += tilt;
                 self.index += 1;
                 continue;
             }
@@ -832,7 +855,7 @@ impl Script {
                 self.index += 1;
                 self.ticks_in_step = 0;
             }
-            return Some((keys, turn));
+            return Some((keys, turn, pitch));
         }
     }
 }
@@ -1035,12 +1058,12 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
             accumulated -= tick_length;
             let held = match script.as_mut() {
                 Some(script) => match script.next() {
-                    Some((held, turn)) => {
-                        if turn != 0.0
+                    Some((held, turn, pitch)) => {
+                        if (turn != 0.0 || pitch != 0.0)
                             && let Some(player) = session.player_mut()
                         {
                             let (y_rot, x_rot) = player.rotation();
-                            player.set_rotation(y_rot + turn as f32, x_rot);
+                            player.set_rotation(y_rot + turn as f32, x_rot + pitch as f32);
                         }
                         held
                     }

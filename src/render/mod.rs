@@ -44,7 +44,7 @@ pub use rotation::{
     rotate_vertex,
 };
 pub use scene::{Mesh, SpriteRect, Vertex, full_cube};
-pub use texture_metadata::TextureMetadata;
+pub use texture_metadata::{AnimationFrames, TextureMetadata};
 pub use tint::{
     ColourMap, ColourMapOutOfBounds, FOLIAGE_MANGROVE, LILY_PAD_IN_WORLD, colour_map_lookup,
     constant_tints, multiply,

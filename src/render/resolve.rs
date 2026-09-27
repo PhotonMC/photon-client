@@ -19,7 +19,7 @@ use crate::render::model::{
 use crate::render::png::{DecodedImage, decode_rgba};
 use crate::render::rotation::rotate_vertex;
 use crate::render::scene::{Mesh, Vertex};
-use crate::render::texture_metadata::TextureMetadata;
+use crate::render::texture_metadata::{AnimationFrames, TextureMetadata};
 
 /// Where model and texture files come from.
 ///
@@ -46,6 +46,14 @@ pub trait AssetSource {
     /// Absent metadata is not an error: every field has a default, and the
     /// default mip strategy decides itself from the sprite's texels.
     fn texture_metadata(&self, _name: &Identifier) -> Option<TextureMetadata> {
+        None
+    }
+
+    /// The animation section of one sprite's metadata, if it is animated.
+    ///
+    /// The atlas holds one frame of an animated sprite; the strip of frames
+    /// in its image never goes into the atlas whole.
+    fn texture_animation(&self, _name: &Identifier) -> Option<AnimationFrames> {
         None
     }
 }
@@ -206,7 +214,28 @@ pub fn build_atlas_for(
     max_size: i32,
     mip_level: i32,
 ) -> Result<BuiltAtlas, ResolveError> {
+    build_atlas_with(source, models, &[], max_size, mip_level)
+}
+
+/// Pack a set of models' textures together with sprites no model names,
+/// such as the fluid sprites the fluid renderer draws with.
+pub fn build_atlas_with(
+    source: &impl AssetSource,
+    models: &[&ResolvedModel],
+    extra: &[Identifier],
+    max_size: i32,
+    mip_level: i32,
+) -> Result<BuiltAtlas, ResolveError> {
     let mut wanted: BTreeMap<String, Material> = BTreeMap::new();
+    for sprite in extra {
+        wanted.insert(
+            sprite.as_string(),
+            Material {
+                sprite: sprite.clone(),
+                force_translucent: false,
+            },
+        );
+    }
     for model in models {
         for element in &model.elements {
             for (_, face) in &element.faces {
@@ -224,7 +253,11 @@ pub fn build_atlas_for(
         let bytes = source
             .texture(&material.sprite)
             .ok_or_else(|| ResolveError::BadTexture(key.clone()))?;
-        let image = decode_rgba(&bytes).map_err(|_| ResolveError::BadTexture(key.clone()))?;
+        let mut image = decode_rgba(&bytes).map_err(|_| ResolveError::BadTexture(key.clone()))?;
+        if let Some(animation) = source.texture_animation(&material.sprite) {
+            image = first_animation_frame(&image, &animation)
+                .ok_or_else(|| ResolveError::BadTexture(key.clone()))?;
+        }
         let metadata = source
             .texture_metadata(&material.sprite)
             .unwrap_or_default();
@@ -464,9 +497,90 @@ fn face_shade(facing: crate::direction::Direction) -> f32 {
     }
 }
 
+/// Cut the frame an animation starts on out of its strip. Frames run left to
+/// right, then down, as many to a row as fit across the image.
+fn first_animation_frame(
+    image: &DecodedImage,
+    animation: &AnimationFrames,
+) -> Option<DecodedImage> {
+    let (width, height) = (image.width as i32, image.height as i32);
+    let (frame_width, frame_height) = animation.frame_size(width, height);
+    if frame_width <= 0
+        || frame_height <= 0
+        || width % frame_width != 0
+        || height % frame_height != 0
+    {
+        return None;
+    }
+    let per_row = width / frame_width;
+    let count = per_row * (height / frame_height);
+    if animation.first_frame < 0 || animation.first_frame >= count {
+        return None;
+    }
+    let left = (animation.first_frame % per_row * frame_width) as usize;
+    let top = (animation.first_frame / per_row * frame_height) as usize;
+    let mut rgba = Vec::with_capacity((frame_width * frame_height * 4) as usize);
+    for row in 0..frame_height as usize {
+        let start = ((top + row) * image.width as usize + left) * 4;
+        rgba.extend_from_slice(&image.rgba[start..start + frame_width as usize * 4]);
+    }
+    Some(DecodedImage {
+        width: frame_width as u32,
+        height: frame_height as u32,
+        rgba,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn an_animated_strip_contributes_its_first_frame() {
+        // Three 2x2 frames stacked, each a solid shade, the second first.
+        let mut rgba = Vec::new();
+        for shade in [10_u8, 20, 30] {
+            for _ in 0..4 {
+                rgba.extend_from_slice(&[shade, shade, shade, 255]);
+            }
+        }
+        let strip = DecodedImage {
+            width: 2,
+            height: 6,
+            rgba,
+        };
+        let square = AnimationFrames::default();
+        let first = first_animation_frame(&strip, &square).expect("frame zero");
+        assert_eq!((first.width, first.height), (2, 2));
+        assert!(first.rgba.chunks(4).all(|texel| texel[0] == 10));
+        let listed = AnimationFrames {
+            first_frame: 1,
+            ..AnimationFrames::default()
+        };
+        let second = first_animation_frame(&strip, &listed).expect("frame one");
+        assert!(second.rgba.chunks(4).all(|texel| texel[0] == 20));
+        let outside = AnimationFrames {
+            first_frame: 3,
+            ..AnimationFrames::default()
+        };
+        assert!(first_animation_frame(&strip, &outside).is_none());
+    }
+
+    #[test]
+    fn frame_size_falls_back_side_by_side() {
+        let neither = AnimationFrames::default();
+        assert_eq!(neither.frame_size(16, 288), (16, 16));
+        let wide = AnimationFrames {
+            frame_width: Some(32),
+            ..AnimationFrames::default()
+        };
+        assert_eq!(wide.frame_size(64, 32), (32, 32));
+        let tall = AnimationFrames {
+            frame_height: Some(8),
+            ..AnimationFrames::default()
+        };
+        assert_eq!(tall.frame_size(16, 64), (16, 8));
+    }
 
     /// A solid image with one distinguishable column, so a shift shows up.
     fn ramp(width: u32, height: u32) -> DecodedImage {

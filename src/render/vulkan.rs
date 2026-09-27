@@ -162,6 +162,7 @@ struct SceneResources {
     index_buffer: vk::Buffer,
     index_memory: vk::DeviceMemory,
     index_count: u32,
+    translucent_index_count: u32,
     texture: vk::Image,
     texture_memory: vk::DeviceMemory,
     texture_view: vk::ImageView,
@@ -171,6 +172,8 @@ struct SceneResources {
     descriptor_set: vk::DescriptorSet,
     pipeline_layout: vk::PipelineLayout,
     pipeline: vk::Pipeline,
+    translucent_pipeline_layout: vk::PipelineLayout,
+    translucent_pipeline: vk::Pipeline,
 }
 
 /// One frame read back from the swapchain, as tightly packed RGBA8 rows.
@@ -631,6 +634,36 @@ impl VulkanBackend {
             );
             self.device
                 .cmd_draw_indexed(self.command_buffer, scene.index_count, 1, 0, 0, 0);
+            if scene.translucent_index_count > 0 {
+                self.device.cmd_bind_pipeline(
+                    self.command_buffer,
+                    vk::PipelineBindPoint::GRAPHICS,
+                    scene.translucent_pipeline,
+                );
+                self.device.cmd_bind_descriptor_sets(
+                    self.command_buffer,
+                    vk::PipelineBindPoint::GRAPHICS,
+                    scene.translucent_pipeline_layout,
+                    0,
+                    &[scene.descriptor_set],
+                    &[],
+                );
+                self.device.cmd_push_constants(
+                    self.command_buffer,
+                    scene.translucent_pipeline_layout,
+                    vk::ShaderStageFlags::VERTEX,
+                    0,
+                    std::slice::from_raw_parts(matrix.as_ptr().cast::<u8>(), 64),
+                );
+                self.device.cmd_draw_indexed(
+                    self.command_buffer,
+                    scene.translucent_index_count,
+                    1,
+                    scene.index_count,
+                    0,
+                    0,
+                );
+            }
             self.dynamic_rendering
                 .cmd_end_rendering(self.command_buffer);
         }
@@ -643,6 +676,7 @@ impl VulkanBackend {
     unsafe fn create_pipeline(
         &self,
         descriptor_layout: vk::DescriptorSetLayout,
+        translucent: bool,
     ) -> Result<(vk::PipelineLayout, vk::Pipeline), VulkanError> {
         unsafe {
             let compiler =
@@ -724,10 +758,24 @@ impl VulkanBackend {
                 .rasterization_samples(vk::SampleCountFlags::TYPE_1);
             let depth_state = vk::PipelineDepthStencilStateCreateInfo::default()
                 .depth_test_enable(true)
-                .depth_write_enable(true)
+                // Translucent faces are tested against the opaque depth but
+                // leave it alone, so what is behind them still shows.
+                .depth_write_enable(!translucent)
                 .depth_compare_op(vk::CompareOp::LESS);
-            let blends = [vk::PipelineColorBlendAttachmentState::default()
-                .color_write_mask(vk::ColorComponentFlags::RGBA)];
+            let blends = [if translucent {
+                vk::PipelineColorBlendAttachmentState::default()
+                    .blend_enable(true)
+                    .src_color_blend_factor(vk::BlendFactor::SRC_ALPHA)
+                    .dst_color_blend_factor(vk::BlendFactor::ONE_MINUS_SRC_ALPHA)
+                    .color_blend_op(vk::BlendOp::ADD)
+                    .src_alpha_blend_factor(vk::BlendFactor::ONE)
+                    .dst_alpha_blend_factor(vk::BlendFactor::ONE_MINUS_SRC_ALPHA)
+                    .alpha_blend_op(vk::BlendOp::ADD)
+                    .color_write_mask(vk::ColorComponentFlags::RGBA)
+            } else {
+                vk::PipelineColorBlendAttachmentState::default()
+                    .color_write_mask(vk::ColorComponentFlags::RGBA)
+            }];
             let blend = vk::PipelineColorBlendStateCreateInfo::default().attachments(&blends);
 
             let push_ranges = [vk::PushConstantRange::default()
@@ -793,9 +841,16 @@ impl VulkanBackend {
             );
             let (vertex_buffer, vertex_memory) =
                 self.upload_buffer(vk::BufferUsageFlags::VERTEX_BUFFER, vertex_bytes)?;
+            // One index buffer: the opaque faces, then the translucent ones.
+            let all_indices: Vec<u32> = mesh
+                .indices
+                .iter()
+                .chain(&mesh.translucent_indices)
+                .copied()
+                .collect();
             let index_bytes = std::slice::from_raw_parts(
-                mesh.indices.as_ptr().cast::<u8>(),
-                std::mem::size_of_val(mesh.indices.as_slice()),
+                all_indices.as_ptr().cast::<u8>(),
+                std::mem::size_of_val(all_indices.as_slice()),
             );
             let (index_buffer, index_memory) =
                 self.upload_buffer(vk::BufferUsageFlags::INDEX_BUFFER, index_bytes)?;
@@ -876,7 +931,9 @@ impl VulkanBackend {
                 .image_info(&image_info);
             self.device.update_descriptor_sets(&[write], &[]);
 
-            let (pipeline_layout, pipeline) = self.create_pipeline(descriptor_layout)?;
+            let (pipeline_layout, pipeline) = self.create_pipeline(descriptor_layout, false)?;
+            let (translucent_pipeline_layout, translucent_pipeline) =
+                self.create_pipeline(descriptor_layout, true)?;
 
             self.scene = Some(SceneResources {
                 vertex_buffer,
@@ -884,6 +941,7 @@ impl VulkanBackend {
                 index_buffer,
                 index_memory,
                 index_count: mesh.indices.len() as u32,
+                translucent_index_count: mesh.translucent_indices.len() as u32,
                 texture,
                 texture_memory,
                 texture_view,
@@ -893,6 +951,8 @@ impl VulkanBackend {
                 descriptor_set,
                 pipeline_layout,
                 pipeline,
+                translucent_pipeline_layout,
+                translucent_pipeline,
             });
             Ok(())
         }
@@ -1068,6 +1128,10 @@ impl VulkanBackend {
             let _ = self.device.device_wait_idle();
             if let Some(scene) = self.scene.take() {
                 self.device.destroy_pipeline(scene.pipeline, None);
+                self.device
+                    .destroy_pipeline(scene.translucent_pipeline, None);
+                self.device
+                    .destroy_pipeline_layout(scene.translucent_pipeline_layout, None);
                 self.device
                     .destroy_pipeline_layout(scene.pipeline_layout, None);
                 self.device

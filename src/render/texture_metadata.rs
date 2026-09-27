@@ -54,3 +54,45 @@ impl TextureMetadata {
         Some(parsed)
     }
 }
+
+/// The part of a sprite's `animation` section that decides what a still
+/// atlas shows: the frame size and which frame comes first.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+pub struct AnimationFrames {
+    pub frame_width: Option<i32>,
+    pub frame_height: Option<i32>,
+    /// The index the frame list starts on; zero when there is no list.
+    pub first_frame: i32,
+}
+
+impl AnimationFrames {
+    /// Read the section. A frame list entry is either an index or an object
+    /// with one.
+    pub fn parse(object: &JsonObject) -> Option<Self> {
+        let mut parsed = Self::default();
+        if object.has("width") {
+            parsed.frame_width = Some(object.i32("width")?);
+        }
+        if object.has("height") {
+            parsed.frame_height = Some(object.i32("height")?);
+        }
+        if let Some(first) = object.array("frames").and_then(|frames| frames.first()) {
+            parsed.first_frame = match first {
+                crate::json::JsonValue::Object(entry) => entry.i32("index")?,
+                other => other.as_i32()?,
+            };
+        }
+        Some(parsed)
+    }
+
+    /// The frame size for a sprite image: a missing side is the image's own,
+    /// and with neither given the frame is the square of the shorter side.
+    pub fn frame_size(&self, width: i32, height: i32) -> (i32, i32) {
+        match (self.frame_width, self.frame_height) {
+            (Some(frame_width), Some(frame_height)) => (frame_width, frame_height),
+            (Some(frame_width), None) => (frame_width, height),
+            (None, Some(frame_height)) => (width, frame_height),
+            (None, None) => (width.min(height), width.min(height)),
+        }
+    }
+}

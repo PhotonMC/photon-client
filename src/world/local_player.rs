@@ -2274,6 +2274,13 @@ impl LocalPlayer {
     }
 }
 
+/// The fluid a block state holds: whether it is water (rather than lava),
+/// its own height, and whether it is falling. Nothing for a dry state.
+pub fn state_fluid(state_id: i32) -> Option<(bool, f32, bool)> {
+    let info = StateInfo::of(Some(state_id));
+    (info.fluid != FluidKind::Empty).then(|| (info.is_water(), info.own_height, info.falling))
+}
+
 /// Whether a block state holds any fluid, as a section's fluid count sees it.
 pub fn state_has_fluid(state_id: i32) -> bool {
     StateInfo::of(Some(state_id)).fluid != FluidKind::Empty

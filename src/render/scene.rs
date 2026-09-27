@@ -33,6 +33,9 @@ pub struct Mesh {
     pub vertices: Vec<Vertex>,
     /// Triangle indices, six per face.
     pub indices: Vec<u32>,
+    /// Indices of the translucent faces, drawn after the rest with blending
+    /// and without writing depth.
+    pub translucent_indices: Vec<u32>,
 }
 
 /// Where one sprite sits on the atlas, in normalised coordinates.
