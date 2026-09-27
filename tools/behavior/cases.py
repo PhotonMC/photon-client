@@ -13082,6 +13082,114 @@ def block_cases():
     }
 
 
+def movement_cases():
+    """`Entity.move` run as a whole, in a world the scenario describes.
+
+    Each row is a scene plus a list of per-tick deltas; the expected output is
+    the position, the motion and the four collision flags after every tick.
+    Pinning the composition matters as much as pinning its parts: the order
+    the flags are computed in, and the rounding between the steps, are what a
+    reimplementation gets wrong."""
+
+    def floor(y, block="minecraft:stone", extent=4):
+        return [{"x": x, "y": y, "z": z, "block": block}
+                for x in range(-extent, extent + 1)
+                for z in range(-extent, extent + 1)]
+
+    def column(x, z, low, high, block="minecraft:stone"):
+        return [{"x": x, "y": y, "z": z, "block": block} for y in range(low, high + 1)]
+
+    def gravity_ticks(count):
+        """What a falling entity does: gravity in, drag applied, then move."""
+        return [{"dx": float_bits(0.0, "f64"), "dy": float_bits(-0.08, "f64"),
+                 "dz": float_bits(0.0, "f64"), "accumulate": True}
+                for _ in range(count)]
+
+    def push_ticks(count, dx, dz=0.0):
+        """A fresh delta every tick, so what `move` left behind is discarded."""
+        return [{"dx": float_bits(dx, "f64"), "dy": float_bits(0.0, "f64"),
+                 "dz": float_bits(dz, "f64"), "accumulate": False}
+                for _ in range(count)]
+
+    def carried_ticks(count, dx):
+        """One push, then nothing: the motion `move` leaves behind carries on,
+        which is what a block's speed factor acts on."""
+        return ([{"dx": float_bits(dx, "f64"), "dy": float_bits(0.0, "f64"),
+                  "dz": float_bits(0.0, "f64"), "accumulate": True}]
+                + [{"dx": float_bits(0.0, "f64"), "dy": float_bits(0.0, "f64"),
+                    "dz": float_bits(0.0, "f64"), "accumulate": True}
+                   for _ in range(count - 1)])
+
+    # The side matters: on a client only the locally authoritative entity runs
+    # the whole of `move`, so a plain entity there skips the bounce and the
+    # fall damage check. Both sides are driven.
+    rows = [
+        # Falling onto a floor: the tick it lands on is where the flags flip.
+        ("fall-onto-floor", "minecraft:armor_stand", floor(63), (0.5, 70.0, 0.5),
+         False, False, gravity_ticks(40)),
+        # Landing from just above, so the very first tick collides.
+        ("land-immediately", "minecraft:armor_stand", floor(63), (0.5, 64.05, 0.5),
+         False, False, gravity_ticks(4)),
+        # Walking into a wall stops flush against it.
+        ("walk-into-wall", "minecraft:armor_stand",
+         floor(63) + column(2, 0, 64, 66), (0.5, 64.0, 0.5), True, False, push_ticks(20, 0.2)),
+        # A diagonal into a real inside corner: two walls, not two posts, so
+        # the entity cannot slip between them.
+        ("walk-into-corner", "minecraft:armor_stand",
+         floor(63)
+         + [b for z in range(-2, 3) for b in column(2, z, 64, 66)]
+         + [b for x in range(-2, 3) for b in column(x, 2, 64, 66)],
+         (0.5, 64.0, 0.5), True, False, push_ticks(20, 0.2, 0.2)),
+        # A single block step: the resolution does not climb it on its own.
+        ("walk-into-step", "minecraft:armor_stand",
+         floor(63) + column(2, 0, 64, 64), (0.5, 64.0, 0.5), True, False, push_ticks(20, 0.2)),
+        # Nothing underneath: the flags stay clear the whole way down.
+        ("fall-forever", "minecraft:armor_stand", [], (0.5, 70.0, 0.5),
+         False, False, gravity_ticks(10)),
+        # A slab floor, so the landing height is not a whole number.
+        ("land-on-slab", "minecraft:armor_stand", floor(63) +
+         [{"x": x, "y": 64, "z": z, "block": "minecraft:stone_slab"}
+          for x in range(-2, 3) for z in range(-2, 3)],
+         (0.5, 70.0, 0.5), False, False, gravity_ticks(40)),
+        # Honey applies a speed factor to the motion `move` leaves behind, so
+        # it only shows when the motion carries from tick to tick.
+        ("walk-on-honey", "minecraft:armor_stand", floor(63, "minecraft:honey_block"),
+         (0.5, 64.0, 0.5), True, False, carried_ticks(12, 0.2)),
+        ("walk-on-stone-carried", "minecraft:armor_stand", floor(63),
+         (0.5, 64.0, 0.5), True, False, carried_ticks(12, 0.2)),
+        # Landing on slime, on the side where the bounce actually runs.
+        ("land-on-slime", "minecraft:armor_stand", floor(63, "minecraft:slime_block"),
+         (0.5, 70.0, 0.5), False, False, gravity_ticks(40)),
+        # The same scene on a client, where a plain entity skips the bounce.
+        ("land-on-slime-clientside", "minecraft:armor_stand",
+         floor(63, "minecraft:slime_block"), (0.5, 70.0, 0.5), False, False,
+         gravity_ticks(40)),
+        # An entity moved by nothing still runs the whole path.
+        ("zero-delta", "minecraft:armor_stand", floor(63), (0.5, 64.0, 0.5),
+         True, False, push_ticks(3, 0.0)),
+    ]
+    yield {
+        "case_id": "movement/entity-move",
+        "family": "movement",
+        "operation": "entity_move",
+        "rows": [
+            {
+                "label": label,
+                "entity": entity,
+                "blocks": blocks,
+                "x": float_bits(position[0], "f64"),
+                "y": float_bits(position[1], "f64"),
+                "z": float_bits(position[2], "f64"),
+                "on_ground": on_ground,
+                "shift_key_down": shift,
+                "client_side": label.endswith("-clientside"),
+                "ticks": ticks,
+            }
+            for label, entity, blocks, position, on_ground, shift, ticks in rows
+        ],
+    }
+
+
 def build_cases(families):
     generators = {"wire": wire_cases, "math": math_cases, "timer": timer_cases, "utf8": utf8_cases,
                   "binary": binary_cases, "nbt": nbt_cases, "resources": resources_cases,

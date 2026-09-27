@@ -222,9 +222,12 @@ def run_command(args, run_dir, report):
              *map(str, sources)], run_dir, "javac")
     java = [commands["java"], "-Djava.awt.headless=true", "-Duser.language=en", "-Duser.country=US",
             "-Duser.timezone=UTC", "-cp", str(classes) + os.pathsep + classpath, "Oracle"]
-    raw, _ = execute(java, run_dir, "java-first", stdin)
+    # Bootstrapping the game's registries and walking every block state takes
+    # longer than the other families put together, so that family gets room.
+    java_timeout = 900 if {"block", "movement"} & set(families) else 60
+    raw, _ = execute(java, run_dir, "java-first", stdin, timeout=java_timeout)
     first = parse_records(raw, cases)
-    second_raw, _ = execute(java, run_dir, "java-second", stdin)
+    second_raw, _ = execute(java, run_dir, "java-second", stdin, timeout=java_timeout)
     second = parse_records(second_raw, cases)
     report["difference"] = compare_records(first, second)
     if report["difference"]:

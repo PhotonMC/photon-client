@@ -57,6 +57,7 @@ public final class BlockOracle {
             switch (operation) {
                 case "state_definitions" -> rows.add(stateDefinitions(element.getAsJsonObject()));
                 case "block_tints" -> rows.add(blockTints(element.getAsJsonObject()));
+                case "face_occlusion" -> rows.add(faceOcclusion(element.getAsJsonObject()));
                 default -> throw new IllegalArgumentException("Unknown block operation: " + operation);
             }
         }
@@ -121,6 +122,157 @@ public final class BlockOracle {
     private static String name(
         net.minecraft.world.level.block.state.properties.Property property, Comparable value) {
         return property.getName(value);
+    }
+
+    /**
+     * Everything the face culling decision reads, as three tables.
+     *
+     * A face's occlusion shape is one of: the whole block, nothing, or one of
+     * a small set of partial shapes. Two states rarely differ in all six, so
+     * the six are grouped into tuples and a block names the tuple each of its
+     * states uses. The last step of the decision asks whether one shape
+     * sticks out past another, which is a pure function of the two shapes and
+     * so is a table as well.
+     */
+    private static JsonObject faceOcclusion(JsonObject row) {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        entry.addProperty("outcome", "listed");
+        var registry = net.minecraft.core.registries.BuiltInRegistries.BLOCK;
+        // Shape kind zero is nothing and one is the whole block; the partial
+        // shapes are numbered after them in the order they turn up.
+        //
+        // Keyed by the boxes the shape holds, not by the object. The reference
+        // hands back a fresh instance per state and `VoxelShape` does not
+        // compare by value, so keying by identity counts the same shape
+        // thousands of times.
+        var shapeIds = new java.util.LinkedHashMap<String, Integer>();
+        var shapeByKey = new java.util.LinkedHashMap<
+            String, net.minecraft.world.phys.shapes.VoxelShape>();
+        var tupleIds = new java.util.LinkedHashMap<String, Integer>();
+        var tuples = new JsonArray();
+        var blocks = new JsonArray();
+        for (var block : registry) {
+            var perState = new JsonArray();
+            for (var state : block.getStateDefinition().getPossibleStates()) {
+                var key = new StringBuilder();
+                var kinds = new int[6];
+                int slot = 0;
+                for (var direction : net.minecraft.core.Direction.values()) {
+                    var shape = state.getFaceOcclusionShape(direction);
+                    int kind;
+                    if (shape == net.minecraft.world.phys.shapes.Shapes.empty()) {
+                        kind = 0;
+                    } else if (shape == net.minecraft.world.phys.shapes.Shapes.block()) {
+                        kind = 1;
+                    } else {
+                        String shapeKey = shape.toAabbs().toString();
+                        kind = shapeIds.computeIfAbsent(shapeKey, k -> shapeIds.size() + 2);
+                        shapeByKey.putIfAbsent(shapeKey, shape);
+                    }
+                    kinds[slot++] = kind;
+                    key.append(kind).append(',');
+                }
+                Integer tuple = tupleIds.get(key.toString());
+                if (tuple == null) {
+                    tuple = tupleIds.size();
+                    tupleIds.put(key.toString(), tuple);
+                    var described = new JsonArray();
+                    for (int kind : kinds) {
+                        described.add(kind);
+                    }
+                    tuples.add(described);
+                }
+                perState.add(tuple);
+            }
+            // A block whose states all share one tuple carries just that one.
+            var distinct = new java.util.LinkedHashSet<com.google.gson.JsonElement>();
+            perState.forEach(distinct::add);
+            var described = new JsonObject();
+            described.addProperty("name", registry.getKey(block).toString());
+            var listed = new JsonArray();
+            (distinct.size() == 1 ? distinct : perState).forEach(listed::add);
+            described.add("tuples", listed);
+            blocks.add(described);
+        }
+        entry.add("tuples", tuples);
+        entry.add("blocks", blocks);
+
+        // Whether the first shape has any part the second does not cover.
+        var ordered = new java.util.ArrayList<net.minecraft.world.phys.shapes.VoxelShape>();
+        ordered.add(net.minecraft.world.phys.shapes.Shapes.empty());
+        ordered.add(net.minecraft.world.phys.shapes.Shapes.block());
+        ordered.addAll(shapeByKey.values());
+        var joins = new JsonArray();
+        for (var shape : ordered) {
+            var line = new StringBuilder();
+            for (var occluder : ordered) {
+                line.append(net.minecraft.world.phys.shapes.Shapes.joinIsNotEmpty(
+                    shape, occluder, net.minecraft.world.phys.shapes.BooleanOp.ONLY_FIRST)
+                    ? '1' : '0');
+            }
+            joins.add(line.toString());
+        }
+        entry.addProperty("shape_count", ordered.size());
+        entry.add("joins", joins);
+
+        // Which ordered pairs of blocks hide their shared face, and whether
+        // that ever depends on the states rather than on the blocks alone.
+        //
+        // The default states are scanned first because almost every pair says
+        // no; only the pairs that say yes are then checked across every state,
+        // which keeps this from being a scan of every state against every
+        // other state.
+        var candidates = new java.util.ArrayList<
+            net.minecraft.world.level.block.Block[]>();
+        for (var block : registry) {
+            var state = block.defaultBlockState();
+            for (var other : registry) {
+                var neighbour = other.defaultBlockState();
+                for (var direction : net.minecraft.core.Direction.values()) {
+                    if (state.skipRendering(neighbour, direction)) {
+                        candidates.add(new net.minecraft.world.level.block.Block[] {block, other});
+                        break;
+                    }
+                }
+            }
+        }
+        // A pair is reported with what it actually depends on, because the
+        // first measurement of this assumed "the blocks alone" and that turned
+        // out to be wrong for some of them.
+        var skips = new JsonArray();
+        for (var pair : candidates) {
+            boolean all = true;
+            var directions = new java.util.TreeSet<String>();
+            for (var state : pair[0].getStateDefinition().getPossibleStates()) {
+                for (var neighbour : pair[1].getStateDefinition().getPossibleStates()) {
+                    for (var direction : net.minecraft.core.Direction.values()) {
+                        if (state.skipRendering(neighbour, direction)) {
+                            directions.add(direction.getName());
+                        } else {
+                            all = false;
+                        }
+                    }
+                }
+            }
+            var described = new JsonObject();
+            described.addProperty("block", registry.getKey(pair[0]).toString());
+            described.addProperty("neighbour", registry.getKey(pair[1]).toString());
+            described.addProperty("always", all);
+            var listed = new JsonArray();
+            directions.forEach(listed::add);
+            described.add("directions", listed);
+            skips.add(described);
+        }
+        entry.add("skip_pairs", skips);
+        boolean stateDependent = false;
+        for (var element : skips) {
+            if (!element.getAsJsonObject().get("always").getAsBoolean()) {
+                stateDependent = true;
+            }
+        }
+        entry.addProperty("skip_is_state_dependent", stateDependent);
+        return entry;
     }
 
     /** What each block's tint layers resolve to outside a world. */

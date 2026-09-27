@@ -51,6 +51,7 @@ public final class Oracle {
                     case "model" -> "ModelOracle";
                     case "json" -> "JsonOracle";
                     case "block" -> "BlockOracle";
+                    case "movement" -> "MovementOracle";
                     default -> throw new IllegalArgumentException("Unknown scenario family");
                 };
                 var response = new JsonObject();
@@ -71,6 +72,10 @@ public final class Oracle {
 
     static float f32(JsonObject object, String name) {
         return Float.intBitsToFloat(Integer.parseUnsignedInt(object.get(name).getAsString(), 16));
+    }
+
+    static double f64(JsonObject object, String name) {
+        return Double.longBitsToDouble(Long.parseUnsignedLong(object.get(name).getAsString(), 16));
     }
 
     static String bits(float value) {
