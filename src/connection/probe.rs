@@ -1870,6 +1870,11 @@ pub(crate) fn open_play_connection(
                         .map_err(|_| ConnectionError::Codec("registry data"))?;
                 trace.registry_packet_count += 1;
                 trace.registry_entry_count += packet.entries.len();
+                trace
+                    .registry_entry_names
+                    .entry(packet.registry.as_string())
+                    .or_default()
+                    .extend(packet.entries.iter().map(|entry| entry.id.as_string()));
                 if packet.registry.as_string() == "minecraft:dimension_type" {
                     for entry in packet.entries {
                         let bounds = entry

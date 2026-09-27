@@ -13,6 +13,7 @@ pub mod png;
 pub mod resolve;
 pub mod rotation;
 pub mod scene;
+pub mod sky;
 pub mod texture_metadata;
 pub mod tint;
 mod uv_lock_table;

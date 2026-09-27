@@ -69,6 +69,62 @@ void main() {
 }
 ";
 
+/// The sky's shaders. Colour comes from the vertex, a texture only when the
+/// vertex carries atlas coordinates, and fog as the reference's sky shader
+/// applies it: towards the fog colour over the spherical distance, and fully
+/// past the same distance measured cylindrically.
+const SKY_VERTEX_SHADER: &str = r"#version 450
+layout(push_constant) uniform Push { mat4 view_projection; } push;
+layout(location = 0) in vec3 in_position;
+layout(location = 1) in vec2 in_uv;
+layout(location = 2) in vec4 in_colour;
+layout(location = 3) in vec2 in_fog;
+layout(location = 0) out vec2 out_uv;
+layout(location = 1) out vec4 out_colour;
+layout(location = 2) out vec2 out_fog;
+void main() {
+    gl_Position = push.view_projection * vec4(in_position, 1.0);
+    out_uv = in_uv;
+    out_colour = in_colour;
+    out_fog = in_fog;
+}
+";
+
+const SKY_FRAGMENT_SHADER: &str = r"#version 450
+layout(set = 0, binding = 0) uniform sampler2D atlas;
+layout(push_constant) uniform Push { layout(offset = 64) vec4 fog_colour; float sky_end; } push;
+layout(location = 0) in vec2 in_uv;
+layout(location = 1) in vec4 in_colour;
+layout(location = 2) in vec2 in_fog;
+layout(location = 0) out vec4 out_colour;
+void main() {
+    vec4 colour = in_colour;
+    if (in_uv.x >= 0.0) {
+        // Celestial sprites are sampled at the nearest texel of the top level.
+        ivec2 size = textureSize(atlas, 0);
+        vec4 texel = texelFetch(atlas, clamp(ivec2(floor(in_uv * vec2(size))), ivec2(0), size - 1), 0);
+        if (texel.a == 0.0) { discard; }
+        colour *= texel;
+    }
+    if (in_fog.x >= 0.0) {
+        float spherical = in_fog.x <= 0.0 ? 0.0 : (in_fog.x >= push.sky_end ? 1.0 : in_fog.x / push.sky_end);
+        float cylindrical = in_fog.y <= push.sky_end ? 0.0 : 1.0;
+        float fog = max(spherical, cylindrical);
+        colour.rgb = mix(colour.rgb, push.fog_colour.rgb, fog * push.fog_colour.a);
+    }
+    out_colour = colour;
+}
+";
+
+/// Which of the drawing pipelines to build.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum PipelineKind {
+    Terrain,
+    Translucent,
+    SkyTranslucent,
+    SkyOverlay,
+}
+
 /// Instance API version the reference asks for.
 const API_VERSION: u32 = vk::API_VERSION_1_2;
 /// Lowest device API version the reference's feature query accepts.
@@ -174,6 +230,26 @@ struct SceneResources {
     pipeline: vk::Pipeline,
     translucent_pipeline_layout: vk::PipelineLayout,
     translucent_pipeline: vk::Pipeline,
+    sky_pipeline_layout: vk::PipelineLayout,
+    sky_pipeline: vk::Pipeline,
+    sky_overlay_pipeline_layout: vk::PipelineLayout,
+    sky_overlay_pipeline: vk::Pipeline,
+}
+
+/// The sky's vertex buffer, rewritten every frame.
+struct SkyBuffer {
+    buffer: vk::Buffer,
+    memory: vk::DeviceMemory,
+    capacity: usize,
+}
+
+/// One frame of sky, waiting for the next render.
+struct PendingSky {
+    vertex_count: u32,
+    batches: Vec<(crate::render::sky::SkyBlend, u32, u32)>,
+    view_projection: [[f32; 4]; 4],
+    fog_colour: [f32; 4],
+    sky_end: f32,
 }
 
 /// One frame read back from the swapchain, as tightly packed RGBA8 rows.
@@ -209,6 +285,8 @@ pub struct VulkanBackend {
     readback_memory: vk::DeviceMemory,
     depth: Option<DepthTarget>,
     scene: Option<SceneResources>,
+    sky_buffer: Option<SkyBuffer>,
+    pending_sky: Option<PendingSky>,
     image_available: vk::Semaphore,
     render_finished: Vec<vk::Semaphore>,
     in_flight: vk::Fence,
@@ -459,6 +537,8 @@ impl VulkanBackend {
                 readback_memory,
                 depth: None,
                 scene: None,
+                sky_buffer: None,
+                pending_sky: None,
                 image_available,
                 render_finished,
                 in_flight,
@@ -599,6 +679,57 @@ impl VulkanBackend {
                 .depth_attachment(&depth_attachment);
             self.dynamic_rendering
                 .cmd_begin_rendering(self.command_buffer, &rendering);
+            // The sky first, over the cleared fog colour and under everything.
+            if let (Some(sky), Some(buffer)) = (self.pending_sky.as_ref(), self.sky_buffer.as_ref())
+                && sky.vertex_count > 0
+            {
+                self.device
+                    .cmd_bind_vertex_buffers(self.command_buffer, 0, &[buffer.buffer], &[0]);
+                let matrix: [f32; 16] = std::array::from_fn(|i| sky.view_projection[i / 4][i % 4]);
+                let mut fragment = [0.0_f32; 8];
+                fragment[..4].copy_from_slice(&sky.fog_colour);
+                fragment[4] = sky.sky_end;
+                for &(blend, first, count) in &sky.batches {
+                    let (layout, pipeline) = match blend {
+                        crate::render::sky::SkyBlend::Translucent => {
+                            (scene.sky_pipeline_layout, scene.sky_pipeline)
+                        }
+                        crate::render::sky::SkyBlend::Overlay => (
+                            scene.sky_overlay_pipeline_layout,
+                            scene.sky_overlay_pipeline,
+                        ),
+                    };
+                    self.device.cmd_bind_pipeline(
+                        self.command_buffer,
+                        vk::PipelineBindPoint::GRAPHICS,
+                        pipeline,
+                    );
+                    self.device.cmd_bind_descriptor_sets(
+                        self.command_buffer,
+                        vk::PipelineBindPoint::GRAPHICS,
+                        layout,
+                        0,
+                        &[scene.descriptor_set],
+                        &[],
+                    );
+                    self.device.cmd_push_constants(
+                        self.command_buffer,
+                        layout,
+                        vk::ShaderStageFlags::VERTEX,
+                        0,
+                        std::slice::from_raw_parts(matrix.as_ptr().cast::<u8>(), 64),
+                    );
+                    self.device.cmd_push_constants(
+                        self.command_buffer,
+                        layout,
+                        vk::ShaderStageFlags::FRAGMENT,
+                        64,
+                        std::slice::from_raw_parts(fragment.as_ptr().cast::<u8>(), 32),
+                    );
+                    self.device
+                        .cmd_draw(self.command_buffer, count, 1, first, 0);
+                }
+            }
             self.device.cmd_bind_pipeline(
                 self.command_buffer,
                 vk::PipelineBindPoint::GRAPHICS,
@@ -676,8 +807,13 @@ impl VulkanBackend {
     unsafe fn create_pipeline(
         &self,
         descriptor_layout: vk::DescriptorSetLayout,
-        translucent: bool,
+        kind: PipelineKind,
     ) -> Result<(vk::PipelineLayout, vk::Pipeline), VulkanError> {
+        let sky = matches!(
+            kind,
+            PipelineKind::SkyTranslucent | PipelineKind::SkyOverlay
+        );
+        let translucent = kind == PipelineKind::Translucent;
         unsafe {
             let compiler =
                 shaderc::Compiler::new().map_err(|error| VulkanError::Loader(error.to_string()))?;
@@ -687,9 +823,14 @@ impl VulkanBackend {
                     .map(|artifact| artifact.as_binary().to_vec())
                     .map_err(|error| VulkanError::Loader(error.to_string()))
             };
-            let vertex_code = compile(VERTEX_SHADER, shaderc::ShaderKind::Vertex, "cube.vert")?;
+            let (vertex_source, fragment_source) = if sky {
+                (SKY_VERTEX_SHADER, SKY_FRAGMENT_SHADER)
+            } else {
+                (VERTEX_SHADER, FRAGMENT_SHADER)
+            };
+            let vertex_code = compile(vertex_source, shaderc::ShaderKind::Vertex, "scene.vert")?;
             let fragment_code =
-                compile(FRAGMENT_SHADER, shaderc::ShaderKind::Fragment, "cube.frag")?;
+                compile(fragment_source, shaderc::ShaderKind::Fragment, "scene.frag")?;
             let make_module = |code: &[u32]| -> Result<vk::ShaderModule, VulkanError> {
                 self.device
                     .create_shader_module(&vk::ShaderModuleCreateInfo::default().code(code), None)
@@ -710,11 +851,38 @@ impl VulkanBackend {
                     .name(&entry),
             ];
 
+            let stride = if sky {
+                std::mem::size_of::<crate::render::sky::SkyVertex>()
+            } else {
+                std::mem::size_of::<Vertex>()
+            };
             let bindings = [vk::VertexInputBindingDescription::default()
                 .binding(0)
-                .stride(std::mem::size_of::<Vertex>() as u32)
+                .stride(stride as u32)
                 .input_rate(vk::VertexInputRate::VERTEX)];
-            let attributes = [
+            let sky_attributes = [
+                vk::VertexInputAttributeDescription::default()
+                    .location(0)
+                    .binding(0)
+                    .format(vk::Format::R32G32B32_SFLOAT)
+                    .offset(0),
+                vk::VertexInputAttributeDescription::default()
+                    .location(1)
+                    .binding(0)
+                    .format(vk::Format::R32G32_SFLOAT)
+                    .offset(12),
+                vk::VertexInputAttributeDescription::default()
+                    .location(2)
+                    .binding(0)
+                    .format(vk::Format::R32G32B32A32_SFLOAT)
+                    .offset(20),
+                vk::VertexInputAttributeDescription::default()
+                    .location(3)
+                    .binding(0)
+                    .format(vk::Format::R32G32_SFLOAT)
+                    .offset(36),
+            ];
+            let terrain_attributes = [
                 vk::VertexInputAttributeDescription::default()
                     .location(0)
                     .binding(0)
@@ -736,9 +904,14 @@ impl VulkanBackend {
                     .format(vk::Format::R32G32B32A32_SFLOAT)
                     .offset(24),
             ];
+            let attributes: &[vk::VertexInputAttributeDescription] = if sky {
+                &sky_attributes
+            } else {
+                &terrain_attributes
+            };
             let vertex_input = vk::PipelineVertexInputStateCreateInfo::default()
                 .vertex_binding_descriptions(&bindings)
-                .vertex_attribute_descriptions(&attributes);
+                .vertex_attribute_descriptions(attributes);
             let assembly = vk::PipelineInputAssemblyStateCreateInfo::default()
                 .topology(vk::PrimitiveTopology::TRIANGLE_LIST);
             let viewports = [vk::Viewport::default()
@@ -751,18 +924,34 @@ impl VulkanBackend {
                 .scissors(&scissors);
             let raster = vk::PipelineRasterizationStateCreateInfo::default()
                 .polygon_mode(vk::PolygonMode::FILL)
-                .cull_mode(vk::CullModeFlags::BACK)
+                // The sky's fans are built in either winding.
+                .cull_mode(if sky {
+                    vk::CullModeFlags::NONE
+                } else {
+                    vk::CullModeFlags::BACK
+                })
                 .front_face(vk::FrontFace::COUNTER_CLOCKWISE)
                 .line_width(1.0);
             let multisample = vk::PipelineMultisampleStateCreateInfo::default()
                 .rasterization_samples(vk::SampleCountFlags::TYPE_1);
             let depth_state = vk::PipelineDepthStencilStateCreateInfo::default()
-                .depth_test_enable(true)
-                // Translucent faces are tested against the opaque depth but
-                // leave it alone, so what is behind them still shows.
-                .depth_write_enable(!translucent)
+                // The sky is behind everything and tests nothing. Translucent
+                // faces are tested against the opaque depth but leave it
+                // alone, so what is behind them still shows.
+                .depth_test_enable(!sky)
+                .depth_write_enable(kind == PipelineKind::Terrain)
                 .depth_compare_op(vk::CompareOp::LESS);
-            let blends = [if translucent {
+            let blends = [if kind == PipelineKind::SkyOverlay {
+                vk::PipelineColorBlendAttachmentState::default()
+                    .blend_enable(true)
+                    .src_color_blend_factor(vk::BlendFactor::SRC_ALPHA)
+                    .dst_color_blend_factor(vk::BlendFactor::ONE)
+                    .color_blend_op(vk::BlendOp::ADD)
+                    .src_alpha_blend_factor(vk::BlendFactor::ONE)
+                    .dst_alpha_blend_factor(vk::BlendFactor::ZERO)
+                    .alpha_blend_op(vk::BlendOp::ADD)
+                    .color_write_mask(vk::ColorComponentFlags::RGBA)
+            } else if translucent || sky {
                 vk::PipelineColorBlendAttachmentState::default()
                     .blend_enable(true)
                     .src_color_blend_factor(vk::BlendFactor::SRC_ALPHA)
@@ -778,16 +967,27 @@ impl VulkanBackend {
             }];
             let blend = vk::PipelineColorBlendStateCreateInfo::default().attachments(&blends);
 
-            let push_ranges = [vk::PushConstantRange::default()
-                .stage_flags(vk::ShaderStageFlags::VERTEX)
-                .size(64)];
+            let push_ranges = [
+                vk::PushConstantRange::default()
+                    .stage_flags(vk::ShaderStageFlags::VERTEX)
+                    .size(64),
+                vk::PushConstantRange::default()
+                    .stage_flags(vk::ShaderStageFlags::FRAGMENT)
+                    .offset(64)
+                    .size(32),
+            ];
+            let push_ranges = if sky {
+                &push_ranges[..]
+            } else {
+                &push_ranges[..1]
+            };
             let set_layouts = [descriptor_layout];
             let pipeline_layout = self
                 .device
                 .create_pipeline_layout(
                     &vk::PipelineLayoutCreateInfo::default()
                         .set_layouts(&set_layouts)
-                        .push_constant_ranges(&push_ranges),
+                        .push_constant_ranges(push_ranges),
                     None,
                 )
                 .map_err(|result| VulkanError::Call("vkCreatePipelineLayout", result))?;
@@ -931,9 +1131,14 @@ impl VulkanBackend {
                 .image_info(&image_info);
             self.device.update_descriptor_sets(&[write], &[]);
 
-            let (pipeline_layout, pipeline) = self.create_pipeline(descriptor_layout, false)?;
+            let (pipeline_layout, pipeline) =
+                self.create_pipeline(descriptor_layout, PipelineKind::Terrain)?;
             let (translucent_pipeline_layout, translucent_pipeline) =
-                self.create_pipeline(descriptor_layout, true)?;
+                self.create_pipeline(descriptor_layout, PipelineKind::Translucent)?;
+            let (sky_pipeline_layout, sky_pipeline) =
+                self.create_pipeline(descriptor_layout, PipelineKind::SkyTranslucent)?;
+            let (sky_overlay_pipeline_layout, sky_overlay_pipeline) =
+                self.create_pipeline(descriptor_layout, PipelineKind::SkyOverlay)?;
 
             self.scene = Some(SceneResources {
                 vertex_buffer,
@@ -953,6 +1158,10 @@ impl VulkanBackend {
                 pipeline,
                 translucent_pipeline_layout,
                 translucent_pipeline,
+                sky_pipeline_layout,
+                sky_pipeline,
+                sky_overlay_pipeline_layout,
+                sky_overlay_pipeline,
             });
             Ok(())
         }
@@ -1130,6 +1339,13 @@ impl VulkanBackend {
                 self.device.destroy_pipeline(scene.pipeline, None);
                 self.device
                     .destroy_pipeline(scene.translucent_pipeline, None);
+                self.device.destroy_pipeline(scene.sky_pipeline, None);
+                self.device
+                    .destroy_pipeline_layout(scene.sky_pipeline_layout, None);
+                self.device
+                    .destroy_pipeline(scene.sky_overlay_pipeline, None);
+                self.device
+                    .destroy_pipeline_layout(scene.sky_overlay_pipeline_layout, None);
                 self.device
                     .destroy_pipeline_layout(scene.translucent_pipeline_layout, None);
                 self.device
@@ -1175,6 +1391,69 @@ impl VulkanBackend {
     ) -> Result<(), VulkanError> {
         self.render_frame(colour, false, view_projection)
             .map(|_| ())
+    }
+
+    /// Hand over the next frame's sky: triangles in view-rotated space, the
+    /// runs they draw in, the rotation-only view-projection, and the fog.
+    pub fn set_sky(
+        &mut self,
+        vertices: &[crate::render::sky::SkyVertex],
+        batches: &[(crate::render::sky::SkyBlend, u32, u32)],
+        view_projection: [[f32; 4]; 4],
+        fog_colour: [f32; 4],
+        sky_end: f32,
+    ) -> Result<(), VulkanError> {
+        unsafe {
+            // The previous frame may still be reading the buffer.
+            self.device
+                .wait_for_fences(&[self.in_flight], true, u64::MAX)
+                .map_err(|result| VulkanError::Call("vkWaitForFences", result))?;
+            let bytes = std::slice::from_raw_parts(
+                vertices.as_ptr().cast::<u8>(),
+                std::mem::size_of_val(vertices),
+            );
+            if self
+                .sky_buffer
+                .as_ref()
+                .is_none_or(|buffer| buffer.capacity < bytes.len())
+            {
+                if let Some(old) = self.sky_buffer.take() {
+                    self.device.destroy_buffer(old.buffer, None);
+                    self.device.free_memory(old.memory, None);
+                }
+                let capacity = bytes.len().max(1 << 20);
+                let (buffer, memory) =
+                    self.upload_buffer(vk::BufferUsageFlags::VERTEX_BUFFER, &vec![0_u8; capacity])?;
+                self.sky_buffer = Some(SkyBuffer {
+                    buffer,
+                    memory,
+                    capacity,
+                });
+            }
+            let buffer = self.sky_buffer.as_ref().expect("allocated above");
+            if !bytes.is_empty() {
+                let mapped = self
+                    .device
+                    .map_memory(
+                        buffer.memory,
+                        0,
+                        bytes.len() as u64,
+                        vk::MemoryMapFlags::empty(),
+                    )
+                    .map_err(|result| VulkanError::Call("vkMapMemory", result))?
+                    .cast::<u8>();
+                std::ptr::copy_nonoverlapping(bytes.as_ptr(), mapped, bytes.len());
+                self.device.unmap_memory(buffer.memory);
+            }
+            self.pending_sky = Some(PendingSky {
+                vertex_count: vertices.len() as u32,
+                batches: batches.to_vec(),
+                view_projection,
+                fog_colour,
+                sky_end,
+            });
+            Ok(())
+        }
     }
 
     /// Draw the loaded scene and read the presented image back.
@@ -1391,6 +1670,10 @@ impl Drop for VulkanBackend {
         unsafe {
             let _ = self.device.device_wait_idle();
             self.destroy_scene();
+            if let Some(sky) = self.sky_buffer.take() {
+                self.device.destroy_buffer(sky.buffer, None);
+                self.device.free_memory(sky.memory, None);
+            }
             for view in self.image_views.drain(..) {
                 self.device.destroy_image_view(view, None);
             }

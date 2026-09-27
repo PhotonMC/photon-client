@@ -30,6 +30,7 @@ use super::session::{read_packet, send_packet};
 const PLAY_CLIENTBOUND_DISCONNECT_PACKET_ID: i32 = 32;
 const PLAY_CLIENTBOUND_PING_PACKET_ID: i32 = 61;
 const PLAY_CLIENTBOUND_SECTION_BLOCKS_UPDATE_PACKET_ID: i32 = 84;
+const PLAY_CLIENTBOUND_SET_TIME_PACKET_ID: i32 = 113;
 const PLAY_SERVERBOUND_PONG_PACKET_ID: i32 = 45;
 const PLAY_SERVERBOUND_MOVE_PLAYER_POS_PACKET_ID: i32 = 30;
 const PLAY_SERVERBOUND_MOVE_PLAYER_ROT_PACKET_ID: i32 = 32;
@@ -52,6 +53,18 @@ pub struct PlaySession {
     auto_jump: bool,
     warned: Option<String>,
     teleports: u32,
+    view_distance: i32,
+    dimension_type_id: i32,
+    game_time: i64,
+    clocks: std::collections::BTreeMap<i32, ClockState>,
+}
+
+/// `ClientClockManager`'s state for one world clock.
+#[derive(Debug, Clone, Copy)]
+struct ClockState {
+    total_ticks: i64,
+    partial_tick: f32,
+    rate: f32,
 }
 
 impl PlaySession {
@@ -90,6 +103,10 @@ impl PlaySession {
             auto_jump,
             warned: None,
             teleports: 0,
+            view_distance: 0,
+            dimension_type_id: 0,
+            game_time: 0,
+            clocks: std::collections::BTreeMap::new(),
         })
     }
 
@@ -114,6 +131,47 @@ impl PlaySession {
     /// and once more for every movement it refused.
     pub fn teleports(&self) -> u32 {
         self.teleports
+    }
+
+    /// The server's view distance in chunks, from the login packet.
+    pub fn view_distance(&self) -> i32 {
+        self.view_distance
+    }
+
+    /// The current dimension type's registry name.
+    pub fn dimension_type(&self) -> Option<&str> {
+        self.registry_names("minecraft:dimension_type")
+            .get(usize::try_from(self.dimension_type_id).ok()?)
+            .map(String::as_str)
+    }
+
+    /// The entry names of one synchronised registry, in network order.
+    pub fn registry_names(&self, registry: &str) -> &[String] {
+        self.trace
+            .registry_entry_names
+            .get(registry)
+            .map_or(&[], Vec::as_slice)
+    }
+
+    /// A world clock's total ticks, by its registry name.
+    pub fn clock_ticks(&self, clock: &str) -> Option<i64> {
+        let id = self
+            .registry_names("minecraft:world_clock")
+            .iter()
+            .position(|name| name == clock)?;
+        self.clocks.get(&(id as i32)).map(|state| state.total_ticks)
+    }
+
+    /// `ClientClockManager.tick`: every clock runs at its own rate.
+    fn tick_clocks(&mut self, game_time: i64) {
+        let delta = game_time - self.game_time;
+        self.game_time = game_time;
+        for state in self.clocks.values_mut() {
+            let ticks = f64::from(state.partial_tick) + delta as f64 * f64::from(state.rate);
+            let whole = ticks.floor();
+            state.partial_tick = (ticks - whole) as f32;
+            state.total_ticks += whole as i64;
+        }
     }
 
     /// The first unported movement branch the player reached, if any.
@@ -161,6 +219,8 @@ impl PlaySession {
                 }
             }
         }
+        // ClientLevel.tickTime: the game time and the clocks move on.
+        self.tick_clocks(self.game_time + 1);
         self.send(PLAY_SERVERBOUND_CLIENT_TICK_END_PACKET_ID, |_| Ok(()))
     }
 
@@ -221,6 +281,8 @@ impl PlaySession {
                     environment,
                 );
                 self.trace.world.configure_chunk_cache(login.chunk_radius);
+                self.view_distance = login.chunk_radius;
+                self.dimension_type_id = login.spawn_info.dimension_type_id;
                 self.trace.world.set_local_player_id(login.player_id);
                 self.player_id = Some(login.player_id);
                 self.game_mode =
@@ -243,6 +305,7 @@ impl PlaySession {
                     environment,
                 );
                 self.game_mode = ClientPlayerGameMode::from_id(i32::from(spawn_info.game_type));
+                self.dimension_type_id = spawn_info.dimension_type_id;
                 // A respawn makes a new player that waits for its position.
                 self.player = None;
                 self.loaded = false;
@@ -356,6 +419,31 @@ impl PlaySession {
                 self.teleports += 1;
                 self.handle_player_position(packet)?;
             }
+            PLAY_CLIENTBOUND_SET_TIME_PACKET_ID => {
+                let mut input = payload;
+                let game_time = read_i64(&mut input)?;
+                let count = wire::read_varint(&mut input)
+                    .map_err(|_| ConnectionError::Codec("set time"))?;
+                // handleUpdates: the clocks catch up first, then take the
+                // server's values.
+                self.tick_clocks(game_time);
+                for _ in 0..count {
+                    let clock = wire::read_varint(&mut input)
+                        .map_err(|_| ConnectionError::Codec("set time clock"))?;
+                    let total_ticks = wire::read_varlong(&mut input)
+                        .map_err(|_| ConnectionError::Codec("set time ticks"))?;
+                    let partial_tick = read_f32(&mut input)?;
+                    let rate = read_f32(&mut input)?;
+                    self.clocks.insert(
+                        clock,
+                        ClockState {
+                            total_ticks,
+                            partial_tick,
+                            rate,
+                        },
+                    );
+                }
+            }
             PLAY_CLIENTBOUND_DISCONNECT_PACKET_ID => {
                 return Err(ConnectionError::ServerDisconnected);
             }
@@ -439,6 +527,15 @@ impl PlaySession {
         self.loaded = true;
         Ok(())
     }
+}
+
+fn read_f32(input: &mut &[u8]) -> Result<f32, ConnectionError> {
+    if input.len() < 4 {
+        return Err(ConnectionError::Codec("float"));
+    }
+    let (head, rest) = input.split_at(4);
+    *input = rest;
+    Ok(f32::from_be_bytes(head.try_into().expect("four bytes")))
 }
 
 fn read_i64(input: &mut &[u8]) -> Result<i64, ConnectionError> {

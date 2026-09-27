@@ -550,6 +550,9 @@ pub struct PlayConnectionTrace {
     pub selected_known_pack_count: usize,
     pub registry_packet_count: usize,
     pub registry_entry_count: usize,
+    /// Every synchronised registry's entry names, in the order the server
+    /// numbered them.
+    pub registry_entry_names: std::collections::BTreeMap<String, Vec<String>>,
     pub dimension_type_registry_bounds: Vec<Option<DimensionBounds>>,
     pub dimension_type_registry_environments: Vec<Option<DimensionEnvironment>>,
     pub update_tags_packet_count: usize,

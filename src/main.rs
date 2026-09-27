@@ -860,8 +860,14 @@ impl Script {
     }
 }
 
-/// A world box's mesh, its atlas levels, and its lowest corner.
-type WorldBox = (render::Mesh, Vec<render::DecodedImage>, [i32; 3]);
+/// A world box's mesh, its atlas levels, its lowest corner, and where the
+/// sky's sprites landed on its atlas.
+type WorldBox = (
+    render::Mesh,
+    Vec<render::DecodedImage>,
+    [i32; 3],
+    render::sky::SkySprites,
+);
 
 /// Build the world box around a point, returning the mesh, its atlas levels,
 /// and the box's lowest corner, which the mesh is measured from.
@@ -906,7 +912,13 @@ fn world_box_mesh(
         "world_box origin={},{},{} size={}x{}x{} solid={}",
         origin[0], origin[1], origin[2], size[0], size[1], size[2], built.solid_count
     );
-    Ok((built.mesh, built.atlas.levels, origin))
+    let sprite = |name: &str| built.atlas.sprites.get(name).copied().unwrap_or([0.0; 4]);
+    let moon_names: Vec<String> = render::sky::moon_sprites().collect();
+    let sprites = render::sky::SkySprites {
+        sun: sprite(render::sky::SUN_SPRITE),
+        moon: std::array::from_fn(|phase| sprite(&moon_names[phase])),
+    };
+    Ok((built.mesh, built.atlas.levels, origin, sprites))
 }
 
 /// View-projection from the player's eye, measured from the mesh origin.
@@ -991,12 +1003,44 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
             scale.framebuffer_height() as u32,
         )
     }?;
-    let (mesh, levels, mut origin) =
+    let (mesh, levels, mut origin, mut sky_sprites) =
         world_box_mesh(session.world(), (position.x, position.y, position.z), &root)?;
     backend.load_scene(&mesh, &levels)?;
 
+    // The sky's data comes from the same vanilla data pack the server runs,
+    // which sits next to the assets.
+    let data_root = env::var("VOXEL_DATA")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|_| std::path::Path::new(&root).with_file_name("data"));
+    let environment = render::sky::Environment::load(
+        &data_root,
+        session.dimension_type().unwrap_or("minecraft:overworld"),
+        session.registry_names("minecraft:worldgen/biome"),
+    )
+    .ok_or("the dimension's sky data could not be read")?;
+    let stars = render::sky::build_stars();
+    let dimension = session.world().dimension();
+    let probe = |session: &PlaySession, eye: [f64; 3]| {
+        let quart_min = dimension.min_y.div_euclid(4);
+        let quart_max = quart_min + dimension.height / 4 - 1;
+        environment.evaluate(
+            eye,
+            |x, y, z| {
+                let y = y.clamp(quart_min, quart_max);
+                session.world().biome_at(x * 4, y * 4, z * 4)
+            },
+            |clock| session.clock_ticks(clock).unwrap_or(0),
+        )
+    };
+    let eye_of = |session: &PlaySession| {
+        let player = session.player().expect("a loaded session has a player");
+        let feet = player.position();
+        [feet.x, feet.y + f64::from(player.eye_height()), feet.z]
+    };
+    let mut attributes_last = probe(&session, eye_of(&session));
+    let mut attributes_next = attributes_last.clone();
+
     let aspect = scale.framebuffer_width() as f32 / scale.framebuffer_height() as f32;
-    let colour = clear_colour();
     let mut keys = HeldKeys::default();
     let mut camera = voxel_client::camera::Camera::new();
     let mut captured = script.is_none();
@@ -1079,6 +1123,9 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
             if let Some(player) = session.player() {
                 camera.tick(player);
             }
+            // The camera's attribute probe steps once a tick.
+            attributes_last = attributes_next;
+            attributes_next = probe(&session, eye_of(&session));
             ticks += 1;
         }
 
@@ -1093,6 +1140,30 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
         ];
         let fov = camera.fov(partial as f32, player.is_eye_in_water());
         let view_projection = player_camera(aspect, fov, eye, y_rot, x_rot);
+
+        let attributes = attributes_last.lerp(&attributes_next, partial as f32);
+        let look = voxel_client::math::Vec3::direction_from_rotation_components(x_rot, y_rot);
+        let sky = render::sky::build_frame(
+            &attributes,
+            &render::sky::SkyView {
+                forward: [look.x as f32, look.y as f32, look.z as f32],
+                eye_above_horizon: feet.y + f64::from(camera.eye_height(partial as f32)) - 63.0,
+                eye_in_water: player.is_eye_in_water(),
+                render_distance: session.view_distance().clamp(2, 12),
+            },
+            &stars,
+            &sky_sprites,
+            environment.skybox(),
+        );
+        let sky_view_projection = player_camera(aspect, fov, [0.0; 3], y_rot, x_rot);
+        backend.set_sky(
+            &sky.vertices,
+            &sky.batches,
+            sky_view_projection,
+            sky.fog_colour,
+            sky.sky_fog_end,
+        )?;
+        let colour = sky.clear_colour;
 
         if script_done {
             let position = player.position();
@@ -1127,10 +1198,11 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
         if (position.x - centre[0]).abs() > rebuild_distance
             || (position.z - centre[1]).abs() > rebuild_distance
         {
-            let (mesh, levels, new_origin) =
+            let (mesh, levels, new_origin, new_sprites) =
                 world_box_mesh(session.world(), (position.x, position.y, position.z), &root)?;
             backend.load_scene(&mesh, &levels)?;
             origin = new_origin;
+            sky_sprites = new_sprites;
         }
     }
     println!("play_frames={frames} play_ticks={ticks}");

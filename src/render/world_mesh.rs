@@ -142,9 +142,14 @@ pub fn build_world_mesh(
     }
 
     let ordered: Vec<&ResolvedModel> = models.values().collect();
+    // The fluid renderer's sprites and the sky's sun and moon phases are
+    // named by no block model, so they are asked for by name.
     let fluid_sprites: Vec<Identifier> = FLUID_SPRITES
         .iter()
-        .map(|name| Identifier::parse(name).expect("fluid sprite names are valid"))
+        .map(|name| (*name).to_owned())
+        .chain(std::iter::once(crate::render::sky::SUN_SPRITE.to_owned()))
+        .chain(crate::render::sky::moon_sprites())
+        .map(|name| Identifier::parse(&name).expect("fixed sprite names are valid"))
         .collect();
     let atlas = crate::render::resolve::build_atlas_with(
         source,

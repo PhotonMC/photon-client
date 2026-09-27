@@ -65,5 +65,17 @@ barışçıl ve `server-port=25600` içeriyor.
 - Animasyonlu dokular (su, deniz otu, yosun, lav) atlasa ilk kareleriyle
   giriyor; referansın kare boyutu kuralı uygulanıyor ama animasyon
   oynatılmıyor.
+- Gökyüzü referansın veri yolundan hesaplanıyor: gök rengi, sis rengi,
+  güneş/ay/yıldız açıları, yıldız parlaklığı, ay evresi ve gün doğumu rengi
+  yerel vanilla veri paketindeki boyut, biyom ve timeline dosyalarından,
+  varsayılan → boyut → kameranın etrafında Gauss ağırlıklı biyom →
+  timeline sırasıyla değerlendiriliyor. Saat `set_time` paketinin dünya
+  saatlerinden alınıp tick'lerle ilerliyor; değerler tick başına hesaplanıp
+  kareler arasında aradeğerleniyor. Çizim: sisle ufka karışan gök diski,
+  gün doğumu yelpazesi, güneş ve ay evresi (en yakın texel), tohumlu 1500
+  yıldız, ufuk altı koyu disk; ekran sis rengine temizleniyor. Farklar:
+  yağmur ve gök gürültüsü karartması, bulutlar, arazinin sisi ve ışığı yok
+  (gece arazi aydınlık kalıyor), su altı görüş süresi sabit, dünya sınırı ve
+  End gökyüzü çizilmiyor; referans karelerle karşılaştırılmadı.
 - Kare zamanlaması referansın zamanlayıcısı değil; tick'ler 50 ms birikimle
   sürülüyor.
