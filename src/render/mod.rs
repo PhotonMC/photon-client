@@ -4,6 +4,8 @@
 
 pub mod atlas;
 pub mod blockstate;
+pub mod face_culling;
+pub mod face_occlusion_table;
 pub mod geometry;
 pub mod mipmap;
 pub mod model;

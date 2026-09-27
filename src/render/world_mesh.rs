@@ -16,6 +16,7 @@ use crate::world::block_registry;
 /// What one position in the world draws.
 struct Placement {
     position: [i32; 3],
+    state: u32,
     model: String,
     rotation: (i32, i32, i32),
     uv_lock: bool,
@@ -126,6 +127,7 @@ pub fn build_world_mesh(
                 }
                 placements.push(Placement {
                     position,
+                    state: state_id,
                     model: model_name,
                     rotation: (
                         variant.x.degrees(),
@@ -152,20 +154,6 @@ pub fn build_world_mesh(
         mip_level,
     )?;
 
-    // A neighbour hides a face when it is inside the box and its collision
-    // shape is the whole block. That is still not the reference's rule, which
-    // compares occlusion shapes face by face, but it no longer hides the faces
-    // under water, beside flowers or against a slab. Anything outside the box
-    // counts as open, so the box's own edges keep their faces.
-    let solid_at = |x: i32, y: i32, z: i32| -> bool {
-        read(x, y, z)
-            .and_then(|state| u32::try_from(state).ok())
-            .is_some_and(|state| {
-                crate::world::block_state::table_collision_shape(state)
-                    .equals_java(&crate::shape::Shapes::block())
-            })
-    };
-
     let mut mesh = Mesh::default();
     for placement in &placements {
         let model = &models[&placement.model];
@@ -183,12 +171,26 @@ pub fn build_world_mesh(
             )
             .unwrap_or(crate::render::rotation::FLAT_IDENTITY)
         };
+        // The reference's own culling decision. A neighbour outside the box
+        // hides nothing, so the box's edges keep their faces.
         let occluded = |facing: Direction| {
             let (step_x, step_y, step_z) = facing.step();
-            solid_at(
+            let neighbour = [
                 placement.position[0] + step_x,
                 placement.position[1] + step_y,
                 placement.position[2] + step_z,
+            ];
+            let inside = (0..3).all(|axis| {
+                neighbour[axis] >= origin[axis] && neighbour[axis] < origin[axis] + size[axis]
+            });
+            let neighbour_state = inside
+                .then(|| read(neighbour[0], neighbour[1], neighbour[2]))
+                .flatten()
+                .and_then(|state| u32::try_from(state).ok());
+            !crate::render::face_culling::should_render_face(
+                placement.state,
+                neighbour_state,
+                facing,
             )
         };
         let part = crate::render::resolve::build_mesh(
@@ -351,10 +353,17 @@ impl<R: Fn(i32, i32, i32) -> Option<i32>> FluidMesher<'_, R> {
         weighted[0] / weighted[1]
     }
 
-    /// Whether a solid neighbour hides the fluid's face towards it. A full
-    /// block hides every face but a surface below full height.
-    fn occluded(&self, up: bool, height: f32, x: i32, y: i32, z: i32) -> bool {
-        self.solid(x, y, z) && (!up || height == 1.0)
+    /// Whether the neighbour hides the fluid's face towards it, from the
+    /// neighbour's face occlusion shape. A whole-block shape hides every face
+    /// but a surface below full height; a partial one is treated as hiding
+    /// nothing, which is where this still differs from the reference.
+    fn occluded(&self, direction: Direction, height: f32, x: i32, y: i32, z: i32) -> bool {
+        let kind = (self.read)(x, y, z)
+            .and_then(|state| u32::try_from(state).ok())
+            .and_then(|state| {
+                crate::render::face_culling::occlusion_kind(state, direction.opposite())
+            });
+        kind == Some(1) && (direction != Direction::Up || height == 1.0)
     }
 
     /// The horizontal flow direction, which is all the surface texture uses.
@@ -401,8 +410,8 @@ impl<R: Fn(i32, i32, i32) -> Option<i32>> FluidMesher<'_, R> {
         };
         let water = fluid.water;
         let render_up = !self.same(water, x, y + 1, z);
-        let render_down =
-            !self.same(water, x, y - 1, z) && !self.occluded(false, 0.888_888_9, x, y - 1, z);
+        let render_down = !self.same(water, x, y - 1, z)
+            && !self.occluded(Direction::Down, 0.888_888_9, x, y - 1, z);
         let render_north = !self.same(water, x, y, z - 1);
         let render_south = !self.same(water, x, y, z + 1);
         let render_west = !self.same(water, x - 1, y, z);
@@ -446,7 +455,7 @@ impl<R: Fn(i32, i32, i32) -> Option<i32>> FluidMesher<'_, R> {
         let bottom = if render_down { 0.001 } else { 0.0 };
 
         let lowest = north_west.min(south_west).min(south_east.min(north_east));
-        if render_up && !self.occluded(true, lowest, x, y + 1, z) {
+        if render_up && !self.occluded(Direction::Up, lowest, x, y + 1, z) {
             north_west -= 0.001;
             south_west -= 0.001;
             south_east -= 0.001;
@@ -500,6 +509,7 @@ impl<R: Fn(i32, i32, i32) -> Option<i32>> FluidMesher<'_, R> {
 
         let sides = [
             (
+                Direction::North,
                 render_north,
                 [x, z - 1],
                 north_west,
@@ -509,6 +519,7 @@ impl<R: Fn(i32, i32, i32) -> Option<i32>> FluidMesher<'_, R> {
                 0.8,
             ),
             (
+                Direction::South,
                 render_south,
                 [x, z + 1],
                 south_east,
@@ -518,6 +529,7 @@ impl<R: Fn(i32, i32, i32) -> Option<i32>> FluidMesher<'_, R> {
                 0.8,
             ),
             (
+                Direction::West,
                 render_west,
                 [x - 1, z],
                 south_west,
@@ -527,6 +539,7 @@ impl<R: Fn(i32, i32, i32) -> Option<i32>> FluidMesher<'_, R> {
                 0.6,
             ),
             (
+                Direction::East,
                 render_east,
                 [x + 1, z],
                 north_east,
@@ -539,8 +552,8 @@ impl<R: Fn(i32, i32, i32) -> Option<i32>> FluidMesher<'_, R> {
         let [u0, v0, u1, v1] = self.sprite(flowing);
         let u = |f: f32| u0 + (u1 - u0) * f;
         let v = |f: f32| v0 + (v1 - v0) * f;
-        for (render, [nx, nz], h0, h1, [x0, z0], [x1, z1], shade) in sides {
-            if !render || self.occluded(false, h0.max(h1), nx, y, nz) {
+        for (direction, render, [nx, nz], h0, h1, [x0, z0], [x1, z1], shade) in sides {
+            if !render || self.occluded(direction, h0.max(h1), nx, y, nz) {
                 continue;
             }
             add_face(

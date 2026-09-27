@@ -910,7 +910,7 @@ fn world_box_mesh(
 }
 
 /// View-projection from the player's eye, measured from the mesh origin.
-fn player_camera(aspect: f32, eye: [f32; 3], y_rot: f32, x_rot: f32) -> [[f32; 4]; 4] {
+fn player_camera(aspect: f32, fov: f32, eye: [f32; 3], y_rot: f32, x_rot: f32) -> [[f32; 4]; 4] {
     let look = voxel_client::math::Vec3::direction_from_rotation_components(x_rot, y_rot);
     let target = [
         eye[0] + look.x as f32,
@@ -918,7 +918,7 @@ fn player_camera(aspect: f32, eye: [f32; 3], y_rot: f32, x_rot: f32) -> [[f32; 4
         eye[2] + look.z as f32,
     ];
     let view = render::scene::look_at(eye, target, [0.0, 1.0, 0.0]);
-    let projection = render::scene::perspective(70.0_f32.to_radians(), aspect, 0.05, 512.0);
+    let projection = render::scene::perspective(fov.to_radians(), aspect, 0.05, 512.0);
     render::scene::multiply(projection, view)
 }
 
@@ -998,6 +998,7 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
     let aspect = scale.framebuffer_width() as f32 / scale.framebuffer_height() as f32;
     let colour = clear_colour();
     let mut keys = HeldKeys::default();
+    let mut camera = voxel_client::camera::Camera::new();
     let mut captured = script.is_none();
     surface.set_cursor_captured(captured);
     let mut last_cursor: Option<(f64, f64)> = None;
@@ -1075,6 +1076,9 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                 None => keys,
             };
             session.tick(held.input())?;
+            if let Some(player) = session.player() {
+                camera.tick(player);
+            }
             ticks += 1;
         }
 
@@ -1084,10 +1088,11 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
         let (y_rot, x_rot) = player.rotation();
         let eye = [
             (feet.x - f64::from(origin[0])) as f32,
-            (feet.y + f64::from(player.eye_height()) - f64::from(origin[1])) as f32,
+            (feet.y + f64::from(camera.eye_height(partial as f32)) - f64::from(origin[1])) as f32,
             (feet.z - f64::from(origin[2])) as f32,
         ];
-        let view_projection = player_camera(aspect, eye, y_rot, x_rot);
+        let fov = camera.fov(partial as f32, player.is_eye_in_water());
+        let view_projection = player_camera(aspect, fov, eye, y_rot, x_rot);
 
         if script_done {
             let position = player.position();

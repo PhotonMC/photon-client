@@ -43,17 +43,23 @@ barışçıl ve `server-port=25600` içeriyor.
 
 ## Eşitlik olmayanlar
 
-- Kamera referansın kamerası değil: göz yüksekliği yumuşatılmıyor, FOV ve
-  bakış sallanması yok (P14).
+- Kamera: göz yüksekliği ve görüş açısı çarpanı referanstaki gibi her tick
+  kalan farkın yarısı kadar yaklaşıyor ve kareler arasında aradeğerleniyor
+  (eğilince bakışın birkaç tick'te inmesi, koşarken görüşün genişlemesi).
+  Kamera tick'inin sırası, bakış sallanması ve suya giren kameranın sıvı
+  kontrolü referansla karşılaştırılmadı (P14).
 - Fare hassasiyeti varsayılan değerin ölçeği; yumuşatma ve ters eksen yok.
 - Çizim [dünya çizim kaydındaki](server-world-render.md) eksikleri taşıyor.
-  Yüz gizleme artık komşunun çarpışma şekli tam blok olduğunda yüz atıyor;
-  suyun altındaki zemin ve çiçek yanındaki yüzler görünüyor, ama referansın
-  yüz yüze örtülme kuralı hâlâ uygulanmıyor.
+  Yüz gizleme referansın kararı: her durumun yüz örtme şekilleri, şekil
+  örtüşme tablosu ve atlanan blok çiftleri referanstan yakalanıp
+  `src/render/face_occlusion_table.rs` olarak üretiliyor
+  (`tools/generate/face_occlusion.py`); block ailesi tabloyu her koşuda
+  karşılaştırıyor. Yapraklar örtmediği için içlerindeki kütükler görünüyor.
 - Su ve lav referansın sıvı çizicisinin mantığıyla çiziliyor: köşe
   yükseklikleri, akış yönüne dönen akış dokusu, aynı sıvıya bakan yüzün
-  atılması, arkadan görünen yüzey. Farklar: komşunun örtme şekli ve
-  katılığı çarpışma şekli tam blok mu diye yaklaşıklanıyor, su rengi biyom
+  atılması, arkadan görünen yüzey. Farklar: kısmi örtme şekli olan komşu
+  sıvı yüzünü gizlemiyor sayılıyor, katılık çarpışma şekline göre
+  yaklaşıklanıyor, su rengi biyom
   yerine varsayılan biyomun rengi, yarı saydam yüzler sıralanmıyor, cam ve
   yaprak yanındaki su kaplama dokusu yok, ışık yok.
 - Animasyonlu dokular (su, deniz otu, yosun, lav) atlasa ilk kareleriyle

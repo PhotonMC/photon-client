@@ -678,6 +678,20 @@ impl LocalPlayer {
         self.dimensions.eye_height()
     }
 
+    /// `getAttributeValue(MOVEMENT_SPEED)` as the field of view reads it.
+    pub fn movement_speed(&self) -> f32 {
+        self.speed()
+    }
+
+    pub fn abilities(&self) -> ClientPlayerAbilities {
+        self.abilities
+    }
+
+    /// Whether the eyes are inside water, as the last fluid update found.
+    pub fn is_eye_in_water(&self) -> bool {
+        self.water.eyes_inside
+    }
+
     pub fn on_ground(&self) -> bool {
         self.on_ground
     }

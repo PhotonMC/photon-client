@@ -13087,6 +13087,12 @@ def block_cases():
         "rows": [{"label": "registry"}],
     }
     yield {
+        "case_id": "block/face-occlusion",
+        "family": "block",
+        "operation": "face_occlusion",
+        "rows": [{"label": "registry"}],
+    }
+    yield {
         "case_id": "block/tints",
         "family": "block",
         "operation": "block_tints",

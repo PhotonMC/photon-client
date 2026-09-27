@@ -16319,6 +16319,45 @@ fn block_result(request: &Value) -> Result<Value, String> {
                     "blocks": blocks,
                 }));
             }
+            "face_occlusion" => {
+                use voxel_client::render::face_occlusion_table as table;
+                // The tables go back out in the reference's shape, so the run
+                // checks every tuple, every join and every skip pair.
+                const NAMES: [&str; 6] = ["down", "up", "north", "south", "west", "east"];
+                let blocks: Vec<Value> = registry::BLOCKS
+                    .iter()
+                    .zip(table::BLOCK_TUPLES.iter())
+                    .map(|(block, tuples)| json!({"name": block.name, "tuples": tuples}))
+                    .collect();
+                let skips: Vec<Value> = table::SKIPS
+                    .iter()
+                    .map(|pair| {
+                        let mut directions: Vec<&str> = NAMES
+                            .iter()
+                            .enumerate()
+                            .filter(|(slot, _)| pair.directions & (1 << slot) != 0)
+                            .map(|(_, name)| *name)
+                            .collect();
+                        directions.sort_unstable();
+                        json!({
+                            "block": registry::BLOCKS[usize::from(pair.block)].name,
+                            "neighbour": registry::BLOCKS[usize::from(pair.neighbour)].name,
+                            "always": pair.always,
+                            "directions": directions,
+                        })
+                    })
+                    .collect();
+                out.push(json!({
+                    "label": label,
+                    "outcome": "listed",
+                    "tuples": table::TUPLES.to_vec(),
+                    "blocks": blocks,
+                    "shape_count": table::SHAPE_COUNT,
+                    "joins": table::JOINS.to_vec(),
+                    "skip_pairs": skips,
+                    "skip_is_state_dependent": table::SKIPS.iter().any(|pair| !pair.always),
+                }));
+            }
             "collision_shapes" => {
                 use voxel_client::world::block_collision_table as table;
                 // The boxes come from the rebuilt shapes, not straight from the
