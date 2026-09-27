@@ -2,7 +2,7 @@ use std::env;
 use std::net::SocketAddr;
 use std::time::Duration;
 
-use voxel_client::connection::connect_and_probe;
+use voxel_client::connection::{PlaySession, connect_and_probe};
 use voxel_client::render::{self, VulkanBackend};
 use voxel_client::window::{DisplayData, WindowSurface};
 
@@ -10,6 +10,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut args = env::args().skip(1);
     if env::args().nth(1).as_deref() == Some("window") {
         return run_window(env::args().skip(2));
+    }
+    if env::args().nth(1).as_deref() == Some("play") {
+        return run_play(env::args().skip(2));
     }
     let address: SocketAddr = args
         .next()
@@ -713,4 +716,395 @@ fn load_world(
         println!("world_skipped={block} ({reason})");
     }
     Ok((built.mesh, built.atlas.levels))
+}
+
+/// Held movement keys, as the key mappings see them.
+#[derive(Default, Clone, Copy)]
+struct HeldKeys {
+    forward: bool,
+    backward: bool,
+    left: bool,
+    right: bool,
+    jump: bool,
+    sneak: bool,
+    sprint: bool,
+}
+
+impl HeldKeys {
+    fn input(self) -> voxel_client::input::Input {
+        voxel_client::input::Input::new(
+            self.forward,
+            self.backward,
+            self.left,
+            self.right,
+            self.jump,
+            self.sneak,
+            self.sprint,
+        )
+    }
+
+    fn set(&mut self, key: glfw::Key, down: bool) {
+        match key {
+            glfw::Key::W => self.forward = down,
+            glfw::Key::S => self.backward = down,
+            glfw::Key::A => self.left = down,
+            glfw::Key::D => self.right = down,
+            glfw::Key::Space => self.jump = down,
+            glfw::Key::LeftShift => self.sneak = down,
+            glfw::Key::LeftControl => self.sprint = down,
+            _ => {}
+        }
+    }
+
+    /// One step of a `VOXEL_SCRIPT`, such as `forward,sprint`.
+    fn parse(step: &str) -> Result<Self, String> {
+        let mut keys = Self::default();
+        for name in step
+            .split(',')
+            .map(str::trim)
+            .filter(|name| !name.is_empty())
+        {
+            match name {
+                "forward" => keys.forward = true,
+                "backward" => keys.backward = true,
+                "left" => keys.left = true,
+                "right" => keys.right = true,
+                "jump" => keys.jump = true,
+                "sneak" => keys.sneak = true,
+                "sprint" => keys.sprint = true,
+                "none" => {}
+                other => return Err(format!("unknown key {other} in VOXEL_SCRIPT")),
+            }
+        }
+        Ok(keys)
+    }
+}
+
+/// A scripted run: keys held for so many ticks, and turns applied between.
+struct Script {
+    steps: Vec<(HeldKeys, u32, f64)>,
+    index: usize,
+    ticks_in_step: u32,
+}
+
+impl Script {
+    /// `forward=40;forward,jump=10;turn:90;none=20` holds the keys for the
+    /// counted ticks, and `turn:D` turns the view by D degrees.
+    fn parse(text: &str) -> Result<Self, String> {
+        let mut steps = Vec::new();
+        for step in text
+            .split(';')
+            .map(str::trim)
+            .filter(|step| !step.is_empty())
+        {
+            if let Some(degrees) = step.strip_prefix("turn:") {
+                let degrees: f64 = degrees.parse().map_err(|_| format!("bad turn {degrees}"))?;
+                steps.push((HeldKeys::default(), 0, degrees));
+                continue;
+            }
+            let (keys, count) = step
+                .split_once('=')
+                .ok_or(format!("{step}: expected keys=ticks"))?;
+            let count: u32 = count
+                .parse()
+                .map_err(|_| format!("bad tick count {count}"))?;
+            steps.push((HeldKeys::parse(keys)?, count, 0.0));
+        }
+        Ok(Self {
+            steps,
+            index: 0,
+            ticks_in_step: 0,
+        })
+    }
+
+    /// The keys for the next tick and a turn to apply first, or nothing once done.
+    fn next(&mut self) -> Option<(HeldKeys, f64)> {
+        let mut turn = 0.0;
+        loop {
+            let (keys, count, degrees) = *self.steps.get(self.index)?;
+            if count == 0 {
+                turn += degrees;
+                self.index += 1;
+                continue;
+            }
+            self.ticks_in_step += 1;
+            if self.ticks_in_step >= count {
+                self.index += 1;
+                self.ticks_in_step = 0;
+            }
+            return Some((keys, turn));
+        }
+    }
+}
+
+/// A world box's mesh, its atlas levels, and its lowest corner.
+type WorldBox = (render::Mesh, Vec<render::DecodedImage>, [i32; 3]);
+
+/// Build the world box around a point, returning the mesh, its atlas levels,
+/// and the box's lowest corner, which the mesh is measured from.
+fn world_box_mesh(
+    world: &voxel_client::world::ClientWorld,
+    centre: (f64, f64, f64),
+    root: &str,
+) -> Result<WorldBox, Box<dyn std::error::Error>> {
+    let reach: i32 = env::var("VOXEL_REACH")
+        .ok()
+        .map(|value| value.parse())
+        .transpose()?
+        .unwrap_or(24);
+    let height: i32 = env::var("VOXEL_HEIGHT")
+        .ok()
+        .map(|value| value.parse())
+        .transpose()?
+        .unwrap_or(24);
+    let origin = [
+        centre.0.floor() as i32 - reach,
+        centre.1.floor() as i32 - height / 2,
+        centre.2.floor() as i32 - reach,
+    ];
+    let size = [reach * 2 + 1, height, reach * 2 + 1];
+    let source = FolderAssets {
+        root: std::path::PathBuf::from(root),
+    };
+    let requested: i32 = env::var("VOXEL_MIP_LEVELS")
+        .ok()
+        .map(|value| value.parse())
+        .transpose()?
+        .unwrap_or(4);
+    let built = render::build_world_mesh(
+        &source,
+        |x, y, z| world.block_state_at(x, y, z),
+        origin,
+        size,
+        requested,
+    )
+    .map_err(|error| format!("world mesh: {error:?}"))?;
+    println!(
+        "world_box origin={},{},{} size={}x{}x{} solid={}",
+        origin[0], origin[1], origin[2], size[0], size[1], size[2], built.solid_count
+    );
+    Ok((built.mesh, built.atlas.levels, origin))
+}
+
+/// View-projection from the player's eye, measured from the mesh origin.
+fn player_camera(aspect: f32, eye: [f32; 3], y_rot: f32, x_rot: f32) -> [[f32; 4]; 4] {
+    let look = voxel_client::math::Vec3::direction_from_rotation_components(x_rot, y_rot);
+    let target = [
+        eye[0] + look.x as f32,
+        eye[1] + look.y as f32,
+        eye[2] + look.z as f32,
+    ];
+    let view = render::scene::look_at(eye, target, [0.0, 1.0, 0.0]);
+    let projection = render::scene::perspective(70.0_f32.to_radians(), aspect, 0.05, 512.0);
+    render::scene::multiply(projection, view)
+}
+
+/// Join a server and walk around in it.
+///
+/// The player is the ported `LocalPlayer`: its tick runs twenty times a
+/// second against the world the server streams, and what it sends is what
+/// the reference client would send. WASD moves, space jumps, left shift
+/// sneaks, left control sprints, the mouse looks, and escape frees the
+/// cursor (a second escape closes the window).
+fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::error::Error>> {
+    let server: SocketAddr = args
+        .next()
+        .unwrap_or_else(|| "127.0.0.1:25565".to_owned())
+        .parse()?;
+    let width: i32 = args
+        .next()
+        .map(|value| value.parse())
+        .transpose()?
+        .unwrap_or(1280);
+    let height: i32 = args
+        .next()
+        .map(|value| value.parse())
+        .transpose()?
+        .unwrap_or(720);
+    let root = env::var("VOXEL_ASSETS").map_err(|_| "VOXEL_ASSETS must name the asset folder")?;
+    let username = env::var("VOXEL_USER").unwrap_or_else(|_| "VoxelClient".to_owned());
+    let auto_jump = env::var("VOXEL_AUTO_JUMP").is_ok_and(|value| value == "1");
+    let mut script = env::var("VOXEL_SCRIPT")
+        .ok()
+        .map(|text| Script::parse(&text))
+        .transpose()?;
+
+    let mut session = PlaySession::connect(server, &username, Duration::from_secs(30), auto_jump)?;
+    let started = std::time::Instant::now();
+    while !session.is_loaded() {
+        session.wait(Duration::from_millis(100))?;
+        if started.elapsed() > Duration::from_secs(30) {
+            return Err("the level did not load within thirty seconds".into());
+        }
+    }
+    // Let the chunks around the player arrive before the first mesh.
+    let settle = std::time::Instant::now();
+    while settle.elapsed() < Duration::from_millis(2000) {
+        session.wait(Duration::from_millis(50))?;
+        session.tick(voxel_client::input::Input::EMPTY)?;
+    }
+    let position = session.player().ok_or("no local player")?.position();
+    println!(
+        "play_spawn={:.3},{:.3},{:.3}",
+        position.x, position.y, position.z
+    );
+    println!("play_chunks={}", session.world().loaded_chunk_count());
+
+    let display = DisplayData {
+        width,
+        height,
+        fullscreen: false,
+    };
+    let mut surface = WindowSurface::create(display, "Minecraft")?;
+    let scale = surface.scale();
+    let (display_handle, window_handle) = surface
+        .raw_handles()
+        .map_err(|error| format!("window handles unavailable: {error}"))?;
+    let mut backend = unsafe {
+        VulkanBackend::create(
+            display_handle,
+            window_handle,
+            scale.framebuffer_width() as u32,
+            scale.framebuffer_height() as u32,
+        )
+    }?;
+    let (mesh, levels, mut origin) =
+        world_box_mesh(session.world(), (position.x, position.y, position.z), &root)?;
+    backend.load_scene(&mesh, &levels)?;
+
+    let aspect = scale.framebuffer_width() as f32 / scale.framebuffer_height() as f32;
+    let colour = clear_colour();
+    let mut keys = HeldKeys::default();
+    let mut captured = script.is_none();
+    surface.set_cursor_captured(captured);
+    let mut last_cursor: Option<(f64, f64)> = None;
+    let tick_length = Duration::from_millis(50);
+    let mut accumulated = Duration::ZERO;
+    let mut last_frame = std::time::Instant::now();
+    let mut ticks = 0_u64;
+    let mut frames = 0_u64;
+    let rebuild_distance = f64::from(
+        env::var("VOXEL_REACH")
+            .ok()
+            .and_then(|value| value.parse::<i32>().ok())
+            .unwrap_or(24),
+    ) * 0.5;
+
+    while !surface.should_close() {
+        for event in surface.poll() {
+            match event {
+                glfw::WindowEvent::Key(glfw::Key::Escape, _, glfw::Action::Press, _) => {
+                    if captured {
+                        captured = false;
+                        surface.set_cursor_captured(false);
+                        keys = HeldKeys::default();
+                    } else {
+                        surface.request_close();
+                    }
+                }
+                glfw::WindowEvent::Key(key, _, action, _) if captured => {
+                    keys.set(key, action != glfw::Action::Release);
+                }
+                glfw::WindowEvent::MouseButton(_, glfw::Action::Press, _) if !captured => {
+                    captured = true;
+                    last_cursor = None;
+                    surface.set_cursor_captured(true);
+                }
+                glfw::WindowEvent::CursorPos(x, y) => {
+                    if captured
+                        && let Some((last_x, last_y)) = last_cursor
+                        && let Some(player) = session.player_mut()
+                    {
+                        // The default sensitivity, 0.5, makes the scale exactly one.
+                        let sensitivity = 0.5 * 0.6 + 0.2_f64;
+                        let scaled = sensitivity * sensitivity * sensitivity * 8.0;
+                        player.turn((x - last_x) * scaled, (y - last_y) * scaled);
+                    }
+                    last_cursor = Some((x, y));
+                }
+                _ => {}
+            }
+        }
+
+        let now = std::time::Instant::now();
+        accumulated += now - last_frame;
+        last_frame = now;
+        session.drain()?;
+        let mut script_done = false;
+        while accumulated >= tick_length {
+            accumulated -= tick_length;
+            let held = match script.as_mut() {
+                Some(script) => match script.next() {
+                    Some((held, turn)) => {
+                        if turn != 0.0
+                            && let Some(player) = session.player_mut()
+                        {
+                            let (y_rot, x_rot) = player.rotation();
+                            player.set_rotation(y_rot + turn as f32, x_rot);
+                        }
+                        held
+                    }
+                    None => {
+                        script_done = true;
+                        HeldKeys::default()
+                    }
+                },
+                None => keys,
+            };
+            session.tick(held.input())?;
+            ticks += 1;
+        }
+
+        let player = session.player().ok_or("no local player")?;
+        let partial = accumulated.as_secs_f64() / tick_length.as_secs_f64();
+        let feet = player.interpolated_position(partial);
+        let (y_rot, x_rot) = player.rotation();
+        let eye = [
+            (feet.x - f64::from(origin[0])) as f32,
+            (feet.y + f64::from(player.eye_height()) - f64::from(origin[1])) as f32,
+            (feet.z - f64::from(origin[2])) as f32,
+        ];
+        let view_projection = player_camera(aspect, eye, y_rot, x_rot);
+
+        if script_done {
+            let position = player.position();
+            println!(
+                "play_end ticks={ticks} position={:.4},{:.4},{:.4} rotation={y_rot},{x_rot} on_ground={}",
+                position.x,
+                position.y,
+                position.z,
+                player.on_ground()
+            );
+            println!("play_teleports={}", session.teleports());
+            if let Some(warning) = session.warning() {
+                println!("play_warning={warning}");
+            }
+            if let Ok(path) = env::var("VOXEL_CAPTURE_PPM") {
+                let captured = backend.capture_scene(colour, view_projection)?;
+                write_ppm(&path, &captured)?;
+                println!("captured_frame={path}");
+            }
+            break;
+        }
+        backend.draw_scene(colour, view_projection)?;
+        frames += 1;
+
+        // The drawn box is fixed; once the player walks towards its edge a
+        // new one is built around them from the chunks that have arrived.
+        let centre = [
+            f64::from(origin[0]) + rebuild_distance * 2.0 + 0.5,
+            f64::from(origin[2]) + rebuild_distance * 2.0 + 0.5,
+        ];
+        let position = player.position();
+        if (position.x - centre[0]).abs() > rebuild_distance
+            || (position.z - centre[1]).abs() > rebuild_distance
+        {
+            let (mesh, levels, new_origin) =
+                world_box_mesh(session.world(), (position.x, position.y, position.z), &root)?;
+            backend.load_scene(&mesh, &levels)?;
+            origin = new_origin;
+        }
+    }
+    println!("play_frames={frames} play_ticks={ticks}");
+    Ok(())
 }

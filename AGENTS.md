@@ -20,7 +20,7 @@ Yeni bir dilim için sıra Java kaynak incelemesi, özgün senaryo ve oracle, Ja
 
 2026-09-12 tarihli [yön düzeltmesi](docs/course-correction-2026-09-12.md) bağlayıcıdır: kanıt sınıfı ayrımı, varyant patlamasının durdurulması, `src/connection.rs` bölünmesi ve kritik yol olarak istemci dünya kopyası orada kayıtlıdır. Yeni dilim seçmeden önce o belge okunur.
 
-Uygulama girişi hâlâ boştur ve oynanabilir istemci yoktur. Pencere/input, bağlantı, dünya, hareket, görüntü, ses ve arayüz çalışmaları [roadmap](docs/roadmap.md) ile [kalan test planında](docs/remaining-test-plan.md) izlenir.
+Uygulamanın sunucuya bağlanıp yürünebilen bir `play` modu var ([kayıt](docs/live-play-session.md)); eylem, envanter, arayüz ve ses olmadığı için hâlâ oynanabilir istemci değildir. Pencere/input, bağlantı, dünya, hareket, görüntü, ses ve arayüz çalışmaları [roadmap](docs/roadmap.md) ile [kalan test planında](docs/remaining-test-plan.md) izlenir.
 
 ## Referanslar ve dağıtım
 

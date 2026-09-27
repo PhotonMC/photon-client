@@ -5,10 +5,12 @@
 //! [`probe`] module. The facade re-exports the stable observation and probe
 //! entry points used by the existing tools.
 
+mod play;
 mod probe;
 mod protocol;
 mod session;
 
+pub use play::PlaySession;
 pub use probe::*;
 pub use protocol::*;
 pub use session::query_status_and_ping;

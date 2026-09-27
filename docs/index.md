@@ -333,6 +333,8 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P16.u — Canlı sunucudan dünya çizimi — sonda kaydı](server-world-render.md)
 - [P17.a — Hareket fixture'ı — altyapı kaydı](movement-fixture-record.md)
 - [P17.b — Blok çarpışma şekilleri — client-parity kayıt](block-collision-conformance.md)
+- [P10.h — LocalPlayer tick bileşimi — client-parity kayıt](local-player-tick-conformance.md)
+- [P11.e — Canlı oyun oturumu — server-conformance kaydı](live-play-session.md)
 - [P16.j — Model dosyası ayrıştırma — client-parity birleşik kayıt](model-file-parse-conformance.md)
 - [P16.l — Blockstate varyant döndürmesi — client-parity birleşik kayıt](model-state-conformance.md)
 - [P16.c — Model texture slot çözümü — client-parity birleşik kayıt](model-texture-slots-conformance.md)

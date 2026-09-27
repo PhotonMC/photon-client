@@ -1599,7 +1599,7 @@ fn observe_player_position_snap(
         });
 }
 
-fn dimension_bounds_for_spawn_info(
+pub(crate) fn dimension_bounds_for_spawn_info(
     trace: &PlayConnectionTrace,
     spawn_info: &SpawnInfoObservation,
 ) -> DimensionBounds {
@@ -1610,7 +1610,7 @@ fn dimension_bounds_for_spawn_info(
         .unwrap_or_else(|| DimensionBounds::for_builtin_dimension(&spawn_info.dimension))
 }
 
-fn dimension_environment_for_spawn_info(
+pub(crate) fn dimension_environment_for_spawn_info(
     trace: &PlayConnectionTrace,
     spawn_info: &SpawnInfoObservation,
 ) -> DimensionEnvironment {
@@ -1766,19 +1766,18 @@ fn observe_experience_orb_tick(
     Ok(())
 }
 
-fn connect_and_probe_with_mode(
+/// Log in and configure, leaving the connection at the start of play.
+///
+/// Returns the stream and the compression threshold the server chose. The
+/// login and configuration packets are recorded in `trace`, and the world in
+/// it takes the tags the server sends.
+pub(crate) fn open_play_connection(
     address: SocketAddr,
     username: &str,
     timeout: Duration,
-    probe: PlayProbeConfig,
-) -> Result<PlayConnectionTrace, ConnectionError> {
-    if username.is_empty() || username.encode_utf16().count() > crate::login::MAX_NAME_LENGTH {
-        return Err(ConnectionError::InvalidArgument("username"));
-    }
-    if timeout.is_zero() {
-        return Err(ConnectionError::InvalidArgument("timeout"));
-    }
-
+    select_known_packs: bool,
+    trace: &mut PlayConnectionTrace,
+) -> Result<(TcpStream, Option<usize>), ConnectionError> {
     let mut stream = connect_stream(address, timeout)?;
     send_handshake_intention(&mut stream, address, ClientIntent::Login)?;
 
@@ -1797,16 +1796,6 @@ fn connect_and_probe_with_mode(
 
     let started = Instant::now();
     let mut compression_threshold = None;
-    let mut trace = PlayConnectionTrace::default();
-    if matches!(probe.action, ProbeAction::CreativePlace) {
-        trace.stone_item_registry_id = Some(VANILLA_STONE_ITEM_REGISTRY_ID);
-    }
-    if matches!(
-        probe.action,
-        ProbeAction::CreativeSnowballUse | ProbeAction::WorldSnowballTick
-    ) {
-        trace.snowball_item_registry_id = Some(VANILLA_SNOWBALL_ITEM_REGISTRY_ID);
-    }
 
     loop {
         let body = read_packet(&mut stream, compression_threshold)?;
@@ -1914,7 +1903,7 @@ fn connect_and_probe_with_mode(
                 let packs = KnownPack::decode_list(&mut input, usize::MAX)
                     .map_err(|_| ConnectionError::Codec("clientbound known packs"))?;
                 trace.known_pack_count = packs.len();
-                let selected_packs = if probe.select_known_packs {
+                let selected_packs = if select_known_packs {
                     packs
                 } else {
                     Vec::new()
@@ -2006,6 +1995,39 @@ fn connect_and_probe_with_mode(
             )));
         }
     }
+    Ok((stream, compression_threshold))
+}
+
+fn connect_and_probe_with_mode(
+    address: SocketAddr,
+    username: &str,
+    timeout: Duration,
+    probe: PlayProbeConfig,
+) -> Result<PlayConnectionTrace, ConnectionError> {
+    if username.is_empty() || username.encode_utf16().count() > crate::login::MAX_NAME_LENGTH {
+        return Err(ConnectionError::InvalidArgument("username"));
+    }
+    if timeout.is_zero() {
+        return Err(ConnectionError::InvalidArgument("timeout"));
+    }
+
+    let mut trace = PlayConnectionTrace::default();
+    if matches!(probe.action, ProbeAction::CreativePlace) {
+        trace.stone_item_registry_id = Some(VANILLA_STONE_ITEM_REGISTRY_ID);
+    }
+    if matches!(
+        probe.action,
+        ProbeAction::CreativeSnowballUse | ProbeAction::WorldSnowballTick
+    ) {
+        trace.snowball_item_registry_id = Some(VANILLA_SNOWBALL_ITEM_REGISTRY_ID);
+    }
+    let (mut stream, compression_threshold) = open_play_connection(
+        address,
+        username,
+        timeout,
+        probe.select_known_packs,
+        &mut trace,
+    )?;
 
     let play_started = Instant::now();
     let mut chunk_batch_started = false;

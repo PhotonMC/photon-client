@@ -142,17 +142,17 @@ pub fn build_world_mesh(
     let ordered: Vec<&ResolvedModel> = models.values().collect();
     let atlas = crate::render::resolve::build_atlas_for(source, &ordered, 2048, mip_level)?;
 
-    // A neighbour is solid when it is inside the box and is not air. Anything
-    // outside the box counts as open, so the box's own edges keep their faces.
+    // A neighbour hides a face when it is inside the box and its collision
+    // shape is the whole block. That is still not the reference's rule, which
+    // compares occlusion shapes face by face, but it no longer hides the faces
+    // under water, beside flowers or against a slab. Anything outside the box
+    // counts as open, so the box's own edges keep their faces.
     let solid_at = |x: i32, y: i32, z: i32| -> bool {
         read(x, y, z)
             .and_then(|state| u32::try_from(state).ok())
-            .and_then(block_registry::block_for_state)
-            .is_some_and(|(block, _)| {
-                !matches!(
-                    block.name,
-                    "minecraft:air" | "minecraft:cave_air" | "minecraft:void_air"
-                )
+            .is_some_and(|state| {
+                crate::world::block_state::table_collision_shape(state)
+                    .equals_java(&crate::shape::Shapes::block())
             })
     };
 

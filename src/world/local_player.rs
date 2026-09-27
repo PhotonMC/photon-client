@@ -722,6 +722,42 @@ impl LocalPlayer {
         self.set_rotation(y_rot, x_rot);
     }
 
+    /// `setValuesFromPositionPacket` without interpolation: the position,
+    /// motion and view the server sent, with nothing to blend from.
+    pub fn apply_teleport(&mut self, position: Vec3, delta: Vec3, y_rot: f32, x_rot: f32) {
+        self.set_pos(position);
+        self.delta = delta;
+        self.old_position = position;
+        self.set_rotation(y_rot, x_rot);
+    }
+
+    /// `Entity.turn`: the mouse's accumulated movement, already scaled by
+    /// the sensitivity, turned into degrees.
+    pub fn turn(&mut self, y_rot_delta: f64, x_rot_delta: f64) {
+        let x_delta = x_rot_delta as f32 * 0.15;
+        let y_delta = y_rot_delta as f32 * 0.15;
+        self.x_rot = (self.x_rot + x_delta).clamp(-90.0, 90.0);
+        self.y_rot += y_delta;
+    }
+
+    /// `MultiPlayerGameMode.setLocalMode`: the new mode's abilities.
+    pub fn set_game_mode(&mut self, game_mode: ClientPlayerGameMode) {
+        self.game_mode = game_mode;
+        self.abilities = game_mode.update_player_abilities(self.abilities);
+    }
+
+    /// `handlePlayerAbilities`: every field but the build permission.
+    pub fn set_abilities(&mut self, abilities: ClientPlayerAbilities) {
+        let may_build = self.abilities.may_build;
+        self.abilities = abilities;
+        self.abilities.may_build = may_build;
+    }
+
+    /// The feet position between the last two ticks.
+    pub fn interpolated_position(&self, partial_tick: f64) -> Vec3 {
+        self.old_position.lerp(self.position, partial_tick)
+    }
+
     /// Run one client tick with the given keys held, and return what it sent.
     pub fn tick(
         &mut self,

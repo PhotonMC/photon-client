@@ -105,6 +105,8 @@ impl WindowSurface {
         window.set_focus_polling(true);
         window.set_key_polling(true);
         window.set_close_polling(true);
+        window.set_cursor_pos_polling(true);
+        window.set_mouse_button_polling(true);
 
         let (framebuffer_width, framebuffer_height) = window.get_framebuffer_size();
         let mut scale = WindowScale::new(
@@ -154,6 +156,21 @@ impl WindowSurface {
             seen.push(event);
         }
         seen
+    }
+
+    /// Hide and hold the cursor for mouse look, or give it back.
+    ///
+    /// The reference grabs the mouse with GLFW's disabled cursor mode and
+    /// asks for raw motion where the platform offers it.
+    pub fn set_cursor_captured(&mut self, captured: bool) {
+        if captured {
+            self.window.set_cursor_mode(glfw::CursorMode::Disabled);
+            if self.glfw.supports_raw_motion() {
+                self.window.set_raw_mouse_motion(true);
+            }
+        } else {
+            self.window.set_cursor_mode(glfw::CursorMode::Normal);
+        }
     }
 
     /// Window position in screen coordinates, as the reference tracks it.
