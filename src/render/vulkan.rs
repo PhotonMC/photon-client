@@ -44,8 +44,26 @@ layout(location = 0) in vec2 in_uv;
 layout(location = 1) in float in_shade;
 layout(location = 2) in vec4 in_tint;
 layout(location = 0) out vec4 out_colour;
+// The terrain sampler filters linearly, yet the reference draws blocks
+// pixel-sharp: its terrain shader pulls each lookup towards the centre of the
+// texel it lands in, by as much as that texel is larger than a screen pixel.
+// Up close the lookup sits on the texel centre and reads it alone; only in the
+// last screen pixel of a texel edge does it blend with the neighbour, which is
+// what keeps the edges from shimmering. Far away, where a texel is smaller
+// than a pixel, the lookup is left alone and the mip chain does the work.
+vec4 sample_texel_centred(vec2 uv) {
+    vec2 texel_size = 1.0 / vec2(textureSize(atlas, 0));
+    vec2 du = dFdx(uv);
+    vec2 dv = dFdy(uv);
+    vec2 texel_on_screen = sqrt(du * du + dv * dv);
+    vec2 texel_coords = uv / texel_size;
+    vec2 corner = round(texel_coords) - 0.5;
+    vec2 offset = texel_coords - corner;
+    offset = clamp((offset - 0.5) * texel_size / texel_on_screen + 0.5, 0.0, 1.0);
+    return textureGrad(atlas, (corner + offset) * texel_size, du, dv);
+}
 void main() {
-    vec4 texel = texture(atlas, in_uv) * in_tint;
+    vec4 texel = sample_texel_centred(in_uv) * in_tint;
     if (texel.a < 0.1) { discard; }
     out_colour = vec4(texel.rgb * in_shade, texel.a);
 }
@@ -788,9 +806,9 @@ impl VulkanBackend {
             // Vulkan sampler it builds. Both filters are linear, which reads
             // as a surprise for a game of pixel art but is consistent with the
             // atlas reserving padding around every sprite: with nearest
-            // sampling that padding would have nothing to do. At a one to one
-            // texel ratio linear sampling lands on the texel centre anyway, so
-            // the blocky look survives; it softens only under magnification.
+            // sampling that padding would have nothing to do. The blocky look
+            // comes from the fragment shader instead, which moves each lookup
+            // to its texel's centre before the linear filter sees it.
             let sampler = self
                 .device
                 .create_sampler(
