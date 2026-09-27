@@ -33,6 +33,30 @@ pub enum ClientEntityPose {
 }
 
 impl ClientEntityPose {
+    /// The reference's `Pose` constant name.
+    pub const fn java_name(self) -> &'static str {
+        match self {
+            Self::Standing => "STANDING",
+            Self::FallFlying => "FALL_FLYING",
+            Self::Sleeping => "SLEEPING",
+            Self::Swimming => "SWIMMING",
+            Self::SpinAttack => "SPIN_ATTACK",
+            Self::Crouching => "CROUCHING",
+            Self::LongJumping => "LONG_JUMPING",
+            Self::Dying => "DYING",
+            Self::Croaking => "CROAKING",
+            Self::UsingTongue => "USING_TONGUE",
+            Self::Sitting => "SITTING",
+            Self::Roaring => "ROARING",
+            Self::Sniffing => "SNIFFING",
+            Self::Emerging => "EMERGING",
+            Self::Digging => "DIGGING",
+            Self::Sliding => "SLIDING",
+            Self::Shooting => "SHOOTING",
+            Self::Inhaling => "INHALING",
+        }
+    }
+
     pub const fn id(self) -> u8 {
         match self {
             Self::Standing => 0,

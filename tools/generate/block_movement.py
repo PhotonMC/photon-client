@@ -101,7 +101,7 @@ def main(path):
         "    pub states: &'static [u16],",
         "}",
         "",
-        f"/// Every distinct state trait set.\npub static STATE_TRAITS: [StateTraits; {len(traits)}] = [",
+        f"/// Every distinct state trait set.\n#[rustfmt::skip]\npub static STATE_TRAITS: [StateTraits; {len(traits)}] = [",
     ]
     for key in traits:
         fluid, amount, falling, height, source, suffocating = key.split("|")
@@ -110,7 +110,7 @@ def main(path):
             f"falling: {falling}, own_height: 0x{height}, source: {source}, "
             f"suffocating: {suffocating} }},"
         )
-    out += ["];", "", f"/// Every block, in registry order.\npub static BLOCKS: [BlockMovement; {len(rows)}] = ["]
+    out += ["];", "", f"/// Every block, in registry order.\n#[rustfmt::skip]\npub static BLOCKS: [BlockMovement; {len(rows)}] = ["]
     for block, indices, flags in rows:
         out.append(
             f"    BlockMovement {{ friction: 0x{block['friction']}, speed_factor: 0x{block['speed_factor']}, "

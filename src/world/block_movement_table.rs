@@ -55,6 +55,7 @@ pub struct BlockMovement {
 }
 
 /// Every distinct state trait set.
+#[rustfmt::skip]
 pub static STATE_TRAITS: [StateTraits; 22] = [
     StateTraits { fluid: FluidKind::Empty, amount: 0, falling: false, own_height: 0x00000000, source: false, suffocating: false },
     StateTraits { fluid: FluidKind::Empty, amount: 0, falling: false, own_height: 0x00000000, source: false, suffocating: true },
@@ -81,6 +82,7 @@ pub static STATE_TRAITS: [StateTraits; 22] = [
 ];
 
 /// Every block, in registry order.
+#[rustfmt::skip]
 pub static BLOCKS: [BlockMovement; 1196] = [
     BlockMovement { friction: 0x3f19999a, speed_factor: 0x3f800000, jump_factor: 0x3f800000, bounce_restitution: 0x00000000, flags: 0, states: &[0] },
     BlockMovement { friction: 0x3f19999a, speed_factor: 0x3f800000, jump_factor: 0x3f800000, bounce_restitution: 0x00000000, flags: 0, states: &[1] },

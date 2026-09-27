@@ -3049,6 +3049,7 @@ impl ClientWorld {
 pub mod block_collision_table;
 pub mod block_movement_table;
 pub mod block_registry;
+pub mod local_player;
 
 #[cfg(test)]
 mod tests;

@@ -16599,6 +16599,204 @@ fn window_result(request: &Value) -> Result<Value, String> {
     }
 }
 
+fn movement_result(request: &Value) -> Result<Value, String> {
+    use voxel_client::world::block_registry as registry;
+    use voxel_client::world::local_player::LocalPlayer;
+    use voxel_client::world::{ClientPlayerGameMode, ClientWorld, DimensionBounds, SectionInput};
+
+    fn bits64(row: &Value, key: &str) -> Result<f64, String> {
+        let text = string(row, key)?;
+        u64::from_str_radix(text, 16)
+            .map(f64::from_bits)
+            .map_err(|error| format!("{key}: {error}"))
+    }
+    fn bits32(row: &Value, key: &str) -> Result<f32, String> {
+        let text = string(row, key)?;
+        u32::from_str_radix(text, 16)
+            .map(f32::from_bits)
+            .map_err(|error| format!("{key}: {error}"))
+    }
+    fn flag(row: &Value, key: &str) -> Result<bool, String> {
+        row[key]
+            .as_bool()
+            .ok_or_else(|| format!("{key} must be a bool"))
+    }
+
+    if string(request, "operation")? != "local_player_ticks" {
+        return Err("unknown movement operation".into());
+    }
+    let rows = request["rows"]
+        .as_array()
+        .ok_or("movement rows must be an array")?;
+    let mut out = Vec::with_capacity(rows.len());
+    for row in rows {
+        let label = string(row, "label")?;
+        // The overworld's bounds, as the reference level is built with.
+        let dimension = DimensionBounds::new(-64, 384);
+        let mut placed = std::collections::HashMap::new();
+        for block in row["blocks"].as_array().ok_or("blocks must be an array")? {
+            let name = string(block, "block")?;
+            let definition =
+                registry::block(name).ok_or_else(|| format!("unknown block {name}"))?;
+            let mut chosen = std::collections::BTreeMap::new();
+            if let Some(properties) = block["properties"].as_object() {
+                for (key, value) in properties {
+                    chosen.insert(
+                        key.clone(),
+                        value
+                            .as_str()
+                            .ok_or("property values are strings")?
+                            .to_owned(),
+                    );
+                }
+            }
+            let state = definition
+                .state_id(&chosen)
+                .ok_or_else(|| format!("bad properties for {name}"))?;
+            placed.insert(
+                (
+                    i32_field(block, "x")?,
+                    i32_field(block, "y")?,
+                    i32_field(block, "z")?,
+                ),
+                state as i32,
+            );
+        }
+        let mut world = ClientWorld::new(dimension);
+        let radius = i32_field(row, "chunk_radius")?;
+        let biomes = vec![0_i32; 64];
+        for chunk_x in -radius..=radius {
+            for chunk_z in -radius..=radius {
+                let mut sections = Vec::new();
+                for index in 0..dimension.section_count() {
+                    let min_y = dimension.min_y + index as i32 * 16;
+                    let mut states = vec![0_i32; 4096];
+                    let mut non_empty = 0_i16;
+                    let mut fluids = 0_i16;
+                    for y in 0..16 {
+                        for z in 0..16 {
+                            for x in 0..16 {
+                                if let Some(&state) =
+                                    placed.get(&(chunk_x * 16 + x, min_y + y, chunk_z * 16 + z))
+                                {
+                                    states[(y * 256 + z * 16 + x) as usize] = state;
+                                    let (block, _) = registry::block_for_state(state as u32)
+                                        .ok_or("state out of range")?;
+                                    if !matches!(
+                                        block.name,
+                                        "minecraft:air"
+                                            | "minecraft:cave_air"
+                                            | "minecraft:void_air"
+                                    ) {
+                                        non_empty += 1;
+                                    }
+                                    if voxel_client::world::local_player::state_has_fluid(state) {
+                                        fluids += 1;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    sections.push((non_empty, fluids, states));
+                }
+                world.replace_chunk(
+                    chunk_x,
+                    chunk_z,
+                    sections
+                        .iter()
+                        .map(|(non_empty, fluids, states)| SectionInput {
+                            non_empty_block_count: *non_empty,
+                            fluid_count: *fluids,
+                            block_states: states,
+                            biomes: &biomes,
+                        }),
+                );
+            }
+        }
+
+        let game_mode = match string(row, "game_mode")? {
+            "survival" => ClientPlayerGameMode::Survival,
+            "creative" => ClientPlayerGameMode::Creative,
+            "adventure" => ClientPlayerGameMode::Adventure,
+            "spectator" => ClientPlayerGameMode::Spectator,
+            other => return Err(format!("unknown game mode {other}")),
+        };
+        let mut player = LocalPlayer::new(
+            i32_field(row, "entity_id")?,
+            voxel_client::math::Vec3::new(bits64(row, "x")?, bits64(row, "y")?, bits64(row, "z")?),
+            bits32(row, "y_rot")?,
+            bits32(row, "x_rot")?,
+            game_mode,
+            flag(row, "auto_jump")?,
+        );
+        let mut ticks = Vec::new();
+        let mut failure = None;
+        for tick in row["ticks"].as_array().ok_or("ticks must be an array")? {
+            let keys = voxel_client::input::Input::new(
+                flag(tick, "forward")?,
+                flag(tick, "backward")?,
+                flag(tick, "left")?,
+                flag(tick, "right")?,
+                flag(tick, "jump")?,
+                flag(tick, "sneak")?,
+                flag(tick, "sprint")?,
+            );
+            let (mut y_rot, mut x_rot) = player.rotation();
+            if tick.get("y_rot").is_some() {
+                y_rot = bits32(tick, "y_rot")?;
+            }
+            if tick.get("x_rot").is_some() {
+                x_rot = bits32(tick, "x_rot")?;
+            }
+            player.set_rotation(y_rot, x_rot);
+            let sent = match player.tick(&world, keys) {
+                Ok(sent) => sent,
+                Err(error) => {
+                    failure = Some(error.to_string());
+                    break;
+                }
+            };
+            let position = player.position();
+            let motion = player.delta_movement();
+            let (y_rot, x_rot) = player.rotation();
+            let packets: Vec<Value> = sent
+                .iter()
+                .map(|packet| json!({"type": packet.type_name(), "bytes": hex(&packet.encode_body())}))
+                .collect();
+            ticks.push(json!({
+                "x": format!("{:016x}", position.x.to_bits()),
+                "y": format!("{:016x}", position.y.to_bits()),
+                "z": format!("{:016x}", position.z.to_bits()),
+                "motion_x": format!("{:016x}", motion.x.to_bits()),
+                "motion_y": format!("{:016x}", motion.y.to_bits()),
+                "motion_z": format!("{:016x}", motion.z.to_bits()),
+                "y_rot": format!("{:08x}", y_rot.to_bits()),
+                "x_rot": format!("{:08x}", x_rot.to_bits()),
+                "on_ground": player.on_ground(),
+                "horizontal_collision": player.horizontal_collision(),
+                "vertical_collision": player.vertical_collision(),
+                "minor_horizontal_collision": player.minor_horizontal_collision(),
+                "sprinting": player.is_sprinting(),
+                "shift_key_down": player.is_shift_key_down(),
+                "pose": player.pose().java_name(),
+                "fall_distance": format!("{:016x}", player.fall_distance().to_bits()),
+                "flying": player.is_flying(),
+                "sent": packets,
+            }));
+        }
+        match failure {
+            None => out.push(json!({"label": label, "outcome": "ticked", "ticks": ticks})),
+            Some(message) => out.push(json!({
+                "label": label,
+                "outcome": "unsupported",
+                "message": message,
+                "ticks": ticks,
+            })),
+        }
+    }
+    Ok(json!({"rows": out}))
+}
+
 fn respond(request: Value) -> Result<Value, String> {
     if request["schema_version"].as_u64() != Some(1) {
         return Err("unsupported schema_version".into());
@@ -16618,6 +16816,7 @@ fn respond(request: Value) -> Result<Value, String> {
         "image" => image_result(&request)?,
         "model" => model_result(&request)?,
         "json" => json_result(&request)?,
+        "movement" => movement_result(&request)?,
         _ => return Err("unknown behavior family".into()),
     };
     Ok(json!({"schema_version": 1, "case_id": case_id, "result": result}))

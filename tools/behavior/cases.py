@@ -13157,6 +13157,22 @@ def movement_cases():
     ladder_wall = column(0, 2, 64, 70)
     pool = [{"x": x, "y": y, "z": z, "block": "minecraft:water"}
             for x in range(-6, 7) for z in range(-6, 7) for y in range(64, 67)]
+    ceiling = [{"x": x, "y": 65, "z": z, "block": "minecraft:stone"}
+               for x in range(-4, 5) for z in range(-4, 9)]
+    low_roof = [{"x": x, "y": 66, "z": z, "block": "minecraft:stone"}
+                for x in range(-2, 3) for z in range(-2, 3)]
+    honey_wall = column(1, 0, 64, 72, "minecraft:honey_block")
+    stream = ([{"x": x, "y": 64, "z": -3, "block": "minecraft:water"} for x in range(-1, 2)]
+              + [{"x": x, "y": 64, "z": z, "block": "minecraft:water",
+                  "properties": {"level": str(z + 3)}}
+                 for x in range(-1, 2) for z in range(-2, 4)])
+    lava = [{"x": x, "y": 64, "z": z, "block": "minecraft:lava"}
+            for x in range(-3, 4) for z in range(-3, 8)]
+    trapdoor_ladder = (column(0, 1, 64, 65, "minecraft:ladder", {"facing": "north"})
+                       + [{"x": 0, "y": 66, "z": 1, "block": "minecraft:oak_trapdoor",
+                           "properties": {"facing": "north", "open": "true"}}])
+    side_wall = [b for x in range(-16, 4) for b in column(x, 1, 64, 65)]
+    edge_ladder = column(0, 2, 56, 62, "minecraft:ladder", {"facing": "north"}) + column(0, 3, 56, 63)
 
     rows = [
         scene("stand-still", floor(), keys(6)),
@@ -13202,6 +13218,29 @@ def movement_cases():
               + keys(10, forward=True), game_mode="creative"),
         scene("spectator-float", floor(), keys(10, forward=True, jump=True),
               game_mode="spectator"),
+        scene("sprint-swim", floor() + pool, keys(24, forward=True, sprint=True)),
+        scene("sneak-sink", floor() + pool, keys(16, sneak=True), start=(0.5, 65.5, 0.5)),
+        scene("fall-into-water", floor() + pool, keys(40), start=(0.5, 90.0, 0.5)),
+        scene("fall-far", floor(), keys(40), start=(0.5, 95.0, 0.5)),
+        scene("crawl-under-ceiling", floor() + ceiling, keys(16, forward=True)),
+        scene("jump-under-ceiling", floor() + low_roof, keys(14, jump=True)),
+        scene("honey-wall-slide", floor() + honey_wall,
+              keys(30, forward=True), start=(0.5, 72.0, 0.5), y_rot=-90.0),
+        scene("flowing-water-push", floor() + stream, keys(20)),
+        scene("lava-wade", floor() + lava, keys(16, forward=True)),
+        scene("trapdoor-ladder", floor() + trapdoor_ladder + ladder_wall,
+              keys(40, forward=True)),
+        scene("sprint-along-wall", floor() + side_wall,
+              keys(16, forward=True, sprint=True), y_rot=85.0),
+        scene("sneak-onto-slime", floor(block="minecraft:slime_block"),
+              keys(24, sneak=True), start=(0.5, 68.0, 0.5)),
+        scene("creative-fly-sprint-land", floor(),
+              keys(1, jump=True) + keys(1) + keys(1, jump=True)
+              + keys(8, forward=True, sprint=True) + keys(10, sneak=True) + keys(4),
+              game_mode="creative"),
+        scene("auto-jump-sprint", floor() + block_step,
+              keys(20, forward=True, sprint=True), auto_jump=True),
+        scene("walk-off-ledge-into-ladder", ledge + edge_ladder, keys(30, forward=True)),
     ]
     yield {
         "case_id": "movement/local-player-ticks",
