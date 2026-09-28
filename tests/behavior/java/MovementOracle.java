@@ -276,6 +276,10 @@ public final class MovementOracle {
         tick.addProperty("pose", player.getPose().name());
         tick.addProperty("fall_distance", Oracle.bits(player.fallDistance));
         tick.addProperty("flying", player.getAbilities().flying);
+        // What the view bob reads, half way through the next frame.
+        var avatar = player.avatarState();
+        tick.addProperty("bob_walk", Oracle.bits(avatar.getBackwardsInterpolatedWalkDistance(0.5F)));
+        tick.addProperty("bob", Oracle.bits(avatar.getInterpolatedBob(0.5F)));
         var packets = new JsonArray();
         for (var packet : sent) {
             var described = new JsonObject();

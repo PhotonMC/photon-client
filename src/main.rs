@@ -878,38 +878,6 @@ impl Script {
 const CLOUD_RANGE: i32 = 128;
 
 /// View-projection from the player's eye, measured from the mesh origin.
-/// `GameRenderer.bobView`: the sway of a walking player's view, a shift
-/// and two small turns applied after the projection's own transform, from
-/// the backwards walked distance and the bob.
-fn view_bob(walked: f32, bob: f32) -> [[f32; 4]; 4] {
-    use voxel_client::math::{mth_cos_f64, mth_sin_f64};
-    let angle = walked * std::f32::consts::PI;
-    let sin = mth_sin_f64(f64::from(angle));
-    let cos = mth_cos_f64(f64::from(angle));
-    let shift = [sin * bob * 0.5, -(cos * bob).abs()];
-    let roll = (sin * bob * 3.0).to_radians();
-    let pitch = ((mth_cos_f64(f64::from(angle - 0.2)) * bob).abs() * 5.0).to_radians();
-    let translate = [
-        [1.0, 0.0, 0.0, 0.0],
-        [0.0, 1.0, 0.0, 0.0],
-        [0.0, 0.0, 1.0, 0.0],
-        [shift[0], shift[1], 0.0, 1.0],
-    ];
-    let around_z = [
-        [roll.cos(), roll.sin(), 0.0, 0.0],
-        [-roll.sin(), roll.cos(), 0.0, 0.0],
-        [0.0, 0.0, 1.0, 0.0],
-        [0.0, 0.0, 0.0, 1.0],
-    ];
-    let around_x = [
-        [1.0, 0.0, 0.0, 0.0],
-        [0.0, pitch.cos(), pitch.sin(), 0.0],
-        [0.0, -pitch.sin(), pitch.cos(), 0.0],
-        [0.0, 0.0, 0.0, 1.0],
-    ];
-    render::scene::multiply(render::scene::multiply(translate, around_z), around_x)
-}
-
 fn player_camera(
     aspect: f32,
     fov: f32,
@@ -1314,7 +1282,7 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
         let far = ((render_distance * 16 * 4) as f32).max((CLOUD_RANGE * 16) as f32);
         // The view bob option's default is on.
         let (walked, bob) = player.view_bob(partial as f32);
-        let bob = view_bob(walked, bob);
+        let bob = voxel_client::camera::view_bob(walked, bob);
         let view_projection = player_camera(aspect, fov, far, eye, y_rot, x_rot, bob);
 
         // Mesh the dirty sections nearest the player first on the workers,

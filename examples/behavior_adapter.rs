@@ -16894,6 +16894,8 @@ fn movement_result(request: &Value) -> Result<Value, String> {
                 "pose": player.pose().java_name(),
                 "fall_distance": format!("{:016x}", player.fall_distance().to_bits()),
                 "flying": player.is_flying(),
+                "bob_walk": format!("{:08x}", player.view_bob(0.5).0.to_bits()),
+                "bob": format!("{:08x}", player.view_bob(0.5).1.to_bits()),
                 "sent": packets,
             }));
         }

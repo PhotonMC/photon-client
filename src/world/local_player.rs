@@ -1326,7 +1326,10 @@ impl LocalPlayer {
         let delta_x = (self.position.x - previous_x) as f32;
         let delta_z = (self.position.z - previous_z) as f32;
         self.update_auto_jump(level, delta_x, delta_z)?;
-        self.walk_dist += (delta_x * delta_x + delta_z * delta_z).sqrt() * 0.6;
+        // `Mth.length(float, float)` squares in double: there is no float
+        // `lengthSquared` of two values.
+        let (x, z) = (f64::from(delta_x), f64::from(delta_z));
+        self.walk_dist += (x * x + z * z).sqrt() as f32 * 0.6;
         Ok(())
     }
 

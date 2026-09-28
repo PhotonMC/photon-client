@@ -68,3 +68,105 @@ impl Camera {
         }
     }
 }
+
+/// `GameRenderer.bobView`: the sway of a walking player's view, a shift
+/// and two small turns applied after the projection's own transform, from
+/// the backwards walked distance and the bob.
+pub fn view_bob(walked: f32, bob: f32) -> [[f32; 4]; 4] {
+    use crate::math::{mth_cos_f64, mth_sin_f64};
+    let angle = walked * std::f32::consts::PI;
+    let sin = mth_sin_f64(f64::from(angle));
+    let cos = mth_cos_f64(f64::from(angle));
+    let shift = [sin * bob * 0.5, -(cos * bob).abs()];
+    let roll = (sin * bob * 3.0).to_radians();
+    let pitch = ((mth_cos_f64(f64::from(angle - 0.2)) * bob).abs() * 5.0).to_radians();
+    let translate = [
+        [1.0, 0.0, 0.0, 0.0],
+        [0.0, 1.0, 0.0, 0.0],
+        [0.0, 0.0, 1.0, 0.0],
+        [shift[0], shift[1], 0.0, 1.0],
+    ];
+    let around_z = [
+        [roll.cos(), roll.sin(), 0.0, 0.0],
+        [-roll.sin(), roll.cos(), 0.0, 0.0],
+        [0.0, 0.0, 1.0, 0.0],
+        [0.0, 0.0, 0.0, 1.0],
+    ];
+    let around_x = [
+        [1.0, 0.0, 0.0, 0.0],
+        [0.0, pitch.cos(), pitch.sin(), 0.0],
+        [0.0, -pitch.sin(), pitch.cos(), 0.0],
+        [0.0, 0.0, 0.0, 1.0],
+    ];
+    crate::render::scene::multiply(
+        crate::render::scene::multiply(translate, around_z),
+        around_x,
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// JOML's matrices for the same inputs, built as `GameRenderer.bobView`
+    /// builds them, printed column by column.
+    #[test]
+    fn view_bob_matches_the_reference_matrices() {
+        let cases: [(f32, f32, [f32; 16]); 2] = [
+            (
+                -1.37,
+                0.08,
+                [
+                    0.99999255,
+                    0.003844246,
+                    0.0,
+                    0.0,
+                    -0.0038442418,
+                    0.9999915,
+                    0.0014445999,
+                    0.0,
+                    5.553398E-6,
+                    -0.0014445892,
+                    0.99999887,
+                    0.0,
+                    0.03670994,
+                    -0.031772956,
+                    0.0,
+                    1.0,
+                ],
+            ),
+            (
+                -12.61,
+                0.1,
+                [
+                    0.99998784,
+                    -0.004926502,
+                    0.0,
+                    0.0,
+                    0.0049264515,
+                    0.9999776,
+                    0.00452793,
+                    0.0,
+                    -2.2306856E-5,
+                    -0.004527875,
+                    0.99998975,
+                    0.0,
+                    -0.047044817,
+                    -0.033869464,
+                    0.0,
+                    1.0,
+                ],
+            ),
+        ];
+        for (walked, bob, expected) in cases {
+            let matrix = view_bob(walked, bob);
+            for (index, value) in expected.iter().enumerate() {
+                let actual = matrix[index / 4][index % 4];
+                assert!(
+                    (actual - value).abs() < 1.0e-6,
+                    "{walked} {bob} [{index}]: {actual} vs {value}"
+                );
+            }
+        }
+    }
+}

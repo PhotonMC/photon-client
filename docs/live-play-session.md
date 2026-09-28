@@ -65,7 +65,11 @@ barışçıl ve `server-port=25600` içeriyor.
   sonunda yatay yer değiştirmenin 0,6 katı artıyor, sallanma `aiStep`
   başında yerdeyken yatay hızın (en çok 0,1) %40'ına yaklaşıyor. Kamera
   tick'inin sırası ve suya giren kameranın sıvı kontrolü referansla
-  karşılaştırılmadı; sallanma karelerle karşılaştırılmadı (P14).
+  karşılaştırılmadı (P14). Sallanmanın girdileri (yarım karedeki geriye
+  doğru yürünen mesafe ve sallanma) movement ailesinde her tick bit bit
+  eşleşiyor; matris JOML'un aynı girdilerle kurduğu matrisle 1e-6 içinde
+  aynı (`camera::tests`). Z ekseni çevresindeki en fazla ±0,3°'lik dönme
+  referansta da var.
 - Pencere: F11 birincil monitörde geçerli video kipinde tam ekrana geçip
   eski yere dönüyor (`VOXEL_FULLSCREEN=1` tam ekranda başlatıyor); boyut
   değişince swapchain, derinlik hedefi ve okuma tamponu yeniden kuruluyor,
