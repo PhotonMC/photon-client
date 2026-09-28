@@ -80,8 +80,16 @@ barışçıl ve `server-port=25600` içeriyor.
   kareler arasında aradeğerleniyor. Çizim: sisle ufka karışan gök diski,
   gün doğumu yelpazesi, güneş ve ay evresi (en yakın texel), tohumlu 1500
   yıldız, ufuk altı koyu disk; ekran sis rengine temizleniyor. Farklar:
-  yağmur ve gök gürültüsü karartması, bulutlar, arazinin sisi yok, su altı
-  görüş süresi sabit, dünya sınırı ve End gökyüzü çizilmiyor; referans
+  yağmur ve gök gürültüsü karartması, bulutlar yok, su altı
+  görüş süresi sıfır sayılıyor, dünya sınırı ve End gökyüzü çizilmiyor; referans
+  karelerle karşılaştırılmadı.
+- Arazi sisi referansın sis çizicisinin hesabı: çevresel sis (atmosfer
+  için `fog_start_distance`/`fog_end_distance`, su altında
+  `water_fog_start_distance` ve görüş süresiyle çarpılan
+  `water_fog_end_distance`) kameraya küresel uzaklıkla, görüş mesafesi
+  sisi (son `clamp(blok/10, 4, 64)` blok) silindirik uzaklıkla ölçülüyor;
+  kalını alınıp sis rengine karıştırılıyor. Farklar: yağmur sisi, körlük,
+  karanlık, lav ve toz kar sisleri ve bölümlerin belirme geçişi yok; referans
   karelerle karşılaştırılmadı.
 - Biyom renkleri (çim, yaprak, kuru yaprak, su) referansın tint yoluyla:
   biyomun sıcaklık/yağıştan colormap rengi ya da kendi rengi, koyu orman ve

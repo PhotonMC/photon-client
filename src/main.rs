@@ -1253,6 +1253,7 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
             0.5,
         );
         let sky_view_projection = player_camera(aspect, fov, [0.0; 3], y_rot, x_rot);
+        backend.set_fog(sky.fog_colour, sky.terrain_fog);
         backend.set_sky(
             &sky.vertices,
             &sky.batches,

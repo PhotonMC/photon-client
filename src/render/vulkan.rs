@@ -27,6 +27,9 @@ layout(push_constant) uniform Push {
     vec4 sky_colour_factor;
     vec4 block_tint_factor;
     vec4 ambient_brightness;
+    vec4 camera;
+    vec4 fog_colour;
+    vec4 fog_distances;
 } push;
 layout(location = 0) in vec3 in_position;
 layout(location = 1) in vec2 in_uv;
@@ -36,6 +39,7 @@ layout(location = 4) in vec2 in_light;
 layout(location = 0) out vec2 out_uv;
 layout(location = 1) out float out_shade;
 layout(location = 2) out vec4 out_tint;
+layout(location = 3) out vec2 out_fog;
 
 // One texel of the reference's 16x16 lightmap, as its lightmap shader
 // computes it and as an 8-bit texture stores it.
@@ -74,6 +78,10 @@ void main() {
     out_uv = in_uv;
     out_shade = in_shade;
     out_tint = in_tint * vec4(sample_lightmap(in_light), 1.0);
+    // Fog is measured from the camera: once as a sphere, once as a
+    // cylinder whose height counts like its radius.
+    vec3 offset = in_position - push.camera.xyz;
+    out_fog = vec2(length(offset), max(length(offset.xz), abs(offset.y)));
 }
 ";
 
@@ -82,7 +90,17 @@ layout(set = 0, binding = 0) uniform sampler2D atlas;
 layout(location = 0) in vec2 in_uv;
 layout(location = 1) in float in_shade;
 layout(location = 2) in vec4 in_tint;
+layout(location = 3) in vec2 in_fog;
 layout(location = 0) out vec4 out_colour;
+layout(push_constant) uniform Push {
+    layout(offset = 128) vec4 fog_colour;
+    vec4 fog_distances;
+} push;
+float linear_fog(float distance, float start, float end) {
+    if (distance <= start) { return 0.0; }
+    if (distance >= end) { return 1.0; }
+    return (distance - start) / (end - start);
+}
 // The terrain sampler filters linearly, yet the reference draws blocks
 // pixel-sharp: its terrain shader pulls each lookup towards the centre of the
 // texel it lands in, by as much as that texel is larger than a screen pixel.
@@ -104,7 +122,13 @@ vec4 sample_texel_centred(vec2 uv) {
 void main() {
     vec4 texel = sample_texel_centred(in_uv) * in_tint;
     if (texel.a < 0.1) { discard; }
-    out_colour = vec4(texel.rgb * in_shade, texel.a);
+    vec3 colour = texel.rgb * in_shade;
+    // The environment's fog over the spherical distance, the render
+    // distance's over the cylindrical one, whichever is thicker.
+    float fog = max(
+        linear_fog(in_fog.x, push.fog_distances.x, push.fog_distances.y),
+        linear_fog(in_fog.y, push.fog_distances.z, push.fog_distances.w));
+    out_colour = vec4(mix(colour, push.fog_colour.rgb, fog * push.fog_colour.a), texel.a);
 }
 ";
 
@@ -154,6 +178,10 @@ void main() {
     out_colour = colour;
 }
 ";
+
+/// No terrain fog: every distance out of reach, as the reference's empty
+/// fog buffer.
+const NO_FOG: [f32; 8] = [0.0, 0.0, 0.0, 1.0, f32::MAX, f32::MAX, f32::MAX, f32::MAX];
 
 /// Lightmap inputs with nothing dimming them: white sky light at full
 /// factor, the default block light tint at the reference's base factor, no
@@ -353,6 +381,8 @@ pub struct VulkanBackend {
     sections: std::collections::BTreeMap<(i32, i32, i32), SectionBuffers>,
     sort_origin: [f32; 3],
     lightmap: [f32; 12],
+    /// The terrain fog's colour and its four distances.
+    fog: [f32; 8],
     image_available: vk::Semaphore,
     render_finished: Vec<vk::Semaphore>,
     in_flight: vk::Fence,
@@ -608,6 +638,7 @@ impl VulkanBackend {
                 sections: std::collections::BTreeMap::new(),
                 sort_origin: [0.0; 3],
                 lightmap: DEFAULT_LIGHTMAP,
+                fog: NO_FOG,
                 image_available,
                 render_finished,
                 in_flight,
@@ -813,16 +844,19 @@ impl VulkanBackend {
                 &[],
             );
             let matrix: [f32; 16] = std::array::from_fn(|i| view_projection[i / 4][i % 4]);
-            // The terrain shaders also take the lightmap's inputs.
-            let mut terrain_push = [0.0_f32; 28];
+            // The terrain shaders also take the lightmap's inputs, the
+            // camera and the fog.
+            let mut terrain_push = [0.0_f32; 40];
             terrain_push[..16].copy_from_slice(&matrix);
-            terrain_push[16..].copy_from_slice(&self.lightmap);
+            terrain_push[16..28].copy_from_slice(&self.lightmap);
+            terrain_push[28..31].copy_from_slice(&self.sort_origin);
+            terrain_push[32..].copy_from_slice(&self.fog);
             self.device.cmd_push_constants(
                 self.command_buffer,
                 scene.pipeline_layout,
-                vk::ShaderStageFlags::VERTEX,
+                vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
                 0,
-                std::slice::from_raw_parts(terrain_push.as_ptr().cast::<u8>(), 112),
+                std::slice::from_raw_parts(terrain_push.as_ptr().cast::<u8>(), 160),
             );
             for section in self
                 .sections
@@ -1082,9 +1116,15 @@ impl VulkanBackend {
             let blend = vk::PipelineColorBlendStateCreateInfo::default().attachments(&blends);
 
             let push_ranges = [
-                vk::PushConstantRange::default()
-                    .stage_flags(vk::ShaderStageFlags::VERTEX)
-                    .size(if sky { 64 } else { 112 }),
+                if sky {
+                    vk::PushConstantRange::default()
+                        .stage_flags(vk::ShaderStageFlags::VERTEX)
+                        .size(64)
+                } else {
+                    vk::PushConstantRange::default()
+                        .stage_flags(vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT)
+                        .size(160)
+                },
                 vk::PushConstantRange::default()
                     .stage_flags(vk::ShaderStageFlags::FRAGMENT)
                     .offset(64)
@@ -1591,6 +1631,14 @@ impl VulkanBackend {
             ambient[2],
             brightness,
         ];
+    }
+
+    /// Set the terrain fog for the frames that follow: its colour, and the
+    /// environmental start and end and the render distance start and end,
+    /// in blocks.
+    pub fn set_fog(&mut self, colour: [f32; 4], distances: [f32; 4]) {
+        self.fog[..4].copy_from_slice(&colour);
+        self.fog[4..].copy_from_slice(&distances);
     }
 
     /// Hand over the next frame's sky: triangles in view-rotated space, the
