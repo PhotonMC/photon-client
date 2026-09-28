@@ -354,6 +354,18 @@ struct SceneResources {
     cloud_pipeline: vk::Pipeline,
 }
 
+/// A rectangle of one atlas level to rewrite.
+#[derive(Debug, Clone)]
+pub struct AtlasRegion {
+    pub level: u32,
+    pub x: u32,
+    pub y: u32,
+    pub width: u32,
+    pub height: u32,
+    /// Tightly packed RGBA8 rows.
+    pub rgba: Vec<u8>,
+}
+
 /// How the clouds are placed for a frame.
 #[derive(Debug, Clone, Copy)]
 pub struct CloudFrame {
@@ -1546,6 +1558,86 @@ impl VulkanBackend {
                 view,
                 format,
             })
+        }
+    }
+
+    /// Rewrite rectangles of the loaded atlas: each a level, a corner, a
+    /// size and its tightly packed RGBA8 texels. Animated sprites use it
+    /// every tick their frame changes.
+    pub fn update_atlas(&mut self, regions: &[AtlasRegion]) -> Result<(), VulkanError> {
+        let Some(scene) = self.scene.as_ref() else {
+            return Ok(());
+        };
+        if regions.is_empty() {
+            return Ok(());
+        }
+        unsafe {
+            // The previous frame may still be sampling the atlas.
+            self.device
+                .wait_for_fences(&[self.in_flight], true, u64::MAX)
+                .map_err(|result| VulkanError::Call("vkWaitForFences", result))?;
+            let mut staged = Vec::new();
+            let mut copies = Vec::with_capacity(regions.len());
+            let mut deepest = 0;
+            for region in regions {
+                copies.push(
+                    vk::BufferImageCopy::default()
+                        .buffer_offset(staged.len() as u64)
+                        .image_subresource(
+                            vk::ImageSubresourceLayers::default()
+                                .aspect_mask(vk::ImageAspectFlags::COLOR)
+                                .mip_level(region.level)
+                                .layer_count(1),
+                        )
+                        .image_offset(vk::Offset3D {
+                            x: region.x as i32,
+                            y: region.y as i32,
+                            z: 0,
+                        })
+                        .image_extent(vk::Extent3D {
+                            width: region.width,
+                            height: region.height,
+                            depth: 1,
+                        }),
+                );
+                staged.extend_from_slice(&region.rgba);
+                deepest = deepest.max(region.level);
+            }
+            let (staging, staging_memory) =
+                self.upload_buffer(vk::BufferUsageFlags::TRANSFER_SRC, &staged)?;
+            let image = scene.texture;
+            let range = vk::ImageSubresourceRange::default()
+                .aspect_mask(vk::ImageAspectFlags::COLOR)
+                .level_count(deepest + 1)
+                .layer_count(1);
+            let result = self.run_once(|command| {
+                transition(
+                    &self.device,
+                    command,
+                    image,
+                    range,
+                    vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+                    vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+                );
+                self.device.cmd_copy_buffer_to_image(
+                    command,
+                    staging,
+                    image,
+                    vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+                    &copies,
+                );
+                transition(
+                    &self.device,
+                    command,
+                    image,
+                    range,
+                    vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+                    vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+                );
+            });
+            self.device.destroy_buffer(staging, None);
+            self.device.free_memory(staging_memory, None);
+            result
         }
     }
 

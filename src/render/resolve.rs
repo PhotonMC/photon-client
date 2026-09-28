@@ -160,6 +160,94 @@ pub struct BuiltAtlas {
     pub levels: Vec<DecodedImage>,
     /// Where each sprite landed, in normalised coordinates.
     pub sprites: BTreeMap<String, [f32; 4]>,
+    /// The animated sprites, each able to draw its current frame into the
+    /// levels.
+    pub animations: Vec<SpriteAnimation>,
+}
+
+/// One animated sprite in an atlas: `SpriteContents.AnimationState`.
+///
+/// Each frame's mip levels are cut from the levels built for the whole
+/// strip. Every client tick advances the frame; a sprite is drawn into the
+/// atlas when its frame changed, or every tick if it blends frames.
+#[derive(Debug, Clone)]
+pub struct SpriteAnimation {
+    pub name: String,
+    /// The sprite's corner in level zero, without its padding.
+    x: u32,
+    y: u32,
+    padding: u32,
+    /// Each strip frame's levels, by strip index.
+    frame_levels: BTreeMap<i32, Vec<DecodedImage>>,
+    /// The frames that play: a strip index and a time in ticks.
+    playback: Vec<(i32, i32)>,
+    interpolate: bool,
+    frame: usize,
+    sub_frame: i32,
+    dirty: bool,
+}
+
+impl SpriteAnimation {
+    /// `AnimationState.tick`.
+    pub fn tick(&mut self) {
+        self.sub_frame += 1;
+        self.dirty = false;
+        let (old_index, time) = self.playback[self.frame];
+        if self.sub_frame >= time {
+            self.frame = (self.frame + 1) % self.playback.len();
+            self.sub_frame = 0;
+            if self.playback[self.frame].0 != old_index {
+                self.dirty = true;
+            }
+        }
+    }
+
+    /// `AnimationState.needsToDraw`.
+    pub fn needs_to_draw(&self) -> bool {
+        self.interpolate || self.dirty
+    }
+
+    /// Draw the current frame, or the blend towards the next one, into one
+    /// atlas level, padding included. Returns the rectangle written: its
+    /// corner and size in that level's texels.
+    pub fn draw(&self, level: usize, target: &mut DecodedImage) -> (u32, u32, u32, u32) {
+        let (index, time) = self.playback[self.frame];
+        let current = &self.frame_levels[&index][level];
+        let blended;
+        let image = if self.interpolate {
+            let next =
+                &self.frame_levels[&self.playback[(self.frame + 1) % self.playback.len()].0][level];
+            // The progress goes through the reference's draw as thousandths.
+            let progress = ((self.sub_frame as f32 / time as f32) * 1000.0) as i32 as f32 / 1000.0;
+            blended = DecodedImage {
+                width: current.width,
+                height: current.height,
+                rgba: current
+                    .rgba
+                    .iter()
+                    .zip(&next.rgba)
+                    .map(|(&a, &b)| {
+                        let (a, b) = (f32::from(a) / 255.0, f32::from(b) / 255.0);
+                        ((a * (1.0 - progress) + b * progress) * 255.0).round() as u8
+                    })
+                    .collect(),
+            };
+            &blended
+        } else {
+            current
+        };
+        let shift = level as u32;
+        let padding = self.padding >> shift;
+        let x = (self.x >> shift).saturating_sub(padding);
+        let y = (self.y >> shift).saturating_sub(padding);
+        blit_sprite(target, image, self.x >> shift, self.y >> shift, padding);
+        (
+            x,
+            y,
+            (image.width + padding * 2).min(target.width - x),
+            (image.height + padding * 2).min(target.height - y),
+        )
+    }
 }
 
 /// How many mip levels a sprite set can actually carry.
@@ -254,25 +342,42 @@ pub fn build_atlas_with(
             .texture(&material.sprite)
             .ok_or_else(|| ResolveError::BadTexture(key.clone()))?;
         let mut image = decode_rgba(&bytes).map_err(|_| ResolveError::BadTexture(key.clone()))?;
+        let mut animated = None;
         if let Some(animation) = source.texture_animation(&material.sprite) {
-            image = first_animation_frame(&image, &animation)
+            let strip = image;
+            image = first_animation_frame(&strip, &animation)
                 .ok_or_else(|| ResolveError::BadTexture(key.clone()))?;
+            let per_row = strip.width / image.width;
+            let count = per_row * (strip.height / image.height);
+            if let Some(playback) = animation.playback(count as i32) {
+                // Still sprites start on the list's first frame; animated
+                // ones on the first frame that plays.
+                image = first_animation_frame(
+                    &strip,
+                    &AnimationFrames {
+                        first_frame: playback[0].0,
+                        ..animation.clone()
+                    },
+                )
+                .ok_or_else(|| ResolveError::BadTexture(key.clone()))?;
+                animated = Some((strip, playback, animation.interpolate));
+            }
         }
         let metadata = source
             .texture_metadata(&material.sprite)
             .unwrap_or_default();
-        decoded.insert(key.clone(), (image, metadata));
+        decoded.insert(key.clone(), (image, metadata, animated));
     }
     // The level is settled before packing, because the padding the packer
     // reserves is one texel of the deepest level on each side.
     let sizes: Vec<(i32, i32)> = decoded
         .values()
-        .map(|(image, _)| (image.width as i32, image.height as i32))
+        .map(|(image, _, _)| (image.width as i32, image.height as i32))
         .collect();
     let mip_level = effective_mip_level(&sizes, mip_level.max(0));
     let mut stitcher = Stitcher::new(max_size, max_size, mip_level, 0);
     for material in wanted.values() {
-        let Some((image, _)) = decoded.get(&material.sprite.as_string()) else {
+        let Some((image, _, _)) = decoded.get(&material.sprite.as_string()) else {
             continue;
         };
         stitcher.register_sprite(SpriteEntry {
@@ -290,6 +395,7 @@ pub fn build_atlas_with(
     // level N.
     let level_count = mip_level.max(0) as u32;
     let mut sprites = BTreeMap::new();
+    let mut animations = Vec::new();
     let mut levels: Vec<DecodedImage> = (0..=level_count)
         .map(|level| {
             let level_width = (width >> level).max(1);
@@ -303,7 +409,7 @@ pub fn build_atlas_with(
         .collect();
     for placement in stitcher.placements() {
         let key = placement.name.as_string();
-        let Some((image, metadata)) = decoded.get(&key) else {
+        let Some((image, metadata, animated)) = decoded.get(&key) else {
             continue;
         };
         let sprite = AtlasSprite::new(
@@ -313,14 +419,65 @@ pub fn build_atlas_with(
             width as i32,
             height as i32,
         );
-        let mips = generate_mip_levels_with(
-            placement.name.path(),
-            image,
-            level_count,
-            metadata.mipmap_strategy,
-            metadata.alpha_cutoff_bias,
-            compute_transparency(image),
-        );
+        let origin_x = placement.x as u32 + placement.padding as u32;
+        let origin_y = placement.y as u32 + placement.padding as u32;
+        let mips = if let Some((strip, playback, interpolate)) = animated {
+            // The reference builds the levels of the whole strip, then cuts
+            // each frame out of every level.
+            let strip_mips = generate_mip_levels_with(
+                placement.name.path(),
+                strip,
+                level_count,
+                metadata.mipmap_strategy,
+                metadata.alpha_cutoff_bias,
+                compute_transparency(strip),
+            );
+            let per_row = strip.width / image.width;
+            let mut frame_levels = BTreeMap::new();
+            for &(index, _) in playback {
+                frame_levels.entry(index).or_insert_with(|| {
+                    let left = index as u32 % per_row * image.width;
+                    let top = index as u32 / per_row * image.height;
+                    strip_mips
+                        .iter()
+                        .enumerate()
+                        .map(|(level, mip)| {
+                            let shift = level as u32;
+                            crop(
+                                mip,
+                                left >> shift,
+                                top >> shift,
+                                image.width >> shift,
+                                image.height >> shift,
+                            )
+                        })
+                        .collect::<Vec<_>>()
+                });
+            }
+            let first = frame_levels[&playback[0].0].clone();
+            animations.push(SpriteAnimation {
+                name: key.clone(),
+                x: origin_x,
+                y: origin_y,
+                padding: placement.padding.max(0) as u32,
+                frame_levels,
+                playback: playback.clone(),
+                interpolate: *interpolate,
+                frame: 0,
+                sub_frame: 0,
+                dirty: true,
+            });
+            first
+        } else {
+            generate_mip_levels_with(
+                placement.name.path(),
+                image,
+                level_count,
+                metadata.mipmap_strategy,
+                metadata.alpha_cutoff_bias,
+                compute_transparency(image),
+            )
+        };
         for (level, mip) in mips.iter().enumerate() {
             let shift = level as u32;
             blit_sprite(
@@ -341,7 +498,22 @@ pub fn build_atlas_with(
         rgba,
         levels,
         sprites,
+        animations,
     })
+}
+
+/// A rectangle of an image.
+fn crop(image: &DecodedImage, left: u32, top: u32, width: u32, height: u32) -> DecodedImage {
+    let mut rgba = Vec::with_capacity((width * height * 4) as usize);
+    for row in top..top + height {
+        let start = ((row * image.width + left) * 4) as usize;
+        rgba.extend_from_slice(&image.rgba[start..start + width as usize * 4]);
+    }
+    DecodedImage {
+        width,
+        height,
+        rgba,
+    }
 }
 
 /// Write one sprite level into one atlas level, extending its edge texels into

@@ -1012,6 +1012,11 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
         baking.elapsed()
     );
     backend.load_atlas(&block_renderer.atlas.levels)?;
+    // Animated sprites tick with the client and redraw their slots of a
+    // copy of the atlas, which then goes to the GPU.
+    let mut atlas_levels = block_renderer.atlas.levels.clone();
+    let mut animations = block_renderer.atlas.animations.clone();
+    let mut animation_redraw = vec![false; animations.len()];
     let sprite = |name: &str| {
         block_renderer
             .atlas
@@ -1073,6 +1078,11 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
     .map_err(|error| format!("clouds: {error:?}"))?;
     let cloud_cells = render::clouds::CloudCells::from_image(&cloud_image);
     let mut cloud_key = None;
+    let capture_frames: u32 = env::var("VOXEL_CAPTURE_FRAMES")
+        .ok()
+        .and_then(|value| value.parse().ok())
+        .unwrap_or(0);
+    let mut captured_frames = 0;
     let mut attributes_next = attributes_last.clone();
 
     let aspect = scale.framebuffer_width() as f32 / scale.framebuffer_height() as f32;
@@ -1149,6 +1159,10 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                 None => keys,
             };
             session.tick(held.input())?;
+            for (animation, redraw) in animations.iter_mut().zip(&mut animation_redraw) {
+                animation.tick();
+                *redraw |= animation.needs_to_draw();
+            }
             if let Some(player) = session.player() {
                 camera.tick(player);
             }
@@ -1245,6 +1259,29 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
             }
         }
         backend.set_sort_origin(eye);
+        let mut regions = Vec::new();
+        for (animation, redraw) in animations.iter().zip(&mut animation_redraw) {
+            if !std::mem::take(redraw) {
+                continue;
+            }
+            for (level, target) in atlas_levels.iter_mut().enumerate() {
+                let (x, y, width, height) = animation.draw(level, target);
+                let mut rgba = Vec::with_capacity((width * height * 4) as usize);
+                for row in y..y + height {
+                    let start = ((row * target.width + x) * 4) as usize;
+                    rgba.extend_from_slice(&target.rgba[start..start + width as usize * 4]);
+                }
+                regions.push(render::vulkan::AtlasRegion {
+                    level: level as u32,
+                    x,
+                    y,
+                    width,
+                    height,
+                    rgba,
+                });
+            }
+        }
+        backend.update_atlas(&regions)?;
 
         let attributes = attributes_last.lerp(&attributes_next, partial as f32);
         let look = voxel_client::math::Vec3::direction_from_rotation_components(x_rot, y_rot);
@@ -1320,6 +1357,18 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
         )?;
         let colour = sky.clear_colour;
 
+        // With a frame count, the frames after the script ends are captured
+        // one per tick into numbered files before the run stops.
+        if script_done && captured_frames < capture_frames {
+            if let Ok(path) = env::var("VOXEL_CAPTURE_PPM") {
+                let captured = backend.capture_scene(colour, view_projection)?;
+                let numbered = format!("{path}.{captured_frames:03}.ppm");
+                write_ppm(&numbered, &captured)?;
+                println!("captured_frame={numbered}");
+            }
+            captured_frames += 1;
+            continue;
+        }
         if script_done {
             let player = session.player().ok_or("no local player")?;
             let position = player.position();
@@ -1343,8 +1392,6 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
         }
         backend.draw_scene(colour, view_projection)?;
         frames += 1;
-
-        let _ = frames;
     }
     println!("play_frames={frames} play_ticks={ticks}");
     Ok(())

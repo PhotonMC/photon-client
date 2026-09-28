@@ -68,9 +68,15 @@ barışçıl ve `server-port=25600` içeriyor.
   yaklaşıklanıyor, su rengi biyom
   yerine varsayılan biyomun rengi, yarı saydam yüzler sıralanmıyor, cam ve
   yaprak yanındaki su kaplama dokusu yok, ışık yok.
-- Animasyonlu dokular (su, deniz otu, yosun, lav) atlasa ilk kareleriyle
-  giriyor; referansın kare boyutu kuralı uygulanıyor ama animasyon
-  oynatılmıyor.
+- Animasyonlu dokular referansın sprite animasyonuyla oynuyor: kare
+  listesi (listesizse şeridin bütün kareleri), kare süreleri (`frametime`
+  ve kareye özel `time`, geçersiz kareler atılıyor), her istemci tick'inde
+  ilerleyen kare/alt kare sayacı; kare değişince, `interpolate` olanlarda
+  her tick sonraki kareye binde bir adımlı ilerlemeyle karıştırılarak
+  atlasa yazılıyor. Her karenin mip seviyeleri şeridin tamamından üretilen
+  seviyelerden kesiliyor. Farklar: atlas GPU'da çizimle değil CPU kopyası ve
+  bölge yüklemesiyle güncelleniyor; bir karede birden çok tick geçerse
+  yalnız son durum yazılıyor; referans karelerle karşılaştırılmadı.
 - Gökyüzü referansın veri yolundan hesaplanıyor: gök rengi, sis rengi,
   güneş/ay/yıldız açıları, yıldız parlaklığı, ay evresi ve gün doğumu rengi
   yerel vanilla veri paketindeki boyut, biyom ve timeline dosyalarından,
