@@ -58,6 +58,7 @@ public final class BlockOracle {
                 case "offset_properties" -> rows.add(offsetProperties(element.getAsJsonObject()));
                 case "fluid_overlay_blocks" -> rows.add(fluidOverlayBlocks(element.getAsJsonObject()));
                 case "motion_blocking" -> rows.add(motionBlocking(element.getAsJsonObject()));
+                case "fluid_flow_properties" -> rows.add(fluidFlowProperties(element.getAsJsonObject()));
                 default -> throw new IllegalArgumentException("Unknown block operation: " + operation);
             }
         }
@@ -523,6 +524,45 @@ public final class BlockOracle {
             packed.add(String.format("%016x", word));
         }
         entry.add("words", packed);
+        return entry;
+    }
+
+    /**
+     * What a fluid's flow reads of each state: bits 0 to 5 are the faces, in
+     * direction order, that are fully sturdy (never for an ice block, which the
+     * fluid treats as not solid), bit 6 whether the state blocks motion. Runs of
+     * equal values in state id order, each its first state and value.
+     */
+    private static JsonObject fluidFlowProperties(JsonObject row) {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        entry.addProperty("outcome", "listed");
+        var getter = net.minecraft.world.level.EmptyBlockGetter.INSTANCE;
+        var origin = net.minecraft.core.BlockPos.ZERO;
+        int count = net.minecraft.world.level.block.Block.BLOCK_STATE_REGISTRY.size();
+        int[] values = new int[count];
+        for (var state : net.minecraft.world.level.block.Block.BLOCK_STATE_REGISTRY) {
+            int value = 0;
+            if (!(state.getBlock() instanceof net.minecraft.world.level.block.IceBlock)) {
+                for (var direction : net.minecraft.core.Direction.values()) {
+                    if (state.isFaceSturdy(getter, origin, direction)) {
+                        value |= 1 << direction.get3DDataValue();
+                    }
+                }
+            }
+            if (state.blocksMotion()) {
+                value |= 1 << 6;
+            }
+            values[net.minecraft.world.level.block.Block.getId(state)] = value;
+        }
+        var runs = new JsonArray();
+        for (int id = 0; id < count; id++) {
+            if (id == 0 || values[id] != values[id - 1]) {
+                runs.add(id + ":" + values[id]);
+            }
+        }
+        entry.addProperty("state_count", count);
+        entry.add("runs", runs);
         return entry;
     }
 

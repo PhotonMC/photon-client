@@ -40,7 +40,9 @@ eğilerek yürüme, tek ve basılı zıplama, sprint zıplaması, duvar, yarım 
 ve tam blok basamak, bloğa zıplama, düşüş, uzun düşüş, kenardan düşme ve
 eğilerek kenarda durma, buz, ruh kumu, balçığa düşüş ve eğilerek balçığa
 düşüş, bal, merdiven, tuzak kapı merdiveni, kenardan merdivene düşüş, yüzme,
-koşarak yüzme, suda yükselme ve batma, suya yüksekten düşüş, akan su, lav,
+koşarak yüzme, suda yükselme ve batma, suya yüksekten düşüş, akan su, duvar
+önündeki şelalede yüzme (düşen sıvının aşağı çekişi), çit yanından akan su
+(tam blok olmayan komşunun `blocksMotion`'ı), lav,
 tavan altında sürünme pozu, tavana zıplama, duvar boyunca sprint (küçük yatay
 çarpışma), bal duvarında kayma, otomatik zıplama ve sprintle otomatik
 zıplama, aşağı bakarak yürüme, yaratıcı çift zıplama ile uçuş, uçarken sprint
@@ -59,7 +61,6 @@ döndürüyor:
 - Çarpışma şekli varlığa bağlı bloklar: iskele ve toz kar.
 - İçine girilen ve hareketi değiştiren bloklar: kabarcık sütunu, örümcek
   ağı, tatlı meyve çalısı, toz kar.
-- Düşen sıvının akışı ve akışta `blocksMotion` gereken, tam blok olmayan komşu.
 - Dünyanın altına düşme.
 
 Hiç yazılmamış olanlar (senaryoya da girmiyorlar): elytra ile süzülme, eşya
@@ -72,7 +73,9 @@ varlıklarla çarpışma ve itilme, dünya sınırı çarpışması.
 Blok başına sürtünme, hız ve zıplama çarpanı, sekme ve etiket/sınıf bayrakları
 ile durum başına sıvı ve boğma bilgisi referanstan yakalanıp
 `src/world/block_movement_table.rs` olarak üretiliyor; block ailesi her koşuda
-tabloyu baştan sona karşılaştırıyor. Üretim:
+tabloyu baştan sona karşılaştırıyor. Sıvı akışının okuduğu durum özellikleri
+(tam sağlam yüzler, buz blokları hariç; `blocksMotion`) da aynı yolla
+`src/world/fluid_flow_table.rs` (`tools/generate/fluid_flow.py`). Üretim:
 
 ```
 python3 tools/generate/block_movement.py .data/captures/behavior/<id>/outputs.jsonl

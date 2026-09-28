@@ -16333,6 +16333,19 @@ fn block_result(request: &Value) -> Result<Value, String> {
                     .collect();
                 out.push(json!({"label": label, "outcome": "listed", "blocks": blocks}));
             }
+            "fluid_flow_properties" => {
+                use voxel_client::world::fluid_flow_table as table;
+                let runs: Vec<String> = table::RUNS
+                    .iter()
+                    .map(|(first, value)| format!("{first}:{value}"))
+                    .collect();
+                out.push(json!({
+                    "label": label,
+                    "outcome": "listed",
+                    "state_count": table::STATE_COUNT,
+                    "runs": runs,
+                }));
+            }
             "motion_blocking" => {
                 use voxel_client::world::motion_blocking_table as table;
                 let words: Vec<String> = table::WORDS

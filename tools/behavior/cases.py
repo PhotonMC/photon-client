@@ -13105,6 +13105,12 @@ def block_cases():
         "rows": [{"label": "registry"}],
     }
     yield {
+        "case_id": "block/fluid-flow-properties",
+        "family": "block",
+        "operation": "fluid_flow_properties",
+        "rows": [{"label": "registry"}],
+    }
+    yield {
         "case_id": "block/light-properties",
         "family": "block",
         "operation": "light_properties",
@@ -13202,6 +13208,12 @@ def movement_cases():
                        + [{"x": 0, "y": 66, "z": 1, "block": "minecraft:oak_trapdoor",
                            "properties": {"facing": "north", "open": "true"}}])
     side_wall = [b for x in range(-16, 4) for b in column(x, 1, 64, 65)]
+    # A waterfall two wide against a wall, and a stream flowing past fences.
+    waterfall = ([{"x": x, "y": y, "z": 0, "block": "minecraft:water", "properties": {"level": "8"}}
+                  for x in range(0, 2) for y in range(64, 72)]
+                 + [b for x in range(-1, 3) for b in column(x, 1, 64, 72)])
+    fenced_stream = stream + [{"x": 2, "y": 64, "z": z, "block": "minecraft:oak_fence"}
+                              for z in range(-2, 4)]
     edge_ladder = column(0, 2, 56, 62, "minecraft:ladder", {"facing": "north"}) + column(0, 3, 56, 63)
 
     rows = [
@@ -13257,6 +13269,10 @@ def movement_cases():
         scene("honey-wall-slide", floor() + honey_wall,
               keys(30, forward=True), start=(0.5, 72.0, 0.5), y_rot=-90.0),
         scene("flowing-water-push", floor() + stream, keys(20)),
+        scene("waterfall-swim", floor() + waterfall,
+              keys(10, forward=True) + keys(20, forward=True, jump=True),
+              start=(0.5, 66.0, 0.5)),
+        scene("stream-past-fence", floor() + fenced_stream, keys(20, left=True)),
         scene("lava-wade", floor() + lava, keys(16, forward=True)),
         scene("trapdoor-ladder", floor() + trapdoor_ladder + ladder_wall,
               keys(40, forward=True)),

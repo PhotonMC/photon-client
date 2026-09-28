@@ -3113,6 +3113,7 @@ pub mod block_collision_table;
 pub mod block_light_table;
 pub mod block_movement_table;
 pub mod block_registry;
+pub mod fluid_flow_table;
 pub mod local_player;
 pub mod motion_blocking_table;
 
@@ -3127,4 +3128,14 @@ pub fn motion_blocking(state: i32) -> bool {
     motion_blocking_table::WORDS
         .get(state / 64)
         .is_some_and(|word| word >> (state % 64) & 1 == 1)
+}
+
+/// What a fluid's flow reads of a state: bits 0 to 5 its fully sturdy faces
+/// in direction order (none for ice), bit 6 whether it blocks motion.
+pub fn fluid_flow_traits(state: u32) -> u8 {
+    let runs = &fluid_flow_table::RUNS;
+    match runs.partition_point(|(first, _)| *first <= state) {
+        0 => 0,
+        index => runs[index - 1].1,
+    }
 }

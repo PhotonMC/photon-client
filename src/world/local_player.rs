@@ -366,11 +366,23 @@ impl Level<'_> {
         if same_above { 1.0 } else { info.own_height }
     }
 
-    /// `FlowingFluid.getFlow` for a fluid that is not falling.
-    fn fluid_flow(&self, pos: BlockPos, info: &StateInfo) -> Result<Vec3, Unsupported> {
-        if info.falling {
-            return unsupported("the flow of a falling fluid");
+    /// `FlowingFluid.isSolidFace` for a horizontal direction: not for the
+    /// same fluid, otherwise whether the block's face on that side (the side
+    /// named by the direction itself) is fully sturdy.
+    fn is_solid_face(&self, pos: BlockPos, info: &StateInfo, direction: usize) -> bool {
+        let there = self.info(pos);
+        let same_fluid =
+            (info.is_water() && there.is_water()) || (info.is_lava() && there.is_lava());
+        if same_fluid {
+            return false;
         }
+        self.state_id(pos).is_some_and(|state| {
+            crate::world::fluid_flow_traits(state as u32) >> direction & 1 == 1
+        })
+    }
+
+    /// `FlowingFluid.getFlow`.
+    fn fluid_flow(&self, pos: BlockPos, info: &StateInfo) -> Result<Vec3, Unsupported> {
         let same = |other: &StateInfo| {
             other.fluid == FluidKind::Empty
                 || (info.is_water() && other.is_water())
@@ -407,7 +419,23 @@ impl Level<'_> {
                 flow_z += f64::from(step_z) * f64::from(distance);
             }
         }
-        Ok(Vec3::new(flow_x, 0.0, flow_z).normalized())
+        let mut flow = Vec3::new(flow_x, 0.0, flow_z);
+        // A falling fluid beside a solid face is pulled down hard.
+        if info.falling {
+            // North, east, south, west, with their direction numbers.
+            for (step_x, step_z, direction) in [(0, -1, 2), (1, 0, 5), (0, 1, 3), (-1, 0, 4)] {
+                let side = BlockPos::new(pos.x + step_x, pos.y, pos.z + step_z);
+                let above = BlockPos::new(side.x, side.y + 1, side.z);
+                if self.is_solid_face(side, info, direction)
+                    || self.is_solid_face(above, info, direction)
+                {
+                    let normal = flow.normalized();
+                    flow = Vec3::new(normal.x, normal.y - 6.0, normal.z);
+                    break;
+                }
+            }
+        }
+        Ok(flow.normalized())
     }
 
     /// Whether `clip` with `ClipContext.Block.FALLDAMAGE_RESETTING` and
@@ -515,16 +543,11 @@ impl Level<'_> {
         false
     }
 
-    /// `BlockState.blocksMotion`, for the states the fluid flow meets.
-    fn blocks_motion(&self, pos: BlockPos, info: &StateInfo) -> Result<bool, Unsupported> {
-        if info.is_air() {
-            return Ok(false);
-        }
-        let shape = self.collision_shape(pos);
-        if shape.equals_java(&Shapes::block()) {
-            return Ok(true);
-        }
-        unsupported(format!("blocksMotion of {}", info.name))
+    /// `BlockState.blocksMotion`, from the reference's table.
+    fn blocks_motion(&self, pos: BlockPos, _info: &StateInfo) -> Result<bool, Unsupported> {
+        Ok(self
+            .state_id(pos)
+            .is_some_and(|state| crate::world::fluid_flow_traits(state as u32) & (1 << 6) != 0))
     }
 }
 
