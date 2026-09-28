@@ -589,6 +589,19 @@ pub struct LocalPlayer {
     /// tick ago, which only the camera reads.
     walk_dist: f32,
     walk_dist_old: f32,
+    /// The body's and the head's facing, now and a tick ago, which the
+    /// player model is turned by.
+    y_body_rot: f32,
+    y_body_rot_old: f32,
+    y_head_rot: f32,
+    y_head_rot_old: f32,
+    /// `WalkAnimationState`: how fast and how far the limbs have swung.
+    walk_speed_old: f32,
+    walk_speed: f32,
+    walk_position: f32,
+    /// How far into the swimming pose the model has turned.
+    swim_amount: f32,
+    swim_amount_old: f32,
     bob: f32,
     bob_old: f32,
     first_tick: bool,
@@ -661,6 +674,17 @@ impl LocalPlayer {
             stuck_speed_multiplier: Vec3::ZERO,
             walk_dist: 0.0,
             walk_dist_old: 0.0,
+            // The reference starts a new player facing at random; this one
+            // starts with head and body where it looks.
+            y_body_rot: y_rot,
+            y_body_rot_old: y_rot,
+            y_head_rot: y_rot,
+            y_head_rot_old: y_rot,
+            walk_speed_old: 0.0,
+            walk_speed: 0.0,
+            walk_position: 0.0,
+            swim_amount: 0.0,
+            swim_amount_old: 0.0,
             bob: 0.0,
             bob_old: 0.0,
             first_tick: true,
@@ -816,6 +840,21 @@ impl LocalPlayer {
     }
 
     /// The feet position between the last two ticks.
+    /// What the player model is posed from, between the last two ticks.
+    pub fn model_pose(&self, partial_tick: f32) -> ModelPose {
+        let lerp = |old: f32, new: f32| old + partial_tick * (new - old);
+        ModelPose {
+            body_rot: rot_lerp(partial_tick, self.y_body_rot_old, self.y_body_rot),
+            head_rot: rot_lerp(partial_tick, self.y_head_rot_old, self.y_head_rot),
+            x_rot: self.x_rot,
+            walk_position: self.walk_position - self.walk_speed * (1.0 - partial_tick),
+            walk_speed: lerp(self.walk_speed_old, self.walk_speed).min(1.0),
+            swim_amount: lerp(self.swim_amount_old, self.swim_amount),
+            crouching: self.pose == ClientEntityPose::Crouching,
+            pose: self.pose,
+        }
+    }
+
     /// `ClientAvatarState.getBackwardsInterpolatedWalkDistance` and
     /// `getInterpolatedBob`, which the view bob reads.
     pub fn view_bob(&self, partial_tick: f32) -> (f32, f32) {
@@ -874,6 +913,9 @@ impl LocalPlayer {
     }
 
     fn living_tick(&mut self, level: &Level<'_>) -> Result<(), Unsupported> {
+        // LivingEntity.baseTick keeps last tick's facings.
+        self.y_head_rot_old = self.y_head_rot;
+        self.y_body_rot_old = self.y_body_rot;
         // Entity.baseTick, as the living base tick runs it.
         self.was_eye_in_water = self.water.eyes_inside;
         self.update_fluid_interaction(level)?;
@@ -885,7 +927,57 @@ impl LocalPlayer {
             return unsupported("falling below the world");
         }
         self.first_tick = false;
-        self.local_ai_step(level)
+        // LivingEntity.tick: the swimming pose eases in or out.
+        self.swim_amount_old = self.swim_amount;
+        if self.pose == ClientEntityPose::Swimming {
+            self.swim_amount = (self.swim_amount + 0.09).min(1.0);
+        } else {
+            self.swim_amount = (self.swim_amount - 0.09).max(0.0);
+        }
+        self.local_ai_step(level)?;
+        self.turn_body();
+        Ok(())
+    }
+
+    /// The rest of `LivingEntity.tick`: the body turns towards where the
+    /// player walks, or where it looks, and never more than 50 degrees from
+    /// the head.
+    fn turn_body(&mut self) {
+        use crate::math::wrap_degrees_f32;
+        let xd = self.position.x - self.old_position.x;
+        let zd = self.position.z - self.old_position.z;
+        let side_dist = (xd * xd + zd * zd) as f32;
+        let mut target = self.y_body_rot;
+        if side_dist > 0.002_500_000_2 {
+            let walk_direction =
+                crate::math::mth_atan2(zd, xd) as f32 * (180.0 / std::f32::consts::PI) - 90.0;
+            let difference = (wrap_degrees_f32(self.y_rot) - walk_direction).abs();
+            target = if 95.0 < difference && difference < 265.0 {
+                walk_direction - 180.0
+            } else {
+                walk_direction
+            };
+        }
+        // `tickHeadTurn`.
+        self.y_body_rot += wrap_degrees_f32(target - self.y_body_rot) * 0.3;
+        let head_difference = wrap_degrees_f32(self.y_rot - self.y_body_rot);
+        let max_head_rotation = 50.0;
+        if head_difference.abs() > max_head_rotation {
+            let sign = if head_difference > 0.0 { 1.0 } else { -1.0 };
+            self.y_body_rot += head_difference - sign * max_head_rotation;
+        }
+        while self.y_body_rot - self.y_body_rot_old < -180.0 {
+            self.y_body_rot_old -= 360.0;
+        }
+        while self.y_body_rot - self.y_body_rot_old >= 180.0 {
+            self.y_body_rot_old += 360.0;
+        }
+        while self.y_head_rot - self.y_head_rot_old < -180.0 {
+            self.y_head_rot_old -= 360.0;
+        }
+        while self.y_head_rot - self.y_head_rot_old >= 180.0 {
+            self.y_head_rot_old += 360.0;
+        }
     }
 
     fn local_ai_step(&mut self, level: &Level<'_>) -> Result<(), Unsupported> {
@@ -1013,7 +1105,9 @@ impl LocalPlayer {
         if self.abilities.flying {
             self.fall_distance = 0.0;
         }
-        self.living_ai_step(level)
+        self.living_ai_step(level)?;
+        self.y_head_rot = self.y_rot;
+        Ok(())
     }
 
     fn living_ai_step(&mut self, level: &Level<'_>) -> Result<(), Unsupported> {
@@ -1077,7 +1171,19 @@ impl LocalPlayer {
 
         let input = Vec3::new(f64::from(self.xxa), 0.0, f64::from(self.zza));
         self.player_travel(level, input)?;
-        self.apply_effects_from_blocks(level)
+        self.apply_effects_from_blocks(level)?;
+        // `calculateEntityAnimation`: the limbs swing with the distance
+        // moved across the ground this tick.
+        let distance = {
+            let x = self.position.x - self.old_position.x;
+            let z = self.position.z - self.old_position.z;
+            (x * x + z * z).sqrt() as f32
+        };
+        let target_speed = (distance * 4.0).min(1.0);
+        self.walk_speed_old = self.walk_speed;
+        self.walk_speed += (target_speed - self.walk_speed) * 0.4;
+        self.walk_position += self.walk_speed;
+        Ok(())
     }
 
     fn player_travel(&mut self, level: &Level<'_>, input: Vec3) -> Result<(), Unsupported> {
@@ -2644,6 +2750,24 @@ fn furthest_corner(direction: Vec3) -> [i32; 3] {
 
 fn compute_modified_friction(friction: f32, modifier: f32) -> f32 {
     (1.0_f32 - (1.0_f32 - friction) * modifier).clamp(0.0, 1.0)
+}
+
+/// What the player model is posed from.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ModelPose {
+    pub body_rot: f32,
+    pub head_rot: f32,
+    pub x_rot: f32,
+    pub walk_position: f32,
+    pub walk_speed: f32,
+    pub swim_amount: f32,
+    pub crouching: bool,
+    pub pose: ClientEntityPose,
+}
+
+/// `Mth.rotLerp`: the shorter way round between two angles.
+fn rot_lerp(partial_tick: f32, from: f32, to: f32) -> f32 {
+    from + partial_tick * crate::math::wrap_degrees_f32(to - from)
 }
 
 fn is_block(state_id: i32, name: &str) -> bool {

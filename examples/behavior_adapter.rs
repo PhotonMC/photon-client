@@ -16896,6 +16896,11 @@ fn movement_result(request: &Value) -> Result<Value, String> {
                 "flying": player.is_flying(),
                 "bob_walk": format!("{:08x}", player.view_bob(0.5).0.to_bits()),
                 "bob": format!("{:08x}", player.view_bob(0.5).1.to_bits()),
+                "body_rot": format!("{:08x}", player.model_pose(0.5).body_rot.to_bits()),
+                "head_rot": format!("{:08x}", player.model_pose(0.5).head_rot.to_bits()),
+                "walk_position": format!("{:08x}", player.model_pose(0.5).walk_position.to_bits()),
+                "walk_speed": format!("{:08x}", player.model_pose(0.5).walk_speed.to_bits()),
+                "swim_amount": format!("{:08x}", player.model_pose(0.5).swim_amount.to_bits()),
                 "sent": packets,
             }));
         }

@@ -52,6 +52,13 @@ yukarı iten kabarcık sütununda yükselme, aşağı çeken sütunda batma,
 bitkilerin (çim, eğrelti, çiçek, fidan, tatlı meyve çalısı, uzun çim)
 içinde eğilip kalkma.
 
+Her tick ayrıca oyuncu modelinin poz girdileri karşılaştırılıyor (yarım
+karede): gövde ve baş yönü (`tickHeadTurn`, yürüme yönüne dönme, başa en
+fazla 50°), yürüme animasyonunun konumu ve hızı, yüzme pozuna geçiş,
+bakış sallanmasının yürünen mesafesi ve sallanması. Referans yeni bir
+canlıyı rastgele bir yöne çevirerek kuruyor; oracle ve Rust baş ile
+gövdeyi başlangıç bakışına eşitleyerek başlıyor.
+
 İçine girilen bloklar referanstaki sırayla geziliyor: hareketin başındaki
 kutu, yol boyunca köşenin geçtiği hücreler ve hedef kutu, her biri hareket
 yönünün köşesinden başlayıp eksenleri adım sırasıyla dolaşarak. Kabarcık

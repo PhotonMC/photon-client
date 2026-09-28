@@ -226,6 +226,12 @@ public final class MovementOracle {
         player.snapTo(
             Oracle.f64(row, "x"), Oracle.f64(row, "y"), Oracle.f64(row, "z"),
             Oracle.f32(row, "y_rot"), Oracle.f32(row, "x_rot"));
+        // The constructor turns a new living entity to a random facing; the
+        // scene starts with head and body where the player looks instead.
+        player.yHeadRot = player.getYRot();
+        player.yHeadRotO = player.getYRot();
+        player.yBodyRot = player.getYRot();
+        player.yBodyRotO = player.getYRot();
 
         var ticks = new JsonArray();
         for (var element : row.get("ticks").getAsJsonArray()) {
@@ -280,6 +286,12 @@ public final class MovementOracle {
         var avatar = player.avatarState();
         tick.addProperty("bob_walk", Oracle.bits(avatar.getBackwardsInterpolatedWalkDistance(0.5F)));
         tick.addProperty("bob", Oracle.bits(avatar.getInterpolatedBob(0.5F)));
+        // What the player model is posed from, half way through the frame.
+        tick.addProperty("body_rot", Oracle.bits(net.minecraft.util.Mth.rotLerp(0.5F, player.yBodyRotO, player.yBodyRot)));
+        tick.addProperty("head_rot", Oracle.bits(net.minecraft.util.Mth.rotLerp(0.5F, player.yHeadRotO, player.yHeadRot)));
+        tick.addProperty("walk_position", Oracle.bits(player.walkAnimation.position(0.5F)));
+        tick.addProperty("walk_speed", Oracle.bits(player.walkAnimation.speed(0.5F)));
+        tick.addProperty("swim_amount", Oracle.bits(player.getSwimAmount(0.5F)));
         var packets = new JsonArray();
         for (var packet : sent) {
             var described = new JsonObject();
