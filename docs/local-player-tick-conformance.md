@@ -46,7 +46,17 @@ koşarak yüzme, suda yükselme ve batma, suya yüksekten düşüş, akan su, du
 tavan altında sürünme pozu, tavana zıplama, duvar boyunca sprint (küçük yatay
 çarpışma), bal duvarında kayma, otomatik zıplama ve sprintle otomatik
 zıplama, aşağı bakarak yürüme, yaratıcı çift zıplama ile uçuş, uçarken sprint
-ve inişte uçuşun kapanması, izleyici uçuşu.
+ve inişte uçuşun kapanması, izleyici uçuşu, toz kara düşüp içinde yürüme
+ve zıplama, zeminde toz kara girme, örümcek ağı, tatlı meyve çalısı,
+yukarı iten kabarcık sütununda yükselme, aşağı çeken sütunda batma.
+
+İçine girilen bloklar referanstaki sırayla geziliyor: hareketin başındaki
+kutu, yol boyunca köşenin geçtiği hücreler ve hedef kutu, her biri hareket
+yönünün köşesinden başlayıp eksenleri adım sırasıyla dolaşarak. Kabarcık
+sütununda her hücre hızı ayrı ayrı sınırladığı için bu sıra sonucu
+değiştiriyor. Toz kar oyuncuyu ancak 2,5 bloktan fazla düşünce tutuyor
+(0,9 yüksekliğinde zemin); deri çizme takılı sayılmıyor, çünkü istemci
+ekipmanı henüz izlemiyor.
 
 ## Sonuç
 
@@ -58,10 +68,13 @@ Bütün senaryolar her tick'te bit bit eşleşiyor.
 Taşınmamış bir dala girilince tick yaklaşık değer üretmiyor, `Unsupported`
 döndürüyor:
 
-- Çarpışma şekli varlığa bağlı bloklar: iskele ve toz kar.
-- İçine girilen ve hareketi değiştiren bloklar: kabarcık sütunu, örümcek
-  ağı, tatlı meyve çalısı, toz kar.
+- Çarpışma şekli varlığa bağlı iskele.
 - Dünyanın altına düşme.
+
+Toz karın donma etkisi (`isInPowderSnow`) ve sunucunun donmaya göre
+verdiği hız cezası tutulmuyor. İlki yalnızca deri çizmeyle tırmanmayı,
+ikincisi sunucunun gönderdiği özellikleri etkiliyor; istemci özellik
+paketlerini de henüz uygulamıyor.
 
 Hiç yazılmamış olanlar (senaryoya da girmiyorlar): elytra ile süzülme, eşya
 kullanırken yavaşlama, iksir etkileri (hız, zıplama, yavaş düşüş,

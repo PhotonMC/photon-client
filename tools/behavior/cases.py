@@ -13215,6 +13215,21 @@ def movement_cases():
     fenced_stream = stream + [{"x": 2, "y": 64, "z": z, "block": "minecraft:oak_fence"}
                               for z in range(-2, 4)]
     edge_ladder = column(0, 2, 56, 62, "minecraft:ladder", {"facing": "north"}) + column(0, 3, 56, 63)
+    # Blocks that hold a player back from inside them.
+    powder_pit = [{"x": x, "y": y, "z": z, "block": "minecraft:powder_snow"}
+                  for x in range(-3, 4) for z in range(-3, 8) for y in range(61, 64)]
+    powder_ahead = [{"x": x, "y": 64, "z": z, "block": "minecraft:powder_snow"}
+                    for x in range(-3, 4) for z in range(2, 5)]
+    webs = [{"x": x, "y": y, "z": 2, "block": "minecraft:cobweb"}
+            for x in range(-1, 2) for y in range(64, 66)]
+    berries = [{"x": x, "y": 64, "z": z, "block": "minecraft:sweet_berry_bush",
+                "properties": {"age": "1"}} for x in range(-1, 2) for z in range(2, 4)]
+    bubbles = ([{"x": 0, "y": 63, "z": 0, "block": "minecraft:soul_sand"}]
+               + column(0, 0, 64, 70, "minecraft:bubble_column", {"drag": "false"})
+               + [{"x": 1, "y": 63, "z": 0, "block": "minecraft:magma_block"}]
+               + column(1, 0, 64, 70, "minecraft:bubble_column", {"drag": "true"})
+               + [b for x in range(-1, 3) for z in (-1, 1) for b in column(x, z, 64, 70)]
+               + column(-1, 0, 64, 70) + column(2, 0, 64, 70))
 
     rows = [
         scene("stand-still", floor(), keys(6)),
@@ -13287,6 +13302,15 @@ def movement_cases():
         scene("auto-jump-sprint", floor() + block_step,
               keys(20, forward=True, sprint=True), auto_jump=True),
         scene("walk-off-ledge-into-ladder", ledge + edge_ladder, keys(30, forward=True)),
+        scene("sink-in-powder-snow", [b for b in floor() if b["x"] < -3 or b["x"] > 3
+                                      or b["z"] < -3 or b["z"] > 7] + powder_pit + floor(y=60),
+              keys(10) + keys(20, forward=True) + keys(20, forward=True, jump=True)),
+        scene("walk-into-powder-snow", floor() + powder_ahead, keys(30, forward=True)),
+        scene("walk-through-cobweb", floor() + webs,
+              keys(30, forward=True) + keys(6, forward=True, jump=True)),
+        scene("walk-through-berry-bush", floor() + berries, keys(30, forward=True)),
+        scene("ride-bubble-column", floor() + bubbles, keys(40), start=(0.5, 64.0, 0.5)),
+        scene("sink-in-bubble-column", floor() + bubbles, keys(30), start=(1.5, 69.0, 0.5)),
     ]
     yield {
         "case_id": "movement/local-player-ticks",

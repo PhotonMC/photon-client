@@ -320,13 +320,26 @@ impl Level<'_> {
         }
     }
 
-    /// `getBlockCollisions`, refusing the states whose shape depends on who asks.
-    fn block_collisions(&self, area: Aabb) -> Result<Vec<(BlockPos, VoxelShape)>, Unsupported> {
-        let collisions = self.world.collect_registered_block_collision_shapes(area);
+    /// `getBlockCollisions` for the player, who has fallen `fall_distance`:
+    /// powder snow holds it only once it falls far enough. Scaffolding is
+    /// refused until its shape is ported.
+    fn block_collisions(
+        &self,
+        area: Aabb,
+        fall_distance: f64,
+    ) -> Result<Vec<(BlockPos, VoxelShape)>, Unsupported> {
+        let registry = &self.world.block_state_registry;
+        let collisions = self.world.collect_block_collisions_with(area, |state| {
+            Some(if is_block(state, "minecraft:powder_snow") {
+                powder_snow_collision_shape(fall_distance)
+            } else {
+                registry.collision_shape(state)
+            })
+        });
         let mut out = Vec::with_capacity(collisions.len());
         for collision in collisions {
             let info = self.info(collision.position);
-            if matches!(info.name, "minecraft:scaffolding" | "minecraft:powder_snow") {
+            if info.name == "minecraft:scaffolding" {
                 return unsupported(format!("entity-dependent collision shape of {}", info.name));
             }
             out.push((collision.position, collision.shape));
@@ -334,16 +347,16 @@ impl Level<'_> {
         Ok(out)
     }
 
-    fn colliders(&self, area: Aabb) -> Result<Vec<VoxelShape>, Unsupported> {
+    fn colliders(&self, area: Aabb, fall_distance: f64) -> Result<Vec<VoxelShape>, Unsupported> {
         Ok(self
-            .block_collisions(area)?
+            .block_collisions(area, fall_distance)?
             .into_iter()
             .map(|(_, shape)| shape)
             .collect())
     }
 
-    fn no_collision(&self, area: Aabb) -> Result<bool, Unsupported> {
-        Ok(self.block_collisions(area)?.is_empty())
+    fn no_collision(&self, area: Aabb, fall_distance: f64) -> Result<bool, Unsupported> {
+        Ok(self.block_collisions(area, fall_distance)?.is_empty())
     }
 
     fn collides_with_suffocating_block(&self, area: Aabb) -> bool {
@@ -571,6 +584,7 @@ pub struct LocalPlayer {
     main_supporting_block: Option<BlockPos>,
     on_ground_no_blocks: bool,
     fall_distance: f64,
+    stuck_speed_multiplier: Vec3,
     first_tick: bool,
     tick_count: i32,
     was_touching_water: bool,
@@ -638,6 +652,7 @@ impl LocalPlayer {
             main_supporting_block: None,
             on_ground_no_blocks: false,
             fall_distance: 0.0,
+            stuck_speed_multiplier: Vec3::ZERO,
             first_tick: true,
             tick_count: 0,
             was_touching_water: false,
@@ -1159,7 +1174,7 @@ impl LocalPlayer {
         if self.horizontal_collision {
             let lift = movement.y + f64::from(0.6_f32) - self.position.y + old_y;
             let moved = self.bounding_box.move_by(movement.x, lift, movement.z);
-            if level.no_collision(moved)? && !self.contains_any_liquid(level, moved) {
+            if level.no_collision(moved, self.fall_distance)? && !self.contains_any_liquid(level, moved) {
                 self.delta = Vec3::new(movement.x, f64::from(0.3_f32), movement.z);
             }
         }
@@ -1291,6 +1306,13 @@ impl LocalPlayer {
             return Ok(());
         }
 
+        let mut delta = delta;
+        if self.stuck_speed_multiplier.length_squared() > 1.0e-7 {
+            let stuck = self.stuck_speed_multiplier;
+            delta = delta.multiply_components(stuck.x, stuck.y, stuck.z);
+            self.stuck_speed_multiplier = Vec3::ZERO;
+            self.delta = Vec3::ZERO;
+        }
         let delta = self.maybe_back_off_from_edge(level, delta)?;
         let movement = self.collide(level, delta)?;
         let movement_length = movement.length_squared();
@@ -1419,7 +1441,7 @@ impl LocalPlayer {
         let movement_step = if movement.length_squared() == 0.0 {
             movement
         } else {
-            let colliders = level.colliders(aabb.expand_towards_vec3(movement))?;
+            let colliders = level.colliders(aabb.expand_towards_vec3(movement), self.fall_distance)?;
             collide_entity_movement(movement, aabb, &colliders)
         };
         let x_collision = movement.x != movement_step.x;
@@ -1438,7 +1460,7 @@ impl LocalPlayer {
             if !on_ground_after_collision {
                 step_up_area = step_up_area.expand_towards(0.0, f64::from(-1.0e-5_f32), 0.0);
             }
-            let colliders = level.colliders(step_up_area)?;
+            let colliders = level.colliders(step_up_area, self.fall_distance)?;
             return Ok(select_step_up_movement(
                 movement,
                 movement_step,
@@ -1523,14 +1545,17 @@ impl LocalPlayer {
         min_height: f64,
     ) -> Result<bool, Unsupported> {
         let bb = self.bounding_box;
-        level.no_collision(Aabb::new(
+        level.no_collision(
+            Aabb::new(
             bb.min_x + 1.0e-7 + delta_x,
             bb.min_y - min_height - 1.0e-7,
             bb.min_z + 1.0e-7 + delta_z,
             bb.max_x - 1.0e-7 + delta_x,
             bb.min_y,
             bb.max_z - 1.0e-7 + delta_z,
-        ))
+            ),
+            self.fall_distance,
+        )
     }
 
     fn check_supporting_block(
@@ -1574,7 +1599,7 @@ impl LocalPlayer {
     ) -> Result<Option<BlockPos>, Unsupported> {
         let mut main: Option<BlockPos> = None;
         let mut main_distance = f64::MAX;
-        for (pos, _) in level.block_collisions(area)? {
+        for (pos, _) in level.block_collisions(area, self.fall_distance)? {
             let dx = f64::from(pos.x) + 0.5 - self.position.x;
             let dy = f64::from(pos.y) + 0.5 - self.position.y;
             let dz = f64::from(pos.z) + 0.5 - self.position.z;
@@ -1730,7 +1755,7 @@ impl LocalPlayer {
         let right_end = seg_end.add_vec3(right_offset);
 
         let mut obstacle_height = f32::from_bits(1);
-        'boxes: for shape in level.colliders(test_box)? {
+        'boxes: for shape in level.colliders(test_box, self.fall_distance)? {
             for bounds in shape.to_aabbs() {
                 if bounds.intersects_vec3(left_begin, left_end)
                     || bounds.intersects_vec3(right_begin, right_end)
@@ -1865,32 +1890,105 @@ impl LocalPlayer {
             .dimensions
             .make_bounding_box(to)
             .deflate(f64::from(1.0e-5_f32));
+        let moved_far = from.distance_to_sqr(to) > 0.999_990_000_000_252_6_f64.powi(2);
         let mut last_iteration = 0;
         for (pos, iteration) in blocks_intersected_between(from, to, at_target) {
             if iteration >= max_iterations {
                 break;
             }
             last_iteration = iteration;
-            let info = level.info(pos);
+            let state = level.state_id(pos);
+            let info = StateInfo::of(state);
             if info.is_air() {
                 continue;
             }
+            // `getEntityInsideCollisionShape`: the whole block, except powder
+            // snow, whose own collision shape counts when it has one.
+            let inside_block = match state {
+                Some(state) if is_block(state, "minecraft:powder_snow") => {
+                    let shape = powder_snow_collision_shape(self.fall_distance);
+                    shape.is_empty() || {
+                        let boxes: Vec<Aabb> = shape
+                            .to_aabbs()
+                            .into_iter()
+                            .map(|aabb| aabb.move_by_block_pos(pos))
+                            .collect();
+                        self.dimensions
+                            .make_bounding_box(from)
+                            .collided_along_vector(to.subtract_vec3(from), &boxes)
+                    }
+                }
+                _ => true,
+            };
+            // Only a block the player is not fully inside can miss, and the
+            // one such block, powder snow, holds no fluid whose effects
+            // (fire) would still need the visit.
+            if !inside_block || !visited.insert((pos.x, pos.y, pos.z)) {
+                continue;
+            }
+            let precise = moved_far || at_target.intersects_block_pos(pos);
             match info.name {
-                "minecraft:honey_block"
-                    if visited.insert((pos.x, pos.y, pos.z)) && self.is_sliding_down_honey(pos) =>
-                {
+                "minecraft:honey_block" if self.is_sliding_down_honey(pos) => {
                     self.do_honey_slide();
                 }
-                name @ ("minecraft:bubble_column"
-                | "minecraft:cobweb"
-                | "minecraft:sweet_berry_bush"
-                | "minecraft:powder_snow") => {
-                    return unsupported(format!("standing inside {name}"));
+                "minecraft:cobweb" => {
+                    self.make_stuck_in_block(Vec3::new(0.25, f64::from(0.05_f32), 0.25));
+                }
+                "minecraft:sweet_berry_bush" => {
+                    self.make_stuck_in_block(Vec3::new(
+                        f64::from(0.8_f32),
+                        0.75,
+                        f64::from(0.8_f32),
+                    ));
+                }
+                "minecraft:powder_snow" => {
+                    if level.info(self.block_position()).name == "minecraft:powder_snow" {
+                        self.make_stuck_in_block(Vec3::new(
+                            f64::from(0.9_f32),
+                            1.5,
+                            f64::from(0.9_f32),
+                        ));
+                    }
+                }
+                "minecraft:bubble_column" if precise => {
+                    let drag_down = property(state, "drag") == Some("true");
+                    let above = pos.offset(0, 1, 0);
+                    let above_state = level.state_id(above);
+                    let nothing_above = above_state.is_none_or(|above_state| {
+                        level
+                            .world
+                            .block_state_registry
+                            .collision_shape(above_state)
+                            .is_empty()
+                            && StateInfo::of(Some(above_state)).fluid == FluidKind::Empty
+                    });
+                    let delta = self.delta;
+                    let y = if nothing_above {
+                        if drag_down {
+                            (delta.y - 0.03).max(-0.9)
+                        } else {
+                            (delta.y + 0.1).min(1.8)
+                        }
+                    } else {
+                        self.fall_distance = 0.0;
+                        if drag_down {
+                            (delta.y - 0.03).max(-0.3)
+                        } else {
+                            (delta.y + 0.06).min(0.7)
+                        }
+                    };
+                    self.delta = Vec3::new(delta.x, y, delta.z);
                 }
                 _ => {}
             }
         }
         Ok(last_iteration + 1)
+    }
+
+    /// `Entity.makeStuckInBlock`.
+    fn make_stuck_in_block(&mut self, speed_multiplier: Vec3) {
+        self.fall_distance = 0.0;
+        self.stuck_speed_multiplier = speed_multiplier;
     }
 
     fn do_honey_slide(&mut self) {
@@ -2078,6 +2176,7 @@ impl LocalPlayer {
             pose.player_dimensions()
                 .make_bounding_box(self.position)
                 .deflate(1.0e-7),
+            self.fall_distance,
         )
     }
 
@@ -2329,18 +2428,52 @@ pub fn state_has_fluid(state_id: i32) -> bool {
 fn blocks_intersected_between(from: Vec3, to: Vec3, at_target: Aabb) -> Vec<(BlockPos, i32)> {
     let mut out = Vec::new();
     let mut seen = std::collections::HashSet::new();
-    let mut add_box =
-        |out: &mut Vec<(BlockPos, i32)>, first: [i32; 3], second: [i32; 3], iteration: i32| {
-            for x in first[0].min(second[0])..=first[0].max(second[0]) {
-                for y in first[1].min(second[1])..=first[1].max(second[1]) {
-                    for z in first[2].min(second[2])..=first[2].max(second[2]) {
-                        if seen.insert((x, y, z)) {
-                            out.push((BlockPos::new(x, y, z), iteration));
-                        }
+    // `BlockPos.betweenClosed` (x fastest, then y, then z) without a
+    // direction, `betweenCornersInDirection` with one: from the corner the
+    // travel leaves, the axes in step order, the last one fastest.
+    let mut add_box = |out: &mut Vec<(BlockPos, i32)>,
+                       first: [i32; 3],
+                       second: [i32; 3],
+                       iteration: i32,
+                       direction: Option<Vec3>| {
+        let min = [0, 1, 2].map(|axis| first[axis].min(second[axis]));
+        let max = [0, 1, 2].map(|axis| first[axis].max(second[axis]));
+        let (order, forward) = match direction {
+            None => ([2, 1, 0], [true; 3]),
+            Some(direction) => {
+                let order = crate::direction::Direction::axis_step_order(direction.x, direction.z)
+                    .map(|axis| match axis {
+                        crate::direction::Axis::X => 0,
+                        crate::direction::Axis::Y => 1,
+                        crate::direction::Axis::Z => 2,
+                    });
+                (
+                    order,
+                    [direction.x >= 0.0, direction.y >= 0.0, direction.z >= 0.0],
+                )
+            }
+        };
+        let step = |axis: usize, index: i32| {
+            if forward[axis] {
+                min[axis] + index
+            } else {
+                max[axis] - index
+            }
+        };
+        for a in 0..=max[order[0]] - min[order[0]] {
+            for b in 0..=max[order[1]] - min[order[1]] {
+                for c in 0..=max[order[2]] - min[order[2]] {
+                    let mut pos = [0; 3];
+                    pos[order[0]] = step(order[0], a);
+                    pos[order[1]] = step(order[1], b);
+                    pos[order[2]] = step(order[2], c);
+                    if seen.insert((pos[0], pos[1], pos[2])) {
+                        out.push((BlockPos::new(pos[0], pos[1], pos[2]), iteration));
                     }
                 }
             }
-        };
+        }
+    };
     let corners = |aabb: Aabb| {
         (
             [
@@ -2358,11 +2491,11 @@ fn blocks_intersected_between(from: Vec3, to: Vec3, at_target: Aabb) -> Vec<(Blo
     let travel = to.subtract_vec3(from);
     if travel.length_squared() < f64::from(1.0e-5_f32 * 1.0e-5_f32) {
         let (first, second) = corners(at_target);
-        add_box(&mut out, first, second, 0);
+        add_box(&mut out, first, second, 0, None);
         return out;
     }
     let (first, second) = corners(at_target.move_by(-travel.x, -travel.y, -travel.z));
-    add_box(&mut out, first, second, 0);
+    add_box(&mut out, first, second, 0, Some(travel));
 
     // addCollisionsAlongTravel.
     let size = [at_target.x_size(), at_target.y_size(), at_target.z_size()];
@@ -2446,11 +2579,11 @@ fn blocks_intersected_between(from: Vec3, to: Vec3, at_target: Aabb) -> Vec<(Blo
                 let clamped = java_clamp(hit_coords[axis], low, high);
                 opposite[axis] = floor_f64(clamped - size[axis] * f64::from(corner_dir[axis]));
             }
-            add_box(&mut out, block, opposite, iterations);
+            add_box(&mut out, block, opposite, iterations, Some(travel));
         }
     }
     let (first, second) = corners(at_target);
-    add_box(&mut out, first, second, iterations + 1);
+    add_box(&mut out, first, second, iterations + 1, Some(travel));
     out
 }
 
@@ -2473,6 +2606,21 @@ fn furthest_corner(direction: Vec3) -> [i32; 3] {
 
 fn compute_modified_friction(friction: f32, modifier: f32) -> f32 {
     (1.0_f32 - (1.0_f32 - friction) * modifier).clamp(0.0, 1.0)
+}
+
+fn is_block(state_id: i32, name: &str) -> bool {
+    block_registry::block_for_state(state_id as u32).is_some_and(|(block, _)| block.name == name)
+}
+
+/// `PowderSnowBlock.getCollisionShape` for a player without leather boots:
+/// nothing until it has fallen more than 2.5 blocks, then a floor 0.9 high.
+fn powder_snow_collision_shape(fall_distance: f64) -> VoxelShape {
+    if fall_distance > 2.5 {
+        Shapes::box_shape(0.0, 0.0, 0.0, 1.0, f64::from(0.9_f32), 1.0)
+            .expect("the falling powder snow shape is a valid box")
+    } else {
+        Shapes::empty()
+    }
 }
 
 fn property(state_id: Option<i32>, name: &str) -> Option<&'static str> {

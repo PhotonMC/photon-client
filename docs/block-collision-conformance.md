@@ -25,7 +25,9 @@ Tablonun yalnızca başlangıç noktası olduğu bloklar ölçülüp işaretlend
   `sulfur_spike`. Rastgele bir ofsetle konumlarına göre kayıyorlar.
 - **Dinamik** (`hasDynamicShape`): yukarıdakiler, shulker kutuları,
   `moving_piston`, `powder_snow`, `scaffolding`. Toz kar ve iskele şekli
-  soran varlığa bakıyor; shulker ve piston blok varlığını okuyor.
+  soran varlığa bakıyor; shulker ve piston blok varlığını okuyor. Oyuncu
+  hareketi toz karın şeklini düşme mesafesinden kendisi kuruyor
+  (`docs/local-player-tick-conformance.md`).
 - **Bağlama bağlı ama oyuncu için boş**: su ve lav. `LiquidBlock` şekli
   yalnızca sıvı üstünde durabilen bir canlı ya da `alwaysCollideWithFluid`
   için dolu; oyuncu ikisi de değil, yani tablonun boş şekli oyuncu için doğru.
