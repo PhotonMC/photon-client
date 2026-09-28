@@ -18,7 +18,8 @@ use crate::protocol::ConnectionProtocol;
 use crate::wire;
 use crate::world::local_player::{LocalPlayer, ServerboundMovement};
 use crate::world::{
-    ClientPlayerAbilities, ClientPlayerGameMode, ClientWorld, DimensionInput, SectionInput,
+    ClientPlayerAbilities, ClientPlayerGameMode, ClientWorld, DimensionInput, LightLayerInput,
+    LightUpdateInput, SectionInput,
 };
 
 use super::probe::{
@@ -324,6 +325,41 @@ impl PlaySession {
                             block_states: &section.block_state_values,
                             biomes: &section.biome_values,
                         }),
+                );
+                self.trace.world.apply_light_updates(
+                    chunk.x,
+                    chunk.z,
+                    LightUpdateInput {
+                        sky: LightLayerInput {
+                            mask: &chunk.light_data.sky_mask,
+                            empty_mask: &chunk.light_data.empty_sky_mask,
+                            updates: &chunk.light_data.sky_updates,
+                        },
+                        block: LightLayerInput {
+                            mask: &chunk.light_data.block_mask,
+                            empty_mask: &chunk.light_data.empty_block_mask,
+                            updates: &chunk.light_data.block_updates,
+                        },
+                    },
+                );
+            }
+            PLAY_CLIENTBOUND_LIGHT_UPDATE_PACKET_ID => {
+                let update = parse_light_update_packet(payload)?;
+                self.trace.world.apply_light_updates(
+                    update.x,
+                    update.z,
+                    LightUpdateInput {
+                        sky: LightLayerInput {
+                            mask: &update.light_data.sky_mask,
+                            empty_mask: &update.light_data.empty_sky_mask,
+                            updates: &update.light_data.sky_updates,
+                        },
+                        block: LightLayerInput {
+                            mask: &update.light_data.block_mask,
+                            empty_mask: &update.light_data.empty_block_mask,
+                            updates: &update.light_data.block_updates,
+                        },
+                    },
                 );
             }
             PLAY_CLIENTBOUND_FORGET_LEVEL_CHUNK_PACKET_ID => {

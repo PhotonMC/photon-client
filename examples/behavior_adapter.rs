@@ -16319,6 +16319,33 @@ fn block_result(request: &Value) -> Result<Value, String> {
                     "blocks": blocks,
                 }));
             }
+            "light_properties" => {
+                use voxel_client::world::block_light_table as table;
+                let blocks: Vec<Value> = registry::BLOCKS
+                    .iter()
+                    .zip(table::BLOCKS.iter())
+                    .map(|(block, ids)| {
+                        let states: Vec<String> = ids
+                            .iter()
+                            .map(|id| {
+                                let t = &table::TRAITS[usize::from(*id)];
+                                format!(
+                                    "{}|{}|{:08x}|{}|{}|{}|{}",
+                                    t.emission,
+                                    t.emissive,
+                                    t.shade,
+                                    t.view_blocking,
+                                    t.dampening,
+                                    t.solid_render,
+                                    t.collision_full_block
+                                )
+                            })
+                            .collect();
+                        json!({"name": block.name, "states": states})
+                    })
+                    .collect();
+                out.push(json!({"label": label, "outcome": "listed", "blocks": blocks}));
+            }
             "face_occlusion" => {
                 use voxel_client::render::face_occlusion_table as table;
                 // The tables go back out in the reference's shape, so the run

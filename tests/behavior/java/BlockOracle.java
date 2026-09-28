@@ -54,6 +54,7 @@ public final class BlockOracle {
                 case "face_occlusion" -> rows.add(faceOcclusion(element.getAsJsonObject()));
                 case "collision_shapes" -> rows.add(collisionShapes(element.getAsJsonObject()));
                 case "movement_properties" -> rows.add(movementProperties(element.getAsJsonObject()));
+                case "light_properties" -> rows.add(lightProperties(element.getAsJsonObject()));
                 default -> throw new IllegalArgumentException("Unknown block operation: " + operation);
             }
         }
@@ -401,6 +402,45 @@ public final class BlockOracle {
             }
             (distinct.size() == 1 ? distinct : perState).forEach(fluids::add);
             described.add("fluids", fluids);
+            blocks.add(described);
+        }
+        entry.add("blocks", blocks);
+        return entry;
+    }
+
+    /**
+     * What the block renderer's lighting asks of each state, outside a world.
+     *
+     * Per state: the light it emits, whether it renders at full brightness,
+     * the ambient occlusion shade it casts, whether it blocks the view, how
+     * much light it dampens, whether it renders solid, and whether its
+     * collision shape is the whole block. A block whose states all agree
+     * carries one entry.
+     */
+    private static JsonObject lightProperties(JsonObject row) {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        entry.addProperty("outcome", "listed");
+        var registry = net.minecraft.core.registries.BuiltInRegistries.BLOCK;
+        var getter = net.minecraft.world.level.EmptyBlockGetter.INSTANCE;
+        var origin = net.minecraft.core.BlockPos.ZERO;
+        var blocks = new JsonArray();
+        for (var block : registry) {
+            var distinct = new java.util.LinkedHashSet<String>();
+            var perState = new java.util.ArrayList<String>();
+            for (var state : block.getStateDefinition().getPossibleStates()) {
+                String key = state.getLightEmission() + "|" + state.emissiveRendering()
+                    + "|" + Oracle.bits(state.getShadeBrightness(getter, origin))
+                    + "|" + state.isViewBlocking(getter, origin) + "|" + state.getLightDampening()
+                    + "|" + state.isSolidRender() + "|" + state.isCollisionShapeFullBlock(getter, origin);
+                perState.add(key);
+                distinct.add(key);
+            }
+            var described = new JsonObject();
+            described.addProperty("name", registry.getKey(block).toString());
+            var states = new JsonArray();
+            (distinct.size() == 1 ? distinct : perState).forEach(states::add);
+            described.add("states", states);
             blocks.add(described);
         }
         entry.add("blocks", blocks);

@@ -1490,6 +1490,47 @@ impl ClientWorld {
         self.light_at(LightLayer::Block, x, y, z)
     }
 
+    /// `getBrightness(LightLayer.SKY, pos)` as the client's light storage
+    /// answers it: above the highest section with data the sky is full, and a
+    /// section with no data takes the bottom row of the nearest one above.
+    pub fn sky_brightness(&self, x: i32, y: i32, z: i32) -> u8 {
+        let Some(chunk) = self.chunk_for_query(x.div_euclid(16), z.div_euclid(16)) else {
+            return 15;
+        };
+        let Some(top) = chunk
+            .lights
+            .iter()
+            .filter(|(_, section)| section.sky.is_some())
+            .map(|(section_y, _)| section_y + 1)
+            .max()
+        else {
+            return 15;
+        };
+        let mut section_y = y.div_euclid(16);
+        let mut local_y = y.rem_euclid(16) as usize;
+        loop {
+            if section_y >= top {
+                return 15;
+            }
+            if let Some(data) = chunk
+                .lights
+                .get(&section_y)
+                .and_then(|section| section.sky.as_ref())
+            {
+                let index =
+                    local_y * 256 + z.rem_euclid(16) as usize * 16 + x.rem_euclid(16) as usize;
+                return (data[index / 2] >> ((index & 1) * 4)) & 0x0f;
+            }
+            section_y += 1;
+            local_y = 0;
+        }
+    }
+
+    /// `getBrightness(LightLayer.BLOCK, pos)`: nothing where no data arrived.
+    pub fn block_brightness(&self, x: i32, y: i32, z: i32) -> u8 {
+        self.light_at(LightLayer::Block, x, y, z).unwrap_or(0)
+    }
+
     pub fn loaded_block_entity_count(&self) -> usize {
         self.chunks
             .values()
@@ -3047,6 +3088,7 @@ impl ClientWorld {
 }
 
 pub mod block_collision_table;
+pub mod block_light_table;
 pub mod block_movement_table;
 pub mod block_registry;
 pub mod local_player;
