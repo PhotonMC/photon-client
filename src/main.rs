@@ -991,6 +991,7 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
         session.hashed_seed(),
     )
     .ok_or("the biome colours could not be read")?;
+    let biome_tints = std::sync::Arc::new(biome_tints);
     // Every block's models and one atlas for all of them, as the reference
     // bakes them at resource load; the world is then meshed a 16-block
     // section at a time as its chunks arrive and change.
@@ -1005,6 +1006,7 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
     let baking = std::time::Instant::now();
     let block_renderer = render::world_mesh::BlockRenderer::new(&source, requested_mips)
         .map_err(|error| format!("block models: {error:?}"))?;
+    let block_renderer = std::sync::Arc::new(block_renderer);
     println!(
         "play_atlas={}x{} models={} skipped={} in {:?}",
         block_renderer.atlas.width,
@@ -1040,6 +1042,20 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
     ];
     let mut pending: std::collections::BTreeSet<(i32, i32, i32)> =
         session.take_dirty_sections().into_iter().collect();
+    // Sections are meshed on worker threads, leaving one core for the game.
+    let worker_count = std::thread::available_parallelism()
+        .map_or(2, |count| count.get().saturating_sub(1))
+        .clamp(1, 8);
+    let mut workers = render::section_workers::SectionWorkers::new(
+        worker_count,
+        std::sync::Arc::clone(&block_renderer),
+        std::sync::Arc::clone(&biome_tints),
+    );
+    // The generation of each section's newest hand-out; a mesh from an
+    // older one is stale.
+    let mut latest: std::collections::HashMap<(i32, i32, i32), u64> =
+        std::collections::HashMap::new();
+    let mut next_generation = 0_u64;
     let section_low = session.world().dimension().min_y.div_euclid(16);
     let section_high = section_low + session.world().dimension().height / 16;
 
@@ -1119,8 +1135,14 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
     let mut last_frame = std::time::Instant::now();
     let mut ticks = 0_u64;
     let mut frames = 0_u64;
+    // `VOXEL_PROFILE` prints where the frame time went, every two seconds.
+    let profile = env::var_os("VOXEL_PROFILE").is_some();
+    let mut profile_spans = [Duration::ZERO; 5];
+    let mut profile_frames = 0_u32;
+    let mut profile_started = std::time::Instant::now();
 
     while !surface.should_close() {
+        let frame_start = std::time::Instant::now();
         for event in surface.poll() {
             match event {
                 glfw::WindowEvent::Key(glfw::Key::Escape, _, glfw::Action::Press, _) => {
@@ -1203,6 +1225,7 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
             ticks += 1;
         }
 
+        let ticked = std::time::Instant::now();
         let player = session.player().ok_or("no local player")?;
         let partial = accumulated.as_secs_f64() / tick_length.as_secs_f64();
         let feet = player.interpolated_position(partial);
@@ -1220,20 +1243,24 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
         let far = ((render_distance * 16 * 4) as f32).max((CLOUD_RANGE * 16) as f32);
         let view_projection = player_camera(aspect, fov, far, eye, y_rot, x_rot);
 
-        // Mesh the dirty sections nearest the player first, within a time
-        // budget, and drop the ones whose chunk went away.
+        // Mesh the dirty sections nearest the player first on the workers,
+        // and drop the ones whose chunk went away.
         for (chunk_x, chunk_z) in session.take_forgotten_chunks() {
             for section_y in section_low..section_high {
-                pending.remove(&(chunk_x, section_y, chunk_z));
-                backend.set_section(
-                    (chunk_x, section_y, chunk_z),
-                    &render::Mesh::default(),
-                    [0.0; 3],
-                )?;
+                let key = (chunk_x, section_y, chunk_z);
+                pending.remove(&key);
+                latest.remove(&key);
+                backend.set_section(key, &render::Mesh::default(), [0.0; 3])?;
             }
         }
         pending.extend(session.take_dirty_sections());
-        {
+        loop {
+            for built in workers.collect() {
+                if latest.get(&built.key) == Some(&built.generation) {
+                    latest.remove(&built.key);
+                    backend.set_section(built.key, &built.mesh, built.centre)?;
+                }
+            }
             let world = session.world();
             let player_section = (
                 feet.x.floor() as i32 >> 4,
@@ -1253,42 +1280,36 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                     + (y - player_section.1).pow(2)
                     + (z - player_section.2).pow(2)
             });
-            let dimension = world.dimension();
-            let quart_min = dimension.min_y.div_euclid(4);
-            let quart_max = quart_min + dimension.height / 4 - 1;
-            let noise_biome = |x: i32, y: i32, z: i32| {
-                world.biome_at(x * 4, y.clamp(quart_min, quart_max) * 4, z * 4)
-            };
-            let read = |x: i32, y: i32, z: i32| world.block_state_at(x, y, z);
-            let light = |x: i32, y: i32, z: i32| {
-                (
-                    world.block_brightness(x, y, z),
-                    world.sky_brightness(x, y, z),
-                )
-            };
-            let tint = |kind, position| biome_tints.tint(kind, position, &noise_biome);
+            // Keep every worker busy with a little queued behind it, and
+            // spend at most a few milliseconds of the frame copying.
             let budget = std::time::Instant::now();
+            let nothing_to_hand_out = ordered.is_empty();
             for key in ordered {
-                // A scripted run finishes every section before its capture.
-                if !script_done && budget.elapsed() > Duration::from_millis(12) {
+                if workers.in_flight() >= worker_count * 4
+                    || budget.elapsed() > Duration::from_millis(4)
+                {
                     break;
                 }
                 pending.remove(&key);
-                if !world.contains_chunk(key.0, key.2) {
+                if world.section_is_empty(key.0, key.1, key.2) {
+                    latest.remove(&key);
                     backend.set_section(key, &render::Mesh::default(), [0.0; 3])?;
                     continue;
                 }
-                let corner = [key.0 * 16, key.1 * 16, key.2 * 16];
-                let region =
-                    block_renderer.mesh_region(&read, &light, &tint, corner, [16, 16, 16], origin);
-                let centre = [
-                    (corner[0] + 8 - origin[0]) as f32,
-                    (corner[1] + 8 - origin[1]) as f32,
-                    (corner[2] + 8 - origin[2]) as f32,
-                ];
-                backend.set_section(key, &region.mesh, centre)?;
+                let (min, size, quart_min, quart_size) =
+                    render::section_workers::SectionWorkers::region(key);
+                let copy = world.copy_region(min, size, quart_min, quart_size);
+                next_generation += 1;
+                latest.insert(key, next_generation);
+                workers.submit(key, next_generation, copy, origin);
             }
+            // A scripted run finishes every section before its capture.
+            if !script_done || (nothing_to_hand_out && workers.in_flight() == 0) {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(1));
         }
+        let meshed = std::time::Instant::now();
         backend.set_sort_origin(eye);
         let mut regions = Vec::new();
         for (animation, redraw) in animations.iter().zip(&mut animation_redraw) {
@@ -1501,8 +1522,39 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
             }
             break;
         }
+        let built = std::time::Instant::now();
         backend.draw_scene(colour, view_projection)?;
         frames += 1;
+        if profile {
+            let drawn = std::time::Instant::now();
+            for (span, (from, to)) in profile_spans.iter_mut().zip([
+                (frame_start, ticked),
+                (ticked, meshed),
+                (meshed, built),
+                (built, drawn),
+                (frame_start, drawn),
+            ]) {
+                *span += to - from;
+            }
+            profile_frames += 1;
+            if profile_started.elapsed() >= Duration::from_secs(2) {
+                let per_frame =
+                    |span: Duration| span.as_secs_f64() * 1000.0 / f64::from(profile_frames);
+                println!(
+                    "profile fps={:.0} ms/frame: tick={:.2} mesh={:.2} build={:.2} draw={:.2} total={:.2} pending={}",
+                    f64::from(profile_frames) / profile_started.elapsed().as_secs_f64(),
+                    per_frame(profile_spans[0]),
+                    per_frame(profile_spans[1]),
+                    per_frame(profile_spans[2]),
+                    per_frame(profile_spans[3]),
+                    per_frame(profile_spans[4]),
+                    pending.len(),
+                );
+                profile_spans = [Duration::ZERO; 5];
+                profile_frames = 0;
+                profile_started = std::time::Instant::now();
+            }
+        }
     }
     println!("play_frames={frames} play_ticks={ticks}");
     Ok(())

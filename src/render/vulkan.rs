@@ -429,15 +429,55 @@ struct CloudBuffer {
 
 /// One mesh's buffers: the opaque indices, then the translucent ones.
 struct SectionBuffers {
-    vertex_buffer: vk::Buffer,
-    vertex_memory: vk::DeviceMemory,
-    index_buffer: vk::Buffer,
-    index_memory: vk::DeviceMemory,
+    vertices: ArenaSlice,
+    indices: ArenaSlice,
     index_count: u32,
     translucent_index_count: u32,
     /// Where the mesh sits, for ordering its translucent faces.
     centre: [f32; 3],
 }
+
+/// One large buffer in the GPU's memory that section meshes are carved
+/// from: a few big allocations instead of two per section, which drivers
+/// cap, and nothing read across the bus while drawing.
+struct ArenaBlock {
+    buffer: vk::Buffer,
+    memory: vk::DeviceMemory,
+    /// Free ranges, offset and length, in offset order.
+    free: Vec<(u64, u64)>,
+}
+
+/// A range of one arena block.
+#[derive(Debug, Clone, Copy)]
+struct ArenaSlice {
+    block: usize,
+    offset: u64,
+    size: u64,
+}
+
+/// The size of each arena block.
+const ARENA_BLOCK_SIZE: u64 = 64 << 20;
+
+/// Host memory that section bytes pass through on their way into the
+/// arena, which lives where only the GPU can write.
+struct StagingChunk {
+    buffer: vk::Buffer,
+    memory: vk::DeviceMemory,
+    mapped: *mut u8,
+    size: u64,
+    used: u64,
+}
+
+/// One staged copy into the arena, recorded before the next frame draws.
+struct StagedCopy {
+    chunk: usize,
+    source: u64,
+    target: ArenaSlice,
+    size: u64,
+}
+
+/// The size of each staging chunk.
+const STAGING_CHUNK_SIZE: u64 = 16 << 20;
 
 /// The sky's vertex buffer, rewritten every frame.
 struct SkyBuffer {
@@ -495,6 +535,16 @@ pub struct VulkanBackend {
     /// The rain's and the snow's vertex counts in the weather buffer.
     weather_counts: (u32, u32),
     sections: std::collections::BTreeMap<(i32, i32, i32), SectionBuffers>,
+    arena: Vec<ArenaBlock>,
+    /// Staging chunks: every chunk, the ones taking uploads for the next
+    /// frame, and the ones the frame in flight still copies from.
+    staging: Vec<StagingChunk>,
+    staging_filling: Vec<usize>,
+    staging_in_flight: Vec<usize>,
+    staged: Vec<StagedCopy>,
+    /// Section meshes replaced since the frame in flight began; freed once
+    /// it is done with them.
+    retired: Vec<SectionBuffers>,
     sort_origin: [f32; 3],
     lightmap: [f32; 12],
     /// The terrain fog's colour and its four distances.
@@ -755,6 +805,12 @@ impl VulkanBackend {
                 weather_buffer: None,
                 weather_counts: (0, 0),
                 sections: std::collections::BTreeMap::new(),
+                arena: Vec::new(),
+                staging: Vec::new(),
+                staging_filling: Vec::new(),
+                staging_in_flight: Vec::new(),
+                staged: Vec::new(),
+                retired: Vec::new(),
                 sort_origin: [0.0; 3],
                 lightmap: DEFAULT_LIGHTMAP,
                 fog: NO_FOG,
@@ -869,6 +925,23 @@ impl VulkanBackend {
     }
 
     /// Record the draw for one swapchain image.
+    unsafe fn bind_section(&self, section: &SectionBuffers) {
+        unsafe {
+            self.device.cmd_bind_vertex_buffers(
+                self.command_buffer,
+                0,
+                &[self.arena[section.vertices.block].buffer],
+                &[section.vertices.offset],
+            );
+            self.device.cmd_bind_index_buffer(
+                self.command_buffer,
+                self.arena[section.indices.block].buffer,
+                section.indices.offset,
+                vk::IndexType::UINT32,
+            );
+        }
+    }
+
     unsafe fn record_scene(&self, index: usize, view_projection: [[f32; 4]; 4]) {
         unsafe {
             let (Some(scene), Some(depth)) = (self.scene.as_ref(), self.depth.as_ref()) else {
@@ -982,18 +1055,7 @@ impl VulkanBackend {
                 .values()
                 .filter(|section| section.index_count > 0)
             {
-                self.device.cmd_bind_vertex_buffers(
-                    self.command_buffer,
-                    0,
-                    &[section.vertex_buffer],
-                    &[0],
-                );
-                self.device.cmd_bind_index_buffer(
-                    self.command_buffer,
-                    section.index_buffer,
-                    0,
-                    vk::IndexType::UINT32,
-                );
+                self.bind_section(section);
                 self.device
                     .cmd_draw_indexed(self.command_buffer, section.index_count, 1, 0, 0, 0);
             }
@@ -1033,18 +1095,7 @@ impl VulkanBackend {
                 );
             }
             for section in translucent {
-                self.device.cmd_bind_vertex_buffers(
-                    self.command_buffer,
-                    0,
-                    &[section.vertex_buffer],
-                    &[0],
-                );
-                self.device.cmd_bind_index_buffer(
-                    self.command_buffer,
-                    section.index_buffer,
-                    0,
-                    vk::IndexType::UINT32,
-                );
+                self.bind_section(section);
                 self.device.cmd_draw_indexed(
                     self.command_buffer,
                     section.translucent_index_count,
@@ -1404,12 +1455,10 @@ impl VulkanBackend {
         centre: [f32; 3],
     ) -> Result<(), VulkanError> {
         unsafe {
-            // The frame in flight may still read the old buffers.
-            self.device
-                .wait_for_fences(&[self.in_flight], true, u64::MAX)
-                .map_err(|result| VulkanError::Call("vkWaitForFences", result))?;
+            // The frame in flight may still read the old mesh, so it is
+            // freed after that frame.
             if let Some(old) = self.sections.remove(&key) {
-                self.destroy_section(old);
+                self.retired.push(old);
             }
             if mesh.indices.is_empty() && mesh.translucent_indices.is_empty() {
                 return Ok(());
@@ -1418,8 +1467,7 @@ impl VulkanBackend {
                 mesh.vertices.as_ptr().cast::<u8>(),
                 std::mem::size_of_val(mesh.vertices.as_slice()),
             );
-            let (vertex_buffer, vertex_memory) =
-                self.upload_buffer(vk::BufferUsageFlags::VERTEX_BUFFER, vertex_bytes)?;
+            let vertices = self.arena_upload(vertex_bytes)?;
             let all_indices: Vec<u32> = mesh
                 .indices
                 .iter()
@@ -1430,15 +1478,12 @@ impl VulkanBackend {
                 all_indices.as_ptr().cast::<u8>(),
                 std::mem::size_of_val(all_indices.as_slice()),
             );
-            let (index_buffer, index_memory) =
-                self.upload_buffer(vk::BufferUsageFlags::INDEX_BUFFER, index_bytes)?;
+            let indices = self.arena_upload(index_bytes)?;
             self.sections.insert(
                 key,
                 SectionBuffers {
-                    vertex_buffer,
-                    vertex_memory,
-                    index_buffer,
-                    index_memory,
+                    vertices,
+                    indices,
                     index_count: mesh.indices.len() as u32,
                     translucent_index_count: mesh.translucent_indices.len() as u32,
                     centre,
@@ -1457,6 +1502,12 @@ impl VulkanBackend {
             for (_, section) in std::mem::take(&mut self.sections) {
                 self.destroy_section(section);
             }
+            for section in std::mem::take(&mut self.retired) {
+                self.destroy_section(section);
+            }
+            // Their copies have nowhere to go now.
+            self.staged.clear();
+            self.staging_filling.clear();
             Ok(())
         }
     }
@@ -1466,12 +1517,203 @@ impl VulkanBackend {
         self.sort_origin = origin;
     }
 
-    unsafe fn destroy_section(&self, section: SectionBuffers) {
+    /// Give a section's ranges back to the arena; the GPU must be done
+    /// with them.
+    unsafe fn destroy_section(&mut self, section: SectionBuffers) {
+        self.arena_free(section.vertices);
+        self.arena_free(section.indices);
+    }
+
+    /// Copy bytes into a free range of the arena, growing it by a block
+    /// when none fits.
+    unsafe fn arena_upload(&mut self, bytes: &[u8]) -> Result<ArenaSlice, VulkanError> {
         unsafe {
-            self.device.destroy_buffer(section.index_buffer, None);
-            self.device.free_memory(section.index_memory, None);
-            self.device.destroy_buffer(section.vertex_buffer, None);
-            self.device.free_memory(section.vertex_memory, None);
+            let size = (bytes.len() as u64).div_ceil(16) * 16;
+            let found = self.arena.iter().enumerate().find_map(|(block, arena)| {
+                arena
+                    .free
+                    .iter()
+                    .position(|&(_, length)| length >= size)
+                    .map(|range| (block, range))
+            });
+            let (block, range) = match found {
+                Some(found) => found,
+                None => {
+                    self.arena
+                        .push(self.create_arena_block(size.max(ARENA_BLOCK_SIZE))?);
+                    (self.arena.len() - 1, 0)
+                }
+            };
+            let arena = &mut self.arena[block];
+            let (offset, length) = arena.free[range];
+            if length == size {
+                arena.free.remove(range);
+            } else {
+                arena.free[range] = (offset + size, length - size);
+            }
+            let target = ArenaSlice {
+                block,
+                offset,
+                size,
+            };
+            let chunk = match self
+                .staging_filling
+                .iter()
+                .copied()
+                .find(|&chunk| self.staging[chunk].size - self.staging[chunk].used >= size)
+            {
+                Some(chunk) => chunk,
+                None => {
+                    let free = (0..self.staging.len()).find(|chunk| {
+                        !self.staging_filling.contains(chunk)
+                            && !self.staging_in_flight.contains(chunk)
+                            && self.staging[*chunk].size >= size
+                    });
+                    let chunk = match free {
+                        Some(chunk) => chunk,
+                        None => {
+                            self.staging
+                                .push(self.create_staging_chunk(size.max(STAGING_CHUNK_SIZE))?);
+                            self.staging.len() - 1
+                        }
+                    };
+                    self.staging[chunk].used = 0;
+                    self.staging_filling.push(chunk);
+                    chunk
+                }
+            };
+            let staging = &mut self.staging[chunk];
+            let source = staging.used;
+            std::ptr::copy_nonoverlapping(
+                bytes.as_ptr(),
+                staging.mapped.add(source as usize),
+                bytes.len(),
+            );
+            staging.used += size;
+            self.staged.push(StagedCopy {
+                chunk,
+                source,
+                target,
+                size,
+            });
+            Ok(target)
+        }
+    }
+
+    fn arena_free(&mut self, slice: ArenaSlice) {
+        let free = &mut self.arena[slice.block].free;
+        let at = free.partition_point(|&(offset, _)| offset < slice.offset);
+        free.insert(at, (slice.offset, slice.size));
+        // Join with the ranges on either side.
+        if at + 1 < free.len() && free[at].0 + free[at].1 == free[at + 1].0 {
+            free[at].1 += free[at + 1].1;
+            free.remove(at + 1);
+        }
+        if at > 0 && free[at - 1].0 + free[at - 1].1 == free[at].0 {
+            free[at - 1].1 += free[at].1;
+            free.remove(at);
+        }
+    }
+
+    /// A new arena block, in the GPU's own memory.
+    unsafe fn create_arena_block(&self, size: u64) -> Result<ArenaBlock, VulkanError> {
+        unsafe {
+            let buffer = self
+                .device
+                .create_buffer(
+                    &vk::BufferCreateInfo::default()
+                        .size(size)
+                        .usage(
+                            vk::BufferUsageFlags::VERTEX_BUFFER
+                                | vk::BufferUsageFlags::INDEX_BUFFER
+                                | vk::BufferUsageFlags::TRANSFER_DST,
+                        )
+                        .sharing_mode(vk::SharingMode::EXCLUSIVE),
+                    None,
+                )
+                .map_err(|result| VulkanError::Call("vkCreateBuffer", result))?;
+            let requirements = self.device.get_buffer_memory_requirements(buffer);
+            let memory = self.allocate(requirements, vk::MemoryPropertyFlags::DEVICE_LOCAL)?;
+            self.device
+                .bind_buffer_memory(buffer, memory, 0)
+                .map_err(|result| VulkanError::Call("vkBindBufferMemory", result))?;
+            Ok(ArenaBlock {
+                buffer,
+                memory,
+                free: vec![(0, size)],
+            })
+        }
+    }
+
+    /// A new staging chunk, mapped for good.
+    unsafe fn create_staging_chunk(&self, size: u64) -> Result<StagingChunk, VulkanError> {
+        unsafe {
+            let buffer = self
+                .device
+                .create_buffer(
+                    &vk::BufferCreateInfo::default()
+                        .size(size)
+                        .usage(vk::BufferUsageFlags::TRANSFER_SRC)
+                        .sharing_mode(vk::SharingMode::EXCLUSIVE),
+                    None,
+                )
+                .map_err(|result| VulkanError::Call("vkCreateBuffer", result))?;
+            let requirements = self.device.get_buffer_memory_requirements(buffer);
+            let memory = self.allocate(
+                requirements,
+                vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
+            )?;
+            self.device
+                .bind_buffer_memory(buffer, memory, 0)
+                .map_err(|result| VulkanError::Call("vkBindBufferMemory", result))?;
+            let mapped = self
+                .device
+                .map_memory(memory, 0, size, vk::MemoryMapFlags::empty())
+                .map_err(|result| VulkanError::Call("vkMapMemory", result))?
+                .cast::<u8>();
+            Ok(StagingChunk {
+                buffer,
+                memory,
+                mapped,
+                size,
+                used: 0,
+            })
+        }
+    }
+
+    /// Record the staged section copies, and make the draws wait for them.
+    unsafe fn record_staged_copies(&mut self) {
+        unsafe {
+            if self.staged.is_empty() {
+                return;
+            }
+            for copy in std::mem::take(&mut self.staged) {
+                self.device.cmd_copy_buffer(
+                    self.command_buffer,
+                    self.staging[copy.chunk].buffer,
+                    self.arena[copy.target.block].buffer,
+                    &[vk::BufferCopy {
+                        src_offset: copy.source,
+                        dst_offset: copy.target.offset,
+                        size: copy.size,
+                    }],
+                );
+            }
+            self.device.cmd_pipeline_barrier(
+                self.command_buffer,
+                vk::PipelineStageFlags::TRANSFER,
+                vk::PipelineStageFlags::VERTEX_INPUT,
+                vk::DependencyFlags::empty(),
+                &[vk::MemoryBarrier::default()
+                    .src_access_mask(vk::AccessFlags::TRANSFER_WRITE)
+                    .dst_access_mask(
+                        vk::AccessFlags::VERTEX_ATTRIBUTE_READ | vk::AccessFlags::INDEX_READ,
+                    )],
+                &[],
+                &[],
+            );
+            self.staging_in_flight
+                .extend(std::mem::take(&mut self.staging_filling));
         }
     }
 
@@ -1888,6 +2130,12 @@ impl VulkanBackend {
             for (_, section) in std::mem::take(&mut self.sections) {
                 self.destroy_section(section);
             }
+            for section in std::mem::take(&mut self.retired) {
+                self.destroy_section(section);
+            }
+            // Their copies have nowhere to go now.
+            self.staged.clear();
+            self.staging_filling.clear();
             if let Some(depth) = self.depth.take() {
                 self.device.destroy_image_view(depth.view, None);
                 self.device.destroy_image(depth.image, None);
@@ -2241,6 +2489,10 @@ impl VulkanBackend {
             self.device
                 .wait_for_fences(&[self.in_flight], true, u64::MAX)
                 .map_err(|result| VulkanError::Call("vkWaitForFences", result))?;
+            for section in std::mem::take(&mut self.retired) {
+                self.destroy_section(section);
+            }
+            self.staging_in_flight.clear();
 
             let (index, _) = match self.swapchain_device.acquire_next_image(
                 self.swapchain,
@@ -2269,6 +2521,7 @@ impl VulkanBackend {
                         .flags(vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT),
                 )
                 .map_err(|result| VulkanError::Call("vkBeginCommandBuffer", result))?;
+            self.record_staged_copies();
 
             transition(
                 &self.device,
@@ -2428,6 +2681,14 @@ impl Drop for VulkanBackend {
             if let Some(weather) = self.weather_buffer.take() {
                 self.device.destroy_buffer(weather.buffer, None);
                 self.device.free_memory(weather.memory, None);
+            }
+            for block in self.arena.drain(..) {
+                self.device.destroy_buffer(block.buffer, None);
+                self.device.free_memory(block.memory, None);
+            }
+            for chunk in self.staging.drain(..) {
+                self.device.destroy_buffer(chunk.buffer, None);
+                self.device.free_memory(chunk.memory, None);
             }
             for view in self.image_views.drain(..) {
                 self.device.destroy_image_view(view, None);

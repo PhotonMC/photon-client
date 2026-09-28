@@ -24,8 +24,16 @@ boşluk, sol shift, sol ctrl ve fare. Kamera oyuncunun gözünde. Bütün blok
 modelleri ve tek atlas açılışta kuruluyor; dünya 16³'lük bölümler halinde
 mesh'leniyor. Gelen yığın ve ışık paketleri çevredeki 3×3 yığın sütununun,
 blok güncellemeleri çevredeki 3×3×3 bölümün mesh'ini kirletiyor; her kare
-görüş mesafesindeki kirli bölümlerin oyuncuya en yakınları bir süre
-bütçesiyle yeniden kuruluyor, unutulan yığınların bölümleri siliniyor.
+görüş mesafesindeki kirli bölümlerin oyuncuya en yakınları işçi iş
+parçacıklarında yeniden kuruluyor, unutulan yığınların bölümleri siliniyor.
+Ana iş parçacığı bölümü ve çevresindeki iki bloğu (blok durumu, ışık,
+biyom) kopyalayıp işçiye veriyor; yalnız havadan oluşan bölüm hiç
+gönderilmiyor. Bölüm yeniden kirlenirse eski sonuç kuşak numarasıyla
+atılıyor. Mesh'ler GPU belleğindeki büyük bloklardan parça olarak ayrılıyor
+ve bir hazırlık tamponundan kopyalanıyor, çünkü CPU'nun yazabildiği GPU
+belleği (Resizable BAR kapalıyken) 256 MB ile sınırlı. Aşıldığında köşe
+verisi her karede PCIe'den okunuyor ve kare 30 ms'ye çıkıyordu.
+`VOXEL_PROFILE=1` her iki saniyede kare süresinin dağılımını yazıyor.
 Yarı saydam yüzler bölüm merkezinin kameraya uzaklığına göre uzaktan yakına
 çiziliyor.
 
@@ -165,9 +173,9 @@ barışçıl ve `server-port=25600` içeriyor.
   çalışmada farklı tohumla); lightmap girdileri tick başına bir kez, tick
   sonundaki öznitelik değerleriyle. Farklar: gece görüşü, karanlık etkisi
   ve patron sisi yok; referans karelerle karşılaştırılmadı.
-- Bölüm mesh'leme referansın bölüm derleyicisinin sırası ve iş
-  parçacıkları değil: kirli bölümler ana iş parçacığında, uzaklık sırasıyla,
-  kare başına 12 ms bütçeyle kuruluyor; görüş mesafesi 2–12 bölüme
+- Bölüm mesh'leme referansın bölüm derleyicisinin sırası değil: kirli
+  bölümler uzaklık sırasıyla, işçi başına dört iş bekleyecek kadar ve kare
+  başına en fazla 4 ms kopyalamayla dağıtılıyor; görüş mesafesi 2–12 bölüme
   kırpılıyor; bölüm içindeki yarı saydam yüzler sıralanmıyor; görünürlük (frustum ve
   mağara) ayıklaması yok. Derinlik testi referanstaki gibi eşitliği
   geçiriyor; aynı yerdeki sonraki yüz (çimin yan örtüsü) görünüyor.

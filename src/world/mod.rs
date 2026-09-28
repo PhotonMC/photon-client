@@ -28,6 +28,7 @@ mod dimension;
 mod entity;
 mod metadata;
 mod player;
+mod region_copy;
 
 pub use block_entity::*;
 pub use block_state::*;
@@ -40,6 +41,7 @@ pub use dimension::*;
 pub use entity::*;
 pub(crate) use metadata::*;
 pub use player::*;
+pub use region_copy::RegionCopy;
 
 /// The client-side copy of the currently loaded world.
 #[derive(Debug, Clone, PartialEq, Eq)]

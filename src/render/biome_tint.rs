@@ -461,12 +461,25 @@ impl BiomeTints {
         position: [i32; 3],
         noise_biome: &impl Fn(i32, i32, i32) -> Option<i32>,
     ) -> u32 {
+        self.tint_from(kind, position, &|x, y, z| {
+            self.biome_at(x, y, z, noise_biome)
+        })
+    }
+
+    /// [`Self::tint`] with the zoomed biome lookup given, so a caller can
+    /// remember it between neighbouring blocks.
+    pub fn tint_from(
+        &self,
+        kind: TintKind,
+        position: [i32; 3],
+        biome_at: &impl Fn(i32, i32, i32) -> usize,
+    ) -> u32 {
         const RADIUS: i32 = 2;
         let count = (RADIUS * 2 + 1) * (RADIUS * 2 + 1);
         let (mut red, mut green, mut blue) = (0, 0, 0);
         for z in position[2] - RADIUS..=position[2] + RADIUS {
             for x in position[0] - RADIUS..=position[0] + RADIUS {
-                let biome = self.biome_at(x, position[1], z, noise_biome);
+                let biome = biome_at(x, position[1], z);
                 let colour = self.colour(kind, biome, x, z);
                 red += ((colour >> 16) & 0xFF) as i32;
                 green += ((colour >> 8) & 0xFF) as i32;
