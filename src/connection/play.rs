@@ -60,6 +60,13 @@ pub struct PlaySession {
     game_time: i64,
     rain_level: f32,
     thunder_level: f32,
+    status: PlayerStatus,
+    /// Whether a respawn was asked for since the player last had health.
+    respawn_requested: bool,
+    /// Set when the server moved the player to a new level.
+    level_reset: bool,
+    /// The hotbar slot the server was last told about.
+    sent_slot: i32,
     dirty_sections: std::collections::BTreeSet<(i32, i32, i32)>,
     forgotten_chunks: Vec<(i32, i32)>,
     clocks: std::collections::BTreeMap<i32, ClockState>,
@@ -115,6 +122,10 @@ impl PlaySession {
             game_time: 0,
             rain_level: 0.0,
             thunder_level: 0.0,
+            status: PlayerStatus::default(),
+            respawn_requested: false,
+            level_reset: false,
+            sent_slot: 0,
             dirty_sections: std::collections::BTreeSet::new(),
             forgotten_chunks: Vec::new(),
             clocks: std::collections::BTreeMap::new(),
@@ -220,6 +231,24 @@ impl PlaySession {
         self.game_time
     }
 
+    /// Whether the server replaced the level since the last call, so
+    /// everything drawn from the old one should go.
+    pub fn take_level_reset(&mut self) -> bool {
+        std::mem::take(&mut self.level_reset)
+    }
+
+    /// What the HUD shows of the player.
+    pub fn status(&self) -> &PlayerStatus {
+        &self.status
+    }
+
+    /// Select a hotbar slot, 0 to 8; the server hears of it next tick.
+    pub fn select_slot(&mut self, slot: i32) {
+        if (0..9).contains(&slot) {
+            self.status.selected_slot = slot;
+        }
+    }
+
     /// `Level.getRainLevel`: how hard it rains, 0 to 1.
     pub fn rain_level(&self) -> f32 {
         self.rain_level
@@ -278,6 +307,16 @@ impl PlaySession {
 
     /// One client tick: the local player, its packets, then the tick end.
     pub fn tick(&mut self, keys: Input) -> Result<(), ConnectionError> {
+        // `MultiPlayerGameMode.ensureHasSentCarriedItem`, which the game
+        // mode's tick runs before the player moves.
+        if self.status.selected_slot != self.sent_slot {
+            self.sent_slot = self.status.selected_slot;
+            let slot = self.sent_slot as i16;
+            self.send(PLAY_SERVERBOUND_SET_CARRIED_ITEM_PACKET_ID, |output| {
+                output.extend_from_slice(&slot.to_be_bytes());
+                Ok(())
+            })?;
+        }
         if self.loaded
             && let Some(player) = self.player.as_mut()
         {
@@ -391,6 +430,7 @@ impl PlaySession {
                 // A respawn makes a new player that waits for its position.
                 self.player = None;
                 self.loaded = false;
+                self.level_reset = true;
             }
             PLAY_CLIENTBOUND_CHUNK_PACKET_ID => {
                 let chunk = parse_chunk_packet(payload)?;
@@ -517,6 +557,40 @@ impl PlaySession {
                     crate::common::ServerboundPongPacket::new(packet.id).encode(output);
                     Ok(())
                 })?;
+            }
+            PLAY_CLIENTBOUND_SET_HEALTH_PACKET_ID => {
+                let packet = parse_set_health_packet(payload)?;
+                self.status.health = packet.health;
+                self.status.food = packet.food;
+                self.status.saturation = packet.saturation;
+                // The death screen is not ported, so a dead player asks to
+                // respawn at once, as the reference does when the server
+                // turns the death screen off.
+                if packet.health <= 0.0 {
+                    if !self.respawn_requested {
+                        self.respawn_requested = true;
+                        self.send(
+                            PLAY_SERVERBOUND_CLIENT_COMMAND_PACKET_ID,
+                            encode_perform_respawn,
+                        )?;
+                    }
+                } else {
+                    self.respawn_requested = false;
+                }
+            }
+            PLAY_CLIENTBOUND_SET_EXPERIENCE_PACKET_ID => {
+                let mut input = payload;
+                self.status.experience_progress = read_f32(&mut input)?;
+                self.status.experience_level = read_varint(&mut input, "experience level")?;
+                self.status.total_experience = read_varint(&mut input, "total experience")?;
+            }
+            PLAY_CLIENTBOUND_SET_HELD_SLOT_PACKET_ID => {
+                let mut input = payload;
+                let slot = read_varint(&mut input, "held slot")?;
+                // `Inventory.isHotbarSlot`: anything else is ignored.
+                if (0..9).contains(&slot) {
+                    self.status.selected_slot = slot;
+                }
             }
             PLAY_CLIENTBOUND_GAME_EVENT_PACKET_ID => {
                 let event = parse_game_event_packet(payload)?;
@@ -685,4 +759,31 @@ fn read_i64(input: &mut &[u8]) -> Result<i64, ConnectionError> {
     let (head, rest) = input.split_at(8);
     *input = rest;
     Ok(i64::from_be_bytes(head.try_into().expect("eight bytes")))
+}
+
+/// The player's health, food, experience and selected hotbar slot, as the
+/// server last set them.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct PlayerStatus {
+    pub health: f32,
+    pub food: i32,
+    pub saturation: f32,
+    pub experience_progress: f32,
+    pub experience_level: i32,
+    pub total_experience: i32,
+    pub selected_slot: i32,
+}
+
+impl Default for PlayerStatus {
+    fn default() -> Self {
+        Self {
+            health: 20.0,
+            food: 20,
+            saturation: 5.0,
+            experience_progress: 0.0,
+            experience_level: 0,
+            total_experience: 0,
+            selected_slot: 0,
+        }
+    }
 }

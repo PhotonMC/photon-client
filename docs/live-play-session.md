@@ -70,6 +70,13 @@ barışçıl ve `server-port=25600` içeriyor.
   eşleşiyor; matris JOML'un aynı girdilerle kurduğu matrisle 1e-6 içinde
   aynı (`camera::tests`). Z ekseni çevresindeki en fazla ±0,3°'lik dönme
   referansta da var.
+- Ölüm: ölüm ekranı yok. Can sıfıra inince istemci hemen yeniden doğmayı
+  istiyor (referansın ölüm ekranı kapalıyken yaptığı gibi); ölü olarak
+  giren oyuncu da böylece yeniden doğuyor, yoksa sunucu yığın göndermiyor
+  ve seviye hiç yüklenmiyordu. Yeniden doğma ve boyut değişimi bütün
+  bölüm mesh'lerini siliyor; yeni konum gelene dek kare çizilmiyor.
+  Sağlık, yiyecek, deneyim ve seçili kısayol yuvası sunucudan izleniyor,
+  seçili yuva değişince sunucuya bildiriliyor.
 - Pencere: F11 birincil monitörde geçerli video kipinde tam ekrana geçip
   eski yere dönüyor (`VOXEL_FULLSCREEN=1` tam ekranda başlatıyor); boyut
   değişince swapchain, derinlik hedefi ve okuma tamponu yeniden kuruluyor,

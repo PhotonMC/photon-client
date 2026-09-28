@@ -938,7 +938,15 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
     while !session.is_loaded() {
         session.wait(Duration::from_millis(100))?;
         if started.elapsed() > Duration::from_secs(30) {
-            return Err("the level did not load within thirty seconds".into());
+            let world = session.world();
+            let cache = world.client_chunk_cache_snapshot();
+            return Err(format!(
+                "the level did not load within thirty seconds: player at {:?}, {} chunks, cache centre {:?}",
+                session.player().map(|player| player.position()),
+                world.loaded_chunk_count(),
+                cache.map(|cache| (cache.view_center_x, cache.view_center_z, cache.storage_radius)),
+            )
+            .into());
         }
     }
     // Let the chunks around the player arrive before the first mesh.
@@ -1163,6 +1171,9 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
     let mut profile_spans = [Duration::ZERO; 5];
     let mut profile_frames = 0_u32;
     let mut profile_started = std::time::Instant::now();
+    let mut mesh_stats = (0_u32, Duration::ZERO);
+    let mut mesh_counts: std::collections::HashMap<(i32, i32, i32), u32> =
+        std::collections::HashMap::new();
 
     while !surface.should_close() {
         let frame_start = std::time::Instant::now();
@@ -1222,6 +1233,14 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
         accumulated += now - last_frame;
         last_frame = now;
         session.drain()?;
+        // A respawn or a change of dimension: nothing of the old level stays.
+        if session.take_level_reset() {
+            backend.clear_sections()?;
+            pending.clear();
+            latest.clear();
+            fades.clear();
+            cloud_key = None;
+        }
         let mut script_done = false;
         while accumulated >= tick_length {
             accumulated -= tick_length;
@@ -1259,13 +1278,19 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                 camera.tick(player);
             }
             // The camera's attribute probe steps once a tick.
-            attributes_last = attributes_next;
-            attributes_next = probe(&session, eye_of(&session));
+            if session.player().is_some() {
+                attributes_last =
+                    std::mem::replace(&mut attributes_next, probe(&session, eye_of(&session)));
+            }
             ticks += 1;
         }
 
         let ticked = std::time::Instant::now();
-        let player = session.player().ok_or("no local player")?;
+        // While a respawn waits for its position there is nothing to draw.
+        let Some(player) = session.player().filter(|_| session.is_loaded()) else {
+            std::thread::sleep(Duration::from_millis(5));
+            continue;
+        };
         let partial = accumulated.as_secs_f64() / tick_length.as_secs_f64();
         let feet = player.interpolated_position(partial);
         let (y_rot, x_rot) = player.rotation();
@@ -1328,6 +1353,9 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
         pending.extend(session.take_dirty_sections());
         loop {
             for built in workers.collect() {
+                mesh_stats.0 += 1;
+                mesh_stats.1 += built.took;
+                *mesh_counts.entry(built.key).or_insert(0_u32) += 1;
                 if latest.get(&built.key) == Some(&built.generation) {
                     latest.remove(&built.key);
                     let fade = fade_for(built.key);
@@ -1626,6 +1654,18 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                     per_frame(profile_spans[4]),
                     pending.len(),
                 );
+                if mesh_stats.0 > 0 {
+                    let repeated = mesh_counts.values().filter(|count| **count > 1).count();
+                    println!(
+                        "profile meshes={} avg_ms={:.2} worker_ms={:.0} sections={} rebuilt={}",
+                        mesh_stats.0,
+                        mesh_stats.1.as_secs_f64() * 1000.0 / f64::from(mesh_stats.0),
+                        mesh_stats.1.as_secs_f64() * 1000.0,
+                        mesh_counts.len(),
+                        repeated,
+                    );
+                }
+                mesh_stats = (0, Duration::ZERO);
                 profile_spans = [Duration::ZERO; 5];
                 profile_frames = 0;
                 profile_started = std::time::Instant::now();

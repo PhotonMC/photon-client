@@ -35,6 +35,8 @@ pub struct Built {
     pub mesh: Mesh,
     /// The section's centre, from the mesh origin.
     pub centre: [f32; 3],
+    /// How long the worker took.
+    pub took: std::time::Duration,
 }
 
 pub struct SectionWorkers {
@@ -133,6 +135,7 @@ impl Drop for SectionWorkers {
 }
 
 fn mesh_section(renderer: &BlockRenderer, tints: &BiomeTints, job: Job) -> Built {
+    let started = std::time::Instant::now();
     let copy = &job.copy;
     let corner = [job.key.0 * 16, job.key.1 * 16, job.key.2 * 16];
     let read = |x: i32, y: i32, z: i32| copy.block_state_at(x, y, z);
@@ -156,5 +159,6 @@ fn mesh_section(renderer: &BlockRenderer, tints: &BiomeTints, job: Job) -> Built
         generation: job.generation,
         mesh: region.mesh,
         centre: [0, 1, 2].map(|axis| (corner[axis] + 8 - job.origin[axis]) as f32),
+        took: started.elapsed(),
     }
 }
