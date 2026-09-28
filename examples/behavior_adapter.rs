@@ -16333,6 +16333,13 @@ fn block_result(request: &Value) -> Result<Value, String> {
                     .collect();
                 out.push(json!({"label": label, "outcome": "listed", "blocks": blocks}));
             }
+            "fluid_overlay_blocks" => {
+                out.push(json!({
+                    "label": label,
+                    "outcome": "listed",
+                    "blocks": voxel_client::render::fluid_overlay_table::OVERLAY_BLOCKS.to_vec(),
+                }));
+            }
             "light_properties" => {
                 use voxel_client::world::block_light_table as table;
                 let blocks: Vec<Value> = registry::BLOCKS

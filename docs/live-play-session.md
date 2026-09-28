@@ -65,9 +65,11 @@ barışçıl ve `server-port=25600` içeriyor.
   yükseklikleri, akış yönüne dönen akış dokusu, aynı sıvıya bakan yüzün
   atılması, arkadan görünen yüzey. Farklar: kısmi örtme şekli olan komşu
   sıvı yüzünü gizlemiyor sayılıyor, katılık çarpışma şekline göre
-  yaklaşıklanıyor, su rengi biyom
-  yerine varsayılan biyomun rengi, yarı saydam yüzler sıralanmıyor, cam ve
-  yaprak yanındaki su kaplama dokusu yok, ışık yok.
+  yaklaşıklanıyor. Su rengi biyomdan, ışık sıvı çizicisinin kuralıyla.
+  Referansın yarı saydam blokları ve yaprakları (`HalfTransparentBlock`,
+  `LeavesBlock`; `src/render/fluid_overlay_table.rs`,
+  `tools/generate/fluid_overlay.py`, block ailesinde karşılaştırılıyor)
+  yanındaki su yüzleri `water_overlay` dokusuyla ve yalnız önden çiziliyor.
 - Animasyonlu dokular referansın sprite animasyonuyla oynuyor: kare
   listesi (listesizse şeridin bütün kareleri), kare süreleri (`frametime`
   ve kareye özel `time`, geçersiz kareler atılıyor), her istemci tick'inde

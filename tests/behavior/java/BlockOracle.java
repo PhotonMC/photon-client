@@ -56,6 +56,7 @@ public final class BlockOracle {
                 case "movement_properties" -> rows.add(movementProperties(element.getAsJsonObject()));
                 case "light_properties" -> rows.add(lightProperties(element.getAsJsonObject()));
                 case "offset_properties" -> rows.add(offsetProperties(element.getAsJsonObject()));
+                case "fluid_overlay_blocks" -> rows.add(fluidOverlayBlocks(element.getAsJsonObject()));
                 default -> throw new IllegalArgumentException("Unknown block operation: " + operation);
             }
         }
@@ -492,6 +493,23 @@ public final class BlockOracle {
             described.addProperty("max_horizontal", Oracle.bits((float) horizontal.invoke(block)));
             described.addProperty("max_vertical", Oracle.bits((float) vertical.invoke(block)));
             blocks.add(described);
+        }
+        entry.add("blocks", blocks);
+        return entry;
+    }
+
+    /** The blocks a fluid's side shows its overlay sprite against. */
+    private static JsonObject fluidOverlayBlocks(JsonObject row) {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        entry.addProperty("outcome", "listed");
+        var registry = net.minecraft.core.registries.BuiltInRegistries.BLOCK;
+        var blocks = new JsonArray();
+        for (var block : registry) {
+            if (block instanceof net.minecraft.world.level.block.HalfTransparentBlock
+                || block instanceof net.minecraft.world.level.block.LeavesBlock) {
+                blocks.add(registry.getKey(block).toString());
+            }
         }
         entry.add("blocks", blocks);
         return entry;

@@ -13093,6 +13093,12 @@ def block_cases():
         "rows": [{"label": "registry"}],
     }
     yield {
+        "case_id": "block/fluid-overlay-blocks",
+        "family": "block",
+        "operation": "fluid_overlay_blocks",
+        "rows": [{"label": "registry"}],
+    }
+    yield {
         "case_id": "block/light-properties",
         "family": "block",
         "operation": "light_properties",

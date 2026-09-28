@@ -10,6 +10,7 @@ pub mod blockstate;
 pub mod clouds;
 pub mod face_culling;
 pub mod face_occlusion_table;
+pub mod fluid_overlay_table;
 pub mod geometry;
 pub mod mipmap;
 pub mod model;

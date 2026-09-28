@@ -389,9 +389,10 @@ pub fn build_world_mesh(
 }
 
 /// The sprites the fluid renderer draws with, which no block model names.
-const FLUID_SPRITES: [&str; 4] = [
+const FLUID_SPRITES: [&str; 5] = [
     "minecraft:block/water_still",
     "minecraft:block/water_flow",
+    "minecraft:block/water_overlay",
     "minecraft:block/lava_still",
     "minecraft:block/lava_flow",
 ];
@@ -517,6 +518,17 @@ where
                 crate::render::face_culling::occlusion_kind(state, direction.opposite())
             });
         kind == Some(1) && (direction != Direction::Up || height == 1.0)
+    }
+
+    /// Whether a water side against this block shows the overlay sprite:
+    /// the reference's half-transparent blocks and leaves.
+    fn shows_overlay(&self, x: i32, y: i32, z: i32) -> bool {
+        (self.read)(x, y, z)
+            .and_then(|state| u32::try_from(state).ok())
+            .and_then(block_registry::block_for_state)
+            .is_some_and(|(block, _)| {
+                crate::render::fluid_overlay_table::OVERLAY_BLOCKS.contains(&block.name)
+            })
     }
 
     /// The horizontal flow direction, which is all the surface texture uses.
@@ -716,13 +728,20 @@ where
                 0.6,
             ),
         ];
-        let [u0, v0, u1, v1] = self.sprite(flowing);
-        let u = |f: f32| u0 + (u1 - u0) * f;
-        let v = |f: f32| v0 + (v1 - v0) * f;
         for (direction, render, [nx, nz], h0, h1, [x0, z0], [x1, z1], shade) in sides {
             if !render || self.occluded(direction, h0.max(h1), nx, y, nz) {
                 continue;
             }
+            // Water against glass, ice or leaves shows its overlay, drawn
+            // from the front only.
+            let overlay = water && self.shows_overlay(nx, y, nz);
+            let [u0, v0, u1, v1] = self.sprite(if overlay {
+                "minecraft:block/water_overlay"
+            } else {
+                flowing
+            });
+            let u = |f: f32| u0 + (u1 - u0) * f;
+            let v = |f: f32| v0 + (v1 - v0) * f;
             add_face(
                 mesh,
                 [
@@ -740,7 +759,7 @@ where
                 shade,
                 tint,
                 self.fluid_light(x, y, z),
-                true,
+                !overlay,
             );
         }
     }
