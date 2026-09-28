@@ -77,6 +77,14 @@ barışçıl ve `server-port=25600` içeriyor.
   yağmur ve gök gürültüsü karartması, bulutlar, arazinin sisi yok, su altı
   görüş süresi sabit, dünya sınırı ve End gökyüzü çizilmiyor; referans
   karelerle karşılaştırılmadı.
+- Biyom renkleri (çim, yaprak, kuru yaprak, su) referansın tint yoluyla:
+  biyomun sıcaklık/yağıştan colormap rengi ya da kendi rengi, koyu orman ve
+  bataklık değiştiricileri (bataklık için tohumu 2345 olan simplex gürültüsü),
+  biyom yöneticisinin hash'lenmiş tohumla bulanık yakınlaştırması ve 5×5
+  sütun ortalaması (varsayılan karışım yarıçapı 2). Uzun çimin üst yarısı
+  alttaki bloğun rengini, nilüfer dünya sabitini alıyor. Farklar: kızıltaş
+  ve sap gibi duruma bağlı tonlar varsayılan durumun sabiti; referans
+  karelerle karşılaştırılmadı.
 - Işık referansın model aydınlatıcısıyla hesaplanıyor: yumuşak ışıkta her
   köşe çevre blokların ışığını ve AO gölgesini karıştırıyor (kısmi yüzler
   ağırlıklı), ışık yayan bloklar ve AO kapalı modeller düz ışıkla; renk AO

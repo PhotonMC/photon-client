@@ -3,6 +3,7 @@
 //! `docs/render-backend-decision.md`.
 
 pub mod atlas;
+pub mod biome_tint;
 pub mod block_light;
 pub mod blockstate;
 pub mod face_culling;

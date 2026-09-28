@@ -432,7 +432,9 @@ mod tests {
     use super::*;
 
     fn stone() -> u32 {
-        block_registry::block("minecraft:stone").expect("stone").default_state_id()
+        block_registry::block("minecraft:stone")
+            .expect("stone")
+            .default_state_id()
     }
 
     #[test]
@@ -441,8 +443,20 @@ mod tests {
             state: |p: [i32; 3]| (p == [0, 0, 0]).then(stone),
             light: |_: [i32; 3]| (0, 15),
         };
-        let top = [[0.0, 1.0, 0.0], [0.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 0.0]];
-        let lit = lighter.light_quad(stone(), [0, 0, 0], &top, Direction::Up, Some(Direction::Up), true);
+        let top = [
+            [0.0, 1.0, 0.0],
+            [0.0, 1.0, 1.0],
+            [1.0, 1.0, 1.0],
+            [1.0, 1.0, 0.0],
+        ];
+        let lit = lighter.light_quad(
+            stone(),
+            [0, 0, 0],
+            &top,
+            Direction::Up,
+            Some(Direction::Up),
+            true,
+        );
         assert_eq!(lit.shade, [1.0; 4]);
         assert_eq!(lit.light.map(light_uv), [[0.0, 240.0]; 4]);
     }
@@ -453,8 +467,20 @@ mod tests {
             state: |p: [i32; 3]| (p == [0, 0, 0] || p == [1, 1, 0]).then(stone),
             light: |_: [i32; 3]| (0, 15),
         };
-        let top = [[0.0, 1.0, 0.0], [0.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 0.0]];
-        let lit = lighter.light_quad(stone(), [0, 0, 0], &top, Direction::Up, Some(Direction::Up), true);
+        let top = [
+            [0.0, 1.0, 0.0],
+            [0.0, 1.0, 1.0],
+            [1.0, 1.0, 1.0],
+            [1.0, 1.0, 0.0],
+        ];
+        let lit = lighter.light_quad(
+            stone(),
+            [0, 0, 0],
+            &top,
+            Direction::Up,
+            Some(Direction::Up),
+            true,
+        );
         // The two corners along the east wall take its occlusion shade.
         assert!(lit.shade[2] < 1.0 && lit.shade[3] < 1.0);
         assert_eq!(lit.shade[0], 1.0);

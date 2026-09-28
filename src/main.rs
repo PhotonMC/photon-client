@@ -699,6 +699,13 @@ fn load_world(
                 trace.world.sky_brightness(x, y, z),
             )
         },
+        // This older snapshot path draws every biome as plains.
+        |kind, _| match kind {
+            render::biome_tint::TintKind::Grass => 0xFF91_BD59,
+            render::biome_tint::TintKind::Foliage => 0xFF77_AB2F,
+            render::biome_tint::TintKind::DryFoliage => 0xFFA0_7545,
+            render::biome_tint::TintKind::Water => 0xFF3F_76E4,
+        },
         origin,
         size,
         requested,
@@ -881,7 +888,13 @@ fn world_box_mesh(
     world: &voxel_client::world::ClientWorld,
     centre: (f64, f64, f64),
     root: &str,
+    tints: &render::biome_tint::BiomeTints,
 ) -> Result<WorldBox, Box<dyn std::error::Error>> {
+    let dimension = world.dimension();
+    let quart_min = dimension.min_y.div_euclid(4);
+    let quart_max = quart_min + dimension.height / 4 - 1;
+    let noise_biome =
+        |x: i32, y: i32, z: i32| world.biome_at(x * 4, y.clamp(quart_min, quart_max) * 4, z * 4);
     let reach: i32 = env::var("VOXEL_REACH")
         .ok()
         .map(|value| value.parse())
@@ -915,6 +928,7 @@ fn world_box_mesh(
                 world.sky_brightness(x, y, z),
             )
         },
+        |kind, position| tints.tint(kind, position, &noise_biome),
         origin,
         size,
         requested,
@@ -996,6 +1010,21 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
         position.x, position.y, position.z
     );
     println!("play_chunks={}", session.world().loaded_chunk_count());
+    let spawn_biome = session
+        .world()
+        .biome_at(
+            position.x.floor() as i32,
+            position.y.floor() as i32,
+            position.z.floor() as i32,
+        )
+        .and_then(|id| {
+            session
+                .registry_names("minecraft:worldgen/biome")
+                .get(usize::try_from(id).ok()?)
+        })
+        .cloned()
+        .unwrap_or_default();
+    println!("play_biome={spawn_biome}");
 
     let display = DisplayData {
         width,
@@ -1015,8 +1044,21 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
             scale.framebuffer_height() as u32,
         )
     }?;
-    let (mesh, levels, mut origin, mut sky_sprites) =
-        world_box_mesh(session.world(), (position.x, position.y, position.z), &root)?;
+    let biome_tints = render::biome_tint::BiomeTints::load(
+        &env::var("VOXEL_DATA")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|_| std::path::Path::new(&root).with_file_name("data")),
+        std::path::Path::new(&root),
+        session.registry_names("minecraft:worldgen/biome"),
+        session.hashed_seed(),
+    )
+    .ok_or("the biome colours could not be read")?;
+    let (mesh, levels, mut origin, mut sky_sprites) = world_box_mesh(
+        session.world(),
+        (position.x, position.y, position.z),
+        &root,
+        &biome_tints,
+    )?;
     backend.load_scene(&mesh, &levels)?;
 
     // The sky's data comes from the same vanilla data pack the server runs,
@@ -1222,8 +1264,12 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
         if (position.x - centre[0]).abs() > rebuild_distance
             || (position.z - centre[1]).abs() > rebuild_distance
         {
-            let (mesh, levels, new_origin, new_sprites) =
-                world_box_mesh(session.world(), (position.x, position.y, position.z), &root)?;
+            let (mesh, levels, new_origin, new_sprites) = world_box_mesh(
+                session.world(),
+                (position.x, position.y, position.z),
+                &root,
+                &biome_tints,
+            )?;
             backend.load_scene(&mesh, &levels)?;
             origin = new_origin;
             sky_sprites = new_sprites;

@@ -56,6 +56,7 @@ pub struct PlaySession {
     teleports: u32,
     view_distance: i32,
     dimension_type_id: i32,
+    hashed_seed: i64,
     game_time: i64,
     clocks: std::collections::BTreeMap<i32, ClockState>,
 }
@@ -106,6 +107,7 @@ impl PlaySession {
             teleports: 0,
             view_distance: 0,
             dimension_type_id: 0,
+            hashed_seed: 0,
             game_time: 0,
             clocks: std::collections::BTreeMap::new(),
         })
@@ -137,6 +139,11 @@ impl PlaySession {
     /// The server's view distance in chunks, from the login packet.
     pub fn view_distance(&self) -> i32 {
         self.view_distance
+    }
+
+    /// The hashed world seed the biome zoom is jittered with.
+    pub fn hashed_seed(&self) -> i64 {
+        self.hashed_seed
     }
 
     /// The current dimension type's registry name.
@@ -284,6 +291,7 @@ impl PlaySession {
                 self.trace.world.configure_chunk_cache(login.chunk_radius);
                 self.view_distance = login.chunk_radius;
                 self.dimension_type_id = login.spawn_info.dimension_type_id;
+                self.hashed_seed = login.spawn_info.seed;
                 self.trace.world.set_local_player_id(login.player_id);
                 self.player_id = Some(login.player_id);
                 self.game_mode =
@@ -307,6 +315,7 @@ impl PlaySession {
                 );
                 self.game_mode = ClientPlayerGameMode::from_id(i32::from(spawn_info.game_type));
                 self.dimension_type_id = spawn_info.dimension_type_id;
+                self.hashed_seed = spawn_info.seed;
                 // A respawn makes a new player that waits for its position.
                 self.player = None;
                 self.loaded = false;

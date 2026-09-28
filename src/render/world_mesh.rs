@@ -49,6 +49,7 @@ pub fn build_world_mesh(
     source: &impl AssetSource,
     read: impl Fn(i32, i32, i32) -> Option<i32>,
     light: impl Fn(i32, i32, i32) -> (u8, u8),
+    biome_tint: impl Fn(crate::render::biome_tint::TintKind, [i32; 3]) -> u32,
     origin: [i32; 3],
     size: [i32; 3],
     mip_level: i32,
@@ -136,7 +137,7 @@ pub fn build_world_mesh(
                         variant.z.degrees(),
                     ),
                     uv_lock: variant.uvlock,
-                    tints: block_registry::tints(block.name).to_vec(),
+                    tints: world_tints(block.name, &properties, position, &biome_tint),
                 });
             }
         }
@@ -279,6 +280,7 @@ pub fn build_world_mesh(
     }
 
     let fluids = FluidMesher {
+        biome_tint: &biome_tint,
         read: &read,
         lighter: &lighter,
         atlas: &atlas,
@@ -316,10 +318,6 @@ const FLUID_SPRITES: [&str; 4] = [
     "minecraft:block/lava_flow",
 ];
 
-/// The water colour of the default biome. Biome colours are not read from
-/// the world yet, so every water block takes this one.
-const WATER_TINT: u32 = 0x3F76E4;
-
 /// One fluid block's surface and sides, built the way the reference's fluid
 /// renderer builds them: corner heights averaged from the neighbours, the
 /// still texture on a level surface and the flowing one turned along the
@@ -330,6 +328,7 @@ const WATER_TINT: u32 = 0x3F76E4;
 /// That is the same answer for ordinary full blocks and an approximation for
 /// everything else.
 struct FluidMesher<'a, R: Fn(i32, i32, i32) -> Option<i32>, S, L> {
+    biome_tint: &'a dyn Fn(crate::render::biome_tint::TintKind, [i32; 3]) -> u32,
     read: &'a R,
     lighter: &'a crate::render::block_light::Lighter<S, L>,
     atlas: &'a BuiltAtlas,
@@ -518,7 +517,11 @@ where
         } else {
             ("minecraft:block/lava_still", "minecraft:block/lava_flow")
         };
-        let tint = if water { WATER_TINT } else { 0xFFFFFF };
+        let tint = if water {
+            (self.biome_tint)(crate::render::biome_tint::TintKind::Water, [x, y, z])
+        } else {
+            0xFFFFFF
+        };
         let tint = [
             ((tint >> 16) & 0xff) as f32 / 255.0,
             ((tint >> 8) & 0xff) as f32 / 255.0,
@@ -692,4 +695,38 @@ fn add_face(
         mesh.translucent_indices
             .extend([base, base + 3, base + 2, base, base + 2, base + 1]);
     }
+}
+
+/// The colours a block's tint layers take at a position in a world: the
+/// biome's for the layers that read one, the fixed colour for the rest.
+fn world_tints(
+    block: &str,
+    properties: &BTreeMap<String, String>,
+    position: [i32; 3],
+    biome_tint: &impl Fn(crate::render::biome_tint::TintKind, [i32; 3]) -> u32,
+) -> Vec<u32> {
+    // The lily pad has a world colour of its own.
+    if block == "minecraft:lily_pad" {
+        return vec![crate::render::tint::LILY_PAD_IN_WORLD];
+    }
+    let constant = block_registry::tints(block);
+    let Some(layers) = crate::render::biome_tint::tint_layers(block) else {
+        return constant.to_vec();
+    };
+    // A tall plant's upper half takes the colour of the block below it.
+    let sample = if properties.get("half").map(String::as_str) == Some("upper")
+        && matches!(block, "minecraft:tall_grass" | "minecraft:large_fern")
+    {
+        [position[0], position[1] - 1, position[2]]
+    } else {
+        position
+    };
+    layers
+        .iter()
+        .enumerate()
+        .map(|(slot, layer)| match layer {
+            Some(kind) => biome_tint(*kind, sample),
+            None => constant.get(slot).copied().unwrap_or(0xFFFF_FFFF),
+        })
+        .collect()
 }
