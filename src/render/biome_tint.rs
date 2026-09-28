@@ -161,7 +161,9 @@ fn colour_map(assets_root: &Path, name: &str) -> Option<Vec<u32>> {
     Some(
         image
             .rgba
-            .chunks_exact(4)
+            .as_chunks::<4>()
+            .0
+            .iter()
             .map(|texel| {
                 (u32::from(texel[3]) << 24)
                     | (u32::from(texel[0]) << 16)
