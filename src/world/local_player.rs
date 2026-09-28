@@ -840,6 +840,22 @@ impl LocalPlayer {
     }
 
     /// The feet position between the last two ticks.
+    /// How many ticks the player has lived, which the model's idle sway
+    /// reads.
+    pub fn tick_count(&self) -> i32 {
+        self.tick_count
+    }
+
+    /// Whether the player only watches.
+    pub fn spectating(&self) -> bool {
+        self.is_spectator()
+    }
+
+    /// Whether the player stands in water.
+    pub fn in_water(&self) -> bool {
+        self.is_in_water()
+    }
+
     /// What the player model is posed from, between the last two ticks.
     pub fn model_pose(&self, partial_tick: f32) -> ModelPose {
         let lerp = |old: f32, new: f32| old + partial_tick * (new - old);

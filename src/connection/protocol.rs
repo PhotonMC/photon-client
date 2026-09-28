@@ -546,6 +546,8 @@ pub struct PlayConnectionTrace {
     pub packets: Vec<PacketObservation>,
     pub compression_threshold: Option<usize>,
     pub login_finished: bool,
+    /// The profile id the server logged the player in with.
+    pub profile_id: Option<crate::binary::Uuid>,
     pub configuration_finished: bool,
     pub enabled_feature_count: usize,
     pub known_pack_count: usize,

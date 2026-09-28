@@ -178,3 +178,80 @@ fn sky_above(chunk: &ClientChunk, top: i32, section_y: i32, x: i32, z: i32) -> u
     }
     15
 }
+
+impl ClientWorld {
+    /// `BlockGetter.clip` against block shapes only, as the third-person
+    /// camera asks it: where the segment first meets a block, if anywhere.
+    /// The collision shape stands in for the visual shape, which is the same
+    /// for every block but a handful (powder snow, barriers, light blocks).
+    pub fn clip_blocks(
+        &self,
+        from: crate::math::Vec3,
+        to: crate::math::Vec3,
+    ) -> Option<crate::math::Vec3> {
+        use crate::math::{floor_f64, frac_f64};
+        if from.x == to.x && from.y == to.y && from.z == to.z {
+            return None;
+        }
+        let lerp = |delta: f64, start: f64, end: f64| start + delta * (end - start);
+        let to_x = lerp(-1.0e-7, to.x, from.x);
+        let to_y = lerp(-1.0e-7, to.y, from.y);
+        let to_z = lerp(-1.0e-7, to.z, from.z);
+        let from_x = lerp(-1.0e-7, from.x, to.x);
+        let from_y = lerp(-1.0e-7, from.y, to.y);
+        let from_z = lerp(-1.0e-7, from.z, to.z);
+        let mut block = [floor_f64(from_x), floor_f64(from_y), floor_f64(from_z)];
+        let hit_at = |block: [i32; 3]| {
+            let state = self.block_state_at(block[0], block[1], block[2])?;
+            let position = crate::world::BlockPos::new(block[0], block[1], block[2]);
+            self.block_state_registry
+                .collision_shape(state)
+                .clip(from, to, position)
+                .map(|hit| hit.location)
+        };
+        if let Some(hit) = hit_at(block) {
+            return Some(hit);
+        }
+        let delta = [to_x - from_x, to_y - from_y, to_z - from_z];
+        let start = [from_x, from_y, from_z];
+        let sign = delta.map(|value| {
+            if value > 0.0 {
+                1
+            } else if value < 0.0 {
+                -1
+            } else {
+                0
+            }
+        });
+        let step = [0, 1, 2].map(|axis| {
+            if sign[axis] == 0 {
+                f64::MAX
+            } else {
+                f64::from(sign[axis]) / delta[axis]
+            }
+        });
+        let mut t = [0, 1, 2].map(|axis| {
+            step[axis]
+                * if sign[axis] > 0 {
+                    1.0 - frac_f64(start[axis])
+                } else {
+                    frac_f64(start[axis])
+                }
+        });
+        while t[0] <= 1.0 || t[1] <= 1.0 || t[2] <= 1.0 {
+            let axis = if t[0] < t[1] {
+                if t[0] < t[2] { 0 } else { 2 }
+            } else if t[1] < t[2] {
+                1
+            } else {
+                2
+            };
+            block[axis] += sign[axis];
+            t[axis] += step[axis];
+            if let Some(hit) = hit_at(block) {
+                return Some(hit);
+            }
+        }
+        None
+    }
+}

@@ -21,7 +21,11 @@ use crate::render::scene::{Mesh, Vertex};
 
 /// Scaffolding shaders. These are this project's own, not the reference's:
 /// they exist to prove the pipeline works, and carry no parity claim.
-const VERTEX_SHADER: &str = r"#version 450
+/// What the terrain's and the entities' vertex shaders share: the push
+/// constants, the vertex inputs and the lightmap.
+macro_rules! vertex_prelude {
+    () => {
+        r"#version 450
 layout(push_constant) uniform Push {
     mat4 view_projection;
     vec4 sky_colour_factor;
@@ -36,10 +40,6 @@ layout(location = 1) in vec2 in_uv;
 layout(location = 2) in float in_shade;
 layout(location = 3) in vec4 in_tint;
 layout(location = 4) in vec2 in_light;
-layout(location = 0) out vec2 out_uv;
-layout(location = 1) out float out_shade;
-layout(location = 2) out vec4 out_tint;
-layout(location = 3) out vec2 out_fog;
 
 // One texel of the reference's 16x16 lightmap, as its lightmap shader
 // computes it and as an 8-bit texture stores it.
@@ -73,6 +73,16 @@ vec3 sample_lightmap(vec2 coords) {
     vec3 top = mix(lightmap_texel(low.x, high.y), lightmap_texel(high.x, high.y), fraction.x);
     return mix(bottom, top, fraction.y);
 }
+"
+    };
+}
+
+const VERTEX_SHADER: &str = concat!(
+    vertex_prelude!(),
+    r"layout(location = 0) out vec2 out_uv;
+layout(location = 1) out float out_shade;
+layout(location = 2) out vec4 out_tint;
+layout(location = 3) out vec2 out_fog;
 void main() {
     gl_Position = push.view_projection * vec4(in_position, 1.0);
     out_uv = in_uv;
@@ -82,6 +92,68 @@ void main() {
     // cylinder whose height counts like its radius.
     vec3 offset = in_position - push.camera.xyz;
     out_fog = vec2(length(offset), max(length(offset.xz), abs(offset.y)));
+}
+",
+);
+
+/// The entities' vertex shader, after the reference's entity shader with
+/// per-face lighting: the vertex's normal rides in its tint, and both faces'
+/// light is worked out so the fragment can pick by which way it faces.
+const ENTITY_VERTEX_SHADER: &str = concat!(
+    vertex_prelude!(),
+    r"layout(location = 0) out vec2 out_uv;
+layout(location = 1) out vec3 out_front;
+layout(location = 2) out vec3 out_back;
+layout(location = 3) out vec3 out_light;
+layout(location = 4) out vec2 out_fog;
+// The level's two diffuse lights.
+const vec3 LIGHT0 = normalize(vec3(0.2, 1.0, -0.7));
+const vec3 LIGHT1 = normalize(vec3(-0.2, 1.0, 0.7));
+float mix_light(vec2 light) {
+    vec2 value = max(vec2(0.0), light);
+    return min(1.0, (value.x + value.y) * 0.6 + 0.4);
+}
+void main() {
+    gl_Position = push.view_projection * vec4(in_position, 1.0);
+    out_uv = in_uv;
+    vec2 light = vec2(dot(LIGHT0, in_tint.xyz), dot(LIGHT1, in_tint.xyz));
+    out_front = vec3(mix_light(light));
+    out_back = vec3(mix_light(-light));
+    out_light = sample_lightmap(in_light);
+    vec3 offset = in_position - push.camera.xyz;
+    out_fog = vec2(length(offset), max(length(offset.xz), abs(offset.y)));
+}
+",
+);
+
+/// The entities' fragment shader: the texture, cut out below a tenth of
+/// alpha, lit by whichever face shows, the lightmap, then fog.
+const ENTITY_FRAGMENT_SHADER: &str = r"#version 450
+layout(set = 0, binding = 0) uniform sampler2D skin;
+layout(location = 0) in vec2 in_uv;
+layout(location = 1) in vec3 in_front;
+layout(location = 2) in vec3 in_back;
+layout(location = 3) in vec3 in_light;
+layout(location = 4) in vec2 in_fog;
+layout(location = 0) out vec4 out_colour;
+layout(push_constant) uniform Push {
+    layout(offset = 128) vec4 fog_colour;
+    vec4 fog_distances;
+} push;
+float linear_fog(float distance, float start, float end) {
+    if (distance <= start) { return 0.0; }
+    if (distance >= end) { return 1.0; }
+    return (distance - start) / (end - start);
+}
+void main() {
+    vec4 colour = texture(skin, in_uv);
+    if (colour.a < 0.1) { discard; }
+    colour.rgb *= gl_FrontFacing ? in_front : in_back;
+    colour.rgb *= in_light;
+    float fog = max(
+        linear_fog(in_fog.x, push.fog_distances.x, push.fog_distances.y),
+        linear_fog(in_fog.y, push.fog_distances.z, push.fog_distances.w));
+    out_colour = vec4(mix(colour.rgb, push.fog_colour.rgb, fog * push.fog_colour.a), colour.a);
 }
 ";
 
@@ -281,6 +353,7 @@ enum PipelineKind {
     SkyOverlay,
     Clouds,
     Weather,
+    Entity,
 }
 
 /// Instance API version the reference asks for.
@@ -394,6 +467,12 @@ struct SceneResources {
     weather_textures: Vec<(vk::Image, vk::DeviceMemory, vk::ImageView)>,
     weather_sampler: Option<vk::Sampler>,
     weather_sets: Vec<vk::DescriptorSet>,
+    entity_pipeline_layout: vk::PipelineLayout,
+    entity_pipeline: vk::Pipeline,
+    /// The skin entities are drawn with.
+    entity_texture: Option<(vk::Image, vk::DeviceMemory, vk::ImageView)>,
+    entity_sampler: Option<vk::Sampler>,
+    entity_set: Option<vk::DescriptorSet>,
 }
 
 /// A rectangle of one atlas level to rewrite.
@@ -572,6 +651,9 @@ pub struct VulkanBackend {
     weather_buffer: Option<SkyBuffer>,
     /// The rain's and the snow's vertex counts in the weather buffer.
     weather_counts: (u32, u32),
+    /// The entities' triangles for the next frame.
+    entity_buffer: Option<SkyBuffer>,
+    entity_count: u32,
     sections: std::collections::BTreeMap<(i32, i32, i32), SectionBuffers>,
     arena: Vec<ArenaBlock>,
     /// Staging chunks: every chunk, the ones taking uploads for the next
@@ -843,6 +925,8 @@ impl VulkanBackend {
                 cloud_buffer: None,
                 weather_buffer: None,
                 weather_counts: (0, 0),
+                entity_buffer: None,
+                entity_count: 0,
                 sections: std::collections::BTreeMap::new(),
                 arena: Vec::new(),
                 staging: Vec::new(),
@@ -1125,6 +1209,35 @@ impl VulkanBackend {
                 self.device
                     .cmd_draw_indexed(self.command_buffer, section.index_count, 1, 0, 0, 0);
             }
+            // Entities after the opaque terrain and before the water.
+            if let (Some(buffer), Some(set)) = (self.entity_buffer.as_ref(), scene.entity_set)
+                && self.entity_count > 0
+            {
+                self.device.cmd_bind_pipeline(
+                    self.command_buffer,
+                    vk::PipelineBindPoint::GRAPHICS,
+                    scene.entity_pipeline,
+                );
+                self.device.cmd_bind_descriptor_sets(
+                    self.command_buffer,
+                    vk::PipelineBindPoint::GRAPHICS,
+                    scene.entity_pipeline_layout,
+                    0,
+                    &[set],
+                    &[],
+                );
+                self.device.cmd_push_constants(
+                    self.command_buffer,
+                    scene.entity_pipeline_layout,
+                    vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
+                    0,
+                    std::slice::from_raw_parts(terrain_push.as_ptr().cast::<u8>(), 160),
+                );
+                self.device
+                    .cmd_bind_vertex_buffers(self.command_buffer, 0, &[buffer.buffer], &[0]);
+                self.device
+                    .cmd_draw(self.command_buffer, self.entity_count, 1, 0, 0);
+            }
             // Translucent faces last, the farthest section first, so nearer
             // water blends over farther.
             let mut translucent: Vec<&SectionBuffers> = self
@@ -1254,6 +1367,7 @@ impl VulkanBackend {
         let translucent = kind == PipelineKind::Translucent;
         let clouds = kind == PipelineKind::Clouds;
         let weather = kind == PipelineKind::Weather;
+        let entity = kind == PipelineKind::Entity;
         unsafe {
             let compiler =
                 shaderc::Compiler::new().map_err(|error| VulkanError::Loader(error.to_string()))?;
@@ -1269,6 +1383,8 @@ impl VulkanBackend {
                 (CLOUD_VERTEX_SHADER, CLOUD_FRAGMENT_SHADER)
             } else if weather {
                 (VERTEX_SHADER, WEATHER_FRAGMENT_SHADER)
+            } else if entity {
+                (ENTITY_VERTEX_SHADER, ENTITY_FRAGMENT_SHADER)
             } else {
                 (VERTEX_SHADER, FRAGMENT_SHADER)
             };
@@ -1389,7 +1505,7 @@ impl VulkanBackend {
             let raster = vk::PipelineRasterizationStateCreateInfo::default()
                 .polygon_mode(vk::PolygonMode::FILL)
                 // The sky's fans are built in either winding.
-                .cull_mode(if sky || weather {
+                .cull_mode(if sky || weather || entity {
                     vk::CullModeFlags::NONE
                 } else {
                     vk::CullModeFlags::BACK
@@ -1406,7 +1522,10 @@ impl VulkanBackend {
                 // a model's later face over an earlier one at the same place
                 // (the grass side overlay) is the one seen.
                 .depth_test_enable(!sky)
-                .depth_write_enable(matches!(kind, PipelineKind::Terrain | PipelineKind::Clouds))
+                .depth_write_enable(matches!(
+                    kind,
+                    PipelineKind::Terrain | PipelineKind::Clouds | PipelineKind::Entity
+                ))
                 .depth_compare_op(vk::CompareOp::GREATER_OR_EQUAL);
             let blends = [if kind == PipelineKind::SkyOverlay {
                 vk::PipelineColorBlendAttachmentState::default()
@@ -1418,7 +1537,7 @@ impl VulkanBackend {
                     .dst_alpha_blend_factor(vk::BlendFactor::ZERO)
                     .alpha_blend_op(vk::BlendOp::ADD)
                     .color_write_mask(vk::ColorComponentFlags::RGBA)
-            } else if translucent || sky || clouds || weather {
+            } else if translucent || sky || clouds || weather || entity {
                 vk::PipelineColorBlendAttachmentState::default()
                     .blend_enable(true)
                     .src_color_blend_factor(vk::BlendFactor::SRC_ALPHA)
@@ -1972,15 +2091,15 @@ impl VulkanBackend {
                     None,
                 )
                 .map_err(|result| VulkanError::Call("vkCreateDescriptorSetLayout", result))?;
-            // The atlas's set, and the rain's and the snow's.
+            // The atlas's set, the rain's and the snow's, and the skin's.
             let sizes = [vk::DescriptorPoolSize::default()
                 .ty(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
-                .descriptor_count(3)];
+                .descriptor_count(4)];
             let descriptor_pool = self
                 .device
                 .create_descriptor_pool(
                     &vk::DescriptorPoolCreateInfo::default()
-                        .max_sets(3)
+                        .max_sets(4)
                         .pool_sizes(&sizes),
                     None,
                 )
@@ -2017,6 +2136,8 @@ impl VulkanBackend {
                 self.create_pipeline(descriptor_layout, PipelineKind::Clouds)?;
             let (weather_pipeline_layout, weather_pipeline) =
                 self.create_pipeline(descriptor_layout, PipelineKind::Weather)?;
+            let (entity_pipeline_layout, entity_pipeline) =
+                self.create_pipeline(descriptor_layout, PipelineKind::Entity)?;
 
             self.scene = Some(SceneResources {
                 texture,
@@ -2041,6 +2162,11 @@ impl VulkanBackend {
                 weather_textures: Vec::new(),
                 weather_sampler: None,
                 weather_sets: Vec::new(),
+                entity_pipeline_layout,
+                entity_pipeline,
+                entity_texture: None,
+                entity_sampler: None,
+                entity_set: None,
             });
             Ok(())
         }
@@ -2319,6 +2445,17 @@ impl VulkanBackend {
                 if let Some(sampler) = scene.weather_sampler {
                     self.device.destroy_sampler(sampler, None);
                 }
+                self.device.destroy_pipeline(scene.entity_pipeline, None);
+                self.device
+                    .destroy_pipeline_layout(scene.entity_pipeline_layout, None);
+                if let Some((image, memory, view)) = scene.entity_texture {
+                    self.device.destroy_image_view(view, None);
+                    self.device.destroy_image(image, None);
+                    self.device.free_memory(memory, None);
+                }
+                if let Some(sampler) = scene.entity_sampler {
+                    self.device.destroy_sampler(sampler, None);
+                }
                 self.device
                     .destroy_pipeline_layout(scene.translucent_pipeline_layout, None);
                 self.device
@@ -2463,6 +2600,103 @@ impl VulkanBackend {
             scene.weather_textures = textures;
             scene.weather_sampler = Some(sampler);
             scene.weather_sets = sets;
+            Ok(())
+        }
+    }
+
+    /// Load the skin entities are drawn with, sampled texel by texel.
+    pub fn load_entity_texture(&mut self, skin: &DecodedImage) -> Result<(), VulkanError> {
+        unsafe {
+            let Some(layout) = self.scene.as_ref().map(|scene| scene.descriptor_layout) else {
+                return Ok(());
+            };
+            if self
+                .scene
+                .as_ref()
+                .is_some_and(|scene| scene.entity_set.is_some())
+            {
+                return Ok(());
+            }
+            let pool = self.scene.as_ref().expect("checked above").descriptor_pool;
+            let sampler = self
+                .device
+                .create_sampler(
+                    &vk::SamplerCreateInfo::default()
+                        .mag_filter(vk::Filter::NEAREST)
+                        .min_filter(vk::Filter::NEAREST)
+                        .mipmap_mode(vk::SamplerMipmapMode::NEAREST)
+                        .address_mode_u(vk::SamplerAddressMode::CLAMP_TO_EDGE)
+                        .address_mode_v(vk::SamplerAddressMode::CLAMP_TO_EDGE)
+                        .address_mode_w(vk::SamplerAddressMode::CLAMP_TO_EDGE)
+                        .max_lod(0.0),
+                    None,
+                )
+                .map_err(|result| VulkanError::Call("vkCreateSampler", result))?;
+            let (texture, memory, view) = self.upload_texture(std::slice::from_ref(skin))?;
+            let layouts = [layout];
+            let set = self
+                .device
+                .allocate_descriptor_sets(
+                    &vk::DescriptorSetAllocateInfo::default()
+                        .descriptor_pool(pool)
+                        .set_layouts(&layouts),
+                )
+                .map_err(|result| VulkanError::Call("vkAllocateDescriptorSets", result))?[0];
+            let image_info = [vk::DescriptorImageInfo::default()
+                .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
+                .image_view(view)
+                .sampler(sampler)];
+            let write = vk::WriteDescriptorSet::default()
+                .dst_set(set)
+                .dst_binding(0)
+                .descriptor_type(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
+                .image_info(&image_info);
+            self.device.update_descriptor_sets(&[write], &[]);
+            let scene = self.scene.as_mut().expect("checked above");
+            scene.entity_texture = Some((texture, memory, view));
+            scene.entity_sampler = Some(sampler);
+            scene.entity_set = Some(set);
+            Ok(())
+        }
+    }
+
+    /// Hand over the next frame's entity triangles, placed like the
+    /// terrain's, with each vertex's normal in its tint.
+    pub fn set_entities(&mut self, vertices: &[Vertex]) -> Result<(), VulkanError> {
+        unsafe {
+            self.device
+                .wait_for_fences(&[self.in_flight], true, u64::MAX)
+                .map_err(|result| VulkanError::Call("vkWaitForFences", result))?;
+            let size = std::mem::size_of_val(vertices);
+            if self
+                .entity_buffer
+                .as_ref()
+                .is_none_or(|buffer| buffer.capacity < size)
+            {
+                if let Some(old) = self.entity_buffer.take() {
+                    self.device.destroy_buffer(old.buffer, None);
+                    self.device.free_memory(old.memory, None);
+                }
+                let capacity = size.max(1 << 16);
+                let (buffer, memory) =
+                    self.upload_buffer(vk::BufferUsageFlags::VERTEX_BUFFER, &vec![0_u8; capacity])?;
+                self.entity_buffer = Some(SkyBuffer {
+                    buffer,
+                    memory,
+                    capacity,
+                });
+            }
+            let buffer = self.entity_buffer.as_ref().expect("allocated above");
+            if size > 0 {
+                let mapped = self
+                    .device
+                    .map_memory(buffer.memory, 0, size as u64, vk::MemoryMapFlags::empty())
+                    .map_err(|result| VulkanError::Call("vkMapMemory", result))?
+                    .cast::<u8>();
+                std::ptr::copy_nonoverlapping(vertices.as_ptr().cast::<u8>(), mapped, size);
+                self.device.unmap_memory(buffer.memory);
+            }
+            self.entity_count = vertices.len() as u32;
             Ok(())
         }
     }
@@ -2890,6 +3124,10 @@ impl Drop for VulkanBackend {
             if let Some(weather) = self.weather_buffer.take() {
                 self.device.destroy_buffer(weather.buffer, None);
                 self.device.free_memory(weather.memory, None);
+            }
+            if let Some(entities) = self.entity_buffer.take() {
+                self.device.destroy_buffer(entities.buffer, None);
+                self.device.free_memory(entities.memory, None);
             }
             for block in self.arena.drain(..) {
                 self.device.destroy_buffer(block.buffer, None);

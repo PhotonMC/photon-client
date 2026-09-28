@@ -73,6 +73,47 @@ impl Quaternion {
         }
     }
 
+    /// `Quaternionf.rotationX`.
+    pub fn rotation_x(angle: f32) -> Self {
+        let sin = sin(angle * 0.5);
+        let cos = cos_from_sin(sin, angle * 0.5);
+        Self {
+            x: sin,
+            y: 0.0,
+            z: 0.0,
+            w: cos,
+        }
+    }
+
+    /// `Quaternionf.rotationY`.
+    pub fn rotation_y(angle: f32) -> Self {
+        let sin = sin(angle * 0.5);
+        let cos = cos_from_sin(sin, angle * 0.5);
+        Self {
+            x: 0.0,
+            y: sin,
+            z: 0.0,
+            w: cos,
+        }
+    }
+
+    /// `Quaternionf.rotationZ`.
+    pub fn rotation_z(angle: f32) -> Self {
+        let sin = sin(angle * 0.5);
+        let cos = cos_from_sin(sin, angle * 0.5);
+        Self {
+            x: 0.0,
+            y: 0.0,
+            z: sin,
+            w: cos,
+        }
+    }
+
+    /// `Axis.rotationDegrees`: degrees turned to radians in `f32`.
+    pub fn degrees_to_radians(degrees: f32) -> f32 {
+        degrees * (std::f64::consts::PI / 180.0) as f32
+    }
+
     /// The rotation's 3x3, in the library's shared expansion.
     fn expand(&self) -> [f32; 9] {
         let w2 = self.w * self.w;

@@ -1820,9 +1820,10 @@ pub(crate) fn open_play_connection(
             }
             LOGIN_FINISHED_PACKET_ID => {
                 let mut input = payload;
-                ClientboundLoginFinishedPacket::decode(&mut input)
+                let finished = ClientboundLoginFinishedPacket::decode(&mut input)
                     .map_err(|_| ConnectionError::Codec("login finished"))?;
                 trace.login_finished = true;
+                trace.profile_id = Some(finished.game_profile.id);
 
                 send_packet(
                     &mut stream,

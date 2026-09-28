@@ -243,6 +243,11 @@ impl PlaySession {
         self.game_time
     }
 
+    /// The player's profile id, as the server logged it in.
+    pub fn profile_id(&self) -> Option<crate::binary::Uuid> {
+        self.trace.profile_id
+    }
+
     /// Whether the server replaced the level since the last call, so
     /// everything drawn from the old one should go.
     pub fn take_level_reset(&mut self) -> bool {

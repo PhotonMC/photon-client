@@ -16,6 +16,7 @@ pub mod joml;
 pub mod mipmap;
 pub mod model;
 pub mod player_model;
+pub mod player_renderer;
 pub mod png;
 pub mod resolve;
 pub mod rotation;

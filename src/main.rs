@@ -878,6 +878,58 @@ impl Script {
 const CLOUD_RANGE: i32 = 128;
 
 /// View-projection from the player's eye, measured from the mesh origin.
+/// Where the camera looks from.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum CameraType {
+    FirstPerson,
+    ThirdPersonBack,
+    ThirdPersonFront,
+}
+
+impl CameraType {
+    /// `CameraType.cycle`.
+    fn next(self) -> Self {
+        match self {
+            Self::FirstPerson => Self::ThirdPersonBack,
+            Self::ThirdPersonBack => Self::ThirdPersonFront,
+            Self::ThirdPersonFront => Self::FirstPerson,
+        }
+    }
+}
+
+/// `Camera.getMaxZoom`: how far the camera can back away from `eye` along
+/// `forwards` before a block is in the way, tried from the eight corners of
+/// a small box around the eye.
+fn max_camera_zoom(
+    world: &voxel_client::world::ClientWorld,
+    eye: voxel_client::math::Vec3,
+    forwards: voxel_client::math::Vec3,
+    mut distance: f32,
+) -> f32 {
+    use voxel_client::math::Vec3;
+    for corner in 0..8 {
+        let offset = |bit: i32| (((corner >> bit) & 1) * 2 - 1) as f32 * 0.1;
+        let from = Vec3::new(
+            eye.x + f64::from(offset(0)),
+            eye.y + f64::from(offset(1)),
+            eye.z + f64::from(offset(2)),
+        );
+        let reach = -f64::from(distance);
+        let to = Vec3::new(
+            from.x + forwards.x * reach,
+            from.y + forwards.y * reach,
+            from.z + forwards.z * reach,
+        );
+        if let Some(hit) = world.clip_blocks(from, to) {
+            let distance_squared = hit.distance_to_sqr(eye) as f32;
+            if distance_squared < distance * distance {
+                distance = f64::from(distance_squared).sqrt() as f32;
+            }
+        }
+    }
+    distance
+}
+
 fn player_camera(
     aspect: f32,
     fov: f32,
@@ -1139,6 +1191,20 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                 .map_err(|error| format!("{name}: {error:?}"))?)
         };
     backend.load_weather_textures(&environment_texture("rain")?, &environment_texture("snow")?)?;
+    // The player's default skin, picked by its profile id as the reference
+    // picks one when the profile has no skin of its own.
+    let skin = render::player_renderer::default_skin(
+        session
+            .profile_id()
+            .unwrap_or(voxel_client::binary::Uuid { most: 0, least: 0 }),
+    );
+    backend.load_entity_texture(
+        &render::png::decode_rgba(&std::fs::read(
+            std::path::Path::new(&root).join(format!("minecraft/textures/{}.png", skin.texture)),
+        )?)
+        .map_err(|error| format!("skin: {error:?}"))?,
+    )?;
+    let mut player_model = render::player_model::PlayerModel::new(skin.slim);
     let mut cloud_key = None;
     // The reference seeds this source uniquely per run.
     let mut flicker_random = voxel_client::random::RandomSource::create(
@@ -1163,6 +1229,13 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
     );
     let mut keys = HeldKeys::default();
     let mut camera = voxel_client::camera::Camera::new();
+    // F5 cycles first person, third person from behind and from the front.
+    // `VOXEL_CAMERA=back` or `front` starts detached.
+    let mut camera_type = match env::var("VOXEL_CAMERA").as_deref() {
+        Ok("back") => CameraType::ThirdPersonBack,
+        Ok("front") => CameraType::ThirdPersonFront,
+        _ => CameraType::FirstPerson,
+    };
     let mut captured = script.is_none();
     surface.set_cursor_captured(captured);
     let mut last_cursor: Option<(f64, f64)> = None;
@@ -1192,6 +1265,9 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                     } else {
                         surface.request_close();
                     }
+                }
+                glfw::WindowEvent::Key(glfw::Key::F5, _, glfw::Action::Press, _) => {
+                    camera_type = camera_type.next();
                 }
                 glfw::WindowEvent::Key(glfw::Key::F11, _, glfw::Action::Press, _) => {
                     surface.toggle_fullscreen();
@@ -1298,12 +1374,89 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
         };
         let partial = accumulated.as_secs_f64() / tick_length.as_secs_f64();
         let feet = player.interpolated_position(partial);
-        let (y_rot, x_rot) = player.rotation();
+        let (player_y_rot, player_x_rot) = player.rotation();
+        // `Camera.alignWithEntity`: the front view turns round, and a
+        // detached camera backs away from the eye until a block is in the
+        // way.
+        let (y_rot, x_rot) = if camera_type == CameraType::ThirdPersonFront {
+            (player_y_rot + 180.0, -player_x_rot)
+        } else {
+            (player_y_rot, player_x_rot)
+        };
+        let eye_world = voxel_client::math::Vec3::new(
+            feet.x,
+            feet.y + f64::from(camera.eye_height(partial as f32)),
+            feet.z,
+        );
+        let camera_world = if camera_type == CameraType::FirstPerson {
+            eye_world
+        } else {
+            let forwards =
+                voxel_client::math::Vec3::direction_from_rotation_components(x_rot, y_rot);
+            let zoom = max_camera_zoom(session.world(), eye_world, forwards, 4.0);
+            voxel_client::math::Vec3::new(
+                eye_world.x - forwards.x * f64::from(zoom),
+                eye_world.y - forwards.y * f64::from(zoom),
+                eye_world.z - forwards.z * f64::from(zoom),
+            )
+        };
         let eye = [
-            (feet.x - f64::from(origin[0])) as f32,
-            (feet.y + f64::from(camera.eye_height(partial as f32)) - f64::from(origin[1])) as f32,
-            (feet.z - f64::from(origin[2])) as f32,
+            (camera_world.x - f64::from(origin[0])) as f32,
+            (camera_world.y - f64::from(origin[1])) as f32,
+            (camera_world.z - f64::from(origin[2])) as f32,
         ];
+        // The player's own model shows once the camera leaves its eyes.
+        if camera_type == CameraType::FirstPerson {
+            backend.set_entities(&[])?;
+        } else {
+            let model_pose = player.model_pose(partial as f32);
+            player_model.setup_anim(&render::player_model::PlayerRenderState {
+                head_y_rot: voxel_client::math::wrap_degrees_f32(
+                    model_pose.head_rot - model_pose.body_rot,
+                ),
+                x_rot: player_x_rot,
+                walk_position: model_pose.walk_position,
+                walk_speed: model_pose.walk_speed,
+                age_in_ticks: player.tick_count() as f32 + partial as f32,
+                swim_amount: model_pose.swim_amount,
+                crouching: model_pose.crouching,
+                spectator: player.spectating(),
+                ..Default::default()
+            });
+            let world = session.world();
+            let light_block = [
+                eye_world.x.floor() as i32,
+                eye_world.y.floor() as i32,
+                eye_world.z.floor() as i32,
+            ];
+            let light =
+                (i32::from(world.block_brightness(light_block[0], light_block[1], light_block[2]))
+                    << 4)
+                    | (i32::from(world.sky_brightness(
+                        light_block[0],
+                        light_block[1],
+                        light_block[2],
+                    )) << 20);
+            let visually_swimming =
+                model_pose.pose == voxel_client::world::ClientEntityPose::Swimming;
+            backend.set_entities(&render::player_renderer::player_vertices(
+                &player_model,
+                &render::player_renderer::Placement {
+                    feet: [
+                        (feet.x - f64::from(origin[0])) as f32,
+                        (feet.y - f64::from(origin[1])) as f32,
+                        (feet.z - f64::from(origin[2])) as f32,
+                    ],
+                    body_rot: model_pose.body_rot,
+                    x_rot: player_x_rot,
+                    swim_amount: model_pose.swim_amount,
+                    in_water: player.in_water(),
+                    visually_swimming,
+                    crouching: model_pose.crouching,
+                    light,
+                },
+            ))?;
+        }
         let fov = camera.fov(partial as f32, player.is_eye_in_water());
         let eye_in_water = player.is_eye_in_water();
         // The camera's far plane: four times the render distance, or the
