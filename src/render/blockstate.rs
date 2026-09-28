@@ -372,37 +372,17 @@ impl Condition {
 }
 
 impl BlockStateFile {
-    /// Every variant a state draws, picked as the reference picks them: the
-    /// block's random source, seeded from its position, draws once from each
-    /// weighted list in turn.
-    pub fn choose_variants(
-        &self,
-        state: &BTreeMap<String, String>,
-        random: &mut crate::random::RandomSource,
-    ) -> Vec<Variant> {
-        let mut pick = |list: &[Variant]| -> Option<Variant> {
-            match list {
-                [] => None,
-                [only] if !only.listed => Some(only.clone()),
-                _ => {
-                    let total: i32 = list.iter().map(|variant| variant.weight).sum();
-                    let mut selection = random.next_int_bound(total).ok()?;
-                    list.iter()
-                        .find(|variant| {
-                            selection -= variant.weight;
-                            selection < 0
-                        })
-                        .cloned()
-                }
-            }
-        };
+    /// The weighted lists a state draws from, in the order the reference
+    /// asks them: the first matching `variants` selector, then every
+    /// `multipart` piece whose condition holds.
+    pub fn matched_lists(&self, state: &BTreeMap<String, String>) -> Vec<Vec<Variant>> {
         let mut out = Vec::new();
         if let Some((_, chosen)) = self.variants.as_ref().and_then(|variants| {
             variants
                 .iter()
                 .find(|(selector, _)| selector_matches(selector, state))
         }) {
-            out.extend(pick(chosen));
+            out.push(chosen.clone());
         }
         if let Some(multipart) = &self.multipart {
             for selector in multipart {
@@ -411,11 +391,51 @@ impl BlockStateFile {
                     .as_ref()
                     .is_none_or(|condition| condition.matches(state));
                 if holds {
-                    out.extend(pick(&selector.apply));
+                    out.push(selector.apply.clone());
                 }
             }
         }
         out
+    }
+
+    /// Pick one variant from each list with the block's random source: a
+    /// lone variant written outside a list takes no draw, anything else
+    /// draws by weight.
+    pub fn pick_variants(
+        lists: &[Vec<Variant>],
+        random: &mut crate::random::RandomSource,
+    ) -> Vec<Variant> {
+        let mut out = Vec::with_capacity(lists.len());
+        for list in lists {
+            let picked = match list.as_slice() {
+                [] => None,
+                [only] if !only.listed => Some(only.clone()),
+                _ => {
+                    let total: i32 = list.iter().map(|variant| variant.weight).sum();
+                    random.next_int_bound(total).ok().and_then(|mut selection| {
+                        list.iter()
+                            .find(|variant| {
+                                selection -= variant.weight;
+                                selection < 0
+                            })
+                            .cloned()
+                    })
+                }
+            };
+            out.extend(picked);
+        }
+        out
+    }
+
+    /// Every variant a state draws, picked as the reference picks them: the
+    /// block's random source, seeded from its position, draws once from each
+    /// weighted list in turn.
+    pub fn choose_variants(
+        &self,
+        state: &BTreeMap<String, String>,
+        random: &mut crate::random::RandomSource,
+    ) -> Vec<Variant> {
+        Self::pick_variants(&self.matched_lists(state), random)
     }
 
     /// Every variant a state draws.

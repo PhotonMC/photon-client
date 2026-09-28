@@ -1057,8 +1057,12 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
         position.y.floor() as i32,
         position.z.floor() as i32,
     ];
-    let mut pending: std::collections::BTreeSet<(i32, i32, i32)> =
-        session.take_dirty_sections().into_iter().collect();
+    // Dirty sections, with when each was last dirtied.
+    let mut pending: std::collections::HashMap<(i32, i32, i32), std::time::Instant> = session
+        .take_dirty_sections()
+        .into_iter()
+        .map(|key| (key, std::time::Instant::now()))
+        .collect();
     // Sections are meshed on worker threads, leaving one core for the game.
     let worker_count = std::thread::available_parallelism()
         .map_or(2, |count| count.get().saturating_sub(1))
@@ -1073,6 +1077,7 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
     let mut latest: std::collections::HashMap<(i32, i32, i32), u64> =
         std::collections::HashMap::new();
     let mut next_generation = 0_u64;
+    const SETTLE: Duration = Duration::from_secs(2);
     let mut fades: std::collections::HashMap<(i32, i32, i32), SectionFade> =
         std::collections::HashMap::new();
     // The chunk fade option, 0.75 seconds by default and `VOXEL_CHUNK_FADE`
@@ -1350,7 +1355,13 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                 }
             })
         };
-        pending.extend(session.take_dirty_sections());
+        let dirtied = std::time::Instant::now();
+        pending.extend(
+            session
+                .take_dirty_sections()
+                .into_iter()
+                .map(|key| (key, dirtied)),
+        );
         loop {
             for built in workers.collect() {
                 mesh_stats.0 += 1;
@@ -1369,12 +1380,30 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                 feet.z.floor() as i32 >> 4,
             );
             let view = session.view_distance().clamp(2, 12);
+            // A section away from the camera waits until the chunks around it
+            // have arrived, so it is built once rather than again for every
+            // neighbour (or, at the edge of what the server sends, until it
+            // has waited long enough); one near the camera, where the player
+            // changes blocks, is built at once.
+            let now = std::time::Instant::now();
             let mut ordered: Vec<(i32, i32, i32)> = pending
                 .iter()
-                .copied()
-                .filter(|&(x, _, z)| {
-                    (x - player_section.0).abs() <= view && (z - player_section.2).abs() <= view
+                .filter(|&(&(x, y, z), &dirtied)| {
+                    let near = [x, y, z]
+                        .iter()
+                        .zip(camera_block)
+                        .map(|(&section, block)| (i64::from(section) * 16 + 8 - block).pow(2))
+                        .sum::<i64>()
+                        < 768;
+                    (x - player_section.0).abs() <= view
+                        && (z - player_section.2).abs() <= view
+                        && (near
+                            || script_done
+                            || now - dirtied >= SETTLE
+                            || (-1..=1)
+                                .all(|dx| (-1..=1).all(|dz| world.contains_chunk(x + dx, z + dz))))
                 })
+                .map(|(&key, _)| key)
                 .collect();
             ordered.sort_by_key(|&(x, y, z)| {
                 (x - player_section.0).pow(2)

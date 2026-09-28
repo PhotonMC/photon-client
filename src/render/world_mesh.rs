@@ -44,12 +44,30 @@ pub struct WorldMesh {
 /// Every block's models and the one atlas they are drawn from, prepared
 /// once, the way the reference bakes its block models at resource load.
 pub struct BlockRenderer {
-    blockstates: BTreeMap<String, crate::render::blockstate::BlockStateFile>,
     models: BTreeMap<String, ResolvedModel>,
+    /// What each block state draws, by state id.
+    states: Vec<StateRender>,
     /// The block atlas, with the fluid and sky sprites too.
     pub atlas: BuiltAtlas,
     /// Blocks or models that could not be prepared, with why.
     pub skipped: Vec<(String, String)>,
+}
+
+/// What one block state draws, worked out once at load rather than for
+/// every block.
+enum StateRender {
+    Air,
+    /// Not air, but nothing to draw it with.
+    Missing,
+    Drawn {
+        name: &'static str,
+        properties: BTreeMap<String, String>,
+        /// The weighted lists its variants are picked from.
+        lists: Vec<Vec<crate::render::blockstate::Variant>>,
+        /// Whether every face of every model it can draw hides behind a
+        /// side, so a block closed in on all six sides draws nothing.
+        closes_in: bool,
+    },
 }
 
 /// One meshed region.
@@ -113,6 +131,48 @@ impl BlockRenderer {
             }
             blockstates.insert(block.name.to_owned(), file);
         }
+        let mut states = Vec::new();
+        for block in block_registry::BLOCKS.iter() {
+            for offset in 0..u32::from(block.state_count) {
+                let state_id = (block.first_state_id + offset) as usize;
+                if states.len() <= state_id {
+                    states.resize_with(state_id + 1, || StateRender::Missing);
+                }
+                if matches!(
+                    block.name,
+                    "minecraft:air" | "minecraft:cave_air" | "minecraft:void_air"
+                ) {
+                    states[state_id] = StateRender::Air;
+                    continue;
+                }
+                let Some(file) = blockstates.get(block.name) else {
+                    continue;
+                };
+                let properties: BTreeMap<String, String> = block
+                    .properties_at(offset)
+                    .unwrap_or_default()
+                    .into_iter()
+                    .map(|(key, value)| (key.to_owned(), value.to_owned()))
+                    .collect();
+                let lists = file.matched_lists(&properties);
+                let closes_in = lists.iter().flatten().all(|variant| {
+                    models.get(&variant.model.as_string()).is_none_or(|model| {
+                        model.elements.iter().all(|element| {
+                            element
+                                .faces
+                                .iter()
+                                .all(|(_, face)| face.cull_for_direction.is_some())
+                        })
+                    })
+                });
+                states[state_id] = StateRender::Drawn {
+                    name: block.name,
+                    properties,
+                    lists,
+                    closes_in,
+                };
+            }
+        }
         let ordered: Vec<&ResolvedModel> = models.values().collect();
         // The fluid renderer's sprites and the sky's sun and moon phases are
         // named by no block model, so they are asked for by name.
@@ -126,8 +186,8 @@ impl BlockRenderer {
         let atlas =
             crate::render::resolve::build_atlas_with(source, &ordered, &extra, 8192, mip_level)?;
         Ok(Self {
-            blockstates,
             models,
+            states,
             atlas,
             skipped,
         })
@@ -168,37 +228,50 @@ impl BlockRenderer {
                     else {
                         continue;
                     };
-                    let Some((block, state_offset)) = block_registry::block_for_state(state_id)
+                    let StateRender::Drawn {
+                        name,
+                        properties,
+                        lists,
+                        closes_in,
+                    } = (match self.states.get(state_id as usize) {
+                        Some(StateRender::Air) => continue,
+                        Some(render) => render,
+                        None => &StateRender::Missing,
+                    })
                     else {
+                        solid_count += 1;
                         continue;
                     };
-                    if matches!(
-                        block.name,
-                        "minecraft:air" | "minecraft:cave_air" | "minecraft:void_air"
-                    ) {
+                    solid_count += 1;
+                    // Closed in on every side, it would draw no face at all.
+                    if *closes_in
+                        && Direction::stream().all(|facing| {
+                            let (step_x, step_y, step_z) = facing.step();
+                            let neighbour = read(
+                                position[0] + step_x,
+                                position[1] + step_y,
+                                position[2] + step_z,
+                            )
+                            .and_then(|state| u32::try_from(state).ok());
+                            !crate::render::face_culling::should_render_face(
+                                state_id, neighbour, facing,
+                            )
+                        })
+                    {
                         continue;
                     }
-                    solid_count += 1;
-                    let Some(file) = self.blockstates.get(block.name) else {
-                        continue;
-                    };
-                    let properties: BTreeMap<String, String> = block
-                        .properties_at(state_offset)
-                        .unwrap_or_default()
-                        .into_iter()
-                        .map(|(key, value)| (key.to_owned(), value.to_owned()))
-                        .collect();
                     let mut random = crate::random::RandomSource::create(render_seed(
-                        block.name,
-                        &properties,
-                        position,
+                        name, properties, position,
                     ));
-                    let variants = file.choose_variants(&properties, &mut random);
+                    let variants = crate::render::blockstate::BlockStateFile::pick_variants(
+                        lists,
+                        &mut random,
+                    );
                     if variants.is_empty() {
                         continue;
                     }
-                    let tints = world_tints(block.name, &properties, position, biome_tint);
-                    let offset = block_offset(block.name, position);
+                    let tints = world_tints(name, properties, position, biome_tint);
+                    let offset = block_offset(name, position);
                     for variant in &variants {
                         let model_name = variant.model.as_string();
                         if !self.models.contains_key(&model_name) {

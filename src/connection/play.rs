@@ -191,6 +191,18 @@ impl PlaySession {
         }
     }
 
+    /// `setSectionDirtyWithNeighbors`: a section and the 26 around it.
+    fn mark_section_with_neighbours(&mut self, chunk_x: i32, section_y: i32, chunk_z: i32) {
+        for dx in -1..=1 {
+            for dy in -1..=1 {
+                for dz in -1..=1 {
+                    self.dirty_sections
+                        .insert((chunk_x + dx, section_y + dy, chunk_z + dz));
+                }
+            }
+        }
+    }
+
     /// Mark the section holding a block and the sections touching it.
     fn mark_block(&mut self, x: i32, y: i32, z: i32) {
         for dx in [-1, 0, 1] {
@@ -467,7 +479,23 @@ impl PlaySession {
             }
             PLAY_CLIENTBOUND_LIGHT_UPDATE_PACKET_ID => {
                 let update = parse_light_update_packet(payload)?;
-                self.mark_columns_around(update.x, update.z);
+                // `readSectionList`: only the sections whose light arrived,
+                // with their neighbours, are rebuilt.
+                let light = &update.light_data;
+                let lowest = self.section_range().start - 1;
+                for index in 0..self.section_range().len() as u64 + 2 {
+                    if light.sky_mask.contains(index)
+                        || light.empty_sky_mask.contains(index)
+                        || light.block_mask.contains(index)
+                        || light.empty_block_mask.contains(index)
+                    {
+                        self.mark_section_with_neighbours(
+                            update.x,
+                            lowest + index as i32,
+                            update.z,
+                        );
+                    }
+                }
                 self.trace.world.apply_light_updates(
                     update.x,
                     update.z,

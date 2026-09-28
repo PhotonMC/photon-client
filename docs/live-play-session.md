@@ -200,7 +200,15 @@ barışçıl ve `server-port=25600` içeriyor.
   ve patron sisi yok; referans karelerle karşılaştırılmadı.
 - Bölüm mesh'leme referansın bölüm derleyicisinin sırası değil: kirli
   bölümler uzaklık sırasıyla, işçi başına dört iş bekleyecek kadar ve kare
-  başına en fazla 4 ms kopyalamayla dağıtılıyor; görüş mesafesi 2–12 bölüme
+  başına en fazla 4 ms kopyalamayla dağıtılıyor. Kameraya yakın olmayan
+  (merkeze uzaklığın karesi 768 ve üstü) bir bölüm, çevresindeki sekiz
+  yığın gelene ya da iki saniye geçene dek bekliyor; sunucu yığınları
+  halka halka gönderdiğinden bölümler yoksa komşu başına yeniden kuruluyordu
+  (bir yüklemede 5.600 bölüm için 18.000 yerine 5.600 kurulum). Işık
+  paketleri referanstaki gibi yalnızca ışığı gelen bölümü ve komşularını
+  kirletiyor. Her blok durumunun özellikleri ve varyant listeleri açılışta
+  bir kez çıkarılıyor; bütün yüzleri bir yana gizlenen ve altı yanı da
+  kapalı olan blok hiç işlenmiyor. Görüş mesafesi 2–12 bölüme
   kırpılıyor; bölüm içindeki yarı saydam yüzler sıralanmıyor; görünürlük (frustum ve
   mağara) ayıklaması yok. Derinlik testi referanstaki gibi eşitliği
   geçiriyor; aynı yerdeki sonraki yüz (çimin yan örtüsü) görünüyor.
