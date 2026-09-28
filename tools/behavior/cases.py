@@ -13215,6 +13215,13 @@ def movement_cases():
     fenced_stream = stream + [{"x": 2, "y": 64, "z": z, "block": "minecraft:oak_fence"}
                               for z in range(-2, 4)]
     edge_ladder = column(0, 2, 56, 62, "minecraft:ladder", {"facing": "north"}) + column(0, 3, 56, 63)
+    plant_names = ["minecraft:short_grass", "minecraft:fern", "minecraft:dandelion",
+                   "minecraft:sweet_berry_bush", "minecraft:oak_sapling"]
+    plants = [{"x": x, "y": 64, "z": z, "block": plant_names[(x + z) % len(plant_names)]}
+              for x in range(-2, 3) for z in range(-2, 12)]
+    plants += [{"x": x, "y": y, "z": 12, "block": "minecraft:tall_grass",
+                "properties": {"half": "lower" if y == 64 else "upper"}}
+               for x in range(-2, 3) for y in (64, 65)]
     # Blocks that hold a player back from inside them.
     powder_pit = [{"x": x, "y": y, "z": z, "block": "minecraft:powder_snow"}
                   for x in range(-3, 4) for z in range(-3, 8) for y in range(61, 64)]
@@ -13309,6 +13316,9 @@ def movement_cases():
         scene("walk-through-cobweb", floor() + webs,
               keys(30, forward=True) + keys(6, forward=True, jump=True)),
         scene("walk-through-berry-bush", floor() + berries, keys(30, forward=True)),
+        scene("sneak-in-plants", floor() + plants,
+              keys(4, forward=True) + keys(10, forward=True, sneak=True) + keys(10, forward=True)
+              + keys(6, sneak=True) + keys(6)),
         scene("ride-bubble-column", floor() + bubbles, keys(40), start=(0.5, 64.0, 0.5)),
         scene("sink-in-bubble-column", floor() + bubbles, keys(30), start=(1.5, 69.0, 0.5)),
     ]

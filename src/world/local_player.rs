@@ -1174,7 +1174,9 @@ impl LocalPlayer {
         if self.horizontal_collision {
             let lift = movement.y + f64::from(0.6_f32) - self.position.y + old_y;
             let moved = self.bounding_box.move_by(movement.x, lift, movement.z);
-            if level.no_collision(moved, self.fall_distance)? && !self.contains_any_liquid(level, moved) {
+            if level.no_collision(moved, self.fall_distance)?
+                && !self.contains_any_liquid(level, moved)
+            {
                 self.delta = Vec3::new(movement.x, f64::from(0.3_f32), movement.z);
             }
         }
@@ -1441,7 +1443,8 @@ impl LocalPlayer {
         let movement_step = if movement.length_squared() == 0.0 {
             movement
         } else {
-            let colliders = level.colliders(aabb.expand_towards_vec3(movement), self.fall_distance)?;
+            let colliders =
+                level.colliders(aabb.expand_towards_vec3(movement), self.fall_distance)?;
             collide_entity_movement(movement, aabb, &colliders)
         };
         let x_collision = movement.x != movement_step.x;
@@ -1547,12 +1550,12 @@ impl LocalPlayer {
         let bb = self.bounding_box;
         level.no_collision(
             Aabb::new(
-            bb.min_x + 1.0e-7 + delta_x,
-            bb.min_y - min_height - 1.0e-7,
-            bb.min_z + 1.0e-7 + delta_z,
-            bb.max_x - 1.0e-7 + delta_x,
-            bb.min_y,
-            bb.max_z - 1.0e-7 + delta_z,
+                bb.min_x + 1.0e-7 + delta_x,
+                bb.min_y - min_height - 1.0e-7,
+                bb.min_z + 1.0e-7 + delta_z,
+                bb.max_x - 1.0e-7 + delta_x,
+                bb.min_y,
+                bb.max_z - 1.0e-7 + delta_z,
             ),
             self.fall_distance,
         )

@@ -48,7 +48,9 @@ tavan altında sürünme pozu, tavana zıplama, duvar boyunca sprint (küçük y
 zıplama, aşağı bakarak yürüme, yaratıcı çift zıplama ile uçuş, uçarken sprint
 ve inişte uçuşun kapanması, izleyici uçuşu, toz kara düşüp içinde yürüme
 ve zıplama, zeminde toz kara girme, örümcek ağı, tatlı meyve çalısı,
-yukarı iten kabarcık sütununda yükselme, aşağı çeken sütunda batma.
+yukarı iten kabarcık sütununda yükselme, aşağı çeken sütunda batma,
+bitkilerin (çim, eğrelti, çiçek, fidan, tatlı meyve çalısı, uzun çim)
+içinde eğilip kalkma.
 
 İçine girilen bloklar referanstaki sırayla geziliyor: hareketin başındaki
 kutu, yol boyunca köşenin geçtiği hücreler ve hedef kutu, her biri hareket
