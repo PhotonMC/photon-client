@@ -123,8 +123,10 @@ pub fn perspective(vertical_fov_radians: f32, aspect: f32, near: f32, far: f32) 
         [focal / aspect, 0.0, 0.0, 0.0],
         // Vulkan's clip space points down, unlike the maths convention.
         [0.0, -focal, 0.0, 0.0],
-        [0.0, 0.0, far / (near - far), -1.0],
-        [0.0, 0.0, near * far / (near - far), 0.0],
+        // Depth is reversed, as the reference's: the near plane at one and
+        // the far plane at zero, which keeps float depth precise far away.
+        [0.0, 0.0, near / (far - near), -1.0],
+        [0.0, 0.0, near * far / (far - near), 0.0],
     ]
 }
 

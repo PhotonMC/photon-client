@@ -179,6 +179,42 @@ void main() {
 }
 ";
 
+/// The clouds' shaders, after the reference's: each vertex is placed from
+/// the camera's cell corner plus the camera's offset in its cell, coloured by
+/// its face's brightness times the cloud colour, and faded out towards the
+/// cloud fog's end over its spherical distance.
+const CLOUD_VERTEX_SHADER: &str = r"#version 450
+layout(push_constant) uniform Push {
+    mat4 view_projection;
+    vec4 offset_and_end;
+    vec4 colour;
+} push;
+layout(location = 0) in vec3 in_position;
+layout(location = 1) in float in_shade;
+layout(location = 0) out vec4 out_colour;
+layout(location = 1) out float out_distance;
+void main() {
+    vec3 position = in_position + push.offset_and_end.xyz;
+    gl_Position = push.view_projection * vec4(position, 1.0);
+    out_colour = vec4(vec3(in_shade), 1.0) * push.colour;
+    out_distance = length(position);
+}
+";
+
+const CLOUD_FRAGMENT_SHADER: &str = r"#version 450
+layout(push_constant) uniform Push {
+    layout(offset = 64) vec4 offset_and_end;
+} push;
+layout(location = 0) in vec4 in_colour;
+layout(location = 1) in float in_distance;
+layout(location = 0) out vec4 out_colour;
+void main() {
+    float end = push.offset_and_end.w;
+    float fog = in_distance <= 0.0 ? 0.0 : (in_distance >= end ? 1.0 : in_distance / end);
+    out_colour = vec4(in_colour.rgb, in_colour.a * (1.0 - fog));
+}
+";
+
 /// No terrain fog: every distance out of reach, as the reference's empty
 /// fog buffer.
 const NO_FOG: [f32; 8] = [0.0, 0.0, 0.0, 1.0, f32::MAX, f32::MAX, f32::MAX, f32::MAX];
@@ -208,6 +244,7 @@ enum PipelineKind {
     Translucent,
     SkyTranslucent,
     SkyOverlay,
+    Clouds,
 }
 
 /// Instance API version the reference asks for.
@@ -313,6 +350,33 @@ struct SceneResources {
     sky_pipeline: vk::Pipeline,
     sky_overlay_pipeline_layout: vk::PipelineLayout,
     sky_overlay_pipeline: vk::Pipeline,
+    cloud_pipeline_layout: vk::PipelineLayout,
+    cloud_pipeline: vk::Pipeline,
+}
+
+/// How the clouds are placed for a frame.
+#[derive(Debug, Clone, Copy)]
+pub struct CloudFrame {
+    /// The camera-centred view-projection.
+    pub view_projection: [[f32; 4]; 4],
+    /// The camera's cell corner at the clouds' bottom, from the camera.
+    pub offset: [f32; 3],
+    /// Where cloud fog is complete, in blocks.
+    pub fog_end: f32,
+    /// The cloud colour, 0 to 1 per channel.
+    pub colour: [f32; 4],
+}
+
+/// The clouds' faces, rebuilt when the camera changes cell, and how they are
+/// placed this frame.
+struct CloudBuffer {
+    buffer: vk::Buffer,
+    memory: vk::DeviceMemory,
+    capacity: usize,
+    vertex_count: u32,
+    /// The view-projection, the offset and fog end, and the colour.
+    push: [f32; 24],
+    visible: bool,
 }
 
 /// One mesh's buffers: the opaque indices, then the translucent ones.
@@ -378,6 +442,7 @@ pub struct VulkanBackend {
     scene: Option<SceneResources>,
     sky_buffer: Option<SkyBuffer>,
     pending_sky: Option<PendingSky>,
+    cloud_buffer: Option<CloudBuffer>,
     sections: std::collections::BTreeMap<(i32, i32, i32), SectionBuffers>,
     sort_origin: [f32; 3],
     lightmap: [f32; 12],
@@ -635,6 +700,7 @@ impl VulkanBackend {
                 scene: None,
                 sky_buffer: None,
                 pending_sky: None,
+                cloud_buffer: None,
                 sections: std::collections::BTreeMap::new(),
                 sort_origin: [0.0; 3],
                 lightmap: DEFAULT_LIGHTMAP,
@@ -768,7 +834,7 @@ impl VulkanBackend {
                 .store_op(vk::AttachmentStoreOp::DONT_CARE)
                 .clear_value(vk::ClearValue {
                     depth_stencil: vk::ClearDepthStencilValue {
-                        depth: 1.0,
+                        depth: 0.0,
                         stencil: 0,
                     },
                 });
@@ -908,9 +974,9 @@ impl VulkanBackend {
                 self.device.cmd_push_constants(
                     self.command_buffer,
                     scene.translucent_pipeline_layout,
-                    vk::ShaderStageFlags::VERTEX,
+                    vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
                     0,
-                    std::slice::from_raw_parts(terrain_push.as_ptr().cast::<u8>(), 112),
+                    std::slice::from_raw_parts(terrain_push.as_ptr().cast::<u8>(), 160),
                 );
             }
             for section in translucent {
@@ -935,6 +1001,28 @@ impl VulkanBackend {
                     0,
                 );
             }
+            // The clouds after the terrain, tested against and writing depth.
+            if let Some(clouds) = self.cloud_buffer.as_ref()
+                && clouds.visible
+                && clouds.vertex_count > 0
+            {
+                self.device.cmd_bind_pipeline(
+                    self.command_buffer,
+                    vk::PipelineBindPoint::GRAPHICS,
+                    scene.cloud_pipeline,
+                );
+                self.device.cmd_push_constants(
+                    self.command_buffer,
+                    scene.cloud_pipeline_layout,
+                    vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
+                    0,
+                    std::slice::from_raw_parts(clouds.push.as_ptr().cast::<u8>(), 96),
+                );
+                self.device
+                    .cmd_bind_vertex_buffers(self.command_buffer, 0, &[clouds.buffer], &[0]);
+                self.device
+                    .cmd_draw(self.command_buffer, clouds.vertex_count, 1, 0, 0);
+            }
             self.dynamic_rendering
                 .cmd_end_rendering(self.command_buffer);
         }
@@ -954,6 +1042,7 @@ impl VulkanBackend {
             PipelineKind::SkyTranslucent | PipelineKind::SkyOverlay
         );
         let translucent = kind == PipelineKind::Translucent;
+        let clouds = kind == PipelineKind::Clouds;
         unsafe {
             let compiler =
                 shaderc::Compiler::new().map_err(|error| VulkanError::Loader(error.to_string()))?;
@@ -965,6 +1054,8 @@ impl VulkanBackend {
             };
             let (vertex_source, fragment_source) = if sky {
                 (SKY_VERTEX_SHADER, SKY_FRAGMENT_SHADER)
+            } else if clouds {
+                (CLOUD_VERTEX_SHADER, CLOUD_FRAGMENT_SHADER)
             } else {
                 (VERTEX_SHADER, FRAGMENT_SHADER)
             };
@@ -993,6 +1084,8 @@ impl VulkanBackend {
 
             let stride = if sky {
                 std::mem::size_of::<crate::render::sky::SkyVertex>()
+            } else if clouds {
+                std::mem::size_of::<crate::render::clouds::CloudVertex>()
             } else {
                 std::mem::size_of::<Vertex>()
             };
@@ -1049,8 +1142,22 @@ impl VulkanBackend {
                     .format(vk::Format::R32G32B32A32_SFLOAT)
                     .offset(24),
             ];
+            let cloud_attributes = [
+                vk::VertexInputAttributeDescription::default()
+                    .location(0)
+                    .binding(0)
+                    .format(vk::Format::R32G32B32_SFLOAT)
+                    .offset(0),
+                vk::VertexInputAttributeDescription::default()
+                    .location(1)
+                    .binding(0)
+                    .format(vk::Format::R32_SFLOAT)
+                    .offset(12),
+            ];
             let attributes: &[vk::VertexInputAttributeDescription] = if sky {
                 &sky_attributes
+            } else if clouds {
+                &cloud_attributes
             } else {
                 &terrain_attributes
             };
@@ -1082,13 +1189,13 @@ impl VulkanBackend {
             let depth_state = vk::PipelineDepthStencilStateCreateInfo::default()
                 // The sky is behind everything and tests nothing. Translucent
                 // faces are tested against the opaque depth but leave it
-                // alone, so what is behind them still shows. Equal depth
-                // passes, as in the reference, so a model's later face over
-                // an earlier one at the same place (the grass side overlay)
-                // is the one seen.
+                // alone, so what is behind them still shows. Depth is
+                // reversed and equal depth passes, as in the reference, so
+                // a model's later face over an earlier one at the same place
+                // (the grass side overlay) is the one seen.
                 .depth_test_enable(!sky)
-                .depth_write_enable(kind == PipelineKind::Terrain)
-                .depth_compare_op(vk::CompareOp::LESS_OR_EQUAL);
+                .depth_write_enable(matches!(kind, PipelineKind::Terrain | PipelineKind::Clouds))
+                .depth_compare_op(vk::CompareOp::GREATER_OR_EQUAL);
             let blends = [if kind == PipelineKind::SkyOverlay {
                 vk::PipelineColorBlendAttachmentState::default()
                     .blend_enable(true)
@@ -1099,7 +1206,7 @@ impl VulkanBackend {
                     .dst_alpha_blend_factor(vk::BlendFactor::ZERO)
                     .alpha_blend_op(vk::BlendOp::ADD)
                     .color_write_mask(vk::ColorComponentFlags::RGBA)
-            } else if translucent || sky {
+            } else if translucent || sky || clouds {
                 vk::PipelineColorBlendAttachmentState::default()
                     .blend_enable(true)
                     .src_color_blend_factor(vk::BlendFactor::SRC_ALPHA)
@@ -1120,6 +1227,10 @@ impl VulkanBackend {
                     vk::PushConstantRange::default()
                         .stage_flags(vk::ShaderStageFlags::VERTEX)
                         .size(64)
+                } else if clouds {
+                    vk::PushConstantRange::default()
+                        .stage_flags(vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT)
+                        .size(96)
                 } else {
                     vk::PushConstantRange::default()
                         .stage_flags(vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT)
@@ -1358,6 +1469,8 @@ impl VulkanBackend {
                 self.create_pipeline(descriptor_layout, PipelineKind::SkyTranslucent)?;
             let (sky_overlay_pipeline_layout, sky_overlay_pipeline) =
                 self.create_pipeline(descriptor_layout, PipelineKind::SkyOverlay)?;
+            let (cloud_pipeline_layout, cloud_pipeline) =
+                self.create_pipeline(descriptor_layout, PipelineKind::Clouds)?;
 
             self.scene = Some(SceneResources {
                 texture,
@@ -1375,6 +1488,8 @@ impl VulkanBackend {
                 sky_pipeline,
                 sky_overlay_pipeline_layout,
                 sky_overlay_pipeline,
+                cloud_pipeline_layout,
+                cloud_pipeline,
             });
             Ok(())
         }
@@ -1559,6 +1674,9 @@ impl VulkanBackend {
                     .destroy_pipeline(scene.sky_overlay_pipeline, None);
                 self.device
                     .destroy_pipeline_layout(scene.sky_overlay_pipeline_layout, None);
+                self.device.destroy_pipeline(scene.cloud_pipeline, None);
+                self.device
+                    .destroy_pipeline_layout(scene.cloud_pipeline_layout, None);
                 self.device
                     .destroy_pipeline_layout(scene.translucent_pipeline_layout, None);
                 self.device
@@ -1639,6 +1757,85 @@ impl VulkanBackend {
     pub fn set_fog(&mut self, colour: [f32; 4], distances: [f32; 4]) {
         self.fog[..4].copy_from_slice(&colour);
         self.fog[4..].copy_from_slice(&distances);
+    }
+
+    /// Replace the clouds' faces, placed from the camera's cell corner.
+    pub fn set_cloud_faces(
+        &mut self,
+        vertices: &[crate::render::clouds::CloudVertex],
+    ) -> Result<(), VulkanError> {
+        unsafe {
+            // The previous frame may still be reading the buffer.
+            self.device
+                .wait_for_fences(&[self.in_flight], true, u64::MAX)
+                .map_err(|result| VulkanError::Call("vkWaitForFences", result))?;
+            let bytes = std::slice::from_raw_parts(
+                vertices.as_ptr().cast::<u8>(),
+                std::mem::size_of_val(vertices),
+            );
+            if self
+                .cloud_buffer
+                .as_ref()
+                .is_none_or(|buffer| buffer.capacity < bytes.len())
+            {
+                if let Some(old) = self.cloud_buffer.take() {
+                    self.device.destroy_buffer(old.buffer, None);
+                    self.device.free_memory(old.memory, None);
+                }
+                let capacity = bytes.len().max(1 << 20);
+                let (buffer, memory) =
+                    self.upload_buffer(vk::BufferUsageFlags::VERTEX_BUFFER, &vec![0_u8; capacity])?;
+                self.cloud_buffer = Some(CloudBuffer {
+                    buffer,
+                    memory,
+                    capacity,
+                    vertex_count: 0,
+                    push: [0.0; 24],
+                    visible: false,
+                });
+            }
+            let buffer = self.cloud_buffer.as_mut().expect("allocated above");
+            if !bytes.is_empty() {
+                let mapped = self
+                    .device
+                    .map_memory(
+                        buffer.memory,
+                        0,
+                        bytes.len() as u64,
+                        vk::MemoryMapFlags::empty(),
+                    )
+                    .map_err(|result| VulkanError::Call("vkMapMemory", result))?
+                    .cast::<u8>();
+                std::ptr::copy_nonoverlapping(bytes.as_ptr(), mapped, bytes.len());
+                self.device.unmap_memory(buffer.memory);
+            }
+            buffer.vertex_count = vertices.len() as u32;
+            Ok(())
+        }
+    }
+
+    /// Place the clouds for the frames that follow: the camera-centred
+    /// view-projection, the camera's cell corner from the camera, where the
+    /// cloud fog ends and the cloud colour; or hide them.
+    pub fn set_cloud_frame(&mut self, placement: Option<CloudFrame>) {
+        let Some(clouds) = self.cloud_buffer.as_mut() else {
+            return;
+        };
+        clouds.visible = placement.is_some();
+        if let Some(CloudFrame {
+            view_projection,
+            offset,
+            fog_end: end,
+            colour,
+        }) = placement
+        {
+            for (index, value) in clouds.push[..16].iter_mut().enumerate() {
+                *value = view_projection[index / 4][index % 4];
+            }
+            clouds.push[16..19].copy_from_slice(&offset);
+            clouds.push[19] = end;
+            clouds.push[20..].copy_from_slice(&colour);
+        }
     }
 
     /// Hand over the next frame's sky: triangles in view-rotated space, the
@@ -1921,6 +2118,10 @@ impl Drop for VulkanBackend {
             if let Some(sky) = self.sky_buffer.take() {
                 self.device.destroy_buffer(sky.buffer, None);
                 self.device.free_memory(sky.memory, None);
+            }
+            if let Some(clouds) = self.cloud_buffer.take() {
+                self.device.destroy_buffer(clouds.buffer, None);
+                self.device.free_memory(clouds.memory, None);
             }
             for view in self.image_views.drain(..) {
                 self.device.destroy_image_view(view, None);

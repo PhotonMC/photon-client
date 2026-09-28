@@ -873,8 +873,18 @@ impl Script {
     }
 }
 
+/// The cloud range option's default, in chunks.
+const CLOUD_RANGE: i32 = 128;
+
 /// View-projection from the player's eye, measured from the mesh origin.
-fn player_camera(aspect: f32, fov: f32, eye: [f32; 3], y_rot: f32, x_rot: f32) -> [[f32; 4]; 4] {
+fn player_camera(
+    aspect: f32,
+    fov: f32,
+    far: f32,
+    eye: [f32; 3],
+    y_rot: f32,
+    x_rot: f32,
+) -> [[f32; 4]; 4] {
     let look = voxel_client::math::Vec3::direction_from_rotation_components(x_rot, y_rot);
     let target = [
         eye[0] + look.x as f32,
@@ -882,7 +892,7 @@ fn player_camera(aspect: f32, fov: f32, eye: [f32; 3], y_rot: f32, x_rot: f32) -
         eye[2] + look.z as f32,
     ];
     let view = render::scene::look_at(eye, target, [0.0, 1.0, 0.0]);
-    let projection = render::scene::perspective(fov.to_radians(), aspect, 0.05, 512.0);
+    let projection = render::scene::perspective(fov.to_radians(), aspect, 0.05, far);
     render::scene::multiply(projection, view)
 }
 
@@ -1057,6 +1067,12 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
         [feet.x, feet.y + f64::from(player.eye_height()), feet.z]
     };
     let mut attributes_last = probe(&session, eye_of(&session));
+    let cloud_image = render::png::decode_rgba(&std::fs::read(
+        std::path::Path::new(&root).join("minecraft/textures/environment/clouds.png"),
+    )?)
+    .map_err(|error| format!("clouds: {error:?}"))?;
+    let cloud_cells = render::clouds::CloudCells::from_image(&cloud_image);
+    let mut cloud_key = None;
     let mut attributes_next = attributes_last.clone();
 
     let aspect = scale.framebuffer_width() as f32 / scale.framebuffer_height() as f32;
@@ -1153,7 +1169,11 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
         ];
         let fov = camera.fov(partial as f32, player.is_eye_in_water());
         let eye_in_water = player.is_eye_in_water();
-        let view_projection = player_camera(aspect, fov, eye, y_rot, x_rot);
+        // The camera's far plane: four times the render distance, or the
+        // cloud range if that is farther.
+        let render_distance = session.view_distance().clamp(2, 12);
+        let far = ((render_distance * 16 * 4) as f32).max((CLOUD_RANGE * 16) as f32);
+        let view_projection = player_camera(aspect, fov, far, eye, y_rot, x_rot);
 
         // Mesh the dirty sections nearest the player first, within a time
         // budget, and drop the ones whose chunk went away.
@@ -1234,7 +1254,8 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                 forward: [look.x as f32, look.y as f32, look.z as f32],
                 eye_above_horizon: feet.y + f64::from(camera.eye_height(partial as f32)) - 63.0,
                 eye_in_water,
-                render_distance: session.view_distance().clamp(2, 12),
+                render_distance,
+                cloud_range: CLOUD_RANGE,
             },
             &stars,
             &sky_sprites,
@@ -1252,7 +1273,43 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
             // The brightness option's default.
             0.5,
         );
-        let sky_view_projection = player_camera(aspect, fov, [0.0; 3], y_rot, x_rot);
+        let sky_view_projection = player_camera(aspect, fov, far, [0.0; 3], y_rot, x_rot);
+        // Clouds, when their colour is not fully transparent; their faces
+        // are rebuilt when the camera enters another cell or crosses the
+        // layer.
+        if sky.cloud_colour[3] > 0.0 {
+            let camera_position = [
+                feet.x,
+                feet.y + f64::from(camera.eye_height(partial as f32)),
+                feet.z,
+            ];
+            let placement = render::clouds::place(
+                &cloud_cells,
+                sky.cloud_height,
+                camera_position,
+                session.game_time(),
+                partial as f32,
+            );
+            let key = (placement.cell, placement.relative);
+            if cloud_key != Some(key) {
+                cloud_key = Some(key);
+                let faces = cloud_cells.build(
+                    placement.relative,
+                    placement.cell.0,
+                    placement.cell.1,
+                    render::clouds::radius_cells(CLOUD_RANGE),
+                );
+                backend.set_cloud_faces(&faces)?;
+            }
+            backend.set_cloud_frame(Some(render::vulkan::CloudFrame {
+                view_projection: sky_view_projection,
+                offset: placement.offset,
+                fog_end: sky.cloud_fog_end,
+                colour: sky.cloud_colour,
+            }));
+        } else {
+            backend.set_cloud_frame(None);
+        }
         backend.set_fog(sky.fog_colour, sky.terrain_fog);
         backend.set_sky(
             &sky.vertices,

@@ -38,13 +38,16 @@ pub enum Attribute {
     WaterFogColor,
     WaterFogStartDistance,
     WaterFogEndDistance,
+    CloudColor,
+    CloudHeight,
+    CloudFogEndDistance,
     SkyLightColor,
     SkyLightFactor,
     BlockLightTint,
     AmbientLightColor,
 }
 
-const ATTRIBUTES: [Attribute; 18] = [
+const ATTRIBUTES: [Attribute; 21] = [
     Attribute::SkyColor,
     Attribute::FogColor,
     Attribute::SunriseSunsetColor,
@@ -58,6 +61,9 @@ const ATTRIBUTES: [Attribute; 18] = [
     Attribute::FogEndDistance,
     Attribute::WaterFogStartDistance,
     Attribute::WaterFogEndDistance,
+    Attribute::CloudColor,
+    Attribute::CloudHeight,
+    Attribute::CloudFogEndDistance,
     Attribute::WaterFogColor,
     Attribute::SkyLightColor,
     Attribute::SkyLightFactor,
@@ -91,6 +97,9 @@ impl Attribute {
             Self::FogEndDistance => "minecraft:visual/fog_end_distance",
             Self::WaterFogStartDistance => "minecraft:visual/water_fog_start_distance",
             Self::WaterFogEndDistance => "minecraft:visual/water_fog_end_distance",
+            Self::CloudColor => "minecraft:visual/cloud_color",
+            Self::CloudHeight => "minecraft:visual/cloud_height",
+            Self::CloudFogEndDistance => "minecraft:visual/cloud_fog_end_distance",
             Self::SkyLightColor => "minecraft:visual/sky_light_color",
             Self::SkyLightFactor => "minecraft:visual/sky_light_factor",
             Self::BlockLightTint => "minecraft:visual/block_light_tint",
@@ -107,14 +116,16 @@ impl Attribute {
             | Self::BlockLightTint
             | Self::AmbientLightColor => Kind::Rgb,
             Self::SkyLightFactor => Kind::Float,
-            Self::SunriseSunsetColor => Kind::Argb,
+            Self::SunriseSunsetColor | Self::CloudColor => Kind::Argb,
             Self::SunAngle | Self::MoonAngle | Self::StarAngle => Kind::Angle,
             Self::StarBrightness
             | Self::SkyFogEndDistance
             | Self::FogStartDistance
             | Self::FogEndDistance
             | Self::WaterFogStartDistance
-            | Self::WaterFogEndDistance => Kind::Float,
+            | Self::WaterFogEndDistance
+            | Self::CloudHeight
+            | Self::CloudFogEndDistance => Kind::Float,
             Self::MoonPhase => Kind::Phase,
         }
     }
@@ -125,6 +136,8 @@ impl Attribute {
             Self::FogEndDistance => Value::Float(1024.0),
             Self::WaterFogStartDistance => Value::Float(-8.0),
             Self::WaterFogEndDistance => Value::Float(96.0),
+            Self::CloudHeight => Value::Float(192.33),
+            Self::CloudFogEndDistance => Value::Float(2048.0),
             Self::WaterFogColor => Value::Color(-16_448_205_i32 as u32),
             Self::MoonPhase => Value::Phase(0),
             Self::SkyLightColor => Value::Color(0xFFFF_FFFF),
@@ -144,7 +157,10 @@ impl Attribute {
                 Value::Float(v.clamp(0.0, 1.0))
             }
             (
-                Self::SkyFogEndDistance | Self::FogEndDistance | Self::WaterFogEndDistance,
+                Self::SkyFogEndDistance
+                | Self::FogEndDistance
+                | Self::WaterFogEndDistance
+                | Self::CloudFogEndDistance,
                 Value::Float(v),
             ) => Value::Float(v.max(0.0)),
             _ => value,
@@ -950,6 +966,11 @@ pub struct SkyFrame {
     /// ends over spherical distance, and where the render distance fog
     /// starts and ends over cylindrical distance.
     pub terrain_fog: [f32; 4],
+    /// The cloud colour (red, green, blue, alpha, 0 to 1), the height of the
+    /// clouds' bottom, and where cloud fog is complete, in blocks.
+    pub cloud_colour: [f32; 4],
+    pub cloud_height: f32,
+    pub cloud_fog_end: f32,
     /// Triangles, three vertices each.
     pub vertices: Vec<SkyVertex>,
     /// Runs of triangles and how each blends.
@@ -1104,6 +1125,8 @@ pub struct SkyView {
     pub eye_in_water: bool,
     /// The effective render distance in chunks.
     pub render_distance: i32,
+    /// The cloud range option, in chunks.
+    pub cloud_range: i32,
 }
 
 /// Build one frame of sky from the blended attributes.
@@ -1163,10 +1186,12 @@ pub fn build_frame(
     // FogRenderer.setupFog: the water or atmospheric environment's
     // distances, then the render distance's own band. The player's water
     // vision is taken as zero, so under water the end is its lowest quarter.
-    let (environmental_start, environmental_end, sky_fog_end) = if view.eye_in_water {
+    let (environmental_start, environmental_end, sky_fog_end, cloud_fog_end) = if view.eye_in_water
+    {
         let end = attributes.get(Attribute::WaterFogEndDistance).float() * 0.25;
         (
             attributes.get(Attribute::WaterFogStartDistance).float(),
+            end,
             end,
             end,
         )
@@ -1175,8 +1200,11 @@ pub fn build_frame(
             attributes.get(Attribute::FogStartDistance).float(),
             attributes.get(Attribute::FogEndDistance).float(),
             render_blocks.min(attributes.get(Attribute::SkyFogEndDistance).float()),
+            ((view.cloud_range * 16) as f32)
+                .min(attributes.get(Attribute::CloudFogEndDistance).float()),
         )
     };
+    let cloud_colour = unpack(attributes.get(Attribute::CloudColor).color());
     let render_fog_span = (render_blocks / 10.0).clamp(4.0, 64.0);
     let terrain_fog = [
         environmental_start,
@@ -1190,6 +1218,9 @@ pub fn build_frame(
         fog_colour,
         sky_fog_end,
         terrain_fog,
+        cloud_colour,
+        cloud_height: attributes.get(Attribute::CloudHeight).float(),
+        cloud_fog_end,
         vertices: Vec::new(),
         batches: Vec::new(),
     };

@@ -80,7 +80,7 @@ barışçıl ve `server-port=25600` içeriyor.
   kareler arasında aradeğerleniyor. Çizim: sisle ufka karışan gök diski,
   gün doğumu yelpazesi, güneş ve ay evresi (en yakın texel), tohumlu 1500
   yıldız, ufuk altı koyu disk; ekran sis rengine temizleniyor. Farklar:
-  yağmur ve gök gürültüsü karartması, bulutlar yok, su altı
+  yağmur ve gök gürültüsü karartması yok, su altı
   görüş süresi sıfır sayılıyor, dünya sınırı ve End gökyüzü çizilmiyor; referans
   karelerle karşılaştırılmadı.
 - Arazi sisi referansın sis çizicisinin hesabı: çevresel sis (atmosfer
@@ -91,6 +91,20 @@ barışçıl ve `server-port=25600` içeriyor.
   kalını alınıp sis rengine karıştırılıyor. Farklar: yağmur sisi, körlük,
   karanlık, lav ve toz kar sisleri ve bölümlerin belirme geçişi yok; referans
   karelerle karşılaştırılmadı.
+- Bulutlar referansın bulut çizicisinin düzeniyle: `clouds.png`'nin her
+  saydam olmayan pikseli 12×12×4 bloklük bir hücre; ızgara oyun zamanıyla
+  tick başına 0,03 blok kayıyor, z'de 3,96 blok kaydırılmış ve sarılıyor.
+  Hücreler kameranın hücresinden halkalar halinde, varsayılan bulut
+  mesafesi 128 yığın boyunca diziliyor (süslü stil): kamera katmanın altında
+  değilse üst yüz, üstünde değilse alt yüz, kenar yüzleri yalnız komşu boşsa
+  ve kameraya bakıyorsa, kameranın çevresindeki 3×3 hücrede içe bakan
+  yüzler. Yüz parlaklıkları, renk (`cloud_color`, gece koyulaşan
+  timeline), yükseklik (`cloud_height`) ve küresel uzaklıkla saydamlaşan
+  bulut sisi (`cloud_fog_end_distance`, en çok bulut mesafesi) referanstaki
+  gibi. Uzak düzlem referanstaki gibi görüş mesafesinin dört katı ya da
+  bulut mesafesi; derinlik referans gibi ters (yakın 1, uzak 0, büyük-eşit
+  testi). Farklar: bulutlar ayrı hedefe çizilmiyor (fabulous yok), düz
+  bulut stili seçilemiyor; referans karelerle karşılaştırılmadı.
 - Biyom renkleri (çim, yaprak, kuru yaprak, su) referansın tint yoluyla:
   biyomun sıcaklık/yağıştan colormap rengi ya da kendi rengi, koyu orman ve
   bataklık değiştiricileri (bataklık için tohumu 2345 olan simplex gürültüsü),

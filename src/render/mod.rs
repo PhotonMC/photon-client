@@ -7,6 +7,7 @@ pub mod biome_tint;
 pub mod block_light;
 pub mod block_offset_table;
 pub mod blockstate;
+pub mod clouds;
 pub mod face_culling;
 pub mod face_occlusion_table;
 pub mod geometry;

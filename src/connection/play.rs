@@ -211,6 +211,11 @@ impl PlaySession {
             .map_or(&[], Vec::as_slice)
     }
 
+    /// The level's game time, as the server last set it and the ticks since.
+    pub fn game_time(&self) -> i64 {
+        self.game_time
+    }
+
     /// A world clock's total ticks, by its registry name.
     pub fn clock_ticks(&self, clock: &str) -> Option<i64> {
         let id = self
