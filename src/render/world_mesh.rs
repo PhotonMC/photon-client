@@ -787,6 +787,9 @@ fn world_tints(
     if block == "minecraft:lily_pad" {
         return vec![crate::render::tint::LILY_PAD_IN_WORLD];
     }
+    if let Some(tint) = crate::render::tint::state_tint(block, properties) {
+        return vec![tint];
+    }
     let constant = block_registry::tints(block);
     let Some(layers) = crate::render::biome_tint::tint_layers(block) else {
         return constant.to_vec();

@@ -116,9 +116,10 @@ barışçıl ve `server-port=25600` içeriyor.
   bataklık değiştiricileri (bataklık için tohumu 2345 olan simplex gürültüsü),
   biyom yöneticisinin hash'lenmiş tohumla bulanık yakınlaştırması ve 5×5
   sütun ortalaması (varsayılan karışım yarıçapı 2). Uzun çimin üst yarısı
-  alttaki bloğun rengini, nilüfer dünya sabitini alıyor. Farklar: kızıltaş
-  ve sap gibi duruma bağlı tonlar varsayılan durumun sabiti; referans
-  karelerle karşılaştırılmadı.
+  alttaki bloğun rengini, nilüfer dünya sabitini alıyor. Duruma bağlı
+  tonlar referansın formülleriyle: kızıltaş tozu gücüne, kavun ve balkabağı
+  sapı yaşına göre (varsayılan durumlar referans tablosuyla testte
+  karşılaştırılıyor). Referans karelerle karşılaştırılmadı.
 - Model seçimi referansın yolu: blok başına tohum (`Mth.getSeed`; çift
   bitki ve kapı alt yarının, yatak başın sütununun tohumu), her ağırlıklı
   listeden sırayla bir çekiliş (tek başına yazılmış varyant çekiliş
@@ -136,7 +137,10 @@ barışçıl ve `server-port=25600` içeriyor.
   seviyeleri sunucunun yığın ve ışık paketlerinden; lightmap referansın
   lightmap shader'ının hesabıyla, 8 bit nicemleme ve doğrusal örneklemeyle
   vertex shader'da. Dörtgenler FaceBakery gibi son yönlerine göre yeniden
-  sıralanıyor. Farklar: blok ışığı titremesi, gece görüşü, karanlık etkisi
+  sıralanıyor. Blok ışığı çarpanı referanstaki gibi 1,4 artı her tick
+  rastgele adımla kayıp 0,9 ile sönen titreme (kaynak referanstaki gibi her
+  çalışmada farklı tohumla); lightmap girdileri tick başına bir kez, tick
+  sonundaki öznitelik değerleriyle. Farklar: gece görüşü, karanlık etkisi
   ve patron sisi yok; referans karelerle karşılaştırılmadı.
 - Bölüm mesh'leme referansın bölüm derleyicisinin sırası ve iş
   parçacıkları değil: kirli bölümler ana iş parçacığında, uzaklık sırasıyla,

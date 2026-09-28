@@ -1078,6 +1078,14 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
     .map_err(|error| format!("clouds: {error:?}"))?;
     let cloud_cells = render::clouds::CloudCells::from_image(&cloud_image);
     let mut cloud_key = None;
+    // The reference seeds this source uniquely per run.
+    let mut flicker_random = voxel_client::random::RandomSource::create(
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|elapsed| elapsed.as_nanos() as i64)
+            .unwrap_or(0),
+    );
+    let mut block_light_flicker = 0.0_f32;
     let capture_frames: u32 = env::var("VOXEL_CAPTURE_FRAMES")
         .ok()
         .and_then(|value| value.parse().ok())
@@ -1159,6 +1167,13 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                 None => keys,
             };
             session.tick(held.input())?;
+            // `LightmapRenderStateExtractor.tick`: the block light's flicker
+            // wanders by a small random step and decays.
+            block_light_flicker += (flicker_random.next_float() - flicker_random.next_float())
+                * flicker_random.next_float()
+                * flicker_random.next_float()
+                * 0.1;
+            block_light_flicker *= 0.9;
             for (animation, redraw) in animations.iter_mut().zip(&mut animation_redraw) {
                 animation.tick();
                 *redraw |= animation.needs_to_draw();
@@ -1298,14 +1313,14 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
             &sky_sprites,
             environment.skybox(),
         );
-        let lightmap = attributes.lightmap();
+        // The lightmap is extracted once per tick, from the probe's values
+        // at the end of the tick rather than blended within it.
+        let lightmap = attributes_next.lightmap();
         backend.set_lightmap(
             lightmap.sky_colour,
             lightmap.sky_factor,
             lightmap.block_tint,
-            // The block light factor carries a small per-tick flicker in
-            // the reference; it is left at its base here.
-            1.4,
+            1.4 + block_light_flicker,
             lightmap.ambient,
             // The brightness option's default.
             0.5,

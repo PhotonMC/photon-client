@@ -95,3 +95,66 @@ pub fn colour_map_lookup(
 pub fn constant_tints(block_name: &str) -> &'static [u32] {
     crate::world::block_registry::tints(block_name)
 }
+
+/// The tint of a block whose colour follows its state rather than its biome:
+/// redstone wire by its power, and a growing melon or pumpkin stem by its
+/// age. Other blocks have none.
+pub fn state_tint(
+    block_name: &str,
+    properties: &std::collections::BTreeMap<String, String>,
+) -> Option<u32> {
+    let value = |name: &str| properties.get(name)?.parse::<i32>().ok();
+    match block_name {
+        "minecraft:redstone_wire" => Some(redstone_colour(value("power")?)),
+        "minecraft:melon_stem" | "minecraft:pumpkin_stem" => {
+            let age = value("age")?;
+            Some(argb(255, age * 32, 255 - age * 8, age * 4))
+        }
+        _ => None,
+    }
+}
+
+/// `RedStoneWireBlock`'s colour for a power level: red rises with power,
+/// green and blue only near the top.
+fn redstone_colour(power: i32) -> u32 {
+    let power = power as f32 / 15.0;
+    let red = power * 0.6 + if power > 0.0 { 0.4 } else { 0.3 };
+    let green = (power * power * 0.7 - 0.5).clamp(0.0, 1.0);
+    let blue = (power * power * 0.6 - 0.7).clamp(0.0, 1.0);
+    let channel = |value: f32| (value * 255.0).floor() as i32;
+    argb(channel(1.0), channel(red), channel(green), channel(blue))
+}
+
+/// `ARGB.color`: pack four channels, each already in range.
+fn argb(alpha: i32, red: i32, green: i32, blue: i32) -> u32 {
+    ((alpha as u32 & 0xFF) << 24)
+        | ((red as u32 & 0xFF) << 16)
+        | ((green as u32 & 0xFF) << 8)
+        | (blue as u32 & 0xFF)
+}
+
+#[cfg(test)]
+mod state_tint_tests {
+    use super::*;
+
+    #[test]
+    fn default_states_match_the_reference_table() {
+        let unpowered = [("power".to_owned(), "0".to_owned())].into_iter().collect();
+        assert_eq!(
+            state_tint("minecraft:redstone_wire", &unpowered),
+            constant_tints("minecraft:redstone_wire").first().copied()
+        );
+        let young = [("age".to_owned(), "0".to_owned())].into_iter().collect();
+        assert_eq!(
+            state_tint("minecraft:melon_stem", &young),
+            constant_tints("minecraft:melon_stem").first().copied()
+        );
+        let full = [("power".to_owned(), "15".to_owned())]
+            .into_iter()
+            .collect();
+        assert_eq!(
+            state_tint("minecraft:redstone_wire", &full),
+            Some(0xFFFF_3200)
+        );
+    }
+}
