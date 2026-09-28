@@ -92,6 +92,7 @@ public final class Oracle {
                     case "json" -> "JsonOracle";
                     case "block" -> "BlockOracle";
                     case "movement" -> "MovementOracle";
+                    case "entity" -> "EntityOracle";
                     default -> throw new IllegalArgumentException("Unknown scenario family");
                 };
                 var response = new JsonObject();

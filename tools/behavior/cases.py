@@ -13330,6 +13330,55 @@ def movement_cases():
     }
 
 
+def entity_cases():
+    """The player model, posed by the reference's `setupAnim` and drawn by its
+    part renderer: every quad's corner positions, texture coordinates and
+    normals. Both arm widths; standing, walking, crouching, looking about,
+    swinging either arm at several points of the swing, swimming through
+    each stroke phase, and a spectator's head alone."""
+    def pose(label, slim=False, head_y_rot=0.0, x_rot=0.0, walk_position=0.0, walk_speed=0.0,
+             age_in_ticks=0.0, attack_time=0.0, attack_arm="right", swim_amount=0.0,
+             crouching=False, spectator=False):
+        return {
+            "label": label,
+            "slim": slim,
+            "head_y_rot": float_bits(head_y_rot),
+            "x_rot": float_bits(x_rot),
+            "walk_position": float_bits(walk_position),
+            "walk_speed": float_bits(walk_speed),
+            "age_in_ticks": float_bits(age_in_ticks),
+            "attack_time": float_bits(attack_time),
+            "attack_arm": attack_arm,
+            "swim_amount": float_bits(swim_amount),
+            "crouching": crouching,
+            "spectator": spectator,
+        }
+
+    rows = [
+        pose("standing"),
+        pose("standing-slim", slim=True),
+        pose("breathing", age_in_ticks=37.25),
+        pose("walking", walk_position=3.7, walk_speed=0.83, age_in_ticks=12.5),
+        pose("walking-slim", slim=True, walk_position=11.2, walk_speed=0.5, age_in_ticks=4.0),
+        pose("looking", head_y_rot=-35.5, x_rot=48.0, age_in_ticks=100.75),
+        pose("crouch-walk", crouching=True, walk_position=6.1, walk_speed=0.3, x_rot=20.0),
+        pose("swing-early", attack_time=0.1, x_rot=-10.0),
+        pose("swing-mid", attack_time=0.5, age_in_ticks=3.3),
+        pose("swing-late-left", attack_time=0.85, attack_arm="left", slim=True),
+        pose("swim-reach", swim_amount=1.0, walk_position=7.0, walk_speed=0.6, x_rot=30.0),
+        pose("swim-pull", swim_amount=0.64, walk_position=17.5, walk_speed=0.9),
+        pose("swim-return", swim_amount=1.0, walk_position=24.25, walk_speed=0.4),
+        pose("swim-swinging", swim_amount=1.0, walk_position=3.0, attack_time=0.4),
+        pose("spectator", spectator=True, head_y_rot=12.0),
+    ]
+    yield {
+        "case_id": "entity/player-model",
+        "family": "entity",
+        "operation": "player_model",
+        "rows": rows,
+    }
+
+
 def build_cases(families):
     generators = {"wire": wire_cases, "math": math_cases, "timer": timer_cases, "utf8": utf8_cases,
                   "binary": binary_cases, "nbt": nbt_cases, "resources": resources_cases,
@@ -13339,7 +13388,8 @@ def build_cases(families):
                   "model": model_cases,
                   "json": json_cases,
                   "block": block_cases,
-                  "movement": movement_cases}
+                  "movement": movement_cases,
+                  "entity": entity_cases}
     cases = [dict(schema_version=1, **case)
              for family in sorted(families) for case in generators[family]()]
     ids = [case["case_id"] for case in cases]
