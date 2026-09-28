@@ -65,6 +65,8 @@ pub struct WindowSurface {
     window: glfw::PWindow,
     events: glfw::GlfwReceiver<(f64, glfw::WindowEvent)>,
     scale: WindowScale,
+    /// Where and how big the window was before it went fullscreen.
+    windowed: Option<(i32, i32, i32, i32)>,
 }
 
 impl WindowSurface {
@@ -121,6 +123,7 @@ impl WindowSurface {
             window,
             events,
             scale,
+            windowed: None,
         })
     }
 
@@ -156,6 +159,42 @@ impl WindowSurface {
             seen.push(event);
         }
         seen
+    }
+
+    /// Switch between a window and fullscreen on the primary monitor at its
+    /// current video mode, as the reference's fullscreen key does, and back
+    /// to the window's old place and size.
+    pub fn toggle_fullscreen(&mut self) {
+        if let Some((x, y, width, height)) = self.windowed.take() {
+            self.window.set_monitor(
+                WindowMode::Windowed,
+                x,
+                y,
+                width.max(1) as u32,
+                height.max(1) as u32,
+                None,
+            );
+            return;
+        }
+        let (x, y) = self.window.get_pos();
+        let (width, height) = self.window.get_size();
+        let window = &mut self.window;
+        let switched = self.glfw.with_primary_monitor(|_, monitor| {
+            let monitor = monitor?;
+            let mode = monitor.get_video_mode()?;
+            window.set_monitor(
+                WindowMode::FullScreen(monitor),
+                0,
+                0,
+                mode.width,
+                mode.height,
+                Some(mode.refresh_rate),
+            );
+            Some(())
+        });
+        if switched.is_some() {
+            self.windowed = Some((x, y, width, height));
+        }
     }
 
     /// Hide and hold the cursor for mouse look, or give it back.

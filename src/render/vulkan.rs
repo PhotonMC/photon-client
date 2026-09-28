@@ -95,6 +95,8 @@ layout(location = 0) out vec4 out_colour;
 layout(push_constant) uniform Push {
     layout(offset = 128) vec4 fog_colour;
     vec4 fog_distances;
+    // How far the section has faded in from the fog colour.
+    float visibility;
 } push;
 float linear_fog(float distance, float start, float end) {
     if (distance <= start) { return 0.0; }
@@ -121,8 +123,10 @@ vec4 sample_texel_centred(vec2 uv) {
 }
 void main() {
     vec4 texel = sample_texel_centred(in_uv) * in_tint;
+    texel.rgb *= in_shade;
+    texel = mix(vec4(push.fog_colour.rgb, texel.a), texel, push.visibility);
     if (texel.a < 0.1) { discard; }
-    vec3 colour = texel.rgb * in_shade;
+    vec3 colour = texel.rgb;
     // The environment's fog over the spherical distance, the render
     // distance's over the cylindrical one, whichever is thicker.
     float fog = max(
@@ -228,6 +232,8 @@ layout(location = 0) out vec4 out_colour;
 layout(push_constant) uniform Push {
     layout(offset = 128) vec4 fog_colour;
     vec4 fog_distances;
+    // How far the section has faded in from the fog colour.
+    float visibility;
 } push;
 float linear_fog(float distance, float start, float end) {
     if (distance <= start) { return 0.0; }
@@ -435,6 +441,36 @@ struct SectionBuffers {
     translucent_index_count: u32,
     /// Where the mesh sits, for ordering its translucent faces.
     centre: [f32; 3],
+    /// When the section first showed and how long it takes to fade in.
+    fade: SectionFade,
+}
+
+/// A section's fade in from the fog colour, as the reference's section
+/// visibility: the time since its first mesh over the fade's length.
+#[derive(Debug, Clone, Copy)]
+pub struct SectionFade {
+    pub since: std::time::Instant,
+    pub length: std::time::Duration,
+}
+
+impl SectionFade {
+    /// Shown at once.
+    pub fn none() -> Self {
+        Self {
+            since: std::time::Instant::now(),
+            length: std::time::Duration::ZERO,
+        }
+    }
+
+    fn visibility(&self, now: std::time::Instant) -> f32 {
+        let elapsed = now.saturating_duration_since(self.since).as_millis();
+        let length = self.length.as_millis();
+        if elapsed >= length {
+            1.0
+        } else {
+            elapsed as f32 / length as f32
+        }
+    }
 }
 
 /// One large buffer in the GPU's memory that section meshes are carved
@@ -527,6 +563,8 @@ pub struct VulkanBackend {
     readback_buffer: vk::Buffer,
     readback_memory: vk::DeviceMemory,
     depth: Option<DepthTarget>,
+    /// Set when the surface no longer matches the swapchain.
+    out_of_date: bool,
     scene: Option<SceneResources>,
     sky_buffer: Option<SkyBuffer>,
     pending_sky: Option<PendingSky>,
@@ -798,6 +836,7 @@ impl VulkanBackend {
                 readback_buffer,
                 readback_memory,
                 depth: None,
+                out_of_date: false,
                 scene: None,
                 sky_buffer: None,
                 pending_sky: None,
@@ -925,8 +964,20 @@ impl VulkanBackend {
     }
 
     /// Record the draw for one swapchain image.
-    unsafe fn bind_section(&self, section: &SectionBuffers) {
+    unsafe fn bind_section(
+        &self,
+        section: &SectionBuffers,
+        layout: vk::PipelineLayout,
+        now: std::time::Instant,
+    ) {
         unsafe {
+            self.device.cmd_push_constants(
+                self.command_buffer,
+                layout,
+                vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
+                160,
+                &section.fade.visibility(now).to_ne_bytes(),
+            );
             self.device.cmd_bind_vertex_buffers(
                 self.command_buffer,
                 0,
@@ -944,6 +995,7 @@ impl VulkanBackend {
 
     unsafe fn record_scene(&self, index: usize, view_projection: [[f32; 4]; 4]) {
         unsafe {
+            let now = std::time::Instant::now();
             let (Some(scene), Some(depth)) = (self.scene.as_ref(), self.depth.as_ref()) else {
                 return;
             };
@@ -971,6 +1023,20 @@ impl VulkanBackend {
                 .depth_attachment(&depth_attachment);
             self.dynamic_rendering
                 .cmd_begin_rendering(self.command_buffer, &rendering);
+            let extent = self.description.extent;
+            self.device.cmd_set_viewport(
+                self.command_buffer,
+                0,
+                &[vk::Viewport::default()
+                    .width(extent.width as f32)
+                    .height(extent.height as f32)
+                    .max_depth(1.0)],
+            );
+            self.device.cmd_set_scissor(
+                self.command_buffer,
+                0,
+                &[vk::Rect2D::default().extent(extent)],
+            );
             // The sky first, over the cleared fog colour and under everything.
             if let (Some(sky), Some(buffer)) = (self.pending_sky.as_ref(), self.sky_buffer.as_ref())
                 && sky.vertex_count > 0
@@ -1055,7 +1121,7 @@ impl VulkanBackend {
                 .values()
                 .filter(|section| section.index_count > 0)
             {
-                self.bind_section(section);
+                self.bind_section(section, scene.pipeline_layout, now);
                 self.device
                     .cmd_draw_indexed(self.command_buffer, section.index_count, 1, 0, 0, 0);
             }
@@ -1095,7 +1161,7 @@ impl VulkanBackend {
                 );
             }
             for section in translucent {
-                self.bind_section(section);
+                self.bind_section(section, scene.translucent_pipeline_layout, now);
                 self.device.cmd_draw_indexed(
                     self.command_buffer,
                     section.translucent_index_count,
@@ -1313,14 +1379,13 @@ impl VulkanBackend {
                 .vertex_attribute_descriptions(attributes);
             let assembly = vk::PipelineInputAssemblyStateCreateInfo::default()
                 .topology(vk::PrimitiveTopology::TRIANGLE_LIST);
-            let viewports = [vk::Viewport::default()
-                .width(self.description.extent.width as f32)
-                .height(self.description.extent.height as f32)
-                .max_depth(1.0)];
-            let scissors = [vk::Rect2D::default().extent(self.description.extent)];
+            // The viewport follows the window, so it is set per frame.
             let viewport_state = vk::PipelineViewportStateCreateInfo::default()
-                .viewports(&viewports)
-                .scissors(&scissors);
+                .viewport_count(1)
+                .scissor_count(1);
+            let dynamic_states = [vk::DynamicState::VIEWPORT, vk::DynamicState::SCISSOR];
+            let dynamic_state =
+                vk::PipelineDynamicStateCreateInfo::default().dynamic_states(&dynamic_states);
             let raster = vk::PipelineRasterizationStateCreateInfo::default()
                 .polygon_mode(vk::PolygonMode::FILL)
                 // The sky's fans are built in either winding.
@@ -1381,7 +1446,7 @@ impl VulkanBackend {
                 } else {
                     vk::PushConstantRange::default()
                         .stage_flags(vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT)
-                        .size(160)
+                        .size(164)
                 },
                 vk::PushConstantRange::default()
                     .stage_flags(vk::ShaderStageFlags::FRAGMENT)
@@ -1417,6 +1482,7 @@ impl VulkanBackend {
                 .vertex_input_state(&vertex_input)
                 .input_assembly_state(&assembly)
                 .viewport_state(&viewport_state)
+                .dynamic_state(&dynamic_state)
                 .rasterization_state(&raster)
                 .multisample_state(&multisample)
                 .depth_stencil_state(&depth_state)
@@ -1444,7 +1510,7 @@ impl VulkanBackend {
         texture_levels: &[DecodedImage],
     ) -> Result<(), VulkanError> {
         self.load_atlas(texture_levels)?;
-        self.set_section((0, 0, 0), mesh, [0.0; 3])
+        self.set_section((0, 0, 0), mesh, [0.0; 3], SectionFade::none())
     }
 
     /// Replace one section's mesh, or remove it when the mesh is empty.
@@ -1453,6 +1519,7 @@ impl VulkanBackend {
         key: (i32, i32, i32),
         mesh: &Mesh,
         centre: [f32; 3],
+        fade: SectionFade,
     ) -> Result<(), VulkanError> {
         unsafe {
             // The frame in flight may still read the old mesh, so it is
@@ -1487,8 +1554,146 @@ impl VulkanBackend {
                     index_count: mesh.indices.len() as u32,
                     translucent_index_count: mesh.translucent_indices.len() as u32,
                     centre,
+                    fade,
                 },
             );
+            Ok(())
+        }
+    }
+
+    /// Whether the swapchain no longer fits the window and wants
+    /// [`Self::resize`].
+    pub fn out_of_date(&self) -> bool {
+        self.out_of_date
+    }
+
+    /// The swapchain's size in pixels.
+    pub fn extent(&self) -> (u32, u32) {
+        (
+            self.description.extent.width,
+            self.description.extent.height,
+        )
+    }
+
+    /// Rebuild the swapchain, and what is sized by it, for a new window
+    /// size. A zero size (a minimised window) is left for later.
+    pub fn resize(&mut self, width: u32, height: u32) -> Result<(), VulkanError> {
+        if width == 0 || height == 0 {
+            return Ok(());
+        }
+        unsafe {
+            self.device
+                .device_wait_idle()
+                .map_err(|result| VulkanError::Call("vkDeviceWaitIdle", result))?;
+            let capabilities = self
+                .surface_instance
+                .get_physical_device_surface_capabilities(self.physical_device, self.surface)
+                .map_err(|result| {
+                    VulkanError::Call("vkGetPhysicalDeviceSurfaceCapabilities", result)
+                })?;
+            let extent = clamp_extent(&capabilities, width, height);
+            if extent.width == 0 || extent.height == 0 {
+                return Ok(());
+            }
+            let swapchain_info = vk::SwapchainCreateInfoKHR::default()
+                .surface(self.surface)
+                .min_image_count(REQUESTED_IMAGE_COUNT.max(capabilities.min_image_count))
+                .image_format(self.description.surface_format)
+                .image_color_space(vk::ColorSpaceKHR::SRGB_NONLINEAR)
+                .image_extent(extent)
+                .image_array_layers(1)
+                .image_usage(
+                    vk::ImageUsageFlags::COLOR_ATTACHMENT | vk::ImageUsageFlags::TRANSFER_DST,
+                )
+                .image_sharing_mode(vk::SharingMode::EXCLUSIVE)
+                .pre_transform(capabilities.current_transform)
+                .composite_alpha(vk::CompositeAlphaFlagsKHR::OPAQUE)
+                .present_mode(vk::PresentModeKHR::FIFO)
+                .clipped(true)
+                .old_swapchain(self.swapchain);
+            let swapchain = self
+                .swapchain_device
+                .create_swapchain(&swapchain_info, None)
+                .map_err(|result| VulkanError::Call("vkCreateSwapchainKHR", result))?;
+            for view in self.image_views.drain(..) {
+                self.device.destroy_image_view(view, None);
+            }
+            self.swapchain_device
+                .destroy_swapchain(self.swapchain, None);
+            self.swapchain = swapchain;
+            self.images = self
+                .swapchain_device
+                .get_swapchain_images(swapchain)
+                .map_err(|result| VulkanError::Call("vkGetSwapchainImagesKHR", result))?;
+            for image in &self.images {
+                self.image_views.push(
+                    self.device
+                        .create_image_view(
+                            &vk::ImageViewCreateInfo::default()
+                                .image(*image)
+                                .view_type(vk::ImageViewType::TYPE_2D)
+                                .format(self.description.surface_format)
+                                .subresource_range(
+                                    vk::ImageSubresourceRange::default()
+                                        .aspect_mask(vk::ImageAspectFlags::COLOR)
+                                        .level_count(1)
+                                        .layer_count(1),
+                                ),
+                            None,
+                        )
+                        .map_err(|result| VulkanError::Call("vkCreateImageView", result))?,
+                );
+            }
+            for semaphore in self.render_finished.drain(..) {
+                self.device.destroy_semaphore(semaphore, None);
+            }
+            for _ in 0..self.images.len() {
+                self.render_finished.push(
+                    self.device
+                        .create_semaphore(&vk::SemaphoreCreateInfo::default(), None)
+                        .map_err(|result| VulkanError::Call("vkCreateSemaphore", result))?,
+                );
+            }
+            // The acquire semaphore may have been left signalled by a failed
+            // acquire, so it is replaced too.
+            self.device.destroy_semaphore(self.image_available, None);
+            self.image_available = self
+                .device
+                .create_semaphore(&vk::SemaphoreCreateInfo::default(), None)
+                .map_err(|result| VulkanError::Call("vkCreateSemaphore", result))?;
+            self.description.extent = extent;
+            self.description.image_count = self.images.len() as u32;
+
+            self.device.destroy_buffer(self.readback_buffer, None);
+            self.device.free_memory(self.readback_memory, None);
+            self.readback_buffer = self
+                .device
+                .create_buffer(
+                    &vk::BufferCreateInfo::default()
+                        .size(u64::from(extent.width) * u64::from(extent.height) * 4)
+                        .usage(vk::BufferUsageFlags::TRANSFER_DST)
+                        .sharing_mode(vk::SharingMode::EXCLUSIVE),
+                    None,
+                )
+                .map_err(|result| VulkanError::Call("vkCreateBuffer", result))?;
+            let requirements = self
+                .device
+                .get_buffer_memory_requirements(self.readback_buffer);
+            self.readback_memory = self.allocate(
+                requirements,
+                vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
+            )?;
+            self.device
+                .bind_buffer_memory(self.readback_buffer, self.readback_memory, 0)
+                .map_err(|result| VulkanError::Call("vkBindBufferMemory", result))?;
+
+            if let Some(depth) = self.depth.take() {
+                self.device.destroy_image_view(depth.view, None);
+                self.device.destroy_image(depth.image, None);
+                self.device.free_memory(depth.memory, None);
+                self.depth = Some(self.create_depth_target()?);
+            }
+            self.out_of_date = false;
             Ok(())
         }
     }
@@ -2501,7 +2706,10 @@ impl VulkanBackend {
                 vk::Fence::null(),
             ) {
                 Ok(value) => value,
-                Err(vk::Result::ERROR_OUT_OF_DATE_KHR) => return Ok(None),
+                Err(vk::Result::ERROR_OUT_OF_DATE_KHR) => {
+                    self.out_of_date = true;
+                    return Ok(None);
+                }
                 Err(result) => return Err(VulkanError::Call("vkAcquireNextImageKHR", result)),
             };
             self.device
@@ -2628,9 +2836,10 @@ impl VulkanBackend {
                 .swapchains(&swapchains)
                 .image_indices(&indices);
             match self.swapchain_device.queue_present(self.queue, &present) {
-                Ok(_)
+                Ok(false) => {}
+                Ok(true)
                 | Err(vk::Result::ERROR_OUT_OF_DATE_KHR)
-                | Err(vk::Result::SUBOPTIMAL_KHR) => {}
+                | Err(vk::Result::SUBOPTIMAL_KHR) => self.out_of_date = true,
                 Err(result) => return Err(VulkanError::Call("vkQueuePresentKHR", result)),
             }
 

@@ -585,6 +585,12 @@ pub struct LocalPlayer {
     on_ground_no_blocks: bool,
     fall_distance: f64,
     stuck_speed_multiplier: Vec3,
+    /// `ClientAvatarState`: the distance walked and the view bob, now and a
+    /// tick ago, which only the camera reads.
+    walk_dist: f32,
+    walk_dist_old: f32,
+    bob: f32,
+    bob_old: f32,
     first_tick: bool,
     tick_count: i32,
     was_touching_water: bool,
@@ -653,6 +659,10 @@ impl LocalPlayer {
             on_ground_no_blocks: false,
             fall_distance: 0.0,
             stuck_speed_multiplier: Vec3::ZERO,
+            walk_dist: 0.0,
+            walk_dist_old: 0.0,
+            bob: 0.0,
+            bob_old: 0.0,
             first_tick: true,
             tick_count: 0,
             was_touching_water: false,
@@ -806,6 +816,16 @@ impl LocalPlayer {
     }
 
     /// The feet position between the last two ticks.
+    /// `ClientAvatarState.getBackwardsInterpolatedWalkDistance` and
+    /// `getInterpolatedBob`, which the view bob reads.
+    pub fn view_bob(&self, partial_tick: f32) -> (f32, f32) {
+        let walked = self.walk_dist - self.walk_dist_old;
+        (
+            -(self.walk_dist + walked * partial_tick),
+            self.bob_old + partial_tick * (self.bob - self.bob_old),
+        )
+    }
+
     pub fn interpolated_position(&self, partial_tick: f64) -> Vec3 {
         self.old_position.lerp(self.position, partial_tick)
     }
@@ -824,6 +844,8 @@ impl LocalPlayer {
         self.old_position = self.position;
         self.tick_count += 1;
 
+        // AbstractClientPlayer.tick: the avatar state steps first.
+        self.walk_dist_old = self.walk_dist;
         self.player_tick(&level)?;
 
         if self.last_sent_input != self.input.key_presses {
@@ -968,6 +990,14 @@ impl LocalPlayer {
             }
         }
 
+        // AbstractClientPlayer.aiStep: the bob eases towards the ground speed.
+        let target_bob = if self.on_ground && !self.is_swimming() {
+            (self.delta.horizontal_distance() as f32).min(0.1)
+        } else {
+            0.0
+        };
+        self.bob_old = self.bob;
+        self.bob += (target_bob - self.bob) * 0.4;
         self.player_ai_step(level)?;
         if self.on_ground && self.abilities.flying && !self.is_spectator() {
             self.abilities.flying = false;
@@ -1295,7 +1325,9 @@ impl LocalPlayer {
         self.entity_move(level, delta)?;
         let delta_x = (self.position.x - previous_x) as f32;
         let delta_z = (self.position.z - previous_z) as f32;
-        self.update_auto_jump(level, delta_x, delta_z)
+        self.update_auto_jump(level, delta_x, delta_z)?;
+        self.walk_dist += (delta_x * delta_x + delta_z * delta_z).sqrt() * 0.6;
+        Ok(())
     }
 
     fn entity_move(&mut self, level: &Level<'_>, delta: Vec3) -> Result<(), Unsupported> {

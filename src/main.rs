@@ -3,6 +3,7 @@ use std::net::SocketAddr;
 use std::time::Duration;
 
 use voxel_client::connection::{PlaySession, connect_and_probe};
+use voxel_client::render::vulkan::SectionFade;
 use voxel_client::render::{self, VulkanBackend};
 use voxel_client::window::{DisplayData, WindowSurface};
 
@@ -877,6 +878,38 @@ impl Script {
 const CLOUD_RANGE: i32 = 128;
 
 /// View-projection from the player's eye, measured from the mesh origin.
+/// `GameRenderer.bobView`: the sway of a walking player's view, a shift
+/// and two small turns applied after the projection's own transform, from
+/// the backwards walked distance and the bob.
+fn view_bob(walked: f32, bob: f32) -> [[f32; 4]; 4] {
+    use voxel_client::math::{mth_cos_f64, mth_sin_f64};
+    let angle = walked * std::f32::consts::PI;
+    let sin = mth_sin_f64(f64::from(angle));
+    let cos = mth_cos_f64(f64::from(angle));
+    let shift = [sin * bob * 0.5, -(cos * bob).abs()];
+    let roll = (sin * bob * 3.0).to_radians();
+    let pitch = ((mth_cos_f64(f64::from(angle - 0.2)) * bob).abs() * 5.0).to_radians();
+    let translate = [
+        [1.0, 0.0, 0.0, 0.0],
+        [0.0, 1.0, 0.0, 0.0],
+        [0.0, 0.0, 1.0, 0.0],
+        [shift[0], shift[1], 0.0, 1.0],
+    ];
+    let around_z = [
+        [roll.cos(), roll.sin(), 0.0, 0.0],
+        [-roll.sin(), roll.cos(), 0.0, 0.0],
+        [0.0, 0.0, 1.0, 0.0],
+        [0.0, 0.0, 0.0, 1.0],
+    ];
+    let around_x = [
+        [1.0, 0.0, 0.0, 0.0],
+        [0.0, pitch.cos(), pitch.sin(), 0.0],
+        [0.0, -pitch.sin(), pitch.cos(), 0.0],
+        [0.0, 0.0, 0.0, 1.0],
+    ];
+    render::scene::multiply(render::scene::multiply(translate, around_z), around_x)
+}
+
 fn player_camera(
     aspect: f32,
     fov: f32,
@@ -884,6 +917,7 @@ fn player_camera(
     eye: [f32; 3],
     y_rot: f32,
     x_rot: f32,
+    bob: [[f32; 4]; 4],
 ) -> [[f32; 4]; 4] {
     let look = voxel_client::math::Vec3::direction_from_rotation_components(x_rot, y_rot);
     let target = [
@@ -892,7 +926,10 @@ fn player_camera(
         eye[2] + look.z as f32,
     ];
     let view = render::scene::look_at(eye, target, [0.0, 1.0, 0.0]);
-    let projection = render::scene::perspective(fov.to_radians(), aspect, 0.05, far);
+    let projection = render::scene::multiply(
+        render::scene::perspective(fov.to_radians(), aspect, 0.05, far),
+        bob,
+    );
     render::scene::multiply(projection, view)
 }
 
@@ -982,6 +1019,10 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
             scale.framebuffer_height() as u32,
         )
     }?;
+    // `VOXEL_FULLSCREEN` starts fullscreen, as F11 would switch.
+    if env::var_os("VOXEL_FULLSCREEN").is_some() {
+        surface.toggle_fullscreen();
+    }
     let biome_tints = render::biome_tint::BiomeTints::load(
         &env::var("VOXEL_DATA")
             .map(std::path::PathBuf::from)
@@ -1056,6 +1097,16 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
     let mut latest: std::collections::HashMap<(i32, i32, i32), u64> =
         std::collections::HashMap::new();
     let mut next_generation = 0_u64;
+    let mut fades: std::collections::HashMap<(i32, i32, i32), SectionFade> =
+        std::collections::HashMap::new();
+    // The chunk fade option, 0.75 seconds by default and `VOXEL_CHUNK_FADE`
+    // seconds if given; a scripted run shows every section at once unless
+    // asked, so its captures do not catch one mid-fade.
+    let chunk_fade = match env::var("VOXEL_CHUNK_FADE") {
+        Ok(seconds) => Duration::from_secs_f64(seconds.parse::<f64>()?.clamp(0.0, 2.0)),
+        Err(_) if script.is_some() => Duration::ZERO,
+        Err(_) => Duration::from_millis(750),
+    };
     let section_low = session.world().dimension().min_y.div_euclid(16);
     let section_high = section_low + session.world().dimension().height / 16;
 
@@ -1124,7 +1175,11 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
     let mut captured_frames = 0;
     let mut attributes_next = attributes_last.clone();
 
-    let aspect = scale.framebuffer_width() as f32 / scale.framebuffer_height() as f32;
+    let mut aspect = scale.framebuffer_width() as f32 / scale.framebuffer_height() as f32;
+    let mut sized_for = (
+        scale.framebuffer_width() as u32,
+        scale.framebuffer_height() as u32,
+    );
     let mut keys = HeldKeys::default();
     let mut camera = voxel_client::camera::Camera::new();
     let mut captured = script.is_none();
@@ -1154,6 +1209,9 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                         surface.request_close();
                     }
                 }
+                glfw::WindowEvent::Key(glfw::Key::F11, _, glfw::Action::Press, _) => {
+                    surface.toggle_fullscreen();
+                }
                 glfw::WindowEvent::Key(key, _, action, _) if captured => {
                     keys.set(key, action != glfw::Action::Release);
                 }
@@ -1176,6 +1234,19 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                 }
                 _ => {}
             }
+        }
+
+        // A resized or fullscreen window gets a swapchain of its new size.
+        let size = surface.scale();
+        let wanted = (
+            size.framebuffer_width() as u32,
+            size.framebuffer_height() as u32,
+        );
+        if (backend.out_of_date() || wanted != sized_for) && wanted.0 > 0 && wanted.1 > 0 {
+            sized_for = wanted;
+            backend.resize(wanted.0, wanted.1)?;
+            let (width, height) = backend.extent();
+            aspect = width as f32 / height as f32;
         }
 
         let now = std::time::Instant::now();
@@ -1241,7 +1312,10 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
         // cloud range if that is farther.
         let render_distance = session.view_distance().clamp(2, 12);
         let far = ((render_distance * 16 * 4) as f32).max((CLOUD_RANGE * 16) as f32);
-        let view_projection = player_camera(aspect, fov, far, eye, y_rot, x_rot);
+        // The view bob option's default is on.
+        let (walked, bob) = player.view_bob(partial as f32);
+        let bob = view_bob(walked, bob);
+        let view_projection = player_camera(aspect, fov, far, eye, y_rot, x_rot, bob);
 
         // Mesh the dirty sections nearest the player first on the workers,
         // and drop the ones whose chunk went away.
@@ -1250,15 +1324,46 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                 let key = (chunk_x, section_y, chunk_z);
                 pending.remove(&key);
                 latest.remove(&key);
-                backend.set_section(key, &render::Mesh::default(), [0.0; 3])?;
+                fades.remove(&key);
+                backend.set_section(
+                    key,
+                    &render::Mesh::default(),
+                    [0.0; 3],
+                    SectionFade::none(),
+                )?;
             }
         }
+        // `LevelRenderer.compileSections`: a section fades in from the fog
+        // the first time it shows, unless it is near the camera; its later
+        // rebuilds keep that first time.
+        let camera_block = [
+            feet.x.floor() as i64,
+            (feet.y + f64::from(camera.eye_height(partial as f32))).floor() as i64,
+            feet.z.floor() as i64,
+        ];
+        let mut fade_for = |key: (i32, i32, i32)| {
+            *fades.entry(key).or_insert_with(|| {
+                let centre = [key.0, key.1, key.2].map(|value| i64::from(value) * 16 + 8);
+                let distance: i64 = (0..3)
+                    .map(|axis| (centre[axis] - camera_block[axis]).pow(2))
+                    .sum();
+                SectionFade {
+                    since: std::time::Instant::now(),
+                    length: if distance < 768 {
+                        Duration::ZERO
+                    } else {
+                        chunk_fade
+                    },
+                }
+            })
+        };
         pending.extend(session.take_dirty_sections());
         loop {
             for built in workers.collect() {
                 if latest.get(&built.key) == Some(&built.generation) {
                     latest.remove(&built.key);
-                    backend.set_section(built.key, &built.mesh, built.centre)?;
+                    let fade = fade_for(built.key);
+                    backend.set_section(built.key, &built.mesh, built.centre, fade)?;
                 }
             }
             let world = session.world();
@@ -1293,7 +1398,10 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                 pending.remove(&key);
                 if world.section_is_empty(key.0, key.1, key.2) {
                     latest.remove(&key);
-                    backend.set_section(key, &render::Mesh::default(), [0.0; 3])?;
+                    // An empty section has shown too, so what is built in it
+                    // later does not fade.
+                    let fade = fade_for(key);
+                    backend.set_section(key, &render::Mesh::default(), [0.0; 3], fade)?;
                     continue;
                 }
                 let (min, size, quart_min, quart_size) =
@@ -1442,7 +1550,7 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
             // The brightness option's default.
             0.5,
         );
-        let sky_view_projection = player_camera(aspect, fov, far, [0.0; 3], y_rot, x_rot);
+        let sky_view_projection = player_camera(aspect, fov, far, [0.0; 3], y_rot, x_rot, bob);
         // Clouds, when their colour is not fully transparent; their faces
         // are rebuilt when the camera enters another cell or crosses the
         // layer.

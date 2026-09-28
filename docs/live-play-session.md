@@ -60,8 +60,22 @@ barışçıl ve `server-port=25600` içeriyor.
 - Kamera: göz yüksekliği ve görüş açısı çarpanı referanstaki gibi her tick
   kalan farkın yarısı kadar yaklaşıyor ve kareler arasında aradeğerleniyor
   (eğilince bakışın birkaç tick'te inmesi, koşarken görüşün genişlemesi).
-  Kamera tick'inin sırası, bakış sallanması ve suya giren kameranın sıvı
-  kontrolü referansla karşılaştırılmadı (P14).
+  Bakış sallanması (varsayılan açık) referanstaki gibi projeksiyona
+  uygulanan bir kaydırma ile iki küçük dönme: yürünen mesafe her `move`
+  sonunda yatay yer değiştirmenin 0,6 katı artıyor, sallanma `aiStep`
+  başında yerdeyken yatay hızın (en çok 0,1) %40'ına yaklaşıyor. Kamera
+  tick'inin sırası ve suya giren kameranın sıvı kontrolü referansla
+  karşılaştırılmadı; sallanma karelerle karşılaştırılmadı (P14).
+- Pencere: F11 birincil monitörde geçerli video kipinde tam ekrana geçip
+  eski yere dönüyor (`VOXEL_FULLSCREEN=1` tam ekranda başlatıyor); boyut
+  değişince swapchain, derinlik hedefi ve okuma tamponu yeniden kuruluyor,
+  viewport kare başına veriliyor.
+- Bölüm belirmesi: bir bölüm ilk göründüğünde referansın varsayılanı olan
+  0,75 saniyede sis renginden kendi rengine geçiyor; kameranın bloğundan
+  merkezine uzaklığın karesi 768'den küçükse ve daha önce boş gösterilen
+  bölüm yeniden kurulunca hemen görünüyor; sonraki yeniden kurulumlar ilk
+  zamanı koruyor. Betikli çalıştırma solmayı kapatıyor
+  (`VOXEL_CHUNK_FADE` saniyesi veriyor).
 - Fare hassasiyeti varsayılan değerin ölçeği; yumuşatma ve ters eksen yok.
 - Çizim [dünya çizim kaydındaki](server-world-render.md) eksikleri taşıyor.
   Yüz gizleme referansın kararı: her durumun yüz örtme şekilleri, şekil
