@@ -73,6 +73,9 @@ pub struct Variant {
     pub uvlock: bool,
     /// How often this one is picked out of the list it belongs to.
     pub weight: i32,
+    /// Whether it was written inside a list. A list, even of one, is drawn
+    /// from with the block's random source; a lone variant is not.
+    pub listed: bool,
 }
 
 /// What a multipart piece tests before it applies.
@@ -188,7 +191,7 @@ pub fn parse_block_state(text: &str) -> Option<BlockStateFile> {
 /// One variant, or a non-empty list of weighted ones.
 fn parse_variants(value: &JsonValue) -> Option<Vec<Variant>> {
     match value {
-        JsonValue::Object(object) => Some(vec![parse_variant(object, 1)?]),
+        JsonValue::Object(object) => Some(vec![parse_variant(object, 1, false)?]),
         JsonValue::Array(items) => {
             if items.is_empty() {
                 return None;
@@ -209,7 +212,7 @@ fn parse_variants(value: &JsonValue) -> Option<Vec<Variant>> {
                 } else {
                     1
                 };
-                out.push(parse_variant(object, weight)?);
+                out.push(parse_variant(object, weight, true)?);
             }
             Some(out)
         }
@@ -217,7 +220,7 @@ fn parse_variants(value: &JsonValue) -> Option<Vec<Variant>> {
     }
 }
 
-fn parse_variant(object: &JsonObject, weight: i32) -> Option<Variant> {
+fn parse_variant(object: &JsonObject, weight: i32, listed: bool) -> Option<Variant> {
     let quadrant = |name: &str| -> Option<Quadrant> {
         if object.has(name) {
             Quadrant::from_degrees(object.i32(name)?)
@@ -236,6 +239,7 @@ fn parse_variant(object: &JsonObject, weight: i32) -> Option<Variant> {
             false
         },
         weight,
+        listed,
     })
 }
 
@@ -368,6 +372,52 @@ impl Condition {
 }
 
 impl BlockStateFile {
+    /// Every variant a state draws, picked as the reference picks them: the
+    /// block's random source, seeded from its position, draws once from each
+    /// weighted list in turn.
+    pub fn choose_variants(
+        &self,
+        state: &BTreeMap<String, String>,
+        random: &mut crate::random::RandomSource,
+    ) -> Vec<Variant> {
+        let mut pick = |list: &[Variant]| -> Option<Variant> {
+            match list {
+                [] => None,
+                [only] if !only.listed => Some(only.clone()),
+                _ => {
+                    let total: i32 = list.iter().map(|variant| variant.weight).sum();
+                    let mut selection = random.next_int_bound(total).ok()?;
+                    list.iter()
+                        .find(|variant| {
+                            selection -= variant.weight;
+                            selection < 0
+                        })
+                        .cloned()
+                }
+            }
+        };
+        let mut out = Vec::new();
+        if let Some((_, chosen)) = self.variants.as_ref().and_then(|variants| {
+            variants
+                .iter()
+                .find(|(selector, _)| selector_matches(selector, state))
+        }) {
+            out.extend(pick(chosen));
+        }
+        if let Some(multipart) = &self.multipart {
+            for selector in multipart {
+                let holds = selector
+                    .condition
+                    .as_ref()
+                    .is_none_or(|condition| condition.matches(state));
+                if holds {
+                    out.extend(pick(&selector.apply));
+                }
+            }
+        }
+        out
+    }
+
     /// Every variant a state draws.
     ///
     /// The `variants` section contributes the first selector that matches,
@@ -395,5 +445,38 @@ impl BlockStateFile {
             }
         }
         out
+    }
+}
+
+#[cfg(test)]
+mod choice_tests {
+    use super::*;
+
+    #[test]
+    fn a_list_draws_from_the_random_source_and_a_lone_variant_does_not() {
+        let file = parse_block_state(
+            r#"{"variants": {"": [{"model": "a"}, {"model": "b", "weight": 3}]}}"#,
+        )
+        .expect("a list");
+        let state = BTreeMap::new();
+        let mut random = crate::random::RandomSource::create(7);
+        let mut expected = crate::random::RandomSource::create(7);
+        let chosen = file.choose_variants(&state, &mut random);
+        let selection = expected.next_int_bound(4).expect("bound");
+        let wanted = if selection < 1 {
+            "minecraft:a"
+        } else {
+            "minecraft:b"
+        };
+        assert_eq!(chosen[0].model.as_string(), wanted);
+        assert_eq!(random.next_int(), expected.next_int());
+
+        let lone = parse_block_state(r#"{"variants": {"": {"model": "c"}}}"#).expect("one");
+        let mut untouched = crate::random::RandomSource::create(7);
+        lone.choose_variants(&state, &mut untouched);
+        assert_eq!(
+            untouched.next_int(),
+            crate::random::RandomSource::create(7).next_int()
+        );
     }
 }

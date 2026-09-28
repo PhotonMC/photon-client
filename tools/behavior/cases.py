@@ -13087,6 +13087,12 @@ def block_cases():
         "rows": [{"label": "registry"}],
     }
     yield {
+        "case_id": "block/offset-properties",
+        "family": "block",
+        "operation": "offset_properties",
+        "rows": [{"label": "registry"}],
+    }
+    yield {
         "case_id": "block/light-properties",
         "family": "block",
         "operation": "light_properties",

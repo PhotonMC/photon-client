@@ -55,6 +55,7 @@ public final class BlockOracle {
                 case "collision_shapes" -> rows.add(collisionShapes(element.getAsJsonObject()));
                 case "movement_properties" -> rows.add(movementProperties(element.getAsJsonObject()));
                 case "light_properties" -> rows.add(lightProperties(element.getAsJsonObject()));
+                case "offset_properties" -> rows.add(offsetProperties(element.getAsJsonObject()));
                 default -> throw new IllegalArgumentException("Unknown block operation: " + operation);
             }
         }
@@ -441,6 +442,55 @@ public final class BlockOracle {
             var states = new JsonArray();
             (distinct.size() == 1 ? distinct : perState).forEach(states::add);
             described.add("states", states);
+            blocks.add(described);
+        }
+        entry.add("blocks", blocks);
+        return entry;
+    }
+
+    /**
+     * Which blocks the renderer nudges off the grid, and by how much at most.
+     *
+     * The offset is a function the block's properties hold, so its kind is
+     * read from what it does: a vertical component anywhere means it moves in
+     * all three axes. The two limits are the block's own.
+     */
+    private static JsonObject offsetProperties(JsonObject row) {
+        try {
+            return offsetPropertiesOf(row);
+        } catch (ReflectiveOperationException failure) {
+            throw new IllegalStateException(failure);
+        }
+    }
+
+    private static JsonObject offsetPropertiesOf(JsonObject row) throws ReflectiveOperationException {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        entry.addProperty("outcome", "listed");
+        var registry = net.minecraft.core.registries.BuiltInRegistries.BLOCK;
+        var horizontal = net.minecraft.world.level.block.state.BlockBehaviour.class
+            .getDeclaredMethod("getMaxHorizontalOffset");
+        var vertical = net.minecraft.world.level.block.state.BlockBehaviour.class
+            .getDeclaredMethod("getMaxVerticalOffset");
+        horizontal.setAccessible(true);
+        vertical.setAccessible(true);
+        var blocks = new JsonArray();
+        for (var block : registry) {
+            var state = block.defaultBlockState();
+            if (!state.hasOffsetFunction()) {
+                continue;
+            }
+            boolean vertically = false;
+            for (int x = 0; x < 16 && !vertically; x++) {
+                for (int z = 0; z < 16 && !vertically; z++) {
+                    vertically = state.getOffset(new net.minecraft.core.BlockPos(x, 0, z)).y != 0.0;
+                }
+            }
+            var described = new JsonObject();
+            described.addProperty("name", registry.getKey(block).toString());
+            described.addProperty("kind", vertically ? "xyz" : "xz");
+            described.addProperty("max_horizontal", Oracle.bits((float) horizontal.invoke(block)));
+            described.addProperty("max_vertical", Oracle.bits((float) vertical.invoke(block)));
             blocks.add(described);
         }
         entry.add("blocks", blocks);

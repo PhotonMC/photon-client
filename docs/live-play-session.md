@@ -85,6 +85,13 @@ barışçıl ve `server-port=25600` içeriyor.
   alttaki bloğun rengini, nilüfer dünya sabitini alıyor. Farklar: kızıltaş
   ve sap gibi duruma bağlı tonlar varsayılan durumun sabiti; referans
   karelerle karşılaştırılmadı.
+- Model seçimi referansın yolu: blok başına tohum (`Mth.getSeed`; çift
+  bitki ve kapı alt yarının, yatak başın sütununun tohumu), her ağırlıklı
+  listeden sırayla bir çekiliş (tek başına yazılmış varyant çekiliş
+  yapmıyor), çok parçalı blokların bütün parçaları. Bitkilerin konuma bağlı
+  kaydırması referanstan tablo (`src/render/block_offset_table.rs`,
+  `tools/generate/block_offset.py`) ve formülle; block ailesinde
+  karşılaştırılıyor.
 - Işık referansın model aydınlatıcısıyla hesaplanıyor: yumuşak ışıkta her
   köşe çevre blokların ışığını ve AO gölgesini karıştırıyor (kısmi yüzler
   ağırlıklı), ışık yayan bloklar ve AO kapalı modeller düz ışıkla; renk AO

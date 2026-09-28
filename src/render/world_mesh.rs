@@ -21,6 +21,8 @@ struct Placement {
     rotation: (i32, i32, i32),
     uv_lock: bool,
     tints: Vec<u32>,
+    /// The block's nudge off the grid, if it has one.
+    offset: [f32; 3],
 }
 
 /// How a world box turned out.
@@ -109,36 +111,45 @@ pub fn build_world_mesh(
                     .into_iter()
                     .map(|(key, value)| (key.to_owned(), value.to_owned()))
                     .collect();
-                let variants = file.variants_for(&properties);
-                let Some(variant) = variants.first() else {
+                let mut random = crate::random::RandomSource::create(render_seed(
+                    block.name,
+                    &properties,
+                    position,
+                ));
+                let variants = file.choose_variants(&properties, &mut random);
+                if variants.is_empty() {
                     note(block.name, "no variant matches".into(), &mut skipped);
                     continue;
-                };
-
-                let model_name = variant.model.as_string();
-                if !models.contains_key(&model_name) {
-                    match crate::render::resolve::resolve_model(source, &variant.model) {
-                        Ok(model) => {
-                            models.insert(model_name.clone(), model);
-                        }
-                        Err(error) => {
-                            note(block.name, format!("{error:?}"), &mut skipped);
-                            continue;
+                }
+                let tints = world_tints(block.name, &properties, position, &biome_tint);
+                let offset = block_offset(block.name, position);
+                for variant in &variants {
+                    let model_name = variant.model.as_string();
+                    if !models.contains_key(&model_name) {
+                        match crate::render::resolve::resolve_model(source, &variant.model) {
+                            Ok(model) => {
+                                models.insert(model_name.clone(), model);
+                            }
+                            Err(error) => {
+                                note(block.name, format!("{error:?}"), &mut skipped);
+                                continue;
+                            }
                         }
                     }
+                    placements.push(Placement {
+                        position,
+                        state: state_id,
+                        model: model_name,
+                        rotation: (
+                            variant.x.degrees(),
+                            variant.y.degrees(),
+                            variant.z.degrees(),
+                        ),
+                        uv_lock: variant.uvlock,
+                        tints: tints.clone(),
+                        offset,
+                    });
                 }
-                placements.push(Placement {
-                    position,
-                    state: state_id,
-                    model: model_name,
-                    rotation: (
-                        variant.x.degrees(),
-                        variant.y.degrees(),
-                        variant.z.degrees(),
-                    ),
-                    uv_lock: variant.uvlock,
-                    tints: world_tints(block.name, &properties, position, &biome_tint),
-                });
             }
         }
     }
@@ -264,9 +275,9 @@ pub fn build_world_mesh(
         // A model is built in its own block's unit cube, so it moves to
         // where the block sits, measured from the box's near corner.
         let offset = [
-            (placement.position[0] - origin[0]) as f32,
-            (placement.position[1] - origin[1]) as f32,
-            (placement.position[2] - origin[2]) as f32,
+            (placement.position[0] - origin[0]) as f32 + placement.offset[0],
+            (placement.position[1] - origin[1]) as f32 + placement.offset[1],
+            (placement.position[2] - origin[2]) as f32 + placement.offset[2],
         ];
         let base = mesh.vertices.len() as u32;
         for mut vertex in part.vertices {
@@ -729,4 +740,72 @@ fn world_tints(
             None => constant.get(slot).copied().unwrap_or(0xFFFF_FFFF),
         })
         .collect()
+}
+
+/// `BlockState.getSeed`: the position a block's model randomness is seeded
+/// from. Two-block plants and doors share their lower half's seed, and a bed
+/// its head's column.
+fn render_seed(block: &str, properties: &BTreeMap<String, String>, position: [i32; 3]) -> i64 {
+    let [x, y, z] = position;
+    let double_plant = matches!(
+        block,
+        "minecraft:tall_grass"
+            | "minecraft:large_fern"
+            | "minecraft:sunflower"
+            | "minecraft:lilac"
+            | "minecraft:rose_bush"
+            | "minecraft:peony"
+            | "minecraft:tall_seagrass"
+            | "minecraft:small_dripleaf"
+            | "minecraft:pitcher_plant"
+            | "minecraft:pitcher_crop"
+    );
+    let door = block.ends_with("_door") && !block.ends_with("trapdoor");
+    if double_plant || door {
+        let upper = properties.get("half").map(String::as_str) == Some("upper");
+        return crate::math::mth_get_seed(x, if upper { y - 1 } else { y }, z);
+    }
+    if block.ends_with("_bed") {
+        let step = if properties.get("part").map(String::as_str) == Some("head") {
+            0
+        } else {
+            1
+        };
+        let (dx, dz) = match properties.get("facing").map(String::as_str) {
+            Some("north") => (0, -1),
+            Some("south") => (0, 1),
+            Some("west") => (-1, 0),
+            _ => (1, 0),
+        };
+        return crate::math::mth_get_seed(x + dx * step, y, z + dz * step);
+    }
+    crate::math::mth_get_seed(x, y, z)
+}
+
+/// `BlockState.getOffset`: how far a plant is nudged off the centre of its
+/// block, from its column's seed and the block's limits.
+fn block_offset(block: &str, position: [i32; 3]) -> [f32; 3] {
+    let Some(&(_, vertical, horizontal_max, vertical_max)) =
+        crate::render::block_offset_table::OFFSETS
+            .iter()
+            .find(|(name, ..)| *name == block)
+    else {
+        return [0.0; 3];
+    };
+    let horizontal_max = f64::from(f32::from_bits(horizontal_max));
+    let seed = crate::math::mth_get_seed(position[0], 0, position[2]);
+    let axis = |bits: i64| {
+        let value = (f64::from((bits & 15) as f32 / 15.0) - 0.5) * 0.5;
+        if value < -horizontal_max {
+            -horizontal_max
+        } else {
+            value.min(horizontal_max)
+        }
+    };
+    let y = if vertical {
+        (f64::from((seed >> 4 & 15) as f32 / 15.0) - 1.0) * f64::from(f32::from_bits(vertical_max))
+    } else {
+        0.0
+    };
+    [axis(seed) as f32, y as f32, axis(seed >> 8) as f32]
 }

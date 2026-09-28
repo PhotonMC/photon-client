@@ -16319,6 +16319,20 @@ fn block_result(request: &Value) -> Result<Value, String> {
                     "blocks": blocks,
                 }));
             }
+            "offset_properties" => {
+                let blocks: Vec<Value> = voxel_client::render::block_offset_table::OFFSETS
+                    .iter()
+                    .map(|(name, vertical, horizontal_max, vertical_max)| {
+                        json!({
+                            "name": name,
+                            "kind": if *vertical { "xyz" } else { "xz" },
+                            "max_horizontal": format!("{horizontal_max:08x}"),
+                            "max_vertical": format!("{vertical_max:08x}"),
+                        })
+                    })
+                    .collect();
+                out.push(json!({"label": label, "outcome": "listed", "blocks": blocks}));
+            }
             "light_properties" => {
                 use voxel_client::world::block_light_table as table;
                 let blocks: Vec<Value> = registry::BLOCKS
