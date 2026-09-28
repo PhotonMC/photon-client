@@ -926,7 +926,9 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
         .map(|text| Script::parse(&text))
         .transpose()?;
 
+    println!("play_connecting={server} user={username}");
     let mut session = PlaySession::connect(server, &username, Duration::from_secs(30), auto_jump)?;
+    println!("play_joined, waiting for the level");
     let started = std::time::Instant::now();
     while !session.is_loaded() {
         session.wait(Duration::from_millis(100))?;
