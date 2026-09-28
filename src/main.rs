@@ -1064,6 +1064,10 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                 session.world().biome_at(x * 4, y * 4, z * 4)
             },
             |clock| session.clock_ticks(clock).unwrap_or(0),
+            render::sky::Weather {
+                rain: session.rain_level(),
+                thunder: session.thunder_level(),
+            },
         )
     };
     let eye_of = |session: &PlaySession| {
@@ -1086,6 +1090,7 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
             .unwrap_or(0),
     );
     let mut block_light_flicker = 0.0_f32;
+    let mut rain_fog = 0.0_f32;
     let capture_frames: u32 = env::var("VOXEL_CAPTURE_FRAMES")
         .ok()
         .and_then(|value| value.parse().ok())
@@ -1142,6 +1147,7 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
         }
 
         let now = std::time::Instant::now();
+        let frame_ticks = (now - last_frame).as_secs_f32() / tick_length.as_secs_f32();
         accumulated += now - last_frame;
         last_frame = now;
         session.drain()?;
@@ -1299,6 +1305,30 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
         backend.update_atlas(&regions)?;
 
         let attributes = attributes_last.lerp(&attributes_next, partial as f32);
+        // `AtmosphericFogEnvironment.updateRainFogState`: rain pulls the fog
+        // in where the camera sees the sky, half as much in a biome without
+        // precipitation, easing a fifth of the way there per tick.
+        {
+            let world = session.world();
+            let block = [
+                feet.x.floor() as i32,
+                (feet.y + f64::from(camera.eye_height(partial as f32))).floor() as i32,
+                feet.z.floor() as i32,
+            ];
+            let dimension = world.dimension();
+            let quart_min = dimension.min_y.div_euclid(4);
+            let quart_max = quart_min + dimension.height / 4 - 1;
+            let noise_biome = |x: i32, y: i32, z: i32| {
+                world.biome_at(x * 4, y.clamp(quart_min, quart_max) * 4, z * 4)
+            };
+            let biome = biome_tints.biome_at(block[0], block[1], block[2], &noise_biome);
+            let precipitation = environment.has_precipitation(i32::try_from(biome).ok());
+            let sky_light = f32::from(world.sky_brightness(block[0], block[1], block[2]));
+            let target = session.rain_level()
+                * ((sky_light - 8.0) / 7.0).clamp(0.0, 1.0)
+                * if precipitation { 1.0 } else { 0.5 };
+            rain_fog += (target - rain_fog) * frame_ticks * 0.2;
+        }
         let look = voxel_client::math::Vec3::direction_from_rotation_components(x_rot, y_rot);
         let sky = render::sky::build_frame(
             &attributes,
@@ -1308,6 +1338,11 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                 eye_in_water,
                 render_distance,
                 cloud_range: CLOUD_RANGE,
+                weather: render::sky::Weather {
+                    rain: session.rain_level(),
+                    thunder: session.thunder_level(),
+                },
+                rain_fog,
             },
             &stars,
             &sky_sprites,

@@ -88,16 +88,28 @@ barışçıl ve `server-port=25600` içeriyor.
   kareler arasında aradeğerleniyor. Çizim: sisle ufka karışan gök diski,
   gün doğumu yelpazesi, güneş ve ay evresi (en yakın texel), tohumlu 1500
   yıldız, ufuk altı koyu disk; ekran sis rengine temizleniyor. Farklar:
-  yağmur ve gök gürültüsü karartması yok, su altı
+  su altı
   görüş süresi sıfır sayılıyor, dünya sınırı ve End gökyüzü çizilmiyor; referans
   karelerle karşılaştırılmadı.
+- Hava: yağmur ve gök gürültüsü seviyeleri oyun olaylarından (başla/dur,
+  seviye değişimi; gök gürültüsü yağmurla ölçekli). Referansın hava
+  katmanı timeline'lardan sonra, yalnız hava alabilen boyutlarda: gök,
+  sis, bulut ve gün doğumu renkleri, gök ışığı rengi ve çarpanı, yıldızlar
+  yağmur/gök gürültüsü değiştiricileriyle, yağmurun gök gürültüsü dışında
+  kalan payı ve gök gürültüsü oranında karıştırılıyor. Sisin karıştığı gök
+  rengi yağmurla koyulaşıyor, güneş ve ay yağmurla soluyor; yağmur sisi
+  kameranın bloğundaki gök ışığı ve biyomun yağışına göre tick başına
+  beşte bir yaklaşıp sis başlangıç ve bitişini çekiyor. Farklar: yağmur ve
+  kar çizgileri, sıçrama parçacıkları, şimşek ve gök parlaması yok;
+  referans karelerle karşılaştırılmadı.
 - Arazi sisi referansın sis çizicisinin hesabı: çevresel sis (atmosfer
   için `fog_start_distance`/`fog_end_distance`, su altında
   `water_fog_start_distance` ve görüş süresiyle çarpılan
   `water_fog_end_distance`) kameraya küresel uzaklıkla, görüş mesafesi
   sisi (son `clamp(blok/10, 4, 64)` blok) silindirik uzaklıkla ölçülüyor;
-  kalını alınıp sis rengine karıştırılıyor. Farklar: yağmur sisi, körlük,
-  karanlık, lav ve toz kar sisleri ve bölümlerin belirme geçişi yok; referans
+  kalını alınıp sis rengine karıştırılıyor. Farklar: körlük,
+  karanlık, lav ve toz kar sisleri ve bölümlerin belirme geçişi yok (yağmur
+  sisi aşağıda); referans
   karelerle karşılaştırılmadı.
 - Bulutlar referansın bulut çizicisinin düzeniyle: `clouds.png`'nin her
   saydam olmayan pikseli 12×12×4 bloklük bir hücre; ızgara oyun zamanıyla

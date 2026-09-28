@@ -58,6 +58,8 @@ pub struct PlaySession {
     dimension_type_id: i32,
     hashed_seed: i64,
     game_time: i64,
+    rain_level: f32,
+    thunder_level: f32,
     dirty_sections: std::collections::BTreeSet<(i32, i32, i32)>,
     forgotten_chunks: Vec<(i32, i32)>,
     clocks: std::collections::BTreeMap<i32, ClockState>,
@@ -111,6 +113,8 @@ impl PlaySession {
             dimension_type_id: 0,
             hashed_seed: 0,
             game_time: 0,
+            rain_level: 0.0,
+            thunder_level: 0.0,
             dirty_sections: std::collections::BTreeSet::new(),
             forgotten_chunks: Vec::new(),
             clocks: std::collections::BTreeMap::new(),
@@ -214,6 +218,16 @@ impl PlaySession {
     /// The level's game time, as the server last set it and the ticks since.
     pub fn game_time(&self) -> i64 {
         self.game_time
+    }
+
+    /// `Level.getRainLevel`: how hard it rains, 0 to 1.
+    pub fn rain_level(&self) -> f32 {
+        self.rain_level
+    }
+
+    /// `Level.getThunderLevel`: the thunder level scaled by the rain.
+    pub fn thunder_level(&self) -> f32 {
+        self.thunder_level * self.rain_level
     }
 
     /// A world clock's total ticks, by its registry name.
@@ -354,6 +368,9 @@ impl PlaySession {
             }
             PLAY_CLIENTBOUND_RESPAWN_PACKET_ID => {
                 let (spawn_info, _) = parse_respawn_packet(payload)?;
+                // A new level starts dry; the server repeats its weather.
+                self.rain_level = 0.0;
+                self.thunder_level = 0.0;
                 let bounds = dimension_bounds_for_spawn_info(&self.trace, &spawn_info);
                 let environment = dimension_environment_for_spawn_info(&self.trace, &spawn_info);
                 self.trace.world.replace_dimension_with_environment(
@@ -503,6 +520,15 @@ impl PlaySession {
             }
             PLAY_CLIENTBOUND_GAME_EVENT_PACKET_ID => {
                 let event = parse_game_event_packet(payload)?;
+                // The weather events set the level's rain and thunder, both
+                // the current and the previous tick's value, clamped.
+                match event.event_id {
+                    1 => self.rain_level = 0.0,
+                    2 => self.rain_level = 1.0,
+                    7 => self.rain_level = event.param.clamp(0.0, 1.0),
+                    8 => self.thunder_level = event.param.clamp(0.0, 1.0),
+                    _ => {}
+                }
                 if event.event_id == GAME_EVENT_CHANGE_GAME_MODE_ID {
                     self.game_mode = ClientPlayerGameMode::from_game_event_param(event.param);
                     if let Some(player) = self.player.as_mut() {

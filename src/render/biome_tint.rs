@@ -252,8 +252,9 @@ impl BiomeTints {
         })
     }
 
-    /// `BiomeManager.getBiome`: the zoomed biome at a block position.
-    fn biome_at(
+    /// `BiomeManager.getBiome`: the zoomed biome at a block position, as
+    /// its network number.
+    pub fn biome_at(
         &self,
         x: i32,
         y: i32,

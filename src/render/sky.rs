@@ -642,6 +642,86 @@ pub struct Environment {
     plains: usize,
     biome_attributes: Vec<Attribute>,
     timelines: Vec<Timeline>,
+    /// `Level.canHaveWeather`: sky light, no ceiling, and not the End.
+    weather: bool,
+    /// Whether each biome has precipitation, by its network number.
+    precipitation: Vec<bool>,
+}
+
+/// How hard it rains and thunders, each 0 to 1, thunder already scaled by
+/// the rain as the level reports it.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct Weather {
+    pub rain: f32,
+    pub thunder: f32,
+}
+
+/// `WeatherAttributes`: how rain and thunder change one attribute's value,
+/// or nothing for an attribute they leave alone.
+fn weather_modifier(attribute: Attribute, thunder: bool, value: Value) -> Option<Value> {
+    // BlendToGray: the greyscale of the colour, scaled, blended in.
+    let blend_to_grey = |brightness: f32, factor: f32| {
+        let colour = value.color();
+        let grey = (channel(colour, 16) as f32 * 0.3
+            + channel(colour, 8) as f32 * 0.59
+            + channel(colour, 0) as f32 * 0.11) as i32;
+        let scaled = ((grey as f32 * brightness) as i32).clamp(0, 255);
+        let grey = argb(channel(colour, 24), scaled, scaled, scaled);
+        Value::Color(srgb_lerp(factor, colour, grey))
+    };
+    let float_blend =
+        |target: f32, alpha: f32| Value::Float(lerp_f32(alpha, value.float(), target));
+    // The night sky light colour, at the alpha the weather blends it in by.
+    let night_sky_light = |alpha: f32| {
+        let colour = argb(
+            (alpha * 255.0).floor() as i32,
+            (0.48_f32 * 255.0).floor() as i32,
+            (0.48_f32 * 255.0).floor() as i32,
+            255,
+        );
+        Value::Color(alpha_blend(value.color(), colour))
+    };
+    let multiply_by = |red: f32, green: f32, blue: f32| {
+        let by = argb(
+            255,
+            (red * 255.0).floor() as i32,
+            (green * 255.0).floor() as i32,
+            (blue * 255.0).floor() as i32,
+        );
+        Value::Color(multiply(value.color(), by))
+    };
+    Some(match (attribute, thunder) {
+        (Attribute::SkyColor, false) => blend_to_grey(0.6, 0.75),
+        (Attribute::SkyColor, true) => blend_to_grey(0.24, 0.94),
+        (Attribute::FogColor | Attribute::SunriseSunsetColor, false) => multiply_by(0.5, 0.5, 0.6),
+        (Attribute::FogColor | Attribute::SunriseSunsetColor, true) => multiply_by(0.25, 0.25, 0.3),
+        (Attribute::CloudColor, false) => blend_to_grey(0.24, 0.5),
+        (Attribute::CloudColor, true) => blend_to_grey(0.095, 0.94),
+        (Attribute::SkyLightColor, false) => night_sky_light(0.3125),
+        (Attribute::SkyLightColor, true) => night_sky_light(0.527_343_75),
+        (Attribute::SkyLightFactor, false) => float_blend(0.24, 0.3125),
+        (Attribute::SkyLightFactor, true) => float_blend(0.24, 0.527_343_75),
+        (Attribute::StarBrightness, _) => Value::Float(0.0),
+        _ => return None,
+    })
+}
+
+/// `ARGB.alphaBlend`: the source over the destination by the source's alpha.
+fn alpha_blend(destination: u32, source: u32) -> u32 {
+    let source_alpha = channel(source, 24);
+    if source_alpha == 255 {
+        return source;
+    }
+    if source_alpha == 0 {
+        return destination;
+    }
+    let alpha = source_alpha + channel(destination, 24) * (255 - source_alpha) / 255;
+    let blend = |shift: u32| {
+        (channel(source, shift) * source_alpha
+            + channel(destination, shift) * (alpha - source_alpha))
+            / alpha
+    };
+    argb(alpha, blend(16), blend(8), blend(0))
 }
 
 fn read_json(path: &Path) -> Option<JsonObject> {
@@ -694,10 +774,25 @@ impl Environment {
             _ => Skybox::Overworld,
         };
         let dimension_map = parse_attribute_map(dimension.object("attributes"));
-        let biomes: Vec<AttributeMap> = biome_names
+        let weather = dimension.bool("has_skylight").unwrap_or(false)
+            && !dimension.bool("has_ceiling").unwrap_or(false)
+            && dimension_type != "minecraft:the_end";
+        let biome_files: Vec<Option<JsonObject>> = biome_names
             .iter()
-            .map(|name| {
-                let biome = read_json(&data_path(data_root, "worldgen/biome", name, ".json"));
+            .map(|name| read_json(&data_path(data_root, "worldgen/biome", name, ".json")))
+            .collect();
+        let precipitation = biome_files
+            .iter()
+            .map(|biome| {
+                biome
+                    .as_ref()
+                    .and_then(|biome| biome.bool("has_precipitation"))
+                    .unwrap_or(false)
+            })
+            .collect();
+        let biomes: Vec<AttributeMap> = biome_files
+            .iter()
+            .map(|biome| {
                 parse_attribute_map(biome.as_ref().and_then(|biome| biome.object("attributes")))
             })
             .collect();
@@ -758,7 +853,19 @@ impl Environment {
             plains,
             biome_attributes,
             timelines,
+            weather,
+            precipitation,
         })
+    }
+
+    /// Whether the biome with this network number has precipitation; an
+    /// unknown number reads as plains.
+    pub fn has_precipitation(&self, biome: Option<i32>) -> bool {
+        let biome = biome
+            .and_then(|id| usize::try_from(id).ok())
+            .filter(|id| *id < self.precipitation.len())
+            .unwrap_or(self.plains);
+        self.precipitation.get(biome).copied().unwrap_or(false)
     }
 
     pub fn skybox(&self) -> Skybox {
@@ -774,6 +881,7 @@ impl Environment {
         eye: [f64; 3],
         biome_at: impl Fn(i32, i32, i32) -> Option<i32>,
         clock_ticks: impl Fn(&str) -> i64,
+        weather: Weather,
     ) -> Attributes {
         // GaussianSampler over the biomes around the camera, a quarter scale.
         let mut weights: Vec<(usize, f64)> = Vec::new();
@@ -860,6 +968,21 @@ impl Environment {
                 {
                     let argument = track.sample(clock_ticks(&timeline.clock));
                     value = apply(kind, track.operation, value, argument);
+                }
+            }
+            // The weather layer: the rain's change blended in by the rain
+            // not already thunder, then the thunder's by the thunder.
+            if self.weather {
+                let rain = weather.rain - weather.thunder;
+                if rain > 0.0
+                    && let Some(rained) = weather_modifier(attribute, false, value)
+                {
+                    value = lerp(kind, rain, value, rained);
+                }
+                if weather.thunder > 0.0
+                    && let Some(thundered) = weather_modifier(attribute, true, value)
+                {
+                    value = lerp(kind, weather.thunder, value, thundered);
                 }
             }
             values.insert(attribute, attribute.sanitize(value));
@@ -1127,6 +1250,10 @@ pub struct SkyView {
     pub render_distance: i32,
     /// The cloud range option, in chunks.
     pub cloud_range: i32,
+    /// The level's rain and thunder at this frame.
+    pub weather: Weather,
+    /// How far rain has pulled the fog in, 0 to 1.
+    pub rain_fog: f32,
 }
 
 /// Build one frame of sky from the blended attributes.
@@ -1177,7 +1304,25 @@ pub fn build_frame(
             0.25 + delta * 0.75
         };
         let mix = 1.0 - (f64::from(mix)).powf(0.25) as f32;
-        srgb_lerp(mix, fog, sky_colour)
+        // The sky colour the fog blends towards is darkened by the weather.
+        let scale = |colour: u32, red: f32, green: f32, blue: f32| {
+            argb(
+                channel(colour, 24),
+                ((channel(colour, 16) as f32 * red) as i32).clamp(0, 255),
+                ((channel(colour, 8) as f32 * green) as i32).clamp(0, 255),
+                ((channel(colour, 0) as f32 * blue) as i32).clamp(0, 255),
+            )
+        };
+        let mut darkened = sky_colour;
+        if view.weather.rain > 0.0 {
+            let modifier = 1.0 - view.weather.rain * 0.5;
+            darkened = scale(darkened, modifier, modifier, 1.0 - view.weather.rain * 0.4);
+        }
+        if view.weather.thunder > 0.0 {
+            let modifier = 1.0 - view.weather.thunder * 0.5;
+            darkened = scale(darkened, modifier, modifier, modifier);
+        }
+        srgb_lerp(mix, fog, darkened)
     };
     let fog_colour = {
         let [r, g, b, _] = unpack(fog);
@@ -1196,9 +1341,10 @@ pub fn build_frame(
             end,
         )
     } else {
+        let end = attributes.get(Attribute::FogEndDistance).float();
         (
-            attributes.get(Attribute::FogStartDistance).float(),
-            attributes.get(Attribute::FogEndDistance).float(),
+            attributes.get(Attribute::FogStartDistance).float() - 160.0 * view.rain_fog,
+            end.min(96.0).max(end - 256.0 * view.rain_fog),
             render_blocks.min(attributes.get(Attribute::SkyFogEndDistance).float()),
             ((view.cloud_range * 16) as f32)
                 .min(attributes.get(Attribute::CloudFogEndDistance).float()),
@@ -1339,7 +1485,8 @@ pub fn build_frame(
         let vertex = |i: usize| SkyVertex {
             position: transform(pose, corners[i]),
             uv: uv[i],
-            colour: [1.0, 1.0, 1.0, 1.0],
+            // Rain fades the sun and the moon.
+            colour: [1.0, 1.0, 1.0, 1.0 - view.weather.rain],
             fog_distance: [-1.0, -1.0],
         };
         quad([vertex(0), vertex(1), vertex(2), vertex(3)])
