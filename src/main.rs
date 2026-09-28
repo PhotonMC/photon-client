@@ -873,80 +873,6 @@ impl Script {
     }
 }
 
-/// A world box's mesh, its atlas levels, its lowest corner, and where the
-/// sky's sprites landed on its atlas.
-type WorldBox = (
-    render::Mesh,
-    Vec<render::DecodedImage>,
-    [i32; 3],
-    render::sky::SkySprites,
-);
-
-/// Build the world box around a point, returning the mesh, its atlas levels,
-/// and the box's lowest corner, which the mesh is measured from.
-fn world_box_mesh(
-    world: &voxel_client::world::ClientWorld,
-    centre: (f64, f64, f64),
-    root: &str,
-    tints: &render::biome_tint::BiomeTints,
-) -> Result<WorldBox, Box<dyn std::error::Error>> {
-    let dimension = world.dimension();
-    let quart_min = dimension.min_y.div_euclid(4);
-    let quart_max = quart_min + dimension.height / 4 - 1;
-    let noise_biome =
-        |x: i32, y: i32, z: i32| world.biome_at(x * 4, y.clamp(quart_min, quart_max) * 4, z * 4);
-    let reach: i32 = env::var("VOXEL_REACH")
-        .ok()
-        .map(|value| value.parse())
-        .transpose()?
-        .unwrap_or(24);
-    let height: i32 = env::var("VOXEL_HEIGHT")
-        .ok()
-        .map(|value| value.parse())
-        .transpose()?
-        .unwrap_or(24);
-    let origin = [
-        centre.0.floor() as i32 - reach,
-        centre.1.floor() as i32 - height / 2,
-        centre.2.floor() as i32 - reach,
-    ];
-    let size = [reach * 2 + 1, height, reach * 2 + 1];
-    let source = FolderAssets {
-        root: std::path::PathBuf::from(root),
-    };
-    let requested: i32 = env::var("VOXEL_MIP_LEVELS")
-        .ok()
-        .map(|value| value.parse())
-        .transpose()?
-        .unwrap_or(4);
-    let built = render::build_world_mesh(
-        &source,
-        |x, y, z| world.block_state_at(x, y, z),
-        |x, y, z| {
-            (
-                world.block_brightness(x, y, z),
-                world.sky_brightness(x, y, z),
-            )
-        },
-        |kind, position| tints.tint(kind, position, &noise_biome),
-        origin,
-        size,
-        requested,
-    )
-    .map_err(|error| format!("world mesh: {error:?}"))?;
-    println!(
-        "world_box origin={},{},{} size={}x{}x{} solid={}",
-        origin[0], origin[1], origin[2], size[0], size[1], size[2], built.solid_count
-    );
-    let sprite = |name: &str| built.atlas.sprites.get(name).copied().unwrap_or([0.0; 4]);
-    let moon_names: Vec<String> = render::sky::moon_sprites().collect();
-    let sprites = render::sky::SkySprites {
-        sun: sprite(render::sky::SUN_SPRITE),
-        moon: std::array::from_fn(|phase| sprite(&moon_names[phase])),
-    };
-    Ok((built.mesh, built.atlas.levels, origin, sprites))
-}
-
 /// View-projection from the player's eye, measured from the mesh origin.
 fn player_camera(aspect: f32, fov: f32, eye: [f32; 3], y_rot: f32, x_rot: f32) -> [[f32; 4]; 4] {
     let look = voxel_client::math::Vec3::direction_from_rotation_components(x_rot, y_rot);
@@ -1053,13 +979,52 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
         session.hashed_seed(),
     )
     .ok_or("the biome colours could not be read")?;
-    let (mesh, levels, mut origin, mut sky_sprites) = world_box_mesh(
-        session.world(),
-        (position.x, position.y, position.z),
-        &root,
-        &biome_tints,
-    )?;
-    backend.load_scene(&mesh, &levels)?;
+    // Every block's models and one atlas for all of them, as the reference
+    // bakes them at resource load; the world is then meshed a 16-block
+    // section at a time as its chunks arrive and change.
+    let source = FolderAssets {
+        root: std::path::PathBuf::from(&root),
+    };
+    let requested_mips: i32 = env::var("VOXEL_MIP_LEVELS")
+        .ok()
+        .map(|value| value.parse())
+        .transpose()?
+        .unwrap_or(4);
+    let baking = std::time::Instant::now();
+    let block_renderer = render::world_mesh::BlockRenderer::new(&source, requested_mips)
+        .map_err(|error| format!("block models: {error:?}"))?;
+    println!(
+        "play_atlas={}x{} models={} skipped={} in {:?}",
+        block_renderer.atlas.width,
+        block_renderer.atlas.height,
+        block_renderer.model_count(),
+        block_renderer.skipped.len(),
+        baking.elapsed()
+    );
+    backend.load_atlas(&block_renderer.atlas.levels)?;
+    let sprite = |name: &str| {
+        block_renderer
+            .atlas
+            .sprites
+            .get(name)
+            .copied()
+            .unwrap_or([0.0; 4])
+    };
+    let moon_names: Vec<String> = render::sky::moon_sprites().collect();
+    let sky_sprites = render::sky::SkySprites {
+        sun: sprite(render::sky::SUN_SPRITE),
+        moon: std::array::from_fn(|phase| sprite(&moon_names[phase])),
+    };
+    // Meshes are measured from a fixed point near where the player started.
+    let origin = [
+        position.x.floor() as i32,
+        position.y.floor() as i32,
+        position.z.floor() as i32,
+    ];
+    let mut pending: std::collections::BTreeSet<(i32, i32, i32)> =
+        session.take_dirty_sections().into_iter().collect();
+    let section_low = session.world().dimension().min_y.div_euclid(16);
+    let section_high = section_low + session.world().dimension().height / 16;
 
     // The sky's data comes from the same vanilla data pack the server runs,
     // which sits next to the assets.
@@ -1105,12 +1070,6 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
     let mut last_frame = std::time::Instant::now();
     let mut ticks = 0_u64;
     let mut frames = 0_u64;
-    let rebuild_distance = f64::from(
-        env::var("VOXEL_REACH")
-            .ok()
-            .and_then(|value| value.parse::<i32>().ok())
-            .unwrap_or(24),
-    ) * 0.5;
 
     while !surface.should_close() {
         for event in surface.poll() {
@@ -1193,7 +1152,79 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
             (feet.z - f64::from(origin[2])) as f32,
         ];
         let fov = camera.fov(partial as f32, player.is_eye_in_water());
+        let eye_in_water = player.is_eye_in_water();
         let view_projection = player_camera(aspect, fov, eye, y_rot, x_rot);
+
+        // Mesh the dirty sections nearest the player first, within a time
+        // budget, and drop the ones whose chunk went away.
+        for (chunk_x, chunk_z) in session.take_forgotten_chunks() {
+            for section_y in section_low..section_high {
+                pending.remove(&(chunk_x, section_y, chunk_z));
+                backend.set_section(
+                    (chunk_x, section_y, chunk_z),
+                    &render::Mesh::default(),
+                    [0.0; 3],
+                )?;
+            }
+        }
+        pending.extend(session.take_dirty_sections());
+        {
+            let world = session.world();
+            let player_section = (
+                feet.x.floor() as i32 >> 4,
+                feet.y.floor() as i32 >> 4,
+                feet.z.floor() as i32 >> 4,
+            );
+            let view = session.view_distance().clamp(2, 12);
+            let mut ordered: Vec<(i32, i32, i32)> = pending
+                .iter()
+                .copied()
+                .filter(|&(x, _, z)| {
+                    (x - player_section.0).abs() <= view && (z - player_section.2).abs() <= view
+                })
+                .collect();
+            ordered.sort_by_key(|&(x, y, z)| {
+                (x - player_section.0).pow(2)
+                    + (y - player_section.1).pow(2)
+                    + (z - player_section.2).pow(2)
+            });
+            let dimension = world.dimension();
+            let quart_min = dimension.min_y.div_euclid(4);
+            let quart_max = quart_min + dimension.height / 4 - 1;
+            let noise_biome = |x: i32, y: i32, z: i32| {
+                world.biome_at(x * 4, y.clamp(quart_min, quart_max) * 4, z * 4)
+            };
+            let read = |x: i32, y: i32, z: i32| world.block_state_at(x, y, z);
+            let light = |x: i32, y: i32, z: i32| {
+                (
+                    world.block_brightness(x, y, z),
+                    world.sky_brightness(x, y, z),
+                )
+            };
+            let tint = |kind, position| biome_tints.tint(kind, position, &noise_biome);
+            let budget = std::time::Instant::now();
+            for key in ordered {
+                // A scripted run finishes every section before its capture.
+                if !script_done && budget.elapsed() > Duration::from_millis(12) {
+                    break;
+                }
+                pending.remove(&key);
+                if !world.contains_chunk(key.0, key.2) {
+                    backend.set_section(key, &render::Mesh::default(), [0.0; 3])?;
+                    continue;
+                }
+                let corner = [key.0 * 16, key.1 * 16, key.2 * 16];
+                let region =
+                    block_renderer.mesh_region(&read, &light, &tint, corner, [16, 16, 16], origin);
+                let centre = [
+                    (corner[0] + 8 - origin[0]) as f32,
+                    (corner[1] + 8 - origin[1]) as f32,
+                    (corner[2] + 8 - origin[2]) as f32,
+                ];
+                backend.set_section(key, &region.mesh, centre)?;
+            }
+        }
+        backend.set_sort_origin(eye);
 
         let attributes = attributes_last.lerp(&attributes_next, partial as f32);
         let look = voxel_client::math::Vec3::direction_from_rotation_components(x_rot, y_rot);
@@ -1202,7 +1233,7 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
             &render::sky::SkyView {
                 forward: [look.x as f32, look.y as f32, look.z as f32],
                 eye_above_horizon: feet.y + f64::from(camera.eye_height(partial as f32)) - 63.0,
-                eye_in_water: player.is_eye_in_water(),
+                eye_in_water,
                 render_distance: session.view_distance().clamp(2, 12),
             },
             &stars,
@@ -1232,6 +1263,7 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
         let colour = sky.clear_colour;
 
         if script_done {
+            let player = session.player().ok_or("no local player")?;
             let position = player.position();
             println!(
                 "play_end ticks={ticks} position={:.4},{:.4},{:.4} rotation={y_rot},{x_rot} on_ground={}",
@@ -1254,26 +1286,7 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
         backend.draw_scene(colour, view_projection)?;
         frames += 1;
 
-        // The drawn box is fixed; once the player walks towards its edge a
-        // new one is built around them from the chunks that have arrived.
-        let centre = [
-            f64::from(origin[0]) + rebuild_distance * 2.0 + 0.5,
-            f64::from(origin[2]) + rebuild_distance * 2.0 + 0.5,
-        ];
-        let position = player.position();
-        if (position.x - centre[0]).abs() > rebuild_distance
-            || (position.z - centre[1]).abs() > rebuild_distance
-        {
-            let (mesh, levels, new_origin, new_sprites) = world_box_mesh(
-                session.world(),
-                (position.x, position.y, position.z),
-                &root,
-                &biome_tints,
-            )?;
-            backend.load_scene(&mesh, &levels)?;
-            origin = new_origin;
-            sky_sprites = new_sprites;
-        }
+        let _ = frames;
     }
     println!("play_frames={frames} play_ticks={ticks}");
     Ok(())

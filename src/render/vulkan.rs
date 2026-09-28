@@ -270,12 +270,6 @@ struct DepthTarget {
 
 /// Everything needed to draw one textured mesh.
 struct SceneResources {
-    vertex_buffer: vk::Buffer,
-    vertex_memory: vk::DeviceMemory,
-    index_buffer: vk::Buffer,
-    index_memory: vk::DeviceMemory,
-    index_count: u32,
-    translucent_index_count: u32,
     texture: vk::Image,
     texture_memory: vk::DeviceMemory,
     texture_view: vk::ImageView,
@@ -291,6 +285,18 @@ struct SceneResources {
     sky_pipeline: vk::Pipeline,
     sky_overlay_pipeline_layout: vk::PipelineLayout,
     sky_overlay_pipeline: vk::Pipeline,
+}
+
+/// One mesh's buffers: the opaque indices, then the translucent ones.
+struct SectionBuffers {
+    vertex_buffer: vk::Buffer,
+    vertex_memory: vk::DeviceMemory,
+    index_buffer: vk::Buffer,
+    index_memory: vk::DeviceMemory,
+    index_count: u32,
+    translucent_index_count: u32,
+    /// Where the mesh sits, for ordering its translucent faces.
+    centre: [f32; 3],
 }
 
 /// The sky's vertex buffer, rewritten every frame.
@@ -344,6 +350,8 @@ pub struct VulkanBackend {
     scene: Option<SceneResources>,
     sky_buffer: Option<SkyBuffer>,
     pending_sky: Option<PendingSky>,
+    sections: std::collections::BTreeMap<(i32, i32, i32), SectionBuffers>,
+    sort_origin: [f32; 3],
     lightmap: [f32; 12],
     image_available: vk::Semaphore,
     render_finished: Vec<vk::Semaphore>,
@@ -597,6 +605,8 @@ impl VulkanBackend {
                 scene: None,
                 sky_buffer: None,
                 pending_sky: None,
+                sections: std::collections::BTreeMap::new(),
+                sort_origin: [0.0; 3],
                 lightmap: DEFAULT_LIGHTMAP,
                 image_available,
                 render_finished,
@@ -814,21 +824,40 @@ impl VulkanBackend {
                 0,
                 std::slice::from_raw_parts(terrain_push.as_ptr().cast::<u8>(), 112),
             );
-            self.device.cmd_bind_vertex_buffers(
-                self.command_buffer,
-                0,
-                &[scene.vertex_buffer],
-                &[0],
-            );
-            self.device.cmd_bind_index_buffer(
-                self.command_buffer,
-                scene.index_buffer,
-                0,
-                vk::IndexType::UINT32,
-            );
-            self.device
-                .cmd_draw_indexed(self.command_buffer, scene.index_count, 1, 0, 0, 0);
-            if scene.translucent_index_count > 0 {
+            for section in self
+                .sections
+                .values()
+                .filter(|section| section.index_count > 0)
+            {
+                self.device.cmd_bind_vertex_buffers(
+                    self.command_buffer,
+                    0,
+                    &[section.vertex_buffer],
+                    &[0],
+                );
+                self.device.cmd_bind_index_buffer(
+                    self.command_buffer,
+                    section.index_buffer,
+                    0,
+                    vk::IndexType::UINT32,
+                );
+                self.device
+                    .cmd_draw_indexed(self.command_buffer, section.index_count, 1, 0, 0, 0);
+            }
+            // Translucent faces last, the farthest section first, so nearer
+            // water blends over farther.
+            let mut translucent: Vec<&SectionBuffers> = self
+                .sections
+                .values()
+                .filter(|section| section.translucent_index_count > 0)
+                .collect();
+            let distance = |section: &SectionBuffers| {
+                (0..3)
+                    .map(|axis| (section.centre[axis] - self.sort_origin[axis]).powi(2))
+                    .sum::<f32>()
+            };
+            translucent.sort_by(|a, b| distance(b).total_cmp(&distance(a)));
+            if !translucent.is_empty() {
                 self.device.cmd_bind_pipeline(
                     self.command_buffer,
                     vk::PipelineBindPoint::GRAPHICS,
@@ -849,11 +878,25 @@ impl VulkanBackend {
                     0,
                     std::slice::from_raw_parts(terrain_push.as_ptr().cast::<u8>(), 112),
                 );
+            }
+            for section in translucent {
+                self.device.cmd_bind_vertex_buffers(
+                    self.command_buffer,
+                    0,
+                    &[section.vertex_buffer],
+                    &[0],
+                );
+                self.device.cmd_bind_index_buffer(
+                    self.command_buffer,
+                    section.index_buffer,
+                    0,
+                    vk::IndexType::UINT32,
+                );
                 self.device.cmd_draw_indexed(
                     self.command_buffer,
-                    scene.translucent_index_count,
+                    section.translucent_index_count,
                     1,
-                    scene.index_count,
+                    section.index_count,
                     0,
                     0,
                 );
@@ -1005,10 +1048,13 @@ impl VulkanBackend {
             let depth_state = vk::PipelineDepthStencilStateCreateInfo::default()
                 // The sky is behind everything and tests nothing. Translucent
                 // faces are tested against the opaque depth but leave it
-                // alone, so what is behind them still shows.
+                // alone, so what is behind them still shows. Equal depth
+                // passes, as in the reference, so a model's later face over
+                // an earlier one at the same place (the grass side overlay)
+                // is the one seen.
                 .depth_test_enable(!sky)
                 .depth_write_enable(kind == PipelineKind::Terrain)
-                .depth_compare_op(vk::CompareOp::LESS);
+                .depth_compare_op(vk::CompareOp::LESS_OR_EQUAL);
             let blends = [if kind == PipelineKind::SkyOverlay {
                 vk::PipelineColorBlendAttachmentState::default()
                     .blend_enable(true)
@@ -1099,17 +1145,34 @@ impl VulkanBackend {
         mesh: &Mesh,
         texture_levels: &[DecodedImage],
     ) -> Result<(), VulkanError> {
-        unsafe {
-            self.destroy_scene();
-            self.depth = Some(self.create_depth_target()?);
+        self.load_atlas(texture_levels)?;
+        self.set_section((0, 0, 0), mesh, [0.0; 3])
+    }
 
+    /// Replace one section's mesh, or remove it when the mesh is empty.
+    pub fn set_section(
+        &mut self,
+        key: (i32, i32, i32),
+        mesh: &Mesh,
+        centre: [f32; 3],
+    ) -> Result<(), VulkanError> {
+        unsafe {
+            // The frame in flight may still read the old buffers.
+            self.device
+                .wait_for_fences(&[self.in_flight], true, u64::MAX)
+                .map_err(|result| VulkanError::Call("vkWaitForFences", result))?;
+            if let Some(old) = self.sections.remove(&key) {
+                self.destroy_section(old);
+            }
+            if mesh.indices.is_empty() && mesh.translucent_indices.is_empty() {
+                return Ok(());
+            }
             let vertex_bytes = std::slice::from_raw_parts(
                 mesh.vertices.as_ptr().cast::<u8>(),
                 std::mem::size_of_val(mesh.vertices.as_slice()),
             );
             let (vertex_buffer, vertex_memory) =
                 self.upload_buffer(vk::BufferUsageFlags::VERTEX_BUFFER, vertex_bytes)?;
-            // One index buffer: the opaque faces, then the translucent ones.
             let all_indices: Vec<u32> = mesh
                 .indices
                 .iter()
@@ -1122,6 +1185,54 @@ impl VulkanBackend {
             );
             let (index_buffer, index_memory) =
                 self.upload_buffer(vk::BufferUsageFlags::INDEX_BUFFER, index_bytes)?;
+            self.sections.insert(
+                key,
+                SectionBuffers {
+                    vertex_buffer,
+                    vertex_memory,
+                    index_buffer,
+                    index_memory,
+                    index_count: mesh.indices.len() as u32,
+                    translucent_index_count: mesh.translucent_indices.len() as u32,
+                    centre,
+                },
+            );
+            Ok(())
+        }
+    }
+
+    /// Drop every section mesh.
+    pub fn clear_sections(&mut self) -> Result<(), VulkanError> {
+        unsafe {
+            self.device
+                .wait_for_fences(&[self.in_flight], true, u64::MAX)
+                .map_err(|result| VulkanError::Call("vkWaitForFences", result))?;
+            for (_, section) in std::mem::take(&mut self.sections) {
+                self.destroy_section(section);
+            }
+            Ok(())
+        }
+    }
+
+    /// Where translucent sections are ordered from, usually the camera.
+    pub fn set_sort_origin(&mut self, origin: [f32; 3]) {
+        self.sort_origin = origin;
+    }
+
+    unsafe fn destroy_section(&self, section: SectionBuffers) {
+        unsafe {
+            self.device.destroy_buffer(section.index_buffer, None);
+            self.device.free_memory(section.index_memory, None);
+            self.device.destroy_buffer(section.vertex_buffer, None);
+            self.device.free_memory(section.vertex_memory, None);
+        }
+    }
+
+    /// Upload the atlas and build the pipelines, dropping every section.
+    pub fn load_atlas(&mut self, texture_levels: &[DecodedImage]) -> Result<(), VulkanError> {
+        unsafe {
+            self.destroy_scene();
+            self.depth = Some(self.create_depth_target()?);
 
             let (texture, texture_memory, texture_view) = self.upload_texture(texture_levels)?;
             // These are the reference's own values for the terrain sampler,
@@ -1209,12 +1320,6 @@ impl VulkanBackend {
                 self.create_pipeline(descriptor_layout, PipelineKind::SkyOverlay)?;
 
             self.scene = Some(SceneResources {
-                vertex_buffer,
-                vertex_memory,
-                index_buffer,
-                index_memory,
-                index_count: mesh.indices.len() as u32,
-                translucent_index_count: mesh.translucent_indices.len() as u32,
                 texture,
                 texture_memory,
                 texture_view,
@@ -1426,10 +1531,9 @@ impl VulkanBackend {
                 self.device.destroy_image_view(scene.texture_view, None);
                 self.device.destroy_image(scene.texture, None);
                 self.device.free_memory(scene.texture_memory, None);
-                self.device.destroy_buffer(scene.index_buffer, None);
-                self.device.free_memory(scene.index_memory, None);
-                self.device.destroy_buffer(scene.vertex_buffer, None);
-                self.device.free_memory(scene.vertex_memory, None);
+            }
+            for (_, section) in std::mem::take(&mut self.sections) {
+                self.destroy_section(section);
             }
             if let Some(depth) = self.depth.take() {
                 self.device.destroy_image_view(depth.view, None);

@@ -20,8 +20,14 @@ tick'i oyuncuyu çalıştırıp istediği paketleri, ardından tick sonu paketin
 gönderiyor.
 
 `voxel-client play <sunucu> [genişlik yükseklik]` bir pencere açıyor: WASD,
-boşluk, sol shift, sol ctrl ve fare. Kamera oyuncunun gözünde; çizilen kutu
-oyuncu kenarına yaklaşınca yeniden kuruluyor.
+boşluk, sol shift, sol ctrl ve fare. Kamera oyuncunun gözünde. Bütün blok
+modelleri ve tek atlas açılışta kuruluyor; dünya 16³'lük bölümler halinde
+mesh'leniyor. Gelen yığın ve ışık paketleri çevredeki 3×3 yığın sütununun,
+blok güncellemeleri çevredeki 3×3×3 bölümün mesh'ini kirletiyor; her kare
+görüş mesafesindeki kirli bölümlerin oyuncuya en yakınları bir süre
+bütçesiyle yeniden kuruluyor, unutulan yığınların bölümleri siliniyor.
+Yarı saydam yüzler bölüm merkezinin kameraya uzaklığına göre uzaktan yakına
+çiziliyor.
 
 ## Ölçülen sonuç
 
@@ -103,7 +109,12 @@ barışçıl ve `server-port=25600` içeriyor.
   lightmap shader'ının hesabıyla, 8 bit nicemleme ve doğrusal örneklemeyle
   vertex shader'da. Dörtgenler FaceBakery gibi son yönlerine göre yeniden
   sıralanıyor. Farklar: blok ışığı titremesi, gece görüşü, karanlık etkisi
-  ve patron sisi yok; ışık paketleri gelince mesh yeniden kurulmuyor;
-  referans karelerle karşılaştırılmadı.
+  ve patron sisi yok; referans karelerle karşılaştırılmadı.
+- Bölüm mesh'leme referansın bölüm derleyicisinin sırası ve iş
+  parçacıkları değil: kirli bölümler ana iş parçacığında, uzaklık sırasıyla,
+  kare başına 12 ms bütçeyle kuruluyor; görüş mesafesi 2–12 bölüme
+  kırpılıyor; bölüm içindeki yarı saydam yüzler sıralanmıyor; görünürlük (frustum ve
+  mağara) ayıklaması yok. Derinlik testi referanstaki gibi eşitliği
+  geçiriyor; aynı yerdeki sonraki yüz (çimin yan örtüsü) görünüyor.
 - Kare zamanlaması referansın zamanlayıcısı değil; tick'ler 50 ms birikimle
   sürülüyor.

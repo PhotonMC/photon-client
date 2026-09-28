@@ -58,6 +58,8 @@ pub struct PlaySession {
     dimension_type_id: i32,
     hashed_seed: i64,
     game_time: i64,
+    dirty_sections: std::collections::BTreeSet<(i32, i32, i32)>,
+    forgotten_chunks: Vec<(i32, i32)>,
     clocks: std::collections::BTreeMap<i32, ClockState>,
 }
 
@@ -109,6 +111,8 @@ impl PlaySession {
             dimension_type_id: 0,
             hashed_seed: 0,
             game_time: 0,
+            dirty_sections: std::collections::BTreeSet::new(),
+            forgotten_chunks: Vec::new(),
             clocks: std::collections::BTreeMap::new(),
         })
     }
@@ -139,6 +143,52 @@ impl PlaySession {
     /// The server's view distance in chunks, from the login packet.
     pub fn view_distance(&self) -> i32 {
         self.view_distance
+    }
+
+    /// Sections whose drawing may have changed since the last call: their
+    /// blocks, their light, or a neighbour they cull or shade against.
+    pub fn take_dirty_sections(&mut self) -> Vec<(i32, i32, i32)> {
+        std::mem::take(&mut self.dirty_sections)
+            .into_iter()
+            .collect()
+    }
+
+    /// Chunks the server unloaded since the last call.
+    pub fn take_forgotten_chunks(&mut self) -> Vec<(i32, i32)> {
+        std::mem::take(&mut self.forgotten_chunks)
+    }
+
+    fn section_range(&self) -> std::ops::Range<i32> {
+        let dimension = self.trace.world.dimension();
+        let low = dimension.min_y.div_euclid(16);
+        low..low + dimension.height / 16
+    }
+
+    /// Mark a chunk column and every column around it.
+    fn mark_columns_around(&mut self, chunk_x: i32, chunk_z: i32) {
+        for section_y in self.section_range() {
+            for dx in -1..=1 {
+                for dz in -1..=1 {
+                    self.dirty_sections
+                        .insert((chunk_x + dx, section_y, chunk_z + dz));
+                }
+            }
+        }
+    }
+
+    /// Mark the section holding a block and the sections touching it.
+    fn mark_block(&mut self, x: i32, y: i32, z: i32) {
+        for dx in [-1, 0, 1] {
+            for dy in [-1, 0, 1] {
+                for dz in [-1, 0, 1] {
+                    self.dirty_sections.insert((
+                        (x + dx).div_euclid(16),
+                        (y + dy).div_euclid(16),
+                        (z + dz).div_euclid(16),
+                    ));
+                }
+            }
+        }
     }
 
     /// The hashed world seed the biome zoom is jittered with.
@@ -322,6 +372,7 @@ impl PlaySession {
             }
             PLAY_CLIENTBOUND_CHUNK_PACKET_ID => {
                 let chunk = parse_chunk_packet(payload)?;
+                self.mark_columns_around(chunk.x, chunk.z);
                 self.trace.world.replace_chunk(
                     chunk.x,
                     chunk.z,
@@ -354,6 +405,7 @@ impl PlaySession {
             }
             PLAY_CLIENTBOUND_LIGHT_UPDATE_PACKET_ID => {
                 let update = parse_light_update_packet(payload)?;
+                self.mark_columns_around(update.x, update.z);
                 self.trace.world.apply_light_updates(
                     update.x,
                     update.z,
@@ -374,9 +426,12 @@ impl PlaySession {
             PLAY_CLIENTBOUND_FORGET_LEVEL_CHUNK_PACKET_ID => {
                 let (x, z) = parse_forget_level_chunk_packet(payload)?;
                 self.trace.world.unload_chunk(x, z);
+                self.forgotten_chunks.push((x, z));
+                self.mark_columns_around(x, z);
             }
             PLAY_CLIENTBOUND_BLOCK_UPDATE_PACKET_ID => {
                 let update = parse_block_update_packet(payload)?;
+                self.mark_block(update.x, update.y, update.z);
                 self.trace
                     .world
                     .update_block_state(update.x, update.y, update.z, update.state_id);
@@ -394,6 +449,12 @@ impl PlaySession {
                         .map_err(|_| ConnectionError::Codec("section blocks update"))?;
                     let state = (packed as u64 >> 12) as i32;
                     let local = (packed & 0xfff) as i32;
+                    let (bx, by, bz) = (
+                        section_x * 16 + ((local >> 8) & 15),
+                        section_y * 16 + (local & 15),
+                        section_z * 16 + ((local >> 4) & 15),
+                    );
+                    self.mark_block(bx, by, bz);
                     self.trace.world.update_block_state(
                         section_x * 16 + ((local >> 8) & 15),
                         section_y * 16 + (local & 15),
