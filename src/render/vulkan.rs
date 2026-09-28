@@ -22,19 +22,58 @@ use crate::render::scene::{Mesh, Vertex};
 /// Scaffolding shaders. These are this project's own, not the reference's:
 /// they exist to prove the pipeline works, and carry no parity claim.
 const VERTEX_SHADER: &str = r"#version 450
-layout(push_constant) uniform Push { mat4 view_projection; } push;
+layout(push_constant) uniform Push {
+    mat4 view_projection;
+    vec4 sky_colour_factor;
+    vec4 block_tint_factor;
+    vec4 ambient_brightness;
+} push;
 layout(location = 0) in vec3 in_position;
 layout(location = 1) in vec2 in_uv;
 layout(location = 2) in float in_shade;
 layout(location = 3) in vec4 in_tint;
+layout(location = 4) in vec2 in_light;
 layout(location = 0) out vec2 out_uv;
 layout(location = 1) out float out_shade;
 layout(location = 2) out vec4 out_tint;
+
+// One texel of the reference's 16x16 lightmap, as its lightmap shader
+// computes it and as an 8-bit texture stores it.
+float brightness(float level) {
+    return level / (4.0 - 3.0 * level);
+}
+vec3 lightmap_texel(int block, int sky) {
+    float block_level = float(block) / 15.0;
+    float sky_level = float(sky) / 15.0;
+    float block_brightness = brightness(block_level) * push.block_tint_factor.a;
+    float sky_brightness = brightness(sky_level) * push.sky_colour_factor.a;
+    vec3 colour = push.ambient_brightness.rgb;
+    colour += push.sky_colour_factor.rgb * sky_brightness;
+    float parabola = (2.0 * block_level - 1.0) * (2.0 * block_level - 1.0);
+    colour += mix(push.block_tint_factor.rgb, vec3(1.0), 0.9 * parabola) * block_brightness;
+    colour = clamp(colour, 0.0, 1.0);
+    float top = max(max(colour.x, colour.y), colour.z);
+    float inverted = 1.0 - top;
+    vec3 lifted = colour * ((1.0 - inverted * inverted * inverted * inverted) / top);
+    colour = mix(colour, lifted, push.ambient_brightness.a);
+    return floor(colour * 255.0 + 0.5) / 255.0;
+}
+// The lightmap sampled with linear filtering at the vertex's coordinates.
+vec3 sample_lightmap(vec2 coords) {
+    vec2 uv = clamp(coords / 256.0 + 0.5 / 16.0, vec2(0.5 / 16.0), vec2(15.5 / 16.0));
+    vec2 texel = uv * 16.0 - 0.5;
+    ivec2 low = ivec2(floor(texel));
+    vec2 fraction = texel - floor(texel);
+    ivec2 high = min(low + 1, ivec2(15));
+    vec3 bottom = mix(lightmap_texel(low.x, low.y), lightmap_texel(high.x, low.y), fraction.x);
+    vec3 top = mix(lightmap_texel(low.x, high.y), lightmap_texel(high.x, high.y), fraction.x);
+    return mix(bottom, top, fraction.y);
+}
 void main() {
     gl_Position = push.view_projection * vec4(in_position, 1.0);
     out_uv = in_uv;
     out_shade = in_shade;
-    out_tint = in_tint;
+    out_tint = in_tint * vec4(sample_lightmap(in_light), 1.0);
 }
 ";
 
@@ -115,6 +154,24 @@ void main() {
     out_colour = colour;
 }
 ";
+
+/// Lightmap inputs with nothing dimming them: white sky light at full
+/// factor, the default block light tint at the reference's base factor, no
+/// ambient light, and the default brightness option.
+const DEFAULT_LIGHTMAP: [f32; 12] = [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    0.847_058_83,
+    0.549_019_63,
+    1.4,
+    0.0,
+    0.0,
+    0.0,
+    0.5,
+];
 
 /// Which of the drawing pipelines to build.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -287,6 +344,7 @@ pub struct VulkanBackend {
     scene: Option<SceneResources>,
     sky_buffer: Option<SkyBuffer>,
     pending_sky: Option<PendingSky>,
+    lightmap: [f32; 12],
     image_available: vk::Semaphore,
     render_finished: Vec<vk::Semaphore>,
     in_flight: vk::Fence,
@@ -539,6 +597,7 @@ impl VulkanBackend {
                 scene: None,
                 sky_buffer: None,
                 pending_sky: None,
+                lightmap: DEFAULT_LIGHTMAP,
                 image_available,
                 render_finished,
                 in_flight,
@@ -744,12 +803,16 @@ impl VulkanBackend {
                 &[],
             );
             let matrix: [f32; 16] = std::array::from_fn(|i| view_projection[i / 4][i % 4]);
+            // The terrain shaders also take the lightmap's inputs.
+            let mut terrain_push = [0.0_f32; 28];
+            terrain_push[..16].copy_from_slice(&matrix);
+            terrain_push[16..].copy_from_slice(&self.lightmap);
             self.device.cmd_push_constants(
                 self.command_buffer,
                 scene.pipeline_layout,
                 vk::ShaderStageFlags::VERTEX,
                 0,
-                std::slice::from_raw_parts(matrix.as_ptr().cast::<u8>(), 64),
+                std::slice::from_raw_parts(terrain_push.as_ptr().cast::<u8>(), 112),
             );
             self.device.cmd_bind_vertex_buffers(
                 self.command_buffer,
@@ -784,7 +847,7 @@ impl VulkanBackend {
                     scene.translucent_pipeline_layout,
                     vk::ShaderStageFlags::VERTEX,
                     0,
-                    std::slice::from_raw_parts(matrix.as_ptr().cast::<u8>(), 64),
+                    std::slice::from_raw_parts(terrain_push.as_ptr().cast::<u8>(), 112),
                 );
                 self.device.cmd_draw_indexed(
                     self.command_buffer,
@@ -884,6 +947,11 @@ impl VulkanBackend {
             ];
             let terrain_attributes = [
                 vk::VertexInputAttributeDescription::default()
+                    .location(4)
+                    .binding(0)
+                    .format(vk::Format::R32G32_SFLOAT)
+                    .offset(40),
+                vk::VertexInputAttributeDescription::default()
                     .location(0)
                     .binding(0)
                     .format(vk::Format::R32G32B32_SFLOAT)
@@ -970,7 +1038,7 @@ impl VulkanBackend {
             let push_ranges = [
                 vk::PushConstantRange::default()
                     .stage_flags(vk::ShaderStageFlags::VERTEX)
-                    .size(64),
+                    .size(if sky { 64 } else { 112 }),
                 vk::PushConstantRange::default()
                     .stage_flags(vk::ShaderStageFlags::FRAGMENT)
                     .offset(64)
@@ -1391,6 +1459,34 @@ impl VulkanBackend {
     ) -> Result<(), VulkanError> {
         self.render_frame(colour, false, view_projection)
             .map(|_| ())
+    }
+
+    /// Set the lightmap's inputs for the frames that follow: the sky light
+    /// colour and factor, the block light tint and factor, and the ambient
+    /// colour and brightness option.
+    pub fn set_lightmap(
+        &mut self,
+        sky_colour: [f32; 3],
+        sky_factor: f32,
+        block_tint: [f32; 3],
+        block_factor: f32,
+        ambient: [f32; 3],
+        brightness: f32,
+    ) {
+        self.lightmap = [
+            sky_colour[0],
+            sky_colour[1],
+            sky_colour[2],
+            sky_factor,
+            block_tint[0],
+            block_tint[1],
+            block_tint[2],
+            block_factor,
+            ambient[0],
+            ambient[1],
+            ambient[2],
+            brightness,
+        ];
     }
 
     /// Hand over the next frame's sky: triangles in view-rotated space, the

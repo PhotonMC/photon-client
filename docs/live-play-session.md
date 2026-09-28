@@ -74,8 +74,21 @@ barışçıl ve `server-port=25600` içeriyor.
   kareler arasında aradeğerleniyor. Çizim: sisle ufka karışan gök diski,
   gün doğumu yelpazesi, güneş ve ay evresi (en yakın texel), tohumlu 1500
   yıldız, ufuk altı koyu disk; ekran sis rengine temizleniyor. Farklar:
-  yağmur ve gök gürültüsü karartması, bulutlar, arazinin sisi ve ışığı yok
-  (gece arazi aydınlık kalıyor), su altı görüş süresi sabit, dünya sınırı ve
-  End gökyüzü çizilmiyor; referans karelerle karşılaştırılmadı.
+  yağmur ve gök gürültüsü karartması, bulutlar, arazinin sisi yok, su altı
+  görüş süresi sabit, dünya sınırı ve End gökyüzü çizilmiyor; referans
+  karelerle karşılaştırılmadı.
+- Işık referansın model aydınlatıcısıyla hesaplanıyor: yumuşak ışıkta her
+  köşe çevre blokların ışığını ve AO gölgesini karıştırıyor (kısmi yüzler
+  ağırlıklı), ışık yayan bloklar ve AO kapalı modeller düz ışıkla; renk AO
+  grisi → yan gölge → ton sırasıyla 8 bit adımlarla. Durum özellikleri
+  (ışık yayma, AO gölgesi, görüş engelleme, sönümleme, katı çizim, tam kutu)
+  referanstan tablo (`src/world/block_light_table.rs`,
+  `tools/generate/block_light.py`), block ailesinde karşılaştırılıyor. Işık
+  seviyeleri sunucunun yığın ve ışık paketlerinden; lightmap referansın
+  lightmap shader'ının hesabıyla, 8 bit nicemleme ve doğrusal örneklemeyle
+  vertex shader'da. Dörtgenler FaceBakery gibi son yönlerine göre yeniden
+  sıralanıyor. Farklar: blok ışığı titremesi, gece görüşü, karanlık etkisi
+  ve patron sisi yok; ışık paketleri gelince mesh yeniden kurulmuyor;
+  referans karelerle karşılaştırılmadı.
 - Kare zamanlaması referansın zamanlayıcısı değil; tick'ler 50 ms birikimle
   sürülüyor.

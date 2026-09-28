@@ -34,9 +34,13 @@ pub enum Attribute {
     MoonPhase,
     SkyFogEndDistance,
     WaterFogColor,
+    SkyLightColor,
+    SkyLightFactor,
+    BlockLightTint,
+    AmbientLightColor,
 }
 
-const ATTRIBUTES: [Attribute; 10] = [
+const ATTRIBUTES: [Attribute; 14] = [
     Attribute::SkyColor,
     Attribute::FogColor,
     Attribute::SunriseSunsetColor,
@@ -47,6 +51,10 @@ const ATTRIBUTES: [Attribute; 10] = [
     Attribute::MoonPhase,
     Attribute::SkyFogEndDistance,
     Attribute::WaterFogColor,
+    Attribute::SkyLightColor,
+    Attribute::SkyLightFactor,
+    Attribute::BlockLightTint,
+    Attribute::AmbientLightColor,
 ];
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -71,12 +79,22 @@ impl Attribute {
             Self::MoonPhase => "minecraft:visual/moon_phase",
             Self::SkyFogEndDistance => "minecraft:visual/sky_fog_end_distance",
             Self::WaterFogColor => "minecraft:visual/water_fog_color",
+            Self::SkyLightColor => "minecraft:visual/sky_light_color",
+            Self::SkyLightFactor => "minecraft:visual/sky_light_factor",
+            Self::BlockLightTint => "minecraft:visual/block_light_tint",
+            Self::AmbientLightColor => "minecraft:visual/ambient_light_color",
         }
     }
 
     fn kind(self) -> Kind {
         match self {
-            Self::SkyColor | Self::FogColor | Self::WaterFogColor => Kind::Rgb,
+            Self::SkyColor
+            | Self::FogColor
+            | Self::WaterFogColor
+            | Self::SkyLightColor
+            | Self::BlockLightTint
+            | Self::AmbientLightColor => Kind::Rgb,
+            Self::SkyLightFactor => Kind::Float,
             Self::SunriseSunsetColor => Kind::Argb,
             Self::SunAngle | Self::MoonAngle | Self::StarAngle => Kind::Angle,
             Self::StarBrightness | Self::SkyFogEndDistance => Kind::Float,
@@ -89,6 +107,10 @@ impl Attribute {
             Self::SkyFogEndDistance => Value::Float(512.0),
             Self::WaterFogColor => Value::Color(-16_448_205_i32 as u32),
             Self::MoonPhase => Value::Phase(0),
+            Self::SkyLightColor => Value::Color(0xFFFF_FFFF),
+            Self::SkyLightFactor => Value::Float(1.0),
+            Self::BlockLightTint => Value::Color(-10_100_i32 as u32),
+            Self::AmbientLightColor => Value::Color(0xFF00_0000),
             _ => match self.kind() {
                 Kind::Rgb | Kind::Argb => Value::Color(0),
                 _ => Value::Float(0.0),
@@ -98,7 +120,9 @@ impl Attribute {
 
     fn sanitize(self, value: Value) -> Value {
         match (self, value) {
-            (Self::StarBrightness, Value::Float(v)) => Value::Float(v.clamp(0.0, 1.0)),
+            (Self::StarBrightness | Self::SkyLightFactor, Value::Float(v)) => {
+                Value::Float(v.clamp(0.0, 1.0))
+            }
             (Self::SkyFogEndDistance, Value::Float(v)) => Value::Float(v.max(0.0)),
             _ => value,
         }
@@ -836,6 +860,36 @@ impl Attributes {
             })
             .collect();
         Self { values }
+    }
+}
+
+/// The lightmap's inputs, as the lightmap extractor reads them.
+#[derive(Debug, Clone, Copy)]
+pub struct LightmapInputs {
+    pub sky_colour: [f32; 3],
+    pub sky_factor: f32,
+    pub block_tint: [f32; 3],
+    pub ambient: [f32; 3],
+}
+
+impl Attributes {
+    /// The sky light colour and factor, the block light tint and the ambient
+    /// colour, each colour as the lightmap takes it (0 to 1 per channel).
+    pub fn lightmap(&self) -> LightmapInputs {
+        let rgb = |attribute: Attribute| {
+            let colour = self.get(attribute).color();
+            [
+                channel(colour, 16) as f32 / 255.0,
+                channel(colour, 8) as f32 / 255.0,
+                channel(colour, 0) as f32 / 255.0,
+            ]
+        };
+        LightmapInputs {
+            sky_colour: rgb(Attribute::SkyLightColor),
+            sky_factor: self.get(Attribute::SkyLightFactor).float(),
+            block_tint: rgb(Attribute::BlockLightTint),
+            ambient: rgb(Attribute::AmbientLightColor),
+        }
     }
 }
 

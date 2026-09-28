@@ -48,6 +48,7 @@ pub struct WorldMesh {
 pub fn build_world_mesh(
     source: &impl AssetSource,
     read: impl Fn(i32, i32, i32) -> Option<i32>,
+    light: impl Fn(i32, i32, i32) -> (u8, u8),
     origin: [i32; 3],
     size: [i32; 3],
     mip_level: i32,
@@ -159,6 +160,10 @@ pub fn build_world_mesh(
         mip_level,
     )?;
 
+    let lighter = crate::render::block_light::Lighter {
+        state: |p: [i32; 3]| read(p[0], p[1], p[2]).and_then(|state| u32::try_from(state).ok()),
+        light: |p: [i32; 3]| light(p[0], p[1], p[2]),
+    };
     let mut mesh = Mesh::default();
     for placement in &placements {
         let model = &models[&placement.model];
@@ -198,7 +203,7 @@ pub fn build_world_mesh(
                 facing,
             )
         };
-        let part = crate::render::resolve::build_mesh(
+        let mut part = crate::render::resolve::build_mesh(
             model,
             &atlas,
             (!identity).then_some(&state),
@@ -206,6 +211,55 @@ pub fn build_world_mesh(
             uv_transform,
             occluded,
         )?;
+        // Smooth lighting, the reference's default, unless the block glows or
+        // the model opts out of ambient occlusion.
+        let emission = crate::render::block_light::light_traits(Some(placement.state)).emission;
+        let smooth = emission == 0 && model.ambient_occlusion;
+        for (quad, info) in part.quads.iter().enumerate() {
+            let corners: [[f32; 3]; 4] =
+                std::array::from_fn(|corner| part.vertices[quad * 4 + corner].position);
+            let lit = lighter.light_quad(
+                placement.state,
+                placement.position,
+                &corners,
+                info.direction,
+                info.cull,
+                smooth,
+            );
+            let side = if info.shade {
+                crate::render::block_light::cardinal(info.direction)
+            } else {
+                1.0
+            };
+            for corner in 0..4 {
+                let vertex = &mut part.vertices[quad * 4 + corner];
+                // The colour is built in 8-bit steps as the reference builds
+                // it: the occlusion grey, then the side shade, then the tint.
+                let grey = if smooth {
+                    let grey = (lit.shade[corner] * 255.0).floor() as i32;
+                    ((grey as f32 * side) as i32).clamp(0, 255)
+                } else {
+                    (side * 255.0).floor() as i32
+                };
+                let tint = vertex.tint.map(|channel| (channel * 255.0).round() as i32);
+                let white = tint == [255, 255, 255, 255];
+                let channel = |index: usize| {
+                    if white {
+                        grey
+                    } else {
+                        grey * tint[index] / 255
+                    }
+                };
+                vertex.tint = [
+                    channel(0) as f32 / 255.0,
+                    channel(1) as f32 / 255.0,
+                    channel(2) as f32 / 255.0,
+                    1.0,
+                ];
+                vertex.shade = 1.0;
+                vertex.light = crate::render::block_light::light_uv(lit.light[corner]);
+            }
+        }
         // A model is built in its own block's unit cube, so it moves to
         // where the block sits, measured from the box's near corner.
         let offset = [
@@ -226,6 +280,7 @@ pub fn build_world_mesh(
 
     let fluids = FluidMesher {
         read: &read,
+        lighter: &lighter,
         atlas: &atlas,
         origin,
     };
@@ -274,8 +329,9 @@ const WATER_TINT: u32 = 0x3F76E4;
 /// it is solid, this asks whether its collision shape is the whole block.
 /// That is the same answer for ordinary full blocks and an approximation for
 /// everything else.
-struct FluidMesher<'a, R: Fn(i32, i32, i32) -> Option<i32>> {
+struct FluidMesher<'a, R: Fn(i32, i32, i32) -> Option<i32>, S, L> {
     read: &'a R,
+    lighter: &'a crate::render::block_light::Lighter<S, L>,
     atlas: &'a BuiltAtlas,
     origin: [i32; 3],
 }
@@ -286,7 +342,22 @@ struct FluidAt {
     own_height: f32,
 }
 
-impl<R: Fn(i32, i32, i32) -> Option<i32>> FluidMesher<'_, R> {
+impl<R, S, L> FluidMesher<'_, R, S, L>
+where
+    R: Fn(i32, i32, i32) -> Option<i32>,
+    S: Fn([i32; 3]) -> Option<u32>,
+    L: Fn([i32; 3]) -> (u8, u8),
+{
+    /// `FluidRenderer.getLightCoords`: the brighter of here and above.
+    fn fluid_light(&self, x: i32, y: i32, z: i32) -> [f32; 2] {
+        let at = |p: [i32; 3]| self.lighter.light_coords((self.lighter.state)(p), p);
+        let here = at([x, y, z]);
+        let above = at([x, y + 1, z]);
+        let block = ((here >> 4) & 15).max((above >> 4) & 15);
+        let sky = ((here >> 20) & 15).max((above >> 20) & 15);
+        crate::render::block_light::light_uv((block << 4) | (sky << 20))
+    }
+
     fn fluid(&self, x: i32, y: i32, z: i32) -> Option<FluidAt> {
         let state = (self.read)(x, y, z)?;
         let (water, own_height, _) = crate::world::local_player::state_fluid(state)?;
@@ -492,7 +563,16 @@ impl<R: Fn(i32, i32, i32) -> Option<i32>> FluidMesher<'_, R> {
             ];
             // Seen from below, the surface is drawn again facing down, unless
             // the block above is solid enough to hide it.
-            add_face(mesh, corners, uv, 1.0, tint, !self.solid(x, y + 1, z));
+            let light = self.fluid_light(x, y, z);
+            add_face(
+                mesh,
+                corners,
+                uv,
+                1.0,
+                tint,
+                light,
+                !self.solid(x, y + 1, z),
+            );
         }
 
         if render_down {
@@ -508,6 +588,7 @@ impl<R: Fn(i32, i32, i32) -> Option<i32>> FluidMesher<'_, R> {
                 [[u0, v0], [u1, v0], [u1, v1], [u0, v1]],
                 0.5,
                 tint,
+                self.fluid_light(x, y - 1, z),
                 false,
             );
         }
@@ -577,6 +658,7 @@ impl<R: Fn(i32, i32, i32) -> Option<i32>> FluidMesher<'_, R> {
                 ],
                 shade,
                 tint,
+                self.fluid_light(x, y, z),
                 true,
             );
         }
@@ -591,6 +673,7 @@ fn add_face(
     uv: [[f32; 2]; 4],
     shade: f32,
     tint: [f32; 4],
+    light: [f32; 2],
     back_face: bool,
 ) {
     let base = mesh.vertices.len() as u32;
@@ -600,6 +683,7 @@ fn add_face(
             uv,
             shade,
             tint,
+            light,
         });
     }
     mesh.translucent_indices

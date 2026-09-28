@@ -693,6 +693,12 @@ fn load_world(
     let built = render::build_world_mesh(
         &source,
         |x, y, z| trace.world.block_state_at(x, y, z),
+        |x, y, z| {
+            (
+                trace.world.block_brightness(x, y, z),
+                trace.world.sky_brightness(x, y, z),
+            )
+        },
         origin,
         size,
         requested,
@@ -903,6 +909,12 @@ fn world_box_mesh(
     let built = render::build_world_mesh(
         &source,
         |x, y, z| world.block_state_at(x, y, z),
+        |x, y, z| {
+            (
+                world.block_brightness(x, y, z),
+                world.sky_brightness(x, y, z),
+            )
+        },
         origin,
         size,
         requested,
@@ -1154,6 +1166,18 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
             &stars,
             &sky_sprites,
             environment.skybox(),
+        );
+        let lightmap = attributes.lightmap();
+        backend.set_lightmap(
+            lightmap.sky_colour,
+            lightmap.sky_factor,
+            lightmap.block_tint,
+            // The block light factor carries a small per-tick flicker in
+            // the reference; it is left at its base here.
+            1.4,
+            lightmap.ambient,
+            // The brightness option's default.
+            0.5,
         );
         let sky_view_projection = player_camera(aspect, fov, [0.0; 3], y_rot, x_rot);
         backend.set_sky(

@@ -24,6 +24,23 @@ pub struct Vertex {
     /// slot. The reference folds the tint into the quad's colour before the
     /// shader sees it, so it rides along with the vertex here too.
     pub tint: [f32; 4],
+    /// Block and sky light as the lightmap reads them, each in sixteenths
+    /// of a level (0 to 240). Full bright unless a world lights the vertex.
+    pub light: [f32; 2],
+}
+
+/// The light a vertex gets when nothing lights it.
+pub const FULL_BRIGHT: [f32; 2] = [240.0, 240.0];
+
+/// What the lighting needs to know about one quad of a mesh.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct QuadInfo {
+    /// The side the quad faces once every rotation is applied.
+    pub direction: crate::direction::Direction,
+    /// The side whose neighbour may hide it, if the face names one.
+    pub cull: Option<crate::direction::Direction>,
+    /// Whether the face takes the per-side shade.
+    pub shade: bool,
 }
 
 /// Vertices and indices for one cube.
@@ -33,6 +50,9 @@ pub struct Mesh {
     pub vertices: Vec<Vertex>,
     /// Triangle indices, six per face.
     pub indices: Vec<u32>,
+    /// One entry per quad of `indices`, in the same order, when the mesh was
+    /// built from a model.
+    pub quads: Vec<QuadInfo>,
     /// Indices of the translucent faces, drawn after the rest with blending
     /// and without writing depth.
     pub translucent_indices: Vec<u32>,
@@ -87,6 +107,7 @@ pub fn full_cube(sprite: SpriteRect) -> Mesh {
                 ],
                 shade: SHADE[face_index],
                 tint: [1.0; 4],
+                light: FULL_BRIGHT,
             });
         }
         mesh.indices

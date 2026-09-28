@@ -428,15 +428,11 @@ pub fn build_mesh(
                 .get(&key)
                 .ok_or_else(|| ResolveError::BadTexture(key.clone()))?;
 
-            let positions = face_vertices(element.from, element.to, *facing);
+            let mut positions = face_vertices(element.from, element.to, *facing);
             let uvs = face
                 .uvs
                 .unwrap_or_else(|| default_face_uv(element.from, element.to, *facing));
-            let shade = if element.shade {
-                face_shade(*facing)
-            } else {
-                1.0
-            };
+
             // A face names a tint slot rather than a colour. A slot the
             // caller did not resolve leaves the face untinted, which is what
             // the reference does when a block has no source for that layer.
@@ -452,32 +448,71 @@ pub fn build_mesh(
             ];
             let face_uv = uv_transform(*facing);
             let base = mesh.vertices.len() as u32;
-            for (slot, position) in positions.into_iter().enumerate() {
+            let mut packed_uvs = [0_u64; 4];
+            for (slot, position) in positions.iter_mut().enumerate() {
                 let mut rotated = match &element.rotation {
-                    Some(rotation) => rotate_vertex(position, rotation.origin, &rotation.transform),
-                    None => position,
+                    Some(rotation) => {
+                        rotate_vertex(*position, rotation.origin, &rotation.transform)
+                    }
+                    None => *position,
                 };
                 // The variant's rotation comes after the element's and turns
                 // about the block's centre, as the reference orders them.
                 if let Some(state) = model_state {
                     rotated = rotate_vertex(rotated, BLOCK_CENTRE, state);
                 }
+                *position = rotated;
                 // UV lock turns the texture coordinate back by as much as the
                 // model turned, so the texture keeps its world orientation.
                 // Without it the transform is identity and the coordinate
                 // passes through.
                 let (u, v) = face_vertex_uv(uvs, face.rotation, slot as u32);
                 let (u, v) = crate::render::rotation::transform_face_uv(&face_uv, u, v);
+                packed_uvs[slot] = (u64::from(u.to_bits()) << 32) | u64::from(v.to_bits());
+            }
+            // FaceBakery: the quad faces whichever side its normal is closest
+            // to, and without an element rotation its corners are put back in
+            // that side's order.
+            let direction = crate::render::geometry::closest_direction(
+                crate::render::geometry::triangle_normal(positions[0], positions[1], positions[2]),
+            );
+            if element.rotation.is_none()
+                && let Some(direction) = direction
+            {
+                let _ = crate::render::geometry::recalculate_winding(
+                    &mut positions,
+                    &mut packed_uvs,
+                    direction,
+                );
+            }
+            let direction = direction.unwrap_or(crate::direction::Direction::Up);
+            let shade = if element.shade {
+                face_shade(direction)
+            } else {
+                1.0
+            };
+            for (position, packed) in positions.into_iter().zip(packed_uvs) {
+                let u = f32::from_bits((packed >> 32) as u32);
+                let v = f32::from_bits(packed as u32);
                 mesh.vertices.push(Vertex {
-                    position: rotated,
+                    position,
                     uv: [
                         rect[0] + (rect[2] - rect[0]) * u,
                         rect[1] + (rect[3] - rect[1]) * v,
                     ],
                     shade,
                     tint,
+                    light: crate::render::scene::FULL_BRIGHT,
                 });
             }
+            mesh.quads.push(crate::render::scene::QuadInfo {
+                direction,
+                cull: face.cull_for_direction.map(|cull| match model_state {
+                    Some(state) => crate::render::rotation::rotate_direction(state, cull),
+                    None => cull,
+                }),
+                shade: element.shade,
+            });
             mesh.indices
                 .extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 3]);
         }
