@@ -32,9 +32,21 @@ enum GrassModifier {
     Swamp,
 }
 
+/// What falls in a column when it rains.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Precipitation {
+    None,
+    Rain,
+    Snow,
+}
+
 #[derive(Clone, Debug)]
 struct BiomeColours {
     temperature: f32,
+    has_precipitation: bool,
+    /// The `frozen` temperature modifier, which lays patches of cold over
+    /// the biome.
+    frozen: bool,
     downfall: f32,
     grass: Option<u32>,
     foliage: Option<u32>,
@@ -137,7 +149,14 @@ pub struct BiomeTints {
     foliage: Vec<u32>,
     dry_foliage: Vec<u32>,
     zoom_seed: i64,
+    /// `Biome.BIOME_INFO_NOISE`, which the swamp colour and the frozen
+    /// modifier read.
     swamp_noise: SimplexNoise,
+    /// `Biome.TEMPERATURE_NOISE`, which cools the air above the snow line.
+    temperature_noise: SimplexNoise,
+    /// `Biome.FROZEN_TEMPERATURE_NOISE`'s three octaves, highest frequency
+    /// first.
+    frozen_noise: [SimplexNoise; 3],
 }
 
 fn read_json(path: &Path) -> Option<JsonObject> {
@@ -215,6 +234,15 @@ impl BiomeTints {
                         .as_ref()
                         .and_then(|b| b.f32("temperature"))
                         .unwrap_or(0.8),
+                    has_precipitation: biome
+                        .as_ref()
+                        .and_then(|b| b.bool("has_precipitation"))
+                        .unwrap_or(false),
+                    frozen: biome
+                        .as_ref()
+                        .and_then(|b| b.text("temperature_modifier"))
+                        .as_deref()
+                        == Some("frozen"),
                     downfall: biome
                         .as_ref()
                         .and_then(|b| b.f32("downfall"))
@@ -241,6 +269,14 @@ impl BiomeTints {
             .position(|name| name == "minecraft:plains")
             .unwrap_or(0);
         let mut random = RandomSource::create(2345);
+        let mut temperature_random = RandomSource::create(1234);
+        let mut frozen_random = RandomSource::create(3456);
+        // The zero octave is drawn first, then the lower ones in turn.
+        let frozen_noise = [
+            SimplexNoise::new(&mut frozen_random),
+            SimplexNoise::new(&mut frozen_random),
+            SimplexNoise::new(&mut frozen_random),
+        ];
         Some(Self {
             biomes,
             plains,
@@ -249,6 +285,8 @@ impl BiomeTints {
             dry_foliage: colour_map(assets_root, "dry_foliage")?,
             zoom_seed,
             swamp_noise: SimplexNoise::new(&mut random),
+            temperature_noise: SimplexNoise::new(&mut temperature_random),
+            frozen_noise,
         })
     }
 
@@ -317,6 +355,63 @@ impl BiomeTints {
             .and_then(|id| usize::try_from(id).ok())
             .filter(|id| *id < self.biomes.len())
             .unwrap_or(self.plains)
+    }
+
+    /// `PerlinSimplexNoise.getValue` over the frozen noise's octaves -2 to 0.
+    fn frozen_value(&self, x: f64, z: f64) -> f64 {
+        let mut value = 0.0;
+        let mut factor = 1.0;
+        let mut value_factor = 1.0 / 7.0;
+        for level in &self.frozen_noise {
+            value += level.value(x * factor, z * factor) * value_factor;
+            factor /= 2.0;
+            value_factor *= 2.0;
+        }
+        value
+    }
+
+    /// `Biome.getHeightAdjustedTemperature`: the biome's temperature, the
+    /// frozen modifier's cold patches, and the cooling above the snow line.
+    fn temperature(&self, biome: usize, position: [i32; 3], sea_level: i32) -> f32 {
+        let colours = &self.biomes[biome];
+        let mut temperature = colours.temperature;
+        if colours.frozen {
+            let [x, _, z] = position.map(f64::from);
+            let large = self.frozen_value(x * 0.05, z * 0.05) * 7.0;
+            let edge = self.swamp_noise.value(x * 0.2, z * 0.2);
+            if large + edge < 0.3 && self.swamp_noise.value(x * 0.09, z * 0.09) < 0.8 {
+                temperature = 0.2;
+            }
+        }
+        let snow_level = sea_level + 17;
+        if position[1] > snow_level {
+            let noise = (self.temperature_noise.value(
+                f64::from(position[0] as f32 / 8.0),
+                f64::from(position[2] as f32 / 8.0),
+            ) * 8.0) as f32;
+            temperature - (noise + position[1] as f32 - snow_level as f32) * 0.05 / 40.0
+        } else {
+            temperature
+        }
+    }
+
+    /// `ClientLevel.getPrecipitationAt` past its loaded-chunk check: none in
+    /// a biome without precipitation, snow where it is colder than 0.15,
+    /// otherwise rain.
+    pub fn precipitation_at(
+        &self,
+        position: [i32; 3],
+        noise_biome: &impl Fn(i32, i32, i32) -> Option<i32>,
+        sea_level: i32,
+    ) -> Precipitation {
+        let biome = self.biome_at(position[0], position[1], position[2], noise_biome);
+        if !self.biomes[biome].has_precipitation {
+            Precipitation::None
+        } else if self.temperature(biome, position, sea_level) >= 0.15 {
+            Precipitation::Rain
+        } else {
+            Precipitation::Snow
+        }
     }
 
     fn colour(&self, kind: TintKind, biome: usize, x: i32, z: i32) -> u32 {

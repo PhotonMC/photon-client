@@ -57,6 +57,7 @@ public final class BlockOracle {
                 case "light_properties" -> rows.add(lightProperties(element.getAsJsonObject()));
                 case "offset_properties" -> rows.add(offsetProperties(element.getAsJsonObject()));
                 case "fluid_overlay_blocks" -> rows.add(fluidOverlayBlocks(element.getAsJsonObject()));
+                case "motion_blocking" -> rows.add(motionBlocking(element.getAsJsonObject()));
                 default -> throw new IllegalArgumentException("Unknown block operation: " + operation);
             }
         }
@@ -495,6 +496,33 @@ public final class BlockOracle {
             blocks.add(described);
         }
         entry.add("blocks", blocks);
+        return entry;
+    }
+
+    /**
+     * Which states the MOTION_BLOCKING heightmap counts: those that block
+     * motion or hold a fluid. One bit per state in state id order, packed into
+     * 64-bit words, lowest bit first, written as hex.
+     */
+    private static JsonObject motionBlocking(JsonObject row) {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        entry.addProperty("outcome", "listed");
+        int count = net.minecraft.world.level.block.Block.BLOCK_STATE_REGISTRY.size();
+        long[] words = new long[(count + 63) / 64];
+        for (var state : net.minecraft.world.level.block.Block.BLOCK_STATE_REGISTRY) {
+            int id = net.minecraft.world.level.block.Block.getId(state);
+            var predicate = net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING.isOpaque();
+            if (predicate.test(state)) {
+                words[id / 64] |= 1L << (id % 64);
+            }
+        }
+        entry.addProperty("state_count", count);
+        var packed = new JsonArray();
+        for (long word : words) {
+            packed.add(String.format("%016x", word));
+        }
+        entry.add("words", packed);
         return entry;
     }
 

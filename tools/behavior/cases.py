@@ -13099,6 +13099,12 @@ def block_cases():
         "rows": [{"label": "registry"}],
     }
     yield {
+        "case_id": "block/motion-blocking",
+        "family": "block",
+        "operation": "motion_blocking",
+        "rows": [{"label": "registry"}],
+    }
+    yield {
         "case_id": "block/light-properties",
         "family": "block",
         "operation": "light_properties",

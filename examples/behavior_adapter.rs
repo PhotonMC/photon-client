@@ -16333,6 +16333,19 @@ fn block_result(request: &Value) -> Result<Value, String> {
                     .collect();
                 out.push(json!({"label": label, "outcome": "listed", "blocks": blocks}));
             }
+            "motion_blocking" => {
+                use voxel_client::world::motion_blocking_table as table;
+                let words: Vec<String> = table::WORDS
+                    .iter()
+                    .map(|word| format!("{word:016x}"))
+                    .collect();
+                out.push(json!({
+                    "label": label,
+                    "outcome": "listed",
+                    "state_count": table::STATE_COUNT,
+                    "words": words,
+                }));
+            }
             "fluid_overlay_blocks" => {
                 out.push(json!({
                     "label": label,

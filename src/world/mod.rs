@@ -1705,6 +1705,28 @@ impl ClientWorld {
     }
 
     /// Return the resolved global block-state ID at a world coordinate.
+    /// `Level.getHeight(MOTION_BLOCKING, x, z)`: one above the highest
+    /// state in the column that blocks motion or holds a fluid, or the
+    /// bottom of the world where there is none or no chunk.
+    pub fn motion_blocking_height(&self, x: i32, z: i32) -> i32 {
+        let bottom = self.dimension().min_y;
+        let Some(chunk) = self.chunk_for_query(x.div_euclid(16), z.div_euclid(16)) else {
+            return bottom;
+        };
+        let column = z.rem_euclid(16) as usize * 16 + x.rem_euclid(16) as usize;
+        for (section_y, section) in chunk.sections.iter().rev() {
+            for local_y in (0..16).rev() {
+                let Some(&state) = section.block_states.get(local_y * 256 + column) else {
+                    continue;
+                };
+                if motion_blocking(state) {
+                    return section_y * 16 + local_y as i32 + 1;
+                }
+            }
+        }
+        bottom
+    }
+
     pub fn block_state_at(&self, x: i32, y: i32, z: i32) -> Option<i32> {
         let chunk_key = (x.div_euclid(16), z.div_euclid(16));
         let chunk = self.chunk_for_query(chunk_key.0, chunk_key.1)?;
@@ -3092,6 +3114,17 @@ pub mod block_light_table;
 pub mod block_movement_table;
 pub mod block_registry;
 pub mod local_player;
+pub mod motion_blocking_table;
 
 #[cfg(test)]
 mod tests;
+
+/// Whether the MOTION_BLOCKING heightmap counts a state.
+pub fn motion_blocking(state: i32) -> bool {
+    let Ok(state) = usize::try_from(state) else {
+        return false;
+    };
+    motion_blocking_table::WORDS
+        .get(state / 64)
+        .is_some_and(|word| word >> (state % 64) & 1 == 1)
+}

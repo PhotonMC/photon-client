@@ -1081,6 +1081,14 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
     )?)
     .map_err(|error| format!("clouds: {error:?}"))?;
     let cloud_cells = render::clouds::CloudCells::from_image(&cloud_image);
+    let environment_texture =
+        |name: &str| -> Result<render::DecodedImage, Box<dyn std::error::Error>> {
+            let path = std::path::Path::new(&root)
+                .join(format!("minecraft/textures/environment/{name}.png"));
+            Ok(render::png::decode_rgba(&std::fs::read(path)?)
+                .map_err(|error| format!("{name}: {error:?}"))?)
+        };
+    backend.load_weather_textures(&environment_texture("rain")?, &environment_texture("snow")?)?;
     let mut cloud_key = None;
     // The reference seeds this source uniquely per run.
     let mut flicker_random = voxel_client::random::RandomSource::create(
@@ -1328,6 +1336,57 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                 * ((sky_light - 8.0) / 7.0).clamp(0.0, 1.0)
                 * if precipitation { 1.0 } else { 0.5 };
             rain_fog += (target - rain_fog) * frame_ticks * 0.2;
+        }
+        // Rain and snow around the camera.
+        {
+            let world = session.world();
+            let dimension = world.dimension();
+            let quart_min = dimension.min_y.div_euclid(4);
+            let quart_max = quart_min + dimension.height / 4 - 1;
+            let noise_biome = |x: i32, y: i32, z: i32| {
+                world.biome_at(x * 4, y.clamp(quart_min, quart_max) * 4, z * 4)
+            };
+            let sea_level = world.sea_level();
+            let height = |x: i32, z: i32| world.motion_blocking_height(x, z);
+            let precipitation = |x: i32, y: i32, z: i32| {
+                if !world.contains_chunk(x.div_euclid(16), z.div_euclid(16)) {
+                    return render::biome_tint::Precipitation::None;
+                }
+                biome_tints.precipitation_at([x, y, z], &noise_biome, sea_level)
+            };
+            let lighter = render::block_light::Lighter {
+                state: |[x, y, z]: [i32; 3]| {
+                    world
+                        .block_state_at(x, y, z)
+                        .and_then(|state| u32::try_from(state).ok())
+                },
+                light: |[x, y, z]: [i32; 3]| {
+                    (
+                        world.block_brightness(x, y, z),
+                        world.sky_brightness(x, y, z),
+                    )
+                },
+            };
+            let light_coords = |x: i32, y: i32, z: i32| {
+                lighter.light_coords((lighter.state)([x, y, z]), [x, y, z])
+            };
+            let weather = render::weather::build(
+                &render::weather::WeatherWorld {
+                    height: &height,
+                    precipitation: &precipitation,
+                    light_coords: &light_coords,
+                },
+                [
+                    feet.x,
+                    feet.y + f64::from(camera.eye_height(partial as f32)),
+                    feet.z,
+                ],
+                origin,
+                session.game_time(),
+                partial as f32,
+                session.rain_level(),
+            );
+            backend.set_weather(&weather.rain, &weather.snow)?;
         }
         let look = voxel_client::math::Vec3::direction_from_rotation_components(x_rot, y_rot);
         let sky = render::sky::build_frame(

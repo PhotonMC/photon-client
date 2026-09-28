@@ -215,6 +215,35 @@ void main() {
 }
 ";
 
+/// The weather's fragment shader, after the reference's particle shader:
+/// the texture at its plain lookup times the vertex colour, a cutout, then
+/// the terrain fog. The vertex side is the terrain's.
+const WEATHER_FRAGMENT_SHADER: &str = r"#version 450
+layout(set = 0, binding = 0) uniform sampler2D weather;
+layout(location = 0) in vec2 in_uv;
+layout(location = 1) in float in_shade;
+layout(location = 2) in vec4 in_tint;
+layout(location = 3) in vec2 in_fog;
+layout(location = 0) out vec4 out_colour;
+layout(push_constant) uniform Push {
+    layout(offset = 128) vec4 fog_colour;
+    vec4 fog_distances;
+} push;
+float linear_fog(float distance, float start, float end) {
+    if (distance <= start) { return 0.0; }
+    if (distance >= end) { return 1.0; }
+    return (distance - start) / (end - start);
+}
+void main() {
+    vec4 colour = texture(weather, in_uv) * in_tint;
+    if (colour.a < 0.1) { discard; }
+    float fog = max(
+        linear_fog(in_fog.x, push.fog_distances.x, push.fog_distances.y),
+        linear_fog(in_fog.y, push.fog_distances.z, push.fog_distances.w));
+    out_colour = vec4(mix(colour.rgb, push.fog_colour.rgb, fog * push.fog_colour.a), colour.a);
+}
+";
+
 /// No terrain fog: every distance out of reach, as the reference's empty
 /// fog buffer.
 const NO_FOG: [f32; 8] = [0.0, 0.0, 0.0, 1.0, f32::MAX, f32::MAX, f32::MAX, f32::MAX];
@@ -245,6 +274,7 @@ enum PipelineKind {
     SkyTranslucent,
     SkyOverlay,
     Clouds,
+    Weather,
 }
 
 /// Instance API version the reference asks for.
@@ -352,6 +382,12 @@ struct SceneResources {
     sky_overlay_pipeline: vk::Pipeline,
     cloud_pipeline_layout: vk::PipelineLayout,
     cloud_pipeline: vk::Pipeline,
+    weather_pipeline_layout: vk::PipelineLayout,
+    weather_pipeline: vk::Pipeline,
+    /// The rain and snow textures, once loaded, with their sampler and sets.
+    weather_textures: Vec<(vk::Image, vk::DeviceMemory, vk::ImageView)>,
+    weather_sampler: Option<vk::Sampler>,
+    weather_sets: Vec<vk::DescriptorSet>,
 }
 
 /// A rectangle of one atlas level to rewrite.
@@ -455,6 +491,9 @@ pub struct VulkanBackend {
     sky_buffer: Option<SkyBuffer>,
     pending_sky: Option<PendingSky>,
     cloud_buffer: Option<CloudBuffer>,
+    weather_buffer: Option<SkyBuffer>,
+    /// The rain's and the snow's vertex counts in the weather buffer.
+    weather_counts: (u32, u32),
     sections: std::collections::BTreeMap<(i32, i32, i32), SectionBuffers>,
     sort_origin: [f32; 3],
     lightmap: [f32; 12],
@@ -713,6 +752,8 @@ impl VulkanBackend {
                 sky_buffer: None,
                 pending_sky: None,
                 cloud_buffer: None,
+                weather_buffer: None,
+                weather_counts: (0, 0),
                 sections: std::collections::BTreeMap::new(),
                 sort_origin: [0.0; 3],
                 lightmap: DEFAULT_LIGHTMAP,
@@ -1035,6 +1076,46 @@ impl VulkanBackend {
                 self.device
                     .cmd_draw(self.command_buffer, clouds.vertex_count, 1, 0, 0);
             }
+            // Rain, then snow, each with its texture, over everything and
+            // leaving the depth alone.
+            if let Some(buffer) = self.weather_buffer.as_ref()
+                && scene.weather_sets.len() == 2
+                && self.weather_counts.0 + self.weather_counts.1 > 0
+            {
+                self.device.cmd_bind_pipeline(
+                    self.command_buffer,
+                    vk::PipelineBindPoint::GRAPHICS,
+                    scene.weather_pipeline,
+                );
+                self.device.cmd_push_constants(
+                    self.command_buffer,
+                    scene.weather_pipeline_layout,
+                    vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
+                    0,
+                    std::slice::from_raw_parts(terrain_push.as_ptr().cast::<u8>(), 160),
+                );
+                self.device
+                    .cmd_bind_vertex_buffers(self.command_buffer, 0, &[buffer.buffer], &[0]);
+                let (rain, snow) = self.weather_counts;
+                for (set, first, count) in [
+                    (scene.weather_sets[0], 0, rain),
+                    (scene.weather_sets[1], rain, snow),
+                ] {
+                    if count == 0 {
+                        continue;
+                    }
+                    self.device.cmd_bind_descriptor_sets(
+                        self.command_buffer,
+                        vk::PipelineBindPoint::GRAPHICS,
+                        scene.weather_pipeline_layout,
+                        0,
+                        &[set],
+                        &[],
+                    );
+                    self.device
+                        .cmd_draw(self.command_buffer, count, 1, first, 0);
+                }
+            }
             self.dynamic_rendering
                 .cmd_end_rendering(self.command_buffer);
         }
@@ -1055,6 +1136,7 @@ impl VulkanBackend {
         );
         let translucent = kind == PipelineKind::Translucent;
         let clouds = kind == PipelineKind::Clouds;
+        let weather = kind == PipelineKind::Weather;
         unsafe {
             let compiler =
                 shaderc::Compiler::new().map_err(|error| VulkanError::Loader(error.to_string()))?;
@@ -1068,6 +1150,8 @@ impl VulkanBackend {
                 (SKY_VERTEX_SHADER, SKY_FRAGMENT_SHADER)
             } else if clouds {
                 (CLOUD_VERTEX_SHADER, CLOUD_FRAGMENT_SHADER)
+            } else if weather {
+                (VERTEX_SHADER, WEATHER_FRAGMENT_SHADER)
             } else {
                 (VERTEX_SHADER, FRAGMENT_SHADER)
             };
@@ -1189,7 +1273,7 @@ impl VulkanBackend {
             let raster = vk::PipelineRasterizationStateCreateInfo::default()
                 .polygon_mode(vk::PolygonMode::FILL)
                 // The sky's fans are built in either winding.
-                .cull_mode(if sky {
+                .cull_mode(if sky || weather {
                     vk::CullModeFlags::NONE
                 } else {
                     vk::CullModeFlags::BACK
@@ -1218,7 +1302,7 @@ impl VulkanBackend {
                     .dst_alpha_blend_factor(vk::BlendFactor::ZERO)
                     .alpha_blend_op(vk::BlendOp::ADD)
                     .color_write_mask(vk::ColorComponentFlags::RGBA)
-            } else if translucent || sky || clouds {
+            } else if translucent || sky || clouds || weather {
                 vk::PipelineColorBlendAttachmentState::default()
                     .blend_enable(true)
                     .src_color_blend_factor(vk::BlendFactor::SRC_ALPHA)
@@ -1441,14 +1525,15 @@ impl VulkanBackend {
                     None,
                 )
                 .map_err(|result| VulkanError::Call("vkCreateDescriptorSetLayout", result))?;
+            // The atlas's set, and the rain's and the snow's.
             let sizes = [vk::DescriptorPoolSize::default()
                 .ty(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
-                .descriptor_count(1)];
+                .descriptor_count(3)];
             let descriptor_pool = self
                 .device
                 .create_descriptor_pool(
                     &vk::DescriptorPoolCreateInfo::default()
-                        .max_sets(1)
+                        .max_sets(3)
                         .pool_sizes(&sizes),
                     None,
                 )
@@ -1483,6 +1568,8 @@ impl VulkanBackend {
                 self.create_pipeline(descriptor_layout, PipelineKind::SkyOverlay)?;
             let (cloud_pipeline_layout, cloud_pipeline) =
                 self.create_pipeline(descriptor_layout, PipelineKind::Clouds)?;
+            let (weather_pipeline_layout, weather_pipeline) =
+                self.create_pipeline(descriptor_layout, PipelineKind::Weather)?;
 
             self.scene = Some(SceneResources {
                 texture,
@@ -1502,6 +1589,11 @@ impl VulkanBackend {
                 sky_overlay_pipeline,
                 cloud_pipeline_layout,
                 cloud_pipeline,
+                weather_pipeline_layout,
+                weather_pipeline,
+                weather_textures: Vec::new(),
+                weather_sampler: None,
+                weather_sets: Vec::new(),
             });
             Ok(())
         }
@@ -1769,6 +1861,17 @@ impl VulkanBackend {
                 self.device.destroy_pipeline(scene.cloud_pipeline, None);
                 self.device
                     .destroy_pipeline_layout(scene.cloud_pipeline_layout, None);
+                self.device.destroy_pipeline(scene.weather_pipeline, None);
+                self.device
+                    .destroy_pipeline_layout(scene.weather_pipeline_layout, None);
+                for (image, memory, view) in scene.weather_textures {
+                    self.device.destroy_image_view(view, None);
+                    self.device.destroy_image(image, None);
+                    self.device.free_memory(memory, None);
+                }
+                if let Some(sampler) = scene.weather_sampler {
+                    self.device.destroy_sampler(sampler, None);
+                }
                 self.device
                     .destroy_pipeline_layout(scene.translucent_pipeline_layout, None);
                 self.device
@@ -1849,6 +1952,113 @@ impl VulkanBackend {
     pub fn set_fog(&mut self, colour: [f32; 4], distances: [f32; 4]) {
         self.fog[..4].copy_from_slice(&colour);
         self.fog[4..].copy_from_slice(&distances);
+    }
+
+    /// Load the rain and snow textures, sampled at the nearest texel and
+    /// repeating, as the reference's plain resource textures are.
+    pub fn load_weather_textures(
+        &mut self,
+        rain: &DecodedImage,
+        snow: &DecodedImage,
+    ) -> Result<(), VulkanError> {
+        unsafe {
+            let Some(layout) = self.scene.as_ref().map(|scene| scene.descriptor_layout) else {
+                return Ok(());
+            };
+            let pool = self.scene.as_ref().expect("checked above").descriptor_pool;
+            let sampler = self
+                .device
+                .create_sampler(
+                    &vk::SamplerCreateInfo::default()
+                        .mag_filter(vk::Filter::NEAREST)
+                        .min_filter(vk::Filter::NEAREST)
+                        .mipmap_mode(vk::SamplerMipmapMode::NEAREST)
+                        .address_mode_u(vk::SamplerAddressMode::REPEAT)
+                        .address_mode_v(vk::SamplerAddressMode::REPEAT)
+                        .address_mode_w(vk::SamplerAddressMode::REPEAT)
+                        .max_lod(0.0),
+                    None,
+                )
+                .map_err(|result| VulkanError::Call("vkCreateSampler", result))?;
+            let mut textures = Vec::new();
+            let mut sets = Vec::new();
+            for image in [rain, snow] {
+                let (texture, memory, view) = self.upload_texture(std::slice::from_ref(image))?;
+                let layouts = [layout];
+                let set = self
+                    .device
+                    .allocate_descriptor_sets(
+                        &vk::DescriptorSetAllocateInfo::default()
+                            .descriptor_pool(pool)
+                            .set_layouts(&layouts),
+                    )
+                    .map_err(|result| VulkanError::Call("vkAllocateDescriptorSets", result))?[0];
+                let image_info = [vk::DescriptorImageInfo::default()
+                    .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
+                    .image_view(view)
+                    .sampler(sampler)];
+                let write = vk::WriteDescriptorSet::default()
+                    .dst_set(set)
+                    .dst_binding(0)
+                    .descriptor_type(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
+                    .image_info(&image_info);
+                self.device.update_descriptor_sets(&[write], &[]);
+                textures.push((texture, memory, view));
+                sets.push(set);
+            }
+            let scene = self.scene.as_mut().expect("checked above");
+            scene.weather_textures = textures;
+            scene.weather_sampler = Some(sampler);
+            scene.weather_sets = sets;
+            Ok(())
+        }
+    }
+
+    /// Hand over the next frame's rain and snow triangles, placed like the
+    /// terrain's.
+    pub fn set_weather(&mut self, rain: &[Vertex], snow: &[Vertex]) -> Result<(), VulkanError> {
+        unsafe {
+            self.device
+                .wait_for_fences(&[self.in_flight], true, u64::MAX)
+                .map_err(|result| VulkanError::Call("vkWaitForFences", result))?;
+            let size = std::mem::size_of::<Vertex>() * (rain.len() + snow.len());
+            if self
+                .weather_buffer
+                .as_ref()
+                .is_none_or(|buffer| buffer.capacity < size)
+            {
+                if let Some(old) = self.weather_buffer.take() {
+                    self.device.destroy_buffer(old.buffer, None);
+                    self.device.free_memory(old.memory, None);
+                }
+                let capacity = size.max(1 << 16);
+                let (buffer, memory) =
+                    self.upload_buffer(vk::BufferUsageFlags::VERTEX_BUFFER, &vec![0_u8; capacity])?;
+                self.weather_buffer = Some(SkyBuffer {
+                    buffer,
+                    memory,
+                    capacity,
+                });
+            }
+            let buffer = self.weather_buffer.as_ref().expect("allocated above");
+            if size > 0 {
+                let mapped = self
+                    .device
+                    .map_memory(buffer.memory, 0, size as u64, vk::MemoryMapFlags::empty())
+                    .map_err(|result| VulkanError::Call("vkMapMemory", result))?
+                    .cast::<u8>();
+                let rain_bytes = std::mem::size_of_val(rain);
+                std::ptr::copy_nonoverlapping(rain.as_ptr().cast::<u8>(), mapped, rain_bytes);
+                std::ptr::copy_nonoverlapping(
+                    snow.as_ptr().cast::<u8>(),
+                    mapped.add(rain_bytes),
+                    std::mem::size_of_val(snow),
+                );
+                self.device.unmap_memory(buffer.memory);
+            }
+            self.weather_counts = (rain.len() as u32, snow.len() as u32);
+            Ok(())
+        }
     }
 
     /// Replace the clouds' faces, placed from the camera's cell corner.
@@ -2214,6 +2424,10 @@ impl Drop for VulkanBackend {
             if let Some(clouds) = self.cloud_buffer.take() {
                 self.device.destroy_buffer(clouds.buffer, None);
                 self.device.free_memory(clouds.memory, None);
+            }
+            if let Some(weather) = self.weather_buffer.take() {
+                self.device.destroy_buffer(weather.buffer, None);
+                self.device.free_memory(weather.memory, None);
             }
             for view in self.image_views.drain(..) {
                 self.device.destroy_image_view(view, None);

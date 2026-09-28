@@ -23,6 +23,7 @@ pub mod texture_metadata;
 pub mod tint;
 mod uv_lock_table;
 pub mod vulkan;
+pub mod weather;
 pub mod world_mesh;
 
 pub use atlas::{AtlasSprite, SpriteEntry, SpritePlacement, StitchError, Stitcher};

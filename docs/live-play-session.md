@@ -99,9 +99,18 @@ barışçıl ve `server-port=25600` içeriyor.
   kalan payı ve gök gürültüsü oranında karıştırılıyor. Sisin karıştığı gök
   rengi yağmurla koyulaşıyor, güneş ve ay yağmurla soluyor; yağmur sisi
   kameranın bloğundaki gök ışığı ve biyomun yağışına göre tick başına
-  beşte bir yaklaşıp sis başlangıç ve bitişini çekiyor. Farklar: yağmur ve
-  kar çizgileri, sıçrama parçacıkları, şimşek ve gök parlaması yok;
-  referans karelerle karşılaştırılmadı.
+  beşte bir yaklaşıp sis başlangıç ve bitişini çekiyor. Yağmur ve kar
+  çizgileri referansın hava efekti çizicisiyle: 10 blokluk yarıçapta her
+  sütun, MOTION_BLOCKING yüksekliği (durum başına bit tablosu referanstan:
+  `src/world/motion_blocking_table.rs`, `tools/generate/motion_blocking.py`,
+  block ailesinde karşılaştırılıyor) ile kameranın ±10 bloğu arasında
+  merkeze dönük bir dörtgen; yağış biyomun yağışı ve sıcaklığından (donmuş
+  değiştiricinin gürültüleri, kar çizgisi üstünde sıcaklık gürültüsüyle
+  soğuma; 0,15 altı kar), sütun tohumlu hız ve kayma, kenara doğru ve
+  yağmurla solan alfa, sütunun ışığı (karda aydınlatılmış), yakın texel ve
+  tekrarlayan örnekleme, derinlik yazmadan, arazi sisiyle. Farklar:
+  sıçrama parçacıkları ve sesler, şimşek ve gök parlaması yok; kar görsel
+  olarak denenmedi; referans karelerle karşılaştırılmadı.
 - Arazi sisi referansın sis çizicisinin hesabı: çevresel sis (atmosfer
   için `fog_start_distance`/`fog_end_distance`, su altında
   `water_fog_start_distance` ve görüş süresiyle çarpılan
