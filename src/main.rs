@@ -881,6 +881,25 @@ impl Script {
 const CLOUD_RANGE: i32 = 128;
 
 /// View-projection from the player's eye, measured from the mesh origin.
+/// The number key for a hotbar slot, 1 to 9.
+fn hotbar_key(key: glfw::Key) -> Option<i32> {
+    use glfw::Key;
+    [
+        Key::Num1,
+        Key::Num2,
+        Key::Num3,
+        Key::Num4,
+        Key::Num5,
+        Key::Num6,
+        Key::Num7,
+        Key::Num8,
+        Key::Num9,
+    ]
+    .iter()
+    .position(|candidate| *candidate == key)
+    .map(|slot| slot as i32)
+}
+
 /// Where the camera looks from.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum CameraType {
@@ -1208,6 +1227,13 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
         .map_err(|error| format!("skin: {error:?}"))?,
     )?;
     let mut player_model = render::player_model::PlayerModel::new(skin.slim);
+    // The HUD: its sprites, its own state, and the wheel's partial steps.
+    let gui_atlas = render::gui::GuiAtlas::load(std::path::Path::new(&root))
+        .ok_or("the HUD sprites could not be read")?;
+    backend.load_gui_texture(&gui_atlas.image)?;
+    let mut hud = render::gui::Hud::default();
+    let mut scroll_wheel = voxel_client::hotbar::ScrollWheel::default();
+    let started_at = std::time::Instant::now();
     // `ItemInHandRenderer.mainHandHeight`: the empty hand rises into view
     // at four tenths a tick.
     let mut hand_height = (0.0_f32, 0.0_f32);
@@ -1281,6 +1307,23 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                 }
                 glfw::WindowEvent::Key(glfw::Key::F11, _, glfw::Action::Press, _) => {
                     surface.toggle_fullscreen();
+                }
+                glfw::WindowEvent::Scroll(x, y) if captured => {
+                    let spectating = session.player().is_some_and(|player| player.spectating());
+                    if !spectating
+                        && let Some(slot) =
+                            scroll_wheel.select(x, y, session.status().selected_slot)
+                    {
+                        session.select_slot(slot);
+                    }
+                }
+                glfw::WindowEvent::Key(key, _, glfw::Action::Press, _)
+                    if captured && hotbar_key(key).is_some() =>
+                {
+                    let spectating = session.player().is_some_and(|player| player.spectating());
+                    if !spectating && let Some(slot) = hotbar_key(key) {
+                        session.select_slot(slot);
+                    }
                 }
                 glfw::WindowEvent::Key(key, _, action, _) if captured => {
                     keys.set(key, action != glfw::Action::Release);
@@ -1429,6 +1472,7 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
             if let Some(player) = session.player() {
                 camera.tick(player);
             }
+            hud.tick();
             // `ItemInHandRenderer.tick`: the empty hand rises back as the
             // attack strength recovers.
             let swap = session
@@ -1914,6 +1958,39 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                 println!("captured_frame={path}");
             }
             break;
+        }
+        // The HUD, in GUI units.
+        {
+            let size = surface.scale();
+            let status = *session.status();
+            let game_mode = session.game_mode();
+            let frame = hud.build(
+                &gui_atlas,
+                size.gui_scaled_width(),
+                size.gui_scaled_height(),
+                &render::gui::HudInput {
+                    health: status.health,
+                    max_health: 20.0,
+                    food: status.food,
+                    saturation: status.saturation,
+                    experience_progress: status.experience_progress,
+                    armor: 0,
+                    selected_slot: status.selected_slot,
+                    survival: game_mode.is_survival(),
+                    spectator: game_mode == voxel_client::world::ClientPlayerGameMode::Spectator,
+                    hardcore: session.hardcore(),
+                    first_person: camera_type == CameraType::FirstPerson,
+                },
+                started_at.elapsed().as_millis(),
+            );
+            let scale = size.gui_scale() as f32;
+            backend.set_gui(
+                &frame,
+                [
+                    size.framebuffer_width() as f32 / scale,
+                    size.framebuffer_height() as f32 / scale,
+                ],
+            )?;
         }
         let built = std::time::Instant::now();
         backend.draw_scene(colour, view_projection)?;

@@ -11,6 +11,7 @@ pub mod connection;
 pub mod direction;
 pub mod frame;
 pub mod handshake;
+pub mod hotbar;
 pub mod identifier;
 pub mod input;
 pub mod input_event;

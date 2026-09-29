@@ -65,6 +65,8 @@ pub struct PlaySession {
     respawn_requested: bool,
     /// Swing packets sent, for scripted runs to report.
     swings: u32,
+    /// Whether the level is hardcore, as the login said.
+    hardcore: bool,
     /// Set when the server moved the player to a new level.
     level_reset: bool,
     /// The hotbar slot the server was last told about.
@@ -127,6 +129,7 @@ impl PlaySession {
             status: PlayerStatus::default(),
             respawn_requested: false,
             swings: 0,
+            hardcore: false,
             level_reset: false,
             sent_slot: 0,
             dirty_sections: std::collections::BTreeSet::new(),
@@ -258,6 +261,16 @@ impl PlaySession {
             wire::write_varint(0, output);
             Ok(())
         })
+    }
+
+    /// Whether the level is hardcore.
+    pub fn hardcore(&self) -> bool {
+        self.hardcore
+    }
+
+    /// The player's game mode, as the server last set it.
+    pub fn game_mode(&self) -> ClientPlayerGameMode {
+        self.game_mode
     }
 
     /// How many swings the session has sent.
@@ -440,6 +453,7 @@ impl PlaySession {
                 self.dimension_type_id = login.spawn_info.dimension_type_id;
                 self.hashed_seed = login.spawn_info.seed;
                 self.trace.world.set_local_player_id(login.player_id);
+                self.hardcore = login.hardcore;
                 self.player_id = Some(login.player_id);
                 self.game_mode =
                     ClientPlayerGameMode::from_id(i32::from(login.spawn_info.game_type));

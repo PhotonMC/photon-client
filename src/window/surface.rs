@@ -109,6 +109,7 @@ impl WindowSurface {
         window.set_close_polling(true);
         window.set_cursor_pos_polling(true);
         window.set_mouse_button_polling(true);
+        window.set_scroll_polling(true);
 
         let (framebuffer_width, framebuffer_height) = window.get_framebuffer_size();
         let mut scale = WindowScale::new(

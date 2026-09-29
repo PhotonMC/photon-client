@@ -157,6 +157,38 @@ void main() {
 }
 ";
 
+/// The GUI's shaders, after the reference's textured GUI shader: a sprite
+/// texel times the vertex colour, dropped where it is fully clear. Vertices
+/// are in GUI units, mapped onto the window by the push constant.
+const GUI_VERTEX_SHADER: &str = r"#version 450
+layout(push_constant) uniform Push {
+    // Two over the window's size in GUI units.
+    vec4 scale;
+} push;
+layout(location = 0) in vec2 in_position;
+layout(location = 1) in vec2 in_uv;
+layout(location = 2) in vec4 in_colour;
+layout(location = 0) out vec2 out_uv;
+layout(location = 1) out vec4 out_colour;
+void main() {
+    gl_Position = vec4(in_position * push.scale.xy - 1.0, 0.0, 1.0);
+    out_uv = in_uv;
+    out_colour = in_colour;
+}
+";
+
+const GUI_FRAGMENT_SHADER: &str = r"#version 450
+layout(set = 0, binding = 0) uniform sampler2D sprites;
+layout(location = 0) in vec2 in_uv;
+layout(location = 1) in vec4 in_colour;
+layout(location = 0) out vec4 out_colour;
+void main() {
+    vec4 colour = texture(sprites, in_uv) * in_colour;
+    if (colour.a == 0.0) { discard; }
+    out_colour = colour;
+}
+";
+
 const FRAGMENT_SHADER: &str = r"#version 450
 layout(set = 0, binding = 0) uniform sampler2D atlas;
 layout(location = 0) in vec2 in_uv;
@@ -354,6 +386,10 @@ enum PipelineKind {
     Clouds,
     Weather,
     Entity,
+    /// GUI sprites over the finished frame.
+    Gui,
+    /// The crosshair, inverting what is behind it.
+    GuiInvert,
 }
 
 /// Instance API version the reference asks for.
@@ -473,6 +509,14 @@ struct SceneResources {
     entity_texture: Option<(vk::Image, vk::DeviceMemory, vk::ImageView)>,
     entity_sampler: Option<vk::Sampler>,
     entity_set: Option<vk::DescriptorSet>,
+    gui_pipeline_layout: vk::PipelineLayout,
+    gui_pipeline: vk::Pipeline,
+    gui_invert_pipeline_layout: vk::PipelineLayout,
+    gui_invert_pipeline: vk::Pipeline,
+    /// The GUI sprites' atlas.
+    gui_texture: Option<(vk::Image, vk::DeviceMemory, vk::ImageView)>,
+    gui_sampler: Option<vk::Sampler>,
+    gui_set: Option<vk::DescriptorSet>,
 }
 
 /// A rectangle of one atlas level to rewrite.
@@ -659,6 +703,11 @@ pub struct VulkanBackend {
     hand_buffer: Option<SkyBuffer>,
     hand_count: u32,
     hand_projection: [[f32; 4]; 4],
+    /// The GUI's triangles, their runs by blend, and the window's size in
+    /// GUI units.
+    gui_buffer: Option<SkyBuffer>,
+    gui_batches: Vec<(crate::render::gui::GuiBlend, u32, u32)>,
+    gui_size: [f32; 2],
     sections: std::collections::BTreeMap<(i32, i32, i32), SectionBuffers>,
     arena: Vec<ArenaBlock>,
     /// Staging chunks: every chunk, the ones taking uploads for the next
@@ -935,6 +984,9 @@ impl VulkanBackend {
                 hand_buffer: None,
                 hand_count: 0,
                 hand_projection: [[0.0; 4]; 4],
+                gui_buffer: None,
+                gui_batches: Vec::new(),
+                gui_size: [1.0, 1.0],
                 sections: std::collections::BTreeMap::new(),
                 arena: Vec::new(),
                 staging: Vec::new(),
@@ -1407,6 +1459,46 @@ impl VulkanBackend {
                 self.device
                     .cmd_draw(self.command_buffer, self.hand_count, 1, 0, 0);
             }
+            // The GUI over everything, run by run in its blends.
+            if let (Some(buffer), Some(set)) = (self.gui_buffer.as_ref(), scene.gui_set)
+                && !self.gui_batches.is_empty()
+            {
+                let push = [2.0 / self.gui_size[0], 2.0 / self.gui_size[1], 0.0, 0.0];
+                self.device
+                    .cmd_bind_vertex_buffers(self.command_buffer, 0, &[buffer.buffer], &[0]);
+                for &(blend, first, count) in &self.gui_batches {
+                    let (pipeline, layout) = match blend {
+                        crate::render::gui::GuiBlend::Translucent => {
+                            (scene.gui_pipeline, scene.gui_pipeline_layout)
+                        }
+                        crate::render::gui::GuiBlend::Invert => {
+                            (scene.gui_invert_pipeline, scene.gui_invert_pipeline_layout)
+                        }
+                    };
+                    self.device.cmd_bind_pipeline(
+                        self.command_buffer,
+                        vk::PipelineBindPoint::GRAPHICS,
+                        pipeline,
+                    );
+                    self.device.cmd_bind_descriptor_sets(
+                        self.command_buffer,
+                        vk::PipelineBindPoint::GRAPHICS,
+                        layout,
+                        0,
+                        &[set],
+                        &[],
+                    );
+                    self.device.cmd_push_constants(
+                        self.command_buffer,
+                        layout,
+                        vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
+                        0,
+                        std::slice::from_raw_parts(push.as_ptr().cast::<u8>(), 16),
+                    );
+                    self.device
+                        .cmd_draw(self.command_buffer, count, 1, first, 0);
+                }
+            }
             self.dynamic_rendering
                 .cmd_end_rendering(self.command_buffer);
         }
@@ -1429,6 +1521,7 @@ impl VulkanBackend {
         let clouds = kind == PipelineKind::Clouds;
         let weather = kind == PipelineKind::Weather;
         let entity = kind == PipelineKind::Entity;
+        let gui = matches!(kind, PipelineKind::Gui | PipelineKind::GuiInvert);
         unsafe {
             let compiler =
                 shaderc::Compiler::new().map_err(|error| VulkanError::Loader(error.to_string()))?;
@@ -1446,6 +1539,8 @@ impl VulkanBackend {
                 (VERTEX_SHADER, WEATHER_FRAGMENT_SHADER)
             } else if entity {
                 (ENTITY_VERTEX_SHADER, ENTITY_FRAGMENT_SHADER)
+            } else if gui {
+                (GUI_VERTEX_SHADER, GUI_FRAGMENT_SHADER)
             } else {
                 (VERTEX_SHADER, FRAGMENT_SHADER)
             };
@@ -1476,6 +1571,8 @@ impl VulkanBackend {
                 std::mem::size_of::<crate::render::sky::SkyVertex>()
             } else if clouds {
                 std::mem::size_of::<crate::render::clouds::CloudVertex>()
+            } else if gui {
+                std::mem::size_of::<crate::render::gui::GuiVertex>()
             } else {
                 std::mem::size_of::<Vertex>()
             };
@@ -1544,10 +1641,29 @@ impl VulkanBackend {
                     .format(vk::Format::R32_SFLOAT)
                     .offset(12),
             ];
+            let gui_attributes = [
+                vk::VertexInputAttributeDescription::default()
+                    .location(0)
+                    .binding(0)
+                    .format(vk::Format::R32G32_SFLOAT)
+                    .offset(0),
+                vk::VertexInputAttributeDescription::default()
+                    .location(1)
+                    .binding(0)
+                    .format(vk::Format::R32G32_SFLOAT)
+                    .offset(8),
+                vk::VertexInputAttributeDescription::default()
+                    .location(2)
+                    .binding(0)
+                    .format(vk::Format::R32G32B32A32_SFLOAT)
+                    .offset(16),
+            ];
             let attributes: &[vk::VertexInputAttributeDescription] = if sky {
                 &sky_attributes
             } else if clouds {
                 &cloud_attributes
+            } else if gui {
+                &gui_attributes
             } else {
                 &terrain_attributes
             };
@@ -1566,7 +1682,7 @@ impl VulkanBackend {
             let raster = vk::PipelineRasterizationStateCreateInfo::default()
                 .polygon_mode(vk::PolygonMode::FILL)
                 // The sky's fans are built in either winding.
-                .cull_mode(if sky || weather || entity {
+                .cull_mode(if sky || weather || entity || gui {
                     vk::CullModeFlags::NONE
                 } else {
                     vk::CullModeFlags::BACK
@@ -1582,13 +1698,23 @@ impl VulkanBackend {
                 // reversed and equal depth passes, as in the reference, so
                 // a model's later face over an earlier one at the same place
                 // (the grass side overlay) is the one seen.
-                .depth_test_enable(!sky)
+                .depth_test_enable(!sky && !gui)
                 .depth_write_enable(matches!(
                     kind,
                     PipelineKind::Terrain | PipelineKind::Clouds | PipelineKind::Entity
                 ))
                 .depth_compare_op(vk::CompareOp::GREATER_OR_EQUAL);
-            let blends = [if kind == PipelineKind::SkyOverlay {
+            let blends = [if kind == PipelineKind::GuiInvert {
+                vk::PipelineColorBlendAttachmentState::default()
+                    .blend_enable(true)
+                    .src_color_blend_factor(vk::BlendFactor::ONE_MINUS_DST_COLOR)
+                    .dst_color_blend_factor(vk::BlendFactor::ONE_MINUS_SRC_COLOR)
+                    .color_blend_op(vk::BlendOp::ADD)
+                    .src_alpha_blend_factor(vk::BlendFactor::ONE)
+                    .dst_alpha_blend_factor(vk::BlendFactor::ZERO)
+                    .alpha_blend_op(vk::BlendOp::ADD)
+                    .color_write_mask(vk::ColorComponentFlags::RGBA)
+            } else if kind == PipelineKind::SkyOverlay {
                 vk::PipelineColorBlendAttachmentState::default()
                     .blend_enable(true)
                     .src_color_blend_factor(vk::BlendFactor::SRC_ALPHA)
@@ -1598,7 +1724,7 @@ impl VulkanBackend {
                     .dst_alpha_blend_factor(vk::BlendFactor::ZERO)
                     .alpha_blend_op(vk::BlendOp::ADD)
                     .color_write_mask(vk::ColorComponentFlags::RGBA)
-            } else if translucent || sky || clouds || weather || entity {
+            } else if translucent || sky || clouds || weather || entity || gui {
                 vk::PipelineColorBlendAttachmentState::default()
                     .blend_enable(true)
                     .src_color_blend_factor(vk::BlendFactor::SRC_ALPHA)
@@ -2152,15 +2278,16 @@ impl VulkanBackend {
                     None,
                 )
                 .map_err(|result| VulkanError::Call("vkCreateDescriptorSetLayout", result))?;
-            // The atlas's set, the rain's and the snow's, and the skin's.
+            // The atlas's set, the rain's and the snow's, the skin's and the
+            // GUI's.
             let sizes = [vk::DescriptorPoolSize::default()
                 .ty(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
-                .descriptor_count(4)];
+                .descriptor_count(5)];
             let descriptor_pool = self
                 .device
                 .create_descriptor_pool(
                     &vk::DescriptorPoolCreateInfo::default()
-                        .max_sets(4)
+                        .max_sets(5)
                         .pool_sizes(&sizes),
                     None,
                 )
@@ -2199,6 +2326,10 @@ impl VulkanBackend {
                 self.create_pipeline(descriptor_layout, PipelineKind::Weather)?;
             let (entity_pipeline_layout, entity_pipeline) =
                 self.create_pipeline(descriptor_layout, PipelineKind::Entity)?;
+            let (gui_pipeline_layout, gui_pipeline) =
+                self.create_pipeline(descriptor_layout, PipelineKind::Gui)?;
+            let (gui_invert_pipeline_layout, gui_invert_pipeline) =
+                self.create_pipeline(descriptor_layout, PipelineKind::GuiInvert)?;
 
             self.scene = Some(SceneResources {
                 texture,
@@ -2228,6 +2359,13 @@ impl VulkanBackend {
                 entity_texture: None,
                 entity_sampler: None,
                 entity_set: None,
+                gui_pipeline_layout,
+                gui_pipeline,
+                gui_invert_pipeline_layout,
+                gui_invert_pipeline,
+                gui_texture: None,
+                gui_sampler: None,
+                gui_set: None,
             });
             Ok(())
         }
@@ -2517,6 +2655,21 @@ impl VulkanBackend {
                 if let Some(sampler) = scene.entity_sampler {
                     self.device.destroy_sampler(sampler, None);
                 }
+                for (pipeline, layout) in [
+                    (scene.gui_pipeline, scene.gui_pipeline_layout),
+                    (scene.gui_invert_pipeline, scene.gui_invert_pipeline_layout),
+                ] {
+                    self.device.destroy_pipeline(pipeline, None);
+                    self.device.destroy_pipeline_layout(layout, None);
+                }
+                if let Some((image, memory, view)) = scene.gui_texture {
+                    self.device.destroy_image_view(view, None);
+                    self.device.destroy_image(image, None);
+                    self.device.free_memory(memory, None);
+                }
+                if let Some(sampler) = scene.gui_sampler {
+                    self.device.destroy_sampler(sampler, None);
+                }
                 self.device
                     .destroy_pipeline_layout(scene.translucent_pipeline_layout, None);
                 self.device
@@ -2667,17 +2820,60 @@ impl VulkanBackend {
 
     /// Load the skin entities are drawn with, sampled texel by texel.
     pub fn load_entity_texture(&mut self, skin: &DecodedImage) -> Result<(), VulkanError> {
+        if self
+            .scene
+            .as_ref()
+            .is_none_or(|scene| scene.entity_set.is_some())
+        {
+            return Ok(());
+        }
+        let Some((texture, sampler, set)) = self.upload_sampled_texture(skin)? else {
+            return Ok(());
+        };
+        let scene = self.scene.as_mut().expect("checked above");
+        scene.entity_texture = Some(texture);
+        scene.entity_sampler = Some(sampler);
+        scene.entity_set = Some(set);
+        Ok(())
+    }
+
+    /// Load the GUI sprites' atlas, sampled texel by texel.
+    pub fn load_gui_texture(&mut self, atlas: &DecodedImage) -> Result<(), VulkanError> {
+        if self
+            .scene
+            .as_ref()
+            .is_none_or(|scene| scene.gui_set.is_some())
+        {
+            return Ok(());
+        }
+        let Some((texture, sampler, set)) = self.upload_sampled_texture(atlas)? else {
+            return Ok(());
+        };
+        let scene = self.scene.as_mut().expect("checked above");
+        scene.gui_texture = Some(texture);
+        scene.gui_sampler = Some(sampler);
+        scene.gui_set = Some(set);
+        Ok(())
+    }
+
+    /// Upload one texture with a nearest, clamped sampler and a descriptor
+    /// set for it.
+    #[allow(clippy::type_complexity)]
+    fn upload_sampled_texture(
+        &mut self,
+        skin: &DecodedImage,
+    ) -> Result<
+        Option<(
+            (vk::Image, vk::DeviceMemory, vk::ImageView),
+            vk::Sampler,
+            vk::DescriptorSet,
+        )>,
+        VulkanError,
+    > {
         unsafe {
             let Some(layout) = self.scene.as_ref().map(|scene| scene.descriptor_layout) else {
-                return Ok(());
+                return Ok(None);
             };
-            if self
-                .scene
-                .as_ref()
-                .is_some_and(|scene| scene.entity_set.is_some())
-            {
-                return Ok(());
-            }
             let pool = self.scene.as_ref().expect("checked above").descriptor_pool;
             let sampler = self
                 .device
@@ -2713,11 +2909,7 @@ impl VulkanBackend {
                 .descriptor_type(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
                 .image_info(&image_info);
             self.device.update_descriptor_sets(&[write], &[]);
-            let scene = self.scene.as_mut().expect("checked above");
-            scene.entity_texture = Some((texture, memory, view));
-            scene.entity_sampler = Some(sampler);
-            scene.entity_set = Some(set);
-            Ok(())
+            Ok(Some(((texture, memory, view), sampler, set)))
         }
     }
 
@@ -2728,6 +2920,27 @@ impl VulkanBackend {
         self.fill_vertex_buffer(&mut buffer, vertices)?;
         self.entity_buffer = buffer;
         self.entity_count = vertices.len() as u32;
+        Ok(())
+    }
+
+    /// Hand over the next frame's GUI: triangles in GUI units, their runs by
+    /// blend, and the window's size in GUI units.
+    pub fn set_gui(
+        &mut self,
+        frame: &crate::render::gui::GuiFrame,
+        size: [f32; 2],
+    ) -> Result<(), VulkanError> {
+        let mut buffer = self.gui_buffer.take();
+        let bytes = unsafe {
+            std::slice::from_raw_parts(
+                frame.vertices.as_ptr().cast::<u8>(),
+                std::mem::size_of_val(frame.vertices.as_slice()),
+            )
+        };
+        self.fill_bytes(&mut buffer, bytes)?;
+        self.gui_buffer = buffer;
+        self.gui_batches = frame.batches.clone();
+        self.gui_size = size;
         Ok(())
     }
 
@@ -2752,11 +2965,27 @@ impl VulkanBackend {
         slot: &mut Option<SkyBuffer>,
         vertices: &[Vertex],
     ) -> Result<(), VulkanError> {
+        let bytes = unsafe {
+            std::slice::from_raw_parts(
+                vertices.as_ptr().cast::<u8>(),
+                std::mem::size_of_val(vertices),
+            )
+        };
+        self.fill_bytes(slot, bytes)
+    }
+
+    /// Write bytes into a host vertex buffer, growing it when they do not
+    /// fit.
+    fn fill_bytes(
+        &mut self,
+        slot: &mut Option<SkyBuffer>,
+        bytes: &[u8],
+    ) -> Result<(), VulkanError> {
         unsafe {
             self.device
                 .wait_for_fences(&[self.in_flight], true, u64::MAX)
                 .map_err(|result| VulkanError::Call("vkWaitForFences", result))?;
-            let size = std::mem::size_of_val(vertices);
+            let size = bytes.len();
             if slot.as_ref().is_none_or(|buffer| buffer.capacity < size) {
                 if let Some(old) = slot.take() {
                     self.device.destroy_buffer(old.buffer, None);
@@ -2778,7 +3007,7 @@ impl VulkanBackend {
                     .map_memory(buffer.memory, 0, size as u64, vk::MemoryMapFlags::empty())
                     .map_err(|result| VulkanError::Call("vkMapMemory", result))?
                     .cast::<u8>();
-                std::ptr::copy_nonoverlapping(vertices.as_ptr().cast::<u8>(), mapped, size);
+                std::ptr::copy_nonoverlapping(bytes.as_ptr(), mapped, size);
                 self.device.unmap_memory(buffer.memory);
             }
             Ok(())
@@ -3209,9 +3438,13 @@ impl Drop for VulkanBackend {
                 self.device.destroy_buffer(weather.buffer, None);
                 self.device.free_memory(weather.memory, None);
             }
-            for buffer in [self.entity_buffer.take(), self.hand_buffer.take()]
-                .into_iter()
-                .flatten()
+            for buffer in [
+                self.entity_buffer.take(),
+                self.hand_buffer.take(),
+                self.gui_buffer.take(),
+            ]
+            .into_iter()
+            .flatten()
             {
                 self.device.destroy_buffer(buffer.buffer, None);
                 self.device.free_memory(buffer.memory, None);
