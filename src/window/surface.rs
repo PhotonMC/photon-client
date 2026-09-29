@@ -213,6 +213,17 @@ impl WindowSurface {
         }
     }
 
+    /// The window's size in screen coordinates, which cursor positions are
+    /// measured in.
+    pub fn window_size(&self) -> (i32, i32) {
+        self.window.get_size()
+    }
+
+    /// Put the cursor at a place in the window, in screen coordinates.
+    pub fn set_cursor_position(&mut self, x: f64, y: f64) {
+        self.window.set_cursor_pos(x, y);
+    }
+
     /// Window position in screen coordinates, as the reference tracks it.
     pub fn position(&self) -> (i32, i32) {
         self.window.get_pos()

@@ -696,6 +696,41 @@ impl ClientWorld {
         true
     }
 
+    /// The local player's inventory menu: its 46 slots, the carried stack
+    /// and the menu's state id.
+    pub fn local_player_menu(
+        &self,
+    ) -> Option<(
+        Vec<Option<ClientItemStackState>>,
+        Option<ClientItemStackState>,
+        i32,
+    )> {
+        let player = self.local_player.as_ref()?;
+        let slots = (0..46)
+            .map(|slot| player.inventory_slots.get(&slot).cloned().flatten())
+            .collect();
+        Some((
+            slots,
+            player.carried_item.clone(),
+            player.inventory_state_id,
+        ))
+    }
+
+    /// Write back the local player's inventory menu after a predicted click.
+    pub fn set_local_player_menu(
+        &mut self,
+        slots: &[Option<ClientItemStackState>],
+        carried: Option<ClientItemStackState>,
+    ) {
+        let Some(player) = self.local_player.as_mut() else {
+            return;
+        };
+        for (slot, stack) in slots.iter().enumerate() {
+            player.inventory_slots.insert(slot as i16, stack.clone());
+        }
+        player.carried_item = carried;
+    }
+
     /// `ItemStack.shrink` on a stack in the local player's inventory menu,
     /// as the client predicts using it up. An emptied stack leaves the slot.
     pub fn shrink_local_player_slot(&mut self, slot: i16, amount: i32) {

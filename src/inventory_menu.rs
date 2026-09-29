@@ -92,7 +92,8 @@ fn stacking(stack: &Stack) -> Option<&'static crate::item_stacking_table::ItemSt
         .and_then(|id| ITEM_STACKING.get(id))
 }
 
-fn max_stack_size(stack: &Stack) -> i32 {
+/// `ItemStack.getMaxStackSize`.
+pub fn max_stack_size(stack: &Stack) -> i32 {
     stacking(stack).map_or(64, |item| item.max_stack_size)
 }
 
@@ -166,6 +167,14 @@ impl InventoryMenu {
         };
         menu.slots.resize(SLOT_COUNT, None);
         menu
+    }
+
+    /// New contents from the client's copy; a drag in progress carries on.
+    pub fn load(&mut self, slots: Vec<Option<Stack>>, carried: Option<Stack>, state_id: i32) {
+        self.slots = slots;
+        self.slots.resize(SLOT_COUNT, None);
+        self.carried = carried;
+        self.state_id = state_id;
     }
 
     /// `MultiPlayerGameMode.handleContainerInput`: the click as the client
@@ -514,13 +523,13 @@ impl InventoryMenu {
     }
 
     /// `Slot.getMaxStackSize(stack)`.
-    fn slot_max_for(&self, index: usize, stack: &Stack) -> i32 {
+    pub fn slot_max_for(&self, index: usize, stack: &Stack) -> i32 {
         let slot_max = if armour_slot(index).is_some() { 1 } else { 99 };
         slot_max.min(max_stack_size(stack))
     }
 
     /// `Slot.mayPlace`.
-    fn may_place(&self, index: usize, stack: &Stack) -> bool {
+    pub fn may_place(&self, index: usize, stack: &Stack) -> bool {
         if index == RESULT {
             return false;
         }
@@ -546,7 +555,7 @@ impl InventoryMenu {
     }
 
     /// `AbstractContainerMenu.canItemQuickReplace`.
-    fn can_item_quick_replace(&self, index: usize, stack: &Stack, ignore_size: bool) -> bool {
+    pub fn can_item_quick_replace(&self, index: usize, stack: &Stack, ignore_size: bool) -> bool {
         match &self.slots[index] {
             Some(slot) if same_item_same_components(stack, slot) => {
                 slot.item_count() + if ignore_size { 0 } else { stack.item_count() }

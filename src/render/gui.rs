@@ -13,8 +13,13 @@ use crate::random::RandomSource;
 use crate::render::atlas::{AtlasSprite, SpriteEntry, Stitcher};
 use crate::render::png::DecodedImage;
 
-/// The sprite folders the HUD draws from, under `textures/gui/sprites`.
-const SPRITE_FOLDERS: [&str; 1] = ["hud"];
+/// The sprite folders the HUD and the screens draw from, under
+/// `textures/gui/sprites`.
+const SPRITE_FOLDERS: [&str; 3] = ["hud", "container", "recipe_book"];
+
+/// Whole textures under `textures/gui` that screens blit parts of, packed as
+/// `texture/<name>`.
+const WHOLE_TEXTURES: [&str; 1] = ["container/inventory"];
 
 /// Every PNG under a sprite folder, as sprite names (`hud/heart/full`).
 fn sprite_names(root: &Path) -> Vec<String> {
@@ -75,6 +80,31 @@ impl GuiAtlas {
             });
             images.insert(format!("minecraft:{name}"), image);
         }
+        for name in WHOLE_TEXTURES {
+            let path = assets_root.join(format!("minecraft/textures/gui/{name}.png"));
+            let image = crate::render::png::decode_rgba(&std::fs::read(path).ok()?).ok()?;
+            let key = format!("minecraft:texture/{name}");
+            stitcher.register_sprite(SpriteEntry {
+                width: image.width as i32,
+                height: image.height as i32,
+                name: Identifier::parse(&key).ok()?,
+            });
+            images.insert(key, image);
+        }
+        // One white texel, which fills are drawn with.
+        stitcher.register_sprite(SpriteEntry {
+            width: 1,
+            height: 1,
+            name: Identifier::parse("minecraft:white").ok()?,
+        });
+        images.insert(
+            "minecraft:white".to_owned(),
+            DecodedImage {
+                width: 1,
+                height: 1,
+                rgba: vec![255; 4],
+            },
+        );
         stitcher.stitch().ok()?;
         let width = stitcher.width().max(1) as u32;
         let height = stitcher.height().max(1) as u32;
@@ -147,8 +177,113 @@ pub struct GuiFrame {
 }
 
 impl GuiFrame {
+    /// `GuiGraphics.fillGradient`: a rectangle from one colour at the top to
+    /// another at the bottom (`0xAARRGGBB`).
+    pub fn fill_gradient(
+        &mut self,
+        atlas: &GuiAtlas,
+        (x0, y0, x1, y1): (i32, i32, i32, i32),
+        top: u32,
+        bottom: u32,
+    ) {
+        let [u0, v0, u1, v1] = atlas.sprite("white");
+        let (u, v) = ((u0 + u1) / 2.0, (v0 + v1) / 2.0);
+        let unpack =
+            |colour: u32| [16, 8, 0, 24].map(|shift| ((colour >> shift) & 0xFF) as f32 / 255.0);
+        let corner = |px: i32, py: i32, colour: u32| GuiVertex {
+            position: [px as f32, py as f32],
+            uv: [u, v],
+            colour: unpack(colour),
+        };
+        let corners = [
+            corner(x0, y0, top),
+            corner(x0, y1, bottom),
+            corner(x1, y1, bottom),
+            corner(x1, y0, top),
+        ];
+        let first = self.vertices.len() as u32;
+        for index in [0, 1, 2, 0, 2, 3] {
+            self.vertices.push(corners[index]);
+        }
+        match self.batches.last_mut() {
+            Some((GuiBlend::Translucent, _, count)) => *count += 6,
+            _ => self.batches.push((GuiBlend::Translucent, first, 6)),
+        }
+    }
+
+    /// `GuiGraphics.fill` in one colour.
+    pub fn fill(&mut self, atlas: &GuiAtlas, rect: (i32, i32, i32, i32), colour: u32) {
+        self.fill_gradient(atlas, rect, colour, colour);
+    }
+
+    /// `GuiGraphics.blitSprite` of a whole sprite.
+    pub fn sprite(&mut self, atlas: &GuiAtlas, name: &str, x: i32, y: i32, w: i32, h: i32) {
+        self.blit(atlas, GuiBlend::Translucent, name, x, y, w, h);
+    }
+
+    /// `GuiGraphics.blit` of a region of a whole texture: `(u, v)` and the
+    /// drawn size in texels of a texture `texture_size` big.
+    #[allow(clippy::too_many_arguments)]
+    pub fn blit_texture(
+        &mut self,
+        atlas: &GuiAtlas,
+        name: &str,
+        texture_size: (i32, i32),
+        uv: (i32, i32),
+        x: i32,
+        y: i32,
+        w: i32,
+        h: i32,
+    ) {
+        self.blit_part(
+            atlas,
+            GuiBlend::Translucent,
+            &format!("texture/{name}"),
+            texture_size,
+            uv,
+            x,
+            y,
+            w,
+            h,
+        );
+    }
+
+    /// `GuiGraphics.item` and `itemDecorations`: an item in the slot at
+    /// `(x, y)`, then its count (or the given text) in the given colour when
+    /// it is not one.
+    #[allow(clippy::too_many_arguments)]
+    pub fn item_with_count(
+        &mut self,
+        atlas: &GuiAtlas,
+        font: &crate::render::font::Font,
+        draw: &mut ItemDrawer<'_>,
+        item: i32,
+        count: i32,
+        text: Option<(&str, u32)>,
+        x: i32,
+        y: i32,
+    ) {
+        self.item(draw, item, x, y);
+        let count_text = count.to_string();
+        let shown = match text {
+            Some(text) => Some(text),
+            None if count != 1 => Some((count_text.as_str(), 0xFFFF_FFFF)),
+            None => None,
+        };
+        if let Some((text, colour)) = shown {
+            self.text_with_shadow(
+                atlas,
+                font,
+                text,
+                x + 19 - 2 - font.width(text),
+                y + 6 + 3,
+                colour,
+            );
+        }
+    }
+
     /// `GuiGraphics.item`: one item's triangles into the slot at `(x, y)`.
-    fn item(&mut self, draw: &mut ItemDrawer<'_>, item: i32, x: i32, y: i32) {
+    pub fn item(&mut self, draw: &mut ItemDrawer<'_>, item: i32, x: i32, y: i32) {
         let first = self.items.len() as u32;
         draw(item, x as f32, y as f32, &mut self.items);
         let added = self.items.len() as u32 - first;

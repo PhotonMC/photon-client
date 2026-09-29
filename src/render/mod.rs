@@ -16,6 +16,7 @@ pub mod font;
 pub mod geometry;
 pub mod gui;
 pub mod gui_items;
+pub mod inventory_screen;
 pub mod item_model;
 pub mod joml;
 pub mod mipmap;

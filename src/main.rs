@@ -767,6 +767,10 @@ struct HeldKeys {
     use_click: bool,
     /// The use key held down on this tick.
     hold_use: bool,
+    /// A scripted press of the inventory key on this tick.
+    inventory: bool,
+    /// A scripted click in the open inventory: slot, button, click type.
+    click: Option<(i32, i32, i32)>,
 }
 
 impl HeldKeys {
@@ -815,8 +819,22 @@ impl HeldKeys {
                 "mine" => keys.mine = true,
                 "use" => keys.use_click = true,
                 "hold_use" => keys.hold_use = true,
+                "inventory" => keys.inventory = true,
                 "none" => {}
-                other => return Err(format!("unknown key {other} in VOXEL_SCRIPT")),
+                other => {
+                    // `click/SLOT/BUTTON/TYPE`, the type by its id.
+                    let parts: Vec<&str> = other.split('/').collect();
+                    match parts.as_slice() {
+                        ["click", slot, button, kind] => {
+                            let number = |text: &str| {
+                                text.parse::<i32>()
+                                    .map_err(|_| format!("bad click {other} in VOXEL_SCRIPT"))
+                            };
+                            keys.click = Some((number(slot)?, number(button)?, number(kind)?));
+                        }
+                        _ => return Err(format!("unknown key {other} in VOXEL_SCRIPT")),
+                    }
+                }
             }
         }
         Ok(keys)
@@ -1051,6 +1069,59 @@ fn player_camera(
 /// the reference client would send. WASD moves, space jumps, left shift
 /// sneaks, left control sprints, the mouse looks, and escape frees the
 /// cursor (a second escape closes the window).
+/// `Minecraft.handleKeybinds` for the inventory key: the survival inventory
+/// screen opens and the mouse is let go, at the window's centre.
+fn open_inventory(
+    surface: &mut WindowSurface,
+    screen: &mut Option<render::inventory_screen::InventoryScreen>,
+) {
+    let size = surface.scale();
+    *screen = Some(render::inventory_screen::InventoryScreen::new(
+        size.gui_scaled_width(),
+        size.gui_scaled_height(),
+    ));
+    surface.set_cursor_captured(false);
+    let (width, height) = surface.window_size();
+    surface.set_cursor_position(f64::from(width) / 2.0, f64::from(height) / 2.0);
+}
+
+/// `AbstractContainerScreen.onClose`: the container closes and the mouse is
+/// grabbed again.
+fn close_inventory(
+    session: &mut PlaySession,
+    surface: &mut WindowSurface,
+    screen: &mut Option<render::inventory_screen::InventoryScreen>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    *screen = None;
+    session.close_inventory()?;
+    surface.set_cursor_captured(true);
+    Ok(())
+}
+
+/// The screen's clicks into the menu, one after another.
+fn screen_clicks(
+    session: &mut PlaySession,
+    clicks: &[render::inventory_screen::SlotClick],
+) -> Result<(), Box<dyn std::error::Error>> {
+    for click in clicks {
+        session.container_click(click.slot, click.button, click.kind)?;
+    }
+    Ok(())
+}
+
+/// The inventory screen's title, `container.crafting` in the default
+/// language.
+fn crafting_title(root: &str) -> String {
+    std::fs::read_to_string(std::path::Path::new(root).join("minecraft/lang/en_us.json"))
+        .ok()
+        .and_then(|text| voxel_client::json::parse(&text).ok())
+        .and_then(|value| match value {
+            voxel_client::json::JsonValue::Object(object) => object.text("container.crafting"),
+            _ => None,
+        })
+        .unwrap_or_else(|| "Crafting".to_owned())
+}
+
 fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::error::Error>> {
     let server: SocketAddr = args
         .next()
@@ -1371,6 +1442,12 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
     };
     let mut captured = script.is_none();
     surface.set_cursor_captured(captured);
+    // The open inventory screen, the mouse in GUI units, and the button a
+    // drag is held with (`MouseHandler.activeButton`).
+    let mut inventory_screen: Option<render::inventory_screen::InventoryScreen> = None;
+    let mut gui_mouse = (0.0_f64, 0.0_f64);
+    let mut active_button: Option<i32> = None;
+    let inventory_title = crafting_title(&root);
     let mut last_cursor: Option<(f64, f64)> = None;
     let tick_length = Duration::from_millis(50);
     let mut accumulated = Duration::ZERO;
@@ -1389,7 +1466,71 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
     while !surface.should_close() {
         let frame_start = std::time::Instant::now();
         for event in surface.poll() {
+            if let Some(screen) = inventory_screen.as_mut() {
+                let size = surface.scale();
+                screen.resize(size.gui_scaled_width(), size.gui_scaled_height());
+            }
             match event {
+                // An open screen takes the keys and the mouse.
+                glfw::WindowEvent::Key(
+                    key,
+                    _,
+                    glfw::Action::Press | glfw::Action::Repeat,
+                    modifiers,
+                ) if inventory_screen.is_some() => {
+                    let menu = session.inventory_menu().clone();
+                    let screen = inventory_screen.as_mut().expect("checked above");
+                    match screen.key_pressed(
+                        key,
+                        modifiers.contains(glfw::Modifiers::Control),
+                        &menu,
+                    ) {
+                        render::inventory_screen::KeyResult::Close => {
+                            close_inventory(&mut session, &mut surface, &mut inventory_screen)?;
+                            captured = true;
+                            last_cursor = None;
+                        }
+                        render::inventory_screen::KeyResult::Clicks(clicks) => {
+                            screen_clicks(&mut session, &clicks)?;
+                        }
+                    }
+                }
+                glfw::WindowEvent::Key(..) if inventory_screen.is_some() => {}
+                glfw::WindowEvent::MouseButton(button, action, modifiers)
+                    if inventory_screen.is_some() =>
+                {
+                    let button = button as i32;
+                    let shift = modifiers.contains(glfw::Modifiers::Shift);
+                    let menu = session.inventory_menu().clone();
+                    let screen = inventory_screen.as_mut().expect("checked above");
+                    let clicks = if action == glfw::Action::Press {
+                        active_button = Some(button);
+                        screen.mouse_clicked(
+                            gui_mouse.0,
+                            gui_mouse.1,
+                            button,
+                            shift,
+                            std::time::Instant::now(),
+                            &menu,
+                        )
+                    } else {
+                        active_button = None;
+                        screen.mouse_released(gui_mouse.0, gui_mouse.1, button, shift, &menu)
+                    };
+                    screen_clicks(&mut session, &clicks)?;
+                }
+                glfw::WindowEvent::Key(glfw::Key::E, _, glfw::Action::Press, _)
+                    if captured
+                        && session.game_mode()
+                            != voxel_client::world::ClientPlayerGameMode::Creative
+                        && !session.player().is_some_and(|player| player.spectating()) =>
+                {
+                    open_inventory(&mut surface, &mut inventory_screen);
+                    captured = false;
+                    keys = HeldKeys::default();
+                    attack_key.release();
+                    use_key.release();
+                }
                 glfw::WindowEvent::Key(glfw::Key::Escape, _, glfw::Action::Press, _) => {
                     if captured {
                         captured = false;
@@ -1460,6 +1601,21 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                     last_cursor = None;
                     surface.set_cursor_captured(true);
                 }
+                glfw::WindowEvent::CursorPos(x, y) if inventory_screen.is_some() => {
+                    // `MouseHandler.onMove`: screen coordinates to GUI units.
+                    let size = surface.scale();
+                    let (width, height) = surface.window_size();
+                    gui_mouse = (
+                        x * f64::from(size.gui_scaled_width()) / f64::from(width.max(1)),
+                        y * f64::from(size.gui_scaled_height()) / f64::from(height.max(1)),
+                    );
+                    if active_button.is_some() {
+                        let menu = session.inventory_menu().clone();
+                        let screen = inventory_screen.as_mut().expect("checked above");
+                        screen.mouse_dragged(gui_mouse.0, gui_mouse.1, &menu);
+                    }
+                    last_cursor = None;
+                }
                 glfw::WindowEvent::CursorPos(x, y) => {
                     if captured
                         && let Some((last_x, last_y)) = last_cursor
@@ -1527,6 +1683,26 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
             // Once the script ends the key stays as its last step left it,
             // so a capture can show a block mid-break.
             if script.is_some() && !script_done {
+                if held.inventory {
+                    if inventory_screen.is_some() {
+                        close_inventory(&mut session, &mut surface, &mut inventory_screen)?;
+                        surface.set_cursor_captured(false);
+                    } else {
+                        open_inventory(&mut surface, &mut inventory_screen);
+                    }
+                }
+                if let Some((slot, button, kind)) = held.click {
+                    let kind = [
+                        voxel_client::inventory_menu::ClickType::Pickup,
+                        voxel_client::inventory_menu::ClickType::QuickMove,
+                        voxel_client::inventory_menu::ClickType::Swap,
+                        voxel_client::inventory_menu::ClickType::Clone,
+                        voxel_client::inventory_menu::ClickType::Throw,
+                        voxel_client::inventory_menu::ClickType::QuickCraft,
+                        voxel_client::inventory_menu::ClickType::PickupAll,
+                    ][kind.clamp(0, 6) as usize];
+                    session.container_click(slot, button, kind)?;
+                }
                 if held.attack {
                     attack_key.press();
                 }
@@ -2233,6 +2409,19 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                     .filter(|stack| stack.item_count() > 0 && stack.item_registry_id() != 0)
                     .map(|stack| (stack.item_registry_id(), stack.item_count()))
             };
+            let mut draw_item =
+                |item: i32, x: f32, y: f32, out: &mut Vec<render::gui_items::GuiItemVertex>| {
+                    let layers = gui_item_layers.entry(item).or_insert_with(|| {
+                        block_renderer.item_layers(
+                            item,
+                            render::model::DisplayContext::Gui,
+                            &|temperature, downfall| {
+                                biome_tints.grass_at_climate(temperature, downfall)
+                            },
+                        )
+                    });
+                    render::gui_items::item_vertices(layers, x, y, out);
+                };
             let frame = hud.build(
                 &gui_atlas,
                 &font,
@@ -2270,19 +2459,22 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                     offhand: stack(45),
                 },
                 started_at.elapsed().as_millis(),
-                &mut |item, x, y, out| {
-                    let layers = gui_item_layers.entry(item).or_insert_with(|| {
-                        block_renderer.item_layers(
-                            item,
-                            render::model::DisplayContext::Gui,
-                            &|temperature, downfall| {
-                                biome_tints.grass_at_climate(temperature, downfall)
-                            },
-                        )
-                    });
-                    render::gui_items::item_vertices(layers, x, y, out);
-                },
+                &mut draw_item,
             );
+            // The open screen over the HUD.
+            let mut frame = frame;
+            if let Some(screen) = inventory_screen.as_mut() {
+                let menu = session.inventory_menu().clone();
+                screen.build(
+                    &mut frame,
+                    &gui_atlas,
+                    &font,
+                    &inventory_title,
+                    &menu,
+                    gui_mouse,
+                    &mut draw_item,
+                );
+            }
             let scale = size.gui_scale() as f32;
             backend.set_gui(
                 &frame,

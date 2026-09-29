@@ -76,6 +76,8 @@ pub struct PlaySession {
     sent_slot: i32,
     /// Breaking state and the miss wait.
     game_mode_state: crate::game_mode::GameMode,
+    /// The player's inventory menu, whose drag state lasts between clicks.
+    inventory_menu: crate::inventory_menu::InventoryMenu,
     dirty_sections: std::collections::BTreeSet<(i32, i32, i32)>,
     forgotten_chunks: Vec<(i32, i32)>,
     clocks: std::collections::BTreeMap<i32, ClockState>,
@@ -139,6 +141,7 @@ impl PlaySession {
             level_reset: false,
             sent_slot: 0,
             game_mode_state: crate::game_mode::GameMode::default(),
+            inventory_menu: crate::inventory_menu::InventoryMenu::default(),
             dirty_sections: std::collections::BTreeSet::new(),
             forgotten_chunks: Vec::new(),
             clocks: std::collections::BTreeMap::new(),
@@ -384,6 +387,67 @@ impl PlaySession {
     /// The breaking state, for drawing the crack and reporting.
     pub fn game_mode_state(&self) -> &crate::game_mode::GameMode {
         &self.game_mode_state
+    }
+
+    /// The player's inventory menu as the client holds it now.
+    pub fn inventory_menu(&mut self) -> &crate::inventory_menu::InventoryMenu {
+        if let Some((slots, carried, state_id)) = self.trace.world.local_player_menu() {
+            self.inventory_menu.load(slots, carried, state_id);
+        }
+        &self.inventory_menu
+    }
+
+    /// `AbstractContainerScreen.slotClicked` into the player's own menu:
+    /// the click as the client predicts it, the arm swings its drops cause,
+    /// then the click packet.
+    pub fn container_click(
+        &mut self,
+        slot: i32,
+        button: i32,
+        kind: crate::inventory_menu::ClickType,
+    ) -> Result<(), ConnectionError> {
+        let Some((slots, carried, state_id)) = self.trace.world.local_player_menu() else {
+            return Ok(());
+        };
+        self.inventory_menu.load(slots, carried, state_id);
+        let player = crate::inventory_menu::Player {
+            selected: self.status.selected_slot.clamp(0, 8) as usize,
+            infinite_materials: self.game_mode == crate::world::ClientPlayerGameMode::Creative,
+        };
+        let (swings, body) = self.inventory_menu.handle_click(slot, button, kind, player);
+        let menu = &self.inventory_menu;
+        self.trace
+            .world
+            .set_local_player_menu(&menu.slots, menu.carried.clone());
+        for _ in 0..swings {
+            // `LocalPlayer.swing`: the arm, then the packet.
+            if let Some(player) = self.player.as_mut() {
+                player.swing();
+            }
+            self.swings += 1;
+            self.send(PLAY_SERVERBOUND_SWING_PACKET_ID, |output| {
+                output.push(0);
+                Ok(())
+            })?;
+        }
+        self.send(PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID, |output| {
+            output.extend_from_slice(&body);
+            Ok(())
+        })
+    }
+
+    /// `LocalPlayer.closeContainer` for the inventory: the close packet,
+    /// then `InventoryMenu.removed`, which empties the result slot.
+    pub fn close_inventory(&mut self) -> Result<(), ConnectionError> {
+        self.send(PLAY_SERVERBOUND_CONTAINER_CLOSE_PACKET_ID, |output| {
+            output.push(0);
+            Ok(())
+        })?;
+        if let Some((mut slots, carried, _)) = self.trace.world.local_player_menu() {
+            slots[0] = None;
+            self.trace.world.set_local_player_menu(&slots, carried);
+        }
+        Ok(())
     }
 
     /// The hands whose stack a use spent since the last call.
