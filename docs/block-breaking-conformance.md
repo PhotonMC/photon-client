@@ -110,7 +110,8 @@ kalıyor, böylece yakalanan kare kırma sürerken alınabiliyor.
   cevherinin yanması, kapı/yatak/çift bitkinin diğer yarısı) ve tahmin
   edilen kırmadan sonra komşu şekil güncellemeleri tahmin edilmiyor;
   sunucunun blok güncellemesi bunları düzeltiyor.
-- İstemci ışığı yeniden hesaplamıyor; ışık sunucunun paketiyle geliyor.
+- Kırılan bloğun ışığı istemcinin ışık motoruyla yeniden hesaplanıyor
+  ([P08.c-light.2](client-light-engine-conformance.md)).
 - Eşyanın yamasındaki `tool` ve `minimum_attack_charge` bileşenleri
   okunmuyor (varsayılan kullanılıyor); adventure `can_break` yüklemi
   değerlendirilmiyor; operatör izin seviyesi izlenmediğinden game master

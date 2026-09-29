@@ -128,6 +128,9 @@ public final class MovementOracle {
 
         @Override
         public void setSectionRangeDirty(int minX, int minY, int minZ, int maxX, int maxY, int maxZ) {}
+
+        @Override
+        public void setSectionDirty(int sectionX, int sectionY, int sectionZ) {}
     }
 
     private static Object getField(Object target, String name) throws Exception {
@@ -178,6 +181,7 @@ public final class MovementOracle {
         for (var element : request.get("rows").getAsJsonArray()) {
             switch (operation) {
                 case "local_player_ticks" -> rows.add(localPlayerTicks(element.getAsJsonObject()));
+                case "light_changes" -> rows.add(lightChanges(element.getAsJsonObject()));
                 default -> throw new IllegalArgumentException(
                     "Unknown movement operation: " + operation);
             }
@@ -212,19 +216,15 @@ public final class MovementOracle {
             (Comparable) parsed);
     }
 
-    /**
-     * Step the reference's own player through a scene, tick by tick.
-     *
-     * The keys held and the look direction are set before each tick, exactly
-     * where the game's frame loop would have left them; then the level ticks
-     * the player the way it ticks every entity. After every tick the position, the motion, the flags
-     * and every packet the player asked to send are reported, the packets as
-     * the bytes their own codec writes.
-     */
-    private static JsonObject localPlayerTicks(JsonObject row) throws Exception {
-        var entry = new JsonObject();
-        entry.addProperty("label", row.get("label").getAsString());
+    /** A client level with the scene's blocks, and the game around it. */
+    record Scene(
+        net.minecraft.client.multiplayer.ClientPacketListener listener,
+        CapturingConnection wire,
+        net.minecraft.client.multiplayer.ClientLevel level,
+        net.minecraft.client.Minecraft minecraft,
+        net.minecraft.client.Options options) {}
 
+    private static Scene buildScene(JsonObject row) throws Exception {
         var listener = (net.minecraft.client.multiplayer.ClientPacketListener)
             unsafe.allocateInstance(net.minecraft.client.multiplayer.ClientPacketListener.class);
         setField(listener, "registryAccess", registries);
@@ -252,7 +252,7 @@ public final class MovementOracle {
         setField(level, "minecraft", minecraft);
         var workDir = java.nio.file.Files.createTempDirectory("oracle-options").toFile();
         var options = new net.minecraft.client.Options(minecraft, workDir);
-        options.autoJump().set(row.get("auto_jump").getAsBoolean());
+        options.autoJump().set(row.has("auto_jump") && row.get("auto_jump").getAsBoolean());
         setField(minecraft, "options", options);
         setField(minecraft, "gui", unsafe.allocateInstance(net.minecraft.client.gui.Gui.class));
         setField(minecraft, "tutorial", new net.minecraft.client.tutorial.Tutorial(minecraft, options));
@@ -291,6 +291,29 @@ public final class MovementOracle {
                     chunkX, chunkZ, buffer, java.util.Map.of(), output -> {});
             }
         }
+
+        return new Scene(listener, wire, level, minecraft, options);
+    }
+
+    /**
+     * Step the reference's own player through a scene, tick by tick.
+     *
+     * The keys held and the look direction are set before each tick, exactly
+     * where the game's frame loop would have left them; then the level ticks
+     * the player the way it ticks every entity. After every tick the position, the motion, the flags
+     * and every packet the player asked to send are reported, the packets as
+     * the bytes their own codec writes.
+     */
+    private static JsonObject localPlayerTicks(JsonObject row) throws Exception {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+
+        var scene = buildScene(row);
+        var listener = scene.listener();
+        var wire = scene.wire();
+        var level = scene.level();
+        var minecraft = scene.minecraft();
+        var options = scene.options();
 
         var player = new net.minecraft.client.player.LocalPlayer(
             minecraft, level, listener, null, null,
@@ -471,6 +494,89 @@ public final class MovementOracle {
                 watched.get("x").getAsInt(), watched.get("y").getAsInt(), watched.get("z").getAsInt()))));
         }
         out.add("watched_states", states);
+        return out;
+    }
+
+    /**
+     * The client level's own light engine, lit from nothing and then kept
+     * current through block updates.
+     *
+     * The level's light starts the way the server first lights a chunk: every
+     * section that holds blocks is marked, every column is switched on, and
+     * the light sources are spread. Each event then arrives as a block update
+     * from the server would, and the engine runs as the frame loop runs it.
+     * After the start and after every event, the block and sky light of a box
+     * are reported, as the level's light getters read them.
+     */
+    private static JsonObject lightChanges(JsonObject row) throws Exception {
+        var scene = buildScene(row);
+        var level = scene.level();
+        var extractor = unsafe.allocateInstance(NoRebuilds.class);
+        setField(level, "levelExtractor", extractor);
+        setField(scene.minecraft(), "levelExtractor", extractor);
+        var engine = level.getChunkSource().getLightEngine();
+        int radius = row.get("chunk_radius").getAsInt();
+        var chunks = new java.util.ArrayList<net.minecraft.world.level.ChunkPos>();
+        for (int chunkX = -radius; chunkX <= radius; chunkX++) {
+            for (int chunkZ = -radius; chunkZ <= radius; chunkZ++) {
+                chunks.add(new net.minecraft.world.level.ChunkPos(chunkX, chunkZ));
+            }
+        }
+        for (var chunkPos : chunks) {
+            var chunk = level.getChunk(chunkPos.x(), chunkPos.z());
+            var sections = chunk.getSections();
+            for (int index = 0; index < sections.length; index++) {
+                if (!sections[index].hasOnlyAir()) {
+                    engine.updateSectionStatus(net.minecraft.core.SectionPos.of(
+                        chunkPos, level.getSectionYFromSectionIndex(index)), false);
+                }
+            }
+        }
+        for (var chunkPos : chunks) {
+            engine.setLightEnabled(chunkPos, true);
+        }
+        for (var chunkPos : chunks) {
+            engine.propagateLightSources(chunkPos);
+        }
+        engine.runLightUpdates();
+
+        var box = row.getAsJsonObject("box");
+        var snapshots = new JsonArray();
+        snapshots.add(lightSnapshot(engine, box));
+        for (var element : row.get("events").getAsJsonArray()) {
+            var event = element.getAsJsonObject();
+            level.setServerVerifiedBlockState(
+                new BlockPos(event.get("x").getAsInt(), event.get("y").getAsInt(), event.get("z").getAsInt()),
+                state(event), 19);
+            engine.runLightUpdates();
+            snapshots.add(lightSnapshot(engine, box));
+        }
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        entry.addProperty("outcome", "lit");
+        entry.add("snapshots", snapshots);
+        return entry;
+    }
+
+    /** Block then sky light of every position in the box, y, then z, then x, as hex digits. */
+    private static JsonObject lightSnapshot(
+        net.minecraft.world.level.lighting.LevelLightEngine engine, JsonObject box) {
+        var out = new JsonObject();
+        for (var layer : net.minecraft.world.level.LightLayer.values()) {
+            var listener = engine.getLayerListener(layer);
+            var values = new StringBuilder();
+            for (int y = 0; y < box.get("size_y").getAsInt(); y++) {
+                for (int z = 0; z < box.get("size_z").getAsInt(); z++) {
+                    for (int x = 0; x < box.get("size_x").getAsInt(); x++) {
+                        values.append(Integer.toHexString(listener.getLightValue(new BlockPos(
+                            box.get("x").getAsInt() + x, box.get("y").getAsInt() + y,
+                            box.get("z").getAsInt() + z))));
+                    }
+                }
+            }
+            out.addProperty(layer == net.minecraft.world.level.LightLayer.BLOCK ? "block" : "sky",
+                values.toString());
+        }
         return out;
     }
 

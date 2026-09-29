@@ -2762,6 +2762,8 @@ fn connect_and_probe_with_mode(
                         },
                     },
                 );
+                // A probe runs the light after each packet, as the next frame would.
+                trace.world.flush_light();
                 if application.invalid_sky_updates != 0 || application.invalid_block_updates != 0 {
                     return Err(ConnectionError::Codec("light update data layer"));
                 }
@@ -3016,7 +3018,7 @@ fn connect_and_probe_with_mode(
                 for entity in &mut chunk.block_entities {
                     entity.applied_to_world = true;
                 }
-                let light_application = trace.world.apply_light_updates(
+                let light_application = trace.world.apply_chunk_light(
                     chunk.x,
                     chunk.z,
                     LightUpdateInput {
@@ -3032,6 +3034,8 @@ fn connect_and_probe_with_mode(
                         },
                     },
                 );
+                // A probe runs the light after each packet, as the next frame would.
+                trace.world.flush_light();
                 if light_application.invalid_sky_updates != 0
                     || light_application.invalid_block_updates != 0
                 {

@@ -13420,6 +13420,65 @@ def movement_cases():
                  main_hand="minecraft:wooden_sword", game_mode="creative"),
         breaking("adventure-bare-hand", dirt, hits(1, clicks=1) + hits(4), game_mode="adventure"),
     ]
+    # Light: the client level lights itself from nothing, then relights as
+    # block updates arrive. Each row reports a box's block and sky light
+    # after the start and after every update.
+    def slab(low_x, high_x, low_z, high_z, low_y, high_y, block="minecraft:stone"):
+        return [{"x": x, "y": y, "z": z, "block": block}
+                for x in range(low_x, high_x + 1) for z in range(low_z, high_z + 1)
+                for y in range(low_y, high_y + 1)]
+
+    def lit(label, blocks, events, box):
+        return {
+            "label": label,
+            "blocks": blocks,
+            "chunk_radius": 1,
+            "events": events,
+            "box": {"x": box[0], "y": box[1], "z": box[2],
+                    "size_x": box[3], "size_y": box[4], "size_z": box[5]},
+        }
+
+    def put(x, y, z, block, properties=None):
+        placed = {"x": x, "y": y, "z": z, "block": block}
+        if properties:
+            placed["properties"] = properties
+        return placed
+
+    ground = slab(-8, 8, -8, 8, 61, 63)
+    walls = ([b for b in slab(-3, 3, -3, 3, 64, 67)
+              if abs(b["x"]) == 3 or abs(b["z"]) == 3 or b["y"] == 67])
+    light_rows = [
+        lit("dig-to-the-void", ground,
+            [put(0, 63, 0, "minecraft:air"), put(0, 62, 0, "minecraft:air"),
+             put(0, 61, 0, "minecraft:air"), put(0, 61, 0, "minecraft:stone")],
+            (-3, 40, -3, 7, 28, 7)),
+        lit("closed-room-glowstone", ground + walls,
+            [put(0, 64, 0, "minecraft:glowstone"), put(0, 64, 0, "minecraft:air"),
+             put(0, 67, 0, "minecraft:air"), put(0, 67, 0, "minecraft:stone"),
+             put(2, 65, 2, "minecraft:glowstone")],
+            (-4, 60, -4, 9, 10, 9)),
+        lit("materials-under-sky", ground,
+            [put(0, 64, 0, "minecraft:torch"),
+             put(2, 64, 0, "minecraft:oak_slab", {"type": "bottom"}),
+             put(2, 65, 0, "minecraft:oak_slab", {"type": "top"}),
+             put(4, 64, 0, "minecraft:oak_leaves", {"persistent": "true"}),
+             put(4, 65, 0, "minecraft:oak_leaves", {"persistent": "true"}),
+             put(-2, 64, 0, "minecraft:water"),
+             put(-4, 64, 0, "minecraft:glass"),
+             put(-4, 65, 0, "minecraft:stone_stairs", {"facing": "north", "half": "bottom"}),
+             put(0, 66, 2, "minecraft:stone"), put(0, 64, 0, "minecraft:air")],
+            (-6, 60, -3, 13, 9, 7)),
+        lit("chunk-edge", slab(8, 24, -4, 4, 61, 63),
+            [put(15, 63, 0, "minecraft:air"), put(16, 63, 0, "minecraft:air"),
+             put(16, 62, 0, "minecraft:glowstone"), put(16, 62, 0, "minecraft:air")],
+            (12, 58, -2, 8, 9, 5)),
+    ]
+    yield {
+        "case_id": "movement/light-changes",
+        "family": "movement",
+        "operation": "light_changes",
+        "rows": light_rows,
+    }
     yield {
         "case_id": "movement/breaking",
         "family": "movement",

@@ -155,14 +155,9 @@ impl ClientChunkCacheState {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub(crate) struct ClientChunk {
     pub(crate) sections: BTreeMap<i32, ClientSection>,
-    pub(crate) lights: BTreeMap<i32, ClientLightSection>,
+    /// `ChunkSkyLightSources`, from the sections the chunk arrived with.
+    pub(crate) sky_sources: Option<super::light::ChunkSkyLightSources>,
     pub(crate) block_entities: BTreeMap<(i32, i32, i32), ClientBlockEntity>,
-}
-
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub(crate) struct ClientLightSection {
-    pub(crate) sky: Option<Vec<u8>>,
-    pub(crate) block: Option<Vec<u8>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -183,12 +178,6 @@ impl PendingLightUpdate {
         }
     }
 
-    pub(crate) fn as_input(&self) -> LightUpdateInput<'_> {
-        LightUpdateInput {
-            sky: self.sky.as_input(),
-            block: self.block.as_input(),
-        }
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -207,13 +196,6 @@ impl OwnedLightLayerInput {
         }
     }
 
-    pub(crate) fn as_input(&self) -> LightLayerInput<'_> {
-        LightLayerInput {
-            mask: &self.mask,
-            empty_mask: &self.empty_mask,
-            updates: &self.updates,
-        }
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -327,46 +309,3 @@ pub(crate) fn count_light_sections(
         .count()
 }
 
-pub(crate) fn apply_light_layer(
-    lights: &mut BTreeMap<i32, ClientLightSection>,
-    min_section_y: i32,
-    section_count: usize,
-    layer: LightLayer,
-    mask: &BitSet,
-    empty_mask: &BitSet,
-    updates: &[Vec<u8>],
-) -> (usize, usize) {
-    let mut update_index = 0;
-    let mut applied_sections = 0;
-    let mut invalid_updates = 0;
-    for section_index in 0..section_count {
-        let bit = section_index as u64;
-        if mask.contains(bit) {
-            let update = updates.get(update_index);
-            update_index += 1;
-            if let Some(update) = update.filter(|update| update.len() == 2_048) {
-                let section = lights
-                    .entry(min_section_y + section_index as i32)
-                    .or_default();
-                match layer {
-                    LightLayer::Sky => section.sky = Some(update.clone()),
-                    LightLayer::Block => section.block = Some(update.clone()),
-                }
-                applied_sections += 1;
-            } else {
-                invalid_updates += 1;
-            }
-        } else if empty_mask.contains(bit) {
-            let section = lights
-                .entry(min_section_y + section_index as i32)
-                .or_default();
-            let empty = vec![0; 2_048];
-            match layer {
-                LightLayer::Sky => section.sky = Some(empty),
-                LightLayer::Block => section.block = Some(empty),
-            }
-            applied_sections += 1;
-        }
-    }
-    (applied_sections, invalid_updates)
-}

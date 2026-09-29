@@ -2337,8 +2337,31 @@ fn replacing_and_unloading_a_chunk_updates_the_section_cache() {
     assert!(!world.unload_chunk(0, 0));
 }
 
+fn sky_update(value: u8) -> Vec<u8> {
+    let mut sky = vec![0; 2_048];
+    sky[0] = value;
+    sky
+}
+
+fn sky_only(updates: &[Vec<u8>]) -> LightUpdateInput<'_> {
+    static MASK: std::sync::OnceLock<BitSet> = std::sync::OnceLock::new();
+    static NONE: std::sync::OnceLock<BitSet> = std::sync::OnceLock::new();
+    LightUpdateInput {
+        sky: LightLayerInput {
+            mask: MASK.get_or_init(|| BitSet::from_bits(&[1])),
+            empty_mask: NONE.get_or_init(BitSet::new),
+            updates,
+        },
+        block: LightLayerInput {
+            mask: NONE.get_or_init(BitSet::new),
+            empty_mask: NONE.get_or_init(BitSet::new),
+            updates: &[],
+        },
+    }
+}
+
 #[test]
-fn light_updates_store_java_nibble_order_and_empty_sections() {
+fn chunk_light_stores_java_nibble_order_and_empty_sections() {
     let (blocks, biomes) = section(7, 8);
     let mut world = ClientWorld::default();
     world.replace_chunk(
@@ -2358,7 +2381,7 @@ fn light_updates_store_java_nibble_order_and_empty_sections() {
     sky[128] = 0x09;
     let mut block = vec![0; 2_048];
     block[0] = 0xa6;
-    let application = world.apply_light_updates(
+    let application = world.apply_chunk_light(
         0,
         0,
         LightUpdateInput {
@@ -2379,7 +2402,11 @@ fn light_updates_store_java_nibble_order_and_empty_sections() {
     assert_eq!(application.applied_block_sections, 2);
     assert_eq!(application.invalid_sky_updates, 0);
     assert_eq!(application.invalid_block_updates, 0);
-    assert_eq!(world.loaded_light_section_count(), 2);
+    // Nothing reaches the engine until a frame runs the queued task.
+    assert_eq!(world.sky_light_at(0, -64, 0), None);
+    world.flush_light();
+    // The filled section and its neighbours above and below hold light.
+    assert_eq!(world.loaded_light_section_count(), 3);
     assert_eq!(world.sky_light_at(0, -64, 0), Some(3));
     assert_eq!(world.sky_light_at(1, -64, 0), Some(12));
     assert_eq!(world.sky_light_at(0, -64, 1), Some(5));
@@ -2390,56 +2417,26 @@ fn light_updates_store_java_nibble_order_and_empty_sections() {
     assert_eq!(world.block_light_at(0, -48, 0), Some(0));
 
     assert!(world.unload_chunk(0, 0));
+    world.flush_light();
     assert_eq!(world.sky_light_at(0, -64, 0), None);
     assert_eq!(world.loaded_light_section_count(), 0);
 }
 
 #[test]
-fn light_updates_for_unloaded_chunks_wait_in_fifo_until_chunk_load() {
+fn light_updates_for_unloaded_chunks_stay_queued_in_the_engine() {
     let mut world = ClientWorld::default();
-    let mut first_sky = vec![0; 2_048];
-    first_sky[0] = 0x05;
-    let mut second_sky = vec![0; 2_048];
-    second_sky[0] = 0x0a;
-
-    let first_application = world.apply_light_updates(
-        3,
-        -2,
-        LightUpdateInput {
-            sky: LightLayerInput {
-                mask: &BitSet::from_bits(&[1]),
-                empty_mask: &BitSet::new(),
-                updates: &[first_sky],
-            },
-            block: LightLayerInput {
-                mask: &BitSet::new(),
-                empty_mask: &BitSet::new(),
-                updates: &[],
-            },
-        },
-    );
-    let second_application = world.apply_light_updates(
-        3,
-        -2,
-        LightUpdateInput {
-            sky: LightLayerInput {
-                mask: &BitSet::from_bits(&[1]),
-                empty_mask: &BitSet::new(),
-                updates: &[second_sky],
-            },
-            block: LightLayerInput {
-                mask: &BitSet::new(),
-                empty_mask: &BitSet::new(),
-                updates: &[],
-            },
-        },
-    );
-
-    assert!(first_application.queued);
-    assert!(second_application.queued);
+    let (first, second) = (vec![sky_update(0x05)], vec![sky_update(0x0a)]);
+    assert!(world.apply_light_updates(3, -2, sky_only(&first)).queued);
+    assert!(world.apply_light_updates(3, -2, sky_only(&second)).queued);
     assert_eq!(world.pending_light_update_count(), 2);
     assert_eq!(world.sky_light_at(48, -64, -32), None);
 
+    // The later layer replaces the earlier one in the engine's queue, which
+    // the getters read before any section stores it.
+    world.flush_light();
+    assert_eq!(world.pending_light_update_count(), 0);
+    assert_eq!(world.sky_light_at(48, -64, -32), Some(10));
+
     let (blocks, biomes) = section(0, 0);
     world.replace_chunk(
         3,
@@ -2451,41 +2448,13 @@ fn light_updates_for_unloaded_chunks_wait_in_fifo_until_chunk_load() {
             biomes: &biomes,
         }],
     );
-
-    assert_eq!(world.pending_light_update_count(), 0);
-    assert_eq!(world.loaded_light_section_count(), 1);
     assert_eq!(world.sky_light_at(48, -64, -32), Some(10));
+    assert_eq!(world.loaded_light_section_count(), 0);
 }
 
 #[test]
-fn unloading_a_chunk_discards_pending_light_updates_for_that_chunk() {
+fn unloading_a_chunk_removes_its_queued_light() {
     let mut world = ClientWorld::default();
-    let mut sky = vec![0; 2_048];
-    sky[0] = 0x0f;
-    assert!(
-        world
-            .apply_light_updates(
-                3,
-                -2,
-                LightUpdateInput {
-                    sky: LightLayerInput {
-                        mask: &BitSet::from_bits(&[1]),
-                        empty_mask: &BitSet::new(),
-                        updates: &[sky],
-                    },
-                    block: LightLayerInput {
-                        mask: &BitSet::new(),
-                        empty_mask: &BitSet::new(),
-                        updates: &[],
-                    },
-                },
-            )
-            .queued
-    );
-    assert_eq!(world.pending_light_update_count(), 1);
-    assert!(!world.unload_chunk(3, -2));
-    assert_eq!(world.pending_light_update_count(), 0);
-
     let (blocks, biomes) = section(0, 0);
     world.replace_chunk(
         3,
@@ -2497,6 +2466,11 @@ fn unloading_a_chunk_discards_pending_light_updates_for_that_chunk() {
             biomes: &biomes,
         }],
     );
+    let sky = vec![sky_update(0x0f)];
+    world.apply_light_updates(3, -2, sky_only(&sky));
+    assert!(world.unload_chunk(3, -2));
+    assert_eq!(world.pending_light_update_count(), 2);
+    world.flush_light();
     assert_eq!(world.sky_light_at(48, -64, -32), None);
 }
 

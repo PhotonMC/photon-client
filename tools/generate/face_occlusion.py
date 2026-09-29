@@ -59,6 +59,10 @@ def main(path):
     out += ["];", "", "#[rustfmt::skip]", f"pub static JOINS: [&str; {len(data['joins'])}] = ["]
     for line in data["joins"]:
         out.append(f'    "{line}",')
+    out += ["];", "", "/// Row `a` column `b`: whether the two faces together cover the whole face.",
+            "#[rustfmt::skip]", f"pub static COVERS: [&str; {len(data['covers'])}] = ["]
+    for line in data["covers"]:
+        out.append(f'    "{line}",')
     out += ["];", "", "#[rustfmt::skip]", f"pub static SKIPS: [SkipPair; {len(data['skip_pairs'])}] = ["]
     for pair in data["skip_pairs"]:
         mask = sum(1 << DIRECTIONS.index(d) for d in pair["directions"])

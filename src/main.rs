@@ -1777,6 +1777,8 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                 }
             })
         };
+        // `ClientLevel.update`: queued light and the light engine, each frame.
+        session.update_light();
         let dirtied = std::time::Instant::now();
         pending.extend(
             session

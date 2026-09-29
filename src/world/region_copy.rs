@@ -8,7 +8,6 @@
 //! region before compiling them.
 
 use super::ClientWorld;
-use super::chunk::ClientChunk;
 
 /// Block states and light in a box of blocks, and the biomes, in quarts,
 /// under it.
@@ -88,36 +87,32 @@ impl ClientWorld {
                 let Some(chunk) = self.chunk_for_query(chunk_x, chunk_z) else {
                     continue;
                 };
-                let sky_top = sky_top(chunk);
                 let x_range = (chunk_x * 16).max(min[0])..(chunk_x * 16 + 16).min(min[0] + size[0]);
                 let z_range = (chunk_z * 16).max(min[2])..(chunk_z * 16 + 16).min(min[2] + size[2]);
                 for y in min[1]..min[1] + size[1] {
-                    let section_y = y.div_euclid(16);
+                    let section = chunk.sections.get(&y.div_euclid(16));
                     let local_y = y.rem_euclid(16) as usize;
-                    let section = chunk.sections.get(&section_y);
-                    let light_section = chunk.lights.get(&section_y);
-                    let block_light = light_section.and_then(|section| section.block.as_ref());
-                    let sky_light = light_section.and_then(|section| section.sky.as_ref());
                     for z in z_range.clone() {
                         for x in x_range.clone() {
                             let within = local_y * 256
                                 + z.rem_euclid(16) as usize * 16
                                 + x.rem_euclid(16) as usize;
-                            let nibble =
-                                |data: &Vec<u8>| (data[within / 2] >> ((within & 1) * 4)) & 0x0f;
                             let index = (((y - min[1]) * size[2] + (z - min[2])) * size[0]
                                 + (x - min[0])) as usize;
                             states[index] = section
                                 .and_then(|section| section.block_states.get(within).copied());
-                            let block = block_light.map_or(0, nibble);
-                            let sky = match (sky_top, sky_light) {
-                                (None, _) => 15,
-                                (Some(_), Some(data)) => nibble(data),
-                                (Some(top), None) => sky_above(chunk, top, section_y, x, z),
-                            };
-                            light[index] = (block, sky);
                         }
                     }
+                }
+            }
+        }
+        // Light as the level's getters read it, loaded chunk or not.
+        for y in min[1]..min[1] + size[1] {
+            for z in min[2]..min[2] + size[2] {
+                for x in min[0]..min[0] + size[0] {
+                    let index =
+                        (((y - min[1]) * size[2] + (z - min[2])) * size[0] + (x - min[0])) as usize;
+                    light[index] = (self.block_brightness(x, y, z), self.sky_brightness(x, y, z));
                 }
             }
         }
@@ -148,35 +143,6 @@ impl ClientWorld {
             quart_rows,
         }
     }
-}
-
-/// The section above the chunk's highest sky light data, where the sky
-/// lookup stops and answers full light.
-fn sky_top(chunk: &ClientChunk) -> Option<i32> {
-    chunk
-        .lights
-        .iter()
-        .filter(|(_, section)| section.sky.is_some())
-        .map(|(section_y, _)| section_y + 1)
-        .max()
-}
-
-/// `sky_brightness` for a section without its own sky data: the bottom row
-/// of the first section above that has some.
-fn sky_above(chunk: &ClientChunk, top: i32, section_y: i32, x: i32, z: i32) -> u8 {
-    let mut section_y = section_y + 1;
-    while section_y < top {
-        if let Some(data) = chunk
-            .lights
-            .get(&section_y)
-            .and_then(|section| section.sky.as_ref())
-        {
-            let index = z.rem_euclid(16) as usize * 16 + x.rem_euclid(16) as usize;
-            return (data[index / 2] >> ((index & 1) * 4)) & 0x0f;
-        }
-        section_y += 1;
-    }
-    15
 }
 
 impl ClientWorld {

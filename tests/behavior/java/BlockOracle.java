@@ -219,6 +219,18 @@ public final class BlockOracle {
         }
         entry.addProperty("shape_count", ordered.size());
         entry.add("joins", joins);
+        // Whether the two faces together cover the whole face, as light
+        // propagation asks it.
+        var covers = new JsonArray();
+        for (var shape : ordered) {
+            var line = new StringBuilder();
+            for (var occluder : ordered) {
+                line.append(net.minecraft.world.phys.shapes.Shapes.faceShapeOccludes(shape, occluder)
+                    ? '1' : '0');
+            }
+            covers.add(line.toString());
+        }
+        entry.add("covers", covers);
 
         // Which ordered pairs of blocks hide their shared face, and whether
         // that ever depends on the states rather than on the blocks alone.
@@ -538,7 +550,8 @@ public final class BlockOracle {
                 String key = state.getLightEmission() + "|" + state.emissiveRendering()
                     + "|" + Oracle.bits(state.getShadeBrightness(getter, origin))
                     + "|" + state.isViewBlocking(getter, origin) + "|" + state.getLightDampening()
-                    + "|" + state.isSolidRender() + "|" + state.isCollisionShapeFullBlock(getter, origin);
+                    + "|" + state.isSolidRender() + "|" + state.isCollisionShapeFullBlock(getter, origin)
+                    + "|" + state.useShapeForLightOcclusion() + "|" + state.canOcclude();
                 perState.add(key);
                 distinct.add(key);
             }

@@ -28,6 +28,7 @@ mod dimension;
 mod entity;
 mod metadata;
 mod player;
+pub mod light;
 mod prediction;
 mod region_copy;
 
@@ -59,7 +60,12 @@ pub struct ClientWorld {
     block_state_registry: ClientBlockStateRegistry,
     chunks: BTreeMap<(i32, i32), ClientChunk>,
     chunk_cache: Option<ClientChunkCacheState>,
-    pending_light_updates: VecDeque<PendingLightUpdate>,
+    /// The client level's light engine and the light tasks waiting for a
+    /// frame, as `ClientLevel.queueLightUpdate` keeps them.
+    light: light::LevelLightEngine,
+    light_tasks: VecDeque<LightTask>,
+    /// Sections the light tasks asked to redraw, besides the engine's own.
+    light_dirty: Vec<light::SectionKey>,
     entities: BTreeMap<i32, ClientEntity>,
     entity_sections: BTreeMap<(i32, i32, i32), BTreeSet<i32>>,
     local_player: Option<ClientPlayerState>,
@@ -91,7 +97,9 @@ impl ClientWorld {
             block_state_registry: ClientBlockStateRegistry::vanilla_26_2(),
             chunks: BTreeMap::new(),
             chunk_cache: None,
-            pending_light_updates: VecDeque::new(),
+            light: new_light_engine(dimension, true),
+            light_tasks: VecDeque::new(),
+            light_dirty: Vec::new(),
             entities: BTreeMap::new(),
             entity_sections: BTreeMap::new(),
             local_player: None,
@@ -141,7 +149,8 @@ impl ClientWorld {
     /// Create the bounded chunk cache used by a Java client level.
     pub fn configure_chunk_cache(&mut self, server_view_radius: i32) {
         self.chunks.clear();
-        self.pending_light_updates.clear();
+        self.light = new_light_engine(self.dimension, self.dimension_environment.has_skylight);
+        self.light_tasks.clear();
         self.chunk_cache = Some(ClientChunkCacheState::new(server_view_radius));
     }
 
@@ -931,6 +940,16 @@ impl ClientWorld {
         environment: DimensionEnvironment,
     ) -> bool {
         let changed = self.dimension_key != input.key;
+        // A new level has its own light engine.
+        if changed
+            || self.dimension.min_y != bounds.min_y
+            || self.dimension.height != bounds.height
+            || self.dimension_environment.has_skylight != environment.has_skylight
+        {
+            self.light = new_light_engine(bounds, environment.has_skylight);
+            self.light_tasks.clear();
+            self.light_dirty.clear();
+        }
         self.dimension = bounds;
         self.dimension_key = input.key.to_owned();
         self.dimension_type_id = input.dimension_type_id;
@@ -946,7 +965,6 @@ impl ClientWorld {
                 .map(|cache| cache.server_view_radius);
             self.chunks.clear();
             self.chunk_cache = server_view_radius.map(ClientChunkCacheState::new);
-            self.pending_light_updates.clear();
             self.entities.clear();
             if let Some(player) = self.local_player.as_mut() {
                 player.vehicle_id = None;
@@ -1437,7 +1455,10 @@ impl ClientWorld {
         self.chunk_for_query(chunk_x, chunk_z).is_some()
     }
 
+    /// `handleForgetLevelChunk`: the chunk is dropped if the cache holds it,
+    /// and its light is queued for removal either way.
     pub fn unload_chunk(&mut self, chunk_x: i32, chunk_z: i32) -> bool {
+        self.queue_light_removal(chunk_x, chunk_z);
         if let Some(cache) = self.chunk_cache.as_ref() {
             if !cache.in_range(chunk_x, chunk_z) {
                 return false;
@@ -1456,9 +1477,8 @@ impl ClientWorld {
                 cache.slots.remove(&index);
                 cache.on_chunk_removed(chunk_x, chunk_z, section_ys);
             }
-            self.pending_light_updates
-                .retain(|update| update.chunk_x != chunk_x || update.chunk_z != chunk_z);
             if removed.is_some() {
+                self.unload_chunk_light(chunk_x, chunk_z);
                 for entity in self.entities.values_mut() {
                     if !entity.always_ticking
                         && entity_chunk_key(entity.position()) == (chunk_x, chunk_z)
@@ -1471,9 +1491,8 @@ impl ClientWorld {
         }
 
         let removed = self.chunks.remove(&(chunk_x, chunk_z)).is_some();
-        self.pending_light_updates
-            .retain(|update| update.chunk_x != chunk_x || update.chunk_z != chunk_z);
         if removed {
+            self.unload_chunk_light(chunk_x, chunk_z);
             for entity in self.entities.values_mut() {
                 if !entity.always_ticking
                     && entity_chunk_key(entity.position()) == (chunk_x, chunk_z)
@@ -1485,14 +1504,27 @@ impl ClientWorld {
         removed
     }
 
+    /// Sections of loaded chunks with published light data in either layer.
     pub fn loaded_light_section_count(&self) -> usize {
-        self.chunks.values().map(|chunk| chunk.lights.len()).sum()
+        let mut sections: BTreeSet<light::SectionKey> = BTreeSet::new();
+        for layer in [light::LightLayer::Sky, light::LightLayer::Block] {
+            sections.extend(
+                self.light
+                    .visible_sections(layer)
+                    .into_iter()
+                    .filter(|key| self.contains_chunk(key.0, key.2)),
+            );
+        }
+        sections.len()
     }
 
+    /// Light tasks waiting for a frame.
     pub fn pending_light_update_count(&self) -> usize {
-        self.pending_light_updates.len()
+        self.light_tasks.len()
     }
 
+    /// The layer's value where the engine holds or has queued a layer for the
+    /// section, as `getDataLayerData` finds it.
     pub fn sky_light_at(&self, x: i32, y: i32, z: i32) -> Option<u8> {
         self.light_at(LightLayer::Sky, x, y, z)
     }
@@ -1501,45 +1533,20 @@ impl ClientWorld {
         self.light_at(LightLayer::Block, x, y, z)
     }
 
-    /// `getBrightness(LightLayer.SKY, pos)` as the client's light storage
-    /// answers it: above the highest section with data the sky is full, and a
-    /// section with no data takes the bottom row of the nearest one above.
+    /// `getBrightness(LightLayer.SKY, pos)`: above the highest section with
+    /// data the sky is full, and a section with no data takes the bottom row
+    /// of the nearest one above.
     pub fn sky_brightness(&self, x: i32, y: i32, z: i32) -> u8 {
-        let Some(chunk) = self.chunk_for_query(x.div_euclid(16), z.div_euclid(16)) else {
-            return 15;
-        };
-        let Some(top) = chunk
-            .lights
-            .iter()
-            .filter(|(_, section)| section.sky.is_some())
-            .map(|(section_y, _)| section_y + 1)
-            .max()
-        else {
-            return 15;
-        };
-        let mut section_y = y.div_euclid(16);
-        let mut local_y = y.rem_euclid(16) as usize;
-        loop {
-            if section_y >= top {
-                return 15;
-            }
-            if let Some(data) = chunk
-                .lights
-                .get(&section_y)
-                .and_then(|section| section.sky.as_ref())
-            {
-                let index =
-                    local_y * 256 + z.rem_euclid(16) as usize * 16 + x.rem_euclid(16) as usize;
-                return (data[index / 2] >> ((index & 1) * 4)) & 0x0f;
-            }
-            section_y += 1;
-            local_y = 0;
-        }
+        self.light.light_value(light::LightLayer::Sky, (x, y, z))
     }
 
     /// `getBrightness(LightLayer.BLOCK, pos)`: nothing where no data arrived.
     pub fn block_brightness(&self, x: i32, y: i32, z: i32) -> u8 {
-        self.light_at(LightLayer::Block, x, y, z).unwrap_or(0)
+        self.light.light_value(light::LightLayer::Block, (x, y, z))
+    }
+
+    pub fn light_engine(&self) -> &light::LevelLightEngine {
+        &self.light
     }
 
     pub fn loaded_block_entity_count(&self) -> usize {
@@ -1612,105 +1619,250 @@ impl ClientWorld {
             .count()
     }
 
-    /// Apply clientbound light layers to a loaded chunk or retain them until
-    /// the addressed chunk is installed in the client world.
+    /// A light update packet: `handleLightUpdatePacket` queues its layers
+    /// for the next frame, and their sections are redrawn when it runs.
     pub fn apply_light_updates(
         &mut self,
         chunk_x: i32,
         chunk_z: i32,
         updates: LightUpdateInput<'_>,
     ) -> LightApplication {
-        if !self.cached_chunk_is_current(chunk_x, chunk_z)
-            || !self.chunks.contains_key(&(chunk_x, chunk_z))
-        {
-            let light_section_count = self.dimension.section_count().saturating_add(2);
-            let invalid_sky_updates = count_invalid_light_updates(
-                light_section_count,
-                updates.sky.mask,
-                updates.sky.updates,
-            );
-            let invalid_block_updates = count_invalid_light_updates(
-                light_section_count,
-                updates.block.mask,
-                updates.block.updates,
-            );
-            if invalid_sky_updates != 0 || invalid_block_updates != 0 {
-                return LightApplication {
-                    invalid_sky_updates,
-                    invalid_block_updates,
-                    ..LightApplication::default()
-                };
-            }
-            let applied_sky_sections = count_light_sections(
-                light_section_count,
-                updates.sky.mask,
-                updates.sky.empty_mask,
-            );
-            let applied_block_sections = count_light_sections(
-                light_section_count,
-                updates.block.mask,
-                updates.block.empty_mask,
-            );
-            self.pending_light_updates
-                .push_back(PendingLightUpdate::new(chunk_x, chunk_z, updates));
-            return LightApplication {
-                applied_sky_sections,
-                applied_block_sections,
-                queued: true,
-                ..LightApplication::default()
-            };
-        }
-
-        self.apply_light_layers(chunk_x, chunk_z, updates)
+        self.queue_light_data(chunk_x, chunk_z, updates, true, false)
     }
 
-    fn apply_light_layers(
+    /// The light that came with a chunk: `handleLevelChunkWithLight` queues
+    /// it, then switches the chunk's sections on for light.
+    pub fn apply_chunk_light(
         &mut self,
         chunk_x: i32,
         chunk_z: i32,
         updates: LightUpdateInput<'_>,
     ) -> LightApplication {
-        let min_light_section_y = self.dimension.min_section_y() - 1;
+        self.queue_light_data(chunk_x, chunk_z, updates, false, true)
+    }
+
+    fn queue_light_data(
+        &mut self,
+        chunk_x: i32,
+        chunk_z: i32,
+        updates: LightUpdateInput<'_>,
+        schedule_rebuild: bool,
+        enable_chunk: bool,
+    ) -> LightApplication {
         let light_section_count = self.dimension.section_count().saturating_add(2);
-        let Some(chunk) = self.chunk_for_update(chunk_x, chunk_z) else {
-            return LightApplication::default();
-        };
-        let (applied_sky_sections, invalid_sky_updates) = apply_light_layer(
-            &mut chunk.lights,
-            min_light_section_y,
+        let invalid_sky_updates =
+            count_invalid_light_updates(light_section_count, updates.sky.mask, updates.sky.updates);
+        let invalid_block_updates = count_invalid_light_updates(
             light_section_count,
-            LightLayer::Sky,
-            updates.sky.mask,
-            updates.sky.empty_mask,
-            updates.sky.updates,
-        );
-        let (applied_block_sections, invalid_block_updates) = apply_light_layer(
-            &mut chunk.lights,
-            min_light_section_y,
-            light_section_count,
-            LightLayer::Block,
             updates.block.mask,
-            updates.block.empty_mask,
             updates.block.updates,
         );
-        LightApplication {
-            applied_sky_sections,
-            applied_block_sections,
-            invalid_sky_updates,
-            invalid_block_updates,
-            queued: false,
+        if invalid_sky_updates != 0 || invalid_block_updates != 0 {
+            return LightApplication {
+                invalid_sky_updates,
+                invalid_block_updates,
+                ..LightApplication::default()
+            };
+        }
+        let application = LightApplication {
+            applied_sky_sections: count_light_sections(
+                light_section_count,
+                updates.sky.mask,
+                updates.sky.empty_mask,
+            ),
+            applied_block_sections: count_light_sections(
+                light_section_count,
+                updates.block.mask,
+                updates.block.empty_mask,
+            ),
+            queued: !self.contains_chunk(chunk_x, chunk_z),
+            ..LightApplication::default()
+        };
+        self.light_tasks.push_back(LightTask::Data {
+            update: PendingLightUpdate::new(chunk_x, chunk_z, updates),
+            schedule_rebuild,
+            enable_chunk,
+        });
+        application
+    }
+
+    /// `ClientLevel.unload`: the chunk's column stops lighting at once.
+    fn unload_chunk_light(&mut self, chunk_x: i32, chunk_z: i32) {
+        let view = LightView {
+            chunks: &self.chunks,
+            cache: self.chunk_cache.as_ref(),
+        };
+        self.light.set_light_enabled(&view, (chunk_x, chunk_z), false);
+    }
+
+    /// `queueLightRemoval`: whether or not the chunk was loaded, its light
+    /// is dropped on a later frame.
+    fn queue_light_removal(&mut self, chunk_x: i32, chunk_z: i32) {
+        self.light_tasks.push_back(LightTask::Removal { chunk_x, chunk_z });
+    }
+
+    /// `enableChunkLight`: each of the loaded chunk's sections tells the
+    /// engine whether it is empty, and the chunk and its neighbours redraw.
+    pub fn enable_chunk_light(&mut self, chunk_x: i32, chunk_z: i32) {
+        let Some(chunk) = self.chunk_for_query(chunk_x, chunk_z) else {
+            return;
+        };
+        let statuses: Vec<(i32, bool)> = chunk
+            .sections
+            .iter()
+            .map(|(y, section)| (*y, section.has_only_air()))
+            .collect();
+        for (section_y, empty) in statuses {
+            self.light
+                .update_section_status((chunk_x, section_y, chunk_z), empty);
+        }
+        let min_section = self.dimension.min_section_y();
+        let max_section = min_section + self.dimension.section_count() as i32 - 1;
+        for x in chunk_x - 1..=chunk_x + 1 {
+            for z in chunk_z - 1..=chunk_z + 1 {
+                for y in min_section..=max_section {
+                    self.light_dirty.push((x, y, z));
+                }
+            }
         }
     }
 
-    fn apply_pending_light_updates_for(&mut self, chunk_x: i32, chunk_z: i32) {
-        let pending = std::mem::take(&mut self.pending_light_updates);
-        for update in pending {
-            if update.chunk_x == chunk_x && update.chunk_z == chunk_z {
-                let application = self.apply_light_layers(chunk_x, chunk_z, update.as_input());
-                debug_assert_eq!(application.invalid_sky_updates, 0);
-                debug_assert_eq!(application.invalid_block_updates, 0);
-            } else {
-                self.pending_light_updates.push_back(update);
+    /// `ClientLevel.update`'s light part, once a frame: some queued light
+    /// tasks, then the engine. Returns the sections to redraw.
+    pub fn update_light(&mut self) -> Vec<light::SectionKey> {
+        // `pollLightUpdates`: a tenth of the queue, at least ten, or all of
+        // it once it reaches a thousand.
+        let size = self.light_tasks.len();
+        let budget = if size < 1000 { (size / 10).max(10) } else { size };
+        for _ in 0..budget {
+            let Some(task) = self.light_tasks.pop_front() else {
+                break;
+            };
+            self.run_light_task(task);
+        }
+        let mut dirty = std::mem::take(&mut self.light_dirty);
+        dirty.extend(self.run_light_updates());
+        dirty
+    }
+
+    /// Every queued light task and the engine, as enough frames would.
+    pub fn flush_light(&mut self) -> Vec<light::SectionKey> {
+        let mut dirty = Vec::new();
+        while !self.light_tasks.is_empty() || self.light.has_light_work() {
+            dirty.extend(self.update_light());
+        }
+        dirty
+    }
+
+    /// `LevelLightEngine.runLightUpdates`: the sections whose light changed.
+    pub fn run_light_updates(&mut self) -> Vec<light::SectionKey> {
+        let view = LightView {
+            chunks: &self.chunks,
+            cache: self.chunk_cache.as_ref(),
+        };
+        self.light.run_light_updates(&view)
+    }
+
+    /// Light every loaded chunk from its own sources, as the server first
+    /// lights a chunk: the sections holding blocks are marked, every column
+    /// is switched on and the sources spread. Not what the client does with
+    /// a server's light; it measures the engine on its own.
+    pub fn light_from_sources(&mut self) {
+        let chunks: Vec<(i32, i32)> = self.chunks.keys().copied().collect();
+        for &(chunk_x, chunk_z) in &chunks {
+            let filled: Vec<i32> = self.chunks[&(chunk_x, chunk_z)]
+                .sections
+                .iter()
+                .filter(|(_, section)| !section.has_only_air())
+                .map(|(y, _)| *y)
+                .collect();
+            for section_y in filled {
+                self.light
+                    .update_section_status((chunk_x, section_y, chunk_z), false);
+            }
+        }
+        let view = LightView {
+            chunks: &self.chunks,
+            cache: self.chunk_cache.as_ref(),
+        };
+        for &chunk in &chunks {
+            self.light.set_light_enabled(&view, chunk, true);
+        }
+        for &chunk in &chunks {
+            self.light.propagate_light_sources(&view, chunk);
+        }
+    }
+
+    fn run_light_task(&mut self, task: LightTask) {
+        match task {
+            LightTask::Data {
+                update,
+                schedule_rebuild,
+                enable_chunk,
+            } => {
+                // `applyLightData`.
+                let (chunk_x, chunk_z) = (update.chunk_x, update.chunk_z);
+                let min = self.light.min_light_section();
+                let count = self.light.light_section_count();
+                for (layer, input) in [
+                    (light::LightLayer::Sky, &update.sky),
+                    (light::LightLayer::Block, &update.block),
+                ] {
+                    let mut updates = input.updates.iter();
+                    for index in 0..count {
+                        let bit = index as u64;
+                        let have_data = input.mask.contains(bit);
+                        if !have_data && !input.empty_mask.contains(bit) {
+                            continue;
+                        }
+                        let data = if have_data {
+                            light::DataLayer::from_bytes(updates.next().expect("counted"))
+                        } else {
+                            light::DataLayer::new(0)
+                        };
+                        let section_y = min + index;
+                        self.light
+                            .queue_section_data(layer, (chunk_x, section_y, chunk_z), Some(data));
+                        if schedule_rebuild {
+                            // `setSectionDirtyWithNeighbors`.
+                            for dx in -1..=1 {
+                                for dy in -1..=1 {
+                                    for dz in -1..=1 {
+                                        self.light_dirty
+                                            .push((chunk_x + dx, section_y + dy, chunk_z + dz));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                let view = LightView {
+                    chunks: &self.chunks,
+                    cache: self.chunk_cache.as_ref(),
+                };
+                self.light.set_light_enabled(&view, (chunk_x, chunk_z), true);
+                if enable_chunk {
+                    self.enable_chunk_light(chunk_x, chunk_z);
+                }
+            }
+            LightTask::Removal { chunk_x, chunk_z } => {
+                let view = LightView {
+                    chunks: &self.chunks,
+                    cache: self.chunk_cache.as_ref(),
+                };
+                self.light.set_light_enabled(&view, (chunk_x, chunk_z), false);
+                let min = self.light.min_light_section();
+                for section_y in min..min + self.light.light_section_count() {
+                    for layer in [light::LightLayer::Block, light::LightLayer::Sky] {
+                        self.light
+                            .queue_section_data(layer, (chunk_x, section_y, chunk_z), None);
+                    }
+                }
+                let min_section = self.dimension.min_section_y();
+                for section_y in min_section..min_section + self.dimension.section_count() as i32 {
+                    self.light
+                        .update_section_status((chunk_x, section_y, chunk_z), true);
+                }
             }
         }
     }
@@ -2107,7 +2259,36 @@ impl ClientWorld {
         {
             return false;
         }
-        section.set_block_state(index, state_id).is_some()
+        let was_empty = section.has_only_air();
+        if section.set_block_state(index, state_id).is_none() {
+            return false;
+        }
+        // `LevelChunk.setBlockState`: the light hears of a section turning
+        // empty or not, and of a change in how light passes the block.
+        let is_empty = section.has_only_air();
+        if was_empty != is_empty {
+            self.light.update_section_status((chunk_key.0, section_y, chunk_key.1), is_empty);
+        }
+        if light::has_different_light_properties(previous_state_id, state_id) {
+            let chunk = self.chunks.get_mut(&chunk_key).expect("updated above");
+            let sections = &chunk.sections;
+            let read = |lx: i32, y: i32, lz: i32| {
+                sections
+                    .get(&y.div_euclid(16))
+                    .and_then(|section| {
+                        section
+                            .block_states
+                            .get((y.rem_euclid(16) * 256 + lz * 16 + lx) as usize)
+                            .copied()
+                    })
+                    .unwrap_or(VANILLA_AIR_BLOCK_STATE_ID)
+            };
+            if let Some(sources) = chunk.sky_sources.as_mut() {
+                sources.update(read, local_x as i32, y, local_z as i32);
+            }
+            self.light.check_block((x, y, z));
+        }
+        true
     }
 
     /// Apply the horizontal `StairBlock.updateShape` state transition against
@@ -3023,19 +3204,13 @@ impl ClientWorld {
     }
 
     fn light_at(&self, layer: LightLayer, x: i32, y: i32, z: i32) -> Option<u8> {
-        let chunk_key = (x.div_euclid(16), z.div_euclid(16));
-        let chunk = self.chunk_for_query(chunk_key.0, chunk_key.1)?;
-        let section_y = y.div_euclid(16);
-        let section = chunk.lights.get(&section_y)?;
-        let data = match layer {
-            LightLayer::Sky => section.sky.as_ref()?,
-            LightLayer::Block => section.block.as_ref()?,
+        let layer = match layer {
+            LightLayer::Sky => light::LightLayer::Sky,
+            LightLayer::Block => light::LightLayer::Block,
         };
-        let local_x = x.rem_euclid(16) as usize;
-        let local_y = y.rem_euclid(16) as usize;
-        let local_z = z.rem_euclid(16) as usize;
-        let index = local_y * 256 + local_z * 16 + local_x;
-        Some((data[index / 2] >> ((index & 1) * 4)) & 0x0f)
+        self.light
+            .data_layer(layer, (x.div_euclid(16), y.div_euclid(16), z.div_euclid(16)))
+            .map(|data| data.get(x.rem_euclid(16), y.rem_euclid(16), z.rem_euclid(16)))
     }
 
     /// Replace a loaded chunk with decoded sections in bottom-to-top order.
@@ -3059,22 +3234,18 @@ impl ClientWorld {
                 )
             })
             .collect::<BTreeMap<_, _>>();
-        let lights = sections
-            .iter()
-            .filter(|(_, section)| !section.has_only_air())
-            .map(|(&section_y, _)| {
-                (
-                    section_y,
-                    ClientLightSection {
-                        sky: Some(vec![0; 2_048]),
-                        block: Some(vec![0; 2_048]),
-                    },
-                )
-            })
-            .collect();
+        // `initializeLightSources`.
+        let mut sky_sources = light::ChunkSkyLightSources::new(self.dimension.min_y);
+        let min_section = self.dimension.min_section_y();
+        sky_sources.fill_from(self.dimension.section_count(), |index| {
+            sections
+                .get(&(min_section + index as i32))
+                .filter(|section| !section.has_only_air())
+                .map(|section| section.block_states.clone())
+        });
         let new_chunk = ClientChunk {
             sections,
-            lights,
+            sky_sources: Some(sky_sources),
             block_entities: BTreeMap::new(),
         };
         let new_section_statuses = new_chunk
@@ -3104,6 +3275,8 @@ impl ClientWorld {
                         .as_mut()
                         .expect("chunk cache exists during replacement")
                         .on_chunk_removed(old_x, old_z, old_section_ys);
+                    // `Storage.replace`: the chunk pushed out is unloaded.
+                    self.unload_chunk_light(old_x, old_z);
                 }
                 self.chunks.insert((chunk_x, chunk_z), new_chunk);
                 let cache = self
@@ -3116,7 +3289,6 @@ impl ClientWorld {
         } else {
             self.chunks.insert((chunk_x, chunk_z), new_chunk);
         }
-        self.apply_pending_light_updates_for(chunk_x, chunk_z);
         for entity in self.entities.values_mut() {
             if entity_chunk_key(entity.position()) == (chunk_x, chunk_z) {
                 entity.ticking = true;
@@ -3156,5 +3328,68 @@ pub fn fluid_flow_traits(state: u32) -> u8 {
     match runs.partition_point(|(first, _)| *first <= state) {
         0 => 0,
         index => runs[index - 1].1,
+    }
+}
+
+/// A light task waiting for a frame.
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum LightTask {
+    Data {
+        update: PendingLightUpdate,
+        schedule_rebuild: bool,
+        enable_chunk: bool,
+    },
+    Removal {
+        chunk_x: i32,
+        chunk_z: i32,
+    },
+}
+
+fn new_light_engine(dimension: DimensionBounds, has_sky_light: bool) -> light::LevelLightEngine {
+    light::LevelLightEngine::new(
+        dimension.min_y,
+        dimension.section_count() as i32,
+        has_sky_light,
+    )
+}
+
+/// The level as the light engine reads it: `getChunkForLighting` finds only
+/// a chunk the cache holds.
+struct LightView<'a> {
+    chunks: &'a BTreeMap<(i32, i32), ClientChunk>,
+    cache: Option<&'a ClientChunkCacheState>,
+}
+
+impl LightView<'_> {
+    fn chunk(&self, chunk_x: i32, chunk_z: i32) -> Option<&ClientChunk> {
+        if let Some(cache) = self.cache
+            && !(cache.in_range(chunk_x, chunk_z)
+                && cache.slots.get(&cache.index(chunk_x, chunk_z)) == Some(&(chunk_x, chunk_z)))
+        {
+            return None;
+        }
+        self.chunks.get(&(chunk_x, chunk_z))
+    }
+}
+
+impl light::LightChunks for LightView<'_> {
+    fn has_chunk(&self, chunk_x: i32, chunk_z: i32) -> bool {
+        self.chunk(chunk_x, chunk_z).is_some()
+    }
+
+    fn block_state(&self, x: i32, y: i32, z: i32) -> i32 {
+        self.chunk(x >> 4, z >> 4)
+            .and_then(|chunk| chunk.sections.get(&(y >> 4)))
+            .and_then(|section| {
+                section
+                    .block_states
+                    .get(((y & 15) * 256 + (z & 15) * 16 + (x & 15)) as usize)
+                    .copied()
+            })
+            .unwrap_or(0)
+    }
+
+    fn sky_sources(&self, chunk_x: i32, chunk_z: i32) -> Option<&light::ChunkSkyLightSources> {
+        self.chunk(chunk_x, chunk_z)?.sky_sources.as_ref()
     }
 }

@@ -47,17 +47,21 @@ def main(path):
         "    pub dampening: u8,",
         "    pub solid_render: bool,",
         "    pub collision_full_block: bool,",
+        "    /// Light is stopped by the shape rather than the whole block.",
+        "    pub use_shape_for_light_occlusion: bool,",
+        "    pub can_occlude: bool,",
         "}",
         "",
         "#[rustfmt::skip]",
         f"pub static TRAITS: [LightTraits; {len(traits)}] = [",
     ]
     for key in traits:
-        emission, emissive, shade, view, damp, solid, full = key.split("|")
+        emission, emissive, shade, view, damp, solid, full, use_shape, occlude = key.split("|")
         out.append(
             f"    LightTraits {{ emission: {emission}, emissive: {emissive}, shade: 0x{shade}, "
             f"view_blocking: {view}, dampening: {damp}, solid_render: {solid}, "
-            f"collision_full_block: {full} }},"
+            f"collision_full_block: {full}, use_shape_for_light_occlusion: {use_shape}, "
+            f"can_occlude: {occlude} }},"
         )
     out += ["];", "", "/// Each block's traits: one for every state, or one per state.",
             "#[rustfmt::skip]", f"pub static BLOCKS: [&[u16]; {len(rows)}] = ["]

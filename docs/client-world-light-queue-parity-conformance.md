@@ -123,3 +123,11 @@ semantiğini, unload sırasında queued layer temizliğini, sky default brightne
 ve block-emission çözümünü, section dirty/rebuild ile render/AO/tint
 invalidasyonunu kapsamaz. Tam bağımsız istemci packet listener entegrasyonu,
 block entity etkileri ve oynanabilir client de açıktır.
+
+## 2026-09-29 notu
+
+Rust tarafı artık referansın ışık motorunun portudur
+([P08.c-light.2](client-light-engine-conformance.md)). Yukarıdaki "bekleyen
+queue `replace_chunk` sırasında uygulanır" modeli kaldırıldı: güncellemeler
+kare kuyruğuna girer ve motorun kendi kuyruğundan yayınlanır. Bu kaydın iki
+vakası yeni motorla eşleşmeye devam ediyor.
