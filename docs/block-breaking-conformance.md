@@ -89,10 +89,19 @@ piksel genişliğinde ekran hizalı şeritler, referansın çizgi indeks
 sırasıyla, görünüm (1−1/4096)·(1−1/256) oranında kameraya çekilmiş, arazi
 sisiyle.
 
+Çatlak, referansın kırma kaplaması gibi: kamerası 32 blok içindeki her
+çatlaklı blok, en ileri aşamasıyla, modelinin bütün dörtgenleri yüz
+gizlemesiz yeniden çiziliyor. Doku koordinatı `SheetedDecalTextureGenerator`
+gibi köşenin bloktaki yerinden, dörtgenin baktığı yöne çevrilerek
+türetiliyor; aşamanın dokusu (`destroy_stage_N`) onda bir alfanın altında
+atılıyor, kaynak×hedef×2 karışımıyla, derinliğe yazmadan ve referansın
+çokgen kaydırmasıyla (eğim 1, sabit 10) kameraya çekilerek, arazi sisiyle.
+
 Ölçülen: vanilla 26.2 sunucusunda betikli koşu (`VOXEL_SCRIPT` içinde
 `attack` tıklama, `mine` basılı tutma) aşağı bakarak dokuz blok kazdı;
 sunucu kazılan sütunu hava olarak doğruladı, fazladan teleport ya da
-düzeltme göndermedi. Çerçeve referans karelerle karşılaştırılmadı.
+düzeltme göndermedi. Betik bitince saldırı tuşu son adımın bıraktığı gibi
+kalıyor, böylece yakalanan kare kırma sürerken alınabiliyor.
 
 ## Eşitlik olmayanlar ve açıklar
 
@@ -110,7 +119,9 @@ düzeltme göndermedi. Çerçeve referans karelerle karşılaştırılmadı.
 - Çatlakların 400 tick sonra silinmesi yok.
 - Eşya kullanımı (`isUsingItem`) henüz olmadığı için saldırıyı engelleyen
   kullanım dalı çalışmıyor (M1.d).
-- Çatlak dokusu çizilmiyor (M1.c devamı). Çerçeve yarı saydam bloklarda
+- Çatlak ve çerçeve referans karelerle karşılaştırılmadı; çatlak `MODEL`
+  dışı çizim şekilli bloklarda (sandık gibi) model dörtgeni olmadığından
+  görünmüyor, referansta da çizilmiyor. Çerçeve yarı saydam bloklarda
   yarı saydam yüzlerden önce çiziliyor; adventure ve spectator'da hiç
   çizilmiyor (eşyanın `can_break`/`can_place_on` yüklemleri ve menü
   sağlayan bloklar taşınmadı); dünya sınırı kontrolü ve yüksek kontrast

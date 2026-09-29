@@ -197,6 +197,58 @@ impl BlockRenderer {
         self.models.len()
     }
 
+    /// Every quad a block's model draws at `position`, culled against
+    /// nothing, as the breaking overlay draws them: corners in the model's
+    /// own unit cube and each quad's facing, with the block's offset. The
+    /// variants are the ones the world mesh picks there.
+    pub fn block_quads(
+        &self,
+        state_id: u32,
+        position: [i32; 3],
+    ) -> (Vec<([[f32; 3]; 4], Direction)>, [f32; 3]) {
+        let Some(StateRender::Drawn {
+            name,
+            properties,
+            lists,
+            ..
+        }) = self.states.get(state_id as usize)
+        else {
+            return (Vec::new(), [0.0; 3]);
+        };
+        let mut random =
+            crate::random::RandomSource::create(render_seed(name, properties, position));
+        let variants = crate::render::blockstate::BlockStateFile::pick_variants(lists, &mut random);
+        let mut quads = Vec::new();
+        for variant in &variants {
+            let Some(model) = self.models.get(&variant.model.as_string()) else {
+                continue;
+            };
+            let (rotate_x, rotate_y, rotate_z) =
+                (variant.x.degrees(), variant.y.degrees(), variant.z.degrees());
+            let Some(state) =
+                crate::render::rotation::model_state_transform(rotate_x, rotate_y, rotate_z)
+            else {
+                continue;
+            };
+            let identity = rotate_x % 360 == 0 && rotate_y % 360 == 0 && rotate_z % 360 == 0;
+            let Ok(part) = crate::render::resolve::build_mesh(
+                model,
+                &self.atlas,
+                (!identity).then_some(&state),
+                &[],
+                |_| crate::render::rotation::FLAT_IDENTITY,
+                |_| false,
+            ) else {
+                continue;
+            };
+            for (quad, info) in part.quads.iter().enumerate() {
+                let corners = std::array::from_fn(|corner| part.vertices[quad * 4 + corner].position);
+                quads.push((corners, info.direction));
+            }
+        }
+        (quads, block_offset(name, position))
+    }
+
     /// Mesh every block in a box of the world, positioned relative to
     /// `mesh_origin`.
     ///

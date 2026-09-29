@@ -218,6 +218,37 @@ void main() {
 }
 ";
 
+/// The breaking overlay's fragment shader, after the reference's crumbling
+/// shader: the stage's crack, cut out below a tenth of alpha, then fog. The
+/// stages are stacked tiles; the vertex's shade names the tile and the
+/// coordinates wrap within it.
+const CRUMBLING_FRAGMENT_SHADER: &str = r"#version 450
+layout(set = 0, binding = 0) uniform sampler2D cracks;
+layout(location = 0) in vec2 in_uv;
+layout(location = 1) in float in_shade;
+layout(location = 2) in vec4 in_tint;
+layout(location = 3) in vec2 in_fog;
+layout(location = 0) out vec4 out_colour;
+layout(push_constant) uniform Push {
+    layout(offset = 128) vec4 fog_colour;
+    vec4 fog_distances;
+} push;
+float linear_fog(float distance, float start, float end) {
+    if (distance <= start) { return 0.0; }
+    if (distance >= end) { return 1.0; }
+    return (distance - start) / (end - start);
+}
+void main() {
+    vec2 tile = vec2(fract(in_uv.x), (in_shade + fract(in_uv.y)) / 10.0);
+    vec4 colour = texture(cracks, tile);
+    if (colour.a < 0.1) { discard; }
+    float fog = max(
+        linear_fog(in_fog.x, push.fog_distances.x, push.fog_distances.y),
+        linear_fog(in_fog.y, push.fog_distances.z, push.fog_distances.w));
+    out_colour = vec4(mix(colour.rgb, push.fog_colour.rgb, fog * push.fog_colour.a), colour.a);
+}
+";
+
 /// The GUI's shaders, after the reference's textured GUI shader: a sprite
 /// texel times the vertex colour, dropped where it is fully clear. Vertices
 /// are in GUI units, mapped onto the window by the push constant.
@@ -453,6 +484,8 @@ enum PipelineKind {
     GuiInvert,
     /// The aimed block's outline.
     Lines,
+    /// The crack over a block being broken.
+    Crumbling,
 }
 
 /// Instance API version the reference asks for.
@@ -570,6 +603,11 @@ struct SceneResources {
     entity_pipeline: vk::Pipeline,
     lines_pipeline_layout: vk::PipelineLayout,
     lines_pipeline: vk::Pipeline,
+    crumbling_pipeline_layout: vk::PipelineLayout,
+    crumbling_pipeline: vk::Pipeline,
+    crack_texture: Option<(vk::Image, vk::DeviceMemory, vk::ImageView)>,
+    crack_sampler: Option<vk::Sampler>,
+    crack_set: Option<vk::DescriptorSet>,
     /// The skin entities are drawn with.
     entity_texture: Option<(vk::Image, vk::DeviceMemory, vk::ImageView)>,
     entity_sampler: Option<vk::Sampler>,
@@ -770,6 +808,9 @@ pub struct VulkanBackend {
     /// The aimed block's outline strips for the next frame.
     outline_buffer: Option<SkyBuffer>,
     outline_count: u32,
+    /// The breaking overlay's triangles for the next frame.
+    breaking_buffer: Option<SkyBuffer>,
+    breaking_count: u32,
     hand_projection: [[f32; 4]; 4],
     /// The GUI's triangles, their runs by blend, and the window's size in
     /// GUI units.
@@ -1084,6 +1125,8 @@ impl VulkanBackend {
                 hand_count: 0,
                 outline_buffer: None,
                 outline_count: 0,
+                breaking_buffer: None,
+                breaking_count: 0,
                 hand_projection: [[0.0; 4]; 4],
                 gui_buffer: None,
                 gui_batches: Vec::new(),
@@ -1423,6 +1466,35 @@ impl VulkanBackend {
                 self.device
                     .cmd_draw(self.command_buffer, self.outline_count, 1, 0, 0);
             }
+            // Cracks over the blocks being broken.
+            if let (Some(buffer), Some(set)) = (self.breaking_buffer.as_ref(), scene.crack_set)
+                && self.breaking_count > 0
+            {
+                self.device.cmd_bind_pipeline(
+                    self.command_buffer,
+                    vk::PipelineBindPoint::GRAPHICS,
+                    scene.crumbling_pipeline,
+                );
+                self.device.cmd_bind_descriptor_sets(
+                    self.command_buffer,
+                    vk::PipelineBindPoint::GRAPHICS,
+                    scene.crumbling_pipeline_layout,
+                    0,
+                    &[set],
+                    &[],
+                );
+                self.device.cmd_push_constants(
+                    self.command_buffer,
+                    scene.crumbling_pipeline_layout,
+                    vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
+                    0,
+                    std::slice::from_raw_parts(terrain_push.as_ptr().cast::<u8>(), 160),
+                );
+                self.device
+                    .cmd_bind_vertex_buffers(self.command_buffer, 0, &[buffer.buffer], &[0]);
+                self.device
+                    .cmd_draw(self.command_buffer, self.breaking_count, 1, 0, 0);
+            }
             // Translucent faces last, the farthest section first, so nearer
             // water blends over farther.
             let mut translucent: Vec<&SectionBuffers> = self
@@ -1648,6 +1720,7 @@ impl VulkanBackend {
         let entity = kind == PipelineKind::Entity;
         let gui = matches!(kind, PipelineKind::Gui | PipelineKind::GuiInvert);
         let lines = kind == PipelineKind::Lines;
+        let crumbling = kind == PipelineKind::Crumbling;
         unsafe {
             let compiler =
                 shaderc::Compiler::new().map_err(|error| VulkanError::Loader(error.to_string()))?;
@@ -1669,6 +1742,8 @@ impl VulkanBackend {
                 (GUI_VERTEX_SHADER, GUI_FRAGMENT_SHADER)
             } else if lines {
                 (LINE_VERTEX_SHADER, LINE_FRAGMENT_SHADER)
+            } else if crumbling {
+                (VERTEX_SHADER, CRUMBLING_FRAGMENT_SHADER)
             } else {
                 (VERTEX_SHADER, FRAGMENT_SHADER)
             };
@@ -1842,7 +1917,12 @@ impl VulkanBackend {
                     vk::CullModeFlags::BACK
                 })
                 .front_face(vk::FrontFace::COUNTER_CLOCKWISE)
-                .line_width(1.0);
+                .line_width(1.0)
+                // The crack is pulled towards the camera so it wins over the
+                // block's own faces: the reference's polygon offset.
+                .depth_bias_enable(crumbling)
+                .depth_bias_constant_factor(if crumbling { 10.0 } else { 0.0 })
+                .depth_bias_slope_factor(if crumbling { 1.0 } else { 0.0 });
             let multisample = vk::PipelineMultisampleStateCreateInfo::default()
                 .rasterization_samples(vk::SampleCountFlags::TYPE_1);
             let depth_state = vk::PipelineDepthStencilStateCreateInfo::default()
@@ -1861,7 +1941,18 @@ impl VulkanBackend {
                         | PipelineKind::Lines
                 ))
                 .depth_compare_op(vk::CompareOp::GREATER_OR_EQUAL);
-            let blends = [if kind == PipelineKind::GuiInvert {
+            let blends = [if crumbling {
+                // Source times destination, twice: darkens and lightens.
+                vk::PipelineColorBlendAttachmentState::default()
+                    .blend_enable(true)
+                    .src_color_blend_factor(vk::BlendFactor::DST_COLOR)
+                    .dst_color_blend_factor(vk::BlendFactor::SRC_COLOR)
+                    .color_blend_op(vk::BlendOp::ADD)
+                    .src_alpha_blend_factor(vk::BlendFactor::ONE)
+                    .dst_alpha_blend_factor(vk::BlendFactor::ZERO)
+                    .alpha_blend_op(vk::BlendOp::ADD)
+                    .color_write_mask(vk::ColorComponentFlags::RGBA)
+            } else if kind == PipelineKind::GuiInvert {
                 vk::PipelineColorBlendAttachmentState::default()
                     .blend_enable(true)
                     .src_color_blend_factor(vk::BlendFactor::ONE_MINUS_DST_COLOR)
@@ -2435,16 +2526,16 @@ impl VulkanBackend {
                     None,
                 )
                 .map_err(|result| VulkanError::Call("vkCreateDescriptorSetLayout", result))?;
-            // The atlas's set, the rain's and the snow's, the skin's and the
-            // GUI's.
+            // The atlas's set, the rain's and the snow's, the skin's, the
+            // GUI's and the cracks'.
             let sizes = [vk::DescriptorPoolSize::default()
                 .ty(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
-                .descriptor_count(5)];
+                .descriptor_count(6)];
             let descriptor_pool = self
                 .device
                 .create_descriptor_pool(
                     &vk::DescriptorPoolCreateInfo::default()
-                        .max_sets(5)
+                        .max_sets(6)
                         .pool_sizes(&sizes),
                     None,
                 )
@@ -2487,6 +2578,8 @@ impl VulkanBackend {
                 self.create_pipeline(descriptor_layout, PipelineKind::Gui)?;
             let (lines_pipeline_layout, lines_pipeline) =
                 self.create_pipeline(descriptor_layout, PipelineKind::Lines)?;
+            let (crumbling_pipeline_layout, crumbling_pipeline) =
+                self.create_pipeline(descriptor_layout, PipelineKind::Crumbling)?;
             let (gui_invert_pipeline_layout, gui_invert_pipeline) =
                 self.create_pipeline(descriptor_layout, PipelineKind::GuiInvert)?;
 
@@ -2517,6 +2610,11 @@ impl VulkanBackend {
                 entity_pipeline,
                 lines_pipeline_layout,
                 lines_pipeline,
+                crumbling_pipeline_layout,
+                crumbling_pipeline,
+                crack_texture: None,
+                crack_sampler: None,
+                crack_set: None,
                 entity_texture: None,
                 entity_sampler: None,
                 entity_set: None,
@@ -2811,6 +2909,17 @@ impl VulkanBackend {
                 self.device.destroy_pipeline(scene.lines_pipeline, None);
                 self.device
                     .destroy_pipeline_layout(scene.lines_pipeline_layout, None);
+                self.device.destroy_pipeline(scene.crumbling_pipeline, None);
+                self.device
+                    .destroy_pipeline_layout(scene.crumbling_pipeline_layout, None);
+                if let Some((image, memory, view)) = scene.crack_texture {
+                    self.device.destroy_image_view(view, None);
+                    self.device.destroy_image(image, None);
+                    self.device.free_memory(memory, None);
+                }
+                if let Some(sampler) = scene.crack_sampler {
+                    self.device.destroy_sampler(sampler, None);
+                }
                 if let Some((image, memory, view)) = scene.entity_texture {
                     self.device.destroy_image_view(view, None);
                     self.device.destroy_image(image, None);
@@ -2983,6 +3092,35 @@ impl VulkanBackend {
     }
 
     /// Load the skin entities are drawn with, sampled texel by texel.
+    /// Hand over the ten crack stages, stacked top to bottom in one image.
+    pub fn load_crack_texture(&mut self, stages: &DecodedImage) -> Result<(), VulkanError> {
+        if self
+            .scene
+            .as_ref()
+            .is_none_or(|scene| scene.crack_set.is_some())
+        {
+            return Ok(());
+        }
+        let Some((texture, sampler, set)) = self.upload_sampled_texture(stages)? else {
+            return Ok(());
+        };
+        let scene = self.scene.as_mut().expect("checked above");
+        scene.crack_texture = Some(texture);
+        scene.crack_sampler = Some(sampler);
+        scene.crack_set = Some(set);
+        Ok(())
+    }
+
+    /// Hand over the next frame's breaking overlay, placed like the
+    /// terrain's.
+    pub fn set_breaking(&mut self, vertices: &[Vertex]) -> Result<(), VulkanError> {
+        let mut buffer = self.breaking_buffer.take();
+        self.fill_vertex_buffer(&mut buffer, vertices)?;
+        self.breaking_buffer = buffer;
+        self.breaking_count = vertices.len() as u32;
+        Ok(())
+    }
+
     pub fn load_entity_texture(&mut self, skin: &DecodedImage) -> Result<(), VulkanError> {
         if self
             .scene
@@ -3625,6 +3763,7 @@ impl Drop for VulkanBackend {
                 self.entity_buffer.take(),
                 self.hand_buffer.take(),
                 self.outline_buffer.take(),
+                self.breaking_buffer.take(),
                 self.gui_buffer.take(),
             ]
             .into_iter()

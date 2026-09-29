@@ -6,6 +6,7 @@ pub mod atlas;
 pub mod biome_tint;
 pub mod block_light;
 pub mod block_offset_table;
+pub mod breaking;
 pub mod blockstate;
 pub mod clouds;
 pub mod face_culling;

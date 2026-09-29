@@ -1266,6 +1266,25 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                 .map_err(|error| format!("{name}: {error:?}"))?)
         };
     backend.load_weather_textures(&environment_texture("rain")?, &environment_texture("snow")?)?;
+    // `ModelBakery.DESTROY_STAGES`, stacked into one image.
+    let mut cracks = render::DecodedImage {
+        width: 0,
+        height: 0,
+        rgba: Vec::new(),
+    };
+    for stage in 0..10 {
+        let path = std::path::Path::new(&root)
+            .join(format!("minecraft/textures/block/destroy_stage_{stage}.png"));
+        let image = render::png::decode_rgba(&std::fs::read(path)?)
+            .map_err(|error| format!("destroy_stage_{stage}: {error:?}"))?;
+        if stage > 0 && (image.width, image.height) != (cracks.width, cracks.height / stage) {
+            return Err(format!("destroy_stage_{stage}: stages differ in size").into());
+        }
+        cracks.width = image.width;
+        cracks.height += image.height;
+        cracks.rgba.extend_from_slice(&image.rgba);
+    }
+    backend.load_crack_texture(&cracks)?;
     // The player's default skin, picked by its profile id as the reference
     // picks one when the profile has no skin of its own.
     let skin = render::player_renderer::default_skin(
@@ -1466,7 +1485,9 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                 None => keys,
             };
             // A scripted `attack` is a click on the tick; `mine` holds the key.
-            if script.is_some() {
+            // Once the script ends the key stays as its last step left it,
+            // so a capture can show a block mid-break.
+            if script.is_some() && !script_done {
                 if held.attack {
                     attack_key.press();
                 }
@@ -1635,6 +1656,38 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
             );
         }
         backend.set_outline(&outline)?;
+        // `extractBlockDestroyAnimation`: each cracked block near the
+        // camera, at the furthest stage anyone has it.
+        let mut cracked: std::collections::BTreeMap<(i32, i32, i32), i32> =
+            std::collections::BTreeMap::new();
+        for progress in session.world().destroying_blocks().values() {
+            let centre = [progress.x, progress.y, progress.z].map(|v| f64::from(v) + 0.5);
+            let distance = (centre[0] - camera_world.x).powi(2)
+                + (centre[1] - camera_world.y).powi(2)
+                + (centre[2] - camera_world.z).powi(2);
+            if distance <= 1024.0 {
+                let stage = cracked.entry((progress.x, progress.y, progress.z)).or_insert(-1);
+                *stage = (*stage).max(progress.stage);
+            }
+        }
+        let mut breaking = Vec::new();
+        for (&(x, y, z), &stage) in &cracked {
+            let Some(state) = session.world().block_state_at(x, y, z) else {
+                continue;
+            };
+            let (quads, offset) = block_renderer.block_quads(state as u32, [x, y, z]);
+            breaking.extend(render::breaking::breaking_vertices(
+                &quads,
+                offset,
+                [
+                    (x - origin[0]) as f32,
+                    (y - origin[1]) as f32,
+                    (z - origin[2]) as f32,
+                ],
+                stage,
+            ));
+        }
+        backend.set_breaking(&breaking)?;
         if camera_type == CameraType::FirstPerson {
             backend.set_entities(&[])?;
         } else {
