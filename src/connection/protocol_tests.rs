@@ -30,8 +30,9 @@ use super::{
     STATUS_CLIENTBOUND_PONG_RESPONSE_PACKET_ID, STATUS_CLIENTBOUND_RESPONSE_PACKET_ID,
     STATUS_SERVERBOUND_PING_REQUEST_PACKET_ID, STATUS_SERVERBOUND_REQUEST_PACKET_ID,
     VANILLA_ITEM_COMPONENT_CONFORMANCE, decode_packet_frame, encode_abort_destroy_block,
-    encode_creative_item_slot, encode_creative_stone_slot, encode_inventory_click_with_input,
-    encode_inventory_drag_empty_cancel_state_correction, encode_inventory_pickup_state_correction,
+    encode_creative_item_slot, encode_creative_slot, encode_creative_stone_slot,
+    encode_inventory_click_with_input, encode_inventory_drag_empty_cancel_state_correction,
+    encode_inventory_pickup_state_correction,
     encode_inventory_pickup_with_component_hash_prediction,
     encode_inventory_pickup_with_component_spec_prediction,
     encode_inventory_pickup_with_partial_changed_slot_prediction,
@@ -1358,6 +1359,35 @@ fn creative_stone_slot_encoder_matches_java_optional_item_stack() {
         0
     );
     assert!(input.is_empty());
+}
+
+#[test]
+fn creative_slot_encoder_writes_the_patch_the_stack_carries() {
+    use crate::world::ClientItemStackState as Stack;
+    // A stack made here has no patch: both counts are zero.
+    let mut payload = Vec::new();
+    encode_creative_slot(&mut payload, 38, Some(&Stack::new(3, 1_044)));
+    let mut input = &payload[2..];
+    assert_eq!(
+        i16::from_be_bytes(payload[..2].try_into().expect("slot")),
+        38
+    );
+    assert_eq!(crate::wire::read_varint(&mut input).expect("count"), 3);
+    assert_eq!(crate::wire::read_varint(&mut input).expect("item"), 1_044);
+    assert_eq!(input, &[0, 0]);
+    // A stack with a patch writes it as it came.
+    let stack = Stack::from_wire(1, 5, vec![103], Vec::new()).with_patch_bytes(vec![1, 0, 103, 1]);
+    let mut payload = Vec::new();
+    encode_creative_slot(&mut payload, -1, Some(&stack));
+    assert_eq!(
+        i16::from_be_bytes(payload[..2].try_into().expect("slot")),
+        -1
+    );
+    assert_eq!(&payload[2..], &[1, 5, 1, 0, 103, 1]);
+    // No stack is a count of zero.
+    let mut payload = Vec::new();
+    encode_creative_slot(&mut payload, 36, None);
+    assert_eq!(&payload[2..], &[0]);
 }
 
 #[test]

@@ -562,6 +562,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 ## Diğer referans kayıtları
 
 - [P16.n — Atlas yerleşimi, dolgu ve mip yüklemesi — karışık kanıt kaydı](atlas-layout-and-mip-upload.md)
+- [P22.d.2 — Yaratıcı envanter ekranı — oracle tablosu ve canlı oturum kaydı](creative-inventory-record.md)
 - [P22.d.1 — Envanter ekranı — canlı oturum kaydı](inventory-screen-record.md)
 - [P11.e — Canlı oyun oturumu — server-conformance kaydı](live-play-session.md)
 - [Yerel kurulum ve çalıştırma](local-setup.md)

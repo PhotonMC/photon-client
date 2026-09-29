@@ -1289,6 +1289,29 @@ pub(crate) fn encode_creative_item_slot(
     Ok(())
 }
 
+/// `ServerboundSetCreativeModeSlotPacket`: a slot and its stack as the
+/// network encodes an optional item stack, component patch included.
+pub(crate) fn encode_creative_slot(
+    output: &mut Vec<u8>,
+    slot: i16,
+    stack: Option<&ClientItemStackState>,
+) {
+    output.extend_from_slice(&slot.to_be_bytes());
+    match stack {
+        Some(stack) if stack.item_count() > 0 => {
+            wire::write_varint(stack.item_count(), output);
+            wire::write_varint(stack.item_registry_id(), output);
+            if stack.patch_bytes().is_empty() {
+                wire::write_varint(0, output);
+                wire::write_varint(0, output);
+            } else {
+                output.extend_from_slice(stack.patch_bytes());
+            }
+        }
+        _ => wire::write_varint(0, output),
+    }
+}
+
 pub(crate) fn encode_inventory_pickup_state_correction(
     output: &mut Vec<u8>,
     state_id: i32,

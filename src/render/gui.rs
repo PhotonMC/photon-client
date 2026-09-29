@@ -19,7 +19,12 @@ const SPRITE_FOLDERS: [&str; 3] = ["hud", "container", "recipe_book"];
 
 /// Whole textures under `textures/gui` that screens blit parts of, packed as
 /// `texture/<name>`.
-const WHOLE_TEXTURES: [&str; 1] = ["container/inventory"];
+const WHOLE_TEXTURES: [&str; 4] = [
+    "container/inventory",
+    "container/creative_inventory/tab_items",
+    "container/creative_inventory/tab_item_search",
+    "container/creative_inventory/tab_inventory",
+];
 
 /// Every PNG under a sprite folder, as sprite names (`hud/heart/full`).
 fn sprite_names(root: &Path) -> Vec<String> {

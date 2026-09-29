@@ -102,6 +102,12 @@ impl ClientItemStackState {
                 && self.patch_bytes == other.patch_bytes)
     }
 
+    /// The component patch as the wire carries it, from the positive
+    /// component count on; empty for a stack made here without one.
+    pub fn patch_bytes(&self) -> &[u8] {
+        &self.patch_bytes
+    }
+
     pub fn item_count(&self) -> i32 {
         self.item_count
     }

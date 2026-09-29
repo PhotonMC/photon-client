@@ -78,6 +78,8 @@ pub struct PlaySession {
     game_mode_state: crate::game_mode::GameMode,
     /// The player's inventory menu, whose drag state lasts between clicks.
     inventory_menu: crate::inventory_menu::InventoryMenu,
+    /// `LocalPlayer.dropSpamThrottler`: what creative drops have added up.
+    drop_spam: i32,
     dirty_sections: std::collections::BTreeSet<(i32, i32, i32)>,
     forgotten_chunks: Vec<(i32, i32)>,
     clocks: std::collections::BTreeMap<i32, ClockState>,
@@ -142,6 +144,7 @@ impl PlaySession {
             sent_slot: 0,
             game_mode_state: crate::game_mode::GameMode::default(),
             inventory_menu: crate::inventory_menu::InventoryMenu::default(),
+            drop_spam: 0,
             dirty_sections: std::collections::BTreeSet::new(),
             forgotten_chunks: Vec::new(),
             clocks: std::collections::BTreeMap::new(),
@@ -436,6 +439,68 @@ impl PlaySession {
         })
     }
 
+    /// `CreativeModeInventoryScreen.slotClicked` into the player's own menu:
+    /// the click as the client predicts it, then what it sends for it.
+    pub fn creative_click(
+        &mut self,
+        creative: &mut crate::creative_menu::CreativeMenu,
+        click: crate::creative_menu::Click,
+    ) -> Result<(), ConnectionError> {
+        use crate::creative_menu::Effect;
+        let Some((slots, carried, state_id)) = self.trace.world.local_player_menu() else {
+            return Ok(());
+        };
+        self.inventory_menu.load(slots, carried, state_id);
+        let player = crate::inventory_menu::Player {
+            selected: self.status.selected_slot.clamp(0, 8) as usize,
+            infinite_materials: self.game_mode == crate::world::ClientPlayerGameMode::Creative,
+        };
+        // `Player.canDropItems`: under the throttler's threshold.
+        let can_drop = self.drop_spam < 1280;
+        let effects = creative.slot_clicked(click, &mut self.inventory_menu, player, can_drop);
+        let menu = &self.inventory_menu;
+        self.trace
+            .world
+            .set_local_player_menu(&menu.slots, menu.carried.clone());
+        if !player.infinite_materials {
+            return Ok(());
+        }
+        for effect in effects {
+            match effect {
+                Effect::Swing => {
+                    if let Some(player) = self.player.as_mut() {
+                        player.swing();
+                    }
+                    self.swings += 1;
+                    self.send(PLAY_SERVERBOUND_SWING_PACKET_ID, |output| {
+                        output.push(0);
+                        Ok(())
+                    })?;
+                }
+                Effect::SetSlot(slot, stack) => {
+                    self.send(
+                        PLAY_SERVERBOUND_SET_CREATIVE_MODE_SLOT_PACKET_ID,
+                        |output| {
+                            encode_creative_slot(output, slot, stack.as_ref());
+                            Ok(())
+                        },
+                    )?;
+                }
+                Effect::Drop(stack) => {
+                    self.send(
+                        PLAY_SERVERBOUND_SET_CREATIVE_MODE_SLOT_PACKET_ID,
+                        |output| {
+                            encode_creative_slot(output, -1, Some(&stack));
+                            Ok(())
+                        },
+                    )?;
+                    self.drop_spam += 20;
+                }
+            }
+        }
+        Ok(())
+    }
+
     /// `LocalPlayer.closeContainer` for the inventory: the close packet,
     /// then `InventoryMenu.removed`, which empties the result slot.
     pub fn close_inventory(&mut self) -> Result<(), ConnectionError> {
@@ -512,6 +577,9 @@ impl PlaySession {
     pub fn tick(&mut self, keys: Input) -> Result<(), ConnectionError> {
         // The game mode's tick runs before the player moves.
         self.ensure_has_sent_carried_item()?;
+        if self.loaded {
+            self.drop_spam = (self.drop_spam - 1).max(0);
+        }
         let main_hand = self
             .trace
             .world

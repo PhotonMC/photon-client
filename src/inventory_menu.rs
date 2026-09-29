@@ -214,6 +214,25 @@ impl InventoryMenu {
         (self.swings, body)
     }
 
+    /// `doClick` alone, for a screen that sends no click packet: how many
+    /// times the click swung the arm.
+    pub fn click_local(
+        &mut self,
+        slot: i32,
+        button: i32,
+        click: ClickType,
+        player: Player,
+    ) -> usize {
+        self.swings = 0;
+        self.clicked(slot, button, click, player);
+        self.swings
+    }
+
+    /// `Slot.remove`: up to `amount` taken out of a slot.
+    pub fn take_from_slot(&mut self, index: usize, amount: i32) -> Option<Stack> {
+        self.remove(index, amount)
+    }
+
     /// `AbstractContainerMenu.doClick`.
     pub fn clicked(&mut self, slot_index: i32, button: i32, click: ClickType, player: Player) {
         // The reference would fail on a slot past the menu's end.

@@ -9,6 +9,7 @@ pub mod block_offset_table;
 pub mod blockstate;
 pub mod breaking;
 pub mod clouds;
+pub mod creative_screen;
 pub mod face_culling;
 pub mod face_occlusion_table;
 pub mod fluid_overlay_table;
