@@ -16,6 +16,13 @@ Kapsamın kesin listesi ve capture kimlikleri [davranış runner'ında](docs/beh
 
 Rust uygulama girişi henüz oynanabilir istemci değildir. İlk gerçek vanilla bağlantı probe'u ve Pumpkin karşılaştırması [birleşik oyun oturumu kaydında](docs/game-connection-conformance.md) tutulur. Pencere/input, dünya state'i, hareket, render, ses ve GUI için istemciye bağlı doğrulamalar sonraki roadmap bölümlerindedir.
 
+## Yerel çalıştırma
+
+Referans oyunu `.data/` altına indirmek, test sunucusunu ve istemciyi
+başlatmak için `python3 tools/voxel.py` kullanılır (Linux, macOS, Windows);
+ayrıntı [yerel kurulum belgesinde](docs/local-setup.md). İndirilenler yalnız
+geliştirme makinesinde kalır, dağıtılan istemciye girmez.
+
 ## Belgeler
 
 Tüm davranış sözleşmeleri, parity/conformance kayıtları ve çalışma belgeleri
