@@ -2619,6 +2619,9 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
         // The HUD, in GUI units.
         {
             let size = surface.scale();
+            let screen_menu = inventory_screen
+                .is_some()
+                .then(|| session.inventory_menu().clone());
             let status = *session.status();
             let game_mode = session.game_mode();
             // What the HUD reads from the player: its attributes (the
@@ -2709,8 +2712,33 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
             );
             // The open screen over the HUD.
             let mut frame = frame;
-            if let Some(screen) = inventory_screen.as_mut() {
-                let menu = session.inventory_menu().clone();
+            if let (Some(screen), Some(menu)) = (inventory_screen.as_mut(), screen_menu) {
+                // The player in the screen, posed as the entity stands now.
+                let mut draw_player =
+                    |area: (i32, i32, i32, i32), size: f32, offset_y: f32, mouse: (f32, f32)| {
+                        let Some(player) = hud_player else {
+                            return Vec::new();
+                        };
+                        let pose = player.model_pose(1.0);
+                        let state = render::player_model::PlayerRenderState {
+                            walk_position: pose.walk_position,
+                            walk_speed: pose.walk_speed,
+                            age_in_ticks: player.tick_count() as f32 + 1.0,
+                            swim_amount: pose.swim_amount,
+                            crouching: pose.crouching,
+                            spectator: player.spectating(),
+                            attack_time: player.attack_anim(1.0),
+                            ..Default::default()
+                        };
+                        render::player_renderer::gui_player_vertices(
+                            &mut player_model,
+                            &state,
+                            area,
+                            size,
+                            offset_y,
+                            mouse,
+                        )
+                    };
                 match screen {
                     Screen::Survival(screen) => screen.build(
                         &mut frame,
@@ -2720,6 +2748,7 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                         &menu,
                         gui_mouse,
                         &mut draw_item,
+                        &mut draw_player,
                     ),
                     Screen::Creative(screen) => screen.build(
                         &mut frame,
@@ -2729,6 +2758,7 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                         &menu,
                         gui_mouse,
                         &mut draw_item,
+                        &mut draw_player,
                     ),
                 }
             }

@@ -9,7 +9,7 @@
 use crate::creative_menu::{Click, CreativeMenu, Target, shown_tabs, table_stack};
 use crate::creative_tabs_table::{CREATIVE_TABS, TabKind};
 use crate::inventory_menu::{ClickType, InventoryMenu, max_stack_size};
-use crate::render::gui::{GuiAtlas, GuiFrame, ItemDrawer};
+use crate::render::gui::{GuiAtlas, GuiFrame, ItemDrawer, PlayerDrawer};
 use crate::render::inventory_screen::{
     ContainerMouse, SlotClick, SlotView, empty_icon, slot_key_clicks,
 };
@@ -495,6 +495,7 @@ impl CreativeScreen {
         inventory: &InventoryMenu,
         mouse: (f64, f64),
         draw: &mut ItemDrawer<'_>,
+        player: &mut PlayerDrawer<'_>,
     ) {
         let (left, top) = (self.left(), self.top());
         let selected = self.menu.tab();
@@ -534,6 +535,14 @@ impl CreativeScreen {
             frame.sprite(atlas, sprite, left + 175, top + 18 + travel, 12, 15);
         }
         self.build_tab(frame, atlas, draw, selected);
+        if self.inventory_tab() {
+            frame.entity(&player(
+                (left + 73, top + 6, left + 105, top + 49),
+                20.0,
+                0.0625,
+                (mouse.0 as f32, mouse.1 as f32),
+            ));
+        }
         self.hovered = self.hovered_slot(mouse.0, mouse.1);
         if let Some(slot) = self.hovered {
             let (x, y) = self.slot_position(slot);

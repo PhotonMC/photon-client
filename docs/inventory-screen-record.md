@@ -21,6 +21,10 @@ girdisi:
   toplanır ve kalan sayı yeniden hesaplanır.
 - Tuşlar: 1–9 ve F imleç boşken üzerindeki yuvayla takas, Q (Ctrl ile
   hepsi) atma.
+- Oyuncu modeli kutusunda fareye bakar (`extractEntityInInventoryFollowsMouse`:
+  gövde `180 + 20·atan((merkez − fare)/40)`, kafa ve eğim aynı açılardan,
+  `ENTITY_IN_UI` ışıkları, kutu içinde 30 birim/blok); deri varsayılan deri.
+  Zırh, elde tutulan eşya ve pelerin çizilmez.
 - Çizim: `extractTransparentBackground` degradesi, `container/inventory`
   dokusu, tarif kitabı düğmesi (üzerine gelince vurgulu), "Crafting" başlığı
   (`en_us.json`), vurgu arka ve ön sprite'ları, boş zırh ve sol el ikonları,
@@ -40,7 +44,7 @@ görüntüsünde düzen referanstaki yerlerde.
 
 ## Açıklar
 
-- Oyuncu modeli kutusu boş; eşya ipuçları (tooltip) yok (M5 metin işine
+- Eşya ipuçları (tooltip) yok (M5 metin işine
   bağlı); tarif kitabı açılmıyor, düğmesi yalnız tıklamayı yutar; etkiler
   paneli yok.
 - Referans sürüklenen yuvaları kimlik hash'li bir kümede tutar, gönderim

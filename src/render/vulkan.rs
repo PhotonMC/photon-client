@@ -1754,9 +1754,20 @@ impl VulkanBackend {
                             set,
                             buffer,
                         ),
-                        crate::render::gui::GuiBlend::Items => {
+                        crate::render::gui::GuiBlend::Items
+                        | crate::render::gui::GuiBlend::Entity => {
                             let Some(items) = self.gui_item_buffer.as_ref() else {
                                 continue;
+                            };
+                            // The player's model samples the skin; the items
+                            // sample the block atlas.
+                            let samples = if blend == crate::render::gui::GuiBlend::Entity {
+                                let Some(skin) = scene.entity_set else {
+                                    continue;
+                                };
+                                skin
+                            } else {
+                                scene.descriptor_set
                             };
                             // Each item is drawn over its own cleared depth
                             // in the reference's item atlas; the slots never
@@ -1782,7 +1793,7 @@ impl VulkanBackend {
                             (
                                 scene.gui_item_pipeline,
                                 scene.gui_item_pipeline_layout,
-                                scene.descriptor_set,
+                                samples,
                                 items,
                             )
                         }

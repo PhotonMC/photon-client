@@ -171,6 +171,9 @@ pub enum GuiBlend {
     Invert,
     /// Items in slots, whose run counts in `GuiFrame::items`.
     Items,
+    /// The player's model in a screen, whose run counts in
+    /// `GuiFrame::items` and which samples the player's skin.
+    Entity,
 }
 
 /// One frame of GUI: triangles and the runs they blend in.
@@ -285,6 +288,18 @@ impl GuiFrame {
                 colour,
             );
         }
+    }
+
+    /// `GuiGraphics.entity`: an entity's triangles, in GUI units with depth
+    /// towards the viewer, textured from the skin.
+    pub fn entity(&mut self, vertices: &[crate::render::gui_items::GuiItemVertex]) {
+        if vertices.is_empty() {
+            return;
+        }
+        let first = self.items.len() as u32;
+        self.items.extend_from_slice(vertices);
+        self.batches
+            .push((GuiBlend::Entity, first, vertices.len() as u32));
     }
 
     /// `GuiGraphics.item`: one item's triangles into the slot at `(x, y)`.
@@ -549,6 +564,17 @@ pub type ItemDrawer<'a> = dyn FnMut(
         f32,
         &mut Vec<crate::render::gui_items::GuiItemVertex>,
     ) + 'a;
+
+/// Draws the player's model into a box (`x0, y0, x1, y1`) at a size and an
+/// offset (`InventoryScreen.extractEntityInInventoryFollowsMouse`), turned
+/// towards the mouse, as triangles for [`GuiFrame::entity`].
+pub type PlayerDrawer<'a> = dyn FnMut(
+        (i32, i32, i32, i32),
+        f32,
+        f32,
+        (f32, f32),
+    ) -> Vec<crate::render::gui_items::GuiItemVertex>
+    + 'a;
 
 /// The HUD's own state across frames: its tick count, the health it last
 /// showed, and when the hearts blink.

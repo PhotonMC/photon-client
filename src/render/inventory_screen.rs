@@ -7,7 +7,7 @@
 //! book; its button is drawn and takes the click, but does not open it.
 
 use crate::inventory_menu::{ClickType, InventoryMenu, SLOT_COUNT, max_stack_size};
-use crate::render::gui::{GuiAtlas, GuiFrame, ItemDrawer};
+use crate::render::gui::{GuiAtlas, GuiFrame, ItemDrawer, PlayerDrawer};
 use crate::world::ClientItemStackState as Stack;
 
 const IMAGE_WIDTH: i32 = 176;
@@ -573,6 +573,7 @@ impl InventoryScreen {
         menu: &InventoryMenu,
         mouse: (f64, f64),
         draw: &mut ItemDrawer<'_>,
+        player: &mut PlayerDrawer<'_>,
     ) {
         let (left, top) = (self.left(), self.top());
         // `extractTransparentBackground`.
@@ -599,6 +600,12 @@ impl InventoryScreen {
             "recipe_book/button"
         };
         frame.sprite(atlas, button, bx, by, 20, 18);
+        frame.entity(&player(
+            (left + 26, top + 8, left + 75, top + 78),
+            30.0,
+            0.0625,
+            (mouse.0 as f32, mouse.1 as f32),
+        ));
         frame.text(atlas, font, title, left + 97, top + 6, 0xFF40_4040);
         self.hovered = self.hovered_slot(mouse.0, mouse.1);
         if let Some(slot) = self.hovered {

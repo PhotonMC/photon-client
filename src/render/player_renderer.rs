@@ -133,6 +133,83 @@ pub fn player_vertices(model: &PlayerModel, placement: &Placement) -> Vec<Vertex
     vertices
 }
 
+/// `InventoryScreen.extractEntityInInventoryFollowsMouse`: the player's model
+/// in the box `area` (`x0, y0, x1, y1` in GUI units), `size` GUI units to a
+/// block, turned towards the mouse, as triangles in GUI units with depth
+/// towards the viewer, lit by the two inventory lights.
+///
+/// `state` is what the model is posed from; the head, the body and the pitch
+/// come from the mouse.
+pub fn gui_player_vertices(
+    model: &mut PlayerModel,
+    state: &crate::render::player_model::PlayerRenderState,
+    area: (i32, i32, i32, i32),
+    size: f32,
+    offset_y: f32,
+    mouse: (f32, f32),
+) -> Vec<crate::render::gui_items::GuiItemVertex> {
+    let centre_x = (area.0 + area.2) as f32 / 2.0;
+    let centre_y = (area.1 + area.3) as f32 / 2.0;
+    let x_angle = ((centre_x - mouse.0) / 40.0).atan();
+    let y_angle = ((centre_y - mouse.1) / 40.0).atan();
+    let state = crate::render::player_model::PlayerRenderState {
+        head_y_rot: x_angle * 20.0,
+        x_rot: -y_angle * 20.0,
+        ..*state
+    };
+    model.setup_anim(&state);
+    let pose = placement_pose(&Placement {
+        feet: [0.0; 3],
+        body_rot: 180.0 + x_angle * 20.0,
+        x_rot: state.x_rot,
+        swim_amount: 0.0,
+        in_water: false,
+        visually_swimming: false,
+        crouching: state.crouching,
+        light: 0,
+    });
+    // `rotation`: a half turn about z, then the pitch about x; the model is
+    // lifted so its middle sits in the box.
+    let pitch = y_angle * 20.0 * (std::f32::consts::PI / 180.0);
+    let (sin, cos) = pitch.sin_cos();
+    let turn = |[x, y, z]: [f32; 3]| {
+        let (y, z) = (y * cos - z * sin, y * sin + z * cos);
+        [-x, -y, z]
+    };
+    let height = if state.crouching { 1.5 } else { 1.8 };
+    let lift = height / 2.0 + offset_y;
+    let lights = inventory_lights();
+    let mut vertices = Vec::new();
+    for (_, corners) in model.render(&pose) {
+        let normal = turn(corners[0].normal);
+        // The view space flips z.
+        let view = [normal[0], normal[1], -normal[2]];
+        let dot = |light: [f32; 3]| {
+            (light[0] * view[0] + light[1] * view[1] + light[2] * view[2]).max(0.0)
+        };
+        let brightness = ((dot(lights[0]) + dot(lights[1])) * 0.6 + 0.4).min(1.0);
+        for index in [0, 1, 2, 0, 2, 3] {
+            let corner = corners[index];
+            let [x, y, z] = turn(corner.position);
+            vertices.push(crate::render::gui_items::GuiItemVertex {
+                position: [centre_x + size * x, centre_y + size * (y + lift), -size * z],
+                uv: corner.uv,
+                colour: [brightness, brightness, brightness, 1.0],
+            });
+        }
+    }
+    vertices
+}
+
+/// `Lighting.Entry.ENTITY_IN_UI`'s two lights.
+fn inventory_lights() -> [[f32; 3]; 2] {
+    let normalise = |v: [f32; 3]| {
+        let length = (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt();
+        v.map(|axis| axis / length)
+    };
+    [normalise([0.2, -1.0, 1.0]), normalise([-0.2, -1.0, 0.0])]
+}
+
 /// What places the first-person hand.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct HandView {
