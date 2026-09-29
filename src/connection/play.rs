@@ -67,6 +67,8 @@ pub struct PlaySession {
     swings: u32,
     /// Whether the level is hardcore, as the login said.
     hardcore: bool,
+    /// Whether a health update has arrived since the player last respawned.
+    health_received: bool,
     /// Set when the server moved the player to a new level.
     level_reset: bool,
     /// The hotbar slot the server was last told about.
@@ -130,6 +132,7 @@ impl PlaySession {
             respawn_requested: false,
             swings: 0,
             hardcore: false,
+            health_received: false,
             level_reset: false,
             sent_slot: 0,
             dirty_sections: std::collections::BTreeSet::new(),
@@ -484,6 +487,7 @@ impl PlaySession {
                 self.player = None;
                 self.loaded = false;
                 self.level_reset = true;
+                self.health_received = false;
             }
             PLAY_CLIENTBOUND_CHUNK_PACKET_ID => {
                 let chunk = parse_chunk_packet(payload)?;
@@ -627,8 +631,40 @@ impl PlaySession {
                     Ok(())
                 })?;
             }
+            PLAY_CLIENTBOUND_SET_ENTITY_DATA_PACKET_ID => {
+                let packet = parse_entity_metadata_packet(payload)?;
+                self.trace
+                    .world
+                    .apply_entity_metadata(packet.entity_id, &packet.metadata);
+            }
+            PLAY_CLIENTBOUND_UPDATE_ATTRIBUTES_PACKET_ID => {
+                let packet = parse_update_attributes_packet(payload)?;
+                self.trace
+                    .world
+                    .apply_local_player_attributes(packet.entity_id, &packet.attributes);
+            }
+            PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID => {
+                let packet = parse_update_mob_effect_packet(payload)?;
+                self.trace.world.apply_local_player_mob_effect(
+                    packet.entity_id,
+                    packet.effect_registry_id,
+                    packet.amplifier,
+                    packet.duration_ticks,
+                    packet.flags,
+                );
+            }
+            PLAY_CLIENTBOUND_REMOVE_MOB_EFFECT_PACKET_ID => {
+                let packet = parse_remove_mob_effect_packet(payload)?;
+                self.trace
+                    .world
+                    .remove_local_player_mob_effect(packet.entity_id, packet.effect_registry_id);
+            }
             PLAY_CLIENTBOUND_SET_HEALTH_PACKET_ID => {
                 let packet = parse_set_health_packet(payload)?;
+                self.health_received = true;
+                if let Some(player) = self.player.as_mut() {
+                    player.hurt_to(packet.health);
+                }
                 self.status.health = packet.health;
                 self.status.food = packet.food;
                 self.status.saturation = packet.saturation;
@@ -744,15 +780,21 @@ impl PlaySession {
         });
         let absolute = resolve_player_position(packet, current);
         let position = Vec3::new(absolute.0, absolute.1, absolute.2);
+        let known_health = self.health_received.then_some(self.status.health);
         let player = self.player.get_or_insert_with(|| {
-            LocalPlayer::new(
+            let mut player = LocalPlayer::new(
                 self.player_id.unwrap_or(0),
                 position,
                 absolute.3,
                 absolute.4,
                 self.game_mode,
                 self.auto_jump,
-            )
+            );
+            // A health update that came before the player did is its first.
+            if let Some(health) = known_health {
+                player.hurt_to(health);
+            }
+            player
         });
         if let Some(abilities) = self.abilities {
             player.set_abilities(abilities);

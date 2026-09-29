@@ -615,6 +615,13 @@ pub struct LocalPlayer {
     /// last attack or change of held item.
     attack_strength_ticker: i32,
     item_swap_ticker: i32,
+    /// `LivingEntity`'s health as the client last set it, and the hurt
+    /// state `LocalPlayer.hurtTo` keeps: ticks of damage immunity, of the
+    /// hurt flash, and whether the next health update may flash at all.
+    health: f32,
+    flash_on_set_health: bool,
+    invulnerable_time: i32,
+    hurt_time: i32,
     /// How far into the swimming pose the model has turned.
     swim_amount: f32,
     swim_amount_old: f32,
@@ -709,6 +716,10 @@ impl LocalPlayer {
             attack_anim_old: 0.0,
             attack_strength_ticker: 0,
             item_swap_ticker: 0,
+            health: 20.0,
+            flash_on_set_health: false,
+            invulnerable_time: 0,
+            hurt_time: 0,
             swim_amount: 0.0,
             swim_amount_old: 0.0,
             bob: 0.0,
@@ -866,6 +877,44 @@ impl LocalPlayer {
     }
 
     /// The feet position between the last two ticks.
+    /// `LocalPlayer.hurtTo`: the server set the health. A loss starts the
+    /// hurt flash and a second of immunity, a gain half a second; the very
+    /// first update only sets it.
+    pub fn hurt_to(&mut self, new_health: f32) {
+        if self.flash_on_set_health {
+            let damage = self.health - new_health;
+            if damage <= 0.0 {
+                self.health = new_health;
+                if damage < 0.0 {
+                    self.invulnerable_time = 10;
+                }
+            } else {
+                self.invulnerable_time = 20;
+                self.health = new_health;
+                self.hurt_time = 10;
+            }
+        } else {
+            self.health = new_health;
+            self.flash_on_set_health = true;
+        }
+    }
+
+    pub fn health(&self) -> f32 {
+        self.health
+    }
+
+    /// Ticks of damage immunity left, which the HUD's hearts blink by.
+    pub fn invulnerable_time(&self) -> i32 {
+        self.invulnerable_time
+    }
+
+    /// `Player.getAttackStrengthScale`: how far the attack has recharged,
+    /// over the attack delay the attack speed sets.
+    pub fn attack_strength_scale(&self, partial_tick: f32, attack_speed: f64) -> f32 {
+        let delay = (1.0 / attack_speed * 20.0) as f32;
+        ((self.attack_strength_ticker as f32 + partial_tick) / delay).clamp(0.0, 1.0)
+    }
+
     /// `LivingEntity.swing` for the main hand: start a swing, unless one is
     /// in its first half.
     pub fn swing(&mut self) {
@@ -892,10 +941,10 @@ impl LocalPlayer {
     }
 
     /// `Player.getItemSwapScale`: how far the hand has come back up after
-    /// an attack or a change of item, over the attack delay of an empty
-    /// hand (five ticks at the default attack speed).
-    pub fn item_swap_scale(&self, partial_tick: f32) -> f32 {
-        let delay = (1.0 / 4.0 * 20.0) as f32;
+    /// an attack or a change of item, over the attack delay the attack
+    /// speed sets (five ticks at the default speed of four).
+    pub fn item_swap_scale(&self, partial_tick: f32, attack_speed: f64) -> f32 {
+        let delay = (1.0 / attack_speed * 20.0) as f32;
         ((self.item_swap_ticker as f32 + partial_tick) / delay).clamp(0.0, 1.0)
     }
 
@@ -1014,6 +1063,13 @@ impl LocalPlayer {
             return unsupported("falling below the world");
         }
         self.first_tick = false;
+        // The rest of LivingEntity.baseTick on a client.
+        if self.hurt_time > 0 {
+            self.hurt_time -= 1;
+        }
+        if self.invulnerable_time > 0 {
+            self.invulnerable_time -= 1;
+        }
         // LivingEntity.tick: the swimming pose eases in or out.
         self.swim_amount_old = self.swim_amount;
         if self.pose == ClientEntityPose::Swimming {

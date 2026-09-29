@@ -2561,6 +2561,12 @@ impl ClientWorld {
             if let Some(ticks_frozen) = ticks_frozen {
                 player.ticks_frozen = ticks_frozen;
             }
+            if let Some(absorption) = player_absorption_from_metadata(metadata) {
+                player.absorption_bits = absorption.to_bits();
+            }
+            if let Some(customisation) = player_model_customisation_from_metadata(metadata) {
+                player.model_customisation = customisation;
+            }
             return true;
         }
         let Some(entity) = self.entities.get_mut(&entity_id) else {

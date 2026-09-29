@@ -287,6 +287,10 @@ pub struct ClientPlayerState {
     pub(crate) silent: bool,
     pub(crate) pose: ClientEntityPose,
     pub(crate) ticks_frozen: i32,
+    /// `Player.getAbsorptionAmount`, from the entity data.
+    pub(crate) absorption_bits: u32,
+    /// Which skin layers show, one bit each, from the entity data.
+    pub(crate) model_customisation: u8,
     pub(crate) attributes: Vec<ClientAttributeState>,
     pub(crate) effects: Vec<ClientMobEffectState>,
     pub(crate) health_bits: u32,
@@ -734,6 +738,8 @@ impl ClientPlayerState {
             silent: false,
             pose: ClientEntityPose::Standing,
             ticks_frozen: 0,
+            absorption_bits: 0,
+            model_customisation: 0,
             attributes: Vec::new(),
             effects: Vec::new(),
             health_bits: 20.0_f32.to_bits(),
@@ -1007,6 +1013,14 @@ impl ClientPlayerState {
 
     pub fn ticks_frozen(&self) -> i32 {
         self.ticks_frozen
+    }
+
+    pub fn absorption(&self) -> f32 {
+        f32::from_bits(self.absorption_bits)
+    }
+
+    pub fn model_customisation(&self) -> u8 {
+        self.model_customisation
     }
 
     pub fn percent_frozen(&self) -> f32 {

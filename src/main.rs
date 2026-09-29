@@ -1475,9 +1475,19 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
             hud.tick();
             // `ItemInHandRenderer.tick`: the empty hand rises back as the
             // attack strength recovers.
+            let attack_speed = session
+                .world()
+                .local_player()
+                .and_then(|state| {
+                    state
+                        .attributes()
+                        .iter()
+                        .find(|attribute| attribute.attribute_id() == 5)
+                })
+                .map_or(4.0, |attribute| attribute.effective_value(0.0, 1024.0));
             let swap = session
                 .player()
-                .map_or(1.0, |player| player.item_swap_scale(1.0));
+                .map_or(1.0, |player| player.item_swap_scale(1.0, attack_speed));
             hand_height.0 = hand_height.1;
             hand_height.1 += (swap * swap * swap - hand_height.1).clamp(-0.4, 0.4);
             // The camera's attribute probe steps once a tick.
@@ -1964,22 +1974,61 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
             let size = surface.scale();
             let status = *session.status();
             let game_mode = session.game_mode();
+            // What the HUD reads from the player: its attributes (the
+            // registry's ids for max health, armour and attack speed), its
+            // effects (regeneration, hunger, poison, wither) and its data.
+            let world = session.world();
+            let local = world.local_player();
+            let attribute = |id: i32, default: f64, min: f64, max: f64| {
+                local
+                    .and_then(|state| {
+                        state
+                            .attributes()
+                            .iter()
+                            .find(|attribute| attribute.attribute_id() == id)
+                    })
+                    .map_or(default, |attribute| attribute.effective_value(min, max))
+            };
+            let has_effect = |id: i32| {
+                local.is_some_and(|state| {
+                    state
+                        .effects()
+                        .iter()
+                        .any(|effect| effect.effect_id() == id)
+                })
+            };
+            let hud_player = session.player();
             let frame = hud.build(
                 &gui_atlas,
                 size.gui_scaled_width(),
                 size.gui_scaled_height(),
                 &render::gui::HudInput {
-                    health: status.health,
-                    max_health: 20.0,
+                    first_person: camera_type == CameraType::FirstPerson,
+                    spectator: game_mode == voxel_client::world::ClientPlayerGameMode::Spectator,
+                    survival: game_mode.is_survival(),
+                    selected_slot: status.selected_slot,
+                    health: hud_player.map_or(status.health, |player| player.health()),
+                    max_health: attribute(23, 20.0, 1.0, 1024.0) as f32,
+                    absorption: local.map_or(0.0, |state| state.absorption()),
+                    invulnerable_time: hud_player.map_or(0, |player| player.invulnerable_time()),
+                    heart_type: render::gui::HeartType::for_player(
+                        has_effect(18),
+                        has_effect(19),
+                        local.is_some_and(|state| state.is_fully_frozen()),
+                    ),
+                    regeneration: has_effect(9),
+                    hardcore: session.hardcore(),
+                    armor: attribute(1, 0.0, 0.0, 30.0).floor() as i32,
                     food: status.food,
                     saturation: status.saturation,
+                    hunger: has_effect(16),
+                    air_supply: local.map_or(300, |state| state.air_supply()),
+                    max_air_supply: 300,
+                    eye_in_water: hud_player.is_some_and(|player| player.is_eye_in_water()),
                     experience_progress: status.experience_progress,
-                    armor: 0,
-                    selected_slot: status.selected_slot,
-                    survival: game_mode.is_survival(),
-                    spectator: game_mode == voxel_client::world::ClientPlayerGameMode::Spectator,
-                    hardcore: session.hardcore(),
-                    first_person: camera_type == CameraType::FirstPerson,
+                    attack_strength: hud_player.map_or(1.0, |player| {
+                        player.attack_strength_scale(0.0, attribute(5, 4.0, 0.0, 1024.0))
+                    }),
                 },
                 started_at.elapsed().as_millis(),
             );

@@ -139,6 +139,19 @@ pub(crate) fn metadata_pose_value(metadata: &[u8]) -> Option<ClientEntityPose> {
     Some(ClientEntityPose::from_wire_id(value))
 }
 
+/// `Avatar.DATA_PLAYER_MODE_CUSTOMISATION`: which skin layers show.
+pub(crate) const PLAYER_MODE_CUSTOMISATION_DATA_ID: u8 = 16;
+/// `Player.DATA_PLAYER_ABSORPTION_ID`.
+pub(crate) const PLAYER_ABSORPTION_DATA_ID: u8 = 17;
+
+pub(crate) fn player_absorption_from_metadata(metadata: &[u8]) -> Option<f32> {
+    metadata_float_value(metadata, PLAYER_ABSORPTION_DATA_ID)
+}
+
+pub(crate) fn player_model_customisation_from_metadata(metadata: &[u8]) -> Option<u8> {
+    metadata_byte_value(metadata, PLAYER_MODE_CUSTOMISATION_DATA_ID)
+}
+
 pub(crate) fn shared_flags_from_metadata(metadata: &[u8]) -> Option<u8> {
     metadata_byte_value(metadata, ENTITY_SHARED_FLAGS_DATA_ID)
 }
