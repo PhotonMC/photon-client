@@ -120,11 +120,24 @@ pub enum ItemModelDef {
         entries: Vec<(f32, ItemModelDef)>,
         fallback: Option<Box<ItemModelDef>>,
     },
-    /// A special renderer (chests, banners, heads…), not drawn yet.
-    Special,
+    /// A special renderer over a base model (chests, banners, heads…): the
+    /// base model gives the display transforms and the light. Only chests
+    /// are drawn yet.
+    Special {
+        base: Identifier,
+        model: SpecialModel,
+    },
     Empty,
     /// A kind this client does not know.
     Unknown(String),
+}
+
+/// The special renderers this client draws.
+#[derive(Debug, Clone, PartialEq)]
+pub enum SpecialModel {
+    /// `ChestSpecialRenderer`: the chest model shut, with the texture under
+    /// `entity/chest`.
+    Chest { texture: Identifier },
 }
 
 fn text_of(value: &JsonValue) -> Option<String> {
@@ -225,7 +238,31 @@ pub fn parse_item_model(object: &JsonObject) -> ItemModelDef {
                 .collect(),
             fallback: child("fallback").map(Box::new),
         },
-        "minecraft:special" => ItemModelDef::Special,
+        "minecraft:special" => {
+            let base = object
+                .text("base")
+                .and_then(|name| Identifier::parse(&name).ok());
+            let model = object.object("model");
+            let kind = model
+                .and_then(|model| model.text("type"))
+                .unwrap_or_default();
+            let special = match (kind.as_str(), model) {
+                ("minecraft:chest", Some(model)) => Identifier::parse(&format!(
+                    "minecraft:entity/chest/{}",
+                    model
+                        .text("texture")
+                        .map(|name| name.trim_start_matches("minecraft:").to_owned())
+                        .unwrap_or_default()
+                ))
+                .ok()
+                .map(|texture| SpecialModel::Chest { texture }),
+                _ => None,
+            };
+            match (base, special) {
+                (Some(base), Some(model)) => ItemModelDef::Special { base, model },
+                _ => ItemModelDef::Unknown(format!("special {kind}")),
+            }
+        }
         "minecraft:empty" => ItemModelDef::Empty,
         other => ItemModelDef::Unknown(other.to_owned()),
     }
@@ -259,6 +296,8 @@ pub struct ClientItem {
 pub struct ItemLayerRef {
     pub model: Identifier,
     pub tints: Vec<TintSource>,
+    /// The special renderer drawn over `model`'s transforms, if any.
+    pub special: Option<SpecialModel>,
 }
 
 /// The layers a default stack (no components, not in use) draws in a
@@ -270,6 +309,12 @@ pub fn layers_for(def: &ItemModelDef, context: DisplayContext, out: &mut Vec<Ite
         ItemModelDef::Model { model, tints } => out.push(ItemLayerRef {
             model: model.clone(),
             tints: tints.clone(),
+            special: None,
+        }),
+        ItemModelDef::Special { base, model } => out.push(ItemLayerRef {
+            model: base.clone(),
+            tints: Vec::new(),
+            special: Some(model.clone()),
         }),
         ItemModelDef::Composite(models) => {
             for model in models {
@@ -311,7 +356,7 @@ pub fn layers_for(def: &ItemModelDef, context: DisplayContext, out: &mut Vec<Ite
                 (None, None) => {}
             }
         }
-        ItemModelDef::Special | ItemModelDef::Empty | ItemModelDef::Unknown(_) => {}
+        ItemModelDef::Empty | ItemModelDef::Unknown(_) => {}
     }
 }
 
@@ -451,4 +496,38 @@ pub fn generated_elements(
         }
     }
     elements
+}
+
+#[cfg(test)]
+mod special_tests {
+    use super::*;
+
+    #[test]
+    fn a_chest_draws_its_model_over_the_base_models_transforms() {
+        let text = r#"{"model":{"type":"minecraft:select","property":"minecraft:local_time",
+            "pattern":"MM-dd","cases":[],"fallback":{"type":"minecraft:special",
+            "base":"minecraft:item/chest","model":{"type":"minecraft:chest",
+            "texture":"minecraft:normal"}}}}"#;
+        let item = parse_client_item(text).expect("a client item");
+        let mut layers = Vec::new();
+        layers_for(&item.model, DisplayContext::ALL[0], &mut layers);
+        assert_eq!(layers.len(), 1);
+        assert_eq!(layers[0].model.as_string(), "minecraft:item/chest");
+        assert_eq!(
+            layers[0].special,
+            Some(SpecialModel::Chest {
+                texture: Identifier::parse("minecraft:entity/chest/normal").expect("valid")
+            })
+        );
+    }
+
+    #[test]
+    fn other_special_renderers_draw_nothing() {
+        let text = r#"{"model":{"type":"minecraft:special","base":"minecraft:item/shield",
+            "model":{"type":"minecraft:shield"}}}"#;
+        let item = parse_client_item(text).expect("a client item");
+        let mut layers = Vec::new();
+        layers_for(&item.model, DisplayContext::ALL[0], &mut layers);
+        assert!(layers.is_empty());
+    }
 }

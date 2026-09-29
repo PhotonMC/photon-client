@@ -66,8 +66,7 @@ Vanilla 26.2 sunucusunda yaratıcı modda betikle (`tab/N`, `scroll/YÜZDE`,
 - Kayıtlı hotbar'lar okunmaz (`hotbar.nbt`): hepsi boş, yer tutucu kâğıtlar
   gösterilir; C/X ile kaydetme ve yükleme yok.
 - Oyuncu modeli envanter sekmesinde çizilmez; eşya ipuçları ve etkiler paneli
-  yok; envanter sekmesinin simgesi (sandık) özel eşya modeli olduğundan
-  boş. Bileşenli eşyaların simgeleri bileşenlerden tint almaz (iksir
+  yok. Bileşenli eşyaların simgeleri bileşenlerden tint almaz (iksir
   rengi vb.).
 - `broadcastChanges` son yayından beri değişeni gönderir; burada tıklamadan
   önce ile sonra karşılaştırılır. Sunucunun tıklamalar arasında yaptığı bir

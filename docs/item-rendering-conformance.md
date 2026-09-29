@@ -62,8 +62,12 @@ birim testiyle sabitlendi.
   farkı beklenmez, ama atlas yerleşimi referansla aynı değil.
 - Yığın bileşenleri okunmuyor: bileşene bağlı özellikler (iksir rengi,
   boyalı zırh, pusula, saat, dayanıklılık çubuğu, bekleme süresi örtüsü)
-  varsayılan yığın gibi çizilir. `special` modeller (kalkan, sandık, kafa,
-  bayrak…) çizilmez.
+  varsayılan yığın gibi çizilir. `special` modellerden yalnız sandıklar
+  çizilir (`ChestModel` kapak kapalı, `entity/chest/*` dokusuyla, temel
+  modelin GUI dönüşümü ve ışığıyla; çift sandık ve açılma yok). Kalkan,
+  kafa, bayrak, yatak, shulker kutusu gibi diğerleri çizilmez. Sandığın
+  `local_time` seçimi varsayılan dokuyu alır: 24-26 Aralık'ın Noel dokusu
+  yok.
 - Yığın alındığında zıplama animasyonu (`popTime`) yok. Ana kol hep sağ
   sayılıyor; sol el yuvası hep solda.
 - Referans her eşyayı ayrı bir atlas hücresine çizip GUI'ye kopyalar; burada

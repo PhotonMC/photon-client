@@ -211,6 +211,42 @@ impl Part {
     }
 }
 
+/// `ChestModel.createSingleBodyLayer` with the lid shut, posed at the origin:
+/// the bottom, the lid and the lock, each face's corners in blocks with the
+/// texture coordinate in the chest's 64x64 texture.
+pub fn chest_quads() -> Vec<[ModelVertex; 4]> {
+    let cube =
+        |tex: (i32, i32), min: [f32; 3], size: [f32; 3]| Cube::new(tex, min, size, 0.0, false);
+    let root = Part::new(
+        "root",
+        Vec::new(),
+        [0.0; 3],
+        vec![
+            Part::new(
+                "bottom",
+                vec![cube((0, 19), [1.0, 0.0, 1.0], [14.0, 10.0, 14.0])],
+                [0.0; 3],
+                Vec::new(),
+            ),
+            Part::new(
+                "lid",
+                vec![cube((0, 0), [1.0, 0.0, 0.0], [14.0, 5.0, 14.0])],
+                [0.0, 9.0, 1.0],
+                Vec::new(),
+            ),
+            Part::new(
+                "lock",
+                vec![cube((0, 0), [7.0, -2.0, 14.0], [2.0, 4.0, 1.0])],
+                [0.0, 9.0, 1.0],
+                Vec::new(),
+            ),
+        ],
+    );
+    let mut faces = Vec::new();
+    root.render(&Pose::default(), "", &mut faces);
+    faces.into_iter().map(|(_, face)| face).collect()
+}
+
 /// Which arm the player swings with.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Arm {

@@ -204,6 +204,11 @@ impl BlockRenderer {
                     crate::render::item_model::layers_for(&def.model, context, &mut layers);
                 }
                 for layer in layers {
+                    if let Some(crate::render::item_model::SpecialModel::Chest { texture }) =
+                        &layer.special
+                    {
+                        layer_sprites.push(texture.clone());
+                    }
                     let name = layer.model.as_string();
                     if models.contains_key(&name) {
                         continue;
@@ -294,6 +299,18 @@ impl BlockRenderer {
                 .iter()
                 .map(|tint| crate::render::item_model::tint_colour(tint, grass))
                 .collect();
+            if let Some(crate::render::item_model::SpecialModel::Chest { texture }) = &layer.special
+            {
+                let Some(rect) = self.atlas.sprites.get(&texture.as_string()) else {
+                    continue;
+                };
+                out.push(ItemLayer {
+                    mesh: chest_mesh(rect),
+                    side_lit: model.gui_light == crate::render::model::GuiLight::Side,
+                    transform: model.display.get(context),
+                });
+                continue;
+            }
             let geometry;
             let model = if model.generated {
                 let mut flat = model.clone();
@@ -1148,4 +1165,34 @@ fn render_seed(block: &str, properties: &BTreeMap<String, String>, position: [i3
 /// block, from its column's seed and the block's limits.
 fn block_offset(block: &str, position: [i32; 3]) -> [f32; 3] {
     crate::world::block_offset(block, position).map(|value| value as f32)
+}
+
+/// The chest model's quads as an item layer's mesh: corners in the unit
+/// block, texture coordinates on the chest's sprite in the atlas, white.
+fn chest_mesh(rect: &[f32; 4]) -> Mesh {
+    let mut mesh = Mesh::default();
+    for quad in crate::render::player_model::chest_quads() {
+        let base = mesh.vertices.len() as u32;
+        let normal = quad[0].normal;
+        for vertex in quad {
+            mesh.vertices.push(crate::render::Vertex {
+                position: vertex.position,
+                uv: [
+                    rect[0] + (rect[2] - rect[0]) * vertex.uv[0],
+                    rect[1] + (rect[3] - rect[1]) * vertex.uv[1],
+                ],
+                shade: 1.0,
+                tint: [1.0; 4],
+                light: crate::render::scene::FULL_BRIGHT,
+            });
+        }
+        mesh.quads.push(crate::render::scene::QuadInfo {
+            direction: crate::render::geometry::closest_direction(normal).unwrap_or(Direction::Up),
+            cull: None,
+            shade: true,
+        });
+        mesh.indices
+            .extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 3]);
+    }
+    mesh
 }
