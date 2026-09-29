@@ -83,6 +83,9 @@ kayıtların tamamı `server-conformance` sınıfındadır.
 
 ## Oynanabilir istemci sırası (2026-09-29)
 
+Kalan işlerin tam listesi, paket kapsam ölçüsü ve sıradaki dilimler
+[kalan işler belgesindedir](remaining-work.md).
+
 `play` modu dünyayı çiziyor ve yürünebiliyor; eylem, eşya, envanter, entity,
 metin, ekran, ses ve parçacık eksik. Kilometre taşları bu sırayla ilerler;
 her biri yukarıdaki bölümlerin dilimlerinden oluşur ve kabul kuralı
