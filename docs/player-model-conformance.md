@@ -82,6 +82,37 @@ seçiliyor.
 Bu kısım referans karelerle karşılaştırılmadı. Nether'in ışık yönleri,
 vurulma kızarıklığı ve isim etiketi yok.
 
+## Birinci şahıs el ve vuruş
+
+Birinci şahısta boş sağ el çiziliyor; izleyicide çizilmiyor. El görünüm
+uzayında kuruluyor:
+
+1. Bakış sallanması uygulanıyor.
+2. El bakışın gecikmeli kopyasının (`xBob/yBob`, her tik farkın yarısını
+   kapatıyor) arkasından farkın onda biri kadar dönüyor.
+3. Referansın boş el dönüşüm zinciri uygulanıyor.
+4. Kol, ağdaki konumunda 0,1 radyan dışa açılmış olarak kolluğuyla
+   çiziliyor.
+
+Elin kendi projeksiyonu var (görüş 70°, suda daralıyor; yakın 0,05, uzak
+100) ve derinlik temizlenip en son çiziliyor. `xBob/yBob` movement
+ailesinde her tick bit bit eşleşiyor.
+
+**Vuruş:**
+
+- Sol tık (ya da betikte `attack`) bir sonraki tikte oyuncudan önce
+  işleniyor ve sunucuya `Swing` gidiyor.
+- 4,5 bloklük erişimde blok yoksa ıska sayılıyor: hayatta kalmada 10 tik
+  bekleme başlıyor, saldırı gücü ve eşya değiştirme sayacı sıfırlanıyor.
+  Blok varsa yalnızca kol sallanıyor; blok kırma henüz yok.
+- Boş elin sallanması altı tik sürüyor (`updateSwingTime`). İlk yarısında
+  yeni vuruş sallanmayı baştan başlatmıyor.
+- El, eşya değiştirme ölçeğinin küpüne doğru tik başına en fazla 0,4
+  yükseliyor. Girişte ve ıskadan sonra aşağıdan kalkıyor.
+- Vuruş hem birinci şahıs elinde hem üçüncü şahıs modelinde oynuyor.
+
+Bu kısım referans karelerle karşılaştırılmadı.
+
 ## Kapsam dışı
 
 Eldeki eşyanın kol pozları, eşya kullanımı, binek, elytra, pelerin, zırh ve

@@ -755,6 +755,8 @@ struct HeldKeys {
     jump: bool,
     sneak: bool,
     sprint: bool,
+    /// A scripted attack click on this tick.
+    attack: bool,
 }
 
 impl HeldKeys {
@@ -799,6 +801,7 @@ impl HeldKeys {
                 "jump" => keys.jump = true,
                 "sneak" => keys.sneak = true,
                 "sprint" => keys.sprint = true,
+                "attack" => keys.attack = true,
                 "none" => {}
                 other => return Err(format!("unknown key {other} in VOXEL_SCRIPT")),
             }
@@ -1204,7 +1207,14 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
         )?)
         .map_err(|error| format!("skin: {error:?}"))?,
     )?;
-    let mut player_model = render::player_model::PlayerModel::new(skin.slim);
+    let mut player_model = render::player_model::PlayerModel::new(!skin.slim);
+    // `ItemInHandRenderer.mainHandHeight`: the empty hand rises into view
+    // at four tenths a tick.
+    let mut hand_height = (0.0_f32, 0.0_f32);
+    // Attack clicks waiting for the next tick, and `Minecraft.missTime`:
+    // ticks a missed attack keeps the next one waiting.
+    let mut attack_clicks = 0_u32;
+    let mut miss_time = 0_i32;
     let mut cloud_key = None;
     // The reference seeds this source uniquely per run.
     let mut flicker_random = voxel_client::random::RandomSource::create(
@@ -1275,6 +1285,13 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                 glfw::WindowEvent::Key(key, _, action, _) if captured => {
                     keys.set(key, action != glfw::Action::Release);
                 }
+                glfw::WindowEvent::MouseButton(
+                    glfw::MouseButton::Button1,
+                    glfw::Action::Press,
+                    _,
+                ) if captured => {
+                    attack_clicks += 1;
+                }
                 glfw::WindowEvent::MouseButton(_, glfw::Action::Press, _) if !captured => {
                     captured = true;
                     last_cursor = None;
@@ -1343,6 +1360,49 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                 },
                 None => keys,
             };
+            if held.attack {
+                attack_clicks += 1;
+            }
+            // `Minecraft.tick`: the miss wait runs down, then each attack
+            // click is handled before the player moves.
+            if miss_time > 0 {
+                miss_time -= 1;
+            }
+            for _ in 0..std::mem::take(&mut attack_clicks) {
+                let Some(player) = session.player() else {
+                    break;
+                };
+                if miss_time > 0 || player.spectating() {
+                    continue;
+                }
+                // Blocks within the default reach of four and a half; the
+                // block is not broken yet, so a hit only swings.
+                let feet = player.position();
+                let (y_rot, x_rot) = player.rotation();
+                let eye = voxel_client::math::Vec3::new(
+                    feet.x,
+                    feet.y + f64::from(player.eye_height()),
+                    feet.z,
+                );
+                let look =
+                    voxel_client::math::Vec3::direction_from_rotation_components(x_rot, y_rot);
+                let reach = voxel_client::math::Vec3::new(
+                    eye.x + look.x * 4.5,
+                    eye.y + look.y * 4.5,
+                    eye.z + look.z * 4.5,
+                );
+                let missed = session.world().clip_blocks(eye, reach).is_none();
+                let creative = player.abilities().instabuild();
+                if missed {
+                    if !creative {
+                        miss_time = 10;
+                    }
+                    if let Some(player) = session.player_mut() {
+                        player.reset_attack_strength();
+                    }
+                }
+                session.swing()?;
+            }
             session.tick(held.input())?;
             // `LightmapRenderStateExtractor.tick`: the block light's flicker
             // wanders by a small random step and decays.
@@ -1358,6 +1418,13 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
             if let Some(player) = session.player() {
                 camera.tick(player);
             }
+            // `ItemInHandRenderer.tick`: the empty hand rises back as the
+            // attack strength recovers.
+            let swap = session
+                .player()
+                .map_or(1.0, |player| player.item_swap_scale(1.0));
+            hand_height.0 = hand_height.1;
+            hand_height.1 += (swap * swap * swap - hand_height.1).clamp(-0.4, 0.4);
             // The camera's attribute probe steps once a tick.
             if session.player().is_some() {
                 attributes_last =
@@ -1405,7 +1472,48 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
             (camera_world.y - f64::from(origin[1])) as f32,
             (camera_world.z - f64::from(origin[2])) as f32,
         ];
-        // The player's own model shows once the camera leaves its eyes.
+        // Packed block and sky light at the eyes, which the player's model
+        // and hand are lit by.
+        let light = {
+            let world = session.world();
+            let [x, y, z] =
+                [eye_world.x, eye_world.y, eye_world.z].map(|value| value.floor() as i32);
+            (i32::from(world.block_brightness(x, y, z)) << 4)
+                | (i32::from(world.sky_brightness(x, y, z)) << 20)
+        };
+        // The player's own model shows once the camera leaves its eyes; in
+        // them, the empty hand does, unless the player only watches.
+        if camera_type == CameraType::FirstPerson && !player.spectating() {
+            let (walked, bob) = player.view_bob(partial as f32);
+            let (x_bob, y_bob) = player.hand_bob(partial as f32);
+            let hand_lift = hand_height.0 + partial as f32 * (hand_height.1 - hand_height.0);
+            let hand = render::player_renderer::hand_vertices(
+                &mut player_model,
+                &render::player_renderer::HandView {
+                    bob_walked: walked,
+                    bob,
+                    view_x_rot: player_x_rot,
+                    view_y_rot: player_y_rot,
+                    x_bob,
+                    y_bob,
+                    inverse_arm_height: 1.0 - hand_lift,
+                    attack: player.attack_anim(partial as f32),
+                    light,
+                },
+            );
+            // `Camera.calculateHudFov`: the hand's field of view is the
+            // default, narrowed in water, and not widened by speed.
+            let hud_fov = if player.is_eye_in_water() {
+                70.0 * 0.857_142_87
+            } else {
+                70.0
+            };
+            let hand_projection =
+                render::scene::perspective(f32::to_radians(hud_fov), aspect, 0.05, 100.0);
+            backend.set_hand(&hand, hand_projection)?;
+        } else {
+            backend.set_hand(&[], [[0.0; 4]; 4])?;
+        }
         if camera_type == CameraType::FirstPerson {
             backend.set_entities(&[])?;
         } else {
@@ -1421,22 +1529,9 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                 swim_amount: model_pose.swim_amount,
                 crouching: model_pose.crouching,
                 spectator: player.spectating(),
+                attack_time: player.attack_anim(partial as f32),
                 ..Default::default()
             });
-            let world = session.world();
-            let light_block = [
-                eye_world.x.floor() as i32,
-                eye_world.y.floor() as i32,
-                eye_world.z.floor() as i32,
-            ];
-            let light =
-                (i32::from(world.block_brightness(light_block[0], light_block[1], light_block[2]))
-                    << 4)
-                    | (i32::from(world.sky_brightness(
-                        light_block[0],
-                        light_block[1],
-                        light_block[2],
-                    )) << 20);
             let visually_swimming =
                 model_pose.pose == voxel_client::world::ClientEntityPose::Swimming;
             backend.set_entities(&render::player_renderer::player_vertices(

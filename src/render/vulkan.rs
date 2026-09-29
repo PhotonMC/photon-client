@@ -654,6 +654,11 @@ pub struct VulkanBackend {
     /// The entities' triangles for the next frame.
     entity_buffer: Option<SkyBuffer>,
     entity_count: u32,
+    /// The first-person hand's triangles, in view space, and the projection
+    /// they are drawn with over a cleared depth.
+    hand_buffer: Option<SkyBuffer>,
+    hand_count: u32,
+    hand_projection: [[f32; 4]; 4],
     sections: std::collections::BTreeMap<(i32, i32, i32), SectionBuffers>,
     arena: Vec<ArenaBlock>,
     /// Staging chunks: every chunk, the ones taking uploads for the next
@@ -927,6 +932,9 @@ impl VulkanBackend {
                 weather_counts: (0, 0),
                 entity_buffer: None,
                 entity_count: 0,
+                hand_buffer: None,
+                hand_count: 0,
+                hand_projection: [[0.0; 4]; 4],
                 sections: std::collections::BTreeMap::new(),
                 arena: Vec::new(),
                 staging: Vec::new(),
@@ -1345,6 +1353,59 @@ impl VulkanBackend {
                     self.device
                         .cmd_draw(self.command_buffer, count, 1, first, 0);
                 }
+            }
+            // The first-person hand last, over a cleared depth, with its own
+            // projection and the camera at the origin of its view space.
+            if let (Some(buffer), Some(set)) = (self.hand_buffer.as_ref(), scene.entity_set)
+                && self.hand_count > 0
+            {
+                self.device.cmd_clear_attachments(
+                    self.command_buffer,
+                    &[vk::ClearAttachment {
+                        aspect_mask: vk::ImageAspectFlags::DEPTH,
+                        color_attachment: 0,
+                        clear_value: vk::ClearValue {
+                            depth_stencil: vk::ClearDepthStencilValue {
+                                depth: 0.0,
+                                stencil: 0,
+                            },
+                        },
+                    }],
+                    &[vk::ClearRect {
+                        rect: vk::Rect2D::default().extent(self.description.extent),
+                        base_array_layer: 0,
+                        layer_count: 1,
+                    }],
+                );
+                let mut hand_push = terrain_push;
+                hand_push[..16].copy_from_slice(&std::array::from_fn::<f32, 16, _>(|i| {
+                    self.hand_projection[i / 4][i % 4]
+                }));
+                hand_push[28..31].copy_from_slice(&[0.0; 3]);
+                self.device.cmd_bind_pipeline(
+                    self.command_buffer,
+                    vk::PipelineBindPoint::GRAPHICS,
+                    scene.entity_pipeline,
+                );
+                self.device.cmd_bind_descriptor_sets(
+                    self.command_buffer,
+                    vk::PipelineBindPoint::GRAPHICS,
+                    scene.entity_pipeline_layout,
+                    0,
+                    &[set],
+                    &[],
+                );
+                self.device.cmd_push_constants(
+                    self.command_buffer,
+                    scene.entity_pipeline_layout,
+                    vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
+                    0,
+                    std::slice::from_raw_parts(hand_push.as_ptr().cast::<u8>(), 160),
+                );
+                self.device
+                    .cmd_bind_vertex_buffers(self.command_buffer, 0, &[buffer.buffer], &[0]);
+                self.device
+                    .cmd_draw(self.command_buffer, self.hand_count, 1, 0, 0);
             }
             self.dynamic_rendering
                 .cmd_end_rendering(self.command_buffer);
@@ -2663,30 +2724,54 @@ impl VulkanBackend {
     /// Hand over the next frame's entity triangles, placed like the
     /// terrain's, with each vertex's normal in its tint.
     pub fn set_entities(&mut self, vertices: &[Vertex]) -> Result<(), VulkanError> {
+        let mut buffer = self.entity_buffer.take();
+        self.fill_vertex_buffer(&mut buffer, vertices)?;
+        self.entity_buffer = buffer;
+        self.entity_count = vertices.len() as u32;
+        Ok(())
+    }
+
+    /// Hand over the next frame's first-person hand: triangles in view
+    /// space, and the projection they are drawn with.
+    pub fn set_hand(
+        &mut self,
+        vertices: &[Vertex],
+        projection: [[f32; 4]; 4],
+    ) -> Result<(), VulkanError> {
+        let mut buffer = self.hand_buffer.take();
+        self.fill_vertex_buffer(&mut buffer, vertices)?;
+        self.hand_buffer = buffer;
+        self.hand_count = vertices.len() as u32;
+        self.hand_projection = projection;
+        Ok(())
+    }
+
+    /// Write vertices into a host buffer, growing it when they do not fit.
+    fn fill_vertex_buffer(
+        &mut self,
+        slot: &mut Option<SkyBuffer>,
+        vertices: &[Vertex],
+    ) -> Result<(), VulkanError> {
         unsafe {
             self.device
                 .wait_for_fences(&[self.in_flight], true, u64::MAX)
                 .map_err(|result| VulkanError::Call("vkWaitForFences", result))?;
             let size = std::mem::size_of_val(vertices);
-            if self
-                .entity_buffer
-                .as_ref()
-                .is_none_or(|buffer| buffer.capacity < size)
-            {
-                if let Some(old) = self.entity_buffer.take() {
+            if slot.as_ref().is_none_or(|buffer| buffer.capacity < size) {
+                if let Some(old) = slot.take() {
                     self.device.destroy_buffer(old.buffer, None);
                     self.device.free_memory(old.memory, None);
                 }
                 let capacity = size.max(1 << 16);
                 let (buffer, memory) =
                     self.upload_buffer(vk::BufferUsageFlags::VERTEX_BUFFER, &vec![0_u8; capacity])?;
-                self.entity_buffer = Some(SkyBuffer {
+                *slot = Some(SkyBuffer {
                     buffer,
                     memory,
                     capacity,
                 });
             }
-            let buffer = self.entity_buffer.as_ref().expect("allocated above");
+            let buffer = slot.as_ref().expect("allocated above");
             if size > 0 {
                 let mapped = self
                     .device
@@ -2696,7 +2781,6 @@ impl VulkanBackend {
                 std::ptr::copy_nonoverlapping(vertices.as_ptr().cast::<u8>(), mapped, size);
                 self.device.unmap_memory(buffer.memory);
             }
-            self.entity_count = vertices.len() as u32;
             Ok(())
         }
     }
@@ -3125,9 +3209,12 @@ impl Drop for VulkanBackend {
                 self.device.destroy_buffer(weather.buffer, None);
                 self.device.free_memory(weather.memory, None);
             }
-            if let Some(entities) = self.entity_buffer.take() {
-                self.device.destroy_buffer(entities.buffer, None);
-                self.device.free_memory(entities.memory, None);
+            for buffer in [self.entity_buffer.take(), self.hand_buffer.take()]
+                .into_iter()
+                .flatten()
+            {
+                self.device.destroy_buffer(buffer.buffer, None);
+                self.device.free_memory(buffer.memory, None);
             }
             for block in self.arena.drain(..) {
                 self.device.destroy_buffer(block.buffer, None);

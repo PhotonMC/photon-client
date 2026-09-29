@@ -533,6 +533,31 @@ impl PlayerModel {
         );
     }
 
+    /// `AvatarRenderer.renderHand`: one arm alone, as the first-person view
+    /// draws it, reset to where the mesh put it, turned out a tenth of a
+    /// radian, with its sleeve.
+    pub fn render_arm(&mut self, arm: Arm, pose: &Pose) -> Vec<(String, [ModelVertex; 4])> {
+        let name = match arm {
+            Arm::Left => "left_arm",
+            Arm::Right => "right_arm",
+        };
+        let part = self.part(name);
+        part.reset();
+        part.visible = true;
+        for child in &mut part.children {
+            child.visible = true;
+        }
+        part.z_rot = match arm {
+            Arm::Left => -0.1,
+            Arm::Right => 0.1,
+        };
+        let mut out = Vec::new();
+        self.root
+            .child(name)
+            .render(pose, &format!("/{name}"), &mut out);
+        out
+    }
+
     /// Every visible face of the posed model, from `pose`.
     pub fn render(&self, pose: &Pose) -> Vec<(String, [ModelVertex; 4])> {
         let mut out = Vec::new();

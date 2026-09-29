@@ -292,6 +292,8 @@ public final class MovementOracle {
         tick.addProperty("walk_position", Oracle.bits(player.walkAnimation.position(0.5F)));
         tick.addProperty("walk_speed", Oracle.bits(player.walkAnimation.speed(0.5F)));
         tick.addProperty("swim_amount", Oracle.bits(player.getSwimAmount(0.5F)));
+        tick.addProperty("hand_x_bob", Oracle.bits(net.minecraft.util.Mth.lerp(0.5F, player.xBobO, player.xBob)));
+        tick.addProperty("hand_y_bob", Oracle.bits(net.minecraft.util.Mth.lerp(0.5F, player.yBobO, player.yBob)));
         var packets = new JsonArray();
         for (var packet : sent) {
             var described = new JsonObject();

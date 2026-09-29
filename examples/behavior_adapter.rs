@@ -16901,6 +16901,8 @@ fn movement_result(request: &Value) -> Result<Value, String> {
                 "walk_position": format!("{:08x}", player.model_pose(0.5).walk_position.to_bits()),
                 "walk_speed": format!("{:08x}", player.model_pose(0.5).walk_speed.to_bits()),
                 "swim_amount": format!("{:08x}", player.model_pose(0.5).swim_amount.to_bits()),
+                "hand_x_bob": format!("{:08x}", player.hand_bob(0.5).0.to_bits()),
+                "hand_y_bob": format!("{:08x}", player.hand_bob(0.5).1.to_bits()),
                 "sent": packets,
             }));
         }

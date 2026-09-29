@@ -599,6 +599,22 @@ pub struct LocalPlayer {
     walk_speed_old: f32,
     walk_speed: f32,
     walk_position: f32,
+    /// The first-person hand's lagging view: it chases the rotation by
+    /// half the gap each tick.
+    x_bob: f32,
+    y_bob: f32,
+    x_bob_old: f32,
+    y_bob_old: f32,
+    /// `LivingEntity`'s arm swing: whether one is under way, how many
+    /// ticks in, and how far through, now and a tick ago.
+    swinging: bool,
+    swing_time: i32,
+    attack_anim: f32,
+    attack_anim_old: f32,
+    /// `Player.attackStrengthTicker` and `itemSwapTicker`: ticks since the
+    /// last attack or change of held item.
+    attack_strength_ticker: i32,
+    item_swap_ticker: i32,
     /// How far into the swimming pose the model has turned.
     swim_amount: f32,
     swim_amount_old: f32,
@@ -683,6 +699,16 @@ impl LocalPlayer {
             walk_speed_old: 0.0,
             walk_speed: 0.0,
             walk_position: 0.0,
+            x_bob: 0.0,
+            y_bob: 0.0,
+            x_bob_old: 0.0,
+            y_bob_old: 0.0,
+            swinging: false,
+            swing_time: 0,
+            attack_anim: 0.0,
+            attack_anim_old: 0.0,
+            attack_strength_ticker: 0,
+            item_swap_ticker: 0,
             swim_amount: 0.0,
             swim_amount_old: 0.0,
             bob: 0.0,
@@ -840,6 +866,47 @@ impl LocalPlayer {
     }
 
     /// The feet position between the last two ticks.
+    /// `LivingEntity.swing` for the main hand: start a swing, unless one is
+    /// in its first half.
+    pub fn swing(&mut self) {
+        if !self.swinging || self.swing_time >= SWING_DURATION / 2 || self.swing_time < 0 {
+            self.swing_time = -1;
+            self.swinging = true;
+        }
+    }
+
+    /// `Player.resetAttackStrengthTicker`.
+    pub fn reset_attack_strength(&mut self) {
+        self.attack_strength_ticker = 0;
+        self.item_swap_ticker = 0;
+    }
+
+    /// `LivingEntity.getAttackAnim`: how far through the swing, between the
+    /// last two ticks, wrapping when a new swing began.
+    pub fn attack_anim(&self, partial_tick: f32) -> f32 {
+        let mut difference = self.attack_anim - self.attack_anim_old;
+        if difference < 0.0 {
+            difference += 1.0;
+        }
+        self.attack_anim_old + difference * partial_tick
+    }
+
+    /// `Player.getItemSwapScale`: how far the hand has come back up after
+    /// an attack or a change of item, over the attack delay of an empty
+    /// hand (five ticks at the default attack speed).
+    pub fn item_swap_scale(&self, partial_tick: f32) -> f32 {
+        let delay = (1.0 / 4.0 * 20.0) as f32;
+        ((self.item_swap_ticker as f32 + partial_tick) / delay).clamp(0.0, 1.0)
+    }
+
+    /// The hand's lagging pitch and yaw between the last two ticks.
+    pub fn hand_bob(&self, partial_tick: f32) -> (f32, f32) {
+        (
+            self.x_bob_old + partial_tick * (self.x_bob - self.x_bob_old),
+            self.y_bob_old + partial_tick * (self.y_bob - self.y_bob_old),
+        )
+    }
+
     /// How many ticks the player has lived, which the model's idle sway
     /// reads.
     pub fn tick_count(&self) -> i32 {
@@ -925,11 +992,15 @@ impl LocalPlayer {
         if clamped_x != self.position.x || clamped_z != self.position.z {
             self.set_pos(Vec3::new(clamped_x, self.position.y, clamped_z));
         }
+        // Player.tick, after the living tick.
+        self.attack_strength_ticker += 1;
+        self.item_swap_ticker += 1;
         self.update_player_pose(level)
     }
 
     fn living_tick(&mut self, level: &Level<'_>) -> Result<(), Unsupported> {
-        // LivingEntity.baseTick keeps last tick's facings.
+        // LivingEntity.baseTick keeps last tick's swing and facings.
+        self.attack_anim_old = self.attack_anim;
         self.y_head_rot_old = self.y_head_rot;
         self.y_body_rot_old = self.y_body_rot;
         // Entity.baseTick, as the living base tick runs it.
@@ -1122,6 +1193,17 @@ impl LocalPlayer {
             self.fall_distance = 0.0;
         }
         self.living_ai_step(level)?;
+        // `updateSwingTime`: an empty hand swings over six ticks.
+        if self.swinging {
+            self.swing_time += 1;
+            if self.swing_time >= SWING_DURATION {
+                self.swing_time = 0;
+                self.swinging = false;
+            }
+        } else {
+            self.swing_time = 0;
+        }
+        self.attack_anim = self.swing_time as f32 / SWING_DURATION as f32;
         self.y_head_rot = self.y_rot;
         Ok(())
     }
@@ -1157,6 +1239,10 @@ impl LocalPlayer {
         self.xxa = modified.x;
         self.zza = modified.y;
         self.jumping = self.input.key_presses.jump;
+        self.y_bob_old = self.y_bob;
+        self.x_bob_old = self.x_bob;
+        self.x_bob += (self.x_rot - self.x_bob) * 0.5;
+        self.y_bob += (self.y_rot - self.y_bob) * 0.5;
 
         if self.jumping && self.is_affected_by_fluids() {
             let fluid_height = if self.is_in_lava() {
@@ -2767,6 +2853,9 @@ fn furthest_corner(direction: Vec3) -> [i32; 3] {
 fn compute_modified_friction(friction: f32, modifier: f32) -> f32 {
     (1.0_f32 - (1.0_f32 - friction) * modifier).clamp(0.0, 1.0)
 }
+
+/// `SwingAnimation.DEFAULT`'s duration: an empty hand's swing, in ticks.
+const SWING_DURATION: i32 = 6;
 
 /// What the player model is posed from.
 #[derive(Debug, Clone, Copy, PartialEq)]

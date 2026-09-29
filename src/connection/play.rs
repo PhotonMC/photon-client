@@ -243,6 +243,19 @@ impl PlaySession {
         self.game_time
     }
 
+    /// `LocalPlayer.swing` with the main hand: the arm swings, and the
+    /// server hears of it.
+    pub fn swing(&mut self) -> Result<(), ConnectionError> {
+        let Some(player) = self.player.as_mut() else {
+            return Ok(());
+        };
+        player.swing();
+        self.send(PLAY_SERVERBOUND_SWING_PACKET_ID, |output| {
+            wire::write_varint(0, output);
+            Ok(())
+        })
+    }
+
     /// The player's profile id, as the server logged it in.
     pub fn profile_id(&self) -> Option<crate::binary::Uuid> {
         self.trace.profile_id

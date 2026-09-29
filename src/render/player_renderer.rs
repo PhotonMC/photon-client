@@ -133,6 +133,95 @@ pub fn player_vertices(model: &PlayerModel, placement: &Placement) -> Vec<Vertex
     vertices
 }
 
+/// What places the first-person hand.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct HandView {
+    /// The view bob's walked distance and bob.
+    pub bob_walked: f32,
+    pub bob: f32,
+    /// The view's pitch and yaw, and the hand's lagging copies of them.
+    pub view_x_rot: f32,
+    pub view_y_rot: f32,
+    pub x_bob: f32,
+    pub y_bob: f32,
+    /// How far the hand has dropped out of view, 0 when fully up.
+    pub inverse_arm_height: f32,
+    /// How far through a swing the hand is.
+    pub attack: f32,
+    pub light: i32,
+}
+
+/// The first-person hand's triangles, in view space: the view bob, the
+/// hand's lag behind the view, then `ItemInHandRenderer.renderPlayerArm`
+/// for an empty right hand.
+pub fn hand_vertices(model: &mut PlayerModel, view: &HandView) -> Vec<Vertex> {
+    use crate::math::{mth_cos_f64, mth_sin_f64};
+    let rad = Quaternion::degrees_to_radians;
+    let sin = |value: f32| mth_sin_f64(f64::from(value));
+    let cos = |value: f32| mth_cos_f64(f64::from(value));
+    let pi = std::f64::consts::PI as f32;
+    let mut pose = Pose::default();
+    // `GameRenderer.bobView` on the hand's pose.
+    let angle = view.bob_walked * pi;
+    pose.translate(
+        sin(angle) * view.bob * 0.5,
+        -(cos(angle) * view.bob).abs(),
+        0.0,
+    );
+    pose.rotate(&Quaternion::rotation_z(rad(sin(angle) * view.bob * 3.0)));
+    pose.rotate(&Quaternion::rotation_x(rad((cos(angle - 0.2) * view.bob)
+        .abs()
+        * 5.0)));
+    // The hand trails the view.
+    pose.rotate(&Quaternion::rotation_x(rad(
+        (view.view_x_rot - view.x_bob) * 0.1
+    )));
+    pose.rotate(&Quaternion::rotation_y(rad(
+        (view.view_y_rot - view.y_bob) * 0.1
+    )));
+    // `renderPlayerArm`, the right arm.
+    let invert = 1.0_f32;
+    let attack = view.attack;
+    let sqrt_attack = f64::from(attack).sqrt() as f32;
+    let x_swing = -0.3 * sin(sqrt_attack * pi);
+    let y_swing = 0.4 * sin(sqrt_attack * (std::f64::consts::PI * 2.0) as f32);
+    let z_swing = -0.4 * sin(attack * pi);
+    pose.translate(
+        invert * (x_swing + 0.640_000_05),
+        y_swing + -0.6 + view.inverse_arm_height * -0.6,
+        z_swing + -0.719_999_97,
+    );
+    pose.rotate(&Quaternion::rotation_y(rad(invert * 45.0)));
+    let z_swing_rotation = sin(attack * attack * pi);
+    let y_swing_rotation = sin(sqrt_attack * pi);
+    pose.rotate(&Quaternion::rotation_y(rad(invert
+        * y_swing_rotation
+        * 70.0)));
+    pose.rotate(&Quaternion::rotation_z(rad(invert
+        * z_swing_rotation
+        * -20.0)));
+    pose.translate(-invert, 3.6, 3.5);
+    pose.rotate(&Quaternion::rotation_z(rad(invert * 120.0)));
+    pose.rotate(&Quaternion::rotation_x(rad(200.0)));
+    pose.rotate(&Quaternion::rotation_y(rad(invert * -135.0)));
+    pose.translate(invert * 5.6, 0.0, 0.0);
+    let light = crate::render::block_light::light_uv(view.light);
+    let mut vertices = Vec::new();
+    for (_, corners) in model.render_arm(crate::render::player_model::Arm::Right, &pose) {
+        for index in [0, 1, 2, 0, 2, 3] {
+            let corner = corners[index];
+            vertices.push(Vertex {
+                position: corner.position,
+                uv: corner.uv,
+                shade: 1.0,
+                tint: [corner.normal[0], corner.normal[1], corner.normal[2], 1.0],
+                light,
+            });
+        }
+    }
+    vertices
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
