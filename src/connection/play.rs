@@ -32,6 +32,7 @@ const PLAY_CLIENTBOUND_DISCONNECT_PACKET_ID: i32 = 32;
 const PLAY_CLIENTBOUND_PING_PACKET_ID: i32 = 61;
 const PLAY_CLIENTBOUND_SECTION_BLOCKS_UPDATE_PACKET_ID: i32 = 84;
 const PLAY_CLIENTBOUND_SET_TIME_PACKET_ID: i32 = 113;
+const PLAY_CLIENTBOUND_UPDATE_TAGS_PACKET_ID: i32 = 134;
 const PLAY_SERVERBOUND_PONG_PACKET_ID: i32 = 45;
 const PLAY_SERVERBOUND_MOVE_PLAYER_POS_PACKET_ID: i32 = 30;
 const PLAY_SERVERBOUND_MOVE_PLAYER_ROT_PACKET_ID: i32 = 32;
@@ -462,7 +463,7 @@ impl PlaySession {
                     ClientPlayerGameMode::from_id(i32::from(login.spawn_info.game_type));
             }
             PLAY_CLIENTBOUND_RESPAWN_PACKET_ID => {
-                let (spawn_info, _) = parse_respawn_packet(payload)?;
+                let (spawn_info, data_to_keep) = parse_respawn_packet(payload)?;
                 // A new level starts dry; the server repeats its weather.
                 self.rain_level = 0.0;
                 self.thunder_level = 0.0;
@@ -481,6 +482,9 @@ impl PlaySession {
                     environment,
                 );
                 self.game_mode = ClientPlayerGameMode::from_id(i32::from(spawn_info.game_type));
+                // The new player starts with an empty inventory; the server
+                // sends it again.
+                self.trace.world.recreate_local_player(data_to_keep);
                 self.dimension_type_id = spawn_info.dimension_type_id;
                 self.hashed_seed = spawn_info.seed;
                 // A respawn makes a new player that waits for its position.
@@ -759,6 +763,56 @@ impl PlaySession {
                         },
                     );
                 }
+            }
+            PLAY_CLIENTBOUND_OPEN_SCREEN_PACKET_ID => {
+                let packet = parse_open_screen_packet(payload)?;
+                self.trace.world.apply_local_player_open_menu(
+                    packet.container_id,
+                    packet.menu_type_id,
+                    &packet.title_nbt,
+                );
+            }
+            PLAY_CLIENTBOUND_CONTAINER_CLOSE_PACKET_ID => {
+                let packet = parse_container_close_packet(payload)?;
+                self.trace
+                    .world
+                    .apply_local_player_container_close(packet.container_id);
+            }
+            PLAY_CLIENTBOUND_CONTAINER_SET_CONTENT_PACKET_ID => {
+                let packet = parse_container_set_content_packet(payload)?;
+                self.trace.world.apply_local_player_container_content(
+                    packet.container_id,
+                    packet.state_id,
+                    &packet.items,
+                    packet.carried_item.as_ref(),
+                );
+            }
+            PLAY_CLIENTBOUND_CONTAINER_SET_SLOT_PACKET_ID => {
+                let packet = parse_container_set_slot_packet(payload)?;
+                self.trace.world.apply_local_player_container_slot(
+                    packet.container_id,
+                    packet.state_id,
+                    packet.slot,
+                    packet.item.as_ref(),
+                );
+            }
+            PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID => {
+                let packet = parse_cursor_item_packet(payload)?;
+                self.trace
+                    .world
+                    .apply_local_player_carried_item(packet.item.as_ref());
+            }
+            PLAY_CLIENTBOUND_SET_PLAYER_INVENTORY_PACKET_ID => {
+                let packet = parse_set_player_inventory_packet(payload)?;
+                self.trace
+                    .world
+                    .apply_local_player_inventory_slot(packet.slot, packet.item.as_ref());
+            }
+            PLAY_CLIENTBOUND_UPDATE_TAGS_PACKET_ID => {
+                let mut input = payload;
+                let packet = crate::tags::ClientboundUpdateTagsPacket::decode(&mut input)
+                    .map_err(|_| ConnectionError::Codec("update tags"))?;
+                self.trace.world.apply_update_tags_packet(&packet);
             }
             PLAY_CLIENTBOUND_DISCONNECT_PACKET_ID => {
                 return Err(ConnectionError::ServerDisconnected);

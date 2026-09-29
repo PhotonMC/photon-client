@@ -69,6 +69,8 @@ pub struct ClientBlockStateRegistry {
     pub(crate) stair_states: BTreeMap<i32, ClientStairBlockState>,
     pub(crate) climbable_block_registry_ids: BTreeSet<i32>,
     pub(crate) glide_through_block_registry_ids: BTreeSet<i32>,
+    /// Every block tag the server sent, by tag id, as block registry ids.
+    pub(crate) block_tags: BTreeMap<String, BTreeSet<i32>>,
 }
 
 impl ClientBlockStateRegistry {
@@ -207,6 +209,7 @@ impl ClientBlockStateRegistry {
             stair_states,
             climbable_block_registry_ids,
             glide_through_block_registry_ids,
+            block_tags: BTreeMap::new(),
         }
     }
 
@@ -358,6 +361,21 @@ impl ClientBlockStateRegistry {
         }
         self.climbable_block_registry_ids = climbable_block_registry_ids;
         self.glide_through_block_registry_ids = glide_through_block_registry_ids;
+        self.block_tags = block_registry
+            .tags
+            .iter()
+            .map(|tag| (tag.id.as_string(), tag.values.iter().copied().collect()))
+            .collect();
+    }
+
+    /// `BlockState.is(tag)`, against the tags the server last sent. `tag` is
+    /// the tag id without the leading `#`.
+    pub fn is_state_in_tag(&self, state_id: i32, tag: &str) -> bool {
+        self.block_registry_id(state_id).is_some_and(|block_id| {
+            self.block_tags
+                .get(tag)
+                .is_some_and(|blocks| blocks.contains(&block_id))
+        })
     }
 }
 
