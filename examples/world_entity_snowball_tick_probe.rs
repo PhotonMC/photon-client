@@ -2,7 +2,7 @@ use std::env;
 use std::net::SocketAddr;
 use std::time::Duration;
 
-use voxel_client::connection::connect_and_world_snowball_tick_probe;
+use voxel_net::connection::connect_and_world_snowball_tick_probe;
 
 const SNOWBALL_ENTITY_TYPE_ID: i32 = 120;
 const SNOWBALL_GRAVITY: f64 = 0.03;

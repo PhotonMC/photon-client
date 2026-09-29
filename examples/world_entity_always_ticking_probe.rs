@@ -3,7 +3,7 @@ use std::net::SocketAddr;
 use std::thread;
 use std::time::Duration;
 
-use voxel_client::connection::connect_and_world_entity_add_probe;
+use voxel_net::connection::connect_and_world_entity_add_probe;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let address: SocketAddr = env::args()

@@ -17,7 +17,7 @@ Kapsam dışı kalanlar: mevcut `Mth.floor` adaptörleri, floating-point `clamp`
 
 ## Client-parity doğrulaması
 
-`src/math.rs`, Java `Mth.ceil(float)`, `ceil(double)`, `lfloor(double)` ve `ceilLong(double)` yollarını Java'nın ceil/floor yönü ve floating-point-to-int/long daraltma kurallarıyla eşler. `examples/behavior_adapter.rs` bu API'leri JSONL senaryolarına bağlar; beklenen değerler oracle çıktısından gelir.
+`crates/voxel-core/src/math.rs`, Java `Mth.ceil(float)`, `ceil(double)`, `lfloor(double)` ve `ceilLong(double)` yollarını Java'nın ceil/floor yönü ve floating-point-to-int/long daraltma kurallarıyla eşler. `examples/behavior_adapter.rs` bu API'leri JSONL senaryolarına bağlar; beklenen değerler oracle çıktısından gelir.
 
 ## Doğrulama
 

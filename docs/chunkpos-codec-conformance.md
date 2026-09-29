@@ -32,12 +32,12 @@ Girdiler `family: "math"`, `operation: "chunkpos_codec"` ve `mode: "decode" | "e
 
 ## Rust karşılığı
 
-`src/binary.rs` içindeki `ChunkPos::codec_decode`, tam iki öğeyi kabul eder; yanlış boyutta gerçek liste uzunluğunu ve yalnızca iki veya daha fazla öğe için ilk iki öğeden oluşan partial değeri `ChunkPosCodecError::WrongLength` içinde taşır. `ChunkPos::codec_encode`, bileşenleri `[x, z]` sırasıyla döndürür. `examples/behavior_adapter.rs` bu API'yi JSONL senaryosuna bağlar; `tests/behavior/java/MathOracle.java` Java codec sonucunu doğrudan `DataResult` üzerinden gözlemler.
+`crates/voxel-core/src/binary.rs` içindeki `ChunkPos::codec_decode`, tam iki öğeyi kabul eder; yanlış boyutta gerçek liste uzunluğunu ve yalnızca iki veya daha fazla öğe için ilk iki öğeden oluşan partial değeri `ChunkPosCodecError::WrongLength` içinde taşır. `ChunkPos::codec_encode`, bileşenleri `[x, z]` sırasıyla döndürür. `examples/behavior_adapter.rs` bu API'yi JSONL senaryosuna bağlar; `tests/behavior/java/MathOracle.java` Java codec sonucunu doğrudan `DataResult` üzerinden gözlemler.
 
 
 ## Client-parity doğrulaması
 
-`src/binary.rs`, Java `ChunkPos.CODEC` sabitinin iki öğeli signed int liste sözleşmesini `ChunkPos::codec_decode` ve `ChunkPos::codec_encode` ile karşılar. Java oracle codec'i `JsonOps` üzerinde doğrudan çağırır; Rust adaptörü aynı sentetik x/z girdilerini üretim API'sine taşır.
+`crates/voxel-core/src/binary.rs`, Java `ChunkPos.CODEC` sabitinin iki öğeli signed int liste sözleşmesini `ChunkPos::codec_decode` ve `ChunkPos::codec_encode` ile karşılar. Java oracle codec'i `JsonOps` üzerinde doğrudan çağırır; Rust adaptörü aynı sentetik x/z girdilerini üretim API'sine taşır.
 
 ## Doğrulama
 

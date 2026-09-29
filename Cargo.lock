@@ -443,13 +443,66 @@ checksum = "e6e4313cd5fcd3dad5cafa179702e2b244f760991f45397d14d4ebf38247da75"
 name = "voxel-client"
 version = "0.1.0"
 dependencies = [
+ "glfw",
+ "serde_json",
+ "voxel-core",
+ "voxel-data",
+ "voxel-game",
+ "voxel-net",
+ "voxel-render",
+ "voxel-world",
+]
+
+[[package]]
+name = "voxel-core"
+version = "0.1.0"
+
+[[package]]
+name = "voxel-data"
+version = "0.1.0"
+
+[[package]]
+name = "voxel-game"
+version = "0.1.0"
+dependencies = [
+ "voxel-core",
+ "voxel-data",
+ "voxel-world",
+]
+
+[[package]]
+name = "voxel-net"
+version = "0.1.0"
+dependencies = [
+ "flate2",
+ "voxel-core",
+ "voxel-data",
+ "voxel-game",
+ "voxel-world",
+]
+
+[[package]]
+name = "voxel-render"
+version = "0.1.0"
+dependencies = [
  "ash",
  "ash-window",
  "flate2",
  "glfw",
  "raw-window-handle",
- "serde_json",
  "shaderc",
+ "voxel-core",
+ "voxel-data",
+ "voxel-game",
+ "voxel-world",
+]
+
+[[package]]
+name = "voxel-world"
+version = "0.1.0"
+dependencies = [
+ "voxel-core",
+ "voxel-data",
 ]
 
 [[package]]

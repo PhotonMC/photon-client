@@ -1,4 +1,4 @@
-"""Generate src/world/block_destroy_table.rs from a block-family capture.
+"""Generate crates/voxel-data/src/block/destroy.rs from a block-family capture.
 
     python3 tools/generate/block_destroy.py .data/captures/behavior/<id>/outputs.jsonl
 
@@ -65,7 +65,7 @@ def main(path):
     out += ["];", "", "/// The registry indices of game master blocks.",
             f"pub static GAME_MASTER: [u16; {len(game_master)}] = ["
             + ", ".join(str(i) for i in game_master) + "];", ""]
-    with open("src/world/block_destroy_table.rs", "w", encoding="utf-8") as handle:
+    with open("crates/voxel-data/src/block/destroy.rs", "w", encoding="utf-8") as handle:
         handle.write("\n".join(out))
     print(f"traits={len(traits)} blocks={len(rows)} game_master={len(game_master)}")
 

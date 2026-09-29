@@ -24,12 +24,12 @@ Girdiler `family: "math"`, `operation: "sectionpos_as_long"`, onaltılık 16 han
 
 ## Rust karşılığı
 
-`src/binary.rs` içindeki `SectionPos::as_long_from_block_pos`, `as_long_coordinates` ve `as_long`, daha önce doğrulanan BlockPos unpack, section arithmetic shift ve SectionPos field-mask packing yollarını kullanır. `examples/behavior_adapter.rs` sonuçları JSONL'e bağlar; `tests/behavior/java/MathOracle.java` Java overload'larını karşılaştırma oracle'ı olarak çağırır.
+`crates/voxel-core/src/binary.rs` içindeki `SectionPos::as_long_from_block_pos`, `as_long_coordinates` ve `as_long`, daha önce doğrulanan BlockPos unpack, section arithmetic shift ve SectionPos field-mask packing yollarını kullanır. `examples/behavior_adapter.rs` sonuçları JSONL'e bağlar; `tests/behavior/java/MathOracle.java` Java overload'larını karşılaştırma oracle'ı olarak çağırır.
 
 
 ## Client-parity doğrulaması
 
-`src/binary.rs`, SectionPos packed long üretimini packed BlockPos, doğrudan section koordinatları ve instance bileşenleri üzerinden Java ile aynı alan maskeleriyle yapar.
+`crates/voxel-core/src/binary.rs`, SectionPos packed long üretimini packed BlockPos, doğrudan section koordinatları ve instance bileşenleri üzerinden Java ile aynı alan maskeleriyle yapar.
 
 ## Doğrulama
 

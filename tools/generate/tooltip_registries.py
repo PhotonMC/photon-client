@@ -1,4 +1,4 @@
-"""Generate src/tooltip_table.rs from a block-family capture.
+"""Generate crates/voxel-data/src/item/tooltip.rs from a block-family capture.
 
     python3 tools/generate/tooltip_registries.py .data/captures/behavior/<id>/outputs.jsonl
 
@@ -112,7 +112,7 @@ def main(path):
             f'style_up: {rust(e["style_up"])}, style_down: {rust(e["style_down"])} }},'
         )
     out += ["];", ""]
-    open("src/tooltip_table.rs", "w", encoding="utf-8").write("\n".join(out))
+    open("crates/voxel-data/src/item/tooltip.rs", "w", encoding="utf-8").write("\n".join(out))
 
 
 if __name__ == "__main__":

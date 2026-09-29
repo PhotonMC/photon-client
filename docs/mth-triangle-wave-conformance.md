@@ -17,7 +17,7 @@ Kapsam dışı kalanlar: `square`, `cube`, `clampedMap`, `map`, diğer Mth yard�
 
 ## Client-parity doğrulaması
 
-`src/math.rs`, Java `Mth.triangleWave(float, float)` yordamının f32 remainder, mutlak değer, çarpma, çıkarma ve bölme işlem sırasını taşır. `examples/behavior_adapter.rs` sonucu raw f32 bit dizgesi olarak dışarı verir.
+`crates/voxel-core/src/math.rs`, Java `Mth.triangleWave(float, float)` yordamının f32 remainder, mutlak değer, çarpma, çıkarma ve bölme işlem sırasını taşır. `examples/behavior_adapter.rs` sonucu raw f32 bit dizgesi olarak dışarı verir.
 
 ## Doğrulama
 

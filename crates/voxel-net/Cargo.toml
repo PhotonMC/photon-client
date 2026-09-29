@@ -1,0 +1,17 @@
+[package]
+name = "voxel-net"
+description = "The Java protocol: phases, packet codecs and the live play session."
+version.workspace = true
+edition.workspace = true
+publish = false
+include = ["/Cargo.toml", "/src/**"]
+
+[dependencies]
+voxel-core.workspace = true
+voxel-data.workspace = true
+voxel-world.workspace = true
+voxel-game.workspace = true
+flate2.workspace = true
+
+[lints]
+workspace = true

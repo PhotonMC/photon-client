@@ -2,10 +2,10 @@ use std::env;
 use std::net::SocketAddr;
 use std::time::Duration;
 
-use voxel_client::connection::{PlaySession, connect_and_probe};
-use voxel_client::render::vulkan::SectionFade;
-use voxel_client::render::{self, VulkanBackend};
-use voxel_client::window::{DisplayData, WindowSurface};
+use voxel_net::connection::{PlaySession, connect_and_probe};
+use voxel_render::VulkanBackend;
+use voxel_render::vulkan::SectionFade;
+use voxel_render::window::{DisplayData, WindowSurface};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut args = env::args().skip(1);
@@ -178,24 +178,25 @@ fn run_window(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std:
             let source = FolderAssets {
                 root: std::path::PathBuf::from(&root),
             };
-            let name = voxel_client::identifier::Identifier::parse(&block)
+            let name = voxel_core::identifier::Identifier::parse(&block)
                 .map_err(|error| format!("{block}: {error:?}"))?;
-            let text = render::AssetSource::block_state(&source, &name)
+            let text = voxel_render::AssetSource::block_state(&source, &name)
                 .ok_or_else(|| format!("{block}: no blockstate file"))?;
-            let file = render::parse_block_state(&text)
+            let file = voxel_render::parse_block_state(&text)
                 .ok_or_else(|| format!("{block}: blockstate file was refused"))?;
             // The registry says which properties the block has and what they
             // may hold, so a typo is caught here rather than silently picking
             // the wrong variant.
-            let definition = voxel_client::world::block_registry::block(&name.as_string())
+            let definition = voxel_data::block::registry::block(&name.as_string())
                 .ok_or_else(|| format!("{block}: not in the block registry"))?;
-            let mut properties =
-                render::blockstate::parse_properties(&env::var("VOXEL_STATE").unwrap_or_default());
+            let mut properties = voxel_render::blockstate::parse_properties(
+                &env::var("VOXEL_STATE").unwrap_or_default(),
+            );
             for (key, value) in &properties {
                 let property = definition
                     .properties
                     .iter()
-                    .map(|index| &voxel_client::world::block_registry::PROPERTIES[*index as usize])
+                    .map(|index| &voxel_data::block::registry::PROPERTIES[*index as usize])
                     .find(|property| property.name == key)
                     .ok_or_else(|| format!("{block}: no property named {key}"))?;
                 if !property.values.contains(&value.as_str()) {
@@ -205,7 +206,7 @@ fn run_window(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std:
             // A property the caller left out keeps the default state's value,
             // which is what a blockstate selector expects to find.
             for (slot, index) in definition.properties.iter().enumerate() {
-                let property = &voxel_client::world::block_registry::PROPERTIES[*index as usize];
+                let property = &voxel_data::block::registry::PROPERTIES[*index as usize];
                 properties
                     .entry(property.name.to_owned())
                     .or_insert_with(|| {
@@ -251,9 +252,9 @@ fn run_window(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std:
                 let source = FolderAssets {
                     root: std::path::PathBuf::from(&root),
                 };
-                let identifier = voxel_client::identifier::Identifier::parse(&name)
+                let identifier = voxel_core::identifier::Identifier::parse(&name)
                     .map_err(|error| format!("{name}: {error:?}"))?;
-                let model = render::resolve_model(&source, &identifier)
+                let model = voxel_render::resolve_model(&source, &identifier)
                     .map_err(|error| format!("{name}: {error:?}"))?;
                 // The reference's own default is four levels, lowered when a
                 // sprite in the set is too small or not a clean multiple.
@@ -262,7 +263,7 @@ fn run_window(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std:
                     .map(|value| value.parse())
                     .transpose()?
                     .unwrap_or(4);
-                let atlas = render::build_atlas(&source, &model, 2048, requested)
+                let atlas = voxel_render::build_atlas(&source, &model, 2048, requested)
                     .map_err(|error| format!("{name}: {error:?}"))?;
                 // A blockstate variant turns its model in quarter turns. When a
                 // block was named the turns come from the variant it selected;
@@ -281,26 +282,25 @@ fn run_window(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std:
                 let rotate_x = angle("VOXEL_ROTATE_X", chosen.as_ref().map(|c| c.2))?;
                 let rotate_y = angle("VOXEL_ROTATE_Y", chosen.as_ref().map(|c| c.3))?;
                 let rotate_z = angle("VOXEL_ROTATE_Z", chosen.as_ref().map(|c| c.4))?;
-                let state = voxel_client::render::rotation::model_state_transform(
-                    rotate_x, rotate_y, rotate_z,
-                )
-                .ok_or("variant rotation must be a multiple of ninety")?;
+                let state =
+                    voxel_render::rotation::model_state_transform(rotate_x, rotate_y, rotate_z)
+                        .ok_or("variant rotation must be a multiple of ninety")?;
                 let identity = rotate_x % 360 == 0 && rotate_y % 360 == 0 && rotate_z % 360 == 0;
                 // Outside a world a block's tints are fixed per block, so they
                 // come from the registry rather than from the world. A model drawn
                 // by name rather than by block has none.
                 let tints: Vec<u32> = chosen
                     .as_ref()
-                    .map(|c| render::constant_tints(&c.6).to_vec())
+                    .map(|c| voxel_render::constant_tints(&c.6).to_vec())
                     .unwrap_or_default();
                 // A variant may lock its UVs, which turns each face's texture
                 // coordinate back by as much as the model turned.
                 let uv_lock = chosen.as_ref().is_some_and(|c| c.5);
                 let uv_transform = |facing| {
-                    voxel_client::render::rotation::inverse_face_transform(
+                    voxel_render::rotation::inverse_face_transform(
                         rotate_x, rotate_y, rotate_z, facing, uv_lock,
                     )
-                    .unwrap_or(voxel_client::render::rotation::FLAT_IDENTITY)
+                    .unwrap_or(voxel_render::rotation::FLAT_IDENTITY)
                 };
                 // A grid repeats the block, so the faces between two of them can
                 // be dropped. That is the smallest scene where culling does any
@@ -310,12 +310,12 @@ fn run_window(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std:
                     .map(|value| value.parse())
                     .transpose()?
                     .unwrap_or(1);
-                let mut mesh = render::Mesh::default();
+                let mut mesh = voxel_render::Mesh::default();
                 for cell_x in 0..grid {
                     for cell_y in 0..grid {
                         for cell_z in 0..grid {
                             let cell = [cell_x, cell_y, cell_z];
-                            let occluded = |facing: voxel_client::direction::Direction| {
+                            let occluded = |facing: voxel_core::direction::Direction| {
                                 let (step_x, step_y, step_z) = facing.step();
                                 [step_x, step_y, step_z].into_iter().enumerate().all(
                                     |(axis, step)| {
@@ -324,7 +324,7 @@ fn run_window(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std:
                                     },
                                 )
                             };
-                            let part = render::build_mesh(
+                            let part = voxel_render::build_mesh(
                                 &model,
                                 &atlas,
                                 (!identity).then_some(&state),
@@ -377,7 +377,7 @@ fn run_window(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std:
                 println!("model_source=built-in cube and checkerboard");
                 let (rgba, size) = checkerboard();
                 println!("model_rotation=0,0,0");
-                let mesh = render::full_cube(render::SpriteRect {
+                let mesh = voxel_render::full_cube(voxel_render::SpriteRect {
                     min_u: 0.0,
                     min_v: 0.0,
                     max_u: 1.0,
@@ -385,7 +385,7 @@ fn run_window(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std:
                 });
                 (
                     mesh,
-                    vec![render::DecodedImage {
+                    vec![voxel_render::DecodedImage {
                         width: size,
                         height: size,
                         rgba,
@@ -486,7 +486,7 @@ fn vk_version_patch(version: u32) -> u32 {
 /// still undecided; P15.a will pin what captures are actually stored as.
 fn write_ppm(
     path: &str,
-    frame: &voxel_client::render::CapturedFrame,
+    frame: &voxel_render::CapturedFrame,
 ) -> Result<(), Box<dyn std::error::Error>> {
     use std::io::Write as _;
     let mut out = std::io::BufWriter::new(std::fs::File::create(path)?);
@@ -500,7 +500,7 @@ fn write_ppm(
 
 fn write_image_ppm(
     path: &str,
-    image: &render::DecodedImage,
+    image: &voxel_render::DecodedImage,
 ) -> Result<(), Box<dyn std::error::Error>> {
     use std::io::Write as _;
     let mut out = std::io::BufWriter::new(std::fs::File::create(path)?);
@@ -521,9 +521,10 @@ fn camera(aspect: f32, angle: f32) -> [[f32; 4]; 4] {
     // single block or a grid there is no player, so the eye orbits it instead.
     if let Some(eye) = CAMERA_EYE.get().copied() {
         let look = [eye[0] + angle.cos(), eye[1] - 0.25, eye[2] + angle.sin()];
-        let view = render::scene::look_at(eye, look, [0.0, 1.0, 0.0]);
-        let projection = render::scene::perspective(70.0_f32.to_radians(), aspect, 0.05, 512.0);
-        return render::scene::multiply(projection, view);
+        let view = voxel_render::scene::look_at(eye, look, [0.0, 1.0, 0.0]);
+        let projection =
+            voxel_render::scene::perspective(70.0_f32.to_radians(), aspect, 0.05, 512.0);
+        return voxel_render::scene::multiply(projection, view);
     }
     let grid = env::var("VOXEL_GRID")
         .ok()
@@ -536,9 +537,9 @@ fn camera(aspect: f32, angle: f32) -> [[f32; 4]; 4] {
         1.4 * grid,
         0.5 + radius * angle.sin(),
     ];
-    let view = render::scene::look_at(eye, [0.5, 0.5, 0.5], [0.0, 1.0, 0.0]);
-    let projection = render::scene::perspective(70.0_f32.to_radians(), aspect, 0.05, 100.0);
-    render::scene::multiply(projection, view)
+    let view = voxel_render::scene::look_at(eye, [0.5, 0.5, 0.5], [0.0, 1.0, 0.0]);
+    let projection = voxel_render::scene::perspective(70.0_f32.to_radians(), aspect, 0.05, 100.0);
+    voxel_render::scene::multiply(projection, view)
 }
 
 /// Where the player stands inside a drawn world box, eyes included.
@@ -571,7 +572,7 @@ impl FolderAssets {
     /// The layout the game's asset tree uses: namespace, kind, then the name.
     fn path(
         &self,
-        name: &voxel_client::identifier::Identifier,
+        name: &voxel_core::identifier::Identifier,
         kind: &str,
         extension: &str,
     ) -> std::path::PathBuf {
@@ -582,20 +583,20 @@ impl FolderAssets {
     }
 }
 
-impl render::AssetSource for FolderAssets {
-    fn model(&self, name: &voxel_client::identifier::Identifier) -> Option<String> {
+impl voxel_render::AssetSource for FolderAssets {
+    fn model(&self, name: &voxel_core::identifier::Identifier) -> Option<String> {
         std::fs::read_to_string(self.path(name, "models", ".json")).ok()
     }
 
-    fn item(&self, name: &voxel_client::identifier::Identifier) -> Option<String> {
+    fn item(&self, name: &voxel_core::identifier::Identifier) -> Option<String> {
         std::fs::read_to_string(self.path(name, "items", ".json")).ok()
     }
 
-    fn texture(&self, name: &voxel_client::identifier::Identifier) -> Option<Vec<u8>> {
+    fn texture(&self, name: &voxel_core::identifier::Identifier) -> Option<Vec<u8>> {
         std::fs::read(self.path(name, "textures", ".png")).ok()
     }
 
-    fn block_state(&self, name: &voxel_client::identifier::Identifier) -> Option<String> {
+    fn block_state(&self, name: &voxel_core::identifier::Identifier) -> Option<String> {
         // A blockstate file sits in its own directory, named after the block
         // rather than after a model.
         std::fs::read_to_string(self.path(name, "blockstates", ".json")).ok()
@@ -603,14 +604,14 @@ impl render::AssetSource for FolderAssets {
 
     fn texture_metadata(
         &self,
-        name: &voxel_client::identifier::Identifier,
-    ) -> Option<render::TextureMetadata> {
+        name: &voxel_core::identifier::Identifier,
+    ) -> Option<voxel_render::TextureMetadata> {
         // A sprite's metadata file sits next to its texture with a second
         // extension, and the mip strategy is one section inside it.
         let text = std::fs::read_to_string(self.path(name, "textures", ".png.mcmeta")).ok()?;
-        match voxel_client::json::parse(&text).ok()? {
-            voxel_client::json::JsonValue::Object(object) => {
-                render::TextureMetadata::parse(object.object("texture")?)
+        match voxel_core::json::parse(&text).ok()? {
+            voxel_core::json::JsonValue::Object(object) => {
+                voxel_render::TextureMetadata::parse(object.object("texture")?)
             }
             _ => None,
         }
@@ -618,12 +619,12 @@ impl render::AssetSource for FolderAssets {
 
     fn texture_animation(
         &self,
-        name: &voxel_client::identifier::Identifier,
-    ) -> Option<render::AnimationFrames> {
+        name: &voxel_core::identifier::Identifier,
+    ) -> Option<voxel_render::AnimationFrames> {
         let text = std::fs::read_to_string(self.path(name, "textures", ".png.mcmeta")).ok()?;
-        match voxel_client::json::parse(&text).ok()? {
-            voxel_client::json::JsonValue::Object(object) => {
-                render::AnimationFrames::parse(object.object("animation")?)
+        match voxel_core::json::parse(&text).ok()? {
+            voxel_core::json::JsonValue::Object(object) => {
+                voxel_render::AnimationFrames::parse(object.object("animation")?)
             }
             _ => None,
         }
@@ -639,7 +640,7 @@ impl render::AssetSource for FolderAssets {
 fn load_world(
     server: &str,
     root: &str,
-) -> Result<(render::Mesh, Vec<render::DecodedImage>), Box<dyn std::error::Error>> {
+) -> Result<(voxel_render::Mesh, Vec<voxel_render::DecodedImage>), Box<dyn std::error::Error>> {
     let address: SocketAddr = server.parse()?;
     let username = env::var("VOXEL_USER").unwrap_or_else(|_| "VoxelClient".to_owned());
     let seconds: u64 = env::var("VOXEL_TIMEOUT")
@@ -695,7 +696,7 @@ fn load_world(
         .map(|value| value.parse())
         .transpose()?
         .unwrap_or(4);
-    let built = render::build_world_mesh(
+    let built = voxel_render::build_world_mesh(
         &source,
         |x, y, z| trace.world.block_state_at(x, y, z),
         |x, y, z| {
@@ -706,10 +707,10 @@ fn load_world(
         },
         // This older snapshot path draws every biome as plains.
         |kind, _| match kind {
-            render::biome_tint::TintKind::Grass => 0xFF91_BD59,
-            render::biome_tint::TintKind::Foliage => 0xFF77_AB2F,
-            render::biome_tint::TintKind::DryFoliage => 0xFFA0_7545,
-            render::biome_tint::TintKind::Water => 0xFF3F_76E4,
+            voxel_render::biome_tint::TintKind::Grass => 0xFF91_BD59,
+            voxel_render::biome_tint::TintKind::Foliage => 0xFF77_AB2F,
+            voxel_render::biome_tint::TintKind::DryFoliage => 0xFFA0_7545,
+            voxel_render::biome_tint::TintKind::Water => 0xFF3F_76E4,
         },
         origin,
         size,
@@ -782,8 +783,8 @@ struct HeldKeys {
 }
 
 impl HeldKeys {
-    fn input(self) -> voxel_client::input::Input {
-        voxel_client::input::Input::new(
+    fn input(self) -> voxel_world::input::Input {
+        voxel_world::input::Input::new(
             self.forward,
             self.backward,
             self.left,
@@ -948,18 +949,18 @@ const CLOUD_RANGE: i32 = 128;
 /// view within reach (4.5 blocks, 5 in creative), or a miss. Entities are
 /// not picked.
 fn pick(
-    world: &voxel_client::world::ClientWorld,
-    player: &voxel_client::world::local_player::LocalPlayer,
-    eye: voxel_client::math::Vec3,
-) -> voxel_client::game_mode::Aim {
+    world: &voxel_world::ClientWorld,
+    player: &voxel_world::local_player::LocalPlayer,
+    eye: voxel_core::math::Vec3,
+) -> voxel_game::game_mode::Aim {
     let reach = if player.abilities().instabuild() {
         5.0
     } else {
         4.5
     };
     let (y_rot, x_rot) = player.rotation();
-    let look = voxel_client::math::Vec3::direction_from_rotation_components(x_rot, y_rot);
-    let to = voxel_client::math::Vec3::new(
+    let look = voxel_core::math::Vec3::direction_from_rotation_components(x_rot, y_rot);
+    let to = voxel_core::math::Vec3::new(
         eye.x + look.x * reach,
         eye.y + look.y * reach,
         eye.z + look.z * reach,
@@ -967,7 +968,7 @@ fn pick(
     match world.clip_outlines(eye, to) {
         // `filterHitResult`: a hit past the reach is a miss.
         Some(hit) if hit.location.distance_to_sqr(eye) < reach * reach => {
-            voxel_client::game_mode::Aim::Block {
+            voxel_game::game_mode::Aim::Block {
                 x: hit.block_pos.x,
                 y: hit.block_pos.y,
                 z: hit.block_pos.z,
@@ -976,17 +977,17 @@ fn pick(
                 inside: hit.inside,
             }
         }
-        _ => voxel_client::game_mode::Aim::Miss,
+        _ => voxel_game::game_mode::Aim::Miss,
     }
 }
 
 /// `Entity.getEyePosition` between ticks.
 fn eye_position(
-    player: &voxel_client::world::local_player::LocalPlayer,
+    player: &voxel_world::local_player::LocalPlayer,
     partial: f64,
-) -> voxel_client::math::Vec3 {
+) -> voxel_core::math::Vec3 {
     let feet = player.interpolated_position(partial);
-    voxel_client::math::Vec3::new(feet.x, feet.y + f64::from(player.eye_height()), feet.z)
+    voxel_core::math::Vec3::new(feet.x, feet.y + f64::from(player.eye_height()), feet.z)
 }
 
 /// The number key for a hotbar slot, 1 to 9.
@@ -1031,12 +1032,12 @@ impl CameraType {
 /// `forwards` before a block is in the way, tried from the eight corners of
 /// a small box around the eye.
 fn max_camera_zoom(
-    world: &voxel_client::world::ClientWorld,
-    eye: voxel_client::math::Vec3,
-    forwards: voxel_client::math::Vec3,
+    world: &voxel_world::ClientWorld,
+    eye: voxel_core::math::Vec3,
+    forwards: voxel_core::math::Vec3,
     mut distance: f32,
 ) -> f32 {
-    use voxel_client::math::Vec3;
+    use voxel_core::math::Vec3;
     for corner in 0..8 {
         let offset = |bit: i32| (((corner >> bit) & 1) * 2 - 1) as f32 * 0.1;
         let from = Vec3::new(
@@ -1069,7 +1070,7 @@ fn player_camera(
     x_rot: f32,
     bob: [[f32; 4]; 4],
 ) -> [[f32; 4]; 4] {
-    let look = voxel_client::math::Vec3::direction_from_rotation_components(x_rot, y_rot);
+    let look = voxel_core::math::Vec3::direction_from_rotation_components(x_rot, y_rot);
     let forward = [look.x as f32, look.y as f32, look.z as f32];
     // `Camera.setRotation`: the camera's side vector turns with the yaw
     // alone, so looking straight up or down keeps a well-defined view.
@@ -1087,11 +1088,11 @@ fn player_camera(
         [right[2], up[2], -forward[2], 0.0],
         [-dot(right, eye), -dot(up, eye), dot(forward, eye), 1.0],
     ];
-    let projection = render::scene::multiply(
-        render::scene::perspective(fov.to_radians(), aspect, 0.05, far),
+    let projection = voxel_render::scene::multiply(
+        voxel_render::scene::perspective(fov.to_radians(), aspect, 0.05, far),
         bob,
     );
-    render::scene::multiply(projection, view)
+    voxel_render::scene::multiply(projection, view)
 }
 
 /// Join a server and walk around in it.
@@ -1109,14 +1110,14 @@ struct ItemLayerCache {
 }
 
 /// The layers of an item with one component patch.
-type PatchLayers = (Vec<u8>, Vec<render::world_mesh::ItemLayer>);
+type PatchLayers = (Vec<u8>, Vec<voxel_render::world_mesh::ItemLayer>);
 
 impl ItemLayerCache {
     fn get(
         &mut self,
-        stack: &voxel_client::world::ClientItemStackState,
-        build: impl FnOnce() -> Vec<render::world_mesh::ItemLayer>,
-    ) -> &[render::world_mesh::ItemLayer] {
+        stack: &voxel_world::ClientItemStackState,
+        build: impl FnOnce() -> Vec<voxel_render::world_mesh::ItemLayer>,
+    ) -> &[voxel_render::world_mesh::ItemLayer] {
         let variants = self.layers.entry(stack.item_registry_id()).or_default();
         let index = match variants
             .iter()
@@ -1134,14 +1135,14 @@ impl ItemLayerCache {
 
 /// The open container screen: the survival inventory or the creative one.
 enum Screen {
-    Survival(render::inventory_screen::InventoryScreen),
-    Creative(Box<render::creative_screen::CreativeScreen>),
+    Survival(voxel_render::inventory_screen::InventoryScreen),
+    Creative(Box<voxel_render::creative_screen::CreativeScreen>),
 }
 
 /// A click a screen asks for.
 enum Action {
-    Container(render::inventory_screen::SlotClick),
-    Creative(voxel_client::creative_menu::Click),
+    Container(voxel_render::inventory_screen::SlotClick),
+    Creative(voxel_game::creative_menu::Click),
 }
 
 /// What a key did to a screen.
@@ -1150,11 +1151,11 @@ enum ScreenKey {
     Actions(Vec<Action>),
 }
 
-fn container_actions(clicks: Vec<render::inventory_screen::SlotClick>) -> Vec<Action> {
+fn container_actions(clicks: Vec<voxel_render::inventory_screen::SlotClick>) -> Vec<Action> {
     clicks.into_iter().map(Action::Container).collect()
 }
 
-fn creative_actions(clicks: Vec<voxel_client::creative_menu::Click>) -> Vec<Action> {
+fn creative_actions(clicks: Vec<voxel_game::creative_menu::Click>) -> Vec<Action> {
     clicks.into_iter().map(Action::Creative).collect()
 }
 
@@ -1169,20 +1170,20 @@ impl Screen {
     fn key_pressed(
         &mut self,
         key: glfw::Key,
-        mods: render::creative_screen::KeyMods,
+        mods: voxel_render::creative_screen::KeyMods,
         menu: &InventoryMenu,
-        clipboard: &mut dyn voxel_client::edit_box::Clipboard,
+        clipboard: &mut dyn voxel_render::edit_box::Clipboard,
     ) -> ScreenKey {
         match self {
             Self::Survival(screen) => match screen.key_pressed(key, mods.control, menu) {
-                render::inventory_screen::KeyResult::Close => ScreenKey::Close,
-                render::inventory_screen::KeyResult::Clicks(clicks) => {
+                voxel_render::inventory_screen::KeyResult::Close => ScreenKey::Close,
+                voxel_render::inventory_screen::KeyResult::Clicks(clicks) => {
                     ScreenKey::Actions(container_actions(clicks))
                 }
             },
             Self::Creative(screen) => match screen.key_pressed(key, mods, menu, clipboard) {
-                render::creative_screen::KeyResult::Close => ScreenKey::Close,
-                render::creative_screen::KeyResult::Clicks(clicks) => {
+                voxel_render::creative_screen::KeyResult::Close => ScreenKey::Close,
+                voxel_render::creative_screen::KeyResult::Clicks(clicks) => {
                     ScreenKey::Actions(creative_actions(clicks))
                 }
             },
@@ -1252,32 +1253,34 @@ impl Screen {
     }
 }
 
-use voxel_client::inventory_menu::InventoryMenu;
+use voxel_game::inventory_menu::InventoryMenu;
 
 /// What a creative screen shares with the rest of the client: the search
 /// trees and the font its search box measures with.
 #[derive(Clone)]
 struct CreativeAssets {
-    trees: std::sync::Arc<voxel_client::creative_menu::SearchTrees>,
-    font: std::sync::Arc<render::font::Font>,
+    trees: std::sync::Arc<voxel_game::creative_menu::SearchTrees>,
+    font: std::sync::Arc<voxel_render::font::Font>,
 }
 
 impl CreativeAssets {
     fn screen(&self, width: i32, height: i32, tab: usize) -> Screen {
-        Screen::Creative(Box::new(render::creative_screen::CreativeScreen::new(
-            width,
-            height,
-            tab,
-            self.trees.clone(),
-            self.font.clone(),
-        )))
+        Screen::Creative(Box::new(
+            voxel_render::creative_screen::CreativeScreen::new(
+                width,
+                height,
+                tab,
+                self.trees.clone(),
+                self.font.clone(),
+            ),
+        ))
     }
 }
 
 /// The window's clipboard, for an edit box.
 struct WindowClipboard<'a>(&'a mut WindowSurface);
 
-impl voxel_client::edit_box::Clipboard for WindowClipboard<'_> {
+impl voxel_render::edit_box::Clipboard for WindowClipboard<'_> {
     fn get(&mut self) -> String {
         self.0.clipboard()
     }
@@ -1302,7 +1305,7 @@ fn open_inventory(
     *screen = Some(if creative {
         assets.screen(width, height, creative_tab)
     } else {
-        Screen::Survival(render::inventory_screen::InventoryScreen::new(
+        Screen::Survival(voxel_render::inventory_screen::InventoryScreen::new(
             width, height,
         ))
     });
@@ -1393,7 +1396,7 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
     let settle = std::time::Instant::now();
     while settle.elapsed() < Duration::from_millis(2000) {
         session.wait(Duration::from_millis(50))?;
-        session.tick(voxel_client::input::Input::EMPTY)?;
+        session.tick(voxel_world::input::Input::EMPTY)?;
     }
     let position = session.player().ok_or("no local player")?.position();
     println!(
@@ -1439,7 +1442,7 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
     if env::var_os("VOXEL_FULLSCREEN").is_some() {
         surface.toggle_fullscreen();
     }
-    let biome_tints = render::biome_tint::BiomeTints::load(
+    let biome_tints = voxel_render::biome_tint::BiomeTints::load(
         &env::var("VOXEL_DATA")
             .map(std::path::PathBuf::from)
             .unwrap_or_else(|_| std::path::Path::new(&root).with_file_name("data")),
@@ -1461,7 +1464,7 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
         .transpose()?
         .unwrap_or(4);
     let baking = std::time::Instant::now();
-    let block_renderer = render::world_mesh::BlockRenderer::new(&source, requested_mips)
+    let block_renderer = voxel_render::world_mesh::BlockRenderer::new(&source, requested_mips)
         .map_err(|error| format!("block models: {error:?}"))?;
     let block_renderer = std::sync::Arc::new(block_renderer);
     println!(
@@ -1486,9 +1489,9 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
             .copied()
             .unwrap_or([0.0; 4])
     };
-    let moon_names: Vec<String> = render::sky::moon_sprites().collect();
-    let sky_sprites = render::sky::SkySprites {
-        sun: sprite(render::sky::SUN_SPRITE),
+    let moon_names: Vec<String> = voxel_render::sky::moon_sprites().collect();
+    let sky_sprites = voxel_render::sky::SkySprites {
+        sun: sprite(voxel_render::sky::SUN_SPRITE),
         moon: std::array::from_fn(|phase| sprite(&moon_names[phase])),
     };
     // Meshes are measured from a fixed point near where the player started.
@@ -1507,7 +1510,7 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
     let worker_count = std::thread::available_parallelism()
         .map_or(2, |count| count.get().saturating_sub(1))
         .clamp(1, 8);
-    let mut workers = render::section_workers::SectionWorkers::new(
+    let mut workers = voxel_render::section_workers::SectionWorkers::new(
         worker_count,
         std::sync::Arc::clone(&block_renderer),
         std::sync::Arc::clone(&biome_tints),
@@ -1536,13 +1539,13 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
     let data_root = env::var("VOXEL_DATA")
         .map(std::path::PathBuf::from)
         .unwrap_or_else(|_| std::path::Path::new(&root).with_file_name("data"));
-    let environment = render::sky::Environment::load(
+    let environment = voxel_render::sky::Environment::load(
         &data_root,
         session.dimension_type().unwrap_or("minecraft:overworld"),
         session.registry_names("minecraft:worldgen/biome"),
     )
     .ok_or("the dimension's sky data could not be read")?;
-    let stars = render::sky::build_stars();
+    let stars = voxel_render::sky::build_stars();
     let dimension = session.world().dimension();
     let probe = |session: &PlaySession, eye: [f64; 3]| {
         let quart_min = dimension.min_y.div_euclid(4);
@@ -1554,7 +1557,7 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                 session.world().biome_at(x * 4, y * 4, z * 4)
             },
             |clock| session.clock_ticks(clock).unwrap_or(0),
-            render::sky::Weather {
+            voxel_render::sky::Weather {
                 rain: session.rain_level(),
                 thunder: session.thunder_level(),
             },
@@ -1566,21 +1569,21 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
         [feet.x, feet.y + f64::from(player.eye_height()), feet.z]
     };
     let mut attributes_last = probe(&session, eye_of(&session));
-    let cloud_image = render::png::decode_rgba(&std::fs::read(
+    let cloud_image = voxel_render::png::decode_rgba(&std::fs::read(
         std::path::Path::new(&root).join("minecraft/textures/environment/clouds.png"),
     )?)
     .map_err(|error| format!("clouds: {error:?}"))?;
-    let cloud_cells = render::clouds::CloudCells::from_image(&cloud_image);
+    let cloud_cells = voxel_render::clouds::CloudCells::from_image(&cloud_image);
     let environment_texture =
-        |name: &str| -> Result<render::DecodedImage, Box<dyn std::error::Error>> {
+        |name: &str| -> Result<voxel_render::DecodedImage, Box<dyn std::error::Error>> {
             let path = std::path::Path::new(&root)
                 .join(format!("minecraft/textures/environment/{name}.png"));
-            Ok(render::png::decode_rgba(&std::fs::read(path)?)
+            Ok(voxel_render::png::decode_rgba(&std::fs::read(path)?)
                 .map_err(|error| format!("{name}: {error:?}"))?)
         };
     backend.load_weather_textures(&environment_texture("rain")?, &environment_texture("snow")?)?;
     // `ModelBakery.DESTROY_STAGES`, stacked into one image.
-    let mut cracks = render::DecodedImage {
+    let mut cracks = voxel_render::DecodedImage {
         width: 0,
         height: 0,
         rgba: Vec::new(),
@@ -1589,7 +1592,7 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
         let path = std::path::Path::new(&root).join(format!(
             "minecraft/textures/block/destroy_stage_{stage}.png"
         ));
-        let image = render::png::decode_rgba(&std::fs::read(path)?)
+        let image = voxel_render::png::decode_rgba(&std::fs::read(path)?)
             .map_err(|error| format!("destroy_stage_{stage}: {error:?}"))?;
         if stage > 0 && (image.width, image.height) != (cracks.width, cracks.height / stage) {
             return Err(format!("destroy_stage_{stage}: stages differ in size").into());
@@ -1601,43 +1604,43 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
     backend.load_crack_texture(&cracks)?;
     // The player's default skin, picked by its profile id as the reference
     // picks one when the profile has no skin of its own.
-    let skin = render::player_renderer::default_skin(
+    let skin = voxel_render::player_renderer::default_skin(
         session
             .profile_id()
-            .unwrap_or(voxel_client::binary::Uuid { most: 0, least: 0 }),
+            .unwrap_or(voxel_core::binary::Uuid { most: 0, least: 0 }),
     );
     backend.load_entity_texture(
-        &render::png::decode_rgba(&std::fs::read(
+        &voxel_render::png::decode_rgba(&std::fs::read(
             std::path::Path::new(&root).join(format!("minecraft/textures/{}.png", skin.texture)),
         )?)
         .map_err(|error| format!("skin: {error:?}"))?,
     )?;
-    let mut player_model = render::player_model::PlayerModel::new(skin.slim);
+    let mut player_model = voxel_render::player_model::PlayerModel::new(skin.slim);
     // The HUD: its sprites, its own state, and the wheel's partial steps.
     let font = std::sync::Arc::new(
-        render::font::Font::load(std::path::Path::new(&root))
+        voxel_render::font::Font::load(std::path::Path::new(&root))
             .ok_or("the default font could not be read")?,
     );
-    let gui_atlas = render::gui::GuiAtlas::load(std::path::Path::new(&root), &font)
+    let gui_atlas = voxel_render::gui::GuiAtlas::load(std::path::Path::new(&root), &font)
         .ok_or("the HUD sprites could not be read")?;
     backend.load_gui_texture(&gui_atlas.image)?;
-    let mut hud = render::gui::Hud::default();
+    let mut hud = voxel_render::gui::Hud::default();
     // Each item's GUI layers, built the first time a slot shows it.
     let mut gui_item_layers = ItemLayerCache::default();
-    let mut scroll_wheel = voxel_client::hotbar::ScrollWheel::default();
+    let mut scroll_wheel = voxel_game::hotbar::ScrollWheel::default();
     let started_at = std::time::Instant::now();
     // `ItemInHandRenderer`: the stacks the hands show and how high they are.
-    let mut item_in_hand = voxel_client::item_in_hand::ItemInHand::default();
+    let mut item_in_hand = voxel_game::item_in_hand::ItemInHand::default();
     // Each item's first-person layers, by item and hand.
     let mut held_item_layers = [ItemLayerCache::default(), ItemLayerCache::default()];
     // Attack clicks waiting for the next tick, and `Minecraft.missTime`:
     // ticks a missed attack keeps the next one waiting.
-    let mut attack_key = voxel_client::attack::AttackKey::default();
+    let mut attack_key = voxel_game::attack::AttackKey::default();
     // The use key keeps its clicks and held state the same way.
-    let mut use_key = voxel_client::attack::AttackKey::default();
+    let mut use_key = voxel_game::attack::AttackKey::default();
     let mut cloud_key = None;
     // The reference seeds this source uniquely per run.
-    let mut flicker_random = voxel_client::random::RandomSource::create(
+    let mut flicker_random = voxel_core::random::RandomSource::create(
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map(|elapsed| elapsed.as_nanos() as i64)
@@ -1658,7 +1661,7 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
         scale.framebuffer_height() as u32,
     );
     let mut keys = HeldKeys::default();
-    let mut camera = voxel_client::camera::Camera::new();
+    let mut camera = voxel_render::camera::Camera::new();
     // F5 cycles first person, third person from behind and from the front.
     // `VOXEL_CAMERA=back` or `front` starts detached.
     let mut camera_type = match env::var("VOXEL_CAMERA").as_deref() {
@@ -1671,16 +1674,16 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
     // The open inventory screen, the mouse in GUI units, and the button a
     // drag is held with (`MouseHandler.activeButton`).
     let mut inventory_screen: Option<Screen> = None;
-    let mut creative_tab = voxel_client::creative_menu::default_tab();
+    let mut creative_tab = voxel_game::creative_menu::default_tab();
     let mut gui_mouse = (0.0_f64, 0.0_f64);
     let mut active_button: Option<i32> = None;
-    let lang = std::sync::Arc::new(voxel_client::text::Lang::load(std::path::Path::new(&root)));
+    let lang = std::sync::Arc::new(voxel_game::text::Lang::load(std::path::Path::new(&root)));
     let creative_assets = CreativeAssets {
-        trees: std::sync::Arc::new(voxel_client::creative_menu::SearchTrees::new(lang.clone())),
+        trees: std::sync::Arc::new(voxel_game::creative_menu::SearchTrees::new(lang.clone())),
         font: font.clone(),
     };
     let inventory_title = lang.text("container.crafting");
-    let tab_titles: Vec<String> = voxel_client::creative_tabs_table::CREATIVE_TABS
+    let tab_titles: Vec<String> = voxel_data::item::creative_tabs::CREATIVE_TABS
         .iter()
         .map(|tab| lang.text(tab.title))
         .collect();
@@ -1716,7 +1719,7 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                 ) if inventory_screen.is_some() => {
                     let menu = session.inventory_menu().clone();
                     let screen = inventory_screen.as_mut().expect("checked above");
-                    let mods = render::creative_screen::KeyMods {
+                    let mods = voxel_render::creative_screen::KeyMods {
                         control: modifiers.contains(glfw::Modifiers::Control),
                         shift: modifiers.contains(glfw::Modifiers::Shift),
                         command: modifiers.contains(glfw::Modifiers::Super),
@@ -1777,7 +1780,7 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                     open_inventory(
                         &mut surface,
                         &mut inventory_screen,
-                        session.game_mode() == voxel_client::world::ClientPlayerGameMode::Creative,
+                        session.game_mode() == voxel_world::ClientPlayerGameMode::Creative,
                         creative_tab,
                         &creative_assets,
                     );
@@ -1908,8 +1911,7 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
         // `containerTick`: each inventory screen hands over to the other when
         // the game mode changes under it. Neither closes the container.
         if let Some(open) = inventory_screen.as_ref() {
-            let creative =
-                session.game_mode() == voxel_client::world::ClientPlayerGameMode::Creative;
+            let creative = session.game_mode() == voxel_world::ClientPlayerGameMode::Creative;
             let size = surface.scale();
             let (width, height) = (size.gui_scaled_width(), size.gui_scaled_height());
             match open {
@@ -1919,7 +1921,7 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                 Screen::Creative(open) if !creative => {
                     creative_tab = open.tab();
                     inventory_screen = Some(Screen::Survival(
-                        render::inventory_screen::InventoryScreen::new(width, height),
+                        voxel_render::inventory_screen::InventoryScreen::new(width, height),
                     ));
                 }
                 _ => {}
@@ -1971,8 +1973,7 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                         open_inventory(
                             &mut surface,
                             &mut inventory_screen,
-                            session.game_mode()
-                                == voxel_client::world::ClientPlayerGameMode::Creative,
+                            session.game_mode() == voxel_world::ClientPlayerGameMode::Creative,
                             creative_tab,
                             &creative_assets,
                         );
@@ -1980,13 +1981,13 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                 }
                 if let Some((slot, button, kind)) = held.click {
                     let kind = [
-                        voxel_client::inventory_menu::ClickType::Pickup,
-                        voxel_client::inventory_menu::ClickType::QuickMove,
-                        voxel_client::inventory_menu::ClickType::Swap,
-                        voxel_client::inventory_menu::ClickType::Clone,
-                        voxel_client::inventory_menu::ClickType::Throw,
-                        voxel_client::inventory_menu::ClickType::QuickCraft,
-                        voxel_client::inventory_menu::ClickType::PickupAll,
+                        voxel_game::inventory_menu::ClickType::Pickup,
+                        voxel_game::inventory_menu::ClickType::QuickMove,
+                        voxel_game::inventory_menu::ClickType::Swap,
+                        voxel_game::inventory_menu::ClickType::Clone,
+                        voxel_game::inventory_menu::ClickType::Throw,
+                        voxel_game::inventory_menu::ClickType::QuickCraft,
+                        voxel_game::inventory_menu::ClickType::PickupAll,
                     ][kind.clamp(0, 6) as usize];
                     match inventory_screen.as_mut() {
                         Some(Screen::Creative(screen)) => {
@@ -2040,12 +2041,12 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
             // player moves, aiming the way `GameRenderer.pick` aims.
             let aim = session
                 .player()
-                .map_or(voxel_client::game_mode::Aim::Miss, |player| {
+                .map_or(voxel_game::game_mode::Aim::Miss, |player| {
                     pick(session.world(), player, eye_position(player, 1.0))
                 });
             let grabbed = captured || script.is_some();
             session.keys(
-                voxel_client::game_mode::Keys {
+                voxel_game::game_mode::Keys {
                     attack_clicks: attack_key.take_clicks(),
                     attack_held: attack_key.is_down() && grabbed,
                     use_clicks: use_key.take_clicks(),
@@ -2124,7 +2125,7 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
         } else {
             (player_y_rot, player_x_rot)
         };
-        let eye_world = voxel_client::math::Vec3::new(
+        let eye_world = voxel_core::math::Vec3::new(
             feet.x,
             feet.y + f64::from(camera.eye_height(partial as f32)),
             feet.z,
@@ -2132,10 +2133,9 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
         let camera_world = if camera_type == CameraType::FirstPerson {
             eye_world
         } else {
-            let forwards =
-                voxel_client::math::Vec3::direction_from_rotation_components(x_rot, y_rot);
+            let forwards = voxel_core::math::Vec3::direction_from_rotation_components(x_rot, y_rot);
             let zoom = max_camera_zoom(session.world(), eye_world, forwards, 4.0);
-            voxel_client::math::Vec3::new(
+            voxel_core::math::Vec3::new(
                 eye_world.x - forwards.x * f64::from(zoom),
                 eye_world.y - forwards.y * f64::from(zoom),
                 eye_world.z - forwards.z * f64::from(zoom),
@@ -2164,16 +2164,16 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
             // which arm swings is not tracked yet.
             let swap = |item: i32| block_renderer.item_swap(item);
             let main_height = item_in_hand.inverse_arm_height(
-                voxel_client::game_mode::MAIN_HAND,
+                voxel_game::game_mode::MAIN_HAND,
                 partial as f32,
                 &swap,
             );
             let off_height = item_in_hand.inverse_arm_height(
-                voxel_client::game_mode::OFF_HAND,
+                voxel_game::game_mode::OFF_HAND,
                 partial as f32,
                 &swap,
             );
-            let view = render::player_renderer::HandView {
+            let view = voxel_render::player_renderer::HandView {
                 bob_walked: walked,
                 bob,
                 view_x_rot: player_x_rot,
@@ -2184,12 +2184,12 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                 attack: player.attack_anim(partial as f32),
                 light,
             };
-            let main_item = item_in_hand.item(voxel_client::game_mode::MAIN_HAND);
-            let off_item = item_in_hand.item(voxel_client::game_mode::OFF_HAND);
+            let main_item = item_in_hand.item(voxel_game::game_mode::MAIN_HAND);
+            let off_item = item_in_hand.item(voxel_game::game_mode::OFF_HAND);
             // An empty main hand shows the arm; each stack is drawn in its
             // hand, the main hand on the right.
             let hand = if main_item.is_none() {
-                render::player_renderer::hand_vertices(&mut player_model, &view)
+                voxel_render::player_renderer::hand_vertices(&mut player_model, &view)
             } else {
                 Vec::new()
             };
@@ -2205,9 +2205,9 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                     block_renderer.item_layers(
                         stack.item_registry_id(),
                         if right {
-                            render::model::DisplayContext::FirstPersonRightHand
+                            voxel_render::model::DisplayContext::FirstPersonRightHand
                         } else {
-                            render::model::DisplayContext::FirstPersonLeftHand
+                            voxel_render::model::DisplayContext::FirstPersonLeftHand
                         },
                         &|temperature, downfall| {
                             biome_tints.grass_at_climate(temperature, downfall)
@@ -2215,7 +2215,7 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                         stack.patch_bytes(),
                     )
                 });
-                held.extend(render::player_renderer::held_item_vertices(
+                held.extend(voxel_render::player_renderer::held_item_vertices(
                     &view, layers, right, attack, height,
                 ));
             }
@@ -2227,7 +2227,7 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                 70.0
             };
             let hand_projection =
-                render::scene::perspective(f32::to_radians(hud_fov), aspect, 0.05, 100.0);
+                voxel_render::scene::perspective(f32::to_radians(hud_fov), aspect, 0.05, 100.0);
             backend.set_hand(&hand, &held, hand_projection)?;
         } else {
             backend.set_hand(&[], &[], [[0.0; 4]; 4])?;
@@ -2238,14 +2238,14 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
         let mut outline = Vec::new();
         if !matches!(
             session.game_mode(),
-            voxel_client::world::ClientPlayerGameMode::Adventure
-                | voxel_client::world::ClientPlayerGameMode::Spectator
-        ) && let voxel_client::game_mode::Aim::Block { x, y, z, .. } =
+            voxel_world::ClientPlayerGameMode::Adventure
+                | voxel_world::ClientPlayerGameMode::Spectator
+        ) && let voxel_game::game_mode::Aim::Block { x, y, z, .. } =
             pick(session.world(), player, eye_position(player, partial))
             && let Some(state) = session.world().block_state_at(x, y, z)
         {
-            let shape = voxel_client::world::outline_shape(state as u32, [x, y, z]);
-            outline = render::outline::outline_vertices(
+            let shape = voxel_world::outline_shape(state as u32, [x, y, z]);
+            outline = voxel_render::outline::outline_vertices(
                 &shape,
                 [
                     (x - origin[0]) as f32,
@@ -2253,8 +2253,8 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                     (z - origin[2]) as f32,
                 ],
                 eye,
-                render::outline::OUTLINE_COLOUR,
-                render::outline::appropriate_line_width(backend.extent().0),
+                voxel_render::outline::OUTLINE_COLOUR,
+                voxel_render::outline::appropriate_line_width(backend.extent().0),
             );
         }
         backend.set_outline(&outline)?;
@@ -2280,7 +2280,7 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                 continue;
             };
             let (quads, offset) = block_renderer.block_quads(state as u32, [x, y, z]);
-            breaking.extend(render::breaking::breaking_vertices(
+            breaking.extend(voxel_render::breaking::breaking_vertices(
                 &quads,
                 offset,
                 [
@@ -2296,8 +2296,8 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
             backend.set_entities(&[])?;
         } else {
             let model_pose = player.model_pose(partial as f32);
-            player_model.setup_anim(&render::player_model::PlayerRenderState {
-                head_y_rot: voxel_client::math::wrap_degrees_f32(
+            player_model.setup_anim(&voxel_render::player_model::PlayerRenderState {
+                head_y_rot: voxel_core::math::wrap_degrees_f32(
                     model_pose.head_rot - model_pose.body_rot,
                 ),
                 x_rot: player_x_rot,
@@ -2310,11 +2310,10 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                 attack_time: player.attack_anim(partial as f32),
                 ..Default::default()
             });
-            let visually_swimming =
-                model_pose.pose == voxel_client::world::ClientEntityPose::Swimming;
-            backend.set_entities(&render::player_renderer::player_vertices(
+            let visually_swimming = model_pose.pose == voxel_world::ClientEntityPose::Swimming;
+            backend.set_entities(&voxel_render::player_renderer::player_vertices(
                 &player_model,
-                &render::player_renderer::Placement {
+                &voxel_render::player_renderer::Placement {
                     feet: [
                         (feet.x - f64::from(origin[0])) as f32,
                         (feet.y - f64::from(origin[1])) as f32,
@@ -2338,7 +2337,7 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
         let far = ((render_distance * 16 * 4) as f32).max((CLOUD_RANGE * 16) as f32);
         // The view bob option's default is on.
         let (walked, bob) = player.view_bob(partial as f32);
-        let bob = voxel_client::camera::view_bob(walked, bob);
+        let bob = voxel_render::camera::view_bob(walked, bob);
         let view_projection = player_camera(aspect, fov, far, eye, y_rot, x_rot, bob);
 
         // Mesh the dirty sections nearest the player first on the workers,
@@ -2351,7 +2350,7 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                 fades.remove(&key);
                 backend.set_section(
                     key,
-                    &render::Mesh::default(),
+                    &voxel_render::Mesh::default(),
                     [0.0; 3],
                     SectionFade::none(),
                 )?;
@@ -2454,11 +2453,11 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                     // An empty section has shown too, so what is built in it
                     // later does not fade.
                     let fade = fade_for(key);
-                    backend.set_section(key, &render::Mesh::default(), [0.0; 3], fade)?;
+                    backend.set_section(key, &voxel_render::Mesh::default(), [0.0; 3], fade)?;
                     continue;
                 }
                 let (min, size, quart_min, quart_size) =
-                    render::section_workers::SectionWorkers::region(key);
+                    voxel_render::section_workers::SectionWorkers::region(key);
                 let copy = world.copy_region(min, size, quart_min, quart_size);
                 next_generation += 1;
                 latest.insert(key, next_generation);
@@ -2484,7 +2483,7 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                     let start = ((row * target.width + x) * 4) as usize;
                     rgba.extend_from_slice(&target.rgba[start..start + width as usize * 4]);
                 }
-                regions.push(render::vulkan::AtlasRegion {
+                regions.push(voxel_render::vulkan::AtlasRegion {
                     level: level as u32,
                     x,
                     y,
@@ -2534,11 +2533,11 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
             let height = |x: i32, z: i32| world.motion_blocking_height(x, z);
             let precipitation = |x: i32, y: i32, z: i32| {
                 if !world.contains_chunk(x.div_euclid(16), z.div_euclid(16)) {
-                    return render::biome_tint::Precipitation::None;
+                    return voxel_render::biome_tint::Precipitation::None;
                 }
                 biome_tints.precipitation_at([x, y, z], &noise_biome, sea_level)
             };
-            let lighter = render::block_light::Lighter {
+            let lighter = voxel_render::block_light::Lighter {
                 state: |[x, y, z]: [i32; 3]| {
                     world
                         .block_state_at(x, y, z)
@@ -2554,8 +2553,8 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
             let light_coords = |x: i32, y: i32, z: i32| {
                 lighter.light_coords((lighter.state)([x, y, z]), [x, y, z])
             };
-            let weather = render::weather::build(
-                &render::weather::WeatherWorld {
+            let weather = voxel_render::weather::build(
+                &voxel_render::weather::WeatherWorld {
                     height: &height,
                     precipitation: &precipitation,
                     light_coords: &light_coords,
@@ -2572,16 +2571,16 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
             );
             backend.set_weather(&weather.rain, &weather.snow)?;
         }
-        let look = voxel_client::math::Vec3::direction_from_rotation_components(x_rot, y_rot);
-        let sky = render::sky::build_frame(
+        let look = voxel_core::math::Vec3::direction_from_rotation_components(x_rot, y_rot);
+        let sky = voxel_render::sky::build_frame(
             &attributes,
-            &render::sky::SkyView {
+            &voxel_render::sky::SkyView {
                 forward: [look.x as f32, look.y as f32, look.z as f32],
                 eye_above_horizon: feet.y + f64::from(camera.eye_height(partial as f32)) - 63.0,
                 eye_in_water,
                 render_distance,
                 cloud_range: CLOUD_RANGE,
-                weather: render::sky::Weather {
+                weather: voxel_render::sky::Weather {
                     rain: session.rain_level(),
                     thunder: session.thunder_level(),
                 },
@@ -2613,7 +2612,7 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                 feet.y + f64::from(camera.eye_height(partial as f32)),
                 feet.z,
             ];
-            let placement = render::clouds::place(
+            let placement = voxel_render::clouds::place(
                 &cloud_cells,
                 sky.cloud_height,
                 camera_position,
@@ -2627,11 +2626,11 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                     placement.relative,
                     placement.cell.0,
                     placement.cell.1,
-                    render::clouds::radius_cells(CLOUD_RANGE),
+                    voxel_render::clouds::radius_cells(CLOUD_RANGE),
                 );
                 backend.set_cloud_faces(&faces)?;
             }
-            backend.set_cloud_frame(Some(render::vulkan::CloudFrame {
+            backend.set_cloud_frame(Some(voxel_render::vulkan::CloudFrame {
                 view_projection: sky_view_projection,
                 offset: placement.offset,
                 fog_end: sky.cloud_fog_end,
@@ -2723,37 +2722,37 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                     .cloned()
             };
             let mut draw_item =
-                |stack: &voxel_client::world::ClientItemStackState,
+                |stack: &voxel_world::ClientItemStackState,
                  x: f32,
                  y: f32,
-                 out: &mut Vec<render::gui_items::GuiItemVertex>| {
+                 out: &mut Vec<voxel_render::gui_items::GuiItemVertex>| {
                     let layers = gui_item_layers.get(stack, || {
                         block_renderer.item_layers(
                             stack.item_registry_id(),
-                            render::model::DisplayContext::Gui,
+                            voxel_render::model::DisplayContext::Gui,
                             &|temperature, downfall| {
                                 biome_tints.grass_at_climate(temperature, downfall)
                             },
                             stack.patch_bytes(),
                         )
                     });
-                    render::gui_items::item_vertices(layers, x, y, out);
+                    voxel_render::gui_items::item_vertices(layers, x, y, out);
                 };
             let frame = hud.build(
                 &gui_atlas,
                 &font,
                 size.gui_scaled_width(),
                 size.gui_scaled_height(),
-                &render::gui::HudInput {
+                &voxel_render::gui::HudInput {
                     first_person: camera_type == CameraType::FirstPerson,
-                    spectator: game_mode == voxel_client::world::ClientPlayerGameMode::Spectator,
+                    spectator: game_mode == voxel_world::ClientPlayerGameMode::Spectator,
                     survival: game_mode.is_survival(),
                     selected_slot: status.selected_slot,
                     health: hud_player.map_or(status.health, |player| player.health()),
                     max_health: attribute(23, 20.0, 1.0, 1024.0) as f32,
                     absorption: local.map_or(0.0, |state| state.absorption()),
                     invulnerable_time: hud_player.map_or(0, |player| player.invulnerable_time()),
-                    heart_type: render::gui::HeartType::for_player(
+                    heart_type: voxel_render::gui::HeartType::for_player(
                         has_effect(18),
                         has_effect(19),
                         local.is_some_and(|state| state.is_fully_frozen()),
@@ -2788,7 +2787,7 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                             return Vec::new();
                         };
                         let pose = player.model_pose(1.0);
-                        let state = render::player_model::PlayerRenderState {
+                        let state = voxel_render::player_model::PlayerRenderState {
                             walk_position: pose.walk_position,
                             walk_speed: pose.walk_speed,
                             age_in_ticks: player.tick_count() as f32 + 1.0,
@@ -2798,7 +2797,7 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                             attack_time: player.attack_anim(1.0),
                             ..Default::default()
                         };
-                        render::player_renderer::gui_player_vertices(
+                        voxel_render::player_renderer::gui_player_vertices(
                             &mut player_model,
                             &state,
                             area,
@@ -2808,16 +2807,12 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                         )
                     };
                 // A stack's tooltip in words.
-                let mut tooltip_lines = |stack: &voxel_client::world::ClientItemStackState,
+                let mut tooltip_lines = |stack: &voxel_world::ClientItemStackState,
                                          creative: bool| {
-                    voxel_client::tooltip::lines(
-                        stack,
-                        true,
-                        voxel_client::tooltip::Flags { creative },
-                    )
-                    .iter()
-                    .map(|line| lang.runs(line, &voxel_client::text::Style::default()))
-                    .collect::<Vec<_>>()
+                    voxel_game::tooltip::lines(stack, true, voxel_game::tooltip::Flags { creative })
+                        .iter()
+                        .map(|line| lang.runs(line, &voxel_game::text::Style::default()))
+                        .collect::<Vec<_>>()
                 };
                 match screen {
                     Screen::Survival(screen) => screen.build(

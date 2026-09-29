@@ -37,7 +37,7 @@ Eksen verilmeden `getClockWise()`/`getCounterClockWise()` çağrıları, matrix 
 
 ## Client-parity doğrulaması
 
-`src/direction.rs` içindeki `Direction::clockwise` ve `counter_clockwise`, Java eksen özel dönüş tablolarını ve hizalı yön kısa yolunu uygular. Rust adapter `direction_axial_rotation` JSONL operation'ı ile iki sonucu dışarı verir; Java oracle iki enum metodunu doğrudan çağırır.
+`crates/voxel-core/src/direction.rs` içindeki `Direction::clockwise` ve `counter_clockwise`, Java eksen özel dönüş tablolarını ve hizalı yön kısa yolunu uygular. Rust adapter `direction_axial_rotation` JSONL operation'ı ile iki sonucu dışarı verir; Java oracle iki enum metodunu doğrudan çağırır.
 
 On sekiz yön/eksen çifti Java oracle çıktısıyla karşılaştırılır.
 

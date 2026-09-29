@@ -36,7 +36,7 @@ Yeni capture kimliği, kaynak/girdi/ortam değişkenleriyle birlikte runner rapo
 
 ## Client-parity doğrulaması
 
-`src/direction.rs` içindeki `Direction::get`, Java `Direction.get(AxisDirection, Axis)` lookup'ını parametre sırası korunarak uygular. Rust adapter `direction_get` JSONL operation'ı üzerinden yön snapshot'ını dışarı verir; Java oracle static lookup metodunu doğrudan çağırır.
+`crates/voxel-core/src/direction.rs` içindeki `Direction::get`, Java `Direction.get(AxisDirection, Axis)` lookup'ını parametre sırası korunarak uygular. Rust adapter `direction_get` JSONL operation'ı üzerinden yön snapshot'ını dışarı verir; Java oracle static lookup metodunu doğrudan çağırır.
 
 Altı axis-direction çifti Java oracle çıktısıyla karşılaştırılır.
 

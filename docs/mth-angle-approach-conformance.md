@@ -21,7 +21,7 @@ Kapsam dışı kalanlar: `getInt`, `smallestEncompassingPowerOfTwo`, diğer `wra
 
 ## Client-parity doğrulaması
 
-`src/math.rs` içindeki `mth_rotate_if_necessary_f32`, `mth_approach_f32` ve `mth_approach_degrees_f32`, Java `Mth.rotateIfNecessary`, `Mth.approach` ve `Mth.approachDegrees` yollarını JSONL adapter'a bağlar. Derece farkı sarmalama, f32 clamp sınırları, artış yönü, ara toplama, signed zero ve özel değer sonuçları Java oracle'ın raw f32 bitleriyle karşılaştırılır.
+`crates/voxel-core/src/math.rs` içindeki `mth_rotate_if_necessary_f32`, `mth_approach_f32` ve `mth_approach_degrees_f32`, Java `Mth.rotateIfNecessary`, `Mth.approach` ve `Mth.approachDegrees` yollarını JSONL adapter'a bağlar. Derece farkı sarmalama, f32 clamp sınırları, artış yönü, ara toplama, signed zero ve özel değer sonuçları Java oracle'ın raw f32 bitleriyle karşılaştırılır.
 
 ## Doğrulama
 

@@ -2,7 +2,7 @@ use std::env;
 use std::net::SocketAddr;
 use std::time::Duration;
 
-use voxel_client::connection::connect_and_world_primed_tnt_tick_probe;
+use voxel_net::connection::connect_and_world_primed_tnt_tick_probe;
 
 const PRIMED_TNT_ENTITY_TYPE_ID: i32 = 133;
 const PRIMED_TNT_GRAVITY: f64 = 0.04;

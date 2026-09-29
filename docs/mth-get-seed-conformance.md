@@ -38,7 +38,7 @@ Mevcut capture'lar değiştirilmez; kaynak, girdi veya ortam değiştiğinde yen
 
 ## Client-parity doğrulaması
 
-`src/math.rs` içindeki `mth_get_seed`, Java `Mth.getSeed(int, int, int)` koordinat overload'unun i32 ve i64 taşma sırasını uygular. `src/random.rs` positional factory'si de aynı yardımcıyı çağırır; ayrı bir seed formülü tutulmaz.
+`crates/voxel-core/src/math.rs` içindeki `mth_get_seed`, Java `Mth.getSeed(int, int, int)` koordinat overload'unun i32 ve i64 taşma sırasını uygular. `crates/voxel-core/src/random.rs` positional factory'si de aynı yardımcıyı çağırır; ayrı bir seed formülü tutulmaz.
 
 Java oracle `Mth.getSeed(x, y, z)` çağrısını doğrudan yürütür. Girdilerde sıfır, işaretli i32 sınırları, `x * 3129871` i32 taşması ve büyük karışık koordinatlar bulunur. Beklenen sonuçlar Java oracle çıktısından alındı.
 

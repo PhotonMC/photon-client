@@ -17,7 +17,7 @@ Kapsam dışı kalanlar: `clampedMap(float)`, `map`, `clampedLerp`, `inverseLerp
 
 ## Client-parity doğrulaması
 
-`src/math.rs`, Java `Mth.clampedMap(double)` yordamının `inverseLerp` ve `clampedLerp` bileşimini aynı f64 işlem sırasıyla taşır. `examples/behavior_adapter.rs` sonucu raw f64 bit dizgisi olarak dışarı verir.
+`crates/voxel-core/src/math.rs`, Java `Mth.clampedMap(double)` yordamının `inverseLerp` ve `clampedLerp` bileşimini aynı f64 işlem sırasıyla taşır. `examples/behavior_adapter.rs` sonucu raw f64 bit dizgisi olarak dışarı verir.
 
 ## Doğrulama
 

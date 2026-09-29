@@ -38,7 +38,7 @@ hepsinde doğrulandı:
    özellik sırasında ve **son özellik en hızlı** değişiyor. Yani bir numara
    tabloya bakmadan özelliklere geri çözülebiliyor.
 
-İkisi de `src/world/block_registry.rs` içindeki testlerle korunuyor; ikinci
+İkisi de `crates/voxel-data/src/block/registry.rs` içindeki testlerle korunuyor; ikinci
 test 32366 durumun her birini ileri ve geri çeviriyor.
 
 ## Renk haritası tuzağı

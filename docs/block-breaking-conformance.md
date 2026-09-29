@@ -38,7 +38,7 @@ kararlarının okuduğu hiçbir şeyi değiştirmiyor. Varsayılan item
 bileşenleri, sunucunun kaynak yüklemesindeki gibi
 `DATA_COMPONENT_INITIALIZERS` ile bağlanıyor.
 
-Rust: `src/game_mode.rs`, `src/world/prediction.rs`, `src/item.rs`.
+Rust: `crates/voxel-game/src/game_mode.rs`, `crates/voxel-world/src/prediction.rs`, `src/item.rs`.
 Adaptör vanilla blok etiketlerini yerel jar'daki veri paketinden çözüp
 sunucunun göndereceği gibi dünyaya veriyor; istemci etiketleri sunucudan
 alıyor.
@@ -48,10 +48,10 @@ alıyor.
 İki tablo referanstan yakalanıp üretiliyor ve her parity koşusunda baştan
 sona karşılaştırılıyor:
 
-- `src/world/block_destroy_table.rs` (`tools/generate/block_destroy.py`,
+- `crates/voxel-data/src/block/destroy.rs` (`tools/generate/block_destroy.py`,
   `block/destroy-properties`): durum başına kırma süresi, doğru alet
   gereksinimi, hava olması, yerine kalan sıvı bloğu; game master blokları.
-- `src/item_table.rs` (`tools/generate/item_tools.py`, `block/item-tools`):
+- `crates/voxel-data/src/item/registry.rs` (`tools/generate/item_tools.py`, `block/item-tools`):
   registry sırasıyla bütün itemler ve varsayılan `tool` bileşeni.
 
 ## Senaryolar

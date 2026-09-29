@@ -37,7 +37,7 @@ Direction matrix rotation, entity bakış yönü ve diğer Direction yardımcıl
 
 ## Client-parity doğrulaması
 
-`src/direction.rs` içindeki `approximate_nearest_f32`, `approximate_nearest` ve `approximate_nearest_vec3`, Java üç overload'un giriş dönüşümlerini ve ortak dot seçim sırasını uygular. Rust adapter `direction_approximate_nearest_overloads` JSONL operation'ı ile üç yön sonucunu dışarı verir; Java oracle üç overload'u doğrudan çağırır.
+`crates/voxel-core/src/direction.rs` içindeki `approximate_nearest_f32`, `approximate_nearest` ve `approximate_nearest_vec3`, Java üç overload'un giriş dönüşümlerini ve ortak dot seçim sırasını uygular. Rust adapter `direction_approximate_nearest_overloads` JSONL operation'ı ile üç yön sonucunu dışarı verir; Java oracle üç overload'u doğrudan çağırır.
 
 Senaryolar f32/f64 raw bit girişlerini, forwarding'i, tie sırasını ve özel değerleri Java oracle çıktısıyla karşılaştırır.
 

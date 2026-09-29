@@ -1,6 +1,6 @@
 # P02.a — Rust zamanlayıcısı — [client-parity] kapsam kaydı
 
-`src/timer.rs`, Java 26.2 istemcisinin tick birikimi ve kısmi tick davranışını uygular. `examples/behavior_adapter.rs`, mevcut `timer/trace` girdilerini bu kütüphaneye bağlar. Üretim modülüne bağımlılık veya gerçek sistem saati erişimi eklenmedi.
+`crates/voxel-core/src/timer.rs`, Java 26.2 istemcisinin tick birikimi ve kısmi tick davranışını uygular. `examples/behavior_adapter.rs`, mevcut `timer/trace` girdilerini bu kütüphaneye bağlar. Üretim modülüne bağımlılık veya gerçek sistem saati erişimi eklenmedi.
 
 ## Kaynak ve kapsam
 

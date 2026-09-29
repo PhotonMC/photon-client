@@ -25,12 +25,12 @@ Bu sözleşme yalnızca iki double overload'unun son int sonucunu kapsar; diğer
 
 ## Rust karşılığı
 
-`src/binary.rs` içindeki `SectionPos::pos_to_section_coord` ve `block_to_section_coord_f64`, Java `Mth.floor` ile ortak `math::floor_f64` yolunu ve SectionPos'un int section dönüşümünü taşır. `examples/behavior_adapter.rs` f64 bit girdisini bu API'lere bağlar.
+`crates/voxel-core/src/binary.rs` içindeki `SectionPos::pos_to_section_coord` ve `block_to_section_coord_f64`, Java `Mth.floor` ile ortak `math::floor_f64` yolunu ve SectionPos'un int section dönüşümünü taşır. `examples/behavior_adapter.rs` f64 bit girdisini bu API'lere bağlar.
 
 
 ## Client-parity doğrulaması
 
-`src/binary.rs`, SectionPos `posToSectionCoord(double)` ve `blockToSectionCoord(double)` overload'larını Java'nın floor, narrowing cast ve arithmetic shift sonuçlarıyla eşleştirir.
+`crates/voxel-core/src/binary.rs`, SectionPos `posToSectionCoord(double)` ve `blockToSectionCoord(double)` overload'larını Java'nın floor, narrowing cast ve arithmetic shift sonuçlarıyla eşleştirir.
 
 ## Doğrulama
 

@@ -19,12 +19,12 @@ Java Edition 26.2 / protokol 776 / Java 25 referansı kullanılır. `client/play
 
 İstek `family: "math"`, `operation: "keyboard_input"` ve yedi boolean tuş alanını taşır: `up`, `down`, `left`, `right`, `jump`, `shift`, `sprint`. Sonuç `key_presses` içinde Java `Input` alanlarını, `move_vector` içinde f32 bitleriyle Vec2 `x`, `y`, `length` ve `length_squared` değerlerini taşır.
 
-Rust karşılığı `src/input.rs` içindeki `Input` ve `KeyboardInput` tipleridir. `KeyboardInput::new` kontrollü tuş durumunu alır; `tick` snapshot ve hareket vektörünü üretir. Adapter, sonucu Java oracle şemasıyla karşılaştırır.
+Rust karşılığı `crates/voxel-world/src/input.rs` içindeki `Input` ve `KeyboardInput` tipleridir. `KeyboardInput::new` kontrollü tuş durumunu alır; `tick` snapshot ve hareket vektörünü üretir. Adapter, sonucu Java oracle şemasıyla karşılaştırır.
 
 
 ## Client-parity doğrulaması
 
-`src/input.rs`, Java Edition 26.2 / protokol 776 / Java 25 kaynak davranışına göre `KeyboardInput.tick()` snapshot’ını ve normalize edilmiş hareket vektörünü uygular. Java oracle, kontrollü `KeyMapping` durumlarıyla gerçek `KeyboardInput.tick()` çağrısını çalıştırır; beklenen sonuç Rust adapter’ından türetilmez.
+`crates/voxel-world/src/input.rs`, Java Edition 26.2 / protokol 776 / Java 25 kaynak davranışına göre `KeyboardInput.tick()` snapshot’ını ve normalize edilmiş hareket vektörünü uygular. Java oracle, kontrollü `KeyMapping` durumlarıyla gerçek `KeyboardInput.tick()` çağrısını çalıştırır; beklenen sonuç Rust adapter’ından türetilmez.
 
 Java referansı `b8ac51bd8c3bd440346514a4021569847347a2d7fedd0409b4fc84e14c8cc9f6` capture’ında iki tekrarla kararlı kaldı. Debug adapter karşılaştırması `compare-058fr0qu`, release adapter karşılaştırması `compare-_6wiu7ho` ve tam Java doğrulaması `verify-j9ido3zp` raporlarında eşleşti.
 

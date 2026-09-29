@@ -55,7 +55,7 @@ olarak doğrulandı ve fark `null` kaldı.
 
 ## Rust doğrulaması
 
-`src/input.rs` içindeki `local_player_travel_in_lava`, Java'nın shallow/deep
+`crates/voxel-world/src/input.rs` içindeki `local_player_travel_in_lava`, Java'nın shallow/deep
 drag ayrımını, relative input dönüşümünü, falling adjustment, gravity ve fluid
 jump sırasını uygular. Setter adımları finite olmayan ara değerlerde mevcut
 delta state'ini korur. `ClientWorld` local player motion state'inden delta'yı

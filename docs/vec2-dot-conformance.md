@@ -31,12 +31,12 @@ Girdiler `family: "math"`, `operation: "vec2_dot"`, `first` ve `second` Vec2 nes
 
 ## Rust karşılığı
 
-`src/math.rs` içindeki `Vec2::dot`, iki f32 çarpımını ve kaynak sıralı toplamı uygular. `examples/behavior_adapter.rs` `vec2_dot` operasyonunu, `tests/behavior/java/MathOracle.java` ise beklenen değeri doğrudan Java `dot` çağrısını kullanarak bağlar.
+`crates/voxel-core/src/math.rs` içindeki `Vec2::dot`, iki f32 çarpımını ve kaynak sıralı toplamı uygular. `examples/behavior_adapter.rs` `vec2_dot` operasyonunu, `tests/behavior/java/MathOracle.java` ise beklenen değeri doğrudan Java `dot` çağrısını kullanarak bağlar.
 
 
 ## Client-parity doğrulaması
 
-`src/math.rs`, Java `Vec2.dot(Vec2)` metodunu karşılayan `Vec2::dot` metodunu içerir. Java oracle doğrudan `dot` çağrısını yapar; Rust adaptörü aynı f32 bit girdilerini üretim API'sine taşır.
+`crates/voxel-core/src/math.rs`, Java `Vec2.dot(Vec2)` metodunu karşılayan `Vec2::dot` metodunu içerir. Java oracle doğrudan `dot` çağrısını yapar; Rust adaptörü aynı f32 bit girdilerini üretim API'sine taşır.
 
 ## Doğrulama
 

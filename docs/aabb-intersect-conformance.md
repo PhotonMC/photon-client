@@ -47,7 +47,7 @@ Rust debug ve release adaptörleri math ailesinde 382/382, birleşik corpus'ta 2
 
 ## Client-parity doğrulaması
 
-`src/aabb.rs`, Java `AABB.intersect` metodunun eksen başına `Math.max`/`Math.min` endpoint hesaplarını ve sonuç kurucusunun normalizasyonunu uygular. `examples/behavior_adapter.rs` `intersect` adımını JSONL math senaryolarına bağlar.
+`crates/voxel-core/src/aabb.rs`, Java `AABB.intersect` metodunun eksen başına `Math.max`/`Math.min` endpoint hesaplarını ve sonuç kurucusunun normalizasyonunu uygular. `examples/behavior_adapter.rs` `intersect` adımını JSONL math senaryolarına bağlar.
 
 ## Doğrulama
 

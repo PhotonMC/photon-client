@@ -31,12 +31,12 @@ Girdiler `family: "math"`, `operation: "vec3"` ve `steps` içinde `reverse` kull
 
 ## Rust karşılığı
 
-`src/math.rs` içindeki `Vec3::reverse`, Java'nın `scale(-1.0)` yönlendirmesini üretim API'sine taşır. `examples/behavior_adapter.rs` çağrıyı JSONL adımına bağlar.
+`crates/voxel-core/src/math.rs` içindeki `Vec3::reverse`, Java'nın `scale(-1.0)` yönlendirmesini üretim API'sine taşır. `examples/behavior_adapter.rs` çağrıyı JSONL adımına bağlar.
 
 
 ## Client-parity doğrulaması
 
-`src/math.rs`, Java `Vec3.reverse()` metodunun `scale(-1.0)` yönlendirmesini karşılar. Java oracle doğrudan çağrıyı yapar; Rust adaptörü aynı girdiyi `Vec3::reverse` API'sine taşır.
+`crates/voxel-core/src/math.rs`, Java `Vec3.reverse()` metodunun `scale(-1.0)` yönlendirmesini karşılar. Java oracle doğrudan çağrıyı yapar; Rust adaptörü aynı girdiyi `Vec3::reverse` API'sine taşır.
 
 ## Doğrulama
 

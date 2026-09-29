@@ -22,12 +22,12 @@ Girdiler `family: "math"`, `operation: "sectionpos_packed_accessors"` ve 16 hane
 
 ## Rust karşılığı
 
-`src/binary.rs` içindeki `SectionPos::get_x`, `get_y` ve `get_z`, packed değerin 22/20/22 bit alanlarını Java ile aynı sign extension işlemiyle döndürür. `SectionPos::unpack` bu erişimcileri kullanır. `examples/behavior_adapter.rs` ham packed hex girdisini bu API'lere bağlar; `tests/behavior/java/MathOracle.java` karşılaştırma oracle'ı olarak Java erişimcilerini çağırır.
+`crates/voxel-core/src/binary.rs` içindeki `SectionPos::get_x`, `get_y` ve `get_z`, packed değerin 22/20/22 bit alanlarını Java ile aynı sign extension işlemiyle döndürür. `SectionPos::unpack` bu erişimcileri kullanır. `examples/behavior_adapter.rs` ham packed hex girdisini bu API'lere bağlar; `tests/behavior/java/MathOracle.java` karşılaştırma oracle'ı olarak Java erişimcilerini çağırır.
 
 
 ## Client-parity doğrulaması
 
-`src/binary.rs`, packed SectionPos long içindeki signed x, y ve z alanlarını Java `SectionPos.x(long)`, `y(long)` ve `z(long)` ile aynı i32 sonuçlara çıkarır. Rust adapter ham packed hex girdisini bu API'lere bağlar.
+`crates/voxel-core/src/binary.rs`, packed SectionPos long içindeki signed x, y ve z alanlarını Java `SectionPos.x(long)`, `y(long)` ve `z(long)` ile aynı i32 sonuçlara çıkarır. Rust adapter ham packed hex girdisini bu API'lere bağlar.
 
 ## Doğrulama
 

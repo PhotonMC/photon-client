@@ -2,7 +2,7 @@ use std::env;
 use std::net::SocketAddr;
 use std::time::Duration;
 
-use voxel_client::connection::connect_and_survival_stone_break_stop_probe;
+use voxel_net::connection::connect_and_survival_stone_break_stop_probe;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let address: SocketAddr = env::args()

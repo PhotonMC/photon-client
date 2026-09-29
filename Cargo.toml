@@ -1,11 +1,18 @@
-[package]
-name = "voxel-client"
+[workspace]
+members = ["crates/*"]
+resolver = "3"
+
+[workspace.package]
 version = "0.1.0"
 edition = "2024"
-publish = false
-include = ["/Cargo.toml", "/Cargo.lock", "/src/**", "/README.md"]
 
-[dependencies]
+[workspace.dependencies]
+voxel-core = { path = "crates/voxel-core" }
+voxel-data = { path = "crates/voxel-data" }
+voxel-world = { path = "crates/voxel-world" }
+voxel-game = { path = "crates/voxel-game" }
+voxel-net = { path = "crates/voxel-net" }
+voxel-render = { path = "crates/voxel-render" }
 ash = "0.38.0"
 ash-window = "0.13.0"
 flate2 = { version = "1.1.10", default-features = false, features = ["rust_backend"] }
@@ -13,8 +20,31 @@ glfw = { version = "0.62.0", default-features = false, features = ["raw-window-h
 raw-window-handle = "0.6.2"
 shaderc = "0.10.1"
 
+[workspace.lints.rust]
+unsafe_op_in_unsafe_fn = "warn"
+
+[package]
+name = "voxel-client"
+description = "The client application: window, session loop, screens and scripted runs."
+version.workspace = true
+edition.workspace = true
+publish = false
+include = ["/Cargo.toml", "/Cargo.lock", "/src/**", "/README.md"]
+
+[dependencies]
+voxel-core.workspace = true
+voxel-data.workspace = true
+voxel-world.workspace = true
+voxel-game.workspace = true
+voxel-net.workspace = true
+voxel-render.workspace = true
+glfw.workspace = true
+
 [dev-dependencies]
 serde_json = "1.0.151"
+
+[lints]
+workspace = true
 
 # Java integer arithmetic always wraps. Keeping overflow checks on in both
 # profiles makes an unintended wrap a test failure instead of a silent

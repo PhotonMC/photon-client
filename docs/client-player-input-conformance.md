@@ -66,7 +66,7 @@ olarak doğrulandı ve fark `null` kaldı.
 
 ## Rust doğrulaması
 
-`src/input.rs` içindeki `modify_local_player_input`, LocalPlayer dönüşümünü
+`crates/voxel-world/src/input.rs` içindeki `modify_local_player_input`, LocalPlayer dönüşümünü
 production kodunda uygular. Behavior adapter aynı helper'ı çağırır; adapter
 ayrı bir matematik kopyası taşımaz.
 

@@ -2,7 +2,7 @@ use std::env;
 use std::net::SocketAddr;
 use std::time::Duration;
 
-use voxel_client::connection::connect_and_world_falling_block_tick_probe;
+use voxel_net::connection::connect_and_world_falling_block_tick_probe;
 
 const FALLING_BLOCK_ENTITY_TYPE_ID: i32 = 51;
 const FALLING_BLOCK_GRAVITY: f64 = 0.04;

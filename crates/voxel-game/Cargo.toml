@@ -1,0 +1,15 @@
+[package]
+name = "voxel-game"
+description = "Items, menus and the player's actions built on the world copy."
+version.workspace = true
+edition.workspace = true
+publish = false
+include = ["/Cargo.toml", "/src/**"]
+
+[dependencies]
+voxel-core.workspace = true
+voxel-data.workspace = true
+voxel-world.workspace = true
+
+[lints]
+workspace = true

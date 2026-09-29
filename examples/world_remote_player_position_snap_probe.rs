@@ -3,7 +3,7 @@ use std::net::SocketAddr;
 use std::thread;
 use std::time::Duration;
 
-use voxel_client::connection::{
+use voxel_net::connection::{
     EntityPositionSnapObservation, connect_and_remote_player_position_snap_mover_probe,
     connect_and_remote_player_position_snap_observer_probe,
 };

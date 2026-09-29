@@ -31,12 +31,12 @@ Girdiler `family: "math"`, `operation: "vec2_distance_to_sqr"`, `first` ve `seco
 
 ## Rust karşılığı
 
-`src/math.rs` içindeki `Vec2::distance_to_sqr`, Java'nın çıkarma, kare alma ve kaynak sıralı toplama adımlarını uygular. `examples/behavior_adapter.rs` operasyonu, `tests/behavior/java/MathOracle.java` ise beklenen değeri doğrudan Java `distanceToSqr` çağrısıyla bağlar.
+`crates/voxel-core/src/math.rs` içindeki `Vec2::distance_to_sqr`, Java'nın çıkarma, kare alma ve kaynak sıralı toplama adımlarını uygular. `examples/behavior_adapter.rs` operasyonu, `tests/behavior/java/MathOracle.java` ise beklenen değeri doğrudan Java `distanceToSqr` çağrısıyla bağlar.
 
 
 ## Client-parity doğrulaması
 
-`src/math.rs`, Java `Vec2.distanceToSqr(Vec2)` metodunu karşılayan `Vec2::distance_to_sqr` metodunu içerir. Java oracle doğrudan `distanceToSqr` çağrısını yapar; Rust adaptörü aynı f32 bit girdilerini üretim API'sine taşır.
+`crates/voxel-core/src/math.rs`, Java `Vec2.distanceToSqr(Vec2)` metodunu karşılayan `Vec2::distance_to_sqr` metodunu içerir. Java oracle doğrudan `distanceToSqr` çağrısını yapar; Rust adaptörü aynı f32 bit girdilerini üretim API'sine taşır.
 
 ## Doğrulama
 

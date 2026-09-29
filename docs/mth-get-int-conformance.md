@@ -17,7 +17,7 @@ Kapsam dışı kalanlar: `smallestEncompassingPowerOfTwo`, `frac`, `getSeed`, JS
 
 ## Client-parity doğrulaması
 
-`src/math.rs` içindeki `mth_get_int`, Java `Mth.getInt(String, int)` yolunu ve pinned Apache Commons Lang `NumberUtils.toInt` fallback davranışını JSONL adapter'a bağlar. Decimal parse, isteğe bağlı ASCII işaret, Java decimal digit kuralları, null/default, biçim hatası ve i32 sınırları Java oracle'ın signed decimal sonuçlarıyla karşılaştırılır.
+`crates/voxel-core/src/math.rs` içindeki `mth_get_int`, Java `Mth.getInt(String, int)` yolunu ve pinned Apache Commons Lang `NumberUtils.toInt` fallback davranışını JSONL adapter'a bağlar. Decimal parse, isteğe bağlı ASCII işaret, Java decimal digit kuralları, null/default, biçim hatası ve i32 sınırları Java oracle'ın signed decimal sonuçlarıyla karşılaştırılır.
 
 ## Doğrulama
 

@@ -2,7 +2,7 @@ use std::env;
 use std::net::SocketAddr;
 use std::time::Duration;
 
-use voxel_client::connection::connect_and_world_entity_position_probe;
+use voxel_net::connection::connect_and_world_entity_position_probe;
 
 const CONTROLLED_POSITION: (f64, f64, f64) = (27.5, 81.0, -35.5);
 

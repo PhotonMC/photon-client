@@ -37,7 +37,7 @@ Axis predicate'leri, yön eşlemeleri, plane, random seçim ve Direction yönler
 
 ## Client-parity doğrulaması
 
-`src/direction.rs` içindeki `Axis.choose_i32`, `choose_f64` ve `choose_bool`, Java `Direction.Axis.choose` overload'larının x/y/z seçim davranışını uygular. Rust adapter `direction_axis_choose` JSONL operation'ı ile üç sonucu dışarı verir; Java oracle overload'ları doğrudan çağırır.
+`crates/voxel-core/src/direction.rs` içindeki `Axis.choose_i32`, `choose_f64` ve `choose_bool`, Java `Direction.Axis.choose` overload'larının x/y/z seçim davranışını uygular. Rust adapter `direction_axis_choose` JSONL operation'ı ile üç sonucu dışarı verir; Java oracle overload'ları doğrudan çağırır.
 
 Senaryolar üç eksendeki ayırt edici değerleri, signed i32 sınırlarını ve özel f64 bitlerini Java oracle çıktısıyla karşılaştırır.
 

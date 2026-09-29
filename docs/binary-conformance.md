@@ -85,7 +85,7 @@ Beklenen çıktılar Rust'a göre değiştirilmedi.
 
 ## Client-parity doğrulaması
 
-`src/binary.rs`, Vec3 stream codec'leri ile sabit ve değişken boyutlu binary kodlamaları içerir. `examples/behavior_adapter.rs` üretim kütüphanesini mevcut JSONL senaryolarına bağlar; beklenen değer üretmez. NBT ve diğer P03 biçimleri bu dilime dahil değildir.
+`crates/voxel-core/src/binary.rs`, Vec3 stream codec'leri ile sabit ve değişken boyutlu binary kodlamaları içerir. `examples/behavior_adapter.rs` üretim kütüphanesini mevcut JSONL senaryolarına bağlar; beklenen değer üretmez. NBT ve diğer P03 biçimleri bu dilime dahil değildir.
 
 ## Referans ve davranış
 

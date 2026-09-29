@@ -33,12 +33,12 @@ Girdiler `family: "math"`, `operation: "vec3_projected_on"`, `first` ve `onto` V
 
 ## Rust karşılığı
 
-`src/math.rs` içindeki `Vec3::projected_on`, önce `onto.length_squared()` değerini Java koşuluyla sınar; devam eden yolda `dot`, iki `scale` ve ters uzunluk karesi sırasını korur. `examples/behavior_adapter.rs` iki Vec3 girdisini ham f64 bitlerinden okur; `tests/behavior/java/MathOracle.java` aynı `Vec3.projectedOn` çağrısını oracle çıktısına bağlar.
+`crates/voxel-core/src/math.rs` içindeki `Vec3::projected_on`, önce `onto.length_squared()` değerini Java koşuluyla sınar; devam eden yolda `dot`, iki `scale` ve ters uzunluk karesi sırasını korur. `examples/behavior_adapter.rs` iki Vec3 girdisini ham f64 bitlerinden okur; `tests/behavior/java/MathOracle.java` aynı `Vec3.projectedOn` çağrısını oracle çıktısına bağlar.
 
 
 ## Client-parity doğrulaması
 
-`src/math.rs`, Java `Vec3.projectedOn(Vec3)` metodunu karşılar. Rust adaptörü sıfır uzunluk karesi kısa yolunu ve Java `dot → scale → scale` sırasını uygular; Java oracle doğrudan `Vec3.projectedOn` çağrısını kullanır.
+`crates/voxel-core/src/math.rs`, Java `Vec3.projectedOn(Vec3)` metodunu karşılar. Rust adaptörü sıfır uzunluk karesi kısa yolunu ve Java `dot → scale → scale` sırasını uygular; Java oracle doğrudan `Vec3.projectedOn` çağrısını kullanır.
 
 ## Doğrulama
 

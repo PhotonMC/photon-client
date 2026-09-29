@@ -48,7 +48,7 @@ olarak doğrulandı ve fark `null` kaldı.
 
 ## Rust doğrulaması
 
-`src/input.rs` içindeki `adjust_local_player_fluid_falling_movement`, Java
+`crates/voxel-world/src/input.rs` içindeki `adjust_local_player_fluid_falling_movement`, Java
 yardımcısının f64 işlem sırasını ve özel falling penceresini uygular.
 `ClientWorld::apply_local_player_fluid_falling_adjustment`, sonucu local
 player'ın sorgulanabilir motion state'ine yazar ve sprint flag'ini world

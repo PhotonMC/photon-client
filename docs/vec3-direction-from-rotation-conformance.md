@@ -23,12 +23,12 @@ Her girdi `family: "math"`, `operation: "vec3_direction_from_rotation"` ve `kind
 
 ## Rust karşılığı
 
-Rust karşılığı `src/math.rs` içindeki iki `Vec3` yordamında açı dönüşümünü, Java f32 ara işlemlerini, Mth lookup yolunu ve f32 ürünlerini korur. `examples/behavior_adapter.rs` iki JSON biçimini üretim API'sine taşır; `tests/behavior/java/MathOracle.java` Java overload'larını doğrudan çağırır.
+Rust karşılığı `crates/voxel-core/src/math.rs` içindeki iki `Vec3` yordamında açı dönüşümünü, Java f32 ara işlemlerini, Mth lookup yolunu ve f32 ürünlerini korur. `examples/behavior_adapter.rs` iki JSON biçimini üretim API'sine taşır; `tests/behavior/java/MathOracle.java` Java overload'larını doğrudan çağırır.
 
 
 ## Client-parity doğrulaması
 
-`src/math.rs`, Java `Vec3.directionFromRotation(float, float)` ve `directionFromRotation(Vec2)` overload'larını aynı f32 derece→radyan, Java `Mth` lookup ve f32 ürün sınırlarıyla karşılar. Java oracle, iki overload'u doğrudan çağırır; beklenen Vec3 snapshot'ı Rust çıktısından türetilmez.
+`crates/voxel-core/src/math.rs`, Java `Vec3.directionFromRotation(float, float)` ve `directionFromRotation(Vec2)` overload'larını aynı f32 derece→radyan, Java `Mth` lookup ve f32 ürün sınırlarıyla karşılar. Java oracle, iki overload'u doğrudan çağırır; beklenen Vec3 snapshot'ı Rust çıktısından türetilmez.
 
 ## Doğrulama
 

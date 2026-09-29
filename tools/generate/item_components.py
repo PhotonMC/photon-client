@@ -1,4 +1,4 @@
-"""Generate src/item_components_table.rs from a block-family capture.
+"""Generate crates/voxel-data/src/item/components.rs from a block-family capture.
 
     python3 tools/generate/item_components.py .data/captures/behavior/<id>/outputs.jsonl
 
@@ -33,7 +33,7 @@ def main(path):
         out.append(f'    "{item["wire"]}", // {item["name"]}')
     out.append("];")
     out.append("")
-    open("src/item_components_table.rs", "w", encoding="utf-8").write("\n".join(out))
+    open("crates/voxel-data/src/item/components.rs", "w", encoding="utf-8").write("\n".join(out))
 
 
 if __name__ == "__main__":

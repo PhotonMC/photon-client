@@ -23,12 +23,12 @@ Her girdi `family: "math"`, `operation: "vec3_rotate"`, `axis: "x"|"y"|"z"`, f64
 
 ## Rust karşılığı
 
-Rust karşılığı, Java `Mth` tablosunun üretim ve indexleme sözleşmesini `src/math.rs` içinde koruyup `Vec3` dönüş yöntemlerini aynı f32/f64 sınırında uygular. `examples/behavior_adapter.rs` sonucu taşır; `tests/behavior/java/MathOracle.java` Java `xRot`/`yRot`/`zRot` çağrısını yapar.
+Rust karşılığı, Java `Mth` tablosunun üretim ve indexleme sözleşmesini `crates/voxel-core/src/math.rs` içinde koruyup `Vec3` dönüş yöntemlerini aynı f32/f64 sınırında uygular. `examples/behavior_adapter.rs` sonucu taşır; `tests/behavior/java/MathOracle.java` Java `xRot`/`yRot`/`zRot` çağrısını yapar.
 
 
 ## Client-parity doğrulaması
 
-`src/math.rs`, Java `Vec3.xRot`, `yRot` ve `zRot` davranışını aynı f32 radyan ve Java `Mth` lookup sözleşmesiyle karşılar. Java oracle, her eksen için özgün yöntemi doğrudan çağırır; beklenen Vec3 snapshot'ı Rust çıktısından türetilmez.
+`crates/voxel-core/src/math.rs`, Java `Vec3.xRot`, `yRot` ve `zRot` davranışını aynı f32 radyan ve Java `Mth` lookup sözleşmesiyle karşılar. Java oracle, her eksen için özgün yöntemi doğrudan çağırır; beklenen Vec3 snapshot'ı Rust çıktısından türetilmez.
 
 ## Doğrulama
 

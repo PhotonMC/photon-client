@@ -66,7 +66,7 @@ olarak doğrulandı ve fark `null` kaldı.
 
 ## Rust doğrulaması
 
-`src/input.rs` içindeki `apply_local_player_input`, P10.a helper'ını kontrollü
+`crates/voxel-world/src/input.rs` içindeki `apply_local_player_input`, P10.a helper'ını kontrollü
 dalda yeniden kullanır ve üst sınıf fallback'ini ayrı uygular. `ClientWorld`
 üzerindeki `apply_local_player_input` çağrısı sonucu
 `ClientPlayerState` içindeki impuls, jump ve bob alanlarına yazar; state

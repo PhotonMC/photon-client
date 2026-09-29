@@ -1,4 +1,4 @@
-"""Generate src/item_table.rs from a block-family capture.
+"""Generate crates/voxel-data/src/item/registry.rs from a block-family capture.
 
     python3 tools/generate/item_tools.py .data/captures/behavior/<id>/outputs.jsonl
 
@@ -97,7 +97,7 @@ def main(path):
         tool = "None" if number is None else f"Some(&TOOLS[{number}])"
         out.append(f'    ItemDefinition {{ name: "{name}", tool: {tool} }},')
     out += ["];", ""]
-    with open("src/item_table.rs", "w", encoding="utf-8") as handle:
+    with open("crates/voxel-data/src/item/registry.rs", "w", encoding="utf-8") as handle:
         handle.write("\n".join(out))
     print(f"items={len(items)} tools={len(tools)}")
 

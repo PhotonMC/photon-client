@@ -54,7 +54,7 @@ olarak doğrulandı ve fark `null` kaldı.
 
 ## Rust doğrulaması
 
-`src/input.rs` içindeki `local_player_update_fall_flying_movement`, Java'nın
+`crates/voxel-world/src/input.rs` içindeki `local_player_update_fall_flying_movement`, Java'nın
 lift, düşüş/nose-up dönüşümleri, look hizalaması ve drag sırasını uygular.
 `ClientWorld` local player motion state'inden delta'yı alıp sonucu tekrar
 sorgulanabilir motion state'ine yazar; behavior adapter aynı production

@@ -30,12 +30,12 @@ Girdiler `family: "math"` ve `operation: "chunkpos_constant"` alanlarını kulla
 
 ## Rust karşılığı
 
-`src/binary.rs` içindeki `ChunkPos::ZERO`, `INVALID_CHUNK_POS`, `REGION_SIZE` ve `REGION_MAX_INDEX` associated constant'ları Java değerlerini taşır. `examples/behavior_adapter.rs` sabiti doğrudan Rust API'sinden sorgular; `tests/behavior/java/MathOracle.java` aynı adı Java sabitine bağlar.
+`crates/voxel-core/src/binary.rs` içindeki `ChunkPos::ZERO`, `INVALID_CHUNK_POS`, `REGION_SIZE` ve `REGION_MAX_INDEX` associated constant'ları Java değerlerini taşır. `examples/behavior_adapter.rs` sabiti doğrudan Rust API'sinden sorgular; `tests/behavior/java/MathOracle.java` aynı adı Java sabitine bağlar.
 
 
 ## Client-parity doğrulaması
 
-`src/binary.rs`, Java `ChunkPos` public static `ZERO`, `INVALID_CHUNK_POS`, `REGION_SIZE` ve `REGION_MAX_INDEX` sabitlerini associated constant olarak karşılar. Rust adapter sabitleri Java ile aynı JSON şekline taşır.
+`crates/voxel-core/src/binary.rs`, Java `ChunkPos` public static `ZERO`, `INVALID_CHUNK_POS`, `REGION_SIZE` ve `REGION_MAX_INDEX` sabitlerini associated constant olarak karşılar. Rust adapter sabitleri Java ile aynı JSON şekline taşır.
 
 ## Doğrulama
 

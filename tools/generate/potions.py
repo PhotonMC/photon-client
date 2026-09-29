@@ -1,4 +1,4 @@
-"""Generate src/potion_table.rs from a block-family capture.
+"""Generate crates/voxel-data/src/item/potions.rs from a block-family capture.
 
     python3 tools/generate/potions.py .data/captures/behavior/<id>/outputs.jsonl
 
@@ -88,7 +88,7 @@ def main(path):
         )
     out.append("];")
     out.append("")
-    open("src/potion_table.rs", "w", encoding="utf-8").write("\n".join(out))
+    open("crates/voxel-data/src/item/potions.rs", "w", encoding="utf-8").write("\n".join(out))
 
 
 if __name__ == "__main__":

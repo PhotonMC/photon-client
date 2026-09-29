@@ -48,7 +48,7 @@ Bu sözleşme legacy kaynağın `setSeed` ve Gaussian cache reset yoluyla sını
 
 ## Client-parity doğrulaması
 
-`src/random.rs`, Java legacy random kaynağının `setSeed` ile LCG durumunu yeniden kurmasını ve Gaussian önbelleğini temizlemesini uygular. `examples/behavior_adapter.rs` aynı üretim API'sini JSONL senaryolarına bağlar; beklenen değer üretmez.
+`crates/voxel-core/src/random.rs`, Java legacy random kaynağının `setSeed` ile LCG durumunu yeniden kurmasını ve Gaussian önbelleğini temizlemesini uygular. `examples/behavior_adapter.rs` aynı üretim API'sini JSONL senaryolarına bağlar; beklenen değer üretmez.
 
 ## Referans ve davranış
 

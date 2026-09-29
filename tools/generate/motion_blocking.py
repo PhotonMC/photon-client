@@ -1,4 +1,4 @@
-"""Generate src/world/motion_blocking_table.rs from a block-family capture.
+"""Generate crates/voxel-data/src/block/motion_blocking.rs from a block-family capture.
 
     python3 tools/generate/motion_blocking.py .data/captures/behavior/<id>/outputs.jsonl
 
@@ -34,7 +34,7 @@ def main(path):
         chunk = data["words"][start:start + 4]
         out.append("    " + " ".join(f"0x{word}," for word in chunk))
     out += ["];", ""]
-    with open("src/world/motion_blocking_table.rs", "w", encoding="utf-8") as handle:
+    with open("crates/voxel-data/src/block/motion_blocking.rs", "w", encoding="utf-8") as handle:
         handle.write("\n".join(out))
     print(f"states={data['state_count']} words={len(data['words'])}")
 

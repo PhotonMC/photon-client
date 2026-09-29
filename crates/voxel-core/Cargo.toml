@@ -1,0 +1,12 @@
+[package]
+name = "voxel-core"
+description = "Numeric, geometric and wire primitives ported from the reference."
+version.workspace = true
+edition.workspace = true
+publish = false
+include = ["/Cargo.toml", "/src/**"]
+
+[dependencies]
+
+[lints]
+workspace = true

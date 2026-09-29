@@ -17,7 +17,7 @@ Java Edition 26.2 / protokol 776 / Java 25 referansı kullanılır. `client/KeyM
 - `matches(KeyEvent)`, bilinmeyen key olayında scancode türünü; normal key olayında keysym türünü arar. `matchesMouse` yalnızca mouse türünü kabul eder. `same`, key türü ve değer eşitliğini kullanır.
 - `isDefault`, `isUnbound` ve `saveString` geçerli key ile default/unknown durumunu ve serialized key adını gözlemlenebilir kılar.
 
-Rust karşılığı `src/key_mapping.rs` içindeki `InputKey`, `KeyMapping` ve `KeyMappingRegistry` tipleridir. Registry'deki key tablosu `setKey` sonrasında bilerek yeniden kurulmaz.
+Rust karşılığı `crates/voxel-game/src/key_mapping.rs` içindeki `InputKey`, `KeyMapping` ve `KeyMappingRegistry` tipleridir. Registry'deki key tablosu `setKey` sonrasında bilerek yeniden kurulmaz.
 
 ## JSONL sınırı
 
@@ -26,7 +26,7 @@ Rust karşılığı `src/key_mapping.rs` içindeki `InputKey`, `KeyMapping` ve `
 
 ## Client-parity doğrulaması
 
-`src/key_mapping.rs`, Java Edition 26.2 / protokol 776 / Java 25 `KeyMapping` ve `InputConstants.Key` davranışının pencere bağımsız alt kümesini uygular. Oracle, gerçek Java sınıflarını kullanarak ortak binding fan-out’unu, click kuyruğunu, release temizliğini, key türlerini, event eşleşmesini ve `setKey` sonrası eski statik tablo kaydını karşılaştırır.
+`crates/voxel-game/src/key_mapping.rs`, Java Edition 26.2 / protokol 776 / Java 25 `KeyMapping` ve `InputConstants.Key` davranışının pencere bağımsız alt kümesini uygular. Oracle, gerçek Java sınıflarını kullanarak ortak binding fan-out’unu, click kuyruğunu, release temizliğini, key türlerini, event eşleşmesini ve `setKey` sonrası eski statik tablo kaydını karşılaştırır.
 
 Math referansı `578f8723ad1c7bc644cfc9bda4f953b98843ea1acde7a16ca037b5f26ee04ceb`; tam corpus referansı `c114281f9e92e9c6591468d78714c1e02163f2a1bd9ccd8b79fbbc8887b149cc` olarak kaydedildi. Debug karşılaştırması `compare-avq6g26v`, release karşılaştırması `compare-b0hxng2i`, Java tekrar doğrulaması `verify-eg54g67s` raporlarında fark üretmedi.
 

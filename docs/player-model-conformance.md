@@ -23,7 +23,7 @@ Poz her seferinde ağdaki başlangıç konumlarından kuruluyor:
 Boş eller, binek yok, elytra yok.
 
 Parçalar referansın matematik kütüphanesinin sırasıyla ve yuvarlamasıyla
-dönüştürülüyor (`src/render/joml.rs`): çarpma-toplamalar tek tek yuvarlanıyor,
+dönüştürülüyor (`crates/voxel-render/src/joml.rs`): çarpma-toplamalar tek tek yuvarlanıyor,
 matrisin özellik bayrakları hangi yolun seçildiğini belirliyor.
 
 ## Senaryolar
@@ -98,7 +98,7 @@ Elin kendi projeksiyonu var (görüş 70°, suda daralıyor; yakın 0,05, uzak
 100) ve derinlik temizlenip en son çiziliyor. `xBob/yBob` movement
 ailesinde her tick bit bit eşleşiyor.
 
-**Vuruş** (`src/attack.rs`) referansın tik döngüsündeki sırayı izliyor:
+**Vuruş** (`crates/voxel-game/src/attack.rs`) referansın tik döngüsündeki sırayı izliyor:
 
 1. Sol tuşa her basış bir tık sayılıyor; tuşun basılı hâli ayrıca tutuluyor.
 2. Her tik oyuncu hareket etmeden önce tıklar harcanıyor. Iska beklemesi
@@ -117,7 +117,7 @@ Bu yüzden tıklayıp bırakmak her tik bir vuruş yapıyor (aynı tikteki
 ikinci tık boşa gidiyor), basılı tutmak ise on tik bekliyor.
 
 Çizgi şekilleri referanstan tablo olarak alınıyor
-(`src/world/block_outline_table.rs`, `tools/generate/block_outline.py`); block
+(`crates/voxel-data/src/block/outline.rs`, `tools/generate/block_outline.py`); block
 ailesi her koşuda tabloyu karşılaştırıyor. Rastgele kaydırmalı bloklarda
 (çiçekler, bambu, sarkıt) şekil konumdaki kaydırmayla taşınıyor; oracle bunun
 her konumda referansın şeklini verdiğini doğruluyor. Çimenin şekli kaymıyor,

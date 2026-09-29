@@ -17,7 +17,7 @@ Kapsam dışı kalanlar: `Mth.getSeed`, `RandomSource` dizisinin kendisi, UUID b
 
 ## Client-parity doğrulaması
 
-`src/math.rs` içindeki `mth_create_insecure_uuid`, Java `Mth.createInsecureUUID(RandomSource)` yolunu JSONL adapter'a bağlar. İki `nextLong` çekişi ve version/variant maskeleri Java oracle çıktısının `most_hex`/`least_hex` yarılarıyla karşılaştırılır.
+`crates/voxel-core/src/math.rs` içindeki `mth_create_insecure_uuid`, Java `Mth.createInsecureUUID(RandomSource)` yolunu JSONL adapter'a bağlar. İki `nextLong` çekişi ve version/variant maskeleri Java oracle çıktısının `most_hex`/`least_hex` yarılarıyla karşılaştırılır.
 
 ## Doğrulama
 

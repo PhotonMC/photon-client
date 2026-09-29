@@ -26,12 +26,12 @@ Bu sözleşme sonlu ve pozitif Cursor3D boyutlarına sahip aralıkları ölçer.
 
 ## Rust karşılığı
 
-`src/binary.rs` içindeki `SectionPos::between_closed`, `cube` ve `around_chunk`, Java'nın x-fastest/y-next/z-next sırasını ve merkez uçlarının i32 wrapping aritmetiğini üretir. `examples/behavior_adapter.rs` üç yolu JSONL operation'ına bağlar; `tests/behavior/java/MathOracle.java` Java stream'lerini karşılaştırma oracle'ı olarak tüketir.
+`crates/voxel-core/src/binary.rs` içindeki `SectionPos::between_closed`, `cube` ve `around_chunk`, Java'nın x-fastest/y-next/z-next sırasını ve merkez uçlarının i32 wrapping aritmetiğini üretir. `examples/behavior_adapter.rs` üç yolu JSONL operation'ına bağlar; `tests/behavior/java/MathOracle.java` Java stream'lerini karşılaştırma oracle'ı olarak tüketir.
 
 
 ## Client-parity doğrulaması
 
-`src/binary.rs`, SectionPos `betweenClosedStream`, `cube` ve `aroundChunk` traversal'larını Java ile aynı inclusive x/y/z sırasına ve packed sonuçlara bağlar.
+`crates/voxel-core/src/binary.rs`, SectionPos `betweenClosedStream`, `cube` ve `aroundChunk` traversal'larını Java ile aynı inclusive x/y/z sırasına ve packed sonuçlara bağlar.
 
 ## Doğrulama
 

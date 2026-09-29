@@ -1,4 +1,4 @@
-"""Generate src/world/fluid_flow_table.rs from a block-family capture.
+"""Generate crates/voxel-data/src/block/fluid_flow.rs from a block-family capture.
 
     python3 tools/generate/fluid_flow.py .data/captures/behavior/<id>/outputs.jsonl
 
@@ -36,7 +36,7 @@ def main(path):
         chunk = runs[start:start + 8]
         out.append("    " + " ".join(f"({first}, {value})," for first, value in chunk))
     out += ["];", ""]
-    with open("src/world/fluid_flow_table.rs", "w", encoding="utf-8") as handle:
+    with open("crates/voxel-data/src/block/fluid_flow.rs", "w", encoding="utf-8") as handle:
         handle.write("\n".join(out))
     print(f"states={data['state_count']} runs={len(runs)}")
 

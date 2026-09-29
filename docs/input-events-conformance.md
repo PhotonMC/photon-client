@@ -20,12 +20,12 @@ Java Edition 26.2 / protokol 776 / Java 25 referansı kullanılır. `client/inpu
 
 İstek `family: "math"`, `operation: "input_with_modifiers"`, keyboard key/scancode, mouse button, modifier maskesi ve f64 bitleriyle verilen x/y koordinatlarını taşır. Sonuç her üç Java record'u için ortak helper alanlarını; ayrıca record'a özgü key, scancode, button ve koordinat bitlerini taşır.
 
-Rust karşılığı `src/input_event.rs` içindeki `InputWithModifiers`, `KeyEvent`, `MouseButtonInfo` ve `MouseButtonEvent` tipleridir. `InputQuirks` Linux oracle ortamının sabitlerini taşır; adapter sonucu Java oracle şemasıyla karşılaştırır.
+Rust karşılığı `crates/voxel-game/src/input_event.rs` içindeki `InputWithModifiers`, `KeyEvent`, `MouseButtonInfo` ve `MouseButtonEvent` tipleridir. `InputQuirks` Linux oracle ortamının sabitlerini taşır; adapter sonucu Java oracle şemasıyla karşılaştırır.
 
 
 ## Client-parity doğrulaması
 
-`src/input_event.rs`, Java Edition 26.2 / protokol 776 / Java 25 kaynak davranışına göre ortak input sınıflandırmalarını, modifier yardımcılarını ve keyboard/mouse event kayıtlarını uygular. Java oracle aynı değerleri gerçek `InputWithModifiers` implementasyonları üzerinden çalıştırır; beklenen sonuç Rust çıktısından türetilmez.
+`crates/voxel-game/src/input_event.rs`, Java Edition 26.2 / protokol 776 / Java 25 kaynak davranışına göre ortak input sınıflandırmalarını, modifier yardımcılarını ve keyboard/mouse event kayıtlarını uygular. Java oracle aynı değerleri gerçek `InputWithModifiers` implementasyonları üzerinden çalıştırır; beklenen sonuç Rust çıktısından türetilmez.
 
 Math referansı `340fc7a9577da0828f076157cecb5cc720483ae3bec7b7728073e666b0618a6a`; tam corpus referansı `19a0ba84836a84126f94a904aff0246e026161812bc12ae9380ea8b65a00475f` olarak kaydedildi. Math debug/release karşılaştırmaları sırasıyla `compare-5g4a7a0d` ve `compare-98z0c0tm`; tam debug/release karşılaştırmaları `compare-521vx__1` ve `compare-rzccakse`; Java tekrar doğrulaması `verify-47v4glid` raporlarında fark üretmedi.
 

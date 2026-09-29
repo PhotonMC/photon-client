@@ -45,7 +45,7 @@ Rust debug ve release adaptörleri tek shape math referansında 361/361, güncel
 
 ## Client-parity doğrulaması
 
-`src/shape.rs`, Java `VoxelShape.collide` taramasını shape koordinat düzlemleri ve dolu hücreler üzerinden uygular. `examples/behavior_adapter.rs` tek shape, moving AABB, eksen ve distance girdilerini JSONL'e bağlar. Çoklu shape döngüsü ayrı [kanıtta](shape-collision-many-conformance.md) doğrulanır.
+`crates/voxel-core/src/shape.rs`, Java `VoxelShape.collide` taramasını shape koordinat düzlemleri ve dolu hücreler üzerinden uygular. `examples/behavior_adapter.rs` tek shape, moving AABB, eksen ve distance girdilerini JSONL'e bağlar. Çoklu shape döngüsü ayrı [kanıtta](shape-collision-many-conformance.md) doğrulanır.
 
 ## Doğrulama
 

@@ -15,7 +15,7 @@ Java Edition 26.2 / protokol 776 / Java 25 referansı kullanılır. `client/Opti
 - `fromSliderValue`, slider `1.0` veya üstündeyse Java f32 `0.99999` değerini kullanır; ardından map sonucunu `floor` ile i32'ye çevirir. NaN, sonsuzluk ve aralık dışı slider değerleri bu dönüşüm yolunun parçasıdır.
 - `UnitDouble`, `0.0 <= value <= 1.0` koşulunu doğrular. Slider'a çevirme ve slider'dan dönme değeri bit düzeyinde değiştirmez; NaN doğrulamadan geçmez.
 
-Rust karşılığı `src/option.rs` içindeki `IntRange` ve `UnitDouble` tipleridir. `IntRange::with_apply_value_immediately`, Java record alanını taşır; codec, xmap ve GUI/widget yöntemleri bu veri dilimine dahil değildir.
+Rust karşılığı `crates/voxel-game/src/option.rs` içindeki `IntRange` ve `UnitDouble` tipleridir. `IntRange::with_apply_value_immediately`, Java record alanını taşır; codec, xmap ve GUI/widget yöntemleri bu veri dilimine dahil değildir.
 
 ## JSONL sınırı
 
@@ -24,7 +24,7 @@ Rust karşılığı `src/option.rs` içindeki `IntRange` ve `UnitDouble` tipleri
 
 ## Client-parity doğrulaması
 
-`src/option.rs`, Java Edition 26.2 / protokol 776 / Java 25 kaynak davranışına göre `OptionInstance.IntRange` ve `OptionInstance.UnitDouble` value set yollarını uygular. Java oracle gerçek Java value set nesnelerini çalıştırır; beklenen sonuç Rust adapter'ından türetilmez.
+`crates/voxel-game/src/option.rs`, Java Edition 26.2 / protokol 776 / Java 25 kaynak davranışına göre `OptionInstance.IntRange` ve `OptionInstance.UnitDouble` value set yollarını uygular. Java oracle gerçek Java value set nesnelerini çalıştırır; beklenen sonuç Rust adapter'ından türetilmez.
 
 Math referansı `6228175f582cf55852ca8f04ace79e1f036490bfbfd8c7ad0dd2b4963509b616`; tam corpus referansı `cd902ce59c38f00873b5de59fc904974ee173bfc8a4027b93c5ecfb024f28eec` olarak kaydedildi. Math debug/release karşılaştırmaları `compare-8nolf8i2` ve `compare-utpldtzr`; tam debug/release karşılaştırmaları `compare-1nsattlt` ve `compare-0zjc7zb0` raporlarında fark üretmedi.
 

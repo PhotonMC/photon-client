@@ -1,6 +1,6 @@
 # P03.a — Rust VarInt/VarLong davranış dilimi — [client-parity] kapsam kaydı
 
-İlk Rust davranış dilimi `src/wire.rs` içinde. `examples/behavior_adapter.rs`, üretim kütüphanesini mevcut JSONL senaryolarına bağlar; kendi codec algoritmasını veya beklenen sonuçlarını içermez. `src/main.rs` hâlâ boş uygulama iskeletidir. Ağ bağlantısı, paket framing'i ve diğer P03 veri biçimleri henüz uygulanmadı.
+İlk Rust davranış dilimi `crates/voxel-core/src/wire.rs` içinde. `examples/behavior_adapter.rs`, üretim kütüphanesini mevcut JSONL senaryolarına bağlar; kendi codec algoritmasını veya beklenen sonuçlarını içermez. `src/main.rs` hâlâ boş uygulama iskeletidir. Ağ bağlantısı, paket framing'i ve diğer P03 veri biçimleri henüz uygulanmadı.
 
 ## Java sözleşmesi
 

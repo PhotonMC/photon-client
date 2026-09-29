@@ -2,7 +2,7 @@ use std::env;
 use std::net::SocketAddr;
 use std::time::Duration;
 
-use voxel_client::connection::connect_and_world_entity_teleport_delta_probe;
+use voxel_net::connection::connect_and_world_entity_teleport_delta_probe;
 
 const RELATIVE_DELTA_MASK: i32 = (1 << 5) | (1 << 6) | (1 << 7);
 const ROTATE_DELTA_FLAG: i32 = 1 << 8;

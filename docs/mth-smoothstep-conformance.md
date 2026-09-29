@@ -17,7 +17,7 @@ Kapsam dışı kalanlar: `catmullrom`, `sign`, diğer `Mth` interpolasyon yardı
 
 ## Client-parity doğrulaması
 
-`src/math.rs`, Java `Mth.smoothstep(double)` ve `Mth.smoothstepDerivative(double)` ifadelerini kaynak işlem sırasıyla taşır. `examples/behavior_adapter.rs` sonuçları raw f64 bit string'leri olarak dışarı verir.
+`crates/voxel-core/src/math.rs`, Java `Mth.smoothstep(double)` ve `Mth.smoothstepDerivative(double)` ifadelerini kaynak işlem sırasıyla taşır. `examples/behavior_adapter.rs` sonuçları raw f64 bit string'leri olarak dışarı verir.
 
 ## Doğrulama
 

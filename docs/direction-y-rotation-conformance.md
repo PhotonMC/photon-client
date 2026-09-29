@@ -37,7 +37,7 @@ Eksen parametreli rotation, Y rotasyon açısı encoder'ı, matrix rotation ve e
 
 ## Client-parity doğrulaması
 
-`src/direction.rs` içindeki `Direction::clockwise_y` ve `counter_clockwise_y`, Java eksensiz Y dönüş tablolarını ve dikey hata yollarını uygular. Rust adapter `direction_y_rotation` JSONL operation'ı ile iki sonucu dışarı verir; Java oracle iki enum metodunu doğrudan çağırır.
+`crates/voxel-core/src/direction.rs` içindeki `Direction::clockwise_y` ve `counter_clockwise_y`, Java eksensiz Y dönüş tablolarını ve dikey hata yollarını uygular. Rust adapter `direction_y_rotation` JSONL operation'ı ile iki sonucu dışarı verir; Java oracle iki enum metodunu doğrudan çağırır.
 
 Altı yön girdisi, yatay dönüşler ve dikey hata mesajlarıyla Java oracle çıktısına karşılaştırılır.
 

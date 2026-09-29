@@ -37,7 +37,7 @@ Plane yüz shuffle, genel liste shuffle overload'ları, stream tabanlı `toShuff
 
 ## Client-parity doğrulaması
 
-`src/direction.rs` içindeki `Direction::all_shuffled`, Java `Direction.allShuffled(RandomSource)` enum kopyası ve `Util.shuffledCopy` swap sırasını uygular. Rust adapter `direction_all_shuffle` JSONL operation'ı ile yüzleri ve sonraki random çekişini dışarı verir; Java oracle static metodu doğrudan çağırır.
+`crates/voxel-core/src/direction.rs` içindeki `Direction::all_shuffled`, Java `Direction.allShuffled(RandomSource)` enum kopyası ve `Util.shuffledCopy` swap sırasını uygular. Rust adapter `direction_all_shuffle` JSONL operation'ı ile yüzleri ve sonraki random çekişini dışarı verir; Java oracle static metodu doğrudan çağırır.
 
 Senaryolar altı yön enum sırasını, signed seed sınırlarını, shuffle sonucunu ve kaynak tüketimini Java oracle çıktısıyla karşılaştırır.
 

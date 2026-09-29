@@ -5,32 +5,65 @@ use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::io::{self, BufRead, Write};
 use std::rc::Rc;
-use voxel_client::aabb::{Aabb, AabbBuilder, AabbBuilderError, BlockHitResult, BoundingBox};
-use voxel_client::axis_cycle::AxisCycle;
-use voxel_client::binary::{
+use voxel_core::aabb::{Aabb, AabbBuilder, AabbBuilderError, BlockHitResult, BoundingBox};
+use voxel_core::axis_cycle::AxisCycle;
+use voxel_core::binary::{
     self, BitSet, BlockPos, BlockRotation, ChunkPos, MutableBlockPos, SectionPos, Uuid,
 };
-use voxel_client::common::{
+use voxel_core::direction::{
+    Axis, AxisDirection, Direction, DirectionYRotError, DirectionYRotationError, Plane,
+};
+use voxel_core::identifier::Identifier;
+use voxel_core::math::{self, Quaternionf, Vec2, Vec3, Vec3f};
+use voxel_core::nbt::{self, Field, FieldValue};
+use voxel_core::random::RandomSource;
+use voxel_core::shape::{BooleanOp, ShapeRotation, Shapes, VoxelShape};
+use voxel_core::smooth::SmoothDouble;
+use voxel_core::tags::{ClientboundUpdateTagsPacket, RegistryTags, TagEntry};
+use voxel_core::timer::Timer;
+use voxel_core::utf8;
+use voxel_core::wire::{self, ReadError};
+use voxel_game::input_event::{
+    CharacterEvent, InputWithModifiers, KeyEvent as InputKeyEvent, MouseButtonEvent,
+    MouseButtonInfo, PreeditEvent,
+};
+use voxel_game::key_mapping::{InputKey, KeyMapping, KeyMappingRegistry};
+use voxel_game::option::{
+    AltEnum, ClampingLazyMaxIntRange, CycleableEnum, IntRange, LazyEnum, SliderableEnum, UnitDouble,
+};
+use voxel_game::scroll::ScrollWheelHandler;
+use voxel_net::common::{
     ClientboundKeepAlivePacket, ClientboundPingPacket, ServerboundKeepAlivePacket,
     ServerboundPongPacket,
 };
-use voxel_client::configuration::{
+use voxel_net::configuration::{
     ChatVisibility, ClientInformation, ClientboundCodeOfConductPacket,
     ClientboundFinishConfigurationPacket, ClientboundResetChatPacket,
     ClientboundUpdateEnabledFeaturesPacket, MainHand, ParticleStatus,
     ServerboundAcceptCodeOfConductPacket, ServerboundClientInformationPacket,
     ServerboundFinishConfigurationPacket,
 };
-use voxel_client::connection::{
+use voxel_net::connection::{
     decode_chunk_section_data, parse_game_event_packet, parse_player_abilities_packet,
 };
-use voxel_client::direction::{
-    Axis, AxisDirection, Direction, DirectionYRotError, DirectionYRotationError, Plane,
+use voxel_net::frame::{self, FrameError, Varint21FrameDecoder};
+use voxel_net::handshake::{self, ClientIntent, ClientIntentionPacket};
+use voxel_net::login::{
+    ClientboundHelloPacket, ClientboundLoginCompressionPacket, ClientboundLoginFinishedPacket,
+    GameProfile, ProfileProperty, ServerboundHelloPacket, ServerboundLoginAcknowledgedPacket,
 };
-use voxel_client::frame::{self, FrameError, Varint21FrameDecoder};
-use voxel_client::handshake::{self, ClientIntent, ClientIntentionPacket};
-use voxel_client::identifier::Identifier;
-use voxel_client::input::{
+use voxel_net::protocol::{ConnectionProtocol, PacketFlow};
+use voxel_net::registry_data::{ClientboundRegistryDataPacket, PackedRegistryEntry};
+use voxel_net::resources::{
+    self, AssetIndex, AssetResolution, KnownPack, KnownPackCodecError, KnownPackListCodecError,
+    PackCompatibility, PackFormat, ReloadableResourceManager, ResourcePack, ResourcePackStack,
+    VanillaPackResources,
+};
+use voxel_net::status::{
+    ClientboundPongResponsePacket, ServerboundPingRequestPacket, ServerboundStatusRequestPacket,
+};
+use voxel_render::window;
+use voxel_world::input::{
     Input, KeyboardInput, LocalPlayerClimbableMovementInput, LocalPlayerFluidFallingInput,
     LocalPlayerFrictionInfluencedSpeedInput, LocalPlayerHandleRelativeFrictionInput,
     LocalPlayerInputModifiers, LocalPlayerInputState, LocalPlayerModifiedFrictionInput,
@@ -45,41 +78,7 @@ use voxel_client::input::{
     local_player_travel_in_air, local_player_travel_in_lava, local_player_travel_in_water,
     local_player_update_fall_flying_movement, modify_local_player_input,
 };
-use voxel_client::input_event::{
-    CharacterEvent, InputWithModifiers, KeyEvent as InputKeyEvent, MouseButtonEvent,
-    MouseButtonInfo, PreeditEvent,
-};
-use voxel_client::key_mapping::{InputKey, KeyMapping, KeyMappingRegistry};
-use voxel_client::login::{
-    ClientboundHelloPacket, ClientboundLoginCompressionPacket, ClientboundLoginFinishedPacket,
-    GameProfile, ProfileProperty, ServerboundHelloPacket, ServerboundLoginAcknowledgedPacket,
-};
-use voxel_client::math::{self, Quaternionf, Vec2, Vec3, Vec3f};
-use voxel_client::nbt::{self, Field, FieldValue};
-use voxel_client::option::{
-    AltEnum, ClampingLazyMaxIntRange, CycleableEnum, IntRange, LazyEnum, SliderableEnum, UnitDouble,
-};
-use voxel_client::protocol::{ConnectionProtocol, PacketFlow};
-use voxel_client::random::RandomSource;
-use voxel_client::registry_data::{ClientboundRegistryDataPacket, PackedRegistryEntry};
-use voxel_client::render;
-use voxel_client::resources::{
-    self, AssetIndex, AssetResolution, KnownPack, KnownPackCodecError, KnownPackListCodecError,
-    PackCompatibility, PackFormat, ReloadableResourceManager, ResourcePack, ResourcePackStack,
-    VanillaPackResources,
-};
-use voxel_client::scroll::ScrollWheelHandler;
-use voxel_client::shape::{BooleanOp, ShapeRotation, Shapes, VoxelShape};
-use voxel_client::smooth::SmoothDouble;
-use voxel_client::status::{
-    ClientboundPongResponsePacket, ServerboundPingRequestPacket, ServerboundStatusRequestPacket,
-};
-use voxel_client::tags::{ClientboundUpdateTagsPacket, RegistryTags, TagEntry};
-use voxel_client::timer::Timer;
-use voxel_client::utf8;
-use voxel_client::window;
-use voxel_client::wire::{self, ReadError};
-use voxel_client::world::{
+use voxel_world::{
     BoatInput, ClientAttributeModifierState, ClientAttributeState, ClientChunkCacheSnapshot,
     ClientEntity, ClientEntityCollisionCandidate, ClientEntityDimensions, ClientEntityPose,
     ClientPlayerAbilities, ClientPlayerGameMode, ClientPlayerPoseInput, ClientWorld,
@@ -400,11 +399,11 @@ fn handshake_intention_result(request: &Value) -> Result<Value, String> {
     }
 }
 
-fn login_read_error(error: voxel_client::login::ReadError) -> &'static str {
+fn login_read_error(error: voxel_net::login::ReadError) -> &'static str {
     match error {
-        voxel_client::login::ReadError::BufferUnderflow => "buffer_underflow",
-        voxel_client::login::ReadError::DecoderError => "decoder_error",
-        voxel_client::login::ReadError::TooBig => "too_big",
+        voxel_net::login::ReadError::BufferUnderflow => "buffer_underflow",
+        voxel_net::login::ReadError::DecoderError => "decoder_error",
+        voxel_net::login::ReadError::TooBig => "too_big",
     }
 }
 
@@ -420,7 +419,7 @@ fn login_hello_result(request: &Value) -> Result<Value, String> {
     match string(request, "direction")? {
         "write" => {
             let name = utf16_hex_units(string(request, "name_utf16_hex")?, "name_utf16_hex")?;
-            let profile_id = voxel_client::binary::Uuid::new(
+            let profile_id = voxel_core::binary::Uuid::new(
                 uuid_hex_field(request, "profile_most_hex")?,
                 uuid_hex_field(request, "profile_least_hex")?,
             );
@@ -429,7 +428,7 @@ fn login_hello_result(request: &Value) -> Result<Value, String> {
             let mut buffer = prefix.clone();
             let mut result = match packet.encode(&mut buffer) {
                 Ok(()) => json!({"outcome": "value"}),
-                Err(voxel_client::login::WriteError::EncoderError) => {
+                Err(voxel_net::login::WriteError::EncoderError) => {
                     json!({"outcome": "error", "error": "encoder_error"})
                 }
             };
@@ -526,7 +525,7 @@ fn login_server_hello_result(request: &Value) -> Result<Value, String> {
             let mut buffer = prefix.clone();
             let mut result = match packet.encode(&mut buffer) {
                 Ok(()) => json!({"outcome": "value"}),
-                Err(voxel_client::login::WriteError::EncoderError) => {
+                Err(voxel_net::login::WriteError::EncoderError) => {
                     json!({"outcome": "error", "error": "encoder_error"})
                 }
             };
@@ -591,7 +590,7 @@ fn login_acknowledged_result(request: &Value) -> Result<Value, String> {
 fn login_finished_result(request: &Value) -> Result<Value, String> {
     match string(request, "direction")? {
         "write" => {
-            let profile_id = voxel_client::binary::Uuid::new(
+            let profile_id = voxel_core::binary::Uuid::new(
                 uuid_hex_field(request, "profile_most_hex")?,
                 uuid_hex_field(request, "profile_least_hex")?,
             );
@@ -619,7 +618,7 @@ fn login_finished_result(request: &Value) -> Result<Value, String> {
                     Ok(ProfileProperty::new(name, value, signature))
                 })
                 .collect::<Result<Vec<_>, String>>()?;
-            let session_id = voxel_client::binary::Uuid::new(
+            let session_id = voxel_core::binary::Uuid::new(
                 uuid_hex_field(request, "session_most_hex")?,
                 uuid_hex_field(request, "session_least_hex")?,
             );
@@ -631,7 +630,7 @@ fn login_finished_result(request: &Value) -> Result<Value, String> {
             let mut buffer = prefix.clone();
             let mut result = match packet.encode(&mut buffer) {
                 Ok(()) => json!({"outcome": "value"}),
-                Err(voxel_client::login::WriteError::EncoderError) => {
+                Err(voxel_net::login::WriteError::EncoderError) => {
                     json!({"outcome": "error", "error": "encoder_error"})
                 }
             };
@@ -743,7 +742,7 @@ fn configuration_misc_result(request: &Value) -> Result<Value, String> {
                     )?;
                     match ClientboundCodeOfConductPacket::new(code_of_conduct).encode(&mut buffer) {
                         Ok(()) => json!({"outcome": "value"}),
-                        Err(voxel_client::configuration::WriteError::EncoderError) => {
+                        Err(voxel_net::configuration::WriteError::EncoderError) => {
                             json!({"outcome": "error", "error": "encoder_error"})
                         }
                     }
@@ -926,7 +925,7 @@ fn client_information_result(request: &Value) -> Result<Value, String> {
             let mut buffer = prefix.clone();
             let mut result = match packet.encode(&mut buffer) {
                 Ok(()) => json!({"outcome": "value"}),
-                Err(voxel_client::configuration::WriteError::EncoderError) => {
+                Err(voxel_net::configuration::WriteError::EncoderError) => {
                     json!({"outcome": "error", "error": "encoder_error"})
                 }
             };
@@ -968,11 +967,11 @@ fn client_information_result(request: &Value) -> Result<Value, String> {
     }
 }
 
-fn common_read_error(error: voxel_client::common::ReadError) -> &'static str {
+fn common_read_error(error: voxel_net::common::ReadError) -> &'static str {
     match error {
-        voxel_client::common::ReadError::BufferUnderflow => "buffer_underflow",
-        voxel_client::common::ReadError::DecoderError => "decoder_error",
-        voxel_client::common::ReadError::TooBig => "too_big",
+        voxel_net::common::ReadError::BufferUnderflow => "buffer_underflow",
+        voxel_net::common::ReadError::DecoderError => "decoder_error",
+        voxel_net::common::ReadError::TooBig => "too_big",
     }
 }
 
@@ -1054,7 +1053,7 @@ fn enabled_features_result(request: &Value) -> Result<Value, String> {
             let mut result =
                 match ClientboundUpdateEnabledFeaturesPacket::new(features).encode(&mut buffer) {
                     Ok(()) => json!({"outcome": "value"}),
-                    Err(voxel_client::configuration::WriteError::EncoderError) => {
+                    Err(voxel_net::configuration::WriteError::EncoderError) => {
                         json!({"outcome": "error", "error": "encoder_error"})
                     }
                 };
@@ -1135,7 +1134,7 @@ fn update_tags_result(request: &Value) -> Result<Value, String> {
             let mut result = match ClientboundUpdateTagsPacket::new(registries).encode(&mut buffer)
             {
                 Ok(()) => json!({"outcome": "value"}),
-                Err(voxel_client::tags::WriteError::EncoderError) => {
+                Err(voxel_core::tags::WriteError::EncoderError) => {
                     json!({"outcome": "error", "error": "encoder_error"})
                 }
             };
@@ -1170,12 +1169,12 @@ fn update_tags_result(request: &Value) -> Result<Value, String> {
     }
 }
 
-fn registry_data_read_error(error: voxel_client::registry_data::ReadError) -> &'static str {
+fn registry_data_read_error(error: voxel_net::registry_data::ReadError) -> &'static str {
     match error {
-        voxel_client::registry_data::ReadError::BufferUnderflow => "buffer_underflow",
-        voxel_client::registry_data::ReadError::DecoderError => "decoder_error",
-        voxel_client::registry_data::ReadError::EncoderError => "encoder_error",
-        voxel_client::registry_data::ReadError::TooBig => "too_big",
+        voxel_net::registry_data::ReadError::BufferUnderflow => "buffer_underflow",
+        voxel_net::registry_data::ReadError::DecoderError => "decoder_error",
+        voxel_net::registry_data::ReadError::EncoderError => "encoder_error",
+        voxel_net::registry_data::ReadError::TooBig => "too_big",
     }
 }
 
@@ -1207,7 +1206,7 @@ fn registry_data_result(request: &Value) -> Result<Value, String> {
             let mut result =
                 match ClientboundRegistryDataPacket::new(registry, entries).encode(&mut buffer) {
                     Ok(()) => json!({"outcome": "value"}),
-                    Err(voxel_client::registry_data::WriteError::EncoderError) => {
+                    Err(voxel_net::registry_data::WriteError::EncoderError) => {
                         json!({"outcome": "error", "error": "encoder_error"})
                     }
                 };
@@ -1271,11 +1270,11 @@ fn status_request_result(request: &Value) -> Result<Value, String> {
     }
 }
 
-fn ping_read_error(error: voxel_client::status::ReadError) -> &'static str {
+fn ping_read_error(error: voxel_net::status::ReadError) -> &'static str {
     match error {
-        voxel_client::status::ReadError::BufferUnderflow => "buffer_underflow",
-        voxel_client::status::ReadError::DecoderError => "decoder_error",
-        voxel_client::status::ReadError::TooBig => "too_big",
+        voxel_net::status::ReadError::BufferUnderflow => "buffer_underflow",
+        voxel_net::status::ReadError::DecoderError => "decoder_error",
+        voxel_net::status::ReadError::TooBig => "too_big",
     }
 }
 
@@ -4576,7 +4575,7 @@ fn shape_result(request: &Value) -> Result<Value, String> {
                         .get("previous")
                         .and_then(Value::as_object)
                         .ok_or("previous must be an object")?;
-                    let previous = voxel_client::world::ClientEntityMovementState {
+                    let previous = voxel_world::ClientEntityMovementState {
                         movement: Vec3::ZERO,
                         x_collision: false,
                         y_collision: false,
@@ -6673,11 +6672,11 @@ fn client_world_light_result(request: &Value) -> Result<Value, String> {
                 };
                 event["stored"] = json!(
                     stored(
-                        voxel_client::world::light::LightLayer::Sky,
+                        voxel_world::light::LightLayer::Sky,
                         &sky_mask,
                         &sky_empty_mask
                     ) || stored(
-                        voxel_client::world::light::LightLayer::Block,
+                        voxel_world::light::LightLayer::Block,
                         &block_mask,
                         &block_empty_mask
                     )
@@ -6739,10 +6738,10 @@ fn client_world_light_result(request: &Value) -> Result<Value, String> {
                 let section = (chunk_x, min_y.div_euclid(16), chunk_z);
                 event["stored"] = json!(
                     engine
-                        .data_layer(voxel_client::world::light::LightLayer::Sky, section)
+                        .data_layer(voxel_world::light::LightLayer::Sky, section)
                         .is_some()
                         || engine
-                            .data_layer(voxel_client::world::light::LightLayer::Block, section)
+                            .data_layer(voxel_world::light::LightLayer::Block, section)
                             .is_some()
                 );
             }
@@ -7009,7 +7008,7 @@ fn client_world_player_attribute_water_result(request: &Value) -> Result<Value, 
 fn client_world_player_sprint_attribute_state(
     label: &str,
     accepted: bool,
-    player: &voxel_client::world::ClientPlayerState,
+    player: &voxel_world::ClientPlayerState,
 ) -> Value {
     let attribute = player
         .attributes()
@@ -7083,7 +7082,7 @@ fn client_world_player_sprint_attribute_result(request: &Value) -> Result<Value,
 fn client_world_player_sneaking_input_state(
     label: &str,
     accepted: bool,
-    player: &voxel_client::world::ClientPlayerState,
+    player: &voxel_world::ClientPlayerState,
 ) -> Value {
     let bob = player.bob();
     let previous_bob = player.previous_bob();
@@ -7165,7 +7164,7 @@ fn client_world_player_keyboard_input_state(
     label: &str,
     accepted: bool,
     keyboard: &KeyboardInput,
-    player: &voxel_client::world::ClientPlayerState,
+    player: &voxel_world::ClientPlayerState,
 ) -> Value {
     let bob = player.bob();
     let previous_bob = player.previous_bob();
@@ -7262,10 +7261,7 @@ fn client_world_player_keyboard_input_result(request: &Value) -> Result<Value, S
     Ok(json!({"states": states}))
 }
 
-fn client_world_player_tick_state(
-    label: &str,
-    player: &voxel_client::world::ClientPlayerState,
-) -> Value {
+fn client_world_player_tick_state(label: &str, player: &voxel_world::ClientPlayerState) -> Value {
     let position = player.position();
     let previous_position = player.previous_position();
     let rotation = player.rotation();
@@ -10174,7 +10170,7 @@ fn sprint_trigger_conditions(value: &Value) -> Result<LocalPlayerSprintTriggerCo
 
 fn client_world_player_sprint_trigger_state(
     label: &str,
-    player: &voxel_client::world::ClientPlayerState,
+    player: &voxel_world::ClientPlayerState,
 ) -> Value {
     json!({
         "label": label,
@@ -15154,8 +15150,8 @@ fn nbt_result(request: &Value) -> Result<Value, String> {
 
 /// The same deterministic rendering the oracle writes, so the comparison sees
 /// shape, order, number literals and string code units.
-fn json_canonical(value: &voxel_client::json::JsonValue, out: &mut String) {
-    use voxel_client::json::JsonValue;
+fn json_canonical(value: &voxel_core::json::JsonValue, out: &mut String) {
+    use voxel_core::json::JsonValue;
     let write_string = |units: &[u16], out: &mut String| {
         out.push('s');
         for unit in units {
@@ -15198,7 +15194,7 @@ fn json_canonical(value: &voxel_client::json::JsonValue, out: &mut String) {
 }
 
 fn json_number_result(request: &Value) -> Result<Value, String> {
-    use voxel_client::json::JsonValue;
+    use voxel_core::json::JsonValue;
     let rows = request["rows"]
         .as_array()
         .ok_or("json rows must be an array")?;
@@ -15206,7 +15202,7 @@ fn json_number_result(request: &Value) -> Result<Value, String> {
     for row in rows {
         let label = string(row, "label")?;
         let literal = string(row, "literal")?;
-        let Ok(value) = voxel_client::json::parse(literal) else {
+        let Ok(value) = voxel_core::json::parse(literal) else {
             out.push(json!({"label": label, "outcome": "rejected"}));
             continue;
         };
@@ -15256,7 +15252,7 @@ fn json_result(request: &Value) -> Result<Value, String> {
                 continue;
             }
         };
-        match voxel_client::json::parse(text) {
+        match voxel_core::json::parse(text) {
             Err(_) => out.push(json!({"label": label, "outcome": "rejected"})),
             Ok(value) => {
                 let mut canonical = String::new();
@@ -15296,8 +15292,8 @@ fn model_geometry_result(request: &Value) -> Result<Value, String> {
             out.push(json!({"label": label, "outcome": "unknown_facing"}));
             continue;
         };
-        let uvs = render::default_face_uv(from, to, facing);
-        let corners: Vec<Value> = render::face_vertices(from, to, facing)
+        let uvs = voxel_render::default_face_uv(from, to, facing);
+        let corners: Vec<Value> = voxel_render::face_vertices(from, to, facing)
             .iter()
             .map(|vertex| {
                 json!({
@@ -15320,8 +15316,8 @@ fn model_geometry_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
-fn direction_by_name(name: &str) -> Option<voxel_client::direction::Direction> {
-    use voxel_client::direction::Direction;
+fn direction_by_name(name: &str) -> Option<voxel_core::direction::Direction> {
+    use voxel_core::direction::Direction;
     Some(match name {
         "down" => Direction::Down,
         "up" => Direction::Up,
@@ -15334,7 +15330,7 @@ fn direction_by_name(name: &str) -> Option<voxel_client::direction::Direction> {
 }
 
 fn model_rotation_result(request: &Value) -> Result<Value, String> {
-    use voxel_client::render::rotation;
+    use voxel_render::rotation;
     let rows = request["rows"]
         .as_array()
         .ok_or("model rows must be an array")?;
@@ -15385,7 +15381,7 @@ fn model_rotation_result(request: &Value) -> Result<Value, String> {
                 matrix.push(json!(format!("{:08x}", value.to_bits())));
             }
         }
-        let corners: Vec<Value> = render::face_vertices(from, to, facing)
+        let corners: Vec<Value> = voxel_render::face_vertices(from, to, facing)
             .iter()
             .map(|vertex| {
                 let rotated = rotation::rotate_vertex(*vertex, origin, &transform);
@@ -15427,7 +15423,7 @@ fn model_winding_result(request: &Value) -> Result<Value, String> {
             }
         }
 
-        let normal = render::triangle_normal(positions[0], positions[1], positions[2]);
+        let normal = voxel_render::triangle_normal(positions[0], positions[1], positions[2]);
         let mut entry = serde_json::Map::new();
         entry.insert("label".into(), json!(label));
         entry.insert("outcome".into(), json!("wound"));
@@ -15444,14 +15440,14 @@ fn model_winding_result(request: &Value) -> Result<Value, String> {
             json!(format!("{:08x}", normal[2].to_bits())),
         );
 
-        match render::closest_direction(normal) {
+        match voxel_render::closest_direction(normal) {
             None => {
                 entry.insert("direction".into(), json!("none"));
             }
             Some(direction) => {
                 entry.insert("direction".into(), json!(direction_name(direction)));
                 let mut payloads = [10_u64, 20, 30, 40];
-                match render::recalculate_winding(&mut positions, &mut payloads, direction) {
+                match voxel_render::recalculate_winding(&mut positions, &mut payloads, direction) {
                     Err(_) => {
                         entry.insert("winding".into(), json!("no_matching_vertex"));
                     }
@@ -15477,8 +15473,8 @@ fn model_winding_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
-fn direction_name(direction: voxel_client::direction::Direction) -> &'static str {
-    use voxel_client::direction::Direction;
+fn direction_name(direction: voxel_core::direction::Direction) -> &'static str {
+    use voxel_core::direction::Direction;
     match direction {
         Direction::Down => "down",
         Direction::Up => "up",
@@ -15490,7 +15486,7 @@ fn direction_name(direction: voxel_client::direction::Direction) -> &'static str
 }
 
 fn model_euler_result(request: &Value) -> Result<Value, String> {
-    use voxel_client::render::rotation;
+    use voxel_render::rotation;
     let rows = request["rows"]
         .as_array()
         .ok_or("model rows must be an array")?;
@@ -15531,7 +15527,7 @@ fn model_uv_rotation_result(request: &Value) -> Result<Value, String> {
     for row in rows {
         let label = string(row, "label")?;
         let degrees = i32_field(row, "degrees")?;
-        let Some(rotation) = render::Quadrant::from_degrees(degrees) else {
+        let Some(rotation) = voxel_render::Quadrant::from_degrees(degrees) else {
             out.push(json!({"label": label, "outcome": "rejected"}));
             continue;
         };
@@ -15543,7 +15539,7 @@ fn model_uv_rotation_result(request: &Value) -> Result<Value, String> {
                 u32::from_str_radix(hex, 16).map_err(|error| format!("uv: {error}"))?,
             );
         }
-        let uvs = render::FaceUvs {
+        let uvs = voxel_render::FaceUvs {
             min_u: parsed[0],
             min_v: parsed[1],
             max_u: parsed[2],
@@ -15551,7 +15547,7 @@ fn model_uv_rotation_result(request: &Value) -> Result<Value, String> {
         };
         let pairs: Vec<Value> = (0..4)
             .map(|vertex| {
-                let (u, v) = render::face_vertex_uv(uvs, rotation, vertex);
+                let (u, v) = voxel_render::face_vertex_uv(uvs, rotation, vertex);
                 json!({
                     "u": format!("{:08x}", u.to_bits()),
                     "v": format!("{:08x}", v.to_bits()),
@@ -15569,7 +15565,7 @@ fn model_uv_rotation_result(request: &Value) -> Result<Value, String> {
 }
 
 fn model_parse_result(request: &Value) -> Result<Value, String> {
-    use voxel_client::render::model;
+    use voxel_render::model;
     let rows = request["rows"]
         .as_array()
         .ok_or("model rows must be an array")?;
@@ -15615,7 +15611,7 @@ fn model_parse_result(request: &Value) -> Result<Value, String> {
             .unwrap_or(&[])
             .iter()
             .map(|element| {
-                let mut faces: Vec<&(voxel_client::direction::Direction, model::ModelFace)> =
+                let mut faces: Vec<&(voxel_core::direction::Direction, model::ModelFace)> =
                     element.faces.iter().collect();
                 // The oracle reads faces out of a map keyed by direction name.
                 faces.sort_by_key(|(direction, _)| direction_name(*direction));
@@ -15724,7 +15720,7 @@ fn model_parse_result(request: &Value) -> Result<Value, String> {
 }
 
 fn model_state_result(request: &Value) -> Result<Value, String> {
-    use voxel_client::render::rotation;
+    use voxel_render::rotation;
     let rows = request["rows"]
         .as_array()
         .ok_or("model rows must be an array")?;
@@ -15759,12 +15755,12 @@ fn model_state_result(request: &Value) -> Result<Value, String> {
         };
         let mut faces = Vec::with_capacity(6);
         for facing in [
-            voxel_client::direction::Direction::Down,
-            voxel_client::direction::Direction::Up,
-            voxel_client::direction::Direction::North,
-            voxel_client::direction::Direction::South,
-            voxel_client::direction::Direction::West,
-            voxel_client::direction::Direction::East,
+            voxel_core::direction::Direction::Down,
+            voxel_core::direction::Direction::Up,
+            voxel_core::direction::Direction::North,
+            voxel_core::direction::Direction::South,
+            voxel_core::direction::Direction::West,
+            voxel_core::direction::Direction::East,
         ] {
             let forward = rotation::face_transform(x, y, z, facing, uv_lock)
                 .ok_or("no face transform for that rotation")?;
@@ -15787,8 +15783,8 @@ fn model_state_result(request: &Value) -> Result<Value, String> {
 }
 
 fn model_uv_lock_result(request: &Value) -> Result<Value, String> {
-    use voxel_client::direction::Direction;
-    use voxel_client::render::rotation;
+    use voxel_core::direction::Direction;
+    use voxel_render::rotation;
     let rows = request["rows"]
         .as_array()
         .ok_or("model rows must be an array")?;
@@ -15821,7 +15817,7 @@ fn model_uv_lock_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
-fn describe_variants(variants: &[render::Variant]) -> Value {
+fn describe_variants(variants: &[voxel_render::Variant]) -> Value {
     Value::Array(
         variants
             .iter()
@@ -15839,9 +15835,9 @@ fn describe_variants(variants: &[render::Variant]) -> Value {
     )
 }
 
-fn describe_condition(condition: &render::Condition) -> Value {
+fn describe_condition(condition: &voxel_render::Condition) -> Value {
     match condition {
-        render::Condition::KeyValue(tests) => {
+        voxel_render::Condition::KeyValue(tests) => {
             let mut described = serde_json::Map::new();
             for (property, terms) in tests {
                 described.insert(
@@ -15856,7 +15852,7 @@ fn describe_condition(condition: &render::Condition) -> Value {
             }
             json!({"kind": "key_value", "tests": Value::Object(described)})
         }
-        render::Condition::Combined { operation, terms } => json!({
+        voxel_render::Condition::Combined { operation, terms } => json!({
             "kind": "combined",
             "operation": operation.name(),
             "terms": terms.iter().map(describe_condition).collect::<Vec<_>>(),
@@ -15871,7 +15867,7 @@ fn model_blockstate_result(request: &Value) -> Result<Value, String> {
     let mut out = Vec::with_capacity(rows.len());
     for row in rows {
         let label = string(row, "label")?;
-        match render::parse_block_state(string(row, "json")?) {
+        match voxel_render::parse_block_state(string(row, "json")?) {
             None => out.push(json!({"label": label, "outcome": "rejected"})),
             Some(file) => {
                 let mut described = serde_json::Map::new();
@@ -15927,14 +15923,14 @@ fn model_result(request: &Value) -> Result<Value, String> {
             out.push(json!({
                 "label": string(row, "label")?,
                 "outcome": "resolved",
-                "direction": render::approximate_nearest_direction(vector).name(),
+                "direction": voxel_render::approximate_nearest_direction(vector).name(),
             }));
         }
         return Ok(json!({"rows": out}));
     }
     if string(request, "operation")? == "cull_rotation" {
-        use voxel_client::direction::Direction;
-        use voxel_client::render::rotation;
+        use voxel_core::direction::Direction;
+        use voxel_render::rotation;
         let rows = request["rows"]
             .as_array()
             .ok_or("model rows must be an array")?;
@@ -15994,7 +15990,7 @@ fn model_result(request: &Value) -> Result<Value, String> {
     ];
     let mut out = Vec::with_capacity(rows.len());
     for row in rows {
-        let mut resolver = render::TextureSlotsResolver::new();
+        let mut resolver = voxel_render::TextureSlotsResolver::new();
         let chain = row["chain"].as_array().ok_or("chain must be an array")?;
         for level in chain {
             let slots = level.as_array().ok_or("chain level must be an array")?;
@@ -16002,10 +15998,10 @@ fn model_result(request: &Value) -> Result<Value, String> {
             for slot in slots {
                 let name = string(slot, "slot")?;
                 let contents = if slot.get("raw").is_some() {
-                    render::SlotContents::parse_string(string(slot, "raw")?)
+                    voxel_render::SlotContents::parse_string(string(slot, "raw")?)
                         .map_err(|error| format!("texture value: {error:?}"))?
                 } else {
-                    render::SlotContents::Value(render::Material {
+                    voxel_render::SlotContents::Value(voxel_render::Material {
                         sprite: Identifier::parse(string(slot, "sprite")?)
                             .map_err(|error| format!("sprite: {error:?}"))?,
                         force_translucent: slot["force_translucent"]
@@ -16015,7 +16011,7 @@ fn model_result(request: &Value) -> Result<Value, String> {
                 };
                 entries.push((name.to_owned(), contents));
             }
-            resolver.add_last(render::TextureSlotsData::from_entries(entries));
+            resolver.add_last(voxel_render::TextureSlotsData::from_entries(entries));
         }
         let resolved = resolver.resolve();
         let mut lookups = Vec::new();
@@ -16039,7 +16035,7 @@ fn model_result(request: &Value) -> Result<Value, String> {
 }
 
 fn image_tables_result(request: &Value) -> Result<Value, String> {
-    let tables = render::SrgbTables::new();
+    let tables = voxel_render::SrgbTables::new();
     let mut forward = String::with_capacity(256 * 4);
     for channel in 0..=255_u8 {
         forward.push_str(&format!("{:04x}", tables.to_linear(channel)));
@@ -16073,19 +16069,20 @@ fn image_mip_result(request: &Value) -> Result<Value, String> {
             .collect::<Result<_, _>>()
             .map_err(|error| format!("png hex: {error}"))?;
         let levels = i32_field(row, "levels")?;
-        let Ok(image) = render::decode_rgba(&bytes) else {
+        let Ok(image) = voxel_render::decode_rgba(&bytes) else {
             out.push(json!({"label": label, "outcome": "failed"}));
             continue;
         };
         let name = string(row, "name")?;
         let path = name.split_once(':').map_or(name, |(_, path)| path);
-        let strategy = render::MipmapStrategy::parse(&string(row, "strategy")?.to_lowercase())
-            .ok_or("unknown mipmap strategy")?;
+        let strategy =
+            voxel_render::MipmapStrategy::parse(&string(row, "strategy")?.to_lowercase())
+                .ok_or("unknown mipmap strategy")?;
         let bias = f32::from_bits(
             u32::from_str_radix(string(row, "bias")?, 16)
                 .map_err(|error| format!("mipmap bias: {error}"))?,
         );
-        let transparency = render::Transparency::of(
+        let transparency = voxel_render::Transparency::of(
             row["transparent"]
                 .as_bool()
                 .ok_or("transparent must be a boolean")?,
@@ -16093,7 +16090,7 @@ fn image_mip_result(request: &Value) -> Result<Value, String> {
                 .as_bool()
                 .ok_or("translucent must be a boolean")?,
         );
-        let generated = render::generate_mip_levels_with(
+        let generated = voxel_render::generate_mip_levels_with(
             path,
             &image,
             levels.max(0) as u32,
@@ -16128,10 +16125,10 @@ fn image_transparency_result(request: &Value) -> Result<Value, String> {
     for row in rows {
         let label = string(row, "label")?;
         let bytes = hex_bytes(string(row, "png")?)?;
-        match render::decode_rgba(&bytes) {
+        match voxel_render::decode_rgba(&bytes) {
             Err(_) => out.push(json!({"label": label, "outcome": "failed"})),
             Ok(image) => {
-                let measured = render::compute_transparency(&image);
+                let measured = voxel_render::compute_transparency(&image);
                 out.push(json!({
                     "label": label,
                     "outcome": "measured",
@@ -16152,14 +16149,15 @@ fn image_texture_metadata_result(request: &Value) -> Result<Value, String> {
     let mut out = Vec::with_capacity(rows.len());
     for row in rows {
         let label = string(row, "label")?;
-        let parsed = voxel_client::json::parse(string(row, "json")?)
-            .ok()
-            .and_then(|value| match value {
-                voxel_client::json::JsonValue::Object(object) => {
-                    render::TextureMetadata::parse(&object)
-                }
-                _ => None,
-            });
+        let parsed =
+            voxel_core::json::parse(string(row, "json")?)
+                .ok()
+                .and_then(|value| match value {
+                    voxel_core::json::JsonValue::Object(object) => {
+                        voxel_render::TextureMetadata::parse(&object)
+                    }
+                    _ => None,
+                });
         match parsed {
             None => out.push(json!({"label": label, "outcome": "rejected"})),
             Some(metadata) => out.push(json!({
@@ -16184,14 +16182,14 @@ fn image_sprite_uv_result(request: &Value) -> Result<Value, String> {
         let label = string(row, "label")?;
         let width = i32_field(row, "width")?;
         let height = i32_field(row, "height")?;
-        let placement = render::SpritePlacement {
-            name: voxel_client::identifier::Identifier::parse("minecraft:block/parity")
+        let placement = voxel_render::SpritePlacement {
+            name: voxel_core::identifier::Identifier::parse("minecraft:block/parity")
                 .map_err(|_| "sprite name")?,
             x: i32_field(row, "x")?,
             y: i32_field(row, "y")?,
             padding: i32_field(row, "padding")?,
         };
-        let sprite = render::AtlasSprite::new(
+        let sprite = voxel_render::AtlasSprite::new(
             &placement,
             width,
             height,
@@ -16228,7 +16226,7 @@ fn image_sprite_uv_result(request: &Value) -> Result<Value, String> {
 
 fn image_colour_map_result(request: &Value) -> Result<Value, String> {
     let bytes = hex_bytes(string(request, "colour_map")?)?;
-    let map = render::decode_rgba(&bytes).map_err(|_| "colour map did not decode")?;
+    let map = voxel_render::decode_rgba(&bytes).map_err(|_| "colour map did not decode")?;
     // The reference reads the map as packed colours, not as bytes.
     let pixels: Vec<u32> = map
         .rgba
@@ -16249,9 +16247,9 @@ fn image_colour_map_result(request: &Value) -> Result<Value, String> {
     for row in rows {
         let label = string(row, "label")?;
         let kind = match string(row, "kind")? {
-            "grass" => render::ColourMap::Grass,
-            "foliage" => render::ColourMap::Foliage,
-            "dry_foliage" => render::ColourMap::DryFoliage,
+            "grass" => voxel_render::ColourMap::Grass,
+            "foliage" => voxel_render::ColourMap::Foliage,
+            "dry_foliage" => voxel_render::ColourMap::DryFoliage,
             other => return Err(format!("unknown colour map kind: {other}")),
         };
         let read = |name: &str| -> Result<f64, String> {
@@ -16259,7 +16257,7 @@ fn image_colour_map_result(request: &Value) -> Result<Value, String> {
                 .map_err(|error| format!("{name}: {error}"))?;
             Ok(f64::from_bits(bits))
         };
-        match render::colour_map_lookup(kind, &pixels, read("temperature")?, read("rain")?) {
+        match voxel_render::colour_map_lookup(kind, &pixels, read("temperature")?, read("rain")?) {
             Err(_) => out.push(json!({"label": label, "outcome": "out_of_bounds"})),
             Ok(colour) => out.push(json!({
                 "label": label,
@@ -16283,7 +16281,7 @@ fn image_argb_multiply_result(request: &Value) -> Result<Value, String> {
         out.push(json!({
             "label": string(row, "label")?,
             "outcome": "multiplied",
-            "colour": format!("{:08x}", render::multiply(read("lhs")?, read("rhs")?)),
+            "colour": format!("{:08x}", voxel_render::multiply(read("lhs")?, read("rhs")?)),
         }));
     }
     Ok(json!({"rows": out}))
@@ -16299,13 +16297,13 @@ fn image_tint_constants_result(request: &Value) -> Result<Value, String> {
             "label": string(row, "label")?,
             "outcome": "listed",
             "values": {
-                "foliage_default": format!("{:08x}", render::ColourMap::Foliage.default_colour()),
-                "foliage_evergreen": format!("{:08x}", render::constant_tints("minecraft:spruce_leaves")[0]),
-                "foliage_birch": format!("{:08x}", render::constant_tints("minecraft:birch_leaves")[0]),
-                "foliage_mangrove": format!("{:08x}", render::FOLIAGE_MANGROVE),
-                "dry_foliage_default": format!("{:08x}", render::ColourMap::DryFoliage.default_colour()),
-                "lily_pad_in_hand": format!("{:08x}", render::constant_tints("minecraft:lily_pad")[0]),
-                "lily_pad_in_world": format!("{:08x}", render::LILY_PAD_IN_WORLD),
+                "foliage_default": format!("{:08x}", voxel_render::ColourMap::Foliage.default_colour()),
+                "foliage_evergreen": format!("{:08x}", voxel_render::constant_tints("minecraft:spruce_leaves")[0]),
+                "foliage_birch": format!("{:08x}", voxel_render::constant_tints("minecraft:birch_leaves")[0]),
+                "foliage_mangrove": format!("{:08x}", voxel_render::FOLIAGE_MANGROVE),
+                "dry_foliage_default": format!("{:08x}", voxel_render::ColourMap::DryFoliage.default_colour()),
+                "lily_pad_in_hand": format!("{:08x}", voxel_render::constant_tints("minecraft:lily_pad")[0]),
+                "lily_pad_in_world": format!("{:08x}", voxel_render::LILY_PAD_IN_WORLD),
             },
         }));
     }
@@ -16313,7 +16311,7 @@ fn image_tint_constants_result(request: &Value) -> Result<Value, String> {
 }
 
 fn block_result(request: &Value) -> Result<Value, String> {
-    use voxel_client::world::block_registry as registry;
+    use voxel_data::block::registry;
     let operation = string(request, "operation")?;
     let rows = request["rows"]
         .as_array()
@@ -16375,7 +16373,7 @@ fn block_result(request: &Value) -> Result<Value, String> {
                 }));
             }
             "offset_properties" => {
-                let blocks: Vec<Value> = voxel_client::render::block_offset_table::OFFSETS
+                let blocks: Vec<Value> = voxel_data::block::offset::OFFSETS
                     .iter()
                     .map(|(name, vertical, horizontal_max, vertical_max)| {
                         json!({
@@ -16389,7 +16387,7 @@ fn block_result(request: &Value) -> Result<Value, String> {
                 out.push(json!({"label": label, "outcome": "listed", "blocks": blocks}));
             }
             "fluid_flow_properties" => {
-                use voxel_client::world::fluid_flow_table as table;
+                use voxel_data::block::fluid_flow as table;
                 let runs: Vec<String> = table::RUNS
                     .iter()
                     .map(|(first, value)| format!("{first}:{value}"))
@@ -16402,7 +16400,7 @@ fn block_result(request: &Value) -> Result<Value, String> {
                 }));
             }
             "motion_blocking" => {
-                use voxel_client::world::motion_blocking_table as table;
+                use voxel_data::block::motion_blocking as table;
                 let words: Vec<String> = table::WORDS
                     .iter()
                     .map(|word| format!("{word:016x}"))
@@ -16418,11 +16416,11 @@ fn block_result(request: &Value) -> Result<Value, String> {
                 out.push(json!({
                     "label": label,
                     "outcome": "listed",
-                    "blocks": voxel_client::render::fluid_overlay_table::OVERLAY_BLOCKS.to_vec(),
+                    "blocks": voxel_data::block::fluid_overlay::OVERLAY_BLOCKS.to_vec(),
                 }));
             }
             "block_behaviours" => {
-                use voxel_client::world::block_behaviour_table::{BLOCKS, CLASSES, ITEMS};
+                use voxel_data::block::behaviour::{BLOCKS, CLASSES, ITEMS};
                 let class = |index: u16| CLASSES[usize::from(index)];
                 let blocks: Vec<Value> = registry::BLOCKS
                     .iter()
@@ -16439,11 +16437,11 @@ fn block_result(request: &Value) -> Result<Value, String> {
                             "update_shape": class(row.update_shape),
                             "replaceable": row.replaceable,
                             "stairs": row.stairs,
-                            "item": voxel_client::item_table::ITEMS[usize::from(row.item)].name,
+                            "item": voxel_data::item::registry::ITEMS[usize::from(row.item)].name,
                         })
                     })
                     .collect();
-                let items: Vec<Value> = voxel_client::item_table::ITEMS
+                let items: Vec<Value> = voxel_data::item::registry::ITEMS
                     .iter()
                     .zip(ITEMS.iter())
                     .map(|(item, row)| {
@@ -16465,7 +16463,7 @@ fn block_result(request: &Value) -> Result<Value, String> {
                 );
             }
             "destroy_properties" => {
-                use voxel_client::world::block_destroy_table as table;
+                use voxel_data::block::destroy as table;
                 let blocks: Vec<Value> = registry::BLOCKS
                     .iter()
                     .zip(table::BLOCKS.iter())
@@ -16491,7 +16489,7 @@ fn block_result(request: &Value) -> Result<Value, String> {
                 out.push(json!({"label": label, "outcome": "listed", "blocks": blocks}));
             }
             "item_tools" => {
-                use voxel_client::item_table::{ITEMS, RuleBlocks};
+                use voxel_data::item::registry::{ITEMS, RuleBlocks};
                 let items: Vec<Value> = ITEMS
                     .iter()
                     .map(|item| {
@@ -16528,8 +16526,8 @@ fn block_result(request: &Value) -> Result<Value, String> {
                 out.push(json!({"label": label, "outcome": "listed", "items": items}));
             }
             "item_stacking" => {
-                use voxel_client::item_stacking_table::ITEM_STACKING;
-                let items: Vec<Value> = voxel_client::item_table::ITEMS
+                use voxel_data::item::stacking::ITEM_STACKING;
+                let items: Vec<Value> = voxel_data::item::registry::ITEMS
                     .iter()
                     .zip(ITEM_STACKING.iter())
                     .map(|(item, stacking)| {
@@ -16567,13 +16565,13 @@ fn block_result(request: &Value) -> Result<Value, String> {
                 };
                 // The reference's wire, kept in a table, is read by this port,
                 // and both forms are written back from what it read.
-                let items: Vec<Value> = voxel_client::item_table::ITEMS
+                let items: Vec<Value> = voxel_data::item::registry::ITEMS
                     .iter()
-                    .zip(voxel_client::item_components_table::ITEM_COMPONENT_WIRES.iter())
+                    .zip(voxel_data::item::components::ITEM_COMPONENT_WIRES.iter())
                     .map(|(item, wire)| {
                         let bytes = unhex(wire);
                         let mut input = bytes.as_slice();
-                        match voxel_client::item_components::read_patch(&mut input) {
+                        match voxel_game::item_components::read_patch(&mut input) {
                             Ok(patch) if input.is_empty() => json!({
                                 "name": item.name,
                                 "wire": hex(&patch.trusted()),
@@ -16587,7 +16585,7 @@ fn block_result(request: &Value) -> Result<Value, String> {
                 out.push(json!({"label": label, "outcome": "listed", "items": items}));
             }
             "tooltip_registries" => {
-                use voxel_client::tooltip_table as table;
+                use voxel_data::item::tooltip as table;
                 let component =
                     |text: &str| -> Value { serde_json::from_str(text).unwrap_or(Value::Null) };
                 let enchantments: Vec<Value> = table::ENCHANTMENTS
@@ -16672,7 +16670,7 @@ fn block_result(request: &Value) -> Result<Value, String> {
                 }));
             }
             "potions" => {
-                use voxel_client::potion_table::{MOB_EFFECTS, POTIONS};
+                use voxel_data::item::potions::{MOB_EFFECTS, POTIONS};
                 let effects: Vec<Value> = MOB_EFFECTS
                     .iter()
                     .map(|effect| {
@@ -16712,7 +16710,7 @@ fn block_result(request: &Value) -> Result<Value, String> {
                 }));
             }
             "creative_tabs" => {
-                use voxel_client::creative_tabs_table::{
+                use voxel_data::item::creative_tabs::{
                     CREATIVE_STACKS, CREATIVE_TABS, DEFAULT_TAB, TabKind,
                 };
                 let stack = |index: u16| {
@@ -16730,7 +16728,7 @@ fn block_result(request: &Value) -> Result<Value, String> {
                     }
                     wire.extend_from_slice(stack.patch);
                     json!({
-                        "item": voxel_client::item_table::ITEMS[stack.item as usize].name,
+                        "item": voxel_data::item::registry::ITEMS[stack.item as usize].name,
                         "wire": wire.iter().map(|byte| format!("{byte:02x}")).collect::<String>(),
                         "positive": stack.positive,
                         "negative": stack.negative,
@@ -16772,7 +16770,7 @@ fn block_result(request: &Value) -> Result<Value, String> {
                 }));
             }
             "light_properties" => {
-                use voxel_client::world::block_light_table as table;
+                use voxel_data::block::light as table;
                 let blocks: Vec<Value> = registry::BLOCKS
                     .iter()
                     .zip(table::BLOCKS.iter())
@@ -16801,7 +16799,7 @@ fn block_result(request: &Value) -> Result<Value, String> {
                 out.push(json!({"label": label, "outcome": "listed", "blocks": blocks}));
             }
             "face_occlusion" => {
-                use voxel_client::render::face_occlusion_table as table;
+                use voxel_data::block::face_occlusion as table;
                 // The tables go back out in the reference's shape, so the run
                 // checks every tuple, every join and every skip pair.
                 const NAMES: [&str; 6] = ["down", "up", "north", "south", "west", "east"];
@@ -16841,13 +16839,13 @@ fn block_result(request: &Value) -> Result<Value, String> {
                 }));
             }
             "collision_shapes" => {
-                use voxel_client::world::block_collision_table as table;
+                use voxel_data::block::collision as table;
                 // The boxes come from the rebuilt shapes, not straight from the
                 // table, so the comparison also checks that rebuilding a shape
                 // from its boxes merges them the way the reference does.
                 let mut shapes = Vec::with_capacity(table::SHAPES.len());
                 for index in 0..table::SHAPES.len() {
-                    let shape = voxel_client::world::block_state::table_shape(index)
+                    let shape = voxel_world::block_state::table_shape(index)
                         .ok_or("table shape out of range")?;
                     let boxes: Vec<Value> = shape
                         .to_aabbs()
@@ -16885,11 +16883,11 @@ fn block_result(request: &Value) -> Result<Value, String> {
                 }));
             }
             "outline_shapes" => {
-                use voxel_client::world::block_outline_table as table;
+                use voxel_data::block::outline as table;
                 let bits = |value: f64| format!("{:016x}", value.to_bits());
                 let mut shapes = Vec::with_capacity(table::SHAPES.len());
                 for index in 0..table::SHAPES.len() {
-                    let shape = voxel_client::world::outline_table_shape(index)
+                    let shape = voxel_world::outline_table_shape(index)
                         .ok_or("outline shape out of range")?;
                     let boxes: Vec<Value> = shape
                         .to_aabbs()
@@ -16930,7 +16928,7 @@ fn block_result(request: &Value) -> Result<Value, String> {
                 }));
             }
             "movement_properties" => {
-                use voxel_client::world::block_movement_table as table;
+                use voxel_data::block::movement as table;
                 let fluid_name = |kind: table::FluidKind| match kind {
                     table::FluidKind::Empty => "minecraft:empty",
                     table::FluidKind::Water => "minecraft:water",
@@ -17031,15 +17029,18 @@ fn image_result(request: &Value) -> Result<Value, String> {
                 .join(".data/minecraft/assets/jar")
                 .join(string(row, "texture")?);
             let bytes = std::fs::read(&path).map_err(|e| format!("{}: {e}", path.display()))?;
-            let image = render::png::decode_rgba(&bytes).map_err(|e| format!("{e:?}"))?;
+            let image = voxel_render::png::decode_rgba(&bytes).map_err(|e| format!("{e:?}"))?;
             let alpha: Vec<u8> = image.rgba.chunks(4).map(|pixel| pixel[3]).collect();
-            let faces: Vec<String> =
-                render::item_model::side_faces(&alpha, image.width as i32, image.height as i32)
-                    .into_iter()
-                    .map(|(facing, x, y)| format!("{},{x:02},{y:02}", facing.name()))
-                    .collect::<std::collections::BTreeSet<_>>()
-                    .into_iter()
-                    .collect();
+            let faces: Vec<String> = voxel_render::item_model::side_faces(
+                &alpha,
+                image.width as i32,
+                image.height as i32,
+            )
+            .into_iter()
+            .map(|(facing, x, y)| format!("{},{x:02},{y:02}", facing.name()))
+            .collect::<std::collections::BTreeSet<_>>()
+            .into_iter()
+            .collect();
             out.push(json!({
                 "label": string(row, "label")?,
                 "outcome": "scanned",
@@ -17067,7 +17068,7 @@ fn image_result(request: &Value) -> Result<Value, String> {
             .map(|index| u8::from_str_radix(&hex[index * 2..index * 2 + 2], 16))
             .collect::<Result<_, _>>()
             .map_err(|error| format!("png hex: {error}"))?;
-        match render::decode_rgba(&bytes) {
+        match voxel_render::decode_rgba(&bytes) {
             Err(_) => out.push(json!({"label": label, "outcome": "decode_failed"})),
             Ok(image) => {
                 let mut encoded = String::with_capacity(image.rgba.len() * 2);
@@ -17096,7 +17097,7 @@ fn atlas_result(request: &Value) -> Result<Value, String> {
         .ok_or("atlas rows must be an array")?;
     let mut out = Vec::with_capacity(rows.len());
     for row in rows {
-        let mut stitcher = render::Stitcher::new(
+        let mut stitcher = voxel_render::Stitcher::new(
             i32_field(row, "max_width")?,
             i32_field(row, "max_height")?,
             i32_field(row, "mip_level")?,
@@ -17108,7 +17109,7 @@ fn atlas_result(request: &Value) -> Result<Value, String> {
         for sprite in sprites {
             let name = Identifier::parse(string(sprite, "name")?)
                 .map_err(|error| format!("sprite name: {error:?}"))?;
-            stitcher.register_sprite(render::SpriteEntry {
+            stitcher.register_sprite(voxel_render::SpriteEntry {
                 width: i32_field(sprite, "width")?,
                 height: i32_field(sprite, "height")?,
                 name,
@@ -17196,8 +17197,8 @@ fn window_result(request: &Value) -> Result<Value, String> {
 /// A block state named as the scenes name it: a block and its properties.
 fn named_state(block: &Value) -> Result<i32, String> {
     let name = string(block, "block")?;
-    let definition = voxel_client::world::block_registry::block(name)
-        .ok_or_else(|| format!("unknown block {name}"))?;
+    let definition =
+        voxel_data::block::registry::block(name).ok_or_else(|| format!("unknown block {name}"))?;
     let mut chosen = std::collections::BTreeMap::new();
     if let Some(properties) = block["properties"].as_object() {
         for (key, value) in properties {
@@ -17245,7 +17246,7 @@ fn vanilla_block_tags() -> Result<ClientboundUpdateTagsPacket, String> {
                 let path = tag.strip_prefix("minecraft:").ok_or("foreign tag")?;
                 out.extend(resolve(root, path, seen)?);
             } else {
-                match voxel_client::world::block_registry::BLOCKS
+                match voxel_data::block::registry::BLOCKS
                     .iter()
                     .position(|block| block.name == id)
                 {
@@ -17296,8 +17297,8 @@ fn vanilla_block_tags() -> Result<ClientboundUpdateTagsPacket, String> {
 /// The scene's blocks in a client world of loaded chunks, as the movement
 /// oracle builds its level.
 fn movement_world(row: &Value) -> Result<ClientWorld, String> {
-    use voxel_client::world::block_registry as registry;
-    use voxel_client::world::{DimensionBounds, SectionInput};
+    use voxel_data::block::registry;
+    use voxel_world::{DimensionBounds, SectionInput};
     // The overworld's bounds, as the reference level is built with.
     let dimension = DimensionBounds::new(-64, 384);
     let mut placed = std::collections::HashMap::new();
@@ -17354,7 +17355,7 @@ fn movement_world(row: &Value) -> Result<ClientWorld, String> {
                                 ) {
                                     non_empty += 1;
                                 }
-                                if voxel_client::world::local_player::state_has_fluid(state) {
+                                if voxel_world::local_player::state_has_fluid(state) {
                                     fluids += 1;
                                 }
                             }
@@ -17446,8 +17447,8 @@ fn hand_count(world: &ClientWorld, slot: i16) -> i32 {
 }
 
 fn movement_result(request: &Value) -> Result<Value, String> {
-    use voxel_client::world::ClientPlayerGameMode;
-    use voxel_client::world::local_player::LocalPlayer;
+    use voxel_world::ClientPlayerGameMode;
+    use voxel_world::local_player::LocalPlayer;
 
     fn bits64(row: &Value, key: &str) -> Result<f64, String> {
         let text = string(row, key)?;
@@ -17493,37 +17494,37 @@ fn movement_result(request: &Value) -> Result<Value, String> {
         let game_mode_of_row = game_mode;
         let mut player = LocalPlayer::new(
             i32_field(row, "entity_id")?,
-            voxel_client::math::Vec3::new(bits64(row, "x")?, bits64(row, "y")?, bits64(row, "z")?),
+            voxel_core::math::Vec3::new(bits64(row, "x")?, bits64(row, "y")?, bits64(row, "z")?),
             bits32(row, "y_rot")?,
             bits32(row, "x_rot")?,
             game_mode,
             flag(row, "auto_jump")?,
         );
         let breaking = row.get("breaking");
-        let mut game_mode = voxel_client::game_mode::GameMode::default();
+        let mut game_mode = voxel_game::game_mode::GameMode::default();
         if let Some(breaking) = breaking {
             world.apply_update_tags_packet(&vanilla_block_tags()?);
             world.set_local_player_id(player.entity_id());
             if let Some(name) = breaking["main_hand"].as_str() {
-                let item = voxel_client::item::id_of(name)
-                    .ok_or_else(|| format!("unknown item {name}"))?;
+                let item =
+                    voxel_game::item::id_of(name).ok_or_else(|| format!("unknown item {name}"))?;
                 let count = breaking["main_hand_count"].as_i64().unwrap_or(1) as i32;
                 world.apply_local_player_container_slot(
                     0,
                     0,
                     36,
-                    Some(&voxel_client::world::ClientItemStackState::new(count, item)),
+                    Some(&voxel_world::ClientItemStackState::new(count, item)),
                 );
                 player.set_main_hand_item(item);
             }
             if let Some(name) = breaking["off_hand"].as_str() {
-                let item = voxel_client::item::id_of(name)
-                    .ok_or_else(|| format!("unknown item {name}"))?;
+                let item =
+                    voxel_game::item::id_of(name).ok_or_else(|| format!("unknown item {name}"))?;
                 world.apply_local_player_container_slot(
                     0,
                     0,
                     45,
-                    Some(&voxel_client::world::ClientItemStackState::new(1, item)),
+                    Some(&voxel_world::ClientItemStackState::new(1, item)),
                 );
             }
             for effect in breaking["effects"].as_array().into_iter().flatten() {
@@ -17544,7 +17545,7 @@ fn movement_result(request: &Value) -> Result<Value, String> {
         let mut ticks = Vec::new();
         let mut failure = None;
         for tick in row["ticks"].as_array().ok_or("ticks must be an array")? {
-            let keys = voxel_client::input::Input::new(
+            let keys = voxel_world::input::Input::new(
                 flag(tick, "forward")?,
                 flag(tick, "backward")?,
                 flag(tick, "left")?,
@@ -17567,7 +17568,7 @@ fn movement_result(request: &Value) -> Result<Value, String> {
                     if event.get("ack").is_some() {
                         for synced in world.handle_block_changed_ack(i32_field(event, "ack")?) {
                             let pos =
-                                voxel_client::binary::BlockPos::new(synced.x, synced.y, synced.z);
+                                voxel_core::binary::BlockPos::new(synced.x, synced.y, synced.z);
                             if let Some(position) = synced.player_position
                                 && player.is_colliding(&world, pos, synced.state)
                             {
@@ -17594,7 +17595,7 @@ fn movement_result(request: &Value) -> Result<Value, String> {
                             Some(at) => [bits64(at, "x")?, bits64(at, "y")?, bits64(at, "z")?],
                             None => [f64::from(x) + 0.5, f64::from(y) + 0.5, f64::from(z) + 0.5],
                         };
-                        voxel_client::game_mode::Aim::Block {
+                        voxel_game::game_mode::Aim::Block {
                             x,
                             y,
                             z,
@@ -17611,20 +17612,20 @@ fn movement_result(request: &Value) -> Result<Value, String> {
                             inside: target["inside"].as_bool().unwrap_or(false),
                         }
                     }
-                    None => voxel_client::game_mode::Aim::Miss,
+                    None => voxel_game::game_mode::Aim::Miss,
                 };
                 let count = |value: &Value, key: &str| -> Result<u32, String> {
                     u32::try_from(i32_field(value, key)?).map_err(|e| e.to_string())
                 };
                 let use_ = attack.get("use");
-                let keys = voxel_client::game_mode::Keys {
+                let keys = voxel_game::game_mode::Keys {
                     attack_clicks: count(attack, "clicks")?,
                     attack_held: flag(attack, "down")?,
                     use_clicks: use_.map_or(Ok(0), |use_| count(use_, "clicks"))?,
                     use_held: use_.map_or(Ok(false), |use_| flag(use_, "down"))?,
                 };
-                let miner = voxel_client::game_mode::Miner::of(&world, 0);
-                let mut ctx = voxel_client::game_mode::Context {
+                let miner = voxel_game::game_mode::Miner::of(&world, 0);
+                let mut ctx = voxel_game::game_mode::Context {
                     world: &mut world,
                     player: &mut player,
                     miner: &miner,
@@ -17736,7 +17737,7 @@ fn movement_result(request: &Value) -> Result<Value, String> {
 }
 
 fn entity_result(request: &Value) -> Result<Value, String> {
-    use voxel_client::render::player_model::{Arm, PlayerModel, PlayerRenderState};
+    use voxel_render::player_model::{Arm, PlayerModel, PlayerRenderState};
     if string(request, "operation")? != "player_model" {
         return Err("unknown entity operation".into());
     }
@@ -17837,11 +17838,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// Clicks in the player's own inventory menu, as the client predicts them
 /// and sends them.
 fn container_clicks_result(request: &Value) -> Result<Value, String> {
-    use voxel_client::inventory_menu::{ClickType, InventoryMenu, Player};
-    use voxel_client::world::ClientItemStackState;
+    use voxel_game::inventory_menu::{ClickType, InventoryMenu, Player};
+    use voxel_world::ClientItemStackState;
     let stack = |described: &Value| -> Result<ClientItemStackState, String> {
         let name = described["item"].as_str().ok_or("item must be a string")?;
-        let id = voxel_client::item::id_of(name).ok_or_else(|| format!("unknown item {name}"))?;
+        let id = voxel_game::item::id_of(name).ok_or_else(|| format!("unknown item {name}"))?;
         let count = described["count"]
             .as_i64()
             .ok_or("count must be a number")? as i32;
@@ -17851,7 +17852,7 @@ fn container_clicks_result(request: &Value) -> Result<Value, String> {
         match stack {
             None => Value::Null,
             Some(stack) => json!({
-                "item": voxel_client::item_table::ITEMS[stack.item_registry_id() as usize].name,
+                "item": voxel_data::item::registry::ITEMS[stack.item_registry_id() as usize].name,
                 "count": stack.item_count(),
             }),
         }

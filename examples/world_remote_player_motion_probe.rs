@@ -3,7 +3,7 @@ use std::net::SocketAddr;
 use std::thread;
 use std::time::Duration;
 
-use voxel_client::connection::{
+use voxel_net::connection::{
     EntityMotionInterpolationObservation, connect_and_remote_player_motion_mover_probe,
     connect_and_remote_player_motion_observer_probe,
 };

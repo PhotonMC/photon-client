@@ -36,7 +36,7 @@ JOML'ın başka yaklaşık kök yöntemleri, `Mth.fastInvSqrt`, `Mth.atan2` ve b
 
 ## Client-parity doğrulaması
 
-`src/math.rs` içindeki `mth_inv_sqrt_f32` ve `mth_inv_sqrt_f64`, Java `Mth.invSqrt` ile pinned JOML `Math.invsqrt` yollarını JSONL oracle'a bağlar. Float ve double overload'ları kendi kaynak genişliklerinde karşılaştırılır.
+`crates/voxel-core/src/math.rs` içindeki `mth_inv_sqrt_f32` ve `mth_inv_sqrt_f64`, Java `Mth.invSqrt` ile pinned JOML `Math.invsqrt` yollarını JSONL oracle'a bağlar. Float ve double overload'ları kendi kaynak genişliklerinde karşılaştırılır.
 
 Java oracle doğrudan `Mth.invSqrt` çağrısını yürütür. Senaryolar sıfır, signed zero, sonlu değerler, subnormal, negatif, Infinity ve NaN girdilerini kapsar. Beklenen sonuçlar Rust çıktısından türetilmez.
 

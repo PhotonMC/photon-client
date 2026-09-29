@@ -37,7 +37,7 @@ Genel liste shuffle overload'ları, stream tabanlı `toShuffledList`, random se�
 
 ## Client-parity doğrulaması
 
-`src/direction.rs` içindeki `Plane.shuffled_copy`, Java `Util.shuffledCopy` kopyalama ve Fisher-Yates swap sırasını uygular. Rust adapter `direction_plane_shuffle` JSONL operation'ı ile kopyalanmış yüzleri ve sonraki random çekişi dışarı verir; Java oracle `Plane.shuffledCopy` yöntemini doğrudan çağırır.
+`crates/voxel-core/src/direction.rs` içindeki `Plane.shuffled_copy`, Java `Util.shuffledCopy` kopyalama ve Fisher-Yates swap sırasını uygular. Rust adapter `direction_plane_shuffle` JSONL operation'ı ile kopyalanmış yüzleri ve sonraki random çekişi dışarı verir; Java oracle `Plane.shuffledCopy` yöntemini doğrudan çağırır.
 
 Senaryolar yatay/dikey yüz listelerini, signed seed sınırlarını, swap sırasını ve kaynak tüketimini Java oracle çıktısıyla karşılaştırır.
 

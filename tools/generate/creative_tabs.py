@@ -1,4 +1,4 @@
-"""Generate src/creative_tabs_table.rs from a block-family capture.
+"""Generate crates/voxel-data/src/item/creative_tabs.rs from a block-family capture.
 
     python3 tools/generate/creative_tabs.py .data/captures/behavior/<id>/outputs.jsonl
 
@@ -133,7 +133,7 @@ def main(path):
         out.append("    },")
     out.append("];")
     out.append("")
-    open("src/creative_tabs_table.rs", "w", encoding="utf-8").write("\n".join(out))
+    open("crates/voxel-data/src/item/creative_tabs.rs", "w", encoding="utf-8").write("\n".join(out))
 
 
 if __name__ == "__main__":

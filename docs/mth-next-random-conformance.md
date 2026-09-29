@@ -17,7 +17,7 @@ Kapsam dışı kalanlar: `Mth.randomBetweenInclusive`, `randomBetween`, `normal`
 
 ## Client-parity doğrulaması
 
-`src/math.rs`, Java `Mth.nextInt(RandomSource, int, int)`, `nextFloat` ve `nextDouble` overload'larını uygular. `examples/behavior_adapter.rs` sabit seed ile oluşturulan `RandomSource` değerlerini Java oracle ile aynı JSON bit/değer biçiminde dışarı verir.
+`crates/voxel-core/src/math.rs`, Java `Mth.nextInt(RandomSource, int, int)`, `nextFloat` ve `nextDouble` overload'larını uygular. `examples/behavior_adapter.rs` sabit seed ile oluşturulan `RandomSource` değerlerini Java oracle ile aynı JSON bit/değer biçiminde dışarı verir.
 
 ## Doğrulama
 

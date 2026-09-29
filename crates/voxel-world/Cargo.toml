@@ -1,0 +1,14 @@
+[package]
+name = "voxel-world"
+description = "The client's copy of the world: blocks, light, entities and the local player."
+version.workspace = true
+edition.workspace = true
+publish = false
+include = ["/Cargo.toml", "/src/**"]
+
+[dependencies]
+voxel-core.workspace = true
+voxel-data.workspace = true
+
+[lints]
+workspace = true

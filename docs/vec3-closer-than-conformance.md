@@ -31,12 +31,12 @@ Girdiler `family: "math"`, `operation: "vec3_closer_than"`, `first`, `second`, `
 
 ## Rust karşılığı
 
-`src/math.rs` içindeki `Vec3::closer_than_position` ve `Vec3::closer_than_xz_y`, Java'nın fark, kare, toplama, strict karşılaştırma ve kısa devre sırasını taşır. `examples/behavior_adapter.rs` JSONL operasyonunu, `tests/behavior/java/MathOracle.java` ise iki overload çağrısını doğrudan Java sonuçlarına bağlar.
+`crates/voxel-core/src/math.rs` içindeki `Vec3::closer_than_position` ve `Vec3::closer_than_xz_y`, Java'nın fark, kare, toplama, strict karşılaştırma ve kısa devre sırasını taşır. `examples/behavior_adapter.rs` JSONL operasyonunu, `tests/behavior/java/MathOracle.java` ise iki overload çağrısını doğrudan Java sonuçlarına bağlar.
 
 
 ## Client-parity doğrulaması
 
-`src/math.rs`, Java `Vec3.closerThan(Position, double)` ve `Vec3.closerThan(Vec3, double, double)` overload'larının strict eşiklerini, x/z toplama sırasını ve y koşulunu karşılar. Java oracle iki overload'u doğrudan çağırır; Rust adaptörü aynı girdideki iki Rust API sonucunu taşır.
+`crates/voxel-core/src/math.rs`, Java `Vec3.closerThan(Position, double)` ve `Vec3.closerThan(Vec3, double, double)` overload'larının strict eşiklerini, x/z toplama sırasını ve y koşulunu karşılar. Java oracle iki overload'u doğrudan çağırır; Rust adaptörü aynı girdideki iki Rust API sonucunu taşır.
 
 ## Doğrulama
 

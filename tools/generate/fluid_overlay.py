@@ -1,4 +1,4 @@
-"""Generate src/render/fluid_overlay_table.rs from a block-family capture.
+"""Generate crates/voxel-data/src/block/fluid_overlay.rs from a block-family capture.
 
     python3 tools/generate/fluid_overlay.py .data/captures/behavior/<id>/outputs.jsonl
 
@@ -30,7 +30,7 @@ def main(path):
     for block in data["blocks"]:
         out.append(f"    \"{block}\",")
     out += ["];", ""]
-    with open("src/render/fluid_overlay_table.rs", "w", encoding="utf-8") as handle:
+    with open("crates/voxel-data/src/block/fluid_overlay.rs", "w", encoding="utf-8") as handle:
         handle.write("\n".join(out))
     print(f"blocks={len(data['blocks'])}")
 

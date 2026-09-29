@@ -23,12 +23,12 @@ Her girdi `family: "math"`, `operation: "vec3_rotation"` ve f64 bit dizgeli `fir
 
 ## Rust karşılığı
 
-Rust karşılığı `src/math.rs` içindeki `Vec3::rotation` yordamında f64 `atan2`/`asin`/`sqrt` hesap sırasını, f32 açı daraltmalarını, derece sabitini ve Vec2 snapshot aritmetiğini korur. `examples/behavior_adapter.rs` sonucu taşır; `tests/behavior/java/MathOracle.java` doğrudan Java `Vec3.rotation()` çağrısını yapar.
+Rust karşılığı `crates/voxel-core/src/math.rs` içindeki `Vec3::rotation` yordamında f64 `atan2`/`asin`/`sqrt` hesap sırasını, f32 açı daraltmalarını, derece sabitini ve Vec2 snapshot aritmetiğini korur. `examples/behavior_adapter.rs` sonucu taşır; `tests/behavior/java/MathOracle.java` doğrudan Java `Vec3.rotation()` çağrısını yapar.
 
 
 ## Client-parity doğrulaması
 
-`src/math.rs`, Java `Vec3.rotation()` davranışını f64 trigonometrik ara işlemleri, f32 açı dönüşümü ve Vec2 snapshot hesaplarıyla karşılar. Java oracle, `Vec3.rotation()` yöntemini doğrudan çağırır; beklenen sonuç Rust çıktısından türetilmez.
+`crates/voxel-core/src/math.rs`, Java `Vec3.rotation()` davranışını f64 trigonometrik ara işlemleri, f32 açı dönüşümü ve Vec2 snapshot hesaplarıyla karşılar. Java oracle, `Vec3.rotation()` yöntemini doğrudan çağırır; beklenen sonuç Rust çıktısından türetilmez.
 
 ## Doğrulama
 

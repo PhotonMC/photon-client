@@ -32,12 +32,12 @@ Girdiler `family: "math"`, `operation: "aabb_builder"` ve f32 bit string'lerinde
 
 ## Rust karşılığı
 
-`src/aabb.rs` içindeki `AabbBuilder`, Java sentinellerini, f32 min/max yardımcılarını ve double'a genişleyen `build` yolunu uygular. `examples/behavior_adapter.rs`, JSONL işlemini üretim API'sine yönlendirir.
+`crates/voxel-core/src/aabb.rs` içindeki `AabbBuilder`, Java sentinellerini, f32 min/max yardımcılarını ve double'a genişleyen `build` yolunu uygular. `examples/behavior_adapter.rs`, JSONL işlemini üretim API'sine yönlendirir.
 
 
 ## Client-parity doğrulaması
 
-`src/aabb.rs`, Java `AABB.Builder` davranışını `AabbBuilder` ile uygular. `examples/behavior_adapter.rs`, f32 point bitlerini Rust API'sine taşır; Java oracle sonuçları doğrudan `AABB.Builder` çağrılarından gelir.
+`crates/voxel-core/src/aabb.rs`, Java `AABB.Builder` davranışını `AabbBuilder` ile uygular. `examples/behavior_adapter.rs`, f32 point bitlerini Rust API'sine taşır; Java oracle sonuçları doğrudan `AABB.Builder` çağrılarından gelir.
 
 ## Doğrulama
 

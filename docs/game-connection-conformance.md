@@ -20,7 +20,7 @@ Java kaynak incelemesinde `ServerLoginPacketListenerImpl`, `ClientHandshakePacke
 
 ## Rust davranış sınırı
 
-`src/connection/session.rs` ve `src/connection/protocol.rs` aşağıdaki akışı yürütür:
+`crates/voxel-net/src/connection/session.rs` ve `crates/voxel-net/src/connection/protocol.rs` aşağıdaki akışı yürütür:
 
 1. Protocol 776 login intention ve offline login hello gönderir.
 2. Login compression paketini okuyup zlib çerçevesini Java'nın eşik kuralıyla çözer; eşik altındaki paketleri `uncompressed length = 0` ile, eşik ve üstündekileri sıkıştırılmış olarak yazar.

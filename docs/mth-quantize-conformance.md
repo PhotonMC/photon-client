@@ -17,7 +17,7 @@ Kapsam dışı kalanlar: `roundToward`, `positiveCeilDiv` ve quantize sonucunu k
 
 ## Client-parity doğrulaması
 
-`src/math.rs`, Java `Mth.quantize(double, int)` yolunu f64 bölme, Java `floor` i32 daraltması ve wrapping i32 çarpımıyla uygular. `examples/behavior_adapter.rs` sonucu Java oracle ile aynı signed i32 decimal biçiminde dışarı verir.
+`crates/voxel-core/src/math.rs`, Java `Mth.quantize(double, int)` yolunu f64 bölme, Java `floor` i32 daraltması ve wrapping i32 çarpımıyla uygular. `examples/behavior_adapter.rs` sonucu Java oracle ile aynı signed i32 decimal biçiminde dışarı verir.
 
 ## Doğrulama
 

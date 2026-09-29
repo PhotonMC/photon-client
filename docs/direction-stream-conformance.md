@@ -36,7 +36,7 @@ Yeni capture kimliği, kaynak/girdi/ortam değişkenleriyle birlikte runner rapo
 
 ## Client-parity doğrulaması
 
-`src/direction.rs` içindeki `Direction::stream`, Java `Direction.stream()` statik değer sırasını iterator olarak sunar. Rust adapter `direction_stream` JSONL operation'ı ile yön adlarını dışarı verir; Java oracle stream'i doğrudan tüketir.
+`crates/voxel-core/src/direction.rs` içindeki `Direction::stream`, Java `Direction.stream()` statik değer sırasını iterator olarak sunar. Rust adapter `direction_stream` JSONL operation'ı ile yön adlarını dışarı verir; Java oracle stream'i doğrudan tüketir.
 
 Beklenen sıra Java oracle çıktısından alındı.
 

@@ -1,4 +1,4 @@
-"""Generate src/world/block_light_table.rs from a block-family capture.
+"""Generate crates/voxel-data/src/block/light.rs from a block-family capture.
 
     python3 tools/generate/block_light.py .data/captures/behavior/<id>/outputs.jsonl
 
@@ -68,7 +68,7 @@ def main(path):
     for ids in rows:
         out.append("    &[" + ", ".join(str(i) for i in ids) + "],")
     out += ["];", ""]
-    with open("src/world/block_light_table.rs", "w", encoding="utf-8") as handle:
+    with open("crates/voxel-data/src/block/light.rs", "w", encoding="utf-8") as handle:
         handle.write("\n".join(out))
     print(f"traits={len(traits)} blocks={len(rows)}")
 

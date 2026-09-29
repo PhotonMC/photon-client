@@ -1,4 +1,4 @@
-"""Generate src/world/block_movement_table.rs from a block-family capture.
+"""Generate crates/voxel-data/src/block/movement.rs from a block-family capture.
 
     python3 tools/generate/block_movement.py .data/captures/behavior/<id>/outputs.jsonl
 
@@ -118,7 +118,7 @@ def main(path):
             f"flags: {flags}, states: &[{', '.join(map(str, indices))}] }},"
         )
     out.append("];")
-    with open("src/world/block_movement_table.rs", "w", encoding="utf-8") as handle:
+    with open("crates/voxel-data/src/block/movement.rs", "w", encoding="utf-8") as handle:
         handle.write("\n".join(out) + "\n")
     print(f"traits={len(traits)} blocks={len(rows)}")
 

@@ -2,7 +2,7 @@ use std::env;
 use std::net::SocketAddr;
 use std::time::Duration;
 
-use voxel_client::connection::connect_and_world_experience_orb_tick_probe;
+use voxel_net::connection::connect_and_world_experience_orb_tick_probe;
 
 const EXPERIENCE_ORB_ENTITY_TYPE_ID: i32 = 49;
 const EXPERIENCE_ORB_GRAVITY: f64 = 0.03;

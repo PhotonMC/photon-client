@@ -17,7 +17,7 @@ Kapsam dışı kalanlar: `lerpInt`, `lerpDiscrete`, Vec3 overload'u, `lerp2`, `l
 
 ## Client-parity doğrulaması
 
-`src/math.rs`, Java `Mth.lerp(float, float, float)` ve `Mth.lerp(double, double, double)` overload'larını fark, çarpma ve toplama sırasıyla taşır. `examples/behavior_adapter.rs` sonucu ilgili hassasiyetin raw IEEE-754 bitleri olarak dışarı verir.
+`crates/voxel-core/src/math.rs`, Java `Mth.lerp(float, float, float)` ve `Mth.lerp(double, double, double)` overload'larını fark, çarpma ve toplama sırasıyla taşır. `examples/behavior_adapter.rs` sonucu ilgili hassasiyetin raw IEEE-754 bitleri olarak dışarı verir.
 
 ## Doğrulama
 

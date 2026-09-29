@@ -47,7 +47,7 @@ Bu sözleşme yalnızca legacy `nextGaussian` ve seçili çağrı sıralarını 
 
 ## Client-parity doğrulaması
 
-`src/random.rs`, Java `LegacyRandomSource.nextGaussian` yolunun polar örnekleme ve eş sonuç önbelleğini uygular. `examples/behavior_adapter.rs` aynı üretim API'sini JSONL senaryolarına bağlar; beklenen değer üretmez.
+`crates/voxel-core/src/random.rs`, Java `LegacyRandomSource.nextGaussian` yolunun polar örnekleme ve eş sonuç önbelleğini uygular. `examples/behavior_adapter.rs` aynı üretim API'sini JSONL senaryolarına bağlar; beklenen değer üretmez.
 
 ## Referans ve davranış
 

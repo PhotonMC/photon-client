@@ -1,4 +1,4 @@
-"""Generate src/world/block_outline_table.rs from a block-family capture.
+"""Generate crates/voxel-data/src/block/outline.rs from a block-family capture.
 
     python3 tools/generate/block_outline.py .data/captures/behavior/<id>/outputs.jsonl
 
@@ -68,7 +68,7 @@ def main(path):
             f"dynamic: {str(block['dynamic']).lower()} }},"
         )
     lines.append("];")
-    with open("src/world/block_outline_table.rs", "w", encoding="utf-8") as out:
+    with open("crates/voxel-data/src/block/outline.rs", "w", encoding="utf-8") as out:
         out.write("\n".join(lines) + "\n")
     print(f"shapes={len(shapes)} blocks={len(blocks)}")
 

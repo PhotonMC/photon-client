@@ -37,7 +37,7 @@ Plane random yön/eksen, shuffle ve diğer Direction/Axis sorguları bu dilime d
 
 ## Client-parity doğrulaması
 
-`src/direction.rs` içindeki Plane yüz/eksen dizileri ve `length`, Java iterator, stream ve uzunluk davranışını uygular. Rust adapter `direction_plane_order` JSONL operation'ı ile sıraları dışarı verir; Java oracle iterable, stream ve length yollarını doğrudan çağırır.
+`crates/voxel-core/src/direction.rs` içindeki Plane yüz/eksen dizileri ve `length`, Java iterator, stream ve uzunluk davranışını uygular. Rust adapter `direction_plane_order` JSONL operation'ı ile sıraları dışarı verir; Java oracle iterable, stream ve length yollarını doğrudan çağırır.
 
 Senaryolar HORIZONTAL ve VERTICAL Plane değerlerinin yüz, stream, eksen sıralarını ve uzunluklarını Java oracle çıktısıyla karşılaştırır.
 

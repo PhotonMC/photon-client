@@ -37,7 +37,7 @@ Direction matrix rotation, entity bakış yönü, Vec3 overload'u ve diğer Dire
 
 ## Client-parity doğrulaması
 
-`src/direction.rs` içindeki `Direction::approximate_nearest`, Java double overload'un f32 daraltma ve enum sıralı dot seçim davranışını uygular. Rust adapter `direction_approximate_nearest` JSONL operation'ı ile yön snapshot'ını dışarı verir; Java oracle double overload'u doğrudan çağırır.
+`crates/voxel-core/src/direction.rs` içindeki `Direction::approximate_nearest`, Java double overload'un f32 daraltma ve enum sıralı dot seçim davranışını uygular. Rust adapter `direction_approximate_nearest` JSONL operation'ı ile yön snapshot'ını dışarı verir; Java oracle double overload'u doğrudan çağırır.
 
 Senaryolar yön baskınlığını, tie sırasını, başlangıç eşiğini ve özel f64 girdilerini Java oracle çıktısıyla karşılaştırır.
 

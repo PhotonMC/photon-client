@@ -36,7 +36,7 @@ Plane predicate, random direction/axis, iterator/stream, shuffle ve length yolla
 
 ## Client-parity doğrulaması
 
-`src/direction.rs` içindeki `Axis.get_plane`, Java eksenlerini yatay/dikey Plane değerlerine eşler. Rust adapter `direction_axis_plane` JSONL operation'ı ile sonucu dışarı verir; Java oracle `Axis.getPlane()` yöntemini doğrudan çağırır.
+`crates/voxel-core/src/direction.rs` içindeki `Axis.get_plane`, Java eksenlerini yatay/dikey Plane değerlerine eşler. Rust adapter `direction_axis_plane` JSONL operation'ı ile sonucu dışarı verir; Java oracle `Axis.getPlane()` yöntemini doğrudan çağırır.
 
 Senaryolar X, Y ve Z eksenlerinin Plane sonuçlarını Java oracle çıktısıyla karşılaştırır.
 

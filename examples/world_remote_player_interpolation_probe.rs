@@ -3,11 +3,11 @@ use std::net::SocketAddr;
 use std::thread;
 use std::time::Duration;
 
-use voxel_client::connection::{
+use voxel_core::math::{mth_lerp_f64, mth_rot_lerp_f64};
+use voxel_net::connection::{
     EntityInterpolationObservation, connect_and_remote_player_interpolation_observer_probe,
     connect_and_remote_player_interpolation_probe,
 };
-use voxel_client::math::{mth_lerp_f64, mth_rot_lerp_f64};
 
 fn expected_positions(observation: &EntityInterpolationObservation) -> Vec<(f64, f64, f64)> {
     let mut current = observation.before_position;

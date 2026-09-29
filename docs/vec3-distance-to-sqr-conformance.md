@@ -31,12 +31,12 @@ Girdiler `family: "math"` kullanır. Vec3 overload'ı `operation: "vec3_distance
 
 ## Rust karşılığı
 
-`src/math.rs` içindeki `Vec3::distance_to_sqr` ve `distance_to_sqr_components`, fark karelerini doğrudan kaynak sırasıyla toplar. `examples/behavior_adapter.rs` iki JSONL operasyonunu, `tests/behavior/java/MathOracle.java` ise beklenen değerleri doğrudan Java overload çağrılarına bağlar.
+`crates/voxel-core/src/math.rs` içindeki `Vec3::distance_to_sqr` ve `distance_to_sqr_components`, fark karelerini doğrudan kaynak sırasıyla toplar. `examples/behavior_adapter.rs` iki JSONL operasyonunu, `tests/behavior/java/MathOracle.java` ise beklenen değerleri doğrudan Java overload çağrılarına bağlar.
 
 
 ## Client-parity doğrulaması
 
-`src/math.rs`, Java `Vec3.distanceToSqr(Vec3)` ve `Vec3.distanceToSqr(double, double, double)` overload'larını karşılayan iki Rust metodunu içerir. Java oracle doğrudan iki overload'u çağırır; Rust adaptörü aynı f64 bit girdilerini üretim API'sine taşır.
+`crates/voxel-core/src/math.rs`, Java `Vec3.distanceToSqr(Vec3)` ve `Vec3.distanceToSqr(double, double, double)` overload'larını karşılayan iki Rust metodunu içerir. Java oracle doğrudan iki overload'u çağırır; Rust adaptörü aynı f64 bit girdilerini üretim API'sine taşır.
 
 ## Doğrulama
 

@@ -48,7 +48,7 @@ Bu doğrulama seçili BlockPos/section-relative corpus'u ile sınırlıdır. Blo
 
 ## Client-parity doğrulaması
 
-`src/binary.rs`, mevcut BlockPos/SectionPos paketleme tiplerine Java uyumlu offset, min/max ve section-relative bit alanı işlemlerini ekler. `examples/behavior_adapter.rs` aynı API'leri JSONL senaryolarına bağlar; beklenen değer üretmez.
+`crates/voxel-core/src/binary.rs`, mevcut BlockPos/SectionPos paketleme tiplerine Java uyumlu offset, min/max ve section-relative bit alanı işlemlerini ekler. `examples/behavior_adapter.rs` aynı API'leri JSONL senaryolarına bağlar; beklenen değer üretmez.
 
 ## Referans ve davranış
 

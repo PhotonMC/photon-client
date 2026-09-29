@@ -45,7 +45,7 @@ Bu dilimin math referans kimliği `30579b0337c9cbef64bfe390fc1b1e3c6fb20fd2e3c1d
 
 ## Client-parity doğrulaması
 
-`src/aabb.rs`, Java `AABB.clip(double, double, double, double, double, double, Vec3, Vec3)` statik yolunu ham endpoint'ler, eksen eşikleri, epsilon'lı yüz kontrolleri ve en yakın geçerli segment ölçeğiyle uygular. `examples/behavior_adapter.rs` bu yolu JSONL math adımı olarak çağırır.
+`crates/voxel-core/src/aabb.rs`, Java `AABB.clip(double, double, double, double, double, double, Vec3, Vec3)` statik yolunu ham endpoint'ler, eksen eşikleri, epsilon'lı yüz kontrolleri ve en yakın geçerli segment ölçeğiyle uygular. `examples/behavior_adapter.rs` bu yolu JSONL math adımı olarak çağırır.
 
 ## Referans ve davranış
 

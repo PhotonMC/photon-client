@@ -2,8 +2,8 @@ use std::env;
 use std::net::SocketAddr;
 use std::time::Duration;
 
-use voxel_client::connection::connect_and_world_firework_tick_probe;
-use voxel_client::math::{mth_atan2, mth_rot_lerp_f32};
+use voxel_core::math::{mth_atan2, mth_rot_lerp_f32};
+use voxel_net::connection::connect_and_world_firework_tick_probe;
 
 const FIREWORK_ENTITY_TYPE_ID: i32 = 53;
 const FIREWORK_HORIZONTAL_ACCELERATION: f64 = 1.15;

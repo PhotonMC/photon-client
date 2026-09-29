@@ -21,7 +21,7 @@ kez hesaplayıp küp simetri grubunun her elemanı için önbelleğe alıyor.
 yirmi dört** farklı tablo çıktı — grubun eleman sayısı — ve her dönüşüm
 matrisine tek bir tablo düştü. Dönüşüm matrisleri tam (yalnızca `0`, `±1`)
 olduğu için tablo onlarla anahtarlanabiliyor. Tablonun tamamı yalnızca on
-farklı kayan nokta değeri taşıyor, bu yüzden `src/render/uv_lock_table.rs`
+farklı kayan nokta değeri taşıyor, bu yüzden `crates/voxel-data/src/model/uv_lock.rs`
 değerleri bir kez listeleyip matrisleri indekslerle yazıyor.
 
 Bu tablo **her parity koşusunda baştan sona karşılaştırılıyor**: 24 dönüşüm ×

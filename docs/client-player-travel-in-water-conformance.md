@@ -54,7 +54,7 @@ olarak doğrulandı ve fark `null` kaldı.
 
 ## Rust doğrulaması
 
-`src/input.rs` içindeki `local_player_travel_in_water`, Java'nın f32
+`crates/voxel-world/src/input.rs` içindeki `local_player_travel_in_water`, Java'nın f32
 slowdown/efficiency işlemlerini, relative input dönüşümünü, drag ve falling
 adjustment sırasını uygular. `ClientWorld` local player motion state'inden
 delta'yı alıp sonucu tekrar sorgulanabilir motion state'ine yazar; behavior

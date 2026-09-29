@@ -30,12 +30,12 @@ Girdiler `family: "math"`, `operation: "chunkpos_block_positions"`, chunk `x`/`z
 
 ## Rust karşılığı
 
-`src/binary.rs` içindeki `ChunkPos::get_block_at`, `get_middle_block_position`, `get_world_position` ve `contains` Java'nın BlockPos üretim sırasını, inclusive yatay sınırlarını ve i32 wrapping aritmetiğini korur. `examples/behavior_adapter.rs` bu API'yi JSONL senaryosuna bağlar; `tests/behavior/java/MathOracle.java` Java çıktısını doğrudan gözlemler.
+`crates/voxel-core/src/binary.rs` içindeki `ChunkPos::get_block_at`, `get_middle_block_position`, `get_world_position` ve `contains` Java'nın BlockPos üretim sırasını, inclusive yatay sınırlarını ve i32 wrapping aritmetiğini korur. `examples/behavior_adapter.rs` bu API'yi JSONL senaryosuna bağlar; `tests/behavior/java/MathOracle.java` Java çıktısını doğrudan gözlemler.
 
 
 ## Client-parity doğrulaması
 
-`src/binary.rs`, Java `ChunkPos` BlockPos yardımcılarını aynı block offset, middle/world position ve yatay containment kurallarıyla karşılar. Java oracle metotları doğrudan çağırır; Rust adaptörü aynı sentetik chunk, offset, y ve query girdilerini üretim API'sine taşır.
+`crates/voxel-core/src/binary.rs`, Java `ChunkPos` BlockPos yardımcılarını aynı block offset, middle/world position ve yatay containment kurallarıyla karşılar. Java oracle metotları doğrudan çağırır; Rust adaptörü aynı sentetik chunk, offset, y ve query girdilerini üretim API'sine taşır.
 
 ## Doğrulama
 

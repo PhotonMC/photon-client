@@ -37,7 +37,7 @@ Yeni capture kimliği, kaynak/girdi/ortam değişkenleriyle birlikte runner rapo
 
 ## Client-parity doğrulaması
 
-`src/direction.rs` içindeki `from_y_rot`, Java `Direction.fromYRot(double)` hesabının bölme, `+ 0.5`, floor, `& 3` ve 2D lookup sırasını taşır. Rust adapter `direction_y_rot` JSONL operation'ı üzerinden bu yöntemi çağırır; Java oracle doğrudan `Direction.fromYRot` kullanır.
+`crates/voxel-core/src/direction.rs` içindeki `from_y_rot`, Java `Direction.fromYRot(double)` hesabının bölme, `+ 0.5`, floor, `& 3` ve 2D lookup sırasını taşır. Rust adapter `direction_y_rot` JSONL operation'ı üzerinden bu yöntemi çağırır; Java oracle doğrudan `Direction.fromYRot` kullanır.
 
 Senaryolar eşik açılarını, negatif değerleri, tekrar eden tam turları, signed zero/subnormal girdilerini ve özel double değerlerini kapsar. Beklenen yön snapshot'ları Java oracle çıktısından alındı.
 

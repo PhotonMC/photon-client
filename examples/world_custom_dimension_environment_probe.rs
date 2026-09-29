@@ -2,8 +2,8 @@ use std::env;
 use std::net::SocketAddr;
 use std::time::Duration;
 
-use voxel_client::connection::connect_and_world_dimension_type_bounds_probe;
-use voxel_client::world::{CardinalLightType, DimensionSkybox};
+use voxel_net::connection::connect_and_world_dimension_type_bounds_probe;
+use voxel_world::{CardinalLightType, DimensionSkybox};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let address: SocketAddr = env::args()

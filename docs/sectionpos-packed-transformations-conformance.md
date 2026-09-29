@@ -22,12 +22,12 @@ Girdiler `family: "math"`, `operation: "sectionpos_packed_transformations"`, ona
 
 ## Rust karşılığı
 
-`src/binary.rs` içindeki `SectionPos::block_to_section`, `get_zero_node`, `get_zero_node_from_coordinates` ve `section_to_chunk`, daha önce doğrulanan BlockPos/SectionPos bit alanı yardımcılarını ve Java i32 arithmetic shift yollarını kullanır. `examples/behavior_adapter.rs` sonuçları JSONL'e bağlar; `tests/behavior/java/MathOracle.java` Java statik metotlarını karşılaştırma oracle'ı olarak çağırır.
+`crates/voxel-core/src/binary.rs` içindeki `SectionPos::block_to_section`, `get_zero_node`, `get_zero_node_from_coordinates` ve `section_to_chunk`, daha önce doğrulanan BlockPos/SectionPos bit alanı yardımcılarını ve Java i32 arithmetic shift yollarını kullanır. `examples/behavior_adapter.rs` sonuçları JSONL'e bağlar; `tests/behavior/java/MathOracle.java` Java statik metotlarını karşılaştırma oracle'ı olarak çağırır.
 
 
 ## Client-parity doğrulaması
 
-`src/binary.rs`, packed BlockPos düğümlerini SectionPos düğümlerine çevirir, SectionPos y alanını temizler ve SectionPos x/z alanlarını ChunkPos packed düzenine taşır.
+`crates/voxel-core/src/binary.rs`, packed BlockPos düğümlerini SectionPos düğümlerine çevirir, SectionPos y alanını temizler ve SectionPos x/z alanlarını ChunkPos packed düzenine taşır.
 
 ## Doğrulama
 

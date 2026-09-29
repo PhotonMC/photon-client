@@ -17,7 +17,7 @@ Kapsam dışı kalanlar: keyfi predicate bileşimleri, `rayIntersectsAABB`, `ata
 
 ## Client-parity doğrulaması
 
-`src/math.rs` içindeki `mth_binary_search`, Java `Mth.binarySearch(int, int, IntPredicate)` yolunu JSONL adapter'a bağlar. `ge` ve `gt` monoton predicate'leriyle ilk true konumu, üst uç ve signed i32 taşma sonuçları Java oracle'ın `value` sonucu ile karşılaştırılır.
+`crates/voxel-core/src/math.rs` içindeki `mth_binary_search`, Java `Mth.binarySearch(int, int, IntPredicate)` yolunu JSONL adapter'a bağlar. `ge` ve `gt` monoton predicate'leriyle ilk true konumu, üst uç ve signed i32 taşma sonuçları Java oracle'ın `value` sonucu ile karşılaştırılır.
 
 ## Doğrulama
 

@@ -80,7 +80,7 @@ olarak doğrulandı ve fark null kaldı.
 
 ## Rust doğrulaması
 
-src/input.rs içindeki advance_local_player_sprint_trigger, Java'nın
+crates/voxel-world/src/input.rs içindeki advance_local_player_sprint_trigger, Java'nın
 previous/current input sırasını ve non-passenger başlangıç koşullarını saf
 state geçişi olarak uygular. ClientPlayerState, bir sonraki çağrının
 previous snapshot'ı için keyPresses, move vector ve trigger zamanını saklar.

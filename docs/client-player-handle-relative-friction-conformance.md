@@ -55,7 +55,7 @@ olarak doğrulandı ve fark `null` kaldı.
 
 ## Rust doğrulaması
 
-`src/input.rs` içindeki `local_player_handle_relative_friction`, mevcut
+`crates/voxel-world/src/input.rs` içindeki `local_player_handle_relative_friction`, mevcut
 friction-influenced speed ve climbable clamp helper'larını Java çağrı sırasıyla
 birleştirir. `ClientWorld` local player motion state'inden delta'yı alıp sonucu
 tekrar sorgulanabilir motion state'ine yazar; behavior adapter aynı production

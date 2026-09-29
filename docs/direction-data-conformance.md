@@ -37,7 +37,7 @@ Mevcut capture'lar değiştirilmez; kaynak, girdi veya ortam değiştiğinde yen
 
 ## Client-parity doğrulaması
 
-`src/direction.rs` içindeki `from_3d_data_value` ve `from_2d_data_value`, Java Direction tablolarının kaynak sırasını ve `abs(data % length)` indeksleme davranışını uygular. Rust adapter bu static yolları `direction_data` JSONL operation'ına bağlar; Java oracle doğrudan ilgili enum metodunu çağırır.
+`crates/voxel-core/src/direction.rs` içindeki `from_3d_data_value` ve `from_2d_data_value`, Java Direction tablolarının kaynak sırasını ve `abs(data % length)` indeksleme davranışını uygular. Rust adapter bu static yolları `direction_data` JSONL operation'ına bağlar; Java oracle doğrudan ilgili enum metodunu çağırır.
 
 Senaryolar pozitif/negatif data değerlerini, tekrar eden remainder'ları ve i32 sınırlarını kapsar. Beklenen yön snapshot'ları Java oracle çıktısından alındı.
 

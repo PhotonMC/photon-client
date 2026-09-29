@@ -17,7 +17,7 @@ Kapsam dışı kalanlar: scalar f32/f64 `lerp`, Vec3 overload'u, `lerp2`, `lerp3
 
 ## Client-parity doğrulaması
 
-`src/math.rs`, Java `Mth.lerpInt(float, int, int)` ve `Mth.lerpDiscrete(float, int, int)` overload'larını i32 delta/floor ve toplama sırasıyla taşır. `examples/behavior_adapter.rs` sonuçları signed decimal i32 string'leri olarak dışarı verir.
+`crates/voxel-core/src/math.rs`, Java `Mth.lerpInt(float, int, int)` ve `Mth.lerpDiscrete(float, int, int)` overload'larını i32 delta/floor ve toplama sırasıyla taşır. `examples/behavior_adapter.rs` sonuçları signed decimal i32 string'leri olarak dışarı verir.
 
 ## Doğrulama
 

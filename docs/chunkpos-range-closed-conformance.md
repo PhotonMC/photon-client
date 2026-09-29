@@ -29,12 +29,12 @@ Girdiler `family: "math"`, `operation: "chunkpos_range_closed"` ve `mode: "from-
 
 ## Rust karşılığı
 
-`src/binary.rs` içindeki `ChunkPos::range_closed` ve `range_closed_from_to`, endpoint aritmetiğini ve Java'nın x-fastest/z-next traversal sırasını üretir. `examples/behavior_adapter.rs` iki overload'u JSONL operation'ına bağlar; `tests/behavior/java/MathOracle.java` Java stream çıktısını gözlemler.
+`crates/voxel-core/src/binary.rs` içindeki `ChunkPos::range_closed` ve `range_closed_from_to`, endpoint aritmetiğini ve Java'nın x-fastest/z-next traversal sırasını üretir. `examples/behavior_adapter.rs` iki overload'u JSONL operation'ına bağlar; `tests/behavior/java/MathOracle.java` Java stream çıktısını gözlemler.
 
 
 ## Client-parity doğrulaması
 
-`src/binary.rs`, Java `ChunkPos.rangeClosed` center/radius ve from/to overload'larının inclusive x-fastest/z-next sırasını karşılar. Rust adapter sonucu Java stream'inin tüketilmiş `ChunkPos` listesini aynı decimal string alanlarıyla taşır.
+`crates/voxel-core/src/binary.rs`, Java `ChunkPos.rangeClosed` center/radius ve from/to overload'larının inclusive x-fastest/z-next sırasını karşılar. Rust adapter sonucu Java stream'inin tüketilmiş `ChunkPos` listesini aynı decimal string alanlarıyla taşır.
 
 ## Doğrulama
 

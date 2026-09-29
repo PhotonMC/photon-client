@@ -1,4 +1,4 @@
-"""Generate src/render/block_offset_table.rs from a block-family capture.
+"""Generate crates/voxel-data/src/block/offset.rs from a block-family capture.
 
     python3 tools/generate/block_offset.py .data/captures/behavior/<id>/outputs.jsonl
 
@@ -35,7 +35,7 @@ def main(path):
             f"0x{block['max_horizontal']}, 0x{block['max_vertical']}),"
         )
     out += ["];", ""]
-    with open("src/render/block_offset_table.rs", "w", encoding="utf-8") as handle:
+    with open("crates/voxel-data/src/block/offset.rs", "w", encoding="utf-8") as handle:
         handle.write("\n".join(out))
     print(f"blocks={len(data['blocks'])}")
 

@@ -14,7 +14,7 @@ Java Edition 26.2 / protokol 776 / Java 25 referansı kullanılır. `client/Scro
 - Her iki tam wheel çıktısı da sıfırsa artık double değerler korunur. En az bir eksen tam adıma ulaştığında tam adımlar döndürülür ve ilgili artık değerlerden çıkarılır; diğer eksenin kesirli artığı aynı çağrıda korunur.
 - Selection helper, wheel işaretini Java `Math.signum` ile int adıma çevirip mevcut seçimi bu adımdan çıkarır. Sonuç önce en az `-1` yapılır, sonra pozitif limit ile döngüsel aralığa taşınır.
 
-Rust karşılığı `src/scroll.rs` içindeki `ScrollWheelHandler` tipidir. Java double-to-int dönüşümünün NaN/Infinity sonuçları ve i32 taşmalı selection arithmetic'i korunur; production callback ve player state entegrasyonu bu veri dilimine dahil değildir.
+Rust karşılığı `crates/voxel-game/src/scroll.rs` içindeki `ScrollWheelHandler` tipidir. Java double-to-int dönüşümünün NaN/Infinity sonuçları ve i32 taşmalı selection arithmetic'i korunur; production callback ve player state entegrasyonu bu veri dilimine dahil değildir.
 
 ## JSONL sınırı
 
@@ -23,7 +23,7 @@ Rust karşılığı `src/scroll.rs` içindeki `ScrollWheelHandler` tipidir. Java
 
 ## Client-parity doğrulaması
 
-`src/scroll.rs`, Java Edition 26.2 / protokol 776 / Java 25 kaynak davranışına göre scroll accumulation ve döngüsel selection helper'ını uygular. Java oracle gerçek `ScrollWheelHandler` nesnesini ve static helper'ı çalıştırır; beklenen sonuç Rust adapter'ından türetilmez.
+`crates/voxel-game/src/scroll.rs`, Java Edition 26.2 / protokol 776 / Java 25 kaynak davranışına göre scroll accumulation ve döngüsel selection helper'ını uygular. Java oracle gerçek `ScrollWheelHandler` nesnesini ve static helper'ı çalıştırır; beklenen sonuç Rust adapter'ından türetilmez.
 
 Math referansı `8cf7a43afb6a60906b47bfee079ed673741f5f86bab9c3cfb6e1c45e38c4349c`; tam corpus referansı `1e0328e7a1ac19c95185e78a0b5b06c565d34c401ad3477be3a28f22417094e0` olarak kaydedildi. Math debug/release karşılaştırmaları `compare-aoa073hl` ve `compare-pid92coi`; tam debug/release karşılaştırmaları `compare-rvsvqgz1` ve `compare-53fxtari` raporlarında fark üretmedi.
 

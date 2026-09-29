@@ -17,7 +17,7 @@ Kapsam dışı kalanlar: AABB segment `clip`, VoxelShape kesişimleri, `atan2`, 
 
 ## Client-parity doğrulaması
 
-`src/math.rs` içindeki `mth_ray_intersects_aabb`, Java `Mth.rayIntersectsAABB(Vec3, Vec3, AABB)` yolunu JSONL adapter'a bağlar. Üç eksen dışlama ve üç Andrew Woo çapraz çarpım sınırı Java oracle'ın boolean `value` sonucu ile karşılaştırılır.
+`crates/voxel-core/src/math.rs` içindeki `mth_ray_intersects_aabb`, Java `Mth.rayIntersectsAABB(Vec3, Vec3, AABB)` yolunu JSONL adapter'a bağlar. Üç eksen dışlama ve üç Andrew Woo çapraz çarpım sınırı Java oracle'ın boolean `value` sonucu ile karşılaştırılır.
 
 ## Doğrulama
 

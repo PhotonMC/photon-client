@@ -73,7 +73,7 @@ olarak doğrulandı ve fark `null` kaldı.
 
 ## Rust doğrulaması
 
-`src/input.rs` içindeki `can_start_local_player_sprinting`, Java predicate'inin
+`crates/voxel-world/src/input.rs` içindeki `can_start_local_player_sprinting`, Java predicate'inin
 non-passenger koşullarını `LocalPlayerSprintGateInput` snapshot'ı üzerinden
 uygular. Behavior adapter aynı production predicate'ini çağırır; Java'nın
 private metodunu veya beklenen sonucu adapter içinde kopyalamaz.

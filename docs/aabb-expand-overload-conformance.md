@@ -33,7 +33,7 @@ Math ve birleşik altı aile referansı `8c4789d8c4953d1e6851df238f157e9ea125bc1
 
 ## Client-parity doğrulaması
 
-`src/aabb.rs`, Java `AABB.expandTowards(Vec3)` overload'ını `Aabb::expand_towards_vec3` ile uygular. `examples/behavior_adapter.rs`, `op: "expand_vec3"` adımını f64 Vec3 bileşenleriyle bu API'ye taşır.
+`crates/voxel-core/src/aabb.rs`, Java `AABB.expandTowards(Vec3)` overload'ını `Aabb::expand_towards_vec3` ile uygular. `examples/behavior_adapter.rs`, `op: "expand_vec3"` adımını f64 Vec3 bileşenleriyle bu API'ye taşır.
 
 ## Doğrulama
 

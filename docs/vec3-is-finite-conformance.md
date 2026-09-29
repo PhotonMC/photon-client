@@ -31,12 +31,12 @@ Girdiler `family: "math"`, `operation: "vec3_is_finite"` ve on altı haneli f64 
 
 ## Rust karşılığı
 
-`src/math.rs` içindeki `Vec3::is_finite`, x, y ve z için Rust f64 sonluluk sorgularını Java'nın üçlü koşuluyla aynı boolean sonucu verecek şekilde bağlar. `examples/behavior_adapter.rs` f64 bit girdilerini çözer; `tests/behavior/java/MathOracle.java` aynı `isFinite` çağrısını doğrudan oracle çıktısına bağlar.
+`crates/voxel-core/src/math.rs` içindeki `Vec3::is_finite`, x, y ve z için Rust f64 sonluluk sorgularını Java'nın üçlü koşuluyla aynı boolean sonucu verecek şekilde bağlar. `examples/behavior_adapter.rs` f64 bit girdilerini çözer; `tests/behavior/java/MathOracle.java` aynı `isFinite` çağrısını doğrudan oracle çıktısına bağlar.
 
 
 ## Client-parity doğrulaması
 
-`src/math.rs`, Java `Vec3.isFinite()` metodunu karşılar. Rust adaptörü üç f64 bileşenini sonluluk için sorgular; Java oracle doğrudan `Vec3.isFinite` çağrısını kullanır.
+`crates/voxel-core/src/math.rs`, Java `Vec3.isFinite()` metodunu karşılar. Rust adaptörü üç f64 bileşenini sonluluk için sorgular; Java oracle doğrudan `Vec3.isFinite` çağrısını kullanır.
 
 ## Doğrulama
 

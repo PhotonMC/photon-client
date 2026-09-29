@@ -3,7 +3,7 @@ use std::net::SocketAddr;
 use std::thread;
 use std::time::Duration;
 
-use voxel_client::connection::{
+use voxel_net::connection::{
     connect_and_remote_player_head_rotation_observer_probe,
     connect_and_remote_player_head_rotation_probe,
 };

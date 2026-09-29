@@ -2,8 +2,8 @@ use std::env;
 use std::net::SocketAddr;
 use std::time::Duration;
 
-use voxel_client::connection::connect_and_world_entity_metadata_probe;
-use voxel_client::world::ClientPlayerGameMode;
+use voxel_net::connection::connect_and_world_entity_metadata_probe;
+use voxel_world::ClientPlayerGameMode;
 
 const CHANGE_GAME_MODE_EVENT_ID: u8 = 3;
 

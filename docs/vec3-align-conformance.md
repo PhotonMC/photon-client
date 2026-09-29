@@ -33,12 +33,12 @@ Girdiler `family: "math"`, `operation: "vec3_align"`, `first` Vec3 nesnesi ve `a
 
 ## Rust karşılığı
 
-`src/math.rs` içindeki `Vec3::align`, eksen slice'ında üyelik arayıp seçilen bileşenlere `floor_f64` uygular; `examples/behavior_adapter.rs` JSON eksen listesini Axis değerlerine çözer. `tests/behavior/java/MathOracle.java` aynı `Vec3.align` çağrısını doğrudan oracle çıktısına bağlar.
+`crates/voxel-core/src/math.rs` içindeki `Vec3::align`, eksen slice'ında üyelik arayıp seçilen bileşenlere `floor_f64` uygular; `examples/behavior_adapter.rs` JSON eksen listesini Axis değerlerine çözer. `tests/behavior/java/MathOracle.java` aynı `Vec3.align` çağrısını doğrudan oracle çıktısına bağlar.
 
 
 ## Client-parity doğrulaması
 
-`src/math.rs`, Java `Vec3.align(EnumSet<Direction.Axis>)` metodunu karşılar. Rust adaptörü JSON eksen listesini Axis değerlerine çözer ve seçilen bileşenlerde Java floor/cast yolunu kullanır; Java oracle doğrudan `Vec3.align` çağrısını kullanır.
+`crates/voxel-core/src/math.rs`, Java `Vec3.align(EnumSet<Direction.Axis>)` metodunu karşılar. Rust adaptörü JSON eksen listesini Axis değerlerine çözer ve seçilen bileşenlerde Java floor/cast yolunu kullanır; Java oracle doğrudan `Vec3.align` çağrısını kullanır.
 
 ## Doğrulama
 

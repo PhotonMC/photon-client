@@ -20,7 +20,7 @@ dahil), eldeki eşya, hayatta kalma ve yaratıcı envanter ekranları
 (tıklama tahmini, sürükleme, arama, ipucu, oyuncu modeli), üçüncü şahıs
 oyuncu.
 
-Kapsam ölçüsü (canlı oturumun paket işleyicisi, `src/connection/play.rs`):
+Kapsam ölçüsü (canlı oturumun paket işleyicisi, `crates/voxel-net/src/connection/play.rs`):
 
 | Yön | İşlenen | Toplam | Eksik olanlar |
 | --- | ---: | ---: | --- |

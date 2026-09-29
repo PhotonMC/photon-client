@@ -38,7 +38,7 @@ JOML `invSqrt`, standart Java `Math.atan2`, Vec3 rotation forwarding'i ve istemc
 
 ## Client-parity doğrulaması
 
-`src/math.rs` içindeki `mth_atan2`, Java `Mth.atan2(double, double)` için normalize etme, 257 girişli tablo kuantizasyonu, düzeltme polinomu ve quadrant dönüşlerini aynı sırayla yürütür. Tablo değerleri çalışma zamanında aynı `ind / 256.0`, `asin` ve `cos(asin)` tanımıyla üretilir; özgün Java kodu Rust'a kopyalanmaz.
+`crates/voxel-core/src/math.rs` içindeki `mth_atan2`, Java `Mth.atan2(double, double)` için normalize etme, 257 girişli tablo kuantizasyonu, düzeltme polinomu ve quadrant dönüşlerini aynı sırayla yürütür. Tablo değerleri çalışma zamanında aynı `ind / 256.0`, `asin` ve `cos(asin)` tanımıyla üretilir; özgün Java kodu Rust'a kopyalanmaz.
 
 Java oracle doğrudan `Mth.atan2(y, x)` çağrısını yürütür. Senaryolar signed zero, eksenler, quadrant'lar, steep/table sınırları, subnormal değerler, taşan norm, Infinity ve NaN yollarını içerir. Beklenen sonuçlar Java oracle çıktısından alındı.
 

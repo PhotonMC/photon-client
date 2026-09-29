@@ -69,7 +69,7 @@ Araç canı, bağlamsal çubuktaki konum ve atlama çubukları, etkilerin sağ
 
 ## Yazı tipi
 
-`src/render/font.rs`, varsayılan yazı tipini referansın tanımından
+`crates/voxel-render/src/font.rs`, varsayılan yazı tipini referansın tanımından
 kuruyor:
 
 - `font/default.json` ve başvurduğu tanımlar sırayla okunuyor.
@@ -90,7 +90,7 @@ kalın ve eğik yazı henüz yok.
 
 ## Yuva seçimi
 
-`src/hotbar.rs`:
+`crates/voxel-game/src/hotbar.rs`:
 
 - 1–9 tuşları yuvayı doğrudan seçiyor.
 - Tekerlek referansın işleyicisiyle ilerliyor: kesirli adımlar

@@ -32,12 +32,12 @@ Girdiler `family: "math"`, `operation: "vec3_relative"`, `first` Vec3 nesnesi, `
 
 ## Rust karşılığı
 
-`src/math.rs` içindeki `Vec3::relative`, `Direction::step()` değerlerini f64 uzaklıkla çarpıp Java bileşen sırasıyla toplar. `examples/behavior_adapter.rs` yönü `Direction::from_name` ile çözer ve uzaklığı ham bitlerden okur; `tests/behavior/java/MathOracle.java` aynı `Vec3.relative` çağrısını doğrudan oracle çıktısına bağlar.
+`crates/voxel-core/src/math.rs` içindeki `Vec3::relative`, `Direction::step()` değerlerini f64 uzaklıkla çarpıp Java bileşen sırasıyla toplar. `examples/behavior_adapter.rs` yönü `Direction::from_name` ile çözer ve uzaklığı ham bitlerden okur; `tests/behavior/java/MathOracle.java` aynı `Vec3.relative` çağrısını doğrudan oracle çıktısına bağlar.
 
 
 ## Client-parity doğrulaması
 
-`src/math.rs`, Java `Vec3.relative(Direction, double)` metodunu karşılar. Rust adaptörü yön normalini uzaklıkla birleştirir; Java oracle doğrudan `Vec3.relative` çağrısını kullanır.
+`crates/voxel-core/src/math.rs`, Java `Vec3.relative(Direction, double)` metodunu karşılar. Rust adaptörü yön normalini uzaklıkla birleştirir; Java oracle doğrudan `Vec3.relative` çağrısını kullanır.
 
 ## Doğrulama
 

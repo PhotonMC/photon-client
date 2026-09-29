@@ -31,12 +31,12 @@ Girdiler `family: "math"`, `operation: "chunkpos_from_section_node"` ve `section
 
 ## Rust karşılığı
 
-`src/binary.rs` içindeki `ChunkPos::from_section_node`, mevcut `SectionPos` packed long çözümünden x/z değerlerini alıp ChunkPos `pack` yoluna verir. `examples/behavior_adapter.rs` sonucu JSONL’ye bağlar; `tests/behavior/java/MathOracle.java` Java metodunu doğrudan gözlemler.
+`crates/voxel-core/src/binary.rs` içindeki `ChunkPos::from_section_node`, mevcut `SectionPos` packed long çözümünden x/z değerlerini alıp ChunkPos `pack` yoluna verir. `examples/behavior_adapter.rs` sonucu JSONL’ye bağlar; `tests/behavior/java/MathOracle.java` Java metodunu doğrudan gözlemler.
 
 
 ## Client-parity doğrulaması
 
-`src/binary.rs`, Java `ChunkPos.fromSectionNode(long)` yolunu SectionPos packed long’undan signed x/z alanlarını çıkarıp ChunkPos packed long’una dönüştürerek karşılar. Rust adaptörü sonucu Java ile aynı unsigned lowercase hex biçiminde taşır.
+`crates/voxel-core/src/binary.rs`, Java `ChunkPos.fromSectionNode(long)` yolunu SectionPos packed long’undan signed x/z alanlarını çıkarıp ChunkPos packed long’una dönüştürerek karşılar. Rust adaptörü sonucu Java ile aynı unsigned lowercase hex biçiminde taşır.
 
 ## Doğrulama
 

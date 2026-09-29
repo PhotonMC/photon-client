@@ -45,7 +45,7 @@ Rust debug ve release adaptörleri math ailesinde 394/394, birleşik corpus'ta 2
 
 ## Client-parity doğrulaması
 
-`src/aabb.rs`, Java `AABB.move(double,double,double)` metodunun her endpoint'e eksen bazında delta eklenmesini uygular. `examples/behavior_adapter.rs` `move` adımını JSONL math senaryolarına bağlar.
+`crates/voxel-core/src/aabb.rs`, Java `AABB.move(double,double,double)` metodunun her endpoint'e eksen bazında delta eklenmesini uygular. `examples/behavior_adapter.rs` `move` adımını JSONL math senaryolarına bağlar.
 
 ## Doğrulama
 

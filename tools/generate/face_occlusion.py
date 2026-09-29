@@ -1,4 +1,4 @@
-"""Generate src/render/face_occlusion_table.rs from a block-family capture.
+"""Generate crates/voxel-data/src/block/face_occlusion.rs from a block-family capture.
 
     python3 tools/generate/face_occlusion.py .data/captures/behavior/<id>/outputs.jsonl
 
@@ -71,7 +71,7 @@ def main(path):
             f"always: {str(pair['always']).lower()}, directions: {mask} }},"
         )
     out += ["];", ""]
-    with open("src/render/face_occlusion_table.rs", "w", encoding="utf-8") as handle:
+    with open("crates/voxel-data/src/block/face_occlusion.rs", "w", encoding="utf-8") as handle:
         handle.write("\n".join(out))
     print(f"tuples={len(data['tuples'])} shapes={data['shape_count']} skips={len(data['skip_pairs'])}")
 

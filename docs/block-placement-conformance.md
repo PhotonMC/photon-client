@@ -14,10 +14,10 @@ en yakın sınıfın kuralıdır. `block/behaviours` her blok için bu sınıfla
 `instanceof StairBlock`'u ve düştüğü itemi; her item için sınıfını, `useOn`
 ve `use` kurallarının sınıfını, varsayılan `Item.use`'un bir şey yapıp
 yapmadığını ve koyduğu bloğu referanstan alır
-(`src/world/block_behaviour_table.rs`, `tools/generate/block_behaviour.py`,
+(`crates/voxel-data/src/block/behaviour.rs`, `tools/generate/block_behaviour.py`,
 her koşuda karşılaştırılıyor).
 
-Rust (`src/world/block_rules.rs`) kuralları sınıf başına yazar; blok,
+Rust (`crates/voxel-world/src/block_rules.rs`) kuralları sınıf başına yazar; blok,
 tablodaki sınıf üzerinden kuralı bulur. Kuralı yazılmış sınıflar:
 yerleştirmede `Block` (464 blok), `SlabBlock` (68), `StairBlock` (64),
 `RotatedPillarBlock` (57); değiştirilebilirlikte `BlockBehaviour` ve

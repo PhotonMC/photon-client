@@ -17,7 +17,7 @@ Kapsam dışı kalanlar: `floor`, `lfloor`, `ceil`, `ceilLong` ve `getSeed`; bun
 
 ## Client-parity doğrulaması
 
-`src/math.rs` içindeki `frac_f32` ve `frac_f64` yordamları, Java `Mth.frac(float)` ve `Mth.frac(double)` yollarını JSONL adapter'a bağlar. Adapter beklenen değerleri üretmez; raw f32/f64 sonuç bitleri Java oracle çıktısıyla karşılaştırılır.
+`crates/voxel-core/src/math.rs` içindeki `frac_f32` ve `frac_f64` yordamları, Java `Mth.frac(float)` ve `Mth.frac(double)` yollarını JSONL adapter'a bağlar. Adapter beklenen değerleri üretmez; raw f32/f64 sonuç bitleri Java oracle çıktısıyla karşılaştırılır.
 
 ## Doğrulama
 

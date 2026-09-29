@@ -31,12 +31,12 @@ Girdiler `family: "math"`, `operation: "chunkpos_region_coordinates"`, chunk `x`
 
 ## Rust karşılığı
 
-`src/binary.rs` içindeki `ChunkPos::get_region_x`, `get_region_z`, `get_region_x_from_packed`, `get_region_z_from_packed`, `get_region_local_x`, `get_region_local_z`, `min_from_region` ve `max_from_region` Java'nın shift, mask ve i32 wrapping aritmetiğini korur. `examples/behavior_adapter.rs` bu API'yi JSONL senaryosuna bağlar; `tests/behavior/java/MathOracle.java` Java çıktısını doğrudan gözlemler.
+`crates/voxel-core/src/binary.rs` içindeki `ChunkPos::get_region_x`, `get_region_z`, `get_region_x_from_packed`, `get_region_z_from_packed`, `get_region_local_x`, `get_region_local_z`, `min_from_region` ve `max_from_region` Java'nın shift, mask ve i32 wrapping aritmetiğini korur. `examples/behavior_adapter.rs` bu API'yi JSONL senaryosuna bağlar; `tests/behavior/java/MathOracle.java` Java çıktısını doğrudan gözlemler.
 
 
 ## Client-parity doğrulaması
 
-`src/binary.rs`, Java `ChunkPos` region ve region-local yardımcılarını signed shift, düşük 5 bit maskesi ve region min/max üretimiyle karşılar. Java oracle metotları doğrudan çağırır; Rust adaptörü aynı sentetik chunk/region girdilerini üretim API'sine taşır.
+`crates/voxel-core/src/binary.rs`, Java `ChunkPos` region ve region-local yardımcılarını signed shift, düşük 5 bit maskesi ve region min/max üretimiyle karşılar. Java oracle metotları doğrudan çağırır; Rust adaptörü aynı sentetik chunk/region girdilerini üretim API'sine taşır.
 
 ## Doğrulama
 

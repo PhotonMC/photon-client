@@ -37,7 +37,7 @@ Plane iterator/stream, random, shuffle ve length yolları ile Axis'in diğer sor
 
 ## Client-parity doğrulaması
 
-`src/direction.rs` içindeki `Plane.test`, Java nullable Direction plane predicate'ini uygular. Rust adapter `direction_plane_test` JSONL operation'ı ile boolean sonucu dışarı verir; Java oracle aynı enum predicate'ini doğrudan çağırır.
+`crates/voxel-core/src/direction.rs` içindeki `Plane.test`, Java nullable Direction plane predicate'ini uygular. Rust adapter `direction_plane_test` JSONL operation'ı ile boolean sonucu dışarı verir; Java oracle aynı enum predicate'ini doğrudan çağırır.
 
 Senaryolar yatay ve dikey plane değerleri için null girdiyi ve altı yönle eşleşme/eşleşmeme sonuçlarını Java oracle çıktısıyla karşılaştırır.
 

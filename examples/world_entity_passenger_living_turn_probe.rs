@@ -2,7 +2,7 @@ use std::env;
 use std::net::SocketAddr;
 use std::time::Duration;
 
-use voxel_client::connection::connect_and_world_entity_passenger_tick_probe;
+use voxel_net::connection::connect_and_world_entity_passenger_tick_probe;
 
 const VANILLA_OAK_BOAT_ENTITY_TYPE_ID: i32 = 89;
 const VANILLA_ZOMBIE_ENTITY_TYPE_ID: i32 = 151;

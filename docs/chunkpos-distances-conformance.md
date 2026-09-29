@@ -29,12 +29,12 @@ Girdiler `family: "math"`, `operation: "chunkpos_distances"` ve signed decimal i
 
 ## Rust karşılığı
 
-`src/math.rs` içindeki `abs_max` ve `chessboard_distance`, Java `Math.abs`/`Math.max` ve `Mth.chessboardDistance` i32 davranışını taşır. `src/binary.rs` içindeki `ChunkPos::get_chessboard_distance`, `get_chessboard_distance_coordinates`, `distance_squared` ve `distance_squared_from_packed` public overload yollarını birleştirir. `examples/behavior_adapter.rs` JSONL bağını sağlar; `tests/behavior/java/MathOracle.java` Java overload'larını doğrudan gözlemler.
+`crates/voxel-core/src/math.rs` içindeki `abs_max` ve `chessboard_distance`, Java `Math.abs`/`Math.max` ve `Mth.chessboardDistance` i32 davranışını taşır. `crates/voxel-core/src/binary.rs` içindeki `ChunkPos::get_chessboard_distance`, `get_chessboard_distance_coordinates`, `distance_squared` ve `distance_squared_from_packed` public overload yollarını birleştirir. `examples/behavior_adapter.rs` JSONL bağını sağlar; `tests/behavior/java/MathOracle.java` Java overload'larını doğrudan gözlemler.
 
 
 ## Client-parity doğrulaması
 
-`src/binary.rs` ve `src/math.rs`, Java `ChunkPos.getChessboardDistance` ile `distanceSquared` overload'larını signed i32 çıkarma, mutlak değer, kare ve toplam sırasını koruyarak karşılar. Java oracle metotları doğrudan çağırır; Rust adaptörü aynı sentetik chunk koordinatlarını üretim API'sine taşır.
+`crates/voxel-core/src/binary.rs` ve `crates/voxel-core/src/math.rs`, Java `ChunkPos.getChessboardDistance` ile `distanceSquared` overload'larını signed i32 çıkarma, mutlak değer, kare ve toplam sırasını koruyarak karşılar. Java oracle metotları doğrudan çağırır; Rust adaptörü aynı sentetik chunk koordinatlarını üretim API'sine taşır.
 
 ## Doğrulama
 

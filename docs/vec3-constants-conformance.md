@@ -29,12 +29,12 @@ Girdiler `family: "math"`, `operation: "vec3_constant"` ve `name` alanını kull
 
 ## Rust karşılığı
 
-`src/math.rs` içindeki `Vec3` associated constant’ları Java değerlerini taşır. `examples/behavior_adapter.rs` sabiti doğrudan Rust API’sinden sorgular; `tests/behavior/java/MathOracle.java` aynı adı doğrudan Java sabitine bağlar.
+`crates/voxel-core/src/math.rs` içindeki `Vec3` associated constant’ları Java değerlerini taşır. `examples/behavior_adapter.rs` sabiti doğrudan Rust API’sinden sorgular; `tests/behavior/java/MathOracle.java` aynı adı doğrudan Java sabitine bağlar.
 
 
 ## Client-parity doğrulaması
 
-`src/math.rs`, Java `Vec3.ZERO`, `X_AXIS`, `Y_AXIS` ve `Z_AXIS` sabitlerini associated constant olarak sunar. Java oracle sabitleri doğrudan okur; Rust adaptörü aynı değerleri üretim API’sinden taşır.
+`crates/voxel-core/src/math.rs`, Java `Vec3.ZERO`, `X_AXIS`, `Y_AXIS` ve `Z_AXIS` sabitlerini associated constant olarak sunar. Java oracle sabitleri doğrudan okur; Rust adaptörü aynı değerleri üretim API’sinden taşır.
 
 ## Doğrulama
 

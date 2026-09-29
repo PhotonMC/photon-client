@@ -31,12 +31,12 @@ Girdiler `family: "math"`, `operation: "vec3_lerp"`, `first`, `second` ve on alt
 
 ## Rust karşılığı
 
-`src/math.rs` içindeki `Vec3::lerp`, üç bileşende Java'nın çıkarma, çarpma ve toplama sırasını korur. `examples/behavior_adapter.rs` f64 bit girdilerini çözüp snapshot döndürür; `tests/behavior/java/MathOracle.java` aynı `Vec3.lerp` çağrısını doğrudan oracle çıktısına bağlar.
+`crates/voxel-core/src/math.rs` içindeki `Vec3::lerp`, üç bileşende Java'nın çıkarma, çarpma ve toplama sırasını korur. `examples/behavior_adapter.rs` f64 bit girdilerini çözüp snapshot döndürür; `tests/behavior/java/MathOracle.java` aynı `Vec3.lerp` çağrısını doğrudan oracle çıktısına bağlar.
 
 
 ## Client-parity doğrulaması
 
-`src/math.rs`, Java `Vec3.lerp(Vec3, double)` metodunu karşılar. Rust adaptörü her eksende `p0 + alpha * (p1 - p0)` hesabını yapar; Java oracle doğrudan `Vec3.lerp` çağrısını kullanır.
+`crates/voxel-core/src/math.rs`, Java `Vec3.lerp(Vec3, double)` metodunu karşılar. Rust adaptörü her eksende `p0 + alpha * (p1 - p0)` hesabını yapar; Java oracle doğrudan `Vec3.lerp` çağrısını kullanır.
 
 ## Doğrulama
 

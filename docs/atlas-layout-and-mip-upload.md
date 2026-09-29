@@ -53,7 +53,7 @@ Aritmetiği açarsak, `t = (i + 0.5) / W'` ve `uv = t(1 + 2p/w) - p/w` için
 aralığa kenetlenir: **dolgu kenar texel'inin tekrarıdır**. `blit_sprite` bunu
 doğrudan tamsayı olarak uygular; kayan noktalı ara adım yoktur.
 
-Bu türetme `src/render/resolve.rs` içindeki üç testle korunuyor: sprite
+Bu türetme `crates/voxel-render/src/resolve.rs` içindeki üç testle korunuyor: sprite
 dolgunun ötesine yazılıyor, sol/sağ dolgu ilk/son sütunu tekrarlıyor, köşe
 iki kenarın harmanı değil köşe texel'inin kendisi.
 

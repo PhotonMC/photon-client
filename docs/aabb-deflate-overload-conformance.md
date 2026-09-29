@@ -32,12 +32,12 @@ Girdiler `family: "math"`, `operation: "aabb"` ve `steps` içinde `op: "deflate_
 
 ## Rust karşılığı
 
-`src/aabb.rs` içindeki `Aabb::deflate_xyz`, Java'nın ters işaretli `inflate` yönlendirmesini uygular. Java unary negation'ın NaN işaretini release optimizasyonlarından bağımsız korumak için bit düzeyinde yardımcı kullanılır. `examples/behavior_adapter.rs` bu metodu JSONL `deflate_xyz` adımına bağlar.
+`crates/voxel-core/src/aabb.rs` içindeki `Aabb::deflate_xyz`, Java'nın ters işaretli `inflate` yönlendirmesini uygular. Java unary negation'ın NaN işaretini release optimizasyonlarından bağımsız korumak için bit düzeyinde yardımcı kullanılır. `examples/behavior_adapter.rs` bu metodu JSONL `deflate_xyz` adımına bağlar.
 
 
 ## Client-parity doğrulaması
 
-`src/aabb.rs`, Java `AABB.deflate(double, double, double)` overload'unun ters işaretli `inflate` davranışını `Aabb::deflate_xyz` ile uygular. Java oracle üç miktarlı overload'u doğrudan çağırır; Rust adapter aynı girdiyi üretim API'sine taşır.
+`crates/voxel-core/src/aabb.rs`, Java `AABB.deflate(double, double, double)` overload'unun ters işaretli `inflate` davranışını `Aabb::deflate_xyz` ile uygular. Java oracle üç miktarlı overload'u doğrudan çağırır; Rust adapter aynı girdiyi üretim API'sine taşır.
 
 ## Doğrulama
 

@@ -47,7 +47,7 @@ olarak doğrulandı ve fark `null` kaldı.
 
 ## Rust doğrulaması
 
-`src/input.rs` içindeki `clamp_local_player_climbable_movement`, Java'nın
+`crates/voxel-world/src/input.rs` içindeki `clamp_local_player_climbable_movement`, Java'nın
 f32 clamp sınırlarını f64'e genişletme ve slide suppression sırasını uygular.
 `ClientWorld::apply_local_player_climbable_state`, local player'ın çevre
 snapshot'ını saklar; `apply_local_player_climbable_movement` sonucu

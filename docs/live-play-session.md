@@ -9,7 +9,7 @@ sürüldüğünde sunucunun gönderilen hareketleri kabul etmesi.
 
 ## Ne yapıldı
 
-`src/connection/play.rs` kalıcı bir oyun oturumu: giriş ve konfigürasyon
+`crates/voxel-net/src/connection/play.rs` kalıcı bir oyun oturumu: giriş ve konfigürasyon
 probe'larla ortak (`open_play_connection`), paketleri bir okuyucu iş parçacığı
 alıyor, çağıran kareler arasında boşaltıyor. Yığın, yığın unutma, blok ve
 bölüm blok güncellemeleri, yığın önbelleği merkezi/yarıçapı, yığın grubu
@@ -91,7 +91,7 @@ barışçıl ve `server-port=25600` içeriyor.
 - Çizim [dünya çizim kaydındaki](server-world-render.md) eksikleri taşıyor.
   Yüz gizleme referansın kararı: her durumun yüz örtme şekilleri, şekil
   örtüşme tablosu ve atlanan blok çiftleri referanstan yakalanıp
-  `src/render/face_occlusion_table.rs` olarak üretiliyor
+  `crates/voxel-data/src/block/face_occlusion.rs` olarak üretiliyor
   (`tools/generate/face_occlusion.py`); block ailesi tabloyu her koşuda
   karşılaştırıyor. Yapraklar örtmediği için içlerindeki kütükler görünüyor.
 - Su ve lav referansın sıvı çizicisinin mantığıyla çiziliyor: köşe
@@ -100,7 +100,7 @@ barışçıl ve `server-port=25600` içeriyor.
   sıvı yüzünü gizlemiyor sayılıyor, katılık çarpışma şekline göre
   yaklaşıklanıyor. Su rengi biyomdan, ışık sıvı çizicisinin kuralıyla.
   Referansın yarı saydam blokları ve yaprakları (`HalfTransparentBlock`,
-  `LeavesBlock`; `src/render/fluid_overlay_table.rs`,
+  `LeavesBlock`; `crates/voxel-data/src/block/fluid_overlay.rs`,
   `tools/generate/fluid_overlay.py`, block ailesinde karşılaştırılıyor)
   yanındaki su yüzleri `water_overlay` dokusuyla ve yalnız önden çiziliyor.
 - Animasyonlu dokular referansın sprite animasyonuyla oynuyor: kare
@@ -135,7 +135,7 @@ barışçıl ve `server-port=25600` içeriyor.
   beşte bir yaklaşıp sis başlangıç ve bitişini çekiyor. Yağmur ve kar
   çizgileri referansın hava efekti çizicisiyle: 10 blokluk yarıçapta her
   sütun, MOTION_BLOCKING yüksekliği (durum başına bit tablosu referanstan:
-  `src/world/motion_blocking_table.rs`, `tools/generate/motion_blocking.py`,
+  `crates/voxel-data/src/block/motion_blocking.rs`, `tools/generate/motion_blocking.py`,
   block ailesinde karşılaştırılıyor) ile kameranın ±10 bloğu arasında
   merkeze dönük bir dörtgen; yağış biyomun yağışı ve sıcaklığından (donmuş
   değiştiricinin gürültüleri, kar çizgisi üstünde sıcaklık gürültüsüyle
@@ -180,7 +180,7 @@ barışçıl ve `server-port=25600` içeriyor.
   bitki ve kapı alt yarının, yatak başın sütununun tohumu), her ağırlıklı
   listeden sırayla bir çekiliş (tek başına yazılmış varyant çekiliş
   yapmıyor), çok parçalı blokların bütün parçaları. Bitkilerin konuma bağlı
-  kaydırması referanstan tablo (`src/render/block_offset_table.rs`,
+  kaydırması referanstan tablo (`crates/voxel-data/src/block/offset.rs`,
   `tools/generate/block_offset.py`) ve formülle; block ailesinde
   karşılaştırılıyor.
 - Işık referansın model aydınlatıcısıyla hesaplanıyor: yumuşak ışıkta her
@@ -188,7 +188,7 @@ barışçıl ve `server-port=25600` içeriyor.
   ağırlıklı), ışık yayan bloklar ve AO kapalı modeller düz ışıkla; renk AO
   grisi → yan gölge → ton sırasıyla 8 bit adımlarla. Durum özellikleri
   (ışık yayma, AO gölgesi, görüş engelleme, sönümleme, katı çizim, tam kutu)
-  referanstan tablo (`src/world/block_light_table.rs`,
+  referanstan tablo (`crates/voxel-data/src/block/light.rs`,
   `tools/generate/block_light.py`), block ailesinde karşılaştırılıyor. Işık
   seviyeleri sunucunun yığın ve ışık paketlerinden; lightmap referansın
   lightmap shader'ının hesabıyla, 8 bit nicemleme ve doğrusal örneklemeyle

@@ -14,7 +14,7 @@ Java Edition 26.2 / protokol 776 / Java 25 referansı kullanılır. `client/Opti
 - `fromSliderValue`, slider `1.0` veya üstündeyse Java f32 `0.99999` değerini kullanır. Ardından `Mth.map` sonucu `floor` edilir ve enum indeksine sıkıştırılır. Negatif, sonsuz ve NaN slider değerleri aynı Java dönüşüm yolundadır.
 - `validateValue`, değerin value listesinde bulunup bulunmadığını döndürür.
 
-Rust karşılığı `src/option.rs` içindeki `SliderableEnum<T>` tipidir. Value listesi boş olamaz; Java'da bu record ile oluşturulabilse de slider metotları boş listede ilk/son değere eriştiği için bu dilim istemcide kullanılan geçerli enum listelerini modeller.
+Rust karşılığı `crates/voxel-game/src/option.rs` içindeki `SliderableEnum<T>` tipidir. Value listesi boş olamaz; Java'da bu record ile oluşturulabilse de slider metotları boş listede ilk/son değere eriştiği için bu dilim istemcide kullanılan geçerli enum listelerini modeller.
 
 ## JSONL sınırı
 
@@ -23,7 +23,7 @@ Rust karşılığı `src/option.rs` içindeki `SliderableEnum<T>` tipidir. Value
 
 ## Client-parity doğrulaması
 
-`src/option.rs`, Java Edition 26.2 / protokol 776 / Java 25 `OptionInstance.SliderableEnum` davranışını uygular. Java oracle gerçek `GraphicsPreset` enum listesiyle oluşturulan `OptionInstance.SliderableEnum` nesnesini çalıştırır; beklenen sonuç Rust adaptöründen türetilmez.
+`crates/voxel-game/src/option.rs`, Java Edition 26.2 / protokol 776 / Java 25 `OptionInstance.SliderableEnum` davranışını uygular. Java oracle gerçek `GraphicsPreset` enum listesiyle oluşturulan `OptionInstance.SliderableEnum` nesnesini çalıştırır; beklenen sonuç Rust adaptöründen türetilmez.
 
 Math referansı `2cdf57ae10115e268494b63af3001a2c44c2a8937a82eb6729e9aeafbbca2708`; tam corpus referansı `e5908239acaab4eac19ee620d9ff2f10f148394cdf705931251d402258b24b1d` olarak kaydedildi. Math debug/release karşılaştırmaları `compare-q6r7l613` ve `compare-_o1el210`; tam debug/release karşılaştırmaları `compare-ujhol5cm` ve `compare-1qbui8nf` raporlarında fark üretmedi.
 

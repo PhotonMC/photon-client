@@ -36,7 +36,7 @@ Eksenin yön seçimi, `getPlane`, random seçim, coordinate choose overload'lar�
 
 ## Client-parity doğrulaması
 
-`src/direction.rs` içindeki `Axis.is_vertical` ve `is_horizontal`, Java enum predicate'lerinin üç eksendeki sonuçlarını uygular. Rust adapter `direction_axis_orientation` JSONL operation'ı ile iki boolean sonucu dışarı verir; Java oracle aynı enum yöntemlerini doğrudan çağırır.
+`crates/voxel-core/src/direction.rs` içindeki `Axis.is_vertical` ve `is_horizontal`, Java enum predicate'lerinin üç eksendeki sonuçlarını uygular. Rust adapter `direction_axis_orientation` JSONL operation'ı ile iki boolean sonucu dışarı verir; Java oracle aynı enum yöntemlerini doğrudan çağırır.
 
 Senaryolar X, Y ve Z eksenlerinin dikey/yatay sonuçlarını Java oracle çıktısıyla karşılaştırır.
 

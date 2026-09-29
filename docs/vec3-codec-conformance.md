@@ -32,12 +32,12 @@ Girdiler `family: "math"`, `operation: "vec3_codec"` ve `mode: "decode" | "encod
 
 ## Rust karşılığı
 
-`src/math.rs` içindeki `Vec3::codec_decode`, tam üç öğeyi kabul eder; yanlış boyutta gerçek uzunluğu ve yalnızca üç veya daha fazla öğe için ilk üç öğeden oluşan partial değeri `Vec3CodecError::WrongLength` içinde taşır. `Vec3::codec_encode`, bileşenleri `[x, y, z]` sırasıyla döndürür. `examples/behavior_adapter.rs` bu API'yi JSONL senaryosuna bağlar; `tests/behavior/java/MathOracle.java` Java codec sonucunu doğrudan `DataResult` üzerinden gözlemler.
+`crates/voxel-core/src/math.rs` içindeki `Vec3::codec_decode`, tam üç öğeyi kabul eder; yanlış boyutta gerçek uzunluğu ve yalnızca üç veya daha fazla öğe için ilk üç öğeden oluşan partial değeri `Vec3CodecError::WrongLength` içinde taşır. `Vec3::codec_encode`, bileşenleri `[x, y, z]` sırasıyla döndürür. `examples/behavior_adapter.rs` bu API'yi JSONL senaryosuna bağlar; `tests/behavior/java/MathOracle.java` Java codec sonucunu doğrudan `DataResult` üzerinden gözlemler.
 
 
 ## Client-parity doğrulaması
 
-`src/math.rs`, Java `Vec3.CODEC` sabitinin sabit üç öğeli liste sözleşmesini `Vec3::codec_decode` ve `Vec3::codec_encode` ile karşılar. Java oracle codec'i `JsonOps` üzerinde doğrudan çağırır; Rust adaptörü aynı raw f64 bit girdilerini üretim API'sine taşır.
+`crates/voxel-core/src/math.rs`, Java `Vec3.CODEC` sabitinin sabit üç öğeli liste sözleşmesini `Vec3::codec_decode` ve `Vec3::codec_encode` ile karşılar. Java oracle codec'i `JsonOps` üzerinde doğrudan çağırır; Rust adaptörü aynı raw f64 bit girdilerini üretim API'sine taşır.
 
 ## Doğrulama
 

@@ -1,4 +1,4 @@
-"""Generate src/world/block_behaviour_table.rs from a block-family capture.
+"""Generate crates/voxel-data/src/block/behaviour.rs from a block-family capture.
 
     python3 tools/generate/block_behaviour.py .data/captures/behavior/<id>/outputs.jsonl
 
@@ -99,7 +99,7 @@ def main(path):
         "];",
         "",
     ]
-    with open("src/world/block_behaviour_table.rs", "w", encoding="utf-8") as handle:
+    with open("crates/voxel-data/src/block/behaviour.rs", "w", encoding="utf-8") as handle:
         handle.write("\n".join(out))
     print(f"blocks={len(block_rows)} items={len(item_rows)} classes={len(classes)}")
 

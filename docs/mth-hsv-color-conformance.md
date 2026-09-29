@@ -19,7 +19,7 @@ Kapsam dışı kalanlar: diğer `ARGB` bileşen yardımcıları, renk uzayı dö
 
 ## Client-parity doğrulaması
 
-`src/math.rs` içindeki `mth_hsv_to_rgb_f32` ve `mth_hsv_to_argb_f32`, Java `Mth.hsvToRgb(float, float, float)` ve `Mth.hsvToArgb(float, float, float, int)` yollarını JSONL adapter'a bağlar. Hue sektör seçimi, f32 ara değerleri, Java int daraltma/clamp sırası ve ARGB paketlemesi Java oracle'ın signed i32 sonucu ile karşılaştırılır.
+`crates/voxel-core/src/math.rs` içindeki `mth_hsv_to_rgb_f32` ve `mth_hsv_to_argb_f32`, Java `Mth.hsvToRgb(float, float, float)` ve `Mth.hsvToArgb(float, float, float, int)` yollarını JSONL adapter'a bağlar. Hue sektör seçimi, f32 ara değerleri, Java int daraltma/clamp sırası ve ARGB paketlemesi Java oracle'ın signed i32 sonucu ile karşılaştırılır.
 
 ## Doğrulama
 
