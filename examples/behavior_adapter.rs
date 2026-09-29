@@ -6672,12 +6672,15 @@ fn client_world_light_result(request: &Value) -> Result<Value, String> {
                     })
                 };
                 event["stored"] = json!(
-                    stored(voxel_client::world::light::LightLayer::Sky, &sky_mask, &sky_empty_mask)
-                        || stored(
-                            voxel_client::world::light::LightLayer::Block,
-                            &block_mask,
-                            &block_empty_mask
-                        )
+                    stored(
+                        voxel_client::world::light::LightLayer::Sky,
+                        &sky_mask,
+                        &sky_empty_mask
+                    ) || stored(
+                        voxel_client::world::light::LightLayer::Block,
+                        &block_mask,
+                        &block_empty_mask
+                    )
                 );
                 event["applied_sky_sections"] = json!(application.applied_sky_sections);
                 event["applied_block_sections"] = json!(application.applied_block_sections);
@@ -15673,6 +15676,29 @@ fn model_parse_result(request: &Value) -> Result<Value, String> {
             })
             .collect();
 
+        let mut display = serde_json::Map::new();
+        if let Some(transforms) = &parsed.display {
+            let bits = |vector: [f32; 3]| {
+                json!(
+                    vector
+                        .iter()
+                        .map(|axis| format!("{:08x}", axis.to_bits()))
+                        .collect::<Vec<_>>()
+                )
+            };
+            for context in model::DisplayContext::ALL {
+                if let Some(transform) = transforms.get(context) {
+                    display.insert(
+                        context.name().to_owned(),
+                        json!({
+                            "rotation": bits(transform.rotation),
+                            "translation": bits(transform.translation),
+                            "scale": bits(transform.scale),
+                        }),
+                    );
+                }
+            }
+        }
         out.push(json!({
             "label": label,
             "outcome": "parsed",
@@ -15691,6 +15717,7 @@ fn model_parse_result(request: &Value) -> Result<Value, String> {
             "texture_slots": slots,
             "has_geometry": parsed.elements.is_some(),
             "elements": elements,
+            "display": display,
         }));
     }
     Ok(json!({"rows": out}))
@@ -16433,7 +16460,9 @@ fn block_result(request: &Value) -> Result<Value, String> {
                         described
                     })
                     .collect();
-                out.push(json!({"label": label, "outcome": "listed", "blocks": blocks, "items": items}));
+                out.push(
+                    json!({"label": label, "outcome": "listed", "blocks": blocks, "items": items}),
+                );
             }
             "destroy_properties" => {
                 use voxel_client::world::block_destroy_table as table;
@@ -16749,6 +16778,34 @@ fn image_result(request: &Value) -> Result<Value, String> {
     if string(request, "operation")? == "argb_multiply" {
         return image_argb_multiply_result(request);
     }
+    if string(request, "operation")? == "item_side_faces" {
+        let rows = request["rows"].as_array().ok_or("rows must be an array")?;
+        let mut out = Vec::with_capacity(rows.len());
+        for row in rows {
+            // Test glue: the texture from the local copy of the pinned jar.
+            let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join(".data/minecraft/assets/jar")
+                .join(string(row, "texture")?);
+            let bytes = std::fs::read(&path).map_err(|e| format!("{}: {e}", path.display()))?;
+            let image = render::png::decode_rgba(&bytes).map_err(|e| format!("{e:?}"))?;
+            let alpha: Vec<u8> = image.rgba.chunks(4).map(|pixel| pixel[3]).collect();
+            let faces: Vec<String> =
+                render::item_model::side_faces(&alpha, image.width as i32, image.height as i32)
+                    .into_iter()
+                    .map(|(facing, x, y)| format!("{},{x:02},{y:02}", facing.name()))
+                    .collect::<std::collections::BTreeSet<_>>()
+                    .into_iter()
+                    .collect();
+            out.push(json!({
+                "label": string(row, "label")?,
+                "outcome": "scanned",
+                "width": image.width,
+                "height": image.height,
+                "faces": faces,
+            }));
+        }
+        return Ok(json!({"rows": out}));
+    }
     if string(request, "operation")? == "tint_constants" {
         return image_tint_constants_result(request);
     }
@@ -16895,7 +16952,8 @@ fn window_result(request: &Value) -> Result<Value, String> {
 /// A block state named as the scenes name it: a block and its properties.
 fn named_state(block: &Value) -> Result<i32, String> {
     let name = string(block, "block")?;
-    let definition = voxel_client::world::block_registry::block(name).ok_or_else(|| format!("unknown block {name}"))?;
+    let definition = voxel_client::world::block_registry::block(name)
+        .ok_or_else(|| format!("unknown block {name}"))?;
     let mut chosen = std::collections::BTreeMap::new();
     if let Some(properties) = block["properties"].as_object() {
         for (key, value) in properties {
@@ -16927,7 +16985,8 @@ fn vanilla_block_tags() -> Result<ClientboundUpdateTagsPacket, String> {
             return Ok(done.clone());
         }
         let path = root.join(format!("{name}.json"));
-        let text = std::fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
+        let text =
+            std::fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
         let parsed: Value = serde_json::from_str(&text).map_err(|e| e.to_string())?;
         let mut out = Vec::new();
         for entry in parsed["values"].as_array().ok_or("tag values")? {
@@ -16942,7 +17001,10 @@ fn vanilla_block_tags() -> Result<ClientboundUpdateTagsPacket, String> {
                 let path = tag.strip_prefix("minecraft:").ok_or("foreign tag")?;
                 out.extend(resolve(root, path, seen)?);
             } else {
-                match voxel_client::world::block_registry::BLOCKS.iter().position(|block| block.name == id) {
+                match voxel_client::world::block_registry::BLOCKS
+                    .iter()
+                    .position(|block| block.name == id)
+                {
                     Some(index) => out.push(index as i32),
                     None if !required => {}
                     None => return Err(format!("unknown block {id} in tag {name}")),
@@ -16952,7 +17014,11 @@ fn vanilla_block_tags() -> Result<ClientboundUpdateTagsPacket, String> {
         seen.insert(name.to_owned(), out.clone());
         Ok(out)
     }
-    fn walk(dir: &std::path::Path, root: &std::path::Path, names: &mut Vec<String>) -> Result<(), String> {
+    fn walk(
+        dir: &std::path::Path,
+        root: &std::path::Path,
+        names: &mut Vec<String>,
+    ) -> Result<(), String> {
         for entry in std::fs::read_dir(dir).map_err(|e| format!("{}: {e}", dir.display()))? {
             let path = entry.map_err(|e| e.to_string())?.path();
             if path.is_dir() {
@@ -16978,7 +17044,9 @@ fn vanilla_block_tags() -> Result<ClientboundUpdateTagsPacket, String> {
         tags.push(TagEntry::new(id, values));
     }
     let registry = Identifier::parse("minecraft:block").map_err(|_| "registry id")?;
-    Ok(ClientboundUpdateTagsPacket::new(vec![RegistryTags::new(registry, tags)]))
+    Ok(ClientboundUpdateTagsPacket::new(vec![RegistryTags::new(
+        registry, tags,
+    )]))
 }
 
 /// The scene's blocks in a client world of loaded chunks, as the movement
@@ -16986,13 +17054,12 @@ fn vanilla_block_tags() -> Result<ClientboundUpdateTagsPacket, String> {
 fn movement_world(row: &Value) -> Result<ClientWorld, String> {
     use voxel_client::world::block_registry as registry;
     use voxel_client::world::{DimensionBounds, SectionInput};
-        // The overworld's bounds, as the reference level is built with.
+    // The overworld's bounds, as the reference level is built with.
     let dimension = DimensionBounds::new(-64, 384);
     let mut placed = std::collections::HashMap::new();
     for block in row["blocks"].as_array().ok_or("blocks must be an array")? {
         let name = string(block, "block")?;
-        let definition =
-            registry::block(name).ok_or_else(|| format!("unknown block {name}"))?;
+        let definition = registry::block(name).ok_or_else(|| format!("unknown block {name}"))?;
         let mut chosen = std::collections::BTreeMap::new();
         if let Some(properties) = block["properties"].as_object() {
             for (key, value) in properties {
@@ -17039,9 +17106,7 @@ fn movement_world(row: &Value) -> Result<ClientWorld, String> {
                                     .ok_or("state out of range")?;
                                 if !matches!(
                                     block.name,
-                                    "minecraft:air"
-                                        | "minecraft:cave_air"
-                                        | "minecraft:void_air"
+                                    "minecraft:air" | "minecraft:cave_air" | "minecraft:void_air"
                                 ) {
                                     non_empty += 1;
                                 }
@@ -17084,7 +17149,11 @@ fn light_changes_result(request: &Value) -> Result<Value, String> {
         world.light_from_sources();
         world.run_light_updates();
         let box_ = &row["box"];
-        let origin = (i32_field(box_, "x")?, i32_field(box_, "y")?, i32_field(box_, "z")?);
+        let origin = (
+            i32_field(box_, "x")?,
+            i32_field(box_, "y")?,
+            i32_field(box_, "z")?,
+        );
         let size = (
             i32_field(box_, "size_x")?,
             i32_field(box_, "size_y")?,
@@ -17189,7 +17258,8 @@ fn movement_result(request: &Value) -> Result<Value, String> {
             world.apply_update_tags_packet(&vanilla_block_tags()?);
             world.set_local_player_id(player.entity_id());
             if let Some(name) = breaking["main_hand"].as_str() {
-                let item = voxel_client::item::id_of(name).ok_or_else(|| format!("unknown item {name}"))?;
+                let item = voxel_client::item::id_of(name)
+                    .ok_or_else(|| format!("unknown item {name}"))?;
                 let count = breaking["main_hand_count"].as_i64().unwrap_or(1) as i32;
                 world.apply_local_player_container_slot(
                     0,
@@ -17200,7 +17270,8 @@ fn movement_result(request: &Value) -> Result<Value, String> {
                 player.set_main_hand_item(item);
             }
             if let Some(name) = breaking["off_hand"].as_str() {
-                let item = voxel_client::item::id_of(name).ok_or_else(|| format!("unknown item {name}"))?;
+                let item = voxel_client::item::id_of(name)
+                    .ok_or_else(|| format!("unknown item {name}"))?;
                 world.apply_local_player_container_slot(
                     0,
                     0,
@@ -17248,7 +17319,8 @@ fn movement_result(request: &Value) -> Result<Value, String> {
                 for event in attack["server"].as_array().into_iter().flatten() {
                     if event.get("ack").is_some() {
                         for synced in world.handle_block_changed_ack(i32_field(event, "ack")?) {
-                            let pos = voxel_client::binary::BlockPos::new(synced.x, synced.y, synced.z);
+                            let pos =
+                                voxel_client::binary::BlockPos::new(synced.x, synced.y, synced.z);
                             if let Some(position) = synced.player_position
                                 && player.is_colliding(&world, pos, synced.state)
                             {
@@ -17273,11 +17345,7 @@ fn movement_result(request: &Value) -> Result<Value, String> {
                         );
                         let location = match target.get("location") {
                             Some(at) => [bits64(at, "x")?, bits64(at, "y")?, bits64(at, "z")?],
-                            None => [
-                                f64::from(x) + 0.5,
-                                f64::from(y) + 0.5,
-                                f64::from(z) + 0.5,
-                            ],
+                            None => [f64::from(x) + 0.5, f64::from(y) + 0.5, f64::from(z) + 0.5],
                         };
                         voxel_client::game_mode::Aim::Block {
                             x,
@@ -17341,10 +17409,9 @@ fn movement_result(request: &Value) -> Result<Value, String> {
                 .iter()
                 .map(|action| json!({"type": action.type_name(), "bytes": hex(&action.encode_body())}))
                 .collect();
-            packets.extend(
-                sent.iter()
-                    .map(|packet| json!({"type": packet.type_name(), "bytes": hex(&packet.encode_body())})),
-            );
+            packets.extend(sent.iter().map(
+                |packet| json!({"type": packet.type_name(), "bytes": hex(&packet.encode_body())}),
+            ));
             let mut described = json!({
                 "x": format!("{:016x}", position.x.to_bits()),
                 "y": format!("{:016x}", position.y.to_bits()),
@@ -17383,7 +17450,11 @@ fn movement_result(request: &Value) -> Result<Value, String> {
                 for place in attack["watch"].as_array().ok_or("watch must be an array")? {
                     watched.push(
                         world
-                            .block_state_at(i32_field(place, "x")?, i32_field(place, "y")?, i32_field(place, "z")?)
+                            .block_state_at(
+                                i32_field(place, "x")?,
+                                i32_field(place, "y")?,
+                                i32_field(place, "z")?,
+                            )
                             .unwrap_or(0),
                     );
                 }

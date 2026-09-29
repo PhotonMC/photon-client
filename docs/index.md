@@ -320,6 +320,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P06.b — Handshake intention codec sözleşmesi — client-parity birleşik kayıt](handshake-intention-conformance.md)
 - [HUD](hud-conformance.md)
 - [P05.b — InputWithModifiers ve event kayıtları sözleşmesi — client-parity birleşik kayıt](input-events-conformance.md)
+- [P18.a — Eşya modelleri ve hotbar ikonları — client-parity kaydı](item-rendering-conformance.md)
 - [P16.d — Strict JSON ayrıştırma ve sayı dönüşümü — client-parity birleşik kayıt](json-parse-conformance.md)
 - [P05.b — KeyMapping sözleşmesi — client-parity birleşik kayıt](key-mapping-conformance.md)
 - [P05.c — KeyboardInput sözleşmesi — client-parity birleşik kayıt](keyboard-input-conformance.md)

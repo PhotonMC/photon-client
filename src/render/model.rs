@@ -241,6 +241,81 @@ pub struct CuboidModel {
     pub texture_slots: TextureSlotsData,
     /// Geometry, or `None` when the model declares none.
     pub elements: Option<Vec<ModelElement>>,
+    /// The `display` transforms, or `None` when the model has no `display`.
+    pub display: Option<ItemTransforms>,
+}
+
+/// Where an item is shown, as `ItemDisplayContext` orders the contexts a
+/// model's `display` can name.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DisplayContext {
+    ThirdPersonLeftHand,
+    ThirdPersonRightHand,
+    FirstPersonLeftHand,
+    FirstPersonRightHand,
+    Head,
+    Gui,
+    Ground,
+    Fixed,
+    OnShelf,
+}
+
+impl DisplayContext {
+    pub const ALL: [DisplayContext; 9] = [
+        DisplayContext::ThirdPersonLeftHand,
+        DisplayContext::ThirdPersonRightHand,
+        DisplayContext::FirstPersonLeftHand,
+        DisplayContext::FirstPersonRightHand,
+        DisplayContext::Head,
+        DisplayContext::Gui,
+        DisplayContext::Ground,
+        DisplayContext::Fixed,
+        DisplayContext::OnShelf,
+    ];
+
+    /// The name a model's `display` uses.
+    pub fn name(self) -> &'static str {
+        match self {
+            DisplayContext::ThirdPersonLeftHand => "thirdperson_lefthand",
+            DisplayContext::ThirdPersonRightHand => "thirdperson_righthand",
+            DisplayContext::FirstPersonLeftHand => "firstperson_lefthand",
+            DisplayContext::FirstPersonRightHand => "firstperson_righthand",
+            DisplayContext::Head => "head",
+            DisplayContext::Gui => "gui",
+            DisplayContext::Ground => "ground",
+            DisplayContext::Fixed => "fixed",
+            DisplayContext::OnShelf => "on_shelf",
+        }
+    }
+
+    /// Whether the item is shown in a left hand.
+    pub fn left_hand(self) -> bool {
+        matches!(
+            self,
+            DisplayContext::ThirdPersonLeftHand | DisplayContext::FirstPersonLeftHand
+        )
+    }
+}
+
+/// `ItemTransform`: degrees, then block units, then scale.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ItemTransform {
+    pub rotation: [f32; 3],
+    pub translation: [f32; 3],
+    pub scale: [f32; 3],
+}
+
+/// `ItemTransforms`: each context's transform; `None` is the reference's
+/// `NO_TRANSFORM`, which a model left unwritten keeps.
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct ItemTransforms {
+    pub transforms: [Option<ItemTransform>; 9],
+}
+
+impl ItemTransforms {
+    pub fn get(&self, context: DisplayContext) -> Option<ItemTransform> {
+        self.transforms[context as usize]
+    }
 }
 
 /// Why a model file was rejected.
@@ -322,12 +397,72 @@ pub fn parse_model(text: &str) -> Result<CuboidModel, ModelParseError> {
         None
     };
 
+    let display = if object.has("display") {
+        let display = object
+            .object("display")
+            .ok_or_else(|| reject("display must be an object"))?;
+        Some(parse_display(display)?)
+    } else {
+        None
+    };
+
     Ok(CuboidModel {
         parent,
         ambient_occlusion,
         gui_light,
         texture_slots,
         elements,
+        display,
+    })
+}
+
+/// `ItemTransforms.Deserializer`: a left hand left out takes the right
+/// hand's transform.
+fn parse_display(display: &JsonObject) -> Result<ItemTransforms, ModelParseError> {
+    let mut transforms = ItemTransforms::default();
+    for context in DisplayContext::ALL {
+        if display.has(context.name()) {
+            let object = display
+                .object(context.name())
+                .ok_or_else(|| reject("transform must be an object"))?;
+            transforms.transforms[context as usize] = Some(parse_transform(object)?);
+        }
+    }
+    for (left, right) in [
+        (
+            DisplayContext::ThirdPersonLeftHand,
+            DisplayContext::ThirdPersonRightHand,
+        ),
+        (
+            DisplayContext::FirstPersonLeftHand,
+            DisplayContext::FirstPersonRightHand,
+        ),
+    ] {
+        if transforms.transforms[left as usize].is_none() {
+            transforms.transforms[left as usize] = transforms.transforms[right as usize];
+        }
+    }
+    Ok(transforms)
+}
+
+/// `ItemTransform.Deserializer`: the translation in sixteenths, then both
+/// translation and scale kept within their limits.
+fn parse_transform(object: &JsonObject) -> Result<ItemTransform, ModelParseError> {
+    let vector = |key: &'static str, default: [f32; 3]| {
+        if object.has(key) {
+            parse_vector(object, key)
+        } else {
+            Ok(default)
+        }
+    };
+    let rotation = vector("rotation", [0.0; 3])?;
+    let translation =
+        vector("translation", [0.0; 3])?.map(|value| (value * 0.0625).clamp(-5.0, 5.0));
+    let scale = vector("scale", [1.0; 3])?.map(|value| value.clamp(-4.0, 4.0));
+    Ok(ItemTransform {
+        rotation,
+        translation,
+        scale,
     })
 }
 

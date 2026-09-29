@@ -105,7 +105,11 @@ impl PlaceContext<'_> {
             self.hit_pos
         } else {
             let (dx, dy, dz) = self.face.step();
-            (self.hit_pos.0 + dx, self.hit_pos.1 + dy, self.hit_pos.2 + dz)
+            (
+                self.hit_pos.0 + dx,
+                self.hit_pos.1 + dy,
+                self.hit_pos.2 + dz,
+            )
         }
     }
 
@@ -177,7 +181,11 @@ pub fn state_for_placement(block: usize, ctx: &PlaceContext<'_>) -> Rule<Option<
                     .and_then(|state| with_property(state, "waterlogged", "false"));
                 return Rule::Known(double);
             }
-            let water = if is_water_source(replaced) { "true" } else { "false" };
+            let water = if is_water_source(replaced) {
+                "true"
+            } else {
+                "false"
+            };
             let half = if lower_half(ctx) { "bottom" } else { "top" };
             Rule::Known(
                 with_property(default, "type", half)
@@ -185,7 +193,11 @@ pub fn state_for_placement(block: usize, ctx: &PlaceContext<'_>) -> Rule<Option<
             )
         }
         "StairBlock" => {
-            let water = if is_water_source(ctx.state(pos)) { "true" } else { "false" };
+            let water = if is_water_source(ctx.state(pos)) {
+                "true"
+            } else {
+                "false"
+            };
             let half = if lower_half(ctx) { "bottom" } else { "top" };
             let Some(state) = with_property(default, "facing", ctx.horizontal_direction.name())
                 .and_then(|state| with_property(state, "half", half))
@@ -217,7 +229,11 @@ fn facing(state: i32) -> Option<Direction> {
 }
 
 /// `StairBlock.getStairsShape`.
-fn stairs_shape(state: i32, state_at: &dyn Fn(i32, i32, i32) -> i32, pos: (i32, i32, i32)) -> &'static str {
+fn stairs_shape(
+    state: i32,
+    state_at: &dyn Fn(i32, i32, i32) -> i32,
+    pos: (i32, i32, i32),
+) -> &'static str {
     let Some(facing_dir) = facing(state) else {
         return "straight";
     };
@@ -231,7 +247,8 @@ fn stairs_shape(state: i32, state_at: &dyn Fn(i32, i32, i32) -> i32, pos: (i32, 
         !is_stairs(other) || facing(other) != Some(facing_dir) || property(other, "half") != half
     };
     let behind = at(facing_dir);
-    if is_stairs(behind) && property(behind, "half") == half
+    if is_stairs(behind)
+        && property(behind, "half") == half
         && let Some(behind_facing) = facing(behind)
         && behind_facing.axis() != facing_dir.axis()
         && can_take_shape(behind_facing.opposite())
@@ -243,7 +260,8 @@ fn stairs_shape(state: i32, state_at: &dyn Fn(i32, i32, i32) -> i32, pos: (i32, 
         };
     }
     let front = at(facing_dir.opposite());
-    if is_stairs(front) && property(front, "half") == half
+    if is_stairs(front)
+        && property(front, "half") == half
         && let Some(front_facing) = facing(front)
         && front_facing.axis() != facing_dir.axis()
         && can_take_shape(front_facing)
@@ -282,7 +300,9 @@ pub fn update_shape(
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UseResult {
     /// It happened; `swing` is whether the client swings its arm.
-    Success { swing: bool },
+    Success {
+        swing: bool,
+    },
     Fail,
     Pass,
     /// `TRY_WITH_EMPTY_HAND`: the block would rather be used without the item.
@@ -312,8 +332,12 @@ pub fn use_without_item(state: i32) -> Rule<UseResult> {
 }
 
 /// An item's table row, by registry id.
-pub fn item_behaviour(item: i32) -> Option<&'static crate::world::block_behaviour_table::ItemBehaviour> {
-    usize::try_from(item).ok().and_then(|index| ITEMS.get(index))
+pub fn item_behaviour(
+    item: i32,
+) -> Option<&'static crate::world::block_behaviour_table::ItemBehaviour> {
+    usize::try_from(item)
+        .ok()
+        .and_then(|index| ITEMS.get(index))
 }
 
 pub fn item_class(item: i32) -> &'static str {

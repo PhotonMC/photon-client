@@ -18,6 +18,7 @@ use crate::{
 };
 
 mod block_entity;
+pub mod block_rules;
 pub mod block_state;
 mod border;
 mod chunk;
@@ -26,10 +27,9 @@ mod constants;
 mod container;
 mod dimension;
 mod entity;
+pub mod light;
 mod metadata;
 mod player;
-pub mod light;
-pub mod block_rules;
 mod prediction;
 mod region_copy;
 
@@ -1707,13 +1707,15 @@ impl ClientWorld {
             chunks: &self.chunks,
             cache: self.chunk_cache.as_ref(),
         };
-        self.light.set_light_enabled(&view, (chunk_x, chunk_z), false);
+        self.light
+            .set_light_enabled(&view, (chunk_x, chunk_z), false);
     }
 
     /// `queueLightRemoval`: whether or not the chunk was loaded, its light
     /// is dropped on a later frame.
     fn queue_light_removal(&mut self, chunk_x: i32, chunk_z: i32) {
-        self.light_tasks.push_back(LightTask::Removal { chunk_x, chunk_z });
+        self.light_tasks
+            .push_back(LightTask::Removal { chunk_x, chunk_z });
     }
 
     /// `enableChunkLight`: each of the loaded chunk's sections tells the
@@ -1748,7 +1750,11 @@ impl ClientWorld {
         // `pollLightUpdates`: a tenth of the queue, at least ten, or all of
         // it once it reaches a thousand.
         let size = self.light_tasks.len();
-        let budget = if size < 1000 { (size / 10).max(10) } else { size };
+        let budget = if size < 1000 {
+            (size / 10).max(10)
+        } else {
+            size
+        };
         for _ in 0..budget {
             let Some(task) = self.light_tasks.pop_front() else {
                 break;
@@ -1836,15 +1842,21 @@ impl ClientWorld {
                             light::DataLayer::new(0)
                         };
                         let section_y = min + index;
-                        self.light
-                            .queue_section_data(layer, (chunk_x, section_y, chunk_z), Some(data));
+                        self.light.queue_section_data(
+                            layer,
+                            (chunk_x, section_y, chunk_z),
+                            Some(data),
+                        );
                         if schedule_rebuild {
                             // `setSectionDirtyWithNeighbors`.
                             for dx in -1..=1 {
                                 for dy in -1..=1 {
                                     for dz in -1..=1 {
-                                        self.light_dirty
-                                            .push((chunk_x + dx, section_y + dy, chunk_z + dz));
+                                        self.light_dirty.push((
+                                            chunk_x + dx,
+                                            section_y + dy,
+                                            chunk_z + dz,
+                                        ));
                                     }
                                 }
                             }
@@ -1855,7 +1867,8 @@ impl ClientWorld {
                     chunks: &self.chunks,
                     cache: self.chunk_cache.as_ref(),
                 };
-                self.light.set_light_enabled(&view, (chunk_x, chunk_z), true);
+                self.light
+                    .set_light_enabled(&view, (chunk_x, chunk_z), true);
                 if enable_chunk {
                     self.enable_chunk_light(chunk_x, chunk_z);
                 }
@@ -1865,7 +1878,8 @@ impl ClientWorld {
                     chunks: &self.chunks,
                     cache: self.chunk_cache.as_ref(),
                 };
-                self.light.set_light_enabled(&view, (chunk_x, chunk_z), false);
+                self.light
+                    .set_light_enabled(&view, (chunk_x, chunk_z), false);
                 let min = self.light.min_light_section();
                 for section_y in min..min + self.light.light_section_count() {
                     for layer in [light::LightLayer::Block, light::LightLayer::Sky] {
@@ -2282,7 +2296,8 @@ impl ClientWorld {
         // empty or not, and of a change in how light passes the block.
         let is_empty = section.has_only_air();
         if was_empty != is_empty {
-            self.light.update_section_status((chunk_key.0, section_y, chunk_key.1), is_empty);
+            self.light
+                .update_section_status((chunk_key.0, section_y, chunk_key.1), is_empty);
         }
         if light::has_different_light_properties(previous_state_id, state_id) {
             let chunk = self.chunks.get_mut(&chunk_key).expect("updated above");
@@ -3224,7 +3239,10 @@ impl ClientWorld {
             LightLayer::Block => light::LightLayer::Block,
         };
         self.light
-            .data_layer(layer, (x.div_euclid(16), y.div_euclid(16), z.div_euclid(16)))
+            .data_layer(
+                layer,
+                (x.div_euclid(16), y.div_euclid(16), z.div_euclid(16)),
+            )
             .map(|data| data.get(x.rem_euclid(16), y.rem_euclid(16), z.rem_euclid(16)))
     }
 

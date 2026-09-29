@@ -45,7 +45,11 @@ pub fn outline_vertices(
 ) -> Vec<LineVertex> {
     let mut vertices = Vec::new();
     let place = |x: f64, y: f64, z: f64| {
-        let world = [block[0] + x as f32, block[1] + y as f32, block[2] + z as f32];
+        let world = [
+            block[0] + x as f32,
+            block[1] + y as f32,
+            block[2] + z as f32,
+        ];
         std::array::from_fn(|axis| camera[axis] + (world[axis] - camera[axis]) * VIEW_SHRINK)
     };
     shape.for_all_edges(|x1, y1, z1, x2, y2, z2| {

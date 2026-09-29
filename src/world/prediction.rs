@@ -177,7 +177,13 @@ impl ClientWorld {
             };
             // A client never destroys a block that reshapes into air.
             if updated != current && !crate::world::block_rules::state_is_air(updated) {
-                self.set_block_with_updates(neighbour, updated, flags & !32, limit, player_position);
+                self.set_block_with_updates(
+                    neighbour,
+                    updated,
+                    flags & !32,
+                    limit,
+                    player_position,
+                );
             }
         }
     }

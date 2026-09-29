@@ -587,6 +587,10 @@ impl render::AssetSource for FolderAssets {
         std::fs::read_to_string(self.path(name, "models", ".json")).ok()
     }
 
+    fn item(&self, name: &voxel_client::identifier::Identifier) -> Option<String> {
+        std::fs::read_to_string(self.path(name, "items", ".json")).ok()
+    }
+
     fn texture(&self, name: &voxel_client::identifier::Identifier) -> Option<Vec<u8>> {
         std::fs::read(self.path(name, "textures", ".png")).ok()
     }
@@ -898,7 +902,11 @@ fn pick(
     player: &voxel_client::world::local_player::LocalPlayer,
     eye: voxel_client::math::Vec3,
 ) -> voxel_client::game_mode::Aim {
-    let reach = if player.abilities().instabuild() { 5.0 } else { 4.5 };
+    let reach = if player.abilities().instabuild() {
+        5.0
+    } else {
+        4.5
+    };
     let (y_rot, x_rot) = player.rotation();
     let look = voxel_client::math::Vec3::direction_from_rotation_components(x_rot, y_rot);
     let to = voxel_client::math::Vec3::new(
@@ -1281,8 +1289,9 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
         rgba: Vec::new(),
     };
     for stage in 0..10 {
-        let path = std::path::Path::new(&root)
-            .join(format!("minecraft/textures/block/destroy_stage_{stage}.png"));
+        let path = std::path::Path::new(&root).join(format!(
+            "minecraft/textures/block/destroy_stage_{stage}.png"
+        ));
         let image = render::png::decode_rgba(&std::fs::read(path)?)
             .map_err(|error| format!("destroy_stage_{stage}: {error:?}"))?;
         if stage > 0 && (image.width, image.height) != (cracks.width, cracks.height / stage) {
@@ -1314,6 +1323,9 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
         .ok_or("the HUD sprites could not be read")?;
     backend.load_gui_texture(&gui_atlas.image)?;
     let mut hud = render::gui::Hud::default();
+    // Each item's GUI layers, built the first time a slot shows it.
+    let mut gui_item_layers =
+        std::collections::HashMap::<i32, Vec<render::world_mesh::ItemLayer>>::new();
     let mut scroll_wheel = voxel_client::hotbar::ScrollWheel::default();
     let started_at = std::time::Instant::now();
     // `ItemInHandRenderer.mainHandHeight`: the empty hand rises into view
@@ -1535,9 +1547,11 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
             }
             // `Minecraft.handleKeybinds`: the attack key is spent before the
             // player moves, aiming the way `GameRenderer.pick` aims.
-            let aim = session.player().map_or(voxel_client::game_mode::Aim::Miss, |player| {
-                pick(session.world(), player, eye_position(player, 1.0))
-            });
+            let aim = session
+                .player()
+                .map_or(voxel_client::game_mode::Aim::Miss, |player| {
+                    pick(session.world(), player, eye_position(player, 1.0))
+                });
             let grabbed = captured || script.is_some();
             session.keys(
                 voxel_client::game_mode::Keys {
@@ -1706,7 +1720,9 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                 + (centre[1] - camera_world.y).powi(2)
                 + (centre[2] - camera_world.z).powi(2);
             if distance <= 1024.0 {
-                let stage = cracked.entry((progress.x, progress.y, progress.z)).or_insert(-1);
+                let stage = cracked
+                    .entry((progress.x, progress.y, progress.z))
+                    .or_insert(-1);
                 *stage = (*stage).max(progress.stage);
             }
         }
@@ -2149,6 +2165,12 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                 })
             };
             let hud_player = session.player();
+            let stack = |slot: i16| {
+                local
+                    .and_then(|state| state.inventory_slot(slot))
+                    .filter(|stack| stack.item_count() > 0 && stack.item_registry_id() != 0)
+                    .map(|stack| (stack.item_registry_id(), stack.item_count()))
+            };
             let frame = hud.build(
                 &gui_atlas,
                 &font,
@@ -2182,8 +2204,22 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                     attack_strength: hud_player.map_or(1.0, |player| {
                         player.attack_strength_scale(0.0, attribute(5, 4.0, 0.0, 1024.0))
                     }),
+                    hotbar: std::array::from_fn(|i| stack(36 + i as i16)),
+                    offhand: stack(45),
                 },
                 started_at.elapsed().as_millis(),
+                &mut |item, x, y, out| {
+                    let layers = gui_item_layers.entry(item).or_insert_with(|| {
+                        block_renderer.item_layers(
+                            item,
+                            render::model::DisplayContext::Gui,
+                            &|temperature, downfall| {
+                                biome_tints.grass_at_climate(temperature, downfall)
+                            },
+                        )
+                    });
+                    render::gui_items::item_vertices(layers, x, y, out);
+                },
             );
             let scale = size.gui_scale() as f32;
             backend.set_gui(

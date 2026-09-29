@@ -356,8 +356,27 @@ public final class ModelOracle {
             entry.addProperty("has_geometry", false);
         }
         entry.add("elements", elements);
+
+        // Each display context's transform, as the model's own `display`
+        // gives it; a context it leaves out is the identity.
+        var display = new JsonObject();
+        if (model.transforms() != null) {
+            for (var context : net.minecraft.world.item.ItemDisplayContext.values()) {
+                var transform = model.transforms().getTransform(context);
+                if (transform == net.minecraft.client.resources.model.cuboid.ItemTransform.NO_TRANSFORM) {
+                    continue;
+                }
+                var described = new JsonObject();
+                described.add("rotation", vectorBits(transform.rotation()));
+                described.add("translation", vectorBits(transform.translation()));
+                described.add("scale", vectorBits(transform.scale()));
+                display.add(context.getSerializedName(), described);
+            }
+        }
+        entry.add("display", display);
         return entry;
     }
+
 
     private static JsonObject describeElement(
             net.minecraft.client.resources.model.cuboid.CuboidModelElement element) {

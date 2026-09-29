@@ -150,7 +150,10 @@ impl Arena {
 
     /// Free a layer that no map holds any more.
     fn drop_if_unheld(&mut self, id: LayerId) {
-        if self.layers[id as usize].as_ref().is_some_and(|slot| slot.1 == 0) {
+        if self.layers[id as usize]
+            .as_ref()
+            .is_some_and(|slot| slot.1 == 0)
+        {
             self.layers[id as usize] = None;
             self.free.push(id);
         }
@@ -556,7 +559,9 @@ impl Storage {
         let key = section_of(block);
         let (x, y, z) = local(block);
         match self.layer {
-            LightLayer::Block => self.visible_layer(key).map_or(0, |layer| layer.get(x, y, z)),
+            LightLayer::Block => self
+                .visible_layer(key)
+                .map_or(0, |layer| layer.get(x, y, z)),
             LightLayer::Sky => {
                 let top = self.visible_sky.top(column(key));
                 if top != self.visible_sky.current_lowest_y && key.1 < top {
@@ -709,7 +714,13 @@ impl ChunkSkyLightSources {
         }
     }
 
-    fn find_lowest_source_y(&self, sections: &[Option<Vec<i32>>], top: usize, x: i32, z: i32) -> i32 {
+    fn find_lowest_source_y(
+        &self,
+        sections: &[Option<Vec<i32>>],
+        top: usize,
+        x: i32,
+        z: i32,
+    ) -> i32 {
         let level_min_y = self.min_y + 1;
         let section_min = |index: usize| level_min_y + index as i32 * 16;
         let mut top_y = section_min(top) + 16;
@@ -745,11 +756,27 @@ impl ChunkSkyLightSources {
         }
         let top = state(x, y + 1, z);
         let middle = state(x, y, z);
-        if self.update_edge(&state, index, current, (x, y + 1, z), top, (x, y, z), middle) {
+        if self.update_edge(
+            &state,
+            index,
+            current,
+            (x, y + 1, z),
+            top,
+            (x, y, z),
+            middle,
+        ) {
             return true;
         }
         let bottom = state(x, y - 1, z);
-        self.update_edge(&state, index, current, (x, y, z), middle, (x, y - 1, z), bottom)
+        self.update_edge(
+            &state,
+            index,
+            current,
+            (x, y, z),
+            middle,
+            (x, y - 1, z),
+            bottom,
+        )
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -848,7 +875,11 @@ mod entry {
         with_level(entry, level)
     }
 
-    pub fn increase_only_one_direction(level: u8, from_empty_shape: bool, direction: Direction) -> u64 {
+    pub fn increase_only_one_direction(
+        level: u8,
+        from_empty_shape: bool,
+        direction: Direction,
+    ) -> u64 {
         let mut entry = 0;
         if from_empty_shape {
             entry |= FROM_EMPTY_SHAPE;
@@ -856,7 +887,13 @@ mod entry {
         with_level(entry | bit(direction), level)
     }
 
-    pub fn increase_sky_source_in_directions(down: bool, north: bool, south: bool, west: bool, east: bool) -> u64 {
+    pub fn increase_sky_source_in_directions(
+        down: bool,
+        north: bool,
+        south: bool,
+        west: bool,
+        east: bool,
+    ) -> u64 {
         let mut entry = with_level(0, 15);
         for (on, direction) in [
             (down, Direction::Down),
@@ -1122,7 +1159,10 @@ impl Engine {
                     if to_emission > 0 {
                         self.increase_queue.push_back((
                             to,
-                            entry::increase_light_from_emission(to_emission, is_empty_shape(to_state)),
+                            entry::increase_light_from_emission(
+                                to_emission,
+                                is_empty_shape(to_state),
+                            ),
                         ));
                     }
                 }
@@ -1137,7 +1177,11 @@ impl Engine {
 
     // Sky light.
 
-    fn chunk_sources<'a>(level: &'a Level<'_>, chunk_x: i32, chunk_z: i32) -> Option<&'a ChunkSkyLightSources> {
+    fn chunk_sources<'a>(
+        level: &'a Level<'_>,
+        chunk_x: i32,
+        chunk_z: i32,
+    ) -> Option<&'a ChunkSkyLightSources> {
         level.chunks.sky_sources(chunk_x, chunk_z)
     }
 
@@ -1161,10 +1205,8 @@ impl Engine {
             return;
         }
         if y >= lowest {
-            self.decrease_queue.push_back((
-                block,
-                entry::decrease_skip_one_direction(15, Direction::Up),
-            ));
+            self.decrease_queue
+                .push_back((block, entry::decrease_skip_one_direction(15, Direction::Up)));
             self.increase_queue.push_back((
                 block,
                 entry::increase_skip_one_direction(15, false, Direction::Up),
@@ -1196,7 +1238,10 @@ impl Engine {
         let start_y = lowest - 1;
         let mut section_y = start_y >> 4;
         while self.storage.has_light_data_at_or_below(section_y) {
-            if self.storage.storing_light_for_section((x >> 4, section_y, z >> 4)) {
+            if self
+                .storage
+                .storing_light_for_section((x >> 4, section_y, z >> 4))
+            {
                 let bottom = section_y * 16;
                 let top = bottom + 15;
                 let mut y = top.min(start_y);
@@ -1219,10 +1264,24 @@ impl Engine {
         }
     }
 
-    fn add_sources_above(&mut self, level: &Level<'_>, x: i32, z: i32, lowest: i32, world_bottom_y: i32) {
+    fn add_sources_above(
+        &mut self,
+        level: &Level<'_>,
+        x: i32,
+        z: i32,
+        lowest: i32,
+        world_bottom_y: i32,
+    ) {
         let neighbor_lowest = Self::lowest_source_y(level, x - 1, z, i32::MIN)
             .max(Self::lowest_source_y(level, x + 1, z, i32::MIN))
-            .max(Self::lowest_source_y(level, x, z - 1, i32::MIN).max(Self::lowest_source_y(level, x, z + 1, i32::MIN)));
+            .max(
+                Self::lowest_source_y(level, x, z - 1, i32::MIN).max(Self::lowest_source_y(
+                    level,
+                    x,
+                    z + 1,
+                    i32::MIN,
+                )),
+            );
         let start_y = lowest.max(world_bottom_y);
         let mut key = (x >> 4, start_y >> 4, z >> 4);
         while !self.storage.is_above_data(key) {
@@ -1303,7 +1362,11 @@ impl Engine {
                         if to_level > 1 {
                             self.increase_queue.push_back((
                                 block,
-                                entry::increase_skip_one_direction(to_level, true, direction.opposite()),
+                                entry::increase_skip_one_direction(
+                                    to_level,
+                                    true,
+                                    direction.opposite(),
+                                ),
                             ));
                         }
                     } else {
@@ -1336,7 +1399,9 @@ impl Engine {
             .max(lowest_fully_source_section_y);
         let mut section_y = top - 1;
         while section_y >= bottom {
-            if let Some(id) = self.storage.data_layer_to_write((chunk.0, section_y, chunk.1))
+            if let Some(id) = self
+                .storage
+                .data_layer_to_write((chunk.0, section_y, chunk.1))
                 && self.storage.arena.get(id).is_empty()
             {
                 self.storage.arena.get_mut(id).fill(15);
@@ -1367,7 +1432,10 @@ impl Engine {
                                 if emission != 0 {
                                     self.increase_queue.push_back((
                                         block,
-                                        entry::increase_light_from_emission(emission, is_empty_shape(state)),
+                                        entry::increase_light_from_emission(
+                                            emission,
+                                            is_empty_shape(state),
+                                        ),
                                     ));
                                 }
                             }
@@ -1404,10 +1472,26 @@ impl Engine {
                         if lowest > section_max_y {
                             continue;
                         }
-                        let north_y = if z == 0 { north.lowest_source_y(x, 15) } else { sources.lowest_source_y(x, z - 1) };
-                        let south_y = if z == 15 { south.lowest_source_y(x, 0) } else { sources.lowest_source_y(x, z + 1) };
-                        let west_y = if x == 0 { west.lowest_source_y(15, z) } else { sources.lowest_source_y(x - 1, z) };
-                        let east_y = if x == 15 { east.lowest_source_y(0, z) } else { sources.lowest_source_y(x + 1, z) };
+                        let north_y = if z == 0 {
+                            north.lowest_source_y(x, 15)
+                        } else {
+                            sources.lowest_source_y(x, z - 1)
+                        };
+                        let south_y = if z == 15 {
+                            south.lowest_source_y(x, 0)
+                        } else {
+                            sources.lowest_source_y(x, z + 1)
+                        };
+                        let west_y = if x == 0 {
+                            west.lowest_source_y(15, z)
+                        } else {
+                            sources.lowest_source_y(x - 1, z)
+                        };
+                        let east_y = if x == 15 {
+                            east.lowest_source_y(0, z)
+                        } else {
+                            sources.lowest_source_y(x + 1, z)
+                        };
                         let neighbor = north_y.max(south_y).max(west_y.max(east_y));
                         let mut y = section_max_y;
                         while y >= section_min_y.max(lowest) {
@@ -1528,7 +1612,12 @@ impl LevelLightEngine {
         }
     }
 
-    pub fn queue_section_data(&mut self, layer: LightLayer, section: SectionKey, data: Option<DataLayer>) {
+    pub fn queue_section_data(
+        &mut self,
+        layer: LightLayer,
+        section: SectionKey,
+        data: Option<DataLayer>,
+    ) {
         if let Some(engine) = self.engine(layer) {
             engine.storage.queue_section_data(section, data);
         }

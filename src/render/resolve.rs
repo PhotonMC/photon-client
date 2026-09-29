@@ -41,6 +41,11 @@ pub trait AssetSource {
         None
     }
 
+    /// The text of one item's client item file (`items/<name>.json`).
+    fn item(&self, _name: &Identifier) -> Option<String> {
+        None
+    }
+
     /// The texture section of one sprite's metadata, if the sprite has one.
     ///
     /// Absent metadata is not an error: every field has a default, and the
@@ -92,7 +97,17 @@ pub struct ResolvedModel {
     pub ambient_occlusion: bool,
     /// GUI lighting, defaulting to side.
     pub gui_light: GuiLight,
+    /// Each display context's transform, the nearest one set walking up
+    /// from the child (`ResolvedModel.findTopTransform`).
+    pub display: crate::render::model::ItemTransforms,
+    /// Whether the chain ends at `builtin/generated`: the geometry is the
+    /// item model generator's extruded layers.
+    pub generated: bool,
 }
+
+/// The item model generator's own model, which item models reach as
+/// `builtin/generated`.
+const GENERATED: &str = "minecraft:builtin/generated";
 
 /// Load a model and its ancestors, then apply the reference's inheritance.
 pub fn resolve_model(
@@ -102,9 +117,28 @@ pub fn resolve_model(
     let mut chain: Vec<CuboidModel> = Vec::new();
     let mut seen: Vec<Identifier> = Vec::new();
     let mut next = Some(name.clone());
+    let mut generated = false;
     while let Some(current) = next {
         if seen.contains(&current) || chain.len() >= MAX_CHAIN {
             return Err(ResolveError::CyclicParent(current.as_string()));
+        }
+        if current.as_string() == GENERATED {
+            // `ItemModelGenerator`: no geometry of its own, front lighting,
+            // and its particle is its first layer.
+            generated = true;
+            chain.push(CuboidModel {
+                parent: None,
+                ambient_occlusion: None,
+                gui_light: Some(GuiLight::Front),
+                texture_slots: crate::render::model::TextureSlotsData::from_entries([(
+                    "particle".to_owned(),
+                    crate::render::model::SlotContents::parse_string("#layer0")
+                        .expect("fixed reference"),
+                )]),
+                elements: None,
+                display: None,
+            });
+            break;
         }
         let text = source
             .model(&current)
@@ -138,11 +172,20 @@ pub fn resolve_model(
         .find_map(|model| model.gui_light)
         .unwrap_or(GuiLight::Side);
 
+    let mut display = crate::render::model::ItemTransforms::default();
+    for context in crate::render::model::DisplayContext::ALL {
+        display.transforms[context as usize] = chain
+            .iter()
+            .find_map(|model| model.display.and_then(|transforms| transforms.get(context)));
+    }
+
     Ok(ResolvedModel {
         textures,
         elements,
         ambient_occlusion,
         gui_light,
+        display,
+        generated,
     })
 }
 

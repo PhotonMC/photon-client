@@ -134,6 +134,8 @@ pub enum GuiBlend {
     Translucent,
     /// The crosshair's inversion of what is behind it.
     Invert,
+    /// Items in slots, whose run counts in `GuiFrame::items`.
+    Items,
 }
 
 /// One frame of GUI: triangles and the runs they blend in.
@@ -141,9 +143,24 @@ pub enum GuiBlend {
 pub struct GuiFrame {
     pub vertices: Vec<GuiVertex>,
     pub batches: Vec<(GuiBlend, u32, u32)>,
+    pub items: Vec<crate::render::gui_items::GuiItemVertex>,
 }
 
 impl GuiFrame {
+    /// `GuiGraphics.item`: one item's triangles into the slot at `(x, y)`.
+    fn item(&mut self, draw: &mut ItemDrawer<'_>, item: i32, x: i32, y: i32) {
+        let first = self.items.len() as u32;
+        draw(item, x as f32, y as f32, &mut self.items);
+        let added = self.items.len() as u32 - first;
+        if added == 0 {
+            return;
+        }
+        match self.batches.last_mut() {
+            Some((GuiBlend::Items, _, count)) => *count += added,
+            _ => self.batches.push((GuiBlend::Items, first, added)),
+        }
+    }
+
     /// `GuiGraphics.blitSprite` of a whole sprite at a size.
     #[allow(clippy::too_many_arguments)]
     fn blit(
@@ -170,7 +187,43 @@ impl GuiFrame {
         y: i32,
         colour: u32,
     ) {
-        let colour = [16, 8, 0, 24].map(|shift| ((colour >> shift) & 0xFF) as f32 / 255.0);
+        self.glyphs(atlas, font, text, x, y, colour, false);
+    }
+
+    /// `GuiGraphics.text` with its shadow: each glyph's copy a unit right and
+    /// down in a quarter of its colour, then the glyph.
+    pub fn text_with_shadow(
+        &mut self,
+        atlas: &GuiAtlas,
+        font: &crate::render::font::Font,
+        text: &str,
+        x: i32,
+        y: i32,
+        colour: u32,
+    ) {
+        self.glyphs(atlas, font, text, x, y, colour, true);
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn glyphs(
+        &mut self,
+        atlas: &GuiAtlas,
+        font: &crate::render::font::Font,
+        text: &str,
+        x: i32,
+        y: i32,
+        colour: u32,
+        shadow: bool,
+    ) {
+        // `ARGB.scaleRGB(colour, 0.25)`.
+        let shadow_colour = [16, 8, 0]
+            .map(|shift| ((((colour >> shift) & 0xFF) as f32 * 0.25) as u32) << shift)
+            .into_iter()
+            .fold(colour & 0xFF00_0000, |sum, channel| sum | channel);
+        let unpack =
+            |colour: u32| [16, 8, 0, 24].map(|shift| ((colour >> shift) & 0xFF) as f32 / 255.0);
+        let shadow_colour = unpack(shadow_colour);
+        let colour = unpack(colour);
         let mut pen = x as f32;
         for codepoint in text.chars() {
             let Some(glyph) = font.glyph(codepoint) else {
@@ -184,28 +237,35 @@ impl GuiFrame {
                 let sv = |pixel: u32| v0 + (v1 - v0) * pixel as f32 / image.height as f32;
                 // `GlyphBitmap`: the cell from its left edge, its top at
                 // seven units less the ascent.
-                let left = pen;
-                let right = pen + cw as f32 * bitmap.scale;
-                let top = y as f32 + 7.0 - bitmap.ascent as f32;
-                let bottom = top + ch as f32 * bitmap.scale;
-                let corner = |px: f32, py: f32, uv: [f32; 2]| GuiVertex {
-                    position: [px, py],
-                    uv,
-                    colour,
+                let passes: &[(f32, [f32; 4])] = if shadow {
+                    &[(1.0, shadow_colour), (0.0, colour)]
+                } else {
+                    &[(0.0, colour)]
                 };
-                let corners = [
-                    corner(left, top, [su(cx), sv(cy)]),
-                    corner(left, bottom, [su(cx), sv(cy + ch)]),
-                    corner(right, bottom, [su(cx + cw), sv(cy + ch)]),
-                    corner(right, top, [su(cx + cw), sv(cy)]),
-                ];
-                let first = self.vertices.len() as u32;
-                for index in [0, 1, 2, 0, 2, 3] {
-                    self.vertices.push(corners[index]);
-                }
-                match self.batches.last_mut() {
-                    Some((GuiBlend::Translucent, _, count)) => *count += 6,
-                    _ => self.batches.push((GuiBlend::Translucent, first, 6)),
+                for &(offset, colour) in passes {
+                    let left = pen + offset;
+                    let right = left + cw as f32 * bitmap.scale;
+                    let top = y as f32 + 7.0 - bitmap.ascent as f32 + offset;
+                    let bottom = top + ch as f32 * bitmap.scale;
+                    let corner = |px: f32, py: f32, uv: [f32; 2]| GuiVertex {
+                        position: [px, py],
+                        uv,
+                        colour,
+                    };
+                    let corners = [
+                        corner(left, top, [su(cx), sv(cy)]),
+                        corner(left, bottom, [su(cx), sv(cy + ch)]),
+                        corner(right, bottom, [su(cx + cw), sv(cy + ch)]),
+                        corner(right, top, [su(cx + cw), sv(cy)]),
+                    ];
+                    let first = self.vertices.len() as u32;
+                    for index in [0, 1, 2, 0, 2, 3] {
+                        self.vertices.push(corners[index]);
+                    }
+                    match self.batches.last_mut() {
+                        Some((GuiBlend::Translucent, _, count)) => *count += 6,
+                        _ => self.batches.push((GuiBlend::Translucent, first, 6)),
+                    }
                 }
             }
             pen += glyph.advance(false);
@@ -331,7 +391,14 @@ pub struct HudInput {
     pub experience_level: i32,
     /// `getAttackStrengthScale(0)`.
     pub attack_strength: f32,
+    /// The hotbar's stacks, item id and count, and the off hand's.
+    pub hotbar: [Option<(i32, i32)>; 9],
+    pub offhand: Option<(i32, i32)>,
 }
+
+/// Draws an item's triangles into the 16 by 16 slot at a GUI position.
+pub type ItemDrawer<'a> =
+    dyn FnMut(i32, f32, f32, &mut Vec<crate::render::gui_items::GuiItemVertex>) + 'a;
 
 /// The HUD's own state across frames: its tick count, the health it last
 /// showed, and when the hearts blink.
@@ -366,6 +433,7 @@ impl Hud {
 
     /// `Hud.extractRenderState` for what this client has: the crosshair,
     /// then the hotbar and its decorations.
+    #[allow(clippy::too_many_arguments)]
     pub fn build(
         &mut self,
         atlas: &GuiAtlas,
@@ -374,6 +442,7 @@ impl Hud {
         height: i32,
         input: &HudInput,
         now_millis: u128,
+        draw_item: &mut ItemDrawer<'_>,
     ) -> GuiFrame {
         let mut frame = GuiFrame::default();
         self.crosshair(&mut frame, atlas, width, height, input);
@@ -391,6 +460,42 @@ impl Hud {
                 24,
                 23,
             );
+            // The off hand is on the left of a right-handed player, which
+            // is the default main arm.
+            if input.offhand.is_some() {
+                frame.blit(
+                    atlas,
+                    t,
+                    "hud/hotbar_offhand_left",
+                    centre - 91 - 29,
+                    height - 23,
+                    29,
+                    24,
+                );
+            }
+            // `extractSlot` for each hotbar slot, then the off hand: the
+            // item, then its count when it is not one.
+            let y = height - 16 - 3;
+            let slots = (0..9)
+                .map(|i| (input.hotbar[i], centre - 90 + i as i32 * 20 + 2))
+                .chain(std::iter::once((input.offhand, centre - 91 - 26)));
+            for (stack, x) in slots {
+                let Some((item, count)) = stack else {
+                    continue;
+                };
+                frame.item(draw_item, item, x, y);
+                if count != 1 {
+                    let text = count.to_string();
+                    frame.text_with_shadow(
+                        atlas,
+                        font,
+                        &text,
+                        x + 19 - 2 - font.width(&text),
+                        y + 6 + 3,
+                        0xFFFF_FFFF,
+                    );
+                }
+            }
         }
         if input.survival {
             self.player_health(&mut frame, atlas, width, height, input, now_millis);

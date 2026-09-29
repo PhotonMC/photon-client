@@ -12136,6 +12136,18 @@ def image_cases():
     ]
 
     yield {
+        "case_id": "image/item-side-faces",
+        "family": "image",
+        "operation": "item_side_faces",
+        "rows": [
+            {"label": name, "texture": f"assets/minecraft/textures/item/{name}.png"}
+            for name in ("diamond_sword", "stick", "apple", "bow", "fishing_rod", "glass_bottle",
+                         "leather_helmet", "leather_helmet_overlay", "potion_overlay", "bucket",
+                         "iron_ingot", "torch" if False else "coal")
+        ],
+    }
+
+    yield {
         "case_id": "image/srgb-tables",
         "family": "image",
         "operation": "srgb_tables",
@@ -12627,7 +12639,19 @@ def model_cases():
         '"west":{"texture":"#all","cullface":"west"},'
         '"east":{"texture":"#all","cullface":"east"}}}]}'
     )
+    display_right = ('{"display":{"thirdperson_righthand":{"rotation":[75,45,0],'
+                     '"translation":[0,2.5,0],"scale":[0.375,0.375,0.375]},'
+                     '"firstperson_righthand":{"rotation":[0,45,0],"scale":[0.4,0.4,0.4]},'
+                     '"gui":{"rotation":[30,225,0],"scale":[0.625,0.625,0.625]},'
+                     '"ground":{"translation":[0,3,0],"scale":[0.25,0.25,0.25]}}}')
+    display_clamped = ('{"display":{"fixed":{"translation":[100,-100,8],"scale":[9,-9,0.5]},'
+                       '"head":{"rotation":[0,180,0],"translation":[0,13,7]},'
+                       '"on_shelf":{"translation":[0,0,-1]},'
+                       '"firstperson_lefthand":{"rotation":[0,-90,25]},'
+                       '"thirdperson_lefthand":{"scale":[1,1,1]}}}')
     model_texts = [
+        ("display-right-hands", display_right),
+        ("display-clamped-and-left", display_clamped),
         ("empty-object", "{}"),
         ("parent-only", cube_all),
         ("full-cube", full_element),

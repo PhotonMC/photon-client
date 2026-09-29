@@ -45,6 +45,10 @@ pub struct WorldMesh {
 /// once, the way the reference bakes its block models at resource load.
 pub struct BlockRenderer {
     models: BTreeMap<String, ResolvedModel>,
+    /// Each item's client item model tree, by registry id.
+    items: Vec<Option<crate::render::item_model::ItemModelDef>>,
+    /// The alpha of every texture a flat item extrudes, with its size.
+    layer_alpha: BTreeMap<String, crate::render::item_model::LayerAlpha>,
     /// What each block state draws, by state id.
     states: Vec<StateRender>,
     /// The block atlas, with the fluid and sky sprites too.
@@ -68,6 +72,17 @@ enum StateRender {
         /// side, so a block closed in on all six sides draws nothing.
         closes_in: bool,
     },
+}
+
+/// One layer of an item as drawn in one display context.
+pub struct ItemLayer {
+    /// Quads in the model's unit cube, tinted, with their facings.
+    pub mesh: Mesh,
+    /// Whether the model lights like a block (`gui_light: side`) rather
+    /// than flat from the front.
+    pub side_lit: bool,
+    /// The context's display transform; `None` is no transform.
+    pub transform: Option<crate::render::model::ItemTransform>,
 }
 
 /// One meshed region.
@@ -173,6 +188,61 @@ impl BlockRenderer {
                 };
             }
         }
+        // Every item's model tree, and the models its layers name in any
+        // display context, go in with the blocks'.
+        let mut items = Vec::with_capacity(crate::item_table::ITEMS.len());
+        let mut layer_alpha = BTreeMap::new();
+        let mut layer_sprites = Vec::new();
+        for item in crate::item_table::ITEMS.iter() {
+            let def = Identifier::parse(item.name)
+                .ok()
+                .and_then(|name| source.item(&name))
+                .and_then(|text| crate::render::item_model::parse_client_item(&text));
+            if let Some(def) = &def {
+                let mut layers = Vec::new();
+                for context in crate::render::model::DisplayContext::ALL {
+                    crate::render::item_model::layers_for(def, context, &mut layers);
+                }
+                for layer in layers {
+                    let name = layer.model.as_string();
+                    if models.contains_key(&name) {
+                        continue;
+                    }
+                    let Ok(model) = crate::render::resolve::resolve_model(source, &layer.model)
+                    else {
+                        continue;
+                    };
+                    if model.generated {
+                        for slot in ["layer0", "layer1", "layer2", "layer3", "layer4"] {
+                            let Some(material) = model.textures.material(slot) else {
+                                break;
+                            };
+                            let sprite = material.sprite.as_string();
+                            if layer_alpha.contains_key(&sprite) {
+                                continue;
+                            }
+                            // The geometry is made from the texture later, so
+                            // no element names it for the atlas.
+                            layer_sprites.push(material.sprite.clone());
+                            if let Some(image) = source
+                                .texture(&material.sprite)
+                                .and_then(|bytes| crate::render::png::decode_rgba(&bytes).ok())
+                            {
+                                // An animated strip's first frame decides the sides.
+                                let frame = image.width.min(image.height);
+                                let alpha = image.rgba[..(frame * frame * 4) as usize]
+                                    .chunks(4)
+                                    .map(|pixel| pixel[3])
+                                    .collect();
+                                layer_alpha.insert(sprite, (alpha, frame as i32, frame as i32));
+                            }
+                        }
+                    }
+                    models.insert(name, model);
+                }
+            }
+            items.push(def);
+        }
         let ordered: Vec<&ResolvedModel> = models.values().collect();
         // The fluid renderer's sprites and the sky's sun and moon phases are
         // named by no block model, so they are asked for by name.
@@ -182,15 +252,77 @@ impl BlockRenderer {
             .chain(std::iter::once(crate::render::sky::SUN_SPRITE.to_owned()))
             .chain(crate::render::sky::moon_sprites())
             .map(|name| Identifier::parse(&name).expect("fixed sprite names are valid"))
+            .chain(layer_sprites)
             .collect();
         let atlas =
             crate::render::resolve::build_atlas_with(source, &ordered, &extra, 8192, mip_level)?;
         Ok(Self {
             models,
+            items,
+            layer_alpha,
             states,
             atlas,
             skipped,
         })
+    }
+
+    /// The quads an item's default stack draws in a display context, layer
+    /// by layer, each with its model's GUI light and display transforms.
+    /// Corners are in the model's unit cube; tints are already applied to
+    /// the vertices' colour. `grass` reads the grass colour map.
+    pub fn item_layers(
+        &self,
+        item: i32,
+        context: crate::render::model::DisplayContext,
+        grass: &dyn Fn(f64, f64) -> u32,
+    ) -> Vec<ItemLayer> {
+        let Some(Some(def)) = usize::try_from(item)
+            .ok()
+            .and_then(|index| self.items.get(index))
+        else {
+            return Vec::new();
+        };
+        let mut layers = Vec::new();
+        crate::render::item_model::layers_for(def, context, &mut layers);
+        let mut out = Vec::new();
+        for layer in layers {
+            let Some(model) = self.models.get(&layer.model.as_string()) else {
+                continue;
+            };
+            let tints: Vec<u32> = layer
+                .tints
+                .iter()
+                .map(|tint| crate::render::item_model::tint_colour(tint, grass))
+                .collect();
+            let geometry;
+            let model = if model.generated {
+                let mut flat = model.clone();
+                flat.elements =
+                    crate::render::item_model::generated_elements(&model.textures, &|sprite| {
+                        self.layer_alpha.get(&sprite.as_string()).cloned()
+                    });
+                geometry = flat;
+                &geometry
+            } else {
+                model
+            };
+            let Ok(mesh) = crate::render::resolve::build_mesh(
+                model,
+                &self.atlas,
+                None,
+                &tints,
+                |_| crate::render::rotation::FLAT_IDENTITY,
+                |_| false,
+            ) else {
+                continue;
+            };
+            out.push(ItemLayer {
+                mesh,
+                side_lit: model.gui_light == crate::render::model::GuiLight::Side,
+                transform: model.display.get(context),
+            });
+        }
+        out
     }
 
     pub fn model_count(&self) -> usize {
@@ -223,8 +355,11 @@ impl BlockRenderer {
             let Some(model) = self.models.get(&variant.model.as_string()) else {
                 continue;
             };
-            let (rotate_x, rotate_y, rotate_z) =
-                (variant.x.degrees(), variant.y.degrees(), variant.z.degrees());
+            let (rotate_x, rotate_y, rotate_z) = (
+                variant.x.degrees(),
+                variant.y.degrees(),
+                variant.z.degrees(),
+            );
             let Some(state) =
                 crate::render::rotation::model_state_transform(rotate_x, rotate_y, rotate_z)
             else {
@@ -242,7 +377,8 @@ impl BlockRenderer {
                 continue;
             };
             for (quad, info) in part.quads.iter().enumerate() {
-                let corners = std::array::from_fn(|corner| part.vertices[quad * 4 + corner].position);
+                let corners =
+                    std::array::from_fn(|corner| part.vertices[quad * 4 + corner].position);
                 quads.push((corners, info.direction));
             }
         }

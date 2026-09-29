@@ -20,6 +20,7 @@ public final class ImageOracle {
                 case "colour_map" -> rows.add(colourMap(request, element.getAsJsonObject()));
                 case "argb_multiply" -> rows.add(argbMultiply(element.getAsJsonObject()));
                 case "tint_constants" -> rows.add(tintConstants(element.getAsJsonObject()));
+                case "item_side_faces" -> rows.add(itemSideFaces(element.getAsJsonObject()));
                 default -> throw new IllegalArgumentException("Unknown image operation: " + operation);
             }
         }
@@ -291,6 +292,50 @@ public final class ImageOracle {
             entry.addProperty("rgba", HexFormat.of().formatHex(rgba));
         } catch (Exception error) {
             entry.addProperty("outcome", "decode_failed");
+        }
+        return entry;
+    }
+
+    /**
+     * The side faces the item model generator extrudes from a texture, as its
+     * own (private) scan finds them: facing, x and y of each, sorted.
+     */
+    private static JsonObject itemSideFaces(JsonObject row) {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        String path = "/" + row.get("texture").getAsString();
+        try (var stream = ImageOracle.class.getResourceAsStream(path)) {
+            if (stream == null) {
+                throw new IllegalStateException("Missing texture: " + path);
+            }
+            var image = NativeImage.read(stream);
+            var contents = new net.minecraft.client.renderer.texture.SpriteContents(
+                net.minecraft.resources.Identifier.withDefaultNamespace("item_side_faces"),
+                new net.minecraft.client.resources.metadata.animation.FrameSize(image.getWidth(), image.getHeight()),
+                image);
+            var scan = net.minecraft.client.resources.model.cuboid.ItemModelGenerator.class
+                .getDeclaredMethod("getSideFaces", net.minecraft.client.renderer.texture.SpriteContents.class);
+            scan.setAccessible(true);
+            var faces = new java.util.TreeSet<String>();
+            for (Object face : (java.util.Collection<?>) scan.invoke(null, contents)) {
+                var facing = face.getClass().getDeclaredMethod("facing");
+                var x = face.getClass().getDeclaredMethod("x");
+                var y = face.getClass().getDeclaredMethod("y");
+                facing.setAccessible(true);
+                x.setAccessible(true);
+                y.setAccessible(true);
+                faces.add(String.format(java.util.Locale.ROOT, "%s,%02d,%02d",
+                    facing.invoke(face), (int) x.invoke(face), (int) y.invoke(face)));
+            }
+            var list = new com.google.gson.JsonArray();
+            faces.forEach(list::add);
+            entry.addProperty("outcome", "scanned");
+            entry.addProperty("width", image.getWidth());
+            entry.addProperty("height", image.getHeight());
+            entry.add("faces", list);
+            contents.close();
+        } catch (java.io.IOException | ReflectiveOperationException failure) {
+            throw new IllegalStateException(failure);
         }
         return entry;
     }

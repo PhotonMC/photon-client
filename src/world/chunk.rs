@@ -177,7 +177,6 @@ impl PendingLightUpdate {
             block: OwnedLightLayerInput::new(input.block),
         }
     }
-
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -195,7 +194,6 @@ impl OwnedLightLayerInput {
             updates: input.updates.to_vec(),
         }
     }
-
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -308,4 +306,3 @@ pub(crate) fn count_light_sections(
         })
         .count()
 }
-

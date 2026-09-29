@@ -201,9 +201,9 @@ impl Miner {
     /// `Player.hasCorrectToolForDrops`.
     fn has_correct_tool(&self, world: &ClientWorld, state: i32) -> bool {
         !traits(state).requires_correct_tool
-            || self.tool().is_some_and(|tool| {
-                tool.is_correct_for_drops(world.block_state_registry(), state)
-            })
+            || self
+                .tool()
+                .is_some_and(|tool| tool.is_correct_for_drops(world.block_state_registry(), state))
     }
 
     /// `BlockBehaviour.getDestroyProgress`: how much one tick of breaking
@@ -223,10 +223,14 @@ impl Miner {
 }
 
 fn traits(state: i32) -> &'static block_destroy_table::DestroyTraits {
-    let (index, offset) = crate::world::block_registry::block_index_for_state(state as u32)
-        .unwrap_or((0, 0));
+    let (index, offset) =
+        crate::world::block_registry::block_index_for_state(state as u32).unwrap_or((0, 0));
     let states = block_destroy_table::BLOCKS[index];
-    let id = states[if states.len() == 1 { 0 } else { offset as usize }];
+    let id = states[if states.len() == 1 {
+        0
+    } else {
+        offset as usize
+    }];
     &block_destroy_table::TRAITS[usize::from(id)]
 }
 
@@ -235,9 +239,8 @@ fn is_air(state: i32) -> bool {
 }
 
 fn is_game_master_block(state: i32) -> bool {
-    crate::world::block_registry::block_index_for_state(state as u32).is_some_and(|(index, _)| {
-        block_destroy_table::GAME_MASTER.contains(&(index as u16))
-    })
+    crate::world::block_registry::block_index_for_state(state as u32)
+        .is_some_and(|(index, _)| block_destroy_table::GAME_MASTER.contains(&(index as u16)))
 }
 
 /// `MultiPlayerGameMode`'s breaking state and `Minecraft.missTime`.
@@ -291,7 +294,10 @@ impl Context<'_> {
     fn within_border(&self, (x, _, z): (i32, i32, i32)) -> bool {
         let border = self.world.world_border();
         let (x, z) = (f64::from(x), f64::from(z));
-        x >= border.min_x(0.0) && x < border.max_x(0.0) && z >= border.min_z(0.0) && z < border.max_z(0.0)
+        x >= border.min_x(0.0)
+            && x < border.max_x(0.0)
+            && z >= border.min_z(0.0)
+            && z < border.max_z(0.0)
     }
 
     /// `Player.blockActionRestricted`: spectators cannot break, and in
@@ -431,7 +437,13 @@ impl GameMode {
     }
 
     /// `Minecraft.continueAttack`.
-    fn continue_attack(&mut self, ctx: &mut Context<'_>, down: bool, aim: Aim, out: &mut Vec<Outgoing>) {
+    fn continue_attack(
+        &mut self,
+        ctx: &mut Context<'_>,
+        down: bool,
+        aim: Aim,
+        out: &mut Vec<Outgoing>,
+    ) {
         if !down {
             self.miss_time = 0;
         }
@@ -473,7 +485,12 @@ impl GameMode {
         ctx.world.stop_predicting();
     }
 
-    fn action(action: PlayerAction, (x, y, z): (i32, i32, i32), face: u8, sequence: i32) -> Outgoing {
+    fn action(
+        action: PlayerAction,
+        (x, y, z): (i32, i32, i32),
+        face: u8,
+        sequence: i32,
+    ) -> Outgoing {
         Outgoing::PlayerAction {
             action,
             x,
@@ -487,7 +504,8 @@ impl GameMode {
     fn crack(&self, ctx: &mut Context<'_>) {
         let (x, y, z) = self.destroy_pos;
         let id = ctx.player.entity_id();
-        ctx.world.destroy_block_progress(id, x, y, z, self.destroy_stage());
+        ctx.world
+            .destroy_block_progress(id, x, y, z, self.destroy_stage());
     }
 
     /// `startDestroyBlock`.
@@ -620,7 +638,8 @@ fn destroy_block(ctx: &mut Context<'_>, pos: (i32, i32, i32)) -> bool {
     }
     let fluid = traits(old).fluid_block as i32;
     let position: Vec3 = ctx.player.position();
-    ctx.world.set_block_with_updates(pos, fluid, 11, 512, position)
+    ctx.world
+        .set_block_with_updates(pos, fluid, 11, 512, position)
 }
 
 impl GameMode {
@@ -745,7 +764,9 @@ impl GameMode {
         }
         match rules::item_use_on_class(item) {
             "Item" => UseResult::Pass,
-            "BlockItem" if rules::item_class(item) == "BlockItem" => self.place(ctx, hand, item, aim),
+            "BlockItem" if rules::item_class(item) == "BlockItem" => {
+                self.place(ctx, hand, item, aim)
+            }
             _ => UseResult::Success { swing: true },
         }
     }
@@ -815,7 +836,10 @@ impl GameMode {
             return UseResult::Fail;
         }
         let position = ctx.player.position();
-        if !ctx.world.set_block_with_updates(pos, state, 11, 512, position) {
+        if !ctx
+            .world
+            .set_block_with_updates(pos, state, 11, 512, position)
+        {
             return UseResult::Fail;
         }
         // `ItemStack.consume`: used up unless materials are infinite.
@@ -828,7 +852,12 @@ impl GameMode {
 
     /// `MultiPlayerGameMode.useItem`: the packet goes whatever the item
     /// does. `None` is a spectator's use, which sends nothing.
-    fn use_item(&mut self, ctx: &mut Context<'_>, hand: u8, out: &mut Vec<Outgoing>) -> Option<UseResult> {
+    fn use_item(
+        &mut self,
+        ctx: &mut Context<'_>,
+        hand: u8,
+        out: &mut Vec<Outgoing>,
+    ) -> Option<UseResult> {
         if ctx.mode == ClientPlayerGameMode::Spectator {
             return Some(UseResult::Pass);
         }
@@ -837,7 +866,9 @@ impl GameMode {
         let result = match ctx.held(hand) {
             Some((item, _)) => {
                 let row = rules::item_behaviour(item);
-                if rules::item_use_class(item) == "Item" && row.is_some_and(|row| row.default_use_pass) {
+                if rules::item_use_class(item) == "Item"
+                    && row.is_some_and(|row| row.default_use_pass)
+                {
                     UseResult::Pass
                 } else {
                     // Eating, equipping and the rest are not written yet.
@@ -881,7 +912,11 @@ impl Outgoing {
                 sequence,
             } => {
                 crate::wire::write_varint(action as i32, &mut out);
-                out.extend_from_slice(&crate::binary::BlockPos::new(x, y, z).as_long().to_be_bytes());
+                out.extend_from_slice(
+                    &crate::binary::BlockPos::new(x, y, z)
+                        .as_long()
+                        .to_be_bytes(),
+                );
                 out.push(face);
                 crate::wire::write_varint(sequence, &mut out);
             }
@@ -897,7 +932,11 @@ impl Outgoing {
                 sequence,
             } => {
                 crate::wire::write_varint(i32::from(hand), &mut out);
-                out.extend_from_slice(&crate::binary::BlockPos::new(x, y, z).as_long().to_be_bytes());
+                out.extend_from_slice(
+                    &crate::binary::BlockPos::new(x, y, z)
+                        .as_long()
+                        .to_be_bytes(),
+                );
                 crate::wire::write_varint(i32::from(face), &mut out);
                 for value in cursor {
                     out.extend_from_slice(&value.to_be_bytes());

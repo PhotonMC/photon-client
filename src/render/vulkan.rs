@@ -281,6 +281,40 @@ void main() {
 }
 ";
 
+/// The shaders for items in the GUI, after the reference's item shader as it
+/// draws into the GUI item atlas: the atlas texel at its nearest, cut out
+/// below a tenth of alpha, times the vertex colour, which already carries the
+/// tint and the item light. Depth runs towards the viewer across the
+/// orthographic range of a thousand units either way.
+const GUI_ITEM_VERTEX_SHADER: &str = r"#version 450
+layout(push_constant) uniform Push {
+    vec4 scale;
+} push;
+layout(location = 0) in vec3 in_position;
+layout(location = 1) in vec2 in_uv;
+layout(location = 2) in vec4 in_colour;
+layout(location = 0) out vec2 out_uv;
+layout(location = 1) out vec4 out_colour;
+void main() {
+    gl_Position = vec4(in_position.xy * push.scale.xy - 1.0, 0.5 + in_position.z / 2000.0, 1.0);
+    out_uv = in_uv;
+    out_colour = in_colour;
+}
+";
+
+const GUI_ITEM_FRAGMENT_SHADER: &str = r"#version 450
+layout(set = 0, binding = 0) uniform sampler2D atlas;
+layout(location = 0) in vec2 in_uv;
+layout(location = 1) in vec4 in_colour;
+layout(location = 0) out vec4 out_colour;
+void main() {
+    ivec2 size = textureSize(atlas, 0);
+    vec4 texel = texelFetch(atlas, clamp(ivec2(floor(in_uv * vec2(size))), ivec2(0), size - 1), 0);
+    if (texel.a < 0.1) { discard; }
+    out_colour = texel * in_colour;
+}
+";
+
 const FRAGMENT_SHADER: &str = r"#version 450
 layout(set = 0, binding = 0) uniform sampler2D atlas;
 layout(location = 0) in vec2 in_uv;
@@ -482,6 +516,8 @@ enum PipelineKind {
     Gui,
     /// The crosshair, inverting what is behind it.
     GuiInvert,
+    /// Items in GUI slots, over a cleared depth.
+    GuiItem,
     /// The aimed block's outline.
     Lines,
     /// The crack over a block being broken.
@@ -616,6 +652,8 @@ struct SceneResources {
     gui_pipeline: vk::Pipeline,
     gui_invert_pipeline_layout: vk::PipelineLayout,
     gui_invert_pipeline: vk::Pipeline,
+    gui_item_pipeline_layout: vk::PipelineLayout,
+    gui_item_pipeline: vk::Pipeline,
     /// The GUI sprites' atlas.
     gui_texture: Option<(vk::Image, vk::DeviceMemory, vk::ImageView)>,
     gui_sampler: Option<vk::Sampler>,
@@ -817,6 +855,8 @@ pub struct VulkanBackend {
     gui_buffer: Option<SkyBuffer>,
     gui_batches: Vec<(crate::render::gui::GuiBlend, u32, u32)>,
     gui_size: [f32; 2],
+    /// The items in the GUI's slots, which the GUI's item runs count in.
+    gui_item_buffer: Option<SkyBuffer>,
     sections: std::collections::BTreeMap<(i32, i32, i32), SectionBuffers>,
     arena: Vec<ArenaBlock>,
     /// Staging chunks: every chunk, the ones taking uploads for the next
@@ -1131,6 +1171,7 @@ impl VulkanBackend {
                 gui_buffer: None,
                 gui_batches: Vec::new(),
                 gui_size: [1.0, 1.0],
+                gui_item_buffer: None,
                 sections: std::collections::BTreeMap::new(),
                 arena: Vec::new(),
                 staging: Vec::new(),
@@ -1661,17 +1702,56 @@ impl VulkanBackend {
                 && !self.gui_batches.is_empty()
             {
                 let push = [2.0 / self.gui_size[0], 2.0 / self.gui_size[1], 0.0, 0.0];
-                self.device
-                    .cmd_bind_vertex_buffers(self.command_buffer, 0, &[buffer.buffer], &[0]);
                 for &(blend, first, count) in &self.gui_batches {
-                    let (pipeline, layout) = match blend {
+                    let (pipeline, layout, set, vertices) = match blend {
                         crate::render::gui::GuiBlend::Translucent => {
-                            (scene.gui_pipeline, scene.gui_pipeline_layout)
+                            (scene.gui_pipeline, scene.gui_pipeline_layout, set, buffer)
                         }
-                        crate::render::gui::GuiBlend::Invert => {
-                            (scene.gui_invert_pipeline, scene.gui_invert_pipeline_layout)
+                        crate::render::gui::GuiBlend::Invert => (
+                            scene.gui_invert_pipeline,
+                            scene.gui_invert_pipeline_layout,
+                            set,
+                            buffer,
+                        ),
+                        crate::render::gui::GuiBlend::Items => {
+                            let Some(items) = self.gui_item_buffer.as_ref() else {
+                                continue;
+                            };
+                            // Each item is drawn over its own cleared depth
+                            // in the reference's item atlas; the slots never
+                            // overlap, so one clear serves them all.
+                            self.device.cmd_clear_attachments(
+                                self.command_buffer,
+                                &[vk::ClearAttachment {
+                                    aspect_mask: vk::ImageAspectFlags::DEPTH,
+                                    color_attachment: 0,
+                                    clear_value: vk::ClearValue {
+                                        depth_stencil: vk::ClearDepthStencilValue {
+                                            depth: 0.0,
+                                            stencil: 0,
+                                        },
+                                    },
+                                }],
+                                &[vk::ClearRect {
+                                    rect: vk::Rect2D::default().extent(self.description.extent),
+                                    base_array_layer: 0,
+                                    layer_count: 1,
+                                }],
+                            );
+                            (
+                                scene.gui_item_pipeline,
+                                scene.gui_item_pipeline_layout,
+                                scene.descriptor_set,
+                                items,
+                            )
                         }
                     };
+                    self.device.cmd_bind_vertex_buffers(
+                        self.command_buffer,
+                        0,
+                        &[vertices.buffer],
+                        &[0],
+                    );
                     self.device.cmd_bind_pipeline(
                         self.command_buffer,
                         vk::PipelineBindPoint::GRAPHICS,
@@ -1719,6 +1799,7 @@ impl VulkanBackend {
         let weather = kind == PipelineKind::Weather;
         let entity = kind == PipelineKind::Entity;
         let gui = matches!(kind, PipelineKind::Gui | PipelineKind::GuiInvert);
+        let gui_item = kind == PipelineKind::GuiItem;
         let lines = kind == PipelineKind::Lines;
         let crumbling = kind == PipelineKind::Crumbling;
         unsafe {
@@ -1740,6 +1821,8 @@ impl VulkanBackend {
                 (ENTITY_VERTEX_SHADER, ENTITY_FRAGMENT_SHADER)
             } else if gui {
                 (GUI_VERTEX_SHADER, GUI_FRAGMENT_SHADER)
+            } else if gui_item {
+                (GUI_ITEM_VERTEX_SHADER, GUI_ITEM_FRAGMENT_SHADER)
             } else if lines {
                 (LINE_VERTEX_SHADER, LINE_FRAGMENT_SHADER)
             } else if crumbling {
@@ -1776,6 +1859,8 @@ impl VulkanBackend {
                 std::mem::size_of::<crate::render::clouds::CloudVertex>()
             } else if gui {
                 std::mem::size_of::<crate::render::gui::GuiVertex>()
+            } else if gui_item {
+                std::mem::size_of::<crate::render::gui_items::GuiItemVertex>()
             } else if lines {
                 std::mem::size_of::<crate::render::outline::LineVertex>()
             } else {
@@ -1885,8 +1970,27 @@ impl VulkanBackend {
                     .format(vk::Format::R32_SFLOAT)
                     .offset(40),
             ];
+            let gui_item_attributes = [
+                vk::VertexInputAttributeDescription::default()
+                    .location(0)
+                    .binding(0)
+                    .format(vk::Format::R32G32B32_SFLOAT)
+                    .offset(0),
+                vk::VertexInputAttributeDescription::default()
+                    .location(1)
+                    .binding(0)
+                    .format(vk::Format::R32G32_SFLOAT)
+                    .offset(12),
+                vk::VertexInputAttributeDescription::default()
+                    .location(2)
+                    .binding(0)
+                    .format(vk::Format::R32G32B32A32_SFLOAT)
+                    .offset(20),
+            ];
             let attributes: &[vk::VertexInputAttributeDescription] = if sky {
                 &sky_attributes
+            } else if gui_item {
+                &gui_item_attributes
             } else if clouds {
                 &cloud_attributes
             } else if gui {
@@ -1911,7 +2015,7 @@ impl VulkanBackend {
             let raster = vk::PipelineRasterizationStateCreateInfo::default()
                 .polygon_mode(vk::PolygonMode::FILL)
                 // The sky's fans are built in either winding.
-                .cull_mode(if sky || weather || entity || gui || lines {
+                .cull_mode(if sky || weather || entity || gui || gui_item || lines {
                     vk::CullModeFlags::NONE
                 } else {
                     vk::CullModeFlags::BACK
@@ -1939,6 +2043,7 @@ impl VulkanBackend {
                         | PipelineKind::Clouds
                         | PipelineKind::Entity
                         | PipelineKind::Lines
+                        | PipelineKind::GuiItem
                 ))
                 .depth_compare_op(vk::CompareOp::GREATER_OR_EQUAL);
             let blends = [if crumbling {
@@ -1972,7 +2077,8 @@ impl VulkanBackend {
                     .dst_alpha_blend_factor(vk::BlendFactor::ZERO)
                     .alpha_blend_op(vk::BlendOp::ADD)
                     .color_write_mask(vk::ColorComponentFlags::RGBA)
-            } else if translucent || sky || clouds || weather || entity || gui || lines {
+            } else if translucent || sky || clouds || weather || entity || gui || gui_item || lines
+            {
                 vk::PipelineColorBlendAttachmentState::default()
                     .blend_enable(true)
                     .src_color_blend_factor(vk::BlendFactor::SRC_ALPHA)
@@ -2582,6 +2688,8 @@ impl VulkanBackend {
                 self.create_pipeline(descriptor_layout, PipelineKind::Crumbling)?;
             let (gui_invert_pipeline_layout, gui_invert_pipeline) =
                 self.create_pipeline(descriptor_layout, PipelineKind::GuiInvert)?;
+            let (gui_item_pipeline_layout, gui_item_pipeline) =
+                self.create_pipeline(descriptor_layout, PipelineKind::GuiItem)?;
 
             self.scene = Some(SceneResources {
                 texture,
@@ -2622,6 +2730,8 @@ impl VulkanBackend {
                 gui_pipeline,
                 gui_invert_pipeline_layout,
                 gui_invert_pipeline,
+                gui_item_pipeline_layout,
+                gui_item_pipeline,
                 gui_texture: None,
                 gui_sampler: None,
                 gui_set: None,
@@ -2931,6 +3041,7 @@ impl VulkanBackend {
                 for (pipeline, layout) in [
                     (scene.gui_pipeline, scene.gui_pipeline_layout),
                     (scene.gui_invert_pipeline, scene.gui_invert_pipeline_layout),
+                    (scene.gui_item_pipeline, scene.gui_item_pipeline_layout),
                 ] {
                     self.device.destroy_pipeline(pipeline, None);
                     self.device.destroy_pipeline_layout(layout, None);
@@ -3241,6 +3352,17 @@ impl VulkanBackend {
         };
         self.fill_bytes(&mut buffer, bytes)?;
         self.gui_buffer = buffer;
+        if !frame.items.is_empty() {
+            let mut items = self.gui_item_buffer.take();
+            let bytes = unsafe {
+                std::slice::from_raw_parts(
+                    frame.items.as_ptr().cast::<u8>(),
+                    std::mem::size_of_val(frame.items.as_slice()),
+                )
+            };
+            self.fill_bytes(&mut items, bytes)?;
+            self.gui_item_buffer = items;
+        }
         self.gui_batches = frame.batches.clone();
         self.gui_size = size;
         Ok(())
@@ -3765,6 +3887,7 @@ impl Drop for VulkanBackend {
                 self.outline_buffer.take(),
                 self.breaking_buffer.take(),
                 self.gui_buffer.take(),
+                self.gui_item_buffer.take(),
             ]
             .into_iter()
             .flatten()

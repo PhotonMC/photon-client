@@ -212,7 +212,6 @@ impl PlaySession {
         }
     }
 
-
     /// Mark the section holding a block and the sections touching it.
     fn mark_block(&mut self, x: i32, y: i32, z: i32) {
         for dx in [-1, 0, 1] {
@@ -634,9 +633,12 @@ impl PlaySession {
             PLAY_CLIENTBOUND_BLOCK_UPDATE_PACKET_ID => {
                 let update = parse_block_update_packet(payload)?;
                 self.mark_block(update.x, update.y, update.z);
-                self.trace
-                    .world
-                    .apply_server_block_state(update.x, update.y, update.z, update.state_id);
+                self.trace.world.apply_server_block_state(
+                    update.x,
+                    update.y,
+                    update.z,
+                    update.state_id,
+                );
             }
             PLAY_CLIENTBOUND_SECTION_BLOCKS_UPDATE_PACKET_ID => {
                 let mut input = payload;

@@ -290,6 +290,18 @@ impl BiomeTints {
         })
     }
 
+    /// `GrassColor.get`: the grass colour map at a climate, as an item's
+    /// grass tint reads it.
+    pub fn grass_at_climate(&self, temperature: f64, downfall: f64) -> u32 {
+        crate::render::tint::colour_map_lookup(
+            crate::render::tint::ColourMap::Grass,
+            &self.grass,
+            temperature,
+            downfall,
+        )
+        .unwrap_or(crate::render::tint::ColourMap::Grass.default_colour())
+    }
+
     /// `BiomeManager.getBiome`: the zoomed biome at a block position, as
     /// its network number.
     pub fn biome_at(
