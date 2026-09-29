@@ -3114,6 +3114,7 @@ impl ClientWorld {
 pub mod block_collision_table;
 pub mod block_light_table;
 pub mod block_movement_table;
+pub mod block_outline_table;
 pub mod block_registry;
 pub mod fluid_flow_table;
 pub mod local_player;

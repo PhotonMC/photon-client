@@ -63,6 +63,8 @@ pub struct PlaySession {
     status: PlayerStatus,
     /// Whether a respawn was asked for since the player last had health.
     respawn_requested: bool,
+    /// Swing packets sent, for scripted runs to report.
+    swings: u32,
     /// Set when the server moved the player to a new level.
     level_reset: bool,
     /// The hotbar slot the server was last told about.
@@ -124,6 +126,7 @@ impl PlaySession {
             thunder_level: 0.0,
             status: PlayerStatus::default(),
             respawn_requested: false,
+            swings: 0,
             level_reset: false,
             sent_slot: 0,
             dirty_sections: std::collections::BTreeSet::new(),
@@ -250,10 +253,16 @@ impl PlaySession {
             return Ok(());
         };
         player.swing();
+        self.swings += 1;
         self.send(PLAY_SERVERBOUND_SWING_PACKET_ID, |output| {
             wire::write_varint(0, output);
             Ok(())
         })
+    }
+
+    /// How many swings the session has sent.
+    pub fn swings(&self) -> u32 {
+        self.swings
     }
 
     /// The player's profile id, as the server logged it in.

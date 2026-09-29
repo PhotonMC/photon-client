@@ -1207,14 +1207,13 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
         )?)
         .map_err(|error| format!("skin: {error:?}"))?,
     )?;
-    let mut player_model = render::player_model::PlayerModel::new(!skin.slim);
+    let mut player_model = render::player_model::PlayerModel::new(skin.slim);
     // `ItemInHandRenderer.mainHandHeight`: the empty hand rises into view
     // at four tenths a tick.
     let mut hand_height = (0.0_f32, 0.0_f32);
     // Attack clicks waiting for the next tick, and `Minecraft.missTime`:
     // ticks a missed attack keeps the next one waiting.
-    let mut attack_clicks = 0_u32;
-    let mut miss_time = 0_i32;
+    let mut attack_key = voxel_client::attack::AttackKey::default();
     let mut cloud_key = None;
     // The reference seeds this source uniquely per run.
     let mut flicker_random = voxel_client::random::RandomSource::create(
@@ -1272,6 +1271,7 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                         captured = false;
                         surface.set_cursor_captured(false);
                         keys = HeldKeys::default();
+                        attack_key.release();
                     } else {
                         surface.request_close();
                     }
@@ -1290,7 +1290,14 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                     glfw::Action::Press,
                     _,
                 ) if captured => {
-                    attack_clicks += 1;
+                    attack_key.press();
+                }
+                glfw::WindowEvent::MouseButton(
+                    glfw::MouseButton::Button1,
+                    glfw::Action::Release,
+                    _,
+                ) => {
+                    attack_key.release();
                 }
                 glfw::WindowEvent::MouseButton(_, glfw::Action::Press, _) if !captured => {
                     captured = true;
@@ -1360,48 +1367,52 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                 },
                 None => keys,
             };
+            // A scripted attack is a click: down and up within the tick.
             if held.attack {
-                attack_clicks += 1;
+                attack_key.press();
+                attack_key.release();
             }
-            // `Minecraft.tick`: the miss wait runs down, then each attack
-            // click is handled before the player moves.
-            if miss_time > 0 {
-                miss_time -= 1;
-            }
-            for _ in 0..std::mem::take(&mut attack_clicks) {
-                let Some(player) = session.player() else {
-                    break;
-                };
-                if miss_time > 0 || player.spectating() {
-                    continue;
-                }
-                // Blocks within the default reach of four and a half; the
-                // block is not broken yet, so a hit only swings.
-                let feet = player.position();
-                let (y_rot, x_rot) = player.rotation();
-                let eye = voxel_client::math::Vec3::new(
-                    feet.x,
-                    feet.y + f64::from(player.eye_height()),
-                    feet.z,
-                );
-                let look =
-                    voxel_client::math::Vec3::direction_from_rotation_components(x_rot, y_rot);
-                let reach = voxel_client::math::Vec3::new(
-                    eye.x + look.x * 4.5,
-                    eye.y + look.y * 4.5,
-                    eye.z + look.z * 4.5,
-                );
-                let missed = session.world().clip_blocks(eye, reach).is_none();
+            // `Minecraft.handleKeybinds`: attack clicks are spent before the
+            // player moves, aiming the way `GameRenderer.pick` aims.
+            if let Some(player) = session.player() {
+                let spectator = player.spectating();
                 let creative = player.abilities().instabuild();
-                if missed {
-                    if !creative {
-                        miss_time = 10;
+                let aim = || {
+                    // The block reach: 4.5, or 5 in creative; the entity reach
+                    // is never longer. Entities are not picked yet.
+                    let reach = if creative { 5.0 } else { 4.5 };
+                    let feet = player.position();
+                    let (y_rot, x_rot) = player.rotation();
+                    let eye = voxel_client::math::Vec3::new(
+                        feet.x,
+                        feet.y + f64::from(player.eye_height()),
+                        feet.z,
+                    );
+                    let look =
+                        voxel_client::math::Vec3::direction_from_rotation_components(x_rot, y_rot);
+                    let to = voxel_client::math::Vec3::new(
+                        eye.x + look.x * reach,
+                        eye.y + look.y * reach,
+                        eye.z + look.z * reach,
+                    );
+                    match session.world().clip_outlines(eye, to) {
+                        // `filterHitResult`: a hit past the reach is a miss.
+                        Some(hit) if hit.distance_to_sqr(eye) < reach * reach => {
+                            voxel_client::attack::Aim::Block
+                        }
+                        _ => voxel_client::attack::Aim::Miss,
                     }
-                    if let Some(player) = session.player_mut() {
+                };
+                let attacks =
+                    attack_key.tick(captured || script.is_some(), spectator, creative, aim);
+                for attack in attacks {
+                    if attack == voxel_client::attack::Attack::Missed
+                        && let Some(player) = session.player_mut()
+                    {
                         player.reset_attack_strength();
                     }
+                    session.swing()?;
                 }
-                session.swing()?;
             }
             session.tick(held.input())?;
             // `LightmapRenderStateExtractor.tick`: the block light's flicker
@@ -1893,6 +1904,7 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                 player.on_ground()
             );
             println!("play_teleports={}", session.teleports());
+            println!("play_swings={}", session.swings());
             if let Some(warning) = session.warning() {
                 println!("play_warning={warning}");
             }

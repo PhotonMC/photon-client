@@ -372,6 +372,72 @@ fn table_shapes() -> &'static [VoxelShape] {
     })
 }
 
+fn outline_shapes() -> &'static [VoxelShape] {
+    static BUILT: std::sync::OnceLock<Vec<VoxelShape>> = std::sync::OnceLock::new();
+    BUILT.get_or_init(|| {
+        crate::world::block_outline_table::SHAPES
+            .iter()
+            .map(|boxes| shape_from_boxes(boxes))
+            .collect()
+    })
+}
+
+/// The rebuilt outline shape for one entry of the table, for the parity
+/// adapter.
+pub fn outline_table_shape(index: usize) -> Option<VoxelShape> {
+    outline_shapes().get(index).cloned()
+}
+
+/// `BlockState.getShape` with no entity in the question: the outline a
+/// click aims at, moved by the block's random offset where it has one.
+pub fn outline_shape(state_id: u32, position: [i32; 3]) -> VoxelShape {
+    let Some((index, offset)) = crate::world::block_registry::block_index_for_state(state_id)
+    else {
+        return Shapes::empty();
+    };
+    let outline = &crate::world::block_outline_table::BLOCKS[index];
+    let shape_index = if outline.shapes.len() == 1 {
+        outline.shapes[0]
+    } else {
+        outline.shapes[offset as usize]
+    };
+    let shape = &outline_shapes()[usize::from(shape_index)];
+    if outline.offset {
+        let [x, y, z] = block_offset(crate::world::block_registry::BLOCKS[index].name, position);
+        shape.move_by(x, y, z)
+    } else {
+        shape.clone()
+    }
+}
+
+/// `BlockState.getOffset`: the random nudge some blocks (plants, bamboo,
+/// dripstone) take off the grid at a position.
+pub fn block_offset(block: &str, position: [i32; 3]) -> [f64; 3] {
+    let Some(&(_, vertical, horizontal_max, vertical_max)) =
+        crate::render::block_offset_table::OFFSETS
+            .iter()
+            .find(|(name, ..)| *name == block)
+    else {
+        return [0.0; 3];
+    };
+    let horizontal_max = f64::from(f32::from_bits(horizontal_max));
+    let seed = crate::math::mth_get_seed(position[0], 0, position[2]);
+    let axis = |bits: i64| {
+        let value = (f64::from((bits & 15) as f32 / 15.0) - 0.5) * 0.5;
+        if value < -horizontal_max {
+            -horizontal_max
+        } else {
+            value.min(horizontal_max)
+        }
+    };
+    let y = if vertical {
+        (f64::from((seed >> 4 & 15) as f32 / 15.0) - 1.0) * f64::from(f32::from_bits(vertical_max))
+    } else {
+        0.0
+    };
+    [axis(seed), y, axis(seed >> 8)]
+}
+
 /// Rebuild a shape from the boxes the reference reported for it.
 ///
 /// A single whole-block box is the reference's own full-block shape rather

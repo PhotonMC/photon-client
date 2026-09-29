@@ -947,27 +947,5 @@ fn render_seed(block: &str, properties: &BTreeMap<String, String>, position: [i3
 /// `BlockState.getOffset`: how far a plant is nudged off the centre of its
 /// block, from its column's seed and the block's limits.
 fn block_offset(block: &str, position: [i32; 3]) -> [f32; 3] {
-    let Some(&(_, vertical, horizontal_max, vertical_max)) =
-        crate::render::block_offset_table::OFFSETS
-            .iter()
-            .find(|(name, ..)| *name == block)
-    else {
-        return [0.0; 3];
-    };
-    let horizontal_max = f64::from(f32::from_bits(horizontal_max));
-    let seed = crate::math::mth_get_seed(position[0], 0, position[2]);
-    let axis = |bits: i64| {
-        let value = (f64::from((bits & 15) as f32 / 15.0) - 0.5) * 0.5;
-        if value < -horizontal_max {
-            -horizontal_max
-        } else {
-            value.min(horizontal_max)
-        }
-    };
-    let y = if vertical {
-        (f64::from((seed >> 4 & 15) as f32 / 15.0) - 1.0) * f64::from(f32::from_bits(vertical_max))
-    } else {
-        0.0
-    };
-    [axis(seed) as f32, y as f32, axis(seed >> 8) as f32]
+    crate::world::block_offset(block, position).map(|value| value as f32)
 }

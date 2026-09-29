@@ -53,6 +53,7 @@ public final class BlockOracle {
                 case "block_tints" -> rows.add(blockTints(element.getAsJsonObject()));
                 case "face_occlusion" -> rows.add(faceOcclusion(element.getAsJsonObject()));
                 case "collision_shapes" -> rows.add(collisionShapes(element.getAsJsonObject()));
+                case "outline_shapes" -> rows.add(outlineShapes(element.getAsJsonObject()));
                 case "movement_properties" -> rows.add(movementProperties(element.getAsJsonObject()));
                 case "light_properties" -> rows.add(lightProperties(element.getAsJsonObject()));
                 case "offset_properties" -> rows.add(offsetProperties(element.getAsJsonObject()));
@@ -342,6 +343,105 @@ public final class BlockOracle {
             (distinct.size() == 1 ? distinct : perState).forEach(listed::add);
             described.add("shapes", listed);
             described.addProperty("position_dependent", moves);
+            described.addProperty("dynamic", block.hasDynamicShape());
+            blocks.add(described);
+        }
+        entry.add("shapes", shapes);
+        entry.add("blocks", blocks);
+        return entry;
+    }
+
+    /**
+     * Every state's outline shape, the one picking a block aims at, with no
+     * entity in the question.
+     *
+     * A block nudged off the grid by a random offset reports its shape with
+     * the nudge at the origin taken back out, and whether the shape at other
+     * positions is exactly that shape moved by the nudge there.
+     */
+    private static JsonObject outlineShapes(JsonObject row) {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        entry.addProperty("outcome", "listed");
+        var registry = net.minecraft.core.registries.BuiltInRegistries.BLOCK;
+        var getter = net.minecraft.world.level.EmptyBlockGetter.INSTANCE;
+        var context = net.minecraft.world.phys.shapes.CollisionContext.empty();
+        var origin = net.minecraft.core.BlockPos.ZERO;
+        var elsewhere = new net.minecraft.core.BlockPos[] {
+            new net.minecraft.core.BlockPos(13, 70, -7),
+            new net.minecraft.core.BlockPos(-200, 5, 999),
+            new net.minecraft.core.BlockPos(1, 1, 1),
+            new net.minecraft.core.BlockPos(-3, 64, 12),
+        };
+        var shapeIds = new java.util.LinkedHashMap<String, Integer>();
+        var shapes = new JsonArray();
+        var blocks = new JsonArray();
+        for (var block : registry) {
+            var perState = new JsonArray();
+            boolean moves = false;
+            boolean offsetExplained = true;
+            for (var state : block.getStateDefinition().getPossibleStates()) {
+                var nudge = state.getOffset(origin);
+                var base = state.getShape(getter, origin, context);
+                boolean shifts = false;
+                for (var pos : elsewhere) {
+                    if (!state.getShape(getter, pos, context).toAabbs().equals(base.toAabbs())) {
+                        shifts = true;
+                    }
+                }
+                if (shifts && !nudge.equals(net.minecraft.world.phys.Vec3.ZERO)) {
+                    // Taking the nudge back out does not round back to the
+                    // shape the block was built from; that shape's corners
+                    // sit on the sixteenth grid, so they are snapped there.
+                    var snapped = net.minecraft.world.phys.shapes.Shapes.empty();
+                    for (var box : base.move(nudge.reverse()).toAabbs()) {
+                        snapped = net.minecraft.world.phys.shapes.Shapes.or(snapped, net.minecraft.world.phys.shapes.Shapes.box(
+                            Math.round(box.minX * 16.0) / 16.0, Math.round(box.minY * 16.0) / 16.0,
+                            Math.round(box.minZ * 16.0) / 16.0, Math.round(box.maxX * 16.0) / 16.0,
+                            Math.round(box.maxY * 16.0) / 16.0, Math.round(box.maxZ * 16.0) / 16.0));
+                    }
+                    base = snapped;
+                }
+                var boxes = base.toAabbs();
+                String key = boxes.toString();
+                Integer id = shapeIds.get(key);
+                if (id == null) {
+                    id = shapeIds.size();
+                    shapeIds.put(key, id);
+                    var described = new JsonArray();
+                    for (var box : boxes) {
+                        var bounds = new JsonArray();
+                        bounds.add(Oracle.bits(box.minX));
+                        bounds.add(Oracle.bits(box.minY));
+                        bounds.add(Oracle.bits(box.minZ));
+                        bounds.add(Oracle.bits(box.maxX));
+                        bounds.add(Oracle.bits(box.maxY));
+                        bounds.add(Oracle.bits(box.maxZ));
+                        described.add(bounds);
+                    }
+                    shapes.add(described);
+                }
+                perState.add(id);
+                for (var pos : elsewhere) {
+                    var there = state.getShape(getter, pos, context).toAabbs();
+                    if (!there.equals(boxes)) {
+                        moves = true;
+                    }
+                    var expected = shifts ? base.move(state.getOffset(pos)).toAabbs() : boxes;
+                    if (!there.equals(expected)) {
+                        offsetExplained = false;
+                    }
+                }
+            }
+            var distinct = new java.util.LinkedHashSet<com.google.gson.JsonElement>();
+            perState.forEach(distinct::add);
+            var described = new JsonObject();
+            described.addProperty("name", registry.getKey(block).toString());
+            var listed = new JsonArray();
+            (distinct.size() == 1 ? distinct : perState).forEach(listed::add);
+            described.add("shapes", listed);
+            described.addProperty("position_dependent", moves);
+            described.addProperty("offset_explained", offsetExplained);
             described.addProperty("dynamic", block.hasDynamicShape());
             blocks.add(described);
         }

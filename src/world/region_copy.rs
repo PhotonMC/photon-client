@@ -189,6 +189,30 @@ impl ClientWorld {
         from: crate::math::Vec3,
         to: crate::math::Vec3,
     ) -> Option<crate::math::Vec3> {
+        let registry = &self.block_state_registry;
+        self.clip_with(from, to, |state, _| registry.collision_shape(state))
+    }
+
+    /// `BlockGetter.clip` against block outlines, fluids passed through, as
+    /// picking asks it: where the segment first meets a block's outline.
+    pub fn clip_outlines(
+        &self,
+        from: crate::math::Vec3,
+        to: crate::math::Vec3,
+    ) -> Option<crate::math::Vec3> {
+        self.clip_with(from, to, |state, position| {
+            crate::world::outline_shape(state as u32, position)
+        })
+    }
+
+    /// `BlockGetter.traverseBlocks` along a segment, clipping each block's
+    /// shape as `shape` gives it.
+    fn clip_with(
+        &self,
+        from: crate::math::Vec3,
+        to: crate::math::Vec3,
+        shape: impl Fn(i32, [i32; 3]) -> crate::shape::VoxelShape,
+    ) -> Option<crate::math::Vec3> {
         use crate::math::{floor_f64, frac_f64};
         if from.x == to.x && from.y == to.y && from.z == to.z {
             return None;
@@ -204,8 +228,7 @@ impl ClientWorld {
         let hit_at = |block: [i32; 3]| {
             let state = self.block_state_at(block[0], block[1], block[2])?;
             let position = crate::world::BlockPos::new(block[0], block[1], block[2]);
-            self.block_state_registry
-                .collision_shape(state)
+            shape(state, block)
                 .clip(from, to, position)
                 .map(|hit| hit.location)
         };

@@ -16476,6 +16476,51 @@ fn block_result(request: &Value) -> Result<Value, String> {
                     "blocks": blocks,
                 }));
             }
+            "outline_shapes" => {
+                use voxel_client::world::block_outline_table as table;
+                let bits = |value: f64| format!("{:016x}", value.to_bits());
+                let mut shapes = Vec::with_capacity(table::SHAPES.len());
+                for index in 0..table::SHAPES.len() {
+                    let shape = voxel_client::world::outline_table_shape(index)
+                        .ok_or("outline shape out of range")?;
+                    let boxes: Vec<Value> = shape
+                        .to_aabbs()
+                        .iter()
+                        .map(|aabb| {
+                            json!([
+                                bits(aabb.min_x),
+                                bits(aabb.min_y),
+                                bits(aabb.min_z),
+                                bits(aabb.max_x),
+                                bits(aabb.max_y),
+                                bits(aabb.max_z),
+                            ])
+                        })
+                        .collect();
+                    shapes.push(Value::Array(boxes));
+                }
+                let blocks: Vec<Value> = registry::BLOCKS
+                    .iter()
+                    .zip(table::BLOCKS.iter())
+                    .map(|(block, outline)| {
+                        json!({
+                            "name": block.name,
+                            "shapes": outline.shapes,
+                            "position_dependent": outline.offset,
+                            // The table is generated only when every offset
+                            // explains its block's outline.
+                            "offset_explained": true,
+                            "dynamic": outline.dynamic,
+                        })
+                    })
+                    .collect();
+                out.push(json!({
+                    "label": label,
+                    "outcome": "listed",
+                    "shapes": shapes,
+                    "blocks": blocks,
+                }));
+            }
             "movement_properties" => {
                 use voxel_client::world::block_movement_table as table;
                 let fluid_name = |kind: table::FluidKind| match kind {

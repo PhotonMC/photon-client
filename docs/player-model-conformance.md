@@ -98,18 +98,45 @@ Elin kendi projeksiyonu var (görüş 70°, suda daralıyor; yakın 0,05, uzak
 100) ve derinlik temizlenip en son çiziliyor. `xBob/yBob` movement
 ailesinde her tick bit bit eşleşiyor.
 
-**Vuruş:**
+**Vuruş** (`src/attack.rs`) referansın tik döngüsündeki sırayı izliyor:
 
-- Sol tık (ya da betikte `attack`) bir sonraki tikte oyuncudan önce
-  işleniyor ve sunucuya `Swing` gidiyor.
-- 4,5 bloklük erişimde blok yoksa ıska sayılıyor: hayatta kalmada 10 tik
-  bekleme başlıyor, saldırı gücü ve eşya değiştirme sayacı sıfırlanıyor.
-  Blok varsa yalnızca kol sallanıyor; blok kırma henüz yok.
+1. Sol tuşa her basış bir tık sayılıyor; tuşun basılı hâli ayrıca tutuluyor.
+2. Her tik oyuncu hareket etmeden önce tıklar harcanıyor. Iska beklemesi
+   sürüyorsa ya da oyuncu izleyiciyse tık boşa gidiyor.
+3. Aksi hâlde hedefe bakılıyor (`GameRenderer.pick`):
+   - Gözden bakış yönünde, bloklar için 4,5 (yaratıcıda 5) blok menzilde,
+     sıvılar geçilerek blokların çizgi şekline ışın atılıyor.
+   - Menzil dışındaki isabet ıska sayılıyor.
+   - Çimen gibi çarpışması olmayan bitkiler de bu şekille isabet alıyor.
+4. Iskada hayatta kalmada 10 tik bekleme başlıyor, saldırı gücü sıfırlanıyor.
+5. Her iki durumda kol sallanıyor ve sunucuya `Swing` gidiyor.
+6. Tıklardan sonra tuş bırakılmışsa bekleme sıfırlanıyor, ardından bir
+   azalıyor.
+
+Bu yüzden tıklayıp bırakmak her tik bir vuruş yapıyor (aynı tikteki
+ikinci tık boşa gidiyor), basılı tutmak ise on tik bekliyor.
+
+Çizgi şekilleri referanstan tablo olarak alınıyor
+(`src/world/block_outline_table.rs`, `tools/generate/block_outline.py`); block
+ailesi her koşuda tabloyu karşılaştırıyor. Rastgele kaydırmalı bloklarda
+(çiçekler, bambu, sarkıt) şekil konumdaki kaydırmayla taşınıyor; oracle bunun
+her konumda referansın şeklini verdiğini doğruluyor. Çimenin şekli kaymıyor,
+yalnızca çizimi kayıyor.
+
+Diğer davranışlar:
+
 - Boş elin sallanması altı tik sürüyor (`updateSwingTime`). İlk yarısında
-  yeni vuruş sallanmayı baştan başlatmıyor.
+  yeni vuruş sallanmayı baştan başlatmıyor, ama paket yine gidiyor.
 - El, eşya değiştirme ölçeğinin küpüne doğru tik başına en fazla 0,4
   yükseliyor. Girişte ve ıskadan sonra aşağıdan kalkıyor.
 - Vuruş hem birinci şahıs elinde hem üçüncü şahıs modelinde oynuyor.
+
+Kapsam dışı:
+
+- **Varlıklar:** Hedeflenmiyor, yani bir canlıya tıklamak ıska sayılıyor.
+  Vanilla'da bu saldırıdır ve bekleme başlatmaz.
+- **Blok kırma:** Yok. Bloğa tıklamak yalnızca kolu sallıyor. Basılı
+  tutunca vanilla'daki her tik sallanma (`continueDestroyBlock`) yok.
 
 Bu kısım referans karelerle karşılaştırılmadı.
 

@@ -13080,6 +13080,13 @@ def block_cases():
         "operation": "collision_shapes",
         "rows": [{"label": "registry"}],
     }
+
+    yield {
+        "case_id": "block/outline-shapes",
+        "family": "block",
+        "operation": "outline_shapes",
+        "rows": [{"label": "registry"}],
+    }
     yield {
         "case_id": "block/movement-properties",
         "family": "block",
