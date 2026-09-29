@@ -60,3 +60,26 @@ python3 tools/voxel.py server --stop
 
 `--decompile` bu makinede çalıştırılmadı. Komut satırı referans kaynakları
 üreten eski `decompile.sh` ile aynı.
+
+## macOS'ta açık kalanlar (Linux'ta yeniden bakılacak)
+
+2026-09-29'da macOS arm64 (Apple Silicon, MoltenVK) üzerinde görülenler.
+Linux'a dönünce bütün aileler yeniden yakalanıp karşılaştırılmalı.
+
+- **`math` ailesi arm64'te geçmiyor.** Rust tarafı x86 Linux'ta yakalanan
+  NaN bit desenlerine göre yazılmış; arm64'te Java bazı işlemlerde farklı
+  işaretli NaN üretiyor (ilk fark `vec3/rotation/subnormal`, beklenen
+  `7fc00000`, Rust `ffc00000`). Karşılaştırma ilk farkta durduğu için
+  kaç vakanın etkilendiği bilinmiyor. `math` dışındaki 14 aile (904 vaka)
+  macOS'ta geçiyor.
+- **`input-with-modifiers` artık platforma göre.** `InputQuirks` macOS'ta
+  düzenleme kısayolunu Cmd ile seçiyor; macOS'ta geçti. Linux'ta Ctrl
+  değerleri değişmedi ama yeniden doğrulanmalı.
+- **Küçük aileler tek başına yakalanamıyor.** `binary`, `json`, `nbt`,
+  `timer`, `utf8`, `window` tek `--family` ile derlenmiyor (ortak
+  `Oracle.java` sınıf yolunda olmayan sınıflara bağlı); bu HEAD'de de
+  aynı, platformdan bağımsız görünüyor. Başka ailelerle birlikte koşunca
+  geçiyorlar.
+- **Derlenen binary `libshaderc_shared`'ı bulamıyor** (rpath yok).
+  Çalıştırmak için `DYLD_LIBRARY_PATH=/usr/local/lib` yeterli; test
+  karşılaştırmasında da aynı değişken verilmeli.
