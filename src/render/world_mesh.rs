@@ -204,10 +204,14 @@ impl BlockRenderer {
                     crate::render::item_model::layers_for(&def.model, context, &mut layers);
                 }
                 for layer in layers {
-                    if let Some(crate::render::item_model::SpecialModel::Chest { texture }) =
-                        &layer.special
-                    {
-                        layer_sprites.push(texture.clone());
+                    if let Some(special) = &layer.special {
+                        for part in crate::render::special_models::layers(special) {
+                            if let Ok(sprite) =
+                                Identifier::parse(&format!("minecraft:{}", part.sprite))
+                            {
+                                layer_sprites.push(sprite);
+                            }
+                        }
                     }
                     let name = layer.model.as_string();
                     if models.contains_key(&name) {
@@ -299,18 +303,23 @@ impl BlockRenderer {
                 .iter()
                 .map(|tint| crate::render::item_model::tint_colour(tint, grass))
                 .collect();
-            if let Some(crate::render::item_model::SpecialModel::Chest { texture }) = &layer.special
-            {
-                let Some(rect) = self.atlas.sprites.get(&texture.as_string()) else {
-                    continue;
-                };
-                let mut mesh = chest_mesh(rect);
-                apply_local(&mut mesh, &layer.local);
-                out.push(ItemLayer {
-                    mesh,
-                    side_lit: model.gui_light == crate::render::model::GuiLight::Side,
-                    transform: model.display.get(context),
-                });
+            if let Some(special) = &layer.special {
+                for part in crate::render::special_models::layers(special) {
+                    let Some(rect) = self
+                        .atlas
+                        .sprites
+                        .get(&format!("minecraft:{}", part.sprite))
+                    else {
+                        continue;
+                    };
+                    let mut mesh = model_mesh(&part, rect);
+                    apply_local(&mut mesh, &layer.local);
+                    out.push(ItemLayer {
+                        mesh,
+                        side_lit: model.gui_light == crate::render::model::GuiLight::Side,
+                        transform: model.display.get(context),
+                    });
+                }
                 continue;
             }
             let geometry;
@@ -1170,11 +1179,18 @@ fn block_offset(block: &str, position: [i32; 3]) -> [f32; 3] {
     crate::world::block_offset(block, position).map(|value| value as f32)
 }
 
-/// The chest model's quads as an item layer's mesh: corners in the unit
-/// block, texture coordinates on the chest's sprite in the atlas, white.
-fn chest_mesh(rect: &[f32; 4]) -> Mesh {
+/// An entity model layer's quads as an item layer's mesh: corners in the
+/// unit block, texture coordinates on the layer's sprite in the atlas, and
+/// the layer's tint.
+fn model_mesh(layer: &crate::render::special_models::ModelLayer, rect: &[f32; 4]) -> Mesh {
+    let tint = [
+        ((layer.tint >> 16) & 0xFF) as f32 / 255.0,
+        ((layer.tint >> 8) & 0xFF) as f32 / 255.0,
+        (layer.tint & 0xFF) as f32 / 255.0,
+        ((layer.tint >> 24) & 0xFF) as f32 / 255.0,
+    ];
     let mut mesh = Mesh::default();
-    for quad in crate::render::player_model::chest_quads() {
+    for quad in &layer.quads {
         let base = mesh.vertices.len() as u32;
         let normal = quad[0].normal;
         for vertex in quad {
@@ -1185,7 +1201,7 @@ fn chest_mesh(rect: &[f32; 4]) -> Mesh {
                     rect[1] + (rect[3] - rect[1]) * vertex.uv[1],
                 ],
                 shade: 1.0,
-                tint: [1.0; 4],
+                tint,
                 light: crate::render::scene::FULL_BRIGHT,
             });
         }

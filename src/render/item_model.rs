@@ -238,11 +238,94 @@ fn parse_transformation(value: &JsonValue) -> Option<Matrix4> {
 }
 
 /// The special renderers this client draws.
-#[derive(Debug, Clone, PartialEq)]
-pub enum SpecialModel {
-    /// `ChestSpecialRenderer`: the chest model shut, with the texture under
-    /// `entity/chest`.
-    Chest { texture: Identifier },
+pub use crate::render::special_models::SpecialKind as SpecialModel;
+
+/// `DyeColor.getTextureDiffuseColor`, opaque, by dye name.
+fn dye_colour(name: &str) -> Option<u32> {
+    Some(
+        0xFF00_0000
+            | match name {
+                "white" => 16_383_998,
+                "orange" => 16_351_261,
+                "magenta" => 13_061_821,
+                "light_blue" => 3_847_130,
+                "yellow" => 16_701_501,
+                "lime" => 8_439_583,
+                "pink" => 15_961_002,
+                "gray" => 4_673_362,
+                "light_gray" => 10_329_495,
+                "cyan" => 1_481_884,
+                "purple" => 8_991_416,
+                "blue" => 3_949_738,
+                "brown" => 8_606_770,
+                "green" => 6_192_150,
+                "red" => 11_546_150,
+                "black" => 1_908_001,
+                _ => return None,
+            },
+    )
+}
+
+/// A special renderer's model, as `special` names it, when this client draws
+/// it.
+fn parse_special(model: &JsonObject) -> Option<SpecialModel> {
+    let kind = model.text("type")?;
+    // A texture name under a folder of `textures`: `minecraft:shulker` under
+    // `entity/shulker`.
+    let named = |folder: &str| {
+        let name = model.text("texture")?;
+        Some(format!(
+            "{folder}/{}",
+            name.trim_start_matches("minecraft:")
+        ))
+    };
+    Some(match kind.as_str() {
+        "minecraft:chest" => SpecialModel::Chest {
+            texture: named("entity/chest")?,
+        },
+        "minecraft:shulker_box" => SpecialModel::ShulkerBox {
+            texture: named("entity/shulker")?,
+        },
+        "minecraft:head" => {
+            let head = model.text("kind")?;
+            let texture = match head.as_str() {
+                "skeleton" => "entity/skeleton/skeleton",
+                "wither_skeleton" => "entity/skeleton/wither_skeleton",
+                "zombie" => "entity/zombie/zombie",
+                "creeper" => "entity/creeper/creeper",
+                "piglin" => "entity/piglin/piglin",
+                "dragon" => "entity/enderdragon/dragon",
+                _ => return None,
+            };
+            SpecialModel::Head {
+                kind: head,
+                texture: texture.to_owned(),
+            }
+        }
+        "minecraft:player_head" => SpecialModel::Head {
+            kind: "player".to_owned(),
+            texture: "entity/player/slim/steve".to_owned(),
+        },
+        "minecraft:banner" => SpecialModel::Banner {
+            color: dye_colour(&model.text("color")?)?,
+        },
+        "minecraft:shield" => SpecialModel::Shield,
+        "minecraft:conduit" => SpecialModel::Conduit,
+        "minecraft:decorated_pot" => SpecialModel::DecoratedPot,
+        "minecraft:copper_golem_statue" => {
+            if model.text("pose")? != "standing" {
+                return None;
+            }
+            let path = model.text("texture")?;
+            SpecialModel::CopperGolemStatue {
+                texture: path
+                    .trim_start_matches("minecraft:textures/")
+                    .trim_end_matches(".png")
+                    .to_owned(),
+            }
+        }
+        _ => return None,
+    })
 }
 
 fn text_of(value: &JsonValue) -> Option<String> {
@@ -363,24 +446,14 @@ fn parse_item_model_node(object: &JsonObject) -> ItemModelDef {
                 .text("base")
                 .and_then(|name| Identifier::parse(&name).ok());
             let model = object.object("model");
-            let kind = model
-                .and_then(|model| model.text("type"))
-                .unwrap_or_default();
-            let special = match (kind.as_str(), model) {
-                ("minecraft:chest", Some(model)) => Identifier::parse(&format!(
-                    "minecraft:entity/chest/{}",
-                    model
-                        .text("texture")
-                        .map(|name| name.trim_start_matches("minecraft:").to_owned())
-                        .unwrap_or_default()
-                ))
-                .ok()
-                .map(|texture| SpecialModel::Chest { texture }),
-                _ => None,
-            };
-            match (base, special) {
+            match (base, model.and_then(parse_special)) {
                 (Some(base), Some(model)) => ItemModelDef::Special { base, model },
-                _ => ItemModelDef::Unknown(format!("special {kind}")),
+                _ => ItemModelDef::Unknown(format!(
+                    "special {}",
+                    model
+                        .and_then(|model| model.text("type"))
+                        .unwrap_or_default()
+                )),
             }
         }
         "minecraft:empty" => ItemModelDef::Empty,
@@ -653,15 +726,15 @@ mod special_tests {
         assert_eq!(
             layers[0].special,
             Some(SpecialModel::Chest {
-                texture: Identifier::parse("minecraft:entity/chest/normal").expect("valid")
+                texture: "entity/chest/normal".to_owned()
             })
         );
     }
 
     #[test]
     fn other_special_renderers_draw_nothing() {
-        let text = r#"{"model":{"type":"minecraft:special","base":"minecraft:item/shield",
-            "model":{"type":"minecraft:shield"}}}"#;
+        let text = r#"{"model":{"type":"minecraft:special","base":"minecraft:item/trident",
+            "model":{"type":"minecraft:trident"}}}"#;
         let item = parse_client_item(text).expect("a client item");
         let mut layers = Vec::new();
         layers_for(&item.model, DisplayContext::ALL[0], &mut layers);

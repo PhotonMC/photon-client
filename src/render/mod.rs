@@ -31,6 +31,7 @@ pub mod rotation;
 pub mod scene;
 pub mod section_workers;
 pub mod sky;
+pub mod special_models;
 pub mod texture_metadata;
 pub mod tint;
 mod uv_lock_table;

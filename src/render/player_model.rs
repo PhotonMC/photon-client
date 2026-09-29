@@ -12,8 +12,14 @@ use crate::direction::Direction;
 use crate::math::{mth_cos_f64, mth_sin_f64};
 use crate::render::joml::{Pose, Quaternion};
 
-/// The skin's size in texels.
-const TEXTURE_SIZE: f32 = 64.0;
+const ALL_FACES: [Direction; 6] = [
+    Direction::Down,
+    Direction::Up,
+    Direction::West,
+    Direction::North,
+    Direction::East,
+    Direction::South,
+];
 
 /// One corner of a model face.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -31,13 +37,28 @@ struct Polygon {
 }
 
 #[derive(Debug, Clone)]
-struct Cube {
+pub(crate) struct Cube {
     polygons: Vec<Polygon>,
 }
 
 impl Cube {
-    /// `ModelPart.Cube`, with every face visible.
+    /// `ModelPart.Cube` in the player's 64x64 texture, with every face
+    /// visible.
     fn new(tex: (i32, i32), min: [f32; 3], size: [f32; 3], grow: f32, mirror: bool) -> Self {
+        Self::sized(tex, min, size, grow, mirror, (64.0, 64.0), &ALL_FACES)
+    }
+
+    /// `ModelPart.Cube` in a texture of any size, with only the faces given
+    /// visible.
+    pub(crate) fn sized(
+        tex: (i32, i32),
+        min: [f32; 3],
+        size: [f32; 3],
+        grow: f32,
+        mirror: bool,
+        texture: (f32, f32),
+        visible: &[Direction],
+    ) -> Self {
         let [width, height, depth] = size;
         let mut min_x = min[0] - grow;
         let min_y = min[1] - grow;
@@ -67,24 +88,53 @@ impl Cube {
         let v1 = tex_v + depth;
         let v2 = tex_v + depth + height;
         let face = |corners: [[f32; 3]; 4], uv: [f32; 4], facing: Direction| {
-            polygon(corners, uv, mirror, facing)
+            polygon(corners, uv, mirror, facing, texture)
         };
-        Self {
-            polygons: vec![
+        let faces = [
+            (
                 face([l1, l0, t0, t1], [u1, v0, u2, v1], Direction::Down),
+                Direction::Down,
+            ),
+            (
                 face([t2, t3, l3, l2], [u2, v1, u22, v0], Direction::Up),
+                Direction::Up,
+            ),
+            (
                 face([t0, l0, l3, t3], [u0, v1, u1, v2], Direction::West),
+                Direction::West,
+            ),
+            (
                 face([t1, t0, t3, t2], [u1, v1, u2, v2], Direction::North),
+                Direction::North,
+            ),
+            (
                 face([l1, t1, t2, l2], [u2, v1, u3, v2], Direction::East),
+                Direction::East,
+            ),
+            (
                 face([l0, l1, l2, l3], [u3, v1, u4, v2], Direction::South),
-            ],
+                Direction::South,
+            ),
+        ];
+        Self {
+            polygons: faces
+                .into_iter()
+                .filter(|(_, facing)| visible.contains(facing))
+                .map(|(polygon, _)| polygon)
+                .collect(),
         }
     }
 }
 
 /// `ModelPart.Polygon`: corner texture coordinates from the face's texel
 /// rectangle, and a mirrored face reversed, with its x normal flipped.
-fn polygon(corners: [[f32; 3]; 4], uv: [f32; 4], mirror: bool, facing: Direction) -> Polygon {
+fn polygon(
+    corners: [[f32; 3]; 4],
+    uv: [f32; 4],
+    mirror: bool,
+    facing: Direction,
+    texture: (f32, f32),
+) -> Polygon {
     let [u0, v0, u1, v1] = uv;
     let facing = if mirror && matches!(facing, Direction::West | Direction::East) {
         facing.opposite()
@@ -93,10 +143,10 @@ fn polygon(corners: [[f32; 3]; 4], uv: [f32; 4], mirror: bool, facing: Direction
     };
     let (x, y, z) = facing.step();
     let mut corners = [
-        (corners[0], [u1 / TEXTURE_SIZE, v0 / TEXTURE_SIZE]),
-        (corners[1], [u0 / TEXTURE_SIZE, v0 / TEXTURE_SIZE]),
-        (corners[2], [u0 / TEXTURE_SIZE, v1 / TEXTURE_SIZE]),
-        (corners[3], [u1 / TEXTURE_SIZE, v1 / TEXTURE_SIZE]),
+        (corners[0], [u1 / texture.0, v0 / texture.1]),
+        (corners[1], [u0 / texture.0, v0 / texture.1]),
+        (corners[2], [u0 / texture.0, v1 / texture.1]),
+        (corners[3], [u1 / texture.0, v1 / texture.1]),
     ];
     if mirror {
         corners.reverse();
@@ -112,6 +162,7 @@ fn polygon(corners: [[f32; 3]; 4], uv: [f32; 4], mirror: bool, facing: Direction
 struct PartPose {
     offset: [f32; 3],
     rotation: [f32; 3],
+    scale: [f32; 3],
 }
 
 /// `ModelPart`.
@@ -127,14 +178,34 @@ pub struct Part {
     pub x_rot: f32,
     pub y_rot: f32,
     pub z_rot: f32,
+    pub scale: [f32; 3],
     pub visible: bool,
 }
 
 impl Part {
-    fn new(name: &'static str, cubes: Vec<Cube>, offset: [f32; 3], children: Vec<Part>) -> Self {
+    pub(crate) fn new(
+        name: &'static str,
+        cubes: Vec<Cube>,
+        offset: [f32; 3],
+        children: Vec<Part>,
+    ) -> Self {
+        Self::posed(name, cubes, offset, [0.0; 3], [1.0; 3], children)
+    }
+
+    /// A part with a pose of its own: `PartPose.offsetAndRotation`, and
+    /// `scaled`.
+    pub(crate) fn posed(
+        name: &'static str,
+        cubes: Vec<Cube>,
+        offset: [f32; 3],
+        rotation: [f32; 3],
+        scale: [f32; 3],
+        children: Vec<Part>,
+    ) -> Self {
         let initial = PartPose {
             offset,
-            rotation: [0.0; 3],
+            rotation,
+            scale,
         };
         Self {
             name,
@@ -144,9 +215,10 @@ impl Part {
             x: offset[0],
             y: offset[1],
             z: offset[2],
-            x_rot: 0.0,
-            y_rot: 0.0,
-            z_rot: 0.0,
+            x_rot: rotation[0],
+            y_rot: rotation[1],
+            z_rot: rotation[2],
+            scale,
             visible: true,
         }
     }
@@ -154,6 +226,7 @@ impl Part {
     fn reset(&mut self) {
         [self.x, self.y, self.z] = self.initial.offset;
         [self.x_rot, self.y_rot, self.z_rot] = self.initial.rotation;
+        self.scale = self.initial.scale;
         for child in &mut self.children {
             child.reset();
         }
@@ -173,6 +246,9 @@ impl Part {
             pose.rotate(&Quaternion::rotation_zyx(
                 self.z_rot, self.y_rot, self.x_rot,
             ));
+        }
+        if self.scale != [1.0; 3] {
+            pose.scale(self.scale[0], self.scale[1], self.scale[2]);
         }
     }
 

@@ -62,12 +62,18 @@ birim testiyle sabitlendi.
   farkı beklenmez, ama atlas yerleşimi referansla aynı değil.
 - Yığın bileşenleri okunmuyor: bileşene bağlı özellikler (iksir rengi,
   boyalı zırh, pusula, saat, dayanıklılık çubuğu, bekleme süresi örtüsü)
-  varsayılan yığın gibi çizilir. `special` modellerden yalnız sandıklar
-  çizilir (`ChestModel` kapak kapalı, `entity/chest/*` dokusuyla, temel
-  modelin GUI dönüşümü ve ışığıyla; çift sandık ve açılma yok). Kalkan,
-  kafa, bayrak, yatak, shulker kutusu gibi diğerleri çizilmez. Sandığın
-  `local_time` seçimi varsayılan dokuyu alır: 24-26 Aralık'ın Noel dokusu
-  yok.
+  varsayılan yığın gibi çizilir. `special` modeller `ModelPart`
+geometrisiyle çizilir (`src/render/special_models.rs`, ölçüler ve dokular
+referansın `LayerDefinition`larından): sandıklar (kapak kapalı, çift
+sandık yok), shulker kutuları, bayraklar (yalnız taban deseni ve boya
+rengi; desen katmanları yok), kafalar (iskelet, wither iskeleti, zombi,
+creeper, piglin, ejderha, oyuncu — varsayılan `steve` derisiyle), kalkan
+(desensiz), conduit, süslü çömlek (süssüz) ve bakır golem heykelleri (ayakta
+duruş). Pozlar hareketsiz başlangıç konumundadır (kafa ileri bakar, kapaklar
+kapalı). `local_time` seçimi varsayılan dokuyu alır: 24-26 Aralık'ın Noel
+sandık dokusu yok. Trident'in `special` modeli ve heykellerin diğer
+duruşları çizilmez; boyalı kalkan, desenli bayrak ve süslü çömlek süsleri
+bileşen değerleri okunmadığı için yok.
 - Modelin `transformation` alanı (`model`, `special`, `composite`, `select`,
   `condition`, `range_dispatch` düğümlerinde) düğümden yapraklara birleştirilir
   ve katmanın geometrisine görüntü dönüşümünden önce uygulanır; yatağın iki
