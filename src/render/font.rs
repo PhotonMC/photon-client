@@ -49,7 +49,7 @@ impl Glyph {
 }
 
 /// The default font's glyphs and the images they are cut from.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Font {
     /// Each bitmap provider's image, by its texture name (`font/ascii`).
     pub images: Vec<(String, DecodedImage)>,
@@ -172,6 +172,20 @@ impl Font {
         text.chars()
             .filter_map(|codepoint| self.glyph(codepoint))
             .map(|glyph| glyph.advance(false))
+            .sum::<f32>()
+            .ceil() as i32
+    }
+
+    /// `Font.width` of styled text: bold glyphs advance a unit more.
+    pub fn width_of_runs(&self, runs: &[crate::text::Run]) -> i32 {
+        runs.iter()
+            .flat_map(|run| {
+                let bold = run.style.bold == Some(true);
+                run.text
+                    .chars()
+                    .filter_map(|codepoint| self.glyph(codepoint))
+                    .map(move |glyph| glyph.advance(bold))
+            })
             .sum::<f32>()
             .ceil() as i32
     }

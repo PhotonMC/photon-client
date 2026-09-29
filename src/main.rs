@@ -775,6 +775,10 @@ struct HeldKeys {
     tab: Option<usize>,
     /// A scripted scroll of the creative screen, in hundredths.
     scroll: Option<i32>,
+    /// The mouse moved to a place, in GUI units.
+    mouse: Option<(f64, f64)>,
+    /// Text typed into the open screen.
+    typed: Option<&'static str>,
 }
 
 impl HeldKeys {
@@ -841,6 +845,17 @@ impl HeldKeys {
                                 tab.parse()
                                     .map_err(|_| format!("bad tab {other} in VOXEL_SCRIPT"))?,
                             );
+                        }
+                        ["type", text] => {
+                            // A script is read once: its text lives on.
+                            keys.typed = Some(Box::leak((*text).to_owned().into_boxed_str()));
+                        }
+                        ["mouse", x, y] => {
+                            let number = |text: &str| {
+                                text.parse::<f64>()
+                                    .map_err(|_| format!("bad mouse {other} in VOXEL_SCRIPT"))
+                            };
+                            keys.mouse = Some((number(x)?, number(y)?));
                         }
                         ["scroll", hundredths] => {
                             keys.scroll = Some(
@@ -1151,15 +1166,21 @@ impl Screen {
         }
     }
 
-    fn key_pressed(&mut self, key: glfw::Key, control: bool, menu: &InventoryMenu) -> ScreenKey {
+    fn key_pressed(
+        &mut self,
+        key: glfw::Key,
+        mods: render::creative_screen::KeyMods,
+        menu: &InventoryMenu,
+        clipboard: &mut dyn voxel_client::edit_box::Clipboard,
+    ) -> ScreenKey {
         match self {
-            Self::Survival(screen) => match screen.key_pressed(key, control, menu) {
+            Self::Survival(screen) => match screen.key_pressed(key, mods.control, menu) {
                 render::inventory_screen::KeyResult::Close => ScreenKey::Close,
                 render::inventory_screen::KeyResult::Clicks(clicks) => {
                     ScreenKey::Actions(container_actions(clicks))
                 }
             },
-            Self::Creative(screen) => match screen.key_pressed(key, control, menu) {
+            Self::Creative(screen) => match screen.key_pressed(key, mods, menu, clipboard) {
                 render::creative_screen::KeyResult::Close => ScreenKey::Close,
                 render::creative_screen::KeyResult::Clicks(clicks) => {
                     ScreenKey::Actions(creative_actions(clicks))
@@ -1210,6 +1231,20 @@ impl Screen {
         }
     }
 
+    /// `charTyped`.
+    fn char_typed(&mut self, character: char) {
+        if let Self::Creative(screen) = self {
+            screen.char_typed(character);
+        }
+    }
+
+    /// `keyReleased`.
+    fn key_released(&mut self) {
+        if let Self::Creative(screen) = self {
+            screen.key_released();
+        }
+    }
+
     fn mouse_scrolled(&mut self, y: f64) {
         if let Self::Creative(screen) = self {
             screen.mouse_scrolled(y);
@@ -1219,6 +1254,39 @@ impl Screen {
 
 use voxel_client::inventory_menu::InventoryMenu;
 
+/// What a creative screen shares with the rest of the client: the search
+/// trees and the font its search box measures with.
+#[derive(Clone)]
+struct CreativeAssets {
+    trees: std::sync::Arc<voxel_client::creative_menu::SearchTrees>,
+    font: std::sync::Arc<render::font::Font>,
+}
+
+impl CreativeAssets {
+    fn screen(&self, width: i32, height: i32, tab: usize) -> Screen {
+        Screen::Creative(Box::new(render::creative_screen::CreativeScreen::new(
+            width,
+            height,
+            tab,
+            self.trees.clone(),
+            self.font.clone(),
+        )))
+    }
+}
+
+/// The window's clipboard, for an edit box.
+struct WindowClipboard<'a>(&'a mut WindowSurface);
+
+impl voxel_client::edit_box::Clipboard for WindowClipboard<'_> {
+    fn get(&mut self) -> String {
+        self.0.clipboard()
+    }
+
+    fn set(&mut self, text: &str) {
+        self.0.set_clipboard(text);
+    }
+}
+
 /// `Minecraft.handleKeybinds` for the inventory key: the survival or the
 /// creative inventory screen opens and the mouse is let go, at the window's
 /// centre. The creative screen opens on the tab it was left on.
@@ -1227,15 +1295,12 @@ fn open_inventory(
     screen: &mut Option<Screen>,
     creative: bool,
     creative_tab: usize,
+    assets: &CreativeAssets,
 ) {
     let size = surface.scale();
     let (width, height) = (size.gui_scaled_width(), size.gui_scaled_height());
     *screen = Some(if creative {
-        Screen::Creative(Box::new(render::creative_screen::CreativeScreen::new(
-            width,
-            height,
-            creative_tab,
-        )))
+        assets.screen(width, height, creative_tab)
     } else {
         Screen::Survival(render::inventory_screen::InventoryScreen::new(
             width, height,
@@ -1281,27 +1346,6 @@ fn run_actions(
         }
     }
     Ok(())
-}
-
-/// The default language's texts for the keys asked, in order; a key the
-/// language lacks reads as itself.
-fn lang_texts(root: &str, keys: &[&str]) -> Vec<String> {
-    let object =
-        std::fs::read_to_string(std::path::Path::new(root).join("minecraft/lang/en_us.json"))
-            .ok()
-            .and_then(|text| voxel_client::json::parse(&text).ok())
-            .and_then(|value| match value {
-                voxel_client::json::JsonValue::Object(object) => Some(object),
-                _ => None,
-            });
-    keys.iter()
-        .map(|key| {
-            object
-                .as_ref()
-                .and_then(|object| object.text(key))
-                .unwrap_or_else(|| (*key).to_owned())
-        })
-        .collect()
 }
 
 fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::error::Error>> {
@@ -1570,8 +1614,10 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
     )?;
     let mut player_model = render::player_model::PlayerModel::new(skin.slim);
     // The HUD: its sprites, its own state, and the wheel's partial steps.
-    let font = render::font::Font::load(std::path::Path::new(&root))
-        .ok_or("the default font could not be read")?;
+    let font = std::sync::Arc::new(
+        render::font::Font::load(std::path::Path::new(&root))
+            .ok_or("the default font could not be read")?,
+    );
     let gui_atlas = render::gui::GuiAtlas::load(std::path::Path::new(&root), &font)
         .ok_or("the HUD sprites could not be read")?;
     backend.load_gui_texture(&gui_atlas.image)?;
@@ -1628,14 +1674,16 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
     let mut creative_tab = voxel_client::creative_menu::default_tab();
     let mut gui_mouse = (0.0_f64, 0.0_f64);
     let mut active_button: Option<i32> = None;
-    let inventory_title = lang_texts(&root, &["container.crafting"]).remove(0);
-    let tab_titles = lang_texts(
-        &root,
-        &voxel_client::creative_tabs_table::CREATIVE_TABS
-            .iter()
-            .map(|tab| tab.title)
-            .collect::<Vec<_>>(),
-    );
+    let lang = std::sync::Arc::new(voxel_client::text::Lang::load(std::path::Path::new(&root)));
+    let creative_assets = CreativeAssets {
+        trees: std::sync::Arc::new(voxel_client::creative_menu::SearchTrees::new(lang.clone())),
+        font: font.clone(),
+    };
+    let inventory_title = lang.text("container.crafting");
+    let tab_titles: Vec<String> = voxel_client::creative_tabs_table::CREATIVE_TABS
+        .iter()
+        .map(|tab| lang.text(tab.title))
+        .collect();
     let mut last_cursor: Option<(f64, f64)> = None;
     let tick_length = Duration::from_millis(50);
     let mut accumulated = Duration::ZERO;
@@ -1668,11 +1716,12 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                 ) if inventory_screen.is_some() => {
                     let menu = session.inventory_menu().clone();
                     let screen = inventory_screen.as_mut().expect("checked above");
-                    match screen.key_pressed(
-                        key,
-                        modifiers.contains(glfw::Modifiers::Control),
-                        &menu,
-                    ) {
+                    let mods = render::creative_screen::KeyMods {
+                        control: modifiers.contains(glfw::Modifiers::Control),
+                        shift: modifiers.contains(glfw::Modifiers::Shift),
+                        command: modifiers.contains(glfw::Modifiers::Super),
+                    };
+                    match screen.key_pressed(key, mods, &menu, &mut WindowClipboard(&mut surface)) {
                         ScreenKey::Close => {
                             close_inventory(
                                 &mut session,
@@ -1688,7 +1737,18 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                         }
                     }
                 }
-                glfw::WindowEvent::Key(..) if inventory_screen.is_some() => {}
+                glfw::WindowEvent::Key(..) if inventory_screen.is_some() => {
+                    inventory_screen
+                        .as_mut()
+                        .expect("checked above")
+                        .key_released();
+                }
+                glfw::WindowEvent::Char(character) if inventory_screen.is_some() => {
+                    inventory_screen
+                        .as_mut()
+                        .expect("checked above")
+                        .char_typed(character);
+                }
                 glfw::WindowEvent::MouseButton(button, action, modifiers)
                     if inventory_screen.is_some() =>
                 {
@@ -1719,6 +1779,7 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                         &mut inventory_screen,
                         session.game_mode() == voxel_client::world::ClientPlayerGameMode::Creative,
                         creative_tab,
+                        &creative_assets,
                     );
                     captured = false;
                     keys = HeldKeys::default();
@@ -1853,9 +1914,7 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
             let (width, height) = (size.gui_scaled_width(), size.gui_scaled_height());
             match open {
                 Screen::Survival(_) if creative => {
-                    inventory_screen = Some(Screen::Creative(Box::new(
-                        render::creative_screen::CreativeScreen::new(width, height, creative_tab),
-                    )));
+                    inventory_screen = Some(creative_assets.screen(width, height, creative_tab));
                 }
                 Screen::Creative(open) if !creative => {
                     creative_tab = open.tab();
@@ -1915,6 +1974,7 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                             session.game_mode()
                                 == voxel_client::world::ClientPlayerGameMode::Creative,
                             creative_tab,
+                            &creative_assets,
                         );
                     }
                 }
@@ -1938,6 +1998,14 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                             )?;
                         }
                         _ => session.container_click(slot, button, kind)?,
+                    }
+                }
+                if let Some(mouse) = held.mouse {
+                    gui_mouse = mouse;
+                }
+                if let (Some(text), Some(screen)) = (held.typed, inventory_screen.as_mut()) {
+                    for character in text.chars() {
+                        screen.char_typed(character);
                     }
                 }
                 if let Some(Screen::Creative(screen)) = inventory_screen.as_mut() {
@@ -2739,6 +2807,18 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                             mouse,
                         )
                     };
+                // A stack's tooltip in words.
+                let mut tooltip_lines = |stack: &voxel_client::world::ClientItemStackState,
+                                         creative: bool| {
+                    voxel_client::tooltip::lines(
+                        stack,
+                        true,
+                        voxel_client::tooltip::Flags { creative },
+                    )
+                    .iter()
+                    .map(|line| lang.runs(line, &voxel_client::text::Style::default()))
+                    .collect::<Vec<_>>()
+                };
                 match screen {
                     Screen::Survival(screen) => screen.build(
                         &mut frame,
@@ -2749,6 +2829,7 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                         gui_mouse,
                         &mut draw_item,
                         &mut draw_player,
+                        &mut tooltip_lines,
                     ),
                     Screen::Creative(screen) => screen.build(
                         &mut frame,
@@ -2759,6 +2840,7 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                         gui_mouse,
                         &mut draw_item,
                         &mut draw_player,
+                        &mut tooltip_lines,
                     ),
                 }
             }

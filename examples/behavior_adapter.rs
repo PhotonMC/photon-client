@@ -16586,6 +16586,91 @@ fn block_result(request: &Value) -> Result<Value, String> {
                     .collect();
                 out.push(json!({"label": label, "outcome": "listed", "items": items}));
             }
+            "tooltip_registries" => {
+                use voxel_client::tooltip_table as table;
+                let component =
+                    |text: &str| -> Value { serde_json::from_str(text).unwrap_or(Value::Null) };
+                let enchantments: Vec<Value> = table::ENCHANTMENTS
+                    .iter()
+                    .enumerate()
+                    .map(|(id, entry)| {
+                        json!({
+                            "name": entry.name,
+                            "id": id,
+                            "description": component(entry.description),
+                            "curse": entry.curse,
+                            "max_level": entry.max_level,
+                            "tooltip_order": entry.tooltip_order,
+                        })
+                    })
+                    .collect();
+                let paintings: Vec<Value> = table::PAINTING_VARIANTS
+                    .iter()
+                    .enumerate()
+                    .map(|(id, entry)| {
+                        let mut described = json!({
+                            "name": entry.name,
+                            "id": id,
+                            "width": entry.width,
+                            "height": entry.height,
+                        });
+                        if !entry.title.is_empty() {
+                            described["title"] = component(entry.title);
+                        }
+                        if !entry.author.is_empty() {
+                            described["author"] = component(entry.author);
+                        }
+                        described
+                    })
+                    .collect();
+                let described = |entries: &[table::Described]| -> Vec<Value> {
+                    entries
+                        .iter()
+                        .enumerate()
+                        .map(|(id, entry)| {
+                            json!({
+                                "name": entry.name,
+                                "id": id,
+                                "description": component(entry.description),
+                            })
+                        })
+                        .collect()
+                };
+                let banners: Vec<Value> = table::BANNER_PATTERNS
+                    .iter()
+                    .enumerate()
+                    .map(|(id, entry)| {
+                        json!({
+                            "name": entry.name,
+                            "id": id,
+                            "translation_key": entry.translation_key,
+                        })
+                    })
+                    .collect();
+                let attributes: Vec<Value> = table::ATTRIBUTES
+                    .iter()
+                    .map(|entry| {
+                        json!({
+                            "name": entry.name,
+                            "description_id": entry.description_id,
+                            "style_up": entry.style_up,
+                            "style_down": entry.style_down,
+                        })
+                    })
+                    .collect();
+                out.push(json!({
+                    "label": label,
+                    "outcome": "listed",
+                    "enchantments": enchantments,
+                    "painting_variants": paintings,
+                    "instruments": described(&table::INSTRUMENTS),
+                    "jukebox_songs": described(&table::JUKEBOX_SONGS),
+                    "banner_patterns": banners,
+                    "trim_materials": described(&table::TRIM_MATERIALS),
+                    "trim_patterns": described(&table::TRIM_PATTERNS),
+                    "attributes": attributes,
+                }));
+            }
             "potions" => {
                 use voxel_client::potion_table::{MOB_EFFECTS, POTIONS};
                 let effects: Vec<Value> = MOB_EFFECTS
@@ -16595,6 +16680,12 @@ fn block_result(request: &Value) -> Result<Value, String> {
                             "name": effect.name,
                             "color": effect.color,
                             "description_id": effect.description_id,
+                            "style": effect.style,
+                            "modifiers": effect.modifiers.iter().map(|modifier| json!({
+                                "attribute": modifier.attribute,
+                                "amount": modifier.amount,
+                                "operation": modifier.operation,
+                            })).collect::<Vec<_>>(),
                         })
                     })
                     .collect();
@@ -16666,6 +16757,10 @@ fn block_result(request: &Value) -> Result<Value, String> {
                             "title": tab.title,
                             "icon": stack(tab.icon),
                             "items": tab.items.iter().map(|index| stack(*index)).collect::<Vec<_>>(),
+                            "search_items": if tab.search_items.is_empty() { tab.items } else { tab.search_items }
+                                .iter()
+                                .map(|index| stack(*index))
+                                .collect::<Vec<_>>(),
                         })
                     })
                     .collect();

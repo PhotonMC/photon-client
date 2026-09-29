@@ -6,10 +6,11 @@
 //! Not drawn: the player's model on the inventory tab, item tooltips, the
 //! search box's text and the effects panel.
 
-use crate::creative_menu::{Click, CreativeMenu, Target, shown_tabs, table_stack};
+use crate::creative_menu::{Click, CreativeMenu, SearchTrees, Target, shown_tabs, table_stack};
 use crate::creative_tabs_table::{CREATIVE_TABS, TabKind};
+use crate::edit_box::{Clipboard, EditBox, EditKey};
 use crate::inventory_menu::{ClickType, InventoryMenu, max_stack_size};
-use crate::render::gui::{GuiAtlas, GuiFrame, ItemDrawer, PlayerDrawer};
+use crate::render::gui::{GuiAtlas, GuiFrame, ItemDrawer, PlayerDrawer, TooltipLines};
 use crate::render::inventory_screen::{
     ContainerMouse, SlotClick, SlotView, empty_icon, slot_key_clicks,
 };
@@ -41,6 +42,40 @@ pub struct CreativeScreen {
     scrolling: bool,
     /// What `hasClickedOutside` last found: `slotClicked` reads it.
     has_clicked_outside: bool,
+    /// The search tab's box.
+    search: EditBox,
+    /// `ignoreTextInput`: the key that opened the search is not typed.
+    ignore_text_input: bool,
+    /// When the box took the focus, which its cursor blinks from.
+    focused_at: std::time::Instant,
+    trees: std::sync::Arc<SearchTrees>,
+    font: std::sync::Arc<crate::render::font::Font>,
+}
+
+/// The modifiers a key came with.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct KeyMods {
+    pub control: bool,
+    pub shift: bool,
+    /// The command key, which the edit box reads as control.
+    pub command: bool,
+}
+
+/// An edit key of a glfw key.
+fn edit_key(key: glfw::Key) -> Option<EditKey> {
+    Some(match key {
+        glfw::Key::Backspace => EditKey::Backspace,
+        glfw::Key::Delete => EditKey::Delete,
+        glfw::Key::Left => EditKey::Left,
+        glfw::Key::Right => EditKey::Right,
+        glfw::Key::Home => EditKey::Home,
+        glfw::Key::End => EditKey::End,
+        glfw::Key::A => EditKey::A,
+        glfw::Key::C => EditKey::C,
+        glfw::Key::V => EditKey::V,
+        glfw::Key::X => EditKey::X,
+        _ => return None,
+    })
 }
 
 /// What the mouse handling reads from the picker and the player's menu.
@@ -140,7 +175,13 @@ impl SlotView for View<'_> {
 
 impl CreativeScreen {
     /// A screen opened on a GUI of this size, on the tab last used.
-    pub fn new(width: i32, height: i32, tab: usize) -> Self {
+    pub fn new(
+        width: i32,
+        height: i32,
+        tab: usize,
+        trees: std::sync::Arc<SearchTrees>,
+        font: std::sync::Arc<crate::render::font::Font>,
+    ) -> Self {
         Self {
             width,
             height,
@@ -149,6 +190,13 @@ impl CreativeScreen {
             mouse: ContainerMouse::default(),
             scrolling: false,
             has_clicked_outside: false,
+            // `new EditBox(font, x + 82, y + 6, 80, 9, ...)` with no border,
+            // fifty characters long.
+            search: EditBox::new(80, 50),
+            ignore_text_input: false,
+            focused_at: std::time::Instant::now(),
+            trees,
+            font,
         }
     }
 
@@ -291,8 +339,56 @@ impl CreativeScreen {
     }
 
     fn select_tab(&mut self, tab: usize) {
+        let old = self.menu.tab();
         self.mouse.quick_craft_slots.clear();
         self.menu.select_tab(tab);
+        if CREATIVE_TABS[tab].kind == TabKind::Search {
+            self.focused_at = std::time::Instant::now();
+            if old != tab {
+                self.search.set_value("", &self.font);
+            }
+            self.refresh_search_results();
+        } else {
+            self.search.set_value("", &self.font);
+        }
+    }
+
+    /// `refreshSearchResults`: everything for an empty box, otherwise what
+    /// the search trees find. A tag search (`#`) finds nothing: the client
+    /// does not hold the items' tags.
+    fn refresh_search_results(&mut self) {
+        let text = self.search.value();
+        if text.is_empty() {
+            self.menu.select_tab(self.menu.tab());
+            return;
+        }
+        let query = text.to_lowercase();
+        let found = if query.starts_with('#') {
+            Vec::new()
+        } else {
+            self.trees.index().search(&query)
+        };
+        self.menu.show_items(&found);
+    }
+
+    /// `charTyped`: a character into the search box. Whether it was taken.
+    pub fn char_typed(&mut self, character: char) -> bool {
+        if self.ignore_text_input || self.menu.kind() != TabKind::Search {
+            return false;
+        }
+        let before = self.search.value();
+        if self.search.char_typed(character, &self.font) {
+            if before != self.search.value() {
+                self.refresh_search_results();
+            }
+            return true;
+        }
+        false
+    }
+
+    /// `keyReleased`.
+    pub fn key_released(&mut self) {
+        self.ignore_text_input = false;
     }
 
     /// A tab chosen from a script: a click on its button.
@@ -430,25 +526,38 @@ impl CreativeScreen {
 
     /// `keyPressed`. Outside the search tab the chat key opens the search
     /// tab, the inventory key closes the screen and the slot keys act on
-    /// the hovered slot; in it only escape closes, and a number key swaps.
+    /// the hovered slot; in it a number key swaps with the hovered slot, the
+    /// edit keys edit the search box, escape closes and nothing else does
+    /// anything.
     pub fn key_pressed(
         &mut self,
         key: glfw::Key,
-        control: bool,
+        mods: KeyMods,
         inventory: &InventoryMenu,
+        clipboard: &mut dyn Clipboard,
     ) -> KeyResult {
+        self.ignore_text_input = false;
         let search = self.menu.kind() == TabKind::Search;
-        if key == glfw::Key::Escape || (!search && key == glfw::Key::E) {
-            return KeyResult::Close;
-        }
-        if !search && key == glfw::Key::T {
-            if let Some(tab) = CREATIVE_TABS
-                .iter()
-                .position(|tab| tab.kind == TabKind::Search)
-            {
-                self.select_tab(tab);
+        if !search {
+            if key == glfw::Key::T {
+                self.ignore_text_input = true;
+                if let Some(tab) = CREATIVE_TABS
+                    .iter()
+                    .position(|tab| tab.kind == TabKind::Search)
+                {
+                    self.select_tab(tab);
+                }
+                return KeyResult::Clicks(Vec::new());
             }
-            return KeyResult::Clicks(Vec::new());
+            if matches!(key, glfw::Key::Escape | glfw::Key::E) {
+                return KeyResult::Close;
+            }
+            let view = View {
+                creative: &self.menu,
+                inventory,
+            };
+            let clicks = slot_key_clicks(key, mods.control, self.hovered, &view);
+            return KeyResult::Clicks(self.clicks(clicks));
         }
         let view = View {
             creative: &self.menu,
@@ -467,19 +576,38 @@ impl CreativeScreen {
                 | glfw::Key::Num8
                 | glfw::Key::Num9
         );
-        if search {
-            // A hovered empty slot of the window takes no swap.
-            let quick_swap = self.hovered.is_none_or(|slot| {
-                !matches!(view.target(slot), Target::Window(_)) || view.stack(slot).is_some()
-            });
-            if numeric && quick_swap {
-                let clicks = slot_key_clicks(key, control, self.hovered, &view);
-                return KeyResult::Clicks(self.clicks(clicks));
+        // A hovered empty slot of the window takes no swap.
+        let quick_swap = self.hovered.is_none_or(|slot| {
+            !matches!(view.target(slot), Target::Window(_)) || view.stack(slot).is_some()
+        });
+        if numeric && quick_swap {
+            let clicks = slot_key_clicks(key, mods.control, self.hovered, &view);
+            let clicks = self.clicks(clicks);
+            if !clicks.is_empty() {
+                self.ignore_text_input = true;
+                return KeyResult::Clicks(clicks);
+            }
+        }
+        let before = self.search.value();
+        if let Some(edit) = edit_key(key)
+            && self.search.key_pressed(
+                edit,
+                mods.control || mods.command,
+                mods.shift,
+                &self.font,
+                clipboard,
+            )
+        {
+            if before != self.search.value() {
+                self.refresh_search_results();
             }
             return KeyResult::Clicks(Vec::new());
         }
-        let clicks = slot_key_clicks(key, control, self.hovered, &view);
-        KeyResult::Clicks(self.clicks(clicks))
+        if key == glfw::Key::Escape {
+            return KeyResult::Close;
+        }
+        // The focused box swallows every other key.
+        KeyResult::Clicks(Vec::new())
     }
 
     /// `extractRenderState`: the dimmed world, the tabs, the image, the scroll
@@ -496,6 +624,7 @@ impl CreativeScreen {
         mouse: (f64, f64),
         draw: &mut ItemDrawer<'_>,
         player: &mut PlayerDrawer<'_>,
+        tooltip: &mut TooltipLines<'_>,
     ) {
         let (left, top) = (self.left(), self.top());
         let selected = self.menu.tab();
@@ -535,6 +664,9 @@ impl CreativeScreen {
             frame.sprite(atlas, sprite, left + 175, top + 18 + travel, 12, 15);
         }
         self.build_tab(frame, atlas, draw, selected);
+        if self.menu.kind() == TabKind::Search {
+            self.build_search_box(frame, atlas, font);
+        }
         if self.inventory_tab() {
             frame.entity(&player(
                 (left + 73, top + 6, left + 105, top + 49),
@@ -600,6 +732,128 @@ impl CreativeScreen {
         }
         self.mouse
             .draw_carried(frame, atlas, font, draw, inventory.carried.as_ref(), mouse);
+        let position = (mouse.0 as i32, mouse.1 as i32);
+        let screen = (self.width, self.height);
+        // The hovered stack's tooltip, when nothing is carried.
+        let hovered_stack = self.hovered.and_then(|slot| {
+            let view = View {
+                creative: &self.menu,
+                inventory,
+            };
+            view.stack(slot)
+                .cloned()
+                .map(|stack| (stack, matches!(view.target(slot), Target::Window(_))))
+        });
+        if inventory.carried.is_none()
+            && let Some((stack, creative_slot)) = hovered_stack
+        {
+            let mut lines = tooltip(&stack, creative_slot);
+            let kind = CREATIVE_TABS[selected].kind;
+            // `getTooltipFromContainerItem`: the tabs a stack is in follow its
+            // name, except for a stack in a single category's own window.
+            if !lines.is_empty() && !(kind == TabKind::Category && creative_slot) {
+                let mut at = 1;
+                for tab in shown_tabs() {
+                    if CREATIVE_TABS[tab].kind != TabKind::Search
+                        && crate::creative_menu::tab_contains(tab, &stack)
+                    {
+                        lines.insert(
+                            at,
+                            vec![crate::text::Run {
+                                text: titles[tab].clone(),
+                                style: crate::text::Style::coloured("blue"),
+                            }],
+                        );
+                        at += 1;
+                    }
+                }
+            }
+            frame.tooltip(atlas, font, &lines, position, screen);
+        } else {
+            // `checkTabHovering`: a tab's name.
+            for tab in shown_tabs() {
+                let (x, y) = (self.tab_x(tab), self.tab_y(tab));
+                let (xm, ym) = (mouse.0 - f64::from(left), mouse.1 - f64::from(top));
+                if xm >= f64::from(x + 3 - 1)
+                    && xm < f64::from(x + 3 + 21 + 1)
+                    && ym >= f64::from(y + 3 - 1)
+                    && ym < f64::from(y + 3 + 27 + 1)
+                {
+                    let line = vec![crate::text::Run {
+                        text: titles[tab].clone(),
+                        style: crate::text::Style::default(),
+                    }];
+                    frame.tooltip(atlas, font, &[line], position, screen);
+                    break;
+                }
+            }
+        }
+    }
+
+    /// `EditBox.extractWidgetRenderState` without a border: the text with the
+    /// cursor blinking in it, and the selection behind.
+    fn build_search_box(
+        &self,
+        frame: &mut GuiFrame,
+        atlas: &GuiAtlas,
+        font: &crate::render::font::Font,
+    ) {
+        let (text_x, text_y) = (self.left() + 82, self.top() + 6);
+        let shown = self.search.shown(font);
+        let chars: Vec<char> = shown.text.chars().collect();
+        let cursor_on_screen = shown.cursor >= 0 && shown.cursor as usize <= chars.len();
+        let blink = (self.focused_at.elapsed().as_millis() / 300).is_multiple_of(2);
+        let colour = 0xFFFF_FFFF;
+        let mut draw_x = text_x;
+        if !chars.is_empty() {
+            let half: String = if cursor_on_screen {
+                chars[..shown.cursor as usize].iter().collect()
+            } else {
+                shown.text.clone()
+            };
+            frame.text_with_shadow(atlas, font, &half, draw_x, text_y, colour);
+            draw_x += font.width(&half) + 1;
+        }
+        let mut cursor_x = draw_x;
+        if !cursor_on_screen {
+            cursor_x = if shown.cursor > 0 {
+                text_x + 80
+            } else {
+                text_x
+            };
+        } else if shown.insert {
+            cursor_x -= 1;
+            draw_x -= 1;
+        }
+        if !chars.is_empty() && cursor_on_screen && (shown.cursor as usize) < chars.len() {
+            let rest: String = chars[shown.cursor as usize..].iter().collect();
+            frame.text_with_shadow(atlas, font, &rest, draw_x, text_y, colour);
+        }
+        if shown.highlight as isize != shown.cursor {
+            let before: String = chars[..shown.highlight].iter().collect();
+            let highlight_x = text_x + font.width(&before);
+            frame.fill(
+                atlas,
+                (
+                    cursor_x.min(text_x + 80),
+                    text_y - 1,
+                    (highlight_x - 1).min(text_x + 80),
+                    text_y + 1 + 9,
+                ),
+                0x800000FF,
+            );
+        }
+        if blink && cursor_on_screen {
+            if shown.insert {
+                frame.fill(
+                    atlas,
+                    (cursor_x, text_y - 1, cursor_x + 1, text_y + 10),
+                    colour,
+                );
+            } else {
+                frame.text_with_shadow(atlas, font, "_", cursor_x, text_y, colour);
+            }
+        }
     }
 
     /// `extractTabButton`: the button and the tab's icon.
@@ -636,6 +890,19 @@ mod tests {
     use super::*;
     use crate::creative_menu::default_tab;
 
+    /// A screen with no language and no font.
+    fn test_screen(tab: usize) -> CreativeScreen {
+        CreativeScreen::new(
+            427,
+            240,
+            tab,
+            std::sync::Arc::new(SearchTrees::new(std::sync::Arc::new(
+                crate::text::Lang::default(),
+            ))),
+            std::sync::Arc::new(crate::render::font::Font::default()),
+        )
+    }
+
     fn centre(screen: &CreativeScreen, slot: usize) -> (f64, f64) {
         let (x, y) = screen.slot_position(slot);
         (
@@ -646,7 +913,7 @@ mod tests {
 
     #[test]
     fn a_window_slot_click_takes_a_stack_on_press() {
-        let mut screen = CreativeScreen::new(427, 240, default_tab());
+        let mut screen = test_screen(default_tab());
         let inventory = InventoryMenu::default();
         let (x, y) = centre(&screen, 0);
         let clicks = screen.mouse_clicked(x, y, 0, false, std::time::Instant::now(), &inventory);
@@ -664,7 +931,7 @@ mod tests {
 
     #[test]
     fn a_tab_is_chosen_when_its_button_is_released() {
-        let mut screen = CreativeScreen::new(427, 240, default_tab());
+        let mut screen = test_screen(default_tab());
         let inventory = InventoryMenu::default();
         let other = shown_tabs()
             .into_iter()
@@ -685,7 +952,7 @@ mod tests {
 
     #[test]
     fn the_scroll_bar_follows_a_drag() {
-        let mut screen = CreativeScreen::new(427, 240, default_tab());
+        let mut screen = test_screen(default_tab());
         let inventory = InventoryMenu::default();
         let x = f64::from(screen.left() + 180);
         let y = f64::from(screen.top() + 25);
@@ -704,7 +971,7 @@ mod tests {
             .iter()
             .position(|tab| tab.kind == TabKind::Inventory)
             .expect("an inventory tab");
-        let screen = CreativeScreen::new(427, 240, inventory_tab);
+        let screen = test_screen(inventory_tab);
         assert_eq!(screen.slot_position(5), (54, 6));
         assert_eq!(screen.slot_position(6), (54, 33));
         assert_eq!(screen.slot_position(7), (108, 6));

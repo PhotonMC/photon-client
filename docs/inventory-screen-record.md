@@ -44,8 +44,8 @@ görüntüsünde düzen referanstaki yerlerde.
 
 ## Açıklar
 
-- Eşya ipuçları (tooltip) yok (M5 metin işine
-  bağlı); tarif kitabı açılmıyor, düğmesi yalnız tıklamayı yutar; etkiler
+- Eşya ipuçları [ayrı kayıtta](tooltip-record.md).
+- Tarif kitabı açılmıyor, düğmesi yalnız tıklamayı yutar; etkiler
   paneli yok.
 - Referans sürüklenen yuvaları kimlik hash'li bir kümede tutar, gönderim
   sırası çalıştırmadan çalıştırmaya değişir; burada ekleme sırası. Sunucunun

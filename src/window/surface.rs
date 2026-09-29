@@ -106,6 +106,7 @@ impl WindowSurface {
         window.set_size_polling(true);
         window.set_focus_polling(true);
         window.set_key_polling(true);
+        window.set_char_polling(true);
         window.set_close_polling(true);
         window.set_cursor_pos_polling(true);
         window.set_mouse_button_polling(true);
@@ -222,6 +223,16 @@ impl WindowSurface {
     /// Put the cursor at a place in the window, in screen coordinates.
     pub fn set_cursor_position(&mut self, x: f64, y: f64) {
         self.window.set_cursor_pos(x, y);
+    }
+
+    /// The clipboard's text.
+    pub fn clipboard(&self) -> String {
+        self.window.get_clipboard_string().unwrap_or_default()
+    }
+
+    /// Put text on the clipboard.
+    pub fn set_clipboard(&mut self, text: &str) {
+        self.window.set_clipboard_string(text);
     }
 
     /// Window position in screen coordinates, as the reference tracks it.

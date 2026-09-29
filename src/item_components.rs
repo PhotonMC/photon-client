@@ -84,9 +84,9 @@ pub struct PotionContents {
     /// The potion's registry id.
     pub potion: Option<i32>,
     pub custom_color: Option<i32>,
-    /// The custom effects: the mob effect's registry id, its amplifier and
-    /// whether it shows.
-    pub effects: Vec<(i32, i32, bool)>,
+    /// The custom effects: the mob effect's registry id, its amplifier, its
+    /// duration in ticks (-1 for no end) and whether it shows.
+    pub effects: Vec<(i32, i32, i32, bool)>,
     pub custom_name: Option<String>,
 }
 
@@ -121,14 +121,14 @@ pub fn potion_contents(value: &[u8]) -> Option<PotionContents> {
     for _ in 0..cursor.count().ok()? {
         let effect = cursor.varint().ok()?;
         let amplifier = cursor.varint().ok()?;
-        cursor.varint().ok()?;
+        let duration = cursor.varint().ok()?;
         cursor.boolean().ok()?;
         let visible = cursor.boolean().ok()?;
         cursor.boolean().ok()?;
         if cursor.boolean().ok()? {
             cursor.mob_effect_details().ok()?;
         }
-        effects.push((effect, amplifier, visible));
+        effects.push((effect, amplifier, duration, visible));
     }
     let custom_name = if cursor.boolean().ok()? {
         let length = cursor.count().ok()?;
@@ -166,12 +166,12 @@ pub fn delimit(trusted: &[u8]) -> Option<Vec<u8>> {
     input.is_empty().then(|| patch.delimited())
 }
 
-struct Cursor<'a> {
-    data: &'a [u8],
+pub(crate) struct Cursor<'a> {
+    pub(crate) data: &'a [u8],
 }
 
 impl Cursor<'_> {
-    fn skip(&mut self, count: usize) -> R {
+    pub(crate) fn skip(&mut self, count: usize) -> R {
         if self.data.len() < count {
             return Err(Malformed);
         }
@@ -179,17 +179,17 @@ impl Cursor<'_> {
         Ok(())
     }
 
-    fn byte(&mut self) -> R<u8> {
+    pub(crate) fn byte(&mut self) -> R<u8> {
         let byte = *self.data.first().ok_or(Malformed)?;
         self.data = &self.data[1..];
         Ok(byte)
     }
 
-    fn boolean(&mut self) -> R<bool> {
+    pub(crate) fn boolean(&mut self) -> R<bool> {
         Ok(self.byte()? != 0)
     }
 
-    fn varint(&mut self) -> R<i32> {
+    pub(crate) fn varint(&mut self) -> R<i32> {
         let mut value = 0_u32;
         for shift in 0..5 {
             let byte = self.byte()?;
@@ -202,46 +202,46 @@ impl Cursor<'_> {
     }
 
     /// A count that a list or a map reads.
-    fn count(&mut self) -> R<usize> {
+    pub(crate) fn count(&mut self) -> R<usize> {
         usize::try_from(self.varint()?).map_err(|_| Malformed)
     }
 
-    fn float(&mut self) -> R {
+    pub(crate) fn float(&mut self) -> R {
         self.skip(4)
     }
 
-    fn double(&mut self) -> R {
+    pub(crate) fn double(&mut self) -> R {
         self.skip(8)
     }
 
-    fn int(&mut self) -> R {
+    pub(crate) fn int(&mut self) -> R {
         self.skip(4)
     }
 
-    fn long(&mut self) -> R {
+    pub(crate) fn long(&mut self) -> R {
         self.skip(8)
     }
 
-    fn string(&mut self) -> R {
+    pub(crate) fn string(&mut self) -> R {
         let length = self.count()?;
         self.skip(length)
     }
 
-    fn identifier(&mut self) -> R {
+    pub(crate) fn identifier(&mut self) -> R {
         self.string()
     }
 
-    fn uuid(&mut self) -> R {
+    pub(crate) fn uuid(&mut self) -> R {
         self.skip(16)
     }
 
     /// `ByteBufCodecs.optional`.
-    fn optional(&mut self, value: impl FnOnce(&mut Self) -> R) -> R {
+    pub(crate) fn optional(&mut self, value: impl FnOnce(&mut Self) -> R) -> R {
         if self.boolean()? { value(self) } else { Ok(()) }
     }
 
     /// `ByteBufCodecs.list`: a count and that many values.
-    fn list(&mut self, mut value: impl FnMut(&mut Self) -> R) -> R {
+    pub(crate) fn list(&mut self, mut value: impl FnMut(&mut Self) -> R) -> R {
         for _ in 0..self.count()? {
             value(self)?;
         }
@@ -249,14 +249,14 @@ impl Cursor<'_> {
     }
 
     /// A network tag: its type, then its payload, with no name.
-    fn tag(&mut self) -> R {
+    pub(crate) fn tag(&mut self) -> R {
         let kind = self.byte()?;
         self.tag_payload(kind)
     }
 
     /// `ByteBufCodecs.COMPOUND_TAG`: a compound, or a single end byte for
     /// none.
-    fn compound_tag(&mut self) -> R {
+    pub(crate) fn compound_tag(&mut self) -> R {
         match self.byte()? {
             0 => Ok(()),
             10 => self.tag_payload(10),
@@ -264,7 +264,7 @@ impl Cursor<'_> {
         }
     }
 
-    fn tag_payload(&mut self, kind: u8) -> R {
+    pub(crate) fn tag_payload(&mut self, kind: u8) -> R {
         match kind {
             0 => Ok(()),
             1 => self.skip(1),
@@ -308,20 +308,20 @@ impl Cursor<'_> {
         }
     }
 
-    fn short(&mut self) -> R<usize> {
+    pub(crate) fn short(&mut self) -> R<usize> {
         let high = self.byte()?;
         let low = self.byte()?;
         Ok(usize::from(u16::from_be_bytes([high, low])))
     }
 
-    fn tag_length(&mut self) -> R<usize> {
+    pub(crate) fn tag_length(&mut self) -> R<usize> {
         let bytes = [self.byte()?, self.byte()?, self.byte()?, self.byte()?];
         usize::try_from(i32::from_be_bytes(bytes)).map_err(|_| Malformed)
     }
 
     /// `ByteBufCodecs.holder`: a registry id plus one, or a zero and the
     /// direct value.
-    fn holder(&mut self, direct: impl FnOnce(&mut Self) -> R) -> R {
+    pub(crate) fn holder(&mut self, direct: impl FnOnce(&mut Self) -> R) -> R {
         if self.varint()? == 0 {
             direct(self)
         } else {
@@ -331,7 +331,7 @@ impl Cursor<'_> {
 
     /// `ByteBufCodecs.holderSet`: a count plus one and that many ids, or a
     /// zero and a tag's name.
-    fn holder_set(&mut self) -> R {
+    pub(crate) fn holder_set(&mut self) -> R {
         match self.varint()? {
             0 => self.identifier(),
             count if count > 0 => {
@@ -345,14 +345,14 @@ impl Cursor<'_> {
     }
 
     /// `SoundEvent.STREAM_CODEC`.
-    fn sound(&mut self) -> R {
+    pub(crate) fn sound(&mut self) -> R {
         self.holder(|cursor| {
             cursor.identifier()?;
             cursor.optional(Cursor::float)
         })
     }
 
-    fn patch(&mut self) -> R<Patch> {
+    pub(crate) fn patch(&mut self) -> R<Patch> {
         let added_count = self.count()?;
         let removed_count = self.count()?;
         let mut patch = Patch {
@@ -373,25 +373,25 @@ impl Cursor<'_> {
     }
 
     /// `ItemStackTemplate.STREAM_CODEC`: an item, a count and a patch.
-    fn template(&mut self) -> R {
+    pub(crate) fn template(&mut self) -> R {
         self.varint()?;
         self.varint()?;
         self.patch().map(|_| ())
     }
 
-    fn mob_effect_instance(&mut self) -> R {
+    pub(crate) fn mob_effect_instance(&mut self) -> R {
         self.varint()?;
         self.mob_effect_details()
     }
 
-    fn mob_effect_details(&mut self) -> R {
+    pub(crate) fn mob_effect_details(&mut self) -> R {
         self.varint()?;
         self.varint()?;
         self.skip(3)?;
         self.optional(Cursor::mob_effect_details)
     }
 
-    fn consume_effect(&mut self) -> R {
+    pub(crate) fn consume_effect(&mut self) -> R {
         match self.varint()? {
             0 => {
                 self.list(Cursor::mob_effect_instance)?;
@@ -406,12 +406,12 @@ impl Cursor<'_> {
     }
 
     /// `Filterable.streamCodec`: the raw value and an optional filtered one.
-    fn filterable(&mut self, mut value: impl FnMut(&mut Self) -> R) -> R {
+    pub(crate) fn filterable(&mut self, mut value: impl FnMut(&mut Self) -> R) -> R {
         value(self)?;
         self.optional(&mut value)
     }
 
-    fn game_profile_properties(&mut self) -> R {
+    pub(crate) fn game_profile_properties(&mut self) -> R {
         self.list(|cursor| {
             cursor.string()?;
             cursor.string()?;
@@ -420,7 +420,7 @@ impl Cursor<'_> {
     }
 
     /// `BlockPredicate.STREAM_CODEC` of the advancement predicates.
-    fn block_predicate(&mut self) -> R {
+    pub(crate) fn block_predicate(&mut self) -> R {
         self.optional(Cursor::holder_set)?;
         self.optional(|cursor| {
             cursor.list(|cursor| {
@@ -448,7 +448,7 @@ impl Cursor<'_> {
     }
 
     /// One component's value, by the type's registry id.
-    fn component(&mut self, id: i32) -> R {
+    pub(crate) fn component(&mut self, id: i32) -> R {
         match id {
             // Holder registries, ids, enumerations and plain numbers.
             1 | 2 | 3 | 8 | 12 | 19 | 31 | 41 | 43 | 46 | 48 | 63 | 73 | 82..=102 | 104..=110 => {
@@ -702,7 +702,7 @@ impl Cursor<'_> {
         }
     }
 
-    fn firework_explosion(&mut self) -> R {
+    pub(crate) fn firework_explosion(&mut self) -> R {
         self.varint()?;
         self.list(Cursor::int)?;
         self.list(Cursor::int)?;

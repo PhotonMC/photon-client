@@ -48,7 +48,9 @@ def main(path):
 
     tabs = []
     for tab in data["tabs"]:
-        tabs.append((tab, stack(tab["icon"]), [stack(item) for item in tab["items"]]))
+        items = [stack(item) for item in tab["items"]]
+        search = [stack(item) for item in tab["search_items"]]
+        tabs.append((tab, stack(tab["icon"]), items, [] if search == items else search))
 
     def ids(values):
         return "&[" + ", ".join(str(value) for value in values) + "]"
@@ -90,6 +92,9 @@ def main(path):
         "    pub title: &'static str,",
         "    pub icon: u16,",
         "    pub items: &'static [u16],",
+        "    /// What the search tab takes from the tab when it is not the same as",
+        "    /// `items`; empty when it is.",
+        "    pub search_items: &'static [u16],",
         "}",
         "",
         f"pub const DEFAULT_TAB: &str = \"{data['default_tab']}\";",
@@ -107,7 +112,7 @@ def main(path):
     out.append("")
     out.append("#[rustfmt::skip]")
     out.append(f"pub static CREATIVE_TABS: [CreativeTab; {len(tabs)}] = [")
-    for tab, icon, items in tabs:
+    for tab, icon, items, search in tabs:
         kind = tab["type"].capitalize()
         out.append("    CreativeTab {")
         out.append(f'        name: "{tab["name"]}", kind: TabKind::{kind}, top: {str(tab["row"] == "TOP").lower()}, column: {tab["column"]},')
@@ -119,6 +124,10 @@ def main(path):
         chunks = [items[i : i + 24] for i in range(0, len(items), 24)]
         out.append("        items: &[")
         for chunk in chunks:
+            out.append("            " + ", ".join(str(value) for value in chunk) + ",")
+        out.append("        ],")
+        out.append("        search_items: &[")
+        for chunk in [search[i : i + 24] for i in range(0, len(search), 24)]:
             out.append("            " + ", ".join(str(value) for value in chunk) + ",")
         out.append("        ],")
         out.append("    },")

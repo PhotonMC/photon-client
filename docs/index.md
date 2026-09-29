@@ -574,5 +574,6 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P15.a.2 — Java referansının kendi değişkenliği — [ölçüm, parity iddiası yok]](render-variability-measurement.md)
 - [P16.u — Canlı sunucudan dünya çizimi — sonda kaydı](server-world-render.md)
 - [P16.f — Dokulu küp çizimi — [altyapı, parity iddiası yok]](textured-cube-record.md)
+- [P22.e.1 — Eşya ipucu, metin bileşeni ve yaratıcı arama — oracle tabloları ve canlı oturum kaydı](tooltip-record.md)
 - [P15.b — Vulkan backend ve swapchain — [altyapı, parity iddiası yok]](vulkan-backend-record.md)
 - [P05.d.2 — GLFW pencere yüzeyi — [altyapı, parity iddiası yok]](window-surface-record.md)

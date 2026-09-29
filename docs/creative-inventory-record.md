@@ -62,13 +62,12 @@ Vanilla 26.2 sunucusunda yaratıcı modda betikle (`tab/N`, `scroll/YÜZDE`,
 
 ## Açıklar
 
-- Arama kutusu yazı almaz: arama sekmesi her şeyi listeler; ad ve `#etiket`
-  araması ve etiket satırları yok (metin işi M5'e bağlı).
+- `#etiket` araması ve arama sekmesinin etiket satırları yok; ad araması ve
+  eşya ipuçları var ([kayıt](tooltip-record.md)).
 - Kayıtlı hotbar'lar okunmaz (`hotbar.nbt`): hepsi boş, yer tutucu kâğıtlar
   gösterilir; C/X ile kaydetme ve yükleme yok.
 - Envanter sekmesindeki oyuncu modeli (20 birim/blok, fareye bakar) zırhsız ve
-  elsiz çizilir; eşya ipuçları ve etkiler paneli yok. Bileşenli eşyaların simgeleri bileşenlerden tint almaz (iksir
-  rengi vb.).
+  elsiz çizilir; etkiler paneli yok.
 - `broadcastChanges` son yayından beri değişeni gönderir; burada tıklamadan
   önce ile sonra karşılaştırılır. Sunucunun tıklamalar arasında yaptığı bir
   değişiklik referansta ek bir paket üretir.

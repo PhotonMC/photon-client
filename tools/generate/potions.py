@@ -29,6 +29,19 @@ def main(path):
         "    /// `MobEffect.getColor`, `0xRRGGBB`.",
         "    pub color: i32,",
         "    pub description_id: &'static str,",
+        "    /// The formatting its tooltip line takes, by its category.",
+        "    pub style: &'static str,",
+        "    /// What it does to attributes at amplifier zero; a higher amplifier",
+        "    /// multiplies the amount by amplifier plus one.",
+        "    pub modifiers: &'static [EffectModifier],",
+        "}",
+        "",
+        "pub struct EffectModifier {",
+        "    /// The attribute's registry id.",
+        "    pub attribute: i32,",
+        "    pub amount: f64,",
+        "    /// `AttributeModifier.Operation.id`.",
+        "    pub operation: i32,",
         "}",
         "",
         "/// One effect a potion gives.",
@@ -50,9 +63,14 @@ def main(path):
         f"pub static MOB_EFFECTS: [MobEffect; {len(data['effects'])}] = [",
     ]
     for effect in data["effects"]:
+        modifiers = ", ".join(
+            f'EffectModifier {{ attribute: {m["attribute"]}, amount: {m["amount"]!r}, operation: {m["operation"]} }}'
+            for m in effect["modifiers"]
+        )
         out.append(
             f'    MobEffect {{ name: "{effect["name"]}", color: {effect["color"]}, '
-            f'description_id: "{effect["description_id"]}" }},'
+            f'description_id: "{effect["description_id"]}", style: "{effect["style"]}", '
+            f"modifiers: &[{modifiers}] }},"
         )
     out.append("];")
     out.append("")

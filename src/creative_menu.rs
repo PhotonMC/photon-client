@@ -83,6 +83,108 @@ pub fn shown_tabs() -> Vec<usize> {
         .collect()
 }
 
+/// The search tab's items with what the search reads of each: the lines of
+/// its tooltip, lowercased, and its id. `SessionSearchTrees` builds it from
+/// the search tab's display items.
+pub struct SearchIndex {
+    /// The items, as indices into the table's stacks.
+    items: Vec<u16>,
+    lines: Vec<Vec<String>>,
+    /// Each item's namespace and path, lowercased.
+    ids: Vec<(String, String)>,
+}
+
+impl SearchIndex {
+    pub fn build(lang: &crate::text::Lang) -> Self {
+        let tab = CREATIVE_TABS
+            .iter()
+            .find(|tab| tab.kind == TabKind::Search)
+            .expect("there is a search tab");
+        let items: Vec<u16> = tab.items.to_vec();
+        let mut lines = Vec::with_capacity(items.len());
+        let mut ids = Vec::with_capacity(items.len());
+        for &index in &items {
+            let stack = table_stack(index);
+            lines.push(
+                crate::tooltip::search_lines(&stack, lang)
+                    .into_iter()
+                    .map(|line| line.to_lowercase())
+                    .collect(),
+            );
+            let name = crate::item_table::ITEMS[stack.item_registry_id() as usize].name;
+            let (namespace, path) = name.split_once(':').unwrap_or(("minecraft", name));
+            ids.push((namespace.to_lowercase(), path.to_lowercase()));
+        }
+        Self { items, lines, ids }
+    }
+
+    /// `SearchTree.search`: the items a query finds, in the search tab's
+    /// order. A query with a colon names a namespace and a path; anything
+    /// else is read as text of the tooltip.
+    pub fn search(&self, text: &str) -> Vec<u16> {
+        let by_line =
+            |needle: &str, at: usize| self.lines[at].iter().any(|line| line.contains(needle));
+        (0..self.items.len())
+            .filter(|&at| match text.split_once(':') {
+                None => by_line(text, at),
+                Some((namespace, path)) => {
+                    let (namespace, path) = (namespace.trim(), path.trim());
+                    self.ids[at].0.contains(namespace)
+                        && (self.ids[at].1.contains(path) || by_line(path, at))
+                }
+            })
+            .map(|at| self.items[at])
+            .collect()
+    }
+}
+
+/// The search trees of a session: built from the language the first time a
+/// search asks, which takes a few milliseconds.
+pub struct SearchTrees {
+    lang: std::sync::Arc<crate::text::Lang>,
+    index: std::sync::OnceLock<SearchIndex>,
+}
+
+impl std::fmt::Debug for SearchTrees {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("SearchTrees")
+    }
+}
+
+impl SearchTrees {
+    pub fn new(lang: std::sync::Arc<crate::text::Lang>) -> Self {
+        Self {
+            lang,
+            index: std::sync::OnceLock::new(),
+        }
+    }
+
+    pub fn index(&self) -> &SearchIndex {
+        self.index.get_or_init(|| SearchIndex::build(&self.lang))
+    }
+}
+
+/// `CreativeModeTab.contains`: whether a stack is one the tab gives the
+/// search tab, by item and component patch.
+pub fn tab_contains(tab: usize, stack: &Stack) -> bool {
+    let entry = &CREATIVE_TABS[tab];
+    let indices = if entry.search_items.is_empty() {
+        entry.items
+    } else {
+        entry.search_items
+    };
+    // A stack made here has no patch bytes: the empty patch is two zeros.
+    let patch: &[u8] = if stack.patch_bytes().is_empty() {
+        &[0, 0]
+    } else {
+        stack.patch_bytes()
+    };
+    indices.iter().any(|&index| {
+        let candidate = &CREATIVE_STACKS[usize::from(index)];
+        candidate.item == stack.item_registry_id() && candidate.patch == patch
+    })
+}
+
 /// `CreativeModeTabs.getDefaultTab`.
 pub fn default_tab() -> usize {
     CREATIVE_TABS
@@ -206,6 +308,22 @@ impl CreativeMenu {
                     .flatten();
             }
         }
+    }
+
+    /// The stacks of the table shown in place of the tab's own, as a search
+    /// finds them, scrolled to the top.
+    pub fn show_items(&mut self, indices: &[u16]) {
+        self.items = indices
+            .iter()
+            .map(|&index| {
+                Some(Shown {
+                    stack: table_stack(index),
+                    locked: false,
+                })
+            })
+            .collect();
+        self.scroll = 0.0;
+        self.scroll_to(0.0);
     }
 
     /// `canScroll` of the menu: more stacks than the window holds.
@@ -684,6 +802,45 @@ mod tests {
                 .iter()
                 .all(|effect| matches!(effect, Effect::SetSlot(_, None)))
         );
+    }
+
+    fn index() -> Option<SearchIndex> {
+        let lang = crate::text::Lang::load(std::path::Path::new(
+            &std::env::var("VOXEL_ASSETS").unwrap_or_default(),
+        ));
+        lang.get("item.minecraft.stone")
+            .is_some()
+            .then(|| SearchIndex::build(&lang))
+    }
+
+    fn names(found: &[u16]) -> Vec<&'static str> {
+        found
+            .iter()
+            .map(|&index| {
+                crate::item_table::ITEMS[table_stack(index).item_registry_id() as usize].name
+            })
+            .collect()
+    }
+
+    #[test]
+    fn a_search_finds_what_the_tooltip_says() {
+        let Some(index) = index() else { return };
+        let found = names(&index.search("diamond sword"));
+        assert_eq!(found, vec!["minecraft:diamond_sword"]);
+        // Text of any line of the tooltip: a potion's effect.
+        let poison = names(&index.search("poison"));
+        assert!(poison.contains(&"minecraft:tipped_arrow"));
+        assert!(poison.contains(&"minecraft:potion"));
+        assert!(index.search("qqqq").is_empty());
+    }
+
+    #[test]
+    fn a_search_with_a_colon_reads_a_namespace_and_a_path() {
+        let Some(index) = index() else { return };
+        let found = names(&index.search("minecraft:oak_lo"));
+        assert!(found.contains(&"minecraft:oak_log"));
+        assert!(found.iter().all(|name| name.starts_with("minecraft:")));
+        assert!(index.search("nomod:oak_log").is_empty());
     }
 
     #[test]

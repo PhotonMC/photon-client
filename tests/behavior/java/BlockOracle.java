@@ -64,6 +64,7 @@ public final class BlockOracle {
                 case "item_tools" -> rows.add(itemTools(element.getAsJsonObject()));
                 case "item_stacking" -> rows.add(itemStacking(element.getAsJsonObject()));
                 case "item_components" -> rows.add(itemComponents(element.getAsJsonObject()));
+                case "tooltip_registries" -> rows.add(tooltipRegistries(element.getAsJsonObject()));
                 case "potions" -> rows.add(potions(element.getAsJsonObject()));
                 case "creative_tabs" -> rows.add(creativeTabs(element.getAsJsonObject()));
                 case "block_behaviours" -> rows.add(blockBehaviours(element.getAsJsonObject()));
@@ -770,8 +771,16 @@ public final class BlockOracle {
         var registry = net.minecraft.core.registries.BuiltInRegistries.ITEM;
         var items = new JsonArray();
         for (var item : registry) {
+            // The components are set in the registry's order: the map they
+            // come from iterates by identity hash, which differs by run.
             var builder = net.minecraft.core.component.DataComponentPatch.builder();
-            builder.set(item.components());
+            var types = net.minecraft.core.registries.BuiltInRegistries.DATA_COMPONENT_TYPE;
+            var typed = new java.util.ArrayList<net.minecraft.core.component.TypedDataComponent<?>>();
+            item.components().forEach(typed::add);
+            typed.sort(java.util.Comparator.comparingInt(component -> types.getId(component.type())));
+            for (var component : typed) {
+                builder.set(component);
+            }
             var patch = builder.build();
             var described = new JsonObject();
             described.addProperty("name", registry.getKey(item).toString());
@@ -780,7 +789,6 @@ public final class BlockOracle {
             described.addProperty("delimited", encodePatch(
                 net.minecraft.core.component.DataComponentPatch.DELIMITED_STREAM_CODEC, patch, registries));
             var ids = new JsonArray();
-            var types = net.minecraft.core.registries.BuiltInRegistries.DATA_COMPONENT_TYPE;
             for (var component : patch.entrySet()) {
                 if (!component.getKey().isTransient()) {
                     ids.add(types.getId(component.getKey()));
@@ -810,6 +818,88 @@ public final class BlockOracle {
     }
 
     /**
+     * The registries an item's tooltip reads its texts from, by registry id:
+     * what each entry is called and, where the reference gives one, the
+     * component it shows, as its JSON.
+     */
+    private static JsonObject tooltipRegistries(JsonObject row) {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        entry.addProperty("outcome", "listed");
+        var registries = Oracle.vanillaRegistries();
+        entry.add("enchantments", listRegistry(registries, net.minecraft.core.registries.Registries.ENCHANTMENT,
+            (enchantment, described) -> {
+                described.add("description", componentJson(enchantment.description()));
+                var holder = registries.lookupOrThrow(net.minecraft.core.registries.Registries.ENCHANTMENT)
+                    .wrapAsHolder(enchantment);
+                described.addProperty("curse", holder.is(net.minecraft.tags.EnchantmentTags.CURSE));
+                described.addProperty("max_level", enchantment.getMaxLevel());
+                int order = -1;
+                var tag = registries.lookupOrThrow(net.minecraft.core.registries.Registries.ENCHANTMENT)
+                    .get(net.minecraft.tags.EnchantmentTags.TOOLTIP_ORDER);
+                if (tag.isPresent()) {
+                    int index = 0;
+                    for (var member : tag.get()) {
+                        if (member.value() == enchantment) {
+                            order = index;
+                        }
+                        index++;
+                    }
+                }
+                described.addProperty("tooltip_order", order);
+            }));
+        entry.add("painting_variants", listRegistry(registries, net.minecraft.core.registries.Registries.PAINTING_VARIANT,
+            (variant, described) -> {
+                described.addProperty("width", variant.width());
+                described.addProperty("height", variant.height());
+                variant.title().ifPresent(title -> described.add("title", componentJson(title)));
+                variant.author().ifPresent(author -> described.add("author", componentJson(author)));
+            }));
+        entry.add("instruments", listRegistry(registries, net.minecraft.core.registries.Registries.INSTRUMENT,
+            (instrument, described) -> described.add("description", componentJson(instrument.description()))));
+        entry.add("jukebox_songs", listRegistry(registries, net.minecraft.core.registries.Registries.JUKEBOX_SONG,
+            (song, described) -> described.add("description", componentJson(song.description()))));
+        entry.add("banner_patterns", listRegistry(registries, net.minecraft.core.registries.Registries.BANNER_PATTERN,
+            (pattern, described) -> described.addProperty("translation_key", pattern.translationKey())));
+        entry.add("trim_materials", listRegistry(registries, net.minecraft.core.registries.Registries.TRIM_MATERIAL,
+            (material, described) -> described.add("description", componentJson(material.description()))));
+        entry.add("trim_patterns", listRegistry(registries, net.minecraft.core.registries.Registries.TRIM_PATTERN,
+            (pattern, described) -> described.add("description", componentJson(pattern.description()))));
+        var attributes = new JsonArray();
+        var attributeRegistry = net.minecraft.core.registries.BuiltInRegistries.ATTRIBUTE;
+        for (var attribute : attributeRegistry) {
+            var described = new JsonObject();
+            described.addProperty("name", attributeRegistry.getKey(attribute).toString());
+            described.addProperty("description_id", attribute.getDescriptionId());
+            described.addProperty("style_up", attribute.getStyle(true).name());
+            described.addProperty("style_down", attribute.getStyle(false).name());
+            attributes.add(described);
+        }
+        entry.add("attributes", attributes);
+        return entry;
+    }
+
+    private static <T> JsonArray listRegistry(net.minecraft.core.RegistryAccess registries,
+            net.minecraft.resources.ResourceKey<? extends net.minecraft.core.Registry<T>> key,
+            java.util.function.BiConsumer<T, JsonObject> describe) {
+        var registry = registries.lookupOrThrow(key);
+        var list = new JsonArray();
+        for (var value : registry) {
+            var described = new JsonObject();
+            described.addProperty("name", registry.getKey(value).toString());
+            described.addProperty("id", registry.getId(value));
+            describe.accept(value, described);
+            list.add(described);
+        }
+        return list;
+    }
+
+    private static com.google.gson.JsonElement componentJson(net.minecraft.network.chat.Component component) {
+        return net.minecraft.network.chat.ComponentSerialization.CODEC
+            .encodeStart(com.mojang.serialization.JsonOps.INSTANCE, component).getOrThrow();
+    }
+
+    /**
      * The potions and the mob effects they are made of: what a potion's
      * colour and name are read from, by registry id.
      */
@@ -825,6 +915,17 @@ public final class BlockOracle {
             described.addProperty("name", effectRegistry.getKey(effect).toString());
             described.addProperty("color", effect.getColor());
             described.addProperty("description_id", effect.getDescriptionId());
+            described.addProperty("style", effect.getCategory().getTooltipFormatting().name());
+            var modifiers = new JsonArray();
+            var attributeRegistry = net.minecraft.core.registries.BuiltInRegistries.ATTRIBUTE;
+            effect.createModifiers(0, (attribute, modifier) -> {
+                var described_modifier = new JsonObject();
+                described_modifier.addProperty("attribute", attributeRegistry.getId(attribute.value()));
+                described_modifier.addProperty("amount", modifier.amount());
+                described_modifier.addProperty("operation", modifier.operation().id());
+                modifiers.add(described_modifier);
+            });
+            described.add("modifiers", modifiers);
             effects.add(described);
         }
         entry.add("effects", effects);
@@ -886,6 +987,11 @@ public final class BlockOracle {
                 items.add(creativeStack(stack, registries));
             }
             described.add("items", items);
+            var searchItems = new JsonArray();
+            for (var stack : tab.getSearchTabDisplayItems()) {
+                searchItems.add(creativeStack(stack, registries));
+            }
+            described.add("search_items", searchItems);
             tabs.add(described);
         }
         entry.add("tabs", tabs);

@@ -7,7 +7,7 @@
 //! book; its button is drawn and takes the click, but does not open it.
 
 use crate::inventory_menu::{ClickType, InventoryMenu, SLOT_COUNT, max_stack_size};
-use crate::render::gui::{GuiAtlas, GuiFrame, ItemDrawer, PlayerDrawer};
+use crate::render::gui::{GuiAtlas, GuiFrame, ItemDrawer, PlayerDrawer, TooltipLines};
 use crate::world::ClientItemStackState as Stack;
 
 const IMAGE_WIDTH: i32 = 176;
@@ -574,6 +574,7 @@ impl InventoryScreen {
         mouse: (f64, f64),
         draw: &mut ItemDrawer<'_>,
         player: &mut PlayerDrawer<'_>,
+        tooltip: &mut TooltipLines<'_>,
     ) {
         let (left, top) = (self.left(), self.top());
         // `extractTransparentBackground`.
@@ -635,6 +636,19 @@ impl InventoryScreen {
         }
         self.mouse
             .draw_carried(frame, atlas, font, draw, menu.carried.as_ref(), mouse);
+        // The hovered stack's tooltip, when nothing is carried.
+        if menu.carried.is_none()
+            && let Some(stack) = self.hovered.and_then(|slot| menu.slots[slot].as_ref())
+        {
+            let lines = tooltip(stack, false);
+            frame.tooltip(
+                atlas,
+                font,
+                &lines,
+                (mouse.0 as i32, mouse.1 as i32),
+                (self.width, self.height),
+            );
+        }
     }
 
     fn build_slot(
