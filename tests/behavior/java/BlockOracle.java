@@ -62,6 +62,7 @@ public final class BlockOracle {
                 case "fluid_flow_properties" -> rows.add(fluidFlowProperties(element.getAsJsonObject()));
                 case "destroy_properties" -> rows.add(destroyProperties(element.getAsJsonObject()));
                 case "item_tools" -> rows.add(itemTools(element.getAsJsonObject()));
+                case "item_stacking" -> rows.add(itemStacking(element.getAsJsonObject()));
                 case "block_behaviours" -> rows.add(blockBehaviours(element.getAsJsonObject()));
                 default -> throw new IllegalArgumentException("Unknown block operation: " + operation);
             }
@@ -701,6 +702,51 @@ public final class BlockOracle {
                 toolJson.addProperty("can_destroy_blocks_in_creative", tool.canDestroyBlocksInCreative());
                 described.add("tool", toolJson);
             }
+            items.add(described);
+        }
+        entry.add("items", items);
+        return entry;
+    }
+
+    /**
+     * What container clicks read from every item's defaults: its stack
+     * size, durability, equipment slot and whether a player may wear it,
+     * the item left behind when it is crafted with, and which class decides
+     * a click with it carried or clicked on.
+     */
+    private static JsonObject itemStacking(JsonObject row) {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        entry.addProperty("outcome", "listed");
+        var registry = net.minecraft.core.registries.BuiltInRegistries.ITEM;
+        var playerType = net.minecraft.world.entity.EntityTypes.PLAYER.builtInRegistryHolder();
+        var items = new JsonArray();
+        for (var item : registry) {
+            var components = item.components();
+            var described = new JsonObject();
+            described.addProperty("name", registry.getKey(item).toString());
+            described.addProperty("max_stack_size",
+                components.getOrDefault(net.minecraft.core.component.DataComponents.MAX_STACK_SIZE, 1));
+            described.addProperty("max_damage",
+                components.getOrDefault(net.minecraft.core.component.DataComponents.MAX_DAMAGE, 0));
+            var equippable = components.get(net.minecraft.core.component.DataComponents.EQUIPPABLE);
+            if (equippable != null) {
+                described.addProperty("equip_slot", equippable.slot().getSerializedName());
+                described.addProperty("player_can_equip", equippable.canBeEquippedBy(playerType));
+            }
+            var remainder = item.getCraftingRemainder();
+            if (remainder != null) {
+                var stack = remainder.create();
+                described.addProperty("crafting_remainder", registry.getKey(stack.getItem()).toString());
+                described.addProperty("crafting_remainder_count", stack.getCount());
+            }
+            described.addProperty("stacked_on_other", declaringClass(item.getClass(), "overrideStackedOnOther",
+                net.minecraft.world.item.ItemStack.class, net.minecraft.world.inventory.Slot.class,
+                net.minecraft.world.inventory.ClickAction.class, net.minecraft.world.entity.player.Player.class));
+            described.addProperty("other_stacked_on_me", declaringClass(item.getClass(), "overrideOtherStackedOnMe",
+                net.minecraft.world.item.ItemStack.class, net.minecraft.world.item.ItemStack.class,
+                net.minecraft.world.inventory.Slot.class, net.minecraft.world.inventory.ClickAction.class,
+                net.minecraft.world.entity.player.Player.class, net.minecraft.world.entity.SlotAccess.class));
             items.add(described);
         }
         entry.add("items", items);

@@ -16527,6 +16527,32 @@ fn block_result(request: &Value) -> Result<Value, String> {
                     .collect();
                 out.push(json!({"label": label, "outcome": "listed", "items": items}));
             }
+            "item_stacking" => {
+                use voxel_client::item_stacking_table::ITEM_STACKING;
+                let items: Vec<Value> = voxel_client::item_table::ITEMS
+                    .iter()
+                    .zip(ITEM_STACKING.iter())
+                    .map(|(item, stacking)| {
+                        let mut described = json!({
+                            "name": item.name,
+                            "max_stack_size": stacking.max_stack_size,
+                            "max_damage": stacking.max_damage,
+                            "stacked_on_other": stacking.stacked_on_other,
+                            "other_stacked_on_me": stacking.other_stacked_on_me,
+                        });
+                        if let Some((slot, player)) = stacking.equip {
+                            described["equip_slot"] = json!(slot);
+                            described["player_can_equip"] = json!(player);
+                        }
+                        if let Some((remainder, count)) = stacking.crafting_remainder {
+                            described["crafting_remainder"] = json!(remainder);
+                            described["crafting_remainder_count"] = json!(count);
+                        }
+                        described
+                    })
+                    .collect();
+                out.push(json!({"label": label, "outcome": "listed", "items": items}));
+            }
             "light_properties" => {
                 use voxel_client::world::block_light_table as table;
                 let blocks: Vec<Value> = registry::BLOCKS
@@ -17226,6 +17252,9 @@ fn movement_result(request: &Value) -> Result<Value, String> {
     if string(request, "operation")? == "light_changes" {
         return light_changes_result(request);
     }
+    if string(request, "operation")? == "container_clicks" {
+        return container_clicks_result(request);
+    }
     if string(request, "operation")? != "local_player_ticks" {
         return Err("unknown movement operation".into());
     }
@@ -17585,4 +17614,79 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     output.flush()?;
     Ok(())
+}
+
+/// Clicks in the player's own inventory menu, as the client predicts them
+/// and sends them.
+fn container_clicks_result(request: &Value) -> Result<Value, String> {
+    use voxel_client::inventory_menu::{ClickType, InventoryMenu, Player};
+    use voxel_client::world::ClientItemStackState;
+    let stack = |described: &Value| -> Result<ClientItemStackState, String> {
+        let name = described["item"].as_str().ok_or("item must be a string")?;
+        let id = voxel_client::item::id_of(name).ok_or_else(|| format!("unknown item {name}"))?;
+        let count = described["count"]
+            .as_i64()
+            .ok_or("count must be a number")? as i32;
+        Ok(ClientItemStackState::new(count, id))
+    };
+    let describe = |stack: Option<&ClientItemStackState>| -> Value {
+        match stack {
+            None => Value::Null,
+            Some(stack) => json!({
+                "item": voxel_client::item_table::ITEMS[stack.item_registry_id() as usize].name,
+                "count": stack.item_count(),
+            }),
+        }
+    };
+    let rows = request["rows"].as_array().ok_or("rows must be an array")?;
+    let mut out = Vec::with_capacity(rows.len());
+    for row in rows {
+        let label = row["label"].as_str().ok_or("label must be a string")?;
+        let mut menu = InventoryMenu::default();
+        for slot in row["slots"].as_array().ok_or("slots must be an array")? {
+            let index = slot["slot"].as_u64().ok_or("slot must be a number")? as usize;
+            menu.slots[index] = Some(stack(slot)?);
+        }
+        if row.get("carried").is_some() {
+            menu.carried = Some(stack(&row["carried"])?);
+        }
+        menu.state_id = row["state_id"]
+            .as_i64()
+            .ok_or("state_id must be a number")? as i32;
+        let selected = row["selected"]
+            .as_u64()
+            .ok_or("selected must be a number")? as usize;
+        let player = Player {
+            selected,
+            infinite_materials: row["game_mode"].as_str() == Some("creative"),
+        };
+        let mut clicks = Vec::new();
+        for click in row["clicks"].as_array().ok_or("clicks must be an array")? {
+            let kind = ClickType::from_name(click["type"].as_str().ok_or("type must be a string")?)
+                .ok_or("unknown click type")?;
+            let (swings, body) = menu.handle_click(
+                click["slot"].as_i64().ok_or("slot must be a number")? as i32,
+                click["button"].as_i64().ok_or("button must be a number")? as i32,
+                kind,
+                player,
+            );
+            let mut sent = Vec::new();
+            for _ in 0..swings {
+                sent.push(json!({"type": "minecraft:swing", "bytes": "00"}));
+            }
+            sent.push(json!({"type": "minecraft:container_click", "bytes": hex(&body)}));
+            let slots: Vec<Value> = menu
+                .slots
+                .iter()
+                .map(|slot| describe(slot.as_ref()))
+                .collect();
+            let mut described = json!({"sent": sent, "slots": slots, "selected": selected});
+            if menu.carried.is_some() {
+                described["carried"] = describe(menu.carried.as_ref());
+            }
+            clicks.push(described);
+        }
+        out.push(json!({"label": label, "outcome": "clicked", "clicks": clicks}));
+    }
+    Ok(json!({"rows": out}))
 }

@@ -13166,6 +13166,12 @@ def block_cases():
         "rows": [{"label": "registry"}],
     }
     yield {
+        "case_id": "block/item-stacking",
+        "family": "block",
+        "operation": "item_stacking",
+        "rows": [{"label": "registry"}],
+    }
+    yield {
         "case_id": "block/behaviours",
         "family": "block",
         "operation": "block_behaviours",
@@ -13602,6 +13608,101 @@ def movement_cases():
         "family": "movement",
         "operation": "local_player_ticks",
         "rows": breaking_rows,
+    }
+    # Container clicks: the inventory screen's clicks into the reference's
+    # own inventory menu and game mode, which predicts each click and sends
+    # it. Stacks are named by item and count.
+    def st(slot, item, count):
+        return {"slot": slot, "item": f"minecraft:{item}", "count": count}
+
+    def cl(slot, button, kind):
+        return {"slot": slot, "button": button, "type": kind}
+
+    def clicks(label, slots, click_list, carried=None, game_mode="survival", selected=0, state_id=0):
+        row = {"label": label, "blocks": [], "chunk_radius": 0, "game_mode": game_mode,
+               "selected": selected, "state_id": state_id, "slots": slots, "clicks": click_list}
+        if carried is not None:
+            row["carried"] = {"item": f"minecraft:{carried[0]}", "count": carried[1]}
+        return row
+
+    P, Q, SW, CL, TH, QC, PA = "PICKUP", "QUICK_MOVE", "SWAP", "CLONE", "THROW", "QUICK_CRAFT", "PICKUP_ALL"
+    click_rows = [
+        clicks("pick up and put down", [st(36, "stone", 64)], [cl(36, 0, P), cl(10, 0, P)], state_id=5),
+        clicks("halves and single placements", [st(36, "stone", 63)],
+               [cl(36, 1, P), cl(11, 1, P), cl(12, 1, P), cl(11, 0, P), cl(36, 0, P)]),
+        clicks("swap unlike stacks", [st(36, "stone", 12)], [cl(36, 0, P), cl(37, 0, P)],
+               carried=("dirt", 10)),
+        clicks("merge over the limit", [st(20, "stone", 50)], [cl(20, 0, P), cl(21, 1, P)],
+               carried=("stone", 40)),
+        clicks("sixteen stack limit", [st(20, "ender_pearl", 10)], [cl(20, 0, P)],
+               carried=("ender_pearl", 10)),
+        clicks("unstackable swap", [st(20, "diamond_sword", 1)], [cl(20, 0, P), cl(21, 0, P)],
+               carried=("iron_sword", 1)),
+        clicks("outside the window", [], [cl(-999, 1, P), cl(-999, 0, P)], carried=("stone", 5)),
+        clicks("quick move rows", [st(36, "stone", 64), st(10, "dirt", 30), st(37, "dirt", 50)],
+               [cl(36, 0, Q), cl(10, 0, Q), cl(9, 0, Q)]),
+        clicks("quick move merges widely",
+               [st(i, "stone", 60) for i in range(9, 36)] + [st(36, "stone", 64), st(40, "stone", 1)],
+               [cl(36, 0, Q)]),
+        clicks("quick move armour and shield",
+               [st(20, "diamond_helmet", 1), st(21, "iron_boots", 1), st(22, "shield", 1),
+                st(23, "carved_pumpkin", 1), st(24, "white_carpet", 3)],
+               [cl(20, 0, Q), cl(21, 0, Q), cl(22, 0, Q), cl(23, 0, Q), cl(24, 0, Q), cl(5, 0, Q)]),
+        clicks("armour slots refuse and cap",
+               [st(36, "stone", 64), st(37, "diamond_chestplate", 1), st(38, "leather_leggings", 1)],
+               [cl(36, 0, P), cl(6, 0, P), cl(36, 0, P), cl(37, 0, P), cl(6, 0, P), cl(38, 0, P), cl(6, 0, P)]),
+        clicks("number keys", [st(15, "stone", 20), st(38, "dirt", 5), st(45, "torch", 3)],
+               [cl(15, 0, SW), cl(15, 2, SW), cl(16, 5, SW), cl(20, 40, SW), cl(36, 40, SW)]),
+        clicks("number key into armour",
+               [st(36, "diamond_helmet", 1), st(37, "stone", 64), st(5, "iron_helmet", 1)],
+               [cl(5, 0, SW), cl(5, 1, SW), cl(8, 1, SW)]),
+        clicks("throw one and all", [st(36, "stone", 5), st(20, "dirt", 3)],
+               [cl(36, 0, TH), cl(36, 1, TH), cl(20, 0, TH), cl(21, 1, TH)]),
+        clicks("double click gathers",
+               [st(10, "stone", 30), st(11, "stone", 64), st(12, "stone", 10), st(40, "stone", 2),
+                st(13, "dirt", 5)],
+               [cl(20, 0, PA)], carried=("stone", 5)),
+        clicks("double click from the end",
+               [st(10, "stone", 30), st(44, "stone", 40), st(12, "stone", 10)],
+               [cl(20, 1, PA)], carried=("stone", 3)),
+        clicks("left drag splits", [],
+               [cl(-999, 0, QC), cl(10, 1, QC), cl(11, 1, QC), cl(12, 1, QC), cl(11, 1, QC), cl(-999, 2, QC)],
+               carried=("stone", 64)),
+        clicks("right drag places one each", [st(11, "stone", 63)],
+               [cl(-999, 4, QC), cl(10, 5, QC), cl(11, 5, QC), cl(12, 5, QC), cl(-999, 6, QC)],
+               carried=("stone", 10)),
+        clicks("drag over one slot is a click", [],
+               [cl(-999, 0, QC), cl(10, 1, QC), cl(-999, 2, QC)], carried=("stone", 7)),
+        clicks("middle drag refused in survival", [],
+               [cl(-999, 8, QC), cl(10, 9, QC), cl(-999, 10, QC), cl(10, 0, P)], carried=("stone", 7)),
+        clicks("broken drag resets", [],
+               [cl(-999, 0, QC), cl(10, 1, QC), cl(11, 0, P)], carried=("stone", 7)),
+        clicks("take the crafting result",
+               [st(0, "oak_planks", 4), st(1, "oak_log", 3), st(2, "water_bucket", 1)],
+               [cl(0, 0, P), cl(0, 0, P), cl(20, 0, P)]),
+        clicks("quick move the crafting result",
+               [st(0, "oak_planks", 4), st(1, "oak_log", 2), st(36, "oak_planks", 62)],
+               [cl(0, 0, Q)]),
+        clicks("crafting grid remainders",
+               [st(0, "cake", 1), st(1, "milk_bucket", 1), st(2, "sugar", 2), st(3, "egg", 1),
+                st(4, "honey_bottle", 3)],
+               [cl(0, 0, P)]),
+        clicks("result refuses placing", [st(0, "stick", 4)], [cl(0, 0, P)], carried=("stick", 2)),
+        clicks("number key from the result", [st(0, "oak_planks", 4), st(1, "oak_log", 2)],
+               [cl(0, 3, SW)]),
+        clicks("clone needs creative", [st(10, "stone", 3)], [cl(10, 2, CL)]),
+        clicks("right drag over thirty slots grows the changed map", [],
+               [cl(-999, 4, QC)] + [cl(i, 5, QC) for i in range(9, 45)] + [cl(-999, 6, QC)],
+               carried=("stone", 64)),
+        clicks("left drag with the zero slot key", [st(0, "stick", 1)],
+               [cl(0, 0, TH), cl(-999, 0, QC), cl(1, 1, QC), cl(2, 1, QC), cl(-999, 2, QC)],
+               carried=("stone", 9)),
+    ]
+    yield {
+        "case_id": "movement/container-clicks",
+        "family": "movement",
+        "operation": "container_clicks",
+        "rows": click_rows,
     }
 
 

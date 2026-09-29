@@ -182,6 +182,7 @@ public final class MovementOracle {
             switch (operation) {
                 case "local_player_ticks" -> rows.add(localPlayerTicks(element.getAsJsonObject()));
                 case "light_changes" -> rows.add(lightChanges(element.getAsJsonObject()));
+                case "container_clicks" -> rows.add(containerClicks(element.getAsJsonObject()));
                 default -> throw new IllegalArgumentException(
                     "Unknown movement operation: " + operation);
             }
@@ -531,6 +532,96 @@ public final class MovementOracle {
                 watched.get("x").getAsInt(), watched.get("y").getAsInt(), watched.get("z").getAsInt()))));
         }
         out.add("watched_states", states);
+        return out;
+    }
+
+    /**
+     * Clicks in the player's own inventory menu, as the inventory screen
+     * sends them: `MultiPlayerGameMode.handleContainerInput` runs the menu's
+     * click as the client predicts it and sends the click packet. After
+     * every click the packets sent, as their codecs write them, every slot
+     * and the carried stack are reported. Stacks carry no components, so
+     * their hashes are never asked for.
+     */
+    private static JsonObject containerClicks(JsonObject row) throws Exception {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        var scene = buildScene(row);
+        var listener = scene.listener();
+        var minecraft = scene.minecraft();
+        var level = scene.level();
+        setField(listener, "decoratedHashOpsGenerator",
+            (net.minecraft.network.HashedPatchMap.HashGenerator) component -> 0);
+        var player = new net.minecraft.client.player.LocalPlayer(
+            minecraft, level, listener, null, null,
+            net.minecraft.world.entity.player.Input.EMPTY, false, null);
+        player.setId(1);
+        setField(minecraft, "player", player);
+        var info = new net.minecraft.client.multiplayer.PlayerInfo(listener.getLocalGameProfile(), false);
+        var gameType = net.minecraft.world.level.GameType.byName(row.get("game_mode").getAsString());
+        var setMode = net.minecraft.client.multiplayer.PlayerInfo.class.getDeclaredMethod(
+            "setGameMode", net.minecraft.world.level.GameType.class);
+        setMode.setAccessible(true);
+        setMode.invoke(info, gameType);
+        setField(player, "playerInfo", info);
+        var gameMode = new net.minecraft.client.multiplayer.MultiPlayerGameMode(minecraft, listener);
+        gameMode.setLocalMode(gameType);
+        gameMode.adjustPlayer(player);
+        setField(minecraft, "gameMode", gameMode);
+        setField(listener, "enabledFeatures", net.minecraft.world.flag.FeatureFlags.DEFAULT_FLAGS);
+        player.getInventory().setSelectedSlot(row.get("selected").getAsInt());
+        var menu = player.inventoryMenu;
+        for (var element : row.getAsJsonArray("slots")) {
+            var slot = element.getAsJsonObject();
+            menu.getSlot(slot.get("slot").getAsInt()).set(stack(slot));
+        }
+        if (row.has("carried")) {
+            menu.setCarried(stack(row.getAsJsonObject("carried")));
+        }
+        setField(menu, "stateId", row.get("state_id").getAsInt());
+        var wire = scene.wire();
+        var clicks = new JsonArray();
+        for (var element : row.getAsJsonArray("clicks")) {
+            var click = element.getAsJsonObject();
+            wire.sent.clear();
+            gameMode.handleContainerInput(0, click.get("slot").getAsInt(), click.get("button").getAsInt(),
+                net.minecraft.world.inventory.ContainerInput.valueOf(click.get("type").getAsString()), player);
+            var described = new JsonObject();
+            var packets = new JsonArray();
+            for (var packet : wire.sent) {
+                var packetJson = new JsonObject();
+                packetJson.addProperty("type", packet.type().id().toString());
+                packetJson.addProperty("bytes", encode(packet));
+                packets.add(packetJson);
+            }
+            described.add("sent", packets);
+            var slots = new JsonArray();
+            for (var slot : menu.slots) {
+                slots.add(describeStack(slot.getItem()));
+            }
+            described.add("slots", slots);
+            described.add("carried", describeStack(menu.getCarried()));
+            described.addProperty("selected", player.getInventory().getSelectedSlot());
+            clicks.add(described);
+        }
+        entry.addProperty("outcome", "clicked");
+        entry.add("clicks", clicks);
+        return entry;
+    }
+
+    private static net.minecraft.world.item.ItemStack stack(JsonObject described) {
+        var item = net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(
+            net.minecraft.resources.Identifier.parse(described.get("item").getAsString()));
+        return new net.minecraft.world.item.ItemStack(item, described.get("count").getAsInt());
+    }
+
+    private static com.google.gson.JsonElement describeStack(net.minecraft.world.item.ItemStack stack) {
+        if (stack.isEmpty()) {
+            return com.google.gson.JsonNull.INSTANCE;
+        }
+        var out = new JsonObject();
+        out.addProperty("item", net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()).toString());
+        out.addProperty("count", stack.getCount());
         return out;
     }
 

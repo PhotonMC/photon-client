@@ -66,6 +66,27 @@ impl ClientItemStackState {
         self.item_registry_id == other.item_registry_id && self.patch_bytes == other.patch_bytes
     }
 
+    /// `ItemStack.copyWithCount`: a new stack of the same item and patch.
+    pub fn copy_with_count(&self, count: i32) -> Self {
+        Self {
+            item_count: count,
+            identity: NEXT_IDENTITY.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
+            ..self.clone()
+        }
+    }
+
+    /// `ItemStack.split`: up to `amount` taken off into a new stack.
+    pub fn split(&mut self, amount: i32) -> Self {
+        let taken = amount.min(self.item_count);
+        self.item_count -= taken;
+        self.copy_with_count(taken)
+    }
+
+    /// `ItemStack.matches`: the same count, item and patch.
+    pub fn matches(&self, other: &Self) -> bool {
+        self.item_count == other.item_count && self.is_same_item_same_components(other)
+    }
+
     /// Whether two stacks are the same Java object.
     pub fn is_same_object(&self, other: &Self) -> bool {
         self.identity == other.identity
