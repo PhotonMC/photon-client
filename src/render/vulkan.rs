@@ -753,6 +753,23 @@ impl VulkanBackend {
                 .to_vec();
             extensions.retain(|name| !name.is_null());
 
+            // Layered drivers such as MoltenVK register as portability drivers,
+            // which the loader hides unless the instance opts in. Opting in only
+            // widens enumeration; conformant drivers are listed either way.
+            let portability = entry
+                .enumerate_instance_extension_properties(None)
+                .map_err(|result| VulkanError::Call("enumerate instance extensions", result))?
+                .iter()
+                .any(|available| {
+                    CStr::from_ptr(available.extension_name.as_ptr())
+                        == ash::khr::portability_enumeration::NAME
+                });
+            let mut instance_flags = vk::InstanceCreateFlags::empty();
+            if portability {
+                extensions.push(ash::khr::portability_enumeration::NAME.as_ptr());
+                instance_flags |= vk::InstanceCreateFlags::ENUMERATE_PORTABILITY_KHR;
+            }
+
             let application_name = CString::new("Minecraft Java Edition").expect("static name");
             let engine_name = CString::new("MinecraftJE").expect("static name");
             let application_info = vk::ApplicationInfo::default()
@@ -761,6 +778,7 @@ impl VulkanBackend {
                 .engine_version(0)
                 .api_version(API_VERSION);
             let instance_info = vk::InstanceCreateInfo::default()
+                .flags(instance_flags)
                 .application_info(&application_info)
                 .enabled_extension_names(&extensions);
             let instance = entry
@@ -779,10 +797,23 @@ impl VulkanBackend {
             let queue_info = [vk::DeviceQueueCreateInfo::default()
                 .queue_family_index(queue_family)
                 .queue_priorities(&queue_priorities)];
-            let extension_names: Vec<*const i8> = REQUIRED_DEVICE_EXTENSIONS
+            let mut extension_names: Vec<*const i8> = REQUIRED_DEVICE_EXTENSIONS
                 .iter()
                 .map(|name| name.as_ptr())
                 .collect();
+            // A portability driver's device must be created with this extension
+            // enabled whenever it advertises it.
+            let portability_subset = instance
+                .enumerate_device_extension_properties(physical_device)
+                .map_err(|result| VulkanError::Call("enumerate device extensions", result))?
+                .iter()
+                .any(|available| {
+                    CStr::from_ptr(available.extension_name.as_ptr())
+                        == ash::khr::portability_subset::NAME
+                });
+            if portability_subset {
+                extension_names.push(ash::khr::portability_subset::NAME.as_ptr());
+            }
 
             // The reference enables these by name; the ones that gate rendering
             // are requested here so device selection matches what it would pick.
