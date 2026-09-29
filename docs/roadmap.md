@@ -81,6 +81,28 @@ ve bölümü kapatabilen tek sınıftır. Tanımlar [davranış testi
 sözleşmesindedir](behavior-testing.md). P06–P08 ve P12–P13 altındaki mevcut
 kayıtların tamamı `server-conformance` sınıfındadır.
 
+## Oynanabilir istemci sırası (2026-09-29)
+
+`play` modu dünyayı çiziyor ve yürünebiliyor; eylem, eşya, envanter, entity,
+metin, ekran, ses ve parçacık eksik. Kilometre taşları bu sırayla ilerler;
+her biri yukarıdaki bölümlerin dilimlerinden oluşur ve kabul kuralı
+değişmez. Durum kilometre taşının dilim kayıtlarındadır.
+
+| Taş | Bölüm | Kapsam | Bağımlılık |
+| --- | --- | --- | --- |
+| M1 Blok eylemleri | P12 | a: canlı envanter ve tag state'i; b: kırma hızı; c: kırma döngüsü, prediction/ack, hedef çerçevesi, çatlak; d: yerleştirme ve eşya kullanımı | P08–P11 |
+| M2 Eşya çizimi | P18, P22.c | Item modelleri, GUI ikonu, eldeki eşya, sayı ve dayanıklılık | M1.a |
+| M3 Envanter | P13, P22.d | İstemci menu/slot modeli, envanter ekranı, tıklama tahmini, creative | M2, M5'in metin ölçüsü |
+| M4 Entity'ler | P17 | Entity hedefleme/saldırı, yerdeki eşya, mob modelleri | M2 |
+| M5 Metin ve chat | P21, P23.a | Font ölçüsü/wrap, chat paneli ve girişi, komut önerisi | P04 |
+| M6 Ekranlar | P22.b/e | Pause, ölüm, ayarlar, başlık, sunucu listesi | M5 |
+| M7 Ses | P20 | Ses tanımı, tetikler, konumsal miks | Ses çıkışı ve çözücü için kaynak incelemesi ve bağımlılık kararı |
+| M8 Parçacıklar | P19 | Kırılma, yağış sıçraması, efektler | M1, M4 |
+
+Paralel borç: canlı oturum kaydındaki "referans karelerle karşılaştırılmadı"
+kalemlerinin P15.a kare karşılaştırmasına bağlanması, frustum/mağara
+ayıklaması, bölüm içi yarı saydam sıralama ve P02.b kare zamanlayıcısı.
+
 ## Kritik yol
 
 Bloke ettiği bölüm sayısına göre kritik yol hâlâ **P08 dünya kopyasıdır**.
