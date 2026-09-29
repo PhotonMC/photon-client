@@ -284,6 +284,7 @@ impl BlockRenderer {
         item: i32,
         context: crate::render::model::DisplayContext,
         grass: &dyn Fn(f64, f64) -> u32,
+        patch: &[u8],
     ) -> Vec<ItemLayer> {
         let Some(Some(def)) = usize::try_from(item)
             .ok()
@@ -291,6 +292,7 @@ impl BlockRenderer {
         else {
             return Vec::new();
         };
+        let values = crate::item_values::Values::new(item, patch);
         let mut layers = Vec::new();
         crate::render::item_model::layers_for(&def.model, context, &mut layers);
         let mut out = Vec::new();
@@ -301,7 +303,7 @@ impl BlockRenderer {
             let tints: Vec<u32> = layer
                 .tints
                 .iter()
-                .map(|tint| crate::render::item_model::tint_colour(tint, grass))
+                .map(|tint| crate::render::item_model::tint_colour(tint, grass, &values))
                 .collect();
             if let Some(special) = &layer.special {
                 for part in crate::render::special_models::layers(special) {

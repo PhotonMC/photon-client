@@ -1086,6 +1086,37 @@ fn player_camera(
 /// the reference client would send. WASD moves, space jumps, left shift
 /// sneaks, left control sprints, the mouse looks, and escape frees the
 /// cursor (a second escape closes the window).
+/// Each stack's layers in one display context, built the first time a slot
+/// shows it: by item, then by component patch.
+#[derive(Default)]
+struct ItemLayerCache {
+    layers: std::collections::HashMap<i32, Vec<PatchLayers>>,
+}
+
+/// The layers of an item with one component patch.
+type PatchLayers = (Vec<u8>, Vec<render::world_mesh::ItemLayer>);
+
+impl ItemLayerCache {
+    fn get(
+        &mut self,
+        stack: &voxel_client::world::ClientItemStackState,
+        build: impl FnOnce() -> Vec<render::world_mesh::ItemLayer>,
+    ) -> &[render::world_mesh::ItemLayer] {
+        let variants = self.layers.entry(stack.item_registry_id()).or_default();
+        let index = match variants
+            .iter()
+            .position(|(patch, _)| patch == stack.patch_bytes())
+        {
+            Some(index) => index,
+            None => {
+                variants.push((stack.patch_bytes().to_vec(), build()));
+                variants.len() - 1
+            }
+        };
+        &variants[index].1
+    }
+}
+
 /// The open container screen: the survival inventory or the creative one.
 enum Screen {
     Survival(render::inventory_screen::InventoryScreen),
@@ -1546,15 +1577,13 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
     backend.load_gui_texture(&gui_atlas.image)?;
     let mut hud = render::gui::Hud::default();
     // Each item's GUI layers, built the first time a slot shows it.
-    let mut gui_item_layers =
-        std::collections::HashMap::<i32, Vec<render::world_mesh::ItemLayer>>::new();
+    let mut gui_item_layers = ItemLayerCache::default();
     let mut scroll_wheel = voxel_client::hotbar::ScrollWheel::default();
     let started_at = std::time::Instant::now();
     // `ItemInHandRenderer`: the stacks the hands show and how high they are.
     let mut item_in_hand = voxel_client::item_in_hand::ItemInHand::default();
     // Each item's first-person layers, by item and hand.
-    let mut held_item_layers =
-        std::collections::HashMap::<(i32, bool), Vec<render::world_mesh::ItemLayer>>::new();
+    let mut held_item_layers = [ItemLayerCache::default(), ItemLayerCache::default()];
     // Attack clicks waiting for the next tick, and `Minecraft.missTime`:
     // ticks a missed attack keeps the next one waiting.
     let mut attack_key = voxel_client::attack::AttackKey::default();
@@ -2087,12 +2116,8 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                 attack: player.attack_anim(partial as f32),
                 light,
             };
-            let main_item = item_in_hand
-                .item(voxel_client::game_mode::MAIN_HAND)
-                .map(|stack| stack.item_registry_id());
-            let off_item = item_in_hand
-                .item(voxel_client::game_mode::OFF_HAND)
-                .map(|stack| stack.item_registry_id());
+            let main_item = item_in_hand.item(voxel_client::game_mode::MAIN_HAND);
+            let off_item = item_in_hand.item(voxel_client::game_mode::OFF_HAND);
             // An empty main hand shows the arm; each stack is drawn in its
             // hand, the main hand on the right.
             let hand = if main_item.is_none() {
@@ -2101,16 +2126,16 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                 Vec::new()
             };
             let mut held = Vec::new();
-            for (item, right, attack, height) in [
+            for (stack, right, attack, height) in [
                 (main_item, true, view.attack, main_height),
                 (off_item, false, 0.0, off_height),
             ] {
-                let Some(item) = item else {
+                let Some(stack) = stack else {
                     continue;
                 };
-                let layers = held_item_layers.entry((item, right)).or_insert_with(|| {
+                let layers = held_item_layers[usize::from(!right)].get(stack, || {
                     block_renderer.item_layers(
-                        item,
+                        stack.item_registry_id(),
                         if right {
                             render::model::DisplayContext::FirstPersonRightHand
                         } else {
@@ -2119,6 +2144,7 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                         &|temperature, downfall| {
                             biome_tints.grass_at_climate(temperature, downfall)
                         },
+                        stack.patch_bytes(),
                     )
                 });
                 held.extend(render::player_renderer::held_item_vertices(
@@ -2623,17 +2649,21 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                 local
                     .and_then(|state| state.inventory_slot(slot))
                     .filter(|stack| stack.item_count() > 0 && stack.item_registry_id() != 0)
-                    .map(|stack| (stack.item_registry_id(), stack.item_count()))
+                    .cloned()
             };
             let mut draw_item =
-                |item: i32, x: f32, y: f32, out: &mut Vec<render::gui_items::GuiItemVertex>| {
-                    let layers = gui_item_layers.entry(item).or_insert_with(|| {
+                |stack: &voxel_client::world::ClientItemStackState,
+                 x: f32,
+                 y: f32,
+                 out: &mut Vec<render::gui_items::GuiItemVertex>| {
+                    let layers = gui_item_layers.get(stack, || {
                         block_renderer.item_layers(
-                            item,
+                            stack.item_registry_id(),
                             render::model::DisplayContext::Gui,
                             &|temperature, downfall| {
                                 biome_tints.grass_at_climate(temperature, downfall)
                             },
+                            stack.patch_bytes(),
                         )
                     });
                     render::gui_items::item_vertices(layers, x, y, out);

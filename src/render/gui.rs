@@ -262,13 +262,13 @@ impl GuiFrame {
         atlas: &GuiAtlas,
         font: &crate::render::font::Font,
         draw: &mut ItemDrawer<'_>,
-        item: i32,
+        stack: &crate::world::ClientItemStackState,
         count: i32,
         text: Option<(&str, u32)>,
         x: i32,
         y: i32,
     ) {
-        self.item(draw, item, x, y);
+        self.item(draw, stack, x, y);
         let count_text = count.to_string();
         let shown = match text {
             Some(text) => Some(text),
@@ -288,9 +288,15 @@ impl GuiFrame {
     }
 
     /// `GuiGraphics.item`: one item's triangles into the slot at `(x, y)`.
-    pub fn item(&mut self, draw: &mut ItemDrawer<'_>, item: i32, x: i32, y: i32) {
+    pub fn item(
+        &mut self,
+        draw: &mut ItemDrawer<'_>,
+        stack: &crate::world::ClientItemStackState,
+        x: i32,
+        y: i32,
+    ) {
         let first = self.items.len() as u32;
-        draw(item, x as f32, y as f32, &mut self.items);
+        draw(stack, x as f32, y as f32, &mut self.items);
         let added = self.items.len() as u32 - first;
         if added == 0 {
             return;
@@ -504,7 +510,7 @@ impl HeartType {
 }
 
 /// What the HUD shows, as the client knows it this frame.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct HudInput {
     /// The camera is in the player's eyes: the crosshair shows.
     pub first_person: bool,
@@ -531,14 +537,18 @@ pub struct HudInput {
     pub experience_level: i32,
     /// `getAttackStrengthScale(0)`.
     pub attack_strength: f32,
-    /// The hotbar's stacks, item id and count, and the off hand's.
-    pub hotbar: [Option<(i32, i32)>; 9],
-    pub offhand: Option<(i32, i32)>,
+    /// The hotbar's stacks and the off hand's.
+    pub hotbar: [Option<crate::world::ClientItemStackState>; 9],
+    pub offhand: Option<crate::world::ClientItemStackState>,
 }
 
 /// Draws an item's triangles into the 16 by 16 slot at a GUI position.
-pub type ItemDrawer<'a> =
-    dyn FnMut(i32, f32, f32, &mut Vec<crate::render::gui_items::GuiItemVertex>) + 'a;
+pub type ItemDrawer<'a> = dyn FnMut(
+        &crate::world::ClientItemStackState,
+        f32,
+        f32,
+        &mut Vec<crate::render::gui_items::GuiItemVertex>,
+    ) + 'a;
 
 /// The HUD's own state across frames: its tick count, the health it last
 /// showed, and when the hearts blink.
@@ -617,15 +627,15 @@ impl Hud {
             // item, then its count when it is not one.
             let y = height - 16 - 3;
             let slots = (0..9)
-                .map(|i| (input.hotbar[i], centre - 90 + i as i32 * 20 + 2))
-                .chain(std::iter::once((input.offhand, centre - 91 - 26)));
+                .map(|i| (&input.hotbar[i], centre - 90 + i as i32 * 20 + 2))
+                .chain(std::iter::once((&input.offhand, centre - 91 - 26)));
             for (stack, x) in slots {
-                let Some((item, count)) = stack else {
+                let Some(stack) = stack else {
                     continue;
                 };
-                frame.item(draw_item, item, x, y);
-                if count != 1 {
-                    let text = count.to_string();
+                frame.item(draw_item, stack, x, y);
+                if stack.item_count() != 1 {
+                    let text = stack.item_count().to_string();
                     frame.text_with_shadow(
                         atlas,
                         font,

@@ -408,7 +408,7 @@ impl ContainerMouse {
                 limit = Some(max.to_string());
             }
             Some(SlotPreview::Fill {
-                item: carried.item_registry_id(),
+                stack: carried.clone(),
                 count,
                 limit,
             })
@@ -425,7 +425,7 @@ pub(crate) enum SlotPreview {
     /// The only slot the drag is over: nothing is drawn in it.
     Hidden,
     Fill {
-        item: i32,
+        stack: Stack,
         count: i32,
         limit: Option<String>,
     },
@@ -673,16 +673,7 @@ impl ContainerMouse {
         let (x, y) = (mouse.0 as i32 - 8, mouse.1 as i32 - 8);
         if count > 0 || text.is_some() {
             let shown = text.map(|text| (text, 0xFFFF_FF55));
-            frame.item_with_count(
-                atlas,
-                font,
-                draw,
-                carried.item_registry_id(),
-                count,
-                shown,
-                x,
-                y,
-            );
+            frame.item_with_count(atlas, font, draw, carried, count, shown, x, y);
         }
     }
 
@@ -702,19 +693,23 @@ impl ContainerMouse {
     ) {
         let mut shown = menu
             .stack(index)
-            .map(|stack| (stack.item_registry_id(), stack.item_count()));
+            .map(|stack| (stack.clone(), stack.item_count()));
         let mut text = None;
         let mut preview = false;
         let yellow;
         match self.slot_preview(index, menu) {
             Some(SlotPreview::Hidden) => return,
-            Some(SlotPreview::Fill { item, count, limit }) => {
+            Some(SlotPreview::Fill {
+                stack,
+                count,
+                limit,
+            }) => {
                 preview = true;
                 if let Some(limit) = limit {
                     yellow = limit;
                     text = Some((yellow.as_str(), 0xFFFF_FF55));
                 }
-                shown = Some((item, count)).filter(|&(_, count)| count > 0);
+                shown = Some((stack, count)).filter(|&(_, count)| count > 0);
             }
             None => {}
         }
@@ -727,8 +722,8 @@ impl ContainerMouse {
         if preview {
             frame.fill(atlas, (x, y, x + 16, y + 16), 0x80FF_FFFF);
         }
-        if let Some((item, count)) = shown {
-            frame.item_with_count(atlas, font, draw, item, count, text, x, y);
+        if let Some((stack, count)) = shown {
+            frame.item_with_count(atlas, font, draw, &stack, count, text, x, y);
         }
     }
 }

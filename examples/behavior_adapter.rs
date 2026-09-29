@@ -16586,6 +16586,40 @@ fn block_result(request: &Value) -> Result<Value, String> {
                     .collect();
                 out.push(json!({"label": label, "outcome": "listed", "items": items}));
             }
+            "potions" => {
+                use voxel_client::potion_table::{MOB_EFFECTS, POTIONS};
+                let effects: Vec<Value> = MOB_EFFECTS
+                    .iter()
+                    .map(|effect| {
+                        json!({
+                            "name": effect.name,
+                            "color": effect.color,
+                            "description_id": effect.description_id,
+                        })
+                    })
+                    .collect();
+                let potions: Vec<Value> = POTIONS
+                    .iter()
+                    .map(|potion| {
+                        json!({
+                            "name": potion.name,
+                            "potion_name": potion.potion_name,
+                            "effects": potion.effects.iter().map(|effect| json!({
+                                "effect": effect.effect,
+                                "amplifier": effect.amplifier,
+                                "duration": effect.duration,
+                                "visible": effect.visible,
+                            })).collect::<Vec<_>>(),
+                        })
+                    })
+                    .collect();
+                out.push(json!({
+                    "label": label,
+                    "outcome": "listed",
+                    "effects": effects,
+                    "potions": potions,
+                }));
+            }
             "creative_tabs" => {
                 use voxel_client::creative_tabs_table::{
                     CREATIVE_STACKS, CREATIVE_TABS, DEFAULT_TAB, TabKind,

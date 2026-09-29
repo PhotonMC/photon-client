@@ -64,6 +64,7 @@ public final class BlockOracle {
                 case "item_tools" -> rows.add(itemTools(element.getAsJsonObject()));
                 case "item_stacking" -> rows.add(itemStacking(element.getAsJsonObject()));
                 case "item_components" -> rows.add(itemComponents(element.getAsJsonObject()));
+                case "potions" -> rows.add(potions(element.getAsJsonObject()));
                 case "creative_tabs" -> rows.add(creativeTabs(element.getAsJsonObject()));
                 case "block_behaviours" -> rows.add(blockBehaviours(element.getAsJsonObject()));
                 default -> throw new IllegalArgumentException("Unknown block operation: " + operation);
@@ -806,6 +807,47 @@ public final class BlockOracle {
             hex.append(String.format("%02x", value));
         }
         return hex.toString();
+    }
+
+    /**
+     * The potions and the mob effects they are made of: what a potion's
+     * colour and name are read from, by registry id.
+     */
+    private static JsonObject potions(JsonObject row) {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        entry.addProperty("outcome", "listed");
+        Oracle.vanillaRegistries();
+        var effectRegistry = net.minecraft.core.registries.BuiltInRegistries.MOB_EFFECT;
+        var effects = new JsonArray();
+        for (var effect : effectRegistry) {
+            var described = new JsonObject();
+            described.addProperty("name", effectRegistry.getKey(effect).toString());
+            described.addProperty("color", effect.getColor());
+            described.addProperty("description_id", effect.getDescriptionId());
+            effects.add(described);
+        }
+        entry.add("effects", effects);
+        var potionRegistry = net.minecraft.core.registries.BuiltInRegistries.POTION;
+        var potions = new JsonArray();
+        for (var potion : potionRegistry) {
+            var described = new JsonObject();
+            described.addProperty("name", potionRegistry.getKey(potion).toString());
+            described.addProperty("potion_name", potion.name());
+            var list = new JsonArray();
+            for (var instance : potion.getEffects()) {
+                var item = new JsonObject();
+                item.addProperty("effect", effectRegistry.getId(instance.getEffect().value()));
+                item.addProperty("amplifier", instance.getAmplifier());
+                item.addProperty("duration", instance.getDuration());
+                item.addProperty("visible", instance.isVisible());
+                list.add(item);
+            }
+            described.add("effects", list);
+            potions.add(described);
+        }
+        entry.add("potions", potions);
+        return entry;
     }
 
     /**

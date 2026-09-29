@@ -60,9 +60,13 @@ birim testiyle sabitlendi.
 - Eşya dokuları referansta ayrı `items` atlasındadır; burada blok atlasına
   eklendi. GUI'de en yakın texel ve sıfırıncı seviye okunduğu için görüntü
   farkı beklenmez, ama atlas yerleşimi referansla aynı değil.
-- Yığın bileşenleri okunmuyor: bileşene bağlı özellikler (iksir rengi,
-  boyalı zırh, pusula, saat, dayanıklılık çubuğu, bekleme süresi örtüsü)
-  varsayılan yığın gibi çizilir. `special` modeller `ModelPart`
+- Yığın bileşenlerinden yalnız renk kaynakları okunur (`src/item_values.rs`):
+  `dye` (`dyed_color`), `potion` (`potion_contents`: özel renk ya da
+  iksirin ve özel efektlerin renklerinin genlik ağırlıklı ortalaması; iksir
+  ve efekt tablosu oracle'dan), `firework` (`firework_explosion` renkleri) ve
+  `map_color`. Bileşene bağlı diğer özellikler (pusula, saat, dayanıklılık
+  çubuğu, bekleme süresi örtüsü, zırh süsü) varsayılan yığın gibi çizilir.
+  Eşyanın varsayılan bileşenleri referansın yamasından okunur. varsayılan yığın gibi çizilir. `special` modeller `ModelPart`
 geometrisiyle çizilir (`src/render/special_models.rs`, ölçüler ve dokular
 referansın `LayerDefinition`larından): sandıklar (kapak kapalı, çift
 sandık yok), shulker kutuları, bayraklar (yalnız taban deseni ve boya

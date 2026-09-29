@@ -13178,6 +13178,12 @@ def block_cases():
         "rows": [{"label": "registry"}],
     }
     yield {
+        "case_id": "block/potions",
+        "family": "block",
+        "operation": "potions",
+        "rows": [{"label": "registry"}],
+    }
+    yield {
         "case_id": "block/creative-tabs",
         "family": "block",
         "operation": "creative_tabs",

@@ -33,6 +33,16 @@ tablodaki her yamayı okur ve iki biçimi yeniden yazar; referansın baytlarıyl
 ve bileşen numaralarıyla eşleşir (`block` ailesi `parity_passed`). Yaratıcı
 sekme tablosunun 1896 yığını da birim testinde tam okunur.
 
+## Değerler
+
+`src/item_values.rs` bir yığının bileşen değerlerini yamadan, yama yoksa
+eşyanın varsayılanından (yukarıdaki tablo) okur; yalnız çizimin okuduğu
+türler çözülür: `dyed_color`, `map_color`, `firework_explosion`,
+`potion_contents`. `PotionContents.getColorOr` portu için
+`block/potions` (BlockOracle) mob efektlerini (renk, açıklama anahtarı) ve
+iksirleri (ad, efektler) kayıt numarasıyla yazar; `src/potion_table.rs`
+(`tools/generate/potions.py`) her koşuda karşılaştırılır.
+
 ## Açıklar
 
 - Bileşen predicate'lerinin kısmi (`partial`) kısmı okunmaz
@@ -40,6 +50,5 @@ sekme tablosunun 1896 yığını da birim testinde tam okunur.
   okunamaz sayılır ve o yığın paketi hata verir.
 - Okunamayan bir yama istemciden giderken atılır (yığın bileşensiz gider),
   yanlış yazılmaz.
-- Bileşen değerleri çözülmüyor, yalnız atlanıyor: ipucu (tooltip) ve
-  bileşene bağlı çizim (iksir rengi, boyalı zırh) için değerlerin okunması
-  ayrı iştir.
+- Metin bileşenleri (özel ad, açıklama) ve büyüler çözülmüyor, yalnız
+  atlanıyor: ipucu (tooltip) için değerlerin okunması ayrı iştir.

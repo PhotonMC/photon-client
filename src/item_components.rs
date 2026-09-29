@@ -64,6 +64,100 @@ pub fn read_patch(input: &mut &[u8]) -> R<Patch> {
     Ok(patch)
 }
 
+/// The registry ids of the components whose values are read.
+pub mod ids {
+    pub const CUSTOM_NAME: i32 = 6;
+    pub const ITEM_NAME: i32 = 9;
+    pub const LORE: i32 = 11;
+    pub const RARITY: i32 = 12;
+    pub const ENCHANTMENTS: i32 = 13;
+    pub const DYED_COLOR: i32 = 44;
+    pub const MAP_COLOR: i32 = 45;
+    pub const POTION_CONTENTS: i32 = 51;
+    pub const FIREWORK_EXPLOSION: i32 = 68;
+    pub const STORED_ENCHANTMENTS: i32 = 42;
+}
+
+/// `PotionContents`, as far as the colour and the name read it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PotionContents {
+    /// The potion's registry id.
+    pub potion: Option<i32>,
+    pub custom_color: Option<i32>,
+    /// The custom effects: the mob effect's registry id, its amplifier and
+    /// whether it shows.
+    pub effects: Vec<(i32, i32, bool)>,
+    pub custom_name: Option<String>,
+}
+
+/// A component value that is one `int`: `dyed_color`, `map_color`.
+pub fn int_value(value: &[u8]) -> Option<i32> {
+    Some(i32::from_be_bytes(value.get(..4)?.try_into().ok()?))
+}
+
+/// A component value that is one `VarInt`: a rarity.
+pub fn varint_value(value: &[u8]) -> Option<i32> {
+    let mut cursor = Cursor { data: value };
+    cursor.varint().ok()
+}
+
+/// `potion_contents`.
+pub fn potion_contents(value: &[u8]) -> Option<PotionContents> {
+    let mut cursor = Cursor { data: value };
+    let potion = if cursor.boolean().ok()? {
+        Some(cursor.varint().ok()?)
+    } else {
+        None
+    };
+    let custom_color = if cursor.boolean().ok()? {
+        let bytes = cursor.data.get(..4)?;
+        let color = i32::from_be_bytes(bytes.try_into().ok()?);
+        cursor.skip(4).ok()?;
+        Some(color)
+    } else {
+        None
+    };
+    let mut effects = Vec::new();
+    for _ in 0..cursor.count().ok()? {
+        let effect = cursor.varint().ok()?;
+        let amplifier = cursor.varint().ok()?;
+        cursor.varint().ok()?;
+        cursor.boolean().ok()?;
+        let visible = cursor.boolean().ok()?;
+        cursor.boolean().ok()?;
+        if cursor.boolean().ok()? {
+            cursor.mob_effect_details().ok()?;
+        }
+        effects.push((effect, amplifier, visible));
+    }
+    let custom_name = if cursor.boolean().ok()? {
+        let length = cursor.count().ok()?;
+        let bytes = cursor.data.get(..length)?;
+        Some(String::from_utf8_lossy(bytes).into_owned())
+    } else {
+        None
+    };
+    Some(PotionContents {
+        potion,
+        custom_color,
+        effects,
+        custom_name,
+    })
+}
+
+/// `firework_explosion`'s colours.
+pub fn firework_colors(value: &[u8]) -> Option<Vec<i32>> {
+    let mut cursor = Cursor { data: value };
+    cursor.varint().ok()?;
+    let mut colors = Vec::new();
+    for _ in 0..cursor.count().ok()? {
+        let bytes = cursor.data.get(..4)?;
+        colors.push(i32::from_be_bytes(bytes.try_into().ok()?));
+        cursor.skip(4).ok()?;
+    }
+    Some(colors)
+}
+
 /// A patch as the trusted codec wrote it, sent back as the delimited codec
 /// writes it. `None` when the patch is not one this reads.
 pub fn delimit(trusted: &[u8]) -> Option<Vec<u8>> {

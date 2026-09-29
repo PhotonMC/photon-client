@@ -91,9 +91,26 @@ pub enum TintSource {
     Constant(u32),
     /// The grass colour map at a climate.
     Grass { temperature: f32, downfall: f32 },
-    /// A source that reads a component the stack may carry; the default
-    /// stack takes its default colour (RGB; made opaque).
+    /// A source that reads a component the stack may carry: the colour the
+    /// component gives, or the source's default when the stack has none
+    /// (RGB; made opaque).
+    Component { source: ComponentTint, default: u32 },
+    /// A source this client does not read; the stack takes its default
+    /// colour (RGB; made opaque).
     Default(u32),
+}
+
+/// The tint sources that read a component.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ComponentTint {
+    /// `dye`: `dyed_color`.
+    Dye,
+    /// `potion`: the colour of `potion_contents`.
+    Potion,
+    /// `firework`: the average of `firework_explosion`'s colours.
+    Firework,
+    /// `map_color`.
+    MapColor,
 }
 
 /// A client item's model tree (`ItemModel.Unbaked`), as `items/*.json`
@@ -349,6 +366,28 @@ fn parse_tint(object: &JsonObject) -> TintSource {
             temperature: object.f32("temperature").unwrap_or(0.5),
             downfall: object.f32("downfall").unwrap_or(1.0),
         },
+        "minecraft:dye" => TintSource::Component {
+            source: ComponentTint::Dye,
+            default: rgb("default"),
+        },
+        "minecraft:potion" => TintSource::Component {
+            source: ComponentTint::Potion,
+            default: object
+                .get_str("default")
+                .and_then(JsonValue::as_i64)
+                .unwrap_or(-13_083_194) as u32,
+        },
+        "minecraft:firework" => TintSource::Component {
+            source: ComponentTint::Firework,
+            default: object
+                .get_str("default")
+                .and_then(JsonValue::as_i64)
+                .unwrap_or(-7_697_782) as u32,
+        },
+        "minecraft:map_color" => TintSource::Component {
+            source: ComponentTint::MapColor,
+            default: rgb("default"),
+        },
         _ => TintSource::Default(rgb("default")),
     }
 }
@@ -571,9 +610,40 @@ fn layers_under(
 }
 
 /// A tint's colour, ARGB. `grass` reads the grass colour map.
-pub fn tint_colour(tint: &TintSource, grass: &dyn Fn(f64, f64) -> u32) -> u32 {
+pub fn tint_colour(
+    tint: &TintSource,
+    grass: &dyn Fn(f64, f64) -> u32,
+    values: &crate::item_values::Values,
+) -> u32 {
     match *tint {
         TintSource::Constant(rgb) | TintSource::Default(rgb) => 0xFF00_0000 | rgb,
+        TintSource::Component { source, default } => {
+            let default = default as i32;
+            0xFF00_0000
+                | (match source {
+                    ComponentTint::Dye => values.dyed_color().unwrap_or(default),
+                    ComponentTint::Potion => values.potion_color_or(default),
+                    ComponentTint::MapColor => values.map_color().unwrap_or(default),
+                    ComponentTint::Firework => {
+                        let colors = values.firework_colors();
+                        match colors.len() {
+                            0 => default,
+                            1 => colors[0],
+                            count => {
+                                let total = |shift: i32| {
+                                    colors
+                                        .iter()
+                                        .map(|color| color >> shift & 0xFF)
+                                        .sum::<i32>()
+                                        / count as i32
+                                };
+                                total(16) << 16 | total(8) << 8 | total(0)
+                            }
+                        }
+                    }
+                } as u32
+                    & 0xFF_FFFF)
+        }
         TintSource::Grass {
             temperature,
             downfall,

@@ -615,7 +615,7 @@ impl CreativeScreen {
         let icon = table_stack(entry.icon);
         frame.item(
             draw,
-            icon.item_registry_id(),
+            &icon,
             x + 13 - 8,
             y + 16 - 8 + if entry.top { 1 } else { -1 },
         );
