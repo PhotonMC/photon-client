@@ -63,6 +63,7 @@ public final class BlockOracle {
                 case "destroy_properties" -> rows.add(destroyProperties(element.getAsJsonObject()));
                 case "item_tools" -> rows.add(itemTools(element.getAsJsonObject()));
                 case "item_stacking" -> rows.add(itemStacking(element.getAsJsonObject()));
+                case "creative_tabs" -> rows.add(creativeTabs(element.getAsJsonObject()));
                 case "block_behaviours" -> rows.add(blockBehaviours(element.getAsJsonObject()));
                 default -> throw new IllegalArgumentException("Unknown block operation: " + operation);
             }
@@ -751,6 +752,72 @@ public final class BlockOracle {
         }
         entry.add("items", items);
         return entry;
+    }
+
+    /**
+     * The creative inventory's tabs and what each shows, as the client builds
+     * them for the default feature flags and a player without operator
+     * permissions, with the client's registries. A stack is its item and
+     * component patch as the network encodes it.
+     */
+    private static JsonObject creativeTabs(JsonObject row) {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        entry.addProperty("outcome", "listed");
+        var registries = Oracle.vanillaRegistries();
+        net.minecraft.world.item.CreativeModeTabs.tryRebuildTabContents(
+            net.minecraft.world.flag.FeatureFlags.DEFAULT_FLAGS, false, registries);
+        var registry = net.minecraft.core.registries.BuiltInRegistries.CREATIVE_MODE_TAB;
+        entry.addProperty("default_tab", registry.getKey(net.minecraft.world.item.CreativeModeTabs.getDefaultTab()).toString());
+        var tabs = new JsonArray();
+        for (var tab : registry) {
+            var described = new JsonObject();
+            described.addProperty("name", registry.getKey(tab).toString());
+            described.addProperty("type", tab.getType().name());
+            described.addProperty("row", tab.row().name());
+            described.addProperty("column", tab.column());
+            described.addProperty("aligned_right", tab.isAlignedRight());
+            described.addProperty("show_title", tab.showTitle());
+            described.addProperty("can_scroll", tab.canScroll());
+            described.addProperty("should_display", tab.shouldDisplay());
+            described.addProperty("background", tab.getBackgroundTexture().toString());
+            var contents = tab.getDisplayName().getContents();
+            described.addProperty("title", contents instanceof net.minecraft.network.chat.contents.TranslatableContents translatable
+                ? translatable.getKey() : "");
+            described.add("icon", creativeStack(tab.getIconItem(), registries));
+            var items = new JsonArray();
+            for (var stack : tab.getDisplayItems()) {
+                items.add(creativeStack(stack, registries));
+            }
+            described.add("items", items);
+            tabs.add(described);
+        }
+        entry.add("tabs", tabs);
+        return entry;
+    }
+
+    private static JsonObject creativeStack(net.minecraft.world.item.ItemStack stack,
+            net.minecraft.core.RegistryAccess registries) {
+        var described = new JsonObject();
+        var buffer = new net.minecraft.network.RegistryFriendlyByteBuf(io.netty.buffer.Unpooled.buffer(), registries);
+        net.minecraft.world.item.ItemStack.OPTIONAL_STREAM_CODEC.encode(buffer, stack);
+        var bytes = new byte[buffer.readableBytes()];
+        buffer.readBytes(bytes);
+        var hex = new StringBuilder();
+        for (byte value : bytes) {
+            hex.append(String.format("%02x", value));
+        }
+        described.addProperty("item", net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()).toString());
+        described.addProperty("wire", hex.toString());
+        var positive = new JsonArray();
+        var negative = new JsonArray();
+        var types = net.minecraft.core.registries.BuiltInRegistries.DATA_COMPONENT_TYPE;
+        for (var component : stack.getComponentsPatch().entrySet()) {
+            (component.getValue().isPresent() ? positive : negative).add(types.getId(component.getKey()));
+        }
+        described.add("positive", positive);
+        described.add("negative", negative);
+        return described;
     }
 
     /** The simple name of the class whose own method a class ends up running. */

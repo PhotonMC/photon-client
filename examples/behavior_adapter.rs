@@ -16553,6 +16553,62 @@ fn block_result(request: &Value) -> Result<Value, String> {
                     .collect();
                 out.push(json!({"label": label, "outcome": "listed", "items": items}));
             }
+            "creative_tabs" => {
+                use voxel_client::creative_tabs_table::{
+                    CREATIVE_STACKS, CREATIVE_TABS, DEFAULT_TAB, TabKind,
+                };
+                let stack = |index: u16| {
+                    let stack = &CREATIVE_STACKS[usize::from(index)];
+                    let mut wire = vec![1_u8];
+                    let mut id = stack.item as u32;
+                    loop {
+                        let byte = (id & 0x7F) as u8;
+                        id >>= 7;
+                        if id == 0 {
+                            wire.push(byte);
+                            break;
+                        }
+                        wire.push(byte | 0x80);
+                    }
+                    wire.extend_from_slice(stack.patch);
+                    json!({
+                        "item": voxel_client::item_table::ITEMS[stack.item as usize].name,
+                        "wire": wire.iter().map(|byte| format!("{byte:02x}")).collect::<String>(),
+                        "positive": stack.positive,
+                        "negative": stack.negative,
+                    })
+                };
+                let tabs: Vec<Value> = CREATIVE_TABS
+                    .iter()
+                    .map(|tab| {
+                        json!({
+                            "name": tab.name,
+                            "type": match tab.kind {
+                                TabKind::Category => "CATEGORY",
+                                TabKind::Inventory => "INVENTORY",
+                                TabKind::Hotbar => "HOTBAR",
+                                TabKind::Search => "SEARCH",
+                            },
+                            "row": if tab.top { "TOP" } else { "BOTTOM" },
+                            "column": tab.column,
+                            "aligned_right": tab.aligned_right,
+                            "show_title": tab.show_title,
+                            "can_scroll": tab.can_scroll,
+                            "should_display": tab.should_display,
+                            "background": tab.background,
+                            "title": tab.title,
+                            "icon": stack(tab.icon),
+                            "items": tab.items.iter().map(|index| stack(*index)).collect::<Vec<_>>(),
+                        })
+                    })
+                    .collect();
+                out.push(json!({
+                    "label": label,
+                    "outcome": "listed",
+                    "default_tab": DEFAULT_TAB,
+                    "tabs": tabs,
+                }));
+            }
             "light_properties" => {
                 use voxel_client::world::block_light_table as table;
                 let blocks: Vec<Value> = registry::BLOCKS
