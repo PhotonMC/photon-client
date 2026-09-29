@@ -8,20 +8,14 @@ another, and which neighbouring blocks hide their shared face. The capture is
 local; the generated table is committed, and the parity run compares it with
 the reference on every pass.
 """
-import json
-import sys
+
+from common import load_case, run, write
 
 DIRECTIONS = ["down", "up", "north", "south", "west", "east"]
 
 
-def main(path):
-    data = None
-    for line in open(path, encoding="utf-8"):
-        case = json.loads(line)
-        if case["case_id"] == "block/face-occlusion":
-            data = case["result"]["rows"][0]
-    if data is None:
-        raise SystemExit("no block/face-occlusion case in the capture")
+def generate(capture):
+    data = load_case(capture, "block/face-occlusion")
     index = {block["name"]: i for i, block in enumerate(data["blocks"])}
     out = [
         "//! Every block state's face occlusion shapes, from the reference.",
@@ -71,10 +65,9 @@ def main(path):
             f"always: {str(pair['always']).lower()}, directions: {mask} }},"
         )
     out += ["];", ""]
-    with open("crates/voxel-data/src/block/face_occlusion.rs", "w", encoding="utf-8") as handle:
-        handle.write("\n".join(out))
+    write("block/face_occlusion.rs", out)
     print(f"tuples={len(data['tuples'])} shapes={data['shape_count']} skips={len(data['skip_pairs'])}")
 
 
 if __name__ == "__main__":
-    main(sys.argv[1])
+    run(generate)

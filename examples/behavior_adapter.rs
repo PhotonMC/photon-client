@@ -16508,7 +16508,7 @@ fn block_result(request: &Value) -> Result<Value, String> {
                                         RuleBlocks::Blocks(names) => json!(names),
                                     };
                                     if let Some(speed) = rule.speed {
-                                        written["speed"] = json!(format!("{speed:08x}"));
+                                        written["speed"] = json!(format!("{:08x}", speed.to_bits()));
                                     }
                                     if let Some(correct) = rule.correct_for_drops {
                                         written["correct_for_drops"] = json!(correct);
@@ -16518,7 +16518,7 @@ fn block_result(request: &Value) -> Result<Value, String> {
                                 .collect();
                             described["tool"] = json!({
                                 "rules": rules,
-                                "default_mining_speed": format!("{:08x}", tool.default_mining_speed),
+                                "default_mining_speed": format!("{:08x}", tool.default_mining_speed.to_bits()),
                                 "damage_per_block": tool.damage_per_block,
                                 "can_destroy_blocks_in_creative": tool.can_destroy_blocks_in_creative,
                             });
@@ -16541,13 +16541,13 @@ fn block_result(request: &Value) -> Result<Value, String> {
                             "stacked_on_other": stacking.stacked_on_other,
                             "other_stacked_on_me": stacking.other_stacked_on_me,
                         });
-                        if let Some((slot, player)) = stacking.equip {
-                            described["equip_slot"] = json!(slot);
-                            described["player_can_equip"] = json!(player);
+                        if let Some(equip) = &stacking.equip {
+                            described["equip_slot"] = json!(equip.slot);
+                            described["player_can_equip"] = json!(equip.player);
                         }
-                        if let Some((remainder, count)) = stacking.crafting_remainder {
-                            described["crafting_remainder"] = json!(remainder);
-                            described["crafting_remainder_count"] = json!(count);
+                        if let Some(remainder) = &stacking.crafting_remainder {
+                            described["crafting_remainder"] = json!(remainder.item);
+                            described["crafting_remainder_count"] = json!(remainder.count);
                         }
                         described
                     })
@@ -16561,19 +16561,13 @@ fn block_result(request: &Value) -> Result<Value, String> {
                         .map(|byte| format!("{byte:02x}"))
                         .collect::<String>()
                 };
-                let unhex = |text: &str| -> Vec<u8> {
-                    (0..text.len() / 2)
-                        .map(|at| u8::from_str_radix(&text[at * 2..at * 2 + 2], 16).unwrap_or(0))
-                        .collect()
-                };
                 // The reference's wire, kept in a table, is read by this port,
                 // and both forms are written back from what it read.
                 let items: Vec<Value> = voxel_data::item::registry::ITEMS
                     .iter()
-                    .zip(voxel_data::item::components::ITEM_COMPONENT_WIRES.iter())
-                    .map(|(item, wire)| {
-                        let bytes = unhex(wire);
-                        let mut input = bytes.as_slice();
+                    .zip(voxel_data::item::components::DEFAULT_PATCHES.iter())
+                    .map(|(item, &patch)| {
+                        let mut input = patch;
                         match voxel_game::item_components::read_patch(&mut input) {
                             Ok(patch) if input.is_empty() => json!({
                                 "name": item.name,

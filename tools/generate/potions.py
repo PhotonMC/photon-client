@@ -7,18 +7,12 @@ registry id, from the reference. A potion's colour and name are read from
 them. The capture is local; the generated table is committed, and the parity
 run compares it with the reference on every pass.
 """
-import json
-import sys
+
+from common import load_case, run, write
 
 
-def main(path):
-    data = None
-    for line in open(path, encoding="utf-8"):
-        case = json.loads(line)
-        if case["case_id"] == "block/potions":
-            data = case["result"]["rows"][0]
-    if data is None:
-        raise SystemExit("no block/potions case in the capture")
+def generate(capture):
+    data = load_case(capture, "block/potions")
     out = [
         "//! The mob effects and the potions by registry id, from the reference.",
         "//!",
@@ -88,8 +82,8 @@ def main(path):
         )
     out.append("];")
     out.append("")
-    open("crates/voxel-data/src/item/potions.rs", "w", encoding="utf-8").write("\n".join(out))
+    write("item/potions.rs", out)
 
 
 if __name__ == "__main__":
-    main(sys.argv[1])
+    run(generate)

@@ -105,8 +105,8 @@ fn is_stackable(stack: &Stack) -> bool {
 /// `LivingEntity.getEquipmentSlotForItem` for a player, by name.
 fn equipment_slot(stack: &Stack) -> &'static str {
     stacking(stack)
-        .and_then(|item| item.equip)
-        .map_or("mainhand", |(slot, _)| slot)
+        .and_then(|item| item.equip.as_ref())
+        .map_or("mainhand", |equip| equip.slot)
 }
 
 /// The armour slot's equipment slot, by menu index.
@@ -554,8 +554,8 @@ impl InventoryMenu {
         }
         match armour_slot(index) {
             Some(slot) => stacking(stack)
-                .and_then(|item| item.equip)
-                .is_some_and(|(equip, player)| equip == slot && player),
+                .and_then(|item| item.equip.as_ref())
+                .is_some_and(|equip| equip.slot == slot && equip.player),
             None => true,
         }
     }
@@ -662,8 +662,10 @@ impl InventoryMenu {
                 continue;
             };
             let remainder = stacking(stack)
-                .and_then(|item| item.crafting_remainder)
-                .and_then(|(name, count)| crate::item::id_of(name).map(|id| Stack::new(count, id)));
+                .and_then(|item| item.crafting_remainder.as_ref())
+                .and_then(|left| {
+                    crate::item::id_of(left.item).map(|id| Stack::new(left.count, id))
+                });
             let _used = self.remove(grid, 1);
             let Some(mut remainder) = remainder else {
                 continue;

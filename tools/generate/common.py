@@ -75,7 +75,9 @@ def _shortest(bits, width):
         return "-0.0" if bits >> (width - 1) else "0.0"
     exact = Fraction(value)
     below = Fraction(value_of(bits - 1)) if bits & ((1 << (width - 1)) - 1) else -exact
-    above = Fraction(value_of(bits + 1))
+    next_up = value_of(bits + 1)
+    # Past the largest finite value the next step is infinity: mirror the gap.
+    above = exact + (exact - below) if next_up in (float("inf"), float("-inf")) else Fraction(next_up)
     for precision in range(1, 18):
         candidate = f"{value:.{precision}g}"
         if _nearest(exact, below, above, candidate):

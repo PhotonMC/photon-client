@@ -8,17 +8,12 @@ generated table is committed, and the parity run compares it with the reference
 on every pass.
 """
 import json
-import sys
+
+from common import f32, load_case, run, write
 
 
-def main(path):
-    data = None
-    for line in open(path, encoding="utf-8"):
-        case = json.loads(line)
-        if case["case_id"] == "block/item-tools":
-            data = case["result"]["rows"][0]
-    if data is None:
-        raise SystemExit("no block/item-tools case in the capture")
+def generate(capture):
+    data = load_case(capture, "block/item-tools")
     tools = []
     index = {}
     items = []
@@ -39,7 +34,7 @@ def main(path):
             written = f'RuleBlocks::Tag("{blocks[1:]}")'
         else:
             written = "RuleBlocks::Blocks(&[" + ", ".join(f'"{b}"' for b in blocks) + "])"
-        speed = f'Some(0x{entry["speed"]})' if "speed" in entry else "None"
+        speed = f'Some({f32(entry["speed"])})' if "speed" in entry else "None"
         correct = entry.get("correct_for_drops")
         correct = "None" if correct is None else f"Some({str(correct).lower()})"
         return f"ToolRule {{ blocks: {written}, speed: {speed}, correct_for_drops: {correct} }}"
@@ -59,16 +54,14 @@ def main(path):
         "",
         "pub struct ToolRule {",
         "    pub blocks: RuleBlocks,",
-        "    /// Mining speed as raw `f32` bits.",
-        "    pub speed: Option<u32>,",
+        "    pub speed: Option<f32>,",
         "    pub correct_for_drops: Option<bool>,",
         "}",
         "",
         "/// The `minecraft:tool` component.",
         "pub struct Tool {",
         "    pub rules: &'static [ToolRule],",
-        "    /// As raw `f32` bits.",
-        "    pub default_mining_speed: u32,",
+        "    pub default_mining_speed: f32,",
         "    pub damage_per_block: i32,",
         "    pub can_destroy_blocks_in_creative: bool,",
         "}",
@@ -87,7 +80,7 @@ def main(path):
         for entry in tool["rules"]:
             out.append(f"            {rule(entry)},")
         out.append("        ],")
-        out.append(f'        default_mining_speed: 0x{tool["default_mining_speed"]},')
+        out.append(f'        default_mining_speed: {f32(tool["default_mining_speed"])},')
         out.append(f'        damage_per_block: {tool["damage_per_block"]},')
         out.append(
             f'        can_destroy_blocks_in_creative: {str(tool["can_destroy_blocks_in_creative"]).lower()},')
@@ -97,10 +90,9 @@ def main(path):
         tool = "None" if number is None else f"Some(&TOOLS[{number}])"
         out.append(f'    ItemDefinition {{ name: "{name}", tool: {tool} }},')
     out += ["];", ""]
-    with open("crates/voxel-data/src/item/registry.rs", "w", encoding="utf-8") as handle:
-        handle.write("\n".join(out))
+    write("item/registry.rs", out)
     print(f"items={len(items)} tools={len(tools)}")
 
 
 if __name__ == "__main__":
-    main(sys.argv[1])
+    run(generate)

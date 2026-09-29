@@ -6,18 +6,12 @@ The blocks a water side shows its overlay sprite against, from the
 reference. The parity run compares the table with the reference on every
 pass.
 """
-import json
-import sys
+
+from common import load_case, run, write
 
 
-def main(path):
-    data = None
-    for line in open(path, encoding="utf-8"):
-        case = json.loads(line)
-        if case["case_id"] == "block/fluid-overlay-blocks":
-            data = case["result"]["rows"][0]
-    if data is None:
-        raise SystemExit("no block/fluid-overlay-blocks case in the capture")
+def generate(capture):
+    data = load_case(capture, "block/fluid-overlay-blocks")
     out = [
         "//! The blocks a fluid side shows its overlay sprite against, from the",
         "//! reference: its half-transparent blocks and its leaves.",
@@ -30,10 +24,9 @@ def main(path):
     for block in data["blocks"]:
         out.append(f"    \"{block}\",")
     out += ["];", ""]
-    with open("crates/voxel-data/src/block/fluid_overlay.rs", "w", encoding="utf-8") as handle:
-        handle.write("\n".join(out))
+    write("block/fluid_overlay.rs", out)
     print(f"blocks={len(data['blocks'])}")
 
 
 if __name__ == "__main__":
-    main(sys.argv[1])
+    run(generate)

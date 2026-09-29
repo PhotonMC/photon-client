@@ -14,13 +14,10 @@ use crate::text::Component;
 fn defaults() -> &'static [Option<Patch>] {
     static DEFAULTS: OnceLock<Vec<Option<Patch>>> = OnceLock::new();
     DEFAULTS.get_or_init(|| {
-        voxel_data::item::components::ITEM_COMPONENT_WIRES
+        voxel_data::item::components::DEFAULT_PATCHES
             .iter()
-            .map(|wire| {
-                let bytes: Vec<u8> = (0..wire.len() / 2)
-                    .filter_map(|at| u8::from_str_radix(&wire[at * 2..at * 2 + 2], 16).ok())
-                    .collect();
-                let mut input = bytes.as_slice();
+            .map(|&patch| {
+                let mut input = patch;
                 item_components::read_patch(&mut input).ok()
             })
             .collect()

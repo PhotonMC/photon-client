@@ -33,7 +33,7 @@ pub fn mining_speed(tool: &Tool, registry: &ClientBlockStateRegistry, state: i32
         .iter()
         .find(|rule| rule.speed.is_some() && rule_covers(&rule.blocks, registry, state))
         .and_then(|rule| rule.speed)
-        .map_or(f32::from_bits(tool.default_mining_speed), f32::from_bits)
+        .unwrap_or(tool.default_mining_speed)
 }
 
 /// `Tool.isCorrectForDrops`: the first rule that decides it and covers the

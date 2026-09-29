@@ -6,18 +6,12 @@ What a fluid's flow reads of each state, from the reference: the fully sturdy
 faces (none for ice blocks) and whether the state blocks motion, as runs over
 state ids. The parity run compares the table with the reference on every pass.
 """
-import json
-import sys
+
+from common import load_case, run, write
 
 
-def main(path):
-    data = None
-    for line in open(path, encoding="utf-8"):
-        case = json.loads(line)
-        if case["case_id"] == "block/fluid-flow-properties":
-            data = case["result"]["rows"][0]
-    if data is None:
-        raise SystemExit("no block/fluid-flow-properties case in the capture")
+def generate(capture):
+    data = load_case(capture, "block/fluid-flow-properties")
     runs = [tuple(int(part) for part in run.split(":")) for run in data["runs"]]
     out = [
         "//! What a fluid's flow reads of each state, from the reference: bits 0 to 5",
@@ -36,10 +30,9 @@ def main(path):
         chunk = runs[start:start + 8]
         out.append("    " + " ".join(f"({first}, {value})," for first, value in chunk))
     out += ["];", ""]
-    with open("crates/voxel-data/src/block/fluid_flow.rs", "w", encoding="utf-8") as handle:
-        handle.write("\n".join(out))
+    write("block/fluid_flow.rs", out)
     print(f"states={data['state_count']} runs={len(runs)}")
 
 
 if __name__ == "__main__":
-    main(sys.argv[1])
+    run(generate)

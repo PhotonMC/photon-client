@@ -6,18 +6,12 @@ Which states the MOTION_BLOCKING heightmap counts, one bit per state id, from
 the reference. The parity run compares the table with the reference on every
 pass.
 """
-import json
-import sys
+
+from common import load_case, run, write
 
 
-def main(path):
-    data = None
-    for line in open(path, encoding="utf-8"):
-        case = json.loads(line)
-        if case["case_id"] == "block/motion-blocking":
-            data = case["result"]["rows"][0]
-    if data is None:
-        raise SystemExit("no block/motion-blocking case in the capture")
+def generate(capture):
+    data = load_case(capture, "block/motion-blocking")
     out = [
         "//! Which states the MOTION_BLOCKING heightmap counts, from the reference:",
         "//! states that block motion or hold a fluid. One bit per state id, lowest",
@@ -34,10 +28,9 @@ def main(path):
         chunk = data["words"][start:start + 4]
         out.append("    " + " ".join(f"0x{word}," for word in chunk))
     out += ["];", ""]
-    with open("crates/voxel-data/src/block/motion_blocking.rs", "w", encoding="utf-8") as handle:
-        handle.write("\n".join(out))
+    write("block/motion_blocking.rs", out)
     print(f"states={data['state_count']} words={len(data['words'])}")
 
 
 if __name__ == "__main__":
-    main(sys.argv[1])
+    run(generate)

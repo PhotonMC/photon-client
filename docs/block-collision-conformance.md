@@ -49,7 +49,7 @@ yol alıyor.
 çarpışma senaryolarının hepsi yeni tabloyla da geçti.
 
 Üretim adımı: `block` ailesini yakala, sonra
-`python3 tools/generate/block_collision.py <yakalama>/outputs.jsonl`.
+`python3 tools/generate/block_shapes.py <yakalama>/outputs.jsonl`.
 
 ## Açık kapsam
 

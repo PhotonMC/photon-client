@@ -8,8 +8,8 @@ stored once and referred to by index. The capture is local; the generated
 table is committed, and the parity run compares it with the reference on
 every pass.
 """
-import json
-import sys
+
+from common import load_case, run, write
 
 
 def read_varint(data, at):
@@ -24,14 +24,8 @@ def read_varint(data, at):
         shift += 7
 
 
-def main(path):
-    data = None
-    for line in open(path, encoding="utf-8"):
-        case = json.loads(line)
-        if case["case_id"] == "block/creative-tabs":
-            data = case["result"]["rows"][0]
-    if data is None:
-        raise SystemExit("no block/creative-tabs case in the capture")
+def generate(capture):
+    data = load_case(capture, "block/creative-tabs")
 
     stacks = []
     index = {}
@@ -133,8 +127,8 @@ def main(path):
         out.append("    },")
     out.append("];")
     out.append("")
-    open("crates/voxel-data/src/item/creative_tabs.rs", "w", encoding="utf-8").write("\n".join(out))
+    write("item/creative_tabs.rs", out)
 
 
 if __name__ == "__main__":
-    main(sys.argv[1])
+    run(generate)

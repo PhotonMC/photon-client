@@ -9,18 +9,12 @@ use rules they run, whether the default `Item.use` does nothing for them, and
 the block a block item places. The capture is local; the generated table is
 committed, and the parity run compares it with the reference on every pass.
 """
-import json
-import sys
+
+from common import load_case, run, write
 
 
-def main(path):
-    data = None
-    for line in open(path, encoding="utf-8"):
-        case = json.loads(line)
-        if case["case_id"] == "block/behaviours":
-            data = case["result"]["rows"][0]
-    if data is None:
-        raise SystemExit("no block/behaviours case in the capture")
+def generate(capture):
+    data = load_case(capture, "block/behaviours")
     classes = []
     index = {}
 
@@ -99,10 +93,9 @@ def main(path):
         "];",
         "",
     ]
-    with open("crates/voxel-data/src/block/behaviour.rs", "w", encoding="utf-8") as handle:
-        handle.write("\n".join(out))
+    write("block/behaviour.rs", out)
     print(f"blocks={len(block_rows)} items={len(item_rows)} classes={len(classes)}")
 
 
 if __name__ == "__main__":
-    main(sys.argv[1])
+    run(generate)

@@ -9,7 +9,8 @@ local; the generated table is committed, and the parity run compares it
 with the reference on every pass.
 """
 import json
-import sys
+
+from common import load_case, run, write
 
 
 def literal(text):
@@ -20,14 +21,8 @@ def rust(text):
     return '"' + text.replace("\\", "\\\\").replace('"', '\\"') + '"'
 
 
-def main(path):
-    data = None
-    for line in open(path, encoding="utf-8"):
-        case = json.loads(line)
-        if case["case_id"] == "block/tooltip-registries":
-            data = case["result"]["rows"][0]
-    if data is None:
-        raise SystemExit("no block/tooltip-registries case in the capture")
+def generate(capture):
+    data = load_case(capture, "block/tooltip-registries")
 
     def component(value):
         return rust(json.dumps(value, separators=(",", ":"))) if value is not None else '""'
@@ -112,8 +107,8 @@ def main(path):
             f'style_up: {rust(e["style_up"])}, style_down: {rust(e["style_down"])} }},'
         )
     out += ["];", ""]
-    open("crates/voxel-data/src/item/tooltip.rs", "w", encoding="utf-8").write("\n".join(out))
+    write("item/tooltip.rs", out)
 
 
 if __name__ == "__main__":
-    main(sys.argv[1])
+    run(generate)

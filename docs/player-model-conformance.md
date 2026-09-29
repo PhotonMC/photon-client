@@ -117,7 +117,7 @@ Bu yüzden tıklayıp bırakmak her tik bir vuruş yapıyor (aynı tikteki
 ikinci tık boşa gidiyor), basılı tutmak ise on tik bekliyor.
 
 Çizgi şekilleri referanstan tablo olarak alınıyor
-(`crates/voxel-data/src/block/outline.rs`, `tools/generate/block_outline.py`); block
+(`crates/voxel-data/src/block/outline.rs`, `tools/generate/block_shapes.py`); block
 ailesi her koşuda tabloyu karşılaştırıyor. Rastgele kaydırmalı bloklarda
 (çiçekler, bambu, sarkıt) şekil konumdaki kaydırmayla taşınıyor; oracle bunun
 her konumda referansın şeklini verdiğini doğruluyor. Çimenin şekli kaymıyor,
