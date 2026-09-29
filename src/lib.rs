@@ -17,6 +17,7 @@ pub mod identifier;
 pub mod input;
 pub mod input_event;
 pub mod item;
+pub mod item_in_hand;
 pub mod item_table;
 pub mod json;
 pub mod key_mapping;

@@ -1328,9 +1328,11 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
         std::collections::HashMap::<i32, Vec<render::world_mesh::ItemLayer>>::new();
     let mut scroll_wheel = voxel_client::hotbar::ScrollWheel::default();
     let started_at = std::time::Instant::now();
-    // `ItemInHandRenderer.mainHandHeight`: the empty hand rises into view
-    // at four tenths a tick.
-    let mut hand_height = (0.0_f32, 0.0_f32);
+    // `ItemInHandRenderer`: the stacks the hands show and how high they are.
+    let mut item_in_hand = voxel_client::item_in_hand::ItemInHand::default();
+    // Each item's first-person layers, by item and hand.
+    let mut held_item_layers =
+        std::collections::HashMap::<(i32, bool), Vec<render::world_mesh::ItemLayer>>::new();
     // Attack clicks waiting for the next tick, and `Minecraft.missTime`:
     // ticks a missed attack keeps the next one waiting.
     let mut attack_key = voxel_client::attack::AttackKey::default();
@@ -1562,6 +1564,36 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                 },
                 aim,
             )?;
+            for hand in session.take_items_used() {
+                item_in_hand.item_used(hand);
+            }
+            // `ItemInHandRenderer.tick`, after the keys and before the
+            // player ticks: the hands follow the stacks and rise back as the
+            // attack strength recovers.
+            {
+                let world = session.world();
+                let local = world.local_player();
+                let attack_speed = local
+                    .and_then(|state| {
+                        state
+                            .attributes()
+                            .iter()
+                            .find(|attribute| attribute.attribute_id() == 5)
+                    })
+                    .map_or(4.0, |attribute| attribute.effective_value(0.0, 1024.0));
+                let swap = session
+                    .player()
+                    .map_or(1.0, |player| player.item_swap_scale(1.0, attack_speed));
+                let stack = |slot: i16| {
+                    local
+                        .and_then(|state| state.inventory_slot(slot))
+                        .filter(|stack| stack.item_count() > 0)
+                };
+                let selected = session.status().selected_slot as i16;
+                item_in_hand.tick(stack(36 + selected), stack(45), swap, false, &|item| {
+                    block_renderer.item_swap(item)
+                });
+            }
             session.tick(held.input())?;
             // `LightmapRenderStateExtractor.tick`: the block light's flicker
             // wanders by a small random step and decays.
@@ -1578,23 +1610,6 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                 camera.tick(player);
             }
             hud.tick();
-            // `ItemInHandRenderer.tick`: the empty hand rises back as the
-            // attack strength recovers.
-            let attack_speed = session
-                .world()
-                .local_player()
-                .and_then(|state| {
-                    state
-                        .attributes()
-                        .iter()
-                        .find(|attribute| attribute.attribute_id() == 5)
-                })
-                .map_or(4.0, |attribute| attribute.effective_value(0.0, 1024.0));
-            let swap = session
-                .player()
-                .map_or(1.0, |player| player.item_swap_scale(1.0, attack_speed));
-            hand_height.0 = hand_height.1;
-            hand_height.1 += (swap * swap * swap - hand_height.1).clamp(-0.4, 0.4);
             // The camera's attribute probe steps once a tick.
             if session.player().is_some() {
                 attributes_last =
@@ -1656,21 +1671,68 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
         if camera_type == CameraType::FirstPerson && !player.spectating() {
             let (walked, bob) = player.view_bob(partial as f32);
             let (x_bob, y_bob) = player.hand_bob(partial as f32);
-            let hand_lift = hand_height.0 + partial as f32 * (hand_height.1 - hand_height.0);
-            let hand = render::player_renderer::hand_vertices(
-                &mut player_model,
-                &render::player_renderer::HandView {
-                    bob_walked: walked,
-                    bob,
-                    view_x_rot: player_x_rot,
-                    view_y_rot: player_y_rot,
-                    x_bob,
-                    y_bob,
-                    inverse_arm_height: 1.0 - hand_lift,
-                    attack: player.attack_anim(partial as f32),
-                    light,
-                },
+            // `submitHandsWithItems`: the swing is the main hand's, since
+            // which arm swings is not tracked yet.
+            let swap = |item: i32| block_renderer.item_swap(item);
+            let main_height = item_in_hand.inverse_arm_height(
+                voxel_client::game_mode::MAIN_HAND,
+                partial as f32,
+                &swap,
             );
+            let off_height = item_in_hand.inverse_arm_height(
+                voxel_client::game_mode::OFF_HAND,
+                partial as f32,
+                &swap,
+            );
+            let view = render::player_renderer::HandView {
+                bob_walked: walked,
+                bob,
+                view_x_rot: player_x_rot,
+                view_y_rot: player_y_rot,
+                x_bob,
+                y_bob,
+                inverse_arm_height: main_height,
+                attack: player.attack_anim(partial as f32),
+                light,
+            };
+            let main_item = item_in_hand
+                .item(voxel_client::game_mode::MAIN_HAND)
+                .map(|stack| stack.item_registry_id());
+            let off_item = item_in_hand
+                .item(voxel_client::game_mode::OFF_HAND)
+                .map(|stack| stack.item_registry_id());
+            // An empty main hand shows the arm; each stack is drawn in its
+            // hand, the main hand on the right.
+            let hand = if main_item.is_none() {
+                render::player_renderer::hand_vertices(&mut player_model, &view)
+            } else {
+                Vec::new()
+            };
+            let mut held = Vec::new();
+            for (item, right, attack, height) in [
+                (main_item, true, view.attack, main_height),
+                (off_item, false, 0.0, off_height),
+            ] {
+                let Some(item) = item else {
+                    continue;
+                };
+                let layers = held_item_layers.entry((item, right)).or_insert_with(|| {
+                    block_renderer.item_layers(
+                        item,
+                        if right {
+                            render::model::DisplayContext::FirstPersonRightHand
+                        } else {
+                            render::model::DisplayContext::FirstPersonLeftHand
+                        },
+                        &|temperature, downfall| {
+                            biome_tints.grass_at_climate(temperature, downfall)
+                        },
+                    )
+                });
+                held.extend(render::player_renderer::held_item_vertices(
+                    &view, layers, right, attack, height,
+                ));
+            }
             // `Camera.calculateHudFov`: the hand's field of view is the
             // default, narrowed in water, and not widened by speed.
             let hud_fov = if player.is_eye_in_water() {
@@ -1680,9 +1742,9 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
             };
             let hand_projection =
                 render::scene::perspective(f32::to_radians(hud_fov), aspect, 0.05, 100.0);
-            backend.set_hand(&hand, hand_projection)?;
+            backend.set_hand(&hand, &held, hand_projection)?;
         } else {
-            backend.set_hand(&[], [[0.0; 4]; 4])?;
+            backend.set_hand(&[], &[], [[0.0; 4]; 4])?;
         }
         // `extractBlockOutline`: the block aimed at this frame, unless the
         // player cannot build (adventure and spectator, whose exceptions are

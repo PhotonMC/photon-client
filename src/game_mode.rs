@@ -255,6 +255,16 @@ pub struct GameMode {
     miss_time: i32,
     /// `Minecraft.rightClickDelay`.
     right_click_delay: i32,
+    /// Hands whose stack was used since the caller last asked:
+    /// `ItemInHandRenderer.itemUsed`.
+    items_used: Vec<u8>,
+}
+
+impl GameMode {
+    /// The hands whose stack was used since the last call, in order.
+    pub fn take_items_used(&mut self) -> Vec<u8> {
+        std::mem::take(&mut self.items_used)
+    }
 }
 
 impl Default for GameMode {
@@ -268,6 +278,7 @@ impl Default for GameMode {
             is_destroying: false,
             miss_time: 0,
             right_click_delay: 0,
+            items_used: Vec::new(),
         }
     }
 }
@@ -652,10 +663,18 @@ impl GameMode {
         self.right_click_delay = 4;
         for hand in [MAIN_HAND, OFF_HAND] {
             if let Aim::Block { .. } = aim {
+                let old_count = ctx.held(hand).map(|(_, count)| count);
                 match self.use_item_on(ctx, hand, aim, out) {
                     Some(UseResult::Success { swing }) => {
                         if swing {
                             ctx.swing_hand(hand, out);
+                            // The hand dips when the use spent some of the
+                            // stack, or the player never runs out.
+                            if let Some((_, count)) = ctx.held(hand)
+                                && (Some(count) != old_count || ctx.instabuild())
+                            {
+                                self.items_used.push(hand);
+                            }
                         }
                         return;
                     }
@@ -669,6 +688,7 @@ impl GameMode {
                 if swing {
                     ctx.swing_hand(hand, out);
                 }
+                self.items_used.push(hand);
                 return;
             }
         }

@@ -46,7 +46,7 @@ pub struct WorldMesh {
 pub struct BlockRenderer {
     models: BTreeMap<String, ResolvedModel>,
     /// Each item's client item model tree, by registry id.
-    items: Vec<Option<crate::render::item_model::ItemModelDef>>,
+    items: Vec<Option<crate::render::item_model::ClientItem>>,
     /// The alpha of every texture a flat item extrudes, with its size.
     layer_alpha: BTreeMap<String, crate::render::item_model::LayerAlpha>,
     /// What each block state draws, by state id.
@@ -201,7 +201,7 @@ impl BlockRenderer {
             if let Some(def) = &def {
                 let mut layers = Vec::new();
                 for context in crate::render::model::DisplayContext::ALL {
-                    crate::render::item_model::layers_for(def, context, &mut layers);
+                    crate::render::item_model::layers_for(&def.model, context, &mut layers);
                 }
                 for layer in layers {
                     let name = layer.model.as_string();
@@ -283,7 +283,7 @@ impl BlockRenderer {
             return Vec::new();
         };
         let mut layers = Vec::new();
-        crate::render::item_model::layers_for(def, context, &mut layers);
+        crate::render::item_model::layers_for(&def.model, context, &mut layers);
         let mut out = Vec::new();
         for layer in layers {
             let Some(model) = self.models.get(&layer.model.as_string()) else {
@@ -323,6 +323,18 @@ impl BlockRenderer {
             });
         }
         out
+    }
+
+    /// A client item's swap properties: whether a new stack lowers the
+    /// hand, and how far. Items without a definition take the defaults.
+    pub fn item_swap(&self, item: i32) -> (bool, f32) {
+        usize::try_from(item)
+            .ok()
+            .and_then(|index| self.items.get(index))
+            .and_then(Option::as_ref)
+            .map_or((true, 1.0), |def| {
+                (def.hand_animation_on_swap, def.swap_animation_scale)
+            })
     }
 
     pub fn model_count(&self) -> usize {

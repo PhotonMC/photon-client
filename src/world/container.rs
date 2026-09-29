@@ -11,7 +11,13 @@ pub struct ClientItemStackState {
     pub(crate) negative_component_type_ids: Vec<i32>,
     /// The component patch as the wire carried it, for comparing stacks.
     pub(crate) patch_bytes: Vec<u8>,
+    /// Which Java `ItemStack` object this is: each decoded stack is a new
+    /// one, and changing a stack in place (`shrink`) keeps it. The hand
+    /// compares held stacks by object.
+    pub(crate) identity: u64,
 }
+
+static NEXT_IDENTITY: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
 
 /// Stacks are compared as observed: count, item and which components the
 /// patch adds or removes. The patch bytes only serve
@@ -40,6 +46,7 @@ impl ClientItemStackState {
             positive_component_type_ids,
             negative_component_type_ids,
             patch_bytes: Vec::new(),
+            identity: NEXT_IDENTITY.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
         }
     }
 
@@ -57,6 +64,21 @@ impl ClientItemStackState {
     /// component patch; the count does not matter.
     pub fn is_same_item_same_components(&self, other: &Self) -> bool {
         self.item_registry_id == other.item_registry_id && self.patch_bytes == other.patch_bytes
+    }
+
+    /// Whether two stacks are the same Java object.
+    pub fn is_same_object(&self, other: &Self) -> bool {
+        self.identity == other.identity
+    }
+
+    /// `ItemStack.matchesIgnoringComponents` with the swap animation's
+    /// ignored components (damage): the same object, or the same count,
+    /// item and patch. The patch is compared whole, damage included.
+    pub fn matches_for_swap(&self, other: &Self) -> bool {
+        self.is_same_object(other)
+            || (self.item_count == other.item_count
+                && self.item_registry_id == other.item_registry_id
+                && self.patch_bytes == other.patch_bytes)
     }
 
     pub fn item_count(&self) -> i32 {

@@ -232,11 +232,26 @@ pub fn parse_item_model(object: &JsonObject) -> ItemModelDef {
 }
 
 /// Parse a client item file (`items/<name>.json`) to its model tree.
-pub fn parse_client_item(text: &str) -> Option<ItemModelDef> {
+pub fn parse_client_item(text: &str) -> Option<ClientItem> {
     let JsonValue::Object(object) = crate::json::parse(text).ok()? else {
         return None;
     };
-    Some(parse_item_model(object.object("model")?))
+    Some(ClientItem {
+        model: parse_item_model(object.object("model")?),
+        hand_animation_on_swap: object.bool("hand_animation_on_swap").unwrap_or(true),
+        swap_animation_scale: object.f32("swap_animation_scale").unwrap_or(1.0),
+    })
+}
+
+/// A client item (`ClientItem`): its model tree and the properties the
+/// hand reads when the held stack changes.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ClientItem {
+    pub model: ItemModelDef,
+    /// Whether a new stack lowers the hand and raises it again.
+    pub hand_animation_on_swap: bool,
+    /// How far the hand drops while it swaps.
+    pub swap_animation_scale: f32,
 }
 
 /// One model layer the item draws, with its tints.

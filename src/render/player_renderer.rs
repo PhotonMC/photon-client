@@ -151,10 +151,9 @@ pub struct HandView {
     pub light: i32,
 }
 
-/// The first-person hand's triangles, in view space: the view bob, the
-/// hand's lag behind the view, then `ItemInHandRenderer.renderPlayerArm`
-/// for an empty right hand.
-pub fn hand_vertices(model: &mut PlayerModel, view: &HandView) -> Vec<Vertex> {
+/// The pose both hands start from: `GameRenderer.bobView`, then the hands'
+/// lag behind the view.
+fn view_pose(view: &HandView) -> Pose {
     use crate::math::{mth_cos_f64, mth_sin_f64};
     let rad = Quaternion::degrees_to_radians;
     let sin = |value: f32| mth_sin_f64(f64::from(value));
@@ -179,6 +178,108 @@ pub fn hand_vertices(model: &mut PlayerModel, view: &HandView) -> Vec<Vertex> {
     pose.rotate(&Quaternion::rotation_y(rad(
         (view.view_y_rot - view.y_bob) * 0.1
     )));
+    pose
+}
+
+/// A held item's triangles, in view space: `submitArmWithItem` for a stack
+/// that is not in use, a map or a crossbow, whose swing is the default
+/// whack, then `ItemTransform.apply` in the first-person context and the
+/// item's quads. Each vertex's shade is the entity lights on its turned
+/// normal, as the arm's shader lights it; its tint is the layer's.
+pub fn held_item_vertices(
+    view: &HandView,
+    layers: &[crate::render::world_mesh::ItemLayer],
+    right_arm: bool,
+    attack: f32,
+    inverse_arm_height: f32,
+) -> Vec<Vertex> {
+    let rad = Quaternion::degrees_to_radians;
+    let sin = |value: f32| crate::math::mth_sin_f64(f64::from(value));
+    let pi = std::f64::consts::PI as f32;
+    let invert = if right_arm { 1.0_f32 } else { -1.0 };
+    let mut pose = view_pose(view);
+    // `applyItemArmTransform`.
+    pose.translate(invert * 0.56, -0.52 + inverse_arm_height * -0.6, -0.72);
+    // `swingArm`.
+    let sqrt_attack = f64::from(attack).sqrt() as f32;
+    pose.translate(
+        invert * (-0.4 * sin(sqrt_attack * pi)),
+        0.2 * sin(sqrt_attack * (std::f64::consts::PI * 2.0) as f32),
+        -0.2 * sin(attack * pi),
+    );
+    // `applyItemArmAttackTransform`.
+    let y_swing_rotation = sin(attack * attack * pi);
+    pose.rotate(&Quaternion::rotation_y(rad(
+        invert * (45.0 + y_swing_rotation * -20.0)
+    )));
+    let xz_swing_rotation = sin(sqrt_attack * pi);
+    pose.rotate(&Quaternion::rotation_z(rad(invert
+        * xz_swing_rotation
+        * -20.0)));
+    pose.rotate(&Quaternion::rotation_x(rad(xz_swing_rotation * -80.0)));
+    pose.rotate(&Quaternion::rotation_y(rad(invert * -45.0)));
+    let light = crate::render::block_light::light_uv(view.light);
+    let mut vertices = Vec::new();
+    for layer in layers {
+        let mut pose = pose;
+        // `ItemTransform.apply`, mirrored for the left hand.
+        if let Some(transform) = layer.transform {
+            let [rx, mut ry, mut rz] = transform.rotation;
+            let mut tx = transform.translation[0];
+            if !right_arm {
+                tx = -tx;
+                ry = -ry;
+                rz = -rz;
+            }
+            pose.translate(tx, transform.translation[1], transform.translation[2]);
+            let degrees = (std::f64::consts::PI / 180.0) as f32;
+            pose.rotate(&Quaternion::rotation_xyz(
+                rx * degrees,
+                ry * degrees,
+                rz * degrees,
+            ));
+            let [sx, sy, sz] = transform.scale;
+            pose.scale(sx, sy, sz);
+        }
+        pose.translate(-0.5, -0.5, -0.5);
+        for (quad, info) in layer.mesh.quads.iter().enumerate() {
+            let (dx, dy, dz) = info.direction.step();
+            let normal = pose.transform_normal([dx as f32, dy as f32, dz as f32]);
+            let shade = entity_light(normal);
+            for index in [0, 1, 2, 0, 2, 3] {
+                let source = &layer.mesh.vertices[quad * 4 + index];
+                let [x, y, z] = source.position;
+                vertices.push(Vertex {
+                    position: pose.pose.transform_position(x, y, z),
+                    uv: source.uv,
+                    shade,
+                    tint: source.tint,
+                    light,
+                });
+            }
+        }
+    }
+    vertices
+}
+
+/// `minecraft_mix_light` with the level's two lights, which the arm's
+/// shader applies to its normals in the same space.
+fn entity_light(normal: [f32; 3]) -> f32 {
+    let light = |direction: [f32; 3]| {
+        let direction = crate::render::joml::normalize(direction);
+        (direction[0] * normal[0] + direction[1] * normal[1] + direction[2] * normal[2]).max(0.0)
+    };
+    ((light([0.2, 1.0, -0.7]) + light([-0.2, 1.0, 0.7])) * 0.6 + 0.4).min(1.0)
+}
+
+/// The first-person hand's triangles, in view space: the view bob, the
+/// hand's lag behind the view, then `ItemInHandRenderer.renderPlayerArm`
+/// for an empty right hand.
+pub fn hand_vertices(model: &mut PlayerModel, view: &HandView) -> Vec<Vertex> {
+    let rad = Quaternion::degrees_to_radians;
+    let sin = |value: f32| crate::math::mth_sin_f64(f64::from(value));
+    let pi = std::f64::consts::PI as f32;
+    let mut pose = view_pose(view);
     // `renderPlayerArm`, the right arm.
     let invert = 1.0_f32;
     let attack = view.attack;

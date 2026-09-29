@@ -843,6 +843,8 @@ pub struct VulkanBackend {
     /// they are drawn with over a cleared depth.
     hand_buffer: Option<SkyBuffer>,
     hand_count: u32,
+    /// The held items' triangles, after the arm's in the hand buffer.
+    held_count: u32,
     /// The aimed block's outline strips for the next frame.
     outline_buffer: Option<SkyBuffer>,
     outline_count: u32,
@@ -1163,6 +1165,7 @@ impl VulkanBackend {
                 entity_count: 0,
                 hand_buffer: None,
                 hand_count: 0,
+                held_count: 0,
                 outline_buffer: None,
                 outline_count: 0,
                 breaking_buffer: None,
@@ -1646,8 +1649,8 @@ impl VulkanBackend {
             }
             // The first-person hand last, over a cleared depth, with its own
             // projection and the camera at the origin of its view space.
-            if let (Some(buffer), Some(set)) = (self.hand_buffer.as_ref(), scene.entity_set)
-                && self.hand_count > 0
+            if let Some(buffer) = self.hand_buffer.as_ref()
+                && self.hand_count + self.held_count > 0
             {
                 self.device.cmd_clear_attachments(
                     self.command_buffer,
@@ -1672,30 +1675,68 @@ impl VulkanBackend {
                     self.hand_projection[i / 4][i % 4]
                 }));
                 hand_push[28..31].copy_from_slice(&[0.0; 3]);
-                self.device.cmd_bind_pipeline(
-                    self.command_buffer,
-                    vk::PipelineBindPoint::GRAPHICS,
-                    scene.entity_pipeline,
-                );
-                self.device.cmd_bind_descriptor_sets(
-                    self.command_buffer,
-                    vk::PipelineBindPoint::GRAPHICS,
-                    scene.entity_pipeline_layout,
-                    0,
-                    &[set],
-                    &[],
-                );
-                self.device.cmd_push_constants(
-                    self.command_buffer,
-                    scene.entity_pipeline_layout,
-                    vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
-                    0,
-                    std::slice::from_raw_parts(hand_push.as_ptr().cast::<u8>(), 160),
-                );
                 self.device
                     .cmd_bind_vertex_buffers(self.command_buffer, 0, &[buffer.buffer], &[0]);
-                self.device
-                    .cmd_draw(self.command_buffer, self.hand_count, 1, 0, 0);
+                if let Some(set) = scene.entity_set
+                    && self.hand_count > 0
+                {
+                    self.device.cmd_bind_pipeline(
+                        self.command_buffer,
+                        vk::PipelineBindPoint::GRAPHICS,
+                        scene.entity_pipeline,
+                    );
+                    self.device.cmd_bind_descriptor_sets(
+                        self.command_buffer,
+                        vk::PipelineBindPoint::GRAPHICS,
+                        scene.entity_pipeline_layout,
+                        0,
+                        &[set],
+                        &[],
+                    );
+                    self.device.cmd_push_constants(
+                        self.command_buffer,
+                        scene.entity_pipeline_layout,
+                        vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
+                        0,
+                        std::slice::from_raw_parts(hand_push.as_ptr().cast::<u8>(), 160),
+                    );
+                    self.device
+                        .cmd_draw(self.command_buffer, self.hand_count, 1, 0, 0);
+                }
+                // The held items after the arm, from the block atlas the way
+                // the terrain samples it, fully faded in.
+                if self.held_count > 0 {
+                    self.device.cmd_bind_pipeline(
+                        self.command_buffer,
+                        vk::PipelineBindPoint::GRAPHICS,
+                        scene.pipeline,
+                    );
+                    self.device.cmd_bind_descriptor_sets(
+                        self.command_buffer,
+                        vk::PipelineBindPoint::GRAPHICS,
+                        scene.pipeline_layout,
+                        0,
+                        &[scene.descriptor_set],
+                        &[],
+                    );
+                    let mut held_push = [0.0_f32; 41];
+                    held_push[..40].copy_from_slice(&hand_push);
+                    held_push[40] = 1.0;
+                    self.device.cmd_push_constants(
+                        self.command_buffer,
+                        scene.pipeline_layout,
+                        vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
+                        0,
+                        std::slice::from_raw_parts(held_push.as_ptr().cast::<u8>(), 164),
+                    );
+                    self.device.cmd_draw(
+                        self.command_buffer,
+                        self.held_count,
+                        1,
+                        self.hand_count,
+                        0,
+                    );
+                }
             }
             // The GUI over everything, run by run in its blends.
             if let (Some(buffer), Some(set)) = (self.gui_buffer.as_ref(), scene.gui_set)
@@ -3392,12 +3433,15 @@ impl VulkanBackend {
     pub fn set_hand(
         &mut self,
         vertices: &[Vertex],
+        held: &[Vertex],
         projection: [[f32; 4]; 4],
     ) -> Result<(), VulkanError> {
         let mut buffer = self.hand_buffer.take();
-        self.fill_vertex_buffer(&mut buffer, vertices)?;
+        let all: Vec<Vertex> = vertices.iter().chain(held).copied().collect();
+        self.fill_vertex_buffer(&mut buffer, &all)?;
         self.hand_buffer = buffer;
         self.hand_count = vertices.len() as u32;
+        self.held_count = held.len() as u32;
         self.hand_projection = projection;
         Ok(())
     }

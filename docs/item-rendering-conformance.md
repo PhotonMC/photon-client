@@ -1,4 +1,4 @@
-# P18.a — Eşya modelleri ve hotbar ikonları — client-parity kaydı
+# P18.a — Eşya modelleri, hotbar ikonları ve eldeki eşya — client-parity kaydı
 
 **Tarih:** 2026-09-29 · **Referans:** Java Edition 26.2 / protokol 776 / Java 25
 **Kanıt sınıfı:** `client-parity` (model ve geometri), canlı gözlem (GUI pikselleri)
@@ -29,6 +29,18 @@
 - Yuvaya çizim (`GuiItemAtlas.drawToSlot`): yuva merkezi, yuva boyu kadar
   blok ve ters y, ardından GUI bağlamındaki dönüşüm (yoksa yarım blok geri);
   derinlik testli, 0.1 altı alfa kesilen ayrı bir Vulkan hattı.
+- Eldeki eşya (`src/item_in_hand.rs`, `held_item_vertices`):
+  `ItemInHandRenderer.tick` sırası (tuşlardan sonra, oyuncu tick'inden
+  önce), gösterilen yığının envanterden geri kalması, yığın değişince elin
+  0.4'lük adımlarla inip onda birin altında yeni yığına geçmesi, yığınların
+  nesne kimliğiyle karşılaştırılması (yerinde azalan yığın aynı nesnedir),
+  `hand_animation_on_swap` ve `swap_animation_scale`, `itemUsed` (kullanım
+  yığını azalttığında ya da oyuncu yaratıcıdayken el dibe iner). Boş ana el
+  kolu, dolu el eşyayı çizer; sol el eşyası solda. Poz: `bobView`, elin
+  bakışın gerisinde kalması, `applyItemArmTransform`, varsayılan `WHACK`
+  sallanması (`swingArm`, `applyItemArmAttackTransform`), birinci şahıs
+  `ItemTransform.apply` (sol elde öteleme x'i, y ve z dönüşleri ters) ve
+  `rotationXYZ` (JOML portuna eklendi).
 
 ## Senaryolar
 
@@ -38,6 +50,9 @@ Bütün math dışı aileler (908 vaka) `parity_passed`.
 Canlı: vanilla 26.2 sunucusunda hotbar'a taş, çimen, elmas kılıç, meşe
 merdiven, elma, meşale, çit, cam, yay ve sol ele kütük verildi; hepsi
 yerlerinde, blok eşyalar izometrik, düz eşyalar önden, sayılar doğru.
+Sağ elde taş, çimen bloğu ve elmas kılıç, sol elde elma ve meşale
+referanstaki yerlerinde görüldü. Eldeki eşya durumunun inip kalkması iki
+birim testiyle sabitlendi.
 
 ## Eşitlik olmayanlar ve açıklar
 
@@ -53,4 +68,15 @@ yerlerinde, blok eşyalar izometrik, düz eşyalar önden, sayılar doğru.
   sayılıyor; sol el yuvası hep solda.
 - Referans her eşyayı ayrı bir atlas hücresine çizip GUI'ye kopyalar; burada
   doğrudan ekrana, eşyalar için bir kez temizlenen derinlikle çiziliyor.
-- Eldeki eşya (birinci şahıs) henüz yok (M2.c).
+- Eldeki eşya pozu ve kimlik mantığı oracle ile karşılaştırılmıyor;
+  referans sırası kaynaktan birebir taşındı, sonuç canlı gözlemle görüldü.
+- Kullanım animasyonları (yeme, içme, yay germe, kalkan, mızrak, fırça,
+  trident), harita, arbalet ve dönerek saldırı yok; mızrağın `STAB`
+  sallanması `WHACK` gibi çiziliyor. Hangi elin sallandığı izlenmiyor,
+  sallanma hep ana eldedir.
+- Eldeki eşya blok atlasından arazinin örnekleyicisiyle, cutout olarak,
+  arka yüzler atılarak çiziliyor; saydam eşyalar (renkli cam) karışmıyor.
+  Işık, kolun ışığıyla aynı: seviyenin iki ışığı dönmüş normal üzerinde.
+- `damage` bileşeni takas karşılaştırmasında dışlanmıyor (yama bayt bayt
+  karşılaştırılıyor); hasar alan bir alet eli indirebilir. Son blok
+  koyulunca yuva boşaldığından el iner, referansta inmez.

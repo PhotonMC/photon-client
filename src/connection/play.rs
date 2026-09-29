@@ -386,6 +386,11 @@ impl PlaySession {
         &self.game_mode_state
     }
 
+    /// The hands whose stack a use spent since the last call.
+    pub fn take_items_used(&mut self) -> Vec<u8> {
+        self.game_mode_state.take_items_used()
+    }
+
     /// The attack and use keys' part of `handleKeybinds`, with what the
     /// player aims at. Runs before the tick, as the reference handles keys
     /// before the level ticks the player.

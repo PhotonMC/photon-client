@@ -73,6 +73,26 @@ impl Quaternion {
         }
     }
 
+    /// `Quaternionf.rotationXYZ`: about x, then y, then z.
+    pub fn rotation_xyz(angle_x: f32, angle_y: f32, angle_z: f32) -> Self {
+        let sx = sin(angle_x * 0.5);
+        let cx = cos_from_sin(sx, angle_x * 0.5);
+        let sy = sin(angle_y * 0.5);
+        let cy = cos_from_sin(sy, angle_y * 0.5);
+        let sz = sin(angle_z * 0.5);
+        let cz = cos_from_sin(sz, angle_z * 0.5);
+        let cycz = cy * cz;
+        let sysz = sy * sz;
+        let sycz = sy * cz;
+        let cysz = cy * sz;
+        Self {
+            w: cx * cycz - sx * sysz,
+            x: sx * cycz + cx * sysz,
+            y: cx * sycz - sx * cysz,
+            z: cx * cysz + sx * sycz,
+        }
+    }
+
     /// `Quaternionf.rotationX`.
     pub fn rotation_x(angle: f32) -> Self {
         let sin = sin(angle * 0.5);
