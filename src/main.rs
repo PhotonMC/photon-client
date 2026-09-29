@@ -1228,7 +1228,9 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
     )?;
     let mut player_model = render::player_model::PlayerModel::new(skin.slim);
     // The HUD: its sprites, its own state, and the wheel's partial steps.
-    let gui_atlas = render::gui::GuiAtlas::load(std::path::Path::new(&root))
+    let font = render::font::Font::load(std::path::Path::new(&root))
+        .ok_or("the default font could not be read")?;
+    let gui_atlas = render::gui::GuiAtlas::load(std::path::Path::new(&root), &font)
         .ok_or("the HUD sprites could not be read")?;
     backend.load_gui_texture(&gui_atlas.image)?;
     let mut hud = render::gui::Hud::default();
@@ -2000,6 +2002,7 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
             let hud_player = session.player();
             let frame = hud.build(
                 &gui_atlas,
+                &font,
                 size.gui_scaled_width(),
                 size.gui_scaled_height(),
                 &render::gui::HudInput {
@@ -2026,6 +2029,7 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                     max_air_supply: 300,
                     eye_in_water: hud_player.is_some_and(|player| player.is_eye_in_water()),
                     experience_progress: status.experience_progress,
+                    experience_level: status.experience_level,
                     attack_strength: hud_player.map_or(1.0, |player| {
                         player.attack_strength_scale(0.0, attribute(5, 4.0, 0.0, 1024.0))
                     }),

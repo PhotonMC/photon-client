@@ -60,9 +60,33 @@ Veriler:
 - Emilim, hava ve donma varlık verisinden geliyor. Oyuncu emilimi 17,
   skin parçaları 16. indeks.
 
+Deneyim seviyesi, sıfırdan büyükse çubuğun üstünde ortalanıyor: dört
+siyah kopya bir birim kaydırılmış, üstünde yeşil (`0xFF80FF20`).
+
 Araç canı, bağlamsal çubuktaki konum ve atlama çubukları, etkilerin sağ
-üst simgeleri, deneyim seviyesi yazısı (yazı tipi) ve kısayol çubuğundaki
-eşyalar henüz yok. Baloncuk sesi çalmıyor.
+üst simgeleri ve kısayol çubuğundaki eşyalar henüz yok. Baloncuk sesi
+çalmıyor.
+
+## Yazı tipi
+
+`src/render/font.rs`, varsayılan yazı tipini referansın tanımından
+kuruyor:
+
+- `font/default.json` ve başvurduğu tanımlar sırayla okunuyor.
+  Seçeneklerin varsayılanıyla (tek tip değil, Japonca varyant kapalı)
+  süzgeçten geçmeyen sağlayıcılar atlanıyor.
+- Bir kod noktasını ilk sağlayan sağlayıcı kullanılıyor.
+- Boşluk sağlayıcısı yalnız ilerleme veriyor.
+- Bitmap sağlayıcısı resmi `chars` ızgarasına bölüyor (satırlar Java'daki
+  gibi kod noktalarına ayrılıyor). Her glifin genişliği sağdan ilk alfalı
+  sütuna kadar; ilerlemesi yüksekliğe göre ölçeklenmiş genişliğin
+  yuvarlanması artı bir.
+- Glif dörtgeni sol kenardan başlıyor; üstü `7 − ascent`, boyutu hücre
+  × ölçek.
+- Metin genişliği ilerlemelerin toplamının yukarı yuvarlanması.
+
+Unifont yedeği okunmuyor; yalnız onda olan kod noktaları çizilmiyor. Gölge,
+kalın ve eğik yazı henüz yok.
 
 ## Yuva seçimi
 

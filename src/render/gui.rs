@@ -53,9 +53,18 @@ pub struct GuiAtlas {
 
 impl GuiAtlas {
     /// Read the HUD's sprites from an asset folder and pack them.
-    pub fn load(assets_root: &Path) -> Option<Self> {
+    pub fn load(assets_root: &Path, font: &crate::render::font::Font) -> Option<Self> {
         let mut images = BTreeMap::new();
         let mut stitcher = Stitcher::new(4096, 4096, 0, 0);
+        // The font's images go in whole, and glyphs are cut from them.
+        for (name, image) in &font.images {
+            stitcher.register_sprite(SpriteEntry {
+                width: image.width as i32,
+                height: image.height as i32,
+                name: Identifier::parse(&format!("minecraft:{name}")).ok()?,
+            });
+            images.insert(format!("minecraft:{name}"), image.clone());
+        }
         for name in sprite_names(assets_root) {
             let path = assets_root.join(format!("minecraft/textures/gui/sprites/{name}.png"));
             let image = crate::render::png::decode_rgba(&std::fs::read(path).ok()?).ok()?;
@@ -148,6 +157,59 @@ impl GuiFrame {
         h: i32,
     ) {
         self.blit_part(atlas, blend, name, (w, h), (0, 0), x, y, w, h);
+    }
+
+    /// `GuiGraphics.text` without a shadow: each glyph of the default font
+    /// at its place, in one colour (`0xAARRGGBB`).
+    pub fn text(
+        &mut self,
+        atlas: &GuiAtlas,
+        font: &crate::render::font::Font,
+        text: &str,
+        x: i32,
+        y: i32,
+        colour: u32,
+    ) {
+        let colour = [16, 8, 0, 24].map(|shift| ((colour >> shift) & 0xFF) as f32 / 255.0);
+        let mut pen = x as f32;
+        for codepoint in text.chars() {
+            let Some(glyph) = font.glyph(codepoint) else {
+                continue;
+            };
+            if let crate::render::font::Glyph::Bitmap(bitmap) = glyph {
+                let (name, image) = &font.images[bitmap.image];
+                let [u0, v0, u1, v1] = atlas.sprite(name);
+                let [cx, cy, cw, ch] = bitmap.cell;
+                let su = |pixel: u32| u0 + (u1 - u0) * pixel as f32 / image.width as f32;
+                let sv = |pixel: u32| v0 + (v1 - v0) * pixel as f32 / image.height as f32;
+                // `GlyphBitmap`: the cell from its left edge, its top at
+                // seven units less the ascent.
+                let left = pen;
+                let right = pen + cw as f32 * bitmap.scale;
+                let top = y as f32 + 7.0 - bitmap.ascent as f32;
+                let bottom = top + ch as f32 * bitmap.scale;
+                let corner = |px: f32, py: f32, uv: [f32; 2]| GuiVertex {
+                    position: [px, py],
+                    uv,
+                    colour,
+                };
+                let corners = [
+                    corner(left, top, [su(cx), sv(cy)]),
+                    corner(left, bottom, [su(cx), sv(cy + ch)]),
+                    corner(right, bottom, [su(cx + cw), sv(cy + ch)]),
+                    corner(right, top, [su(cx + cw), sv(cy)]),
+                ];
+                let first = self.vertices.len() as u32;
+                for index in [0, 1, 2, 0, 2, 3] {
+                    self.vertices.push(corners[index]);
+                }
+                match self.batches.last_mut() {
+                    Some((GuiBlend::Translucent, _, count)) => *count += 6,
+                    _ => self.batches.push((GuiBlend::Translucent, first, 6)),
+                }
+            }
+            pen += glyph.advance(false);
+        }
     }
 
     /// `GuiGraphics.blitSprite` of part of a sprite: the sprite is taken as
@@ -266,6 +328,7 @@ pub struct HudInput {
     pub max_air_supply: i32,
     pub eye_in_water: bool,
     pub experience_progress: f32,
+    pub experience_level: i32,
     /// `getAttackStrengthScale(0)`.
     pub attack_strength: f32,
 }
@@ -306,6 +369,7 @@ impl Hud {
     pub fn build(
         &mut self,
         atlas: &GuiAtlas,
+        font: &crate::render::font::Font,
         width: i32,
         height: i32,
         input: &HudInput,
@@ -348,6 +412,17 @@ impl Hud {
                     progress,
                     5,
                 );
+            }
+            // `ContextualBar.extractExperienceLevel`: the level in green,
+            // outlined by four black copies a unit off.
+            if input.experience_level > 0 {
+                let text = input.experience_level.to_string();
+                let x = (width - font.width(&text)) / 2;
+                let y = height - 24 - 9 - 2;
+                for (dx, dy) in [(1, 0), (-1, 0), (0, 1), (0, -1)] {
+                    frame.text(atlas, font, &text, x + dx, y + dy, 0xFF00_0000);
+                }
+                frame.text(atlas, font, &text, x, y, 0xFF80_FF20);
             }
         }
         frame
