@@ -258,21 +258,18 @@ impl StateInfo {
             return Self::AIR;
         };
         let block = &movement_table::BLOCKS[index];
-        let traits_index = if block.states.len() == 1 {
-            0
-        } else {
-            offset as usize
-        };
-        let traits = &movement_table::STATE_TRAITS[usize::from(block.states[traits_index])];
+        let traits = &movement_table::STATE_TRAITS[usize::from(
+            voxel_data::block::per_state(block.states, offset).expect("a trait per state"),
+        )];
         Self {
             name: registry::BLOCKS[index].name,
-            friction: f32::from_bits(block.friction),
-            speed_factor: f32::from_bits(block.speed_factor),
-            jump_factor: f32::from_bits(block.jump_factor),
-            bounce: f32::from_bits(block.bounce_restitution),
+            friction: block.friction,
+            speed_factor: block.speed_factor,
+            jump_factor: block.jump_factor,
+            bounce: block.bounce_restitution,
             flags: block.flags,
             fluid: traits.fluid,
-            own_height: f32::from_bits(traits.own_height),
+            own_height: traits.own_height,
             falling: traits.falling,
             suffocating: traits.suffocating,
         }

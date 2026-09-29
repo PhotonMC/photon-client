@@ -608,11 +608,7 @@ pub trait LightChunks {
 }
 
 fn light_traits(state: i32) -> &'static voxel_data::block::light::LightTraits {
-    let (index, offset) =
-        voxel_data::block::registry::block_index_for_state(state as u32).unwrap_or((0, 0));
-    let ids = voxel_data::block::light::BLOCKS[index];
-    let id = ids[if ids.len() == 1 { 0 } else { offset as usize }];
-    &voxel_data::block::light::TRAITS[usize::from(id)]
+    voxel_data::block::light_traits(state as u32)
 }
 
 fn emission(state: i32) -> u8 {

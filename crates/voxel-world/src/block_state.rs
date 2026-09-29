@@ -7,6 +7,7 @@ use voxel_core::{
     direction::Direction,
     shape::{Shapes, VoxelShape},
 };
+use voxel_data::block::shape::{BlockShapes, ShapeBox};
 
 /// A block collision shape returned in Java's cursor traversal order.
 #[derive(Debug, Clone, PartialEq)]
@@ -379,25 +380,35 @@ impl ClientBlockStateRegistry {
     }
 }
 
-/// The distinct shapes of the pinned table, built once.
-fn table_shapes() -> &'static [VoxelShape] {
+/// The distinct shapes of a shape table, rebuilt once each.
+fn built_shapes(
+    cell: &'static std::sync::OnceLock<Vec<VoxelShape>>,
+    table: &'static [&'static [ShapeBox]],
+) -> &'static [VoxelShape] {
+    cell.get_or_init(|| table.iter().map(|boxes| shape_from_boxes(boxes)).collect())
+}
+
+fn collision_shapes() -> &'static [VoxelShape] {
     static BUILT: std::sync::OnceLock<Vec<VoxelShape>> = std::sync::OnceLock::new();
-    BUILT.get_or_init(|| {
-        voxel_data::block::collision::SHAPES
-            .iter()
-            .map(|boxes| shape_from_boxes(boxes))
-            .collect()
-    })
+    built_shapes(&BUILT, &voxel_data::block::collision::SHAPES)
 }
 
 fn outline_shapes() -> &'static [VoxelShape] {
     static BUILT: std::sync::OnceLock<Vec<VoxelShape>> = std::sync::OnceLock::new();
-    BUILT.get_or_init(|| {
-        voxel_data::block::outline::SHAPES
-            .iter()
-            .map(|boxes| shape_from_boxes(boxes))
-            .collect()
-    })
+    built_shapes(&BUILT, &voxel_data::block::outline::SHAPES)
+}
+
+/// The block (registry index) of a state, and its shape in a shape table;
+/// `None` outside the registry.
+fn state_shape(
+    shapes: &'static [VoxelShape],
+    blocks: &'static [BlockShapes],
+    state_id: u32,
+) -> Option<(usize, &'static BlockShapes, &'static VoxelShape)> {
+    let (index, offset) = voxel_data::block::registry::block_index_for_state(state_id)?;
+    let block = &blocks[index];
+    let shape = &shapes[usize::from(voxel_data::block::per_state(block.shapes, offset)?)];
+    Some((index, block, shape))
 }
 
 /// The rebuilt outline shape for one entry of the table, for the parity
@@ -409,17 +420,14 @@ pub fn outline_table_shape(index: usize) -> Option<VoxelShape> {
 /// `BlockState.getShape` with no entity in the question: the outline a
 /// click aims at, moved by the block's random offset where it has one.
 pub fn outline_shape(state_id: u32, position: [i32; 3]) -> VoxelShape {
-    let Some((index, offset)) = voxel_data::block::registry::block_index_for_state(state_id) else {
+    let Some((index, block, shape)) = state_shape(
+        outline_shapes(),
+        &voxel_data::block::outline::BLOCKS,
+        state_id,
+    ) else {
         return Shapes::empty();
     };
-    let outline = &voxel_data::block::outline::BLOCKS[index];
-    let shape_index = if outline.shapes.len() == 1 {
-        outline.shapes[0]
-    } else {
-        outline.shapes[offset as usize]
-    };
-    let shape = &outline_shapes()[usize::from(shape_index)];
-    if outline.offset {
+    if block.offset {
         let [x, y, z] = block_offset(voxel_data::block::registry::BLOCKS[index].name, position);
         shape.move_by(x, y, z)
     } else {
@@ -430,13 +438,13 @@ pub fn outline_shape(state_id: u32, position: [i32; 3]) -> VoxelShape {
 /// `BlockState.getOffset`: the random nudge some blocks (plants, bamboo,
 /// dripstone) take off the grid at a position.
 pub fn block_offset(block: &str, position: [i32; 3]) -> [f64; 3] {
-    let Some(&(_, vertical, horizontal_max, vertical_max)) = voxel_data::block::offset::OFFSETS
+    let Some(offset) = voxel_data::block::offset::OFFSETS
         .iter()
-        .find(|(name, ..)| *name == block)
+        .find(|offset| offset.name == block)
     else {
         return [0.0; 3];
     };
-    let horizontal_max = f64::from(f32::from_bits(horizontal_max));
+    let horizontal_max = f64::from(offset.max_horizontal);
     let seed = voxel_core::math::mth_get_seed(position[0], 0, position[2]);
     let axis = |bits: i64| {
         let value = (f64::from((bits & 15) as f32 / 15.0) - 0.5) * 0.5;
@@ -446,8 +454,8 @@ pub fn block_offset(block: &str, position: [i32; 3]) -> [f64; 3] {
             value.min(horizontal_max)
         }
     };
-    let y = if vertical {
-        (f64::from((seed >> 4 & 15) as f32 / 15.0) - 1.0) * f64::from(f32::from_bits(vertical_max))
+    let y = if offset.vertical {
+        (f64::from((seed >> 4 & 15) as f32 / 15.0) - 1.0) * f64::from(offset.max_vertical)
     } else {
         0.0
     };
@@ -459,14 +467,13 @@ pub fn block_offset(block: &str, position: [i32; 3]) -> [f64; 3] {
 /// A single whole-block box is the reference's own full-block shape rather
 /// than a box that happens to fill the block, because the collision walk
 /// tests for that shape by identity and takes a shortcut when it finds it.
-fn shape_from_boxes(boxes: &[voxel_data::block::collision::ShapeBox]) -> VoxelShape {
+fn shape_from_boxes(boxes: &[ShapeBox]) -> VoxelShape {
     let full = [0.0_f64, 0.0, 0.0, 1.0, 1.0, 1.0].map(f64::to_bits);
-    if boxes.len() == 1 && boxes[0] == full {
+    if boxes.len() == 1 && boxes[0].map(f64::to_bits) == full {
         return Shapes::block();
     }
     let mut shape = Shapes::empty();
-    for bounds in boxes {
-        let [min_x, min_y, min_z, max_x, max_y, max_z] = bounds.map(f64::from_bits);
+    for &[min_x, min_y, min_z, max_x, max_y, max_z] in boxes {
         let part = Shapes::box_shape(min_x, min_y, min_z, max_x, max_y, max_z)
             .expect("the reference's boxes are ordered");
         shape = Shapes::or(&shape, &part);
@@ -476,19 +483,15 @@ fn shape_from_boxes(boxes: &[voxel_data::block::collision::ShapeBox]) -> VoxelSh
 
 /// The rebuilt shape for one entry of the table, for the parity adapter.
 pub fn table_shape(index: usize) -> Option<VoxelShape> {
-    table_shapes().get(index).cloned()
+    collision_shapes().get(index).cloned()
 }
 
 /// The table's shape for one state; a state outside the registry is air.
 pub fn table_collision_shape(state_id: u32) -> VoxelShape {
-    let Some((index, offset)) = voxel_data::block::registry::block_index_for_state(state_id) else {
-        return Shapes::empty();
-    };
-    let shapes = voxel_data::block::collision::BLOCKS[index].shapes;
-    let shape = if shapes.len() == 1 {
-        shapes[0]
-    } else {
-        shapes[offset as usize]
-    };
-    table_shapes()[usize::from(shape)].clone()
+    state_shape(
+        collision_shapes(),
+        &voxel_data::block::collision::BLOCKS,
+        state_id,
+    )
+    .map_or_else(Shapes::empty, |(_, _, shape)| shape.clone())
 }

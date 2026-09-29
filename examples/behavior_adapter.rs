@@ -16375,12 +16375,12 @@ fn block_result(request: &Value) -> Result<Value, String> {
             "offset_properties" => {
                 let blocks: Vec<Value> = voxel_data::block::offset::OFFSETS
                     .iter()
-                    .map(|(name, vertical, horizontal_max, vertical_max)| {
+                    .map(|offset| {
                         json!({
-                            "name": name,
-                            "kind": if *vertical { "xyz" } else { "xz" },
-                            "max_horizontal": format!("{horizontal_max:08x}"),
-                            "max_vertical": format!("{vertical_max:08x}"),
+                            "name": offset.name,
+                            "kind": if offset.vertical { "xyz" } else { "xz" },
+                            "max_horizontal": format!("{:08x}", offset.max_horizontal.to_bits()),
+                            "max_vertical": format!("{:08x}", offset.max_vertical.to_bits()),
                         })
                     })
                     .collect();
@@ -16475,7 +16475,10 @@ fn block_result(request: &Value) -> Result<Value, String> {
                                 let t = &table::TRAITS[usize::from(*id)];
                                 format!(
                                     "{:08x}|{}|{}|{}",
-                                    t.destroy_time, t.requires_correct_tool, t.air, t.fluid_block
+                                    t.destroy_time.to_bits(),
+                                    t.requires_correct_tool,
+                                    t.air,
+                                    t.fluid_block
                                 )
                             })
                             .collect();
@@ -16783,7 +16786,7 @@ fn block_result(request: &Value) -> Result<Value, String> {
                                     "{}|{}|{:08x}|{}|{}|{}|{}|{}|{}",
                                     t.emission,
                                     t.emissive,
-                                    t.shade,
+                                    t.shade.to_bits(),
                                     t.view_blocking,
                                     t.dampening,
                                     t.solid_render,
@@ -16870,7 +16873,7 @@ fn block_result(request: &Value) -> Result<Value, String> {
                         json!({
                             "name": block.name,
                             "shapes": collision.shapes,
-                            "position_dependent": collision.position_dependent,
+                            "position_dependent": collision.offset,
                             "dynamic": collision.dynamic,
                         })
                     })
@@ -16951,7 +16954,7 @@ fn block_result(request: &Value) -> Result<Value, String> {
                                     fluid_name(traits.fluid),
                                     traits.amount,
                                     traits.falling,
-                                    traits.own_height,
+                                    traits.own_height.to_bits(),
                                     traits.source,
                                     traits.suffocating
                                 )
@@ -16959,10 +16962,10 @@ fn block_result(request: &Value) -> Result<Value, String> {
                             .collect();
                         json!({
                             "name": block.name,
-                            "friction": format!("{:08x}", movement.friction),
-                            "speed_factor": format!("{:08x}", movement.speed_factor),
-                            "jump_factor": format!("{:08x}", movement.jump_factor),
-                            "bounce_restitution": format!("{:08x}", movement.bounce_restitution),
+                            "friction": format!("{:08x}", movement.friction.to_bits()),
+                            "speed_factor": format!("{:08x}", movement.speed_factor.to_bits()),
+                            "jump_factor": format!("{:08x}", movement.jump_factor.to_bits()),
+                            "bounce_restitution": format!("{:08x}", movement.bounce_restitution.to_bits()),
                             "climbable": has(table::flag::CLIMBABLE),
                             "fence": has(table::flag::FENCE),
                             "wall": has(table::flag::WALL),

@@ -77,8 +77,8 @@ pub fn is_water_source(state: i32) -> bool {
         Some(found) => found,
         None => return false,
     };
-    let ids = voxel_data::block::destroy::BLOCKS[index];
-    let id = ids[if ids.len() == 1 { 0 } else { offset as usize }];
+    let id = voxel_data::block::per_state(voxel_data::block::destroy::BLOCKS[index], offset)
+        .expect("a destroy trait per state");
     voxel_data::block::destroy::TRAITS[usize::from(id)].fluid_block == source
 }
 

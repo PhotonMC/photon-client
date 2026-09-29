@@ -17,13 +17,7 @@ fn slot(direction: Direction) -> usize {
 /// The face occlusion shape kind a state shows towards a direction: zero for
 /// nothing, one for the whole block, higher for a partial shape.
 pub fn occlusion_kind(state: u32, direction: Direction) -> Option<u8> {
-    let (block, offset) = registry::block_index_for_state(state)?;
-    let tuples = BLOCK_TUPLES[block];
-    let tuple = if tuples.len() == 1 {
-        tuples[0]
-    } else {
-        *tuples.get(offset as usize)?
-    };
+    let tuple = voxel_data::block::state_value(&BLOCK_TUPLES, state)?;
     Some(TUPLES[usize::from(tuple)][slot(direction)])
 }
 

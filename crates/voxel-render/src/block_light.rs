@@ -10,25 +10,13 @@
 //! half, each in sixteenths.
 
 use voxel_core::direction::Direction;
-use voxel_data::block::light::{BLOCKS, LightTraits, TRAITS};
-use voxel_data::block::registry;
+use voxel_data::block::light::LightTraits;
 
 /// Full brightness in both halves.
 pub const FULL_BRIGHT: i32 = 15_728_880;
 
 fn traits(state: Option<u32>) -> &'static LightTraits {
-    let index = state
-        .and_then(registry::block_index_for_state)
-        .map(|(block, offset)| {
-            let states = BLOCKS[block];
-            if states.len() == 1 {
-                states[0]
-            } else {
-                states[offset as usize]
-            }
-        })
-        .unwrap_or(0);
-    &TRAITS[usize::from(index)]
+    voxel_data::block::light_traits(state.unwrap_or(0))
 }
 
 /// The lighting traits of a state: emission, emissive, shade, view blocking,
@@ -265,7 +253,7 @@ where
     }
 
     fn shade_at(&self, position: [i32; 3]) -> f32 {
-        f32::from_bits(traits((self.state)(position)).shade)
+        traits((self.state)(position)).shade
     }
 
     /// The lit colour and light of a quad drawn at `position` for `state`.
@@ -432,7 +420,7 @@ mod tests {
     use super::*;
 
     fn stone() -> u32 {
-        registry::block("minecraft:stone")
+        voxel_data::block::registry::block("minecraft:stone")
             .expect("stone")
             .default_state_id()
     }

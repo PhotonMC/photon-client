@@ -5,8 +5,7 @@
 The capture is local; the generated table is committed, and the parity run
 compares it with the reference on every pass.
 """
-import json
-import sys
+from common import f32, intern, load_case, run, write
 
 FLAGS = [
     ("climbable", "CLIMBABLE"),
@@ -27,26 +26,13 @@ FLUID_KINDS = {
 }
 
 
-def main(path):
-    data = None
-    for line in open(path, encoding="utf-8"):
-        record = json.loads(line)
-        if record["case_id"] == "block/movement-properties":
-            data = record["result"]["rows"][0]
-    if data is None:
-        raise SystemExit("no block/movement-properties record in that capture")
-
-    traits, trait_ids = [], {}
+def generate(capture):
+    data = load_case(capture, "block/movement-properties")
+    traits, indices = intern(block["fluids"] for block in data["blocks"])
     rows = []
-    for block in data["blocks"]:
-        indices = []
-        for key in block["fluids"]:
-            if key not in trait_ids:
-                trait_ids[key] = len(traits)
-                traits.append(key)
-            indices.append(trait_ids[key])
+    for block, ids in zip(data["blocks"], indices):
         flags = " | ".join(f"flag::{name}" for field, name in FLAGS if block[field]) or "0"
-        rows.append((block, indices, flags))
+        rows.append((block, ids, flags))
 
     out = [
         "//! What each block contributes to movement beyond its shape, from the reference.",
@@ -83,19 +69,18 @@ def main(path):
         "    pub amount: u8,",
         "    /// A flowing fluid falling from above.",
         "    pub falling: bool,",
-        "    /// `FluidState.getOwnHeight`, as raw `f32` bits.",
-        "    pub own_height: u32,",
+        "    /// `FluidState.getOwnHeight`.",
+        "    pub own_height: f32,",
         "    pub source: bool,",
         "    pub suffocating: bool,",
         "}",
         "",
         "/// One block's movement properties.",
         "pub struct BlockMovement {",
-        "    /// The four factors as raw `f32` bits.",
-        "    pub friction: u32,",
-        "    pub speed_factor: u32,",
-        "    pub jump_factor: u32,",
-        "    pub bounce_restitution: u32,",
+        "    pub friction: f32,",
+        "    pub speed_factor: f32,",
+        "    pub jump_factor: f32,",
+        "    pub bounce_restitution: f32,",
         "    pub flags: u16,",
         "    /// Indices into [`STATE_TRAITS`]: one for every state, or one per state.",
         "    pub states: &'static [u16],",
@@ -107,21 +92,20 @@ def main(path):
         fluid, amount, falling, height, source, suffocating = key.split("|")
         out.append(
             f"    StateTraits {{ fluid: FluidKind::{FLUID_KINDS[fluid]}, amount: {amount}, "
-            f"falling: {falling}, own_height: 0x{height}, source: {source}, "
+            f"falling: {falling}, own_height: {f32(height)}, source: {source}, "
             f"suffocating: {suffocating} }},"
         )
     out += ["];", "", f"/// Every block, in registry order.\n#[rustfmt::skip]\npub static BLOCKS: [BlockMovement; {len(rows)}] = ["]
-    for block, indices, flags in rows:
+    for block, ids, flags in rows:
         out.append(
-            f"    BlockMovement {{ friction: 0x{block['friction']}, speed_factor: 0x{block['speed_factor']}, "
-            f"jump_factor: 0x{block['jump_factor']}, bounce_restitution: 0x{block['bounce_restitution']}, "
-            f"flags: {flags}, states: &[{', '.join(map(str, indices))}] }},"
+            f"    BlockMovement {{ friction: {f32(block['friction'])}, speed_factor: {f32(block['speed_factor'])}, "
+            f"jump_factor: {f32(block['jump_factor'])}, bounce_restitution: {f32(block['bounce_restitution'])}, "
+            f"flags: {flags}, states: &[{', '.join(map(str, ids))}] }},"
         )
     out.append("];")
-    with open("crates/voxel-data/src/block/movement.rs", "w", encoding="utf-8") as handle:
-        handle.write("\n".join(out) + "\n")
+    write("block/movement.rs", out)
     print(f"traits={len(traits)} blocks={len(rows)}")
 
 
 if __name__ == "__main__":
-    main(sys.argv[1])
+    run(generate)

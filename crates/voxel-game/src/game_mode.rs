@@ -15,7 +15,7 @@
 //! operators (the permission level is not tracked; they are never broken).
 
 use voxel_core::math::Vec3;
-use voxel_data::block::destroy as block_destroy_table;
+use voxel_data::block::destroy;
 use voxel_world::block_rules::{self as rules, Rule, UseResult};
 use voxel_world::local_player::LocalPlayer;
 use voxel_world::{ClientItemStackState, ClientPlayerGameMode, ClientWorld};
@@ -210,7 +210,7 @@ impl Miner {
     /// `BlockBehaviour.getDestroyProgress`: how much one tick of breaking
     /// does.
     pub fn destroy_progress(&self, world: &ClientWorld, player: &LocalPlayer, state: i32) -> f32 {
-        let destroy_time = f32::from_bits(traits(state).destroy_time);
+        let destroy_time = traits(state).destroy_time;
         if destroy_time == -1.0 {
             return 0.0;
         }
@@ -223,16 +223,8 @@ impl Miner {
     }
 }
 
-fn traits(state: i32) -> &'static block_destroy_table::DestroyTraits {
-    let (index, offset) =
-        voxel_data::block::registry::block_index_for_state(state as u32).unwrap_or((0, 0));
-    let states = block_destroy_table::BLOCKS[index];
-    let id = states[if states.len() == 1 {
-        0
-    } else {
-        offset as usize
-    }];
-    &block_destroy_table::TRAITS[usize::from(id)]
+fn traits(state: i32) -> &'static destroy::DestroyTraits {
+    voxel_data::block::destroy_traits(state as u32)
 }
 
 fn is_air(state: i32) -> bool {
@@ -241,7 +233,7 @@ fn is_air(state: i32) -> bool {
 
 fn is_game_master_block(state: i32) -> bool {
     voxel_data::block::registry::block_index_for_state(state as u32)
-        .is_some_and(|(index, _)| block_destroy_table::GAME_MASTER.contains(&(index as u16)))
+        .is_some_and(|(index, _)| destroy::GAME_MASTER.contains(&(index as u16)))
 }
 
 /// `MultiPlayerGameMode`'s breaking state and `Minecraft.missTime`.
