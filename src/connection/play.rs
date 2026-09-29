@@ -74,6 +74,8 @@ pub struct PlaySession {
     level_reset: bool,
     /// The hotbar slot the server was last told about.
     sent_slot: i32,
+    /// Breaking state and the miss wait.
+    game_mode_state: crate::game_mode::GameMode,
     dirty_sections: std::collections::BTreeSet<(i32, i32, i32)>,
     forgotten_chunks: Vec<(i32, i32)>,
     clocks: std::collections::BTreeMap<i32, ClockState>,
@@ -136,6 +138,7 @@ impl PlaySession {
             health_received: false,
             level_reset: false,
             sent_slot: 0,
+            game_mode_state: crate::game_mode::GameMode::default(),
             dirty_sections: std::collections::BTreeSet::new(),
             forgotten_chunks: Vec::new(),
             clocks: std::collections::BTreeMap::new(),
@@ -361,10 +364,16 @@ impl PlaySession {
         }
     }
 
-    /// One client tick: the local player, its packets, then the tick end.
-    pub fn tick(&mut self, keys: Input) -> Result<(), ConnectionError> {
-        // `MultiPlayerGameMode.ensureHasSentCarriedItem`, which the game
-        // mode's tick runs before the player moves.
+    fn warn(&mut self, message: String) {
+        if self.warned.as_deref() != Some(message.as_str()) {
+            eprintln!("{message}");
+            self.warned = Some(message);
+        }
+    }
+
+    /// `MultiPlayerGameMode.ensureHasSentCarriedItem`: the server hears of
+    /// a new hotbar slot before anything the slot's item does.
+    fn ensure_has_sent_carried_item(&mut self) -> Result<(), ConnectionError> {
         if self.status.selected_slot != self.sent_slot {
             self.sent_slot = self.status.selected_slot;
             let slot = self.sent_slot as i16;
@@ -373,9 +382,79 @@ impl PlaySession {
                 Ok(())
             })?;
         }
+        Ok(())
+    }
+
+    /// The breaking state, for drawing the crack and reporting.
+    pub fn game_mode_state(&self) -> &crate::game_mode::GameMode {
+        &self.game_mode_state
+    }
+
+    /// The attack key's part of `handleKeybinds`: `clicks` presses since the
+    /// last tick, whether it is held with the mouse captured, and what the
+    /// player aims at. Runs before the tick, as the reference handles keys
+    /// before the level ticks the player.
+    pub fn attack(
+        &mut self,
+        clicks: u32,
+        held: bool,
+        aim: crate::game_mode::Aim,
+    ) -> Result<(), ConnectionError> {
+        use crate::game_mode::{Context, Miner, Outgoing};
+        self.ensure_has_sent_carried_item()?;
+        let Some(player) = self.player.as_mut() else {
+            return Ok(());
+        };
+        let miner = Miner::of(&self.trace.world, self.status.selected_slot);
+        let mut ctx = Context {
+            world: &mut self.trace.world,
+            player,
+            miner: &miner,
+            mode: self.game_mode,
+        };
+        let sent = self.game_mode_state.attack_tick(&mut ctx, clicks, held, aim);
+        for packet in sent {
+            match packet {
+                Outgoing::Swing => {
+                    self.swings += 1;
+                    self.send(PLAY_SERVERBOUND_SWING_PACKET_ID, |output| {
+                        wire::write_varint(0, output);
+                        Ok(())
+                    })?;
+                }
+                Outgoing::PlayerAction {
+                    action,
+                    x,
+                    y,
+                    z,
+                    face,
+                    sequence,
+                } => {
+                    // A predicted break changes the block it names.
+                    self.mark_block(x, y, z);
+                    self.send(PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID, |output| {
+                        encode_player_action(output, action as i32, (x, y, z), face, sequence)
+                    })?;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// One client tick: the local player, its packets, then the tick end.
+    pub fn tick(&mut self, keys: Input) -> Result<(), ConnectionError> {
+        // The game mode's tick runs before the player moves.
+        self.ensure_has_sent_carried_item()?;
+        let main_hand = self
+            .trace
+            .world
+            .local_player()
+            .and_then(|state| state.inventory_slot((36 + self.status.selected_slot) as i16))
+            .map_or(0, |stack| stack.item_registry_id());
         if self.loaded
             && let Some(player) = self.player.as_mut()
         {
+            player.set_main_hand_item(main_hand);
             match player.tick(&self.trace.world, keys) {
                 Ok(sent) => {
                     for packet in sent {
@@ -573,7 +652,7 @@ impl PlaySession {
                 self.mark_block(update.x, update.y, update.z);
                 self.trace
                     .world
-                    .update_block_state(update.x, update.y, update.z, update.state_id);
+                    .apply_server_block_state(update.x, update.y, update.z, update.state_id);
             }
             PLAY_CLIENTBOUND_SECTION_BLOCKS_UPDATE_PACKET_ID => {
                 let mut input = payload;
@@ -594,12 +673,7 @@ impl PlaySession {
                         section_z * 16 + ((local >> 4) & 15),
                     );
                     self.mark_block(bx, by, bz);
-                    self.trace.world.update_block_state(
-                        section_x * 16 + ((local >> 8) & 15),
-                        section_y * 16 + (local & 15),
-                        section_z * 16 + ((local >> 4) & 15),
-                        state,
-                    );
+                    self.trace.world.apply_server_block_state(bx, by, bz, state);
                 }
             }
             PLAY_CLIENTBOUND_SET_CHUNK_CACHE_RADIUS_PACKET_ID => {
@@ -738,6 +812,7 @@ impl PlaySession {
                 let packet = parse_player_position_packet(payload)?;
                 self.teleports += 1;
                 self.handle_player_position(packet)?;
+                self.trace.world.prediction_teleport();
             }
             PLAY_CLIENTBOUND_SET_TIME_PACKET_ID => {
                 let mut input = payload;
@@ -764,6 +839,31 @@ impl PlaySession {
                     );
                 }
             }
+            PLAY_CLIENTBOUND_BLOCK_CHANGED_ACK_PACKET_ID => {
+                let sequence = read_varint(&mut &payload[..], "block changed ack sequence")?;
+                for synced in self.trace.world.handle_block_changed_ack(sequence) {
+                    self.mark_block(synced.x, synced.y, synced.z);
+                    // `syncBlockState`: a block put back into the player
+                    // moves it back to where it stood when it predicted.
+                    let pos = crate::binary::BlockPos::new(synced.x, synced.y, synced.z);
+                    if let Some(position) = synced.player_position
+                        && let Some(player) = self.player.as_mut()
+                        && player.is_colliding(&self.trace.world, pos, synced.state)
+                    {
+                        player.abs_snap_to(position);
+                    }
+                }
+            }
+            PLAY_CLIENTBOUND_BLOCK_DESTRUCTION_PACKET_ID => {
+                let packet = parse_block_destruction_packet(payload)?;
+                self.trace.world.destroy_block_progress(
+                    packet.entity_id,
+                    packet.x,
+                    packet.y,
+                    packet.z,
+                    i32::from(packet.progress),
+                );
+            }
             PLAY_CLIENTBOUND_OPEN_SCREEN_PACKET_ID => {
                 let packet = parse_open_screen_packet(payload)?;
                 self.trace.world.apply_local_player_open_menu(
@@ -779,7 +879,15 @@ impl PlaySession {
                     .apply_local_player_container_close(packet.container_id);
             }
             PLAY_CLIENTBOUND_CONTAINER_SET_CONTENT_PACKET_ID => {
-                let packet = parse_container_set_content_packet(payload)?;
+                let packet = match parse_container_set_content_packet(payload) {
+                    Ok(packet) => packet,
+                    // An item with a component the parser does not know
+                    // leaves that stack unknown rather than the session.
+                    Err(error) => {
+                        self.warn(format!("inventory: {error:?}"));
+                        return self.maybe_finish_loading();
+                    }
+                };
                 self.trace.world.apply_local_player_container_content(
                     packet.container_id,
                     packet.state_id,
@@ -788,7 +896,15 @@ impl PlaySession {
                 );
             }
             PLAY_CLIENTBOUND_CONTAINER_SET_SLOT_PACKET_ID => {
-                let packet = parse_container_set_slot_packet(payload)?;
+                let packet = match parse_container_set_slot_packet(payload) {
+                    Ok(packet) => packet,
+                    // An item with a component the parser does not know
+                    // leaves that stack unknown rather than the session.
+                    Err(error) => {
+                        self.warn(format!("inventory: {error:?}"));
+                        return self.maybe_finish_loading();
+                    }
+                };
                 self.trace.world.apply_local_player_container_slot(
                     packet.container_id,
                     packet.state_id,
@@ -797,13 +913,29 @@ impl PlaySession {
                 );
             }
             PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID => {
-                let packet = parse_cursor_item_packet(payload)?;
+                let packet = match parse_cursor_item_packet(payload) {
+                    Ok(packet) => packet,
+                    // An item with a component the parser does not know
+                    // leaves that stack unknown rather than the session.
+                    Err(error) => {
+                        self.warn(format!("inventory: {error:?}"));
+                        return self.maybe_finish_loading();
+                    }
+                };
                 self.trace
                     .world
                     .apply_local_player_carried_item(packet.item.as_ref());
             }
             PLAY_CLIENTBOUND_SET_PLAYER_INVENTORY_PACKET_ID => {
-                let packet = parse_set_player_inventory_packet(payload)?;
+                let packet = match parse_set_player_inventory_packet(payload) {
+                    Ok(packet) => packet,
+                    // An item with a component the parser does not know
+                    // leaves that stack unknown rather than the session.
+                    Err(error) => {
+                        self.warn(format!("inventory: {error:?}"));
+                        return self.maybe_finish_loading();
+                    }
+                };
                 self.trace
                     .world
                     .apply_local_player_inventory_slot(packet.slot, packet.item.as_ref());

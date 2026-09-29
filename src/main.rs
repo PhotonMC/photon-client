@@ -757,6 +757,8 @@ struct HeldKeys {
     sprint: bool,
     /// A scripted attack click on this tick.
     attack: bool,
+    /// The attack key held down on this tick.
+    mine: bool,
 }
 
 impl HeldKeys {
@@ -802,6 +804,7 @@ impl HeldKeys {
                 "sneak" => keys.sneak = true,
                 "sprint" => keys.sprint = true,
                 "attack" => keys.attack = true,
+                "mine" => keys.mine = true,
                 "none" => {}
                 other => return Err(format!("unknown key {other} in VOXEL_SCRIPT")),
             }
@@ -881,6 +884,45 @@ impl Script {
 const CLOUD_RANGE: i32 = 128;
 
 /// View-projection from the player's eye, measured from the mesh origin.
+/// `GameRenderer.pick` for blocks: the outline seen from `eye` along the
+/// view within reach (4.5 blocks, 5 in creative), or a miss. Entities are
+/// not picked.
+fn pick(
+    world: &voxel_client::world::ClientWorld,
+    player: &voxel_client::world::local_player::LocalPlayer,
+    eye: voxel_client::math::Vec3,
+) -> voxel_client::game_mode::Aim {
+    let reach = if player.abilities().instabuild() { 5.0 } else { 4.5 };
+    let (y_rot, x_rot) = player.rotation();
+    let look = voxel_client::math::Vec3::direction_from_rotation_components(x_rot, y_rot);
+    let to = voxel_client::math::Vec3::new(
+        eye.x + look.x * reach,
+        eye.y + look.y * reach,
+        eye.z + look.z * reach,
+    );
+    match world.clip_outlines(eye, to) {
+        // `filterHitResult`: a hit past the reach is a miss.
+        Some(hit) if hit.location.distance_to_sqr(eye) < reach * reach => {
+            voxel_client::game_mode::Aim::Block {
+                x: hit.block_pos.x,
+                y: hit.block_pos.y,
+                z: hit.block_pos.z,
+                face: hit.direction.data3d() as u8,
+            }
+        }
+        _ => voxel_client::game_mode::Aim::Miss,
+    }
+}
+
+/// `Entity.getEyePosition` between ticks.
+fn eye_position(
+    player: &voxel_client::world::local_player::LocalPlayer,
+    partial: f64,
+) -> voxel_client::math::Vec3 {
+    let feet = player.interpolated_position(partial);
+    voxel_client::math::Vec3::new(feet.x, feet.y + f64::from(player.eye_height()), feet.z)
+}
+
 /// The number key for a hotbar slot, 1 to 9.
 fn hotbar_key(key: glfw::Key) -> Option<i32> {
     use glfw::Key;
@@ -1423,53 +1465,28 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                 },
                 None => keys,
             };
-            // A scripted attack is a click: down and up within the tick.
-            if held.attack {
-                attack_key.press();
-                attack_key.release();
-            }
-            // `Minecraft.handleKeybinds`: attack clicks are spent before the
-            // player moves, aiming the way `GameRenderer.pick` aims.
-            if let Some(player) = session.player() {
-                let spectator = player.spectating();
-                let creative = player.abilities().instabuild();
-                let aim = || {
-                    // The block reach: 4.5, or 5 in creative; the entity reach
-                    // is never longer. Entities are not picked yet.
-                    let reach = if creative { 5.0 } else { 4.5 };
-                    let feet = player.position();
-                    let (y_rot, x_rot) = player.rotation();
-                    let eye = voxel_client::math::Vec3::new(
-                        feet.x,
-                        feet.y + f64::from(player.eye_height()),
-                        feet.z,
-                    );
-                    let look =
-                        voxel_client::math::Vec3::direction_from_rotation_components(x_rot, y_rot);
-                    let to = voxel_client::math::Vec3::new(
-                        eye.x + look.x * reach,
-                        eye.y + look.y * reach,
-                        eye.z + look.z * reach,
-                    );
-                    match session.world().clip_outlines(eye, to) {
-                        // `filterHitResult`: a hit past the reach is a miss.
-                        Some(hit) if hit.distance_to_sqr(eye) < reach * reach => {
-                            voxel_client::attack::Aim::Block
-                        }
-                        _ => voxel_client::attack::Aim::Miss,
-                    }
-                };
-                let attacks =
-                    attack_key.tick(captured || script.is_some(), spectator, creative, aim);
-                for attack in attacks {
-                    if attack == voxel_client::attack::Attack::Missed
-                        && let Some(player) = session.player_mut()
-                    {
-                        player.reset_attack_strength();
-                    }
-                    session.swing()?;
+            // A scripted `attack` is a click on the tick; `mine` holds the key.
+            if script.is_some() {
+                if held.attack {
+                    attack_key.press();
+                }
+                if !held.mine {
+                    attack_key.release();
+                } else if !attack_key.is_down() {
+                    attack_key.press();
+                    attack_key.take_clicks();
                 }
             }
+            // `Minecraft.handleKeybinds`: the attack key is spent before the
+            // player moves, aiming the way `GameRenderer.pick` aims.
+            let aim = session.player().map_or(voxel_client::game_mode::Aim::Miss, |player| {
+                pick(session.world(), player, eye_position(player, 1.0))
+            });
+            session.attack(
+                attack_key.take_clicks(),
+                attack_key.is_down() && (captured || script.is_some()),
+                aim,
+            )?;
             session.tick(held.input())?;
             // `LightmapRenderStateExtractor.tick`: the block light's flicker
             // wanders by a small random step and decays.
@@ -1592,6 +1609,32 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
         } else {
             backend.set_hand(&[], [[0.0; 4]; 4])?;
         }
+        // `extractBlockOutline`: the block aimed at this frame, unless the
+        // player cannot build (adventure and spectator, whose exceptions are
+        // not ported).
+        let mut outline = Vec::new();
+        if !matches!(
+            session.game_mode(),
+            voxel_client::world::ClientPlayerGameMode::Adventure
+                | voxel_client::world::ClientPlayerGameMode::Spectator
+        ) && let voxel_client::game_mode::Aim::Block { x, y, z, .. } =
+            pick(session.world(), player, eye_position(player, partial))
+            && let Some(state) = session.world().block_state_at(x, y, z)
+        {
+            let shape = voxel_client::world::outline_shape(state as u32, [x, y, z]);
+            outline = render::outline::outline_vertices(
+                &shape,
+                [
+                    (x - origin[0]) as f32,
+                    (y - origin[1]) as f32,
+                    (z - origin[2]) as f32,
+                ],
+                eye,
+                render::outline::OUTLINE_COLOUR,
+                render::outline::appropriate_line_width(backend.extent().0),
+            );
+        }
+        backend.set_outline(&outline)?;
         if camera_type == CameraType::FirstPerson {
             backend.set_entities(&[])?;
         } else {

@@ -17,6 +17,7 @@ pub mod gui;
 pub mod joml;
 pub mod mipmap;
 pub mod model;
+pub mod outline;
 pub mod player_model;
 pub mod player_renderer;
 pub mod png;

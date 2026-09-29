@@ -157,6 +157,67 @@ void main() {
 }
 ";
 
+/// The block outline's shaders, after the reference's line shader: each
+/// vertex is pushed sideways on screen by half its signed width, across the
+/// edge's direction as the screen sees it, so a line keeps its width in
+/// pixels at any distance. The colour then fogs like the terrain.
+const LINE_VERTEX_SHADER: &str = r"#version 450
+layout(push_constant) uniform Push {
+    mat4 view_projection;
+    // The framebuffer's size in pixels.
+    vec4 screen;
+    vec4 unused_block;
+    vec4 unused_ambient;
+    vec4 camera;
+    vec4 fog_colour;
+    vec4 fog_distances;
+} push;
+layout(location = 0) in vec3 in_position;
+layout(location = 1) in vec4 in_colour;
+layout(location = 2) in vec3 in_normal;
+layout(location = 3) in float in_width;
+layout(location = 0) out vec4 out_colour;
+layout(location = 1) out vec2 out_fog;
+void main() {
+    vec4 start = push.view_projection * vec4(in_position, 1.0);
+    vec4 end = push.view_projection * vec4(in_position + in_normal, 1.0);
+    vec3 ndc_start = start.xyz / start.w;
+    vec3 ndc_end = end.xyz / end.w;
+    vec2 screen = push.screen.xy;
+    vec2 direction = normalize((ndc_end.xy - ndc_start.xy) * screen);
+    vec2 offset = vec2(-direction.y, direction.x) * abs(in_width) / screen;
+    if (offset.x < 0.0) {
+        offset = -offset;
+    }
+    offset *= sign(in_width);
+    gl_Position = vec4((ndc_start + vec3(offset, 0.0)) * start.w, start.w);
+    out_colour = in_colour;
+    vec3 from_camera = in_position - push.camera.xyz;
+    out_fog = vec2(length(from_camera), max(length(from_camera.xz), abs(from_camera.y)));
+}
+";
+
+const LINE_FRAGMENT_SHADER: &str = r"#version 450
+layout(location = 0) in vec4 in_colour;
+layout(location = 1) in vec2 in_fog;
+layout(location = 0) out vec4 out_colour;
+layout(push_constant) uniform Push {
+    layout(offset = 128) vec4 fog_colour;
+    vec4 fog_distances;
+} push;
+float linear_fog(float distance, float start, float end) {
+    if (distance <= start) { return 0.0; }
+    if (distance >= end) { return 1.0; }
+    return (distance - start) / (end - start);
+}
+void main() {
+    float fog = max(
+        linear_fog(in_fog.x, push.fog_distances.x, push.fog_distances.y),
+        linear_fog(in_fog.y, push.fog_distances.z, push.fog_distances.w));
+    out_colour = vec4(mix(in_colour.rgb, push.fog_colour.rgb, fog * push.fog_colour.a), in_colour.a);
+}
+";
+
 /// The GUI's shaders, after the reference's textured GUI shader: a sprite
 /// texel times the vertex colour, dropped where it is fully clear. Vertices
 /// are in GUI units, mapped onto the window by the push constant.
@@ -390,6 +451,8 @@ enum PipelineKind {
     Gui,
     /// The crosshair, inverting what is behind it.
     GuiInvert,
+    /// The aimed block's outline.
+    Lines,
 }
 
 /// Instance API version the reference asks for.
@@ -505,6 +568,8 @@ struct SceneResources {
     weather_sets: Vec<vk::DescriptorSet>,
     entity_pipeline_layout: vk::PipelineLayout,
     entity_pipeline: vk::Pipeline,
+    lines_pipeline_layout: vk::PipelineLayout,
+    lines_pipeline: vk::Pipeline,
     /// The skin entities are drawn with.
     entity_texture: Option<(vk::Image, vk::DeviceMemory, vk::ImageView)>,
     entity_sampler: Option<vk::Sampler>,
@@ -702,6 +767,9 @@ pub struct VulkanBackend {
     /// they are drawn with over a cleared depth.
     hand_buffer: Option<SkyBuffer>,
     hand_count: u32,
+    /// The aimed block's outline strips for the next frame.
+    outline_buffer: Option<SkyBuffer>,
+    outline_count: u32,
     hand_projection: [[f32; 4]; 4],
     /// The GUI's triangles, their runs by blend, and the window's size in
     /// GUI units.
@@ -1014,6 +1082,8 @@ impl VulkanBackend {
                 entity_count: 0,
                 hand_buffer: None,
                 hand_count: 0,
+                outline_buffer: None,
+                outline_count: 0,
                 hand_projection: [[0.0; 4]; 4],
                 gui_buffer: None,
                 gui_batches: Vec::new(),
@@ -1329,6 +1399,30 @@ impl VulkanBackend {
                 self.device
                     .cmd_draw(self.command_buffer, self.entity_count, 1, 0, 0);
             }
+            // The aimed block's outline over the solid world.
+            if let Some(buffer) = self.outline_buffer.as_ref()
+                && self.outline_count > 0
+            {
+                let mut line_push = terrain_push;
+                line_push[16] = extent.width as f32;
+                line_push[17] = extent.height as f32;
+                self.device.cmd_bind_pipeline(
+                    self.command_buffer,
+                    vk::PipelineBindPoint::GRAPHICS,
+                    scene.lines_pipeline,
+                );
+                self.device.cmd_push_constants(
+                    self.command_buffer,
+                    scene.lines_pipeline_layout,
+                    vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
+                    0,
+                    std::slice::from_raw_parts(line_push.as_ptr().cast::<u8>(), 160),
+                );
+                self.device
+                    .cmd_bind_vertex_buffers(self.command_buffer, 0, &[buffer.buffer], &[0]);
+                self.device
+                    .cmd_draw(self.command_buffer, self.outline_count, 1, 0, 0);
+            }
             // Translucent faces last, the farthest section first, so nearer
             // water blends over farther.
             let mut translucent: Vec<&SectionBuffers> = self
@@ -1553,6 +1647,7 @@ impl VulkanBackend {
         let weather = kind == PipelineKind::Weather;
         let entity = kind == PipelineKind::Entity;
         let gui = matches!(kind, PipelineKind::Gui | PipelineKind::GuiInvert);
+        let lines = kind == PipelineKind::Lines;
         unsafe {
             let compiler =
                 shaderc::Compiler::new().map_err(|error| VulkanError::Loader(error.to_string()))?;
@@ -1572,6 +1667,8 @@ impl VulkanBackend {
                 (ENTITY_VERTEX_SHADER, ENTITY_FRAGMENT_SHADER)
             } else if gui {
                 (GUI_VERTEX_SHADER, GUI_FRAGMENT_SHADER)
+            } else if lines {
+                (LINE_VERTEX_SHADER, LINE_FRAGMENT_SHADER)
             } else {
                 (VERTEX_SHADER, FRAGMENT_SHADER)
             };
@@ -1604,6 +1701,8 @@ impl VulkanBackend {
                 std::mem::size_of::<crate::render::clouds::CloudVertex>()
             } else if gui {
                 std::mem::size_of::<crate::render::gui::GuiVertex>()
+            } else if lines {
+                std::mem::size_of::<crate::render::outline::LineVertex>()
             } else {
                 std::mem::size_of::<Vertex>()
             };
@@ -1689,12 +1788,36 @@ impl VulkanBackend {
                     .format(vk::Format::R32G32B32A32_SFLOAT)
                     .offset(16),
             ];
+            let line_attributes = [
+                vk::VertexInputAttributeDescription::default()
+                    .location(0)
+                    .binding(0)
+                    .format(vk::Format::R32G32B32_SFLOAT)
+                    .offset(0),
+                vk::VertexInputAttributeDescription::default()
+                    .location(1)
+                    .binding(0)
+                    .format(vk::Format::R32G32B32A32_SFLOAT)
+                    .offset(12),
+                vk::VertexInputAttributeDescription::default()
+                    .location(2)
+                    .binding(0)
+                    .format(vk::Format::R32G32B32_SFLOAT)
+                    .offset(28),
+                vk::VertexInputAttributeDescription::default()
+                    .location(3)
+                    .binding(0)
+                    .format(vk::Format::R32_SFLOAT)
+                    .offset(40),
+            ];
             let attributes: &[vk::VertexInputAttributeDescription] = if sky {
                 &sky_attributes
             } else if clouds {
                 &cloud_attributes
             } else if gui {
                 &gui_attributes
+            } else if lines {
+                &line_attributes
             } else {
                 &terrain_attributes
             };
@@ -1713,7 +1836,7 @@ impl VulkanBackend {
             let raster = vk::PipelineRasterizationStateCreateInfo::default()
                 .polygon_mode(vk::PolygonMode::FILL)
                 // The sky's fans are built in either winding.
-                .cull_mode(if sky || weather || entity || gui {
+                .cull_mode(if sky || weather || entity || gui || lines {
                     vk::CullModeFlags::NONE
                 } else {
                     vk::CullModeFlags::BACK
@@ -1732,7 +1855,10 @@ impl VulkanBackend {
                 .depth_test_enable(!sky && !gui)
                 .depth_write_enable(matches!(
                     kind,
-                    PipelineKind::Terrain | PipelineKind::Clouds | PipelineKind::Entity
+                    PipelineKind::Terrain
+                        | PipelineKind::Clouds
+                        | PipelineKind::Entity
+                        | PipelineKind::Lines
                 ))
                 .depth_compare_op(vk::CompareOp::GREATER_OR_EQUAL);
             let blends = [if kind == PipelineKind::GuiInvert {
@@ -1755,7 +1881,7 @@ impl VulkanBackend {
                     .dst_alpha_blend_factor(vk::BlendFactor::ZERO)
                     .alpha_blend_op(vk::BlendOp::ADD)
                     .color_write_mask(vk::ColorComponentFlags::RGBA)
-            } else if translucent || sky || clouds || weather || entity || gui {
+            } else if translucent || sky || clouds || weather || entity || gui || lines {
                 vk::PipelineColorBlendAttachmentState::default()
                     .blend_enable(true)
                     .src_color_blend_factor(vk::BlendFactor::SRC_ALPHA)
@@ -2359,6 +2485,8 @@ impl VulkanBackend {
                 self.create_pipeline(descriptor_layout, PipelineKind::Entity)?;
             let (gui_pipeline_layout, gui_pipeline) =
                 self.create_pipeline(descriptor_layout, PipelineKind::Gui)?;
+            let (lines_pipeline_layout, lines_pipeline) =
+                self.create_pipeline(descriptor_layout, PipelineKind::Lines)?;
             let (gui_invert_pipeline_layout, gui_invert_pipeline) =
                 self.create_pipeline(descriptor_layout, PipelineKind::GuiInvert)?;
 
@@ -2387,6 +2515,8 @@ impl VulkanBackend {
                 weather_sets: Vec::new(),
                 entity_pipeline_layout,
                 entity_pipeline,
+                lines_pipeline_layout,
+                lines_pipeline,
                 entity_texture: None,
                 entity_sampler: None,
                 entity_set: None,
@@ -2678,6 +2808,9 @@ impl VulkanBackend {
                 self.device.destroy_pipeline(scene.entity_pipeline, None);
                 self.device
                     .destroy_pipeline_layout(scene.entity_pipeline_layout, None);
+                self.device.destroy_pipeline(scene.lines_pipeline, None);
+                self.device
+                    .destroy_pipeline_layout(scene.lines_pipeline_layout, None);
                 if let Some((image, memory, view)) = scene.entity_texture {
                     self.device.destroy_image_view(view, None);
                     self.device.destroy_image(image, None);
@@ -2972,6 +3105,25 @@ impl VulkanBackend {
         self.gui_buffer = buffer;
         self.gui_batches = frame.batches.clone();
         self.gui_size = size;
+        Ok(())
+    }
+
+    /// Hand over the next frame's block outline strips, placed like the
+    /// terrain's.
+    pub fn set_outline(
+        &mut self,
+        vertices: &[crate::render::outline::LineVertex],
+    ) -> Result<(), VulkanError> {
+        let mut buffer = self.outline_buffer.take();
+        let bytes = unsafe {
+            std::slice::from_raw_parts(
+                vertices.as_ptr().cast::<u8>(),
+                std::mem::size_of_val(vertices),
+            )
+        };
+        self.fill_bytes(&mut buffer, bytes)?;
+        self.outline_buffer = buffer;
+        self.outline_count = vertices.len() as u32;
         Ok(())
     }
 
@@ -3472,6 +3624,7 @@ impl Drop for VulkanBackend {
             for buffer in [
                 self.entity_buffer.take(),
                 self.hand_buffer.take(),
+                self.outline_buffer.take(),
                 self.gui_buffer.take(),
             ]
             .into_iter()

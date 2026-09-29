@@ -72,6 +72,28 @@ kılıç, adventure.
 
 `compare --family block --family movement`: `parity_passed`.
 
+## Canlı oturum
+
+`play` modu sol tık ve basılı tutmayı her tick `GameMode`'a veriyor
+(`PlaySession::attack`, `Minecraft.handleKeybinds` gibi oyuncunun tick'inden
+önce). Hedef `GameRenderer.pick` gibi göz konumundan erişim içinde (4,5;
+creative'de 5 blok) blok çerçevesine ışın testiyle seçiliyor. Oturum
+envanteri, efektleri ve attribute'ları sunucudan izliyor; blok
+güncellemeleri tahmin sürerken yalnız saklanan durumu değiştiriyor, onay
+paketi saklananı geri koyup gerekirse oyuncuyu geri çekiyor, diğer
+oyuncuların çatlakları (`block_destruction`) dünyaya yazılıyor.
+
+Hedef blok çerçevesi her karede kısmi tick'teki göz konumundan seçilip
+`forAllEdges` kenarlarıyla çiziliyor: %40 siyah, `max(2,5, genişlik/1920·2,5)`
+piksel genişliğinde ekran hizalı şeritler, referansın çizgi indeks
+sırasıyla, görünüm (1−1/4096)·(1−1/256) oranında kameraya çekilmiş, arazi
+sisiyle.
+
+Ölçülen: vanilla 26.2 sunucusunda betikli koşu (`VOXEL_SCRIPT` içinde
+`attack` tıklama, `mine` basılı tutma) aşağı bakarak dokuz blok kazdı;
+sunucu kazılan sütunu hava olarak doğruladı, fazladan teleport ya da
+düzeltme göndermedi. Çerçeve referans karelerle karşılaştırılmadı.
+
 ## Eşitlik olmayanlar ve açıklar
 
 - Kırma parçacıkları ve vuruş sesleri çalışmıyor (M7, M8);
@@ -88,3 +110,10 @@ kılıç, adventure.
 - Çatlakların 400 tick sonra silinmesi yok.
 - Eşya kullanımı (`isUsingItem`) henüz olmadığı için saldırıyı engelleyen
   kullanım dalı çalışmıyor (M1.d).
+- Çatlak dokusu çizilmiyor (M1.c devamı). Çerçeve yarı saydam bloklarda
+  yarı saydam yüzlerden önce çiziliyor; adventure ve spectator'da hiç
+  çizilmiyor (eşyanın `can_break`/`can_place_on` yüklemleri ve menü
+  sağlayan bloklar taşınmadı); dünya sınırı kontrolü ve yüksek kontrast
+  seçeneği yok.
+- Tanınmayan bir item bileşeni içeren envanter paketi oturumu düşürmüyor ama
+  o yuva bilinmiyor.
