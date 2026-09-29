@@ -29,6 +29,7 @@ mod entity;
 mod metadata;
 mod player;
 pub mod light;
+pub mod block_rules;
 mod prediction;
 mod region_copy;
 
@@ -693,6 +694,20 @@ impl ClientWorld {
             .collect();
         container.carried_item = carried_item.cloned();
         true
+    }
+
+    /// `ItemStack.shrink` on a stack in the local player's inventory menu,
+    /// as the client predicts using it up. An emptied stack leaves the slot.
+    pub fn shrink_local_player_slot(&mut self, slot: i16, amount: i32) {
+        let Some(player) = self.local_player.as_mut() else {
+            return;
+        };
+        if let Some(Some(stack)) = player.inventory_slots.get_mut(&slot) {
+            stack.item_count -= amount;
+            if stack.item_count <= 0 {
+                player.inventory_slots.insert(slot, None);
+            }
+        }
     }
 
     pub fn apply_local_player_container_slot(
@@ -3298,6 +3313,7 @@ impl ClientWorld {
     }
 }
 
+pub mod block_behaviour_table;
 pub mod block_collision_table;
 pub mod block_destroy_table;
 pub mod block_light_table;

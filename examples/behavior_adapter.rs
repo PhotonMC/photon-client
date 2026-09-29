@@ -16394,6 +16394,47 @@ fn block_result(request: &Value) -> Result<Value, String> {
                     "blocks": voxel_client::render::fluid_overlay_table::OVERLAY_BLOCKS.to_vec(),
                 }));
             }
+            "block_behaviours" => {
+                use voxel_client::world::block_behaviour_table::{BLOCKS, CLASSES, ITEMS};
+                let class = |index: u16| CLASSES[usize::from(index)];
+                let blocks: Vec<Value> = registry::BLOCKS
+                    .iter()
+                    .zip(BLOCKS.iter())
+                    .map(|(block, row)| {
+                        json!({
+                            "name": block.name,
+                            "class": class(row.class),
+                            "placement": class(row.placement),
+                            "can_be_replaced": class(row.can_be_replaced),
+                            "can_survive": class(row.can_survive),
+                            "use_without_item": class(row.use_without_item),
+                            "use_item_on": class(row.use_item_on),
+                            "update_shape": class(row.update_shape),
+                            "replaceable": row.replaceable,
+                            "stairs": row.stairs,
+                            "item": voxel_client::item_table::ITEMS[usize::from(row.item)].name,
+                        })
+                    })
+                    .collect();
+                let items: Vec<Value> = voxel_client::item_table::ITEMS
+                    .iter()
+                    .zip(ITEMS.iter())
+                    .map(|(item, row)| {
+                        let mut described = json!({
+                            "name": item.name,
+                            "class": class(row.class),
+                            "use_on": class(row.use_on),
+                            "use": class(row.use_),
+                            "default_use_pass": row.default_use_pass,
+                        });
+                        if let Some(block) = row.block {
+                            described["block"] = json!(registry::BLOCKS[usize::from(block)].name);
+                        }
+                        described
+                    })
+                    .collect();
+                out.push(json!({"label": label, "outcome": "listed", "blocks": blocks, "items": items}));
+            }
             "destroy_properties" => {
                 use voxel_client::world::block_destroy_table as table;
                 let blocks: Vec<Value> = registry::BLOCKS
@@ -17083,6 +17124,14 @@ fn light_changes_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// The count of the stack in an inventory menu slot, zero when empty.
+fn hand_count(world: &ClientWorld, slot: i16) -> i32 {
+    world
+        .local_player()
+        .and_then(|state| state.inventory_slot(slot))
+        .map_or(0, |stack| stack.item_count())
+}
+
 fn movement_result(request: &Value) -> Result<Value, String> {
     use voxel_client::world::ClientPlayerGameMode;
     use voxel_client::world::local_player::LocalPlayer;
@@ -17141,13 +17190,23 @@ fn movement_result(request: &Value) -> Result<Value, String> {
             world.set_local_player_id(player.entity_id());
             if let Some(name) = breaking["main_hand"].as_str() {
                 let item = voxel_client::item::id_of(name).ok_or_else(|| format!("unknown item {name}"))?;
+                let count = breaking["main_hand_count"].as_i64().unwrap_or(1) as i32;
                 world.apply_local_player_container_slot(
                     0,
                     0,
                     36,
-                    Some(&voxel_client::world::ClientItemStackState::new(1, item)),
+                    Some(&voxel_client::world::ClientItemStackState::new(count, item)),
                 );
                 player.set_main_hand_item(item);
+            }
+            if let Some(name) = breaking["off_hand"].as_str() {
+                let item = voxel_client::item::id_of(name).ok_or_else(|| format!("unknown item {name}"))?;
+                world.apply_local_player_container_slot(
+                    0,
+                    0,
+                    45,
+                    Some(&voxel_client::world::ClientItemStackState::new(1, item)),
+                );
             }
             for effect in breaking["effects"].as_array().into_iter().flatten() {
                 let id = match string(effect, "effect")? {
@@ -17206,21 +17265,48 @@ fn movement_result(request: &Value) -> Result<Value, String> {
                     }
                 }
                 let aim = match attack.get("target") {
-                    Some(target) => voxel_client::game_mode::Aim::Block {
-                        x: i32_field(target, "x")?,
-                        y: i32_field(target, "y")?,
-                        z: i32_field(target, "z")?,
-                        face: match string(target, "face")? {
-                            "down" => 0,
-                            "up" => 1,
-                            "north" => 2,
-                            "south" => 3,
-                            "west" => 4,
-                            "east" => 5,
-                            other => return Err(format!("unknown face {other}")),
-                        },
-                    },
+                    Some(target) => {
+                        let (x, y, z) = (
+                            i32_field(target, "x")?,
+                            i32_field(target, "y")?,
+                            i32_field(target, "z")?,
+                        );
+                        let location = match target.get("location") {
+                            Some(at) => [bits64(at, "x")?, bits64(at, "y")?, bits64(at, "z")?],
+                            None => [
+                                f64::from(x) + 0.5,
+                                f64::from(y) + 0.5,
+                                f64::from(z) + 0.5,
+                            ],
+                        };
+                        voxel_client::game_mode::Aim::Block {
+                            x,
+                            y,
+                            z,
+                            face: match string(target, "face")? {
+                                "down" => 0,
+                                "up" => 1,
+                                "north" => 2,
+                                "south" => 3,
+                                "west" => 4,
+                                "east" => 5,
+                                other => return Err(format!("unknown face {other}")),
+                            },
+                            location,
+                            inside: target["inside"].as_bool().unwrap_or(false),
+                        }
+                    }
                     None => voxel_client::game_mode::Aim::Miss,
+                };
+                let count = |value: &Value, key: &str| -> Result<u32, String> {
+                    u32::try_from(i32_field(value, key)?).map_err(|e| e.to_string())
+                };
+                let use_ = attack.get("use");
+                let keys = voxel_client::game_mode::Keys {
+                    attack_clicks: count(attack, "clicks")?,
+                    attack_held: flag(attack, "down")?,
+                    use_clicks: use_.map_or(Ok(0), |use_| count(use_, "clicks"))?,
+                    use_held: use_.map_or(Ok(false), |use_| flag(use_, "down"))?,
                 };
                 let miner = voxel_client::game_mode::Miner::of(&world, 0);
                 let mut ctx = voxel_client::game_mode::Context {
@@ -17228,13 +17314,18 @@ fn movement_result(request: &Value) -> Result<Value, String> {
                     player: &mut player,
                     miner: &miner,
                     mode: game_mode_of_row,
+                    selected_slot: 0,
                 };
-                actions = game_mode.attack_tick(
-                    &mut ctx,
-                    u32::try_from(i32_field(attack, "clicks")?).map_err(|e| e.to_string())?,
-                    flag(attack, "down")?,
-                    aim,
-                );
+                actions = game_mode.keys_tick(&mut ctx, keys, aim);
+            }
+            // As the session does: the main hand the player ticks with is
+            // the world's inventory now.
+            if breaking.is_some() {
+                let main_hand = world
+                    .local_player()
+                    .and_then(|state| state.inventory_slot(36))
+                    .map_or(0, |stack| stack.item_registry_id());
+                player.set_main_hand_item(main_hand);
             }
             let sent = match player.tick(&world, keys) {
                 Ok(sent) => sent,
@@ -17248,28 +17339,7 @@ fn movement_result(request: &Value) -> Result<Value, String> {
             let (y_rot, x_rot) = player.rotation();
             let mut packets: Vec<Value> = actions
                 .iter()
-                .map(|action| match *action {
-                    voxel_client::game_mode::Outgoing::Swing => {
-                        json!({"type": "minecraft:swing", "bytes": "00"})
-                    }
-                    voxel_client::game_mode::Outgoing::PlayerAction {
-                        action,
-                        x,
-                        y,
-                        z,
-                        face,
-                        sequence,
-                    } => {
-                        let mut bytes = Vec::new();
-                        wire::write_varint(action as i32, &mut bytes);
-                        bytes.extend_from_slice(
-                            &voxel_client::binary::BlockPos::new(x, y, z).as_long().to_be_bytes(),
-                        );
-                        bytes.push(face);
-                        wire::write_varint(sequence, &mut bytes);
-                        json!({"type": "minecraft:player_action", "bytes": hex(&bytes)})
-                    }
-                })
+                .map(|action| json!({"type": action.type_name(), "bytes": hex(&action.encode_body())}))
                 .collect();
             packets.extend(
                 sent.iter()
@@ -17326,6 +17396,9 @@ fn movement_result(request: &Value) -> Result<Value, String> {
                     "stage": stage,
                     "sequence": world.prediction_sequence(),
                     "attack_strength_ticker": player.attack_strength_ticker(),
+                    "right_click_delay": game_mode.right_click_delay(),
+                    "main_hand_count": hand_count(&world, 36),
+                    "off_hand_count": hand_count(&world, 45),
                     "watched_states": watched,
                 });
             }

@@ -13142,6 +13142,12 @@ def block_cases():
         "rows": [{"label": "registry"}],
     }
     yield {
+        "case_id": "block/behaviours",
+        "family": "block",
+        "operation": "block_behaviours",
+        "rows": [{"label": "registry"}],
+    }
+    yield {
         "case_id": "block/tints",
         "family": "block",
         "operation": "block_tints",
@@ -13478,6 +13484,94 @@ def movement_cases():
         "family": "movement",
         "operation": "light_changes",
         "rows": light_rows,
+    }
+    # Using: the use key as `handleKeybinds` spends it, into the reference's
+    # own game mode and block items. The aim is named, with where on the
+    # face it lands.
+    def aim_at(x, y, z, face, at):
+        return {"x": x, "y": y, "z": z, "face": face,
+                "location": {"x": float_bits(at[0], "f64"), "y": float_bits(at[1], "f64"),
+                             "z": float_bits(at[2], "f64")}}
+
+    def uses(count, aim, clicks=0, down=False, watch_at=(), **held):
+        ticks = keys(count, **held)
+        for index, tick in enumerate(ticks):
+            attack = {"clicks": 0, "down": False,
+                      "use": {"clicks": clicks if index == 0 else 0, "down": down},
+                      "watch": [{"x": w[0], "y": w[1], "z": w[2]} for w in watch_at]}
+            if aim is not None:
+                attack["target"] = aim
+            tick["attack"] = attack
+        return ticks
+
+    def using(label, blocks, ticks, main_hand=None, count=1, off_hand=None, **kwargs):
+        row = scene(label, floor() + blocks, ticks, **kwargs)
+        row["breaking"] = {}
+        if main_hand:
+            row["breaking"]["main_hand"] = main_hand
+            row["breaking"]["main_hand_count"] = count
+        if off_hand:
+            row["breaking"]["off_hand"] = off_hand
+        return row
+
+    top_of = aim_at(0, 63, 2, "up", (0.5, 64.0, 2.5))
+    around = [(0, 64, 2), (0, 65, 2), (1, 64, 2), (-1, 64, 2), (0, 64, 3)]
+    side_high = aim_at(0, 64, 3, "north", (0.5, 64.75, 3.0))
+    side_low = aim_at(0, 64, 3, "north", (0.5, 64.25, 3.0))
+    pool_under = [put(x, 64, z, "minecraft:water") for x in range(-2, 3) for z in range(1, 5)]
+    using_rows = [
+        using("stone-on-floor", [], uses(1, top_of, clicks=1, watch_at=around) + uses(12, top_of, down=True, watch_at=around),
+              main_hand="minecraft:stone", count=4),
+        using("empty-hand-on-stone", [], uses(1, top_of, clicks=1, watch_at=around) + uses(3, top_of, watch_at=around)),
+        using("use-in-air", [], uses(1, None, clicks=1, watch_at=around) + uses(6, None, down=True, watch_at=around),
+              main_hand="minecraft:stone", count=4),
+        using("slab-bottom-then-double", [],
+              uses(1, top_of, clicks=1, watch_at=around) + uses(5, top_of, watch_at=around)
+              + uses(1, aim_at(0, 64, 2, "up", (0.5, 64.5, 2.5)), clicks=1, watch_at=around) + uses(3, top_of, watch_at=around),
+              main_hand="minecraft:oak_slab", count=4),
+        using("slab-on-side-halves", [put(0, 64, 3, "minecraft:stone")],
+              uses(1, side_high, clicks=1, watch_at=around) + uses(5, side_low, watch_at=around)
+              + uses(1, aim_at(0, 64, 3, "west", (0.0, 64.25, 3.5)), clicks=1, watch_at=around + [(-1, 64, 3)]),
+              main_hand="minecraft:stone_slab", count=4),
+        using("log-axis-from-face", [put(0, 64, 3, "minecraft:stone")],
+              uses(1, side_high, clicks=1, watch_at=around) + uses(5, top_of, watch_at=around)
+              + uses(1, aim_at(0, 64, 3, "east", (1.0, 64.5, 3.5)), clicks=1, watch_at=around + [(1, 64, 3)]),
+              main_hand="minecraft:oak_log", count=4),
+        using("stairs-meet-stairs",
+              [put(1, 64, 2, "minecraft:oak_stairs", {"facing": "east", "half": "bottom", "shape": "straight"})],
+              uses(1, top_of, clicks=1, watch_at=around) + uses(3, top_of, watch_at=around),
+              main_hand="minecraft:oak_stairs", count=4, y_rot=90.0),
+        using("stairs-top-half-facing", [put(0, 64, 3, "minecraft:stone")],
+              uses(1, side_high, clicks=1, watch_at=around) + uses(3, top_of, watch_at=around),
+              main_hand="minecraft:stone_stairs", count=4, y_rot=-45.0),
+        using("slab-into-water", pool_under,
+              uses(1, aim_at(0, 63, 2, "up", (0.5, 64.0, 2.5)), clicks=1, watch_at=around) + uses(3, top_of, watch_at=around),
+              main_hand="minecraft:oak_slab", count=4),
+        using("place-where-standing", [],
+              uses(1, aim_at(0, 63, 0, "up", (0.5, 64.0, 0.5)), clicks=1, watch_at=[(0, 64, 0)])
+              + uses(3, top_of, watch_at=[(0, 64, 0)]),
+              main_hand="minecraft:stone", count=4),
+        using("creative-keeps-count", [], uses(1, top_of, clicks=1, watch_at=around) + uses(3, top_of, watch_at=around),
+              main_hand="minecraft:stone", count=4, game_mode="creative"),
+        using("crafting-table-use", [put(0, 64, 2, "minecraft:crafting_table")],
+              uses(1, aim_at(0, 64, 2, "up", (0.5, 65.0, 2.5)), clicks=1, watch_at=around) + uses(3, top_of, watch_at=around),
+              main_hand="minecraft:stone", count=4),
+        using("sneak-place-on-crafting-table", [put(0, 64, 2, "minecraft:crafting_table")],
+              uses(1, aim_at(0, 64, 2, "up", (0.5, 65.0, 2.5)), clicks=1, watch_at=around, sneak=True)
+              + uses(3, top_of, watch_at=around, sneak=True),
+              main_hand="minecraft:stone", count=4),
+        using("off-hand-places", [], uses(1, top_of, clicks=1, watch_at=around) + uses(3, top_of, watch_at=around),
+              off_hand="minecraft:cobblestone"),
+        using("adventure-cannot-place", [], uses(1, top_of, clicks=1, watch_at=around) + uses(3, top_of, watch_at=around),
+              main_hand="minecraft:stone", count=4, game_mode="adventure"),
+        using("place-last-block", [], uses(1, top_of, clicks=1, watch_at=around) + uses(3, top_of, watch_at=around),
+              main_hand="minecraft:stone", count=1),
+    ]
+    yield {
+        "case_id": "movement/using",
+        "family": "movement",
+        "operation": "local_player_ticks",
+        "rows": using_rows,
     }
     yield {
         "case_id": "movement/breaking",

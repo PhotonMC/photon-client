@@ -120,6 +120,68 @@ impl ClientWorld {
         changed
     }
 
+    /// `Level.setBlock` from the client's own action: the block changes as a
+    /// prediction, then, unless `flags` holds 16, its neighbours reshape to
+    /// it. `limit` bounds how far the reshaping reaches, as the reference's
+    /// update limit does.
+    pub fn set_block_with_updates(
+        &mut self,
+        (x, y, z): (i32, i32, i32),
+        state: i32,
+        flags: u32,
+        limit: i32,
+        player_position: Vec3,
+    ) -> bool {
+        if !self.set_block_predicted(x, y, z, state, player_position) {
+            return false;
+        }
+        if flags & 16 == 0 && limit > 0 {
+            self.update_neighbour_shapes((x, y, z), flags & !33, limit - 1, player_position);
+        }
+        true
+    }
+
+    /// `updateNeighbourShapes`: each neighbour, in the reference's order,
+    /// reshapes to the changed block through `updateOrDestroy`. A neighbour
+    /// whose class's rule is not written keeps its state.
+    fn update_neighbour_shapes(
+        &mut self,
+        pos: (i32, i32, i32),
+        flags: u32,
+        limit: i32,
+        player_position: Vec3,
+    ) {
+        use crate::direction::Direction;
+        for direction in [
+            Direction::West,
+            Direction::East,
+            Direction::North,
+            Direction::South,
+            Direction::Down,
+            Direction::Up,
+        ] {
+            let (dx, dy, dz) = direction.step();
+            let neighbour = (pos.0 + dx, pos.1 + dy, pos.2 + dz);
+            let Some(current) = self.block_state_at(neighbour.0, neighbour.1, neighbour.2) else {
+                continue;
+            };
+            let read = |x: i32, y: i32, z: i32| self.block_state_at(x, y, z).unwrap_or(0);
+            let updated = match crate::world::block_rules::update_shape(
+                current,
+                &read,
+                neighbour,
+                direction.opposite(),
+            ) {
+                crate::world::block_rules::Rule::Known(updated) => updated,
+                crate::world::block_rules::Rule::Unported => continue,
+            };
+            // A client never destroys a block that reshapes into air.
+            if updated != current && !crate::world::block_rules::state_is_air(updated) {
+                self.set_block_with_updates(neighbour, updated, flags & !32, limit, player_position);
+            }
+        }
+    }
+
     /// `setServerVerifiedBlockState`: a block update from the server. A block
     /// with a prediction pending keeps it and only remembers the state.
     /// Returns whether the block itself changed.

@@ -52,6 +52,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P12 — Menzil dışı blok kırma reddi sözleşmesi — server-conformance birleşik kayıt](block-break-rejection-conformance.md)
 - [P12.c — Blok kırma döngüsü ve tahmin — client-parity kaydı](block-breaking-conformance.md)
 - [P17.b — Blok çarpışma şekilleri — client-parity kayıt](block-collision-conformance.md)
+- [P12.d — Sağ tık, blok koyma ve sınıf kuralları — client-parity kaydı](block-placement-conformance.md)
 - [P16.s — Blok kayıt defteri — client-parity kayıt](block-registry-conformance.md)
 - [P16.o — Blok tonlaması — client-parity kayıt](block-tint-conformance.md)
 - [P01.c — BlockPos betweenClosed AABB sözleşmesi — client-parity birleşik kayıt](blockpos-between-closed-aabb-conformance.md)

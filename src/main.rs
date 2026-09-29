@@ -759,6 +759,10 @@ struct HeldKeys {
     attack: bool,
     /// The attack key held down on this tick.
     mine: bool,
+    /// A scripted use click on this tick.
+    use_click: bool,
+    /// The use key held down on this tick.
+    hold_use: bool,
 }
 
 impl HeldKeys {
@@ -805,6 +809,8 @@ impl HeldKeys {
                 "sprint" => keys.sprint = true,
                 "attack" => keys.attack = true,
                 "mine" => keys.mine = true,
+                "use" => keys.use_click = true,
+                "hold_use" => keys.hold_use = true,
                 "none" => {}
                 other => return Err(format!("unknown key {other} in VOXEL_SCRIPT")),
             }
@@ -908,6 +914,8 @@ fn pick(
                 y: hit.block_pos.y,
                 z: hit.block_pos.z,
                 face: hit.direction.data3d() as u8,
+                location: [hit.location.x, hit.location.y, hit.location.z],
+                inside: hit.inside,
             }
         }
         _ => voxel_client::game_mode::Aim::Miss,
@@ -1314,6 +1322,8 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
     // Attack clicks waiting for the next tick, and `Minecraft.missTime`:
     // ticks a missed attack keeps the next one waiting.
     let mut attack_key = voxel_client::attack::AttackKey::default();
+    // The use key keeps its clicks and held state the same way.
+    let mut use_key = voxel_client::attack::AttackKey::default();
     let mut cloud_key = None;
     // The reference seeds this source uniquely per run.
     let mut flicker_random = voxel_client::random::RandomSource::create(
@@ -1372,6 +1382,7 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                         surface.set_cursor_captured(false);
                         keys = HeldKeys::default();
                         attack_key.release();
+                        use_key.release();
                     } else {
                         surface.request_close();
                     }
@@ -1415,6 +1426,20 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                     _,
                 ) => {
                     attack_key.release();
+                }
+                glfw::WindowEvent::MouseButton(
+                    glfw::MouseButton::Button2,
+                    glfw::Action::Press,
+                    _,
+                ) if captured => {
+                    use_key.press();
+                }
+                glfw::WindowEvent::MouseButton(
+                    glfw::MouseButton::Button2,
+                    glfw::Action::Release,
+                    _,
+                ) => {
+                    use_key.release();
                 }
                 glfw::WindowEvent::MouseButton(_, glfw::Action::Press, _) if !captured => {
                     captured = true;
@@ -1497,15 +1522,30 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
                     attack_key.press();
                     attack_key.take_clicks();
                 }
+                // `use` is a click on the tick; `hold_use` holds the key.
+                if held.use_click {
+                    use_key.press();
+                }
+                if !held.hold_use {
+                    use_key.release();
+                } else if !use_key.is_down() {
+                    use_key.press();
+                    use_key.take_clicks();
+                }
             }
             // `Minecraft.handleKeybinds`: the attack key is spent before the
             // player moves, aiming the way `GameRenderer.pick` aims.
             let aim = session.player().map_or(voxel_client::game_mode::Aim::Miss, |player| {
                 pick(session.world(), player, eye_position(player, 1.0))
             });
-            session.attack(
-                attack_key.take_clicks(),
-                attack_key.is_down() && (captured || script.is_some()),
+            let grabbed = captured || script.is_some();
+            session.keys(
+                voxel_client::game_mode::Keys {
+                    attack_clicks: attack_key.take_clicks(),
+                    attack_held: attack_key.is_down() && grabbed,
+                    use_clicks: use_key.take_clicks(),
+                    use_held: use_key.is_down(),
+                },
                 aim,
             )?;
             session.tick(held.input())?;

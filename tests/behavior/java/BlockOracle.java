@@ -62,6 +62,7 @@ public final class BlockOracle {
                 case "fluid_flow_properties" -> rows.add(fluidFlowProperties(element.getAsJsonObject()));
                 case "destroy_properties" -> rows.add(destroyProperties(element.getAsJsonObject()));
                 case "item_tools" -> rows.add(itemTools(element.getAsJsonObject()));
+                case "block_behaviours" -> rows.add(blockBehaviours(element.getAsJsonObject()));
                 default -> throw new IllegalArgumentException("Unknown block operation: " + operation);
             }
         }
@@ -699,6 +700,94 @@ public final class BlockOracle {
                 toolJson.addProperty("damage_per_block", tool.damagePerBlock());
                 toolJson.addProperty("can_destroy_blocks_in_creative", tool.canDestroyBlocksInCreative());
                 described.add("tool", toolJson);
+            }
+            items.add(described);
+        }
+        entry.add("items", items);
+        return entry;
+    }
+
+    /** The simple name of the class whose own method a class ends up running. */
+    private static String declaringClass(Class<?> type, String name, Class<?>... parameters) {
+        for (Class<?> current = type; current != null; current = current.getSuperclass()) {
+            try {
+                current.getDeclaredMethod(name, parameters);
+                return current.getSimpleName();
+            } catch (NoSuchMethodException missing) {
+                // Look further up.
+            }
+        }
+        throw new IllegalStateException("No " + name + " on " + type);
+    }
+
+    /**
+     * Which class's own rule each block runs when an item is used on it and
+     * when it is placed, and each state's replaceable flag. Items get their
+     * class, the class whose use rules they run, and the block they place.
+     */
+    private static JsonObject blockBehaviours(JsonObject row) {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        entry.addProperty("outcome", "listed");
+        var registry = net.minecraft.core.registries.BuiltInRegistries.BLOCK;
+        Class<?> stateType = net.minecraft.world.level.block.state.BlockState.class;
+        Class<?> posType = net.minecraft.core.BlockPos.class;
+        Class<?> levelType = net.minecraft.world.level.Level.class;
+        Class<?> playerType = net.minecraft.world.entity.player.Player.class;
+        Class<?> hitType = net.minecraft.world.phys.BlockHitResult.class;
+        Class<?> placeType = net.minecraft.world.item.context.BlockPlaceContext.class;
+        var blocks = new JsonArray();
+        for (var block : registry) {
+            var type = block.getClass();
+            var described = new JsonObject();
+            described.addProperty("name", registry.getKey(block).toString());
+            described.addProperty("class", type.getSimpleName());
+            described.addProperty("placement", declaringClass(type, "getStateForPlacement", placeType));
+            described.addProperty("can_be_replaced", declaringClass(type, "canBeReplaced", stateType, placeType));
+            described.addProperty("can_survive", declaringClass(type, "canSurvive",
+                stateType, net.minecraft.world.level.LevelReader.class, posType));
+            described.addProperty("use_without_item", declaringClass(type, "useWithoutItem",
+                stateType, levelType, posType, playerType, hitType));
+            described.addProperty("use_item_on", declaringClass(type, "useItemOn",
+                net.minecraft.world.item.ItemStack.class, stateType, levelType, posType, playerType,
+                net.minecraft.world.InteractionHand.class, hitType));
+            described.addProperty("update_shape", declaringClass(type, "updateShape",
+                stateType, net.minecraft.world.level.LevelReader.class,
+                net.minecraft.world.level.ScheduledTickAccess.class, posType,
+                net.minecraft.core.Direction.class, posType, stateType,
+                net.minecraft.util.RandomSource.class));
+            var replaceable = new StringBuilder();
+            for (var state : block.getStateDefinition().getPossibleStates()) {
+                replaceable.append(state.canBeReplaced() ? '1' : '0');
+            }
+            described.addProperty("replaceable", replaceable.toString());
+            described.addProperty("stairs", block instanceof net.minecraft.world.level.block.StairBlock);
+            described.addProperty("item", net.minecraft.core.registries.BuiltInRegistries.ITEM
+                .getKey(block.asItem()).toString());
+            blocks.add(described);
+        }
+        entry.add("blocks", blocks);
+        var items = new JsonArray();
+        var itemRegistry = net.minecraft.core.registries.BuiltInRegistries.ITEM;
+        for (var item : itemRegistry) {
+            var type = item.getClass();
+            var described = new JsonObject();
+            described.addProperty("name", itemRegistry.getKey(item).toString());
+            described.addProperty("class", type.getSimpleName());
+            described.addProperty("use_on", declaringClass(type, "useOn",
+                net.minecraft.world.item.context.UseOnContext.class));
+            described.addProperty("use", declaringClass(type, "use",
+                levelType, playerType, net.minecraft.world.InteractionHand.class));
+            // `Item.use` does nothing for a stack with none of these.
+            var components = item.components();
+            var equippable = components.get(net.minecraft.core.component.DataComponents.EQUIPPABLE);
+            described.addProperty("default_use_pass",
+                !components.has(net.minecraft.core.component.DataComponents.CONSUMABLE)
+                    && (equippable == null || !equippable.swappable())
+                    && !components.has(net.minecraft.core.component.DataComponents.BLOCKS_ATTACKS)
+                    && !components.has(net.minecraft.core.component.DataComponents.KINETIC_WEAPON));
+            if (item instanceof net.minecraft.world.item.BlockItem blockItem) {
+                described.addProperty("block", registry.getKey(blockItem.getBlock()).toString());
             }
             items.add(described);
         }

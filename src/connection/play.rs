@@ -387,14 +387,12 @@ impl PlaySession {
         &self.game_mode_state
     }
 
-    /// The attack key's part of `handleKeybinds`: `clicks` presses since the
-    /// last tick, whether it is held with the mouse captured, and what the
+    /// The attack and use keys' part of `handleKeybinds`, with what the
     /// player aims at. Runs before the tick, as the reference handles keys
     /// before the level ticks the player.
-    pub fn attack(
+    pub fn keys(
         &mut self,
-        clicks: u32,
-        held: bool,
+        keys: crate::game_mode::Keys,
         aim: crate::game_mode::Aim,
     ) -> Result<(), ConnectionError> {
         use crate::game_mode::{Context, Miner, Outgoing};
@@ -408,32 +406,36 @@ impl PlaySession {
             player,
             miner: &miner,
             mode: self.game_mode,
+            selected_slot: self.status.selected_slot,
         };
-        let sent = self.game_mode_state.attack_tick(&mut ctx, clicks, held, aim);
+        let sent = self.game_mode_state.keys_tick(&mut ctx, keys, aim);
         for packet in sent {
-            match packet {
-                Outgoing::Swing => {
+            let id = match packet {
+                Outgoing::Swing { .. } => {
                     self.swings += 1;
-                    self.send(PLAY_SERVERBOUND_SWING_PACKET_ID, |output| {
-                        wire::write_varint(0, output);
-                        Ok(())
-                    })?;
+                    PLAY_SERVERBOUND_SWING_PACKET_ID
                 }
-                Outgoing::PlayerAction {
-                    action,
-                    x,
-                    y,
-                    z,
-                    face,
-                    sequence,
-                } => {
+                Outgoing::PlayerAction { x, y, z, .. } => {
                     // A predicted break changes the block it names.
                     self.mark_block(x, y, z);
-                    self.send(PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID, |output| {
-                        encode_player_action(output, action as i32, (x, y, z), face, sequence)
-                    })?;
+                    PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID
                 }
-            }
+                Outgoing::UseItemOn { x, y, z, face, .. } => {
+                    // A predicted placement changes the block or the one
+                    // in front of the face, and its neighbours.
+                    let (dx, dy, dz) =
+                        crate::direction::Direction::from_3d_data_value(i32::from(face)).step();
+                    self.mark_block(x, y, z);
+                    self.mark_block(x + dx, y + dy, z + dz);
+                    PLAY_SERVERBOUND_USE_ITEM_ON_PACKET_ID
+                }
+                Outgoing::UseItem { .. } => PLAY_SERVERBOUND_USE_ITEM_PACKET_ID,
+            };
+            let body = packet.encode_body();
+            self.send(id, |output| {
+                output.extend_from_slice(&body);
+                Ok(())
+            })?;
         }
         Ok(())
     }

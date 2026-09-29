@@ -107,9 +107,10 @@ kalıyor, böylece yakalanan kare kırma sürerken alınabiliyor.
 
 - Kırma parçacıkları ve vuruş sesleri çalışmıyor (M7, M8);
   `BlockState.attack` ve `playerWillDestroy` yan etkileri (kızıltaş
-  cevherinin yanması, kapı/yatak/çift bitkinin diğer yarısı) ve tahmin
-  edilen kırmadan sonra komşu şekil güncellemeleri tahmin edilmiyor;
-  sunucunun blok güncellemesi bunları düzeltiyor.
+  cevherinin yanması, kapı/yatak/çift bitkinin diğer yarısı) tahmin
+  edilmiyor. Tahmin edilen kırmadan sonra komşular yalnız kuralı yazılmış
+  sınıflarda yeniden şekilleniyor ([P12.d](block-placement-conformance.md));
+  sunucunun blok güncellemesi gerisini düzeltiyor.
 - Kırılan bloğun ışığı istemcinin ışık motoruyla yeniden hesaplanıyor
   ([P08.c-light.2](client-light-engine-conformance.md)).
 - Eşyanın yamasındaki `tool` ve `minimum_attack_charge` bileşenleri

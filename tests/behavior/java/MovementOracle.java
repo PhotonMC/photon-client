@@ -351,6 +351,9 @@ public final class MovementOracle {
 
         boolean breaking = row.has("breaking");
         if (breaking) {
+            // The client's own player is one of its level's entities, and
+            // placing a block checks the level's entities for room.
+            level.addEntity(player);
             setField(minecraft, "level", level);
             var sprite = (net.minecraft.client.renderer.texture.TextureAtlasSprite)
                 unsafe.allocateInstance(BlankSprite.class);
@@ -366,8 +369,16 @@ public final class MovementOracle {
             if (breaking_.has("main_hand")) {
                 var item = net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(
                     net.minecraft.resources.Identifier.parse(breaking_.get("main_hand").getAsString()));
-                player.getInventory().setItem(0, new net.minecraft.world.item.ItemStack(item));
+                int count = breaking_.has("main_hand_count") ? breaking_.get("main_hand_count").getAsInt() : 1;
+                player.getInventory().setItem(0, new net.minecraft.world.item.ItemStack(item, count));
             }
+            if (breaking_.has("off_hand")) {
+                var item = net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(
+                    net.minecraft.resources.Identifier.parse(breaking_.get("off_hand").getAsString()));
+                player.getInventory().setItem(40, new net.minecraft.world.item.ItemStack(item));
+            }
+            setField(getField(minecraft, "gameRenderer"), "itemInHandRenderer",
+                unsafe.allocateInstance(net.minecraft.client.renderer.ItemInHandRenderer.class));
             if (breaking_.has("effects")) {
                 for (var effectElement : breaking_.getAsJsonArray("effects")) {
                     var effect = effectElement.getAsJsonObject();
@@ -447,19 +458,42 @@ public final class MovementOracle {
                 }
             }
         }
+        // `Minecraft.tick`: the right click delay counts down first.
+        int rightClickDelay = (int) getField(minecraft, "rightClickDelay");
+        if (rightClickDelay > 0) {
+            setField(minecraft, "rightClickDelay", rightClickDelay - 1);
+        }
         if (attack.has("target")) {
             var target = attack.getAsJsonObject("target");
             var pos = new BlockPos(target.get("x").getAsInt(), target.get("y").getAsInt(),
                 target.get("z").getAsInt());
             var face = net.minecraft.core.Direction.byName(target.get("face").getAsString());
+            var location = target.has("location")
+                ? new net.minecraft.world.phys.Vec3(
+                    Oracle.f64(target.getAsJsonObject("location"), "x"),
+                    Oracle.f64(target.getAsJsonObject("location"), "y"),
+                    Oracle.f64(target.getAsJsonObject("location"), "z"))
+                : net.minecraft.world.phys.Vec3.atCenterOf(pos);
             minecraft.hitResult = new net.minecraft.world.phys.BlockHitResult(
-                net.minecraft.world.phys.Vec3.atCenterOf(pos), face, pos, false);
+                location, face, pos, target.has("inside") && target.get("inside").getAsBoolean());
         } else {
             minecraft.hitResult = net.minecraft.world.phys.BlockHitResult.miss(
                 net.minecraft.world.phys.Vec3.ZERO, net.minecraft.core.Direction.UP, BlockPos.ZERO);
         }
         for (int click = 0; click < attack.get("clicks").getAsInt(); click++) {
             startAttack.invoke(minecraft);
+        }
+        if (attack.has("use")) {
+            var use = attack.getAsJsonObject("use");
+            var startUseItem = net.minecraft.client.Minecraft.class.getDeclaredMethod("startUseItem");
+            startUseItem.setAccessible(true);
+            for (int click = 0; click < use.get("clicks").getAsInt(); click++) {
+                startUseItem.invoke(minecraft);
+            }
+            if (use.get("down").getAsBoolean() && (int) getField(minecraft, "rightClickDelay") == 0
+                && !minecraft.player.isUsingItem()) {
+                startUseItem.invoke(minecraft);
+            }
         }
         continueAttack.invoke(minecraft, attack.get("down").getAsBoolean());
         int missTime = (int) getField(minecraft, "missTime");
@@ -487,6 +521,9 @@ public final class MovementOracle {
         var handler = getField(level, "blockStatePredictionHandler");
         out.addProperty("sequence", (int) getField(handler, "currentSequenceNr"));
         out.addProperty("attack_strength_ticker", (int) getField(player, "attackStrengthTicker"));
+        out.addProperty("right_click_delay", (int) getField(minecraft, "rightClickDelay"));
+        out.addProperty("main_hand_count", player.getMainHandItem().getCount());
+        out.addProperty("off_hand_count", player.getOffhandItem().getCount());
         var states = new JsonArray();
         for (var element : attack.getAsJsonArray("watch")) {
             var watched = element.getAsJsonObject();
