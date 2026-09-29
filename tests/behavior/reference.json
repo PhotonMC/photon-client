@@ -85,6 +85,26 @@
       "file": "lwjgl-3.4.1-natives-linux.jar",
       "sha1": "2734e106bd95db49fe0da8cf8bf7fd96475c436c"
     },
+    "org.lwjgl:lwjgl-natives-macos": {
+      "file": "lwjgl-3.4.1-natives-macos.jar",
+      "sha1": "b034fd9a67cb8646c01af7efcefcb93be835542b"
+    },
+    "org.lwjgl:lwjgl-natives-macos-arm64": {
+      "file": "lwjgl-3.4.1-natives-macos-arm64.jar",
+      "sha1": "b4cbdef4818abd714ee66985344c0949fd1cd6d6"
+    },
+    "org.lwjgl:lwjgl-natives-windows": {
+      "file": "lwjgl-3.4.1-natives-windows.jar",
+      "sha1": "96a217f0428ab73487f114a54179a4f41e851a04"
+    },
+    "org.lwjgl:lwjgl-natives-windows-arm64": {
+      "file": "lwjgl-3.4.1-natives-windows-arm64.jar",
+      "sha1": "d1d3a7052da47ccde2a5fdf3a1bd45d801c3157c"
+    },
+    "org.lwjgl:lwjgl-natives-windows-x86": {
+      "file": "lwjgl-3.4.1-natives-windows-x86.jar",
+      "sha1": "65de43bd52507e108a58247c0da57a50ce3ee6f6"
+    },
     "org.lwjgl:lwjgl-stb": {
       "file": "lwjgl-stb-3.4.1.jar",
       "sha1": "f077c3dafc31924fbe8acb0b913f08977ba27f8e"
@@ -92,6 +112,26 @@
     "org.lwjgl:lwjgl-stb-natives-linux": {
       "file": "lwjgl-stb-3.4.1-natives-linux.jar",
       "sha1": "7e1cfae909da6c68f3cb6073a9bfeb6c90e82a57"
+    },
+    "org.lwjgl:lwjgl-stb-natives-macos": {
+      "file": "lwjgl-stb-3.4.1-natives-macos.jar",
+      "sha1": "fd1ea36b717b0832babca09324a6cfc43906e2aa"
+    },
+    "org.lwjgl:lwjgl-stb-natives-macos-arm64": {
+      "file": "lwjgl-stb-3.4.1-natives-macos-arm64.jar",
+      "sha1": "da554e04f819f09b0f3473bd931628ebf557965e"
+    },
+    "org.lwjgl:lwjgl-stb-natives-windows": {
+      "file": "lwjgl-stb-3.4.1-natives-windows.jar",
+      "sha1": "b4e13ece83c228ecf57354639d8555076a989d74"
+    },
+    "org.lwjgl:lwjgl-stb-natives-windows-arm64": {
+      "file": "lwjgl-stb-3.4.1-natives-windows-arm64.jar",
+      "sha1": "7f4c39b3d56c7bae4900ee6e59d8f75432bdb18f"
+    },
+    "org.lwjgl:lwjgl-stb-natives-windows-x86": {
+      "file": "lwjgl-stb-3.4.1-natives-windows-x86.jar",
+      "sha1": "e091cd3b25ab7db88f0e34a0d2797dc396a528fa"
     },
     "org.slf4j:slf4j-api": {
       "file": "slf4j-api-2.0.17.jar",

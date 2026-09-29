@@ -67,6 +67,23 @@ def execute(command, cwd, label, stdin="", timeout=60):
     return result.stdout, result.stderr
 
 
+def native_platform():
+    """LWJGL's name for this machine's natives, as the version file lists them."""
+    system, machine = platform.system(), platform.machine().lower()
+    arm = machine in ("arm64", "aarch64")
+    if system == "Darwin":
+        return "macos-arm64" if arm else "macos"
+    if system == "Windows":
+        return "windows-arm64" if arm else ("windows" if machine.endswith("64") else "windows-x86")
+    return "linux"
+
+
+def native_key(key):
+    """Families name the Linux natives; another machine loads its own."""
+    suffix = "-natives-linux"
+    return key[:-len(suffix)] + "-natives-" + native_platform() if key.endswith(suffix) else key
+
+
 def preflight(families, runtime, jdk_home, run_dir):
     pin = json.loads((SPEC / "reference.json").read_text(encoding="utf-8"))
     unknown = set(families) - pin["families"].keys()
@@ -74,7 +91,8 @@ def preflight(families, runtime, jdk_home, run_dir):
         raise Blocked(f"Unknown families: {sorted(unknown)}")
     client = runtime / pin["client_file"]
     check_file(client, pin["client_sha1"])
-    keys = sorted({key for family in families for key in pin["families"][family]["libraries"]})
+    keys = sorted({native_key(key) for family in families
+                   for key in pin["families"][family]["libraries"]})
     classpath = [str(client)]
     for key in keys:
         entry = pin["libraries"][key]
