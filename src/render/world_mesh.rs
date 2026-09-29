@@ -304,8 +304,10 @@ impl BlockRenderer {
                 let Some(rect) = self.atlas.sprites.get(&texture.as_string()) else {
                     continue;
                 };
+                let mut mesh = chest_mesh(rect);
+                apply_local(&mut mesh, &layer.local);
                 out.push(ItemLayer {
-                    mesh: chest_mesh(rect),
+                    mesh,
                     side_lit: model.gui_light == crate::render::model::GuiLight::Side,
                     transform: model.display.get(context),
                 });
@@ -323,7 +325,7 @@ impl BlockRenderer {
             } else {
                 model
             };
-            let Ok(mesh) = crate::render::resolve::build_mesh(
+            let Ok(mut mesh) = crate::render::resolve::build_mesh(
                 model,
                 &self.atlas,
                 None,
@@ -333,6 +335,7 @@ impl BlockRenderer {
             ) else {
                 continue;
             };
+            apply_local(&mut mesh, &layer.local);
             out.push(ItemLayer {
                 mesh,
                 side_lit: model.gui_light == crate::render::model::GuiLight::Side,
@@ -1195,4 +1198,39 @@ fn chest_mesh(rect: &[f32; 4]) -> Mesh {
             .extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 3]);
     }
     mesh
+}
+
+/// A layer's `transformation` applied to its quads, in the unit block. The
+/// quads keep facing outwards: a mirroring matrix turns each quad's corners
+/// round, and the facing each quad is shaded by follows the matrix.
+fn apply_local(mesh: &mut Mesh, matrix: &crate::render::item_model::Matrix4) {
+    if *matrix == crate::render::item_model::IDENTITY {
+        return;
+    }
+    let determinant = {
+        let m = matrix;
+        m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1])
+            - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0])
+            + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0])
+    };
+    for vertex in &mut mesh.vertices {
+        let [x, y, z] = vertex.position;
+        vertex.position = std::array::from_fn(|row| {
+            matrix[row][0] * x + matrix[row][1] * y + matrix[row][2] * z + matrix[row][3]
+        });
+    }
+    for (quad, info) in mesh.quads.iter_mut().enumerate() {
+        let first = quad * 4;
+        if determinant < 0.0 {
+            mesh.vertices[first + 1..first + 4].reverse();
+        }
+        let normal = crate::render::geometry::triangle_normal(
+            mesh.vertices[first].position,
+            mesh.vertices[first + 1].position,
+            mesh.vertices[first + 2].position,
+        );
+        if let Some(direction) = crate::render::geometry::closest_direction(normal) {
+            info.direction = direction;
+        }
+    }
 }

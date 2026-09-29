@@ -1389,6 +1389,32 @@ fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::e
     let block_renderer = render::world_mesh::BlockRenderer::new(&source, requested_mips)
         .map_err(|error| format!("block models: {error:?}"))?;
     let block_renderer = std::sync::Arc::new(block_renderer);
+    if env::var_os("VOXEL_ITEM_REPORT").is_some() {
+        for tab in voxel_client::creative_tabs_table::CREATIVE_TABS.iter() {
+            let mut missing = Vec::new();
+            for &index in tab.items {
+                let stack = voxel_client::creative_menu::table_stack(index);
+                let layers = block_renderer.item_layers(
+                    stack.item_registry_id(),
+                    render::model::DisplayContext::Gui,
+                    &|_, _| 0,
+                );
+                if layers.is_empty() || layers.iter().all(|layer| layer.mesh.quads.is_empty()) {
+                    missing.push(
+                        voxel_client::item_table::ITEMS[stack.item_registry_id() as usize].name,
+                    );
+                }
+            }
+            missing.dedup();
+            println!(
+                "REPORT {} {}/{}: {}",
+                tab.name,
+                missing.len(),
+                tab.items.len(),
+                missing.join(" ")
+            );
+        }
+    }
     println!(
         "play_atlas={}x{} models={} skipped={} in {:?}",
         block_renderer.atlas.width,

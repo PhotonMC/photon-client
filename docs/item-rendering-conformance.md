@@ -68,6 +68,10 @@ birim testiyle sabitlendi.
   kafa, bayrak, yatak, shulker kutusu gibi diğerleri çizilmez. Sandığın
   `local_time` seçimi varsayılan dokuyu alır: 24-26 Aralık'ın Noel dokusu
   yok.
+- Modelin `transformation` alanı (`model`, `special`, `composite`, `select`,
+  `condition`, `range_dispatch` düğümlerinde) düğümden yapraklara birleştirilir
+  ve katmanın geometrisine görüntü dönüşümünden önce uygulanır; yatağın iki
+  yarısı (ayak yarısı bir blok öteye) böyle çizilir.
 - Yığın alındığında zıplama animasyonu (`popTime`) yok. Ana kol hep sağ
   sayılıyor; sol el yuvası hep solda.
 - Referans her eşyayı ayrı bir atlas hücresine çizip GUI'ye kopyalar; burada

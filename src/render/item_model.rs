@@ -120,6 +120,12 @@ pub enum ItemModelDef {
         entries: Vec<(f32, ItemModelDef)>,
         fallback: Option<Box<ItemModelDef>>,
     },
+    /// A model tree under its own `transformation`, which every layer below
+    /// it draws through.
+    Transformed {
+        matrix: Matrix4,
+        model: Box<ItemModelDef>,
+    },
     /// A special renderer over a base model (chests, banners, heads…): the
     /// base model gives the display transforms and the light. Only chests
     /// are drawn yet.
@@ -130,6 +136,105 @@ pub enum ItemModelDef {
     Empty,
     /// A kind this client does not know.
     Unknown(String),
+}
+
+/// A 4x4 matrix, row by row, applied to column vectors.
+pub type Matrix4 = [[f32; 4]; 4];
+
+pub const IDENTITY: Matrix4 = [
+    [1.0, 0.0, 0.0, 0.0],
+    [0.0, 1.0, 0.0, 0.0],
+    [0.0, 0.0, 1.0, 0.0],
+    [0.0, 0.0, 0.0, 1.0],
+];
+
+/// `a * b`: `b` first, then `a`.
+pub fn multiply(a: &Matrix4, b: &Matrix4) -> Matrix4 {
+    std::array::from_fn(|row| {
+        std::array::from_fn(|column| (0..4).map(|k| a[row][k] * b[k][column]).sum())
+    })
+}
+
+/// A rotation by a quaternion `(x, y, z, w)`, as JOML's `rotate` turns.
+fn rotation([x, y, z, w]: [f32; 4]) -> Matrix4 {
+    let (xx, yy, zz) = (x * x, y * y, z * z);
+    [
+        [
+            1.0 - 2.0 * (yy + zz),
+            2.0 * (x * y - z * w),
+            2.0 * (x * z + y * w),
+            0.0,
+        ],
+        [
+            2.0 * (x * y + z * w),
+            1.0 - 2.0 * (xx + zz),
+            2.0 * (y * z - x * w),
+            0.0,
+        ],
+        [
+            2.0 * (x * z - y * w),
+            2.0 * (y * z + x * w),
+            1.0 - 2.0 * (xx + yy),
+            0.0,
+        ],
+        [0.0, 0.0, 0.0, 1.0],
+    ]
+}
+
+/// `Transformation.EXTENDED_CODEC`: the parts (translation, left rotation,
+/// scale, right rotation) composed in that order, or a matrix of sixteen
+/// numbers, column by column.
+fn parse_transformation(value: &JsonValue) -> Option<Matrix4> {
+    let numbers = |value: &JsonValue| -> Option<Vec<f32>> {
+        match value {
+            JsonValue::Array(items) => items.iter().map(JsonValue::as_f32).collect(),
+            _ => None,
+        }
+    };
+    match value {
+        JsonValue::Array(_) => {
+            let values = numbers(value)?;
+            if values.len() != 16 {
+                return None;
+            }
+            // Written column by column.
+            Some(std::array::from_fn(|row| {
+                std::array::from_fn(|column| values[column * 4 + row])
+            }))
+        }
+        JsonValue::Object(object) => {
+            let get = |key: &str, len: usize| {
+                let values = numbers(object.get_str(key)?)?;
+                (values.len() == len).then_some(values)
+            };
+            let translation = get("translation", 3)?;
+            let left = get("left_rotation", 4)?;
+            let scale = get("scale", 3)?;
+            let right = get("right_rotation", 4)?;
+            let mut matrix = IDENTITY;
+            for (row, value) in translation.iter().enumerate() {
+                matrix[row][3] = *value;
+            }
+            let scaling: Matrix4 = std::array::from_fn(|row| {
+                std::array::from_fn(|column| {
+                    if row == column && row < 3 {
+                        scale[row]
+                    } else if row == column {
+                        1.0
+                    } else {
+                        0.0
+                    }
+                })
+            });
+            let left = rotation([left[0], left[1], left[2], left[3]]);
+            let right = rotation([right[0], right[1], right[2], right[3]]);
+            Some(multiply(
+                &multiply(&multiply(&matrix, &left), &scaling),
+                &right,
+            ))
+        }
+        _ => None,
+    }
 }
 
 /// The special renderers this client draws.
@@ -165,8 +270,23 @@ fn parse_tint(object: &JsonObject) -> TintSource {
     }
 }
 
-/// Parse one `ItemModel.Unbaked`.
+/// Parse one `ItemModel.Unbaked`: its node, under its `transformation` when
+/// it has one.
 pub fn parse_item_model(object: &JsonObject) -> ItemModelDef {
+    let node = parse_item_model_node(object);
+    match object
+        .get_str("transformation")
+        .and_then(parse_transformation)
+    {
+        Some(matrix) => ItemModelDef::Transformed {
+            matrix,
+            model: Box::new(node),
+        },
+        None => node,
+    }
+}
+
+fn parse_item_model_node(object: &JsonObject) -> ItemModelDef {
     let kind = object.text("type").unwrap_or_default();
     let child = |key: &str| object.object(key).map(parse_item_model);
     match kind.as_str() {
@@ -298,6 +418,9 @@ pub struct ItemLayerRef {
     pub tints: Vec<TintSource>,
     /// The special renderer drawn over `model`'s transforms, if any.
     pub special: Option<SpecialModel>,
+    /// The transformations of the nodes above the layer, composed: applied
+    /// to the layer's geometry before its display transform.
+    pub local: Matrix4,
 }
 
 /// The layers a default stack (no components, not in use) draws in a
@@ -305,23 +428,37 @@ pub struct ItemLayerRef {
 /// false, selections other than the display context and numeric
 /// properties take their fallbacks.
 pub fn layers_for(def: &ItemModelDef, context: DisplayContext, out: &mut Vec<ItemLayerRef>) {
+    layers_under(def, context, &IDENTITY, out);
+}
+
+fn layers_under(
+    def: &ItemModelDef,
+    context: DisplayContext,
+    local: &Matrix4,
+    out: &mut Vec<ItemLayerRef>,
+) {
     match def {
+        ItemModelDef::Transformed { matrix, model } => {
+            layers_under(model, context, &multiply(local, matrix), out);
+        }
         ItemModelDef::Model { model, tints } => out.push(ItemLayerRef {
             model: model.clone(),
             tints: tints.clone(),
             special: None,
+            local: *local,
         }),
         ItemModelDef::Special { base, model } => out.push(ItemLayerRef {
             model: base.clone(),
             tints: Vec::new(),
             special: Some(model.clone()),
+            local: *local,
         }),
         ItemModelDef::Composite(models) => {
             for model in models {
-                layers_for(model, context, out);
+                layers_under(model, context, local, out);
             }
         }
-        ItemModelDef::Condition { on_false, .. } => layers_for(on_false, context, out),
+        ItemModelDef::Condition { on_false, .. } => layers_under(on_false, context, local, out),
         ItemModelDef::Select {
             property,
             cases,
@@ -336,8 +473,8 @@ pub fn layers_for(def: &ItemModelDef, context: DisplayContext, out: &mut Vec<Ite
                 })
                 .flatten();
             match (chosen, fallback) {
-                (Some(model), _) => layers_for(model, context, out),
-                (None, Some(fallback)) => layers_for(fallback, context, out),
+                (Some(model), _) => layers_under(model, context, local, out),
+                (None, Some(fallback)) => layers_under(fallback, context, local, out),
                 (None, None) => {}
             }
         }
@@ -351,8 +488,8 @@ pub fn layers_for(def: &ItemModelDef, context: DisplayContext, out: &mut Vec<Ite
                 .max_by(|a, b| a.0.total_cmp(&b.0))
                 .map(|(_, model)| model);
             match (chosen, fallback) {
-                (Some(model), _) => layers_for(model, context, out),
-                (None, Some(fallback)) => layers_for(fallback, context, out),
+                (Some(model), _) => layers_under(model, context, local, out),
+                (None, Some(fallback)) => layers_under(fallback, context, local, out),
                 (None, None) => {}
             }
         }
@@ -529,5 +666,42 @@ mod special_tests {
         let mut layers = Vec::new();
         layers_for(&item.model, DisplayContext::ALL[0], &mut layers);
         assert!(layers.is_empty());
+    }
+}
+
+#[cfg(test)]
+mod transformation_tests {
+    use super::*;
+
+    #[test]
+    fn a_child_transformation_moves_only_that_child() {
+        // A bed: two models, the second a block further along z.
+        let text = r#"{"model":{"type":"minecraft:composite","models":[
+            {"type":"minecraft:model","model":"minecraft:block/white_bed_head"},
+            {"type":"minecraft:model","model":"minecraft:block/white_bed_foot","transformation":
+             {"left_rotation":[0.0,0.0,0.0,1.0],"right_rotation":[0.0,0.0,0.0,1.0],
+              "scale":[1.0,1.0,1.0],"translation":[0.0,0.0,1.0]}}]}}"#;
+        let item = parse_client_item(text).expect("a client item");
+        let mut layers = Vec::new();
+        layers_for(&item.model, DisplayContext::ALL[0], &mut layers);
+        assert_eq!(layers.len(), 2);
+        assert_eq!(layers[0].local, IDENTITY);
+        assert_eq!(layers[1].local[2][3], 1.0);
+        assert_eq!(layers[1].local[0][0], 1.0);
+    }
+
+    #[test]
+    fn a_transformation_composes_translation_rotation_and_scale() {
+        // A half turn about x, scaled by 2, moved by (1, 2, 3): a point at
+        // (0, 1, 0) goes to (1, 2 - 2, 3) = (1, 0, 3).
+        let text = r#"{"model":{"type":"minecraft:model","model":"minecraft:item/x",
+            "transformation":{"translation":[1.0,2.0,3.0],"left_rotation":[1.0,0.0,0.0,0.0],
+            "scale":[2.0,2.0,2.0],"right_rotation":[0.0,0.0,0.0,1.0]}}}"#;
+        let item = parse_client_item(text).expect("a client item");
+        let mut layers = Vec::new();
+        layers_for(&item.model, DisplayContext::ALL[0], &mut layers);
+        let m = layers[0].local;
+        let moved: Vec<f32> = (0..3).map(|row| m[row][1] + m[row][3]).collect();
+        assert_eq!(moved, vec![1.0, 0.0, 3.0]);
     }
 }
