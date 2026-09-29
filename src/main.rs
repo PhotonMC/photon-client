@@ -962,12 +962,23 @@ fn player_camera(
     bob: [[f32; 4]; 4],
 ) -> [[f32; 4]; 4] {
     let look = voxel_client::math::Vec3::direction_from_rotation_components(x_rot, y_rot);
-    let target = [
-        eye[0] + look.x as f32,
-        eye[1] + look.y as f32,
-        eye[2] + look.z as f32,
+    let forward = [look.x as f32, look.y as f32, look.z as f32];
+    // `Camera.setRotation`: the camera's side vector turns with the yaw
+    // alone, so looking straight up or down keeps a well-defined view.
+    let yaw = y_rot.to_radians();
+    let right = [-yaw.cos(), 0.0, -yaw.sin()];
+    let up = [
+        right[1] * forward[2] - right[2] * forward[1],
+        right[2] * forward[0] - right[0] * forward[2],
+        right[0] * forward[1] - right[1] * forward[0],
     ];
-    let view = render::scene::look_at(eye, target, [0.0, 1.0, 0.0]);
+    let dot = |a: [f32; 3], b: [f32; 3]| a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+    let view = [
+        [right[0], up[0], -forward[0], 0.0],
+        [right[1], up[1], -forward[1], 0.0],
+        [right[2], up[2], -forward[2], 0.0],
+        [-dot(right, eye), -dot(up, eye), dot(forward, eye), 1.0],
+    ];
     let projection = render::scene::multiply(
         render::scene::perspective(fov.to_radians(), aspect, 0.05, far),
         bob,
