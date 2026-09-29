@@ -65,6 +65,11 @@ public final class Oracle {
         var loaded = layers.replaceFrom(net.minecraft.server.RegistryLayer.WORLDGEN, worldgen);
         staticTags.forEach(net.minecraft.core.Registry.PendingTags::apply);
         vanillaRegistries = loaded.compositeAccess().freeze();
+        // Items and other built-in entries get their default components the
+        // way the server's resource reload gives them, once the lookups exist.
+        net.minecraft.core.registries.BuiltInRegistries.DATA_COMPONENT_INITIALIZERS
+            .build(vanillaRegistries)
+            .forEach(net.minecraft.core.component.DataComponentInitializers.PendingComponents::apply);
         return vanillaRegistries;
     }
 

@@ -16366,6 +16366,69 @@ fn block_result(request: &Value) -> Result<Value, String> {
                     "blocks": voxel_client::render::fluid_overlay_table::OVERLAY_BLOCKS.to_vec(),
                 }));
             }
+            "destroy_properties" => {
+                use voxel_client::world::block_destroy_table as table;
+                let blocks: Vec<Value> = registry::BLOCKS
+                    .iter()
+                    .zip(table::BLOCKS.iter())
+                    .enumerate()
+                    .map(|(index, (block, ids))| {
+                        let states: Vec<String> = ids
+                            .iter()
+                            .map(|id| {
+                                let t = &table::TRAITS[usize::from(*id)];
+                                format!(
+                                    "{:08x}|{}|{}|{}",
+                                    t.destroy_time, t.requires_correct_tool, t.air, t.fluid_block
+                                )
+                            })
+                            .collect();
+                        json!({
+                            "name": block.name,
+                            "game_master": table::GAME_MASTER.contains(&(index as u16)),
+                            "states": states,
+                        })
+                    })
+                    .collect();
+                out.push(json!({"label": label, "outcome": "listed", "blocks": blocks}));
+            }
+            "item_tools" => {
+                use voxel_client::item_table::{ITEMS, RuleBlocks};
+                let items: Vec<Value> = ITEMS
+                    .iter()
+                    .map(|item| {
+                        let mut described = json!({"name": item.name});
+                        if let Some(tool) = item.tool {
+                            let rules: Vec<Value> = tool
+                                .rules
+                                .iter()
+                                .map(|rule| {
+                                    let mut written = json!({});
+                                    written["blocks"] = match rule.blocks {
+                                        RuleBlocks::Tag(tag) => json!(format!("#{tag}")),
+                                        RuleBlocks::Blocks(names) => json!(names),
+                                    };
+                                    if let Some(speed) = rule.speed {
+                                        written["speed"] = json!(format!("{speed:08x}"));
+                                    }
+                                    if let Some(correct) = rule.correct_for_drops {
+                                        written["correct_for_drops"] = json!(correct);
+                                    }
+                                    written
+                                })
+                                .collect();
+                            described["tool"] = json!({
+                                "rules": rules,
+                                "default_mining_speed": format!("{:08x}", tool.default_mining_speed),
+                                "damage_per_block": tool.damage_per_block,
+                                "can_destroy_blocks_in_creative": tool.can_destroy_blocks_in_creative,
+                            });
+                        }
+                        described
+                    })
+                    .collect();
+                out.push(json!({"label": label, "outcome": "listed", "items": items}));
+            }
             "light_properties" => {
                 use voxel_client::world::block_light_table as table;
                 let blocks: Vec<Value> = registry::BLOCKS
@@ -16757,6 +16820,95 @@ fn window_result(request: &Value) -> Result<Value, String> {
     }
 }
 
+/// A block state named as the scenes name it: a block and its properties.
+fn named_state(block: &Value) -> Result<i32, String> {
+    let name = string(block, "block")?;
+    let definition = voxel_client::world::block_registry::block(name).ok_or_else(|| format!("unknown block {name}"))?;
+    let mut chosen = std::collections::BTreeMap::new();
+    if let Some(properties) = block["properties"].as_object() {
+        for (key, value) in properties {
+            chosen.insert(
+                key.clone(),
+                value
+                    .as_str()
+                    .ok_or("property values are strings")?
+                    .to_owned(),
+            );
+        }
+    }
+    definition
+        .state_id(&chosen)
+        .map(|state| state as i32)
+        .ok_or_else(|| format!("bad properties for {name}"))
+}
+
+/// The vanilla block tags, resolved from the pinned jar's data pack as the
+/// server would send them. Test glue only: the client takes its tags from
+/// the server. The files stay local under `.data`.
+fn vanilla_block_tags() -> Result<ClientboundUpdateTagsPacket, String> {
+    fn resolve(
+        root: &std::path::Path,
+        name: &str,
+        seen: &mut BTreeMap<String, Vec<i32>>,
+    ) -> Result<Vec<i32>, String> {
+        if let Some(done) = seen.get(name) {
+            return Ok(done.clone());
+        }
+        let path = root.join(format!("{name}.json"));
+        let text = std::fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
+        let parsed: Value = serde_json::from_str(&text).map_err(|e| e.to_string())?;
+        let mut out = Vec::new();
+        for entry in parsed["values"].as_array().ok_or("tag values")? {
+            let (id, required) = match entry {
+                Value::String(id) => (id.as_str(), true),
+                other => (
+                    other["id"].as_str().ok_or("tag entry id")?,
+                    other["required"].as_bool().unwrap_or(true),
+                ),
+            };
+            if let Some(tag) = id.strip_prefix('#') {
+                let path = tag.strip_prefix("minecraft:").ok_or("foreign tag")?;
+                out.extend(resolve(root, path, seen)?);
+            } else {
+                match voxel_client::world::block_registry::BLOCKS.iter().position(|block| block.name == id) {
+                    Some(index) => out.push(index as i32),
+                    None if !required => {}
+                    None => return Err(format!("unknown block {id} in tag {name}")),
+                }
+            }
+        }
+        seen.insert(name.to_owned(), out.clone());
+        Ok(out)
+    }
+    fn walk(dir: &std::path::Path, root: &std::path::Path, names: &mut Vec<String>) -> Result<(), String> {
+        for entry in std::fs::read_dir(dir).map_err(|e| format!("{}: {e}", dir.display()))? {
+            let path = entry.map_err(|e| e.to_string())?.path();
+            if path.is_dir() {
+                walk(&path, root, names)?;
+            } else if let Some(stem) = path.strip_prefix(root).ok().and_then(|p| p.to_str()) {
+                names.push(stem.trim_end_matches(".json").replace('\\', "/"));
+            }
+        }
+        Ok(())
+    }
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join(".data/minecraft/assets/jar/data/minecraft/tags/block");
+    let mut names = Vec::new();
+    walk(&root, &root, &mut names)?;
+    names.sort();
+    let mut seen = BTreeMap::new();
+    let mut tags = Vec::new();
+    for name in names {
+        let mut values = resolve(&root, &name, &mut seen)?;
+        values.sort_unstable();
+        values.dedup();
+        let id = Identifier::parse(&format!("minecraft:{name}")).map_err(|_| "tag id")?;
+        tags.push(TagEntry::new(id, values));
+    }
+    let registry = Identifier::parse("minecraft:block").map_err(|_| "registry id")?;
+    Ok(ClientboundUpdateTagsPacket::new(vec![RegistryTags::new(registry, tags)]))
+}
+
 fn movement_result(request: &Value) -> Result<Value, String> {
     use voxel_client::world::block_registry as registry;
     use voxel_client::world::local_player::LocalPlayer;
@@ -16879,6 +17031,7 @@ fn movement_result(request: &Value) -> Result<Value, String> {
             "spectator" => ClientPlayerGameMode::Spectator,
             other => return Err(format!("unknown game mode {other}")),
         };
+        let game_mode_of_row = game_mode;
         let mut player = LocalPlayer::new(
             i32_field(row, "entity_id")?,
             voxel_client::math::Vec3::new(bits64(row, "x")?, bits64(row, "y")?, bits64(row, "z")?),
@@ -16887,6 +17040,36 @@ fn movement_result(request: &Value) -> Result<Value, String> {
             game_mode,
             flag(row, "auto_jump")?,
         );
+        let breaking = row.get("breaking");
+        let mut game_mode = voxel_client::game_mode::GameMode::default();
+        if let Some(breaking) = breaking {
+            world.apply_update_tags_packet(&vanilla_block_tags()?);
+            world.set_local_player_id(player.entity_id());
+            if let Some(name) = breaking["main_hand"].as_str() {
+                let item = voxel_client::item::id_of(name).ok_or_else(|| format!("unknown item {name}"))?;
+                world.apply_local_player_container_slot(
+                    0,
+                    0,
+                    36,
+                    Some(&voxel_client::world::ClientItemStackState::new(1, item)),
+                );
+                player.set_main_hand_item(item);
+            }
+            for effect in breaking["effects"].as_array().into_iter().flatten() {
+                let id = match string(effect, "effect")? {
+                    "minecraft:haste" => 2,
+                    "minecraft:mining_fatigue" => 3,
+                    other => return Err(format!("unknown effect {other}")),
+                };
+                world.apply_local_player_mob_effect(
+                    player.entity_id(),
+                    id,
+                    i32_field(effect, "amplifier")?,
+                    1_000_000,
+                    0,
+                );
+            }
+        }
         let mut ticks = Vec::new();
         let mut failure = None;
         for tick in row["ticks"].as_array().ok_or("ticks must be an array")? {
@@ -16907,6 +17090,58 @@ fn movement_result(request: &Value) -> Result<Value, String> {
                 x_rot = bits32(tick, "x_rot")?;
             }
             player.set_rotation(y_rot, x_rot);
+            let mut actions = Vec::new();
+            if let Some(attack) = tick.get("attack") {
+                for event in attack["server"].as_array().into_iter().flatten() {
+                    if event.get("ack").is_some() {
+                        for synced in world.handle_block_changed_ack(i32_field(event, "ack")?) {
+                            let pos = voxel_client::binary::BlockPos::new(synced.x, synced.y, synced.z);
+                            if let Some(position) = synced.player_position
+                                && player.is_colliding(&world, pos, synced.state)
+                            {
+                                player.abs_snap_to(position);
+                            }
+                        }
+                    } else {
+                        world.apply_server_block_state(
+                            i32_field(event, "x")?,
+                            i32_field(event, "y")?,
+                            i32_field(event, "z")?,
+                            named_state(event)?,
+                        );
+                    }
+                }
+                let aim = match attack.get("target") {
+                    Some(target) => voxel_client::game_mode::Aim::Block {
+                        x: i32_field(target, "x")?,
+                        y: i32_field(target, "y")?,
+                        z: i32_field(target, "z")?,
+                        face: match string(target, "face")? {
+                            "down" => 0,
+                            "up" => 1,
+                            "north" => 2,
+                            "south" => 3,
+                            "west" => 4,
+                            "east" => 5,
+                            other => return Err(format!("unknown face {other}")),
+                        },
+                    },
+                    None => voxel_client::game_mode::Aim::Miss,
+                };
+                let miner = voxel_client::game_mode::Miner::of(&world, 0);
+                let mut ctx = voxel_client::game_mode::Context {
+                    world: &mut world,
+                    player: &mut player,
+                    miner: &miner,
+                    mode: game_mode_of_row,
+                };
+                actions = game_mode.attack_tick(
+                    &mut ctx,
+                    u32::try_from(i32_field(attack, "clicks")?).map_err(|e| e.to_string())?,
+                    flag(attack, "down")?,
+                    aim,
+                );
+            }
             let sent = match player.tick(&world, keys) {
                 Ok(sent) => sent,
                 Err(error) => {
@@ -16917,11 +17152,36 @@ fn movement_result(request: &Value) -> Result<Value, String> {
             let position = player.position();
             let motion = player.delta_movement();
             let (y_rot, x_rot) = player.rotation();
-            let packets: Vec<Value> = sent
+            let mut packets: Vec<Value> = actions
                 .iter()
-                .map(|packet| json!({"type": packet.type_name(), "bytes": hex(&packet.encode_body())}))
+                .map(|action| match *action {
+                    voxel_client::game_mode::Outgoing::Swing => {
+                        json!({"type": "minecraft:swing", "bytes": "00"})
+                    }
+                    voxel_client::game_mode::Outgoing::PlayerAction {
+                        action,
+                        x,
+                        y,
+                        z,
+                        face,
+                        sequence,
+                    } => {
+                        let mut bytes = Vec::new();
+                        wire::write_varint(action as i32, &mut bytes);
+                        bytes.extend_from_slice(
+                            &voxel_client::binary::BlockPos::new(x, y, z).as_long().to_be_bytes(),
+                        );
+                        bytes.push(face);
+                        wire::write_varint(sequence, &mut bytes);
+                        json!({"type": "minecraft:player_action", "bytes": hex(&bytes)})
+                    }
+                })
                 .collect();
-            ticks.push(json!({
+            packets.extend(
+                sent.iter()
+                    .map(|packet| json!({"type": packet.type_name(), "bytes": hex(&packet.encode_body())})),
+            );
+            let mut described = json!({
                 "x": format!("{:016x}", position.x.to_bits()),
                 "y": format!("{:016x}", position.y.to_bits()),
                 "z": format!("{:016x}", position.z.to_bits()),
@@ -16949,7 +17209,33 @@ fn movement_result(request: &Value) -> Result<Value, String> {
                 "hand_x_bob": format!("{:08x}", player.hand_bob(0.5).0.to_bits()),
                 "hand_y_bob": format!("{:08x}", player.hand_bob(0.5).1.to_bits()),
                 "sent": packets,
-            }));
+            });
+            if let Some(attack) = tick.get("attack") {
+                let stage = world
+                    .destroying_blocks()
+                    .get(&player.entity_id())
+                    .map_or(-1, |progress| progress.stage);
+                let mut watched = Vec::new();
+                for place in attack["watch"].as_array().ok_or("watch must be an array")? {
+                    watched.push(
+                        world
+                            .block_state_at(i32_field(place, "x")?, i32_field(place, "y")?, i32_field(place, "z")?)
+                            .unwrap_or(0),
+                    );
+                }
+                described["breaking"] = json!({
+                    "destroying": game_mode.is_destroying(),
+                    "progress": format!("{:08x}", game_mode.destroy_progress().to_bits()),
+                    "destroy_ticks": format!("{:08x}", game_mode.destroy_ticks().to_bits()),
+                    "delay": game_mode.destroy_delay(),
+                    "miss_time": game_mode.miss_time(),
+                    "stage": stage,
+                    "sequence": world.prediction_sequence(),
+                    "attack_strength_ticker": player.attack_strength_ticker(),
+                    "watched_states": watched,
+                });
+            }
+            ticks.push(described);
         }
         match failure {
             None => out.push(json!({"label": label, "outcome": "ticked", "ticks": ticks})),

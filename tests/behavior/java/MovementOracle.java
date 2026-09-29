@@ -51,6 +51,99 @@ public final class MovementOracle {
             net.minecraft.client.resources.sounds.SoundInstance instance, int delay) {}
     }
 
+    /**
+     * Breaking a block spawns terrain particles, which look up the block's
+     * sprite and tint. A headless run has no atlas, so these stand in: every
+     * block's particle sprite is one blank terrain sprite, and particles are
+     * dropped when added. Nothing breaking decides reads them back.
+     */
+    static final class BlankSprite extends net.minecraft.client.renderer.texture.TextureAtlasSprite {
+        private BlankSprite() {
+            super(null, null, 1, 1, 0, 0, 0);
+        }
+
+        @Override
+        public com.mojang.blaze3d.platform.Transparency transparency() {
+            return new com.mojang.blaze3d.platform.Transparency(false, false);
+        }
+
+        @Override
+        public net.minecraft.resources.Identifier atlasLocation() {
+            return net.minecraft.client.renderer.texture.TextureAtlas.LOCATION_BLOCKS;
+        }
+    }
+
+    static final class BlankModels extends net.minecraft.client.renderer.block.BlockStateModelSet {
+        static net.minecraft.client.renderer.texture.TextureAtlasSprite sprite;
+
+        private BlankModels() {
+            super(null, null);
+        }
+
+        @Override
+        public net.minecraft.client.resources.model.sprite.Material.Baked getParticleMaterial(
+            net.minecraft.world.level.block.state.BlockState state) {
+            return new net.minecraft.client.resources.model.sprite.Material.Baked(sprite, false);
+        }
+    }
+
+    static final class BlankModelManager extends net.minecraft.client.resources.model.ModelManager {
+        static net.minecraft.client.renderer.block.BlockStateModelSet models;
+
+        private BlankModelManager() {
+            super(null, null, null);
+        }
+
+        @Override
+        public net.minecraft.client.renderer.block.BlockStateModelSet getBlockStateModelSet() {
+            return models;
+        }
+    }
+
+    static final class DroppingParticleEngine extends net.minecraft.client.particle.ParticleEngine {
+        private DroppingParticleEngine() {
+            super(null, null);
+        }
+
+        @Override
+        public void add(net.minecraft.client.particle.Particle particle) {}
+    }
+
+    /** The level tells the renderer which sections to rebuild; nothing draws here. */
+    static final class NoRebuilds extends net.minecraft.client.renderer.extract.LevelExtractor {
+        private NoRebuilds() {
+            super(null, null, null);
+        }
+
+        @Override
+        public void blockChanged(BlockPos pos, int updateFlags) {}
+
+        @Override
+        public void setBlockDirty(BlockPos pos,
+            net.minecraft.world.level.block.state.BlockState oldState,
+            net.minecraft.world.level.block.state.BlockState newState) {}
+
+        @Override
+        public void setSectionDirtyWithNeighbors(int sectionX, int sectionY, int sectionZ) {}
+
+        @Override
+        public void setSectionRangeDirty(int minX, int minY, int minZ, int maxX, int maxY, int maxZ) {}
+    }
+
+    private static Object getField(Object target, String name) throws Exception {
+        Class<?> type = target.getClass();
+        while (type != null) {
+            try {
+                var field = type.getDeclaredField(name);
+                field.setAccessible(true);
+                return field.get(target);
+            } catch (NoSuchFieldException missing) {
+                type = type.getSuperclass();
+            }
+        }
+        throw new NoSuchFieldException(name);
+    }
+
     private static void setField(Object target, String name, Object value) throws Exception {
         Class<?> type = target.getClass();
         while (type != null) {
@@ -233,6 +326,42 @@ public final class MovementOracle {
         player.yBodyRot = player.getYRot();
         player.yBodyRotO = player.getYRot();
 
+        boolean breaking = row.has("breaking");
+        if (breaking) {
+            setField(minecraft, "level", level);
+            var sprite = (net.minecraft.client.renderer.texture.TextureAtlasSprite)
+                unsafe.allocateInstance(BlankSprite.class);
+            BlankModels.sprite = sprite;
+            BlankModelManager.models = (net.minecraft.client.renderer.block.BlockStateModelSet)
+                unsafe.allocateInstance(BlankModels.class);
+            setField(minecraft, "modelManager", unsafe.allocateInstance(BlankModelManager.class));
+            setField(minecraft, "particleEngine", unsafe.allocateInstance(DroppingParticleEngine.class));
+            setField(minecraft, "blockColors", net.minecraft.client.color.block.BlockColors.createDefault());
+            setField(level, "levelExtractor", unsafe.allocateInstance(NoRebuilds.class));
+            setField(listener, "enabledFeatures", net.minecraft.world.flag.FeatureFlags.DEFAULT_FLAGS);
+            var breaking_ = row.getAsJsonObject("breaking");
+            if (breaking_.has("main_hand")) {
+                var item = net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(
+                    net.minecraft.resources.Identifier.parse(breaking_.get("main_hand").getAsString()));
+                player.getInventory().setItem(0, new net.minecraft.world.item.ItemStack(item));
+            }
+            if (breaking_.has("effects")) {
+                for (var effectElement : breaking_.getAsJsonArray("effects")) {
+                    var effect = effectElement.getAsJsonObject();
+                    var holder = net.minecraft.core.registries.BuiltInRegistries.MOB_EFFECT.get(
+                        net.minecraft.resources.Identifier.parse(effect.get("effect").getAsString()))
+                        .orElseThrow();
+                    player.forceAddEffect(new net.minecraft.world.effect.MobEffectInstance(
+                        holder, 1000000, effect.get("amplifier").getAsInt()), null);
+                }
+            }
+        }
+        var startAttack = net.minecraft.client.Minecraft.class.getDeclaredMethod("startAttack");
+        startAttack.setAccessible(true);
+        var continueAttack = net.minecraft.client.Minecraft.class.getDeclaredMethod(
+            "continueAttack", boolean.class);
+        continueAttack.setAccessible(true);
+
         var ticks = new JsonArray();
         for (var element : row.get("ticks").getAsJsonArray()) {
             var input = element.getAsJsonObject();
@@ -250,15 +379,99 @@ public final class MovementOracle {
                 player.setXRot(Oracle.f32(input, "x_rot"));
             }
             wire.sent.clear();
+            if (input.has("attack")) {
+                attack(minecraft, level, input, startAttack, continueAttack);
+            }
             // The level ticks its entities, not the entity itself: it saves
             // the old position and rotation and counts the tick first, and
             // both are read during the tick.
             level.tickNonPassenger(player);
-            ticks.add(describe(player, wire.sent));
+            var described = describe(player, wire.sent);
+            if (input.has("attack")) {
+                described.add("breaking", breakingState(minecraft, level, gameMode, player,
+                    input.getAsJsonObject("attack")));
+            }
+            ticks.add(described);
         }
         entry.addProperty("outcome", "ticked");
         entry.add("ticks", ticks);
         return entry;
+    }
+
+    /**
+     * One tick of what `Minecraft.runTick` does before the level ticks the
+     * player: the server's block packets first, then the attack key as
+     * `handleKeybinds` spends it, then the miss wait counting down. The aim
+     * is given, not picked: the scene names the block face or a miss.
+     */
+    private static void attack(
+        net.minecraft.client.Minecraft minecraft,
+        net.minecraft.client.multiplayer.ClientLevel level,
+        JsonObject input,
+        java.lang.reflect.Method startAttack,
+        java.lang.reflect.Method continueAttack) throws Exception {
+        var attack = input.getAsJsonObject("attack");
+        if (attack.has("server")) {
+            for (var element : attack.getAsJsonArray("server")) {
+                var event = element.getAsJsonObject();
+                if (event.has("ack")) {
+                    level.handleBlockChangedAck(event.get("ack").getAsInt());
+                } else {
+                    level.setServerVerifiedBlockState(
+                        new BlockPos(event.get("x").getAsInt(), event.get("y").getAsInt(),
+                            event.get("z").getAsInt()),
+                        state(event), 19);
+                }
+            }
+        }
+        if (attack.has("target")) {
+            var target = attack.getAsJsonObject("target");
+            var pos = new BlockPos(target.get("x").getAsInt(), target.get("y").getAsInt(),
+                target.get("z").getAsInt());
+            var face = net.minecraft.core.Direction.byName(target.get("face").getAsString());
+            minecraft.hitResult = new net.minecraft.world.phys.BlockHitResult(
+                net.minecraft.world.phys.Vec3.atCenterOf(pos), face, pos, false);
+        } else {
+            minecraft.hitResult = net.minecraft.world.phys.BlockHitResult.miss(
+                net.minecraft.world.phys.Vec3.ZERO, net.minecraft.core.Direction.UP, BlockPos.ZERO);
+        }
+        for (int click = 0; click < attack.get("clicks").getAsInt(); click++) {
+            startAttack.invoke(minecraft);
+        }
+        continueAttack.invoke(minecraft, attack.get("down").getAsBoolean());
+        int missTime = (int) getField(minecraft, "missTime");
+        if (missTime > 0) {
+            setField(minecraft, "missTime", missTime - 1);
+        }
+    }
+
+    /** What breaking left behind: the game mode's own state and the level's. */
+    private static JsonObject breakingState(
+        net.minecraft.client.Minecraft minecraft,
+        net.minecraft.client.multiplayer.ClientLevel level,
+        net.minecraft.client.multiplayer.MultiPlayerGameMode gameMode,
+        net.minecraft.client.player.LocalPlayer player,
+        JsonObject attack) throws Exception {
+        var out = new JsonObject();
+        out.addProperty("destroying", gameMode.isDestroying());
+        out.addProperty("progress", Oracle.bits((float) getField(gameMode, "destroyProgress")));
+        out.addProperty("destroy_ticks", Oracle.bits((float) getField(gameMode, "destroyTicks")));
+        out.addProperty("delay", (int) getField(gameMode, "destroyDelay"));
+        out.addProperty("miss_time", (int) getField(minecraft, "missTime"));
+        var destroying = (it.unimi.dsi.fastutil.ints.Int2ObjectMap<?>) getField(level, "destroyingBlocks");
+        var entry = (net.minecraft.server.level.BlockDestructionProgress) destroying.get(player.getId());
+        out.addProperty("stage", entry == null ? -1 : entry.getProgress());
+        var handler = getField(level, "blockStatePredictionHandler");
+        out.addProperty("sequence", (int) getField(handler, "currentSequenceNr"));
+        out.addProperty("attack_strength_ticker", (int) getField(player, "attackStrengthTicker"));
+        var states = new JsonArray();
+        for (var element : attack.getAsJsonArray("watch")) {
+            var watched = element.getAsJsonObject();
+            states.add(net.minecraft.world.level.block.Block.getId(level.getBlockState(new BlockPos(
+                watched.get("x").getAsInt(), watched.get("y").getAsInt(), watched.get("z").getAsInt()))));
+        }
+        out.add("watched_states", states);
+        return out;
     }
 
     private static JsonObject describe(

@@ -2323,16 +2323,20 @@ struct ParsedItemStackObservation {
     item_registry_id: Option<i32>,
     positive_component_type_ids: Vec<i32>,
     negative_component_type_ids: Vec<i32>,
+    patch_bytes: Vec<u8>,
 }
 
 impl ParsedItemStackObservation {
     fn client_state(&self) -> Option<ClientItemStackState> {
-        Some(ClientItemStackState::from_wire(
-            self.item_count?,
-            self.item_registry_id?,
-            self.positive_component_type_ids.clone(),
-            self.negative_component_type_ids.clone(),
-        ))
+        Some(
+            ClientItemStackState::from_wire(
+                self.item_count?,
+                self.item_registry_id?,
+                self.positive_component_type_ids.clone(),
+                self.negative_component_type_ids.clone(),
+            )
+            .with_patch_bytes(self.patch_bytes.clone()),
+        )
     }
 }
 
@@ -2347,9 +2351,11 @@ fn parse_optional_item_stack(
             item_registry_id: None,
             positive_component_type_ids: Vec::new(),
             negative_component_type_ids: Vec::new(),
+            patch_bytes: Vec::new(),
         });
     }
     let item_registry_id = read_varint(input, name)?;
+    let patch_start = *input;
     let positive_component_count = read_count(input, name)?;
     let negative_component_count = read_count(input, name)?;
     let mut positive_component_type_ids = Vec::with_capacity(positive_component_count);
@@ -2392,11 +2398,13 @@ fn parse_optional_item_stack(
     for _ in 0..negative_component_count {
         negative_component_type_ids.push(read_varint(input, name)?);
     }
+    let patch_bytes = patch_start[..patch_start.len() - input.len()].to_vec();
     Ok(ParsedItemStackObservation {
         item_count: Some(item_count),
         item_registry_id: Some(item_registry_id),
         positive_component_type_ids,
         negative_component_type_ids,
+        patch_bytes,
     })
 }
 

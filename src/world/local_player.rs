@@ -21,7 +21,7 @@ use crate::input::{Input, KeyboardInput, LocalPlayerInputModifiers, modify_local
 use crate::math::{
     MTH_DEG_TO_RAD, Vec3, equal_f64, floor_f64, mth_cos_f64, mth_inv_sqrt_f32, mth_sin_f64,
 };
-use crate::shape::{Shapes, VoxelShape};
+use crate::shape::{BooleanOp, Shapes, VoxelShape};
 
 use super::ClientWorld;
 use super::block_movement_table::{self as movement_table, FluidKind, flag};
@@ -614,6 +614,10 @@ pub struct LocalPlayer {
     /// `Player.attackStrengthTicker` and `itemSwapTicker`: ticks since the
     /// last attack or change of held item.
     attack_strength_ticker: i32,
+    /// The main hand item's registry id (air when empty), and the one the
+    /// last tick saw.
+    main_hand_item: i32,
+    last_main_hand_item: i32,
     item_swap_ticker: i32,
     /// `LivingEntity`'s health as the client last set it, and the hurt
     /// state `LocalPlayer.hurtTo` keeps: ticks of damage immunity, of the
@@ -715,6 +719,8 @@ impl LocalPlayer {
             attack_anim: 0.0,
             attack_anim_old: 0.0,
             attack_strength_ticker: 0,
+            main_hand_item: 0,
+            last_main_hand_item: 0,
             item_swap_ticker: 0,
             health: 20.0,
             flash_on_set_health: false,
@@ -759,6 +765,10 @@ impl LocalPlayer {
             last_sent_input: Input::EMPTY,
             sent: Vec::new(),
         }
+    }
+
+    pub fn entity_id(&self) -> i32 {
+        self.entity_id
     }
 
     pub fn position(&self) -> Vec3 {
@@ -845,6 +855,31 @@ impl LocalPlayer {
         self.set_rotation(y_rot, x_rot);
     }
 
+    /// `Entity.absSnapTo`: the position, kept inside the world's limits,
+    /// with no movement from last tick.
+    pub fn abs_snap_to(&mut self, position: Vec3) {
+        let position = Vec3::new(
+            position.x.clamp(-3.0e7, 3.0e7),
+            position.y,
+            position.z.clamp(-3.0e7, 3.0e7),
+        );
+        self.old_position = position;
+        self.set_pos(position);
+    }
+
+    /// `Entity.isColliding`: whether a block's collision shape at `pos`
+    /// overlaps the player.
+    pub fn is_colliding(&self, world: &ClientWorld, pos: BlockPos, state: i32) -> bool {
+        let shape = world
+            .block_state_registry()
+            .collision_shape(state)
+            .move_by_block_pos(pos);
+        let Ok(player) = Shapes::create_from_aabb(self.bounding_box) else {
+            return false;
+        };
+        Shapes::join_is_not_empty(&shape, &player, BooleanOp::And)
+    }
+
     /// `setValuesFromPositionPacket` without interpolation: the position,
     /// motion and view the server sent, with nothing to blend from.
     pub fn apply_teleport(&mut self, position: Vec3, delta: Vec3, y_rot: f32, x_rot: f32) {
@@ -922,6 +957,15 @@ impl LocalPlayer {
             self.swing_time = -1;
             self.swinging = true;
         }
+    }
+
+    /// The item now in the main hand, by registry id; air when empty.
+    pub fn set_main_hand_item(&mut self, item: i32) {
+        self.main_hand_item = item;
+    }
+
+    pub fn attack_strength_ticker(&self) -> i32 {
+        self.attack_strength_ticker
     }
 
     /// `Player.resetAttackStrengthTicker`.
@@ -1044,6 +1088,11 @@ impl LocalPlayer {
         // Player.tick, after the living tick.
         self.attack_strength_ticker += 1;
         self.item_swap_ticker += 1;
+        // A different item in the main hand starts the attack strength over.
+        if self.main_hand_item != self.last_main_hand_item {
+            self.reset_attack_strength();
+            self.last_main_hand_item = self.main_hand_item;
+        }
         self.update_player_pose(level)
     }
 

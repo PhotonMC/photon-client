@@ -28,6 +28,7 @@ mod dimension;
 mod entity;
 mod metadata;
 mod player;
+mod prediction;
 mod region_copy;
 
 pub use block_entity::*;
@@ -41,6 +42,7 @@ pub use dimension::*;
 pub use entity::*;
 pub(crate) use metadata::*;
 pub use player::*;
+pub use prediction::{DestroyProgress, SyncedBlock};
 pub use region_copy::RegionCopy;
 
 /// The client-side copy of the currently loaded world.
@@ -63,6 +65,8 @@ pub struct ClientWorld {
     local_player: Option<ClientPlayerState>,
     world_border: ClientWorldBorder,
     game_time: u64,
+    predictions: prediction::BlockPredictions,
+    destroying_blocks: BTreeMap<i32, DestroyProgress>,
 }
 
 impl Default for ClientWorld {
@@ -93,6 +97,8 @@ impl ClientWorld {
             local_player: None,
             world_border: ClientWorldBorder::default(),
             game_time: 0,
+            predictions: prediction::BlockPredictions::new(),
+            destroying_blocks: BTreeMap::new(),
         }
     }
 
@@ -680,7 +686,7 @@ impl ClientWorld {
         true
     }
 
-    pub(crate) fn apply_local_player_container_slot(
+    pub fn apply_local_player_container_slot(
         &mut self,
         container_id: i32,
         state_id: i32,
@@ -948,6 +954,9 @@ impl ClientWorld {
             }
             self.world_border = ClientWorldBorder::default();
             self.game_time = 0;
+            // A new level starts with no predictions and no cracks.
+            self.predictions = prediction::BlockPredictions::new();
+            self.destroying_blocks.clear();
         }
         changed
     }
@@ -3118,6 +3127,7 @@ impl ClientWorld {
 }
 
 pub mod block_collision_table;
+pub mod block_destroy_table;
 pub mod block_light_table;
 pub mod block_movement_table;
 pub mod block_outline_table;

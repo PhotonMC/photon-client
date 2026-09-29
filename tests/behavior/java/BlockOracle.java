@@ -60,6 +60,8 @@ public final class BlockOracle {
                 case "fluid_overlay_blocks" -> rows.add(fluidOverlayBlocks(element.getAsJsonObject()));
                 case "motion_blocking" -> rows.add(motionBlocking(element.getAsJsonObject()));
                 case "fluid_flow_properties" -> rows.add(fluidFlowProperties(element.getAsJsonObject()));
+                case "destroy_properties" -> rows.add(destroyProperties(element.getAsJsonObject()));
+                case "item_tools" -> rows.add(itemTools(element.getAsJsonObject()));
                 default -> throw new IllegalArgumentException("Unknown block operation: " + operation);
             }
         }
@@ -605,6 +607,92 @@ public final class BlockOracle {
      * motion or hold a fluid. One bit per state in state id order, packed into
      * 64-bit words, lowest bit first, written as hex.
      */
+    /**
+     * What breaking a block reads of each state: its destroy time (as float
+     * bits; -1 cannot be broken), whether drops need the right tool, whether
+     * it is air, and the state the client predicts in its place (the legacy
+     * block of the fluid it holds). A block whose states all agree carries one
+     * entry. Game master blocks are flagged per block.
+     */
+    private static JsonObject destroyProperties(JsonObject row) {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        entry.addProperty("outcome", "listed");
+        var registry = net.minecraft.core.registries.BuiltInRegistries.BLOCK;
+        var getter = net.minecraft.world.level.EmptyBlockGetter.INSTANCE;
+        var origin = net.minecraft.core.BlockPos.ZERO;
+        var blocks = new JsonArray();
+        for (var block : registry) {
+            var distinct = new java.util.LinkedHashSet<String>();
+            var perState = new java.util.ArrayList<String>();
+            for (var state : block.getStateDefinition().getPossibleStates()) {
+                String key = Oracle.bits(state.getDestroySpeed(getter, origin))
+                    + "|" + state.requiresCorrectToolForDrops() + "|" + state.isAir()
+                    + "|" + net.minecraft.world.level.block.Block.getId(
+                        state.getFluidState().createLegacyBlock());
+                perState.add(key);
+                distinct.add(key);
+            }
+            var described = new JsonObject();
+            described.addProperty("name", registry.getKey(block).toString());
+            described.addProperty("game_master",
+                block instanceof net.minecraft.world.level.block.GameMasterBlock);
+            var states = new JsonArray();
+            (distinct.size() == 1 ? distinct : perState).forEach(states::add);
+            described.add("states", states);
+            blocks.add(described);
+        }
+        entry.add("blocks", blocks);
+        return entry;
+    }
+
+    /**
+     * Every item in registry order with the tool component it carries by
+     * default. A rule's blocks are a tag (written with a leading #) or a list
+     * of block names; speed and drop correctness are absent when the rule
+     * leaves them out.
+     */
+    private static JsonObject itemTools(JsonObject row) {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        entry.addProperty("outcome", "listed");
+        var registry = net.minecraft.core.registries.BuiltInRegistries.ITEM;
+        var items = new JsonArray();
+        for (var item : registry) {
+            var described = new JsonObject();
+            described.addProperty("name", registry.getKey(item).toString());
+            var tool = item.components().get(net.minecraft.core.component.DataComponents.TOOL);
+            if (tool != null) {
+                var toolJson = new JsonObject();
+                var rules = new JsonArray();
+                for (var rule : tool.rules()) {
+                    var ruleJson = new JsonObject();
+                    var tag = rule.blocks().unwrapKey();
+                    if (tag.isPresent()) {
+                        ruleJson.addProperty("blocks", "#" + tag.get().location());
+                    } else {
+                        var names = new JsonArray();
+                        for (var holder : rule.blocks()) {
+                            names.add(holder.unwrapKey().orElseThrow().identifier().toString());
+                        }
+                        ruleJson.add("blocks", names);
+                    }
+                    rule.speed().ifPresent(speed -> ruleJson.addProperty("speed", Oracle.bits(speed)));
+                    rule.correctForDrops().ifPresent(correct -> ruleJson.addProperty("correct_for_drops", correct));
+                    rules.add(ruleJson);
+                }
+                toolJson.add("rules", rules);
+                toolJson.addProperty("default_mining_speed", Oracle.bits(tool.defaultMiningSpeed()));
+                toolJson.addProperty("damage_per_block", tool.damagePerBlock());
+                toolJson.addProperty("can_destroy_blocks_in_creative", tool.canDestroyBlocksInCreative());
+                described.add("tool", toolJson);
+            }
+            items.add(described);
+        }
+        entry.add("items", items);
+        return entry;
+    }
+
     private static JsonObject motionBlocking(JsonObject row) {
         var entry = new JsonObject();
         entry.addProperty("label", row.get("label").getAsString());

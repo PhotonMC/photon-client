@@ -3,13 +3,29 @@
 use std::collections::BTreeMap;
 
 /// Raw item-stack state retained by the client inventory copy.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct ClientItemStackState {
     pub(crate) item_count: i32,
     pub(crate) item_registry_id: i32,
     pub(crate) positive_component_type_ids: Vec<i32>,
     pub(crate) negative_component_type_ids: Vec<i32>,
+    /// The component patch as the wire carried it, for comparing stacks.
+    pub(crate) patch_bytes: Vec<u8>,
 }
+
+/// Stacks are compared as observed: count, item and which components the
+/// patch adds or removes. The patch bytes only serve
+/// [`ClientItemStackState::is_same_item_same_components`].
+impl PartialEq for ClientItemStackState {
+    fn eq(&self, other: &Self) -> bool {
+        self.item_count == other.item_count
+            && self.item_registry_id == other.item_registry_id
+            && self.positive_component_type_ids == other.positive_component_type_ids
+            && self.negative_component_type_ids == other.negative_component_type_ids
+    }
+}
+
+impl Eq for ClientItemStackState {}
 
 impl ClientItemStackState {
     pub(crate) fn from_wire(
@@ -23,7 +39,24 @@ impl ClientItemStackState {
             item_registry_id,
             positive_component_type_ids,
             negative_component_type_ids,
+            patch_bytes: Vec::new(),
         }
+    }
+
+    /// A stack of an item with no component patch.
+    pub fn new(item_count: i32, item_registry_id: i32) -> Self {
+        Self::from_wire(item_count, item_registry_id, Vec::new(), Vec::new())
+    }
+
+    pub(crate) fn with_patch_bytes(mut self, patch_bytes: Vec<u8>) -> Self {
+        self.patch_bytes = patch_bytes;
+        self
+    }
+
+    /// `ItemStack.isSameItemSameComponents`: the same item with the same
+    /// component patch; the count does not matter.
+    pub fn is_same_item_same_components(&self, other: &Self) -> bool {
+        self.item_registry_id == other.item_registry_id && self.patch_bytes == other.patch_bytes
     }
 
     pub fn item_count(&self) -> i32 {

@@ -13130,6 +13130,18 @@ def block_cases():
         "rows": [{"label": "registry"}],
     }
     yield {
+        "case_id": "block/destroy-properties",
+        "family": "block",
+        "operation": "destroy_properties",
+        "rows": [{"label": "registry"}],
+    }
+    yield {
+        "case_id": "block/item-tools",
+        "family": "block",
+        "operation": "item_tools",
+        "rows": [{"label": "registry"}],
+    }
+    yield {
         "case_id": "block/tints",
         "family": "block",
         "operation": "block_tints",
@@ -13334,6 +13346,85 @@ def movement_cases():
         "family": "movement",
         "operation": "local_player_ticks",
         "rows": rows,
+    }
+
+    # Breaking: the attack key as `handleKeybinds` spends it, into the
+    # reference's own game mode. The target is named, not picked. Each tick
+    # reports the game mode's destroy state, the crack stage the level keeps,
+    # the prediction sequence and the watched block states.
+    target = {"x": 0, "y": 64, "z": 2, "face": "north"}
+    second = {"x": 1, "y": 64, "z": 2, "face": "north"}
+    watch = [target, second]
+
+    def hits(count, aim=target, down=True, clicks=0, server=None, **held):
+        ticks = keys(count, **held)
+        for index, tick in enumerate(ticks):
+            attack = {"clicks": clicks if index == 0 else 0, "down": down,
+                      "watch": [{"x": w["x"], "y": w["y"], "z": w["z"]} for w in watch]}
+            if aim is not None:
+                attack["target"] = aim
+            if server and index == 0:
+                attack["server"] = server
+            tick["attack"] = attack
+        return ticks
+
+    def breaking(label, blocks, ticks, main_hand=None, effects=None, **kwargs):
+        row = scene(label, floor() + blocks, ticks, **kwargs)
+        row["breaking"] = {}
+        if main_hand:
+            row["breaking"]["main_hand"] = main_hand
+        if effects:
+            row["breaking"]["effects"] = effects
+        return row
+
+    def at(place, block, properties=None):
+        placed = {"x": place["x"], "y": place["y"], "z": place["z"], "block": block}
+        if properties:
+            placed["properties"] = properties
+        return placed
+
+    air = {"x": 0, "y": 64, "z": 2, "block": "minecraft:air"}
+    dirt = [at(target, "minecraft:dirt")]
+    stone = [at(target, "minecraft:stone")]
+    pool = [{"x": x, "y": y, "z": z, "block": "minecraft:water"}
+            for x in range(-3, 4) for z in range(-3, 2) for y in range(64, 67)]
+    breaking_rows = [
+        breaking("dirt-bare-hand", dirt,
+                 hits(1, clicks=1) + hits(19) + hits(1, server=[air, {"ack": 2}]) + hits(3)),
+        breaking("stone-wooden-pickaxe", stone, hits(1, clicks=1) + hits(26),
+                 main_hand="minecraft:wooden_pickaxe"),
+        breaking("stone-wooden-shovel", stone, hits(1, clicks=1) + hits(12),
+                 main_hand="minecraft:wooden_shovel"),
+        breaking("stone-release", stone, hits(1, clicks=1) + hits(9) + hits(3, down=False)),
+        breaking("switch-target", dirt + [at(second, "minecraft:dirt")],
+                 hits(1, clicks=1) + hits(5) + hits(20, aim=second)),
+        breaking("dirt-rejected", dirt,
+                 hits(1, clicks=1) + hits(16)
+                 + hits(1, server=[at(target, "minecraft:dirt"), {"ack": 2}]) + hits(4)),
+        breaking("dirt-haste", dirt, hits(1, clicks=1) + hits(12),
+                 effects=[{"effect": "minecraft:haste", "amplifier": 1}]),
+        breaking("dirt-mining-fatigue", dirt, hits(1, clicks=1) + hits(12),
+                 effects=[{"effect": "minecraft:mining_fatigue", "amplifier": 0}]),
+        breaking("dirt-jumping", dirt, hits(1, clicks=1, jump=True) + hits(20, jump=True)),
+        breaking("dirt-underwater", dirt + pool, hits(1, clicks=1) + hits(20),
+                 start=(0.5, 64.0, 0.5)),
+        breaking("waterlogged-slab-axe",
+                 [at(target, "minecraft:oak_slab", {"waterlogged": "true"})],
+                 hits(1, clicks=1) + hits(34), main_hand="minecraft:wooden_axe"),
+        breaking("miss-then-hold", dirt,
+                 hits(1, aim=None, clicks=1) + hits(3, aim=None, clicks=1)
+                 + hits(8, clicks=1) + hits(2, down=False) + hits(1, clicks=1) + hits(3)),
+        breaking("creative-hold", dirt + [at(second, "minecraft:dirt")],
+                 hits(1, clicks=1) + hits(3) + hits(8, aim=second), game_mode="creative"),
+        breaking("creative-sword", dirt, hits(1, clicks=1) + hits(6),
+                 main_hand="minecraft:wooden_sword", game_mode="creative"),
+        breaking("adventure-bare-hand", dirt, hits(1, clicks=1) + hits(4), game_mode="adventure"),
+    ]
+    yield {
+        "case_id": "movement/breaking",
+        "family": "movement",
+        "operation": "local_player_ticks",
+        "rows": breaking_rows,
     }
 
 
