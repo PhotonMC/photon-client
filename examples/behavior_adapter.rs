@@ -16553,6 +16553,39 @@ fn block_result(request: &Value) -> Result<Value, String> {
                     .collect();
                 out.push(json!({"label": label, "outcome": "listed", "items": items}));
             }
+            "item_components" => {
+                let hex = |bytes: &[u8]| {
+                    bytes
+                        .iter()
+                        .map(|byte| format!("{byte:02x}"))
+                        .collect::<String>()
+                };
+                let unhex = |text: &str| -> Vec<u8> {
+                    (0..text.len() / 2)
+                        .map(|at| u8::from_str_radix(&text[at * 2..at * 2 + 2], 16).unwrap_or(0))
+                        .collect()
+                };
+                // The reference's wire, kept in a table, is read by this port,
+                // and both forms are written back from what it read.
+                let items: Vec<Value> = voxel_client::item_table::ITEMS
+                    .iter()
+                    .zip(voxel_client::item_components_table::ITEM_COMPONENT_WIRES.iter())
+                    .map(|(item, wire)| {
+                        let bytes = unhex(wire);
+                        let mut input = bytes.as_slice();
+                        match voxel_client::item_components::read_patch(&mut input) {
+                            Ok(patch) if input.is_empty() => json!({
+                                "name": item.name,
+                                "wire": hex(&patch.trusted()),
+                                "delimited": hex(&patch.delimited()),
+                                "components": patch.added.iter().map(|(id, _)| *id).collect::<Vec<_>>(),
+                            }),
+                            _ => json!({"name": item.name, "wire": "unreadable"}),
+                        }
+                    })
+                    .collect();
+                out.push(json!({"label": label, "outcome": "listed", "items": items}));
+            }
             "creative_tabs" => {
                 use voxel_client::creative_tabs_table::{
                     CREATIVE_STACKS, CREATIVE_TABS, DEFAULT_TAB, TabKind,

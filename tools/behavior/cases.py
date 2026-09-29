@@ -13172,6 +13172,12 @@ def block_cases():
         "rows": [{"label": "registry"}],
     }
     yield {
+        "case_id": "block/item-components",
+        "family": "block",
+        "operation": "item_components",
+        "rows": [{"label": "registry"}],
+    }
+    yield {
         "case_id": "block/creative-tabs",
         "family": "block",
         "operation": "creative_tabs",

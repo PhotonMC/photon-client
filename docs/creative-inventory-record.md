@@ -42,7 +42,8 @@ referansla karşılaştırılır (`block` ailesi `parity_passed`).
 - Paketler: hotbar/envanter değişiklikleri `SetCreativeModeSlot` ile yuva
   başına (`broadcastChanges` sırasıyla), atılan yığın yuva −1 ile ve atma
   sınırlayıcısı (`TickThrottler(20, 1280)`) sayılır. Container click paketi
-  gitmez. Bileşen yaması tablodaki gibi, olduğu gibi yazılır.
+  gitmez. Bileşen yaması istemci biçiminde, her değer uzunluğuyla yazılır
+  ([bileşen kaydı](item-components-conformance.md)).
 - Oyun modu değişince iki envanter ekranı birbirine geçer; E yaratıcıda da
   ekranı açar.
 

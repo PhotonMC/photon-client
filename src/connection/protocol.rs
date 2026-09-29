@@ -448,14 +448,6 @@ pub(crate) fn inventory_component_spec(
         .find(|spec| spec.component_path == component_path)
 }
 
-pub(crate) fn inventory_component_spec_by_type_id(
-    component_type_id: i32,
-) -> Option<&'static InventoryComponentProbeSpec> {
-    VANILLA_ITEM_COMPONENT_CONFORMANCE
-        .iter()
-        .find(|spec| spec.component_type_id == component_type_id)
-}
-
 pub(crate) const VANILLA_MILK_BUCKET_ITEM_REGISTRY_ID: i32 = 1_046;
 pub(crate) const VANILLA_SNOWBALL_ITEM_REGISTRY_ID: i32 = 1_044;
 // DataComponents registers CUSTOM_MODEL_DATA after the first 17 built-in component types.
@@ -1290,7 +1282,8 @@ pub(crate) fn encode_creative_item_slot(
 }
 
 /// `ServerboundSetCreativeModeSlotPacket`: a slot and its stack as the
-/// network encodes an optional item stack, component patch included.
+/// network encodes an optional item stack for the server, component patch
+/// included, each value behind its length.
 pub(crate) fn encode_creative_slot(
     output: &mut Vec<u8>,
     slot: i16,
@@ -1301,11 +1294,14 @@ pub(crate) fn encode_creative_slot(
         Some(stack) if stack.item_count() > 0 => {
             wire::write_varint(stack.item_count(), output);
             wire::write_varint(stack.item_registry_id(), output);
-            if stack.patch_bytes().is_empty() {
-                wire::write_varint(0, output);
-                wire::write_varint(0, output);
-            } else {
-                output.extend_from_slice(stack.patch_bytes());
+            // The server reads a client's components behind their lengths. A
+            // patch this cannot read is left off rather than sent wrong.
+            match crate::item_components::delimit(stack.patch_bytes()) {
+                Some(patch) if !stack.patch_bytes().is_empty() => output.extend_from_slice(&patch),
+                _ => {
+                    wire::write_varint(0, output);
+                    wire::write_varint(0, output);
+                }
             }
         }
         _ => wire::write_varint(0, output),
@@ -2380,48 +2376,10 @@ fn parse_optional_item_stack(
     }
     let item_registry_id = read_varint(input, name)?;
     let patch_start = *input;
-    let positive_component_count = read_count(input, name)?;
-    let negative_component_count = read_count(input, name)?;
-    let mut positive_component_type_ids = Vec::with_capacity(positive_component_count);
-    for _ in 0..positive_component_count {
-        let component_type_id = read_varint(input, name)?;
-        let Some(spec) = inventory_component_spec_by_type_id(component_type_id) else {
-            return Err(ConnectionError::Codec(name));
-        };
-        match spec.codec {
-            InventoryComponentCodec::VarInt | InventoryComponentCodec::RegistryId => {
-                read_varint(input, name)?;
-            }
-            InventoryComponentCodec::Unit => {}
-            InventoryComponentCodec::Float => {
-                read_f32(input, name)?;
-            }
-            InventoryComponentCodec::Byte => {
-                read_byte(input, name)?;
-            }
-            InventoryComponentCodec::Int => {
-                read_i32(input, name)?;
-            }
-            InventoryComponentCodec::Identifier => {
-                crate::identifier::read_identifier(input)
-                    .map_err(|_| ConnectionError::Codec(name))?;
-            }
-            InventoryComponentCodec::UseEffects => {
-                read_byte(input, name)?;
-                read_byte(input, name)?;
-                read_f32(input, name)?;
-            }
-            InventoryComponentCodec::CustomModelData => skip_custom_model_data(input, name)?,
-            InventoryComponentCodec::Food => skip_food(input, name)?,
-            InventoryComponentCodec::Tool => skip_tool(input, name)?,
-            InventoryComponentCodec::Weapon => skip_weapon(input, name)?,
-        }
-        positive_component_type_ids.push(component_type_id);
-    }
-    let mut negative_component_type_ids = Vec::with_capacity(negative_component_count);
-    for _ in 0..negative_component_count {
-        negative_component_type_ids.push(read_varint(input, name)?);
-    }
+    let patch =
+        crate::item_components::read_patch(input).map_err(|_| ConnectionError::Codec(name))?;
+    let positive_component_type_ids = patch.added.iter().map(|(id, _)| *id).collect();
+    let negative_component_type_ids = patch.removed;
     let patch_bytes = patch_start[..patch_start.len() - input.len()].to_vec();
     Ok(ParsedItemStackObservation {
         item_count: Some(item_count),
@@ -2430,78 +2388,6 @@ fn parse_optional_item_stack(
         negative_component_type_ids,
         patch_bytes,
     })
-}
-
-pub(crate) fn skip_custom_model_data(
-    input: &mut &[u8],
-    name: &'static str,
-) -> Result<(), ConnectionError> {
-    let float_count = read_count(input, name)?;
-    for _ in 0..float_count {
-        read_f32(input, name)?;
-    }
-    let flag_count = read_count(input, name)?;
-    for _ in 0..flag_count {
-        read_byte(input, name)?;
-    }
-    let string_count = read_count(input, name)?;
-    for _ in 0..string_count {
-        read_length_prefixed_bytes(input, 131_068, name)?;
-    }
-    let color_count = read_count(input, name)?;
-    for _ in 0..color_count {
-        read_i32(input, name)?;
-    }
-    Ok(())
-}
-
-pub(crate) fn skip_food(input: &mut &[u8], name: &'static str) -> Result<(), ConnectionError> {
-    read_varint(input, name)?;
-    read_f32(input, name)?;
-    read_byte(input, name)?;
-    Ok(())
-}
-
-pub(crate) fn skip_tool(input: &mut &[u8], name: &'static str) -> Result<(), ConnectionError> {
-    let rule_count = read_count(input, name)?;
-    for _ in 0..rule_count {
-        skip_holder_set(input, name)?;
-        if read_byte(input, name)? != 0 {
-            read_f32(input, name)?;
-        }
-        if read_byte(input, name)? != 0 {
-            read_byte(input, name)?;
-        }
-    }
-    read_f32(input, name)?;
-    read_varint(input, name)?;
-    read_byte(input, name)?;
-    Ok(())
-}
-
-pub(crate) fn skip_holder_set(
-    input: &mut &[u8],
-    name: &'static str,
-) -> Result<(), ConnectionError> {
-    let encoded_count = read_varint(input, name)?;
-    if encoded_count == 0 {
-        read_length_prefixed_bytes(input, 131_068, name)?;
-    } else if encoded_count > 0 {
-        let holder_count =
-            usize::try_from(encoded_count - 1).map_err(|_| ConnectionError::Codec(name))?;
-        for _ in 0..holder_count {
-            read_varint(input, name)?;
-        }
-    } else {
-        return Err(ConnectionError::Codec(name));
-    }
-    Ok(())
-}
-
-pub(crate) fn skip_weapon(input: &mut &[u8], name: &'static str) -> Result<(), ConnectionError> {
-    read_varint(input, name)?;
-    read_f32(input, name)?;
-    Ok(())
 }
 
 pub(crate) fn parse_container_set_content_packet(

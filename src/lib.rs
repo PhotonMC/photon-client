@@ -20,6 +20,8 @@ pub mod input;
 pub mod input_event;
 pub mod inventory_menu;
 pub mod item;
+pub mod item_components;
+pub mod item_components_table;
 pub mod item_in_hand;
 pub mod item_stacking_table;
 pub mod item_table;

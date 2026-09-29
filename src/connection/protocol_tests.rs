@@ -1375,7 +1375,7 @@ fn creative_slot_encoder_writes_the_patch_the_stack_carries() {
     assert_eq!(crate::wire::read_varint(&mut input).expect("count"), 3);
     assert_eq!(crate::wire::read_varint(&mut input).expect("item"), 1_044);
     assert_eq!(input, &[0, 0]);
-    // A stack with a patch writes it as it came.
+    // A stack with a patch writes each value behind its length.
     let stack = Stack::from_wire(1, 5, vec![103], Vec::new()).with_patch_bytes(vec![1, 0, 103, 1]);
     let mut payload = Vec::new();
     encode_creative_slot(&mut payload, -1, Some(&stack));
@@ -1383,7 +1383,7 @@ fn creative_slot_encoder_writes_the_patch_the_stack_carries() {
         i16::from_be_bytes(payload[..2].try_into().expect("slot")),
         -1
     );
-    assert_eq!(&payload[2..], &[1, 5, 1, 0, 103, 1]);
+    assert_eq!(&payload[2..], &[1, 5, 1, 0, 103, 1, 1]);
     // No stack is a count of zero.
     let mut payload = Vec::new();
     encode_creative_slot(&mut payload, 36, None);
@@ -1889,9 +1889,9 @@ fn inventory_component_hash_prediction_encoder_keeps_registry_hash_fields() {
 
 fn write_component_fixture(codec: InventoryComponentCodec, output: &mut Vec<u8>) {
     match codec {
-        InventoryComponentCodec::VarInt | InventoryComponentCodec::RegistryId => {
-            crate::wire::write_varint(0, output);
-        }
+        InventoryComponentCodec::VarInt => crate::wire::write_varint(0, output),
+        // A holder writes its registry id plus one; a zero is a direct value.
+        InventoryComponentCodec::RegistryId => crate::wire::write_varint(1, output),
         InventoryComponentCodec::Unit => {}
         InventoryComponentCodec::Float => output.extend_from_slice(&0.0_f32.to_be_bytes()),
         InventoryComponentCodec::Byte => output.push(0),
@@ -2035,7 +2035,12 @@ fn inventory_item_component_conformance_parser_consumes_table_codecs() {
 
         let mut input = payload.as_slice();
         let observation = parse_optional_item_stack(&mut input, "table component item stack")
-            .expect("table component item stack");
+            .unwrap_or_else(|error| {
+                panic!(
+                    "table component item stack {}: {error:?}",
+                    spec.component_path
+                )
+            });
         assert_eq!(
             observation.item_count,
             Some(1),

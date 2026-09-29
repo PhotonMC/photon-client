@@ -63,6 +63,7 @@ public final class BlockOracle {
                 case "destroy_properties" -> rows.add(destroyProperties(element.getAsJsonObject()));
                 case "item_tools" -> rows.add(itemTools(element.getAsJsonObject()));
                 case "item_stacking" -> rows.add(itemStacking(element.getAsJsonObject()));
+                case "item_components" -> rows.add(itemComponents(element.getAsJsonObject()));
                 case "creative_tabs" -> rows.add(creativeTabs(element.getAsJsonObject()));
                 case "block_behaviours" -> rows.add(blockBehaviours(element.getAsJsonObject()));
                 default -> throw new IllegalArgumentException("Unknown block operation: " + operation);
@@ -752,6 +753,59 @@ public final class BlockOracle {
         }
         entry.add("items", items);
         return entry;
+    }
+
+    /**
+     * Every item's default components as a component patch, in both forms a
+     * stack carries them: as a server sends it, and as a client sends it
+     * (each value behind its length). Components the network does not carry
+     * are left out by the patch's own encoder.
+     */
+    private static JsonObject itemComponents(JsonObject row) {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        entry.addProperty("outcome", "listed");
+        var registries = Oracle.vanillaRegistries();
+        var registry = net.minecraft.core.registries.BuiltInRegistries.ITEM;
+        var items = new JsonArray();
+        for (var item : registry) {
+            var builder = net.minecraft.core.component.DataComponentPatch.builder();
+            builder.set(item.components());
+            var patch = builder.build();
+            var described = new JsonObject();
+            described.addProperty("name", registry.getKey(item).toString());
+            described.addProperty("wire", encodePatch(
+                net.minecraft.core.component.DataComponentPatch.STREAM_CODEC, patch, registries));
+            described.addProperty("delimited", encodePatch(
+                net.minecraft.core.component.DataComponentPatch.DELIMITED_STREAM_CODEC, patch, registries));
+            var ids = new JsonArray();
+            var types = net.minecraft.core.registries.BuiltInRegistries.DATA_COMPONENT_TYPE;
+            for (var component : patch.entrySet()) {
+                if (!component.getKey().isTransient()) {
+                    ids.add(types.getId(component.getKey()));
+                }
+            }
+            described.add("components", ids);
+            items.add(described);
+        }
+        entry.add("items", items);
+        return entry;
+    }
+
+    private static String encodePatch(
+            net.minecraft.network.codec.StreamCodec<net.minecraft.network.RegistryFriendlyByteBuf,
+                net.minecraft.core.component.DataComponentPatch> codec,
+            net.minecraft.core.component.DataComponentPatch patch,
+            net.minecraft.core.RegistryAccess registries) {
+        var buffer = new net.minecraft.network.RegistryFriendlyByteBuf(io.netty.buffer.Unpooled.buffer(), registries);
+        codec.encode(buffer, patch);
+        var bytes = new byte[buffer.readableBytes()];
+        buffer.readBytes(bytes);
+        var hex = new StringBuilder();
+        for (byte value : bytes) {
+            hex.append(String.format("%02x", value));
+        }
+        return hex.toString();
     }
 
     /**
