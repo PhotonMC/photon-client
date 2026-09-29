@@ -9,14 +9,21 @@ pub const MOD_SUPER: i32 = 8;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct InvalidCodePoint(pub i32);
 
-/// Platform-dependent input constants for the pinned Linux reference runner.
+/// Platform-dependent input constants: macOS edits with the command key,
+/// simulates a right click with a long left click, and does not restore key
+/// state after the mouse is grabbed.
 pub struct InputQuirks;
 
 impl InputQuirks {
-    pub const REPLACE_CTRL_KEY_WITH_CMD_KEY: bool = false;
-    pub const EDIT_SHORTCUT_KEY_MODIFIER: i32 = MOD_CONTROL;
-    pub const SIMULATE_RIGHT_CLICK_WITH_LONG_LEFT_CLICK: bool = false;
-    pub const RESTORE_KEY_STATE_AFTER_MOUSE_GRAB: bool = true;
+    const ON_OSX: bool = cfg!(target_os = "macos");
+    pub const REPLACE_CTRL_KEY_WITH_CMD_KEY: bool = Self::ON_OSX;
+    pub const EDIT_SHORTCUT_KEY_MODIFIER: i32 = if Self::REPLACE_CTRL_KEY_WITH_CMD_KEY {
+        MOD_SUPER
+    } else {
+        MOD_CONTROL
+    };
+    pub const SIMULATE_RIGHT_CLICK_WITH_LONG_LEFT_CLICK: bool = Self::ON_OSX;
+    pub const RESTORE_KEY_STATE_AFTER_MOUSE_GRAB: bool = !Self::ON_OSX;
 }
 
 /// A character callback event.
