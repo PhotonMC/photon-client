@@ -1,50 +1,13 @@
-//! The survival inventory screen: `AbstractContainerScreen` over the
-//! player's own menu, as `InventoryScreen` lays it out with its recipe book
-//! closed. The screen turns mouse and key input into menu clicks and draws
-//! the menu; the clicks themselves run in [`voxel_game::inventory_menu`].
-//!
-//! Not drawn: the player's model in its box, item tooltips and the recipe
-//! book; its button is drawn and takes the click, but does not open it.
+//! What the container screens share: `AbstractContainerScreen`'s mouse
+//! handling (clicks, drags, double clicks) over a view of a menu, the slot
+//! keys, and drawing a slot and the carried stack.
 
-use crate::gui::{GuiAtlas, GuiFrame, ItemDrawer, PlayerDrawer, TooltipLines};
-use voxel_game::inventory_menu::{ClickType, InventoryMenu, SLOT_COUNT, max_stack_size};
+use super::ScreenDraw;
+use voxel_game::inventory_menu::{ClickType, max_stack_size};
 use voxel_world::ClientItemStackState as Stack;
 
-const IMAGE_WIDTH: i32 = 176;
-const IMAGE_HEIGHT: i32 = 166;
 /// `MouseHandler`'s double click window.
 const DOUBLE_CLICK: std::time::Duration = std::time::Duration::from_millis(250);
-
-/// Where each menu slot sits in the screen's image: `InventoryMenu`'s
-/// constructor.
-pub fn slot_position(index: usize) -> (i32, i32) {
-    match index {
-        0 => (154, 28),
-        1..5 => (
-            98 + ((index - 1) % 2) as i32 * 18,
-            18 + ((index - 1) / 2) as i32 * 18,
-        ),
-        5..9 => (8, 8 + (index - 5) as i32 * 18),
-        9..36 => (
-            8 + ((index - 9) % 9) as i32 * 18,
-            84 + ((index - 9) / 9) as i32 * 18,
-        ),
-        36..45 => (8 + (index - 36) as i32 * 18, 142),
-        _ => (77, 62),
-    }
-}
-
-/// The icon an empty slot shows: the armour slots' and the off hand's.
-pub(crate) fn empty_icon(index: usize) -> Option<&'static str> {
-    match index {
-        5 => Some("container/slot/helmet"),
-        6 => Some("container/slot/chestplate"),
-        7 => Some("container/slot/leggings"),
-        8 => Some("container/slot/boots"),
-        45 => Some("container/slot/shield"),
-        _ => None,
-    }
-}
 
 /// A click the screen asks the menu for.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -52,13 +15,6 @@ pub struct SlotClick {
     pub slot: i32,
     pub button: i32,
     pub kind: ClickType,
-}
-
-/// What a key did.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum KeyResult {
-    Clicks(Vec<SlotClick>),
-    Close,
 }
 
 /// What `AbstractContainerScreen`'s mouse handling reads from a menu.
@@ -75,44 +31,6 @@ pub trait SlotView {
     fn slot_count(&self) -> usize;
     /// `Slot.isSameInventory`.
     fn same_container(&self, a: usize, b: usize) -> bool;
-}
-
-impl SlotView for InventoryMenu {
-    fn stack(&self, slot: usize) -> Option<&Stack> {
-        self.slots[slot].as_ref()
-    }
-
-    fn carried(&self) -> Option<&Stack> {
-        self.carried.as_ref()
-    }
-
-    fn can_item_quick_replace(&self, slot: usize, stack: &Stack, ignore_size: bool) -> bool {
-        InventoryMenu::can_item_quick_replace(self, slot, stack, ignore_size)
-    }
-
-    fn may_place(&self, slot: usize, stack: &Stack) -> bool {
-        InventoryMenu::may_place(self, slot, stack)
-    }
-
-    fn slot_max_for(&self, slot: usize, stack: &Stack) -> i32 {
-        InventoryMenu::slot_max_for(self, slot, stack)
-    }
-
-    fn can_drag_to(&self, _slot: usize) -> bool {
-        true
-    }
-
-    fn can_take_for_pick_all(&self, slot: usize) -> bool {
-        slot != 0
-    }
-
-    fn slot_count(&self) -> usize {
-        SLOT_COUNT
-    }
-
-    fn same_container(&self, a: usize, b: usize) -> bool {
-        container_of(a) == container_of(b)
-    }
 }
 
 /// `AbstractContainerScreen`'s mouse state: the drag, the double click and
@@ -431,259 +349,12 @@ pub(crate) enum SlotPreview {
     },
 }
 
-/// The survival inventory screen's own state between events.
-#[derive(Debug, Clone)]
-pub struct InventoryScreen {
-    width: i32,
-    height: i32,
-    hovered: Option<usize>,
-    mouse: ContainerMouse,
-    /// `InventoryScreen.buttonClicked`: the recipe book button took the
-    /// press, so the release is swallowed.
-    button_clicked: bool,
-}
-
-impl InventoryScreen {
-    /// A screen opened on a GUI of this size.
-    pub fn new(width: i32, height: i32) -> Self {
-        Self {
-            width,
-            height,
-            hovered: None,
-            mouse: ContainerMouse::default(),
-            button_clicked: false,
-        }
-    }
-
-    /// The GUI was resized: `Screen.resize` lays the screen out again.
-    pub fn resize(&mut self, width: i32, height: i32) {
-        self.width = width;
-        self.height = height;
-    }
-
-    fn left(&self) -> i32 {
-        (self.width - IMAGE_WIDTH) / 2
-    }
-
-    fn top(&self) -> i32 {
-        (self.height - IMAGE_HEIGHT) / 2
-    }
-
-    fn recipe_button(&self) -> (i32, i32) {
-        (self.left() + 104, self.height / 2 - 22)
-    }
-
-    fn on_recipe_button(&self, x: f64, y: f64) -> bool {
-        let (bx, by) = self.recipe_button();
-        x >= f64::from(bx) && y >= f64::from(by) && x < f64::from(bx + 20) && y < f64::from(by + 18)
-    }
-
-    /// `getHoveredSlot`: the first slot within a unit of the mouse.
-    fn hovered_slot(&self, x: f64, y: f64) -> Option<usize> {
-        let (xm, ym) = (x - f64::from(self.left()), y - f64::from(self.top()));
-        (0..SLOT_COUNT).find(|&index| {
-            let (sx, sy) = slot_position(index);
-            xm >= f64::from(sx - 1)
-                && xm < f64::from(sx + 17)
-                && ym >= f64::from(sy - 1)
-                && ym < f64::from(sy + 17)
-        })
-    }
-
-    fn clicked_outside(&self, x: f64, y: f64) -> bool {
-        let (left, top) = (f64::from(self.left()), f64::from(self.top()));
-        x < left
-            || y < top
-            || x >= left + f64::from(IMAGE_WIDTH)
-            || y >= top + f64::from(IMAGE_HEIGHT)
-    }
-
-    /// `mouseClicked`, with `MouseHandler`'s double click check first.
-    pub fn mouse_clicked(
-        &mut self,
-        x: f64,
-        y: f64,
-        button: i32,
-        shift: bool,
-        now: std::time::Instant,
-        menu: &InventoryMenu,
-    ) -> Vec<SlotClick> {
-        let double = self.mouse.note_click(now, button);
-        // The recipe book button is a widget, which takes the press first.
-        if self.on_recipe_button(x, y) {
-            self.button_clicked = true;
-            return Vec::new();
-        }
-        let slot = self.hovered_slot(x, y);
-        let outside = self.clicked_outside(x, y);
-        self.mouse
-            .clicked(double, slot, outside, button, shift, false, menu)
-    }
-
-    /// `mouseDragged`: a drag gathers the slots it passes.
-    pub fn mouse_dragged(&mut self, x: f64, y: f64, menu: &InventoryMenu) {
-        let slot = self.hovered_slot(x, y);
-        self.mouse.dragged(slot, menu);
-    }
-
-    /// `mouseReleased`.
-    pub fn mouse_released(
-        &mut self,
-        x: f64,
-        y: f64,
-        button: i32,
-        shift: bool,
-        menu: &InventoryMenu,
-    ) -> Vec<SlotClick> {
-        if self.button_clicked {
-            self.button_clicked = false;
-            return Vec::new();
-        }
-        let slot = self.hovered_slot(x, y);
-        let outside = self.clicked_outside(x, y);
-        self.mouse
-            .released(slot, outside, button, shift, false, menu)
-    }
-
-    /// `keyPressed`: the inventory key and escape close the screen; the
-    /// hotbar keys and the off hand key swap with the hovered slot; the drop
-    /// key throws from it, all of it with control.
-    pub fn key_pressed(
-        &mut self,
-        key: glfw::Key,
-        control: bool,
-        menu: &InventoryMenu,
-    ) -> KeyResult {
-        if matches!(key, glfw::Key::Escape | glfw::Key::E) {
-            return KeyResult::Close;
-        }
-        KeyResult::Clicks(slot_key_clicks(key, control, self.hovered, menu))
-    }
-
-    /// `extractRenderState`: the dimmed world, the image, the recipe book
-    /// button, the title, the slots with the hovered one lit, then the
-    /// carried stack at the mouse.
-    #[allow(clippy::too_many_arguments)]
-    pub fn build(
-        &mut self,
-        frame: &mut GuiFrame,
-        atlas: &GuiAtlas,
-        font: &crate::font::Font,
-        title: &str,
-        menu: &InventoryMenu,
-        mouse: (f64, f64),
-        draw: &mut ItemDrawer<'_>,
-        player: &mut PlayerDrawer<'_>,
-        tooltip: &mut TooltipLines<'_>,
-    ) {
-        let (left, top) = (self.left(), self.top());
-        // `extractTransparentBackground`.
-        frame.fill_gradient(
-            atlas,
-            (0, 0, self.width, self.height),
-            0xC010_1010,
-            0xD010_1010,
-        );
-        frame.blit_texture(
-            atlas,
-            "container/inventory",
-            (256, 256),
-            (0, 0),
-            left,
-            top,
-            IMAGE_WIDTH,
-            IMAGE_HEIGHT,
-        );
-        let (bx, by) = self.recipe_button();
-        let button = if self.on_recipe_button(mouse.0, mouse.1) {
-            "recipe_book/button_highlighted"
-        } else {
-            "recipe_book/button"
-        };
-        frame.sprite(atlas, button, bx, by, 20, 18);
-        frame.entity(&player(
-            (left + 26, top + 8, left + 75, top + 78),
-            30.0,
-            0.0625,
-            (mouse.0 as f32, mouse.1 as f32),
-        ));
-        frame.text(atlas, font, title, left + 97, top + 6, 0xFF40_4040);
-        self.hovered = self.hovered_slot(mouse.0, mouse.1);
-        if let Some(slot) = self.hovered {
-            let (x, y) = slot_position(slot);
-            frame.sprite(
-                atlas,
-                "container/slot_highlight_back",
-                left + x - 4,
-                top + y - 4,
-                24,
-                24,
-            );
-        }
-        for index in 0..SLOT_COUNT {
-            self.build_slot(frame, atlas, font, menu, index, draw);
-        }
-        if let Some(slot) = self.hovered {
-            let (x, y) = slot_position(slot);
-            frame.sprite(
-                atlas,
-                "container/slot_highlight_front",
-                left + x - 4,
-                top + y - 4,
-                24,
-                24,
-            );
-        }
-        self.mouse
-            .draw_carried(frame, atlas, font, draw, menu.carried.as_ref(), mouse);
-        // The hovered stack's tooltip, when nothing is carried.
-        if menu.carried.is_none()
-            && let Some(stack) = self.hovered.and_then(|slot| menu.slots[slot].as_ref())
-        {
-            let lines = tooltip(stack, false);
-            frame.tooltip(
-                atlas,
-                font,
-                &lines,
-                (mouse.0 as i32, mouse.1 as i32),
-                (self.width, self.height),
-            );
-        }
-    }
-
-    fn build_slot(
-        &mut self,
-        frame: &mut GuiFrame,
-        atlas: &GuiAtlas,
-        font: &crate::font::Font,
-        menu: &InventoryMenu,
-        index: usize,
-        draw: &mut ItemDrawer<'_>,
-    ) {
-        let (x, y) = slot_position(index);
-        let (x, y) = (self.left() + x, self.top() + y);
-        self.mouse.draw_slot(
-            frame,
-            atlas,
-            font,
-            draw,
-            menu,
-            index,
-            (x, y),
-            empty_icon(index),
-        );
-    }
-}
-
 impl ContainerMouse {
     /// `extractCarriedItem`: the stack at the mouse, less what a drag over
     /// more than one slot would leave.
     pub(crate) fn draw_carried(
         &self,
-        frame: &mut GuiFrame,
-        atlas: &GuiAtlas,
-        font: &crate::font::Font,
-        draw: &mut ItemDrawer<'_>,
+        draw: &mut ScreenDraw<'_, '_>,
         carried: Option<&Stack>,
         mouse: (f64, f64),
     ) {
@@ -694,19 +365,17 @@ impl ContainerMouse {
         let (x, y) = (mouse.0 as i32 - 8, mouse.1 as i32 - 8);
         if count > 0 || text.is_some() {
             let shown = text.map(|text| (text, 0xFFFF_FF55));
-            frame.item_with_count(atlas, font, draw, carried, count, shown, x, y);
+            draw.frame.item_with_count(
+                draw.atlas, draw.font, draw.item, carried, count, shown, x, y,
+            );
         }
     }
 
     /// `extractSlot`: a drag's preview count, an empty slot's icon, or the
     /// stack and its count.
-    #[allow(clippy::too_many_arguments)]
     pub(crate) fn draw_slot(
         &mut self,
-        frame: &mut GuiFrame,
-        atlas: &GuiAtlas,
-        font: &crate::font::Font,
-        draw: &mut ItemDrawer<'_>,
+        draw: &mut ScreenDraw<'_, '_>,
         menu: &impl SlotView,
         index: usize,
         (x, y): (i32, i32),
@@ -737,14 +406,16 @@ impl ContainerMouse {
         if shown.is_none()
             && let Some(icon) = empty_icon
         {
-            frame.sprite(atlas, icon, x, y, 16, 16);
+            draw.frame.sprite(draw.atlas, icon, x, y, 16, 16);
             return;
         }
         if preview {
-            frame.fill(atlas, (x, y, x + 16, y + 16), 0x80FF_FFFF);
+            draw.frame
+                .fill(draw.atlas, (x, y, x + 16, y + 16), 0x80FF_FFFF);
         }
         if let Some((stack, count)) = shown {
-            frame.item_with_count(atlas, font, draw, &stack, count, text, x, y);
+            draw.frame
+                .item_with_count(draw.atlas, draw.font, draw.item, &stack, count, text, x, y);
         }
     }
 }
@@ -797,115 +468,107 @@ pub(crate) fn slot_key_clicks(
     clicks
 }
 
-/// Which container a menu slot belongs to: the result, the crafting grid,
-/// or the player's inventory.
-fn container_of(index: usize) -> u8 {
-    match index {
-        0 => 0,
-        1..5 => 1,
-        _ => 2,
-    }
+/// Where a container screen's image sits in the GUI and what the mouse is
+/// over: `AbstractContainerScreen`'s `leftPos`, `topPos` and slot hit tests.
+#[derive(Debug, Clone, Copy)]
+pub struct ContainerLayout {
+    pub width: i32,
+    pub height: i32,
+    /// The image's size (`imageWidth`, `imageHeight`).
+    pub image: (i32, i32),
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn centre(screen: &InventoryScreen, slot: usize) -> (f64, f64) {
-        let (x, y) = slot_position(slot);
-        (
-            f64::from(screen.left() + x + 8),
-            f64::from(screen.top() + y + 8),
-        )
+impl ContainerLayout {
+    pub fn new(width: i32, height: i32, image: (i32, i32)) -> Self {
+        Self {
+            width,
+            height,
+            image,
+        }
     }
 
-    #[test]
-    fn a_click_picks_up_on_press_and_places_on_release() {
-        let mut screen = InventoryScreen::new(427, 240);
-        let mut menu = InventoryMenu::default();
-        menu.slots[36] = Some(Stack::new(64, 1));
-        let now = std::time::Instant::now();
-        let (x, y) = centre(&screen, 36);
-        let press = screen.mouse_clicked(x, y, 0, false, now, &menu);
-        assert_eq!(
-            press,
-            vec![SlotClick {
-                slot: 36,
-                button: 0,
-                kind: ClickType::Pickup
-            }]
-        );
-        // The release after a pick up is skipped.
-        assert!(screen.mouse_released(x, y, 0, false, &menu).is_empty());
-        menu.carried = menu.slots[36].take();
-        let (x, y) = centre(&screen, 10);
-        let later = now + std::time::Duration::from_secs(1);
-        assert!(
-            screen
-                .mouse_clicked(x, y, 0, false, later, &menu)
-                .is_empty()
-        );
-        let release = screen.mouse_released(x, y, 0, false, &menu);
-        assert_eq!(
-            release,
-            vec![SlotClick {
-                slot: 10,
-                button: 0,
-                kind: ClickType::Pickup
-            }]
-        );
+    /// `leftPos`.
+    pub fn left(&self) -> i32 {
+        (self.width - self.image.0) / 2
     }
 
-    #[test]
-    fn a_drag_over_slots_sends_the_quick_craft_steps() {
-        let mut screen = InventoryScreen::new(427, 240);
-        let mut menu = InventoryMenu::default();
-        menu.carried = Some(Stack::new(64, 1));
-        let now = std::time::Instant::now();
-        let (x, y) = centre(&screen, 10);
-        assert!(screen.mouse_clicked(x, y, 1, false, now, &menu).is_empty());
-        screen.mouse_dragged(x, y, &menu);
-        let (x, y) = centre(&screen, 11);
-        screen.mouse_dragged(x, y, &menu);
-        let clicks = screen.mouse_released(x, y, 1, false, &menu);
-        let steps: Vec<(i32, i32)> = clicks
-            .iter()
-            .map(|click| (click.slot, click.button))
-            .collect();
-        assert_eq!(steps, vec![(-999, 4), (10, 5), (11, 5), (-999, 6)]);
-        assert!(
-            clicks
-                .iter()
-                .all(|click| click.kind == ClickType::QuickCraft)
+    /// `topPos`.
+    pub fn top(&self) -> i32 {
+        (self.height - self.image.1) / 2
+    }
+
+    /// The mouse relative to the image's corner.
+    pub fn relative(&self, (x, y): (f64, f64)) -> (f64, f64) {
+        (x - f64::from(self.left()), y - f64::from(self.top()))
+    }
+
+    /// `getHoveredSlot`: the first of `count` slots, placed in the image by
+    /// `position`, within a unit of the mouse.
+    pub fn hovered(
+        &self,
+        mouse: (f64, f64),
+        count: usize,
+        position: impl Fn(usize) -> (i32, i32),
+    ) -> Option<usize> {
+        let (xm, ym) = self.relative(mouse);
+        (0..count).find(|&index| {
+            let (sx, sy) = position(index);
+            xm >= f64::from(sx - 1)
+                && xm < f64::from(sx + 17)
+                && ym >= f64::from(sy - 1)
+                && ym < f64::from(sy + 17)
+        })
+    }
+
+    /// `hasClickedOutside`: the mouse is off the image.
+    pub fn outside(&self, (x, y): (f64, f64)) -> bool {
+        let (left, top) = (f64::from(self.left()), f64::from(self.top()));
+        x < left
+            || y < top
+            || x >= left + f64::from(self.image.0)
+            || y >= top + f64::from(self.image.1)
+    }
+
+    /// `extractTransparentBackground`: the world dimmed behind the screen.
+    pub fn background(&self, draw: &mut ScreenDraw<'_, '_>) {
+        draw.frame.fill_gradient(
+            draw.atlas,
+            (0, 0, self.width, self.height),
+            0xC010_1010,
+            0xD010_1010,
         );
     }
 
-    #[test]
-    fn a_double_click_gathers() {
-        let mut screen = InventoryScreen::new(427, 240);
-        let mut menu = InventoryMenu::default();
-        menu.slots[20] = Some(Stack::new(5, 1));
-        let now = std::time::Instant::now();
-        let (x, y) = centre(&screen, 20);
-        screen.mouse_clicked(x, y, 0, false, now, &menu);
-        screen.mouse_released(x, y, 0, false, &menu);
-        menu.carried = menu.slots[20].take();
-        screen.mouse_clicked(
-            x,
-            y,
-            0,
-            false,
-            now + std::time::Duration::from_millis(100),
-            &menu,
+    /// The hovered slot's highlight, behind or in front of its stack.
+    pub fn highlight(&self, draw: &mut ScreenDraw<'_, '_>, (x, y): (i32, i32), front: bool) {
+        let sprite = if front {
+            "container/slot_highlight_front"
+        } else {
+            "container/slot_highlight_back"
+        };
+        draw.frame.sprite(
+            draw.atlas,
+            sprite,
+            self.left() + x - 4,
+            self.top() + y - 4,
+            24,
+            24,
         );
-        let clicks = screen.mouse_released(x, y, 0, false, &menu);
-        assert_eq!(
-            clicks,
-            vec![SlotClick {
-                slot: 20,
-                button: 0,
-                kind: ClickType::PickupAll
-            }]
+    }
+
+    /// A stack's tooltip beside the mouse.
+    pub fn tooltip(
+        &self,
+        draw: &mut ScreenDraw<'_, '_>,
+        lines: &[Vec<voxel_game::text::Run>],
+        mouse: (f64, f64),
+    ) {
+        draw.frame.tooltip(
+            draw.atlas,
+            draw.font,
+            lines,
+            (mouse.0 as i32, mouse.1 as i32),
+            (self.width, self.height),
         );
     }
 }

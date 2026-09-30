@@ -1,0 +1,124 @@
+//! Screens over the game: the survival inventory and the creative inventory,
+//! and what their container handling shares.
+//!
+//! A screen is a [`Screen`]: it takes the mouse and the keys while it is open,
+//! answers with the clicks it wants run ([`ScreenAction`]), and draws itself
+//! into the GUI frame through a [`ScreenDraw`].
+
+pub mod container;
+pub mod creative;
+pub mod inventory;
+
+use voxel_game::creative_menu::Click;
+use voxel_game::inventory_menu::{ClickType, InventoryMenu};
+
+use crate::gui::edit_box::Clipboard;
+use crate::gui::font::Font;
+use crate::gui::{GuiAtlas, GuiFrame, GuiItemVertex, ItemDrawer};
+pub use container::SlotClick;
+
+/// Draws the player's model into a box (`x0, y0, x1, y1`) at a size and an
+/// offset (`InventoryScreen.extractEntityInInventoryFollowsMouse`), turned
+/// towards the mouse, as triangles for [`GuiFrame::entity`].
+pub type PlayerDrawer<'a> =
+    dyn FnMut((i32, i32, i32, i32), f32, f32, (f32, f32)) -> Vec<GuiItemVertex> + 'a;
+
+/// An item's tooltip as lines of styled text: for a stack, and whether it is
+/// on one of the creative inventory's own slots.
+pub type TooltipLines<'a> =
+    dyn FnMut(&voxel_world::ClientItemStackState, bool) -> Vec<Vec<voxel_game::text::Run>> + 'a;
+
+/// What a screen draws with: the frame and its atlas and font, and how the
+/// client draws items, the player and tooltips.
+pub struct ScreenDraw<'a, 'b> {
+    pub frame: &'a mut GuiFrame,
+    pub atlas: &'a GuiAtlas,
+    pub font: &'a Font,
+    pub item: &'a mut ItemDrawer<'b>,
+    pub player: &'a mut PlayerDrawer<'b>,
+    pub tooltip: &'a mut TooltipLines<'b>,
+}
+
+/// A click a screen asks the session to run.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum ScreenAction {
+    /// A click in the player's own menu, sent as a container click.
+    Container(SlotClick),
+    /// A click in the creative inventory, run by its menu.
+    Creative(Click),
+}
+
+/// What a key did to a screen.
+#[derive(Debug, Clone, PartialEq)]
+pub enum KeyResult {
+    Close,
+    Actions(Vec<ScreenAction>),
+}
+
+/// The modifiers a key came with.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct KeyMods {
+    pub control: bool,
+    pub shift: bool,
+    /// The command key, which text boxes read as control.
+    pub command: bool,
+}
+
+/// A screen that takes the input while it is open (`Screen` and
+/// `AbstractContainerScreen`). Mouse positions are in GUI units.
+pub trait Screen {
+    /// The GUI was resized: `Screen.resize` lays the screen out again.
+    fn resize(&mut self, width: i32, height: i32);
+
+    /// `mouseClicked`, with `MouseHandler`'s double click check first.
+    fn mouse_clicked(
+        &mut self,
+        mouse: (f64, f64),
+        button: i32,
+        shift: bool,
+        now: std::time::Instant,
+        menu: &InventoryMenu,
+    ) -> Vec<ScreenAction>;
+
+    /// `mouseReleased`.
+    fn mouse_released(
+        &mut self,
+        mouse: (f64, f64),
+        button: i32,
+        shift: bool,
+        menu: &InventoryMenu,
+    ) -> Vec<ScreenAction>;
+
+    /// `mouseDragged`, while a button is held.
+    fn mouse_dragged(&mut self, mouse: (f64, f64), menu: &InventoryMenu);
+
+    /// `mouseScrolled`.
+    fn mouse_scrolled(&mut self, _y: f64) {}
+
+    /// `keyPressed`.
+    fn key_pressed(
+        &mut self,
+        key: glfw::Key,
+        mods: KeyMods,
+        menu: &InventoryMenu,
+        clipboard: &mut dyn Clipboard,
+    ) -> KeyResult;
+
+    /// `keyReleased`.
+    fn key_released(&mut self) {}
+
+    /// `charTyped`.
+    fn char_typed(&mut self, _character: char) {}
+
+    /// A click a script asks for on a slot of the screen's layout, or -999
+    /// outside it.
+    fn scripted_click(&mut self, slot: i32, button: i32, kind: ClickType) -> ScreenAction;
+
+    /// `extractRenderState`.
+    fn build(&mut self, draw: &mut ScreenDraw<'_, '_>, menu: &InventoryMenu, mouse: (f64, f64));
+
+    /// The creative screen, for what only it has (its tab and menu).
+    fn as_creative_mut(&mut self) -> Option<&mut creative::CreativeScreen> {
+        None
+    }
+}

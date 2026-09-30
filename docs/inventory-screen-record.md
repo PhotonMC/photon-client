@@ -6,7 +6,7 @@
 
 ## Ne yapıldı
 
-`crates/voxel-render/src/inventory_screen.rs`, hayatta kalma envanteri
+`crates/voxel-render/src/gui/screen/inventory.rs`, hayatta kalma envanteri
 (`InventoryScreen`, tarif kitabı kapalı) ve `AbstractContainerScreen`'in
 girdisi:
 

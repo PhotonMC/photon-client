@@ -23,7 +23,7 @@ referansla karşılaştırılır (`block` ailesi `parity_passed`).
 ## Ekran
 
 `crates/voxel-game/src/creative_menu.rs` `ItemPickerMenu`u ve ekranın `slotClicked`ini taşır,
-`crates/voxel-render/src/creative_screen.rs` yerleşimi, fareyi ve çizimi:
+`crates/voxel-render/src/gui/screen/creative.rs` yerleşimi, fareyi ve çizimi:
 
 - Pencere 5×9 yuva; satır satır kayar (`scrollTo`, `getRowIndexForScroll`,
   `subtractInputFromScroll`); kaydırma çubuğu sürüklenir, tekerlek satır

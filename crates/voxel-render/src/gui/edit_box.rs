@@ -5,7 +5,8 @@
 //! characters, where the reference counts UTF-16 units; the two agree for
 //! what fits a search box.
 
-use crate::font::Font;
+use crate::gui::font::Font;
+use crate::gui::{GuiAtlas, GuiFrame};
 
 /// A key an edit box acts on.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -309,6 +310,91 @@ pub struct Shown {
     pub highlight: usize,
     /// The cursor overwrites (a line) rather than follows the text (`_`).
     pub insert: bool,
+}
+
+impl EditBox {
+    /// `EditBox.extractWidgetRenderState` without a border, its text's corner
+    /// at `(x, y)`: the text with the cursor blinking in it, the selection
+    /// over it. `focused_at` is when the box took the focus, which the
+    /// cursor blinks from.
+    pub fn draw(
+        &self,
+        frame: &mut GuiFrame,
+        atlas: &GuiAtlas,
+        font: &Font,
+        (text_x, text_y): (i32, i32),
+        focused_at: std::time::Instant,
+    ) {
+        let shown = self.shown(font);
+        let chars: Vec<char> = shown.text.chars().collect();
+        let cursor_on_screen = shown.cursor >= 0 && shown.cursor as usize <= chars.len();
+        let blink = (focused_at.elapsed().as_millis() / 300).is_multiple_of(2);
+        let colour = 0xFFFF_FFFF;
+        let right = text_x + self.width;
+        let mut draw_x = text_x;
+        if !chars.is_empty() {
+            let half: String = if cursor_on_screen {
+                chars[..shown.cursor as usize].iter().collect()
+            } else {
+                shown.text.clone()
+            };
+            frame.text_with_shadow(atlas, font, &half, draw_x, text_y, colour);
+            draw_x += font.width(&half) + 1;
+        }
+        let mut cursor_x = draw_x;
+        if !cursor_on_screen {
+            cursor_x = if shown.cursor > 0 { right } else { text_x };
+        } else if shown.insert {
+            cursor_x -= 1;
+            draw_x -= 1;
+        }
+        if !chars.is_empty() && cursor_on_screen && (shown.cursor as usize) < chars.len() {
+            let rest: String = chars[shown.cursor as usize..].iter().collect();
+            frame.text_with_shadow(atlas, font, &rest, draw_x, text_y, colour);
+        }
+        if shown.highlight as isize != shown.cursor {
+            let before: String = chars[..shown.highlight].iter().collect();
+            let highlight_x = text_x + font.width(&before);
+            frame.fill(
+                atlas,
+                (
+                    cursor_x.min(right),
+                    text_y - 1,
+                    (highlight_x - 1).min(right),
+                    text_y + 1 + 9,
+                ),
+                0x800000FF,
+            );
+        }
+        if blink && cursor_on_screen {
+            if shown.insert {
+                frame.fill(
+                    atlas,
+                    (cursor_x, text_y - 1, cursor_x + 1, text_y + 10),
+                    colour,
+                );
+            } else {
+                frame.text_with_shadow(atlas, font, "_", cursor_x, text_y, colour);
+            }
+        }
+    }
+}
+
+/// The edit key a glfw key is, if any.
+pub fn edit_key(key: glfw::Key) -> Option<EditKey> {
+    Some(match key {
+        glfw::Key::Backspace => EditKey::Backspace,
+        glfw::Key::Delete => EditKey::Delete,
+        glfw::Key::Left => EditKey::Left,
+        glfw::Key::Right => EditKey::Right,
+        glfw::Key::Home => EditKey::Home,
+        glfw::Key::End => EditKey::End,
+        glfw::Key::A => EditKey::A,
+        glfw::Key::C => EditKey::C,
+        glfw::Key::V => EditKey::V,
+        glfw::Key::X => EditKey::X,
+        _ => return None,
+    })
 }
 
 #[cfg(test)]

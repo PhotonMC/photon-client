@@ -1911,7 +1911,7 @@ impl VulkanBackend {
             } else if gui {
                 std::mem::size_of::<crate::gui::GuiVertex>()
             } else if gui_item {
-                std::mem::size_of::<crate::gui_items::GuiItemVertex>()
+                std::mem::size_of::<crate::gui::items::GuiItemVertex>()
             } else if lines {
                 std::mem::size_of::<crate::outline::LineVertex>()
             } else {

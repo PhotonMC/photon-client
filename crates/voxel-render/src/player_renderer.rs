@@ -147,7 +147,7 @@ pub fn gui_player_vertices(
     size: f32,
     offset_y: f32,
     mouse: (f32, f32),
-) -> Vec<crate::gui_items::GuiItemVertex> {
+) -> Vec<crate::gui::items::GuiItemVertex> {
     let centre_x = (area.0 + area.2) as f32 / 2.0;
     let centre_y = (area.1 + area.3) as f32 / 2.0;
     let x_angle = ((centre_x - mouse.0) / 40.0).atan();
@@ -191,7 +191,7 @@ pub fn gui_player_vertices(
         for index in [0, 1, 2, 0, 2, 3] {
             let corner = corners[index];
             let [x, y, z] = turn(corner.position);
-            vertices.push(crate::gui_items::GuiItemVertex {
+            vertices.push(crate::gui::items::GuiItemVertex {
                 position: [centre_x + size * x, centre_y + size * (y + lift), -size * z],
                 uv: corner.uv,
                 colour: [brightness, brightness, brightness, 1.0],
