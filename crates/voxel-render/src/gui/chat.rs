@@ -395,7 +395,7 @@ impl ChatScreen {
         let (width, height) = self.size;
         frame.fill(atlas, (2, height - 14, width - 2, height - 2), 0x8000_0000);
         self.edit
-            .draw(frame, atlas, &self.font, (4, height - 10), self.focused_at);
+            .draw(frame, atlas, &self.font, (4, height - 12), self.focused_at);
         // `CommandSuggestions.SuggestionsList`: the matches over the box, at
         // the text they replace.
         let shown = self.suggestions.len().min(10);
