@@ -151,6 +151,8 @@ pub struct ClientContainerState {
     pub(crate) state_id: i32,
     pub(crate) slots: BTreeMap<i16, Option<ClientItemStackState>>,
     pub(crate) carried_item: Option<ClientItemStackState>,
+    /// The menu's `ContainerData`, by index.
+    pub(crate) data: BTreeMap<i16, i16>,
 }
 
 impl ClientContainerState {
@@ -164,7 +166,13 @@ impl ClientContainerState {
             state_id: 0,
             slots: BTreeMap::new(),
             carried_item: None,
+            data: BTreeMap::new(),
         }
+    }
+
+    /// A `ContainerData` value; zero until the server has sent it.
+    pub fn data(&self, index: i16) -> i16 {
+        self.data.get(&index).copied().unwrap_or(0)
     }
 
     pub fn container_id(&self) -> i32 {

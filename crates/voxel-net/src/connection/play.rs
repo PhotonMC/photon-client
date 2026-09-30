@@ -484,6 +484,20 @@ impl PlaySession {
                 ));
             }
         }
+        // What a furnace menu reads besides its slots.
+        if let Some(menu) = self.open_menu.as_mut() {
+            if let voxel_game::container_menu::MenuKind::Furnace(smelter) = menu.kind {
+                menu.accepted_inputs = self.trace.world.recipe_property_set(smelter.input_set());
+            }
+            if let Some(container) = self
+                .trace
+                .world
+                .local_player()
+                .and_then(|player| player.open_container())
+            {
+                menu.data = (0..4).map(|index| container.data(index)).collect();
+            }
+        }
         self.open_menu.as_ref()
     }
 
@@ -1165,6 +1179,20 @@ impl PlaySession {
                     &packet.items,
                     packet.carried_item.as_ref(),
                 );
+            }
+            PLAY_CLIENTBOUND_CONTAINER_SET_DATA_PACKET_ID => {
+                let packet = parse_container_set_data_packet(payload)?;
+                self.trace.world.apply_local_player_container_data(
+                    packet.container_id,
+                    packet.id,
+                    packet.value,
+                );
+            }
+            PLAY_CLIENTBOUND_UPDATE_RECIPES_PACKET_ID => {
+                match parse_update_recipes_packet(payload) {
+                    Ok(sets) => self.trace.world.apply_recipe_property_sets(sets),
+                    Err(error) => self.warn(format!("recipes: {error:?}")),
+                }
             }
             PLAY_CLIENTBOUND_CONTAINER_SET_SLOT_PACKET_ID => {
                 let packet = match parse_container_set_slot_packet(payload) {

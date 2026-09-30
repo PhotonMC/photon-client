@@ -69,7 +69,9 @@ pub(crate) const PLAY_CLIENTBOUND_CHUNK_BATCH_FINISHED_PACKET_ID: i32 = 11;
 pub(crate) const PLAY_CLIENTBOUND_CHUNK_BATCH_START_PACKET_ID: i32 = 12;
 pub(crate) const PLAY_CLIENTBOUND_CONTAINER_CLOSE_PACKET_ID: i32 = 17;
 pub(crate) const PLAY_CLIENTBOUND_CONTAINER_SET_CONTENT_PACKET_ID: i32 = 18;
+pub(crate) const PLAY_CLIENTBOUND_CONTAINER_SET_DATA_PACKET_ID: i32 = 19;
 pub(crate) const PLAY_CLIENTBOUND_CONTAINER_SET_SLOT_PACKET_ID: i32 = 20;
+pub(crate) const PLAY_CLIENTBOUND_UPDATE_RECIPES_PACKET_ID: i32 = 123;
 pub(crate) const PLAY_CLIENTBOUND_OPEN_SCREEN_PACKET_ID: i32 = 59;
 pub(crate) const PLAY_CLIENTBOUND_PLAYER_ABILITIES_PACKET_ID: i32 = 64;
 pub(crate) const PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID: i32 = 96;
@@ -1797,6 +1799,53 @@ pub(crate) fn parse_container_close_packet(
         container_id,
         applied_to_world: false,
     })
+}
+
+/// One clientbound container-data packet: a menu's `ContainerData` value
+/// (a furnace's burn time, an enchanting table's cost).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ContainerDataObservation {
+    pub container_id: i32,
+    pub id: i16,
+    pub value: i16,
+}
+
+pub(crate) fn parse_container_set_data_packet(
+    input: &[u8],
+) -> Result<ContainerDataObservation, ConnectionError> {
+    let mut input = input;
+    let container_id = read_varint(&mut input, "container data id")?;
+    let id = read_i16(&mut input, "container data slot")?;
+    let value = read_i16(&mut input, "container data value")?;
+    if !input.is_empty() {
+        return Err(ConnectionError::Codec("container data trailing payload"));
+    }
+    Ok(ContainerDataObservation {
+        container_id,
+        id,
+        value,
+    })
+}
+
+/// The item sets of a clientbound update-recipes packet, by name: the items
+/// a furnace, a blast furnace or a smoker accepts, and so on, as registry
+/// ids. The stonecutter recipes after them are not read.
+pub(crate) fn parse_update_recipes_packet(
+    input: &[u8],
+) -> Result<Vec<(String, Vec<i32>)>, ConnectionError> {
+    let mut input = input;
+    let sets = read_varint(&mut input, "recipe property set count")?;
+    let mut out = Vec::new();
+    for _ in 0..sets {
+        let name = read_identifier_string(&mut input, "recipe property set name")?;
+        let count = read_varint(&mut input, "recipe property set size")?;
+        let mut items = Vec::new();
+        for _ in 0..count {
+            items.push(read_varint(&mut input, "recipe property set item")?);
+        }
+        out.push((name, items));
+    }
+    Ok(out)
 }
 
 pub(crate) fn parse_set_health_packet(input: &[u8]) -> Result<HealthObservation, ConnectionError> {

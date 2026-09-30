@@ -576,6 +576,26 @@ public final class MovementOracle {
             // A menu the server opened: built the way the client builds it,
             // over the player's own inventory.
             containerId = row.get("container_id").getAsInt();
+            // A furnace menu reads the items its recipes accept from the
+            // server's recipe sets, and what burns from the client's fuel
+            // values.
+            setField(listener, "fuelValues", net.minecraft.world.level.block.entity.FuelValues
+                .vanillaBurnTimes(Oracle.vanillaRegistries(), net.minecraft.world.flag.FeatureFlags.DEFAULT_FLAGS));
+            var accepted = new java.util.ArrayList<net.minecraft.world.item.crafting.Ingredient>();
+            if (row.has("furnace_inputs")) {
+                for (var name : row.getAsJsonArray("furnace_inputs")) {
+                    accepted.add(net.minecraft.world.item.crafting.Ingredient.of(
+                        net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(
+                            net.minecraft.resources.Identifier.parse(name.getAsString()))));
+                }
+            }
+            var inputs = net.minecraft.world.item.crafting.RecipePropertySet.create(accepted);
+            setField(listener, "recipes", new net.minecraft.client.multiplayer.ClientRecipeContainer(
+                java.util.Map.of(
+                    net.minecraft.world.item.crafting.RecipePropertySet.FURNACE_INPUT, inputs,
+                    net.minecraft.world.item.crafting.RecipePropertySet.BLAST_FURNACE_INPUT, inputs,
+                    net.minecraft.world.item.crafting.RecipePropertySet.SMOKER_INPUT, inputs),
+                net.minecraft.world.item.crafting.SelectableRecipe.SingleInputSet.empty()));
             var type = net.minecraft.core.registries.BuiltInRegistries.MENU.getValue(
                 net.minecraft.resources.Identifier.parse(row.get("menu").getAsString()));
             menu = type.create(containerId, player.getInventory());

@@ -6,13 +6,14 @@
 use super::container::{ContainerLayout, ContainerMouse, SlotClick, slot_key_clicks};
 use super::{KeyMods, KeyResult, Screen, ScreenAction, ScreenDraw};
 use crate::gui::edit_box::Clipboard;
-use voxel_game::container_menu::{ClickType, ContainerMenu, MenuKind};
+use crate::gui::frame::GuiBlend;
+use voxel_game::container_menu::{ClickType, ContainerMenu, MenuKind, Smelter};
 
 /// The size of the screen's image for a menu.
 fn image(kind: MenuKind) -> (i32, i32) {
     match kind {
         MenuKind::Chest(rows) => (176, 114 + rows as i32 * 18),
-        MenuKind::Dispenser | MenuKind::Crafting => (176, 166),
+        MenuKind::Dispenser | MenuKind::Crafting | MenuKind::Furnace(_) => (176, 166),
         MenuKind::Hopper => (176, 133),
         MenuKind::ShulkerBox | MenuKind::Inventory => (176, 167),
     }
@@ -22,6 +23,9 @@ fn image(kind: MenuKind) -> (i32, i32) {
 /// places them, then the player's 27 and 9 below them.
 pub fn slot_position(kind: MenuKind, index: usize) -> (i32, i32) {
     let top = kind.top_slots();
+    if matches!(kind, MenuKind::Furnace(_)) && index < top {
+        return [(56, 17), (56, 53), (116, 35)][index];
+    }
     if kind == MenuKind::Crafting && index < top {
         return if index == 0 {
             (124, 35)
@@ -93,8 +97,11 @@ impl GenericScreen {
 
     /// The crafting table's recipe book button, where `CraftingScreen` puts it.
     fn recipe_button(&self) -> Option<(i32, i32)> {
-        (self.kind == MenuKind::Crafting)
-            .then(|| (self.layout.left() + 5, self.layout.height / 2 - 49))
+        match self.kind {
+            MenuKind::Crafting => Some((self.layout.left() + 5, self.layout.height / 2 - 49)),
+            MenuKind::Furnace(_) => Some((self.layout.left() + 20, self.layout.height / 2 - 49)),
+            _ => None,
+        }
     }
 
     fn on_recipe_button(&self, (x, y): (f64, f64)) -> bool {
@@ -110,6 +117,110 @@ impl GenericScreen {
         let kind = self.kind;
         self.layout
             .hovered(mouse, kind.slot_count(), |index| slot_position(kind, index))
+    }
+
+    /// The screen's texture, over the image's rectangle.
+    fn blit_background(&self, draw: &mut ScreenDraw<'_, '_>) {
+        let (left, top) = (self.layout.left(), self.layout.top());
+        let (width, height) = image(self.kind);
+        match self.kind {
+            MenuKind::Chest(rows) => {
+                let upper = rows as i32 * 18 + 17;
+                let texture = "container/generic_54";
+                draw.frame.blit_texture(
+                    draw.atlas,
+                    texture,
+                    (256, 256),
+                    (0, 0),
+                    left,
+                    top,
+                    width,
+                    upper,
+                );
+                draw.frame.blit_texture(
+                    draw.atlas,
+                    texture,
+                    (256, 256),
+                    (0, 126),
+                    left,
+                    top + upper,
+                    width,
+                    96,
+                );
+            }
+            other => {
+                let texture = match other {
+                    MenuKind::Dispenser => "container/dispenser",
+                    MenuKind::Hopper => "container/hopper",
+                    MenuKind::Crafting => "container/crafting_table",
+                    MenuKind::Furnace(Smelter::Furnace) => "container/furnace",
+                    MenuKind::Furnace(Smelter::BlastFurnace) => "container/blast_furnace",
+                    MenuKind::Furnace(Smelter::Smoker) => "container/smoker",
+                    _ => "container/shulker_box",
+                };
+                draw.frame.blit_texture(
+                    draw.atlas,
+                    texture,
+                    (256, 256),
+                    (0, 0),
+                    left,
+                    top,
+                    width,
+                    height,
+                );
+            }
+        }
+    }
+
+    /// `AbstractFurnaceScreen.extractBackground`: the flame, as much of it as
+    /// burns, and the arrow, as much as has cooked.
+    fn furnace_progress(
+        &self,
+        draw: &mut ScreenDraw<'_, '_>,
+        menu: &ContainerMenu,
+        smelter: Smelter,
+    ) {
+        let (left, top) = (self.layout.left(), self.layout.top());
+        let folder = match smelter {
+            Smelter::Furnace => "furnace",
+            Smelter::BlastFurnace => "blast_furnace",
+            Smelter::Smoker => "smoker",
+        };
+        let data = |index: usize| i32::from(menu.data.get(index).copied().unwrap_or(0));
+        if data(0) > 0 {
+            let duration = if data(1) == 0 { 200 } else { data(1) };
+            let lit = (data(0) as f32 / duration as f32).clamp(0.0, 1.0);
+            let height = (lit * 13.0).ceil() as i32 + 1;
+            draw.frame.blit_part(
+                draw.atlas,
+                GuiBlend::Translucent,
+                &format!("container/{folder}/lit_progress"),
+                (14, 14),
+                (0, 14 - height),
+                left + 56,
+                top + 36 + 14 - height,
+                14,
+                height,
+            );
+        }
+        let (current, total) = (data(2), data(3));
+        let cooked = if total != 0 && current != 0 {
+            (current as f32 / total as f32).clamp(0.0, 1.0)
+        } else {
+            0.0
+        };
+        let width = (cooked * 24.0).ceil() as i32;
+        draw.frame.blit_part(
+            draw.atlas,
+            GuiBlend::Translucent,
+            &format!("container/{folder}/burn_progress"),
+            (24, 16),
+            (0, 0),
+            left + 79,
+            top + 34,
+            width,
+            16,
+        );
     }
 
     fn actions(clicks: Vec<SlotClick>) -> Vec<ScreenAction> {
@@ -198,49 +309,9 @@ impl Screen for GenericScreen {
         let (left, top) = (self.layout.left(), self.layout.top());
         let (width, height) = image(self.kind);
         self.layout.background(draw);
-        match self.kind {
-            MenuKind::Chest(rows) => {
-                let upper = rows as i32 * 18 + 17;
-                let texture = "container/generic_54";
-                draw.frame.blit_texture(
-                    draw.atlas,
-                    texture,
-                    (256, 256),
-                    (0, 0),
-                    left,
-                    top,
-                    width,
-                    upper,
-                );
-                draw.frame.blit_texture(
-                    draw.atlas,
-                    texture,
-                    (256, 256),
-                    (0, 126),
-                    left,
-                    top + upper,
-                    width,
-                    96,
-                );
-            }
-            other => {
-                let texture = match other {
-                    MenuKind::Dispenser => "container/dispenser",
-                    MenuKind::Hopper => "container/hopper",
-                    MenuKind::Crafting => "container/crafting_table",
-                    _ => "container/shulker_box",
-                };
-                draw.frame.blit_texture(
-                    draw.atlas,
-                    texture,
-                    (256, 256),
-                    (0, 0),
-                    left,
-                    top,
-                    width,
-                    height,
-                );
-            }
+        self.blit_background(draw);
+        if let MenuKind::Furnace(smelter) = self.kind {
+            self.furnace_progress(draw, menu, smelter);
         }
         if let Some((bx, by)) = self.recipe_button() {
             let button = if self.on_recipe_button(mouse) {
@@ -251,7 +322,7 @@ impl Screen for GenericScreen {
             draw.frame.sprite(draw.atlas, button, bx, by, 20, 18);
         }
         // The dispenser centres its title; the others keep it at the corner.
-        let title_x = if self.kind == MenuKind::Dispenser {
+        let title_x = if matches!(self.kind, MenuKind::Dispenser | MenuKind::Furnace(_)) {
             (width - draw.font.width(&self.titles.title)) / 2
         } else {
             8

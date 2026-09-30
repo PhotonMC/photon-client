@@ -38,7 +38,21 @@ Java ile birebir. Tarif kitabı düğmesi çizilir ve basışı yutar, kitap aç
 Canlı: bir kütük ızgaraya taşındı, sunucunun gönderdiği sonuç hızlı taşınarak
 8 tahta alındı.
 
+## Fırınlar (fırın, yüksek fırın, dumanlayıcı)
+
+`MenuKind::Furnace` (menü türleri 14, 10, 22): malzeme 0, yakıt 1, sonuç 2.
+`AbstractFurnaceMenu.quickMoveStack`, `FurnaceFuelSlot` (yalnız yakıt ve kova,
+kova 1'lik), `FurnaceResultSlot` (yalnız alınır) portlandı. İstemci ne yandığını
+ve neyin pişeceğini Java gibi ayırır: yakıt süreleri oracle'dan üretilen eşya
+tanımındaki `burn_time` (`FuelValues.vanillaBurnTimes`, 280 eşya), pişen eşyalar
+sunucunun `UpdateRecipes` paketindeki `furnace_input`/`blast_furnace_input`/
+`smoker_input` kümeleri. `ContainerSetData` (yanma ve pişme ilerlemesi) işlenir
+ve ekran alev ile oku çizer. Oracle'da 8 satır Java ile birebir (Java menüyü
+`MenuType.create` ile, kümeleri `ClientRecipeContainer` ile kurar). Canlı:
+ham demir ve kömür hızlı taşınınca doğru yuvalara gitti, pişirme ilerledi.
+
 ## Açık
 
-Bileşenli eşyada bileşen hash'leri, kap içeriği ipucu, `ContainerSetData`
-(fırın/beacon), tarif kitabı, diğer menü türleri ve at envanteri.
+Bileşenli eşyada bileşen hash'leri, kap içeriği ipucu, tarif kitabı, kalan menü
+türleri (örs, büyü masası, taş kesici, loom, cartography, grindstone, smithing,
+beacon, brewing stand, lectern, tüccar, crafter) ve at envanteri.

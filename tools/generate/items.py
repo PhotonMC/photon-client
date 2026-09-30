@@ -134,6 +134,8 @@ def items_file(items):
         for flag in ("consumable", "blocks_attacks", "kinetic_weapon"):
             if item[flag]:
                 calls.append(f"{flag}()")
+        if item.get("burn_time"):
+            calls.append(f"burns({item['burn_time']})")
         if item.get("block"):
             calls.append(f"places({rust_str(item['block'])})")
         components = component_calls(item)

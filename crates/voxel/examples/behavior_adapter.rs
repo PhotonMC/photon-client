@@ -16832,6 +16832,9 @@ fn item_declarations(label: &str) -> Value {
                     "can_destroy_blocks_in_creative": tool.can_destroy_blocks_in_creative,
                 });
             }
+            if item.burn_time > 0 {
+                described["burn_time"] = json!(item.burn_time);
+            }
             if let Some(block) = item.block {
                 described["block"] = json!(block);
             }
@@ -18372,7 +18375,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// Clicks in the player's own inventory menu, as the client predicts them
 /// and sends them.
 fn container_clicks_result(request: &Value) -> Result<Value, String> {
-    use voxel_game::container_menu::{ClickType, ContainerMenu, MenuKind, Player};
+    use voxel_game::container_menu::{ClickType, ContainerMenu, MenuKind, Player, Smelter};
     use voxel_world::ClientItemStackState;
     let stack = |described: &Value| -> Result<ClientItemStackState, String> {
         let name = described["item"].as_str().ok_or("item must be a string")?;
@@ -18400,6 +18403,9 @@ fn container_clicks_result(request: &Value) -> Result<Value, String> {
             Some(name) => {
                 let kind = match name.strip_prefix("minecraft:").unwrap_or(name) {
                     "crafting" => MenuKind::Crafting,
+                    "furnace" => MenuKind::Furnace(Smelter::Furnace),
+                    "blast_furnace" => MenuKind::Furnace(Smelter::BlastFurnace),
+                    "smoker" => MenuKind::Furnace(Smelter::Smoker),
                     "generic_3x3" => MenuKind::Dispenser,
                     "hopper" => MenuKind::Hopper,
                     "shulker_box" => MenuKind::ShulkerBox,
@@ -18413,7 +18419,16 @@ fn container_clicks_result(request: &Value) -> Result<Value, String> {
                 let id = row["container_id"]
                     .as_i64()
                     .ok_or("container_id must be a number")? as i32;
-                ContainerMenu::for_menu(kind, id, Vec::new(), None, 0)
+                let mut menu = ContainerMenu::for_menu(kind, id, Vec::new(), None, 0);
+                if let Some(inputs) = row.get("furnace_inputs").and_then(Value::as_array) {
+                    menu.accepted_inputs = std::sync::Arc::new(
+                        inputs
+                            .iter()
+                            .filter_map(|name| voxel_game::item::id_of(name.as_str()?))
+                            .collect(),
+                    );
+                }
+                menu
             }
         };
         for slot in row["slots"].as_array().ok_or("slots must be an array")? {

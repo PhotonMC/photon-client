@@ -77,6 +77,28 @@ pub enum MenuKind {
     ShulkerBox,
     /// `CraftingMenu`: the result, then the three by three grid.
     Crafting,
+    /// `AbstractFurnaceMenu`: the ingredient, the fuel and the result.
+    Furnace(Smelter),
+}
+
+/// Which furnace a [`MenuKind::Furnace`] is: each has its own screen and
+/// its own set of inputs.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Smelter {
+    Furnace,
+    BlastFurnace,
+    Smoker,
+}
+
+impl Smelter {
+    /// The recipe property set of the items it accepts.
+    pub fn input_set(self) -> &'static str {
+        match self {
+            Self::Furnace => "minecraft:furnace_input",
+            Self::BlastFurnace => "minecraft:blast_furnace_input",
+            Self::Smoker => "minecraft:smoker_input",
+        }
+    }
 }
 
 impl MenuKind {
@@ -85,7 +107,10 @@ impl MenuKind {
         Some(match id {
             0..=5 => Self::Chest(id as usize + 1),
             6 => Self::Dispenser,
+            10 => Self::Furnace(Smelter::BlastFurnace),
             12 => Self::Crafting,
+            14 => Self::Furnace(Smelter::Furnace),
+            22 => Self::Furnace(Smelter::Smoker),
             16 => Self::Hopper,
             20 => Self::ShulkerBox,
             _ => return None,
@@ -101,6 +126,7 @@ impl MenuKind {
             Self::Hopper => 5,
             Self::ShulkerBox => 27,
             Self::Crafting => 10,
+            Self::Furnace(_) => 3,
         }
     }
 
@@ -123,6 +149,11 @@ pub struct ContainerMenu {
     pub slots: Vec<Option<Stack>>,
     pub carried: Option<Stack>,
     pub state_id: i32,
+    /// The items a furnace menu's ingredient slot takes, from the recipe
+    /// property set the server sent.
+    pub accepted_inputs: std::sync::Arc<std::collections::BTreeSet<i32>>,
+    /// The menu's `ContainerData` (a furnace's burn and cook progress).
+    pub data: Vec<i16>,
     quickcraft_status: i32,
     quickcraft_type: i32,
     quickcraft_slots: Vec<usize>,
@@ -139,6 +170,8 @@ impl Default for ContainerMenu {
             slots: vec![None; SLOT_COUNT],
             carried: None,
             state_id: 0,
+            accepted_inputs: std::sync::Arc::default(),
+            data: Vec::new(),
             quickcraft_status: 0,
             quickcraft_type: 0,
             quickcraft_slots: Vec::new(),
@@ -648,6 +681,7 @@ impl ContainerMenu {
                 1..10 => 1,
                 _ => 2,
             },
+            MenuKind::Furnace(_) => usize::from(index >= 3),
             other => usize::from(index >= other.top_slots()),
         };
         part(a) == part(b)
@@ -680,7 +714,9 @@ impl ContainerMenu {
 
     /// `Slot.getMaxStackSize(stack)`.
     pub fn slot_max_for(&self, index: usize, stack: &Stack) -> i32 {
-        let slot_max = if self.armour_at(index).is_some() {
+        let slot_max = if self.armour_at(index).is_some()
+            || (matches!(self.kind, MenuKind::Furnace(_)) && index == 1 && is_bucket(stack))
+        {
             1
         } else {
             99
@@ -692,6 +728,15 @@ impl ContainerMenu {
     pub fn may_place(&self, index: usize, stack: &Stack) -> bool {
         if self.is_result(index) {
             return false;
+        }
+        if matches!(self.kind, MenuKind::Furnace(_)) {
+            match index {
+                // `FurnaceResultSlot`.
+                2 => return false,
+                // `FurnaceFuelSlot`.
+                1 => return self.is_fuel(stack) || is_bucket(stack),
+                _ => {}
+            }
         }
         // `ShulkerBoxSlot`: a shulker box does not go inside one.
         if self.kind == MenuKind::ShulkerBox && index < self.kind.top_slots() {
@@ -901,9 +946,56 @@ impl ContainerMenu {
         Some(clicked)
     }
 
+    /// `AbstractFurnaceMenu.isFuel`.
+    fn is_fuel(&self, stack: &Stack) -> bool {
+        stacking(stack).is_some_and(|item| item.burn_time > 0)
+    }
+
+    /// `AbstractFurnaceMenu.canSmelt`.
+    fn can_smelt(&self, stack: &Stack) -> bool {
+        self.accepted_inputs.contains(&stack.item_registry_id())
+    }
+
+    /// `AbstractFurnaceMenu.quickMoveStack`.
+    fn quick_move_furnace(&mut self, index: usize, player: Player) -> Option<Stack> {
+        let original = self.slots[index].as_ref()?.clone();
+        let clicked = original.copy_with_count(original.item_count());
+        let mut stack = self.slots[index].take().expect("checked above");
+        let moved = if index == 2 {
+            self.move_item_stack_to(&mut stack, 3, 39, true)
+        } else if index > 2 {
+            if self.can_smelt(&stack) {
+                self.move_item_stack_to(&mut stack, 0, 1, false)
+            } else if self.is_fuel(&stack) {
+                self.move_item_stack_to(&mut stack, 1, 2, false)
+            } else if index < 30 {
+                self.move_item_stack_to(&mut stack, 30, 39, false)
+            } else {
+                self.move_item_stack_to(&mut stack, 3, 30, false)
+            }
+        } else {
+            self.move_item_stack_to(&mut stack, 3, 39, false)
+        };
+        self.slots[index] = Some(stack);
+        settle(&mut self.slots[index]);
+        if !moved {
+            return None;
+        }
+        let left = self.slots[index].as_ref().map_or(0, Stack::item_count);
+        if left == clicked.item_count() {
+            return None;
+        }
+        let taken = self.slots[index]
+            .clone()
+            .unwrap_or_else(|| clicked.copy_with_count(0));
+        self.on_take(index, &taken, player);
+        Some(clicked)
+    }
+
     /// `quickMoveStack` of the menu.
     fn quick_move_stack(&mut self, index: usize, player: Player) -> Option<Stack> {
         match self.kind {
+            MenuKind::Furnace(_) => self.quick_move_furnace(index, player),
             MenuKind::Inventory => self.quick_move_inventory(index, player),
             MenuKind::Crafting => self.quick_move_crafting(index, player),
             _ => self.quick_move_container(index, player),
@@ -1058,6 +1150,11 @@ impl ContainerMenu {
             .filter_map(|index| self.inventory_to_menu(index))
             .find(|&slot| self.slots[slot].is_none())
     }
+}
+
+/// `FurnaceFuelSlot.isBucket`.
+fn is_bucket(stack: &Stack) -> bool {
+    stacking(stack).is_some_and(|item| item.name == "minecraft:bucket")
 }
 
 /// `Item.canFitInsideContainerItems`: every item but a shulker box.

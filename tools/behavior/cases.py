@@ -13655,12 +13655,14 @@ def movement_cases():
         return {"slot": slot, "button": button, "type": kind}
 
     def clicks(label, slots, click_list, carried=None, game_mode="survival", selected=0, state_id=0,
-               menu=None):
+               menu=None, furnace_inputs=None):
         row = {"label": label, "blocks": [], "chunk_radius": 0, "game_mode": game_mode,
                "selected": selected, "state_id": state_id, "slots": slots, "clicks": click_list}
         if menu is not None:
             row["menu"] = f"minecraft:{menu}"
             row["container_id"] = 4
+        if furnace_inputs is not None:
+            row["furnace_inputs"] = [f"minecraft:{name}" for name in furnace_inputs]
         if carried is not None:
             row["carried"] = {"item": f"minecraft:{carried[0]}", "count": carried[1]}
         return row
@@ -13805,6 +13807,34 @@ def movement_cases():
         clicks("table drag over the grid", [],
                [cl(-999, 0, QC), cl(1, 1, QC), cl(2, 1, QC), cl(30, 1, QC), cl(-999, 2, QC)],
                carried=("stone", 9), menu=crafting),
+    ]
+    # The furnaces: the ingredient at 0, the fuel at 1, the result at 2.
+    smelts = ["raw_iron", "beef", "cobblestone", "sand"]
+    click_rows += [
+        clicks("furnace quick move sorts by use",
+               [st(3, "raw_iron", 10), st(4, "coal", 20), st(5, "dirt", 7), st(30, "beef", 3),
+                st(31, "charcoal", 5), st(6, "lava_bucket", 1)],
+               [cl(3, 0, Q), cl(4, 0, Q), cl(5, 0, Q), cl(30, 0, Q), cl(31, 0, Q), cl(6, 0, Q)],
+               menu="furnace", furnace_inputs=smelts),
+        clicks("furnace quick move out", [st(0, "raw_iron", 5), st(1, "coal", 3), st(2, "iron_ingot", 7)],
+               [cl(0, 0, Q), cl(1, 0, Q), cl(2, 0, Q)], menu="furnace", furnace_inputs=smelts),
+        clicks("furnace fuel slot takes fuel and buckets only",
+               [st(3, "coal", 10), st(4, "dirt", 5), st(5, "bucket", 3), st(6, "water_bucket", 1)],
+               [cl(3, 0, P), cl(1, 0, P), cl(3, 0, P), cl(4, 0, P), cl(1, 0, P), cl(4, 0, P),
+                cl(5, 0, P), cl(1, 1, P), cl(5, 0, P), cl(6, 0, P), cl(1, 0, P)],
+               menu="furnace", furnace_inputs=smelts),
+        clicks("furnace ingredient slot takes anything", [st(3, "dirt", 10)],
+               [cl(3, 0, P), cl(0, 0, P), cl(0, 1, P)], menu="furnace", furnace_inputs=smelts),
+        clicks("furnace result only comes out", [st(2, "iron_ingot", 7), st(3, "iron_ingot", 4)],
+               [cl(2, 1, P), cl(3, 0, P), cl(2, 0, P), cl(2, 0, P), cl(10, 0, P)],
+               menu="furnace", furnace_inputs=smelts),
+        clicks("furnace double click gathers the result too",
+               [st(2, "iron_ingot", 9), st(3, "iron_ingot", 10), st(4, "iron_ingot", 20)],
+               [cl(12, 0, PA)], carried=("iron_ingot", 5), menu="furnace", furnace_inputs=smelts),
+        clicks("blast furnace quick move", [st(3, "raw_iron", 10), st(4, "coal", 20), st(5, "beef", 4)],
+               [cl(3, 0, Q), cl(4, 0, Q), cl(5, 0, Q)], menu="blast_furnace", furnace_inputs=smelts),
+        clicks("smoker quick move and number key", [st(3, "beef", 10), st(4, "stick", 20), st(2, "cooked_beef", 4)],
+               [cl(3, 0, Q), cl(4, 0, Q), cl(2, 2, SW), cl(2, 0, TH)], menu="smoker", furnace_inputs=smelts),
     ]
     yield {
         "case_id": "movement/container-clicks",

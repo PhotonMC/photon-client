@@ -1,6 +1,7 @@
 //! Queryable client-side world state built from decoded chunk sections.
 
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
+use std::sync::Arc;
 
 use crate::input::{
     Input, KeyboardInput, LocalPlayerHandleRelativeFrictionParameters, LocalPlayerInputModifiers,
@@ -62,6 +63,8 @@ pub struct ClientWorld {
     sea_level: i32,
     dimension_environment: DimensionEnvironment,
     block_state_registry: ClientBlockStateRegistry,
+    /// The items each recipe property set accepts, as the server sent them.
+    recipe_property_sets: BTreeMap<String, Arc<BTreeSet<i32>>>,
     chunks: BTreeMap<(i32, i32), ClientChunk>,
     chunk_cache: Option<ClientChunkCacheState>,
     /// The client level's light engine and the light tasks waiting for a
@@ -109,6 +112,7 @@ impl ClientWorld {
                 "minecraft:overworld",
             ),
             block_state_registry: ClientBlockStateRegistry::default(),
+            recipe_property_sets: BTreeMap::new(),
             chunks: BTreeMap::new(),
             chunk_cache: None,
             light: new_light_engine(dimension, true),
@@ -841,6 +845,43 @@ impl ClientWorld {
         container.slots.insert(slot, item.cloned());
         player.mirror_container_into_inventory();
         true
+    }
+
+    /// `handleContainerSetData`: a value of the open menu's `ContainerData`.
+    pub fn apply_local_player_container_data(
+        &mut self,
+        container_id: i32,
+        index: i16,
+        value: i16,
+    ) -> bool {
+        let Some(container) = self
+            .local_player
+            .as_mut()
+            .and_then(|player| player.open_container.as_mut())
+            .filter(|container| container.container_id == container_id)
+        else {
+            return false;
+        };
+        container.data.insert(index, value);
+        true
+    }
+
+    /// `handleUpdateRecipes`: the items each recipe property set accepts, by
+    /// the set's name (`minecraft:furnace_input`).
+    pub fn apply_recipe_property_sets(&mut self, sets: Vec<(String, Vec<i32>)>) {
+        self.recipe_property_sets = sets
+            .into_iter()
+            .map(|(name, items)| (name, Arc::new(items.into_iter().collect())))
+            .collect();
+    }
+
+    /// The items a recipe property set accepts (`RecipePropertySet.test`);
+    /// none for a set the server has not sent.
+    pub fn recipe_property_set(&self, set: &str) -> Arc<BTreeSet<i32>> {
+        self.recipe_property_sets
+            .get(set)
+            .cloned()
+            .unwrap_or_default()
     }
 
     pub fn apply_local_player_carried_item(&mut self, item: Option<&ClientItemStackState>) -> bool {

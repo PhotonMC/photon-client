@@ -61,6 +61,8 @@ pub struct Item {
     pub consumable: bool,
     pub blocks_attacks: bool,
     pub kinetic_weapon: bool,
+    /// Ticks a furnace burns it for; zero when it is no fuel.
+    pub burn_time: i32,
     /// The block a block item places.
     pub block: Option<&'static str>,
     /// The other default components the client reads.
@@ -81,9 +83,16 @@ impl Item {
             consumable: false,
             blocks_attacks: false,
             kinetic_weapon: false,
+            burn_time: 0,
             block: None,
             components: &[],
         }
+    }
+
+    /// What a furnace burns the item for, in ticks (`FuelValues`).
+    pub const fn burns(mut self, ticks: i32) -> Self {
+        self.burn_time = ticks;
+        self
     }
 
     pub const fn stacks_to(mut self, size: i32) -> Self {
