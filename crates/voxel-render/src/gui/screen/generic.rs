@@ -3,9 +3,12 @@
 //! each `AbstractContainerScreen` over a generic menu. The clicks themselves
 //! run in [`voxel_game::container_menu`].
 
+mod transform;
+
 use super::container::{ContainerLayout, ContainerMouse, SlotClick, slot_key_clicks};
 use super::{KeyMods, KeyResult, Screen, ScreenAction, ScreenDraw};
 use crate::gui::edit_box::Clipboard;
+use crate::gui::font::Font;
 use crate::gui::frame::GuiBlend;
 use voxel_game::container_menu::{ClickType, ContainerMenu, MenuKind, Smelter};
 
@@ -16,6 +19,7 @@ fn image(kind: MenuKind) -> (i32, i32) {
         MenuKind::Dispenser | MenuKind::Crafting | MenuKind::Furnace(_) => (176, 166),
         MenuKind::Hopper => (176, 133),
         MenuKind::ShulkerBox | MenuKind::Inventory => (176, 167),
+        _ => (176, 166),
     }
 }
 
@@ -25,6 +29,9 @@ pub fn slot_position(kind: MenuKind, index: usize) -> (i32, i32) {
     let top = kind.top_slots();
     if matches!(kind, MenuKind::Furnace(_)) && index < top {
         return [(56, 17), (56, 53), (116, 35)][index];
+    }
+    if let Some(position) = transform::slot_position(kind, index) {
+        return position;
     }
     if kind == MenuKind::Crafting && index < top {
         return if index == 0 {
@@ -67,6 +74,11 @@ pub fn slot_position(kind: MenuKind, index: usize) -> (i32, i32) {
 pub struct Titles {
     pub title: String,
     pub inventory: String,
+    /// The font the anvil's name box measures with.
+    pub font: std::sync::Arc<Font>,
+    /// `container.repair.cost` and `container.repair.expensive`, for the anvil.
+    pub repair_cost: String,
+    pub repair_expensive: String,
 }
 
 /// A generic container screen's own state between events.
@@ -80,6 +92,8 @@ pub struct GenericScreen {
     /// The recipe book button of the crafting table took the press, so the
     /// release is swallowed; the book itself is not drawn.
     button_clicked: bool,
+    /// What only the menus that transform their items keep.
+    extras: transform::Extras,
 }
 
 impl GenericScreen {
@@ -92,6 +106,7 @@ impl GenericScreen {
             hovered: None,
             mouse: ContainerMouse::default(),
             button_clicked: false,
+            extras: transform::Extras::new(),
         }
     }
 
@@ -156,7 +171,8 @@ impl GenericScreen {
                     MenuKind::Furnace(Smelter::Furnace) => "container/furnace",
                     MenuKind::Furnace(Smelter::BlastFurnace) => "container/blast_furnace",
                     MenuKind::Furnace(Smelter::Smoker) => "container/smoker",
-                    _ => "container/shulker_box",
+                    MenuKind::ShulkerBox => "container/shulker_box",
+                    other => transform::texture(other).unwrap_or("container/hopper"),
                 };
                 draw.frame.blit_texture(
                     draw.atlas,
@@ -285,8 +301,17 @@ impl Screen for GenericScreen {
         key: glfw::Key,
         mods: KeyMods,
         menu: &ContainerMenu,
-        _clipboard: &mut dyn Clipboard,
+        clipboard: &mut dyn Clipboard,
     ) -> KeyResult {
+        if let Some(result) = self.name_key(
+            key,
+            mods.control || mods.command,
+            mods.shift,
+            menu,
+            clipboard,
+        ) {
+            return result;
+        }
         if matches!(key, glfw::Key::Escape | glfw::Key::E) {
             return KeyResult::Close;
         }
@@ -296,6 +321,14 @@ impl Screen for GenericScreen {
             self.hovered,
             menu,
         )))
+    }
+
+    fn char_typed(&mut self, character: char) {
+        self.name_char(character);
+    }
+
+    fn drain_actions(&mut self) -> Vec<ScreenAction> {
+        self.take_queued()
     }
 
     fn scripted_click(&mut self, slot: i32, button: i32, kind: ClickType) -> ScreenAction {
@@ -313,6 +346,7 @@ impl Screen for GenericScreen {
         if let MenuKind::Furnace(smelter) = self.kind {
             self.furnace_progress(draw, menu, smelter);
         }
+        self.draw_extras(draw, menu, (left, top));
         if let Some((bx, by)) = self.recipe_button() {
             let button = if self.on_recipe_button(mouse) {
                 "recipe_book/button_highlighted"
@@ -322,17 +356,18 @@ impl Screen for GenericScreen {
             draw.frame.sprite(draw.atlas, button, bx, by, 20, 18);
         }
         // The dispenser centres its title; the others keep it at the corner.
+        let (label_x, label_y) = transform::title_label(self.kind);
         let title_x = if matches!(self.kind, MenuKind::Dispenser | MenuKind::Furnace(_)) {
             (width - draw.font.width(&self.titles.title)) / 2
         } else {
-            8
+            label_x
         };
         draw.frame.text(
             draw.atlas,
             draw.font,
             &self.titles.title,
             left + title_x,
-            top + 6,
+            top + label_y,
             0xFF40_4040,
         );
         draw.frame.text(
@@ -351,8 +386,13 @@ impl Screen for GenericScreen {
         }
         for index in 0..kind.slot_count() {
             let (x, y) = slot_position(kind, index);
-            self.mouse
-                .draw_slot(draw, menu, index, (left + x, top + y), None);
+            self.mouse.draw_slot(
+                draw,
+                menu,
+                index,
+                (left + x, top + y),
+                transform::empty_icon(kind, index),
+            );
         }
         if let Some(slot) = self.hovered {
             self.layout.highlight(draw, slot_position(kind, slot), true);
@@ -379,6 +419,9 @@ mod tests {
         Titles {
             title: "Chest".to_owned(),
             inventory: "Inventory".to_owned(),
+            font: std::sync::Arc::new(Font::default()),
+            repair_cost: String::new(),
+            repair_expensive: String::new(),
         }
     }
 

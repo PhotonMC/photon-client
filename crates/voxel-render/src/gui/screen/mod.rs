@@ -41,12 +41,14 @@ pub struct ScreenDraw<'a, 'b> {
 }
 
 /// A click a screen asks the session to run.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ScreenAction {
     /// A click in the player's own menu, sent as a container click.
     Container(SlotClick),
     /// A click in the creative inventory, run by its menu.
     Creative(Click),
+    /// The anvil's name box changed: what the server is to name the result.
+    Rename(String),
 }
 
 /// What a key did to a screen.
@@ -110,6 +112,12 @@ pub trait Screen {
 
     /// `charTyped`.
     fn char_typed(&mut self, _character: char) {}
+
+    /// The clicks a typed key or character asked for, which the events that
+    /// carry no result could not return.
+    fn drain_actions(&mut self) -> Vec<ScreenAction> {
+        Vec::new()
+    }
 
     /// A click a script asks for on a slot of the screen's layout, or -999
     /// outside it.

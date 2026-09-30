@@ -486,9 +486,14 @@ impl PlaySession {
         }
         // What a furnace menu reads besides its slots.
         if let Some(menu) = self.open_menu.as_mut() {
-            if let voxel_game::container_menu::MenuKind::Furnace(smelter) = menu.kind {
-                menu.accepted_inputs = self.trace.world.recipe_property_set(smelter.input_set());
-            }
+            menu.accepted = menu
+                .kind
+                .input_sets()
+                .iter()
+                .map(|set| self.trace.world.recipe_property_set(set))
+                .collect();
+            menu.item_tags = self.trace.world.block_state_registry().item_tags().clone();
+            menu.xp_level = self.status.experience_level;
             if let Some(container) = self
                 .trace
                 .world
@@ -499,6 +504,37 @@ impl PlaySession {
             }
         }
         self.open_menu.as_ref()
+    }
+
+    /// `MultiPlayerGameMode.handleInventoryButtonClick`: a button of the open
+    /// menu (a stonecutter recipe, a loom pattern, an enchantment) pressed.
+    pub fn container_button(&mut self, button: i32) -> Result<(), ConnectionError> {
+        let Some(container_id) = self
+            .trace
+            .world
+            .local_player()
+            .and_then(|player| player.open_container())
+            .map(|container| container.container_id())
+        else {
+            return Ok(());
+        };
+        self.send(
+            PLAY_SERVERBOUND_CONTAINER_BUTTON_CLICK_PACKET_ID,
+            |output| {
+                voxel_core::wire::write_varint(container_id, output);
+                voxel_core::wire::write_varint(button, output);
+                Ok(())
+            },
+        )
+    }
+
+    /// `ServerboundRenameItemPacket`: the anvil's name box changed.
+    pub fn rename_item(&mut self, name: &str) -> Result<(), ConnectionError> {
+        self.send(PLAY_SERVERBOUND_RENAME_ITEM_PACKET_ID, |output| {
+            voxel_core::wire::write_varint(name.len() as i32, output);
+            output.extend_from_slice(name.as_bytes());
+            Ok(())
+        })
     }
 
     /// `AbstractContainerScreen.slotClicked` into the open menu: the player's

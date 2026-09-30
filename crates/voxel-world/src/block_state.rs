@@ -8,7 +8,7 @@ use voxel_core::{
     shape::{Shapes, VoxelShape},
 };
 
-use crate::block::tags::BlockTags;
+use crate::block::tags::{BlockTags, ItemTags};
 
 /// A block collision shape returned in Java's cursor traversal order.
 #[derive(Debug, Clone, PartialEq)]
@@ -23,6 +23,8 @@ pub struct ClientBlockCollision {
 pub struct ClientBlockStateRegistry {
     /// The block tags the server last sent.
     pub(crate) tags: Arc<BlockTags>,
+    /// The item tags the server last sent.
+    pub(crate) item_tags: Arc<ItemTags>,
 }
 
 impl ClientBlockStateRegistry {
@@ -72,6 +74,11 @@ impl ClientBlockStateRegistry {
         self.is_state_in_tag(state_id, "minecraft:can_glide_through")
     }
 
+    /// The item tags the server last sent.
+    pub fn item_tags(&self) -> &Arc<ItemTags> {
+        &self.item_tags
+    }
+
     /// The block tags the server last sent.
     pub fn tags(&self) -> &Arc<BlockTags> {
         &self.tags
@@ -80,6 +87,9 @@ impl ClientBlockStateRegistry {
     pub(crate) fn apply_update_tags(&mut self, registries: &[voxel_core::tags::RegistryTags]) {
         if let Some(tags) = BlockTags::from_registries(registries) {
             self.tags = Arc::new(tags);
+        }
+        if let Some(tags) = ItemTags::from_registries(registries) {
+            self.item_tags = Arc::new(tags);
         }
     }
 

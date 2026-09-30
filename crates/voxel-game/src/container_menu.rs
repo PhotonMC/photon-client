@@ -58,7 +58,6 @@ pub struct Player {
 
 /// The number of slots in the player's inventory menu.
 pub const SLOT_COUNT: usize = 46;
-const RESULT: usize = 0;
 const OFF_HAND: usize = 45;
 
 /// Which menu this is, and so how its slots behave.
@@ -79,6 +78,20 @@ pub enum MenuKind {
     Crafting,
     /// `AbstractFurnaceMenu`: the ingredient, the fuel and the result.
     Furnace(Smelter),
+    /// `StonecutterMenu`: the input and the result.
+    Stonecutter,
+    /// `GrindstoneMenu`: two inputs and the result.
+    Grindstone,
+    /// `CartographyTableMenu`: the map, the additional item and the result.
+    Cartography,
+    /// `LoomMenu`: the banner, the dye, the pattern and the result.
+    Loom,
+    /// `SmithingMenu`: the template, the base, the addition and the result.
+    Smithing,
+    /// `AnvilMenu`: two inputs and the result.
+    Anvil,
+    /// `EnchantmentMenu`: the item and the lapis.
+    Enchantment,
 }
 
 /// Which furnace a [`MenuKind::Furnace`] is: each has its own screen and
@@ -107,10 +120,17 @@ impl MenuKind {
         Some(match id {
             0..=5 => Self::Chest(id as usize + 1),
             6 => Self::Dispenser,
+            8 => Self::Anvil,
             10 => Self::Furnace(Smelter::BlastFurnace),
             12 => Self::Crafting,
+            13 => Self::Enchantment,
             14 => Self::Furnace(Smelter::Furnace),
+            15 => Self::Grindstone,
+            18 => Self::Loom,
+            21 => Self::Smithing,
             22 => Self::Furnace(Smelter::Smoker),
+            23 => Self::Cartography,
+            24 => Self::Stonecutter,
             16 => Self::Hopper,
             20 => Self::ShulkerBox,
             _ => return None,
@@ -126,7 +146,39 @@ impl MenuKind {
             Self::Hopper => 5,
             Self::ShulkerBox => 27,
             Self::Crafting => 10,
-            Self::Furnace(_) => 3,
+            Self::Furnace(_) | Self::Grindstone | Self::Cartography | Self::Anvil => 3,
+            Self::Stonecutter | Self::Enchantment => 2,
+            Self::Loom | Self::Smithing => 4,
+        }
+    }
+
+    /// The recipe property sets the menu's slots take their items from, in
+    /// the order of [`ContainerMenu::accepted`].
+    pub fn input_sets(self) -> &'static [&'static str] {
+        match self {
+            Self::Furnace(smelter) => match smelter {
+                Smelter::Furnace => &["minecraft:furnace_input"],
+                Smelter::BlastFurnace => &["minecraft:blast_furnace_input"],
+                Smelter::Smoker => &["minecraft:smoker_input"],
+            },
+            Self::Smithing => &[
+                "minecraft:smithing_template",
+                "minecraft:smithing_base",
+                "minecraft:smithing_addition",
+            ],
+            _ => &[],
+        }
+    }
+
+    /// The menu's result slot, for the menus that have one.
+    pub fn result_slot(self) -> Option<usize> {
+        match self {
+            Self::Inventory | Self::Crafting => Some(0),
+            Self::Furnace(_) => Some(2),
+            Self::Stonecutter => Some(1),
+            Self::Grindstone | Self::Cartography | Self::Anvil => Some(2),
+            Self::Loom | Self::Smithing => Some(3),
+            _ => None,
         }
     }
 
@@ -149,9 +201,15 @@ pub struct ContainerMenu {
     pub slots: Vec<Option<Stack>>,
     pub carried: Option<Stack>,
     pub state_id: i32,
-    /// The items a furnace menu's ingredient slot takes, from the recipe
-    /// property set the server sent.
-    pub accepted_inputs: std::sync::Arc<std::collections::BTreeSet<i32>>,
+    /// The item sets the menu's slots take, from what the server sent (see
+    /// [`MenuKind::input_sets`]).
+    pub accepted: Vec<std::sync::Arc<std::collections::BTreeSet<i32>>>,
+    /// The item tags the server sent, for the slots that ask for one.
+    pub item_tags: std::sync::Arc<voxel_world::block::tags::ItemTags>,
+    /// The player's experience level, which the anvil asks for.
+    pub xp_level: i32,
+    /// Whether the last click was made with infinite materials (creative).
+    infinite_materials: bool,
     /// The menu's `ContainerData` (a furnace's burn and cook progress).
     pub data: Vec<i16>,
     quickcraft_status: i32,
@@ -170,7 +228,10 @@ impl Default for ContainerMenu {
             slots: vec![None; SLOT_COUNT],
             carried: None,
             state_id: 0,
-            accepted_inputs: std::sync::Arc::default(),
+            accepted: Vec::new(),
+            item_tags: std::sync::Arc::default(),
+            xp_level: 0,
+            infinite_materials: false,
             data: Vec::new(),
             quickcraft_status: 0,
             quickcraft_type: 0,
@@ -344,6 +405,7 @@ impl ContainerMenu {
         reason = "kept whole to read against the reference method line by line"
     )]
     pub fn clicked(&mut self, slot_index: i32, button: i32, click: ClickType, player: Player) {
+        self.infinite_materials = player.infinite_materials;
         // The reference would fail on a slot past the menu's end.
         if slot_index >= self.slots.len() as i32 {
             return;
@@ -622,7 +684,7 @@ impl ContainerMenu {
                         if self.slots[target].is_some()
                             && self.can_item_quick_replace(target, &carried, true)
                             && self.may_pickup(target)
-                            && !self.is_result(target)
+                            && self.can_take_for_pick_all(target)
                         {
                             let stack = self.slots[target].as_ref().expect("checked above");
                             if pass != 0 || stack.item_count() != max_stack_size(stack) {
@@ -653,9 +715,35 @@ impl ContainerMenu {
         }
     }
 
+    /// Whether the last click was made with infinite materials.
+    pub fn creative(&self) -> bool {
+        self.infinite_materials
+    }
+
+    /// Whether the player may take what is in the result slot.
+    pub fn can_pick_up_result(&self) -> bool {
+        self.kind
+            .result_slot()
+            .is_none_or(|slot| self.may_pickup(slot))
+    }
+
     /// Whether this is the player menu's crafting result slot.
     pub fn is_result(&self, index: usize) -> bool {
-        matches!(self.kind, MenuKind::Inventory | MenuKind::Crafting) && index == RESULT
+        !matches!(self.kind, MenuKind::Furnace(_) | MenuKind::Loom)
+            && self.kind.result_slot() == Some(index)
+    }
+
+    /// `canTakeItemForPickAll`: the result containers of these menus are
+    /// skipped when a double click gathers.
+    pub fn can_take_for_pick_all(&self, index: usize) -> bool {
+        !(matches!(
+            self.kind,
+            MenuKind::Inventory
+                | MenuKind::Crafting
+                | MenuKind::Stonecutter
+                | MenuKind::Cartography
+                | MenuKind::Smithing
+        ) && self.kind.result_slot() == Some(index))
     }
 
     /// The crafting grid's slots, which the result slot uses up.
@@ -682,7 +770,16 @@ impl ContainerMenu {
                 _ => 2,
             },
             MenuKind::Furnace(_) => usize::from(index >= 3),
-            other => usize::from(index >= other.top_slots()),
+            MenuKind::Enchantment => usize::from(index >= 2),
+            other => {
+                if other.result_slot() == Some(index) {
+                    1
+                } else if index < other.top_slots() {
+                    0
+                } else {
+                    2
+                }
+            }
         };
         part(a) == part(b)
     }
@@ -716,6 +813,7 @@ impl ContainerMenu {
     pub fn slot_max_for(&self, index: usize, stack: &Stack) -> i32 {
         let slot_max = if self.armour_at(index).is_some()
             || (matches!(self.kind, MenuKind::Furnace(_)) && index == 1 && is_bucket(stack))
+            || (self.kind == MenuKind::Enchantment && index == 0)
         {
             1
         } else {
@@ -728,6 +826,9 @@ impl ContainerMenu {
     pub fn may_place(&self, index: usize, stack: &Stack) -> bool {
         if self.is_result(index) {
             return false;
+        }
+        if let Some(allowed) = self.transform_may_place(index, stack) {
+            return allowed;
         }
         if matches!(self.kind, MenuKind::Furnace(_)) {
             match index {
@@ -750,8 +851,13 @@ impl ContainerMenu {
         }
     }
 
-    /// `Slot.mayPickup`: every slot, since armour locks are not read.
-    fn may_pickup(&self, _index: usize) -> bool {
+    /// `Slot.mayPickup`: every slot but the anvil's result, which needs the
+    /// levels it costs; armour locks are not read.
+    fn may_pickup(&self, index: usize) -> bool {
+        if self.kind == MenuKind::Anvil && index == 2 {
+            let cost = i32::from(self.data.first().copied().unwrap_or(0));
+            return (self.infinite_materials || self.xp_level >= cost) && cost > 0;
+        }
         true
     }
 
@@ -842,7 +948,9 @@ impl ContainerMenu {
 
     /// `Slot.onTake`: the result slot uses up the crafting grid.
     fn on_take(&mut self, index: usize, _taken: &Stack, player: Player) {
-        if !self.is_result(index) {
+        self.transform_on_take(index, player);
+        if !matches!(self.kind, MenuKind::Inventory | MenuKind::Crafting) || !self.is_result(index)
+        {
             return;
         }
         // `ResultSlot.onTake` with `CraftingRecipe.defaultCraftingReminder`,
@@ -953,7 +1061,9 @@ impl ContainerMenu {
 
     /// `AbstractFurnaceMenu.canSmelt`.
     fn can_smelt(&self, stack: &Stack) -> bool {
-        self.accepted_inputs.contains(&stack.item_registry_id())
+        self.accepted
+            .first()
+            .is_some_and(|inputs| inputs.contains(&stack.item_registry_id()))
     }
 
     /// `AbstractFurnaceMenu.quickMoveStack`.
@@ -996,6 +1106,13 @@ impl ContainerMenu {
     fn quick_move_stack(&mut self, index: usize, player: Player) -> Option<Stack> {
         match self.kind {
             MenuKind::Furnace(_) => self.quick_move_furnace(index, player),
+            MenuKind::Stonecutter
+            | MenuKind::Grindstone
+            | MenuKind::Cartography
+            | MenuKind::Loom
+            | MenuKind::Smithing
+            | MenuKind::Anvil
+            | MenuKind::Enchantment => self.quick_move_transform(index, player),
             MenuKind::Inventory => self.quick_move_inventory(index, player),
             MenuKind::Crafting => self.quick_move_crafting(index, player),
             _ => self.quick_move_container(index, player),
@@ -1243,6 +1360,8 @@ pub fn fastutil_int_order(keys: &[i32]) -> Vec<i32> {
     order.extend(table.iter().rev().copied().filter(|&key| key != 0));
     order
 }
+
+mod transform;
 
 #[cfg(test)]
 mod tests {

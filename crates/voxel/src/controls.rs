@@ -163,6 +163,7 @@ impl Controls {
                 screen.char_typed(character);
             }
         }
+        self.drain_screen_actions(session)?;
         if let Some(screen) = self
             .screen
             .as_mut()
@@ -201,10 +202,24 @@ impl Controls {
                 | glfw::WindowEvent::CursorPos(..)
         );
         if self.screen.is_some() && for_screen {
-            self.screen_event(event, session, surface)
+            let handled = self.screen_event(event, session, surface);
+            self.drain_screen_actions(session)?;
+            handled
         } else {
             self.world_event(event, session, surface, assets)
         }
+    }
+
+    /// The clicks the open screen queued while it took a key or a character.
+    fn drain_screen_actions(&mut self, session: &mut PlaySession) -> Result {
+        let Some(screen) = self.screen.as_mut() else {
+            return Ok(());
+        };
+        let actions = screen.drain_actions();
+        if actions.is_empty() {
+            return Ok(());
+        }
+        run_actions(session, &mut self.screen, actions)
     }
 
     /// An event for the open screen.

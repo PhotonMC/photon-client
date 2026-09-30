@@ -18421,12 +18421,12 @@ fn container_clicks_result(request: &Value) -> Result<Value, String> {
                     .ok_or("container_id must be a number")? as i32;
                 let mut menu = ContainerMenu::for_menu(kind, id, Vec::new(), None, 0);
                 if let Some(inputs) = row.get("furnace_inputs").and_then(Value::as_array) {
-                    menu.accepted_inputs = std::sync::Arc::new(
+                    menu.accepted = vec![std::sync::Arc::new(
                         inputs
                             .iter()
                             .filter_map(|name| voxel_game::item::id_of(name.as_str()?))
                             .collect(),
-                    );
+                    )];
                 }
                 menu
             }

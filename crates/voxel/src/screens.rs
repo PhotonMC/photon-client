@@ -42,6 +42,9 @@ impl ScreenAssets {
             Titles {
                 title,
                 inventory: self.lang.text("container.inventory"),
+                font: self.creative.font.clone(),
+                repair_cost: self.lang.text("container.repair.cost"),
+                repair_expensive: self.lang.text("container.repair.expensive"),
             },
         ))
     }
@@ -125,6 +128,7 @@ pub fn run_actions(
             ScreenAction::Container(click) => {
                 session.container_click(click.slot, click.button, click.kind)?;
             }
+            ScreenAction::Rename(name) => session.rename_item(&name)?,
             ScreenAction::Creative(click) => {
                 if let Some(open) = screen.as_mut().and_then(|open| open.as_creative_mut()) {
                     session.creative_click(open.menu_mut(), click)?;

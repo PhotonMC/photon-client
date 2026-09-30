@@ -40,3 +40,30 @@ impl BlockTags {
             .is_some_and(|blocks| blocks.contains(&block))
     }
 }
+
+/// Each item tag, by id without the leading `#`, as item registry ids:
+/// what `ItemStack.is(tag)` reads.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct ItemTags(BTreeMap<String, BTreeSet<i32>>);
+
+impl ItemTags {
+    /// The item registry's tags from a tag packet; `None` when the packet
+    /// does not update the item registry.
+    pub fn from_registries(registries: &[RegistryTags]) -> Option<Self> {
+        let items = registries
+            .iter()
+            .find(|registry| registry.registry.as_string() == "minecraft:item")?;
+        Some(Self(
+            items
+                .tags
+                .iter()
+                .map(|tag| (tag.id.as_string(), tag.values.iter().copied().collect()))
+                .collect(),
+        ))
+    }
+
+    /// `ItemStack.is(tag)` for an item, by registry id.
+    pub fn contains(&self, item: i32, tag: &str) -> bool {
+        self.0.get(tag).is_some_and(|items| items.contains(&item))
+    }
+}

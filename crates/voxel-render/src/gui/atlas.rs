@@ -14,7 +14,7 @@ const SPRITE_FOLDERS: [&str; 4] = ["hud", "container", "recipe_book", "tooltip"]
 
 /// Whole textures under `textures/gui` that screens blit parts of, packed as
 /// `texture/<name>`.
-const WHOLE_TEXTURES: [&str; 12] = [
+const WHOLE_TEXTURES: [&str; 19] = [
     "container/inventory",
     "container/generic_54",
     "container/dispenser",
@@ -23,6 +23,13 @@ const WHOLE_TEXTURES: [&str; 12] = [
     "container/furnace",
     "container/blast_furnace",
     "container/smoker",
+    "container/stonecutter",
+    "container/grindstone",
+    "container/cartography_table",
+    "container/loom",
+    "container/smithing",
+    "container/anvil",
+    "container/enchanting_table",
     "container/shulker_box",
     "container/creative_inventory/tab_items",
     "container/creative_inventory/tab_item_search",
