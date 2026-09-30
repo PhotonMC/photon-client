@@ -34,7 +34,7 @@ envantere yazılır, sunucunun envanteri değiştirmesi kabın menüsünde gör�
 `MenuKind::Crafting` (menü türü 12): sonuç 0, 3×3 ızgara 1–9, sonra oyuncunun
 27+9 yuvası. `CraftingMenu.quickMoveStack` ve sonuç yuvasının ızgarayı
 tüketmesi (istemci tarafında `defaultCraftingReminder`) oracle'da 9 satırla
-Java ile birebir. Tarif kitabı düğmesi çizilir ve basışı yutar, kitap açılmaz.
+Java ile birebir. Tarif kitabı için aşağıdaki bölüme bakın.
 Canlı: bir kütük ızgaraya taşındı, sunucunun gönderdiği sonuç hızlı taşınarak
 8 tahta alındı.
 
@@ -70,7 +70,32 @@ hash'i yok; harita görüntüsü, zırh askısı, büyülü kitap ve bayrak öni
 çizilmez; smithing/örs dönen simgeleri sadeleştirildi; örste onarım malzemesi
 tüketimi tahmin edilmez.
 
+## Tarif kitabı (envanter 2×2, çalışma tezgâhı, fırınlar)
+
+Sunucu paketleri: `RecipeBookAdd` (74), `RecipeBookRemove` (75),
+`RecipeBookSettings` (76), `PlaceGhostRecipe` (63); istemci paketleri:
+`PlaceRecipe` (39), `RecipeBookChangeSettings` (46), `RecipeBookSeenRecipe`
+(47, yazıldı, henüz gönderilmiyor). `RecipeDisplay` 5 türü ve `SlotDisplay` 11
+türü okunur (istasyon alanı atılır). Durum `ClientWorld.recipe_book`
+(bilinen tarifler, vurgular, dört kitap türünün açık/süzgeç ayarı, hayalet).
+`voxel-game/recipe_book.rs`: koleksiyonlar (kategori+grup, grupsuz tarif tek
+başına), menüye uyan tarifler (`RecipeCollection.selectRecipes`), üretilebilirlik
+(`StackedContents.canCraft`: çift parçalı eşleştirme, hasarlı/büyülü/adlı
+yığınlar sayılmaz), `PlaceRecipeHelper.placeRecipe` (küçük tarifleri ortalar) ve
+hayalet yuvalar. Arayüz `voxel-render/gui/screen/recipe_book.rs`: düğme, panel
+(arka plan, arama kutusu, süzgeç, sekmeler, 5×4 tarif düğmesi, sayfa okları),
+sol tıkta `PlaceRecipe` (shift = `useMaxItems`, üretilemeyen son tarife tekrar
+basmak yok sayılır), hayalet çizimi, `leftPos` kayması (`379` altı dar düzen
+ayrı). Ayar değişikliği yerelde hemen uygulanır ve sunucuya gönderilir. Canlı:
+envanter, tezgâh (8 tahtadan çubuk yerleşti) ve fırın.
+
+Bilinen sapmalar: sağ tıkla çok tarifli koleksiyon kaplaması yok (sağ tık sol
+gibi yerleştirir); yeni tarif vurgusu, sekme titremesi, tost ve `SeenRecipe`
+gönderimi yok; dar ekranda (`<379`) kitap açıkken çerçeve tam Java gibi yalnız
+arka planı çizmez; arama yalnız eşya adı ve kimliğine bakar (ipucu metni yok);
+koleksiyonlar tarif kimliğine göre sıralanır; filtre ipucu tek satır.
+
 ## Açık
 
-Bileşenli eşyada bileşen hash'leri, kap içeriği ipucu, tarif kitabı, kalan menü
+Bileşenli eşyada bileşen hash'leri, kap içeriği ipucu, kalan menü
 türleri (beacon, brewing stand, lectern, tüccar, crafter) ve at envanteri.

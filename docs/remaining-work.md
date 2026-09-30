@@ -98,7 +98,8 @@ genişletilmesi (`client-parity`), ekranlar canlı gözlem.
   bileşensiz hash'lenir (sunucu düzeltir).
 - Hasarlı eşya, büyü kilidi (zırh), bundle tıklama geçersiz kılmaları tahmin
   edilmez.
-- Tarif kitabı: düğme çizilir ve basışı yutulur; kitap açılmaz.
+- Tarif kitabı çekirdeği var; kaplama, vurgu/tost, `SeenRecipe` ve dar ekran
+  düzeni eksik (ayrıntı `generic-container-conformance.md`).
 - Kap içeriği ipucu (shulker/bundle satırları) ve `#etiket` araması yok.
 - Modellenmeyen menüler açılınca istemci hemen kapanış paketi gönderir.
 
