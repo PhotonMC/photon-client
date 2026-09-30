@@ -1471,4 +1471,23 @@ mod tests {
             Some(2)
         );
     }
+
+    #[test]
+    fn a_grindstone_refuses_a_tool_that_cannot_break() {
+        let menu = ContainerMenu::for_menu(MenuKind::Grindstone, 4, vec![None; 39], None, 0);
+        let plain = stack("minecraft:iron_pickaxe", 1);
+        let patch = crate::item_components::Patch {
+            added: vec![(voxel_data::item::component_types::UNBREAKABLE, Vec::new())],
+            removed: Vec::new(),
+        };
+        let unbreakable = Stack::from_wire(
+            1,
+            plain.item_registry_id(),
+            vec![voxel_data::item::component_types::UNBREAKABLE],
+            Vec::new(),
+        )
+        .with_patch_bytes(patch.trusted());
+        assert!(menu.may_place(0, &plain));
+        assert!(!menu.may_place(0, &unbreakable));
+    }
 }

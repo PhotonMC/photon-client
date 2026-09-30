@@ -168,9 +168,15 @@ impl Screen for InventoryScreen {
             && !self
                 .book
                 .claims(mouse, (self.layout.left(), self.layout.top()), IMAGE.1);
-        let clicks = self
-            .mouse
-            .clicked(double, slot, outside, button, shift, false, menu);
+        let clicks = self.mouse.clicked(
+            double,
+            slot,
+            outside,
+            button,
+            shift,
+            button == 2 && menu.creative(),
+            menu,
+        );
         self.actions(clicks)
     }
 
@@ -194,9 +200,14 @@ impl Screen for InventoryScreen {
             && !self
                 .book
                 .claims(mouse, (self.layout.left(), self.layout.top()), IMAGE.1);
-        let clicks = self
-            .mouse
-            .released(slot, outside, button, shift, false, menu);
+        let clicks = self.mouse.released(
+            slot,
+            outside,
+            button,
+            shift,
+            button == 2 && menu.creative(),
+            menu,
+        );
         self.actions(clicks)
     }
 

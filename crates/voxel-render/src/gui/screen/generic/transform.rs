@@ -53,6 +53,7 @@ pub(super) fn title_label(kind: MenuKind) -> (i32, i32) {
         MenuKind::Cartography | MenuKind::Loom => (8, 4),
         MenuKind::Smithing => (44, 15),
         MenuKind::Anvil => (60, 6),
+        MenuKind::Crafting => (29, 6),
         _ => (8, 6),
     }
 }
@@ -88,7 +89,7 @@ pub(super) struct Extras {
     start_index: usize,
     scrolling: bool,
     options_count: usize,
-    stone_input: Option<i32>,
+    stone_input: Option<(i32, i32)>,
     /// The loom's pattern list: its scroll position, first row shown, whether
     /// the bar is grabbed and how many patterns it offers.
     loom_offs: f32,
@@ -98,7 +99,15 @@ pub(super) struct Extras {
     name: EditBox,
     focused_at: Instant,
     filled_for: Option<Option<(i32, i32)>>,
-    last_sent: String,
+    /// `AnvilMenu.itemName`: the name the server was last sent, none yet.
+    /// `setTooltipForNextFrame`: the tooltip a menu's own widgets asked for,
+    /// which is drawn last.
+    pub(super) pending_tooltip: Option<Vec<Vec<voxel_game::text::Run>>>,
+    item_name: Option<String>,
+    /// The item in the name slot: its hover name, and whether it has a
+    /// custom name; none when the slot is empty (which also makes the box
+    /// uneditable).
+    named_item: Option<(String, bool)>,
     queued: Vec<ScreenAction>,
 }
 
@@ -118,7 +127,9 @@ impl Extras {
             name: EditBox::new(103, 50).with_colour(0xFFFF_FFFF),
             focused_at: Instant::now(),
             filled_for: None,
-            last_sent: String::new(),
+            pending_tooltip: None,
+            item_name: None,
+            named_item: None,
             queued: Vec::new(),
         }
     }
@@ -220,12 +231,9 @@ impl GenericScreen {
         mouse: (f64, f64),
         (left, top): (i32, i32),
     ) {
-        // A new input starts the list over.
-        let input = menu
-            .slots
-            .first()
-            .and_then(Option::as_ref)
-            .map(|stack| stack.item_registry_id());
+        // Any change of the input slot, its count too, starts the list over
+        // (`containerChanged` runs on each change of the input container).
+        let input = key_of(menu, 0);
         if input != self.extras.stone_input {
             self.extras.stone_input = input;
             self.extras.scroll_offs = 0.0;
@@ -279,7 +287,7 @@ impl GenericScreen {
         }
         if let Some(stack) = hovered {
             let lines = (draw.tooltip)(&stack, false);
-            self.layout.tooltip(draw, &lines, mouse);
+            self.extras.pending_tooltip = Some(lines);
         }
     }
 
@@ -447,7 +455,7 @@ impl GenericScreen {
                     (0, 1, 21, 40),
                     (px, py, 5, 10),
                 );
-                if over {
+                if over && index as i32 != selected {
                     tip = Some(self.titles.lang.text(&format!("{key}.{dye}")));
                 }
             }
@@ -457,7 +465,7 @@ impl GenericScreen {
                 text,
                 style: voxel_game::text::Style::default(),
             }]];
-            self.layout.tooltip(draw, &lines, mouse);
+            self.extras.pending_tooltip = Some(lines);
         }
     }
 
@@ -662,46 +670,45 @@ impl GenericScreen {
             }
         }
         if let Some(row) = tip {
-            self.enchant_tooltip(draw, menu, mouse, row);
+            self.enchant_tooltip(menu, row);
         }
     }
 
     /// `EnchantmentScreen.extractRenderState`'s tooltip over a row: the clue,
     /// and what it costs.
-    fn enchant_tooltip(
-        &self,
-        draw: &mut ScreenDraw<'_, '_>,
-        menu: &ContainerMenu,
-        mouse: (f64, f64),
-        row: usize,
-    ) {
-        use voxel_game::text::{Run, Style};
+    fn enchant_tooltip(&mut self, menu: &ContainerMenu, row: usize) {
+        use voxel_game::text::{Component, Run, Style};
         let data = |index: usize| i32::from(menu.data.get(index).copied().unwrap_or(0));
         let cost = data(row);
         let clue = usize::try_from(data(4 + row)).ok();
         let level = data(7 + row);
-        let Some(name) = clue.and_then(|id| self.titles.enchantments.get(id)) else {
+        let Some(enchantment) = clue.and_then(|id| self.titles.enchantments.get(id)) else {
             return;
         };
         if cost <= 0 || level < 0 {
             return;
         }
         let lang = &self.titles.lang;
-        let roman = lang.get(&format!("enchantment.level.{level}"));
-        let full = match roman {
-            Some(roman) => format!("{name} {roman}"),
-            None => format!("{name} {level}"),
-        };
+        // `Enchantment.getFullname`: the name in grey, red for a curse, and
+        // the level unless the enchantment has one level only.
+        let mut full = Component::literal(enchantment.name.clone())
+            .with_colour(if enchantment.curse { "red" } else { "gray" });
+        if level != 1 || enchantment.max_level != 1 {
+            full = full
+                .append(Component::literal(" "))
+                .append(Component::translatable(format!(
+                    "enchantment.level.{level}"
+                )));
+        }
+        let clue_line =
+            Component::translatable_with("container.enchant.clue", vec![full]).with_colour("white");
         let line = |text: String, colour: &str| {
             vec![Run {
                 text,
                 style: Style::coloured(colour),
             }]
         };
-        let mut lines = vec![line(
-            lang.text("container.enchant.clue").replace("%s", &full),
-            "white",
-        )];
+        let mut lines = vec![lang.runs(&clue_line, &Style::default())];
         if !menu.creative() {
             lines.push(Vec::new());
             let gold = menu
@@ -733,16 +740,25 @@ impl GenericScreen {
                 lines.push(line(levels, "gray"));
             }
         }
-        self.layout.tooltip(draw, &lines, mouse);
+        self.extras.pending_tooltip = Some(lines);
     }
 
-    /// `AnvilScreen.onNameChanged`: a name that differs from what the server
-    /// has is sent.
+    /// `AnvilScreen.onNameChanged`: with an item in the slot, the box's text
+    /// is the name to send, or none at all when it is what the item is
+    /// called already; `AnvilMenu.setItemName` tells whether that is news.
     fn name_changed(&mut self) {
+        let Some((hover, custom)) = &self.extras.named_item else {
+            return;
+        };
         let value = self.extras.name.value();
-        if value != self.extras.last_sent && value.chars().count() <= 50 {
-            self.extras.last_sent.clone_from(&value);
-            self.extras.queued.push(ScreenAction::Rename(value));
+        let name = if !custom && value == *hover {
+            String::new()
+        } else {
+            value
+        };
+        if name.chars().count() <= 50 && self.extras.item_name.as_ref() != Some(&name) {
+            self.extras.item_name = Some(name.clone());
+            self.extras.queued.push(ScreenAction::Rename(name));
         }
     }
 
@@ -774,7 +790,7 @@ impl GenericScreen {
 
     /// A character typed into the anvil's name box.
     pub(super) fn name_char(&mut self, character: char) {
-        if self.kind == MenuKind::Anvil {
+        if self.kind == MenuKind::Anvil && self.extras.named_item.is_some() {
             let font = self.titles.font.clone();
             if self.extras.name.char_typed(character, &font) {
                 self.name_changed();
@@ -880,10 +896,8 @@ impl GenericScreen {
         let key = key_of(menu, 0);
         if self.extras.filled_for != Some(key) {
             self.extras.filled_for = Some(key);
-            let name = menu
-                .slots
-                .first()
-                .and_then(Option::as_ref)
+            let item = menu.slots.first().and_then(Option::as_ref);
+            let name = item
                 .map(|stack| {
                     (draw.tooltip)(stack, false)
                         .first()
@@ -891,10 +905,19 @@ impl GenericScreen {
                         .unwrap_or_default()
                 })
                 .unwrap_or_default();
+            self.extras.named_item = item.map(|stack| {
+                let custom = voxel_game::item_values::Values::new(
+                    stack.item_registry_id(),
+                    stack.patch_bytes(),
+                )
+                .has(voxel_data::item::component_types::CUSTOM_NAME);
+                (name.clone(), custom)
+            });
             let font = self.titles.font.clone();
             self.extras.name.set_value(&name, &font);
-            self.extras.last_sent.clone_from(&name);
             self.extras.focused_at = Instant::now();
+            // `setValue` tells the responder, which sends the name.
+            self.name_changed();
         }
         let field = if editable {
             "container/anvil/text_field"

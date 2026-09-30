@@ -2,7 +2,7 @@
 
 use voxel_net::connection::PlaySession;
 use voxel_render::gui::screen::creative::{CreativeAssets, CreativeScreen};
-use voxel_render::gui::screen::generic::{GenericScreen, Titles};
+use voxel_render::gui::screen::generic::{EnchantText, GenericScreen, Titles};
 use voxel_render::gui::screen::inventory::InventoryScreen;
 use voxel_render::gui::screen::recipe_book::RecipeAssets;
 use voxel_render::gui::screen::{Screen, ScreenAction};
@@ -87,13 +87,15 @@ impl ScreenAssets {
                     self.registries
                         .enchantments
                         .iter()
-                        .map(|enchantment| {
-                            enchantment
+                        .map(|enchantment| EnchantText {
+                            name: enchantment
                                 .description
                                 .as_ref()
                                 .and_then(voxel_game::text::Component::from_json)
                                 .map(|component| self.lang.plain(&component))
-                                .unwrap_or_default()
+                                .unwrap_or_default(),
+                            curse: enchantment.curse,
+                            max_level: enchantment.max_level,
                         })
                         .collect(),
                 ),

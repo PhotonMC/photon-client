@@ -1893,11 +1893,19 @@ fn read_slot_display(
         8 => {
             let base = next(input)?;
             let material = next(input)?;
-            D::SmithingTrim(
-                Box::new(base),
-                Box::new(material),
-                read_varint(input, "display trim pattern")?,
-            )
+            // `Holder<TrimPattern>`: a registry id plus one, or zero and the
+            // pattern written out (its asset, its name and whether it is a decal).
+            let pattern = match read_varint(input, "display trim pattern")? {
+                0 => {
+                    read_identifier_string(input, "trim pattern asset")?;
+                    voxel_core::nbt::read_any_nbt(input)
+                        .map_err(|_| ConnectionError::Codec("trim pattern name"))?;
+                    read_bool(input, "trim pattern decal")?;
+                    -1
+                }
+                id => id - 1,
+            };
+            D::SmithingTrim(Box::new(base), Box::new(material), pattern)
         }
         9 => {
             let source = next(input)?;

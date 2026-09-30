@@ -97,7 +97,9 @@ impl ContainerMenu {
         }
         Some(match (self.kind, index) {
             (MenuKind::Grindstone, 0 | 1) => {
-                stacking(stack).is_some_and(|item| item.max_damage > 0)
+                // `ItemStack.isDamageableItem`: a max damage, no unbreakable mark.
+                (stacking(stack).is_some_and(|item| item.max_damage > 0)
+                    && !has_component(stack, ids::UNBREAKABLE))
                     || has_any_enchantments(stack)
             }
             (MenuKind::Cartography, 0) => has_component(stack, ids::MAP_ID),

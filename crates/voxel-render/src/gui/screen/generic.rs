@@ -89,9 +89,18 @@ pub struct Titles {
     /// The font the enchanting table writes its names in.
     pub alt_font: std::sync::Arc<Font>,
     /// Each enchantment's name, by registry id, for the clue it gives.
-    pub enchantments: std::sync::Arc<Vec<String>>,
+    pub enchantments: std::sync::Arc<Vec<EnchantText>>,
     /// What the recipe book writes.
     pub recipe: std::sync::Arc<RecipeAssets>,
+}
+
+/// An enchantment as the clue names it (`Enchantment.getFullname`): its name,
+/// whether it is a curse and its highest level.
+#[derive(Debug, Clone, Default)]
+pub struct EnchantText {
+    pub name: String,
+    pub curse: bool,
+    pub max_level: i32,
 }
 
 /// A generic container screen's own state between events.
@@ -322,9 +331,15 @@ impl Screen for GenericScreen {
         }
         let slot = self.hovered_slot(mouse);
         let outside = self.outside(mouse);
-        let clicks = self
-            .mouse
-            .clicked(double, slot, outside, button, shift, false, menu);
+        let clicks = self.mouse.clicked(
+            double,
+            slot,
+            outside,
+            button,
+            shift,
+            button == 2 && menu.creative(),
+            menu,
+        );
         self.actions(clicks)
     }
 
@@ -356,9 +371,14 @@ impl Screen for GenericScreen {
         }
         let slot = self.hovered_slot(mouse);
         let outside = self.outside(mouse);
-        let clicks = self
-            .mouse
-            .released(slot, outside, button, shift, false, menu);
+        let clicks = self.mouse.released(
+            slot,
+            outside,
+            button,
+            shift,
+            button == 2 && menu.creative(),
+            menu,
+        );
         self.actions(clicks)
     }
 
@@ -497,6 +517,9 @@ impl Screen for GenericScreen {
             book.draw_ghost(draw, menu, (left, top), &|slot| slot_position(kind, slot));
         }
         self.mouse.draw_carried(draw, menu.carried.as_ref(), mouse);
+        if let Some(lines) = self.extras.pending_tooltip.take() {
+            self.layout.tooltip(draw, &lines, mouse);
+        }
         if menu.carried.is_none()
             && let Some(stack) = self
                 .hovered
