@@ -1,4 +1,4 @@
-"""Generate crates/voxel-data/src/item/creative_tabs.rs from a block-family capture.
+"""Generate crates/voxel-data/src/generated/item/creative_tabs.rs from a block-family capture.
 
     python3 tools/generate/creative_tabs.py .data/captures/behavior/<id>/outputs.jsonl
 
@@ -57,8 +57,8 @@ def generate(capture):
                  "creative_tabs.py", [
         "order, for the default features and a player without operator",
         "permissions."]) + [
-        "pub use super::creative::{CreativeStack, CreativeTab, TabKind};",
-        f"use super::component::{{{imports}}};",
+        "pub use crate::item::creative::{CreativeStack, CreativeTab, TabKind};",
+        f"use crate::item::component::{{{imports}}};",
         "",
         f"pub const DEFAULT_TAB: &str = {rust_str(data['default_tab'])};",
         "",

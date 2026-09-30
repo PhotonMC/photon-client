@@ -31,8 +31,8 @@ def load_case(path, case_id):
 
 
 def write(relative, lines):
-    """Write a generated file under the data crate."""
-    with open(f"{DATA}/{relative}", "w", encoding="utf-8") as handle:
+    """Write a generated file under the data crate's `generated/` directory."""
+    with open(f"{DATA}/generated/{relative}", "w", encoding="utf-8") as handle:
         handle.write("\n".join(lines).rstrip("\n") + "\n")
 
 

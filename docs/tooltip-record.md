@@ -43,7 +43,7 @@ tablolar, enstrümanlar, plaklar, bayrak desenleri, süs malzemeleri ve
 desenleri, öznitelikler (anahtar, artış/azalış rengi), mob efektleri
 (renk, açıklama anahtarı, kategori rengi, öznitelik değiştiricileri) ve
 iksirler; hepsi kayıt numarasıyla (`crates/voxel-data/src/item/tooltip.rs`,
-`crates/voxel-data/src/item/potions.rs`, `tools/generate/`) ve adaptörle her koşuda
+`crates/voxel-data/src/generated/item/potions.rs`, `tools/generate/`) ve adaptörle her koşuda
 referanstan karşılaştırılır.
 
 ## Yaratıcı arama

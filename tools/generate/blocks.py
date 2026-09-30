@@ -2,7 +2,7 @@
 
     python3 tools/generate/blocks.py .data/captures/behavior/<id>/outputs.jsonl
 
-Writes three files under crates/voxel-data/src/block/:
+Writes three files under crates/voxel-data/src/generated/block/:
 
 - `properties.rs`: every state property, named after the field that holds it
   in the reference (`BlockStateProperties.HORIZONTAL_FACING`).
@@ -122,7 +122,7 @@ def chain(block):
 def properties_file(properties):
     out = header("Every block state property, named after the field that holds it in the",
                  "blocks.py", ["reference."]) + [
-        "use super::definition::{Property, PropertyKind};",
+        "use crate::block::definition::{Property, PropertyKind};",
         "",
     ]
     for prop in properties:
@@ -207,9 +207,9 @@ def classes_file(classes, interfaces):
 def blocks_file(blocks):
     out = header("Every block, in registry order, as the reference's `Blocks` declares it.",
                  "blocks.py") + [
-        "use super::classes::BlockClass;",
-        "use super::definition::{Block, Emission, Fluid, OffsetType, PushReaction, Rule};",
-        "use super::properties::*;",
+        "use crate::block::classes::BlockClass;",
+        "use crate::block::definition::{Block, Emission, Fluid, OffsetType, PushReaction, Rule};",
+        "use crate::block::properties::*;",
         "",
         "#[rustfmt::skip]",
         f"pub static BLOCKS: [Block; {len(blocks)}] = [",

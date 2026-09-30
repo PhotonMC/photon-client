@@ -9,7 +9,7 @@ Workspace altı kütüphane crate'i ve uygulama crate'i `voxel`'den oluşur; hep
 | Crate | Sorumluluk |
 | --- | --- |
 | `voxel-core` | Java semantiğine uyan temel tipler ve codec'ler: matematik, AABB, şekiller, wire/binary/NBT/JSON/UTF-8 okuma-yazma, kimlikler, rastgelelik, zamanlayıcı. |
-| `voxel-data` | Oracle'dan üretilmiş tablolar ve onların elle yazılmış arama fonksiyonları. Başka mantık taşımaz. |
+| `voxel-data` | Oracle'dan üretilmiş tablolar (`src/generated/`, elle düzenlenmez) ve onların elle yazılmış tipleri ile arama fonksiyonları. Başka mantık taşımaz. |
 | `voxel-world` | İstemcinin dünya kopyası: chunk'lar, blok durumları, ışık, varlıklar, yerel oyuncu ve hareket. |
 | `voxel-game` | Oyun kuralları: eşyalar, bileşenler, envanter ve yaratıcı menüleri, tooltip, saldırı, seçenekler. |
 | `voxel-net` | Protokol, paketler, bağlantı ve oturum (`PlaySession`). |
@@ -53,7 +53,7 @@ Sınırı aşan kod önce bölünür: tek sorumluluklu yardımcı fonksiyon, dur
 ## Referans verisi
 
 - Java bir değeri başka veriden **hesaplıyorsa** biz de hesaplarız (state önbelleği, şekillerden çıkan değerler); tablo olarak tutmayız. Java onu kodda veya `data/` altında **tanımlıyorsa** tanımı tipli ve okunur bir kayıt olarak tutarız. Durum [yol haritasındadır](architecture-roadmap.md).
-- Tanımlar `crates/voxel-data/src` altındadır ve `tools/generate/` içindeki bir üretici tarafından yazılır; dosyanın başındaki belge üreticinin adını verir. Üretilen dosya elle düzenlenmez.
+- Tanımlar `crates/voxel-data/src/generated` altındadır ve `tools/generate/` içindeki bir üretici tarafından yazılır; dosyanın başındaki belge üreticinin adını verir. Üretilen dosya elle düzenlenmez.
 - Biçim, referansın kodunu okur gibi olmalıdır: blok başına bir `Block::of(...)` zinciri, adı Java alanı olan özellik sabitleri, alan adlarıyla yazılmış kayıtlar. Tekrarları silmek için indeks listeleri, bit dizgeleri, koşu uzunluğu dizileri veya ham ağ baytları kullanılmaz; bir sürüm atlamasında diff gerçek değişikliği göstermelidir.
 - Tabloyu okuyan elle yazılmış kod (`definition`, `registry`, `shape`) üretilen dosyadan ayrı tutulur. Float'lar referans bitlerine birebir dönen en kısa ondalık yazımla yazılır (`tools/generate/common.py`).
 - Bütün tanımlar `python3 tools/generate/all.py <capture>` ile yeniden üretilir ve her parity koşusunda davranış adaptörü üzerinden baştan sona karşılaştırılır.

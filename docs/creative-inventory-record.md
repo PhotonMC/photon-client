@@ -15,7 +15,7 @@ başlık çeviri anahtarı, simgesi ve eşyaları. Bir eşya, ağın kodladığ�
 (sayı, eşya numarası, bileşen yaması) ve yamadaki bileşenlerin numaralarıyla
 yazılır; 14 sekmede 1896 ayrı eşya var.
 
-`tools/generate/creative_tabs.py` capture'dan `crates/voxel-data/src/item/creative_tabs.rs`
+`tools/generate/creative_tabs.py` capture'dan `crates/voxel-data/src/generated/item/creative_tabs.rs`
 üretir (eşyalar bir kez, sekmeler indeksle). Tablo commit'lenir; adaptörün
 `creative_tabs` işlemi tabloyu aynı JSON'a çevirir ve her parity koşusunda
 referansla karşılaştırılır (`block` ailesi `parity_passed`).

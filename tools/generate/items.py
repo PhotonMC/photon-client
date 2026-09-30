@@ -2,7 +2,7 @@
 
     python3 tools/generate/items.py .data/captures/behavior/<id>/outputs.jsonl
 
-Writes two files under crates/voxel-data/src/item/:
+Writes two files under crates/voxel-data/src/generated/item/:
 
 - `classes.rs`: every item class with the class it extends and the tracked
   methods it declares itself, so a rule is looked up the way the reference
@@ -105,11 +105,11 @@ def items_file(items):
                 names[key] = "TOOL_" + item["name"].split(":")[1].upper()
                 tools[key] = tool
     out = header("Every item, in registry order, as the reference's `Items` declares it.", "items.py") + [
-        "use super::classes::ItemClass;",
-        "use super::component::{",
+        "use crate::item::classes::ItemClass;",
+        "use crate::item::component::{",
         "    AttributeDisplay, AttributeModifier, Component, Operation, Rarity, SlotGroup,",
         "};",
-        "use super::definition::{Equip, Item, RuleBlocks, Tool, ToolRule};",
+        "use crate::item::definition::{Equip, Item, RuleBlocks, Tool, ToolRule};",
         "",
     ]
     for key, tool in tools.items():

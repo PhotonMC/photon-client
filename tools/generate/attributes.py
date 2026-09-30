@@ -1,4 +1,4 @@
-"""Generate crates/voxel-data/src/item/attributes.rs from a block-family capture.
+"""Generate crates/voxel-data/src/generated/item/attributes.rs from a block-family capture.
 
     python3 tools/generate/attributes.py .data/captures/behavior/<id>/outputs.jsonl
 
@@ -16,7 +16,7 @@ def generate(capture):
     data = load_case(capture, "block/tooltip-registries")["attributes"]
     out = header("Every attribute, in registry order, as the reference's `Attributes`", "attributes.py",
                  ["declares it."]) + [
-        "use super::attribute::{Attribute, Sentiment};",
+        "use crate::item::attribute::{Attribute, Sentiment};",
         "",
         "#[rustfmt::skip]",
         f"pub static ATTRIBUTES: [Attribute; {len(data)}] = [",

@@ -2,7 +2,7 @@
 
     python3 tools/generate/potions.py .data/captures/behavior/<id>/outputs.jsonl
 
-Writes `crates/voxel-data/src/item/mob_effects.rs` and `potions.rs`: every mob
+Writes `crates/voxel-data/src/generated/item/mob_effects.rs` and `potions.rs`: every mob
 effect and potion in registry order, as `MobEffects` and `Potions` declare
 them. A reference to an effect or an attribute is by name; an effect's
 description key and tooltip colour are checked against what the reference
@@ -19,7 +19,7 @@ def generate(capture):
     effects = data["effects"]
     out = header("Every mob effect, in registry order, as the reference's `MobEffects`", "potions.py",
                  ["declares it."]) + [
-        "use super::effect::{EffectModifier, MobEffect};",
+        "use crate::item::effect::{EffectModifier, MobEffect};",
         "",
         "#[rustfmt::skip]",
         f"pub static MOB_EFFECTS: [MobEffect; {len(effects)}] = [",
@@ -43,7 +43,7 @@ def generate(capture):
     potions = data["potions"]
     out = header("Every potion, in registry order, as the reference's `Potions` declares it.",
                  "potions.py") + [
-        "use super::effect::{Potion, PotionEffect};",
+        "use crate::item::effect::{Potion, PotionEffect};",
         "",
         "#[rustfmt::skip]",
         f"pub static POTIONS: [Potion; {len(potions)}] = [",

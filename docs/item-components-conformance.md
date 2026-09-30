@@ -40,7 +40,7 @@ eşyanın varsayılanından (yukarıdaki tablo) okur; yalnız çizimin okuduğu
 türler çözülür: `dyed_color`, `map_color`, `firework_explosion`,
 `potion_contents`. `PotionContents.getColorOr` portu için
 `block/potions` (BlockOracle) mob efektlerini (renk, açıklama anahtarı) ve
-iksirleri (ad, efektler) kayıt numarasıyla yazar; `crates/voxel-data/src/item/potions.rs`
+iksirleri (ad, efektler) kayıt numarasıyla yazar; `crates/voxel-data/src/generated/item/potions.rs`
 (`tools/generate/potions.py`) her koşuda karşılaştırılır.
 
 ## Açıklar
