@@ -15,7 +15,9 @@ use crate::registries::Registries;
 use crate::text::{Component, Lang, Style};
 use voxel_core::json::JsonValue;
 use voxel_data::item::attributes::ATTRIBUTES;
-use voxel_data::item::potions::{MOB_EFFECTS, POTIONS};
+use voxel_data::item::effect::{attribute_id, effect_id};
+use voxel_data::item::mob_effects::MOB_EFFECTS;
+use voxel_data::item::potions::POTIONS;
 use voxel_world::ClientItemStackState as Stack;
 
 /// `TooltipFlag`.
@@ -73,7 +75,7 @@ fn potion_name(prefix: &str, contents: &crate::item_components::PotionContents) 
             contents
                 .potion
                 .and_then(|id| POTIONS.get(usize::try_from(id).ok()?))
-                .map(|potion| potion.potion_name.to_owned())
+                .map(|potion| potion.potion_name().to_owned())
         })
         .unwrap_or_else(|| "empty".to_owned());
     Component::translatable(format!("{prefix}{suffix}"))
@@ -224,12 +226,12 @@ fn potion_tooltip(effects: &[(i32, i32, i32)], scale: f32, out: &mut Vec<Compone
         };
         for modifier in entry.modifiers {
             modifiers.push((
-                modifier.attribute,
+                attribute_id(modifier.attribute).unwrap_or(-1),
                 modifier.amount * f64::from(amplifier + 1),
                 modifier.operation,
             ));
         }
-        let mut line = Component::translatable(entry.description_id);
+        let mut line = Component::translatable(entry.description_id());
         if amplifier > 0 {
             line = Component::translatable_with(
                 "potion.withAmplifier",
@@ -248,7 +250,11 @@ fn potion_tooltip(effects: &[(i32, i32, i32)], scale: f32, out: &mut Vec<Compone
             };
             line = Component::translatable_with("potion.withDuration", vec![line, time]);
         }
-        out.push(line.with_colour(if entry.style == "RED" { "red" } else { "blue" }));
+        out.push(line.with_colour(if entry.style() == "RED" {
+            "red"
+        } else {
+            "blue"
+        }));
     }
     if effects.is_empty() {
         out.push(Component::translatable("effect.none").with_colour("gray"));
@@ -585,7 +591,13 @@ pub fn lines(stack: &Stack, player: bool, flags: Flags, registries: &Registries)
                 potion
                     .effects
                     .iter()
-                    .map(|effect| (effect.effect, effect.amplifier, effect.duration))
+                    .map(|effect| {
+                        (
+                            effect_id(effect.effect).unwrap_or(-1),
+                            effect.amplifier,
+                            effect.duration,
+                        )
+                    })
                     .collect()
             })
             .unwrap_or_default();

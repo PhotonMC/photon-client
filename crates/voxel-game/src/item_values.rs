@@ -96,7 +96,13 @@ impl Values {
                     potion
                         .effects
                         .iter()
-                        .map(|effect| (effect.effect, effect.amplifier, effect.visible))
+                        .map(|effect| {
+                            (
+                                voxel_data::item::effect::effect_id(effect.effect).unwrap_or(-1),
+                                effect.amplifier,
+                                effect.visible,
+                            )
+                        })
                         .collect::<Vec<_>>()
                 })
                 .unwrap_or_default();
@@ -111,7 +117,7 @@ impl Values {
                 }
                 let Some(color) = usize::try_from(effect)
                     .ok()
-                    .and_then(|id| voxel_data::item::potions::MOB_EFFECTS.get(id))
+                    .and_then(|id| voxel_data::item::mob_effects::MOB_EFFECTS.get(id))
                     .map(|effect| effect.color)
                 else {
                     continue;

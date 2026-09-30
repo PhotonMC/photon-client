@@ -92,7 +92,7 @@ olarak tutulmaz.
 - [ ] Yaratıcı sekmeleri Java'daki gibi kodla kurulur; kayıt güdümlü
   parçalar (büyülü kitaplar, iksirler, tablolar, keçi boruları) oturumun
   kayıtlarından üretilir.
-- [ ] Etkiler ve iksirler okunur tanımlar.
+- [x] Etkiler ve iksirler okunur tanımlar.
 
 ### F6. Bellek ve GPU
 

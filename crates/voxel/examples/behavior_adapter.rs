@@ -17136,17 +17136,19 @@ fn block_result(request: &Value) -> Result<Value, String> {
             }
             "tooltip_registries" => out.push(tooltip_registries(label)),
             "potions" => {
-                use voxel_data::item::potions::{MOB_EFFECTS, POTIONS};
+                use voxel_data::item::effect::{attribute_id, effect_id};
+                use voxel_data::item::mob_effects::MOB_EFFECTS;
+                use voxel_data::item::potions::POTIONS;
                 let effects: Vec<Value> = MOB_EFFECTS
                     .iter()
                     .map(|effect| {
                         json!({
                             "name": effect.name,
                             "color": effect.color,
-                            "description_id": effect.description_id,
-                            "style": effect.style,
+                            "description_id": effect.description_id(),
+                            "style": effect.style(),
                             "modifiers": effect.modifiers.iter().map(|modifier| json!({
-                                "attribute": modifier.attribute,
+                                "attribute": attribute_id(modifier.attribute),
                                 "amount": modifier.amount,
                                 "operation": modifier.operation,
                             })).collect::<Vec<_>>(),
@@ -17158,9 +17160,9 @@ fn block_result(request: &Value) -> Result<Value, String> {
                     .map(|potion| {
                         json!({
                             "name": potion.name,
-                            "potion_name": potion.potion_name,
+                            "potion_name": potion.potion_name(),
                             "effects": potion.effects.iter().map(|effect| json!({
-                                "effect": effect.effect,
+                                "effect": effect_id(effect.effect),
                                 "amplifier": effect.amplifier,
                                 "duration": effect.duration,
                                 "visible": effect.visible,

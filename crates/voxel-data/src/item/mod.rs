@@ -6,6 +6,8 @@ pub mod classes;
 pub mod components;
 pub mod creative_tabs;
 pub mod definition;
+pub mod effect;
 pub mod items;
+pub mod mob_effects;
 pub mod potions;
 pub mod registry;
