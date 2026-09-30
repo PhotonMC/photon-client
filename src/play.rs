@@ -8,16 +8,19 @@ use voxel_net::connection::PlaySession;
 use voxel_render::VulkanBackend;
 use voxel_render::gui::screen::creative::CreativeAssets;
 use voxel_render::gui::screen::{KeyMods, KeyResult};
-use voxel_render::vulkan::SectionFade;
 use voxel_render::window::{DisplayData, WindowSurface};
 
 use crate::assets::FolderAssets;
+use crate::atmosphere::{rain_fog_target, weather};
+use crate::hud_input::{attack_speed, hud_input};
 use crate::item_layers::ItemLayerCache;
 use crate::ppm;
+use crate::profile::FrameProfile;
 use crate::screens::{
     OpenScreen, ScreenAssets, WindowClipboard, close_inventory, open_inventory, run_actions,
 };
 use crate::script::{HeldKeys, Script};
+use crate::sections::SectionMeshes;
 use crate::view::{CLOUD_RANGE, CameraType, eye_position, max_camera_zoom, pick, player_camera};
 
 /// Join a server and walk around in it.
@@ -50,30 +53,7 @@ pub fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn st
         .map(|text| Script::parse(&text))
         .transpose()?;
 
-    println!("play_connecting={server} user={username}");
-    let mut session = PlaySession::connect(server, &username, Duration::from_secs(30), auto_jump)?;
-    println!("play_joined, waiting for the level");
-    let started = std::time::Instant::now();
-    while !session.is_loaded() {
-        session.wait(Duration::from_millis(100))?;
-        if started.elapsed() > Duration::from_secs(30) {
-            let world = session.world();
-            let cache = world.client_chunk_cache_snapshot();
-            return Err(format!(
-                "the level did not load within thirty seconds: player at {:?}, {} chunks, cache centre {:?}",
-                session.player().map(|player| player.position()),
-                world.loaded_chunk_count(),
-                cache.map(|cache| (cache.view_center_x, cache.view_center_z, cache.storage_radius)),
-            )
-            .into());
-        }
-    }
-    // Let the chunks around the player arrive before the first mesh.
-    let settle = std::time::Instant::now();
-    while settle.elapsed() < Duration::from_millis(2000) {
-        session.wait(Duration::from_millis(50))?;
-        session.tick(voxel_world::input::Input::EMPTY)?;
-    }
+    let mut session = join(server, &username, auto_jump)?;
     let position = session.player().ok_or("no local player")?.position();
     println!(
         "play_spawn={:.3},{:.3},{:.3}",
@@ -118,10 +98,13 @@ pub fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn st
     if env::var_os("VOXEL_FULLSCREEN").is_some() {
         surface.toggle_fullscreen();
     }
+    // The vanilla data pack the server runs, which sits next to the assets:
+    // the biomes' colours and the sky's data come from it.
+    let data_root = env::var("VOXEL_DATA")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|_| std::path::Path::new(&root).with_file_name("data"));
     let biome_tints = voxel_render::biome_tint::BiomeTints::load(
-        &env::var("VOXEL_DATA")
-            .map(std::path::PathBuf::from)
-            .unwrap_or_else(|_| std::path::Path::new(&root).with_file_name("data")),
+        &data_root,
         std::path::Path::new(&root),
         session.registry_names("minecraft:worldgen/biome"),
         session.hashed_seed(),
@@ -176,29 +159,6 @@ pub fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn st
         position.y.floor() as i32,
         position.z.floor() as i32,
     ];
-    // Dirty sections, with when each was last dirtied.
-    let mut pending: std::collections::HashMap<(i32, i32, i32), std::time::Instant> = session
-        .take_dirty_sections()
-        .into_iter()
-        .map(|key| (key, std::time::Instant::now()))
-        .collect();
-    // Sections are meshed on worker threads, leaving one core for the game.
-    let worker_count = std::thread::available_parallelism()
-        .map_or(2, |count| count.get().saturating_sub(1))
-        .clamp(1, 8);
-    let mut workers = voxel_render::section_workers::SectionWorkers::new(
-        worker_count,
-        std::sync::Arc::clone(&block_renderer),
-        std::sync::Arc::clone(&biome_tints),
-    );
-    // The generation of each section's newest hand-out; a mesh from an
-    // older one is stale.
-    let mut latest: std::collections::HashMap<(i32, i32, i32), u64> =
-        std::collections::HashMap::new();
-    let mut next_generation = 0_u64;
-    const SETTLE: Duration = Duration::from_secs(2);
-    let mut fades: std::collections::HashMap<(i32, i32, i32), SectionFade> =
-        std::collections::HashMap::new();
     // The chunk fade option, 0.75 seconds by default and `VOXEL_CHUNK_FADE`
     // seconds if given; a scripted run shows every section at once unless
     // asked, so its captures do not catch one mid-fade.
@@ -207,14 +167,13 @@ pub fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn st
         Err(_) if script.is_some() => Duration::ZERO,
         Err(_) => Duration::from_millis(750),
     };
-    let section_low = session.world().dimension().min_y.div_euclid(16);
-    let section_high = section_low + session.world().dimension().height / 16;
+    let mut sections = SectionMeshes::new(
+        &mut session,
+        std::sync::Arc::clone(&block_renderer),
+        std::sync::Arc::clone(&biome_tints),
+        chunk_fade,
+    );
 
-    // The sky's data comes from the same vanilla data pack the server runs,
-    // which sits next to the assets.
-    let data_root = env::var("VOXEL_DATA")
-        .map(std::path::PathBuf::from)
-        .unwrap_or_else(|_| std::path::Path::new(&root).with_file_name("data"));
     let environment = voxel_render::sky::Environment::load(
         &data_root,
         session.dimension_type().unwrap_or("minecraft:overworld"),
@@ -224,12 +183,11 @@ pub fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn st
     let stars = voxel_render::sky::build_stars();
     let dimension = session.world().dimension();
     let probe = |session: &PlaySession, eye: [f64; 3]| {
-        let quart_min = dimension.min_y.div_euclid(4);
-        let quart_max = quart_min + dimension.height / 4 - 1;
         environment.evaluate(
             eye,
+            // The dimension the session joined in, even after a respawn.
             |x, y, z| {
-                let y = y.clamp(quart_min, quart_max);
+                let y = dimension.clamp_quart_y(y);
                 session.world().biome_at(x * 4, y * 4, z * 4)
             },
             |clock| session.clock_ticks(clock).unwrap_or(0),
@@ -245,39 +203,13 @@ pub fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn st
         [feet.x, feet.y + f64::from(player.eye_height()), feet.z]
     };
     let mut attributes_last = probe(&session, eye_of(&session));
-    let cloud_image = voxel_render::png::decode_rgba(&std::fs::read(
-        std::path::Path::new(&root).join("minecraft/textures/environment/clouds.png"),
-    )?)
-    .map_err(|error| format!("clouds: {error:?}"))?;
+    let cloud_image = texture(&root, "environment/clouds", "clouds")?;
     let cloud_cells = voxel_render::clouds::CloudCells::from_image(&cloud_image);
-    let environment_texture =
-        |name: &str| -> Result<voxel_render::DecodedImage, Box<dyn std::error::Error>> {
-            let path = std::path::Path::new(&root)
-                .join(format!("minecraft/textures/environment/{name}.png"));
-            Ok(voxel_render::png::decode_rgba(&std::fs::read(path)?)
-                .map_err(|error| format!("{name}: {error:?}"))?)
-        };
-    backend.load_weather_textures(&environment_texture("rain")?, &environment_texture("snow")?)?;
-    // `ModelBakery.DESTROY_STAGES`, stacked into one image.
-    let mut cracks = voxel_render::DecodedImage {
-        width: 0,
-        height: 0,
-        rgba: Vec::new(),
-    };
-    for stage in 0..10 {
-        let path = std::path::Path::new(&root).join(format!(
-            "minecraft/textures/block/destroy_stage_{stage}.png"
-        ));
-        let image = voxel_render::png::decode_rgba(&std::fs::read(path)?)
-            .map_err(|error| format!("destroy_stage_{stage}: {error:?}"))?;
-        if stage > 0 && (image.width, image.height) != (cracks.width, cracks.height / stage) {
-            return Err(format!("destroy_stage_{stage}: stages differ in size").into());
-        }
-        cracks.width = image.width;
-        cracks.height += image.height;
-        cracks.rgba.extend_from_slice(&image.rgba);
-    }
-    backend.load_crack_texture(&cracks)?;
+    backend.load_weather_textures(
+        &texture(&root, "environment/rain", "rain")?,
+        &texture(&root, "environment/snow", "snow")?,
+    )?;
+    backend.load_crack_texture(&destroy_stages(&root)?)?;
     // The player's default skin, picked by its profile id as the reference
     // picks one when the profile has no skin of its own.
     let skin = voxel_render::player_renderer::default_skin(
@@ -285,12 +217,7 @@ pub fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn st
             .profile_id()
             .unwrap_or(voxel_core::binary::Uuid { most: 0, least: 0 }),
     );
-    backend.load_entity_texture(
-        &voxel_render::png::decode_rgba(&std::fs::read(
-            std::path::Path::new(&root).join(format!("minecraft/textures/{}.png", skin.texture)),
-        )?)
-        .map_err(|error| format!("skin: {error:?}"))?,
-    )?;
+    backend.load_entity_texture(&texture(&root, skin.texture, "skin")?)?;
     let mut player_model = voxel_render::player_model::PlayerModel::new(skin.slim);
     // The HUD: its sprites, its own state, and the wheel's partial steps.
     let font = std::sync::Arc::new(
@@ -371,14 +298,7 @@ pub fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn st
     let mut last_frame = std::time::Instant::now();
     let mut ticks = 0_u64;
     let mut frames = 0_u64;
-    // `VOXEL_PROFILE` prints where the frame time went, every two seconds.
-    let profile = env::var_os("VOXEL_PROFILE").is_some();
-    let mut profile_spans = [Duration::ZERO; 5];
-    let mut profile_frames = 0_u32;
-    let mut profile_started = std::time::Instant::now();
-    let mut mesh_stats = (0_u32, Duration::ZERO);
-    let mut mesh_counts: std::collections::HashMap<(i32, i32, i32), u32> =
-        std::collections::HashMap::new();
+    let mut profile = FrameProfile::from_env();
 
     while !surface.should_close() {
         let frame_start = std::time::Instant::now();
@@ -603,9 +523,7 @@ pub fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn st
         // A respawn or a change of dimension: nothing of the old level stays.
         if session.take_level_reset() {
             backend.clear_sections()?;
-            pending.clear();
-            latest.clear();
-            fades.clear();
+            sections.clear();
             cloud_key = None;
         }
         let mut script_done = false;
@@ -735,14 +653,7 @@ pub fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn st
             {
                 let world = session.world();
                 let local = world.local_player();
-                let attack_speed = local
-                    .and_then(|state| {
-                        state
-                            .attributes()
-                            .iter()
-                            .find(|attribute| attribute.attribute_id() == 5)
-                    })
-                    .map_or(4.0, |attribute| attribute.effective_value(0.0, 1024.0));
+                let attack_speed = attack_speed(local);
                 let swap = session
                     .player()
                     .map_or(1.0, |player| player.item_swap_scale(1.0, attack_speed));
@@ -1012,135 +923,18 @@ pub fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn st
         let bob = voxel_render::camera::view_bob(walked, bob);
         let view_projection = player_camera(aspect, fov, far, eye, y_rot, x_rot, bob);
 
-        // Mesh the dirty sections nearest the player first on the workers,
-        // and drop the ones whose chunk went away.
-        for (chunk_x, chunk_z) in session.take_forgotten_chunks() {
-            for section_y in section_low..section_high {
-                let key = (chunk_x, section_y, chunk_z);
-                pending.remove(&key);
-                latest.remove(&key);
-                fades.remove(&key);
-                backend.set_section(
-                    key,
-                    &voxel_render::Mesh::default(),
-                    [0.0; 3],
-                    SectionFade::none(),
-                )?;
-            }
-        }
-        // `LevelRenderer.compileSections`: a section fades in from the fog
-        // the first time it shows, unless it is near the camera; its later
-        // rebuilds keep that first time.
-        let camera_block = [
-            feet.x.floor() as i64,
-            (feet.y + f64::from(camera.eye_height(partial as f32))).floor() as i64,
-            feet.z.floor() as i64,
-        ];
-        let mut fade_for = |key: (i32, i32, i32)| {
-            *fades.entry(key).or_insert_with(|| {
-                let centre = [key.0, key.1, key.2].map(|value| i64::from(value) * 16 + 8);
-                let distance: i64 = (0..3)
-                    .map(|axis| (centre[axis] - camera_block[axis]).pow(2))
-                    .sum();
-                SectionFade {
-                    since: std::time::Instant::now(),
-                    length: if distance < 768 {
-                        Duration::ZERO
-                    } else {
-                        chunk_fade
-                    },
-                }
-            })
-        };
-        // `ClientLevel.update`: queued light and the light engine, each frame.
-        session.update_light();
-        let dirtied = std::time::Instant::now();
-        pending.extend(
-            session
-                .take_dirty_sections()
-                .into_iter()
-                .map(|key| (key, dirtied)),
-        );
-        loop {
-            for built in workers.collect() {
-                mesh_stats.0 += 1;
-                mesh_stats.1 += built.took;
-                *mesh_counts.entry(built.key).or_insert(0_u32) += 1;
-                if latest.get(&built.key) == Some(&built.generation) {
-                    latest.remove(&built.key);
-                    let fade = fade_for(built.key);
-                    backend.set_section(built.key, &built.mesh, built.centre, fade)?;
-                }
-            }
-            let world = session.world();
-            let player_section = (
-                feet.x.floor() as i32 >> 4,
-                feet.y.floor() as i32 >> 4,
-                feet.z.floor() as i32 >> 4,
-            );
-            let view = session.view_distance().clamp(2, 12);
-            // A section away from the camera waits until the chunks around it
-            // have arrived, so it is built once rather than again for every
-            // neighbour (or, at the edge of what the server sends, until it
-            // has waited long enough); one near the camera, where the player
-            // changes blocks, is built at once.
-            let now = std::time::Instant::now();
-            let mut ordered: Vec<(i32, i32, i32)> = pending
-                .iter()
-                .filter(|&(&(x, y, z), &dirtied)| {
-                    let near = [x, y, z]
-                        .iter()
-                        .zip(camera_block)
-                        .map(|(&section, block)| (i64::from(section) * 16 + 8 - block).pow(2))
-                        .sum::<i64>()
-                        < 768;
-                    (x - player_section.0).abs() <= view
-                        && (z - player_section.2).abs() <= view
-                        && (near
-                            || script_done
-                            || now - dirtied >= SETTLE
-                            || (-1..=1)
-                                .all(|dx| (-1..=1).all(|dz| world.contains_chunk(x + dx, z + dz))))
-                })
-                .map(|(&key, _)| key)
-                .collect();
-            ordered.sort_by_key(|&(x, y, z)| {
-                (x - player_section.0).pow(2)
-                    + (y - player_section.1).pow(2)
-                    + (z - player_section.2).pow(2)
-            });
-            // Keep every worker busy with a little queued behind it, and
-            // spend at most a few milliseconds of the frame copying.
-            let budget = std::time::Instant::now();
-            let nothing_to_hand_out = ordered.is_empty();
-            for key in ordered {
-                if workers.in_flight() >= worker_count * 4
-                    || budget.elapsed() > Duration::from_millis(4)
-                {
-                    break;
-                }
-                pending.remove(&key);
-                if world.section_is_empty(key.0, key.1, key.2) {
-                    latest.remove(&key);
-                    // An empty section has shown too, so what is built in it
-                    // later does not fade.
-                    let fade = fade_for(key);
-                    backend.set_section(key, &voxel_render::Mesh::default(), [0.0; 3], fade)?;
-                    continue;
-                }
-                let (min, size, quart_min, quart_size) =
-                    voxel_render::section_workers::SectionWorkers::region(key);
-                let copy = world.copy_region(min, size, quart_min, quart_size);
-                next_generation += 1;
-                latest.insert(key, next_generation);
-                workers.submit(key, next_generation, copy, origin);
-            }
-            // A scripted run finishes every section before its capture.
-            if !script_done || (nothing_to_hand_out && workers.in_flight() == 0) {
-                break;
-            }
-            std::thread::sleep(Duration::from_millis(1));
-        }
+        // Drop the sections whose chunk went away, then mesh the dirty ones.
+        sections.forget_chunks(session.take_forgotten_chunks(), &mut backend)?;
+        let camera_block =
+            [eye_world.x, eye_world.y, eye_world.z].map(|value| value.floor() as i64);
+        sections.update(
+            &mut session,
+            &mut backend,
+            feet,
+            camera_block,
+            script_done,
+            origin,
+        )?;
         let meshed = std::time::Instant::now();
         backend.set_sort_origin(eye);
         let mut regions = Vec::new();
@@ -1172,83 +966,17 @@ pub fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn st
         // in where the camera sees the sky, half as much in a biome without
         // precipitation, easing a fifth of the way there per tick.
         {
-            let world = session.world();
-            let block = [
-                feet.x.floor() as i32,
-                (feet.y + f64::from(camera.eye_height(partial as f32))).floor() as i32,
-                feet.z.floor() as i32,
-            ];
-            let dimension = world.dimension();
-            let quart_min = dimension.min_y.div_euclid(4);
-            let quart_max = quart_min + dimension.height / 4 - 1;
-            let noise_biome = |x: i32, y: i32, z: i32| {
-                world.biome_at(x * 4, y.clamp(quart_min, quart_max) * 4, z * 4)
-            };
-            let biome = biome_tints.biome_at(block[0], block[1], block[2], &noise_biome);
-            let precipitation = environment.has_precipitation(i32::try_from(biome).ok());
-            let sky_light = f32::from(world.sky_brightness(block[0], block[1], block[2]));
-            let target = session.rain_level()
-                * ((sky_light - 8.0) / 7.0).clamp(0.0, 1.0)
-                * if precipitation { 1.0 } else { 0.5 };
+            let target = rain_fog_target(&session, &biome_tints, &environment, eye_world);
             rain_fog += (target - rain_fog) * frame_ticks * 0.2;
         }
-        // Rain and snow around the camera.
-        {
-            let world = session.world();
-            let dimension = world.dimension();
-            let quart_min = dimension.min_y.div_euclid(4);
-            let quart_max = quart_min + dimension.height / 4 - 1;
-            let noise_biome = |x: i32, y: i32, z: i32| {
-                world.biome_at(x * 4, y.clamp(quart_min, quart_max) * 4, z * 4)
-            };
-            let sea_level = world.sea_level();
-            let height = |x: i32, z: i32| world.motion_blocking_height(x, z);
-            let precipitation = |x: i32, y: i32, z: i32| {
-                if !world.contains_chunk(x.div_euclid(16), z.div_euclid(16)) {
-                    return voxel_render::biome_tint::Precipitation::None;
-                }
-                biome_tints.precipitation_at([x, y, z], &noise_biome, sea_level)
-            };
-            let lighter = voxel_render::block_light::Lighter {
-                state: |[x, y, z]: [i32; 3]| {
-                    world
-                        .block_state_at(x, y, z)
-                        .and_then(|state| u32::try_from(state).ok())
-                },
-                light: |[x, y, z]: [i32; 3]| {
-                    (
-                        world.block_brightness(x, y, z),
-                        world.sky_brightness(x, y, z),
-                    )
-                },
-            };
-            let light_coords = |x: i32, y: i32, z: i32| {
-                lighter.light_coords((lighter.state)([x, y, z]), [x, y, z])
-            };
-            let weather = voxel_render::weather::build(
-                &voxel_render::weather::WeatherWorld {
-                    height: &height,
-                    precipitation: &precipitation,
-                    light_coords: &light_coords,
-                },
-                [
-                    feet.x,
-                    feet.y + f64::from(camera.eye_height(partial as f32)),
-                    feet.z,
-                ],
-                origin,
-                session.game_time(),
-                partial as f32,
-                session.rain_level(),
-            );
-            backend.set_weather(&weather.rain, &weather.snow)?;
-        }
+        let weather = weather(&session, &biome_tints, eye_world, origin, partial as f32);
+        backend.set_weather(&weather.rain, &weather.snow)?;
         let look = voxel_core::math::Vec3::direction_from_rotation_components(x_rot, y_rot);
         let sky = voxel_render::sky::build_frame(
             &attributes,
             &voxel_render::sky::SkyView {
                 forward: [look.x as f32, look.y as f32, look.z as f32],
-                eye_above_horizon: feet.y + f64::from(camera.eye_height(partial as f32)) - 63.0,
+                eye_above_horizon: eye_world.y - 63.0,
                 eye_in_water,
                 render_distance,
                 cloud_range: CLOUD_RANGE,
@@ -1279,11 +1007,7 @@ pub fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn st
         // are rebuilt when the camera enters another cell or crosses the
         // layer.
         if sky.cloud_colour[3] > 0.0 {
-            let camera_position = [
-                feet.x,
-                feet.y + f64::from(camera.eye_height(partial as f32)),
-                feet.z,
-            ];
+            let camera_position = [eye_world.x, eye_world.y, eye_world.z];
             let placement = voxel_render::clouds::place(
                 &cloud_cells,
                 sky.cloud_height,
@@ -1361,38 +1085,7 @@ pub fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn st
             let screen_menu = inventory_screen
                 .is_some()
                 .then(|| session.inventory_menu().clone());
-            let status = *session.status();
-            let game_mode = session.game_mode();
-            // What the HUD reads from the player: its attributes (the
-            // registry's ids for max health, armour and attack speed), its
-            // effects (regeneration, hunger, poison, wither) and its data.
-            let world = session.world();
-            let local = world.local_player();
-            let attribute = |id: i32, default: f64, min: f64, max: f64| {
-                local
-                    .and_then(|state| {
-                        state
-                            .attributes()
-                            .iter()
-                            .find(|attribute| attribute.attribute_id() == id)
-                    })
-                    .map_or(default, |attribute| attribute.effective_value(min, max))
-            };
-            let has_effect = |id: i32| {
-                local.is_some_and(|state| {
-                    state
-                        .effects()
-                        .iter()
-                        .any(|effect| effect.effect_id() == id)
-                })
-            };
             let hud_player = session.player();
-            let stack = |slot: i16| {
-                local
-                    .and_then(|state| state.inventory_slot(slot))
-                    .filter(|stack| stack.item_count() > 0 && stack.item_registry_id() != 0)
-                    .cloned()
-            };
             let mut draw_item =
                 |stack: &voxel_world::ClientItemStackState,
                  x: f32,
@@ -1415,37 +1108,7 @@ pub fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn st
                 &font,
                 size.gui_scaled_width(),
                 size.gui_scaled_height(),
-                &voxel_render::gui::HudInput {
-                    first_person: camera_type == CameraType::FirstPerson,
-                    spectator: game_mode == voxel_world::ClientPlayerGameMode::Spectator,
-                    survival: game_mode.is_survival(),
-                    selected_slot: status.selected_slot,
-                    health: hud_player.map_or(status.health, |player| player.health()),
-                    max_health: attribute(23, 20.0, 1.0, 1024.0) as f32,
-                    absorption: local.map_or(0.0, |state| state.absorption()),
-                    invulnerable_time: hud_player.map_or(0, |player| player.invulnerable_time()),
-                    heart_type: voxel_render::gui::HeartType::for_player(
-                        has_effect(18),
-                        has_effect(19),
-                        local.is_some_and(|state| state.is_fully_frozen()),
-                    ),
-                    regeneration: has_effect(9),
-                    hardcore: session.hardcore(),
-                    armor: attribute(1, 0.0, 0.0, 30.0).floor() as i32,
-                    food: status.food,
-                    saturation: status.saturation,
-                    hunger: has_effect(16),
-                    air_supply: local.map_or(300, |state| state.air_supply()),
-                    max_air_supply: 300,
-                    eye_in_water: hud_player.is_some_and(|player| player.is_eye_in_water()),
-                    experience_progress: status.experience_progress,
-                    experience_level: status.experience_level,
-                    attack_strength: hud_player.map_or(1.0, |player| {
-                        player.attack_strength_scale(0.0, attribute(5, 4.0, 0.0, 1024.0))
-                    }),
-                    hotbar: std::array::from_fn(|i| stack(36 + i as i16)),
-                    offhand: stack(45),
-                },
+                &hud_input(&session, camera_type == CameraType::FirstPerson),
                 started_at.elapsed().as_millis(),
                 &mut draw_item,
             );
@@ -1508,51 +1171,79 @@ pub fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn st
         let built = std::time::Instant::now();
         backend.draw_scene(colour, view_projection)?;
         frames += 1;
-        if profile {
+        if let Some(profile) = profile.as_mut() {
             let drawn = std::time::Instant::now();
-            for (span, (from, to)) in profile_spans.iter_mut().zip([
-                (frame_start, ticked),
-                (ticked, meshed),
-                (meshed, built),
-                (built, drawn),
-                (frame_start, drawn),
-            ]) {
-                *span += to - from;
-            }
-            profile_frames += 1;
-            if profile_started.elapsed() >= Duration::from_secs(2) {
-                let per_frame =
-                    |span: Duration| span.as_secs_f64() * 1000.0 / f64::from(profile_frames);
-                println!(
-                    "profile fps={:.0} ms/frame: tick={:.2} mesh={:.2} build={:.2} draw={:.2} total={:.2} pending={}",
-                    f64::from(profile_frames) / profile_started.elapsed().as_secs_f64(),
-                    per_frame(profile_spans[0]),
-                    per_frame(profile_spans[1]),
-                    per_frame(profile_spans[2]),
-                    per_frame(profile_spans[3]),
-                    per_frame(profile_spans[4]),
-                    pending.len(),
-                );
-                if mesh_stats.0 > 0 {
-                    let repeated = mesh_counts.values().filter(|count| **count > 1).count();
-                    println!(
-                        "profile meshes={} avg_ms={:.2} worker_ms={:.0} sections={} rebuilt={}",
-                        mesh_stats.0,
-                        mesh_stats.1.as_secs_f64() * 1000.0 / f64::from(mesh_stats.0),
-                        mesh_stats.1.as_secs_f64() * 1000.0,
-                        mesh_counts.len(),
-                        repeated,
-                    );
-                }
-                mesh_stats = (0, Duration::ZERO);
-                profile_spans = [Duration::ZERO; 5];
-                profile_frames = 0;
-                profile_started = std::time::Instant::now();
-            }
+            profile.record([frame_start, ticked, meshed, built, drawn], &mut sections);
         }
     }
     println!("play_frames={frames} play_ticks={ticks}");
     Ok(())
+}
+
+/// Join a server and wait until its level has loaded around the player,
+/// then a little longer for the chunks near them.
+fn join(
+    server: SocketAddr,
+    username: &str,
+    auto_jump: bool,
+) -> Result<PlaySession, Box<dyn std::error::Error>> {
+    println!("play_connecting={server} user={username}");
+    let mut session = PlaySession::connect(server, username, Duration::from_secs(30), auto_jump)?;
+    println!("play_joined, waiting for the level");
+    let started = std::time::Instant::now();
+    while !session.is_loaded() {
+        session.wait(Duration::from_millis(100))?;
+        if started.elapsed() > Duration::from_secs(30) {
+            let world = session.world();
+            let cache = world.client_chunk_cache_snapshot();
+            return Err(format!(
+                "the level did not load within thirty seconds: player at {:?}, {} chunks, cache centre {:?}",
+                session.player().map(|player| player.position()),
+                world.loaded_chunk_count(),
+                cache.map(|cache| (cache.view_center_x, cache.view_center_z, cache.storage_radius)),
+            )
+            .into());
+        }
+    }
+    // Let the chunks around the player arrive before the first mesh.
+    let settle = std::time::Instant::now();
+    while settle.elapsed() < Duration::from_millis(2000) {
+        session.wait(Duration::from_millis(50))?;
+        session.tick(voxel_world::input::Input::EMPTY)?;
+    }
+    Ok(session)
+}
+
+/// A texture of the game's own, `minecraft/textures/<name>.png`, with a
+/// label for its errors.
+fn texture(
+    root: &str,
+    name: &str,
+    label: &str,
+) -> Result<voxel_render::DecodedImage, Box<dyn std::error::Error>> {
+    let path = std::path::Path::new(root).join(format!("minecraft/textures/{name}.png"));
+    Ok(voxel_render::png::decode_rgba(&std::fs::read(path)?)
+        .map_err(|error| format!("{label}: {error:?}"))?)
+}
+
+/// `ModelBakery.DESTROY_STAGES`, stacked into one image.
+fn destroy_stages(root: &str) -> Result<voxel_render::DecodedImage, Box<dyn std::error::Error>> {
+    let mut cracks = voxel_render::DecodedImage {
+        width: 0,
+        height: 0,
+        rgba: Vec::new(),
+    };
+    for stage in 0..10 {
+        let label = format!("destroy_stage_{stage}");
+        let image = texture(root, &format!("block/{label}"), &label)?;
+        if stage > 0 && (image.width, image.height) != (cracks.width, cracks.height / stage) {
+            return Err(format!("{label}: stages differ in size").into());
+        }
+        cracks.width = image.width;
+        cracks.height += image.height;
+        cracks.rgba.extend_from_slice(&image.rgba);
+    }
+    Ok(cracks)
 }
 
 /// The number key for a hotbar slot, 1 to 9.

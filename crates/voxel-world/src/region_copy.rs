@@ -117,18 +117,13 @@ impl ClientWorld {
             }
         }
 
-        let dimension = self.dimension();
-        let quart_rows = (
-            dimension.min_y.div_euclid(4),
-            dimension.min_y.div_euclid(4) + dimension.height / 4 - 1,
-        );
+        let quart_rows = self.dimension().quart_rows();
         let mut biomes =
             Vec::with_capacity((quart_size[0] * quart_size[1] * quart_size[2]) as usize);
         for y in quart_min[1]..quart_min[1] + quart_size[1] {
             for z in quart_min[2]..quart_min[2] + quart_size[2] {
                 for x in quart_min[0]..quart_min[0] + quart_size[0] {
-                    let y = y.clamp(quart_rows.0, quart_rows.1);
-                    biomes.push(self.biome_at(x * 4, y * 4, z * 4));
+                    biomes.push(self.noise_biome(x, y, z));
                 }
             }
         }

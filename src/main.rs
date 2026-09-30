@@ -1,9 +1,13 @@
 mod assets;
+mod atmosphere;
+mod hud_input;
 mod item_layers;
 mod play;
 mod ppm;
+mod profile;
 mod screens;
 mod script;
+mod sections;
 mod view;
 mod window_probe;
 

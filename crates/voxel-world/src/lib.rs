@@ -3241,6 +3241,12 @@ impl ClientWorld {
         Some((section.non_empty_block_count, section.fluid_count))
     }
 
+    /// `getNoiseBiome`: the biome at a quart position, its row clamped into
+    /// the dimension.
+    pub fn noise_biome(&self, x: i32, y: i32, z: i32) -> Option<i32> {
+        self.biome_at(x * 4, self.dimension.clamp_quart_y(y) * 4, z * 4)
+    }
+
     /// Return the resolved biome registry ID at a world coordinate.
     pub fn biome_at(&self, x: i32, y: i32, z: i32) -> Option<i32> {
         let chunk_key = (x.div_euclid(16), z.div_euclid(16));

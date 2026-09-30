@@ -43,6 +43,20 @@ impl DimensionBounds {
     pub(crate) fn min_section_y(self) -> i32 {
         self.min_y.div_euclid(16)
     }
+
+    /// The lowest and highest quart rows (`QuartPos`, four blocks) of the
+    /// dimension.
+    pub fn quart_rows(self) -> (i32, i32) {
+        let min = self.min_y.div_euclid(4);
+        (min, min + self.height / 4 - 1)
+    }
+
+    /// A quart row clamped into the dimension, as `LevelReader.getNoiseBiome`
+    /// reads the biome storage.
+    pub fn clamp_quart_y(self, y: i32) -> i32 {
+        let (min, max) = self.quart_rows();
+        y.clamp(min, max)
+    }
 }
 
 impl Default for DimensionBounds {
