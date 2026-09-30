@@ -100,7 +100,7 @@ pub struct PlaySession {
     /// Breaking state and the miss wait.
     game_mode_state: voxel_game::game_mode::GameMode,
     /// The player's inventory menu, whose drag state lasts between clicks.
-    inventory_menu: voxel_game::inventory_menu::InventoryMenu,
+    container_menu: voxel_game::container_menu::ContainerMenu,
     /// `LocalPlayer.dropSpamThrottler`: what creative drops have added up.
     drop_spam: i32,
     dirty_sections: std::collections::BTreeSet<(i32, i32, i32)>,
@@ -166,7 +166,7 @@ impl PlaySession {
             level_reset: false,
             sent_slot: 0,
             game_mode_state: voxel_game::game_mode::GameMode::default(),
-            inventory_menu: voxel_game::inventory_menu::InventoryMenu::default(),
+            container_menu: voxel_game::container_menu::ContainerMenu::default(),
             drop_spam: 0,
             dirty_sections: std::collections::BTreeSet::new(),
             forgotten_chunks: Vec::new(),
@@ -416,11 +416,11 @@ impl PlaySession {
     }
 
     /// The player's inventory menu as the client holds it now.
-    pub fn inventory_menu(&mut self) -> &voxel_game::inventory_menu::InventoryMenu {
+    pub fn container_menu(&mut self) -> &voxel_game::container_menu::ContainerMenu {
         if let Some((slots, carried, state_id)) = self.trace.world.local_player_menu() {
-            self.inventory_menu.load(slots, carried, state_id);
+            self.container_menu.load(slots, carried, state_id);
         }
-        &self.inventory_menu
+        &self.container_menu
     }
 
     /// `AbstractContainerScreen.slotClicked` into the player's own menu:
@@ -430,18 +430,18 @@ impl PlaySession {
         &mut self,
         slot: i32,
         button: i32,
-        kind: voxel_game::inventory_menu::ClickType,
+        kind: voxel_game::container_menu::ClickType,
     ) -> Result<(), ConnectionError> {
         let Some((slots, carried, state_id)) = self.trace.world.local_player_menu() else {
             return Ok(());
         };
-        self.inventory_menu.load(slots, carried, state_id);
-        let player = voxel_game::inventory_menu::Player {
+        self.container_menu.load(slots, carried, state_id);
+        let player = voxel_game::container_menu::Player {
             selected: self.status.selected_slot.clamp(0, 8) as usize,
             infinite_materials: self.game_mode == voxel_world::ClientPlayerGameMode::Creative,
         };
-        let (swings, body) = self.inventory_menu.handle_click(slot, button, kind, player);
-        let menu = &self.inventory_menu;
+        let (swings, body) = self.container_menu.handle_click(slot, button, kind, player);
+        let menu = &self.container_menu;
         self.trace
             .world
             .set_local_player_menu(&menu.slots, menu.carried.clone());
@@ -473,15 +473,15 @@ impl PlaySession {
         let Some((slots, carried, state_id)) = self.trace.world.local_player_menu() else {
             return Ok(());
         };
-        self.inventory_menu.load(slots, carried, state_id);
-        let player = voxel_game::inventory_menu::Player {
+        self.container_menu.load(slots, carried, state_id);
+        let player = voxel_game::container_menu::Player {
             selected: self.status.selected_slot.clamp(0, 8) as usize,
             infinite_materials: self.game_mode == voxel_world::ClientPlayerGameMode::Creative,
         };
         // `Player.canDropItems`: under the throttler's threshold.
         let can_drop = self.drop_spam < 1280;
-        let effects = creative.slot_clicked(click, &mut self.inventory_menu, player, can_drop);
-        let menu = &self.inventory_menu;
+        let effects = creative.slot_clicked(click, &mut self.container_menu, player, can_drop);
+        let menu = &self.container_menu;
         self.trace
             .world
             .set_local_player_menu(&menu.slots, menu.carried.clone());
@@ -525,7 +525,7 @@ impl PlaySession {
     }
 
     /// `LocalPlayer.closeContainer` for the inventory: the close packet,
-    /// then `InventoryMenu.removed`, which empties the result slot.
+    /// then `ContainerMenu.removed`, which empties the result slot.
     pub fn close_inventory(&mut self) -> Result<(), ConnectionError> {
         self.send(PLAY_SERVERBOUND_CONTAINER_CLOSE_PACKET_ID, |output| {
             output.push(0);

@@ -1,10 +1,13 @@
-//! The player's own inventory menu as the client predicts a click in it:
-//! `AbstractContainerMenu.doClick` with `InventoryMenu`'s slots, and the
-//! click packet `MultiPlayerGameMode.handleContainerInput` sends.
+//! A menu as the client predicts a click in it: `AbstractContainerMenu.doClick`
+//! with the slots of the player's own inventory menu or of a generic
+//! container's (chests, dispensers, hoppers, shulker boxes), and the click
+//! packet `MultiPlayerGameMode.handleContainerInput` sends.
 //!
-//! The menu's slots, by menu index: 0 the crafting result, 1 to 4 the
+//! The player menu's slots, by menu index: 0 the crafting result, 1 to 4 the
 //! crafting grid, 5 to 8 the armour from head to feet, 9 to 35 the main
-//! inventory, 36 to 44 the hotbar and 45 the off hand.
+//! inventory, 36 to 44 the hotbar and 45 the off hand. A container menu has
+//! its own slots first, then the 27 of the main inventory and the 9 of the
+//! hotbar; its off hand is not a slot, so a swap with it is not predicted.
 //!
 //! Stacks are values here where the reference shares objects; each step
 //! writes back what the shared object would have become. Not ported: the
@@ -53,15 +56,66 @@ pub struct Player {
     pub infinite_materials: bool,
 }
 
-/// The number of slots in the menu.
+/// The number of slots in the player's inventory menu.
 pub const SLOT_COUNT: usize = 46;
 const RESULT: usize = 0;
 const OFF_HAND: usize = 45;
 
+/// Which menu this is, and so how its slots behave.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MenuKind {
+    /// `InventoryMenu`.
+    Inventory,
+    /// `ChestMenu` with this many rows of nine (also the barrel and the
+    /// ender chest).
+    Chest(usize),
+    /// `DispenserMenu`: three by three (also the dropper).
+    Dispenser,
+    /// `HopperMenu`: five slots.
+    Hopper,
+    /// `ShulkerBoxMenu`: 27 slots that refuse shulker boxes.
+    ShulkerBox,
+}
+
+impl MenuKind {
+    /// The menu a `MenuType` registry id opens, for those modelled.
+    pub fn from_menu_type(id: i32) -> Option<Self> {
+        Some(match id {
+            0..=5 => Self::Chest(id as usize + 1),
+            6 => Self::Dispenser,
+            16 => Self::Hopper,
+            20 => Self::ShulkerBox,
+            _ => return None,
+        })
+    }
+
+    /// The menu's own slots, before the player's 36.
+    pub fn top_slots(self) -> usize {
+        match self {
+            Self::Inventory => 0,
+            Self::Chest(rows) => rows * 9,
+            Self::Dispenser => 9,
+            Self::Hopper => 5,
+            Self::ShulkerBox => 27,
+        }
+    }
+
+    /// Every slot of the menu.
+    pub fn slot_count(self) -> usize {
+        match self {
+            Self::Inventory => SLOT_COUNT,
+            other => other.top_slots() + 36,
+        }
+    }
+}
+
 /// The player's inventory menu: its slots, the carried stack and the drag
 /// in progress.
 #[derive(Debug, Clone)]
-pub struct InventoryMenu {
+pub struct ContainerMenu {
+    pub kind: MenuKind,
+    /// The id the server gave the menu; the player's own is 0.
+    pub container_id: i32,
     pub slots: Vec<Option<Stack>>,
     pub carried: Option<Stack>,
     pub state_id: i32,
@@ -73,9 +127,11 @@ pub struct InventoryMenu {
     swings: usize,
 }
 
-impl Default for InventoryMenu {
+impl Default for ContainerMenu {
     fn default() -> Self {
         Self {
+            kind: MenuKind::Inventory,
+            container_id: 0,
             slots: vec![None; SLOT_COUNT],
             carried: None,
             state_id: 0,
@@ -153,23 +209,37 @@ fn same_item(a: Option<&Stack>, b: &Stack) -> bool {
     a.is_some_and(|a| a.item_registry_id() == b.item_registry_id())
 }
 
-impl InventoryMenu {
-    /// The menu's slots and carried stack from the client's copy.
+impl ContainerMenu {
+    /// The player menu's slots and carried stack from the client's copy.
     pub fn with_contents(slots: Vec<Option<Stack>>, carried: Option<Stack>, state_id: i32) -> Self {
+        Self::for_menu(MenuKind::Inventory, 0, slots, carried, state_id)
+    }
+
+    /// A menu of `kind` the server opened as `container_id`, with the
+    /// client's copy of its slots and carried stack.
+    pub fn for_menu(
+        kind: MenuKind,
+        container_id: i32,
+        slots: Vec<Option<Stack>>,
+        carried: Option<Stack>,
+        state_id: i32,
+    ) -> Self {
         let mut menu = Self {
+            kind,
+            container_id,
             slots,
             carried,
             state_id,
             ..Self::default()
         };
-        menu.slots.resize(SLOT_COUNT, None);
+        menu.slots.resize(kind.slot_count(), None);
         menu
     }
 
     /// New contents from the client's copy; a drag in progress carries on.
     pub fn load(&mut self, slots: Vec<Option<Stack>>, carried: Option<Stack>, state_id: i32) {
         self.slots = slots;
-        self.slots.resize(SLOT_COUNT, None);
+        self.slots.resize(self.kind.slot_count(), None);
         self.carried = carried;
         self.state_id = state_id;
     }
@@ -186,7 +256,7 @@ impl InventoryMenu {
         let before = self.slots.clone();
         self.swings = 0;
         self.clicked(slot, button, click, player);
-        let changed: Vec<(usize, Option<&Stack>)> = (0..SLOT_COUNT)
+        let changed: Vec<(usize, Option<&Stack>)> = (0..self.slots.len())
             .filter(|&index| !match (&before[index], &self.slots[index]) {
                 (None, None) => true,
                 (Some(a), Some(b)) => a.matches(b),
@@ -195,7 +265,7 @@ impl InventoryMenu {
             .map(|index| (index, self.slots[index].as_ref()))
             .collect();
         let mut body = Vec::new();
-        voxel_core::wire::write_varint(0, &mut body);
+        voxel_core::wire::write_varint(self.container_id, &mut body);
         voxel_core::wire::write_varint(self.state_id, &mut body);
         body.extend_from_slice(&(slot as i16).to_be_bytes());
         body.push(button as i8 as u8);
@@ -238,7 +308,7 @@ impl InventoryMenu {
     )]
     pub fn clicked(&mut self, slot_index: i32, button: i32, click: ClickType, player: Player) {
         // The reference would fail on a slot past the menu's end.
-        if slot_index >= SLOT_COUNT as i32 {
+        if slot_index >= self.slots.len() as i32 {
             return;
         }
         if click == ClickType::QuickCraft {
@@ -267,7 +337,7 @@ impl InventoryMenu {
                 let Ok(index) = usize::try_from(slot_index) else {
                     return;
                 };
-                if index >= SLOT_COUNT {
+                if index >= self.slots.len() {
                     return;
                 }
                 let carried = self.carried.as_ref().expect("checked above");
@@ -420,7 +490,10 @@ impl InventoryMenu {
             let Ok(index) = usize::try_from(slot_index) else {
                 return;
             };
-            let source_slot = inventory_to_menu(button as usize);
+            // The off hand is not a slot of a container menu.
+            let Some(source_slot) = self.inventory_to_menu(button as usize) else {
+                return;
+            };
             let source = self.slots[source_slot].clone();
             let target = self.slots[index].clone();
             match (source, target) {
@@ -500,19 +573,19 @@ impl InventoryMenu {
                 let (start, step) = if button == 0 {
                     (0_i32, 1_i32)
                 } else {
-                    (SLOT_COUNT as i32 - 1, -1)
+                    (self.slots.len() as i32 - 1, -1)
                 };
                 for pass in 0..2 {
                     let mut i = start;
                     while i >= 0
-                        && i < SLOT_COUNT as i32
+                        && i < self.slots.len() as i32
                         && carried.item_count() < max_stack_size(&carried)
                     {
                         let target = i as usize;
                         if self.slots[target].is_some()
                             && self.can_item_quick_replace(target, &carried, true)
                             && self.may_pickup(target)
-                            && target != RESULT
+                            && !self.is_result(target)
                         {
                             let stack = self.slots[target].as_ref().expect("checked above");
                             if pass != 0 || stack.item_count() != max_stack_size(stack) {
@@ -543,18 +616,56 @@ impl InventoryMenu {
         }
     }
 
+    /// Whether this is the player menu's crafting result slot.
+    fn is_result(&self, index: usize) -> bool {
+        self.kind == MenuKind::Inventory && index == RESULT
+    }
+
+    /// The armour slot at a menu index, in the player menu.
+    fn armour_at(&self, index: usize) -> Option<&'static str> {
+        if self.kind == MenuKind::Inventory {
+            armour_slot(index)
+        } else {
+            None
+        }
+    }
+
+    /// An `Inventory` index as this menu's slot: the hotbar and the main
+    /// inventory in both, the armour and the off hand in the player menu.
+    fn inventory_to_menu(&self, index: usize) -> Option<usize> {
+        match self.kind {
+            MenuKind::Inventory => Some(inventory_to_menu(index)),
+            other => {
+                let top = other.top_slots();
+                match index {
+                    0..9 => Some(top + 27 + index),
+                    9..36 => Some(top + index - 9),
+                    _ => None,
+                }
+            }
+        }
+    }
+
     /// `Slot.getMaxStackSize(stack)`.
     pub fn slot_max_for(&self, index: usize, stack: &Stack) -> i32 {
-        let slot_max = if armour_slot(index).is_some() { 1 } else { 99 };
+        let slot_max = if self.armour_at(index).is_some() {
+            1
+        } else {
+            99
+        };
         slot_max.min(max_stack_size(stack))
     }
 
     /// `Slot.mayPlace`.
     pub fn may_place(&self, index: usize, stack: &Stack) -> bool {
-        if index == RESULT {
+        if self.is_result(index) {
             return false;
         }
-        match armour_slot(index) {
+        // `ShulkerBoxSlot`: a shulker box does not go inside one.
+        if self.kind == MenuKind::ShulkerBox && index < self.kind.top_slots() {
+            return can_fit_inside_container_items(stack);
+        }
+        match self.armour_at(index) {
             Some(slot) => stacking(stack)
                 .and_then(|item| item.equippable.as_ref())
                 .is_some_and(|equip| equip.slot == slot && equip.player),
@@ -594,7 +705,7 @@ impl InventoryMenu {
 
     /// `Slot.remove`: the result slot gives its whole stack.
     fn remove(&mut self, index: usize, amount: i32) -> Option<Stack> {
-        if index == RESULT {
+        if self.is_result(index) {
             return self.slots[index].take();
         }
         let stack = self.slots[index].as_mut()?;
@@ -654,7 +765,7 @@ impl InventoryMenu {
 
     /// `Slot.onTake`: the result slot uses up the crafting grid.
     fn on_take(&mut self, index: usize, _taken: &Stack, player: Player) {
-        if index != RESULT {
+        if !self.is_result(index) {
             return;
         }
         // `ResultSlot.onTake` with `CraftingRecipe.defaultCraftingReminder`,
@@ -688,8 +799,49 @@ impl InventoryMenu {
         }
     }
 
-    /// `InventoryMenu.quickMoveStack`.
+    /// `quickMoveStack` of a generic container menu: out of its own slots into
+    /// the player's, from the end, or the player's into its own.
+    fn quick_move_container(&mut self, index: usize, player: Player) -> Option<Stack> {
+        let original = self.slots[index].as_ref()?.clone();
+        let clicked = original.copy_with_count(original.item_count());
+        let top = self.kind.top_slots();
+        let (start, end, backwards) = if index < top {
+            (top, self.slots.len(), true)
+        } else {
+            (0, top, false)
+        };
+        let mut stack = self.slots[index].take().expect("checked above");
+        let moved = self.move_item_stack_to(&mut stack, start, end, backwards);
+        self.slots[index] = Some(stack);
+        settle(&mut self.slots[index]);
+        if !moved {
+            return None;
+        }
+        // Only the dispenser's menu gives up when nothing came off the stack.
+        if self.kind == MenuKind::Dispenser {
+            let left = self.slots[index].as_ref().map_or(0, Stack::item_count);
+            if left == clicked.item_count() {
+                return None;
+            }
+            let taken = self.slots[index]
+                .clone()
+                .unwrap_or_else(|| clicked.copy_with_count(0));
+            self.on_take(index, &taken, player);
+        }
+        Some(clicked)
+    }
+
+    /// `quickMoveStack` of the menu.
     fn quick_move_stack(&mut self, index: usize, player: Player) -> Option<Stack> {
+        if self.kind == MenuKind::Inventory {
+            self.quick_move_inventory(index, player)
+        } else {
+            self.quick_move_container(index, player)
+        }
+    }
+
+    /// `InventoryMenu.quickMoveStack`.
+    fn quick_move_inventory(&mut self, index: usize, player: Player) -> Option<Stack> {
         let original = self.slots[index].as_ref()?.clone();
         let clicked = original.copy_with_count(original.item_count());
         let equip = equipment_slot(&clicked);
@@ -724,7 +876,7 @@ impl InventoryMenu {
             .clone()
             .unwrap_or_else(|| clicked.copy_with_count(0));
         self.on_take(index, &taken, player);
-        if index == RESULT {
+        if self.is_result(index) {
             self.drop(self.slots[index].clone().as_ref());
         }
         Some(clicked)
@@ -823,20 +975,34 @@ impl InventoryMenu {
                     && present.item_count() < 99.min(max_stack_size(present))
             })
         };
-        std::iter::once(inventory_to_menu(player.selected))
-            .chain(std::iter::once(OFF_HAND))
-            .chain((0..36).map(inventory_to_menu))
+        let off_hand = (self.kind == MenuKind::Inventory).then_some(OFF_HAND);
+        self.inventory_to_menu(player.selected)
+            .into_iter()
+            .chain(off_hand)
+            .chain((0..36).filter_map(|index| self.inventory_to_menu(index)))
             .find(|&slot| has_room(slot))
     }
 
     fn free_slot(&self) -> Option<usize> {
         (0..36)
-            .map(inventory_to_menu)
+            .filter_map(|index| self.inventory_to_menu(index))
             .find(|&slot| self.slots[slot].is_none())
     }
 }
 
-/// An `Inventory` index as the menu's slot.
+/// `Item.canFitInsideContainerItems`: every item but a shulker box.
+fn can_fit_inside_container_items(stack: &Stack) -> bool {
+    !stacking(stack)
+        .and_then(|item| item.block)
+        .and_then(voxel_data::block::registry::block)
+        .is_some_and(|block| {
+            block
+                .class
+                .is(voxel_data::block::classes::BlockClass::ShulkerBoxBlock)
+        })
+}
+
+/// An `Inventory` index as the player menu's slot.
 fn inventory_to_menu(index: usize) -> usize {
     match index {
         0..9 => 36 + index,
@@ -909,4 +1075,82 @@ pub fn fastutil_int_order(keys: &[i32]) -> Vec<i32> {
     }
     order.extend(table.iter().rev().copied().filter(|&key| key != 0));
     order
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const PLAYER: Player = Player {
+        selected: 0,
+        infinite_materials: false,
+    };
+
+    fn stack(name: &str, count: i32) -> Stack {
+        Stack::new(count, crate::item::id_of(name).expect("an item"))
+    }
+
+    fn chest(rows: usize) -> ContainerMenu {
+        ContainerMenu::for_menu(MenuKind::Chest(rows), 7, Vec::new(), None, 3)
+    }
+
+    #[test]
+    fn menu_types_name_their_layouts() {
+        assert_eq!(MenuKind::from_menu_type(2), Some(MenuKind::Chest(3)));
+        assert_eq!(
+            MenuKind::from_menu_type(2).map(MenuKind::slot_count),
+            Some(63)
+        );
+        assert_eq!(MenuKind::from_menu_type(16), Some(MenuKind::Hopper));
+        assert_eq!(MenuKind::from_menu_type(9), None);
+    }
+
+    #[test]
+    fn a_chest_click_carries_the_servers_container_id() {
+        let mut menu = chest(3);
+        menu.slots[0] = Some(stack("minecraft:stone", 5));
+        let (_, body) = menu.handle_click(0, 0, ClickType::Pickup, PLAYER);
+        // Container id, then state id.
+        assert_eq!(&body[..2], &[7, 3]);
+        assert_eq!(menu.carried.as_ref().map(Stack::item_count), Some(5));
+    }
+
+    #[test]
+    fn shift_clicking_moves_between_the_chest_and_the_player_slots() {
+        let mut menu = chest(3);
+        menu.slots[0] = Some(stack("minecraft:stone", 5));
+        menu.clicked(0, 0, ClickType::QuickMove, PLAYER);
+        assert!(menu.slots[0].is_none());
+        // Into the hotbar's end first, the way `moveItemStackTo` goes back.
+        assert_eq!(menu.slots[62].as_ref().map(Stack::item_count), Some(5));
+        menu.clicked(62, 0, ClickType::QuickMove, PLAYER);
+        assert_eq!(menu.slots[0].as_ref().map(Stack::item_count), Some(5));
+        assert!(menu.slots[62].is_none());
+    }
+
+    #[test]
+    fn a_shulker_box_does_not_go_inside_one() {
+        let mut menu = ContainerMenu::for_menu(MenuKind::ShulkerBox, 1, Vec::new(), None, 0);
+        let shulker = stack("minecraft:shulker_box", 1);
+        let stone = stack("minecraft:stone", 1);
+        assert!(!menu.may_place(0, &shulker));
+        assert!(menu.may_place(0, &stone));
+        // The player's own slots take it.
+        assert!(menu.may_place(27, &shulker));
+        menu.slots[27] = Some(shulker);
+        menu.clicked(27, 0, ClickType::QuickMove, PLAYER);
+        assert!(menu.slots[0].is_none());
+    }
+
+    #[test]
+    fn a_swap_with_the_hotbar_uses_the_containers_hotbar_slots() {
+        let mut menu = chest(1);
+        menu.slots[0] = Some(stack("minecraft:stone", 2));
+        menu.clicked(0, 3, ClickType::Swap, PLAYER);
+        assert!(menu.slots[0].is_none());
+        assert_eq!(
+            menu.slots[9 + 27 + 3].as_ref().map(Stack::item_count),
+            Some(2)
+        );
+    }
 }

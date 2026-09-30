@@ -11,7 +11,7 @@
 //! text), the hotbar tab's saved hotbars (they are all empty, so it shows
 //! the placeholders), tooltips, and armour locked by enchantments.
 
-use crate::inventory_menu::{ClickType, InventoryMenu, Player, max_stack_size, settle};
+use crate::container_menu::{ClickType, ContainerMenu, Player, max_stack_size, settle};
 use crate::registries::Registries;
 use voxel_data::item::creative_tabs::{CREATIVE_TABS, CreativeStack, DEFAULT_TAB, TabKind};
 use voxel_world::ClientItemStackState as Stack;
@@ -231,7 +231,7 @@ pub struct CreativeMenu {
     window: Vec<Option<Shown>>,
     /// The picker's own menu, which the hotbar slots of a click go through.
     /// It keeps a drag in progress between clicks.
-    picker: InventoryMenu,
+    picker: ContainerMenu,
     scroll: f32,
     /// The registries the tabs' stacks are written with.
     registries: std::sync::Arc<Registries>,
@@ -244,7 +244,7 @@ impl CreativeMenu {
             tab,
             items: Vec::new(),
             window: vec![None; WINDOW],
-            picker: InventoryMenu::default(),
+            picker: ContainerMenu::default(),
             scroll: 0.0,
             registries,
         };
@@ -378,7 +378,7 @@ impl CreativeMenu {
     pub fn slot_clicked(
         &mut self,
         click: Click,
-        menu: &mut InventoryMenu,
+        menu: &mut ContainerMenu,
         player: Player,
         can_drop: bool,
     ) -> Vec<Effect> {
@@ -456,7 +456,7 @@ impl CreativeMenu {
         slot_id: i32,
         button: i32,
         input: ClickType,
-        menu: &mut InventoryMenu,
+        menu: &mut ContainerMenu,
         player: Player,
         effects: &mut Vec<Effect>,
     ) {
@@ -499,7 +499,7 @@ impl CreativeMenu {
         button: i32,
         input: ClickType,
         quick_key: bool,
-        menu: &mut InventoryMenu,
+        menu: &mut ContainerMenu,
         effects: &mut Vec<Effect>,
     ) {
         let clicked = self.window_stack(slot).cloned();
@@ -589,7 +589,7 @@ impl CreativeMenu {
         slot_id: i32,
         button: i32,
         input: ClickType,
-        menu: &mut InventoryMenu,
+        menu: &mut ContainerMenu,
         player: Player,
         effects: &mut Vec<Effect>,
     ) {
@@ -678,7 +678,7 @@ mod tests {
 
     fn click(
         creative: &mut CreativeMenu,
-        menu: &mut InventoryMenu,
+        menu: &mut ContainerMenu,
         target: Option<Target>,
         button: i32,
         input: ClickType,
@@ -731,7 +731,7 @@ mod tests {
             default_tab(),
             std::sync::Arc::new(crate::registries::for_tests()),
         );
-        let mut menu = InventoryMenu::default();
+        let mut menu = ContainerMenu::default();
         let item = creative.window_stack(0).cloned().expect("a stack");
         click(
             &mut creative,
@@ -777,7 +777,7 @@ mod tests {
             default_tab(),
             std::sync::Arc::new(crate::registries::for_tests()),
         );
-        let mut menu = InventoryMenu::default();
+        let mut menu = ContainerMenu::default();
         click(
             &mut creative,
             &mut menu,
@@ -803,7 +803,7 @@ mod tests {
             default_tab(),
             std::sync::Arc::new(crate::registries::for_tests()),
         );
-        let mut menu = InventoryMenu::default();
+        let mut menu = ContainerMenu::default();
         let effects = click(
             &mut creative,
             &mut menu,
@@ -822,7 +822,7 @@ mod tests {
             default_tab(),
             std::sync::Arc::new(crate::registries::for_tests()),
         );
-        let mut menu = InventoryMenu::default();
+        let mut menu = ContainerMenu::default();
         menu.carried = Some(Stack::new(5, 1));
         let effects = click(&mut creative, &mut menu, None, 0, ClickType::Pickup);
         assert!(menu.carried.is_none());
@@ -834,7 +834,7 @@ mod tests {
     #[test]
     fn the_bin_empties_the_whole_inventory_with_a_quick_click() {
         let mut creative = menu_on(TabKind::Inventory);
-        let mut menu = InventoryMenu::default();
+        let mut menu = ContainerMenu::default();
         menu.slots[10] = Some(Stack::new(3, 1));
         let effects = click(
             &mut creative,
@@ -892,7 +892,7 @@ mod tests {
     #[test]
     fn the_hotbar_tab_shows_locked_placeholders() {
         let mut creative = menu_on(TabKind::Hotbar);
-        let mut menu = InventoryMenu::default();
+        let mut menu = ContainerMenu::default();
         assert!(creative.window_stack(0).is_some());
         assert!(creative.window_stack(1).is_none());
         click(

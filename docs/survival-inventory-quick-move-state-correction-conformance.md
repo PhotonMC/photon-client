@@ -22,7 +22,7 @@ tek boolean `false` olarak taşınır.
 
 `ServerGamePacketListenerImpl.handleContainerClick` aynı container id ve
 geçerli slot koşullarında state-id uyuşmazlığı olsa bile
-`AbstractContainerMenu.clicked` çağrısını çalıştırır. `InventoryMenu` slot 36
+`AbstractContainerMenu.clicked` çağrısını çalıştırır. `ContainerMenu` slot 36
 hotbar stack'i için `quickMoveStack` çağrısında hedef aralığı menu slotları
 `9..35` olarak seçer; ilk boş main inventory slotu menu slotu `9`'dur. Stack
 slot 36'dan slot 9'a taşındıktan sonra eski state-id nedeniyle

@@ -18372,7 +18372,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// Clicks in the player's own inventory menu, as the client predicts them
 /// and sends them.
 fn container_clicks_result(request: &Value) -> Result<Value, String> {
-    use voxel_game::inventory_menu::{ClickType, InventoryMenu, Player};
+    use voxel_game::container_menu::{ClickType, ContainerMenu, Player};
     use voxel_world::ClientItemStackState;
     let stack = |described: &Value| -> Result<ClientItemStackState, String> {
         let name = described["item"].as_str().ok_or("item must be a string")?;
@@ -18395,7 +18395,7 @@ fn container_clicks_result(request: &Value) -> Result<Value, String> {
     let mut out = Vec::with_capacity(rows.len());
     for row in rows {
         let label = row["label"].as_str().ok_or("label must be a string")?;
-        let mut menu = InventoryMenu::default();
+        let mut menu = ContainerMenu::default();
         for slot in row["slots"].as_array().ok_or("slots must be an array")? {
             let index = slot["slot"].as_u64().ok_or("slot must be a number")? as usize;
             menu.slots[index] = Some(stack(slot)?);

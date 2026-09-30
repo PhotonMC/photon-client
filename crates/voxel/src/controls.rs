@@ -188,7 +188,7 @@ impl Controls {
                 glfw::Action::Press | glfw::Action::Repeat,
                 modifiers,
             ) => {
-                let menu = session.inventory_menu().clone();
+                let menu = session.container_menu().clone();
                 let mods = KeyMods {
                     control: modifiers.contains(glfw::Modifiers::Control),
                     shift: modifiers.contains(glfw::Modifiers::Shift),
@@ -215,7 +215,7 @@ impl Controls {
             glfw::WindowEvent::MouseButton(button, action, modifiers) => {
                 let button = button as i32;
                 let shift = modifiers.contains(glfw::Modifiers::Shift);
-                let menu = session.inventory_menu().clone();
+                let menu = session.container_menu().clone();
                 let actions = if action == glfw::Action::Press {
                     self.active_button = Some(button);
                     let now = std::time::Instant::now();
@@ -236,7 +236,7 @@ impl Controls {
                     y * f64::from(size.gui_scaled_height()) / f64::from(height.max(1)),
                 );
                 if self.active_button.is_some() {
-                    let menu = session.inventory_menu().clone();
+                    let menu = session.container_menu().clone();
                     screen.mouse_dragged(self.gui_mouse, &menu);
                 }
                 self.last_cursor = None;

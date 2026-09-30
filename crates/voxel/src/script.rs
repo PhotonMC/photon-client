@@ -1,7 +1,7 @@
 //! `VOXEL_SCRIPT`: keys held and clicks made on given ticks, so a run can
 //! be repeated without a person at the keyboard.
 
-use voxel_game::inventory_menu::ClickType;
+use voxel_game::container_menu::ClickType;
 
 /// Held movement keys, as the key mappings see them.
 #[derive(Default, Clone, Copy)]

@@ -12,7 +12,7 @@ girdisi:
 
 - E ile açılır (yaratıcı ve izleyici hariç), fare bırakılır ve pencerenin
   ortasına konur; E ya da Esc ile kapanır: `container_close` paketi,
-  `InventoryMenu.removed`'ın sonuç yuvasını boşaltması, fare yeniden tutulur.
+  `ContainerMenu.removed`'ın sonuç yuvasını boşaltması, fare yeniden tutulur.
   Ekran açıkken tuşlar ve fare ekrana gider, oyuncu durur.
 - Fare: basınca imleç boşsa alma/shift/pencere dışına atma, doluysa sürükleme
   başlar; bırakınca koyma ya da sürüklenen yuvalara `QUICK_CRAFT` adımları;

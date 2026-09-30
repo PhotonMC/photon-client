@@ -1,7 +1,7 @@
 //! The survival inventory screen: `AbstractContainerScreen` over the
 //! player's own menu, as `InventoryScreen` lays it out with its recipe book
 //! closed. The screen turns mouse and key input into menu clicks and draws
-//! the menu; the clicks themselves run in [`voxel_game::inventory_menu`].
+//! the menu; the clicks themselves run in [`voxel_game::container_menu`].
 //!
 //! Not drawn: the recipe book; its button is drawn and takes the click, but
 //! does not open it.
@@ -9,12 +9,12 @@
 use super::container::{ContainerLayout, ContainerMouse, SlotClick, SlotView, slot_key_clicks};
 use super::{KeyMods, KeyResult, Screen, ScreenAction, ScreenDraw};
 use crate::gui::edit_box::Clipboard;
-use voxel_game::inventory_menu::{ClickType, InventoryMenu, SLOT_COUNT};
+use voxel_game::container_menu::{ClickType, ContainerMenu, SLOT_COUNT};
 use voxel_world::ClientItemStackState as Stack;
 
 const IMAGE: (i32, i32) = (176, 166);
 
-/// Where each menu slot sits in the screen's image: `InventoryMenu`'s
+/// Where each menu slot sits in the screen's image: `ContainerMenu`'s
 /// constructor.
 pub fn slot_position(index: usize) -> (i32, i32) {
     match index {
@@ -45,7 +45,7 @@ pub(crate) fn empty_icon(index: usize) -> Option<&'static str> {
     }
 }
 
-impl SlotView for InventoryMenu {
+impl SlotView for ContainerMenu {
     fn stack(&self, slot: usize) -> Option<&Stack> {
         self.slots[slot].as_ref()
     }
@@ -55,15 +55,15 @@ impl SlotView for InventoryMenu {
     }
 
     fn can_item_quick_replace(&self, slot: usize, stack: &Stack, ignore_size: bool) -> bool {
-        InventoryMenu::can_item_quick_replace(self, slot, stack, ignore_size)
+        ContainerMenu::can_item_quick_replace(self, slot, stack, ignore_size)
     }
 
     fn may_place(&self, slot: usize, stack: &Stack) -> bool {
-        InventoryMenu::may_place(self, slot, stack)
+        ContainerMenu::may_place(self, slot, stack)
     }
 
     fn slot_max_for(&self, slot: usize, stack: &Stack) -> i32 {
-        InventoryMenu::slot_max_for(self, slot, stack)
+        ContainerMenu::slot_max_for(self, slot, stack)
     }
 
     fn can_drag_to(&self, _slot: usize) -> bool {
@@ -137,7 +137,7 @@ impl Screen for InventoryScreen {
         button: i32,
         shift: bool,
         now: std::time::Instant,
-        menu: &InventoryMenu,
+        menu: &ContainerMenu,
     ) -> Vec<ScreenAction> {
         let double = self.mouse.note_click(now, button);
         // The recipe book button is a widget, which takes the press first.
@@ -153,7 +153,7 @@ impl Screen for InventoryScreen {
         )
     }
 
-    fn mouse_dragged(&mut self, mouse: (f64, f64), menu: &InventoryMenu) {
+    fn mouse_dragged(&mut self, mouse: (f64, f64), menu: &ContainerMenu) {
         let slot = self.hovered_slot(mouse);
         self.mouse.dragged(slot, menu);
     }
@@ -163,7 +163,7 @@ impl Screen for InventoryScreen {
         mouse: (f64, f64),
         button: i32,
         shift: bool,
-        menu: &InventoryMenu,
+        menu: &ContainerMenu,
     ) -> Vec<ScreenAction> {
         if self.button_clicked {
             self.button_clicked = false;
@@ -184,7 +184,7 @@ impl Screen for InventoryScreen {
         &mut self,
         key: glfw::Key,
         mods: KeyMods,
-        menu: &InventoryMenu,
+        menu: &ContainerMenu,
         _clipboard: &mut dyn Clipboard,
     ) -> KeyResult {
         if matches!(key, glfw::Key::Escape | glfw::Key::E) {
@@ -205,7 +205,7 @@ impl Screen for InventoryScreen {
     /// `extractRenderState`: the dimmed world, the image, the recipe book
     /// button, the player, the title, the slots with the hovered one lit,
     /// the carried stack at the mouse, then the hovered stack's tooltip.
-    fn build(&mut self, draw: &mut ScreenDraw<'_, '_>, menu: &InventoryMenu, mouse: (f64, f64)) {
+    fn build(&mut self, draw: &mut ScreenDraw<'_, '_>, menu: &ContainerMenu, mouse: (f64, f64)) {
         let (left, top) = (self.layout.left(), self.layout.top());
         self.layout.background(draw);
         draw.frame.blit_texture(
@@ -288,7 +288,7 @@ mod tests {
     #[test]
     fn a_click_picks_up_on_press_and_places_on_release() {
         let mut screen = InventoryScreen::new(427, 240, String::new());
-        let mut menu = InventoryMenu::default();
+        let mut menu = ContainerMenu::default();
         menu.slots[36] = Some(Stack::new(64, 1));
         let now = std::time::Instant::now();
         let (x, y) = centre(&screen, 36);
@@ -325,7 +325,7 @@ mod tests {
     #[test]
     fn a_drag_over_slots_sends_the_quick_craft_steps() {
         let mut screen = InventoryScreen::new(427, 240, String::new());
-        let mut menu = InventoryMenu::default();
+        let mut menu = ContainerMenu::default();
         menu.carried = Some(Stack::new(64, 1));
         let now = std::time::Instant::now();
         let (x, y) = centre(&screen, 10);
@@ -360,7 +360,7 @@ mod tests {
     #[test]
     fn a_double_click_gathers() {
         let mut screen = InventoryScreen::new(427, 240, String::new());
-        let mut menu = InventoryMenu::default();
+        let mut menu = ContainerMenu::default();
         menu.slots[20] = Some(Stack::new(5, 1));
         let now = std::time::Instant::now();
         let (x, y) = centre(&screen, 20);

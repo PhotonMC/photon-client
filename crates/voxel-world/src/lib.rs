@@ -791,7 +791,7 @@ impl ClientWorld {
         slot: i32,
         item: Option<&ClientItemStackState>,
     ) -> bool {
-        let Some(menu_slot) = player_inventory_menu_slot(slot) else {
+        let Some(menu_slot) = player_container_menu_slot(slot) else {
             return false;
         };
         let Some(player) = self.local_player.as_mut() else {

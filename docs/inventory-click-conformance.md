@@ -5,7 +5,7 @@
 
 ## Ne pinlendi
 
-`crates/voxel-game/src/inventory_menu.rs`, oyuncunun kendi envanter menüsü (`InventoryMenu`)
+`crates/voxel-game/src/container_menu.rs`, oyuncunun kendi envanter menüsü (`ContainerMenu`)
 için `AbstractContainerMenu.doClick` ve
 `MultiPlayerGameMode.handleContainerInput`:
 
@@ -39,7 +39,7 @@ oyuncunun giyip giyemediği, üretim artığı, tıklamayı değiştiren sınıf
 ## Senaryolar
 
 `tools/behavior/cases.py` içindeki `movement/container-clicks`: gerçek
-`LocalPlayer`, `InventoryMenu` ve `MultiPlayerGameMode` üzerinde
+`LocalPlayer`, `ContainerMenu` ve `MultiPlayerGameMode` üzerinde
 `handleContainerInput`. Her tıklamadan sonra giden paketlerin baytları, 46
 yuva ve imleçteki yığın. 29 senaryo: yukarıdaki türlerin her dalı, 16'lık ve
 tekil yığınlar, zırh yuvasının reddi, sonuç yuvası (alma, shift, sayı tuşu,

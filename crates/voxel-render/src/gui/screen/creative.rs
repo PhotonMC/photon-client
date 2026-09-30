@@ -13,10 +13,10 @@ use super::{KeyMods, KeyResult, Screen, ScreenAction, ScreenDraw};
 use crate::gui::edit_box::{Clipboard, EditBox, edit_key};
 use crate::gui::font::Font;
 use voxel_data::item::creative_tabs::{CREATIVE_TABS, TabKind};
+use voxel_game::container_menu::{ClickType, ContainerMenu, max_stack_size};
 use voxel_game::creative_menu::{
     Click, CreativeMenu, SearchTrees, Target, shown_tabs, tab_contains, table_stack,
 };
-use voxel_game::inventory_menu::{ClickType, InventoryMenu, max_stack_size};
 use voxel_game::text::{Run, Style};
 use voxel_world::ClientItemStackState as Stack;
 
@@ -59,7 +59,7 @@ pub struct CreativeScreen {
 /// What the mouse handling reads from the picker and the player's menu.
 struct View<'a> {
     creative: &'a CreativeMenu,
-    inventory: &'a InventoryMenu,
+    inventory: &'a ContainerMenu,
 }
 
 impl View<'_> {
@@ -191,7 +191,7 @@ impl CreativeScreen {
         self.menu.kind() == TabKind::Inventory
     }
 
-    fn view<'a>(&'a self, inventory: &'a InventoryMenu) -> View<'a> {
+    fn view<'a>(&'a self, inventory: &'a ContainerMenu) -> View<'a> {
         View {
             creative: &self.menu,
             inventory,
@@ -303,7 +303,7 @@ impl CreativeScreen {
         &mut self,
         key: glfw::Key,
         mods: KeyMods,
-        inventory: &InventoryMenu,
+        inventory: &ContainerMenu,
         clipboard: &mut dyn Clipboard,
     ) -> KeyResult {
         let view = self.view(inventory);
@@ -412,7 +412,7 @@ impl CreativeScreen {
     fn build_tooltip(
         &self,
         draw: &mut ScreenDraw<'_, '_>,
-        inventory: &InventoryMenu,
+        inventory: &ContainerMenu,
         mouse: (f64, f64),
     ) {
         let selected = self.menu.tab();
@@ -483,7 +483,7 @@ impl Screen for CreativeScreen {
         button: i32,
         shift: bool,
         now: std::time::Instant,
-        inventory: &InventoryMenu,
+        inventory: &ContainerMenu,
     ) -> Vec<ScreenAction> {
         let double = self.mouse.note_click(now, button);
         if button == 0 {
@@ -517,7 +517,7 @@ impl Screen for CreativeScreen {
         mouse: (f64, f64),
         button: i32,
         shift: bool,
-        inventory: &InventoryMenu,
+        inventory: &ContainerMenu,
     ) -> Vec<ScreenAction> {
         if button == 0 {
             let relative = self.layout.relative(mouse);
@@ -543,7 +543,7 @@ impl Screen for CreativeScreen {
     }
 
     /// `mouseDragged`: the scroll bar follows, or a drag gathers slots.
-    fn mouse_dragged(&mut self, mouse: (f64, f64), inventory: &InventoryMenu) {
+    fn mouse_dragged(&mut self, mouse: (f64, f64), inventory: &ContainerMenu) {
         if self.scrolling {
             let y0 = f64::from(self.layout.top() + 18);
             let y1 = y0 + 112.0;
@@ -575,7 +575,7 @@ impl Screen for CreativeScreen {
         &mut self,
         key: glfw::Key,
         mods: KeyMods,
-        inventory: &InventoryMenu,
+        inventory: &ContainerMenu,
         clipboard: &mut dyn Clipboard,
     ) -> KeyResult {
         self.ignore_text_input = false;
@@ -635,7 +635,7 @@ impl Screen for CreativeScreen {
     fn build(
         &mut self,
         draw: &mut ScreenDraw<'_, '_>,
-        inventory: &InventoryMenu,
+        inventory: &ContainerMenu,
         mouse: (f64, f64),
     ) {
         let (left, top) = (self.layout.left(), self.layout.top());
@@ -787,7 +787,7 @@ mod tests {
     #[test]
     fn a_window_slot_click_takes_a_stack_on_press() {
         let mut screen = test_screen(default_tab());
-        let inventory = InventoryMenu::default();
+        let inventory = ContainerMenu::default();
         let mouse = centre(&screen, 0);
         let clicks = screen.mouse_clicked(mouse, 0, false, std::time::Instant::now(), &inventory);
         assert_eq!(
@@ -805,7 +805,7 @@ mod tests {
     #[test]
     fn a_tab_is_chosen_when_its_button_is_released() {
         let mut screen = test_screen(default_tab());
-        let inventory = InventoryMenu::default();
+        let inventory = ContainerMenu::default();
         let other = shown_tabs()
             .into_iter()
             .find(|&tab| tab != default_tab() && CREATIVE_TABS[tab].top)
@@ -830,7 +830,7 @@ mod tests {
     #[test]
     fn the_scroll_bar_follows_a_drag() {
         let mut screen = test_screen(default_tab());
-        let inventory = InventoryMenu::default();
+        let inventory = ContainerMenu::default();
         let x = f64::from(screen.layout.left() + 180);
         let y = f64::from(screen.layout.top() + 25);
         let now = std::time::Instant::now();

@@ -200,7 +200,7 @@ impl ClientContainerState {
     }
 }
 
-pub(crate) fn player_inventory_menu_slot(slot: i32) -> Option<i16> {
+pub(crate) fn player_container_menu_slot(slot: i32) -> Option<i16> {
     match slot {
         0..=8 => Some((36 + slot) as i16),
         9..=35 => Some(slot as i16),

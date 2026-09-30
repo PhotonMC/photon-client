@@ -9,8 +9,8 @@ pub mod container;
 pub mod creative;
 pub mod inventory;
 
+use voxel_game::container_menu::{ClickType, ContainerMenu};
 use voxel_game::creative_menu::Click;
-use voxel_game::inventory_menu::{ClickType, InventoryMenu};
 
 use crate::gui::edit_box::Clipboard;
 use crate::gui::font::Font;
@@ -77,7 +77,7 @@ pub trait Screen {
         button: i32,
         shift: bool,
         now: std::time::Instant,
-        menu: &InventoryMenu,
+        menu: &ContainerMenu,
     ) -> Vec<ScreenAction>;
 
     /// `mouseReleased`.
@@ -86,11 +86,11 @@ pub trait Screen {
         mouse: (f64, f64),
         button: i32,
         shift: bool,
-        menu: &InventoryMenu,
+        menu: &ContainerMenu,
     ) -> Vec<ScreenAction>;
 
     /// `mouseDragged`, while a button is held.
-    fn mouse_dragged(&mut self, mouse: (f64, f64), menu: &InventoryMenu);
+    fn mouse_dragged(&mut self, mouse: (f64, f64), menu: &ContainerMenu);
 
     /// `mouseScrolled`.
     fn mouse_scrolled(&mut self, _y: f64) {}
@@ -100,7 +100,7 @@ pub trait Screen {
         &mut self,
         key: glfw::Key,
         mods: KeyMods,
-        menu: &InventoryMenu,
+        menu: &ContainerMenu,
         clipboard: &mut dyn Clipboard,
     ) -> KeyResult;
 
@@ -115,7 +115,7 @@ pub trait Screen {
     fn scripted_click(&mut self, slot: i32, button: i32, kind: ClickType) -> ScreenAction;
 
     /// `extractRenderState`.
-    fn build(&mut self, draw: &mut ScreenDraw<'_, '_>, menu: &InventoryMenu, mouse: (f64, f64));
+    fn build(&mut self, draw: &mut ScreenDraw<'_, '_>, menu: &ContainerMenu, mouse: (f64, f64));
 
     /// The creative screen, for what only it has (its tab and menu).
     fn as_creative_mut(&mut self) -> Option<&mut creative::CreativeScreen> {

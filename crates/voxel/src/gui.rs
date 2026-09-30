@@ -98,7 +98,7 @@ impl Gui {
         let screen_menu = controls
             .screen
             .is_some()
-            .then(|| session.inventory_menu().clone());
+            .then(|| session.container_menu().clone());
         let session = &*session;
         let hud_player = session.player();
         let items = &mut self.items;
