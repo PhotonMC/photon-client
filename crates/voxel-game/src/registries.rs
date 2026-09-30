@@ -44,6 +44,8 @@ pub struct DescribedEntry {
 pub struct BannerEntry {
     pub name: String,
     pub translation_key: String,
+    /// The texture's name under `entity/banner`, without the namespace.
+    pub asset_id: String,
 }
 
 /// The registries, each in the order its entries were named.
@@ -148,11 +150,17 @@ impl Registries {
         };
         let banner_patterns = names("minecraft:banner_pattern")
             .into_iter()
-            .map(|name| BannerEntry {
-                translation_key: read_entry(data_root, "banner_pattern", &name)
-                    .text("translation_key")
-                    .unwrap_or_default(),
-                name,
+            .map(|name| {
+                let entry = read_entry(data_root, "banner_pattern", &name);
+                BannerEntry {
+                    translation_key: entry.text("translation_key").unwrap_or_default(),
+                    asset_id: entry
+                        .text("asset_id")
+                        .unwrap_or_default()
+                        .trim_start_matches("minecraft:")
+                        .to_owned(),
+                    name,
+                }
             })
             .collect();
         Self {

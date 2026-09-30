@@ -7,7 +7,7 @@
 
 use std::time::Instant;
 
-use super::{GenericScreen, KeyResult, MenuKind, ScreenAction, ScreenDraw};
+use super::{GenericScreen, GuiBlend, KeyResult, MenuKind, ScreenAction, ScreenDraw};
 use crate::gui::edit_box::{Clipboard, EditBox, edit_key};
 use voxel_game::container_menu::ContainerMenu;
 
@@ -89,6 +89,12 @@ pub(super) struct Extras {
     scrolling: bool,
     options_count: usize,
     stone_input: Option<i32>,
+    /// The loom's pattern list: its scroll position, first row shown, whether
+    /// the bar is grabbed and how many patterns it offers.
+    loom_offs: f32,
+    loom_row: usize,
+    loom_scrolling: bool,
+    loom_count: usize,
     name: EditBox,
     focused_at: Instant,
     filled_for: Option<Option<(i32, i32)>>,
@@ -104,6 +110,10 @@ impl Extras {
             scrolling: false,
             options_count: 0,
             stone_input: None,
+            loom_offs: 0.0,
+            loom_row: 0,
+            loom_scrolling: false,
+            loom_count: 0,
             // `new EditBox(font, x + 62, y + 24, 103, 12, ...)`, unbordered.
             name: EditBox::new(103, 50),
             focused_at: Instant::now(),
@@ -278,6 +288,179 @@ impl GenericScreen {
         (item >= 0).then(|| voxel_world::ClientItemStackState::new(1, item))
     }
 
+    /// Whether the loom shows its patterns: a banner and a dye, room for
+    /// another layer and something to offer.
+    fn loom_display(menu: &ContainerMenu) -> bool {
+        let has = |slot: usize| menu.slots.get(slot).is_some_and(Option::is_some);
+        has(0) && has(1) && menu.banner_layers < 6 && !menu.patterns.is_empty()
+    }
+
+    /// The rows past the four shown.
+    fn loom_rows(&self) -> i32 {
+        ((self.extras.loom_count as i32 + 3) / 4 - 4).max(0)
+    }
+
+    /// `LoomScreen.mouseClicked`: a pattern pressed (its index), or the scroll
+    /// bar grabbed.
+    pub(super) fn loom_click(&mut self, mouse: (f64, f64), menu: &ContainerMenu) -> Option<i32> {
+        if self.kind != MenuKind::Loom {
+            return None;
+        }
+        self.extras.loom_scrolling = false;
+        if !Self::loom_display(menu) {
+            return None;
+        }
+        let (mx, my) = (
+            mouse.0 - f64::from(self.layout.left()),
+            mouse.1 - f64::from(self.layout.top()),
+        );
+        let first = self.extras.loom_row * 4;
+        let shown = first..(first + 16).min(menu.patterns.len());
+        for index in shown {
+            let place = (index - first) as i32;
+            let (x, y) = (60 + place % 4 * 14, 13 + place / 4 * 14);
+            if (0.0..14.0).contains(&(mx - f64::from(x)))
+                && (0.0..14.0).contains(&(my - f64::from(y)))
+            {
+                return Some(index as i32);
+            }
+        }
+        if (119.0..131.0).contains(&mx) && (9.0..65.0).contains(&my) {
+            self.extras.loom_scrolling = true;
+        }
+        None
+    }
+
+    fn loom_scroll_to(&mut self, offs: f32) {
+        self.extras.loom_offs = offs;
+        let rows = self.loom_rows() as f32;
+        self.extras.loom_row = ((offs * rows + 0.5) as usize).max(0);
+    }
+
+    /// `LoomScreen.mouseDragged`.
+    pub(super) fn loom_drag(&mut self, mouse: (f64, f64)) {
+        if self.kind != MenuKind::Loom || !self.extras.loom_scrolling || self.loom_rows() <= 0 {
+            return;
+        }
+        let top = f64::from(self.layout.top() + 13);
+        let offs = ((mouse.1 - top - 7.5) / (56.0 - 15.0)).clamp(0.0, 1.0) as f32;
+        self.loom_scroll_to(offs);
+    }
+
+    /// `LoomScreen.mouseScrolled`.
+    pub(super) fn loom_wheel(&mut self, y: f64) {
+        let rows = self.loom_rows();
+        if self.kind == MenuKind::Loom && rows > 0 {
+            let offs = (self.extras.loom_offs - (y / f64::from(rows)) as f32).clamp(0.0, 1.0);
+            self.loom_scroll_to(offs);
+        }
+    }
+
+    /// `LoomScreen.mouseReleased`.
+    pub(super) fn loom_release(&mut self) {
+        self.extras.loom_scrolling = false;
+    }
+
+    /// `LoomScreen.extractBackground`'s scroll bar, pattern buttons and mark.
+    fn loom_draw(
+        &mut self,
+        draw: &mut ScreenDraw<'_, '_>,
+        menu: &ContainerMenu,
+        mouse: (f64, f64),
+        (left, top): (i32, i32),
+    ) {
+        self.extras.loom_count = menu.patterns.len();
+        if self.extras.loom_row * 4 >= menu.patterns.len().max(1) {
+            self.extras.loom_row = 0;
+            self.extras.loom_offs = 0.0;
+        }
+        if menu.banner_layers >= 6 {
+            draw.frame.sprite(
+                draw.atlas,
+                "container/loom/error",
+                left + 143 - 5,
+                top + 57 - 5,
+                26,
+                26,
+            );
+        }
+        let display = Self::loom_display(menu);
+        let scroller = if display && menu.patterns.len() > 16 {
+            "container/loom/scroller"
+        } else {
+            "container/loom/scroller_disabled"
+        };
+        let travel = (41.0 * self.extras.loom_offs) as i32;
+        draw.frame
+            .sprite(draw.atlas, scroller, left + 119, top + 13 + travel, 12, 15);
+        if !display {
+            return;
+        }
+        let selected = if menu.patterns.len() == 1 {
+            0
+        } else {
+            i32::from(menu.data.first().copied().unwrap_or(-1))
+        };
+        let dye = menu
+            .slots
+            .get(1)
+            .and_then(Option::as_ref)
+            .and_then(|stack| {
+                voxel_data::item::registry::ITEMS
+                    .get(usize::try_from(stack.item_registry_id()).ok()?)
+            })
+            .and_then(|item| item.name.strip_prefix("minecraft:")?.strip_suffix("_dye"))
+            .unwrap_or("white");
+        let first = self.extras.loom_row * 4;
+        let (mx, my) = (mouse.0 - f64::from(left), mouse.1 - f64::from(top));
+        let mut tip = None;
+        for index in first..(first + 16).min(menu.patterns.len()) {
+            let place = (index - first) as i32;
+            let (x, y) = (60 + place % 4 * 14, 13 + place / 4 * 14);
+            let over = mx >= f64::from(x)
+                && my >= f64::from(y)
+                && mx < f64::from(x + 14)
+                && my < f64::from(y + 14);
+            let sprite = if index as i32 == selected {
+                "container/loom/pattern_selected"
+            } else if over {
+                "container/loom/pattern_highlighted"
+            } else {
+                "container/loom/pattern"
+            };
+            draw.frame
+                .sprite(draw.atlas, sprite, left + x, top + y, 14, 14);
+            let pattern = usize::try_from(menu.patterns[index])
+                .ok()
+                .and_then(|id| self.titles.patterns.get(id));
+            if let Some((asset, key)) = pattern {
+                // The banner's texture from its top left: 21 by 40 of the 64
+                // by 64, drawn small over grey.
+                let (px, py) = (left + x + 4, top + y + 2);
+                draw.frame
+                    .fill(draw.atlas, (px, py, px + 5, py + 10), 0xFF47_4F52);
+                draw.frame.blit_region(
+                    draw.atlas,
+                    GuiBlend::Translucent,
+                    &format!("banner/{asset}"),
+                    (64, 64),
+                    (0, 1, 21, 40),
+                    (px, py, 5, 10),
+                );
+                if over {
+                    tip = Some(self.titles.lang.text(&format!("{key}.{dye}")));
+                }
+            }
+        }
+        if let Some(text) = tip {
+            let lines = vec![vec![voxel_game::text::Run {
+                text,
+                style: voxel_game::text::Style::default(),
+            }]];
+            self.layout.tooltip(draw, &lines, mouse);
+        }
+    }
+
     /// `AnvilScreen.onNameChanged`: a name that differs from what the server
     /// has is sent.
     fn name_changed(&mut self) {
@@ -362,6 +545,7 @@ impl GenericScreen {
             MenuKind::Cartography => self.cartography_preview(draw, menu, (left, top)),
             MenuKind::Anvil => self.anvil_extras(draw, menu, (left, top)),
             MenuKind::Stonecutter => self.stone_draw(draw, menu, mouse, (left, top)),
+            MenuKind::Loom => self.loom_draw(draw, menu, mouse, (left, top)),
             _ => {}
         }
     }

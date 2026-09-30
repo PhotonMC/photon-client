@@ -505,6 +505,11 @@ impl PlaySession {
                     })
                     .unwrap_or_default();
             }
+            if menu.kind == voxel_game::container_menu::MenuKind::Loom {
+                let (patterns, layers) = Self::loom_patterns(&self.trace.world, menu);
+                menu.patterns = patterns;
+                menu.banner_layers = layers;
+            }
             menu.item_tags = self.trace.world.block_state_registry().item_tags().clone();
             menu.xp_level = self.status.experience_level;
             if let Some(container) = self
@@ -537,6 +542,16 @@ impl PlaySession {
             .open_menu
             .as_ref()
             .is_some_and(|menu| menu.kind == voxel_game::container_menu::MenuKind::Stonecutter);
+        let loom = self
+            .open_menu
+            .as_ref()
+            .is_some_and(|menu| menu.kind == voxel_game::container_menu::MenuKind::Loom);
+        if loom {
+            // `LoomMenu.clickMenuButton`: the pattern is chosen.
+            self.trace
+                .world
+                .apply_local_player_container_data(container_id, 0, button as i16);
+        }
         if stonecutter {
             self.trace
                 .world
@@ -567,6 +582,39 @@ impl PlaySession {
             output.extend_from_slice(name.as_bytes());
             Ok(())
         })
+    }
+
+    /// `LoomMenu.slotsChanged`'s list of patterns: with a banner and a dye in,
+    /// those that need no item, or those the pattern item in the loom gives.
+    /// Nothing once the banner has six layers.
+    fn loom_patterns(
+        world: &voxel_world::ClientWorld,
+        menu: &voxel_game::container_menu::ContainerMenu,
+    ) -> (Vec<i32>, usize) {
+        let stack = |slot: usize| menu.slots.get(slot).and_then(Option::as_ref);
+        let (Some(banner), Some(_dye)) = (stack(0), stack(1)) else {
+            return (Vec::new(), 0);
+        };
+        let layers =
+            voxel_game::item_values::Values::new(banner.item_registry_id(), banner.patch_bytes())
+                .banner_layers()
+                .len();
+        let tags = world.block_state_registry().banner_pattern_tags();
+        let tag = match stack(2) {
+            None => "minecraft:no_item_required".to_owned(),
+            Some(pattern) => {
+                // `provides_banner_patterns` names `pattern_item/<name>`.
+                let name = usize::try_from(pattern.item_registry_id())
+                    .ok()
+                    .and_then(|id| voxel_data::item::registry::ITEMS.get(id))
+                    .map_or("", |item| item.name);
+                let short = name
+                    .trim_start_matches("minecraft:")
+                    .trim_end_matches("_banner_pattern");
+                format!("minecraft:pattern_item/{short}")
+            }
+        };
+        (tags.members(&tag).collect(), layers)
     }
 
     /// `AbstractContainerScreen.slotClicked` into the open menu: the player's

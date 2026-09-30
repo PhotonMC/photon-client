@@ -533,7 +533,7 @@ impl GuiFrame {
 
     /// A region of a sprite, `(u, v, width, height)` of a sprite `size`
     /// units big, stretched to a rectangle `(x, y, w, h)`.
-    fn blit_region(
+    pub(crate) fn blit_region(
         &mut self,
         atlas: &GuiAtlas,
         blend: GuiBlend,

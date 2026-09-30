@@ -36,6 +36,22 @@ const WHOLE_TEXTURES: [&str; 19] = [
     "container/creative_inventory/tab_inventory",
 ];
 
+/// The names of the banner pattern textures (`creeper`), without `banner`
+/// the base and `banner_base` that are no patterns.
+fn banner_texture_names(assets_root: &Path) -> Vec<String> {
+    let folder = assets_root.join("minecraft/textures/entity/banner");
+    let mut names: Vec<String> = std::fs::read_dir(folder)
+        .into_iter()
+        .flatten()
+        .filter_map(|entry| {
+            let file = entry.ok()?.file_name().into_string().ok()?;
+            file.strip_suffix(".png").map(str::to_owned)
+        })
+        .collect();
+    names.sort();
+    names
+}
+
 /// Every PNG under a sprite folder, as sprite names (`hud/heart/full`).
 fn sprite_names(root: &Path) -> Vec<String> {
     let mut names = Vec::new();
@@ -99,6 +115,19 @@ impl GuiAtlas {
             let path = assets_root.join(format!("minecraft/textures/gui/{name}.png"));
             let image = crate::png::decode_rgba(&std::fs::read(path).ok()?).ok()?;
             let key = format!("minecraft:texture/{name}");
+            stitcher.register_sprite(SpriteEntry {
+                width: image.width as i32,
+                height: image.height as i32,
+                name: Identifier::parse(&key).ok()?,
+            });
+            images.insert(key, image);
+        }
+        // The banner patterns' textures, which the loom's buttons show a
+        // piece of.
+        for name in banner_texture_names(assets_root) {
+            let path = assets_root.join(format!("minecraft/textures/entity/banner/{name}.png"));
+            let image = crate::png::decode_rgba(&std::fs::read(path).ok()?).ok()?;
+            let key = format!("minecraft:banner/{name}");
             stitcher.register_sprite(SpriteEntry {
                 width: image.width as i32,
                 height: image.height as i32,

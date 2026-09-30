@@ -50,9 +50,15 @@ impl ItemTags {
     /// The item registry's tags from a tag packet; `None` when the packet
     /// does not update the item registry.
     pub fn from_registries(registries: &[RegistryTags]) -> Option<Self> {
+        Self::of_registry(registries, "minecraft:item")
+    }
+
+    /// The tags of another registry (`minecraft:banner_pattern`), as registry
+    /// ids, read the same way.
+    pub fn of_registry(registries: &[RegistryTags], name: &str) -> Option<Self> {
         let items = registries
             .iter()
-            .find(|registry| registry.registry.as_string() == "minecraft:item")?;
+            .find(|registry| registry.registry.as_string() == name)?;
         Some(Self(
             items
                 .tags

@@ -206,6 +206,10 @@ pub struct ContainerMenu {
     pub accepted: Vec<std::sync::Arc<std::collections::BTreeSet<i32>>>,
     /// The item tags the server sent, for the slots that ask for one.
     pub item_tags: std::sync::Arc<voxel_world::block::tags::ItemTags>,
+    /// The banner patterns the loom offers, by registry id.
+    pub patterns: Vec<i32>,
+    /// How many layers the banner in the loom already has.
+    pub banner_layers: usize,
     /// What the stonecutter offers for its input: the item each entry shows,
     /// or -1 for one that names none.
     pub options: Vec<i32>,
@@ -235,6 +239,8 @@ impl Default for ContainerMenu {
             state_id: 0,
             accepted: Vec::new(),
             item_tags: std::sync::Arc::default(),
+            patterns: Vec::new(),
+            banner_layers: 0,
             options: Vec::new(),
             xp_level: 0,
             infinite_materials: false,

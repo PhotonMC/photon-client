@@ -25,6 +25,8 @@ pub struct ClientBlockStateRegistry {
     pub(crate) tags: Arc<BlockTags>,
     /// The item tags the server last sent.
     pub(crate) item_tags: Arc<ItemTags>,
+    /// The banner pattern tags the server last sent.
+    pub(crate) banner_pattern_tags: Arc<ItemTags>,
 }
 
 impl ClientBlockStateRegistry {
@@ -74,6 +76,11 @@ impl ClientBlockStateRegistry {
         self.is_state_in_tag(state_id, "minecraft:can_glide_through")
     }
 
+    /// The banner pattern tags the server last sent.
+    pub fn banner_pattern_tags(&self) -> &Arc<ItemTags> {
+        &self.banner_pattern_tags
+    }
+
     /// The item tags the server last sent.
     pub fn item_tags(&self) -> &Arc<ItemTags> {
         &self.item_tags
@@ -90,6 +97,9 @@ impl ClientBlockStateRegistry {
         }
         if let Some(tags) = ItemTags::from_registries(registries) {
             self.item_tags = Arc::new(tags);
+        }
+        if let Some(tags) = ItemTags::of_registry(registries, "minecraft:banner_pattern") {
+            self.banner_pattern_tags = Arc::new(tags);
         }
     }
 

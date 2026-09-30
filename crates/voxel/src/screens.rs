@@ -13,6 +13,8 @@ pub type OpenScreen = Option<Box<dyn Screen>>;
 /// What the inventory screens are opened with.
 pub struct ScreenAssets {
     pub creative: CreativeAssets,
+    /// The data-driven registries, for the loom's pattern names.
+    pub registries: std::sync::Arc<voxel_game::registries::Registries>,
     pub inventory_title: String,
     /// The client's language, for the titles the server names.
     pub lang: std::sync::Arc<voxel_game::text::Lang>,
@@ -45,6 +47,14 @@ impl ScreenAssets {
                 font: self.creative.font.clone(),
                 repair_cost: self.lang.text("container.repair.cost"),
                 repair_expensive: self.lang.text("container.repair.expensive"),
+                patterns: std::sync::Arc::new(
+                    self.registries
+                        .banner_patterns
+                        .iter()
+                        .map(|pattern| (pattern.asset_id.clone(), pattern.translation_key.clone()))
+                        .collect(),
+                ),
+                lang: self.lang.clone(),
             },
         ))
     }

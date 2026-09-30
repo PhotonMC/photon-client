@@ -79,6 +79,11 @@ pub struct Titles {
     /// `container.repair.cost` and `container.repair.expensive`, for the anvil.
     pub repair_cost: String,
     pub repair_expensive: String,
+    /// The banner patterns the loom can offer, by registry id: the texture
+    /// name and the translation key of each.
+    pub patterns: std::sync::Arc<Vec<(String, String)>>,
+    /// The client's language, for the loom's button tooltips.
+    pub lang: std::sync::Arc<voxel_game::text::Lang>,
 }
 
 /// A generic container screen's own state between events.
@@ -267,6 +272,9 @@ impl Screen for GenericScreen {
                 vec![ScreenAction::Button(entry)]
             };
         }
+        if let Some(entry) = self.loom_click(mouse, menu) {
+            return vec![ScreenAction::Button(entry)];
+        }
         if self.on_recipe_button(mouse) {
             self.button_clicked = true;
             return Vec::new();
@@ -281,6 +289,7 @@ impl Screen for GenericScreen {
 
     fn mouse_dragged(&mut self, mouse: (f64, f64), menu: &ContainerMenu) {
         self.stone_drag(mouse);
+        self.loom_drag(mouse);
         let slot = self.hovered_slot(mouse);
         self.mouse.dragged(slot, menu);
     }
@@ -293,6 +302,7 @@ impl Screen for GenericScreen {
         menu: &ContainerMenu,
     ) -> Vec<ScreenAction> {
         self.stone_release();
+        self.loom_release();
         if std::mem::take(&mut self.button_clicked) {
             return Vec::new();
         }
@@ -336,6 +346,7 @@ impl Screen for GenericScreen {
 
     fn mouse_scrolled(&mut self, y: f64) {
         self.stone_wheel(y);
+        self.loom_wheel(y);
     }
 
     fn char_typed(&mut self, character: char) {
@@ -437,6 +448,8 @@ mod tests {
             font: std::sync::Arc::new(Font::default()),
             repair_cost: String::new(),
             repair_expensive: String::new(),
+            patterns: std::sync::Arc::default(),
+            lang: std::sync::Arc::default(),
         }
     }
 

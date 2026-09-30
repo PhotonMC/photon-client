@@ -76,6 +76,7 @@ impl Gui {
                     .collect(),
             },
             inventory_title: lang.text("container.crafting"),
+            registries: self.registries.clone(),
             lang: lang.clone(),
         }
     }
