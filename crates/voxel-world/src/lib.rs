@@ -1985,7 +1985,7 @@ impl ClientWorld {
         bounding_box: Aabb,
         shapes_by_state: &BTreeMap<i32, VoxelShape>,
     ) -> Vec<ClientBlockCollision> {
-        self.collect_block_collisions_with(bounding_box, |state_id| {
+        self.collect_block_collisions_with(bounding_box, |state_id, _| {
             shapes_by_state.get(&state_id).cloned()
         })
     }
@@ -1994,7 +1994,7 @@ impl ClientWorld {
     fn collect_block_collisions_with(
         &self,
         bounding_box: Aabb,
-        shape_of: impl Fn(i32) -> Option<VoxelShape>,
+        shape_of: impl Fn(i32, [i32; 3]) -> Option<VoxelShape>,
     ) -> Vec<ClientBlockCollision> {
         let entity_shape = Shapes::create_from_aabb(bounding_box)
             .expect("ClientWorld collision queries require normalized bounds");
@@ -2020,7 +2020,7 @@ impl ClientWorld {
                     let Some(state_id) = self.block_state_at(x, y, z) else {
                         continue;
                     };
-                    let Some(local_shape) = shape_of(state_id) else {
+                    let Some(local_shape) = shape_of(state_id, [x, y, z]) else {
                         continue;
                     };
                     let position = BlockPos::new(x, y, z);
@@ -2063,8 +2063,8 @@ impl ClientWorld {
         bounding_box: Aabb,
     ) -> Vec<ClientBlockCollision> {
         let registry = &self.block_state_registry;
-        self.collect_block_collisions_with(bounding_box, |state_id| {
-            Some(registry.collision_shape(state_id))
+        self.collect_block_collisions_with(bounding_box, |state_id, at| {
+            Some(registry.collision_shape_at(state_id, at))
         })
     }
 

@@ -34,12 +34,18 @@ impl ClientBlockStateRegistry {
         }
     }
 
-    /// The shape a state blocks movement with, when no entity is asking.
-    ///
-    /// A block that shifts by position answers with the shift at the origin.
+    /// The shape a state blocks movement with, when no entity is asking,
+    /// as a block at the origin has it: one that shifts by position is
+    /// shifted by the origin's shift.
     pub fn collision_shape(&self, state_id: i32) -> VoxelShape {
-        let info = crate::block::state_or_air(i64::from(state_id));
-        crate::block::states().collision(info).clone()
+        u32::try_from(state_id)
+            .map_or_else(|_| Shapes::empty(), |id| collision_shape_at(id, [0; 3]))
+    }
+
+    /// The same for a block at `position`.
+    pub fn collision_shape_at(&self, state_id: i32, position: [i32; 3]) -> VoxelShape {
+        u32::try_from(state_id)
+            .map_or_else(|_| Shapes::empty(), |id| collision_shape_at(id, position))
     }
 
     /// A stair state's `shape`.
@@ -92,6 +98,22 @@ pub fn outline_shape(state_id: u32, position: [i32; 3]) -> VoxelShape {
         return Shapes::empty();
     };
     let shape = crate::block::states().outline(info).clone();
+    let block = info.block();
+    if crate::block::moves_with_position(block) {
+        let [x, y, z] = crate::block::offset(block, position);
+        shape.move_by(x, y, z)
+    } else {
+        shape
+    }
+}
+
+/// `BlockState.getCollisionShape` with no entity in the question, moved by
+/// the block's random offset at `position` where it has one.
+pub fn collision_shape_at(state_id: u32, position: [i32; 3]) -> VoxelShape {
+    let Some(info) = crate::block::state(state_id) else {
+        return Shapes::empty();
+    };
+    let shape = crate::block::states().collision(info).clone();
     let block = info.block();
     if crate::block::moves_with_position(block) {
         let [x, y, z] = crate::block::offset(block, position);

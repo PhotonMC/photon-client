@@ -17461,10 +17461,15 @@ fn shape_table(label: &str, outline: bool) -> Value {
             for offset in 0..block.state_count() {
                 let info = voxel_world::block::state(block.first_state_id() + offset)
                     .expect("a registry state");
+                let origin_collision;
                 let shape = if outline {
                     states.outline(info)
                 } else {
-                    states.collision(info)
+                    origin_collision = voxel_world::block_state::collision_shape_at(
+                        block.first_state_id() + offset,
+                        [0; 3],
+                    );
+                    &origin_collision
                 };
                 let boxes: Vec<[u64; 6]> = shape
                     .to_aabbs()

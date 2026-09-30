@@ -53,8 +53,8 @@ kodundan hesaplanıyor (`crates/voxel-world/src/block/shape_rules/`) ve
 oracle vakaları bu hesaplanan şekilleri karşılaştırıyor. Konuma göre kayan
 yalnızca çiçek, bambu, sarkıt ve mangrov filizi (referansta da
 `shape.move(getOffset(pos))` yapan sınıflar); çimen gibi blokların şekli
-kaymaz, yalnız çizimi kayar. Çarpışma şekli konumsuz sorulduğunda orijindeki
-kaymayla verilir.
+kaymaz, yalnız çizimi kayar. Çarpışma şekli dünyada bloğun kendi konumundaki kaymayla
+verilir (`collision_shape_at`); konumsuz sorulduğunda orijindeki kaymayla.
 
 ## Açık kapsam
 

@@ -333,7 +333,10 @@ impl Level<'_> {
 
     fn collision_shape(&self, pos: BlockPos) -> VoxelShape {
         match self.state_id(pos) {
-            Some(state) => self.world.block_state_registry.collision_shape(state),
+            Some(state) => self
+                .world
+                .block_state_registry
+                .collision_shape_at(state, [pos.x, pos.y, pos.z]),
             None => Shapes::empty(),
         }
     }
@@ -347,11 +350,11 @@ impl Level<'_> {
         fall_distance: f64,
     ) -> Result<Vec<(BlockPos, VoxelShape)>, Unsupported> {
         let registry = &self.world.block_state_registry;
-        let collisions = self.world.collect_block_collisions_with(area, |state| {
+        let collisions = self.world.collect_block_collisions_with(area, |state, at| {
             Some(if is_block(state, "minecraft:powder_snow") {
                 powder_snow_collision_shape(fall_distance)
             } else {
-                registry.collision_shape(state)
+                registry.collision_shape_at(state, at)
             })
         });
         let mut out = Vec::with_capacity(collisions.len());
@@ -381,10 +384,10 @@ impl Level<'_> {
         let registry = &self.world.block_state_registry;
         !self
             .world
-            .collect_block_collisions_with(area, |state| {
+            .collect_block_collisions_with(area, |state, at| {
                 crate::block::state_or_air(i64::from(state))
                     .suffocating
-                    .then(|| registry.collision_shape(state))
+                    .then(|| registry.collision_shape_at(state, at))
             })
             .is_empty()
     }
@@ -894,7 +897,7 @@ impl LocalPlayer {
     pub fn is_colliding(&self, world: &ClientWorld, pos: BlockPos, state: i32) -> bool {
         let shape = world
             .block_state_registry()
-            .collision_shape(state)
+            .collision_shape_at(state, [pos.x, pos.y, pos.z])
             .move_by_block_pos(pos);
         let Ok(player) = Shapes::create_from_aabb(self.bounding_box) else {
             return false;

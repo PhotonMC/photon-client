@@ -90,23 +90,16 @@ pub fn outline(block: &Block, offset: u32) -> VoxelShape {
 }
 
 /// `getCollisionShape`, which is the outline unless the block has no
-/// collision, for the state at `offset` of `block`.
+/// collision, for the state at `offset` of `block`, before the block's
+/// random offset where it moves with position.
 pub fn collision(block: &Block, offset: u32) -> VoxelShape {
-    let shape = match owner(block, Method::GetCollisionShape) {
+    match owner(block, Method::GetCollisionShape) {
         // `BlockBehaviour.getCollisionShape`.
         None if block.has_collision => outline(block, offset),
         None => Shapes::empty(),
         Some(class) => class_collision(class, block, offset)
             .unwrap_or_else(|| panic!("no getCollisionShape is written for {class:?}")),
-    };
-    // The shape a state answers with where no position is asked for is the
-    // one at the origin, so a block that shifts by position is shifted by
-    // the origin's shift.
-    if !moves_with_position(block) {
-        return shape;
     }
-    let [x, y, z] = super::offset(block, [0, 0, 0]);
-    shape.move_by(x, y, z)
 }
 
 fn class_outline(class: BlockClass, block: &Block, offset: u32) -> Option<VoxelShape> {
@@ -157,6 +150,27 @@ mod tests {
                 collision(block, offset);
             }
         }
+    }
+
+    /// Bamboo collides where it stands, which is off the grid by its own
+    /// random offset: the shape differs by what the two positions' offsets do.
+    #[test]
+    fn bamboo_collides_where_its_offset_puts_it() {
+        let (bamboo, offset) = state("minecraft:bamboo", &[]);
+        let id = bamboo.first_state_id() + offset;
+        let at = |position: [i32; 3]| {
+            crate::block_state::collision_shape_at(id, position)
+                .bounds()
+                .expect("a box")
+        };
+        let (near, far) = ([0, 64, 0], [13, 64, -7]);
+        let (near_shift, far_shift) = (
+            super::super::offset(bamboo, near),
+            super::super::offset(bamboo, far),
+        );
+        assert_ne!(near_shift, far_shift);
+        let gap = at(far).min_x - at(near).min_x;
+        assert!((gap - (far_shift[0] - near_shift[0])).abs() < 1.0e-12);
     }
 
     #[test]

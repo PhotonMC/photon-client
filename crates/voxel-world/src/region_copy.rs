@@ -159,7 +159,7 @@ impl ClientWorld {
         to: voxel_core::math::Vec3,
     ) -> Option<voxel_core::math::Vec3> {
         let registry = &self.block_state_registry;
-        self.clip_with(from, to, |state, _| registry.collision_shape(state))
+        self.clip_with(from, to, |state, at| registry.collision_shape_at(state, at))
             .map(|hit| hit.location)
     }
 
