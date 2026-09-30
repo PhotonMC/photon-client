@@ -41,11 +41,34 @@ const PLAY_SERVERBOUND_PLAYER_ABILITIES_PACKET_ID: i32 = 40;
 const PLAY_SERVERBOUND_PLAYER_COMMAND_PACKET_ID: i32 = 42;
 const PLAY_SERVERBOUND_PLAYER_INPUT_PACKET_ID: i32 = 43;
 
+/// A packet as the reader thread hands it over. Chunk and light packets,
+/// which are the heavy ones to parse, arrive already parsed; the order the
+/// packets came in is kept, so an error surfaces where it always did.
+enum Incoming {
+    Raw(Vec<u8>),
+    Chunk(Box<ChunkPacketObservation>),
+    Light(Box<LightUpdateObservation>),
+}
+
+/// Parse the packets worth parsing off the game's thread.
+fn classify(body: Vec<u8>) -> Result<Incoming, ConnectionError> {
+    let (packet_id, payload) = split_packet(&body)?;
+    match packet_id {
+        PLAY_CLIENTBOUND_CHUNK_PACKET_ID => {
+            Ok(Incoming::Chunk(Box::new(parse_chunk_packet(payload)?)))
+        }
+        PLAY_CLIENTBOUND_LIGHT_UPDATE_PACKET_ID => Ok(Incoming::Light(Box::new(
+            parse_light_update_packet(payload)?,
+        ))),
+        _ => Ok(Incoming::Raw(body)),
+    }
+}
+
 /// A connection in the play phase with its world and local player.
 pub struct PlaySession {
     writer: TcpStream,
     compression_threshold: Option<usize>,
-    incoming: Receiver<Result<Vec<u8>, ConnectionError>>,
+    incoming: Receiver<Result<Incoming, ConnectionError>>,
     trace: PlayConnectionTrace,
     player_id: Option<i32>,
     game_mode: ClientPlayerGameMode,
@@ -109,7 +132,7 @@ impl PlaySession {
         let (sender, incoming) = mpsc::channel();
         std::thread::spawn(move || {
             loop {
-                let packet = read_packet(&mut reader, compression_threshold);
+                let packet = read_packet(&mut reader, compression_threshold).and_then(classify);
                 let failed = packet.is_err();
                 if sender.send(packet).is_err() || failed {
                     return;
@@ -350,7 +373,7 @@ impl PlaySession {
     pub fn drain(&mut self) -> Result<(), ConnectionError> {
         loop {
             match self.incoming.try_recv() {
-                Ok(packet) => self.handle(&packet?)?,
+                Ok(packet) => self.handle_incoming(packet?)?,
                 Err(TryRecvError::Empty) => return Ok(()),
                 Err(TryRecvError::Disconnected) => return Err(ConnectionError::ServerDisconnected),
             }
@@ -360,7 +383,7 @@ impl PlaySession {
     /// Wait up to `limit` for the next packet and handle it.
     pub fn wait(&mut self, limit: Duration) -> Result<(), ConnectionError> {
         match self.incoming.recv_timeout(limit) {
-            Ok(packet) => self.handle(&packet?),
+            Ok(packet) => self.handle_incoming(packet?),
             Err(mpsc::RecvTimeoutError::Timeout) => Ok(()),
             Err(mpsc::RecvTimeoutError::Disconnected) => Err(ConnectionError::ServerDisconnected),
         }
@@ -647,6 +670,76 @@ impl PlaySession {
         })
     }
 
+    /// A packet from the reader thread: the heavy ones arrive parsed.
+    fn handle_incoming(&mut self, packet: Incoming) -> Result<(), ConnectionError> {
+        match packet {
+            Incoming::Raw(body) => self.handle(&body),
+            Incoming::Chunk(chunk) => {
+                self.apply_chunk(&chunk);
+                Ok(())
+            }
+            Incoming::Light(update) => {
+                self.apply_light_update(&update);
+                Ok(())
+            }
+        }
+    }
+
+    /// `handleLevelChunkWithLight`: the chunk, then its light.
+    fn apply_chunk(&mut self, chunk: &ChunkPacketObservation) {
+        self.mark_columns_around(chunk.x, chunk.z);
+        self.trace.world.replace_chunk(
+            chunk.x,
+            chunk.z,
+            chunk
+                .section_observations
+                .iter()
+                .map(|section| SectionInput {
+                    non_empty_block_count: section.non_empty_block_count,
+                    fluid_count: section.fluid_count,
+                    block_states: &section.block_state_values,
+                    biomes: &section.biome_values,
+                }),
+        );
+        self.trace.world.apply_chunk_light(
+            chunk.x,
+            chunk.z,
+            LightUpdateInput {
+                sky: LightLayerInput {
+                    mask: &chunk.light_data.sky_mask,
+                    empty_mask: &chunk.light_data.empty_sky_mask,
+                    updates: &chunk.light_data.sky_updates,
+                },
+                block: LightLayerInput {
+                    mask: &chunk.light_data.block_mask,
+                    empty_mask: &chunk.light_data.empty_block_mask,
+                    updates: &chunk.light_data.block_updates,
+                },
+            },
+        );
+    }
+
+    /// `handleLightUpdatePacket`: `readSectionList` redraws the sections
+    /// whose light arrived when the queued task runs.
+    fn apply_light_update(&mut self, update: &LightUpdateObservation) {
+        self.trace.world.apply_light_updates(
+            update.x,
+            update.z,
+            LightUpdateInput {
+                sky: LightLayerInput {
+                    mask: &update.light_data.sky_mask,
+                    empty_mask: &update.light_data.empty_sky_mask,
+                    updates: &update.light_data.sky_updates,
+                },
+                block: LightLayerInput {
+                    mask: &update.light_data.block_mask,
+                    empty_mask: &update.light_data.empty_block_mask,
+                    updates: &update.light_data.block_updates,
+                },
+            },
+        );
+    }
+
     #[expect(
         clippy::too_many_lines,
         reason = "one arm per packet the play state reads"
@@ -713,58 +806,10 @@ impl PlaySession {
                 self.health_received = false;
             }
             PLAY_CLIENTBOUND_CHUNK_PACKET_ID => {
-                let chunk = parse_chunk_packet(payload)?;
-                self.mark_columns_around(chunk.x, chunk.z);
-                self.trace.world.replace_chunk(
-                    chunk.x,
-                    chunk.z,
-                    chunk
-                        .section_observations
-                        .iter()
-                        .map(|section| SectionInput {
-                            non_empty_block_count: section.non_empty_block_count,
-                            fluid_count: section.fluid_count,
-                            block_states: &section.block_state_values,
-                            biomes: &section.biome_values,
-                        }),
-                );
-                self.trace.world.apply_chunk_light(
-                    chunk.x,
-                    chunk.z,
-                    LightUpdateInput {
-                        sky: LightLayerInput {
-                            mask: &chunk.light_data.sky_mask,
-                            empty_mask: &chunk.light_data.empty_sky_mask,
-                            updates: &chunk.light_data.sky_updates,
-                        },
-                        block: LightLayerInput {
-                            mask: &chunk.light_data.block_mask,
-                            empty_mask: &chunk.light_data.empty_block_mask,
-                            updates: &chunk.light_data.block_updates,
-                        },
-                    },
-                );
+                self.apply_chunk(&parse_chunk_packet(payload)?);
             }
             PLAY_CLIENTBOUND_LIGHT_UPDATE_PACKET_ID => {
-                let update = parse_light_update_packet(payload)?;
-                // `readSectionList` redraws the sections whose light arrived
-                // when the queued task runs.
-                self.trace.world.apply_light_updates(
-                    update.x,
-                    update.z,
-                    LightUpdateInput {
-                        sky: LightLayerInput {
-                            mask: &update.light_data.sky_mask,
-                            empty_mask: &update.light_data.empty_sky_mask,
-                            updates: &update.light_data.sky_updates,
-                        },
-                        block: LightLayerInput {
-                            mask: &update.light_data.block_mask,
-                            empty_mask: &update.light_data.empty_block_mask,
-                            updates: &update.light_data.block_updates,
-                        },
-                    },
-                );
+                self.apply_light_update(&parse_light_update_packet(payload)?);
             }
             PLAY_CLIENTBOUND_FORGET_LEVEL_CHUNK_PACKET_ID => {
                 let (x, z) = parse_forget_level_chunk_packet(payload)?;
