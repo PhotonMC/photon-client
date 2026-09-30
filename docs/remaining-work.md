@@ -62,7 +62,9 @@ bağımsız yürüyebilir.
 
 - **S** `ContainerSetData` (fırın ilerlemesi, büyü seviyeleri, işaret ışığı),
   `ContainerClose` çift yönlü kapanış, `ContainerSlotStateChanged`.
-- **M** Genel `AbstractContainerMenu`: yuva düzeni ve kural sınıfı başına
+- [x] **M** Genel `AbstractContainerMenu` ve sandık/fıçı/ender sandığı/dağıtıcı/
+  hopper/shulker kutusu ekranları ([kayıt](generic-container-conformance.md)).
+- **M** (eski notu, yalnız kalan menüler) Genel `AbstractContainerMenu`: yuva düzeni ve kural sınıfı başına
   `mayPlace/mayPickup/quickMoveStack` (sandık, dispenser/dropper, hopper,
   shulker kutusu, at/eşek envanteri, ender sandığı, fıçı).
 - **M** Kap ekranları: `ContainerScreen` (sandık ailesi), `DispenserScreen`,

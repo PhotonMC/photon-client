@@ -318,6 +318,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P16.i — Yüz UV döndürmesi — client-parity birleşik kayıt](face-uv-rotation-conformance.md)
 - [P06.a — VarInt21 frame sınırı sözleşmesi — client-parity birleşik kayıt](frame-conformance.md)
 - [P06–P08 — İlk gerçek oyun oturumu sözleşmesi — server-conformance birleşik kayıt](game-connection-conformance.md)
+- [Sunucunun açtığı genel kaplar (sandık, fıçı, ender sandığı, dağıtıcı, hopper, shulker kutusu)](generic-container-conformance.md)
 - [P06.b — Handshake intention codec sözleşmesi — client-parity birleşik kayıt](handshake-intention-conformance.md)
 - [HUD](hud-conformance.md)
 - [P05.b — InputWithModifiers ve event kayıtları sözleşmesi — client-parity birleşik kayıt](input-events-conformance.md)
