@@ -156,7 +156,7 @@ impl CreativeScreen {
     pub fn new(width: i32, height: i32, tab: usize, assets: CreativeAssets) -> Self {
         Self {
             layout: ContainerLayout::new(width, height, IMAGE),
-            menu: CreativeMenu::new(tab),
+            menu: CreativeMenu::new(tab, assets.trees.registries().clone()),
             hovered: None,
             mouse: ContainerMouse::default(),
             scrolling: false,
@@ -367,7 +367,7 @@ impl CreativeScreen {
             entry.column + 1
         );
         draw.frame.sprite(draw.atlas, &sprite, x, y, 26, 32);
-        let icon = table_stack(entry.icon);
+        let icon = table_stack(&entry.icon, self.assets.trees.registries());
         draw.frame.item(
             draw.item,
             &icon,
@@ -433,7 +433,9 @@ impl CreativeScreen {
             if !lines.is_empty() && !(kind == TabKind::Category && creative_slot) {
                 let mut at = 1;
                 for tab in shown_tabs() {
-                    if CREATIVE_TABS[tab].kind != TabKind::Search && tab_contains(tab, &stack) {
+                    if CREATIVE_TABS[tab].kind != TabKind::Search
+                        && tab_contains(tab, &stack, self.assets.trees.registries())
+                    {
                         lines.insert(
                             at,
                             vec![Run {

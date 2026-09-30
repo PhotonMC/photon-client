@@ -483,6 +483,7 @@ mod tests {
 
     #[test]
     fn a_tipped_arrows_colour_is_its_potions() {
+        let registries = crate::registries::for_tests();
         let creative = crate::creative_menu::shown_tabs()
             .into_iter()
             .flat_map(|tab| {
@@ -490,7 +491,7 @@ mod tests {
                     .items
                     .iter()
             })
-            .map(|&index| crate::creative_menu::table_stack(index))
+            .map(|entry| crate::creative_menu::table_stack(entry, &registries))
             .filter(|stack| stack.item_registry_id() == item("minecraft:tipped_arrow"))
             .collect::<Vec<_>>();
         assert!(creative.len() > 10);

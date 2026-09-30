@@ -92,7 +92,7 @@ olarak tutulmaz.
 - [x] Büyü, tablo, enstrüman, müzik diski, zırh süsü ve bayrak deseni
   kayıtları `data/` JSON'undan ve sunucunun kayıt verisinden; `tooltip.rs`
   kalkar.
-- [ ] Yaratıcı sekmeleri Java'daki gibi kodla kurulur; kayıt güdümlü
+- [x] Yaratıcı sekmeleri bildirim olarak: her yığın eşya adı ve bileşenleri (`CreativeStack::of(..).with(..)`); kayıt güdümlü
   parçalar (büyülü kitaplar, iksirler, tablolar, keçi boruları) oturumun
   kayıtlarından üretilir.
 - [x] Etkiler ve iksirler okunur tanımlar.

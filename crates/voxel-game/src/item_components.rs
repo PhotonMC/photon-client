@@ -740,14 +740,18 @@ mod tests {
 
     #[test]
     fn every_creative_stack_reads_whole() {
-        for stack in voxel_data::item::creative_tabs::CREATIVE_STACKS.iter() {
-            let mut input = stack.patch;
-            let patch = read_patch(&mut input).expect("the reference's own patch reads");
-            assert!(input.is_empty());
-            let ids: Vec<i32> = patch.added.iter().map(|(id, _)| *id).collect();
-            assert_eq!(ids, stack.positive);
-            assert_eq!(patch.removed, stack.negative);
-            assert_eq!(patch.trusted(), stack.patch);
+        let registries = crate::registries::for_tests();
+        for tab in voxel_data::item::creative_tabs::CREATIVE_TABS.iter() {
+            for entry in tab.items {
+                let stack = crate::creative_menu::table_stack(entry, &registries);
+                let mut input = stack.patch_bytes();
+                let patch = read_patch(&mut input).expect("a patch this port wrote reads");
+                assert!(input.is_empty());
+                let ids: Vec<i32> = patch.added.iter().map(|(id, _)| *id).collect();
+                assert_eq!(ids, stack.positive_component_type_ids());
+                assert!(patch.removed.is_empty());
+                assert_eq!(patch.trusted(), stack.patch_bytes());
+            }
         }
     }
 

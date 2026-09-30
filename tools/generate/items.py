@@ -15,16 +15,14 @@ Nothing the game computes from these is written; see `definition.rs`.
 """
 import json
 
-from common import amount, f32, header, load_case, run, rust_str, write
+from common import f32, header, load_case, run, rust_str, write
+from components import convert
 
 METHODS = ["useOn", "use", "overrideStackedOnOther", "overrideOtherStackedOnMe"]
 
-RARITIES = {"uncommon": "Uncommon", "rare": "Rare", "epic": "Epic"}
-OPERATIONS = {"add_value": "AddValue", "add_multiplied_base": "AddMultipliedBase",
-              "add_multiplied_total": "AddMultipliedTotal"}
-SLOTS = {"any": "Any", "mainhand": "MainHand", "offhand": "OffHand", "hand": "Hand", "feet": "Feet",
-         "legs": "Legs", "chest": "Chest", "head": "Head", "armor": "Armor", "body": "Body",
-         "saddle": "Saddle"}
+
+def method_name(method):
+    return method[0].upper() + method[1:]
 
 
 def description_key(item):
@@ -33,64 +31,14 @@ def description_key(item):
     return f"{'block' if item.get('block') else 'item'}.{namespace}.{path}"
 
 
-def float_literal(value):
-    import struct
-    bits = f"{struct.unpack('>I', struct.pack('>f', value))[0]:08x}"
-    return f32(bits)
-
-
 def component_calls(item):
     """The `Component` values an item declares, from the capture's JSON."""
     out = []
     for name, value in item["components"].items():
-        kind = name.split(":")[1]
-        if kind == "item_name":
-            if value != {"translate": description_key(item)}:
-                out.append(f"Component::ItemName({rust_str(value['translate'])})")
-        elif kind == "rarity":
-            out.append(f"Component::Rarity(Rarity::{RARITIES[value]})")
-        elif kind == "attribute_modifiers":
-            entries = []
-            for entry in value:
-                display = entry.get("display")
-                if display not in (None, {"type": "hidden"}):
-                    raise SystemExit(f"{item['name']}: attribute display {display}")
-                entries.append(
-                    f"AttributeModifier {{ attribute: {rust_str(entry['type'])}, id: {rust_str(entry['id'])}, "
-                    f"amount: {amount(entry['amount'])}, operation: Operation::{OPERATIONS[entry['operation']]}, "
-                    f"slot: SlotGroup::{SLOTS[entry['slot']]}, display: AttributeDisplay::"
-                    f"{'Default' if display is None else 'Hidden'} }}")
-            out.append("Component::AttributeModifiers(&[" + ", ".join(entries) + "])")
-        elif kind == "enchantment_glint_override":
-            out.append(f"Component::EnchantmentGlintOverride({str(value).lower()})")
-        elif kind == "map_color":
-            out.append(f"Component::MapColor(0x{value:06X})")
-        elif kind == "potion_contents":
-            if value != {}:
-                raise SystemExit(f"{item['name']}: potion contents {value}")
-            out.append("Component::PotionContentsEmpty")
-        elif kind == "potion_duration_scale":
-            out.append(f"Component::PotionDurationScale({float_literal(value)})")
-        elif kind == "fireworks":
-            if set(value) != {"flight_duration"}:
-                raise SystemExit(f"{item['name']}: fireworks {value}")
-            out.append(f"Component::Fireworks {{ flight_duration: {value['flight_duration']} }}")
-        elif kind == "instrument":
-            out.append(f"Component::Instrument({rust_str(value)})")
-        elif kind == "jukebox_playable":
-            out.append(f"Component::JukeboxPlayable({rust_str(value)})")
-        elif kind == "block_state":
-            pairs = ", ".join(f"({rust_str(k)}, {rust_str(v)})" for k, v in value.items())
-            out.append(f"Component::BlockState(&[{pairs}])")
-        elif kind == "ominous_bottle_amplifier":
-            out.append(f"Component::OminousBottleAmplifier({value})")
-        else:
-            raise SystemExit(f"{item['name']}: component {name} is not modelled")
+        if name == "minecraft:item_name" and value == {"translate": description_key(item)}:
+            continue
+        out.append(convert(item["name"], name, value))
     return out
-
-
-def method_name(method):
-    return method[0].upper() + method[1:]
 
 
 def classes_file(classes):

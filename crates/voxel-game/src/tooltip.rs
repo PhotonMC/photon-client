@@ -740,10 +740,8 @@ pub fn search_lines(stack: &Stack, lang: &Lang, registries: &Registries) -> Vec<
 mod tests {
     use super::*;
 
-    /// The vanilla data pack next to the assets, when there is one.
     fn registries() -> Registries {
-        let assets = std::path::PathBuf::from(std::env::var("VOXEL_ASSETS").unwrap_or_default());
-        Registries::vanilla(&assets.with_file_name("data"))
+        crate::registries::for_tests()
     }
 
     fn lang() -> Lang {
@@ -788,8 +786,8 @@ mod tests {
         }
         let registries = registries();
         for tab in crate::creative_menu::shown_tabs() {
-            for &index in voxel_data::item::creative_tabs::CREATIVE_TABS[tab].items {
-                let stack = crate::creative_menu::table_stack(index);
+            for entry in voxel_data::item::creative_tabs::CREATIVE_TABS[tab].items {
+                let stack = crate::creative_menu::table_stack(entry, &registries);
                 let text = search_lines(&stack, &lang, &registries);
                 assert!(!text.is_empty(), "{}", item_name_of(&stack));
             }

@@ -9,6 +9,7 @@ use voxel_data::item::component::{
 };
 use voxel_data::item::component_types as ids;
 use voxel_data::item::definition::Item;
+use voxel_data::item::potions::POTIONS;
 
 use crate::item_components::Patch;
 use crate::registries::Registries;
@@ -90,6 +91,29 @@ fn attribute_modifier(modifier: &AttributeModifier, out: &mut Vec<u8>) {
     );
 }
 
+/// `DyeColor.getId`.
+fn dye_id(name: &str) -> Option<i32> {
+    const DYES: [&str; 16] = [
+        "white",
+        "orange",
+        "magenta",
+        "light_blue",
+        "yellow",
+        "lime",
+        "pink",
+        "gray",
+        "light_gray",
+        "cyan",
+        "purple",
+        "blue",
+        "brown",
+        "green",
+        "red",
+        "black",
+    ];
+    DYES.iter().position(|dye| *dye == name).map(|id| id as i32)
+}
+
 /// A holder of a registry entry as the network writes it: the entry's place
 /// plus one, since zero says the entry follows written out.
 fn holder(names: impl Iterator<Item = String>, wanted: &str, out: &mut Vec<u8>) -> Option<()> {
@@ -100,6 +124,7 @@ fn holder(names: impl Iterator<Item = String>, wanted: &str, out: &mut Vec<u8>) 
 
 /// A component's type id and value bytes; `None` when the value names an
 /// entry of a registry that is not known.
+#[expect(clippy::too_many_lines, reason = "one arm per component kind")]
 pub fn encode(component: &Component, registries: Option<&Registries>) -> Option<(i32, Vec<u8>)> {
     let mut out = Vec::new();
     let id = match component {
@@ -126,9 +151,17 @@ pub fn encode(component: &Component, registries: Option<&Registries>) -> Option<
             out.extend_from_slice(&color.to_be_bytes());
             ids::MAP_COLOR
         }
-        Component::PotionContentsEmpty => {
-            // No potion, no colour, no effects, no name.
-            out.extend_from_slice(&[0, 0, 0, 0]);
+        Component::PotionContents(potion) => {
+            match potion {
+                Some(name) => {
+                    let id = POTIONS.iter().position(|potion| potion.name == *name)?;
+                    out.push(1);
+                    write_varint(id as i32, &mut out);
+                }
+                None => out.push(0),
+            }
+            // No colour, no effects, no name.
+            out.extend_from_slice(&[0, 0, 0]);
             ids::POTION_CONTENTS
         }
         Component::PotionDurationScale(scale) => {
@@ -175,6 +208,64 @@ pub fn encode(component: &Component, registries: Option<&Registries>) -> Option<
         Component::OminousBottleAmplifier(amplifier) => {
             write_varint(*amplifier, &mut out);
             ids::OMINOUS_BOTTLE_AMPLIFIER
+        }
+        Component::StoredEnchantments(enchantments) => {
+            let registries = registries?;
+            write_varint(enchantments.len() as i32, &mut out);
+            for (name, level) in *enchantments {
+                let id = registries
+                    .enchantments
+                    .iter()
+                    .position(|entry| entry.name == *name)?;
+                write_varint(id as i32, &mut out);
+                write_varint(*level, &mut out);
+            }
+            ids::STORED_ENCHANTMENTS
+        }
+        Component::PaintingVariant(name) => {
+            let registries = registries?;
+            holder(
+                registries
+                    .painting_variants
+                    .iter()
+                    .map(|entry| entry.name.clone()),
+                name,
+                &mut out,
+            )?;
+            ids::PAINTING_VARIANT
+        }
+        Component::SuspiciousStewEffects(effects) => {
+            write_varint(effects.len() as i32, &mut out);
+            for (name, duration) in *effects {
+                write_varint(voxel_data::item::effect::effect_id(name)?, &mut out);
+                write_varint(*duration, &mut out);
+            }
+            ids::SUSPICIOUS_STEW_EFFECTS
+        }
+        Component::BannerPatterns(layers) => {
+            let registries = registries?;
+            write_varint(layers.len() as i32, &mut out);
+            for (pattern, dye) in *layers {
+                holder(
+                    registries
+                        .banner_patterns
+                        .iter()
+                        .map(|entry| entry.name.clone()),
+                    pattern,
+                    &mut out,
+                )?;
+                write_varint(dye_id(dye)?, &mut out);
+            }
+            ids::BANNER_PATTERNS
+        }
+        Component::TooltipDisplay(hidden) => {
+            // The tooltip is shown; only these components are left out.
+            out.push(0);
+            write_varint(hidden.len() as i32, &mut out);
+            for name in *hidden {
+                write_varint(ids::id(name)?, &mut out);
+            }
+            ids::TOOLTIP_DISPLAY
         }
     };
     Some((id, out))

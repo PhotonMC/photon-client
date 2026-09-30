@@ -12,7 +12,8 @@
 //! the placeholders), tooltips, and armour locked by enchantments.
 
 use crate::inventory_menu::{ClickType, InventoryMenu, Player, max_stack_size, settle};
-use voxel_data::item::creative_tabs::{CREATIVE_STACKS, CREATIVE_TABS, DEFAULT_TAB, TabKind};
+use crate::registries::Registries;
+use voxel_data::item::creative_tabs::{CREATIVE_TABS, CreativeStack, DEFAULT_TAB, TabKind};
 use voxel_world::ClientItemStackState as Stack;
 
 /// The rows the window shows and the columns of a row.
@@ -64,16 +65,30 @@ pub enum Effect {
     Drop(Stack),
 }
 
-/// The stack of an entry in the table: one item with its patch.
-pub fn table_stack(index: u16) -> Stack {
-    let entry = &CREATIVE_STACKS[usize::from(index)];
-    Stack::from_wire(
-        1,
-        entry.item,
-        entry.positive.to_vec(),
-        entry.negative.to_vec(),
-    )
-    .with_patch_bytes(entry.patch.to_vec())
+/// The stack a tab declares: the item and the components it carries, as the
+/// network carries them. A component naming an entry the registries do not
+/// hold is left out.
+pub fn table_stack(entry: &CreativeStack, registries: &Registries) -> Stack {
+    let item = voxel_data::item::registry::index(entry.item).map_or(0, |index| index as i32);
+    let added: Vec<(i32, Vec<u8>)> = entry
+        .components
+        .iter()
+        .filter_map(|component| crate::default_components::encode(component, Some(registries)))
+        .collect();
+    let positive = added.iter().map(|(id, _)| *id).collect();
+    let patch = crate::item_components::Patch {
+        added,
+        removed: Vec::new(),
+    };
+    Stack::from_wire(1, item, positive, Vec::new()).with_patch_bytes(patch.trusted())
+}
+
+/// The search tab, which lists every stack the other tabs do.
+fn search_tab() -> &'static voxel_data::item::creative::CreativeTab {
+    CREATIVE_TABS
+        .iter()
+        .find(|tab| tab.kind == TabKind::Search)
+        .expect("there is a search tab")
 }
 
 /// The tabs that are shown, in the reference's order: `CreativeModeTabs.tabs`.
@@ -87,44 +102,44 @@ pub fn shown_tabs() -> Vec<usize> {
 /// its tooltip, lowercased, and its id. `SessionSearchTrees` builds it from
 /// the search tab's display items.
 pub struct SearchIndex {
-    /// The items, as indices into the table's stacks.
-    items: Vec<u16>,
+    /// The search tab's stacks, by place.
+    count: usize,
     lines: Vec<Vec<String>>,
     /// Each item's namespace and path, lowercased.
     ids: Vec<(String, String)>,
 }
 
 impl SearchIndex {
-    pub fn build(lang: &crate::text::Lang, registries: &crate::registries::Registries) -> Self {
-        let tab = CREATIVE_TABS
-            .iter()
-            .find(|tab| tab.kind == TabKind::Search)
-            .expect("there is a search tab");
-        let items: Vec<u16> = tab.items.to_vec();
+    pub fn build(lang: &crate::text::Lang, registries: &Registries) -> Self {
+        let items = search_tab().items;
         let mut lines = Vec::with_capacity(items.len());
         let mut ids = Vec::with_capacity(items.len());
-        for &index in &items {
-            let stack = table_stack(index);
+        for entry in items {
+            let stack = table_stack(entry, registries);
             lines.push(
                 crate::tooltip::search_lines(&stack, lang, registries)
                     .into_iter()
                     .map(|line| line.to_lowercase())
                     .collect(),
             );
-            let name = voxel_data::item::registry::ITEMS[stack.item_registry_id() as usize].name;
+            let name = entry.item;
             let (namespace, path) = name.split_once(':').unwrap_or(("minecraft", name));
             ids.push((namespace.to_lowercase(), path.to_lowercase()));
         }
-        Self { items, lines, ids }
+        Self {
+            count: items.len(),
+            lines,
+            ids,
+        }
     }
 
-    /// `SearchTree.search`: the items a query finds, in the search tab's
-    /// order. A query with a colon names a namespace and a path; anything
-    /// else is read as text of the tooltip.
+    /// `SearchTree.search`: the places in the search tab of the stacks a
+    /// query finds, in its order. A query with a colon names a namespace and
+    /// a path; anything else is read as text of the tooltip.
     pub fn search(&self, text: &str) -> Vec<u16> {
         let by_line =
             |needle: &str, at: usize| self.lines[at].iter().any(|line| line.contains(needle));
-        (0..self.items.len())
+        (0..self.count)
             .filter(|&at| match text.split_once(':') {
                 None => by_line(text, at),
                 Some((namespace, path)) => {
@@ -133,7 +148,7 @@ impl SearchIndex {
                         && (self.ids[at].1.contains(path) || by_line(path, at))
                 }
             })
-            .map(|at| self.items[at])
+            .map(|at| at as u16)
             .collect()
     }
 }
@@ -142,7 +157,7 @@ impl SearchIndex {
 /// search asks, which takes a few milliseconds.
 pub struct SearchTrees {
     lang: std::sync::Arc<crate::text::Lang>,
-    registries: std::sync::Arc<crate::registries::Registries>,
+    registries: std::sync::Arc<Registries>,
     index: std::sync::OnceLock<SearchIndex>,
 }
 
@@ -155,13 +170,18 @@ impl std::fmt::Debug for SearchTrees {
 impl SearchTrees {
     pub fn new(
         lang: std::sync::Arc<crate::text::Lang>,
-        registries: std::sync::Arc<crate::registries::Registries>,
+        registries: std::sync::Arc<Registries>,
     ) -> Self {
         Self {
             lang,
             registries,
             index: std::sync::OnceLock::new(),
         }
+    }
+
+    /// The registries the trees were built with.
+    pub fn registries(&self) -> &std::sync::Arc<Registries> {
+        &self.registries
     }
 
     pub fn index(&self) -> &SearchIndex {
@@ -172,9 +192,9 @@ impl SearchTrees {
 
 /// `CreativeModeTab.contains`: whether a stack is one the tab gives the
 /// search tab, by item and component patch.
-pub fn tab_contains(tab: usize, stack: &Stack) -> bool {
+pub fn tab_contains(tab: usize, stack: &Stack, registries: &Registries) -> bool {
     let entry = &CREATIVE_TABS[tab];
-    let indices = if entry.search_items.is_empty() {
+    let candidates = if entry.search_items.is_empty() {
         entry.items
     } else {
         entry.search_items
@@ -185,9 +205,10 @@ pub fn tab_contains(tab: usize, stack: &Stack) -> bool {
     } else {
         stack.patch_bytes()
     };
-    indices.iter().any(|&index| {
-        let candidate = &CREATIVE_STACKS[usize::from(index)];
-        candidate.item == stack.item_registry_id() && candidate.patch == patch
+    let item = usize::try_from(stack.item_registry_id()).ok();
+    candidates.iter().any(|candidate| {
+        voxel_data::item::registry::index(candidate.item) == item
+            && table_stack(candidate, registries).patch_bytes() == patch
     })
 }
 
@@ -212,17 +233,20 @@ pub struct CreativeMenu {
     /// It keeps a drag in progress between clicks.
     picker: InventoryMenu,
     scroll: f32,
+    /// The registries the tabs' stacks are written with.
+    registries: std::sync::Arc<Registries>,
 }
 
 impl CreativeMenu {
     /// A menu on a tab.
-    pub fn new(tab: usize) -> Self {
+    pub fn new(tab: usize, registries: std::sync::Arc<Registries>) -> Self {
         let mut menu = Self {
             tab,
             items: Vec::new(),
             window: vec![None; WINDOW],
             picker: InventoryMenu::default(),
             scroll: 0.0,
+            registries,
         };
         menu.select_tab(tab);
         menu
@@ -268,9 +292,9 @@ impl CreativeMenu {
                 }
             }
             TabKind::Category | TabKind::Search => {
-                for &index in CREATIVE_TABS[tab].items {
+                for entry in CREATIVE_TABS[tab].items {
                     self.items.push(Some(Shown {
-                        stack: table_stack(index),
+                        stack: table_stack(entry, &self.registries),
                         locked: false,
                     }));
                 }
@@ -316,14 +340,15 @@ impl CreativeMenu {
         }
     }
 
-    /// The stacks of the table shown in place of the tab's own, as a search
-    /// finds them, scrolled to the top.
-    pub fn show_items(&mut self, indices: &[u16]) {
-        self.items = indices
+    /// The search tab's stacks, by place, shown in place of the tab's own, as
+    /// a search finds them, scrolled to the top.
+    pub fn show_items(&mut self, places: &[u16]) {
+        let items = search_tab().items;
+        self.items = places
             .iter()
-            .map(|&index| {
+            .map(|&place| {
                 Some(Shown {
-                    stack: table_stack(index),
+                    stack: table_stack(&items[usize::from(place)], &self.registries),
                     locked: false,
                 })
             })
@@ -648,7 +673,7 @@ mod tests {
             .iter()
             .position(|tab| tab.kind == kind)
             .expect("a tab of the kind");
-        CreativeMenu::new(tab)
+        CreativeMenu::new(tab, std::sync::Arc::new(crate::registries::for_tests()))
     }
 
     fn click(
@@ -676,7 +701,10 @@ mod tests {
 
     #[test]
     fn the_default_tab_lists_its_items() {
-        let creative = CreativeMenu::new(default_tab());
+        let creative = CreativeMenu::new(
+            default_tab(),
+            std::sync::Arc::new(crate::registries::for_tests()),
+        );
         assert_eq!(creative.kind(), TabKind::Category);
         assert!(creative.window_stack(0).is_some());
         assert!(creative.can_scroll());
@@ -685,7 +713,10 @@ mod tests {
 
     #[test]
     fn scrolling_moves_the_window_by_rows() {
-        let mut creative = CreativeMenu::new(default_tab());
+        let mut creative = CreativeMenu::new(
+            default_tab(),
+            std::sync::Arc::new(crate::registries::for_tests()),
+        );
         let first = creative.window_stack(0).map(Stack::item_registry_id);
         creative.set_scroll(1.0);
         assert_ne!(creative.window_stack(0).map(Stack::item_registry_id), first);
@@ -696,7 +727,10 @@ mod tests {
 
     #[test]
     fn a_click_on_the_window_takes_a_stack_and_clicks_grow_it() {
-        let mut creative = CreativeMenu::new(default_tab());
+        let mut creative = CreativeMenu::new(
+            default_tab(),
+            std::sync::Arc::new(crate::registries::for_tests()),
+        );
         let mut menu = InventoryMenu::default();
         let item = creative.window_stack(0).cloned().expect("a stack");
         click(
@@ -739,7 +773,10 @@ mod tests {
 
     #[test]
     fn placing_in_the_hotbar_sends_the_slot() {
-        let mut creative = CreativeMenu::new(default_tab());
+        let mut creative = CreativeMenu::new(
+            default_tab(),
+            std::sync::Arc::new(crate::registries::for_tests()),
+        );
         let mut menu = InventoryMenu::default();
         click(
             &mut creative,
@@ -762,7 +799,10 @@ mod tests {
 
     #[test]
     fn a_hotbar_key_over_the_window_fills_the_slot_with_a_full_stack() {
-        let mut creative = CreativeMenu::new(default_tab());
+        let mut creative = CreativeMenu::new(
+            default_tab(),
+            std::sync::Arc::new(crate::registries::for_tests()),
+        );
         let mut menu = InventoryMenu::default();
         let effects = click(
             &mut creative,
@@ -778,7 +818,10 @@ mod tests {
 
     #[test]
     fn a_click_outside_throws_the_carried_stack_away() {
-        let mut creative = CreativeMenu::new(default_tab());
+        let mut creative = CreativeMenu::new(
+            default_tab(),
+            std::sync::Arc::new(crate::registries::for_tests()),
+        );
         let mut menu = InventoryMenu::default();
         menu.carried = Some(Stack::new(5, 1));
         let effects = click(&mut creative, &mut menu, None, 0, ClickType::Pickup);
@@ -812,7 +855,7 @@ mod tests {
     fn index() -> Option<SearchIndex> {
         let assets = std::path::PathBuf::from(std::env::var("VOXEL_ASSETS").unwrap_or_default());
         let lang = crate::text::Lang::load(&assets);
-        let registries = crate::registries::Registries::vanilla(&assets.with_file_name("data"));
+        let registries = crate::registries::for_tests();
         lang.get("item.minecraft.stone")
             .is_some()
             .then(|| SearchIndex::build(&lang, &registries))
@@ -821,10 +864,7 @@ mod tests {
     fn names(found: &[u16]) -> Vec<&'static str> {
         found
             .iter()
-            .map(|&index| {
-                voxel_data::item::registry::ITEMS[table_stack(index).item_registry_id() as usize]
-                    .name
-            })
+            .map(|&place| search_tab().items[usize::from(place)].item)
             .collect()
     }
 

@@ -1021,6 +1021,18 @@ public final class BlockOracle {
         }
         described.add("positive", positive);
         described.add("negative", negative);
+        // What the patch adds, by component name, as the codec writes it.
+        var ops = net.minecraft.resources.RegistryOps.create(com.mojang.serialization.JsonOps.INSTANCE, registries);
+        var added = new JsonObject();
+        for (var component : stack.getComponentsPatch().entrySet()) {
+            if (component.getValue().isPresent()) {
+                var typed = net.minecraft.core.component.TypedDataComponent.createUnchecked(
+                    component.getKey(), component.getValue().get());
+                added.add(types.getKey(component.getKey()).toString(),
+                    typed.encodeValue(ops).result().orElse(com.google.gson.JsonNull.INSTANCE));
+            }
+        }
+        described.add("components", sortedObject(added));
         return described;
     }
 

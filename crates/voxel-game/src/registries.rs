@@ -185,3 +185,11 @@ impl Registries {
         })
     }
 }
+
+/// The vanilla registries the tests read tooltips and creative stacks with:
+/// the data pack next to the assets `VOXEL_ASSETS` names, or empty ones.
+#[cfg(test)]
+pub(crate) fn for_tests() -> Registries {
+    let assets = PathBuf::from(std::env::var("VOXEL_ASSETS").unwrap_or_default());
+    Registries::vanilla(&assets.with_file_name("data"))
+}

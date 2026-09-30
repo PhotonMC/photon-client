@@ -64,8 +64,9 @@ pub enum Component {
     AttributeModifiers(&'static [AttributeModifier]),
     EnchantmentGlintOverride(bool),
     MapColor(i32),
-    /// `potion_contents` with no potion, colour, effects or name.
-    PotionContentsEmpty,
+    /// `potion_contents` with a potion (by registry name) or none, and no
+    /// colour, effects or name.
+    PotionContents(Option<&'static str>),
     PotionDurationScale(f32),
     Fireworks {
         flight_duration: i32,
@@ -76,4 +77,14 @@ pub enum Component {
     JukeboxPlayable(&'static str),
     BlockState(&'static [(&'static str, &'static str)]),
     OminousBottleAmplifier(i32),
+    /// Enchantments by registry name and level.
+    StoredEnchantments(&'static [(&'static str, i32)]),
+    /// A painting variant, by registry name.
+    PaintingVariant(&'static str),
+    /// Mob effects by registry name, each with its duration in ticks.
+    SuspiciousStewEffects(&'static [(&'static str, i32)]),
+    /// Banner layers: a pattern by registry name and a dye colour by name.
+    BannerPatterns(&'static [(&'static str, &'static str)]),
+    /// A tooltip that hides none but the named components.
+    TooltipDisplay(&'static [&'static str]),
 }
