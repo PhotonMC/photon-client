@@ -114,6 +114,25 @@ impl Controls {
         Ok(())
     }
 
+    /// The request the chat box's last edit asked for is sent, and an
+    /// answer that came is handed to it.
+    fn send_suggestion_request(&mut self, session: &mut PlaySession) -> Result {
+        let Some(chat) = self.chat.as_mut() else {
+            return Ok(());
+        };
+        if let Some((id, text)) = chat.take_request() {
+            session.request_suggestions(id, &text)?;
+        }
+        Ok(())
+    }
+
+    /// An answer to a suggestion request reaches the open chat box.
+    pub fn receive_suggestions(&mut self, session: &mut PlaySession) {
+        if let (Some(chat), Some(answer)) = (self.chat.as_mut(), session.take_suggestions()) {
+            chat.suggested(answer.id, answer.start, answer.length, answer.matches);
+        }
+    }
+
     /// An event for the open chat box.
     fn chat_event(
         &mut self,
@@ -145,8 +164,12 @@ impl Controls {
                     ChatKey::Scroll(lines) => self.chat_log.scroll_by(lines),
                     ChatKey::None => {}
                 }
+                self.send_suggestion_request(session)?;
             }
-            glfw::WindowEvent::Char(character) => chat.char_typed(character),
+            glfw::WindowEvent::Char(character) => {
+                chat.char_typed(character);
+                self.send_suggestion_request(session)?;
+            }
             glfw::WindowEvent::Scroll(_, y) => {
                 self.chat_log.scroll_by((y * 7.0) as i32);
             }
@@ -267,6 +290,14 @@ impl Controls {
                 chat.char_typed(character);
             }
         }
+        self.send_suggestion_request(session)?;
+        if held.complete
+            && let Some(chat) = self.chat.as_mut()
+        {
+            let mut clipboard = WindowClipboard(surface);
+            chat.key_pressed(glfw::Key::Tab, (false, false), &mut clipboard);
+        }
+        self.send_suggestion_request(session)?;
         if held.enter
             && let Some(chat) = self.chat.as_mut()
         {

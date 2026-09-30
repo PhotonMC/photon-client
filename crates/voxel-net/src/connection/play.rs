@@ -109,6 +109,7 @@ pub struct PlaySession {
     /// Title, action bar and tab list packets not yet shown, and the players
     /// the tab list names.
     hud_events: Vec<HudEvent>,
+    suggestions: Option<CommandSuggestions>,
     player_infos: std::collections::BTreeMap<(u64, u64), PlayerInfo>,
     next_chat_index: i32,
     /// `LocalPlayer.dropSpamThrottler`: what creative drops have added up.
@@ -180,6 +181,7 @@ impl PlaySession {
             open_menu: None,
             chat_events: Vec::new(),
             hud_events: Vec::new(),
+            suggestions: None,
             player_infos: std::collections::BTreeMap::new(),
             next_chat_index: 0,
             drop_spam: 0,
@@ -611,6 +613,21 @@ impl PlaySession {
                 InfoAction::Add { .. } => {}
             }
         }
+    }
+
+    /// `ServerboundCommandSuggestionPacket`: ask for what could follow `text`.
+    pub fn request_suggestions(&mut self, id: i32, text: &str) -> Result<(), ConnectionError> {
+        self.send(PLAY_SERVERBOUND_COMMAND_SUGGESTION_PACKET_ID, |output| {
+            voxel_core::wire::write_varint(id, output);
+            let units: Vec<u16> = text.encode_utf16().collect();
+            voxel_core::utf8::write_utf8(output, &units, 32500)
+                .map_err(|_| ConnectionError::Codec("suggestion request"))
+        })
+    }
+
+    /// The answer to the last request, if one came.
+    pub fn take_suggestions(&mut self) -> Option<CommandSuggestions> {
+        self.suggestions.take()
     }
 
     /// The title, action bar and tab list packets since the last call.
@@ -1488,6 +1505,12 @@ impl PlaySession {
                 Err(error) => self.warn(format!("player chat: {error:?}")),
             },
             PLAY_CLIENTBOUND_DELETE_CHAT_PACKET_ID => {}
+            PLAY_CLIENTBOUND_COMMAND_SUGGESTIONS_PACKET_ID => {
+                match parse_command_suggestions(payload) {
+                    Ok(suggestions) => self.suggestions = Some(suggestions),
+                    Err(error) => self.warn(format!("suggestions: {error:?}")),
+                }
+            }
             PLAY_CLIENTBOUND_SET_TITLE_TEXT_PACKET_ID
             | PLAY_CLIENTBOUND_SET_SUBTITLE_TEXT_PACKET_ID
             | PLAY_CLIENTBOUND_SET_ACTION_BAR_TEXT_PACKET_ID

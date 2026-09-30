@@ -252,6 +252,7 @@ impl Play {
             self.accumulated += now - self.last_frame;
             self.last_frame = now;
             self.session.drain()?;
+            self.controls.receive_suggestions(&mut self.session);
             let hud = self.session.drain_hud();
             if !hud.is_empty() {
                 self.gui.receive_hud(hud);

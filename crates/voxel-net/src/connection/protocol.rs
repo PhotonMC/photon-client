@@ -86,6 +86,8 @@ pub(crate) const PLAY_CLIENTBOUND_SET_ENTITY_DATA_PACKET_ID: i32 = 99;
 pub(crate) const PLAY_CLIENTBOUND_TELEPORT_ENTITY_PACKET_ID: i32 = 125;
 pub(crate) const PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID: i32 = 121;
 pub(crate) const PLAY_CLIENTBOUND_CLEAR_TITLES_PACKET_ID: i32 = 14;
+pub(crate) const PLAY_CLIENTBOUND_COMMAND_SUGGESTIONS_PACKET_ID: i32 = 15;
+pub(crate) const PLAY_SERVERBOUND_COMMAND_SUGGESTION_PACKET_ID: i32 = 15;
 pub(crate) const PLAY_CLIENTBOUND_PLAYER_INFO_REMOVE_PACKET_ID: i32 = 69;
 pub(crate) const PLAY_CLIENTBOUND_PLAYER_INFO_UPDATE_PACKET_ID: i32 = 70;
 pub(crate) const PLAY_CLIENTBOUND_SET_ACTION_BAR_TEXT_PACKET_ID: i32 = 87;
@@ -2954,6 +2956,40 @@ pub(crate) fn parse_player_info_remove(input: &[u8]) -> Result<Vec<(u64, u64)>, 
         ids.push((uuid.most, uuid.least));
     }
     Ok(ids)
+}
+
+/// `ClientboundCommandSuggestionsPacket`: the request it answers, the range
+/// of the typed text the matches replace, and the matches.
+#[derive(Debug, Clone, PartialEq)]
+pub struct CommandSuggestions {
+    pub id: i32,
+    pub start: usize,
+    pub length: usize,
+    pub matches: Vec<String>,
+}
+
+pub(crate) fn parse_command_suggestions(
+    input: &[u8],
+) -> Result<CommandSuggestions, ConnectionError> {
+    let mut input = input;
+    let id = read_varint(&mut input, "suggestion id")?;
+    let start = read_varint(&mut input, "suggestion start")?.max(0) as usize;
+    let length = read_varint(&mut input, "suggestion length")?.max(0) as usize;
+    let count = read_varint(&mut input, "suggestion count")?;
+    let mut matches = Vec::new();
+    for _ in 0..count {
+        matches.push(read_chat_string(&mut input, 32767, "suggestion text")?);
+        // The tooltip is read and dropped.
+        if read_bool(&mut input, "suggestion tooltip flag")? {
+            read_chat_component(&mut input, "suggestion tooltip")?;
+        }
+    }
+    Ok(CommandSuggestions {
+        id,
+        start,
+        length,
+        matches,
+    })
 }
 
 /// The title, action bar and tab list packets, by id.

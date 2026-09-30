@@ -26,6 +26,8 @@ pub struct HeldKeys {
     /// The chat box opened or closed on this tick, and Enter pressed in it.
     pub chat: bool,
     pub enter: bool,
+    /// Tab pressed in the chat box.
+    pub complete: bool,
     /// A scripted click in the open inventory: slot, button, click type.
     pub click: Option<(i32, i32, ClickType)>,
     /// A scripted tab choice on the open creative screen, by table index.
@@ -89,6 +91,7 @@ impl HeldKeys {
                 "inventory" => keys.inventory = true,
                 "chat" => keys.chat = true,
                 "enter" => keys.enter = true,
+                "complete" => keys.complete = true,
                 "none" => {}
                 other => {
                     // `click/SLOT/BUTTON/TYPE`, the type by its id.

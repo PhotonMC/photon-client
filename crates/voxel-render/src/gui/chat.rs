@@ -206,6 +206,16 @@ pub struct ChatScreen {
     focused_at: Instant,
     /// The key that opened the box also types its character: dropped.
     skip_char: bool,
+    /// What the server suggested for the last request, the range of the text
+    /// it replaces and the one Tab last took.
+    suggestions: Vec<String>,
+    range: (usize, usize),
+    selected: Option<usize>,
+    /// The request to send: its id and text, and the id of the last sent.
+    request: Option<(i32, String)>,
+    request_id: i32,
+    /// A Tab just changed the text: that edit asks for nothing.
+    applied: bool,
 }
 
 impl ChatScreen {
@@ -224,6 +234,12 @@ impl ChatScreen {
             history_buffer: String::new(),
             focused_at: Instant::now(),
             skip_char: true,
+            suggestions: Vec::new(),
+            range: (0, 0),
+            selected: None,
+            request: None,
+            request_id: 0,
+            applied: false,
         }
     }
 
@@ -235,6 +251,59 @@ impl ChatScreen {
 
     pub fn resize(&mut self, size: (i32, i32)) {
         self.size = size;
+    }
+
+    /// The request the last edit asked for, taken.
+    pub fn take_request(&mut self) -> Option<(i32, String)> {
+        self.request.take()
+    }
+
+    /// `CommandSuggestions.updateCommandInfo`: a command's text asks for its
+    /// matches; text that is no command has none.
+    fn edited(&mut self) {
+        if std::mem::take(&mut self.applied) {
+            return;
+        }
+        self.suggestions.clear();
+        self.selected = None;
+        let text = self.edit.value();
+        if text.starts_with('/') {
+            self.request_id += 1;
+            self.request = Some((self.request_id, text));
+        }
+    }
+
+    /// The server's answer, when it is to the last request.
+    pub fn suggested(&mut self, id: i32, start: usize, length: usize, matches: Vec<String>) {
+        if id == self.request_id {
+            self.range = (start, length);
+            self.suggestions = matches;
+            self.selected = None;
+        }
+    }
+
+    /// `CommandSuggestions.keyPressed` for Tab: the next match replaces the
+    /// range it was offered for.
+    fn apply_next(&mut self) {
+        if self.suggestions.is_empty() {
+            return;
+        }
+        let next = self
+            .selected
+            .map_or(0, |index| (index + 1) % self.suggestions.len());
+        let chars: Vec<char> = self.edit.value().chars().collect();
+        let (start, length) = self.range;
+        let start = start.min(chars.len());
+        let end = (start + length).min(chars.len());
+        let mut text: String = chars[..start].iter().collect();
+        text.push_str(&self.suggestions[next]);
+        // The text after the range the last Tab replaced is kept.
+        text.extend(chars[end..].iter());
+        self.selected = Some(next);
+        self.range = (start, self.suggestions[next].chars().count());
+        self.applied = true;
+        let font = self.font.clone();
+        self.edit.set_value(&text, &font);
     }
 
     pub fn history(&self) -> &[String] {
@@ -264,6 +333,7 @@ impl ChatScreen {
                 }
                 return ChatKey::Close;
             }
+            Key::Tab => self.apply_next(),
             Key::Up => self.move_in_history(-1),
             Key::Down => self.move_in_history(1),
             Key::PageUp => return ChatKey::Scroll(LINES_OPEN as i32 - 1),
@@ -271,8 +341,12 @@ impl ChatScreen {
             other => {
                 if let Some(edit) = edit_key(other) {
                     let font = self.font.clone();
+                    let before = self.edit.value();
                     self.edit
                         .key_pressed(edit, control, shift, &font, clipboard);
+                    if self.edit.value() != before {
+                        self.edited();
+                    }
                 }
             }
         }
@@ -286,7 +360,9 @@ impl ChatScreen {
         }
         if character != '\u{a7}' && character >= ' ' && character != '\u{7f}' {
             let font = self.font.clone();
-            self.edit.char_typed(character, &font);
+            if self.edit.char_typed(character, &font) {
+                self.edited();
+            }
         }
     }
 
@@ -320,7 +396,45 @@ impl ChatScreen {
         frame.fill(atlas, (2, height - 14, width - 2, height - 2), 0x8000_0000);
         self.edit
             .draw(frame, atlas, &self.font, (4, height - 10), self.focused_at);
+        // `CommandSuggestions.SuggestionsList`: the matches over the box, at
+        // the text they replace.
+        let shown = self.suggestions.len().min(10);
+        if shown > 0 {
+            let typed: String = self.edit.value().chars().take(self.range.0).collect();
+            let width = self
+                .suggestions
+                .iter()
+                .map(|text| self.font.width(text))
+                .max()
+                .unwrap_or(0);
+            let x = (4 + self.font.width(&typed) - 1)
+                .clamp(0, (width_limit(self.size.0) - width).max(0));
+            let top = height - 12 - shown as i32 * 12;
+            frame.fill(atlas, (x, top, x + width + 1, height - 12), 0xD000_0000);
+            for (row, text) in self.suggestions.iter().take(shown).enumerate() {
+                let colour = if self.selected == Some(row) {
+                    0xFFFF_FF00
+                } else {
+                    0xFFAA_AAAA
+                };
+                let runs = plain_runs(text);
+                frame.styled_text(
+                    atlas,
+                    &self.font,
+                    &runs,
+                    x + 1,
+                    top + row as i32 * 12 + 2,
+                    colour,
+                    true,
+                );
+            }
+        }
     }
+}
+
+/// The right edge suggestions stay inside.
+fn width_limit(screen_width: i32) -> i32 {
+    screen_width
 }
 
 /// `ChatScreen.normalizeChatMessage`: trimmed, runs of blanks made one,
