@@ -470,7 +470,7 @@ impl GenericScreen {
             .and_then(Option::as_ref)
             .map_or(0, voxel_world::ClientItemStackState::item_count);
         menu.creative()
-            || (lapis >= row as i32 + 1 && menu.xp_level >= row as i32 + 1 && menu.xp_level >= cost)
+            || (lapis > row as i32 && menu.xp_level > row as i32 && menu.xp_level >= cost)
     }
 
     /// `EnchantmentScreen.mouseClicked`: the row pressed, if the menu would
@@ -495,6 +495,10 @@ impl GenericScreen {
 
     /// `EnchantmentScreen.extractBackground`'s three rows, and the tooltip of
     /// the hovered one (`extractRenderState`).
+    #[expect(
+        clippy::too_many_lines,
+        reason = "kept whole to read against the reference method line by line"
+    )]
     fn enchant_draw(
         &mut self,
         draw: &mut ScreenDraw<'_, '_>,
@@ -930,7 +934,10 @@ impl GenericScreen {
                     0xFFFF_6060
                 };
                 (
-                    self.titles.repair_cost.replace("%s", &cost.to_string()),
+                    self.titles
+                        .repair_cost
+                        .replace("%1$s", &cost.to_string())
+                        .replace("%s", &cost.to_string()),
                     colour,
                 )
             } else {
