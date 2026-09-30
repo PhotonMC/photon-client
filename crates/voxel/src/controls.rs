@@ -31,6 +31,8 @@ pub struct Controls {
     last_cursor: Option<(f64, f64)>,
     /// The open inventory screen, if any.
     pub screen: OpenScreen,
+    /// The id of the container the server opened, while its screen is up.
+    server_container: Option<i32>,
     /// The creative screen's tab, kept for the next time it opens.
     pub creative_tab: usize,
     /// The mouse in GUI units.
@@ -50,6 +52,7 @@ impl Controls {
             captured,
             last_cursor: None,
             screen: None,
+            server_container: None,
             creative_tab: voxel_game::creative_menu::default_tab(),
             gui_mouse: (0.0, 0.0),
             active_button: None,
@@ -63,25 +66,58 @@ impl Controls {
         self.use_key.release();
     }
 
-    /// `containerTick`: each inventory screen hands over to the other when
-    /// the game mode changes under it. Neither closes the container.
+    /// `containerTick`: a container the server opens or closes opens or
+    /// closes its screen, and each inventory screen hands over to the other
+    /// when the game mode changes under it. Neither closes the container.
     pub fn container_tick(
         &mut self,
-        session: &PlaySession,
-        surface: &WindowSurface,
+        session: &mut PlaySession,
+        surface: &mut WindowSurface,
         assets: &ScreenAssets,
-    ) {
-        let Some(open) = self.screen.as_mut() else {
-            return;
-        };
-        let creative = session.game_mode() == voxel_world::ClientPlayerGameMode::Creative;
+    ) -> Result {
         let size = surface.scale();
         let (width, height) = (size.gui_scaled_width(), size.gui_scaled_height());
+        // A container with no screen here is closed at once, so the server
+        // does not wait on a window the player cannot see.
+        if session.open_container_unsupported() {
+            session.close_inventory()?;
+        }
+        match (self.server_container, session.open_container_info()) {
+            (None, Some((id, kind, title))) => {
+                self.server_container = Some(id);
+                self.screen = Some(assets.container_screen(kind, &title, width, height));
+                self.release_keys();
+                surface.set_cursor_captured(false);
+                let (w, h) = surface.window_size();
+                surface.set_cursor_position(f64::from(w) / 2.0, f64::from(h) / 2.0);
+                return Ok(());
+            }
+            (Some(open), Some((id, kind, title))) if open != id => {
+                self.server_container = Some(id);
+                self.screen = Some(assets.container_screen(kind, &title, width, height));
+                return Ok(());
+            }
+            (Some(_), None) => {
+                // The server closed it, or the player did.
+                self.server_container = None;
+                if self.screen.take().is_some() {
+                    surface.set_cursor_captured(true);
+                }
+                return Ok(());
+            }
+            (Some(_), Some(_)) => return Ok(()),
+            (None, None) => {}
+        }
+        let Some(open) = self.screen.as_mut() else {
+            return Ok(());
+        };
+        let creative = session.game_mode() == voxel_world::ClientPlayerGameMode::Creative;
         let open_tab = open.as_creative_mut().map(|open| open.tab());
         if open_tab.is_some() != creative {
             self.creative_tab = open_tab.unwrap_or(self.creative_tab);
             self.screen = Some(assets.screen(creative, width, height, self.creative_tab));
         }
+        Ok(())
     }
 
     /// A script's step on this tick: the inventory key, a click in the
@@ -188,7 +224,7 @@ impl Controls {
                 glfw::Action::Press | glfw::Action::Repeat,
                 modifiers,
             ) => {
-                let menu = session.container_menu().clone();
+                let menu = session.active_menu().clone();
                 let mods = KeyMods {
                     control: modifiers.contains(glfw::Modifiers::Control),
                     shift: modifiers.contains(glfw::Modifiers::Shift),
@@ -215,7 +251,7 @@ impl Controls {
             glfw::WindowEvent::MouseButton(button, action, modifiers) => {
                 let button = button as i32;
                 let shift = modifiers.contains(glfw::Modifiers::Shift);
-                let menu = session.container_menu().clone();
+                let menu = session.active_menu().clone();
                 let actions = if action == glfw::Action::Press {
                     self.active_button = Some(button);
                     let now = std::time::Instant::now();
@@ -236,7 +272,7 @@ impl Controls {
                     y * f64::from(size.gui_scaled_height()) / f64::from(height.max(1)),
                 );
                 if self.active_button.is_some() {
-                    let menu = session.container_menu().clone();
+                    let menu = session.active_menu().clone();
                     screen.mouse_dragged(self.gui_mouse, &menu);
                 }
                 self.last_cursor = None;

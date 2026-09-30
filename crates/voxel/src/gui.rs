@@ -76,6 +76,7 @@ impl Gui {
                     .collect(),
             },
             inventory_title: lang.text("container.crafting"),
+            lang: lang.clone(),
         }
     }
 
@@ -98,7 +99,7 @@ impl Gui {
         let screen_menu = controls
             .screen
             .is_some()
-            .then(|| session.container_menu().clone());
+            .then(|| session.active_menu().clone());
         let session = &*session;
         let hud_player = session.player();
         let items = &mut self.items;

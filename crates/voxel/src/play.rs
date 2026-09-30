@@ -252,8 +252,11 @@ impl Play {
             self.accumulated += now - self.last_frame;
             self.last_frame = now;
             self.session.drain()?;
-            self.controls
-                .container_tick(&self.session, &self.surface, &self.screen_assets);
+            self.controls.container_tick(
+                &mut self.session,
+                &mut self.surface,
+                &self.screen_assets,
+            )?;
             // A respawn or a change of dimension: nothing of the old level stays.
             if self.session.take_level_reset() {
                 self.backend.clear_sections()?;

@@ -1,5 +1,5 @@
-//! Screens over the game: the survival inventory and the creative inventory,
-//! and what their container handling shares.
+//! Screens over the game: the survival inventory, the creative inventory and
+//! the containers the server opens, and what their handling shares.
 //!
 //! A screen is a [`Screen`]: it takes the mouse and the keys while it is open,
 //! answers with the clicks it wants run ([`ScreenAction`]), and draws itself
@@ -7,6 +7,7 @@
 
 pub mod container;
 pub mod creative;
+pub mod generic;
 pub mod inventory;
 
 use voxel_game::container_menu::{ClickType, ContainerMenu};

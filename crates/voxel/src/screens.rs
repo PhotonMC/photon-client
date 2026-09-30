@@ -2,6 +2,7 @@
 
 use voxel_net::connection::PlaySession;
 use voxel_render::gui::screen::creative::{CreativeAssets, CreativeScreen};
+use voxel_render::gui::screen::generic::{GenericScreen, Titles};
 use voxel_render::gui::screen::inventory::InventoryScreen;
 use voxel_render::gui::screen::{Screen, ScreenAction};
 use voxel_render::window::WindowSurface;
@@ -13,9 +14,38 @@ pub type OpenScreen = Option<Box<dyn Screen>>;
 pub struct ScreenAssets {
     pub creative: CreativeAssets,
     pub inventory_title: String,
+    /// The client's language, for the titles the server names.
+    pub lang: std::sync::Arc<voxel_game::text::Lang>,
 }
 
 impl ScreenAssets {
+    /// The screen of a container the server opened: `title_nbt` is the
+    /// menu's title as the network wrote it.
+    pub fn container_screen(
+        &self,
+        kind: voxel_game::container_menu::MenuKind,
+        title_nbt: &[u8],
+        width: i32,
+        height: i32,
+    ) -> Box<dyn Screen> {
+        let mut data = title_nbt;
+        let title = voxel_core::nbt::read_any_nbt(&mut data)
+            .ok()
+            .flatten()
+            .and_then(|tag| voxel_game::text::Component::from_nbt(&tag))
+            .map(|component| self.lang.plain(&component))
+            .unwrap_or_default();
+        Box::new(GenericScreen::new(
+            kind,
+            width,
+            height,
+            Titles {
+                title,
+                inventory: self.lang.text("container.inventory"),
+            },
+        ))
+    }
+
     /// The creative screen on a tab, or the survival one, on a GUI of this
     /// size.
     pub fn screen(&self, creative: bool, width: i32, height: i32, tab: usize) -> Box<dyn Screen> {

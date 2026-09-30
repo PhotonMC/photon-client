@@ -101,6 +101,8 @@ pub struct PlaySession {
     game_mode_state: voxel_game::game_mode::GameMode,
     /// The player's inventory menu, whose drag state lasts between clicks.
     container_menu: voxel_game::container_menu::ContainerMenu,
+    /// The menu of the container the server opened, likewise.
+    open_menu: Option<voxel_game::container_menu::ContainerMenu>,
     /// `LocalPlayer.dropSpamThrottler`: what creative drops have added up.
     drop_spam: i32,
     dirty_sections: std::collections::BTreeSet<(i32, i32, i32)>,
@@ -167,6 +169,7 @@ impl PlaySession {
             sent_slot: 0,
             game_mode_state: voxel_game::game_mode::GameMode::default(),
             container_menu: voxel_game::container_menu::ContainerMenu::default(),
+            open_menu: None,
             drop_spam: 0,
             dirty_sections: std::collections::BTreeSet::new(),
             forgotten_chunks: Vec::new(),
@@ -423,28 +426,110 @@ impl PlaySession {
         &self.container_menu
     }
 
-    /// `AbstractContainerScreen.slotClicked` into the player's own menu:
-    /// the click as the client predicts it, the arm swings its drops cause,
-    /// then the click packet.
+    /// The container the server opened, as a screen needs to know it: its id,
+    /// the menu it is and its title as NBT. `None` with none open, or one of
+    /// a kind not modelled yet.
+    pub fn open_container_info(
+        &self,
+    ) -> Option<(i32, voxel_game::container_menu::MenuKind, Vec<u8>)> {
+        let container = self.trace.world.local_player()?.open_container()?;
+        let kind = voxel_game::container_menu::MenuKind::from_menu_type(container.menu_type_id())?;
+        // A screen opens once the server has sent what is in the container.
+        self.trace.world.local_player_container_menu()?;
+        Some((
+            container.container_id(),
+            kind,
+            container.title_nbt().to_vec(),
+        ))
+    }
+
+    /// Whether the server has opened a container this client has no menu for.
+    pub fn open_container_unsupported(&self) -> bool {
+        self.trace
+            .world
+            .local_player()
+            .and_then(|player| player.open_container())
+            .is_some_and(|container| {
+                voxel_game::container_menu::MenuKind::from_menu_type(container.menu_type_id())
+                    .is_none()
+            })
+    }
+
+    /// The menu an open screen is over: the container the server opened, or
+    /// the player's own.
+    pub fn active_menu(&mut self) -> &voxel_game::container_menu::ContainerMenu {
+        if self.open_container_menu().is_some() {
+            return self.open_menu.as_ref().expect("synced above");
+        }
+        self.container_menu()
+    }
+
+    /// The menu of the container the server opened, as the client holds it
+    /// now; `None` until its contents have come.
+    pub fn open_container_menu(&mut self) -> Option<&voxel_game::container_menu::ContainerMenu> {
+        let (container_id, menu_type, slots, carried, state_id) =
+            self.trace.world.local_player_container_menu()?;
+        let kind = voxel_game::container_menu::MenuKind::from_menu_type(menu_type)?;
+        match self.open_menu.as_mut() {
+            Some(menu) if menu.container_id == container_id && menu.kind == kind => {
+                menu.load(slots, carried, state_id);
+            }
+            _ => {
+                self.open_menu = Some(voxel_game::container_menu::ContainerMenu::for_menu(
+                    kind,
+                    container_id,
+                    slots,
+                    carried,
+                    state_id,
+                ));
+            }
+        }
+        self.open_menu.as_ref()
+    }
+
+    /// `AbstractContainerScreen.slotClicked` into the open menu: the player's
+    /// own, or the container the server opened. The click as the client
+    /// predicts it, the arm swings its drops cause, then the click packet.
     pub fn container_click(
         &mut self,
         slot: i32,
         button: i32,
         kind: voxel_game::container_menu::ClickType,
     ) -> Result<(), ConnectionError> {
-        let Some((slots, carried, state_id)) = self.trace.world.local_player_menu() else {
-            return Ok(());
-        };
-        self.container_menu.load(slots, carried, state_id);
         let player = voxel_game::container_menu::Player {
             selected: self.status.selected_slot.clamp(0, 8) as usize,
             infinite_materials: self.game_mode == voxel_world::ClientPlayerGameMode::Creative,
         };
-        let (swings, body) = self.container_menu.handle_click(slot, button, kind, player);
-        let menu = &self.container_menu;
-        self.trace
+        let opened = self
+            .trace
             .world
-            .set_local_player_menu(&menu.slots, menu.carried.clone());
+            .local_player()
+            .is_some_and(|player| player.open_container().is_some());
+        let (swings, body) = if opened {
+            // Synced before the click; `None` when the container is of a kind
+            // with no menu here, which no screen sends clicks for.
+            if self.open_container_menu().is_none() {
+                return Ok(());
+            }
+            let menu = self.open_menu.as_mut().expect("synced above");
+            let clicked = menu.handle_click(slot, button, kind, player);
+            let (slots, carried) = (menu.slots.clone(), menu.carried.clone());
+            self.trace
+                .world
+                .set_local_player_container_menu(&slots, carried);
+            clicked
+        } else {
+            let Some((slots, carried, state_id)) = self.trace.world.local_player_menu() else {
+                return Ok(());
+            };
+            self.container_menu.load(slots, carried, state_id);
+            let clicked = self.container_menu.handle_click(slot, button, kind, player);
+            let menu = &self.container_menu;
+            self.trace
+                .world
+                .set_local_player_menu(&menu.slots, menu.carried.clone());
+            clicked
+        };
         for _ in 0..swings {
             // `LocalPlayer.swing`: the arm, then the packet.
             if let Some(player) = self.player.as_mut() {
@@ -527,10 +612,23 @@ impl PlaySession {
     /// `LocalPlayer.closeContainer` for the inventory: the close packet,
     /// then `ContainerMenu.removed`, which empties the result slot.
     pub fn close_inventory(&mut self) -> Result<(), ConnectionError> {
+        let opened = self
+            .trace
+            .world
+            .local_player()
+            .and_then(|player| player.open_container())
+            .map(|container| container.container_id());
+        let id = opened.unwrap_or(0);
         self.send(PLAY_SERVERBOUND_CONTAINER_CLOSE_PACKET_ID, |output| {
-            output.push(0);
+            voxel_core::wire::write_varint(id, output);
             Ok(())
         })?;
+        if opened.is_some() {
+            // `LocalPlayer.clientSideCloseContainer`: back to the player's menu.
+            self.trace.world.apply_local_player_container_close(id);
+            self.open_menu = None;
+            return Ok(());
+        }
         if let Some((mut slots, carried, _)) = self.trace.world.local_player_menu() {
             slots[0] = None;
             self.trace.world.set_local_player_menu(&slots, carried);

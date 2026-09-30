@@ -71,15 +71,15 @@ impl SlotView for ContainerMenu {
     }
 
     fn can_take_for_pick_all(&self, slot: usize) -> bool {
-        slot != 0
+        !self.is_result(slot)
     }
 
     fn slot_count(&self) -> usize {
-        SLOT_COUNT
+        self.slots.len()
     }
 
     fn same_container(&self, a: usize, b: usize) -> bool {
-        container_of(a) == container_of(b)
+        self.same_inventory(a, b)
     }
 }
 
@@ -260,16 +260,6 @@ impl Screen for InventoryScreen {
             let lines = (draw.tooltip)(stack, false);
             self.layout.tooltip(draw, &lines, mouse);
         }
-    }
-}
-
-/// Which container a menu slot belongs to: the result, the crafting grid,
-/// or the player's inventory.
-fn container_of(index: usize) -> u8 {
-    match index {
-        0 => 0,
-        1..5 => 1,
-        _ => 2,
     }
 }
 

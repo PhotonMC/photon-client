@@ -617,8 +617,23 @@ impl ContainerMenu {
     }
 
     /// Whether this is the player menu's crafting result slot.
-    fn is_result(&self, index: usize) -> bool {
+    pub fn is_result(&self, index: usize) -> bool {
         self.kind == MenuKind::Inventory && index == RESULT
+    }
+
+    /// `Slot.isSameInventory`: in the player menu the result, the crafting
+    /// grid and the rest are three containers; in the others the menu's own
+    /// slots and the player's are two.
+    pub fn same_inventory(&self, a: usize, b: usize) -> bool {
+        let part = |index: usize| match self.kind {
+            MenuKind::Inventory => match index {
+                0 => 0,
+                1..5 => 1,
+                _ => 2,
+            },
+            other => usize::from(index >= other.top_slots()),
+        };
+        part(a) == part(b)
     }
 
     /// The armour slot at a menu index, in the player menu.

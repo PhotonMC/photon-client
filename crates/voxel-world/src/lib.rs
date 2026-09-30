@@ -85,6 +85,16 @@ impl Default for ClientWorld {
     }
 }
 
+/// An open container's menu: its id, its `MenuType` registry id, every slot,
+/// the carried stack and the state id.
+pub type OpenContainerMenu = (
+    i32,
+    i32,
+    Vec<Option<ClientItemStackState>>,
+    Option<ClientItemStackState>,
+    i32,
+);
+
 impl ClientWorld {
     pub fn new(dimension: DimensionBounds) -> Self {
         Self {
@@ -694,6 +704,7 @@ impl ClientWorld {
             .map(|(slot, item)| (slot as i16, item.clone()))
             .collect();
         container.carried_item = carried_item.cloned();
+        player.mirror_container_into_inventory();
         true
     }
 
@@ -730,6 +741,63 @@ impl ClientWorld {
             player.inventory_slots.insert(slot as i16, stack.clone());
         }
         player.carried_item = carried;
+    }
+
+    /// The menu of the container the server opened: its id and type, every
+    /// slot, the carried stack and the state id. `None` with no container
+    /// open or before its contents have come.
+    pub fn local_player_container_menu(&self) -> Option<OpenContainerMenu> {
+        let player = self.local_player.as_ref()?;
+        let container = player.open_container.as_ref()?;
+        if container.slot_count == 0 {
+            return None;
+        }
+        let mut slots: Vec<Option<ClientItemStackState>> = (0..container.slot_count)
+            .map(|slot| container.slots.get(&(slot as i16)).cloned().flatten())
+            .collect();
+        // The last 36 slots are the player's inventory, which the server can
+        // also change without the container's knowing.
+        if let Some(top) = container.top_slot_count {
+            for index in 0..36 {
+                let from = if index < 27 {
+                    9 + index
+                } else {
+                    36 + index - 27
+                };
+                if let (Some(slot), Some(stack)) = (
+                    slots.get_mut(top + index),
+                    player.inventory_slots.get(&(from as i16)),
+                ) {
+                    *slot = stack.clone();
+                }
+            }
+        }
+        Some((
+            container.container_id,
+            container.menu_type_id,
+            slots,
+            container.carried_item.clone(),
+            container.state_id,
+        ))
+    }
+
+    /// Write back the open container's menu after a predicted click.
+    pub fn set_local_player_container_menu(
+        &mut self,
+        slots: &[Option<ClientItemStackState>],
+        carried: Option<ClientItemStackState>,
+    ) {
+        let Some(player) = self.local_player.as_mut() else {
+            return;
+        };
+        let Some(container) = player.open_container.as_mut() else {
+            return;
+        };
+        for (slot, stack) in slots.iter().enumerate() {
+            container.slots.insert(slot as i16, stack.clone());
+        }
+        container.carried_item = carried;
+        player.mirror_container_into_inventory();
     }
 
     /// `ItemStack.shrink` on a stack in the local player's inventory menu,
@@ -771,6 +839,7 @@ impl ClientWorld {
         };
         container.state_id = state_id;
         container.slots.insert(slot, item.cloned());
+        player.mirror_container_into_inventory();
         true
     }
 
