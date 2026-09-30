@@ -31,9 +31,29 @@ pub enum GuiBlend {
     Entity,
 }
 
+/// A drawing call as the behaviour tests compare it with the reference's
+/// recorded GUI state.
+#[derive(Debug, Clone, PartialEq)]
+pub enum DrawOp {
+    Fill {
+        rect: (i32, i32, i32, i32),
+        colour: u32,
+    },
+    Text {
+        x: i32,
+        y: i32,
+        colour: u32,
+        shadow: bool,
+        /// Each run: its text, its colour if it has one, bold, italic.
+        runs: Vec<(String, Option<u32>, bool, bool)>,
+    },
+}
+
 /// One frame of GUI: triangles and the runs they blend in.
 #[derive(Debug, Default)]
 pub struct GuiFrame {
+    /// The calls made, when a test asked to keep them.
+    pub log: Option<Vec<DrawOp>>,
     pub vertices: Vec<GuiVertex>,
     pub batches: Vec<(GuiBlend, u32, u32)>,
     pub items: Vec<crate::gui::items::GuiItemVertex>,
@@ -49,6 +69,12 @@ impl GuiFrame {
         top: u32,
         bottom: u32,
     ) {
+        if let Some(log) = &mut self.log {
+            log.push(DrawOp::Fill {
+                rect: (x0.min(x1), y0.min(y1), x0.max(x1), y0.max(y1)),
+                colour: top,
+            });
+        }
         let [u0, v0, u1, v1] = atlas.sprite("white");
         let (u, v) = ((u0 + u1) / 2.0, (v0 + v1) / 2.0);
         let unpack =
@@ -408,6 +434,36 @@ impl GuiFrame {
         self.styled_text(atlas, font, &runs, x, y, colour, shadow);
     }
 
+    /// Keeps a text call for a test that asked for the calls.
+    fn log_text(
+        &mut self,
+        (x, y): (i32, i32),
+        runs: &[voxel_game::text::Run],
+        colour: u32,
+        shadow: bool,
+    ) {
+        let Some(log) = &mut self.log else {
+            return;
+        };
+        log.push(DrawOp::Text {
+            x,
+            y,
+            colour,
+            shadow,
+            runs: runs
+                .iter()
+                .map(|run| {
+                    (
+                        run.text.clone(),
+                        run.style.colour,
+                        run.style.bold == Some(true),
+                        run.style.italic == Some(true),
+                    )
+                })
+                .collect(),
+        });
+    }
+
     /// `GuiGraphics.text` of styled text: each run in its colour, with the
     /// bold glyphs drawn twice a unit apart and the italic ones sheared.
     /// Underlines, strikethrough and obfuscation are not drawn.
@@ -425,6 +481,7 @@ impl GuiFrame {
         default_colour: u32,
         shadow: bool,
     ) {
+        self.log_text((x, y), runs, default_colour, shadow);
         let unpack =
             |colour: u32| [16, 8, 0, 24].map(|shift| ((colour >> shift) & 0xFF) as f32 / 255.0);
         let mut pen = x as f32;

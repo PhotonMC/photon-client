@@ -14001,6 +14001,28 @@ def entity_cases():
     }
 
 
+def gui_cases():
+    """The screens' drawing as the reference's own GUI code records it: the
+    rectangles and the text, in order, with their poses applied. The glyphs
+    are not drawn; their advances come from the reference's font providers."""
+    def chat(label, messages, tick, width=427, height=240):
+        return {"label": label, "width": width, "height": height,
+                "messages": [{"text": text, "tick": at} for text, at in messages], "tick": tick}
+
+    long_text = ("this is a fairly long chat message that should wrap onto a second line "
+                 "when it reaches the edge of the chat box and goes on for a third one too")
+    rows = [
+        chat("one-line", [("hello world", 0)], 0),
+        chat("three-lines", [("one", 0), ("two", 1), ("three", 2)], 3),
+        chat("wrapped", [(long_text, 0)], 5),
+        chat("fading", [("fading out", 0)], 190),
+        chat("faded", [("gone", 0)], 200),
+        chat("many", [(f"line {n}", 0) for n in range(14)], 10),
+        chat("tall-window", [("hello", 0)], 0, width=640, height=480),
+    ]
+    yield {"case_id": "gui/chat", "family": "gui", "operation": "chat", "rows": rows}
+
+
 def build_cases(families):
     generators = {"wire": wire_cases, "math": math_cases, "timer": timer_cases, "utf8": utf8_cases,
                   "binary": binary_cases, "nbt": nbt_cases, "resources": resources_cases,
@@ -14011,7 +14033,8 @@ def build_cases(families):
                   "json": json_cases,
                   "block": block_cases,
                   "movement": movement_cases,
-                  "entity": entity_cases}
+                  "entity": entity_cases,
+                  "gui": gui_cases}
     cases = [dict(schema_version=1, **case)
              for family in sorted(families) for case in generators[family]()]
     ids = [case["case_id"] for case in cases]

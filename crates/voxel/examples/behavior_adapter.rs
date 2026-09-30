@@ -18351,6 +18351,89 @@ fn entity_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// The recorded drawing calls as the reference's oracle writes them.
+fn gui_ops(ops: &[voxel_render::gui::DrawOp]) -> Vec<Value> {
+    use voxel_render::gui::DrawOp;
+    // The reference keeps a layer's rectangles before its text, whatever the
+    // order they were asked for in.
+    let (fills, texts): (Vec<&DrawOp>, Vec<&DrawOp>) =
+        ops.iter().partition(|op| matches!(op, DrawOp::Fill { .. }));
+    fills
+        .into_iter()
+        .chain(texts)
+        .map(|op| match op {
+            DrawOp::Fill { rect, colour } => json!({
+                "op": "fill", "x0": f64::from(rect.0), "y0": f64::from(rect.1),
+                "x1": f64::from(rect.2), "y1": f64::from(rect.3),
+                "color": *colour as i32,
+            }),
+            DrawOp::Text {
+                x,
+                y,
+                colour,
+                shadow,
+                runs,
+            } => json!({
+                "op": "text", "x": f64::from(*x), "y": f64::from(*y), "scale": 1.0, "color": *colour as i32,
+                "shadow": shadow,
+                "runs": runs.iter().map(|(text, rgb, bold, italic)| {
+                    let mut run = json!({"text": text, "bold": bold, "italic": italic});
+                    if let Some(rgb) = rgb {
+                        run["rgb"] = json!(rgb);
+                    }
+                    run
+                }).collect::<Vec<_>>(),
+            }),
+        })
+        .collect()
+}
+
+/// The screens' drawing, recorded and compared with the reference's own.
+fn gui_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::gui::chat::ChatLog;
+    use voxel_render::gui::font::Font;
+    use voxel_render::gui::{GuiAtlas, GuiFrame};
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../.data/minecraft/assets/jar/assets");
+    let font = Font::load(&root).ok_or("font")?;
+    let alt = Font::load_alt(&root).ok_or("alt font")?;
+    let (atlas, _) = GuiAtlas::load(&root, &[&font, &alt]).ok_or("gui atlas")?;
+    let rows = request["rows"]
+        .as_array()
+        .ok_or("gui rows must be an array")?;
+    let mut out = Vec::new();
+    for row in rows {
+        let int = |key: &str| row[key].as_i64().unwrap_or(0) as i32;
+        let mut frame = GuiFrame {
+            log: Some(Vec::new()),
+            ..GuiFrame::default()
+        };
+        match string(request, "operation")? {
+            "chat" => {
+                let mut log = ChatLog::default();
+                for message in row["messages"].as_array().ok_or("messages")? {
+                    let tick = message["tick"].as_u64().unwrap_or(0);
+                    while log.ticks() < tick {
+                        log.tick();
+                    }
+                    let text = message["text"].as_str().ok_or("text")?;
+                    log.add(&voxel_render::gui::chat::plain_runs(text), &font, false);
+                }
+                while log.ticks() < row["tick"].as_u64().unwrap_or(0) {
+                    log.tick();
+                }
+                log.draw(&mut frame, &atlas, &font, int("height"), false);
+            }
+            _ => return Err("unknown gui operation".into()),
+        }
+        out.push(json!({
+            "label": row["label"],
+            "ops": gui_ops(&frame.log.take().unwrap_or_default()),
+        }));
+    }
+    Ok(json!({"rows": out}))
+}
+
 fn respond(request: Value) -> Result<Value, String> {
     if request["schema_version"].as_u64() != Some(1) {
         return Err("unsupported schema_version".into());
@@ -18372,6 +18455,7 @@ fn respond(request: Value) -> Result<Value, String> {
         "json" => json_result(&request)?,
         "movement" => movement_result(&request)?,
         "entity" => entity_result(&request)?,
+        "gui" => gui_result(&request)?,
         _ => return Err("unknown behavior family".into()),
     };
     Ok(json!({"schema_version": 1, "case_id": case_id, "result": result}))

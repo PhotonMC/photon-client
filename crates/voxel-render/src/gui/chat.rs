@@ -124,6 +124,10 @@ impl ChatLog {
         self.ticks += 1;
     }
 
+    pub fn ticks(&self) -> u64 {
+        self.ticks
+    }
+
     /// `ChatComponent.addMessage`: the message wrapped and added, newest
     /// first. A chat that is scrolled back keeps what it shows.
     pub fn add(&mut self, runs: &[Run], font: &Font, focused: bool) {
@@ -161,24 +165,36 @@ impl ChatLog {
         let per_page = if focused { LINES_OPEN } else { LINES_CLOSED };
         let shown = self.lines.len().saturating_sub(self.scroll).min(per_page);
         let bottom = gui_height - BOTTOM_MARGIN;
-        for i in 0..shown {
-            let line = &self.lines[i + self.scroll];
-            let alpha = if focused {
-                1.0
-            } else {
-                fade(self.ticks - line.added)
-            };
-            if alpha <= 1.0e-5 {
-                continue;
-            }
+        // `forEachLine`: from the oldest of the page to the newest, the ones
+        // not faded out; the backgrounds first, then each line's text and tag.
+        let visible: Vec<(usize, f32)> = (0..shown)
+            .rev()
+            .filter_map(|i| {
+                let line = &self.lines[i + self.scroll];
+                let alpha = if focused {
+                    1.0
+                } else {
+                    fade(self.ticks - line.added)
+                };
+                (alpha > 1.0e-5).then_some((i, alpha))
+            })
+            .collect();
+        for &(i, alpha) in &visible {
             let entry_bottom = bottom - i as i32 * LINE_HEIGHT;
-            let top = entry_bottom - LINE_HEIGHT;
             let background = ((255.0 * 0.5 * alpha) as u32) << 24;
-            frame.fill(atlas, (0, top, WIDTH + 12, entry_bottom), background);
-            let tag = ((255.0 * alpha) as u32) << 24 | TAG_COLOUR;
-            frame.fill(atlas, (0, top, 2, entry_bottom), tag);
+            frame.fill(
+                atlas,
+                (0, entry_bottom - LINE_HEIGHT, WIDTH + 12, entry_bottom),
+                background,
+            );
+        }
+        for &(i, alpha) in &visible {
+            let entry_bottom = bottom - i as i32 * LINE_HEIGHT;
             let text = ((255.0 * alpha) as u32) << 24 | 0x00FF_FFFF;
+            let line = &self.lines[i + self.scroll];
             frame.styled_text(atlas, font, &line.runs, 4, entry_bottom - 8, text, true);
+            let tag = ((255.0 * alpha) as u32) << 24 | TAG_COLOUR;
+            frame.fill(atlas, (0, entry_bottom - LINE_HEIGHT, 2, entry_bottom), tag);
         }
     }
 }
