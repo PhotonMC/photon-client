@@ -15,6 +15,7 @@ use crate::gui::GuiAtlas;
 use crate::gui::GuiFrame;
 use crate::gui::edit_box::{Clipboard, EditBox, edit_key};
 use crate::gui::font::Font;
+use crate::gui::suggestions::{ListKey, SuggestionsList};
 
 /// `ChatComponent`'s width at the default option, and the lines it keeps.
 const WIDTH: i32 = 320;
@@ -222,15 +223,12 @@ pub struct ChatScreen {
     focused_at: Instant,
     /// The key that opened the box also types its character: dropped.
     skip_char: bool,
-    /// What the server suggested for the last request, the range of the text
-    /// it replaces and the one Tab last took.
-    suggestions: Vec<String>,
-    range: (usize, usize),
-    selected: Option<usize>,
+    /// The list of matches the server sent for the text, when there is one.
+    list: Option<SuggestionsList>,
     /// The request to send: its id and text, and the id of the last sent.
     request: Option<(i32, String)>,
     request_id: i32,
-    /// A Tab just changed the text: that edit asks for nothing.
+    /// `keepSuggestions`: a match was just used, and that edit asks for nothing.
     applied: bool,
 }
 
@@ -250,9 +248,7 @@ impl ChatScreen {
             history_buffer: String::new(),
             focused_at: Instant::now(),
             skip_char: true,
-            suggestions: Vec::new(),
-            range: (0, 0),
-            selected: None,
+            list: None,
             request: None,
             request_id: 0,
             applied: false,
@@ -274,52 +270,116 @@ impl ChatScreen {
         self.request.take()
     }
 
-    /// `CommandSuggestions.updateCommandInfo`: a command's text asks for its
-    /// matches; text that is no command has none.
+    /// `CommandSuggestions.updateCommandInfo`: the list goes, and a command's
+    /// text up to the cursor asks for its matches. A match just used keeps
+    /// the list and asks for nothing.
     fn edited(&mut self) {
         if std::mem::take(&mut self.applied) {
             return;
         }
-        self.suggestions.clear();
-        self.selected = None;
+        self.edit.set_suggestion(None);
+        self.list = None;
         let text = self.edit.value();
-        if text.starts_with('/') {
+        let cursor = self.edit.cursor();
+        if text.starts_with('/') && cursor >= 1 {
             self.request_id += 1;
-            self.request = Some((self.request_id, text));
+            let typed: String = text.chars().take(cursor).collect();
+            self.request = Some((self.request_id, typed));
         }
     }
 
-    /// The server's answer, when it is to the last request.
+    /// The server's answer, when it is to the last request:
+    /// `showSuggestions`.
     pub fn suggested(&mut self, id: i32, start: usize, length: usize, matches: Vec<String>) {
-        if id == self.request_id {
-            self.range = (start, length);
-            self.suggestions = matches;
-            self.selected = None;
-        }
-    }
-
-    /// `CommandSuggestions.keyPressed` for Tab: the next match replaces the
-    /// range it was offered for.
-    fn apply_next(&mut self) {
-        if self.suggestions.is_empty() {
+        if id != self.request_id {
             return;
         }
-        let next = self
-            .selected
-            .map_or(0, |index| (index + 1) % self.suggestions.len());
-        let chars: Vec<char> = self.edit.value().chars().collect();
-        let (start, length) = self.range;
-        let start = start.min(chars.len());
-        let end = (start + length).min(chars.len());
-        let mut text: String = chars[..start].iter().collect();
-        text.push_str(&self.suggestions[next]);
-        // The text after the range the last Tab replaced is kept.
-        text.extend(chars[end..].iter());
-        self.selected = Some(next);
-        self.range = (start, self.suggestions[next].chars().count());
+        let value = self.edit.value();
+        let typed: String = value.chars().take(self.edit.cursor()).collect();
+        self.list = SuggestionsList::new(
+            matches,
+            (start, length),
+            &value,
+            &typed,
+            self.size.1,
+            &self.font,
+            (4, self.size.0 - 4),
+        );
+        self.update_ghost();
+    }
+
+    /// `select`'s `setSuggestion`: what the chosen match adds to the text.
+    fn update_ghost(&mut self) {
+        let ghost = self
+            .list
+            .as_ref()
+            .and_then(|list| list.ghost(&self.edit.value()));
+        self.edit.set_suggestion(ghost);
+    }
+
+    /// `useSuggestion`: the box takes the match's text, the cursor after it.
+    fn take_match(&mut self, (text, end): (String, usize)) {
         self.applied = true;
         let font = self.font.clone();
         self.edit.set_value(&text, &font);
+        self.edit.set_cursor_position(end, &font);
+        self.update_ghost();
+    }
+
+    /// `CommandSuggestions.keyPressed`: whether the list took the key.
+    fn list_key(&mut self, key: ListKey) -> bool {
+        let Some(list) = &mut self.list else {
+            return false;
+        };
+        if key == ListKey::Escape {
+            self.list = None;
+            self.edit.set_suggestion(None);
+            return true;
+        }
+        let (taken, used) = list.key(key);
+        if let Some(used) = used {
+            self.take_match(used);
+        } else {
+            self.update_ghost();
+        }
+        taken
+    }
+
+    /// A press in the list (`mouseClicked`): whether it was the list's.
+    pub fn mouse_clicked(&mut self, mouse: (i32, i32)) -> bool {
+        let Some(list) = &mut self.list else {
+            return false;
+        };
+        match list.clicked(mouse) {
+            None => false,
+            Some(used) => {
+                if let Some(used) = used {
+                    self.take_match(used);
+                }
+                true
+            }
+        }
+    }
+
+    /// The wheel over the list (`mouseScrolled`): whether it was the list's.
+    pub fn mouse_scrolled(&mut self, scroll: f64, mouse: (i32, i32)) -> bool {
+        self.list
+            .as_mut()
+            .is_some_and(|list| list.scrolled(scroll.clamp(-1.0, 1.0), mouse))
+    }
+
+    /// The box takes the focus again: its cursor shows from now.
+    pub fn refocus(&mut self) {
+        self.focused_at = Instant::now();
+    }
+
+    /// The box's text and its cursor.
+    pub fn value(&self) -> String {
+        self.edit.value()
+    }
+
+    pub fn cursor(&self) -> usize {
+        self.edit.cursor()
     }
 
     pub fn history(&self) -> &[String] {
@@ -334,6 +394,18 @@ impl ChatScreen {
         clipboard: &mut dyn Clipboard,
     ) -> ChatKey {
         use glfw::Key;
+        let list_key = match key {
+            Key::Up => Some(ListKey::Up),
+            Key::Down => Some(ListKey::Down),
+            Key::Tab => Some(ListKey::Tab { shift }),
+            Key::Escape => Some(ListKey::Escape),
+            _ => None,
+        };
+        if let Some(list_key) = list_key
+            && self.list_key(list_key)
+        {
+            return ChatKey::None;
+        }
         match key {
             Key::Escape => return ChatKey::Close,
             Key::Enter | Key::KpEnter => {
@@ -349,7 +421,7 @@ impl ChatScreen {
                 }
                 return ChatKey::Close;
             }
-            Key::Tab => self.apply_next(),
+            Key::Tab => {}
             Key::Up => self.move_in_history(-1),
             Key::Down => self.move_in_history(1),
             Key::PageUp => return ChatKey::Scroll(LINES_OPEN as i32 - 1),
@@ -406,51 +478,18 @@ impl ChatScreen {
         }
     }
 
-    /// The box over the chat: a dark band, the text in it.
-    pub fn draw(&self, frame: &mut GuiFrame, atlas: &GuiAtlas) {
+    /// The box over the chat: a dark band, the text in it, and the list of
+    /// matches over it.
+    pub fn draw(&mut self, frame: &mut GuiFrame, atlas: &GuiAtlas, mouse: (i32, i32)) {
         let (width, height) = self.size;
         frame.fill(atlas, (2, height - 14, width - 2, height - 2), 0x8000_0000);
         self.edit
             .draw(frame, atlas, &self.font, (4, height - 12), self.focused_at);
-        // `CommandSuggestions.SuggestionsList`: the matches over the box, at
-        // the text they replace.
-        let shown = self.suggestions.len().min(10);
-        if shown > 0 {
-            let typed: String = self.edit.value().chars().take(self.range.0).collect();
-            let width = self
-                .suggestions
-                .iter()
-                .map(|text| self.font.width(text))
-                .max()
-                .unwrap_or(0);
-            let x = (4 + self.font.width(&typed) - 1)
-                .clamp(0, (width_limit(self.size.0) - width).max(0));
-            let top = height - 12 - shown as i32 * 12;
-            frame.fill(atlas, (x, top, x + width + 1, height - 12), 0xD000_0000);
-            for (row, text) in self.suggestions.iter().take(shown).enumerate() {
-                let colour = if self.selected == Some(row) {
-                    0xFFFF_FF00
-                } else {
-                    0xFFAA_AAAA
-                };
-                let runs = plain_runs(text);
-                frame.styled_text(
-                    atlas,
-                    &self.font,
-                    &runs,
-                    x + 1,
-                    top + row as i32 * 12 + 2,
-                    colour,
-                    true,
-                );
-            }
+        if let Some(list) = &mut self.list {
+            list.draw(frame, atlas, &self.font, mouse);
         }
+        self.update_ghost();
     }
-}
-
-/// The right edge suggestions stay inside.
-fn width_limit(screen_width: i32) -> i32 {
-    screen_width
 }
 
 /// `ChatScreen.normalizeChatMessage`: trimmed, runs of blanks made one,

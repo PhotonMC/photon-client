@@ -1,5 +1,6 @@
 """Original synthetic inputs only. Expected values always come from the Java JAR."""
 
+import itertools
 import math
 import struct
 
@@ -14023,6 +14024,30 @@ def gui_cases():
     yield {"case_id": "gui/chat", "family": "gui", "operation": "chat", "rows": rows}
 
 
+def gui_suggestion_cases():
+    """The chat box's list of matches: where it sits, which one is chosen, what
+    Tab, Shift+Tab, the arrow keys and Escape do to the list and the text, and
+    the grey text after the cursor."""
+    def row(label, text, start, length, matches, keys, width=427, height=240):
+        return {"label": label, "width": width, "height": height, "text": text, "start": start,
+                "length": length, "matches": matches, "keys": keys}
+
+    many = [f"entry{n}" for n in range(14)]
+    rows = [
+        row("first-chosen", "/gam", 1, 3, ["gamemode", "gamerule"], []),
+        row("tab-twice", "/gam", 1, 3, ["gamemode", "gamerule"], ["tab", "tab", "tab"]),
+        row("shift-tab", "/gam", 1, 3, ["gamemode", "gamerule"], ["tab", "shift+tab", "tab"]),
+        row("arrows", "/gam", 1, 3, ["gamemode", "gamerule", "gametest"], ["down", "down", "up", "up", "up"]),
+        row("escape-hides", "/gam", 1, 3, ["gamemode", "gamerule"], ["escape"]),
+        row("prefix-first", "/ga", 1, 2, ["zgame", "gamemode", "minecraft:gamerule"], []),
+        row("mid-text", "/say hel", 5, 3, ["help", "hello", "hex"], ["tab"]),
+        row("scrolling-window", "/e", 1, 1, many, ["down"] * 11 + ["up"] * 3),
+        row("wraps-round", "/e", 1, 1, many, ["up", "up", "down"]),
+        row("narrow-screen", "/gam", 1, 3, ["gamemode", "gamerule"], ["tab"], width=320, height=240),
+    ]
+    yield {"case_id": "gui/suggestions", "family": "gui", "operation": "suggestions", "rows": rows}
+
+
 def build_cases(families):
     generators = {"wire": wire_cases, "math": math_cases, "timer": timer_cases, "utf8": utf8_cases,
                   "binary": binary_cases, "nbt": nbt_cases, "resources": resources_cases,
@@ -14035,6 +14060,7 @@ def build_cases(families):
                   "movement": movement_cases,
                   "entity": entity_cases,
                   "gui": gui_cases}
+    generators["gui"] = lambda: itertools.chain(gui_cases(), gui_suggestion_cases())
     cases = [dict(schema_version=1, **case)
              for family in sorted(families) for case in generators[family]()]
     ids = [case["case_id"] for case in cases]

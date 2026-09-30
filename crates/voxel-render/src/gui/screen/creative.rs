@@ -163,7 +163,7 @@ impl CreativeScreen {
             has_clicked_outside: false,
             // `new EditBox(font, x + 82, y + 6, 80, 9, ...)` with no border,
             // fifty characters long.
-            search: EditBox::new(80, 50),
+            search: EditBox::new(80, 50).with_colour(0xFFFF_FFFF),
             ignore_text_input: false,
             focused_at: std::time::Instant::now(),
             assets,

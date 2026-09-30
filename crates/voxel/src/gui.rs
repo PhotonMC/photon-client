@@ -244,8 +244,12 @@ impl Gui {
             size.gui_scaled_height(),
             controls.chat.is_some(),
         );
-        if let Some(chat) = controls.chat.as_ref() {
-            chat.draw(&mut frame, &self.atlas);
+        if let Some(chat) = controls.chat.as_mut() {
+            chat.draw(
+                &mut frame,
+                &self.atlas,
+                (controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32),
+            );
         }
         let gui_size = (size.gui_scaled_width(), size.gui_scaled_height());
         let partial = (self.last_tick.elapsed().as_secs_f32() / 0.05).min(1.0);

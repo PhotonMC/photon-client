@@ -445,6 +445,10 @@ impl GuiFrame {
         let Some(log) = &mut self.log else {
             return;
         };
+        // The reference draws no call for an empty string.
+        if runs.iter().all(|run| run.text.is_empty()) {
+            return;
+        }
         log.push(DrawOp::Text {
             x,
             y,

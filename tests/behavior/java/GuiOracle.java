@@ -166,6 +166,19 @@ public final class GuiOracle {
         });
     }
 
+    /** A narrator that says nothing, for the code that narrates what it selects. */
+    static final class SilentNarrator extends net.minecraft.client.GameNarrator {
+        SilentNarrator() {
+            super(null);
+        }
+
+        @Override
+        public void saySystemNow(Component message) {}
+
+        @Override
+        public void saySystemNow(String message) {}
+    }
+
     /** A glyph's box: all the bounds the game asks of a drawn glyph. */
     private record Box(float left, float top, float right, float bottom, Style style)
             implements TextRenderable.Styled {
@@ -225,11 +238,17 @@ public final class GuiOracle {
         set(gui, "hud", hud);
         set(minecraft, "gui", gui);
         set(minecraft, "font", font);
+        set(minecraft, "narrator", unsafe.allocateInstance(SilentNarrator.class));
+        set(minecraft, "textInputManager", unsafe.allocateInstance(com.mojang.blaze3d.platform.TextInputManager.class));
         var state = new GuiRenderState();
         return new Screen(minecraft, hud, state, new GuiGraphicsExtractor(minecraft, state, mouseX, mouseY));
     }
 
-    /** What was drawn, in order: rectangles and text, each with its pose applied. */
+    /**
+     * What was drawn: rectangles and text, each with its pose applied, each
+     * kind in a fixed order. The game layers what overlaps above what it
+     * overlaps, which is an order for the GPU and not for what is drawn.
+     */
     static JsonArray record(GuiRenderState state) {
         var ops = new JsonArray();
         state.forEachElement(element -> {
@@ -296,13 +315,34 @@ public final class GuiOracle {
                 throw new IllegalStateException(error);
             }
         });
-        return ops;
+        var sorted = new ArrayList<JsonObject>();
+        ops.forEach(op -> sorted.add(op.getAsJsonObject()));
+        // Fills before text; then top to bottom, left to right, and by what
+        // is left to tell two apart.
+        sorted.sort(java.util.Comparator
+            .comparing((JsonObject op) -> op.get("op").getAsString())
+            .thenComparing(op -> op.has("y0") ? op.get("y0").getAsDouble() : op.get("y").getAsDouble())
+            .thenComparing(op -> op.has("x0") ? op.get("x0").getAsDouble() : op.get("x").getAsDouble())
+            .thenComparing(op -> op.has("x1") ? op.get("x1").getAsDouble() : 0.0)
+            .thenComparing(op -> op.has("y1") ? op.get("y1").getAsDouble() : 0.0)
+            .thenComparing(op -> op.has("runs") ? flatten(op.getAsJsonArray("runs")) : "")
+            .thenComparing(op -> op.get("color").getAsLong()));
+        var ordered = new JsonArray();
+        sorted.forEach(ordered::add);
+        return ordered;
+    }
+
+    private static String flatten(JsonArray runs) {
+        var text = new StringBuilder();
+        runs.forEach(run -> text.append(run.getAsJsonObject().get("text").getAsString()));
+        return text.toString();
     }
 
     public static JsonObject run(JsonObject request) {
         try {
             return switch (request.get("operation").getAsString()) {
                 case "chat" -> chat(request);
+                case "suggestions" -> suggestions(request);
                 default -> throw new IllegalArgumentException("Unknown gui operation");
             };
         } catch (Exception error) {
@@ -328,6 +368,83 @@ public final class GuiOracle {
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());
             out.add("ops", record(screen.state()));
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
+     * The chat box's suggestion list: the matches the server sent for a
+     * typed text, then keys pressed in turn. After each, the box's text and
+     * what the box and the list draw.
+     */
+    private static JsonObject suggestions(JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            int width = row.get("width").getAsInt();
+            int height = row.get("height").getAsInt();
+            var screen = screen(width, height, 0, 0);
+            var chatScreen = (net.minecraft.client.gui.screens.ChatScreen)
+                unsafe.allocateInstance(net.minecraft.client.gui.screens.ChatScreen.class);
+            set(chatScreen, "width", width);
+            set(chatScreen, "height", height);
+            var input = new net.minecraft.client.gui.components.EditBox(font, 4, height - 12, width - 4, 12,
+                Component.empty());
+            input.setBordered(false);
+            input.setMaxLength(256);
+            input.setValue(row.get("text").getAsString());
+            input.setFocused(true);
+            set(chatScreen, "focused", input);
+            var commandSuggestions = new net.minecraft.client.gui.components.CommandSuggestions(
+                screen.minecraft(), chatScreen, input, font, false, false, 1, 10, true, -805306368);
+            commandSuggestions.setAllowSuggestions(true);
+            int start = row.get("start").getAsInt();
+            var range = com.mojang.brigadier.context.StringRange.between(start, start + row.get("length").getAsInt());
+            var list = new ArrayList<com.mojang.brigadier.suggestion.Suggestion>();
+            for (var match : row.getAsJsonArray("matches")) {
+                list.add(new com.mojang.brigadier.suggestion.Suggestion(range, match.getAsString()));
+            }
+            set(commandSuggestions, "pendingSuggestions", java.util.concurrent.CompletableFuture.completedFuture(
+                new com.mojang.brigadier.suggestion.Suggestions(range, list)));
+            commandSuggestions.showSuggestions(false);
+            var steps = new JsonArray();
+            var keys = new ArrayList<String>();
+            keys.add("");
+            row.getAsJsonArray("keys").forEach(key -> keys.add(key.getAsString()));
+            for (String key : keys) {
+                var step = new JsonObject();
+                step.addProperty("key", key);
+                if (!key.isEmpty()) {
+                    int code = switch (key) {
+                        case "tab" -> 258;
+                        case "up" -> 265;
+                        case "down" -> 264;
+                        case "escape" -> 256;
+                        case "shift+tab" -> 258;
+                        default -> throw new IllegalArgumentException(key);
+                    };
+                    int modifiers = key.startsWith("shift+") ? 1 : 0;
+                    commandSuggestions.keyPressed(new net.minecraft.client.input.KeyEvent(code, 0, modifiers));
+                }
+                var drawn = screen(width, height, 0, 0);
+                // `ChatScreen.extractRenderState`'s band under the box.
+                drawn.graphics().fill(2, height - 14, width - 2, height - 2,
+                    drawn.minecraft().options.getBackgroundColor(Integer.MIN_VALUE));
+                // The cursor blinks from when the box took the focus.
+                set(input, "focusedTime", net.minecraft.util.Util.getMillis());
+                input.extractRenderState(drawn.graphics(), 0, 0, 0.0F);
+                commandSuggestions.extractRenderState(drawn.graphics(), 0, 0);
+                step.addProperty("value", input.getValue());
+                step.addProperty("cursor", input.getCursorPosition());
+                step.add("ops", record(drawn.state()));
+                steps.add(step);
+            }
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("steps", steps);
             rows.add(out);
         }
         var result = new JsonObject();

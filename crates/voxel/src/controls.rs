@@ -171,7 +171,23 @@ impl Controls {
                 self.send_suggestion_request(session)?;
             }
             glfw::WindowEvent::Scroll(_, y) => {
-                self.chat_log.scroll_by((y * 7.0) as i32);
+                // `ChatScreen.mouseScrolled`: the list of matches first, then
+                // the chat by a notch of seven lines.
+                let mouse = (self.gui_mouse.0 as i32, self.gui_mouse.1 as i32);
+                if !chat.mouse_scrolled(y, mouse) {
+                    self.chat_log.scroll_by((y.clamp(-1.0, 1.0) * 7.0) as i32);
+                }
+            }
+            glfw::WindowEvent::CursorPos(x, y) => {
+                let (width, height) = surface.window_size();
+                self.gui_mouse = (
+                    x * f64::from(size.gui_scaled_width()) / f64::from(width.max(1)),
+                    y * f64::from(size.gui_scaled_height()) / f64::from(height.max(1)),
+                );
+            }
+            glfw::WindowEvent::MouseButton(glfw::MouseButton::Button1, glfw::Action::Press, _) => {
+                let mouse = (self.gui_mouse.0 as i32, self.gui_mouse.1 as i32);
+                chat.mouse_clicked(mouse);
             }
             _ => {}
         }

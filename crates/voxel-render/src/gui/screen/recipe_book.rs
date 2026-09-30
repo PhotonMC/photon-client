@@ -71,7 +71,7 @@ impl RecipeBookPanel {
             button,
             assets,
             model: BookModel::new(kind),
-            search: EditBox::new(73, 50),
+            search: EditBox::new(73, 50).with_colour(0xFFFF_FFFF),
             focused: false,
             focused_at: Instant::now(),
             started: Instant::now(),

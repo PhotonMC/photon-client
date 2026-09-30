@@ -18354,13 +18354,35 @@ fn entity_result(request: &Value) -> Result<Value, String> {
 /// The recorded drawing calls as the reference's oracle writes them.
 fn gui_ops(ops: &[voxel_render::gui::DrawOp]) -> Vec<Value> {
     use voxel_render::gui::DrawOp;
-    // The reference keeps a layer's rectangles before its text, whatever the
-    // order they were asked for in.
-    let (fills, texts): (Vec<&DrawOp>, Vec<&DrawOp>) =
-        ops.iter().partition(|op| matches!(op, DrawOp::Fill { .. }));
-    fills
+    // Fills before text, then top to bottom, left to right and by what is
+    // left to tell two apart: the reference layers what overlaps, an order
+    // for the GPU and not for what is drawn.
+    let key = |op: &&DrawOp| match op {
+        DrawOp::Fill { rect, colour } => (
+            0,
+            rect.1,
+            rect.0,
+            rect.2,
+            rect.3,
+            String::new(),
+            i64::from(*colour as i32),
+        ),
+        DrawOp::Text {
+            x, y, colour, runs, ..
+        } => (
+            1,
+            *y,
+            *x,
+            0,
+            0,
+            runs.iter().map(|run| run.0.as_str()).collect::<String>(),
+            i64::from(*colour as i32),
+        ),
+    };
+    let mut sorted: Vec<&DrawOp> = ops.iter().collect();
+    sorted.sort_by_key(key);
+    sorted
         .into_iter()
-        .chain(texts)
         .map(|op| match op {
             DrawOp::Fill { rect, colour } => json!({
                 "op": "fill", "x0": f64::from(rect.0), "y0": f64::from(rect.1),
@@ -18386,6 +18408,17 @@ fn gui_ops(ops: &[voxel_render::gui::DrawOp]) -> Vec<Value> {
             }),
         })
         .collect()
+}
+
+/// A clipboard for a test with nothing to copy.
+struct NoClipboard;
+
+impl voxel_render::gui::edit_box::Clipboard for NoClipboard {
+    fn get(&mut self) -> String {
+        String::new()
+    }
+
+    fn set(&mut self, _text: &str) {}
 }
 
 /// The screens' drawing, recorded and compared with the reference's own.
@@ -18423,6 +18456,67 @@ fn gui_result(request: &Value) -> Result<Value, String> {
                     log.tick();
                 }
                 log.draw(&mut frame, &atlas, &font, int("height"), false);
+            }
+            "suggestions" => {
+                use voxel_render::gui::chat::ChatScreen;
+                let width = int("width");
+                let height = int("height");
+                let text = row["text"].as_str().ok_or("text")?;
+                let mut screen = ChatScreen::new(
+                    std::sync::Arc::new(Font::load(&root).ok_or("font")?),
+                    (width, height),
+                    text,
+                    Vec::new(),
+                )
+                .without_key();
+                let matches = row["matches"]
+                    .as_array()
+                    .ok_or("matches")?
+                    .iter()
+                    .filter_map(|m| m.as_str().map(str::to_owned))
+                    .collect();
+                screen.suggested(
+                    0,
+                    row["start"].as_u64().unwrap_or(0) as usize,
+                    row["length"].as_u64().unwrap_or(0) as usize,
+                    matches,
+                );
+                let mut keys = vec![String::new()];
+                keys.extend(
+                    row["keys"]
+                        .as_array()
+                        .ok_or("keys")?
+                        .iter()
+                        .filter_map(|k| k.as_str().map(str::to_owned)),
+                );
+                let mut steps = Vec::new();
+                for key in keys {
+                    if !key.is_empty() {
+                        let (glfw_key, shift) = match key.as_str() {
+                            "tab" => (glfw::Key::Tab, false),
+                            "shift+tab" => (glfw::Key::Tab, true),
+                            "up" => (glfw::Key::Up, false),
+                            "down" => (glfw::Key::Down, false),
+                            "escape" => (glfw::Key::Escape, false),
+                            _ => return Err("unknown key".into()),
+                        };
+                        screen.key_pressed(glfw_key, (false, shift), &mut NoClipboard);
+                    }
+                    let mut drawn = GuiFrame {
+                        log: Some(Vec::new()),
+                        ..GuiFrame::default()
+                    };
+                    screen.refocus();
+                    screen.draw(&mut drawn, &atlas, (0, 0));
+                    steps.push(json!({
+                        "key": key,
+                        "value": screen.value(),
+                        "cursor": screen.cursor(),
+                        "ops": gui_ops(&drawn.log.take().unwrap_or_default()),
+                    }));
+                }
+                out.push(json!({"label": row["label"], "steps": steps}));
+                continue;
             }
             _ => return Err("unknown gui operation".into()),
         }

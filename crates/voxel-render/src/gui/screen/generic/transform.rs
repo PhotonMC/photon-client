@@ -115,7 +115,7 @@ impl Extras {
             loom_scrolling: false,
             loom_count: 0,
             // `new EditBox(font, x + 62, y + 24, 103, 12, ...)`, unbordered.
-            name: EditBox::new(103, 50),
+            name: EditBox::new(103, 50).with_colour(0xFFFF_FFFF),
             focused_at: Instant::now(),
             filled_for: None,
             last_sent: String::new(),

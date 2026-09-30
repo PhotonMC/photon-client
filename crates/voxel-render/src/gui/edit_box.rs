@@ -43,6 +43,10 @@ pub struct EditBox {
     max_length: usize,
     /// `getInnerWidth`.
     width: i32,
+    /// `textColor`: the default the reference gives a box.
+    colour: u32,
+    /// `setSuggestion`: the grey text after the cursor.
+    suggestion: Option<String>,
 }
 
 /// `Font.plainSubstrByWidth`: the longest head of the text that fits.
@@ -85,7 +89,30 @@ impl EditBox {
             display_pos: 0,
             max_length,
             width,
+            colour: 0xFFE0_E0E0,
+            suggestion: None,
         }
+    }
+
+    /// `setTextColor`.
+    pub fn with_colour(mut self, colour: u32) -> Self {
+        self.colour = colour;
+        self
+    }
+
+    /// `setSuggestion`.
+    pub fn set_suggestion(&mut self, suggestion: Option<String>) {
+        self.suggestion = suggestion;
+    }
+
+    /// `getCursorPosition`.
+    pub fn cursor(&self) -> usize {
+        self.cursor
+    }
+
+    /// `setCursorPosition` with the selection dropped (`setHighlightPos`).
+    pub fn set_cursor_position(&mut self, position: usize, font: &Font) {
+        self.move_cursor_to(position, false, font);
     }
 
     pub fn value(&self) -> String {
@@ -329,7 +356,7 @@ impl EditBox {
         let chars: Vec<char> = shown.text.chars().collect();
         let cursor_on_screen = shown.cursor >= 0 && shown.cursor as usize <= chars.len();
         let blink = (focused_at.elapsed().as_millis() / 300).is_multiple_of(2);
-        let colour = 0xFFFF_FFFF;
+        let colour = self.colour;
         let right = text_x + self.width;
         let mut draw_x = text_x;
         if !chars.is_empty() {
@@ -351,6 +378,11 @@ impl EditBox {
         if !chars.is_empty() && cursor_on_screen && (shown.cursor as usize) < chars.len() {
             let rest: String = chars[shown.cursor as usize..].iter().collect();
             frame.text_with_shadow(atlas, font, &rest, draw_x, text_y, colour);
+        }
+        if !shown.insert
+            && let Some(suggestion) = &self.suggestion
+        {
+            frame.text_with_shadow(atlas, font, suggestion, cursor_x - 1, text_y, 0xFF80_8080);
         }
         if shown.highlight as isize != shown.cursor {
             let before: String = chars[..shown.highlight].iter().collect();
