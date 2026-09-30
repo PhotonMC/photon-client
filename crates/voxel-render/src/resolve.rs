@@ -732,6 +732,7 @@ pub fn build_mesh(
                     None => cull,
                 }),
                 shade: element.shade,
+                tint_index: face.tint_index,
             });
             mesh.indices
                 .extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 3]);

@@ -5,25 +5,14 @@
 //! variant, and the variant names a model. This walks a box of the world and
 //! does that for every position in it.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 
+use crate::bake::{BakeKey, BakedModel};
 use crate::resolve::{AssetSource, BuiltAtlas, ResolveError, ResolvedModel};
 use crate::scene::Mesh;
 use voxel_core::direction::Direction;
 use voxel_core::identifier::Identifier;
 use voxel_data::block::registry;
-
-/// What one position in the world draws.
-struct Placement {
-    position: [i32; 3],
-    state: u32,
-    model: String,
-    rotation: (i32, i32, i32),
-    uv_lock: bool,
-    tints: Vec<u32>,
-    /// The block's nudge off the grid, if it has one.
-    offset: [f32; 3],
-}
 
 /// How a world box turned out.
 pub struct WorldMesh {
@@ -48,6 +37,8 @@ pub type FacedQuad = ([[f32; 3]; 4], Direction);
 /// once, the way the reference bakes its block models at resource load.
 pub struct BlockRenderer {
     models: BTreeMap<String, ResolvedModel>,
+    /// Every variant's model, baked, by the index the states name.
+    baked: Vec<BakedModel>,
     /// Each item's client item model tree, by registry id.
     items: Vec<Option<crate::item_model::ClientItem>>,
     /// The alpha of every texture a flat item extrudes, with its size.
@@ -66,15 +57,180 @@ enum StateRender {
     Air,
     /// Not air, but nothing to draw it with.
     Missing,
-    Drawn {
-        name: &'static str,
-        properties: BTreeMap<String, String>,
-        /// The weighted lists its variants are picked from.
-        lists: Vec<Vec<crate::blockstate::Variant>>,
-        /// Whether every face of every model it can draw hides behind a
-        /// side, so a block closed in on all six sides draws nothing.
-        closes_in: bool,
+    Drawn(DrawnState),
+}
+
+struct DrawnState {
+    /// The weighted lists its variants are picked from.
+    lists: Vec<Vec<BakedVariant>>,
+    /// Whether every quad of every model it can draw hides behind a side,
+    /// so a block closed in on all six sides draws nothing.
+    closes_in: bool,
+    /// Where each tint slot's colour comes from.
+    tints: StateTints,
+}
+
+/// A variant as the random pick sees it, with its baked model.
+struct BakedVariant {
+    /// Index into [`BlockRenderer::baked`]; `None` when the model could not
+    /// be baked, which still takes its draw.
+    model: Option<u32>,
+    weight: i32,
+    /// Whether it was written inside a list, and so drawn for.
+    listed: bool,
+}
+
+/// `BlockColors` for a state: fixed colours, or colours read from the
+/// biome around the block.
+enum StateTints {
+    Fixed(Vec<u32>),
+    Biome {
+        layers: &'static [Option<crate::biome_tint::TintKind>],
+        constant: &'static [u32],
+        /// A tall plant's upper half takes the colour of the block below.
+        below: bool,
     },
+}
+
+impl StateTints {
+    /// The reference's colour providers for a block's state
+    /// (`BlockColors.createDefault`).
+    fn of(block: &str, properties: &BTreeMap<String, String>) -> Self {
+        // The lily pad has a world colour of its own.
+        if block == "minecraft:lily_pad" {
+            return Self::Fixed(vec![crate::tint::LILY_PAD_IN_WORLD]);
+        }
+        if let Some(tint) = crate::tint::state_tint(block, properties) {
+            return Self::Fixed(vec![tint]);
+        }
+        let constant = registry::tints(block);
+        match crate::biome_tint::tint_layers(block) {
+            None => Self::Fixed(constant.to_vec()),
+            Some(layers) => Self::Biome {
+                layers,
+                constant,
+                below: properties.get("half").map(String::as_str) == Some("upper")
+                    && matches!(block, "minecraft:tall_grass" | "minecraft:large_fern"),
+            },
+        }
+    }
+
+    /// Each slot's colour for the block at `position`, into `out`.
+    fn colours(
+        &self,
+        position: [i32; 3],
+        biome_tint: &impl Fn(crate::biome_tint::TintKind, [i32; 3]) -> u32,
+        out: &mut Vec<u32>,
+    ) {
+        out.clear();
+        match self {
+            Self::Fixed(colours) => out.extend_from_slice(colours),
+            Self::Biome {
+                layers,
+                constant,
+                below,
+            } => {
+                let sample = if *below {
+                    [position[0], position[1] - 1, position[2]]
+                } else {
+                    position
+                };
+                out.extend(layers.iter().enumerate().map(|(slot, layer)| match layer {
+                    Some(kind) => biome_tint(*kind, sample),
+                    None => constant.get(slot).copied().unwrap_or(0xFFFF_FFFF),
+                }));
+            }
+        }
+    }
+}
+
+/// `WeightedList` draws: one variant from each list with the block's random
+/// source, a lone variant written outside a list taking no draw.
+fn pick_variants(
+    lists: &[Vec<BakedVariant>],
+    random: &mut voxel_core::random::RandomSource,
+    mut picked: impl FnMut(Option<u32>),
+) {
+    for list in lists {
+        match list.as_slice() {
+            [] => {}
+            [only] if !only.listed => picked(only.model),
+            _ => {
+                let total: i32 = list.iter().map(|variant| variant.weight).sum();
+                if let Ok(mut selection) = random.next_int_bound(total)
+                    && let Some(variant) = list.iter().find(|variant| {
+                        selection -= variant.weight;
+                        selection < 0
+                    })
+                {
+                    picked(variant.model);
+                }
+            }
+        }
+    }
+}
+
+/// Bake every variant the states name, each distinct model and turn once,
+/// and turn each state's lists into lists of baked models.
+fn bake_states(
+    models: &BTreeMap<String, ResolvedModel>,
+    atlas: &BuiltAtlas,
+    pending: Vec<Option<(Vec<Vec<crate::blockstate::Variant>>, StateTints)>>,
+    air: &[bool],
+) -> (Vec<BakedModel>, Vec<StateRender>) {
+    let mut baked = Vec::new();
+    let mut known: HashMap<BakeKey, Option<u32>> = HashMap::new();
+    let states = pending
+        .into_iter()
+        .zip(air)
+        .map(|(drawn, is_air)| {
+            if *is_air {
+                return StateRender::Air;
+            }
+            let Some((lists, tints)) = drawn else {
+                return StateRender::Missing;
+            };
+            let lists: Vec<Vec<BakedVariant>> = lists
+                .iter()
+                .map(|list| {
+                    list.iter()
+                        .map(|variant| {
+                            let key = BakeKey {
+                                model: variant.model.as_string(),
+                                rotation: (
+                                    variant.x.degrees(),
+                                    variant.y.degrees(),
+                                    variant.z.degrees(),
+                                ),
+                                uv_lock: variant.uvlock,
+                            };
+                            let model = *known.entry(key).or_insert_with_key(|key| {
+                                let model = crate::bake::bake(models.get(&key.model)?, atlas, key)?;
+                                baked.push(model);
+                                u32::try_from(baked.len() - 1).ok()
+                            });
+                            BakedVariant {
+                                model,
+                                weight: variant.weight,
+                                listed: variant.listed,
+                            }
+                        })
+                        .collect()
+                })
+                .collect();
+            let closes_in = lists.iter().flatten().all(|variant| {
+                variant
+                    .model
+                    .is_none_or(|model| baked[model as usize].closes_in())
+            });
+            StateRender::Drawn(DrawnState {
+                lists,
+                closes_in,
+                tints,
+            })
+        })
+        .collect();
+    (baked, states)
 }
 
 /// One layer of an item as drawn in one display context.
@@ -154,46 +310,30 @@ impl BlockRenderer {
             }
             blockstates.insert(block.name.to_owned(), file);
         }
-        let mut states = Vec::new();
+        // Each state's variant lists and colours; baked once the atlas is.
+        let mut pending: Vec<Option<(Vec<Vec<crate::blockstate::Variant>>, StateTints)>> =
+            Vec::new();
+        let mut air = Vec::new();
         for block in registry::BLOCKS.iter() {
+            let is_air = matches!(
+                block.name,
+                "minecraft:air" | "minecraft:cave_air" | "minecraft:void_air"
+            );
             for offset in 0..block.state_count() {
-                let state_id = (block.first_state_id() + offset) as usize;
-                if states.len() <= state_id {
-                    states.resize_with(state_id + 1, || StateRender::Missing);
-                }
-                if matches!(
-                    block.name,
-                    "minecraft:air" | "minecraft:cave_air" | "minecraft:void_air"
-                ) {
-                    states[state_id] = StateRender::Air;
-                    continue;
-                }
-                let Some(file) = blockstates.get(block.name) else {
-                    continue;
-                };
-                let properties: BTreeMap<String, String> = block
-                    .properties_at(offset)
-                    .unwrap_or_default()
-                    .into_iter()
-                    .map(|(key, value)| (key.to_owned(), value.to_owned()))
-                    .collect();
-                let lists = file.matched_lists(&properties);
-                let closes_in = lists.iter().flatten().all(|variant| {
-                    models.get(&variant.model.as_string()).is_none_or(|model| {
-                        model.elements.iter().all(|element| {
-                            element
-                                .faces
-                                .iter()
-                                .all(|(_, face)| face.cull_for_direction.is_some())
-                        })
-                    })
+                air.push(is_air);
+                let drawn = blockstates.get(block.name).filter(|_| !is_air).map(|file| {
+                    let properties: BTreeMap<String, String> = block
+                        .properties_at(offset)
+                        .unwrap_or_default()
+                        .into_iter()
+                        .map(|(key, value)| (key.to_owned(), value.to_owned()))
+                        .collect();
+                    (
+                        file.matched_lists(&properties),
+                        StateTints::of(block.name, &properties),
+                    )
                 });
-                states[state_id] = StateRender::Drawn {
-                    name: block.name,
-                    properties,
-                    lists,
-                    closes_in,
-                };
+                pending.push(drawn);
             }
         }
         // Every item's model tree, and the models its layers name in any
@@ -271,8 +411,10 @@ impl BlockRenderer {
             .chain(layer_sprites)
             .collect();
         let atlas = crate::resolve::build_atlas_with(source, &ordered, &extra, 8192, mip_level)?;
+        let (baked, states) = bake_states(&models, &atlas, pending, &air);
         Ok(Self {
             models,
+            baked,
             items,
             layer_alpha,
             states,
@@ -382,50 +524,26 @@ impl BlockRenderer {
     /// own unit cube and each quad's facing, with the block's offset. The
     /// variants are the ones the world mesh picks there.
     pub fn block_quads(&self, state_id: u32, position: [i32; 3]) -> (Vec<FacedQuad>, [f32; 3]) {
-        let Some(StateRender::Drawn {
-            name,
-            properties,
-            lists,
-            ..
-        }) = self.states.get(state_id as usize)
-        else {
+        let Some(StateRender::Drawn(drawn)) = self.states.get(state_id as usize) else {
             return (Vec::new(), [0.0; 3]);
         };
+        let info = voxel_world::block::state_or_air(i64::from(state_id));
         let mut random =
-            voxel_core::random::RandomSource::create(render_seed(name, properties, position));
-        let variants = crate::blockstate::BlockStateFile::pick_variants(lists, &mut random);
+            voxel_core::random::RandomSource::create(voxel_world::block::seed(info, position));
         let mut quads = Vec::new();
-        for variant in &variants {
-            let Some(model) = self.models.get(&variant.model.as_string()) else {
-                continue;
+        pick_variants(&drawn.lists, &mut random, |model| {
+            let Some(model) = model else {
+                return;
             };
-            let (rotate_x, rotate_y, rotate_z) = (
-                variant.x.degrees(),
-                variant.y.degrees(),
-                variant.z.degrees(),
+            quads.extend(
+                self.baked[model as usize]
+                    .quads
+                    .iter()
+                    .map(|quad| (quad.corners, quad.direction)),
             );
-            let Some(state) = crate::rotation::model_state_transform(rotate_x, rotate_y, rotate_z)
-            else {
-                continue;
-            };
-            let identity = rotate_x % 360 == 0 && rotate_y % 360 == 0 && rotate_z % 360 == 0;
-            let Ok(part) = crate::resolve::build_mesh(
-                model,
-                &self.atlas,
-                (!identity).then_some(&state),
-                &[],
-                |_| crate::rotation::FLAT_IDENTITY,
-                |_| false,
-            ) else {
-                continue;
-            };
-            for (quad, info) in part.quads.iter().enumerate() {
-                let corners =
-                    std::array::from_fn(|corner| part.vertices[quad * 4 + corner].position);
-                quads.push((corners, info.direction));
-            }
-        }
-        (quads, block_offset(name, position))
+        });
+        let offset = voxel_world::block::offset(info.block(), position).map(|value| value as f32);
+        (quads, offset)
     }
 
     /// Mesh every block in a box of the world, positioned relative to
@@ -457,8 +575,13 @@ impl BlockRenderer {
             biome_tint,
             tags,
         } = *world;
-        let mut placements = Vec::new();
+        let lighter = crate::block_light::Lighter {
+            state: |p: [i32; 3]| read(p[0], p[1], p[2]).and_then(|state| u32::try_from(state).ok()),
+            light: |p: [i32; 3]| light(p[0], p[1], p[2]),
+        };
+        let mut mesh = Mesh::default();
         let mut solid_count = 0;
+        let mut tints = Vec::new();
         for offset_x in 0..size[0] {
             for offset_y in 0..size[1] {
                 for offset_z in 0..size[2] {
@@ -472,24 +595,19 @@ impl BlockRenderer {
                     else {
                         continue;
                     };
-                    let StateRender::Drawn {
-                        name,
-                        properties,
-                        lists,
-                        closes_in,
-                    } = (match self.states.get(state_id as usize) {
+                    let drawn = match self.states.get(state_id as usize) {
                         Some(StateRender::Air) => continue,
-                        Some(render) => render,
-                        None => &StateRender::Missing,
-                    })
-                    else {
-                        solid_count += 1;
-                        continue;
+                        Some(StateRender::Drawn(drawn)) => drawn,
+                        _ => {
+                            solid_count += 1;
+                            continue;
+                        }
                     };
                     solid_count += 1;
-                    // Closed in on every side, it would draw no face at all.
-                    if *closes_in
-                        && Direction::stream().all(|facing| {
+                    // `shouldRenderFace` towards each side, asked at most once.
+                    let mut hidden: [Option<bool>; 6] = [None; 6];
+                    let mut is_hidden = |facing: Direction| {
+                        *hidden[facing as usize].get_or_insert_with(|| {
                             let (step_x, step_y, step_z) = facing.step();
                             let neighbour = read(
                                 position[0] + step_x,
@@ -501,161 +619,63 @@ impl BlockRenderer {
                                 state_id, neighbour, facing, tags,
                             )
                         })
-                    {
+                    };
+                    // Closed in on every side, it would draw no face at all.
+                    if drawn.closes_in && Direction::stream().all(&mut is_hidden) {
                         continue;
                     }
-                    let mut random = voxel_core::random::RandomSource::create(render_seed(
-                        name, properties, position,
-                    ));
-                    let variants =
-                        crate::blockstate::BlockStateFile::pick_variants(lists, &mut random);
-                    if variants.is_empty() {
+                    let info = voxel_world::block::state_or_air(i64::from(state_id));
+                    let mut random = voxel_core::random::RandomSource::create(
+                        voxel_world::block::seed(info, position),
+                    );
+                    let mut picked = Vec::new();
+                    pick_variants(&drawn.lists, &mut random, |model| picked.push(model));
+                    if picked.is_empty() {
                         continue;
                     }
-                    let tints = world_tints(name, properties, position, biome_tint);
-                    let offset = block_offset(name, position);
-                    for variant in &variants {
-                        let model_name = variant.model.as_string();
-                        if !self.models.contains_key(&model_name) {
-                            continue;
+                    drawn.tints.colours(position, biome_tint, &mut tints);
+                    let nudge = voxel_world::block::offset(info.block(), position);
+                    // A model is built in its own block's unit cube, so it
+                    // moves to where the block sits, measured from the box's
+                    // near corner.
+                    let shift: [f32; 3] = std::array::from_fn(|axis| {
+                        (position[axis] - mesh_origin[axis]) as f32 + nudge[axis] as f32
+                    });
+                    for model in picked.into_iter().flatten() {
+                        let model = &self.baked[model as usize];
+                        // Smooth lighting, the reference's default, unless the
+                        // block glows or the model opts out of ambient occlusion.
+                        let smooth = info.light_emission == 0 && model.ambient_occlusion;
+                        for quad in &model.quads {
+                            if quad.cull.is_some_and(&mut is_hidden) {
+                                continue;
+                            }
+                            let tint = usize::try_from(quad.tint_index)
+                                .ok()
+                                .and_then(|slot| tints.get(slot).copied())
+                                .unwrap_or(0xFFFF_FFFF);
+                            push_block_quad(
+                                &mut mesh,
+                                quad,
+                                &lighter.light_quad(
+                                    state_id,
+                                    position,
+                                    &quad.corners,
+                                    quad.direction,
+                                    quad.cull,
+                                    smooth,
+                                ),
+                                smooth,
+                                tint,
+                                shift,
+                            );
                         }
-                        placements.push(Placement {
-                            position,
-                            state: state_id,
-                            model: model_name,
-                            rotation: (
-                                variant.x.degrees(),
-                                variant.y.degrees(),
-                                variant.z.degrees(),
-                            ),
-                            uv_lock: variant.uvlock,
-                            tints: tints.clone(),
-                            offset,
-                        });
                     }
                 }
             }
         }
 
         let atlas = &self.atlas;
-        let lighter = crate::block_light::Lighter {
-            state: |p: [i32; 3]| read(p[0], p[1], p[2]).and_then(|state| u32::try_from(state).ok()),
-            light: |p: [i32; 3]| light(p[0], p[1], p[2]),
-        };
-        let mut mesh = Mesh::default();
-        for placement in &placements {
-            let model = &self.models[&placement.model];
-            let (rotate_x, rotate_y, rotate_z) = placement.rotation;
-            let Some(state) = crate::rotation::model_state_transform(rotate_x, rotate_y, rotate_z)
-            else {
-                continue;
-            };
-            let identity = rotate_x % 360 == 0 && rotate_y % 360 == 0 && rotate_z % 360 == 0;
-            let uv_transform = |facing| {
-                crate::rotation::inverse_face_transform(
-                    rotate_x,
-                    rotate_y,
-                    rotate_z,
-                    facing,
-                    placement.uv_lock,
-                )
-                .unwrap_or(crate::rotation::FLAT_IDENTITY)
-            };
-            // The reference's own culling decision against the real
-            // neighbour; an unloaded one hides nothing.
-            let occluded = |facing: Direction| {
-                let (step_x, step_y, step_z) = facing.step();
-                let neighbour_state = read(
-                    placement.position[0] + step_x,
-                    placement.position[1] + step_y,
-                    placement.position[2] + step_z,
-                )
-                .and_then(|state| u32::try_from(state).ok());
-                !voxel_world::block::should_render_face(
-                    placement.state,
-                    neighbour_state,
-                    facing,
-                    tags,
-                )
-            };
-            let Ok(mut part) = crate::resolve::build_mesh(
-                model,
-                atlas,
-                (!identity).then_some(&state),
-                &placement.tints,
-                uv_transform,
-                occluded,
-            ) else {
-                continue;
-            };
-            // Smooth lighting, the reference's default, unless the block glows or
-            // the model opts out of ambient occlusion.
-            let emission =
-                voxel_world::block::state_or_air(i64::from(placement.state)).light_emission;
-            let smooth = emission == 0 && model.ambient_occlusion;
-            for (quad, info) in part.quads.iter().enumerate() {
-                let corners: [[f32; 3]; 4] =
-                    std::array::from_fn(|corner| part.vertices[quad * 4 + corner].position);
-                let lit = lighter.light_quad(
-                    placement.state,
-                    placement.position,
-                    &corners,
-                    info.direction,
-                    info.cull,
-                    smooth,
-                );
-                let side = if info.shade {
-                    crate::block_light::cardinal(info.direction)
-                } else {
-                    1.0
-                };
-                for corner in 0..4 {
-                    let vertex = &mut part.vertices[quad * 4 + corner];
-                    // The colour is built in 8-bit steps as the reference builds
-                    // it: the occlusion grey, then the side shade, then the tint.
-                    let grey = if smooth {
-                        let grey = (lit.shade[corner] * 255.0).floor() as i32;
-                        ((grey as f32 * side) as i32).clamp(0, 255)
-                    } else {
-                        (side * 255.0).floor() as i32
-                    };
-                    let tint = vertex.tint.map(|channel| (channel * 255.0).round() as i32);
-                    let white = tint == [255, 255, 255, 255];
-                    let channel = |index: usize| {
-                        if white {
-                            grey
-                        } else {
-                            grey * tint[index] / 255
-                        }
-                    };
-                    vertex.tint = [
-                        channel(0) as f32 / 255.0,
-                        channel(1) as f32 / 255.0,
-                        channel(2) as f32 / 255.0,
-                        1.0,
-                    ];
-                    vertex.shade = 1.0;
-                    vertex.light = crate::block_light::light_uv(lit.light[corner]);
-                }
-            }
-            // A model is built in its own block's unit cube, so it moves to
-            // where the block sits, measured from the box's near corner.
-            let offset = [
-                (placement.position[0] - mesh_origin[0]) as f32 + placement.offset[0],
-                (placement.position[1] - mesh_origin[1]) as f32 + placement.offset[1],
-                (placement.position[2] - mesh_origin[2]) as f32 + placement.offset[2],
-            ];
-            let base = mesh.vertices.len() as u32;
-            for mut vertex in part.vertices {
-                for (axis, shift) in vertex.position.iter_mut().zip(offset) {
-                    *axis += shift;
-                }
-                mesh.vertices.push(vertex);
-            }
-            mesh.indices
-                .extend(part.indices.into_iter().map(|index| index + base));
-        }
-
         let fluids = FluidMesher {
             biome_tint,
             read,
@@ -679,6 +699,56 @@ impl BlockRenderer {
         }
         RegionMesh { mesh, solid_count }
     }
+}
+
+/// One lit quad of a block into the mesh. The colour is built in 8-bit
+/// steps as the reference builds it: the occlusion grey, then the side
+/// shade, then the tint.
+fn push_block_quad(
+    mesh: &mut Mesh,
+    quad: &crate::bake::BakedQuad,
+    lit: &crate::block_light::QuadLight,
+    smooth: bool,
+    tint: u32,
+    shift: [f32; 3],
+) {
+    let side = if quad.shade {
+        crate::block_light::cardinal(quad.direction)
+    } else {
+        1.0
+    };
+    let tint = [16, 8, 0, 24].map(|bits| ((tint >> bits) & 0xFF) as i32);
+    let white = tint == [255, 255, 255, 255];
+    let base = mesh.vertices.len() as u32;
+    for corner in 0..4 {
+        let grey = if smooth {
+            let grey = (lit.shade[corner] * 255.0).floor() as i32;
+            ((grey as f32 * side) as i32).clamp(0, 255)
+        } else {
+            (side * 255.0).floor() as i32
+        };
+        let channel = |index: usize| {
+            if white {
+                grey
+            } else {
+                grey * tint[index] / 255
+            }
+        };
+        mesh.vertices.push(crate::scene::Vertex {
+            position: std::array::from_fn(|axis| quad.corners[corner][axis] + shift[axis]),
+            uv: quad.uvs[corner],
+            shade: 1.0,
+            tint: [
+                channel(0) as f32 / 255.0,
+                channel(1) as f32 / 255.0,
+                channel(2) as f32 / 255.0,
+                1.0,
+            ],
+            light: crate::block_light::light_uv(lit.light[corner]),
+        });
+    }
+    mesh.indices
+        .extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 3]);
 }
 
 /// What meshing reads of the world around a region: block states, light,
@@ -1129,91 +1199,6 @@ fn add_face(
     }
 }
 
-/// The colours a block's tint layers take at a position in a world: the
-/// biome's for the layers that read one, the fixed colour for the rest.
-fn world_tints(
-    block: &str,
-    properties: &BTreeMap<String, String>,
-    position: [i32; 3],
-    biome_tint: &impl Fn(crate::biome_tint::TintKind, [i32; 3]) -> u32,
-) -> Vec<u32> {
-    // The lily pad has a world colour of its own.
-    if block == "minecraft:lily_pad" {
-        return vec![crate::tint::LILY_PAD_IN_WORLD];
-    }
-    if let Some(tint) = crate::tint::state_tint(block, properties) {
-        return vec![tint];
-    }
-    let constant = registry::tints(block);
-    let Some(layers) = crate::biome_tint::tint_layers(block) else {
-        return constant.to_vec();
-    };
-    // A tall plant's upper half takes the colour of the block below it.
-    let sample = if properties.get("half").map(String::as_str) == Some("upper")
-        && matches!(block, "minecraft:tall_grass" | "minecraft:large_fern")
-    {
-        [position[0], position[1] - 1, position[2]]
-    } else {
-        position
-    };
-    layers
-        .iter()
-        .enumerate()
-        .map(|(slot, layer)| match layer {
-            Some(kind) => biome_tint(*kind, sample),
-            None => constant.get(slot).copied().unwrap_or(0xFFFF_FFFF),
-        })
-        .collect()
-}
-
-/// `BlockState.getSeed`: the position a block's model randomness is seeded
-/// from. Two-block plants and doors share their lower half's seed, and a bed
-/// its head's column.
-fn render_seed(block: &str, properties: &BTreeMap<String, String>, position: [i32; 3]) -> i64 {
-    let [x, y, z] = position;
-    let double_plant = matches!(
-        block,
-        "minecraft:tall_grass"
-            | "minecraft:large_fern"
-            | "minecraft:sunflower"
-            | "minecraft:lilac"
-            | "minecraft:rose_bush"
-            | "minecraft:peony"
-            | "minecraft:tall_seagrass"
-            | "minecraft:small_dripleaf"
-            | "minecraft:pitcher_plant"
-            | "minecraft:pitcher_crop"
-    );
-    let door = block.ends_with("_door") && !block.ends_with("trapdoor");
-    if double_plant || door {
-        let upper = properties.get("half").map(String::as_str) == Some("upper");
-        return voxel_core::math::mth_get_seed(x, if upper { y - 1 } else { y }, z);
-    }
-    if block.ends_with("_bed") {
-        let step = if properties.get("part").map(String::as_str) == Some("head") {
-            0
-        } else {
-            1
-        };
-        let (dx, dz) = match properties.get("facing").map(String::as_str) {
-            Some("north") => (0, -1),
-            Some("south") => (0, 1),
-            Some("west") => (-1, 0),
-            _ => (1, 0),
-        };
-        return voxel_core::math::mth_get_seed(x + dx * step, y, z + dz * step);
-    }
-    voxel_core::math::mth_get_seed(x, y, z)
-}
-
-/// `BlockState.getOffset`: how far a plant is nudged off the centre of its
-/// block, from its column's seed and the block's limits.
-fn block_offset(block: &str, position: [i32; 3]) -> [f32; 3] {
-    registry::block(block).map_or([0.0; 3], |block| {
-        voxel_world::block::offset(block, position).map(|value| value as f32)
-    })
-}
-
 /// An entity model layer's quads as an item layer's mesh: corners in the
 /// unit block, texture coordinates on the layer's sprite in the atlas, and
 /// the layer's tint.
@@ -1244,6 +1229,7 @@ fn model_mesh(layer: &crate::special_models::ModelLayer, rect: &[f32; 4]) -> Mes
             direction: crate::geometry::closest_direction(normal).unwrap_or(Direction::Up),
             cull: None,
             shade: true,
+            tint_index: -1,
         });
         mesh.indices
             .extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 3]);

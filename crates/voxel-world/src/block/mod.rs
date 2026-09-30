@@ -63,3 +63,31 @@ pub fn offset(block: &Block, position: [i32; 3]) -> [f64; 3] {
     };
     [axis(seed), y, axis(seed >> 8)]
 }
+
+/// `BlockBehaviour.getSeed`: the number a block's model randomness is
+/// seeded from. Two-block plants and doors share their lower half's, and a
+/// bed its head's column.
+pub fn seed(state: &StateInfo, position: [i32; 3]) -> i64 {
+    use voxel_data::block::properties::{BED_PART, DOUBLE_BLOCK_HALF, HORIZONTAL_FACING};
+    let block = state.block();
+    let offset = u32::from(state.offset);
+    let [x, y, z] = position;
+    for class in block.class.lineage() {
+        match class {
+            BlockClass::DoublePlantBlock | BlockClass::DoorBlock => {
+                let below = i32::from(block.value(offset, &DOUBLE_BLOCK_HALF) != Some("lower"));
+                return voxel_core::math::mth_get_seed(x, y - below, z);
+            }
+            BlockClass::BedBlock => {
+                let step = i32::from(block.value(offset, &BED_PART) != Some("head"));
+                let (dx, _, dz) = block
+                    .value(offset, &HORIZONTAL_FACING)
+                    .and_then(voxel_core::direction::Direction::from_name)
+                    .map_or((0, 0, 0), voxel_core::direction::Direction::step);
+                return voxel_core::math::mth_get_seed(x + dx * step, y, z + dz * step);
+            }
+            _ => {}
+        }
+    }
+    voxel_core::math::mth_get_seed(x, y, z)
+}

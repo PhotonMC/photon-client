@@ -65,7 +65,7 @@ olarak tutulmaz.
 ### F3. Hazır modeller ve paralel açılış (Java `ModelBakery`)
 
 - [ ] Ayrıştırılmış model önbelleği: her dosya bir kez okunur.
-- [ ] Her state'in modeli açılışta hazırlanır (dönüş, UV kilidi, köşeler);
+- [x] Her state'in modeli açılışta hazırlanır (dönüş, UV kilidi, köşeler);
   mesh sırasında yalnızca varyant seçimi, renk ve ışık kalır; blok başına
   dizge işi kalmaz.
 - [ ] Rayon ile paralel dosya okuma, PNG çözme, mipmap ve state hazırlama.

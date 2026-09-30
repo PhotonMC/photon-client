@@ -41,6 +41,51 @@ fn world() -> ClientWorld {
         seed ^= seed << 17;
         seed
     };
+    // A section above the surface holding blocks whose models turn, nudge,
+    // span two blocks or take colours.
+    let variety: Vec<i32> = [
+        ("minecraft:oak_log", &[("axis", "x")][..]),
+        ("minecraft:oak_log", &[("axis", "z")]),
+        (
+            "minecraft:oak_stairs",
+            &[("facing", "east"), ("half", "top")],
+        ),
+        (
+            "minecraft:oak_stairs",
+            &[("facing", "south"), ("shape", "outer_left")],
+        ),
+        ("minecraft:tall_grass", &[("half", "lower")]),
+        ("minecraft:tall_grass", &[("half", "upper")]),
+        ("minecraft:short_grass", &[]),
+        (
+            "minecraft:oak_door",
+            &[("half", "upper"), ("facing", "west")],
+        ),
+        (
+            "minecraft:red_bed",
+            &[("part", "foot"), ("facing", "north")],
+        ),
+        ("minecraft:redstone_wire", &[("power", "15")]),
+        ("minecraft:lily_pad", &[]),
+        ("minecraft:oak_leaves", &[]),
+        ("minecraft:glass", &[]),
+        (
+            "minecraft:oak_fence",
+            &[("north", "true"), ("east", "true")],
+        ),
+        ("minecraft:pointed_dripstone", &[]),
+        ("minecraft:grass_block", &[]),
+    ]
+    .iter()
+    .map(|(name, values)| {
+        let block = voxel_data::block::registry::block(name).expect("a vanilla block");
+        let chosen = values
+            .iter()
+            .map(|(key, value)| ((*key).to_owned(), (*value).to_owned()))
+            .collect();
+        i32::try_from(block.state_id(&chosen).expect("valid properties")).expect("fits")
+    })
+    .collect();
     let mut world = ClientWorld::new(DimensionBounds::new(-64, 384));
     let biomes = vec![0; 64];
     for chunk_x in -2..=2 {
@@ -66,6 +111,8 @@ fn world() -> ClientWorld {
                             water
                         } else if y < 70 && next() % 9 == 0 {
                             leaves
+                        } else if (80..96).contains(&y) && next() % 3 == 0 {
+                            variety[(next() % variety.len() as u64) as usize]
                         } else {
                             0
                         };
@@ -107,7 +154,7 @@ fn main() {
 
     let world = world();
     let tint = |_: voxel_render::biome_tint::TintKind, _: [i32; 3]| 0xff79_c05a_u32;
-    for section_y in [-3, 0, 3, 4] {
+    for section_y in [-3, 0, 3, 4, 5] {
         let key = (0, section_y, 0);
         let (min, size, quart_min, quart_size) = SectionWorkers::region(key);
         let copying = Instant::now();
@@ -115,6 +162,7 @@ fn main() {
         let copied = copying.elapsed();
         let meshing = Instant::now();
         let mut quads = 0;
+        let mut digest = 0;
         for _ in 0..REPEATS {
             let region = renderer.mesh_region(
                 &voxel_render::world_mesh::MeshWorld {
@@ -128,10 +176,32 @@ fn main() {
                 [0, 0, 0],
             );
             quads = region.mesh.indices.len() / 6;
+            digest = mesh_digest(&region.mesh);
         }
         println!(
-            "section y={section_y} quads={quads} copy={copied:?} mesh={:?}",
+            "section y={section_y} quads={quads} digest={digest:016x} copy={copied:?} mesh={:?}",
             meshing.elapsed() / REPEATS
         );
     }
+}
+
+/// A hash of every vertex's bits and every index, so two builds can be
+/// checked for the same mesh.
+fn mesh_digest(mesh: &voxel_render::Mesh) -> u64 {
+    use std::hash::{Hash, Hasher};
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    for vertex in &mesh.vertices {
+        for value in vertex
+            .position
+            .iter()
+            .chain(&vertex.uv)
+            .chain(std::iter::once(&vertex.shade))
+            .chain(&vertex.tint)
+            .chain(&vertex.light)
+        {
+            value.to_bits().hash(&mut hasher);
+        }
+    }
+    mesh.indices.hash(&mut hasher);
+    hasher.finish()
 }

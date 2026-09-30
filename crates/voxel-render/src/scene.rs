@@ -41,6 +41,8 @@ pub struct QuadInfo {
     pub cull: Option<voxel_core::direction::Direction>,
     /// Whether the face takes the per-side shade.
     pub shade: bool,
+    /// The tint slot the face takes its colour from; negative for none.
+    pub tint_index: i32,
 }
 
 /// Vertices and indices for one cube.
