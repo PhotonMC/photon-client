@@ -252,6 +252,14 @@ impl Play {
             self.accumulated += now - self.last_frame;
             self.last_frame = now;
             self.session.drain()?;
+            let chat = self.session.drain_chat();
+            if !chat.is_empty() {
+                self.gui.receive_chat(
+                    chat,
+                    &mut self.controls.chat_log,
+                    self.controls.chat.is_some(),
+                );
+            }
             self.controls.container_tick(
                 &mut self.session,
                 &mut self.surface,
@@ -360,6 +368,7 @@ impl Play {
             self.camera.tick(player);
         }
         self.gui.tick();
+        self.controls.chat_log.tick();
         self.sky.tick(session);
         self.ticks += 1;
         Ok(())

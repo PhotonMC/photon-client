@@ -103,6 +103,10 @@ pub struct PlaySession {
     container_menu: voxel_game::container_menu::ContainerMenu,
     /// The menu of the container the server opened, likewise.
     open_menu: Option<voxel_game::container_menu::ContainerMenu>,
+    /// Chat the server sent that the client has not shown yet, and the
+    /// `nextChatIndex` its player chat must come in.
+    chat_events: Vec<ChatEvent>,
+    next_chat_index: i32,
     /// `LocalPlayer.dropSpamThrottler`: what creative drops have added up.
     drop_spam: i32,
     dirty_sections: std::collections::BTreeSet<(i32, i32, i32)>,
@@ -170,6 +174,8 @@ impl PlaySession {
             game_mode_state: voxel_game::game_mode::GameMode::default(),
             container_menu: voxel_game::container_menu::ContainerMenu::default(),
             open_menu: None,
+            chat_events: Vec::new(),
+            next_chat_index: 0,
             drop_spam: 0,
             dirty_sections: std::collections::BTreeSet::new(),
             forgotten_chunks: Vec::new(),
@@ -573,6 +579,32 @@ impl PlaySession {
                 Ok(())
             },
         )
+    }
+
+    /// The chat the server sent since the last call.
+    pub fn drain_chat(&mut self) -> Vec<ChatEvent> {
+        std::mem::take(&mut self.chat_events)
+    }
+
+    /// `ClientPacketListener.sendChat` and `sendCommand`: a line typed into
+    /// the chat, sent as a command when `command` (without its slash).
+    /// Without a chat key the message goes unsigned.
+    pub fn send_chat(&mut self, text: &str, command: bool) -> Result<(), ConnectionError> {
+        if command {
+            return self.send(PLAY_SERVERBOUND_CHAT_COMMAND_PACKET_ID, |output| {
+                let units: Vec<u16> = text.encode_utf16().collect();
+                voxel_core::utf8::write_utf8(output, &units, 32767)
+                    .map_err(|_| ConnectionError::Codec("chat command"))
+            });
+        }
+        let millis = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |time| time.as_millis() as i64);
+        let salt = i64::from(rand_salt());
+        self.send(PLAY_SERVERBOUND_CHAT_PACKET_ID, |output| {
+            encode_chat(text, millis, salt, output);
+            Ok(())
+        })
     }
 
     /// `ServerboundPlaceRecipePacket`: the recipe book asks the server to
@@ -1050,6 +1082,7 @@ impl PlaySession {
         match packet_id {
             PLAY_CLIENTBOUND_LOGIN_PACKET_ID => {
                 let login = parse_login_packet(payload)?;
+                self.next_chat_index = 0;
                 let bounds = dimension_bounds_for_spawn_info(&self.trace, &login.spawn_info);
                 let environment =
                     dimension_environment_for_spawn_info(&self.trace, &login.spawn_info);
@@ -1377,6 +1410,35 @@ impl PlaySession {
                     packet.value,
                 );
             }
+            PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID => match parse_system_chat_event(payload) {
+                Ok(event) => self.chat_events.push(event),
+                Err(error) => self.warn(format!("system chat: {error:?}")),
+            },
+            PLAY_CLIENTBOUND_DISGUISED_CHAT_PACKET_ID => {
+                match parse_disguised_chat_event(payload) {
+                    Ok(event) => self.chat_events.push(event),
+                    Err(error) => self.warn(format!("disguised chat: {error:?}")),
+                }
+            }
+            PLAY_CLIENTBOUND_PLAYER_CHAT_PACKET_ID => match parse_player_chat_event(payload) {
+                Ok(Some(event)) => {
+                    // The reference drops the connection when the count
+                    // skips; this client counts on from what it saw.
+                    if let ChatEvent::Player { global_index, .. } = &event {
+                        if *global_index != self.next_chat_index {
+                            self.warn(format!(
+                                "chat index {global_index}, expected {}",
+                                self.next_chat_index
+                            ));
+                        }
+                        self.next_chat_index = global_index + 1;
+                    }
+                    self.chat_events.push(event);
+                }
+                Ok(None) => {}
+                Err(error) => self.warn(format!("player chat: {error:?}")),
+            },
+            PLAY_CLIENTBOUND_DELETE_CHAT_PACKET_ID => {}
             PLAY_CLIENTBOUND_RECIPE_BOOK_ADD_PACKET_ID => {
                 match parse_recipe_book_add_packet(payload) {
                     Ok((entries, replace)) => {
@@ -1596,4 +1658,12 @@ impl Default for PlayerStatus {
             selected_slot: 0,
         }
     }
+}
+
+/// A salt for a chat message: the clock's nanoseconds, which only has to
+/// differ from one message to the next.
+fn rand_salt() -> u32 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |time| time.subsec_nanos())
 }

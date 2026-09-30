@@ -4,6 +4,7 @@
 use voxel_game::attack::AttackKey;
 use voxel_game::hotbar::ScrollWheel;
 use voxel_net::connection::PlaySession;
+use voxel_render::gui::chat::{ChatKey, ChatLog, ChatScreen};
 use voxel_render::gui::screen::{KeyMods, KeyResult};
 use voxel_render::window::WindowSurface;
 
@@ -35,6 +36,11 @@ pub struct Controls {
     server_container: Option<i32>,
     /// The creative screen's tab, kept for the next time it opens.
     pub creative_tab: usize,
+    /// The chat box, while it is open, what was sent through it and the
+    /// lines of chat the player has been told.
+    pub chat: Option<ChatScreen>,
+    chat_history: Vec<String>,
+    pub chat_log: ChatLog,
     /// The mouse in GUI units.
     pub gui_mouse: (f64, f64),
     /// The button a drag is held with (`MouseHandler.activeButton`).
@@ -54,9 +60,96 @@ impl Controls {
             screen: None,
             server_container: None,
             creative_tab: voxel_game::creative_menu::default_tab(),
+            chat: None,
+            chat_history: Vec::new(),
+            chat_log: ChatLog::default(),
             gui_mouse: (0.0, 0.0),
             active_button: None,
         }
+    }
+
+    /// `Minecraft.openChatScreen`: the chat box opens holding `initial`, and
+    /// the mouse is let go. `keyed` is whether a key opened it.
+    fn open_chat(
+        &mut self,
+        initial: &str,
+        keyed: bool,
+        surface: &mut WindowSurface,
+        assets: &ScreenAssets,
+    ) {
+        let size = surface.scale();
+        let size = (size.gui_scaled_width(), size.gui_scaled_height());
+        let screen = ChatScreen::new(
+            assets.creative.font.clone(),
+            size,
+            initial,
+            self.chat_history.clone(),
+        );
+        self.chat = Some(if keyed { screen } else { screen.without_key() });
+        self.captured = false;
+        self.release_keys();
+        surface.set_cursor_captured(false);
+    }
+
+    /// The chat box closes, keeping what was sent, and the mouse is grabbed.
+    fn close_chat(&mut self, surface: &mut WindowSurface) {
+        if let Some(chat) = self.chat.take() {
+            self.chat_history = chat.history().to_vec();
+        }
+        self.chat_log.reset_scroll();
+        self.captured = true;
+        self.last_cursor = None;
+        surface.set_cursor_captured(true);
+    }
+
+    /// `ClientPacketListener.sendChat` or `sendCommand` for a typed line.
+    fn send_chat(session: &mut PlaySession, text: &str) -> Result {
+        match text.strip_prefix('/') {
+            Some(command) => session.send_chat(command, true)?,
+            None => session.send_chat(text, false)?,
+        }
+        Ok(())
+    }
+
+    /// An event for the open chat box.
+    fn chat_event(
+        &mut self,
+        event: glfw::WindowEvent,
+        session: &mut PlaySession,
+        surface: &mut WindowSurface,
+    ) -> Result {
+        let Some(chat) = self.chat.as_mut() else {
+            return Ok(());
+        };
+        let size = surface.scale();
+        chat.resize((size.gui_scaled_width(), size.gui_scaled_height()));
+        match event {
+            glfw::WindowEvent::Key(
+                key,
+                _,
+                glfw::Action::Press | glfw::Action::Repeat,
+                modifiers,
+            ) => {
+                let control = modifiers.contains(glfw::Modifiers::Control)
+                    || modifiers.contains(glfw::Modifiers::Super);
+                let shift = modifiers.contains(glfw::Modifiers::Shift);
+                match chat.key_pressed(key, (control, shift), &mut WindowClipboard(surface)) {
+                    ChatKey::Close => self.close_chat(surface),
+                    ChatKey::Send(text) => {
+                        Self::send_chat(session, &text)?;
+                        self.close_chat(surface);
+                    }
+                    ChatKey::Scroll(lines) => self.chat_log.scroll_by(lines),
+                    ChatKey::None => {}
+                }
+            }
+            glfw::WindowEvent::Char(character) => chat.char_typed(character),
+            glfw::WindowEvent::Scroll(_, y) => {
+                self.chat_log.scroll_by((y * 7.0) as i32);
+            }
+            _ => {}
+        }
+        Ok(())
     }
 
     /// Let go of every key, as the mouse is freed.
@@ -158,6 +251,29 @@ impl Controls {
         if let Some(mouse) = held.mouse {
             self.gui_mouse = mouse;
         }
+        if held.chat {
+            if self.chat.is_some() {
+                self.close_chat(surface);
+            } else {
+                self.open_chat("", false, surface, assets);
+            }
+        }
+        if let (Some(text), Some(chat)) = (held.typed, self.chat.as_mut()) {
+            for character in text.chars() {
+                chat.char_typed(character);
+            }
+        }
+        if held.enter
+            && let Some(chat) = self.chat.as_mut()
+        {
+            let mut clipboard = WindowClipboard(surface);
+            if let ChatKey::Send(text) =
+                chat.key_pressed(glfw::Key::Enter, (false, false), &mut clipboard)
+            {
+                Self::send_chat(session, &text)?;
+            }
+            self.close_chat(surface);
+        }
         if let (Some((button, shift)), Some(screen)) = (held.press, self.screen.as_mut()) {
             let menu = session.active_menu().clone();
             let now = std::time::Instant::now();
@@ -208,6 +324,9 @@ impl Controls {
                 | glfw::WindowEvent::Scroll(..)
                 | glfw::WindowEvent::CursorPos(..)
         );
+        if self.chat.is_some() && for_screen {
+            return self.chat_event(event, session, surface);
+        }
         if self.screen.is_some() && for_screen {
             let handled = self.screen_event(event, session, surface);
             self.drain_screen_actions(session)?;
@@ -335,6 +454,12 @@ impl Controls {
                 } else {
                     surface.request_close();
                 }
+            }
+            WindowEvent::Key(Key::T, _, Action::Press, _) if self.captured => {
+                self.open_chat("", true, surface, assets);
+            }
+            WindowEvent::Key(Key::Slash, _, Action::Press, _) if self.captured => {
+                self.open_chat("/", true, surface, assets);
             }
             WindowEvent::Key(Key::F5, _, Action::Press, _) => {
                 self.camera_type = self.camera_type.next();

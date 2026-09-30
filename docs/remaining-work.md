@@ -141,9 +141,15 @@ paketlerini işlemiyor.
 
 Bitti: `Component`/dil (`en_us`), stilli yazı, `EditBox`, ipucu kutusu.
 
-- **M** Chat paketleri: `PlayerChat`, `DisguisedChat`, `SystemChat`,
-  `DeleteChat`, `ChatAck`; chat paneli (geçmiş, kayma, solma, satır kırma
-  `StringSplitter`), `Chat`/`ChatCommand` gönderimi, T/`/` girişi.
+- **Bitti (M5.a, çevrimdışı)** `SystemChat`, `DisguisedChat`, `PlayerChat`
+  (imzalar atlanır, kısmi süzme tam süzme gibi değil geçer), sohbet türü
+  süslemesi (`chat_type` kayıt defteri, veri paketinden), sohbet paneli (100
+  satır, `StringSplitter` ile sarma, 180–200 tikte solma, etiket çubuğu),
+  T ve `/` ile giriş kutusu, geçmiş (yukarı/aşağı), PageUp/PageDown, `Chat` ve
+  `ChatCommand` gönderimi (imzasız, boş `LastSeenMessages`). Eksik: kaydırma
+  çubuğu, güven simgesi, `DeleteChat`, eylem çubuğu (`overlay`), sohbet
+  seçenekleri (genişlik/ölçek/görünürlük), fareyle tıklama/üzerine gelme
+  olayları, `nextChatIndex` kopuşunda bağlantıyı kesme (yalnız uyarı).
 - **L** İmzalı sohbet: `ChatSessionUpdate`, mesaj zinciri, `ChatCommandSigned`;
   çevrimdışı modda gerekmez, çevrimiçide zorunlu (M9).
 - **M** Komutlar: `Commands` ağacı ayrıştırma, `CommandSuggestions`, öneri

@@ -1,6 +1,7 @@
 //! Items, menus and the player's actions, built on the client's world copy.
 
 pub mod attack;
+pub mod chat;
 pub mod container_menu;
 pub mod creative_menu;
 pub mod default_components;

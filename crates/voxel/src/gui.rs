@@ -5,9 +5,10 @@ use std::sync::Arc;
 
 use voxel_game::registries::Registries;
 use voxel_game::text::{Lang, Style};
-use voxel_net::connection::PlaySession;
+use voxel_net::connection::{ChatEvent, ChatHolder, PlaySession};
 use voxel_render::VulkanBackend;
 use voxel_render::biome_tint::BiomeTints;
+use voxel_render::gui::chat::ChatLog;
 use voxel_render::gui::font::Font;
 use voxel_render::gui::items::GuiItemVertex;
 use voxel_render::gui::screen::ScreenDraw;
@@ -89,6 +90,37 @@ impl Gui {
         self.hud.tick();
     }
 
+    /// The chat the server sent, worded and added to the log.
+    pub fn receive_chat(&self, events: Vec<ChatEvent>, log: &mut ChatLog, focused: bool) {
+        for event in events {
+            let component = match event {
+                // The action bar is not drawn yet.
+                ChatEvent::System { overlay: true, .. } => continue,
+                ChatEvent::System { content, .. } => content,
+                ChatEvent::Disguised { content, bound }
+                | ChatEvent::Player { content, bound, .. } => {
+                    let decoration = match &bound.holder {
+                        ChatHolder::Direct(decoration) => Some(decoration),
+                        ChatHolder::Registry(id) => usize::try_from(*id)
+                            .ok()
+                            .and_then(|id| self.registries.chat_types.get(id)),
+                    };
+                    match decoration {
+                        Some(decoration) => {
+                            decoration.decorate(content, &bound.name, bound.target.as_ref())
+                        }
+                        None => content,
+                    }
+                }
+            };
+            log.add(
+                &self.lang.runs(&component, &Style::default()),
+                &self.font,
+                focused,
+            );
+        }
+    }
+
     /// The HUD, then the open screen over it, with the player in the screen
     /// posed as the entity stands now.
     pub fn draw(
@@ -122,6 +154,17 @@ impl Gui {
             self.started_at.elapsed().as_millis(),
             &mut draw_item,
         );
+        // The chat, over the hotbar; open, it is the box's and brighter.
+        controls.chat_log.draw(
+            &mut frame,
+            &self.atlas,
+            &self.font,
+            size.gui_scaled_height(),
+            controls.chat.is_some(),
+        );
+        if let Some(chat) = controls.chat.as_ref() {
+            chat.draw(&mut frame, &self.atlas);
+        }
         if let (Some(screen), Some(menu)) = (controls.screen.as_mut(), screen_menu) {
             let mut draw_player =
                 |area: (i32, i32, i32, i32), size: f32, offset_y: f32, mouse: (f32, f32)| {

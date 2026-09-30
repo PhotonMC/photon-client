@@ -2435,3 +2435,41 @@ fn recipe_book_add_reads_a_shaped_entry_and_its_flags() {
     book.add(entries, replace);
     assert!(book.highlight.contains(&7));
 }
+
+#[test]
+fn player_chat_reads_the_text_the_type_and_the_sender() {
+    let mut payload = vec![0]; // global index
+    payload.extend([0; 16]); // sender
+    payload.push(0); // index
+    payload.push(0); // no signature
+    payload.extend([2, b'h', b'i']); // content
+    payload.extend([0; 16]); // timestamp and salt
+    payload.push(0); // last seen
+    payload.push(0); // no unsigned content
+    payload.push(0); // filter mask: pass through
+    payload.push(1); // chat type: registry id 0
+    payload.extend([8, 0, 3, b'B', b'o', b'b']); // the sender's name
+    payload.push(0); // no target
+    let event = super::parse_player_chat_event(&payload).unwrap().unwrap();
+    let super::ChatEvent::Player {
+        global_index,
+        content,
+        bound,
+    } = event
+    else {
+        panic!("not a player chat");
+    };
+    assert_eq!(global_index, 0);
+    assert_eq!(content, voxel_game::text::Component::literal("hi"));
+    assert_eq!(bound.holder, super::ChatHolder::Registry(0));
+    assert_eq!(bound.name, voxel_game::text::Component::literal("Bob"));
+}
+
+#[test]
+fn an_unsigned_chat_packet_ends_in_an_empty_acknowledgement() {
+    let mut output = Vec::new();
+    super::encode_chat("hi", 5, 7, &mut output);
+    assert_eq!(output[..3], [2, b'h', b'i']);
+    // offset 0, three bytes of bits, checksum 1, after the signature flag.
+    assert_eq!(output[3 + 16..], [0, 0, 0, 0, 0, 1]);
+}

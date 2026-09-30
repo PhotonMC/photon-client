@@ -58,6 +58,8 @@ pub struct Registries {
     pub trim_materials: Vec<DescribedEntry>,
     pub trim_patterns: Vec<DescribedEntry>,
     pub banner_patterns: Vec<BannerEntry>,
+    /// The chat types' decorations for chat, by registry id.
+    pub chat_types: Vec<crate::chat::ChatDecoration>,
 }
 
 /// Where a registry entry's file sits in the data pack.
@@ -102,6 +104,32 @@ fn tag_values(data_root: &Path, directory: &str, tag: &str) -> Vec<String> {
 /// A field of an entry that is a text component, as its JSON.
 fn component(object: &JsonObject, key: &str) -> Option<JsonValue> {
     object.get_str(key).cloned()
+}
+
+/// The `chat` decoration of a chat type's entry.
+fn chat_decoration(entry: &JsonObject) -> crate::chat::ChatDecoration {
+    let Some(chat) = entry.object("chat") else {
+        return crate::chat::ChatDecoration::default();
+    };
+    crate::chat::ChatDecoration {
+        translation_key: chat.text("translation_key").unwrap_or_default(),
+        parameters: chat
+            .array("parameters")
+            .unwrap_or_default()
+            .iter()
+            .filter_map(|value| match value {
+                JsonValue::String(units) => {
+                    crate::chat::ChatParameter::from_name(&String::from_utf16_lossy(units))
+                }
+                _ => None,
+            })
+            .collect(),
+        style: chat
+            .get_str("style")
+            .and_then(crate::text::Component::from_json)
+            .map(|component| component.style)
+            .unwrap_or_default(),
+    }
 }
 
 impl Registries {
@@ -163,7 +191,12 @@ impl Registries {
                 }
             })
             .collect();
+        let chat_types = names("minecraft:chat_type")
+            .into_iter()
+            .map(|name| chat_decoration(&read_entry(data_root, "chat_type", &name)))
+            .collect();
         Self {
+            chat_types,
             enchantments,
             painting_variants,
             instruments: described("minecraft:instrument", "instrument"),

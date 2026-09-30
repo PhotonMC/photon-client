@@ -2,6 +2,7 @@
 //! item icons, widgets, the HUD and the screens.
 
 pub mod atlas;
+pub mod chat;
 pub mod edit_box;
 pub mod font;
 pub mod frame;

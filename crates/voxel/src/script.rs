@@ -23,6 +23,9 @@ pub struct HeldKeys {
     pub hold_use: bool,
     /// A scripted press of the inventory key on this tick.
     pub inventory: bool,
+    /// The chat box opened or closed on this tick, and Enter pressed in it.
+    pub chat: bool,
+    pub enter: bool,
     /// A scripted click in the open inventory: slot, button, click type.
     pub click: Option<(i32, i32, ClickType)>,
     /// A scripted tab choice on the open creative screen, by table index.
@@ -84,6 +87,8 @@ impl HeldKeys {
                 "use" => keys.use_click = true,
                 "hold_use" => keys.hold_use = true,
                 "inventory" => keys.inventory = true,
+                "chat" => keys.chat = true,
+                "enter" => keys.enter = true,
                 "none" => {}
                 other => {
                     // `click/SLOT/BUTTON/TYPE`, the type by its id.
@@ -103,9 +108,10 @@ impl HeldKeys {
                                     .map_err(|_| format!("bad tab {other} in VOXEL_SCRIPT"))?,
                             );
                         }
-                        ["type", text] => {
-                            // A script is read once: its text lives on.
-                            keys.typed = Some(Box::leak((*text).to_owned().into_boxed_str()));
+                        ["type", text @ ..] => {
+                            // A script is read once: its text lives on; a
+                            // slash in it is part of the text.
+                            keys.typed = Some(Box::leak(text.join("/").into_boxed_str()));
                         }
                         ["mouse", x, y] => {
                             let number = |text: &str| {

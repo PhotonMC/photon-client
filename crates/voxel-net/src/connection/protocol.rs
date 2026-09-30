@@ -85,6 +85,9 @@ pub(crate) const PLAY_CLIENTBOUND_REMOVE_MOB_EFFECT_PACKET_ID: i32 = 78;
 pub(crate) const PLAY_CLIENTBOUND_SET_ENTITY_DATA_PACKET_ID: i32 = 99;
 pub(crate) const PLAY_CLIENTBOUND_TELEPORT_ENTITY_PACKET_ID: i32 = 125;
 pub(crate) const PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID: i32 = 121;
+pub(crate) const PLAY_CLIENTBOUND_DELETE_CHAT_PACKET_ID: i32 = 31;
+pub(crate) const PLAY_CLIENTBOUND_DISGUISED_CHAT_PACKET_ID: i32 = 33;
+pub(crate) const PLAY_CLIENTBOUND_PLAYER_CHAT_PACKET_ID: i32 = 65;
 pub(crate) const PLAY_CLIENTBOUND_KEEP_ALIVE_PACKET_ID: i32 = 44;
 pub(crate) const PLAY_CLIENTBOUND_CHUNK_PACKET_ID: i32 = 45;
 pub(crate) const PLAY_CLIENTBOUND_LOGIN_PACKET_ID: i32 = 49;
@@ -99,6 +102,8 @@ pub(crate) const PLAY_SERVERBOUND_ACCEPT_TELEPORTATION_PACKET_ID: i32 = 0;
 pub(crate) const PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID: i32 = 41;
 pub(crate) const PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID: i32 = 11;
 pub(crate) const PLAY_SERVERBOUND_CLIENT_COMMAND_PACKET_ID: i32 = 12;
+pub(crate) const PLAY_SERVERBOUND_CHAT_COMMAND_PACKET_ID: i32 = 7;
+pub(crate) const PLAY_SERVERBOUND_CHAT_PACKET_ID: i32 = 9;
 pub(crate) const PLAY_SERVERBOUND_CLIENT_TICK_END_PACKET_ID: i32 = 13;
 pub(crate) const PLAY_SERVERBOUND_KEEP_ALIVE_PACKET_ID: i32 = 28;
 pub(crate) const PLAY_SERVERBOUND_MOVE_PLAYER_POS_ROT_PACKET_ID: i32 = 31;
@@ -2816,6 +2821,205 @@ pub(crate) fn parse_system_chat_packet(
         overlay,
         translation_key,
     })
+}
+
+/// How a chat type is named on the wire (`Holder<ChatType>`): by its
+/// registry id, or written out.
+#[derive(Debug, Clone, PartialEq)]
+pub enum ChatHolder {
+    Registry(i32),
+    Direct(voxel_game::chat::ChatDecoration),
+}
+
+/// `ChatType.Bound`: the type, the sender's name and the target's.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ChatBound {
+    pub holder: ChatHolder,
+    pub name: voxel_game::text::Component,
+    pub target: Option<voxel_game::text::Component>,
+}
+
+/// A chat packet as the client shows it.
+#[derive(Debug, Clone, PartialEq)]
+pub enum ChatEvent {
+    /// `ClientboundSystemChatPacket`: the action bar when `overlay`.
+    System {
+        content: voxel_game::text::Component,
+        overlay: bool,
+    },
+    /// `ClientboundDisguisedChatPacket`.
+    Disguised {
+        content: voxel_game::text::Component,
+        bound: ChatBound,
+    },
+    /// `ClientboundPlayerChatPacket`: what it says and its place in the
+    /// session's chat count.
+    Player {
+        global_index: i32,
+        content: voxel_game::text::Component,
+        bound: ChatBound,
+    },
+}
+
+fn read_chat_component(
+    input: &mut &[u8],
+    name: &'static str,
+) -> Result<voxel_game::text::Component, ConnectionError> {
+    voxel_core::nbt::read_any_nbt(input)
+        .ok()
+        .flatten()
+        .and_then(|tag| voxel_game::text::Component::from_nbt(&tag))
+        .ok_or(ConnectionError::Codec(name))
+}
+
+fn read_chat_string(
+    input: &mut &[u8],
+    max: usize,
+    name: &'static str,
+) -> Result<String, ConnectionError> {
+    voxel_core::utf8::read_utf8(input, max)
+        .map(|units| String::from_utf16_lossy(&units))
+        .map_err(|_| ConnectionError::Codec(name))
+}
+
+/// `ChatTypeDecoration.STREAM_CODEC`.
+fn read_chat_decoration(
+    input: &mut &[u8],
+) -> Result<voxel_game::chat::ChatDecoration, ConnectionError> {
+    let translation_key = read_chat_string(input, 32767, "chat decoration key")?;
+    let count = read_varint(input, "chat decoration parameters")?;
+    let mut parameters = Vec::new();
+    for _ in 0..count {
+        let id = read_varint(input, "chat decoration parameter")?;
+        parameters.push(
+            voxel_game::chat::ChatParameter::from_id(id)
+                .ok_or(ConnectionError::Codec("chat decoration parameter"))?,
+        );
+    }
+    let style = voxel_core::nbt::read_any_nbt(input)
+        .ok()
+        .flatten()
+        .and_then(|tag| voxel_game::text::Component::from_nbt(&tag))
+        .map(|component| component.style)
+        .ok_or(ConnectionError::Codec("chat decoration style"))?;
+    Ok(voxel_game::chat::ChatDecoration {
+        translation_key,
+        parameters,
+        style,
+    })
+}
+
+/// `ChatType.Bound.STREAM_CODEC`: a holder whose id 0 is a chat type written
+/// out (its chat decoration, then its narration), then the names.
+fn read_chat_bound(input: &mut &[u8]) -> Result<ChatBound, ConnectionError> {
+    let holder = match read_varint(input, "chat type")? {
+        0 => {
+            let chat = read_chat_decoration(input)?;
+            read_chat_decoration(input)?;
+            ChatHolder::Direct(chat)
+        }
+        id => ChatHolder::Registry(id - 1),
+    };
+    let name = read_chat_component(input, "chat sender name")?;
+    let target = if read_bool(input, "chat target flag")? {
+        Some(read_chat_component(input, "chat target name")?)
+    } else {
+        None
+    };
+    Ok(ChatBound {
+        holder,
+        name,
+        target,
+    })
+}
+
+/// A `MessageSignature.Packed`: a cache id, or the signature itself.
+fn skip_packed_signature(input: &mut &[u8]) -> Result<(), ConnectionError> {
+    if read_varint(input, "packed signature")? == 0 {
+        skip_bytes(input, 256, "signature")?;
+    }
+    Ok(())
+}
+
+fn skip_bytes(input: &mut &[u8], count: usize, name: &'static str) -> Result<(), ConnectionError> {
+    if input.len() < count {
+        return Err(ConnectionError::Codec(name));
+    }
+    *input = &input[count..];
+    Ok(())
+}
+
+/// `ClientboundSystemChatPacket`.
+pub(crate) fn parse_system_chat_event(input: &[u8]) -> Result<ChatEvent, ConnectionError> {
+    let mut input = input;
+    let content = read_chat_component(&mut input, "system chat component")?;
+    let overlay = read_bool(&mut input, "system chat overlay")?;
+    Ok(ChatEvent::System { content, overlay })
+}
+
+/// `ClientboundDisguisedChatPacket`.
+pub(crate) fn parse_disguised_chat_event(input: &[u8]) -> Result<ChatEvent, ConnectionError> {
+    let mut input = input;
+    let content = read_chat_component(&mut input, "disguised chat message")?;
+    let bound = read_chat_bound(&mut input)?;
+    Ok(ChatEvent::Disguised { content, bound })
+}
+
+/// `ClientboundPlayerChatPacket`, shown as the server's unsigned content
+/// when it sent one, else the signed text. The signatures are not checked.
+/// `None` for a message the server filtered out entirely.
+pub(crate) fn parse_player_chat_event(input: &[u8]) -> Result<Option<ChatEvent>, ConnectionError> {
+    let mut input = input;
+    let global_index = read_varint(&mut input, "chat global index")?;
+    skip_bytes(&mut input, 16, "chat sender")?;
+    read_varint(&mut input, "chat index")?;
+    if read_bool(&mut input, "chat signature flag")? {
+        skip_bytes(&mut input, 256, "chat signature")?;
+    }
+    let text = read_chat_string(&mut input, 256, "chat content")?;
+    skip_bytes(&mut input, 16, "chat timestamp and salt")?;
+    let last_seen = read_varint(&mut input, "chat last seen")?;
+    for _ in 0..last_seen {
+        skip_packed_signature(&mut input)?;
+    }
+    let unsigned = if read_bool(&mut input, "chat unsigned flag")? {
+        Some(read_chat_component(&mut input, "chat unsigned content")?)
+    } else {
+        None
+    };
+    // `FilterMask`: pass through, fully filtered, or partly (with a bit set).
+    let fully_filtered = match read_varint(&mut input, "chat filter mask")? {
+        1 => true,
+        2 => {
+            let longs = read_varint(&mut input, "chat filter bits")?;
+            skip_bytes(&mut input, longs.max(0) as usize * 8, "chat filter bits")?;
+            false
+        }
+        _ => false,
+    };
+    let bound = read_chat_bound(&mut input)?;
+    if fully_filtered {
+        return Ok(None);
+    }
+    Ok(Some(ChatEvent::Player {
+        global_index,
+        content: unsigned.unwrap_or_else(|| voxel_game::text::Component::literal(text)),
+        bound,
+    }))
+}
+
+/// `ServerboundChatPacket` for a session without a chat key: the message, the
+/// time, a salt, no signature and an empty acknowledgement (offset 0, no
+/// messages, checksum 1).
+pub(crate) fn encode_chat(message: &str, millis: i64, salt: i64, output: &mut Vec<u8>) {
+    let units: Vec<u16> = message.encode_utf16().collect();
+    let _ = voxel_core::utf8::write_utf8(output, &units, 256);
+    output.extend_from_slice(&millis.to_be_bytes());
+    output.extend_from_slice(&salt.to_be_bytes());
+    output.push(0);
+    voxel_core::wire::write_varint(0, output);
+    output.extend_from_slice(&[0, 0, 0]);
+    output.push(1);
 }
 
 fn read_lp_vec3(input: &mut &[u8], name: &'static str) -> Result<(f64, f64, f64), ConnectionError> {
