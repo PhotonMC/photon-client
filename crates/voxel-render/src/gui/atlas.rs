@@ -89,11 +89,14 @@ pub struct GuiAtlas {
 impl GuiAtlas {
     /// Read the HUD's sprites from an asset folder and pack them: where each
     /// went, and the texture they make, which only the GPU needs.
-    pub fn load(assets_root: &Path, font: &crate::gui::font::Font) -> Option<(Self, DecodedImage)> {
+    pub fn load(
+        assets_root: &Path,
+        fonts: &[&crate::gui::font::Font],
+    ) -> Option<(Self, DecodedImage)> {
         let mut images = BTreeMap::new();
         let mut stitcher = Stitcher::new(4096, 4096, 0, 0);
         // The font's images go in whole, and glyphs are cut from them.
-        for (name, image) in &font.images {
+        for (name, image) in fonts.iter().flat_map(|font| &font.images) {
             stitcher.register_sprite(SpriteEntry {
                 width: image.width as i32,
                 height: image.height as i32,

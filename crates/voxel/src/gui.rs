@@ -27,6 +27,7 @@ use crate::view::CameraType;
 /// each item's GUI layers, built the first time a slot shows it.
 pub struct Gui {
     font: Arc<Font>,
+    alt_font: Arc<Font>,
     atlas: GuiAtlas,
     lang: Arc<Lang>,
     /// The data-driven registries tooltips read.
@@ -45,11 +46,13 @@ impl Gui {
         backend: &mut VulkanBackend,
     ) -> Result<Self, Box<dyn std::error::Error>> {
         let font = Arc::new(Font::load(root).ok_or("the default font could not be read")?);
+        let alt_font = Arc::new(Font::load_alt(root).ok_or("the alt font could not be read")?);
         let (atlas, texture) =
-            GuiAtlas::load(root, &font).ok_or("the HUD sprites could not be read")?;
+            GuiAtlas::load(root, &[&font, &alt_font]).ok_or("the HUD sprites could not be read")?;
         backend.load_gui_texture(&texture)?;
         Ok(Self {
             font,
+            alt_font,
             atlas,
             lang: Arc::new(Lang::load(root)),
             registries: Arc::new(registries),
@@ -77,6 +80,7 @@ impl Gui {
             },
             inventory_title: lang.text("container.crafting"),
             registries: self.registries.clone(),
+            alt_font: self.alt_font.clone(),
             lang: lang.clone(),
         }
     }

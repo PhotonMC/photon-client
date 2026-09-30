@@ -13,6 +13,8 @@ pub type OpenScreen = Option<Box<dyn Screen>>;
 /// What the inventory screens are opened with.
 pub struct ScreenAssets {
     pub creative: CreativeAssets,
+    /// The font the enchanting table writes its names in.
+    pub alt_font: std::sync::Arc<voxel_render::gui::font::Font>,
     /// The data-driven registries, for the loom's pattern names.
     pub registries: std::sync::Arc<voxel_game::registries::Registries>,
     pub inventory_title: String,
@@ -55,6 +57,21 @@ impl ScreenAssets {
                         .collect(),
                 ),
                 lang: self.lang.clone(),
+                alt_font: self.alt_font.clone(),
+                enchantments: std::sync::Arc::new(
+                    self.registries
+                        .enchantments
+                        .iter()
+                        .map(|enchantment| {
+                            enchantment
+                                .description
+                                .as_ref()
+                                .and_then(voxel_game::text::Component::from_json)
+                                .map(|component| self.lang.plain(&component))
+                                .unwrap_or_default()
+                        })
+                        .collect(),
+                ),
             },
         ))
     }

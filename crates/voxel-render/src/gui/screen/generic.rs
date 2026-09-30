@@ -84,6 +84,10 @@ pub struct Titles {
     pub patterns: std::sync::Arc<Vec<(String, String)>>,
     /// The client's language, for the loom's button tooltips.
     pub lang: std::sync::Arc<voxel_game::text::Lang>,
+    /// The font the enchanting table writes its names in.
+    pub alt_font: std::sync::Arc<Font>,
+    /// Each enchantment's name, by registry id, for the clue it gives.
+    pub enchantments: std::sync::Arc<Vec<String>>,
 }
 
 /// A generic container screen's own state between events.
@@ -275,6 +279,9 @@ impl Screen for GenericScreen {
         if let Some(entry) = self.loom_click(mouse, menu) {
             return vec![ScreenAction::Button(entry)];
         }
+        if let Some(row) = self.enchant_click(mouse, menu) {
+            return vec![ScreenAction::Button(row)];
+        }
         if self.on_recipe_button(mouse) {
             self.button_clicked = true;
             return Vec::new();
@@ -450,6 +457,8 @@ mod tests {
             repair_expensive: String::new(),
             patterns: std::sync::Arc::default(),
             lang: std::sync::Arc::default(),
+            alt_font: std::sync::Arc::new(Font::default()),
+            enchantments: std::sync::Arc::default(),
         }
     }
 

@@ -67,6 +67,16 @@ impl Font {
         Some(font)
     }
 
+    /// The `minecraft:alt` font the enchanting table writes its names in.
+    pub fn load_alt(assets_root: &Path) -> Option<Self> {
+        let mut font = Self {
+            images: Vec::new(),
+            glyphs: HashMap::new(),
+        };
+        font.load_definition(assets_root, "minecraft:alt")?;
+        Some(font)
+    }
+
     fn load_definition(&mut self, root: &Path, id: &str) -> Option<()> {
         let (namespace, path) = id.split_once(':').unwrap_or(("minecraft", id));
         let file = root.join(format!("{namespace}/font/{path}.json"));

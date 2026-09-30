@@ -461,6 +461,277 @@ impl GenericScreen {
         }
     }
 
+    /// The enchanting table's three rows: whether the player can pay for each.
+    fn enchant_can_afford(menu: &ContainerMenu, row: usize) -> bool {
+        let cost = i32::from(menu.data.get(row).copied().unwrap_or(0));
+        let lapis = menu
+            .slots
+            .get(1)
+            .and_then(Option::as_ref)
+            .map_or(0, voxel_world::ClientItemStackState::item_count);
+        menu.creative()
+            || (lapis >= row as i32 + 1 && menu.xp_level >= row as i32 + 1 && menu.xp_level >= cost)
+    }
+
+    /// `EnchantmentScreen.mouseClicked`: the row pressed, if the menu would
+    /// take the press (`clickMenuButton`).
+    pub(super) fn enchant_click(&self, mouse: (f64, f64), menu: &ContainerMenu) -> Option<i32> {
+        if self.kind != MenuKind::Enchantment {
+            return None;
+        }
+        let (mx, my) = (
+            mouse.0 - f64::from(self.layout.left() + 60),
+            mouse.1 - f64::from(self.layout.top()),
+        );
+        (0..3).find_map(|row| {
+            let (xx, yy) = (mx, my - f64::from(14 + 19 * row as i32));
+            let hit = (0.0..108.0).contains(&xx) && (0.0..19.0).contains(&yy);
+            let cost = i32::from(menu.data.get(row).copied().unwrap_or(0));
+            let has_item = menu.slots.first().is_some_and(Option::is_some);
+            (hit && cost > 0 && has_item && Self::enchant_can_afford(menu, row))
+                .then_some(row as i32)
+        })
+    }
+
+    /// `EnchantmentScreen.extractBackground`'s three rows, and the tooltip of
+    /// the hovered one (`extractRenderState`).
+    fn enchant_draw(
+        &mut self,
+        draw: &mut ScreenDraw<'_, '_>,
+        menu: &ContainerMenu,
+        mouse: (f64, f64),
+        (left, top): (i32, i32),
+    ) {
+        const WORDS: [&str; 62] = [
+            "the",
+            "elder",
+            "scrolls",
+            "klaatu",
+            "berata",
+            "niktu",
+            "xyzzy",
+            "bless",
+            "curse",
+            "light",
+            "darkness",
+            "fire",
+            "air",
+            "earth",
+            "water",
+            "hot",
+            "dry",
+            "cold",
+            "wet",
+            "ignite",
+            "snuff",
+            "embiggen",
+            "twist",
+            "shorten",
+            "stretch",
+            "fiddle",
+            "destroy",
+            "imbue",
+            "galvanize",
+            "enchant",
+            "free",
+            "limited",
+            "range",
+            "of",
+            "towards",
+            "inside",
+            "sphere",
+            "cube",
+            "self",
+            "other",
+            "ball",
+            "mental",
+            "physical",
+            "grow",
+            "shrink",
+            "demon",
+            "elemental",
+            "spirit",
+            "animal",
+            "creature",
+            "beast",
+            "humanoid",
+            "undead",
+            "fresh",
+            "stale",
+            "phnglui",
+            "mglwnafh",
+            "cthulhu",
+            "rlyeh",
+            "wgahnagl",
+            "fhtagn",
+            "baguette",
+        ];
+        let data = |index: usize| i32::from(menu.data.get(index).copied().unwrap_or(0));
+        // `EnchantmentNames.initSeed`: the same names each frame.
+        let mut random = voxel_core::random::RandomSource::create(i64::from(data(3)));
+        let mut tip = None;
+        for row in 0..3_usize {
+            let x = left + 60;
+            let y = top + 14 + 19 * row as i32;
+            let cost = data(row);
+            if cost == 0 {
+                draw.frame.sprite(
+                    draw.atlas,
+                    "container/enchanting_table/enchantment_slot_disabled",
+                    x,
+                    y,
+                    108,
+                    19,
+                );
+                continue;
+            }
+            let cost_text = cost.to_string();
+            let text_width = 86 - draw.font.width(&cost_text);
+            // `EnchantmentNames.getRandomName`, cut to the width.
+            let count = random.next_int_bound(2).unwrap_or(0) + 3;
+            let name = (0..count)
+                .map(|_| WORDS[random.next_int_bound(WORDS.len() as i32).unwrap_or(0) as usize])
+                .collect::<Vec<_>>()
+                .join(" ");
+            let alt = self.titles.alt_font.clone();
+            let mut shown = String::new();
+            for character in name.chars() {
+                shown.push(character);
+                if alt.width(&shown) > text_width {
+                    shown.pop();
+                    break;
+                }
+            }
+            let level = format!("container/enchanting_table/level_{}", row + 1);
+            let affordable = Self::enchant_can_afford(menu, row);
+            let (name_colour, cost_colour) = if !affordable {
+                draw.frame.sprite(
+                    draw.atlas,
+                    "container/enchanting_table/enchantment_slot_disabled",
+                    x,
+                    y,
+                    108,
+                    19,
+                );
+                draw.frame.sprite(
+                    draw.atlas,
+                    &format!("{level}_disabled"),
+                    x + 1,
+                    y + 1,
+                    16,
+                    16,
+                );
+                (0xFF34_2F25, 0xFF40_7F10)
+            } else {
+                let (xx, yy) = (mouse.0 - f64::from(x), mouse.1 - f64::from(y));
+                let over = (0.0..108.0).contains(&xx) && (0.0..19.0).contains(&yy);
+                let (sprite, colour) = if over {
+                    ("enchantment_slot_highlighted", 0xFFFF_FF80)
+                } else {
+                    ("enchantment_slot", 0xFF68_5E4A)
+                };
+                draw.frame.sprite(
+                    draw.atlas,
+                    &format!("container/enchanting_table/{sprite}"),
+                    x,
+                    y,
+                    108,
+                    19,
+                );
+                draw.frame.sprite(draw.atlas, &level, x + 1, y + 1, 16, 16);
+                (colour, 0xFF80_FF20)
+            };
+            draw.frame
+                .text(draw.atlas, &alt, &shown, x + 20, y + 2, name_colour);
+            draw.frame.text_with_shadow(
+                draw.atlas,
+                draw.font,
+                &cost_text,
+                x + 20 + 86 - draw.font.width(&cost_text),
+                y + 9,
+                cost_colour,
+            );
+            // The tooltip of the row under the mouse.
+            let (xx, yy) = (mouse.0 - f64::from(x), mouse.1 - f64::from(y));
+            if tip.is_none() && (0.0..108.0).contains(&xx) && (0.0..17.0).contains(&yy) {
+                tip = Some(row);
+            }
+        }
+        if let Some(row) = tip {
+            self.enchant_tooltip(draw, menu, mouse, row);
+        }
+    }
+
+    /// `EnchantmentScreen.extractRenderState`'s tooltip over a row: the clue,
+    /// and what it costs.
+    fn enchant_tooltip(
+        &self,
+        draw: &mut ScreenDraw<'_, '_>,
+        menu: &ContainerMenu,
+        mouse: (f64, f64),
+        row: usize,
+    ) {
+        use voxel_game::text::{Run, Style};
+        let data = |index: usize| i32::from(menu.data.get(index).copied().unwrap_or(0));
+        let cost = data(row);
+        let clue = usize::try_from(data(4 + row)).ok();
+        let level = data(7 + row);
+        let Some(name) = clue.and_then(|id| self.titles.enchantments.get(id)) else {
+            return;
+        };
+        if cost <= 0 || level < 0 {
+            return;
+        }
+        let lang = &self.titles.lang;
+        let roman = lang.get(&format!("enchantment.level.{level}"));
+        let full = match roman {
+            Some(roman) => format!("{name} {roman}"),
+            None => format!("{name} {level}"),
+        };
+        let line = |text: String, colour: &str| {
+            vec![Run {
+                text,
+                style: Style::coloured(colour),
+            }]
+        };
+        let mut lines = vec![line(
+            lang.text("container.enchant.clue").replace("%s", &full),
+            "white",
+        )];
+        if !menu.creative() {
+            lines.push(Vec::new());
+            let gold = menu
+                .slots
+                .get(1)
+                .and_then(Option::as_ref)
+                .map_or(0, voxel_world::ClientItemStackState::item_count);
+            let row_cost = row as i32 + 1;
+            if menu.xp_level < cost {
+                lines.push(line(
+                    lang.text("container.enchant.level.requirement")
+                        .replace("%s", &cost.to_string()),
+                    "red",
+                ));
+            } else {
+                let lapis = if row_cost == 1 {
+                    lang.text("container.enchant.lapis.one")
+                } else {
+                    lang.text("container.enchant.lapis.many")
+                        .replace("%s", &row_cost.to_string())
+                };
+                lines.push(line(lapis, if gold >= row_cost { "gray" } else { "red" }));
+                let levels = if row_cost == 1 {
+                    lang.text("container.enchant.level.one")
+                } else {
+                    lang.text("container.enchant.level.many")
+                        .replace("%s", &row_cost.to_string())
+                };
+                lines.push(line(levels, "gray"));
+            }
+        }
+        self.layout.tooltip(draw, &lines, mouse);
+    }
+
     /// `AnvilScreen.onNameChanged`: a name that differs from what the server
     /// has is sent.
     fn name_changed(&mut self) {
@@ -546,6 +817,7 @@ impl GenericScreen {
             MenuKind::Anvil => self.anvil_extras(draw, menu, (left, top)),
             MenuKind::Stonecutter => self.stone_draw(draw, menu, mouse, (left, top)),
             MenuKind::Loom => self.loom_draw(draw, menu, mouse, (left, top)),
+            MenuKind::Enchantment => self.enchant_draw(draw, menu, mouse, (left, top)),
             _ => {}
         }
     }
