@@ -14006,9 +14006,13 @@ def gui_cases():
     """The screens' drawing as the reference's own GUI code records it: the
     rectangles and the text, in order, with their poses applied. The glyphs
     are not drawn; their advances come from the reference's font providers."""
-    def chat(label, messages, tick, width=427, height=240, focused=False, scroll=None):
+    def chat(label, messages, tick, width=427, height=240, focused=False, scroll=None,
+             extra=(), deletions=()):
         row = {"label": label, "width": width, "height": height,
-               "messages": [{"text": text, "tick": at} for text, at in messages], "tick": tick}
+               "messages": [{"text": text, "tick": at} for text, at in messages] + list(extra),
+               "tick": tick}
+        if deletions:
+            row["deletions"] = [{"delete": sig, "tick": at} for sig, at in deletions]
         if focused:
             row["focused"] = True
         if scroll is not None:
@@ -14030,6 +14034,25 @@ def gui_cases():
         chat("open-scrolled", [(f"line {n}", 0) for n in range(30)], 400, focused=True, scroll=3),
         chat("open-scrolled-end", [(f"line {n}", 0) for n in range(30)], 400, focused=True, scroll=100),
         chat("open-short", [("only", 0), ("two", 0)], 400, focused=True),
+        chat("tags", [], 5, extra=[
+            {"text": "system", "tick": 0, "tag": "system"},
+            {"text": "not secure", "tick": 1, "tag": "not_secure", "signature": 1},
+            {"text": "modified", "tick": 2, "tag": "modified:the original", "signature": 2},
+            {"text": "error", "tick": 3, "tag": "error"},
+            {"text": "no tag", "tick": 4, "signature": 3},
+        ]),
+        chat("modified-wraps-narrower", [], 5, extra=[
+            {"text": long_text, "tick": 0, "tag": "modified:x", "signature": 4},
+        ]),
+        chat("delete-waits", [], 30, extra=[{"text": "will go", "tick": 0, "signature": 7}],
+             deletions=[(7, 10)]),
+        chat("delete-after-sixty", [], 100, extra=[
+            {"text": "before", "tick": 0, "tag": "system"},
+            {"text": "will go", "tick": 1, "signature": 7},
+            {"text": "after", "tick": 2, "tag": "system"},
+        ], deletions=[(7, 5)]),
+        chat("delete-unknown", [], 10, extra=[{"text": "kept", "tick": 0, "signature": 8}],
+             deletions=[(9, 5)]),
     ]
     yield {"case_id": "gui/chat", "family": "gui", "operation": "chat", "rows": rows}
 

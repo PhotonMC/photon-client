@@ -373,7 +373,7 @@ impl Play {
             self.camera.tick(player);
         }
         self.gui.tick();
-        self.controls.chat_log.tick();
+        self.gui.tick_chat(&mut self.controls.chat_log);
         self.sky.tick(session);
         self.ticks += 1;
         Ok(())

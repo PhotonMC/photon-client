@@ -106,6 +106,7 @@ pub struct PlaySession {
     /// Chat the server sent that the client has not shown yet, and the
     /// `nextChatIndex` its player chat must come in.
     chat_events: Vec<ChatEvent>,
+    signature_cache: SignatureCache,
     /// Title, action bar and tab list packets not yet shown, and the players
     /// the tab list names.
     hud_events: Vec<HudEvent>,
@@ -180,6 +181,7 @@ impl PlaySession {
             container_menu: voxel_game::container_menu::ContainerMenu::default(),
             open_menu: None,
             chat_events: Vec::new(),
+            signature_cache: SignatureCache::default(),
             hud_events: Vec::new(),
             suggestions: None,
             player_infos: std::collections::BTreeMap::new(),
@@ -641,6 +643,44 @@ impl PlaySession {
             .values()
             .filter(|info| info.listed)
             .collect()
+    }
+
+    /// `ClientPacketListener.handlePlayerChat`: the count, the signatures
+    /// looked up and pushed into the cache, and the sender looked up.
+    fn receive_player_chat(&mut self, packet: PlayerChatPacket) {
+        // The reference drops the connection when the count skips; this
+        // client counts on from what it saw.
+        if packet.global_index != self.next_chat_index {
+            self.warn(format!(
+                "chat index {}, expected {}",
+                packet.global_index, self.next_chat_index
+            ));
+        }
+        self.next_chat_index = packet.global_index + 1;
+        let mut queue = std::collections::VecDeque::new();
+        for seen in &packet.last_seen {
+            match self.signature_cache.unpack(seen) {
+                Some(signature) => queue.push_back(signature),
+                None => {
+                    self.warn("player chat: unknown signature".to_owned());
+                    return;
+                }
+            }
+        }
+        if let Some(signature) = &packet.signature {
+            queue.push_back(signature.clone());
+        }
+        self.signature_cache.push(queue);
+        let sender_known = self.player_infos.contains_key(&packet.sender);
+        let sender_is_local = self
+            .trace
+            .profile_id
+            .is_some_and(|id| (id.most, id.least) == packet.sender);
+        self.chat_events.push(ChatEvent::Player {
+            packet,
+            sender_known,
+            sender_is_local,
+        });
     }
 
     /// The chat the server sent since the last call.
@@ -1495,25 +1535,19 @@ impl PlaySession {
                     Err(error) => self.warn(format!("disguised chat: {error:?}")),
                 }
             }
-            PLAY_CLIENTBOUND_PLAYER_CHAT_PACKET_ID => match parse_player_chat_event(payload) {
-                Ok(Some(event)) => {
-                    // The reference drops the connection when the count
-                    // skips; this client counts on from what it saw.
-                    if let ChatEvent::Player { global_index, .. } = &event {
-                        if *global_index != self.next_chat_index {
-                            self.warn(format!(
-                                "chat index {global_index}, expected {}",
-                                self.next_chat_index
-                            ));
-                        }
-                        self.next_chat_index = global_index + 1;
-                    }
-                    self.chat_events.push(event);
-                }
-                Ok(None) => {}
+            PLAY_CLIENTBOUND_PLAYER_CHAT_PACKET_ID => match parse_player_chat_packet(payload) {
+                Ok(packet) => self.receive_player_chat(packet),
                 Err(error) => self.warn(format!("player chat: {error:?}")),
             },
-            PLAY_CLIENTBOUND_DELETE_CHAT_PACKET_ID => {}
+            PLAY_CLIENTBOUND_DELETE_CHAT_PACKET_ID => match parse_delete_chat_packet(payload) {
+                Ok(packed) => match self.signature_cache.unpack(&packed) {
+                    Some(signature) => self.chat_events.push(ChatEvent::Delete(signature)),
+                    // The reference drops the connection over a number it
+                    // does not know.
+                    None => self.warn("delete chat: unknown signature".to_owned()),
+                },
+                Err(error) => self.warn(format!("delete chat: {error:?}")),
+            },
             PLAY_CLIENTBOUND_COMMAND_SUGGESTIONS_PACKET_ID => {
                 match parse_command_suggestions(payload) {
                     Ok(suggestions) => self.suggestions = Some(suggestions),

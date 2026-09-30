@@ -2450,19 +2450,61 @@ fn player_chat_reads_the_text_the_type_and_the_sender() {
     payload.push(1); // chat type: registry id 0
     payload.extend([8, 0, 3, b'B', b'o', b'b']); // the sender's name
     payload.push(0); // no target
-    let event = super::parse_player_chat_event(&payload).unwrap().unwrap();
-    let super::ChatEvent::Player {
-        global_index,
-        content,
-        bound,
-    } = event
-    else {
-        panic!("not a player chat");
-    };
-    assert_eq!(global_index, 0);
-    assert_eq!(content, voxel_game::text::Component::literal("hi"));
-    assert_eq!(bound.holder, super::ChatHolder::Registry(0));
-    assert_eq!(bound.name, voxel_game::text::Component::literal("Bob"));
+    let packet = super::parse_player_chat_packet(&payload).unwrap();
+    assert_eq!(packet.global_index, 0);
+    assert_eq!(packet.signed_text, "hi");
+    assert_eq!(packet.signature, None);
+    assert_eq!(packet.filter, super::FilterMask::PassThrough);
+    assert_eq!(packet.bound.holder, super::ChatHolder::Registry(0));
+    assert_eq!(
+        packet.bound.name,
+        voxel_game::text::Component::literal("Bob")
+    );
+}
+
+#[test]
+fn the_signature_cache_pushes_new_entries_to_the_front() {
+    let sig = |byte: u8| vec![byte; 256];
+    let mut cache = super::SignatureCache::default();
+    cache.push([sig(1), sig(2)].into());
+    // The newest is at place 0, the one before it at 1.
+    assert_eq!(
+        cache.unpack(&super::PackedSignature::Cached(0)),
+        Some(sig(2))
+    );
+    assert_eq!(
+        cache.unpack(&super::PackedSignature::Cached(1)),
+        Some(sig(1))
+    );
+    // One more shifts the old ones back; one it repeats is not kept twice.
+    cache.push([sig(2), sig(3)].into());
+    assert_eq!(
+        cache.unpack(&super::PackedSignature::Cached(0)),
+        Some(sig(3))
+    );
+    assert_eq!(
+        cache.unpack(&super::PackedSignature::Cached(1)),
+        Some(sig(2))
+    );
+    assert_eq!(
+        cache.unpack(&super::PackedSignature::Cached(2)),
+        Some(sig(1))
+    );
+    assert_eq!(cache.unpack(&super::PackedSignature::Cached(3)), None);
+}
+
+#[test]
+fn a_partial_filter_mask_hides_its_set_bits() {
+    let mut payload = vec![0];
+    payload.extend([0; 16]);
+    payload.extend([0, 0, 2, b'h', b'i']);
+    payload.extend([0; 16]);
+    payload.extend([0, 0, 2, 1]);
+    payload.extend([0, 0, 0, 0, 0, 0, 0, 0b10]); // the second character
+    payload.push(1);
+    payload.extend([8, 0, 3, b'B', b'o', b'b', 0]);
+    let packet = super::parse_player_chat_packet(&payload).unwrap();
+    assert!(!packet.filter.hides(0) && packet.filter.hides(1));
 }
 
 #[test]

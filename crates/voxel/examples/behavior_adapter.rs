@@ -18449,17 +18449,62 @@ fn gui_result(request: &Value) -> Result<Value, String> {
         };
         match string(request, "operation")? {
             "chat" => {
+                use voxel_render::gui::chat::Tag;
                 let mut log = ChatLog::default();
-                for message in row["messages"].as_array().ok_or("messages")? {
-                    let tick = message["tick"].as_u64().unwrap_or(0);
+                let lang = voxel_game::text::Lang::load(&root);
+                let marker_style = voxel_game::text::Style {
+                    colour: voxel_game::text::named_colour("gray"),
+                    italic: Some(true),
+                    ..voxel_game::text::Style::default()
+                };
+                let marker = lang.runs(
+                    &voxel_game::text::Component::translatable("chat.deleted_marker"),
+                    &marker_style,
+                );
+                // The messages and the deletions, each at its tick, the
+                // chat's own tick after each.
+                let mut events: Vec<&Value> = row["messages"]
+                    .as_array()
+                    .ok_or("messages")?
+                    .iter()
+                    .collect();
+                if let Some(deletions) = row["deletions"].as_array() {
+                    events.extend(deletions.iter());
+                }
+                events.sort_by_key(|event| event["tick"].as_u64().unwrap_or(0));
+                let signature = |id: u64| vec![id as u8; 256];
+                for event in events {
+                    let tick = event["tick"].as_u64().unwrap_or(0);
                     while log.ticks() < tick {
-                        log.tick();
+                        log.tick(&font, &marker);
                     }
-                    let text = message["text"].as_str().ok_or("text")?;
-                    log.add(&voxel_render::gui::chat::plain_runs(text), &font, false);
+                    if let Some(id) = event["delete"].as_u64() {
+                        log.delete(&signature(id), &font, &marker);
+                        continue;
+                    }
+                    let text = event["text"].as_str().ok_or("text")?;
+                    let sig = event["signature"].as_u64().map(signature);
+                    let tag = match event["tag"].as_str() {
+                        None if sig.is_none() => Some(Tag::SystemSinglePlayer),
+                        None => None,
+                        Some("system") => Some(Tag::System),
+                        Some("system_single_player") => Some(Tag::SystemSinglePlayer),
+                        Some("not_secure") => Some(Tag::NotSecure),
+                        Some("error") => Some(Tag::Error),
+                        Some(other) => Some(Tag::Modified(
+                            other.trim_start_matches("modified:").to_owned(),
+                        )),
+                    };
+                    log.add_message(
+                        &voxel_render::gui::chat::plain_runs(text),
+                        sig,
+                        tag,
+                        &font,
+                        false,
+                    );
                 }
                 while log.ticks() < row["tick"].as_u64().unwrap_or(0) {
-                    log.tick();
+                    log.tick(&font, &marker);
                 }
                 if let Some(scroll) = row["scroll"].as_i64() {
                     log.scroll_by(scroll as i32);

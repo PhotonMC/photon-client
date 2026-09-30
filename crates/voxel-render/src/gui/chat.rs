@@ -9,7 +9,7 @@ use std::collections::VecDeque;
 use std::sync::Arc;
 use std::time::Instant;
 
-use voxel_game::text::{Run, Style};
+use voxel_game::text::{Lang, Run, Style};
 
 use crate::gui::GuiAtlas;
 use crate::gui::GuiFrame;
@@ -26,14 +26,78 @@ const BOTTOM_MARGIN: i32 = 40;
 /// The lines a closed and an open chat show (`getHeight` / 9).
 const LINES_CLOSED: usize = 10;
 const LINES_OPEN: usize = 20;
-/// `GuiMessageTag.system()`'s indicator colour.
-const TAG_COLOUR: u32 = 0x00D0_D0D0;
 
-/// One wrapped line and the tick it was added on.
+/// `GuiMessageTag`: the mark beside a message that says where it came from.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Tag {
+    /// `system`: a message the server sent as a player would.
+    System,
+    /// `systemSinglePlayer`: what the server says.
+    SystemSinglePlayer,
+    /// `chatNotSecure`: a player's message with no signature.
+    NotSecure,
+    /// `chatModified`: signed, but shown changed; holds the original.
+    Modified(String),
+    /// `chatError`: a message that could not be checked.
+    Error,
+}
+
+impl Tag {
+    /// `indicatorColor`.
+    fn colour(&self) -> u32 {
+        match self {
+            Self::System | Self::SystemSinglePlayer | Self::NotSecure => 0x00D0_D0D0,
+            Self::Modified(_) => 0x0060_6060,
+            Self::Error => 0x00FF_5555,
+        }
+    }
+
+    /// Whether the tag has an icon (`GuiMessageTag.Icon`), which is 9 by 9.
+    fn has_icon(&self) -> bool {
+        matches!(self, Self::Modified(_))
+    }
+
+    /// The tag's tooltip, as lines of the text it is made of.
+    fn tooltip(&self, lang: &voxel_game::text::Lang) -> Vec<Run> {
+        let key = match self {
+            Self::System => "chat.tag.system",
+            Self::SystemSinglePlayer => "chat.tag.system_single_player",
+            Self::NotSecure => "chat.tag.not_secure",
+            Self::Modified(_) => "chat.tag.modified",
+            Self::Error => "chat.tag.error",
+        };
+        let mut runs = vec![Run {
+            text: lang.text(key),
+            style: Style::default(),
+        }];
+        if let Self::Modified(original) = self {
+            runs.push(Run {
+                text: format!("\n{original}"),
+                style: Style {
+                    colour: Some(0xAAAAAA),
+                    ..Style::default()
+                },
+            });
+        }
+        runs
+    }
+}
+
+/// A `GuiMessage`: what was said, when, and its signature and tag.
+#[derive(Debug, Clone)]
+struct Message {
+    runs: Vec<Run>,
+    added: u64,
+    signature: Option<Vec<u8>>,
+    tag: Option<Tag>,
+}
+
+/// One wrapped line of a message (`GuiMessage.Line`).
 #[derive(Debug, Clone)]
 struct ChatLine {
     runs: Vec<Run>,
     added: u64,
+    tag: Option<Tag>,
 }
 
 /// `StringSplitter.splitLines`: the runs broken into lines of at most `max`
@@ -128,32 +192,85 @@ fn fade(age: u64) -> f32 {
     t * t
 }
 
-/// The lines the player has been told, newest first.
+/// `ChatComponent.TIME_BEFORE_MESSAGE_DELETION`.
+const TIME_BEFORE_DELETION: u64 = 60;
+
+/// The messages the player has been told, and their lines, newest first.
 #[derive(Debug, Default)]
 pub struct ChatLog {
+    messages: VecDeque<Message>,
     lines: VecDeque<ChatLine>,
     ticks: u64,
     scroll: usize,
     /// `newMessageSinceScroll`: the scroll bar shows red.
     new_message: bool,
+    /// `messageDeletionQueue`: a signature and the tick it may go at.
+    deletions: Vec<(Vec<u8>, u64)>,
 }
 
 impl ChatLog {
-    pub fn tick(&mut self) {
+    /// `ChatComponent.tick`: the clock, and the deletions that have waited
+    /// long enough. `marker` is the deleted message's text.
+    pub fn tick(&mut self, font: &Font, marker: &[Run]) {
         self.ticks += 1;
+        if self.deletions.is_empty() {
+            return;
+        }
+        let now = self.ticks;
+        let waiting = std::mem::take(&mut self.deletions);
+        for (signature, after) in waiting {
+            if now >= after {
+                if let Some(delayed) = self.delete_or_delay(&signature, font, marker) {
+                    self.deletions.push(delayed);
+                }
+            } else {
+                self.deletions.push((signature, after));
+            }
+        }
     }
 
     pub fn ticks(&self) -> u64 {
         self.ticks
     }
 
-    /// `ChatComponent.addMessage`: the message wrapped and added, newest
+    /// `ChatComponent.addMessage`: the message kept and wrapped, newest
     /// first. A chat that is scrolled back keeps what it shows.
     pub fn add(&mut self, runs: &[Run], font: &Font, focused: bool) {
-        for line in wrap(runs, WIDTH, font) {
+        self.add_message(runs, None, None, font, focused);
+    }
+
+    /// `addMessage` with a signature and a tag.
+    pub fn add_message(
+        &mut self,
+        runs: &[Run],
+        signature: Option<Vec<u8>>,
+        tag: Option<Tag>,
+        font: &Font,
+        focused: bool,
+    ) {
+        let message = Message {
+            runs: runs.to_vec(),
+            added: self.ticks,
+            signature,
+            tag,
+        };
+        self.add_to_display(&message, font, focused);
+        self.messages.push_front(message);
+        self.messages.truncate(MAX_LINES);
+    }
+
+    /// `addMessageToDisplayQueue`: the message's lines, the width short of a
+    /// tag's icon.
+    fn add_to_display(&mut self, message: &Message, font: &Font, focused: bool) {
+        let mut width = WIDTH;
+        if message.tag.as_ref().is_some_and(Tag::has_icon) {
+            width -= 9 + 4 + 2;
+        }
+        for line in wrap(&message.runs, width, font) {
             self.lines.push_front(ChatLine {
                 runs: line,
-                added: self.ticks,
+                added: message.added,
+                tag: message.tag.clone(),
             });
             if focused && self.scroll > 0 {
                 self.new_message = true;
@@ -161,6 +278,48 @@ impl ChatLog {
             }
         }
         self.lines.truncate(MAX_LINES);
+    }
+
+    /// `ChatComponent.deleteMessage`: a signed message is replaced by the
+    /// marker, once it is 60 ticks old.
+    pub fn delete(&mut self, signature: &[u8], font: &Font, marker: &[Run]) {
+        if let Some(delayed) = self.delete_or_delay(signature, font, marker) {
+            self.deletions.push(delayed);
+        }
+    }
+
+    fn delete_or_delay(
+        &mut self,
+        signature: &[u8],
+        font: &Font,
+        marker: &[Run],
+    ) -> Option<(Vec<u8>, u64)> {
+        let place = self
+            .messages
+            .iter()
+            .position(|message| message.signature.as_deref() == Some(signature))?;
+        let after = self.messages[place].added + TIME_BEFORE_DELETION;
+        if self.ticks >= after {
+            self.messages[place] = Message {
+                runs: marker.to_vec(),
+                added: self.messages[place].added,
+                signature: None,
+                tag: Some(Tag::System),
+            };
+            self.refresh(font);
+            return None;
+        }
+        Some((signature.to_vec(), after))
+    }
+
+    /// `refreshTrimmedMessages`: the lines made again from the messages,
+    /// oldest first.
+    fn refresh(&mut self, font: &Font) {
+        self.lines.clear();
+        let messages: Vec<Message> = self.messages.iter().rev().cloned().collect();
+        for message in &messages {
+            self.add_to_display(message, font, false);
+        }
     }
 
     /// `scrollChat`, in lines.
@@ -178,7 +337,8 @@ impl ChatLog {
         self.new_message = false;
     }
 
-    /// `ChatComponent.extractRenderState`: the lines over the hotbar.
+    /// `ChatComponent.extractRenderState`: the lines over the hotbar. An open
+    /// chat with the mouse over a tag gives back the tag's tooltip.
     pub fn draw(
         &self,
         frame: &mut GuiFrame,
@@ -187,6 +347,32 @@ impl ChatLog {
         gui_height: i32,
         focused: bool,
     ) {
+        self.draw_with(
+            frame,
+            atlas,
+            font,
+            gui_height,
+            focused,
+            None,
+            &Lang::default(),
+        );
+    }
+
+    /// [`Self::draw`] with the mouse, for the tooltip of a tag it is over.
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "mirrors the reference's render call"
+    )]
+    pub fn draw_with(
+        &self,
+        frame: &mut GuiFrame,
+        atlas: &GuiAtlas,
+        font: &Font,
+        gui_height: i32,
+        focused: bool,
+        mouse: Option<(i32, i32)>,
+        lang: &Lang,
+    ) -> Option<Vec<Vec<Run>>> {
         let per_page = if focused { LINES_OPEN } else { LINES_CLOSED };
         let shown = self.lines.len().saturating_sub(self.scroll).min(per_page);
         let bottom = gui_height - BOTTOM_MARGIN;
@@ -213,15 +399,39 @@ impl ChatLog {
                 background,
             );
         }
+        // The mouse in the chat's own units (the pose moves it 4 right).
+        let local = mouse.map(|(x, y)| (x - 4, y));
+        let over = |local: Option<(i32, i32)>, (x0, y0, x1, y1): (i32, i32, i32, i32)| {
+            local.is_some_and(|(x, y)| x >= x0 && x < x1 && y >= y0 && y < y1)
+        };
+        let mut tooltip = None;
         for &(i, alpha) in &visible {
             let entry_bottom = bottom - i as i32 * LINE_HEIGHT;
+            let entry_top = entry_bottom - LINE_HEIGHT;
             let text = ((255.0 * alpha) as u32) << 24 | 0x00FF_FFFF;
             let line = &self.lines[i + self.scroll];
             frame.styled_text(atlas, font, &line.runs, 4, entry_bottom - 8, text, true);
-            let tag = ((255.0 * alpha) as u32) << 24 | TAG_COLOUR;
-            frame.fill(atlas, (0, entry_bottom - LINE_HEIGHT, 2, entry_bottom), tag);
+            let Some(tag) = &line.tag else {
+                continue;
+            };
+            let bar = ((255.0 * alpha) as u32) << 24 | tag.colour();
+            frame.fill(atlas, (0, entry_top, 2, entry_bottom), bar);
+            if focused && over(local, (-4, entry_top, -2, entry_bottom)) {
+                tooltip = Some(tag.tooltip(lang));
+            }
+            if tag.has_icon() && focused {
+                // `handleTagIcon`: shown while the mouse is over it.
+                let left = font.width_of_runs(&line.runs) + 4;
+                let bottom_of_text = entry_bottom - 8 + LINE_HEIGHT;
+                let top = bottom_of_text - 9 - 1;
+                if over(local, (left, top, left + 9, bottom_of_text)) {
+                    tooltip = Some(tag.tooltip(lang));
+                    frame.sprite(atlas, "icon/chat_modified", left + 4, top, 9, 9);
+                }
+            }
         }
         self.scroll_bar(frame, atlas, bottom, visible.len(), focused);
+        tooltip.map(|runs| split(&runs, 210, font))
     }
 
     /// The scroll bar of a chat that is open (`extractRenderState`'s last

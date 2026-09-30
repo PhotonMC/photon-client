@@ -300,6 +300,24 @@ public final class GuiOracle {
         return new Screen(minecraft, hud, state, new GuiGraphicsExtractor(minecraft, state, mouseX, mouseY));
     }
 
+    private static net.minecraft.network.chat.MessageSignature signature(int id) {
+        var bytes = new byte[256];
+        java.util.Arrays.fill(bytes, (byte) id);
+        return new net.minecraft.network.chat.MessageSignature(bytes);
+    }
+
+    private static net.minecraft.client.multiplayer.chat.GuiMessageTag tag(String name) {
+        return switch (name) {
+            case "system" -> net.minecraft.client.multiplayer.chat.GuiMessageTag.system();
+            case "system_single_player" ->
+                net.minecraft.client.multiplayer.chat.GuiMessageTag.systemSinglePlayer();
+            case "not_secure" -> net.minecraft.client.multiplayer.chat.GuiMessageTag.chatNotSecure();
+            case "error" -> net.minecraft.client.multiplayer.chat.GuiMessageTag.chatError();
+            default -> net.minecraft.client.multiplayer.chat.GuiMessageTag.chatModified(
+                name.substring("modified:".length()));
+        };
+    }
+
     /**
      * What was drawn: rectangles and text, each with its pose applied, each
      * kind in a fixed order. The game layers what overlaps above what it
@@ -427,10 +445,42 @@ public final class GuiOracle {
             var row = element.getAsJsonObject();
             var screen = screen(row.get("width").getAsInt(), row.get("height").getAsInt(), 0, 0);
             var chat = new net.minecraft.client.gui.components.ChatComponent(screen.minecraft());
+            // The messages and the deletions, each at its tick, the chat's own
+            // tick after each.
+            var events = new ArrayList<JsonObject>();
             for (var messageElement : row.getAsJsonArray("messages")) {
-                var message = messageElement.getAsJsonObject();
-                set(screen.hud(), "tickCount", message.get("tick").getAsInt());
-                chat.addServerSystemMessage(Component.literal(message.get("text").getAsString()));
+                events.add(messageElement.getAsJsonObject());
+            }
+            if (row.has("deletions")) {
+                for (var deletion : row.getAsJsonArray("deletions")) {
+                    events.add(deletion.getAsJsonObject());
+                }
+            }
+            events.sort(java.util.Comparator.comparingInt(event -> event.get("tick").getAsInt()));
+            int now = 0;
+            for (var event : events) {
+                int at = event.get("tick").getAsInt();
+                for (; now < at; now++) {
+                    set(screen.hud(), "tickCount", now);
+                    chat.tick();
+                }
+                set(screen.hud(), "tickCount", at);
+                if (event.has("delete")) {
+                    chat.deleteMessage(signature(event.get("delete").getAsInt()));
+                    continue;
+                }
+                var tag = event.has("tag") ? tag(event.get("tag").getAsString()) : null;
+                var sig = event.has("signature") ? signature(event.get("signature").getAsInt()) : null;
+                var text = Component.literal(event.get("text").getAsString());
+                if (tag == null && sig == null) {
+                    chat.addServerSystemMessage(text);
+                } else {
+                    chat.addPlayerMessage(text, sig, tag);
+                }
+            }
+            for (; now < row.get("tick").getAsInt(); now++) {
+                set(screen.hud(), "tickCount", now);
+                chat.tick();
             }
             set(screen.hud(), "tickCount", row.get("tick").getAsInt());
             boolean focused = row.has("focused") && row.get("focused").getAsBoolean();

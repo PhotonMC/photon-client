@@ -155,40 +155,155 @@ impl Gui {
         entries
     }
 
+    /// The decoration of a bound chat type, if the registries know it.
+    fn decorate(
+        &self,
+        content: voxel_game::text::Component,
+        bound: &voxel_net::connection::ChatBound,
+    ) -> voxel_game::text::Component {
+        let decoration = match &bound.holder {
+            ChatHolder::Direct(decoration) => Some(decoration),
+            ChatHolder::Registry(id) => usize::try_from(*id)
+                .ok()
+                .and_then(|id| self.registries.chat_types.get(id)),
+        };
+        match decoration {
+            Some(decoration) => decoration.decorate(content, &bound.name, bound.target.as_ref()),
+            None => content,
+        }
+    }
+
+    /// `ChatComponent.DELETED_CHAT_MESSAGE`.
+    fn deleted_marker(&self) -> Vec<voxel_game::text::Run> {
+        let style = Style {
+            colour: voxel_game::text::named_colour("gray"),
+            italic: Some(true),
+            ..Style::default()
+        };
+        self.lang.runs(
+            &voxel_game::text::Component::translatable("chat.deleted_marker"),
+            &style,
+        )
+    }
+
+    /// The chat's clock, and the deletions that have waited long enough.
+    pub fn tick_chat(&self, log: &mut ChatLog) {
+        log.tick(&self.font, &self.deleted_marker());
+    }
+
+    /// `ChatListener.showMessageToPlayer`: a player's message, tagged by how
+    /// far it can be trusted, and cut by what the server filtered.
+    fn show_player_chat(
+        &self,
+        packet: voxel_net::connection::PlayerChatPacket,
+        sender_is_local: bool,
+        log: &mut ChatLog,
+        focused: bool,
+    ) {
+        use voxel_net::connection::FilterMask;
+        use voxel_render::gui::chat::Tag;
+        if packet.filter == FilterMask::FullyFiltered {
+            return;
+        }
+        let content = packet
+            .unsigned
+            .clone()
+            .unwrap_or_else(|| voxel_game::text::Component::literal(packet.signed_text.clone()));
+        let decorated = self.decorate(content, &packet.bound);
+        let decorated_text = self.lang.plain(&decorated);
+        // `ChatTrustLevel.evaluate`: no signature or an old one is not
+        // secure; text that is not what was signed is modified.
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |time| time.as_millis() as i64);
+        let expired = now > packet.timestamp_millis + 7 * 60 * 1000;
+        let tag = if sender_is_local {
+            None
+        } else if packet.signature.is_none() || expired {
+            Some(Tag::NotSecure)
+        } else if !decorated_text.contains(&packet.signed_text) {
+            Some(Tag::Modified(packet.signed_text.clone()))
+        } else {
+            None
+        };
+        let shown = if packet.filter == FilterMask::PassThrough {
+            decorated
+        } else {
+            self.decorate(
+                filtered_content(&packet.signed_text, &packet.filter),
+                &packet.bound,
+            )
+        };
+        log.add_message(
+            &self.lang.runs(&shown, &Style::default()),
+            packet.signature.clone(),
+            tag,
+            &self.font,
+            focused,
+        );
+    }
+
     /// The chat the server sent, worded and added to the log.
     pub fn receive_chat(&mut self, events: Vec<ChatEvent>, log: &mut ChatLog, focused: bool) {
+        use voxel_render::gui::chat::Tag;
         for event in events {
-            let component = match event {
+            match event {
                 ChatEvent::System {
                     content,
                     overlay: true,
                 } => {
                     let runs = self.lang.runs(&content, &Style::default());
                     self.titles.set_overlay(runs);
-                    continue;
                 }
-                ChatEvent::System { content, .. } => content,
-                ChatEvent::Disguised { content, bound }
-                | ChatEvent::Player { content, bound, .. } => {
-                    let decoration = match &bound.holder {
-                        ChatHolder::Direct(decoration) => Some(decoration),
-                        ChatHolder::Registry(id) => usize::try_from(*id)
-                            .ok()
-                            .and_then(|id| self.registries.chat_types.get(id)),
-                    };
-                    match decoration {
-                        Some(decoration) => {
-                            decoration.decorate(content, &bound.name, bound.target.as_ref())
-                        }
-                        None => content,
+                ChatEvent::System { content, .. } => log.add_message(
+                    &self.lang.runs(&content, &Style::default()),
+                    None,
+                    Some(Tag::SystemSinglePlayer),
+                    &self.font,
+                    focused,
+                ),
+                ChatEvent::Disguised { content, bound } => {
+                    let decorated = self.decorate(content, &bound);
+                    log.add_message(
+                        &self.lang.runs(&decorated, &Style::default()),
+                        None,
+                        Some(Tag::System),
+                        &self.font,
+                        focused,
+                    );
+                }
+                ChatEvent::Player {
+                    packet,
+                    sender_known,
+                    sender_is_local,
+                } => {
+                    if sender_known {
+                        self.show_player_chat(packet, sender_is_local, log, focused);
+                    } else {
+                        // `handleChatMessageError`: a sender the client has
+                        // no player for.
+                        let style = Style {
+                            colour: voxel_game::text::named_colour("red"),
+                            italic: Some(true),
+                            ..Style::default()
+                        };
+                        let error =
+                            voxel_game::text::Component::translatable("chat.validation_error")
+                                .with_style(&style);
+                        let decorated = self.decorate(error, &packet.bound);
+                        log.add_message(
+                            &self.lang.runs(&decorated, &Style::default()),
+                            None,
+                            Some(Tag::Error),
+                            &self.font,
+                            focused,
+                        );
                     }
                 }
-            };
-            log.add(
-                &self.lang.runs(&component, &Style::default()),
-                &self.font,
-                focused,
-            );
+                ChatEvent::Delete(signature) => {
+                    log.delete(&signature, &self.font, &self.deleted_marker());
+                }
+            }
         }
     }
 
@@ -231,12 +346,15 @@ impl Gui {
             &mut draw_item,
         );
         // The chat, over the hotbar; open, it is the box's and brighter.
-        controls.chat_log.draw(
+        let focused = controls.chat.is_some();
+        let chat_tooltip = controls.chat_log.draw_with(
             &mut frame,
             &self.atlas,
             &self.font,
             size.gui_scaled_height(),
-            controls.chat.is_some(),
+            focused,
+            focused.then_some((controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32)),
+            &self.lang,
         );
         if let Some(chat) = controls.chat.as_mut() {
             chat.draw(
@@ -246,6 +364,15 @@ impl Gui {
             );
         }
         let gui_size = (size.gui_scaled_width(), size.gui_scaled_height());
+        if let Some(lines) = chat_tooltip {
+            frame.tooltip(
+                &self.atlas,
+                &self.font,
+                &lines,
+                (controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32),
+                gui_size,
+            );
+        }
         let partial = (self.last_tick.elapsed().as_secs_f32() / 0.05).min(1.0);
         self.titles
             .draw(&mut frame, &self.atlas, &self.font, gui_size, partial);
@@ -321,5 +448,60 @@ impl Gui {
             ],
         )?;
         Ok(())
+    }
+}
+
+/// `FilterMask.applyWithFormatting`: the text with the hidden characters
+/// shown as dark grey hashes, each run in one piece.
+fn filtered_content(
+    text: &str,
+    mask: &voxel_net::connection::FilterMask,
+) -> voxel_game::text::Component {
+    use voxel_game::text::Component;
+    let chars: Vec<char> = text.chars().collect();
+    let mut result = Component::empty();
+    let mut start = 0;
+    while start < chars.len() {
+        let hidden = mask.hides(start);
+        let end = (start..chars.len())
+            .find(|&index| mask.hides(index) != hidden)
+            .unwrap_or(chars.len());
+        if hidden {
+            result =
+                result.append(Component::literal("#".repeat(end - start)).with_colour("dark_gray"));
+        } else {
+            result = result.append(Component::literal(
+                chars[start..end].iter().collect::<String>(),
+            ));
+        }
+        start = end;
+    }
+    result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use voxel_net::connection::FilterMask;
+
+    #[test]
+    fn hidden_characters_become_dark_grey_hashes_in_runs() {
+        // Characters 1 and 2 of "hello" hidden: bits 0b110.
+        let mask = FilterMask::Partial(vec![0b110]);
+        let component = filtered_content("hello", &mask);
+        let lang = Lang::default();
+        let runs = lang.runs(&component, &Style::default());
+        let shown: Vec<(&str, Option<u32>)> = runs
+            .iter()
+            .map(|run| (run.text.as_str(), run.style.colour))
+            .collect();
+        assert_eq!(
+            shown,
+            [
+                ("h", None),
+                ("##", voxel_game::text::named_colour("dark_gray")),
+                ("lo", None)
+            ]
+        );
     }
 }
