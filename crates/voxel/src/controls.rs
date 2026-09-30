@@ -41,6 +41,8 @@ pub struct Controls {
     pub chat: Option<ChatScreen>,
     chat_history: Vec<String>,
     pub chat_log: ChatLog,
+    /// Whether the tab list key is held.
+    pub tab_held: bool,
     /// The mouse in GUI units.
     pub gui_mouse: (f64, f64),
     /// The button a drag is held with (`MouseHandler.activeButton`).
@@ -63,6 +65,7 @@ impl Controls {
             chat: None,
             chat_history: Vec::new(),
             chat_log: ChatLog::default(),
+            tab_held: false,
             gui_mouse: (0.0, 0.0),
             active_button: None,
         }
@@ -155,6 +158,7 @@ impl Controls {
     /// Let go of every key, as the mouse is freed.
     fn release_keys(&mut self) {
         self.keys = HeldKeys::default();
+        self.tab_held = false;
         self.attack_key.release();
         self.use_key.release();
     }
@@ -454,6 +458,9 @@ impl Controls {
                 } else {
                     surface.request_close();
                 }
+            }
+            WindowEvent::Key(Key::Tab, _, action, _) => {
+                self.tab_held = action != Action::Release && self.captured;
             }
             WindowEvent::Key(Key::T, _, Action::Press, _) if self.captured => {
                 self.open_chat("", true, surface, assets);

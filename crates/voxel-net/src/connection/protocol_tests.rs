@@ -2473,3 +2473,47 @@ fn an_unsigned_chat_packet_ends_in_an_empty_acknowledgement() {
     // offset 0, three bytes of bits, checksum 1, after the signature flag.
     assert_eq!(output[3 + 16..], [0, 0, 0, 0, 0, 1]);
 }
+
+#[test]
+fn player_info_update_reads_its_actions_in_order() {
+    // Add, update listed, update latency for one player.
+    let mut payload = vec![1 | 8 | 16, 1];
+    payload.extend([0; 15]);
+    payload.push(9); // uuid
+    payload.extend([2, b'A', b'l', 0]); // name, no properties
+    payload.extend([1, 50]); // listed, latency
+    let entries = super::parse_player_info_update(&payload).unwrap();
+    assert_eq!(entries[0].0, (0, 9));
+    assert_eq!(
+        entries[0].1,
+        vec![
+            super::InfoAction::Add { name: "Al".into() },
+            super::InfoAction::Listed(true),
+            super::InfoAction::Latency(50),
+        ]
+    );
+}
+
+#[test]
+fn title_packets_read_their_fields() {
+    let animation = [0, 0, 0, 10, 0, 0, 0, 70, 0, 0, 0, 20];
+    assert_eq!(
+        super::parse_hud_packet(115, &animation).unwrap(),
+        Some(super::HudEvent::Times {
+            fade_in: 10,
+            stay: 70,
+            fade_out: 20
+        })
+    );
+    assert_eq!(
+        super::parse_hud_packet(14, &[1]).unwrap(),
+        Some(super::HudEvent::Clear { reset_times: true })
+    );
+    let title = [8, 0, 2, b'h', b'i'];
+    assert_eq!(
+        super::parse_hud_packet(114, &title).unwrap(),
+        Some(super::HudEvent::Title(
+            voxel_game::text::Component::literal("hi")
+        ))
+    );
+}

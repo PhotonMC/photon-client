@@ -252,6 +252,10 @@ impl Play {
             self.accumulated += now - self.last_frame;
             self.last_frame = now;
             self.session.drain()?;
+            let hud = self.session.drain_hud();
+            if !hud.is_empty() {
+                self.gui.receive_hud(hud);
+            }
             let chat = self.session.drain_chat();
             if !chat.is_empty() {
                 self.gui.receive_chat(

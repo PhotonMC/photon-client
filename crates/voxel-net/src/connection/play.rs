@@ -106,6 +106,10 @@ pub struct PlaySession {
     /// Chat the server sent that the client has not shown yet, and the
     /// `nextChatIndex` its player chat must come in.
     chat_events: Vec<ChatEvent>,
+    /// Title, action bar and tab list packets not yet shown, and the players
+    /// the tab list names.
+    hud_events: Vec<HudEvent>,
+    player_infos: std::collections::BTreeMap<(u64, u64), PlayerInfo>,
     next_chat_index: i32,
     /// `LocalPlayer.dropSpamThrottler`: what creative drops have added up.
     drop_spam: i32,
@@ -175,6 +179,8 @@ impl PlaySession {
             container_menu: voxel_game::container_menu::ContainerMenu::default(),
             open_menu: None,
             chat_events: Vec::new(),
+            hud_events: Vec::new(),
+            player_infos: std::collections::BTreeMap::new(),
             next_chat_index: 0,
             drop_spam: 0,
             dirty_sections: std::collections::BTreeSet::new(),
@@ -579,6 +585,45 @@ impl PlaySession {
                 Ok(())
             },
         )
+    }
+
+    /// `ClientPacketListener.applyPlayerInfoUpdate`: an `Add` makes the
+    /// player; the rest change one that is known and are dropped for one
+    /// that is not.
+    fn apply_player_info(&mut self, id: (u64, u64), actions: Vec<InfoAction>) {
+        for action in actions {
+            if let InfoAction::Add { name } = action {
+                self.player_infos.entry(id).or_insert_with(|| PlayerInfo {
+                    name,
+                    ..PlayerInfo::default()
+                });
+                continue;
+            }
+            let Some(info) = self.player_infos.get_mut(&id) else {
+                continue;
+            };
+            match action {
+                InfoAction::GameMode(mode) => info.game_mode = mode,
+                InfoAction::Listed(listed) => info.listed = listed,
+                InfoAction::Latency(latency) => info.latency = latency,
+                InfoAction::DisplayName(name) => info.display_name = name,
+                InfoAction::ListOrder(order) => info.list_order = order,
+                InfoAction::Add { .. } => {}
+            }
+        }
+    }
+
+    /// The title, action bar and tab list packets since the last call.
+    pub fn drain_hud(&mut self) -> Vec<HudEvent> {
+        std::mem::take(&mut self.hud_events)
+    }
+
+    /// The players the tab list names (`getOnlinePlayers`, listed ones).
+    pub fn listed_players(&self) -> Vec<&PlayerInfo> {
+        self.player_infos
+            .values()
+            .filter(|info| info.listed)
+            .collect()
     }
 
     /// The chat the server sent since the last call.
@@ -1077,6 +1122,10 @@ impl PlaySession {
         clippy::too_many_lines,
         reason = "one arm per packet the play state reads"
     )]
+    #[expect(
+        clippy::cognitive_complexity,
+        reason = "one arm per packet id, read like the reference's handler list"
+    )]
     fn handle(&mut self, body: &[u8]) -> Result<(), ConnectionError> {
         let (packet_id, payload) = split_packet(body)?;
         match packet_id {
@@ -1439,6 +1488,36 @@ impl PlaySession {
                 Err(error) => self.warn(format!("player chat: {error:?}")),
             },
             PLAY_CLIENTBOUND_DELETE_CHAT_PACKET_ID => {}
+            PLAY_CLIENTBOUND_SET_TITLE_TEXT_PACKET_ID
+            | PLAY_CLIENTBOUND_SET_SUBTITLE_TEXT_PACKET_ID
+            | PLAY_CLIENTBOUND_SET_ACTION_BAR_TEXT_PACKET_ID
+            | PLAY_CLIENTBOUND_SET_TITLES_ANIMATION_PACKET_ID
+            | PLAY_CLIENTBOUND_CLEAR_TITLES_PACKET_ID
+            | PLAY_CLIENTBOUND_TAB_LIST_PACKET_ID => match parse_hud_packet(packet_id, payload) {
+                Ok(Some(event)) => self.hud_events.push(event),
+                Ok(None) => {}
+                Err(error) => self.warn(format!("hud packet {packet_id}: {error:?}")),
+            },
+            PLAY_CLIENTBOUND_PLAYER_INFO_UPDATE_PACKET_ID => {
+                match parse_player_info_update(payload) {
+                    Ok(entries) => {
+                        for (id, actions) in entries {
+                            self.apply_player_info(id, actions);
+                        }
+                    }
+                    Err(error) => self.warn(format!("player info: {error:?}")),
+                }
+            }
+            PLAY_CLIENTBOUND_PLAYER_INFO_REMOVE_PACKET_ID => {
+                match parse_player_info_remove(payload) {
+                    Ok(ids) => {
+                        for id in ids {
+                            self.player_infos.remove(&id);
+                        }
+                    }
+                    Err(error) => self.warn(format!("player info remove: {error:?}")),
+                }
+            }
             PLAY_CLIENTBOUND_RECIPE_BOOK_ADD_PACKET_ID => {
                 match parse_recipe_book_add_packet(payload) {
                     Ok((entries, replace)) => {

@@ -74,6 +74,17 @@ impl GuiFrame {
         }
     }
 
+    /// A pose scale and translate over what was drawn since vertex `first`:
+    /// each position `p` becomes `translate + scale * p`.
+    pub fn scale_from(&mut self, first: usize, scale: f32, translate: (f32, f32)) {
+        for vertex in &mut self.vertices[first..] {
+            vertex.position = [
+                translate.0 + scale * vertex.position[0],
+                translate.1 + scale * vertex.position[1],
+            ];
+        }
+    }
+
     /// `GuiGraphics.fill` in one colour.
     pub fn fill(&mut self, atlas: &GuiAtlas, rect: (i32, i32, i32, i32), colour: u32) {
         self.fill_gradient(atlas, rect, colour, colour);

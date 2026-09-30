@@ -154,8 +154,13 @@ Bitti: `Component`/dil (`en_us`), stilli yazı, `EditBox`, ipucu kutusu.
   çevrimdışı modda gerekmez, çevrimiçide zorunlu (M9).
 - **M** Komutlar: `Commands` ağacı ayrıştırma, `CommandSuggestions`, öneri
   kutusu, sekmeyle tamamlama.
-- **M** Ekran metinleri: başlık/altyazı/eylem çubuğu (`SetTitleText`…),
-  `TabList`, `PlayerInfo` tablist, bossbar (`BossEvent`), scoreboard
+- **Bitti** Başlık/altyazı/eylem çubuğu (`SetTitleText`, `SetSubtitleText`,
+  `SetTitlesAnimation`, `ClearTitles`, `SetActionBarText`, `SystemChat`
+  overlay), `PlayerInfoUpdate/Remove`, `TabList` ve Tab ile tablist (sıralama,
+  sütunlar, ping simgesi, üst/alt yazı; çevrimdışı kafasız). Tablist canlı
+  denenmedi (birim testli). Eksik: çevrimiçi kafalar, takım biçimi, eylem
+  çubuğunun renk animasyonu, eylem çubuğu canlı doğrulaması.
+- **M** Kalan ekran metinleri: bossbar (`BossEvent`), scoreboard
   (`SetObjective`, `SetScore`, `SetDisplayObjective`, `SetPlayerTeam`),
   `TrackedWaypoint`.
 - **M** Yazı motoru kalanı: unifont yedeği (Latin dışı glifler), altı çizili /

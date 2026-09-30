@@ -5,13 +5,15 @@ use std::sync::Arc;
 
 use voxel_game::registries::Registries;
 use voxel_game::text::{Lang, Style};
-use voxel_net::connection::{ChatEvent, ChatHolder, PlaySession};
+use voxel_net::connection::{ChatEvent, ChatHolder, HudEvent, PlaySession};
 use voxel_render::VulkanBackend;
 use voxel_render::biome_tint::BiomeTints;
-use voxel_render::gui::chat::ChatLog;
+use voxel_render::gui::chat::{ChatLog, plain_runs as chat_runs};
 use voxel_render::gui::font::Font;
 use voxel_render::gui::items::GuiItemVertex;
 use voxel_render::gui::screen::ScreenDraw;
+use voxel_render::gui::tab_list::{self, TabEntry};
+use voxel_render::gui::titles::Titles;
 use voxel_render::gui::{GuiAtlas, Hud};
 use voxel_render::player_model::{PlayerModel, PlayerRenderState};
 use voxel_render::window::WindowSurface;
@@ -34,6 +36,12 @@ pub struct Gui {
     /// The data-driven registries tooltips read.
     registries: Arc<Registries>,
     hud: Hud,
+    titles: Titles,
+    /// The tab list's header and footer, and when the HUD last ticked (for
+    /// the partial tick the fades are drawn at).
+    tab_header: Vec<voxel_game::text::Run>,
+    tab_footer: Vec<voxel_game::text::Run>,
+    last_tick: std::time::Instant,
     items: ItemLayerCache,
     started_at: std::time::Instant,
 }
@@ -58,6 +66,10 @@ impl Gui {
             lang: Arc::new(Lang::load(root)),
             registries: Arc::new(registries),
             hud: Hud::default(),
+            titles: Titles::default(),
+            tab_header: Vec::new(),
+            tab_footer: Vec::new(),
+            last_tick: std::time::Instant::now(),
             items: ItemLayerCache::new(voxel_render::model::DisplayContext::Gui),
             started_at: std::time::Instant::now(),
         })
@@ -88,14 +100,79 @@ impl Gui {
 
     pub fn tick(&mut self) {
         self.hud.tick();
+        self.titles.tick();
+        self.last_tick = std::time::Instant::now();
+    }
+
+    /// The title, action bar and tab list packets.
+    pub fn receive_hud(&mut self, events: Vec<HudEvent>) {
+        let runs = |lang: &Lang, component: &voxel_game::text::Component| {
+            lang.runs(component, &Style::default())
+        };
+        for event in events {
+            match event {
+                HudEvent::Title(title) => self.titles.set_title(runs(&self.lang, &title)),
+                HudEvent::Subtitle(subtitle) => {
+                    self.titles.set_subtitle(runs(&self.lang, &subtitle));
+                }
+                HudEvent::ActionBar(message) => {
+                    self.titles.set_overlay(runs(&self.lang, &message));
+                }
+                HudEvent::Times {
+                    fade_in,
+                    stay,
+                    fade_out,
+                } => self.titles.set_times(fade_in, stay, fade_out),
+                HudEvent::Clear { reset_times } => self.titles.clear(reset_times),
+                HudEvent::TabList { header, footer } => {
+                    self.tab_header = runs(&self.lang, &header);
+                    self.tab_footer = runs(&self.lang, &footer);
+                }
+            }
+        }
+    }
+
+    /// The players of the tab list, in the order it lists them.
+    fn tab_entries(&self, session: &PlaySession) -> Vec<TabEntry> {
+        let mut entries: Vec<TabEntry> = session
+            .listed_players()
+            .into_iter()
+            .map(|info| {
+                let spectator = info.game_mode == 3;
+                let mut name = match &info.display_name {
+                    Some(component) => self.lang.runs(component, &Style::default()),
+                    None => chat_runs(&info.name),
+                };
+                if spectator {
+                    for run in &mut name {
+                        run.style.italic = Some(true);
+                    }
+                }
+                TabEntry {
+                    name,
+                    spectator,
+                    latency: info.latency,
+                    order: info.list_order,
+                    profile_name: info.name.clone(),
+                }
+            })
+            .collect();
+        tab_list::sort(&mut entries);
+        entries
     }
 
     /// The chat the server sent, worded and added to the log.
-    pub fn receive_chat(&self, events: Vec<ChatEvent>, log: &mut ChatLog, focused: bool) {
+    pub fn receive_chat(&mut self, events: Vec<ChatEvent>, log: &mut ChatLog, focused: bool) {
         for event in events {
             let component = match event {
-                // The action bar is not drawn yet.
-                ChatEvent::System { overlay: true, .. } => continue,
+                ChatEvent::System {
+                    content,
+                    overlay: true,
+                } => {
+                    let runs = self.lang.runs(&content, &Style::default());
+                    self.titles.set_overlay(runs);
+                    continue;
+                }
                 ChatEvent::System { content, .. } => content,
                 ChatEvent::Disguised { content, bound }
                 | ChatEvent::Player { content, bound, .. } => {
@@ -123,6 +200,10 @@ impl Gui {
 
     /// The HUD, then the open screen over it, with the player in the screen
     /// posed as the entity stands now.
+    #[expect(
+        clippy::too_many_lines,
+        reason = "one frame's HUD, screen and overlays in drawing order"
+    )]
     pub fn draw(
         &mut self,
         backend: &mut VulkanBackend,
@@ -139,6 +220,7 @@ impl Gui {
             .then(|| session.active_menu().clone());
         let session = &*session;
         let hud_player = session.player();
+        let tab_entries = controls.tab_held.then(|| self.tab_entries(session));
         let items = &mut self.items;
         let mut draw_item =
             |stack: &ClientItemStackState, x: f32, y: f32, out: &mut Vec<GuiItemVertex>| {
@@ -164,6 +246,21 @@ impl Gui {
         );
         if let Some(chat) = controls.chat.as_ref() {
             chat.draw(&mut frame, &self.atlas);
+        }
+        let gui_size = (size.gui_scaled_width(), size.gui_scaled_height());
+        let partial = (self.last_tick.elapsed().as_secs_f32() / 0.05).min(1.0);
+        self.titles
+            .draw(&mut frame, &self.atlas, &self.font, gui_size, partial);
+        if let Some(entries) = tab_entries {
+            tab_list::draw(
+                &mut frame,
+                &self.atlas,
+                &self.font,
+                gui_size.0,
+                &entries,
+                &self.tab_header,
+                &self.tab_footer,
+            );
         }
         if let (Some(screen), Some(menu)) = (controls.screen.as_mut(), screen_menu) {
             let mut draw_player =

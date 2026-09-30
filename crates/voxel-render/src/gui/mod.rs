@@ -9,6 +9,8 @@ pub mod frame;
 pub mod hud;
 pub mod items;
 pub mod screen;
+pub mod tab_list;
+pub mod titles;
 
 pub use atlas::GuiAtlas;
 pub use frame::{GuiBlend, GuiFrame, GuiVertex, ItemDrawer};
