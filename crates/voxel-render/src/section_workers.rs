@@ -153,7 +153,17 @@ fn mesh_section(renderer: &BlockRenderer, tints: &BiomeTints, job: Job) -> Built
         biome
     };
     let tint = |kind, position| tints.tint_from(kind, position, &biome_at);
-    let region = renderer.mesh_region(&read, &light, &tint, corner, [16, 16, 16], job.origin);
+    let region = renderer.mesh_region(
+        &crate::world_mesh::MeshWorld {
+            read: &read,
+            light: &light,
+            biome_tint: &tint,
+            tags: copy.tags(),
+        },
+        corner,
+        [16, 16, 16],
+        job.origin,
+    );
     Built {
         key: job.key,
         generation: job.generation,

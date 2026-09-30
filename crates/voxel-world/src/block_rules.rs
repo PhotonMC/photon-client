@@ -69,17 +69,8 @@ fn is_air(state: i32) -> bool {
 
 /// `getFluidState(pos).is(Fluids.WATER)`: a water source, loose or held.
 pub fn is_water_source(state: i32) -> bool {
-    static SOURCE: std::sync::OnceLock<u32> = std::sync::OnceLock::new();
-    let source = *SOURCE.get_or_init(|| {
-        registry::block("minecraft:water").map_or(u32::MAX, |block| block.default_state_id())
-    });
-    let (index, offset) = match block_index(state) {
-        Some(found) => found,
-        None => return false,
-    };
-    let id = voxel_data::block::per_state(voxel_data::block::destroy::BLOCKS[index], offset)
-        .expect("a destroy trait per state");
-    voxel_data::block::destroy::TRAITS[usize::from(id)].fluid_block == source
+    crate::block::state_or_air(i64::from(state)).fluid.fluid
+        == voxel_data::block::definition::Fluid::Water
 }
 
 /// What a block reads of the level and of the use that places it.

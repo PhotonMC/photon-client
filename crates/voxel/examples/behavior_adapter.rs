@@ -16329,7 +16329,23 @@ fn block_declarations(label: &str) -> Value {
             let parent = class
                 .parent()
                 .map_or(String::new(), |parent| format!("{parent:?}"));
-            json!({"name": format!("{class:?}"), "parent": parent})
+            let interfaces: Vec<String> = class
+                .interfaces()
+                .iter()
+                .map(|interface| format!("{interface:?}"))
+                .collect();
+            json!({"name": format!("{class:?}"), "parent": parent, "interfaces": interfaces})
+        })
+        .collect();
+    let interfaces: Vec<Value> = voxel_data::block::classes::BlockInterface::ALL
+        .iter()
+        .map(|interface| {
+            let parents: Vec<String> = interface
+                .parents()
+                .iter()
+                .map(|parent| format!("{parent:?}"))
+                .collect();
+            json!({"name": format!("{interface:?}"), "parents": parents})
         })
         .collect();
     let properties: Vec<Value> = FIELDS
@@ -16426,27 +16442,17 @@ fn block_declarations(label: &str) -> Value {
         "label": label,
         "outcome": "listed",
         "classes": classes,
+        "interfaces": interfaces,
         "properties": properties,
         "blocks": blocks,
     })
 }
 
-/// Binds the vanilla data pack's block tags, which is what the oracle's
-/// registry holds.
-fn bind_vanilla_block_tags() -> Result<(), String> {
-    let packet = vanilla_block_tags()?;
-    let tags = packet
-        .registries
-        .iter()
-        .filter(|registry| registry.registry.as_string() == "minecraft:block")
-        .flat_map(|registry| &registry.tags)
-        .map(|tag| {
-            let blocks = tag.values.iter().map(|value| *value as usize).collect();
-            (tag.id.as_string(), blocks)
-        })
-        .collect();
-    voxel_world::block::tags::bind(tags);
-    Ok(())
+/// The vanilla data pack's block tags, which is what the oracle's registry
+/// holds.
+fn vanilla_tags() -> Result<voxel_world::block::tags::BlockTags, String> {
+    voxel_world::block::tags::BlockTags::from_registries(&vanilla_block_tags()?.registries)
+        .ok_or_else(|| "the vanilla tags have no block registry".to_owned())
 }
 
 /// `face_occlusion`: the state cache's faces and skip rules, numbered and
@@ -16455,7 +16461,7 @@ fn face_occlusion(label: &str) -> Result<Value, String> {
     use voxel_data::block::registry;
     use voxel_world::block::culling::skip_rendering;
     use voxel_world::block::state::{DIRECTIONS, states};
-    bind_vanilla_block_tags()?;
+    let tags = vanilla_tags()?;
     let states = states();
     let mut tuples: Vec<[u16; 6]> = Vec::new();
     let mut blocks = Vec::with_capacity(registry::BLOCKS.len());
@@ -16504,7 +16510,7 @@ fn face_occlusion(label: &str) -> Result<Value, String> {
             let neighbour = info(other, other.default_state_id() - other.first_state_id());
             if !DIRECTIONS
                 .iter()
-                .any(|direction| skip_rendering(own, neighbour, *direction))
+                .any(|direction| skip_rendering(own, neighbour, *direction, &tags))
             {
                 continue;
             }
@@ -16513,8 +16519,12 @@ fn face_occlusion(label: &str) -> Result<Value, String> {
             for offset in 0..block.state_count() {
                 for other_offset in 0..other.state_count() {
                     for direction in DIRECTIONS {
-                        if skip_rendering(info(block, offset), info(other, other_offset), direction)
-                        {
+                        if skip_rendering(
+                            info(block, offset),
+                            info(other, other_offset),
+                            direction,
+                            &tags,
+                        ) {
                             directions.insert(direction.name());
                         } else {
                             all = false;
@@ -16542,6 +16552,67 @@ fn face_occlusion(label: &str) -> Result<Value, String> {
         "skip_pairs": skips,
         "skip_is_state_dependent": state_dependent,
     }))
+}
+
+/// `movement_properties`: the declarations, the state cache and the
+/// vanilla tags, as the oracle describes them.
+fn movement_properties(label: &str) -> Result<Value, String> {
+    use voxel_data::block::classes::BlockClass;
+    use voxel_data::block::definition::Fluid;
+    use voxel_data::block::registry;
+    let tags = vanilla_tags()?;
+    let bits = |value: f32| format!("{:08x}", value.to_bits());
+    let fluid_name = |fluid: Fluid| match fluid {
+        Fluid::Empty => "minecraft:empty",
+        Fluid::Water => "minecraft:water",
+        Fluid::FlowingWater => "minecraft:flowing_water",
+        Fluid::Lava => "minecraft:lava",
+        Fluid::FlowingLava => "minecraft:flowing_lava",
+    };
+    let blocks: Vec<Value> = registry::BLOCKS
+        .iter()
+        .enumerate()
+        .map(|(index, block)| {
+            let first = block.first_state_id();
+            let mut fluids: Vec<String> = (0..block.state_count())
+                .map(|offset| {
+                    let state =
+                        voxel_world::block::state(first + offset).expect("a registry state");
+                    let fluid = state.fluid;
+                    format!(
+                        "{}|{}|{}|{:08x}|{}|{}",
+                        fluid_name(fluid.fluid),
+                        fluid.amount,
+                        fluid.falling,
+                        fluid.own_height().to_bits(),
+                        fluid.is_source(),
+                        state.suffocating
+                    )
+                })
+                .collect();
+            if fluids.iter().all(|fluid| *fluid == fluids[0]) {
+                fluids.truncate(1);
+            }
+            let tagged = |tag: &str| tags.contains(index, tag);
+            json!({
+                "name": block.name,
+                "friction": bits(block.friction),
+                "speed_factor": bits(block.speed_factor),
+                "jump_factor": bits(block.jump_factor),
+                "bounce_restitution": bits(block.bounce_restitution),
+                "climbable": tagged("minecraft:climbable"),
+                "fence": tagged("minecraft:fences"),
+                "wall": tagged("minecraft:walls"),
+                "can_glide_through": tagged("minecraft:can_glide_through"),
+                "suppresses_bounce": tagged("minecraft:suppresses_bounce"),
+                "fence_gate": block.class.is(BlockClass::FenceGateBlock),
+                "trapdoor": block.class.is(BlockClass::TrapDoorBlock),
+                "ladder": block.class.is(BlockClass::LadderBlock),
+                "fluids": fluids,
+            })
+        })
+        .collect();
+    Ok(json!({"label": label, "outcome": "listed", "blocks": blocks}))
 }
 
 fn block_result(request: &Value) -> Result<Value, String> {
@@ -16611,37 +16682,57 @@ fn block_result(request: &Value) -> Result<Value, String> {
                 out.push(json!({"label": label, "outcome": "listed", "blocks": blocks}));
             }
             "fluid_flow_properties" => {
-                use voxel_data::block::fluid_flow as table;
-                let runs: Vec<String> = table::RUNS
-                    .iter()
-                    .map(|(first, value)| format!("{first}:{value}"))
-                    .collect();
+                // `FlowingFluid.isSolidFace`'s sturdy faces (never for ice)
+                // and `blocksMotion`, as runs of equal values.
+                let count = registry::state_count();
+                let value = |id: u32| {
+                    let state = voxel_world::block::state(id).expect("a registry state");
+                    let ice = state
+                        .block()
+                        .class
+                        .is(voxel_data::block::classes::BlockClass::IceBlock);
+                    let sturdy = if ice { 0 } else { state.sturdy_faces };
+                    sturdy | u8::from(state.blocks_motion) << 6
+                };
+                let mut runs = Vec::new();
+                let mut last = None;
+                for id in 0..count {
+                    let current = value(id);
+                    if last != Some(current) {
+                        runs.push(format!("{id}:{current}"));
+                        last = Some(current);
+                    }
+                }
                 out.push(json!({
                     "label": label,
                     "outcome": "listed",
-                    "state_count": table::STATE_COUNT,
+                    "state_count": count,
                     "runs": runs,
                 }));
             }
             "motion_blocking" => {
-                use voxel_data::block::motion_blocking as table;
-                let words: Vec<String> = table::WORDS
-                    .iter()
-                    .map(|word| format!("{word:016x}"))
-                    .collect();
+                let count = registry::state_count();
+                let mut words = vec![0_u64; count.div_ceil(64) as usize];
+                for id in 0..count {
+                    if voxel_world::motion_blocking(id as i32) {
+                        words[id as usize / 64] |= 1 << (id % 64);
+                    }
+                }
+                let words: Vec<String> = words.iter().map(|word| format!("{word:016x}")).collect();
                 out.push(json!({
                     "label": label,
                     "outcome": "listed",
-                    "state_count": table::STATE_COUNT,
+                    "state_count": count,
                     "words": words,
                 }));
             }
             "fluid_overlay_blocks" => {
-                out.push(json!({
-                    "label": label,
-                    "outcome": "listed",
-                    "blocks": voxel_data::block::fluid_overlay::OVERLAY_BLOCKS.to_vec(),
-                }));
+                let blocks: Vec<&str> = registry::BLOCKS
+                    .iter()
+                    .filter(|block| voxel_world::block::shows_fluid_overlay(block))
+                    .map(|block| block.name)
+                    .collect();
+                out.push(json!({"label": label, "outcome": "listed", "blocks": blocks}));
             }
             "block_declarations" => out.push(block_declarations(label)),
             "block_behaviours" => {
@@ -16688,28 +16779,31 @@ fn block_result(request: &Value) -> Result<Value, String> {
                 );
             }
             "destroy_properties" => {
-                use voxel_data::block::destroy as table;
                 let blocks: Vec<Value> = registry::BLOCKS
                     .iter()
-                    .zip(table::BLOCKS.iter())
-                    .enumerate()
-                    .map(|(index, (block, ids))| {
-                        let states: Vec<String> = ids
-                            .iter()
-                            .map(|id| {
-                                let t = &table::TRAITS[usize::from(*id)];
+                    .map(|block| {
+                        let first = block.first_state_id();
+                        let mut states: Vec<String> = (0..block.state_count())
+                            .map(|offset| {
+                                let state = voxel_world::block::state(first + offset)
+                                    .expect("a registry state");
                                 format!(
                                     "{:08x}|{}|{}|{}",
-                                    t.destroy_time.to_bits(),
-                                    t.requires_correct_tool,
-                                    t.air,
-                                    t.fluid_block
+                                    block.destroy_time.to_bits(),
+                                    block.requires_correct_tool_for_drops,
+                                    block.air,
+                                    state.fluid.legacy_block()
                                 )
                             })
                             .collect();
+                        if states.iter().all(|state| *state == states[0]) {
+                            states.truncate(1);
+                        }
                         json!({
                             "name": block.name,
-                            "game_master": table::GAME_MASTER.contains(&(index as u16)),
+                            "game_master": block.class.implements(
+                                voxel_data::block::classes::BlockInterface::GameMasterBlock,
+                            ),
                             "states": states,
                         })
                     })
@@ -17112,56 +17206,7 @@ fn block_result(request: &Value) -> Result<Value, String> {
                     "blocks": blocks,
                 }));
             }
-            "movement_properties" => {
-                use voxel_data::block::movement as table;
-                let fluid_name = |kind: table::FluidKind| match kind {
-                    table::FluidKind::Empty => "minecraft:empty",
-                    table::FluidKind::Water => "minecraft:water",
-                    table::FluidKind::FlowingWater => "minecraft:flowing_water",
-                    table::FluidKind::Lava => "minecraft:lava",
-                    table::FluidKind::FlowingLava => "minecraft:flowing_lava",
-                };
-                let blocks: Vec<Value> = registry::BLOCKS
-                    .iter()
-                    .zip(table::BLOCKS.iter())
-                    .map(|(block, movement)| {
-                        let has = |flag: u16| movement.flags & flag != 0;
-                        let fluids: Vec<String> = movement
-                            .states
-                            .iter()
-                            .map(|index| {
-                                let traits = &table::STATE_TRAITS[usize::from(*index)];
-                                format!(
-                                    "{}|{}|{}|{:08x}|{}|{}",
-                                    fluid_name(traits.fluid),
-                                    traits.amount,
-                                    traits.falling,
-                                    traits.own_height.to_bits(),
-                                    traits.source,
-                                    traits.suffocating
-                                )
-                            })
-                            .collect();
-                        json!({
-                            "name": block.name,
-                            "friction": format!("{:08x}", movement.friction.to_bits()),
-                            "speed_factor": format!("{:08x}", movement.speed_factor.to_bits()),
-                            "jump_factor": format!("{:08x}", movement.jump_factor.to_bits()),
-                            "bounce_restitution": format!("{:08x}", movement.bounce_restitution.to_bits()),
-                            "climbable": has(table::flag::CLIMBABLE),
-                            "fence": has(table::flag::FENCE),
-                            "wall": has(table::flag::WALL),
-                            "can_glide_through": has(table::flag::CAN_GLIDE_THROUGH),
-                            "suppresses_bounce": has(table::flag::SUPPRESSES_BOUNCE),
-                            "fence_gate": has(table::flag::FENCE_GATE),
-                            "trapdoor": has(table::flag::TRAPDOOR),
-                            "ladder": has(table::flag::LADDER),
-                            "fluids": fluids,
-                        })
-                    })
-                    .collect();
-                out.push(json!({"label": label, "outcome": "listed", "blocks": blocks}));
-            }
+            "movement_properties" => out.push(movement_properties(label)?),
             "block_tints" => {
                 let tinted: Vec<Value> = registry::TINTS
                     .iter()
@@ -17564,6 +17609,8 @@ fn movement_world(row: &Value) -> Result<ClientWorld, String> {
         }
     }
 
+    // The reference level's registry holds the vanilla tags.
+    world.apply_update_tags_packet(&vanilla_block_tags()?);
     Ok(world)
 }
 
@@ -17688,7 +17735,6 @@ fn movement_result(request: &Value) -> Result<Value, String> {
         let breaking = row.get("breaking");
         let mut game_mode = voxel_game::game_mode::GameMode::default();
         if let Some(breaking) = breaking {
-            world.apply_update_tags_packet(&vanilla_block_tags()?);
             world.set_local_player_id(player.entity_id());
             if let Some(name) = breaking["main_hand"].as_str() {
                 let item =

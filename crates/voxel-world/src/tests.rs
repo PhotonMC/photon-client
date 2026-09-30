@@ -398,9 +398,28 @@ fn indexed_player_collision_respects_trapdoor_ladder_context() {
     assert!(!world.no_entity_collision_for_entity(Some(7), test_area));
 }
 
+/// The server's climbing tags for the ladder (221) and the vine (366), as a
+/// vanilla server sends them.
+fn climbing_tags() -> ClientboundUpdateTagsPacket {
+    ClientboundUpdateTagsPacket::new(vec![RegistryTags::new(
+        Identifier::parse("minecraft:block").unwrap(),
+        vec![
+            TagEntry::new(
+                Identifier::parse("minecraft:climbable").unwrap(),
+                vec![221, 366],
+            ),
+            TagEntry::new(
+                Identifier::parse("minecraft:can_glide_through").unwrap(),
+                vec![366],
+            ),
+        ],
+    )])
+}
+
 #[test]
 fn indexed_player_collision_respects_climbable_block_state_tag() {
     let mut world = ClientWorld::default();
+    world.apply_update_tags_packet(&climbing_tags());
     for (entity_id, type_id) in [(7, 0), (8, VANILLA_PLAYER_ENTITY_TYPE_ID)] {
         assert!(world.apply_entity(EntityInput {
             entity_id,
@@ -432,6 +451,7 @@ fn indexed_player_collision_respects_climbable_block_state_tag() {
 #[test]
 fn indexed_player_collision_respects_glide_through_tag() {
     let mut world = ClientWorld::default();
+    world.apply_update_tags_packet(&climbing_tags());
     for (entity_id, type_id) in [(7, 0), (8, VANILLA_PLAYER_ENTITY_TYPE_ID)] {
         assert!(world.apply_entity(EntityInput {
             entity_id,

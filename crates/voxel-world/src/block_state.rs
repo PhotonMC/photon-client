@@ -1,6 +1,9 @@
 //! `ClientWorld` block_state layer split out of the former single-file module.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
+use std::sync::Arc;
+
+use crate::block::tags::BlockTags;
 
 use voxel_core::{
     binary::BlockPos,
@@ -68,10 +71,8 @@ pub(crate) fn client_stair_block_state(
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ClientBlockStateRegistry {
     pub(crate) stair_states: BTreeMap<i32, ClientStairBlockState>,
-    pub(crate) climbable_block_registry_ids: BTreeSet<i32>,
-    pub(crate) glide_through_block_registry_ids: BTreeSet<i32>,
-    /// Every block tag the server sent, by tag id, as block registry ids.
-    pub(crate) block_tags: BTreeMap<String, BTreeSet<i32>>,
+    /// The block tags the server last sent.
+    pub(crate) tags: Arc<BlockTags>,
 }
 
 impl ClientBlockStateRegistry {
@@ -208,13 +209,9 @@ impl ClientBlockStateRegistry {
                 ),
             ),
         ]);
-        let climbable_block_registry_ids = BTreeSet::from([221, 366]);
-        let glide_through_block_registry_ids = BTreeSet::from([366]);
         Self {
             stair_states,
-            climbable_block_registry_ids,
-            glide_through_block_registry_ids,
-            block_tags: BTreeMap::new(),
+            tags: Arc::default(),
         }
     }
 
@@ -331,56 +328,32 @@ impl ClientBlockStateRegistry {
         voxel_data::block::registry::block_index_for_state(id).map(|(index, _)| index as i32)
     }
 
-    /// Return whether a block-state belongs to BlockTags.CLIMBABLE.
+    /// `BlockTags.CLIMBABLE`.
     pub fn is_climbable_state(&self, state_id: i32) -> bool {
-        self.block_registry_id(state_id)
-            .is_some_and(|block_id| self.climbable_block_registry_ids.contains(&block_id))
+        self.is_state_in_tag(state_id, "minecraft:climbable")
     }
 
-    /// Return whether a block-state belongs to BlockTags.CAN_GLIDE_THROUGH.
+    /// `BlockTags.CAN_GLIDE_THROUGH`.
     pub fn is_glide_through_state(&self, state_id: i32) -> bool {
-        self.block_registry_id(state_id)
-            .is_some_and(|block_id| self.glide_through_block_registry_ids.contains(&block_id))
+        self.is_state_in_tag(state_id, "minecraft:can_glide_through")
+    }
+
+    /// The block tags the server last sent.
+    pub fn tags(&self) -> &Arc<BlockTags> {
+        &self.tags
     }
 
     pub(crate) fn apply_update_tags(&mut self, registries: &[voxel_core::tags::RegistryTags]) {
-        let Some(block_registry) = registries.iter().find(|registry| {
-            registry.registry.namespace() == "minecraft" && registry.registry.path() == "block"
-        }) else {
-            return;
-        };
-
-        let mut climbable_block_registry_ids = BTreeSet::new();
-        let mut glide_through_block_registry_ids = BTreeSet::new();
-        for tag in &block_registry.tags {
-            let target = if tag.id.namespace() == "minecraft" && tag.id.path() == "climbable" {
-                Some(&mut climbable_block_registry_ids)
-            } else if tag.id.namespace() == "minecraft" && tag.id.path() == "can_glide_through" {
-                Some(&mut glide_through_block_registry_ids)
-            } else {
-                None
-            };
-            if let Some(target) = target {
-                target.extend(tag.values.iter().copied());
-            }
+        if let Some(tags) = BlockTags::from_registries(registries) {
+            self.tags = Arc::new(tags);
         }
-        self.climbable_block_registry_ids = climbable_block_registry_ids;
-        self.glide_through_block_registry_ids = glide_through_block_registry_ids;
-        self.block_tags = block_registry
-            .tags
-            .iter()
-            .map(|tag| (tag.id.as_string(), tag.values.iter().copied().collect()))
-            .collect();
     }
 
     /// `BlockState.is(tag)`, against the tags the server last sent. `tag` is
     /// the tag id without the leading `#`.
     pub fn is_state_in_tag(&self, state_id: i32, tag: &str) -> bool {
-        self.block_registry_id(state_id).is_some_and(|block_id| {
-            self.block_tags
-                .get(tag)
-                .is_some_and(|blocks| blocks.contains(&block_id))
-        })
+        self.block_registry_id(state_id)
+            .is_some_and(|block| self.tags.contains(block as usize, tag))
     }
 }
 

@@ -4,7 +4,7 @@
 //! [`super::blocks`]; everything a state works out from these and from its
 //! shapes is computed, not stored.
 
-use super::classes::BlockClass;
+use super::classes::{BlockClass, BlockInterface};
 
 /// What kind of values a property takes.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -299,8 +299,26 @@ impl BlockClass {
         std::iter::successors(Some(self), |class| class.parent())
     }
 
-    /// `instanceof`.
+    /// `instanceof` a class.
     pub fn is(self, other: Self) -> bool {
         self.lineage().any(|class| class == other)
+    }
+
+    /// `instanceof` an interface: one the class or a class it extends
+    /// implements, or one those extend.
+    pub fn implements(self, interface: BlockInterface) -> bool {
+        fn reaches(from: BlockInterface, interface: BlockInterface) -> bool {
+            from == interface
+                || from
+                    .parents()
+                    .iter()
+                    .any(|parent| reaches(*parent, interface))
+        }
+        self.lineage().any(|class| {
+            class
+                .interfaces()
+                .iter()
+                .any(|own| reaches(*own, interface))
+        })
     }
 }

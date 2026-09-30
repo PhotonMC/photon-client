@@ -259,26 +259,6 @@ impl ClientWorld {
     ) {
         self.block_state_registry
             .apply_update_tags(&packet.registries);
-        if let Some(blocks) = packet
-            .registries
-            .iter()
-            .find(|registry| registry.registry.as_string() == "minecraft:block")
-        {
-            block::tags::bind(
-                blocks
-                    .tags
-                    .iter()
-                    .map(|tag| {
-                        let members = tag
-                            .values
-                            .iter()
-                            .filter_map(|value| usize::try_from(*value).ok())
-                            .collect();
-                        (tag.id.as_string(), members)
-                    })
-                    .collect(),
-            );
-        }
     }
 
     pub fn world_border(&self) -> &ClientWorldBorder {
@@ -3391,24 +3371,11 @@ pub mod local_player;
 #[cfg(test)]
 mod tests;
 
-/// Whether the MOTION_BLOCKING heightmap counts a state.
+/// Whether the `MOTION_BLOCKING` heightmap counts a state: it blocks
+/// motion or holds a fluid.
 pub fn motion_blocking(state: i32) -> bool {
-    let Ok(state) = usize::try_from(state) else {
-        return false;
-    };
-    voxel_data::block::motion_blocking::WORDS
-        .get(state / 64)
-        .is_some_and(|word| word >> (state % 64) & 1 == 1)
-}
-
-/// What a fluid's flow reads of a state: bits 0 to 5 its fully sturdy faces
-/// in direction order (none for ice), bit 6 whether it blocks motion.
-pub fn fluid_flow_traits(state: u32) -> u8 {
-    let runs = &voxel_data::block::fluid_flow::RUNS;
-    match runs.partition_point(|(first, _)| *first <= state) {
-        0 => 0,
-        index => runs[index - 1].1,
-    }
+    let state = block::state_or_air(i64::from(state));
+    state.blocks_motion || !state.fluid.is_empty()
 }
 
 /// A light task waiting for a frame.

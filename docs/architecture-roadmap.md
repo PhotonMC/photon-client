@@ -41,12 +41,12 @@ olarak tutulmaz.
 - [x] Yüz oklüzyon şekilleri (`getOcclusionShape`, `getFaceShape`) ve
   `shouldRenderFace`; `skipRendering` sınıfların kendi kuralıyla.
   `face_occlusion.rs` silinir.
-- [ ] Sağlam yüzler ve hareket engelleme (`isFaceSturdy`, `legacySolid`,
+- [x] Sağlam yüzler ve hareket engelleme (`isFaceSturdy`, `legacySolid`,
   `blocksMotion`); `fluid_flow.rs` ve `motion_blocking.rs` silinir.
 - [x] Işık özellikleri: `solidRender`, `propagatesSkylightDown`, sönüm,
   gölge parlaklığı, çarpışma şeklinin tam blok olması; `light.rs`'in
   hesaplanan alanları kalkar.
-- [ ] Akışkan durumu (`getFluidState`) sınıf ve özelliklerden;
+- [x] Akışkan durumu (`getFluidState`) sınıf ve özelliklerden;
   `fluid_overlay.rs` sınıftan (`HalfTransparentBlock`, `LeavesBlock`).
 
 ### F2. Okunur blok tanımları (Java `Blocks.java`)
@@ -59,7 +59,7 @@ olarak tutulmaz.
 - [ ] Sınıf davranışları sınıf enum'u üzerinden; `ClientBlockStateRegistry`
   içindeki sabit merdiven numaraları kalkar, bütün merdivenler
   özelliklerinden çalışır.
-- [ ] Etiket bayrakları (tırmanılabilir, çit, duvar…) sunucunun gönderdiği
+- [x] Etiket bayrakları (tırmanılabilir, çit, duvar…) sunucunun gönderdiği
   etiketlerden; gömülü etiket listesi kalkar.
 
 ### F3. Hazır modeller ve paralel açılış (Java `ModelBakery`)

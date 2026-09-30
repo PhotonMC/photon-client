@@ -117,9 +117,12 @@ fn main() {
         let mut quads = 0;
         for _ in 0..REPEATS {
             let region = renderer.mesh_region(
-                &|x, y, z| copy.block_state_at(x, y, z),
-                &|x, y, z| copy.light_at(x, y, z),
-                &tint,
+                &voxel_render::world_mesh::MeshWorld {
+                    read: &|x, y, z| copy.block_state_at(x, y, z),
+                    light: &|x, y, z| copy.light_at(x, y, z),
+                    biome_tint: &tint,
+                    tags: copy.tags(),
+                },
                 [key.0 * 16, key.1 * 16, key.2 * 16],
                 [16, 16, 16],
                 [0, 0, 0],

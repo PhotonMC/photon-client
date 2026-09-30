@@ -1,31 +1,42 @@
-//! Block tags as the reference binds them: the registry's holders carry the
-//! tags the server last sent, and `BlockState.is(tag)` reads them from
-//! anywhere. Until a server sends any, every tag is empty.
+//! Block tags as the server sends them (`ClientboundUpdateTagsPacket`):
+//! what `BlockState.is(tag)` reads. Until a server sends any, every tag is
+//! empty, as the reference's are.
 
 use std::collections::{BTreeMap, BTreeSet};
-use std::sync::{Arc, LazyLock, RwLock};
 
-/// Each tag, by id without the leading `#`, as block registry indices.
-pub type BlockTags = BTreeMap<String, BTreeSet<usize>>;
+use voxel_core::tags::RegistryTags;
 
-fn bound() -> &'static RwLock<Arc<BlockTags>> {
-    static BOUND: LazyLock<RwLock<Arc<BlockTags>>> = LazyLock::new(RwLock::default);
-    &BOUND
-}
+/// Each block tag, by id without the leading `#`, as block registry indices.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct BlockTags(BTreeMap<String, BTreeSet<usize>>);
 
-/// `TagLoader`'s result bound to the registry, replacing what was there.
-pub fn bind(tags: BlockTags) {
-    *bound().write().expect("the tag binding is never poisoned") = Arc::new(tags);
-}
+impl BlockTags {
+    /// The block registry's tags from a tag packet; `None` when the packet
+    /// does not update the block registry.
+    pub fn from_registries(registries: &[RegistryTags]) -> Option<Self> {
+        let blocks = registries
+            .iter()
+            .find(|registry| registry.registry.as_string() == "minecraft:block")?;
+        Some(Self(
+            blocks
+                .tags
+                .iter()
+                .map(|tag| {
+                    let members = tag
+                        .values
+                        .iter()
+                        .filter_map(|value| usize::try_from(*value).ok())
+                        .collect();
+                    (tag.id.as_string(), members)
+                })
+                .collect(),
+        ))
+    }
 
-/// The tags bound now.
-pub fn current() -> Arc<BlockTags> {
-    Arc::clone(&bound().read().expect("the tag binding is never poisoned"))
-}
-
-/// `BlockState.is(tag)` for a block, by registry index.
-pub fn is(block: usize, tag: &str) -> bool {
-    current()
-        .get(tag)
-        .is_some_and(|blocks| blocks.contains(&block))
+    /// `BlockState.is(tag)` for a block, by registry index.
+    pub fn contains(&self, block: usize, tag: &str) -> bool {
+        self.0
+            .get(tag)
+            .is_some_and(|blocks| blocks.contains(&block))
+    }
 }

@@ -9,7 +9,7 @@ use voxel_data::block::classes::BlockClass;
 use voxel_data::block::properties::{EAST, NORTH, SOUTH, WEST};
 
 use super::state::{EMPTY_FACE, FULL_FACE, StateInfo, states};
-use super::tags;
+use super::tags::BlockTags;
 
 /// `LeavesBlock.cutoutLeaves`, which the graphics options set; leaves hide
 /// their shared faces only when it is off.
@@ -33,7 +33,12 @@ fn side_property(direction: Direction) -> Option<&'static voxel_data::block::reg
 
 /// `BlockState.skipRendering`: whether the pair hides its shared face
 /// whatever their shapes.
-pub fn skip_rendering(state: &StateInfo, neighbour: &StateInfo, direction: Direction) -> bool {
+pub fn skip_rendering(
+    state: &StateInfo,
+    neighbour: &StateInfo,
+    direction: Direction,
+    tags: &BlockTags,
+) -> bool {
     let block = state.block();
     for class in block.class.lineage() {
         match class {
@@ -50,7 +55,7 @@ pub fn skip_rendering(state: &StateInfo, neighbour: &StateInfo, direction: Direc
                 }
             }
             BlockClass::IronBarsBlock => {
-                if iron_bars_join(state, neighbour, direction) {
+                if iron_bars_join(state, neighbour, direction, tags) {
                     return true;
                 }
             }
@@ -67,13 +72,18 @@ pub fn skip_rendering(state: &StateInfo, neighbour: &StateInfo, direction: Direc
 
 /// `IronBarsBlock.skipRendering`'s own test: bars joined above and below,
 /// or across a side both reach towards.
-fn iron_bars_join(state: &StateInfo, neighbour: &StateInfo, direction: Direction) -> bool {
+fn iron_bars_join(
+    state: &StateInfo,
+    neighbour: &StateInfo,
+    direction: Direction,
+    tags: &BlockTags,
+) -> bool {
     let block = state.block();
     let other = neighbour.block();
     let opposite = side_property(direction.opposite());
     let joins = neighbour.block == state.block
-        || tags::is(usize::from(neighbour.block), "minecraft:bars")
-            && tags::is(usize::from(state.block), "minecraft:bars")
+        || tags.contains(usize::from(neighbour.block), "minecraft:bars")
+            && tags.contains(usize::from(state.block), "minecraft:bars")
             && opposite.is_some_and(|property| {
                 other.value(u32::from(neighbour.offset), property).is_some()
             });
@@ -89,7 +99,12 @@ fn iron_bars_join(state: &StateInfo, neighbour: &StateInfo, direction: Direction
 
 /// `Block.shouldRenderFace`: whether `state`'s face towards `direction` is
 /// drawn with `neighbour` beside it. An unloaded neighbour hides nothing.
-pub fn should_render_face(state: u32, neighbour: Option<u32>, direction: Direction) -> bool {
+pub fn should_render_face(
+    state: u32,
+    neighbour: Option<u32>,
+    direction: Direction,
+    tags: &BlockTags,
+) -> bool {
     let states = states();
     let (Some(own), Some(neighbour)) = (states.get(state), neighbour.and_then(|id| states.get(id)))
     else {
@@ -99,7 +114,7 @@ pub fn should_render_face(state: u32, neighbour: Option<u32>, direction: Directi
     if occluder == FULL_FACE {
         return false;
     }
-    if skip_rendering(own, neighbour, direction) {
+    if skip_rendering(own, neighbour, direction, tags) {
         return false;
     }
     if occluder == EMPTY_FACE {
@@ -127,7 +142,12 @@ mod tests {
         let log = state("minecraft:oak_log");
         let leaves = state("minecraft:oak_leaves");
         for direction in [Direction::Up, Direction::North, Direction::East] {
-            assert!(should_render_face(log, Some(leaves), direction));
+            assert!(should_render_face(
+                log,
+                Some(leaves),
+                direction,
+                &BlockTags::default()
+            ));
         }
     }
 
@@ -135,10 +155,30 @@ mod tests {
     fn full_blocks_and_matching_glass_hide_their_shared_face() {
         let stone = state("minecraft:stone");
         let glass = state("minecraft:glass");
-        assert!(!should_render_face(stone, Some(stone), Direction::West));
-        assert!(!should_render_face(glass, Some(glass), Direction::West));
-        assert!(should_render_face(stone, Some(glass), Direction::West));
-        assert!(should_render_face(stone, None, Direction::West));
+        assert!(!should_render_face(
+            stone,
+            Some(stone),
+            Direction::West,
+            &BlockTags::default()
+        ));
+        assert!(!should_render_face(
+            glass,
+            Some(glass),
+            Direction::West,
+            &BlockTags::default()
+        ));
+        assert!(should_render_face(
+            stone,
+            Some(glass),
+            Direction::West,
+            &BlockTags::default()
+        ));
+        assert!(should_render_face(
+            stone,
+            None,
+            Direction::West,
+            &BlockTags::default()
+        ));
     }
 
     #[test]
@@ -147,8 +187,23 @@ mod tests {
         let slab = state("minecraft:stone_slab");
         // A bottom slab above covers the stone's top; beside it, only half
         // of the side, so the side still shows.
-        assert!(!should_render_face(stone, Some(slab), Direction::Up));
-        assert!(should_render_face(stone, Some(slab), Direction::Down));
-        assert!(should_render_face(stone, Some(slab), Direction::North));
+        assert!(!should_render_face(
+            stone,
+            Some(slab),
+            Direction::Up,
+            &BlockTags::default()
+        ));
+        assert!(should_render_face(
+            stone,
+            Some(slab),
+            Direction::Down,
+            &BlockTags::default()
+        ));
+        assert!(should_render_face(
+            stone,
+            Some(slab),
+            Direction::North,
+            &BlockTags::default()
+        ));
     }
 }

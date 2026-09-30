@@ -439,15 +439,24 @@ impl BlockRenderer {
         clippy::too_many_lines,
         reason = "kept whole to read against the reference method line by line"
     )]
-    pub fn mesh_region(
+    pub fn mesh_region<R, L, T>(
         &self,
-        read: &impl Fn(i32, i32, i32) -> Option<i32>,
-        light: &impl Fn(i32, i32, i32) -> (u8, u8),
-        biome_tint: &impl Fn(crate::biome_tint::TintKind, [i32; 3]) -> u32,
+        world: &MeshWorld<'_, R, L, T>,
         origin: [i32; 3],
         size: [i32; 3],
         mesh_origin: [i32; 3],
-    ) -> RegionMesh {
+    ) -> RegionMesh
+    where
+        R: Fn(i32, i32, i32) -> Option<i32>,
+        L: Fn(i32, i32, i32) -> (u8, u8),
+        T: Fn(crate::biome_tint::TintKind, [i32; 3]) -> u32,
+    {
+        let MeshWorld {
+            read,
+            light,
+            biome_tint,
+            tags,
+        } = *world;
         let mut placements = Vec::new();
         let mut solid_count = 0;
         for offset_x in 0..size[0] {
@@ -488,7 +497,9 @@ impl BlockRenderer {
                                 position[2] + step_z,
                             )
                             .and_then(|state| u32::try_from(state).ok());
-                            !voxel_world::block::should_render_face(state_id, neighbour, facing)
+                            !voxel_world::block::should_render_face(
+                                state_id, neighbour, facing, tags,
+                            )
                         })
                     {
                         continue;
@@ -560,7 +571,12 @@ impl BlockRenderer {
                     placement.position[2] + step_z,
                 )
                 .and_then(|state| u32::try_from(state).ok());
-                !voxel_world::block::should_render_face(placement.state, neighbour_state, facing)
+                !voxel_world::block::should_render_face(
+                    placement.state,
+                    neighbour_state,
+                    facing,
+                    tags,
+                )
             };
             let Ok(mut part) = crate::resolve::build_mesh(
                 model,
@@ -665,6 +681,15 @@ impl BlockRenderer {
     }
 }
 
+/// What meshing reads of the world around a region: block states, light,
+/// biome colours and the server's block tags.
+pub struct MeshWorld<'a, R, L, T> {
+    pub read: &'a R,
+    pub light: &'a L,
+    pub biome_tint: &'a T,
+    pub tags: &'a voxel_world::block::tags::BlockTags,
+}
+
 /// Read a box of the world and build one mesh for everything in it, with
 /// its own atlas.
 pub fn build_world_mesh(
@@ -677,7 +702,15 @@ pub fn build_world_mesh(
     mip_level: i32,
 ) -> Result<WorldMesh, ResolveError> {
     let renderer = BlockRenderer::new(source, mip_level)?;
-    let region = renderer.mesh_region(&read, &light, &biome_tint, origin, size, origin);
+    // A probe's world has no server, so no tags.
+    let tags = voxel_world::block::tags::BlockTags::default();
+    let world = MeshWorld {
+        read: &read,
+        light: &light,
+        biome_tint: &biome_tint,
+        tags: &tags,
+    };
+    let region = renderer.mesh_region(&world, origin, size, origin);
     let model_count = renderer.model_count();
     Ok(WorldMesh {
         mesh: region.mesh,
@@ -825,10 +858,8 @@ where
     fn shows_overlay(&self, x: i32, y: i32, z: i32) -> bool {
         (self.read)(x, y, z)
             .and_then(|state| u32::try_from(state).ok())
-            .and_then(registry::block_for_state)
-            .is_some_and(|(block, _)| {
-                voxel_data::block::fluid_overlay::OVERLAY_BLOCKS.contains(&block.name)
-            })
+            .and_then(voxel_world::block::state)
+            .is_some_and(|state| voxel_world::block::shows_fluid_overlay(state.block()))
     }
 
     /// The horizontal flow direction, which is all the surface texture uses.

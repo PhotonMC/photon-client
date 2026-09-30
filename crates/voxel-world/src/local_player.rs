@@ -21,7 +21,7 @@ use crate::input::{Input, KeyboardInput, LocalPlayerInputModifiers, modify_local
 use crate::java_math;
 use voxel_core::aabb::Aabb;
 use voxel_core::binary::BlockPos;
-use voxel_core::direction::Axis;
+use voxel_core::direction::{Axis, Direction};
 use voxel_core::math::{
     MTH_DEG_TO_RAD, Vec3, equal_f64, floor_f64, mth_cos_f64, mth_inv_sqrt_f32, mth_sin_f64,
 };
@@ -33,7 +33,8 @@ use super::collision::{
 };
 use super::entity::{ClientEntityDimensions, ClientEntityPose};
 use super::player::{ClientPlayerAbilities, ClientPlayerGameMode};
-use voxel_data::block::movement::{self as movement_table, FluidKind, flag};
+use voxel_data::block::classes::BlockClass;
+use voxel_data::block::definition::Fluid;
 use voxel_data::block::registry;
 
 /// A branch of the reference tick this port does not carry yet.
@@ -226,6 +227,18 @@ struct Movement {
     original: Option<Vec3>,
 }
 
+/// The tags and classes movement tests of a block.
+mod flag {
+    pub const CLIMBABLE: u16 = 1 << 0;
+    pub const FENCE: u16 = 1 << 1;
+    pub const WALL: u16 = 1 << 2;
+    pub const CAN_GLIDE_THROUGH: u16 = 1 << 3;
+    pub const SUPPRESSES_BOUNCE: u16 = 1 << 4;
+    pub const FENCE_GATE: u16 = 1 << 5;
+    pub const TRAPDOOR: u16 = 1 << 6;
+    pub const LADDER: u16 = 1 << 7;
+}
+
 /// What a block state holds for movement, looked up once.
 #[derive(Clone, Copy)]
 struct StateInfo {
@@ -235,47 +248,51 @@ struct StateInfo {
     jump_factor: f32,
     bounce: f32,
     flags: u16,
-    fluid: FluidKind,
+    fluid: Fluid,
     own_height: f32,
     falling: bool,
-    suffocating: bool,
 }
 
 impl StateInfo {
-    const AIR: Self = Self {
-        name: "minecraft:void_air",
-        friction: 0.6,
-        speed_factor: 1.0,
-        jump_factor: 1.0,
-        bounce: 0.0,
-        flags: 0,
-        fluid: FluidKind::Empty,
-        own_height: 0.0,
-        falling: false,
-        suffocating: false,
-    };
-
-    fn of(state_id: Option<i32>) -> Self {
-        let Some((index, offset)) =
-            state_id.and_then(|id| registry::block_index_for_state(id as u32))
-        else {
-            return Self::AIR;
-        };
-        let block = &movement_table::BLOCKS[index];
-        let traits = &movement_table::STATE_TRAITS[usize::from(
-            voxel_data::block::per_state(block.states, offset).expect("a trait per state"),
-        )];
+    /// A state against the server's tags; a number outside the registry
+    /// reads as air.
+    fn of(state_id: Option<i32>, tags: &crate::block::tags::BlockTags) -> Self {
+        let state = crate::block::state_or_air(state_id.map_or(0, i64::from));
+        let block = state.block();
+        let index = usize::from(state.block);
+        let tagged = [
+            ("minecraft:climbable", flag::CLIMBABLE),
+            ("minecraft:fences", flag::FENCE),
+            ("minecraft:walls", flag::WALL),
+            ("minecraft:can_glide_through", flag::CAN_GLIDE_THROUGH),
+            ("minecraft:suppresses_bounce", flag::SUPPRESSES_BOUNCE),
+        ];
+        let classes = [
+            (BlockClass::FenceGateBlock, flag::FENCE_GATE),
+            (BlockClass::TrapDoorBlock, flag::TRAPDOOR),
+            (BlockClass::LadderBlock, flag::LADDER),
+        ];
+        let flags = tagged
+            .iter()
+            .filter(|(tag, _)| tags.contains(index, tag))
+            .map(|(_, bit)| bit)
+            .chain(
+                classes
+                    .iter()
+                    .filter(|(class, _)| block.class.is(*class))
+                    .map(|(_, bit)| bit),
+            )
+            .fold(0, |flags, bit| flags | bit);
         Self {
-            name: registry::BLOCKS[index].name,
+            name: block.name,
             friction: block.friction,
             speed_factor: block.speed_factor,
             jump_factor: block.jump_factor,
             bounce: block.bounce_restitution,
-            flags: block.flags,
-            fluid: traits.fluid,
-            own_height: traits.own_height,
-            falling: traits.falling,
-            suffocating: traits.suffocating,
+            flags,
+            fluid: state.fluid.fluid,
+            own_height: state.fluid.own_height(),
+            falling: state.fluid.falling,
         }
     }
 
@@ -287,11 +304,11 @@ impl StateInfo {
     }
 
     fn is_water(&self) -> bool {
-        matches!(self.fluid, FluidKind::Water | FluidKind::FlowingWater)
+        matches!(self.fluid, Fluid::Water | Fluid::FlowingWater)
     }
 
     fn is_lava(&self) -> bool {
-        matches!(self.fluid, FluidKind::Lava | FluidKind::FlowingLava)
+        matches!(self.fluid, Fluid::Lava | Fluid::FlowingLava)
     }
 }
 
@@ -306,7 +323,7 @@ impl Level<'_> {
     }
 
     fn info(&self, pos: BlockPos) -> StateInfo {
-        StateInfo::of(self.state_id(pos))
+        StateInfo::of(self.state_id(pos), self.world.block_state_registry.tags())
     }
 
     fn has_chunk_at(&self, pos: BlockPos) -> bool {
@@ -365,7 +382,7 @@ impl Level<'_> {
         !self
             .world
             .collect_block_collisions_with(area, |state| {
-                StateInfo::of(Some(state))
+                crate::block::state_or_air(i64::from(state))
                     .suffocating
                     .then(|| registry.collision_shape(state))
             })
@@ -381,23 +398,23 @@ impl Level<'_> {
     }
 
     /// `FlowingFluid.isSolidFace` for a horizontal direction: not for the
-    /// same fluid, otherwise whether the block's face on that side (the side
-    /// named by the direction itself) is fully sturdy.
-    fn is_solid_face(&self, pos: BlockPos, info: &StateInfo, direction: usize) -> bool {
+    /// same fluid, never for ice, otherwise whether the block's face on that
+    /// side (the side named by the direction itself) is fully sturdy.
+    fn is_solid_face(&self, pos: BlockPos, info: &StateInfo, direction: Direction) -> bool {
         let there = self.info(pos);
         let same_fluid =
             (info.is_water() && there.is_water()) || (info.is_lava() && there.is_lava());
         if same_fluid {
             return false;
         }
-        self.state_id(pos)
-            .is_some_and(|state| crate::fluid_flow_traits(state as u32) >> direction & 1 == 1)
+        let state = crate::block::state_or_air(self.state_id(pos).map_or(0, i64::from));
+        !state.block().class.is(BlockClass::IceBlock) && state.is_face_sturdy(direction)
     }
 
     /// `FlowingFluid.getFlow`.
     fn fluid_flow(&self, pos: BlockPos, info: &StateInfo) -> Result<Vec3, Unsupported> {
         let same = |other: &StateInfo| {
-            other.fluid == FluidKind::Empty
+            other.fluid == Fluid::Empty
                 || (info.is_water() && other.is_water())
                 || (info.is_lava() && other.is_lava())
         };
@@ -435,8 +452,13 @@ impl Level<'_> {
         let mut flow = Vec3::new(flow_x, 0.0, flow_z);
         // A falling fluid beside a solid face is pulled down hard.
         if info.falling {
-            // North, east, south, west, with their direction numbers.
-            for (step_x, step_z, direction) in [(0, -1, 2), (1, 0, 5), (0, 1, 3), (-1, 0, 4)] {
+            // North, east, south, west.
+            for (step_x, step_z, direction) in [
+                (0, -1, Direction::North),
+                (1, 0, Direction::East),
+                (0, 1, Direction::South),
+                (-1, 0, Direction::West),
+            ] {
                 let side = BlockPos::new(pos.x + step_x, pos.y, pos.z + step_z);
                 let above = BlockPos::new(side.x, side.y + 1, side.z);
                 if self.is_solid_face(side, info, direction)
@@ -556,11 +578,11 @@ impl Level<'_> {
         false
     }
 
-    /// `BlockState.blocksMotion`, from the reference's table.
+    /// `BlockState.blocksMotion`.
     fn blocks_motion(&self, pos: BlockPos, _info: &StateInfo) -> Result<bool, Unsupported> {
         Ok(self
             .state_id(pos)
-            .is_some_and(|state| crate::fluid_flow_traits(state as u32) & (1 << 6) != 0))
+            .is_some_and(|state| crate::block::state_or_air(i64::from(state)).blocks_motion))
     }
 }
 
@@ -1407,7 +1429,7 @@ impl LocalPlayer {
                 floor_f64(self.position.y + 1.0 - 0.1),
                 floor_f64(self.position.z),
             );
-            if look_y <= 0.0 || self.jumping || level.info(above).fluid != FluidKind::Empty {
+            if look_y <= 0.0 || self.jumping || level.info(above).fluid != Fluid::Empty {
                 self.delta =
                     self.delta
                         .add_components(0.0, (look_y - self.delta.y) * multiplier, 0.0);
@@ -1541,7 +1563,7 @@ impl LocalPlayer {
         for x in x0..x1 {
             for y in y0..y1 {
                 for z in z0..z1 {
-                    if level.info(BlockPos::new(x, y, z)).fluid != FluidKind::Empty {
+                    if level.info(BlockPos::new(x, y, z)).fluid != Fluid::Empty {
                         return true;
                     }
                 }
@@ -2260,7 +2282,7 @@ impl LocalPlayer {
             }
             last_iteration = iteration;
             let state = level.state_id(pos);
-            let info = StateInfo::of(state);
+            let info = level.info(pos);
             if info.is_air() {
                 continue;
             }
@@ -2322,7 +2344,9 @@ impl LocalPlayer {
                             .block_state_registry
                             .collision_shape(above_state)
                             .is_empty()
-                            && StateInfo::of(Some(above_state)).fluid == FluidKind::Empty
+                            && crate::block::state_or_air(i64::from(above_state))
+                                .fluid
+                                .is_empty()
                     });
                     let delta = self.delta;
                     let y = if nothing_above {
@@ -2400,7 +2424,7 @@ impl LocalPlayer {
                     for z in z0..=z1 {
                         let pos = BlockPos::new(x, y, z);
                         let info = level.info(pos);
-                        if info.fluid == FluidKind::Empty {
+                        if info.fluid == Fluid::Empty {
                             continue;
                         }
                         let bottom = f64::from(y);
@@ -2778,13 +2802,21 @@ impl LocalPlayer {
 /// The fluid a block state holds: whether it is water (rather than lava),
 /// its own height, and whether it is falling. Nothing for a dry state.
 pub fn state_fluid(state_id: i32) -> Option<(bool, f32, bool)> {
-    let info = StateInfo::of(Some(state_id));
-    (info.fluid != FluidKind::Empty).then(|| (info.is_water(), info.own_height, info.falling))
+    let fluid = crate::block::state_or_air(i64::from(state_id)).fluid;
+    (!fluid.is_empty()).then(|| {
+        (
+            fluid.is_same(Fluid::Water),
+            fluid.own_height(),
+            fluid.falling,
+        )
+    })
 }
 
 /// Whether a block state holds any fluid, as a section's fluid count sees it.
 pub fn state_has_fluid(state_id: i32) -> bool {
-    StateInfo::of(Some(state_id)).fluid != FluidKind::Empty
+    !crate::block::state_or_air(i64::from(state_id))
+        .fluid
+        .is_empty()
 }
 
 /// `BlockGetter.forEachBlockIntersectedBetween`, as the blocks it visits and

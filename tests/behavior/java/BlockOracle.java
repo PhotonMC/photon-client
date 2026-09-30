@@ -1129,6 +1129,7 @@ public final class BlockOracle {
             propertiesField.setAccessible(true);
             var fresh = net.minecraft.world.level.block.state.BlockBehaviour.Properties.of();
             var classes = new java.util.LinkedHashMap<String, String>();
+            var classTypes = new java.util.HashMap<String, Class<?>>();
             var propertyFields = new java.util.IdentityHashMap<Object, String>();
             var propertyList = new JsonArray();
             var blocks = new JsonArray();
@@ -1137,6 +1138,7 @@ public final class BlockOracle {
                      type != net.minecraft.world.level.block.state.BlockBehaviour.class;
                      type = type.getSuperclass()) {
                     var parent = type.getSuperclass();
+                    classTypes.putIfAbsent(type.getSimpleName(), type);
                     classes.putIfAbsent(type.getSimpleName(),
                         parent == net.minecraft.world.level.block.state.BlockBehaviour.class
                             ? "" : parent.getSimpleName());
@@ -1215,19 +1217,50 @@ public final class BlockOracle {
                 blocks.add(described);
             }
             var classList = new JsonArray();
+            var interfaceParents = new java.util.LinkedHashMap<String, java.util.List<String>>();
             classes.forEach((name, parent) -> {
                 var described = new JsonObject();
                 described.addProperty("name", name);
                 described.addProperty("parent", parent);
+                var interfaces = new JsonArray();
+                for (var type : classTypes.get(name).getInterfaces()) {
+                    interfaces.add(type.getSimpleName());
+                    collectInterface(type, interfaceParents);
+                }
+                described.add("interfaces", interfaces);
                 classList.add(described);
             });
             entry.add("classes", classList);
+            var interfaceList = new JsonArray();
+            interfaceParents.forEach((name, parents) -> {
+                var described = new JsonObject();
+                described.addProperty("name", name);
+                var listed = new JsonArray();
+                parents.forEach(listed::add);
+                described.add("parents", listed);
+                interfaceList.add(described);
+            });
+            entry.add("interfaces", interfaceList);
             entry.add("properties", propertyList);
             entry.add("blocks", blocks);
         } catch (ReflectiveOperationException failure) {
             throw new IllegalStateException(failure);
         }
         return entry;
+    }
+
+    /** An interface and every interface it extends, each listed once. */
+    private static void collectInterface(
+        Class<?> type, java.util.Map<String, java.util.List<String>> seen) {
+        if (seen.containsKey(type.getSimpleName())) {
+            return;
+        }
+        var parents = new java.util.ArrayList<String>();
+        seen.put(type.getSimpleName(), parents);
+        for (var parent : type.getInterfaces()) {
+            parents.add(parent.getSimpleName());
+            collectInterface(parent, seen);
+        }
     }
 
     /** The static field a state property is kept in: `BlockStateProperties`

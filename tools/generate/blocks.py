@@ -136,7 +136,7 @@ def properties_file(properties):
     return out
 
 
-def classes_file(classes):
+def classes_file(classes, interfaces):
     out = header("Every block class the registry uses, with the class it extends.", "blocks.py", [
         "",
         "A rule the reference overrides in some classes is looked up by walking",
@@ -157,7 +157,29 @@ def classes_file(classes):
     for entry in classes:
         parent = f"Some(Self::{entry['parent']})" if entry["parent"] else "None"
         out.append(f"            Self::{entry['name']} => {parent},")
-    out += ["        }", "    }", "}"]
+    out += ["        }", "    }", "",
+            "    /// The interfaces this class itself declares it implements.",
+            '    #[expect(clippy::too_many_lines, reason = "one arm per class")]',
+            "    pub const fn interfaces(self) -> &'static [BlockInterface] {", "        match self {"]
+    for entry in classes:
+        if entry["interfaces"]:
+            listed = ", ".join(f"BlockInterface::{name}" for name in entry["interfaces"])
+            out.append(f"            Self::{entry['name']} => &[{listed}],")
+    out += ["            _ => &[],", "        }", "    }", "}", "",
+            "/// Every interface a block class implements, directly or through another.",
+            "#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]", "pub enum BlockInterface {"]
+    out += [f"    {entry['name']}," for entry in interfaces]
+    out += ["}", "", "impl BlockInterface {",
+            "    /// Every interface, in the order the registry first reaches them.",
+            f"    pub const ALL: [Self; {len(interfaces)}] = ["]
+    out += [f"        Self::{entry['name']}," for entry in interfaces]
+    out += ["    ];", "", "    /// The interfaces this one extends.",
+            "    pub const fn parents(self) -> &'static [Self] {", "        match self {"]
+    for entry in interfaces:
+        if entry["parents"]:
+            listed = ", ".join(f"Self::{name}" for name in entry["parents"])
+            out.append(f"            Self::{entry['name']} => &[{listed}],")
+    out += ["            _ => &[],", "        }", "    }", "}"]
     return out
 
 
@@ -185,7 +207,7 @@ def blocks_file(blocks):
 def generate(capture):
     data = load_case(capture, "block/declarations")
     write("block/properties.rs", properties_file(data["properties"]))
-    write("block/classes.rs", classes_file(data["classes"]))
+    write("block/classes.rs", classes_file(data["classes"], data["interfaces"]))
     write("block/blocks.rs", blocks_file(data["blocks"]))
     print(f"properties={len(data['properties'])} classes={len(data['classes'])} blocks={len(data['blocks'])}")
 

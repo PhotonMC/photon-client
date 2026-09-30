@@ -15,7 +15,6 @@
 //! operators (the permission level is not tracked; they are never broken).
 
 use voxel_core::math::Vec3;
-use voxel_data::block::destroy;
 use voxel_world::block_rules::{self as rules, Rule, UseResult};
 use voxel_world::local_player::LocalPlayer;
 use voxel_world::{ClientItemStackState, ClientPlayerGameMode, ClientWorld};
@@ -201,7 +200,7 @@ impl Miner {
 
     /// `Player.hasCorrectToolForDrops`.
     fn has_correct_tool(&self, world: &ClientWorld, state: i32) -> bool {
-        !traits(state).requires_correct_tool
+        !block(state).requires_correct_tool_for_drops
             || self.tool().is_some_and(|tool| {
                 crate::item::is_correct_for_drops(tool, world.block_state_registry(), state)
             })
@@ -210,7 +209,7 @@ impl Miner {
     /// `BlockBehaviour.getDestroyProgress`: how much one tick of breaking
     /// does.
     pub fn destroy_progress(&self, world: &ClientWorld, player: &LocalPlayer, state: i32) -> f32 {
-        let destroy_time = traits(state).destroy_time;
+        let destroy_time = block(state).destroy_time;
         if destroy_time == -1.0 {
             return 0.0;
         }
@@ -223,17 +222,20 @@ impl Miner {
     }
 }
 
-fn traits(state: i32) -> &'static destroy::DestroyTraits {
-    voxel_data::block::destroy_traits(state as u32)
+/// The block a state belongs to; a number outside the registry is air.
+fn block(state: i32) -> &'static voxel_data::block::registry::Block {
+    voxel_world::block::state_or_air(i64::from(state)).block()
 }
 
+/// `BlockState.isAir`.
 fn is_air(state: i32) -> bool {
-    traits(state).air
+    block(state).air
 }
 
 fn is_game_master_block(state: i32) -> bool {
-    voxel_data::block::registry::block_index_for_state(state as u32)
-        .is_some_and(|(index, _)| destroy::GAME_MASTER.contains(&(index as u16)))
+    block(state)
+        .class
+        .implements(voxel_data::block::classes::BlockInterface::GameMasterBlock)
 }
 
 /// `MultiPlayerGameMode`'s breaking state and `Minecraft.missTime`.
@@ -640,7 +642,9 @@ fn destroy_block(ctx: &mut Context<'_>, pos: (i32, i32, i32)) -> bool {
     if is_game_master_block(old) || is_air(old) {
         return false;
     }
-    let fluid = traits(old).fluid_block as i32;
+    let fluid = voxel_world::block::state_or_air(i64::from(old))
+        .fluid
+        .legacy_block() as i32;
     let position: Vec3 = ctx.player.position();
     ctx.world
         .set_block_with_updates(pos, fluid, 11, 512, position)

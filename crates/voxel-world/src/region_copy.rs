@@ -23,9 +23,16 @@ pub struct RegionCopy {
     biomes: Vec<Option<i32>>,
     /// The dimension's quart rows, which a biome lookup is clamped into.
     quart_rows: (i32, i32),
+    /// The block tags the server last sent, which face culling reads.
+    tags: std::sync::Arc<crate::block::tags::BlockTags>,
 }
 
 impl RegionCopy {
+    /// The block tags the server had sent when the copy was made.
+    pub fn tags(&self) -> &crate::block::tags::BlockTags {
+        &self.tags
+    }
+
     fn index(&self, x: i32, y: i32, z: i32) -> Option<usize> {
         let local = [x - self.min[0], y - self.min[1], z - self.min[2]];
         (0..3)
@@ -136,6 +143,7 @@ impl ClientWorld {
             quart_size,
             biomes,
             quart_rows,
+            tags: std::sync::Arc::clone(self.block_state_registry.tags()),
         }
     }
 }
