@@ -18372,7 +18372,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// Clicks in the player's own inventory menu, as the client predicts them
 /// and sends them.
 fn container_clicks_result(request: &Value) -> Result<Value, String> {
-    use voxel_game::container_menu::{ClickType, ContainerMenu, Player};
+    use voxel_game::container_menu::{ClickType, ContainerMenu, MenuKind, Player};
     use voxel_world::ClientItemStackState;
     let stack = |described: &Value| -> Result<ClientItemStackState, String> {
         let name = described["item"].as_str().ok_or("item must be a string")?;
@@ -18395,7 +18395,26 @@ fn container_clicks_result(request: &Value) -> Result<Value, String> {
     let mut out = Vec::with_capacity(rows.len());
     for row in rows {
         let label = row["label"].as_str().ok_or("label must be a string")?;
-        let mut menu = ContainerMenu::default();
+        let mut menu = match row.get("menu").and_then(Value::as_str) {
+            None => ContainerMenu::default(),
+            Some(name) => {
+                let kind = match name.strip_prefix("minecraft:").unwrap_or(name) {
+                    "generic_3x3" => MenuKind::Dispenser,
+                    "hopper" => MenuKind::Hopper,
+                    "shulker_box" => MenuKind::ShulkerBox,
+                    chest => MenuKind::Chest(
+                        chest
+                            .strip_prefix("generic_9x")
+                            .and_then(|rows| rows.parse().ok())
+                            .ok_or_else(|| format!("unknown menu {name}"))?,
+                    ),
+                };
+                let id = row["container_id"]
+                    .as_i64()
+                    .ok_or("container_id must be a number")? as i32;
+                ContainerMenu::for_menu(kind, id, Vec::new(), None, 0)
+            }
+        };
         for slot in row["slots"].as_array().ok_or("slots must be an array")? {
             let index = slot["slot"].as_u64().ok_or("slot must be a number")? as usize;
             menu.slots[index] = Some(stack(slot)?);

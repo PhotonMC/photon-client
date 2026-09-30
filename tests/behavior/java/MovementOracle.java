@@ -570,7 +570,17 @@ public final class MovementOracle {
         setField(minecraft, "gameMode", gameMode);
         setField(listener, "enabledFeatures", net.minecraft.world.flag.FeatureFlags.DEFAULT_FLAGS);
         player.getInventory().setSelectedSlot(row.get("selected").getAsInt());
-        var menu = player.inventoryMenu;
+        net.minecraft.world.inventory.AbstractContainerMenu menu = player.inventoryMenu;
+        int containerId = 0;
+        if (row.has("menu")) {
+            // A menu the server opened: built the way the client builds it,
+            // over the player's own inventory.
+            containerId = row.get("container_id").getAsInt();
+            var type = net.minecraft.core.registries.BuiltInRegistries.MENU.getValue(
+                net.minecraft.resources.Identifier.parse(row.get("menu").getAsString()));
+            menu = type.create(containerId, player.getInventory());
+            player.containerMenu = menu;
+        }
         for (var element : row.getAsJsonArray("slots")) {
             var slot = element.getAsJsonObject();
             menu.getSlot(slot.get("slot").getAsInt()).set(stack(slot));
@@ -584,7 +594,7 @@ public final class MovementOracle {
         for (var element : row.getAsJsonArray("clicks")) {
             var click = element.getAsJsonObject();
             wire.sent.clear();
-            gameMode.handleContainerInput(0, click.get("slot").getAsInt(), click.get("button").getAsInt(),
+            gameMode.handleContainerInput(containerId, click.get("slot").getAsInt(), click.get("button").getAsInt(),
                 net.minecraft.world.inventory.ContainerInput.valueOf(click.get("type").getAsString()), player);
             var described = new JsonObject();
             var packets = new JsonArray();

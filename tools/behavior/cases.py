@@ -13654,9 +13654,13 @@ def movement_cases():
     def cl(slot, button, kind):
         return {"slot": slot, "button": button, "type": kind}
 
-    def clicks(label, slots, click_list, carried=None, game_mode="survival", selected=0, state_id=0):
+    def clicks(label, slots, click_list, carried=None, game_mode="survival", selected=0, state_id=0,
+               menu=None):
         row = {"label": label, "blocks": [], "chunk_radius": 0, "game_mode": game_mode,
                "selected": selected, "state_id": state_id, "slots": slots, "clicks": click_list}
+        if menu is not None:
+            row["menu"] = f"minecraft:{menu}"
+            row["container_id"] = 4
         if carried is not None:
             row["carried"] = {"item": f"minecraft:{carried[0]}", "count": carried[1]}
         return row
@@ -13733,6 +13737,47 @@ def movement_cases():
         clicks("left drag with the zero slot key", [st(0, "stick", 1)],
                [cl(0, 0, TH), cl(-999, 0, QC), cl(1, 1, QC), cl(2, 1, QC), cl(-999, 2, QC)],
                carried=("stone", 9)),
+    ]
+    # Menus the server opens: the container's own slots first, then the 27 of
+    # the main inventory and the 9 of the hotbar.
+    chest = "generic_9x3"
+    click_rows += [
+        clicks("chest pick up and put down", [st(0, "stone", 64)],
+               [cl(0, 0, P), cl(5, 0, P), cl(5, 1, P), cl(30, 0, P)], menu=chest, state_id=2),
+        clicks("chest quick move out and in",
+               [st(0, "stone", 40), st(1, "diamond_sword", 1), st(30, "dirt", 3), st(57, "stone", 50)],
+               [cl(0, 0, Q), cl(1, 0, Q), cl(30, 0, Q), cl(57, 0, Q)], menu=chest),
+        clicks("chest quick move merges and fills",
+               [st(i, "stone", 64) for i in range(0, 26)] + [st(26, "stone", 60), st(40, "stone", 30)],
+               [cl(40, 0, Q)], menu=chest),
+        clicks("chest number keys", [st(3, "stone", 20), st(55, "dirt", 5)],
+               [cl(3, 1, SW), cl(4, 1, SW), cl(3, 8, SW), cl(28, 0, SW), cl(3, 40, SW)], menu=chest),
+        clicks("chest throw", [st(2, "stone", 5)], [cl(2, 0, TH), cl(2, 1, TH)], menu=chest),
+        clicks("chest left drag over both parts", [],
+               [cl(-999, 0, QC), cl(3, 1, QC), cl(4, 1, QC), cl(40, 1, QC), cl(58, 1, QC), cl(-999, 2, QC)],
+               carried=("stone", 64), menu=chest),
+        clicks("chest right drag", [st(4, "stone", 63)],
+               [cl(-999, 4, QC), cl(3, 5, QC), cl(4, 5, QC), cl(62, 5, QC), cl(-999, 6, QC)],
+               carried=("stone", 10), menu=chest),
+        clicks("chest double click gathers across both parts",
+               [st(0, "stone", 30), st(40, "stone", 64), st(41, "stone", 10), st(62, "stone", 2)],
+               [cl(5, 0, PA), cl(5, 1, PA)], carried=("stone", 5), menu=chest),
+        clicks("clone in a chest", [st(1, "stone", 3)], [cl(1, 2, CL)], menu=chest),
+        clicks("one row chest quick move", [st(0, "stone", 5), st(9, "dirt", 7)],
+               [cl(0, 0, Q), cl(9, 0, Q)], menu="generic_9x1"),
+        clicks("six row chest quick move", [st(0, "stone", 5), st(54, "dirt", 7)],
+               [cl(0, 0, Q), cl(54, 0, Q)], menu="generic_9x6"),
+        clicks("hopper quick move", [st(0, "stone", 5), st(1, "stone", 64), st(5, "dirt", 7)],
+               [cl(0, 0, Q), cl(5, 0, Q), cl(1, 0, Q)], menu="hopper"),
+        clicks("dispenser quick move gives up on no change",
+               [st(0, "stone", 5), st(9, "dirt", 7), st(10, "stone", 64)] +
+               [st(i, "cobblestone", 64) for i in range(1, 9)] + [st(11, "diamond_sword", 1)],
+               [cl(0, 0, Q), cl(9, 0, Q), cl(11, 0, Q)], menu="generic_3x3"),
+        clicks("shulker box refuses shulker boxes",
+               [st(27, "shulker_box", 1), st(28, "red_shulker_box", 1), st(29, "stone", 4), st(0, "dirt", 2)],
+               [cl(27, 0, Q), cl(28, 0, P), cl(1, 0, P), cl(29, 0, Q), cl(0, 0, Q)], menu="shulker_box"),
+        clicks("shulker box pick up a shulker box", [st(27, "shulker_box", 1)],
+               [cl(27, 0, P), cl(3, 0, P), cl(40, 0, P)], menu="shulker_box"),
     ]
     yield {
         "case_id": "movement/container-clicks",
