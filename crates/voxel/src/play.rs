@@ -184,7 +184,12 @@ impl Play {
                 .unwrap_or(voxel_core::binary::Uuid { most: 0, least: 0 }),
         );
         backend.load_entity_texture(&texture(&root, skin.texture, "skin")?)?;
-        let gui = Gui::load(std::path::Path::new(&root), &mut backend)?;
+        // The registries a tooltip reads, from the data pack, named as the
+        // server synchronised them.
+        let registries = voxel_game::registries::Registries::load(&data_root, |registry| {
+            session.registry_names(registry).to_vec()
+        });
+        let gui = Gui::load(std::path::Path::new(&root), registries, &mut backend)?;
         let capture_frames = env::var("VOXEL_CAPTURE_FRAMES")
             .ok()
             .and_then(|value| value.parse().ok())

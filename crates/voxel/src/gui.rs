@@ -3,6 +3,7 @@
 use std::path::Path;
 use std::sync::Arc;
 
+use voxel_game::registries::Registries;
 use voxel_game::text::{Lang, Style};
 use voxel_net::connection::PlaySession;
 use voxel_render::VulkanBackend;
@@ -28,6 +29,8 @@ pub struct Gui {
     font: Arc<Font>,
     atlas: GuiAtlas,
     lang: Arc<Lang>,
+    /// The data-driven registries tooltips read.
+    registries: Arc<Registries>,
     hud: Hud,
     items: ItemLayerCache,
     started_at: std::time::Instant,
@@ -38,6 +41,7 @@ impl Gui {
     /// from the asset folder.
     pub fn load(
         root: &Path,
+        registries: Registries,
         backend: &mut VulkanBackend,
     ) -> Result<Self, Box<dyn std::error::Error>> {
         let font = Arc::new(Font::load(root).ok_or("the default font could not be read")?);
@@ -47,6 +51,7 @@ impl Gui {
             font,
             atlas,
             lang: Arc::new(Lang::load(root)),
+            registries: Arc::new(registries),
             hud: Hud::default(),
             items: ItemLayerCache::new(voxel_render::model::DisplayContext::Gui),
             started_at: std::time::Instant::now(),
@@ -59,7 +64,10 @@ impl Gui {
         let lang = &self.lang;
         ScreenAssets {
             creative: voxel_render::gui::screen::creative::CreativeAssets {
-                trees: Arc::new(voxel_game::creative_menu::SearchTrees::new(lang.clone())),
+                trees: Arc::new(voxel_game::creative_menu::SearchTrees::new(
+                    lang.clone(),
+                    self.registries.clone(),
+                )),
                 font: self.font.clone(),
                 titles: voxel_data::item::creative_tabs::CREATIVE_TABS
                     .iter()
@@ -135,11 +143,17 @@ impl Gui {
                 };
             // A stack's tooltip in words.
             let lang = &self.lang;
+            let registries = &self.registries;
             let mut tooltip_lines = |stack: &ClientItemStackState, creative: bool| {
-                voxel_game::tooltip::lines(stack, true, voxel_game::tooltip::Flags { creative })
-                    .iter()
-                    .map(|line| lang.runs(line, &Style::default()))
-                    .collect::<Vec<_>>()
+                voxel_game::tooltip::lines(
+                    stack,
+                    true,
+                    voxel_game::tooltip::Flags { creative },
+                    registries,
+                )
+                .iter()
+                .map(|line| lang.runs(line, &Style::default()))
+                .collect::<Vec<_>>()
             };
             let mut draw = ScreenDraw {
                 frame: &mut frame,

@@ -86,7 +86,7 @@ olarak tutulmaz.
   tablosu kalktı.
 - [ ] Varsayılan bileşenler tipli (`DataComponentMap`); `components.rs`
   ham bayt tutmaz.
-- [ ] Büyü, tablo, enstrüman, müzik diski, zırh süsü ve bayrak deseni
+- [x] Büyü, tablo, enstrüman, müzik diski, zırh süsü ve bayrak deseni
   kayıtları `data/` JSON'undan ve sunucunun kayıt verisinden; `tooltip.rs`
   kalkar.
 - [ ] Yaratıcı sekmeleri Java'daki gibi kodla kurulur; kayıt güdümlü

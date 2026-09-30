@@ -95,7 +95,7 @@ pub struct SearchIndex {
 }
 
 impl SearchIndex {
-    pub fn build(lang: &crate::text::Lang) -> Self {
+    pub fn build(lang: &crate::text::Lang, registries: &crate::registries::Registries) -> Self {
         let tab = CREATIVE_TABS
             .iter()
             .find(|tab| tab.kind == TabKind::Search)
@@ -106,7 +106,7 @@ impl SearchIndex {
         for &index in &items {
             let stack = table_stack(index);
             lines.push(
-                crate::tooltip::search_lines(&stack, lang)
+                crate::tooltip::search_lines(&stack, lang, registries)
                     .into_iter()
                     .map(|line| line.to_lowercase())
                     .collect(),
@@ -142,6 +142,7 @@ impl SearchIndex {
 /// search asks, which takes a few milliseconds.
 pub struct SearchTrees {
     lang: std::sync::Arc<crate::text::Lang>,
+    registries: std::sync::Arc<crate::registries::Registries>,
     index: std::sync::OnceLock<SearchIndex>,
 }
 
@@ -152,15 +153,20 @@ impl std::fmt::Debug for SearchTrees {
 }
 
 impl SearchTrees {
-    pub fn new(lang: std::sync::Arc<crate::text::Lang>) -> Self {
+    pub fn new(
+        lang: std::sync::Arc<crate::text::Lang>,
+        registries: std::sync::Arc<crate::registries::Registries>,
+    ) -> Self {
         Self {
             lang,
+            registries,
             index: std::sync::OnceLock::new(),
         }
     }
 
     pub fn index(&self) -> &SearchIndex {
-        self.index.get_or_init(|| SearchIndex::build(&self.lang))
+        self.index
+            .get_or_init(|| SearchIndex::build(&self.lang, &self.registries))
     }
 }
 
@@ -804,12 +810,12 @@ mod tests {
     }
 
     fn index() -> Option<SearchIndex> {
-        let lang = crate::text::Lang::load(std::path::Path::new(
-            &std::env::var("VOXEL_ASSETS").unwrap_or_default(),
-        ));
+        let assets = std::path::PathBuf::from(std::env::var("VOXEL_ASSETS").unwrap_or_default());
+        let lang = crate::text::Lang::load(&assets);
+        let registries = crate::registries::Registries::vanilla(&assets.with_file_name("data"));
         lang.get("item.minecraft.stone")
             .is_some()
-            .then(|| SearchIndex::build(&lang))
+            .then(|| SearchIndex::build(&lang, &registries))
     }
 
     fn names(found: &[u16]) -> Vec<&'static str> {

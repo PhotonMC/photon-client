@@ -766,6 +766,7 @@ mod tests {
         let assets = CreativeAssets {
             trees: Arc::new(SearchTrees::new(
                 Arc::new(voxel_game::text::Lang::default()),
+                Arc::new(voxel_game::registries::Registries::default()),
             )),
             font: Arc::new(Font::default()),
             titles: Arc::from(Vec::new()),

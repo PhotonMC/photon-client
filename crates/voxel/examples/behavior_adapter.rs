@@ -16714,6 +16714,119 @@ fn item_declarations(label: &str) -> Value {
     json!({"label": label, "outcome": "listed", "classes": classes, "items": items})
 }
 
+/// A parsed JSON value as a `serde_json` one, for the oracle's comparison.
+fn serde_of(value: &voxel_core::json::JsonValue) -> Value {
+    use voxel_core::json::JsonValue;
+    match value {
+        JsonValue::Null => Value::Null,
+        JsonValue::Bool(flag) => json!(flag),
+        JsonValue::Number(text) => text.parse::<i64>().map_or_else(
+            |_| json!(text.parse::<f64>().unwrap_or(0.0)),
+            |number| json!(number),
+        ),
+        JsonValue::String(units) => json!(String::from_utf16_lossy(units)),
+        JsonValue::Array(items) => Value::Array(items.iter().map(serde_of).collect()),
+        JsonValue::Object(object) => Value::Object(
+            object
+                .entries()
+                .map(|(key, value)| (String::from_utf16_lossy(key), serde_of(value)))
+                .collect(),
+        ),
+    }
+}
+
+/// `tooltip_registries`: the data-driven registries as the game loads them
+/// from the data pack, and the attributes' declarations.
+fn tooltip_registries(label: &str) -> Value {
+    use voxel_data::item::attributes::ATTRIBUTES;
+    use voxel_game::registries::{DescribedEntry, Registries};
+    let data_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../.data/minecraft/assets/jar/data");
+    let registries = Registries::vanilla(&data_root);
+    let component =
+        |value: &Option<voxel_core::json::JsonValue>| value.as_ref().map_or(Value::Null, serde_of);
+    let enchantments: Vec<Value> = registries
+        .enchantments
+        .iter()
+        .enumerate()
+        .map(|(id, entry)| {
+            json!({
+                "name": entry.name,
+                "id": id,
+                "description": component(&entry.description),
+                "curse": entry.curse,
+                "max_level": entry.max_level,
+                "tooltip_order": entry.tooltip_order,
+            })
+        })
+        .collect();
+    let paintings: Vec<Value> = registries
+        .painting_variants
+        .iter()
+        .enumerate()
+        .map(|(id, entry)| {
+            let mut described = json!({
+                "name": entry.name,
+                "id": id,
+                "width": entry.width,
+                "height": entry.height,
+            });
+            if entry.title.is_some() {
+                described["title"] = component(&entry.title);
+            }
+            if entry.author.is_some() {
+                described["author"] = component(&entry.author);
+            }
+            described
+        })
+        .collect();
+    let described = |entries: &[DescribedEntry]| -> Vec<Value> {
+        entries
+            .iter()
+            .enumerate()
+            .map(|(id, entry)| {
+                json!({
+                    "name": entry.name,
+                    "id": id,
+                    "description": component(&entry.description),
+                })
+            })
+            .collect()
+    };
+    let banners: Vec<Value> = registries
+        .banner_patterns
+        .iter()
+        .enumerate()
+        .map(|(id, entry)| {
+            json!({"name": entry.name, "id": id, "translation_key": entry.translation_key})
+        })
+        .collect();
+    let attributes: Vec<Value> = ATTRIBUTES
+        .iter()
+        .map(|entry| {
+            let (up, down) = entry.styles();
+            json!({
+                "name": entry.name,
+                "description_id": entry.description_id(),
+                "style_up": up,
+                "style_down": down,
+            })
+        })
+        .collect();
+    json!({
+        "label": label,
+        "outcome": "listed",
+        "enchantments": enchantments,
+        "painting_variants": paintings,
+        "instruments": described(&registries.instruments),
+        "jukebox_songs": described(&registries.jukebox_songs),
+        "banner_patterns": banners,
+        "trim_materials": described(&registries.trim_materials),
+        "trim_patterns": described(&registries.trim_patterns),
+        "attributes": attributes,
+    })
+}
+
 fn block_result(request: &Value) -> Result<Value, String> {
     use voxel_data::block::registry;
     let operation = string(request, "operation")?;
@@ -17021,91 +17134,7 @@ fn block_result(request: &Value) -> Result<Value, String> {
                     .collect();
                 out.push(json!({"label": label, "outcome": "listed", "items": items}));
             }
-            "tooltip_registries" => {
-                use voxel_data::item::tooltip as table;
-                let component =
-                    |text: &str| -> Value { serde_json::from_str(text).unwrap_or(Value::Null) };
-                let enchantments: Vec<Value> = table::ENCHANTMENTS
-                    .iter()
-                    .enumerate()
-                    .map(|(id, entry)| {
-                        json!({
-                            "name": entry.name,
-                            "id": id,
-                            "description": component(entry.description),
-                            "curse": entry.curse,
-                            "max_level": entry.max_level,
-                            "tooltip_order": entry.tooltip_order,
-                        })
-                    })
-                    .collect();
-                let paintings: Vec<Value> = table::PAINTING_VARIANTS
-                    .iter()
-                    .enumerate()
-                    .map(|(id, entry)| {
-                        let mut described = json!({
-                            "name": entry.name,
-                            "id": id,
-                            "width": entry.width,
-                            "height": entry.height,
-                        });
-                        if !entry.title.is_empty() {
-                            described["title"] = component(entry.title);
-                        }
-                        if !entry.author.is_empty() {
-                            described["author"] = component(entry.author);
-                        }
-                        described
-                    })
-                    .collect();
-                let described = |entries: &[table::Described]| -> Vec<Value> {
-                    entries
-                        .iter()
-                        .enumerate()
-                        .map(|(id, entry)| {
-                            json!({
-                                "name": entry.name,
-                                "id": id,
-                                "description": component(entry.description),
-                            })
-                        })
-                        .collect()
-                };
-                let banners: Vec<Value> = table::BANNER_PATTERNS
-                    .iter()
-                    .enumerate()
-                    .map(|(id, entry)| {
-                        json!({
-                            "name": entry.name,
-                            "id": id,
-                            "translation_key": entry.translation_key,
-                        })
-                    })
-                    .collect();
-                let attributes: Vec<Value> = table::ATTRIBUTES
-                    .iter()
-                    .map(|entry| {
-                        json!({
-                            "name": entry.name,
-                            "description_id": entry.description_id,
-                            "style_up": entry.style_up,
-                            "style_down": entry.style_down,
-                        })
-                    })
-                    .collect();
-                out.push(json!({
-                    "label": label,
-                    "outcome": "listed",
-                    "enchantments": enchantments,
-                    "painting_variants": paintings,
-                    "instruments": described(&table::INSTRUMENTS),
-                    "jukebox_songs": described(&table::JUKEBOX_SONGS),
-                    "banner_patterns": banners,
-                    "trim_materials": described(&table::TRIM_MATERIALS),
-                    "trim_patterns": described(&table::TRIM_PATTERNS),
-                    "attributes": attributes,
-                }));
-            }
+            "tooltip_registries" => out.push(tooltip_registries(label)),
             "potions" => {
                 use voxel_data::item::potions::{MOB_EFFECTS, POTIONS};
                 let effects: Vec<Value> = MOB_EFFECTS

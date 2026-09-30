@@ -11,9 +11,11 @@
 //! and the advanced lines (the `F3+H` toggle is off).
 
 use crate::item_values::{AttributeDisplay, Explosion, PaintingVariant, Values};
+use crate::registries::Registries;
 use crate::text::{Component, Lang, Style};
+use voxel_core::json::JsonValue;
+use voxel_data::item::attributes::ATTRIBUTES;
 use voxel_data::item::potions::{MOB_EFFECTS, POTIONS};
-use voxel_data::item::tooltip as table;
 use voxel_world::ClientItemStackState as Stack;
 
 /// `TooltipFlag`.
@@ -281,9 +283,9 @@ fn potion_tooltip(effects: &[(i32, i32, i32)], scale: f32, out: &mut Vec<Compone
 fn attribute_name(attribute: i32) -> Component {
     usize::try_from(attribute)
         .ok()
-        .and_then(|id| table::ATTRIBUTES.get(id))
+        .and_then(|id| ATTRIBUTES.get(id))
         .map_or_else(Component::empty, |entry| {
-            Component::translatable(entry.description_id)
+            Component::translatable(entry.description_id())
         })
 }
 
@@ -295,8 +297,8 @@ fn colour_of(formatting: &str) -> &'static str {
     }
 }
 
-fn json_component(text: &str) -> Option<Component> {
-    Component::from_json(&voxel_core::json::parse(text).ok()?)
+fn json_component(value: &JsonValue) -> Option<Component> {
+    Component::from_json(value)
 }
 
 /// `ItemStack.addAttributeTooltips`.
@@ -316,7 +318,7 @@ fn attribute_tooltips(values: &Values, player: bool, out: &mut Vec<Component>) {
                 AttributeDisplay::Default => {
                     let attribute = usize::try_from(entry.attribute)
                         .ok()
-                        .and_then(|id| table::ATTRIBUTES.get(id));
+                        .and_then(|id| ATTRIBUTES.get(id));
                     let mut amount = entry.amount;
                     let mut with_base = false;
                     if player && entry.id == "minecraft:base_attack_damage" {
@@ -334,8 +336,7 @@ fn attribute_tooltips(values: &Values, player: bool, out: &mut Vec<Component>) {
                         display = amount * 10.0;
                     }
                     let name = attribute_name(entry.attribute);
-                    let (up, down) =
-                        attribute.map_or(("BLUE", "RED"), |a| (a.style_up, a.style_down));
+                    let (up, down) = attribute.map_or(("BLUE", "RED"), |a| a.styles());
                     let arg = |value: f64| Component::literal(format_decimal(value));
                     if with_base {
                         lines.push(
@@ -378,9 +379,9 @@ fn attribute_tooltips(values: &Values, player: bool, out: &mut Vec<Component>) {
 }
 
 /// `Enchantment.getFullname`.
-fn enchantment_line(id: i32, level: i32) -> Option<Component> {
-    let entry = table::ENCHANTMENTS.get(usize::try_from(id).ok()?)?;
-    let description = json_component(entry.description)?;
+fn enchantment_line(registries: &Registries, id: i32, level: i32) -> Option<Component> {
+    let entry = registries.enchantments.get(usize::try_from(id).ok()?)?;
+    let description = json_component(entry.description.as_ref()?)?;
     let mut line =
         description.with_style(&Style::coloured(if entry.curse { "red" } else { "gray" }));
     if level != 1 || entry.max_level != 1 {
@@ -395,8 +396,9 @@ fn enchantment_line(id: i32, level: i32) -> Option<Component> {
 
 /// `ItemEnchantments.addToTooltip`: the enchantments the tooltip order names
 /// first, in its order, then the rest.
-fn enchantment_tooltip(entries: &[(i32, i32)], out: &mut Vec<Component>) {
-    let mut ordered: Vec<(i32, i32, i32)> = table::ENCHANTMENTS
+fn enchantment_tooltip(registries: &Registries, entries: &[(i32, i32)], out: &mut Vec<Component>) {
+    let mut ordered: Vec<(i32, i32, i32)> = registries
+        .enchantments
         .iter()
         .enumerate()
         .filter(|(_, entry)| entry.tooltip_order >= 0)
@@ -407,15 +409,16 @@ fn enchantment_tooltip(entries: &[(i32, i32)], out: &mut Vec<Component>) {
         if let Some(&(_, level)) = entries.iter().find(|(entry, _)| *entry == id)
             && level > 0
         {
-            out.extend(enchantment_line(id, level));
+            out.extend(enchantment_line(registries, id, level));
         }
     }
     for &(id, level) in entries {
-        let in_order = table::ENCHANTMENTS
+        let in_order = registries
+            .enchantments
             .get(usize::try_from(id).unwrap_or(usize::MAX))
             .is_some_and(|entry| entry.tooltip_order >= 0);
         if !in_order {
-            out.extend(enchantment_line(id, level));
+            out.extend(enchantment_line(registries, id, level));
         }
     }
 }
@@ -454,7 +457,7 @@ pub fn styled_name(stack: &Stack, values: &Values) -> Component {
     clippy::too_many_lines,
     reason = "kept whole to read against the reference method line by line"
 )]
-pub fn lines(stack: &Stack, player: bool, flags: Flags) -> Vec<Component> {
+pub fn lines(stack: &Stack, player: bool, flags: Flags, registries: &Registries) -> Vec<Component> {
     let values = Values::new(stack.item_registry_id(), stack.patch_bytes());
     let (hide, hidden) = values.tooltip_display();
     if !flags.creative && hide {
@@ -468,9 +471,9 @@ pub fn lines(stack: &Stack, player: bool, flags: Flags) -> Vec<Component> {
     if item == "minecraft:painting" && shows(103) {
         match values.painting_variant() {
             Some(PaintingVariant::Registry(id)) => {
-                if let Some(variant) = table::PAINTING_VARIANTS.get(id as usize) {
-                    out.extend(json_component(variant.title));
-                    out.extend(json_component(variant.author));
+                if let Some(variant) = registries.painting_variants.get(id as usize) {
+                    out.extend(variant.title.as_ref().and_then(json_component));
+                    out.extend(variant.author.as_ref().and_then(json_component));
                     out.push(Component::translatable_with(
                         "painting.dimensions",
                         vec![
@@ -510,8 +513,8 @@ pub fn lines(stack: &Stack, player: bool, flags: Flags) -> Vec<Component> {
     }
     if shows(61)
         && let Some(id) = values.holder_id(61)
-        && let Some(entry) = table::INSTRUMENTS.get(id as usize)
-        && let Some(description) = json_component(entry.description)
+        && let Some(entry) = registries.instruments.get(id as usize)
+        && let Some(description) = entry.description.as_ref().and_then(json_component)
     {
         out.push(description.with_style(&Style::coloured("gray")));
     }
@@ -596,31 +599,39 @@ pub fn lines(stack: &Stack, player: bool, flags: Flags) -> Vec<Component> {
     }
     if shows(64)
         && let Some(id) = values.holder_id(64)
-        && let Some(entry) = table::JUKEBOX_SONGS.get(id as usize)
-        && let Some(description) = json_component(entry.description)
+        && let Some(entry) = registries.jukebox_songs.get(id as usize)
+        && let Some(description) = entry.description.as_ref().and_then(json_component)
     {
         out.push(description.with_style(&Style::coloured("gray")));
     }
     if shows(56)
         && let Some((material, pattern)) = values.trim()
         && let (Some(material), Some(pattern)) = (
-            table::TRIM_MATERIALS.get(material as usize),
-            table::TRIM_PATTERNS.get(pattern as usize),
+            registries.trim_materials.get(material as usize),
+            registries.trim_patterns.get(pattern as usize),
         )
     {
         out.push(
             Component::translatable("item.minecraft.smithing_template.upgrade").with_colour("gray"),
         );
-        let material = json_component(material.description).unwrap_or_else(Component::empty);
-        let pattern = json_component(pattern.description).unwrap_or_else(Component::empty);
+        let material = material
+            .description
+            .as_ref()
+            .and_then(json_component)
+            .unwrap_or_else(Component::empty);
+        let pattern = pattern
+            .description
+            .as_ref()
+            .and_then(json_component)
+            .unwrap_or_else(Component::empty);
         out.push(Component::literal(" ").append(pattern.with_style(&material.style)));
         out.push(Component::literal(" ").append(material));
     }
     if shows(42) {
-        enchantment_tooltip(&values.enchantments(42), &mut out);
+        enchantment_tooltip(registries, &values.enchantments(42), &mut out);
     }
     if shows(13) {
-        enchantment_tooltip(&values.enchantments(13), &mut out);
+        enchantment_tooltip(registries, &values.enchantments(13), &mut out);
     }
     if shows(44) && values.dyed_color().is_some() {
         out.push(
@@ -639,7 +650,7 @@ pub fn lines(stack: &Stack, player: bool, flags: Flags) -> Vec<Component> {
     }
     if shows(72) {
         for (pattern, dye) in values.banner_layers().into_iter().take(6) {
-            if let Some(entry) = table::BANNER_PATTERNS.get(pattern as usize) {
+            if let Some(entry) = registries.banner_patterns.get(pattern as usize) {
                 out.push(
                     Component::translatable(format!("{}.{}", entry.translation_key, dye_name(dye)))
                         .with_colour("gray"),
@@ -699,8 +710,8 @@ fn attribute_tooltips_if(shown: bool, values: &Values, player: bool, out: &mut V
 
 /// The tooltip's lines as the search reads them: formatting stripped, each
 /// trimmed, the empty ones left out.
-pub fn search_lines(stack: &Stack, lang: &Lang) -> Vec<String> {
-    lines(stack, false, Flags { creative: true })
+pub fn search_lines(stack: &Stack, lang: &Lang, registries: &Registries) -> Vec<String> {
+    lines(stack, false, Flags { creative: true }, registries)
         .iter()
         .map(|line| lang.plain(line).trim().to_owned())
         .filter(|line| !line.is_empty())
@@ -710,6 +721,12 @@ pub fn search_lines(stack: &Stack, lang: &Lang) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The vanilla data pack next to the assets, when there is one.
+    fn registries() -> Registries {
+        let assets = std::path::PathBuf::from(std::env::var("VOXEL_ASSETS").unwrap_or_default());
+        Registries::vanilla(&assets.with_file_name("data"))
+    }
 
     fn lang() -> Lang {
         Lang::load(std::path::Path::new(
@@ -736,7 +753,12 @@ mod tests {
     #[test]
     fn a_plain_item_has_only_its_name() {
         let stone = crate::item::id_of("minecraft:stone").expect("an item");
-        let lines = lines(&Stack::new(1, stone), false, Flags::default());
+        let lines = lines(
+            &Stack::new(1, stone),
+            false,
+            Flags::default(),
+            &registries(),
+        );
         assert_eq!(lines.len(), 1);
     }
 
@@ -746,10 +768,11 @@ mod tests {
         if lang.get("item.minecraft.stone").is_none() {
             return;
         }
+        let registries = registries();
         for tab in crate::creative_menu::shown_tabs() {
             for &index in voxel_data::item::creative_tabs::CREATIVE_TABS[tab].items {
                 let stack = crate::creative_menu::table_stack(index);
-                let text = search_lines(&stack, &lang);
+                let text = search_lines(&stack, &lang, &registries);
                 assert!(!text.is_empty(), "{}", item_name_of(&stack));
             }
         }
