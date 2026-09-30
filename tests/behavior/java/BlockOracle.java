@@ -1299,6 +1299,10 @@ public final class BlockOracle {
         methods.put("updateShape", new Class<?>[] {
             state, reader, net.minecraft.world.level.ScheduledTickAccess.class, pos,
             net.minecraft.core.Direction.class, pos, state, net.minecraft.util.RandomSource.class});
+        Class<?> getter = net.minecraft.world.level.BlockGetter.class;
+        Class<?> context = net.minecraft.world.phys.shapes.CollisionContext.class;
+        methods.put("getShape", new Class<?>[] {state, getter, pos, context});
+        methods.put("getCollisionShape", new Class<?>[] {state, getter, pos, context});
         return methods;
     }
 

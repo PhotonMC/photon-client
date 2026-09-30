@@ -41,7 +41,8 @@ impl ClientBlockStateRegistry {
     /// blocks are flagged there as depending on their position or on the
     /// asking entity; see [`voxel_data::block::collision`].
     pub fn collision_shape(&self, state_id: i32) -> VoxelShape {
-        table_collision_shape(self.resolve_state_id(state_id) as u32)
+        let info = crate::block::state_or_air(i64::from(state_id));
+        crate::block::states().collision(info).clone()
     }
 
     /// A stair state's `shape`.
@@ -127,19 +128,28 @@ pub fn outline_table_shape(index: usize) -> Option<VoxelShape> {
 /// `BlockState.getShape` with no entity in the question: the outline a
 /// click aims at, moved by the block's random offset where it has one.
 pub fn outline_shape(state_id: u32, position: [i32; 3]) -> VoxelShape {
-    let Some((index, block, shape)) = state_shape(
+    let Some(info) = crate::block::state(state_id) else {
+        return Shapes::empty();
+    };
+    let shape = crate::block::states().outline(info).clone();
+    let block = info.block();
+    if block.offset_type == voxel_data::block::definition::OffsetType::None {
+        shape
+    } else {
+        let [x, y, z] = crate::block::offset(block, position);
+        shape.move_by(x, y, z)
+    }
+}
+
+/// The table's outline shape for one state, for the states whose class does
+/// not compute it yet; a state outside the registry is air.
+pub(crate) fn table_outline_shape(state_id: u32) -> VoxelShape {
+    state_shape(
         outline_shapes(),
         &voxel_data::block::outline::BLOCKS,
         state_id,
-    ) else {
-        return Shapes::empty();
-    };
-    if block.offset {
-        let [x, y, z] = crate::block::offset(&voxel_data::block::registry::BLOCKS[index], position);
-        shape.move_by(x, y, z)
-    } else {
-        shape.clone()
-    }
+    )
+    .map_or_else(Shapes::empty, |(_, _, shape)| shape.clone())
 }
 
 /// Rebuild a shape from the boxes the reference reported for it.
@@ -166,8 +176,9 @@ pub fn table_shape(index: usize) -> Option<VoxelShape> {
     collision_shapes().get(index).cloned()
 }
 
-/// The table's shape for one state; a state outside the registry is air.
-pub fn table_collision_shape(state_id: u32) -> VoxelShape {
+/// The table's collision shape for one state, for the states whose class
+/// does not compute it yet; a state outside the registry is air.
+pub(crate) fn table_collision_shape(state_id: u32) -> VoxelShape {
     state_shape(
         collision_shapes(),
         &voxel_data::block::collision::BLOCKS,

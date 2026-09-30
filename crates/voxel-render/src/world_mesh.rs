@@ -925,8 +925,10 @@ where
     fn solid(&self, x: i32, y: i32, z: i32) -> bool {
         (self.read)(x, y, z)
             .and_then(|state| u32::try_from(state).ok())
+            .and_then(voxel_world::block::state)
             .is_some_and(|state| {
-                voxel_world::block_state::table_collision_shape(state)
+                voxel_world::block::states()
+                    .collision(state)
                     .equals_java(&voxel_core::shape::Shapes::block())
             })
     }

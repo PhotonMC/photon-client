@@ -17,8 +17,9 @@ use voxel_data::block::properties::{
 use voxel_data::block::registry::{BLOCKS, Block};
 
 use super::fluid::{FluidState, fluid_state};
+use super::shape_rules;
 use super::shapes;
-use crate::block_state::{outline_shape, table_collision_shape};
+use crate::block_state::{table_collision_shape, table_outline_shape};
 
 /// The directions in the reference's order, which the face arrays follow.
 pub const DIRECTIONS: [Direction; 6] = [
@@ -61,6 +62,10 @@ pub struct StateInfo {
     pub suffocating: bool,
     pub view_blocking: bool,
     pub redstone_conductor: bool,
+    /// `getShape` and `getCollisionShape` with no level and no entity, as
+    /// places in the shape pool ([`States::outline`], [`States::collision`]).
+    outline: u16,
+    collision: u16,
 }
 
 impl StateInfo {
@@ -81,6 +86,8 @@ impl StateInfo {
 /// culling asks of each pair of them.
 pub struct States {
     states: Vec<StateInfo>,
+    /// The distinct outline and collision shapes the states use.
+    shapes: Vec<VoxelShape>,
     faces: Vec<VoxelShape>,
     joins: PairCache,
     covers: PairCache,
@@ -119,6 +126,17 @@ impl States {
     /// A state's values; `None` outside the registry.
     pub fn get(&self, state: u32) -> Option<&StateInfo> {
         self.states.get(state as usize)
+    }
+
+    /// `getShape` of a state, with no level and no entity and before the
+    /// block's random offset.
+    pub fn outline(&self, state: &StateInfo) -> &VoxelShape {
+        &self.shapes[usize::from(state.outline)]
+    }
+
+    /// `getCollisionShape` of a state, with no level and no entity.
+    pub fn collision(&self, state: &StateInfo) -> &VoxelShape {
+        &self.shapes[usize::from(state.collision)]
     }
 
     /// The distinct face shapes, by face number.
@@ -163,23 +181,63 @@ pub fn state_or_air(state: i64) -> &'static StateInfo {
 fn build() -> States {
     let mut faces = Faces::default();
     let mut facts = ShapeFacts::default();
+    let mut pool = ShapePool::default();
     let states = BLOCKS
         .iter()
         .enumerate()
         .flat_map(|(index, block)| {
             (0..block.state_count()).map(move |offset| (index, block, offset))
         })
-        .map(|(index, block, offset)| compute(index, block, offset, &mut faces, &mut facts))
+        .map(|(index, block, offset)| {
+            compute(index, block, offset, &mut faces, &mut facts, &mut pool)
+        })
         .collect();
     let faces = faces.shapes;
     let count = faces.len();
     States {
         states,
+        shapes: pool.shapes,
         faces,
         joins: PairCache::new(count, |shape, occluder| {
             Shapes::join_is_not_empty(shape, occluder, BooleanOp::OnlyFirst)
         }),
         covers: PairCache::new(count, Shapes::face_shape_occludes),
+    }
+}
+
+/// The distinct outline and collision shapes, each held once. The
+/// reference's own whole-block and empty shapes are kept apart from shapes
+/// that merely have the same boxes, because the reference tells them by
+/// identity.
+#[derive(Default)]
+struct ShapePool {
+    shapes: Vec<VoxelShape>,
+    places: HashMap<(u8, Vec<u64>), u16>,
+}
+
+impl ShapePool {
+    fn intern(&mut self, shape: VoxelShape) -> u16 {
+        let kind = if shape.equals_java(&Shapes::empty()) {
+            1
+        } else if shape.equals_java(&Shapes::block()) {
+            2
+        } else {
+            0
+        };
+        let boxes = shape
+            .to_aabbs()
+            .iter()
+            .flat_map(|aabb| {
+                [
+                    aabb.min_x, aabb.min_y, aabb.min_z, aabb.max_x, aabb.max_y, aabb.max_z,
+                ]
+                .map(f64::to_bits)
+            })
+            .collect();
+        *self.places.entry((kind, boxes)).or_insert_with(|| {
+            self.shapes.push(shape);
+            u16::try_from(self.shapes.len() - 1).expect("fewer than 65536 shapes")
+        })
     }
 }
 
@@ -300,11 +358,16 @@ fn compute(
     offset: u32,
     faces: &mut Faces,
     facts: &mut ShapeFacts,
+    pool: &mut ShapePool,
 ) -> StateInfo {
     let id = block.first_state_id() + offset;
     let fluid = fluid_state(block, offset);
-    let outline = outline_shape(id, [0, 0, 0]);
-    let collision = table_collision_shape(id);
+    let outline_place =
+        pool.intern(shape_rules::outline(block, offset).unwrap_or_else(|| table_outline_shape(id)));
+    let collision_place = pool
+        .intern(shape_rules::collision(block, offset).unwrap_or_else(|| table_collision_shape(id)));
+    let outline = pool.shapes[usize::from(outline_place)].clone();
+    let collision = pool.shapes[usize::from(collision_place)].clone();
     let occlusion = occlusion_shape(block, offset, &outline, &collision);
     let solid_render = facts.of(&occlusion).full;
     let face_numbers = facts.faces(&occlusion, faces);
@@ -338,6 +401,8 @@ fn compute(
             .redstone_conductor
             .value(offset)
             .unwrap_or(collision_full_block),
+        outline: outline_place,
+        collision: collision_place,
     }
 }
 

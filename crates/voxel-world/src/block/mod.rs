@@ -4,6 +4,7 @@
 
 pub mod culling;
 pub mod fluid;
+pub mod shape_rules;
 pub mod shapes;
 pub mod state;
 pub mod tags;
