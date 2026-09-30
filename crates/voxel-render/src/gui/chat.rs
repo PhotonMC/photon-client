@@ -547,6 +547,8 @@ impl ChatScreen {
             let buffer = self.history_buffer.clone();
             let font = self.font.clone();
             self.edit.set_value(&buffer, &font);
+            // `setValue` tells the responder, which asks for suggestions.
+            self.edited();
         } else {
             if self.history_pos == self.history.len() {
                 self.history_buffer = self.edit.value();
@@ -555,6 +557,12 @@ impl ChatScreen {
             let line = self.history[new_pos].clone();
             let font = self.font.clone();
             self.edit.set_value(&line, &font);
+            // `setAllowSuggestions(false)`: a line taken from the history
+            // shows no list until the next edit.
+            self.edit.set_suggestion(None);
+            self.list = None;
+            self.stale = false;
+            self.request = None;
         }
     }
 
@@ -633,6 +641,29 @@ mod tests {
             screen.key_pressed(glfw::Key::Backspace, (false, false), &mut NoClip);
         }
         assert!(screen.list.is_none());
+    }
+
+    #[test]
+    fn a_line_from_the_history_shows_no_list_until_the_next_edit() {
+        let Some(font) = Font::load(std::path::Path::new(
+            &std::env::var("VOXEL_ASSETS").unwrap_or_default(),
+        )) else {
+            return;
+        };
+        let mut screen = ChatScreen::new(
+            Arc::new(font),
+            (427, 240),
+            "/g",
+            vec!["/gamemode creative".into()],
+        )
+        .without_key();
+        screen.suggested(0, 1, 1, vec!["gamemode".into()]);
+        screen.suggested(screen.request_id, 1, 1, vec!["gamemode".into()]);
+        screen.move_in_history(-1);
+        assert!(screen.list.is_none() && screen.take_request().is_none());
+        // Back to the line being typed asks again.
+        screen.move_in_history(1);
+        assert!(screen.take_request().is_some());
     }
 
     struct NoClip;

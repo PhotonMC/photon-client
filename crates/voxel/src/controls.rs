@@ -40,6 +40,10 @@ pub struct Controls {
     /// lines of chat the player has been told.
     pub chat: Option<ChatScreen>,
     chat_history: Vec<String>,
+    /// `CommandHistory`: the commands sent, kept in a file.
+    command_history: Vec<String>,
+    /// Whether a shift key is down, which wheel events carry no mark of.
+    shift_held: bool,
     pub chat_log: ChatLog,
     /// Whether the tab list key is held.
     pub tab_held: bool,
@@ -51,6 +55,7 @@ pub struct Controls {
 
 impl Controls {
     pub fn new(camera_type: CameraType, captured: bool) -> Self {
+        let command_history = read_command_history();
         Self {
             keys: HeldKeys::default(),
             attack_key: AttackKey::default(),
@@ -63,7 +68,9 @@ impl Controls {
             server_container: None,
             creative_tab: voxel_game::creative_menu::default_tab(),
             chat: None,
-            chat_history: Vec::new(),
+            chat_history: command_history.clone(),
+            command_history,
+            shift_held: false,
             chat_log: ChatLog::default(),
             tab_held: false,
             gui_mouse: (0.0, 0.0),
@@ -103,6 +110,19 @@ impl Controls {
         self.captured = true;
         self.last_cursor = None;
         surface.set_cursor_captured(true);
+    }
+
+    /// `ChatComponent.addRecentChat`'s second half: a command is kept in the
+    /// history file (the last 50, no repeat of the last).
+    fn remember_command(&mut self, text: &str) {
+        if !text.starts_with('/') || self.command_history.last().is_some_and(|last| last == text) {
+            return;
+        }
+        if self.command_history.len() >= COMMAND_HISTORY_LIMIT {
+            self.command_history.remove(0);
+        }
+        self.command_history.push(text.to_owned());
+        write_command_history(&self.command_history);
     }
 
     /// `ClientPacketListener.sendChat` or `sendCommand` for a typed line.
@@ -145,6 +165,11 @@ impl Controls {
         };
         let size = surface.scale();
         chat.resize((size.gui_scaled_width(), size.gui_scaled_height()));
+        if let glfw::WindowEvent::Key(glfw::Key::LeftShift | glfw::Key::RightShift, _, action, _) =
+            event
+        {
+            self.shift_held = action != glfw::Action::Release;
+        }
         match event {
             glfw::WindowEvent::Key(
                 key,
@@ -159,6 +184,7 @@ impl Controls {
                     ChatKey::Close => self.close_chat(surface),
                     ChatKey::Send(text) => {
                         Self::send_chat(session, &text)?;
+                        self.remember_command(&text);
                         self.close_chat(surface);
                     }
                     ChatKey::Scroll(lines) => self.chat_log.scroll_by(lines),
@@ -175,7 +201,9 @@ impl Controls {
                 // the chat by a notch of seven lines.
                 let mouse = (self.gui_mouse.0 as i32, self.gui_mouse.1 as i32);
                 if !chat.mouse_scrolled(y, mouse) {
-                    self.chat_log.scroll_by((y.clamp(-1.0, 1.0) * 7.0) as i32);
+                    let notch = y.clamp(-1.0, 1.0);
+                    let lines = if self.shift_held { notch } else { notch * 7.0 };
+                    self.chat_log.scroll_by(lines as i32);
                 }
             }
             glfw::WindowEvent::CursorPos(x, y) => {
@@ -572,6 +600,31 @@ impl Controls {
         }
         Ok(())
     }
+}
+
+/// `CommandHistory.MAX_PERSISTED_COMMAND_HISTORY`.
+const COMMAND_HISTORY_LIMIT: usize = 50;
+
+/// Where the game keeps its files (`gameDirectory`).
+fn game_directory() -> std::path::PathBuf {
+    std::env::var_os("VOXEL_GAME_DIR")
+        .map_or_else(|| std::path::PathBuf::from(".data/client"), Into::into)
+}
+
+/// `CommandHistory`'s constructor: the lines of `command_history.txt`.
+fn read_command_history() -> Vec<String> {
+    std::fs::read_to_string(game_directory().join("command_history.txt"))
+        .map(|text| text.lines().map(str::to_owned).collect())
+        .unwrap_or_default()
+}
+
+/// `CommandHistory.save`.
+fn write_command_history(commands: &[String]) {
+    let directory = game_directory();
+    let _ = std::fs::create_dir_all(&directory);
+    let mut text = commands.join("\n");
+    text.push('\n');
+    let _ = std::fs::write(directory.join("command_history.txt"), text);
 }
 
 /// A scripted key: a click on this tick, and whether it is held.
