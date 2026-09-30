@@ -492,6 +492,19 @@ impl PlaySession {
                 .iter()
                 .map(|set| self.trace.world.recipe_property_set(set))
                 .collect();
+            if menu.kind == voxel_game::container_menu::MenuKind::Stonecutter {
+                menu.accepted = vec![std::sync::Arc::new(self.trace.world.stonecutter_inputs())];
+                menu.options = menu
+                    .slots
+                    .first()
+                    .and_then(Option::as_ref)
+                    .map(|input| {
+                        self.trace
+                            .world
+                            .stonecutter_options(input.item_registry_id())
+                    })
+                    .unwrap_or_default();
+            }
             menu.item_tags = self.trace.world.block_state_registry().item_tags().clone();
             menu.xp_level = self.status.experience_level;
             if let Some(container) = self
@@ -518,6 +531,25 @@ impl PlaySession {
         else {
             return Ok(());
         };
+        // `StonecutterMenu.clickMenuButton`: the entry is chosen, and the
+        // result, which only the server can make, is emptied.
+        let stonecutter = self
+            .open_menu
+            .as_ref()
+            .is_some_and(|menu| menu.kind == voxel_game::container_menu::MenuKind::Stonecutter);
+        if stonecutter {
+            self.trace
+                .world
+                .apply_local_player_container_data(container_id, 0, button as i16);
+            if let Some((_, _, mut slots, carried, _)) =
+                self.trace.world.local_player_container_menu()
+            {
+                slots[1] = None;
+                self.trace
+                    .world
+                    .set_local_player_container_menu(&slots, carried);
+            }
+        }
         self.send(
             PLAY_SERVERBOUND_CONTAINER_BUTTON_CLICK_PACKET_ID,
             |output| {
@@ -1226,7 +1258,12 @@ impl PlaySession {
             }
             PLAY_CLIENTBOUND_UPDATE_RECIPES_PACKET_ID => {
                 match parse_update_recipes_packet(payload) {
-                    Ok(sets) => self.trace.world.apply_recipe_property_sets(sets),
+                    Ok(update) => {
+                        self.trace.world.apply_recipe_property_sets(update.sets);
+                        self.trace
+                            .world
+                            .apply_stonecutter_recipes(update.stonecutter);
+                    }
                     Err(error) => self.warn(format!("recipes: {error:?}")),
                 }
             }

@@ -62,6 +62,11 @@ impl ItemTags {
         ))
     }
 
+    /// The items of a tag, by registry id.
+    pub fn members(&self, tag: &str) -> impl Iterator<Item = i32> + '_ {
+        self.0.get(tag).into_iter().flatten().copied()
+    }
+
     /// `ItemStack.is(tag)` for an item, by registry id.
     pub fn contains(&self, item: i32, tag: &str) -> bool {
         self.0.get(tag).is_some_and(|items| items.contains(&item))

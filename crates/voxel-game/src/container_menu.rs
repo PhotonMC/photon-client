@@ -206,6 +206,9 @@ pub struct ContainerMenu {
     pub accepted: Vec<std::sync::Arc<std::collections::BTreeSet<i32>>>,
     /// The item tags the server sent, for the slots that ask for one.
     pub item_tags: std::sync::Arc<voxel_world::block::tags::ItemTags>,
+    /// What the stonecutter offers for its input: the item each entry shows,
+    /// or -1 for one that names none.
+    pub options: Vec<i32>,
     /// The player's experience level, which the anvil asks for.
     pub xp_level: i32,
     /// Whether the last click was made with infinite materials (creative).
@@ -232,6 +235,7 @@ impl Default for ContainerMenu {
             state_id: 0,
             accepted: Vec::new(),
             item_tags: std::sync::Arc::default(),
+            options: Vec::new(),
             xp_level: 0,
             infinite_materials: false,
             last_input: None,

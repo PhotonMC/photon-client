@@ -49,6 +49,9 @@ pub enum ScreenAction {
     Creative(Click),
     /// The anvil's name box changed: what the server is to name the result.
     Rename(String),
+    /// A button of the open menu pressed (`ContainerButtonClick`): a
+    /// stonecutter recipe, a loom pattern or an enchantment.
+    Button(i32),
 }
 
 /// What a key did to a screen.

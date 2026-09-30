@@ -1829,12 +1829,87 @@ pub(crate) fn parse_container_set_data_packet(
     })
 }
 
-/// The item sets of a clientbound update-recipes packet, by name: the items
-/// a furnace, a blast furnace or a smoker accepts, and so on, as registry
-/// ids. The stonecutter recipes after them are not read.
-pub(crate) fn parse_update_recipes_packet(
-    input: &[u8],
-) -> Result<Vec<(String, Vec<i32>)>, ConnectionError> {
+/// What a clientbound update-recipes packet carries: the item sets by name
+/// (the items a furnace, a blast furnace or a smoker accepts, and so on, as
+/// registry ids) and the stonecutter's entries.
+pub(crate) struct RecipeUpdate {
+    pub sets: Vec<(String, Vec<i32>)>,
+    pub stonecutter: Vec<voxel_world::StonecutterEntry>,
+}
+
+/// `SlotDisplay.STREAM_CODEC`.
+fn read_slot_display(
+    input: &mut &[u8],
+    depth: usize,
+) -> Result<voxel_world::SlotDisplay, ConnectionError> {
+    use voxel_world::SlotDisplay as D;
+    if depth > 16 {
+        return Err(ConnectionError::Codec("slot display too deep"));
+    }
+    let next = |input: &mut &[u8]| read_slot_display(input, depth + 1);
+    Ok(match read_varint(input, "slot display type")? {
+        0 => D::Empty,
+        1 => D::AnyFuel,
+        2 => D::WithAnyPotion(Box::new(next(input)?)),
+        3 => {
+            let source = next(input)?;
+            D::OnlyWithComponent(Box::new(source), read_varint(input, "display component")?)
+        }
+        4 => D::Item(read_varint(input, "display item")?),
+        5 => {
+            let item = read_varint(input, "display stack item")?;
+            let count = read_varint(input, "display stack count")?;
+            voxel_game::item_components::read_patch(input)
+                .map_err(|_| ConnectionError::Codec("display stack components"))?;
+            D::ItemStack(item, count)
+        }
+        6 => D::Tag(read_identifier_string(input, "display tag")?),
+        7 => {
+            let dye = next(input)?;
+            D::Dyed(Box::new(dye), Box::new(next(input)?))
+        }
+        8 => {
+            let base = next(input)?;
+            let material = next(input)?;
+            D::SmithingTrim(
+                Box::new(base),
+                Box::new(material),
+                read_varint(input, "display trim pattern")?,
+            )
+        }
+        9 => {
+            let source = next(input)?;
+            D::WithRemainder(Box::new(source), Box::new(next(input)?))
+        }
+        10 => {
+            let count = read_varint(input, "display count")?;
+            let mut all = Vec::new();
+            for _ in 0..count {
+                all.push(next(input)?);
+            }
+            D::Composite(all)
+        }
+        _ => return Err(ConnectionError::Codec("unknown slot display")),
+    })
+}
+
+/// `Ingredient.CONTENTS_STREAM_CODEC`: a tag, or the items it lists.
+fn read_ingredient(input: &mut &[u8]) -> Result<voxel_world::Ingredient, ConnectionError> {
+    let marker = read_varint(input, "ingredient marker")?;
+    if marker == 0 {
+        return Ok(voxel_world::Ingredient::Tag(read_identifier_string(
+            input,
+            "ingredient tag",
+        )?));
+    }
+    let mut items = Vec::new();
+    for _ in 0..marker - 1 {
+        items.push(read_varint(input, "ingredient item")?);
+    }
+    Ok(voxel_world::Ingredient::Items(items))
+}
+
+pub(crate) fn parse_update_recipes_packet(input: &[u8]) -> Result<RecipeUpdate, ConnectionError> {
     let mut input = input;
     let sets = read_varint(&mut input, "recipe property set count")?;
     let mut out = Vec::new();
@@ -1847,7 +1922,20 @@ pub(crate) fn parse_update_recipes_packet(
         }
         out.push((name, items));
     }
-    Ok(out)
+    let entries = read_varint(&mut input, "stonecutter recipe count")?;
+    let mut stonecutter = Vec::new();
+    for _ in 0..entries {
+        let ingredient = read_ingredient(&mut input)?;
+        let display = read_slot_display(&mut input, 0)?;
+        stonecutter.push(voxel_world::StonecutterEntry {
+            input: ingredient,
+            display,
+        });
+    }
+    Ok(RecipeUpdate {
+        sets: out,
+        stonecutter,
+    })
 }
 
 pub(crate) fn parse_set_health_packet(input: &[u8]) -> Result<HealthObservation, ConnectionError> {

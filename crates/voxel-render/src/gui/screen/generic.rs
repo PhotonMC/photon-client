@@ -258,6 +258,15 @@ impl Screen for GenericScreen {
         menu: &ContainerMenu,
     ) -> Vec<ScreenAction> {
         let double = self.mouse.note_click(now, button);
+        if let Some(entry) = self.stone_click(mouse, menu) {
+            // `clickMenuButton`: one that is not the chosen one, and is an entry.
+            let chosen = i32::from(menu.data.first().copied().unwrap_or(-1));
+            return if entry == chosen {
+                Vec::new()
+            } else {
+                vec![ScreenAction::Button(entry)]
+            };
+        }
         if self.on_recipe_button(mouse) {
             self.button_clicked = true;
             return Vec::new();
@@ -271,6 +280,7 @@ impl Screen for GenericScreen {
     }
 
     fn mouse_dragged(&mut self, mouse: (f64, f64), menu: &ContainerMenu) {
+        self.stone_drag(mouse);
         let slot = self.hovered_slot(mouse);
         self.mouse.dragged(slot, menu);
     }
@@ -282,6 +292,7 @@ impl Screen for GenericScreen {
         shift: bool,
         menu: &ContainerMenu,
     ) -> Vec<ScreenAction> {
+        self.stone_release();
         if std::mem::take(&mut self.button_clicked) {
             return Vec::new();
         }
@@ -323,6 +334,10 @@ impl Screen for GenericScreen {
         )))
     }
 
+    fn mouse_scrolled(&mut self, y: f64) {
+        self.stone_wheel(y);
+    }
+
     fn char_typed(&mut self, character: char) {
         self.name_char(character);
     }
@@ -346,7 +361,7 @@ impl Screen for GenericScreen {
         if let MenuKind::Furnace(smelter) = self.kind {
             self.furnace_progress(draw, menu, smelter);
         }
-        self.draw_extras(draw, menu, (left, top));
+        self.draw_extras(draw, menu, mouse, (left, top));
         if let Some((bx, by)) = self.recipe_button() {
             let button = if self.on_recipe_button(mouse) {
                 "recipe_book/button_highlighted"

@@ -35,6 +35,7 @@ mod metadata;
 mod paletted;
 mod player;
 mod prediction;
+mod recipes;
 mod region_copy;
 
 pub use block_entity::*;
@@ -49,6 +50,7 @@ pub use entity::*;
 pub(crate) use metadata::*;
 pub use player::*;
 pub use prediction::{DestroyProgress, SyncedBlock};
+pub use recipes::{Ingredient, SlotDisplay, StonecutterEntry};
 pub use region_copy::RegionCopy;
 
 /// The client-side copy of the currently loaded world.
@@ -65,6 +67,8 @@ pub struct ClientWorld {
     block_state_registry: ClientBlockStateRegistry,
     /// The items each recipe property set accepts, as the server sent them.
     recipe_property_sets: BTreeMap<String, Arc<BTreeSet<i32>>>,
+    /// The stonecutter's recipes, as the server sent them.
+    stonecutter: Arc<Vec<StonecutterEntry>>,
     chunks: BTreeMap<(i32, i32), ClientChunk>,
     chunk_cache: Option<ClientChunkCacheState>,
     /// The client level's light engine and the light tasks waiting for a
@@ -113,6 +117,7 @@ impl ClientWorld {
             ),
             block_state_registry: ClientBlockStateRegistry::default(),
             recipe_property_sets: BTreeMap::new(),
+            stonecutter: Arc::default(),
             chunks: BTreeMap::new(),
             chunk_cache: None,
             light: new_light_engine(dimension, true),
@@ -873,6 +878,39 @@ impl ClientWorld {
             .into_iter()
             .map(|(name, items)| (name, Arc::new(items.into_iter().collect())))
             .collect();
+    }
+
+    /// `handleUpdateRecipes`'s stonecutter half.
+    pub fn apply_stonecutter_recipes(&mut self, entries: Vec<StonecutterEntry>) {
+        self.stonecutter = Arc::new(entries);
+    }
+
+    /// `SingleInputSet.acceptsInput`, as the items it accepts: every entry's
+    /// items, and the members of the tags it names.
+    pub fn stonecutter_inputs(&self) -> BTreeSet<i32> {
+        let tags = self.block_state_registry.item_tags();
+        let mut accepted = BTreeSet::new();
+        for entry in self.stonecutter.iter() {
+            match &entry.input {
+                Ingredient::Items(items) => accepted.extend(items.iter().copied()),
+                Ingredient::Tag(tag) => accepted.extend(tags.members(tag)),
+            }
+        }
+        accepted
+    }
+
+    /// `SingleInputSet.selectByInput`: what each entry that takes the item
+    /// shows, in the server's order (the first item of each display).
+    pub fn stonecutter_options(&self, item: i32) -> Vec<i32> {
+        let tags = self.block_state_registry.item_tags();
+        self.stonecutter
+            .iter()
+            .filter(|entry| match &entry.input {
+                Ingredient::Items(items) => items.contains(&item),
+                Ingredient::Tag(tag) => tags.contains(item, tag),
+            })
+            .map(|entry| entry.display.first_item().unwrap_or(-1))
+            .collect()
     }
 
     /// The items a recipe property set accepts (`RecipePropertySet.test`);

@@ -129,6 +129,7 @@ pub fn run_actions(
                 session.container_click(click.slot, click.button, click.kind)?;
             }
             ScreenAction::Rename(name) => session.rename_item(&name)?,
+            ScreenAction::Button(button) => session.container_button(button)?,
             ScreenAction::Creative(click) => {
                 if let Some(open) = screen.as_mut().and_then(|open| open.as_creative_mut()) {
                     session.creative_click(open.menu_mut(), click)?;

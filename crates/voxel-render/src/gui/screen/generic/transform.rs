@@ -82,6 +82,13 @@ fn key_of(menu: &ContainerMenu, slot: usize) -> Option<(i32, i32)> {
 /// item it was last filled for.
 #[derive(Debug, Clone)]
 pub(super) struct Extras {
+    /// The stonecutter's scroll position, from 0 to 1, and the first entry
+    /// shown (a multiple of four).
+    scroll_offs: f32,
+    start_index: usize,
+    scrolling: bool,
+    options_count: usize,
+    stone_input: Option<i32>,
     name: EditBox,
     focused_at: Instant,
     filled_for: Option<Option<(i32, i32)>>,
@@ -92,6 +99,11 @@ pub(super) struct Extras {
 impl Extras {
     pub(super) fn new() -> Self {
         Self {
+            scroll_offs: 0.0,
+            start_index: 0,
+            scrolling: false,
+            options_count: 0,
+            stone_input: None,
             // `new EditBox(font, x + 62, y + 24, 103, 12, ...)`, unbordered.
             name: EditBox::new(103, 50),
             focused_at: Instant::now(),
@@ -106,6 +118,164 @@ impl GenericScreen {
     /// The clicks the name box asked for since the last call.
     pub(super) fn take_queued(&mut self) -> Vec<ScreenAction> {
         std::mem::take(&mut self.extras.queued)
+    }
+
+    /// Whether the stonecutter shows its recipes: an input and entries for it.
+    fn stone_display(menu: &ContainerMenu) -> bool {
+        menu.slots.first().is_some_and(Option::is_some) && !menu.options.is_empty()
+    }
+
+    /// The stonecutter's entries shown: twelve from the first one.
+    fn stone_shown(&self) -> std::ops::Range<usize> {
+        self.extras.start_index..(self.extras.start_index + 12).min(self.extras.options_count)
+    }
+
+    /// Where an entry is drawn, as the cell's corner.
+    fn stone_cell(&self, index: usize) -> (i32, i32) {
+        let place = (index - self.extras.start_index) as i32;
+        (52 + place % 4 * 16, 14 + place / 4 * 18 + 2)
+    }
+
+    /// `StonecutterScreen.mouseClicked`: a recipe pressed, or the scroll bar
+    /// grabbed. The button pressed, if a recipe was.
+    pub(super) fn stone_click(&mut self, mouse: (f64, f64), menu: &ContainerMenu) -> Option<i32> {
+        if self.kind != MenuKind::Stonecutter {
+            return None;
+        }
+        self.extras.scrolling = false;
+        if !Self::stone_display(menu) {
+            return None;
+        }
+        let (mx, my) = (
+            mouse.0 - f64::from(self.layout.left()),
+            mouse.1 - f64::from(self.layout.top()),
+        );
+        for index in self.stone_shown() {
+            let (x, y) = self.stone_cell(index);
+            let (xx, yy) = (mx - f64::from(x), my - f64::from(y - 2));
+            if (0.0..16.0).contains(&xx) && (0.0..18.0).contains(&yy) {
+                return Some(index as i32);
+            }
+        }
+        if (119.0..131.0).contains(&mx) && (9.0..63.0).contains(&my) {
+            self.extras.scrolling = true;
+        }
+        None
+    }
+
+    /// `StonecutterScreen.mouseDragged`.
+    pub(super) fn stone_drag(&mut self, mouse: (f64, f64)) {
+        if self.kind != MenuKind::Stonecutter || !self.extras.scrolling || self.stone_rows() <= 0 {
+            return;
+        }
+        let top = f64::from(self.layout.top() + 14);
+        let scroll = ((mouse.1 - top - 7.5) / (54.0 - 15.0)).clamp(0.0, 1.0) as f32;
+        self.stone_scroll_to(scroll);
+    }
+
+    /// `StonecutterScreen.mouseScrolled`.
+    pub(super) fn stone_wheel(&mut self, y: f64) {
+        let rows = self.stone_rows();
+        if self.kind == MenuKind::Stonecutter && rows > 0 {
+            let scroll = (self.extras.scroll_offs - (y / f64::from(rows)) as f32).clamp(0.0, 1.0);
+            self.stone_scroll_to(scroll);
+        }
+    }
+
+    /// `StonecutterScreen.mouseReleased`.
+    pub(super) fn stone_release(&mut self) {
+        self.extras.scrolling = false;
+    }
+
+    /// The rows past the three shown.
+    fn stone_rows(&self) -> i32 {
+        if self.extras.options_count > 12 {
+            (self.extras.options_count as i32 + 3) / 4 - 3
+        } else {
+            0
+        }
+    }
+
+    fn stone_scroll_to(&mut self, scroll: f32) {
+        self.extras.scroll_offs = scroll;
+        let rows = self.stone_rows() as f32;
+        self.extras.start_index = ((scroll * rows + 0.5) as usize) * 4;
+    }
+
+    /// `StonecutterScreen.extractBackground`'s recipe list and scroll bar.
+    fn stone_draw(
+        &mut self,
+        draw: &mut ScreenDraw<'_, '_>,
+        menu: &ContainerMenu,
+        mouse: (f64, f64),
+        (left, top): (i32, i32),
+    ) {
+        // A new input starts the list over.
+        let input = menu
+            .slots
+            .first()
+            .and_then(Option::as_ref)
+            .map(|stack| stack.item_registry_id());
+        if input != self.extras.stone_input {
+            self.extras.stone_input = input;
+            self.extras.scroll_offs = 0.0;
+            self.extras.start_index = 0;
+        }
+        self.extras.options_count = menu.options.len();
+        if !Self::stone_display(menu) {
+            draw.frame.sprite(
+                draw.atlas,
+                "container/stonecutter/scroller_disabled",
+                left + 119,
+                top + 15,
+                12,
+                15,
+            );
+            return;
+        }
+        let active = menu.options.len() > 12;
+        let scroller = if active {
+            "container/stonecutter/scroller"
+        } else {
+            "container/stonecutter/scroller_disabled"
+        };
+        let travel = (41.0 * self.extras.scroll_offs) as i32;
+        draw.frame
+            .sprite(draw.atlas, scroller, left + 119, top + 15 + travel, 12, 15);
+        let selected = i32::from(menu.data.first().copied().unwrap_or(-1));
+        let (mx, my) = (mouse.0 - f64::from(left), mouse.1 - f64::from(top));
+        let mut hovered = None;
+        for index in self.stone_shown() {
+            let (x, y) = self.stone_cell(index);
+            let over = mx >= f64::from(x)
+                && my >= f64::from(y)
+                && mx < f64::from(x + 16)
+                && my < f64::from(y + 18);
+            let sprite = if index as i32 == selected {
+                "container/stonecutter/recipe_selected"
+            } else if over {
+                "container/stonecutter/recipe_highlighted"
+            } else {
+                "container/stonecutter/recipe"
+            };
+            draw.frame
+                .sprite(draw.atlas, sprite, left + x, top + y - 1, 16, 18);
+            if let Some(stack) = Self::option_stack(menu.options[index]) {
+                draw.frame.item(draw.item, &stack, left + x, top + y);
+                if over {
+                    hovered = Some(stack);
+                }
+            }
+        }
+        if let Some(stack) = hovered {
+            let lines = (draw.tooltip)(&stack, false);
+            self.layout.tooltip(draw, &lines, mouse);
+        }
+    }
+
+    /// What an entry shows, as a stack of one.
+    fn option_stack(item: i32) -> Option<voxel_world::ClientItemStackState> {
+        (item >= 0).then(|| voxel_world::ClientItemStackState::new(1, item))
     }
 
     /// `AnvilScreen.onNameChanged`: a name that differs from what the server
@@ -159,6 +329,7 @@ impl GenericScreen {
         &mut self,
         draw: &mut ScreenDraw<'_, '_>,
         menu: &ContainerMenu,
+        mouse: (f64, f64),
         (left, top): (i32, i32),
     ) {
         let has = |slot: usize| menu.slots.get(slot).is_some_and(Option::is_some);
@@ -190,6 +361,7 @@ impl GenericScreen {
             }
             MenuKind::Cartography => self.cartography_preview(draw, menu, (left, top)),
             MenuKind::Anvil => self.anvil_extras(draw, menu, (left, top)),
+            MenuKind::Stonecutter => self.stone_draw(draw, menu, mouse, (left, top)),
             _ => {}
         }
     }
