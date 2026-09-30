@@ -48,8 +48,13 @@ yol alıyor.
 `parity_passed`, 3905 senaryo / 13 aile. 202 birim testi. Mevcut dünya
 çarpışma senaryolarının hepsi yeni tabloyla da geçti.
 
-Üretim adımı: `block` ailesini yakala, sonra
-`python3 tools/generate/block_shapes.py <yakalama>/outputs.jsonl`.
+Şekil tabloları artık yok: çarpışma ve çizgi şekilleri blok sınıflarının
+kodundan hesaplanıyor (`crates/voxel-world/src/block/shape_rules/`) ve
+oracle vakaları bu hesaplanan şekilleri karşılaştırıyor. Konuma göre kayan
+yalnızca çiçek, bambu, sarkıt ve mangrov filizi (referansta da
+`shape.move(getOffset(pos))` yapan sınıflar); çimen gibi blokların şekli
+kaymaz, yalnız çizimi kayar. Çarpışma şekli konumsuz sorulduğunda orijindeki
+kaymayla verilir.
 
 ## Açık kapsam
 

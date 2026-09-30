@@ -108,8 +108,9 @@ olarak tutulmaz.
 
 ### F8. Sınıf başına şekiller
 
-- [ ] `getShape` ve `getCollisionShape` blok sınıflarının kodundan;
-  `outline.rs` ve `collision.rs` kalkar.
+- [x] `getShape` ve `getCollisionShape` blok sınıflarının kodundan
+  (`voxel-world/src/block/shape_rules/`); `outline.rs`, `collision.rs` ve
+  üreticisi kalktı. Oracle vakaları hesaplanan durum şekillerinden üretilir.
 
 ### F9. Ölçüp karar verilecek sapmalar
 
