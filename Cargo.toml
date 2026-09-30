@@ -18,6 +18,7 @@ ash-window = "0.13.0"
 flate2 = { version = "1.1.10", default-features = false, features = ["rust_backend"] }
 glfw = { version = "0.62.0", default-features = false, features = ["raw-window-handle-v0-6", "vulkan", "wayland", "x11", "src-build"] }
 raw-window-handle = "0.6.2"
+rayon = "1.12.0"
 shaderc = "0.10.1"
 
 [workspace.lints.rust]

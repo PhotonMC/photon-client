@@ -16,6 +16,7 @@ ash-window.workspace = true
 flate2.workspace = true
 glfw.workspace = true
 raw-window-handle.workspace = true
+rayon.workspace = true
 shaderc.workspace = true
 
 [lints]

@@ -170,16 +170,48 @@ fn pick_variants(
     }
 }
 
-/// Bake every variant the states name, each distinct model and turn once,
-/// and turn each state's lists into lists of baked models.
+/// Bake every variant the states name, each distinct model and turn once
+/// and in parallel, and turn each state's lists into lists of baked models.
 fn bake_states(
     models: &BTreeMap<String, ResolvedModel>,
     atlas: &BuiltAtlas,
-    pending: Vec<Option<(Vec<Vec<crate::blockstate::Variant>>, StateTints)>>,
+    pending: Vec<PendingState>,
     air: &[bool],
 ) -> (Vec<BakedModel>, Vec<StateRender>) {
+    use rayon::prelude::*;
+    let key = |variant: &crate::blockstate::Variant| BakeKey {
+        model: variant.model.as_string(),
+        rotation: (
+            variant.x.degrees(),
+            variant.y.degrees(),
+            variant.z.degrees(),
+        ),
+        uv_lock: variant.uvlock,
+    };
+    // Each distinct model and turn, in the order the states first name it.
+    let mut keys: Vec<BakeKey> = Vec::new();
+    let mut slots: HashMap<BakeKey, usize> = HashMap::new();
+    for (lists, _) in pending.iter().flatten() {
+        for variant in lists.iter().flatten() {
+            slots.entry(key(variant)).or_insert_with_key(|key| {
+                keys.push(key.clone());
+                keys.len() - 1
+            });
+        }
+    }
+    let results: Vec<Option<BakedModel>> = keys
+        .par_iter()
+        .map(|key| crate::bake::bake(models.get(&key.model)?, atlas, key))
+        .collect();
     let mut baked = Vec::new();
-    let mut known: HashMap<BakeKey, Option<u32>> = HashMap::new();
+    let indices: Vec<Option<u32>> = results
+        .into_iter()
+        .map(|model| {
+            let model = model?;
+            baked.push(model);
+            u32::try_from(baked.len() - 1).ok()
+        })
+        .collect();
     let states = pending
         .into_iter()
         .zip(air)
@@ -194,26 +226,10 @@ fn bake_states(
                 .iter()
                 .map(|list| {
                     list.iter()
-                        .map(|variant| {
-                            let key = BakeKey {
-                                model: variant.model.as_string(),
-                                rotation: (
-                                    variant.x.degrees(),
-                                    variant.y.degrees(),
-                                    variant.z.degrees(),
-                                ),
-                                uv_lock: variant.uvlock,
-                            };
-                            let model = *known.entry(key).or_insert_with_key(|key| {
-                                let model = crate::bake::bake(models.get(&key.model)?, atlas, key)?;
-                                baked.push(model);
-                                u32::try_from(baked.len() - 1).ok()
-                            });
-                            BakedVariant {
-                                model,
-                                weight: variant.weight,
-                                listed: variant.listed,
-                            }
+                        .map(|variant| BakedVariant {
+                            model: indices[slots[&key(variant)]],
+                            weight: variant.weight,
+                            listed: variant.listed,
                         })
                         .collect()
                 })
@@ -231,6 +247,152 @@ fn bake_states(
         })
         .collect();
     (baked, states)
+}
+
+fn is_air_block(name: &str) -> bool {
+    matches!(
+        name,
+        "minecraft:air" | "minecraft:cave_air" | "minecraft:void_air"
+    )
+}
+
+/// Every weighted list a blockstate file holds: its variants, then its
+/// multipart pieces.
+fn variant_lists(
+    file: &crate::blockstate::BlockStateFile,
+) -> impl Iterator<Item = &Vec<crate::blockstate::Variant>> {
+    file.variants
+        .iter()
+        .flat_map(|variants| variants.values())
+        .chain(
+            file.multipart
+                .iter()
+                .flat_map(|parts| parts.iter().map(|part| &part.apply)),
+        )
+}
+
+/// A state's variant lists and colours, before they are baked.
+type PendingState = Option<(Vec<Vec<crate::blockstate::Variant>>, StateTints)>;
+
+/// Every state's variant lists and colours, block by block in parallel, and
+/// which states are air.
+fn state_lists(
+    blockstates: &BTreeMap<String, crate::blockstate::BlockStateFile>,
+) -> (Vec<PendingState>, Vec<bool>) {
+    use rayon::prelude::*;
+    let per_block: Vec<Vec<(PendingState, bool)>> = registry::BLOCKS
+        .par_iter()
+        .map(|block| {
+            let is_air = is_air_block(block.name);
+            (0..block.state_count())
+                .map(|offset| {
+                    let drawn = blockstates.get(block.name).filter(|_| !is_air).map(|file| {
+                        let properties: BTreeMap<String, String> = block
+                            .properties_at(offset)
+                            .unwrap_or_default()
+                            .into_iter()
+                            .map(|(key, value)| (key.to_owned(), value.to_owned()))
+                            .collect();
+                        (
+                            file.matched_lists(&properties),
+                            StateTints::of(block.name, &properties),
+                        )
+                    });
+                    (drawn, is_air)
+                })
+                .collect()
+        })
+        .collect();
+    per_block.into_iter().flatten().unzip()
+}
+
+/// Every item's client item definition, the models its layers name in any
+/// display context (added to `models`), the alpha of every flat item's
+/// layers and the sprites no element names.
+fn item_models(
+    source: &impl AssetSource,
+    cache: &mut crate::resolve::ModelCache,
+    models: &mut BTreeMap<String, ResolvedModel>,
+) -> (
+    Vec<Option<crate::item_model::ClientItem>>,
+    BTreeMap<String, crate::item_model::LayerAlpha>,
+    Vec<Identifier>,
+) {
+    use rayon::prelude::*;
+    let items: Vec<Option<crate::item_model::ClientItem>> = voxel_data::item::registry::ITEMS
+        .par_iter()
+        .map(|item| {
+            Identifier::parse(item.name)
+                .ok()
+                .and_then(|name| source.item(&name))
+                .and_then(|text| crate::item_model::parse_client_item(&text))
+        })
+        .collect();
+    let layers_of = |def: &crate::item_model::ClientItem| {
+        let mut layers = Vec::new();
+        for context in crate::model::DisplayContext::ALL {
+            crate::item_model::layers_for(&def.model, context, &mut layers);
+        }
+        layers
+    };
+    cache.prefetch(
+        source,
+        items
+            .iter()
+            .flatten()
+            .flat_map(layers_of)
+            .map(|layer| layer.model),
+    );
+    let mut layer_sprites = Vec::new();
+    // The textures a flat item's geometry is made from, decoded below.
+    let mut flat_sprites: Vec<Identifier> = Vec::new();
+    let mut asked = std::collections::HashSet::new();
+    for def in items.iter().flatten() {
+        for layer in layers_of(def) {
+            if let Some(special) = &layer.special {
+                for part in crate::special_models::layers(special) {
+                    if let Ok(sprite) = Identifier::parse(&format!("minecraft:{}", part.sprite)) {
+                        layer_sprites.push(sprite);
+                    }
+                }
+            }
+            let name = layer.model.as_string();
+            if models.contains_key(&name) {
+                continue;
+            }
+            let Ok(model) = cache.resolve(source, &layer.model) else {
+                continue;
+            };
+            if model.generated {
+                for slot in ["layer0", "layer1", "layer2", "layer3", "layer4"] {
+                    let Some(material) = model.textures.material(slot) else {
+                        break;
+                    };
+                    if asked.insert(material.sprite.as_string()) {
+                        // The geometry is made from the texture later, so no
+                        // element names it for the atlas.
+                        layer_sprites.push(material.sprite.clone());
+                        flat_sprites.push(material.sprite.clone());
+                    }
+                }
+            }
+            models.insert(name, model);
+        }
+    }
+    let layer_alpha = flat_sprites
+        .par_iter()
+        .filter_map(|sprite| {
+            let image = crate::png::decode_rgba(&source.texture(sprite)?).ok()?;
+            // An animated strip's first frame decides the sides.
+            let frame = image.width.min(image.height);
+            let alpha = image.rgba[..(frame * frame * 4) as usize]
+                .chunks(4)
+                .map(|pixel| pixel[3])
+                .collect();
+            Some((sprite.as_string(), (alpha, frame as i32, frame as i32)))
+        })
+        .collect();
+    (items, layer_alpha, layer_sprites)
 }
 
 /// One layer of an item as drawn in one display context.
@@ -254,150 +416,66 @@ pub struct RegionMesh {
 impl BlockRenderer {
     /// Read every block's blockstate file and every model any of its
     /// variants names, and pack all their textures into one atlas.
-    #[expect(
-        clippy::too_many_lines,
-        reason = "the model bake steps in the order the reference runs them"
-    )]
     pub fn new(source: &impl AssetSource, mip_level: i32) -> Result<Self, ResolveError> {
+        use rayon::prelude::*;
+        let mut model_cache = crate::resolve::ModelCache::default();
+        // Every blockstate file, read and parsed in parallel.
+        let files: Vec<Option<crate::blockstate::BlockStateFile>> = registry::BLOCKS
+            .par_iter()
+            .map(|block| {
+                if is_air_block(block.name) {
+                    return None;
+                }
+                Identifier::parse(block.name)
+                    .ok()
+                    .and_then(|name| source.block_state(&name))
+                    .and_then(|text| crate::blockstate::parse_block_state(&text))
+            })
+            .collect();
+        model_cache.prefetch(
+            source,
+            files
+                .iter()
+                .flatten()
+                .flat_map(variant_lists)
+                .flatten()
+                .map(|variant| variant.model.clone()),
+        );
         let mut blockstates = BTreeMap::new();
         let mut models: BTreeMap<String, ResolvedModel> = BTreeMap::new();
         let mut skipped: Vec<(String, String)> = Vec::new();
-        for block in registry::BLOCKS.iter() {
-            if matches!(
-                block.name,
-                "minecraft:air" | "minecraft:cave_air" | "minecraft:void_air"
-            ) {
+        for (block, file) in registry::BLOCKS.iter().zip(files) {
+            if is_air_block(block.name) {
                 continue;
             }
-            let Some(file) = Identifier::parse(block.name)
-                .ok()
-                .and_then(|name| source.block_state(&name))
-                .and_then(|text| crate::blockstate::parse_block_state(&text))
-            else {
+            let Some(file) = file else {
                 skipped.push((block.name.to_owned(), "no blockstate file".into()));
                 continue;
             };
-            let lists = file
-                .variants
-                .iter()
-                .flat_map(|variants| variants.values())
-                .chain(
-                    file.multipart
-                        .iter()
-                        .flat_map(|parts| parts.iter().map(|part| &part.apply)),
-                );
-            for list in lists {
-                for variant in list {
-                    let name = variant.model.as_string();
-                    if models.contains_key(&name) {
-                        continue;
+            for variant in variant_lists(&file).flatten() {
+                let name = variant.model.as_string();
+                if models.contains_key(&name) {
+                    continue;
+                }
+                match model_cache.resolve(source, &variant.model) {
+                    Ok(model) => {
+                        models.insert(name, model);
                     }
-                    match crate::resolve::resolve_model(source, &variant.model) {
-                        Ok(model) => {
-                            models.insert(name, model);
-                        }
-                        Err(error) => {
-                            if !skipped
-                                .iter()
-                                .any(|(block_name, _)| block_name == block.name)
-                            {
-                                skipped.push((block.name.to_owned(), format!("{error:?}")));
-                            }
+                    Err(error) => {
+                        if !skipped
+                            .iter()
+                            .any(|(block_name, _)| block_name == block.name)
+                        {
+                            skipped.push((block.name.to_owned(), format!("{error:?}")));
                         }
                     }
                 }
             }
             blockstates.insert(block.name.to_owned(), file);
         }
-        // Each state's variant lists and colours; baked once the atlas is.
-        let mut pending: Vec<Option<(Vec<Vec<crate::blockstate::Variant>>, StateTints)>> =
-            Vec::new();
-        let mut air = Vec::new();
-        for block in registry::BLOCKS.iter() {
-            let is_air = matches!(
-                block.name,
-                "minecraft:air" | "minecraft:cave_air" | "minecraft:void_air"
-            );
-            for offset in 0..block.state_count() {
-                air.push(is_air);
-                let drawn = blockstates.get(block.name).filter(|_| !is_air).map(|file| {
-                    let properties: BTreeMap<String, String> = block
-                        .properties_at(offset)
-                        .unwrap_or_default()
-                        .into_iter()
-                        .map(|(key, value)| (key.to_owned(), value.to_owned()))
-                        .collect();
-                    (
-                        file.matched_lists(&properties),
-                        StateTints::of(block.name, &properties),
-                    )
-                });
-                pending.push(drawn);
-            }
-        }
-        // Every item's model tree, and the models its layers name in any
-        // display context, go in with the blocks'.
-        let mut items = Vec::with_capacity(voxel_data::item::registry::ITEMS.len());
-        let mut layer_alpha = BTreeMap::new();
-        let mut layer_sprites = Vec::new();
-        for item in voxel_data::item::registry::ITEMS.iter() {
-            let def = Identifier::parse(item.name)
-                .ok()
-                .and_then(|name| source.item(&name))
-                .and_then(|text| crate::item_model::parse_client_item(&text));
-            if let Some(def) = &def {
-                let mut layers = Vec::new();
-                for context in crate::model::DisplayContext::ALL {
-                    crate::item_model::layers_for(&def.model, context, &mut layers);
-                }
-                for layer in layers {
-                    if let Some(special) = &layer.special {
-                        for part in crate::special_models::layers(special) {
-                            if let Ok(sprite) =
-                                Identifier::parse(&format!("minecraft:{}", part.sprite))
-                            {
-                                layer_sprites.push(sprite);
-                            }
-                        }
-                    }
-                    let name = layer.model.as_string();
-                    if models.contains_key(&name) {
-                        continue;
-                    }
-                    let Ok(model) = crate::resolve::resolve_model(source, &layer.model) else {
-                        continue;
-                    };
-                    if model.generated {
-                        for slot in ["layer0", "layer1", "layer2", "layer3", "layer4"] {
-                            let Some(material) = model.textures.material(slot) else {
-                                break;
-                            };
-                            let sprite = material.sprite.as_string();
-                            if layer_alpha.contains_key(&sprite) {
-                                continue;
-                            }
-                            // The geometry is made from the texture later, so
-                            // no element names it for the atlas.
-                            layer_sprites.push(material.sprite.clone());
-                            if let Some(image) = source
-                                .texture(&material.sprite)
-                                .and_then(|bytes| crate::png::decode_rgba(&bytes).ok())
-                            {
-                                // An animated strip's first frame decides the sides.
-                                let frame = image.width.min(image.height);
-                                let alpha = image.rgba[..(frame * frame * 4) as usize]
-                                    .chunks(4)
-                                    .map(|pixel| pixel[3])
-                                    .collect();
-                                layer_alpha.insert(sprite, (alpha, frame as i32, frame as i32));
-                            }
-                        }
-                    }
-                    models.insert(name, model);
-                }
-            }
-            items.push(def);
-        }
+        let (pending, air) = state_lists(&blockstates);
+        let (items, layer_alpha, layer_sprites) =
+            item_models(source, &mut model_cache, &mut models);
         let ordered: Vec<&ResolvedModel> = models.values().collect();
         // The fluid renderer's sprites and the sky's sun and moon phases are
         // named by no block model, so they are asked for by name.

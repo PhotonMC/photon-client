@@ -25,7 +25,7 @@ use voxel_core::identifier::Identifier;
 ///
 /// The client reads assets from a location the user names, so resolution is
 /// written against this rather than against any bundled content.
-pub trait AssetSource {
+pub trait AssetSource: Sync {
     /// The text of one model, by the name a model file uses for it.
     ///
     /// The name is what appears in a `parent` field, so the source owns the
@@ -114,44 +114,135 @@ pub fn resolve_model(
     source: &impl AssetSource,
     name: &Identifier,
 ) -> Result<ResolvedModel, ResolveError> {
-    let mut chain: Vec<CuboidModel> = Vec::new();
-    let mut seen: Vec<Identifier> = Vec::new();
-    let mut next = Some(name.clone());
-    let mut generated = false;
-    while let Some(current) = next {
-        if seen.contains(&current) || chain.len() >= MAX_CHAIN {
-            return Err(ResolveError::CyclicParent(current.as_string()));
-        }
-        if current.as_string() == GENERATED {
-            // `ItemModelGenerator`: no geometry of its own, front lighting,
-            // and its particle is its first layer.
-            generated = true;
-            chain.push(CuboidModel {
-                parent: None,
-                ambient_occlusion: None,
-                gui_light: Some(GuiLight::Front),
-                texture_slots: crate::model::TextureSlotsData::from_entries([(
-                    "particle".to_owned(),
-                    crate::model::SlotContents::parse_string("#layer0").expect("fixed reference"),
-                )]),
-                elements: None,
-                display: None,
-            });
-            break;
-        }
-        let text = source
-            .model(&current)
-            .ok_or_else(|| ResolveError::MissingModel(current.as_string()))?;
-        let parsed = parse_model(&text).map_err(|_| ResolveError::BadModel(current.as_string()))?;
-        next = parsed.parent.clone();
-        seen.push(current);
-        chain.push(parsed);
+    ModelCache::default().resolve(source, name)
+}
+
+/// Every model file read so far, parsed, so a parent many models share is
+/// read once (`ModelDiscovery` loads each model once too).
+#[derive(Default)]
+pub struct ModelCache {
+    parsed: std::collections::HashMap<String, Result<std::sync::Arc<CuboidModel>, ResolveError>>,
+}
+
+impl ModelCache {
+    /// A model file, parsed, read the first time it is asked for.
+    fn load(
+        &mut self,
+        source: &impl AssetSource,
+        name: &Identifier,
+    ) -> Result<std::sync::Arc<CuboidModel>, ResolveError> {
+        self.parsed
+            .entry(name.as_string())
+            .or_insert_with(|| {
+                let text = source
+                    .model(name)
+                    .ok_or_else(|| ResolveError::MissingModel(name.as_string()))?;
+                parse_model(&text)
+                    .map(std::sync::Arc::new)
+                    .map_err(|_| ResolveError::BadModel(name.as_string()))
+            })
+            .clone()
     }
 
+    /// Read and parse every named model and every parent they reach, the
+    /// files of each generation in parallel, so resolving them afterwards
+    /// reads nothing.
+    pub fn prefetch(
+        &mut self,
+        source: &impl AssetSource,
+        names: impl IntoIterator<Item = Identifier>,
+    ) {
+        use rayon::prelude::*;
+        let mut frontier: Vec<Identifier> = Vec::new();
+        let mut queued = std::collections::HashSet::new();
+        for name in names {
+            let key = name.as_string();
+            if key != GENERATED && !self.parsed.contains_key(&key) && queued.insert(key) {
+                frontier.push(name);
+            }
+        }
+        while !frontier.is_empty() {
+            let loaded: Vec<_> = frontier
+                .par_iter()
+                .map(|name| {
+                    let parsed = source
+                        .model(name)
+                        .ok_or_else(|| ResolveError::MissingModel(name.as_string()))
+                        .and_then(|text| {
+                            parse_model(&text)
+                                .map(std::sync::Arc::new)
+                                .map_err(|_| ResolveError::BadModel(name.as_string()))
+                        });
+                    (name.as_string(), parsed)
+                })
+                .collect();
+            let mut next = Vec::new();
+            for (key, parsed) in loaded {
+                if let Ok(model) = &parsed
+                    && let Some(parent) = &model.parent
+                {
+                    let parent_key = parent.as_string();
+                    if parent_key != GENERATED
+                        && !self.parsed.contains_key(&parent_key)
+                        && queued.insert(parent_key)
+                    {
+                        next.push(parent.clone());
+                    }
+                }
+                self.parsed.insert(key, parsed);
+            }
+            frontier = next;
+        }
+    }
+
+    /// Load a model and its ancestors, then apply the reference's
+    /// inheritance.
+    pub fn resolve(
+        &mut self,
+        source: &impl AssetSource,
+        name: &Identifier,
+    ) -> Result<ResolvedModel, ResolveError> {
+        let mut chain: Vec<std::sync::Arc<CuboidModel>> = Vec::new();
+        let mut seen: Vec<Identifier> = Vec::new();
+        let mut next = Some(name.clone());
+        let mut generated = false;
+        while let Some(current) = next {
+            if seen.contains(&current) || chain.len() >= MAX_CHAIN {
+                return Err(ResolveError::CyclicParent(current.as_string()));
+            }
+            if current.as_string() == GENERATED {
+                // `ItemModelGenerator`: no geometry of its own, front
+                // lighting, and its particle is its first layer.
+                generated = true;
+                chain.push(std::sync::Arc::new(CuboidModel {
+                    parent: None,
+                    ambient_occlusion: None,
+                    gui_light: Some(GuiLight::Front),
+                    texture_slots: crate::model::TextureSlotsData::from_entries([(
+                        "particle".to_owned(),
+                        crate::model::SlotContents::parse_string("#layer0")
+                            .expect("fixed reference"),
+                    )]),
+                    elements: None,
+                    display: None,
+                }));
+                break;
+            }
+            let parsed = self.load(source, &current)?;
+            next = parsed.parent.clone();
+            seen.push(current);
+            chain.push(parsed);
+        }
+        Ok(inherit(&chain, generated))
+    }
+}
+
+/// The reference's inheritance over a chain, child first.
+fn inherit(chain: &[std::sync::Arc<CuboidModel>], generated: bool) -> ResolvedModel {
     // Texture maps are collected child first, which is the order the resolver
     // expects; it applies them root first so a child overrides its parent.
     let mut resolver = TextureSlotsResolver::new();
-    for model in &chain {
+    for model in chain {
         resolver.add_last(model.texture_slots.clone());
     }
     let textures = resolver.resolve();
@@ -178,14 +269,14 @@ pub fn resolve_model(
             .find_map(|model| model.display.and_then(|transforms| transforms.get(context)));
     }
 
-    Ok(ResolvedModel {
+    ResolvedModel {
         textures,
         elements,
         ambient_occlusion,
         gui_light,
         display,
         generated,
-    })
+    }
 }
 
 /// An atlas built from the sprites one model needs.
@@ -382,37 +473,19 @@ pub fn build_atlas_with(
         }
     }
 
+    // Every sprite read and decoded in parallel; the first failure in the
+    // sprites' order is the one reported.
+    let listed: Vec<(&String, &Material)> = wanted.iter().collect();
+    let results: Vec<Result<DecodedSprite, ResolveError>> = {
+        use rayon::prelude::*;
+        listed
+            .par_iter()
+            .map(|(key, material)| decode_sprite(source, key, material))
+            .collect()
+    };
     let mut decoded = BTreeMap::new();
-    for (key, material) in &wanted {
-        let bytes = source
-            .texture(&material.sprite)
-            .ok_or_else(|| ResolveError::BadTexture(key.clone()))?;
-        let mut image = decode_rgba(&bytes).map_err(|_| ResolveError::BadTexture(key.clone()))?;
-        let mut animated = None;
-        if let Some(animation) = source.texture_animation(&material.sprite) {
-            let strip = image;
-            image = first_animation_frame(&strip, &animation)
-                .ok_or_else(|| ResolveError::BadTexture(key.clone()))?;
-            let per_row = strip.width / image.width;
-            let count = per_row * (strip.height / image.height);
-            if let Some(playback) = animation.playback(count as i32) {
-                // Still sprites start on the list's first frame; animated
-                // ones on the first frame that plays.
-                image = first_animation_frame(
-                    &strip,
-                    &AnimationFrames {
-                        first_frame: playback[0].0,
-                        ..animation.clone()
-                    },
-                )
-                .ok_or_else(|| ResolveError::BadTexture(key.clone()))?;
-                animated = Some((strip, playback, animation.interpolate));
-            }
-        }
-        let metadata = source
-            .texture_metadata(&material.sprite)
-            .unwrap_or_default();
-        decoded.insert(key.clone(), (image, metadata, animated));
+    for ((key, _), result) in listed.into_iter().zip(results) {
+        decoded.insert(key.clone(), result?);
     }
     // The level is settled before packing, because the padding the packer
     // reserves is one texel of the deepest level on each side.
@@ -453,78 +526,30 @@ pub fn build_atlas_with(
             }
         })
         .collect();
-    for placement in stitcher.placements() {
-        let key = placement.name.as_string();
-        let Some((image, metadata, animated)) = decoded.get(&key) else {
-            continue;
-        };
-        let sprite = AtlasSprite::new(
-            &placement,
-            image.width as i32,
-            image.height as i32,
-            width as i32,
-            height as i32,
-        );
-        let origin_x = placement.x as u32 + placement.padding as u32;
-        let origin_y = placement.y as u32 + placement.padding as u32;
-        let mips = if let Some((strip, playback, interpolate)) = animated {
-            // The reference builds the levels of the whole strip, then cuts
-            // each frame out of every level.
-            let strip_mips = generate_mip_levels_with(
-                placement.name.path(),
-                strip,
-                level_count,
-                metadata.mipmap_strategy,
-                metadata.alpha_cutoff_bias,
-                compute_transparency(strip),
-            );
-            let per_row = strip.width / image.width;
-            let mut frame_levels = BTreeMap::new();
-            for &(index, _) in playback {
-                frame_levels.entry(index).or_insert_with(|| {
-                    let left = index as u32 % per_row * image.width;
-                    let top = index as u32 / per_row * image.height;
-                    strip_mips
-                        .iter()
-                        .enumerate()
-                        .map(|(level, mip)| {
-                            let shift = level as u32;
-                            crop(
-                                mip,
-                                left >> shift,
-                                top >> shift,
-                                image.width >> shift,
-                                image.height >> shift,
-                            )
-                        })
-                        .collect::<Vec<_>>()
-                });
-            }
-            let first = frame_levels[&playback[0].0].clone();
-            animations.push(SpriteAnimation {
-                name: key.clone(),
-                x: origin_x,
-                y: origin_y,
-                padding: placement.padding.max(0) as u32,
-                frame_levels,
-                playback: playback.clone(),
-                interpolate: *interpolate,
-                frame: 0,
-                sub_frame: 0,
-                dirty: true,
-            });
-            first
-        } else {
-            generate_mip_levels_with(
-                placement.name.path(),
-                image,
-                level_count,
-                metadata.mipmap_strategy,
-                metadata.alpha_cutoff_bias,
-                compute_transparency(image),
-            )
-        };
-        for (level, mip) in mips.iter().enumerate() {
+    // Every sprite's levels built in parallel, then written into the atlas
+    // in the packer's order.
+    let built: Vec<_> = {
+        use rayon::prelude::*;
+        stitcher
+            .placements()
+            .into_par_iter()
+            .filter_map(|placement| {
+                let key = placement.name.as_string();
+                let entry = decoded.get(&key)?;
+                Some(sprite_levels(
+                    &placement,
+                    key,
+                    entry,
+                    level_count,
+                    width,
+                    height,
+                ))
+            })
+            .collect()
+    };
+    for built in built {
+        let placement = &built.placement;
+        for (level, mip) in built.mips.iter().enumerate() {
             let shift = level as u32;
             blit_sprite(
                 &mut levels[level],
@@ -534,7 +559,8 @@ pub fn build_atlas_with(
                 placement.padding.max(0) as u32 >> shift,
             );
         }
-        sprites.insert(key, [sprite.u0, sprite.v0, sprite.u1, sprite.v1]);
+        animations.extend(built.animation);
+        sprites.insert(built.key, built.rect);
     }
     let rgba = levels[0].rgba.clone();
 
@@ -546,6 +572,144 @@ pub fn build_atlas_with(
         sprites,
         animations,
     })
+}
+
+/// A decoded sprite: its image (the first frame of an animated strip), its
+/// metadata, and an animated strip with its playback.
+type DecodedSprite = (
+    DecodedImage,
+    crate::texture_metadata::TextureMetadata,
+    Option<(DecodedImage, Vec<(i32, i32)>, bool)>,
+);
+
+/// Read and decode one sprite of the atlas.
+fn decode_sprite(
+    source: &impl AssetSource,
+    key: &str,
+    material: &Material,
+) -> Result<DecodedSprite, ResolveError> {
+    let bad = || ResolveError::BadTexture(key.to_owned());
+    let bytes = source.texture(&material.sprite).ok_or_else(bad)?;
+    let mut image = decode_rgba(&bytes).map_err(|_| bad())?;
+    let mut animated = None;
+    if let Some(animation) = source.texture_animation(&material.sprite) {
+        let strip = image;
+        image = first_animation_frame(&strip, &animation).ok_or_else(bad)?;
+        let per_row = strip.width / image.width;
+        let count = per_row * (strip.height / image.height);
+        if let Some(playback) = animation.playback(count as i32) {
+            // Still sprites start on the list's first frame; animated ones on
+            // the first frame that plays.
+            image = first_animation_frame(
+                &strip,
+                &AnimationFrames {
+                    first_frame: playback[0].0,
+                    ..animation.clone()
+                },
+            )
+            .ok_or_else(bad)?;
+            animated = Some((strip, playback, animation.interpolate));
+        }
+    }
+    let metadata = source
+        .texture_metadata(&material.sprite)
+        .unwrap_or_default();
+    Ok((image, metadata, animated))
+}
+
+/// One sprite's levels, ready to write into the atlas.
+struct BuiltSprite {
+    placement: crate::atlas::SpritePlacement,
+    key: String,
+    rect: [f32; 4],
+    mips: Vec<DecodedImage>,
+    animation: Option<SpriteAnimation>,
+}
+
+/// A placed sprite's mip levels; an animated sprite's are its first
+/// frame's, with every frame's kept for playback.
+fn sprite_levels(
+    placement: &crate::atlas::SpritePlacement,
+    key: String,
+    (image, metadata, animated): &DecodedSprite,
+    level_count: u32,
+    width: u32,
+    height: u32,
+) -> BuiltSprite {
+    let sprite = AtlasSprite::new(
+        placement,
+        image.width as i32,
+        image.height as i32,
+        width as i32,
+        height as i32,
+    );
+    let origin_x = placement.x as u32 + placement.padding as u32;
+    let origin_y = placement.y as u32 + placement.padding as u32;
+    let mut animation = None;
+    let mips = if let Some((strip, playback, interpolate)) = animated {
+        // The reference builds the levels of the whole strip, then cuts each
+        // frame out of every level.
+        let strip_mips = generate_mip_levels_with(
+            placement.name.path(),
+            strip,
+            level_count,
+            metadata.mipmap_strategy,
+            metadata.alpha_cutoff_bias,
+            compute_transparency(strip),
+        );
+        let per_row = strip.width / image.width;
+        let mut frame_levels = BTreeMap::new();
+        for &(index, _) in playback {
+            frame_levels.entry(index).or_insert_with(|| {
+                let left = index as u32 % per_row * image.width;
+                let top = index as u32 / per_row * image.height;
+                strip_mips
+                    .iter()
+                    .enumerate()
+                    .map(|(level, mip)| {
+                        let shift = level as u32;
+                        crop(
+                            mip,
+                            left >> shift,
+                            top >> shift,
+                            image.width >> shift,
+                            image.height >> shift,
+                        )
+                    })
+                    .collect::<Vec<_>>()
+            });
+        }
+        let first = frame_levels[&playback[0].0].clone();
+        animation = Some(SpriteAnimation {
+            name: key.clone(),
+            x: origin_x,
+            y: origin_y,
+            padding: placement.padding.max(0) as u32,
+            frame_levels,
+            playback: playback.clone(),
+            interpolate: *interpolate,
+            frame: 0,
+            sub_frame: 0,
+            dirty: true,
+        });
+        first
+    } else {
+        generate_mip_levels_with(
+            placement.name.path(),
+            image,
+            level_count,
+            metadata.mipmap_strategy,
+            metadata.alpha_cutoff_bias,
+            compute_transparency(image),
+        )
+    };
+    BuiltSprite {
+        placement: placement.clone(),
+        key,
+        rect: [sprite.u0, sprite.v0, sprite.u1, sprite.v1],
+        mips,
+        animation,
+    }
 }
 
 /// A rectangle of an image.
