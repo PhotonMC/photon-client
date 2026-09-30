@@ -14,6 +14,6 @@ pub mod tab_list;
 pub mod titles;
 
 pub use atlas::GuiAtlas;
-pub use frame::{DrawOp, GuiBlend, GuiFrame, GuiVertex, ItemDrawer};
+pub use frame::{DrawOp, FrameMark, GuiBlend, GuiFrame, GuiVertex, ItemDrawer};
 pub use hud::{HeartType, Hud, HudInput};
 pub use items::GuiItemVertex;

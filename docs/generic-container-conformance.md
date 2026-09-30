@@ -109,11 +109,19 @@ Enter/Space son tarifi yeniden yerleştirir, T aramayı odaklar, tarif kitabı
 `TrimPattern` holder okuması. `shapeless` hayaleti kaydıkça değil sırayla
 yuvalara yerleşir.
 
-Bilinen sapmalar: sağ tıkla çok tarifli koleksiyon kaplaması yok (sağ tık
-yerleştirmez, yalnız yutulur); yeni tarif düğmelerinin ve sekmelerin sıkışma
-animasyonu, tost ve zamanlayıcının Ctrl ile durması yok; hayalet yuva ipucu yok;
-`AnyFuel` hayaleti boş (yakıt listesi yok); tarif kitabının çizimi için oracle
-yoktur (yalnız Java kaynağından okunup birim testlenir).
+Kaplama (`OverlayRecipeComponent`): çok tarifli düğmeye sağ tık kutuyu açar
+(4 ya da 5 sütun, üretilebilirler önce, ekran merkezine göre kaydırma
+`overlay_origin`), malzemeler 0,375 ölçekle 7 birimlik hücrelere çizilir, sol
+tık yerleştirir, boşluğa tık kapatır; kapalı kitap kaplamayı götürür. Yeni
+tarif olan düğme ve sekme 15 tikte sıkışır (`scale_about`), Ctrl basılıyken saat
+durur, hayalet yuva ipucu ve `AnyFuel` için yakıtlı eşyalar (kayıt sırası)
+eklendi.
+
+Bilinen sapmalar: tost yok; animasyon ve döngü saati Java'da kare başına kısmi
+tiktir (kare hızına bağlı), burada gerçek zamandır; `AnyFuel` sırası Java'nın
+`FuelValues` kurulum sırası değil kayıt sırasıdır; kaplama ve düğme
+ipuçlarının çizimi için oracle yok (eşya çizimi kaydedilmez), yalnız geometri
+birim testli.
 
 ## Açık
 

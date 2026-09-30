@@ -56,6 +56,13 @@ pub enum DrawOp {
     },
 }
 
+/// A place in a [`GuiFrame`]: how much of it was drawn.
+#[derive(Debug, Clone, Copy)]
+pub struct FrameMark {
+    vertices: usize,
+    items: usize,
+}
+
 /// One frame of GUI: triangles and the runs they blend in.
 #[derive(Debug, Default)]
 pub struct GuiFrame {
@@ -130,6 +137,36 @@ impl GuiFrame {
                 translate.0 + scale * vertex.position[0],
                 translate.1 + scale * vertex.position[1],
             ];
+        }
+    }
+
+    /// Where a frame is now, to apply a pose to what is drawn after.
+    pub fn mark(&self) -> FrameMark {
+        FrameMark {
+            vertices: self.vertices.len(),
+            items: self.items.len(),
+        }
+    }
+
+    /// A pose over everything drawn since `mark`: scaled by `(sx, sy)` about
+    /// the point `pivot` (translate, scale, translate back).
+    pub fn scale_about(&mut self, mark: FrameMark, (sx, sy): (f32, f32), pivot: (f32, f32)) {
+        for vertex in &mut self.vertices[mark.vertices..] {
+            vertex.position[0] = pivot.0 + sx * (vertex.position[0] - pivot.0);
+            vertex.position[1] = pivot.1 + sy * (vertex.position[1] - pivot.1);
+        }
+        for vertex in &mut self.items[mark.items..] {
+            vertex.position[0] = pivot.0 + sx * (vertex.position[0] - pivot.0);
+            vertex.position[1] = pivot.1 + sy * (vertex.position[1] - pivot.1);
+        }
+    }
+
+    /// A pose over the items drawn since item vertex `first`: each position
+    /// `p` becomes `offset + scale * p`.
+    pub fn scale_items_from(&mut self, first: usize, scale: f32, offset: (f32, f32)) {
+        for vertex in &mut self.items[first..] {
+            vertex.position[0] = offset.0 + scale * vertex.position[0];
+            vertex.position[1] = offset.1 + scale * vertex.position[1];
         }
     }
 

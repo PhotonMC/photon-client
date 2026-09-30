@@ -42,6 +42,8 @@ pub struct ScreenDraw<'a, 'b> {
     /// The recipe book and the item tags its recipes are read against.
     pub book: &'a voxel_world::RecipeBook,
     pub tags: &'a voxel_world::block::tags::ItemTags,
+    /// `Minecraft.hasControlDown`: the recipe book's clock stops while it is.
+    pub control_held: bool,
 }
 
 /// A click a screen asks the session to run.

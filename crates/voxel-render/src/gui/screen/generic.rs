@@ -528,6 +528,8 @@ impl Screen for GenericScreen {
         {
             let lines = (draw.tooltip)(stack, false);
             self.layout.tooltip(draw, &lines, mouse);
+        } else if let Some(book) = &self.book {
+            book.ghost_tooltip(draw, menu, self.hovered, mouse);
         }
     }
 }

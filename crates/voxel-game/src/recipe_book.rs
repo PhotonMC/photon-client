@@ -466,6 +466,77 @@ pub fn ghost_slots(
     slots
 }
 
+/// `OverlayRecipeComponent.init`'s place for the overlay: where the button
+/// is, the middle of the panel and the button's width decide how far the
+/// overlay is moved left and up or down to stay near it. `total` recipes.
+pub fn overlay_origin(
+    button: (i32, i32),
+    (center_x, center_y): (i32, i32),
+    button_width: f32,
+    total: usize,
+) -> (i32, i32) {
+    let max_row = if total <= 16 { 4 } else { 5 };
+    let rows = total.div_ceil(max_row);
+    let (mut x, mut y) = button;
+    let right = x as f32 + total.min(max_row) as f32 * 25.0;
+    let max_left = (center_x + 50) as f32;
+    if right > max_left {
+        x = (x as f32 - button_width * ((right - max_left) / button_width).trunc()) as i32;
+    }
+    let bottom = y as f32 + rows as f32 * 25.0;
+    let max_bottom = (center_y + 50) as f32;
+    if bottom > max_bottom {
+        y = (y as f32 - button_width * ((bottom - max_bottom) / button_width).ceil()) as i32;
+    }
+    let top = y as f32;
+    let max_top = (center_y - 100) as f32;
+    if top < max_top {
+        y = (y as f32 - button_width * ((top - max_top) / button_width).ceil()) as i32;
+    }
+    (x, y)
+}
+
+/// One ingredient of an overlay button: where it sits in the button and what
+/// it shows.
+pub type OverlaySlot = (i32, i32, SlotDisplay);
+
+/// The ingredients an overlay button draws (`calculateIngredientsPositions`):
+/// a crafting recipe on a 3 by 3 grid of 7-unit cells, a furnace recipe's
+/// ingredient in the middle one.
+pub fn overlay_slots(display: &RecipeDisplay, tags: &ItemTags) -> Vec<OverlaySlot> {
+    let cell = |x: i32, y: i32| (3 + x * 7, 3 + y * 7);
+    let shown = |slot: &SlotDisplay| !display_stacks(slot, tags).is_empty();
+    match display {
+        RecipeDisplay::Shaped {
+            width,
+            height,
+            ingredients,
+            ..
+        } => place_recipe_helper((3, 3), (*width, *height), ingredients.len())
+            .into_iter()
+            .filter(|(entry, _)| shown(&ingredients[*entry]))
+            .map(|(entry, grid)| {
+                let (x, y) = cell(grid % 3, grid / 3);
+                (x, y, ingredients[entry].clone())
+            })
+            .collect(),
+        RecipeDisplay::Shapeless { ingredients, .. } => ingredients
+            .iter()
+            .enumerate()
+            .filter(|(_, slot)| shown(slot))
+            .map(|(index, slot)| {
+                let (x, y) = cell(index as i32 % 3, index as i32 / 3);
+                (x, y, slot.clone())
+            })
+            .collect(),
+        RecipeDisplay::Furnace { ingredient, .. } if shown(ingredient) => {
+            let (x, y) = cell(1, 1);
+            vec![(x, y, ingredient.clone())]
+        }
+        _ => Vec::new(),
+    }
+}
+
 /// What a button shows for a recipe and how it cycles
 /// (`RecipeButton.getDisplayStack`): `results` holds each recipe's stacks as
 /// (item, count); `index` counts up with time.
@@ -511,7 +582,15 @@ pub fn display_stacks(display: &SlotDisplay, tags: &ItemTags) -> Vec<(i32, i32)>
         | SlotDisplay::WithAnyPotion(input) => display_stacks(input, tags),
         SlotDisplay::Dyed(_, target) => display_stacks(target, tags),
         SlotDisplay::SmithingTrim(base, _, _) => display_stacks(base, tags),
-        SlotDisplay::Empty | SlotDisplay::AnyFuel => Vec::new(),
+        // `AnyFuel.resolveForStacks`: every item that burns (in registry
+        // order; the reference lists them in the order its table was built).
+        SlotDisplay::AnyFuel => voxel_data::item::registry::ITEMS
+            .iter()
+            .enumerate()
+            .filter(|(_, item)| item.burn_time > 0)
+            .map(|(id, _)| (id as i32, 1))
+            .collect(),
+        SlotDisplay::Empty => Vec::new(),
     }
 }
 
@@ -545,6 +624,30 @@ mod tests {
             place_recipe_helper((3, 3), (1, 3), 3),
             vec![(0, 1), (1, 4), (2, 7)]
         );
+    }
+
+    #[test]
+    fn the_overlay_stays_near_its_button_inside_the_panel() {
+        // Far enough left, no move; too far right, back by whole buttons.
+        assert_eq!(overlay_origin((20, 60), (73, 96), 25.0, 4), (20, 60));
+        assert_eq!(overlay_origin((100, 60), (73, 96), 25.0, 4), (25, 60));
+        // Too low moves up, by whole buttons.
+        assert_eq!(overlay_origin((20, 140), (73, 96), 25.0, 8), (20, 90));
+    }
+
+    #[test]
+    fn an_overlay_button_lays_its_ingredients_on_seven_unit_cells() {
+        let display = RecipeDisplay::Shapeless {
+            ingredients: vec![
+                SlotDisplay::Item(1),
+                SlotDisplay::Empty,
+                SlotDisplay::Item(2),
+            ],
+            result: SlotDisplay::Item(9),
+        };
+        let slots = overlay_slots(&display, &ItemTags::default());
+        let places: Vec<(i32, i32)> = slots.iter().map(|slot| (slot.0, slot.1)).collect();
+        assert_eq!(places, [(3, 3), (17, 3)]);
     }
 
     #[test]

@@ -312,6 +312,8 @@ impl Screen for InventoryScreen {
         {
             let lines = (draw.tooltip)(stack, false);
             self.layout.tooltip(draw, &lines, mouse);
+        } else {
+            self.book.ghost_tooltip(draw, menu, self.hovered, mouse);
         }
     }
 }

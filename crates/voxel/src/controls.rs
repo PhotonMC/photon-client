@@ -42,6 +42,9 @@ pub struct Controls {
     chat_history: Vec<String>,
     /// `CommandHistory`: the commands sent, kept in a file.
     command_history: Vec<String>,
+    /// `Minecraft.hasControlDown`: a control key is down (the command key on
+    /// macOS).
+    pub control_held: bool,
     /// Whether a shift key is down, which wheel events carry no mark of.
     shift_held: bool,
     pub chat_log: ChatLog,
@@ -71,6 +74,7 @@ impl Controls {
             chat_history: command_history.clone(),
             command_history,
             shift_held: false,
+            control_held: false,
             chat_log: ChatLog::default(),
             tab_held: false,
             gui_mouse: (0.0, 0.0),
@@ -392,6 +396,16 @@ impl Controls {
         surface: &mut WindowSurface,
         assets: &ScreenAssets,
     ) -> Result {
+        if let glfw::WindowEvent::Key(key, _, action, _) = event {
+            let control_keys: [glfw::Key; 2] = if cfg!(target_os = "macos") {
+                [glfw::Key::LeftSuper, glfw::Key::RightSuper]
+            } else {
+                [glfw::Key::LeftControl, glfw::Key::RightControl]
+            };
+            if control_keys.contains(&key) {
+                self.control_held = action != glfw::Action::Release;
+            }
+        }
         if let Some(screen) = self.screen.as_mut() {
             let size = surface.scale();
             screen.resize(size.gui_scaled_width(), size.gui_scaled_height());
