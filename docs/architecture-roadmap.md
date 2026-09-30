@@ -114,6 +114,6 @@ olarak tutulmaz.
   açıldığı kare. Etki: büyük yüklemede son chunk'lar ~0,5 sn erken
   görünür; aynı anda çok chunk gelirse tek karede takılma riski. F4'ten
   sonra ölçülür, gecikme görülürse onayla yapılır.
-- [ ] D2: chunk section'larını ağ thread'inde ayrıştırmak. Sonuç birebir
+- [x] D2: chunk section'larını ağ thread'inde ayrıştırmak. Sonuç birebir
   aynı, yalnızca iş başka thread'de; giriş ve ışınlanmada ana thread
   takılması azalır.
