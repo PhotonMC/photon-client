@@ -40,6 +40,17 @@ pub fn box_z(size_x: f64, min_y: f64, max_y: f64, min_z: f64, max_z: f64) -> Vox
     cube(8.0 - half_x, min_y, min_z, 8.0 + half_x, max_y, max_z)
 }
 
+/// `Block.column(sizeXZ, minY, maxY)`.
+pub fn column_xz(size: f64, min_y: f64, max_y: f64) -> VoxelShape {
+    column(size, size, min_y, max_y)
+}
+
+/// `Block.boxZ(sizeXY, minZ, maxZ)`: a box centred on both x and y.
+pub fn box_z_xy(size: f64, min_z: f64, max_z: f64) -> VoxelShape {
+    let half = size / 2.0;
+    box_z(size, 8.0 - half, 8.0 + half, min_z, max_z)
+}
+
 fn by_axis(shapes: &[(Axis, VoxelShape); 2], axis: Axis) -> &VoxelShape {
     &shapes
         .iter()

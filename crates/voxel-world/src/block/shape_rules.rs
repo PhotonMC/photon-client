@@ -5,9 +5,31 @@
 //! state cache takes that state's shape from the reference's table until it
 //! is.
 
+mod connected;
+mod hinged;
+
+use voxel_core::direction::Direction;
 use voxel_core::shape::{Shapes, VoxelShape};
 use voxel_data::block::classes::{BlockClass, Method};
+use voxel_data::block::definition::Property;
 use voxel_data::block::registry::Block;
+
+/// The shape a `Shapes.rotate*` map holds for a direction.
+fn arm(shapes: &[(Direction, VoxelShape)], direction: Direction) -> &VoxelShape {
+    &shapes
+        .iter()
+        .find(|(own, _)| *own == direction)
+        .expect("the map holds every direction asked for")
+        .1
+}
+
+/// A direction property's value.
+fn facing(block: &Block, offset: u32, property: &Property) -> Direction {
+    block
+        .value(offset, property)
+        .and_then(Direction::from_name)
+        .expect("a facing property holds a direction")
+}
 
 /// The class whose own `method` the block runs; `None` for the one
 /// `BlockBehaviour` itself has.
@@ -40,12 +62,27 @@ pub fn collision(block: &Block, offset: u32) -> Option<VoxelShape> {
     }
 }
 
-fn class_outline(_class: BlockClass, _block: &Block, _offset: u32) -> Option<VoxelShape> {
-    None
+fn class_outline(class: BlockClass, block: &Block, offset: u32) -> Option<VoxelShape> {
+    Some(match class {
+        BlockClass::WallBlock => connected::wall_outline(block, offset),
+        BlockClass::CrossCollisionBlock => {
+            connected::cross_outline(block, offset, block.class.is(BlockClass::FenceBlock))
+        }
+        BlockClass::StairBlock => hinged::stairs_outline(block, offset),
+        BlockClass::DoorBlock => hinged::door_outline(block, offset),
+        BlockClass::TrapDoorBlock => hinged::trapdoor_outline(block, offset),
+        _ => return None,
+    })
 }
 
-fn class_collision(_class: BlockClass, _block: &Block, _offset: u32) -> Option<VoxelShape> {
-    None
+fn class_collision(class: BlockClass, block: &Block, offset: u32) -> Option<VoxelShape> {
+    Some(match class {
+        BlockClass::WallBlock => connected::wall_collision(block, offset),
+        BlockClass::CrossCollisionBlock => {
+            connected::cross_collision(block, offset, block.class.is(BlockClass::FenceBlock))
+        }
+        _ => return None,
+    })
 }
 
 #[cfg(test)]
