@@ -92,6 +92,7 @@ fn world() -> ClientWorld {
     let variety = variety();
     let mut world = ClientWorld::new(DimensionBounds::new(-64, 384));
     let biomes = vec![0; 64];
+    let mut applying = std::time::Duration::ZERO;
     for chunk_x in -2..=2 {
         for chunk_z in -2..=2 {
             let sections: Vec<(Vec<i32>, i16)> = (0..24)
@@ -125,6 +126,7 @@ fn world() -> ClientWorld {
                     (blocks, filled)
                 })
                 .collect();
+            let started = std::time::Instant::now();
             world.replace_chunk(
                 chunk_x,
                 chunk_z,
@@ -135,8 +137,10 @@ fn world() -> ClientWorld {
                     biomes: &biomes,
                 }),
             );
+            applying += started.elapsed();
         }
     }
+    println!("chunk apply chunks=25 in {applying:?}");
     world
 }
 

@@ -55,6 +55,9 @@ pub struct SectionView {
 pub struct SectionMeshes {
     /// Sections waiting to be built.
     pending: HashSet<SectionKey>,
+    /// Sections dirtied since they were last looked at for being empty;
+    /// only a change dirties one, so only these can have turned empty.
+    unchecked: Vec<SectionKey>,
     /// The generation of each section's newest hand-out; a mesh from an
     /// older one is stale.
     latest: HashMap<SectionKey, u64>,
@@ -89,7 +92,8 @@ impl SectionMeshes {
         tints: Arc<voxel_render::biome_tint::BiomeTints>,
         chunk_fade: Duration,
     ) -> Self {
-        let pending = session.take_dirty_sections().into_iter().collect();
+        let pending: HashSet<SectionKey> = session.take_dirty_sections().into_iter().collect();
+        let unchecked = pending.iter().copied().collect();
         let worker_count = std::thread::available_parallelism()
             .map_or(2, |count| count.get().saturating_sub(1))
             .clamp(1, 8);
@@ -97,6 +101,7 @@ impl SectionMeshes {
         let low = dimension.min_y.div_euclid(16);
         Self {
             pending,
+            unchecked,
             latest: HashMap::new(),
             next_generation: 0,
             fades: HashMap::new(),
@@ -116,6 +121,7 @@ impl SectionMeshes {
     /// A respawn or a change of dimension: nothing of the old level stays.
     pub fn clear(&mut self) {
         self.pending.clear();
+        self.unchecked.clear();
         self.latest.clear();
         self.fades.clear();
         self.compiled.clear();
@@ -178,6 +184,7 @@ impl SectionMeshes {
         let dirtied = session.take_dirty_sections();
         // A chunk arriving or a section turning empty changes the flood.
         self.graph_stale |= !dirtied.is_empty();
+        self.unchecked.extend(dirtied.iter().copied());
         self.pending.extend(dirtied);
         let camera_block = view.camera.map(|value| value.floor() as i64);
         loop {
@@ -226,10 +233,10 @@ impl SectionMeshes {
         camera_block: [i64; 3],
     ) -> Result<(), Box<dyn std::error::Error>> {
         let world = session.world();
-        let empty: Vec<SectionKey> = self
-            .pending
-            .iter()
-            .copied()
+        // A section whose chunk is not here yet is dirtied again when it comes.
+        let empty: Vec<SectionKey> = std::mem::take(&mut self.unchecked)
+            .into_iter()
+            .filter(|key| self.pending.contains(key))
             .filter(|&(x, y, z)| world.contains_chunk(x, z) && world.section_is_empty(x, y, z))
             .collect();
         for key in empty {
