@@ -5,28 +5,51 @@
 //! state cache takes that state's shape from the reference's table until it
 //! is.
 
+/// A shape or a map of them built the first time it is asked for.
+macro_rules! cached {
+    ($ty:ty, $make:expr) => {{
+        static CELL: std::sync::OnceLock<$ty> = std::sync::OnceLock::new();
+        CELL.get_or_init(|| $make)
+    }};
+}
+
 mod connected;
 mod hinged;
+mod singles;
 
 use voxel_core::direction::Direction;
 use voxel_core::shape::{Shapes, VoxelShape};
 use voxel_data::block::classes::{BlockClass, Method};
-use voxel_data::block::definition::Property;
+use voxel_data::block::definition::OffsetType;
 use voxel_data::block::registry::Block;
 
-/// The shape a `Shapes.rotate*` map holds for a direction.
-fn arm(shapes: &[(Direction, VoxelShape)], direction: Direction) -> &VoxelShape {
+/// The shape a `Shapes.rotate*` map holds for a key.
+fn arm<K: PartialEq>(shapes: &[(K, VoxelShape)], key: K) -> &VoxelShape {
     &shapes
         .iter()
-        .find(|(own, _)| *own == direction)
-        .expect("the map holds every direction asked for")
+        .find(|(own, _)| *own == key)
+        .expect("the map holds every key asked for")
         .1
 }
 
+/// A property's value by its name; `None` when the block has no such one.
+fn prop(block: &Block, offset: u32, name: &str) -> Option<&'static str> {
+    let property = block.properties.iter().find(|own| own.name == name)?;
+    block.value(offset, property)
+}
+
+fn flag(block: &Block, offset: u32, name: &str) -> bool {
+    prop(block, offset, name) == Some("true")
+}
+
+/// An integer property's value; zero when the block has no such one.
+fn number(block: &Block, offset: u32, name: &str) -> usize {
+    prop(block, offset, name).map_or(0, |value| value.parse().expect("an integer property"))
+}
+
 /// A direction property's value.
-fn facing(block: &Block, offset: u32, property: &Property) -> Direction {
-    block
-        .value(offset, property)
+fn facing(block: &Block, offset: u32, name: &str) -> Direction {
+    prop(block, offset, name)
         .and_then(Direction::from_name)
         .expect("a facing property holds a direction")
 }
@@ -54,12 +77,20 @@ pub fn outline(block: &Block, offset: u32) -> Option<VoxelShape> {
 /// collision, for the state at `offset` of `block`; `None` when its class
 /// is not written.
 pub fn collision(block: &Block, offset: u32) -> Option<VoxelShape> {
-    match owner(block, Method::GetCollisionShape) {
+    let shape = match owner(block, Method::GetCollisionShape) {
         // `BlockBehaviour.getCollisionShape`.
         None if block.has_collision => outline(block, offset),
         None => Some(Shapes::empty()),
         Some(class) => class_collision(class, block, offset),
+    }?;
+    // The shape a state answers with where no position is asked for is the
+    // one at the origin, so a block that shifts by position is shifted by
+    // the origin's shift.
+    if block.offset_type == OffsetType::None {
+        return Some(shape);
     }
+    let [x, y, z] = super::offset(block, [0, 0, 0]);
+    Some(shape.move_by(x, y, z))
 }
 
 fn class_outline(class: BlockClass, block: &Block, offset: u32) -> Option<VoxelShape> {
@@ -71,7 +102,7 @@ fn class_outline(class: BlockClass, block: &Block, offset: u32) -> Option<VoxelS
         BlockClass::StairBlock => hinged::stairs_outline(block, offset),
         BlockClass::DoorBlock => hinged::door_outline(block, offset),
         BlockClass::TrapDoorBlock => hinged::trapdoor_outline(block, offset),
-        _ => return None,
+        _ => return singles::outline(class, block, offset),
     })
 }
 
@@ -81,7 +112,7 @@ fn class_collision(class: BlockClass, block: &Block, offset: u32) -> Option<Voxe
         BlockClass::CrossCollisionBlock => {
             connected::cross_collision(block, offset, block.class.is(BlockClass::FenceBlock))
         }
-        _ => return None,
+        _ => return singles::collision(class, block, offset),
     })
 }
 
@@ -133,7 +164,12 @@ mod tests {
                 if let Some(shape) = collision(block, offset) {
                     collisions += 1;
                     if fingerprint(&shape) != fingerprint(&table_collision_shape(id)) {
-                        wrong.push(format!("{} collision at {offset}", block.name));
+                        wrong.push(format!(
+                            "{} collision at {offset}: {:?} vs table {:?}",
+                            block.name,
+                            fingerprint(&shape),
+                            fingerprint(&table_collision_shape(id))
+                        ));
                     }
                 }
             }
@@ -143,7 +179,7 @@ mod tests {
             wrong.is_empty(),
             "{} differ, first {:?}",
             wrong.len(),
-            &wrong[..wrong.len().min(8)]
+            wrong
         );
     }
 }

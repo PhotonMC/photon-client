@@ -51,6 +51,18 @@ pub fn box_z_xy(size: f64, min_z: f64, max_z: f64) -> VoxelShape {
     box_z(size, 8.0 - half, 8.0 + half, min_z, max_z)
 }
 
+/// `Block.boxZ(sizeX, sizeY, minZ, maxZ)`: a box centred on x and y.
+pub fn box_z_sized(size_x: f64, size_y: f64, min_z: f64, max_z: f64) -> VoxelShape {
+    let half = size_y / 2.0;
+    box_z(size_x, 8.0 - half, 8.0 + half, min_z, max_z)
+}
+
+/// `Block.cube(sizeX, sizeY, sizeZ)`: a box centred on the block.
+pub fn block_cube(size_x: f64, size_y: f64, size_z: f64) -> VoxelShape {
+    let half = size_y / 2.0;
+    column(size_x, size_z, 8.0 - half, 8.0 + half)
+}
+
 fn by_axis(shapes: &[(Axis, VoxelShape); 2], axis: Axis) -> &VoxelShape {
     &shapes
         .iter()

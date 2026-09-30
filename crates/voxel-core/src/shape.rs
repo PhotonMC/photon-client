@@ -63,6 +63,8 @@ pub enum ShapeRotation {
     Rot180FaceYz,
     /// `OctahedralGroup.INVERT_Y`: the mirror that turns a shape upside down.
     InvertY,
+    /// `OctahedralGroup.INVERT_X`.
+    InvertX,
 }
 
 impl ShapeRotation {
@@ -79,6 +81,7 @@ impl ShapeRotation {
             "ROT_180_FACE_XZ" => Some(Self::Rot180FaceXz),
             "ROT_180_FACE_YZ" => Some(Self::Rot180FaceYz),
             "INVERT_Y" => Some(Self::InvertY),
+            "INVERT_X" => Some(Self::InvertX),
             _ => None,
         }
     }
@@ -96,6 +99,7 @@ impl ShapeRotation {
             Self::Rot180FaceXz => ([0, 1, 2], [true, false, true]),
             Self::Rot180FaceYz => ([0, 1, 2], [false, true, true]),
             Self::InvertY => ([0, 1, 2], [false, true, false]),
+            Self::InvertX => ([0, 1, 2], [true, false, false]),
         }
     }
 

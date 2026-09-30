@@ -5,7 +5,7 @@ use std::sync::OnceLock;
 
 use voxel_core::direction::Direction;
 use voxel_core::shape::{ShapeRotation, Shapes, VoxelShape};
-use voxel_data::block::properties::{DOOR_HINGE, HALF, HORIZONTAL_FACING, OPEN, STAIRS_SHAPE};
+use voxel_data::block::properties::{DOOR_HINGE, HALF, OPEN, STAIRS_SHAPE};
 use voxel_data::block::registry::Block;
 
 use super::super::shapes::{box_z_xy, column_xz, cube};
@@ -46,7 +46,7 @@ impl Stairs {
 pub fn stairs_outline(block: &Block, offset: u32) -> VoxelShape {
     static STAIRS: OnceLock<Stairs> = OnceLock::new();
     let stairs = STAIRS.get_or_init(Stairs::new);
-    let facing = facing(block, offset, &HORIZONTAL_FACING);
+    let facing = facing(block, offset, "facing");
     let rings = if block.value(offset, &HALF) == Some("bottom") {
         &stairs.bottom
     } else {
@@ -71,7 +71,7 @@ pub fn stairs_outline(block: &Block, offset: u32) -> VoxelShape {
 pub fn door_outline(block: &Block, offset: u32) -> VoxelShape {
     static SHAPES: OnceLock<Ring> = OnceLock::new();
     let shapes = SHAPES.get_or_init(|| Shapes::rotate_horizontal(&box_z_xy(16.0, 13.0, 16.0)));
-    let facing = facing(block, offset, &HORIZONTAL_FACING);
+    let facing = facing(block, offset, "facing");
     let door = if block.flag(offset, &OPEN) {
         if block.value(offset, &DOOR_HINGE) == Some("right") {
             facing.counter_clockwise_y()
@@ -90,7 +90,7 @@ pub fn trapdoor_outline(block: &Block, offset: u32) -> VoxelShape {
     static SHAPES: OnceLock<[(Direction, VoxelShape); 6]> = OnceLock::new();
     let shapes = SHAPES.get_or_init(|| Shapes::rotate_all(&box_z_xy(16.0, 13.0, 16.0)));
     let direction = if block.flag(offset, &OPEN) {
-        facing(block, offset, &HORIZONTAL_FACING)
+        facing(block, offset, "facing")
     } else if block.value(offset, &HALF) == Some("top") {
         Direction::Down
     } else {
