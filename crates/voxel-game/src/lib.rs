@@ -13,6 +13,7 @@ pub mod item_in_hand;
 pub mod item_values;
 pub mod key_mapping;
 pub mod option;
+pub mod recipe_book;
 pub mod registries;
 pub mod scroll;
 pub mod text;

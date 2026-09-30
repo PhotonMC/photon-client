@@ -72,6 +72,10 @@ pub(crate) const PLAY_CLIENTBOUND_CONTAINER_SET_CONTENT_PACKET_ID: i32 = 18;
 pub(crate) const PLAY_CLIENTBOUND_CONTAINER_SET_DATA_PACKET_ID: i32 = 19;
 pub(crate) const PLAY_CLIENTBOUND_CONTAINER_SET_SLOT_PACKET_ID: i32 = 20;
 pub(crate) const PLAY_CLIENTBOUND_UPDATE_RECIPES_PACKET_ID: i32 = 133;
+pub(crate) const PLAY_CLIENTBOUND_PLACE_GHOST_RECIPE_PACKET_ID: i32 = 63;
+pub(crate) const PLAY_CLIENTBOUND_RECIPE_BOOK_ADD_PACKET_ID: i32 = 74;
+pub(crate) const PLAY_CLIENTBOUND_RECIPE_BOOK_REMOVE_PACKET_ID: i32 = 75;
+pub(crate) const PLAY_CLIENTBOUND_RECIPE_BOOK_SETTINGS_PACKET_ID: i32 = 76;
 pub(crate) const PLAY_CLIENTBOUND_OPEN_SCREEN_PACKET_ID: i32 = 59;
 pub(crate) const PLAY_CLIENTBOUND_PLAYER_ABILITIES_PACKET_ID: i32 = 64;
 pub(crate) const PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID: i32 = 96;
@@ -104,6 +108,9 @@ pub(crate) const PLAY_SERVERBOUND_SET_CREATIVE_MODE_SLOT_PACKET_ID: i32 = 56;
 pub(crate) const PLAY_SERVERBOUND_CONTAINER_BUTTON_CLICK_PACKET_ID: i32 = 17;
 pub(crate) const PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID: i32 = 18;
 pub(crate) const PLAY_SERVERBOUND_RENAME_ITEM_PACKET_ID: i32 = 48;
+pub(crate) const PLAY_SERVERBOUND_PLACE_RECIPE_PACKET_ID: i32 = 39;
+pub(crate) const PLAY_SERVERBOUND_RECIPE_BOOK_CHANGE_SETTINGS_PACKET_ID: i32 = 46;
+pub(crate) const PLAY_SERVERBOUND_RECIPE_BOOK_SEEN_RECIPE_PACKET_ID: i32 = 47;
 pub(crate) const PLAY_SERVERBOUND_SWING_PACKET_ID: i32 = 63;
 pub(crate) const PLAY_SERVERBOUND_CONTAINER_CLOSE_PACKET_ID: i32 = 19;
 pub(crate) const PLAY_SERVERBOUND_USE_ITEM_ON_PACKET_ID: i32 = 66;
@@ -1936,6 +1943,154 @@ pub(crate) fn parse_update_recipes_packet(input: &[u8]) -> Result<RecipeUpdate, 
         sets: out,
         stonecutter,
     })
+}
+
+fn read_slot_displays(input: &mut &[u8]) -> Result<Vec<voxel_world::SlotDisplay>, ConnectionError> {
+    let count = read_varint(input, "recipe display count")?;
+    let mut all = Vec::new();
+    for _ in 0..count {
+        all.push(read_slot_display(input, 0)?);
+    }
+    Ok(all)
+}
+
+/// `RecipeDisplay.STREAM_CODEC`: the crafting station each one ends with is
+/// read and dropped.
+pub(crate) fn read_recipe_display(
+    input: &mut &[u8],
+) -> Result<voxel_world::RecipeDisplay, ConnectionError> {
+    use voxel_world::RecipeDisplay as R;
+    let slot = |input: &mut &[u8]| read_slot_display(input, 0);
+    Ok(match read_varint(input, "recipe display type")? {
+        0 => {
+            let ingredients = read_slot_displays(input)?;
+            let result = slot(input)?;
+            slot(input)?;
+            R::Shapeless {
+                ingredients,
+                result,
+            }
+        }
+        1 => {
+            let width = read_varint(input, "shaped width")?;
+            let height = read_varint(input, "shaped height")?;
+            let ingredients = read_slot_displays(input)?;
+            if i64::from(width) * i64::from(height) != ingredients.len() as i64 {
+                return Err(ConnectionError::Codec("shaped recipe size"));
+            }
+            let result = slot(input)?;
+            slot(input)?;
+            R::Shaped {
+                width,
+                height,
+                ingredients,
+                result,
+            }
+        }
+        2 => {
+            let ingredient = slot(input)?;
+            let fuel = slot(input)?;
+            let result = slot(input)?;
+            slot(input)?;
+            read_varint(input, "furnace duration")?;
+            read_f32(input, "furnace experience")?;
+            R::Furnace {
+                ingredient,
+                fuel,
+                result,
+            }
+        }
+        3 => {
+            slot(input)?;
+            let result = slot(input)?;
+            slot(input)?;
+            R::Stonecutter { result }
+        }
+        4 => {
+            slot(input)?;
+            slot(input)?;
+            slot(input)?;
+            let result = slot(input)?;
+            slot(input)?;
+            R::Smithing { result }
+        }
+        _ => return Err(ConnectionError::Codec("unknown recipe display")),
+    })
+}
+
+/// `ClientboundRecipeBookAddPacket`: the entries with their flag bytes, and
+/// whether they replace the book.
+pub(crate) fn parse_recipe_book_add_packet(
+    input: &[u8],
+) -> Result<(Vec<(voxel_world::RecipeDisplayEntry, u8)>, bool), ConnectionError> {
+    let mut input = input;
+    let count = read_varint(&mut input, "recipe book add count")?;
+    let mut entries = Vec::new();
+    for _ in 0..count {
+        let id = read_varint(&mut input, "recipe id")?;
+        let display = read_recipe_display(&mut input)?;
+        let group = match read_varint(&mut input, "recipe group")? {
+            0 => None,
+            value => Some(value - 1),
+        };
+        let category = read_varint(&mut input, "recipe category")?;
+        let requirements = if read_byte(&mut input, "recipe requirements flag")? != 0 {
+            let count = read_varint(&mut input, "recipe requirement count")?;
+            let mut all = Vec::new();
+            for _ in 0..count {
+                all.push(read_ingredient(&mut input)?);
+            }
+            Some(all)
+        } else {
+            None
+        };
+        let flags = read_byte(&mut input, "recipe flags")?;
+        entries.push((
+            voxel_world::RecipeDisplayEntry {
+                id,
+                display,
+                group,
+                category,
+                requirements,
+            },
+            flags,
+        ));
+    }
+    let replace = read_byte(&mut input, "recipe book replace")? != 0;
+    Ok((entries, replace))
+}
+
+pub(crate) fn parse_recipe_book_remove_packet(input: &[u8]) -> Result<Vec<i32>, ConnectionError> {
+    let mut input = input;
+    let count = read_varint(&mut input, "recipe book remove count")?;
+    let mut ids = Vec::new();
+    for _ in 0..count {
+        ids.push(read_varint(&mut input, "recipe book remove id")?);
+    }
+    Ok(ids)
+}
+
+/// `RecipeBookSettings.read`: open and filtering flags for crafting,
+/// furnace, blast furnace and smoker, in that order.
+pub(crate) fn parse_recipe_book_settings_packet(
+    input: &[u8],
+) -> Result<[voxel_world::BookTypeSettings; 4], ConnectionError> {
+    let mut input = input;
+    let mut settings = [voxel_world::BookTypeSettings::default(); 4];
+    for entry in &mut settings {
+        entry.open = read_byte(&mut input, "recipe book open")? != 0;
+        entry.filtering = read_byte(&mut input, "recipe book filtering")? != 0;
+    }
+    Ok(settings)
+}
+
+/// `ClientboundPlaceGhostRecipePacket`.
+pub(crate) fn parse_place_ghost_recipe_packet(
+    input: &[u8],
+) -> Result<(i32, voxel_world::RecipeDisplay), ConnectionError> {
+    let mut input = input;
+    let container = read_varint(&mut input, "ghost container")?;
+    Ok((container, read_recipe_display(&mut input)?))
 }
 
 pub(crate) fn parse_set_health_packet(input: &[u8]) -> Result<HealthObservation, ConnectionError> {

@@ -9,6 +9,7 @@ pub mod container;
 pub mod creative;
 pub mod generic;
 pub mod inventory;
+pub mod recipe_book;
 
 use voxel_game::container_menu::{ClickType, ContainerMenu};
 use voxel_game::creative_menu::Click;
@@ -38,6 +39,9 @@ pub struct ScreenDraw<'a, 'b> {
     pub item: &'a mut ItemDrawer<'b>,
     pub player: &'a mut PlayerDrawer<'b>,
     pub tooltip: &'a mut TooltipLines<'b>,
+    /// The recipe book and the item tags its recipes are read against.
+    pub book: &'a voxel_world::RecipeBook,
+    pub tags: &'a voxel_world::block::tags::ItemTags,
 }
 
 /// A click a screen asks the session to run.
@@ -52,6 +56,16 @@ pub enum ScreenAction {
     /// A button of the open menu pressed (`ContainerButtonClick`): a
     /// stonecutter recipe, a loom pattern or an enchantment.
     Button(i32),
+    /// The recipe book asks the server to place a recipe (`PlaceRecipe`).
+    PlaceRecipe { recipe: i32, shift: bool },
+    /// The recipe book was opened or closed, or its filter flipped.
+    RecipeBookSettings {
+        book_type: i32,
+        open: bool,
+        filtering: bool,
+    },
+    /// The ghost recipe goes.
+    ClearGhost,
 }
 
 /// What a key did to a screen.

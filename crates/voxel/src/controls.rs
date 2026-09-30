@@ -158,6 +158,13 @@ impl Controls {
         if let Some(mouse) = held.mouse {
             self.gui_mouse = mouse;
         }
+        if let (Some((button, shift)), Some(screen)) = (held.press, self.screen.as_mut()) {
+            let menu = session.active_menu().clone();
+            let now = std::time::Instant::now();
+            let mut actions = screen.mouse_clicked(self.gui_mouse, button, shift, now, &menu);
+            actions.extend(screen.mouse_released(self.gui_mouse, button, shift, &menu));
+            run_actions(session, &mut self.screen, actions)?;
+        }
         if let (Some(text), Some(screen)) = (held.typed, self.screen.as_mut()) {
             for character in text.chars() {
                 screen.char_typed(character);

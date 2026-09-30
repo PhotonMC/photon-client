@@ -3,13 +3,14 @@
 //! closed. The screen turns mouse and key input into menu clicks and draws
 //! the menu; the clicks themselves run in [`voxel_game::container_menu`].
 //!
-//! Not drawn: the recipe book; its button is drawn and takes the click, but
-//! does not open it.
+//! The recipe book beside it is [`super::recipe_book`]'s.
 
 use super::container::{ContainerLayout, ContainerMouse, SlotClick, SlotView, slot_key_clicks};
+use super::recipe_book::{RecipeAssets, RecipeBookPanel};
 use super::{KeyMods, KeyResult, Screen, ScreenAction, ScreenDraw};
 use crate::gui::edit_box::Clipboard;
 use voxel_game::container_menu::{ClickType, ContainerMenu, SLOT_COUNT};
+use voxel_game::recipe_book::BookKind;
 use voxel_world::ClientItemStackState as Stack;
 
 const IMAGE: (i32, i32) = (176, 166);
@@ -91,44 +92,53 @@ pub struct InventoryScreen {
     title: String,
     hovered: Option<usize>,
     mouse: ContainerMouse,
-    /// `InventoryScreen.buttonClicked`: the recipe book button took the
-    /// press, so the release is swallowed.
-    button_clicked: bool,
+    book: RecipeBookPanel,
 }
 
 impl InventoryScreen {
     /// A screen opened on a GUI of this size.
-    pub fn new(width: i32, height: i32, title: String) -> Self {
+    pub fn new(
+        width: i32,
+        height: i32,
+        title: String,
+        recipe: std::sync::Arc<RecipeAssets>,
+    ) -> Self {
         Self {
             layout: ContainerLayout::new(width, height, IMAGE),
             title,
             hovered: None,
             mouse: ContainerMouse::default(),
-            button_clicked: false,
+            book: RecipeBookPanel::new(
+                BookKind::Crafting { size: 2 },
+                IMAGE.0,
+                (104, -22),
+                recipe,
+                (width, height),
+            ),
         }
-    }
-
-    fn recipe_button(&self) -> (i32, i32) {
-        (self.layout.left() + 104, self.layout.height / 2 - 22)
-    }
-
-    fn on_recipe_button(&self, (x, y): (f64, f64)) -> bool {
-        let (bx, by) = self.recipe_button();
-        x >= f64::from(bx) && y >= f64::from(by) && x < f64::from(bx + 20) && y < f64::from(by + 18)
     }
 
     fn hovered_slot(&self, mouse: (f64, f64)) -> Option<usize> {
         self.layout.hovered(mouse, SLOT_COUNT, slot_position)
     }
 
-    fn actions(clicks: Vec<SlotClick>) -> Vec<ScreenAction> {
-        clicks.into_iter().map(ScreenAction::Container).collect()
+    /// The clicks as actions, with what the recipe book answers them with.
+    fn actions(&mut self, clicks: Vec<SlotClick>) -> Vec<ScreenAction> {
+        let mut actions = Vec::new();
+        for click in clicks {
+            self.book.slot_clicked(click.slot);
+            actions.extend(self.book.drain_actions());
+            actions.push(ScreenAction::Container(click));
+        }
+        actions
     }
 }
 
 impl Screen for InventoryScreen {
     fn resize(&mut self, width: i32, height: i32) {
         self.layout = ContainerLayout::new(width, height, IMAGE);
+        self.book.resize((width, height));
+        self.layout.left_override = Some(self.book.left_pos());
     }
 
     fn mouse_clicked(
@@ -140,17 +150,16 @@ impl Screen for InventoryScreen {
         menu: &ContainerMenu,
     ) -> Vec<ScreenAction> {
         let double = self.mouse.note_click(now, button);
-        // The recipe book button is a widget, which takes the press first.
-        if self.on_recipe_button(mouse) {
-            self.button_clicked = true;
-            return Vec::new();
+        // The recipe book's widgets take the press first.
+        if self.book.mouse_clicked(mouse, shift, self.layout.left()) {
+            return self.book.drain_actions();
         }
         let slot = self.hovered_slot(mouse);
         let outside = self.layout.outside(mouse);
-        Self::actions(
-            self.mouse
-                .clicked(double, slot, outside, button, shift, false, menu),
-        )
+        let clicks = self
+            .mouse
+            .clicked(double, slot, outside, button, shift, false, menu);
+        self.actions(clicks)
     }
 
     fn mouse_dragged(&mut self, mouse: (f64, f64), menu: &ContainerMenu) {
@@ -165,16 +174,15 @@ impl Screen for InventoryScreen {
         shift: bool,
         menu: &ContainerMenu,
     ) -> Vec<ScreenAction> {
-        if self.button_clicked {
-            self.button_clicked = false;
+        if self.book.take_swallowed_release() {
             return Vec::new();
         }
         let slot = self.hovered_slot(mouse);
         let outside = self.layout.outside(mouse);
-        Self::actions(
-            self.mouse
-                .released(slot, outside, button, shift, false, menu),
-        )
+        let clicks = self
+            .mouse
+            .released(slot, outside, button, shift, false, menu);
+        self.actions(clicks)
     }
 
     /// `keyPressed`: the inventory key and escape close the screen; the
@@ -185,17 +193,27 @@ impl Screen for InventoryScreen {
         key: glfw::Key,
         mods: KeyMods,
         menu: &ContainerMenu,
-        _clipboard: &mut dyn Clipboard,
+        clipboard: &mut dyn Clipboard,
     ) -> KeyResult {
+        if self
+            .book
+            .key_pressed(key, (mods.control || mods.command, mods.shift), clipboard)
+        {
+            return KeyResult::Actions(Vec::new());
+        }
         if matches!(key, glfw::Key::Escape | glfw::Key::E) {
             return KeyResult::Close;
         }
-        KeyResult::Actions(Self::actions(slot_key_clicks(
-            key,
-            mods.control,
-            self.hovered,
-            menu,
-        )))
+        let clicks = slot_key_clicks(key, mods.control, self.hovered, menu);
+        KeyResult::Actions(self.actions(clicks))
+    }
+
+    fn char_typed(&mut self, character: char) {
+        self.book.char_typed(character);
+    }
+
+    fn drain_actions(&mut self) -> Vec<ScreenAction> {
+        self.book.drain_actions()
     }
 
     fn scripted_click(&mut self, slot: i32, button: i32, kind: ClickType) -> ScreenAction {
@@ -206,6 +224,8 @@ impl Screen for InventoryScreen {
     /// button, the player, the title, the slots with the hovered one lit,
     /// the carried stack at the mouse, then the hovered stack's tooltip.
     fn build(&mut self, draw: &mut ScreenDraw<'_, '_>, menu: &ContainerMenu, mouse: (f64, f64)) {
+        self.book.sync(draw.book);
+        self.layout.left_override = Some(self.book.left_pos());
         let (left, top) = (self.layout.left(), self.layout.top());
         self.layout.background(draw);
         draw.frame.blit_texture(
@@ -218,13 +238,6 @@ impl Screen for InventoryScreen {
             IMAGE.0,
             IMAGE.1,
         );
-        let (bx, by) = self.recipe_button();
-        let button = if self.on_recipe_button(mouse) {
-            "recipe_book/button_highlighted"
-        } else {
-            "recipe_book/button"
-        };
-        draw.frame.sprite(draw.atlas, button, bx, by, 20, 18);
         let model = (draw.player)(
             (left + 26, top + 8, left + 75, top + 78),
             30.0,
@@ -252,6 +265,9 @@ impl Screen for InventoryScreen {
         if let Some(slot) = self.hovered {
             self.layout.highlight(draw, slot_position(slot), true);
         }
+        self.book.draw(draw, menu, mouse, left);
+        self.book
+            .draw_ghost(draw, menu, (left, top), &slot_position);
         self.mouse.draw_carried(draw, menu.carried.as_ref(), mouse);
         // The hovered stack's tooltip, when nothing is carried.
         if menu.carried.is_none()
@@ -277,7 +293,7 @@ mod tests {
 
     #[test]
     fn a_click_picks_up_on_press_and_places_on_release() {
-        let mut screen = InventoryScreen::new(427, 240, String::new());
+        let mut screen = InventoryScreen::new(427, 240, String::new(), std::sync::Arc::default());
         let mut menu = ContainerMenu::default();
         menu.slots[36] = Some(Stack::new(64, 1));
         let now = std::time::Instant::now();
@@ -314,7 +330,7 @@ mod tests {
 
     #[test]
     fn a_drag_over_slots_sends_the_quick_craft_steps() {
-        let mut screen = InventoryScreen::new(427, 240, String::new());
+        let mut screen = InventoryScreen::new(427, 240, String::new(), std::sync::Arc::default());
         let mut menu = ContainerMenu::default();
         menu.carried = Some(Stack::new(64, 1));
         let now = std::time::Instant::now();
@@ -349,7 +365,7 @@ mod tests {
 
     #[test]
     fn a_double_click_gathers() {
-        let mut screen = InventoryScreen::new(427, 240, String::new());
+        let mut screen = InventoryScreen::new(427, 240, String::new(), std::sync::Arc::default());
         let mut menu = ContainerMenu::default();
         menu.slots[20] = Some(Stack::new(5, 1));
         let now = std::time::Instant::now();

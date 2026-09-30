@@ -50,7 +50,10 @@ pub use entity::*;
 pub(crate) use metadata::*;
 pub use player::*;
 pub use prediction::{DestroyProgress, SyncedBlock};
-pub use recipes::{Ingredient, SlotDisplay, StonecutterEntry};
+pub use recipes::{
+    BookTypeSettings, Ingredient, RecipeBook, RecipeDisplay, RecipeDisplayEntry, SlotDisplay,
+    StonecutterEntry,
+};
 pub use region_copy::RegionCopy;
 
 /// The client-side copy of the currently loaded world.
@@ -69,6 +72,8 @@ pub struct ClientWorld {
     recipe_property_sets: BTreeMap<String, Arc<BTreeSet<i32>>>,
     /// The stonecutter's recipes, as the server sent them.
     stonecutter: Arc<Vec<StonecutterEntry>>,
+    /// The recipe book the server keeps the client in step with.
+    recipe_book: RecipeBook,
     chunks: BTreeMap<(i32, i32), ClientChunk>,
     chunk_cache: Option<ClientChunkCacheState>,
     /// The client level's light engine and the light tasks waiting for a
@@ -118,6 +123,7 @@ impl ClientWorld {
             block_state_registry: ClientBlockStateRegistry::default(),
             recipe_property_sets: BTreeMap::new(),
             stonecutter: Arc::default(),
+            recipe_book: RecipeBook::default(),
             chunks: BTreeMap::new(),
             chunk_cache: None,
             light: new_light_engine(dimension, true),
@@ -878,6 +884,14 @@ impl ClientWorld {
             .into_iter()
             .map(|(name, items)| (name, Arc::new(items.into_iter().collect())))
             .collect();
+    }
+
+    pub fn recipe_book(&self) -> &RecipeBook {
+        &self.recipe_book
+    }
+
+    pub fn recipe_book_mut(&mut self) -> &mut RecipeBook {
+        &mut self.recipe_book
     }
 
     /// `handleUpdateRecipes`'s stonecutter half.

@@ -14,7 +14,7 @@ const SPRITE_FOLDERS: [&str; 4] = ["hud", "container", "recipe_book", "tooltip"]
 
 /// Whole textures under `textures/gui` that screens blit parts of, packed as
 /// `texture/<name>`.
-const WHOLE_TEXTURES: [&str; 19] = [
+const WHOLE_TEXTURES: [&str; 20] = [
     "container/inventory",
     "container/generic_54",
     "container/dispenser",
@@ -34,6 +34,7 @@ const WHOLE_TEXTURES: [&str; 19] = [
     "container/creative_inventory/tab_items",
     "container/creative_inventory/tab_item_search",
     "container/creative_inventory/tab_inventory",
+    "recipe_book",
 ];
 
 /// The names of the banner pattern textures (`creeper`), without `banner`

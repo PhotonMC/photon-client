@@ -169,6 +169,8 @@ impl Gui {
                 item: &mut draw_item,
                 player: &mut draw_player,
                 tooltip: &mut tooltip_lines,
+                book: session.world().recipe_book(),
+                tags: session.world().block_state_registry().item_tags(),
             };
             screen.build(&mut draw, &menu, controls.gui_mouse);
         }

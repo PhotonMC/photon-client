@@ -31,6 +31,8 @@ pub struct HeldKeys {
     pub scroll: Option<i32>,
     /// The mouse moved to a place, in GUI units.
     pub mouse: Option<(f64, f64)>,
+    /// A mouse press and release at the mouse: button and whether shift is held.
+    pub press: Option<(i32, bool)>,
     /// Text typed into the open screen.
     pub typed: Option<&'static str>,
 }
@@ -111,6 +113,14 @@ impl HeldKeys {
                                     .map_err(|_| format!("bad mouse {other} in VOXEL_SCRIPT"))
                             };
                             keys.mouse = Some((number(x)?, number(y)?));
+                        }
+                        ["press", button] | ["press", button, _] => {
+                            keys.press = Some((
+                                button
+                                    .parse()
+                                    .map_err(|_| format!("bad press {other} in VOXEL_SCRIPT"))?,
+                                parts.len() == 3,
+                            ));
                         }
                         ["scroll", hundredths] => {
                             keys.scroll = Some(

@@ -4,6 +4,7 @@ use voxel_net::connection::PlaySession;
 use voxel_render::gui::screen::creative::{CreativeAssets, CreativeScreen};
 use voxel_render::gui::screen::generic::{GenericScreen, Titles};
 use voxel_render::gui::screen::inventory::InventoryScreen;
+use voxel_render::gui::screen::recipe_book::RecipeAssets;
 use voxel_render::gui::screen::{Screen, ScreenAction};
 use voxel_render::window::WindowSurface;
 
@@ -23,6 +24,25 @@ pub struct ScreenAssets {
 }
 
 impl ScreenAssets {
+    /// What the recipe book writes.
+    fn recipe_assets(&self) -> std::sync::Arc<RecipeAssets> {
+        let filtered = |key: &str| {
+            self.lang
+                .text(&format!("gui.recipebook.toggleRecipes.{key}"))
+        };
+        std::sync::Arc::new(RecipeAssets {
+            font: self.creative.font.clone(),
+            search_hint: self.lang.text("gui.recipebook.search_hint"),
+            filtered: [
+                filtered("craftable"),
+                filtered("smeltable"),
+                filtered("blastable"),
+                filtered("smokable"),
+            ],
+            all: filtered("all"),
+        })
+    }
+
     /// The screen of a container the server opened: `title_nbt` is the
     /// menu's title as the network wrote it.
     pub fn container_screen(
@@ -72,6 +92,7 @@ impl ScreenAssets {
                         })
                         .collect(),
                 ),
+                recipe: self.recipe_assets(),
             },
         ))
     }
@@ -91,6 +112,7 @@ impl ScreenAssets {
                 width,
                 height,
                 self.inventory_title.clone(),
+                self.recipe_assets(),
             ))
         }
     }
@@ -157,6 +179,13 @@ pub fn run_actions(
             }
             ScreenAction::Rename(name) => session.rename_item(&name)?,
             ScreenAction::Button(button) => session.container_button(button)?,
+            ScreenAction::PlaceRecipe { recipe, shift } => session.place_recipe(recipe, shift)?,
+            ScreenAction::RecipeBookSettings {
+                book_type,
+                open,
+                filtering,
+            } => session.set_recipe_book_settings(book_type, open, filtering)?,
+            ScreenAction::ClearGhost => session.clear_recipe_ghost(),
             ScreenAction::Creative(click) => {
                 if let Some(open) = screen.as_mut().and_then(|open| open.as_creative_mut()) {
                     session.creative_click(open.menu_mut(), click)?;

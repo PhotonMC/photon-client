@@ -575,6 +575,79 @@ impl PlaySession {
         )
     }
 
+    /// `ServerboundPlaceRecipePacket`: the recipe book asks the server to
+    /// move a recipe's ingredients into the open menu's grid.
+    pub fn place_recipe(&mut self, recipe: i32, shift: bool) -> Result<(), ConnectionError> {
+        let container_id = self.open_container_id();
+        self.send(PLAY_SERVERBOUND_PLACE_RECIPE_PACKET_ID, |output| {
+            voxel_core::wire::write_varint(container_id, output);
+            voxel_core::wire::write_varint(recipe, output);
+            output.push(u8::from(shift));
+            Ok(())
+        })
+    }
+
+    /// `ServerboundRecipeBookChangeSettingsPacket`: `book_type` is the
+    /// `RecipeBookType` ordinal.
+    pub fn recipe_book_settings(
+        &mut self,
+        book_type: i32,
+        open: bool,
+        filtering: bool,
+    ) -> Result<(), ConnectionError> {
+        self.send(
+            PLAY_SERVERBOUND_RECIPE_BOOK_CHANGE_SETTINGS_PACKET_ID,
+            |output| {
+                voxel_core::wire::write_varint(book_type, output);
+                output.push(u8::from(open));
+                output.push(u8::from(filtering));
+                Ok(())
+            },
+        )
+    }
+
+    /// `RecipeBookComponent.setVisible` and the filter button: the book's
+    /// settings change here at once and the server is told.
+    pub fn set_recipe_book_settings(
+        &mut self,
+        book_type: i32,
+        open: bool,
+        filtering: bool,
+    ) -> Result<(), ConnectionError> {
+        let book = self.trace.world.recipe_book_mut();
+        if let Some(settings) = book.settings.get_mut(book_type as usize) {
+            settings.open = open;
+            settings.filtering = filtering;
+            book.revision += 1;
+        }
+        self.recipe_book_settings(book_type, open, filtering)
+    }
+
+    /// `GhostSlots.clear`.
+    pub fn clear_recipe_ghost(&mut self) {
+        self.trace.world.recipe_book_mut().ghost = None;
+    }
+
+    /// `ServerboundRecipeBookSeenRecipePacket`: a highlighted recipe was seen.
+    pub fn recipe_seen(&mut self, recipe: i32) -> Result<(), ConnectionError> {
+        self.send(
+            PLAY_SERVERBOUND_RECIPE_BOOK_SEEN_RECIPE_PACKET_ID,
+            |output| {
+                voxel_core::wire::write_varint(recipe, output);
+                Ok(())
+            },
+        )
+    }
+
+    /// The open menu's container id; 0 is the player's own.
+    fn open_container_id(&self) -> i32 {
+        self.trace
+            .world
+            .local_player()
+            .and_then(|player| player.open_container())
+            .map_or(0, |container| container.container_id())
+    }
+
     /// `ServerboundRenameItemPacket`: the anvil's name box changed.
     pub fn rename_item(&mut self, name: &str) -> Result<(), ConnectionError> {
         self.send(PLAY_SERVERBOUND_RENAME_ITEM_PACKET_ID, |output| {
@@ -1303,6 +1376,32 @@ impl PlaySession {
                     packet.id,
                     packet.value,
                 );
+            }
+            PLAY_CLIENTBOUND_RECIPE_BOOK_ADD_PACKET_ID => {
+                match parse_recipe_book_add_packet(payload) {
+                    Ok((entries, replace)) => {
+                        self.trace.world.recipe_book_mut().add(entries, replace);
+                    }
+                    Err(error) => self.warn(format!("recipe book add: {error:?}")),
+                }
+            }
+            PLAY_CLIENTBOUND_RECIPE_BOOK_REMOVE_PACKET_ID => {
+                match parse_recipe_book_remove_packet(payload) {
+                    Ok(ids) => self.trace.world.recipe_book_mut().remove(&ids),
+                    Err(error) => self.warn(format!("recipe book remove: {error:?}")),
+                }
+            }
+            PLAY_CLIENTBOUND_RECIPE_BOOK_SETTINGS_PACKET_ID => {
+                match parse_recipe_book_settings_packet(payload) {
+                    Ok(settings) => self.trace.world.recipe_book_mut().set_settings(settings),
+                    Err(error) => self.warn(format!("recipe book settings: {error:?}")),
+                }
+            }
+            PLAY_CLIENTBOUND_PLACE_GHOST_RECIPE_PACKET_ID => {
+                match parse_place_ghost_recipe_packet(payload) {
+                    Ok(ghost) => self.trace.world.recipe_book_mut().ghost = Some(ghost),
+                    Err(error) => self.warn(format!("place ghost recipe: {error:?}")),
+                }
             }
             PLAY_CLIENTBOUND_UPDATE_RECIPES_PACKET_ID => {
                 match parse_update_recipes_packet(payload) {

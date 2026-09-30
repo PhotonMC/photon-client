@@ -6,11 +6,13 @@
 mod transform;
 
 use super::container::{ContainerLayout, ContainerMouse, SlotClick, slot_key_clicks};
+use super::recipe_book::{RecipeAssets, RecipeBookPanel};
 use super::{KeyMods, KeyResult, Screen, ScreenAction, ScreenDraw};
 use crate::gui::edit_box::Clipboard;
 use crate::gui::font::Font;
 use crate::gui::frame::GuiBlend;
 use voxel_game::container_menu::{ClickType, ContainerMenu, MenuKind, Smelter};
+use voxel_game::recipe_book::BookKind;
 
 /// The size of the screen's image for a menu.
 fn image(kind: MenuKind) -> (i32, i32) {
@@ -88,6 +90,8 @@ pub struct Titles {
     pub alt_font: std::sync::Arc<Font>,
     /// Each enchantment's name, by registry id, for the clue it gives.
     pub enchantments: std::sync::Arc<Vec<String>>,
+    /// What the recipe book writes.
+    pub recipe: std::sync::Arc<RecipeAssets>,
 }
 
 /// A generic container screen's own state between events.
@@ -98,9 +102,8 @@ pub struct GenericScreen {
     titles: Titles,
     hovered: Option<usize>,
     mouse: ContainerMouse,
-    /// The recipe book button of the crafting table took the press, so the
-    /// release is swallowed; the book itself is not drawn.
-    button_clicked: bool,
+    /// The recipe book, for the menus that have one.
+    book: Option<RecipeBookPanel>,
     /// What only the menus that transform their items keep.
     extras: transform::Extras,
 }
@@ -108,33 +111,24 @@ pub struct GenericScreen {
 impl GenericScreen {
     /// A screen for a menu, opened on a GUI of this size.
     pub fn new(kind: MenuKind, width: i32, height: i32, titles: Titles) -> Self {
+        // `CraftingScreen` and `AbstractFurnaceScreen` place the toggle button.
+        let button = if kind == MenuKind::Crafting {
+            (5, -49)
+        } else {
+            (20, -49)
+        };
+        let book = BookKind::of_menu(kind).map(|book| {
+            RecipeBookPanel::new(book, 176, button, titles.recipe.clone(), (width, height))
+        });
         Self {
             kind,
             layout: ContainerLayout::new(width, height, image(kind)),
             titles,
             hovered: None,
             mouse: ContainerMouse::default(),
-            button_clicked: false,
+            book,
             extras: transform::Extras::new(),
         }
-    }
-
-    /// The crafting table's recipe book button, where `CraftingScreen` puts it.
-    fn recipe_button(&self) -> Option<(i32, i32)> {
-        match self.kind {
-            MenuKind::Crafting => Some((self.layout.left() + 5, self.layout.height / 2 - 49)),
-            MenuKind::Furnace(_) => Some((self.layout.left() + 20, self.layout.height / 2 - 49)),
-            _ => None,
-        }
-    }
-
-    fn on_recipe_button(&self, (x, y): (f64, f64)) -> bool {
-        self.recipe_button().is_some_and(|(bx, by)| {
-            x >= f64::from(bx)
-                && y >= f64::from(by)
-                && x < f64::from(bx + 20)
-                && y < f64::from(by + 18)
-        })
     }
 
     fn hovered_slot(&self, mouse: (f64, f64)) -> Option<usize> {
@@ -248,14 +242,27 @@ impl GenericScreen {
         );
     }
 
-    fn actions(clicks: Vec<SlotClick>) -> Vec<ScreenAction> {
-        clicks.into_iter().map(ScreenAction::Container).collect()
+    /// The clicks as actions, with what the recipe book answers them with.
+    fn actions(&mut self, clicks: Vec<SlotClick>) -> Vec<ScreenAction> {
+        let mut actions = Vec::new();
+        for click in clicks {
+            if let Some(book) = &mut self.book {
+                book.slot_clicked(click.slot);
+                actions.extend(book.drain_actions());
+            }
+            actions.push(ScreenAction::Container(click));
+        }
+        actions
     }
 }
 
 impl Screen for GenericScreen {
     fn resize(&mut self, width: i32, height: i32) {
         self.layout = ContainerLayout::new(width, height, image(self.kind));
+        if let Some(book) = &mut self.book {
+            book.resize((width, height));
+            self.layout.left_override = Some(book.left_pos());
+        }
     }
 
     fn mouse_clicked(
@@ -282,16 +289,17 @@ impl Screen for GenericScreen {
         if let Some(row) = self.enchant_click(mouse, menu) {
             return vec![ScreenAction::Button(row)];
         }
-        if self.on_recipe_button(mouse) {
-            self.button_clicked = true;
-            return Vec::new();
+        if let Some(book) = &mut self.book
+            && book.mouse_clicked(mouse, shift, self.layout.left())
+        {
+            return book.drain_actions();
         }
         let slot = self.hovered_slot(mouse);
         let outside = self.layout.outside(mouse);
-        Self::actions(
-            self.mouse
-                .clicked(double, slot, outside, button, shift, false, menu),
-        )
+        let clicks = self
+            .mouse
+            .clicked(double, slot, outside, button, shift, false, menu);
+        self.actions(clicks)
     }
 
     fn mouse_dragged(&mut self, mouse: (f64, f64), menu: &ContainerMenu) {
@@ -310,15 +318,19 @@ impl Screen for GenericScreen {
     ) -> Vec<ScreenAction> {
         self.stone_release();
         self.loom_release();
-        if std::mem::take(&mut self.button_clicked) {
+        if self
+            .book
+            .as_mut()
+            .is_some_and(RecipeBookPanel::take_swallowed_release)
+        {
             return Vec::new();
         }
         let slot = self.hovered_slot(mouse);
         let outside = self.layout.outside(mouse);
-        Self::actions(
-            self.mouse
-                .released(slot, outside, button, shift, false, menu),
-        )
+        let clicks = self
+            .mouse
+            .released(slot, outside, button, shift, false, menu);
+        self.actions(clicks)
     }
 
     /// `keyPressed`: the inventory key and escape close the screen; the
@@ -331,6 +343,11 @@ impl Screen for GenericScreen {
         menu: &ContainerMenu,
         clipboard: &mut dyn Clipboard,
     ) -> KeyResult {
+        if let Some(book) = &mut self.book
+            && book.key_pressed(key, (mods.control || mods.command, mods.shift), clipboard)
+        {
+            return KeyResult::Actions(Vec::new());
+        }
         if let Some(result) = self.name_key(
             key,
             mods.control || mods.command,
@@ -343,12 +360,8 @@ impl Screen for GenericScreen {
         if matches!(key, glfw::Key::Escape | glfw::Key::E) {
             return KeyResult::Close;
         }
-        KeyResult::Actions(Self::actions(slot_key_clicks(
-            key,
-            mods.control,
-            self.hovered,
-            menu,
-        )))
+        let clicks = slot_key_clicks(key, mods.control, self.hovered, menu);
+        KeyResult::Actions(self.actions(clicks))
     }
 
     fn mouse_scrolled(&mut self, y: f64) {
@@ -357,11 +370,20 @@ impl Screen for GenericScreen {
     }
 
     fn char_typed(&mut self, character: char) {
+        if let Some(book) = &mut self.book
+            && book.char_typed(character)
+        {
+            return;
+        }
         self.name_char(character);
     }
 
     fn drain_actions(&mut self) -> Vec<ScreenAction> {
-        self.take_queued()
+        let mut actions = self.take_queued();
+        if let Some(book) = &mut self.book {
+            actions.extend(book.drain_actions());
+        }
+        actions
     }
 
     fn scripted_click(&mut self, slot: i32, button: i32, kind: ClickType) -> ScreenAction {
@@ -372,6 +394,10 @@ impl Screen for GenericScreen {
     /// slots with the hovered one lit, the carried stack at the mouse, then
     /// the hovered stack's tooltip.
     fn build(&mut self, draw: &mut ScreenDraw<'_, '_>, menu: &ContainerMenu, mouse: (f64, f64)) {
+        if let Some(book) = &mut self.book {
+            book.sync(draw.book);
+            self.layout.left_override = Some(book.left_pos());
+        }
         let (left, top) = (self.layout.left(), self.layout.top());
         let (width, height) = image(self.kind);
         self.layout.background(draw);
@@ -380,14 +406,6 @@ impl Screen for GenericScreen {
             self.furnace_progress(draw, menu, smelter);
         }
         self.draw_extras(draw, menu, mouse, (left, top));
-        if let Some((bx, by)) = self.recipe_button() {
-            let button = if self.on_recipe_button(mouse) {
-                "recipe_book/button_highlighted"
-            } else {
-                "recipe_book/button"
-            };
-            draw.frame.sprite(draw.atlas, button, bx, by, 20, 18);
-        }
         // The dispenser centres its title; the others keep it at the corner.
         let (label_x, label_y) = transform::title_label(self.kind);
         let title_x = if matches!(self.kind, MenuKind::Dispenser | MenuKind::Furnace(_)) {
@@ -430,6 +448,10 @@ impl Screen for GenericScreen {
         if let Some(slot) = self.hovered {
             self.layout.highlight(draw, slot_position(kind, slot), true);
         }
+        if let Some(book) = &mut self.book {
+            book.draw(draw, menu, mouse, left);
+            book.draw_ghost(draw, menu, (left, top), &|slot| slot_position(kind, slot));
+        }
         self.mouse.draw_carried(draw, menu.carried.as_ref(), mouse);
         if menu.carried.is_none()
             && let Some(stack) = self
@@ -459,6 +481,7 @@ mod tests {
             lang: std::sync::Arc::default(),
             alt_font: std::sync::Arc::new(Font::default()),
             enchantments: std::sync::Arc::default(),
+            recipe: std::sync::Arc::default(),
         }
     }
 

@@ -479,6 +479,8 @@ pub struct ContainerLayout {
     pub height: i32,
     /// The image's size (`imageWidth`, `imageHeight`).
     pub image: (i32, i32),
+    /// A `leftPos` the recipe book moved the image to.
+    pub left_override: Option<i32>,
 }
 
 impl ContainerLayout {
@@ -487,12 +489,14 @@ impl ContainerLayout {
             width,
             height,
             image,
+            left_override: None,
         }
     }
 
     /// `leftPos`.
     pub fn left(&self) -> i32 {
-        (self.width - self.image.0) / 2
+        self.left_override
+            .unwrap_or((self.width - self.image.0) / 2)
     }
 
     /// `topPos`.
