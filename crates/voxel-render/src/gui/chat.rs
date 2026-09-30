@@ -290,6 +290,8 @@ pub struct ChatScreen {
     skip_char: bool,
     /// The list of matches the server sent for the text, when there is one.
     list: Option<SuggestionsList>,
+    /// The list is for text since edited: it waits for the server's answer.
+    stale: bool,
     /// The request to send: its id and text, and the id of the last sent.
     request: Option<(i32, String)>,
     request_id: i32,
@@ -314,6 +316,7 @@ impl ChatScreen {
             focused_at: Instant::now(),
             skip_char: true,
             list: None,
+            stale: false,
             request: None,
             request_id: 0,
             applied: false,
@@ -343,9 +346,15 @@ impl ChatScreen {
             return;
         }
         self.edit.set_suggestion(None);
-        self.list = None;
+        self.stale = true;
         let text = self.edit.value();
         let cursor = self.edit.cursor();
+        // The reference knows the commands and answers within the same frame;
+        // here the server answers a moment later, so the list stays up until
+        // its answer replaces it, rather than blinking out between keys.
+        if !(text.starts_with('/') && cursor >= 1) {
+            self.list = None;
+        }
         if text.starts_with('/') && cursor >= 1 {
             self.request_id += 1;
             let typed: String = text.chars().take(cursor).collect();
@@ -359,6 +368,7 @@ impl ChatScreen {
         if id != self.request_id {
             return;
         }
+        self.stale = false;
         let value = self.edit.value();
         let typed: String = value.chars().take(self.edit.cursor()).collect();
         self.list = SuggestionsList::new(
@@ -378,6 +388,7 @@ impl ChatScreen {
         let ghost = self
             .list
             .as_ref()
+            .filter(|_| !self.stale)
             .and_then(|list| list.ghost(&self.edit.value()));
         self.edit.set_suggestion(ghost);
     }
@@ -396,6 +407,10 @@ impl ChatScreen {
         let Some(list) = &mut self.list else {
             return false;
         };
+        if self.stale && key != ListKey::Escape {
+            // The list is for older text; the answer is on its way.
+            return true;
+        }
         if key == ListKey::Escape {
             self.list = None;
             self.edit.set_suggestion(None);
@@ -593,6 +608,41 @@ mod tests {
             .collect();
         // A newline breaks the line without indenting the next.
         assert_eq!(texts, ["ab", "cd"]);
+    }
+
+    #[test]
+    fn the_list_stays_up_between_keys_until_the_answer_replaces_it() {
+        let Some(font) = Font::load(std::path::Path::new(
+            &std::env::var("VOXEL_ASSETS").unwrap_or_default(),
+        )) else {
+            return;
+        };
+        let mut screen =
+            ChatScreen::new(Arc::new(font), (427, 240), "/g", Vec::new()).without_key();
+        screen.suggested(0, 1, 1, vec!["gamemode".into(), "gamerule".into()]);
+        assert!(screen.list.is_some());
+        // A key asks again; the list does not blink out meanwhile.
+        screen.char_typed('a');
+        let (id, text) = screen.take_request().expect("a request");
+        assert_eq!(text, "/ga");
+        assert!(screen.list.is_some() && screen.stale);
+        screen.suggested(id, 1, 2, vec!["gamemode".into(), "gamerule".into()]);
+        assert!(!screen.stale);
+        // Text that is no command has no list.
+        for _ in 0..3 {
+            screen.key_pressed(glfw::Key::Backspace, (false, false), &mut NoClip);
+        }
+        assert!(screen.list.is_none());
+    }
+
+    struct NoClip;
+
+    impl Clipboard for NoClip {
+        fn get(&mut self) -> String {
+            String::new()
+        }
+
+        fn set(&mut self, _text: &str) {}
     }
 
     #[test]
