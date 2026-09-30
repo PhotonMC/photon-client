@@ -114,6 +114,12 @@ def preflight(families, runtime, jdk_home, run_dir):
             raise Blocked(f"Expected {name} {pin['java_major']}; got {version}")
         versions[name] = version
     sources = [SPEC / "java/Oracle.java"] + [SPEC / "java" / pin["families"][f]["source"] for f in sorted(families)]
+    # A family that builds on another's helpers (the screens use the movement
+    # family's menus) names those sources too.
+    for family in sorted(families):
+        for extra in pin["families"][family].get("extra_sources", []):
+            if SPEC / "java" / extra not in sources:
+                sources.append(SPEC / "java" / extra)
     # The math family calls one LWJGL helper and would otherwise need natives,
     # so it compiles a stub. Compiled classes come before the jars, so that stub
     # would also shadow the real class for any family that pulls LWJGL in for

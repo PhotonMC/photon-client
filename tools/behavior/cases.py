@@ -14130,6 +14130,66 @@ def gui_tab_list_cases():
     yield {"case_id": "gui/tab-list", "family": "gui", "operation": "tab_list", "rows": rows}
 
 
+def gui_container_screen_cases():
+    """The screens of the menus that change their items, over the reference's
+    own menu: labels, textures, sprites, name box and what each shows of its
+    data. Slots hold items, which are not recorded."""
+    def screen(label, menu, title_key, slots=(), data=None, xp=None, keys=(), sync_slot=None,
+               mouse=(0, 0), width=427, height=240, stonecutter=()):
+        row = {"label": label, "width": width, "height": height, "mouse_x": mouse[0],
+               "mouse_y": mouse[1], "menu": f"minecraft:{menu}", "title_key": title_key,
+               "container_id": 4, "game_mode": "survival", "selected": 0, "state_id": 0,
+               "blocks": [], "chunk_radius": 0, "clicks": [], "keys": list(keys),
+               "slots": [{"slot": slot, "item": f"minecraft:{item}", "count": count}
+                         for slot, item, count in slots]}
+        if data is not None:
+            row["data"] = data
+        if xp is not None:
+            row["xp_level"] = xp
+        if sync_slot is not None:
+            row["sync_slot"] = sync_slot
+        if stonecutter:
+            row["stonecutter_inputs"] = list(stonecutter)
+            # Its entries show no item the reference can name here.
+            row["tooltips"] = False
+        return row
+
+    rows = [
+        screen("anvil-empty", "anvil", "container.repair"),
+        screen("anvil-item", "anvil", "container.repair", slots=[(0, "iron_sword", 1)], sync_slot=0),
+        screen("anvil-no-result", "anvil", "container.repair", slots=[(0, "iron_sword", 1)],
+               data=[0], sync_slot=0),
+        screen("grindstone-empty", "grindstone", "container.grindstone_title"),
+        screen("grindstone-error", "grindstone", "container.grindstone_title",
+               slots=[(0, "iron_sword", 1)]),
+        screen("stonecutter-empty", "stonecutter", "container.stonecutter"),
+        screen("stonecutter-entries", "stonecutter", "container.stonecutter",
+               slots=[(0, "iron_ingot", 1)], stonecutter=["minecraft:iron_ingot"] * 5, data=[2],
+               sync_slot=0),
+        screen("stonecutter-hover", "stonecutter", "container.stonecutter",
+               slots=[(0, "iron_ingot", 1)], stonecutter=["minecraft:iron_ingot"] * 5, data=[-1],
+               mouse=(198, 56), sync_slot=0),
+        screen("stonecutter-scrollable", "stonecutter", "container.stonecutter",
+               slots=[(0, "iron_ingot", 1)], stonecutter=["minecraft:iron_ingot"] * 14, data=[-1],
+               sync_slot=0),
+        screen("loom-empty", "loom", "container.loom"),
+        screen("enchanting-empty", "enchantment", "container.enchant"),
+        screen("enchanting-rows", "enchantment", "container.enchant",
+               slots=[(0, "diamond_sword", 1), (1, "lapis_lazuli", 3)], xp=30,
+               data=[10, 20, 30, 12345, -1, -1, -1, -1, -1, -1]),
+        screen("enchanting-poor", "enchantment", "container.enchant",
+               slots=[(0, "diamond_sword", 1), (1, "lapis_lazuli", 1)], xp=15,
+               data=[10, 20, 30, 777, -1, -1, -1, -1, -1, -1]),
+        screen("enchanting-hover", "enchantment", "container.enchant",
+               slots=[(0, "diamond_sword", 1), (1, "lapis_lazuli", 3)], xp=30,
+               data=[10, 20, 30, 12345, -1, -1, -1, -1, -1, -1], mouse=(195, 56)),
+        screen("narrow", "anvil", "container.repair", width=320, height=240),
+        screen("tall", "grindstone", "container.grindstone_title", width=640, height=480),
+    ]
+    yield {"case_id": "gui/container-screen", "family": "gui", "operation": "container_screen",
+           "rows": rows}
+
+
 def gui_suggestion_cases():
     """The chat box's list of matches: where it sits, which one is chosen, what
     Tab, Shift+Tab, the arrow keys and Escape do to the list and the text, and
@@ -14166,7 +14226,8 @@ def build_cases(families):
                   "movement": movement_cases,
                   "entity": entity_cases,
                   "gui": gui_cases}
-    generators["gui"] = lambda: itertools.chain(gui_cases(), gui_suggestion_cases(), gui_title_cases(), gui_tab_list_cases())
+    generators["gui"] = lambda: itertools.chain(gui_cases(), gui_suggestion_cases(), gui_title_cases(), gui_tab_list_cases(),
+                                          gui_container_screen_cases())
     cases = [dict(schema_version=1, **case)
              for family in sorted(families) for case in generators[family]()]
     ids = [case["case_id"] for case in cases]

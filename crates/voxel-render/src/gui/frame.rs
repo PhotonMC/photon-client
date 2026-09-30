@@ -43,6 +43,12 @@ pub enum DrawOp {
         name: String,
         rect: (i32, i32, i32, i32),
     },
+    /// A part of a whole texture, as fractions of it.
+    Texture {
+        name: String,
+        rect: (i32, i32, i32, i32),
+        uv: (f32, f32, f32, f32),
+    },
     Text {
         /// Where the text starts, after any pose a caller applied, and the
         /// scale of the pose.
@@ -203,6 +209,19 @@ impl GuiFrame {
         w: i32,
         h: i32,
     ) {
+        if let Some(log) = &mut self.log {
+            let (tw, th) = (texture_size.0 as f32, texture_size.1 as f32);
+            log.push(DrawOp::Texture {
+                name: name.to_owned(),
+                rect: (x, y, x + w, y + h),
+                uv: (
+                    uv.0 as f32 / tw,
+                    uv.0 as f32 / tw + w as f32 / tw,
+                    uv.1 as f32 / th,
+                    uv.1 as f32 / th + h as f32 / th,
+                ),
+            });
+        }
         self.blit_part(
             atlas,
             GuiBlend::Translucent,
@@ -304,6 +323,13 @@ impl GuiFrame {
         w: i32,
         h: i32,
     ) {
+        if let Some(log) = &mut self.log {
+            // The reference blits a nine-slice sprite as one call.
+            log.push(DrawOp::Sprite {
+                name: name.to_owned(),
+                rect: (x, y, x + w, y + h),
+            });
+        }
         let blend = GuiBlend::Translucent;
         let (inner_w, inner_h) = (tex.0 - 2 * border, tex.1 - 2 * border);
         let (mid_w, mid_h) = (w - 2 * border, h - 2 * border);

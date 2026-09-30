@@ -101,6 +101,10 @@ genişletilmesi (`client-parity`), ekranlar canlı gözlem.
 - Tarif kitabı çekirdeği var; kaplama, vurgu/tost, `SeenRecipe` ve dar ekran
   düzeni eksik (ayrıntı `generic-container-conformance.md`).
 - Kap içeriği ipucu (shulker/bundle satırları) ve `#etiket` araması yok.
+- Java menüleri girdi değişince sonucu istemcide de hesaplar (`AnvilMenu.createResult`,
+  `GrindstoneMenu.createResult`, `LoomMenu.slotsChanged`): bizde sonuç yuvası
+  yalnız sunucunun gönderdiği olur (taşınmadı). Anvil için onarım maliyeti, büyü
+  birleştirme ve yeniden adlandırma tahmini L iş.
 - Modellenmeyen menüler açılınca istemci hemen kapanış paketi gönderir.
 
 ## 4. M4 — Entity'ler

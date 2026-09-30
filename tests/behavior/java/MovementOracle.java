@@ -163,7 +163,7 @@ public final class MovementOracle {
     }
 
     /** Bring the game up once, with the vanilla data pack's registries and tags. */
-    private static synchronized void bootstrap() throws Exception {
+    static synchronized void bootstrap() throws Exception {
         if (bootstrapped) {
             return;
         }
@@ -543,9 +543,11 @@ public final class MovementOracle {
      * and the carried stack are reported. Stacks carry no components, so
      * their hashes are never asked for.
      */
-    private static JsonObject containerClicks(JsonObject row) throws Exception {
-        var entry = new JsonObject();
-        entry.addProperty("label", row.get("label").getAsString());
+    /** A menu and the game around it: the scene, the player and the menu, slots and data set. */
+    record OpenMenu(Scene scene, net.minecraft.client.player.LocalPlayer player,
+                    net.minecraft.world.inventory.AbstractContainerMenu menu, int containerId) {}
+
+    static OpenMenu openMenu(JsonObject row) throws Exception {
         var scene = buildScene(row);
         var listener = scene.listener();
         var minecraft = scene.minecraft();
@@ -649,6 +651,20 @@ public final class MovementOracle {
             }
         }
         setField(menu, "stateId", row.get("state_id").getAsInt());
+        return new OpenMenu(scene, player, menu, containerId);
+    }
+
+    private static JsonObject containerClicks(JsonObject row) throws Exception {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        var open = openMenu(row);
+        var scene = open.scene();
+        var listener = scene.listener();
+        var minecraft = scene.minecraft();
+        var player = open.player();
+        var menu = open.menu();
+        int containerId = open.containerId();
+        var gameMode = minecraft.gameMode;
         var wire = scene.wire();
         var clicks = new JsonArray();
         for (var element : row.getAsJsonArray("clicks")) {

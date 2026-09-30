@@ -140,6 +140,30 @@
     "com.ibm.icu:icu4j": {
       "file": "icu4j-78.3.jar",
       "sha1": "6a851a53bb1f25689fc418dcc8935b0d93580adf"
+    },
+    "org.lwjgl:lwjgl-glfw-natives-linux": {
+      "file": "lwjgl-glfw-3.4.1-natives-linux.jar",
+      "sha1": "23cdf7655ce9f3b27ad90f08e73345e0d5b46362"
+    },
+    "org.lwjgl:lwjgl-glfw-natives-macos": {
+      "file": "lwjgl-glfw-3.4.1-natives-macos.jar",
+      "sha1": "3c8538942f58377d59cd7be2dc164ba71a53868a"
+    },
+    "org.lwjgl:lwjgl-glfw-natives-macos-arm64": {
+      "file": "lwjgl-glfw-3.4.1-natives-macos-arm64.jar",
+      "sha1": "ef1f8efca5a60ba3512bc4982b88e446ecc43378"
+    },
+    "org.lwjgl:lwjgl-glfw-natives-windows": {
+      "file": "lwjgl-glfw-3.4.1-natives-windows.jar",
+      "sha1": "2eb4aa895ea190ba8cf4356f8cea24d3ebb40ea1"
+    },
+    "org.lwjgl:lwjgl-glfw-natives-windows-arm64": {
+      "file": "lwjgl-glfw-3.4.1-natives-windows-arm64.jar",
+      "sha1": "196101d96d9b2aa73264a96ae1dc8944a1446cee"
+    },
+    "org.lwjgl:lwjgl-glfw-natives-windows-x86": {
+      "file": "lwjgl-glfw-3.4.1-natives-windows-x86.jar",
+      "sha1": "a48bbdd544f00c88f8906e9d09e3f31bc1c17fac"
     }
   },
   "families": {
@@ -442,7 +466,11 @@
         "org.lwjgl:lwjgl-stb",
         "org.lwjgl:lwjgl-stb-natives-linux",
         "org.slf4j:slf4j-api",
-        "com.ibm.icu:icu4j"
+        "com.ibm.icu:icu4j",
+        "org.lwjgl:lwjgl-glfw-natives-linux"
+      ],
+      "extra_sources": [
+        "MovementOracle.java"
       ]
     }
   }

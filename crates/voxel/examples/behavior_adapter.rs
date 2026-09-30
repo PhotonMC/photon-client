@@ -18367,7 +18367,9 @@ fn gui_ops(ops: &[voxel_render::gui::DrawOp]) -> Vec<Value> {
             String::new(),
             i64::from(*colour as i32),
         ),
-        DrawOp::Sprite { rect, .. } => (1, rect.1, rect.0, rect.2, rect.3, String::new(), -1),
+        DrawOp::Sprite { rect, name } | DrawOp::Texture { rect, name, .. } => {
+            (1, rect.1, rect.0, rect.2, rect.3, name.clone(), -1)
+        }
         DrawOp::Text {
             x, y, colour, runs, ..
         } => (
@@ -18389,6 +18391,11 @@ fn gui_ops(ops: &[voxel_render::gui::DrawOp]) -> Vec<Value> {
                 "op": "fill", "x0": f64::from(rect.0), "y0": f64::from(rect.1),
                 "x1": f64::from(rect.2), "y1": f64::from(rect.3),
                 "color": *colour as i32,
+            }),
+            DrawOp::Texture { name, rect, uv } => json!({
+                "op": "texture", "name": name, "x0": f64::from(rect.0), "y0": f64::from(rect.1),
+                "x1": f64::from(rect.2), "y1": f64::from(rect.3), "color": -1,
+                "u0": f64::from(uv.0), "u1": f64::from(uv.1), "v0": f64::from(uv.2), "v1": f64::from(uv.3),
             }),
             DrawOp::Sprite { name, rect } => json!({
                 "op": "sprite", "name": name, "x0": f64::from(rect.0), "y0": f64::from(rect.1),
@@ -18637,6 +18644,122 @@ fn gui_result(request: &Value) -> Result<Value, String> {
                     &runs("footer"),
                 );
             }
+            "container_screen" => {
+                use voxel_render::gui::screen::Screen;
+                use voxel_render::gui::screen::generic::{EnchantText, GenericScreen, Titles};
+                let name = row["menu"].as_str().ok_or("menu")?;
+                let mut menu = menu_named(name, row)?;
+                for slot in row["slots"].as_array().ok_or("slots")? {
+                    let index = slot["slot"].as_u64().ok_or("slot")? as usize;
+                    let item = voxel_game::item::id_of(slot["item"].as_str().ok_or("item")?)
+                        .ok_or("unknown item")?;
+                    menu.slots[index] = Some(voxel_world::ClientItemStackState::new(
+                        slot["count"].as_i64().unwrap_or(1) as i32,
+                        item,
+                    ));
+                }
+                // The stonecutter's entries for the item in its slot, each
+                // showing an item (which the screen draws and this run does not
+                // record).
+                if let (Some(inputs), Some(Some(input))) = (
+                    row["stonecutter_inputs"].as_array(),
+                    menu.slots
+                        .first()
+                        .map(|slot| slot.as_ref().map(|s| s.item_registry_id())),
+                ) {
+                    menu.options = inputs
+                        .iter()
+                        .filter(|name| {
+                            name.as_str()
+                                .and_then(voxel_game::item::id_of)
+                                .is_some_and(|id| id == input)
+                        })
+                        .map(|_| 1)
+                        .collect();
+                }
+                let lang = std::sync::Arc::new(voxel_game::text::Lang::load(&root));
+                let shared_font = std::sync::Arc::new(Font::load(&root).ok_or("font")?);
+                let titles = Titles {
+                    title: lang.text(row["title_key"].as_str().ok_or("title_key")?),
+                    inventory: lang.text("container.inventory"),
+                    font: shared_font.clone(),
+                    repair_cost: lang.text("container.repair.cost"),
+                    repair_expensive: lang.text("container.repair.expensive"),
+                    patterns: std::sync::Arc::default(),
+                    lang: lang.clone(),
+                    alt_font: std::sync::Arc::new(Font::load_alt(&root).ok_or("alt font")?),
+                    enchantments: std::sync::Arc::new(Vec::<EnchantText>::new()),
+                    recipe: std::sync::Arc::default(),
+                };
+                let (width, height) = (int("width"), int("height"));
+                let mut screen = GenericScreen::new(menu.kind, width, height, titles);
+                let mouse = (f64::from(int("mouse_x")), f64::from(int("mouse_y")));
+                let mut steps = Vec::new();
+                let mut keys = vec![String::new()];
+                keys.extend(
+                    row["keys"]
+                        .as_array()
+                        .into_iter()
+                        .flatten()
+                        .filter_map(|k| k.as_str().map(str::to_owned)),
+                );
+                let mut item_drawer =
+                    |_: &voxel_world::ClientItemStackState,
+                     _: f32,
+                     _: f32,
+                     _: &mut Vec<voxel_render::gui::GuiItemVertex>| {};
+                let mut player = |_: (i32, i32, i32, i32), _: f32, _: f32, _: (f32, f32)| {
+                    Vec::<voxel_render::gui::GuiItemVertex>::new()
+                };
+                // A tooltip is only its first line, the item's name, which is
+                // what the anvil's name box takes.
+                let tooltips = row["tooltips"].as_bool().unwrap_or(true);
+                let mut tooltip = |stack: &voxel_world::ClientItemStackState, _: bool| {
+                    if !tooltips {
+                        return Vec::new();
+                    }
+                    let name = voxel_data::item::registry::ITEMS[stack.item_registry_id() as usize]
+                        .name
+                        .trim_start_matches("minecraft:");
+                    let text = lang
+                        .get(&format!("item.minecraft.{name}"))
+                        .or_else(|| lang.get(&format!("block.minecraft.{name}")))
+                        .unwrap_or(name)
+                        .to_owned();
+                    vec![voxel_render::gui::chat::plain_runs(&text)]
+                };
+                let book = voxel_world::RecipeBook::default();
+                let tags = voxel_world::block::tags::ItemTags::default();
+                for key in keys {
+                    if let Some(text) = key.strip_prefix("type:") {
+                        for character in text.chars() {
+                            screen.char_typed(character);
+                        }
+                    }
+                    let mut drawn = GuiFrame {
+                        log: Some(Vec::new()),
+                        ..GuiFrame::default()
+                    };
+                    let mut draw = voxel_render::gui::screen::ScreenDraw {
+                        frame: &mut drawn,
+                        atlas: &atlas,
+                        font: &font,
+                        item: &mut item_drawer,
+                        player: &mut player,
+                        tooltip: &mut tooltip,
+                        book: &book,
+                        tags: &tags,
+                        control_held: false,
+                    };
+                    screen.build(&mut draw, &menu, mouse);
+                    steps.push(json!({
+                        "key": key,
+                        "ops": gui_ops(&drawn.log.take().unwrap_or_default()),
+                    }));
+                }
+                out.push(json!({"label": row["label"], "steps": steps}));
+                continue;
+            }
             _ => return Err("unknown gui operation".into()),
         }
         out.push(json!({
@@ -18688,10 +18811,101 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+/// The menu a scenario row describes: its kind, recipe sets, data and XP
+/// level, as the client holds them before its slots are set.
+fn menu_named(
+    name: &str,
+    row: &Value,
+) -> Result<voxel_game::container_menu::ContainerMenu, String> {
+    use voxel_game::container_menu::{ContainerMenu, MenuKind, Smelter};
+    let kind = match name.strip_prefix("minecraft:").unwrap_or(name) {
+        "crafting" => MenuKind::Crafting,
+        "anvil" => MenuKind::Anvil,
+        "enchantment" => MenuKind::Enchantment,
+        "grindstone" => MenuKind::Grindstone,
+        "loom" => MenuKind::Loom,
+        "smithing" => MenuKind::Smithing,
+        "cartography_table" => MenuKind::Cartography,
+        "stonecutter" => MenuKind::Stonecutter,
+        "furnace" => MenuKind::Furnace(Smelter::Furnace),
+        "blast_furnace" => MenuKind::Furnace(Smelter::BlastFurnace),
+        "smoker" => MenuKind::Furnace(Smelter::Smoker),
+        "generic_3x3" => MenuKind::Dispenser,
+        "hopper" => MenuKind::Hopper,
+        "shulker_box" => MenuKind::ShulkerBox,
+        chest => MenuKind::Chest(
+            chest
+                .strip_prefix("generic_9x")
+                .and_then(|rows| rows.parse().ok())
+                .ok_or_else(|| format!("unknown menu {name}"))?,
+        ),
+    };
+    let id = row["container_id"]
+        .as_i64()
+        .ok_or("container_id must be a number")? as i32;
+    let mut menu = ContainerMenu::for_menu(kind, id, Vec::new(), None, 0);
+    if let Some(sets) = row.get("recipe_sets").and_then(Value::as_object) {
+        // In the order the menu reads its sets.
+        menu.accepted = kind
+            .input_sets()
+            .iter()
+            .map(|name| {
+                std::sync::Arc::new(
+                    sets.get(*name)
+                        .and_then(Value::as_array)
+                        .into_iter()
+                        .flatten()
+                        .filter_map(|item| {
+                            let name = item.as_str()?;
+                            voxel_game::item::id_of(&format!(
+                                "minecraft:{}",
+                                name.trim_start_matches("minecraft:")
+                            ))
+                        })
+                        .collect(),
+                )
+            })
+            .collect();
+    }
+    if let Some(inputs) = row.get("stonecutter_inputs").and_then(Value::as_array) {
+        menu.accepted = vec![std::sync::Arc::new(
+            inputs
+                .iter()
+                .filter_map(|item| {
+                    let name = item.as_str()?;
+                    voxel_game::item::id_of(&format!(
+                        "minecraft:{}",
+                        name.trim_start_matches("minecraft:")
+                    ))
+                })
+                .collect(),
+        )];
+    }
+    if let Some(data) = row.get("data").and_then(Value::as_array) {
+        menu.data = data
+            .iter()
+            .filter_map(|value| Some(value.as_i64()? as i16))
+            .collect();
+    }
+    if let Some(level) = row.get("xp_level").and_then(Value::as_i64) {
+        menu.xp_level = level as i32;
+    }
+    menu.item_tags = std::sync::Arc::new(vanilla_item_tags()?);
+    if let Some(inputs) = row.get("furnace_inputs").and_then(Value::as_array) {
+        menu.accepted = vec![std::sync::Arc::new(
+            inputs
+                .iter()
+                .filter_map(|name| voxel_game::item::id_of(name.as_str()?))
+                .collect(),
+        )];
+    }
+    Ok(menu)
+}
+
 /// Clicks in the player's own inventory menu, as the client predicts them
 /// and sends them.
 fn container_clicks_result(request: &Value) -> Result<Value, String> {
-    use voxel_game::container_menu::{ClickType, ContainerMenu, MenuKind, Player, Smelter};
+    use voxel_game::container_menu::{ClickType, ContainerMenu, Player};
     use voxel_world::ClientItemStackState;
     let stack = |described: &Value| -> Result<ClientItemStackState, String> {
         let name = described["item"].as_str().ok_or("item must be a string")?;
@@ -18716,90 +18930,7 @@ fn container_clicks_result(request: &Value) -> Result<Value, String> {
         let label = row["label"].as_str().ok_or("label must be a string")?;
         let mut menu = match row.get("menu").and_then(Value::as_str) {
             None => ContainerMenu::default(),
-            Some(name) => {
-                let kind = match name.strip_prefix("minecraft:").unwrap_or(name) {
-                    "crafting" => MenuKind::Crafting,
-                    "anvil" => MenuKind::Anvil,
-                    "enchantment" => MenuKind::Enchantment,
-                    "grindstone" => MenuKind::Grindstone,
-                    "loom" => MenuKind::Loom,
-                    "smithing" => MenuKind::Smithing,
-                    "cartography_table" => MenuKind::Cartography,
-                    "stonecutter" => MenuKind::Stonecutter,
-                    "furnace" => MenuKind::Furnace(Smelter::Furnace),
-                    "blast_furnace" => MenuKind::Furnace(Smelter::BlastFurnace),
-                    "smoker" => MenuKind::Furnace(Smelter::Smoker),
-                    "generic_3x3" => MenuKind::Dispenser,
-                    "hopper" => MenuKind::Hopper,
-                    "shulker_box" => MenuKind::ShulkerBox,
-                    chest => MenuKind::Chest(
-                        chest
-                            .strip_prefix("generic_9x")
-                            .and_then(|rows| rows.parse().ok())
-                            .ok_or_else(|| format!("unknown menu {name}"))?,
-                    ),
-                };
-                let id = row["container_id"]
-                    .as_i64()
-                    .ok_or("container_id must be a number")? as i32;
-                let mut menu = ContainerMenu::for_menu(kind, id, Vec::new(), None, 0);
-                if let Some(sets) = row.get("recipe_sets").and_then(Value::as_object) {
-                    // In the order the menu reads its sets.
-                    menu.accepted = kind
-                        .input_sets()
-                        .iter()
-                        .map(|name| {
-                            std::sync::Arc::new(
-                                sets.get(*name)
-                                    .and_then(Value::as_array)
-                                    .into_iter()
-                                    .flatten()
-                                    .filter_map(|item| {
-                                        let name = item.as_str()?;
-                                        voxel_game::item::id_of(&format!(
-                                            "minecraft:{}",
-                                            name.trim_start_matches("minecraft:")
-                                        ))
-                                    })
-                                    .collect(),
-                            )
-                        })
-                        .collect();
-                }
-                if let Some(inputs) = row.get("stonecutter_inputs").and_then(Value::as_array) {
-                    menu.accepted = vec![std::sync::Arc::new(
-                        inputs
-                            .iter()
-                            .filter_map(|item| {
-                                let name = item.as_str()?;
-                                voxel_game::item::id_of(&format!(
-                                    "minecraft:{}",
-                                    name.trim_start_matches("minecraft:")
-                                ))
-                            })
-                            .collect(),
-                    )];
-                }
-                if let Some(data) = row.get("data").and_then(Value::as_array) {
-                    menu.data = data
-                        .iter()
-                        .filter_map(|value| Some(value.as_i64()? as i16))
-                        .collect();
-                }
-                if let Some(level) = row.get("xp_level").and_then(Value::as_i64) {
-                    menu.xp_level = level as i32;
-                }
-                menu.item_tags = std::sync::Arc::new(vanilla_item_tags()?);
-                if let Some(inputs) = row.get("furnace_inputs").and_then(Value::as_array) {
-                    menu.accepted = vec![std::sync::Arc::new(
-                        inputs
-                            .iter()
-                            .filter_map(|name| voxel_game::item::id_of(name.as_str()?))
-                            .collect(),
-                    )];
-                }
-                menu
-            }
+            Some(name) => menu_named(name, row)?,
         };
         for slot in row["slots"].as_array().ok_or("slots must be an array")? {
             let index = slot["slot"].as_u64().ok_or("slot must be a number")? as usize;

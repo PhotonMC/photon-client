@@ -33,8 +33,10 @@ public final class GuiOracle {
 
     private static sun.misc.Unsafe unsafe;
     private static Font font;
-    private static final Map<Integer, Float> ADVANCES = new HashMap<>();
-    private static final List<com.mojang.blaze3d.font.GlyphProvider> PROVIDERS = new ArrayList<>();
+    /** Each font's providers, and the advances asked of them. */
+    private static final Map<String, List<com.mojang.blaze3d.font.GlyphProvider>> FONTS = new HashMap<>();
+    private static final Map<String, Map<Integer, Float>> ADVANCES = new HashMap<>();
+    private static final Map<String, GlyphSource> SOURCES = new HashMap<>();
 
     static void set(Object target, String name, Object value) throws Exception {
         for (Class<?> type = target.getClass(); type != null; type = type.getSuperclass()) {
@@ -57,8 +59,8 @@ public final class GuiOracle {
     }
 
     /** Loads `font/<id>.json` the way the font manager does, bitmap and space providers only. */
-    private static void loadFont(net.minecraft.server.packs.resources.ResourceManager manager, Identifier id)
-            throws Exception {
+    private static void loadFont(net.minecraft.server.packs.resources.ResourceManager manager, Identifier id,
+            List<com.mojang.blaze3d.font.GlyphProvider> providers) throws Exception {
         var location = id.withPrefix("font/").withSuffix(".json");
         try (var reader = manager.openAsReader(location)) {
             var json = com.google.gson.JsonParser.parseReader(reader).getAsJsonObject();
@@ -75,12 +77,12 @@ public final class GuiOracle {
                 var unpacked = parsed.get().definition().unpack();
                 if (unpacked.left().isPresent()) {
                     try {
-                        PROVIDERS.add(unpacked.left().get().load(manager));
+                        providers.add(unpacked.left().get().load(manager));
                     } catch (Exception skipped) {
                         // the provider needs a resource this run does not have
                     }
                 } else {
-                    loadFont(manager, unpacked.right().get().id());
+                    loadFont(manager, unpacked.right().get().id(), providers);
                 }
             }
         } catch (com.google.gson.JsonParseException | java.io.IOException skipped) {
@@ -88,9 +90,9 @@ public final class GuiOracle {
         }
     }
 
-    private static float advance(int codepoint) {
-        return ADVANCES.computeIfAbsent(codepoint, cp -> {
-            for (var provider : PROVIDERS) {
+    private static float advance(String font, int codepoint) {
+        return ADVANCES.computeIfAbsent(font, name -> new HashMap<>()).computeIfAbsent(codepoint, cp -> {
+            for (var provider : FONTS.get(font)) {
                 var glyph = provider.getGlyph(cp);
                 if (glyph != null) {
                     return glyph.info().getAdvance();
@@ -98,6 +100,33 @@ public final class GuiOracle {
             }
             return 7.0F;
         });
+    }
+
+    /** The glyphs of one font: each as wide as the font's providers say. */
+    private static GlyphSource glyphSource(String fontId) {
+        return new GlyphSource() {
+            @Override
+            public BakedGlyph getGlyph(int codepoint) {
+                float advance = advance(fontId, codepoint);
+                return new BakedGlyph() {
+                    @Override
+                    public GlyphInfo info() {
+                        return GlyphInfo.simple(advance);
+                    }
+
+                    @Override
+                    public TextRenderable.Styled createGlyph(float x, float y, int color, int shadowColor,
+                            Style style, float boldOffset, float shadowOffset) {
+                        return new Box(x, y, x + advance, y + 8, style);
+                    }
+                };
+            }
+
+            @Override
+            public BakedGlyph getRandomGlyph(net.minecraft.util.RandomSource random, int width) {
+                return getGlyph('?');
+            }
+        };
     }
 
     private static synchronized void setup() throws Exception {
@@ -120,46 +149,18 @@ public final class GuiOracle {
                 net.minecraft.server.packs.repository.PackSource.BUILT_IN, java.util.Optional.empty()));
         var manager = new net.minecraft.server.packs.resources.MultiPackResourceManager(
             net.minecraft.server.packs.PackType.CLIENT_RESOURCES, List.of(pack));
-        loadFont(manager, Identifier.withDefaultNamespace("default"));
-        BakedGlyph glyphOf = new BakedGlyph() {
-            @Override
-            public GlyphInfo info() {
-                throw new IllegalStateException("per character");
-            }
-
-            @Override
-            public TextRenderable.Styled createGlyph(float x, float y, int color, int shadowColor, Style style,
-                    float boldOffset, float shadowOffset) {
-                return null;
-            }
-        };
-        GlyphSource source = new GlyphSource() {
-            @Override
-            public BakedGlyph getGlyph(int codepoint) {
-                float advance = advance(codepoint);
-                return new BakedGlyph() {
-                    @Override
-                    public GlyphInfo info() {
-                        return GlyphInfo.simple(advance);
-                    }
-
-                    @Override
-                    public TextRenderable.Styled createGlyph(float x, float y, int color, int shadowColor,
-                            Style style, float boldOffset, float shadowOffset) {
-                        return new Box(x, y, x + advance, y + 8, style);
-                    }
-                };
-            }
-
-            @Override
-            public BakedGlyph getRandomGlyph(net.minecraft.util.RandomSource random, int width) {
-                return getGlyph('?');
-            }
-        };
+        for (String name : new String[] {"default", "alt"}) {
+            var providers = new ArrayList<com.mojang.blaze3d.font.GlyphProvider>();
+            loadFont(manager, Identifier.withDefaultNamespace(name), providers);
+            FONTS.put("minecraft:" + name, providers);
+        }
         font = new Font(new Font.Provider() {
             @Override
             public GlyphSource glyphs(FontDescription description) {
-                return source;
+                String id = description instanceof FontDescription.Resource resource
+                    ? resource.id().toString() : "minecraft:default";
+                return SOURCES.computeIfAbsent(FONTS.containsKey(id) ? id : "minecraft:default",
+                    GuiOracle::glyphSource);
             }
 
             @Override
@@ -204,11 +205,30 @@ public final class GuiOracle {
         }
     }
 
+    /** A texture view that is only its name. */
+    static final class NamedView extends com.mojang.blaze3d.textures.GpuTextureView {
+        String name;
+
+        NamedView() {
+            super(null, 0, 1);
+        }
+
+        @Override
+        public void close() {}
+
+        @Override
+        public boolean isClosed() {
+            return false;
+        }
+    }
+
     /** A texture with nothing behind it. */
     static final class BlankTexture extends net.minecraft.client.renderer.texture.AbstractTexture {
+        NamedView view;
+
         @Override
         public com.mojang.blaze3d.textures.GpuTextureView getTextureView() {
-            return null;
+            return view;
         }
 
         @Override
@@ -264,6 +284,13 @@ public final class GuiOracle {
         var instance = net.minecraft.client.Minecraft.class.getDeclaredField("instance");
         instance.setAccessible(true);
         instance.set(null, minecraft);
+        return prepare(minecraft, width, height, mouseX, mouseY);
+    }
+
+    /** The GUI around a game: a window, the atlas, textures, fonts and the HUD. */
+    static Screen prepare(net.minecraft.client.Minecraft minecraft, int width, int height, int mouseX,
+            int mouseY) throws Exception {
+        setup();
         var window = unsafe.allocateInstance(com.mojang.blaze3d.platform.Window.class);
         set(window, "guiScaledWidth", width);
         set(window, "guiScaledHeight", height);
@@ -271,8 +298,20 @@ public final class GuiOracle {
         var atlasManager = unsafe.allocateInstance(net.minecraft.client.resources.model.sprite.AtlasManager.class);
         var atlas = unsafe.allocateInstance(StubAtlas.class);
         var textures = unsafe.allocateInstance(net.minecraft.client.renderer.texture.TextureManager.class);
-        set(textures, "byPath", new HashMap<>(Map.of(Identifier.withDefaultNamespace("textures/atlas/gui.png"),
-            unsafe.allocateInstance(BlankTexture.class))));
+        // Every texture asked of is a blank one whose view carries its name.
+        set(textures, "byPath", new HashMap<Identifier, net.minecraft.client.renderer.texture.AbstractTexture>() {
+            @Override
+            public net.minecraft.client.renderer.texture.AbstractTexture get(Object key) {
+                try {
+                    var texture = (BlankTexture) unsafe.allocateInstance(BlankTexture.class);
+                    texture.view = (NamedView) unsafe.allocateInstance(NamedView.class);
+                    texture.view.name = ((Identifier) key).getPath();
+                    return texture;
+                } catch (Exception error) {
+                    throw new IllegalStateException(error);
+                }
+            }
+        });
         set(minecraft, "textureManager", textures);
         Class<?> entryClass = Class.forName(
             "net.minecraft.client.resources.model.sprite.AtlasManager$AtlasEntry");
@@ -328,8 +367,19 @@ public final class GuiOracle {
         state.forEachElement(element -> {
             if (element instanceof BlitRenderState blit) {
                 var op = new JsonObject();
-                op.addProperty("op", "sprite");
-                op.addProperty("name", SPRITE_NAMES.get(blit.u0()));
+                var view = blit.textureSetup().texure0() instanceof NamedView named ? named.name : "";
+                if (view.equals("textures/atlas/gui.png")) {
+                    op.addProperty("op", "sprite");
+                    op.addProperty("name", SPRITE_NAMES.get(blit.u0()));
+                } else {
+                    // A whole texture, a part of it: where in it, as fractions.
+                    op.addProperty("op", "texture");
+                    op.addProperty("name", view.replace("textures/gui/", "").replace(".png", ""));
+                    op.addProperty("u0", (double) blit.u0());
+                    op.addProperty("u1", (double) blit.u1());
+                    op.addProperty("v0", (double) blit.v0());
+                    op.addProperty("v1", (double) blit.v1());
+                }
                 var pose = blit.pose();
                 op.addProperty("x0", pose.m00() * blit.x0() + pose.m10() * blit.y0() + pose.m20());
                 op.addProperty("y0", pose.m01() * blit.x0() + pose.m11() * blit.y0() + pose.m21());
@@ -406,12 +456,17 @@ public final class GuiOracle {
         // Fills before text; then top to bottom, left to right, and by what
         // is left to tell two apart.
         sorted.sort(java.util.Comparator
-            .comparing((JsonObject op) -> op.get("op").getAsString())
+            .comparing((JsonObject op) -> switch (op.get("op").getAsString()) {
+                case "fill" -> 0;
+                case "sprite", "texture" -> 1;
+                default -> 2;
+            })
             .thenComparing(op -> op.has("y0") ? op.get("y0").getAsDouble() : op.get("y").getAsDouble())
             .thenComparing(op -> op.has("x0") ? op.get("x0").getAsDouble() : op.get("x").getAsDouble())
             .thenComparing(op -> op.has("x1") ? op.get("x1").getAsDouble() : 0.0)
             .thenComparing(op -> op.has("y1") ? op.get("y1").getAsDouble() : 0.0)
-            .thenComparing(op -> op.has("runs") ? flatten(op.getAsJsonArray("runs")) : "")
+            .thenComparing(op -> op.has("runs") ? flatten(op.getAsJsonArray("runs"))
+                : op.has("name") ? op.get("name").getAsString() : "")
             .thenComparing(op -> op.get("color").getAsLong()));
         var ordered = new JsonArray();
         sorted.forEach(ordered::add);
@@ -431,6 +486,7 @@ public final class GuiOracle {
                 case "suggestions" -> suggestions(request);
                 case "titles" -> titles(request);
                 case "tab_list" -> tabList(request);
+                case "container_screen" -> containerScreen(request);
                 default -> throw new IllegalArgumentException("Unknown gui operation");
             };
         } catch (Exception error) {
@@ -685,6 +741,131 @@ public final class GuiOracle {
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());
             out.add("ops", record(screen.state()));
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /** Lighting with no GPU behind it. */
+    static final class NoLighting extends com.mojang.blaze3d.platform.Lighting {
+        @Override
+        public void setupFor(com.mojang.blaze3d.platform.Lighting.Entry entry) {}
+    }
+
+    /** An item resolver that draws nothing: slots hold items, which are not recorded. */
+    static final class NoItems extends net.minecraft.client.renderer.item.ItemModelResolver {
+        NoItems() {
+            super(null);
+        }
+
+        @Override
+        public void updateForTopItem(net.minecraft.client.renderer.item.ItemStackRenderState output,
+                net.minecraft.world.item.ItemStack item, net.minecraft.world.item.ItemDisplayContext context,
+                net.minecraft.world.level.Level level, net.minecraft.world.entity.ItemOwner owner, int seed) {}
+    }
+
+    /**
+     * A menu's screen over the game's own container menu: its labels, sprites,
+     * name box and what it shows of its data, with slots holding items that
+     * draw nothing. After each row's `keys` and `typed` text.
+     */
+    private static JsonObject containerScreen(JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            setup();
+            MovementOracle.bootstrap();
+            var open = MovementOracle.openMenu(row);
+            var minecraft = open.scene().minecraft();
+            var instance = net.minecraft.client.Minecraft.class.getDeclaredField("instance");
+            instance.setAccessible(true);
+            instance.set(null, minecraft);
+            int width = row.get("width").getAsInt();
+            int height = row.get("height").getAsInt();
+            var drawn = prepare(minecraft, width, height, row.get("mouse_x").getAsInt(),
+                row.get("mouse_y").getAsInt());
+            set(minecraft, "itemModelResolver", unsafe.allocateInstance(NoItems.class));
+            // The entity models the loom's flag and the book of the enchanting
+            // table are baked from.
+            var modelManager = unsafe.allocateInstance(net.minecraft.client.resources.model.ModelManager.class);
+            set(modelManager, "entityModelSet", net.minecraft.client.model.geom.EntityModelSet.vanilla());
+            set(minecraft, "modelManager", modelManager);
+            var renderer = unsafe.allocateInstance(net.minecraft.client.renderer.GameRenderer.class);
+            set(renderer, "lighting", unsafe.allocateInstance(NoLighting.class));
+            set(minecraft, "gameRenderer", renderer);
+            set(minecraft, "level", open.scene().level());
+            set(minecraft, "deltaTracker", new net.minecraft.client.DeltaTracker.Timer(20.0F, 0L, millis -> 50L));
+            var menu = open.menu();
+            var inventory = open.player().getInventory();
+            net.minecraft.client.gui.screens.inventory.AbstractContainerScreen<?> screen =
+                switch (row.get("menu").getAsString()) {
+                    case "minecraft:anvil" -> new net.minecraft.client.gui.screens.inventory.AnvilScreen(
+                        (net.minecraft.world.inventory.AnvilMenu) menu, inventory,
+                        Component.translatable("container.repair"));
+                    case "minecraft:stonecutter" -> new net.minecraft.client.gui.screens.inventory.StonecutterScreen(
+                        (net.minecraft.world.inventory.StonecutterMenu) menu, inventory,
+                        Component.translatable("container.stonecutter"));
+                    case "minecraft:loom" -> new net.minecraft.client.gui.screens.inventory.LoomScreen(
+                        (net.minecraft.world.inventory.LoomMenu) menu, inventory,
+                        Component.translatable("container.loom"));
+                    case "minecraft:grindstone" -> new net.minecraft.client.gui.screens.inventory.GrindstoneScreen(
+                        (net.minecraft.world.inventory.GrindstoneMenu) menu, inventory,
+                        Component.translatable("container.grindstone_title"));
+                    case "minecraft:enchantment" -> new net.minecraft.client.gui.screens.inventory.EnchantmentScreen(
+                        (net.minecraft.world.inventory.EnchantmentMenu) menu, inventory,
+                        Component.translatable("container.enchant"));
+                    default -> throw new IllegalArgumentException("Unknown menu screen");
+                };
+            set(screen, "minecraft", minecraft);
+            set(screen, "font", font);
+            set(screen, "width", width);
+            set(screen, "height", height);
+            var init = net.minecraft.client.gui.screens.Screen.class.getDeclaredMethod("init");
+            init.setAccessible(true);
+            init.invoke(screen);
+            if (row.has("sync_slot")) {
+                // The server's update of a slot, as the screen hears it.
+                int slot = row.get("sync_slot").getAsInt();
+                if (screen instanceof net.minecraft.world.inventory.ContainerListener listener) {
+                    listener.slotChanged(menu, slot, menu.getSlot(slot).getItem());
+                } else {
+                    // The stonecutter and the loom hear their menu's own update.
+                    menu.getSlot(slot).setChanged();
+                }
+            }
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            var steps = new JsonArray();
+            var keys = new ArrayList<String>();
+            keys.add("");
+            if (row.has("keys")) {
+                row.getAsJsonArray("keys").forEach(key -> keys.add(key.getAsString()));
+            }
+            for (String key : keys) {
+                var step = new JsonObject();
+                step.addProperty("key", key);
+                if (key.startsWith("type:")) {
+                    for (char c : key.substring(5).toCharArray()) {
+                        screen.charTyped(new net.minecraft.client.input.CharacterEvent(c));
+                    }
+                }
+                var frame = prepare(minecraft, width, height, row.get("mouse_x").getAsInt(),
+                    row.get("mouse_y").getAsInt());
+                // The screen's own draw, without the deferred tooltip the game
+                // draws last (tooltip text is the item's, which this run has no
+                // items to give).
+                frame.graphics().nextStratum();
+                screen.extractBackground(frame.graphics(), row.get("mouse_x").getAsInt(),
+                    row.get("mouse_y").getAsInt(), 0.0F);
+                frame.graphics().nextStratum();
+                screen.extractRenderState(frame.graphics(), row.get("mouse_x").getAsInt(),
+                    row.get("mouse_y").getAsInt(), 0.0F);
+                step.add("ops", record(frame.state()));
+                steps.add(step);
+            }
+            out.add("steps", steps);
             rows.add(out);
         }
         var result = new JsonObject();

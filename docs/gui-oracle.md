@@ -17,6 +17,7 @@ Arayüzün yerleşimi ve davranışı, Java'nın **kendi GUI kodunun** başsız 
 | `suggestions` | `CommandSuggestions` + `EditBox` | seçili ilk öğe, hayalet sonek, Tab/Shift+Tab/ok/Esc, sıralama, 10 satırlık pencere |
 | `titles` | `Hud.extractTitle/extractOverlayMessage` | alfa eğrisi, ölçek, süre, eylem çubuğu |
 | `tab_list` | `PlayerTabOverlay` | sütunlar, sıralama, ping, üst/alt yazı, 80 sınırı |
+| `container_screen` | `AnvilScreen`, `GrindstoneScreen`, `StonecutterScreen`, `LoomScreen`, `EnchantmentScreen` Java'nın kendi menüsüyle (`MovementOracle.openMenu`) | etiketler, doku/sprite yerleri, ad kutusu, taş kesici girdileri/kaydırma/vurgu, büyü satırları ve adları |
 
 Yeni bir ekran için: Java'da gerçek sınıfı çağıran bir operation, `cases.py`'de senaryo satırları, adaptörde aynı sahnenin Rust karşılığı.
 
@@ -24,5 +25,8 @@ Yeni bir ekran için: Java'da gerçek sınıfı çağıran bir operation, `cases
 
 - Glif çizimi, eşya, varlık ve GPU katmanlama doğrulanmaz; yalnız dikdörtgen, sprite ve metin konumu/rengi.
 - Seçim vurgusu (`GUI_TEXT_HIGHLIGHT`) Java'da özel bir boru hattıdır; Rust'ta düz dolgudur.
-- Tarif kitabı, kap ekranları ve ipuçları için oracle yoktur (`RecipeBookComponent` ve menüler daha çok sahte durum ister); bu ekranlar Java kaynağından satır satır okunarak birim testlerle doğrulanır.
+- Tarif kitabı ve ipuçları için oracle yoktur (`RecipeBookComponent` daha çok sahte durum ister); Java kaynağından satır satır okunarak birim testlerle doğrulanır. Ekranlar ipucu çizmeden karşılaştırılır (ertelenmiş ipucu `extractDeferredElements` ile çizilir, çağrılmaz).
+- Kap ekranlarında Java menüsü girdi değişince sonucu kendisi hesaplar (`AnvilMenu.createResult` istemcide de çalışır): sonuç yuvası dolu senaryolar (anvil maliyet etiketi, grindstone sonucu) bu yüzden oracle'da yok; bu portlanmadı (bkz. `remaining-work.md`).
+- Loom desenleri (afiş atlası), cartography ve smithing için kap ekranı oracle satırı yok.
+- Taş kesici için Java `AnyFuel` görüntüsünü ilk yakıtla (lav kovası) çözer; bizim kayıt sırasıyla farklı, ipucu çizilmediği için karşılaştırmaya girmez.
 - Sonraki adımlar: `blit` ile çizilen tam dokular, anvil/tarif kitabı/menü ekranları.
