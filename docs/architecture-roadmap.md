@@ -156,3 +156,8 @@ Mesh özetleri (`digest=`) bütün adımlarda aynı kaldı. Açık kalan: D1 (sa
   ~0,4 ms), section bölge kopyası ~80 µs; işçiler yük sırasında %99 boşta.
   Yani chunk uygulamayı rayon'a taşımak anlamlı kazanç vermez; yavaşlık
   sunucudan gelen veri, ışık kuyruğu (D1) ve görünürlükle sınırlı.
+
+## Sonraki
+
+Kalan mimari ve kod sağlığı işleri ile düşük öncelikli Vulkan güvenlik
+denetimi [kalan işler belgesinde](remaining-work.md) (§14 ve §15).

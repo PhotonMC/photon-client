@@ -243,10 +243,10 @@ Bitti: `Component`/dil (`en_us`), stilli yazı, `EditBox`, ipucu kutusu.
   ses/UI→respawn→yeniden bağlan).
 - **L** Platform matrisi: Linux ve Windows (GLFW/Vulkan), macOS
   MoltenVK notları (`docs/local-setup.md`); Java 25 kurulumu kalanları.
-- **M** Performans: blok/eşya tabloları hesaplamaya döndü ve açılış
-  ~375 ms oldu ([yol haritası](architecture-roadmap.md)); kalanlar: Java
-  blok vertex biçimi (~32 bayt), ışık kuyruğu sınırı (sapma, onay gerekir),
-  entity sayısı arttığında çizim.
+- **M** Performans: tablolar hesaplamaya döndü, açılış ~375 ms, ayak izi
+  643 → 513 MB, section vertex'i 28 bayt ([yol haritası](architecture-roadmap.md));
+  ışık kuyruğu sınırı (D1) yapılmayacak; kalan: entity sayısı arttığında çizim
+  (M4 ile).
 - **M** Paketleme: özel asset kökü seçimi (P04.d), orijinal içeriğin pakete
   girmemesi, yürütülebilir dosya dağıtımı, sürüm ve kaydedilebilir ayarlar.
 
@@ -279,3 +279,40 @@ Bitti: `Component`/dil (`en_us`), stilli yazı, `EditBox`, ipucu kutusu.
 
 Her dilim önce Java kaynak dalını inceler, oracle senaryosunu yazar, sonra
 Rust'ı taşır; kanıt sınıfı kayıtta açıkça yazılır.
+
+## 14. Mimari ve kod sağlığı kuyruğu
+
+Hepsi sapmasız; oyun özelliklerinin arasında, ölçerek yapılır.
+
+- **M** Büyük dosyaları böl: `voxel-render/src/vulkan.rs` (~4,2k satır: aygıt
+  ve swapchain, arena ve staging, boru hatları, sahne çizimi), `voxel/examples/
+  behavior_adapter.rs` (~18k satır, aileye göre modüller), `voxel-world/src/
+  lib.rs` ve `tests.rs`. vulkan.rs bölünmesi §15'in ön koşulu.
+- **S** `u16` indeks: 65.535'ten az köşeli section'lar (~10 MB).
+- **M** Bellek: ayak izi 513 MB; kalan başlangıç tepesinden (atlas kurulumu,
+  çözülen PNG'ler, `pending` durum listeleri). `footprint` ile önce/sonra.
+- **S** Canlı duman testi: `VOXEL_SCRIPT` senaryolarını dosya biçimine alıp
+  `tools/voxel.py` altında tekrarlanabilir koşu (katıla → envanter →
+  yeniden boyutlandırma → ekran görüntüsü).
+- **S** Küçük temizlik: `expect` gerekçeleri, kullanılmayan üretici/fixture.
+- Yapılmayacak: D1 ışık kuyruğu sınırı; ışık yayılımını paralelleştirme.
+
+## 15. Vulkan güvenlik denetimi (düşük öncelik)
+
+`vulkan.rs` 63 `unsafe` taşır; `// SAFETY:` açıklaması ve çalışma zamanı
+denetimi yok. Makinede Khronos doğrulama katmanı kurulu
+(`/usr/local/lib/libVkLayer_khronos_validation.dylib`).
+
+1. **S** `VOXEL_VULKAN_VALIDATION=1`: `create_instance`'a
+   `VK_LAYER_KHRONOS_validation` ve `VK_EXT_debug_utils`, mesaj geri çağrısı
+   stderr'e yazar; `=strict` ilk mesajda süreci sonlandırır; senkronizasyon
+   doğrulaması `VK_EXT_validation_features` ile. Kapalıyken maliyet yok.
+2. **S** Doğrulamalı duman testi: §14'teki senaryolar `strict` ile, kabul
+   ölçütü sıfır mesaj; bulunanlar ayrı commit'lerle düzeltilir.
+3. **M** Kesin tipler: `Buffer`+`DeviceMemory` çiftleri için `Drop`'lu
+   sarmalayıcılar (arena bloğu, staging parçası, okuma tamponu); yeni
+   bağımlılık yok.
+4. **S** `clippy::undocumented_unsafe_blocks` uyarısı ve her `unsafe` bloğa
+   `// SAFETY:`; kural `coding-standards.md`'ye.
+5. Sınır: doğrulama katmanı yalnız koşulan senaryoları denetler; Miri FFI'yi
+   çalıştıramaz.
