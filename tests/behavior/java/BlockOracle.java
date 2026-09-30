@@ -1191,6 +1191,12 @@ public final class BlockOracle {
                 }
                 values.addProperty("pushReaction", declaredValue(declared, "pushReaction").toString());
                 described.add("declared", values);
+                if (block instanceof net.minecraft.world.level.block.LiquidBlock) {
+                    var fluid = net.minecraft.world.level.block.LiquidBlock.class.getDeclaredField("fluid");
+                    fluid.setAccessible(true);
+                    described.addProperty("fluid", net.minecraft.core.registries.BuiltInRegistries.FLUID
+                        .getKey((net.minecraft.world.level.material.Fluid) fluid.get(block)).toString());
+                }
                 var states = definition.getPossibleStates();
                 var perState = new JsonObject();
                 var getter = net.minecraft.world.level.EmptyBlockGetter.INSTANCE;

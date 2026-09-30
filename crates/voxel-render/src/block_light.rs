@@ -10,19 +10,14 @@
 //! half, each in sixteenths.
 
 use voxel_core::direction::Direction;
-use voxel_data::block::light::LightTraits;
+use voxel_world::block::StateInfo;
 
 /// Full brightness in both halves.
 pub const FULL_BRIGHT: i32 = 15_728_880;
 
-fn traits(state: Option<u32>) -> &'static LightTraits {
-    voxel_data::block::light_traits(state.unwrap_or(0))
-}
-
-/// The lighting traits of a state: emission, emissive, shade, view blocking,
-/// dampening, solid rendering and a full collision shape.
-pub fn light_traits(state: Option<u32>) -> &'static LightTraits {
-    traits(state)
+/// What the lighting reads of a state; nothing reads as air.
+fn traits(state: Option<u32>) -> &'static StateInfo {
+    voxel_world::block::state_or_air(state.map_or(0, i64::from))
 }
 
 fn pack(block: i32, sky: i32) -> i32 {
@@ -235,12 +230,12 @@ where
     /// `LightCoordsUtil.getLightCoords` for a state standing at a position.
     pub fn light_coords(&self, state: Option<u32>, position: [i32; 3]) -> i32 {
         let traits = traits(state);
-        if traits.emissive {
+        if traits.emissive_rendering {
             return FULL_BRIGHT;
         }
         let (block, sky) = (self.light)(position);
         let packed = pack(i32::from(block), i32::from(sky));
-        let emission = i32::from(traits.emission);
+        let emission = i32::from(traits.light_emission);
         if i32::from(block) < emission {
             (packed & 0xFF_0000) | (emission << 4)
         } else {
@@ -253,7 +248,7 @@ where
     }
 
     fn shade_at(&self, position: [i32; 3]) -> f32 {
-        traits((self.state)(position)).shade
+        traits((self.state)(position)).shade_brightness
     }
 
     /// The lit colour and light of a quad drawn at `position` for `state`.
@@ -346,7 +341,7 @@ where
         let translucent = around.map(|p| {
             let beyond = offset(p, direction);
             let traits = traits((self.state)(beyond));
-            !traits.view_blocking || traits.dampening == 0
+            !traits.view_blocking || traits.light_dampening == 0
         });
         // The reference falls back to the first corner's values for every
         // diagonal whose two sides are both opaque.

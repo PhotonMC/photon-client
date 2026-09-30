@@ -219,6 +219,12 @@ impl VoxelShape {
         }
     }
 
+    /// A number no other live shape shares, like Java's identity hash: the
+    /// key for caches the reference keeps per shape object.
+    pub fn identity(&self) -> usize {
+        Arc::as_ptr(&self.identity) as usize
+    }
+
     /// Compare object identity like Java `VoxelShape.equals(Object)`.
     pub fn equals_java(&self, other: &Self) -> bool {
         Arc::ptr_eq(&self.identity, &other.identity)
@@ -1049,13 +1055,64 @@ impl Shapes {
         VoxelShape::new(xs, ys, zs, cells)
     }
 
-    /// Return whether a BooleanOp join contains any occupied cell.
+    /// Return whether a BooleanOp join contains any occupied cell, like Java
+    /// `Shapes.joinIsNotEmpty`: without building the joined shape, and
+    /// stopping at the first occupied cell.
     pub fn join_is_not_empty(
         first: &VoxelShape,
         second: &VoxelShape,
         operation: BooleanOp,
     ) -> bool {
-        !Self::join(first, second, operation).is_empty()
+        let (first_empty, second_empty) = (first.is_empty(), second.is_empty());
+        if first_empty || second_empty {
+            return operation.apply(!first_empty, !second_empty);
+        }
+        if first.equals_java(second) {
+            return operation.apply(true, true);
+        }
+        let first_only_matters = operation.apply(true, false);
+        let second_only_matters = operation.apply(false, true);
+        for axis in [Axis::X, Axis::Y, Axis::Z] {
+            if first.max(axis) < second.min(axis) - 1.0e-7
+                || second.max(axis) < first.min(axis) - 1.0e-7
+            {
+                return first_only_matters || second_only_matters;
+            }
+        }
+        // Each merged interval's cell in either shape, looked up once per axis.
+        let cells = |merged: &[f64], own: &[f64]| -> Vec<Option<usize>> {
+            merged
+                .windows(2)
+                .map(|pair| interval(own, midpoint(pair[0], pair[1])))
+                .collect()
+        };
+        let xs = merged_coords(&first.xs, &second.xs);
+        let ys = merged_coords(&first.ys, &second.ys);
+        let zs = merged_coords(&first.zs, &second.zs);
+        let [first_x, first_y, first_z] = [
+            cells(&xs, &first.xs),
+            cells(&ys, &first.ys),
+            cells(&zs, &first.zs),
+        ];
+        let [second_x, second_y, second_z] = [
+            cells(&xs, &second.xs),
+            cells(&ys, &second.ys),
+            cells(&zs, &second.zs),
+        ];
+        let full = |shape: &VoxelShape, x: Option<usize>, y: Option<usize>, z: Option<usize>| matches!((x, y, z), (Some(x), Some(y), Some(z)) if shape.is_full(x, y, z));
+        for x in 0..xs.len() - 1 {
+            for y in 0..ys.len() - 1 {
+                for z in 0..zs.len() - 1 {
+                    if operation.apply(
+                        full(first, first_x[x], first_y[y], first_z[z]),
+                        full(second, second_x[x], second_y[y], second_z[z]),
+                    ) {
+                        return true;
+                    }
+                }
+            }
+        }
+        false
     }
 
     /// Return whether two shapes occupy the same cells.

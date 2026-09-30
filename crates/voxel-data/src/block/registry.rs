@@ -111,6 +111,26 @@ impl Block {
         Some(out)
     }
 
+    /// `state.getValue(property)` for the state at `offset`; `None` when the
+    /// block does not have the property (`hasProperty` is false).
+    pub fn value(&self, offset: u32, property: &Property) -> Option<&'static str> {
+        let slot = self
+            .properties
+            .iter()
+            .position(|own| std::ptr::eq(*own, property))?;
+        let below: u32 = self.properties[slot + 1..]
+            .iter()
+            .map(|later| later.values.len() as u32)
+            .product();
+        let count = property.values.len() as u32;
+        Some(property.values[(offset / below % count) as usize])
+    }
+
+    /// A boolean property's value; `false` when the block does not have it.
+    pub fn flag(&self, offset: u32, property: &Property) -> bool {
+        self.value(offset, property) == Some("true")
+    }
+
     /// The default state's value of each property, as an index into its values.
     fn default_value(&self, slot: usize) -> usize {
         let property = self.properties[slot];

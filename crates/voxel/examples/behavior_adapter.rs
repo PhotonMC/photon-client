@@ -16319,7 +16319,7 @@ fn image_tint_constants_result(request: &Value) -> Result<Value, String> {
 /// `block_declarations`: the declarations as the oracle describes them.
 fn block_declarations(label: &str) -> Value {
     use voxel_data::block::classes::BlockClass;
-    use voxel_data::block::definition::{Emission, PushReaction, Rule};
+    use voxel_data::block::definition::{Emission, Fluid, PushReaction, Rule};
     use voxel_data::block::properties::FIELDS;
     use voxel_data::block::registry::{self, PropertyKind};
     let bits = |value: f32| format!("{:08x}", value.to_bits());
@@ -16376,7 +16376,7 @@ fn block_declarations(label: &str) -> Value {
                     per_state.insert(key.into(), json!(values));
                 }
             }
-            json!({
+            let mut described = json!({
                 "name": block.name,
                 "class": format!("{:?}", block.class),
                 "properties": block.properties.iter().map(|property| field(property)).collect::<Vec<_>>(),
@@ -16409,7 +16409,17 @@ fn block_declarations(label: &str) -> Value {
                     },
                 },
                 "per_state": per_state,
-            })
+            });
+            if block.class.is(BlockClass::LiquidBlock) {
+                described["fluid"] = json!(match block.fluid {
+                    Fluid::Water => "minecraft:water",
+                    Fluid::FlowingWater => "minecraft:flowing_water",
+                    Fluid::Lava => "minecraft:lava",
+                    Fluid::FlowingLava => "minecraft:flowing_lava",
+                    Fluid::Empty => "minecraft:empty",
+                });
+            }
+            described
         })
         .collect();
     json!({
@@ -16419,6 +16429,119 @@ fn block_declarations(label: &str) -> Value {
         "properties": properties,
         "blocks": blocks,
     })
+}
+
+/// Binds the vanilla data pack's block tags, which is what the oracle's
+/// registry holds.
+fn bind_vanilla_block_tags() -> Result<(), String> {
+    let packet = vanilla_block_tags()?;
+    let tags = packet
+        .registries
+        .iter()
+        .filter(|registry| registry.registry.as_string() == "minecraft:block")
+        .flat_map(|registry| &registry.tags)
+        .map(|tag| {
+            let blocks = tag.values.iter().map(|value| *value as usize).collect();
+            (tag.id.as_string(), blocks)
+        })
+        .collect();
+    voxel_world::block::tags::bind(tags);
+    Ok(())
+}
+
+/// `face_occlusion`: the state cache's faces and skip rules, numbered and
+/// grouped the way the oracle groups them.
+fn face_occlusion(label: &str) -> Result<Value, String> {
+    use voxel_data::block::registry;
+    use voxel_world::block::culling::skip_rendering;
+    use voxel_world::block::state::{DIRECTIONS, states};
+    bind_vanilla_block_tags()?;
+    let states = states();
+    let mut tuples: Vec<[u16; 6]> = Vec::new();
+    let mut blocks = Vec::with_capacity(registry::BLOCKS.len());
+    for block in &registry::BLOCKS {
+        let first = block.first_state_id();
+        let per_state: Vec<usize> = (0..block.state_count())
+            .map(|offset| {
+                let faces = states.get(first + offset).expect("a registry state").faces;
+                tuples
+                    .iter()
+                    .position(|tuple| *tuple == faces)
+                    .unwrap_or_else(|| {
+                        tuples.push(faces);
+                        tuples.len() - 1
+                    })
+            })
+            .collect();
+        let listed = if per_state.iter().all(|tuple| *tuple == per_state[0]) {
+            vec![per_state[0]]
+        } else {
+            per_state
+        };
+        blocks.push(json!({"name": block.name, "tuples": listed}));
+    }
+    let count = states.faces().len();
+    let matrix = |test: &dyn Fn(u16, u16) -> bool| -> Vec<String> {
+        (0..count as u16)
+            .map(|shape| {
+                (0..count as u16)
+                    .map(|occluder| if test(shape, occluder) { '1' } else { '0' })
+                    .collect()
+            })
+            .collect()
+    };
+    let joins = matrix(&|shape, occluder| states.joins(shape, occluder));
+    let covers = matrix(&|shape, occluder| states.covers(shape, occluder));
+    let info = |block: &registry::Block, offset: u32| {
+        states
+            .get(block.first_state_id() + offset)
+            .expect("a registry state")
+    };
+    let mut skips = Vec::new();
+    for block in &registry::BLOCKS {
+        let own = info(block, block.default_state_id() - block.first_state_id());
+        for other in &registry::BLOCKS {
+            let neighbour = info(other, other.default_state_id() - other.first_state_id());
+            if !DIRECTIONS
+                .iter()
+                .any(|direction| skip_rendering(own, neighbour, *direction))
+            {
+                continue;
+            }
+            let mut all = true;
+            let mut directions = std::collections::BTreeSet::new();
+            for offset in 0..block.state_count() {
+                for other_offset in 0..other.state_count() {
+                    for direction in DIRECTIONS {
+                        if skip_rendering(info(block, offset), info(other, other_offset), direction)
+                        {
+                            directions.insert(direction.name());
+                        } else {
+                            all = false;
+                        }
+                    }
+                }
+            }
+            skips.push(json!({
+                "block": block.name,
+                "neighbour": other.name,
+                "always": all,
+                "directions": directions,
+            }));
+        }
+    }
+    let state_dependent = skips.iter().any(|pair| pair["always"] == json!(false));
+    Ok(json!({
+        "label": label,
+        "outcome": "listed",
+        "tuples": tuples,
+        "blocks": blocks,
+        "shape_count": count,
+        "joins": joins,
+        "covers": covers,
+        "skip_pairs": skips,
+        "skip_is_state_dependent": state_dependent,
+    }))
 }
 
 fn block_result(request: &Value) -> Result<Value, String> {
@@ -16869,22 +16992,21 @@ fn block_result(request: &Value) -> Result<Value, String> {
                 }));
             }
             "light_properties" => {
-                use voxel_data::block::light as table;
                 let blocks: Vec<Value> = registry::BLOCKS
                     .iter()
-                    .zip(table::BLOCKS.iter())
-                    .map(|(block, ids)| {
-                        let states: Vec<String> = ids
-                            .iter()
-                            .map(|id| {
-                                let t = &table::TRAITS[usize::from(*id)];
+                    .map(|block| {
+                        let first = block.first_state_id();
+                        let mut states: Vec<String> = (0..block.state_count())
+                            .map(|offset| {
+                                let t = voxel_world::block::state(first + offset)
+                                    .expect("a registry state");
                                 format!(
                                     "{}|{}|{:08x}|{}|{}|{}|{}|{}|{}",
-                                    t.emission,
-                                    t.emissive,
-                                    t.shade.to_bits(),
+                                    t.light_emission,
+                                    t.emissive_rendering,
+                                    t.shade_brightness.to_bits(),
                                     t.view_blocking,
-                                    t.dampening,
+                                    t.light_dampening,
                                     t.solid_render,
                                     t.collision_full_block,
                                     t.use_shape_for_light_occlusion,
@@ -16892,51 +17014,15 @@ fn block_result(request: &Value) -> Result<Value, String> {
                                 )
                             })
                             .collect();
+                        if states.iter().all(|state| *state == states[0]) {
+                            states.truncate(1);
+                        }
                         json!({"name": block.name, "states": states})
                     })
                     .collect();
                 out.push(json!({"label": label, "outcome": "listed", "blocks": blocks}));
             }
-            "face_occlusion" => {
-                use voxel_data::block::face_occlusion as table;
-                // The tables go back out in the reference's shape, so the run
-                // checks every tuple, every join and every skip pair.
-                const NAMES: [&str; 6] = ["down", "up", "north", "south", "west", "east"];
-                let blocks: Vec<Value> = registry::BLOCKS
-                    .iter()
-                    .zip(table::BLOCK_TUPLES.iter())
-                    .map(|(block, tuples)| json!({"name": block.name, "tuples": tuples}))
-                    .collect();
-                let skips: Vec<Value> = table::SKIPS
-                    .iter()
-                    .map(|pair| {
-                        let mut directions: Vec<&str> = NAMES
-                            .iter()
-                            .enumerate()
-                            .filter(|(slot, _)| pair.directions & (1 << slot) != 0)
-                            .map(|(_, name)| *name)
-                            .collect();
-                        directions.sort_unstable();
-                        json!({
-                            "block": registry::BLOCKS[usize::from(pair.block)].name,
-                            "neighbour": registry::BLOCKS[usize::from(pair.neighbour)].name,
-                            "always": pair.always,
-                            "directions": directions,
-                        })
-                    })
-                    .collect();
-                out.push(json!({
-                    "label": label,
-                    "outcome": "listed",
-                    "tuples": table::TUPLES.to_vec(),
-                    "blocks": blocks,
-                    "shape_count": table::SHAPE_COUNT,
-                    "joins": table::JOINS.to_vec(),
-                    "covers": table::COVERS.to_vec(),
-                    "skip_pairs": skips,
-                    "skip_is_state_dependent": table::SKIPS.iter().any(|pair| !pair.always),
-                }));
-            }
+            "face_occlusion" => out.push(face_occlusion(label)?),
             "collision_shapes" => {
                 use voxel_data::block::collision as table;
                 // The boxes come from the rebuilt shapes, not straight from the

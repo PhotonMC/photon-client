@@ -90,6 +90,9 @@ fn world() -> ClientWorld {
 }
 
 fn main() {
+    let caching = Instant::now();
+    let faces = voxel_world::block::states().faces().len();
+    println!("state cache faces={faces} in {:?}", caching.elapsed());
     let root = std::env::var("VOXEL_ASSETS").expect("VOXEL_ASSETS names the assets folder");
     let source = assets::FolderAssets { root: root.into() };
     let baking = Instant::now();

@@ -607,16 +607,16 @@ pub trait LightChunks {
     fn sky_sources(&self, chunk_x: i32, chunk_z: i32) -> Option<&ChunkSkyLightSources>;
 }
 
-fn light_traits(state: i32) -> &'static voxel_data::block::light::LightTraits {
-    voxel_data::block::light_traits(state as u32)
+fn light_traits(state: i32) -> &'static crate::block::StateInfo {
+    crate::block::state_or_air(i64::from(state))
 }
 
 fn emission(state: i32) -> u8 {
-    light_traits(state).emission
+    light_traits(state).light_emission
 }
 
 fn dampening(state: i32) -> u8 {
-    light_traits(state).dampening
+    light_traits(state).light_dampening
 }
 
 /// `LightEngine.isEmptyShape`: light ignores the shape of a block that
@@ -626,18 +626,21 @@ fn is_empty_shape(state: i32) -> bool {
     !traits.can_occlude || !traits.use_shape_for_light_occlusion
 }
 
-/// `LightEngine.getOcclusionShape`, as a face shape kind.
-fn occlusion_shape(state: i32, direction: Direction) -> u8 {
+/// `LightEngine.getOcclusionShape`, as a face number.
+fn occlusion_shape(state: i32, direction: Direction) -> crate::block::state::Face {
     if is_empty_shape(state) {
-        0
+        crate::block::state::EMPTY_FACE
     } else {
-        crate::face_culling::occlusion_kind(state as u32, direction).unwrap_or(0)
+        light_traits(state).face(direction)
     }
 }
 
 /// `Shapes.faceShapeOccludes`.
-fn face_shape_occludes(shape: u8, occluder: u8) -> bool {
-    voxel_data::block::shape_covers(shape, occluder)
+fn face_shape_occludes(
+    shape: crate::block::state::Face,
+    occluder: crate::block::state::Face,
+) -> bool {
+    crate::block::states().covers(shape, occluder)
 }
 
 /// `LightEngine.hasDifferentLightProperties`.
@@ -646,8 +649,8 @@ pub fn has_different_light_properties(old: i32, new: i32) -> bool {
         return false;
     }
     let (a, b) = (light_traits(old), light_traits(new));
-    b.dampening != a.dampening
-        || b.emission != a.emission
+    b.light_dampening != a.light_dampening
+        || b.light_emission != a.light_emission
         || b.use_shape_for_light_occlusion
         || a.use_shape_for_light_occlusion
 }

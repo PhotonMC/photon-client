@@ -17,6 +17,7 @@ use voxel_core::{
     shape::{BooleanOp, Shapes, VoxelShape},
 };
 
+pub mod block;
 mod block_entity;
 pub mod block_rules;
 pub mod block_state;
@@ -258,6 +259,26 @@ impl ClientWorld {
     ) {
         self.block_state_registry
             .apply_update_tags(&packet.registries);
+        if let Some(blocks) = packet
+            .registries
+            .iter()
+            .find(|registry| registry.registry.as_string() == "minecraft:block")
+        {
+            block::tags::bind(
+                blocks
+                    .tags
+                    .iter()
+                    .map(|tag| {
+                        let members = tag
+                            .values
+                            .iter()
+                            .filter_map(|value| usize::try_from(*value).ok())
+                            .collect();
+                        (tag.id.as_string(), members)
+                    })
+                    .collect(),
+            );
+        }
     }
 
     pub fn world_border(&self) -> &ClientWorldBorder {
@@ -3364,7 +3385,6 @@ impl ClientWorld {
     }
 }
 
-pub mod face_culling;
 pub mod input;
 pub mod local_player;
 

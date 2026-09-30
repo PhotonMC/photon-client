@@ -488,9 +488,7 @@ impl BlockRenderer {
                                 position[2] + step_z,
                             )
                             .and_then(|state| u32::try_from(state).ok());
-                            !voxel_world::face_culling::should_render_face(
-                                state_id, neighbour, facing,
-                            )
+                            !voxel_world::block::should_render_face(state_id, neighbour, facing)
                         })
                     {
                         continue;
@@ -562,11 +560,7 @@ impl BlockRenderer {
                     placement.position[2] + step_z,
                 )
                 .and_then(|state| u32::try_from(state).ok());
-                !voxel_world::face_culling::should_render_face(
-                    placement.state,
-                    neighbour_state,
-                    facing,
-                )
+                !voxel_world::block::should_render_face(placement.state, neighbour_state, facing)
             };
             let Ok(mut part) = crate::resolve::build_mesh(
                 model,
@@ -580,7 +574,8 @@ impl BlockRenderer {
             };
             // Smooth lighting, the reference's default, unless the block glows or
             // the model opts out of ambient occlusion.
-            let emission = crate::block_light::light_traits(Some(placement.state)).emission;
+            let emission =
+                voxel_world::block::state_or_air(i64::from(placement.state)).light_emission;
             let smooth = emission == 0 && model.ambient_occlusion;
             for (quad, info) in part.quads.iter().enumerate() {
                 let corners: [[f32; 3]; 4] =
@@ -817,12 +812,12 @@ where
     /// but a surface below full height; a partial one is treated as hiding
     /// nothing, which is where this still differs from the reference.
     fn occluded(&self, direction: Direction, height: f32, x: i32, y: i32, z: i32) -> bool {
-        let kind = (self.read)(x, y, z)
+        let face = (self.read)(x, y, z)
             .and_then(|state| u32::try_from(state).ok())
-            .and_then(|state| {
-                voxel_world::face_culling::occlusion_kind(state, direction.opposite())
-            });
-        kind == Some(1) && (direction != Direction::Up || height == 1.0)
+            .and_then(voxel_world::block::state)
+            .map(|state| state.face(direction.opposite()));
+        face == Some(voxel_world::block::state::FULL_FACE)
+            && (direction != Direction::Up || height == 1.0)
     }
 
     /// Whether a water side against this block shows the overlay sprite:

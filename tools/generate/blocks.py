@@ -41,6 +41,13 @@ FLAGS = [
     ("dynamicShape", True, "dynamic_shape"),
 ]
 
+FLUIDS = {
+    "minecraft:water": "Water",
+    "minecraft:flowing_water": "FlowingWater",
+    "minecraft:lava": "Lava",
+    "minecraft:flowing_lava": "FlowingLava",
+}
+
 RULES = [
     ("emissiveRendering", "emissive_rendering"),
     ("isSuffocating", "is_suffocating"),
@@ -97,6 +104,8 @@ def chain(block):
     if declared["pushReaction"] != "NORMAL":
         reaction = "".join(part.capitalize() for part in declared["pushReaction"].split("_"))
         calls.append(f"push_reaction(PushReaction::{reaction})")
+    if "fluid" in block:
+        calls.append(f"fluid(Fluid::{FLUIDS[block['fluid']]})")
     per_state = block["per_state"]
     if per_state.get("lightEmission") is not None:
         calls.append(f"light_level({emission(per_state['lightEmission'])})")
@@ -156,7 +165,7 @@ def blocks_file(blocks):
     out = header("Every block, in registry order, as the reference's `Blocks` declares it.",
                  "blocks.py") + [
         "use super::classes::BlockClass;",
-        "use super::definition::{Block, Emission, PushReaction, Rule};",
+        "use super::definition::{Block, Emission, Fluid, PushReaction, Rule};",
         "use super::properties::*;",
         "",
         "#[rustfmt::skip]",
@@ -165,7 +174,11 @@ def blocks_file(blocks):
     for block in blocks:
         head = f"    Block::of({rust_str(block['name'])}, BlockClass::{block['class']})"
         out.append(head + "".join(f".{call}" for call in chain(block)) + ",")
-    out.append("];")
+    out += ["];", "", "/// Each block's place in the registry, named as `Blocks` names it.",
+            "#[rustfmt::skip]", "pub mod id {"]
+    for index, block in enumerate(blocks):
+        out.append(f"    pub const {block['name'].split(':')[1].upper()}: usize = {index};")
+    out.append("}")
     return out
 
 

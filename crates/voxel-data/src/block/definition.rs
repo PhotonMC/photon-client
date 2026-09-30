@@ -33,6 +33,16 @@ pub enum PushReaction {
     PushOnly,
 }
 
+/// A fluid type (`Fluids`).
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Fluid {
+    Empty,
+    Water,
+    FlowingWater,
+    Lava,
+    FlowingLava,
+}
+
 /// A `StatePredicate` a block may replace: the one `Properties.of()` starts
 /// with, or the block's own, as its value in each state.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -106,6 +116,8 @@ pub struct Block {
     pub suffocating: Rule,
     pub view_blocking: Rule,
     pub redstone_conductor: Rule,
+    /// The fluid a `LiquidBlock` is made of.
+    pub fluid: Fluid,
 }
 
 impl Block {
@@ -140,6 +152,7 @@ impl Block {
             suffocating: Rule::Default,
             view_blocking: Rule::Default,
             redstone_conductor: Rule::Default,
+            fluid: Fluid::Empty,
         }
     }
 
@@ -269,6 +282,12 @@ impl Block {
 
     pub const fn is_redstone_conductor(mut self, rule: Rule) -> Self {
         self.redstone_conductor = rule;
+        self
+    }
+
+    /// The fluid a `LiquidBlock` is made with.
+    pub const fn fluid(mut self, fluid: Fluid) -> Self {
+        self.fluid = fluid;
         self
     }
 }

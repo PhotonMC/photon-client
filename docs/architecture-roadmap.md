@@ -38,12 +38,12 @@ erişilen bir kayıt. Hesaplanan değerler Java'nın formülüyle çıkar; tablo
 olarak tutulmaz.
 
 - [x] State → blok ve sıra: tek dizi, ikili arama yok.
-- [ ] Yüz oklüzyon şekilleri (`getOcclusionShape`, `getFaceShape`) ve
+- [x] Yüz oklüzyon şekilleri (`getOcclusionShape`, `getFaceShape`) ve
   `shouldRenderFace`; `skipRendering` sınıfların kendi kuralıyla.
   `face_occlusion.rs` silinir.
 - [ ] Sağlam yüzler ve hareket engelleme (`isFaceSturdy`, `legacySolid`,
   `blocksMotion`); `fluid_flow.rs` ve `motion_blocking.rs` silinir.
-- [ ] Işık özellikleri: `solidRender`, `propagatesSkylightDown`, sönüm,
+- [x] Işık özellikleri: `solidRender`, `propagatesSkylightDown`, sönüm,
   gölge parlaklığı, çarpışma şeklinin tam blok olması; `light.rs`'in
   hesaplanan alanları kalkar.
 - [ ] Akışkan durumu (`getFluidState`) sınıf ve özelliklerden;
