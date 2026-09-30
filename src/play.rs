@@ -6,19 +6,17 @@ use std::time::Duration;
 
 use voxel_net::connection::PlaySession;
 use voxel_render::VulkanBackend;
-use voxel_render::gui::screen::creative::CreativeAssets;
 use voxel_render::window::{DisplayData, WindowSurface};
 
 use crate::animated_atlas::AnimatedAtlas;
 use crate::assets::FolderAssets;
 use crate::atmosphere::{Clouds, Flicker, rain_fog_target, weather};
 use crate::controls::Controls;
-use crate::hud_input::hud_input;
+use crate::gui::Gui;
 use crate::item_layers::ItemLayerCache;
 use crate::overlays::{self, FrameView, cracks, hands, hud_fov, outline, packed_light, tick_hands};
 use crate::ppm;
 use crate::profile::FrameProfile;
-use crate::screens::ScreenAssets;
 use crate::script::{HeldKeys, Script};
 use crate::sections::SectionMeshes;
 use crate::view::{CLOUD_RANGE, CameraType, camera_position, eye_position, pick, player_camera};
@@ -215,18 +213,7 @@ pub fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn st
     );
     backend.load_entity_texture(&texture(&root, skin.texture, "skin")?)?;
     let mut player_model = voxel_render::player_model::PlayerModel::new(skin.slim);
-    // The HUD: its sprites, its own state, and the wheel's partial steps.
-    let font = std::sync::Arc::new(
-        voxel_render::gui::font::Font::load(std::path::Path::new(&root))
-            .ok_or("the default font could not be read")?,
-    );
-    let gui_atlas = voxel_render::gui::GuiAtlas::load(std::path::Path::new(&root), &font)
-        .ok_or("the HUD sprites could not be read")?;
-    backend.load_gui_texture(&gui_atlas.image)?;
-    let mut hud = voxel_render::gui::Hud::default();
-    // Each item's GUI layers, built the first time a slot shows it.
-    let mut gui_item_layers = ItemLayerCache::new(voxel_render::model::DisplayContext::Gui);
-    let started_at = std::time::Instant::now();
+    let mut gui = Gui::load(std::path::Path::new(&root), &mut backend)?;
     // `ItemInHandRenderer`: the stacks the hands show and how high they are.
     let mut item_in_hand = voxel_game::item_in_hand::ItemInHand::default();
     // Each item's first-person layers, by item and hand.
@@ -257,18 +244,7 @@ pub fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn st
     };
     let mut controls = Controls::new(camera_type, script.is_none());
     surface.set_cursor_captured(controls.captured);
-    let lang = std::sync::Arc::new(voxel_game::text::Lang::load(std::path::Path::new(&root)));
-    let screen_assets = ScreenAssets {
-        creative: CreativeAssets {
-            trees: std::sync::Arc::new(voxel_game::creative_menu::SearchTrees::new(lang.clone())),
-            font: font.clone(),
-            titles: voxel_data::item::creative_tabs::CREATIVE_TABS
-                .iter()
-                .map(|tab| lang.text(tab.title))
-                .collect(),
-        },
-        inventory_title: lang.text("container.crafting"),
-    };
+    let screen_assets = gui.screen_assets();
     let tick_length = Duration::from_millis(50);
     let mut accumulated = Duration::ZERO;
     let mut last_frame = std::time::Instant::now();
@@ -361,7 +337,7 @@ pub fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn st
             if let Some(player) = session.player() {
                 camera.tick(player);
             }
-            hud.tick();
+            gui.tick();
             // The camera's attribute probe steps once a tick.
             if session.player().is_some() {
                 attributes_last =
@@ -541,87 +517,14 @@ pub fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn st
             }
             break;
         }
-        // The HUD, in GUI units.
-        {
-            let size = surface.scale();
-            let screen_menu = controls
-                .screen
-                .is_some()
-                .then(|| session.inventory_menu().clone());
-            let hud_player = session.player();
-            let mut draw_item =
-                |stack: &voxel_world::ClientItemStackState,
-                 x: f32,
-                 y: f32,
-                 out: &mut Vec<voxel_render::gui::items::GuiItemVertex>| {
-                    let layers = gui_item_layers.get(stack, &block_renderer, &biome_tints);
-                    voxel_render::gui::items::item_vertices(layers, x, y, out);
-                };
-            let frame = hud.build(
-                &gui_atlas,
-                &font,
-                size.gui_scaled_width(),
-                size.gui_scaled_height(),
-                &hud_input(&session, controls.camera_type == CameraType::FirstPerson),
-                started_at.elapsed().as_millis(),
-                &mut draw_item,
-            );
-            // The open screen over the HUD.
-            let mut frame = frame;
-            if let (Some(screen), Some(menu)) = (controls.screen.as_mut(), screen_menu) {
-                // The player in the screen, posed as the entity stands now.
-                let mut draw_player =
-                    |area: (i32, i32, i32, i32), size: f32, offset_y: f32, mouse: (f32, f32)| {
-                        let Some(player) = hud_player else {
-                            return Vec::new();
-                        };
-                        let pose = player.model_pose(1.0);
-                        let state = voxel_render::player_model::PlayerRenderState {
-                            walk_position: pose.walk_position,
-                            walk_speed: pose.walk_speed,
-                            age_in_ticks: player.tick_count() as f32 + 1.0,
-                            swim_amount: pose.swim_amount,
-                            crouching: pose.crouching,
-                            spectator: player.spectating(),
-                            attack_time: player.attack_anim(1.0),
-                            ..Default::default()
-                        };
-                        voxel_render::player_renderer::gui_player_vertices(
-                            &mut player_model,
-                            &state,
-                            area,
-                            size,
-                            offset_y,
-                            mouse,
-                        )
-                    };
-                // A stack's tooltip in words.
-                let mut tooltip_lines = |stack: &voxel_world::ClientItemStackState,
-                                         creative: bool| {
-                    voxel_game::tooltip::lines(stack, true, voxel_game::tooltip::Flags { creative })
-                        .iter()
-                        .map(|line| lang.runs(line, &voxel_game::text::Style::default()))
-                        .collect::<Vec<_>>()
-                };
-                let mut draw = voxel_render::gui::screen::ScreenDraw {
-                    frame: &mut frame,
-                    atlas: &gui_atlas,
-                    font: &font,
-                    item: &mut draw_item,
-                    player: &mut draw_player,
-                    tooltip: &mut tooltip_lines,
-                };
-                screen.build(&mut draw, &menu, controls.gui_mouse);
-            }
-            let scale = size.gui_scale() as f32;
-            backend.set_gui(
-                &frame,
-                [
-                    size.framebuffer_width() as f32 / scale,
-                    size.framebuffer_height() as f32 / scale,
-                ],
-            )?;
-        }
+        gui.draw(
+            &mut backend,
+            &surface,
+            &mut session,
+            &mut controls,
+            (&block_renderer, &biome_tints),
+            &mut player_model,
+        )?;
         let built = std::time::Instant::now();
         backend.draw_scene(colour, view_projection)?;
         frames += 1;
