@@ -250,12 +250,9 @@ Bitti: `Component`/dil (`en_us`), stilli yazı, `EditBox`, ipucu kutusu.
 
 ## 12. Kod sağlığı
 
-- **M** `main.rs` (~2.900 satır) bölünmesi: ekran yönetimi, betik motoru,
-  oturum döngüsü ve HUD kurulumu ayrı modüllere; `Screen` sarmalayıcısının
-  ortak bir `Screen` özelliğine dönüşmesi (kap ekranları ve menüler için).
-- **S** Bilinen `clippy` uyarıları (`light.rs` ×2, `world_mesh.rs` karmaşık tip,
-  `block_rules.rs` ×2), belge hücre sınırı, üretilen tabloların yeniden
-  üretim komut dizisi (`tools/generate/*` için tek `make`/betik).
+- Kod düzeni, crate katmanları ve karmaşıklık sınırları
+  [kodlama standartlarındadır](coding-standards.md); kalan istisnalar
+  gerekçeli `#[expect]` ile işaretlidir ve bölündükçe kaldırılır.
 - **S** Oracle harness: Java tekrarlarının determinizm denetimini yaygınlaştırma
   (bileşen sırası bu oturumda yakalandı: `DataComponentMap` kimlik hash'iyle
   dolaşıyor); macOS arm64'te `math` ailesinin çalıştırılması.
