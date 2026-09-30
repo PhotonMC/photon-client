@@ -34,8 +34,7 @@ pub mod world_mesh;
 
 pub use atlas::{AtlasSprite, SpriteEntry, SpritePlacement, StitchError, Stitcher};
 pub use blockstate::{
-    BlockStateFile, Condition, Operation, Quadrant as VariantQuadrant, Selector, Term, Variant,
-    parse_block_state,
+    BlockStateFile, Condition, Operation, Selector, Term, Variant, parse_block_state,
 };
 pub use geometry::{
     FaceUvs, Quadrant, WindingError, approximate_nearest_direction, closest_direction,

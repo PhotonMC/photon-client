@@ -703,14 +703,6 @@ fn alpha_blend(destination: u32, source: u32) -> u32 {
     argb(alpha, blend(16), blend(8), blend(0))
 }
 
-fn read_json(path: &Path) -> Option<JsonObject> {
-    let text = std::fs::read_to_string(path).ok()?;
-    match voxel_core::json::parse(&text).ok()? {
-        JsonValue::Object(object) => Some(object),
-        _ => None,
-    }
-}
-
 fn data_path(root: &Path, kind: &str, name: &str, extension: &str) -> PathBuf {
     let (namespace, path) = name.split_once(':').unwrap_or(("minecraft", name));
     root.join(namespace)
@@ -720,7 +712,9 @@ fn data_path(root: &Path, kind: &str, name: &str, extension: &str) -> PathBuf {
 
 /// A tag's entries with nested tags expanded, in order.
 fn expand_tag(root: &Path, kind: &str, name: &str, out: &mut Vec<String>) {
-    let Some(tag) = read_json(&data_path(root, &format!("tags/{kind}"), name, ".json")) else {
+    let Some(tag) =
+        voxel_core::json::read_object(&data_path(root, &format!("tags/{kind}"), name, ".json"))
+    else {
         return;
     };
     for value in tag.array("values").unwrap_or(&[]) {
@@ -741,7 +735,7 @@ impl Environment {
     /// Read a dimension's sky data from a data pack folder (the one holding
     /// `minecraft/`), with the biomes numbered as the server numbered them.
     pub fn load(data_root: &Path, dimension_type: &str, biome_names: &[String]) -> Option<Self> {
-        let dimension = read_json(&data_path(
+        let dimension = voxel_core::json::read_object(&data_path(
             data_root,
             "dimension_type",
             dimension_type,
@@ -758,7 +752,14 @@ impl Environment {
             && dimension_type != "minecraft:the_end";
         let biome_files: Vec<Option<JsonObject>> = biome_names
             .iter()
-            .map(|name| read_json(&data_path(data_root, "worldgen/biome", name, ".json")))
+            .map(|name| {
+                voxel_core::json::read_object(&data_path(
+                    data_root,
+                    "worldgen/biome",
+                    name,
+                    ".json",
+                ))
+            })
             .collect();
         let precipitation = biome_files
             .iter()
@@ -807,7 +808,8 @@ impl Environment {
         }
         let mut timelines = Vec::new();
         for name in timeline_names {
-            let Some(timeline) = read_json(&data_path(data_root, "timeline", &name, ".json"))
+            let Some(timeline) =
+                voxel_core::json::read_object(&data_path(data_root, "timeline", &name, ".json"))
             else {
                 continue;
             };

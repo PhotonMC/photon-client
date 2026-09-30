@@ -1,5 +1,6 @@
 //! Keyboard-driven player input for the pinned Java client.
 
+use crate::java_math;
 use std::cmp::Ordering;
 
 use voxel_core::math::{MTH_DEG_TO_RAD, Vec2, Vec3, clamp_f32, mth_cos_f64, mth_sin_f64};
@@ -322,9 +323,9 @@ pub fn clamp_local_player_climbable_movement(state: LocalPlayerClimbableMovement
         movement_y = 0.0;
     }
     Vec3::new(
-        java_clamp_f64(state.movement.x, -max, max),
+        java_math::clamp(state.movement.x, -max, max),
         movement_y,
-        java_clamp_f64(state.movement.z, -max, max),
+        java_math::clamp(state.movement.z, -max, max),
     )
 }
 
@@ -1092,42 +1093,8 @@ fn modify_input_speed_for_square_movement(input: Vec2) -> Vec2 {
     // Vec2.length() follows Mth.sqrt(1.0F + square(tangent)) with the
     // reference's f32 addition and f64 sqrt narrowing.
     let distance_to_unit_square = Vec2::new(1.0_f32, tangent).length();
-    let modified_length = java_min_f32(length * distance_to_unit_square, 1.0_f32);
+    let modified_length = java_math::min_f32(length * distance_to_unit_square, 1.0_f32);
     direction.scale(modified_length)
-}
-
-fn java_min_f32(left: f32, right: f32) -> f32 {
-    if left.is_nan() {
-        left
-    } else if right.is_nan() {
-        right
-    } else if left == 0.0 && right == 0.0 {
-        f32::from_bits(left.to_bits() | right.to_bits())
-    } else if left <= right {
-        left
-    } else {
-        right
-    }
-}
-
-fn java_clamp_f64(value: f64, min: f64, max: f64) -> f64 {
-    if value < min {
-        min
-    } else {
-        java_min_f64(value, max)
-    }
-}
-
-fn java_min_f64(left: f64, right: f64) -> f64 {
-    if left.is_nan() || right.is_nan() {
-        f64::NAN
-    } else if left == 0.0 && right == 0.0 {
-        f64::from_bits(left.to_bits() | right.to_bits())
-    } else if left <= right {
-        left
-    } else {
-        right
-    }
 }
 
 fn java_max_f64(left: f64, right: f64) -> f64 {

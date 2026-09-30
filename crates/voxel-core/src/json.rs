@@ -88,6 +88,20 @@ pub struct JsonError {
     pub reason: &'static str,
 }
 
+/// A document that must be one object, or `None`.
+pub fn parse_object(text: &str) -> Option<JsonObject> {
+    match parse(text).ok()? {
+        JsonValue::Object(object) => Some(object),
+        _ => None,
+    }
+}
+
+/// A file that must hold one object, or `None` if it cannot be read or does
+/// not.
+pub fn read_object(path: &std::path::Path) -> Option<JsonObject> {
+    parse_object(&std::fs::read_to_string(path).ok()?)
+}
+
 /// Parse one complete document, rejecting anything after it.
 pub fn parse(text: &str) -> Result<JsonValue, JsonError> {
     let mut reader = Reader {

@@ -13,7 +13,7 @@
 use std::path::Path;
 
 use crate::tint::{ColourMap, colour_map_lookup};
-use voxel_core::json::{JsonObject, JsonValue};
+use voxel_core::json::JsonObject;
 use voxel_core::random::RandomSource;
 
 /// Which biome colour a tint layer reads.
@@ -159,14 +159,6 @@ pub struct BiomeTints {
     frozen_noise: [SimplexNoise; 3],
 }
 
-fn read_json(path: &Path) -> Option<JsonObject> {
-    let text = std::fs::read_to_string(path).ok()?;
-    match voxel_core::json::parse(&text).ok()? {
-        JsonValue::Object(object) => Some(object),
-        _ => None,
-    }
-}
-
 fn hex_colour(object: &JsonObject, key: &str) -> Option<u32> {
     let text = object.text(key)?;
     let hex = text.strip_prefix('#')?;
@@ -222,7 +214,7 @@ impl BiomeTints {
             .iter()
             .map(|name| {
                 let (namespace, path) = name.split_once(':').unwrap_or(("minecraft", name));
-                let biome = read_json(
+                let biome = voxel_core::json::read_object(
                     &data_root
                         .join(namespace)
                         .join("worldgen/biome")

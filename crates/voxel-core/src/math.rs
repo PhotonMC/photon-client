@@ -1730,7 +1730,7 @@ scalar_operations!(f32, floor_f32, wrap_degrees_f32, clamp_f32);
 scalar_operations!(f64, floor_f64, wrap_degrees_f64, clamp_f64);
 
 #[inline(never)]
-fn java_negate(value: f64) -> f64 {
+pub(crate) fn java_negate(value: f64) -> f64 {
     f64::from_bits(value.to_bits() ^ (1_u64 << 63))
 }
 
@@ -1755,7 +1755,7 @@ fn java_f32_add(left: f32, right: f32) -> f32 {
     }
 }
 
-fn java_double_compare(left: f64, right: f64) -> i32 {
+pub(crate) fn java_double_compare(left: f64, right: f64) -> i32 {
     if left < right {
         -1
     } else if left > right {
@@ -1781,7 +1781,7 @@ fn java_double_to_long_bits(value: f64) -> u64 {
     }
 }
 
-fn java_double_hash(value: f64) -> i32 {
+pub(crate) fn java_double_hash(value: f64) -> i32 {
     let bits = java_double_to_long_bits(value);
     (bits ^ (bits >> 32)) as i32
 }

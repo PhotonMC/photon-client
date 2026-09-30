@@ -155,7 +155,7 @@ impl ClientboundUpdateEnabledFeaturesPacket {
 
     /// Decode the count-sized HashSet and preserve Java's iteration order.
     pub fn decode(input: &mut &[u8]) -> Result<Self, ReadError> {
-        let count = wire::read_varint(input).map_err(map_wire_error)?;
+        let count = wire::read_varint(input).map_err(ReadError::from)?;
         if count < 0 {
             return Err(ReadError::DecoderError);
         }
@@ -190,7 +190,7 @@ impl ClientboundCodeOfConductPacket {
     /// Decode the text with Java's default 32767 UTF-16-unit bound.
     pub fn decode(input: &mut &[u8]) -> Result<Self, ReadError> {
         Ok(Self::new(
-            utf8::read_utf8(input, 32_767).map_err(map_utf8_error)?,
+            utf8::read_utf8(input, 32_767).map_err(ReadError::from)?,
         ))
     }
 }
@@ -217,7 +217,7 @@ impl ServerboundClientInformationPacket {
 
     /// Decode the nine ClientInformation fields in Java's order.
     pub fn decode(input: &mut &[u8]) -> Result<Self, ReadError> {
-        let language = utf8::read_utf8(input, 16).map_err(map_utf8_error)?;
+        let language = utf8::read_utf8(input, 16).map_err(ReadError::from)?;
         let view_distance = i8::from_be_bytes([read_byte(input)?]) as i32;
         let chat_visibility =
             ChatVisibility::from_id(read_enum(input)?).ok_or(ReadError::DecoderError)?;
@@ -300,26 +300,11 @@ fn write_enum(value: i32, output: &mut Vec<u8>) {
 }
 
 fn read_enum(input: &mut &[u8]) -> Result<i32, ReadError> {
-    wire::read_varint(input).map_err(map_wire_error)
+    wire::read_varint(input).map_err(ReadError::from)
 }
 
 fn read_byte(input: &mut &[u8]) -> Result<u8, ReadError> {
     let (&value, rest) = input.split_first().ok_or(ReadError::BufferUnderflow)?;
     *input = rest;
     Ok(value)
-}
-
-fn map_utf8_error(error: utf8::ReadError) -> ReadError {
-    match error {
-        utf8::ReadError::DecoderError => ReadError::DecoderError,
-        utf8::ReadError::BufferUnderflow => ReadError::BufferUnderflow,
-        utf8::ReadError::TooBig => ReadError::TooBig,
-    }
-}
-
-fn map_wire_error(error: wire::ReadError) -> ReadError {
-    match error {
-        wire::ReadError::BufferUnderflow => ReadError::BufferUnderflow,
-        wire::ReadError::TooBig => ReadError::TooBig,
-    }
 }

@@ -21,6 +21,25 @@ pub enum ReadError {
     TooBig,
 }
 
+impl From<wire::ReadError> for ReadError {
+    fn from(error: wire::ReadError) -> Self {
+        match error {
+            wire::ReadError::BufferUnderflow => Self::BufferUnderflow,
+            wire::ReadError::TooBig => Self::TooBig,
+        }
+    }
+}
+
+impl From<crate::utf8::ReadError> for ReadError {
+    fn from(error: crate::utf8::ReadError) -> Self {
+        match error {
+            crate::utf8::ReadError::DecoderError => Self::DecoderError,
+            crate::utf8::ReadError::BufferUnderflow => Self::BufferUnderflow,
+            crate::utf8::ReadError::TooBig => Self::TooBig,
+        }
+    }
+}
+
 /// 128-bit identifier split into big-endian halves.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Uuid {
@@ -107,10 +126,7 @@ pub fn read_lp_vec3(input: &mut &[u8]) -> Result<Vec3, ReadError> {
     let buffer = u64::from(highest) << 16 | u64::from(middle) << 8 | u64::from(lowest);
     let mut scale = u64::from(lowest & 3);
     if lowest & 4 != 0 {
-        let continuation = wire::read_varint(input).map_err(|error| match error {
-            wire::ReadError::BufferUnderflow => ReadError::BufferUnderflow,
-            wire::ReadError::TooBig => ReadError::TooBig,
-        })?;
+        let continuation = wire::read_varint(input)?;
         scale |= u64::from(continuation as u32) << 2;
     }
     let scale = scale as f64;
@@ -1511,11 +1527,7 @@ impl BitSet {
 
 /// Read a VarInt length followed by big-endian longs.
 pub fn read_long_array(input: &mut &[u8]) -> Result<Vec<i64>, ReadError> {
-    let length = match wire::read_varint(input) {
-        Ok(value) => value,
-        Err(wire::ReadError::BufferUnderflow) => return Err(ReadError::BufferUnderflow),
-        Err(wire::ReadError::TooBig) => return Err(ReadError::TooBig),
-    };
+    let length = wire::read_varint(input)?;
     if length < 0 {
         return Err(ReadError::DecoderError);
     }

@@ -27,6 +27,7 @@ mod constants;
 mod container;
 mod dimension;
 mod entity;
+mod java_math;
 pub mod light;
 mod metadata;
 mod player;

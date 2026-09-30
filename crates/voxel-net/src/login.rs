@@ -39,7 +39,7 @@ impl ServerboundHelloPacket {
 
     /// Decode one hello packet with Java's name-then-UUID consumption order.
     pub fn decode(input: &mut &[u8]) -> Result<Self, ReadError> {
-        let name = utf8::read_utf8(input, MAX_NAME_LENGTH).map_err(map_utf8_error)?;
+        let name = utf8::read_utf8(input, MAX_NAME_LENGTH).map_err(ReadError::from)?;
         let profile_id = binary::read_uuid(input)?;
         Ok(Self { name, profile_id })
     }
@@ -103,7 +103,7 @@ impl ClientboundHelloPacket {
 
     /// Decode fields in Java's server-id, public-key, challenge, boolean order.
     pub fn decode(input: &mut &[u8]) -> Result<Self, ReadError> {
-        let server_id = utf8::read_utf8(input, MAX_SERVER_ID_LENGTH).map_err(map_utf8_error)?;
+        let server_id = utf8::read_utf8(input, MAX_SERVER_ID_LENGTH).map_err(ReadError::from)?;
         let public_key = read_byte_array(input)?;
         let challenge = read_byte_array(input)?;
         let (&should_authenticate, rest) = input.split_first().ok_or(ReadError::BufferUnderflow)?;
@@ -192,7 +192,7 @@ impl ClientboundLoginFinishedPacket {
     /// Decode GameProfile fields followed by the session UUID.
     pub fn decode(input: &mut &[u8]) -> Result<Self, ReadError> {
         let id = binary::read_uuid(input)?;
-        let name = utf8::read_utf8(input, MAX_NAME_LENGTH).map_err(map_utf8_error)?;
+        let name = utf8::read_utf8(input, MAX_NAME_LENGTH).map_err(ReadError::from)?;
         let properties = read_properties(input)?;
         let session_id = binary::read_uuid(input)?;
         Ok(Self::new(
@@ -228,18 +228,18 @@ fn write_properties(
 }
 
 fn read_properties(input: &mut &[u8]) -> Result<Vec<ProfileProperty>, ReadError> {
-    let count = wire::read_varint(input).map_err(map_wire_error)?;
+    let count = wire::read_varint(input).map_err(ReadError::from)?;
     if count > MAX_PROFILE_PROPERTIES as i32 {
         return Err(ReadError::DecoderError);
     }
     let mut properties = Vec::new();
     for _ in 0..count {
-        let name = utf8::read_utf8(input, MAX_PROPERTY_NAME_LENGTH).map_err(map_utf8_error)?;
-        let value = utf8::read_utf8(input, MAX_PROPERTY_VALUE_LENGTH).map_err(map_utf8_error)?;
+        let name = utf8::read_utf8(input, MAX_PROPERTY_NAME_LENGTH).map_err(ReadError::from)?;
+        let value = utf8::read_utf8(input, MAX_PROPERTY_VALUE_LENGTH).map_err(ReadError::from)?;
         let (&has_signature, rest) = input.split_first().ok_or(ReadError::BufferUnderflow)?;
         *input = rest;
         let signature = if has_signature != 0 {
-            Some(utf8::read_utf8(input, MAX_PROPERTY_SIGNATURE_LENGTH).map_err(map_utf8_error)?)
+            Some(utf8::read_utf8(input, MAX_PROPERTY_SIGNATURE_LENGTH).map_err(ReadError::from)?)
         } else {
             None
         };
@@ -257,7 +257,7 @@ fn write_byte_array(value: &[u8], output: &mut Vec<u8>) -> Result<(), WriteError
 
 fn read_byte_array(input: &mut &[u8]) -> Result<Vec<u8>, ReadError> {
     let available_before_length = input.len();
-    let length = wire::read_varint(input).map_err(map_wire_error)?;
+    let length = wire::read_varint(input).map_err(ReadError::from)?;
     if length < 0 {
         return Err(ReadError::DecoderError);
     }
@@ -271,19 +271,4 @@ fn read_byte_array(input: &mut &[u8]) -> Result<Vec<u8>, ReadError> {
     let (value, rest) = input.split_at(length);
     *input = rest;
     Ok(value.to_vec())
-}
-
-fn map_utf8_error(error: utf8::ReadError) -> ReadError {
-    match error {
-        utf8::ReadError::DecoderError => ReadError::DecoderError,
-        utf8::ReadError::BufferUnderflow => ReadError::BufferUnderflow,
-        utf8::ReadError::TooBig => ReadError::TooBig,
-    }
-}
-
-fn map_wire_error(error: wire::ReadError) -> ReadError {
-    match error {
-        wire::ReadError::BufferUnderflow => ReadError::BufferUnderflow,
-        wire::ReadError::TooBig => ReadError::TooBig,
-    }
 }

@@ -245,10 +245,12 @@ pub fn recalculate_winding(
     Ok(())
 }
 
-/// A face's texture rotation, which the model gives in degrees.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// A quarter turn (`Quadrant`): a face's texture rotation, or a blockstate
+/// variant's turn about an axis, both given in degrees.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Quadrant {
     /// No rotation.
+    #[default]
     R0,
     /// A quarter turn.
     R90,
@@ -271,6 +273,26 @@ impl Quadrant {
             180 => Some(Self::R180),
             270 => Some(Self::R270),
             _ => None,
+        }
+    }
+
+    /// The name the reference's enum carries.
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::R0 => "R0",
+            Self::R90 => "R90",
+            Self::R180 => "R180",
+            Self::R270 => "R270",
+        }
+    }
+
+    /// The angle in degrees.
+    pub fn degrees(self) -> i32 {
+        match self {
+            Self::R0 => 0,
+            Self::R90 => 90,
+            Self::R180 => 180,
+            Self::R270 => 270,
         }
     }
 

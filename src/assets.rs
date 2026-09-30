@@ -46,12 +46,8 @@ impl voxel_render::AssetSource for FolderAssets {
         // A sprite's metadata file sits next to its texture with a second
         // extension, and the mip strategy is one section inside it.
         let text = std::fs::read_to_string(self.path(name, "textures", ".png.mcmeta")).ok()?;
-        match voxel_core::json::parse(&text).ok()? {
-            voxel_core::json::JsonValue::Object(object) => {
-                voxel_render::TextureMetadata::parse(object.object("texture")?)
-            }
-            _ => None,
-        }
+        let object = voxel_core::json::parse_object(&text)?;
+        voxel_render::TextureMetadata::parse(object.object("texture")?)
     }
 
     fn texture_animation(
@@ -59,11 +55,7 @@ impl voxel_render::AssetSource for FolderAssets {
         name: &voxel_core::identifier::Identifier,
     ) -> Option<voxel_render::AnimationFrames> {
         let text = std::fs::read_to_string(self.path(name, "textures", ".png.mcmeta")).ok()?;
-        match voxel_core::json::parse(&text).ok()? {
-            voxel_core::json::JsonValue::Object(object) => {
-                voxel_render::AnimationFrames::parse(object.object("animation")?)
-            }
-            _ => None,
-        }
+        let object = voxel_core::json::parse_object(&text)?;
+        voxel_render::AnimationFrames::parse(object.object("animation")?)
     }
 }

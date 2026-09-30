@@ -12,7 +12,7 @@
 use crate::{
     binary::BlockPos,
     direction::{Axis, Direction},
-    math::{Vec3, java_double_to_string},
+    math::{Vec3, java_double_compare, java_double_hash, java_double_to_string, java_negate},
 };
 
 /// Integer-aligned bounds used by structure and world-generation geometry.
@@ -903,11 +903,6 @@ fn java_max_f32(left: f32, right: f32) -> f32 {
     }
 }
 
-#[inline(never)]
-fn java_negate(value: f64) -> f64 {
-    f64::from_bits(value.to_bits() ^ (1_u64 << 63))
-}
-
 fn java_max(left: f64, right: f64) -> f64 {
     if left.is_nan() {
         left
@@ -924,35 +919,4 @@ fn java_max(left: f64, right: f64) -> f64 {
     } else {
         right
     }
-}
-
-fn java_double_compare(left: f64, right: f64) -> i32 {
-    if left < right {
-        -1
-    } else if left > right {
-        1
-    } else {
-        let left_bits = java_double_to_long_bits(left) as i64;
-        let right_bits = java_double_to_long_bits(right) as i64;
-        if left_bits < right_bits {
-            -1
-        } else if left_bits > right_bits {
-            1
-        } else {
-            0
-        }
-    }
-}
-
-fn java_double_to_long_bits(value: f64) -> u64 {
-    if value.is_nan() {
-        0x7ff8_0000_0000_0000
-    } else {
-        value.to_bits()
-    }
-}
-
-fn java_double_hash(value: f64) -> i32 {
-    let bits = java_double_to_long_bits(value);
-    (bits ^ (bits >> 32)) as i32
 }

@@ -71,7 +71,7 @@ pub fn write_identifier(
 }
 
 pub fn read_identifier(input: &mut &[u8]) -> Result<Identifier, binary::ReadError> {
-    let units = utf8::read_utf8(input, 32_767).map_err(map_utf8_error)?;
+    let units = utf8::read_utf8(input, 32_767).map_err(binary::ReadError::from)?;
     let value = String::from_utf16(&units).map_err(|_| binary::ReadError::DecoderError)?;
     Identifier::parse(&value).map_err(|_| binary::ReadError::DecoderError)
 }
@@ -160,14 +160,6 @@ fn is_valid_namespace_char(value: char) -> bool {
 
 fn is_valid_path_char(value: char) -> bool {
     is_valid_namespace_char(value) || value == '/'
-}
-
-fn map_utf8_error(error: utf8::ReadError) -> binary::ReadError {
-    match error {
-        utf8::ReadError::DecoderError => binary::ReadError::DecoderError,
-        utf8::ReadError::BufferUnderflow => binary::ReadError::BufferUnderflow,
-        utf8::ReadError::TooBig => binary::ReadError::TooBig,
-    }
 }
 
 fn hash_bucket(identifier: &Identifier, capacity: usize) -> usize {

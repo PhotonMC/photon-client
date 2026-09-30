@@ -13,52 +13,7 @@ use std::collections::BTreeMap;
 use voxel_core::identifier::Identifier;
 use voxel_core::json::{JsonObject, JsonValue};
 
-/// A quarter turn, as a variant names it.
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
-pub enum Quadrant {
-    #[default]
-    R0,
-    R90,
-    R180,
-    R270,
-}
-
-impl Quadrant {
-    /// The quarter turn an angle in degrees names.
-    ///
-    /// The angle is taken modulo a full turn first, so `450` and `-270` both
-    /// land on a quarter turn; anything that is not a multiple of ninety is
-    /// refused rather than rounded.
-    pub fn from_degrees(degrees: i32) -> Option<Self> {
-        match voxel_core::math::positive_modulo_i32(degrees, 360) {
-            0 => Some(Self::R0),
-            90 => Some(Self::R90),
-            180 => Some(Self::R180),
-            270 => Some(Self::R270),
-            _ => None,
-        }
-    }
-
-    /// The name the reference's enum carries.
-    pub fn name(self) -> &'static str {
-        match self {
-            Self::R0 => "R0",
-            Self::R90 => "R90",
-            Self::R180 => "R180",
-            Self::R270 => "R270",
-        }
-    }
-
-    /// The angle in degrees.
-    pub fn degrees(self) -> i32 {
-        match self {
-            Self::R0 => 0,
-            Self::R90 => 90,
-            Self::R180 => 180,
-            Self::R270 => 270,
-        }
-    }
-}
+use crate::geometry::Quadrant;
 
 /// One model a state may draw, with the turn applied to it.
 #[derive(Clone, PartialEq, Debug)]

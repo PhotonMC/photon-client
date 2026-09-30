@@ -15,6 +15,7 @@
 #![allow(clippy::neg_cmp_op_on_partial_ord)]
 
 use crate::input::{Input, KeyboardInput, LocalPlayerInputModifiers, modify_local_player_input};
+use crate::java_math;
 use voxel_core::aabb::Aabb;
 use voxel_core::binary::BlockPos;
 use voxel_core::direction::Axis;
@@ -1586,9 +1587,9 @@ impl LocalPlayer {
         }
         self.fall_distance = 0.0;
         let max = f64::from(0.15_f32);
-        let x = java_clamp(delta.x, -max, max);
-        let z = java_clamp(delta.z, -max, max);
-        let mut y = java_max(delta.y, -max);
+        let x = java_math::clamp(delta.x, -max, max);
+        let z = java_math::clamp(delta.z, -max, max);
+        let mut y = java_math::max(delta.y, -max);
         if y < 0.0 && self.is_shift_key_down() && !self.abilities.flying {
             if level.info(self.block_position()).name == "minecraft:scaffolding" {
                 return unsupported("climbing scaffolding");
@@ -1762,7 +1763,7 @@ impl LocalPlayer {
                     && !suppressing_bounce
                     && effect_state.flags & flag::SUPPRESSES_BOUNCE == 0
                 {
-                    java_max(restitution, f64::from(effect_state.bounce))
+                    java_math::max(restitution, f64::from(effect_state.bounce))
                 } else {
                     0.0
                 };
@@ -1837,8 +1838,8 @@ impl LocalPlayer {
         let mut delta_x = delta.x;
         let mut delta_z = delta.z;
         let step = 0.05;
-        let step_x = java_signum(delta_x) * step;
-        let step_z = java_signum(delta_z) * step;
+        let step_x = java_math::signum(delta_x) * step;
+        let step_z = java_math::signum(delta_z) * step;
         let max_down = f64::from(max_down_step);
 
         while delta_x != 0.0 && self.can_fall_at_least(level, delta_x, 0.0, max_down)? {
@@ -2016,7 +2017,7 @@ impl LocalPlayer {
         }
         self.delta = Vec3::new(
             self.delta.x,
-            java_max(f64::from(jump_power), self.delta.y),
+            java_math::max(f64::from(jump_power), self.delta.y),
             self.delta.z,
         );
         if self.sprinting {
@@ -2403,7 +2404,7 @@ impl LocalPlayer {
                         if x == eye_x && z == eye_z && eye_y >= bottom && eye_y <= top {
                             tracker.eyes_inside = true;
                         }
-                        tracker.height = java_max(top - entity_y, tracker.height);
+                        tracker.height = java_math::max(top - entity_y, tracker.height);
                         if !ignore_current {
                             let mut flow = level.fluid_flow(pos, &info)?;
                             let tracker = if info.is_water() {
@@ -2926,7 +2927,7 @@ fn blocks_intersected_between(from: Vec3, to: Vec3, at_target: Aabb) -> Vec<(Blo
             for axis in 0..3 {
                 let low = f64::from(block[axis] as f32 + 1.0e-5_f32);
                 let high = f64::from(block[axis]) + 1.0 - f64::from(1.0e-5_f32);
-                let clamped = java_clamp(hit_coords[axis], low, high);
+                let clamped = java_math::clamp(hit_coords[axis], low, high);
                 opposite[axis] = floor_f64(clamped - size[axis] * f64::from(corner_dir[axis]));
             }
             add_box(&mut out, block, opposite, iterations, Some(travel));
@@ -3001,46 +3002,4 @@ fn property(state_id: Option<i32>, name: &str) -> Option<&'static str> {
         .into_iter()
         .find(|(property, _)| *property == name)
         .map(|(_, value)| value)
-}
-
-fn java_signum(value: f64) -> f64 {
-    if value > 0.0 {
-        1.0
-    } else if value < 0.0 {
-        -1.0
-    } else {
-        value
-    }
-}
-
-fn java_clamp(value: f64, min: f64, max: f64) -> f64 {
-    if value < min {
-        min
-    } else {
-        java_min(value, max)
-    }
-}
-
-fn java_min(left: f64, right: f64) -> f64 {
-    if left.is_nan() || right.is_nan() {
-        f64::NAN
-    } else if left == 0.0 && right == 0.0 {
-        f64::from_bits(left.to_bits() | right.to_bits())
-    } else if left <= right {
-        left
-    } else {
-        right
-    }
-}
-
-fn java_max(left: f64, right: f64) -> f64 {
-    if left.is_nan() || right.is_nan() {
-        f64::NAN
-    } else if left == 0.0 && right == 0.0 {
-        f64::from_bits(left.to_bits() & right.to_bits())
-    } else if left >= right {
-        left
-    } else {
-        right
-    }
 }

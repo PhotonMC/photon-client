@@ -80,11 +80,11 @@ impl ClientboundUpdateTagsPacket {
             let mut tags = Vec::new();
             for _ in 0..tag_count {
                 let id = identifier::read_identifier(input)?;
-                let value_count = wire::read_varint(input).map_err(map_wire_error)?;
+                let value_count = wire::read_varint(input).map_err(ReadError::from)?;
                 let mut values = Vec::new();
                 if value_count >= 0 {
                     for _ in 0..value_count {
-                        values.push(wire::read_varint(input).map_err(map_wire_error)?);
+                        values.push(wire::read_varint(input).map_err(ReadError::from)?);
                     }
                 }
                 tags.push(TagEntry::new(id, values));
@@ -105,7 +105,7 @@ fn write_identifier(identifier: &Identifier, output: &mut Vec<u8>) -> Result<(),
 }
 
 fn read_count(input: &mut &[u8]) -> Result<usize, ReadError> {
-    let count = wire::read_varint(input).map_err(map_wire_error)?;
+    let count = wire::read_varint(input).map_err(ReadError::from)?;
     usize::try_from(count).map_err(|_| ReadError::DecoderError)
 }
 
@@ -141,12 +141,5 @@ fn guava_expected_size(value: usize) -> usize {
         (value as f64 / 0.75 + 1.0) as usize
     } else {
         usize::MAX
-    }
-}
-
-fn map_wire_error(error: wire::ReadError) -> ReadError {
-    match error {
-        wire::ReadError::BufferUnderflow => ReadError::BufferUnderflow,
-        wire::ReadError::TooBig => ReadError::TooBig,
     }
 }
