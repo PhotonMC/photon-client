@@ -89,6 +89,21 @@ bağımsız yürüyebilir.
 Kanıt: kap tıklamaları için `movement/container-clicks` ailesinin
 genişletilmesi (`client-parity`), ekranlar canlı gözlem.
 
+### Kap menülerinde bilinen eksikler (unutulmasın)
+
+- Kap menüsünde off hand bir yuva değil: off hand ile değiştirme (`SWAP` 40)
+  tahmin edilmez, sunucunun düzeltmesi gelir; `Inventory.add` off hand'i de
+  saymaz.
+- `UpdateRecipes` paketinin taş kesici tarifleri kısmı okunmuyor (yalnız
+  özellik kümeleri).
+- Bileşenli eşyanın bileşen hash'leri yok: tıklama paketinde bileşeni olan yığın
+  bileşensiz hash'lenir (sunucu düzeltir).
+- Hasarlı eşya, büyü kilidi (zırh), bundle tıklama geçersiz kılmaları tahmin
+  edilmez.
+- Tarif kitabı: düğme çizilir ve basışı yutulur; kitap açılmaz.
+- Kap içeriği ipucu (shulker/bundle satırları) ve `#etiket` araması yok.
+- Modellenmeyen menüler açılınca istemci hemen kapanış paketi gönderir.
+
 ## 4. M4 — Entity'ler
 
 En büyük iş; altyapısı hazır değil. Dünya kopyasında entity durumu
