@@ -334,7 +334,7 @@ impl GenericScreen {
     fn loom_scroll_to(&mut self, offs: f32) {
         self.extras.loom_offs = offs;
         let rows = self.loom_rows() as f32;
-        self.extras.loom_row = ((offs * rows + 0.5) as usize).max(0);
+        self.extras.loom_row = (offs * rows + 0.5) as usize;
     }
 
     /// `LoomScreen.mouseDragged`.
