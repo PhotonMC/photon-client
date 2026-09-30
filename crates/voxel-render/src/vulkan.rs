@@ -860,6 +860,8 @@ pub struct VulkanBackend {
     /// The items in the GUI's slots, which the GUI's item runs count in.
     gui_item_buffer: Option<SkyBuffer>,
     sections: std::collections::BTreeMap<(i32, i32, i32), SectionBuffers>,
+    /// The sections in view this frame; `None` draws every section.
+    visible_sections: Option<Vec<(i32, i32, i32)>>,
     arena: Vec<ArenaBlock>,
     /// Staging chunks: every chunk, the ones taking uploads for the next
     /// frame, and the ones the frame in flight still copies from.
@@ -1180,6 +1182,7 @@ impl VulkanBackend {
                 gui_size: [1.0, 1.0],
                 gui_item_buffer: None,
                 sections: std::collections::BTreeMap::new(),
+                visible_sections: None,
                 arena: Vec::new(),
                 staging: Vec::new(),
                 staging_filling: Vec::new(),
@@ -1457,8 +1460,8 @@ impl VulkanBackend {
                 std::slice::from_raw_parts(terrain_push.as_ptr().cast::<u8>(), 160),
             );
             for section in self
-                .sections
-                .values()
+                .drawn_sections()
+                .into_iter()
                 .filter(|section| section.index_count > 0)
             {
                 self.bind_section(section, scene.pipeline_layout, now);
@@ -1550,8 +1553,8 @@ impl VulkanBackend {
             // Translucent faces last, the farthest section first, so nearer
             // water blends over farther.
             let mut translucent: Vec<&SectionBuffers> = self
-                .sections
-                .values()
+                .drawn_sections()
+                .into_iter()
                 .filter(|section| section.translucent_index_count > 0)
                 .collect();
             let distance = |section: &SectionBuffers| {
@@ -2423,6 +2426,22 @@ impl VulkanBackend {
             }
             self.out_of_date = false;
             Ok(())
+        }
+    }
+
+    /// Draw only these sections from now on (the ones in view).
+    pub fn set_visible_sections(&mut self, visible: &[(i32, i32, i32)]) {
+        self.visible_sections = Some(visible.to_vec());
+    }
+
+    /// The sections drawn this frame: the ones in view, or all of them.
+    fn drawn_sections(&self) -> Vec<&SectionBuffers> {
+        match &self.visible_sections {
+            Some(visible) => visible
+                .iter()
+                .filter_map(|key| self.sections.get(key))
+                .collect(),
+            None => self.sections.values().collect(),
         }
     }
 

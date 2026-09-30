@@ -72,10 +72,10 @@ olarak tutulmaz.
 
 ### F4. Görünürlük ve derleme zamanı (Java `SectionOcclusionGraph`)
 
-- [ ] Frustum culling: çizim yalnızca görüş konisindeki section'lar için.
-- [ ] Oklüzyon grafiği: section'lar arası görünürlük; görünmeyen section
+- [x] Frustum culling: çizim yalnızca görüş konisindeki section'lar için.
+- [x] Oklüzyon grafiği: section'lar arası görünürlük; görünmeyen section
   ne derlenir ne çizilir.
-- [ ] Derleme 8 komşu chunk ve ışık hazır olunca (`hasAllNeighbors`,
+- [x] Derleme 8 komşu chunk ve ışık hazır olunca (`hasAllNeighbors`,
   `lightOnInColumn`); `SETTLE` süresi kalkar, çift derleme biter.
 
 ### F5. Eşyalar ve veri güdümlü kayıtlar

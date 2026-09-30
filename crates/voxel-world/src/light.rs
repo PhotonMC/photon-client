@@ -1549,6 +1549,17 @@ impl LevelLightEngine {
         }
     }
 
+    /// `lightOnInColumn`: whether a chunk's light has been switched on in
+    /// every layer the level has.
+    pub fn light_on_in_column(&self, chunk_x: i32, chunk_z: i32) -> bool {
+        let section = (chunk_x, 0, chunk_z);
+        self.block.storage.light_on_in_section(section)
+            && self
+                .sky
+                .as_ref()
+                .is_none_or(|sky| sky.storage.light_on_in_section(section))
+    }
+
     fn engines(&mut self) -> impl Iterator<Item = &mut Engine> {
         std::iter::once(&mut self.block).chain(self.sky.as_mut())
     }

@@ -65,7 +65,6 @@ enum Flow {
 /// Where a frame is seen from.
 struct FrameCamera {
     partial: f64,
-    feet: Vec3,
     /// The player's eyes.
     eye: Vec3,
     /// The camera, which backs away from the eyes when detached.
@@ -79,6 +78,8 @@ struct FrameCamera {
     sky_view_projection: [[f32; 4]; 4],
     render_distance: i32,
     eye_in_water: bool,
+    /// `Camera.getCullFrustum`.
+    frustum: voxel_render::visibility::Frustum,
 }
 
 /// A joined session with its window, renderer and everything the frames
@@ -392,7 +393,6 @@ impl Play {
         let bob = voxel_render::camera::view_bob(walked, bob);
         FrameCamera {
             partial,
-            feet,
             eye,
             camera,
             relative,
@@ -401,6 +401,16 @@ impl Play {
             sky_view_projection: player_camera(self.aspect, fov, far, [0.0; 3], y_rot, x_rot, bob),
             render_distance,
             eye_in_water,
+            // The field of view never culls narrower than the option.
+            frustum: voxel_render::visibility::Frustum::new(
+                &crate::view::view_rotation(y_rot, x_rot),
+                &voxel_render::visibility::culling_projection(
+                    fov.max(voxel_render::camera::DEFAULT_FOV),
+                    self.aspect,
+                    far,
+                ),
+                [camera.x, camera.y, camera.z],
+            ),
         }
     }
 
@@ -476,15 +486,16 @@ impl Play {
         // Drop the sections whose chunk went away, then mesh the dirty ones.
         self.sections
             .forget_chunks(self.session.take_forgotten_chunks(), &mut self.backend)?;
-        let camera_block =
-            [frame.eye.x, frame.eye.y, frame.eye.z].map(|value| value.floor() as i64);
         self.sections.update(
             &mut self.session,
             &mut self.backend,
-            frame.feet,
-            camera_block,
+            &crate::sections::SectionView {
+                camera: [frame.camera.x, frame.camera.y, frame.camera.z],
+                frustum: frame.frustum,
+                view_distance: frame.render_distance,
+                origin: self.origin,
+            },
             script_done,
-            self.origin,
         )?;
         let meshed = Instant::now();
         self.backend.set_sort_origin(frame.relative);

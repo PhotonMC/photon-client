@@ -28,6 +28,7 @@ pub mod sky;
 pub mod special_models;
 pub mod texture_metadata;
 pub mod tint;
+pub mod visibility;
 pub mod vulkan;
 pub mod weather;
 pub mod window;

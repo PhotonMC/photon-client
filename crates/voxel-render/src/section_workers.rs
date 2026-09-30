@@ -35,6 +35,8 @@ pub struct Built {
     pub mesh: Mesh,
     /// The section's centre, from the mesh origin.
     pub centre: [f32; 3],
+    /// Which of its faces see each other, for the occlusion flood.
+    pub visibility: crate::visibility::VisibilitySet,
     /// How long the worker took.
     pub took: std::time::Duration,
 }
@@ -164,9 +166,23 @@ fn mesh_section(renderer: &BlockRenderer, tints: &BiomeTints, job: Job) -> Built
         [16, 16, 16],
         job.origin,
     );
+    // `SectionCompiler`: every block that renders solid hides what is
+    // behind it.
+    let mut graph = crate::visibility::VisGraph::default();
+    for y in 0..16 {
+        for z in 0..16 {
+            for x in 0..16 {
+                let state = read(corner[0] + x, corner[1] + y, corner[2] + z).unwrap_or(0);
+                if voxel_world::block::state_or_air(i64::from(state)).solid_render {
+                    graph.set_opaque(x as usize, y as usize, z as usize);
+                }
+            }
+        }
+    }
     Built {
         key: job.key,
         generation: job.generation,
+        visibility: graph.resolve(),
         mesh: region.mesh,
         centre: [0, 1, 2].map(|axis| (corner[axis] + 8 - job.origin[axis]) as f32),
         took: started.elapsed(),

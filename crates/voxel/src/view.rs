@@ -102,6 +102,34 @@ fn max_camera_zoom(
 }
 
 /// View-projection from the player's eye, measured from the mesh origin.
+/// The camera's right, up and forward vectors (`Camera.setRotation`).
+fn view_basis(y_rot: f32, x_rot: f32) -> ([f32; 3], [f32; 3], [f32; 3]) {
+    let look = voxel_core::math::Vec3::direction_from_rotation_components(x_rot, y_rot);
+    let forward = [look.x as f32, look.y as f32, look.z as f32];
+    // The side vector turns with the yaw alone, so looking straight up or
+    // down keeps a well-defined view.
+    let yaw = y_rot.to_radians();
+    let right = [-yaw.cos(), 0.0, -yaw.sin()];
+    let up = [
+        right[1] * forward[2] - right[2] * forward[1],
+        right[2] * forward[0] - right[0] * forward[2],
+        right[0] * forward[1] - right[1] * forward[0],
+    ];
+    (right, up, forward)
+}
+
+/// `Camera.getViewRotationMatrix`: the view's turn with no move, which the
+/// culling frustum is built from.
+pub fn view_rotation(y_rot: f32, x_rot: f32) -> [[f32; 4]; 4] {
+    let (right, up, forward) = view_basis(y_rot, x_rot);
+    [
+        [right[0], up[0], -forward[0], 0.0],
+        [right[1], up[1], -forward[1], 0.0],
+        [right[2], up[2], -forward[2], 0.0],
+        [0.0, 0.0, 0.0, 1.0],
+    ]
+}
+
 pub fn player_camera(
     aspect: f32,
     fov: f32,
@@ -111,17 +139,7 @@ pub fn player_camera(
     x_rot: f32,
     bob: [[f32; 4]; 4],
 ) -> [[f32; 4]; 4] {
-    let look = voxel_core::math::Vec3::direction_from_rotation_components(x_rot, y_rot);
-    let forward = [look.x as f32, look.y as f32, look.z as f32];
-    // `Camera.setRotation`: the camera's side vector turns with the yaw
-    // alone, so looking straight up or down keeps a well-defined view.
-    let yaw = y_rot.to_radians();
-    let right = [-yaw.cos(), 0.0, -yaw.sin()];
-    let up = [
-        right[1] * forward[2] - right[2] * forward[1],
-        right[2] * forward[0] - right[0] * forward[2],
-        right[0] * forward[1] - right[1] * forward[0],
-    ];
+    let (right, up, forward) = view_basis(y_rot, x_rot);
     let dot = |a: [f32; 3], b: [f32; 3]| a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
     let view = [
         [right[0], up[0], -forward[0], 0.0],
@@ -154,4 +172,60 @@ pub fn camera_position(
         eye.y - forwards.y * f64::from(zoom),
         eye.z - forwards.z * f64::from(zoom),
     )
+}
+
+#[cfg(test)]
+mod culling_tests {
+    use voxel_render::visibility::{Frustum, culling_projection};
+
+    /// The culling frustum the play loop builds, at a camera looking along
+    /// a yaw and pitch.
+    fn frustum(y_rot: f32, x_rot: f32) -> (Frustum, voxel_core::math::Vec3) {
+        let camera = [0.5, 64.5, 0.5];
+        let frustum = Frustum::new(
+            &super::view_rotation(y_rot, x_rot),
+            &culling_projection(70.0, 16.0 / 9.0, 512.0),
+            camera,
+        );
+        let look = voxel_core::math::Vec3::direction_from_rotation_components(x_rot, y_rot);
+        (frustum, look)
+    }
+
+    /// The section `distance` blocks from the camera along `look`.
+    fn section_along(look: voxel_core::math::Vec3, distance: f64) -> (i32, i32, i32) {
+        let point = [
+            0.5 + look.x * distance,
+            64.5 + look.y * distance,
+            0.5 + look.z * distance,
+        ];
+        let [x, y, z] = point.map(|value| (value.floor() as i32).div_euclid(16));
+        (x, y, z)
+    }
+
+    #[test]
+    fn what_the_camera_faces_is_in_view_and_what_is_behind_it_is_not() {
+        for y_rot in [0.0, 37.0, 90.0, 180.0, 270.0] {
+            for x_rot in [-60.0, 0.0, 45.0] {
+                let (frustum, look) = frustum(y_rot, x_rot);
+                assert!(
+                    frustum.section_visible(section_along(look, 64.0)),
+                    "ahead at yaw {y_rot} pitch {x_rot}"
+                );
+                assert!(
+                    !frustum.section_visible(section_along(look, -64.0)),
+                    "behind at yaw {y_rot} pitch {x_rot}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn looking_straight_up_or_down_still_backs_off_to_the_camera_cube() {
+        for x_rot in [-90.0, 90.0] {
+            let (frustum, look) = frustum(0.0, x_rot);
+            let offset = frustum.offset_to_fully_include_camera_cube(8);
+            assert!(offset.is_visible([0.0, 64.0, 0.0], [8.0, 72.0, 8.0]));
+            assert!(offset.section_visible(section_along(look, 48.0)));
+        }
+    }
 }

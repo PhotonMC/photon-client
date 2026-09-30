@@ -1,7 +1,8 @@
-//! The world's sections meshed on worker threads as they arrive and change:
-//! `LevelRenderer.compileSections` and its section fade.
+//! The world's sections meshed on worker threads as they arrive and change,
+//! and which of them are in view: `LevelRenderer.compileSections`,
+//! `SectionOcclusionGraph`, the culling frustum and the section fade.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::ops::Range;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -9,14 +10,13 @@ use std::time::{Duration, Instant};
 use voxel_net::connection::PlaySession;
 use voxel_render::VulkanBackend;
 use voxel_render::section_workers::{SectionKey, SectionWorkers};
+use voxel_render::visibility::{
+    Frustum, GraphWorld, SectionState, VisibilitySet, visible_sections,
+};
 use voxel_render::vulkan::SectionFade;
 
-/// How long a section away from the camera waits for its neighbouring
-/// chunks before it is built anyway.
-const SETTLE: Duration = Duration::from_secs(2);
-
 /// The squared distance, in blocks, within which a section counts as near
-/// the camera: it is built at once and does not fade in.
+/// the camera: it does not fade in.
 const NEAR: i64 = 768;
 
 /// Whether a section's centre is near the camera's block.
@@ -38,16 +38,36 @@ pub struct MeshStats {
     counts: HashMap<SectionKey, u32>,
 }
 
-/// The dirty sections, the meshes handed out for them, and when each first
-/// showed.
+/// Where the sections are seen from this frame.
+pub struct SectionView {
+    /// The camera's place in the world.
+    pub camera: [f64; 3],
+    /// The culling frustum at the camera.
+    pub frustum: Frustum,
+    /// The render distance, in chunks.
+    pub view_distance: i32,
+    /// The point meshes are measured from.
+    pub origin: [i32; 3],
+}
+
+/// The dirty sections, the meshes handed out for them, which are in view,
+/// and when each first showed.
 pub struct SectionMeshes {
-    /// Dirty sections, with when each was last dirtied.
-    pending: HashMap<SectionKey, Instant>,
+    /// Sections waiting to be built.
+    pending: HashSet<SectionKey>,
     /// The generation of each section's newest hand-out; a mesh from an
     /// older one is stale.
     latest: HashMap<SectionKey, u64>,
     next_generation: u64,
     fades: HashMap<SectionKey, SectionFade>,
+    /// Each built section's face visibility (`CompiledSectionMesh`).
+    compiled: HashMap<SectionKey, VisibilitySet>,
+    /// The occlusion flood's sections, and whether it has to run again.
+    graph: Vec<SectionKey>,
+    graph_stale: bool,
+    /// The camera's eight-block cell and the view distance the flood last
+    /// ran with (`invalidateIfNeeded`).
+    graph_from: Option<([i64; 3], i32)>,
     workers: SectionWorkers,
     worker_count: usize,
     /// The chunk fade option.
@@ -66,11 +86,7 @@ impl SectionMeshes {
         tints: Arc<voxel_render::biome_tint::BiomeTints>,
         chunk_fade: Duration,
     ) -> Self {
-        let pending = session
-            .take_dirty_sections()
-            .into_iter()
-            .map(|key| (key, Instant::now()))
-            .collect();
+        let pending = session.take_dirty_sections().into_iter().collect();
         let worker_count = std::thread::available_parallelism()
             .map_or(2, |count| count.get().saturating_sub(1))
             .clamp(1, 8);
@@ -81,6 +97,10 @@ impl SectionMeshes {
             latest: HashMap::new(),
             next_generation: 0,
             fades: HashMap::new(),
+            compiled: HashMap::new(),
+            graph: Vec::new(),
+            graph_stale: true,
+            graph_from: None,
             workers: SectionWorkers::new(worker_count, renderer, tints),
             worker_count,
             chunk_fade,
@@ -94,6 +114,9 @@ impl SectionMeshes {
         self.pending.clear();
         self.latest.clear();
         self.fades.clear();
+        self.compiled.clear();
+        self.graph.clear();
+        self.graph_stale = true;
     }
 
     /// Drop the sections of chunks the server forgot.
@@ -103,11 +126,13 @@ impl SectionMeshes {
         backend: &mut VulkanBackend,
     ) -> Result<(), Box<dyn std::error::Error>> {
         for (chunk_x, chunk_z) in chunks {
+            self.graph_stale = true;
             for section_y in self.sections.clone() {
                 let key = (chunk_x, section_y, chunk_z);
                 self.pending.remove(&key);
                 self.latest.remove(&key);
                 self.fades.remove(&key);
+                self.compiled.remove(&key);
                 backend.set_section(
                     key,
                     &voxel_render::Mesh::default(),
@@ -133,37 +158,32 @@ impl SectionMeshes {
         })
     }
 
-    /// Update the light, then mesh the dirty sections nearest the player
-    /// first, and show what the workers have finished. A finished script
-    /// waits until every section is built, so its capture has them all.
+    /// Update the light, show what the workers have finished, work out which
+    /// sections are in view, and hand the dirty ones in view to the workers,
+    /// nearest first. A finished script waits until every section in view is
+    /// built, so its capture has them all.
     pub fn update(
         &mut self,
         session: &mut PlaySession,
         backend: &mut VulkanBackend,
-        feet: voxel_core::math::Vec3,
-        camera_block: [i64; 3],
+        view: &SectionView,
         script_done: bool,
-        origin: [i32; 3],
     ) -> Result<(), Box<dyn std::error::Error>> {
         // `ClientLevel.update`: queued light and the light engine, each frame.
         session.update_light();
-        let dirtied = Instant::now();
-        self.pending.extend(
-            session
-                .take_dirty_sections()
-                .into_iter()
-                .map(|key| (key, dirtied)),
-        );
-        let player_section = (
-            feet.x.floor() as i32 >> 4,
-            feet.y.floor() as i32 >> 4,
-            feet.z.floor() as i32 >> 4,
-        );
+        let dirtied = session.take_dirty_sections();
+        // A chunk arriving or a section turning empty changes the flood.
+        self.graph_stale |= !dirtied.is_empty();
+        self.pending.extend(dirtied);
+        let camera_block = view.camera.map(|value| value.floor() as i64);
         loop {
             self.show_built(backend, camera_block)?;
-            let ordered = self.ready(session, player_section, camera_block, script_done);
+            self.show_empty(session, backend, camera_block)?;
+            let visible = self.visible(session, view);
+            backend.set_visible_sections(&visible);
+            let ordered = self.ready(session, &visible, camera_block);
             let nothing_to_hand_out = ordered.is_empty();
-            self.hand_out(session, backend, ordered, camera_block, origin)?;
+            self.hand_out(session, ordered, view.origin);
             if !script_done || (nothing_to_hand_out && self.workers.in_flight() == 0) {
                 return Ok(());
             }
@@ -184,6 +204,8 @@ impl SectionMeshes {
             *self.stats.counts.entry(built.key).or_insert(0_u32) += 1;
             if self.latest.get(&built.key) == Some(&built.generation) {
                 self.latest.remove(&built.key);
+                self.compiled.insert(built.key, built.visibility);
+                self.graph_stale = true;
                 let fade = self.fade(built.key, camera_block);
                 backend.set_section(built.key, &built.mesh, built.centre, fade)?;
             }
@@ -191,55 +213,115 @@ impl SectionMeshes {
         Ok(())
     }
 
-    /// The dirty sections within the view distance that may be built now,
-    /// nearest first. A section away from the camera waits until the chunks
-    /// around it have arrived, so it is built once rather than again for
-    /// every neighbour (or, at the edge of what the server sends, until it
-    /// has waited long enough); one near the camera, where the player
-    /// changes blocks, is built at once.
+    /// Dirty sections holding only air need no worker: they show as nothing
+    /// at once, and the flood passes through them.
+    fn show_empty(
+        &mut self,
+        session: &PlaySession,
+        backend: &mut VulkanBackend,
+        camera_block: [i64; 3],
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let world = session.world();
+        let empty: Vec<SectionKey> = self
+            .pending
+            .iter()
+            .copied()
+            .filter(|&(x, y, z)| world.contains_chunk(x, z) && world.section_is_empty(x, y, z))
+            .collect();
+        for key in empty {
+            self.pending.remove(&key);
+            self.latest.remove(&key);
+            self.compiled.remove(&key);
+            // An empty section has shown too, so what is built in it later
+            // does not fade.
+            let fade = self.fade(key, camera_block);
+            backend.set_section(key, &voxel_render::Mesh::default(), [0.0; 3], fade)?;
+        }
+        Ok(())
+    }
+
+    /// The sections in view: the occlusion flood's, run again when the
+    /// camera crosses into another eight-block cell or what it floods
+    /// through changed, and then the ones in the frustum.
+    fn visible(&mut self, session: &PlaySession, view: &SectionView) -> Vec<SectionKey> {
+        let cell = view.camera.map(|value| (value / 8.0).floor() as i64);
+        if self.graph_from != Some((cell, view.view_distance)) {
+            self.graph_from = Some((cell, view.view_distance));
+            self.graph_stale = true;
+        }
+        if self.graph_stale {
+            self.graph_stale = false;
+            let world = session.world();
+            let compiled = &self.compiled;
+            let section = |(x, y, z): SectionKey| {
+                if world.section_is_empty(x, y, z) {
+                    SectionState::Empty
+                } else {
+                    compiled
+                        .get(&(x, y, z))
+                        .map_or(SectionState::Uncompiled, |visibility| {
+                            SectionState::Compiled(*visibility)
+                        })
+                }
+            };
+            self.graph = visible_sections(&GraphWorld {
+                camera: view.camera,
+                view_distance: view.view_distance,
+                min_section_y: self.sections.start,
+                max_section_y: self.sections.end - 1,
+                loaded: &|x, z| world.contains_chunk(x, z),
+                section: &section,
+                smart_cull: true,
+            });
+        }
+        let frustum = view.frustum.offset_to_fully_include_camera_cube(8);
+        self.graph
+            .iter()
+            .copied()
+            .filter(|key| frustum.section_visible(*key))
+            .collect()
+    }
+
+    /// The dirty sections in view that may be built now, nearest first: one
+    /// built before is rebuilt at once, one never built waits until the
+    /// chunks around it and their light have arrived
+    /// (`SectionUpdateTracker.hasAllNeighbors`), so it is built once rather
+    /// than again for every neighbour.
     fn ready(
         &self,
         session: &PlaySession,
-        player_section: (i32, i32, i32),
+        visible: &[SectionKey],
         camera_block: [i64; 3],
-        script_done: bool,
     ) -> Vec<SectionKey> {
         let world = session.world();
-        let view = session.view_distance().clamp(2, 12);
-        let now = Instant::now();
-        let mut ordered: Vec<SectionKey> = self
-            .pending
+        let lit = |x: i32, z: i32| {
+            world.contains_chunk(x, z) && world.light_engine().light_on_in_column(x, z)
+        };
+        let mut ordered: Vec<SectionKey> = visible
             .iter()
-            .filter(|&(&(x, y, z), &dirtied)| {
-                (x - player_section.0).abs() <= view
-                    && (z - player_section.2).abs() <= view
-                    && (near((x, y, z), camera_block)
-                        || script_done
-                        || now - dirtied >= SETTLE
-                        || (-1..=1)
-                            .all(|dx| (-1..=1).all(|dz| world.contains_chunk(x + dx, z + dz))))
+            .copied()
+            .filter(|key| self.pending.contains(key))
+            .filter(|&(x, y, z)| {
+                self.compiled.contains_key(&(x, y, z))
+                    || (-1..=1)
+                        .all(|dx| (-1..=1).all(|dz| (dx == 0 && dz == 0) || lit(x + dx, z + dz)))
             })
-            .map(|(&key, _)| key)
             .collect();
-        ordered.sort_by_key(|&(x, y, z)| {
-            (x - player_section.0).pow(2)
-                + (y - player_section.1).pow(2)
-                + (z - player_section.2).pow(2)
-        });
+        let distance = |&(x, y, z): &SectionKey| {
+            [x, y, z]
+                .iter()
+                .zip(camera_block)
+                .map(|(&section, block)| (i64::from(section) * 16 + 8 - block).pow(2))
+                .sum::<i64>()
+        };
+        ordered.sort_by_key(distance);
         ordered
     }
 
     /// Hand sections to the workers, keeping every worker busy with a
     /// little queued behind it, and spending at most a few milliseconds of
-    /// the frame copying. An empty section shows at once.
-    fn hand_out(
-        &mut self,
-        session: &PlaySession,
-        backend: &mut VulkanBackend,
-        ordered: Vec<SectionKey>,
-        camera_block: [i64; 3],
-        origin: [i32; 3],
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    /// the frame copying.
+    fn hand_out(&mut self, session: &PlaySession, ordered: Vec<SectionKey>, origin: [i32; 3]) {
         let world = session.world();
         let budget = Instant::now();
         for key in ordered {
@@ -249,21 +331,12 @@ impl SectionMeshes {
                 break;
             }
             self.pending.remove(&key);
-            if world.section_is_empty(key.0, key.1, key.2) {
-                self.latest.remove(&key);
-                // An empty section has shown too, so what is built in it
-                // later does not fade.
-                let fade = self.fade(key, camera_block);
-                backend.set_section(key, &voxel_render::Mesh::default(), [0.0; 3], fade)?;
-                continue;
-            }
             let (min, size, quart_min, quart_size) = SectionWorkers::region(key);
             let copy = world.copy_region(min, size, quart_min, quart_size);
             self.next_generation += 1;
             self.latest.insert(key, self.next_generation);
             self.workers.submit(key, self.next_generation, copy, origin);
         }
-        Ok(())
     }
 
     /// How many sections wait to be built.
