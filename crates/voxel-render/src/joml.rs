@@ -137,6 +137,40 @@ impl Quaternion {
         degrees * (std::f64::consts::PI / 180.0) as f32
     }
 
+    /// `new Quaternionf()`.
+    pub fn identity() -> Self {
+        Self {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+            w: 1.0,
+        }
+    }
+
+    /// `Quaternionf.rotateX(angle)`: this turned further about x.
+    pub fn rotate_x(self, angle: f32) -> Self {
+        let sin = sin(angle * 0.5);
+        let cos = cos_from_sin(sin, angle * 0.5);
+        Self {
+            x: self.w * sin + self.x * cos,
+            y: self.y * cos + self.z * sin,
+            z: self.z * cos - self.y * sin,
+            w: self.w * cos - self.x * sin,
+        }
+    }
+
+    /// `Quaternionf.rotateY(angle)`: this turned further about y.
+    pub fn rotate_y(self, angle: f32) -> Self {
+        let sin = sin(angle * 0.5);
+        let cos = cos_from_sin(sin, angle * 0.5);
+        Self {
+            x: self.x * cos - self.z * sin,
+            y: self.w * sin + self.y * cos,
+            z: self.x * sin + self.z * cos,
+            w: self.w * cos - self.y * sin,
+        }
+    }
+
     /// The rotation's 3x3, in the library's shared expansion.
     fn expand(&self) -> [f32; 9] {
         let w2 = self.w * self.w;
@@ -194,6 +228,138 @@ impl Matrix4 {
             ],
             properties: IDENTITY | AFFINE | TRANSLATION | ORTHONORMAL,
         }
+    }
+
+    /// `new Matrix4f(Matrix3fc)`: a 3x3 (as columns) in the upper left, the
+    /// rest the identity's, known only to be affine.
+    pub fn from_affine(columns: [[f32; 3]; 3]) -> Self {
+        let mut matrix = Self::identity();
+        for (column, values) in columns.iter().enumerate() {
+            matrix.m[column][..3].copy_from_slice(values);
+        }
+        matrix.properties = AFFINE;
+        matrix
+    }
+
+    /// Whether the matrix is exactly the identity
+    /// (`MatrixUtil.isIdentity`, which compares values).
+    pub fn is_identity(&self) -> bool {
+        self.properties & IDENTITY != 0 || self.m == Self::identity().m
+    }
+
+    /// `Matrix4f.mul(right)`: this times `right`, for the affine cases the
+    /// reference's dispatch sends to `mulAffine` and the identity shortcuts.
+    pub fn mul(&self, right: &Self) -> Self {
+        if self.properties & IDENTITY != 0 {
+            return *right;
+        }
+        if right.properties & IDENTITY != 0 {
+            return *self;
+        }
+        assert!(
+            self.properties & AFFINE != 0 && right.properties & AFFINE != 0,
+            "only affine products are ported"
+        );
+        let (l, r) = (&self.m, &right.m);
+        let mut out = [[0.0_f32; 4]; 4];
+        for column in 0..3 {
+            for row in 0..3 {
+                out[column][row] = fma(
+                    l[0][row],
+                    r[column][0],
+                    fma(l[1][row], r[column][1], l[2][row] * r[column][2]),
+                );
+            }
+            out[column][3] = l[column][3];
+        }
+        for row in 0..3 {
+            out[3][row] = fma(
+                l[0][row],
+                r[3][0],
+                fma(l[1][row], r[3][1], fma(l[2][row], r[3][2], l[3][row])),
+            );
+        }
+        out[3][3] = l[3][3];
+        Self {
+            m: out,
+            properties: AFFINE | self.properties & right.properties & ORTHONORMAL,
+        }
+    }
+
+    /// `Matrix4f.invertAffine()`.
+    pub fn invert_affine(&self) -> Self {
+        let m = &self.m;
+        let m11m00 = m[0][0] * m[1][1];
+        let m10m01 = m[0][1] * m[1][0];
+        let m10m02 = m[0][2] * m[1][0];
+        let m12m00 = m[0][0] * m[1][2];
+        let m12m01 = m[0][1] * m[1][2];
+        let m11m02 = m[0][2] * m[1][1];
+        let det =
+            (m11m00 - m10m01) * m[2][2] + (m10m02 - m12m00) * m[2][1] + (m12m01 - m11m02) * m[2][0];
+        let s = 1.0 / det;
+        let m10m22 = m[1][0] * m[2][2];
+        let m10m21 = m[1][0] * m[2][1];
+        let m11m22 = m[1][1] * m[2][2];
+        let m11m20 = m[1][1] * m[2][0];
+        let m12m21 = m[1][2] * m[2][1];
+        let m12m20 = m[1][2] * m[2][0];
+        let m20m02 = m[2][0] * m[0][2];
+        let m20m01 = m[2][0] * m[0][1];
+        let m21m02 = m[2][1] * m[0][2];
+        let m21m00 = m[2][1] * m[0][0];
+        let m22m01 = m[2][2] * m[0][1];
+        let m22m00 = m[2][2] * m[0][0];
+        let nm31 = (m20m02 * m[3][1] - m20m01 * m[3][2] + m21m00 * m[3][2] - m21m02 * m[3][0]
+            + m22m01 * m[3][0]
+            - m22m00 * m[3][1])
+            * s;
+        let nm32 = (m11m02 * m[3][0] - m12m01 * m[3][0] + m12m00 * m[3][1] - m10m02 * m[3][1]
+            + m10m01 * m[3][2]
+            - m11m00 * m[3][2])
+            * s;
+        Self {
+            m: [
+                [
+                    (m11m22 - m12m21) * s,
+                    (m21m02 - m22m01) * s,
+                    (m12m01 - m11m02) * s,
+                    0.0,
+                ],
+                [
+                    (m12m20 - m10m22) * s,
+                    (m22m00 - m20m02) * s,
+                    (m10m02 - m12m00) * s,
+                    0.0,
+                ],
+                [
+                    (m10m21 - m11m20) * s,
+                    (m20m01 - m21m00) * s,
+                    (m11m00 - m10m01) * s,
+                    0.0,
+                ],
+                [
+                    (m10m22 * m[3][1] - m10m21 * m[3][2] + m11m20 * m[3][2] - m11m22 * m[3][0]
+                        + m12m21 * m[3][0]
+                        - m12m20 * m[3][1])
+                        * s,
+                    nm31,
+                    nm32,
+                    1.0,
+                ],
+            ],
+            properties: AFFINE,
+        }
+    }
+
+    /// `Matrix4f.transformDirection(x, y, z)`: the upper 3x3 applied.
+    pub fn transform_direction(&self, x: f32, y: f32, z: f32) -> [f32; 3] {
+        let m = &self.m;
+        [
+            fma(m[0][0], x, fma(m[1][0], y, m[2][0] * z)),
+            fma(m[0][1], x, fma(m[1][1], y, m[2][1] * z)),
+            fma(m[0][2], x, fma(m[1][2], y, m[2][2] * z)),
+        ]
     }
 
     /// `Matrix4f.translate(x, y, z)`.

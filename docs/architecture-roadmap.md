@@ -97,7 +97,7 @@ olarak tutulmaz.
 
 ### F7. UV kilidi
 
-- [ ] `uv_lock.rs` JOML ile açılışta hesaplanır (`invertAffine`, `mul`).
+- [x] `uv_lock.rs` JOML ile açılışta hesaplanır (`invertAffine`, `mul`).
 
 ### F8. Sınıf başına şekiller
 

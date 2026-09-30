@@ -297,7 +297,7 @@ fn exact_multiply(left: &Matrix4, right: &Matrix4) -> Matrix4 {
     })
 }
 
-/// One matrix from the pinned UV lock tables, as sixteen floats flattened
+/// One matrix of the UV lock face transforms, as sixteen floats flattened
 /// column by column.
 pub type FlatMatrix = [f32; 16];
 
@@ -319,14 +319,10 @@ pub fn flatten(matrix: &Matrix4) -> FlatMatrix {
     out
 }
 
-fn table_value(index: u8) -> f32 {
-    voxel_data::model::uv_lock::VALUES[usize::from(index)]
-}
-
 /// The inverse face transform a UV-locked variant applies to one face.
 ///
 /// Without UV lock every face is left at identity. With it on, the transform
-/// comes from the pinned table for the rotation, which is looked up by the
+/// comes from the face transforms of the rotation, which are looked up by the
 /// whole-model transform the three angles compose to.
 pub fn inverse_face_transform(
     x_degrees: i32,
@@ -339,14 +335,12 @@ pub fn inverse_face_transform(
     if !uv_lock {
         return Some(FLAT_IDENTITY);
     }
-    let entry = find_entry(&transform)?;
-    let face = entry.inverse_faces[facing as usize];
-    Some(std::array::from_fn(|slot| table_value(face[slot])))
+    Some(crate::uv_lock::for_transform(&transform)?.inverse[facing as usize])
 }
 
 /// The forward face transform, which the reference computes on the way to the
 /// inverse above. Nothing in the baking path reads it; it is here so the
-/// pinned table is compared whole rather than half.
+/// parity run compares both halves.
 pub fn face_transform(
     x_degrees: i32,
     y_degrees: i32,
@@ -358,20 +352,7 @@ pub fn face_transform(
     if !uv_lock {
         return Some(FLAT_IDENTITY);
     }
-    let entry = find_entry(&transform)?;
-    let face = entry.faces[facing as usize];
-    Some(std::array::from_fn(|slot| table_value(face[slot])))
-}
-
-/// The table entry for one whole-model transform.
-fn find_entry(transform: &FlatMatrix) -> Option<&'static voxel_data::model::uv_lock::Entry> {
-    voxel_data::model::uv_lock::TABLE.iter().find(|entry| {
-        entry
-            .transform
-            .iter()
-            .zip(transform)
-            .all(|(index, value)| table_value(*index) == *value)
-    })
+    Some(crate::uv_lock::for_transform(&transform)?.forward[facing as usize])
 }
 
 /// Whether a flattened transform is the identity.

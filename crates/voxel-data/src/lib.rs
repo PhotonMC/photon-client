@@ -12,4 +12,3 @@
 
 pub mod block;
 pub mod item;
-pub mod model;
