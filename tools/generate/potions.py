@@ -8,21 +8,9 @@ them. A reference to an effect or an attribute is by name; an effect's
 description key and tooltip colour are checked against what the reference
 reports and follow from its name and category.
 """
-import struct
-
-from common import f32, header, load_case, run, rust_str, write
+from common import amount, header, load_case, run, rust_str, write
 
 CATEGORIES = {"BLUE": "beneficial", "RED": "harmful", "YELLOW": "neutral"}
-
-
-def amount(value):
-    """A modifier amount: the float it was written as, when it is one."""
-    as_float = struct.unpack(">f", struct.pack(">f", value))[0]
-    if as_float == value:
-        bits = f"{struct.unpack('>I', struct.pack('>f', value))[0]:08x}"
-        return f"{f32(bits)}_f32 as f64"
-    literal = repr(value)
-    return literal if "." in literal or "e" in literal else literal + ".0"
 
 
 def generate(capture):

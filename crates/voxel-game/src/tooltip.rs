@@ -462,7 +462,7 @@ pub fn styled_name(stack: &Stack, values: &Values) -> Component {
     reason = "kept whole to read against the reference method line by line"
 )]
 pub fn lines(stack: &Stack, player: bool, flags: Flags, registries: &Registries) -> Vec<Component> {
-    let values = Values::new(stack.item_registry_id(), stack.patch_bytes());
+    let values = Values::with_registries(stack.item_registry_id(), stack.patch_bytes(), registries);
     let (hide, hidden) = values.tooltip_display();
     if !flags.creative && hide {
         return Vec::new();

@@ -84,8 +84,11 @@ olarak tutulmaz.
   sınıf hiyerarşisi (`ItemClass`), yığın boyutu, dayanıklılık, alet,
   giyilebilirlik, bırakılan kalıntı; `stacking.rs`, `behaviour.rs` ve alet
   tablosu kalktı.
-- [ ] Varsayılan bileşenler tipli (`DataComponentMap`); `components.rs`
-  ham bayt tutmaz.
+- [x] Varsayılan bileşenler tipli (`Component` enum'u, eşya tanımında);
+  `components.rs` ham baytı kalktı, varsayılanlar ağ biçimine açılışta
+  kodlanıyor (`default_components.rs`) ve parity'de Java'nın bayt ve
+  JSON'uyla karşılaştırılıyor. Tüm bileşen türlerinin okuma sınaması
+  `tests/behavior/fixtures/item-default-patches.txt` fixture'ında kaldı.
 - [x] Büyü, tablo, enstrüman, müzik diski, zırh süsü ve bayrak deseni
   kayıtları `data/` JSON'undan ve sunucunun kayıt verisinden; `tooltip.rs`
   kalkar.

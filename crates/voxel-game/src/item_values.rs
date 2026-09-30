@@ -4,39 +4,46 @@
 //! The values are read from the bytes a patch carries, on demand; only the
 //! components something reads are decoded.
 
-use std::sync::OnceLock;
-
 use crate::item_components::{self, Cursor, Patch, PotionContents, ids};
+use crate::registries::Registries;
 use crate::text::Component;
-
-/// Every item's default components, parsed from the reference's own patch of
-/// them, by registry id.
-fn defaults() -> &'static [Option<Patch>] {
-    static DEFAULTS: OnceLock<Vec<Option<Patch>>> = OnceLock::new();
-    DEFAULTS.get_or_init(|| {
-        voxel_data::item::components::DEFAULT_PATCHES
-            .iter()
-            .map(|&patch| {
-                let mut input = patch;
-                item_components::read_patch(&mut input).ok()
-            })
-            .collect()
-    })
-}
 
 /// The components of a stack: `ItemStack.get`.
 pub struct Values {
-    item: i32,
+    /// The item's default components, in the wire's form.
+    defaults: Patch,
     patch: Option<Patch>,
 }
 
 impl Values {
     /// The components of a stack of an item with a patch, as the wire
     /// carried it from the positive component count on; empty for none.
+    /// A default that names an entry of a registry (an instrument) is left
+    /// out, for there is no registry to find its id in.
     pub fn new(item: i32, patch: &[u8]) -> Self {
+        Self::build(item, patch, None)
+    }
+
+    /// Like [`Values::new`], with the registries the defaults' entries are
+    /// found in.
+    pub fn with_registries(item: i32, patch: &[u8], registries: &Registries) -> Self {
+        Self::build(item, patch, Some(registries))
+    }
+
+    fn build(item: i32, patch: &[u8], registries: Option<&Registries>) -> Self {
         let mut input = patch;
+        let defaults = usize::try_from(item)
+            .ok()
+            .and_then(|index| voxel_data::item::registry::ITEMS.get(index))
+            .map_or_else(
+                || Patch {
+                    added: Vec::new(),
+                    removed: Vec::new(),
+                },
+                |item| crate::default_components::defaults(item, registries),
+            );
         Self {
-            item,
+            defaults,
             patch: item_components::read_patch(&mut input).ok(),
         }
     }
@@ -52,8 +59,7 @@ impl Values {
                 return None;
             }
         }
-        let default = defaults().get(usize::try_from(self.item).ok()?)?.as_ref()?;
-        default
+        self.defaults
             .added
             .iter()
             .find(|(id, _)| *id == component)

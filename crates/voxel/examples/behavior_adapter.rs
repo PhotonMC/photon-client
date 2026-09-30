@@ -16634,6 +16634,107 @@ fn movement_properties(label: &str) -> Result<Value, String> {
     Ok(json!({"label": label, "outcome": "listed", "blocks": blocks}))
 }
 
+/// An item's default components the client reads, as the codec's JSON and
+/// as the network's bytes, keyed by component type name.
+fn default_components(
+    item: &voxel_data::item::definition::Item,
+    registries: &voxel_game::registries::Registries,
+) -> (Value, Value) {
+    use voxel_data::item::component::{AttributeDisplay, Component, Operation, Rarity, SlotGroup};
+    use voxel_data::item::component_types::NAMES;
+    let json_of = |component: &Component| -> Value {
+        match component {
+            Component::ItemName(key) => json!({"translate": key}),
+            Component::Rarity(rarity) => json!(match rarity {
+                Rarity::Common => "common",
+                Rarity::Uncommon => "uncommon",
+                Rarity::Rare => "rare",
+                Rarity::Epic => "epic",
+            }),
+            Component::AttributeModifiers(modifiers) => Value::Array(
+                modifiers
+                    .iter()
+                    .map(|modifier| {
+                        let mut entry = json!({
+                            "type": modifier.attribute,
+                            "id": modifier.id,
+                            "amount": modifier.amount,
+                            "operation": match modifier.operation {
+                                Operation::AddValue => "add_value",
+                                Operation::AddMultipliedBase => "add_multiplied_base",
+                                Operation::AddMultipliedTotal => "add_multiplied_total",
+                            },
+                            "slot": match modifier.slot {
+                                SlotGroup::Any => "any",
+                                SlotGroup::MainHand => "mainhand",
+                                SlotGroup::OffHand => "offhand",
+                                SlotGroup::Hand => "hand",
+                                SlotGroup::Feet => "feet",
+                                SlotGroup::Legs => "legs",
+                                SlotGroup::Chest => "chest",
+                                SlotGroup::Head => "head",
+                                SlotGroup::Armor => "armor",
+                                SlotGroup::Body => "body",
+                                SlotGroup::Saddle => "saddle",
+                            },
+                        });
+                        if modifier.display == AttributeDisplay::Hidden {
+                            entry["display"] = json!({"type": "hidden"});
+                        }
+                        entry
+                    })
+                    .collect(),
+            ),
+            Component::EnchantmentGlintOverride(value) => json!(value),
+            Component::MapColor(color) => json!(color),
+            Component::PotionContentsEmpty => json!({}),
+            Component::PotionDurationScale(scale) => json!(f64::from(*scale)),
+            Component::Fireworks { flight_duration } => json!({"flight_duration": flight_duration}),
+            Component::Instrument(name) | Component::JukeboxPlayable(name) => json!(name),
+            Component::BlockState(properties) => Value::Object(
+                properties
+                    .iter()
+                    .map(|(key, value)| ((*key).to_owned(), json!(value)))
+                    .collect(),
+            ),
+            Component::OminousBottleAmplifier(amplifier) => json!(amplifier),
+        }
+    };
+    let mut json_map = serde_json::Map::new();
+    let mut wire_map = serde_json::Map::new();
+    let hex = |bytes: &[u8]| {
+        bytes
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect::<String>()
+    };
+    let mut put = |id: i32, json: Value, bytes: &[u8]| {
+        let name = NAMES[id as usize];
+        json_map.insert(name.to_owned(), json);
+        wire_map.insert(name.to_owned(), json!(hex(bytes)));
+    };
+    let declared_name = item
+        .components
+        .iter()
+        .any(|component| matches!(component, Component::ItemName(_)));
+    if !declared_name {
+        let key = voxel_game::default_components::description_key(item);
+        put(
+            voxel_data::item::component_types::ITEM_NAME,
+            json!({"translate": key}),
+            &voxel_game::default_components::translatable(&key),
+        );
+    }
+    for component in item.components {
+        if let Some((id, bytes)) =
+            voxel_game::default_components::encode(component, Some(registries))
+        {
+            put(id, json_of(component), &bytes);
+        }
+    }
+    (Value::Object(json_map), Value::Object(wire_map))
+}
+
 /// `item_declarations`: the declarations as the oracle describes them.
 fn item_declarations(label: &str) -> Value {
     use voxel_data::item::classes::ItemClass;
@@ -16656,6 +16757,9 @@ fn item_declarations(label: &str) -> Value {
             })
         })
         .collect();
+    let data_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../.data/minecraft/assets/jar/data");
+    let registries = voxel_game::registries::Registries::vanilla(&data_root);
     let items: Vec<Value> = voxel_data::item::registry::ITEMS
         .iter()
         .map(|item| {
@@ -16708,6 +16812,9 @@ fn item_declarations(label: &str) -> Value {
             if let Some(block) = item.block {
                 described["block"] = json!(block);
             }
+            let (components, wire) = default_components(item, &registries);
+            described["components"] = components;
+            described["component_wire"] = wire;
             described
         })
         .collect();
@@ -17121,21 +17228,28 @@ fn block_result(request: &Value) -> Result<Value, String> {
                         .map(|byte| format!("{byte:02x}"))
                         .collect::<String>()
                 };
-                // The reference's wire, kept in a table, is read by this port,
-                // and both forms are written back from what it read.
-                let items: Vec<Value> = voxel_data::item::registry::ITEMS
-                    .iter()
-                    .zip(voxel_data::item::components::DEFAULT_PATCHES.iter())
-                    .map(|(item, &patch)| {
-                        let mut input = patch;
+                // The reference's whole default patch of each item, kept as a
+                // fixture, is read by this port, and both forms are written
+                // back from what it read.
+                const PATCHES: &str =
+                    include_str!("../../../tests/behavior/fixtures/item-default-patches.txt");
+                let items: Vec<Value> = PATCHES
+                    .lines()
+                    .map(|line| {
+                        let (name, wire) = line.split_once(' ').expect("a name and its bytes");
+                        let bytes: Vec<u8> = (0..wire.len())
+                            .step_by(2)
+                            .map(|at| u8::from_str_radix(&wire[at..at + 2], 16).expect("hex"))
+                            .collect();
+                        let mut input = bytes.as_slice();
                         match voxel_game::item_components::read_patch(&mut input) {
                             Ok(patch) if input.is_empty() => json!({
-                                "name": item.name,
+                                "name": name,
                                 "wire": hex(&patch.trusted()),
                                 "delimited": hex(&patch.delimited()),
                                 "components": patch.added.iter().map(|(id, _)| *id).collect::<Vec<_>>(),
                             }),
-                            _ => json!({"name": item.name, "wire": "unreadable"}),
+                            _ => json!({"name": name, "wire": "unreadable"}),
                         }
                     })
                     .collect();

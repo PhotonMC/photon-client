@@ -1392,6 +1392,34 @@ public final class BlockOracle {
         return methods;
     }
 
+    /** The default components the client reads from an item. */
+    private static final java.util.Set<String> READ_COMPONENTS = java.util.Set.of(
+        "minecraft:item_name", "minecraft:rarity", "minecraft:attribute_modifiers",
+        "minecraft:enchantment_glint_override", "minecraft:map_color", "minecraft:potion_contents",
+        "minecraft:potion_duration_scale", "minecraft:fireworks", "minecraft:instrument",
+        "minecraft:jukebox_playable", "minecraft:block_state", "minecraft:ominous_bottle_amplifier");
+
+    private static JsonObject sortedObject(JsonObject object) {
+        var sorted = new JsonObject();
+        object.keySet().stream().sorted().forEach(key -> sorted.add(key, object.get(key)));
+        return sorted;
+    }
+
+    /** A component's value as the network writes it, without its id. */
+    private static <T> String encodeComponentValue(
+            net.minecraft.core.component.TypedDataComponent<T> component,
+            net.minecraft.core.RegistryAccess registries) {
+        var buffer = new net.minecraft.network.RegistryFriendlyByteBuf(io.netty.buffer.Unpooled.buffer(), registries);
+        component.type().streamCodec().encode(buffer, component.value());
+        var bytes = new byte[buffer.readableBytes()];
+        buffer.readBytes(bytes);
+        var hex = new StringBuilder();
+        for (byte value : bytes) {
+            hex.append(String.format("%02x", value));
+        }
+        return hex.toString();
+    }
+
     private static JsonObject toolJson(net.minecraft.world.item.component.Tool tool) {
         var toolJson = new JsonObject();
         var rules = new JsonArray();
@@ -1481,6 +1509,33 @@ public final class BlockOracle {
             if (item instanceof net.minecraft.world.item.BlockItem blockItem) {
                 described.addProperty("block", blockRegistry.getKey(blockItem.getBlock()).toString());
             }
+            // The default components the client reads, as the component's own
+            // codec writes them and as the network writes them. A value the
+            // client cannot tell from the component being absent (common
+            // rarity, no attribute modifiers) is left out.
+            var componentJson = new JsonObject();
+            var componentWire = new JsonObject();
+            var registries = Oracle.vanillaRegistries();
+            var ops = net.minecraft.resources.RegistryOps.create(
+                com.mojang.serialization.JsonOps.INSTANCE, registries);
+            for (var component : data) {
+                var key = net.minecraft.core.registries.BuiltInRegistries.DATA_COMPONENT_TYPE
+                    .getKey(component.type()).toString();
+                if (!READ_COMPONENTS.contains(key)) {
+                    continue;
+                }
+                var encoded = component.encodeValue(ops).result().orElseThrow();
+                if (key.equals("minecraft:rarity") && encoded.getAsString().equals("common")) {
+                    continue;
+                }
+                if (key.equals("minecraft:attribute_modifiers") && encoded.getAsJsonArray().isEmpty()) {
+                    continue;
+                }
+                componentJson.add(key, encoded);
+                componentWire.addProperty(key, encodeComponentValue(component, registries));
+            }
+            described.add("components", sortedObject(componentJson));
+            described.add("component_wire", sortedObject(componentWire));
             items.add(described);
         }
         var classList = new JsonArray();

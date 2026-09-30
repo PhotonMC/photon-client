@@ -3,6 +3,7 @@
 //! from `Item.Properties` defaults is written in [`super::items`].
 
 pub use super::classes::{ItemClass, ItemMethod};
+use super::component::Component;
 
 /// The blocks a tool rule covers.
 #[derive(Debug)]
@@ -62,6 +63,8 @@ pub struct Item {
     pub kinetic_weapon: bool,
     /// The block a block item places.
     pub block: Option<&'static str>,
+    /// The other default components the client reads.
+    pub components: &'static [Component],
 }
 
 impl Item {
@@ -79,6 +82,7 @@ impl Item {
             blocks_attacks: false,
             kinetic_weapon: false,
             block: None,
+            components: &[],
         }
     }
 
@@ -119,6 +123,12 @@ impl Item {
 
     pub const fn kinetic_weapon(mut self) -> Self {
         self.kinetic_weapon = true;
+        self
+    }
+
+    /// The default components the client reads beyond the above.
+    pub const fn components(mut self, components: &'static [Component]) -> Self {
+        self.components = components;
         self
     }
 

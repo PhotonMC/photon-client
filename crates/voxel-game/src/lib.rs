@@ -2,6 +2,7 @@
 
 pub mod attack;
 pub mod creative_menu;
+pub mod default_components;
 pub mod game_mode;
 pub mod hotbar;
 pub mod input_event;
