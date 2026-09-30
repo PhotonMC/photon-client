@@ -72,6 +72,9 @@ pub struct SectionMeshes {
     worker_count: usize,
     /// The chunk fade option.
     chunk_fade: Duration,
+    /// Whether the occlusion graph and the frustum choose the sections;
+    /// `VOXEL_CULLING=0` turns them off to compare against.
+    culling: bool,
     /// The dimension's sections, bottom to top.
     sections: Range<i32>,
     stats: MeshStats,
@@ -104,6 +107,7 @@ impl SectionMeshes {
             workers: SectionWorkers::new(worker_count, renderer, tints),
             worker_count,
             chunk_fade,
+            culling: std::env::var("VOXEL_CULLING").map_or(true, |value| value != "0"),
             sections: low..low + dimension.height / 16,
             stats: MeshStats::default(),
         }
@@ -180,7 +184,7 @@ impl SectionMeshes {
             self.show_built(backend, camera_block)?;
             self.show_empty(session, backend, camera_block)?;
             let visible = self.visible(session, view);
-            backend.set_visible_sections(&visible);
+            backend.set_visible_sections(self.culling.then_some(&visible[..]));
             let ordered = self.ready(session, &visible, camera_block);
             let nothing_to_hand_out = ordered.is_empty();
             self.hand_out(session, ordered, view.origin);
@@ -244,6 +248,21 @@ impl SectionMeshes {
     /// camera crosses into another eight-block cell or what it floods
     /// through changed, and then the ones in the frustum.
     fn visible(&mut self, session: &PlaySession, view: &SectionView) -> Vec<SectionKey> {
+        if !self.culling {
+            // Every dirty section within the view distance, in view or not.
+            let camera = view
+                .camera
+                .map(|value| (value.floor() as i32).div_euclid(16));
+            return self
+                .pending
+                .iter()
+                .copied()
+                .filter(|&(x, _, z)| {
+                    (x - camera[0]).abs() <= view.view_distance
+                        && (z - camera[2]).abs() <= view.view_distance
+                })
+                .collect();
+        }
         let cell = view.camera.map(|value| (value / 8.0).floor() as i64);
         if self.graph_from != Some((cell, view.view_distance)) {
             self.graph_from = Some((cell, view.view_distance));

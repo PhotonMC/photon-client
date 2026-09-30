@@ -2429,9 +2429,10 @@ impl VulkanBackend {
         }
     }
 
-    /// Draw only these sections from now on (the ones in view).
-    pub fn set_visible_sections(&mut self, visible: &[(i32, i32, i32)]) {
-        self.visible_sections = Some(visible.to_vec());
+    /// Draw only these sections from now on (the ones in view), or every
+    /// section for `None`.
+    pub fn set_visible_sections(&mut self, visible: Option<&[(i32, i32, i32)]>) {
+        self.visible_sections = visible.map(<[_]>::to_vec);
     }
 
     /// The sections drawn this frame: the ones in view, or all of them.
