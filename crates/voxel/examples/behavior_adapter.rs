@@ -16316,6 +16316,111 @@ fn image_tint_constants_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// `block_declarations`: the declarations as the oracle describes them.
+fn block_declarations(label: &str) -> Value {
+    use voxel_data::block::classes::BlockClass;
+    use voxel_data::block::definition::{Emission, PushReaction, Rule};
+    use voxel_data::block::properties::FIELDS;
+    use voxel_data::block::registry::{self, PropertyKind};
+    let bits = |value: f32| format!("{:08x}", value.to_bits());
+    let classes: Vec<Value> = BlockClass::ALL
+        .iter()
+        .map(|class| {
+            let parent = class
+                .parent()
+                .map_or(String::new(), |parent| format!("{parent:?}"));
+            json!({"name": format!("{class:?}"), "parent": parent})
+        })
+        .collect();
+    let properties: Vec<Value> = FIELDS
+        .iter()
+        .map(|(field, property)| {
+            json!({
+                "field": field,
+                "name": property.name,
+                "kind": match property.kind {
+                    PropertyKind::Boolean => "boolean",
+                    PropertyKind::Integer => "integer",
+                    PropertyKind::Enum => "enum",
+                },
+                "values": property.values,
+            })
+        })
+        .collect();
+    let field = |property: &registry::Property| {
+        FIELDS
+            .iter()
+            .find(|(_, listed)| std::ptr::eq(*listed, property))
+            .map(|(field, _)| *field)
+            .expect("every property is listed")
+    };
+    let blocks: Vec<Value> = registry::BLOCKS
+        .iter()
+        .map(|block| {
+            let count = block.state_count();
+            let mut per_state = serde_json::Map::new();
+            if block.light_emission != Emission::Constant(0) {
+                let levels: Vec<u8> = (0..count).map(|offset| block.light_emission.value(offset)).collect();
+                per_state.insert("lightEmission".into(), json!(levels));
+            }
+            for (key, rule) in [
+                ("emissiveRendering", block.emissive_rendering),
+                ("isSuffocating", block.suffocating),
+                ("isViewBlocking", block.view_blocking),
+                ("isRedstoneConductor", block.redstone_conductor),
+            ] {
+                if rule != Rule::Default {
+                    let values: Vec<bool> = (0..count)
+                        .map(|offset| rule.value(offset).expect("not the default"))
+                        .collect();
+                    per_state.insert(key.into(), json!(values));
+                }
+            }
+            json!({
+                "name": block.name,
+                "class": format!("{:?}", block.class),
+                "properties": block.properties.iter().map(|property| field(property)).collect::<Vec<_>>(),
+                "default": block.default,
+                "declared": {
+                    "destroyTime": bits(block.destroy_time),
+                    "explosionResistance": bits(block.explosion_resistance),
+                    "friction": bits(block.friction),
+                    "speedFactor": bits(block.speed_factor),
+                    "jumpFactor": bits(block.jump_factor),
+                    "bounceRestitution": bits(block.bounce_restitution),
+                    "hasCollision": block.has_collision,
+                    "requiresCorrectToolForDrops": block.requires_correct_tool_for_drops,
+                    "isRandomlyTicking": block.randomly_ticking,
+                    "canOcclude": block.can_occlude,
+                    "isAir": block.air,
+                    "ignitedByLava": block.ignited_by_lava,
+                    "liquid": block.liquid,
+                    "forceSolidOff": block.force_solid_off,
+                    "forceSolidOn": block.force_solid_on,
+                    "spawnTerrainParticles": block.spawn_terrain_particles,
+                    "replaceable": block.replaceable,
+                    "dynamicShape": block.dynamic_shape,
+                    "pushReaction": match block.push_reaction {
+                        PushReaction::Normal => "NORMAL",
+                        PushReaction::Destroy => "DESTROY",
+                        PushReaction::Block => "BLOCK",
+                        PushReaction::Ignore => "IGNORE",
+                        PushReaction::PushOnly => "PUSH_ONLY",
+                    },
+                },
+                "per_state": per_state,
+            })
+        })
+        .collect();
+    json!({
+        "label": label,
+        "outcome": "listed",
+        "classes": classes,
+        "properties": properties,
+        "blocks": blocks,
+    })
+}
+
 fn block_result(request: &Value) -> Result<Value, String> {
     use voxel_data::block::registry;
     let operation = string(request, "operation")?;
@@ -16334,8 +16439,7 @@ fn block_result(request: &Value) -> Result<Value, String> {
                         let properties: Vec<Value> = block
                             .properties
                             .iter()
-                            .map(|index| {
-                                let property = &registry::PROPERTIES[usize::from(*index)];
+                            .map(|property| {
                                 json!({
                                     "name": property.name,
                                     "kind": match property.kind {
@@ -16347,22 +16451,13 @@ fn block_result(request: &Value) -> Result<Value, String> {
                                 })
                             })
                             .collect();
-                        let defaults: Vec<Value> = block
-                            .properties
-                            .iter()
-                            .zip(block.default)
-                            .map(|(index, chosen)| {
-                                let property = &registry::PROPERTIES[usize::from(*index)];
-                                json!(property.values[usize::from(*chosen)])
-                            })
-                            .collect();
                         json!({
                             "name": block.name,
                             "id": id,
                             "properties": properties,
-                            "default": defaults,
-                            "state_count": block.state_count,
-                            "first_state_id": block.first_state_id,
+                            "default": block.default,
+                            "state_count": block.state_count(),
+                            "first_state_id": block.first_state_id(),
                             "default_state_id": block.default_state_id(),
                         })
                     })
@@ -16373,7 +16468,7 @@ fn block_result(request: &Value) -> Result<Value, String> {
                     "block_count": registry::BLOCKS.len(),
                     "state_count": registry::BLOCKS
                         .iter()
-                        .map(|block| u32::from(block.state_count))
+                        .map(registry::Block::state_count)
                         .sum::<u32>(),
                     "blocks": blocks,
                 }));
@@ -16425,6 +16520,7 @@ fn block_result(request: &Value) -> Result<Value, String> {
                     "blocks": voxel_data::block::fluid_overlay::OVERLAY_BLOCKS.to_vec(),
                 }));
             }
+            "block_declarations" => out.push(block_declarations(label)),
             "block_behaviours" => {
                 use voxel_data::block::behaviour::{BLOCKS, CLASSES, ITEMS};
                 let class = |index: u16| CLASSES[usize::from(index)];

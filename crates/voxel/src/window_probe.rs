@@ -244,7 +244,6 @@ fn choose_block(block: &str, root: String) -> Result<ChosenBlock> {
 /// completed with the default state's values, which is what a blockstate
 /// selector expects to find.
 fn block_properties(block: &str, name: &str) -> Result<std::collections::BTreeMap<String, String>> {
-    use voxel_data::block::registry::PROPERTIES;
     let definition = voxel_data::block::registry::block(name)
         .ok_or_else(|| format!("{block}: not in the block registry"))?;
     let mut properties =
@@ -253,18 +252,16 @@ fn block_properties(block: &str, name: &str) -> Result<std::collections::BTreeMa
         let property = definition
             .properties
             .iter()
-            .map(|index| &PROPERTIES[*index as usize])
             .find(|property| property.name == key)
             .ok_or_else(|| format!("{block}: no property named {key}"))?;
         if !property.values.contains(&value.as_str()) {
             return Err(format!("{block}: {key} cannot be {value}").into());
         }
     }
-    for (slot, index) in definition.properties.iter().enumerate() {
-        let property = &PROPERTIES[*index as usize];
+    for (property, default) in definition.properties.iter().zip(definition.default) {
         properties
             .entry(property.name.to_owned())
-            .or_insert_with(|| property.values[usize::from(definition.default[slot])].to_owned());
+            .or_insert_with(|| (*default).to_owned());
     }
     println!("block_state_id={:?}", definition.state_id(&properties));
     Ok(properties)

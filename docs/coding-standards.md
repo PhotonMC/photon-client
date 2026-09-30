@@ -50,12 +50,13 @@ Sınırı aşan kod önce bölünür: tek sorumluluklu yardımcı fonksiyon, dur
 - Paket veya bileşen kimliği başına bir kolu olan dağıtım `match`'i.
 - Baştan sona tek akış olarak okunan test, probe ve adaptör senaryoları (dosya düzeyinde `#![expect]`).
 
-## Üretilen tablolar
+## Referans verisi
 
-- Oracle'dan yakalanan tablolar `crates/voxel-data/src` altındadır ve her biri `tools/generate/` içindeki bir üretici tarafından yazılır; dosyanın başındaki belge üreticinin adını verir. Üretilen dosya elle düzenlenmez.
-- Tabloyu okuyan elle yazılmış kod (`registry`, `shape`, `mod.rs` içindeki aramalar) üretilen dosyadan ayrı tutulur.
-- Ortak biçim `tools/generate/common.py` içindedir: float'lar referans bitlerine birebir dönen en kısa ondalık yazımla, baytlar bayt dizisi olarak, tekrar eden değerler tek listeye indekslenerek yazılır.
-- Bütün tablolar `python3 tools/generate/all.py <capture>` ile yeniden üretilir ve her parity koşusunda davranış adaptörü üzerinden baştan sona karşılaştırılır.
+- Java bir değeri başka veriden **hesaplıyorsa** biz de hesaplarız (state önbelleği, şekillerden çıkan değerler); tablo olarak tutmayız. Java onu kodda veya `data/` altında **tanımlıyorsa** tanımı tipli ve okunur bir kayıt olarak tutarız. Durum [yol haritasındadır](architecture-roadmap.md).
+- Tanımlar `crates/voxel-data/src` altındadır ve `tools/generate/` içindeki bir üretici tarafından yazılır; dosyanın başındaki belge üreticinin adını verir. Üretilen dosya elle düzenlenmez.
+- Biçim, referansın kodunu okur gibi olmalıdır: blok başına bir `Block::of(...)` zinciri, adı Java alanı olan özellik sabitleri, alan adlarıyla yazılmış kayıtlar. Tekrarları silmek için indeks listeleri, bit dizgeleri, koşu uzunluğu dizileri veya ham ağ baytları kullanılmaz; bir sürüm atlamasında diff gerçek değişikliği göstermelidir.
+- Tabloyu okuyan elle yazılmış kod (`definition`, `registry`, `shape`) üretilen dosyadan ayrı tutulur. Float'lar referans bitlerine birebir dönen en kısa ondalık yazımla yazılır (`tools/generate/common.py`).
+- Bütün tanımlar `python3 tools/generate/all.py <capture>` ile yeniden üretilir ve her parity koşusunda davranış adaptörü üzerinden baştan sona karşılaştırılır.
 
 ## Davranışı koruma
 

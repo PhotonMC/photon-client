@@ -156,8 +156,8 @@ impl BlockRenderer {
         }
         let mut states = Vec::new();
         for block in registry::BLOCKS.iter() {
-            for offset in 0..u32::from(block.state_count) {
-                let state_id = (block.first_state_id + offset) as usize;
+            for offset in 0..block.state_count() {
+                let state_id = (block.first_state_id() + offset) as usize;
                 if states.len() <= state_id {
                     states.resize_with(state_id + 1, || StateRender::Missing);
                 }

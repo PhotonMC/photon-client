@@ -37,7 +37,7 @@ Her state için açılışta bir kez hesaplanan, state numarasıyla doğrudan
 erişilen bir kayıt. Hesaplanan değerler Java'nın formülüyle çıkar; tablo
 olarak tutulmaz.
 
-- [ ] State → blok ve sıra: tek dizi, ikili arama yok.
+- [x] State → blok ve sıra: tek dizi, ikili arama yok.
 - [ ] Yüz oklüzyon şekilleri (`getOcclusionShape`, `getFaceShape`) ve
   `shouldRenderFace`; `skipRendering` sınıfların kendi kuralıyla.
   `face_occlusion.rs` silinir.

@@ -1,7 +1,10 @@
 //! Per block and per block state, in registry order.
 
 pub mod behaviour;
+pub mod blocks;
+pub mod classes;
 pub mod collision;
+pub mod definition;
 pub mod destroy;
 pub mod face_occlusion;
 pub mod fluid_flow;
@@ -11,9 +14,10 @@ pub mod motion_blocking;
 pub mod movement;
 pub mod offset;
 pub mod outline;
+pub mod properties;
 pub mod registry;
 pub mod shape;
-pub mod states;
+pub mod tints;
 
 /// A per-block list holds either one value shared by every state or one value
 /// per state: the value for the state at `offset` in its block.

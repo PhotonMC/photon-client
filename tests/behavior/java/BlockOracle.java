@@ -68,6 +68,7 @@ public final class BlockOracle {
                 case "potions" -> rows.add(potions(element.getAsJsonObject()));
                 case "creative_tabs" -> rows.add(creativeTabs(element.getAsJsonObject()));
                 case "block_behaviours" -> rows.add(blockBehaviours(element.getAsJsonObject()));
+                case "block_declarations" -> rows.add(blockDeclarations(element.getAsJsonObject()));
                 default -> throw new IllegalArgumentException("Unknown block operation: " + operation);
             }
         }
@@ -1108,6 +1109,173 @@ public final class BlockOracle {
         }
         entry.add("items", items);
         return entry;
+    }
+
+    /**
+     * What each block declares, as `Blocks` builds it: its class and the
+     * classes above it, its state properties by the field that holds them,
+     * and its `Properties`. A state predicate or function reads as `default`
+     * when it is the one `Properties.of()` starts with; otherwise its value
+     * for every state. Nothing here is computed from shapes.
+     */
+    private static JsonObject blockDeclarations(JsonObject row) {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        entry.addProperty("outcome", "listed");
+        var registry = net.minecraft.core.registries.BuiltInRegistries.BLOCK;
+        try {
+            var propertiesField = net.minecraft.world.level.block.state.BlockBehaviour.class
+                .getDeclaredField("properties");
+            propertiesField.setAccessible(true);
+            var fresh = net.minecraft.world.level.block.state.BlockBehaviour.Properties.of();
+            var classes = new java.util.LinkedHashMap<String, String>();
+            var propertyFields = new java.util.IdentityHashMap<Object, String>();
+            var propertyList = new JsonArray();
+            var blocks = new JsonArray();
+            for (var block : registry) {
+                for (Class<?> type = block.getClass();
+                     type != net.minecraft.world.level.block.state.BlockBehaviour.class;
+                     type = type.getSuperclass()) {
+                    var parent = type.getSuperclass();
+                    classes.putIfAbsent(type.getSimpleName(),
+                        parent == net.minecraft.world.level.block.state.BlockBehaviour.class
+                            ? "" : parent.getSimpleName());
+                }
+                var described = new JsonObject();
+                described.addProperty("name", registry.getKey(block).toString());
+                described.addProperty("class", block.getClass().getSimpleName());
+                var definition = block.getStateDefinition();
+                var names = new JsonArray();
+                var defaults = new JsonArray();
+                for (var property : definition.getProperties()) {
+                    String field = propertyFields.get(property);
+                    if (field == null) {
+                        field = propertyField(property, block.getClass());
+                        propertyFields.put(property, field);
+                        var describedProperty = new JsonObject();
+                        describedProperty.addProperty("field", field);
+                        describedProperty.addProperty("name", property.getName());
+                        describedProperty.addProperty("kind", switch (property) {
+                            case net.minecraft.world.level.block.state.properties.BooleanProperty p -> "boolean";
+                            case net.minecraft.world.level.block.state.properties.IntegerProperty p -> "integer";
+                            case net.minecraft.world.level.block.state.properties.EnumProperty p -> "enum";
+                            default -> "other";
+                        });
+                        var values = new JsonArray();
+                        for (var value : property.getPossibleValues()) {
+                            values.add(name(property, (Comparable) value));
+                        }
+                        describedProperty.add("values", values);
+                        propertyList.add(describedProperty);
+                    }
+                    names.add(field);
+                    defaults.add(name(property, block.defaultBlockState().getValue(property)));
+                }
+                described.add("properties", names);
+                described.add("default", defaults);
+                var declared = (net.minecraft.world.level.block.state.BlockBehaviour.Properties)
+                    propertiesField.get(block);
+                var values = new JsonObject();
+                for (String field : new String[] {
+                    "destroyTime", "explosionResistance", "friction", "speedFactor", "jumpFactor",
+                    "bounceRestitution",
+                }) {
+                    values.addProperty(field, Oracle.bits((float) declaredValue(declared, field)));
+                }
+                for (String field : new String[] {
+                    "hasCollision", "requiresCorrectToolForDrops", "isRandomlyTicking", "canOcclude",
+                    "isAir", "ignitedByLava", "liquid", "forceSolidOff", "forceSolidOn",
+                    "spawnTerrainParticles", "replaceable", "dynamicShape",
+                }) {
+                    values.addProperty(field, (boolean) declaredValue(declared, field));
+                }
+                values.addProperty("pushReaction", declaredValue(declared, "pushReaction").toString());
+                described.add("declared", values);
+                var states = definition.getPossibleStates();
+                var perState = new JsonObject();
+                var getter = net.minecraft.world.level.EmptyBlockGetter.INSTANCE;
+                var origin = net.minecraft.core.BlockPos.ZERO;
+                perState.add("lightEmission", sameAsFresh(declared, fresh, "lightEmission") ? null
+                    : intsOf(states, state -> state.getLightEmission()));
+                perState.add("emissiveRendering", sameAsFresh(declared, fresh, "emissiveRendering") ? null
+                    : boolsOf(states, state -> state.emissiveRendering()));
+                perState.add("isSuffocating", sameAsFresh(declared, fresh, "isSuffocating") ? null
+                    : boolsOf(states, state -> state.isSuffocating(getter, origin)));
+                perState.add("isViewBlocking", sameAsFresh(declared, fresh, "isViewBlocking") ? null
+                    : boolsOf(states, state -> state.isViewBlocking(getter, origin)));
+                perState.add("isRedstoneConductor", sameAsFresh(declared, fresh, "isRedstoneConductor") ? null
+                    : boolsOf(states, state -> state.isRedstoneConductor(getter, origin)));
+                described.add("per_state", perState);
+                blocks.add(described);
+            }
+            var classList = new JsonArray();
+            classes.forEach((name, parent) -> {
+                var described = new JsonObject();
+                described.addProperty("name", name);
+                described.addProperty("parent", parent);
+                classList.add(described);
+            });
+            entry.add("classes", classList);
+            entry.add("properties", propertyList);
+            entry.add("blocks", blocks);
+        } catch (ReflectiveOperationException failure) {
+            throw new IllegalStateException(failure);
+        }
+        return entry;
+    }
+
+    /** The static field a state property is kept in: `BlockStateProperties`
+     * first, then the block's own classes. */
+    private static String propertyField(Object property, Class<?> type) {
+        var owners = new java.util.ArrayList<Class<?>>();
+        owners.add(net.minecraft.world.level.block.state.properties.BlockStateProperties.class);
+        for (Class<?> current = type; current != null; current = current.getSuperclass()) {
+            owners.add(current);
+        }
+        for (var owner : owners) {
+            for (var field : owner.getDeclaredFields()) {
+                if (!java.lang.reflect.Modifier.isStatic(field.getModifiers())) {
+                    continue;
+                }
+                try {
+                    field.setAccessible(true);
+                    if (field.get(null) == property) {
+                        return owner == owners.get(0) ? field.getName()
+                            : owner.getSimpleName() + "." + field.getName();
+                    }
+                } catch (ReflectiveOperationException | RuntimeException skipped) {
+                    // Not readable; not the one.
+                }
+            }
+        }
+        throw new IllegalStateException("No field holds " + property + " for " + type);
+    }
+
+    private static Object declaredValue(Object properties, String field) throws ReflectiveOperationException {
+        var reflected = net.minecraft.world.level.block.state.BlockBehaviour.Properties.class.getDeclaredField(field);
+        reflected.setAccessible(true);
+        return reflected.get(properties);
+    }
+
+    private static boolean sameAsFresh(Object properties, Object fresh, String field)
+        throws ReflectiveOperationException {
+        return declaredValue(properties, field) == declaredValue(fresh, field);
+    }
+
+    private static JsonArray intsOf(
+        java.util.List<net.minecraft.world.level.block.state.BlockState> states,
+        java.util.function.ToIntFunction<net.minecraft.world.level.block.state.BlockState> value) {
+        var out = new JsonArray();
+        states.forEach(state -> out.add(value.applyAsInt(state)));
+        return out;
+    }
+
+    private static JsonArray boolsOf(
+        java.util.List<net.minecraft.world.level.block.state.BlockState> states,
+        java.util.function.Predicate<net.minecraft.world.level.block.state.BlockState> value) {
+        var out = new JsonArray();
+        states.forEach(state -> out.add(value.test(state)));
+        return out;
     }
 
     private static JsonObject motionBlocking(JsonObject row) {

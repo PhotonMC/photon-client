@@ -86,6 +86,10 @@ def _shortest(bits, width):
     for precision in range(1, 18):
         candidate = f"{value:.{precision}g}"
         if _nearest(exact, below, above, candidate):
+            # `1e+02` reads better as `100.0` when that is the same decimal.
+            plain = repr(float(candidate))
+            if "e" not in plain and Fraction(plain) == Fraction(candidate):
+                return _literal(plain)
             return _literal(candidate)
     return _literal(repr(value))
 

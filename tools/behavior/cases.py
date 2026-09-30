@@ -13099,6 +13099,12 @@ def block_cases():
         "rows": [{"label": "registry"}],
     }
     yield {
+        "case_id": "block/declarations",
+        "family": "block",
+        "operation": "block_declarations",
+        "rows": [{"label": "registry"}],
+    }
+    yield {
         "case_id": "block/collision-shapes",
         "family": "block",
         "operation": "collision_shapes",

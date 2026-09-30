@@ -7,8 +7,8 @@
 //!
 //! A generated file is never edited by hand: it says so in its header and
 //! regeneration overwrites it. What is written by hand (the module layout,
-//! `block/mod.rs`, `block/shape.rs` and `block/registry.rs`) holds the types
-//! the tables share and the lookups on them.
+//! `block/definition.rs`, `block/shape.rs` and `block/registry.rs`) holds the
+//! types the tables share and the lookups on them.
 
 pub mod block;
 pub mod item;
