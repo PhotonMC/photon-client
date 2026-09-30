@@ -1,4 +1,4 @@
-# Sunucunun açtığı genel kaplar (sandık, fıçı, ender sandığı, dağıtıcı, hopper, shulker kutusu)
+# Sunucunun açtığı genel kaplar (sandık, fıçı, ender sandığı, dağıtıcı, hopper, shulker kutusu, çalışma tezgâhı)
 
 Kapsam: `OpenScreen` ile açılan `generic_9x1..9x6`, `generic_3x3`, `hopper` ve
 `shulker_box` menüleri. Fırın, tezgâh, örs gibi diğer menü türleri henüz
@@ -28,6 +28,15 @@ envantere yazılır, sunucunun envanteri değiştirmesi kabın menüsünde gör�
 - Canlı (`server-conformance`): üç eşyalı bir sandık açıldı, hızlı taşıma ve
   alma/koyma tıklandı, kapatıldı; sunucudaki sandık ve oyuncu envanteri istemcinin
   tahminiyle aynı çıktı.
+
+## Çalışma tezgâhı
+
+`MenuKind::Crafting` (menü türü 12): sonuç 0, 3×3 ızgara 1–9, sonra oyuncunun
+27+9 yuvası. `CraftingMenu.quickMoveStack` ve sonuç yuvasının ızgarayı
+tüketmesi (istemci tarafında `defaultCraftingReminder`) oracle'da 9 satırla
+Java ile birebir. Tarif kitabı düğmesi çizilir ve basışı yutar, kitap açılmaz.
+Canlı: bir kütük ızgaraya taşındı, sunucunun gönderdiği sonuç hızlı taşınarak
+8 tahta alındı.
 
 ## Açık
 

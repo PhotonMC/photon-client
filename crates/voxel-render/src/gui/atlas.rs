@@ -14,11 +14,12 @@ const SPRITE_FOLDERS: [&str; 4] = ["hud", "container", "recipe_book", "tooltip"]
 
 /// Whole textures under `textures/gui` that screens blit parts of, packed as
 /// `texture/<name>`.
-const WHOLE_TEXTURES: [&str; 8] = [
+const WHOLE_TEXTURES: [&str; 9] = [
     "container/inventory",
     "container/generic_54",
     "container/dispenser",
     "container/hopper",
+    "container/crafting_table",
     "container/shulker_box",
     "container/creative_inventory/tab_items",
     "container/creative_inventory/tab_item_search",

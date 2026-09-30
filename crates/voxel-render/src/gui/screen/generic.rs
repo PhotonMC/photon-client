@@ -12,7 +12,7 @@ use voxel_game::container_menu::{ClickType, ContainerMenu, MenuKind};
 fn image(kind: MenuKind) -> (i32, i32) {
     match kind {
         MenuKind::Chest(rows) => (176, 114 + rows as i32 * 18),
-        MenuKind::Dispenser => (176, 166),
+        MenuKind::Dispenser | MenuKind::Crafting => (176, 166),
         MenuKind::Hopper => (176, 133),
         MenuKind::ShulkerBox | MenuKind::Inventory => (176, 167),
     }
@@ -22,6 +22,16 @@ fn image(kind: MenuKind) -> (i32, i32) {
 /// places them, then the player's 27 and 9 below them.
 pub fn slot_position(kind: MenuKind, index: usize) -> (i32, i32) {
     let top = kind.top_slots();
+    if kind == MenuKind::Crafting && index < top {
+        return if index == 0 {
+            (124, 35)
+        } else {
+            (
+                30 + ((index - 1) % 3) as i32 * 18,
+                17 + ((index - 1) / 3) as i32 * 18,
+            )
+        };
+    }
     if index < top {
         let (column, row) = ((index % 9) as i32, (index / 9) as i32);
         return match kind {
@@ -63,6 +73,9 @@ pub struct GenericScreen {
     titles: Titles,
     hovered: Option<usize>,
     mouse: ContainerMouse,
+    /// The recipe book button of the crafting table took the press, so the
+    /// release is swallowed; the book itself is not drawn.
+    button_clicked: bool,
 }
 
 impl GenericScreen {
@@ -74,7 +87,23 @@ impl GenericScreen {
             titles,
             hovered: None,
             mouse: ContainerMouse::default(),
+            button_clicked: false,
         }
+    }
+
+    /// The crafting table's recipe book button, where `CraftingScreen` puts it.
+    fn recipe_button(&self) -> Option<(i32, i32)> {
+        (self.kind == MenuKind::Crafting)
+            .then(|| (self.layout.left() + 5, self.layout.height / 2 - 49))
+    }
+
+    fn on_recipe_button(&self, (x, y): (f64, f64)) -> bool {
+        self.recipe_button().is_some_and(|(bx, by)| {
+            x >= f64::from(bx)
+                && y >= f64::from(by)
+                && x < f64::from(bx + 20)
+                && y < f64::from(by + 18)
+        })
     }
 
     fn hovered_slot(&self, mouse: (f64, f64)) -> Option<usize> {
@@ -102,6 +131,10 @@ impl Screen for GenericScreen {
         menu: &ContainerMenu,
     ) -> Vec<ScreenAction> {
         let double = self.mouse.note_click(now, button);
+        if self.on_recipe_button(mouse) {
+            self.button_clicked = true;
+            return Vec::new();
+        }
         let slot = self.hovered_slot(mouse);
         let outside = self.layout.outside(mouse);
         Self::actions(
@@ -122,6 +155,9 @@ impl Screen for GenericScreen {
         shift: bool,
         menu: &ContainerMenu,
     ) -> Vec<ScreenAction> {
+        if std::mem::take(&mut self.button_clicked) {
+            return Vec::new();
+        }
         let slot = self.hovered_slot(mouse);
         let outside = self.layout.outside(mouse);
         Self::actions(
@@ -191,6 +227,7 @@ impl Screen for GenericScreen {
                 let texture = match other {
                     MenuKind::Dispenser => "container/dispenser",
                     MenuKind::Hopper => "container/hopper",
+                    MenuKind::Crafting => "container/crafting_table",
                     _ => "container/shulker_box",
                 };
                 draw.frame.blit_texture(
@@ -204,6 +241,14 @@ impl Screen for GenericScreen {
                     height,
                 );
             }
+        }
+        if let Some((bx, by)) = self.recipe_button() {
+            let button = if self.on_recipe_button(mouse) {
+                "recipe_book/button_highlighted"
+            } else {
+                "recipe_book/button"
+            };
+            draw.frame.sprite(draw.atlas, button, bx, by, 20, 18);
         }
         // The dispenser centres its title; the others keep it at the corner.
         let title_x = if self.kind == MenuKind::Dispenser {

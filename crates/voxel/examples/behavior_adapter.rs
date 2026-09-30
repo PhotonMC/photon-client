@@ -18399,6 +18399,7 @@ fn container_clicks_result(request: &Value) -> Result<Value, String> {
             None => ContainerMenu::default(),
             Some(name) => {
                 let kind = match name.strip_prefix("minecraft:").unwrap_or(name) {
+                    "crafting" => MenuKind::Crafting,
                     "generic_3x3" => MenuKind::Dispenser,
                     "hopper" => MenuKind::Hopper,
                     "shulker_box" => MenuKind::ShulkerBox,

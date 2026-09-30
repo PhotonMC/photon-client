@@ -13779,6 +13779,33 @@ def movement_cases():
         clicks("shulker box pick up a shulker box", [st(27, "shulker_box", 1)],
                [cl(27, 0, P), cl(3, 0, P), cl(40, 0, P)], menu="shulker_box"),
     ]
+    # The crafting table: the result at 0, the grid at 1 to 9, then the player.
+    crafting = "crafting"
+    click_rows += [
+        clicks("table take the result", [st(0, "oak_planks", 4), st(1, "oak_log", 3), st(2, "water_bucket", 1)],
+               [cl(0, 0, P), cl(0, 0, P), cl(20, 0, P)], menu=crafting),
+        clicks("table quick move the result",
+               [st(0, "oak_planks", 4), st(1, "oak_log", 2), st(36, "oak_planks", 62)],
+               [cl(0, 0, Q)], menu=crafting),
+        clicks("table grid remainders",
+               [st(0, "cake", 1), st(1, "milk_bucket", 1), st(9, "sugar", 2), st(5, "egg", 1),
+                st(8, "honey_bottle", 3)],
+               [cl(0, 0, P)], menu=crafting),
+        clicks("table quick move into the grid", [st(20, "stone", 30), st(40, "dirt", 3), st(3, "stone", 60)],
+               [cl(20, 0, Q), cl(40, 0, Q)], menu=crafting),
+        clicks("table quick move out of the grid", [st(4, "stone", 5), st(9, "dirt", 7)],
+               [cl(4, 0, Q), cl(9, 0, Q)], menu=crafting),
+        clicks("table result refuses placing", [st(0, "stick", 4)], [cl(0, 0, P)],
+               carried=("stick", 2), menu=crafting),
+        clicks("table number key from the result", [st(0, "oak_planks", 4), st(1, "oak_log", 2)],
+               [cl(0, 3, SW)], menu=crafting),
+        clicks("table double click skips the result",
+               [st(0, "stone", 30), st(10, "stone", 10), st(45, "stone", 4)],
+               [cl(11, 0, PA)], carried=("stone", 5), menu=crafting),
+        clicks("table drag over the grid", [],
+               [cl(-999, 0, QC), cl(1, 1, QC), cl(2, 1, QC), cl(30, 1, QC), cl(-999, 2, QC)],
+               carried=("stone", 9), menu=crafting),
+    ]
     yield {
         "case_id": "movement/container-clicks",
         "family": "movement",

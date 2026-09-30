@@ -75,6 +75,8 @@ pub enum MenuKind {
     Hopper,
     /// `ShulkerBoxMenu`: 27 slots that refuse shulker boxes.
     ShulkerBox,
+    /// `CraftingMenu`: the result, then the three by three grid.
+    Crafting,
 }
 
 impl MenuKind {
@@ -83,6 +85,7 @@ impl MenuKind {
         Some(match id {
             0..=5 => Self::Chest(id as usize + 1),
             6 => Self::Dispenser,
+            12 => Self::Crafting,
             16 => Self::Hopper,
             20 => Self::ShulkerBox,
             _ => return None,
@@ -97,6 +100,7 @@ impl MenuKind {
             Self::Dispenser => 9,
             Self::Hopper => 5,
             Self::ShulkerBox => 27,
+            Self::Crafting => 10,
         }
     }
 
@@ -618,7 +622,15 @@ impl ContainerMenu {
 
     /// Whether this is the player menu's crafting result slot.
     pub fn is_result(&self, index: usize) -> bool {
-        self.kind == MenuKind::Inventory && index == RESULT
+        matches!(self.kind, MenuKind::Inventory | MenuKind::Crafting) && index == RESULT
+    }
+
+    /// The crafting grid's slots, which the result slot uses up.
+    fn grid(&self) -> std::ops::Range<usize> {
+        match self.kind {
+            MenuKind::Crafting => 1..10,
+            _ => 1..5,
+        }
     }
 
     /// `Slot.isSameInventory`: in the player menu the result, the crafting
@@ -629,6 +641,11 @@ impl ContainerMenu {
             MenuKind::Inventory => match index {
                 0 => 0,
                 1..5 => 1,
+                _ => 2,
+            },
+            MenuKind::Crafting => match index {
+                0 => 0,
+                1..10 => 1,
                 _ => 2,
             },
             other => usize::from(index >= other.top_slots()),
@@ -785,7 +802,7 @@ impl ContainerMenu {
         }
         // `ResultSlot.onTake` with `CraftingRecipe.defaultCraftingReminder`,
         // row by row through the grid.
-        for grid in 1..5 {
+        for grid in self.grid() {
             let Some(stack) = self.slots[grid].as_ref() else {
                 continue;
             };
@@ -846,12 +863,50 @@ impl ContainerMenu {
         Some(clicked)
     }
 
+    /// `CraftingMenu.quickMoveStack`: the result into the player's slots
+    /// from the end, the player's into the grid and then across the
+    /// inventory and hotbar, the grid back into the player's.
+    fn quick_move_crafting(&mut self, index: usize, player: Player) -> Option<Stack> {
+        let original = self.slots[index].as_ref()?.clone();
+        let clicked = original.copy_with_count(original.item_count());
+        let mut stack = self.slots[index].take().expect("checked above");
+        let moved = if index == 0 {
+            self.move_item_stack_to(&mut stack, 10, 46, true)
+        } else if (10..46).contains(&index) {
+            self.move_item_stack_to(&mut stack, 1, 10, false)
+                || if index < 37 {
+                    self.move_item_stack_to(&mut stack, 37, 46, false)
+                } else {
+                    self.move_item_stack_to(&mut stack, 10, 37, false)
+                }
+        } else {
+            self.move_item_stack_to(&mut stack, 10, 46, false)
+        };
+        self.slots[index] = Some(stack);
+        settle(&mut self.slots[index]);
+        if !moved {
+            return None;
+        }
+        let left = self.slots[index].as_ref().map_or(0, Stack::item_count);
+        if left == clicked.item_count() {
+            return None;
+        }
+        let taken = self.slots[index]
+            .clone()
+            .unwrap_or_else(|| clicked.copy_with_count(0));
+        self.on_take(index, &taken, player);
+        if index == 0 {
+            self.drop(self.slots[index].clone().as_ref());
+        }
+        Some(clicked)
+    }
+
     /// `quickMoveStack` of the menu.
     fn quick_move_stack(&mut self, index: usize, player: Player) -> Option<Stack> {
-        if self.kind == MenuKind::Inventory {
-            self.quick_move_inventory(index, player)
-        } else {
-            self.quick_move_container(index, player)
+        match self.kind {
+            MenuKind::Inventory => self.quick_move_inventory(index, player),
+            MenuKind::Crafting => self.quick_move_crafting(index, player),
+            _ => self.quick_move_container(index, player),
         }
     }
 
