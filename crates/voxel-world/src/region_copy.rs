@@ -106,8 +106,8 @@ impl ClientWorld {
                                 + x.rem_euclid(16) as usize;
                             let index = (((y - min[1]) * size[2] + (z - min[2])) * size[0]
                                 + (x - min[0])) as usize;
-                            states[index] = section
-                                .and_then(|section| section.block_states.get(within).copied());
+                            states[index] =
+                                section.and_then(|section| section.block_states.get(within));
                         }
                     }
                 }

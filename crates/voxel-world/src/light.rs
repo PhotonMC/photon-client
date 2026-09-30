@@ -697,8 +697,13 @@ impl ChunkSkyLightSources {
     /// `fillFrom`: from the chunk's sections, the highest first. `section`
     /// answers a section's block states (y, z, x order, 4096 of them) by
     /// index, or nothing if it holds only air.
-    pub fn fill_from(&mut self, section_count: usize, section: impl Fn(usize) -> Option<Vec<i32>>) {
-        let sections: Vec<Option<Vec<i32>>> = (0..section_count).map(&section).collect();
+    pub(crate) fn fill_from<'a>(
+        &mut self,
+        section_count: usize,
+        section: impl Fn(usize) -> Option<&'a crate::paletted::PalettedStates>,
+    ) {
+        let sections: Vec<Option<&crate::paletted::PalettedStates>> =
+            (0..section_count).map(&section).collect();
         let Some(highest) = sections.iter().rposition(Option::is_some) else {
             self.heights.fill(self.min_y);
             return;
@@ -713,7 +718,7 @@ impl ChunkSkyLightSources {
 
     fn find_lowest_source_y(
         &self,
-        sections: &[Option<Vec<i32>>],
+        sections: &[Option<&crate::paletted::PalettedStates>],
         top: usize,
         x: i32,
         z: i32,
@@ -730,7 +735,7 @@ impl ChunkSkyLightSources {
                 }
                 Some(states) => {
                     for y in (0..16).rev() {
-                        let bottom_state = states[(y * 256 + z * 16 + x) as usize];
+                        let bottom_state = states.get((y * 256 + z * 16 + x) as usize).unwrap_or(0);
                         if is_edge_occluded(top_state, bottom_state) {
                             return top_y;
                         }

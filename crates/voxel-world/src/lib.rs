@@ -31,6 +31,7 @@ mod entity;
 mod java_math;
 pub mod light;
 mod metadata;
+mod paletted;
 mod player;
 mod prediction;
 mod region_copy;
@@ -1936,7 +1937,7 @@ impl ClientWorld {
         let column = z.rem_euclid(16) as usize * 16 + x.rem_euclid(16) as usize;
         for (section_y, section) in chunk.sections.iter().rev() {
             for local_y in (0..16).rev() {
-                let Some(&state) = section.block_states.get(local_y * 256 + column) else {
+                let Some(state) = section.block_states.get(local_y * 256 + column) else {
                     continue;
                 };
                 if motion_blocking(state) {
@@ -1945,6 +1946,20 @@ impl ClientWorld {
             }
         }
         bottom
+    }
+
+    /// How many bytes the loaded chunks' block states take, and how many
+    /// they would take stored as a number for every block.
+    pub fn block_state_bytes(&self) -> (usize, usize) {
+        self.chunks
+            .values()
+            .flat_map(|chunk| chunk.sections.values())
+            .fold((0, 0), |(stored, plain), section| {
+                (
+                    stored + section.block_states.bytes(),
+                    plain + paletted::SECTION_VOLUME * std::mem::size_of::<i32>(),
+                )
+            })
     }
 
     pub fn block_state_at(&self, x: i32, y: i32, z: i32) -> Option<i32> {
@@ -1956,7 +1971,7 @@ impl ClientWorld {
         let local_y = y.rem_euclid(16) as usize;
         let local_z = z.rem_euclid(16) as usize;
         let index = local_y * 256 + local_z * 16 + local_x;
-        section.block_states.get(index).copied()
+        section.block_states.get(index)
     }
 
     /// Collect loaded block collision shapes using Java's `BlockCollisions` traversal.
@@ -2308,7 +2323,7 @@ impl ClientWorld {
         let local_y = y.rem_euclid(16) as usize;
         let local_z = z.rem_euclid(16) as usize;
         let index = local_y * 256 + local_z * 16 + local_x;
-        let Some(previous_state_id) = section.block_states.get(index).copied() else {
+        let Some(previous_state_id) = section.block_states.get(index) else {
             return false;
         };
         if (section.has_only_air() && state_id == VANILLA_AIR_BLOCK_STATE_ID)
@@ -2337,7 +2352,6 @@ impl ClientWorld {
                         section
                             .block_states
                             .get((y.rem_euclid(16) * 256 + lz * 16 + lx) as usize)
-                            .copied()
                     })
                     .unwrap_or(VANILLA_AIR_BLOCK_STATE_ID)
             };
@@ -3302,7 +3316,7 @@ impl ClientWorld {
                     ClientSection {
                         non_empty_block_count: input.non_empty_block_count,
                         fluid_count: input.fluid_count,
-                        block_states: input.block_states.to_vec(),
+                        block_states: paletted::PalettedStates::from_values(input.block_states),
                         biomes: input.biomes.to_vec(),
                     },
                 )
@@ -3315,7 +3329,7 @@ impl ClientWorld {
             sections
                 .get(&(min_section + index as i32))
                 .filter(|section| !section.has_only_air())
-                .map(|section| section.block_states.clone())
+                .map(|section| &section.block_states)
         });
         let new_chunk = ClientChunk {
             sections,
@@ -3438,7 +3452,6 @@ impl light::LightChunks for LightView<'_> {
                 section
                     .block_states
                     .get(((y & 15) * 256 + (z & 15) * 16 + (x & 15)) as usize)
-                    .copied()
             })
             .unwrap_or(0)
     }

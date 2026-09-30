@@ -96,7 +96,7 @@ olarak tutulmaz.
 
 ### F6. Bellek ve GPU
 
-- [ ] Paletli section depolama (Java `PalettedContainer`).
+- [x] Paletli section depolama (Java `PalettedContainer`).
 - [ ] Java'nın blok vertex biçimi: renk ve ışık baytlara paketli, ~32 bayt.
 
 ### F7. UV kilidi

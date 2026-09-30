@@ -200,7 +200,7 @@ impl OwnedLightLayerInput {
 pub(crate) struct ClientSection {
     pub(crate) non_empty_block_count: i16,
     pub(crate) fluid_count: i16,
-    pub(crate) block_states: Vec<i32>,
+    pub(crate) block_states: crate::paletted::PalettedStates,
     pub(crate) biomes: Vec<i32>,
 }
 
@@ -213,8 +213,7 @@ impl ClientSection {
         // The complete block-state registry is still open; this slice has the
         // exact air/non-air and source-water classifications used by its
         // pinned update trace.
-        let block_state = self.block_states.get_mut(index)?;
-        let previous_state_id = *block_state;
+        let previous_state_id = self.block_states.get(index)?;
         if previous_state_id != VANILLA_AIR_BLOCK_STATE_ID {
             self.non_empty_block_count -= 1;
             if previous_state_id == VANILLA_WATER_BLOCK_STATE_ID {
@@ -227,7 +226,7 @@ impl ClientSection {
                 self.fluid_count += 1;
             }
         }
-        *block_state = state_id;
+        self.block_states.set(index, state_id);
         Some(previous_state_id)
     }
 }

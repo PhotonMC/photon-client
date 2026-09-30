@@ -157,6 +157,8 @@ fn main() {
     );
 
     let world = world();
+    let (stored, plain) = world.block_state_bytes();
+    println!("block states stored={stored} bytes plain={plain} bytes");
     let tint = |_: voxel_render::biome_tint::TintKind, _: [i32; 3]| 0xff79_c05a_u32;
     for section_y in [-3, 0, 3, 4, 5] {
         let key = (0, section_y, 0);
