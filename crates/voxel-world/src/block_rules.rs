@@ -131,7 +131,7 @@ pub fn can_be_replaced(state: i32, ctx: &PlaceContext<'_>) -> Rule<bool> {
     match class_name(row.can_be_replaced) {
         "BlockBehaviour" => {
             let (_, offset) = block_index(state).expect("row found");
-            let replaceable = row.replaceable.as_bytes()[offset as usize] == b'1';
+            let replaceable = row.replaceable(offset);
             Rule::Known(replaceable && (ctx.item.is_none() || !ctx.holds_item_of(state)))
         }
         "SlabBlock" => {

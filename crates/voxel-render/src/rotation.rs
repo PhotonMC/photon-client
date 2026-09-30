@@ -320,7 +320,7 @@ pub fn flatten(matrix: &Matrix4) -> FlatMatrix {
 }
 
 fn table_value(index: u8) -> f32 {
-    f32::from_bits(voxel_data::model::uv_lock::VALUES[usize::from(index)])
+    voxel_data::model::uv_lock::VALUES[usize::from(index)]
 }
 
 /// The inverse face transform a UV-locked variant applies to one face.

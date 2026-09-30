@@ -73,6 +73,6 @@ varyanttan besliyor. `minecraft:oak_stairs` `facing=north` durumunda
 
 `BlockMath.getFaceTransformation` kilitli yolda normali dönüştürüp en yakın
 yönü seçiyor. O adım tablonun **içinde** kaldığı için ayrıca sabitlenmedi;
-tablo değiştiğinde (yeni bir sürümde) yeniden üretilmesi gerekir. Üretim
-adımı: `model/model-state` ailesini `uvlock: true` satırlarıyla yakala,
-`transformation`'a göre tekilleştir, indeksli tabloyu yaz.
+tablo değiştiğinde (yeni bir sürümde) yeniden üretilmesi gerekir:
+`tools/generate/uv_lock.py` `model/model-state` vakasının `uvlock-`
+satırlarını `transformation`'a göre tekilleştirip indeksli tabloyu yazar.

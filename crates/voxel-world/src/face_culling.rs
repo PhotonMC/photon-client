@@ -7,7 +7,7 @@
 //! hiding depends on the states carry their rule here.
 
 use voxel_core::direction::Direction;
-use voxel_data::block::face_occlusion::{BLOCK_TUPLES, JOINS, SKIPS, TUPLES};
+use voxel_data::block::face_occlusion::{BLOCK_TUPLES, SKIPS, TUPLES};
 use voxel_data::block::registry;
 
 fn slot(direction: Direction) -> usize {
@@ -97,7 +97,7 @@ pub fn should_render_face(state: u32, neighbour: Option<u32>, direction: Directi
     if shape == 0 {
         return true;
     }
-    JOINS[usize::from(shape)].as_bytes()[usize::from(occluder)] == b'1'
+    voxel_data::block::shape_joins(shape, occluder)
 }
 
 #[cfg(test)]

@@ -16,13 +16,18 @@ from fractions import Fraction
 DATA = "crates/voxel-data/src"
 
 
-def load_case(path, case_id):
-    """The first row of a case's result in a capture."""
+def load_rows(path, case_id):
+    """Every row of a case's result in a capture."""
     for line in open(path, encoding="utf-8"):
         case = json.loads(line)
         if case["case_id"] == case_id:
-            return case["result"]["rows"][0]
+            return case["result"]["rows"]
     raise SystemExit(f"no {case_id} case in {path}")
+
+
+def load_case(path, case_id):
+    """The first row of a case's result in a capture."""
+    return load_rows(path, case_id)[0]
 
 
 def write(relative, lines):

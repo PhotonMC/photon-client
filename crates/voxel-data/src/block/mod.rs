@@ -13,6 +13,7 @@ pub mod offset;
 pub mod outline;
 pub mod registry;
 pub mod shape;
+pub mod states;
 
 /// A per-block list holds either one value shared by every state or one value
 /// per state: the value for the state at `offset` in its block.
@@ -38,6 +39,37 @@ pub fn light_traits(state: u32) -> &'static light::LightTraits {
 /// A state's destroy traits; a state outside the registry breaks as air.
 pub fn destroy_traits(state: u32) -> &'static destroy::DestroyTraits {
     &destroy::TRAITS[usize::from(state_value(&destroy::BLOCKS, state).unwrap_or(0))]
+}
+
+/// Bit `index` of a row of a bit matrix, which the tables write as text of
+/// `0` and `1`, as the reference's capture has it.
+fn bit(row: &str, index: usize) -> bool {
+    row.as_bytes()[index] == b'1'
+}
+
+/// Whether face occlusion shape `shape` has any part `occluder` does not
+/// cover (`Shapes.joinIsNotEmpty` with `ONLY_FIRST`).
+pub fn shape_joins(shape: u8, occluder: u8) -> bool {
+    bit(
+        face_occlusion::JOINS[usize::from(shape)],
+        usize::from(occluder),
+    )
+}
+
+/// `Shapes.faceShapeOccludes`: whether face occlusion shape `shape` is
+/// covered by `occluder`.
+pub fn shape_covers(shape: u8, occluder: u8) -> bool {
+    bit(
+        face_occlusion::COVERS[usize::from(shape)],
+        usize::from(occluder),
+    )
+}
+
+impl behaviour::BlockBehaviour {
+    /// `BlockState.canBeReplaced()` of the state at `offset` in the block.
+    pub fn replaceable(&self, offset: u32) -> bool {
+        bit(self.replaceable, offset as usize)
+    }
 }
 
 #[cfg(test)]

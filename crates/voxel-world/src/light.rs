@@ -637,8 +637,7 @@ fn occlusion_shape(state: i32, direction: Direction) -> u8 {
 
 /// `Shapes.faceShapeOccludes`.
 fn face_shape_occludes(shape: u8, occluder: u8) -> bool {
-    voxel_data::block::face_occlusion::COVERS[usize::from(shape)].as_bytes()[usize::from(occluder)]
-        == b'1'
+    voxel_data::block::shape_covers(shape, occluder)
 }
 
 /// `LightEngine.hasDifferentLightProperties`.
