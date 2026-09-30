@@ -563,6 +563,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 
 ## Diğer referans kayıtları
 
+- [Blok modeli, tablolar ve performans yol haritası (2026-09-30)](architecture-roadmap.md)
 - [P16.n — Atlas yerleşimi, dolgu ve mip yüklemesi — karışık kanıt kaydı](atlas-layout-and-mip-upload.md)
 - [P22.d.2 — Yaratıcı envanter ekranı — oracle tablosu ve canlı oturum kaydı](creative-inventory-record.md)
 - [P22.d.1 — Envanter ekranı — canlı oturum kaydı](inventory-screen-record.md)
