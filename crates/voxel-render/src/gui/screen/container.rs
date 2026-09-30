@@ -79,7 +79,10 @@ impl ContainerMouse {
     }
 
     /// `mouseClicked`, after the widgets did not take the press.
-    #[allow(clippy::too_many_arguments)]
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "the reference method's parameters, in its order"
+    )]
     pub fn clicked(
         &mut self,
         double: bool,

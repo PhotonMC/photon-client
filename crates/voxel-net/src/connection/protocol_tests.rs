@@ -1,5 +1,10 @@
 //! Wire-level protocol tests for the play/status packet codecs.
 
+#![expect(
+    clippy::cognitive_complexity,
+    reason = "a scenario test reads as one sequence of steps"
+)]
+
 use super::{
     GAME_EVENT_CHANGE_GAME_MODE_ID, InventoryComponentCodec, PLAY_CLIENTBOUND_ADD_ENTITY_PACKET_ID,
     PLAY_CLIENTBOUND_BLOCK_CHANGED_ACK_PACKET_ID, PLAY_CLIENTBOUND_BLOCK_DESTRUCTION_PACKET_ID,

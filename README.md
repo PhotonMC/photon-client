@@ -27,6 +27,7 @@ geliştirme makinesinde kalır, dağıtılan istemciye girmez.
 
 Tüm davranış sözleşmeleri, parity/conformance kayıtları ve çalışma belgeleri
 [belge dizininde](docs/index.md) tutulur. Dizin, `docs/` içeriğinden
-`tools/generate-doc-index.py` ile üretilir.
+`tools/generate-doc-index.py` ile üretilir. Crate katmanları, kod düzeni ve
+karmaşıklık sınırları [kodlama standartlarındadır](docs/coding-standards.md).
 
 Her AI aracı işe başlamadan `AGENTS.md` dosyasını okumalıdır. Claude, Gemini ve Copilot giriş dosyaları aynı kurallara yönlendirir. Talimat dosyalarını otomatik okumayan araçlarda `AGENTS.md` görev bağlamına açıkça verilmelidir; bu dosyalar modellerin davranışını teknik olarak zorlayan bir mekanizma değildir.

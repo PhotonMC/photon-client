@@ -119,7 +119,10 @@ impl Hud {
 
     /// `Hud.extractRenderState` for what this client has: the crosshair,
     /// then the hotbar and its decorations.
-    #[allow(clippy::too_many_arguments)]
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "mirrors the parameters of the reference's `GuiGraphics` call"
+    )]
     pub fn build(
         &mut self,
         atlas: &GuiAtlas,
@@ -271,6 +274,11 @@ impl Hud {
     }
 
     /// `Hud.extractPlayerHealth`: armour, hearts, food and air.
+    #[expect(
+        clippy::cognitive_complexity,
+        clippy::too_many_lines,
+        reason = "kept whole to read against the reference method line by line"
+    )]
     fn player_health(
         &mut self,
         frame: &mut GuiFrame,

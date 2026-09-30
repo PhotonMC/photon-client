@@ -230,6 +230,11 @@ impl InventoryMenu {
     }
 
     /// `AbstractContainerMenu.doClick`.
+    #[expect(
+        clippy::cognitive_complexity,
+        clippy::too_many_lines,
+        reason = "kept whole to read against the reference method line by line"
+    )]
     pub fn clicked(&mut self, slot_index: i32, button: i32, click: ClickType, player: Player) {
         // The reference would fail on a slot past the menu's end.
         if slot_index >= SLOT_COUNT as i32 {

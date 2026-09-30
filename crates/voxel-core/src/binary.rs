@@ -870,7 +870,10 @@ impl BlockPos {
 
     /// Enumerate Java's bounded random block positions in x, y, z draw order.
     // The six coordinates mirror Java's public overload exactly.
-    #[allow(clippy::too_many_arguments)]
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "the reference method's parameters, in its order"
+    )]
     pub fn random_between_closed(
         random: &mut RandomSource,
         limit: i32,

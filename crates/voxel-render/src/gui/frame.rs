@@ -86,7 +86,10 @@ impl GuiFrame {
 
     /// `GuiGraphics.blit` of a region of a whole texture: `(u, v)` and the
     /// drawn size in texels of a texture `texture_size` big.
-    #[allow(clippy::too_many_arguments)]
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "mirrors the parameters of the reference's `GuiGraphics` call"
+    )]
     pub fn blit_texture(
         &mut self,
         atlas: &GuiAtlas,
@@ -114,7 +117,10 @@ impl GuiFrame {
     /// `GuiGraphics.item` and `itemDecorations`: an item in the slot at
     /// `(x, y)`, then its count (or the given text) in the given colour when
     /// it is not one.
-    #[allow(clippy::too_many_arguments)]
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "mirrors the parameters of the reference's `GuiGraphics` call"
+    )]
     pub fn item_with_count(
         &mut self,
         atlas: &GuiAtlas,
@@ -180,7 +186,10 @@ impl GuiFrame {
     /// `GuiGraphics.blitSprite` of a nine-slice sprite: the corners as they
     /// are, the edges and the middle tiled (or stretched, when the sprite
     /// says so) over what is left. `tex` is the sprite's size in units.
-    #[allow(clippy::too_many_arguments)]
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "mirrors the parameters of the reference's `GuiGraphics` call"
+    )]
     pub fn nine_slice(
         &mut self,
         atlas: &GuiAtlas,
@@ -265,7 +274,6 @@ impl GuiFrame {
     /// with the first followed by two more; a single line is two units
     /// shorter. The box goes where the mouse's tooltip position puts it in a
     /// screen `screen` units big.
-    #[allow(clippy::too_many_arguments)]
     pub fn tooltip(
         &mut self,
         atlas: &GuiAtlas,
@@ -323,7 +331,10 @@ impl GuiFrame {
     }
 
     /// `GuiGraphics.blitSprite` of a whole sprite at a size.
-    #[allow(clippy::too_many_arguments)]
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "mirrors the parameters of the reference's `GuiGraphics` call"
+    )]
     pub(crate) fn blit(
         &mut self,
         atlas: &GuiAtlas,
@@ -365,7 +376,10 @@ impl GuiFrame {
         self.glyphs(atlas, font, text, x, y, colour, true);
     }
 
-    #[allow(clippy::too_many_arguments)]
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "mirrors the parameters of the reference's `GuiGraphics` call"
+    )]
     fn glyphs(
         &mut self,
         atlas: &GuiAtlas,
@@ -386,7 +400,10 @@ impl GuiFrame {
     /// `GuiGraphics.text` of styled text: each run in its colour, with the
     /// bold glyphs drawn twice a unit apart and the italic ones sheared.
     /// Underlines, strikethrough and obfuscation are not drawn.
-    #[allow(clippy::too_many_arguments)]
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "mirrors the parameters of the reference's `GuiGraphics` call"
+    )]
     pub fn styled_text(
         &mut self,
         atlas: &GuiAtlas,
@@ -495,7 +512,10 @@ impl GuiFrame {
 
     /// `GuiGraphics.blitSprite` of part of a sprite: the sprite is taken as
     /// `size` units, and the part from `(u, v)` as big as the drawn area.
-    #[allow(clippy::too_many_arguments)]
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "mirrors the parameters of the reference's `GuiGraphics` call"
+    )]
     pub(crate) fn blit_part(
         &mut self,
         atlas: &GuiAtlas,
@@ -513,7 +533,6 @@ impl GuiFrame {
 
     /// A region of a sprite, `(u, v, width, height)` of a sprite `size`
     /// units big, stretched to a rectangle `(x, y, w, h)`.
-    #[allow(clippy::too_many_arguments)]
     fn blit_region(
         &mut self,
         atlas: &GuiAtlas,

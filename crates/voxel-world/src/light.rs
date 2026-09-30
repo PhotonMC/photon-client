@@ -773,7 +773,10 @@ impl ChunkSkyLightSources {
         )
     }
 
-    #[allow(clippy::too_many_arguments)]
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "the reference method's parameters, in its order"
+    )]
     fn update_edge(
         &mut self,
         state: &impl Fn(i32, i32, i32) -> i32,
@@ -805,7 +808,7 @@ impl ChunkSkyLightSources {
     ) -> i32 {
         let (x, mut top_y, z) = start;
         let mut top_state = start_state;
-        while top_y - 1 >= self.min_y {
+        while top_y > self.min_y {
             let bottom_state = state(x, top_y - 1, z);
             if is_edge_occluded(top_state, bottom_state) {
                 return top_y;
@@ -1132,7 +1135,7 @@ impl Engine {
             if to_level == 0 {
                 continue;
             }
-            if i32::from(to_level) <= i32::from(old_from_level) - 1 {
+            if to_level < old_from_level {
                 if sky {
                     self.storage.set_stored_level(to, 0);
                     self.decrease_queue.push_back((

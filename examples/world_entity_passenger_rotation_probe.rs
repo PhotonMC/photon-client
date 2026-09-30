@@ -1,3 +1,8 @@
+#![expect(
+    clippy::too_many_lines,
+    reason = "a probe scenario reads as one sequence of steps"
+)]
+
 use std::env;
 use std::net::SocketAddr;
 use std::thread;

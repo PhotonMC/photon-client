@@ -16,6 +16,10 @@ use crate::ppm;
 /// This is the surface only: nothing is drawn yet, so the window stays blank
 /// until the Vulkan backend lands. `frames` bounds the loop so the probe can be
 /// run non-interactively; `0` keeps it open until the window is closed.
+#[expect(
+    clippy::too_many_lines,
+    reason = "the probe's modes as one sequence of steps"
+)]
 pub fn run_window(
     mut args: impl Iterator<Item = String>,
 ) -> Result<(), Box<dyn std::error::Error>> {

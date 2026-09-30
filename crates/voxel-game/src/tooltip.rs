@@ -449,6 +449,11 @@ pub fn styled_name(stack: &Stack, values: &Values) -> Component {
 
 /// `ItemStack.getTooltipLines`. `player` is whether a player is at hand,
 /// which the attribute lines add its base values for.
+#[expect(
+    clippy::cognitive_complexity,
+    clippy::too_many_lines,
+    reason = "kept whole to read against the reference method line by line"
+)]
 pub fn lines(stack: &Stack, player: bool, flags: Flags) -> Vec<Component> {
     let values = Values::new(stack.item_registry_id(), stack.patch_bytes());
     let (hide, hidden) = values.tooltip_display();

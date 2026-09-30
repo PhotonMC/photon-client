@@ -166,7 +166,10 @@ pub struct Explosion {
 
 /// A painting's variant: by registry id, or written out in full.
 #[derive(Debug, Clone, PartialEq)]
-#[allow(clippy::large_enum_variant)]
+#[expect(
+    clippy::large_enum_variant,
+    reason = "the inline variant is the one nearly every painting uses"
+)]
 pub enum PaintingVariant {
     Registry(i32),
     Direct {

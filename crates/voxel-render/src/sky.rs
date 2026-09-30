@@ -734,6 +734,10 @@ fn expand_tag(root: &Path, kind: &str, name: &str, out: &mut Vec<String>) {
 impl Environment {
     /// Read a dimension's sky data from a data pack folder (the one holding
     /// `minecraft/`), with the biomes numbered as the server numbered them.
+    #[expect(
+        clippy::too_many_lines,
+        reason = "one read per data pack file the sky needs"
+    )]
     pub fn load(data_root: &Path, dimension_type: &str, biome_names: &[String]) -> Option<Self> {
         let dimension = voxel_core::json::read_object(&data_path(
             data_root,
@@ -857,6 +861,10 @@ impl Environment {
     ///
     /// `biome_at` answers the network biome number at a quart position, or
     /// nothing where no chunk is loaded, which the client reads as plains.
+    #[expect(
+        clippy::too_many_lines,
+        reason = "kept whole to read against the reference method line by line"
+    )]
     pub fn evaluate(
         &self,
         eye: [f64; 3],
@@ -1238,6 +1246,10 @@ pub struct SkyView {
 }
 
 /// Build one frame of sky from the blended attributes.
+#[expect(
+    clippy::too_many_lines,
+    reason = "kept whole to read against the reference method line by line"
+)]
 pub fn build_frame(
     attributes: &Attributes,
     view: &SkyView,

@@ -1309,7 +1309,10 @@ pub fn mth_lerp2_f64(alpha1: f64, alpha2: f64, x00: f64, x10: f64, x01: f64, x11
 }
 
 /// Return Java `Mth.lerp3(double, ...)` with its two plane calls in source order.
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the reference method's parameters, in its order"
+)]
 pub fn mth_lerp3_f64(
     alpha1: f64,
     alpha2: f64,

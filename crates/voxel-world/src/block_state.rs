@@ -75,6 +75,10 @@ pub struct ClientBlockStateRegistry {
 }
 
 impl ClientBlockStateRegistry {
+    #[expect(
+        clippy::too_many_lines,
+        reason = "one literal table of the vanilla states it covers"
+    )]
     pub fn vanilla_26_2() -> Self {
         let stair_states = BTreeMap::from([
             (

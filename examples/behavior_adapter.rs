@@ -1,5 +1,11 @@
 //! JSONL test glue. Behavior is delegated to the production library.
 
+#![expect(
+    clippy::cognitive_complexity,
+    clippy::too_many_lines,
+    reason = "the adapter answers every behaviour family in one dispatch"
+)]
+
 use serde_json::{Value, json};
 use std::cell::RefCell;
 use std::collections::BTreeMap;

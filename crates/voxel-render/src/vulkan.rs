@@ -887,6 +887,10 @@ impl VulkanBackend {
     ///
     /// `display_handle` and `window_handle` must refer to a window that outlives
     /// this backend; the surface borrows them.
+    #[expect(
+        clippy::too_many_lines,
+        reason = "Vulkan objects created in the order the API requires"
+    )]
     pub unsafe fn create(
         display_handle: raw_window_handle::RawDisplayHandle,
         window_handle: raw_window_handle::RawWindowHandle,
@@ -1325,6 +1329,10 @@ impl VulkanBackend {
         }
     }
 
+    #[expect(
+        clippy::too_many_lines,
+        reason = "one command buffer recorded in draw order"
+    )]
     unsafe fn record_scene(&self, index: usize, view_projection: [[f32; 4]; 4]) {
         unsafe {
             let now = std::time::Instant::now();
@@ -1836,6 +1844,11 @@ impl VulkanBackend {
     ///
     /// Dynamic rendering is used rather than a render pass object, which is
     /// the extension the reference already requires of every device it picks.
+    #[expect(
+        clippy::cognitive_complexity,
+        clippy::too_many_lines,
+        reason = "Vulkan objects created in the order the API requires"
+    )]
     unsafe fn create_pipeline(
         &self,
         descriptor_layout: vk::DescriptorSetLayout,
@@ -2288,6 +2301,10 @@ impl VulkanBackend {
 
     /// Rebuild the swapchain, and what is sized by it, for a new window
     /// size. A zero size (a minimised window) is left for later.
+    #[expect(
+        clippy::too_many_lines,
+        reason = "Vulkan objects created in the order the API requires"
+    )]
     pub fn resize(&mut self, width: u32, height: u32) -> Result<(), VulkanError> {
         if width == 0 || height == 0 {
             return Ok(());
@@ -2634,6 +2651,10 @@ impl VulkanBackend {
     }
 
     /// Upload the atlas and build the pipelines, dropping every section.
+    #[expect(
+        clippy::too_many_lines,
+        reason = "Vulkan objects created in the order the API requires"
+    )]
     pub fn load_atlas(&mut self, texture_levels: &[DecodedImage]) -> Result<(), VulkanError> {
         unsafe {
             self.destroy_scene();
@@ -2925,6 +2946,10 @@ impl VulkanBackend {
         }
     }
 
+    #[expect(
+        clippy::too_many_lines,
+        reason = "Vulkan objects created in the order the API requires"
+    )]
     unsafe fn upload_texture(
         &self,
         levels: &[DecodedImage],
@@ -3322,7 +3347,10 @@ impl VulkanBackend {
 
     /// Upload one texture with a nearest, clamped sampler and a descriptor
     /// set for it.
-    #[allow(clippy::type_complexity)]
+    #[expect(
+        clippy::type_complexity,
+        reason = "the handles one upload creates, returned together"
+    )]
     fn upload_sampled_texture(
         &mut self,
         skin: &DecodedImage,
@@ -3728,6 +3756,10 @@ impl VulkanBackend {
         })
     }
 
+    #[expect(
+        clippy::too_many_lines,
+        reason = "one frame submitted in the order the API requires"
+    )]
     fn render_frame(
         &mut self,
         colour: [f32; 4],

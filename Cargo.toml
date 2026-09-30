@@ -23,6 +23,11 @@ shaderc = "0.10.1"
 [workspace.lints.rust]
 unsafe_op_in_unsafe_fn = "warn"
 
+# Complexity limits (thresholds in clippy.toml); see docs/coding-standards.md.
+[workspace.lints.clippy]
+cognitive_complexity = "warn"
+too_many_lines = "warn"
+
 [package]
 name = "voxel-client"
 description = "The client application: window, session loop, screens and scripted runs."

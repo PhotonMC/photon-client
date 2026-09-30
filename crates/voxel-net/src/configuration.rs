@@ -100,7 +100,10 @@ pub struct ClientInformation {
 }
 
 impl ClientInformation {
-    #[allow(clippy::too_many_arguments)]
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "one parameter per field of the packet"
+    )]
     pub fn new(
         language: Vec<u16>,
         view_distance: i32,

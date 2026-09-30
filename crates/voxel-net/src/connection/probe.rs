@@ -1771,6 +1771,10 @@ fn observe_experience_orb_tick(
 /// Returns the stream and the compression threshold the server chose. The
 /// login and configuration packets are recorded in `trace`, and the world in
 /// it takes the tags the server sends.
+#[expect(
+    clippy::too_many_lines,
+    reason = "the login and configuration exchange as one sequence"
+)]
 pub(crate) fn open_play_connection(
     address: SocketAddr,
     username: &str,
@@ -2004,6 +2008,11 @@ pub(crate) fn open_play_connection(
     Ok((stream, compression_threshold))
 }
 
+#[expect(
+    clippy::cognitive_complexity,
+    clippy::too_many_lines,
+    reason = "a live-server probe run as one sequence of scenario steps"
+)]
 fn connect_and_probe_with_mode(
     address: SocketAddr,
     username: &str,

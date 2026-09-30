@@ -8,7 +8,10 @@
 //! paths round differently.
 
 // Matrix entries are addressed by column and row, as the library writes them.
-#![allow(clippy::needless_range_loop)]
+#![expect(
+    clippy::needless_range_loop,
+    reason = "index loops that follow JOML's element-wise arithmetic"
+)]
 
 /// The matrix is a perspective projection.
 const PERSPECTIVE: u8 = 1;

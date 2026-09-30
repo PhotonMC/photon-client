@@ -11,6 +11,7 @@ INDEX = DOCS / "index.md"
 CORE_NAMES = {
     "behavior-runner.md",
     "behavior-testing.md",
+    "coding-standards.md",
     "course-correction-2026-09-12.md",
     "first-behavior-tests.md",
     "reference-baseline.md",

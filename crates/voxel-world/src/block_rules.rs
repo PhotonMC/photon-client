@@ -160,6 +160,10 @@ pub fn state_for_placement(block: usize, ctx: &PlaceContext<'_>) -> Rule<Option<
     let row = &BLOCKS[block];
     let default = default_state(block);
     let pos = ctx.clicked_pos();
+    #[expect(
+        clippy::neg_cmp_op_on_partial_ord,
+        reason = "the reference's `!(y > 0.5)`, which a NaN also passes"
+    )]
     let lower_half = |ctx: &PlaceContext<'_>| {
         ctx.face != Direction::Down
             && (ctx.face == Direction::Up || !(ctx.location.1 - f64::from(pos.1) > 0.5))
@@ -225,7 +229,7 @@ fn is_stairs(state: i32) -> bool {
 }
 
 fn facing(state: i32) -> Option<Direction> {
-    property(state, "facing").and_then(|name| Direction::from_name(name))
+    property(state, "facing").and_then(Direction::from_name)
 }
 
 /// `StairBlock.getStairsShape`.

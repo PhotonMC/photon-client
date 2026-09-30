@@ -415,7 +415,10 @@ impl CreativeMenu {
     }
 
     /// The inventory tab: the player's own menu, seen through other places.
-    #[allow(clippy::too_many_arguments)]
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "the reference method's parameters, in its order"
+    )]
     fn inventory_tab_click(
         &mut self,
         target: Option<Target>,
@@ -545,7 +548,10 @@ impl CreativeMenu {
     /// The picker's own slots: the hotbar, and a drag over it. The click runs
     /// in a menu that holds only the hotbar, since the window's slots take no
     /// part in it.
-    #[allow(clippy::too_many_arguments)]
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "the reference method's parameters, in its order"
+    )]
     fn picker_click(
         &mut self,
         target: Option<Target>,

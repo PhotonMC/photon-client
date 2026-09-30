@@ -8,6 +8,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 
 - [Yerel davranış testlerini çalıştırma](behavior-runner.md)
 - [Davranış doğrulama sözleşmesi](behavior-testing.md)
+- [Kodlama standartları](coding-standards.md)
 - [2026-09-12 yön düzeltmesi: kanıt sınıfı, varyant patlaması ve kritik yol](course-correction-2026-09-12.md)
 - [İlk davranış testleri: implementasyondan önceki sözleşmeler](first-behavior-tests.md)
 - [Referans envanteri — Java Edition 26.2](reference-baseline.md)

@@ -41,6 +41,9 @@ pub struct WorldMesh {
     pub skipped: Vec<(String, String)>,
 }
 
+/// A quad's four corners in the model's unit cube, and the way it faces.
+pub type FacedQuad = ([[f32; 3]; 4], Direction);
+
 /// Every block's models and the one atlas they are drawn from, prepared
 /// once, the way the reference bakes its block models at resource load.
 pub struct BlockRenderer {
@@ -95,6 +98,11 @@ pub struct RegionMesh {
 impl BlockRenderer {
     /// Read every block's blockstate file and every model any of its
     /// variants names, and pack all their textures into one atlas.
+    #[expect(
+        clippy::cognitive_complexity,
+        clippy::too_many_lines,
+        reason = "the model bake steps in the order the reference runs them"
+    )]
     pub fn new(source: &impl AssetSource, mip_level: i32) -> Result<Self, ResolveError> {
         let mut blockstates = BTreeMap::new();
         let mut models: BTreeMap<String, ResolvedModel> = BTreeMap::new();
@@ -373,11 +381,7 @@ impl BlockRenderer {
     /// nothing, as the breaking overlay draws them: corners in the model's
     /// own unit cube and each quad's facing, with the block's offset. The
     /// variants are the ones the world mesh picks there.
-    pub fn block_quads(
-        &self,
-        state_id: u32,
-        position: [i32; 3],
-    ) -> (Vec<([[f32; 3]; 4], Direction)>, [f32; 3]) {
+    pub fn block_quads(&self, state_id: u32, position: [i32; 3]) -> (Vec<FacedQuad>, [f32; 3]) {
         let Some(StateRender::Drawn {
             name,
             properties,
@@ -431,6 +435,10 @@ impl BlockRenderer {
     /// chunk is loaded, which reads as air. Neighbours outside the box are
     /// read from the world too, so a region's faces cull exactly as the
     /// whole world's would.
+    #[expect(
+        clippy::too_many_lines,
+        reason = "kept whole to read against the reference method line by line"
+    )]
     pub fn mesh_region(
         &self,
         read: &impl Fn(i32, i32, i32) -> Option<i32>,
@@ -865,6 +873,10 @@ where
         self.atlas.sprites[name]
     }
 
+    #[expect(
+        clippy::too_many_lines,
+        reason = "kept whole to read against the reference method line by line"
+    )]
     fn tesselate(&self, pos: [i32; 3], mesh: &mut Mesh) {
         let [x, y, z] = pos;
         let Some(fluid) = self.fluid(x, y, z) else {

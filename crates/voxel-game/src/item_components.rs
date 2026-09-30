@@ -440,6 +440,10 @@ impl Cursor<'_> {
     }
 
     /// One component's value, by the type's registry id.
+    #[expect(
+        clippy::too_many_lines,
+        reason = "one arm per component type's network codec"
+    )]
     pub(crate) fn component(&mut self, id: i32) -> R {
         match id {
             // Holder registries, ids, enumerations and plain numbers.

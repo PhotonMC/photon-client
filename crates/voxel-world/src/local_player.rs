@@ -12,7 +12,10 @@
 //!
 //! The reference writes `!(a > b)` where a NaN must fall through the other
 //! way than `a <= b` would send it, so those negations are kept as written.
-#![allow(clippy::neg_cmp_op_on_partial_ord)]
+#![expect(
+    clippy::neg_cmp_op_on_partial_ord,
+    reason = "the reference's negated comparisons, which a NaN also passes"
+)]
 
 use crate::input::{Input, KeyboardInput, LocalPlayerInputModifiers, modify_local_player_input};
 use crate::java_math;
@@ -1169,6 +1172,11 @@ impl LocalPlayer {
         }
     }
 
+    #[expect(
+        clippy::cognitive_complexity,
+        clippy::too_many_lines,
+        reason = "kept whole to read against the reference method line by line"
+    )]
     fn local_ai_step(&mut self, level: &Level<'_>) -> Result<(), Unsupported> {
         if self.sprint_trigger_time > 0 {
             self.sprint_trigger_time -= 1;
@@ -2030,6 +2038,10 @@ impl LocalPlayer {
         }
     }
 
+    #[expect(
+        clippy::too_many_lines,
+        reason = "kept whole to read against the reference method line by line"
+    )]
     fn update_auto_jump(&mut self, level: &Level<'_>, xa: f32, za: f32) -> Result<(), Unsupported> {
         let can_auto_jump = self.auto_jump_enabled
             && self.auto_jump_time <= 0
@@ -2460,7 +2472,10 @@ impl LocalPlayer {
         self.delta = self.delta.add_vec3(impulse);
     }
 
-    #[allow(clippy::too_many_arguments)]
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "the reference method's parameters, in its order"
+    )]
     fn has_fluid_and_loaded(
         &self,
         level: &Level<'_>,
@@ -2775,6 +2790,10 @@ pub fn state_has_fluid(state_id: i32) -> bool {
 /// `BlockGetter.forEachBlockIntersectedBetween`, as the blocks it visits and
 /// the iteration each is visited in. The order within one iteration is not
 /// kept: only honey acts here, and it acts at most once a tick.
+#[expect(
+    clippy::too_many_lines,
+    reason = "kept whole to read against the reference method line by line"
+)]
 fn blocks_intersected_between(from: Vec3, to: Vec3, at_target: Aabb) -> Vec<(BlockPos, i32)> {
     let mut out = Vec::new();
     let mut seen = std::collections::HashSet::new();

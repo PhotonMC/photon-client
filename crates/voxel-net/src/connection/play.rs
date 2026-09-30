@@ -647,6 +647,10 @@ impl PlaySession {
         })
     }
 
+    #[expect(
+        clippy::too_many_lines,
+        reason = "one arm per packet the play state reads"
+    )]
     fn handle(&mut self, body: &[u8]) -> Result<(), ConnectionError> {
         let (packet_id, payload) = split_packet(body)?;
         match packet_id {

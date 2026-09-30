@@ -28,6 +28,10 @@ use crate::view::{CLOUD_RANGE, CameraType, camera_position, eye_position, pick, 
 /// the reference client would send. WASD moves, space jumps, left shift
 /// sneaks, left control sprints, the mouse looks, and escape frees the
 /// cursor (a second escape closes the window).
+#[expect(
+    clippy::too_many_lines,
+    reason = "the session loop in the order it runs; each part lives in its own module"
+)]
 pub fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn std::error::Error>> {
     let server: SocketAddr = args
         .next()

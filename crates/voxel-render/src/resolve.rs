@@ -349,6 +349,10 @@ pub fn build_atlas_for(
 
 /// Pack a set of models' textures together with sprites no model names,
 /// such as the fluid sprites the fluid renderer draws with.
+#[expect(
+    clippy::too_many_lines,
+    reason = "the atlas packing steps in the order the stitcher runs them"
+)]
 pub fn build_atlas_with(
     source: &impl AssetSource,
     models: &[&ResolvedModel],
