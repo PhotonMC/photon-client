@@ -65,6 +65,12 @@ deseni ve büyü satırı; örste ad `RenameItem` (48) ile gider. Oracle'da her
 menü için satırlar Java ile birebir; ekranlar canlı doğrulandı (taş kesici,
 loom, büyü masası, örs).
 
+Denetimle düzeltilenler: örs ad kutusu boş slotta yazı almaz ve özgün ada dönünce
+`Rename("")` gönderir, tezgâh başlığı x=29, büyü ipucu Java'nın
+`getFullname`i gibi (seviye gizleme, gri/kırmızı ad), menü ipuçları en son çizilir,
+loom'da seçili düğmede ipucu yok, taş kesici kaydırması girdi sayısı değişince
+da sıfırlanır, orta tıkla `CLONE` (yaratıcı), kırılmaz eşya grindstone'a girmez.
+
 Bilinen sapmalar: bundle/hasarlı eşya/zırh kilidi tahmin edilmez; bileşen
 hash'i yok; harita görüntüsü, zırh askısı, büyülü kitap ve bayrak önizlemeleri
 çizilmez; smithing/örs dönen simgeleri sadeleştirildi; örste onarım malzemesi
@@ -89,11 +95,25 @@ basmak yok sayılır), hayalet çizimi, `leftPos` kayması (`379` altı dar düz
 ayrı). Ayar değişikliği yerelde hemen uygulanır ve sunucuya gönderilir. Canlı:
 envanter, tezgâh (8 tahtadan çubuk yerleşti) ve fırın.
 
-Bilinen sapmalar: sağ tıkla çok tarifli koleksiyon kaplaması yok (sağ tık sol
-gibi yerleştirir); yeni tarif vurgusu, sekme titremesi, tost ve `SeenRecipe`
-gönderimi yok; dar ekranda (`<379`) kitap açıkken çerçeve tam Java gibi yalnız
-arka planı çizmez; arama yalnız eşya adı ve kimliğine bakar (ipucu metni yok);
-koleksiyonlar tarif kimliğine göre sıralanır; filtre ipucu tek satır.
+Java kaynağına göre düzeltilenler (denetim sonrası): hayalet renkleri
+(`0x30FF0000` altta, `0x30FFFFFF` üstte), envanterde küçük sonuç kutusu, boş
+görüntülü hayalet yuvası atlanır, sonuç adedi, hayalet yalnız ekranı boyunca
+yaşar, tarif yerleştirmede `lastPlacedRecipe` koruması (yerleştirilemezse tık
+ekrana geçer), panel şeridi "dışarı" sayılmaz, sağ tık yerleştirmez, süzgeç
+açıkken düğme yalnız üretilebilir tarifleri döndürür ve ikonlar aynı sonuçta
+üst üste çizilir, sayfa yalnız sekme değişince sıfırlanır, arama sekmesi
+kategorileri sırayla listeler, arama çevrilmiş ipucu satırlarında ve `ns:path`
+ile yapılır, tarif/ok ipuçları (`moreRecipes`), `RecipeBookSeenRecipe`, dar
+ekran (`<379`) yalnız arka planı çizer ve tıkları yutar, Esc dar kitabı kapatır,
+Enter/Space son tarifi yeniden yerleştirir, T aramayı odaklar, tarif kitabı
+`TrimPattern` holder okuması. `shapeless` hayaleti kaydıkça değil sırayla
+yuvalara yerleşir.
+
+Bilinen sapmalar: sağ tıkla çok tarifli koleksiyon kaplaması yok (sağ tık
+yerleştirmez, yalnız yutulur); yeni tarif düğmelerinin ve sekmelerin sıkışma
+animasyonu, tost ve zamanlayıcının Ctrl ile durması yok; hayalet yuva ipucu yok;
+`AnyFuel` hayaleti boş (yakıt listesi yok); tarif kitabının çizimi için oracle
+yoktur (yalnız Java kaynağından okunup birim testlenir).
 
 ## Açık
 

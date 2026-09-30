@@ -64,6 +64,7 @@ Runner'ın ortak JSONL ve kesin karşılaştırma kuralları yukarıdaki protoko
 | binary | Vec3/LP Vec3, UUID, konum, chunk/section, array ve bitset kodlamaları |
 | nbt | Bileşik, liste ve primitive array okuma/yazma davranışı |
 | resources | Asset index yolu çözümleme, sanal object bağlantıları ve pack kaynak önceliği |
+| gui | Arayüz çizim çağrıları (dikdörtgen, sprite, metin): sohbet, öneri listesi, başlık, tablist; ayrıntı [GUI çizim oracle'ında](gui-oracle.md) |
 
 Yeni bir operation eklendiğinde kendi kaynak incelemesi, oracle branch'i, senaryoları ve birleşik contract/parity kaydı eklenir. Bu genel runner belgesinde hareketli senaryo toplamı veya operation başına sayaç tutulmaz.
 

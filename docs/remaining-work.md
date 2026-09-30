@@ -152,9 +152,11 @@ Bitti: `Component`/dil (`en_us`), stilli yazı, `EditBox`, ipucu kutusu.
   olayları, `nextChatIndex` kopuşunda bağlantıyı kesme (yalnız uyarı).
 - **L** İmzalı sohbet: `ChatSessionUpdate`, mesaj zinciri, `ChatCommandSigned`;
   çevrimdışı modda gerekmez, çevrimiçide zorunlu (M9).
-- **Kısmen** Sekmeyle tamamlama: sunucudan `CommandSuggestion` (15) ile
-  öneri alınır, kutu ve Tab döngüsü çalışır. Eksik: `Commands` ağacı (renkli
-  sözdizimi, hata gösterimi), ipucu metinleri, ok tuşlarıyla seçim, fareyle seçim.
+- **Kısmen** Sekmeyle tamamlama: sunucudan `CommandSuggestion` (15) ile öneri
+  alınır; liste Java ile birebir ([GUI oracle](gui-oracle.md): ilk öğe seçili,
+  hayalet sonek, Tab/Shift+Tab/ok/Esc, 10 satırlık pencere, fare). Eksik:
+  `Commands` ağacı (renkli sözdizimi, kullanım/hata satırları), öneri ipuçları,
+  oyuncu adı/özel sohbet tamamlamaları (`CustomChatCompletions`).
 - **Bitti** Başlık/altyazı/eylem çubuğu (`SetTitleText`, `SetSubtitleText`,
   `SetTitlesAnimation`, `ClearTitles`, `SetActionBarText`, `SystemChat`
   overlay), `PlayerInfoUpdate/Remove`, `TabList` ve Tab ile tablist (sıralama,
