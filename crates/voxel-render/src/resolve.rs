@@ -17,7 +17,7 @@ use crate::model::{
 };
 use crate::png::{DecodedImage, decode_rgba};
 use crate::rotation::rotate_vertex;
-use crate::scene::{Mesh, Vertex};
+use crate::scene::{BlockVertex, Mesh};
 use crate::texture_metadata::{AnimationFrames, TextureMetadata};
 use voxel_core::identifier::Identifier;
 
@@ -855,24 +855,18 @@ pub fn build_mesh(
                 );
             }
             let direction = direction.unwrap_or(voxel_core::direction::Direction::Up);
-            let shade = if element.shade {
-                face_shade(direction)
-            } else {
-                1.0
-            };
             for (position, packed) in positions.into_iter().zip(packed_uvs) {
                 let u = f32::from_bits((packed >> 32) as u32);
                 let v = f32::from_bits(packed as u32);
-                mesh.vertices.push(Vertex {
+                mesh.vertices.push(BlockVertex::new(
                     position,
-                    uv: [
+                    [
                         rect[0] + (rect[2] - rect[0]) * u,
                         rect[1] + (rect[3] - rect[1]) * v,
                     ],
-                    shade,
                     tint,
-                    light: crate::scene::FULL_BRIGHT,
-                });
+                    crate::scene::FULL_BRIGHT,
+                ));
             }
             mesh.quads.push(crate::scene::QuadInfo {
                 direction,
@@ -900,18 +894,6 @@ fn face_tint(tints: &[u32], slot: i32) -> [f32; 4] {
         .and_then(|slot| tints.get(slot).copied())
         .unwrap_or(0xFFFF_FFFF);
     [16, 8, 0, 24].map(|bits| ((tint >> bits) & 0xFF) as f32 / 255.0)
-}
-
-/// Flat per-face shading. Not the reference's lighting; a placeholder that
-/// keeps the faces of a block distinguishable.
-fn face_shade(facing: voxel_core::direction::Direction) -> f32 {
-    use voxel_core::direction::Direction;
-    match facing {
-        Direction::Up => 1.0,
-        Direction::Down => 0.5,
-        Direction::North | Direction::South => 0.8,
-        Direction::West | Direction::East => 0.6,
-    }
 }
 
 /// Cut the frame an animation starts on out of its strip. Frames run left to

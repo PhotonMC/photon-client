@@ -17,15 +17,16 @@ use std::ffi::{CStr, CString};
 use ash::vk;
 
 use crate::png::DecodedImage;
-use crate::scene::{Mesh, Vertex};
+use crate::scene::{BlockVertex, Mesh, Vertex};
 
 /// Scaffolding shaders. These are this project's own, not the reference's:
 /// they exist to prove the pipeline works, and carry no parity claim.
 /// What the terrain's and the entities' vertex shaders share: the push
-/// constants, the vertex inputs and the lightmap.
+/// constants, the lightmap, and the vertex inputs each takes.
 macro_rules! vertex_prelude {
-    () => {
-        r"#version 450
+    ($inputs:expr) => {
+        concat!(
+            r"#version 450
 layout(push_constant) uniform Push {
     mat4 view_projection;
     vec4 sky_colour_factor;
@@ -35,11 +36,9 @@ layout(push_constant) uniform Push {
     vec4 fog_colour;
     vec4 fog_distances;
 } push;
-layout(location = 0) in vec3 in_position;
-layout(location = 1) in vec2 in_uv;
-layout(location = 2) in float in_shade;
-layout(location = 3) in vec4 in_tint;
-layout(location = 4) in vec2 in_light;
+",
+            $inputs,
+            r"
 
 // One texel of the reference's 16x16 lightmap, as its lightmap shader
 // computes it and as an 8-bit texture stores it.
@@ -74,11 +73,52 @@ vec3 sample_lightmap(vec2 coords) {
     return mix(bottom, top, fraction.y);
 }
 "
+        )
     };
 }
 
+/// The vertex inputs of [`Vertex`], which every pipeline but the terrain's
+/// draws with.
+macro_rules! vertex_inputs {
+    () => {
+        r"layout(location = 0) in vec3 in_position;
+layout(location = 1) in vec2 in_uv;
+layout(location = 2) in float in_shade;
+layout(location = 3) in vec4 in_tint;
+layout(location = 4) in vec2 in_light;
+"
+    };
+}
+
+/// The section meshes' vertex shader: their vertices carry the colour in
+/// bytes and the light in whole levels of sixteenths, and no separate shade.
+const SECTION_VERTEX_SHADER: &str = concat!(
+    vertex_prelude!(
+        r"layout(location = 0) in vec3 in_position;
+layout(location = 1) in vec2 in_uv;
+layout(location = 2) in vec4 in_colour;
+layout(location = 3) in uvec2 in_light;
+"
+    ),
+    r"layout(location = 0) out vec2 out_uv;
+layout(location = 1) out float out_shade;
+layout(location = 2) out vec4 out_tint;
+layout(location = 3) out vec2 out_fog;
+void main() {
+    gl_Position = push.view_projection * vec4(in_position, 1.0);
+    out_uv = in_uv;
+    out_shade = 1.0;
+    out_tint = in_colour * vec4(sample_lightmap(vec2(in_light)), 1.0);
+    // Fog is measured from the camera: once as a sphere, once as a
+    // cylinder whose height counts like its radius.
+    vec3 offset = in_position - push.camera.xyz;
+    out_fog = vec2(length(offset), max(length(offset.xz), abs(offset.y)));
+}
+",
+);
+
 const VERTEX_SHADER: &str = concat!(
-    vertex_prelude!(),
+    vertex_prelude!(vertex_inputs!()),
     r"layout(location = 0) out vec2 out_uv;
 layout(location = 1) out float out_shade;
 layout(location = 2) out vec4 out_tint;
@@ -100,7 +140,7 @@ void main() {
 /// per-face lighting: the vertex's normal rides in its tint, and both faces'
 /// light is worked out so the fragment can pick by which way it faces.
 const ENTITY_VERTEX_SHADER: &str = concat!(
-    vertex_prelude!(),
+    vertex_prelude!(vertex_inputs!()),
     r"layout(location = 0) out vec2 out_uv;
 layout(location = 1) out vec3 out_front;
 layout(location = 2) out vec3 out_back;
@@ -522,6 +562,9 @@ enum PipelineKind {
     Lines,
     /// The crack over a block being broken.
     Crumbling,
+    /// The held items, which are drawn with the terrain's shaders but from
+    /// the wider vertices the entities use.
+    Held,
 }
 
 /// Instance API version the reference asks for.
@@ -641,6 +684,8 @@ struct SceneResources {
     lines_pipeline: vk::Pipeline,
     crumbling_pipeline_layout: vk::PipelineLayout,
     crumbling_pipeline: vk::Pipeline,
+    held_pipeline_layout: vk::PipelineLayout,
+    held_pipeline: vk::Pipeline,
     crack_texture: Option<(vk::Image, vk::DeviceMemory, vk::ImageView)>,
     crack_sampler: Option<vk::Sampler>,
     crack_set: Option<vk::DescriptorSet>,
@@ -1727,12 +1772,12 @@ impl VulkanBackend {
                     self.device.cmd_bind_pipeline(
                         self.command_buffer,
                         vk::PipelineBindPoint::GRAPHICS,
-                        scene.pipeline,
+                        scene.held_pipeline,
                     );
                     self.device.cmd_bind_descriptor_sets(
                         self.command_buffer,
                         vk::PipelineBindPoint::GRAPHICS,
-                        scene.pipeline_layout,
+                        scene.held_pipeline_layout,
                         0,
                         &[scene.descriptor_set],
                         &[],
@@ -1742,7 +1787,7 @@ impl VulkanBackend {
                     held_push[40] = 1.0;
                     self.device.cmd_push_constants(
                         self.command_buffer,
-                        scene.pipeline_layout,
+                        scene.held_pipeline_layout,
                         vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
                         0,
                         std::slice::from_raw_parts(held_push.as_ptr().cast::<u8>(), 164),
@@ -1876,6 +1921,7 @@ impl VulkanBackend {
         let gui_item = kind == PipelineKind::GuiItem;
         let lines = kind == PipelineKind::Lines;
         let crumbling = kind == PipelineKind::Crumbling;
+        let section = matches!(kind, PipelineKind::Terrain | PipelineKind::Translucent);
         unsafe {
             let compiler =
                 shaderc::Compiler::new().map_err(|error| VulkanError::Loader(error.to_string()))?;
@@ -1901,6 +1947,8 @@ impl VulkanBackend {
                 (LINE_VERTEX_SHADER, LINE_FRAGMENT_SHADER)
             } else if crumbling {
                 (VERTEX_SHADER, CRUMBLING_FRAGMENT_SHADER)
+            } else if section {
+                (SECTION_VERTEX_SHADER, FRAGMENT_SHADER)
             } else {
                 (VERTEX_SHADER, FRAGMENT_SHADER)
             };
@@ -1937,6 +1985,8 @@ impl VulkanBackend {
                 std::mem::size_of::<crate::gui::items::GuiItemVertex>()
             } else if lines {
                 std::mem::size_of::<crate::outline::LineVertex>()
+            } else if section {
+                std::mem::size_of::<BlockVertex>()
             } else {
                 std::mem::size_of::<Vertex>()
             };
@@ -1991,6 +2041,28 @@ impl VulkanBackend {
                     .location(3)
                     .binding(0)
                     .format(vk::Format::R32G32B32A32_SFLOAT)
+                    .offset(24),
+            ];
+            let section_attributes = [
+                vk::VertexInputAttributeDescription::default()
+                    .location(0)
+                    .binding(0)
+                    .format(vk::Format::R32G32B32_SFLOAT)
+                    .offset(0),
+                vk::VertexInputAttributeDescription::default()
+                    .location(1)
+                    .binding(0)
+                    .format(vk::Format::R32G32_SFLOAT)
+                    .offset(12),
+                vk::VertexInputAttributeDescription::default()
+                    .location(2)
+                    .binding(0)
+                    .format(vk::Format::R8G8B8A8_UNORM)
+                    .offset(20),
+                vk::VertexInputAttributeDescription::default()
+                    .location(3)
+                    .binding(0)
+                    .format(vk::Format::R8G8_UINT)
                     .offset(24),
             ];
             let cloud_attributes = [
@@ -2071,6 +2143,8 @@ impl VulkanBackend {
                 &gui_attributes
             } else if lines {
                 &line_attributes
+            } else if section {
+                &section_attributes
             } else {
                 &terrain_attributes
             };
@@ -2833,6 +2907,8 @@ impl VulkanBackend {
                 self.create_pipeline(descriptor_layout, PipelineKind::Lines)?;
             let (crumbling_pipeline_layout, crumbling_pipeline) =
                 self.create_pipeline(descriptor_layout, PipelineKind::Crumbling)?;
+            let (held_pipeline_layout, held_pipeline) =
+                self.create_pipeline(descriptor_layout, PipelineKind::Held)?;
             let (gui_invert_pipeline_layout, gui_invert_pipeline) =
                 self.create_pipeline(descriptor_layout, PipelineKind::GuiInvert)?;
             let (gui_item_pipeline_layout, gui_item_pipeline) =
@@ -2867,6 +2943,8 @@ impl VulkanBackend {
                 lines_pipeline,
                 crumbling_pipeline_layout,
                 crumbling_pipeline,
+                held_pipeline_layout,
+                held_pipeline,
                 crack_texture: None,
                 crack_sampler: None,
                 crack_set: None,
@@ -3170,6 +3248,9 @@ impl VulkanBackend {
                 self.device.destroy_pipeline(scene.lines_pipeline, None);
                 self.device
                     .destroy_pipeline_layout(scene.lines_pipeline_layout, None);
+                self.device.destroy_pipeline(scene.held_pipeline, None);
+                self.device
+                    .destroy_pipeline_layout(scene.held_pipeline_layout, None);
                 self.device.destroy_pipeline(scene.crumbling_pipeline, None);
                 self.device
                     .destroy_pipeline_layout(scene.crumbling_pipeline_layout, None);

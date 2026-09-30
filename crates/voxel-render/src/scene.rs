@@ -29,6 +29,49 @@ pub struct Vertex {
     pub light: [f32; 2],
 }
 
+/// One vertex of a section mesh, as the terrain pipeline reads it: 28 bytes.
+/// The colour is the occlusion, the side shade and the tint already
+/// multiplied, in bytes as the reference builds it, and the light is the two
+/// whole levels (in sixteenths) the lightmap is read at.
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[repr(C)]
+pub struct BlockVertex {
+    /// Position in block units.
+    pub position: [f32; 3],
+    /// Texture coordinate in atlas units, already normalised.
+    pub uv: [f32; 2],
+    /// Red, green, blue and alpha.
+    pub colour: [u8; 4],
+    /// Block and sky light, each 0 to 240.
+    pub light: [u8; 2],
+    _padding: [u8; 2],
+}
+
+impl BlockVertex {
+    /// A vertex with its colour (each part 0 to 1) and light (each 0 to 240)
+    /// rounded to the bytes they are kept in.
+    pub fn new(position: [f32; 3], uv: [f32; 2], colour: [f32; 4], light: [f32; 2]) -> Self {
+        let byte = |value: f32| (value * 255.0).round().clamp(0.0, 255.0) as u8;
+        Self {
+            position,
+            uv,
+            colour: colour.map(byte),
+            light: light.map(|level| level.round().clamp(0.0, 255.0) as u8),
+            _padding: [0; 2],
+        }
+    }
+
+    /// The colour as 0 to 1 parts.
+    pub fn colour(&self) -> [f32; 4] {
+        self.colour.map(|part| f32::from(part) / 255.0)
+    }
+
+    /// The light as the lightmap's coordinates, 0 to 240.
+    pub fn light_levels(&self) -> [f32; 2] {
+        self.light.map(f32::from)
+    }
+}
+
 /// The light a vertex gets when nothing lights it.
 pub const FULL_BRIGHT: [f32; 2] = [240.0, 240.0];
 
@@ -49,7 +92,7 @@ pub struct QuadInfo {
 #[derive(Debug, Clone, Default)]
 pub struct Mesh {
     /// Vertex data, four per face.
-    pub vertices: Vec<Vertex>,
+    pub vertices: Vec<BlockVertex>,
     /// Triangle indices, six per face.
     pub indices: Vec<u32>,
     /// One entry per quad of `indices`, in the same order, when the mesh was
@@ -101,16 +144,16 @@ pub fn full_cube(sprite: SpriteRect) -> Mesh {
             // The per-vertex corner and the unrotated case both come from the
             // pinned face UV table rather than being written out here.
             let (u, v) = face_vertex_uv(uvs, Quadrant::R0, slot as u32);
-            mesh.vertices.push(Vertex {
+            let shade = SHADE[face_index];
+            mesh.vertices.push(BlockVertex::new(
                 position,
-                uv: [
+                [
                     sprite.min_u + (sprite.max_u - sprite.min_u) * u,
                     sprite.min_v + (sprite.max_v - sprite.min_v) * v,
                 ],
-                shade: SHADE[face_index],
-                tint: [1.0; 4],
-                light: FULL_BRIGHT,
-            });
+                [shade, shade, shade, 1.0],
+                FULL_BRIGHT,
+            ));
         }
         mesh.indices
             .extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 3]);

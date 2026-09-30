@@ -330,7 +330,7 @@ pub fn held_item_vertices(
                     position: pose.pose.transform_position(x, y, z),
                     uv: source.uv,
                     shade,
-                    tint: source.tint,
+                    tint: source.colour(),
                     light,
                 });
             }

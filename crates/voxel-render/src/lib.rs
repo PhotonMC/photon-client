@@ -60,7 +60,7 @@ pub use rotation::{
     Matrix4, RotationAxis, element_transform, euler_element_transform, model_state_transform,
     rotate_vertex,
 };
-pub use scene::{Mesh, SpriteRect, Vertex, full_cube};
+pub use scene::{BlockVertex, Mesh, SpriteRect, Vertex, full_cube};
 pub use texture_metadata::{AnimationFrames, TextureMetadata};
 pub use tint::{
     ColourMap, ColourMapOutOfBounds, FOLIAGE_MANGROVE, LILY_PAD_IN_WORLD, colour_map_lookup,

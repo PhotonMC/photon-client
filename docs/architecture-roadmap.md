@@ -100,7 +100,11 @@ olarak tutulmaz.
 ### F6. Bellek ve GPU
 
 - [x] Paletli section depolama (Java `PalettedContainer`).
-- [ ] Java'nın blok vertex biçimi: renk ve ışık baytlara paketli, ~32 bayt.
+- [x] Java'nın blok vertex biçimi: section vertex'i 28 bayt (`BlockVertex`:
+  renk ve ışık baytlara paketli; ayrı `shade` alanı yok). Akışkan yüzlerinin
+  gölgesi renge bayt olarak katılır (bench `y=3` özeti bu yüzden
+  `d63dc070836550a3` oldu; blok quad'ları bit düzeyinde aynı). Ayak izi
+  531 → 513 MB.
 
 ### F7. UV kilidi
 
@@ -134,8 +138,7 @@ olarak tutulmaz.
 | Section mesh'i (kısa / yoğun) | 2,0–3,1 ms | 0,6 / 4,0 ms |
 | Section blok durumları (yapay dünya) | 9,8 MB | 0,3 MB |
 
-Mesh özetleri (`digest=`) bütün adımlarda aynı kaldı. Açık kalanlar: F6.2
-(vertex biçimi; görsel doğrulama gerektirir) ve D1 (sapma; onay gerekir).
+Mesh özetleri (`digest=`) bütün adımlarda aynı kaldı. Açık kalan: D1 (sapma; yapılmayacak).
 
 ## Bellek ve yükleme turu (2026-09-30)
 

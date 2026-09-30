@@ -142,14 +142,15 @@ pub fn item_vertices(layers: &[ItemLayer], x: f32, y: f32, out: &mut Vec<GuiItem
             let brightness = mix_light(lights, normal_of(info.direction));
             let vertex = |corner: usize| {
                 let source = &layer.mesh.vertices[quad * 4 + corner];
+                let tint = source.colour();
                 GuiItemVertex {
                     position: place(source.position),
                     uv: source.uv,
                     colour: [
-                        source.tint[0] * brightness,
-                        source.tint[1] * brightness,
-                        source.tint[2] * brightness,
-                        source.tint[3],
+                        tint[0] * brightness,
+                        tint[1] * brightness,
+                        tint[2] * brightness,
+                        tint[3],
                     ],
                 }
             };

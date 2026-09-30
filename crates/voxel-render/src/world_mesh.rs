@@ -811,18 +811,17 @@ fn push_block_quad(
                 grey * tint[index] / 255
             }
         };
-        mesh.vertices.push(crate::scene::Vertex {
-            position: std::array::from_fn(|axis| quad.corners[corner][axis] + shift[axis]),
-            uv: quad.uvs[corner],
-            shade: 1.0,
-            tint: [
+        mesh.vertices.push(crate::scene::BlockVertex::new(
+            std::array::from_fn(|axis| quad.corners[corner][axis] + shift[axis]),
+            quad.uvs[corner],
+            [
                 channel(0) as f32 / 255.0,
                 channel(1) as f32 / 255.0,
                 channel(2) as f32 / 255.0,
                 1.0,
             ],
-            light: crate::block_light::light_uv(lit.light[corner]),
-        });
+            crate::block_light::light_uv(lit.light[corner]),
+        ));
     }
     mesh.indices
         .extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 3]);
@@ -1262,13 +1261,13 @@ fn add_face(
 ) {
     let base = mesh.vertices.len() as u32;
     for (position, uv) in corners.into_iter().zip(uv) {
-        mesh.vertices.push(crate::scene::Vertex {
+        // The shade goes into the colour, in bytes, as the reference's does.
+        mesh.vertices.push(crate::scene::BlockVertex::new(
             position,
             uv,
-            shade,
-            tint,
+            [tint[0] * shade, tint[1] * shade, tint[2] * shade, tint[3]],
             light,
-        });
+        ));
     }
     mesh.translucent_indices
         .extend([base, base + 1, base + 2, base, base + 2, base + 3]);
@@ -1293,16 +1292,15 @@ fn model_mesh(layer: &crate::special_models::ModelLayer, rect: &[f32; 4]) -> Mes
         let base = mesh.vertices.len() as u32;
         let normal = quad[0].normal;
         for vertex in quad {
-            mesh.vertices.push(crate::Vertex {
-                position: vertex.position,
-                uv: [
+            mesh.vertices.push(crate::scene::BlockVertex::new(
+                vertex.position,
+                [
                     rect[0] + (rect[2] - rect[0]) * vertex.uv[0],
                     rect[1] + (rect[3] - rect[1]) * vertex.uv[1],
                 ],
-                shade: 1.0,
                 tint,
-                light: crate::scene::FULL_BRIGHT,
-            });
+                crate::scene::FULL_BRIGHT,
+            ));
         }
         mesh.quads.push(crate::scene::QuadInfo {
             direction: crate::geometry::closest_direction(normal).unwrap_or(Direction::Up),

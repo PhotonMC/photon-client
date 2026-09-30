@@ -201,13 +201,15 @@ fn mesh_digest(mesh: &voxel_render::Mesh) -> u64 {
     use std::hash::{Hash, Hasher};
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
     for vertex in &mesh.vertices {
+        // The colour and light as the floats the older vertex kept, so the
+        // digest still tells the mesh apart from before the bytes.
         for value in vertex
             .position
             .iter()
             .chain(&vertex.uv)
-            .chain(std::iter::once(&vertex.shade))
-            .chain(&vertex.tint)
-            .chain(&vertex.light)
+            .chain(std::iter::once(&1.0_f32))
+            .chain(&vertex.colour())
+            .chain(&vertex.light_levels())
         {
             value.to_bits().hash(&mut hasher);
         }
