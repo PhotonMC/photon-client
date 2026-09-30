@@ -1,7 +1,10 @@
+mod animated_atlas;
 mod assets;
 mod atmosphere;
+mod controls;
 mod hud_input;
 mod item_layers;
+mod overlays;
 mod play;
 mod ppm;
 mod profile;

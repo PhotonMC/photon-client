@@ -69,3 +69,102 @@ pub fn weather(
         session.rain_level(),
     )
 }
+
+/// `LightmapRenderStateExtractor`'s block light flicker: it wanders by a
+/// small random step each tick and decays.
+pub struct Flicker {
+    random: voxel_core::random::RandomSource,
+    value: f32,
+}
+
+impl Flicker {
+    /// The reference seeds this source uniquely per run.
+    pub fn new() -> Self {
+        Self {
+            random: voxel_core::random::RandomSource::create(
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map(|elapsed| elapsed.as_nanos() as i64)
+                    .unwrap_or(0),
+            ),
+            value: 0.0,
+        }
+    }
+
+    pub fn tick(&mut self) {
+        let random = &mut self.random;
+        self.value += (random.next_float() - random.next_float())
+            * random.next_float()
+            * random.next_float()
+            * 0.1;
+        self.value *= 0.9;
+    }
+
+    pub fn value(&self) -> f32 {
+        self.value
+    }
+}
+
+/// The cloud layer: its cells from the clouds texture, and which cell and
+/// side of the layer its faces were last built for.
+pub struct Clouds {
+    cells: voxel_render::clouds::CloudCells,
+    built_for: Option<((i32, i32), voxel_render::clouds::RelativeCamera)>,
+}
+
+impl Clouds {
+    pub fn new(cells: voxel_render::clouds::CloudCells) -> Self {
+        Self {
+            cells,
+            built_for: None,
+        }
+    }
+
+    /// Build the faces again on the next frame, as after a respawn.
+    pub fn reset(&mut self) {
+        self.built_for = None;
+    }
+
+    /// The clouds for the frame, when their colour is not fully
+    /// transparent; their faces are rebuilt when the camera enters another
+    /// cell or crosses the layer.
+    pub fn draw(
+        &mut self,
+        backend: &mut voxel_render::VulkanBackend,
+        sky: &voxel_render::sky::SkyFrame,
+        (eye, game_time, partial): (Vec3, i64, f32),
+        view_projection: [[f32; 4]; 4],
+        cloud_range: i32,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let visible = sky.cloud_colour[3] > 0.0;
+        if !visible {
+            backend.set_cloud_frame(None);
+            return Ok(());
+        }
+        let placement = voxel_render::clouds::place(
+            &self.cells,
+            sky.cloud_height,
+            [eye.x, eye.y, eye.z],
+            game_time,
+            partial,
+        );
+        let key = (placement.cell, placement.relative);
+        if self.built_for != Some(key) {
+            self.built_for = Some(key);
+            let faces = self.cells.build(
+                placement.relative,
+                placement.cell.0,
+                placement.cell.1,
+                voxel_render::clouds::radius_cells(cloud_range),
+            );
+            backend.set_cloud_faces(&faces)?;
+        }
+        backend.set_cloud_frame(Some(voxel_render::vulkan::CloudFrame {
+            view_projection,
+            offset: placement.offset,
+            fog_end: sky.cloud_fog_end,
+            colour: sky.cloud_colour,
+        }));
+        Ok(())
+    }
+}

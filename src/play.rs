@@ -7,21 +7,21 @@ use std::time::Duration;
 use voxel_net::connection::PlaySession;
 use voxel_render::VulkanBackend;
 use voxel_render::gui::screen::creative::CreativeAssets;
-use voxel_render::gui::screen::{KeyMods, KeyResult};
 use voxel_render::window::{DisplayData, WindowSurface};
 
+use crate::animated_atlas::AnimatedAtlas;
 use crate::assets::FolderAssets;
-use crate::atmosphere::{rain_fog_target, weather};
-use crate::hud_input::{attack_speed, hud_input};
+use crate::atmosphere::{Clouds, Flicker, rain_fog_target, weather};
+use crate::controls::Controls;
+use crate::hud_input::hud_input;
 use crate::item_layers::ItemLayerCache;
+use crate::overlays::{self, FrameView, cracks, hands, hud_fov, outline, packed_light, tick_hands};
 use crate::ppm;
 use crate::profile::FrameProfile;
-use crate::screens::{
-    OpenScreen, ScreenAssets, WindowClipboard, close_inventory, open_inventory, run_actions,
-};
+use crate::screens::ScreenAssets;
 use crate::script::{HeldKeys, Script};
 use crate::sections::SectionMeshes;
-use crate::view::{CLOUD_RANGE, CameraType, eye_position, max_camera_zoom, pick, player_camera};
+use crate::view::{CLOUD_RANGE, CameraType, camera_position, eye_position, pick, player_camera};
 
 /// Join a server and walk around in it.
 ///
@@ -135,11 +135,7 @@ pub fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn st
         baking.elapsed()
     );
     backend.load_atlas(&block_renderer.atlas.levels)?;
-    // Animated sprites tick with the client and redraw their slots of a
-    // copy of the atlas, which then goes to the GPU.
-    let mut atlas_levels = block_renderer.atlas.levels.clone();
-    let mut animations = block_renderer.atlas.animations.clone();
-    let mut animation_redraw = vec![false; animations.len()];
+    let mut animated_atlas = AnimatedAtlas::new(&block_renderer.atlas);
     let sprite = |name: &str| {
         block_renderer
             .atlas
@@ -204,7 +200,7 @@ pub fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn st
     };
     let mut attributes_last = probe(&session, eye_of(&session));
     let cloud_image = texture(&root, "environment/clouds", "clouds")?;
-    let cloud_cells = voxel_render::clouds::CloudCells::from_image(&cloud_image);
+    let mut clouds = Clouds::new(voxel_render::clouds::CloudCells::from_image(&cloud_image));
     backend.load_weather_textures(
         &texture(&root, "environment/rain", "rain")?,
         &texture(&root, "environment/snow", "snow")?,
@@ -229,27 +225,16 @@ pub fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn st
     backend.load_gui_texture(&gui_atlas.image)?;
     let mut hud = voxel_render::gui::Hud::default();
     // Each item's GUI layers, built the first time a slot shows it.
-    let mut gui_item_layers = ItemLayerCache::default();
-    let mut scroll_wheel = voxel_game::hotbar::ScrollWheel::default();
+    let mut gui_item_layers = ItemLayerCache::new(voxel_render::model::DisplayContext::Gui);
     let started_at = std::time::Instant::now();
     // `ItemInHandRenderer`: the stacks the hands show and how high they are.
     let mut item_in_hand = voxel_game::item_in_hand::ItemInHand::default();
     // Each item's first-person layers, by item and hand.
-    let mut held_item_layers = [ItemLayerCache::default(), ItemLayerCache::default()];
-    // Attack clicks waiting for the next tick, and `Minecraft.missTime`:
-    // ticks a missed attack keeps the next one waiting.
-    let mut attack_key = voxel_game::attack::AttackKey::default();
-    // The use key keeps its clicks and held state the same way.
-    let mut use_key = voxel_game::attack::AttackKey::default();
-    let mut cloud_key = None;
-    // The reference seeds this source uniquely per run.
-    let mut flicker_random = voxel_core::random::RandomSource::create(
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map(|elapsed| elapsed.as_nanos() as i64)
-            .unwrap_or(0),
-    );
-    let mut block_light_flicker = 0.0_f32;
+    let mut held_item_layers = [
+        ItemLayerCache::new(voxel_render::model::DisplayContext::FirstPersonRightHand),
+        ItemLayerCache::new(voxel_render::model::DisplayContext::FirstPersonLeftHand),
+    ];
+    let mut flicker = Flicker::new();
     let mut rain_fog = 0.0_f32;
     let capture_frames: u32 = env::var("VOXEL_CAPTURE_FRAMES")
         .ok()
@@ -263,23 +248,15 @@ pub fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn st
         scale.framebuffer_width() as u32,
         scale.framebuffer_height() as u32,
     );
-    let mut keys = HeldKeys::default();
     let mut camera = voxel_render::camera::Camera::new();
-    // F5 cycles first person, third person from behind and from the front.
     // `VOXEL_CAMERA=back` or `front` starts detached.
-    let mut camera_type = match env::var("VOXEL_CAMERA").as_deref() {
+    let camera_type = match env::var("VOXEL_CAMERA").as_deref() {
         Ok("back") => CameraType::ThirdPersonBack,
         Ok("front") => CameraType::ThirdPersonFront,
         _ => CameraType::FirstPerson,
     };
-    let mut captured = script.is_none();
-    surface.set_cursor_captured(captured);
-    // The open inventory screen, the mouse in GUI units, and the button a
-    // drag is held with (`MouseHandler.activeButton`).
-    let mut inventory_screen: OpenScreen = None;
-    let mut creative_tab = voxel_game::creative_menu::default_tab();
-    let mut gui_mouse = (0.0_f64, 0.0_f64);
-    let mut active_button: Option<i32> = None;
+    let mut controls = Controls::new(camera_type, script.is_none());
+    surface.set_cursor_captured(controls.captured);
     let lang = std::sync::Arc::new(voxel_game::text::Lang::load(std::path::Path::new(&root)));
     let screen_assets = ScreenAssets {
         creative: CreativeAssets {
@@ -292,7 +269,6 @@ pub fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn st
         },
         inventory_title: lang.text("container.crafting"),
     };
-    let mut last_cursor: Option<(f64, f64)> = None;
     let tick_length = Duration::from_millis(50);
     let mut accumulated = Duration::ZERO;
     let mut last_frame = std::time::Instant::now();
@@ -303,190 +279,7 @@ pub fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn st
     while !surface.should_close() {
         let frame_start = std::time::Instant::now();
         for event in surface.poll() {
-            if let Some(screen) = inventory_screen.as_mut() {
-                let size = surface.scale();
-                screen.resize(size.gui_scaled_width(), size.gui_scaled_height());
-            }
-            match event {
-                // An open screen takes the keys and the mouse.
-                glfw::WindowEvent::Key(
-                    key,
-                    _,
-                    glfw::Action::Press | glfw::Action::Repeat,
-                    modifiers,
-                ) if inventory_screen.is_some() => {
-                    let menu = session.inventory_menu().clone();
-                    let screen = inventory_screen.as_mut().expect("checked above");
-                    let mods = KeyMods {
-                        control: modifiers.contains(glfw::Modifiers::Control),
-                        shift: modifiers.contains(glfw::Modifiers::Shift),
-                        command: modifiers.contains(glfw::Modifiers::Super),
-                    };
-                    match screen.key_pressed(key, mods, &menu, &mut WindowClipboard(&mut surface)) {
-                        KeyResult::Close => {
-                            close_inventory(
-                                &mut session,
-                                &mut surface,
-                                &mut inventory_screen,
-                                &mut creative_tab,
-                            )?;
-                            captured = true;
-                            last_cursor = None;
-                        }
-                        KeyResult::Actions(actions) => {
-                            run_actions(&mut session, &mut inventory_screen, actions)?;
-                        }
-                    }
-                }
-                glfw::WindowEvent::Key(..) if inventory_screen.is_some() => {
-                    inventory_screen
-                        .as_mut()
-                        .expect("checked above")
-                        .key_released();
-                }
-                glfw::WindowEvent::Char(character) if inventory_screen.is_some() => {
-                    inventory_screen
-                        .as_mut()
-                        .expect("checked above")
-                        .char_typed(character);
-                }
-                glfw::WindowEvent::MouseButton(button, action, modifiers)
-                    if inventory_screen.is_some() =>
-                {
-                    let button = button as i32;
-                    let shift = modifiers.contains(glfw::Modifiers::Shift);
-                    let menu = session.inventory_menu().clone();
-                    let screen = inventory_screen.as_mut().expect("checked above");
-                    let actions = if action == glfw::Action::Press {
-                        active_button = Some(button);
-                        let now = std::time::Instant::now();
-                        screen.mouse_clicked(gui_mouse, button, shift, now, &menu)
-                    } else {
-                        active_button = None;
-                        screen.mouse_released(gui_mouse, button, shift, &menu)
-                    };
-                    run_actions(&mut session, &mut inventory_screen, actions)?;
-                }
-                glfw::WindowEvent::Scroll(_, y) if inventory_screen.is_some() => {
-                    inventory_screen
-                        .as_mut()
-                        .expect("checked above")
-                        .mouse_scrolled(y);
-                }
-                glfw::WindowEvent::Key(glfw::Key::E, _, glfw::Action::Press, _)
-                    if captured && !session.player().is_some_and(|player| player.spectating()) =>
-                {
-                    open_inventory(
-                        &mut surface,
-                        &mut inventory_screen,
-                        session.game_mode() == voxel_world::ClientPlayerGameMode::Creative,
-                        creative_tab,
-                        &screen_assets,
-                    );
-                    captured = false;
-                    keys = HeldKeys::default();
-                    attack_key.release();
-                    use_key.release();
-                }
-                glfw::WindowEvent::Key(glfw::Key::Escape, _, glfw::Action::Press, _) => {
-                    if captured {
-                        captured = false;
-                        surface.set_cursor_captured(false);
-                        keys = HeldKeys::default();
-                        attack_key.release();
-                        use_key.release();
-                    } else {
-                        surface.request_close();
-                    }
-                }
-                glfw::WindowEvent::Key(glfw::Key::F5, _, glfw::Action::Press, _) => {
-                    camera_type = camera_type.next();
-                }
-                glfw::WindowEvent::Key(glfw::Key::F11, _, glfw::Action::Press, _) => {
-                    surface.toggle_fullscreen();
-                }
-                glfw::WindowEvent::Scroll(x, y) if captured => {
-                    let spectating = session.player().is_some_and(|player| player.spectating());
-                    if !spectating
-                        && let Some(slot) =
-                            scroll_wheel.select(x, y, session.status().selected_slot)
-                    {
-                        session.select_slot(slot);
-                    }
-                }
-                glfw::WindowEvent::Key(key, _, glfw::Action::Press, _)
-                    if captured && hotbar_key(key).is_some() =>
-                {
-                    let spectating = session.player().is_some_and(|player| player.spectating());
-                    if !spectating && let Some(slot) = hotbar_key(key) {
-                        session.select_slot(slot);
-                    }
-                }
-                glfw::WindowEvent::Key(key, _, action, _) if captured => {
-                    keys.set(key, action != glfw::Action::Release);
-                }
-                glfw::WindowEvent::MouseButton(
-                    glfw::MouseButton::Button1,
-                    glfw::Action::Press,
-                    _,
-                ) if captured => {
-                    attack_key.press();
-                }
-                glfw::WindowEvent::MouseButton(
-                    glfw::MouseButton::Button1,
-                    glfw::Action::Release,
-                    _,
-                ) => {
-                    attack_key.release();
-                }
-                glfw::WindowEvent::MouseButton(
-                    glfw::MouseButton::Button2,
-                    glfw::Action::Press,
-                    _,
-                ) if captured => {
-                    use_key.press();
-                }
-                glfw::WindowEvent::MouseButton(
-                    glfw::MouseButton::Button2,
-                    glfw::Action::Release,
-                    _,
-                ) => {
-                    use_key.release();
-                }
-                glfw::WindowEvent::MouseButton(_, glfw::Action::Press, _) if !captured => {
-                    captured = true;
-                    last_cursor = None;
-                    surface.set_cursor_captured(true);
-                }
-                glfw::WindowEvent::CursorPos(x, y) if inventory_screen.is_some() => {
-                    // `MouseHandler.onMove`: screen coordinates to GUI units.
-                    let size = surface.scale();
-                    let (width, height) = surface.window_size();
-                    gui_mouse = (
-                        x * f64::from(size.gui_scaled_width()) / f64::from(width.max(1)),
-                        y * f64::from(size.gui_scaled_height()) / f64::from(height.max(1)),
-                    );
-                    if active_button.is_some() {
-                        let menu = session.inventory_menu().clone();
-                        let screen = inventory_screen.as_mut().expect("checked above");
-                        screen.mouse_dragged(gui_mouse, &menu);
-                    }
-                    last_cursor = None;
-                }
-                glfw::WindowEvent::CursorPos(x, y) => {
-                    if captured
-                        && let Some((last_x, last_y)) = last_cursor
-                        && let Some(player) = session.player_mut()
-                    {
-                        // The default sensitivity, 0.5, makes the scale exactly one.
-                        let sensitivity = 0.5 * 0.6 + 0.2_f64;
-                        let scaled = sensitivity * sensitivity * sensitivity * 8.0;
-                        player.turn((x - last_x) * scaled, (y - last_y) * scaled);
-                    }
-                    last_cursor = Some((x, y));
-                }
-                _ => {}
-            }
+            controls.handle(event, &mut session, &mut surface, &screen_assets)?;
         }
 
         // A resized or fullscreen window gets a swapchain of its new size.
@@ -507,24 +300,12 @@ pub fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn st
         accumulated += now - last_frame;
         last_frame = now;
         session.drain()?;
-        // `containerTick`: each inventory screen hands over to the other when
-        // the game mode changes under it. Neither closes the container.
-        if let Some(open) = inventory_screen.as_mut() {
-            let creative = session.game_mode() == voxel_world::ClientPlayerGameMode::Creative;
-            let size = surface.scale();
-            let (width, height) = (size.gui_scaled_width(), size.gui_scaled_height());
-            let open_tab = open.as_creative_mut().map(|open| open.tab());
-            if open_tab.is_some() != creative {
-                creative_tab = open_tab.unwrap_or(creative_tab);
-                inventory_screen =
-                    Some(screen_assets.screen(creative, width, height, creative_tab));
-            }
-        }
+        controls.container_tick(&session, &surface, &screen_assets);
         // A respawn or a change of dimension: nothing of the old level stays.
         if session.take_level_reset() {
             backend.clear_sections()?;
             sections.clear();
-            cloud_key = None;
+            clouds.reset();
         }
         let mut script_done = false;
         while accumulated >= tick_length {
@@ -545,87 +326,12 @@ pub fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn st
                         HeldKeys::default()
                     }
                 },
-                None => keys,
+                None => controls.keys,
             };
-            // A scripted `attack` is a click on the tick; `mine` holds the key.
-            // Once the script ends the key stays as its last step left it,
+            // Once the script ends the keys stay as its last step left them,
             // so a capture can show a block mid-break.
             if script.is_some() && !script_done {
-                if held.inventory {
-                    if inventory_screen.is_some() {
-                        close_inventory(
-                            &mut session,
-                            &mut surface,
-                            &mut inventory_screen,
-                            &mut creative_tab,
-                        )?;
-                        surface.set_cursor_captured(false);
-                    } else {
-                        open_inventory(
-                            &mut surface,
-                            &mut inventory_screen,
-                            session.game_mode() == voxel_world::ClientPlayerGameMode::Creative,
-                            creative_tab,
-                            &screen_assets,
-                        );
-                    }
-                }
-                if let Some((slot, button, kind)) = held.click {
-                    let kind = [
-                        voxel_game::inventory_menu::ClickType::Pickup,
-                        voxel_game::inventory_menu::ClickType::QuickMove,
-                        voxel_game::inventory_menu::ClickType::Swap,
-                        voxel_game::inventory_menu::ClickType::Clone,
-                        voxel_game::inventory_menu::ClickType::Throw,
-                        voxel_game::inventory_menu::ClickType::QuickCraft,
-                        voxel_game::inventory_menu::ClickType::PickupAll,
-                    ][kind.clamp(0, 6) as usize];
-                    match inventory_screen.as_mut() {
-                        Some(screen) => {
-                            let action = screen.scripted_click(slot, button, kind);
-                            run_actions(&mut session, &mut inventory_screen, vec![action])?;
-                        }
-                        None => session.container_click(slot, button, kind)?,
-                    }
-                }
-                if let Some(mouse) = held.mouse {
-                    gui_mouse = mouse;
-                }
-                if let (Some(text), Some(screen)) = (held.typed, inventory_screen.as_mut()) {
-                    for character in text.chars() {
-                        screen.char_typed(character);
-                    }
-                }
-                if let Some(screen) = inventory_screen
-                    .as_mut()
-                    .and_then(|screen| screen.as_creative_mut())
-                {
-                    if let Some(tab) = held.tab {
-                        screen.select_tab_index(tab);
-                    }
-                    if let Some(scroll) = held.scroll {
-                        screen.menu_mut().set_scroll(scroll as f32 / 100.0);
-                    }
-                }
-                if held.attack {
-                    attack_key.press();
-                }
-                if !held.mine {
-                    attack_key.release();
-                } else if !attack_key.is_down() {
-                    attack_key.press();
-                    attack_key.take_clicks();
-                }
-                // `use` is a click on the tick; `hold_use` holds the key.
-                if held.use_click {
-                    use_key.press();
-                }
-                if !held.hold_use {
-                    use_key.release();
-                } else if !use_key.is_down() {
-                    use_key.press();
-                    use_key.take_clicks();
-                }
+                controls.script_step(held, &mut session, &mut surface, &screen_assets)?;
             }
             // `Minecraft.handleKeybinds`: the attack key is spent before the
             // player moves, aiming the way `GameRenderer.pick` aims.
@@ -634,51 +340,24 @@ pub fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn st
                 .map_or(voxel_game::game_mode::Aim::Miss, |player| {
                     pick(session.world(), player, eye_position(player, 1.0))
                 });
-            let grabbed = captured || script.is_some();
+            let grabbed = controls.captured || script.is_some();
             session.keys(
                 voxel_game::game_mode::Keys {
-                    attack_clicks: attack_key.take_clicks(),
-                    attack_held: attack_key.is_down() && grabbed,
-                    use_clicks: use_key.take_clicks(),
-                    use_held: use_key.is_down(),
+                    attack_clicks: controls.attack_key.take_clicks(),
+                    attack_held: controls.attack_key.is_down() && grabbed,
+                    use_clicks: controls.use_key.take_clicks(),
+                    use_held: controls.use_key.is_down(),
                 },
                 aim,
             )?;
             for hand in session.take_items_used() {
                 item_in_hand.item_used(hand);
             }
-            // `ItemInHandRenderer.tick`, after the keys and before the
-            // player ticks: the hands follow the stacks and rise back as the
-            // attack strength recovers.
-            {
-                let world = session.world();
-                let local = world.local_player();
-                let attack_speed = attack_speed(local);
-                let swap = session
-                    .player()
-                    .map_or(1.0, |player| player.item_swap_scale(1.0, attack_speed));
-                let stack = |slot: i16| {
-                    local
-                        .and_then(|state| state.inventory_slot(slot))
-                        .filter(|stack| stack.item_count() > 0)
-                };
-                let selected = session.status().selected_slot as i16;
-                item_in_hand.tick(stack(36 + selected), stack(45), swap, false, &|item| {
-                    block_renderer.item_swap(item)
-                });
-            }
+            // After the keys and before the player ticks.
+            tick_hands(&mut item_in_hand, &session, &block_renderer);
             session.tick(held.input())?;
-            // `LightmapRenderStateExtractor.tick`: the block light's flicker
-            // wanders by a small random step and decays.
-            block_light_flicker += (flicker_random.next_float() - flicker_random.next_float())
-                * flicker_random.next_float()
-                * flicker_random.next_float()
-                * 0.1;
-            block_light_flicker *= 0.9;
-            for (animation, redraw) in animations.iter_mut().zip(&mut animation_redraw) {
-                animation.tick();
-                *redraw |= animation.needs_to_draw();
-            }
+            flicker.tick();
+            animated_atlas.tick();
             if let Some(player) = session.player() {
                 camera.tick(player);
             }
@@ -703,7 +382,7 @@ pub fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn st
         // `Camera.alignWithEntity`: the front view turns round, and a
         // detached camera backs away from the eye until a block is in the
         // way.
-        let (y_rot, x_rot) = if camera_type == CameraType::ThirdPersonFront {
+        let (y_rot, x_rot) = if controls.camera_type == CameraType::ThirdPersonFront {
             (player_y_rot + 180.0, -player_x_rot)
         } else {
             (player_y_rot, player_x_rot)
@@ -713,204 +392,47 @@ pub fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn st
             feet.y + f64::from(camera.eye_height(partial as f32)),
             feet.z,
         );
-        let camera_world = if camera_type == CameraType::FirstPerson {
-            eye_world
-        } else {
-            let forwards = voxel_core::math::Vec3::direction_from_rotation_components(x_rot, y_rot);
-            let zoom = max_camera_zoom(session.world(), eye_world, forwards, 4.0);
-            voxel_core::math::Vec3::new(
-                eye_world.x - forwards.x * f64::from(zoom),
-                eye_world.y - forwards.y * f64::from(zoom),
-                eye_world.z - forwards.z * f64::from(zoom),
-            )
-        };
+        let camera_world = camera_position(
+            session.world(),
+            controls.camera_type,
+            eye_world,
+            (y_rot, x_rot),
+        );
         let eye = [
             (camera_world.x - f64::from(origin[0])) as f32,
             (camera_world.y - f64::from(origin[1])) as f32,
             (camera_world.z - f64::from(origin[2])) as f32,
         ];
-        // Packed block and sky light at the eyes, which the player's model
-        // and hand are lit by.
-        let light = {
-            let world = session.world();
-            let [x, y, z] =
-                [eye_world.x, eye_world.y, eye_world.z].map(|value| value.floor() as i32);
-            (i32::from(world.block_brightness(x, y, z)) << 4)
-                | (i32::from(world.sky_brightness(x, y, z)) << 20)
+        // The player's model and hand are lit by the light at the eyes.
+        let view = FrameView {
+            partial,
+            light: packed_light(session.world(), eye_world),
+            origin,
         };
         // The player's own model shows once the camera leaves its eyes; in
         // them, the empty hand does, unless the player only watches.
-        if camera_type == CameraType::FirstPerson && !player.spectating() {
-            let (walked, bob) = player.view_bob(partial as f32);
-            let (x_bob, y_bob) = player.hand_bob(partial as f32);
-            // `submitHandsWithItems`: the swing is the main hand's, since
-            // which arm swings is not tracked yet.
-            let swap = |item: i32| block_renderer.item_swap(item);
-            let main_height = item_in_hand.inverse_arm_height(
-                voxel_game::game_mode::MAIN_HAND,
-                partial as f32,
-                &swap,
+        if controls.camera_type == CameraType::FirstPerson && !player.spectating() {
+            let (hand, held) = hands(
+                player,
+                &item_in_hand,
+                &mut held_item_layers,
+                (&block_renderer, &biome_tints),
+                &mut player_model,
+                view,
             );
-            let off_height = item_in_hand.inverse_arm_height(
-                voxel_game::game_mode::OFF_HAND,
-                partial as f32,
-                &swap,
-            );
-            let view = voxel_render::player_renderer::HandView {
-                bob_walked: walked,
-                bob,
-                view_x_rot: player_x_rot,
-                view_y_rot: player_y_rot,
-                x_bob,
-                y_bob,
-                inverse_arm_height: main_height,
-                attack: player.attack_anim(partial as f32),
-                light,
-            };
-            let main_item = item_in_hand.item(voxel_game::game_mode::MAIN_HAND);
-            let off_item = item_in_hand.item(voxel_game::game_mode::OFF_HAND);
-            // An empty main hand shows the arm; each stack is drawn in its
-            // hand, the main hand on the right.
-            let hand = if main_item.is_none() {
-                voxel_render::player_renderer::hand_vertices(&mut player_model, &view)
-            } else {
-                Vec::new()
-            };
-            let mut held = Vec::new();
-            for (stack, right, attack, height) in [
-                (main_item, true, view.attack, main_height),
-                (off_item, false, 0.0, off_height),
-            ] {
-                let Some(stack) = stack else {
-                    continue;
-                };
-                let layers = held_item_layers[usize::from(!right)].get(stack, || {
-                    block_renderer.item_layers(
-                        stack.item_registry_id(),
-                        if right {
-                            voxel_render::model::DisplayContext::FirstPersonRightHand
-                        } else {
-                            voxel_render::model::DisplayContext::FirstPersonLeftHand
-                        },
-                        &|temperature, downfall| {
-                            biome_tints.grass_at_climate(temperature, downfall)
-                        },
-                        stack.patch_bytes(),
-                    )
-                });
-                held.extend(voxel_render::player_renderer::held_item_vertices(
-                    &view, layers, right, attack, height,
-                ));
-            }
-            // `Camera.calculateHudFov`: the hand's field of view is the
-            // default, narrowed in water, and not widened by speed.
-            let hud_fov = if player.is_eye_in_water() {
-                70.0 * 0.857_142_87
-            } else {
-                70.0
-            };
             let hand_projection =
-                voxel_render::scene::perspective(f32::to_radians(hud_fov), aspect, 0.05, 100.0);
+                voxel_render::scene::perspective(hud_fov(player).to_radians(), aspect, 0.05, 100.0);
             backend.set_hand(&hand, &held, hand_projection)?;
         } else {
             backend.set_hand(&[], &[], [[0.0; 4]; 4])?;
         }
-        // `extractBlockOutline`: the block aimed at this frame, unless the
-        // player cannot build (adventure and spectator, whose exceptions are
-        // not ported).
-        let mut outline = Vec::new();
-        if !matches!(
-            session.game_mode(),
-            voxel_world::ClientPlayerGameMode::Adventure
-                | voxel_world::ClientPlayerGameMode::Spectator
-        ) && let voxel_game::game_mode::Aim::Block { x, y, z, .. } =
-            pick(session.world(), player, eye_position(player, partial))
-            && let Some(state) = session.world().block_state_at(x, y, z)
-        {
-            let shape = voxel_world::outline_shape(state as u32, [x, y, z]);
-            outline = voxel_render::outline::outline_vertices(
-                &shape,
-                [
-                    (x - origin[0]) as f32,
-                    (y - origin[1]) as f32,
-                    (z - origin[2]) as f32,
-                ],
-                eye,
-                voxel_render::outline::OUTLINE_COLOUR,
-                voxel_render::outline::appropriate_line_width(backend.extent().0),
-            );
-        }
-        backend.set_outline(&outline)?;
-        // `extractBlockDestroyAnimation`: each cracked block near the
-        // camera, at the furthest stage anyone has it.
-        let mut cracked: std::collections::BTreeMap<(i32, i32, i32), i32> =
-            std::collections::BTreeMap::new();
-        for progress in session.world().destroying_blocks().values() {
-            let centre = [progress.x, progress.y, progress.z].map(|v| f64::from(v) + 0.5);
-            let distance = (centre[0] - camera_world.x).powi(2)
-                + (centre[1] - camera_world.y).powi(2)
-                + (centre[2] - camera_world.z).powi(2);
-            if distance <= 1024.0 {
-                let stage = cracked
-                    .entry((progress.x, progress.y, progress.z))
-                    .or_insert(-1);
-                *stage = (*stage).max(progress.stage);
-            }
-        }
-        let mut breaking = Vec::new();
-        for (&(x, y, z), &stage) in &cracked {
-            let Some(state) = session.world().block_state_at(x, y, z) else {
-                continue;
-            };
-            let (quads, offset) = block_renderer.block_quads(state as u32, [x, y, z]);
-            breaking.extend(voxel_render::breaking::breaking_vertices(
-                &quads,
-                offset,
-                [
-                    (x - origin[0]) as f32,
-                    (y - origin[1]) as f32,
-                    (z - origin[2]) as f32,
-                ],
-                stage,
-            ));
-        }
-        backend.set_breaking(&breaking)?;
-        if camera_type == CameraType::FirstPerson {
+        let line_width = voxel_render::outline::appropriate_line_width(backend.extent().0);
+        backend.set_outline(&outline(&session, player, view, eye, line_width))?;
+        backend.set_breaking(&cracks(&session, &block_renderer, camera_world, view))?;
+        if controls.camera_type == CameraType::FirstPerson {
             backend.set_entities(&[])?;
         } else {
-            let model_pose = player.model_pose(partial as f32);
-            player_model.setup_anim(&voxel_render::player_model::PlayerRenderState {
-                head_y_rot: voxel_core::math::wrap_degrees_f32(
-                    model_pose.head_rot - model_pose.body_rot,
-                ),
-                x_rot: player_x_rot,
-                walk_position: model_pose.walk_position,
-                walk_speed: model_pose.walk_speed,
-                age_in_ticks: player.tick_count() as f32 + partial as f32,
-                swim_amount: model_pose.swim_amount,
-                crouching: model_pose.crouching,
-                spectator: player.spectating(),
-                attack_time: player.attack_anim(partial as f32),
-                ..Default::default()
-            });
-            let visually_swimming = model_pose.pose == voxel_world::ClientEntityPose::Swimming;
-            backend.set_entities(&voxel_render::player_renderer::player_vertices(
-                &player_model,
-                &voxel_render::player_renderer::Placement {
-                    feet: [
-                        (feet.x - f64::from(origin[0])) as f32,
-                        (feet.y - f64::from(origin[1])) as f32,
-                        (feet.z - f64::from(origin[2])) as f32,
-                    ],
-                    body_rot: model_pose.body_rot,
-                    x_rot: player_x_rot,
-                    swim_amount: model_pose.swim_amount,
-                    in_water: player.in_water(),
-                    visually_swimming,
-                    crouching: model_pose.crouching,
-                    light,
-                },
-            ))?;
+            backend.set_entities(&overlays::player_model(player, &mut player_model, view))?;
         }
         let fov = camera.fov(partial as f32, player.is_eye_in_water());
         let eye_in_water = player.is_eye_in_water();
@@ -937,29 +459,7 @@ pub fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn st
         )?;
         let meshed = std::time::Instant::now();
         backend.set_sort_origin(eye);
-        let mut regions = Vec::new();
-        for (animation, redraw) in animations.iter().zip(&mut animation_redraw) {
-            if !std::mem::take(redraw) {
-                continue;
-            }
-            for (level, target) in atlas_levels.iter_mut().enumerate() {
-                let (x, y, width, height) = animation.draw(level, target);
-                let mut rgba = Vec::with_capacity((width * height * 4) as usize);
-                for row in y..y + height {
-                    let start = ((row * target.width + x) * 4) as usize;
-                    rgba.extend_from_slice(&target.rgba[start..start + width as usize * 4]);
-                }
-                regions.push(voxel_render::vulkan::AtlasRegion {
-                    level: level as u32,
-                    x,
-                    y,
-                    width,
-                    height,
-                    rgba,
-                });
-            }
-        }
-        backend.update_atlas(&regions)?;
+        backend.update_atlas(&animated_atlas.changed_regions())?;
 
         let attributes = attributes_last.lerp(&attributes_next, partial as f32);
         // `AtmosphericFogEnvironment.updateRainFogState`: rain pulls the fog
@@ -997,44 +497,19 @@ pub fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn st
             lightmap.sky_colour,
             lightmap.sky_factor,
             lightmap.block_tint,
-            1.4 + block_light_flicker,
+            1.4 + flicker.value(),
             lightmap.ambient,
             // The brightness option's default.
             0.5,
         );
         let sky_view_projection = player_camera(aspect, fov, far, [0.0; 3], y_rot, x_rot, bob);
-        // Clouds, when their colour is not fully transparent; their faces
-        // are rebuilt when the camera enters another cell or crosses the
-        // layer.
-        if sky.cloud_colour[3] > 0.0 {
-            let camera_position = [eye_world.x, eye_world.y, eye_world.z];
-            let placement = voxel_render::clouds::place(
-                &cloud_cells,
-                sky.cloud_height,
-                camera_position,
-                session.game_time(),
-                partial as f32,
-            );
-            let key = (placement.cell, placement.relative);
-            if cloud_key != Some(key) {
-                cloud_key = Some(key);
-                let faces = cloud_cells.build(
-                    placement.relative,
-                    placement.cell.0,
-                    placement.cell.1,
-                    voxel_render::clouds::radius_cells(CLOUD_RANGE),
-                );
-                backend.set_cloud_faces(&faces)?;
-            }
-            backend.set_cloud_frame(Some(voxel_render::vulkan::CloudFrame {
-                view_projection: sky_view_projection,
-                offset: placement.offset,
-                fog_end: sky.cloud_fog_end,
-                colour: sky.cloud_colour,
-            }));
-        } else {
-            backend.set_cloud_frame(None);
-        }
+        clouds.draw(
+            &mut backend,
+            &sky,
+            (eye_world, session.game_time(), partial as f32),
+            sky_view_projection,
+            CLOUD_RANGE,
+        )?;
         backend.set_fog(sky.fog_colour, sky.terrain_fog);
         backend.set_sky(
             &sky.vertices,
@@ -1058,20 +533,7 @@ pub fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn st
             continue;
         }
         if script_done {
-            let player = session.player().ok_or("no local player")?;
-            let position = player.position();
-            println!(
-                "play_end ticks={ticks} position={:.4},{:.4},{:.4} rotation={y_rot},{x_rot} on_ground={}",
-                position.x,
-                position.y,
-                position.z,
-                player.on_ground()
-            );
-            println!("play_teleports={}", session.teleports());
-            println!("play_swings={}", session.swings());
-            if let Some(warning) = session.warning() {
-                println!("play_warning={warning}");
-            }
+            report_end(&session, ticks, (y_rot, x_rot))?;
             if let Ok(path) = env::var("VOXEL_CAPTURE_PPM") {
                 let captured = backend.capture_scene(colour, view_projection)?;
                 ppm::write(&path, captured.width, captured.height, &captured.rgba)?;
@@ -1082,7 +544,8 @@ pub fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn st
         // The HUD, in GUI units.
         {
             let size = surface.scale();
-            let screen_menu = inventory_screen
+            let screen_menu = controls
+                .screen
                 .is_some()
                 .then(|| session.inventory_menu().clone());
             let hud_player = session.player();
@@ -1091,16 +554,7 @@ pub fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn st
                  x: f32,
                  y: f32,
                  out: &mut Vec<voxel_render::gui::items::GuiItemVertex>| {
-                    let layers = gui_item_layers.get(stack, || {
-                        block_renderer.item_layers(
-                            stack.item_registry_id(),
-                            voxel_render::model::DisplayContext::Gui,
-                            &|temperature, downfall| {
-                                biome_tints.grass_at_climate(temperature, downfall)
-                            },
-                            stack.patch_bytes(),
-                        )
-                    });
+                    let layers = gui_item_layers.get(stack, &block_renderer, &biome_tints);
                     voxel_render::gui::items::item_vertices(layers, x, y, out);
                 };
             let frame = hud.build(
@@ -1108,13 +562,13 @@ pub fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn st
                 &font,
                 size.gui_scaled_width(),
                 size.gui_scaled_height(),
-                &hud_input(&session, camera_type == CameraType::FirstPerson),
+                &hud_input(&session, controls.camera_type == CameraType::FirstPerson),
                 started_at.elapsed().as_millis(),
                 &mut draw_item,
             );
             // The open screen over the HUD.
             let mut frame = frame;
-            if let (Some(screen), Some(menu)) = (inventory_screen.as_mut(), screen_menu) {
+            if let (Some(screen), Some(menu)) = (controls.screen.as_mut(), screen_menu) {
                 // The player in the screen, posed as the entity stands now.
                 let mut draw_player =
                     |area: (i32, i32, i32, i32), size: f32, offset_y: f32, mouse: (f32, f32)| {
@@ -1157,7 +611,7 @@ pub fn run_play(mut args: impl Iterator<Item = String>) -> Result<(), Box<dyn st
                     player: &mut draw_player,
                     tooltip: &mut tooltip_lines,
                 };
-                screen.build(&mut draw, &menu, gui_mouse);
+                screen.build(&mut draw, &menu, controls.gui_mouse);
             }
             let scale = size.gui_scale() as f32;
             backend.set_gui(
@@ -1246,21 +700,25 @@ fn destroy_stages(root: &str) -> Result<voxel_render::DecodedImage, Box<dyn std:
     Ok(cracks)
 }
 
-/// The number key for a hotbar slot, 1 to 9.
-fn hotbar_key(key: glfw::Key) -> Option<i32> {
-    use glfw::Key;
-    [
-        Key::Num1,
-        Key::Num2,
-        Key::Num3,
-        Key::Num4,
-        Key::Num5,
-        Key::Num6,
-        Key::Num7,
-        Key::Num8,
-        Key::Num9,
-    ]
-    .iter()
-    .position(|candidate| *candidate == key)
-    .map(|slot| slot as i32)
+/// What a finished script leaves the player as.
+fn report_end(
+    session: &PlaySession,
+    ticks: u64,
+    (y_rot, x_rot): (f32, f32),
+) -> Result<(), Box<dyn std::error::Error>> {
+    let player = session.player().ok_or("no local player")?;
+    let position = player.position();
+    println!(
+        "play_end ticks={ticks} position={:.4},{:.4},{:.4} rotation={y_rot},{x_rot} on_ground={}",
+        position.x,
+        position.y,
+        position.z,
+        player.on_ground()
+    );
+    println!("play_teleports={}", session.teleports());
+    println!("play_swings={}", session.swings());
+    if let Some(warning) = session.warning() {
+        println!("play_warning={warning}");
+    }
+    Ok(())
 }

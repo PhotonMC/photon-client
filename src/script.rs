@@ -1,6 +1,8 @@
 //! `VOXEL_SCRIPT`: keys held and clicks made on given ticks, so a run can
 //! be repeated without a person at the keyboard.
 
+use voxel_game::inventory_menu::ClickType;
+
 /// Held movement keys, as the key mappings see them.
 #[derive(Default, Clone, Copy)]
 pub struct HeldKeys {
@@ -22,7 +24,7 @@ pub struct HeldKeys {
     /// A scripted press of the inventory key on this tick.
     pub inventory: bool,
     /// A scripted click in the open inventory: slot, button, click type.
-    pub click: Option<(i32, i32, i32)>,
+    pub click: Option<(i32, i32, ClickType)>,
     /// A scripted tab choice on the open creative screen, by table index.
     pub tab: Option<usize>,
     /// A scripted scroll of the creative screen, in hundredths.
@@ -90,7 +92,8 @@ impl HeldKeys {
                                 text.parse::<i32>()
                                     .map_err(|_| format!("bad click {other} in VOXEL_SCRIPT"))
                             };
-                            keys.click = Some((number(slot)?, number(button)?, number(kind)?));
+                            keys.click =
+                                Some((number(slot)?, number(button)?, click_type(number(kind)?)));
                         }
                         ["tab", tab] => {
                             keys.tab = Some(
@@ -190,4 +193,17 @@ impl Script {
             return Some((keys, turn, pitch));
         }
     }
+}
+
+/// A click type by its id, clamped into the ones there are.
+fn click_type(id: i32) -> ClickType {
+    [
+        ClickType::Pickup,
+        ClickType::QuickMove,
+        ClickType::Swap,
+        ClickType::Clone,
+        ClickType::Throw,
+        ClickType::QuickCraft,
+        ClickType::PickupAll,
+    ][id.clamp(0, 6) as usize]
 }

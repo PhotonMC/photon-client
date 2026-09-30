@@ -1,21 +1,36 @@
 //! Item models turned into layers once and kept.
 
+use voxel_render::biome_tint::BiomeTints;
+use voxel_render::model::DisplayContext;
+use voxel_render::world_mesh::{BlockRenderer, ItemLayer};
+use voxel_world::ClientItemStackState;
+
 /// Each stack's layers in one display context, built the first time a slot
 /// shows it: by item, then by component patch.
-#[derive(Default)]
 pub struct ItemLayerCache {
+    context: DisplayContext,
     layers: std::collections::HashMap<i32, Vec<PatchLayers>>,
 }
 
 /// The layers of an item with one component patch.
-pub type PatchLayers = (Vec<u8>, Vec<voxel_render::world_mesh::ItemLayer>);
+type PatchLayers = (Vec<u8>, Vec<ItemLayer>);
 
 impl ItemLayerCache {
+    pub fn new(context: DisplayContext) -> Self {
+        Self {
+            context,
+            layers: std::collections::HashMap::new(),
+        }
+    }
+
+    /// A stack's layers, its grass tinted by climate.
     pub fn get(
         &mut self,
-        stack: &voxel_world::ClientItemStackState,
-        build: impl FnOnce() -> Vec<voxel_render::world_mesh::ItemLayer>,
-    ) -> &[voxel_render::world_mesh::ItemLayer] {
+        stack: &ClientItemStackState,
+        renderer: &BlockRenderer,
+        tints: &BiomeTints,
+    ) -> &[ItemLayer] {
+        let context = self.context;
         let variants = self.layers.entry(stack.item_registry_id()).or_default();
         let index = match variants
             .iter()
@@ -23,7 +38,13 @@ impl ItemLayerCache {
         {
             Some(index) => index,
             None => {
-                variants.push((stack.patch_bytes().to_vec(), build()));
+                let layers = renderer.item_layers(
+                    stack.item_registry_id(),
+                    context,
+                    &|temperature, downfall| tints.grass_at_climate(temperature, downfall),
+                    stack.patch_bytes(),
+                );
+                variants.push((stack.patch_bytes().to_vec(), layers));
                 variants.len() - 1
             }
         };

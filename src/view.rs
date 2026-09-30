@@ -71,7 +71,7 @@ impl CameraType {
 /// `Camera.getMaxZoom`: how far the camera can back away from `eye` along
 /// `forwards` before a block is in the way, tried from the eight corners of
 /// a small box around the eye.
-pub fn max_camera_zoom(
+fn max_camera_zoom(
     world: &voxel_world::ClientWorld,
     eye: voxel_core::math::Vec3,
     forwards: voxel_core::math::Vec3,
@@ -134,4 +134,24 @@ pub fn player_camera(
         bob,
     );
     voxel_render::scene::multiply(projection, view)
+}
+
+/// `Camera.alignWithEntity`'s position: the eye, or for a detached camera
+/// as far back from it along the view as no block is in the way.
+pub fn camera_position(
+    world: &voxel_world::ClientWorld,
+    camera_type: CameraType,
+    eye: voxel_core::math::Vec3,
+    (y_rot, x_rot): (f32, f32),
+) -> voxel_core::math::Vec3 {
+    if camera_type == CameraType::FirstPerson {
+        return eye;
+    }
+    let forwards = voxel_core::math::Vec3::direction_from_rotation_components(x_rot, y_rot);
+    let zoom = max_camera_zoom(world, eye, forwards, 4.0);
+    voxel_core::math::Vec3::new(
+        eye.x - forwards.x * f64::from(zoom),
+        eye.y - forwards.y * f64::from(zoom),
+        eye.z - forwards.z * f64::from(zoom),
+    )
 }
