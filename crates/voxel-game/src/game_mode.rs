@@ -15,6 +15,7 @@
 //! operators (the permission level is not tracked; they are never broken).
 
 use voxel_core::math::Vec3;
+use voxel_data::item::classes::ItemClass;
 use voxel_world::block_rules::{self as rules, Rule, UseResult};
 use voxel_world::local_player::LocalPlayer;
 use voxel_world::{ClientItemStackState, ClientPlayerGameMode, ClientWorld};
@@ -779,9 +780,11 @@ impl GameMode {
         if ctx.mode == ClientPlayerGameMode::Adventure {
             return UseResult::Pass;
         }
-        match rules::item_use_on_class(item) {
-            "Item" => UseResult::Pass,
-            "BlockItem" if rules::item_class(item) == "BlockItem" => {
+        match rules::item_use_on_owner(item) {
+            ItemClass::Item => UseResult::Pass,
+            ItemClass::BlockItem
+                if rules::item(item).is_some_and(|row| row.class == ItemClass::BlockItem) =>
+            {
                 self.place(ctx, hand, item, aim)
             }
             _ => UseResult::Success { swing: true },
@@ -801,7 +804,7 @@ impl GameMode {
         else {
             return UseResult::Pass;
         };
-        let Some(block) = rules::item_behaviour(item)
+        let Some(block) = rules::item(item)
             .and_then(|row| row.block)
             .and_then(voxel_data::block::registry::block_index)
         else {
@@ -885,9 +888,9 @@ impl GameMode {
         let (y_rot, x_rot) = ctx.player.rotation();
         let result = match ctx.held(hand) {
             Some((item, _)) => {
-                let row = rules::item_behaviour(item);
-                if rules::item_use_class(item) == "Item"
-                    && row.is_some_and(|row| row.default_use_pass)
+                let row = rules::item(item);
+                if rules::item_use_owner(item) == ItemClass::Item
+                    && row.is_some_and(voxel_data::item::registry::Item::use_does_nothing)
                 {
                     UseResult::Pass
                 } else {

@@ -13,7 +13,8 @@ use std::collections::BTreeMap;
 use voxel_core::direction::{Axis, Direction};
 use voxel_data::block::classes::{BlockClass, Method};
 use voxel_data::block::registry::{self, BLOCKS, Block};
-use voxel_data::item::behaviour::ITEMS;
+use voxel_data::item::classes::{ItemClass, ItemMethod};
+use voxel_data::item::registry::{ITEMS, Item};
 
 /// A rule's answer, or that the class's rule is not written.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -123,7 +124,7 @@ impl PlaceContext<'_> {
     /// Whether the item in use is the block's own (`asItem`).
     fn holds_item_of(&self, state: i32) -> bool {
         block(state)
-            .and_then(|block| voxel_data::item::index(block.item_name()))
+            .and_then(|block| voxel_data::item::registry::index(block.item_name()))
             .is_some_and(|item| self.item == i32::try_from(item).ok())
     }
 }
@@ -337,23 +338,23 @@ pub fn use_without_item(state: i32) -> Rule<UseResult> {
     }
 }
 
-/// An item's table row, by registry id.
-pub fn item_behaviour(item: i32) -> Option<&'static voxel_data::item::behaviour::ItemBehaviour> {
+/// An item by registry id.
+pub fn item(item: i32) -> Option<&'static Item> {
     usize::try_from(item)
         .ok()
         .and_then(|index| ITEMS.get(index))
 }
 
-pub fn item_class(item: i32) -> &'static str {
-    item_behaviour(item).map_or("Item", |row| row.class)
+/// The class whose own `useOn` the item runs; `Item` for an unknown item.
+pub fn item_use_on_owner(item_id: i32) -> ItemClass {
+    item(item_id).map_or(ItemClass::Item, |item| {
+        item.class.owner_of(ItemMethod::UseOn)
+    })
 }
 
-pub fn item_use_on_class(item: i32) -> &'static str {
-    item_behaviour(item).map_or("Item", |row| row.use_on)
-}
-
-pub fn item_use_class(item: i32) -> &'static str {
-    item_behaviour(item).map_or("Item", |row| row.use_)
+/// The class whose own `use` the item runs; `Item` for an unknown item.
+pub fn item_use_owner(item_id: i32) -> ItemClass {
+    item(item_id).map_or(ItemClass::Item, |item| item.class.owner_of(ItemMethod::Use))
 }
 
 /// Whether a state is air, for `updateOrDestroy`.

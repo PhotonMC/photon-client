@@ -16634,6 +16634,86 @@ fn movement_properties(label: &str) -> Result<Value, String> {
     Ok(json!({"label": label, "outcome": "listed", "blocks": blocks}))
 }
 
+/// `item_declarations`: the declarations as the oracle describes them.
+fn item_declarations(label: &str) -> Value {
+    use voxel_data::item::classes::ItemClass;
+    use voxel_data::item::definition::RuleBlocks;
+    let classes: Vec<Value> = ItemClass::ALL
+        .iter()
+        .map(|class| {
+            let declares: Vec<String> = class
+                .declares()
+                .iter()
+                .map(|method| {
+                    let name = format!("{method:?}");
+                    name[..1].to_lowercase() + &name[1..]
+                })
+                .collect();
+            json!({
+                "name": format!("{class:?}"),
+                "parent": class.parent().map_or(String::new(), |parent| format!("{parent:?}")),
+                "declares": declares,
+            })
+        })
+        .collect();
+    let items: Vec<Value> = voxel_data::item::registry::ITEMS
+        .iter()
+        .map(|item| {
+            let mut described = json!({
+                "name": item.name,
+                "class": format!("{:?}", item.class),
+                "max_stack_size": item.max_stack_size,
+                "max_damage": item.max_damage,
+                "consumable": item.consumable,
+                "blocks_attacks": item.blocks_attacks,
+                "kinetic_weapon": item.kinetic_weapon,
+            });
+            if let Some(equip) = &item.equippable {
+                described["equippable"] = json!({
+                    "slot": equip.slot,
+                    "player": equip.player,
+                    "swappable": equip.swappable,
+                });
+            }
+            if let Some(remainder) = &item.crafting_remainder {
+                described["crafting_remainder"] =
+                    json!({"item": remainder.item, "count": remainder.count});
+            }
+            if let Some(tool) = item.tool {
+                let rules: Vec<Value> = tool
+                    .rules
+                    .iter()
+                    .map(|rule| {
+                        let mut written = json!({});
+                        written["blocks"] = match rule.blocks {
+                            RuleBlocks::Tag(tag) => json!(format!("#{tag}")),
+                            RuleBlocks::Blocks(names) => json!(names),
+                        };
+                        if let Some(speed) = rule.speed {
+                            written["speed"] = json!(format!("{:08x}", speed.to_bits()));
+                        }
+                        if let Some(correct) = rule.correct_for_drops {
+                            written["correct_for_drops"] = json!(correct);
+                        }
+                        written
+                    })
+                    .collect();
+                described["tool"] = json!({
+                    "rules": rules,
+                    "default_mining_speed": format!("{:08x}", tool.default_mining_speed.to_bits()),
+                    "damage_per_block": tool.damage_per_block,
+                    "can_destroy_blocks_in_creative": tool.can_destroy_blocks_in_creative,
+                });
+            }
+            if let Some(block) = item.block {
+                described["block"] = json!(block);
+            }
+            described
+        })
+        .collect();
+    json!({"label": label, "outcome": "listed", "classes": classes, "items": items})
+}
+
 fn block_result(request: &Value) -> Result<Value, String> {
     use voxel_data::block::registry;
     let operation = string(request, "operation")?;
@@ -16762,9 +16842,9 @@ fn block_result(request: &Value) -> Result<Value, String> {
                 out.push(json!({"label": label, "outcome": "listed", "blocks": blocks}));
             }
             "block_declarations" => out.push(block_declarations(label)),
+            "item_declarations" => out.push(item_declarations(label)),
             "block_behaviours" => {
                 use voxel_data::block::classes::Method;
-                use voxel_data::item::behaviour::ITEMS;
                 // The class whose own method the block runs, as the
                 // reference's dispatch resolves it.
                 let owner = |block: &registry::Block, method: Method| {
@@ -16797,16 +16877,18 @@ fn block_result(request: &Value) -> Result<Value, String> {
                     .collect();
                 let items: Vec<Value> = voxel_data::item::registry::ITEMS
                     .iter()
-                    .zip(ITEMS.iter())
-                    .map(|(item, row)| {
+                    .map(|item| {
+                        use voxel_data::item::classes::ItemMethod;
+                        let owner =
+                            |method: ItemMethod| format!("{:?}", item.class.owner_of(method));
                         let mut described = json!({
                             "name": item.name,
-                            "class": row.class,
-                            "use_on": row.use_on,
-                            "use": row.use_,
-                            "default_use_pass": row.default_use_pass,
+                            "class": format!("{:?}", item.class),
+                            "use_on": owner(ItemMethod::UseOn),
+                            "use": owner(ItemMethod::Use),
+                            "default_use_pass": item.use_does_nothing(),
                         });
-                        if let Some(block) = row.block {
+                        if let Some(block) = item.block {
                             described["block"] = json!(block);
                         }
                         described
@@ -16886,23 +16968,24 @@ fn block_result(request: &Value) -> Result<Value, String> {
                 out.push(json!({"label": label, "outcome": "listed", "items": items}));
             }
             "item_stacking" => {
-                use voxel_data::item::stacking::ITEM_STACKING;
+                use voxel_data::item::classes::ItemMethod;
                 let items: Vec<Value> = voxel_data::item::registry::ITEMS
                     .iter()
-                    .zip(ITEM_STACKING.iter())
-                    .map(|(item, stacking)| {
+                    .map(|item| {
+                        let owner =
+                            |method: ItemMethod| format!("{:?}", item.class.owner_of(method));
                         let mut described = json!({
                             "name": item.name,
-                            "max_stack_size": stacking.max_stack_size,
-                            "max_damage": stacking.max_damage,
-                            "stacked_on_other": stacking.stacked_on_other,
-                            "other_stacked_on_me": stacking.other_stacked_on_me,
+                            "max_stack_size": item.max_stack_size,
+                            "max_damage": item.max_damage,
+                            "stacked_on_other": owner(ItemMethod::OverrideStackedOnOther),
+                            "other_stacked_on_me": owner(ItemMethod::OverrideOtherStackedOnMe),
                         });
-                        if let Some(equip) = &stacking.equip {
+                        if let Some(equip) = &item.equippable {
                             described["equip_slot"] = json!(equip.slot);
                             described["player_can_equip"] = json!(equip.player);
                         }
-                        if let Some(remainder) = &stacking.crafting_remainder {
+                        if let Some(remainder) = &item.crafting_remainder {
                             described["crafting_remainder"] = json!(remainder.item);
                             described["crafting_remainder_count"] = json!(remainder.count);
                         }

@@ -14,7 +14,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).parent))
 
 GENERATORS = [
     "block_shapes", "block_tints", "blocks", "creative_tabs",
-    "item_behaviour", "item_components", "item_stacking", "item_tools",
+    "items", "item_components",
     "potions", "tooltip_registries",
 ]
 

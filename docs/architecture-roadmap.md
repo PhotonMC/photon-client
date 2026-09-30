@@ -80,8 +80,12 @@ olarak tutulmaz.
 
 ### F5. Eşyalar ve veri güdümlü kayıtlar
 
+- [x] Eşya tanımları `Items.java` gibi: `Item::of(ad, sınıf)` zinciri,
+  sınıf hiyerarşisi (`ItemClass`), yığın boyutu, dayanıklılık, alet,
+  giyilebilirlik, bırakılan kalıntı; `stacking.rs`, `behaviour.rs` ve alet
+  tablosu kalktı.
 - [ ] Varsayılan bileşenler tipli (`DataComponentMap`); `components.rs`
-  ham bayt tutmaz. `stacking.rs` ve alet bilgisi bu bileşenlerden çıkar.
+  ham bayt tutmaz.
 - [ ] Büyü, tablo, enstrüman, müzik diski, zırh süsü ve bayrak deseni
   kayıtları `data/` JSON'undan ve sunucunun kayıt verisinden; `tooltip.rs`
   kalkar.

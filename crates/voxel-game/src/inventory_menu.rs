@@ -13,7 +13,8 @@
 //! undamaged), enchantments that lock armour, and component hashes (a
 //! stack with a component patch is hashed as if it had none).
 
-use voxel_data::item::stacking::ITEM_STACKING;
+use voxel_data::item::classes::{ItemClass, ItemMethod};
+use voxel_data::item::registry::{ITEMS, Item};
 use voxel_world::ClientItemStackState as Stack;
 
 /// `ContainerInput`, by its id.
@@ -86,10 +87,10 @@ impl Default for InventoryMenu {
     }
 }
 
-fn stacking(stack: &Stack) -> Option<&'static voxel_data::item::stacking::ItemStacking> {
+fn stacking(stack: &Stack) -> Option<&'static Item> {
     usize::try_from(stack.item_registry_id())
         .ok()
-        .and_then(|id| ITEM_STACKING.get(id))
+        .and_then(|id| ITEMS.get(id))
 }
 
 /// `ItemStack.getMaxStackSize`.
@@ -105,7 +106,7 @@ fn is_stackable(stack: &Stack) -> bool {
 /// `LivingEntity.getEquipmentSlotForItem` for a player, by name.
 fn equipment_slot(stack: &Stack) -> &'static str {
     stacking(stack)
-        .and_then(|item| item.equip.as_ref())
+        .and_then(|item| item.equippable.as_ref())
         .map_or("mainhand", |equip| equip.slot)
 }
 
@@ -134,9 +135,9 @@ fn armour_index(slot: &str) -> Option<usize> {
 fn overrides_click(stack: Option<&Stack>, carried: bool) -> bool {
     stack.and_then(stacking).is_some_and(|item| {
         if carried {
-            item.stacked_on_other != "Item"
+            item.class.owner_of(ItemMethod::OverrideStackedOnOther) != ItemClass::Item
         } else {
-            item.other_stacked_on_me != "Item"
+            item.class.owner_of(ItemMethod::OverrideOtherStackedOnMe) != ItemClass::Item
         }
     })
 }
@@ -555,7 +556,7 @@ impl InventoryMenu {
         }
         match armour_slot(index) {
             Some(slot) => stacking(stack)
-                .and_then(|item| item.equip.as_ref())
+                .and_then(|item| item.equippable.as_ref())
                 .is_some_and(|equip| equip.slot == slot && equip.player),
             None => true,
         }

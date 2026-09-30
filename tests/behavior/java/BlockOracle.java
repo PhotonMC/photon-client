@@ -69,6 +69,7 @@ public final class BlockOracle {
                 case "creative_tabs" -> rows.add(creativeTabs(element.getAsJsonObject()));
                 case "block_behaviours" -> rows.add(blockBehaviours(element.getAsJsonObject()));
                 case "block_declarations" -> rows.add(blockDeclarations(element.getAsJsonObject()));
+                case "item_declarations" -> rows.add(itemDeclarations(element.getAsJsonObject()));
                 default -> throw new IllegalArgumentException("Unknown block operation: " + operation);
             }
         }
@@ -1371,6 +1372,138 @@ public final class BlockOracle {
         var out = new JsonArray();
         states.forEach(state -> out.add(value.test(state)));
         return out;
+    }
+
+    /** The item methods the client ports class by class. */
+    private static final java.util.Map<String, Class<?>[]> TRACKED_ITEM_METHODS = trackedItemMethods();
+
+    private static java.util.Map<String, Class<?>[]> trackedItemMethods() {
+        Class<?> stack = net.minecraft.world.item.ItemStack.class;
+        Class<?> slot = net.minecraft.world.inventory.Slot.class;
+        Class<?> click = net.minecraft.world.inventory.ClickAction.class;
+        Class<?> player = net.minecraft.world.entity.player.Player.class;
+        var methods = new java.util.LinkedHashMap<String, Class<?>[]>();
+        methods.put("useOn", new Class<?>[] {net.minecraft.world.item.context.UseOnContext.class});
+        methods.put("use", new Class<?>[] {
+            net.minecraft.world.level.Level.class, player, net.minecraft.world.InteractionHand.class});
+        methods.put("overrideStackedOnOther", new Class<?>[] {stack, slot, click, player});
+        methods.put("overrideOtherStackedOnMe", new Class<?>[] {
+            stack, stack, slot, click, player, net.minecraft.world.entity.SlotAccess.class});
+        return methods;
+    }
+
+    private static JsonObject toolJson(net.minecraft.world.item.component.Tool tool) {
+        var toolJson = new JsonObject();
+        var rules = new JsonArray();
+        for (var rule : tool.rules()) {
+            var ruleJson = new JsonObject();
+            var tag = rule.blocks().unwrapKey();
+            if (tag.isPresent()) {
+                ruleJson.addProperty("blocks", "#" + tag.get().location());
+            } else {
+                var names = new JsonArray();
+                for (var holder : rule.blocks()) {
+                    names.add(holder.unwrapKey().orElseThrow().identifier().toString());
+                }
+                ruleJson.add("blocks", names);
+            }
+            rule.speed().ifPresent(speed -> ruleJson.addProperty("speed", Oracle.bits(speed)));
+            rule.correctForDrops().ifPresent(correct -> ruleJson.addProperty("correct_for_drops", correct));
+            rules.add(ruleJson);
+        }
+        toolJson.add("rules", rules);
+        toolJson.addProperty("default_mining_speed", Oracle.bits(tool.defaultMiningSpeed()));
+        toolJson.addProperty("damage_per_block", tool.damagePerBlock());
+        toolJson.addProperty("can_destroy_blocks_in_creative", tool.canDestroyBlocksInCreative());
+        return toolJson;
+    }
+
+    /**
+     * What each item declares, as `Items` builds it: its class with the
+     * classes above it and the tracked methods each declares, and the
+     * `Item.Properties` the client reads: stack size, durability, the
+     * equippable and tool components, the crafting remainder, whether
+     * using it does anything by default, and the block a block item places.
+     */
+    private static JsonObject itemDeclarations(JsonObject row) {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        entry.addProperty("outcome", "listed");
+        var registry = net.minecraft.core.registries.BuiltInRegistries.ITEM;
+        var blockRegistry = net.minecraft.core.registries.BuiltInRegistries.BLOCK;
+        var playerType = net.minecraft.world.entity.EntityTypes.PLAYER.builtInRegistryHolder();
+        var components = net.minecraft.core.component.DataComponents.class;
+        var classes = new java.util.LinkedHashMap<String, Class<?>>();
+        var items = new JsonArray();
+        for (var item : registry) {
+            for (Class<?> type = item.getClass();
+                 type != null && type != Object.class;
+                 type = type.getSuperclass()) {
+                classes.putIfAbsent(type.getSimpleName(), type);
+                if (type == net.minecraft.world.item.Item.class) {
+                    break;
+                }
+            }
+            var data = item.components();
+            var described = new JsonObject();
+            described.addProperty("name", registry.getKey(item).toString());
+            described.addProperty("class", item.getClass().getSimpleName());
+            described.addProperty("max_stack_size",
+                data.getOrDefault(net.minecraft.core.component.DataComponents.MAX_STACK_SIZE, 1));
+            described.addProperty("max_damage",
+                data.getOrDefault(net.minecraft.core.component.DataComponents.MAX_DAMAGE, 0));
+            var equippable = data.get(net.minecraft.core.component.DataComponents.EQUIPPABLE);
+            if (equippable != null) {
+                var equip = new JsonObject();
+                equip.addProperty("slot", equippable.slot().getSerializedName());
+                equip.addProperty("player", equippable.canBeEquippedBy(playerType));
+                equip.addProperty("swappable", equippable.swappable());
+                described.add("equippable", equip);
+            }
+            var remainder = item.getCraftingRemainder();
+            if (remainder != null) {
+                var stack = remainder.create();
+                var left = new JsonObject();
+                left.addProperty("item", registry.getKey(stack.getItem()).toString());
+                left.addProperty("count", stack.getCount());
+                described.add("crafting_remainder", left);
+            }
+            var tool = data.get(net.minecraft.core.component.DataComponents.TOOL);
+            if (tool != null) {
+                described.add("tool", toolJson(tool));
+            }
+            described.addProperty("consumable",
+                data.has(net.minecraft.core.component.DataComponents.CONSUMABLE));
+            described.addProperty("blocks_attacks",
+                data.has(net.minecraft.core.component.DataComponents.BLOCKS_ATTACKS));
+            described.addProperty("kinetic_weapon",
+                data.has(net.minecraft.core.component.DataComponents.KINETIC_WEAPON));
+            if (item instanceof net.minecraft.world.item.BlockItem blockItem) {
+                described.addProperty("block", blockRegistry.getKey(blockItem.getBlock()).toString());
+            }
+            items.add(described);
+        }
+        var classList = new JsonArray();
+        classes.forEach((name, type) -> {
+            var described = new JsonObject();
+            described.addProperty("name", name);
+            described.addProperty("parent",
+                type == net.minecraft.world.item.Item.class ? "" : type.getSuperclass().getSimpleName());
+            var declares = new JsonArray();
+            for (var method : TRACKED_ITEM_METHODS.entrySet()) {
+                try {
+                    type.getDeclaredMethod(method.getKey(), method.getValue());
+                    declares.add(method.getKey());
+                } catch (NoSuchMethodException absent) {
+                    // Inherited, not its own.
+                }
+            }
+            described.add("declares", declares);
+            classList.add(described);
+        });
+        entry.add("classes", classList);
+        entry.add("items", items);
+        return entry;
     }
 
     private static JsonObject motionBlocking(JsonObject row) {

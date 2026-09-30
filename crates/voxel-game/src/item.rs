@@ -1,11 +1,11 @@
 //! Items as the client knows them without the server: the registry and the
 //! default components, from the reference's table.
 
-use voxel_data::item::registry::{ITEMS, ItemDefinition, RuleBlocks, Tool};
+use voxel_data::item::registry::{ITEMS, Item, RuleBlocks, Tool};
 use voxel_world::ClientBlockStateRegistry;
 
 /// The item with a registry id.
-pub fn definition(id: i32) -> Option<&'static ItemDefinition> {
+pub fn definition(id: i32) -> Option<&'static Item> {
     usize::try_from(id).ok().and_then(|index| ITEMS.get(index))
 }
 
