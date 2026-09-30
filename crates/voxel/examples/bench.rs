@@ -21,29 +21,10 @@ fn state(name: &str) -> i32 {
     i32::try_from(block.default_state_id()).expect("state numbers fit an i32")
 }
 
-/// A 5 by 5 chunk overworld: stone with holes and ore under a dirt and
-/// grass surface around y 60, water below sea level and scattered leaves
-/// above, from a fixed xorshift so every run meshes the same blocks.
-fn world() -> ClientWorld {
-    let [stone, ore, dirt, grass, water, leaves] = [
-        "minecraft:stone",
-        "minecraft:iron_ore",
-        "minecraft:dirt",
-        "minecraft:grass_block",
-        "minecraft:water",
-        "minecraft:oak_leaves",
-    ]
-    .map(state);
-    let mut seed = 12_345_u64;
-    let mut next = move || {
-        seed ^= seed << 13;
-        seed ^= seed >> 7;
-        seed ^= seed << 17;
-        seed
-    };
-    // A section above the surface holding blocks whose models turn, nudge,
-    // span two blocks or take colours.
-    let variety: Vec<i32> = [
+/// Blocks whose models turn, nudge, span two blocks or take colours, which
+/// the made-up world scatters in a section above its surface.
+fn variety() -> Vec<i32> {
+    [
         ("minecraft:oak_log", &[("axis", "x")][..]),
         ("minecraft:oak_log", &[("axis", "z")]),
         (
@@ -85,7 +66,30 @@ fn world() -> ClientWorld {
             .collect();
         i32::try_from(block.state_id(&chosen).expect("valid properties")).expect("fits")
     })
-    .collect();
+    .collect()
+}
+
+/// A 5 by 5 chunk overworld: stone with holes and ore under a dirt and
+/// grass surface around y 60, water below sea level and scattered leaves
+/// above, from a fixed xorshift so every run meshes the same blocks.
+fn world() -> ClientWorld {
+    let [stone, ore, dirt, grass, water, leaves] = [
+        "minecraft:stone",
+        "minecraft:iron_ore",
+        "minecraft:dirt",
+        "minecraft:grass_block",
+        "minecraft:water",
+        "minecraft:oak_leaves",
+    ]
+    .map(state);
+    let mut seed = 12_345_u64;
+    let mut next = move || {
+        seed ^= seed << 13;
+        seed ^= seed >> 7;
+        seed ^= seed << 17;
+        seed
+    };
+    let variety = variety();
     let mut world = ClientWorld::new(DimensionBounds::new(-64, 384));
     let biomes = vec![0; 64];
     for chunk_x in -2..=2 {

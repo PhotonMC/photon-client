@@ -651,19 +651,7 @@ pub fn build_mesh(
                 .uvs
                 .unwrap_or_else(|| default_face_uv(element.from, element.to, *facing));
 
-            // A face names a tint slot rather than a colour. A slot the
-            // caller did not resolve leaves the face untinted, which is what
-            // the reference does when a block has no source for that layer.
-            let tint = usize::try_from(face.tint_index)
-                .ok()
-                .and_then(|slot| tints.get(slot).copied())
-                .unwrap_or(0xFFFF_FFFF);
-            let tint = [
-                ((tint >> 16) & 0xFF) as f32 / 255.0,
-                ((tint >> 8) & 0xFF) as f32 / 255.0,
-                (tint & 0xFF) as f32 / 255.0,
-                ((tint >> 24) & 0xFF) as f32 / 255.0,
-            ];
+            let tint = face_tint(tints, face.tint_index);
             let face_uv = uv_transform(*facing);
             let base = mesh.vertices.len() as u32;
             let mut packed_uvs = [0_u64; 4];
@@ -739,6 +727,18 @@ pub fn build_mesh(
         }
     }
     Ok(mesh)
+}
+
+/// A face's colour from its tint slot, as red, green, blue and alpha. A face
+/// names a slot rather than a colour; a slot the caller did not resolve
+/// leaves the face untinted, which is what the reference does when a block
+/// has no source for that layer.
+fn face_tint(tints: &[u32], slot: i32) -> [f32; 4] {
+    let tint = usize::try_from(slot)
+        .ok()
+        .and_then(|slot| tints.get(slot).copied())
+        .unwrap_or(0xFFFF_FFFF);
+    [16, 8, 0, 24].map(|bits| ((tint >> bits) & 0xFF) as f32 / 255.0)
 }
 
 /// Flat per-face shading. Not the reference's lighting; a placeholder that

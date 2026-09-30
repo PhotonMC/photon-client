@@ -255,7 +255,6 @@ impl BlockRenderer {
     /// Read every block's blockstate file and every model any of its
     /// variants names, and pack all their textures into one atlas.
     #[expect(
-        clippy::cognitive_complexity,
         clippy::too_many_lines,
         reason = "the model bake steps in the order the reference runs them"
     )]
