@@ -6,7 +6,7 @@
 
 use voxel_game::text::Run;
 
-use crate::gui::chat::wrap;
+use crate::gui::chat::split;
 use crate::gui::font::Font;
 use crate::gui::{GuiAtlas, GuiFrame};
 
@@ -23,6 +23,34 @@ pub struct TabEntry {
     pub order: i32,
     /// The profile name, which orders players of one kind.
     pub profile_name: String,
+}
+
+impl TabEntry {
+    /// A listed player: the name shown (the display name the server gave, or
+    /// the profile name), and what orders it. A spectator's name is italic
+    /// where its own style says nothing of it (`decorateName`).
+    pub fn new(
+        profile_name: &str,
+        display: Option<Vec<Run>>,
+        game_mode: i32,
+        latency: i32,
+        order: i32,
+    ) -> Self {
+        let spectator = game_mode == 3;
+        let mut name = display.unwrap_or_else(|| crate::gui::chat::plain_runs(profile_name));
+        if spectator {
+            for run in &mut name {
+                run.style.italic = run.style.italic.or(Some(true));
+            }
+        }
+        Self {
+            name,
+            spectator,
+            latency,
+            order,
+            profile_name: profile_name.to_owned(),
+        }
+    }
 }
 
 /// The order players are listed in: a higher list order first, spectators
@@ -86,7 +114,7 @@ pub fn draw(
         if runs.is_empty() {
             Vec::new()
         } else {
-            wrap(runs, screen_width - 50, font)
+            split(runs, screen_width - 50, font)
         }
     };
     let (header_lines, footer_lines) = (split(header), split(footer));
@@ -115,9 +143,8 @@ pub fn draw(
     let mut y = 10;
     if !header_lines.is_empty() {
         lines(frame, &header_lines, y);
-        y += header_lines.len() as i32 * 9;
+        y += header_lines.len() as i32 * 9 + 1;
     }
-    y += 1;
     frame.fill(atlas, (left, y - 1, right, y + rows as i32 * 9), panel);
     for (index, entry) in entries.iter().enumerate() {
         let (col, row) = (index / rows, index % rows);

@@ -41,6 +41,15 @@ struct ChatLine {
 /// The space a line breaks at goes; a line that follows another starts with
 /// a space (`ComponentRenderUtils.wrapComponents`).
 pub fn wrap(runs: &[Run], max: i32, font: &Font) -> Vec<Vec<Run>> {
+    break_lines(runs, max, font, true)
+}
+
+/// `Font.split`: the same lines, with no indent on those that follow.
+pub fn split(runs: &[Run], max: i32, font: &Font) -> Vec<Vec<Run>> {
+    break_lines(runs, max, font, false)
+}
+
+fn break_lines(runs: &[Run], max: i32, font: &Font, indent_soft: bool) -> Vec<Vec<Run>> {
     let chars: Vec<(char, usize)> = runs
         .iter()
         .enumerate()
@@ -50,13 +59,16 @@ pub fn wrap(runs: &[Run], max: i32, font: &Font) -> Vec<Vec<Run>> {
         let bold = runs[index].style.bold == Some(true);
         font.glyph(c).map_or(0.0, |glyph| glyph.advance(bold))
     };
-    let mut lines: Vec<Vec<(char, usize)>> = Vec::new();
+    // Each line, and whether it follows a soft break (one the width made).
+    let mut lines: Vec<(Vec<(char, usize)>, bool)> = Vec::new();
+    let mut soft = false;
     let mut current: Vec<(char, usize)> = Vec::new();
     let mut width = 0.0_f32;
     let mut last_space: Option<usize> = None;
     for &entry in &chars {
         if entry.0 == '\n' {
-            lines.push(std::mem::take(&mut current));
+            lines.push((std::mem::take(&mut current), soft));
+            soft = false;
             width = 0.0;
             last_space = None;
             continue;
@@ -78,25 +90,29 @@ pub fn wrap(runs: &[Run], max: i32, font: &Font) -> Vec<Vec<Run>> {
                     (std::mem::take(&mut current), rest)
                 }
             };
-            lines.push(line);
+            lines.push((line, soft));
+            soft = true;
             current = rest;
             width = current.iter().map(|entry| advance(*entry)).sum();
             last_space = current.iter().rposition(|entry| entry.0 == ' ');
         }
     }
-    lines.push(current);
+    lines.push((current, soft));
     lines
         .into_iter()
-        .enumerate()
-        .map(|(number, line)| {
+        .map(|(line, soft)| {
             let mut out: Vec<Run> = Vec::new();
-            let indent = (number > 0).then(|| (' ', line.first().map_or(0, |entry| entry.1)));
-            for (c, index) in indent.into_iter().chain(line) {
+            // A line after a soft break starts with a space in no style.
+            let indent = (soft && indent_soft).then_some((' ', Style::default()));
+            let styled = line
+                .into_iter()
+                .map(|(c, index)| (c, runs[index].style.clone()));
+            for (c, style) in indent.into_iter().chain(styled) {
                 match out.last_mut() {
-                    Some(run) if run.style == runs[index].style => run.text.push(c),
+                    Some(run) if run.style == style => run.text.push(c),
                     _ => out.push(Run {
                         text: c.to_string(),
-                        style: runs[index].style.clone(),
+                        style,
                     }),
                 }
             }
@@ -118,6 +134,8 @@ pub struct ChatLog {
     lines: VecDeque<ChatLine>,
     ticks: u64,
     scroll: usize,
+    /// `newMessageSinceScroll`: the scroll bar shows red.
+    new_message: bool,
 }
 
 impl ChatLog {
@@ -133,13 +151,14 @@ impl ChatLog {
     /// first. A chat that is scrolled back keeps what it shows.
     pub fn add(&mut self, runs: &[Run], font: &Font, focused: bool) {
         for line in wrap(runs, WIDTH, font) {
-            if focused && self.scroll > 0 {
-                self.scroll += 1;
-            }
             self.lines.push_front(ChatLine {
                 runs: line,
                 added: self.ticks,
             });
+            if focused && self.scroll > 0 {
+                self.new_message = true;
+                self.scroll_by(1);
+            }
         }
         self.lines.truncate(MAX_LINES);
     }
@@ -148,10 +167,15 @@ impl ChatLog {
     pub fn scroll_by(&mut self, amount: i32) {
         let limit = self.lines.len().saturating_sub(LINES_OPEN);
         self.scroll = (self.scroll as i32 + amount).clamp(0, limit as i32) as usize;
+        if self.scroll == 0 {
+            self.new_message = false;
+        }
     }
 
+    /// `resetChatScroll`.
     pub fn reset_scroll(&mut self) {
         self.scroll = 0;
+        self.new_message = false;
     }
 
     /// `ChatComponent.extractRenderState`: the lines over the hotbar.
@@ -197,6 +221,47 @@ impl ChatLog {
             let tag = ((255.0 * alpha) as u32) << 24 | TAG_COLOUR;
             frame.fill(atlas, (0, entry_bottom - LINE_HEIGHT, 2, entry_bottom), tag);
         }
+        self.scroll_bar(frame, atlas, bottom, visible.len(), focused);
+    }
+
+    /// The scroll bar of a chat that is open (`extractRenderState`'s last
+    /// part): as tall as the lines shown are of all of them.
+    fn scroll_bar(
+        &self,
+        frame: &mut GuiFrame,
+        atlas: &GuiAtlas,
+        chat_bottom: i32,
+        count: usize,
+        focused: bool,
+    ) {
+        let total = self.lines.len() as i32;
+        if total == 0 || !focused {
+            return;
+        }
+        let chat_height = count as i32 * LINE_HEIGHT;
+        let virtual_height = total * LINE_HEIGHT;
+        if virtual_height == chat_height {
+            return;
+        }
+        let y = self.scroll as i32 * chat_height / total - chat_bottom;
+        let height = chat_height * chat_height / virtual_height;
+        let alpha = if y > 0 { 170_u32 } else { 96 };
+        let colour = if self.new_message {
+            13_382_451
+        } else {
+            3_355_562
+        };
+        let start_x = WIDTH + 4 + 4;
+        frame.fill(
+            atlas,
+            (start_x, -y, start_x + 2, -y - height),
+            alpha << 24 | colour,
+        );
+        frame.fill(
+            atlas,
+            (start_x + 2, -y, start_x + 1, -y - height),
+            alpha << 24 | 13_421_772,
+        );
     }
 }
 
@@ -520,13 +585,14 @@ mod tests {
     }
 
     #[test]
-    fn a_newline_breaks_a_line_and_the_next_starts_with_a_space() {
+    fn a_newline_breaks_a_line_without_an_indent() {
         let lines = wrap(&plain_runs("ab\ncd"), WIDTH, &Font::default());
         let texts: Vec<String> = lines
             .iter()
             .map(|line| line.iter().map(|run| run.text.as_str()).collect())
             .collect();
-        assert_eq!(texts, ["ab", " cd"]);
+        // A newline breaks the line without indenting the next.
+        assert_eq!(texts, ["ab", "cd"]);
     }
 
     #[test]

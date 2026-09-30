@@ -161,9 +161,9 @@ impl Titles {
             return;
         }
         let colour = (alpha as u32) << 24 | 0x00FF_FFFF;
-        let centre = (width as f32 / 2.0, height as f32 / 2.0);
+        let centre = ((width / 2) as f32, (height / 2) as f32);
         let mut line = |runs: &[Run], scale: f32, y: i32| {
-            let first = frame.vertices.len();
+            let first = (frame.vertices.len(), frame.log.as_ref().map_or(0, Vec::len));
             let x = -(font.width_of_runs(runs) / 2);
             frame.styled_text(atlas, font, runs, x, y, colour, true);
             frame.scale_from(first, scale, centre);

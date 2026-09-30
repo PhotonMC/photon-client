@@ -13,6 +13,7 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.font.TextRenderable;
 import net.minecraft.client.gui.font.glyphs.BakedGlyph;
 import net.minecraft.client.gui.font.providers.GlyphProviderDefinition;
+import net.minecraft.client.renderer.state.gui.BlitRenderState;
 import net.minecraft.client.renderer.state.gui.ColoredRectangleRenderState;
 import net.minecraft.client.renderer.state.gui.GuiRenderState;
 import net.minecraft.client.renderer.state.gui.GuiTextRenderState;
@@ -106,6 +107,8 @@ public final class GuiOracle {
         var field = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
         field.setAccessible(true);
         unsafe = (sun.misc.Unsafe) field.get(null);
+        // The game's registries, which the client classes read as they load.
+        Oracle.vanillaRegistries();
         // The game's own assets, read from its jar.
         var jar = java.nio.file.Path.of(net.minecraft.client.Minecraft.class
             .getProtectionDomain().getCodeSource().getLocation().toURI());
@@ -166,6 +169,54 @@ public final class GuiOracle {
         });
     }
 
+    /** The sprites asked of the GUI atlas, each with a texture coordinate of its own to tell it by. */
+    private static final Map<Float, String> SPRITE_NAMES = new HashMap<>();
+    private static final Map<String, Float> SPRITE_COORDINATES = new HashMap<>();
+
+    /** An atlas with no texture: it hands out a stand-in sprite for each name. */
+    static final class StubAtlas extends net.minecraft.client.renderer.texture.TextureAtlas {
+        StubAtlas() {
+            super(null);
+        }
+
+        @Override
+        public net.minecraft.client.renderer.texture.TextureAtlasSprite getSprite(Identifier location) {
+            try {
+                float coordinate = SPRITE_COORDINATES.computeIfAbsent(location.getPath(), name -> {
+                    float next = SPRITE_COORDINATES.size() + 1;
+                    SPRITE_NAMES.put(next, name);
+                    return next;
+                });
+                var sprite = (net.minecraft.client.renderer.texture.TextureAtlasSprite) unsafe.allocateInstance(
+                    net.minecraft.client.renderer.texture.TextureAtlasSprite.class);
+                var contents = unsafe.allocateInstance(net.minecraft.client.renderer.texture.SpriteContents.class);
+                set(contents, "additionalMetadata", List.of());
+                set(sprite, "contents", contents);
+                set(sprite, "atlasLocation", Identifier.withDefaultNamespace("textures/atlas/gui.png"));
+                set(sprite, "u0", coordinate);
+                set(sprite, "u1", coordinate);
+                set(sprite, "v0", 0.0F);
+                set(sprite, "v1", 0.0F);
+                return sprite;
+            } catch (Exception error) {
+                throw new IllegalStateException(error);
+            }
+        }
+    }
+
+    /** A texture with nothing behind it. */
+    static final class BlankTexture extends net.minecraft.client.renderer.texture.AbstractTexture {
+        @Override
+        public com.mojang.blaze3d.textures.GpuTextureView getTextureView() {
+            return null;
+        }
+
+        @Override
+        public com.mojang.blaze3d.textures.GpuSampler getSampler() {
+            return null;
+        }
+    }
+
     /** A narrator that says nothing, for the code that narrates what it selects. */
     static final class SilentNarrator extends net.minecraft.client.GameNarrator {
         SilentNarrator() {
@@ -218,7 +269,11 @@ public final class GuiOracle {
         set(window, "guiScaledHeight", height);
         set(minecraft, "window", window);
         var atlasManager = unsafe.allocateInstance(net.minecraft.client.resources.model.sprite.AtlasManager.class);
-        var atlas = unsafe.allocateInstance(net.minecraft.client.renderer.texture.TextureAtlas.class);
+        var atlas = unsafe.allocateInstance(StubAtlas.class);
+        var textures = unsafe.allocateInstance(net.minecraft.client.renderer.texture.TextureManager.class);
+        set(textures, "byPath", new HashMap<>(Map.of(Identifier.withDefaultNamespace("textures/atlas/gui.png"),
+            unsafe.allocateInstance(BlankTexture.class))));
+        set(minecraft, "textureManager", textures);
         Class<?> entryClass = Class.forName(
             "net.minecraft.client.resources.model.sprite.AtlasManager$AtlasEntry");
         var constructor = entryClass.getDeclaredConstructors()[0];
@@ -235,6 +290,7 @@ public final class GuiOracle {
         set(gui, "chatListener", listener);
         var hud = unsafe.allocateInstance(net.minecraft.client.gui.Hud.class);
         set(hud, "tickCount", 0);
+        set(hud, "minecraft", minecraft);
         set(gui, "hud", hud);
         set(minecraft, "gui", gui);
         set(minecraft, "font", font);
@@ -252,6 +308,18 @@ public final class GuiOracle {
     static JsonArray record(GuiRenderState state) {
         var ops = new JsonArray();
         state.forEachElement(element -> {
+            if (element instanceof BlitRenderState blit) {
+                var op = new JsonObject();
+                op.addProperty("op", "sprite");
+                op.addProperty("name", SPRITE_NAMES.get(blit.u0()));
+                var pose = blit.pose();
+                op.addProperty("x0", pose.m00() * blit.x0() + pose.m10() * blit.y0() + pose.m20());
+                op.addProperty("y0", pose.m01() * blit.x0() + pose.m11() * blit.y0() + pose.m21());
+                op.addProperty("x1", pose.m00() * blit.x1() + pose.m10() * blit.y1() + pose.m20());
+                op.addProperty("y1", pose.m01() * blit.x1() + pose.m11() * blit.y1() + pose.m21());
+                op.addProperty("color", blit.color());
+                ops.add(op);
+            }
             if (element instanceof ColoredRectangleRenderState rectangle) {
                 var op = new JsonObject();
                 op.addProperty("op", "fill");
@@ -343,6 +411,8 @@ public final class GuiOracle {
             return switch (request.get("operation").getAsString()) {
                 case "chat" -> chat(request);
                 case "suggestions" -> suggestions(request);
+                case "titles" -> titles(request);
+                case "tab_list" -> tabList(request);
                 default -> throw new IllegalArgumentException("Unknown gui operation");
             };
         } catch (Exception error) {
@@ -363,8 +433,18 @@ public final class GuiOracle {
                 chat.addServerSystemMessage(Component.literal(message.get("text").getAsString()));
             }
             set(screen.hud(), "tickCount", row.get("tick").getAsInt());
+            boolean focused = row.has("focused") && row.get("focused").getAsBoolean();
+            if (focused) {
+                // The chat is focused while the chat screen is the open one.
+                set(get(screen.minecraft(), "gui"), "screen",
+                    unsafe.allocateInstance(net.minecraft.client.gui.screens.ChatScreen.class));
+            }
+            if (row.has("scroll")) {
+                chat.scrollChat(row.get("scroll").getAsInt());
+            }
             chat.extractRenderState(screen.graphics(), font, row.get("tick").getAsInt(), 0, 0,
-                net.minecraft.client.gui.components.ChatComponent.DisplayMode.BACKGROUND, false);
+                focused ? net.minecraft.client.gui.components.ChatComponent.DisplayMode.FOREGROUND
+                    : net.minecraft.client.gui.components.ChatComponent.DisplayMode.BACKGROUND, false);
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());
             out.add("ops", record(screen.state()));
@@ -445,6 +525,116 @@ public final class GuiOracle {
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());
             out.add("steps", steps);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /** The title, the subtitle and the action bar, each at a point of its time. */
+    private static JsonObject titles(JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            var screen = screen(row.get("width").getAsInt(), row.get("height").getAsInt(), 0, 0);
+            var hud = screen.hud();
+            int fadeIn = row.get("fade_in").getAsInt();
+            int stay = row.get("stay").getAsInt();
+            int fadeOut = row.get("fade_out").getAsInt();
+            set(hud, "titleFadeInTime", fadeIn);
+            set(hud, "titleStayTime", stay);
+            set(hud, "titleFadeOutTime", fadeOut);
+            if (row.has("title")) {
+                set(hud, "title", Component.literal(row.get("title").getAsString()));
+                set(hud, "titleTime", fadeIn + stay + fadeOut - row.get("elapsed").getAsInt());
+            }
+            if (row.has("subtitle")) {
+                set(hud, "subtitle", Component.literal(row.get("subtitle").getAsString()));
+            }
+            if (row.has("overlay")) {
+                set(hud, "overlayMessageString", Component.literal(row.get("overlay").getAsString()));
+                set(hud, "overlayMessageTime", 60 - row.get("overlay_elapsed").getAsInt());
+            }
+            float partial = row.get("partial").getAsFloat();
+            var tracker = new net.minecraft.client.DeltaTracker() {
+                @Override
+                public float getGameTimeDeltaTicks() {
+                    return partial;
+                }
+
+                @Override
+                public float getGameTimeDeltaPartialTick(boolean ignoreFrozenGame) {
+                    return partial;
+                }
+
+                @Override
+                public float getRealtimeDeltaTicks() {
+                    return partial;
+                }
+            };
+            for (String name : new String[] {"extractOverlayMessage", "extractTitle"}) {
+                var method = net.minecraft.client.gui.Hud.class.getDeclaredMethod(name,
+                    GuiGraphicsExtractor.class, net.minecraft.client.DeltaTracker.class);
+                method.setAccessible(true);
+                method.invoke(hud, screen.graphics(), tracker);
+            }
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("ops", record(screen.state()));
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /** The player list over the game: who is listed, how, and the header and footer. */
+    private static JsonObject tabList(JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            int width = row.get("width").getAsInt();
+            var screen = screen(width, row.get("height").getAsInt(), 0, 0);
+            var minecraft = screen.minecraft();
+            var listener = (net.minecraft.client.multiplayer.ClientPacketListener)
+                unsafe.allocateInstance(net.minecraft.client.multiplayer.ClientPacketListener.class);
+            var scoreboard = new net.minecraft.world.scores.Scoreboard();
+            set(listener, "scoreboard", scoreboard);
+            var listed = new it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet<net.minecraft.client.multiplayer.PlayerInfo>();
+            set(listener, "listedPlayers", listed);
+            set(listener, "onlineMode", false);
+            var player = unsafe.allocateInstance(net.minecraft.client.player.LocalPlayer.class);
+            set(player, "connection", listener);
+            set(minecraft, "player", player);
+            var level = unsafe.allocateInstance(net.minecraft.client.multiplayer.ClientLevel.class);
+            set(level, "connection", listener);
+            set(minecraft, "level", level);
+            for (var playerElement : row.getAsJsonArray("players")) {
+                var described = playerElement.getAsJsonObject();
+                String name = described.get("name").getAsString();
+                var info = new net.minecraft.client.multiplayer.PlayerInfo(new com.mojang.authlib.GameProfile(
+                    java.util.UUID.nameUUIDFromBytes(name.getBytes()), name), false);
+                set(info, "gameMode", net.minecraft.world.level.GameType.byId(described.get("mode").getAsInt()));
+                set(info, "latency", described.get("latency").getAsInt());
+                set(info, "tabListOrder", described.get("order").getAsInt());
+                if (described.has("display")) {
+                    info.setTabListDisplayName(Component.literal(described.get("display").getAsString()));
+                }
+                listed.add(info);
+            }
+            var overlay = new net.minecraft.client.gui.components.PlayerTabOverlay(minecraft,
+                (net.minecraft.client.gui.Hud) screen.hud());
+            if (row.has("header")) {
+                overlay.setHeader(Component.literal(row.get("header").getAsString()));
+            }
+            if (row.has("footer")) {
+                overlay.setFooter(Component.literal(row.get("footer").getAsString()));
+            }
+            overlay.extractRenderState(screen.graphics(), width, scoreboard, null);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("ops", record(screen.state()));
             rows.add(out);
         }
         var result = new JsonObject();

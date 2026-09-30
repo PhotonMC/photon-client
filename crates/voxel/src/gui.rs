@@ -8,7 +8,7 @@ use voxel_game::text::{Lang, Style};
 use voxel_net::connection::{ChatEvent, ChatHolder, HudEvent, PlaySession};
 use voxel_render::VulkanBackend;
 use voxel_render::biome_tint::BiomeTints;
-use voxel_render::gui::chat::{ChatLog, plain_runs as chat_runs};
+use voxel_render::gui::chat::ChatLog;
 use voxel_render::gui::font::Font;
 use voxel_render::gui::items::GuiItemVertex;
 use voxel_render::gui::screen::ScreenDraw;
@@ -138,23 +138,17 @@ impl Gui {
             .listed_players()
             .into_iter()
             .map(|info| {
-                let spectator = info.game_mode == 3;
-                let mut name = match &info.display_name {
-                    Some(component) => self.lang.runs(component, &Style::default()),
-                    None => chat_runs(&info.name),
-                };
-                if spectator {
-                    for run in &mut name {
-                        run.style.italic = Some(true);
-                    }
-                }
-                TabEntry {
-                    name,
-                    spectator,
-                    latency: info.latency,
-                    order: info.list_order,
-                    profile_name: info.name.clone(),
-                }
+                let display = info
+                    .display_name
+                    .as_ref()
+                    .map(|component| self.lang.runs(component, &Style::default()));
+                TabEntry::new(
+                    &info.name,
+                    display,
+                    info.game_mode,
+                    info.latency,
+                    info.list_order,
+                )
             })
             .collect();
         tab_list::sort(&mut entries);

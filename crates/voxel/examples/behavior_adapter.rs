@@ -18367,12 +18367,13 @@ fn gui_ops(ops: &[voxel_render::gui::DrawOp]) -> Vec<Value> {
             String::new(),
             i64::from(*colour as i32),
         ),
+        DrawOp::Sprite { rect, .. } => (1, rect.1, rect.0, rect.2, rect.3, String::new(), -1),
         DrawOp::Text {
             x, y, colour, runs, ..
         } => (
-            1,
-            *y,
-            *x,
+            2,
+            *y as i32,
+            *x as i32,
             0,
             0,
             runs.iter().map(|run| run.0.as_str()).collect::<String>(),
@@ -18389,14 +18390,19 @@ fn gui_ops(ops: &[voxel_render::gui::DrawOp]) -> Vec<Value> {
                 "x1": f64::from(rect.2), "y1": f64::from(rect.3),
                 "color": *colour as i32,
             }),
+            DrawOp::Sprite { name, rect } => json!({
+                "op": "sprite", "name": name, "x0": f64::from(rect.0), "y0": f64::from(rect.1),
+                "x1": f64::from(rect.2), "y1": f64::from(rect.3), "color": -1,
+            }),
             DrawOp::Text {
                 x,
                 y,
+                scale,
                 colour,
                 shadow,
                 runs,
             } => json!({
-                "op": "text", "x": f64::from(*x), "y": f64::from(*y), "scale": 1.0, "color": *colour as i32,
+                "op": "text", "x": f64::from(*x), "y": f64::from(*y), "scale": f64::from(*scale), "color": *colour as i32,
                 "shadow": shadow,
                 "runs": runs.iter().map(|(text, rgb, bold, italic)| {
                     let mut run = json!({"text": text, "bold": bold, "italic": italic});
@@ -18455,7 +18461,11 @@ fn gui_result(request: &Value) -> Result<Value, String> {
                 while log.ticks() < row["tick"].as_u64().unwrap_or(0) {
                     log.tick();
                 }
-                log.draw(&mut frame, &atlas, &font, int("height"), false);
+                if let Some(scroll) = row["scroll"].as_i64() {
+                    log.scroll_by(scroll as i32);
+                }
+                let focused = row["focused"].as_bool().unwrap_or(false);
+                log.draw(&mut frame, &atlas, &font, int("height"), focused);
             }
             "suggestions" => {
                 use voxel_render::gui::chat::ChatScreen;
@@ -18517,6 +18527,70 @@ fn gui_result(request: &Value) -> Result<Value, String> {
                 }
                 out.push(json!({"label": row["label"], "steps": steps}));
                 continue;
+            }
+            "titles" => {
+                use voxel_render::gui::titles::Titles;
+                let mut titles = Titles::default();
+                titles.set_times(int("fade_in"), int("stay"), int("fade_out"));
+                let runs = |text: &str| voxel_render::gui::chat::plain_runs(text);
+                if let Some(title) = row["title"].as_str() {
+                    titles.set_title(runs(title));
+                    for _ in 0..int("elapsed") {
+                        titles.tick();
+                    }
+                }
+                if let Some(subtitle) = row["subtitle"].as_str() {
+                    titles.set_subtitle(runs(subtitle));
+                }
+                if let Some(overlay) = row["overlay"].as_str() {
+                    titles.set_overlay(runs(overlay));
+                    for _ in 0..int("overlay_elapsed") {
+                        titles.tick();
+                    }
+                }
+                let partial = row["partial"].as_f64().unwrap_or(0.0) as f32;
+                titles.draw(
+                    &mut frame,
+                    &atlas,
+                    &font,
+                    (int("width"), int("height")),
+                    partial,
+                );
+            }
+            "tab_list" => {
+                use voxel_render::gui::tab_list::{self, TabEntry};
+                let runs = |key: &str| {
+                    row[key]
+                        .as_str()
+                        .map(voxel_render::gui::chat::plain_runs)
+                        .unwrap_or_default()
+                };
+                let mut entries: Vec<TabEntry> = row["players"]
+                    .as_array()
+                    .ok_or("players")?
+                    .iter()
+                    .map(|player| {
+                        TabEntry::new(
+                            player["name"].as_str().unwrap_or_default(),
+                            player["display"]
+                                .as_str()
+                                .map(voxel_render::gui::chat::plain_runs),
+                            player["mode"].as_i64().unwrap_or(0) as i32,
+                            player["latency"].as_i64().unwrap_or(0) as i32,
+                            player["order"].as_i64().unwrap_or(0) as i32,
+                        )
+                    })
+                    .collect();
+                tab_list::sort(&mut entries);
+                tab_list::draw(
+                    &mut frame,
+                    &atlas,
+                    &font,
+                    int("width"),
+                    &entries,
+                    &runs("header"),
+                    &runs("footer"),
+                );
             }
             _ => return Err("unknown gui operation".into()),
         }

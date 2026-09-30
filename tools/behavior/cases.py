@@ -14006,9 +14006,14 @@ def gui_cases():
     """The screens' drawing as the reference's own GUI code records it: the
     rectangles and the text, in order, with their poses applied. The glyphs
     are not drawn; their advances come from the reference's font providers."""
-    def chat(label, messages, tick, width=427, height=240):
-        return {"label": label, "width": width, "height": height,
-                "messages": [{"text": text, "tick": at} for text, at in messages], "tick": tick}
+    def chat(label, messages, tick, width=427, height=240, focused=False, scroll=None):
+        row = {"label": label, "width": width, "height": height,
+               "messages": [{"text": text, "tick": at} for text, at in messages], "tick": tick}
+        if focused:
+            row["focused"] = True
+        if scroll is not None:
+            row["scroll"] = scroll
+        return row
 
     long_text = ("this is a fairly long chat message that should wrap onto a second line "
                  "when it reaches the edge of the chat box and goes on for a third one too")
@@ -14020,8 +14025,86 @@ def gui_cases():
         chat("faded", [("gone", 0)], 200),
         chat("many", [(f"line {n}", 0) for n in range(14)], 10),
         chat("tall-window", [("hello", 0)], 0, width=640, height=480),
+        chat("newline", [("first line\nsecond line", 0)], 0),
+        chat("open-unscrolled", [(f"line {n}", 0) for n in range(30)], 400, focused=True),
+        chat("open-scrolled", [(f"line {n}", 0) for n in range(30)], 400, focused=True, scroll=3),
+        chat("open-scrolled-end", [(f"line {n}", 0) for n in range(30)], 400, focused=True, scroll=100),
+        chat("open-short", [("only", 0), ("two", 0)], 400, focused=True),
     ]
     yield {"case_id": "gui/chat", "family": "gui", "operation": "chat", "rows": rows}
+
+
+def gui_title_cases():
+    """The title, the subtitle and the action bar at points of their times: the
+    fade in and out, the hold, the scales and places, and a subtitle with no
+    title."""
+    def titles(label, elapsed=0, partial=0.0, title="Hello", subtitle=None, overlay=None,
+               overlay_elapsed=0, times=(10, 70, 20), width=427, height=240):
+        row = {"label": label, "width": width, "height": height, "fade_in": times[0],
+               "stay": times[1], "fade_out": times[2], "elapsed": elapsed,
+               "overlay_elapsed": overlay_elapsed, "partial": partial}
+        if title is not None:
+            row["title"] = title
+        if subtitle is not None:
+            row["subtitle"] = subtitle
+        if overlay is not None:
+            row["overlay"] = overlay
+        return row
+
+    rows = [
+        titles("fade-in-start", elapsed=0, partial=0.5),
+        titles("fade-in-middle", elapsed=5, partial=0.25),
+        titles("hold", elapsed=30, subtitle="below"),
+        titles("fade-out", elapsed=90, partial=0.75, subtitle="below"),
+        titles("last-tick", elapsed=99),
+        titles("title-only-wide", elapsed=30, title="A much longer title to centre", width=640, height=480),
+        titles("custom-times", elapsed=3, times=(5, 10, 5), subtitle="x"),
+        titles("no-fade-in", elapsed=0, times=(0, 70, 20)),
+        titles("subtitle-without-title", title=None, subtitle="lonely"),
+        titles("action-bar", title=None, overlay="Action bar text", overlay_elapsed=10),
+        titles("action-bar-fading", title=None, overlay="Action bar text", overlay_elapsed=50, partial=0.5),
+        titles("both", elapsed=20, subtitle="sub", overlay="bar", overlay_elapsed=5),
+    ]
+    yield {"case_id": "gui/titles", "family": "gui", "operation": "titles", "rows": rows}
+
+
+def gui_tab_list_cases():
+    """The player list: one column and several, the header and the footer (and
+    their wrapping), spectators, display names, list order and the ping icons."""
+    def player(name, mode=0, latency=0, order=0, display=None):
+        described = {"name": name, "mode": mode, "latency": latency, "order": order}
+        if display is not None:
+            described["display"] = display
+        return described
+
+    def tab(label, players, header=None, footer=None, width=427, height=240):
+        row = {"label": label, "width": width, "height": height, "players": players}
+        if header is not None:
+            row["header"] = header
+        if footer is not None:
+            row["footer"] = footer
+        return row
+
+    twenty = [player(f"player{n:02}", latency=n * 40) for n in range(20)]
+    many = [player(f"player{n:02}", latency=n * 20 - 10) for n in range(45)]
+    rows = [
+        tab("alone", [player("Miner", latency=23)]),
+        tab("pings", [player("a", latency=-1), player("b", latency=100), player("c", latency=200),
+                      player("d", latency=400), player("e", latency=800), player("f", latency=2000)]),
+        tab("header-footer", [player("Miner")], header="Welcome to the server", footer="Have fun"),
+        tab("footer-only", [player("Miner")], footer="Bottom line"),
+        tab("header-only", [player("Miner")], header="Top line"),
+        tab("wrapped-header", [player("Miner")],
+            header="a header long enough that the tab list has to break it over lines " * 2),
+        tab("sorted", [player("zed"), player("Amy", mode=3), player("bob"), player("Cat", order=5),
+                       player("dan", mode=3, order=5)]),
+        tab("display-names", [player("a", display="Alice the Great"), player("b")]),
+        tab("twenty", twenty),
+        tab("columns", many),
+        tab("narrow", many, width=320),
+        tab("eighty-cap", [player(f"p{n:03}") for n in range(95)]),
+    ]
+    yield {"case_id": "gui/tab-list", "family": "gui", "operation": "tab_list", "rows": rows}
 
 
 def gui_suggestion_cases():
@@ -14060,7 +14143,7 @@ def build_cases(families):
                   "movement": movement_cases,
                   "entity": entity_cases,
                   "gui": gui_cases}
-    generators["gui"] = lambda: itertools.chain(gui_cases(), gui_suggestion_cases())
+    generators["gui"] = lambda: itertools.chain(gui_cases(), gui_suggestion_cases(), gui_title_cases(), gui_tab_list_cases())
     cases = [dict(schema_version=1, **case)
              for family in sorted(families) for case in generators[family]()]
     ids = [case["case_id"] for case in cases]

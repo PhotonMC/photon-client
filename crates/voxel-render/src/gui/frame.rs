@@ -39,9 +39,16 @@ pub enum DrawOp {
         rect: (i32, i32, i32, i32),
         colour: u32,
     },
+    Sprite {
+        name: String,
+        rect: (i32, i32, i32, i32),
+    },
     Text {
-        x: i32,
-        y: i32,
+        /// Where the text starts, after any pose a caller applied, and the
+        /// scale of the pose.
+        x: f32,
+        y: f32,
+        scale: f32,
         colour: u32,
         shadow: bool,
         /// Each run: its text, its colour if it has one, bold, italic.
@@ -102,7 +109,22 @@ impl GuiFrame {
 
     /// A pose scale and translate over what was drawn since vertex `first`:
     /// each position `p` becomes `translate + scale * p`.
-    pub fn scale_from(&mut self, first: usize, scale: f32, translate: (f32, f32)) {
+    pub fn scale_from(
+        &mut self,
+        (first, first_op): (usize, usize),
+        scale: f32,
+        translate: (f32, f32),
+    ) {
+        if let Some(log) = &mut self.log {
+            let from = first_op.min(log.len());
+            for op in &mut log[from..] {
+                if let DrawOp::Text { x, y, scale: s, .. } = op {
+                    *x = translate.0 + scale * *x;
+                    *y = translate.1 + scale * *y;
+                    *s *= scale;
+                }
+            }
+        }
         for vertex in &mut self.vertices[first..] {
             vertex.position = [
                 translate.0 + scale * vertex.position[0],
@@ -118,6 +140,12 @@ impl GuiFrame {
 
     /// `GuiGraphics.blitSprite` of a whole sprite.
     pub fn sprite(&mut self, atlas: &GuiAtlas, name: &str, x: i32, y: i32, w: i32, h: i32) {
+        if let Some(log) = &mut self.log {
+            log.push(DrawOp::Sprite {
+                name: name.to_owned(),
+                rect: (x, y, x + w, y + h),
+            });
+        }
         self.blit(atlas, GuiBlend::Translucent, name, x, y, w, h);
     }
 
@@ -450,8 +478,9 @@ impl GuiFrame {
             return;
         }
         log.push(DrawOp::Text {
-            x,
-            y,
+            x: x as f32,
+            y: y as f32,
+            scale: 1.0,
             colour,
             shadow,
             runs: runs
