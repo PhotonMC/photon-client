@@ -17757,10 +17757,31 @@ fn named_state(block: &Value) -> Result<i32, String> {
 /// server would send them. Test glue only: the client takes its tags from
 /// the server. The files stay local under `.data`.
 fn vanilla_block_tags() -> Result<ClientboundUpdateTagsPacket, String> {
+    vanilla_tags_of("block", "minecraft:block", &|name| {
+        voxel_data::block::registry::BLOCKS
+            .iter()
+            .position(|block| block.name == name)
+            .map(|index| index as i32)
+    })
+}
+
+/// The item tags of the data pack, as a tag packet would carry them.
+fn vanilla_item_tags() -> Result<voxel_world::block::tags::ItemTags, String> {
+    let packet = vanilla_tags_of("item", "minecraft:item", &voxel_game::item::id_of)?;
+    voxel_world::block::tags::ItemTags::from_registries(&packet.registries)
+        .ok_or_else(|| "no item tags".to_owned())
+}
+
+fn vanilla_tags_of(
+    folder: &str,
+    registry_name: &str,
+    index_of: &dyn Fn(&str) -> Option<i32>,
+) -> Result<ClientboundUpdateTagsPacket, String> {
     fn resolve(
         root: &std::path::Path,
         name: &str,
         seen: &mut BTreeMap<String, Vec<i32>>,
+        index_of: &dyn Fn(&str) -> Option<i32>,
     ) -> Result<Vec<i32>, String> {
         if let Some(done) = seen.get(name) {
             return Ok(done.clone());
@@ -17780,15 +17801,12 @@ fn vanilla_block_tags() -> Result<ClientboundUpdateTagsPacket, String> {
             };
             if let Some(tag) = id.strip_prefix('#') {
                 let path = tag.strip_prefix("minecraft:").ok_or("foreign tag")?;
-                out.extend(resolve(root, path, seen)?);
+                out.extend(resolve(root, path, seen, index_of)?);
             } else {
-                match voxel_data::block::registry::BLOCKS
-                    .iter()
-                    .position(|block| block.name == id)
-                {
-                    Some(index) => out.push(index as i32),
+                match index_of(id) {
+                    Some(index) => out.push(index),
                     None if !required => {}
-                    None => return Err(format!("unknown block {id} in tag {name}")),
+                    None => return Err(format!("unknown entry {id} in tag {name}")),
                 }
             }
         }
@@ -17811,20 +17829,21 @@ fn vanilla_block_tags() -> Result<ClientboundUpdateTagsPacket, String> {
         Ok(())
     }
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../.data/minecraft/assets/jar/data/minecraft/tags/block");
+        .join("../../.data/minecraft/assets/jar/data/minecraft/tags")
+        .join(folder);
     let mut names = Vec::new();
     walk(&root, &root, &mut names)?;
     names.sort();
     let mut seen = BTreeMap::new();
     let mut tags = Vec::new();
     for name in names {
-        let mut values = resolve(&root, &name, &mut seen)?;
+        let mut values = resolve(&root, &name, &mut seen, index_of)?;
         values.sort_unstable();
         values.dedup();
         let id = Identifier::parse(&format!("minecraft:{name}")).map_err(|_| "tag id")?;
         tags.push(TagEntry::new(id, values));
     }
-    let registry = Identifier::parse("minecraft:block").map_err(|_| "registry id")?;
+    let registry = Identifier::parse(registry_name).map_err(|_| "registry id")?;
     Ok(ClientboundUpdateTagsPacket::new(vec![RegistryTags::new(
         registry, tags,
     )]))
@@ -18403,6 +18422,13 @@ fn container_clicks_result(request: &Value) -> Result<Value, String> {
             Some(name) => {
                 let kind = match name.strip_prefix("minecraft:").unwrap_or(name) {
                     "crafting" => MenuKind::Crafting,
+                    "anvil" => MenuKind::Anvil,
+                    "enchantment" => MenuKind::Enchantment,
+                    "grindstone" => MenuKind::Grindstone,
+                    "loom" => MenuKind::Loom,
+                    "smithing" => MenuKind::Smithing,
+                    "cartography_table" => MenuKind::Cartography,
+                    "stonecutter" => MenuKind::Stonecutter,
                     "furnace" => MenuKind::Furnace(Smelter::Furnace),
                     "blast_furnace" => MenuKind::Furnace(Smelter::BlastFurnace),
                     "smoker" => MenuKind::Furnace(Smelter::Smoker),
@@ -18420,6 +18446,53 @@ fn container_clicks_result(request: &Value) -> Result<Value, String> {
                     .as_i64()
                     .ok_or("container_id must be a number")? as i32;
                 let mut menu = ContainerMenu::for_menu(kind, id, Vec::new(), None, 0);
+                if let Some(sets) = row.get("recipe_sets").and_then(Value::as_object) {
+                    // In the order the menu reads its sets.
+                    menu.accepted = kind
+                        .input_sets()
+                        .iter()
+                        .map(|name| {
+                            std::sync::Arc::new(
+                                sets.get(*name)
+                                    .and_then(Value::as_array)
+                                    .into_iter()
+                                    .flatten()
+                                    .filter_map(|item| {
+                                        let name = item.as_str()?;
+                                        voxel_game::item::id_of(&format!(
+                                            "minecraft:{}",
+                                            name.trim_start_matches("minecraft:")
+                                        ))
+                                    })
+                                    .collect(),
+                            )
+                        })
+                        .collect();
+                }
+                if let Some(inputs) = row.get("stonecutter_inputs").and_then(Value::as_array) {
+                    menu.accepted = vec![std::sync::Arc::new(
+                        inputs
+                            .iter()
+                            .filter_map(|item| {
+                                let name = item.as_str()?;
+                                voxel_game::item::id_of(&format!(
+                                    "minecraft:{}",
+                                    name.trim_start_matches("minecraft:")
+                                ))
+                            })
+                            .collect(),
+                    )];
+                }
+                if let Some(data) = row.get("data").and_then(Value::as_array) {
+                    menu.data = data
+                        .iter()
+                        .filter_map(|value| Some(value.as_i64()? as i16))
+                        .collect();
+                }
+                if let Some(level) = row.get("xp_level").and_then(Value::as_i64) {
+                    menu.xp_level = level as i32;
+                }
+                menu.item_tags = std::sync::Arc::new(vanilla_item_tags()?);
                 if let Some(inputs) = row.get("furnace_inputs").and_then(Value::as_array) {
                     menu.accepted = vec![std::sync::Arc::new(
                         inputs

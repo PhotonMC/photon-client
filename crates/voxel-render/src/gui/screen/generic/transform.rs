@@ -224,7 +224,7 @@ impl GenericScreen {
         };
         if extra == "minecraft:paper" {
             sprite(draw, "scaled_map", 67, 13, 66, 66);
-        } else if extra == "minecraft:filled_map" {
+        } else if extra == "minecraft:map" {
             sprite(draw, "duplicated_map", 83, 13, 50, 66);
             sprite(draw, "duplicated_map", 67, 29, 50, 66);
         } else if extra == "minecraft:glass_pane" {

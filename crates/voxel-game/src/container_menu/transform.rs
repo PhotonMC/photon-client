@@ -37,6 +37,51 @@ fn has_any_enchantments(stack: &Stack) -> bool {
 }
 
 impl ContainerMenu {
+    /// The slots whose change the menu answers with `slotsChanged`: the
+    /// inputs of a menu that makes a result from them.
+    pub(super) fn input_slots(&self) -> std::ops::Range<usize> {
+        match self.kind {
+            MenuKind::Stonecutter => 0..1,
+            MenuKind::Grindstone | MenuKind::Cartography | MenuKind::Anvil => 0..2,
+            MenuKind::Loom => 0..3,
+            MenuKind::Smithing => 0..3,
+            _ => 0..0,
+        }
+    }
+
+    /// `slotsChanged` of these menus, as far as the client runs it: a result
+    /// slot whose inputs changed is emptied, which is what the ones that make
+    /// nothing on the client do, and what the ones that do make (the
+    /// grindstone's, the loom's and the anvil's) start from before the server
+    /// sends theirs.
+    pub(super) fn inputs_changed(&mut self) {
+        let Some(result) = self.kind.result_slot() else {
+            return;
+        };
+        match self.kind {
+            // `lastInputItem`: only a different item starts the list over.
+            MenuKind::Stonecutter => {
+                let input = self.slots[0].as_ref().map(Stack::item_registry_id);
+                if input != self.last_input {
+                    self.last_input = input;
+                    if let Some(selected) = self.data.first_mut() {
+                        *selected = -1;
+                    }
+                    self.slots[result] = None;
+                }
+            }
+            // The result stays only while both inputs are there.
+            MenuKind::Cartography => {
+                if self.slots[result].is_some()
+                    && !(self.slots[0].is_some() && self.slots[1].is_some())
+                {
+                    self.slots[result] = None;
+                }
+            }
+            _ => self.slots[result] = None,
+        }
+    }
+
     /// `ItemStack.is(tag)`.
     fn in_tag(&self, stack: &Stack, tag: &str) -> bool {
         self.item_tags.contains(stack.item_registry_id(), tag)
@@ -58,7 +103,7 @@ impl ContainerMenu {
             (MenuKind::Cartography, 0) => has_component(stack, ids::MAP_ID),
             (MenuKind::Cartography, 1) => {
                 is_item(stack, "minecraft:paper")
-                    || is_item(stack, "minecraft:filled_map")
+                    || is_item(stack, "minecraft:map")
                     || is_item(stack, "minecraft:glass_pane")
             }
             (MenuKind::Smithing, 0..=2) => self
@@ -66,13 +111,10 @@ impl ContainerMenu {
                 .get(index)
                 .is_some_and(|items| items.contains(&stack.item_registry_id())),
             (MenuKind::Loom, 0) => is_class(stack, ItemClass::BannerItem),
-            (MenuKind::Loom, 1) => {
-                self.in_tag(stack, "minecraft:loom_dyes") && has_component(stack, ids::DYE)
-            }
-            (MenuKind::Loom, 2) => {
-                self.in_tag(stack, "minecraft:loom_patterns")
-                    && has_component(stack, ids::PROVIDES_BANNER_PATTERNS)
-            }
+            // The loom's tags hold exactly the items that carry the `dye` and
+            // `provides_banner_patterns` components.
+            (MenuKind::Loom, 1) => self.in_tag(stack, "minecraft:loom_dyes"),
+            (MenuKind::Loom, 2) => self.in_tag(stack, "minecraft:loom_patterns"),
             (MenuKind::Enchantment, 1) => is_item(stack, "minecraft:lapis_lazuli"),
             (
                 MenuKind::Stonecutter
@@ -206,7 +248,7 @@ impl ContainerMenu {
                     self.move_item_stack_to(&mut stack, 3, 39, true)
                 } else if index > 2 {
                     let is_extra = is_item(&stack, "minecraft:paper")
-                        || is_item(&stack, "minecraft:filled_map")
+                        || is_item(&stack, "minecraft:map")
                         || is_item(&stack, "minecraft:glass_pane");
                     if has_component(&stack, ids::MAP_ID) {
                         self.move_item_stack_to(&mut stack, 0, 1, false)
@@ -229,7 +271,7 @@ impl ContainerMenu {
                         self.move_item_stack_to(&mut stack, 0, 1, false)
                     } else if is_class(&stack, ItemClass::DyeItem) {
                         self.move_item_stack_to(&mut stack, 1, 2, false)
-                    } else if has_component(&stack, ids::PROVIDES_BANNER_PATTERNS) {
+                    } else if self.in_tag(&stack, "minecraft:loom_patterns") {
                         self.move_item_stack_to(&mut stack, 2, 3, false)
                     } else if index < 31 {
                         self.move_item_stack_to(&mut stack, 31, 40, false)

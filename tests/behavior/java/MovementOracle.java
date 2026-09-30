@@ -590,14 +590,46 @@ public final class MovementOracle {
                 }
             }
             var inputs = net.minecraft.world.item.crafting.RecipePropertySet.create(accepted);
+            var sets = new java.util.HashMap<net.minecraft.resources.ResourceKey<
+                net.minecraft.world.item.crafting.RecipePropertySet>,
+                net.minecraft.world.item.crafting.RecipePropertySet>();
+            sets.put(net.minecraft.world.item.crafting.RecipePropertySet.FURNACE_INPUT, inputs);
+            sets.put(net.minecraft.world.item.crafting.RecipePropertySet.BLAST_FURNACE_INPUT, inputs);
+            sets.put(net.minecraft.world.item.crafting.RecipePropertySet.SMOKER_INPUT, inputs);
+            if (row.has("recipe_sets")) {
+                for (var setEntry : row.getAsJsonObject("recipe_sets").entrySet()) {
+                    var members = new java.util.ArrayList<net.minecraft.world.item.crafting.Ingredient>();
+                    for (var name : setEntry.getValue().getAsJsonArray()) {
+                        members.add(net.minecraft.world.item.crafting.Ingredient.of(
+                            net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(
+                                net.minecraft.resources.Identifier.parse(name.getAsString()))));
+                    }
+                    sets.put(net.minecraft.resources.ResourceKey.create(
+                            net.minecraft.world.item.crafting.RecipePropertySet.TYPE_KEY,
+                            net.minecraft.resources.Identifier.parse(setEntry.getKey())),
+                        net.minecraft.world.item.crafting.RecipePropertySet.create(members));
+                }
+            }
+            var cutter = new java.util.ArrayList<net.minecraft.world.item.crafting.SelectableRecipe.SingleInputEntry<
+                net.minecraft.world.item.crafting.StonecutterRecipe>>();
+            if (row.has("stonecutter_inputs")) {
+                for (var name : row.getAsJsonArray("stonecutter_inputs")) {
+                    cutter.add(new net.minecraft.world.item.crafting.SelectableRecipe.SingleInputEntry<>(
+                        net.minecraft.world.item.crafting.Ingredient.of(
+                            net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(
+                                net.minecraft.resources.Identifier.parse(name.getAsString()))),
+                        new net.minecraft.world.item.crafting.SelectableRecipe<>(
+                            net.minecraft.world.item.crafting.display.SlotDisplay.AnyFuel.INSTANCE,
+                            java.util.Optional.empty())));
+                }
+            }
             setField(listener, "recipes", new net.minecraft.client.multiplayer.ClientRecipeContainer(
-                java.util.Map.of(
-                    net.minecraft.world.item.crafting.RecipePropertySet.FURNACE_INPUT, inputs,
-                    net.minecraft.world.item.crafting.RecipePropertySet.BLAST_FURNACE_INPUT, inputs,
-                    net.minecraft.world.item.crafting.RecipePropertySet.SMOKER_INPUT, inputs),
-                net.minecraft.world.item.crafting.SelectableRecipe.SingleInputSet.empty()));
+                sets, new net.minecraft.world.item.crafting.SelectableRecipe.SingleInputSet<>(cutter)));
             var type = net.minecraft.core.registries.BuiltInRegistries.MENU.getValue(
                 net.minecraft.resources.Identifier.parse(row.get("menu").getAsString()));
+            if (row.has("xp_level")) {
+                player.experienceLevel = row.get("xp_level").getAsInt();
+            }
             menu = type.create(containerId, player.getInventory());
             player.containerMenu = menu;
         }
@@ -607,6 +639,14 @@ public final class MovementOracle {
         }
         if (row.has("carried")) {
             menu.setCarried(stack(row.getAsJsonObject("carried")));
+        }
+        // What the server last sent of the menu's data, after the slots are
+        // set, which would make a menu work its own out.
+        if (row.has("data")) {
+            var values = row.getAsJsonArray("data");
+            for (int index = 0; index < values.size(); index++) {
+                menu.setData(index, values.get(index).getAsInt());
+            }
         }
         setField(menu, "stateId", row.get("state_id").getAsInt());
         var wire = scene.wire();

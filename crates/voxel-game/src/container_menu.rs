@@ -210,6 +210,8 @@ pub struct ContainerMenu {
     pub xp_level: i32,
     /// Whether the last click was made with infinite materials (creative).
     infinite_materials: bool,
+    /// The item in the stonecutter's input the last time its list was made.
+    last_input: Option<i32>,
     /// The menu's `ContainerData` (a furnace's burn and cook progress).
     pub data: Vec<i16>,
     quickcraft_status: i32,
@@ -232,6 +234,7 @@ impl Default for ContainerMenu {
             item_tags: std::sync::Arc::default(),
             xp_level: 0,
             infinite_materials: false,
+            last_input: None,
             data: Vec::new(),
             quickcraft_status: 0,
             quickcraft_type: 0,
@@ -398,13 +401,32 @@ impl ContainerMenu {
         self.remove(index, amount)
     }
 
+    /// `AbstractContainerMenu.doClick`, then `slotsChanged` if an input slot
+    /// of the menu changed under it.
+    pub fn clicked(&mut self, slot_index: i32, button: i32, click: ClickType, player: Player) {
+        let inputs = self.input_slots();
+        let before: Vec<Option<Stack>> = self.slots[inputs.clone()].to_vec();
+        self.do_click(slot_index, button, click, player);
+        let changed = self.slots[inputs]
+            .iter()
+            .zip(&before)
+            .any(|(now, was)| match (now, was) {
+                (None, None) => false,
+                (Some(a), Some(b)) => !a.matches(b),
+                _ => true,
+            });
+        if changed {
+            self.inputs_changed();
+        }
+    }
+
     /// `AbstractContainerMenu.doClick`.
     #[expect(
         clippy::cognitive_complexity,
         clippy::too_many_lines,
         reason = "kept whole to read against the reference method line by line"
     )]
-    pub fn clicked(&mut self, slot_index: i32, button: i32, click: ClickType, player: Player) {
+    fn do_click(&mut self, slot_index: i32, button: i32, click: ClickType, player: Player) {
         self.infinite_materials = player.infinite_materials;
         // The reference would fail on a slot past the menu's end.
         if slot_index >= self.slots.len() as i32 {
