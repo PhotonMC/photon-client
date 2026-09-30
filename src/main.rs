@@ -12,6 +12,7 @@ mod profile;
 mod screens;
 mod script;
 mod sections;
+mod sky;
 mod view;
 mod window_probe;
 
