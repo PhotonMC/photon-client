@@ -34,14 +34,14 @@ impl Uuid {
     }
 }
 
+fn read_u64(input: &mut &[u8]) -> Result<u64, ReadError> {
+    wire::take(input)
+        .map(u64::from_be_bytes)
+        .ok_or(ReadError::BufferUnderflow)
+}
+
 fn read_double(input: &mut &[u8]) -> Result<f64, ReadError> {
-    if input.len() < 8 {
-        return Err(ReadError::BufferUnderflow);
-    }
-    let (head, rest) = input.split_at(8);
-    let value = f64::from_bits(u64::from_be_bytes(head.try_into().expect("checked length")));
-    *input = rest;
-    Ok(value)
+    read_u64(input).map(f64::from_bits)
 }
 
 /// Read three consecutive big-endian doubles as a Vec3.
@@ -71,13 +71,9 @@ fn read_byte(input: &mut &[u8]) -> Result<u8, ReadError> {
 }
 
 fn read_u32(input: &mut &[u8]) -> Result<u32, ReadError> {
-    if input.len() < 4 {
-        return Err(ReadError::BufferUnderflow);
-    }
-    let (head, rest) = input.split_at(4);
-    let value = u32::from_be_bytes(head.try_into().expect("checked length"));
-    *input = rest;
-    Ok(value)
+    wire::take(input)
+        .map(u32::from_be_bytes)
+        .ok_or(ReadError::BufferUnderflow)
 }
 
 fn lp_unpack(value: u64) -> f64 {
@@ -1429,18 +1425,8 @@ impl ChunkPos {
 
 /// Read 16 bytes as UUID. A short second half leaves the first half consumed.
 pub fn read_uuid(input: &mut &[u8]) -> Result<Uuid, ReadError> {
-    if input.len() < 8 {
-        return Err(ReadError::BufferUnderflow);
-    }
-    let (head, rest) = input.split_at(8);
-    let most = u64::from_be_bytes(head.try_into().expect("checked length"));
-    *input = rest;
-    if input.len() < 8 {
-        return Err(ReadError::BufferUnderflow);
-    }
-    let (head, rest) = input.split_at(8);
-    let least = u64::from_be_bytes(head.try_into().expect("checked length"));
-    *input = rest;
+    let most = read_u64(input)?;
+    let least = read_u64(input)?;
     Ok(Uuid { most, least })
 }
 
@@ -1452,13 +1438,7 @@ pub fn write_uuid(value: Uuid, output: &mut Vec<u8>) {
 
 /// Read 8 bytes as a packed position without consuming on failure.
 pub fn read_blockpos(input: &mut &[u8]) -> Result<BlockPos, ReadError> {
-    if input.len() < 8 {
-        return Err(ReadError::BufferUnderflow);
-    }
-    let (head, rest) = input.split_at(8);
-    let packed = u64::from_be_bytes(head.try_into().expect("checked length"));
-    *input = rest;
-    Ok(BlockPos::unpack(packed))
+    read_u64(input).map(BlockPos::unpack)
 }
 
 /// Append 8 bytes for a packed position.
@@ -1468,13 +1448,7 @@ pub fn write_blockpos(value: BlockPos, output: &mut Vec<u8>) {
 
 /// Read 8 bytes as a packed chunk position without consuming on failure.
 pub fn read_chunkpos(input: &mut &[u8]) -> Result<ChunkPos, ReadError> {
-    if input.len() < 8 {
-        return Err(ReadError::BufferUnderflow);
-    }
-    let (head, rest) = input.split_at(8);
-    let packed = u64::from_be_bytes(head.try_into().expect("checked length"));
-    *input = rest;
-    Ok(ChunkPos::unpack(packed))
+    read_u64(input).map(ChunkPos::unpack)
 }
 
 /// Append 8 bytes for a packed chunk position.
@@ -1551,9 +1525,7 @@ pub fn read_long_array(input: &mut &[u8]) -> Result<Vec<i64>, ReadError> {
     }
     let mut values = Vec::with_capacity(length);
     for _ in 0..length {
-        let (head, rest) = input.split_at(8);
-        values.push(i64::from_be_bytes(head.try_into().expect("checked length")));
-        *input = rest;
+        values.push(read_u64(input)? as i64);
     }
     Ok(values)
 }
@@ -2027,13 +1999,7 @@ impl SectionPos {
 
 /// Read 8 bytes as a packed section position without consuming on failure.
 pub fn read_sectionpos(input: &mut &[u8]) -> Result<SectionPos, ReadError> {
-    if input.len() < 8 {
-        return Err(ReadError::BufferUnderflow);
-    }
-    let (head, rest) = input.split_at(8);
-    let packed = u64::from_be_bytes(head.try_into().expect("checked length"));
-    *input = rest;
-    Ok(SectionPos::unpack(packed))
+    read_u64(input).map(SectionPos::unpack)
 }
 
 /// Append 8 bytes for a packed section position.

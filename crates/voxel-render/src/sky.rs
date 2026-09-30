@@ -276,28 +276,7 @@ fn channel(color: u32, shift: u32) -> i32 {
     ((color >> shift) & 0xff) as i32
 }
 
-fn argb(alpha: i32, red: i32, green: i32, blue: i32) -> u32 {
-    ((alpha as u32 & 0xff) << 24)
-        | ((red as u32 & 0xff) << 16)
-        | ((green as u32 & 0xff) << 8)
-        | (blue as u32 & 0xff)
-}
-
-/// `ARGB.multiply`, with the reference's short cut for white.
-fn multiply(left: u32, right: u32) -> u32 {
-    if left == 0xFFFF_FFFF {
-        return right;
-    }
-    if right == 0xFFFF_FFFF {
-        return left;
-    }
-    argb(
-        channel(left, 24) * channel(right, 24) / 255,
-        channel(left, 16) * channel(right, 16) / 255,
-        channel(left, 8) * channel(right, 8) / 255,
-        channel(left, 0) * channel(right, 0) / 255,
-    )
-}
+use crate::tint::{argb, multiply};
 
 fn lerp_int(alpha: f32, from: i32, to: i32) -> i32 {
     from + (alpha * (to - from) as f32).floor() as i32

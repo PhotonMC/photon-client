@@ -190,15 +190,7 @@ impl Cursor<'_> {
     }
 
     pub(crate) fn varint(&mut self) -> R<i32> {
-        let mut value = 0_u32;
-        for shift in 0..5 {
-            let byte = self.byte()?;
-            value |= u32::from(byte & 0x7F) << (shift * 7);
-            if byte & 0x80 == 0 {
-                return Ok(value as i32);
-            }
-        }
-        Err(Malformed)
+        voxel_core::wire::read_varint(&mut self.data).map_err(|_| Malformed)
     }
 
     /// A count that a list or a map reads.

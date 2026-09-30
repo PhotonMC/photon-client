@@ -88,12 +88,9 @@ impl ClientIntentionPacket {
     pub fn decode(input: &mut &[u8]) -> Result<Self, ReadError> {
         let protocol_version = wire::read_varint(input).map_err(map_wire_error)?;
         let host_name = utf8::read_utf8(input, MAX_HOST_LENGTH).map_err(map_utf8_error)?;
-        if input.len() < 2 {
-            return Err(ReadError::BufferUnderflow);
-        }
-        let (port_bytes, rest) = input.split_at(2);
-        let port = u16::from_be_bytes([port_bytes[0], port_bytes[1]]) as i32;
-        *input = rest;
+        let port = wire::take(input)
+            .map(u16::from_be_bytes)
+            .ok_or(ReadError::BufferUnderflow)? as i32;
         let intention_id = wire::read_varint(input).map_err(map_wire_error)?;
         let intention = ClientIntent::from_id(intention_id).ok_or(ReadError::DecoderError)?;
         Ok(Self {

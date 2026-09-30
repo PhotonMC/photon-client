@@ -142,7 +142,7 @@ fn overrides_click(stack: Option<&Stack>, carried: bool) -> bool {
 }
 
 /// A stack emptied in place reads as no stack.
-fn settle(stack: &mut Option<Stack>) {
+pub(crate) fn settle(stack: &mut Option<Stack>) {
     if stack.as_ref().is_some_and(|stack| stack.item_count() <= 0) {
         *stack = None;
     }
@@ -150,10 +150,6 @@ fn settle(stack: &mut Option<Stack>) {
 
 fn same_item(a: Option<&Stack>, b: &Stack) -> bool {
     a.is_some_and(|a| a.item_registry_id() == b.item_registry_id())
-}
-
-fn same_item_same_components(a: &Stack, b: &Stack) -> bool {
-    a.is_same_item_same_components(b)
 }
 
 impl InventoryMenu {
@@ -376,7 +372,7 @@ impl InventoryMenu {
                             self.carried = carried;
                         } else if let Some(mut carried) = carried {
                             if self.may_place(index, &carried) {
-                                if same_item_same_components(&clicked, &carried) {
+                                if clicked.is_same_item_same_components(&carried) {
                                     let amount = if primary { carried.item_count() } else { 1 };
                                     self.carried = self.safe_insert(index, carried, amount);
                                 } else if carried.item_count() <= self.slot_max_for(index, &carried)
@@ -386,7 +382,7 @@ impl InventoryMenu {
                                 } else {
                                     self.carried = Some(carried);
                                 }
-                            } else if same_item_same_components(&clicked, &carried) {
+                            } else if clicked.is_same_item_same_components(&carried) {
                                 let room = max_stack_size(&carried) - carried.item_count();
                                 if let Some(taken) =
                                     self.try_remove(index, clicked.item_count(), room)
@@ -576,7 +572,7 @@ impl InventoryMenu {
     /// `AbstractContainerMenu.canItemQuickReplace`.
     pub fn can_item_quick_replace(&self, index: usize, stack: &Stack, ignore_size: bool) -> bool {
         match &self.slots[index] {
-            Some(slot) if same_item_same_components(stack, slot) => {
+            Some(slot) if stack.is_same_item_same_components(slot) => {
                 slot.item_count() + if ignore_size { 0 } else { stack.item_count() }
                     <= max_stack_size(stack)
             }
@@ -641,7 +637,7 @@ impl InventoryMenu {
                 let part = input.split(moved);
                 self.set_by_player(index, Some(part));
             }
-            Some(slot) if same_item_same_components(slot, &input) => {
+            Some(slot) if slot.is_same_item_same_components(&input) => {
                 input.shrink(moved);
                 slot.grow(moved);
             }
@@ -672,7 +668,7 @@ impl InventoryMenu {
             };
             match self.slots[grid].as_ref() {
                 None => self.slots[grid] = Some(remainder),
-                Some(present) if same_item_same_components(present, &remainder) => {
+                Some(present) if present.is_same_item_same_components(&remainder) => {
                     remainder.grow(present.item_count());
                     self.slots[grid] = Some(remainder);
                 }
@@ -748,7 +744,7 @@ impl InventoryMenu {
                     break;
                 }
                 let max = match &self.slots[dest] {
-                    Some(target) if same_item_same_components(stack, target) => {
+                    Some(target) if stack.is_same_item_same_components(target) => {
                         self.slot_max_for(dest, target)
                     }
                     _ => continue,
@@ -816,7 +812,7 @@ impl InventoryMenu {
     fn slot_with_remaining_space(&self, stack: &Stack, player: Player) -> Option<usize> {
         let has_room = |slot: usize| {
             self.slots[slot].as_ref().is_some_and(|present| {
-                same_item_same_components(present, stack)
+                present.is_same_item_same_components(stack)
                     && is_stackable(present)
                     && present.item_count() < 99.min(max_stack_size(present))
             })

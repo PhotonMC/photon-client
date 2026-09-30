@@ -63,12 +63,7 @@ fn write_time(time: i64, output: &mut Vec<u8>) {
 }
 
 fn read_time(input: &mut &[u8]) -> Result<i64, ReadError> {
-    if input.len() < 8 {
-        return Err(ReadError::BufferUnderflow);
-    }
-    let (head, rest) = input.split_at(8);
-    *input = rest;
-    Ok(i64::from_be_bytes(
-        head.try_into().expect("checked long length"),
-    ))
+    voxel_core::wire::take(input)
+        .map(i64::from_be_bytes)
+        .ok_or(ReadError::BufferUnderflow)
 }

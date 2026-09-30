@@ -126,7 +126,7 @@ fn redstone_colour(power: i32) -> u32 {
 }
 
 /// `ARGB.color`: pack four channels, each already in range.
-fn argb(alpha: i32, red: i32, green: i32, blue: i32) -> u32 {
+pub(crate) fn argb(alpha: i32, red: i32, green: i32, blue: i32) -> u32 {
     ((alpha as u32 & 0xFF) << 24)
         | ((red as u32 & 0xFF) << 16)
         | ((green as u32 & 0xFF) << 8)

@@ -11,7 +11,7 @@
 //! text), the hotbar tab's saved hotbars (they are all empty, so it shows
 //! the placeholders), tooltips, and armour locked by enchantments.
 
-use crate::inventory_menu::{ClickType, InventoryMenu, Player, max_stack_size};
+use crate::inventory_menu::{ClickType, InventoryMenu, Player, max_stack_size, settle};
 use voxel_data::item::creative_tabs::{CREATIVE_STACKS, CREATIVE_TABS, DEFAULT_TAB, TabKind};
 use voxel_world::ClientItemStackState as Stack;
 
@@ -604,13 +604,6 @@ impl CreativeMenu {
             }
             broadcast_changes(&before, &menu.slots, effects);
         }
-    }
-}
-
-/// A stack emptied in place reads as no stack.
-fn settle(stack: &mut Option<Stack>) {
-    if stack.as_ref().is_some_and(|stack| stack.item_count() <= 0) {
-        *stack = None;
     }
 }
 

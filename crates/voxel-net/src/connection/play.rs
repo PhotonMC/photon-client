@@ -1162,24 +1162,18 @@ impl PlaySession {
 }
 
 fn read_f32(input: &mut &[u8]) -> Result<f32, ConnectionError> {
-    if input.len() < 4 {
-        return Err(ConnectionError::Codec("float"));
-    }
-    let (head, rest) = input.split_at(4);
-    *input = rest;
-    Ok(f32::from_be_bytes(head.try_into().expect("four bytes")))
+    super::protocol::read_f32(input, "float")
 }
 
 fn read_i64(input: &mut &[u8]) -> Result<i64, ConnectionError> {
-    if input.len() < 8 {
-        return Err(ConnectionError::Io(io::Error::new(
-            io::ErrorKind::UnexpectedEof,
-            "section position",
-        )));
-    }
-    let (head, rest) = input.split_at(8);
-    *input = rest;
-    Ok(i64::from_be_bytes(head.try_into().expect("eight bytes")))
+    voxel_core::wire::take(input)
+        .map(i64::from_be_bytes)
+        .ok_or_else(|| {
+            ConnectionError::Io(io::Error::new(
+                io::ErrorKind::UnexpectedEof,
+                "section position",
+            ))
+        })
 }
 
 /// The player's health, food, experience and selected hotbar slot, as the

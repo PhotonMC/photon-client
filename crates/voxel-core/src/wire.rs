@@ -9,6 +9,14 @@ pub enum ReadError {
     TooBig,
 }
 
+/// The first `N` bytes of the input, taken off it; `None`, leaving the
+/// input as it was, when fewer remain.
+pub fn take<const N: usize>(input: &mut &[u8]) -> Option<[u8; N]> {
+    let (head, rest) = input.split_first_chunk::<N>()?;
+    *input = rest;
+    Some(*head)
+}
+
 /// Decode an i32, accepting the reference's noncanonical representations.
 pub fn read_varint(input: &mut &[u8]) -> Result<i32, ReadError> {
     read_unsigned(input, 5).map(|value| value as i32)

@@ -1930,16 +1930,9 @@ fn read_identifier_string(
 pub(crate) fn parse_block_update_packet(
     input: &[u8],
 ) -> Result<BlockUpdateObservation, ConnectionError> {
-    if input.len() < 8 {
-        return Err(ConnectionError::Codec("block update position"));
-    }
-    let (packed, input) = input.split_at(8);
-    let position = voxel_core::binary::BlockPos::unpack(u64::from_be_bytes(
-        packed
-            .try_into()
-            .expect("checked block update position length"),
-    ));
     let mut input = input;
+    let position =
+        voxel_core::binary::BlockPos::unpack(read_i64(&mut input, "block update position")? as u64);
     let state_id = read_varint(&mut input, "block update state")?;
     if !input.is_empty() {
         return Err(ConnectionError::Codec("block update trailing payload"));
@@ -1955,16 +1948,9 @@ pub(crate) fn parse_block_update_packet(
 pub(crate) fn parse_block_entity_data_packet(
     input: &[u8],
 ) -> Result<BlockEntityObservation, ConnectionError> {
-    if input.len() < 8 {
-        return Err(ConnectionError::Codec("block entity position"));
-    }
-    let (packed, rest) = input.split_at(8);
-    let position = voxel_core::binary::BlockPos::unpack(u64::from_be_bytes(
-        packed
-            .try_into()
-            .expect("checked block entity position length"),
-    ));
-    let mut input = rest;
+    let mut input = input;
+    let position =
+        voxel_core::binary::BlockPos::unpack(read_i64(&mut input, "block entity position")? as u64);
     let type_id = read_varint(&mut input, "block entity type")?;
     let tag = read_nbt_bytes(&mut input, "block entity nbt")?;
     if !input.is_empty() {
@@ -1987,16 +1973,10 @@ pub(crate) fn parse_block_destruction_packet(
 ) -> Result<BlockDestructionObservation, ConnectionError> {
     let mut input = input;
     let entity_id = read_varint(&mut input, "block destruction entity id")?;
-    if input.len() < 8 {
-        return Err(ConnectionError::Codec("block destruction position"));
-    }
-    let (packed, rest) = input.split_at(8);
-    input = rest;
-    let position = voxel_core::binary::BlockPos::unpack(u64::from_be_bytes(
-        packed
-            .try_into()
-            .expect("checked block destruction position length"),
-    ));
+    let position = voxel_core::binary::BlockPos::unpack(read_i64(
+        &mut input,
+        "block destruction position",
+    )? as u64);
     let progress = read_byte(&mut input, "block destruction progress")?;
     if !input.is_empty() {
         return Err(ConnectionError::Codec("block destruction trailing payload"));
@@ -2709,17 +2689,12 @@ fn parse_light_data(input: &mut &[u8]) -> Result<LightUpdateData, ConnectionErro
 pub(crate) fn parse_forget_level_chunk_packet(
     mut input: &[u8],
 ) -> Result<(i32, i32), ConnectionError> {
-    if input.len() < 8 {
-        return Err(ConnectionError::Codec("forget level chunk position"));
-    }
-    let (packed, rest) = input.split_at(8);
-    input = rest;
+    let packed = read_i64(&mut input, "forget level chunk position")?;
     if !input.is_empty() {
         return Err(ConnectionError::Codec(
             "forget level chunk trailing payload",
         ));
     }
-    let packed = i64::from_be_bytes(packed.try_into().expect("checked chunk position length"));
     Ok((packed as i32, (packed >> 32) as i32))
 }
 
@@ -2770,58 +2745,33 @@ pub(crate) fn read_bool(input: &mut &[u8], name: &'static str) -> Result<bool, C
 }
 
 pub(crate) fn read_i64(input: &mut &[u8], name: &'static str) -> Result<i64, ConnectionError> {
-    if input.len() < 8 {
-        return Err(ConnectionError::Codec(name));
-    }
-    let (head, rest) = input.split_at(8);
-    *input = rest;
-    Ok(i64::from_be_bytes(
-        head.try_into().expect("checked long length"),
-    ))
+    wire::take(input)
+        .map(i64::from_be_bytes)
+        .ok_or(ConnectionError::Codec(name))
 }
 
 pub(crate) fn read_i16(input: &mut &[u8], name: &'static str) -> Result<i16, ConnectionError> {
-    if input.len() < 2 {
-        return Err(ConnectionError::Codec(name));
-    }
-    let (head, rest) = input.split_at(2);
-    *input = rest;
-    Ok(i16::from_be_bytes(
-        head.try_into().expect("checked short length"),
-    ))
+    wire::take(input)
+        .map(i16::from_be_bytes)
+        .ok_or(ConnectionError::Codec(name))
 }
 
 pub(crate) fn read_i32(input: &mut &[u8], name: &'static str) -> Result<i32, ConnectionError> {
-    if input.len() < 4 {
-        return Err(ConnectionError::Codec(name));
-    }
-    let (head, rest) = input.split_at(4);
-    *input = rest;
-    Ok(i32::from_be_bytes(
-        head.try_into().expect("checked int length"),
-    ))
+    wire::take(input)
+        .map(i32::from_be_bytes)
+        .ok_or(ConnectionError::Codec(name))
 }
 
 pub(crate) fn read_f32(input: &mut &[u8], name: &'static str) -> Result<f32, ConnectionError> {
-    if input.len() < 4 {
-        return Err(ConnectionError::Codec(name));
-    }
-    let (head, rest) = input.split_at(4);
-    *input = rest;
-    Ok(f32::from_be_bytes(
-        head.try_into().expect("checked float length"),
-    ))
+    wire::take(input)
+        .map(f32::from_be_bytes)
+        .ok_or(ConnectionError::Codec(name))
 }
 
 pub(crate) fn read_f64(input: &mut &[u8], name: &'static str) -> Result<f64, ConnectionError> {
-    if input.len() < 8 {
-        return Err(ConnectionError::Codec(name));
-    }
-    let (head, rest) = input.split_at(8);
-    *input = rest;
-    Ok(f64::from_be_bytes(
-        head.try_into().expect("checked double length"),
-    ))
+    wire::take(input)
+        .map(f64::from_be_bytes)
+        .ok_or(ConnectionError::Codec(name))
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

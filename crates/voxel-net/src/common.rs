@@ -89,14 +89,9 @@ fn write_i32(value: i32, output: &mut Vec<u8>) {
 }
 
 fn read_i32(input: &mut &[u8]) -> Result<i32, ReadError> {
-    if input.len() < 4 {
-        return Err(ReadError::BufferUnderflow);
-    }
-    let (head, rest) = input.split_at(4);
-    *input = rest;
-    Ok(i32::from_be_bytes(
-        head.try_into().expect("checked int length"),
-    ))
+    voxel_core::wire::take(input)
+        .map(i32::from_be_bytes)
+        .ok_or(ReadError::BufferUnderflow)
 }
 
 fn write_i64(value: i64, output: &mut Vec<u8>) {
@@ -104,12 +99,7 @@ fn write_i64(value: i64, output: &mut Vec<u8>) {
 }
 
 fn read_i64(input: &mut &[u8]) -> Result<i64, ReadError> {
-    if input.len() < 8 {
-        return Err(ReadError::BufferUnderflow);
-    }
-    let (head, rest) = input.split_at(8);
-    *input = rest;
-    Ok(i64::from_be_bytes(
-        head.try_into().expect("checked long length"),
-    ))
+    voxel_core::wire::take(input)
+        .map(i64::from_be_bytes)
+        .ok_or(ReadError::BufferUnderflow)
 }
