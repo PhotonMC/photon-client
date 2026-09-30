@@ -121,3 +121,18 @@ olarak tutulmaz.
 - [x] D2: chunk section'larını ağ thread'inde ayrıştırmak. Sonuç birebir
   aynı, yalnızca iş başka thread'de; giriş ve ışınlanmada ana thread
   takılması azalır.
+- [x] Durum önbelleğinin şekilleri rayon ile paralel kurulur (200 → ~105 ms)
+  ve bölüm mesh işçileri rayon havuzunda çalışır (elle yazılmış
+  `Mutex<Receiver>` havuzu kalktı).
+
+## Son ölçümler (bench, 8 çekirdek, release)
+
+| Ölçü | Başlangıç | Şimdi |
+| --- | --- | --- |
+| Blok modellerinin hazırlanması | ~660 ms | ~380 ms |
+| Durum önbelleği (şekiller dahil) | — | ~105 ms |
+| Section mesh'i (kısa / yoğun) | 2,0–3,1 ms | 0,6 / 4,0 ms |
+| Section blok durumları (yapay dünya) | 9,8 MB | 0,3 MB |
+
+Mesh özetleri (`digest=`) bütün adımlarda aynı kaldı. Açık kalanlar: F6.2
+(vertex biçimi; görsel doğrulama gerektirir) ve D1 (sapma; onay gerekir).

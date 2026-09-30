@@ -243,8 +243,10 @@ Bitti: `Component`/dil (`en_us`), stilli yazı, `EditBox`, ipucu kutusu.
   ses/UI→respawn→yeniden bağlan).
 - **L** Platform matrisi: Linux ve Windows (GLFW/Vulkan), macOS
   MoltenVK notları (`docs/local-setup.md`); Java 25 kurulumu kalanları.
-- **M** Performans: açılış (`4096×2048` atlas ~1,5 sn), bölüm mesh'leme,
-  bellek, entity sayısı arttığında çizim; profil koşuları (`--profile`).
+- **M** Performans: blok/eşya tabloları hesaplamaya döndü ve açılış
+  ~375 ms oldu ([yol haritası](architecture-roadmap.md)); kalanlar: Java
+  blok vertex biçimi (~32 bayt), ışık kuyruğu sınırı (sapma, onay gerekir),
+  entity sayısı arttığında çizim.
 - **M** Paketleme: özel asset kökü seçimi (P04.d), orijinal içeriğin pakete
   girmemesi, yürütülebilir dosya dağıtımı, sürüm ve kaydedilebilir ayarlar.
 
