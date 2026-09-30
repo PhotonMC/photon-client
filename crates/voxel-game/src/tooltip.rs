@@ -120,25 +120,7 @@ fn hover_name(stack: &Stack, values: &Values) -> Component {
 
 /// `DyeColor.getName` by id.
 fn dye_name(id: i32) -> &'static str {
-    const NAMES: [&str; 16] = [
-        "white",
-        "orange",
-        "magenta",
-        "light_blue",
-        "yellow",
-        "lime",
-        "pink",
-        "gray",
-        "light_gray",
-        "cyan",
-        "purple",
-        "blue",
-        "brown",
-        "green",
-        "red",
-        "black",
-    ];
-    NAMES
+    crate::default_components::DYE_NAMES
         .get(usize::try_from(id).unwrap_or(0))
         .copied()
         .unwrap_or("white")

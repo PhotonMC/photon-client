@@ -1,22 +1,30 @@
-//! Animated sprites: they tick with the client and redraw their slots of a
-//! copy of the block atlas, which then goes to the GPU.
+//! Animated sprites: they tick with the client and redraw their slots of the
+//! block atlas, which then goes to the GPU. The atlas itself lives only on
+//! the GPU; a redrawn slot is built on its own.
 
 use voxel_render::resolve::{BuiltAtlas, SpriteAnimation};
 use voxel_render::vulkan::AtlasRegion;
 
 pub struct AnimatedAtlas {
-    levels: Vec<voxel_render::DecodedImage>,
+    /// The size in texels of every mip level.
+    level_sizes: Vec<(u32, u32)>,
     animations: Vec<SpriteAnimation>,
     /// Whether each animation changed since its slot was last copied.
     redraw: Vec<bool>,
 }
 
 impl AnimatedAtlas {
-    pub fn new(atlas: &BuiltAtlas) -> Self {
+    /// Take the animations out of a built atlas, leaving it without them.
+    pub fn new(atlas: &mut BuiltAtlas) -> Self {
+        let animations = std::mem::take(&mut atlas.animations);
         Self {
-            levels: atlas.levels.clone(),
-            animations: atlas.animations.clone(),
-            redraw: vec![false; atlas.animations.len()],
+            level_sizes: atlas
+                .levels
+                .iter()
+                .map(|level| (level.width, level.height))
+                .collect(),
+            redraw: vec![false; animations.len()],
+            animations,
         }
     }
 
@@ -35,20 +43,15 @@ impl AnimatedAtlas {
             if !std::mem::take(redraw) {
                 continue;
             }
-            for (level, target) in self.levels.iter_mut().enumerate() {
-                let (x, y, width, height) = animation.draw(level, target);
-                let mut rgba = Vec::with_capacity((width * height * 4) as usize);
-                for row in y..y + height {
-                    let start = ((row * target.width + x) * 4) as usize;
-                    rgba.extend_from_slice(&target.rgba[start..start + width as usize * 4]);
-                }
+            for (level, size) in self.level_sizes.iter().enumerate() {
+                let (x, y, image) = animation.draw(level, *size);
                 regions.push(AtlasRegion {
                     level: level as u32,
                     x,
                     y,
-                    width,
-                    height,
-                    rgba,
+                    width: image.width,
+                    height: image.height,
+                    rgba: image.rgba,
                 });
             }
         }

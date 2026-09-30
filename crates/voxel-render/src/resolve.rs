@@ -286,9 +286,6 @@ pub struct BuiltAtlas {
     pub width: u32,
     /// Atlas height in texels at level zero.
     pub height: u32,
-    /// Row-major RGBA8 texels of level zero, kept for callers that take one
-    /// level.
-    pub rgba: Vec<u8>,
     /// Every mip level, level zero first, each half the previous one.
     pub levels: Vec<DecodedImage>,
     /// Where each sprite landed, in normalised coordinates.
@@ -340,10 +337,10 @@ impl SpriteAnimation {
         self.interpolate || self.dirty
     }
 
-    /// Draw the current frame, or the blend towards the next one, into one
-    /// atlas level, padding included. Returns the rectangle written: its
-    /// corner and size in that level's texels.
-    pub fn draw(&self, level: usize, target: &mut DecodedImage) -> (u32, u32, u32, u32) {
+    /// Draw the current frame, or the blend towards the next one, for one
+    /// atlas level of `level_size` texels, padding included. Returns the
+    /// rectangle to write: its corner in that level's texels and its image.
+    pub fn draw(&self, level: usize, level_size: (u32, u32)) -> (u32, u32, DecodedImage) {
         let (index, time) = self.playback[self.frame];
         let current = &self.frame_levels[&index][level];
         let blended;
@@ -371,15 +368,18 @@ impl SpriteAnimation {
         };
         let shift = level as u32;
         let padding = self.padding >> shift;
-        let x = (self.x >> shift).saturating_sub(padding);
-        let y = (self.y >> shift).saturating_sub(padding);
-        blit_sprite(target, image, self.x >> shift, self.y >> shift, padding);
-        (
-            x,
-            y,
-            (image.width + padding * 2).min(target.width - x),
-            (image.height + padding * 2).min(target.height - y),
-        )
+        let origin = (self.x >> shift, self.y >> shift);
+        let x = origin.0.saturating_sub(padding);
+        let y = origin.1.saturating_sub(padding);
+        let width = (image.width + padding * 2).min(level_size.0 - x);
+        let height = (image.height + padding * 2).min(level_size.1 - y);
+        let mut region = DecodedImage {
+            width,
+            height,
+            rgba: vec![0; width as usize * height as usize * 4],
+        };
+        blit_sprite(&mut region, image, origin.0 - x, origin.1 - y, padding);
+        (x, y, region)
     }
 }
 
@@ -562,12 +562,9 @@ pub fn build_atlas_with(
         animations.extend(built.animation);
         sprites.insert(built.key, built.rect);
     }
-    let rgba = levels[0].rgba.clone();
-
     Ok(BuiltAtlas {
         width,
         height,
-        rgba,
         levels,
         sprites,
         animations,
@@ -954,6 +951,68 @@ fn first_animation_frame(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A redrawn slot is the same texels whether it is drawn into a copy of
+    /// the atlas and cut out, or built on its own, edge clipping included.
+    #[test]
+    fn an_animation_slot_is_the_same_cut_from_the_atlas_or_built_alone() {
+        let frame = |shade: u8| DecodedImage {
+            width: 3,
+            height: 3,
+            rgba: (0..9).flat_map(|i| [shade, i * 20, 7, 255]).collect(),
+        };
+        for (x, y, padding) in [(4, 4, 2), (0, 1, 2), (6, 6, 2)] {
+            let animation = SpriteAnimation {
+                name: String::new(),
+                x,
+                y,
+                padding,
+                frame_levels: BTreeMap::from([(0, vec![frame(40)]), (1, vec![frame(200)])]),
+                playback: vec![(0, 2), (1, 2)],
+                interpolate: true,
+                frame: 0,
+                sub_frame: 1,
+                dirty: true,
+            };
+            let mut atlas = DecodedImage {
+                width: 8,
+                height: 8,
+                rgba: vec![9; 8 * 8 * 4],
+            };
+            let image = &animation.frame_levels[&0][0];
+            let (index, time) = animation.playback[0];
+            assert_eq!((index, time), (0, 2));
+            // What the whole-atlas way writes for a blended frame.
+            let next = &animation.frame_levels[&1][0];
+            let progress = ((1.0_f32 / 2.0) * 1000.0) as i32 as f32 / 1000.0;
+            let blended = DecodedImage {
+                width: 3,
+                height: 3,
+                rgba: image
+                    .rgba
+                    .iter()
+                    .zip(&next.rgba)
+                    .map(|(&a, &b)| {
+                        let (a, b) = (f32::from(a) / 255.0, f32::from(b) / 255.0);
+                        ((a * (1.0 - progress) + b * progress) * 255.0).round() as u8
+                    })
+                    .collect(),
+            };
+            blit_sprite(&mut atlas, &blended, x, y, padding);
+            let (left, top, alone) = animation.draw(0, (8, 8));
+            assert_eq!(
+                (left, top),
+                (x.saturating_sub(padding), y.saturating_sub(padding))
+            );
+            for row in 0..alone.height {
+                let from = (((top + row) * 8 + left) * 4) as usize;
+                let cut = &atlas.rgba[from..from + alone.width as usize * 4];
+                let own =
+                    &alone.rgba[(row * alone.width * 4) as usize..][..alone.width as usize * 4];
+                assert_eq!(cut, own, "row {row} at {x},{y}");
+            }
+        }
+    }
 
     #[test]
     fn an_animated_strip_contributes_its_first_frame() {

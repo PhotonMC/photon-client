@@ -45,8 +45,9 @@ impl Gui {
         backend: &mut VulkanBackend,
     ) -> Result<Self, Box<dyn std::error::Error>> {
         let font = Arc::new(Font::load(root).ok_or("the default font could not be read")?);
-        let atlas = GuiAtlas::load(root, &font).ok_or("the HUD sprites could not be read")?;
-        backend.load_gui_texture(&atlas.image)?;
+        let (atlas, texture) =
+            GuiAtlas::load(root, &font).ok_or("the HUD sprites could not be read")?;
+        backend.load_gui_texture(&texture)?;
         Ok(Self {
             font,
             atlas,

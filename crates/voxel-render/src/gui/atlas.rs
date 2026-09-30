@@ -52,13 +52,13 @@ fn sprite_names(root: &Path) -> Vec<String> {
 /// The GUI sprites packed into one texture.
 #[derive(Debug, Clone)]
 pub struct GuiAtlas {
-    pub image: DecodedImage,
     sprites: BTreeMap<String, [f32; 4]>,
 }
 
 impl GuiAtlas {
-    /// Read the HUD's sprites from an asset folder and pack them.
-    pub fn load(assets_root: &Path, font: &crate::gui::font::Font) -> Option<Self> {
+    /// Read the HUD's sprites from an asset folder and pack them: where each
+    /// went, and the texture they make, which only the GPU needs.
+    pub fn load(assets_root: &Path, font: &crate::gui::font::Font) -> Option<(Self, DecodedImage)> {
         let mut images = BTreeMap::new();
         let mut stitcher = Stitcher::new(4096, 4096, 0, 0);
         // The font's images go in whole, and glyphs are cut from them.
@@ -134,10 +134,7 @@ impl GuiAtlas {
             );
             sprites.insert(key, [sprite.u0, sprite.v0, sprite.u1, sprite.v1]);
         }
-        Some(Self {
-            image: atlas,
-            sprites,
-        })
+        Some((Self { sprites }, atlas))
     }
 
     pub(crate) fn sprite(&self, name: &str) -> [f32; 4] {

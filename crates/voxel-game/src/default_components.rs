@@ -91,27 +91,32 @@ fn attribute_modifier(modifier: &AttributeModifier, out: &mut Vec<u8>) {
     );
 }
 
+/// `DyeColor.getName`, by `DyeColor.getId`.
+pub(crate) const DYE_NAMES: [&str; 16] = [
+    "white",
+    "orange",
+    "magenta",
+    "light_blue",
+    "yellow",
+    "lime",
+    "pink",
+    "gray",
+    "light_gray",
+    "cyan",
+    "purple",
+    "blue",
+    "brown",
+    "green",
+    "red",
+    "black",
+];
+
 /// `DyeColor.getId`.
 fn dye_id(name: &str) -> Option<i32> {
-    const DYES: [&str; 16] = [
-        "white",
-        "orange",
-        "magenta",
-        "light_blue",
-        "yellow",
-        "lime",
-        "pink",
-        "gray",
-        "light_gray",
-        "cyan",
-        "purple",
-        "blue",
-        "brown",
-        "green",
-        "red",
-        "black",
-    ];
-    DYES.iter().position(|dye| *dye == name).map(|id| id as i32)
+    DYE_NAMES
+        .iter()
+        .position(|dye| *dye == name)
+        .map(|id| id as i32)
 }
 
 /// A holder of a registry entry as the network writes it: the entry's place

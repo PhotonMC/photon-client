@@ -147,8 +147,7 @@ impl Play {
             )
             .ok_or("the biome colours could not be read")?,
         );
-        let block_renderer = bake_blocks(&root, &mut backend)?;
-        let animated_atlas = AnimatedAtlas::new(&block_renderer.atlas);
+        let (block_renderer, animated_atlas) = bake_blocks(&root, &mut backend)?;
         let sky_sprites = sky_sprites(&block_renderer);
         let origin = [
             position.x.floor() as i32,
@@ -625,7 +624,10 @@ fn open_window(width: i32, height: i32) -> Result<(WindowSurface, VulkanBackend,
 /// Every block's models and one atlas for all of them (sent to the GPU),
 /// as the reference bakes them at resource load; the world is then meshed a
 /// 16-block section at a time as its chunks arrive and change.
-fn bake_blocks(root: &str, backend: &mut VulkanBackend) -> Result<Arc<BlockRenderer>> {
+fn bake_blocks(
+    root: &str,
+    backend: &mut VulkanBackend,
+) -> Result<(Arc<BlockRenderer>, AnimatedAtlas)> {
     let source = FolderAssets {
         root: std::path::PathBuf::from(root),
     };
@@ -635,7 +637,7 @@ fn bake_blocks(root: &str, backend: &mut VulkanBackend) -> Result<Arc<BlockRende
         .transpose()?
         .unwrap_or(4);
     let baking = Instant::now();
-    let block_renderer = BlockRenderer::new(&source, requested_mips)
+    let mut block_renderer = BlockRenderer::new(&source, requested_mips)
         .map_err(|error| format!("block models: {error:?}"))?;
     println!(
         "play_atlas={}x{} models={} skipped={} in {:?}",
@@ -646,7 +648,11 @@ fn bake_blocks(root: &str, backend: &mut VulkanBackend) -> Result<Arc<BlockRende
         baking.elapsed()
     );
     backend.load_atlas(&block_renderer.atlas.levels)?;
-    Ok(Arc::new(block_renderer))
+    // The atlas now lives on the GPU; the renderer only keeps where the
+    // sprites are, and the animations take their frames with them.
+    let animated = AnimatedAtlas::new(&mut block_renderer.atlas);
+    block_renderer.atlas.levels = Vec::new();
+    Ok((Arc::new(block_renderer), animated))
 }
 
 /// The sun and the moon's phases in the block atlas.

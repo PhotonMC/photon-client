@@ -743,7 +743,9 @@ impl SectionFade {
 struct ArenaBlock {
     buffer: vk::Buffer,
     memory: vk::DeviceMemory,
-    /// Free ranges, offset and length, in offset order.
+    size: u64,
+    /// Free ranges, offset and length, in offset order. A block given back
+    /// to the driver has a null buffer and none.
     free: Vec<(u64, u64)>,
 }
 
@@ -756,7 +758,7 @@ struct ArenaSlice {
 }
 
 /// The size of each arena block.
-const ARENA_BLOCK_SIZE: u64 = 64 << 20;
+const ARENA_BLOCK_SIZE: u64 = 32 << 20;
 
 /// Host memory that section bytes pass through on their way into the
 /// arena, which lives where only the GPU can write.
@@ -777,7 +779,10 @@ struct StagedCopy {
 }
 
 /// The size of each staging chunk.
-const STAGING_CHUNK_SIZE: u64 = 16 << 20;
+const STAGING_CHUNK_SIZE: u64 = 4 << 20;
+
+/// How many idle staging chunks are kept for the next frame's uploads.
+const STAGING_SPARE: usize = 2;
 
 /// The sky's vertex buffer, rewritten every frame.
 struct SkyBuffer {
@@ -824,8 +829,8 @@ pub struct VulkanBackend {
     image_views: Vec<vk::ImageView>,
     command_pool: vk::CommandPool,
     command_buffer: vk::CommandBuffer,
-    readback_buffer: vk::Buffer,
-    readback_memory: vk::DeviceMemory,
+    /// The buffer a screenshot is copied into, there only while one is taken.
+    readback: Option<(vk::Buffer, vk::DeviceMemory)>,
     depth: Option<DepthTarget>,
     /// Set when the surface no longer matches the swapchain.
     out_of_date: bool,
@@ -1075,41 +1080,6 @@ impl VulkanBackend {
                 )
                 .map_err(|result| VulkanError::Call("vkAllocateCommandBuffers", result))?[0];
 
-            let byte_count = u64::from(extent.width) * u64::from(extent.height) * 4;
-            let readback_buffer = device
-                .create_buffer(
-                    &vk::BufferCreateInfo::default()
-                        .size(byte_count)
-                        .usage(vk::BufferUsageFlags::TRANSFER_DST)
-                        .sharing_mode(vk::SharingMode::EXCLUSIVE),
-                    None,
-                )
-                .map_err(|result| VulkanError::Call("vkCreateBuffer", result))?;
-            let requirements = device.get_buffer_memory_requirements(readback_buffer);
-            let memory_properties = instance.get_physical_device_memory_properties(physical_device);
-            let memory_type = (0..memory_properties.memory_type_count)
-                .find(|index| {
-                    let supported = requirements.memory_type_bits & (1 << index) != 0;
-                    let flags = memory_properties.memory_types[*index as usize].property_flags;
-                    supported
-                        && flags.contains(
-                            vk::MemoryPropertyFlags::HOST_VISIBLE
-                                | vk::MemoryPropertyFlags::HOST_COHERENT,
-                        )
-                })
-                .ok_or(VulkanError::NoSuitableDevice)?;
-            let readback_memory = device
-                .allocate_memory(
-                    &vk::MemoryAllocateInfo::default()
-                        .allocation_size(requirements.size)
-                        .memory_type_index(memory_type),
-                    None,
-                )
-                .map_err(|result| VulkanError::Call("vkAllocateMemory", result))?;
-            device
-                .bind_buffer_memory(readback_buffer, readback_memory, 0)
-                .map_err(|result| VulkanError::Call("vkBindBufferMemory", result))?;
-
             let image_available = device
                 .create_semaphore(&vk::SemaphoreCreateInfo::default(), None)
                 .map_err(|result| VulkanError::Call("vkCreateSemaphore", result))?;
@@ -1157,8 +1127,7 @@ impl VulkanBackend {
                 image_views,
                 command_pool,
                 command_buffer,
-                readback_buffer,
-                readback_memory,
+                readback: None,
                 depth: None,
                 out_of_date: false,
                 scene: None,
@@ -1237,6 +1206,44 @@ impl VulkanBackend {
     }
 
     /// Find a memory type matching the requirements and properties.
+    /// The buffer a screenshot of the current extent is copied into, made
+    /// when one is taken and freed once it has been read.
+    unsafe fn make_readback(&mut self) -> Result<(), VulkanError> {
+        unsafe {
+            self.free_readback();
+            let extent = self.description.extent;
+            let buffer = self
+                .device
+                .create_buffer(
+                    &vk::BufferCreateInfo::default()
+                        .size(u64::from(extent.width) * u64::from(extent.height) * 4)
+                        .usage(vk::BufferUsageFlags::TRANSFER_DST)
+                        .sharing_mode(vk::SharingMode::EXCLUSIVE),
+                    None,
+                )
+                .map_err(|result| VulkanError::Call("vkCreateBuffer", result))?;
+            let requirements = self.device.get_buffer_memory_requirements(buffer);
+            let memory = self.allocate(
+                requirements,
+                vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
+            )?;
+            self.device
+                .bind_buffer_memory(buffer, memory, 0)
+                .map_err(|result| VulkanError::Call("vkBindBufferMemory", result))?;
+            self.readback = Some((buffer, memory));
+            Ok(())
+        }
+    }
+
+    unsafe fn free_readback(&mut self) {
+        unsafe {
+            if let Some((buffer, memory)) = self.readback.take() {
+                self.device.destroy_buffer(buffer, None);
+                self.device.free_memory(memory, None);
+            }
+        }
+    }
+
     unsafe fn allocate(
         &self,
         requirements: vk::MemoryRequirements,
@@ -2304,10 +2311,6 @@ impl VulkanBackend {
 
     /// Rebuild the swapchain, and what is sized by it, for a new window
     /// size. A zero size (a minimised window) is left for later.
-    #[expect(
-        clippy::too_many_lines,
-        reason = "Vulkan objects created in the order the API requires"
-    )]
     pub fn resize(&mut self, width: u32, height: u32) -> Result<(), VulkanError> {
         if width == 0 || height == 0 {
             return Ok(());
@@ -2395,29 +2398,6 @@ impl VulkanBackend {
             self.description.extent = extent;
             self.description.image_count = self.images.len() as u32;
 
-            self.device.destroy_buffer(self.readback_buffer, None);
-            self.device.free_memory(self.readback_memory, None);
-            self.readback_buffer = self
-                .device
-                .create_buffer(
-                    &vk::BufferCreateInfo::default()
-                        .size(u64::from(extent.width) * u64::from(extent.height) * 4)
-                        .usage(vk::BufferUsageFlags::TRANSFER_DST)
-                        .sharing_mode(vk::SharingMode::EXCLUSIVE),
-                    None,
-                )
-                .map_err(|result| VulkanError::Call("vkCreateBuffer", result))?;
-            let requirements = self
-                .device
-                .get_buffer_memory_requirements(self.readback_buffer);
-            self.readback_memory = self.allocate(
-                requirements,
-                vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
-            )?;
-            self.device
-                .bind_buffer_memory(self.readback_buffer, self.readback_memory, 0)
-                .map_err(|result| VulkanError::Call("vkBindBufferMemory", result))?;
-
             if let Some(depth) = self.depth.take() {
                 self.device.destroy_image_view(depth.view, None);
                 self.device.destroy_image(depth.image, None);
@@ -2475,6 +2455,56 @@ impl VulkanBackend {
     unsafe fn destroy_section(&mut self, section: SectionBuffers) {
         self.arena_free(section.vertices);
         self.arena_free(section.indices);
+        unsafe { self.trim_arena() };
+    }
+
+    /// Give every block that holds nothing back to the driver but one, which
+    /// stays for the next meshes.
+    unsafe fn trim_arena(&mut self) {
+        unsafe {
+            let mut spare = false;
+            for block in &mut self.arena {
+                let empty = block.buffer != vk::Buffer::null()
+                    && block.free.as_slice() == [(0, block.size)];
+                if !empty {
+                    continue;
+                }
+                if !spare {
+                    spare = true;
+                    continue;
+                }
+                self.device.destroy_buffer(block.buffer, None);
+                self.device.free_memory(block.memory, None);
+                block.buffer = vk::Buffer::null();
+                block.memory = vk::DeviceMemory::null();
+                block.free = Vec::new();
+            }
+        }
+    }
+
+    /// Give the staging chunks past the spare ones back to the driver; none
+    /// is in use when a frame starts.
+    unsafe fn trim_staging(&mut self) {
+        unsafe {
+            let mut idle = 0;
+            for (index, chunk) in self.staging.iter_mut().enumerate() {
+                if chunk.buffer == vk::Buffer::null() || self.staging_filling.contains(&index) {
+                    continue;
+                }
+                idle += 1;
+                if idle <= STAGING_SPARE {
+                    continue;
+                }
+                self.device.unmap_memory(chunk.memory);
+                self.device.destroy_buffer(chunk.buffer, None);
+                self.device.free_memory(chunk.memory, None);
+                chunk.buffer = vk::Buffer::null();
+                chunk.memory = vk::DeviceMemory::null();
+                chunk.mapped = std::ptr::null_mut();
+                chunk.size = 0;
+                chunk.used = 0;
+            }
+        }
     }
 
     /// Copy bytes into a free range of the arena, growing it by a block
@@ -2492,9 +2522,21 @@ impl VulkanBackend {
             let (block, range) = match found {
                 Some(found) => found,
                 None => {
-                    self.arena
-                        .push(self.create_arena_block(size.max(ARENA_BLOCK_SIZE))?);
-                    (self.arena.len() - 1, 0)
+                    let block = self.create_arena_block(size.max(ARENA_BLOCK_SIZE))?;
+                    let given_back = self
+                        .arena
+                        .iter()
+                        .position(|own| own.buffer == vk::Buffer::null());
+                    match given_back {
+                        Some(slot) => {
+                            self.arena[slot] = block;
+                            (slot, 0)
+                        }
+                        None => {
+                            self.arena.push(block);
+                            (self.arena.len() - 1, 0)
+                        }
+                    }
                 }
             };
             let arena = &mut self.arena[block];
@@ -2525,9 +2567,21 @@ impl VulkanBackend {
                     let chunk = match free {
                         Some(chunk) => chunk,
                         None => {
-                            self.staging
-                                .push(self.create_staging_chunk(size.max(STAGING_CHUNK_SIZE))?);
-                            self.staging.len() - 1
+                            let made = self.create_staging_chunk(size.max(STAGING_CHUNK_SIZE))?;
+                            let given_back = self
+                                .staging
+                                .iter()
+                                .position(|own| own.buffer == vk::Buffer::null());
+                            match given_back {
+                                Some(slot) => {
+                                    self.staging[slot] = made;
+                                    slot
+                                }
+                                None => {
+                                    self.staging.push(made);
+                                    self.staging.len() - 1
+                                }
+                            }
                         }
                     };
                     self.staging[chunk].used = 0;
@@ -2593,6 +2647,7 @@ impl VulkanBackend {
             Ok(ArenaBlock {
                 buffer,
                 memory,
+                size,
                 free: vec![(0, size)],
             })
         }
@@ -3794,6 +3849,10 @@ impl VulkanBackend {
                 self.destroy_section(section);
             }
             self.staging_in_flight.clear();
+            self.trim_staging();
+            if capture {
+                self.make_readback()?;
+            }
 
             let (index, _) = match self.swapchain_device.acquire_next_image(
                 self.swapchain,
@@ -3886,7 +3945,7 @@ impl VulkanBackend {
                     self.command_buffer,
                     image,
                     vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
-                    self.readback_buffer,
+                    self.readback.expect("made for the capture").0,
                     &[region],
                 );
                 transition(
@@ -3947,19 +4006,16 @@ impl VulkanBackend {
                 .map_err(|result| VulkanError::Call("vkWaitForFences", result))?;
             let byte_count =
                 (self.description.extent.width * self.description.extent.height * 4) as usize;
+            let memory = self.readback.expect("made for the capture").1;
             let mapped = self
                 .device
-                .map_memory(
-                    self.readback_memory,
-                    0,
-                    byte_count as u64,
-                    vk::MemoryMapFlags::empty(),
-                )
+                .map_memory(memory, 0, byte_count as u64, vk::MemoryMapFlags::empty())
                 .map_err(|result| VulkanError::Call("vkMapMemory", result))?
                 .cast::<u8>();
             let mut rgba = vec![0_u8; byte_count];
             std::ptr::copy_nonoverlapping(mapped, rgba.as_mut_ptr(), byte_count);
-            self.device.unmap_memory(self.readback_memory);
+            self.device.unmap_memory(memory);
+            self.free_readback();
             if self.description.surface_format == vk::Format::B8G8R8A8_UNORM {
                 for pixel in rgba.as_chunks_mut::<4>().0 {
                     pixel.swap(0, 2);
@@ -4018,8 +4074,7 @@ impl Drop for VulkanBackend {
             self.device.destroy_semaphore(self.image_available, None);
             self.device.destroy_fence(self.in_flight, None);
             self.device.destroy_command_pool(self.command_pool, None);
-            self.device.destroy_buffer(self.readback_buffer, None);
-            self.device.free_memory(self.readback_memory, None);
+            self.free_readback();
             self.swapchain_device
                 .destroy_swapchain(self.swapchain, None);
             self.device.destroy_device(None);
