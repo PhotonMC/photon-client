@@ -1503,6 +1503,12 @@ public final class BlockOracle {
         });
         entry.add("classes", classList);
         entry.add("items", items);
+        var componentTypes = new JsonArray();
+        for (var type : net.minecraft.core.registries.BuiltInRegistries.DATA_COMPONENT_TYPE) {
+            componentTypes.add(net.minecraft.core.registries.BuiltInRegistries.DATA_COMPONENT_TYPE
+                .getKey(type).toString());
+        }
+        entry.add("component_types", componentTypes);
         return entry;
     }
 

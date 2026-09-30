@@ -16711,7 +16711,14 @@ fn item_declarations(label: &str) -> Value {
             described
         })
         .collect();
-    json!({"label": label, "outcome": "listed", "classes": classes, "items": items})
+    let component_types: Vec<&str> = voxel_data::item::component_types::NAMES.to_vec();
+    json!({
+        "label": label,
+        "outcome": "listed",
+        "classes": classes,
+        "items": items,
+        "component_types": component_types,
+    })
 }
 
 /// A parsed JSON value as a `serde_json` one, for the oracle's comparison.

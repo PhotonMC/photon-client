@@ -64,19 +64,8 @@ pub fn read_patch(input: &mut &[u8]) -> R<Patch> {
     Ok(patch)
 }
 
-/// The registry ids of the components whose values are read.
-pub mod ids {
-    pub const CUSTOM_NAME: i32 = 6;
-    pub const ITEM_NAME: i32 = 9;
-    pub const LORE: i32 = 11;
-    pub const RARITY: i32 = 12;
-    pub const ENCHANTMENTS: i32 = 13;
-    pub const DYED_COLOR: i32 = 44;
-    pub const MAP_COLOR: i32 = 45;
-    pub const POTION_CONTENTS: i32 = 51;
-    pub const FIREWORK_EXPLOSION: i32 = 68;
-    pub const STORED_ENCHANTMENTS: i32 = 42;
-}
+/// The registry ids of the data component types, named.
+pub use voxel_data::item::component_types as ids;
 
 /// `PotionContents`, as far as the colour and the name read it.
 #[derive(Debug, Clone, PartialEq, Eq)]

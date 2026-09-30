@@ -10,6 +10,7 @@
 //! templates, map, container, book and bee lines, the adventure predicates
 //! and the advanced lines (the `F3+H` toggle is off).
 
+use crate::item_components::ids;
 use crate::item_values::{AttributeDisplay, Explosion, PaintingVariant, Values};
 use crate::registries::Registries;
 use crate::text::{Component, Lang, Style};
@@ -102,13 +103,13 @@ fn hover_name(stack: &Stack, values: &Values) -> Component {
             }
         }
         "minecraft:shield" => {
-            if let (Some(dye), Some(id)) = (values.raw(73), &base)
+            if let (Some(dye), Some(id)) = (values.raw(ids::BASE_COLOR), &base)
                 && let Some(dye) = crate::item_components::varint_value(dye)
             {
                 return Component::translatable(format!("{id}.{}", dye_name(dye)));
             }
         }
-        "minecraft:compass" if values.has(67) => {
+        "minecraft:compass" if values.has(ids::LODESTONE_TRACKER) => {
             return Component::translatable("item.minecraft.lodestone_compass");
         }
         _ => {}
@@ -432,10 +433,7 @@ fn enchantment_tooltip(registries: &Registries, entries: &[(i32, i32)], out: &mu
 /// `ItemStack.getRarity`.
 pub fn rarity(values: &Values) -> i32 {
     let base = values.rarity();
-    if values
-        .enchantments(crate::item_components::ids::ENCHANTMENTS)
-        .is_empty()
-    {
+    if values.enchantments(ids::ENCHANTMENTS).is_empty() {
         return base;
     }
     match base {
@@ -474,7 +472,7 @@ pub fn lines(stack: &Stack, player: bool, flags: Flags, registries: &Registries)
     let item = item_name_of(stack);
 
     // `HangingEntityItem.appendHoverText`.
-    if item == "minecraft:painting" && shows(103) {
+    if item == "minecraft:painting" && shows(ids::PAINTING_VARIANT) {
         match values.painting_variant() {
             Some(PaintingVariant::Registry(id)) => {
                 if let Some(variant) = registries.painting_variants.get(id as usize) {
@@ -517,14 +515,14 @@ pub fn lines(stack: &Stack, player: bool, flags: Flags, registries: &Registries)
     {
         out.push(Component::translatable(format!("{id}.desc")).with_colour("gray"));
     }
-    if shows(61)
-        && let Some(id) = values.holder_id(61)
+    if shows(ids::INSTRUMENT)
+        && let Some(id) = values.holder_id(ids::INSTRUMENT)
         && let Some(entry) = registries.instruments.get(id as usize)
         && let Some(description) = entry.description.as_ref().and_then(json_component)
     {
         out.push(description.with_style(&Style::coloured("gray")));
     }
-    if shows(69)
+    if shows(ids::FIREWORKS)
         && let Some((flight, explosions)) = values.fireworks()
     {
         if flight > 0 {
@@ -575,13 +573,13 @@ pub fn lines(stack: &Stack, player: bool, flags: Flags, registries: &Registries)
         }
         flush(current, &mut out);
     }
-    if shows(68)
+    if shows(ids::FIREWORK_EXPLOSION)
         && let Some(explosion) = values.firework_explosion()
     {
         out.push(shape_name(explosion.shape).with_colour("gray"));
         explosion_details(&explosion, &mut out);
     }
-    if shows(51)
+    if shows(ids::POTION_CONTENTS)
         && let Some(contents) = values.potion_contents()
     {
         let mut effects: Vec<(i32, i32, i32)> = contents
@@ -609,14 +607,14 @@ pub fn lines(stack: &Stack, player: bool, flags: Flags, registries: &Registries)
         );
         potion_tooltip(&effects, values.potion_duration_scale(), &mut out);
     }
-    if shows(64)
-        && let Some(id) = values.holder_id(64)
+    if shows(ids::JUKEBOX_PLAYABLE)
+        && let Some(id) = values.holder_id(ids::JUKEBOX_PLAYABLE)
         && let Some(entry) = registries.jukebox_songs.get(id as usize)
         && let Some(description) = entry.description.as_ref().and_then(json_component)
     {
         out.push(description.with_style(&Style::coloured("gray")));
     }
-    if shows(56)
+    if shows(ids::TRIM)
         && let Some((material, pattern)) = values.trim()
         && let (Some(material), Some(pattern)) = (
             registries.trim_materials.get(material as usize),
@@ -639,20 +637,28 @@ pub fn lines(stack: &Stack, player: bool, flags: Flags, registries: &Registries)
         out.push(Component::literal(" ").append(pattern.with_style(&material.style)));
         out.push(Component::literal(" ").append(material));
     }
-    if shows(42) {
-        enchantment_tooltip(registries, &values.enchantments(42), &mut out);
+    if shows(ids::STORED_ENCHANTMENTS) {
+        enchantment_tooltip(
+            registries,
+            &values.enchantments(ids::STORED_ENCHANTMENTS),
+            &mut out,
+        );
     }
-    if shows(13) {
-        enchantment_tooltip(registries, &values.enchantments(13), &mut out);
+    if shows(ids::ENCHANTMENTS) {
+        enchantment_tooltip(
+            registries,
+            &values.enchantments(ids::ENCHANTMENTS),
+            &mut out,
+        );
     }
-    if shows(44) && values.dyed_color().is_some() {
+    if shows(ids::DYED_COLOR) && values.dyed_color().is_some() {
         out.push(
             Component::translatable("item.dyed")
                 .with_colour("gray")
                 .italic(),
         );
     }
-    if shows(11) {
+    if shows(ids::LORE) {
         let lore = Style {
             colour: crate::text::named_colour("dark_purple"),
             italic: Some(true),
@@ -660,7 +666,7 @@ pub fn lines(stack: &Stack, player: bool, flags: Flags, registries: &Registries)
         };
         out.extend(values.lore().into_iter().map(|line| line.with_style(&lore)));
     }
-    if shows(72) {
+    if shows(ids::BANNER_PATTERNS) {
         for (pattern, dye) in values.banner_layers().into_iter().take(6) {
             if let Some(entry) = registries.banner_patterns.get(pattern as usize) {
                 out.push(
@@ -670,16 +676,16 @@ pub fn lines(stack: &Stack, player: bool, flags: Flags, registries: &Registries)
             }
         }
     }
-    attribute_tooltips_if(shows(16), &values, player, &mut out);
-    if shows(22) && values.has(22) {
+    attribute_tooltips_if(shows(ids::ATTRIBUTE_MODIFIERS), &values, player, &mut out);
+    if shows(ids::INTANGIBLE_PROJECTILE) && values.has(ids::INTANGIBLE_PROJECTILE) {
         out.push(Component::translatable("item.intangible").with_colour("gray"));
     }
-    if shows(4) && values.has(4) {
+    if shows(ids::UNBREAKABLE) && values.has(ids::UNBREAKABLE) {
         out.push(Component::translatable("item.unbreakable").with_colour("blue"));
     }
-    if shows(63)
+    if shows(ids::OMINOUS_BOTTLE_AMPLIFIER)
         && let Some(amplifier) = values
-            .raw(63)
+            .raw(ids::OMINOUS_BOTTLE_AMPLIFIER)
             .and_then(crate::item_components::varint_value)
         && let Some(bad_omen) = MOB_EFFECTS
             .iter()
@@ -687,7 +693,7 @@ pub fn lines(stack: &Stack, player: bool, flags: Flags, registries: &Registries)
     {
         potion_tooltip(&[(bad_omen as i32, amplifier, 120_000)], 1.0, &mut out);
     }
-    if flags.creative && shows(53) {
+    if flags.creative && shows(ids::SUSPICIOUS_STEW_EFFECTS) {
         let effects: Vec<(i32, i32, i32)> = values
             .suspicious_stew()
             .into_iter()
@@ -697,7 +703,7 @@ pub fn lines(stack: &Stack, player: bool, flags: Flags, registries: &Registries)
             potion_tooltip(&effects, 1.0, &mut out);
         }
     }
-    if shows(76)
+    if shows(ids::BLOCK_STATE)
         && let Some((_, level)) = values
             .block_state()
             .into_iter()

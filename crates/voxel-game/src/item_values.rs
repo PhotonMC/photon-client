@@ -190,7 +190,7 @@ impl Values {
     /// `tooltip_display`: whether the tooltip is hidden, and which
     /// components it leaves out.
     pub fn tooltip_display(&self) -> (bool, Vec<i32>) {
-        let Some(mut cursor) = self.raw(18).map(|data| Cursor { data }) else {
+        let Some(mut cursor) = self.raw(ids::TOOLTIP_DISPLAY).map(|data| Cursor { data }) else {
             return (false, Vec::new());
         };
         let hide = cursor.boolean().unwrap_or(false);
@@ -267,7 +267,7 @@ impl Values {
 
     /// `attribute_modifiers`.
     pub fn attribute_modifiers(&self) -> Vec<AttributeEntry> {
-        let Some(data) = self.raw(16) else {
+        let Some(data) = self.raw(ids::ATTRIBUTE_MODIFIERS) else {
             return Vec::new();
         };
         let mut cursor = Cursor { data };
@@ -311,7 +311,7 @@ impl Values {
     /// `fireworks`: the flight duration and the explosions.
     pub fn fireworks(&self) -> Option<(i32, Vec<Explosion>)> {
         let mut cursor = Cursor {
-            data: self.raw(69)?,
+            data: self.raw(ids::FIREWORKS)?,
         };
         let flight = cursor.varint().ok()?;
         let mut explosions = Vec::new();
@@ -324,14 +324,14 @@ impl Values {
     /// `firework_explosion`.
     pub fn firework_explosion(&self) -> Option<Explosion> {
         read_explosion(&mut Cursor {
-            data: self.raw(68)?,
+            data: self.raw(ids::FIREWORK_EXPLOSION)?,
         })
     }
 
     /// `painting/variant`.
     pub fn painting_variant(&self) -> Option<PaintingVariant> {
         let mut cursor = Cursor {
-            data: self.raw(103)?,
+            data: self.raw(ids::PAINTING_VARIANT)?,
         };
         let id = cursor.varint().ok()?;
         if id > 0 {
@@ -370,7 +370,7 @@ impl Values {
 
     /// `banner_patterns`: each layer's pattern registry id and dye.
     pub fn banner_layers(&self) -> Vec<(i32, i32)> {
-        let Some(data) = self.raw(72) else {
+        let Some(data) = self.raw(ids::BANNER_PATTERNS) else {
             return Vec::new();
         };
         let mut cursor = Cursor { data };
@@ -391,7 +391,7 @@ impl Values {
     /// `trim`: the material's and the pattern's registry ids.
     pub fn trim(&self) -> Option<(i32, i32)> {
         let mut cursor = Cursor {
-            data: self.raw(56)?,
+            data: self.raw(ids::TRIM)?,
         };
         let material = cursor.varint().ok()?;
         let pattern = cursor.varint().ok()?;
@@ -400,7 +400,7 @@ impl Values {
 
     /// `suspicious_stew_effects`: effect registry ids and durations.
     pub fn suspicious_stew(&self) -> Vec<(i32, i32)> {
-        let Some(data) = self.raw(53) else {
+        let Some(data) = self.raw(ids::SUSPICIOUS_STEW_EFFECTS) else {
             return Vec::new();
         };
         let mut cursor = Cursor { data };
@@ -416,14 +416,14 @@ impl Values {
 
     /// `potion_duration_scale`.
     pub fn potion_duration_scale(&self) -> f32 {
-        self.raw(52)
+        self.raw(ids::POTION_DURATION_SCALE)
             .and_then(|data| Some(f32::from_be_bytes(data.get(..4)?.try_into().ok()?)))
             .unwrap_or(1.0)
     }
 
     /// `block_state`'s properties.
     pub fn block_state(&self) -> Vec<(String, String)> {
-        let Some(data) = self.raw(76) else {
+        let Some(data) = self.raw(ids::BLOCK_STATE) else {
             return Vec::new();
         };
         let mut cursor = Cursor { data };
