@@ -1,15 +1,14 @@
-//! `ClientWorld` block_state layer split out of the former single-file module.
+//! The client's block registry (the tags the server sent) and the pinned
+//! shape tables: what a state collides with and what a click aims at.
 
-use std::collections::BTreeMap;
 use std::sync::Arc;
-
-use crate::block::tags::BlockTags;
 
 use voxel_core::{
     binary::BlockPos,
-    direction::Direction,
     shape::{Shapes, VoxelShape},
 };
+
+use crate::block::tags::BlockTags;
 use voxel_data::block::shape::{BlockShapes, ShapeBox};
 
 /// A block collision shape returned in Java's cursor traversal order.
@@ -19,202 +18,15 @@ pub struct ClientBlockCollision {
     pub shape: VoxelShape,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum ClientStairsShape {
-    Straight,
-    InnerLeft,
-    InnerRight,
-    OuterLeft,
-    OuterRight,
-}
-
-impl ClientStairsShape {
-    pub(crate) fn name(self) -> &'static str {
-        match self {
-            Self::Straight => "straight",
-            Self::InnerLeft => "inner_left",
-            Self::InnerRight => "inner_right",
-            Self::OuterLeft => "outer_left",
-            Self::OuterRight => "outer_right",
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) struct ClientStairBlockState {
-    pub(crate) facing: Direction,
-    pub(crate) top: bool,
-    pub(crate) shape: ClientStairsShape,
-    pub(crate) waterlogged: bool,
-}
-
-pub(crate) fn client_stair_block_state(
-    facing: Direction,
-    top: bool,
-    shape: ClientStairsShape,
-    waterlogged: bool,
-) -> ClientStairBlockState {
-    ClientStairBlockState {
-        facing,
-        top,
-        shape,
-        waterlogged,
-    }
-}
-
-/// Resolve the pinned 26.2 built-in block-state IDs used by the current
-/// ClientWorld collision slice.
-///
-/// Java's complete built-in registry is larger. IDs outside this deliberately
-/// small exact subset follow the `Block.stateById` fallback to air until their
-/// state definition and context branch is implemented.
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// What the client's block registry holds beyond the pinned declarations:
+/// the tags the server sent.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ClientBlockStateRegistry {
-    pub(crate) stair_states: BTreeMap<i32, ClientStairBlockState>,
     /// The block tags the server last sent.
     pub(crate) tags: Arc<BlockTags>,
 }
 
 impl ClientBlockStateRegistry {
-    #[expect(
-        clippy::too_many_lines,
-        reason = "one literal table of the vanilla states it covers"
-    )]
-    pub fn vanilla_26_2() -> Self {
-        let stair_states = BTreeMap::from([
-            (
-                3908,
-                client_stair_block_state(
-                    Direction::North,
-                    true,
-                    ClientStairsShape::Straight,
-                    false,
-                ),
-            ),
-            (
-                3917,
-                client_stair_block_state(
-                    Direction::North,
-                    false,
-                    ClientStairsShape::Straight,
-                    true,
-                ),
-            ),
-            (
-                3918,
-                client_stair_block_state(
-                    Direction::North,
-                    false,
-                    ClientStairsShape::Straight,
-                    false,
-                ),
-            ),
-            (
-                3919,
-                client_stair_block_state(
-                    Direction::North,
-                    false,
-                    ClientStairsShape::InnerLeft,
-                    true,
-                ),
-            ),
-            (
-                3920,
-                client_stair_block_state(
-                    Direction::North,
-                    false,
-                    ClientStairsShape::InnerLeft,
-                    false,
-                ),
-            ),
-            (
-                3921,
-                client_stair_block_state(
-                    Direction::North,
-                    false,
-                    ClientStairsShape::InnerRight,
-                    true,
-                ),
-            ),
-            (
-                3922,
-                client_stair_block_state(
-                    Direction::North,
-                    false,
-                    ClientStairsShape::InnerRight,
-                    false,
-                ),
-            ),
-            (
-                3923,
-                client_stair_block_state(
-                    Direction::North,
-                    false,
-                    ClientStairsShape::OuterLeft,
-                    true,
-                ),
-            ),
-            (
-                3924,
-                client_stair_block_state(
-                    Direction::North,
-                    false,
-                    ClientStairsShape::OuterLeft,
-                    false,
-                ),
-            ),
-            (
-                3925,
-                client_stair_block_state(
-                    Direction::North,
-                    false,
-                    ClientStairsShape::OuterRight,
-                    true,
-                ),
-            ),
-            (
-                3926,
-                client_stair_block_state(
-                    Direction::North,
-                    false,
-                    ClientStairsShape::OuterRight,
-                    false,
-                ),
-            ),
-            (
-                3938,
-                client_stair_block_state(
-                    Direction::South,
-                    false,
-                    ClientStairsShape::Straight,
-                    false,
-                ),
-            ),
-            (
-                3958,
-                client_stair_block_state(
-                    Direction::West,
-                    false,
-                    ClientStairsShape::Straight,
-                    false,
-                ),
-            ),
-            (
-                3978,
-                client_stair_block_state(
-                    Direction::East,
-                    false,
-                    ClientStairsShape::Straight,
-                    false,
-                ),
-            ),
-        ]);
-        Self {
-            stair_states,
-            tags: Arc::default(),
-        }
-    }
-
     /// Java `Block.stateById`: a number outside the registry reads as air.
     pub fn resolve_state_id(&self, state_id: i32) -> i32 {
         match u32::try_from(state_id) {
@@ -232,91 +44,9 @@ impl ClientBlockStateRegistry {
         table_collision_shape(self.resolve_state_id(state_id) as u32)
     }
 
+    /// A stair state's `shape`.
     pub fn stair_shape_name(&self, state_id: i32) -> Option<&'static str> {
-        self.stair_states
-            .get(&state_id)
-            .map(|state| state.shape.name())
-    }
-
-    pub(crate) fn stair_shape_update_state_id(
-        &self,
-        state_id: i32,
-        neighbors: &[Option<i32>; 6],
-    ) -> Option<i32> {
-        let state = self.stair_states.get(&state_id)?;
-        let facing = state.facing;
-        let shape = if let Some(behind_id) = neighbors[facing.data3d() as usize]
-            && let Some(behind) = self.stair_states.get(&behind_id)
-            && state.top == behind.top
-            && behind.facing.axis() != facing.axis()
-            && self.stair_can_take_shape(state, neighbors, behind.facing.opposite())
-        {
-            if behind.facing
-                == facing
-                    .counter_clockwise_y()
-                    .expect("stair facing is horizontal")
-            {
-                ClientStairsShape::OuterLeft
-            } else {
-                ClientStairsShape::OuterRight
-            }
-        } else if let Some(front_id) = neighbors[facing.opposite().data3d() as usize]
-            && let Some(front) = self.stair_states.get(&front_id)
-            && state.top == front.top
-            && front.facing.axis() != facing.axis()
-            && self.stair_can_take_shape(state, neighbors, front.facing)
-        {
-            if front.facing
-                == facing
-                    .counter_clockwise_y()
-                    .expect("stair facing is horizontal")
-            {
-                ClientStairsShape::InnerLeft
-            } else {
-                ClientStairsShape::InnerRight
-            }
-        } else {
-            ClientStairsShape::Straight
-        };
-
-        self.stair_state_id_for_shape(state, shape)
-    }
-
-    pub(crate) fn stair_can_take_shape(
-        &self,
-        state: &ClientStairBlockState,
-        neighbors: &[Option<i32>; 6],
-        direction: Direction,
-    ) -> bool {
-        let Some(neighbor_id) = neighbors[direction.data3d() as usize] else {
-            return true;
-        };
-        let Some(neighbor) = self.stair_states.get(&neighbor_id) else {
-            return true;
-        };
-        neighbor.facing != state.facing || neighbor.top != state.top
-    }
-
-    pub(crate) fn stair_state_id_for_shape(
-        &self,
-        state: &ClientStairBlockState,
-        shape: ClientStairsShape,
-    ) -> Option<i32> {
-        if state.facing != Direction::North || state.top {
-            return None;
-        }
-        Some(match (state.waterlogged, shape) {
-            (false, ClientStairsShape::Straight) => 3918,
-            (false, ClientStairsShape::InnerLeft) => 3920,
-            (false, ClientStairsShape::InnerRight) => 3922,
-            (false, ClientStairsShape::OuterLeft) => 3924,
-            (false, ClientStairsShape::OuterRight) => 3926,
-            (true, ClientStairsShape::Straight) => 3917,
-            (true, ClientStairsShape::InnerLeft) => 3919,
-            (true, ClientStairsShape::InnerRight) => 3921,
-            (true, ClientStairsShape::OuterLeft) => 3923,
-            (true, ClientStairsShape::OuterRight) => 3925,
-        })
+        crate::block_rules::property(state_id, "shape")
     }
 
     /// The registry number of the block a state belongs to.

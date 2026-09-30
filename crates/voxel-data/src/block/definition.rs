@@ -118,6 +118,8 @@ pub struct Block {
     pub redstone_conductor: Rule,
     /// The fluid a `LiquidBlock` is made of.
     pub fluid: Fluid,
+    /// `asItem`, when it is not the item named like the block.
+    pub item: Option<&'static str>,
 }
 
 impl Block {
@@ -153,6 +155,7 @@ impl Block {
             view_blocking: Rule::Default,
             redstone_conductor: Rule::Default,
             fluid: Fluid::Empty,
+            item: None,
         }
     }
 
@@ -289,6 +292,18 @@ impl Block {
     pub const fn fluid(mut self, fluid: Fluid) -> Self {
         self.fluid = fluid;
         self
+    }
+
+    /// The item the block stands for (`Item.BY_BLOCK`), when it is not the
+    /// one named like the block: air for a block with no item.
+    pub const fn item(mut self, item: &'static str) -> Self {
+        self.item = Some(item);
+        self
+    }
+
+    /// `asItem`, as an item identifier.
+    pub fn item_name(&self) -> &'static str {
+        self.item.unwrap_or(self.name)
     }
 }
 

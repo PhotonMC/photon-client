@@ -1193,6 +1193,8 @@ public final class BlockOracle {
                 }
                 values.addProperty("pushReaction", declaredValue(declared, "pushReaction").toString());
                 described.add("declared", values);
+                described.addProperty("item", net.minecraft.core.registries.BuiltInRegistries.ITEM
+                    .getKey(block.asItem()).toString());
                 if (block instanceof net.minecraft.world.level.block.LiquidBlock) {
                     var fluid = net.minecraft.world.level.block.LiquidBlock.class.getDeclaredField("fluid");
                     fluid.setAccessible(true);
@@ -1228,6 +1230,16 @@ public final class BlockOracle {
                     collectInterface(type, interfaceParents);
                 }
                 described.add("interfaces", interfaces);
+                var declares = new JsonArray();
+                for (var method : TRACKED_METHODS.entrySet()) {
+                    try {
+                        classTypes.get(name).getDeclaredMethod(method.getKey(), method.getValue());
+                        declares.add(method.getKey());
+                    } catch (NoSuchMethodException absent) {
+                        // Inherited, not its own.
+                    }
+                }
+                described.add("declares", declares);
                 classList.add(described);
             });
             entry.add("classes", classList);
@@ -1247,6 +1259,33 @@ public final class BlockOracle {
             throw new IllegalStateException(failure);
         }
         return entry;
+    }
+
+    /** The block methods the client ports class by class, with their
+     * parameters, in the order the declarations list them. */
+    private static final java.util.Map<String, Class<?>[]> TRACKED_METHODS = trackedMethods();
+
+    private static java.util.Map<String, Class<?>[]> trackedMethods() {
+        Class<?> state = net.minecraft.world.level.block.state.BlockState.class;
+        Class<?> pos = net.minecraft.core.BlockPos.class;
+        Class<?> level = net.minecraft.world.level.Level.class;
+        Class<?> reader = net.minecraft.world.level.LevelReader.class;
+        Class<?> player = net.minecraft.world.entity.player.Player.class;
+        Class<?> hit = net.minecraft.world.phys.BlockHitResult.class;
+        var methods = new java.util.LinkedHashMap<String, Class<?>[]>();
+        methods.put("getStateForPlacement",
+            new Class<?>[] {net.minecraft.world.item.context.BlockPlaceContext.class});
+        methods.put("canBeReplaced",
+            new Class<?>[] {state, net.minecraft.world.item.context.BlockPlaceContext.class});
+        methods.put("canSurvive", new Class<?>[] {state, reader, pos});
+        methods.put("useWithoutItem", new Class<?>[] {state, level, pos, player, hit});
+        methods.put("useItemOn", new Class<?>[] {
+            net.minecraft.world.item.ItemStack.class, state, level, pos, player,
+            net.minecraft.world.InteractionHand.class, hit});
+        methods.put("updateShape", new Class<?>[] {
+            state, reader, net.minecraft.world.level.ScheduledTickAccess.class, pos,
+            net.minecraft.core.Direction.class, pos, state, net.minecraft.util.RandomSource.class});
+        return methods;
     }
 
     /** An interface and every interface it extends, each listed once. */

@@ -104,6 +104,8 @@ def chain(block):
     if declared["pushReaction"] != "NORMAL":
         reaction = "".join(part.capitalize() for part in declared["pushReaction"].split("_"))
         calls.append(f"push_reaction(PushReaction::{reaction})")
+    if block["item"] != block["name"]:
+        calls.append(f"item({rust_str(block['item'])})")
     if "fluid" in block:
         calls.append(f"fluid(Fluid::{FLUIDS[block['fluid']]})")
     per_state = block["per_state"]
@@ -165,7 +167,24 @@ def classes_file(classes, interfaces):
         if entry["interfaces"]:
             listed = ", ".join(f"BlockInterface::{name}" for name in entry["interfaces"])
             out.append(f"            Self::{entry['name']} => &[{listed}],")
+    out += ["            _ => &[],", "        }", "    }", "",
+            "    /// The tracked methods this class declares itself (overrides).",
+            '    #[expect(clippy::too_many_lines, reason = "one arm per class")]',
+            "    pub const fn declares(self) -> &'static [Method] {", "        match self {"]
+    for entry in classes:
+        if entry["declares"]:
+            listed = ", ".join(f"Method::{method[0].upper()}{method[1:]}" for method in entry["declares"])
+            out.append(f"            Self::{entry['name']} => &[{listed}],")
     out += ["            _ => &[],", "        }", "    }", "}", "",
+            "/// The block methods the client ports class by class.",
+            "#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]", "pub enum Method {"]
+    methods = []
+    for entry in classes:
+        for method in entry["declares"]:
+            if method not in methods:
+                methods.append(method)
+    out += [f"    {method[0].upper()}{method[1:]}," for method in sorted(methods)]
+    out += ["}", "",
             "/// Every interface a block class implements, directly or through another.",
             "#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]", "pub enum BlockInterface {"]
     out += [f"    {entry['name']}," for entry in interfaces]

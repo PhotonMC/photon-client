@@ -16334,7 +16334,20 @@ fn block_declarations(label: &str) -> Value {
                 .iter()
                 .map(|interface| format!("{interface:?}"))
                 .collect();
-            json!({"name": format!("{class:?}"), "parent": parent, "interfaces": interfaces})
+            let declares: Vec<String> = class
+                .declares()
+                .iter()
+                .map(|method| {
+                    let name = format!("{method:?}");
+                    name[..1].to_lowercase() + &name[1..]
+                })
+                .collect();
+            json!({
+                "name": format!("{class:?}"),
+                "parent": parent,
+                "interfaces": interfaces,
+                "declares": declares,
+            })
         })
         .collect();
     let interfaces: Vec<Value> = voxel_data::block::classes::BlockInterface::ALL
@@ -16425,6 +16438,7 @@ fn block_declarations(label: &str) -> Value {
                     },
                 },
                 "per_state": per_state,
+                "item": block.item_name(),
             });
             if block.class.is(BlockClass::LiquidBlock) {
                 described["fluid"] = json!(match block.fluid {
@@ -16736,24 +16750,35 @@ fn block_result(request: &Value) -> Result<Value, String> {
             }
             "block_declarations" => out.push(block_declarations(label)),
             "block_behaviours" => {
-                use voxel_data::block::behaviour::{BLOCKS, CLASSES, ITEMS};
-                let class = |index: u16| CLASSES[usize::from(index)];
+                use voxel_data::block::classes::Method;
+                use voxel_data::item::behaviour::ITEMS;
+                // The class whose own method the block runs, as the
+                // reference's dispatch resolves it.
+                let owner = |block: &registry::Block, method: Method| {
+                    block
+                        .class
+                        .lineage()
+                        .find(|class| class.declares().contains(&method))
+                        .map_or_else(|| "BlockBehaviour".to_owned(), |class| format!("{class:?}"))
+                };
                 let blocks: Vec<Value> = registry::BLOCKS
                     .iter()
-                    .zip(BLOCKS.iter())
-                    .map(|(block, row)| {
+                    .map(|block| {
+                        let replaceable = if block.replaceable { "1" } else { "0" };
                         json!({
                             "name": block.name,
-                            "class": class(row.class),
-                            "placement": class(row.placement),
-                            "can_be_replaced": class(row.can_be_replaced),
-                            "can_survive": class(row.can_survive),
-                            "use_without_item": class(row.use_without_item),
-                            "use_item_on": class(row.use_item_on),
-                            "update_shape": class(row.update_shape),
-                            "replaceable": row.replaceable,
-                            "stairs": row.stairs,
-                            "item": voxel_data::item::registry::ITEMS[usize::from(row.item)].name,
+                            "class": format!("{:?}", block.class),
+                            "placement": owner(block, Method::GetStateForPlacement),
+                            "can_be_replaced": owner(block, Method::CanBeReplaced),
+                            "can_survive": owner(block, Method::CanSurvive),
+                            "use_without_item": owner(block, Method::UseWithoutItem),
+                            "use_item_on": owner(block, Method::UseItemOn),
+                            "update_shape": owner(block, Method::UpdateShape),
+                            "replaceable": replaceable.repeat(block.state_count() as usize),
+                            "stairs": block
+                                .class
+                                .is(voxel_data::block::classes::BlockClass::StairBlock),
+                            "item": block.item_name(),
                         })
                     })
                     .collect();
@@ -16763,13 +16788,13 @@ fn block_result(request: &Value) -> Result<Value, String> {
                     .map(|(item, row)| {
                         let mut described = json!({
                             "name": item.name,
-                            "class": class(row.class),
-                            "use_on": class(row.use_on),
-                            "use": class(row.use_),
+                            "class": row.class,
+                            "use_on": row.use_on,
+                            "use": row.use_,
                             "default_use_pass": row.default_use_pass,
                         });
                         if let Some(block) = row.block {
-                            described["block"] = json!(registry::BLOCKS[usize::from(block)].name);
+                            described["block"] = json!(block);
                         }
                         described
                     })

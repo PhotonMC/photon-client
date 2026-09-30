@@ -2,16 +2,18 @@
 //! state a placed block takes, may it stand there, and how a block reshapes
 //! when a neighbour changes.
 //!
-//! Each block runs the rule of the class whose own method it inherits, as
-//! the reference's class hierarchy resolves it; `block_behaviour_table` names
-//! that class. A class whose rule is written here answers; any other class
-//! answers [`Rule::Unported`], and the caller does not predict what it does.
+//! Each block runs the rule of the nearest class in its lineage that
+//! declares the method, as the reference's dispatch resolves it
+//! ([`BlockClass::declares`]). A class whose rule is written here answers;
+//! any other class answers [`Rule::Unported`], and the caller does not
+//! predict what it does.
 
 use std::collections::BTreeMap;
 
 use voxel_core::direction::{Axis, Direction};
-use voxel_data::block::behaviour::{BLOCKS, CLASSES, ITEMS};
-use voxel_data::block::registry;
+use voxel_data::block::classes::{BlockClass, Method};
+use voxel_data::block::registry::{self, BLOCKS, Block};
+use voxel_data::item::behaviour::ITEMS;
 
 /// A rule's answer, or that the class's rule is not written.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -20,17 +22,27 @@ pub enum Rule<T> {
     Unported,
 }
 
-fn class_name(index: u16) -> &'static str {
-    CLASSES[usize::from(index)]
-}
-
 fn block_index(state: i32) -> Option<(usize, u32)> {
     registry::block_index_for_state(u32::try_from(state).ok()?)
 }
 
-/// The block's table row.
-fn behaviour(state: i32) -> Option<&'static voxel_data::block::behaviour::BlockBehaviour> {
+fn block(state: i32) -> Option<&'static Block> {
     block_index(state).map(|(index, _)| &BLOCKS[index])
+}
+
+/// The class whose own `method` the block runs; `None` for the one
+/// `BlockBehaviour` itself has.
+fn owner(block: &Block, method: Method) -> Option<BlockClass> {
+    block
+        .class
+        .lineage()
+        .find(|class| class.declares().contains(&method))
+}
+
+/// The class whose own `method` a state's block runs; `None` for
+/// `BlockBehaviour`'s own or a state outside the registry.
+fn state_owner(state: i32, method: Method) -> Option<BlockClass> {
+    block(state).and_then(|block| owner(block, method))
 }
 
 /// A property's value in a state.
@@ -108,24 +120,23 @@ impl PlaceContext<'_> {
         (self.state_at)(pos.0, pos.1, pos.2)
     }
 
+    /// Whether the item in use is the block's own (`asItem`).
     fn holds_item_of(&self, state: i32) -> bool {
-        behaviour(state).is_some_and(|row| self.item == Some(i32::from(row.item)))
+        block(state)
+            .and_then(|block| voxel_data::item::index(block.item_name()))
+            .is_some_and(|item| self.item == i32::try_from(item).ok())
     }
 }
 
 /// `BlockBehaviour.canBeReplaced(state, context)` as the block's class
 /// decides it.
 pub fn can_be_replaced(state: i32, ctx: &PlaceContext<'_>) -> Rule<bool> {
-    let Some(row) = behaviour(state) else {
+    let Some(block) = block(state) else {
         return Rule::Known(false);
     };
-    match class_name(row.can_be_replaced) {
-        "BlockBehaviour" => {
-            let (_, offset) = block_index(state).expect("row found");
-            let replaceable = row.replaceable(offset);
-            Rule::Known(replaceable && (ctx.item.is_none() || !ctx.holds_item_of(state)))
-        }
-        "SlabBlock" => {
+    match owner(block, Method::CanBeReplaced) {
+        None => Rule::Known(block.replaceable && (ctx.item.is_none() || !ctx.holds_item_of(state))),
+        Some(BlockClass::SlabBlock) => {
             let kind = property(state, "type");
             if kind == Some("double") || !ctx.holds_item_of(state) {
                 return Rule::Known(false);
@@ -148,7 +159,6 @@ pub fn can_be_replaced(state: i32, ctx: &PlaceContext<'_>) -> Rule<bool> {
 /// `Block.getStateForPlacement` for the block the item places; `None` is a
 /// refusal.
 pub fn state_for_placement(block: usize, ctx: &PlaceContext<'_>) -> Rule<Option<i32>> {
-    let row = &BLOCKS[block];
     let default = default_state(block);
     let pos = ctx.clicked_pos();
     #[expect(
@@ -159,9 +169,9 @@ pub fn state_for_placement(block: usize, ctx: &PlaceContext<'_>) -> Rule<Option<
         ctx.face != Direction::Down
             && (ctx.face == Direction::Up || !(ctx.location.1 - f64::from(pos.1) > 0.5))
     };
-    match class_name(row.placement) {
-        "Block" => Rule::Known(Some(default)),
-        "RotatedPillarBlock" => {
+    match owner(&BLOCKS[block], Method::GetStateForPlacement) {
+        Some(BlockClass::Block) => Rule::Known(Some(default)),
+        Some(BlockClass::RotatedPillarBlock) => {
             let axis = match ctx.face.axis() {
                 Axis::X => "x",
                 Axis::Y => "y",
@@ -169,7 +179,7 @@ pub fn state_for_placement(block: usize, ctx: &PlaceContext<'_>) -> Rule<Option<
             };
             Rule::Known(with_property(default, "axis", axis))
         }
-        "SlabBlock" => {
+        Some(BlockClass::SlabBlock) => {
             let replaced = ctx.state(pos);
             if block_index(replaced).map(|(index, _)| index) == Some(block) {
                 let double = with_property(replaced, "type", "double")
@@ -187,7 +197,7 @@ pub fn state_for_placement(block: usize, ctx: &PlaceContext<'_>) -> Rule<Option<
                     .and_then(|state| with_property(state, "waterlogged", water)),
             )
         }
-        "StairBlock" => {
+        Some(BlockClass::StairBlock) => {
             let water = if is_water_source(ctx.state(pos)) {
                 "true"
             } else {
@@ -209,14 +219,15 @@ pub fn state_for_placement(block: usize, ctx: &PlaceContext<'_>) -> Rule<Option<
 
 /// `BlockBehaviour.canSurvive` as the block's class decides it.
 pub fn can_survive(state: i32) -> Rule<bool> {
-    match behaviour(state).map(|row| class_name(row.can_survive)) {
-        Some("BlockBehaviour") | None => Rule::Known(true),
-        _ => Rule::Unported,
+    match state_owner(state, Method::CanSurvive) {
+        None => Rule::Known(true),
+        Some(_) => Rule::Unported,
     }
 }
 
+/// `instanceof StairBlock`.
 fn is_stairs(state: i32) -> bool {
-    behaviour(state).is_some_and(|row| row.stairs)
+    block(state).is_some_and(|block| block.class.is(BlockClass::StairBlock))
 }
 
 fn facing(state: i32) -> Option<Direction> {
@@ -278,9 +289,9 @@ pub fn update_shape(
     pos: (i32, i32, i32),
     direction: Direction,
 ) -> Rule<i32> {
-    match behaviour(state).map(|row| class_name(row.update_shape)) {
-        Some("BlockBehaviour") | None => Rule::Known(state),
-        Some("StairBlock") => {
+    match state_owner(state, Method::UpdateShape) {
+        None => Rule::Known(state),
+        Some(BlockClass::StairBlock) => {
             if direction.axis() == Axis::Y {
                 return Rule::Known(state);
             }
@@ -312,37 +323,37 @@ impl UseResult {
 
 /// `BlockBehaviour.useItemOn`.
 pub fn use_item_on(state: i32) -> Rule<UseResult> {
-    match behaviour(state).map(|row| class_name(row.use_item_on)) {
-        Some("BlockBehaviour") | None => Rule::Known(UseResult::TryEmptyHand),
-        _ => Rule::Unported,
+    match state_owner(state, Method::UseItemOn) {
+        None => Rule::Known(UseResult::TryEmptyHand),
+        Some(_) => Rule::Unported,
     }
 }
 
 /// `BlockBehaviour.useWithoutItem`.
 pub fn use_without_item(state: i32) -> Rule<UseResult> {
-    match behaviour(state).map(|row| class_name(row.use_without_item)) {
-        Some("BlockBehaviour") | None => Rule::Known(UseResult::Pass),
-        _ => Rule::Unported,
+    match state_owner(state, Method::UseWithoutItem) {
+        None => Rule::Known(UseResult::Pass),
+        Some(_) => Rule::Unported,
     }
 }
 
 /// An item's table row, by registry id.
-pub fn item_behaviour(item: i32) -> Option<&'static voxel_data::block::behaviour::ItemBehaviour> {
+pub fn item_behaviour(item: i32) -> Option<&'static voxel_data::item::behaviour::ItemBehaviour> {
     usize::try_from(item)
         .ok()
         .and_then(|index| ITEMS.get(index))
 }
 
 pub fn item_class(item: i32) -> &'static str {
-    item_behaviour(item).map_or("Item", |row| class_name(row.class))
+    item_behaviour(item).map_or("Item", |row| row.class)
 }
 
 pub fn item_use_on_class(item: i32) -> &'static str {
-    item_behaviour(item).map_or("Item", |row| class_name(row.use_on))
+    item_behaviour(item).map_or("Item", |row| row.use_on)
 }
 
 pub fn item_use_class(item: i32) -> &'static str {
-    item_behaviour(item).map_or("Item", |row| class_name(row.use_))
+    item_behaviour(item).map_or("Item", |row| row.use_)
 }
 
 /// Whether a state is air, for `updateOrDestroy`.

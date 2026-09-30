@@ -56,7 +56,7 @@ olarak tutulmaz.
   ışık yayma, `noOcclusion`, ofset türü, yüzey rengi…), alan adlarıyla.
   `states`, `destroy`, `light`, `movement`, `offset`, `behaviour`
   tabloları bunda birleşir.
-- [ ] Sınıf davranışları sınıf enum'u üzerinden; `ClientBlockStateRegistry`
+- [x] Sınıf davranışları sınıf enum'u üzerinden; `ClientBlockStateRegistry`
   içindeki sabit merdiven numaraları kalkar, bütün merdivenler
   özelliklerinden çalışır.
 - [x] Etiket bayrakları (tırmanılabilir, çit, duvar…) sunucunun gönderdiği

@@ -97,7 +97,7 @@ impl ClientWorld {
             dimension_environment: DimensionEnvironment::for_builtin_dimension(
                 "minecraft:overworld",
             ),
-            block_state_registry: ClientBlockStateRegistry::vanilla_26_2(),
+            block_state_registry: ClientBlockStateRegistry::default(),
             chunks: BTreeMap::new(),
             chunk_cache: None,
             light: new_light_engine(dimension, true),
@@ -2351,22 +2351,29 @@ impl ClientWorld {
 
     /// Apply the horizontal `StairBlock.updateShape` state transition against
     /// the currently loaded six-neighbor block states.
+    /// `StairBlock.updateShape` after a side neighbour changed: the stair
+    /// takes the shape its neighbours give it. `false` when the block there
+    /// is not a stair.
     pub fn apply_stair_neighbor_shape_update(&mut self, x: i32, y: i32, z: i32) -> bool {
         let Some(state_id) = self.block_state_at(x, y, z) else {
             return false;
         };
-        let neighbors = [
-            self.block_state_at(x, y - 1, z),
-            self.block_state_at(x, y + 1, z),
-            self.block_state_at(x, y, z - 1),
-            self.block_state_at(x, y, z + 1),
-            self.block_state_at(x - 1, y, z),
-            self.block_state_at(x + 1, y, z),
-        ];
-        let Some(updated_state_id) = self
-            .block_state_registry
-            .stair_shape_update_state_id(state_id, &neighbors)
-        else {
+        let is_stairs = block::state(state_id as u32).is_some_and(|state| {
+            state
+                .block()
+                .class
+                .is(voxel_data::block::classes::BlockClass::StairBlock)
+        });
+        if !is_stairs {
+            return false;
+        }
+        let state_at = |x: i32, y: i32, z: i32| self.block_state_at(x, y, z).unwrap_or(0);
+        let block_rules::Rule::Known(updated_state_id) = block_rules::update_shape(
+            state_id,
+            &state_at,
+            (x, y, z),
+            voxel_core::direction::Direction::North,
+        ) else {
             return false;
         };
         if updated_state_id == state_id {

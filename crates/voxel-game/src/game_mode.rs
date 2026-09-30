@@ -801,7 +801,10 @@ impl GameMode {
         else {
             return UseResult::Pass;
         };
-        let Some(block) = rules::item_behaviour(item).and_then(|row| row.block) else {
+        let Some(block) = rules::item_behaviour(item)
+            .and_then(|row| row.block)
+            .and_then(voxel_data::block::registry::block_index)
+        else {
             return UseResult::Success { swing: true };
         };
         let world: &ClientWorld = ctx.world;
@@ -830,7 +833,7 @@ impl GameMode {
                 Rule::Unported => return UseResult::Success { swing: true },
             }
         }
-        let state = match rules::state_for_placement(usize::from(block), &place_ctx) {
+        let state = match rules::state_for_placement(block, &place_ctx) {
             Rule::Known(Some(state)) => state,
             Rule::Known(None) => return UseResult::Fail,
             Rule::Unported => return UseResult::Success { swing: true },

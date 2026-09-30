@@ -1,6 +1,5 @@
 //! Per block and per block state, in registry order.
 
-pub mod behaviour;
 pub mod blocks;
 pub mod classes;
 pub mod collision;
@@ -19,24 +18,5 @@ pub fn per_state<T: Copy>(values: &[T], offset: u32) -> Option<T> {
         Some(values[0])
     } else {
         values.get(offset as usize).copied()
-    }
-}
-
-/// A state's value in a per-block table; `None` outside the registry.
-pub fn state_value<T: Copy>(per_block: &[&[T]], state: u32) -> Option<T> {
-    let (block, offset) = registry::block_index_for_state(state)?;
-    per_state(per_block[block], offset)
-}
-
-/// Bit `index` of a row of a bit matrix, which the tables write as text of
-/// `0` and `1`, as the reference's capture has it.
-fn bit(row: &str, index: usize) -> bool {
-    row.as_bytes()[index] == b'1'
-}
-
-impl behaviour::BlockBehaviour {
-    /// `BlockState.canBeReplaced()` of the state at `offset` in the block.
-    pub fn replaceable(&self, offset: u32) -> bool {
-        bit(self.replaceable, offset as usize)
     }
 }
