@@ -553,6 +553,7 @@ dependencies = [
 name = "voxel-world"
 version = "0.1.0"
 dependencies = [
+ "rayon",
  "voxel-core",
  "voxel-data",
 ]

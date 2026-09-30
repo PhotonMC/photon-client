@@ -7,8 +7,8 @@
 
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::sync::mpsc::{Receiver, Sender, channel};
-use std::sync::{Arc, Mutex};
 
 use crate::biome_tint::BiomeTints;
 use crate::scene::Mesh;
@@ -42,45 +42,29 @@ pub struct Built {
 }
 
 pub struct SectionWorkers {
-    jobs: Option<Sender<Job>>,
+    pool: rayon::ThreadPool,
+    renderer: Arc<BlockRenderer>,
+    tints: Arc<BiomeTints>,
+    sender: Sender<Built>,
     built: Receiver<Built>,
-    threads: Vec<std::thread::JoinHandle<()>>,
     in_flight: usize,
 }
 
 impl SectionWorkers {
     /// Start `count` workers sharing the block models and biome colours.
     pub fn new(count: usize, renderer: Arc<BlockRenderer>, tints: Arc<BiomeTints>) -> Self {
-        let (job_sender, job_receiver) = channel::<Job>();
-        let job_receiver = Arc::new(Mutex::new(job_receiver));
-        let (built_sender, built) = channel();
-        let threads = (0..count.max(1))
-            .map(|index| {
-                let jobs = Arc::clone(&job_receiver);
-                let built = built_sender.clone();
-                let renderer = Arc::clone(&renderer);
-                let tints = Arc::clone(&tints);
-                std::thread::Builder::new()
-                    .name(format!("section-mesher-{index}"))
-                    .spawn(move || {
-                        loop {
-                            let job = match jobs.lock() {
-                                Ok(receiver) => receiver.recv(),
-                                Err(_) => return,
-                            };
-                            let Ok(job) = job else { return };
-                            if built.send(mesh_section(&renderer, &tints, job)).is_err() {
-                                return;
-                            }
-                        }
-                    })
-                    .expect("a section mesher thread starts")
-            })
-            .collect();
+        let (sender, built) = channel();
+        let pool = rayon::ThreadPoolBuilder::new()
+            .num_threads(count.max(1))
+            .thread_name(|index| format!("section-mesher-{index}"))
+            .build()
+            .expect("a section mesher pool starts");
         Self {
-            jobs: Some(job_sender),
+            pool,
+            renderer,
+            tints,
+            sender,
             built,
-            threads,
             in_flight: 0,
         }
     }
@@ -103,20 +87,23 @@ impl SectionWorkers {
         (min, size, quart_min, quart_size)
     }
 
-    /// Hand a copied section to the workers.
+    /// Hand a copied section to the workers, which take them in the order
+    /// they were handed over.
     pub fn submit(&mut self, key: SectionKey, generation: u64, copy: RegionCopy, origin: [i32; 3]) {
-        if let Some(jobs) = &self.jobs
-            && jobs
-                .send(Job {
-                    key,
-                    generation,
-                    copy,
-                    origin,
-                })
-                .is_ok()
-        {
-            self.in_flight += 1;
-        }
+        let job = Job {
+            key,
+            generation,
+            copy,
+            origin,
+        };
+        let renderer = Arc::clone(&self.renderer);
+        let tints = Arc::clone(&self.tints);
+        let sender = self.sender.clone();
+        self.pool.spawn_fifo(move || {
+            // The receiver is gone when the workers are being dropped.
+            let _ = sender.send(mesh_section(&renderer, &tints, job));
+        });
+        self.in_flight += 1;
     }
 
     /// The meshes finished since the last call.
@@ -124,15 +111,6 @@ impl SectionWorkers {
         let built: Vec<Built> = self.built.try_iter().collect();
         self.in_flight -= built.len();
         built
-    }
-}
-
-impl Drop for SectionWorkers {
-    fn drop(&mut self) {
-        self.jobs = None;
-        for thread in self.threads.drain(..) {
-            let _ = thread.join();
-        }
     }
 }
 

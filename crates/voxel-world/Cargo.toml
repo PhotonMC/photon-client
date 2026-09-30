@@ -9,6 +9,7 @@ include = ["/Cargo.toml", "/src/**"]
 [dependencies]
 voxel-core.workspace = true
 voxel-data.workspace = true
+rayon.workspace = true
 
 [lints]
 workspace = true

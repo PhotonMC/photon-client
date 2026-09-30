@@ -7,6 +7,8 @@ use std::collections::HashMap;
 use std::sync::OnceLock;
 use std::sync::atomic::{AtomicU8, Ordering};
 
+use rayon::prelude::*;
+
 use voxel_core::direction::{Axis, Direction};
 use voxel_core::shape::{BooleanOp, Shapes, VoxelShape};
 use voxel_data::block::blocks::id;
@@ -181,14 +183,32 @@ fn build() -> States {
     let mut faces = Faces::default();
     let mut facts = ShapeFacts::default();
     let mut pool = ShapePool::default();
-    let states = BLOCKS
+    let work: Vec<(usize, &'static Block, u32)> = BLOCKS
         .iter()
         .enumerate()
         .flat_map(|(index, block)| {
             (0..block.state_count()).map(move |offset| (index, block, offset))
         })
-        .map(|(index, block, offset)| {
-            compute(index, block, offset, &mut faces, &mut facts, &mut pool)
+        .collect();
+    // The shapes each class works out do not depend on one another, so they
+    // are made side by side; numbering them and everything that is worked
+    // out from them follows in state order.
+    let own_shapes: Vec<(VoxelShape, VoxelShape)> = work
+        .par_iter()
+        .map(|&(_, block, offset)| {
+            (
+                shape_rules::outline(block, offset),
+                shape_rules::collision(block, offset),
+            )
+        })
+        .collect();
+    let states = work
+        .into_iter()
+        .zip(own_shapes)
+        .map(|((index, block, offset), shapes)| {
+            compute(
+                index, block, offset, shapes, &mut faces, &mut facts, &mut pool,
+            )
         })
         .collect();
     let faces = faces.shapes;
@@ -355,13 +375,14 @@ fn compute(
     index: usize,
     block: &'static Block,
     offset: u32,
+    (outline, collision): (VoxelShape, VoxelShape),
     faces: &mut Faces,
     facts: &mut ShapeFacts,
     pool: &mut ShapePool,
 ) -> StateInfo {
     let fluid = fluid_state(block, offset);
-    let outline_place = pool.intern(shape_rules::outline(block, offset));
-    let collision_place = pool.intern(shape_rules::collision(block, offset));
+    let outline_place = pool.intern(outline);
+    let collision_place = pool.intern(collision);
     let outline = pool.shapes[usize::from(outline_place)].clone();
     let collision = pool.shapes[usize::from(collision_place)].clone();
     let occlusion = occlusion_shape(block, offset, &outline, &collision);
