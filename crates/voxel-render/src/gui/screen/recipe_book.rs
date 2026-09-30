@@ -4,9 +4,9 @@
 //! recipes and what can be crafted are [`voxel_game::recipe_book`]'s.
 //!
 //! Not drawn: the overlay of a collection's other recipes (right click),
-//! the highlight of new recipes and the toasts; a right click places the
-//! button's recipe like a left one.
+//! the squeeze animation of new recipes' buttons and tabs, and the toasts.
 
+use std::collections::{BTreeSet, HashMap};
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -14,7 +14,11 @@ use super::{ScreenAction, ScreenDraw};
 use crate::gui::edit_box::{Clipboard, EditBox, edit_key};
 use crate::gui::font::Font;
 use voxel_game::container_menu::{ContainerMenu, MenuKind};
-use voxel_game::recipe_book::{BookKind, BookModel, RECIPES_PER_PAGE, display_items, ghost_slots};
+use voxel_game::recipe_book::{
+    BookKind, BookModel, Collection, RECIPES_PER_PAGE, button_stack, display_stacks, ghost_slots,
+    same_display,
+};
+use voxel_game::text::{Lang, Run, Style};
 use voxel_world::{ClientItemStackState as Stack, RecipeBook};
 
 /// The panel's width and height, and where the button, tabs and pages sit
@@ -28,10 +32,23 @@ const TOO_NARROW: i32 = 379;
 #[derive(Debug, Clone, Default)]
 pub struct RecipeAssets {
     pub font: Arc<Font>,
+    pub lang: Arc<Lang>,
+    pub registries: Arc<voxel_game::registries::Registries>,
     pub search_hint: String,
     /// The filter's tooltip while it shows what can be crafted, by book type.
     pub filtered: [String; 4],
     pub all: String,
+    pub more_recipes: String,
+    pub next_page: String,
+    pub previous_page: String,
+}
+
+/// What a collection's search reads: its recipes' results' tooltip lines
+/// (lowercased) and ids.
+#[derive(Debug, Clone, Default)]
+struct SearchText {
+    lines: Vec<String>,
+    ids: Vec<(String, String)>,
 }
 
 /// The recipe book of one screen.
@@ -46,15 +63,27 @@ pub struct RecipeBookPanel {
     search: EditBox,
     focused: bool,
     focused_at: Instant,
-    started: Instant,
+    /// `RecipeBookComponent.time`: ticks the open book has shown, which the
+    /// buttons and the ghost cycle with.
+    time: f32,
+    last_frame: Option<Instant>,
     size: (i32, i32),
     visible: bool,
     filtering: bool,
     listed: Vec<usize>,
+    /// `lastPlacedRecipe`, and the recipe Enter places again.
     last_placed: Option<i32>,
+    last_recipe: Option<(i32, i32)>,
     queued: Vec<ScreenAction>,
     /// A press a widget took, so the release is not the menu's.
     swallow_release: bool,
+    /// `ignoreTextInput`: the key that focused the search is not typed.
+    ignore_text: bool,
+    /// What the search reads of each collection, by its first recipe.
+    texts: HashMap<i32, SearchText>,
+    texts_for: Option<u64>,
+    /// Highlighted recipes already reported seen.
+    seen: BTreeSet<i32>,
 }
 
 impl RecipeBookPanel {
@@ -74,14 +103,20 @@ impl RecipeBookPanel {
             search: EditBox::new(73, 50).with_colour(0xFFFF_FFFF),
             focused: false,
             focused_at: Instant::now(),
-            started: Instant::now(),
+            time: 0.0,
+            last_frame: None,
             size,
             visible: false,
             filtering: false,
             listed: Vec::new(),
             last_placed: None,
+            last_recipe: None,
             queued: Vec::new(),
             swallow_release: false,
+            ignore_text: false,
+            texts: HashMap::new(),
+            texts_for: None,
+            seen: BTreeSet::new(),
         }
     }
 
@@ -101,6 +136,12 @@ impl RecipeBookPanel {
         } else {
             (self.size.0 - self.image_width) / 2
         }
+    }
+
+    /// Whether the open book covers the screen, which then draws only its
+    /// background and takes no click (`widthTooNarrow`).
+    pub fn blocks_screen(&self) -> bool {
+        self.visible && self.too_narrow()
     }
 
     /// The panel's corner (`xo`, `yo`).
@@ -161,6 +202,12 @@ impl RecipeBookPanel {
         self.listed.len().div_ceil(RECIPES_PER_PAGE)
     }
 
+    /// `SlotSelectTime.currentIndex`: which recipe and which item the buttons
+    /// and the ghost show.
+    fn select_time(&self) -> usize {
+        (self.time / 30.0).floor() as usize
+    }
+
     /// The recipe button cell's corner.
     fn cell(&self, index: usize) -> (i32, i32) {
         let (xo, yo) = self.origin();
@@ -170,9 +217,32 @@ impl RecipeBookPanel {
         )
     }
 
+    /// `hasClickedOutside`'s part of the book: the panel's strip beside the
+    /// image and the tabs are not outside.
+    pub fn claims(&self, mouse: (f64, f64), (left, top): (i32, i32), image_height: i32) -> bool {
+        if !self.visible {
+            return false;
+        }
+        let in_strip = f64::from(left - 147) < mouse.0
+            && mouse.0 < f64::from(left)
+            && f64::from(top) < mouse.1
+            && mouse.1 < f64::from(top + image_height);
+        let (xo, yo) = self.origin();
+        in_strip
+            || self.visible_tabs().iter().enumerate().any(|(index, _)| {
+                Self::in_rect(mouse, (xo - 30, yo + 3 + 27 * index as i32, 35, 27))
+            })
+    }
+
     /// A press, before the screen's own: the toggle button, then the panel's
     /// widgets while it is open. Whether the book took it.
-    pub fn mouse_clicked(&mut self, mouse: (f64, f64), shift: bool, left: i32) -> bool {
+    pub fn mouse_clicked(
+        &mut self,
+        mouse: (f64, f64),
+        button: i32,
+        shift: bool,
+        left: i32,
+    ) -> bool {
         let (bx, by) = self.button_corner(left);
         if Self::in_rect(mouse, (bx, by, 20, 18)) {
             self.queued
@@ -184,14 +254,7 @@ impl RecipeBookPanel {
             return false;
         }
         let (xo, yo) = self.origin();
-        // The filter button, the page arrows and the tabs.
-        if Self::in_rect(mouse, (xo + 110, yo + 12, 26, 16)) {
-            self.queued
-                .push(self.settings_action(self.visible, !self.filtering));
-            self.model.page = 0;
-            self.swallow_release = true;
-            return true;
-        }
+        // `RecipeBookPage.mouseClicked`: the arrows, then the buttons.
         let pages = self.total_pages();
         if pages > 1
             && self.model.page + 1 < pages
@@ -204,16 +267,6 @@ impl RecipeBookPanel {
             self.model.page -= 1;
             return true;
         }
-        for (index, tab) in self.visible_tabs().into_iter().enumerate() {
-            if Self::in_rect(mouse, (xo - 30, yo + 3 + 27 * index as i32, 35, 27)) {
-                if self.model.tab != tab {
-                    self.model.tab = tab;
-                    self.model.page = 0;
-                }
-                return true;
-            }
-        }
-        // The recipes of the page.
         let first = self.model.page * RECIPES_PER_PAGE;
         for cell in 0..RECIPES_PER_PAGE {
             let Some(&collection) = self.listed.get(first + cell) else {
@@ -221,7 +274,11 @@ impl RecipeBookPanel {
             };
             let (x, y) = self.cell(cell);
             if Self::in_rect(mouse, (x, y, 25, 25)) {
-                self.place(collection, shift);
+                // A left click places; a right click would open the other
+                // recipes, which this book does not show.
+                if button == 0 {
+                    return self.place(collection, shift);
+                }
                 return true;
             }
         }
@@ -232,71 +289,127 @@ impl RecipeBookPanel {
             return true;
         }
         self.focused = false;
+        if Self::in_rect(mouse, (xo + 110, yo + 12, 26, 16)) {
+            self.queued
+                .push(self.settings_action(self.visible, !self.filtering));
+            self.swallow_release = true;
+            return true;
+        }
+        for (index, tab) in self.visible_tabs().into_iter().enumerate() {
+            if Self::in_rect(mouse, (xo - 30, yo + 3 + 27 * index as i32, 35, 27)) {
+                if self.model.tab != tab {
+                    self.model.tab = tab;
+                    self.model.page = 0;
+                }
+                return true;
+            }
+        }
         false
     }
 
     /// `tryPlaceRecipe`: the recipe the button shows is asked of the server,
-    /// unless it cannot be crafted and was the last one asked for.
-    fn place(&mut self, collection: usize, shift: bool) {
+    /// unless it cannot be crafted and was the last one asked for. Whether
+    /// the click was taken.
+    fn place(&mut self, collection: usize, shift: bool) -> bool {
         let Some(collection) = self.model.collections().get(collection) else {
-            return;
+            return true;
         };
-        let entries = collection.selected_entries(None);
+        let entries = collection.offered(self.filtering);
         if entries.is_empty() {
-            return;
+            return true;
         }
-        let id = entries[self.shown_index(entries.len())];
-        if !collection.craftable.contains(&id) && self.last_placed == Some(id) {
-            return;
+        let id = entries[self.select_time() % entries.len()];
+        let first = collection.entries[0];
+        let taken = self.try_place(id, collection.craftable.contains(&id), shift);
+        if taken {
+            self.last_recipe = Some((id, first));
+            // `!isOffsetNextToMainGUI`: a book with no room beside the
+            // screen closes once it has placed.
+            if self.too_narrow() {
+                self.queued
+                    .push(self.settings_action(false, self.filtering));
+            }
+        }
+        taken
+    }
+
+    fn try_place(&mut self, id: i32, craftable: bool, shift: bool) -> bool {
+        if !craftable && self.last_placed == Some(id) {
+            return false;
         }
         self.last_placed = Some(id);
         self.queued.push(ScreenAction::ClearGhost);
         self.queued
             .push(ScreenAction::PlaceRecipe { recipe: id, shift });
+        true
     }
 
-    /// Which of a collection's recipes the button shows now: one for each 30
-    /// ticks.
-    fn shown_index(&self, count: usize) -> usize {
-        let ticks = self.started.elapsed().as_secs_f32() * 20.0;
-        (ticks / 30.0) as usize % count.max(1)
-    }
-
-    /// A slot of the menu's ingredients or result was clicked: the ghost goes.
+    /// A slot of the menu's ingredients or result was clicked: the ghost goes
+    /// and the last placed recipe is forgotten (`slotClicked`).
     pub fn slot_clicked(&mut self, slot: i32) {
         let own = match self.kind {
             BookKind::Crafting { size } => size * size + 1,
             BookKind::Furnace(_) => 3,
         };
         if (0..own).contains(&slot) {
+            self.last_placed = None;
             self.queued.push(ScreenAction::ClearGhost);
         }
     }
 
-    /// Keys go to the search box while it has the focus. Whether it took it.
+    /// `keyPressed`: Escape closes a book with no room, the search takes
+    /// the keys while it has the focus, the chat key focuses it, and Enter or
+    /// Space places the last recipe again. Whether the book took the key.
     pub fn key_pressed(
         &mut self,
         key: glfw::Key,
         (control, shift): (bool, bool),
         clipboard: &mut dyn Clipboard,
     ) -> bool {
-        if !self.visible || !self.focused {
+        self.ignore_text = false;
+        if !self.visible {
             return false;
         }
-        if key == glfw::Key::Escape {
-            return false;
+        if key == glfw::Key::Escape && self.too_narrow() {
+            self.queued
+                .push(self.settings_action(false, self.filtering));
+            return true;
         }
-        if let Some(edit) = edit_key(key) {
+        if let Some(edit) = edit_key(key)
+            && self.focused
+        {
             let font = self.assets.font.clone();
             self.search
                 .key_pressed(edit, control, shift, &font, clipboard);
             self.search_changed();
+            return true;
         }
-        true
+        if self.focused && key != glfw::Key::Escape {
+            return true;
+        }
+        if key == glfw::Key::T && !self.focused {
+            self.ignore_text = true;
+            self.focused = true;
+            self.focused_at = Instant::now();
+            return true;
+        }
+        if matches!(
+            key,
+            glfw::Key::Enter | glfw::Key::KpEnter | glfw::Key::Space
+        ) && let Some((id, _)) = self.last_recipe
+        {
+            self.retry(id, shift);
+            return true;
+        }
+        false
+    }
+
+    pub fn key_released(&mut self) {
+        self.ignore_text = false;
     }
 
     pub fn char_typed(&mut self, character: char) -> bool {
-        if !self.visible || !self.focused {
+        if self.ignore_text || !self.visible || !self.focused {
             return false;
         }
         let font = self.assets.font.clone();
@@ -306,11 +419,64 @@ impl RecipeBookPanel {
         true
     }
 
+    /// `checkSearchStringUpdate`: the page stays where it is.
     fn search_changed(&mut self) {
         let value = self.search.value();
         if value != self.model.search {
             self.model.search = value;
-            self.model.page = 0;
+        }
+    }
+
+    /// `tryPlaceRecipe` for Enter or Space: the last recipe again, when the
+    /// book has it still.
+    pub fn retry(&mut self, recipe: i32, shift: bool) {
+        let craftable = self
+            .model
+            .collections()
+            .iter()
+            .any(|collection| collection.craftable.contains(&recipe));
+        self.try_place(recipe, craftable, shift);
+    }
+
+    /// What the search reads of each collection: the tooltip lines of its
+    /// recipes' results and their ids (`SessionSearchTrees.updateRecipes`).
+    fn search_texts(&mut self, draw: &ScreenDraw<'_, '_>) {
+        if self.texts_for == Some(draw.book.revision) {
+            return;
+        }
+        self.texts_for = Some(draw.book.revision);
+        self.texts.clear();
+        for collection in self.model.collections() {
+            let mut text = SearchText::default();
+            for id in &collection.entries {
+                let Some(entry) = draw.book.known.get(id) else {
+                    continue;
+                };
+                for (item, _) in display_stacks(entry.display.result(), draw.tags) {
+                    let stack = Stack::new(1, item);
+                    text.lines.extend(
+                        voxel_game::tooltip::search_lines(
+                            &stack,
+                            &self.assets.lang,
+                            &self.assets.registries,
+                        )
+                        .into_iter()
+                        .map(|line| line.to_lowercase()),
+                    );
+                    if let Some(item) = usize::try_from(item)
+                        .ok()
+                        .and_then(|item| voxel_data::item::registry::ITEMS.get(item))
+                    {
+                        let (namespace, path) = item
+                            .name
+                            .split_once(':')
+                            .unwrap_or(("minecraft", item.name));
+                        text.ids
+                            .push((namespace.to_lowercase(), path.to_lowercase()));
+                    }
+                }
+            }
+            self.texts.insert(collection.entries[0], text);
         }
     }
 
@@ -324,16 +490,27 @@ impl RecipeBookPanel {
     ) {
         self.sync(draw.book);
         self.model.refresh(draw.book, menu, draw.tags);
-        let name = |item: i32| -> String {
-            usize::try_from(item)
-                .ok()
-                .and_then(|id| voxel_data::item::registry::ITEMS.get(id))
-                .map_or_else(String::new, |item| {
-                    let path = item.name.trim_start_matches("minecraft:");
-                    format!("{path} {}", path.replace('_', " "))
+        if self.visible {
+            let now = Instant::now();
+            if let Some(last) = self.last_frame {
+                self.time += (now - last).as_secs_f32() * 20.0;
+            }
+            self.last_frame = Some(now);
+        } else {
+            self.last_frame = None;
+        }
+        let query = self.model.search.to_lowercase();
+        if !query.is_empty() {
+            self.search_texts(draw);
+        }
+        let texts = &self.texts;
+        self.listed = self
+            .model
+            .listed(self.filtering, &|collection: &Collection| {
+                texts.get(&collection.entries[0]).is_some_and(|text| {
+                    voxel_game::creative_menu::query_matches(&text.lines, &text.ids, &query)
                 })
-        };
-        self.listed = self.model.listed(self.filtering, &name, draw.book);
+            });
         let pages = self.total_pages();
         if self.model.page >= pages.max(1) {
             self.model.page = 0;
@@ -341,6 +518,7 @@ impl RecipeBookPanel {
         if !self.model.tab_visible(self.model.tab) {
             self.model.tab = 0;
         }
+        self.report_seen(draw.book);
         let (bx, by) = self.button_corner(left);
         let button = if Self::in_rect(mouse, (bx, by, 20, 18)) {
             "recipe_book/button_highlighted"
@@ -352,6 +530,22 @@ impl RecipeBookPanel {
             return;
         }
         self.draw_panel(draw, mouse, pages);
+    }
+
+    /// `RecipeButton.init`: a recipe that is new and shows on the page is
+    /// reported seen.
+    fn report_seen(&mut self, book: &RecipeBook) {
+        if !self.visible || book.highlight.is_empty() {
+            return;
+        }
+        let first = self.model.page * RECIPES_PER_PAGE;
+        for &index in self.listed.iter().skip(first).take(RECIPES_PER_PAGE) {
+            for id in self.model.collections()[index].offered(self.filtering) {
+                if book.highlight.contains(&id) && self.seen.insert(id) {
+                    self.queued.push(ScreenAction::RecipeSeen(id));
+                }
+            }
+        }
     }
 
     fn draw_panel(&mut self, draw: &mut ScreenDraw<'_, '_>, mouse: (f64, f64), pages: usize) {
@@ -366,27 +560,40 @@ impl RecipeBookPanel {
             PANEL.0,
             PANEL.1,
         );
-        // The search box: a frame round black, the text or the hint in it.
-        let frame = if self.focused {
-            0xFFFF_FFFF
+        // The search box: the field sprite, the text or the hint in it.
+        let field = if self.focused {
+            "widget/text_field_highlighted"
         } else {
-            0xFFA0_A0A0
+            "widget/text_field"
         };
-        draw.frame
-            .fill(draw.atlas, (xo + 25, yo + 13, xo + 106, yo + 27), frame);
-        draw.frame.fill(
+        draw.frame.nine_slice(
             draw.atlas,
-            (xo + 26, yo + 14, xo + 105, yo + 26),
-            0xFF00_0000,
+            field,
+            (200, 20),
+            1,
+            false,
+            xo + 25,
+            yo + 13,
+            81,
+            14,
         );
         if self.search.is_empty() && !self.focused {
-            draw.frame.text_with_shadow(
+            let hint = [Run {
+                text: self.assets.search_hint.clone(),
+                style: Style {
+                    colour: Some(0xAAAAAA),
+                    italic: Some(true),
+                    ..Style::default()
+                },
+            }];
+            draw.frame.styled_text(
                 draw.atlas,
                 draw.font,
-                &self.assets.search_hint,
+                &hint,
                 xo + 29,
                 yo + 16,
-                0xFFAA_AAAA,
+                0xFFFF_FFFF,
+                true,
             );
         } else {
             self.search.draw(
@@ -426,18 +633,18 @@ impl RecipeBookPanel {
             } else {
                 &self.assets.all
             };
-            let lines = vec![vec![voxel_game::text::Run {
-                text: text.clone(),
-                style: voxel_game::text::Style::default(),
-            }]];
-            draw.frame.tooltip(
-                draw.atlas,
-                draw.font,
-                &lines,
-                (mouse.0 as i32, mouse.1 as i32),
-                self.size,
-            );
+            self.tooltip(draw, mouse, vec![plain(text)]);
         }
+    }
+
+    fn tooltip(&self, draw: &mut ScreenDraw<'_, '_>, mouse: (f64, f64), lines: Vec<Vec<Run>>) {
+        draw.frame.tooltip(
+            draw.atlas,
+            draw.font,
+            &lines,
+            (mouse.0 as i32, mouse.1 as i32),
+            self.size,
+        );
     }
 
     fn draw_tabs(&self, draw: &mut ScreenDraw<'_, '_>, (xo, yo): (i32, i32)) {
@@ -496,7 +703,10 @@ impl RecipeBookPanel {
             };
             let collection = &self.model.collections()[index];
             let (x, y) = self.cell(cell);
-            let many = collection.selected.len() > 1;
+            // `RecipeButton`: the recipes it offers, only the craftable ones
+            // while filtering.
+            let offered = collection.offered(self.filtering);
+            let many = offered.len() > 1;
             let sprite = match (collection.has_craftable(), many) {
                 (true, false) => "slot_craftable",
                 (true, true) => "slot_many_craftable",
@@ -505,20 +715,24 @@ impl RecipeBookPanel {
             };
             draw.frame
                 .sprite(draw.atlas, &format!("recipe_book/{sprite}"), x, y, 25, 25);
-            let entries = collection.selected_entries(None);
-            let Some(entry) = entries
-                .get(self.shown_index(entries.len()))
-                .and_then(|id| draw.book.known.get(id))
-            else {
+            let results: Vec<Vec<(i32, i32)>> = offered
+                .iter()
+                .filter_map(|id| draw.book.known.get(id))
+                .map(|entry| display_stacks(entry.display.result(), draw.tags))
+                .collect();
+            let Some((item, count)) = button_stack(&results, self.select_time()) else {
                 continue;
             };
-            let items = display_items(entry.display.result(), draw.tags);
-            if let Some(&item) = items.get(self.shown_index(items.len())) {
-                let stack = Stack::new(1, item);
-                draw.frame.item(draw.item, &stack, x + 4, y + 4);
-                if Self::in_rect(mouse, (x, y, 25, 25)) {
-                    hovered = Some(stack);
-                }
+            let stack = Stack::new(count, item);
+            let mut offset = 4;
+            if many && same_display(&results) {
+                draw.frame
+                    .item(draw.item, &stack, x + offset + 1, y + offset + 1);
+                offset -= 1;
+            }
+            draw.frame.item(draw.item, &stack, x + offset, y + offset);
+            if Self::in_rect(mouse, (x, y, 25, 25)) {
+                hovered = Some((stack, many));
             }
         }
         // The page arrows and the page number.
@@ -529,14 +743,25 @@ impl RecipeBookPanel {
                 draw.atlas,
                 draw.font,
                 &text,
-                xo + 73 - width / 2,
+                xo - width / 2 + 73,
                 yo + 141,
                 0xFFFF_FFFF,
             );
         }
-        for (shown, name, x) in [
-            (self.model.page + 1 < pages, "page_forward", xo + 93),
-            (self.model.page > 0, "page_backward", xo + 38),
+        let mut arrow_tooltip = None;
+        for (shown, name, x, text) in [
+            (
+                self.model.page + 1 < pages,
+                "page_forward",
+                xo + 93,
+                &self.assets.next_page,
+            ),
+            (
+                self.model.page > 0,
+                "page_backward",
+                xo + 38,
+                &self.assets.previous_page,
+            ),
         ] {
             if shown {
                 let over = Self::in_rect(mouse, (x, yo + 137, 12, 17));
@@ -549,22 +774,25 @@ impl RecipeBookPanel {
                     12,
                     17,
                 );
+                if over {
+                    arrow_tooltip = Some(text.clone());
+                }
             }
         }
-        if let Some(stack) = hovered {
-            let lines = (draw.tooltip)(&stack, false);
-            draw.frame.tooltip(
-                draw.atlas,
-                draw.font,
-                &lines,
-                (mouse.0 as i32, mouse.1 as i32),
-                self.size,
-            );
+        if let Some(text) = arrow_tooltip {
+            self.tooltip(draw, mouse, vec![plain(&text)]);
+        }
+        if let Some((stack, many)) = hovered {
+            let mut lines = (draw.tooltip)(&stack, false);
+            if many {
+                lines.push(plain(&self.assets.more_recipes));
+            }
+            self.tooltip(draw, mouse, lines);
         }
     }
 
     /// `GhostSlots`: the ghost recipe over the menu's slots, each slot's
-    /// item a translucent copy in a tinted square.
+    /// item a translucent copy between a red and a white wash.
     pub fn draw_ghost(
         &self,
         draw: &mut ScreenDraw<'_, '_>,
@@ -578,23 +806,45 @@ impl RecipeBookPanel {
         if *container != menu.container_id || matches!(menu.kind, MenuKind::Chest(_)) {
             return;
         }
+        // `isBiggerResultSlot`: the inventory's result slot is not.
+        let big_result = menu.kind != MenuKind::Inventory;
         let empty = |slot: usize| menu.slots.get(slot).is_none_or(Option::is_none);
         for (slot, shown, is_result) in ghost_slots(self.kind, display, &empty) {
+            let stacks = display_stacks(&shown, draw.tags);
+            if stacks.is_empty() {
+                continue;
+            }
             let (x, y) = position(slot);
             let (x, y) = (left + x, top + y);
-            let (from, to) = if is_result {
-                ((x - 4, y - 4), (x + 20, y + 20))
+            let rect = if is_result && big_result {
+                (x - 4, y - 4, x + 20, y + 20)
             } else {
-                ((x, y), (x + 16, y + 16))
+                (x, y, x + 16, y + 16)
             };
+            draw.frame.fill(draw.atlas, rect, 0x30FF_0000);
+            let (item, count) = stacks[self.select_time() % stacks.len()];
+            let stack = Stack::new(count, item);
+            draw.frame.item(draw.item, &stack, x, y);
             draw.frame
-                .fill(draw.atlas, (from.0, from.1, to.0, to.1), 0x3100_0000);
-            let items = display_items(&shown, draw.tags);
-            if let Some(&item) = items.get(self.shown_index(items.len())) {
-                draw.frame.item(draw.item, &Stack::new(1, item), x, y);
+                .fill(draw.atlas, (x, y, x + 16, y + 16), 0x30FF_FFFF);
+            if is_result && count != 1 {
+                draw.frame.text_with_shadow(
+                    draw.atlas,
+                    draw.font,
+                    &count.to_string(),
+                    x + 19 - 2 - draw.font.width(&count.to_string()),
+                    y + 6 + 3,
+                    0xFFFF_FFFF,
+                );
             }
-            draw.frame
-                .fill(draw.atlas, (x, y, x + 16, y + 16), 0x3100_FFFF);
         }
     }
+}
+
+/// A line of plain text.
+fn plain(text: &str) -> Vec<Run> {
+    vec![Run {
+        text: text.to_owned(),
+        style: Style::default(),
+    }]
 }

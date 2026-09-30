@@ -10,7 +10,14 @@ use voxel_core::identifier::Identifier;
 
 /// The sprite folders the HUD and the screens draw from, under
 /// `textures/gui/sprites`.
-const SPRITE_FOLDERS: [&str; 5] = ["hud", "container", "recipe_book", "tooltip", "icon"];
+const SPRITE_FOLDERS: [&str; 6] = [
+    "hud",
+    "container",
+    "recipe_book",
+    "tooltip",
+    "icon",
+    "widget",
+];
 
 /// Whole textures under `textures/gui` that screens blit parts of, packed as
 /// `texture/<name>`.

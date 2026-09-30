@@ -131,7 +131,30 @@ impl GenericScreen {
         }
     }
 
+    /// `AbstractRecipeBookScreen.widthTooNarrow`: the open book covers the
+    /// screen, which takes no click or hover.
+    fn book_covers(&self) -> bool {
+        self.book
+            .as_ref()
+            .is_some_and(RecipeBookPanel::blocks_screen)
+    }
+
+    /// `hasClickedOutside`: off the image, and off the book's panel and tabs.
+    fn outside(&self, mouse: (f64, f64)) -> bool {
+        self.layout.outside(mouse)
+            && !self.book.as_ref().is_some_and(|book| {
+                book.claims(
+                    mouse,
+                    (self.layout.left(), self.layout.top()),
+                    image(self.kind).1,
+                )
+            })
+    }
+
     fn hovered_slot(&self, mouse: (f64, f64)) -> Option<usize> {
+        if self.book_covers() {
+            return None;
+        }
         let kind = self.kind;
         self.layout
             .hovered(mouse, kind.slot_count(), |index| slot_position(kind, index))
@@ -290,12 +313,15 @@ impl Screen for GenericScreen {
             return vec![ScreenAction::Button(row)];
         }
         if let Some(book) = &mut self.book
-            && book.mouse_clicked(mouse, shift, self.layout.left())
+            && book.mouse_clicked(mouse, button, shift, self.layout.left())
         {
             return book.drain_actions();
         }
+        if self.book_covers() {
+            return Vec::new();
+        }
         let slot = self.hovered_slot(mouse);
-        let outside = self.layout.outside(mouse);
+        let outside = self.outside(mouse);
         let clicks = self
             .mouse
             .clicked(double, slot, outside, button, shift, false, menu);
@@ -325,8 +351,11 @@ impl Screen for GenericScreen {
         {
             return Vec::new();
         }
+        if self.book_covers() {
+            return Vec::new();
+        }
         let slot = self.hovered_slot(mouse);
-        let outside = self.layout.outside(mouse);
+        let outside = self.outside(mouse);
         let clicks = self
             .mouse
             .released(slot, outside, button, shift, false, menu);
@@ -362,6 +391,12 @@ impl Screen for GenericScreen {
         }
         let clicks = slot_key_clicks(key, mods.control, self.hovered, menu);
         KeyResult::Actions(self.actions(clicks))
+    }
+
+    fn key_released(&mut self) {
+        if let Some(book) = &mut self.book {
+            book.key_released();
+        }
     }
 
     fn mouse_scrolled(&mut self, y: f64) {
@@ -404,6 +439,15 @@ impl Screen for GenericScreen {
         self.blit_background(draw);
         if let MenuKind::Furnace(smelter) = self.kind {
             self.furnace_progress(draw, menu, smelter);
+        }
+        if self.book_covers() {
+            // A book with no room beside the screen covers it: only the
+            // background shows, and the book over it.
+            if let Some(book) = &mut self.book {
+                book.draw(draw, menu, mouse, left);
+            }
+            self.mouse.draw_carried(draw, menu.carried.as_ref(), mouse);
+            return;
         }
         self.draw_extras(draw, menu, mouse, (left, top));
         // The dispenser centres its title; the others keep it at the corner.

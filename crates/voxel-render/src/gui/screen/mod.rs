@@ -66,6 +66,9 @@ pub enum ScreenAction {
     },
     /// The ghost recipe goes.
     ClearGhost,
+    /// A recipe that was new has shown on a page: it is seen
+    /// (`RecipeBookSeenRecipe`).
+    RecipeSeen(i32),
 }
 
 /// What a key did to a screen.

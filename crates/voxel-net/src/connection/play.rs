@@ -722,6 +722,15 @@ impl PlaySession {
         self.trace.world.recipe_book_mut().ghost = None;
     }
 
+    /// `LocalPlayer.removeRecipeHighlight`: a new recipe that showed on a page
+    /// stops being new, and the server is told.
+    pub fn mark_recipe_seen(&mut self, recipe: i32) -> Result<(), ConnectionError> {
+        if self.trace.world.recipe_book_mut().highlight.remove(&recipe) {
+            self.recipe_seen(recipe)?;
+        }
+        Ok(())
+    }
+
     /// `ServerboundRecipeBookSeenRecipePacket`: a highlighted recipe was seen.
     pub fn recipe_seen(&mut self, recipe: i32) -> Result<(), ConnectionError> {
         self.send(

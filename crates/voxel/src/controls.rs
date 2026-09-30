@@ -236,6 +236,7 @@ impl Controls {
             (Some(_), None) => {
                 // The server closed it, or the player did.
                 self.server_container = None;
+                session.clear_recipe_ghost();
                 if self.screen.take().is_some() {
                     surface.set_cursor_captured(true);
                 }

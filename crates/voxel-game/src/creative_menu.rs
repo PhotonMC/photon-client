@@ -137,19 +137,26 @@ impl SearchIndex {
     /// query finds, in its order. A query with a colon names a namespace and
     /// a path; anything else is read as text of the tooltip.
     pub fn search(&self, text: &str) -> Vec<u16> {
-        let by_line =
-            |needle: &str, at: usize| self.lines[at].iter().any(|line| line.contains(needle));
         (0..self.count)
-            .filter(|&at| match text.split_once(':') {
-                None => by_line(text, at),
-                Some((namespace, path)) => {
-                    let (namespace, path) = (namespace.trim(), path.trim());
-                    self.ids[at].0.contains(namespace)
-                        && (self.ids[at].1.contains(path) || by_line(path, at))
-                }
-            })
+            .filter(|&at| query_matches(&self.lines[at], std::slice::from_ref(&self.ids[at]), text))
             .map(|at| at as u16)
             .collect()
+    }
+}
+
+/// Whether a query finds what has these tooltip lines (lowercased) and these
+/// ids (namespace and path, lowercased): a query with a colon names a
+/// namespace and a path, anything else is text of a line.
+pub fn query_matches(lines: &[String], ids: &[(String, String)], text: &str) -> bool {
+    let by_line = |needle: &str| lines.iter().any(|line| line.contains(needle));
+    match text.split_once(':') {
+        None => by_line(text),
+        Some((namespace, path)) => {
+            let (namespace, path) = (namespace.trim(), path.trim());
+            ids.iter().any(|(id_namespace, id_path)| {
+                id_namespace.contains(namespace) && (id_path.contains(path) || by_line(path))
+            })
+        }
     }
 }
 

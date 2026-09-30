@@ -40,6 +40,11 @@ impl ScreenAssets {
                 filtered("smokable"),
             ],
             all: filtered("all"),
+            lang: self.lang.clone(),
+            registries: self.registries.clone(),
+            more_recipes: self.lang.text("gui.recipebook.moreRecipes"),
+            next_page: self.lang.text("gui.recipebook.next_page"),
+            previous_page: self.lang.text("gui.recipebook.previous_page"),
         })
     }
 
@@ -161,6 +166,8 @@ pub fn close_inventory(
         *creative_tab = open.tab();
     }
     *screen = None;
+    // The ghost recipe belongs to the screen that showed it.
+    session.clear_recipe_ghost();
     session.close_inventory()?;
     surface.set_cursor_captured(true);
     Ok(())
@@ -186,6 +193,7 @@ pub fn run_actions(
                 filtering,
             } => session.set_recipe_book_settings(book_type, open, filtering)?,
             ScreenAction::ClearGhost => session.clear_recipe_ghost(),
+            ScreenAction::RecipeSeen(recipe) => session.mark_recipe_seen(recipe)?,
             ScreenAction::Creative(click) => {
                 if let Some(open) = screen.as_mut().and_then(|open| open.as_creative_mut()) {
                     session.creative_click(open.menu_mut(), click)?;

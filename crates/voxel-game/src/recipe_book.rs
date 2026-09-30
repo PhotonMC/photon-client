@@ -118,6 +118,12 @@ impl Collection {
         !self.craftable.is_empty()
     }
 
+    /// The recipes a button offers (`RecipeButton.init`): only the craftable
+    /// ones while filtering.
+    pub fn offered(&self, filtering: bool) -> Vec<i32> {
+        self.selected_entries(filtering.then_some(true))
+    }
+
     /// `getSelectedRecipes`: the ids, the craftable ones first only when
     /// asked for.
     pub fn selected_entries(&self, craftable: Option<bool>) -> Vec<i32> {
@@ -301,36 +307,33 @@ impl BookModel {
             })
     }
 
-    /// The collections the grid lists (`updateCollections`): those of the tab
-    /// with a recipe to show, matching the search, and with something
-    /// craftable when filtering. `name` is an item's lowercase name for the
-    /// search.
-    pub fn listed(
-        &self,
-        filtering: bool,
-        name: &dyn Fn(i32) -> String,
-        book: &RecipeBook,
-    ) -> Vec<usize> {
-        let search = self.search.to_lowercase();
+    /// The collections the grid lists (`updateCollections`): those of the
+    /// tab with a recipe to show, the ones the search finds, and with
+    /// something craftable when filtering. The search tab lists the tabs'
+    /// categories one after another (`SearchRecipeBookCategory`).
+    pub fn listed(&self, filtering: bool, found: &dyn Fn(&Collection) -> bool) -> Vec<usize> {
         let tab_categories: Vec<i32> = if self.tab == 0 {
-            self.kind.categories().collect()
+            self.kind
+                .tabs()
+                .iter()
+                .flat_map(|tab| tab.iter().copied())
+                .collect()
         } else {
             self.kind.tabs()[self.tab - 1].to_vec()
         };
-        self.collections
+        let searching = !self.search.is_empty();
+        tab_categories
             .iter()
-            .enumerate()
+            .flat_map(|category| {
+                self.collections
+                    .iter()
+                    .enumerate()
+                    .filter(move |(_, collection)| collection.category == *category)
+            })
             .filter(|(_, collection)| {
-                tab_categories.contains(&collection.category)
-                    && collection.has_any_selected()
+                collection.has_any_selected()
+                    && (!searching || found(collection))
                     && (!filtering || collection.has_craftable())
-                    && (search.is_empty()
-                        || collection.entries.iter().any(|id| {
-                            book.known
-                                .get(id)
-                                .and_then(|entry| entry.display.result().first_item())
-                                .is_some_and(|item| name(item).contains(&search))
-                        }))
             })
             .map(|(index, _)| index)
             .collect()
@@ -438,9 +441,11 @@ pub fn ghost_slots(
             }
         }
         (BookKind::Crafting { size }, RecipeDisplay::Shapeless { ingredients, .. }) => {
-            for (entry, grid) in place_recipe_helper((size, size), (size, size), ingredients.len())
-            {
-                slots.push((grid as usize + 1, ingredients[entry].clone(), false));
+            // `CraftingRecipeBookComponent.fillGhostRecipe`: the i-th
+            // ingredient goes to the i-th slot of the grid.
+            let count = ingredients.len().min((size * size) as usize);
+            for (index, ingredient) in ingredients.iter().take(count).enumerate() {
+                slots.push((index + 1, ingredient.clone(), false));
             }
         }
         (
@@ -461,22 +466,51 @@ pub fn ghost_slots(
     slots
 }
 
+/// What a button shows for a recipe and how it cycles
+/// (`RecipeButton.getDisplayStack`): `results` holds each recipe's stacks as
+/// (item, count); `index` counts up with time.
+pub fn button_stack(results: &[Vec<(i32, i32)>], index: usize) -> Option<(i32, i32)> {
+    let count = results.len();
+    if count == 0 {
+        return None;
+    }
+    let offset = index / count;
+    let stacks = &results[index - count * offset];
+    (!stacks.is_empty()).then(|| stacks[offset % stacks.len()])
+}
+
+/// `allRecipesHaveSameResultDisplay`: every stack of every recipe is the same.
+pub fn same_display(results: &[Vec<(i32, i32)>]) -> bool {
+    let mut all = results.iter().flatten();
+    all.next()
+        .is_none_or(|first| results.iter().flatten().all(|stack| stack == first))
+}
+
 /// The items a display can show, which a ghost slot and a button cycle
 /// through (`SlotDisplay.resolveForStacks`). Displays that need more of the
 /// world than the client keeps (fuels, potions) show nothing.
 pub fn display_items(display: &SlotDisplay, tags: &ItemTags) -> Vec<i32> {
+    display_stacks(display, tags)
+        .into_iter()
+        .map(|(item, _)| item)
+        .collect()
+}
+
+/// The stacks a display can show, as (item, count).
+pub fn display_stacks(display: &SlotDisplay, tags: &ItemTags) -> Vec<(i32, i32)> {
     match display {
-        SlotDisplay::Item(item) | SlotDisplay::ItemStack(item, _) => vec![*item],
-        SlotDisplay::Tag(tag) => tags.members(tag).collect(),
+        SlotDisplay::Item(item) => vec![(*item, 1)],
+        SlotDisplay::ItemStack(item, count) => vec![(*item, *count)],
+        SlotDisplay::Tag(tag) => tags.members(tag).map(|item| (item, 1)).collect(),
         SlotDisplay::Composite(all) => all
             .iter()
-            .flat_map(|one| display_items(one, tags))
+            .flat_map(|one| display_stacks(one, tags))
             .collect(),
         SlotDisplay::WithRemainder(input, _)
         | SlotDisplay::OnlyWithComponent(input, _)
-        | SlotDisplay::WithAnyPotion(input) => display_items(input, tags),
-        SlotDisplay::Dyed(_, target) => display_items(target, tags),
-        SlotDisplay::SmithingTrim(base, _, _) => display_items(base, tags),
+        | SlotDisplay::WithAnyPotion(input) => display_stacks(input, tags),
+        SlotDisplay::Dyed(_, target) => display_stacks(target, tags),
+        SlotDisplay::SmithingTrim(base, _, _) => display_stacks(base, tags),
         SlotDisplay::Empty | SlotDisplay::AnyFuel => Vec::new(),
     }
 }
@@ -511,6 +545,30 @@ mod tests {
             place_recipe_helper((3, 3), (1, 3), 3),
             vec![(0, 1), (1, 4), (2, 7)]
         );
+    }
+
+    #[test]
+    fn a_button_cycles_recipes_then_their_items() {
+        let results = vec![vec![(1, 1), (2, 1)], vec![(3, 1)]];
+        // Time steps through the recipes, and each lap through the items.
+        let shown: Vec<_> = (0..4).map(|time| button_stack(&results, time)).collect();
+        assert_eq!(
+            shown,
+            [Some((1, 1)), Some((3, 1)), Some((2, 1)), Some((3, 1))]
+        );
+        assert!(same_display(&[vec![(1, 1)], vec![(1, 1)]]));
+        assert!(!same_display(&[vec![(1, 1)], vec![(1, 2)]]));
+    }
+
+    #[test]
+    fn a_shapeless_ghost_fills_the_grid_in_order() {
+        let display = RecipeDisplay::Shapeless {
+            ingredients: vec![SlotDisplay::Item(5), SlotDisplay::Item(6)],
+            result: SlotDisplay::Item(9),
+        };
+        let slots = ghost_slots(BookKind::Crafting { size: 3 }, &display, &|_| true);
+        let places: Vec<usize> = slots.iter().map(|slot| slot.0).collect();
+        assert_eq!(places, [0, 1, 2]);
     }
 
     #[test]

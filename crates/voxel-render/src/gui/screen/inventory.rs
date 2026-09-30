@@ -119,6 +119,9 @@ impl InventoryScreen {
     }
 
     fn hovered_slot(&self, mouse: (f64, f64)) -> Option<usize> {
+        if self.book.blocks_screen() {
+            return None;
+        }
         self.layout.hovered(mouse, SLOT_COUNT, slot_position)
     }
 
@@ -151,11 +154,20 @@ impl Screen for InventoryScreen {
     ) -> Vec<ScreenAction> {
         let double = self.mouse.note_click(now, button);
         // The recipe book's widgets take the press first.
-        if self.book.mouse_clicked(mouse, shift, self.layout.left()) {
+        if self
+            .book
+            .mouse_clicked(mouse, button, shift, self.layout.left())
+        {
             return self.book.drain_actions();
         }
+        if self.book.blocks_screen() {
+            return Vec::new();
+        }
         let slot = self.hovered_slot(mouse);
-        let outside = self.layout.outside(mouse);
+        let outside = self.layout.outside(mouse)
+            && !self
+                .book
+                .claims(mouse, (self.layout.left(), self.layout.top()), IMAGE.1);
         let clicks = self
             .mouse
             .clicked(double, slot, outside, button, shift, false, menu);
@@ -174,11 +186,14 @@ impl Screen for InventoryScreen {
         shift: bool,
         menu: &ContainerMenu,
     ) -> Vec<ScreenAction> {
-        if self.book.take_swallowed_release() {
+        if self.book.take_swallowed_release() || self.book.blocks_screen() {
             return Vec::new();
         }
         let slot = self.hovered_slot(mouse);
-        let outside = self.layout.outside(mouse);
+        let outside = self.layout.outside(mouse)
+            && !self
+                .book
+                .claims(mouse, (self.layout.left(), self.layout.top()), IMAGE.1);
         let clicks = self
             .mouse
             .released(slot, outside, button, shift, false, menu);
@@ -206,6 +221,10 @@ impl Screen for InventoryScreen {
         }
         let clicks = slot_key_clicks(key, mods.control, self.hovered, menu);
         KeyResult::Actions(self.actions(clicks))
+    }
+
+    fn key_released(&mut self) {
+        self.book.key_released();
     }
 
     fn char_typed(&mut self, character: char) {
@@ -245,6 +264,13 @@ impl Screen for InventoryScreen {
             (mouse.0 as f32, mouse.1 as f32),
         );
         draw.frame.entity(&model);
+        if self.book.blocks_screen() {
+            // A book with no room beside the screen covers it: only the
+            // background shows, and the book over it.
+            self.book.draw(draw, menu, mouse, left);
+            self.mouse.draw_carried(draw, menu.carried.as_ref(), mouse);
+            return;
+        }
         draw.frame.text(
             draw.atlas,
             draw.font,
