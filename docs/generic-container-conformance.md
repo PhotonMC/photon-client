@@ -51,8 +51,26 @@ ve ekran alev ile oku çizer. Oracle'da 8 satır Java ile birebir (Java menüyü
 `MenuType.create` ile, kümeleri `ClientRecipeContainer` ile kurar). Canlı:
 ham demir ve kömür hızlı taşınınca doğru yuvalara gitti, pişirme ilerledi.
 
+## Dönüşüm menüleri (taş kesici, grindstone, cartography, loom, smithing, örs, büyü masası)
+
+Hepsi `MenuKind` ile aynı `doClick` portundan geçer (`container_menu/transform.rs`:
+yerleştirme kuralları, alma kancası, `quickMoveStack`, girdi değişince sonucu
+temizleme). Sonuç yuvalarının içeriğini sunucu üretir; istemci girdi değişince
+sonucu boşaltır ve sunucunun `SetSlot`'unu bekler (Java'nın tahmin ettiği
+sonuçlar için bilinen sapma, sunucu düzeltir). Taş kesici tarifleri
+`UpdateRecipes`'ten (`SlotDisplay`), loom desenleri `banner_pattern`
+kayıt defteri ve etiketinden, büyü adları 62 kelimelik listeden ve
+`data[3]` tohumundan gelir. `ContainerButtonClick` (17): taş kesici tarifi, loom
+deseni ve büyü satırı; örste ad `RenameItem` (48) ile gider. Oracle'da her
+menü için satırlar Java ile birebir; ekranlar canlı doğrulandı (taş kesici,
+loom, büyü masası, örs).
+
+Bilinen sapmalar: bundle/hasarlı eşya/zırh kilidi tahmin edilmez; bileşen
+hash'i yok; harita görüntüsü, zırh askısı, büyülü kitap ve bayrak önizlemeleri
+çizilmez; smithing/örs dönen simgeleri sadeleştirildi; örste onarım malzemesi
+tüketimi tahmin edilmez.
+
 ## Açık
 
 Bileşenli eşyada bileşen hash'leri, kap içeriği ipucu, tarif kitabı, kalan menü
-türleri (örs, büyü masası, taş kesici, loom, cartography, grindstone, smithing,
-beacon, brewing stand, lectern, tüccar, crafter) ve at envanteri.
+türleri (beacon, brewing stand, lectern, tüccar, crafter) ve at envanteri.

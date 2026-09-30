@@ -94,8 +94,6 @@ genişletilmesi (`client-parity`), ekranlar canlı gözlem.
 - Kap menüsünde off hand bir yuva değil: off hand ile değiştirme (`SWAP` 40)
   tahmin edilmez, sunucunun düzeltmesi gelir; `Inventory.add` off hand'i de
   saymaz.
-- `UpdateRecipes` paketinin taş kesici tarifleri kısmı okunmuyor (yalnız
-  özellik kümeleri).
 - Bileşenli eşyanın bileşen hash'leri yok: tıklama paketinde bileşeni olan yığın
   bileşensiz hash'lenir (sunucu düzeltir).
 - Hasarlı eşya, büyü kilidi (zırh), bundle tıklama geçersiz kılmaları tahmin
