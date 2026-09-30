@@ -1209,7 +1209,9 @@ fn render_seed(block: &str, properties: &BTreeMap<String, String>, position: [i3
 /// `BlockState.getOffset`: how far a plant is nudged off the centre of its
 /// block, from its column's seed and the block's limits.
 fn block_offset(block: &str, position: [i32; 3]) -> [f32; 3] {
-    voxel_world::block_offset(block, position).map(|value| value as f32)
+    registry::block(block).map_or([0.0; 3], |block| {
+        voxel_world::block::offset(block, position).map(|value| value as f32)
+    })
 }
 
 /// An entity model layer's quads as an item layer's mesh: corners in the

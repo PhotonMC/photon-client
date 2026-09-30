@@ -135,38 +135,11 @@ pub fn outline_shape(state_id: u32, position: [i32; 3]) -> VoxelShape {
         return Shapes::empty();
     };
     if block.offset {
-        let [x, y, z] = block_offset(voxel_data::block::registry::BLOCKS[index].name, position);
+        let [x, y, z] = crate::block::offset(&voxel_data::block::registry::BLOCKS[index], position);
         shape.move_by(x, y, z)
     } else {
         shape.clone()
     }
-}
-
-/// `BlockState.getOffset`: the random nudge some blocks (plants, bamboo,
-/// dripstone) take off the grid at a position.
-pub fn block_offset(block: &str, position: [i32; 3]) -> [f64; 3] {
-    let Some(offset) = voxel_data::block::offset::OFFSETS
-        .iter()
-        .find(|offset| offset.name == block)
-    else {
-        return [0.0; 3];
-    };
-    let horizontal_max = f64::from(offset.max_horizontal);
-    let seed = voxel_core::math::mth_get_seed(position[0], 0, position[2]);
-    let axis = |bits: i64| {
-        let value = (f64::from((bits & 15) as f32 / 15.0) - 0.5) * 0.5;
-        if value < -horizontal_max {
-            -horizontal_max
-        } else {
-            value.min(horizontal_max)
-        }
-    };
-    let y = if offset.vertical {
-        (f64::from((seed >> 4 & 15) as f32 / 15.0) - 1.0) * f64::from(offset.max_vertical)
-    } else {
-        0.0
-    };
-    [axis(seed), y, axis(seed >> 8)]
 }
 
 /// Rebuild a shape from the boxes the reference reported for it.

@@ -51,7 +51,7 @@ olarak tutulmaz.
 
 ### F2. Okunur blok tanımları (Java `Blocks.java`)
 
-- [ ] Blok başına tek kayıt: ad, sınıf (enum), özellikler ve tanımlı
+- [x] Blok başına tek kayıt: ad, sınıf (enum), özellikler ve tanımlı
   `Properties` alanları (kırılma süresi, sürtünme, hız ve zıplama çarpanı,
   ışık yayma, `noOcclusion`, ofset türü, yüzey rengi…), alan adlarıyla.
   `states`, `destroy`, `light`, `movement`, `offset`, `behaviour`

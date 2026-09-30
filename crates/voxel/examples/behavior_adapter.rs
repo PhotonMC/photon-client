@@ -16429,7 +16429,12 @@ fn block_declarations(label: &str) -> Value {
                     "spawnTerrainParticles": block.spawn_terrain_particles,
                     "replaceable": block.replaceable,
                     "dynamicShape": block.dynamic_shape,
-                    "pushReaction": match block.push_reaction {
+                    "offsetType": match block.offset_type {
+                    voxel_data::block::definition::OffsetType::None => "NONE",
+                    voxel_data::block::definition::OffsetType::Xz => "XZ",
+                    voxel_data::block::definition::OffsetType::Xyz => "XYZ",
+                },
+                "pushReaction": match block.push_reaction {
                         PushReaction::Normal => "NORMAL",
                         PushReaction::Destroy => "DESTROY",
                         PushReaction::Block => "BLOCK",
@@ -16682,14 +16687,22 @@ fn block_result(request: &Value) -> Result<Value, String> {
                 }));
             }
             "offset_properties" => {
-                let blocks: Vec<Value> = voxel_data::block::offset::OFFSETS
+                use voxel_data::block::definition::OffsetType;
+                let blocks: Vec<Value> = registry::BLOCKS
                     .iter()
-                    .map(|offset| {
+                    .filter(|block| block.offset_type != OffsetType::None)
+                    .map(|block| {
                         json!({
-                            "name": offset.name,
-                            "kind": if offset.vertical { "xyz" } else { "xz" },
-                            "max_horizontal": format!("{:08x}", offset.max_horizontal.to_bits()),
-                            "max_vertical": format!("{:08x}", offset.max_vertical.to_bits()),
+                            "name": block.name,
+                            "kind": if block.offset_type == OffsetType::Xyz { "xyz" } else { "xz" },
+                            "max_horizontal": format!(
+                                "{:08x}",
+                                voxel_world::block::max_horizontal_offset(block).to_bits()
+                            ),
+                            "max_vertical": format!(
+                                "{:08x}",
+                                voxel_world::block::max_vertical_offset(block).to_bits()
+                            ),
                         })
                     })
                     .collect();

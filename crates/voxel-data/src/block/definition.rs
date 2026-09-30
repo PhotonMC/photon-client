@@ -43,6 +43,14 @@ pub enum Fluid {
     FlowingLava,
 }
 
+/// `BlockBehaviour.OffsetType`: how far off the grid a block is nudged.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum OffsetType {
+    None,
+    Xz,
+    Xyz,
+}
+
 /// A `StatePredicate` a block may replace: the one `Properties.of()` starts
 /// with, or the block's own, as its value in each state.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -111,6 +119,7 @@ pub struct Block {
     pub replaceable: bool,
     pub dynamic_shape: bool,
     pub push_reaction: PushReaction,
+    pub offset_type: OffsetType,
     pub light_emission: Emission,
     pub emissive_rendering: Rule,
     pub suffocating: Rule,
@@ -149,6 +158,7 @@ impl Block {
             replaceable: false,
             dynamic_shape: false,
             push_reaction: PushReaction::Normal,
+            offset_type: OffsetType::None,
             light_emission: Emission::Constant(0),
             emissive_rendering: Rule::Default,
             suffocating: Rule::Default,
@@ -260,6 +270,11 @@ impl Block {
 
     pub const fn push_reaction(mut self, reaction: PushReaction) -> Self {
         self.push_reaction = reaction;
+        self
+    }
+
+    pub const fn offset_type(mut self, offset: OffsetType) -> Self {
+        self.offset_type = offset;
         self
     }
 

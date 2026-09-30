@@ -1192,6 +1192,7 @@ public final class BlockOracle {
                     values.addProperty(field, (boolean) declaredValue(declared, field));
                 }
                 values.addProperty("pushReaction", declaredValue(declared, "pushReaction").toString());
+                values.addProperty("offsetType", offsetType(block.defaultBlockState()));
                 described.add("declared", values);
                 described.addProperty("item", net.minecraft.core.registries.BuiltInRegistries.ITEM
                     .getKey(block.asItem()).toString());
@@ -1286,6 +1287,22 @@ public final class BlockOracle {
             state, reader, net.minecraft.world.level.ScheduledTickAccess.class, pos,
             net.minecraft.core.Direction.class, pos, state, net.minecraft.util.RandomSource.class});
         return methods;
+    }
+
+    /** `Properties.offsetType`, read from what the offset function does: a
+     * vertical component anywhere means it moves in all three axes. */
+    private static String offsetType(net.minecraft.world.level.block.state.BlockState state) {
+        if (!state.hasOffsetFunction()) {
+            return "NONE";
+        }
+        for (int x = 0; x < 16; x++) {
+            for (int z = 0; z < 16; z++) {
+                if (state.getOffset(new net.minecraft.core.BlockPos(x, 0, z)).y != 0.0) {
+                    return "XYZ";
+                }
+            }
+        }
+        return "XZ";
     }
 
     /** An interface and every interface it extends, each listed once. */

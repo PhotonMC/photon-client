@@ -92,3 +92,8 @@ pub fn chorus_flower_support() -> VoxelShape {
     static SHAPE: OnceLock<VoxelShape> = OnceLock::new();
     SHAPE.get_or_init(|| column(14.0, 14.0, 0.0, 15.0)).clone()
 }
+
+/// `SpeleothemBlock.MAX_HORIZONTAL_OFFSET`: how far its base reaches in.
+pub fn speleothem_max_horizontal_offset() -> f32 {
+    column(12.0, 12.0, 0.0, 16.0).min(Axis::X) as f32
+}

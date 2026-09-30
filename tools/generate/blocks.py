@@ -101,6 +101,8 @@ def chain(block):
     for field, when, method in FLAGS:
         if declared[field] == when:
             calls.append(f"{method}()")
+    if declared["offsetType"] != "NONE":
+        calls.append(f"offset_type(OffsetType::{declared['offsetType'].capitalize()})")
     if declared["pushReaction"] != "NORMAL":
         reaction = "".join(part.capitalize() for part in declared["pushReaction"].split("_"))
         calls.append(f"push_reaction(PushReaction::{reaction})")
@@ -206,7 +208,7 @@ def blocks_file(blocks):
     out = header("Every block, in registry order, as the reference's `Blocks` declares it.",
                  "blocks.py") + [
         "use super::classes::BlockClass;",
-        "use super::definition::{Block, Emission, Fluid, PushReaction, Rule};",
+        "use super::definition::{Block, Emission, Fluid, OffsetType, PushReaction, Rule};",
         "use super::properties::*;",
         "",
         "#[rustfmt::skip]",

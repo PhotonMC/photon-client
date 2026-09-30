@@ -4,7 +4,6 @@ pub mod blocks;
 pub mod classes;
 pub mod collision;
 pub mod definition;
-pub mod offset;
 pub mod outline;
 pub mod properties;
 pub mod registry;
