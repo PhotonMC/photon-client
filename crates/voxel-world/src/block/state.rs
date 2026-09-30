@@ -19,7 +19,6 @@ use voxel_data::block::registry::{BLOCKS, Block};
 use super::fluid::{FluidState, fluid_state};
 use super::shape_rules;
 use super::shapes;
-use crate::block_state::{table_collision_shape, table_outline_shape};
 
 /// The directions in the reference's order, which the face arrays follow.
 pub const DIRECTIONS: [Direction; 6] = [
@@ -360,12 +359,9 @@ fn compute(
     facts: &mut ShapeFacts,
     pool: &mut ShapePool,
 ) -> StateInfo {
-    let id = block.first_state_id() + offset;
     let fluid = fluid_state(block, offset);
-    let outline_place =
-        pool.intern(shape_rules::outline(block, offset).unwrap_or_else(|| table_outline_shape(id)));
-    let collision_place = pool
-        .intern(shape_rules::collision(block, offset).unwrap_or_else(|| table_collision_shape(id)));
+    let outline_place = pool.intern(shape_rules::outline(block, offset));
+    let collision_place = pool.intern(shape_rules::collision(block, offset));
     let outline = pool.shapes[usize::from(outline_place)].clone();
     let collision = pool.shapes[usize::from(collision_place)].clone();
     let occlusion = occlusion_shape(block, offset, &outline, &collision);

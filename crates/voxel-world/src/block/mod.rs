@@ -5,6 +5,7 @@
 pub mod culling;
 pub mod fluid;
 pub mod shape_rules;
+pub use shape_rules::moves_with_position;
 pub mod shapes;
 pub mod state;
 pub mod tags;

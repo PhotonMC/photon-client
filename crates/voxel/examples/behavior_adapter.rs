@@ -16383,7 +16383,7 @@ fn block_declarations(label: &str) -> Value {
             .map(|(field, _)| *field)
             .expect("every property is listed")
     };
-    let blocks: Vec<Value> = registry::BLOCKS
+    let blocks: Vec<Value> = voxel_data::block::registry::BLOCKS
         .iter()
         .map(|block| {
             let count = block.state_count();
@@ -16578,7 +16578,6 @@ fn face_occlusion(label: &str) -> Result<Value, String> {
 fn movement_properties(label: &str) -> Result<Value, String> {
     use voxel_data::block::classes::BlockClass;
     use voxel_data::block::definition::Fluid;
-    use voxel_data::block::registry;
     let tags = vanilla_tags()?;
     let bits = |value: f32| format!("{:08x}", value.to_bits());
     let fluid_name = |fluid: Fluid| match fluid {
@@ -16588,7 +16587,7 @@ fn movement_properties(label: &str) -> Result<Value, String> {
         Fluid::Lava => "minecraft:lava",
         Fluid::FlowingLava => "minecraft:flowing_lava",
     };
-    let blocks: Vec<Value> = registry::BLOCKS
+    let blocks: Vec<Value> = voxel_data::block::registry::BLOCKS
         .iter()
         .enumerate()
         .map(|(index, block)| {
@@ -16976,7 +16975,7 @@ fn block_result(request: &Value) -> Result<Value, String> {
         let label = string(row, "label")?;
         match operation {
             "state_definitions" => {
-                let blocks: Vec<Value> = registry::BLOCKS
+                let blocks: Vec<Value> = voxel_data::block::registry::BLOCKS
                     .iter()
                     .enumerate()
                     .map(|(id, block)| {
@@ -17019,7 +17018,7 @@ fn block_result(request: &Value) -> Result<Value, String> {
             }
             "offset_properties" => {
                 use voxel_data::block::definition::OffsetType;
-                let blocks: Vec<Value> = registry::BLOCKS
+                let blocks: Vec<Value> = voxel_data::block::registry::BLOCKS
                     .iter()
                     .filter(|block| block.offset_type != OffsetType::None)
                     .map(|block| {
@@ -17105,7 +17104,7 @@ fn block_result(request: &Value) -> Result<Value, String> {
                         .find(|class| class.declares().contains(&method))
                         .map_or_else(|| "BlockBehaviour".to_owned(), |class| format!("{class:?}"))
                 };
-                let blocks: Vec<Value> = registry::BLOCKS
+                let blocks: Vec<Value> = voxel_data::block::registry::BLOCKS
                     .iter()
                     .map(|block| {
                         let replaceable = if block.replaceable { "1" } else { "0" };
@@ -17150,7 +17149,7 @@ fn block_result(request: &Value) -> Result<Value, String> {
                 );
             }
             "destroy_properties" => {
-                let blocks: Vec<Value> = registry::BLOCKS
+                let blocks: Vec<Value> = voxel_data::block::registry::BLOCKS
                     .iter()
                     .map(|block| {
                         let first = block.first_state_id();
@@ -17387,7 +17386,7 @@ fn block_result(request: &Value) -> Result<Value, String> {
                 }));
             }
             "light_properties" => {
-                let blocks: Vec<Value> = registry::BLOCKS
+                let blocks: Vec<Value> = voxel_data::block::registry::BLOCKS
                     .iter()
                     .map(|block| {
                         let first = block.first_state_id();
@@ -17418,95 +17417,8 @@ fn block_result(request: &Value) -> Result<Value, String> {
                 out.push(json!({"label": label, "outcome": "listed", "blocks": blocks}));
             }
             "face_occlusion" => out.push(face_occlusion(label)?),
-            "collision_shapes" => {
-                use voxel_data::block::collision as table;
-                // The boxes come from the rebuilt shapes, not straight from the
-                // table, so the comparison also checks that rebuilding a shape
-                // from its boxes merges them the way the reference does.
-                let mut shapes = Vec::with_capacity(table::SHAPES.len());
-                for index in 0..table::SHAPES.len() {
-                    let shape = voxel_world::block_state::table_shape(index)
-                        .ok_or("table shape out of range")?;
-                    let boxes: Vec<Value> = shape
-                        .to_aabbs()
-                        .iter()
-                        .map(|aabb| {
-                            json!([
-                                format!("{:016x}", aabb.min_x.to_bits()),
-                                format!("{:016x}", aabb.min_y.to_bits()),
-                                format!("{:016x}", aabb.min_z.to_bits()),
-                                format!("{:016x}", aabb.max_x.to_bits()),
-                                format!("{:016x}", aabb.max_y.to_bits()),
-                                format!("{:016x}", aabb.max_z.to_bits()),
-                            ])
-                        })
-                        .collect();
-                    shapes.push(Value::Array(boxes));
-                }
-                let blocks: Vec<Value> = registry::BLOCKS
-                    .iter()
-                    .zip(table::BLOCKS.iter())
-                    .map(|(block, collision)| {
-                        json!({
-                            "name": block.name,
-                            "shapes": collision.shapes,
-                            "position_dependent": collision.offset,
-                            "dynamic": collision.dynamic,
-                        })
-                    })
-                    .collect();
-                out.push(json!({
-                    "label": label,
-                    "outcome": "listed",
-                    "shapes": shapes,
-                    "blocks": blocks,
-                }));
-            }
-            "outline_shapes" => {
-                use voxel_data::block::outline as table;
-                let bits = |value: f64| format!("{:016x}", value.to_bits());
-                let mut shapes = Vec::with_capacity(table::SHAPES.len());
-                for index in 0..table::SHAPES.len() {
-                    let shape = voxel_world::outline_table_shape(index)
-                        .ok_or("outline shape out of range")?;
-                    let boxes: Vec<Value> = shape
-                        .to_aabbs()
-                        .iter()
-                        .map(|aabb| {
-                            json!([
-                                bits(aabb.min_x),
-                                bits(aabb.min_y),
-                                bits(aabb.min_z),
-                                bits(aabb.max_x),
-                                bits(aabb.max_y),
-                                bits(aabb.max_z),
-                            ])
-                        })
-                        .collect();
-                    shapes.push(Value::Array(boxes));
-                }
-                let blocks: Vec<Value> = registry::BLOCKS
-                    .iter()
-                    .zip(table::BLOCKS.iter())
-                    .map(|(block, outline)| {
-                        json!({
-                            "name": block.name,
-                            "shapes": outline.shapes,
-                            "position_dependent": outline.offset,
-                            // The table is generated only when every offset
-                            // explains its block's outline.
-                            "offset_explained": true,
-                            "dynamic": outline.dynamic,
-                        })
-                    })
-                    .collect();
-                out.push(json!({
-                    "label": label,
-                    "outcome": "listed",
-                    "shapes": shapes,
-                    "blocks": blocks,
-                }));
-            }
+            "collision_shapes" => out.push(shape_table(label, false)),
+            "outline_shapes" => out.push(shape_table(label, true)),
             "movement_properties" => out.push(movement_properties(label)?),
             "block_tints" => {
                 let tinted: Vec<Value> = registry::TINTS
@@ -17527,6 +17439,91 @@ fn block_result(request: &Value) -> Result<Value, String> {
         }
     }
     Ok(json!({"rows": out}))
+}
+
+/// Every state's collision or outline shape as the reference lists them: the
+/// distinct shapes by their boxes in the order they are first met, then for
+/// each block the shape of its one state or of each.
+///
+/// The collision shape of a block that shifts by position is the one at the
+/// origin; the outline is listed before the shift and a block is position
+/// dependent when its shape is not empty and the shift is not always zero.
+fn shape_table(label: &str, outline: bool) -> Value {
+    const ELSEWHERE: [[i32; 3]; 4] = [[13, 70, -7], [-200, 5, 999], [1, 1, 1], [-3, 64, 12]];
+    let mut ids: std::collections::HashMap<Vec<u64>, usize> = std::collections::HashMap::new();
+    let mut shapes: Vec<Value> = Vec::new();
+    let states = voxel_world::block::states();
+    let blocks: Vec<Value> = voxel_data::block::registry::BLOCKS
+        .iter()
+        .map(|block| {
+            let mut per_state = Vec::new();
+            let mut moves = false;
+            for offset in 0..block.state_count() {
+                let info = voxel_world::block::state(block.first_state_id() + offset)
+                    .expect("a registry state");
+                let shape = if outline {
+                    states.outline(info)
+                } else {
+                    states.collision(info)
+                };
+                let boxes: Vec<[u64; 6]> = shape
+                    .to_aabbs()
+                    .iter()
+                    .map(|aabb| {
+                        [
+                            aabb.min_x, aabb.min_y, aabb.min_z, aabb.max_x, aabb.max_y, aabb.max_z,
+                        ]
+                        .map(f64::to_bits)
+                    })
+                    .collect();
+                let origin = voxel_world::block::offset(block, [0, 0, 0]);
+                moves |= !boxes.is_empty()
+                    && voxel_world::block::moves_with_position(block)
+                    && ELSEWHERE.iter().any(|at| {
+                        let shift = voxel_world::block::offset(block, *at);
+                        if outline {
+                            shift != [0.0; 3]
+                        } else {
+                            shift != origin
+                        }
+                    });
+                let key: Vec<u64> = boxes.iter().flatten().copied().collect();
+                let id = *ids.entry(key).or_insert_with(|| {
+                    shapes.push(Value::Array(
+                        boxes
+                            .iter()
+                            .map(|bits| {
+                                Value::Array(
+                                    bits.iter()
+                                        .map(|bit| json!(format!("{bit:016x}")))
+                                        .collect(),
+                                )
+                            })
+                            .collect(),
+                    ));
+                    shapes.len() - 1
+                });
+                per_state.push(id);
+            }
+            let listed = if per_state.iter().all(|id| *id == per_state[0]) {
+                vec![per_state[0]]
+            } else {
+                per_state
+            };
+            let mut entry = json!({
+                "name": block.name,
+                "shapes": listed,
+                "position_dependent": moves,
+                "dynamic": block.dynamic_shape,
+            });
+            if outline {
+                // The shift is explained by the same offset at any position.
+                entry["offset_explained"] = json!(true);
+            }
+            entry
+        })
+        .collect();
+    json!({"label": label, "outcome": "listed", "shapes": shapes, "blocks": blocks})
 }
 
 fn image_result(request: &Value) -> Result<Value, String> {

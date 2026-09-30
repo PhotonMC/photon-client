@@ -1,9 +1,7 @@
 //! A block's shapes as its class works them out (`getShape` and
 //! `getCollisionShape`): the nearest class in the block's lineage that
 //! declares the method answers, and a block no class answers for has the
-//! reference's defaults. A class not written here answers `None`, and the
-//! state cache takes that state's shape from the reference's table until it
-//! is.
+//! reference's defaults.
 
 /// A shape or a map of them built the first time it is asked for.
 macro_rules! cached {
@@ -63,34 +61,52 @@ fn owner(block: &Block, method: Method) -> Option<BlockClass> {
         .find(|class| class.declares().contains(&method))
 }
 
+/// Whether the class moves its shapes by the block's random offset
+/// (`shape.move(state.getOffset(pos))`); the others keep them where the
+/// block's cell is, though the block is drawn off the grid.
+pub fn moves_with_position(block: &Block) -> bool {
+    block.offset_type != OffsetType::None
+        && matches!(
+            owner(block, Method::GetShape),
+            Some(
+                BlockClass::FlowerBlock
+                    | BlockClass::MangrovePropaguleBlock
+                    | BlockClass::SpeleothemBlock
+                    | BlockClass::BambooStalkBlock
+                    | BlockClass::BambooSaplingBlock
+            )
+        )
+}
+
 /// `getShape` for the state at `offset` of `block`, with no level and no
-/// entity; `None` when its class is not written.
-pub fn outline(block: &Block, offset: u32) -> Option<VoxelShape> {
+/// entity and before the block's random offset.
+pub fn outline(block: &Block, offset: u32) -> VoxelShape {
     match owner(block, Method::GetShape) {
         // `BlockBehaviour.getShape`: the whole block.
-        None => Some(Shapes::block()),
-        Some(class) => class_outline(class, block, offset),
+        None => Shapes::block(),
+        Some(class) => class_outline(class, block, offset)
+            .unwrap_or_else(|| panic!("no getShape is written for {class:?}")),
     }
 }
 
 /// `getCollisionShape`, which is the outline unless the block has no
-/// collision, for the state at `offset` of `block`; `None` when its class
-/// is not written.
-pub fn collision(block: &Block, offset: u32) -> Option<VoxelShape> {
+/// collision, for the state at `offset` of `block`.
+pub fn collision(block: &Block, offset: u32) -> VoxelShape {
     let shape = match owner(block, Method::GetCollisionShape) {
         // `BlockBehaviour.getCollisionShape`.
         None if block.has_collision => outline(block, offset),
-        None => Some(Shapes::empty()),
-        Some(class) => class_collision(class, block, offset),
-    }?;
+        None => Shapes::empty(),
+        Some(class) => class_collision(class, block, offset)
+            .unwrap_or_else(|| panic!("no getCollisionShape is written for {class:?}")),
+    };
     // The shape a state answers with where no position is asked for is the
     // one at the origin, so a block that shifts by position is shifted by
     // the origin's shift.
-    if block.offset_type == OffsetType::None {
-        return Some(shape);
+    if !moves_with_position(block) {
+        return shape;
     }
     let [x, y, z] = super::offset(block, [0, 0, 0]);
-    Some(shape.move_by(x, y, z))
+    shape.move_by(x, y, z)
 }
 
 fn class_outline(class: BlockClass, block: &Block, offset: u32) -> Option<VoxelShape> {
@@ -119,67 +135,67 @@ fn class_collision(class: BlockClass, block: &Block, offset: u32) -> Option<Voxe
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::block_state::{table_collision_shape, table_outline_shape};
-    use voxel_data::block::registry::BLOCKS;
+    use voxel_data::block::registry::{BLOCKS, block};
 
-    /// A shape's boxes as bits, and whether it is the reference's own whole
-    /// block or empty shape, which it tells from another by identity.
-    fn fingerprint(shape: &VoxelShape) -> (u8, Vec<u64>) {
-        let kind = if shape.equals_java(&Shapes::empty()) {
-            1
-        } else if shape.equals_java(&Shapes::block()) {
-            2
-        } else {
-            0
-        };
-        let boxes = shape
-            .to_aabbs()
+    fn state(name: &str, properties: &[(&str, &str)]) -> (&'static Block, u32) {
+        let block = block(name).expect("a block");
+        let chosen = properties
             .iter()
-            .flat_map(|aabb| {
-                [
-                    aabb.min_x, aabb.min_y, aabb.min_z, aabb.max_x, aabb.max_y, aabb.max_z,
-                ]
-                .map(f64::to_bits)
-            })
+            .map(|(key, value)| ((*key).to_owned(), (*value).to_owned()))
             .collect();
-        (kind, boxes)
+        let id = block.state_id(&chosen).expect("a state");
+        (block, id - block.first_state_id())
     }
 
-    /// Every state a class computes has the shape the reference's table
-    /// holds for it; the ones no class computes yet are counted.
+    /// Every state of every block has both shapes; a class whose shape is
+    /// not written panics.
     #[test]
-    fn computed_shapes_are_the_tables() {
-        let (mut outlines, mut collisions, mut states) = (0, 0, 0);
-        let mut wrong = Vec::new();
+    fn every_state_has_shapes() {
         for block in &BLOCKS {
             for offset in 0..block.state_count() {
-                states += 1;
-                let id = block.first_state_id() + offset;
-                if let Some(shape) = outline(block, offset) {
-                    outlines += 1;
-                    if fingerprint(&shape) != fingerprint(&table_outline_shape(id)) {
-                        wrong.push(format!("{} outline at {offset}", block.name));
-                    }
-                }
-                if let Some(shape) = collision(block, offset) {
-                    collisions += 1;
-                    if fingerprint(&shape) != fingerprint(&table_collision_shape(id)) {
-                        wrong.push(format!(
-                            "{} collision at {offset}: {:?} vs table {:?}",
-                            block.name,
-                            fingerprint(&shape),
-                            fingerprint(&table_collision_shape(id))
-                        ));
-                    }
-                }
+                outline(block, offset);
+                collision(block, offset);
             }
         }
-        println!("shapes computed: outline {outlines}/{states}, collision {collisions}/{states}");
-        assert!(
-            wrong.is_empty(),
-            "{} differ, first {:?}",
-            wrong.len(),
-            wrong
+    }
+
+    #[test]
+    fn a_bottom_slab_is_the_lower_half() {
+        let (slab, offset) = state("minecraft:stone_slab", &[("type", "bottom")]);
+        let bounds = outline(slab, offset).bounds().expect("a box");
+        assert_eq!((bounds.min_y, bounds.max_y), (0.0, 0.5));
+    }
+
+    #[test]
+    fn a_fence_collides_higher_than_it_shows() {
+        let (fence, offset) = state("minecraft:oak_fence", &[]);
+        let outline = outline(fence, offset).bounds().expect("a box");
+        let collision = collision(fence, offset).bounds().expect("a box");
+        assert_eq!((outline.max_y, collision.max_y), (1.0, 1.5));
+    }
+
+    #[test]
+    fn a_top_stair_is_the_bottom_one_turned_over() {
+        let (bottom, at) = state("minecraft:oak_stairs", &[("half", "bottom")]);
+        let (top, above) = state("minecraft:oak_stairs", &[("half", "top")]);
+        let bottom = outline(bottom, at).bounds().expect("a box");
+        let top = outline(top, above).bounds().expect("a box");
+        assert_eq!((bottom.min_y, bottom.max_y), (0.0, 1.0));
+        assert_eq!((top.min_y, top.max_y), (0.0, 1.0));
+        assert_eq!(
+            outline_area(&state("minecraft:oak_stairs", &[("half", "top")])),
+            0.75
         );
+    }
+
+    fn outline_area((block, offset): &(&'static Block, u32)) -> f64 {
+        let shape = outline(block, *offset);
+        shape
+            .to_aabbs()
+            .iter()
+            .map(|aabb| {
+                (aabb.max_x - aabb.min_x) * (aabb.max_y - aabb.min_y) * (aabb.max_z - aabb.min_z)
+            })
+            .sum()
     }
 }
