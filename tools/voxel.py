@@ -344,7 +344,7 @@ def server(args):
 
 
 def play(args):
-    binary = ROOT / "target" / "release" / ("voxel-client.exe" if os.name == "nt" else "voxel-client")
+    binary = ROOT / "target" / "release" / ("voxel.exe" if os.name == "nt" else "voxel")
     if not args.no_build:
         subprocess.run(["cargo", "build", "--release"], cwd=ROOT, check=True)
     assets = ASSETS / "jar" / "assets"

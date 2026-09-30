@@ -49,7 +49,7 @@ Her girdi `schema_version: 1`, `case_id`, `family`, `operation` ve operasyona ö
 
 Wire kapsamı işaretli min/max, 7 bit sınırları, negatif değerler, kesilmiş/fazla uzun/noncanonical kodlamalar ve kalan baytları içerir. Her `write` çağrısında orijinal decoder da çağrılır; bağımsız sentetik `read` girdileri ayrıca bulunur. UTF-8 ayrı ailede Java referansı olarak hazır; diğer P03 biçimleri henüz kapsanmıyor.
 
-JSON protokolünü konuşan bir executable'ın programlama dili araç tarafından kanıtlanmaz. `examples/behavior_adapter.rs` mevcut gerçek Rust wire/timer/math adaptörüdür; rapor executable SHA-256'sını ve seçili kapsamı kaydeder. Altyapı denemelerinde kullanılan sentetik programlar oyun eşitlik kanıtı değildir.
+JSON protokolünü konuşan bir executable'ın programlama dili araç tarafından kanıtlanmaz. `crates/voxel/examples/behavior_adapter.rs` mevcut gerçek Rust wire/timer/math adaptörüdür; rapor executable SHA-256'sını ve seçili kapsamı kaydeder. Altyapı denemelerinde kullanılan sentetik programlar oyun eşitlik kanıtı değildir.
 
 ## Aile ve operation sözleşmeleri
 

@@ -19,7 +19,7 @@ işleniyor. Seviye yüklenince (oyuncunun konumu ve altındaki yığın gelince)
 tick'i oyuncuyu çalıştırıp istediği paketleri, ardından tick sonu paketini
 gönderiyor.
 
-`voxel-client play <sunucu> [genişlik yükseklik]` bir pencere açıyor: WASD,
+`voxel play <sunucu> [genişlik yükseklik]` bir pencere açıyor: WASD,
 boşluk, sol shift, sol ctrl ve fare. Kamera oyuncunun gözünde. Bütün blok
 modelleri ve tek atlas açılışta kuruluyor; dünya 16³'lük bölümler halinde
 mesh'leniyor. Gelen yığın ve ışık paketleri çevredeki 3×3 yığın sütununun,
@@ -49,7 +49,7 @@ göndermedi ve günlüğünde "moved wrongly" ya da "moved too quickly" yok.
 ```
 cd .data/render/walk && java -jar ../../minecraft/runtime/server-26.2.jar nogui
 VOXEL_ASSETS=.data/minecraft/assets/jar/assets \
-  target/release/voxel-client play 127.0.0.1:25600
+  target/release/voxel play 127.0.0.1:25600
 ```
 
 Sunucu klasörü yerel; `server.properties` çevrimdışı mod, hayatta kalma,

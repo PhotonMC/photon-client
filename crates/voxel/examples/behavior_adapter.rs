@@ -17029,7 +17029,7 @@ fn image_result(request: &Value) -> Result<Value, String> {
         for row in rows {
             // Test glue: the texture from the local copy of the pinned jar.
             let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-                .join(".data/minecraft/assets/jar")
+                .join("../../.data/minecraft/assets/jar")
                 .join(string(row, "texture")?);
             let bytes = std::fs::read(&path).map_err(|e| format!("{}: {e}", path.display()))?;
             let image = voxel_render::png::decode_rgba(&bytes).map_err(|e| format!("{e:?}"))?;
@@ -17278,7 +17278,7 @@ fn vanilla_block_tags() -> Result<ClientboundUpdateTagsPacket, String> {
         Ok(())
     }
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join(".data/minecraft/assets/jar/data/minecraft/tags/block");
+        .join("../../.data/minecraft/assets/jar/data/minecraft/tags/block");
     let mut names = Vec::new();
     walk(&root, &root, &mut names)?;
     names.sort();

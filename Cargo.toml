@@ -28,29 +28,6 @@ unsafe_op_in_unsafe_fn = "warn"
 cognitive_complexity = "warn"
 too_many_lines = "warn"
 
-[package]
-name = "voxel-client"
-description = "The client application: window, session loop, screens and scripted runs."
-version.workspace = true
-edition.workspace = true
-publish = false
-include = ["/Cargo.toml", "/Cargo.lock", "/src/**", "/README.md"]
-
-[dependencies]
-voxel-core.workspace = true
-voxel-data.workspace = true
-voxel-world.workspace = true
-voxel-game.workspace = true
-voxel-net.workspace = true
-voxel-render.workspace = true
-glfw.workspace = true
-
-[dev-dependencies]
-serde_json = "1.0.151"
-
-[lints]
-workspace = true
-
 # Java integer arithmetic always wraps. Keeping overflow checks on in both
 # profiles makes an unintended wrap a test failure instead of a silent
 # release-only divergence; deliberate wrapping is written with `wrapping_*`.

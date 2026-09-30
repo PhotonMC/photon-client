@@ -1,4 +1,4 @@
-//! `voxel-client window`: the window and Vulkan probe, which draws one block,
+//! `voxel window`: the window and Vulkan probe, which draws one block,
 //! a grid of them, or a box of a server's world, and can capture the frame.
 
 use std::env;

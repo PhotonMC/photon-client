@@ -1,4 +1,4 @@
-//! `voxel-client play`: join a server and walk around in it.
+//! `voxel play`: join a server and walk around in it.
 
 use std::env;
 use std::net::SocketAddr;

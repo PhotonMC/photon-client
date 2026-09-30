@@ -4,7 +4,7 @@ Bu belge Rust kodunun nasıl düzenleneceğini, adlandırılacağını ve hangi 
 
 ## Crate katmanları
 
-Workspace altı kütüphane crate'i ve kökteki uygulama paketinden oluşur. Bağımlılık yalnızca aşağıya doğru akar; bir crate kendinden sonraki bir crate'i bilemez, döngü kurulmaz.
+Workspace altı kütüphane crate'i ve uygulama crate'i `voxel`'den oluşur; hepsi `crates/` altındadır, kökte kaynak kodu yoktur. Bağımlılık yalnızca aşağıya doğru akar; bir crate kendinden sonraki bir crate'i bilemez, döngü kurulmaz.
 
 | Crate | Sorumluluk |
 | --- | --- |
@@ -14,7 +14,7 @@ Workspace altı kütüphane crate'i ve kökteki uygulama paketinden oluşur. Ba�
 | `voxel-game` | Oyun kuralları: eşyalar, bileşenler, envanter ve yaratıcı menüleri, tooltip, saldırı, seçenekler. |
 | `voxel-net` | Protokol, paketler, bağlantı ve oturum (`PlaySession`). |
 | `voxel-render` | Vulkan arka ucu, model/atlas/mesh, gökyüzü ve hava, arayüz (`gui`). |
-| `voxel-client` (kök) | `src/`: uygulama; oyun döngüsü, pencere olayları, betikler. `examples/`: probe'lar ve davranış adaptörü. |
+| `voxel` | `src/`: uygulama (`voxel` ikilisi); oyun döngüsü, pencere olayları, betikler. `examples/`: probe'lar ve davranış adaptörü. |
 
 Yeni kod, sorumluluğunun ait olduğu en alttaki crate'e konur. Bir tip başka crate'e taşınırsa `pub(crate)` alanlar ya metoda ya da `pub`'a çevrilir; başka crate'in tipine inherent `impl` yazılamayacağı için yardımcı serbest fonksiyon olur.
 

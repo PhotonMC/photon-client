@@ -1,0 +1,22 @@
+[package]
+name = "voxel"
+description = "The client application: window, session loop, screens and scripted runs."
+version.workspace = true
+edition.workspace = true
+publish = false
+include = ["/Cargo.toml", "/src/**", "/examples/**"]
+
+[dependencies]
+voxel-core.workspace = true
+voxel-data.workspace = true
+voxel-world.workspace = true
+voxel-game.workspace = true
+voxel-net.workspace = true
+voxel-render.workspace = true
+glfw.workspace = true
+
+[dev-dependencies]
+serde_json = "1.0.151"
+
+[lints]
+workspace = true

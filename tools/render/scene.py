@@ -482,7 +482,7 @@ def main():
     put.add_argument("--scene", choices=sorted(SCENES), default=DEFAULT_SCENE)
     put.add_argument("--user", default="ParityTest")
     put.add_argument("--port", type=int, default=25599)
-    put.add_argument("--probe", type=Path, default=ROOT / "target/release/voxel-client")
+    put.add_argument("--probe", type=Path, default=ROOT / "target/release/voxel")
     put.add_argument("--java", default="java")
     put.add_argument("--heap", default="2G")
     put.add_argument("--timeout", type=float, default=180.0)
