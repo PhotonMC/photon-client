@@ -1,5 +1,7 @@
 # Kalan işler ve oynanabilir istemci yol haritası (2026-09-29)
 
+> Sıradaki işler [görev panosundadır](tasks/README.md). Bu belge bugünkü durumu ve bilinen boşlukları kaydeder; görev bitince ilgili satır güncellenir.
+
 Bu belge [roadmap](roadmap.md)ın P00–P26 tablosunu yeniden yazmaz; o tablo
 bölüm kapsamını ve kabul kuralını tutar. Burası, bugünkü `play` modunun
 gerçekte neyi yaptığını ve oynanabilir bir istemciye kadar **hangi işlerin,
@@ -357,24 +359,9 @@ Bitti: `Component`/dil (`en_us`), stilli yazı, `EditBox`, ipucu kutusu.
 - **S** Test envanteri: canlı sunucu betiklerinin (`VOXEL_SCRIPT`) bir
   senaryo dosyası biçimine ve sürekli çalıştırmaya alınması.
 
-## 13. Sıradaki altı dilim
+## 13. Sıradaki işler
 
-1. **M3.d.a** `ContainerSetData` + genel kap menüsü modeli + sandık/fıçı/
-   ender sandığı/shulker kutusu ekranı (`OpenScreen` bağlanır, `ContainerClose`
-   iki yönlü, kap tıklamaları oracle'a eklenir).
-2. **M3.d.b** Tezgâh ve fırın ekranları, tarif tablosu oracle'ı, tarif kitabı
-   çekirdeği.
-3. **M5.a** Chat paketleri, panel ve giriş; `SystemChat`/`DisguisedChat`; komut
-   ağacı ve öneri kutusu.
-4. **M6.a** Widget kitaplığı, duraklatma menüsü, ölüm ekranı, bağlantı kopma
-   ekranı.
-5. **M4.a** Entity paketleri ve dünya kopyasına bağlanma, entity render iskeleti,
-   yerdeki eşya ve uzaktaki oyuncu (varsayılan deri).
-6. **M8.a** `BlockEntityData` ve blok entity çizicileri (sandık, tabela, bayrak,
-   kafa) ile `LevelEvent` çekirdeği.
-
-Her dilim önce Java kaynak dalını inceler, oracle senaryosunu yazar, sonra
-Rust'ı taşır; kanıt sınıfı kayıtta açıkça yazılır.
+Görevler [görev panosundadır](tasks/README.md) (T01–T26 ve PLAN görevleri); burada ikinci bir liste tutulmaz.
 
 ## 14. Mimari ve kod sağlığı kuyruğu
 

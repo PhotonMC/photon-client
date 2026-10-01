@@ -12,13 +12,13 @@ Bu kurallar model veya sağlayıcıdan bağımsızdır: GPT/Codex, Claude, Gemin
 
 ## Aşama sınırı
 
-Referans girdileri sağlandı; Minecraft Java Edition 26.2, protokol 776 ve Java 25 sabitlendi. Her yeni dilimden önce [referans envanterini](docs/reference-baseline.md), [kaynak incelemesini](docs/source-review.md) ve [roadmap'i](docs/roadmap.md) oku.
+Referans girdileri sağlandı; Minecraft Java Edition 26.2, protokol 776 ve Java 25 sabitlendi. Sıradaki iş [görev panosundadır](docs/tasks/README.md); görev dosyası gereken bağlamı damıtılmış hâlde taşır. [Referans envanteri](docs/reference-baseline.md), [kaynak incelemesi](docs/source-review.md) ve [roadmap](docs/roadmap.md) yalnız görev isterse veya yeni bir dilim/görev tasarlanırken okunur.
 
 Tamamlanan Rust davranış dilimleri kendi contract/parity belgelerinde tutulur. [Yerel davranış runner'ı](docs/behavior-runner.md) Java oracle, golden capture ve Rust adapter karşılaştırmasını yürütür. Hareketli corpus toplamları bu dosyada tekrar edilmez; kesin kayıt kimliği ve kapsam ilgili dilim belgesi ile runner raporundadır.
 
 Yeni bir dilim için sıra Java kaynak incelemesi, özgün senaryo ve oracle, Java capture, Rust implementasyonu, karşılaştırma ve dilime özel kanıttır. Eski dilim belgeleri yeni bir dilim eklendiğinde güncellenmez; paylaşılan davranış sözleşmesi veya protokol değişirse etkilenen belgeler yeniden incelenir. Java referansının geçmesi tek başına Rust veya istemci eşitliği değildir.
 
-2026-09-12 tarihli [yön düzeltmesi](docs/course-correction-2026-09-12.md) bağlayıcıdır: kanıt sınıfı ayrımı, varyant patlamasının durdurulması, `src/connection.rs` bölünmesi ve kritik yol olarak istemci dünya kopyası orada kayıtlıdır. Yeni dilim seçmeden önce o belge okunur.
+2026-09-12 tarihli [yön düzeltmesi](docs/course-correction-2026-09-12.md) bağlayıcıdır (kuralları aşağıdaki maddelerde ve görev şablonlarında özetlenmiştir; yeni dilim türü tasarlarken oku): kanıt sınıfı ayrımı, varyant patlamasının durdurulması, `src/connection.rs` bölünmesi ve kritik yol olarak istemci dünya kopyası orada kayıtlıdır. Yeni dilim seçmeden önce o belge okunur.
 
 Uygulamanın sunucuya bağlanıp yürünebilen bir `play` modu var ([kayıt](docs/live-play-session.md)); eylem, envanter, arayüz ve ses olmadığı için hâlâ oynanabilir istemci değildir. Pencere/input, bağlantı, dünya, hareket, görüntü, ses ve arayüz çalışmaları [roadmap](docs/roadmap.md) ile [kalan test planında](docs/remaining-test-plan.md) izlenir.
 
@@ -49,3 +49,13 @@ Uygulamanın sunucuya bağlanıp yürünebilen bir `play` modu var ([kayıt](doc
 - Belge yükünü sabit tut. `python3 tools/check-doc-cells.py` bu kuralı zorlar ve belge değiştiren her dilimde çalıştırılır. Bir dilim kendi contract/parity kaydını ekler; `README.md`, `roadmap.md` ve `remaining-test-plan.md` içindeki genel hücrelere senaryo adı biriktirmez. Bu belgelerde hareketli toplam ve senaryo listesi tutulmaz, ilgili kayda bağlantı verilir.
 - Commit mesajlarına `Co-Authored-By` veya başka AI atıf footer'ları ekleme. Git yazar kimliği uydurma. Commit öncesi staged diff ve dosya listesini denetle; yerel referanslar veya çıktılar sızmamalı.
 - Kullanıcı istemedikçe release veya yayın yapma. Sonuçta değişikliği, doğrulamayı ve açık kalan davranış farklarını kısa ve dürüst biçimde bildir.
+
+## Oturum ve token düzeni
+
+Çalışma görev başına tek oturumdur; bağlam her görev sonunda sıfırlanabilir. Bu yüzden:
+
+- Oturum başında yalnız bu dosya, [görev panosu](docs/tasks/README.md) (oturum protokolü orada), aktif görev dosyası ve onun **Oku** listesi okunur. Görev dosyası olan işte plan modu ve alt ajan (Explore/Plan) kullanılmaz; arama `grep -n`/`find` ile doğrudan yapılır.
+- Büyük dosyalar bütün okunmaz; `grep -n` ile çapa bulunur, `Read` ile ~150 satırlık pencere alınır: `crates/voxel/examples/behavior_adapter*` (dosya veya dizin), `tools/behavior/cases*.py`, `tests/behavior/java/MathOracle.java`, `crates/voxel-net/src/connection/{protocol,probe,play}.rs`, `crates/voxel-world/src/{lib,tests,local_player}.rs`, `crates/voxel-render/src/vulkan.rs`, Java `Options.java` ve `voxel-data/src/generated/*`.
+- Çıktı süzülür. Kapı ve parity yalnız `python3 tools/voxel.py check|parity` ile (yalnız hata ve tek özet satırı basar; kapı çıktısını ham `cargo` ile tekrar etme). İterasyonda `cargo build -p <crate> 2>&1 | grep -E '^(error|warning)' -A6 | head -60` ve `cargo test -p <crate> <filtre>`; tam kapı commit öncesi bir kez.
+- Canlı oyun yalnız görevin **Kabul** bölümü isterse ve `python3 tools/voxel.py shot` ile; görüntü bir kez okunur. Refaktörde oyun açılmaz.
+- Kendi düzenlemeni doğrulamak için dosyayı yeniden okuma (araç hata verir); `rustfmt` yeniden biçimlediyse yalnız ilgili pencereyi oku. Aynı bilgiyi birden fazla belgeye yazma; devir notu en çok 10 satır.

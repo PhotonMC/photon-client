@@ -5,6 +5,9 @@
     python3 tools/voxel.py server --accept-eula  # set up and start the test server
     python3 tools/voxel.py play                  # build and start the client
     python3 tools/voxel.py rcon "time set noon"  # send commands to the test server
+    python3 tools/voxel.py check [--capture]     # the commit gate: prints CHECK OK or CHECK FAILED
+    python3 tools/voxel.py parity --family gui   # Java/Rust comparison only, one summary line
+    python3 tools/voxel.py shot NAME "SCRIPT"    # scripted client run, screenshot to .data/runs/shots
 
 Only the Python standard library is used. Everything downloaded goes under
 .data/, which stays on this machine and is never committed. Downloads come
@@ -17,6 +20,7 @@ import concurrent.futures
 import hashlib
 import json
 import os
+import re
 import shutil
 import socket
 import struct
@@ -397,6 +401,164 @@ def rcon(args):
         say(f"{command} -> {reply}")
 
 
+# ---------------------------------------------------------------- check
+
+
+# Every behavior family except `math` (which only runs on x86-64 Linux).
+PARITY_FAMILIES = ["atlas", "binary", "block", "entity", "gui", "image", "json", "model",
+                   "movement", "nbt", "resources", "timer", "utf8", "window", "wire"]
+NOISE = ("block v0.1.6", "future-incompat")
+
+
+def tool_environment():
+    environment = dict(os.environ)
+    environment["VOXEL_ASSETS"] = str(ASSETS / "jar" / "assets")
+    if sys.platform == "darwin" and Path("/usr/local/lib").is_dir():
+        environment["DYLD_LIBRARY_PATH"] = "/usr/local/lib"
+    return environment
+
+
+def run_captured(command):
+    result = subprocess.run(command, cwd=ROOT, env=tool_environment(), text=True,
+                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    return result.returncode, result.stdout.splitlines()
+
+
+def diagnostics(lines, limit=60):
+    """Warning and error blocks of a cargo run, without the known noise."""
+    shown, context = [], 0
+    for line in lines:
+        if line.startswith(("warning", "error")):
+            context = 10
+            keep = not any(noise in line for noise in NOISE)
+        elif context:
+            context -= 1
+        else:
+            keep = False
+            continue
+        if keep:
+            shown.append(line)
+    return shown[:limit]
+
+
+def parity_summary(capture, families):
+    """Run the Java/Rust comparison and return (ok, one summary line)."""
+    families = families or PARITY_FAMILIES
+    command = [sys.executable, "tools/behavior/run.py", "capture" if capture else "compare"]
+    for family in families:
+        command += ["--family", family]
+    adapter = "target/release/examples/behavior_adapter"
+    if capture:
+        _, lines = run_captured(command)
+        last = parse_report(lines)
+        if last.get("status") != "reference_ready":
+            return False, f"capture: {summary_of(last, lines)}"
+    _, lines = run_captured([sys.executable, "tools/behavior/run.py", "compare",
+                             *command[3:], "--adapter", adapter])
+    report = parse_report(lines)
+    return report.get("status") == "parity_passed", f"parity: {summary_of(report, lines)}"
+
+
+def parse_report(lines):
+    for line in reversed(lines):
+        try:
+            report = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(report, dict):
+            return report
+    return {}
+
+
+def summary_of(report, lines):
+    if not report:
+        return " | ".join(lines[-3:])
+    difference = str(report.get("difference"))[:600]
+    return f"{report.get('status')} {report.get('case_count')} {difference} {report.get('reason') or ''}".strip()
+
+
+def check(args):
+    ok = True
+
+    def step(label, command, fatal_only_on_output=False):
+        nonlocal ok
+        code, lines = run_captured(command)
+        problems = diagnostics(lines)
+        failed = code != 0 or (fatal_only_on_output and problems)
+        if failed or problems:
+            ok = False
+            say(f"{label}: problems")
+            for line in (problems or lines[-40:]):
+                print(line)
+        return lines
+
+    run_captured(["cargo", "fmt", "--all"])
+    step("build", ["cargo", "build", "--release", "--workspace", "--all-targets"], True)
+    code, lines = run_captured(["cargo", "test", "--release", "--workspace", "--all-targets"])
+    passed = failed = 0
+    for line in lines:
+        found = re.match(r"test result: \w+\. (\d+) passed; (\d+) failed", line)
+        if found:
+            passed += int(found.group(1))
+            failed += int(found.group(2))
+        elif "FAILED" in line or "panicked" in line:
+            print(line)
+    print(f"tests passed {passed} failed {failed}")
+    if code != 0 or failed:
+        ok = False
+        if not failed:
+            print("\n".join(lines[-30:]))
+    step("clippy", ["cargo", "clippy", "--release", "--workspace", "--all-targets"], True)
+    good, line = parity_summary(args.capture, args.family)
+    print(line)
+    ok = ok and good
+    for script in ("generate-doc-index.py", "check-doc-cells.py"):
+        code, lines = run_captured([sys.executable, f"tools/{script}"])
+        if code != 0:
+            ok = False
+            print("\n".join(lines[-15:]))
+    print("CHECK OK" if ok else "CHECK FAILED")
+    raise SystemExit(0 if ok else 1)
+
+
+def parity(args):
+    good, line = parity_summary(args.capture, args.family)
+    print(line)
+    raise SystemExit(0 if good else 1)
+
+
+# ---------------------------------------------------------------- shot
+
+
+def shot(args):
+    """Run the client with a script, send RCON commands once joined, save the first frame."""
+    directory = DATA / "runs" / "shots"
+    directory.mkdir(parents=True, exist_ok=True)
+    prefix = directory / args.name
+    for stale in directory.glob(f"{args.name}.*"):
+        stale.unlink()
+    binary = ROOT / "target" / "release" / ("voxel.exe" if os.name == "nt" else "voxel")
+    environment = tool_environment()
+    environment.update({"VOXEL_USER": args.user, "VOXEL_SCRIPT": args.script,
+                        "VOXEL_CAPTURE_PPM": str(prefix), "VOXEL_CAPTURE_FRAMES": "1"})
+    log = open(f"{prefix}.log", "w", encoding="utf-8")
+    process = subprocess.Popen([str(binary), "play", args.address, "854", "480"], cwd=ROOT,
+                               env=environment, stdout=log, stderr=subprocess.STDOUT)
+    if args.rcon:
+        time.sleep(args.wait)
+        for command, reply in zip(args.rcon, rcon_send(args.rcon)):
+            say(f"{command} -> {reply[:80]}")
+    process.wait()
+    log.close()
+    frame = Path(f"{prefix}.000.ppm")
+    if frame.exists() and shutil.which("sips"):
+        subprocess.run(["sips", "-s", "format", "png", str(frame), "--out", f"{prefix}.png"],
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    say(f"frame: {prefix}.png" if Path(f"{prefix}.png").exists() else f"frame: {frame}")
+    for line in Path(f"{prefix}.log").read_text(encoding="utf-8").splitlines()[-2:]:
+        print(line)
+
+
 # ---------------------------------------------------------------- main
 
 
@@ -438,6 +600,26 @@ def main():
     rcon_parser = commands.add_parser("rcon", help="send commands to the test server")
     rcon_parser.add_argument("commands", nargs="+")
     rcon_parser.set_defaults(run=rcon)
+
+    check_parser = commands.add_parser("check", help="commit gate: fmt, build, test, clippy, parity, docs")
+    check_parser.add_argument("--capture", action="store_true",
+                              help="capture the Java reference first (needed after oracle source changes)")
+    check_parser.add_argument("--family", action="append", help="repeat to limit the parity families")
+    check_parser.set_defaults(run=check)
+
+    parity_parser = commands.add_parser("parity", help="Java/Rust comparison, one summary line")
+    parity_parser.add_argument("--capture", action="store_true", help="capture the Java reference first")
+    parity_parser.add_argument("--family", action="append", help="repeat to select families")
+    parity_parser.set_defaults(run=parity)
+
+    shot_parser = commands.add_parser("shot", help="scripted client run with a screenshot")
+    shot_parser.add_argument("name")
+    shot_parser.add_argument("script", help="VOXEL_SCRIPT steps, e.g. 'none=60;escape=1;none=5'")
+    shot_parser.add_argument("--user", default="Miner")
+    shot_parser.add_argument("--address", default=f"127.0.0.1:{SERVER_PORT}")
+    shot_parser.add_argument("--rcon", action="append", help="command to send after --wait seconds")
+    shot_parser.add_argument("--wait", type=float, default=9.0)
+    shot_parser.set_defaults(run=shot)
 
     args = parser.parse_args()
     args.run(args)

@@ -76,7 +76,7 @@ Bir kap ekranı `voxel_render::gui::screen::Screen` trait'ini uygular. Yerleşim
 
 ## Doğrulama
 
-Her değişiklik şu adımlardan geçer; uyarı sayısı sıfırdır:
+Her değişiklik şu adımlardan geçer; uyarı sayısı sıfırdır. Hepsini tek komut çalıştırır: `python3 tools/voxel.py check` (oracle kaynağı değiştiyse `--capture`); yalnız hata ve tek özet satırı basar, sonda `CHECK OK`.
 
 1. `cargo fmt --all`
 2. `cargo build --release --workspace --all-targets`

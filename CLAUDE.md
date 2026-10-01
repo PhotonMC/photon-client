@@ -1,3 +1,6 @@
 # Proje talimatları
 
-İşe başlamadan kökteki [AGENTS.md](AGENTS.md) dosyasının tamamını oku ve uygula. Bu dosya Claude dahil bütün AI ajanları için tek ortak kural kaynağıdır. İlgili `docs/` belgelerini de oku.
+@AGENTS.md
+@docs/tasks/README.md
+
+Yukarıdaki iki dosya bu projenin tek kural kaynağıdır (Claude dahil bütün AI ajanları için); oturum başında otomatik yüklenir. Sıradaki görevin dosyasını (`docs/tasks/`) ve onun **Oku** listesini oku; başka belge gerekmedikçe `docs/` altını tarama.
