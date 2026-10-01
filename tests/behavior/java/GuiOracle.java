@@ -489,6 +489,7 @@ public final class GuiOracle {
                 case "sidebar" -> sidebar(request);
                 case "command_parse" -> commandParse(request);
                 case "command_suggest" -> commandSuggest(request);
+                case "pause_screen" -> pauseScreen(request);
                 case "tab_list" -> tabList(request);
                 case "container_screen" -> containerScreen(request);
                 default -> throw new IllegalArgumentException("Unknown gui operation");
@@ -737,6 +738,49 @@ public final class GuiOracle {
             return true;
         });
         return text.toString();
+    }
+
+    /** The game's own pause menu, over a game with nothing behind it. */
+    private static JsonObject pauseScreen(JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            int width = row.get("width").getAsInt();
+            int height = row.get("height").getAsInt();
+            int mouseX = row.get("mouse").getAsJsonArray().get(0).getAsInt();
+            int mouseY = row.get("mouse").getAsJsonArray().get(1).getAsInt();
+            var screen = screen(width, height, mouseX, mouseY);
+            var minecraft = screen.minecraft();
+            var listener = (net.minecraft.client.multiplayer.ClientPacketListener)
+                unsafe.allocateInstance(net.minecraft.client.multiplayer.ClientPacketListener.class);
+            set(listener, "registryAccess", (net.minecraft.core.RegistryAccess.Frozen) Oracle.vanillaRegistries());
+            set(listener, "serverLinks", net.minecraft.server.ServerLinks.EMPTY);
+            var player = unsafe.allocateInstance(net.minecraft.client.player.LocalPlayer.class);
+            set(player, "connection", listener);
+            set(minecraft, "player", player);
+            var level = unsafe.allocateInstance(net.minecraft.client.multiplayer.ClientLevel.class);
+            set(level, "connection", listener);
+            set(minecraft, "level", level);
+            set(minecraft, "playerSocialManager",
+                unsafe.allocateInstance(net.minecraft.client.gui.screens.social.PlayerSocialManager.class));
+            set(minecraft, "reportingContext",
+                unsafe.allocateInstance(net.minecraft.client.multiplayer.chat.report.ReportingContext.class));
+            var pause = new net.minecraft.client.gui.screens.PauseScreen(true);
+            set(pause, "width", width);
+            set(pause, "height", height);
+            var init = net.minecraft.client.gui.screens.PauseScreen.class.getDeclaredMethod("init");
+            init.setAccessible(true);
+            init.invoke(pause);
+            pause.extractBackground(screen.graphics(), mouseX, mouseY, 0.0F);
+            pause.extractRenderState(screen.graphics(), mouseX, mouseY, 0.0F);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("ops", record(screen.state()));
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
     }
 
     /** The dispatcher a `ClientboundCommandsPacket` payload makes, as the client builds it. */

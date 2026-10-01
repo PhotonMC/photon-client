@@ -18838,6 +18838,16 @@ fn gui_result(request: &Value) -> Result<Value, String> {
                     );
                 }
             }
+            "pause_screen" => {
+                let lang = voxel_game::text::Lang::load(&root);
+                let size = (int("width"), int("height"));
+                let screen = voxel_render::gui::pause::PauseScreen::new(&font, &lang, size);
+                let mouse = (
+                    row["mouse"][0].as_i64().unwrap_or(0) as i32,
+                    row["mouse"][1].as_i64().unwrap_or(0) as i32,
+                );
+                screen.draw(&mut frame, &atlas, &font, mouse, size, true);
+            }
             "boss_bar" => {
                 use voxel_render::gui::boss_bar::BossBars;
                 let mut bars = BossBars::default();

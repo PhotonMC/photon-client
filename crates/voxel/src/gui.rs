@@ -12,6 +12,7 @@ use voxel_render::gui::boss_bar::BossBars;
 use voxel_render::gui::chat::ChatLog;
 use voxel_render::gui::font::Font;
 use voxel_render::gui::items::GuiItemVertex;
+use voxel_render::gui::pause::PauseScreen;
 use voxel_render::gui::screen::ScreenDraw;
 use voxel_render::gui::sidebar::{self, SidebarLine};
 use voxel_render::gui::tab_list::{
@@ -440,6 +441,13 @@ impl Gui {
             .draw(&mut frame, &self.atlas, &self.font, gui_size, now);
         self.titles
             .draw(&mut frame, &self.atlas, &self.font, gui_size, partial);
+        if let Some(pause) = controls.pause.as_mut() {
+            if pause.size() != gui_size {
+                *pause = PauseScreen::new(&self.font, &self.lang, gui_size);
+            }
+            let mouse = (controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32);
+            pause.draw(&mut frame, &self.atlas, &self.font, mouse, gui_size, true);
+        }
         if let Some((entries, objective)) = tab_entries {
             tab_list::draw(
                 &mut frame,

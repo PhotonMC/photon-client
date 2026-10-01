@@ -5,6 +5,7 @@ use voxel_game::attack::AttackKey;
 use voxel_game::hotbar::ScrollWheel;
 use voxel_net::connection::PlaySession;
 use voxel_render::gui::chat::{ChatKey, ChatLog, ChatScreen};
+use voxel_render::gui::pause::{PauseAction, PauseScreen};
 use voxel_render::gui::screen::{KeyMods, KeyResult};
 use voxel_render::window::WindowSurface;
 
@@ -39,6 +40,8 @@ pub struct Controls {
     /// The chat box, while it is open, what was sent through it and the
     /// lines of chat the player has been told.
     pub chat: Option<ChatScreen>,
+    /// The pause menu, while it is open.
+    pub pause: Option<PauseScreen>,
     chat_history: Vec<String>,
     /// `CommandHistory`: the commands sent, kept in a file.
     command_history: Vec<String>,
@@ -71,6 +74,7 @@ impl Controls {
             server_container: None,
             creative_tab: voxel_game::creative_menu::default_tab(),
             chat: None,
+            pause: None,
             chat_history: command_history.clone(),
             command_history,
             shift_held: false,
@@ -79,6 +83,70 @@ impl Controls {
             tab_held: false,
             gui_mouse: (0.0, 0.0),
             active_button: None,
+        }
+    }
+
+    /// `PauseScreen`: the menu opens and the mouse is let go. The game goes
+    /// on behind it, as on a server.
+    fn open_pause(&mut self, surface: &mut WindowSurface, assets: &ScreenAssets) {
+        let size = surface.scale();
+        let size = (size.gui_scaled_width(), size.gui_scaled_height());
+        self.pause = Some(PauseScreen::new(&assets.creative.font, &assets.lang, size));
+        self.captured = false;
+        self.last_cursor = None;
+        surface.set_cursor_captured(false);
+        self.release_keys();
+    }
+
+    /// The menu closes and the mouse is grabbed again.
+    fn close_pause(&mut self, surface: &mut WindowSurface) {
+        self.pause = None;
+        self.captured = true;
+        self.last_cursor = None;
+        surface.set_cursor_captured(true);
+    }
+
+    /// What a pause menu button does: "Back to Game" closes the menu and
+    /// "Disconnect" leaves; the screens the others open are not built.
+    fn pause_action(&mut self, action: PauseAction, surface: &mut WindowSurface) {
+        match action {
+            PauseAction::Resume => self.close_pause(surface),
+            PauseAction::Disconnect => surface.request_close(),
+            _ => {}
+        }
+    }
+
+    /// An event for the open pause menu.
+    fn pause_event(&mut self, event: glfw::WindowEvent, surface: &mut WindowSurface) {
+        use glfw::{Action, Key, WindowEvent};
+        let Some(pause) = self.pause.as_mut() else {
+            return;
+        };
+        match event {
+            WindowEvent::Key(Key::Escape, _, Action::Press, _) => self.close_pause(surface),
+            WindowEvent::Key(Key::Tab, _, Action::Press | Action::Repeat, modifiers) => {
+                pause.tab(!modifiers.contains(glfw::Modifiers::Shift));
+            }
+            WindowEvent::Key(Key::Enter | Key::KpEnter | Key::Space, _, Action::Press, _) => {
+                if let Some(action) = pause.pressed() {
+                    self.pause_action(action, surface);
+                }
+            }
+            WindowEvent::CursorPos(x, y) => {
+                let size = surface.scale();
+                let (width, height) = surface.window_size();
+                self.gui_mouse = (
+                    x * f64::from(size.gui_scaled_width()) / f64::from(width.max(1)),
+                    y * f64::from(size.gui_scaled_height()) / f64::from(height.max(1)),
+                );
+            }
+            WindowEvent::MouseButton(glfw::MouseButton::Button1, Action::Press, _) => {
+                let mouse = (self.gui_mouse.0 as i32, self.gui_mouse.1 as i32);
+                if let Some(action) = pause.clicked(mouse) {
+                    self.pause_action(action, surface);
+                }
+            }
+            _ => {}
         }
     }
 
@@ -339,6 +407,13 @@ impl Controls {
         if let Some(mouse) = held.mouse {
             self.gui_mouse = mouse;
         }
+        if held.escape {
+            if self.pause.is_some() {
+                self.close_pause(surface);
+            } else {
+                self.open_pause(surface, assets);
+            }
+        }
         if held.chat {
             if self.chat.is_some() {
                 self.close_chat(surface);
@@ -432,6 +507,10 @@ impl Controls {
         );
         if self.chat.is_some() && for_screen {
             return self.chat_event(event, session, surface);
+        }
+        if self.pause.is_some() && for_screen {
+            self.pause_event(event, surface);
+            return Ok(());
         }
         if self.screen.is_some() && for_screen {
             let handled = self.screen_event(event, session, surface);
@@ -553,13 +632,7 @@ impl Controls {
                 self.release_keys();
             }
             WindowEvent::Key(Key::Escape, _, Action::Press, _) => {
-                if self.captured {
-                    self.captured = false;
-                    surface.set_cursor_captured(false);
-                    self.release_keys();
-                } else {
-                    surface.request_close();
-                }
+                self.open_pause(surface, assets);
             }
             WindowEvent::Key(Key::Tab, _, action, _) => {
                 self.tab_held = action != Action::Release && self.captured;

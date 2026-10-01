@@ -190,6 +190,16 @@ Bitti: `Component`/dil (`en_us`), stilli yazı, `EditBox`, ipucu kutusu.
   sütunlar, ping simgesi, üst/alt yazı; çevrimdışı kafasız). Tablist canlı
   denenmedi (birim testli). Eksik: çevrimiçi kafalar, takım biçimi, eylem
   çubuğunun renk animasyonu, eylem çubuğu canlı doğrulaması.
+- **Kısmen** Duraklatma menüsü (`PauseScreen`, Esc): ızgara düzeni
+  (`layout.rs`), düğmeler/simgeler/başlık (`widgets.rs`, `pause.rs`),
+  `pause_screen` oracle'ı gerçek Java ekranına karşı 13 satır. Çalışan: Back
+  to Game, Disconnect (pencereyi kapatır), Tab/Enter odak. Yapılmadı:
+  Advancements, Statistics, Options, hata bildirme, geri bildirim, arkadaşlar,
+  oyuncu bildirme düğmeleri çizilir ama basınca bir şey olmaz (ekranları yok);
+  arka plan bulanıklığı (`blurBeforeThisStratum`, GPU) yok; yerel sunucu
+  düzeni (`hasSingleplayerServer`) yok; taslak rapor simgesi yok; ipuçları
+  (simge düğmesi üzerinde bekleyince) yok; Tab dışı ok tuşlarıyla odak yok;
+  uzun etiketin kayan yazısı yok.
 - **Bossbar** (`BossEvent` paketi, `BossHealthOverlay`, ilerleme yumuşatması)
   yapıldı, `boss_bar` oracle'lı. Eksik: seviye değişince çubukları silmek,
   koyulaştırma/sis/müzik bayrakları yalnız durum (ses ve sis yok).

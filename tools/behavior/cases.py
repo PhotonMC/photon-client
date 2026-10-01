@@ -14362,6 +14362,20 @@ def gui_command_suggest_cases():
            "tree": tree, "rows": rows}
 
 
+def gui_pause_screen_cases():
+    """The pause menu in screens of several sizes, with the mouse away and
+    over each of its buttons."""
+    def row(label, width, height, mouse=(0, 0)):
+        return {"label": label, "width": width, "height": height, "mouse": list(mouse)}
+
+    rows = [row("default", 427, 240), row("small", 320, 240), row("wide", 640, 360), row("tiny", 200, 150)]
+    for name, point in {"return": (213, 60), "advancements": (160, 90), "statistics": (265, 90),
+                        "report": (170, 120), "feedback": (193, 120), "friends": (215, 120),
+                        "reporting": (237, 120), "options": (213, 150), "disconnect": (213, 180)}.items():
+        rows.append(row("hover-" + name, 427, 240, point))
+    yield {"case_id": "gui/pause-screen", "family": "gui", "operation": "pause_screen", "rows": rows}
+
+
 def gui_boss_bar_cases():
     """The boss bars: every colour and notch, progress at its ends and in the
     middle (the discrete width), several bars down the screen and the cut-off
@@ -14613,7 +14627,7 @@ def build_cases(families):
                   "movement": movement_cases,
                   "entity": entity_cases,
                   "gui": gui_cases}
-    generators["gui"] = lambda: itertools.chain(gui_cases(), gui_suggestion_cases(), gui_title_cases(), gui_boss_bar_cases(), gui_sidebar_cases(), gui_command_parse_cases(), gui_command_suggest_cases(), gui_tab_list_cases(),
+    generators["gui"] = lambda: itertools.chain(gui_cases(), gui_suggestion_cases(), gui_title_cases(), gui_boss_bar_cases(), gui_sidebar_cases(), gui_command_parse_cases(), gui_command_suggest_cases(), gui_pause_screen_cases(), gui_tab_list_cases(),
                                           gui_container_screen_cases())
     cases = [dict(schema_version=1, **case)
              for family in sorted(families) for case in generators[family]()]

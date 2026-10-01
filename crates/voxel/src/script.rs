@@ -26,6 +26,8 @@ pub struct HeldKeys {
     /// The chat box opened or closed on this tick, and Enter pressed in it.
     pub chat: bool,
     pub enter: bool,
+    /// Escape pressed with no screen open: the pause menu opens or closes.
+    pub escape: bool,
     /// Tab pressed in the chat box.
     pub complete: bool,
     /// A scripted click in the open inventory: slot, button, click type.
@@ -91,6 +93,7 @@ impl HeldKeys {
                 "inventory" => keys.inventory = true,
                 "chat" => keys.chat = true,
                 "enter" => keys.enter = true,
+                "escape" => keys.escape = true,
                 "complete" => keys.complete = true,
                 "none" => {}
                 other => {

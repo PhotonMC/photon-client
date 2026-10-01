@@ -217,6 +217,46 @@ impl GuiFrame {
         );
     }
 
+    /// `GuiGraphics.blit` of a whole texture repeated over a rectangle
+    /// (`Screen.extractMenuBackgroundTexture`): one call in the reference,
+    /// whole tiles here with the last ones cut.
+    pub fn tile_texture(
+        &mut self,
+        atlas: &GuiAtlas,
+        name: &str,
+        tile: (i32, i32),
+        (x, y, w, h): (i32, i32, i32, i32),
+    ) {
+        if let Some(log) = &mut self.log {
+            log.push(DrawOp::Texture {
+                name: name.to_owned(),
+                rect: (x, y, x + w, y + h),
+                uv: (0.0, w as f32 / tile.0 as f32, 0.0, h as f32 / tile.1 as f32),
+            });
+        }
+        let mut top = 0;
+        while top < h {
+            let piece_h = tile.1.min(h - top);
+            let mut left = 0;
+            while left < w {
+                let piece_w = tile.0.min(w - left);
+                self.blit_part(
+                    atlas,
+                    GuiBlend::Translucent,
+                    &format!("texture/{name}"),
+                    tile,
+                    (0, 0),
+                    x + left,
+                    y + top,
+                    piece_w,
+                    piece_h,
+                );
+                left += tile.0;
+            }
+            top += tile.1;
+        }
+    }
+
     /// `GuiGraphics.blit` of a region of a whole texture: `(u, v)` and the
     /// drawn size in texels of a texture `texture_size` big.
     #[expect(
