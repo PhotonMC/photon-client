@@ -111,7 +111,7 @@ pub struct PlaySession {
     /// the tab list names.
     hud_events: Vec<HudEvent>,
     scoreboard: voxel_game::scoreboard::Scoreboard,
-    commands: Option<voxel_game::commands::CommandTree>,
+    commands: Option<std::sync::Arc<voxel_game::commands::CommandTree>>,
     username: String,
     suggestions: Option<CommandSuggestions>,
     player_infos: std::collections::BTreeMap<(u64, u64), PlayerInfo>,
@@ -649,7 +649,7 @@ impl PlaySession {
     }
 
     /// The command tree the server sent, once it has.
-    pub fn commands(&self) -> Option<&voxel_game::commands::CommandTree> {
+    pub fn commands(&self) -> Option<&std::sync::Arc<voxel_game::commands::CommandTree>> {
         self.commands.as_ref()
     }
 
@@ -1587,7 +1587,7 @@ impl PlaySession {
                 Err(error) => self.warn(format!("hud packet {packet_id}: {error:?}")),
             },
             PLAY_CLIENTBOUND_COMMANDS_PACKET_ID => match parse_commands_packet(payload) {
-                Ok(tree) => self.commands = Some(tree),
+                Ok(tree) => self.commands = Some(std::sync::Arc::new(tree)),
                 Err(error) => self.warn(format!("commands: {error:?}")),
             },
             PLAY_CLIENTBOUND_SET_OBJECTIVE_PACKET_ID

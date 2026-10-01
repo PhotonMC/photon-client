@@ -508,6 +508,11 @@ pub struct ChatScreen {
     request_id: i32,
     /// `keepSuggestions`: a match was just used, and that edit asks for nothing.
     applied: bool,
+    /// The command tree, which suggests what continues a command itself.
+    commands: Option<Arc<CommandTree>>,
+    /// What the tree suggested for the text, while the server's answer on
+    /// its own arguments is awaited.
+    local: Vec<String>,
 }
 
 impl ChatScreen {
@@ -531,7 +536,15 @@ impl ChatScreen {
             request: None,
             request_id: 0,
             applied: false,
+            commands: None,
+            local: Vec::new(),
         }
+    }
+
+    /// The tree the server sent: it is what suggests the commands, and the
+    /// server is asked only for what the tree cannot tell.
+    pub fn set_commands(&mut self, commands: Option<Arc<CommandTree>>) {
+        self.commands = commands;
     }
 
     /// A script's chat box: no key opened it.
@@ -567,18 +580,47 @@ impl ChatScreen {
             self.list = None;
         }
         if text.starts_with('/') && cursor >= 1 {
-            self.request_id += 1;
-            let typed: String = text.chars().take(cursor).collect();
-            self.request = Some((self.request_id, typed));
+            self.local.clear();
+            let mut ask_server = true;
+            let mut start = 0;
+            if let Some(tree) = self.commands.clone() {
+                // `getCompletionSuggestions` of the whole text at the cursor.
+                let parse = tree.parse(&text, 1);
+                let suggested = tree.suggestions(&parse, cursor);
+                ask_server = suggested.ask_server;
+                start = suggested.start;
+                self.local = suggested.matches;
+            }
+            if ask_server {
+                self.request_id += 1;
+                let typed: String = text.chars().take(cursor).collect();
+                self.request = Some((self.request_id, typed));
+            } else {
+                // The tree knew it all: no request, and the list is final.
+                self.request_id += 1;
+                let matches = std::mem::take(&mut self.local);
+                self.show(start, cursor - start, matches);
+            }
         }
     }
 
     /// The server's answer, when it is to the last request:
-    /// `showSuggestions`.
+    /// `showSuggestions`, with what the tree suggested added to it.
     pub fn suggested(&mut self, id: i32, start: usize, length: usize, matches: Vec<String>) {
         if id != self.request_id {
             return;
         }
+        let mut matches = matches;
+        // The server's answer comes sorted; it is merged only with the tree's.
+        if !self.local.is_empty() {
+            matches.append(&mut self.local);
+            voxel_game::commands::sort_suggestions(&mut matches);
+        }
+        self.show(start, length, matches);
+    }
+
+    /// The list for matches, the text up to the cursor having been read.
+    fn show(&mut self, start: usize, length: usize, matches: Vec<String>) {
         self.stale = false;
         let value = self.edit.value();
         let typed: String = value.chars().take(self.edit.cursor()).collect();

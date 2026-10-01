@@ -118,3 +118,107 @@ pub fn usage_lines(
     }
     CommandSuggestionsView { lines, start }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::super::{ArgumentKind, CommandTree, NodeKind, NodeStub};
+    use super::*;
+
+    fn tree() -> CommandTree {
+        let stubs = vec![
+            NodeStub {
+                kind: NodeKind::Root,
+                children: vec![1],
+                redirect: None,
+                executable: false,
+                custom_suggestions: false,
+            },
+            NodeStub {
+                kind: NodeKind::Literal("give".into()),
+                children: vec![2],
+                redirect: None,
+                executable: false,
+                custom_suggestions: false,
+            },
+            NodeStub {
+                kind: NodeKind::Argument {
+                    name: "who".into(),
+                    kind: ArgumentKind::Word,
+                },
+                children: vec![3],
+                redirect: None,
+                executable: false,
+                custom_suggestions: false,
+            },
+            NodeStub {
+                kind: NodeKind::Argument {
+                    name: "n".into(),
+                    kind: ArgumentKind::Integer { min: 1, max: 9 },
+                },
+                children: vec![],
+                redirect: None,
+                executable: true,
+                custom_suggestions: false,
+            },
+        ];
+        CommandTree::build(stubs, 0).unwrap()
+    }
+
+    /// Whatever the box shows, the parts put back together are the text.
+    #[test]
+    fn formatting_any_stretch_keeps_the_text() {
+        let tree = tree();
+        for text in [
+            "/",
+            "/g",
+            "/give",
+            "/give ",
+            "/give a",
+            "/give a ",
+            "/give a 5",
+            "/give a x",
+            "/give a 5 z",
+            "/zzz",
+            "/give  a",
+        ] {
+            let parse = tree.parse(text, 1);
+            let chars: Vec<char> = text.chars().collect();
+            for cursor in 0..=chars.len() {
+                for display in 0..=cursor {
+                    let half: String = chars[display..cursor].iter().collect();
+                    let rest: String = chars[cursor..].iter().collect();
+                    let first: String = format_text(&parse, &half, display)
+                        .into_iter()
+                        .map(|p| p.0)
+                        .collect();
+                    assert_eq!(first, half, "{text:?} first {display}..{cursor}");
+                    let second: String = format_text(&parse, &rest, cursor)
+                        .into_iter()
+                        .map(|p| p.0)
+                        .collect();
+                    assert_eq!(second, rest, "{text:?} rest from {cursor}");
+                }
+            }
+        }
+    }
+
+    /// The tree suggests its own literals, case ignored, and leaves out what
+    /// it does not hold (a command the player may not use).
+    #[test]
+    fn the_tree_suggests_only_what_it_holds() {
+        let tree = tree();
+        let parse = tree.parse("/G", 1);
+        let suggested = tree.suggestions(&parse, 2);
+        assert_eq!(suggested.matches, ["give"]);
+        assert!(!suggested.ask_server);
+        // After "give " an argument that is a word is for the server.
+        let parse = tree.parse("/give ", 1);
+        let suggested = tree.suggestions(&parse, 6);
+        assert!(suggested.ask_server);
+        assert!(suggested.matches.is_empty());
+        assert_eq!(
+            tree.suggestions(&tree.parse("/zz", 1), 3).matches,
+            Vec::<String>::new()
+        );
+    }
+}

@@ -3084,6 +3084,7 @@ pub fn parse_commands_packet(
         } else {
             None
         };
+        let mut custom = false;
         let kind = match flags & 3 {
             1 => NodeKind::Literal(read_chat_string(input, 32767, "command literal")?),
             2 => {
@@ -3092,6 +3093,7 @@ pub fn parse_commands_packet(
                 let kind = read_argument_kind(input, id)?;
                 if flags & 16 != 0 {
                     read_chat_string(input, 32767, "command suggestion id")?;
+                    custom = true;
                 }
                 NodeKind::Argument { name, kind }
             }
@@ -3102,6 +3104,7 @@ pub fn parse_commands_packet(
             children,
             redirect,
             executable: flags & 4 != 0,
+            custom_suggestions: custom,
         });
     }
     let root = read_count(input, "command root index")?;

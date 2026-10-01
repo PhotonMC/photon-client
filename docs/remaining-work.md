@@ -160,9 +160,11 @@ Bitti: `Component`/dil (`en_us`), stilli yazı, `EditBox`, ipucu kutusu.
   alınır; liste Java ile birebir ([GUI oracle](gui-oracle.md): ilk öğe seçili,
   hayalet sonek, Tab/Shift+Tab/ok/Esc, 10 satırlık pencere, fare). Eksik:
   öneri ipuçları, oyuncu adı/özel sohbet tamamlamaları
-  (`CustomChatCompletions`). Öneriler hâlâ her komutta sunucudan istenir
-  (Java yalnız `ask_server` düğümlerinde ister; literal ve türe bağlı
-  öneriler orada yerel).
+  (`CustomChatCompletions`). Komut adları ve kapalı kümeli türler (bool, oyun modu,
+  çapa, işlem, takım rengi) ağaçtan yerel önerilir; sunucu yalnız `ask_server`
+  düğümlerinde ve kayıt defterine bağlı türlerde (varlık, eşya, blok,
+  tanımlayıcı…) sorulur, ağaç yoksa her zaman sorulur. Yetkisiz oyuncuya
+  yetkisiz komut önerilmez.
 - **Kısmen** Komut ağacı (`Commands` paketi, `voxel-game/commands`): düğüm
   ağacı, Brigadier ayrıştırması (yönlendirme, aday sıralaması, istisnalar),
   renkli sözdizimi (`formatText`), kullanım ve hata satırları
