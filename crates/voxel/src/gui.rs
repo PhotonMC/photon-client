@@ -459,7 +459,13 @@ impl Gui {
             let mouse = (controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32);
             disconnected.draw(&mut frame, &self.atlas, &self.font, mouse);
         }
-        if let Some(video) = controls.video_screen.as_mut() {
+        if let Some(chat_options) = controls.chat_options_screen.as_mut() {
+            if chat_options.size() != gui_size {
+                chat_options.resize(gui_size);
+            }
+            let mouse = (controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32);
+            chat_options.draw(&mut frame, &self.atlas, &self.font, mouse);
+        } else if let Some(video) = controls.video_screen.as_mut() {
             if video.size() != gui_size {
                 video.resize(gui_size);
             }

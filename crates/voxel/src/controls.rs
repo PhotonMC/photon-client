@@ -5,7 +5,9 @@ use voxel_game::attack::AttackKey;
 use voxel_game::hotbar::ScrollWheel;
 use voxel_game::options::Options;
 use voxel_net::connection::PlaySession;
+use voxel_render::gui::chat::ChatSettings;
 use voxel_render::gui::chat::{ChatKey, ChatLog, ChatScreen};
+use voxel_render::gui::chat_options::ChatOptionsScreen;
 use voxel_render::gui::confirm::{ConfirmAction, ConfirmBackground, ConfirmScreen};
 use voxel_render::gui::death::{DeathAction, DeathScreen};
 use voxel_render::gui::disconnected::DisconnectedScreen;
@@ -54,6 +56,8 @@ pub struct Controls {
     /// The video settings, opened from the options screen, which waits under
     /// it.
     pub video_screen: Option<VideoSettingsScreen>,
+    /// The chat settings, opened the same way.
+    pub chat_options_screen: Option<ChatOptionsScreen>,
     /// The death screen, from the server's word of a death until the player
     /// has health again.
     pub death: Option<DeathScreen>,
@@ -85,6 +89,7 @@ impl Controls {
     pub fn new(camera_type: CameraType, captured: bool) -> Self {
         let command_history = read_command_history();
         let options = load_options();
+        let chat_settings = ChatSettings::from(&options);
         Self {
             keys: HeldKeys::default(),
             attack_key: AttackKey::default(),
@@ -100,6 +105,7 @@ impl Controls {
             pause: None,
             options_screen: None,
             video_screen: None,
+            chat_options_screen: None,
             death: None,
             confirm: None,
             disconnected: None,
@@ -108,7 +114,7 @@ impl Controls {
             command_history,
             shift_held: false,
             control_held: false,
-            chat_log: ChatLog::default(),
+            chat_log: ChatLog::with_settings(chat_settings),
             tab_held: false,
             gui_mouse: (0.0, 0.0),
             active_button: None,
@@ -186,6 +192,7 @@ impl Controls {
         match input.action {
             Some(OptionsAction::Done) => self.close_options(),
             Some(OptionsAction::Video) => self.open_video(surface, assets),
+            Some(OptionsAction::Chat) => self.open_chat_options(surface, assets),
             _ => {}
         }
     }
@@ -208,6 +215,87 @@ impl Controls {
     fn close_video(&mut self) {
         self.video_screen = None;
         let _ = self.options.save(&options_path());
+    }
+
+    /// `ChatOptionsScreen`, over the options screen.
+    fn open_chat_options(&mut self, surface: &WindowSurface, assets: &ScreenAssets) {
+        let scale = surface.scale();
+        self.chat_options_screen = Some(ChatOptionsScreen::new(
+            &assets.creative.font,
+            &assets.lang,
+            (scale.gui_scaled_width(), scale.gui_scaled_height()),
+            true,
+            &self.options,
+        ));
+    }
+
+    /// `OptionsSubScreen.onClose` and `removed`: back to the options screen,
+    /// and the options are saved.
+    fn close_chat_options(&mut self) {
+        self.chat_options_screen = None;
+        let _ = self.options.save(&options_path());
+    }
+
+    /// The chat options the screen shows are the options: the chat wraps
+    /// its lines again when they changed (`rescaleChat`).
+    fn take_chat_choices(&mut self, assets: &ScreenAssets) {
+        let Some(screen) = self.chat_options_screen.as_ref() else {
+            return;
+        };
+        let choices = screen.choices();
+        let options = &mut self.options;
+        options.chat_visibility = choices.visibility;
+        options.chat_width = choices.settings.width;
+        options.chat_scale = choices.settings.scale;
+        options.chat_opacity = choices.settings.opacity;
+        options.text_background_opacity = choices.settings.background_opacity;
+        options.chat_line_spacing = choices.settings.line_spacing;
+        options.chat_height_focused = choices.settings.height_focused;
+        options.chat_height_unfocused = choices.settings.height_unfocused;
+        self.chat_log
+            .set_settings(choices.settings, &assets.creative.font);
+    }
+
+    /// An event for the open chat settings.
+    fn chat_options_event(
+        &mut self,
+        event: glfw::WindowEvent,
+        surface: &mut WindowSurface,
+        assets: &ScreenAssets,
+    ) {
+        use glfw::{Action, Key, MouseButton, WindowEvent};
+        let lang = &assets.lang;
+        if let WindowEvent::CursorPos(x, y) = event {
+            let before = self.gui_mouse.1;
+            self.move_gui_mouse((x, y), surface);
+            if let Some(screen) = self.chat_options_screen.as_mut() {
+                screen.dragged(lang, self.gui_mouse, self.gui_mouse.1 - before);
+            }
+            self.take_chat_choices(assets);
+            return;
+        }
+        let Some(screen) = self.chat_options_screen.as_mut() else {
+            return;
+        };
+        let mut done = false;
+        match event {
+            WindowEvent::Key(Key::Escape, _, Action::Press, _) => done = true,
+            WindowEvent::MouseButton(MouseButton::Button1, Action::Press, modifiers) => {
+                let shift = modifiers.contains(glfw::Modifiers::Shift);
+                done = screen.clicked(lang, self.gui_mouse, shift).done;
+            }
+            WindowEvent::MouseButton(MouseButton::Button1, Action::Release, _) => {
+                screen.released(lang);
+            }
+            WindowEvent::Scroll(_, y) => {
+                screen.scrolled(self.gui_mouse, y * self.options.mouse_wheel_sensitivity);
+            }
+            _ => {}
+        }
+        self.take_chat_choices(assets);
+        if done {
+            self.close_chat_options();
+        }
     }
 
     /// An event for the open video settings.
@@ -341,6 +429,7 @@ impl Controls {
         self.pause = None;
         self.options_screen = None;
         self.video_screen = None;
+        self.chat_options_screen = None;
         self.death = None;
         self.confirm = None;
         self.screen = None;
@@ -402,6 +491,7 @@ impl Controls {
             self.pause = None;
             self.options_screen = None;
             self.video_screen = None;
+            self.chat_options_screen = None;
             self.screen = None;
             self.captured = false;
             self.last_cursor = None;
@@ -489,6 +579,8 @@ impl Controls {
             if let Some(action) = confirm.escape() {
                 self.confirm_action(action, session, surface)?;
             }
+        } else if self.chat_options_screen.is_some() {
+            self.close_chat_options();
         } else if self.video_screen.is_some() {
             self.close_video();
         } else if self.options_screen.is_some() {
@@ -767,7 +859,10 @@ impl Controls {
                         self.remember_command(&text);
                         self.close_chat(surface);
                     }
-                    ChatKey::Scroll(lines) => self.chat_log.scroll_by(lines),
+                    ChatKey::Page(direction) => {
+                        let page = self.chat_log.lines_per_page(true) as i32 - 1;
+                        self.chat_log.scroll_by(direction * page, true);
+                    }
                     ChatKey::None => {}
                 }
                 self.send_suggestion_request(session)?;
@@ -783,7 +878,7 @@ impl Controls {
                 if !chat.mouse_scrolled(y, mouse) {
                     let notch = y.clamp(-1.0, 1.0);
                     let lines = if self.shift_held { notch } else { notch * 7.0 };
-                    self.chat_log.scroll_by(lines as i32);
+                    self.chat_log.scroll_by(lines as i32, true);
                 }
             }
             glfw::WindowEvent::CursorPos(x, y) => {
@@ -1012,6 +1107,10 @@ impl Controls {
         }
         if self.death.is_some() && for_screen {
             return self.death_event(event, session, surface, assets);
+        }
+        if self.chat_options_screen.is_some() && for_screen {
+            self.chat_options_event(event, surface, assets);
+            return Ok(());
         }
         if self.video_screen.is_some() && for_screen {
             self.video_event(event, surface, assets);

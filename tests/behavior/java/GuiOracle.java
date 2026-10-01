@@ -248,6 +248,11 @@ public final class GuiOracle {
 
         @Override
         public void saySystemNow(String message) {}
+
+        @Override
+        public boolean isActive() {
+            return false;
+        }
     }
 
     /** A glyph's box: all the bounds the game asks of a drawn glyph. */
@@ -493,7 +498,8 @@ public final class GuiOracle {
                 case "confirm_screen" -> confirmScreen(request);
                 case "widgets" -> widgets(request);
                 case "options_screen" -> optionsScreen(request);
-                case "video_settings_screen" -> videoSettingsScreen(request);
+                case "video_settings_screen" -> settingsScreen(request, "video");
+                case "chat_options_screen" -> settingsScreen(request, "chat");
                 case "death_screen" -> deathScreen(request);
                 case "disconnected_screen" -> disconnectedScreen(request);
                 case "tab_list" -> tabList(request);
@@ -506,12 +512,26 @@ public final class GuiOracle {
     }
 
     /** The chat over the HUD: messages added at ticks, drawn at a later one. */
+    /** The chat options a row names, set the way the options screen sets them. */
+    static void chatOptions(net.minecraft.client.Options options, JsonObject values) {
+        if (values.has("scale")) options.chatScale().set(values.get("scale").getAsDouble());
+        if (values.has("opacity")) options.chatOpacity().set(values.get("opacity").getAsDouble());
+        if (values.has("width")) options.chatWidth().set(values.get("width").getAsDouble());
+        if (values.has("height_focused")) options.chatHeightFocused().set(values.get("height_focused").getAsDouble());
+        if (values.has("height_unfocused")) options.chatHeightUnfocused().set(values.get("height_unfocused").getAsDouble());
+        if (values.has("line_spacing")) options.chatLineSpacing().set(values.get("line_spacing").getAsDouble());
+        if (values.has("background_opacity")) options.textBackgroundOpacity().set(values.get("background_opacity").getAsDouble());
+    }
+
     private static JsonObject chat(JsonObject request) throws Exception {
         var rows = new JsonArray();
         for (var element : request.getAsJsonArray("rows")) {
             var row = element.getAsJsonObject();
             var screen = screen(row.get("width").getAsInt(), row.get("height").getAsInt(), 0, 0);
             var chat = new net.minecraft.client.gui.components.ChatComponent(screen.minecraft());
+            if (row.has("options")) {
+                chatOptions(screen.minecraft().options, row.getAsJsonObject("options"));
+            }
             // The messages and the deletions, each at its tick, the chat's own
             // tick after each.
             var events = new ArrayList<JsonObject>();
@@ -550,6 +570,10 @@ public final class GuiOracle {
                 chat.tick();
             }
             set(screen.hud(), "tickCount", row.get("tick").getAsInt());
+            if (row.has("rescale")) {
+                chatOptions(screen.minecraft().options, row.getAsJsonObject("rescale"));
+                chat.rescaleChat();
+            }
             boolean focused = row.has("focused") && row.get("focused").getAsBoolean();
             if (focused) {
                 // The chat is focused while the chat screen is the open one.
@@ -1175,7 +1199,7 @@ public final class GuiOracle {
      * what it draws. A screen is drawn between steps, as the game does, since the widgets
      * take their places as they are drawn.
      */
-    private static JsonObject videoSettingsScreen(JsonObject request) throws Exception {
+    private static JsonObject settingsScreen(JsonObject request, String kind) throws Exception {
         var rows = new JsonArray();
         for (var element : request.getAsJsonArray("rows")) {
             var row = element.getAsJsonObject();
@@ -1213,7 +1237,17 @@ public final class GuiOracle {
             minecraft.options.guiScale().set(row.get("gui_scale").getAsInt());
             set(minecraft, "running", true);
             window.setGuiScale(window.calculateScale(minecraft.options.guiScale().get(), false));
-            var video = new net.minecraft.client.gui.screens.options.VideoSettingsScreen(null, minecraft, minecraft.options);
+            // The chat the options screen asks to wrap its lines again.
+            set(minecraft.gui.hud, "chat", new net.minecraft.client.gui.components.ChatComponent(minecraft));
+            if (row.has("options")) {
+                chatOptions(minecraft.options, row.getAsJsonObject("options"));
+            }
+            net.minecraft.client.gui.screens.options.OptionsSubScreen video = switch (kind) {
+                case "video" -> new net.minecraft.client.gui.screens.options.VideoSettingsScreen(
+                    null, minecraft, minecraft.options);
+                case "chat" -> new net.minecraft.client.gui.screens.options.ChatOptionsScreen(null, minecraft.options);
+                default -> throw new IllegalArgumentException(kind);
+            };
             minecraft.current = video;
             set(minecraft.gui, "screen", video);
             set(video, "width", window.getGuiScaledWidth());

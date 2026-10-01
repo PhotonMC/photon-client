@@ -7,55 +7,72 @@
 
 use super::{Value, json};
 
+/// A single-precision number as the reference writes it: its shortest
+/// decimal, which is the value the oracle reads back as a double.
+fn num(value: f32) -> f64 {
+    value.to_string().parse().unwrap_or(f64::from(value))
+}
+
 /// The recorded drawing calls as the reference's oracle writes them.
 fn gui_ops(ops: &[voxel_render::gui::DrawOp]) -> Vec<Value> {
     use voxel_render::gui::DrawOp;
     // Fills before text, then top to bottom, left to right and by what is
     // left to tell two apart: the reference layers what overlaps, an order
     // for the GPU and not for what is drawn.
-    let key = |op: &&DrawOp| match op {
-        DrawOp::Fill { rect, colour } => (
-            0,
-            rect.1,
-            rect.0,
-            rect.2,
-            rect.3,
-            String::new(),
-            i64::from(*colour as i32),
-        ),
-        DrawOp::Sprite { rect, name } | DrawOp::Texture { rect, name, .. } => {
-            (1, rect.1, rect.0, rect.2, rect.3, name.clone(), -1)
+    let key = |op: &&DrawOp| -> (u8, [f64; 4], String, i64) {
+        match op {
+            DrawOp::Fill { rect, colour } => (
+                0,
+                [rect.1, rect.0, rect.2, rect.3].map(f64::from),
+                String::new(),
+                i64::from(*colour as i32),
+            ),
+            DrawOp::Sprite { rect, name } | DrawOp::Texture { rect, name, .. } => (
+                1,
+                [rect.1, rect.0, rect.2, rect.3].map(f64::from),
+                name.clone(),
+                -1,
+            ),
+            DrawOp::Text {
+                x, y, colour, runs, ..
+            } => (
+                2,
+                [f64::from(*y), f64::from(*x), 0.0, 0.0],
+                runs.iter().map(|run| run.0.as_str()).collect::<String>(),
+                i64::from(*colour as i32),
+            ),
         }
-        DrawOp::Text {
-            x, y, colour, runs, ..
-        } => (
-            2,
-            *y as i32,
-            *x as i32,
-            0,
-            0,
-            runs.iter().map(|run| run.0.as_str()).collect::<String>(),
-            i64::from(*colour as i32),
-        ),
     };
     let mut sorted: Vec<&DrawOp> = ops.iter().collect();
-    sorted.sort_by_key(key);
+    sorted.sort_by(|a, b| {
+        let (a, b) = (key(a), key(b));
+        a.0.cmp(&b.0)
+            .then_with(|| {
+                a.1.iter()
+                    .zip(&b.1)
+                    .map(|(x, y)| x.total_cmp(y))
+                    .find(|order| order.is_ne())
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
+            .then_with(|| a.2.cmp(&b.2))
+            .then_with(|| a.3.cmp(&b.3))
+    });
     sorted
         .into_iter()
         .map(|op| match op {
             DrawOp::Fill { rect, colour } => json!({
-                "op": "fill", "x0": f64::from(rect.0), "y0": f64::from(rect.1),
-                "x1": f64::from(rect.2), "y1": f64::from(rect.3),
+                "op": "fill", "x0": num(rect.0), "y0": num(rect.1),
+                "x1": num(rect.2), "y1": num(rect.3),
                 "color": *colour as i32,
             }),
             DrawOp::Texture { name, rect, uv } => json!({
-                "op": "texture", "name": name, "x0": f64::from(rect.0), "y0": f64::from(rect.1),
-                "x1": f64::from(rect.2), "y1": f64::from(rect.3), "color": -1,
+                "op": "texture", "name": name, "x0": num(rect.0), "y0": num(rect.1),
+                "x1": num(rect.2), "y1": num(rect.3), "color": -1,
                 "u0": f64::from(uv.0), "u1": f64::from(uv.1), "v0": f64::from(uv.2), "v1": f64::from(uv.3),
             }),
             DrawOp::Sprite { name, rect } => json!({
-                "op": "sprite", "name": name, "x0": f64::from(rect.0), "y0": f64::from(rect.1),
-                "x1": f64::from(rect.2), "y1": f64::from(rect.3), "color": -1,
+                "op": "sprite", "name": name, "x0": num(rect.0), "y0": num(rect.1),
+                "x1": num(rect.2), "y1": num(rect.3), "color": -1,
             }),
             DrawOp::Text {
                 x,
@@ -66,7 +83,7 @@ fn gui_ops(ops: &[voxel_render::gui::DrawOp]) -> Vec<Value> {
                 runs,
                 ..
             } => json!({
-                "op": "text", "x": f64::from(*x), "y": f64::from(*y), "scale": f64::from(*scale), "color": *colour as i32,
+                "op": "text", "x": num(*x), "y": num(*y), "scale": num(*scale), "color": *colour as i32,
                 "shadow": shadow,
                 "runs": runs.iter().map(|(text, rgb, bold, italic)| {
                     let mut run = json!({"text": text, "bold": bold, "italic": italic});
@@ -168,7 +185,7 @@ fn scoreboard_from(row: &Value) -> Result<voxel_game::scoreboard::Scoreboard, St
 }
 
 pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
-    use voxel_render::gui::chat::ChatLog;
+    use voxel_render::gui::chat::{ChatLog, ChatSettings};
     use voxel_render::gui::font::Font;
     use voxel_render::gui::{GuiAtlas, GuiFrame};
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -196,6 +213,26 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
             "chat" => {
                 use voxel_render::gui::chat::Tag;
                 let mut log = ChatLog::default();
+                // The chat options a row sets, before the messages and again
+                // after them (which wraps them anew).
+                let settings = |options: &Value, base: ChatSettings| ChatSettings {
+                    scale: options["scale"].as_f64().unwrap_or(base.scale),
+                    opacity: options["opacity"].as_f64().unwrap_or(base.opacity),
+                    width: options["width"].as_f64().unwrap_or(base.width),
+                    height_focused: options["height_focused"]
+                        .as_f64()
+                        .unwrap_or(base.height_focused),
+                    height_unfocused: options["height_unfocused"]
+                        .as_f64()
+                        .unwrap_or(base.height_unfocused),
+                    line_spacing: options["line_spacing"]
+                        .as_f64()
+                        .unwrap_or(base.line_spacing),
+                    background_opacity: options["background_opacity"]
+                        .as_f64()
+                        .unwrap_or(base.background_opacity),
+                };
+                log.set_settings(settings(&row["options"], log.settings()), &font);
                 let lang = voxel_game::text::Lang::load(&root);
                 let marker_style = voxel_game::text::Style {
                     colour: voxel_game::text::named_colour("gray"),
@@ -251,10 +288,13 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                 while log.ticks() < row["tick"].as_u64().unwrap_or(0) {
                     log.tick(&font, &marker);
                 }
-                if let Some(scroll) = row["scroll"].as_i64() {
-                    log.scroll_by(scroll as i32);
+                if row["rescale"].is_object() {
+                    log.set_settings(settings(&row["rescale"], log.settings()), &font);
                 }
                 let focused = row["focused"].as_bool().unwrap_or(false);
+                if let Some(scroll) = row["scroll"].as_i64() {
+                    log.scroll_by(scroll as i32, focused);
+                }
                 log.draw(&mut frame, &atlas, &font, int("height"), focused);
             }
             "suggestions" => {
@@ -596,6 +636,68 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                     "width": window.gui_scaled_width(),
                     "height": window.gui_scaled_height(),
                     "gui_scale": gui_scale,
+                    "scroll": screen.scroll_amount(),
+                    "ops": gui_ops(&frame.log.take().unwrap_or_default()),
+                }));
+                continue;
+            }
+            "chat_options_screen" => {
+                use voxel_render::gui::chat_options::ChatOptionsScreen;
+                use voxel_render::window::scale::WindowScale;
+                let lang = voxel_game::text::Lang::load(&root);
+                let framebuffer = (
+                    row["framebuffer"][0].as_i64().unwrap_or(0) as i32,
+                    row["framebuffer"][1].as_i64().unwrap_or(0) as i32,
+                );
+                let mouse = (
+                    row["mouse"][0].as_i64().unwrap_or(0) as i32,
+                    row["mouse"][1].as_i64().unwrap_or(0) as i32,
+                );
+                let mut window = WindowScale::new(framebuffer.0, framebuffer.1);
+                window.set_gui_scale(window.calculate_scale(int("gui_scale"), false));
+                let mut options = voxel_game::options::Options::default();
+                let set = |key: &str, field: &mut f64| {
+                    if let Some(value) = row["options"][key].as_f64() {
+                        *field = value;
+                    }
+                };
+                set("scale", &mut options.chat_scale);
+                set("opacity", &mut options.chat_opacity);
+                set("width", &mut options.chat_width);
+                set("height_focused", &mut options.chat_height_focused);
+                set("height_unfocused", &mut options.chat_height_unfocused);
+                set("line_spacing", &mut options.chat_line_spacing);
+                set("background_opacity", &mut options.text_background_opacity);
+                let mut screen = ChatOptionsScreen::new(
+                    &font,
+                    &lang,
+                    (window.gui_scaled_width(), window.gui_scaled_height()),
+                    row["in_world"].as_bool().unwrap_or(false),
+                    &options,
+                );
+                let mut last = (0.0, 0.0);
+                for step in row["steps"].as_array().ok_or("steps")? {
+                    let at = (
+                        step["x"].as_f64().unwrap_or(last.0),
+                        step["y"].as_f64().unwrap_or(last.1),
+                    );
+                    match step["do"].as_str().unwrap_or_default() {
+                        "click" => {
+                            screen.clicked(&lang, at, step["shift"].as_bool().unwrap_or(false));
+                        }
+                        "drag" => screen.dragged(&lang, at, at.1 - last.1),
+                        "release" => screen.released(&lang),
+                        "scroll" => screen.scrolled(at, step["dy"].as_f64().unwrap_or(0.0)),
+                        other => return Err(format!("unknown step {other}")),
+                    }
+                    last = at;
+                }
+                screen.draw(&mut frame, &atlas, &font, mouse);
+                out.push(json!({
+                    "label": row["label"],
+                    "width": window.gui_scaled_width(),
+                    "height": window.gui_scaled_height(),
+                    "gui_scale": int("gui_scale"),
                     "scroll": screen.scroll_amount(),
                     "ops": gui_ops(&frame.log.take().unwrap_or_default()),
                 }));

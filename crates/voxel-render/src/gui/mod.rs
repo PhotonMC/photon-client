@@ -4,6 +4,7 @@
 pub mod atlas;
 pub mod boss_bar;
 pub mod chat;
+pub mod chat_options;
 pub mod confirm;
 pub mod cycle;
 pub mod death;

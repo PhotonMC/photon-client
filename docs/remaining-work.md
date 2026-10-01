@@ -154,7 +154,7 @@ Bitti: `Component`/dil (`en_us`), stilli yazı, `EditBox`, ipucu kutusu.
   T ve `/` ile giriş kutusu, geçmiş (yukarı/aşağı), PageUp/PageDown, `Chat` ve
   `ChatCommand` gönderimi (imzasız, boş `LastSeenMessages`). Eksik: kaydırma
   çubuğu, güven simgesi, `DeleteChat`, eylem çubuğu (`overlay`), sohbet
-  seçenekleri (genişlik/ölçek/görünürlük), fareyle tıklama/üzerine gelme
+  görünürlük seçeneğinin sunucuya bildirilmesi ve kısıtlı sohbet istemi, fareyle tıklama/üzerine gelme
   olayları, `nextChatIndex` kopuşunda bağlantıyı kesme (yalnız uyarı).
 - **L** İmzalı sohbet: `ChatSessionUpdate`, mesaj zinciri, `ChatCommandSigned`;
   çevrimdışı modda gerekmez, çevrimiçide zorunlu (M9).
@@ -278,7 +278,8 @@ Bitti: `Component`/dil (`en_us`), stilli yazı, `EditBox`, ipucu kutusu.
   kaydı/yüklenmesi. **Kısmen:** `options.txt` okunur/yazılır (`voxel-game/src/
   options.rs`: FOV, GUI ölçeği, fare, tekerlek, sohbet değerleri; bilinmeyen
   anahtarlar korunur); FOV, GUI ölçeği, duyarlılık, ters çevirme ve tekerlek
-  oyuna bağlı, sohbet değerlerinin çizime bağlanması T08'de.
+  oyuna bağlı; sohbet değerleri (genişlik, ölçek, opaklıklar, satır aralığı, yükseklikler) sohbet çizimine bağlı (`ChatSettings`).
+- **Kısmen** Sohbet ayarları (`ChatOptionsScreen`, Options → Chat Settings): 18 satır, Java etiketleri; görünürlük, genişlik, ölçek, opaklık, arka plan opaklığı, satır aralığı ve yükseklikler `Options`'a yazılır ve sohbeti anında yeniden sarar (`rescaleChat`). Yapılmadı: renkler/bağlantılar/öneriler/gecikme/imzalı sohbet/taslak vb. değerler yalnız ekranda yaşar; anlatıcı yok (düğme uykuda); görünürlüğün sunucuya bildirilmesi ve kısıtlı sohbet istemi; Tab/ok odağı (T11). `chat_options_screen` oracle'ı gerçek ekrana karşı.
 - **L** Ana menü, sunucu listesi ve doğrudan bağlanma, bağlantı/yükleme
   ekranları (`LevelLoadingScreen`, `ReceivingLevelScreen`), bağlantı kopma
   ekranı, dünya seçimi (`P25`: Pumpkin ile eşleme).

@@ -9,7 +9,7 @@ def gui_cases():
     rectangles and the text, in order, with their poses applied. The glyphs
     are not drawn; their advances come from the reference's font providers."""
     def chat(label, messages, tick, width=427, height=240, focused=False, scroll=None,
-             extra=(), deletions=()):
+             extra=(), deletions=(), options=None, rescale=None):
         row = {"label": label, "width": width, "height": height,
                "messages": [{"text": text, "tick": at} for text, at in messages] + list(extra),
                "tick": tick}
@@ -19,6 +19,10 @@ def gui_cases():
             row["focused"] = True
         if scroll is not None:
             row["scroll"] = scroll
+        if options:
+            row["options"] = options
+        if rescale:
+            row["rescale"] = rescale
         return row
 
     long_text = ("this is a fairly long chat message that should wrap onto a second line "
@@ -55,6 +59,54 @@ def gui_cases():
         ], deletions=[(7, 5)]),
         chat("delete-unknown", [], 10, extra=[{"text": "kept", "tick": 0, "signature": 8}],
              deletions=[(9, 5)]),
+    ]
+    # The chat options: each alone and together, closed and open, before the
+    # messages and after them (the chat wraps them again), with tags.
+    many = [(f"line {n}", 0) for n in range(30)]
+    opt = lambda **values: values
+    rows += [
+        chat("scale-half", [(long_text, 0)], 3, options=opt(scale=0.5)),
+        chat("scale-three-quarters", [(long_text, 0)], 3, options=opt(scale=0.75)),
+        chat("scale-third", [("hello", 0), ("two", 1)], 3, options=opt(scale=0.33)),
+        chat("scale-open", many, 400, focused=True, options=opt(scale=0.6)),
+        chat("scale-open-scrolled", many, 400, focused=True, scroll=5, options=opt(scale=0.9)),
+        chat("scale-tags", [], 5, options=opt(scale=0.7), extra=[
+            {"text": "system", "tick": 0, "tag": "system"},
+            {"text": "modified", "tick": 2, "tag": "modified:the original", "signature": 2}]),
+        chat("width-narrow", [(long_text, 0)], 3, options=opt(width=0.0)),
+        chat("width-half", [(long_text, 0)], 3, options=opt(width=0.5)),
+        chat("width-quarter-open", [(long_text, 0)] * 4, 3, focused=True, options=opt(width=0.25)),
+        chat("width-and-scale", [(long_text, 0)], 3, options=opt(width=0.4, scale=0.8)),
+        chat("opacity-zero", [("hello", 0)], 3, options=opt(opacity=0.0)),
+        chat("opacity-low", [("hello", 0), ("fading", 1)], 3, options=opt(opacity=0.3)),
+        chat("opacity-fading", [("fading out", 0)], 190, options=opt(opacity=0.5)),
+        chat("opacity-open-tags", [], 5, focused=True, options=opt(opacity=0.4), extra=[
+            {"text": "system", "tick": 0, "tag": "system"},
+            {"text": "error", "tick": 3, "tag": "error"}]),
+        chat("background-zero", [("hello", 0)], 3, options=opt(background_opacity=0.0)),
+        chat("background-full", [("hello", 0), ("two", 0)], 3, options=opt(background_opacity=1.0)),
+        chat("background-fading", [("fading out", 0)], 190, options=opt(background_opacity=0.8)),
+        chat("spacing-full", [("one", 0), ("two", 1), ("three", 2)], 3, options=opt(line_spacing=1.0)),
+        chat("spacing-quarter", [(f"line {n}", 0) for n in range(14)], 10, options=opt(line_spacing=0.25)),
+        chat("spacing-open", many, 400, focused=True, options=opt(line_spacing=0.5)),
+        chat("spacing-open-scrolled", many, 400, focused=True, scroll=4, options=opt(line_spacing=0.3)),
+        chat("spacing-tags", [], 5, options=opt(line_spacing=0.6), extra=[
+            {"text": "system", "tick": 0, "tag": "system"},
+            {"text": "no tag", "tick": 4, "signature": 3}]),
+        chat("height-unfocused-low", [(f"line {n}", 0) for n in range(14)], 10, options=opt(height_unfocused=0.0)),
+        chat("height-unfocused-full", [(f"line {n}", 0) for n in range(30)], 10, options=opt(height_unfocused=1.0)),
+        chat("height-focused-low", many, 400, focused=True, options=opt(height_focused=0.2)),
+        chat("height-focused-half-scrolled", many, 400, focused=True, scroll=7, options=opt(height_focused=0.5)),
+        chat("height-and-spacing", many, 400, focused=True, options=opt(height_focused=0.6, line_spacing=0.4)),
+        chat("scroll-end-low-height", many, 400, focused=True, scroll=100, options=opt(height_focused=0.3)),
+        chat("everything", many, 400, focused=True, scroll=3, options=opt(
+            scale=0.7, width=0.6, opacity=0.6, background_opacity=0.3, line_spacing=0.2,
+            height_focused=0.7)),
+        chat("rescale-width", [(long_text, 0), ("short", 1)], 3, rescale=opt(width=0.3)),
+        chat("rescale-scale", [(long_text, 0)], 3, rescale=opt(scale=0.5)),
+        chat("rescale-resets-scroll", many, 400, focused=True, scroll=6, rescale=opt(opacity=0.9)),
+        chat("rescale-after-options", [(long_text, 0)], 3, options=opt(width=0.8), rescale=opt(width=0.2)),
+        chat("tall-window-scaled", [("hello", 0)], 0, width=640, height=480, options=opt(scale=0.5)),
     ]
     yield {"case_id": "gui/chat", "family": "gui", "operation": "chat", "rows": rows}
 
@@ -972,6 +1024,89 @@ def gui_video_settings_cases():
            "rows": rows}
 
 
+def gui_chat_options_cases():
+    """The chat settings screen: the eighteen options in a list, with the
+    options' own values shown (every slider's label), the ones that hold a
+    value on their widget, the narrator asleep (there is none), the list
+    scrolled and its bar dragged, and sliders and cycle buttons pressed."""
+    def row(label, framebuffer=(854, 480), gui_scale=2, in_world=True, mouse=(0, 0), steps=(),
+            options=None):
+        row = {"label": label, "framebuffer": list(framebuffer), "gui_scale": gui_scale,
+               "in_world": in_world, "mouse": list(mouse), "steps": list(steps)}
+        if options:
+            row["options"] = options
+        return row
+
+    click = lambda x, y, shift=False: {"do": "click", "x": x, "y": y, "shift": shift}
+    drag = lambda x, y: {"do": "drag", "x": x, "y": y}
+    release = lambda x=0, y=0: {"do": "release", "x": x, "y": y}
+    wheel = lambda dy, x=200, y=100: {"do": "scroll", "x": x, "y": y, "dy": dy, "ctrl": False}
+    opt = lambda **values: values
+    rows = [
+        row("in-world"), row("out-of-world", in_world=False), row("small", (640, 480)),
+        row("large", (1280, 720)), row("tiny", (640, 480), 3), row("short", (854, 300)),
+        row("auto-large", (1920, 1080), 0),
+        row("hover-visibility", mouse=(100, 45)), row("hover-narrator-asleep", mouse=(100, 195)),
+        row("hover-slider", mouse=(100, 95)), row("hover-done", mouse=(213, 223)),
+        row("scroll-1", steps=[wheel(-1)]), row("scroll-5", steps=[wheel(-5)]),
+        row("scroll-end", steps=[wheel(-100)]), row("scroll-end-short", (854, 300), steps=[wheel(-100)]),
+        row("bar-drag", steps=[click(379, 60), drag(379, 90), release(379, 90)]),
+        row("bar-drag-end", steps=[click(379, 60), drag(379, 230)]),
+        row("opacity-zero", options=opt(opacity=0.0)), row("opacity-full", options=opt(opacity=1.0)),
+        row("opacity-mid", options=opt(opacity=0.37)),
+        row("background-zero", options=opt(background_opacity=0.0)),
+        row("background-mid", options=opt(background_opacity=0.73)),
+        row("scale-zero", options=opt(scale=0.0)), row("scale-mid", options=opt(scale=0.55)),
+        row("spacing-full", options=opt(line_spacing=1.0)), row("spacing-mid", options=opt(line_spacing=0.25)),
+        row("width-zero", options=opt(width=0.0)), row("width-mid", options=opt(width=0.5)),
+        row("width-full", options=opt(width=1.0)),
+        row("height-focused-low", options=opt(height_focused=0.0)),
+        row("height-focused-mid", options=opt(height_focused=0.33)),
+        row("height-unfocused-high", options=opt(height_unfocused=1.0)),
+        row("everything", options=opt(opacity=0.2, background_opacity=0.9, scale=0.7, line_spacing=0.6,
+                                       width=0.3, height_focused=0.8, height_unfocused=0.1)),
+        row("press-visibility", steps=[click(100, 45)]),
+        row("press-visibility-twice", steps=[click(100, 45)] * 2),
+        row("press-visibility-thrice", steps=[click(100, 45)] * 3),
+        row("press-visibility-shift", steps=[click(100, 45, True)]),
+        row("press-colors", steps=[click(250, 45)]), row("press-links", steps=[click(100, 70)]),
+        row("press-links-prompt", steps=[click(250, 70)]),
+        row("press-narrator-asleep", steps=[click(100, 195)]),
+        row("press-gap", steps=[click(212, 45)]),
+        row("press-opacity", steps=[click(100, 95)]), row("press-opacity-end", steps=[click(205, 95)]),
+        row("press-opacity-start", steps=[click(60, 95)]),
+        row("drag-opacity", steps=[click(80, 95), drag(130, 95), release(130, 95)]),
+        row("drag-opacity-held", steps=[click(80, 95), drag(180, 95)]),
+        row("drag-opacity-past", steps=[click(80, 95), drag(400, 95), release(400, 95)]),
+        row("press-background", steps=[click(300, 95)]),
+        row("drag-background", steps=[click(230, 95), drag(300, 95), release(300, 95)]),
+        row("press-scale", steps=[click(100, 120)]),
+        row("drag-scale-zero", steps=[click(100, 120), drag(0, 120), release(0, 120)]),
+        row("drag-scale-full", steps=[click(100, 120), drag(300, 120), release(300, 120)]),
+        row("press-spacing", steps=[click(300, 120)]),
+        row("press-delay", steps=[click(100, 145)]),
+        row("drag-delay", steps=[click(70, 145), drag(120, 145), drag(160, 145), release(160, 145)]),
+        row("drag-delay-end", steps=[click(70, 145), drag(300, 145), release(300, 145)]),
+        row("press-width", steps=[click(300, 145)]),
+        row("drag-width", steps=[click(230, 145), drag(300, 145), release(300, 145)]),
+        row("drag-width-zero", steps=[click(300, 145), drag(0, 145), release(0, 145)]),
+        row("press-height-focused", steps=[click(100, 170)]),
+        row("drag-height-focused", steps=[click(70, 170), drag(150, 170), release(150, 170)]),
+        row("press-height-unfocused", steps=[click(300, 170)]),
+        row("drag-height-unfocused-zero", steps=[click(300, 170), drag(0, 170), release(0, 170)]),
+        row("press-autosuggest", steps=[click(250, 195)]),
+        row("scrolled-press-hide-matched", steps=[wheel(-100), click(100, 100)]),
+        row("scrolled-press-reduced-debug", steps=[wheel(-100), click(250, 100)]),
+        row("scrolled-press-secure", steps=[wheel(-100), click(100, 125)]),
+        row("scrolled-press-drafts", steps=[wheel(-100), click(250, 125)]),
+        row("scrolled-press-twice", steps=[wheel(-100), click(250, 125), click(250, 125)]),
+        row("press-clipped-bottom", steps=[click(100, 206)]),
+        row("press-two-in-turn", steps=[click(100, 45), click(250, 70), click(100, 95)]),
+    ]
+    yield {"case_id": "gui/chat-options-screen", "family": "gui", "operation": "chat_options_screen",
+           "rows": rows}
+
+
 def gui_generators():
     return itertools.chain(
         gui_cases(), gui_suggestion_cases(), gui_title_cases(), gui_boss_bar_cases(),
@@ -979,4 +1114,4 @@ def gui_generators():
         gui_pause_screen_cases(), gui_death_screen_cases(), gui_disconnected_screen_cases(),
         gui_tab_list_cases(), gui_container_screen_cases(),
         gui_confirm_screen_cases(), gui_widgets_cases(),
-        gui_options_screen_cases(), gui_video_settings_cases())
+        gui_options_screen_cases(), gui_video_settings_cases(), gui_chat_options_cases())

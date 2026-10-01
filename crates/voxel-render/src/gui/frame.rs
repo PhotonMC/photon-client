@@ -36,17 +36,17 @@ pub enum GuiBlend {
 #[derive(Debug, Clone, PartialEq)]
 pub enum DrawOp {
     Fill {
-        rect: (i32, i32, i32, i32),
+        rect: (f32, f32, f32, f32),
         colour: u32,
     },
     Sprite {
         name: String,
-        rect: (i32, i32, i32, i32),
+        rect: (f32, f32, f32, f32),
     },
     /// A part of a whole texture, as fractions of it.
     Texture {
         name: String,
-        rect: (i32, i32, i32, i32),
+        rect: (f32, f32, f32, f32),
         uv: (f32, f32, f32, f32),
     },
     Text {
@@ -98,7 +98,12 @@ impl GuiFrame {
     ) {
         if let Some(log) = &mut self.log {
             log.push(DrawOp::Fill {
-                rect: (x0.min(x1), y0.min(y1), x0.max(x1), y0.max(y1)),
+                rect: (
+                    x0.min(x1) as f32,
+                    y0.min(y1) as f32,
+                    x0.max(x1) as f32,
+                    y0.max(y1) as f32,
+                ),
                 colour: top,
             });
         }
@@ -137,11 +142,24 @@ impl GuiFrame {
     ) {
         if let Some(log) = &mut self.log {
             let from = first_op.min(log.len());
+            let place = |rect: &mut (f32, f32, f32, f32)| {
+                *rect = (
+                    translate.0 + scale * rect.0,
+                    translate.1 + scale * rect.1,
+                    translate.0 + scale * rect.2,
+                    translate.1 + scale * rect.3,
+                );
+            };
             for op in &mut log[from..] {
-                if let DrawOp::Text { x, y, scale: s, .. } = op {
-                    *x = translate.0 + scale * *x;
-                    *y = translate.1 + scale * *y;
-                    *s *= scale;
+                match op {
+                    DrawOp::Text { x, y, scale: s, .. } => {
+                        *x = translate.0 + scale * *x;
+                        *y = translate.1 + scale * *y;
+                        *s *= scale;
+                    }
+                    DrawOp::Fill { rect, .. }
+                    | DrawOp::Sprite { rect, .. }
+                    | DrawOp::Texture { rect, .. } => place(rect),
                 }
             }
         }
@@ -194,7 +212,7 @@ impl GuiFrame {
         if let Some(log) = &mut self.log {
             log.push(DrawOp::Sprite {
                 name: name.to_owned(),
-                rect: (x, y, x + w, y + h),
+                rect: (x as f32, y as f32, (x + w) as f32, (y + h) as f32),
             });
         }
         self.blit(atlas, GuiBlend::Translucent, name, x, y, w, h);
@@ -212,7 +230,7 @@ impl GuiFrame {
         if let Some(log) = &mut self.log {
             log.push(DrawOp::Sprite {
                 name: name.to_owned(),
-                rect: (x, y, x + w, y + h),
+                rect: (x as f32, y as f32, (x + w) as f32, (y + h) as f32),
             });
         }
         self.blit_region(
@@ -253,7 +271,7 @@ impl GuiFrame {
             let (tw, th) = (tile.0 as f32, tile.1 as f32);
             log.push(DrawOp::Texture {
                 name: name.to_owned(),
-                rect: (x, y, x + w, y + h),
+                rect: (x as f32, y as f32, (x + w) as f32, (y + h) as f32),
                 uv: (
                     u as f32 / tw,
                     u as f32 / tw + w as f32 / tw,
@@ -304,11 +322,9 @@ impl GuiFrame {
                     DrawOp::Fill { rect, .. }
                     | DrawOp::Sprite { rect, .. }
                     | DrawOp::Texture { rect, .. } => *rect,
-                    DrawOp::Text { x, y, width, .. } => {
-                        (*x as i32, *y as i32, *x as i32 + width, *y as i32 + 8)
-                    }
+                    DrawOp::Text { x, y, width, .. } => (*x, *y, *x + *width as f32, *y + 8.0),
                 };
-                x0 < right && x1 > left && y0 < bottom && y1 > top
+                x0 < right as f32 && x1 > left as f32 && y0 < bottom as f32 && y1 > top as f32
             });
         }
         let first = mark.vertices;
@@ -372,7 +388,7 @@ impl GuiFrame {
             let (tw, th) = (texture_size.0 as f32, texture_size.1 as f32);
             log.push(DrawOp::Texture {
                 name: name.to_owned(),
-                rect: (x, y, x + w, y + h),
+                rect: (x as f32, y as f32, (x + w) as f32, (y + h) as f32),
                 uv: (
                     uv.0 as f32 / tw,
                     uv.0 as f32 / tw + w as f32 / tw,
@@ -502,7 +518,7 @@ impl GuiFrame {
             // The reference blits a nine-slice sprite as one call.
             log.push(DrawOp::Sprite {
                 name: name.to_owned(),
-                rect: (x, y, x + w, y + h),
+                rect: (x as f32, y as f32, (x + w) as f32, (y + h) as f32),
             });
         }
         let blend = GuiBlend::Translucent;
@@ -955,9 +971,9 @@ mod tests {
             ..GuiFrame::default()
         };
         let mark = frame.mark();
-        let sprite = |rect| DrawOp::Sprite {
+        let sprite = |(x0, y0, x1, y1): (i32, i32, i32, i32)| DrawOp::Sprite {
             name: "a".to_owned(),
-            rect,
+            rect: (x0 as f32, y0 as f32, x1 as f32, y1 as f32),
         };
         // Half in, wholly below, wholly above.
         quad(&mut frame, (0.0, 0.0, 10.0, 20.0));

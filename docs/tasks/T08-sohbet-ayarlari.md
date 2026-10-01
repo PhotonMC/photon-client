@@ -26,4 +26,6 @@ Konuşma anlatıcısı (narrator), sohbet bildirimleri.
 `docs/gui-oracle.md`, `docs/remaining-work.md` M5 "sohbet seçenekleri" cümlesi.
 
 ## Devir notu
-(boş)
+- `gui/chat_options.rs` (`SubScreen` kabuğu; 18 satır, `choices()` ile Options'a yazılır) + `ChatSettings` (`chat.rs`: `lines_per_page`, `set_settings` = `rescaleChat`). Sohbet çizimi Java'nın pose'unu (scale, translate 4) taklit eder: yerel koordinat + `scale_from`; `DrawOp` dikdörtgenleri `f32`, adaptör f32'yi en kısa ondalıkla yazar (Java float'ı gibi). Ortak seçenek kurucuları (`cycle/boolean/slider/named`) `options_list.rs`'e taşındı.
+- Oracle: mevcut `chat` operation'ına `options`/`rescale` alanları (+32 satır), yeni `chat_options_screen` (+66 satır; `settingsScreen` Java yöntemi video ile ortak, `hud.chat` ve `isActive()=false` sahteleri).
+- Sapma/açık: görünürlük yalnız değer (sunucuya bildirim `session.rs` sabit Full); sohbet kuyruğu ve kısıtlı sohbet istemi çizilmez; sohbet fare üzerine gelme için pose tersi f32 ile hesaplanır ama oracle fare (0,0) kullanır; ölçek 0 oracle'da yok. Canlı denenmedi.

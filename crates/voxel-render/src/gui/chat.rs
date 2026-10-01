@@ -1,9 +1,9 @@
 //! The chat: its lines as `ChatComponent` keeps, wraps, fades and draws them
 //! over the HUD, and the box a line is typed into (`ChatScreen`).
 //!
-//! Not drawn: the scroll bar, the message trust icon and the chat
-//! visibility, width, scale and opacity options, which stay at their
-//! defaults.
+//! The chat's width, height, scale, opacity, background opacity and line
+//! spacing are the options' ([`ChatSettings`]). Not drawn: the chat queue
+//! and the prompt of a chat that the options disable.
 
 use std::collections::VecDeque;
 use std::sync::Arc;
@@ -18,15 +18,55 @@ use crate::gui::edit_box::{Clipboard, EditBox, edit_key};
 use crate::gui::font::Font;
 use crate::gui::suggestions::{ListKey, SuggestionsList};
 
-/// `ChatComponent`'s width at the default option, and the lines it keeps.
-const WIDTH: i32 = 320;
+/// The lines the chat keeps.
 const MAX_LINES: usize = 100;
-/// A line's height, and the room under the chat for the hotbar.
-const LINE_HEIGHT: i32 = 9;
+/// A message's height, and the room under the chat for the hotbar.
+const MESSAGE_HEIGHT: i32 = 9;
 const BOTTOM_MARGIN: i32 = 40;
-/// The lines a closed and an open chat show (`getHeight` / 9).
-const LINES_CLOSED: usize = 10;
-const LINES_OPEN: usize = 20;
+
+/// The options `ChatComponent` reads, each a share from 0 to 1 as the
+/// option holds it.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ChatSettings {
+    pub width: f64,
+    pub scale: f64,
+    pub opacity: f64,
+    pub background_opacity: f64,
+    pub line_spacing: f64,
+    pub height_focused: f64,
+    pub height_unfocused: f64,
+}
+
+impl Default for ChatSettings {
+    /// The options' defaults.
+    fn default() -> Self {
+        Self::from(&voxel_game::options::Options::default())
+    }
+}
+
+impl From<&voxel_game::options::Options> for ChatSettings {
+    fn from(options: &voxel_game::options::Options) -> Self {
+        Self {
+            width: options.chat_width,
+            scale: options.chat_scale,
+            opacity: options.chat_opacity,
+            background_opacity: options.text_background_opacity,
+            line_spacing: options.chat_line_spacing,
+            height_focused: options.chat_height_focused,
+            height_unfocused: options.chat_height_unfocused,
+        }
+    }
+}
+
+/// `ChatComponent.getWidth`: the width in units of a share.
+pub fn width_of(share: f64) -> i32 {
+    (share * 280.0 + 40.0).floor() as i32
+}
+
+/// `ChatComponent.getHeight`: the height in units of a share.
+pub fn height_of(share: f64) -> i32 {
+    (share * 160.0 + 20.0).floor() as i32
+}
 
 /// `GuiMessageTag`: the mark beside a message that says where it came from.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -207,6 +247,7 @@ pub struct ChatLog {
     new_message: bool,
     /// `messageDeletionQueue`: a signature and the tick it may go at.
     deletions: Vec<(Vec<u8>, u64)>,
+    settings: ChatSettings,
 }
 
 impl ChatLog {
@@ -232,6 +273,49 @@ impl ChatLog {
 
     pub fn ticks(&self) -> u64 {
         self.ticks
+    }
+
+    pub fn settings(&self) -> ChatSettings {
+        self.settings
+    }
+
+    /// A chat with no messages that wraps for these settings.
+    pub fn with_settings(settings: ChatSettings) -> Self {
+        Self {
+            settings,
+            ..Self::default()
+        }
+    }
+
+    /// The options changed: `rescaleChat` takes the chat back to the bottom
+    /// and wraps its messages again for the new width and scale.
+    pub fn set_settings(&mut self, settings: ChatSettings, font: &Font) {
+        if settings != self.settings {
+            self.settings = settings;
+            self.rescale(font);
+        }
+    }
+
+    /// `rescaleChat`.
+    pub fn rescale(&mut self, font: &Font) {
+        self.reset_scroll();
+        self.refresh(font);
+    }
+
+    /// `getLineHeight`: a message's line and the space between lines.
+    fn entry_height(&self) -> i32 {
+        (f64::from(MESSAGE_HEIGHT) * (self.settings.line_spacing + 1.0)) as i32
+    }
+
+    /// `getLinesPerPage`: the lines a chat shows, an open one more than a
+    /// closed one.
+    pub fn lines_per_page(&self, focused: bool) -> usize {
+        let share = if focused {
+            self.settings.height_focused
+        } else {
+            self.settings.height_unfocused
+        };
+        (height_of(share) / self.entry_height()).max(0) as usize
     }
 
     /// `ChatComponent.addMessage`: the message kept and wrapped, newest
@@ -263,7 +347,8 @@ impl ChatLog {
     /// `addMessageToDisplayQueue`: the message's lines, the width short of a
     /// tag's icon.
     fn add_to_display(&mut self, message: &Message, font: &Font, focused: bool) {
-        let mut width = WIDTH;
+        let mut width =
+            (f64::from(width_of(self.settings.width)) / self.settings.scale).floor() as i32;
         if message.tag.as_ref().is_some_and(Tag::has_icon) {
             width -= 9 + 4 + 2;
         }
@@ -275,7 +360,7 @@ impl ChatLog {
             });
             if focused && self.scroll > 0 {
                 self.new_message = true;
-                self.scroll_by(1);
+                self.scroll_by(1, true);
             }
         }
         self.lines.truncate(MAX_LINES);
@@ -324,8 +409,11 @@ impl ChatLog {
     }
 
     /// `scrollChat`, in lines.
-    pub fn scroll_by(&mut self, amount: i32) {
-        let limit = self.lines.len().saturating_sub(LINES_OPEN);
+    pub fn scroll_by(&mut self, amount: i32, focused: bool) {
+        let limit = self
+            .lines
+            .len()
+            .saturating_sub(self.lines_per_page(focused));
         self.scroll = (self.scroll as i32 + amount).clamp(0, limit as i32) as usize;
         if self.scroll == 0 {
             self.new_message = false;
@@ -360,6 +448,8 @@ impl ChatLog {
     }
 
     /// [`Self::draw`] with the mouse, for the tooltip of a tag it is over.
+    /// Everything is drawn in the chat's own units, under a pose that scales
+    /// by the option and moves 4 right.
     #[expect(
         clippy::too_many_arguments,
         reason = "mirrors the reference's render call"
@@ -374,9 +464,19 @@ impl ChatLog {
         mouse: Option<(i32, i32)>,
         lang: &Lang,
     ) -> Option<Vec<Vec<Run>>> {
-        let per_page = if focused { LINES_OPEN } else { LINES_CLOSED };
+        let first = (frame.vertices.len(), frame.log.as_ref().map_or(0, Vec::len));
+        let scale = self.settings.scale as f32;
+        let max_width = (width_of(self.settings.width) as f32 / scale).ceil() as i32;
+        let chat_bottom = ((gui_height - BOTTOM_MARGIN) as f32 / scale).floor() as i32;
+        let text_opacity = self.settings.opacity as f32 * 0.9 + 0.1;
+        let background_opacity = self.settings.background_opacity as f32;
+        let spacing = self.settings.line_spacing;
+        let entry_height = self.entry_height();
+        // `Math.round`.
+        let entry_bottom_to_message_y =
+            (8.0 * (spacing + 1.0) - 4.0 * spacing + 0.5).floor() as i32;
+        let per_page = self.lines_per_page(focused);
         let shown = self.lines.len().saturating_sub(self.scroll).min(per_page);
-        let bottom = gui_height - BOTTOM_MARGIN;
         // `forEachLine`: from the oldest of the page to the newest, the ones
         // not faded out; the backgrounds first, then each line's text and tag.
         let visible: Vec<(usize, f32)> = (0..shown)
@@ -392,46 +492,72 @@ impl ChatLog {
             })
             .collect();
         for &(i, alpha) in &visible {
-            let entry_bottom = bottom - i as i32 * LINE_HEIGHT;
-            let background = ((255.0 * 0.5 * alpha) as u32) << 24;
+            let entry_bottom = chat_bottom - i as i32 * entry_height;
+            let background = ((alpha * background_opacity * 255.0) as u32) << 24;
             frame.fill(
                 atlas,
-                (0, entry_bottom - LINE_HEIGHT, WIDTH + 12, entry_bottom),
+                (
+                    -4,
+                    entry_bottom - entry_height,
+                    max_width + 4 + 4,
+                    entry_bottom,
+                ),
                 background,
             );
         }
-        // The mouse in the chat's own units (the pose moves it 4 right).
-        let local = mouse.map(|(x, y)| (x - 4, y));
-        let over = |local: Option<(i32, i32)>, (x0, y0, x1, y1): (i32, i32, i32, i32)| {
-            local.is_some_and(|(x, y)| x >= x0 && x < x1 && y >= y0 && y < y1)
+        // The mouse in the chat's own units: the pose undone
+        // (`Matrix3x2f.invert`, in single precision).
+        let local = mouse.map(|(x, y)| {
+            let (m00, m20) = (scale, 4.0 * scale);
+            let det = 1.0 / (m00 * m00);
+            let inverse_x = m00 * det;
+            let inverse_translation = (0.0 - m20 * m00) * det;
+            (
+                inverse_x * x as f32 + inverse_translation,
+                inverse_x * y as f32,
+            )
+        });
+        let over = |local: Option<(f32, f32)>, (x0, y0, x1, y1): (i32, i32, i32, i32)| {
+            local.is_some_and(|(x, y)| {
+                x >= x0 as f32 && x < x1 as f32 && y >= y0 as f32 && y < y1 as f32
+            })
         };
         let mut tooltip = None;
         for &(i, alpha) in &visible {
-            let entry_bottom = bottom - i as i32 * LINE_HEIGHT;
-            let entry_top = entry_bottom - LINE_HEIGHT;
-            let text = ((255.0 * alpha) as u32) << 24 | 0x00FF_FFFF;
+            let entry_bottom = chat_bottom - i as i32 * entry_height;
+            let entry_top = entry_bottom - entry_height;
+            let text_top = entry_bottom - entry_bottom_to_message_y;
+            let opacity = alpha * text_opacity;
+            let text = ((opacity * 255.0) as u32) << 24 | 0x00FF_FFFF;
             let line = &self.lines[i + self.scroll];
-            frame.styled_text(atlas, font, &line.runs, 4, entry_bottom - 8, text, true);
+            frame.styled_text(atlas, font, &line.runs, 0, text_top, text, true);
             let Some(tag) = &line.tag else {
                 continue;
             };
-            let bar = ((255.0 * alpha) as u32) << 24 | tag.colour();
-            frame.fill(atlas, (0, entry_top, 2, entry_bottom), bar);
+            let bar = ((opacity * 255.0) as u32) << 24 | tag.colour();
+            frame.fill(atlas, (-4, entry_top, -2, entry_bottom), bar);
             if focused && over(local, (-4, entry_top, -2, entry_bottom)) {
                 tooltip = Some(tag.tooltip(lang));
             }
             if tag.has_icon() && focused {
                 // `handleTagIcon`: shown while the mouse is over it.
                 let left = font.width_of_runs(&line.runs) + 4;
-                let bottom_of_text = entry_bottom - 8 + LINE_HEIGHT;
+                let bottom_of_text = text_top + MESSAGE_HEIGHT;
                 let top = bottom_of_text - 9 - 1;
                 if over(local, (left, top, left + 9, bottom_of_text)) {
                     tooltip = Some(tag.tooltip(lang));
-                    frame.sprite(atlas, "icon/chat_modified", left + 4, top, 9, 9);
+                    frame.sprite(atlas, "icon/chat_modified", left, top, 9, 9);
                 }
             }
         }
-        self.scroll_bar(frame, atlas, bottom, visible.len(), focused);
+        self.scroll_bar(
+            frame,
+            atlas,
+            (chat_bottom, max_width),
+            visible.len(),
+            focused,
+        );
+        frame.scale_from(first, scale, (4.0 * scale, 0.0));
         tooltip.map(|runs| split(&runs, 210, font))
     }
 
@@ -441,7 +567,7 @@ impl ChatLog {
         &self,
         frame: &mut GuiFrame,
         atlas: &GuiAtlas,
-        chat_bottom: i32,
+        (chat_bottom, max_width): (i32, i32),
         count: usize,
         focused: bool,
     ) {
@@ -449,8 +575,8 @@ impl ChatLog {
         if total == 0 || !focused {
             return;
         }
-        let chat_height = count as i32 * LINE_HEIGHT;
-        let virtual_height = total * LINE_HEIGHT;
+        let chat_height = count as i32 * self.entry_height();
+        let virtual_height = total * self.entry_height();
         if virtual_height == chat_height {
             return;
         }
@@ -462,7 +588,7 @@ impl ChatLog {
         } else {
             3_355_562
         };
-        let start_x = WIDTH + 4 + 4;
+        let start_x = max_width + 4;
         frame.fill(
             atlas,
             (start_x, -y, start_x + 2, -y - height),
@@ -483,8 +609,8 @@ pub enum ChatKey {
     Close,
     /// The line to send, and whether the screen closes (it always does).
     Send(String),
-    /// Scroll the log by this many lines.
-    Scroll(i32),
+    /// Scroll the log a page, less a line: up for 1, down for -1.
+    Page(i32),
 }
 
 /// `ChatScreen`: the box at the bottom of the screen and the history of what
@@ -775,8 +901,8 @@ impl ChatScreen {
             Key::Tab => {}
             Key::Up => self.move_in_history(-1),
             Key::Down => self.move_in_history(1),
-            Key::PageUp => return ChatKey::Scroll(LINES_OPEN as i32 - 1),
-            Key::PageDown => return ChatKey::Scroll(-(LINES_OPEN as i32) + 1),
+            Key::PageUp => return ChatKey::Page(1),
+            Key::PageDown => return ChatKey::Page(-1),
             other => {
                 if let Some(edit) = edit_key(other) {
                     let font = self.font.clone();
@@ -916,6 +1042,23 @@ mod tests {
     use super::*;
 
     #[test]
+    fn the_options_set_the_size_of_the_chat() {
+        assert_eq!((width_of(1.0), width_of(0.0)), (320, 40));
+        assert_eq!((height_of(1.0), height_of(0.0)), (180, 20));
+        let log = ChatLog::default();
+        // 180 / 9 lines open, and 90 / 9 closed by default.
+        assert_eq!(
+            (log.lines_per_page(true), log.lines_per_page(false)),
+            (20, 10)
+        );
+        let spaced = ChatLog::with_settings(ChatSettings {
+            line_spacing: 1.0,
+            ..ChatSettings::default()
+        });
+        assert_eq!(spaced.lines_per_page(true), 10);
+    }
+
+    #[test]
     fn a_message_fades_between_180_and_200_ticks() {
         assert_eq!(fade(0), 1.0);
         assert_eq!(fade(180), 1.0);
@@ -925,7 +1068,7 @@ mod tests {
 
     #[test]
     fn a_newline_breaks_a_line_without_an_indent() {
-        let lines = wrap(&plain_runs("ab\ncd"), WIDTH, &Font::default());
+        let lines = wrap(&plain_runs("ab\ncd"), 320, &Font::default());
         let texts: Vec<String> = lines
             .iter()
             .map(|line| line.iter().map(|run| run.text.as_str()).collect())

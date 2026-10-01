@@ -8,8 +8,10 @@ use voxel_game::text::{Component, Lang, Run, Style};
 use crate::gui::cycle::CycleButton;
 use crate::gui::font::Font;
 use crate::gui::option_text::{generic_int, generic_value, on_off, percent_value};
-use crate::gui::options_list::{Build, SubScreen, SubScreenInput};
-use crate::gui::slider::{OptionSlider, SliderValues};
+use crate::gui::options_list::{
+    Build, Named, SubScreen, SubScreenInput, boolean, counted, cycle, named, off_composed, slider,
+};
+use crate::gui::slider::OptionSlider;
 use crate::gui::{GuiAtlas, GuiFrame};
 
 /// What the screen finds its widgets by; an option with `CUSTOMISING` in its
@@ -26,27 +28,12 @@ const GRAPHICS_API: u8 = 4;
 /// `RESTART_REQUIRED`'s colour, `withColor(-2142128)`.
 const RESTART_COLOUR: u32 = 0xDF_5050;
 
-/// A cycle button of a few named values: the keys of their names.
-type Named = &'static str;
-
-fn translated(key: &Named) -> Component {
-    Component::translatable(*key)
-}
-
-fn toggle(value: &bool) -> Component {
-    on_off(*value)
-}
-
 fn gui_scale_text(value: &i32) -> Component {
     if *value == 0 {
         Component::translatable("options.guiScale.auto")
     } else {
         Component::literal(value.to_string())
     }
-}
-
-fn counted(key: &str, value: i32) -> Component {
-    Component::translatable_with(key, vec![Component::literal(value.to_string())])
 }
 
 /// `genericValueLabel(caption, translatable("options.chunks", value))`.
@@ -56,11 +43,6 @@ fn chunks(caption: &Component, value: &i32) -> Component {
 
 fn blocks(caption: &Component, value: &i32) -> Component {
     generic_value(caption, counted("options.blocks", *value))
-}
-
-/// `CommonComponents.optionStatus(caption, false)`.
-fn off_composed(caption: &Component) -> Component {
-    Component::translatable_with("options.off.composed", vec![caption.clone()])
 }
 
 fn biome_blend(caption: &Component, value: &i32) -> Component {
@@ -139,56 +121,6 @@ fn graphics_preset(caption: &Component, value: &Named) -> Component {
 /// The fullscreen resolutions of a monitor, of which there is none.
 fn fullscreen_resolution(_caption: &Component, _value: &i32) -> Component {
     Component::translatable("options.fullscreen.unavailable")
-}
-
-/// A cycle button of an option.
-fn cycle<V: Clone + PartialEq + 'static>(
-    key: &'static str,
-    values: Vec<V>,
-    text: fn(&V) -> Component,
-    initial: V,
-) -> Build {
-    Box::new(move |lang, rect| {
-        Box::new(CycleButton::new(
-            lang,
-            rect,
-            Component::translatable(key),
-            values,
-            text,
-            &initial,
-        ))
-    })
-}
-
-fn boolean(key: &'static str, initial: bool) -> Build {
-    cycle(key, vec![true, false], toggle, initial)
-}
-
-fn named(key: &'static str, values: &[Named], initial: Named) -> Build {
-    cycle(key, values.to_vec(), translated, initial)
-}
-
-/// A slider of an option.
-fn slider<S>(
-    key: &'static str,
-    values: S,
-    text: fn(&Component, &S::Value) -> Component,
-    initial: S::Value,
-) -> Build
-where
-    S: SliderValues + 'static,
-    S::Value: 'static,
-{
-    Box::new(move |lang, rect| {
-        Box::new(OptionSlider::new(
-            lang,
-            rect,
-            values,
-            Component::translatable(key),
-            text,
-            initial,
-        ))
-    })
 }
 
 /// `displayOptions`, with the GUI scale a cycle button of `0..=max`.

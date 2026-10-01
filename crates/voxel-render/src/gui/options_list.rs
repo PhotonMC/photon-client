@@ -9,6 +9,7 @@ use voxel_game::text::{Component, Lang, Run, Style};
 use crate::gui::cycle::CycleButton;
 use crate::gui::font::Font;
 use crate::gui::layout::{Arena, Grid, Item, Settings, place_in_frame};
+use crate::gui::option_text::on_off;
 use crate::gui::slider::{InputType, OptionSlider, SliderValues};
 use crate::gui::widgets::{Kind, Widget};
 use crate::gui::{GuiAtlas, GuiFrame};
@@ -612,6 +613,77 @@ impl OptionsList {
         self.set_scroll_amount(self.scroll - scroll_y * SCROLL_RATE);
         true
     }
+}
+
+/// Builders of the widgets the settings lists are made of.
+/// The value of a cycle button of a few named values: the key of its name.
+pub type Named = &'static str;
+
+pub fn translated(key: &Named) -> Component {
+    Component::translatable(*key)
+}
+
+pub fn toggle(value: &bool) -> Component {
+    on_off(*value)
+}
+
+pub fn counted(key: &str, value: i32) -> Component {
+    Component::translatable_with(key, vec![Component::literal(value.to_string())])
+}
+
+/// `CommonComponents.optionStatus(caption, false)`.
+pub fn off_composed(caption: &Component) -> Component {
+    Component::translatable_with("options.off.composed", vec![caption.clone()])
+}
+
+/// A cycle button of an option.
+pub fn cycle<V: Clone + PartialEq + 'static>(
+    key: &'static str,
+    values: Vec<V>,
+    text: fn(&V) -> Component,
+    initial: V,
+) -> Build {
+    Box::new(move |lang, rect| {
+        Box::new(CycleButton::new(
+            lang,
+            rect,
+            Component::translatable(key),
+            values,
+            text,
+            &initial,
+        ))
+    })
+}
+
+pub fn boolean(key: &'static str, initial: bool) -> Build {
+    cycle(key, vec![true, false], toggle, initial)
+}
+
+pub fn named(key: &'static str, values: &[Named], initial: Named) -> Build {
+    cycle(key, values.to_vec(), translated, initial)
+}
+
+/// A slider of an option.
+pub fn slider<S>(
+    key: &'static str,
+    values: S,
+    text: fn(&Component, &S::Value) -> Component,
+    initial: S::Value,
+) -> Build
+where
+    S: SliderValues + 'static,
+    S::Value: 'static,
+{
+    Box::new(move |lang, rect| {
+        Box::new(OptionSlider::new(
+            lang,
+            rect,
+            values,
+            Component::translatable(key),
+            text,
+            initial,
+        ))
+    })
 }
 
 /// What an input to a settings screen asks for.
