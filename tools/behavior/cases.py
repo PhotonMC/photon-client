@@ -14376,6 +14376,28 @@ def gui_pause_screen_cases():
     yield {"case_id": "gui/pause-screen", "family": "gui", "operation": "pause_screen", "rows": rows}
 
 
+def gui_death_screen_cases():
+    """The death screen: before and after its buttons wake (20 ticks), with
+    and without a cause, hardcore, scores of several widths, and the mouse
+    over each button."""
+    def row(label, width=427, height=240, mouse=(0, 0), ticks=0, hardcore=False, cause="Steve was slain by Zombie",
+            score=0):
+        described = {"label": label, "width": width, "height": height, "mouse": list(mouse), "ticks": ticks,
+                     "hardcore": hardcore, "score": score}
+        if cause is not None:
+            described["cause"] = cause
+        return described
+
+    rows = [row("fresh"), row("awake", ticks=20), row("one-short", ticks=19), row("late", ticks=80),
+            row("no-cause", ticks=20, cause=None), row("hardcore", ticks=20, hardcore=True),
+            row("big-score", ticks=20, score=123456), row("small-screen", 320, 240, ticks=20),
+            row("wide", 854, 480, ticks=20), row("long-cause", ticks=20, cause="Alex was blown up by Creeper"
+                                                                              " whilst fighting Skeleton and more"),
+            row("hover-respawn-asleep", mouse=(213, 132)), row("hover-respawn", mouse=(213, 132), ticks=20),
+            row("hover-title", mouse=(213, 156), ticks=20), row("hover-elsewhere", mouse=(10, 10), ticks=20)]
+    yield {"case_id": "gui/death-screen", "family": "gui", "operation": "death_screen", "rows": rows}
+
+
 def gui_boss_bar_cases():
     """The boss bars: every colour and notch, progress at its ends and in the
     middle (the discrete width), several bars down the screen and the cut-off
@@ -14627,7 +14649,7 @@ def build_cases(families):
                   "movement": movement_cases,
                   "entity": entity_cases,
                   "gui": gui_cases}
-    generators["gui"] = lambda: itertools.chain(gui_cases(), gui_suggestion_cases(), gui_title_cases(), gui_boss_bar_cases(), gui_sidebar_cases(), gui_command_parse_cases(), gui_command_suggest_cases(), gui_pause_screen_cases(), gui_tab_list_cases(),
+    generators["gui"] = lambda: itertools.chain(gui_cases(), gui_suggestion_cases(), gui_title_cases(), gui_boss_bar_cases(), gui_sidebar_cases(), gui_command_parse_cases(), gui_command_suggest_cases(), gui_pause_screen_cases(), gui_death_screen_cases(), gui_tab_list_cases(),
                                           gui_container_screen_cases())
     cases = [dict(schema_version=1, **case)
              for family in sorted(families) for case in generators[family]()]

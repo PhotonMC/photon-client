@@ -490,6 +490,7 @@ public final class GuiOracle {
                 case "command_parse" -> commandParse(request);
                 case "command_suggest" -> commandSuggest(request);
                 case "pause_screen" -> pauseScreen(request);
+                case "death_screen" -> deathScreen(request);
                 case "tab_list" -> tabList(request);
                 case "container_screen" -> containerScreen(request);
                 default -> throw new IllegalArgumentException("Unknown gui operation");
@@ -738,6 +739,57 @@ public final class GuiOracle {
             return true;
         });
         return text.toString();
+    }
+
+    /** The game's own death screen, after some ticks, for a score and a cause. */
+    private static JsonObject deathScreen(JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            int width = row.get("width").getAsInt();
+            int height = row.get("height").getAsInt();
+            int mouseX = row.get("mouse").getAsJsonArray().get(0).getAsInt();
+            int mouseY = row.get("mouse").getAsJsonArray().get(1).getAsInt();
+            var screen = screen(width, height, mouseX, mouseY);
+            var minecraft = screen.minecraft();
+            var player = unsafe.allocateInstance(net.minecraft.client.player.LocalPlayer.class);
+            var scoreField = net.minecraft.world.entity.player.Player.class.getDeclaredField("DATA_SCORE_ID");
+            scoreField.setAccessible(true);
+            @SuppressWarnings("unchecked")
+            var accessor = (net.minecraft.network.syncher.EntityDataAccessor<Integer>) scoreField.get(null);
+            var data = (net.minecraft.network.syncher.SynchedEntityData)
+                unsafe.allocateInstance(net.minecraft.network.syncher.SynchedEntityData.class);
+            var items = new net.minecraft.network.syncher.SynchedEntityData.DataItem<?>[accessor.id() + 1];
+            items[accessor.id()] = new net.minecraft.network.syncher.SynchedEntityData.DataItem<>(
+                accessor, row.get("score").getAsInt());
+            set(data, "itemsById", items);
+            set(player, "entityData", data);
+            set(minecraft, "player", player);
+            set(minecraft, "reportingContext",
+                unsafe.allocateInstance(net.minecraft.client.multiplayer.chat.report.ReportingContext.class));
+            var level = unsafe.allocateInstance(net.minecraft.client.multiplayer.ClientLevel.class);
+            set(minecraft, "level", level);
+            Component cause = row.has("cause") ? Component.literal(row.get("cause").getAsString()) : null;
+            var death = new net.minecraft.client.gui.screens.DeathScreen(cause,
+                row.get("hardcore").getAsBoolean(), (net.minecraft.client.player.LocalPlayer) player);
+            set(death, "width", width);
+            set(death, "height", height);
+            var init = net.minecraft.client.gui.screens.DeathScreen.class.getDeclaredMethod("init");
+            init.setAccessible(true);
+            init.invoke(death);
+            for (int tick = 0; tick < row.get("ticks").getAsInt(); tick++) {
+                death.tick();
+            }
+            death.extractBackground(screen.graphics(), mouseX, mouseY, 0.0F);
+            death.extractRenderState(screen.graphics(), mouseX, mouseY, 0.0F);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("ops", record(screen.state()));
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
     }
 
     /** The game's own pause menu, over a game with nothing behind it. */

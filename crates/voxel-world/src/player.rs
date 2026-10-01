@@ -293,6 +293,8 @@ pub struct ClientPlayerState {
     pub(crate) absorption_bits: u32,
     /// Which skin layers show, one bit each, from the entity data.
     pub(crate) model_customisation: u8,
+    /// `Player.getScore`.
+    pub(crate) score: i32,
     pub(crate) attributes: Vec<ClientAttributeState>,
     pub(crate) effects: Vec<ClientMobEffectState>,
     pub(crate) health_bits: u32,
@@ -742,6 +744,7 @@ impl ClientPlayerState {
             ticks_frozen: 0,
             absorption_bits: 0,
             model_customisation: 0,
+            score: 0,
             attributes: Vec::new(),
             effects: Vec::new(),
             health_bits: 20.0_f32.to_bits(),
@@ -1019,6 +1022,10 @@ impl ClientPlayerState {
 
     pub fn absorption(&self) -> f32 {
         f32::from_bits(self.absorption_bits)
+    }
+
+    pub fn score(&self) -> i32 {
+        self.score
     }
 
     pub fn model_customisation(&self) -> u8 {

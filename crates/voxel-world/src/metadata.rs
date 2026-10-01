@@ -143,6 +143,8 @@ pub(crate) fn metadata_pose_value(metadata: &[u8]) -> Option<ClientEntityPose> {
 pub(crate) const PLAYER_MODE_CUSTOMISATION_DATA_ID: u8 = 16;
 /// `Player.DATA_PLAYER_ABSORPTION_ID`.
 pub(crate) const PLAYER_ABSORPTION_DATA_ID: u8 = 17;
+/// `Player.DATA_SCORE_ID`: what the death screen shows.
+pub(crate) const PLAYER_SCORE_DATA_ID: u8 = 18;
 
 pub(crate) fn player_absorption_from_metadata(metadata: &[u8]) -> Option<f32> {
     metadata_float_value(metadata, PLAYER_ABSORPTION_DATA_ID)
@@ -150,6 +152,10 @@ pub(crate) fn player_absorption_from_metadata(metadata: &[u8]) -> Option<f32> {
 
 pub(crate) fn player_model_customisation_from_metadata(metadata: &[u8]) -> Option<u8> {
     metadata_byte_value(metadata, PLAYER_MODE_CUSTOMISATION_DATA_ID)
+}
+
+pub(crate) fn player_score_from_metadata(metadata: &[u8]) -> Option<i32> {
+    metadata_int_value(metadata, PLAYER_SCORE_DATA_ID)
 }
 
 pub(crate) fn shared_flags_from_metadata(metadata: &[u8]) -> Option<u8> {

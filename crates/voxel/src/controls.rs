@@ -5,6 +5,7 @@ use voxel_game::attack::AttackKey;
 use voxel_game::hotbar::ScrollWheel;
 use voxel_net::connection::PlaySession;
 use voxel_render::gui::chat::{ChatKey, ChatLog, ChatScreen};
+use voxel_render::gui::death::{DeathAction, DeathScreen};
 use voxel_render::gui::pause::{PauseAction, PauseScreen};
 use voxel_render::gui::screen::{KeyMods, KeyResult};
 use voxel_render::window::WindowSurface;
@@ -42,6 +43,9 @@ pub struct Controls {
     pub chat: Option<ChatScreen>,
     /// The pause menu, while it is open.
     pub pause: Option<PauseScreen>,
+    /// The death screen, from the server's word of a death until the player
+    /// has health again.
+    pub death: Option<DeathScreen>,
     chat_history: Vec<String>,
     /// `CommandHistory`: the commands sent, kept in a file.
     command_history: Vec<String>,
@@ -75,6 +79,7 @@ impl Controls {
             creative_tab: voxel_game::creative_menu::default_tab(),
             chat: None,
             pause: None,
+            death: None,
             chat_history: command_history.clone(),
             command_history,
             shift_held: false,
@@ -113,6 +118,119 @@ impl Controls {
             PauseAction::Resume => self.close_pause(surface),
             PauseAction::Disconnect => surface.request_close(),
             _ => {}
+        }
+    }
+
+    /// `handlePlayerCombatKill`: a death the server told of opens the death
+    /// screen, in the place of whatever was open; the player having health
+    /// again closes it.
+    pub fn receive_death(
+        &mut self,
+        session: &mut PlaySession,
+        surface: &mut WindowSurface,
+        assets: &ScreenAssets,
+    ) {
+        if let Some(message) = session.take_death() {
+            let size = surface.scale();
+            let size = (size.gui_scaled_width(), size.gui_scaled_height());
+            let score = session
+                .world()
+                .local_player()
+                .map_or(0, voxel_world::ClientPlayerState::score);
+            self.death = Some(DeathScreen::new(
+                &assets.lang,
+                size,
+                Some(&message),
+                session.hardcore(),
+                score,
+            ));
+            self.chat = None;
+            self.pause = None;
+            self.screen = None;
+            self.captured = false;
+            self.last_cursor = None;
+            surface.set_cursor_captured(false);
+            self.release_keys();
+        } else if self.death.is_some() && session.status().health > 0.0 {
+            self.death = None;
+            self.captured = true;
+            self.last_cursor = None;
+            surface.set_cursor_captured(true);
+        }
+    }
+
+    /// What a death screen button does: "Respawn" asks the server; "Title
+    /// Screen" leaves (the confirmation a living player gets is not built).
+    fn death_action(
+        &mut self,
+        action: DeathAction,
+        session: &mut PlaySession,
+        surface: &mut WindowSurface,
+    ) -> Result {
+        match action {
+            DeathAction::Respawn => session.respawn()?,
+            DeathAction::TitleScreen => surface.request_close(),
+        }
+        Ok(())
+    }
+
+    /// A scripted Escape: the pause menu opens, or closes.
+    fn scripted_escape(&mut self, surface: &mut WindowSurface, assets: &ScreenAssets) {
+        if self.pause.is_some() {
+            self.close_pause(surface);
+        } else {
+            self.open_pause(surface, assets);
+        }
+    }
+
+    /// A scripted press of the primary button on the death screen or the
+    /// pause menu, at the mouse.
+    fn scripted_press(&mut self, session: &mut PlaySession, surface: &mut WindowSurface) -> Result {
+        let mouse = (self.gui_mouse.0 as i32, self.gui_mouse.1 as i32);
+        if let Some(action) = self.death.as_mut().and_then(|death| death.clicked(mouse)) {
+            self.death_action(action, session, surface)?;
+        } else if let Some(action) = self.pause.as_ref().and_then(|pause| pause.clicked(mouse)) {
+            self.pause_action(action, surface);
+        }
+        Ok(())
+    }
+
+    /// An event for the open death screen: it takes no Escape.
+    fn death_event(
+        &mut self,
+        event: glfw::WindowEvent,
+        session: &mut PlaySession,
+        surface: &mut WindowSurface,
+    ) -> Result {
+        use glfw::{Action, Key, WindowEvent};
+        let Some(death) = self.death.as_mut() else {
+            return Ok(());
+        };
+        let action = match event {
+            WindowEvent::Key(Key::Tab, _, Action::Press | Action::Repeat, modifiers) => {
+                death.tab(!modifiers.contains(glfw::Modifiers::Shift));
+                None
+            }
+            WindowEvent::Key(Key::Enter | Key::KpEnter | Key::Space, _, Action::Press, _) => {
+                death.pressed()
+            }
+            WindowEvent::CursorPos(x, y) => {
+                let size = surface.scale();
+                let (width, height) = surface.window_size();
+                self.gui_mouse = (
+                    x * f64::from(size.gui_scaled_width()) / f64::from(width.max(1)),
+                    y * f64::from(size.gui_scaled_height()) / f64::from(height.max(1)),
+                );
+                None
+            }
+            WindowEvent::MouseButton(glfw::MouseButton::Button1, Action::Press, _) => {
+                death.clicked((self.gui_mouse.0 as i32, self.gui_mouse.1 as i32))
+            }
+            _ => None,
+        };
+        match action {
+            Some(action) => self.death_action(action, session, surface),
+            None => Ok(()),
         }
     }
 
@@ -408,11 +526,7 @@ impl Controls {
             self.gui_mouse = mouse;
         }
         if held.escape {
-            if self.pause.is_some() {
-                self.close_pause(surface);
-            } else {
-                self.open_pause(surface, assets);
-            }
+            self.scripted_escape(surface, assets);
         }
         if held.chat {
             if self.chat.is_some() {
@@ -444,6 +558,9 @@ impl Controls {
                 Self::send_chat(session, &text)?;
             }
             self.close_chat(surface);
+        }
+        if held.press.is_some() {
+            self.scripted_press(session, surface)?;
         }
         if let (Some((button, shift)), Some(screen)) = (held.press, self.screen.as_mut()) {
             let menu = session.active_menu().clone();
@@ -507,6 +624,9 @@ impl Controls {
         );
         if self.chat.is_some() && for_screen {
             return self.chat_event(event, session, surface);
+        }
+        if self.death.is_some() && for_screen {
+            return self.death_event(event, session, surface);
         }
         if self.pause.is_some() && for_screen {
             self.pause_event(event, surface);

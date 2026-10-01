@@ -18848,6 +18848,28 @@ fn gui_result(request: &Value) -> Result<Value, String> {
                 );
                 screen.draw(&mut frame, &atlas, &font, mouse, size, true);
             }
+            "death_screen" => {
+                let lang = voxel_game::text::Lang::load(&root);
+                let size = (int("width"), int("height"));
+                let cause = row["cause"]
+                    .as_str()
+                    .map(voxel_game::text::Component::literal);
+                let mut screen = voxel_render::gui::death::DeathScreen::new(
+                    &lang,
+                    size,
+                    cause.as_ref(),
+                    row["hardcore"].as_bool().unwrap_or(false),
+                    int("score"),
+                );
+                for _ in 0..int("ticks") {
+                    screen.tick();
+                }
+                let mouse = (
+                    row["mouse"][0].as_i64().unwrap_or(0) as i32,
+                    row["mouse"][1].as_i64().unwrap_or(0) as i32,
+                );
+                screen.draw(&mut frame, &atlas, &font, mouse);
+            }
             "boss_bar" => {
                 use voxel_render::gui::boss_bar::BossBars;
                 let mut bars = BossBars::default();

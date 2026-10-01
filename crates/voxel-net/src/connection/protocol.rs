@@ -110,6 +110,9 @@ pub(crate) const PLAY_CLIENTBOUND_CHUNK_PACKET_ID: i32 = 45;
 pub(crate) const PLAY_CLIENTBOUND_LOGIN_PACKET_ID: i32 = 49;
 pub(crate) const PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID: i32 = 72;
 pub(crate) const PLAY_CLIENTBOUND_RESPAWN_PACKET_ID: i32 = 82;
+pub(crate) const PLAY_CLIENTBOUND_PLAYER_COMBAT_KILL_PACKET_ID: i32 = 68;
+/// `ClientboundGameEventPacket.IMMEDIATE_RESPAWN`.
+pub(crate) const GAME_EVENT_IMMEDIATE_RESPAWN_ID: u8 = 11;
 pub(crate) const PLAY_CLIENTBOUND_SET_EXPERIENCE_PACKET_ID: i32 = 103;
 pub(crate) const PLAY_CLIENTBOUND_SET_HEALTH_PACKET_ID: i32 = 104;
 pub(crate) const PLAY_CLIENTBOUND_SET_HELD_SLOT_PACKET_ID: i32 = 105;
@@ -3231,6 +3234,15 @@ fn read_argument_kind(
         56 => K::Uuid,
         _ => return Err(ConnectionError::Codec("command argument type")),
     })
+}
+
+/// `ClientboundPlayerCombatKillPacket`: who died and the message for them.
+pub(crate) fn parse_player_combat_kill_packet(
+    input: &[u8],
+) -> Result<(i32, voxel_game::text::Component), ConnectionError> {
+    let mut input = input;
+    let id = read_varint(&mut input, "combat kill player id")?;
+    Ok((id, read_chat_component(&mut input, "combat kill message")?))
 }
 
 /// The scoreboard packets, by id.

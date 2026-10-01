@@ -85,8 +85,10 @@ pub struct PlaySession {
     rain_level: f32,
     thunder_level: f32,
     status: PlayerStatus,
-    /// Whether a respawn was asked for since the player last had health.
-    respawn_requested: bool,
+    /// `LocalPlayer.shouldShowDeathScreen`: off when the level respawns at once.
+    show_death_screen: bool,
+    /// The message of a death the death screen is yet to show.
+    death: Option<voxel_game::text::Component>,
     /// Swing packets sent, for scripted runs to report.
     swings: u32,
     /// Whether the level is hardcore, as the login said.
@@ -174,7 +176,8 @@ impl PlaySession {
             rain_level: 0.0,
             thunder_level: 0.0,
             status: PlayerStatus::default(),
-            respawn_requested: false,
+            show_death_screen: true,
+            death: None,
             swings: 0,
             hardcore: false,
             health_received: false,
@@ -641,6 +644,19 @@ impl PlaySession {
     /// The title, action bar and tab list packets since the last call.
     pub fn drain_hud(&mut self) -> Vec<HudEvent> {
         std::mem::take(&mut self.hud_events)
+    }
+
+    /// A death the death screen is yet to show: the server's message.
+    pub fn take_death(&mut self) -> Option<voxel_game::text::Component> {
+        self.death.take()
+    }
+
+    /// `LocalPlayer.respawn`: ask the server to bring the player back.
+    pub fn respawn(&mut self) -> Result<(), ConnectionError> {
+        self.send(
+            PLAY_SERVERBOUND_CLIENT_COMMAND_PACKET_ID,
+            encode_perform_respawn,
+        )
     }
 
     /// What the server's scoreboard packets built.
@@ -1248,6 +1264,7 @@ impl PlaySession {
                 self.hashed_seed = login.spawn_info.seed;
                 self.trace.world.set_local_player_id(login.player_id);
                 self.hardcore = login.hardcore;
+                self.show_death_screen = login.show_death_screen;
                 self.player_id = Some(login.player_id);
                 self.game_mode =
                     ClientPlayerGameMode::from_id(i32::from(login.spawn_info.game_type));
@@ -1397,19 +1414,15 @@ impl PlaySession {
                 self.status.health = packet.health;
                 self.status.food = packet.food;
                 self.status.saturation = packet.saturation;
-                // The death screen is not ported, so a dead player asks to
-                // respawn at once, as the reference does when the server
-                // turns the death screen off.
-                if packet.health <= 0.0 {
-                    if !self.respawn_requested {
-                        self.respawn_requested = true;
-                        self.send(
-                            PLAY_SERVERBOUND_CLIENT_COMMAND_PACKET_ID,
-                            encode_perform_respawn,
-                        )?;
+            }
+            PLAY_CLIENTBOUND_PLAYER_COMBAT_KILL_PACKET_ID => {
+                let (id, message) = parse_player_combat_kill_packet(payload)?;
+                if self.player_id == Some(id) {
+                    if self.show_death_screen {
+                        self.death = Some(message);
+                    } else {
+                        self.respawn()?;
                     }
-                } else {
-                    self.respawn_requested = false;
                 }
             }
             PLAY_CLIENTBOUND_SET_EXPERIENCE_PACKET_ID => {
@@ -1436,6 +1449,9 @@ impl PlaySession {
                     7 => self.rain_level = event.param.clamp(0.0, 1.0),
                     8 => self.thunder_level = event.param.clamp(0.0, 1.0),
                     _ => {}
+                }
+                if event.event_id == GAME_EVENT_IMMEDIATE_RESPAWN_ID {
+                    self.show_death_screen = event.param == 0.0;
                 }
                 if event.event_id == GAME_EVENT_CHANGE_GAME_MODE_ID {
                     self.game_mode = ClientPlayerGameMode::from_game_event_param(event.param);

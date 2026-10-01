@@ -2998,6 +2998,9 @@ impl ClientWorld {
             if let Some(customisation) = player_model_customisation_from_metadata(metadata) {
                 player.model_customisation = customisation;
             }
+            if let Some(score) = player_score_from_metadata(metadata) {
+                player.score = score;
+            }
             return true;
         }
         let Some(entity) = self.entities.get_mut(&entity_id) else {

@@ -2695,3 +2695,11 @@ fn a_commands_packet_links_into_a_tree() {
     // A child past the end is refused.
     assert!(super::parse_commands_packet(&[1, 0, 1, 7, 0]).is_err());
 }
+
+#[test]
+fn combat_kill_names_who_died_and_the_message() {
+    let packet = [0xE8, 0x07, 8, 0, 2, b'h', b'i'];
+    let (id, message) = super::parse_player_combat_kill_packet(&packet).unwrap();
+    assert_eq!(id, 1000);
+    assert_eq!(message, voxel_game::text::Component::literal("hi"));
+}

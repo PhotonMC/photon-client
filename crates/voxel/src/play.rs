@@ -253,6 +253,8 @@ impl Play {
             self.last_frame = now;
             self.session.drain()?;
             self.controls.receive_suggestions(&mut self.session);
+            self.controls
+                .receive_death(&mut self.session, &mut self.surface, &self.screen_assets);
             let hud = self.session.drain_hud();
             if !hud.is_empty() {
                 self.gui.receive_hud(hud);
@@ -373,6 +375,9 @@ impl Play {
             self.camera.tick(player);
         }
         self.gui.tick();
+        if let Some(death) = self.controls.death.as_mut() {
+            death.tick();
+        }
         self.gui.tick_chat(&mut self.controls.chat_log);
         self.sky.tick(session);
         self.ticks += 1;
