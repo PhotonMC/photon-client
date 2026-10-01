@@ -26,4 +26,8 @@ Başlık ekranı, gerçek "başlığa dön" (bağlantıyı koparıp menüye) —
 `docs/gui-oracle.md` satırı; `docs/remaining-work.md`'de ölüm ekranı "ConfirmScreen yok" cümlesini sil/güncelle.
 
 ## Devir notu
-(boş)
+- `voxel-render/src/gui/confirm.rs`: `ConfirmScreen` (düzen Java'nın dikey/yatay `LinearLayout`'u; ileti `MultiLineLabel` 15 satır + üç nokta; `set_delay`/`tick`/`escape`/`tab`/`pressed`/`clicked`, `ConfirmBackground::{Menu, Death}`, `resized`). `death::draw_background` paylaşılır.
+- Oracle `confirm_screen` (44 satır, geri çağrı cevabı dahil) ilk koşuda eşit; parity 929. Java'da `SilentSounds` ile düğme sesi susturuldu.
+- Yığın yerine `Controls.confirm: Option<ConfirmScreen>` (YAGNI): yalnız ölüm → "Title Screen" kullanıyor; evet `request_close`, hayır `respawn` + ölüm ekranını kapat. Pause "Disconnect" onaysız kaldı (Java'daki gibi).
+- Fare konumu güncellemesi `move_gui_mouse` yardımcısında toplandı. Script `press`/`escape` adımı confirm'e yönlenir.
+- Açık: genel ekran yığını (pause → seçenekler → geri) T06'da gerekirse; canlı kill → Title Screen denenmedi (oracle yeterli).

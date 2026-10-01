@@ -380,6 +380,9 @@ impl Play {
         if let Some(death) = self.controls.death.as_mut() {
             death.tick();
         }
+        if let Some(confirm) = self.controls.confirm.as_mut() {
+            confirm.tick();
+        }
         self.gui.tick_chat(&mut self.controls.chat_log);
         self.sky.tick(session);
         self.ticks += 1;

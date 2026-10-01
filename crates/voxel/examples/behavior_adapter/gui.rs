@@ -379,6 +379,75 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                 );
                 screen.draw(&mut frame, &atlas, &font, mouse, size, true);
             }
+            "confirm_screen" => {
+                use voxel_render::gui::confirm::{ConfirmAction, ConfirmBackground, ConfirmScreen};
+                let lang = voxel_game::text::Lang::load(&root);
+                let size = (int("width"), int("height"));
+                let text = |key: &str| {
+                    voxel_game::text::Component::literal(row[key].as_str().unwrap_or_default())
+                };
+                let background = if row["death"].as_bool().unwrap_or(false) {
+                    ConfirmBackground::Death
+                } else {
+                    ConfirmBackground::Menu {
+                        in_world: row["in_world"].as_bool().unwrap_or(false),
+                    }
+                };
+                let mut screen = ConfirmScreen::new(
+                    &font,
+                    &lang,
+                    size,
+                    &text("title"),
+                    &text("message"),
+                    &text("yes"),
+                    &text("no"),
+                )
+                .with_background(background);
+                if int("delay") > 0 {
+                    screen.set_delay(int("delay"));
+                }
+                for _ in 0..int("ticks") {
+                    screen.tick();
+                }
+                let mouse = (
+                    row["mouse"][0].as_i64().unwrap_or(0) as i32,
+                    row["mouse"][1].as_i64().unwrap_or(0) as i32,
+                );
+                let mut callbacks = Vec::new();
+                for key in row["keys"].as_array().ok_or("keys")? {
+                    let action = match key.as_str().unwrap_or_default() {
+                        "tab" => {
+                            screen.tab(true);
+                            None
+                        }
+                        "shift+tab" => {
+                            screen.tab(false);
+                            None
+                        }
+                        "escape" => screen.escape(),
+                        "enter" | "space" => screen.pressed(),
+                        other => return Err(format!("unknown key {other}")),
+                    };
+                    callbacks.extend(action);
+                }
+                if row["click"].as_bool().unwrap_or(false) {
+                    callbacks.extend(screen.clicked(mouse));
+                }
+                screen.draw(&mut frame, &atlas, &font, mouse);
+                let callbacks: Vec<&str> = callbacks
+                    .iter()
+                    .map(|action| match action {
+                        ConfirmAction::Yes => "yes",
+                        ConfirmAction::No => "no",
+                    })
+                    .collect();
+                out.push(json!({
+                    "label": row["label"],
+                    "callbacks": callbacks,
+                    "ops": gui_ops(&frame.log.take().unwrap_or_default()),
+                }));
+                continue;
+            }
             "death_screen" => {
                 let lang = voxel_game::text::Lang::load(&root);
                 let size = (int("width"), int("height"));

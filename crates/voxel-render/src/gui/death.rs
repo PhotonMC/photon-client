@@ -33,6 +33,12 @@ pub struct DeathScreen {
     focus: Option<usize>,
 }
 
+/// `extractDeathBackground`: the red gradient over the whole screen, which
+/// the confirmation of "Title Screen" shares.
+pub fn draw_background(frame: &mut GuiFrame, atlas: &GuiAtlas, (width, height): (i32, i32)) {
+    frame.fill_gradient(atlas, (0, 0, width, height), 0x6050_0000, 0xA080_3030);
+}
+
 fn runs(lang: &Lang, component: &Component) -> Vec<Run> {
     lang.runs(component, &Style::default())
 }
@@ -110,8 +116,8 @@ impl DeathScreen {
     /// The gradient, the buttons, then the title (twice as big), the cause
     /// and the score.
     pub fn draw(&self, frame: &mut GuiFrame, atlas: &GuiAtlas, font: &Font, mouse: (i32, i32)) {
-        let (width, height) = self.size;
-        frame.fill_gradient(atlas, (0, 0, width, height), 0x6050_0000, 0xA080_3030);
+        let width = self.size.0;
+        draw_background(frame, atlas, self.size);
         for (index, (widget, _)) in self.buttons.iter().enumerate() {
             let highlighted = widget.contains(&self.arena, mouse) || self.focus == Some(index);
             widget.draw(frame, atlas, font, &self.arena, highlighted);

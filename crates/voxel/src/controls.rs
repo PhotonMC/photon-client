@@ -5,6 +5,7 @@ use voxel_game::attack::AttackKey;
 use voxel_game::hotbar::ScrollWheel;
 use voxel_net::connection::PlaySession;
 use voxel_render::gui::chat::{ChatKey, ChatLog, ChatScreen};
+use voxel_render::gui::confirm::{ConfirmAction, ConfirmBackground, ConfirmScreen};
 use voxel_render::gui::death::{DeathAction, DeathScreen};
 use voxel_render::gui::disconnected::DisconnectedScreen;
 use voxel_render::gui::pause::{PauseAction, PauseScreen};
@@ -47,6 +48,9 @@ pub struct Controls {
     /// The death screen, from the server's word of a death until the player
     /// has health again.
     pub death: Option<DeathScreen>,
+    /// "Title Screen" asks first (`deathScreen.quit.confirm`), over the death
+    /// screen, which this takes the place of while it is open.
+    pub confirm: Option<ConfirmScreen>,
     /// The screen a lost connection leaves, which nothing replaces.
     pub disconnected: Option<DisconnectedScreen>,
     chat_history: Vec<String>,
@@ -83,6 +87,7 @@ impl Controls {
             chat: None,
             pause: None,
             death: None,
+            confirm: None,
             disconnected: None,
             chat_history: command_history.clone(),
             command_history,
@@ -150,6 +155,7 @@ impl Controls {
         self.chat = None;
         self.pause = None;
         self.death = None;
+        self.confirm = None;
         self.screen = None;
         self.captured = false;
         self.last_cursor = None;
@@ -171,14 +177,7 @@ impl Controls {
             {
                 surface.request_close();
             }
-            WindowEvent::CursorPos(x, y) => {
-                let size = surface.scale();
-                let (width, height) = surface.window_size();
-                self.gui_mouse = (
-                    x * f64::from(size.gui_scaled_width()) / f64::from(width.max(1)),
-                    y * f64::from(size.gui_scaled_height()) / f64::from(height.max(1)),
-                );
-            }
+            WindowEvent::CursorPos(x, y) => self.move_gui_mouse((x, y), surface),
             WindowEvent::MouseButton(glfw::MouseButton::Button1, Action::Press, _)
                 if screen.clicked((self.gui_mouse.0 as i32, self.gui_mouse.1 as i32)) =>
             {
@@ -211,6 +210,7 @@ impl Controls {
                 session.hardcore(),
                 score,
             ));
+            self.confirm = None;
             self.chat = None;
             self.pause = None;
             self.screen = None;
@@ -219,47 +219,160 @@ impl Controls {
             surface.set_cursor_captured(false);
             self.release_keys();
         } else if self.death.is_some() && session.status().health > 0.0 {
-            self.death = None;
-            self.captured = true;
-            self.last_cursor = None;
-            surface.set_cursor_captured(true);
+            self.close_death(surface);
         }
     }
 
+    /// The death screen goes, with the confirmation over it, and the mouse
+    /// is grabbed again (`setScreen(null)`).
+    fn close_death(&mut self, surface: &mut WindowSurface) {
+        self.death = None;
+        self.confirm = None;
+        self.captured = true;
+        self.last_cursor = None;
+        surface.set_cursor_captured(true);
+    }
+
     /// What a death screen button does: "Respawn" asks the server; "Title
-    /// Screen" leaves (the confirmation a living player gets is not built).
+    /// Screen" leaves, after a confirmation unless the world is hardcore
+    /// (`handleExitToTitleScreen`).
     fn death_action(
         &mut self,
         action: DeathAction,
         session: &mut PlaySession,
         surface: &mut WindowSurface,
+        assets: &ScreenAssets,
     ) -> Result {
         match action {
             DeathAction::Respawn => session.respawn()?,
-            DeathAction::TitleScreen => surface.request_close(),
+            DeathAction::TitleScreen if session.hardcore() => surface.request_close(),
+            DeathAction::TitleScreen => self.open_title_confirm(surface, assets),
         }
         Ok(())
     }
 
-    /// A scripted Escape: the pause menu opens, or closes.
-    fn scripted_escape(&mut self, surface: &mut WindowSurface, assets: &ScreenAssets) {
-        if self.pause.is_some() {
+    /// `DeathScreen.TitleConfirmScreen`, its buttons asleep for a second.
+    fn open_title_confirm(&mut self, surface: &WindowSurface, assets: &ScreenAssets) {
+        use voxel_game::text::Component;
+        let size = surface.scale();
+        let size = (size.gui_scaled_width(), size.gui_scaled_height());
+        let mut confirm = ConfirmScreen::new(
+            &assets.creative.font,
+            &assets.lang,
+            size,
+            &Component::translatable("deathScreen.quit.confirm"),
+            &Component::empty(),
+            &Component::translatable("deathScreen.titleScreen"),
+            &Component::translatable("deathScreen.respawn"),
+        )
+        .with_background(ConfirmBackground::Death);
+        confirm.set_delay(20);
+        self.confirm = Some(confirm);
+    }
+
+    /// What the confirmation's callback does: yes leaves; no respawns and
+    /// closes the screens.
+    fn confirm_action(
+        &mut self,
+        action: ConfirmAction,
+        session: &mut PlaySession,
+        surface: &mut WindowSurface,
+    ) -> Result {
+        match action {
+            ConfirmAction::Yes => surface.request_close(),
+            ConfirmAction::No => {
+                session.respawn()?;
+                self.close_death(surface);
+            }
+        }
+        Ok(())
+    }
+
+    /// A scripted Escape: the confirmation answers no once awake; else the
+    /// pause menu opens, or closes.
+    fn scripted_escape(
+        &mut self,
+        session: &mut PlaySession,
+        surface: &mut WindowSurface,
+        assets: &ScreenAssets,
+    ) -> Result {
+        if let Some(confirm) = &self.confirm {
+            if let Some(action) = confirm.escape() {
+                self.confirm_action(action, session, surface)?;
+            }
+        } else if self.pause.is_some() {
             self.close_pause(surface);
         } else {
             self.open_pause(surface, assets);
         }
+        Ok(())
     }
 
-    /// A scripted press of the primary button on the death screen or the
-    /// pause menu, at the mouse.
-    fn scripted_press(&mut self, session: &mut PlaySession, surface: &mut WindowSurface) -> Result {
+    /// A scripted press of the primary button on the confirmation, the death
+    /// screen or the pause menu, at the mouse.
+    fn scripted_press(
+        &mut self,
+        session: &mut PlaySession,
+        surface: &mut WindowSurface,
+        assets: &ScreenAssets,
+    ) -> Result {
         let mouse = (self.gui_mouse.0 as i32, self.gui_mouse.1 as i32);
-        if let Some(action) = self.death.as_mut().and_then(|death| death.clicked(mouse)) {
-            self.death_action(action, session, surface)?;
+        if let Some(confirm) = &self.confirm {
+            if let Some(action) = confirm.clicked(mouse) {
+                self.confirm_action(action, session, surface)?;
+            }
+        } else if let Some(action) = self.death.as_mut().and_then(|death| death.clicked(mouse)) {
+            self.death_action(action, session, surface, assets)?;
         } else if let Some(action) = self.pause.as_ref().and_then(|pause| pause.clicked(mouse)) {
             self.pause_action(action, surface);
         }
         Ok(())
+    }
+
+    /// The mouse in GUI units, from a cursor position in pixels.
+    fn move_gui_mouse(&mut self, (x, y): (f64, f64), surface: &WindowSurface) {
+        let size = surface.scale();
+        let (width, height) = surface.window_size();
+        self.gui_mouse = (
+            x * f64::from(size.gui_scaled_width()) / f64::from(width.max(1)),
+            y * f64::from(size.gui_scaled_height()) / f64::from(height.max(1)),
+        );
+    }
+
+    /// An event for the open confirmation: Escape answers no once it is
+    /// awake.
+    fn confirm_event(
+        &mut self,
+        event: glfw::WindowEvent,
+        session: &mut PlaySession,
+        surface: &mut WindowSurface,
+    ) -> Result {
+        use glfw::{Action, Key, WindowEvent};
+        let Some(confirm) = self.confirm.as_mut() else {
+            return Ok(());
+        };
+        let action = match event {
+            WindowEvent::Key(Key::Escape, _, Action::Press, _) => confirm.escape(),
+            WindowEvent::Key(Key::Tab, _, Action::Press | Action::Repeat, modifiers) => {
+                confirm.tab(!modifiers.contains(glfw::Modifiers::Shift));
+                None
+            }
+            WindowEvent::Key(Key::Enter | Key::KpEnter | Key::Space, _, Action::Press, _) => {
+                confirm.pressed()
+            }
+            WindowEvent::CursorPos(x, y) => {
+                self.move_gui_mouse((x, y), surface);
+                None
+            }
+            WindowEvent::MouseButton(glfw::MouseButton::Button1, Action::Press, _) => {
+                confirm.clicked((self.gui_mouse.0 as i32, self.gui_mouse.1 as i32))
+            }
+            _ => None,
+        };
+        match action {
+            Some(action) => self.confirm_action(action, session, surface),
+            None => Ok(()),
+        }
     }
 
     /// An event for the open death screen: it takes no Escape.
@@ -268,6 +381,7 @@ impl Controls {
         event: glfw::WindowEvent,
         session: &mut PlaySession,
         surface: &mut WindowSurface,
+        assets: &ScreenAssets,
     ) -> Result {
         use glfw::{Action, Key, WindowEvent};
         let Some(death) = self.death.as_mut() else {
@@ -282,12 +396,7 @@ impl Controls {
                 death.pressed()
             }
             WindowEvent::CursorPos(x, y) => {
-                let size = surface.scale();
-                let (width, height) = surface.window_size();
-                self.gui_mouse = (
-                    x * f64::from(size.gui_scaled_width()) / f64::from(width.max(1)),
-                    y * f64::from(size.gui_scaled_height()) / f64::from(height.max(1)),
-                );
+                self.move_gui_mouse((x, y), surface);
                 None
             }
             WindowEvent::MouseButton(glfw::MouseButton::Button1, Action::Press, _) => {
@@ -296,7 +405,7 @@ impl Controls {
             _ => None,
         };
         match action {
-            Some(action) => self.death_action(action, session, surface),
+            Some(action) => self.death_action(action, session, surface, assets),
             None => Ok(()),
         }
     }
@@ -593,7 +702,7 @@ impl Controls {
             self.gui_mouse = mouse;
         }
         if held.escape {
-            self.scripted_escape(surface, assets);
+            self.scripted_escape(session, surface, assets)?;
         }
         if held.chat {
             if self.chat.is_some() {
@@ -627,7 +736,7 @@ impl Controls {
             self.close_chat(surface);
         }
         if held.press.is_some() {
-            self.scripted_press(session, surface)?;
+            self.scripted_press(session, surface, assets)?;
         }
         if let (Some((button, shift)), Some(screen)) = (held.press, self.screen.as_mut()) {
             let menu = session.active_menu().clone();
@@ -696,8 +805,11 @@ impl Controls {
             self.disconnected_event(event, surface);
             return Ok(());
         }
+        if self.confirm.is_some() && for_screen {
+            return self.confirm_event(event, session, surface);
+        }
         if self.death.is_some() && for_screen {
-            return self.death_event(event, session, surface);
+            return self.death_event(event, session, surface, assets);
         }
         if self.pause.is_some() && for_screen {
             self.pause_event(event, surface);

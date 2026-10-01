@@ -208,9 +208,9 @@ Bitti: `Component`/dil (`en_us`), stilli yazı, `EditBox`, ipucu kutusu.
   anında yeniden doğma kuralı (`immediate_respawn`, oyun olayı 11);
   `death_screen` oracle'ı gerçek Java ekranına karşı 14 satır. Canlı:
   öldür → ekran → Respawn → yeni can → ekran kapanır. Artık otomatik
-  yeniden doğma yok. Yapılmadı: "Title Screen" bağlantıyı doğrudan keser
-  (Java'nın "Çıkmak istediğine emin misin?" `ConfirmScreen`'i ve başlık ekranı
-  yok), taslak rapor simgesi, ölüm nedeninin tıklanabilir bağlantıları,
+  yeniden doğma yok. Yapılmadı: "Title Screen" hardcore değilse önce
+  `ConfirmScreen` (`deathScreen.quit.confirm`, 20 tik gecikme; hayır = yeniden
+  doğ) ister, evet bağlantıyı keser (başlık ekranı yok), taslak rapor simgesi, ölüm nedeninin tıklanabilir bağlantıları,
   ölü oyuncu olarak girişte ekran (seviye yüklenemiyor).
 - **Kısmen** Bağlantı kopması ekranı (`DisconnectedScreen`): `Disconnect`
   paketinin nedeni, okuma hatası (`Internal Exception: …`) ve akış sonu

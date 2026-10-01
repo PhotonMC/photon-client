@@ -490,6 +490,7 @@ public final class GuiOracle {
                 case "command_parse" -> commandParse(request);
                 case "command_suggest" -> commandSuggest(request);
                 case "pause_screen" -> pauseScreen(request);
+                case "confirm_screen" -> confirmScreen(request);
                 case "death_screen" -> deathScreen(request);
                 case "disconnected_screen" -> disconnectedScreen(request);
                 case "tab_list" -> tabList(request);
@@ -865,6 +866,97 @@ public final class GuiOracle {
             pause.extractRenderState(screen.graphics(), mouseX, mouseY, 0.0F);
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());
+            out.add("ops", record(screen.state()));
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /** A sound manager that plays nothing, for the buttons that click when pressed. */
+    static final class SilentSounds extends net.minecraft.client.sounds.SoundManager {
+        SilentSounds() {
+            super(null);
+        }
+
+        @Override
+        public net.minecraft.client.sounds.SoundEngine.PlayResult play(
+                net.minecraft.client.resources.sounds.SoundInstance instance) {
+            return null;
+        }
+    }
+
+    /**
+     * The game's own confirmation screen (or the death screen's own), after some ticks and
+     * some key presses and a click: what its callback was told, and what it draws.
+     */
+    private static JsonObject confirmScreen(JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            int width = row.get("width").getAsInt();
+            int height = row.get("height").getAsInt();
+            int mouseX = row.get("mouse").getAsJsonArray().get(0).getAsInt();
+            int mouseY = row.get("mouse").getAsJsonArray().get(1).getAsInt();
+            var screen = screen(width, height, mouseX, mouseY);
+            var minecraft = screen.minecraft();
+            set(minecraft, "soundManager", unsafe.allocateInstance(SilentSounds.class));
+            if (row.get("in_world").getAsBoolean()) {
+                set(minecraft, "level", unsafe.allocateInstance(net.minecraft.client.multiplayer.ClientLevel.class));
+            }
+            var callbacks = new JsonArray();
+            it.unimi.dsi.fastutil.booleans.BooleanConsumer callback =
+                result -> callbacks.add(result ? "yes" : "no");
+            Component title = Component.literal(row.get("title").getAsString());
+            Component message = Component.literal(row.get("message").getAsString());
+            Component yes = Component.literal(row.get("yes").getAsString());
+            Component no = Component.literal(row.get("no").getAsString());
+            net.minecraft.client.gui.screens.ConfirmScreen confirm =
+                row.get("death").getAsBoolean()
+                    ? new net.minecraft.client.gui.screens.DeathScreen.TitleConfirmScreen(
+                        callback, title, message, yes, no)
+                    : new net.minecraft.client.gui.screens.ConfirmScreen(callback, title, message, yes, no);
+            set(confirm, "width", width);
+            set(confirm, "height", height);
+            var init = net.minecraft.client.gui.screens.ConfirmScreen.class.getDeclaredMethod("init");
+            init.setAccessible(true);
+            init.invoke(confirm);
+            int delay = row.get("delay").getAsInt();
+            if (delay > 0) {
+                confirm.setDelay(delay);
+            }
+            for (int tick = 0; tick < row.get("ticks").getAsInt(); tick++) {
+                confirm.tick();
+            }
+            for (var key : row.getAsJsonArray("keys")) {
+                String name = key.getAsString();
+                int code = switch (name) {
+                    case "tab", "shift+tab" -> 258;
+                    case "escape" -> 256;
+                    case "enter" -> 257;
+                    case "space" -> 32;
+                    default -> throw new IllegalArgumentException(name);
+                };
+                confirm.keyPressed(new net.minecraft.client.input.KeyEvent(code, 0, name.startsWith("shift+") ? 1 : 0));
+            }
+            if (row.get("click").getAsBoolean()) {
+                confirm.mouseClicked(new net.minecraft.client.input.MouseButtonEvent(mouseX, mouseY,
+                    new net.minecraft.client.input.MouseButtonInfo(0, 0)), false);
+            }
+            if (row.get("death").getAsBoolean()) {
+                confirm.extractBackground(screen.graphics(), mouseX, mouseY, 0.0F);
+            } else {
+                // Without a level the panorama would draw first, which is not a GUI drawing.
+                var background = net.minecraft.client.gui.screens.Screen.class.getDeclaredMethod(
+                    "extractMenuBackground", GuiGraphicsExtractor.class);
+                background.setAccessible(true);
+                background.invoke(confirm, screen.graphics());
+            }
+            confirm.extractRenderState(screen.graphics(), mouseX, mouseY, 0.0F);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("callbacks", callbacks);
             out.add("ops", record(screen.state()));
             rows.add(out);
         }

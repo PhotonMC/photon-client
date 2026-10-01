@@ -654,9 +654,60 @@ def gui_suggestion_cases():
     yield {"case_id": "gui/suggestions", "family": "gui", "operation": "suggestions", "rows": rows}
 
 
+def gui_confirm_screen_cases():
+    """The confirmation screen (and the death screen's own, over its red
+    gradient): the message wrapped and clipped to fifteen lines, the delay
+    that keeps the buttons asleep and Escape shut, Tab, Enter and clicks, and
+    what the callback was told."""
+    def row(label, width=427, height=240, mouse=(0, 0), death=False, title="Are you sure?",
+            message="This cannot be undone.", yes="Yes", no="No", delay=0, ticks=0, keys=(), click=False,
+            in_world=False):
+        return {"label": label, "width": width, "height": height, "mouse": list(mouse), "death": death,
+                "title": title, "message": message, "yes": yes, "no": no, "delay": delay, "ticks": ticks,
+                "keys": list(keys), "click": click, "in_world": in_world}
+
+    long_message = ("This message is long enough that it has to wrap onto several lines of the screen "
+                    "before the buttons, and it keeps going so that the third line is needed too.")
+    lines = lambda count: "\n".join(f"line {n}" for n in range(count))
+    quit_row = dict(death=True, title="Are you sure you want to quit?", message="", yes="Title Screen",
+                    no="Respawn", delay=20)
+    rows = [
+        row("plain"), row("plain-in-world", in_world=True), row("empty-message", message="", mouse=(0, 0)),
+        row("wrapped", message=long_message), row("wrapped-narrow", 320, 240, message=long_message),
+        row("wrapped-wide", 854, 480, message=long_message), row("newlines", message="one\ntwo\n\nfour"),
+        row("fifteen-lines", message=lines(15)), row("sixteen-lines", message=lines(16)),
+        row("many-lines", message=lines(40)), row("custom-buttons", yes="Open", no="Cancel"),
+        row("hover-yes", mouse=(100, 145)), row("hover-no", mouse=(300, 145)),
+        row("hover-gap", mouse=(213, 145)), row("hover-elsewhere", mouse=(10, 10)),
+        row("quit", **quit_row), row("quit-awake", ticks=20, **quit_row),
+        row("quit-hover-asleep", mouse=(100, 140), **quit_row),
+        row("quit-hover-awake", mouse=(100, 140), ticks=20, **quit_row),
+        row("quit-small", 320, 240, **quit_row),
+        row("delay-one-short", delay=20, ticks=19), row("delay-done", delay=20, ticks=20),
+        row("delay-long", delay=20, ticks=80),
+        row("tab", keys=["tab"]), row("tab-twice", keys=["tab", "tab"]), row("tab-thrice", keys=["tab"] * 3),
+        row("shift-tab", keys=["shift+tab"]), row("shift-tab-twice", keys=["shift+tab", "shift+tab"]),
+        row("tab-asleep", delay=20, ticks=5, keys=["tab"]),
+        row("tab-awake", delay=20, ticks=20, keys=["tab"]),
+        row("enter-unfocused", keys=["enter"]), row("enter-yes", keys=["tab", "enter"]),
+        row("space-no", keys=["tab", "tab", "space"]),
+        row("enter-asleep", delay=20, ticks=5, keys=["tab", "enter"]),
+        row("escape", keys=["escape"]), row("escape-asleep", delay=20, ticks=5, keys=["escape"]),
+        row("escape-last-tick", delay=20, ticks=19, keys=["escape"]),
+        row("escape-awake", delay=20, ticks=20, keys=["escape"]),
+        row("escape-quit", ticks=25, keys=["escape"], **quit_row),
+        row("click-yes", mouse=(100, 145), click=True), row("click-no", mouse=(300, 145), click=True),
+        row("click-gap", mouse=(213, 145), click=True),
+        row("click-asleep", mouse=(100, 145), delay=20, ticks=5, click=True),
+        row("click-awake", mouse=(300, 145), delay=20, ticks=20, click=True),
+    ]
+    yield {"case_id": "gui/confirm-screen", "family": "gui", "operation": "confirm_screen", "rows": rows}
+
+
 def gui_generators():
     return itertools.chain(
         gui_cases(), gui_suggestion_cases(), gui_title_cases(), gui_boss_bar_cases(),
         gui_sidebar_cases(), gui_command_parse_cases(), gui_command_suggest_cases(),
         gui_pause_screen_cases(), gui_death_screen_cases(), gui_disconnected_screen_cases(),
-        gui_tab_list_cases(), gui_container_screen_cases())
+        gui_tab_list_cases(), gui_container_screen_cases(),
+        gui_confirm_screen_cases())
