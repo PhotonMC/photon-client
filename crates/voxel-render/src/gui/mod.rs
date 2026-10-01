@@ -16,6 +16,7 @@ pub mod items;
 pub mod layout;
 pub mod option_text;
 pub mod options;
+pub mod options_list;
 pub mod pause;
 pub mod screen;
 pub mod sidebar;
@@ -23,6 +24,7 @@ pub mod slider;
 pub mod suggestions;
 pub mod tab_list;
 pub mod titles;
+pub mod video;
 pub mod widgets;
 
 pub use atlas::GuiAtlas;

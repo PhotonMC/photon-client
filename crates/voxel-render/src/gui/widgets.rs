@@ -109,9 +109,9 @@ impl Widget {
 }
 
 /// `extractScrollingStringOverContents`: the label centred in what is
-/// between the margins; a label too wide scrolls in the reference, and
-/// here shows its start. A label of a widget that is not active takes the
-/// grey of one that is not.
+/// between the margins; a label too wide slides to and fro behind the
+/// margins, by the frame's clock. A label of a widget that is not active
+/// takes the grey of one that is not.
 pub fn draw_label(
     frame: &mut GuiFrame,
     atlas: &GuiAtlas,
@@ -128,11 +128,31 @@ pub fn draw_label(
     }
     let width = font.width_of_runs(&runs);
     let text_top = (top + bottom - 9) / 2 + 1;
-    let x = if width > right - left {
-        left
+    if width > right - left {
+        // `ActiveTextCollector.defaultScrollingHelper`.
+        let max_position = f64::from(width - (right - left));
+        let time = frame.millis as f64 / 1000.0;
+        let period = (max_position * 0.5).max(3.0);
+        let alpha = ((std::f64::consts::PI / 2.0)
+            * (std::f64::consts::PI * 2.0 * time / period).cos())
+        .sin()
+            / 2.0
+            + 0.5;
+        let position = alpha * max_position;
+        let mark = frame.mark();
+        frame.styled_text(
+            atlas,
+            font,
+            &runs,
+            left - position as i32,
+            text_top,
+            0xFFFF_FFFF,
+            true,
+        );
+        frame.clip_from(mark, (left, top, right, bottom));
     } else {
         let centre = (left + right) / 2;
-        centre.clamp(left + width / 2, right - width / 2) - width / 2
-    };
-    frame.styled_text(atlas, font, &runs, x, text_top, 0xFFFF_FFFF, true);
+        let x = centre.clamp(left + width / 2, right - width / 2) - width / 2;
+        frame.styled_text(atlas, font, &runs, x, text_top, 0xFFFF_FFFF, true);
+    }
 }

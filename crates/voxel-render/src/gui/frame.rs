@@ -57,6 +57,9 @@ pub enum DrawOp {
         scale: f32,
         colour: u32,
         shadow: bool,
+        /// How wide the text is, which decides whether a scissor leaves any
+        /// of it.
+        width: i32,
         /// Each run: its text, its colour if it has one, bold, italic.
         runs: Vec<(String, Option<u32>, bool, bool)>,
     },
@@ -67,6 +70,7 @@ pub enum DrawOp {
 pub struct FrameMark {
     vertices: usize,
     items: usize,
+    log: usize,
 }
 
 /// One frame of GUI: triangles and the runs they blend in.
@@ -77,6 +81,9 @@ pub struct GuiFrame {
     pub vertices: Vec<GuiVertex>,
     pub batches: Vec<(GuiBlend, u32, u32)>,
     pub items: Vec<crate::gui::items::GuiItemVertex>,
+    /// The clock a label that does not fit in its button scrolls by
+    /// (`Util.getMillis`).
+    pub millis: u64,
 }
 
 impl GuiFrame {
@@ -151,6 +158,7 @@ impl GuiFrame {
         FrameMark {
             vertices: self.vertices.len(),
             items: self.items.len(),
+            log: self.log.as_ref().map_or(0, Vec::len),
         }
     }
 
@@ -225,35 +233,121 @@ impl GuiFrame {
         atlas: &GuiAtlas,
         name: &str,
         tile: (i32, i32),
+        rect: (i32, i32, i32, i32),
+    ) {
+        self.tile_texture_from(atlas, name, tile, (0, 0), rect);
+    }
+
+    /// `GuiGraphics.blit` of a texture `tile` big repeated over a rectangle,
+    /// the first texel being `(u, v)`: the list's background, which moves
+    /// with the scroll.
+    pub fn tile_texture_from(
+        &mut self,
+        atlas: &GuiAtlas,
+        name: &str,
+        tile: (i32, i32),
+        (u, v): (i32, i32),
         (x, y, w, h): (i32, i32, i32, i32),
     ) {
         if let Some(log) = &mut self.log {
+            let (tw, th) = (tile.0 as f32, tile.1 as f32);
             log.push(DrawOp::Texture {
                 name: name.to_owned(),
                 rect: (x, y, x + w, y + h),
-                uv: (0.0, w as f32 / tile.0 as f32, 0.0, h as f32 / tile.1 as f32),
+                uv: (
+                    u as f32 / tw,
+                    u as f32 / tw + w as f32 / tw,
+                    v as f32 / th,
+                    v as f32 / th + h as f32 / th,
+                ),
             });
         }
         let mut top = 0;
         while top < h {
-            let piece_h = tile.1.min(h - top);
+            let from_v = (v + top).rem_euclid(tile.1);
+            let piece_h = (tile.1 - from_v).min(h - top);
             let mut left = 0;
             while left < w {
-                let piece_w = tile.0.min(w - left);
+                let from_u = (u + left).rem_euclid(tile.0);
+                let piece_w = (tile.0 - from_u).min(w - left);
                 self.blit_part(
                     atlas,
                     GuiBlend::Translucent,
                     &format!("texture/{name}"),
                     tile,
-                    (0, 0),
+                    (from_u, from_v),
                     x + left,
                     y + top,
                     piece_w,
                     piece_h,
                 );
-                left += tile.0;
+                left += piece_w;
             }
-            top += tile.1;
+            top += piece_h;
+        }
+    }
+
+    /// `GuiGraphics.enableScissor` over what was drawn since `mark`: each
+    /// rectangle of two triangles is cut to `(left, top, right, bottom)`, its
+    /// texture with it; what falls outside is flattened to nothing, and the
+    /// reference keeps no call for it. Only upright rectangles are cut
+    /// exactly, which is all a list has in it.
+    pub fn clip_from(&mut self, mark: FrameMark, (left, top, right, bottom): (i32, i32, i32, i32)) {
+        if let Some(log) = &mut self.log {
+            let mut index = 0;
+            log.retain(|op| {
+                index += 1;
+                if index <= mark.log {
+                    return true;
+                }
+                let (x0, y0, x1, y1) = match op {
+                    DrawOp::Fill { rect, .. }
+                    | DrawOp::Sprite { rect, .. }
+                    | DrawOp::Texture { rect, .. } => *rect,
+                    DrawOp::Text { x, y, width, .. } => {
+                        (*x as i32, *y as i32, *x as i32 + width, *y as i32 + 8)
+                    }
+                };
+                x0 < right && x1 > left && y0 < bottom && y1 > top
+            });
+        }
+        let first = mark.vertices;
+        let (left, top, right, bottom) = (left as f32, top as f32, right as f32, bottom as f32);
+        for quad in self.vertices[first..].chunks_exact_mut(6) {
+            let xs = quad.iter().map(|vertex| vertex.position[0]);
+            let ys = quad.iter().map(|vertex| vertex.position[1]);
+            let (x0, x1) = (
+                xs.clone().fold(f32::INFINITY, f32::min),
+                xs.fold(f32::NEG_INFINITY, f32::max),
+            );
+            let (y0, y1) = (
+                ys.clone().fold(f32::INFINITY, f32::min),
+                ys.fold(f32::NEG_INFINITY, f32::max),
+            );
+            if x0 >= left && x1 <= right && y0 >= top && y1 <= bottom {
+                continue;
+            }
+            if x1 <= left || x0 >= right || y1 <= top || y0 >= bottom {
+                let corner = quad[0];
+                quad.fill(GuiVertex {
+                    position: [left, top],
+                    ..corner
+                });
+                continue;
+            }
+            let (cx0, cx1) = (x0.max(left), x1.min(right));
+            let (cy0, cy1) = (y0.max(top), y1.min(bottom));
+            // The texture follows the position across the quad, whose first
+            // corner is its top left and third its bottom right.
+            let (a, b) = (quad[0], quad[2]);
+            let u_at = |x: f32| a.uv[0] + (b.uv[0] - a.uv[0]) * (x - x0) / (x1 - x0);
+            let v_at = |y: f32| a.uv[1] + (b.uv[1] - a.uv[1]) * (y - y0) / (y1 - y0);
+            for vertex in quad.iter_mut() {
+                let x = if vertex.position[0] <= x0 { cx0 } else { cx1 };
+                let y = if vertex.position[1] <= y0 { cy0 } else { cy1 };
+                vertex.uv = [u_at(x), v_at(y)];
+                vertex.position = [x, y];
+            }
         }
     }
 
@@ -607,6 +701,7 @@ impl GuiFrame {
         runs: &[voxel_game::text::Run],
         colour: u32,
         shadow: bool,
+        width: i32,
     ) {
         let Some(log) = &mut self.log else {
             return;
@@ -621,6 +716,7 @@ impl GuiFrame {
             scale: 1.0,
             colour,
             shadow,
+            width,
             runs: merged_runs(runs),
         });
     }
@@ -642,7 +738,13 @@ impl GuiFrame {
         default_colour: u32,
         shadow: bool,
     ) {
-        self.log_text((x, y), runs, default_colour, shadow);
+        self.log_text(
+            (x, y),
+            runs,
+            default_colour,
+            shadow,
+            font.width_of_runs(runs),
+        );
         let unpack =
             |colour: u32| [16, 8, 0, 24].map(|shift| ((colour >> shift) & 0xFF) as f32 / 255.0);
         let mut pen = x as f32;
@@ -821,4 +923,64 @@ fn merged_runs(runs: &[voxel_game::text::Run]) -> Vec<(String, Option<u32>, bool
         }
     }
     merged
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A rectangle `(x0, y0, x1, y1)` as the frame builds it, its texture
+    /// running from `(0, 0)` to `(1, 1)`.
+    fn quad(frame: &mut GuiFrame, (x0, y0, x1, y1): (f32, f32, f32, f32)) {
+        let corner = |x: f32, y: f32, u: f32, v: f32| GuiVertex {
+            position: [x, y],
+            uv: [u, v],
+            colour: [1.0; 4],
+        };
+        let corners = [
+            corner(x0, y0, 0.0, 0.0),
+            corner(x0, y1, 0.0, 1.0),
+            corner(x1, y1, 1.0, 1.0),
+            corner(x1, y0, 1.0, 0.0),
+        ];
+        for index in [0, 1, 2, 0, 2, 3] {
+            frame.vertices.push(corners[index]);
+        }
+    }
+
+    #[test]
+    fn a_scissor_cuts_a_rectangle_and_its_texture_and_drops_what_is_outside() {
+        let mut frame = GuiFrame {
+            log: Some(Vec::new()),
+            ..GuiFrame::default()
+        };
+        let mark = frame.mark();
+        let sprite = |rect| DrawOp::Sprite {
+            name: "a".to_owned(),
+            rect,
+        };
+        // Half in, wholly below, wholly above.
+        quad(&mut frame, (0.0, 0.0, 10.0, 20.0));
+        quad(&mut frame, (0.0, 30.0, 10.0, 40.0));
+        quad(&mut frame, (0.0, 2.0, 10.0, 8.0));
+        frame.log.as_mut().unwrap().extend([
+            sprite((0, 0, 10, 20)),
+            sprite((0, 30, 10, 40)),
+            sprite((0, 2, 10, 8)),
+        ]);
+        frame.clip_from(mark, (0, 10, 10, 25));
+        // The log keeps what the scissor leaves any of, as the reference.
+        assert_eq!(frame.log.as_ref().unwrap(), &[sprite((0, 0, 10, 20))]);
+        // The first rectangle keeps the part from 10 down, its texture the
+        // lower half; the second has none left.
+        let first = &frame.vertices[0..6];
+        assert!(first.iter().all(|vertex| vertex.position[1] >= 10.0));
+        assert!(first.iter().any(|vertex| (vertex.uv[1] - 0.5).abs() < 1e-6));
+        let second = &frame.vertices[6..12];
+        assert!(
+            second
+                .iter()
+                .all(|vertex| vertex.position == second[0].position)
+        );
+    }
 }

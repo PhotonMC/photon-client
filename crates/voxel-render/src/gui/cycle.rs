@@ -69,6 +69,24 @@ impl<V: Clone + PartialEq> CycleButton<V> {
         &self.value
     }
 
+    /// `setValue`: the button takes a value, which moves its place in the
+    /// list if the list has it.
+    pub fn set_value(&mut self, lang: &Lang, value: V) {
+        if let Some(index) = self.values.iter().position(|candidate| *candidate == value) {
+            self.index = index as i32;
+        }
+        self.value = value;
+        self.update_label(lang);
+    }
+
+    /// `isMouseOver`: the button is active and the mouse is on it.
+    pub fn is_mouse_over(&self, arena: &Arena, mouse: (f64, f64)) -> bool {
+        self.widget.is_active()
+            && self
+                .widget
+                .contains(arena, (mouse.0 as i32, mouse.1 as i32))
+    }
+
     fn update_label(&mut self, lang: &Lang) {
         let text = generic_value(&self.name, (self.value_text)(self.value()));
         self.widget.kind = Kind::Button {

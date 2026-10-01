@@ -847,6 +847,131 @@ def gui_options_screen_cases():
     yield {"case_id": "gui/options-screen", "family": "gui", "operation": "options_screen", "rows": rows}
 
 
+def gui_video_settings_cases():
+    """The video settings screen: the list of display, quality and preference
+    options in several window sizes and GUI scales, scrolled with the wheel and
+    the scroll bar, hovered, pressed (a cycle button, with and without Shift,
+    a slider by a press and a drag), Control and the wheel through the GUI
+    scales, and the preset turning to Custom when a quality option changes.
+    Nothing presses the options whose reference effect needs a window (full
+    screen) or a pipeline (the presets): those are drawn and not pressed."""
+    def row(label, framebuffer=(854, 480), gui_scale=2, in_world=True, mouse=(0, 0), steps=()):
+        return {"label": label, "framebuffer": list(framebuffer), "gui_scale": gui_scale,
+                "in_world": in_world, "mouse": list(mouse), "steps": list(steps)}
+
+    click = lambda x, y, shift=False: {"do": "click", "x": x, "y": y, "shift": shift}
+    drag = lambda x, y: {"do": "drag", "x": x, "y": y}
+    release = lambda x=0, y=0: {"do": "release", "x": x, "y": y}
+    wheel = lambda dy, x=200, y=100, ctrl=False: {"do": "scroll", "x": x, "y": y, "dy": dy, "ctrl": ctrl}
+    rows = [
+        row("in-world"), row("out-of-world", in_world=False),
+        row("small", (640, 480)), row("large", (1280, 720)), row("tiny", (640, 480), 3),
+        row("auto-large", (1920, 1080), 0), row("short", (854, 300)), row("scale-1", gui_scale=1),
+        row("very-short", (640, 400), 4), row("wide", (1708, 480), in_world=False),
+        row("hover-gui-scale", mouse=(250, 110)), row("hover-fullscreen-resolution", mouse=(200, 60)),
+        row("hover-gamma", mouse=(100, 160)), row("hover-done", mouse=(213, 223)),
+        row("hover-gap", mouse=(212, 110)), row("hover-first-pixel-of-last", mouse=(100, 206)),
+        row("hover-under-header", mouse=(100, 30), steps=[wheel(-2)]),
+        row("hover-header-line", mouse=(100, 40), steps=[wheel(-1)]),
+        row("scroll-1", steps=[wheel(-1)]), row("scroll-5", steps=[wheel(-1)] * 5),
+        row("scroll-10", steps=[wheel(-1)] * 10), row("scroll-end", steps=[wheel(-100)]),
+        row("scroll-up-past-top", steps=[wheel(-3), wheel(10)]),
+        row("scroll-fraction", steps=[wheel(-0.5)]), row("scroll-fraction-up", steps=[wheel(-4), wheel(1.5)]),
+        row("scroll-over-header", steps=[wheel(-3, 200, 10)]),
+        row("scroll-over-widget", steps=[wheel(-2, 250, 110)]),
+        row("scroll-end-short", (854, 300), steps=[wheel(-100)]),
+        row("scroll-end-very-short", (640, 400), 4, steps=[wheel(-100)]),
+        row("scroll-end-large", (1280, 720), steps=[wheel(-100)]),
+        row("scroll-end-out-of-world", in_world=False, steps=[wheel(-100)]),
+        row("bar-drag", steps=[click(379, 60), drag(379, 90), release(379, 90)]),
+        row("bar-drag-held", steps=[click(379, 60), drag(379, 90)]),
+        row("bar-drag-past-bottom", steps=[click(379, 60), drag(379, 230)]),
+        row("bar-drag-above", steps=[wheel(-5), click(379, 100), drag(379, 20)]),
+        row("bar-drag-in-steps", steps=[click(379, 50), drag(379, 70), drag(379, 100), drag(379, 130)]),
+        row("bar-click-only", steps=[click(379, 100), release(379, 100)]),
+        row("bar-drag-short", (854, 300), steps=[click(379, 50), drag(379, 80)]),
+        row("bar-drag-very-short", (640, 400), 4, steps=[click(100, 40), drag(100, 60)]),
+        row("bar-edge-left", steps=[click(376, 60), drag(376, 100)]),
+        row("bar-edge-right", steps=[click(382, 60), drag(382, 100)]),
+        row("bar-beside", steps=[click(383, 60), drag(383, 100)]),
+        row("gui-scale-press", steps=[click(250, 110)]),
+        row("gui-scale-press-hover", mouse=(250, 110), steps=[click(250, 110)]),
+        row("gui-scale-press-twice", steps=[click(250, 110), click(250, 110)]),
+        row("gui-scale-press-thrice", steps=[click(250, 110)] * 3),
+        row("gui-scale-shift", steps=[click(250, 110, True)]),
+        row("gui-scale-from-auto", (1920, 1080), 0, steps=[click(300, 110)]),
+        row("gui-scale-large-auto-twice", (1920, 1080), 0, steps=[click(300, 110), click(300, 110)]),
+        row("gui-scale-then-scroll", steps=[click(250, 110), wheel(-3, 300, 100)]),
+        row("gui-scale-scrolled", steps=[wheel(-5), click(250, 50)]),
+        row("gui-scale-then-press-vsync", steps=[click(250, 110), click(250, 85)]),
+        row("gui-scale-short", (854, 300), steps=[click(250, 110)]),
+        row("gui-scale-shift-wraps", (1920, 1080), 0, steps=[click(300, 110, True)]),
+        row("press-vsync", steps=[click(250, 85)]), row("press-vsync-away", mouse=(5, 5), steps=[click(250, 85)]),
+        row("press-vsync-twice", steps=[click(250, 85), click(250, 85)]),
+        row("press-vsync-shift", steps=[click(250, 85, True)]),
+        row("press-inactivity", steps=[click(100, 110)]),
+        row("press-exclusive", steps=[click(250, 135)]),
+        row("press-backend", steps=[click(250, 160)]), row("press-backend-3", steps=[click(250, 160)] * 3),
+        row("press-gap", steps=[click(212, 85)]), row("press-header-line", steps=[click(100, 40)]),
+        row("press-outside-row", steps=[click(30, 85)]), row("press-under-header", steps=[click(100, 20)]),
+        row("press-two-then-move-focus", steps=[click(250, 85), click(100, 110)]),
+        row("press-slider-framerate", steps=[click(100, 85)]),
+        row("press-slider-framerate-release", steps=[click(100, 85), release(100, 85)]),
+        row("drag-slider-framerate", steps=[click(100, 85), drag(150, 85), release(150, 85)]),
+        row("drag-slider-framerate-held", steps=[click(100, 85), drag(190, 85)]),
+        row("drag-slider-framerate-end", steps=[click(100, 85), drag(300, 85), release(300, 85)]),
+        row("drag-slider-framerate-start", steps=[click(100, 85), drag(0, 85), release(0, 85)]),
+        row("press-slider-gamma", steps=[click(70, 160)]), row("drag-slider-gamma", steps=[click(70, 160), drag(60, 160)]),
+        row("drag-slider-gamma-100", steps=[click(70, 160), drag(300, 160), release(300, 160)]),
+        row("drag-slider-gamma-0", steps=[click(70, 160), drag(10, 160), release(10, 160)]),
+        row("press-resolution-slider", steps=[click(100, 60)]),
+        row("press-resolution-slider-drag", steps=[click(100, 60), drag(200, 60), release(200, 60)]),
+        row("press-preset-last-pixel", steps=[click(170, 206)]),
+        row("press-preset-last-pixel-release", steps=[click(170, 206), release(170, 206)]),
+        row("press-preset-scrolled-in", steps=[wheel(-9), click(170, 100)]),
+        row("press-ao-custom", steps=[wheel(-10), click(100, 170)]),
+        row("press-ao-custom-twice", steps=[wheel(-10), click(100, 170), click(100, 170)]),
+        row("press-shadows-custom", steps=[wheel(-10), click(100, 180)]),
+        row("press-particles-custom", steps=[wheel(-10), click(300, 170)]),
+        row("press-vsync-keeps-preset", steps=[wheel(-10), click(250, 20)]),
+        row("press-weather-slider", steps=[wheel(-100), click(300, 110)]),
+        row("press-weather-slider-drag", steps=[wheel(-100), click(300, 110), drag(250, 110), release(250, 110)]),
+        row("press-cloud-range-clipped", steps=[wheel(-100), click(300, 40)]),
+        row("press-cutout-leaves", steps=[wheel(-100), click(100, 60)]),
+        row("press-transparency", steps=[wheel(-100), click(300, 60)]),
+        row("anisotropy-asleep", steps=[wheel(-100)]),
+        row("anisotropy-asleep-hover", mouse=(300, 86), steps=[wheel(-100)]),
+        row("anisotropy-asleep-press", steps=[wheel(-100), click(300, 86)]),
+        row("filtering-rgss", steps=[wheel(-100), click(100, 86)]),
+        row("filtering-anisotropic", steps=[wheel(-100), click(100, 86), click(100, 86)]),
+        row("filtering-anisotropic-press-slider", steps=[wheel(-100), click(100, 86)] * 2 + [click(300, 86)]),
+        row("filtering-anisotropic-drag-slider",
+            steps=[wheel(-100), click(100, 86), click(100, 86), click(250, 86), drag(340, 86), release(340, 86)]),
+        row("filtering-back-to-none", steps=[wheel(-100)] + [click(100, 86)] * 3),
+        row("press-autosave", steps=[wheel(-100), click(100, 165)]),
+        row("press-vignette", steps=[wheel(-100), click(300, 165)]),
+        row("press-attack", steps=[wheel(-100), click(100, 190)]),
+        row("press-attack-shift", steps=[wheel(-100), click(100, 190, True)]),
+        row("press-chunk-fade", steps=[wheel(-100), click(300, 190)]),
+        row("drag-chunk-fade", steps=[wheel(-100), click(300, 190), drag(240, 190), release(240, 190)]),
+        row("drag-chunk-fade-zero", steps=[wheel(-100), click(300, 190), drag(0, 190), release(0, 190)]),
+        row("ctrl-wheel-down", steps=[wheel(-1, ctrl=True)]), row("ctrl-wheel-up-at-top", steps=[wheel(1, ctrl=True)]),
+        row("ctrl-wheel-auto-down", (1920, 1080), 0, steps=[wheel(-1, ctrl=True)]),
+        row("ctrl-wheel-auto-up", (1920, 1080), 0, steps=[wheel(1, ctrl=True)]),
+        row("ctrl-wheel-down-twice", (1920, 1080), 3, steps=[wheel(-1, ctrl=True)] * 2),
+        row("ctrl-wheel-down-thrice", (1920, 1080), 3, steps=[wheel(-1, ctrl=True)] * 3),
+        row("ctrl-wheel-up", (1920, 1080), 2, steps=[wheel(1, ctrl=True)]),
+        row("ctrl-wheel-scrolled", steps=[wheel(-5), wheel(-1, ctrl=True)]),
+        row("ctrl-wheel-outside-list", steps=[wheel(-1, 200, 10, True)]),
+        row("ctrl-wheel-fraction", (1920, 1080), 3, steps=[wheel(-0.5, ctrl=True)]),
+        row("ctrl-wheel-focused", steps=[click(250, 85), wheel(-1, ctrl=True)]),
+        row("ctrl-wheel-then-wheel", steps=[wheel(-1, ctrl=True), wheel(-3)]),
+        row("ctrl-wheel-at-1", gui_scale=1, steps=[wheel(-1, ctrl=True)]),
+    ]
+    yield {"case_id": "gui/video-settings-screen", "family": "gui", "operation": "video_settings_screen",
+           "rows": rows}
+
+
 def gui_generators():
     return itertools.chain(
         gui_cases(), gui_suggestion_cases(), gui_title_cases(), gui_boss_bar_cases(),
@@ -854,4 +979,4 @@ def gui_generators():
         gui_pause_screen_cases(), gui_death_screen_cases(), gui_disconnected_screen_cases(),
         gui_tab_list_cases(), gui_container_screen_cases(),
         gui_confirm_screen_cases(), gui_widgets_cases(),
-        gui_options_screen_cases())
+        gui_options_screen_cases(), gui_video_settings_cases())

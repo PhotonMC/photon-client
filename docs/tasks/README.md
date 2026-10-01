@@ -38,7 +38,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T04](T04-options-durumu.md) | Seçenek değerleri ve `options.txt` | M | – | bitti |
 | [T05](T05-slider-cycle-widget.md) | Kaydırıcı ve döngü düğmesi widget'ları | M | T04 | bitti |
 | [T06](T06-options-ekrani.md) | `OptionsScreen` | M | T03, T05 | bitti |
-| [T07](T07-video-ayarlari.md) | `OptionsList` + `VideoSettingsScreen` (FOV, GUI ölçeği) | M | T06 | açık |
+| [T07](T07-video-ayarlari.md) | `OptionsList` + `VideoSettingsScreen` (FOV, GUI ölçeği) | M | T06 | bitti |
 | [T08](T08-sohbet-ayarlari.md) | `ChatOptionsScreen` + sohbet ayarları çizime | M | T06 | açık |
 | [T09](T09-fare-ayarlari.md) | `MouseSettingsScreen` + duyarlılık | S | T06 | açık |
 | [T10](T10-dil-secimi.md) | `LanguageSelectScreen` + dil yeniden yükleme | L | T06 | açık |

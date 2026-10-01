@@ -25,4 +25,7 @@ Grafik seçenekleri gerçek uygulaması (görüş mesafesi, bulanıklık, mipmap
 `docs/gui-oracle.md`, `docs/remaining-work.md`.
 
 ## Devir notu
-(boş)
+- `gui/options_list.rs`: `OptionsList` (Java ölçüleri: satır 310, adım 25, çark 12, çubuk x=satırSağı+8; yerinde `resize`, odaklanan girdiyi görünüre kaydırma) + `SubScreen` (başlık/Done/liste kabuğu; T08/T09 `fill` kapanışıyla yeniden kullanır) + `Control` (kaydırıcı ve döngü düğmesi). `gui/video.rs`: bütün Java satırları tablo olarak; `GuiFrame::clip_from` Java kırpmasını (log'dan da eler) uygular.
+- Java'dan sapma/eklenen: `OptionsSubScreen` yeniden boyutta listeyi yeniden kurmaz, Rust da kurmaz. Etiket kaydırma (`draw_label`) saate bağlandı (`GuiFrame::millis`; oracle saati 0'a sabitler). Yalnız GUI ölçeği çalışır; diğer değerler ekranda yaşar (kapanınca unutulur), `setGraphicsPresetToCustom` var, ön ayarı uygulama yok.
+- Oracle `video_settings_screen` 120 satır: `StubGame` (resizeGui/Ctrl), `NoMonitors`; Done basılmadı (Java `setScreen` sahtede çöker), tam ekran/ön ayar değişimi basılmadı.
+- Açık: Tab/ok odağı (T11), ipuçları, görüş mesafesi vb. gerçek uygulama, değerlerin `options.txt`'e yazılması, `applyValueImmediately=false` 600 ms gecikmesi, canlı oyunda denenmedi (oracle yeterli).

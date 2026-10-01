@@ -200,8 +200,9 @@ Bitti: `Component`/dil (`en_us`), stilli yazı, `EditBox`, ipucu kutusu.
   oyuncu bildirme düğmeleri çizilir ama basınca bir şey olmaz (ekranları yok);
   arka plan bulanıklığı (`blurBeforeThisStratum`, GPU) yok; yerel sunucu
   düzeni (`hasSingleplayerServer`) yok; taslak rapor simgesi yok; ipuçları
-  (simge düğmesi üzerinde bekleyince) yok; Tab dışı ok tuşlarıyla odak yok;
-  uzun etiketin kayan yazısı yok.
+  (simge düğmesi üzerinde bekleyince) yok; Tab dışı ok tuşlarıyla odak yok.
+  Düğmeye sığmayan etiket saate göre kayar (`GuiFrame::millis`, `draw_label`);
+  oracle saati sabitler (T07).
 - **Kısmen** Seçenekler ekranı (`OptionsScreen`, pause → Options...):
   başlık, FOV kaydırıcısı (anında oyuna yansır), Online/dünya seçenekleri
   düğmesi, 10 düğmelik ızgara ve Done; Esc/Done `options.txt` kaydeder ve
@@ -210,6 +211,20 @@ Bitti: `Component`/dil (`en_us`), stilli yazı, `EditBox`, ipucu kutusu.
   Chat, Resource Packs, Accessibility, Telemetry, Credits, Online, Difficulty)
   — düğmeler çizilir ama basınca bir şey olmaz; Telemetry çevrimdışı
   olduğundan etkisiz çizilir; ok tuşlarıyla odak (T11); ipuçları.
+- **Kısmen** Video ayarları (`VideoSettingsScreen`, Options → Video Settings):
+  kaydırmalı liste (`OptionsList`: çark, kaydırma çubuğu sürükleme, Java
+  kırpması, odaktaki girdiyi görünüre kaydırma), bütün Java satırları çizilir
+  ve düğmesi/kaydırıcısı değer tutar; yalnız **GUI ölçeği** çalışır (tıklama,
+  Shift ile geri, Ctrl+tekerlek; pencere ve ekran yeni boyuta kurulur). Yapılmadı:
+  görüş/simülasyon mesafesi, FPS sınırı, V-Sync, tam ekran ve çözünürlüğü,
+  parlaklık, bulut/parçacık/mipmap/anisotropi/gölge/yaprak/saydamlık ve diğer
+  grafik değerleri hiçbir şeyi etkilemez, değerleri `options.txt`'e yazılmaz ve
+  ekran kapanınca unutulur; grafik ön ayarı yalnız "Custom"a döner (ön ayar
+  seçince diğer değerleri ayarlamaz); `applyValueImmediately=false`
+  kaydırıcılar (görüş mesafesi vb.) 600 ms gecikmeden değil bırakınca oturur;
+  Tab/ok tuşlarıyla odak (T11), ipuçları, tam ekran çözünürlüğü listesi
+  (monitör yok), sahte GPU uyarısı ekranı yok. `video_settings_screen`
+  oracle'ı gerçek Java ekranına karşı (120 satır).
 - **Kısmen** Ölüm ekranı (`DeathScreen`, `PlayerCombatKill`, `deathScreen.*`):
   gradyan, başlık/neden/skor (yerel oyuncunun `DATA_SCORE_ID` verisi), "Respawn"
   ve "Title Screen" düğmeleri (20 tik sonra uyanır), hardcore metinleri,

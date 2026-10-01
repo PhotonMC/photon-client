@@ -64,6 +64,7 @@ fn gui_ops(ops: &[voxel_render::gui::DrawOp]) -> Vec<Value> {
                 colour,
                 shadow,
                 runs,
+                ..
             } => json!({
                 "op": "text", "x": f64::from(*x), "y": f64::from(*y), "scale": f64::from(*scale), "color": *colour as i32,
                 "shadow": shadow,
@@ -527,6 +528,75 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                 out.push(json!({
                     "label": row["label"],
                     "fov": fov,
+                    "ops": gui_ops(&frame.log.take().unwrap_or_default()),
+                }));
+                continue;
+            }
+            "video_settings_screen" => {
+                use voxel_render::gui::video::VideoSettingsScreen;
+                use voxel_render::window::scale::WindowScale;
+                let lang = voxel_game::text::Lang::load(&root);
+                let framebuffer = (
+                    row["framebuffer"][0].as_i64().unwrap_or(0) as i32,
+                    row["framebuffer"][1].as_i64().unwrap_or(0) as i32,
+                );
+                let mouse = (
+                    row["mouse"][0].as_i64().unwrap_or(0) as i32,
+                    row["mouse"][1].as_i64().unwrap_or(0) as i32,
+                );
+                let mut window = WindowScale::new(framebuffer.0, framebuffer.1);
+                let mut gui_scale = int("gui_scale");
+                window.set_gui_scale(window.calculate_scale(gui_scale, false));
+                let max_scale = window.calculate_scale(0, false);
+                let mut screen = VideoSettingsScreen::new(
+                    &font,
+                    &lang,
+                    (window.gui_scaled_width(), window.gui_scaled_height()),
+                    row["in_world"].as_bool().unwrap_or(false),
+                    gui_scale,
+                    max_scale,
+                );
+                let mut last = (0.0, 0.0);
+                for step in row["steps"].as_array().ok_or("steps")? {
+                    let at = (
+                        step["x"].as_f64().unwrap_or(last.0),
+                        step["y"].as_f64().unwrap_or(last.1),
+                    );
+                    // `Minecraft.resizeGui`: the window takes the scale.
+                    let mut resize = |new: i32| {
+                        gui_scale = new;
+                        window.set_gui_scale(window.calculate_scale(new, false));
+                        (window.gui_scaled_width(), window.gui_scaled_height())
+                    };
+                    match step["do"].as_str().unwrap_or_default() {
+                        "click" => {
+                            screen.clicked(
+                                &lang,
+                                at,
+                                step["shift"].as_bool().unwrap_or(false),
+                                &mut resize,
+                            );
+                        }
+                        "drag" => screen.dragged(&lang, at, at.1 - last.1),
+                        "release" => screen.released(&lang),
+                        "scroll" => screen.scrolled(
+                            &lang,
+                            at,
+                            step["dy"].as_f64().unwrap_or(0.0),
+                            step["ctrl"].as_bool().unwrap_or(false),
+                            &mut resize,
+                        ),
+                        other => return Err(format!("unknown step {other}")),
+                    }
+                    last = at;
+                }
+                screen.draw(&mut frame, &atlas, &font, mouse);
+                out.push(json!({
+                    "label": row["label"],
+                    "width": window.gui_scaled_width(),
+                    "height": window.gui_scaled_height(),
+                    "gui_scale": gui_scale,
+                    "scroll": screen.scroll_amount(),
                     "ops": gui_ops(&frame.log.take().unwrap_or_default()),
                 }));
                 continue;

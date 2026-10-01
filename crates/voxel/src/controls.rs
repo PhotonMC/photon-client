@@ -13,6 +13,7 @@ use voxel_render::gui::options::{OptionsAction, OptionsInput, OptionsScreen};
 use voxel_render::gui::pause::{PauseAction, PauseScreen};
 use voxel_render::gui::screen::{KeyMods, KeyResult};
 use voxel_render::gui::slider::SliderKey;
+use voxel_render::gui::video::VideoSettingsScreen;
 use voxel_render::window::WindowSurface;
 
 use crate::screens::{
@@ -50,6 +51,9 @@ pub struct Controls {
     pub pause: Option<PauseScreen>,
     /// The options screen, opened from the pause menu, which waits under it.
     pub options_screen: Option<OptionsScreen>,
+    /// The video settings, opened from the options screen, which waits under
+    /// it.
+    pub video_screen: Option<VideoSettingsScreen>,
     /// The death screen, from the server's word of a death until the player
     /// has health again.
     pub death: Option<DeathScreen>,
@@ -95,6 +99,7 @@ impl Controls {
             chat: None,
             pause: None,
             options_screen: None,
+            video_screen: None,
             death: None,
             confirm: None,
             disconnected: None,
@@ -167,14 +172,97 @@ impl Controls {
     }
 
     /// What an input to the options screen asks for: a new field of view
-    /// takes effect at once; Done leaves; the screens the others open are
-    /// not built.
-    fn options_input(&mut self, input: OptionsInput) {
+    /// takes effect at once; Done leaves; Video opens the video settings;
+    /// the screens the others open are not built.
+    fn options_input(
+        &mut self,
+        input: OptionsInput,
+        surface: &WindowSurface,
+        assets: &ScreenAssets,
+    ) {
         if let Some(fov) = input.fov {
             self.options.fov = fov;
         }
-        if input.action == Some(OptionsAction::Done) {
-            self.close_options();
+        match input.action {
+            Some(OptionsAction::Done) => self.close_options(),
+            Some(OptionsAction::Video) => self.open_video(surface, assets),
+            _ => {}
+        }
+    }
+
+    /// `VideoSettingsScreen`, over the options screen.
+    fn open_video(&mut self, surface: &WindowSurface, assets: &ScreenAssets) {
+        let scale = surface.scale();
+        self.video_screen = Some(VideoSettingsScreen::new(
+            &assets.creative.font,
+            &assets.lang,
+            (scale.gui_scaled_width(), scale.gui_scaled_height()),
+            true,
+            self.options.gui_scale,
+            scale.calculate_scale(0, false),
+        ));
+    }
+
+    /// `OptionsSubScreen.onClose` and `removed`: back to the options screen,
+    /// and the options are saved.
+    fn close_video(&mut self) {
+        self.video_screen = None;
+        let _ = self.options.save(&options_path());
+    }
+
+    /// An event for the open video settings.
+    fn video_event(
+        &mut self,
+        event: glfw::WindowEvent,
+        surface: &mut WindowSurface,
+        assets: &ScreenAssets,
+    ) {
+        use glfw::{Action, Key, MouseButton, WindowEvent};
+        let lang = &assets.lang;
+        if let WindowEvent::CursorPos(x, y) = event {
+            let before = self.gui_mouse.1;
+            self.move_gui_mouse((x, y), surface);
+            if let Some(video) = self.video_screen.as_mut() {
+                video.dragged(lang, self.gui_mouse, self.gui_mouse.1 - before);
+            }
+            return;
+        }
+        let Some(video) = self.video_screen.as_mut() else {
+            return;
+        };
+        // `Minecraft.resizeGui`: a new GUI scale is the option's, and the
+        // window answers with the size it gives the screen.
+        let wheel = self.options.mouse_wheel_sensitivity;
+        let options = &mut self.options;
+        let mut resize = |scale: i32| {
+            options.gui_scale = scale;
+            surface.set_gui_scale_option(scale);
+            let size = surface.scale();
+            (size.gui_scaled_width(), size.gui_scaled_height())
+        };
+        let mut done = false;
+        match event {
+            WindowEvent::Key(Key::Escape, _, Action::Press, _) => done = true,
+            WindowEvent::MouseButton(MouseButton::Button1, Action::Press, modifiers) => {
+                let shift = modifiers.contains(glfw::Modifiers::Shift);
+                done = video.clicked(lang, self.gui_mouse, shift, &mut resize).done;
+            }
+            WindowEvent::MouseButton(MouseButton::Button1, Action::Release, _) => {
+                video.released(lang);
+            }
+            WindowEvent::Scroll(_, y) => {
+                video.scrolled(
+                    lang,
+                    self.gui_mouse,
+                    y * wheel,
+                    self.control_held,
+                    &mut resize,
+                );
+            }
+            _ => {}
+        }
+        if done {
+            self.close_video();
         }
     }
 
@@ -224,7 +312,7 @@ impl Controls {
             }
             _ => OptionsInput::default(),
         };
-        self.options_input(input);
+        self.options_input(input, surface, assets);
     }
 
     /// `onDisconnect`: a lost connection puts the disconnected screen in the
@@ -252,6 +340,7 @@ impl Controls {
         self.chat = None;
         self.pause = None;
         self.options_screen = None;
+        self.video_screen = None;
         self.death = None;
         self.confirm = None;
         self.screen = None;
@@ -312,6 +401,7 @@ impl Controls {
             self.chat = None;
             self.pause = None;
             self.options_screen = None;
+            self.video_screen = None;
             self.screen = None;
             self.captured = false;
             self.last_cursor = None;
@@ -399,6 +489,8 @@ impl Controls {
             if let Some(action) = confirm.escape() {
                 self.confirm_action(action, session, surface)?;
             }
+        } else if self.video_screen.is_some() {
+            self.close_video();
         } else if self.options_screen.is_some() {
             self.close_options();
         } else if self.pause.is_some() {
@@ -425,7 +517,7 @@ impl Controls {
         } else if let Some(screen) = self.options_screen.as_mut() {
             let input = screen.clicked(&assets.lang, self.gui_mouse);
             screen.released(&assets.lang);
-            self.options_input(input);
+            self.options_input(input, surface, assets);
         } else if let Some(action) = self.death.as_mut().and_then(|death| death.clicked(mouse)) {
             self.death_action(action, session, surface, assets)?;
         } else if let Some(action) = self.pause.as_ref().and_then(|pause| pause.clicked(mouse)) {
@@ -920,6 +1012,10 @@ impl Controls {
         }
         if self.death.is_some() && for_screen {
             return self.death_event(event, session, surface, assets);
+        }
+        if self.video_screen.is_some() && for_screen {
+            self.video_event(event, surface, assets);
+            return Ok(());
         }
         if self.options_screen.is_some() && for_screen {
             self.options_event(event, surface, assets);

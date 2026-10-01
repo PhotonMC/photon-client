@@ -396,6 +396,7 @@ impl Gui {
             self.started_at.elapsed().as_millis(),
             &mut draw_item,
         );
+        frame.millis = self.started_at.elapsed().as_millis() as u64;
         if let Some((title, lines)) = &sidebar {
             sidebar::draw(
                 &mut frame,
@@ -458,7 +459,13 @@ impl Gui {
             let mouse = (controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32);
             disconnected.draw(&mut frame, &self.atlas, &self.font, mouse);
         }
-        if let Some(options_screen) = controls.options_screen.as_mut() {
+        if let Some(video) = controls.video_screen.as_mut() {
+            if video.size() != gui_size {
+                video.resize(gui_size);
+            }
+            let mouse = (controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32);
+            video.draw(&mut frame, &self.atlas, &self.font, mouse);
+        } else if let Some(options_screen) = controls.options_screen.as_mut() {
             if options_screen.size() != gui_size {
                 *options_screen =
                     options_screen.resized(&self.font, &self.lang, gui_size, controls.options.fov);

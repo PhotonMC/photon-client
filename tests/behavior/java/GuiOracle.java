@@ -493,6 +493,7 @@ public final class GuiOracle {
                 case "confirm_screen" -> confirmScreen(request);
                 case "widgets" -> widgets(request);
                 case "options_screen" -> optionsScreen(request);
+                case "video_settings_screen" -> videoSettingsScreen(request);
                 case "death_screen" -> deathScreen(request);
                 case "disconnected_screen" -> disconnectedScreen(request);
                 case "tab_list" -> tabList(request);
@@ -1127,6 +1128,150 @@ public final class GuiOracle {
             out.addProperty("label", row.get("label").getAsString());
             out.addProperty("fov", minecraft.options.fov().get());
             out.add("ops", record(screen.state()));
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /** A game whose GUI scale can change, whose Control key is told, and whose monitor is none. */
+    static final class StubGame extends net.minecraft.client.Minecraft {
+        boolean control;
+        net.minecraft.client.gui.screens.Screen current;
+
+        StubGame() {
+            super(null);
+        }
+
+        @Override
+        public boolean hasControlDown() {
+            return control;
+        }
+
+        /** `Minecraft.resizeGui` without the mouse handler. */
+        @Override
+        public void resizeGui() {
+            var window = getWindow();
+            window.setGuiScale(window.calculateScale(options.guiScale().get(), isEnforceUnicode()));
+            current.resize(window.getGuiScaledWidth(), window.getGuiScaledHeight());
+        }
+    }
+
+    static final class NoMonitors extends com.mojang.blaze3d.platform.MonitorManager {
+        NoMonitors() {
+            super();
+        }
+
+        @Override
+        public com.mojang.blaze3d.platform.Monitor findBestMonitor(com.mojang.blaze3d.platform.Window window) {
+            return null;
+        }
+    }
+
+    /**
+     * The game's own video settings screen in a window of a framebuffer size and a GUI scale:
+     * what a press, a drag, a release and the wheel (with Control or without) do to it, then
+     * what it draws. A screen is drawn between steps, as the game does, since the widgets
+     * take their places as they are drawn.
+     */
+    private static JsonObject videoSettingsScreen(JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            int mouseX = row.get("mouse").getAsJsonArray().get(0).getAsInt();
+            int mouseY = row.get("mouse").getAsJsonArray().get(1).getAsInt();
+            setup();
+            var minecraft = (StubGame) unsafe.allocateInstance(StubGame.class);
+            var instance = net.minecraft.client.Minecraft.class.getDeclaredField("instance");
+            instance.setAccessible(true);
+            instance.set(null, minecraft);
+            var screen = prepare(minecraft, 0, 0, mouseX, mouseY);
+            // A label too wide for its button scrolls by the clock: stop it at the start.
+            var clock = net.minecraft.util.Util.class.getDeclaredField("timeSource");
+            clock.setAccessible(true);
+            var clockBefore = clock.get(null);
+            clock.set(null, net.minecraft.util.TimeSource.constant(0L));
+            set(minecraft, "soundManager", unsafe.allocateInstance(SilentSounds.class));
+            // `GraphicsPreset.apply` asks for the device even for Custom, which does nothing with it.
+            var deviceField = com.mojang.blaze3d.systems.RenderSystem.class.getDeclaredField("DEVICE");
+            deviceField.setAccessible(true);
+            deviceField.set(null, unsafe.allocateInstance(com.mojang.blaze3d.systems.GpuDevice.class));
+            set(minecraft, "framerateLimitTracker",
+                unsafe.allocateInstance(com.mojang.blaze3d.platform.FramerateLimitTracker.class));
+            var warnlist = unsafe.allocateInstance(net.minecraft.client.renderer.GpuWarnlistManager.class);
+            set(warnlist, "warnings", com.google.common.collect.ImmutableMap.of());
+            set(minecraft, "gpuWarnlistManager", warnlist);
+            boolean inWorld = row.get("in_world").getAsBoolean();
+            if (inWorld) {
+                set(minecraft, "level", unsafe.allocateInstance(net.minecraft.client.multiplayer.ClientLevel.class));
+            }
+            var window = minecraft.getWindow();
+            set(window, "monitorManager", unsafe.allocateInstance(NoMonitors.class));
+            set(window, "framebufferWidth", row.get("framebuffer").getAsJsonArray().get(0).getAsInt());
+            set(window, "framebufferHeight", row.get("framebuffer").getAsJsonArray().get(1).getAsInt());
+            minecraft.options.guiScale().set(row.get("gui_scale").getAsInt());
+            set(minecraft, "running", true);
+            window.setGuiScale(window.calculateScale(minecraft.options.guiScale().get(), false));
+            var video = new net.minecraft.client.gui.screens.options.VideoSettingsScreen(null, minecraft, minecraft.options);
+            minecraft.current = video;
+            set(minecraft.gui, "screen", video);
+            set(video, "width", window.getGuiScaledWidth());
+            set(video, "height", window.getGuiScaledHeight());
+            var init = net.minecraft.client.gui.screens.options.OptionsSubScreen.class.getDeclaredMethod("init");
+            init.setAccessible(true);
+            init.invoke(video);
+            video.tick();
+            var info = new net.minecraft.client.input.MouseButtonInfo(0, 0);
+            double lastX = 0;
+            double lastY = 0;
+            for (var stepElement : row.getAsJsonArray("steps")) {
+                var step = stepElement.getAsJsonObject();
+                // A frame between one event and the next.
+                var frame = new GuiRenderState();
+                video.extractRenderState(new GuiGraphicsExtractor(minecraft, frame, mouseX, mouseY), mouseX, mouseY, 0.0F);
+                String action = step.get("do").getAsString();
+                double x = step.has("x") ? step.get("x").getAsDouble() : lastX;
+                double y = step.has("y") ? step.get("y").getAsDouble() : lastY;
+                switch (action) {
+                    case "click" -> {
+                        minecraft.setLastInputType(net.minecraft.client.InputType.MOUSE);
+                        video.mouseClicked(new net.minecraft.client.input.MouseButtonEvent(x, y,
+                            new net.minecraft.client.input.MouseButtonInfo(0, step.get("shift").getAsBoolean() ? 1 : 0)), false);
+                    }
+                    case "drag" -> video.mouseDragged(new net.minecraft.client.input.MouseButtonEvent(x, y, info),
+                        x - lastX, y - lastY);
+                    case "release" -> video.mouseReleased(new net.minecraft.client.input.MouseButtonEvent(x, y, info));
+                    case "scroll" -> {
+                        minecraft.control = step.get("ctrl").getAsBoolean();
+                        video.mouseScrolled(x, y, 0.0, step.get("dy").getAsDouble());
+                        minecraft.control = false;
+                    }
+                    default -> throw new IllegalArgumentException(action);
+                }
+                lastX = x;
+                lastY = y;
+                video.tick();
+            }
+            var background = net.minecraft.client.gui.screens.Screen.class.getDeclaredMethod("extractMenuBackground",
+                GuiGraphicsExtractor.class);
+            background.setAccessible(true);
+            // A graphics made now knows the window's size, which the scissor is cut to.
+            var finalState = new GuiRenderState();
+            var graphics = new GuiGraphicsExtractor(minecraft, finalState, mouseX, mouseY);
+            background.invoke(video, graphics);
+            video.extractRenderState(graphics, mouseX, mouseY, 0.0F);
+            var listField = net.minecraft.client.gui.screens.options.OptionsSubScreen.class.getDeclaredField("list");
+            listField.setAccessible(true);
+            var list = (net.minecraft.client.gui.components.OptionsList) listField.get(video);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.addProperty("width", window.getGuiScaledWidth());
+            out.addProperty("height", window.getGuiScaledHeight());
+            out.addProperty("gui_scale", minecraft.options.guiScale().get());
+            out.addProperty("scroll", list.scrollAmount());
+            out.add("ops", record(finalState));
+            clock.set(null, clockBefore);
             rows.add(out);
         }
         var result = new JsonObject();

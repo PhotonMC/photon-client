@@ -2,7 +2,7 @@
 //! (`OptionInstanceSliderButton`): a handle that follows the mouse or the
 //! arrow keys along a bar, and a label that says what the value is.
 
-use voxel_game::option::{IntRange, UnitDouble};
+use voxel_game::option::{IntRange, MappedIntRange, SliderableEnum, UnitDouble};
 use voxel_game::text::{Component, Lang, Run, Style};
 
 use crate::gui::font::Font;
@@ -80,6 +80,51 @@ impl SliderValues for UnitDouble {
     }
 }
 
+impl<R, To, FromValue> SliderValues for MappedIntRange<R, To, FromValue>
+where
+    R: Clone + PartialEq,
+    To: Fn(i32) -> R,
+    FromValue: Fn(&R) -> i32,
+{
+    type Value = R;
+
+    fn position_of(&self, value: &R) -> f64 {
+        self.to_slider_value(value)
+    }
+
+    fn value_at(&self, slider: f64) -> R {
+        self.from_slider_value(slider)
+    }
+
+    fn next(&self, current: &R) -> Option<R> {
+        MappedIntRange::next(self, current)
+    }
+
+    fn previous(&self, current: &R) -> Option<R> {
+        MappedIntRange::previous(self, current)
+    }
+}
+
+impl<T: Clone + PartialEq> SliderValues for SliderableEnum<T> {
+    type Value = T;
+
+    fn position_of(&self, value: &T) -> f64 {
+        self.to_slider_value(value)
+    }
+
+    fn value_at(&self, slider: f64) -> T {
+        self.from_slider_value(slider)
+    }
+
+    fn next(&self, current: &T) -> Option<T> {
+        Some(SliderableEnum::next(self, current))
+    }
+
+    fn previous(&self, current: &T) -> Option<T> {
+        Some(SliderableEnum::previous(self, current))
+    }
+}
+
 /// An option's slider: the bar, its value set and the label it makes of the
 /// option's name and value.
 pub struct OptionSlider<S: SliderValues> {
@@ -142,6 +187,13 @@ impl<S: SliderValues> OptionSlider<S> {
 
     pub fn value(&self) -> &S::Value {
         &self.current
+    }
+
+    /// `instance.set` and `resetValue`: the option takes a value from
+    /// elsewhere and the handle goes to it.
+    pub fn set_current(&mut self, lang: &Lang, value: S::Value) {
+        self.current = value;
+        self.reset(lang);
     }
 
     /// The words on the bar.
