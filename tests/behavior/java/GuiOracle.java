@@ -566,7 +566,8 @@ public final class GuiOracle {
                 }
                 var tag = event.has("tag") ? tag(event.get("tag").getAsString()) : null;
                 var sig = event.has("signature") ? signature(event.get("signature").getAsInt()) : null;
-                var text = Component.literal(event.get("text").getAsString());
+                var text = event.has("key") ? Component.translatable(event.get("key").getAsString())
+                    : Component.literal(event.get("text").getAsString());
                 if (tag == null && sig == null) {
                     chat.addServerSystemMessage(text);
                 } else {
@@ -578,6 +579,11 @@ public final class GuiOracle {
                 chat.tick();
             }
             set(screen.hud(), "tickCount", row.get("tick").getAsInt());
+            var languageBefore = net.minecraft.locale.Language.getInstance();
+            if (row.has("lang_after")) {
+                net.minecraft.locale.Language.inject(clientLanguage(row.get("lang_after").getAsString()));
+                chat.rescaleChat();
+            }
             if (row.has("rescale")) {
                 chatOptions(screen.minecraft().options, row.getAsJsonObject("rescale"));
                 chat.rescaleChat();
@@ -597,6 +603,7 @@ public final class GuiOracle {
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());
             out.add("ops", record(screen.state()));
+            net.minecraft.locale.Language.inject(languageBefore);
             rows.add(out);
         }
         var result = new JsonObject();

@@ -10,7 +10,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use voxel_game::commands::{CommandTree, SuggestContext, format_text, usage_lines};
-use voxel_game::text::{Lang, Run, Style};
+use voxel_game::text::{Component, Lang, Run, Style};
 
 use crate::gui::GuiAtlas;
 use crate::gui::GuiFrame;
@@ -128,6 +128,8 @@ impl Tag {
 #[derive(Debug, Clone)]
 struct Message {
     runs: Vec<Run>,
+    /// What the runs were made of, if it is known, to be worded again.
+    source: Option<Component>,
     added: u64,
     signature: Option<Vec<u8>>,
     tag: Option<Tag>,
@@ -324,6 +326,39 @@ impl ChatLog {
         self.add_message(runs, None, None, font, focused);
     }
 
+    /// `addMessage` of a component, which is worded in `lang` now and again
+    /// when the language changes.
+    pub fn add_component(
+        &mut self,
+        component: &Component,
+        lang: &Lang,
+        (signature, tag): (Option<Vec<u8>>, Option<Tag>),
+        font: &Font,
+        focused: bool,
+    ) {
+        self.add_message(
+            &lang.runs(component, &Style::default()),
+            signature,
+            tag,
+            font,
+            focused,
+        );
+        if let Some(message) = self.messages.front_mut() {
+            message.source = Some(component.clone());
+        }
+    }
+
+    /// The language changed: the messages made of a component are worded
+    /// again, and the lines wrapped anew (`rescaleChat` on a reload).
+    pub fn set_lang(&mut self, lang: &Lang, font: &Font) {
+        for message in &mut self.messages {
+            if let Some(source) = &message.source {
+                message.runs = lang.runs(source, &Style::default());
+            }
+        }
+        self.rescale(font);
+    }
+
     /// `addMessage` with a signature and a tag.
     pub fn add_message(
         &mut self,
@@ -335,6 +370,7 @@ impl ChatLog {
     ) {
         let message = Message {
             runs: runs.to_vec(),
+            source: None,
             added: self.ticks,
             signature,
             tag,
@@ -388,6 +424,7 @@ impl ChatLog {
         if self.ticks >= after {
             self.messages[place] = Message {
                 runs: marker.to_vec(),
+                source: None,
                 added: self.messages[place].added,
                 signature: None,
                 tag: Some(Tag::System),

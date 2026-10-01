@@ -262,6 +262,7 @@ impl Play {
             if let Some(code) = self.controls.take_language_request() {
                 self.gui.set_language(&code);
                 self.screen_assets = self.gui.screen_assets();
+                self.gui.reword_chat(&mut self.controls.chat_log);
                 self.controls
                     .rebuild_menus(&self.surface, &self.screen_assets);
             }

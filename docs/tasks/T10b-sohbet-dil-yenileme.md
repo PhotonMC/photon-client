@@ -21,4 +21,5 @@
 `docs/remaining-work.md` Dil seçimi satırı.
 
 ## Devir notu
-(boş)
+- `ChatLog::add_component` mesajın `Component`ini saklar, `set_lang` çevrilebilir mesajları yeniden çözüp `rescale` eder; `gui.rs` bütün sohbet eklemeleri `add_component`; `play.rs` dil değişince `Gui::reword_chat`. Silinmiş-mesaj işareti ve düz `add_message` kaynaksız kalır (eski dilde).
+- Oracle `chat`: mesajda `key` (çevrilebilir), satırda `lang_after` (+6 satır, `Language.inject` + `rescaleChat`). Canlı denenmedi.

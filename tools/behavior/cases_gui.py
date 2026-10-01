@@ -9,7 +9,7 @@ def gui_cases():
     rectangles and the text, in order, with their poses applied. The glyphs
     are not drawn; their advances come from the reference's font providers."""
     def chat(label, messages, tick, width=427, height=240, focused=False, scroll=None,
-             extra=(), deletions=(), options=None, rescale=None):
+             extra=(), deletions=(), options=None, rescale=None, lang_after=None):
         row = {"label": label, "width": width, "height": height,
                "messages": [{"text": text, "tick": at} for text, at in messages] + list(extra),
                "tick": tick}
@@ -23,6 +23,8 @@ def gui_cases():
             row["options"] = options
         if rescale:
             row["rescale"] = rescale
+        if lang_after:
+            row["lang_after"] = lang_after
         return row
 
     long_text = ("this is a fairly long chat message that should wrap onto a second line "
@@ -107,6 +109,19 @@ def gui_cases():
         chat("rescale-resets-scroll", many, 400, focused=True, scroll=6, rescale=opt(opacity=0.9)),
         chat("rescale-after-options", [(long_text, 0)], 3, options=opt(width=0.8), rescale=opt(width=0.2)),
         chat("tall-window-scaled", [("hello", 0)], 0, width=640, height=480, options=opt(scale=0.5)),
+    ]
+    # A language change words the translatable messages again, and wraps them.
+    warning = {"key": "options.languageAccuracyWarning"}
+    rows += [
+        chat("lang-same", [], 3, extra=[dict(warning, tick=0)], lang_after="en_us"),
+        chat("lang-german", [], 3, extra=[dict(warning, tick=0), {"key": "gui.done", "tick": 1}], lang_after="de_de"),
+        chat("lang-french", [], 3, extra=[dict(warning, tick=0), {"text": "plain", "tick": 1}], lang_after="fr_fr"),
+        chat("lang-portuguese-tags", [], 3, extra=[dict(warning, tick=0, tag="system"),
+                                                    {"key": "menu.quit", "tick": 1, "tag": "error"}],
+             lang_after="pt_br"),
+        chat("lang-spanish-open", [], 400, focused=True,
+             extra=[dict(warning, tick=n) for n in range(0, 8)], lang_after="es_es", scroll=3),
+        chat("lang-unknown", [], 3, extra=[dict(warning, tick=0)], lang_after="xx_xx"),
     ]
     yield {"case_id": "gui/chat", "family": "gui", "operation": "chat", "rows": rows}
 

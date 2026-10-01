@@ -266,7 +266,12 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                         log.delete(&signature(id), &font, &marker);
                         continue;
                     }
-                    let text = event["text"].as_str().ok_or("text")?;
+                    let component = match event["key"].as_str() {
+                        Some(key) => voxel_game::text::Component::translatable(key),
+                        None => voxel_game::text::Component::literal(
+                            event["text"].as_str().ok_or("text")?,
+                        ),
+                    };
                     let sig = event["signature"].as_u64().map(signature);
                     let tag = match event["tag"].as_str() {
                         None if sig.is_none() => Some(Tag::SystemSinglePlayer),
@@ -279,16 +284,19 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                             other.trim_start_matches("modified:").to_owned(),
                         )),
                     };
-                    log.add_message(
-                        &voxel_render::gui::chat::plain_runs(text),
-                        sig,
-                        tag,
-                        &font,
-                        false,
-                    );
+                    log.add_component(&component, &lang, (sig, tag), &font, false);
                 }
                 while log.ticks() < row["tick"].as_u64().unwrap_or(0) {
                     log.tick(&font, &marker);
+                }
+                if let Some(code) = row["lang_after"].as_str() {
+                    let source = match &languages {
+                        Some(source) => source,
+                        None => languages.insert(
+                            voxel_game::language::LanguageSource::open(&root).ok_or("languages")?,
+                        ),
+                    };
+                    log.set_lang(&source.lang(code), &font);
                 }
                 if row["rescale"].is_object() {
                     log.set_settings(settings(&row["rescale"], log.settings()), &font);

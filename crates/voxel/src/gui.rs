@@ -116,6 +116,11 @@ impl Gui {
         }
     }
 
+    /// The chat's messages are worded in the language now loaded.
+    pub fn reword_chat(&self, log: &mut ChatLog) {
+        log.set_lang(&self.lang, &self.font);
+    }
+
     /// The client's language is another: texts are read again.
     pub fn set_language(&mut self, code: &str) {
         if let Some(source) = &self.languages {
@@ -281,10 +286,10 @@ impl Gui {
                 &packet.bound,
             )
         };
-        log.add_message(
-            &self.lang.runs(&shown, &Style::default()),
-            packet.signature.clone(),
-            tag,
+        log.add_component(
+            &shown,
+            &self.lang,
+            (packet.signature.clone(), tag),
             &self.font,
             focused,
         );
@@ -302,19 +307,19 @@ impl Gui {
                     let runs = self.lang.runs(&content, &Style::default());
                     self.titles.set_overlay(runs);
                 }
-                ChatEvent::System { content, .. } => log.add_message(
-                    &self.lang.runs(&content, &Style::default()),
-                    None,
-                    Some(Tag::SystemSinglePlayer),
+                ChatEvent::System { content, .. } => log.add_component(
+                    &content,
+                    &self.lang,
+                    (None, Some(Tag::SystemSinglePlayer)),
                     &self.font,
                     focused,
                 ),
                 ChatEvent::Disguised { content, bound } => {
                     let decorated = self.decorate(content, &bound);
-                    log.add_message(
-                        &self.lang.runs(&decorated, &Style::default()),
-                        None,
-                        Some(Tag::System),
+                    log.add_component(
+                        &decorated,
+                        &self.lang,
+                        (None, Some(Tag::System)),
                         &self.font,
                         focused,
                     );
@@ -338,10 +343,10 @@ impl Gui {
                             voxel_game::text::Component::translatable("chat.validation_error")
                                 .with_style(&style);
                         let decorated = self.decorate(error, &packet.bound);
-                        log.add_message(
-                            &self.lang.runs(&decorated, &Style::default()),
-                            None,
-                            Some(Tag::Error),
+                        log.add_component(
+                            &decorated,
+                            &self.lang,
+                            (None, Some(Tag::Error)),
                             &self.font,
                             focused,
                         );
