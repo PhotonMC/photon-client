@@ -26,7 +26,7 @@ Arayüzün yerleşimi ve davranışı, Java'nın **kendi GUI kodunun** başsız 
 | `tab_list` | `PlayerTabOverlay` | sütunlar, sıralama (takım dahil), ping, üst/alt yazı, 80 sınırı, puan sütunu, kalpler |
 | `container_screen` | `AnvilScreen`, `GrindstoneScreen`, `StonecutterScreen`, `LoomScreen`, `EnchantmentScreen` Java'nın kendi menüsüyle (`MovementOracle.openMenu`) | etiketler, doku/sprite yerleri, ad kutusu, taş kesici girdileri/kaydırma/vurgu, büyü satırları ve adları |
 
-Yeni bir ekran için: Java'da gerçek sınıfı çağıran bir operation, `cases.py`'de senaryo satırları, adaptörde aynı sahnenin Rust karşılığı.
+Yeni bir ekran için: Java'da gerçek sınıfı çağıran bir operation, `tools/behavior/cases_gui.py`'de senaryo satırları, adaptörde aynı sahnenin Rust karşılığı.
 
 ## Bilinen sınırlar
 

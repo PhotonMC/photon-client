@@ -23,4 +23,7 @@ Başka ailelerin üreticileri; case içeriğini değiştirmek.
 `docs/gui-oracle.md` "Yeni bir ekran için" cümlesi ve `AGENTS.md` token bölümü listesi; `docs/tasks/README.md` G tarifinin 2. adımındaki "T02'den sonra" notu zaten var.
 
 ## Devir notu
-(boş)
+- GUI üreticileri ve `command_tree_hex` (yalnız GUI kullanıyordu) `tools/behavior/cases_gui.py`'ye taşındı; giriş noktası `gui_generators()`, `build_cases` onu tembel içe aktarır.
+- Taşımadan önce/sonra `build_cases(['gui'])` JSON özeti aynı (sha256 35c46bf1…); capture kimliği girdi baytlarına bağlı olduğundan yeni capture gerekmedi.
+- Yeni GUI üreticisi artık `cases_gui.py`'de, `gui_generators()` zincirine eklenir.
+- `check --capture`: CHECK OK, parity 928. Açık kalan yok.

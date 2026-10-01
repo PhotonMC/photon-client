@@ -33,7 +33,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | Kimlik | Görev | Boy | Bağımlılık | Durum |
 | --- | --- | --- | --- | --- |
 | [T01](T01-adapter-gui-modulu.md) | `behavior_adapter` GUI modülüne böl | S | – | bitti |
-| [T02](T02-cases-gui-modulu.md) | `cases.py` GUI üreticilerini ayır | S | T01 | açık |
+| [T02](T02-cases-gui-modulu.md) | `cases.py` GUI üreticilerini ayır | S | T01 | bitti |
 | [T03](T03-ekran-yigini-confirm.md) | Ekran yığını + `ConfirmScreen` | M | – | açık |
 | [T04](T04-options-durumu.md) | Seçenek değerleri ve `options.txt` | M | – | açık |
 | [T05](T05-slider-cycle-widget.md) | Kaydırıcı ve döngü düğmesi widget'ları | M | T04 | açık |
