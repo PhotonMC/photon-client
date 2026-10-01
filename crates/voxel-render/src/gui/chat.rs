@@ -9,7 +9,7 @@ use std::collections::VecDeque;
 use std::sync::Arc;
 use std::time::Instant;
 
-use voxel_game::commands::{CommandTree, format_text, usage_lines};
+use voxel_game::commands::{CommandTree, SuggestContext, format_text, usage_lines};
 use voxel_game::text::{Lang, Run, Style};
 
 use crate::gui::GuiAtlas;
@@ -510,6 +510,9 @@ pub struct ChatScreen {
     applied: bool,
     /// The command tree, which suggests what continues a command itself.
     commands: Option<Arc<CommandTree>>,
+    /// The names the suggestions draw on: online players, and teams.
+    players: Vec<String>,
+    teams: Vec<String>,
     /// What the tree suggested for the text, while the server's answer on
     /// its own arguments is awaited.
     local: Vec<String>,
@@ -537,6 +540,8 @@ impl ChatScreen {
             request_id: 0,
             applied: false,
             commands: None,
+            players: Vec::new(),
+            teams: Vec::new(),
             local: Vec::new(),
         }
     }
@@ -545,6 +550,12 @@ impl ChatScreen {
     /// server is asked only for what the tree cannot tell.
     pub fn set_commands(&mut self, commands: Option<Arc<CommandTree>>) {
         self.commands = commands;
+    }
+
+    /// The online players' and the teams' names, which suggestions use.
+    pub fn set_names(&mut self, players: Vec<String>, teams: Vec<String>) {
+        self.players = players;
+        self.teams = teams;
     }
 
     /// A script's chat box: no key opened it.
@@ -586,7 +597,14 @@ impl ChatScreen {
             if let Some(tree) = self.commands.clone() {
                 // `getCompletionSuggestions` of the whole text at the cursor.
                 let parse = tree.parse(&text, 1);
-                let suggested = tree.suggestions(&parse, cursor);
+                let suggested = tree.suggestions(
+                    &parse,
+                    cursor,
+                    &SuggestContext {
+                        players: &self.players,
+                        teams: &self.teams,
+                    },
+                );
                 ask_server = suggested.ask_server;
                 start = suggested.start;
                 self.local = suggested.matches;

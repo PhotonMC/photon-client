@@ -295,28 +295,6 @@ fn one_of(reader: &mut StringReader, values: &[&str], key: &str, rewind: bool) -
     Err(CommandSyntaxException::at(reader, key, &[literal(name)]))
 }
 
-const DISPLAY_SLOTS: [&str; 19] = [
-    "list",
-    "sidebar",
-    "below_name",
-    "sidebar.team.black",
-    "sidebar.team.dark_blue",
-    "sidebar.team.dark_green",
-    "sidebar.team.dark_aqua",
-    "sidebar.team.dark_red",
-    "sidebar.team.dark_purple",
-    "sidebar.team.gold",
-    "sidebar.team.gray",
-    "sidebar.team.dark_gray",
-    "sidebar.team.blue",
-    "sidebar.team.green",
-    "sidebar.team.aqua",
-    "sidebar.team.red",
-    "sidebar.team.light_purple",
-    "sidebar.team.yellow",
-    "sidebar.team.white",
-];
-
 fn range_error<T: std::fmt::Display>(
     reader: &StringReader,
     kind: &str,
@@ -503,7 +481,7 @@ impl ArgumentKind {
                 // The slot names hold dots, which `readUnquotedString` takes.
                 one_of(
                     reader,
-                    &DISPLAY_SLOTS,
+                    &crate::scoreboard::DISPLAY_SLOT_NAMES,
                     "argument.scoreboardDisplaySlot.invalid",
                     false,
                 )

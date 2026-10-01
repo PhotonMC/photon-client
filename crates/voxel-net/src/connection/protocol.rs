@@ -3085,12 +3085,14 @@ pub fn parse_commands_packet(
             None
         };
         let mut custom = false;
+        let mut type_id = 0;
         let kind = match flags & 3 {
             1 => NodeKind::Literal(read_chat_string(input, 32767, "command literal")?),
             2 => {
                 let name = read_chat_string(input, 32767, "command argument name")?;
                 let id = read_varint(input, "command argument type")?;
                 let kind = read_argument_kind(input, id)?;
+                type_id = u8::try_from(id).unwrap_or(u8::MAX);
                 if flags & 16 != 0 {
                     read_chat_string(input, 32767, "command suggestion id")?;
                     custom = true;
@@ -3105,6 +3107,7 @@ pub fn parse_commands_packet(
             redirect,
             executable: flags & 4 != 0,
             custom_suggestions: custom,
+            type_id,
         });
     }
     let root = read_count(input, "command root index")?;

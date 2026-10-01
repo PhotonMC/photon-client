@@ -104,6 +104,9 @@ pub struct Node {
     /// The server answers this argument's suggestions (`ask_server` and the
     /// other custom providers).
     pub custom_suggestions: bool,
+    /// The argument type's id on the wire (`COMMAND_ARGUMENT_TYPE`), 0 for
+    /// the rest.
+    pub type_id: u8,
 }
 
 impl Node {
@@ -141,6 +144,7 @@ pub struct NodeStub {
     pub redirect: Option<usize>,
     pub executable: bool,
     pub custom_suggestions: bool,
+    pub type_id: u8,
 }
 
 impl CommandTree {
@@ -157,6 +161,7 @@ impl CommandTree {
                 redirect: stub.redirect,
                 executable: stub.executable,
                 custom_suggestions: stub.custom_suggestions,
+                type_id: stub.type_id,
             })
             .collect();
         if root >= nodes.len()
@@ -540,117 +545,7 @@ impl Context {
 }
 
 mod arguments;
+mod suggest;
 mod usage;
+pub use suggest::{LocalSuggestions, SuggestContext, sort_suggestions};
 pub use usage::{CommandSuggestionsView, format_text, usage_lines};
-
-/// What the tree itself suggests for text up to a cursor, and whether the
-/// server has more to add.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct LocalSuggestions {
-    /// Where the suggested text starts in the input.
-    pub start: usize,
-    /// Sorted without regard to case, each once.
-    pub matches: Vec<String>,
-    /// An argument at the cursor has suggestions only the server knows.
-    pub ask_server: bool,
-}
-
-/// `SharedSuggestionProvider.matchesSubStr`: the pattern starts the input or
-/// follows one of `._/` in it.
-fn matches_sub_str(pattern: &str, input: &str) -> bool {
-    let input: Vec<char> = input.chars().collect();
-    let pattern: Vec<char> = pattern.chars().collect();
-    let mut index = 0;
-    while !input[index.min(input.len())..].starts_with(&pattern) {
-        match input[index.min(input.len())..]
-            .iter()
-            .position(|c| matches!(c, '.' | '_' | '/'))
-        {
-            Some(found) => index += found + 1,
-            None => return false,
-        }
-        if index > input.len() {
-            return false;
-        }
-    }
-    true
-}
-
-/// `Suggestions.create`'s order: case ignored, then as written.
-pub fn sort_suggestions(matches: &mut Vec<String>) {
-    matches.sort_by(|a, b| {
-        let fold = |text: &str| -> Vec<char> {
-            text.chars()
-                .map(|c| c.to_uppercase().next().unwrap_or(c))
-                .map(|c| c.to_lowercase().next().unwrap_or(c))
-                .collect()
-        };
-        fold(a).cmp(&fold(b))
-    });
-    matches.dedup();
-}
-
-impl CommandTree {
-    /// `CommandDispatcher.getCompletionSuggestions`, for what needs no
-    /// server: the literals that continue the text, and the values of the
-    /// arguments whose type lists its own.
-    pub fn suggestions(&self, parse: &ParseResults, cursor: usize) -> LocalSuggestions {
-        let (parent, start) = parse.context.suggestion_context(cursor as i32);
-        let start = (start.max(0) as usize).min(cursor);
-        let text = parse.text();
-        let remaining: String = text
-            .chars()
-            .skip(start)
-            .take(cursor - start)
-            .collect::<String>()
-            .to_lowercase();
-        let mut matches = Vec::new();
-        let mut ask_server = false;
-        let suggest = |matches: &mut Vec<String>, values: &[&str]| {
-            for value in values {
-                if matches_sub_str(&remaining, &value.to_lowercase()) {
-                    matches.push((*value).to_owned());
-                }
-            }
-        };
-        for &child in &self.nodes[parent].children {
-            let node = &self.nodes[child];
-            match &node.kind {
-                NodeKind::Literal(literal) => {
-                    if literal.to_lowercase().starts_with(&remaining) {
-                        matches.push(literal.clone());
-                    }
-                }
-                NodeKind::Argument { .. } if node.custom_suggestions => ask_server = true,
-                NodeKind::Argument { kind, .. } => match kind {
-                    ArgumentKind::Bool => suggest(&mut matches, &["true", "false"]),
-                    ArgumentKind::GameMode => suggest(
-                        &mut matches,
-                        &["survival", "creative", "adventure", "spectator"],
-                    ),
-                    ArgumentKind::EntityAnchor => suggest(&mut matches, &["feet", "eyes"]),
-                    ArgumentKind::Operation => suggest(
-                        &mut matches,
-                        &["=", "+=", "-=", "*=", "/=", "%=", "<", ">", "><"],
-                    ),
-                    ArgumentKind::TeamColor => {
-                        suggest(&mut matches, &crate::scoreboard::TEAM_COLOURS)
-                    }
-                    ArgumentKind::Integer { .. }
-                    | ArgumentKind::Long { .. }
-                    | ArgumentKind::Float { .. }
-                    | ArgumentKind::Double { .. }
-                    | ArgumentKind::String(StringType::Word | StringType::Phrase) => {}
-                    _ => ask_server = true,
-                },
-                NodeKind::Root => {}
-            }
-        }
-        sort_suggestions(&mut matches);
-        LocalSuggestions {
-            start,
-            matches,
-            ask_server,
-        }
-    }
-}

@@ -160,11 +160,19 @@ Bitti: `Component`/dil (`en_us`), stilli yazı, `EditBox`, ipucu kutusu.
   alınır; liste Java ile birebir ([GUI oracle](gui-oracle.md): ilk öğe seçili,
   hayalet sonek, Tab/Shift+Tab/ok/Esc, 10 satırlık pencere, fare). Eksik:
   öneri ipuçları, oyuncu adı/özel sohbet tamamlamaları
-  (`CustomChatCompletions`). Komut adları ve kapalı kümeli türler (bool, oyun modu,
-  çapa, işlem, takım rengi) ağaçtan yerel önerilir; sunucu yalnız `ask_server`
-  düğümlerinde ve kayıt defterine bağlı türlerde (varlık, eşya, blok,
-  tanımlayıcı…) sorulur, ağaç yoksa her zaman sorulur. Yetkisiz oyuncuya
-  yetkisiz komut önerilmez.
+  (`CustomChatCompletions`). Öneriler Java gibi istemcinin süzülmüş komut ağacından
+  yerel üretilir (`command_suggest` oracle'ı, 143 satır): literaller,
+  bool, kapalı kümeler (oyun modu, çapa, işlem, takım rengi, slot adı, şablon
+  aynası/dönüşü, yükseklik haritası), takım ve oyuncu adları, seçiciler
+  (`@p…`, `[` ve ad), koordinatlar (`~`/`^`, bakılan blok yok), süre
+  birimleri, onaltılık renk örnekleri; yetkisiz komut önerilmez. Sunucuya
+  Java gibi yalnız `ask_server`/bilinmeyen sağlayıcılı düğümlerde ve
+  `objective`, `loot_*` türlerinde sorulur; Java'nın kayıt defterinden yerel
+  listelediği türler (eşya, blok, parçacık, dimension, slot, ölçüt, kaynak,
+  diyalog, bilinen yerel sağlayıcılar) ve seçici seçenekleri (`@a[`…) burada
+  sunucuya sorulur (aynı değerler, farklı mekanizma; oracle'da
+  `registry_backed` satırları). Eksik: seçici izin düzeyi (yetkisiz oyuncuda
+  seçici önerilmemeli/yazılmamalı), bakılan varlık UUID'si.
 - **Kısmen** Komut ağacı (`Commands` paketi, `voxel-game/commands`): düğüm
   ağacı, Brigadier ayrıştırması (yönlendirme, aday sıralaması, istisnalar),
   renkli sözdizimi (`formatText`), kullanım ve hata satırları

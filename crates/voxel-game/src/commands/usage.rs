@@ -121,6 +121,7 @@ pub fn usage_lines(
 
 #[cfg(test)]
 mod tests {
+    use super::super::SuggestContext;
     use super::super::{ArgumentKind, CommandTree, NodeKind, NodeStub};
     use super::*;
 
@@ -132,6 +133,7 @@ mod tests {
                 redirect: None,
                 executable: false,
                 custom_suggestions: false,
+                type_id: 0,
             },
             NodeStub {
                 kind: NodeKind::Literal("give".into()),
@@ -139,6 +141,7 @@ mod tests {
                 redirect: None,
                 executable: false,
                 custom_suggestions: false,
+                type_id: 0,
             },
             NodeStub {
                 kind: NodeKind::Argument {
@@ -149,6 +152,7 @@ mod tests {
                 redirect: None,
                 executable: false,
                 custom_suggestions: false,
+                type_id: 24,
             },
             NodeStub {
                 kind: NodeKind::Argument {
@@ -159,6 +163,7 @@ mod tests {
                 redirect: None,
                 executable: true,
                 custom_suggestions: false,
+                type_id: 0,
             },
         ];
         CommandTree::build(stubs, 0).unwrap()
@@ -202,22 +207,30 @@ mod tests {
         }
     }
 
+    fn context() -> SuggestContext<'static> {
+        SuggestContext {
+            players: &[],
+            teams: &[],
+        }
+    }
+
     /// The tree suggests its own literals, case ignored, and leaves out what
     /// it does not hold (a command the player may not use).
     #[test]
     fn the_tree_suggests_only_what_it_holds() {
         let tree = tree();
         let parse = tree.parse("/G", 1);
-        let suggested = tree.suggestions(&parse, 2);
+        let suggested = tree.suggestions(&parse, 2, &context());
         assert_eq!(suggested.matches, ["give"]);
         assert!(!suggested.ask_server);
-        // After "give " an argument that is a word is for the server.
+        // After "give " the argument is an objective, which the server holds.
         let parse = tree.parse("/give ", 1);
-        let suggested = tree.suggestions(&parse, 6);
+        let suggested = tree.suggestions(&parse, 6, &context());
         assert!(suggested.ask_server);
         assert!(suggested.matches.is_empty());
         assert_eq!(
-            tree.suggestions(&tree.parse("/zz", 1), 3).matches,
+            tree.suggestions(&tree.parse("/zz", 1), 3, &context())
+                .matches,
             Vec::<String>::new()
         );
     }

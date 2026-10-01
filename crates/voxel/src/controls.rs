@@ -154,6 +154,10 @@ impl Controls {
     pub fn receive_suggestions(&mut self, session: &mut PlaySession) {
         if let Some(chat) = self.chat.as_mut() {
             chat.set_commands(session.commands().cloned());
+            chat.set_names(
+                session.online_player_names(),
+                session.scoreboard().team_names(),
+            );
         }
         if let (Some(chat), Some(answer)) = (self.chat.as_mut(), session.take_suggestions()) {
             chat.suggested(answer.id, answer.start, answer.length, answer.matches);
@@ -171,6 +175,10 @@ impl Controls {
             return Ok(());
         };
         chat.set_commands(session.commands().cloned());
+        chat.set_names(
+            session.online_player_names(),
+            session.scoreboard().team_names(),
+        );
         let size = surface.scale();
         chat.resize((size.gui_scaled_width(), size.gui_scaled_height()));
         if let glfw::WindowEvent::Key(glfw::Key::LeftShift | glfw::Key::RightShift, _, action, _) =

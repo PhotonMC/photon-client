@@ -13,6 +13,29 @@ pub const SLOT_LIST: u8 = 0;
 pub const SLOT_SIDEBAR: u8 = 1;
 const SLOT_COUNT: usize = 19;
 
+/// `DisplaySlot`'s names, in id order.
+pub const DISPLAY_SLOT_NAMES: [&str; 19] = [
+    "list",
+    "sidebar",
+    "below_name",
+    "sidebar.team.black",
+    "sidebar.team.dark_blue",
+    "sidebar.team.dark_green",
+    "sidebar.team.dark_aqua",
+    "sidebar.team.dark_red",
+    "sidebar.team.dark_purple",
+    "sidebar.team.gold",
+    "sidebar.team.gray",
+    "sidebar.team.dark_gray",
+    "sidebar.team.blue",
+    "sidebar.team.green",
+    "sidebar.team.aqua",
+    "sidebar.team.red",
+    "sidebar.team.light_purple",
+    "sidebar.team.yellow",
+    "sidebar.team.white",
+];
+
 /// `TeamColor`, in id order.
 pub const TEAM_COLOURS: [&str; 16] = [
     "black",
@@ -317,6 +340,11 @@ impl Scoreboard {
             }
             _ => {}
         }
+    }
+
+    /// `getTeamNames`.
+    pub fn team_names(&self) -> Vec<String> {
+        self.teams.keys().cloned().collect()
     }
 
     /// `getPlayersTeam`.

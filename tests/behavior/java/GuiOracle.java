@@ -488,6 +488,7 @@ public final class GuiOracle {
                 case "boss_bar" -> bossBar(request);
                 case "sidebar" -> sidebar(request);
                 case "command_parse" -> commandParse(request);
+                case "command_suggest" -> commandSuggest(request);
                 case "tab_list" -> tabList(request);
                 case "container_screen" -> containerScreen(request);
                 default -> throw new IllegalArgumentException("Unknown gui operation");
@@ -738,15 +739,12 @@ public final class GuiOracle {
         return text.toString();
     }
 
-    /**
-     * A command tree the way the client reads one off the wire, and what the
-     * chat box makes of texts typed against it: where each node read, what
-     * could not be read, the colours of the text and the lines under it.
-     */
+    /** The dispatcher a `ClientboundCommandsPacket` payload makes, as the client builds it. */
     @SuppressWarnings("unchecked")
-    private static JsonObject commandParse(JsonObject request) throws Exception {
+    private static com.mojang.brigadier.CommandDispatcher<net.minecraft.client.multiplayer.ClientSuggestionProvider>
+            commandDispatcher(String hex) throws Exception {
         var registries = Oracle.vanillaRegistries();
-        var bytes = java.util.HexFormat.of().parseHex(request.get("tree").getAsString());
+        var bytes = java.util.HexFormat.of().parseHex(hex);
         var buffer = new net.minecraft.network.FriendlyByteBuf(io.netty.buffer.Unpooled.wrappedBuffer(bytes));
         var packet = net.minecraft.network.protocol.game.ClientboundCommandsPacket.STREAM_CODEC.decode(buffer);
         var builderField = net.minecraft.client.multiplayer.ClientPacketListener.class.getDeclaredField("COMMAND_NODE_BUILDER");
@@ -755,7 +753,139 @@ public final class GuiOracle {
                 net.minecraft.world.flag.FeatureFlags.DEFAULT_FLAGS),
             (net.minecraft.network.protocol.game.ClientboundCommandsPacket.NodeBuilder<
                 net.minecraft.client.multiplayer.ClientSuggestionProvider>) builderField.get(null));
-        var dispatcher = new com.mojang.brigadier.CommandDispatcher<net.minecraft.client.multiplayer.ClientSuggestionProvider>(root);
+        return new com.mojang.brigadier.CommandDispatcher<>(root);
+    }
+
+    /** A suggestion source with no game behind it: it says whether the server was asked. */
+    static final class OracleSource extends net.minecraft.client.multiplayer.ClientSuggestionProvider {
+        boolean asked;
+        final java.util.List<String> players;
+        final java.util.List<String> teams;
+
+        OracleSource(java.util.List<String> players, java.util.List<String> teams) {
+            super(null, null, permission -> true);
+            this.players = players;
+            this.teams = teams;
+        }
+
+        @Override
+        public java.util.Collection<String> getOnlinePlayerNames() {
+            return players;
+        }
+
+        @Override
+        public java.util.Collection<String> getCustomTabSuggestions() {
+            return players;
+        }
+
+        @Override
+        public java.util.Collection<String> getSelectedEntities() {
+            return java.util.List.of();
+        }
+
+        @Override
+        public java.util.Collection<String> getAllTeams() {
+            return teams;
+        }
+
+        @Override
+        public java.util.stream.Stream<Identifier> getAvailableSounds() {
+            return java.util.stream.Stream.empty();
+        }
+
+        @Override
+        public java.util.Collection<TextCoordinates> getRelevantCoordinates() {
+            return java.util.Collections.singleton(TextCoordinates.DEFAULT_GLOBAL);
+        }
+
+        @Override
+        public java.util.Collection<TextCoordinates> getAbsoluteCoordinates() {
+            return java.util.Collections.singleton(TextCoordinates.DEFAULT_GLOBAL);
+        }
+
+        @Override
+        public java.util.Set<net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level>> levels() {
+            return java.util.Set.of();
+        }
+
+        @Override
+        public net.minecraft.core.RegistryAccess registryAccess() {
+            return Oracle.vanillaRegistries();
+        }
+
+        @Override
+        public net.minecraft.world.flag.FeatureFlagSet enabledFeatures() {
+            return net.minecraft.world.flag.FeatureFlags.DEFAULT_FLAGS;
+        }
+
+        @Override
+        public java.util.concurrent.CompletableFuture<com.mojang.brigadier.suggestion.Suggestions> customSuggestion(
+                com.mojang.brigadier.context.CommandContext<?> context) {
+            asked = true;
+            return com.mojang.brigadier.suggestion.Suggestions.empty();
+        }
+    }
+
+    /**
+     * What the tree and the types suggest for text at a cursor, by the game's
+     * own `getCompletionSuggestions`, and whether the server would be asked.
+     */
+    private static JsonObject commandSuggest(JsonObject request) throws Exception {
+        var dispatcher = commandDispatcher(request.get("tree").getAsString());
+        var rows = new JsonArray();
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            String text = row.get("text").getAsString();
+            int cursor = row.has("cursor") ? row.get("cursor").getAsInt() : text.length();
+            var players = new java.util.ArrayList<String>();
+            for (var player : row.getAsJsonArray("players")) {
+                players.add(player.getAsString());
+            }
+            var teams = new java.util.ArrayList<String>();
+            for (var team : row.getAsJsonArray("teams")) {
+                teams.add(team.getAsString());
+            }
+            var source = new OracleSource(players, teams);
+            if (row.has("registry_backed")) {
+                // The game lists these from its registries; this port asks the server.
+                var out = new JsonObject();
+                out.addProperty("label", row.get("label").getAsString());
+                out.add("matches", new JsonArray());
+                out.addProperty("start", -1);
+                out.addProperty("asked", true);
+                rows.add(out);
+                continue;
+            }
+            var reader = new com.mojang.brigadier.StringReader(text);
+            if (reader.canRead() && reader.peek() == '/') {
+                reader.skip();
+            }
+            var parse = dispatcher.parse(reader, source);
+            var suggestions = dispatcher.getCompletionSuggestions(parse, cursor).get();
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            var matches = new JsonArray();
+            for (var suggestion : suggestions.getList()) {
+                matches.add(suggestion.getText());
+            }
+            out.add("matches", matches);
+            out.addProperty("start", suggestions.isEmpty() ? -1 : suggestions.getRange().getStart());
+            out.addProperty("asked", source.asked);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
+     * A command tree the way the client reads one off the wire, and what the
+     * chat box makes of texts typed against it: where each node read, what
+     * could not be read, the colours of the text and the lines under it.
+     */
+    @SuppressWarnings("unchecked")
+    private static JsonObject commandParse(JsonObject request) throws Exception {
+        var dispatcher = commandDispatcher(request.get("tree").getAsString());
         net.minecraft.client.multiplayer.ClientSuggestionProvider source = new net.minecraft.client.multiplayer.ClientSuggestionProvider(
             null, null, permission -> true);
         var formatText = net.minecraft.client.gui.components.CommandSuggestions.class.getDeclaredMethod("formatText",

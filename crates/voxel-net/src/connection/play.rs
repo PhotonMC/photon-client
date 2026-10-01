@@ -658,6 +658,14 @@ impl PlaySession {
         &self.username
     }
 
+    /// `getOnlinePlayers`: the names of every player the server told of.
+    pub fn online_player_names(&self) -> Vec<String> {
+        self.player_infos
+            .values()
+            .map(|info| info.name.clone())
+            .collect()
+    }
+
     /// The players the tab list names (`getOnlinePlayers`, listed ones).
     pub fn listed_players(&self) -> Vec<&PlayerInfo> {
         self.player_infos

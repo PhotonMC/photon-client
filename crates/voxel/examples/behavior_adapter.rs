@@ -18586,6 +18586,55 @@ fn command_parse_result(request: &Value, root: &std::path::Path) -> Result<Value
     Ok(json!({"rows": rows}))
 }
 
+/// The tree's own suggestions for text at a cursor, and whether the server
+/// would be asked.
+fn command_suggest_result(request: &Value) -> Result<Value, String> {
+    use voxel_game::commands::SuggestContext;
+    let hex = request["tree"].as_str().ok_or("tree")?;
+    let bytes: Vec<u8> = (0..hex.len() / 2)
+        .map(|index| u8::from_str_radix(&hex[index * 2..index * 2 + 2], 16).map_err(|_| "tree hex"))
+        .collect::<Result<_, _>>()?;
+    let tree = voxel_net::connection::parse_commands_packet(&bytes)
+        .map_err(|error| format!("{error:?}"))?;
+    let names = |value: &Value| -> Vec<String> {
+        value
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|name| name.as_str().map(str::to_owned))
+            .collect()
+    };
+    let mut rows = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let text = row["text"].as_str().ok_or("text")?;
+        let cursor = row["cursor"]
+            .as_u64()
+            .map_or_else(|| text.chars().count(), |cursor| cursor as usize);
+        let (players, teams) = (names(&row["players"]), names(&row["teams"]));
+        let parse = tree.parse(text, usize::from(text.starts_with('/')));
+        let found = tree.suggestions(
+            &parse,
+            cursor,
+            &SuggestContext {
+                players: &players,
+                teams: &teams,
+            },
+        );
+        let start = if found.matches.is_empty() {
+            -1
+        } else {
+            found.start as i64
+        };
+        rows.push(json!({
+            "label": row["label"],
+            "matches": found.matches,
+            "start": start,
+            "asked": found.ask_server,
+        }));
+    }
+    Ok(json!({"rows": rows}))
+}
+
 fn gui_result(request: &Value) -> Result<Value, String> {
     use voxel_render::gui::chat::ChatLog;
     use voxel_render::gui::font::Font;
@@ -18597,6 +18646,9 @@ fn gui_result(request: &Value) -> Result<Value, String> {
     let (atlas, _) = GuiAtlas::load(&root, &[&font, &alt]).ok_or("gui atlas")?;
     if request["operation"] == "command_parse" {
         return command_parse_result(request, &root);
+    }
+    if request["operation"] == "command_suggest" {
+        return command_suggest_result(request);
     }
     let rows = request["rows"]
         .as_array()

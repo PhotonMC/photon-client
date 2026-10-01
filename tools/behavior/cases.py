@@ -14130,6 +14130,8 @@ def command_tree_hex(root):
             flags |= 4
         if node.get("redirect") is not None:
             flags |= 8
+        if node.get("provider"):
+            flags |= 16
         out.append(flags)
         out += varint(len(node["children"]))
         for child in node["children"]:
@@ -14140,6 +14142,8 @@ def command_tree_hex(root):
             out += utf(node["name"])
         elif node["kind"] == "arg":
             out += utf(node["name"]) + varint(node["type"][0]) + node["type"][1]
+            if node.get("provider"):
+                out += utf(node["provider"])
     out += varint(index[id(root)])
     return out.hex()
 
@@ -14269,6 +14273,92 @@ def gui_command_parse_cases():
         for empty in (True, False):
             rows.append({"label": f"{number}-{text}-{empty}", "text": text, "suggestions_empty": empty})
     yield {"case_id": "gui/command-parse", "family": "gui", "operation": "command_parse",
+           "tree": tree, "rows": rows}
+
+
+def gui_command_suggest_cases():
+    """What a command tree suggests for text at a cursor: literals, the
+    values of each argument type, selectors and names, coordinates, and
+    whether the server would be asked (`ask_server`, unknown providers)."""
+    import struct
+
+    def parameters(type_id, variant=0):
+        if type_id in (1, 2, 3, 4):
+            return bytes([0])
+        if type_id == 5:
+            return bytes([variant])
+        if type_id == 6:
+            return bytes([variant])
+        if type_id == 31:
+            return bytes([variant])
+        if type_id == 43:
+            return struct.pack(">i", 0)
+        if type_id in (44, 45, 46, 47, 48):
+            name = b"minecraft:item"
+            return bytes([len(name)]) + name
+        return b""
+
+    def lit(name, *children, exec=False):
+        return {"kind": "lit", "name": name, "children": list(children), "exec": exec, "redirect": None}
+
+    def arg(name, type_, *children, exec=False, provider=None):
+        return {"kind": "arg", "name": name, "type": type_, "children": list(children),
+                "exec": exec, "redirect": None, "provider": provider}
+
+    branches = [lit(f"t{i}", arg("x", (i, parameters(i)), exec=True)) for i in range(57)]
+    branches += [
+        lit("single", arg("x", (6, parameters(6, 3)), exec=True)),
+        lit("ask", arg("x", (5, parameters(5)), exec=True, provider="minecraft:ask_server")),
+        lit("sounds", arg("x", (5, parameters(5)), exec=True, provider="minecraft:available_sounds")),
+        lit("bogus", arg("x", (5, parameters(5)), exec=True, provider="minecraft:bogus")),
+        lit("mixed", lit("literal", exec=True), arg("x", (5, parameters(5)), exec=True, provider="minecraft:ask_server")),
+        lit("alpha", exec=True), lit("Alphabet", exec=True), lit("beta", exec=True), lit("gamma", exec=True),
+    ]
+    root = {"kind": "root", "children": branches, "exec": False, "redirect": None}
+    tree = command_tree_hex(root)
+    rows = []
+
+    def add(text, cursor=None):
+        row = {"label": f"{len(rows)}-{text}", "text": text, "players": ["Alex", "Miner", "miner2"],
+               "teams": ["red", "blue"]}
+        if cursor is not None:
+            row["cursor"] = cursor
+        rows.append(row)
+
+    for text in ["/", "/t", "/T1", "/a", "/al", "/AL", "/alpha", "/alpha ", "/nope", "/be", "/zzz", ""]:
+        add(text)
+    # The game lists these from its registries; the port asks the server.
+    registry = {12, 13, 14, 15, 25, 27, 34, 35, 41, 44, 45, 46, 47, 48, 55}
+    for i in range(57):
+        add(f"/t{i} ")
+        if i in registry:
+            rows[-1]["registry_backed"] = True
+    samples = {
+        0: ["tr", "F", "x"], 42: ["cre", "ive", "s", "x"], 38: ["f", "e", "ey"],
+        26: ["=", "+", "<", "x"], 16: ["re", "ed", "dark_", "_blue", "x"], 30: ["side", "sidebar.t", "team.r", "x"],
+        33: ["r", "b", "x"], 6: ["@", "@a", "@z", "@a[", "@a[t", "Mi", "mi", "x", "@a ", "@p[type=player,"],
+        7: ["@", "Mi"], 31: ["@", "Mi", "*"],
+        8: ["1", "1 2", "~", "^", "1 2 3"], 10: ["1", "1 2", "~", "^", "1 2 3"], 9: ["1", "1 2"], 11: ["1", "1 2"],
+        29: ["1"], 43: ["1", "1d", "x"], 5: ["a"],
+    }
+    for i, texts in samples.items():
+        for text in texts:
+            add(f"/t{i} {text}")
+            if text.startswith(("@a[", "@p[")):
+                rows[-1]["registry_backed"] = True
+    add("/single ")
+    add("/single @")
+    for name in ("ask", "sounds", "bogus", "mixed"):
+        add(f"/{name} ")
+        add(f"/{name} a")
+        if name == "sounds":
+            # A provider the game lists locally (the sounds); the port asks.
+            rows[-1]["registry_backed"] = rows[-2]["registry_backed"] = True
+    add("/t42 creative ")
+    add("/t6 Alex ")
+    add("/t42 cr", cursor=5)
+    add("/t42 creative", cursor=5)
+    yield {"case_id": "gui/command-suggest", "family": "gui", "operation": "command_suggest",
            "tree": tree, "rows": rows}
 
 
@@ -14523,7 +14613,7 @@ def build_cases(families):
                   "movement": movement_cases,
                   "entity": entity_cases,
                   "gui": gui_cases}
-    generators["gui"] = lambda: itertools.chain(gui_cases(), gui_suggestion_cases(), gui_title_cases(), gui_boss_bar_cases(), gui_sidebar_cases(), gui_command_parse_cases(), gui_tab_list_cases(),
+    generators["gui"] = lambda: itertools.chain(gui_cases(), gui_suggestion_cases(), gui_title_cases(), gui_boss_bar_cases(), gui_sidebar_cases(), gui_command_parse_cases(), gui_command_suggest_cases(), gui_tab_list_cases(),
                                           gui_container_screen_cases())
     cases = [dict(schema_version=1, **case)
              for family in sorted(families) for case in generators[family]()]
