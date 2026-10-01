@@ -1107,6 +1107,82 @@ def gui_chat_options_cases():
            "rows": rows}
 
 
+def gui_mouse_cases():
+    """The mouse settings screen and the controls screen it opens from: their
+    lists in several sizes, the sensitivity and wheel sliders at their ends
+    and middle (with their special labels), the inversions, and presses and
+    drags on every kind of widget. The buttons that open another screen are
+    drawn and hovered, not pressed."""
+    def row(label, framebuffer=(854, 480), gui_scale=2, in_world=True, mouse=(0, 0), steps=(),
+            options=None):
+        row = {"label": label, "framebuffer": list(framebuffer), "gui_scale": gui_scale,
+               "in_world": in_world, "mouse": list(mouse), "steps": list(steps)}
+        if options:
+            row["options"] = options
+        return row
+
+    click = lambda x, y, shift=False: {"do": "click", "x": x, "y": y, "shift": shift}
+    drag = lambda x, y: {"do": "drag", "x": x, "y": y}
+    release = lambda x=0, y=0: {"do": "release", "x": x, "y": y}
+    wheel = lambda dy, x=200, y=100: {"do": "scroll", "x": x, "y": y, "dy": dy, "ctrl": False}
+    opt = lambda **values: values
+    mouse = [
+        row("in-world"), row("out-of-world", in_world=False), row("small", (640, 480)),
+        row("large", (1280, 720)), row("tiny", (640, 480), 3), row("short", (854, 240)),
+        row("sensitivity-zero", options=opt(sensitivity=0.0)),
+        row("sensitivity-full", options=opt(sensitivity=1.0)),
+        row("sensitivity-mid", options=opt(sensitivity=0.37)),
+        row("wheel-low", options=opt(wheel=0.01)), row("wheel-high", options=opt(wheel=10.0)),
+        row("wheel-odd", options=opt(wheel=2.5)),
+        row("inverted", options=opt(invert_x=True, invert_y=True)),
+        row("inverted-x", options=opt(invert_x=True)),
+        row("hover-sensitivity", mouse=(100, 45)), row("hover-done", mouse=(213, 223)),
+        row("hover-gap", mouse=(212, 45)),
+        row("press-sensitivity", steps=[click(100, 45)]),
+        row("press-sensitivity-start", steps=[click(60, 45)]),
+        row("press-sensitivity-end", steps=[click(205, 45)]),
+        row("drag-sensitivity", steps=[click(80, 45), drag(150, 45), release(150, 45)]),
+        row("drag-sensitivity-held", steps=[click(80, 45), drag(190, 45)]),
+        row("drag-sensitivity-zero", steps=[click(100, 45), drag(0, 45), release(0, 45)]),
+        row("drag-sensitivity-full", steps=[click(100, 45), drag(400, 45), release(400, 45)]),
+        row("press-wheel", steps=[click(300, 45)]),
+        row("drag-wheel", steps=[click(230, 45), drag(260, 45), release(260, 45)]),
+        row("drag-wheel-low", steps=[click(300, 45), drag(0, 45), release(0, 45)]),
+        row("drag-wheel-high", steps=[click(300, 45), drag(500, 45), release(500, 45)]),
+        row("press-discrete", steps=[click(100, 70)]), row("press-discrete-twice", steps=[click(100, 70)] * 2),
+        row("press-invert-x", steps=[click(250, 70)]), row("press-invert-y", steps=[click(100, 95)]),
+        row("press-cursor", steps=[click(250, 95)]), row("press-shift", steps=[click(250, 70, True)]),
+        row("press-gap", steps=[click(212, 70)]),
+        row("scroll-short", (854, 240), steps=[wheel(-100)]),
+        row("press-in-turn", steps=[click(250, 70), click(100, 95), click(100, 45)]),
+    ]
+    controls = [
+        row("in-world"), row("out-of-world", in_world=False), row("small", (640, 480)),
+        row("large", (1280, 720)), row("short", (854, 240)), row("tiny", (640, 480), 3),
+        row("hover-mouse-settings", mouse=(100, 45)), row("hover-key-binds", mouse=(300, 45)),
+        row("hover-toggle", mouse=(100, 70)), row("hover-done", mouse=(213, 223)),
+        row("press-toggle-sneak", steps=[click(100, 70)]),
+        row("press-toggle-sneak-twice", steps=[click(100, 70)] * 2),
+        row("press-toggle-sprint", steps=[click(250, 70)]),
+        row("press-toggle-attack", steps=[click(100, 95)]),
+        row("press-toggle-use", steps=[click(250, 95)]),
+        row("press-shift-toggle", steps=[click(250, 95, True)]),
+        row("press-auto-jump", steps=[click(100, 120)]),
+        row("press-sprint-window", steps=[click(250, 120)]),
+        row("drag-sprint-window", steps=[click(230, 120), drag(300, 120), release(300, 120)]),
+        row("drag-sprint-window-zero", steps=[click(230, 120), drag(0, 120), release(0, 120)]),
+        row("drag-sprint-window-end", steps=[click(230, 120), drag(400, 120), release(400, 120)]),
+        row("press-operator-tab", steps=[click(100, 145)]),
+        row("press-gap", steps=[click(212, 70)]),
+        row("scroll-short", (854, 240), steps=[wheel(-100)]),
+        row("press-in-turn", steps=[click(100, 70), click(250, 95), click(100, 145)]),
+    ]
+    yield {"case_id": "gui/mouse-settings-screen", "family": "gui", "operation": "mouse_settings_screen",
+           "rows": mouse}
+    yield {"case_id": "gui/controls-screen", "family": "gui", "operation": "controls_screen",
+           "rows": controls}
+
+
 def gui_generators():
     return itertools.chain(
         gui_cases(), gui_suggestion_cases(), gui_title_cases(), gui_boss_bar_cases(),
@@ -1114,4 +1190,5 @@ def gui_generators():
         gui_pause_screen_cases(), gui_death_screen_cases(), gui_disconnected_screen_cases(),
         gui_tab_list_cases(), gui_container_screen_cases(),
         gui_confirm_screen_cases(), gui_widgets_cases(),
-        gui_options_screen_cases(), gui_video_settings_cases(), gui_chat_options_cases())
+        gui_options_screen_cases(), gui_video_settings_cases(), gui_chat_options_cases(),
+        gui_mouse_cases())

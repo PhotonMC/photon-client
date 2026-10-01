@@ -279,6 +279,7 @@ Bitti: `Component`/dil (`en_us`), stilli yazı, `EditBox`, ipucu kutusu.
   options.rs`: FOV, GUI ölçeği, fare, tekerlek, sohbet değerleri; bilinmeyen
   anahtarlar korunur); FOV, GUI ölçeği, duyarlılık, ters çevirme ve tekerlek
   oyuna bağlı; sohbet değerleri (genişlik, ölçek, opaklıklar, satır aralığı, yükseklikler) sohbet çizimine bağlı (`ChatSettings`).
+- **Kısmen** Kontroller ve fare ayarları (`ControlsScreen` → `MouseSettingsScreen`, Options → Controls...): duyarlılık, tekerlek duyarlılığı ve ters çevirmeler `Options`'a yazılır, kameraya ve tekerleğe anında yansır (`turn_by`); ayrık kaydırma, imleç değişimi, Hold/Toggle, otomatik zıplama, koşu penceresi, operatör sekmesi yalnız ekranda yaşar; Key Binds ekranı yok (düğme çizilir, basınca bir şey olmaz); ham fare girdisi satırı yok (macOS'ta desteklenmez). `mouse_settings_screen` ve `controls_screen` oracle'ları.
 - **Kısmen** Sohbet ayarları (`ChatOptionsScreen`, Options → Chat Settings): 18 satır, Java etiketleri; görünürlük, genişlik, ölçek, opaklık, arka plan opaklığı, satır aralığı ve yükseklikler `Options`'a yazılır ve sohbeti anında yeniden sarar (`rescaleChat`). Yapılmadı: renkler/bağlantılar/öneriler/gecikme/imzalı sohbet/taslak vb. değerler yalnız ekranda yaşar; anlatıcı yok (düğme uykuda); görünürlüğün sunucuya bildirilmesi ve kısıtlı sohbet istemi; Tab/ok odağı (T11). `chat_options_screen` oracle'ı gerçek ekrana karşı.
 - **L** Ana menü, sunucu listesi ve doğrudan bağlanma, bağlantı/yükleme
   ekranları (`LevelLoadingScreen`, `ReceivingLevelScreen`), bağlantı kopma

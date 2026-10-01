@@ -15,6 +15,7 @@ pub mod frame;
 pub mod hud;
 pub mod items;
 pub mod layout;
+pub mod mouse_options;
 pub mod option_text;
 pub mod options;
 pub mod options_list;

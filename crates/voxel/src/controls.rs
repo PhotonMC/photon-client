@@ -11,6 +11,7 @@ use voxel_render::gui::chat_options::ChatOptionsScreen;
 use voxel_render::gui::confirm::{ConfirmAction, ConfirmBackground, ConfirmScreen};
 use voxel_render::gui::death::{DeathAction, DeathScreen};
 use voxel_render::gui::disconnected::DisconnectedScreen;
+use voxel_render::gui::mouse_options::{ControlsScreen, MouseSettingsScreen};
 use voxel_render::gui::options::{OptionsAction, OptionsInput, OptionsScreen};
 use voxel_render::gui::pause::{PauseAction, PauseScreen};
 use voxel_render::gui::screen::{KeyMods, KeyResult};
@@ -58,6 +59,9 @@ pub struct Controls {
     pub video_screen: Option<VideoSettingsScreen>,
     /// The chat settings, opened the same way.
     pub chat_options_screen: Option<ChatOptionsScreen>,
+    /// The controls screen, and the mouse settings over it.
+    pub controls_screen: Option<ControlsScreen>,
+    pub mouse_screen: Option<MouseSettingsScreen>,
     /// The death screen, from the server's word of a death until the player
     /// has health again.
     pub death: Option<DeathScreen>,
@@ -85,6 +89,27 @@ pub struct Controls {
     active_button: Option<i32>,
 }
 
+/// `MouseHandler.turnPlayer` for a mouse that moved `(dx, dy)`: scaled by
+/// the sensitivity cubed (`* 0.6F + 0.2F` widens floats), either axis
+/// reversed by its inversion option.
+fn turn_by(options: &Options, (dx, dy): (f64, f64)) -> (f64, f64) {
+    let sensitivity = options.sensitivity * f64::from(0.6_f32) + f64::from(0.2_f32);
+    let scaled = sensitivity * sensitivity * sensitivity * 8.0;
+    let (turn_x, turn_y) = (dx * scaled, dy * scaled);
+    (
+        if options.invert_mouse_x {
+            -turn_x
+        } else {
+            turn_x
+        },
+        if options.invert_mouse_y {
+            -turn_y
+        } else {
+            turn_y
+        },
+    )
+}
+
 impl Controls {
     pub fn new(camera_type: CameraType, captured: bool) -> Self {
         let command_history = read_command_history();
@@ -106,6 +131,8 @@ impl Controls {
             options_screen: None,
             video_screen: None,
             chat_options_screen: None,
+            controls_screen: None,
+            mouse_screen: None,
             death: None,
             confirm: None,
             disconnected: None,
@@ -193,6 +220,7 @@ impl Controls {
             Some(OptionsAction::Done) => self.close_options(),
             Some(OptionsAction::Video) => self.open_video(surface, assets),
             Some(OptionsAction::Chat) => self.open_chat_options(surface, assets),
+            Some(OptionsAction::Controls) => self.open_controls(surface, assets),
             _ => {}
         }
     }
@@ -214,6 +242,114 @@ impl Controls {
     /// and the options are saved.
     fn close_video(&mut self) {
         self.video_screen = None;
+        let _ = self.options.save(&options_path());
+    }
+
+    fn gui_size(surface: &WindowSurface) -> (i32, i32) {
+        let scale = surface.scale();
+        (scale.gui_scaled_width(), scale.gui_scaled_height())
+    }
+
+    /// `ControlsScreen`, over the options screen.
+    fn open_controls(&mut self, surface: &WindowSurface, assets: &ScreenAssets) {
+        self.controls_screen = Some(ControlsScreen::new(
+            &assets.creative.font,
+            &assets.lang,
+            Self::gui_size(surface),
+            true,
+        ));
+    }
+
+    /// `MouseSettingsScreen`, over the controls screen.
+    fn open_mouse_settings(&mut self, surface: &WindowSurface, assets: &ScreenAssets) {
+        self.mouse_screen = Some(MouseSettingsScreen::new(
+            &assets.creative.font,
+            &assets.lang,
+            Self::gui_size(surface),
+            true,
+            &self.options,
+        ));
+    }
+
+    /// The mouse options the screen shows are the options.
+    fn take_mouse_choices(&mut self) {
+        if let Some(screen) = self.mouse_screen.as_ref() {
+            let choices = screen.choices();
+            self.options.sensitivity = choices.sensitivity;
+            self.options.mouse_wheel_sensitivity = choices.wheel_sensitivity;
+            self.options.invert_mouse_x = choices.invert_x;
+            self.options.invert_mouse_y = choices.invert_y;
+        }
+    }
+
+    /// An event for the open mouse settings or the controls screen under
+    /// them.
+    fn controls_event(
+        &mut self,
+        event: glfw::WindowEvent,
+        surface: &mut WindowSurface,
+        assets: &ScreenAssets,
+    ) {
+        use glfw::{Action, Key, MouseButton, WindowEvent};
+        let lang = &assets.lang;
+        let wheel = self.options.mouse_wheel_sensitivity;
+        let mut done = false;
+        let mut open_mouse = false;
+        if let WindowEvent::CursorPos(x, y) = event {
+            let before = self.gui_mouse.1;
+            self.move_gui_mouse((x, y), surface);
+            let (mouse, dy) = (self.gui_mouse, self.gui_mouse.1 - before);
+            if let Some(screen) = self.mouse_screen.as_mut() {
+                screen.dragged(lang, mouse, dy);
+            } else if let Some(screen) = self.controls_screen.as_mut() {
+                screen.dragged(lang, mouse, dy);
+            }
+            self.take_mouse_choices();
+            return;
+        }
+        let mouse = self.gui_mouse;
+        match event {
+            WindowEvent::Key(Key::Escape, _, Action::Press, _) => done = true,
+            WindowEvent::MouseButton(MouseButton::Button1, Action::Press, modifiers) => {
+                let shift = modifiers.contains(glfw::Modifiers::Shift);
+                if let Some(screen) = self.mouse_screen.as_mut() {
+                    done = screen.clicked(lang, mouse, shift).done;
+                } else if let Some(screen) = self.controls_screen.as_mut() {
+                    let input = screen.clicked(lang, mouse, shift);
+                    done = input.done;
+                    open_mouse = input.mouse_settings;
+                }
+            }
+            WindowEvent::MouseButton(MouseButton::Button1, Action::Release, _) => {
+                if let Some(screen) = self.mouse_screen.as_mut() {
+                    screen.released(lang);
+                } else if let Some(screen) = self.controls_screen.as_mut() {
+                    screen.released(lang);
+                }
+            }
+            WindowEvent::Scroll(_, y) => {
+                if let Some(screen) = self.mouse_screen.as_mut() {
+                    screen.scrolled(mouse, y * wheel);
+                } else if let Some(screen) = self.controls_screen.as_mut() {
+                    screen.scrolled(mouse, y * wheel);
+                }
+            }
+            _ => {}
+        }
+        self.take_mouse_choices();
+        if open_mouse {
+            self.open_mouse_settings(surface, assets);
+        } else if done {
+            self.close_controls();
+        }
+    }
+
+    /// Done or Escape on the mouse settings goes back to the controls
+    /// screen, on that to the options; each saves the options.
+    fn close_controls(&mut self) {
+        if self.mouse_screen.take().is_none() {
+            self.controls_screen = None;
+        }
         let _ = self.options.save(&options_path());
     }
 
@@ -430,6 +566,8 @@ impl Controls {
         self.options_screen = None;
         self.video_screen = None;
         self.chat_options_screen = None;
+        self.controls_screen = None;
+        self.mouse_screen = None;
         self.death = None;
         self.confirm = None;
         self.screen = None;
@@ -492,6 +630,8 @@ impl Controls {
             self.options_screen = None;
             self.video_screen = None;
             self.chat_options_screen = None;
+            self.controls_screen = None;
+            self.mouse_screen = None;
             self.screen = None;
             self.captured = false;
             self.last_cursor = None;
@@ -579,6 +719,8 @@ impl Controls {
             if let Some(action) = confirm.escape() {
                 self.confirm_action(action, session, surface)?;
             }
+        } else if self.mouse_screen.is_some() || self.controls_screen.is_some() {
+            self.close_controls();
         } else if self.chat_options_screen.is_some() {
             self.close_chat_options();
         } else if self.video_screen.is_some() {
@@ -1108,6 +1250,10 @@ impl Controls {
         if self.death.is_some() && for_screen {
             return self.death_event(event, session, surface, assets);
         }
+        if (self.mouse_screen.is_some() || self.controls_screen.is_some()) && for_screen {
+            self.controls_event(event, surface, assets);
+            return Ok(());
+        }
         if self.chat_options_screen.is_some() && for_screen {
             self.chat_options_event(event, surface, assets);
             return Ok(());
@@ -1302,23 +1448,8 @@ impl Controls {
                     && let Some((last_x, last_y)) = self.last_cursor
                     && let Some(player) = session.player_mut()
                 {
-                    // `MouseHandler.turnPlayer`: `* 0.6F + 0.2F` widens floats.
-                    let sensitivity =
-                        self.options.sensitivity * f64::from(0.6_f32) + f64::from(0.2_f32);
-                    let scaled = sensitivity * sensitivity * sensitivity * 8.0;
-                    let (turn_x, turn_y) = ((x - last_x) * scaled, (y - last_y) * scaled);
-                    player.turn(
-                        if self.options.invert_mouse_x {
-                            -turn_x
-                        } else {
-                            turn_x
-                        },
-                        if self.options.invert_mouse_y {
-                            -turn_y
-                        } else {
-                            turn_y
-                        },
-                    );
+                    let (turn_x, turn_y) = turn_by(&self.options, (x - last_x, y - last_y));
+                    player.turn(turn_x, turn_y);
                 }
                 self.last_cursor = Some((x, y));
             }
@@ -1399,4 +1530,26 @@ fn hotbar_key(key: glfw::Key) -> Option<i32> {
     .iter()
     .position(|candidate| *candidate == key)
     .map(|slot| slot as i32)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_camera_turns_by_the_sensitivity_cubed_and_the_inversions() {
+        let mut options = Options::default();
+        // At the least, (0.2)^3 * 8; at the most, (0.8)^3 * 8, in single
+        // precision where the reference widens a float.
+        options.sensitivity = 0.0;
+        let low = f64::from(0.2_f32).powi(3) * 8.0;
+        assert_eq!(turn_by(&options, (10.0, -5.0)), (10.0 * low, -5.0 * low));
+        options.sensitivity = 1.0;
+        let high = (f64::from(0.6_f32) + f64::from(0.2_f32)).powi(3) * 8.0;
+        assert_eq!(turn_by(&options, (1.0, 1.0)), (high, high));
+        options.invert_mouse_x = true;
+        assert_eq!(turn_by(&options, (1.0, 1.0)), (-high, high));
+        options.invert_mouse_y = true;
+        assert_eq!(turn_by(&options, (1.0, 1.0)), (-high, -high));
+    }
 }

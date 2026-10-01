@@ -686,6 +686,76 @@ where
     })
 }
 
+/// A button of the list that opens another screen (`Button` in an
+/// `OptionsList`): a press is its "change".
+pub struct ButtonControl {
+    widget: Widget,
+    focused: bool,
+}
+
+impl Control for ButtonControl {
+    fn is_mouse_over(&self, arena: &Arena, mouse: (f64, f64)) -> bool {
+        self.widget.is_active()
+            && self
+                .widget
+                .contains(arena, (mouse.0 as i32, mouse.1 as i32))
+    }
+
+    fn pressed(&mut self, _lang: &Lang, _arena: &Arena, _mouse: (f64, f64), _shift: bool) -> bool {
+        true
+    }
+
+    fn dragged(&mut self, _lang: &Lang, _arena: &Arena, _x: f64) -> bool {
+        false
+    }
+
+    fn released(&mut self, _lang: &Lang) {}
+
+    fn set_focused(&mut self, focused: bool, _input: InputType) {
+        self.focused = focused;
+    }
+
+    fn set_active(&mut self, active: bool) {
+        self.widget.active = active;
+    }
+
+    fn draw(
+        &self,
+        frame: &mut GuiFrame,
+        atlas: &GuiAtlas,
+        font: &Font,
+        arena: &Arena,
+        mouse: (i32, i32),
+    ) {
+        let highlighted = self.widget.contains(arena, mouse) || self.focused;
+        self.widget.draw(frame, atlas, font, arena, highlighted);
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+}
+
+/// A button with a label that a press of is reported to the screen.
+pub fn button(key: &'static str) -> Build {
+    Box::new(move |lang, rect| {
+        Box::new(ButtonControl {
+            widget: Widget {
+                rect,
+                active: true,
+                kind: Kind::Button {
+                    label: lang.runs(&Component::translatable(key), &Style::default()),
+                },
+            },
+            focused: false,
+        })
+    })
+}
+
 /// What an input to a settings screen asks for.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct SubScreenInput {

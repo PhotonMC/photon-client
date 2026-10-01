@@ -51,12 +51,12 @@ const GUI_SCALE_MAX: i32 = 2_147_483_646;
 const CHAT_HEIGHT_SPAN: f64 = 160.0;
 
 /// `Options.logMouse`.
-fn log_mouse(value: i32) -> f64 {
+pub fn log_mouse(value: i32) -> f64 {
     10.0_f64.powf(f64::from(value) / 100.0)
 }
 
 /// `Options.unlogMouse`.
-fn unlog_mouse(value: f64) -> i32 {
+pub fn unlog_mouse(value: f64) -> i32 {
     (value.log10() * 100.0).floor() as i32
 }
 

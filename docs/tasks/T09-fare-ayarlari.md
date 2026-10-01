@@ -24,4 +24,6 @@ Tuş atamaları ekranı (`ControlsScreen` alt ekranları).
 `docs/gui-oracle.md`.
 
 ## Devir notu
-(boş)
+- `gui/mouse_options.rs`: `MouseSettingsScreen` (6 satır) + `ControlsScreen` (Java'da fare ekranının tek giriş yolu; Key Binds düğmesi ölü). `ButtonControl`/`button` listeye düğme ekler (basış "değişti" sayılır). Tekerlek kaydırıcısı `MappedIntRange<f64, fn, fn>` (`log_mouse/unlog_mouse` artık pub). Seçenekler `choices()` ile `Options`'a yazılır; Esc/Done kaydeder.
+- Oracle: `settingsScreen` Java yöntemi `mouse`/`controls` türleriyle; `mouse_settings_screen` 37, `controls_screen` 25 satır; ham fare satırı Java'da da yok çıktı (`isRawMouseInputSupported` yanlış). Düğmeler (Mouse Settings, Key Binds) basılmadı (Java `setScreen` sahtede çöker).
+- `controls.rs`: `turn_by` (Java `turnPlayer` formülü) birim testli. Açık: Key Binds ekranı, Tab/ok odağı (T11), ayrık kaydırma gerçek etkisi.

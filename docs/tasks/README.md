@@ -40,7 +40,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T06](T06-options-ekrani.md) | `OptionsScreen` | M | T03, T05 | bitti |
 | [T07](T07-video-ayarlari.md) | `OptionsList` + `VideoSettingsScreen` (FOV, GUI ölçeği) | M | T06 | bitti |
 | [T08](T08-sohbet-ayarlari.md) | `ChatOptionsScreen` + sohbet ayarları çizime | M | T06 | bitti |
-| [T09](T09-fare-ayarlari.md) | `MouseSettingsScreen` + duyarlılık | S | T06 | açık |
+| [T09](T09-fare-ayarlari.md) | `MouseSettingsScreen` + duyarlılık | S | T06 | bitti |
 | [T10](T10-dil-secimi.md) | `LanguageSelectScreen` + dil yeniden yükleme | L | T06 | açık |
 | [T11](T11-ipucu-ok-odagi.md) | Widget ipuçları + ok tuşlarıyla odak | M | T05 | açık |
 | [T12](T12-click-hover-modeli.md) | `ClickEvent`/`HoverEvent` stil modeli + sohbet ipucu | M | – | açık |

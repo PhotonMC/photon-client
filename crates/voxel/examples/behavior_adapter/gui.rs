@@ -641,8 +641,24 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                 }));
                 continue;
             }
-            "chat_options_screen" => {
+            "chat_options_screen" | "mouse_settings_screen" | "controls_screen" => {
                 use voxel_render::gui::chat_options::ChatOptionsScreen;
+                use voxel_render::gui::mouse_options::{ControlsScreen, MouseSettingsScreen};
+                // The settings screens that have the same inputs.
+                enum Shell {
+                    Chat(ChatOptionsScreen),
+                    Mouse(MouseSettingsScreen),
+                    Controls(ControlsScreen),
+                }
+                macro_rules! each {
+                    ($shell:expr, $screen:ident => $body:expr) => {
+                        match $shell {
+                            Shell::Chat($screen) => $body,
+                            Shell::Mouse($screen) => $body,
+                            Shell::Controls($screen) => $body,
+                        }
+                    };
+                }
                 use voxel_render::window::scale::WindowScale;
                 let lang = voxel_game::text::Lang::load(&root);
                 let framebuffer = (
@@ -668,13 +684,21 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                 set("height_unfocused", &mut options.chat_height_unfocused);
                 set("line_spacing", &mut options.chat_line_spacing);
                 set("background_opacity", &mut options.text_background_opacity);
-                let mut screen = ChatOptionsScreen::new(
-                    &font,
-                    &lang,
-                    (window.gui_scaled_width(), window.gui_scaled_height()),
-                    row["in_world"].as_bool().unwrap_or(false),
-                    &options,
-                );
+                set("sensitivity", &mut options.sensitivity);
+                set("wheel", &mut options.mouse_wheel_sensitivity);
+                options.invert_mouse_x = row["options"]["invert_x"].as_bool().unwrap_or(false);
+                options.invert_mouse_y = row["options"]["invert_y"].as_bool().unwrap_or(false);
+                let size = (window.gui_scaled_width(), window.gui_scaled_height());
+                let in_world = row["in_world"].as_bool().unwrap_or(false);
+                let mut screen = match super::string(request, "operation")? {
+                    "chat_options_screen" => Shell::Chat(ChatOptionsScreen::new(
+                        &font, &lang, size, in_world, &options,
+                    )),
+                    "mouse_settings_screen" => Shell::Mouse(MouseSettingsScreen::new(
+                        &font, &lang, size, in_world, &options,
+                    )),
+                    _ => Shell::Controls(ControlsScreen::new(&font, &lang, size, in_world)),
+                };
                 let mut last = (0.0, 0.0);
                 for step in row["steps"].as_array().ok_or("steps")? {
                     let at = (
@@ -683,22 +707,26 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                     );
                     match step["do"].as_str().unwrap_or_default() {
                         "click" => {
-                            screen.clicked(&lang, at, step["shift"].as_bool().unwrap_or(false));
+                            let shift = step["shift"].as_bool().unwrap_or(false);
+                            each!(&mut screen, s => { s.clicked(&lang, at, shift); });
                         }
-                        "drag" => screen.dragged(&lang, at, at.1 - last.1),
-                        "release" => screen.released(&lang),
-                        "scroll" => screen.scrolled(at, step["dy"].as_f64().unwrap_or(0.0)),
+                        "drag" => each!(&mut screen, s => s.dragged(&lang, at, at.1 - last.1)),
+                        "release" => each!(&mut screen, s => s.released(&lang)),
+                        "scroll" => {
+                            let dy = step["dy"].as_f64().unwrap_or(0.0);
+                            each!(&mut screen, s => s.scrolled(at, dy));
+                        }
                         other => return Err(format!("unknown step {other}")),
                     }
                     last = at;
                 }
-                screen.draw(&mut frame, &atlas, &font, mouse);
+                each!(&screen, s => s.draw(&mut frame, &atlas, &font, mouse));
                 out.push(json!({
                     "label": row["label"],
                     "width": window.gui_scaled_width(),
                     "height": window.gui_scaled_height(),
                     "gui_scale": int("gui_scale"),
-                    "scroll": screen.scroll_amount(),
+                    "scroll": each!(&screen, s => s.scroll_amount()),
                     "ops": gui_ops(&frame.log.take().unwrap_or_default()),
                 }));
                 continue;

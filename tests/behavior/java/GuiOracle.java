@@ -500,6 +500,8 @@ public final class GuiOracle {
                 case "options_screen" -> optionsScreen(request);
                 case "video_settings_screen" -> settingsScreen(request, "video");
                 case "chat_options_screen" -> settingsScreen(request, "chat");
+                case "mouse_settings_screen" -> settingsScreen(request, "mouse");
+                case "controls_screen" -> settingsScreen(request, "controls");
                 case "death_screen" -> deathScreen(request);
                 case "disconnected_screen" -> disconnectedScreen(request);
                 case "tab_list" -> tabList(request);
@@ -514,6 +516,10 @@ public final class GuiOracle {
     /** The chat over the HUD: messages added at ticks, drawn at a later one. */
     /** The chat options a row names, set the way the options screen sets them. */
     static void chatOptions(net.minecraft.client.Options options, JsonObject values) {
+        if (values.has("sensitivity")) options.sensitivity().set(values.get("sensitivity").getAsDouble());
+        if (values.has("wheel")) options.mouseWheelSensitivity().set(values.get("wheel").getAsDouble());
+        if (values.has("invert_x")) options.invertMouseX().set(values.get("invert_x").getAsBoolean());
+        if (values.has("invert_y")) options.invertMouseY().set(values.get("invert_y").getAsBoolean());
         if (values.has("scale")) options.chatScale().set(values.get("scale").getAsDouble());
         if (values.has("opacity")) options.chatOpacity().set(values.get("opacity").getAsDouble());
         if (values.has("width")) options.chatWidth().set(values.get("width").getAsDouble());
@@ -1246,6 +1252,8 @@ public final class GuiOracle {
                 case "video" -> new net.minecraft.client.gui.screens.options.VideoSettingsScreen(
                     null, minecraft, minecraft.options);
                 case "chat" -> new net.minecraft.client.gui.screens.options.ChatOptionsScreen(null, minecraft.options);
+                case "mouse" -> new net.minecraft.client.gui.screens.options.MouseSettingsScreen(null, minecraft.options);
+                case "controls" -> new net.minecraft.client.gui.screens.options.controls.ControlsScreen(null, minecraft.options);
                 default -> throw new IllegalArgumentException(kind);
             };
             minecraft.current = video;
