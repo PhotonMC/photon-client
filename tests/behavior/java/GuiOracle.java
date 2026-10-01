@@ -485,6 +485,7 @@ public final class GuiOracle {
                 case "chat" -> chat(request);
                 case "suggestions" -> suggestions(request);
                 case "titles" -> titles(request);
+                case "boss_bar" -> bossBar(request);
                 case "tab_list" -> tabList(request);
                 case "container_screen" -> containerScreen(request);
                 default -> throw new IllegalArgumentException("Unknown gui operation");
@@ -685,6 +686,36 @@ public final class GuiOracle {
                 method.setAccessible(true);
                 method.invoke(hud, screen.graphics(), tracker);
             }
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("ops", record(screen.state()));
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /** The boss bars: each event as the packet adds it, drawn by the overlay. */
+    private static JsonObject bossBar(JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            var screen = screen(row.get("width").getAsInt(), row.get("height").getAsInt(), 0, 0);
+            var overlay = new net.minecraft.client.gui.components.BossHealthOverlay(screen.minecraft());
+            int index = 0;
+            for (var barElement : row.getAsJsonArray("bars")) {
+                var bar = barElement.getAsJsonObject();
+                var colors = net.minecraft.world.BossEvent.BossBarColor.values();
+                var overlays = net.minecraft.world.BossEvent.BossBarOverlay.values();
+                var id = new java.util.UUID(0L, ++index);
+                ((java.util.Map<java.util.UUID, net.minecraft.client.gui.components.LerpingBossEvent>)
+                    get(overlay, "events")).put(id, new net.minecraft.client.gui.components.LerpingBossEvent(
+                        id, Component.literal(bar.get("name").getAsString()), bar.get("progress").getAsFloat(),
+                        colors[bar.get("color").getAsInt()], overlays[bar.get("overlay").getAsInt()],
+                        false, false, false));
+            }
+            overlay.extractRenderState(screen.graphics());
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());
             out.add("ops", record(screen.state()));

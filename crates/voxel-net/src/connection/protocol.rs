@@ -95,6 +95,7 @@ pub(crate) const PLAY_CLIENTBOUND_SET_SUBTITLE_TEXT_PACKET_ID: i32 = 112;
 pub(crate) const PLAY_CLIENTBOUND_SET_TITLE_TEXT_PACKET_ID: i32 = 114;
 pub(crate) const PLAY_CLIENTBOUND_SET_TITLES_ANIMATION_PACKET_ID: i32 = 115;
 pub(crate) const PLAY_CLIENTBOUND_TAB_LIST_PACKET_ID: i32 = 122;
+pub(crate) const PLAY_CLIENTBOUND_BOSS_EVENT_PACKET_ID: i32 = 9;
 pub(crate) const PLAY_CLIENTBOUND_DELETE_CHAT_PACKET_ID: i32 = 31;
 pub(crate) const PLAY_CLIENTBOUND_DISGUISED_CHAT_PACKET_ID: i32 = 33;
 pub(crate) const PLAY_CLIENTBOUND_PLAYER_CHAT_PACKET_ID: i32 = 65;
@@ -2860,6 +2861,33 @@ pub enum HudEvent {
         header: voxel_game::text::Component,
         footer: voxel_game::text::Component,
     },
+    /// `ClientboundBossEventPacket`.
+    Boss {
+        id: u128,
+        operation: BossOperation,
+    },
+}
+
+/// What a boss event packet does to the bar `id`.
+#[derive(Debug, Clone, PartialEq)]
+pub enum BossOperation {
+    Add {
+        name: voxel_game::text::Component,
+        progress: f32,
+        /// `BossBarColor` ordinal: pink, blue, red, green, yellow, purple, white.
+        color: u8,
+        /// `BossBarOverlay` ordinal: progress, then notched 6, 10, 12, 20.
+        overlay: u8,
+        flags: u8,
+    },
+    Remove,
+    Progress(f32),
+    Name(voxel_game::text::Component),
+    Style {
+        color: u8,
+        overlay: u8,
+    },
+    Properties(u8),
 }
 
 /// A `PlayerInfo` of the tab list: what the client keeps of a player.
@@ -3026,8 +3054,45 @@ pub(crate) fn parse_hud_packet(id: i32, input: &[u8]) -> Result<Option<HudEvent>
             header: read_chat_component(input, "tab list header")?,
             footer: read_chat_component(input, "tab list footer")?,
         },
+        PLAY_CLIENTBOUND_BOSS_EVENT_PACKET_ID => parse_boss_event(input)?,
         _ => return Ok(None),
     }))
+}
+
+/// `ClientboundBossEventPacket(RegistryFriendlyByteBuf)`.
+fn parse_boss_event(input: &mut &[u8]) -> Result<HudEvent, ConnectionError> {
+    let id = wire::take::<16>(input)
+        .map(u128::from_be_bytes)
+        .ok_or(ConnectionError::Codec("boss event id"))?;
+    let operation = match read_varint(input, "boss event operation")? {
+        0 => BossOperation::Add {
+            name: read_chat_component(input, "boss bar name")?,
+            progress: read_f32(input, "boss bar progress")?,
+            color: boss_ordinal(input, 7, "boss bar color")?,
+            overlay: boss_ordinal(input, 5, "boss bar overlay")?,
+            flags: read_byte(input, "boss bar flags")?,
+        },
+        1 => BossOperation::Remove,
+        2 => BossOperation::Progress(read_f32(input, "boss bar progress")?),
+        3 => BossOperation::Name(read_chat_component(input, "boss bar name")?),
+        4 => BossOperation::Style {
+            color: boss_ordinal(input, 7, "boss bar color")?,
+            overlay: boss_ordinal(input, 5, "boss bar overlay")?,
+        },
+        5 => BossOperation::Properties(read_byte(input, "boss bar flags")?),
+        _ => return Err(ConnectionError::Codec("boss event operation")),
+    };
+    Ok(HudEvent::Boss { id, operation })
+}
+
+/// An enum on the wire: its ordinal as a varint, below `count`.
+fn boss_ordinal(input: &mut &[u8], count: i32, name: &'static str) -> Result<u8, ConnectionError> {
+    let ordinal = read_varint(input, name)?;
+    if (0..count).contains(&ordinal) {
+        Ok(ordinal as u8)
+    } else {
+        Err(ConnectionError::Codec(name))
+    }
 }
 
 /// How a chat type is named on the wire (`Holder<ChatType>`): by its

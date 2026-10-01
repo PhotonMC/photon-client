@@ -18609,6 +18609,24 @@ fn gui_result(request: &Value) -> Result<Value, String> {
                     partial,
                 );
             }
+            "boss_bar" => {
+                use voxel_render::gui::boss_bar::BossBars;
+                let mut bars = BossBars::default();
+                for (index, bar) in row["bars"].as_array().ok_or("bars")?.iter().enumerate() {
+                    bars.add(
+                        index as u128 + 1,
+                        voxel_render::gui::chat::plain_runs(
+                            bar["name"].as_str().unwrap_or_default(),
+                        ),
+                        bar["progress"].as_f64().unwrap_or(0.0) as f32,
+                        bar["color"].as_u64().unwrap_or(0) as u8,
+                        bar["overlay"].as_u64().unwrap_or(0) as u8,
+                        0,
+                        0,
+                    );
+                }
+                bars.draw(&mut frame, &atlas, &font, (int("width"), int("height")), 0);
+            }
             "tab_list" => {
                 use voxel_render::gui::tab_list::{self, TabEntry};
                 let runs = |key: &str| {

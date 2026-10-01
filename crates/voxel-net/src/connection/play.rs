@@ -1559,6 +1559,7 @@ impl PlaySession {
             | PLAY_CLIENTBOUND_SET_ACTION_BAR_TEXT_PACKET_ID
             | PLAY_CLIENTBOUND_SET_TITLES_ANIMATION_PACKET_ID
             | PLAY_CLIENTBOUND_CLEAR_TITLES_PACKET_ID
+            | PLAY_CLIENTBOUND_BOSS_EVENT_PACKET_ID
             | PLAY_CLIENTBOUND_TAB_LIST_PACKET_ID => match parse_hud_packet(packet_id, payload) {
                 Ok(Some(event)) => self.hud_events.push(event),
                 Ok(None) => {}

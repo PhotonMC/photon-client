@@ -192,6 +192,31 @@ impl GuiFrame {
         self.blit(atlas, GuiBlend::Translucent, name, x, y, w, h);
     }
 
+    /// `GuiGraphics.blitSprite` of the left `w` by `h` part of a sprite
+    /// `size` big (a bar that is only part full).
+    pub fn sprite_part(
+        &mut self,
+        atlas: &GuiAtlas,
+        name: &str,
+        size: (i32, i32),
+        (x, y, w, h): (i32, i32, i32, i32),
+    ) {
+        if let Some(log) = &mut self.log {
+            log.push(DrawOp::Sprite {
+                name: name.to_owned(),
+                rect: (x, y, x + w, y + h),
+            });
+        }
+        self.blit_region(
+            atlas,
+            GuiBlend::Translucent,
+            name,
+            size,
+            (0, 0, w, h),
+            (x, y, w, h),
+        );
+    }
+
     /// `GuiGraphics.blit` of a region of a whole texture: `(u, v)` and the
     /// drawn size in texels of a texture `texture_size` big.
     #[expect(

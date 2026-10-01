@@ -2559,3 +2559,36 @@ fn title_packets_read_their_fields() {
         ))
     );
 }
+
+#[test]
+fn boss_event_packets_read_each_operation() {
+    let mut add = 7u128.to_be_bytes().to_vec();
+    add.extend([0, 8, 0, 2, b'h', b'i']);
+    add.extend(0.5f32.to_be_bytes());
+    add.extend([3, 2, 0b101]);
+    assert_eq!(
+        super::parse_hud_packet(9, &add).unwrap(),
+        Some(super::HudEvent::Boss {
+            id: 7,
+            operation: super::BossOperation::Add {
+                name: voxel_game::text::Component::literal("hi"),
+                progress: 0.5,
+                color: 3,
+                overlay: 2,
+                flags: 0b101,
+            },
+        })
+    );
+    let mut remove = 7u128.to_be_bytes().to_vec();
+    remove.push(1);
+    assert_eq!(
+        super::parse_hud_packet(9, &remove).unwrap(),
+        Some(super::HudEvent::Boss {
+            id: 7,
+            operation: super::BossOperation::Remove,
+        })
+    );
+    let mut style = 7u128.to_be_bytes().to_vec();
+    style.extend([4, 7, 0]);
+    assert!(super::parse_hud_packet(9, &style).is_err());
+}

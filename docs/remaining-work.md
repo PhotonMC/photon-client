@@ -167,9 +167,11 @@ Bitti: `Component`/dil (`en_us`), stilli yazı, `EditBox`, ipucu kutusu.
   sütunlar, ping simgesi, üst/alt yazı; çevrimdışı kafasız). Tablist canlı
   denenmedi (birim testli). Eksik: çevrimiçi kafalar, takım biçimi, eylem
   çubuğunun renk animasyonu, eylem çubuğu canlı doğrulaması.
-- **M** Kalan ekran metinleri: bossbar (`BossEvent`), scoreboard
-  (`SetObjective`, `SetScore`, `SetDisplayObjective`, `SetPlayerTeam`),
-  `TrackedWaypoint`.
+- **Bossbar** (`BossEvent` paketi, `BossHealthOverlay`, ilerleme yumuşatması)
+  yapıldı, `boss_bar` oracle'lı. Eksik: seviye değişince çubukları silmek,
+  koyulaştırma/sis/müzik bayrakları yalnız durum (ses ve sis yok).
+- **M** Kalan ekran metinleri: scoreboard (`SetObjective`, `SetScore`,
+  `SetDisplayObjective`, `SetPlayerTeam`), `TrackedWaypoint`.
 - **M** Yazı motoru kalanı: unifont yedeği (Latin dışı glifler), altı çizili /
   üstü çizili / karışık yazı, sağdan sola metin (bidi), tıklama/üzerine gelme
   olayları (`ClickEvent`, `HoverEvent`), yazı tipi seçimi, gölge rengi,

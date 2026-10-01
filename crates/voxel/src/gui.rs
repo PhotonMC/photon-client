@@ -5,9 +5,10 @@ use std::sync::Arc;
 
 use voxel_game::registries::Registries;
 use voxel_game::text::{Lang, Style};
-use voxel_net::connection::{ChatEvent, ChatHolder, HudEvent, PlaySession};
+use voxel_net::connection::{BossOperation, ChatEvent, ChatHolder, HudEvent, PlaySession};
 use voxel_render::VulkanBackend;
 use voxel_render::biome_tint::BiomeTints;
+use voxel_render::gui::boss_bar::BossBars;
 use voxel_render::gui::chat::ChatLog;
 use voxel_render::gui::font::Font;
 use voxel_render::gui::items::GuiItemVertex;
@@ -37,6 +38,7 @@ pub struct Gui {
     registries: Arc<Registries>,
     hud: Hud,
     titles: Titles,
+    boss_bars: BossBars,
     /// The tab list's header and footer, and when the HUD last ticked (for
     /// the partial tick the fades are drawn at).
     tab_header: Vec<voxel_game::text::Run>,
@@ -67,6 +69,7 @@ impl Gui {
             registries: Arc::new(registries),
             hud: Hud::default(),
             titles: Titles::default(),
+            boss_bars: BossBars::default(),
             tab_header: Vec::new(),
             tab_footer: Vec::new(),
             last_tick: std::time::Instant::now(),
@@ -127,6 +130,34 @@ impl Gui {
                 HudEvent::TabList { header, footer } => {
                     self.tab_header = runs(&self.lang, &header);
                     self.tab_footer = runs(&self.lang, &footer);
+                }
+                HudEvent::Boss { id, operation } => {
+                    let now = self.started_at.elapsed().as_millis() as u64;
+                    match operation {
+                        BossOperation::Add {
+                            name,
+                            progress,
+                            color,
+                            overlay,
+                            flags,
+                        } => {
+                            let name = runs(&self.lang, &name);
+                            self.boss_bars
+                                .add(id, name, progress, color, overlay, flags, now);
+                        }
+                        BossOperation::Remove => self.boss_bars.remove(id),
+                        BossOperation::Progress(progress) => {
+                            self.boss_bars.set_progress(id, progress, now);
+                        }
+                        BossOperation::Name(name) => {
+                            let name = runs(&self.lang, &name);
+                            self.boss_bars.set_name(id, name);
+                        }
+                        BossOperation::Style { color, overlay } => {
+                            self.boss_bars.set_style(id, color, overlay);
+                        }
+                        BossOperation::Properties(flags) => self.boss_bars.set_flags(id, flags),
+                    }
                 }
             }
         }
@@ -374,6 +405,9 @@ impl Gui {
             );
         }
         let partial = (self.last_tick.elapsed().as_secs_f32() / 0.05).min(1.0);
+        let now = self.started_at.elapsed().as_millis() as u64;
+        self.boss_bars
+            .draw(&mut frame, &self.atlas, &self.font, gui_size, now);
         self.titles
             .draw(&mut frame, &self.atlas, &self.font, gui_size, partial);
         if let Some(entries) = tab_entries {

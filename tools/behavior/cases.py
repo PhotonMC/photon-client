@@ -14091,6 +14091,32 @@ def gui_title_cases():
     yield {"case_id": "gui/titles", "family": "gui", "operation": "titles", "rows": rows}
 
 
+def gui_boss_bar_cases():
+    """The boss bars: every colour and notch, progress at its ends and in the
+    middle (the discrete width), several bars down the screen and the cut-off
+    at a third of its height."""
+    def bar(name, progress=1.0, color=0, overlay=0):
+        return {"name": name, "progress": progress, "color": color, "overlay": overlay}
+
+    def boss(label, bars, width=427, height=240):
+        return {"label": label, "width": width, "height": height, "bars": bars}
+
+    rows = [
+        boss("full", [bar("Ender Dragon")]),
+        boss("empty", [bar("Wither", 0.0, 4)]),
+        boss("a-sliver", [bar("Wither", 0.001, 2)]),
+        boss("half", [bar("Half", 0.5, 3)]),
+        boss("almost-full", [bar("Almost", 0.999, 5)]),
+    ]
+    rows += [boss("colour-%d" % c, [bar("Colour", 0.7, c)]) for c in range(7)]
+    rows += [boss("notches-%d" % o, [bar("Notched", 0.6, 1, o)]) for o in range(1, 5)]
+    rows.append(boss("three", [bar("One", 0.3), bar("Two", 0.6, 1, 2), bar("Three", 0.9, 2, 4)]))
+    rows.append(boss("cut-off", [bar("Bar %d" % i, 0.5, i % 7) for i in range(8)], height=240))
+    rows.append(boss("cut-off-tall", [bar("Bar %d" % i, 0.5, i % 7) for i in range(8)], height=480))
+    rows.append(boss("narrow-screen", [bar("A long boss name to centre", 0.4)], width=200, height=150))
+    yield {"case_id": "gui/boss_bar", "family": "gui", "operation": "boss_bar", "rows": rows}
+
+
 def gui_tab_list_cases():
     """The player list: one column and several, the header and the footer (and
     their wrapping), spectators, display names, list order and the ping icons."""
@@ -14226,7 +14252,7 @@ def build_cases(families):
                   "movement": movement_cases,
                   "entity": entity_cases,
                   "gui": gui_cases}
-    generators["gui"] = lambda: itertools.chain(gui_cases(), gui_suggestion_cases(), gui_title_cases(), gui_tab_list_cases(),
+    generators["gui"] = lambda: itertools.chain(gui_cases(), gui_suggestion_cases(), gui_title_cases(), gui_boss_bar_cases(), gui_tab_list_cases(),
                                           gui_container_screen_cases())
     cases = [dict(schema_version=1, **case)
              for family in sorted(families) for case in generators[family]()]
