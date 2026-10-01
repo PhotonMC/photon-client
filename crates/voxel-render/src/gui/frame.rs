@@ -571,17 +571,7 @@ impl GuiFrame {
             scale: 1.0,
             colour,
             shadow,
-            runs: runs
-                .iter()
-                .map(|run| {
-                    (
-                        run.text.clone(),
-                        run.style.colour,
-                        run.style.bold == Some(true),
-                        run.style.italic == Some(true),
-                    )
-                })
-                .collect(),
+            runs: merged_runs(runs),
         });
     }
 
@@ -764,3 +754,21 @@ impl GuiFrame {
 /// Draws an item's triangles into the 16 by 16 slot at a GUI position.
 pub type ItemDrawer<'a> = dyn FnMut(&voxel_world::ClientItemStackState, f32, f32, &mut Vec<crate::gui::items::GuiItemVertex>)
     + 'a;
+
+/// The runs as the reference's character sequence yields them: neighbours in
+/// one style are one stretch.
+fn merged_runs(runs: &[voxel_game::text::Run]) -> Vec<(String, Option<u32>, bool, bool)> {
+    let mut merged: Vec<(String, Option<u32>, bool, bool)> = Vec::new();
+    for run in runs {
+        let style = (
+            run.style.colour,
+            run.style.bold == Some(true),
+            run.style.italic == Some(true),
+        );
+        match merged.last_mut() {
+            Some(last) if (last.1, last.2, last.3) == style => last.0.push_str(&run.text),
+            _ => merged.push((run.text.clone(), style.0, style.1, style.2)),
+        }
+    }
+    merged
+}

@@ -57,6 +57,39 @@ impl Style {
         }
     }
 
+    /// A style from the tag the network carries: a compound with the
+    /// style's fields beside any others.
+    pub fn from_nbt(value: &FieldValue) -> Option<Self> {
+        match value {
+            FieldValue::Compound(fields) => Some(Self::from_fields(fields)),
+            _ => None,
+        }
+    }
+
+    fn from_fields(fields: &[voxel_core::nbt::Field]) -> Self {
+        let get = |key: &str| {
+            fields
+                .iter()
+                .find(|field| field.key == key)
+                .map(|f| &f.value)
+        };
+        let flag = |key: &str| match get(key) {
+            Some(FieldValue::Byte(value)) => Some(*value != 0),
+            _ => None,
+        };
+        Self {
+            colour: match get("color") {
+                Some(FieldValue::Str(name)) => parse_colour(name),
+                _ => None,
+            },
+            bold: flag("bold"),
+            italic: flag("italic"),
+            underlined: flag("underlined"),
+            strikethrough: flag("strikethrough"),
+            obfuscated: flag("obfuscated"),
+        }
+    }
+
     /// `Style.applyTo`: this style over a parent's.
     pub fn apply_to(&self, parent: &Style) -> Style {
         Style {
@@ -227,10 +260,6 @@ impl Component {
                     Some(FieldValue::Str(text)) => Some(text.clone()),
                     _ => None,
                 };
-                let flag = |key: &str| match get(key) {
-                    Some(FieldValue::Byte(value)) => Some(*value != 0),
-                    _ => None,
-                };
                 let content = if let Some(text) = get("text") {
                     match Self::from_nbt(text)?.content {
                         content @ Content::Literal(_) => content,
@@ -252,14 +281,7 @@ impl Component {
                 };
                 Some(Self {
                     content,
-                    style: Style {
-                        colour: string("color").and_then(|name| parse_colour(&name)),
-                        bold: flag("bold"),
-                        italic: flag("italic"),
-                        underlined: flag("underlined"),
-                        strikethrough: flag("strikethrough"),
-                        obfuscated: flag("obfuscated"),
-                    },
+                    style: Style::from_fields(fields),
                     siblings: match get("extra") {
                         Some(FieldValue::List(items)) => {
                             items.iter().filter_map(Self::from_nbt).collect()

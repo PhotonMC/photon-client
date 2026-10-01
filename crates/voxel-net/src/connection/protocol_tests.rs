@@ -2592,3 +2592,79 @@ fn boss_event_packets_read_each_operation() {
     style.extend([4, 7, 0]);
     assert!(super::parse_hud_packet(9, &style).is_err());
 }
+
+#[test]
+fn scoreboard_packets_read_their_fields() {
+    use voxel_game::scoreboard::{NumberFormat, ScoreboardEvent};
+    use voxel_game::text::Component;
+    // Objective "o": add, display name "hi", hearts, a blank number format.
+    let mut objective = vec![1, b'o', 0, 8, 0, 2, b'h', b'i', 1, 1, 0];
+    assert_eq!(
+        super::parse_scoreboard_packet(106, &objective).unwrap(),
+        Some(ScoreboardEvent::Objective {
+            name: "o".to_owned(),
+            method: 0,
+            display_name: Component::literal("hi"),
+            hearts: true,
+            number_format: Some(NumberFormat::Blank),
+        })
+    );
+    // A removal carries nothing more.
+    objective.truncate(3);
+    objective[2] = 1;
+    assert!(matches!(
+        super::parse_scoreboard_packet(106, &objective).unwrap(),
+        Some(ScoreboardEvent::Objective { method: 1, .. })
+    ));
+    // Score of "al" on "o": 5, no display, a fixed format.
+    let score = [2, b'a', b'l', 1, b'o', 5, 0, 1, 2, 8, 0, 1, b'x'];
+    assert_eq!(
+        super::parse_scoreboard_packet(110, &score).unwrap(),
+        Some(ScoreboardEvent::Score {
+            owner: "al".to_owned(),
+            objective: "o".to_owned(),
+            value: 5,
+            display: None,
+            number_format: Some(NumberFormat::Fixed(Component::literal("x"))),
+        })
+    );
+    // Reset of every score of "al".
+    assert_eq!(
+        super::parse_scoreboard_packet(79, &[2, b'a', b'l', 0]).unwrap(),
+        Some(ScoreboardEvent::ResetScore {
+            owner: "al".to_owned(),
+            objective: None,
+        })
+    );
+    // Slot 1 shows "o"; an empty name clears the slot.
+    assert_eq!(
+        super::parse_scoreboard_packet(98, &[1, 1, b'o']).unwrap(),
+        Some(ScoreboardEvent::Display {
+            slot: 1,
+            objective: Some("o".to_owned()),
+        })
+    );
+    assert_eq!(
+        super::parse_scoreboard_packet(98, &[1, 0]).unwrap(),
+        Some(ScoreboardEvent::Display {
+            slot: 1,
+            objective: None,
+        })
+    );
+    // Team "t": add, three components, two rules, colour 12, options, one player.
+    let mut team = vec![1, b't', 0];
+    for text in ["t", "[", "]"] {
+        team.extend([8, 0, 1, text.as_bytes()[0]]);
+    }
+    team.extend([0, 0, 1, 12, 3, 1, 2, b'a', b'l']);
+    let Some(ScoreboardEvent::Team {
+        parameters: Some(parameters),
+        players,
+        ..
+    }) = super::parse_scoreboard_packet(109, &team).unwrap()
+    else {
+        panic!("a team with parameters");
+    };
+    assert_eq!(parameters.colour, Some(12));
+    assert_eq!(players, ["al"]);
+}

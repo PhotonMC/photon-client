@@ -110,6 +110,8 @@ pub struct PlaySession {
     /// Title, action bar and tab list packets not yet shown, and the players
     /// the tab list names.
     hud_events: Vec<HudEvent>,
+    scoreboard: voxel_game::scoreboard::Scoreboard,
+    username: String,
     suggestions: Option<CommandSuggestions>,
     player_infos: std::collections::BTreeMap<(u64, u64), PlayerInfo>,
     next_chat_index: i32,
@@ -183,6 +185,8 @@ impl PlaySession {
             chat_events: Vec::new(),
             signature_cache: SignatureCache::default(),
             hud_events: Vec::new(),
+            scoreboard: voxel_game::scoreboard::Scoreboard::default(),
+            username: username.to_owned(),
             suggestions: None,
             player_infos: std::collections::BTreeMap::new(),
             next_chat_index: 0,
@@ -635,6 +639,16 @@ impl PlaySession {
     /// The title, action bar and tab list packets since the last call.
     pub fn drain_hud(&mut self) -> Vec<HudEvent> {
         std::mem::take(&mut self.hud_events)
+    }
+
+    /// What the server's scoreboard packets built.
+    pub fn scoreboard(&self) -> &voxel_game::scoreboard::Scoreboard {
+        &self.scoreboard
+    }
+
+    /// The local player's name, which scoreboard teams and scores go by.
+    pub fn local_name(&self) -> &str {
+        &self.username
     }
 
     /// The players the tab list names (`getOnlinePlayers`, listed ones).
@@ -1565,6 +1579,17 @@ impl PlaySession {
                 Ok(None) => {}
                 Err(error) => self.warn(format!("hud packet {packet_id}: {error:?}")),
             },
+            PLAY_CLIENTBOUND_SET_OBJECTIVE_PACKET_ID
+            | PLAY_CLIENTBOUND_SET_SCORE_PACKET_ID
+            | PLAY_CLIENTBOUND_RESET_SCORE_PACKET_ID
+            | PLAY_CLIENTBOUND_SET_DISPLAY_OBJECTIVE_PACKET_ID
+            | PLAY_CLIENTBOUND_SET_PLAYER_TEAM_PACKET_ID => {
+                match parse_scoreboard_packet(packet_id, payload) {
+                    Ok(Some(event)) => self.scoreboard.apply(event),
+                    Ok(None) => {}
+                    Err(error) => self.warn(format!("scoreboard packet {packet_id}: {error:?}")),
+                }
+            }
             PLAY_CLIENTBOUND_PLAYER_INFO_UPDATE_PACKET_ID => {
                 match parse_player_info_update(payload) {
                     Ok(entries) => {

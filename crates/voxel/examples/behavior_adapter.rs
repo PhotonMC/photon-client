@@ -18435,6 +18435,81 @@ impl voxel_render::gui::edit_box::Clipboard for NoClipboard {
 }
 
 /// The screens' drawing, recorded and compared with the reference's own.
+/// A number format named in a request: `blank`, `style:<colour>` or
+/// `fixed:<text>`.
+fn number_format(spec: &str) -> voxel_game::scoreboard::NumberFormat {
+    use voxel_game::scoreboard::NumberFormat;
+    if spec == "blank" {
+        NumberFormat::Blank
+    } else if let Some(colour) = spec.strip_prefix("style:") {
+        NumberFormat::Styled(voxel_game::text::Style::coloured(colour))
+    } else {
+        NumberFormat::Fixed(voxel_game::text::Component::literal(
+            spec.strip_prefix("fixed:").unwrap_or_default(),
+        ))
+    }
+}
+
+/// The scoreboard a gui request describes, built the way the packets build
+/// the game's.
+fn scoreboard_from(row: &Value) -> Result<voxel_game::scoreboard::Scoreboard, String> {
+    use voxel_game::scoreboard::{Scoreboard, ScoreboardEvent, TeamParameters};
+    use voxel_game::text::Component;
+    let literal = |value: &Value| Component::literal(value.as_str().unwrap_or_default());
+    let mut board = Scoreboard::default();
+    for objective in row["objectives"].as_array().into_iter().flatten() {
+        board.apply(ScoreboardEvent::Objective {
+            name: objective["name"]
+                .as_str()
+                .ok_or("objective name")?
+                .to_owned(),
+            method: 0,
+            display_name: literal(&objective["title"]),
+            hearts: objective["hearts"].as_bool().unwrap_or(false),
+            number_format: objective["format"].as_str().map(number_format),
+        });
+    }
+    for score in row["scores"].as_array().into_iter().flatten() {
+        board.apply(ScoreboardEvent::Score {
+            owner: score["owner"].as_str().ok_or("score owner")?.to_owned(),
+            objective: score["objective"]
+                .as_str()
+                .ok_or("score objective")?
+                .to_owned(),
+            value: score["value"].as_i64().unwrap_or(0) as i32,
+            display: score["display"].as_str().map(Component::literal),
+            number_format: score["format"].as_str().map(number_format),
+        });
+    }
+    if let Some(slots) = row["slots"].as_object() {
+        for (slot, objective) in slots {
+            board.apply(ScoreboardEvent::Display {
+                slot: slot.parse().map_err(|_| "slot")?,
+                objective: objective.as_str().map(str::to_owned),
+            });
+        }
+    }
+    for team in row["teams"].as_array().into_iter().flatten() {
+        board.apply(ScoreboardEvent::Team {
+            name: team["name"].as_str().ok_or("team name")?.to_owned(),
+            method: 0,
+            parameters: Some(TeamParameters {
+                display_name: literal(&team["name"]),
+                prefix: literal(&team["prefix"]),
+                suffix: literal(&team["suffix"]),
+                colour: team["color"].as_u64().map(|colour| colour as u8),
+            }),
+            players: team["players"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(|player| player.as_str().map(str::to_owned))
+                .collect(),
+        });
+    }
+    Ok(board)
+}
+
 fn gui_result(request: &Value) -> Result<Value, String> {
     use voxel_render::gui::chat::ChatLog;
     use voxel_render::gui::font::Font;
@@ -18609,6 +18684,29 @@ fn gui_result(request: &Value) -> Result<Value, String> {
                     partial,
                 );
             }
+            "sidebar" => {
+                use voxel_render::gui::sidebar;
+                let lang = voxel_game::text::Lang::new([]);
+                let board = scoreboard_from(row)?;
+                let style = voxel_game::text::Style::default();
+                if let Some((name, objective)) =
+                    board.sidebar_objective(row["local"].as_str().unwrap_or_default())
+                {
+                    let lines: Vec<sidebar::SidebarLine> = board
+                        .sidebar_lines(name)
+                        .iter()
+                        .map(|(name, score)| (lang.runs(name, &style), lang.runs(score, &style)))
+                        .collect();
+                    sidebar::draw(
+                        &mut frame,
+                        &atlas,
+                        &font,
+                        (int("width"), int("height")),
+                        &lang.runs(&objective.display_name, &style),
+                        &lines,
+                    );
+                }
+            }
             "boss_bar" => {
                 use voxel_render::gui::boss_bar::BossBars;
                 let mut bars = BossBars::default();
@@ -18628,38 +18726,54 @@ fn gui_result(request: &Value) -> Result<Value, String> {
                 bars.draw(&mut frame, &atlas, &font, (int("width"), int("height")), 0);
             }
             "tab_list" => {
-                use voxel_render::gui::tab_list::{self, TabEntry};
+                use voxel_render::gui::tab_list::{self, HealthStates, TabPlayer, TabScores};
                 let runs = |key: &str| {
                     row[key]
                         .as_str()
                         .map(voxel_render::gui::chat::plain_runs)
                         .unwrap_or_default()
                 };
-                let mut entries: Vec<TabEntry> = row["players"]
+                let board = scoreboard_from(row)?;
+                let lang = voxel_game::text::Lang::load(&root);
+                let displays: Vec<Option<voxel_game::text::Component>> = row["players"]
                     .as_array()
                     .ok_or("players")?
                     .iter()
                     .map(|player| {
-                        TabEntry::new(
-                            player["name"].as_str().unwrap_or_default(),
-                            player["display"]
-                                .as_str()
-                                .map(voxel_render::gui::chat::plain_runs),
-                            player["mode"].as_i64().unwrap_or(0) as i32,
-                            player["latency"].as_i64().unwrap_or(0) as i32,
-                            player["order"].as_i64().unwrap_or(0) as i32,
-                        )
+                        player["display"]
+                            .as_str()
+                            .map(voxel_game::text::Component::literal)
                     })
                     .collect();
-                tab_list::sort(&mut entries);
+                let players = row["players"].as_array().ok_or("players")?;
+                let (entries, objective) = tab_list::entries(
+                    players
+                        .iter()
+                        .zip(&displays)
+                        .map(|(player, display)| TabPlayer {
+                            name: player["name"].as_str().unwrap_or_default(),
+                            display_name: display.as_ref(),
+                            game_mode: player["mode"].as_i64().unwrap_or(0) as i32,
+                            latency: player["latency"].as_i64().unwrap_or(0) as i32,
+                            list_order: player["order"].as_i64().unwrap_or(0) as i32,
+                        }),
+                    &board,
+                    &lang,
+                );
+                let mut health = HealthStates::default();
                 tab_list::draw(
                     &mut frame,
                     &atlas,
                     &font,
                     int("width"),
                     &entries,
-                    &runs("header"),
-                    &runs("footer"),
+                    (&runs("header"), &runs("footer")),
+                    TabScores {
+                        objective,
+                        health: &mut health,
+                        gui_ticks: 0,
+                        lang: &lang,
+                    },
                 );
             }
             "container_screen" => {

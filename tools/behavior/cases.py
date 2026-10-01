@@ -14117,6 +14117,60 @@ def gui_boss_bar_cases():
     yield {"case_id": "gui/boss_bar", "family": "gui", "operation": "boss_bar", "rows": rows}
 
 
+def gui_sidebar_cases():
+    """The scoreboard's sidebar: ordering (value, then name without case),
+    hidden `#` owners, the 15 line limit, number formats (blank, styled,
+    fixed, per score), display names, team prefixes, suffixes and colours, and
+    a team colour's own sidebar over the general one."""
+    def objective(name="o", title="Title", fmt=None):
+        described = {"name": name, "title": title}
+        if fmt is not None:
+            described["format"] = fmt
+        return described
+
+    def score(owner, value, name="o", display=None, fmt=None):
+        described = {"owner": owner, "objective": name, "value": value}
+        if display is not None:
+            described["display"] = display
+        if fmt is not None:
+            described["format"] = fmt
+        return described
+
+    def board(label, objectives, scores, slots=None, teams=None, local="me", width=427, height=240):
+        row = {"label": label, "width": width, "height": height, "local": local,
+               "objectives": objectives, "scores": scores,
+               "slots": slots if slots is not None else {"1": objectives[0]["name"]}}
+        if teams:
+            row["teams"] = teams
+        return row
+
+    rows = [
+        board("basic", [objective()], [score("Alice", 5), score("Bob", 12), score("Cy", 1)]),
+        board("ties-by-name", [objective()], [score("bob", 5), score("Al", 5), score("cy", 5), score("AL2", 5)]),
+        board("negative", [objective()], [score("a", -3), score("b", 0), score("c", 7)]),
+        board("hidden", [objective()], [score("#total", 99), score("visible", 1)]),
+        board("fifteen-limit", [objective()], [score("p%02d" % i, i) for i in range(20)]),
+        board("wide-title", [objective(title="A rather long scoreboard title")], [score("a", 1)]),
+        board("long-name", [objective(title="T")], [score("a_name_that_is_quite_long", 123456)]),
+        board("blank-format", [objective(fmt="blank")], [score("a", 1), score("b", 2)]),
+        board("fixed-format", [objective(fmt="fixed:many")], [score("a", 1)]),
+        board("styled-format", [objective(fmt="style:green")], [score("a", 1)]),
+        board("per-score-format", [objective()], [score("a", 1, fmt="fixed:x"), score("b", 2)]),
+        board("display-name", [objective()], [score("a", 1, display="Shown")]),
+        board("team-dress", [objective()], [score("al", 3), score("bo", 2)],
+              teams=[{"name": "t", "prefix": "[T] ", "suffix": "!", "color": 12, "players": ["al"]}]),
+        board("team-colour-sidebar", [objective("all"), objective("mine", "Team only")],
+              [score("al", 1, "all"), score("x", 9, "mine")],
+              slots={"1": "all", "15": "mine"},
+              teams=[{"name": "t", "color": 12, "players": ["me"]}]),
+        board("team-without-slot", [objective("all")], [score("al", 1, "all")],
+              teams=[{"name": "t", "color": 12, "players": ["me"]}]),
+        board("no-sidebar", [objective()], [score("a", 1)], slots={"0": "o"}),
+        board("small-screen", [objective()], [score("a", 1), score("b", 2)], width=200, height=150),
+    ]
+    yield {"case_id": "gui/sidebar", "family": "gui", "operation": "sidebar", "rows": rows}
+
+
 def gui_tab_list_cases():
     """The player list: one column and several, the header and the footer (and
     their wrapping), spectators, display names, list order and the ping icons."""
@@ -14152,6 +14206,42 @@ def gui_tab_list_cases():
         tab("columns", many),
         tab("narrow", many, width=320),
         tab("eighty-cap", [player(f"p{n:03}") for n in range(95)]),
+    ]
+
+    def scored(label, players, scores, hearts=False, fmt=None, teams=None, width=427, height=240):
+        objective = {"name": "o", "title": "T"}
+        if hearts:
+            objective["hearts"] = True
+        if fmt is not None:
+            objective["format"] = fmt
+        row = tab(label, players, width=width, height=height)
+        row["objectives"] = [objective]
+        row["scores"] = [{"owner": name, "objective": "o", "value": value} for name, value in scores.items()]
+        row["slots"] = {"0": "o"}
+        if teams:
+            row["teams"] = teams
+        return row
+
+    trio = [player("Amy"), player("Bob"), player("Cy")]
+    rows += [
+        scored("scores", trio, {"Amy": 3, "Bob": 120, "Cy": 7}),
+        scored("score-missing", trio, {"Amy": 3}),
+        scored("score-spectator", [player("Amy"), player("Bob", mode=3)], {"Amy": 3, "Bob": 5}),
+        scored("score-blank", trio, {"Amy": 3, "Bob": 4}, fmt="blank"),
+        scored("score-fixed", trio, {"Amy": 3}, fmt="fixed:lots"),
+        scored("score-styled", trio, {"Amy": 3}, fmt="style:aqua"),
+        scored("score-columns", [player(f"player{n:02}") for n in range(30)],
+               {f"player{n:02}": n * 13 for n in range(30)}),
+        scored("hearts", trio, {"Amy": 20, "Bob": 7, "Cy": 1}, hearts=True),
+        scored("hearts-over-twenty", trio, {"Amy": 30, "Bob": 22}, hearts=True),
+        scored("hearts-text", trio, {"Amy": 80, "Bob": 100}, hearts=True),
+        scored("hearts-zero", trio, {"Amy": 0}, hearts=True),
+        scored("hearts-narrow", trio, {"Amy": 20}, hearts=True, width=160),
+        scored("teams", [player("zed"), player("amy"), player("bob")], {},
+               teams=[{"name": "b", "prefix": "[B] ", "color": 12, "players": ["amy"]},
+                      {"name": "a", "suffix": " (A)", "color": 10, "players": ["zed", "bob"]}]),
+        scored("team-with-display", [player("zed", display="Shown")], {},
+               teams=[{"name": "a", "prefix": "[A] ", "color": 12, "players": ["zed"]}]),
     ]
     yield {"case_id": "gui/tab-list", "family": "gui", "operation": "tab_list", "rows": rows}
 
@@ -14252,7 +14342,7 @@ def build_cases(families):
                   "movement": movement_cases,
                   "entity": entity_cases,
                   "gui": gui_cases}
-    generators["gui"] = lambda: itertools.chain(gui_cases(), gui_suggestion_cases(), gui_title_cases(), gui_boss_bar_cases(), gui_tab_list_cases(),
+    generators["gui"] = lambda: itertools.chain(gui_cases(), gui_suggestion_cases(), gui_title_cases(), gui_boss_bar_cases(), gui_sidebar_cases(), gui_tab_list_cases(),
                                           gui_container_screen_cases())
     cases = [dict(schema_version=1, **case)
              for family in sorted(families) for case in generators[family]()]

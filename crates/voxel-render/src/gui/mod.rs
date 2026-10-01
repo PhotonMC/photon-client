@@ -10,6 +10,7 @@ pub mod frame;
 pub mod hud;
 pub mod items;
 pub mod screen;
+pub mod sidebar;
 pub mod suggestions;
 pub mod tab_list;
 pub mod titles;

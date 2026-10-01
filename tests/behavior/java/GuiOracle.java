@@ -486,6 +486,7 @@ public final class GuiOracle {
                 case "suggestions" -> suggestions(request);
                 case "titles" -> titles(request);
                 case "boss_bar" -> bossBar(request);
+                case "sidebar" -> sidebar(request);
                 case "tab_list" -> tabList(request);
                 case "container_screen" -> containerScreen(request);
                 default -> throw new IllegalArgumentException("Unknown gui operation");
@@ -726,6 +727,108 @@ public final class GuiOracle {
         return result;
     }
 
+    /** A number format named in a request: `blank`, `style:<colour>` or `fixed:<text>`. */
+    private static net.minecraft.network.chat.numbers.NumberFormat numberFormat(String spec) {
+        if (spec.equals("blank")) {
+            return net.minecraft.network.chat.numbers.BlankFormat.INSTANCE;
+        }
+        if (spec.startsWith("style:")) {
+            return new net.minecraft.network.chat.numbers.StyledFormat(net.minecraft.network.chat.Style.EMPTY
+                .withColor(net.minecraft.ChatFormatting.valueOf(spec.substring("style:".length()).toUpperCase())));
+        }
+        return new net.minecraft.network.chat.numbers.FixedFormat(Component.literal(spec.substring("fixed:".length())));
+    }
+
+    /**
+     * A scoreboard a request describes: objectives, scores, the slots they
+     * show in and teams, built through the game's own `Scoreboard`.
+     */
+    private static net.minecraft.world.scores.Scoreboard scoreboard(JsonObject row) {
+        var scoreboard = new net.minecraft.world.scores.Scoreboard();
+        var objectives = new HashMap<String, net.minecraft.world.scores.Objective>();
+        for (var element : row.has("objectives") ? row.getAsJsonArray("objectives") : new JsonArray()) {
+            var described = element.getAsJsonObject();
+            var name = described.get("name").getAsString();
+            objectives.put(name, scoreboard.addObjective(name, net.minecraft.world.scores.criteria.ObjectiveCriteria.DUMMY,
+                Component.literal(described.get("title").getAsString()),
+                described.has("hearts") && described.get("hearts").getAsBoolean()
+                    ? net.minecraft.world.scores.criteria.ObjectiveCriteria.RenderType.HEARTS
+                    : net.minecraft.world.scores.criteria.ObjectiveCriteria.RenderType.INTEGER,
+                false, described.has("format") ? numberFormat(described.get("format").getAsString()) : null));
+        }
+        for (var element : row.has("scores") ? row.getAsJsonArray("scores") : new JsonArray()) {
+            var described = element.getAsJsonObject();
+            var access = scoreboard.getOrCreatePlayerScore(
+                net.minecraft.world.scores.ScoreHolder.forNameOnly(described.get("owner").getAsString()),
+                objectives.get(described.get("objective").getAsString()), true);
+            access.set(described.get("value").getAsInt());
+            if (described.has("display")) {
+                access.display(Component.literal(described.get("display").getAsString()));
+            }
+            if (described.has("format")) {
+                access.numberFormatOverride(numberFormat(described.get("format").getAsString()));
+            }
+        }
+        if (row.has("slots")) {
+            for (var entry : row.getAsJsonObject("slots").entrySet()) {
+                scoreboard.setDisplayObjective(net.minecraft.world.scores.DisplaySlot.values()[Integer.parseInt(entry.getKey())],
+                    objectives.get(entry.getValue().getAsString()));
+            }
+        }
+        if (row.has("teams")) {
+            for (var element : row.getAsJsonArray("teams")) {
+                var described = element.getAsJsonObject();
+                var team = scoreboard.addPlayerTeam(described.get("name").getAsString());
+                if (described.has("prefix")) {
+                    team.setPlayerPrefix(Component.literal(described.get("prefix").getAsString()));
+                }
+                if (described.has("suffix")) {
+                    team.setPlayerSuffix(Component.literal(described.get("suffix").getAsString()));
+                }
+                if (described.has("color")) {
+                    team.setColor(java.util.Optional.of(net.minecraft.world.scores.TeamColor.values()[described.get("color").getAsInt()]));
+                }
+                for (var player : described.getAsJsonArray("players")) {
+                    scoreboard.addPlayerToTeam(player.getAsString(), team);
+                }
+            }
+        }
+        return scoreboard;
+    }
+
+    /** The sidebar the scoreboard and the local player's team choose. */
+    private static JsonObject sidebar(JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            var screen = screen(row.get("width").getAsInt(), row.get("height").getAsInt(), 0, 0);
+            var minecraft = screen.minecraft();
+            var listener = (net.minecraft.client.multiplayer.ClientPacketListener)
+                unsafe.allocateInstance(net.minecraft.client.multiplayer.ClientPacketListener.class);
+            set(listener, "scoreboard", scoreboard(row));
+            var player = unsafe.allocateInstance(net.minecraft.client.player.LocalPlayer.class);
+            set(player, "connection", listener);
+            String local = row.get("local").getAsString();
+            set(player, "gameProfile", new com.mojang.authlib.GameProfile(
+                java.util.UUID.nameUUIDFromBytes(local.getBytes()), local));
+            set(minecraft, "player", player);
+            var level = unsafe.allocateInstance(net.minecraft.client.multiplayer.ClientLevel.class);
+            set(level, "connection", listener);
+            set(minecraft, "level", level);
+            var method = net.minecraft.client.gui.Hud.class.getDeclaredMethod("extractScoreboardSidebar",
+                GuiGraphicsExtractor.class, net.minecraft.client.DeltaTracker.class);
+            method.setAccessible(true);
+            method.invoke(screen.hud(), screen.graphics(), null);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("ops", record(screen.state()));
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** The player list over the game: who is listed, how, and the header and footer. */
     private static JsonObject tabList(JsonObject request) throws Exception {
         var rows = new JsonArray();
@@ -736,7 +839,7 @@ public final class GuiOracle {
             var minecraft = screen.minecraft();
             var listener = (net.minecraft.client.multiplayer.ClientPacketListener)
                 unsafe.allocateInstance(net.minecraft.client.multiplayer.ClientPacketListener.class);
-            var scoreboard = new net.minecraft.world.scores.Scoreboard();
+            var scoreboard = scoreboard(row);
             set(listener, "scoreboard", scoreboard);
             var listed = new it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet<net.minecraft.client.multiplayer.PlayerInfo>();
             set(listener, "listedPlayers", listed);
@@ -768,7 +871,8 @@ public final class GuiOracle {
             if (row.has("footer")) {
                 overlay.setFooter(Component.literal(row.get("footer").getAsString()));
             }
-            overlay.extractRenderState(screen.graphics(), width, scoreboard, null);
+            overlay.extractRenderState(screen.graphics(), width, scoreboard,
+                scoreboard.getDisplayObjective(net.minecraft.world.scores.DisplaySlot.LIST));
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());
             out.add("ops", record(screen.state()));

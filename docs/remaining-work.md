@@ -170,8 +170,16 @@ Bitti: `Component`/dil (`en_us`), stilli yazı, `EditBox`, ipucu kutusu.
 - **Bossbar** (`BossEvent` paketi, `BossHealthOverlay`, ilerleme yumuşatması)
   yapıldı, `boss_bar` oracle'lı. Eksik: seviye değişince çubukları silmek,
   koyulaştırma/sis/müzik bayrakları yalnız durum (ses ve sis yok).
-- **M** Kalan ekran metinleri: scoreboard (`SetObjective`, `SetScore`,
-  `SetDisplayObjective`, `SetPlayerTeam`), `TrackedWaypoint`.
+- **Scoreboard** (`SetObjective`, `SetScore`, `ResetScore`,
+  `SetDisplayObjective`, `SetPlayerTeam`; `voxel-game/scoreboard.rs`) yapıldı:
+  kenar çubuğu (takım rengine özel dahil), tablist puan sütunu ve kalpler,
+  takım öneki/soneki/rengi ve takım sırası; `sidebar` ve genişletilmiş
+  `tab_list` oracle'lı. Eksik: `below_name` (oyuncu adı altı puan, entity
+  çizimi gerekir), takımın ad etiketi/çarpışma/dost ateşi alanları yalnız
+  okunur (kullanım yok), kalp sütununun yanıp sönmesi birim testli ama
+  oracle'da yalnız ilk çizim, bozuk (`unknown objective`) paketler sessizce
+  yok sayılır.
+- **M** Kalan ekran metinleri: `TrackedWaypoint`.
 - **M** Yazı motoru kalanı: unifont yedeği (Latin dışı glifler), altı çizili /
   üstü çizili / karışık yazı, sağdan sola metin (bidi), tıklama/üzerine gelme
   olayları (`ClickEvent`, `HoverEvent`), yazı tipi seçimi, gölge rengi,

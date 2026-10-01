@@ -13,7 +13,10 @@ use voxel_render::gui::chat::ChatLog;
 use voxel_render::gui::font::Font;
 use voxel_render::gui::items::GuiItemVertex;
 use voxel_render::gui::screen::ScreenDraw;
-use voxel_render::gui::tab_list::{self, TabEntry};
+use voxel_render::gui::sidebar::{self, SidebarLine};
+use voxel_render::gui::tab_list::{
+    self, HealthStates, TabEntry, TabObjective, TabPlayer, TabScores,
+};
 use voxel_render::gui::titles::Titles;
 use voxel_render::gui::{GuiAtlas, Hud};
 use voxel_render::player_model::{PlayerModel, PlayerRenderState};
@@ -39,6 +42,8 @@ pub struct Gui {
     hud: Hud,
     titles: Titles,
     boss_bars: BossBars,
+    tab_health: HealthStates,
+    gui_ticks: i64,
     /// The tab list's header and footer, and when the HUD last ticked (for
     /// the partial tick the fades are drawn at).
     tab_header: Vec<voxel_game::text::Run>,
@@ -70,6 +75,8 @@ impl Gui {
             hud: Hud::default(),
             titles: Titles::default(),
             boss_bars: BossBars::default(),
+            tab_health: HealthStates::default(),
+            gui_ticks: 0,
             tab_header: Vec::new(),
             tab_footer: Vec::new(),
             last_tick: std::time::Instant::now(),
@@ -104,6 +111,7 @@ impl Gui {
     pub fn tick(&mut self) {
         self.hud.tick();
         self.titles.tick();
+        self.gui_ticks += 1;
         self.last_tick = std::time::Instant::now();
     }
 
@@ -163,27 +171,20 @@ impl Gui {
         }
     }
 
-    /// The players of the tab list, in the order it lists them.
-    fn tab_entries(&self, session: &PlaySession) -> Vec<TabEntry> {
-        let mut entries: Vec<TabEntry> = session
-            .listed_players()
-            .into_iter()
-            .map(|info| {
-                let display = info
-                    .display_name
-                    .as_ref()
-                    .map(|component| self.lang.runs(component, &Style::default()));
-                TabEntry::new(
-                    &info.name,
-                    display,
-                    info.game_mode,
-                    info.latency,
-                    info.list_order,
-                )
-            })
-            .collect();
-        tab_list::sort(&mut entries);
-        entries
+    /// The players of the tab list, in the order it lists them, and the
+    /// objective whose scores it shows.
+    fn tab_entries(&self, session: &PlaySession) -> (Vec<TabEntry>, Option<TabObjective>) {
+        tab_list::entries(
+            session.listed_players().into_iter().map(|info| TabPlayer {
+                name: &info.name,
+                display_name: info.display_name.as_ref(),
+                game_mode: info.game_mode,
+                latency: info.latency,
+                list_order: info.list_order,
+            }),
+            session.scoreboard(),
+            &self.lang,
+        )
     }
 
     /// The decoration of a bound chat type, if the registries know it.
@@ -361,6 +362,24 @@ impl Gui {
         let session = &*session;
         let hud_player = session.player();
         let tab_entries = controls.tab_held.then(|| self.tab_entries(session));
+        if !controls.tab_held {
+            self.tab_health.clear();
+        }
+        let sidebar = session
+            .scoreboard()
+            .sidebar_objective(session.local_name())
+            .map(|(name, objective)| {
+                let runs = |component: &voxel_game::text::Component| {
+                    self.lang.runs(component, &Style::default())
+                };
+                let lines: Vec<SidebarLine> = session
+                    .scoreboard()
+                    .sidebar_lines(name)
+                    .iter()
+                    .map(|(name, score)| (runs(name), runs(score)))
+                    .collect();
+                (runs(&objective.display_name), lines)
+            });
         let items = &mut self.items;
         let mut draw_item =
             |stack: &ClientItemStackState, x: f32, y: f32, out: &mut Vec<GuiItemVertex>| {
@@ -376,6 +395,16 @@ impl Gui {
             self.started_at.elapsed().as_millis(),
             &mut draw_item,
         );
+        if let Some((title, lines)) = &sidebar {
+            sidebar::draw(
+                &mut frame,
+                &self.atlas,
+                &self.font,
+                (size.gui_scaled_width(), size.gui_scaled_height()),
+                title,
+                lines,
+            );
+        }
         // The chat, over the hotbar; open, it is the box's and brighter.
         let focused = controls.chat.is_some();
         let chat_tooltip = controls.chat_log.draw_with(
@@ -410,15 +439,20 @@ impl Gui {
             .draw(&mut frame, &self.atlas, &self.font, gui_size, now);
         self.titles
             .draw(&mut frame, &self.atlas, &self.font, gui_size, partial);
-        if let Some(entries) = tab_entries {
+        if let Some((entries, objective)) = tab_entries {
             tab_list::draw(
                 &mut frame,
                 &self.atlas,
                 &self.font,
                 gui_size.0,
                 &entries,
-                &self.tab_header,
-                &self.tab_footer,
+                (&self.tab_header, &self.tab_footer),
+                TabScores {
+                    objective,
+                    health: &mut self.tab_health,
+                    gui_ticks: self.gui_ticks,
+                    lang: &self.lang,
+                },
             );
         }
         if let (Some(screen), Some(menu)) = (controls.screen.as_mut(), screen_menu) {

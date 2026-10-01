@@ -16,6 +16,7 @@ pub mod key_mapping;
 pub mod option;
 pub mod recipe_book;
 pub mod registries;
+pub mod scoreboard;
 pub mod scroll;
 pub mod text;
 pub mod tooltip;
