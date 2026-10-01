@@ -491,6 +491,7 @@ public final class GuiOracle {
                 case "command_suggest" -> commandSuggest(request);
                 case "pause_screen" -> pauseScreen(request);
                 case "confirm_screen" -> confirmScreen(request);
+                case "widgets" -> widgets(request);
                 case "death_screen" -> deathScreen(request);
                 case "disconnected_screen" -> disconnectedScreen(request);
                 case "tab_list" -> tabList(request);
@@ -957,6 +958,93 @@ public final class GuiOracle {
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());
             out.add("callbacks", callbacks);
+            out.add("ops", record(screen.state()));
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
+     * The widgets an option makes (`OptionInstance.createButton`): a slider or a cycle button
+     * for an option set to a value, after some focus, mouse and key steps: its drawing and the
+     * option's value.
+     */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static JsonObject widgets(JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            int mouseX = row.get("mouse").getAsJsonArray().get(0).getAsInt();
+            int mouseY = row.get("mouse").getAsJsonArray().get(1).getAsInt();
+            var screen = screen(427, 240, mouseX, mouseY);
+            var minecraft = screen.minecraft();
+            set(minecraft, "soundManager", unsafe.allocateInstance(SilentSounds.class));
+            var options = minecraft.options;
+            String kind = row.get("kind").getAsString();
+            net.minecraft.client.OptionInstance instance = switch (kind) {
+                case "fov" -> options.fov();
+                case "sensitivity" -> options.sensitivity();
+                case "chat_opacity" -> options.chatOpacity();
+                case "invert_y" -> options.invertMouseY();
+                case "chat_visibility" -> options.chatVisibility();
+                default -> throw new IllegalArgumentException(kind);
+            };
+            var value = row.get("value");
+            instance.set(switch (kind) {
+                case "fov" -> (Object) value.getAsInt();
+                case "invert_y" -> (Object) value.getAsBoolean();
+                case "chat_visibility" ->
+                    (Object) net.minecraft.world.entity.player.ChatVisiblity.values()[value.getAsInt()];
+                default -> (Object) value.getAsDouble();
+            });
+            var widget = instance.createButton(options, 100, 50, row.get("width").getAsInt());
+            widget.active = row.get("active").getAsBoolean();
+            var info = new net.minecraft.client.input.MouseButtonInfo(0, 0);
+            for (var stepElement : row.getAsJsonArray("steps")) {
+                var step = stepElement.getAsJsonObject();
+                String action = step.get("do").getAsString();
+                switch (action) {
+                    case "focus" -> {
+                        minecraft.setLastInputType(net.minecraft.client.InputType.valueOf(
+                            step.get("input").getAsString()));
+                        widget.setFocused(true);
+                    }
+                    case "unfocus" -> widget.setFocused(false);
+                    case "click" -> widget.mouseClicked(new net.minecraft.client.input.MouseButtonEvent(
+                        step.get("x").getAsDouble(), step.get("y").getAsDouble(),
+                        new net.minecraft.client.input.MouseButtonInfo(0, step.get("shift").getAsBoolean() ? 1 : 0)),
+                        false);
+                    case "drag" -> widget.mouseDragged(new net.minecraft.client.input.MouseButtonEvent(
+                        step.get("x").getAsDouble(), 60, info), 0, 0);
+                    case "release" -> widget.mouseReleased(new net.minecraft.client.input.MouseButtonEvent(
+                        step.get("x").getAsDouble(), 60, info));
+                    case "key" -> {
+                        int code = switch (step.get("key").getAsString()) {
+                            case "left" -> 263;
+                            case "right" -> 262;
+                            case "enter" -> 257;
+                            case "space" -> 32;
+                            default -> throw new IllegalArgumentException(step.get("key").getAsString());
+                        };
+                        widget.keyPressed(new net.minecraft.client.input.KeyEvent(
+                            code, 0, step.get("shift").getAsBoolean() ? 1 : 0));
+                    }
+                    case "scroll" -> widget.mouseScrolled(110, 60, 0, step.get("dy").getAsDouble());
+                    default -> throw new IllegalArgumentException(action);
+                }
+            }
+            widget.extractRenderState(screen.graphics(), mouseX, mouseY, 0.0F);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            Object result = instance.get();
+            out.addProperty("value", switch (kind) {
+                case "fov" -> Integer.toString((Integer) result);
+                case "invert_y" -> Boolean.toString((Boolean) result);
+                case "chat_visibility" -> Integer.toString(((net.minecraft.world.entity.player.ChatVisiblity) result).ordinal());
+                default -> String.format("%016x", Double.doubleToRawLongBits((Double) result));
+            });
             out.add("ops", record(screen.state()));
             rows.add(out);
         }

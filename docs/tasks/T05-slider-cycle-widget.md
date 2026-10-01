@@ -26,4 +26,7 @@ Operation `widgets`: Java'da gerçek `OptionInstance`'tan `createButton` ile ür
 `docs/gui-oracle.md` satırı.
 
 ## Devir notu
-(boş)
+- `gui/slider.rs` (`OptionSlider<S: SliderValues>`: IntRange/UnitDouble; tıkla/sürükle/bırak/tuş, `InputType`, `canChangeValue`), `gui/cycle.rs` (`CycleButton<V>`: tık/Shift/tekerlek/Enter), `gui/option_text.rs` (FOV, duyarlılık, sohbet opaklığı, boolean, görünürlük etiketleri). `Frame::nine_slice_edges` asimetrik kenar için eklendi (tutamak 2/2/2/3); `widgets::draw_label` serbest işlev oldu.
+- Oracle `widgets` (68 satır) ilk koşuda Java'ya eşit, tek düzeltme: `AbstractButton.keyPressed` odağı kendisi denetlemez (ekran verir). Seçenek değeri de kıyaslanır.
+- Sapma/kapsam: kaydırıcının gecikmeli uygulaması (`applyValueImmediately=false`, FOV değil), `ValueSet` türlerinin kalanı, ipuçları (T11), imleç şekli ve ses yok. Etiket tanımları (hangi seçenek hangi etiketi alır) şimdilik `option_text` işlevlerinde; T07 seçenek listesini kurarken genişletir.
+- Cycle düğmesi `Options` alanına bağlı değil: sahip ekran dönen değeri kaydedip `options.save()` çağırır (Java `CycleableValueSet.createButton` gibi).

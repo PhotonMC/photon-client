@@ -36,7 +36,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T02](T02-cases-gui-modulu.md) | `cases.py` GUI üreticilerini ayır | S | T01 | bitti |
 | [T03](T03-ekran-yigini-confirm.md) | Ekran yığını + `ConfirmScreen` | M | – | bitti |
 | [T04](T04-options-durumu.md) | Seçenek değerleri ve `options.txt` | M | – | bitti |
-| [T05](T05-slider-cycle-widget.md) | Kaydırıcı ve döngü düğmesi widget'ları | M | T04 | açık |
+| [T05](T05-slider-cycle-widget.md) | Kaydırıcı ve döngü düğmesi widget'ları | M | T04 | bitti |
 | [T06](T06-options-ekrani.md) | `OptionsScreen` | M | T03, T05 | açık |
 | [T07](T07-video-ayarlari.md) | `OptionsList` + `VideoSettingsScreen` (FOV, GUI ölçeği) | M | T06 | açık |
 | [T08](T08-sohbet-ayarlari.md) | `ChatOptionsScreen` + sohbet ayarları çizime | M | T06 | açık |

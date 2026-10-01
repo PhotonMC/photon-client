@@ -63,15 +63,13 @@ impl Widget {
         match &self.kind {
             Kind::Button { label } => {
                 self.draw_sprite(frame, atlas, arena, highlighted);
-                self.draw_label(
+                draw_label(
                     frame,
                     atlas,
                     font,
-                    label,
-                    rect.x + 2,
-                    rect.x + rect.width - 2,
-                    rect.y,
-                    rect.y + rect.height,
+                    (label, self.active),
+                    (rect.x + 2, rect.x + rect.width - 2),
+                    (rect.y, rect.y + rect.height),
                 );
             }
             Kind::Icon { sprite, size } => {
@@ -108,39 +106,33 @@ impl Widget {
             rect.height,
         );
     }
+}
 
-    /// `extractScrollingStringOverContents`: the label centred in what is
-    /// between the margins; a label too wide scrolls in the reference, and
-    /// here shows its start.
-    #[expect(
-        clippy::too_many_arguments,
-        reason = "mirrors the reference's `acceptScrollingWithDefaultCenter`"
-    )]
-    fn draw_label(
-        &self,
-        frame: &mut GuiFrame,
-        atlas: &GuiAtlas,
-        font: &Font,
-        label: &[Run],
-        left: i32,
-        right: i32,
-        top: i32,
-        bottom: i32,
-    ) {
-        let mut runs = label.to_vec();
-        if !self.active {
-            for run in &mut runs {
-                run.style.colour.get_or_insert(INACTIVE_COLOUR);
-            }
+/// `extractScrollingStringOverContents`: the label centred in what is
+/// between the margins; a label too wide scrolls in the reference, and
+/// here shows its start. A label of a widget that is not active takes the
+/// grey of one that is not.
+pub fn draw_label(
+    frame: &mut GuiFrame,
+    atlas: &GuiAtlas,
+    font: &Font,
+    (label, active): (&[Run], bool),
+    (left, right): (i32, i32),
+    (top, bottom): (i32, i32),
+) {
+    let mut runs = label.to_vec();
+    if !active {
+        for run in &mut runs {
+            run.style.colour.get_or_insert(INACTIVE_COLOUR);
         }
-        let width = font.width_of_runs(&runs);
-        let text_top = (top + bottom - 9) / 2 + 1;
-        let x = if width > right - left {
-            left
-        } else {
-            let centre = (left + right) / 2;
-            centre.clamp(left + width / 2, right - width / 2) - width / 2
-        };
-        frame.styled_text(atlas, font, &runs, x, text_top, 0xFFFF_FFFF, true);
     }
+    let width = font.width_of_runs(&runs);
+    let text_top = (top + bottom - 9) / 2 + 1;
+    let x = if width > right - left {
+        left
+    } else {
+        let centre = (left + right) / 2;
+        centre.clamp(left + width / 2, right - width / 2) - width / 2
+    };
+    frame.styled_text(atlas, font, &runs, x, text_top, 0xFFFF_FFFF, true);
 }

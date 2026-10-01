@@ -369,9 +369,8 @@ impl GuiFrame {
         }
     }
 
-    /// `GuiGraphics.blitSprite` of a nine-slice sprite: the corners as they
-    /// are, the edges and the middle tiled (or stretched, when the sprite
-    /// says so) over what is left. `tex` is the sprite's size in units.
+    /// `GuiGraphics.blitSprite` of a nine-slice sprite whose border is the
+    /// same on every side: see [`Self::nine_slice_edges`].
     #[expect(
         clippy::too_many_arguments,
         reason = "mirrors the parameters of the reference's `GuiGraphics` call"
@@ -388,6 +387,23 @@ impl GuiFrame {
         w: i32,
         h: i32,
     ) {
+        let edges = (border, border, border, border);
+        self.nine_slice_edges(atlas, name, tex, edges, stretch_inner, (x, y, w, h));
+    }
+
+    /// `GuiGraphics.blitSprite` of a nine-slice sprite: the corners as they
+    /// are, the edges and the middle tiled (or stretched, when the sprite
+    /// says so) over what is left. `tex` is the sprite's size in units and
+    /// `edges` its border's left, top, right and bottom.
+    pub fn nine_slice_edges(
+        &mut self,
+        atlas: &GuiAtlas,
+        name: &str,
+        tex: (i32, i32),
+        (left, top, right, bottom): (i32, i32, i32, i32),
+        stretch_inner: bool,
+        (x, y, w, h): (i32, i32, i32, i32),
+    ) {
         if let Some(log) = &mut self.log {
             // The reference blits a nine-slice sprite as one call.
             log.push(DrawOp::Sprite {
@@ -396,8 +412,8 @@ impl GuiFrame {
             });
         }
         let blend = GuiBlend::Translucent;
-        let (inner_w, inner_h) = (tex.0 - 2 * border, tex.1 - 2 * border);
-        let (mid_w, mid_h) = (w - 2 * border, h - 2 * border);
+        let (inner_w, inner_h) = (tex.0 - left - right, tex.1 - top - bottom);
+        let (mid_w, mid_h) = (w - left - right, h - top - bottom);
         // One segment: its source origin and size, and where it goes.
         let mut segment = |source: (i32, i32, i32, i32), dest: (i32, i32, i32, i32)| {
             let (sx, sy, sw, sh) = source;
@@ -429,36 +445,30 @@ impl GuiFrame {
                 ty += sh;
             }
         };
-        let (right, bottom) = (x + w - border, y + h - border);
+        let (far_x, far_y) = (x + w - right, y + h - bottom);
         // Corners.
-        segment((0, 0, border, border), (x, y, border, border));
+        segment((0, 0, left, top), (x, y, left, top));
+        segment((tex.0 - right, 0, right, top), (far_x, y, right, top));
+        segment((0, tex.1 - bottom, left, bottom), (x, far_y, left, bottom));
         segment(
-            (tex.0 - border, 0, border, border),
-            (right, y, border, border),
-        );
-        segment(
-            (0, tex.1 - border, border, border),
-            (x, bottom, border, border),
-        );
-        segment(
-            (tex.0 - border, tex.1 - border, border, border),
-            (right, bottom, border, border),
+            (tex.0 - right, tex.1 - bottom, right, bottom),
+            (far_x, far_y, right, bottom),
         );
         // Edges.
-        segment((border, 0, inner_w, border), (x + border, y, mid_w, border));
+        segment((left, 0, inner_w, top), (x + left, y, mid_w, top));
         segment(
-            (border, tex.1 - border, inner_w, border),
-            (x + border, bottom, mid_w, border),
+            (left, tex.1 - bottom, inner_w, bottom),
+            (x + left, far_y, mid_w, bottom),
         );
-        segment((0, border, border, inner_h), (x, y + border, border, mid_h));
+        segment((0, top, left, inner_h), (x, y + top, left, mid_h));
         segment(
-            (tex.0 - border, border, border, inner_h),
-            (right, y + border, border, mid_h),
+            (tex.0 - right, top, right, inner_h),
+            (far_x, y + top, right, mid_h),
         );
         // The middle.
         segment(
-            (border, border, inner_w, inner_h),
-            (x + border, y + border, mid_w, mid_h),
+            (left, top, inner_w, inner_h),
+            (x + left, y + top, mid_w, mid_h),
         );
     }
 

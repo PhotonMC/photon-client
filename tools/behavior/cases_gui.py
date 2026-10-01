@@ -704,10 +704,97 @@ def gui_confirm_screen_cases():
     yield {"case_id": "gui/confirm-screen", "family": "gui", "operation": "confirm_screen", "rows": rows}
 
 
+def gui_widgets_cases():
+    """The widgets an option makes: the slider of a range (field of view), of
+    a share (sensitivity, chat opacity), and the cycle button of a boolean and
+    of a choice. Each is set to a value, focused, clicked, dragged, stepped
+    with the keys or turned with the wheel; the drawing and the option's value
+    are what is compared."""
+    def row(label, kind, value, width=150, active=True, mouse=(0, 0), steps=()):
+        return {"label": label, "kind": kind, "value": value, "width": width, "active": active,
+                "mouse": list(mouse), "steps": list(steps)}
+
+    def focus(input="MOUSE"):
+        return {"do": "focus", "input": input}
+
+    def click(x, shift=False):
+        return {"do": "click", "x": x, "y": 60, "shift": shift}
+
+    def key(name, shift=False):
+        return {"do": "key", "key": name, "shift": shift}
+
+    drag = lambda x: {"do": "drag", "x": x}
+    release = lambda x: {"do": "release", "x": x}
+    scroll = lambda dy: {"do": "scroll", "dy": dy}
+    rows = [
+        row("fov-normal", "fov", 70), row("fov-quake-pro", "fov", 110), row("fov-lowest", "fov", 30),
+        row("fov-90", "fov", 90), row("fov-wide-bar", "fov", 90, width=200),
+        row("fov-big-bar", "fov", 45, width=310), row("fov-inactive", "fov", 90, active=False),
+        row("fov-hover-bar", "fov", 90, mouse=(120, 55)), row("fov-hover-handle", "fov", 90, mouse=(144, 55)),
+        row("fov-click", "fov", 70, steps=[click(175)]),
+        row("fov-click-release", "fov", 70, steps=[click(175), release(175)]),
+        row("fov-click-left-edge", "fov", 70, steps=[click(100), release(100)]),
+        row("fov-click-right-edge", "fov", 70, steps=[click(249), release(249)]),
+        row("fov-click-outside", "fov", 70, steps=[click(300)]),
+        row("fov-click-inactive", "fov", 70, active=False, steps=[click(175)]),
+        row("fov-drag", "fov", 70, steps=[click(120), drag(160), drag(200)]),
+        row("fov-drag-release", "fov", 70, steps=[click(120), drag(160), drag(200), release(200)]),
+        row("fov-drag-past-end", "fov", 70, steps=[click(120), drag(900), release(900)]),
+        row("fov-drag-before-start", "fov", 90, steps=[click(120), drag(-50), release(-50)]),
+        row("fov-focus-mouse", "fov", 70, steps=[focus("MOUSE")]),
+        row("fov-focus-tab", "fov", 70, steps=[focus("KEYBOARD_TAB")]),
+        row("fov-focus-arrow", "fov", 70, steps=[focus("KEYBOARD_ARROW")]),
+        row("fov-focus-none", "fov", 70, steps=[focus("NONE")]),
+        row("fov-keys-right", "fov", 70, steps=[focus(), key("right"), key("right"), key("right")]),
+        row("fov-keys-left", "fov", 70, steps=[focus(), key("left"), key("left")]),
+        row("fov-keys-at-end", "fov", 110, steps=[focus(), key("right")]),
+        row("fov-keys-at-start", "fov", 30, steps=[focus(), key("left")]),
+        row("fov-keys-locked", "fov", 70, steps=[focus("KEYBOARD_ARROW"), key("right")]),
+        row("fov-enter-unlocks", "fov", 70, steps=[focus("KEYBOARD_ARROW"), key("enter"), key("right")]),
+        row("fov-space-toggles", "fov", 70, steps=[focus(), key("space"), key("right")]),
+        row("fov-unfocus", "fov", 70, steps=[focus(), {"do": "unfocus"}]),
+        row("sensitivity-half", "sensitivity", 0.5), row("sensitivity-yawn", "sensitivity", 0.0),
+        row("sensitivity-hyperspeed", "sensitivity", 1.0), row("sensitivity-third", "sensitivity", 0.33),
+        row("sensitivity-click", "sensitivity", 0.5, steps=[click(120), release(120)]),
+        row("sensitivity-drag", "sensitivity", 0.5, steps=[click(120), drag(130)]),
+        row("sensitivity-drag-to-ends", "sensitivity", 0.5, steps=[click(120), drag(-100), release(-100)]),
+        row("sensitivity-keys", "sensitivity", 0.5, steps=[focus(), key("right"), key("right"), key("left")]),
+        row("sensitivity-keys-at-end", "sensitivity", 1.0, steps=[focus(), key("right")]),
+        row("sensitivity-wide-keys", "sensitivity", 0.5, width=310, steps=[focus(), key("right")]),
+        row("chat-opacity-full", "chat_opacity", 1.0), row("chat-opacity-none", "chat_opacity", 0.0),
+        row("chat-opacity-third", "chat_opacity", 0.33),
+        row("chat-opacity-click", "chat_opacity", 1.0, steps=[click(130), release(130)]),
+        row("invert-off", "invert_y", False), row("invert-on", "invert_y", True),
+        row("invert-inactive", "invert_y", True, active=False),
+        row("invert-hover", "invert_y", False, mouse=(150, 55)),
+        row("invert-click", "invert_y", False, steps=[click(150)]),
+        row("invert-click-twice", "invert_y", False, steps=[click(150), click(150)]),
+        row("invert-shift-click", "invert_y", False, steps=[click(150, True)]),
+        row("invert-click-outside", "invert_y", False, steps=[click(300)]),
+        row("invert-click-inactive", "invert_y", False, active=False, steps=[click(150)]),
+        row("invert-scroll-up", "invert_y", False, steps=[scroll(1.0)]),
+        row("invert-scroll-down", "invert_y", False, steps=[scroll(-1.0)]),
+        row("invert-scroll-none", "invert_y", False, steps=[scroll(0.0)]),
+        row("invert-enter-unfocused", "invert_y", False, steps=[key("enter")]),
+        row("invert-enter-focused", "invert_y", False, steps=[focus(), key("enter")]),
+        row("invert-space-shift", "invert_y", False, steps=[focus(), key("space", True)]),
+        row("invert-focused", "invert_y", False, steps=[focus()]),
+        row("invert-wide", "invert_y", False, width=310),
+        row("visibility-shown", "chat_visibility", 0), row("visibility-commands", "chat_visibility", 1),
+        row("visibility-hidden", "chat_visibility", 2),
+        row("visibility-click", "chat_visibility", 0, steps=[click(150)]),
+        row("visibility-click-wraps", "chat_visibility", 2, steps=[click(150)]),
+        row("visibility-shift-click-wraps", "chat_visibility", 0, steps=[click(150, True)]),
+        row("visibility-scroll", "chat_visibility", 1, steps=[scroll(1.0), scroll(1.0)]),
+        row("visibility-scroll-down", "chat_visibility", 1, steps=[scroll(-1.0), scroll(-1.0)]),
+    ]
+    yield {"case_id": "gui/widgets", "family": "gui", "operation": "widgets", "rows": rows}
+
+
 def gui_generators():
     return itertools.chain(
         gui_cases(), gui_suggestion_cases(), gui_title_cases(), gui_boss_bar_cases(),
         gui_sidebar_cases(), gui_command_parse_cases(), gui_command_suggest_cases(),
         gui_pause_screen_cases(), gui_death_screen_cases(), gui_disconnected_screen_cases(),
         gui_tab_list_cases(), gui_container_screen_cases(),
-        gui_confirm_screen_cases())
+        gui_confirm_screen_cases(), gui_widgets_cases())
