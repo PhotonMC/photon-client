@@ -23,4 +23,7 @@ Başka aileleri bölmek; adaptörde mantık değiştirmek.
 Yukarıdaki yol düzeltmeleri. `AGENTS.md` token bölümündeki "büyük dosyalar" listesinde `behavior_adapter.rs` → `behavior_adapter/*.rs`.
 
 ## Devir notu
-(boş)
+- `behavior_adapter.rs` → `behavior_adapter/main.rs` + `gui.rs` (`gui_result`, `gui_ops`, `NoClipboard`, `number_format`, `scoreboard_from`); `menu_named`, `string`, `command_*_result` `main.rs`'de, `super::` ile çağrılıyor.
+- `include_str!` yolu bir seviye derinleşti (`../../../../tests/...`); yeni fixture include'ları buna göre yazılır.
+- `gui.rs` kendi `#![expect(clippy::too_many_lines)]`'ini taşır (`cognitive_complexity` gerekmedi).
+- Davranış değişmedi: `CHECK OK`, parity 928. Açık kalan yok.

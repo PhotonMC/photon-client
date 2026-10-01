@@ -20,7 +20,7 @@ GUI görevleri bu beş adımı izler; görev dosyaları "G" diye anar.
 
 1. Java: `tests/behavior/java/GuiOracle.java` — operation yöntemi ekle (örnek `pauseScreen`, `grep -n "pauseScreen"`), `switch` koluna bağla (~485–496). Gerçek Java ekranı Unsafe/yansıma sahtelerle kurulur (`screen(...)`, `set/get` yardımcıları üstte).
 2. `tools/behavior/cases.py` — `gui_<ad>_cases()` üreticisi (örnek `gui_pause_screen_cases`); `generators["gui"]` zincirine ekle (`grep -n 'generators\["gui"\]'`). T02'den sonra yer `cases_gui.py`'dir.
-3. Rust: `crates/voxel/examples/behavior_adapter.rs` içindeki `gui_result` match kolu (örnek `"pause_screen"`; T01'den sonra `examples/behavior_adapter/gui.rs`). Rust ekranı üretimdeki tipin kendisidir; adaptör yalnız kurar ve `draw` çağırır.
+3. Rust: `crates/voxel/examples/behavior_adapter/gui.rs` içindeki `gui_result` match kolu (örnek `"pause_screen"`). Rust ekranı üretimdeki tipin kendisidir; adaptör yalnız kurar ve `draw` çağırır.
 4. `docs/gui-oracle.md` kapsam tablosuna operation satırı.
 5. `python3 tools/voxel.py parity --capture --family gui` yeşil olana dek yinele. Fark çıkarsa Rust'ı düzelt; beklenen değeri Rust çıktısından türetme.
 
@@ -32,7 +32,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 
 | Kimlik | Görev | Boy | Bağımlılık | Durum |
 | --- | --- | --- | --- | --- |
-| [T01](T01-adapter-gui-modulu.md) | `behavior_adapter` GUI modülüne böl | S | – | açık |
+| [T01](T01-adapter-gui-modulu.md) | `behavior_adapter` GUI modülüne böl | S | – | bitti |
 | [T02](T02-cases-gui-modulu.md) | `cases.py` GUI üreticilerini ayır | S | T01 | açık |
 | [T03](T03-ekran-yigini-confirm.md) | Ekran yığını + `ConfirmScreen` | M | – | açık |
 | [T04](T04-options-durumu.md) | Seçenek değerleri ve `options.txt` | M | – | açık |
