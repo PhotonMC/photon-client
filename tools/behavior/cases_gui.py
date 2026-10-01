@@ -434,14 +434,68 @@ def gui_command_suggest_cases():
 def gui_pause_screen_cases():
     """The pause menu in screens of several sizes, with the mouse away and
     over each of its buttons."""
-    def row(label, width, height, mouse=(0, 0)):
-        return {"label": label, "width": width, "height": height, "mouse": list(mouse)}
+    def row(label, width, height, mouse=(0, 0), steps=(), ms=0):
+        return {"label": label, "width": width, "height": height, "mouse": list(mouse),
+                "steps": list(steps), "ms": ms}
 
     rows = [row("default", 427, 240), row("small", 320, 240), row("wide", 640, 360), row("tiny", 200, 150)]
     for name, point in {"return": (213, 60), "advancements": (160, 90), "statistics": (265, 90),
                         "report": (170, 120), "feedback": (193, 120), "friends": (215, 120),
                         "reporting": (237, 120), "options": (213, 150), "disconnect": (213, 180)}.items():
         rows.append(row("hover-" + name, 427, 240, point))
+    # Tooltips: shown once the widget has been hovered a moment (a frame
+    # earlier), and not on the first frame of it.
+    frame = lambda ms: {"do": "frame", "ms": ms}
+    key = lambda name: {"do": "key", "key": name}
+    icons = {"report": (170, 120), "feedback": (193, 120), "friends": (215, 120), "reporting": (237, 120)}
+    for name, point in icons.items():
+        rows.append(row("tip-" + name, 427, 240, point, [frame(0)], 10))
+        rows.append(row("tip-first-frame-" + name, 427, 240, point, [], 0))
+    rows += [
+        row("tip-late", 427, 240, (170, 120), [frame(0), frame(500)], 1000),
+        row("tip-small-screen", 320, 240, (150, 120), [frame(0)], 10),
+        row("tip-tiny-screen", 200, 150, (100, 95), [frame(0)], 10),
+        row("tip-wide-screen", 640, 360, (270, 175), [frame(0)], 10),
+        row("tip-edge-left", 427, 240, (166, 112), [frame(0)], 10),
+        row("tip-edge-bottom", 427, 240, (170, 138), [frame(0)], 10),
+        row("tip-edge-top", 427, 240, (170, 101), [frame(0)], 10),
+        row("tip-moves-between", 427, 240, (193, 120), [frame(0), frame(5)], 10),
+        row("tip-not-on-button", 427, 240, (160, 90), [frame(0)], 10),
+        row("tip-on-wide-button", 427, 240, (213, 60), [frame(0)], 10),
+    ]
+    # Keyboard focus: Tab and the arrows, then the tooltip below the widget.
+    tab = key("tab")
+    rows += [
+        row("tab-1", 427, 240, steps=[tab]), row("tab-2", 427, 240, steps=[tab, tab]),
+        row("tab-4-icon", 427, 240, steps=[tab] * 4, ms=0),
+        row("tab-4-icon-tip", 427, 240, steps=[tab] * 4 + [frame(0)], ms=10),
+        row("tab-5-icon-tip", 427, 240, steps=[tab] * 5 + [frame(0)], ms=10),
+        row("tab-6-icon-tip", 427, 240, steps=[tab] * 6 + [frame(0)], ms=10),
+        row("tab-7-icon-tip", 427, 240, steps=[tab] * 7 + [frame(0)], ms=10),
+        row("tab-then-hover-tip", 427, 240, (237, 120), [tab] * 4 + [frame(0)], 10),
+        row("tab-icon-small-tip", 320, 240, steps=[tab] * 4 + [frame(0)], ms=10),
+        row("tab-icon-tiny-tip", 200, 150, steps=[tab] * 4 + [frame(0)], ms=10),
+        row("shift-tab-tip", 427, 240, steps=[key("shift+tab")] * 4 + [frame(0)], ms=10),
+        row("arrow-down", 427, 240, steps=[key("down")]),
+        row("arrow-up", 427, 240, steps=[key("up")]),
+        row("arrow-down-twice", 427, 240, steps=[key("down")] * 2),
+        row("arrow-down-thrice", 427, 240, steps=[key("down")] * 3),
+        row("arrow-down-icons-tip", 427, 240, steps=[key("down")] * 3 + [frame(0)], ms=10),
+        row("arrow-right-from-first", 427, 240, steps=[key("down"), key("right")]),
+        row("arrow-grid", 427, 240, steps=[key("down"), key("down"), key("right"), key("down")]),
+        row("arrow-icons-across", 427, 240, steps=[key("down")] * 3 + [key("right"), key("right"), frame(0)], ms=10),
+        row("arrow-icons-left", 427, 240, steps=[key("down")] * 3 + [key("right"), key("left"), frame(0)], ms=10),
+        row("arrow-down-from-icons", 427, 240, steps=[key("down")] * 4),
+        row("arrow-down-to-disconnect", 427, 240, steps=[key("down")] * 6),
+        row("arrow-down-past", 427, 240, steps=[key("down")] * 8),
+        row("arrow-up-from-disconnect", 427, 240, steps=[key("down")] * 6 + [key("up")]),
+        row("arrow-up-to-return", 427, 240, steps=[key("down")] * 3 + [key("up")] * 3),
+        row("arrow-left-from-nothing", 427, 240, steps=[key("left")]),
+        row("arrow-right-from-nothing", 427, 240, steps=[key("right")]),
+        row("arrow-small", 320, 240, steps=[key("down")] * 3 + [key("right")]),
+        row("arrow-wide", 640, 360, steps=[key("down"), key("right"), key("down")]),
+        row("arrow-tiny", 200, 150, steps=[key("down")] * 3 + [key("right"), key("down")]),
+    ]
     yield {"case_id": "gui/pause-screen", "family": "gui", "operation": "pause_screen", "rows": rows}
 
 
@@ -910,6 +964,29 @@ def gui_options_screen_cases():
         row("click-fov-then-keys", steps=[click(130), release(130), key("right")]),
         row("click-fov-then-tab", steps=[click(130), release(130), tab]),
         row("tab-then-click-fov", steps=[tab, tab, click(130), release(130)]),
+        # Arrows the slider does not take move the focus to the neighbour.
+        row("arrow-down-from-nothing", steps=[key("down")]),
+        row("arrow-up-from-nothing", steps=[key("up")]),
+        row("arrow-right-from-nothing", steps=[key("right")]),
+        row("arrow-left-from-nothing", steps=[key("left")]),
+        row("arrow-down-from-fov", steps=[tab, key("down")]),
+        row("arrow-down-twice", steps=[tab, key("down"), key("down")]),
+        row("arrow-down-thrice", steps=[tab, key("down"), key("down"), key("down")]),
+        row("arrow-down-to-done", steps=[tab] + [key("down")] * 7),
+        row("arrow-down-past-done", steps=[tab] + [key("down")] * 9),
+        row("arrow-up-from-done", steps=[tab, key("shift+tab"), key("up")]),
+        row("arrow-up-from-fov", steps=[tab, key("up")]),
+        row("arrow-right-from-button", steps=[tab, key("down"), key("right")]),
+        row("arrow-left-from-button", steps=[tab, key("down"), key("right"), key("left")]),
+        row("arrow-grid-down", steps=[tab, key("down"), key("down"), key("down"), key("up")]),
+        row("arrow-grid-across", steps=[tab, key("down"), key("down"), key("right"), key("down"), key("left")]),
+        row("arrow-over-asleep", steps=[tab] + [key("down")] * 6 + [key("right"), key("down")]),
+        row("arrow-slider-takes-right", steps=[tab, key("enter"), key("right"), key("right")]),
+        row("arrow-slider-left-not-locked", steps=[tab, key("enter"), key("enter"), key("left")]),
+        row("arrow-after-click", steps=[click(130), release(130), key("down")]),
+        row("arrow-wide-small", 200, 150, steps=[tab, key("down"), key("down"), key("right")]),
+        row("arrow-wide-large", 640, 360, steps=[tab, key("down"), key("right"), key("down")]),
+        row("arrow-out-of-world", in_world=False, steps=[key("down"), key("down"), key("right")]),
     ]
     yield {"case_id": "gui/options-screen", "family": "gui", "operation": "options_screen", "rows": rows}
 
@@ -922,9 +999,9 @@ def gui_video_settings_cases():
     scales, and the preset turning to Custom when a quality option changes.
     Nothing presses the options whose reference effect needs a window (full
     screen) or a pipeline (the presets): those are drawn and not pressed."""
-    def row(label, framebuffer=(854, 480), gui_scale=2, in_world=True, mouse=(0, 0), steps=()):
+    def row(label, framebuffer=(854, 480), gui_scale=2, in_world=True, mouse=(0, 0), steps=(), ms=0):
         return {"label": label, "framebuffer": list(framebuffer), "gui_scale": gui_scale,
-                "in_world": in_world, "mouse": list(mouse), "steps": list(steps)}
+                "in_world": in_world, "mouse": list(mouse), "steps": list(steps), "ms": ms}
 
     click = lambda x, y, shift=False: {"do": "click", "x": x, "y": y, "shift": shift}
     drag = lambda x, y: {"do": "drag", "x": x, "y": y}
@@ -1035,6 +1112,41 @@ def gui_video_settings_cases():
         row("ctrl-wheel-then-wheel", steps=[wheel(-1, ctrl=True), wheel(-3)]),
         row("ctrl-wheel-at-1", gui_scale=1, steps=[wheel(-1, ctrl=True)]),
     ]
+    # Tooltips: a moment after the mouse is on the widget (a frame at 0, one at 10).
+    frame = lambda ms: {"do": "frame", "ms": ms}
+    tip = lambda label, mouse, steps=(), **kw: row("tip-" + label, mouse=mouse, steps=[frame(0)] + list(steps), ms=10, **kw)
+    rows += [
+        row("tip-first-frame", mouse=(100, 110)),
+        tip("inactivity", (100, 110)), tip("exclusive", (250, 135)), tip("backend", (250, 160)),
+        tip("gui-scale-none", (250, 110)), tip("resolution-none", (200, 60)),
+        tip("preset", (150, 108), [wheel(-9)]), tip("preset-last-pixel", (150, 206)),
+        tip("prioritize", (100, 146), [wheel(-10)]),
+        tip("ao-none", (100, 170), [wheel(-10)]),
+        tip("blurriness", (100, 40), [wheel(-100)]), tip("cutout-leaves", (100, 60), [wheel(-100)]),
+        tip("transparency", (300, 60), [wheel(-100)]), tip("filtering", (100, 86), [wheel(-100)]),
+        tip("anisotropy-asleep", (300, 86), [wheel(-100)]), tip("weather", (100, 110), [wheel(-100)]),
+        tip("vignette", (300, 167), [wheel(-100)]), tip("chunk-fade", (300, 192), [wheel(-100)]),
+        tip("attack-none", (100, 192), [wheel(-100)]),
+        tip("exclusive-restart", (250, 135), [click(250, 135)]),
+        tip("exclusive-back", (250, 135), [click(250, 135), click(250, 135)]),
+        tip("backend-restart", (250, 160), [click(250, 160)]),
+        tip("backend-vulkan", (250, 160), [click(250, 160), click(250, 160)]),
+        tip("backend-default", (250, 160), [click(250, 160)] * 3),
+        tip("inactivity-minimized", (100, 110), [click(100, 110)]),
+        tip("filtering-rgss", (100, 86), [wheel(-100), click(100, 86)]),
+        tip("filtering-anisotropic", (100, 86), [wheel(-100), click(100, 86), click(100, 86)]),
+        tip("anisotropy-awake", (300, 86), [wheel(-100), click(100, 86), click(100, 86)]),
+        tip("prioritize-by-player", (100, 146), [wheel(-10), click(100, 146)]),
+        tip("prioritize-nearby", (100, 146), [wheel(-10), click(100, 146), click(100, 146)]),
+        tip("preset-after-custom", (150, 108), [wheel(-10), click(100, 170)]),
+        tip("small-screen", (100, 110), [], framebuffer=(640, 480)),
+        tip("tiny-screen", (150, 70), [], framebuffer=(640, 480), gui_scale=3),
+        tip("out-of-world", (100, 110), [], in_world=False),
+        row("tip-late", mouse=(100, 110), steps=[frame(0), frame(300)], ms=1000),
+        row("tip-moved-away", mouse=(5, 5), steps=[frame(0)], ms=10),
+        row("tip-clipped-hover", mouse=(100, 30), steps=[frame(0), wheel(-2)], ms=10),
+        row("tip-marquee-time", mouse=(100, 110), steps=[frame(0), wheel(-100)], ms=1234),
+    ]
     yield {"case_id": "gui/video-settings-screen", "family": "gui", "operation": "video_settings_screen",
            "rows": rows}
 
@@ -1045,9 +1157,9 @@ def gui_chat_options_cases():
     value on their widget, the narrator asleep (there is none), the list
     scrolled and its bar dragged, and sliders and cycle buttons pressed."""
     def row(label, framebuffer=(854, 480), gui_scale=2, in_world=True, mouse=(0, 0), steps=(),
-            options=None):
+            options=None, ms=0):
         row = {"label": label, "framebuffer": list(framebuffer), "gui_scale": gui_scale,
-               "in_world": in_world, "mouse": list(mouse), "steps": list(steps)}
+               "in_world": in_world, "mouse": list(mouse), "steps": list(steps), "ms": ms}
         if options:
             row["options"] = options
         return row
@@ -1117,6 +1229,13 @@ def gui_chat_options_cases():
         row("scrolled-press-twice", steps=[wheel(-100), click(250, 125), click(250, 125)]),
         row("press-clipped-bottom", steps=[click(100, 206)]),
         row("press-two-in-turn", steps=[click(100, 45), click(250, 70), click(100, 95)]),
+        # Tooltips of the widgets that have one.
+        row("tip-hide-matched", mouse=(100, 167), steps=[{"do": "frame", "ms": 0}, wheel(-100)], ms=10),
+        row("tip-hide-matched-seen", mouse=(100, 167), steps=[wheel(-100), {"do": "frame", "ms": 0}], ms=10),
+        row("tip-secure", mouse=(100, 192), steps=[wheel(-100), {"do": "frame", "ms": 0}], ms=10),
+        row("tip-drafts", mouse=(300, 192), steps=[wheel(-100), {"do": "frame", "ms": 0}], ms=10),
+        row("tip-none-on-opacity", mouse=(100, 95), steps=[{"do": "frame", "ms": 0}], ms=10),
+        row("tip-drafts-pressed", mouse=(300, 192), steps=[wheel(-100), {"do": "frame", "ms": 0}, click(300, 192)], ms=10),
     ]
     yield {"case_id": "gui/chat-options-screen", "family": "gui", "operation": "chat_options_screen",
            "rows": rows}
@@ -1129,9 +1248,9 @@ def gui_mouse_cases():
     drags on every kind of widget. The buttons that open another screen are
     drawn and hovered, not pressed."""
     def row(label, framebuffer=(854, 480), gui_scale=2, in_world=True, mouse=(0, 0), steps=(),
-            options=None):
+            options=None, ms=0):
         row = {"label": label, "framebuffer": list(framebuffer), "gui_scale": gui_scale,
-               "in_world": in_world, "mouse": list(mouse), "steps": list(steps)}
+               "in_world": in_world, "mouse": list(mouse), "steps": list(steps), "ms": ms}
         if options:
             row["options"] = options
         return row
@@ -1170,6 +1289,9 @@ def gui_mouse_cases():
         row("press-gap", steps=[click(212, 70)]),
         row("scroll-short", (854, 240), steps=[wheel(-100)]),
         row("press-in-turn", steps=[click(250, 70), click(100, 95), click(100, 45)]),
+        row("tip-cursor-changes", mouse=(250, 97), steps=[{"do": "frame", "ms": 0}], ms=10),
+        row("tip-cursor-first", mouse=(250, 97), ms=0),
+        row("tip-none-on-sensitivity", mouse=(100, 45), steps=[{"do": "frame", "ms": 0}], ms=10),
     ]
     controls = [
         row("in-world"), row("out-of-world", in_world=False), row("small", (640, 480)),
@@ -1191,6 +1313,10 @@ def gui_mouse_cases():
         row("press-gap", steps=[click(212, 70)]),
         row("scroll-short", (854, 240), steps=[wheel(-100)]),
         row("press-in-turn", steps=[click(100, 70), click(250, 95), click(100, 145)]),
+        row("tip-sprint-window", mouse=(250, 120), steps=[{"do": "frame", "ms": 0}], ms=10),
+        row("tip-sprint-window-dragged", mouse=(250, 120),
+            steps=[{"do": "frame", "ms": 0}, click(230, 120), drag(300, 120), release(300, 120)], ms=10),
+        row("tip-none-on-buttons", mouse=(100, 45), steps=[{"do": "frame", "ms": 0}], ms=10),
     ]
     yield {"case_id": "gui/mouse-settings-screen", "family": "gui", "operation": "mouse_settings_screen",
            "rows": mouse}

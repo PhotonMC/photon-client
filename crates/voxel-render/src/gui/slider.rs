@@ -7,6 +7,7 @@ use voxel_game::text::{Component, Lang, Run, Style};
 
 use crate::gui::font::Font;
 use crate::gui::layout::Arena;
+use crate::gui::tooltip::{Holder, joined};
 use crate::gui::widgets::draw_label;
 use crate::gui::{GuiAtlas, GuiFrame};
 
@@ -28,6 +29,9 @@ pub enum InputType {
 pub enum SliderKey {
     Left,
     Right,
+    /// The vertical arrows, which a slider does not take.
+    Up,
+    Down,
     /// Enter, Space or the keypad's Enter.
     Select,
 }
@@ -141,7 +145,13 @@ pub struct OptionSlider<S: SliderValues> {
     text: fn(&Component, &S::Value) -> Component,
     /// The option's own value, `instance.get()`.
     current: S::Value,
+    /// What the tooltip says of a value, and the tooltip.
+    tip: Option<SliderTip<S::Value>>,
+    tooltip: Holder,
 }
+
+/// The lines of a tooltip for a value (`None` a blank line).
+pub type SliderTip<V> = Box<dyn Fn(&V) -> Vec<Option<Component>>>;
 
 impl<S: SliderValues> OptionSlider<S> {
     /// `OptionInstanceSliderButton`, for the bar at `rect` of the arena.
@@ -165,13 +175,32 @@ impl<S: SliderValues> OptionSlider<S> {
             caption,
             text,
             current,
+            tip: None,
+            tooltip: Holder::default(),
         };
         slider.update_message(lang);
         slider
     }
 
+    /// `OptionInstanceSliderButton`'s tooltip: it follows the handle.
+    #[must_use]
+    pub fn with_tip(mut self, lang: &Lang, tip: SliderTip<S::Value>) -> Self {
+        self.tip = Some(tip);
+        self.update_message(lang);
+        self
+    }
+
+    pub fn tooltip(&self) -> &Holder {
+        &self.tooltip
+    }
+
     pub fn set_active(&mut self, active: bool) {
         self.active = active;
+    }
+
+    /// The bar's place in the arena.
+    pub fn rect(&self) -> usize {
+        self.rect
     }
 
     /// `setFocused`: losing the focus stops the keys moving the handle; a
@@ -202,8 +231,12 @@ impl<S: SliderValues> OptionSlider<S> {
     }
 
     fn update_message(&mut self, lang: &Lang) {
-        let text = (self.text)(&self.caption, &self.values.value_at(self.position));
+        let at = self.values.value_at(self.position);
+        let text = (self.text)(&self.caption, &at);
         self.label = lang.runs(&text, &Style::default());
+        if let Some(tip) = &self.tip {
+            self.tooltip.set(Some(joined(lang, &tip(&at))));
+        }
     }
 
     fn width(&self, arena: &Arena) -> i32 {

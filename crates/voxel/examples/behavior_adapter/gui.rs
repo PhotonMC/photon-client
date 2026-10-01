@@ -421,13 +421,35 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                 }
             }
             "pause_screen" => {
+                use voxel_render::gui::navigation::Direction;
                 let lang = voxel_game::text::Lang::load(&root);
                 let size = (int("width"), int("height"));
-                let screen = voxel_render::gui::pause::PauseScreen::new(&font, &lang, size);
+                let mut screen = voxel_render::gui::pause::PauseScreen::new(&font, &lang, size);
                 let mouse = (
                     row["mouse"][0].as_i64().unwrap_or(0) as i32,
                     row["mouse"][1].as_i64().unwrap_or(0) as i32,
                 );
+                for step in row["steps"].as_array().map_or(&[][..], Vec::as_slice) {
+                    if step["do"] == "frame" {
+                        // A frame drawn and thrown away, at a time.
+                        let mut thrown = GuiFrame {
+                            millis: step["ms"].as_u64().unwrap_or(0),
+                            ..GuiFrame::default()
+                        };
+                        screen.draw(&mut thrown, &atlas, &font, mouse, size, true);
+                    } else {
+                        match step["key"].as_str().unwrap_or_default() {
+                            "tab" => screen.tab(true),
+                            "shift+tab" => screen.tab(false),
+                            "left" => screen.arrow(Direction::Left),
+                            "right" => screen.arrow(Direction::Right),
+                            "up" => screen.arrow(Direction::Up),
+                            "down" => screen.arrow(Direction::Down),
+                            other => return Err(format!("unknown key {other}")),
+                        }
+                    }
+                }
+                frame.millis = row["ms"].as_u64().unwrap_or(0);
                 screen.draw(&mut frame, &atlas, &font, mouse, size, true);
             }
             "confirm_screen" => {
@@ -561,6 +583,8 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                             }
                             "left" => screen.key_pressed(&lang, SliderKey::Left),
                             "right" => screen.key_pressed(&lang, SliderKey::Right),
+                            "up" => screen.key_pressed(&lang, SliderKey::Up),
+                            "down" => screen.key_pressed(&lang, SliderKey::Down),
                             "enter" | "space" => screen.key_pressed(&lang, SliderKey::Select),
                             other => return Err(format!("unknown key {other}")),
                         },
@@ -607,7 +631,23 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                     max_scale,
                 );
                 let mut last = (0.0, 0.0);
+                let mut clock = 0_u64;
                 for step in row["steps"].as_array().ok_or("steps")? {
+                    if step["do"] == "frame" {
+                        clock = step["ms"].as_u64().unwrap_or(0);
+                        let mut thrown = GuiFrame {
+                            millis: clock,
+                            ..GuiFrame::default()
+                        };
+                        screen.draw(&mut thrown, &atlas, &font, mouse);
+                        continue;
+                    }
+                    // The reference draws a frame between one event and the next.
+                    let mut between = GuiFrame {
+                        millis: clock,
+                        ..GuiFrame::default()
+                    };
+                    screen.draw(&mut between, &atlas, &font, mouse);
                     let at = (
                         step["x"].as_f64().unwrap_or(last.0),
                         step["y"].as_f64().unwrap_or(last.1),
@@ -640,6 +680,7 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                     }
                     last = at;
                 }
+                frame.millis = row["ms"].as_u64().unwrap_or(0);
                 screen.draw(&mut frame, &atlas, &font, mouse);
                 out.push(json!({
                     "label": row["label"],
@@ -710,7 +751,23 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                     _ => Shell::Controls(ControlsScreen::new(&font, &lang, size, in_world)),
                 };
                 let mut last = (0.0, 0.0);
+                let mut clock = 0_u64;
                 for step in row["steps"].as_array().ok_or("steps")? {
+                    if step["do"] == "frame" {
+                        clock = step["ms"].as_u64().unwrap_or(0);
+                        let mut thrown = GuiFrame {
+                            millis: clock,
+                            ..GuiFrame::default()
+                        };
+                        each!(&screen, s => s.draw(&mut thrown, &atlas, &font, mouse));
+                        continue;
+                    }
+                    // The reference draws a frame between one event and the next.
+                    let mut between = GuiFrame {
+                        millis: clock,
+                        ..GuiFrame::default()
+                    };
+                    each!(&screen, s => s.draw(&mut between, &atlas, &font, mouse));
                     let at = (
                         step["x"].as_f64().unwrap_or(last.0),
                         step["y"].as_f64().unwrap_or(last.1),
@@ -730,6 +787,7 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                     }
                     last = at;
                 }
+                frame.millis = row["ms"].as_u64().unwrap_or(0);
                 each!(&screen, s => s.draw(&mut frame, &atlas, &font, mouse));
                 out.push(json!({
                     "label": row["label"],

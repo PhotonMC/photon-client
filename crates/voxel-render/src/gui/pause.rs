@@ -1,10 +1,15 @@
 //! The pause menu (`PauseScreen`): the buttons of the game menu laid out in
 //! a grid, over the menu background.
 
-use voxel_game::text::{Lang, Run, Style};
+use std::cell::Cell;
+
+use voxel_game::text::{Component, Lang, Run, Style};
 
 use crate::gui::font::Font;
 use crate::gui::layout::{Arena, Grid, Item, Settings, horizontal};
+use crate::gui::navigation::{Candidate, Direction, Rectangle, next_in_direction};
+use crate::gui::slider::InputType;
+use crate::gui::tooltip::{Holder, Pending};
 use crate::gui::widgets::{Kind, Widget};
 use crate::gui::{GuiAtlas, GuiFrame};
 
@@ -30,6 +35,11 @@ pub struct PauseScreen {
     title: Widget,
     /// The widget the keyboard has focused, an index of `widgets`.
     focus: Option<usize>,
+    /// The tooltip of each widget that has one.
+    tooltips: Vec<Option<Holder>>,
+    /// What the window last took in, which decides whether a focus shows its
+    /// tooltip.
+    input: Cell<InputType>,
     size: (i32, i32),
 }
 
@@ -147,11 +157,27 @@ impl PauseScreen {
             active: false,
             kind: Kind::Text { text },
         };
+        // The icon buttons say what they are when the mouse is on them.
+        let tooltips = widgets
+            .iter()
+            .map(|(_, action)| {
+                let key = match action {
+                    Some(PauseAction::ReportBugs) => "menu.reportBugs",
+                    Some(PauseAction::Feedback) => "menu.sendFeedback",
+                    Some(PauseAction::Friends) => "gui.friends.open.tooltip",
+                    Some(PauseAction::PlayerReporting) => "menu.playerReporting",
+                    _ => return None,
+                };
+                Some(Holder::of(lang, &Component::translatable(key)))
+            })
+            .collect();
         Self {
             arena,
             widgets,
             title,
             focus: None,
+            tooltips,
+            input: Cell::new(InputType::Mouse),
             size: (width, height),
         }
     }
@@ -184,10 +210,81 @@ impl PauseScreen {
             widget.draw(frame, atlas, font, &self.arena, highlighted);
         }
         self.title.draw(frame, atlas, font, &self.arena, false);
+        // `extractDeferredElements`: the tooltip of the widget over the rest
+        // (the first asked for, but the focused one's replaces it).
+        let mut pending: Option<Pending> = None;
+        for (index, (widget, _)) in self.widgets.iter().enumerate() {
+            let Some(tooltip) = &self.tooltips[index] else {
+                continue;
+            };
+            let rect = self.arena.0[widget.rect];
+            let rectangle = Rectangle {
+                x: rect.x,
+                y: rect.y,
+                width: rect.width,
+                height: rect.height,
+            };
+            let focused = self.focus == Some(index);
+            let hovered = widget.contains(&self.arena, mouse);
+            if let Some(asked) = tooltip.refresh(
+                frame.millis,
+                (hovered, focused),
+                self.input.get(),
+                rectangle,
+            ) && (pending.is_none() || focused)
+            {
+                pending = Some(asked);
+            }
+        }
+        if let Some(pending) = pending {
+            pending.draw(frame, atlas, font, mouse, (width, height));
+        }
+    }
+
+    /// The mouse moved or was pressed: the window's last input is the mouse.
+    pub fn mouse_input(&self) {
+        self.input.set(InputType::Mouse);
+    }
+
+    /// An arrow key: the focus goes to the button next to the focused one.
+    pub fn arrow(&mut self, direction: Direction) {
+        self.input.set(InputType::KeyboardArrow);
+        let rectangle = |rect: usize| {
+            let rect = self.arena.0[rect];
+            Rectangle {
+                x: rect.x,
+                y: rect.y,
+                width: rect.width,
+                height: rect.height,
+            }
+        };
+        // The children in the order they are added: the title is last.
+        let mut children: Vec<Candidate> = self
+            .widgets
+            .iter()
+            .map(|(widget, _)| Candidate {
+                rectangle: rectangle(widget.rect),
+                focusable: widget.is_active(),
+            })
+            .collect();
+        children.push(Candidate {
+            rectangle: rectangle(self.title.rect),
+            focusable: false,
+        });
+        let container = Rectangle {
+            x: 0,
+            y: 0,
+            width: self.size.0,
+            height: self.size.1,
+        };
+        if let Some(next) = next_in_direction(&children, self.focus, direction, container) {
+            self.focus = Some(next);
+        }
     }
 
     /// A press of the primary button at `mouse`: what it asks for.
     pub fn clicked(&self, mouse: (i32, i32)) -> Option<PauseAction> {
+        self.mouse_input();
         self.widgets
             .iter()
             .find(|(widget, _)| widget.is_active() && widget.contains(&self.arena, mouse))
@@ -196,6 +293,7 @@ impl PauseScreen {
 
     /// Tab (and Shift+Tab): the focus moves to the next button.
     pub fn tab(&mut self, forward: bool) {
+        self.input.set(InputType::KeyboardTab);
         let count = self.widgets.len();
         let next = match (self.focus, forward) {
             (None, true) => 0,

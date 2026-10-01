@@ -9,7 +9,8 @@ use crate::gui::cycle::CycleButton;
 use crate::gui::font::Font;
 use crate::gui::option_text::{generic_int, generic_value, on_off, percent_value};
 use crate::gui::options_list::{
-    Build, Named, SubScreen, SubScreenInput, boolean, counted, cycle, named, off_composed, slider,
+    Build, Named, SubScreen, SubScreenInput, boolean, boolean_tip, constant_tip, counted, cycle,
+    cycle_tip, named, named_tip, off_composed, slider, slider_tip,
 };
 use crate::gui::slider::OptionSlider;
 use crate::gui::{GuiAtlas, GuiFrame};
@@ -123,6 +124,14 @@ fn fullscreen_resolution(_caption: &Component, _value: &i32) -> Component {
     Component::translatable("options.fullscreen.unavailable")
 }
 
+fn toggle_text(value: &bool) -> Component {
+    crate::gui::options_list::toggle(value)
+}
+
+fn translated_value(value: &Named) -> Component {
+    crate::gui::options_list::translated(value)
+}
+
 /// `displayOptions`, with the GUI scale a cycle button of `0..=max`.
 fn display_options(gui_scale: i32, max_gui_scale: i32) -> Vec<(u8, Build)> {
     vec![
@@ -138,7 +147,7 @@ fn display_options(gui_scale: i32, max_gui_scale: i32) -> Vec<(u8, Build)> {
         (PLAIN, boolean("options.vsync", true)),
         (
             PLAIN,
-            named(
+            named_tip(
                 "options.inactivityFpsLimit",
                 &[
                     "options.inactivityFpsLimit.minimized",
@@ -159,7 +168,27 @@ fn display_options(gui_scale: i32, max_gui_scale: i32) -> Vec<(u8, Build)> {
         (PLAIN, boolean("options.fullscreen", false)),
         (
             EXCLUSIVE_FULLSCREEN,
-            boolean("options.exclusiveFullscreen", false),
+            cycle_tip(
+                "options.exclusiveFullscreen",
+                vec![true, false],
+                toggle_text,
+                false,
+                Box::new(|value: &bool| {
+                    // A value other than the one the game started with
+                    // needs a restart (`TOOLTIP_NEEDS_RESTART`).
+                    let mut lines = Vec::new();
+                    if *value {
+                        lines.push(Some(Component::translatable("options.needsRestart")));
+                        lines.push(None);
+                    }
+                    lines.push(Some(Component::translatable(if *value {
+                        "options.exclusiveFullscreen.on.tooltip"
+                    } else {
+                        "options.exclusiveFullscreen.off.tooltip"
+                    })));
+                    lines
+                }),
+            ),
         ),
         (
             PLAIN,
@@ -167,14 +196,30 @@ fn display_options(gui_scale: i32, max_gui_scale: i32) -> Vec<(u8, Build)> {
         ),
         (
             GRAPHICS_API,
-            named(
+            cycle_tip(
                 "options.graphicsApi",
-                &[
+                vec![
                     "options.graphicsApi.default",
                     "options.graphicsApi.opengl",
                     "options.graphicsApi.vulkan",
                 ],
+                translated_value,
                 "options.graphicsApi.default",
+                Box::new(|value: &Named| {
+                    let mut lines = Vec::new();
+                    if *value != "options.graphicsApi.default" {
+                        lines.push(Some(Component::translatable("options.needsRestart")));
+                        lines.push(None);
+                    }
+                    lines.push(Some(Component::translatable("options.graphicsApi.tooltip")));
+                    if *value == "options.graphicsApi.vulkan" {
+                        lines.push(None);
+                        lines.push(Some(Component::translatable(
+                            "options.graphicsApi.tooltip.vulkan",
+                        )));
+                    }
+                    lines
+                }),
             ),
         ),
     ]
@@ -203,7 +248,7 @@ fn quality_options_first() -> Vec<(u8, Build)> {
         ),
         (
             CUSTOMISING,
-            named(
+            named_tip(
                 "options.prioritizeChunkUpdates",
                 &[
                     "options.prioritizeChunkUpdates.none",
@@ -269,11 +314,12 @@ fn quality_options_rest() -> Vec<(u8, Build)> {
         ),
         (
             CUSTOMISING,
-            slider(
+            slider_tip(
                 "options.accessibility.menu_background_blurriness",
                 IntRange::new(0, 10),
                 blurriness,
                 5,
+                constant_tip("options.accessibility.menu_background_blurriness.tooltip"),
             ),
         ),
         (
@@ -285,11 +331,21 @@ fn quality_options_rest() -> Vec<(u8, Build)> {
                 128,
             ),
         ),
-        (CUSTOMISING, boolean("options.cutoutLeaves", true)),
-        (CUSTOMISING, boolean("options.improvedTransparency", false)),
+        (
+            CUSTOMISING,
+            boolean_tip("options.cutoutLeaves", true, "options.cutoutLeaves.tooltip"),
+        ),
+        (
+            CUSTOMISING,
+            boolean_tip(
+                "options.improvedTransparency",
+                false,
+                "options.improvedTransparency.tooltip",
+            ),
+        ),
         (
             TEXTURE_FILTERING,
-            named(
+            named_tip(
                 "options.textureFiltering",
                 &[
                     "options.textureFiltering.none",
@@ -301,11 +357,23 @@ fn quality_options_rest() -> Vec<(u8, Build)> {
         ),
         (
             MAX_ANISOTROPY,
-            slider("options.maxAnisotropy", IntRange::new(1, 3), anisotropy, 2),
+            slider_tip(
+                "options.maxAnisotropy",
+                IntRange::new(1, 3),
+                anisotropy,
+                2,
+                constant_tip("options.maxAnisotropy.tooltip"),
+            ),
         ),
         (
             CUSTOMISING,
-            slider("options.weatherRadius", IntRange::new(3, 10), blocks, 10),
+            slider_tip(
+                "options.weatherRadius",
+                IntRange::new(3, 10),
+                blocks,
+                10,
+                constant_tip("options.weatherRadius.tooltip"),
+            ),
         ),
     ]
 }
@@ -321,7 +389,10 @@ fn quality_options() -> Vec<(u8, Build)> {
 fn preference_options() -> Vec<(u8, Build)> {
     vec![
         (PLAIN, boolean("options.autosaveIndicator", true)),
-        (PLAIN, boolean("options.vignette", true)),
+        (
+            PLAIN,
+            boolean_tip("options.vignette", true, "options.vignette.tooltip"),
+        ),
         (
             PLAIN,
             named(
@@ -336,7 +407,7 @@ fn preference_options() -> Vec<(u8, Build)> {
         ),
         (
             PLAIN,
-            slider(
+            slider_tip(
                 "options.chunkFade",
                 IntRange::new(0, 40).xmap(
                     |value| f64::from(value) / 20.0,
@@ -345,6 +416,7 @@ fn preference_options() -> Vec<(u8, Build)> {
                 ),
                 chunk_fade,
                 0.75,
+                constant_tip("options.chunkFade.tooltip"),
             ),
         ),
     ]
@@ -388,7 +460,7 @@ impl VideoSettingsScreen {
             list.add_big(
                 lang,
                 GRAPHICS_PRESET,
-                slider(
+                slider_tip(
                     "options.graphics.preset",
                     SliderableEnum::new(vec![
                         "options.graphics.fast",
@@ -398,6 +470,7 @@ impl VideoSettingsScreen {
                     ]),
                     graphics_preset,
                     "options.graphics.fancy",
+                    constant_tip("options.graphics.preset.tooltip"),
                 ),
             );
             list.add_small(lang, quality_options());

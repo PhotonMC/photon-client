@@ -6,12 +6,14 @@ use std::any::Any;
 
 use voxel_game::text::{Component, Lang, Run, Style};
 
-use crate::gui::cycle::CycleButton;
+use crate::gui::cycle::{CycleButton, Tip};
 use crate::gui::font::Font;
 use crate::gui::layout::{Arena, Grid, Item, Settings, place_in_frame};
+use crate::gui::navigation::Rectangle;
 use crate::gui::option_text::on_off;
 use crate::gui::scroll_area::{Place, SCROLLBAR_WIDTH};
-use crate::gui::slider::{InputType, OptionSlider, SliderValues};
+use crate::gui::slider::{InputType, OptionSlider, SliderTip, SliderValues};
+use crate::gui::tooltip::{Holder, Pending};
 use crate::gui::widgets::{Kind, Widget};
 use crate::gui::{GuiAtlas, GuiFrame};
 
@@ -53,12 +55,20 @@ pub trait Control {
     );
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
+    /// The widget's tooltip, if it has one.
+    fn tooltip(&self) -> Option<&Holder> {
+        None
+    }
 }
 
 impl<S: SliderValues + 'static> Control for OptionSlider<S>
 where
     S::Value: 'static,
 {
+    fn tooltip(&self) -> Option<&Holder> {
+        Some(OptionSlider::tooltip(self))
+    }
+
     fn is_mouse_over(&self, arena: &Arena, mouse: (f64, f64)) -> bool {
         OptionSlider::is_mouse_over(self, arena, mouse)
     }
@@ -104,6 +114,10 @@ where
 }
 
 impl<V: Clone + PartialEq + 'static> Control for CycleButton<V> {
+    fn tooltip(&self) -> Option<&Holder> {
+        Some(CycleButton::tooltip(self))
+    }
+
     fn is_mouse_over(&self, arena: &Arena, mouse: (f64, f64)) -> bool {
         CycleButton::is_mouse_over(self, arena, mouse)
     }
@@ -185,6 +199,8 @@ pub struct OptionsList {
     focus: Option<Focus>,
     /// Whether the mouse holds the focused widget (`isDragging`).
     dragging: bool,
+    /// What the window last took in.
+    input: InputType,
 }
 
 impl OptionsList {
@@ -204,6 +220,7 @@ impl OptionsList {
             scrolling: false,
             focus: None,
             dragging: false,
+            input: InputType::Mouse,
         }
     }
 
@@ -371,22 +388,52 @@ impl OptionsList {
 
     /// The menu list's background, scrolled with the list, the widgets in
     /// it cut to the list, the lines above and below, then the scroll bar.
-    pub fn draw(&self, frame: &mut GuiFrame, atlas: &GuiAtlas, font: &Font, mouse: (i32, i32)) {
+    /// The tooltip a widget asks for, to draw over everything.
+    pub fn draw(
+        &self,
+        frame: &mut GuiFrame,
+        atlas: &GuiAtlas,
+        font: &Font,
+        mouse: (i32, i32),
+    ) -> Option<Pending> {
         let place = self.place;
         place.draw_background(frame, atlas, self.scroll);
         // The hover of a widget needs the mouse inside the cut.
         let inside = place.contains((f64::from(mouse.0), f64::from(mouse.1)));
         let mouse = if inside { mouse } else { (i32::MIN, i32::MIN) };
         let mark = frame.mark();
-        for entry in &self.entries {
+        let mut pending: Option<Pending> = None;
+        for (entry_index, entry) in self.entries.iter().enumerate() {
             if entry.y + entry.height < place.y || entry.y > place.bottom() {
                 continue;
             }
             match &entry.content {
                 Content::Header { text, .. } => text.draw(frame, atlas, font, &self.arena, false),
                 Content::Row(children) => {
-                    for child in children {
+                    for (child_index, child) in children.iter().enumerate() {
                         child.control.draw(frame, atlas, font, &self.arena, mouse);
+                        let Some(holder) = child.control.tooltip() else {
+                            continue;
+                        };
+                        let rect = self.arena.0[child.rect];
+                        let hovered = inside
+                            && mouse.0 >= rect.x
+                            && mouse.0 < rect.x + rect.width
+                            && mouse.1 >= rect.y
+                            && mouse.1 < rect.y + rect.height;
+                        let focused = self.focus == Some((entry_index, child_index));
+                        let widget = Rectangle {
+                            x: rect.x,
+                            y: rect.y,
+                            width: rect.width,
+                            height: rect.height,
+                        };
+                        if let Some(asked) =
+                            holder.refresh(frame.millis, (hovered, focused), self.input, widget)
+                            && (pending.is_none() || focused)
+                        {
+                            pending = Some(asked);
+                        }
                     }
                 }
             }
@@ -398,6 +445,7 @@ impl OptionsList {
             (self.scroll, self.content_height()),
             self.scrollbar_x(),
         );
+        pending
     }
 
     /// `getEntryAtPosition`.
@@ -585,6 +633,79 @@ where
             text,
             initial,
         ))
+    })
+}
+
+/// The lines of a tooltip that says one thing whatever the value
+/// (`cachedConstantTooltip`).
+pub fn constant_tip<V>(key: &'static str) -> Tip<V> {
+    Box::new(move |_| vec![Some(Component::translatable(key))])
+}
+
+/// A cycle button of an option with a tooltip.
+pub fn cycle_tip<V: Clone + PartialEq + 'static>(
+    key: &'static str,
+    values: Vec<V>,
+    text: fn(&V) -> Component,
+    initial: V,
+    tip: Tip<V>,
+) -> Build {
+    Box::new(move |lang, rect| {
+        Box::new(
+            CycleButton::new(
+                lang,
+                rect,
+                Component::translatable(key),
+                values,
+                text,
+                &initial,
+            )
+            .with_tip(lang, tip),
+        )
+    })
+}
+
+/// A cycle button of on and off with a tooltip that says one thing.
+pub fn boolean_tip(key: &'static str, initial: bool, tip: &'static str) -> Build {
+    cycle_tip(key, vec![true, false], toggle, initial, constant_tip(tip))
+}
+
+/// A cycle button of named values whose tooltip is the value's own
+/// (`<value>.tooltip`).
+pub fn named_tip(key: &'static str, values: &[Named], initial: Named) -> Build {
+    cycle_tip(
+        key,
+        values.to_vec(),
+        translated,
+        initial,
+        Box::new(|value: &Named| vec![Some(Component::translatable(format!("{value}.tooltip")))]),
+    )
+}
+
+/// A slider of an option with a tooltip.
+pub fn slider_tip<S>(
+    key: &'static str,
+    values: S,
+    text: fn(&Component, &S::Value) -> Component,
+    initial: S::Value,
+    tip: SliderTip<S::Value>,
+) -> Build
+where
+    S: SliderValues + 'static,
+    S::Value: 'static,
+{
+    Box::new(move |lang, rect| {
+        Box::new(
+            OptionSlider::new(
+                lang,
+                rect,
+                values,
+                Component::translatable(key),
+                text,
+                initial,
+            )
+            .with_tip(lang, tip),
+        )
     })
 }
 
@@ -805,9 +926,12 @@ impl SubScreen {
         if let Some((warning, true)) = &self.warning {
             warning.draw(frame, atlas, font, &self.arena, false);
         }
-        self.list.draw(frame, atlas, font, mouse);
+        let pending = self.list.draw(frame, atlas, font, mouse);
         let highlighted = self.done.contains(&self.arena, mouse);
         self.done.draw(frame, atlas, font, &self.arena, highlighted);
+        if let Some(pending) = pending {
+            pending.draw(frame, atlas, font, mouse, self.size);
+        }
     }
 
     /// A press of the primary button: the list takes it if it is on it,

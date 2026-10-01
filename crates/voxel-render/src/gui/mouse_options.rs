@@ -11,7 +11,8 @@ use crate::gui::cycle::CycleButton;
 use crate::gui::font::Font;
 use crate::gui::option_text::{generic_value, on_off, sensitivity};
 use crate::gui::options_list::{
-    Build, OptionsList, SubScreen, SubScreenInput, boolean, button, counted, cycle, slider,
+    Build, OptionsList, SubScreen, SubScreenInput, boolean, boolean_tip, button, constant_tip,
+    counted, cycle, slider, slider_tip,
 };
 use crate::gui::slider::OptionSlider;
 use crate::gui::{GuiAtlas, GuiFrame};
@@ -97,7 +98,14 @@ impl MouseSettingsScreen {
                             INVERT_Y,
                             boolean("options.invertMouseY", options.invert_mouse_y),
                         ),
-                        (PLAIN, boolean("options.allowCursorChanges", true)),
+                        (
+                            PLAIN,
+                            boolean_tip(
+                                "options.allowCursorChanges",
+                                true,
+                                "options.allowCursorChanges.tooltip",
+                            ),
+                        ),
                     ],
                 );
             },
@@ -223,11 +231,12 @@ impl ControlsScreen {
                         (PLAIN, boolean("options.autoJump", false)),
                         (
                             PLAIN,
-                            slider(
+                            slider_tip(
                                 "options.sprintWindow",
                                 IntRange::new(0, 10),
                                 sprint_window,
                                 7,
+                                constant_tip("options.sprintWindow.tooltip"),
                             ),
                         ),
                         (PLAIN, boolean("options.operatorItemsTab", false)),

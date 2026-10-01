@@ -7,6 +7,7 @@ use voxel_game::text::{Component, Lang, Run, Style};
 
 use crate::gui::font::Font;
 use crate::gui::layout::{Arena, Grid, Item, Settings, place_in_frame};
+use crate::gui::navigation::{Candidate, Direction, Rectangle, next_in_direction};
 use crate::gui::option_text;
 use crate::gui::slider::{InputType, OptionSlider, SliderKey};
 use crate::gui::widgets::{Kind, Widget};
@@ -325,9 +326,77 @@ impl OptionsScreen {
         self.focus_on(next.copied(), InputType::KeyboardTab);
     }
 
-    /// An arrow or Enter key for the focused widget.
+    /// `Screen.keyPressed`'s arrow navigation: the focus goes to the widget
+    /// next to the focused one in the direction.
+    fn navigate(&mut self, direction: Direction) {
+        let (width, height) = self.size;
+        let rectangle = |rect: usize| {
+            let rect = self.arena.0[rect];
+            Rectangle {
+                x: rect.x,
+                y: rect.y,
+                width: rect.width,
+                height: rect.height,
+            }
+        };
+        // The children in the order they were added: the title, the field
+        // of view, then the buttons.
+        let mut children = vec![
+            Candidate {
+                rectangle: rectangle(self.title.rect),
+                focusable: false,
+            },
+            Candidate {
+                rectangle: rectangle(self.fov.rect()),
+                focusable: true,
+            },
+        ];
+        children.extend(self.buttons.iter().map(|(widget, _)| Candidate {
+            rectangle: rectangle(widget.rect),
+            focusable: widget.is_active(),
+        }));
+        let focused = self.focus.map(|focus| match focus {
+            Focus::Fov => 1,
+            Focus::Button(index) => index + 2,
+        });
+        let container = Rectangle {
+            x: 0,
+            y: 0,
+            width,
+            height,
+        };
+        let next = next_in_direction(&children, focused, direction, container);
+        let focus = next.map(|index| match index {
+            1 => Focus::Fov,
+            index => Focus::Button(index - 2),
+        });
+        if focus.is_some() {
+            self.focus_on(focus, InputType::KeyboardArrow);
+        }
+    }
+
+    /// An arrow or Enter key for the focused widget; an arrow it does not
+    /// take moves the focus.
     pub fn key_pressed(&mut self, lang: &Lang, key: SliderKey) -> OptionsInput {
         let mut input = OptionsInput::default();
+        let direction = match key {
+            SliderKey::Left => Some(Direction::Left),
+            SliderKey::Right => Some(Direction::Right),
+            SliderKey::Up => Some(Direction::Up),
+            SliderKey::Down => Some(Direction::Down),
+            SliderKey::Select => None,
+        };
+        if let Some(direction) = direction {
+            if self.focus == Some(Focus::Fov) && matches!(key, SliderKey::Left | SliderKey::Right) {
+                let (taken, value) = self.fov.key_pressed(lang, &self.arena, key);
+                input.fov = value;
+                if taken {
+                    return input;
+                }
+            }
+            self.navigate(direction);
+            return input;
+        }
         match self.focus {
             Some(Focus::Fov) => input.fov = self.fov.key_pressed(lang, &self.arena, key).1,
             Some(Focus::Button(index)) if key == SliderKey::Select => {

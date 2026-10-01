@@ -11,7 +11,7 @@ use crate::gui::cycle::CycleButton;
 use crate::gui::font::Font;
 use crate::gui::option_text::{chat_opacity, chat_visibility, percent_value};
 use crate::gui::options_list::{
-    Build, Named, SubScreen, SubScreenInput, boolean, cycle, off_composed, slider,
+    Build, Named, SubScreen, SubScreenInput, boolean, boolean_tip, cycle, off_composed, slider,
 };
 use crate::gui::slider::OptionSlider;
 use crate::gui::{GuiAtlas, GuiFrame};
@@ -91,6 +91,10 @@ pub struct ChatOptionsScreen {
 
 impl ChatOptionsScreen {
     /// `init`, with the options as they are.
+    #[expect(
+        clippy::too_many_lines,
+        reason = "`addOptions` lists each option of the screen in turn"
+    )]
     pub fn new(
         font: &Font,
         lang: &Lang,
@@ -184,10 +188,27 @@ impl ChatOptionsScreen {
                         ),
                     ),
                     (PLAIN, boolean("options.autoSuggestCommands", true)),
-                    (PLAIN, boolean("options.hideMatchedNames", true)),
+                    (
+                        PLAIN,
+                        boolean_tip(
+                            "options.hideMatchedNames",
+                            true,
+                            "options.hideMatchedNames.tooltip",
+                        ),
+                    ),
                     (PLAIN, boolean("options.reducedDebugInfo", false)),
-                    (PLAIN, boolean("options.onlyShowSecureChat", false)),
-                    (PLAIN, boolean("options.chat.drafts", false)),
+                    (
+                        PLAIN,
+                        boolean_tip(
+                            "options.onlyShowSecureChat",
+                            false,
+                            "options.onlyShowSecureChat.tooltip",
+                        ),
+                    ),
+                    (
+                        PLAIN,
+                        boolean_tip("options.chat.drafts", false, "options.chat.drafts.tooltip"),
+                    ),
                 ],
             );
         });

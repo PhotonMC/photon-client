@@ -884,6 +884,13 @@ public final class GuiOracle {
             int mouseY = row.get("mouse").getAsJsonArray().get(1).getAsInt();
             var screen = screen(width, height, mouseX, mouseY);
             var minecraft = screen.minecraft();
+            minecraft.setLastInputType(net.minecraft.client.InputType.MOUSE);
+            // The clock the tooltips wait by is the row's to move.
+            var clockField = net.minecraft.util.Util.class.getDeclaredField("timeSource");
+            clockField.setAccessible(true);
+            var clockBefore = clockField.get(null);
+            long[] now = {0};
+            clockField.set(null, (net.minecraft.util.TimeSource.NanoTimeSource) () -> now[0] * 1_000_000L);
             var listener = (net.minecraft.client.multiplayer.ClientPacketListener)
                 unsafe.allocateInstance(net.minecraft.client.multiplayer.ClientPacketListener.class);
             set(listener, "registryAccess", (net.minecraft.core.RegistryAccess.Frozen) Oracle.vanillaRegistries());
@@ -904,8 +911,37 @@ public final class GuiOracle {
             var init = net.minecraft.client.gui.screens.PauseScreen.class.getDeclaredMethod("init");
             init.setAccessible(true);
             init.invoke(pause);
+            if (row.has("steps")) {
+                for (var stepElement : row.getAsJsonArray("steps")) {
+                    var step = stepElement.getAsJsonObject();
+                    if (step.get("do").getAsString().equals("frame")) {
+                        // A frame drawn and thrown away, at a time.
+                        now[0] = step.get("ms").getAsLong();
+                        var frame = new GuiRenderState();
+                        var graphics = new GuiGraphicsExtractor(minecraft, frame, mouseX, mouseY);
+                        pause.extractRenderState(graphics, mouseX, mouseY, 0.0F);
+                        graphics.extractDeferredElements(mouseX, mouseY, 0.0F);
+                    } else {
+                        String name = step.get("key").getAsString();
+                        int code = switch (name) {
+                            case "tab", "shift+tab" -> 258;
+                            case "left" -> 263;
+                            case "right" -> 262;
+                            case "up" -> 265;
+                            case "down" -> 264;
+                            default -> throw new IllegalArgumentException(name);
+                        };
+                        minecraft.setLastInputType(code == 258 ? net.minecraft.client.InputType.KEYBOARD_TAB
+                            : net.minecraft.client.InputType.KEYBOARD_ARROW);
+                        pause.keyPressed(new net.minecraft.client.input.KeyEvent(code, 0, name.startsWith("shift+") ? 1 : 0));
+                    }
+                }
+            }
+            now[0] = row.has("ms") ? row.get("ms").getAsLong() : 0;
             pause.extractBackground(screen.graphics(), mouseX, mouseY, 0.0F);
             pause.extractRenderState(screen.graphics(), mouseX, mouseY, 0.0F);
+            screen.graphics().extractDeferredElements(mouseX, mouseY, 0.0F);
+            clockField.set(null, clockBefore);
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());
             out.add("ops", record(screen.state()));
@@ -1133,6 +1169,8 @@ public final class GuiOracle {
                             case "tab", "shift+tab" -> 258;
                             case "left" -> 263;
                             case "right" -> 262;
+                            case "up" -> 265;
+                            case "down" -> 264;
                             case "enter" -> 257;
                             case "space" -> 32;
                             default -> throw new IllegalArgumentException(name);
@@ -1140,7 +1178,7 @@ public final class GuiOracle {
                         // What `KeyboardHandler` notes of the keys before the screen has them.
                         if (code == 258) {
                             minecraft.setLastInputType(net.minecraft.client.InputType.KEYBOARD_TAB);
-                        } else if (code == 262 || code == 263) {
+                        } else if (code == 262 || code == 263 || code == 264 || code == 265) {
                             minecraft.setLastInputType(net.minecraft.client.InputType.KEYBOARD_ARROW);
                         }
                         options.keyPressed(new net.minecraft.client.input.KeyEvent(
@@ -1320,7 +1358,8 @@ public final class GuiOracle {
             var clock = net.minecraft.util.Util.class.getDeclaredField("timeSource");
             clock.setAccessible(true);
             var clockBefore = clock.get(null);
-            clock.set(null, net.minecraft.util.TimeSource.constant(0L));
+            long[] now = {0};
+            clock.set(null, (net.minecraft.util.TimeSource.NanoTimeSource) () -> now[0] * 1_000_000L);
             set(minecraft, "soundManager", unsafe.allocateInstance(SilentSounds.class));
             // `GraphicsPreset.apply` asks for the device even for Custom, which does nothing with it.
             var deviceField = com.mojang.blaze3d.systems.RenderSystem.class.getDeclaredField("DEVICE");
@@ -1384,6 +1423,15 @@ public final class GuiOracle {
                 var frame = new GuiRenderState();
                 video.extractRenderState(new GuiGraphicsExtractor(minecraft, frame, mouseX, mouseY), mouseX, mouseY, 0.0F);
                 String action = step.get("do").getAsString();
+                if (action.equals("frame")) {
+                    // A frame drawn and thrown away, at a time (the tooltips wait by it).
+                    now[0] = step.get("ms").getAsLong();
+                    var thrown = new GuiRenderState();
+                    var thrownGraphics = new GuiGraphicsExtractor(minecraft, thrown, mouseX, mouseY);
+                    video.extractRenderState(thrownGraphics, mouseX, mouseY, 0.0F);
+                    thrownGraphics.extractDeferredElements(mouseX, mouseY, 0.0F);
+                    continue;
+                }
                 double x = step.has("x") ? step.get("x").getAsDouble() : lastX;
                 double y = step.has("y") ? step.get("y").getAsDouble() : lastY;
                 switch (action) {
@@ -1422,7 +1470,9 @@ public final class GuiOracle {
             var finalState = new GuiRenderState();
             var graphics = new GuiGraphicsExtractor(minecraft, finalState, mouseX, mouseY);
             background.invoke(video, graphics);
+            now[0] = row.has("ms") ? row.get("ms").getAsLong() : 0;
             video.extractRenderState(graphics, mouseX, mouseY, 0.0F);
+            graphics.extractDeferredElements(mouseX, mouseY, 0.0F);
             double scrollAmount;
             if (kind.equals("language")) {
                 var languageList = video.getClass().getDeclaredField("languageSelectionList");

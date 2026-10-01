@@ -627,6 +627,12 @@ impl Controls {
             WindowEvent::Key(Key::Right, _, Action::Press | Action::Repeat, _) => {
                 screen.key_pressed(lang, SliderKey::Right)
             }
+            WindowEvent::Key(Key::Up, _, Action::Press | Action::Repeat, _) => {
+                screen.key_pressed(lang, SliderKey::Up)
+            }
+            WindowEvent::Key(Key::Down, _, Action::Press | Action::Repeat, _) => {
+                screen.key_pressed(lang, SliderKey::Down)
+            }
             WindowEvent::Key(Key::Enter | Key::KpEnter | Key::Space, _, Action::Press, _) => {
                 screen.key_pressed(lang, SliderKey::Select)
             }
@@ -976,7 +982,22 @@ impl Controls {
                     self.pause_action(action, surface, assets);
                 }
             }
+            WindowEvent::Key(
+                key @ (Key::Up | Key::Down | Key::Left | Key::Right),
+                _,
+                Action::Press | Action::Repeat,
+                _,
+            ) => {
+                use voxel_render::gui::navigation::Direction;
+                pause.arrow(match key {
+                    Key::Up => Direction::Up,
+                    Key::Down => Direction::Down,
+                    Key::Left => Direction::Left,
+                    _ => Direction::Right,
+                });
+            }
             WindowEvent::CursorPos(x, y) => {
+                pause.mouse_input();
                 let size = surface.scale();
                 let (width, height) = surface.window_size();
                 self.gui_mouse = (

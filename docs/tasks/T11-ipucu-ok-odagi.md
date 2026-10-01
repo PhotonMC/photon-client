@@ -25,4 +25,6 @@ Anlatıcı (narration), dokunmatik.
 `docs/gui-oracle.md` (ipucu sınırı notu güncellenir), `docs/remaining-work.md` pause satırı.
 
 ## Devir notu
-(boş)
+- `gui/navigation.rs` (ScreenRectangle/yön araması portu, birim testli), `gui/tooltip.rs` (`Holder` = `WidgetTooltipHolder`: sıfır gecikme, `>` kıyası), `Positioner::{Default,Menu,BelowOrAbove}` (`frame.rs`). Pause: 4 simge ipucu + Tab/ok odağı; Options: ok tuşları (kaydırıcı sağ/sol'u alırsa gezinti yok). Ayar listeleri: `Control` ipucu (`with_tip`, `cycle_tip/slider_tip/named_tip/boolean_tip`): video, sohbet, fare, kontroller (restart notu dahil).
+- Oracle: `pause_screen` adımları (key/frame, `ms`), ayar ekranlarında `frame` adımı + `ms` + `extractDeferredElements`; adaptör Java'nın adım arası karesini taklit eder. Kasıtlı: hover ipucu ilk karede çıkmaz (`>` 0 ms). Metin kayması saate bağlı (aynı `ms`).
+- Açık: listelerde klavye gezintisi (T11b), dil listesi, ipucu için klavye odağı listelerde. Canlı denenmedi.

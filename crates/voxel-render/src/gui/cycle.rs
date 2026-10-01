@@ -6,6 +6,7 @@ use voxel_game::text::{Component, Lang, Run, Style};
 use crate::gui::font::Font;
 use crate::gui::layout::Arena;
 use crate::gui::option_text::generic_value;
+use crate::gui::tooltip::{Holder, joined};
 use crate::gui::widgets::{Kind, Widget};
 use crate::gui::{GuiAtlas, GuiFrame};
 
@@ -18,7 +19,13 @@ pub struct CycleButton<V> {
     index: i32,
     value_text: fn(&V) -> Component,
     focused: bool,
+    /// What the tooltip says of a value, and the tooltip.
+    tip: Option<Tip<V>>,
+    tooltip: Holder,
 }
+
+/// The lines of a tooltip for a value (`None` a blank line).
+pub type Tip<V> = Box<dyn Fn(&V) -> Vec<Option<Component>>>;
 
 impl<V: Clone + PartialEq> CycleButton<V> {
     /// `CycleButton.Builder.create`, with the button at `rect` of the arena
@@ -52,9 +59,23 @@ impl<V: Clone + PartialEq> CycleButton<V> {
             index,
             value_text,
             focused: false,
+            tip: None,
+            tooltip: Holder::default(),
         };
         button.update_label(lang);
         button
+    }
+
+    /// `withTooltip`: the tooltip follows the value.
+    #[must_use]
+    pub fn with_tip(mut self, lang: &Lang, tip: Tip<V>) -> Self {
+        self.tip = Some(tip);
+        self.update_label(lang);
+        self
+    }
+
+    pub fn tooltip(&self) -> &Holder {
+        &self.tooltip
     }
 
     pub fn set_active(&mut self, active: bool) {
@@ -92,6 +113,9 @@ impl<V: Clone + PartialEq> CycleButton<V> {
         self.widget.kind = Kind::Button {
             label: lang.runs(&text, &Style::default()),
         };
+        if let Some(tip) = &self.tip {
+            self.tooltip.set(Some(joined(lang, &tip(&self.value))));
+        }
     }
 
     /// The words on the button.

@@ -200,7 +200,7 @@ Bitti: `Component`/dil (`en_us`), stilli yazı, `EditBox`, ipucu kutusu.
   oyuncu bildirme düğmeleri çizilir ama basınca bir şey olmaz (ekranları yok);
   arka plan bulanıklığı (`blurBeforeThisStratum`, GPU) yok; yerel sunucu
   düzeni (`hasSingleplayerServer`) yok; taslak rapor simgesi yok; ipuçları
-  (simge düğmesi üzerinde bekleyince) yok; Tab dışı ok tuşlarıyla odak yok.
+  (simge düğmesi üzerinde bekleyince) var: `Holder`/`Positioner` (`tooltip.rs`, `frame.rs`), simge ipuçları pause'da; ok tuşlarıyla odak (`navigation.rs`) pause ve Options ekranında; ayar listelerinde (Tab/ok) ve dil listesinde klavye gezintisi yok (T11b).
   Düğmeye sığmayan etiket saate göre kayar (`GuiFrame::millis`, `draw_label`);
   oracle saati sabitler (T07).
 - **Kısmen** Seçenekler ekranı (`OptionsScreen`, pause → Options...):

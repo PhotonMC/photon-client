@@ -65,6 +65,76 @@ pub enum DrawOp {
     },
 }
 
+/// Where a tooltip goes (`ClientTooltipPositioner`).
+#[derive(Debug, Clone, Copy)]
+pub enum Positioner {
+    /// `DefaultTooltipPositioner`: by the mouse.
+    Default,
+    /// `MenuTooltipPositioner`: by the mouse, off the widget.
+    Menu(crate::gui::navigation::Rectangle),
+    /// `BelowOrAboveWidgetTooltipPositioner`: under the widget, or over it.
+    BelowOrAbove(crate::gui::navigation::Rectangle),
+}
+
+impl Positioner {
+    /// `positionTooltip`: the top left of the tooltip's text for a tooltip
+    /// `size` big and the mouse at `mouse`, in a screen of `screen`.
+    pub fn position(
+        &self,
+        (screen_width, screen_height): (i32, i32),
+        (mouse_x, mouse_y): (i32, i32),
+        (width, height): (i32, i32),
+    ) -> (i32, i32) {
+        match self {
+            Self::Default => {
+                let (mut x, mut y) = (mouse_x + 12, mouse_y - 12);
+                if x + width > screen_width {
+                    x = (x - 24 - width).max(4);
+                }
+                if y + height + 3 > screen_height {
+                    y = screen_height - (height + 3);
+                }
+                (x, y)
+            }
+            Self::Menu(widget) => {
+                let (top, bottom) = (widget.y, widget.y + widget.height);
+                // `getOffset`: how far from the widget, by how far the mouse is.
+                let offset = |mouse_y: i32, widget_y: i32, widget_height: i32| {
+                    let distance = (mouse_y - widget_y).abs().min(widget_height);
+                    let delta = distance as f32 / widget_height as f32;
+                    let start = (widget_height - 3) as f32;
+                    ((start + delta * (5.0 - start)) + 0.5).floor() as i32
+                };
+                let mut x = mouse_x + 12;
+                if x + width > screen_width - 5 {
+                    x = (mouse_x - 12 - width).max(9);
+                }
+                let mut y = mouse_y + 3;
+                let padded = height + 3 + 3;
+                let lowest = bottom + 3 + offset(0, 0, widget.height);
+                if lowest + padded <= screen_height - 5 {
+                    y += offset(y, top, widget.height);
+                } else {
+                    y -= padded + offset(y, bottom, widget.height);
+                }
+                (x, y)
+            }
+            Self::BelowOrAbove(widget) => {
+                let (right, bottom) = (widget.x + widget.width, widget.y + widget.height);
+                let mut x = widget.x + 3;
+                let mut y = bottom + 3 + 1;
+                if y + height + 3 > screen_height {
+                    y = widget.y - height - 3 - 1;
+                }
+                if x + width > screen_width {
+                    x = (right - width - 3).max(4);
+                }
+                (x, y)
+            }
+        }
+    }
+}
+
 /// A place in a [`GuiFrame`]: how much of it was drawn.
 #[derive(Debug, Clone, Copy)]
 pub struct FrameMark {
@@ -595,6 +665,19 @@ impl GuiFrame {
         mouse: (i32, i32),
         screen: (i32, i32),
     ) {
+        self.tooltip_with(atlas, font, lines, &Positioner::Default, mouse, screen);
+    }
+
+    /// A tooltip placed by a positioner (`ClientTooltipPositioner`).
+    pub fn tooltip_with(
+        &mut self,
+        atlas: &GuiAtlas,
+        font: &crate::gui::font::Font,
+        lines: &[Vec<voxel_game::text::Run>],
+        positioner: &Positioner,
+        mouse: (i32, i32),
+        screen: (i32, i32),
+    ) {
         if lines.is_empty() {
             return;
         }
@@ -604,14 +687,7 @@ impl GuiFrame {
             .max()
             .unwrap_or(0);
         let height = lines.len() as i32 * 10 - if lines.len() == 1 { 2 } else { 0 };
-        // `DefaultTooltipPositioner`.
-        let (mut x, mut y) = (mouse.0 + 12, mouse.1 - 12);
-        if x + width > screen.0 {
-            x = (x - 24 - width).max(4);
-        }
-        if y + height + 3 > screen.1 {
-            y = screen.1 - (height + 3);
-        }
+        let (x, y) = positioner.position(screen, mouse, (width, height));
         let (x0, y0) = (x - 3 - 9, y - 3 - 9);
         let (padded_w, padded_h) = (width + 6 + 18, height + 6 + 18);
         self.nine_slice(
