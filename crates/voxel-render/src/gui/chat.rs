@@ -990,7 +990,7 @@ impl ChatScreen {
             atlas,
             &self.font,
             (4, height - 12),
-            self.focused_at,
+            Some(self.focused_at),
             Some(&format),
         );
         if let Some(list) = &mut self.list {

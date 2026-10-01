@@ -420,6 +420,16 @@ impl Lang {
         Self::new(flat_strings(&text).unwrap_or_default())
     }
 
+    /// The texts of the language, to put others over.
+    pub fn into_texts(self) -> HashMap<String, String> {
+        self.texts
+    }
+
+    /// The texts a language file holds.
+    pub fn parse_texts(text: &str) -> Vec<(String, String)> {
+        flat_strings(text).unwrap_or_default()
+    }
+
     pub fn get(&self, key: &str) -> Option<&str> {
         self.texts.get(key).map(String::as_str)
     }

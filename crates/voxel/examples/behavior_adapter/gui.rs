@@ -203,6 +203,8 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
         .as_array()
         .ok_or("gui rows must be an array")?;
     let mut out = Vec::new();
+    // The languages' source is read once: its index has thousands of files.
+    let mut languages: Option<voxel_game::language::LanguageSource> = None;
     for row in rows {
         let int = |key: &str| row[key].as_i64().unwrap_or(0) as i32;
         let mut frame = GuiFrame {
@@ -727,6 +729,110 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                     "height": window.gui_scaled_height(),
                     "gui_scale": int("gui_scale"),
                     "scroll": each!(&screen, s => s.scroll_amount()),
+                    "ops": gui_ops(&frame.log.take().unwrap_or_default()),
+                }));
+                continue;
+            }
+            "lang_text" => {
+                let source = match &languages {
+                    Some(source) => source,
+                    None => languages.insert(
+                        voxel_game::language::LanguageSource::open(&root).ok_or("languages")?,
+                    ),
+                };
+                let lang = source.lang(row["language"].as_str().unwrap_or("en_us"));
+                let keys = row["keys"].as_array().ok_or("keys")?;
+                out.push(json!({
+                    "label": row["label"],
+                    "texts": keys.iter().map(|key| lang.text(key.as_str().unwrap_or_default())).collect::<Vec<_>>(),
+                }));
+                continue;
+            }
+            "language_screen" => {
+                use voxel_render::gui::language_select::LanguageSelectScreen;
+                use voxel_render::window::scale::WindowScale;
+                struct NoClipboard;
+                impl voxel_render::gui::edit_box::Clipboard for NoClipboard {
+                    fn get(&mut self) -> String {
+                        String::new()
+                    }
+                    fn set(&mut self, _text: &str) {}
+                }
+                let source = match &languages {
+                    Some(source) => source,
+                    None => languages.insert(
+                        voxel_game::language::LanguageSource::open(&root).ok_or("languages")?,
+                    ),
+                };
+                let code = row["language"].as_str().unwrap_or("en_us");
+                let lang = source.lang(code);
+                let framebuffer = (
+                    row["framebuffer"][0].as_i64().unwrap_or(0) as i32,
+                    row["framebuffer"][1].as_i64().unwrap_or(0) as i32,
+                );
+                let mouse = (
+                    row["mouse"][0].as_i64().unwrap_or(0) as i32,
+                    row["mouse"][1].as_i64().unwrap_or(0) as i32,
+                );
+                let mut window = WindowScale::new(framebuffer.0, framebuffer.1);
+                window.set_gui_scale(window.calculate_scale(int("gui_scale"), false));
+                let mut screen = LanguageSelectScreen::new(
+                    &font,
+                    &lang,
+                    (window.gui_scaled_width(), window.gui_scaled_height()),
+                    row["in_world"].as_bool().unwrap_or(false),
+                    source
+                        .languages()
+                        .into_iter()
+                        .filter(|(code, _)| {
+                            row["codes"].as_array().is_none_or(|codes| {
+                                codes.is_empty()
+                                    || codes.iter().any(|listed| listed == code.as_str())
+                            })
+                        })
+                        .collect(),
+                    code,
+                );
+                let mut last = (0.0, 0.0);
+                for step in row["steps"].as_array().ok_or("steps")? {
+                    let at = (
+                        step["x"].as_f64().unwrap_or(last.0),
+                        step["y"].as_f64().unwrap_or(last.1),
+                    );
+                    match step["do"].as_str().unwrap_or_default() {
+                        "click" => {
+                            screen.clicked(&font, at, step["double"].as_bool().unwrap_or(false));
+                        }
+                        "char" => {
+                            if let Some(character) =
+                                step["char"].as_str().and_then(|text| text.chars().next())
+                            {
+                                screen.char_typed(&font, character);
+                            }
+                        }
+                        "key" => {
+                            let key = match step["key"].as_str().unwrap_or_default() {
+                                "backspace" => glfw::Key::Backspace,
+                                "enter" => glfw::Key::Enter,
+                                other => return Err(format!("unknown key {other}")),
+                            };
+                            screen.key_pressed(&font, key, (false, false), &mut NoClipboard);
+                        }
+                        "drag" => screen.dragged(at, at.1 - last.1),
+                        "release" => screen.released(),
+                        "scroll" => screen.scrolled(at, step["dy"].as_f64().unwrap_or(0.0)),
+                        other => return Err(format!("unknown step {other}")),
+                    }
+                    last = at;
+                }
+                screen.draw(&mut frame, &atlas, &font, mouse);
+                out.push(json!({
+                    "label": row["label"],
+                    "width": window.gui_scaled_width(),
+                    "height": window.gui_scaled_height(),
+                    "gui_scale": int("gui_scale"),
+                    "scroll": screen.scroll_amount(),
+                    "search": screen.search_text(),
                     "ops": gui_ops(&frame.log.take().unwrap_or_default()),
                 }));
                 continue;

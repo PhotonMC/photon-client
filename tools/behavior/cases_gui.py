@@ -1183,6 +1183,85 @@ def gui_mouse_cases():
            "rows": controls}
 
 
+def latin_language_codes():
+    """The languages whose names are all in Latin letters, from the asset
+    pack's own list: the font's other scripts need fallbacks and the right
+    to left shaping, which are not ported, so the list shows these."""
+    import json
+    import pathlib
+    import unicodedata
+    root = pathlib.Path(__file__).resolve().parents[2] / ".data/minecraft/assets"
+    index = json.loads(next((root / "indexes").glob("*.json")).read_text())["objects"]
+    digest = index["pack.mcmeta"]["hash"]
+    packs = json.loads((root / "objects" / digest[:2] / digest).read_text())["language"]
+    plain = lambda text: all(c in " ()-'.," or c.isdigit() or unicodedata.name(c, "").startswith("LATIN")
+                             for c in text)
+    return [code for code, info in sorted(packs.items()) if plain(info["name"] + " (" + info["region"] + ")")]
+
+
+def gui_language_cases():
+    """The language screen as the reference draws it, in the languages it
+    lists: the title over the search box, the list centred on the language
+    in use, the warning, the font button and Done; the list scrolled and its
+    bar dragged, the search typed into and cleared, the entries pressed
+    (the outline white while the list has the focus, the hint when the box
+    has not). Done, the font button and a double click open another screen or change
+    the language, which the game's reload does: those are not pressed here."""
+    def row(label, language="en_us", framebuffer=(854, 480), gui_scale=2, in_world=True,
+            mouse=(0, 0), steps=()):
+        return {"label": label, "language": language, "framebuffer": list(framebuffer),
+                "gui_scale": gui_scale, "in_world": in_world, "mouse": list(mouse), "steps": list(steps),
+                "codes": codes}
+
+    codes = latin_language_codes()
+    click = lambda x, y, double=False: {"do": "click", "x": x, "y": y, "double": double}
+    drag = lambda x, y: {"do": "drag", "x": x, "y": y}
+    release = lambda x=0, y=0: {"do": "release", "x": x, "y": y}
+    wheel = lambda dy, x=200, y=100: {"do": "scroll", "x": x, "y": y, "dy": dy, "ctrl": False}
+    typed = lambda text: [{"do": "char", "char": c} for c in text]
+    back = {"do": "key", "key": "backspace"}
+    rows = [
+        row("english"), row("german", "de_de"), row("turkish", "tr_tr"),
+        row("out-of-world", in_world=False), row("small", framebuffer=(640, 480)),
+        row("large", framebuffer=(1280, 720)), row("tiny", framebuffer=(640, 480), gui_scale=3),
+        row("short", framebuffer=(854, 300)), row("auto-large", framebuffer=(1920, 1080), gui_scale=0),
+        row("first-language", "af_za"), row("unknown-language", "xx_xx"),
+        row("hover-done", mouse=(300, 225)), row("hover-fonts", mouse=(130, 225)),
+        row("hover-entry", mouse=(213, 120)),
+        row("scroll-1", steps=[wheel(-1)]), row("scroll-5", steps=[wheel(-5)]),
+        row("scroll-end", steps=[wheel(-500)]), row("scroll-top", steps=[wheel(500)]),
+        row("scroll-over-header", steps=[wheel(-3, 200, 10)]),
+        row("bar-drag", steps=[click(356, 90), drag(356, 120), release(356, 120)]),
+        row("bar-drag-end", steps=[click(356, 90), drag(356, 400)]),
+        row("bar-drag-top", steps=[click(356, 90), drag(356, 0)]),
+        row("press-entry", steps=[click(213, 90)]),
+        row("press-entry-then-search", steps=[click(213, 90), click(200, 25)]),
+        row("press-entry-twice", steps=[click(213, 90), click(213, 125)]),
+        row("press-entry-clipped-bottom", steps=[click(213, 190)]),
+        row("press-gap", steps=[click(20, 90)]),
+        row("press-search", steps=[click(150, 25)]),
+        row("type-tr", steps=typed("tr")), row("type-de", "de_de", steps=typed("de")),
+        row("type-german", steps=typed("German")), row("type-capital", steps=typed("TUR")),
+        row("type-nothing-matches", steps=typed("zzzz")),
+        row("type-region", steps=typed("Deutschland")),
+        row("type-then-clear", steps=typed("tr") + [back, back]),
+        row("type-one-back", steps=typed("abc") + [back]),
+        row("type-then-press-entry", steps=typed("fran") + [click(213, 55)]),
+        row("type-then-scroll", steps=typed("e") + [wheel(-2)]),
+        row("type-after-list-focus", steps=[click(213, 90)] + typed("x")),
+        row("hint-after-list", steps=[click(213, 90)]),
+        row("type-selection-lost", "tr_tr", steps=typed("e")),
+        row("type-long", steps=typed("abcdefghijklmnopqrstuvwxyz")),
+    ]
+    yield {"case_id": "gui/language-screen", "family": "gui", "operation": "language_screen", "rows": rows}
+    keys = ["gui.done", "options.language.title", "options.video", "options.language.accuracy",
+            "menu.quit", "gui.cancel", "options.on", "options.off", "deathScreen.title", "options.fov",
+            "not.a.key", "options.generic_value", "chat.type.text"]
+    yield {"case_id": "gui/lang-text", "family": "gui", "operation": "lang_text",
+           "rows": [{"label": code, "language": code, "keys": keys}
+                    for code in ("en_us", "tr_tr", "de_de", "fr_fr", "ja_jp", "ar_sa", "ru_ru", "xx_xx")]}
+
+
 def gui_generators():
     return itertools.chain(
         gui_cases(), gui_suggestion_cases(), gui_title_cases(), gui_boss_bar_cases(),
@@ -1191,4 +1270,4 @@ def gui_generators():
         gui_tab_list_cases(), gui_container_screen_cases(),
         gui_confirm_screen_cases(), gui_widgets_cases(),
         gui_options_screen_cases(), gui_video_settings_cases(), gui_chat_options_cases(),
-        gui_mouse_cases())
+        gui_mouse_cases(), gui_language_cases())

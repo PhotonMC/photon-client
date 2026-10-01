@@ -21,6 +21,8 @@ pub struct ScreenAssets {
     pub inventory_title: String,
     /// The client's language, for the titles the server names.
     pub lang: std::sync::Arc<voxel_game::text::Lang>,
+    /// The languages the client can switch to.
+    pub languages: Option<std::sync::Arc<voxel_game::language::LanguageSource>>,
 }
 
 impl ScreenAssets {

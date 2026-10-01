@@ -119,6 +119,15 @@ impl EditBox {
         self.value.iter().collect()
     }
 
+    /// `onClick`: the cursor goes to the place `offset` units into the text
+    /// that is shown.
+    pub fn click_at(&mut self, offset: i32, font: &Font) {
+        let offset = offset.min(self.width);
+        let rest = &self.value[self.display_pos.min(self.value.len())..];
+        let position = head_by_width(font, rest, offset) + self.display_pos;
+        self.move_cursor_to(position, false, font);
+    }
+
     pub fn is_empty(&self) -> bool {
         self.value.is_empty()
     }
@@ -355,7 +364,7 @@ impl EditBox {
         at: (i32, i32),
         focused_at: std::time::Instant,
     ) {
-        self.draw_formatted(frame, atlas, font, at, focused_at, None);
+        self.draw_formatted(frame, atlas, font, at, Some(focused_at), None);
     }
 
     /// `draw` with a formatter (`addFormatter`): given a stretch of the text
@@ -367,7 +376,7 @@ impl EditBox {
         atlas: &GuiAtlas,
         font: &Font,
         (text_x, text_y): (i32, i32),
-        focused_at: std::time::Instant,
+        focused_at: Option<std::time::Instant>,
         formatter: Option<&Formatter<'_>>,
     ) {
         // `applyFormat`: the parts, drawn one after another; their width.
@@ -395,7 +404,7 @@ impl EditBox {
         let shown = self.shown(font);
         let chars: Vec<char> = shown.text.chars().collect();
         let cursor_on_screen = shown.cursor >= 0 && shown.cursor as usize <= chars.len();
-        let blink = (focused_at.elapsed().as_millis() / 300).is_multiple_of(2);
+        let blink = focused_at.is_some_and(|at| (at.elapsed().as_millis() / 300).is_multiple_of(2));
         let colour = self.colour;
         let right = text_x + self.width;
         let mut draw_x = text_x;

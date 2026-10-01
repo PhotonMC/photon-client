@@ -38,6 +38,8 @@ pub struct Gui {
     alt_font: Arc<Font>,
     atlas: GuiAtlas,
     lang: Arc<Lang>,
+    /// Where the other languages are, if the asset folder has them.
+    languages: Option<Arc<voxel_game::language::LanguageSource>>,
     /// The data-driven registries tooltips read.
     registries: Arc<Registries>,
     hud: Hud,
@@ -61,17 +63,19 @@ impl Gui {
         root: &Path,
         registries: Registries,
         backend: &mut VulkanBackend,
+        language: &str,
     ) -> Result<Self, Box<dyn std::error::Error>> {
         let font = Arc::new(Font::load(root).ok_or("the default font could not be read")?);
         let alt_font = Arc::new(Font::load_alt(root).ok_or("the alt font could not be read")?);
         let (atlas, texture) =
             GuiAtlas::load(root, &[&font, &alt_font]).ok_or("the HUD sprites could not be read")?;
         backend.load_gui_texture(&texture)?;
-        Ok(Self {
+        let mut gui = Self {
             font,
             alt_font,
             atlas,
             lang: Arc::new(Lang::load(root)),
+            languages: voxel_game::language::LanguageSource::open(root).map(Arc::new),
             registries: Arc::new(registries),
             hud: Hud::default(),
             titles: Titles::default(),
@@ -83,7 +87,9 @@ impl Gui {
             last_tick: std::time::Instant::now(),
             items: ItemLayerCache::new(voxel_render::model::DisplayContext::Gui),
             started_at: std::time::Instant::now(),
-        })
+        };
+        gui.set_language(language);
+        Ok(gui)
     }
 
     /// What the inventory screens open with: the search trees, the font and
@@ -106,6 +112,14 @@ impl Gui {
             registries: self.registries.clone(),
             alt_font: self.alt_font.clone(),
             lang: lang.clone(),
+            languages: self.languages.clone(),
+        }
+    }
+
+    /// The client's language is another: texts are read again.
+    pub fn set_language(&mut self, code: &str) {
+        if let Some(source) = &self.languages {
+            self.lang = Arc::new(source.lang(code));
         }
     }
 
@@ -340,6 +354,45 @@ impl Gui {
         }
     }
 
+    /// The settings screen that is open, the topmost of those over the
+    /// options, or the options screen, or the pause menu.
+    fn draw_menu(
+        (atlas, font, lang): (&GuiAtlas, &Font, &Lang),
+        controls: &mut Controls,
+        frame: &mut voxel_render::gui::GuiFrame,
+        gui_size: (i32, i32),
+    ) {
+        let mouse = (controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32);
+        macro_rules! sized {
+            ($screen:expr) => {
+                if let Some(screen) = $screen.as_mut() {
+                    if screen.size() != gui_size {
+                        screen.resize(gui_size);
+                    }
+                    screen.draw(frame, atlas, font, mouse);
+                    return;
+                }
+            };
+        }
+        sized!(controls.language_screen);
+        sized!(controls.mouse_screen);
+        sized!(controls.controls_screen);
+        sized!(controls.chat_options_screen);
+        sized!(controls.video_screen);
+        if let Some(options_screen) = controls.options_screen.as_mut() {
+            if options_screen.size() != gui_size {
+                *options_screen =
+                    options_screen.resized(font, lang, gui_size, controls.options.fov);
+            }
+            options_screen.draw(frame, atlas, font, mouse);
+        } else if let Some(pause) = controls.pause.as_mut() {
+            if pause.size() != gui_size {
+                *pause = PauseScreen::new(font, lang, gui_size);
+            }
+            pause.draw(frame, atlas, font, mouse, gui_size, true);
+        }
+    }
+
     /// The HUD, then the open screen over it, with the player in the screen
     /// posed as the entity stands now.
     #[expect(
@@ -459,44 +512,12 @@ impl Gui {
             let mouse = (controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32);
             disconnected.draw(&mut frame, &self.atlas, &self.font, mouse);
         }
-        if let Some(mouse_screen) = controls.mouse_screen.as_mut() {
-            if mouse_screen.size() != gui_size {
-                mouse_screen.resize(gui_size);
-            }
-            let mouse = (controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32);
-            mouse_screen.draw(&mut frame, &self.atlas, &self.font, mouse);
-        } else if let Some(controls_screen) = controls.controls_screen.as_mut() {
-            if controls_screen.size() != gui_size {
-                controls_screen.resize(gui_size);
-            }
-            let mouse = (controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32);
-            controls_screen.draw(&mut frame, &self.atlas, &self.font, mouse);
-        } else if let Some(chat_options) = controls.chat_options_screen.as_mut() {
-            if chat_options.size() != gui_size {
-                chat_options.resize(gui_size);
-            }
-            let mouse = (controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32);
-            chat_options.draw(&mut frame, &self.atlas, &self.font, mouse);
-        } else if let Some(video) = controls.video_screen.as_mut() {
-            if video.size() != gui_size {
-                video.resize(gui_size);
-            }
-            let mouse = (controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32);
-            video.draw(&mut frame, &self.atlas, &self.font, mouse);
-        } else if let Some(options_screen) = controls.options_screen.as_mut() {
-            if options_screen.size() != gui_size {
-                *options_screen =
-                    options_screen.resized(&self.font, &self.lang, gui_size, controls.options.fov);
-            }
-            let mouse = (controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32);
-            options_screen.draw(&mut frame, &self.atlas, &self.font, mouse);
-        } else if let Some(pause) = controls.pause.as_mut() {
-            if pause.size() != gui_size {
-                *pause = PauseScreen::new(&self.font, &self.lang, gui_size);
-            }
-            let mouse = (controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32);
-            pause.draw(&mut frame, &self.atlas, &self.font, mouse, gui_size, true);
-        }
+        Self::draw_menu(
+            (&self.atlas, &self.font, &self.lang),
+            controls,
+            &mut frame,
+            gui_size,
+        );
         if let Some((entries, objective)) = tab_entries {
             tab_list::draw(
                 &mut frame,

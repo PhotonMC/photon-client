@@ -1,6 +1,7 @@
 //! The player's hands on the client: the keys and the mouse, a script's
 //! steps, and the inventory screen they may be typing into.
 
+use std::time::{Duration, Instant};
 use voxel_game::attack::AttackKey;
 use voxel_game::hotbar::ScrollWheel;
 use voxel_game::options::Options;
@@ -11,6 +12,7 @@ use voxel_render::gui::chat_options::ChatOptionsScreen;
 use voxel_render::gui::confirm::{ConfirmAction, ConfirmBackground, ConfirmScreen};
 use voxel_render::gui::death::{DeathAction, DeathScreen};
 use voxel_render::gui::disconnected::DisconnectedScreen;
+use voxel_render::gui::language_select::LanguageSelectScreen;
 use voxel_render::gui::mouse_options::{ControlsScreen, MouseSettingsScreen};
 use voxel_render::gui::options::{OptionsAction, OptionsInput, OptionsScreen};
 use voxel_render::gui::pause::{PauseAction, PauseScreen};
@@ -61,6 +63,11 @@ pub struct Controls {
     pub chat_options_screen: Option<ChatOptionsScreen>,
     /// The controls screen, and the mouse settings over it.
     pub controls_screen: Option<ControlsScreen>,
+    /// The language screen, and the language it chose, for the game to load.
+    pub language_screen: Option<LanguageSelectScreen>,
+    language_request: Option<String>,
+    /// When and where the primary button last went down.
+    last_press: Option<(Instant, (i32, i32))>,
     pub mouse_screen: Option<MouseSettingsScreen>,
     /// The death screen, from the server's word of a death until the player
     /// has health again.
@@ -132,6 +139,9 @@ impl Controls {
             video_screen: None,
             chat_options_screen: None,
             controls_screen: None,
+            language_screen: None,
+            language_request: None,
+            last_press: None,
             mouse_screen: None,
             death: None,
             confirm: None,
@@ -221,6 +231,7 @@ impl Controls {
             Some(OptionsAction::Video) => self.open_video(surface, assets),
             Some(OptionsAction::Chat) => self.open_chat_options(surface, assets),
             Some(OptionsAction::Controls) => self.open_controls(surface, assets),
+            Some(OptionsAction::Language) => self.open_language(surface, assets),
             _ => {}
         }
     }
@@ -248,6 +259,105 @@ impl Controls {
     fn gui_size(surface: &WindowSurface) -> (i32, i32) {
         let scale = surface.scale();
         (scale.gui_scaled_width(), scale.gui_scaled_height())
+    }
+
+    /// `LanguageSelectScreen`, over the options screen.
+    fn open_language(&mut self, surface: &WindowSurface, assets: &ScreenAssets) {
+        let Some(source) = assets.languages.as_ref() else {
+            return;
+        };
+        self.language_screen = Some(LanguageSelectScreen::new(
+            &assets.creative.font,
+            &assets.lang,
+            Self::gui_size(surface),
+            true,
+            source.languages().into_iter().collect(),
+            &self.options.language_code,
+        ));
+    }
+
+    /// The language the player chose, once.
+    pub fn take_language_request(&mut self) -> Option<String> {
+        self.language_request.take()
+    }
+
+    /// The screens that hold their words are made again in the language
+    /// now loaded.
+    pub fn rebuild_menus(&mut self, surface: &WindowSurface, assets: &ScreenAssets) {
+        let size = Self::gui_size(surface);
+        if self.pause.is_some() {
+            self.pause = Some(PauseScreen::new(&assets.creative.font, &assets.lang, size));
+        }
+        if self.options_screen.is_some() {
+            self.open_options(surface, assets);
+        }
+    }
+
+    /// An event for the open language screen.
+    fn language_event(
+        &mut self,
+        event: glfw::WindowEvent,
+        surface: &mut WindowSurface,
+        assets: &ScreenAssets,
+    ) {
+        use glfw::{Action, Key, MouseButton, WindowEvent};
+        let font = &assets.creative.font;
+        if let WindowEvent::CursorPos(x, y) = event {
+            let before = self.gui_mouse.1;
+            self.move_gui_mouse((x, y), surface);
+            let mouse = self.gui_mouse;
+            if let Some(screen) = self.language_screen.as_mut() {
+                screen.dragged(mouse, mouse.1 - before);
+            }
+            return;
+        }
+        let mouse = self.gui_mouse;
+        let control = self.control_held;
+        let wheel = self.options.mouse_wheel_sensitivity;
+        let Some(screen) = self.language_screen.as_mut() else {
+            return;
+        };
+        let mut input = None;
+        match event {
+            WindowEvent::Key(Key::Escape, _, Action::Press, _) => {
+                input = Some(voxel_render::gui::language_select::LanguageInput {
+                    done: true,
+                    language: None,
+                });
+            }
+            WindowEvent::Key(key, _, Action::Press | Action::Repeat, modifiers) => {
+                let shift = modifiers.contains(glfw::Modifiers::Shift);
+                input = Some(screen.key_pressed(
+                    font,
+                    key,
+                    (control, shift),
+                    &mut WindowClipboard(surface),
+                ));
+            }
+            WindowEvent::Char(character) => screen.char_typed(font, character),
+            WindowEvent::MouseButton(MouseButton::Button1, Action::Press, _) => {
+                // The window's own double click timing is not kept: two
+                // presses at the same place within 250 ms.
+                let now = Instant::now();
+                let double = self.last_press.is_some_and(|(at, place)| {
+                    now - at < Duration::from_millis(250)
+                        && place == (mouse.0 as i32, mouse.1 as i32)
+                });
+                self.last_press = Some((now, (mouse.0 as i32, mouse.1 as i32)));
+                input = Some(screen.clicked(font, mouse, double));
+            }
+            WindowEvent::MouseButton(MouseButton::Button1, Action::Release, _) => screen.released(),
+            WindowEvent::Scroll(_, y) => screen.scrolled(mouse, y * wheel),
+            _ => {}
+        }
+        if let Some(input) = input.filter(|input| input.done) {
+            self.language_screen = None;
+            if let Some(code) = input.language {
+                self.options.language_code.clone_from(&code);
+                self.language_request = Some(code);
+            }
+            let _ = self.options.save(&options_path());
+        }
     }
 
     /// `ControlsScreen`, over the options screen.
@@ -567,6 +677,7 @@ impl Controls {
         self.video_screen = None;
         self.chat_options_screen = None;
         self.controls_screen = None;
+        self.language_screen = None;
         self.mouse_screen = None;
         self.death = None;
         self.confirm = None;
@@ -631,6 +742,7 @@ impl Controls {
             self.video_screen = None;
             self.chat_options_screen = None;
             self.controls_screen = None;
+            self.language_screen = None;
             self.mouse_screen = None;
             self.screen = None;
             self.captured = false;
@@ -719,6 +831,8 @@ impl Controls {
             if let Some(action) = confirm.escape() {
                 self.confirm_action(action, session, surface)?;
             }
+        } else if self.language_screen.is_some() {
+            self.language_screen = None;
         } else if self.mouse_screen.is_some() || self.controls_screen.is_some() {
             self.close_controls();
         } else if self.chat_options_screen.is_some() {
@@ -1249,6 +1363,10 @@ impl Controls {
         }
         if self.death.is_some() && for_screen {
             return self.death_event(event, session, surface, assets);
+        }
+        if self.language_screen.is_some() && for_screen {
+            self.language_event(event, surface, assets);
+            return Ok(());
         }
         if (self.mouse_screen.is_some() || self.controls_screen.is_some()) && for_screen {
             self.controls_event(event, surface, assets);

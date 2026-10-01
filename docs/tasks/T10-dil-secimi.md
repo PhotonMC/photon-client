@@ -26,4 +26,6 @@
 `docs/gui-oracle.md`, `docs/remaining-work.md` (yazı tipi kalanı).
 
 ## Devir notu
-(boş)
+- `voxel-game/src/language.rs` (`LanguageSource`: jar `en_us` + indeks/`objects`, `languages()` = `pack.mcmeta`), `gui/language_select.rs` (arama `EditBox` + 18'lik seçim listesi), `gui/scroll_area.rs` (liste ortakları; `OptionsList` de bunu kullanıyor), `EditBox::click_at`. Canlı: `Controls.language_request` → `play.rs` `Gui::set_language` + `rebuild_menus`.
+- Oracle: `language_screen` 42 satır (`settingsScreen` Java yöntemi, `LanguageManager` pack listesiyle, `StubGame.onTextInputFocusChange`), `lang_text` 8 dil. Liste yalnız Latin adlı dillerle çünkü unifont yedeği ve RTL taşınmadı.
+- Açık: unifont (Türkçe ş/ğ/İ/ı çizilmez), RTL, Font ekranı, sohbet geçmişi yeniden çözümü (T10b), ok tuşu gezintisi (T11), çift tık süresi 250 ms sabit. Canlı denenmedi.

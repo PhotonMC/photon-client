@@ -10,6 +10,7 @@ use crate::gui::cycle::CycleButton;
 use crate::gui::font::Font;
 use crate::gui::layout::{Arena, Grid, Item, Settings, place_in_frame};
 use crate::gui::option_text::on_off;
+use crate::gui::scroll_area::{Place, SCROLLBAR_WIDTH};
 use crate::gui::slider::{InputType, OptionSlider, SliderValues};
 use crate::gui::widgets::{Kind, Widget};
 use crate::gui::{GuiAtlas, GuiFrame};
@@ -23,9 +24,6 @@ const ROW_WIDTH: i32 = 310;
 /// The width of each of the two narrow widgets, and the step between them.
 const SMALL_WIDTH: i32 = 150;
 const COLUMN_STEP: i32 = 160;
-/// `AbstractScrollArea.SCROLLBAR_WIDTH` and the least the bar is tall.
-const SCROLLBAR_WIDTH: i32 = 6;
-const SCROLLBAR_MIN_HEIGHT: i32 = 32;
 /// `Entry.CONTENT_PADDING`.
 const PADDING: i32 = 2;
 /// `ScrollbarSettings.scrollRate`: half of an item's height.
@@ -179,10 +177,7 @@ type Focus = (usize, usize);
 /// `OptionsList`.
 pub struct OptionsList {
     arena: Arena,
-    /// The list's place: it is as wide as the screen.
-    y: i32,
-    width: i32,
-    height: i32,
+    place: Place,
     entries: Vec<Entry>,
     scroll: f64,
     /// Whether the mouse holds the scroll bar.
@@ -190,7 +185,6 @@ pub struct OptionsList {
     focus: Option<Focus>,
     /// Whether the mouse holds the focused widget (`isDragging`).
     dragging: bool,
-    in_world: bool,
 }
 
 impl OptionsList {
@@ -199,15 +193,17 @@ impl OptionsList {
     pub fn new(width: i32, (y, height): (i32, i32), in_world: bool) -> Self {
         Self {
             arena: Arena::default(),
-            y,
-            width,
-            height,
+            place: Place {
+                y,
+                width,
+                height,
+                in_world,
+            },
             entries: Vec::new(),
             scroll: 0.0,
             scrolling: false,
             focus: None,
             dragging: false,
-            in_world,
         }
     }
 
@@ -295,27 +291,19 @@ impl OptionsList {
         })
     }
 
-    fn bottom(&self) -> i32 {
-        self.y + self.height
-    }
-
     /// `getRowLeft`.
     fn row_left(&self) -> i32 {
-        self.width / 2 - ROW_WIDTH / 2
+        self.place.width / 2 - ROW_WIDTH / 2
+    }
+
+    /// `contentHeight`.
+    fn max_scroll(&self) -> i32 {
+        self.place.max_scroll(self.content_height())
     }
 
     /// `contentHeight`.
     fn content_height(&self) -> i32 {
         self.entries.iter().map(|entry| entry.height).sum::<i32>() + 4
-    }
-
-    /// `maxScrollAmount`.
-    fn max_scroll(&self) -> i32 {
-        (self.content_height() - self.height).max(0)
-    }
-
-    fn scrollable(&self) -> bool {
-        self.max_scroll() > 0
     }
 
     pub fn scroll_amount(&self) -> f64 {
@@ -331,8 +319,8 @@ impl OptionsList {
 
     /// `repositionEntries`, and the widgets where `extractContent` puts them.
     fn reposition(&mut self) {
-        let mut y = self.y + PADDING - self.scroll as i32;
-        let x = self.width / 2 - 155;
+        let mut y = self.place.y + PADDING - self.scroll as i32;
+        let x = self.place.width / 2 - 155;
         for entry in &mut self.entries {
             entry.y = y;
             y += entry.height;
@@ -353,9 +341,9 @@ impl OptionsList {
 
     /// `updateSizeAndPosition`: a screen of another size.
     pub fn resize(&mut self, width: i32, (y, height): (i32, i32)) {
-        self.width = width;
-        self.y = y;
-        self.height = height;
+        self.place.width = width;
+        self.place.y = y;
+        self.place.height = height;
         self.reposition();
         if let Some((entry, _)) = self.focus {
             self.scroll_to_entry(entry);
@@ -365,24 +353,14 @@ impl OptionsList {
 
     /// `scrollToEntry`.
     fn scroll_to_entry(&mut self, entry: usize) {
-        let top_delta = self.entries[entry].y - self.y - PADDING;
+        let top_delta = self.entries[entry].y - self.place.y - PADDING;
         if top_delta < 0 {
             self.set_scroll_amount(self.scroll + f64::from(top_delta));
         }
         let bottom_delta =
-            self.bottom() - self.entries[entry].y - self.entries[entry].height - PADDING;
+            self.place.bottom() - self.entries[entry].y - self.entries[entry].height - PADDING;
         if bottom_delta < 0 {
             self.set_scroll_amount(self.scroll - f64::from(bottom_delta));
-        }
-    }
-
-    /// `scrollerHeight`.
-    fn scroller_height(&self) -> i32 {
-        let share = ((self.height * self.height) as f32 / self.content_height() as f32) as i32;
-        if share < SCROLLBAR_MIN_HEIGHT {
-            SCROLLBAR_MIN_HEIGHT
-        } else {
-            share.min(self.height - 8)
         }
     }
 
@@ -391,48 +369,17 @@ impl OptionsList {
         self.row_left() + ROW_WIDTH + SCROLLBAR_WIDTH + 2
     }
 
-    /// `scrollBarY`.
-    fn scrollbar_y(&self) -> i32 {
-        if self.max_scroll() == 0 {
-            self.y
-        } else {
-            self.y.max(
-                self.scroll as i32 * (self.height - self.scroller_height()) / self.max_scroll()
-                    + self.y,
-            )
-        }
-    }
-
-    fn contains(&self, (x, y): (f64, f64)) -> bool {
-        x >= 0.0
-            && x < f64::from(self.width)
-            && y >= f64::from(self.y)
-            && y < f64::from(self.bottom())
-    }
-
     /// The menu list's background, scrolled with the list, the widgets in
     /// it cut to the list, the lines above and below, then the scroll bar.
     pub fn draw(&self, frame: &mut GuiFrame, atlas: &GuiAtlas, font: &Font, mouse: (i32, i32)) {
-        let world = |name: &str| {
-            if self.in_world {
-                format!("inworld_{name}")
-            } else {
-                name.to_owned()
-            }
-        };
-        frame.tile_texture_from(
-            atlas,
-            &world("menu_list_background"),
-            (32, 32),
-            (self.width, self.bottom() + self.scroll as i32),
-            (0, self.y, self.width, self.height),
-        );
+        let place = self.place;
+        place.draw_background(frame, atlas, self.scroll);
         // The hover of a widget needs the mouse inside the cut.
-        let inside = self.contains((f64::from(mouse.0), f64::from(mouse.1)));
+        let inside = place.contains((f64::from(mouse.0), f64::from(mouse.1)));
         let mouse = if inside { mouse } else { (i32::MIN, i32::MIN) };
         let mark = frame.mark();
         for entry in &self.entries {
-            if entry.y + entry.height < self.y || entry.y > self.bottom() {
+            if entry.y + entry.height < place.y || entry.y > place.bottom() {
                 continue;
             }
             match &entry.content {
@@ -444,52 +391,13 @@ impl OptionsList {
                 }
             }
         }
-        frame.clip_from(mark, (0, self.y, self.width, self.bottom()));
-        frame.blit_texture(
+        frame.clip_from(mark, (0, place.y, place.width, place.bottom()));
+        place.draw_edges(
+            frame,
             atlas,
-            &world("header_separator"),
-            (32, 2),
-            (0, 0),
-            0,
-            self.y - 2,
-            self.width,
-            2,
+            (self.scroll, self.content_height()),
+            self.scrollbar_x(),
         );
-        frame.blit_texture(
-            atlas,
-            &world("footer_separator"),
-            (32, 2),
-            (0, 0),
-            0,
-            self.bottom(),
-            self.width,
-            2,
-        );
-        if self.scrollable() {
-            let x = self.scrollbar_x();
-            frame.nine_slice(
-                atlas,
-                "widget/scroller_background",
-                (SCROLLBAR_WIDTH, 32),
-                1,
-                false,
-                x,
-                self.y,
-                SCROLLBAR_WIDTH,
-                self.height,
-            );
-            frame.nine_slice(
-                atlas,
-                "widget/scroller",
-                (SCROLLBAR_WIDTH, 32),
-                1,
-                false,
-                x,
-                self.scrollbar_y(),
-                SCROLLBAR_WIDTH,
-                self.scroller_height(),
-            );
-        }
     }
 
     /// `getEntryAtPosition`.
@@ -522,7 +430,7 @@ impl OptionsList {
             let changed_entry = !matches!(old, Some((before, _)) if before == entry);
             let top = self.entries[entry].y + PADDING;
             let bottom = self.entries[entry].y + self.entries[entry].height - PADDING;
-            if changed_entry && (top < self.y || bottom > self.bottom()) {
+            if changed_entry && (top < self.place.y || bottom > self.place.bottom()) {
                 self.scroll_to_entry(entry);
             }
         }
@@ -532,14 +440,14 @@ impl OptionsList {
     /// (it landed on a widget or the scroll bar), and the tag of the widget
     /// whose option changed.
     pub fn clicked(&mut self, lang: &Lang, mouse: (f64, f64), shift: bool) -> (bool, Option<u8>) {
-        if !self.contains(mouse) {
+        if !self.place.contains(mouse) {
             return (false, None);
         }
-        self.scrolling = self.scrollable()
+        self.scrolling = self.max_scroll() > 0
             && mouse.0 >= f64::from(self.scrollbar_x())
             && mouse.0 <= f64::from(self.scrollbar_x() + SCROLLBAR_WIDTH)
-            && mouse.1 >= f64::from(self.y)
-            && mouse.1 < f64::from(self.bottom());
+            && mouse.1 >= f64::from(self.place.y)
+            && mouse.1 < f64::from(self.place.bottom());
         let hit = self.entry_at(mouse).and_then(|entry| {
             let Content::Row(children) = &self.entries[entry].content else {
                 return None;
@@ -568,16 +476,10 @@ impl OptionsList {
     /// down.
     pub fn dragged(&mut self, lang: &Lang, (x, y): (f64, f64), dy: f64) -> Option<u8> {
         if self.scrolling {
-            if y < f64::from(self.y) {
-                self.set_scroll_amount(0.0);
-            } else if y > f64::from(self.bottom()) {
-                self.set_scroll_amount(f64::from(self.max_scroll()));
-            } else {
-                let max = f64::from(self.max_scroll().max(1));
-                let bar = self.scroller_height();
-                let scale = (max / f64::from(self.height - bar)).max(1.0);
-                self.set_scroll_amount(self.scroll + dy * scale);
-            }
+            let to = self
+                .place
+                .dragged_scroll(self.scroll, y, dy, self.content_height());
+            self.set_scroll_amount(to);
         }
         if self.dragging
             && let Some((entry, child)) = self.focus
@@ -607,7 +509,7 @@ impl OptionsList {
     /// `AbstractScrollArea.mouseScrolled`: the wheel moves the list the
     /// mouse is over.
     pub fn scrolled(&mut self, mouse: (f64, f64), scroll_y: f64) -> bool {
-        if !self.contains(mouse) {
+        if !self.place.contains(mouse) {
             return false;
         }
         self.set_scroll_amount(self.scroll - scroll_y * SCROLL_RATE);

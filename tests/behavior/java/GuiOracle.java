@@ -502,6 +502,8 @@ public final class GuiOracle {
                 case "chat_options_screen" -> settingsScreen(request, "chat");
                 case "mouse_settings_screen" -> settingsScreen(request, "mouse");
                 case "controls_screen" -> settingsScreen(request, "controls");
+                case "language_screen" -> settingsScreen(request, "language");
+                case "lang_text" -> langText(request);
                 case "death_screen" -> deathScreen(request);
                 case "disconnected_screen" -> disconnectedScreen(request);
                 case "tab_list" -> tabList(request);
@@ -1165,6 +1167,91 @@ public final class GuiOracle {
         return result;
     }
 
+    /** `.data/minecraft/assets`, found from the game's jar in `.data/minecraft/runtime`. */
+    private static java.nio.file.Path assetFolder() throws Exception {
+        var jar = java.nio.file.Path.of(net.minecraft.client.Minecraft.class
+            .getProtectionDomain().getCodeSource().getLocation().toURI());
+        return jar.getParent().getParent().resolve("assets");
+    }
+
+    /** The pack's names of the languages, and the file of a language of the asset index. */
+    private static java.util.Map<String, com.google.gson.JsonObject> languageIndex() throws Exception {
+        var index = com.google.gson.JsonParser.parseReader(java.nio.file.Files.newBufferedReader(
+            assetFolder().resolve("indexes/32.json"))).getAsJsonObject().getAsJsonObject("objects");
+        var result = new java.util.HashMap<String, com.google.gson.JsonObject>();
+        for (var entry : index.entrySet()) {
+            result.put(entry.getKey(), entry.getValue().getAsJsonObject());
+        }
+        return result;
+    }
+
+    private static java.nio.file.Path object(java.util.Map<String, com.google.gson.JsonObject> index, String name)
+            throws Exception {
+        String hash = index.get(name).get("hash").getAsString();
+        return assetFolder().resolve("objects").resolve(hash.substring(0, 2)).resolve(hash);
+    }
+
+    /** `LanguageManager.getLanguages` as the pack names them. */
+    static net.minecraft.client.resources.language.LanguageManager languageManager(String code, JsonArray codes)
+            throws Exception {
+        var allowed = new java.util.HashSet<String>();
+        for (var listed : codes) allowed.add(listed.getAsString());
+        var index = languageIndex();
+        var meta = com.google.gson.JsonParser.parseReader(java.nio.file.Files.newBufferedReader(object(index, "pack.mcmeta")))
+            .getAsJsonObject().getAsJsonObject("language");
+        var languages = new java.util.HashMap<String, net.minecraft.client.resources.language.LanguageInfo>();
+        for (var entry : meta.entrySet()) {
+            var info = entry.getValue().getAsJsonObject();
+            if (!allowed.isEmpty() && !allowed.contains(entry.getKey())) continue;
+            languages.put(entry.getKey(), new net.minecraft.client.resources.language.LanguageInfo(
+                info.get("region").getAsString(), info.get("name").getAsString(),
+                info.has("bidirectional") && info.get("bidirectional").getAsBoolean()));
+        }
+        var manager = new net.minecraft.client.resources.language.LanguageManager(code, language -> {});
+        set(manager, "languages", languages);
+        return manager;
+    }
+
+    /** `ClientLanguage.loadFrom` for `en_us` and a code, from the jar and the asset index. */
+    static net.minecraft.client.resources.language.ClientLanguage clientLanguage(String code) throws Exception {
+        var index = languageIndex();
+        var translations = new java.util.HashMap<String, String>();
+        try (var jar = GuiOracle.class.getResourceAsStream("/assets/minecraft/lang/en_us.json")) {
+            net.minecraft.locale.Language.loadFromJson(jar, translations::put);
+        }
+        if (!code.equals("en_us") && index.containsKey("minecraft/lang/" + code + ".json")) {
+            try (var stream = java.nio.file.Files.newInputStream(object(index, "minecraft/lang/" + code + ".json"))) {
+                net.minecraft.locale.Language.loadFromJson(stream, translations::put);
+            }
+        }
+        var constructor = net.minecraft.client.resources.language.ClientLanguage.class
+            .getDeclaredConstructor(java.util.Map.class, boolean.class);
+        constructor.setAccessible(true);
+        return constructor.newInstance(java.util.Map.copyOf(translations), false);
+    }
+
+    /** What the game's language says of some keys, in a language. */
+    private static JsonObject langText(JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        var before = net.minecraft.locale.Language.getInstance();
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            net.minecraft.locale.Language.inject(clientLanguage(row.get("language").getAsString()));
+            var texts = new JsonArray();
+            for (var key : row.getAsJsonArray("keys")) {
+                texts.add(net.minecraft.locale.Language.getInstance().getOrDefault(key.getAsString()));
+            }
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("texts", texts);
+            rows.add(out);
+        }
+        net.minecraft.locale.Language.inject(before);
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** A game whose GUI scale can change, whose Control key is told, and whose monitor is none. */
     static final class StubGame extends net.minecraft.client.Minecraft {
         boolean control;
@@ -1178,6 +1265,11 @@ public final class GuiOracle {
         public boolean hasControlDown() {
             return control;
         }
+
+        /** A text field taking the focus tells the keyboard, of which there is none. */
+        @Override
+        public void onTextInputFocusChange(net.minecraft.client.gui.components.events.GuiEventListener element,
+                boolean isFocused) {}
 
         /** `Minecraft.resizeGui` without the mouse handler. */
         @Override
@@ -1248,12 +1340,19 @@ public final class GuiOracle {
             if (row.has("options")) {
                 chatOptions(minecraft.options, row.getAsJsonObject("options"));
             }
+            minecraft.setLastInputType(net.minecraft.client.InputType.NONE);
+            var languageBefore = net.minecraft.locale.Language.getInstance();
+            if (kind.equals("language")) {
+                net.minecraft.locale.Language.inject(clientLanguage(row.get("language").getAsString()));
+            }
             net.minecraft.client.gui.screens.options.OptionsSubScreen video = switch (kind) {
                 case "video" -> new net.minecraft.client.gui.screens.options.VideoSettingsScreen(
                     null, minecraft, minecraft.options);
                 case "chat" -> new net.minecraft.client.gui.screens.options.ChatOptionsScreen(null, minecraft.options);
                 case "mouse" -> new net.minecraft.client.gui.screens.options.MouseSettingsScreen(null, minecraft.options);
                 case "controls" -> new net.minecraft.client.gui.screens.options.controls.ControlsScreen(null, minecraft.options);
+                case "language" -> new net.minecraft.client.gui.screens.options.LanguageSelectScreen(
+                    null, minecraft.options, languageManager(row.get("language").getAsString(), row.getAsJsonArray("codes")));
                 default -> throw new IllegalArgumentException(kind);
             };
             minecraft.current = video;
@@ -1263,6 +1362,11 @@ public final class GuiOracle {
             var init = net.minecraft.client.gui.screens.options.OptionsSubScreen.class.getDeclaredMethod("init");
             init.setAccessible(true);
             init.invoke(video);
+            if (kind.equals("language")) {
+                var focus = net.minecraft.client.gui.screens.Screen.class.getDeclaredMethod("setInitialFocus");
+                focus.setAccessible(true);
+                focus.invoke(video);
+            }
             video.tick();
             var info = new net.minecraft.client.input.MouseButtonInfo(0, 0);
             double lastX = 0;
@@ -1279,13 +1383,22 @@ public final class GuiOracle {
                     case "click" -> {
                         minecraft.setLastInputType(net.minecraft.client.InputType.MOUSE);
                         video.mouseClicked(new net.minecraft.client.input.MouseButtonEvent(x, y,
-                            new net.minecraft.client.input.MouseButtonInfo(0, step.get("shift").getAsBoolean() ? 1 : 0)), false);
+                            new net.minecraft.client.input.MouseButtonInfo(0, step.has("shift") && step.get("shift").getAsBoolean() ? 1 : 0)),
+                            step.has("double") && step.get("double").getAsBoolean());
                     }
+                    case "char" -> video.charTyped(new net.minecraft.client.input.CharacterEvent(
+                        step.get("char").getAsString().codePointAt(0)));
+                    case "key" -> video.keyPressed(new net.minecraft.client.input.KeyEvent(
+                        switch (step.get("key").getAsString()) {
+                            case "backspace" -> 259;
+                            case "enter" -> 257;
+                            default -> throw new IllegalArgumentException(step.get("key").getAsString());
+                        }, 0, 0));
                     case "drag" -> video.mouseDragged(new net.minecraft.client.input.MouseButtonEvent(x, y, info),
                         x - lastX, y - lastY);
                     case "release" -> video.mouseReleased(new net.minecraft.client.input.MouseButtonEvent(x, y, info));
                     case "scroll" -> {
-                        minecraft.control = step.get("ctrl").getAsBoolean();
+                        minecraft.control = step.has("ctrl") && step.get("ctrl").getAsBoolean();
                         video.mouseScrolled(x, y, 0.0, step.get("dy").getAsDouble());
                         minecraft.control = false;
                     }
@@ -1303,16 +1416,31 @@ public final class GuiOracle {
             var graphics = new GuiGraphicsExtractor(minecraft, finalState, mouseX, mouseY);
             background.invoke(video, graphics);
             video.extractRenderState(graphics, mouseX, mouseY, 0.0F);
-            var listField = net.minecraft.client.gui.screens.options.OptionsSubScreen.class.getDeclaredField("list");
-            listField.setAccessible(true);
-            var list = (net.minecraft.client.gui.components.OptionsList) listField.get(video);
+            double scrollAmount;
+            if (kind.equals("language")) {
+                var languageList = video.getClass().getDeclaredField("languageSelectionList");
+                languageList.setAccessible(true);
+                scrollAmount = ((net.minecraft.client.gui.components.AbstractScrollArea) languageList.get(video))
+                    .scrollAmount();
+            } else {
+                var listField = net.minecraft.client.gui.screens.options.OptionsSubScreen.class.getDeclaredField("list");
+                listField.setAccessible(true);
+                scrollAmount = ((net.minecraft.client.gui.components.OptionsList) listField.get(video)).scrollAmount();
+            }
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());
             out.addProperty("width", window.getGuiScaledWidth());
             out.addProperty("height", window.getGuiScaledHeight());
             out.addProperty("gui_scale", minecraft.options.guiScale().get());
-            out.addProperty("scroll", list.scrollAmount());
+            out.addProperty("scroll", scrollAmount);
+            if (kind.equals("language")) {
+                var searchField = video.getClass().getDeclaredField("search");
+                searchField.setAccessible(true);
+                out.addProperty("search",
+                    ((net.minecraft.client.gui.components.EditBox) searchField.get(video)).getValue());
+            }
             out.add("ops", record(finalState));
+            net.minecraft.locale.Language.inject(languageBefore);
             clock.set(null, clockBefore);
             rows.add(out);
         }

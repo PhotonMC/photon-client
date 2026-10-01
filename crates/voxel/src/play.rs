@@ -120,6 +120,10 @@ struct Play {
 
 impl Play {
     /// Join, open the window, and load everything the frames draw.
+    #[expect(
+        clippy::too_many_lines,
+        reason = "start-up builds each part of the session in turn"
+    )]
     fn start(server: SocketAddr, (width, height): (i32, i32)) -> Result<Self> {
         let root =
             env::var("VOXEL_ASSETS").map_err(|_| "VOXEL_ASSETS must name the asset folder")?;
@@ -188,11 +192,6 @@ impl Play {
         let registries = voxel_game::registries::Registries::load(&data_root, |registry| {
             session.registry_names(registry).to_vec()
         });
-        let gui = Gui::load(std::path::Path::new(&root), registries, &mut backend)?;
-        let capture_frames = env::var("VOXEL_CAPTURE_FRAMES")
-            .ok()
-            .and_then(|value| value.parse().ok())
-            .unwrap_or(0);
         // `VOXEL_CAMERA=back` or `front` starts detached.
         let camera_type = match env::var("VOXEL_CAMERA").as_deref() {
             Ok("back") => CameraType::ThirdPersonBack,
@@ -200,6 +199,17 @@ impl Play {
             _ => CameraType::FirstPerson,
         };
         let controls = Controls::new(camera_type, script.is_none());
+        let language = &controls.options.language_code;
+        let gui = Gui::load(
+            std::path::Path::new(&root),
+            registries,
+            &mut backend,
+            language,
+        )?;
+        let capture_frames = env::var("VOXEL_CAPTURE_FRAMES")
+            .ok()
+            .and_then(|value| value.parse().ok())
+            .unwrap_or(0);
         surface.set_gui_scale_option(controls.options.gui_scale);
         surface.set_cursor_captured(controls.captured);
         Ok(Self {
@@ -246,6 +256,14 @@ impl Play {
                     &mut self.surface,
                     &self.screen_assets,
                 )?;
+            }
+            // `LanguageSelectScreen.onDone`: the texts are read again, and the
+            // screens that are open are made again in them.
+            if let Some(code) = self.controls.take_language_request() {
+                self.gui.set_language(&code);
+                self.screen_assets = self.gui.screen_assets();
+                self.controls
+                    .rebuild_menus(&self.surface, &self.screen_assets);
             }
             self.fit_swapchain()?;
             let now = Instant::now();
