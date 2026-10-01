@@ -9,6 +9,7 @@ use std::collections::VecDeque;
 use std::sync::Arc;
 use std::time::Instant;
 
+use voxel_game::commands::{CommandTree, format_text, usage_lines};
 use voxel_game::text::{Lang, Run, Style};
 
 use crate::gui::GuiAtlas;
@@ -776,15 +777,60 @@ impl ChatScreen {
         }
     }
 
-    /// The box over the chat: a dark band, the text in it, and the list of
-    /// matches over it.
-    pub fn draw(&mut self, frame: &mut GuiFrame, atlas: &GuiAtlas, mouse: (i32, i32)) {
+    /// The box over the chat: a dark band, the text in it (coloured by what
+    /// reads it when it is a command), and the list of matches over it, or
+    /// the usage and errors of the command in its place.
+    pub fn draw(
+        &mut self,
+        frame: &mut GuiFrame,
+        atlas: &GuiAtlas,
+        mouse: (i32, i32),
+        commands: Option<(&CommandTree, &Lang)>,
+    ) {
         let (width, height) = self.size;
         frame.fill(atlas, (2, height - 14, width - 2, height - 2), 0x8000_0000);
-        self.edit
-            .draw(frame, atlas, &self.font, (4, height - 12), self.focused_at);
+        let text = self.edit.value();
+        // `updateCommandInfo`: a command is read against the tree.
+        let parse = commands
+            .filter(|_| text.starts_with('/'))
+            .map(|(tree, lang)| (tree, lang, tree.parse(&text, 1)));
+        let format = |part: &str, offset: usize| {
+            parse
+                .as_ref()
+                .map(|(_, _, parse)| format_text(parse, part, offset))
+        };
+        self.edit.draw_formatted(
+            frame,
+            atlas,
+            &self.font,
+            (4, height - 12),
+            self.focused_at,
+            Some(&format),
+        );
         if let Some(list) = &mut self.list {
             list.draw(frame, atlas, &self.font, mouse);
+        } else if let (Some((tree, lang, parse)), false) = (&parse, self.stale) {
+            let view = usage_lines(tree, parse, self.edit.cursor(), true);
+            let lines: Vec<String> = view.lines.iter().map(|line| lang.plain(line)).collect();
+            let longest = lines
+                .iter()
+                .map(|line| self.font.width(line))
+                .max()
+                .unwrap_or(0);
+            let chars: Vec<char> = text.chars().collect();
+            let start = view.start.max(0) as usize;
+            let start_x = if start > chars.len() {
+                4
+            } else {
+                4 + self.font.width(&chars[..start].iter().collect::<String>())
+            };
+            let x = start_x.clamp(0, (4 + width - 4 - longest).max(0));
+            for (index, line) in view.lines.iter().enumerate() {
+                let y = height - 27 - 12 * index as i32;
+                frame.fill(atlas, (x - 1, y, x + longest + 1, y + 12), 0xD000_0000);
+                let runs = lang.runs(line, &Style::default());
+                frame.styled_text(atlas, &self.font, &runs, x, y + 2, 0xFFFF_FFFF, true);
+            }
         }
         self.update_ghost();
     }

@@ -159,8 +159,21 @@ Bitti: `Component`/dil (`en_us`), stilli yazı, `EditBox`, ipucu kutusu.
 - **Kısmen** Sekmeyle tamamlama: sunucudan `CommandSuggestion` (15) ile öneri
   alınır; liste Java ile birebir ([GUI oracle](gui-oracle.md): ilk öğe seçili,
   hayalet sonek, Tab/Shift+Tab/ok/Esc, 10 satırlık pencere, fare). Eksik:
-  `Commands` ağacı (renkli sözdizimi, kullanım/hata satırları), öneri ipuçları,
-  oyuncu adı/özel sohbet tamamlamaları (`CustomChatCompletions`).
+  öneri ipuçları, oyuncu adı/özel sohbet tamamlamaları
+  (`CustomChatCompletions`). Öneriler hâlâ her komutta sunucudan istenir
+  (Java yalnız `ask_server` düğümlerinde ister; literal ve türe bağlı
+  öneriler orada yerel).
+- **Kısmen** Komut ağacı (`Commands` paketi, `voxel-game/commands`): düğüm
+  ağacı, Brigadier ayrıştırması (yönlendirme, aday sıralaması, istisnalar),
+  renkli sözdizimi (`formatText`), kullanım ve hata satırları
+  (`updateUsageInfo`, `getSmartUsage`); `command_parse` oracle'ı gerçek
+  `CommandDispatcher`'a karşı 174 satır. Birebir okunan türler: Brigadier'in
+  altısı, koordinatlar, kapalı kümeli kelimeler (oyun modu, çapa, işlem,
+  slot, takım rengi, swizzle), tanımlayıcı, uuid, süre, varlık/ad. Şekle göre
+  okunanlar (iyi biçimli metinde Java ile aynı, bozuk metinde sessiz):
+  seçici seçenekleri, blok durumu/koşulu, eşya, NBT, bileşen, stil, parçacık,
+  aralıklar, kaynak türleri; blok özellik doğrulaması ve kayıt defterine bağlı
+  kontroller yok. Gönderim öncesi `verifyCommand` onay ekranı yok.
 - **Bitti** Başlık/altyazı/eylem çubuğu (`SetTitleText`, `SetSubtitleText`,
   `SetTitlesAnimation`, `ClearTitles`, `SetActionBarText`, `SystemChat`
   overlay), `PlayerInfoUpdate/Remove`, `TabList` ve Tab ile tablist (sıralama,

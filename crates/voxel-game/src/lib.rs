@@ -2,6 +2,7 @@
 
 pub mod attack;
 pub mod chat;
+pub mod commands;
 pub mod container_menu;
 pub mod creative_menu;
 pub mod default_components;

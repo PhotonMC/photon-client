@@ -421,6 +421,7 @@ impl Gui {
                 &mut frame,
                 &self.atlas,
                 (controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32),
+                session.commands().map(|tree| (tree, &*self.lang)),
             );
         }
         let gui_size = (size.gui_scaled_width(), size.gui_scaled_height());

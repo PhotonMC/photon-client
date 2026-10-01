@@ -111,6 +111,7 @@ pub struct PlaySession {
     /// the tab list names.
     hud_events: Vec<HudEvent>,
     scoreboard: voxel_game::scoreboard::Scoreboard,
+    commands: Option<voxel_game::commands::CommandTree>,
     username: String,
     suggestions: Option<CommandSuggestions>,
     player_infos: std::collections::BTreeMap<(u64, u64), PlayerInfo>,
@@ -186,6 +187,7 @@ impl PlaySession {
             signature_cache: SignatureCache::default(),
             hud_events: Vec::new(),
             scoreboard: voxel_game::scoreboard::Scoreboard::default(),
+            commands: None,
             username: username.to_owned(),
             suggestions: None,
             player_infos: std::collections::BTreeMap::new(),
@@ -644,6 +646,11 @@ impl PlaySession {
     /// What the server's scoreboard packets built.
     pub fn scoreboard(&self) -> &voxel_game::scoreboard::Scoreboard {
         &self.scoreboard
+    }
+
+    /// The command tree the server sent, once it has.
+    pub fn commands(&self) -> Option<&voxel_game::commands::CommandTree> {
+        self.commands.as_ref()
     }
 
     /// The local player's name, which scoreboard teams and scores go by.
@@ -1578,6 +1585,10 @@ impl PlaySession {
                 Ok(Some(event)) => self.hud_events.push(event),
                 Ok(None) => {}
                 Err(error) => self.warn(format!("hud packet {packet_id}: {error:?}")),
+            },
+            PLAY_CLIENTBOUND_COMMANDS_PACKET_ID => match parse_commands_packet(payload) {
+                Ok(tree) => self.commands = Some(tree),
+                Err(error) => self.warn(format!("commands: {error:?}")),
             },
             PLAY_CLIENTBOUND_SET_OBJECTIVE_PACKET_ID
             | PLAY_CLIENTBOUND_SET_SCORE_PACKET_ID

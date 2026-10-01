@@ -96,6 +96,7 @@ pub(crate) const PLAY_CLIENTBOUND_SET_TITLE_TEXT_PACKET_ID: i32 = 114;
 pub(crate) const PLAY_CLIENTBOUND_SET_TITLES_ANIMATION_PACKET_ID: i32 = 115;
 pub(crate) const PLAY_CLIENTBOUND_TAB_LIST_PACKET_ID: i32 = 122;
 pub(crate) const PLAY_CLIENTBOUND_BOSS_EVENT_PACKET_ID: i32 = 9;
+pub(crate) const PLAY_CLIENTBOUND_COMMANDS_PACKET_ID: i32 = 16;
 pub(crate) const PLAY_CLIENTBOUND_RESET_SCORE_PACKET_ID: i32 = 79;
 pub(crate) const PLAY_CLIENTBOUND_SET_DISPLAY_OBJECTIVE_PACKET_ID: i32 = 98;
 pub(crate) const PLAY_CLIENTBOUND_SET_OBJECTIVE_PACKET_ID: i32 = 106;
@@ -3062,6 +3063,168 @@ pub(crate) fn parse_hud_packet(id: i32, input: &[u8]) -> Result<Option<HudEvent>
         PLAY_CLIENTBOUND_BOSS_EVENT_PACKET_ID => parse_boss_event(input)?,
         _ => return Ok(None),
     }))
+}
+
+/// `ClientboundCommandsPacket`: the entries, linked into a tree.
+pub fn parse_commands_packet(
+    input: &[u8],
+) -> Result<voxel_game::commands::CommandTree, ConnectionError> {
+    use voxel_game::commands::{CommandTree, NodeKind, NodeStub};
+    let mut input = input;
+    let input = &mut input;
+    let count = read_count(input, "command node count")?;
+    let mut stubs = Vec::with_capacity(count.min(4096));
+    for _ in 0..count {
+        let flags = read_byte(input, "command node flags")?;
+        let children = (0..read_count(input, "command children count")?)
+            .map(|_| read_count(input, "command child"))
+            .collect::<Result<Vec<_>, _>>()?;
+        let redirect = if flags & 8 != 0 {
+            Some(read_count(input, "command redirect")?)
+        } else {
+            None
+        };
+        let kind = match flags & 3 {
+            1 => NodeKind::Literal(read_chat_string(input, 32767, "command literal")?),
+            2 => {
+                let name = read_chat_string(input, 32767, "command argument name")?;
+                let id = read_varint(input, "command argument type")?;
+                let kind = read_argument_kind(input, id)?;
+                if flags & 16 != 0 {
+                    read_chat_string(input, 32767, "command suggestion id")?;
+                }
+                NodeKind::Argument { name, kind }
+            }
+            _ => NodeKind::Root,
+        };
+        stubs.push(NodeStub {
+            kind,
+            children,
+            redirect,
+            executable: flags & 4 != 0,
+        });
+    }
+    let root = read_count(input, "command root index")?;
+    CommandTree::build(stubs, root).ok_or(ConnectionError::Codec("command tree"))
+}
+
+#[expect(clippy::too_many_lines, reason = "one arm for each argument type id")]
+/// An argument type by registry id with its parameters
+/// (`ArgumentTypeInfo.deserializeFromNetwork`).
+fn read_argument_kind(
+    input: &mut &[u8],
+    id: i32,
+) -> Result<voxel_game::commands::ArgumentKind, ConnectionError> {
+    use voxel_game::commands::{ArgumentKind as K, StringType};
+    let name = "command argument parameters";
+    Ok(match id {
+        0 => K::Bool,
+        1 => {
+            let flags = read_byte(input, name)?;
+            let min = if flags & 1 != 0 {
+                read_f32(input, name)?
+            } else {
+                -f32::MAX
+            };
+            let max = if flags & 2 != 0 {
+                read_f32(input, name)?
+            } else {
+                f32::MAX
+            };
+            K::Float { min, max }
+        }
+        2 => {
+            let flags = read_byte(input, name)?;
+            let min = if flags & 1 != 0 {
+                read_f64(input, name)?
+            } else {
+                -f64::MAX
+            };
+            let max = if flags & 2 != 0 {
+                read_f64(input, name)?
+            } else {
+                f64::MAX
+            };
+            K::Double { min, max }
+        }
+        3 => {
+            let flags = read_byte(input, name)?;
+            let min = if flags & 1 != 0 {
+                read_i32(input, name)?
+            } else {
+                i32::MIN
+            };
+            let max = if flags & 2 != 0 {
+                read_i32(input, name)?
+            } else {
+                i32::MAX
+            };
+            K::Integer { min, max }
+        }
+        4 => {
+            let flags = read_byte(input, name)?;
+            let min = if flags & 1 != 0 {
+                read_i64(input, name)?
+            } else {
+                i64::MIN
+            };
+            let max = if flags & 2 != 0 {
+                read_i64(input, name)?
+            } else {
+                i64::MAX
+            };
+            K::Long { min, max }
+        }
+        5 => K::String(match read_varint(input, name)? {
+            0 => StringType::Word,
+            1 => StringType::Phrase,
+            _ => StringType::Greedy,
+        }),
+        6 => {
+            let flags = read_byte(input, name)?;
+            K::Entity {
+                single: flags & 1 != 0,
+                players_only: flags & 2 != 0,
+            }
+        }
+        // Game profiles are players; score holders also take a bare name.
+        7 => K::Entity {
+            single: false,
+            players_only: true,
+        },
+        31 => {
+            read_byte(input, name)?;
+            K::Balanced
+        }
+        12..=15 | 18 | 19 | 21..=23 | 37 | 52..=55 => K::Balanced,
+        8 => K::BlockPos,
+        9 => K::ColumnPos,
+        10 => K::Vec3,
+        11 => K::Vec2,
+        16 => K::TeamColor,
+        17 => K::HexColor,
+        20 => K::Greedy,
+        24 | 33 => K::Unquoted,
+        25 | 27 | 34 | 35 | 39 | 40 | 49..=51 => K::Word,
+        26 => K::Operation,
+        28 => K::Angle,
+        29 => K::Rotation,
+        30 => K::ScoreboardSlot,
+        32 => K::Swizzle,
+        36 | 41 => K::Identifier,
+        38 => K::EntityAnchor,
+        42 => K::GameMode,
+        43 => K::Time {
+            min: read_i32(input, name)?,
+        },
+        // Resources name the registry they come from.
+        44..=48 => {
+            read_chat_string(input, 32767, name)?;
+            K::Word
+        }
+        56 => K::Uuid,
+        _ => return Err(ConnectionError::Codec("command argument type")),
+    })
 }
 
 /// The scoreboard packets, by id.

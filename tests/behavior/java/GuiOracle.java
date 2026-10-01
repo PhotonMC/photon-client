@@ -487,6 +487,7 @@ public final class GuiOracle {
                 case "titles" -> titles(request);
                 case "boss_bar" -> bossBar(request);
                 case "sidebar" -> sidebar(request);
+                case "command_parse" -> commandParse(request);
                 case "tab_list" -> tabList(request);
                 case "container_screen" -> containerScreen(request);
                 default -> throw new IllegalArgumentException("Unknown gui operation");
@@ -720,6 +721,152 @@ public final class GuiOracle {
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());
             out.add("ops", record(screen.state()));
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /** A formatted sequence as plain text. */
+    private static String plain(net.minecraft.util.FormattedCharSequence sequence) {
+        var text = new StringBuilder();
+        sequence.accept((index, style, codepoint) -> {
+            text.appendCodePoint(codepoint);
+            return true;
+        });
+        return text.toString();
+    }
+
+    /**
+     * A command tree the way the client reads one off the wire, and what the
+     * chat box makes of texts typed against it: where each node read, what
+     * could not be read, the colours of the text and the lines under it.
+     */
+    @SuppressWarnings("unchecked")
+    private static JsonObject commandParse(JsonObject request) throws Exception {
+        var registries = Oracle.vanillaRegistries();
+        var bytes = java.util.HexFormat.of().parseHex(request.get("tree").getAsString());
+        var buffer = new net.minecraft.network.FriendlyByteBuf(io.netty.buffer.Unpooled.wrappedBuffer(bytes));
+        var packet = net.minecraft.network.protocol.game.ClientboundCommandsPacket.STREAM_CODEC.decode(buffer);
+        var builderField = net.minecraft.client.multiplayer.ClientPacketListener.class.getDeclaredField("COMMAND_NODE_BUILDER");
+        builderField.setAccessible(true);
+        var root = packet.getRoot(net.minecraft.commands.CommandBuildContext.simple(registries,
+                net.minecraft.world.flag.FeatureFlags.DEFAULT_FLAGS),
+            (net.minecraft.network.protocol.game.ClientboundCommandsPacket.NodeBuilder<
+                net.minecraft.client.multiplayer.ClientSuggestionProvider>) builderField.get(null));
+        var dispatcher = new com.mojang.brigadier.CommandDispatcher<net.minecraft.client.multiplayer.ClientSuggestionProvider>(root);
+        net.minecraft.client.multiplayer.ClientSuggestionProvider source = new net.minecraft.client.multiplayer.ClientSuggestionProvider(
+            null, null, permission -> true);
+        var formatText = net.minecraft.client.gui.components.CommandSuggestions.class.getDeclaredMethod("formatText",
+            com.mojang.brigadier.ParseResults.class, String.class, int.class);
+        formatText.setAccessible(true);
+        var exceptionMessage = net.minecraft.client.gui.components.CommandSuggestions.class
+            .getDeclaredMethod("getExceptionMessage", com.mojang.brigadier.exceptions.CommandSyntaxException.class);
+        exceptionMessage.setAccessible(true);
+        var rows = new JsonArray();
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            String text = row.get("text").getAsString();
+            var reader = new com.mojang.brigadier.StringReader(text);
+            if (reader.canRead() && reader.peek() == '/') {
+                reader.skip();
+            }
+            var parse = dispatcher.parse(reader, source);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            var nodes = new JsonArray();
+            for (var context = parse.getContext(); context != null; context = context.getChild()) {
+                for (var node : context.getNodes()) {
+                    var described = new JsonArray();
+                    described.add(node.getNode().getUsageText());
+                    described.add(node.getRange().getStart());
+                    described.add(node.getRange().getEnd());
+                    nodes.add(described);
+                }
+            }
+            out.add("nodes", nodes);
+            var arguments = new JsonArray();
+            for (var entry : parse.getContext().getLastChild().getArguments().entrySet()) {
+                var described = new JsonArray();
+                described.add(entry.getKey());
+                described.add(entry.getValue().getRange().getStart());
+                described.add(entry.getValue().getRange().getEnd());
+                arguments.add(described);
+            }
+            out.add("arguments", arguments);
+            out.addProperty("cursor", parse.getReader().getCursor());
+            out.addProperty("executable", parse.getContext().getLastChild().getCommand() != null);
+            var exceptions = new JsonArray();
+            for (var entry : parse.getExceptions().entrySet()) {
+                var exception = entry.getValue();
+                var described = new JsonArray();
+                described.add(net.minecraft.network.chat.ComponentUtils.fromMessage(exception.getRawMessage()).getString());
+                described.add(exception.getCursor());
+                exceptions.add(described);
+            }
+            out.add("exceptions", exceptions);
+            var runs = new JsonArray();
+            var sequence = (net.minecraft.util.FormattedCharSequence) formatText.invoke(null, parse, text, 0);
+            var current = new StringBuilder();
+            int[] colour = {-2};
+            sequence.accept((index, style, codepoint) -> {
+                int rgb = style.getColor() == null ? -1 : style.getColor().getValue();
+                if (rgb != colour[0] && current.length() > 0) {
+                    var described = new JsonArray();
+                    described.add(current.toString());
+                    described.add(colour[0]);
+                    runs.add(described);
+                    current.setLength(0);
+                }
+                colour[0] = rgb;
+                current.appendCodePoint(codepoint);
+                return true;
+            });
+            if (current.length() > 0) {
+                var described = new JsonArray();
+                described.add(current.toString());
+                described.add(colour[0]);
+                runs.add(described);
+            }
+            out.add("runs", runs);
+            // `updateUsageInfo` with the cursor at the end of the text.
+            var usage = new JsonArray();
+            boolean trailing = false;
+            if (row.get("suggestions_empty").getAsBoolean() && !parse.getExceptions().isEmpty()) {
+                int literals = 0;
+                for (var entry : parse.getExceptions().entrySet()) {
+                    var exception = entry.getValue();
+                    if (exception.getType() == com.mojang.brigadier.exceptions.CommandSyntaxException.BUILT_IN_EXCEPTIONS.literalIncorrect()) {
+                        literals++;
+                    } else {
+                        usage.add(plain((net.minecraft.util.FormattedCharSequence) exceptionMessage.invoke(null, exception)));
+                    }
+                }
+                if (literals > 0) {
+                    usage.add(plain((net.minecraft.util.FormattedCharSequence) exceptionMessage.invoke(null,
+                        com.mojang.brigadier.exceptions.CommandSyntaxException.BUILT_IN_EXCEPTIONS
+                            .dispatcherUnknownArgument().createWithContext(parse.getReader()))));
+                }
+            } else if (parse.getReader().canRead()) {
+                trailing = true;
+            }
+            var suggestionContext = parse.getContext().findSuggestionContext(text.length());
+            if (usage.isEmpty()) {
+                var entries = new JsonArray();
+                for (var entry : dispatcher.getSmartUsage(suggestionContext.parent, source).entrySet()) {
+                    if (!(entry.getKey() instanceof com.mojang.brigadier.tree.LiteralCommandNode)) {
+                        entries.add(entry.getValue());
+                    }
+                }
+                if (entries.isEmpty() && trailing) {
+                    usage.add(plain((net.minecraft.util.FormattedCharSequence) exceptionMessage.invoke(null,
+                        net.minecraft.commands.Commands.getParseException(parse))));
+                }
+                usage.addAll(entries);
+            }
+            out.add("usage", usage);
+            out.addProperty("usage_start", suggestionContext.startPos);
             rows.add(out);
         }
         var result = new JsonObject();

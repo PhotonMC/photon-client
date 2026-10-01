@@ -17,6 +17,7 @@ Arayüzün yerleşimi ve davranışı, Java'nın **kendi GUI kodunun** başsız 
 | `suggestions` | `CommandSuggestions` + `EditBox` | seçili ilk öğe, hayalet sonek, Tab/Shift+Tab/ok/Esc, sıralama, 10 satırlık pencere |
 | `titles` | `Hud.extractTitle/extractOverlayMessage` | alfa eğrisi, ölçek, süre, eylem çubuğu |
 | `boss_bar` | `BossHealthOverlay.extractRenderState` | renk, çentik, ilerleme genişliği, çubuk sayısı sınırı |
+| `command_parse` | `CommandDispatcher.parse`, `CommandSuggestions.formatText/updateUsageInfo` | düğüm aralıkları, istisna iletileri, renkler, kullanım/hata satırları; ağaç gerçek paket baytlarıyla |
 | `sidebar` | `Hud.extractScoreboardSidebar/displayScoreboardSidebar` | sıralama, gizli sahipler, 15 satır, sayı biçimleri, takım giydirme, takım rengine özel kenar çubuğu |
 | `tab_list` | `PlayerTabOverlay` | sütunlar, sıralama (takım dahil), ping, üst/alt yazı, 80 sınırı, puan sütunu, kalpler |
 | `container_screen` | `AnvilScreen`, `GrindstoneScreen`, `StonecutterScreen`, `LoomScreen`, `EnchantmentScreen` Java'nın kendi menüsüyle (`MovementOracle.openMenu`) | etiketler, doku/sprite yerleri, ad kutusu, taş kesici girdileri/kaydırma/vurgu, büyü satırları ve adları |

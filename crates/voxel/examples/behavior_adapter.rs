@@ -18510,6 +18510,82 @@ fn scoreboard_from(row: &Value) -> Result<voxel_game::scoreboard::Scoreboard, St
     Ok(board)
 }
 
+/// The chat box's reading of commands typed against a tree: where each node
+/// read, what could not be read, the colours and the lines under the text.
+fn command_parse_result(request: &Value, root: &std::path::Path) -> Result<Value, String> {
+    use voxel_game::commands::{format_text, usage_lines};
+    use voxel_game::text::{Lang, Style};
+    let bytes: Vec<u8> = (0..request["tree"].as_str().ok_or("tree")?.len() / 2)
+        .map(|index| {
+            u8::from_str_radix(
+                &request["tree"].as_str().unwrap_or_default()[index * 2..index * 2 + 2],
+                16,
+            )
+            .map_err(|_| "tree hex")
+        })
+        .collect::<Result<_, _>>()?;
+    let tree = voxel_net::connection::parse_commands_packet(&bytes)
+        .map_err(|error| format!("{error:?}"))?;
+    let lang = Lang::load(root);
+    let plain = |component: &voxel_game::text::Component| lang.plain(component);
+    let mut rows = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let text = row["text"].as_str().ok_or("text")?;
+        let start = usize::from(text.starts_with('/'));
+        let parse = tree.parse(text, start);
+        let mut nodes = Vec::new();
+        let mut context = Some(&parse.context);
+        while let Some(current) = context {
+            for (node, range) in &current.nodes {
+                nodes.push(json!([
+                    tree.node(*node).usage_text(),
+                    range.start,
+                    range.end
+                ]));
+            }
+            context = current.child.as_deref();
+        }
+        let arguments: Vec<Value> = parse
+            .context
+            .last_child()
+            .arguments
+            .iter()
+            .map(|(name, range)| json!([name, range.start, range.end]))
+            .collect();
+        let exceptions: Vec<Value> = parse
+            .exceptions
+            .iter()
+            .map(|(_, error)| json!([plain(&error.message), error.cursor()]))
+            .collect();
+        let mut runs: Vec<(String, i64)> = Vec::new();
+        for (part, colour) in format_text(&parse, text, 0) {
+            match runs.last_mut() {
+                Some(last) if last.1 == i64::from(colour) => last.0.push_str(&part),
+                _ => runs.push((part, i64::from(colour))),
+            }
+        }
+        let view = usage_lines(
+            &tree,
+            &parse,
+            text.chars().count(),
+            row["suggestions_empty"].as_bool().unwrap_or(true),
+        );
+        let _ = Style::default();
+        rows.push(json!({
+            "label": row["label"],
+            "nodes": nodes,
+            "arguments": arguments,
+            "cursor": parse.cursor(),
+            "executable": parse.context.last_child().executable,
+            "exceptions": exceptions,
+            "runs": runs.iter().map(|(text, colour)| json!([text, colour])).collect::<Vec<_>>(),
+            "usage": view.lines.iter().map(plain).collect::<Vec<_>>(),
+            "usage_start": view.start,
+        }));
+    }
+    Ok(json!({"rows": rows}))
+}
+
 fn gui_result(request: &Value) -> Result<Value, String> {
     use voxel_render::gui::chat::ChatLog;
     use voxel_render::gui::font::Font;
@@ -18519,6 +18595,9 @@ fn gui_result(request: &Value) -> Result<Value, String> {
     let font = Font::load(&root).ok_or("font")?;
     let alt = Font::load_alt(&root).ok_or("alt font")?;
     let (atlas, _) = GuiAtlas::load(&root, &[&font, &alt]).ok_or("gui atlas")?;
+    if request["operation"] == "command_parse" {
+        return command_parse_result(request, &root);
+    }
     let rows = request["rows"]
         .as_array()
         .ok_or("gui rows must be an array")?;
@@ -18644,7 +18723,7 @@ fn gui_result(request: &Value) -> Result<Value, String> {
                         ..GuiFrame::default()
                     };
                     screen.refocus();
-                    screen.draw(&mut drawn, &atlas, (0, 0));
+                    screen.draw(&mut drawn, &atlas, (0, 0), None);
                     steps.push(json!({
                         "key": key,
                         "value": screen.value(),

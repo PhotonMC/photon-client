@@ -326,6 +326,9 @@ impl EditBox {
     }
 }
 
+/// A text formatter: a stretch of text and where it starts in the whole.
+pub type Formatter<'a> = dyn Fn(&str, usize) -> Option<Vec<(String, u32)>> + 'a;
+
 /// The part of the text the box shows.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Shown {
@@ -349,9 +352,46 @@ impl EditBox {
         frame: &mut GuiFrame,
         atlas: &GuiAtlas,
         font: &Font,
-        (text_x, text_y): (i32, i32),
+        at: (i32, i32),
         focused_at: std::time::Instant,
     ) {
+        self.draw_formatted(frame, atlas, font, at, focused_at, None);
+    }
+
+    /// `draw` with a formatter (`addFormatter`): given a stretch of the text
+    /// and where it starts in the whole, it cuts it into parts in colours of
+    /// their own, or says nothing of it.
+    pub fn draw_formatted(
+        &self,
+        frame: &mut GuiFrame,
+        atlas: &GuiAtlas,
+        font: &Font,
+        (text_x, text_y): (i32, i32),
+        focused_at: std::time::Instant,
+        formatter: Option<&Formatter<'_>>,
+    ) {
+        // `applyFormat`: the parts, drawn one after another; their width.
+        let draw_text = |frame: &mut GuiFrame,
+                         text: &str,
+                         offset: usize,
+                         x: i32,
+                         colour: u32|
+         -> i32 {
+            match formatter.and_then(|format| format(text, offset)) {
+                Some(parts) => {
+                    let mut at = x;
+                    for (part, rgb) in parts {
+                        frame.text_with_shadow(atlas, font, &part, at, text_y, 0xFF00_0000 | rgb);
+                        at += font.width(&part);
+                    }
+                    at - x
+                }
+                None => {
+                    frame.text_with_shadow(atlas, font, text, x, text_y, colour);
+                    font.width(text)
+                }
+            }
+        };
         let shown = self.shown(font);
         let chars: Vec<char> = shown.text.chars().collect();
         let cursor_on_screen = shown.cursor >= 0 && shown.cursor as usize <= chars.len();
@@ -365,8 +405,7 @@ impl EditBox {
             } else {
                 shown.text.clone()
             };
-            frame.text_with_shadow(atlas, font, &half, draw_x, text_y, colour);
-            draw_x += font.width(&half) + 1;
+            draw_x += draw_text(frame, &half, self.display_pos, draw_x, colour) + 1;
         }
         let mut cursor_x = draw_x;
         if !cursor_on_screen {
@@ -377,7 +416,7 @@ impl EditBox {
         }
         if !chars.is_empty() && cursor_on_screen && (shown.cursor as usize) < chars.len() {
             let rest: String = chars[shown.cursor as usize..].iter().collect();
-            frame.text_with_shadow(atlas, font, &rest, draw_x, text_y, colour);
+            draw_text(frame, &rest, self.cursor, draw_x, colour);
         }
         if !shown.insert
             && let Some(suggestion) = &self.suggestion
