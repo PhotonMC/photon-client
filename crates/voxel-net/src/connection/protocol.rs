@@ -3236,6 +3236,13 @@ fn read_argument_kind(
     })
 }
 
+/// `ClientboundDisconnectPacket`: the reason the server gives.
+pub(crate) fn read_disconnect_reason(
+    input: &mut &[u8],
+) -> Result<voxel_game::text::Component, ConnectionError> {
+    read_chat_component(input, "disconnect reason")
+}
+
 /// `ClientboundPlayerCombatKillPacket`: who died and the message for them.
 pub(crate) fn parse_player_combat_kill_packet(
     input: &[u8],

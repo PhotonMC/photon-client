@@ -18870,6 +18870,21 @@ fn gui_result(request: &Value) -> Result<Value, String> {
                 );
                 screen.draw(&mut frame, &atlas, &font, mouse);
             }
+            "disconnected_screen" => {
+                let lang = voxel_game::text::Lang::load(&root);
+                let size = (int("width"), int("height"));
+                let reason = voxel_game::text::Component::literal(
+                    row["reason"].as_str().unwrap_or_default(),
+                );
+                let screen = voxel_render::gui::disconnected::DisconnectedScreen::new(
+                    &font, &lang, size, &reason,
+                );
+                let mouse = (
+                    row["mouse"][0].as_i64().unwrap_or(0) as i32,
+                    row["mouse"][1].as_i64().unwrap_or(0) as i32,
+                );
+                screen.draw(&mut frame, &atlas, &font, mouse);
+            }
             "boss_bar" => {
                 use voxel_render::gui::boss_bar::BossBars;
                 let mut bars = BossBars::default();

@@ -5,6 +5,7 @@ pub mod atlas;
 pub mod boss_bar;
 pub mod chat;
 pub mod death;
+pub mod disconnected;
 pub mod edit_box;
 pub mod font;
 pub mod frame;

@@ -210,6 +210,15 @@ Bitti: `Component`/dil (`en_us`), stilli yazı, `EditBox`, ipucu kutusu.
   (Java'nın "Çıkmak istediğine emin misin?" `ConfirmScreen`'i ve başlık ekranı
   yok), taslak rapor simgesi, ölüm nedeninin tıklanabilir bağlantıları,
   ölü oyuncu olarak girişte ekran (seviye yüklenemiyor).
+- **Kısmen** Bağlantı kopması ekranı (`DisconnectedScreen`): `Disconnect`
+  paketinin nedeni, okuma hatası (`Internal Exception: …`) ve akış sonu
+  (`disconnect.endOfStream`) ekrana gelir; bağlantı bitince hiçbir şey
+  gönderilmez. `disconnected_screen` oracle'ı gerçek Java ekranına karşı 9
+  satır. Yapılmadı: "Back to Server List" yalnız çıkar (sunucu listesi/başlık
+  ekranı yok), arka planda başlık panoraması ve bulanıklık yok (yalnız menü
+  arka planı dokusu), yapılandırma aşamasındaki kopma ekranı (giriş sırasında
+  kopma hâlâ hata ile çıkar), hata bildirim bağlantısı/raporu düğmeleri,
+  `timeout` ve `closed` gibi özel ileti anahtarları.
 - **Bossbar** (`BossEvent` paketi, `BossHealthOverlay`, ilerleme yumuşatması)
   yapıldı, `boss_bar` oracle'lı. Eksik: seviye değişince çubukları silmek,
   koyulaştırma/sis/müzik bayrakları yalnız durum (ses ve sis yok).

@@ -491,6 +491,7 @@ public final class GuiOracle {
                 case "command_suggest" -> commandSuggest(request);
                 case "pause_screen" -> pauseScreen(request);
                 case "death_screen" -> deathScreen(request);
+                case "disconnected_screen" -> disconnectedScreen(request);
                 case "tab_list" -> tabList(request);
                 case "container_screen" -> containerScreen(request);
                 default -> throw new IllegalArgumentException("Unknown gui operation");
@@ -782,6 +783,43 @@ public final class GuiOracle {
             }
             death.extractBackground(screen.graphics(), mouseX, mouseY, 0.0F);
             death.extractRenderState(screen.graphics(), mouseX, mouseY, 0.0F);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("ops", record(screen.state()));
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /** The game's own disconnected screen, for a reason. */
+    private static JsonObject disconnectedScreen(JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            int width = row.get("width").getAsInt();
+            int height = row.get("height").getAsInt();
+            int mouseX = row.get("mouse").getAsJsonArray().get(0).getAsInt();
+            int mouseY = row.get("mouse").getAsJsonArray().get(1).getAsInt();
+            var screen = screen(width, height, mouseX, mouseY);
+            var minecraft = screen.minecraft();
+            set(minecraft, "allowsMultiplayer", true);
+            set(minecraft, "userPropertiesFuture", java.util.concurrent.CompletableFuture.completedFuture(
+                com.mojang.authlib.minecraft.UserApiService.OFFLINE_PROPERTIES));
+            set(minecraft, "profileFuture", java.util.concurrent.CompletableFuture.completedFuture(null));
+            var disconnected = new net.minecraft.client.gui.screens.DisconnectedScreen(null,
+                Component.translatable("disconnect.lost"), Component.literal(row.get("reason").getAsString()));
+            set(disconnected, "width", width);
+            set(disconnected, "height", height);
+            var init = net.minecraft.client.gui.screens.DisconnectedScreen.class.getDeclaredMethod("init");
+            init.setAccessible(true);
+            init.invoke(disconnected);
+            var background = net.minecraft.client.gui.screens.Screen.class.getDeclaredMethod("extractMenuBackground",
+                GuiGraphicsExtractor.class);
+            background.setAccessible(true);
+            background.invoke(disconnected, screen.graphics());
+            disconnected.extractRenderState(screen.graphics(), mouseX, mouseY, 0.0F);
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());
             out.add("ops", record(screen.state()));

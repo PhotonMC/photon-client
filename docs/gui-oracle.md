@@ -21,6 +21,7 @@ Arayüzün yerleşimi ve davranışı, Java'nın **kendi GUI kodunun** başsız 
 | `command_suggest` | `CommandDispatcher.getCompletionSuggestions` | öneri metinleri, başlangıç, sunucuya sorulup sorulmadığı; `registry_backed` satırları (Java kayıt defterinden yerel, bizde sunucudan) işaretle eşitlenir |
 | `pause_screen` | gerçek `PauseScreen` (init + extractBackground + extractRenderState) | ızgara düzeni, düğme/simge sprite'ları, etiket ve başlık yerleri, üzerine gelince vurgu, menü arka planı; ekran boyutları |
 | `death_screen` | gerçek `DeathScreen` (init + tick + extractBackground + extractRenderState) | gradyan, başlık ölçeği 2, ölüm nedeni ve skor, düğmelerin 20 tik sonra uyanması, hardcore, ekran boyutları, üzerine gelme |
+| `disconnected_screen` | gerçek `DisconnectedScreen` (init + extractMenuBackground + extractRenderState) | dikey düzen, başlık, sarılmış ortalı neden (ekran genişliği − 50), düğme, boş neden, çok satır |
 | `sidebar` | `Hud.extractScoreboardSidebar/displayScoreboardSidebar` | sıralama, gizli sahipler, 15 satır, sayı biçimleri, takım giydirme, takım rengine özel kenar çubuğu |
 | `tab_list` | `PlayerTabOverlay` | sütunlar, sıralama (takım dahil), ping, üst/alt yazı, 80 sınırı, puan sütunu, kalpler |
 | `container_screen` | `AnvilScreen`, `GrindstoneScreen`, `StonecutterScreen`, `LoomScreen`, `EnchantmentScreen` Java'nın kendi menüsüyle (`MovementOracle.openMenu`) | etiketler, doku/sprite yerleri, ad kutusu, taş kesici girdileri/kaydırma/vurgu, büyü satırları ve adları |

@@ -2703,3 +2703,12 @@ fn combat_kill_names_who_died_and_the_message() {
     assert_eq!(id, 1000);
     assert_eq!(message, voxel_game::text::Component::literal("hi"));
 }
+
+#[test]
+fn a_disconnect_carries_its_reason() {
+    let mut input: &[u8] = &[8, 0, 2, b'h', b'i'];
+    assert_eq!(
+        super::read_disconnect_reason(&mut input).unwrap(),
+        voxel_game::text::Component::literal("hi")
+    );
+}

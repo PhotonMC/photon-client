@@ -14398,6 +14398,21 @@ def gui_death_screen_cases():
     yield {"case_id": "gui/death-screen", "family": "gui", "operation": "death_screen", "rows": rows}
 
 
+def gui_disconnected_screen_cases():
+    """The disconnected screen for short and long reasons (wrapped at the
+    screen's width less 50), in several screen sizes, and with the mouse over
+    the button."""
+    def row(label, reason, width=427, height=240, mouse=(0, 0)):
+        return {"label": label, "width": width, "height": height, "mouse": list(mouse), "reason": reason}
+
+    long_reason = "You are not whitelisted on this server and the reason is long enough to wrap " * 3
+    rows = [row("short", "Disconnected"), row("kicked", "Kicked for flying"), row("long", long_reason),
+            row("small", "Timed out", 320, 240), row("wide", long_reason, 854, 480),
+            row("tiny", long_reason, 200, 150), row("empty", ""), row("lines", "one\ntwo\nthree"),
+            row("hover", "Disconnected", mouse=(213, 140))]
+    yield {"case_id": "gui/disconnected-screen", "family": "gui", "operation": "disconnected_screen", "rows": rows}
+
+
 def gui_boss_bar_cases():
     """The boss bars: every colour and notch, progress at its ends and in the
     middle (the discrete width), several bars down the screen and the cut-off
@@ -14649,7 +14664,7 @@ def build_cases(families):
                   "movement": movement_cases,
                   "entity": entity_cases,
                   "gui": gui_cases}
-    generators["gui"] = lambda: itertools.chain(gui_cases(), gui_suggestion_cases(), gui_title_cases(), gui_boss_bar_cases(), gui_sidebar_cases(), gui_command_parse_cases(), gui_command_suggest_cases(), gui_pause_screen_cases(), gui_death_screen_cases(), gui_tab_list_cases(),
+    generators["gui"] = lambda: itertools.chain(gui_cases(), gui_suggestion_cases(), gui_title_cases(), gui_boss_bar_cases(), gui_sidebar_cases(), gui_command_parse_cases(), gui_command_suggest_cases(), gui_pause_screen_cases(), gui_death_screen_cases(), gui_disconnected_screen_cases(), gui_tab_list_cases(),
                                           gui_container_screen_cases())
     cases = [dict(schema_version=1, **case)
              for family in sorted(families) for case in generators[family]()]

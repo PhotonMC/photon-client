@@ -6,6 +6,7 @@ use voxel_game::hotbar::ScrollWheel;
 use voxel_net::connection::PlaySession;
 use voxel_render::gui::chat::{ChatKey, ChatLog, ChatScreen};
 use voxel_render::gui::death::{DeathAction, DeathScreen};
+use voxel_render::gui::disconnected::DisconnectedScreen;
 use voxel_render::gui::pause::{PauseAction, PauseScreen};
 use voxel_render::gui::screen::{KeyMods, KeyResult};
 use voxel_render::window::WindowSurface;
@@ -46,6 +47,8 @@ pub struct Controls {
     /// The death screen, from the server's word of a death until the player
     /// has health again.
     pub death: Option<DeathScreen>,
+    /// The screen a lost connection leaves, which nothing replaces.
+    pub disconnected: Option<DisconnectedScreen>,
     chat_history: Vec<String>,
     /// `CommandHistory`: the commands sent, kept in a file.
     command_history: Vec<String>,
@@ -80,6 +83,7 @@ impl Controls {
             chat: None,
             pause: None,
             death: None,
+            disconnected: None,
             chat_history: command_history.clone(),
             command_history,
             shift_held: false,
@@ -117,6 +121,69 @@ impl Controls {
         match action {
             PauseAction::Resume => self.close_pause(surface),
             PauseAction::Disconnect => surface.request_close(),
+            _ => {}
+        }
+    }
+
+    /// `onDisconnect`: a lost connection puts the disconnected screen in the
+    /// place of whatever was open.
+    pub fn receive_disconnect(
+        &mut self,
+        session: &PlaySession,
+        surface: &mut WindowSurface,
+        assets: &ScreenAssets,
+    ) {
+        let Some(reason) = session.disconnected() else {
+            return;
+        };
+        if self.disconnected.is_some() {
+            return;
+        }
+        let size = surface.scale();
+        let size = (size.gui_scaled_width(), size.gui_scaled_height());
+        self.disconnected = Some(DisconnectedScreen::new(
+            &assets.creative.font,
+            &assets.lang,
+            size,
+            reason,
+        ));
+        self.chat = None;
+        self.pause = None;
+        self.death = None;
+        self.screen = None;
+        self.captured = false;
+        self.last_cursor = None;
+        surface.set_cursor_captured(false);
+        self.release_keys();
+    }
+
+    /// An event for the disconnected screen: it takes no Escape, and its
+    /// button leaves, there being no server list to go back to.
+    fn disconnected_event(&mut self, event: glfw::WindowEvent, surface: &mut WindowSurface) {
+        use glfw::{Action, Key, WindowEvent};
+        let Some(screen) = self.disconnected.as_mut() else {
+            return;
+        };
+        match event {
+            WindowEvent::Key(Key::Tab, _, Action::Press | Action::Repeat, _) => screen.tab(),
+            WindowEvent::Key(Key::Enter | Key::KpEnter | Key::Space, _, Action::Press, _)
+                if screen.pressed() =>
+            {
+                surface.request_close();
+            }
+            WindowEvent::CursorPos(x, y) => {
+                let size = surface.scale();
+                let (width, height) = surface.window_size();
+                self.gui_mouse = (
+                    x * f64::from(size.gui_scaled_width()) / f64::from(width.max(1)),
+                    y * f64::from(size.gui_scaled_height()) / f64::from(height.max(1)),
+                );
+            }
+            WindowEvent::MouseButton(glfw::MouseButton::Button1, Action::Press, _)
+                if screen.clicked((self.gui_mouse.0 as i32, self.gui_mouse.1 as i32)) =>
+            {
+                surface.request_close();
+            }
             _ => {}
         }
     }
@@ -624,6 +691,10 @@ impl Controls {
         );
         if self.chat.is_some() && for_screen {
             return self.chat_event(event, session, surface);
+        }
+        if self.disconnected.is_some() && for_screen {
+            self.disconnected_event(event, surface);
+            return Ok(());
         }
         if self.death.is_some() && for_screen {
             return self.death_event(event, session, surface);

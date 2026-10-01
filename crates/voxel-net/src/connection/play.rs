@@ -87,6 +87,9 @@ pub struct PlaySession {
     status: PlayerStatus,
     /// `LocalPlayer.shouldShowDeathScreen`: off when the level respawns at once.
     show_death_screen: bool,
+    /// Why the connection is over, once it is: the server's word or what
+    /// the connection said (`onDisconnect`).
+    disconnect: Option<voxel_game::text::Component>,
     /// The message of a death the death screen is yet to show.
     death: Option<voxel_game::text::Component>,
     /// Swing packets sent, for scripted runs to report.
@@ -177,6 +180,7 @@ impl PlaySession {
             thunder_level: 0.0,
             status: PlayerStatus::default(),
             show_death_screen: true,
+            disconnect: None,
             death: None,
             swings: 0,
             hardcore: false,
@@ -400,12 +404,35 @@ impl PlaySession {
     /// Handle every packet that has arrived, without waiting for more.
     pub fn drain(&mut self) -> Result<(), ConnectionError> {
         loop {
+            if self.disconnect.is_some() {
+                return Ok(());
+            }
             match self.incoming.try_recv() {
-                Ok(packet) => self.handle_incoming(packet?)?,
+                Ok(Ok(packet)) => self.handle_incoming(packet)?,
+                // `ClientCommonPacketListenerImpl.onDisconnect`: a failure to
+                // read ends the connection with what went wrong.
+                Ok(Err(ConnectionError::Io(error))) => {
+                    self.disconnect = Some(voxel_game::text::Component::translatable_with(
+                        "disconnect.genericReason",
+                        vec![voxel_game::text::Component::literal(format!(
+                            "Internal Exception: {error}"
+                        ))],
+                    ));
+                }
+                Ok(Err(error)) => return Err(error),
                 Err(TryRecvError::Empty) => return Ok(()),
-                Err(TryRecvError::Disconnected) => return Err(ConnectionError::ServerDisconnected),
+                Err(TryRecvError::Disconnected) => {
+                    self.disconnect = Some(voxel_game::text::Component::translatable(
+                        "disconnect.endOfStream",
+                    ));
+                }
             }
         }
+    }
+
+    /// Why the connection is over, once it is.
+    pub fn disconnected(&self) -> Option<&voxel_game::text::Component> {
+        self.disconnect.as_ref()
     }
 
     /// Wait up to `limit` for the next packet and handle it.
@@ -1127,6 +1154,10 @@ impl PlaySession {
     where
         F: FnOnce(&mut Vec<u8>) -> Result<(), ConnectionError>,
     {
+        // Nothing is sent over a connection that is over.
+        if self.disconnect.is_some() {
+            return Ok(());
+        }
         send_packet(
             &mut self.writer,
             ConnectionProtocol::Play,
@@ -1734,7 +1765,8 @@ impl PlaySession {
                 self.trace.world.apply_update_tags_packet(&packet);
             }
             PLAY_CLIENTBOUND_DISCONNECT_PACKET_ID => {
-                return Err(ConnectionError::ServerDisconnected);
+                let mut input = payload;
+                self.disconnect = Some(read_disconnect_reason(&mut input)?);
             }
             _ => {}
         }
