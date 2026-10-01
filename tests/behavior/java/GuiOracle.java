@@ -492,6 +492,7 @@ public final class GuiOracle {
                 case "pause_screen" -> pauseScreen(request);
                 case "confirm_screen" -> confirmScreen(request);
                 case "widgets" -> widgets(request);
+                case "options_screen" -> optionsScreen(request);
                 case "death_screen" -> deathScreen(request);
                 case "disconnected_screen" -> disconnectedScreen(request);
                 case "tab_list" -> tabList(request);
@@ -1045,6 +1046,86 @@ public final class GuiOracle {
                 case "chat_visibility" -> Integer.toString(((net.minecraft.world.entity.player.ChatVisiblity) result).ordinal());
                 default -> String.format("%016x", Double.doubleToRawLongBits((Double) result));
             });
+            out.add("ops", record(screen.state()));
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
+     * The game's own options screen, after some focus, key and mouse steps: what it draws and
+     * the field of view the slider left. The buttons that open other screens are not pressed.
+     */
+    private static JsonObject optionsScreen(JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            int width = row.get("width").getAsInt();
+            int height = row.get("height").getAsInt();
+            int mouseX = row.get("mouse").getAsJsonArray().get(0).getAsInt();
+            int mouseY = row.get("mouse").getAsJsonArray().get(1).getAsInt();
+            var screen = screen(width, height, mouseX, mouseY);
+            var minecraft = screen.minecraft();
+            set(minecraft, "soundManager", unsafe.allocateInstance(SilentSounds.class));
+            set(minecraft, "userPropertiesFuture", java.util.concurrent.CompletableFuture.completedFuture(
+                com.mojang.authlib.minecraft.UserApiService.OFFLINE_PROPERTIES));
+            boolean inWorld = row.get("in_world").getAsBoolean();
+            if (inWorld) {
+                set(minecraft, "level", unsafe.allocateInstance(net.minecraft.client.multiplayer.ClientLevel.class));
+            }
+            minecraft.options.fov().set(row.get("fov").getAsInt());
+            var options = new net.minecraft.client.gui.screens.options.OptionsScreen(null, minecraft.options, inWorld);
+            set(options, "width", width);
+            set(options, "height", height);
+            var init = net.minecraft.client.gui.screens.options.OptionsScreen.class.getDeclaredMethod("init");
+            init.setAccessible(true);
+            init.invoke(options);
+            var info = new net.minecraft.client.input.MouseButtonInfo(0, 0);
+            for (var stepElement : row.getAsJsonArray("steps")) {
+                var step = stepElement.getAsJsonObject();
+                String action = step.get("do").getAsString();
+                switch (action) {
+                    case "key" -> {
+                        String name = step.get("key").getAsString();
+                        int code = switch (name) {
+                            case "tab", "shift+tab" -> 258;
+                            case "left" -> 263;
+                            case "right" -> 262;
+                            case "enter" -> 257;
+                            case "space" -> 32;
+                            default -> throw new IllegalArgumentException(name);
+                        };
+                        // What `KeyboardHandler` notes of the keys before the screen has them.
+                        if (code == 258) {
+                            minecraft.setLastInputType(net.minecraft.client.InputType.KEYBOARD_TAB);
+                        } else if (code == 262 || code == 263) {
+                            minecraft.setLastInputType(net.minecraft.client.InputType.KEYBOARD_ARROW);
+                        }
+                        options.keyPressed(new net.minecraft.client.input.KeyEvent(
+                            code, 0, name.startsWith("shift+") ? 1 : 0));
+                    }
+                    case "click" -> {
+                        minecraft.setLastInputType(net.minecraft.client.InputType.MOUSE);
+                        options.mouseClicked(new net.minecraft.client.input.MouseButtonEvent(
+                            step.get("x").getAsDouble(), step.get("y").getAsDouble(), info), false);
+                    }
+                    case "drag" -> options.mouseDragged(new net.minecraft.client.input.MouseButtonEvent(
+                        step.get("x").getAsDouble(), step.get("y").getAsDouble(), info), 0, 0);
+                    case "release" -> options.mouseReleased(new net.minecraft.client.input.MouseButtonEvent(
+                        step.get("x").getAsDouble(), step.get("y").getAsDouble(), info));
+                    default -> throw new IllegalArgumentException(action);
+                }
+            }
+            var background = net.minecraft.client.gui.screens.Screen.class.getDeclaredMethod("extractMenuBackground",
+                GuiGraphicsExtractor.class);
+            background.setAccessible(true);
+            background.invoke(options, screen.graphics());
+            options.extractRenderState(screen.graphics(), mouseX, mouseY, 0.0F);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.addProperty("fov", minecraft.options.fov().get());
             out.add("ops", record(screen.state()));
             rows.add(out);
         }

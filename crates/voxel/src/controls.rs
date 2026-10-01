@@ -9,8 +9,10 @@ use voxel_render::gui::chat::{ChatKey, ChatLog, ChatScreen};
 use voxel_render::gui::confirm::{ConfirmAction, ConfirmBackground, ConfirmScreen};
 use voxel_render::gui::death::{DeathAction, DeathScreen};
 use voxel_render::gui::disconnected::DisconnectedScreen;
+use voxel_render::gui::options::{OptionsAction, OptionsInput, OptionsScreen};
 use voxel_render::gui::pause::{PauseAction, PauseScreen};
 use voxel_render::gui::screen::{KeyMods, KeyResult};
+use voxel_render::gui::slider::SliderKey;
 use voxel_render::window::WindowSurface;
 
 use crate::screens::{
@@ -46,6 +48,8 @@ pub struct Controls {
     pub chat: Option<ChatScreen>,
     /// The pause menu, while it is open.
     pub pause: Option<PauseScreen>,
+    /// The options screen, opened from the pause menu, which waits under it.
+    pub options_screen: Option<OptionsScreen>,
     /// The death screen, from the server's word of a death until the player
     /// has health again.
     pub death: Option<DeathScreen>,
@@ -90,6 +94,7 @@ impl Controls {
             creative_tab: voxel_game::creative_menu::default_tab(),
             chat: None,
             pause: None,
+            options_screen: None,
             death: None,
             confirm: None,
             disconnected: None,
@@ -127,12 +132,99 @@ impl Controls {
 
     /// What a pause menu button does: "Back to Game" closes the menu and
     /// "Disconnect" leaves; the screens the others open are not built.
-    fn pause_action(&mut self, action: PauseAction, surface: &mut WindowSurface) {
+    fn pause_action(
+        &mut self,
+        action: PauseAction,
+        surface: &mut WindowSurface,
+        assets: &ScreenAssets,
+    ) {
         match action {
             PauseAction::Resume => self.close_pause(surface),
             PauseAction::Disconnect => surface.request_close(),
+            PauseAction::Options => self.open_options(surface, assets),
             _ => {}
         }
+    }
+
+    /// `OptionsScreen`, over the pause menu, in a world.
+    fn open_options(&mut self, surface: &WindowSurface, assets: &ScreenAssets) {
+        let size = surface.scale();
+        let size = (size.gui_scaled_width(), size.gui_scaled_height());
+        self.options_screen = Some(OptionsScreen::new(
+            &assets.creative.font,
+            &assets.lang,
+            size,
+            self.options.fov,
+            true,
+        ));
+    }
+
+    /// `OptionsScreen.onClose` and `removed`: back to the pause menu, and
+    /// the options are saved.
+    fn close_options(&mut self) {
+        self.options_screen = None;
+        let _ = self.options.save(&options_path());
+    }
+
+    /// What an input to the options screen asks for: a new field of view
+    /// takes effect at once; Done leaves; the screens the others open are
+    /// not built.
+    fn options_input(&mut self, input: OptionsInput) {
+        if let Some(fov) = input.fov {
+            self.options.fov = fov;
+        }
+        if input.action == Some(OptionsAction::Done) {
+            self.close_options();
+        }
+    }
+
+    /// An event for the open options screen.
+    fn options_event(
+        &mut self,
+        event: glfw::WindowEvent,
+        surface: &WindowSurface,
+        assets: &ScreenAssets,
+    ) {
+        use glfw::{Action, Key, WindowEvent};
+        let lang = &assets.lang;
+        let Some(screen) = self.options_screen.as_mut() else {
+            return;
+        };
+        let input = match event {
+            WindowEvent::Key(Key::Escape, _, Action::Press, _) => OptionsInput {
+                action: Some(OptionsAction::Done),
+                fov: None,
+            },
+            WindowEvent::Key(Key::Tab, _, Action::Press | Action::Repeat, modifiers) => {
+                screen.tab(!modifiers.contains(glfw::Modifiers::Shift));
+                OptionsInput::default()
+            }
+            WindowEvent::Key(Key::Left, _, Action::Press | Action::Repeat, _) => {
+                screen.key_pressed(lang, SliderKey::Left)
+            }
+            WindowEvent::Key(Key::Right, _, Action::Press | Action::Repeat, _) => {
+                screen.key_pressed(lang, SliderKey::Right)
+            }
+            WindowEvent::Key(Key::Enter | Key::KpEnter | Key::Space, _, Action::Press, _) => {
+                screen.key_pressed(lang, SliderKey::Select)
+            }
+            WindowEvent::CursorPos(x, y) => {
+                self.move_gui_mouse((x, y), surface);
+                match self.options_screen.as_mut() {
+                    Some(screen) => screen.dragged(lang, self.gui_mouse.0),
+                    None => OptionsInput::default(),
+                }
+            }
+            WindowEvent::MouseButton(glfw::MouseButton::Button1, Action::Press, _) => {
+                screen.clicked(lang, self.gui_mouse)
+            }
+            WindowEvent::MouseButton(glfw::MouseButton::Button1, Action::Release, _) => {
+                screen.released(lang);
+                OptionsInput::default()
+            }
+            _ => OptionsInput::default(),
+        };
+        self.options_input(input);
     }
 
     /// `onDisconnect`: a lost connection puts the disconnected screen in the
@@ -159,6 +251,7 @@ impl Controls {
         ));
         self.chat = None;
         self.pause = None;
+        self.options_screen = None;
         self.death = None;
         self.confirm = None;
         self.screen = None;
@@ -218,6 +311,7 @@ impl Controls {
             self.confirm = None;
             self.chat = None;
             self.pause = None;
+            self.options_screen = None;
             self.screen = None;
             self.captured = false;
             self.last_cursor = None;
@@ -305,6 +399,8 @@ impl Controls {
             if let Some(action) = confirm.escape() {
                 self.confirm_action(action, session, surface)?;
             }
+        } else if self.options_screen.is_some() {
+            self.close_options();
         } else if self.pause.is_some() {
             self.close_pause(surface);
         } else {
@@ -326,10 +422,14 @@ impl Controls {
             if let Some(action) = confirm.clicked(mouse) {
                 self.confirm_action(action, session, surface)?;
             }
+        } else if let Some(screen) = self.options_screen.as_mut() {
+            let input = screen.clicked(&assets.lang, self.gui_mouse);
+            screen.released(&assets.lang);
+            self.options_input(input);
         } else if let Some(action) = self.death.as_mut().and_then(|death| death.clicked(mouse)) {
             self.death_action(action, session, surface, assets)?;
         } else if let Some(action) = self.pause.as_ref().and_then(|pause| pause.clicked(mouse)) {
-            self.pause_action(action, surface);
+            self.pause_action(action, surface, assets);
         }
         Ok(())
     }
@@ -416,7 +516,12 @@ impl Controls {
     }
 
     /// An event for the open pause menu.
-    fn pause_event(&mut self, event: glfw::WindowEvent, surface: &mut WindowSurface) {
+    fn pause_event(
+        &mut self,
+        event: glfw::WindowEvent,
+        surface: &mut WindowSurface,
+        assets: &ScreenAssets,
+    ) {
         use glfw::{Action, Key, WindowEvent};
         let Some(pause) = self.pause.as_mut() else {
             return;
@@ -428,7 +533,7 @@ impl Controls {
             }
             WindowEvent::Key(Key::Enter | Key::KpEnter | Key::Space, _, Action::Press, _) => {
                 if let Some(action) = pause.pressed() {
-                    self.pause_action(action, surface);
+                    self.pause_action(action, surface, assets);
                 }
             }
             WindowEvent::CursorPos(x, y) => {
@@ -442,7 +547,7 @@ impl Controls {
             WindowEvent::MouseButton(glfw::MouseButton::Button1, Action::Press, _) => {
                 let mouse = (self.gui_mouse.0 as i32, self.gui_mouse.1 as i32);
                 if let Some(action) = pause.clicked(mouse) {
-                    self.pause_action(action, surface);
+                    self.pause_action(action, surface, assets);
                 }
             }
             _ => {}
@@ -816,8 +921,12 @@ impl Controls {
         if self.death.is_some() && for_screen {
             return self.death_event(event, session, surface, assets);
         }
+        if self.options_screen.is_some() && for_screen {
+            self.options_event(event, surface, assets);
+            return Ok(());
+        }
         if self.pause.is_some() && for_screen {
-            self.pause_event(event, surface);
+            self.pause_event(event, surface, assets);
             return Ok(());
         }
         if self.screen.is_some() && for_screen {
@@ -1033,10 +1142,15 @@ fn game_directory() -> std::path::PathBuf {
         .map_or_else(|| std::path::PathBuf::from(".data/client"), Into::into)
 }
 
+/// `Options.optionsFile`.
+fn options_path() -> std::path::PathBuf {
+    game_directory().join("options.txt")
+}
+
 /// `Options.load`: `options.txt` of the game directory, written when it
 /// was not there.
 fn load_options() -> Options {
-    let path = game_directory().join("options.txt");
+    let path = options_path();
     let options = Options::load(&path);
     if !path.exists() {
         let _ = options.save(&path);

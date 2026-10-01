@@ -25,4 +25,6 @@ Skin/Music/Resource Packs/Accessibility/Telemetry/Credits/Online ekranları (lis
 `docs/gui-oracle.md`; `docs/remaining-work.md` pause ve ayarlar satırları.
 
 ## Devir notu
-(boş)
+- `gui/options.rs::OptionsScreen` (Java `HeaderAndFooterLayout(61, 33)`; `layout::place_in_frame` FrameLayout çocuğunu `AbstractChildWrapper` yuvarlamasıyla yerleştirir). Telemetry çevrimdışı olduğu için `active=false` (Java'da `allowsTelemetry()` yanlış). Sapma: ekran yığını yok — `Controls.options_screen: Option<OptionsScreen>` pause'un üstünde, Done/Esc kapatıp `options.save` çağırır (T03'teki YAGNI kararıyla aynı).
+- Oracle `options_screen` (47 satır) kuruldu: Tab/Shift+Tab/Enter/ok/tık/sürükle/bırak, FOV değeri. Ok tuşunu kaydırıcı almazsa Java odak gezdirir (T11); o satırlar oracle'a konmadı. Alt ekran açan düğmelere basılmadı (Java ekranı kurar, oracle'da çöker); Rust'ta bu düğmeler `OptionsAction` döndürür, `Controls` yoksayar.
+- Yalnız Video/Chat/Mouse/Language vb. bağlanmadı; T07–T10'da `options_input` içindeki eşlemeye eklenir. Canlı oyunda denenmedi (oracle yeterli, görev isteğe bağlı demişti).

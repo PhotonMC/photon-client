@@ -476,6 +476,61 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                 }));
                 continue;
             }
+            "options_screen" => {
+                use voxel_render::gui::options::OptionsScreen;
+                use voxel_render::gui::slider::SliderKey;
+                let lang = voxel_game::text::Lang::load(&root);
+                let size = (int("width"), int("height"));
+                let mouse = (
+                    row["mouse"][0].as_i64().unwrap_or(0) as i32,
+                    row["mouse"][1].as_i64().unwrap_or(0) as i32,
+                );
+                let mut fov = int("fov");
+                let mut screen = OptionsScreen::new(
+                    &font,
+                    &lang,
+                    size,
+                    fov,
+                    row["in_world"].as_bool().unwrap_or(false),
+                );
+                for step in row["steps"].as_array().ok_or("steps")? {
+                    let at = (
+                        step["x"].as_f64().unwrap_or(0.0),
+                        step["y"].as_f64().unwrap_or(0.0),
+                    );
+                    let input = match step["do"].as_str().unwrap_or_default() {
+                        "key" => match step["key"].as_str().unwrap_or_default() {
+                            "tab" => {
+                                screen.tab(true);
+                                Default::default()
+                            }
+                            "shift+tab" => {
+                                screen.tab(false);
+                                Default::default()
+                            }
+                            "left" => screen.key_pressed(&lang, SliderKey::Left),
+                            "right" => screen.key_pressed(&lang, SliderKey::Right),
+                            "enter" | "space" => screen.key_pressed(&lang, SliderKey::Select),
+                            other => return Err(format!("unknown key {other}")),
+                        },
+                        "click" => screen.clicked(&lang, at),
+                        "drag" => screen.dragged(&lang, at.0),
+                        "release" => {
+                            screen.released(&lang);
+                            Default::default()
+                        }
+                        other => return Err(format!("unknown step {other}")),
+                    };
+                    fov = input.fov.unwrap_or(fov);
+                }
+                screen.draw(&mut frame, &atlas, &font, mouse);
+                out.push(json!({
+                    "label": row["label"],
+                    "fov": fov,
+                    "ops": gui_ops(&frame.log.take().unwrap_or_default()),
+                }));
+                continue;
+            }
             "death_screen" => {
                 let lang = voxel_game::text::Lang::load(&root);
                 let size = (int("width"), int("height"));

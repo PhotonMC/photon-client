@@ -336,6 +336,30 @@ impl Grid {
     }
 }
 
+/// A child of a `FrameLayout` of a given place and size: put in it by its
+/// alignment (`x` truncates, `y` rounds, as `AbstractChildWrapper` has it).
+pub fn place_in_frame(
+    arena: &mut Arena,
+    item: Item,
+    (x, y, width, height): (i32, i32, i32, i32),
+    (x_align, y_align): (f32, f32),
+) {
+    let mut cell = Cell {
+        item,
+        row: 0,
+        column: 0,
+        rows: 1,
+        columns: 1,
+        settings: Settings {
+            x_align,
+            y_align,
+            ..Settings::default()
+        },
+    };
+    cell.place_x(arena, x, width);
+    cell.place_y(arena, y, height);
+}
+
 /// `LinearLayout.horizontal().spacing(spacing)` of leaves.
 pub fn horizontal(arena: &Arena, leaves: &[usize], spacing: i32) -> Grid {
     let _ = arena;

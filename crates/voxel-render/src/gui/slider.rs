@@ -193,7 +193,8 @@ impl<S: SliderValues> OptionSlider<S> {
         self.set_position(lang, (x - left) / span)
     }
 
-    fn is_mouse_over(&self, arena: &Arena, (x, y): (f64, f64)) -> bool {
+    /// `isMouseOver`: the mouse is on the bar, which is active.
+    pub fn is_mouse_over(&self, arena: &Arena, (x, y): (f64, f64)) -> bool {
         let rect = arena.0[self.rect];
         self.active
             && x >= f64::from(rect.x)

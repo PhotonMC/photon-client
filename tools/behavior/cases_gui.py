@@ -791,10 +791,67 @@ def gui_widgets_cases():
     yield {"case_id": "gui/widgets", "family": "gui", "operation": "widgets", "rows": rows}
 
 
+def gui_options_screen_cases():
+    """The options screen: the field of view, the header's second button
+    (online outside a world, world options in one), the grid of settings
+    screens (telemetry asleep: the player is offline) and Done, in several
+    screen sizes; hover, Tab through every widget and round, the slider
+    moved with the mouse and the keys (an arrow key that the slider does not
+    take moves the focus, which is not built). The buttons that open other
+    screens are not pressed."""
+    def row(label, width=427, height=240, mouse=(0, 0), in_world=True, fov=70, steps=()):
+        return {"label": label, "width": width, "height": height, "mouse": list(mouse), "in_world": in_world,
+                "fov": fov, "steps": list(steps)}
+
+    def key(name):
+        return {"do": "key", "key": name}
+
+    click = lambda x, y=38: {"do": "click", "x": x, "y": y}
+    drag = lambda x, y=38: {"do": "drag", "x": x, "y": y}
+    release = lambda x, y=38: {"do": "release", "x": x, "y": y}
+    tab = key("tab")
+    rows = [
+        row("in-world"), row("out-of-world", in_world=False), row("small", 320, 240), row("large", 640, 360),
+        row("tiny", 200, 150), row("wide", 854, 480, in_world=False), row("short", 427, 200),
+        row("fov-min", fov=30), row("fov-max", fov=110), row("fov-90", fov=90),
+        row("hover-fov", mouse=(100, 38)), row("hover-online", mouse=(300, 38), in_world=False),
+        row("hover-world-options", mouse=(300, 38)), row("hover-skin", mouse=(100, 95)),
+        row("hover-controls", mouse=(300, 119)), row("hover-telemetry-asleep", mouse=(100, 190)),
+        row("hover-done", mouse=(200, 220)), row("hover-gap", mouse=(212, 95)),
+        row("hover-elsewhere", mouse=(5, 5)),
+        row("tab-1", steps=[tab]), row("tab-2", steps=[tab] * 2), row("tab-3", steps=[tab] * 3),
+        row("tab-9", steps=[tab] * 9), row("tab-10-past-telemetry", steps=[tab] * 10),
+        row("tab-12-done", steps=[tab] * 12), row("tab-13-round", steps=[tab] * 13),
+        row("shift-tab", steps=[key("shift+tab")]), row("shift-tab-2", steps=[key("shift+tab")] * 2),
+        row("tab-then-back", steps=[tab, tab, key("shift+tab")]),
+        row("tab-back-round", steps=[tab, key("shift+tab")]),
+        row("keys-right", steps=[tab, key("right"), key("right"), key("right")]),
+        row("keys-left", steps=[tab, key("left")] + [key("left")] * 2, fov=40),
+        row("keys-at-max", fov=110, steps=[tab, key("right")]),
+        row("keys-enter-twice", steps=[tab, key("enter"), key("enter"), key("right")]),
+        row("keys-enter-locks-shown", steps=[tab, key("enter")]),
+        row("enter-unfocused", steps=[key("enter")]),
+        row("click-fov", steps=[click(130)]), row("click-fov-release", steps=[click(130), release(130)]),
+        row("click-fov-left", steps=[click(59), release(59)]),
+        row("click-fov-right", steps=[click(208), release(208)]),
+        row("drag-fov", steps=[click(70), drag(110), drag(150)]),
+        row("drag-fov-release", steps=[click(70), drag(110), drag(150), release(150)]),
+        row("drag-past-end", steps=[click(70), drag(900), release(900)]),
+        row("drag-without-click", steps=[drag(150), release(150)]),
+        row("click-empty", steps=[click(5, 5), release(5, 5)]),
+        row("click-telemetry-asleep", steps=[click(100, 190), release(100, 190)]),
+        row("click-fov-then-keys", steps=[click(130), release(130), key("right")]),
+        row("click-fov-then-tab", steps=[click(130), release(130), tab]),
+        row("tab-then-click-fov", steps=[tab, tab, click(130), release(130)]),
+    ]
+    yield {"case_id": "gui/options-screen", "family": "gui", "operation": "options_screen", "rows": rows}
+
+
 def gui_generators():
     return itertools.chain(
         gui_cases(), gui_suggestion_cases(), gui_title_cases(), gui_boss_bar_cases(),
         gui_sidebar_cases(), gui_command_parse_cases(), gui_command_suggest_cases(),
         gui_pause_screen_cases(), gui_death_screen_cases(), gui_disconnected_screen_cases(),
         gui_tab_list_cases(), gui_container_screen_cases(),
-        gui_confirm_screen_cases(), gui_widgets_cases())
+        gui_confirm_screen_cases(), gui_widgets_cases(),
+        gui_options_screen_cases())

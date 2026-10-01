@@ -195,13 +195,21 @@ Bitti: `Component`/dil (`en_us`), stilli yazı, `EditBox`, ipucu kutusu.
 - **Kısmen** Duraklatma menüsü (`PauseScreen`, Esc): ızgara düzeni
   (`layout.rs`), düğmeler/simgeler/başlık (`widgets.rs`, `pause.rs`),
   `pause_screen` oracle'ı gerçek Java ekranına karşı 13 satır. Çalışan: Back
-  to Game, Disconnect (pencereyi kapatır), Tab/Enter odak. Yapılmadı:
-  Advancements, Statistics, Options, hata bildirme, geri bildirim, arkadaşlar,
+  to Game, Disconnect (pencereyi kapatır), Options (aşağıdaki ekran), Tab/Enter
+  odak. Yapılmadı: Advancements, Statistics, hata bildirme, geri bildirim, arkadaşlar,
   oyuncu bildirme düğmeleri çizilir ama basınca bir şey olmaz (ekranları yok);
   arka plan bulanıklığı (`blurBeforeThisStratum`, GPU) yok; yerel sunucu
   düzeni (`hasSingleplayerServer`) yok; taslak rapor simgesi yok; ipuçları
   (simge düğmesi üzerinde bekleyince) yok; Tab dışı ok tuşlarıyla odak yok;
   uzun etiketin kayan yazısı yok.
+- **Kısmen** Seçenekler ekranı (`OptionsScreen`, pause → Options...):
+  başlık, FOV kaydırıcısı (anında oyuna yansır), Online/dünya seçenekleri
+  düğmesi, 10 düğmelik ızgara ve Done; Esc/Done `options.txt` kaydeder ve
+  duraklatma menüsüne döner. `options_screen` oracle'ı gerçek Java ekranına
+  karşı. Yapılmadı: alt ekranlar (Skin, Sounds, Video, Controls, Language,
+  Chat, Resource Packs, Accessibility, Telemetry, Credits, Online, Difficulty)
+  — düğmeler çizilir ama basınca bir şey olmaz; Telemetry çevrimdışı
+  olduğundan etkisiz çizilir; ok tuşlarıyla odak (T11); ipuçları.
 - **Kısmen** Ölüm ekranı (`DeathScreen`, `PlayerCombatKill`, `deathScreen.*`):
   gradyan, başlık/neden/skor (yerel oyuncunun `DATA_SCORE_ID` verisi), "Respawn"
   ve "Title Screen" düğmeleri (20 tik sonra uyanır), hardcore metinleri,

@@ -15,6 +15,7 @@ pub mod hud;
 pub mod items;
 pub mod layout;
 pub mod option_text;
+pub mod options;
 pub mod pause;
 pub mod screen;
 pub mod sidebar;
