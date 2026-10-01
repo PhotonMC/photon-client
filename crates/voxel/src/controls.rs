@@ -3,6 +3,7 @@
 
 use voxel_game::attack::AttackKey;
 use voxel_game::hotbar::ScrollWheel;
+use voxel_game::options::Options;
 use voxel_net::connection::PlaySession;
 use voxel_render::gui::chat::{ChatKey, ChatLog, ChatScreen};
 use voxel_render::gui::confirm::{ConfirmAction, ConfirmBackground, ConfirmScreen};
@@ -53,6 +54,8 @@ pub struct Controls {
     pub confirm: Option<ConfirmScreen>,
     /// The screen a lost connection leaves, which nothing replaces.
     pub disconnected: Option<DisconnectedScreen>,
+    /// The values of `options.txt` the client reads.
+    pub options: Options,
     chat_history: Vec<String>,
     /// `CommandHistory`: the commands sent, kept in a file.
     command_history: Vec<String>,
@@ -73,6 +76,7 @@ pub struct Controls {
 impl Controls {
     pub fn new(camera_type: CameraType, captured: bool) -> Self {
         let command_history = read_command_history();
+        let options = load_options();
         Self {
             keys: HeldKeys::default(),
             attack_key: AttackKey::default(),
@@ -89,6 +93,7 @@ impl Controls {
             death: None,
             confirm: None,
             disconnected: None,
+            options,
             chat_history: command_history.clone(),
             command_history,
             shift_held: false,
@@ -952,9 +957,11 @@ impl Controls {
             WindowEvent::Key(Key::F11, _, Action::Press, _) => surface.toggle_fullscreen(),
             WindowEvent::Scroll(x, y) if self.captured => {
                 if !spectating
-                    && let Some(slot) =
-                        self.scroll_wheel
-                            .select(x, y, session.status().selected_slot)
+                    && let Some(slot) = self.scroll_wheel.select(
+                        x * self.options.mouse_wheel_sensitivity,
+                        y * self.options.mouse_wheel_sensitivity,
+                        session.status().selected_slot,
+                    )
                 {
                     session.select_slot(slot);
                 }
@@ -991,10 +998,23 @@ impl Controls {
                     && let Some((last_x, last_y)) = self.last_cursor
                     && let Some(player) = session.player_mut()
                 {
-                    // The default sensitivity, 0.5, makes the scale exactly one.
-                    let sensitivity = 0.5 * 0.6 + 0.2_f64;
+                    // `MouseHandler.turnPlayer`: `* 0.6F + 0.2F` widens floats.
+                    let sensitivity =
+                        self.options.sensitivity * f64::from(0.6_f32) + f64::from(0.2_f32);
                     let scaled = sensitivity * sensitivity * sensitivity * 8.0;
-                    player.turn((x - last_x) * scaled, (y - last_y) * scaled);
+                    let (turn_x, turn_y) = ((x - last_x) * scaled, (y - last_y) * scaled);
+                    player.turn(
+                        if self.options.invert_mouse_x {
+                            -turn_x
+                        } else {
+                            turn_x
+                        },
+                        if self.options.invert_mouse_y {
+                            -turn_y
+                        } else {
+                            turn_y
+                        },
+                    );
                 }
                 self.last_cursor = Some((x, y));
             }
@@ -1011,6 +1031,17 @@ const COMMAND_HISTORY_LIMIT: usize = 50;
 fn game_directory() -> std::path::PathBuf {
     std::env::var_os("VOXEL_GAME_DIR")
         .map_or_else(|| std::path::PathBuf::from(".data/client"), Into::into)
+}
+
+/// `Options.load`: `options.txt` of the game directory, written when it
+/// was not there.
+fn load_options() -> Options {
+    let path = game_directory().join("options.txt");
+    let options = Options::load(&path);
+    if !path.exists() {
+        let _ = options.save(&path);
+    }
+    options
 }
 
 /// `CommandHistory`'s constructor: the lines of `command_history.txt`.

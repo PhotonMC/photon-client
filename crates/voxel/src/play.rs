@@ -200,6 +200,7 @@ impl Play {
             _ => CameraType::FirstPerson,
         };
         let controls = Controls::new(camera_type, script.is_none());
+        surface.set_gui_scale_option(controls.options.gui_scale);
         surface.set_cursor_captured(controls.captured);
         Ok(Self {
             screen_assets: gui.screen_assets(),
@@ -414,7 +415,8 @@ impl Play {
             (camera.z - f64::from(self.origin[2])) as f32,
         ];
         let eye_in_water = player.is_eye_in_water();
-        let fov = self.camera.fov(partial as f32, eye_in_water);
+        let option_fov = self.controls.options.fov;
+        let fov = self.camera.fov(option_fov, partial as f32, eye_in_water);
         // The camera's far plane: four times the render distance, or the
         // cloud range if that is farther.
         let render_distance = self.session.view_distance().clamp(2, 12);
@@ -436,7 +438,7 @@ impl Play {
             frustum: voxel_render::visibility::Frustum::new(
                 &crate::view::view_rotation(y_rot, x_rot),
                 &voxel_render::visibility::culling_projection(
-                    fov.max(voxel_render::camera::DEFAULT_FOV),
+                    fov.max(option_fov as f32),
                     self.aspect,
                     far,
                 ),

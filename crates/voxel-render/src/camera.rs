@@ -8,9 +8,6 @@
 
 use voxel_world::local_player::LocalPlayer;
 
-/// The option's default field of view, in degrees.
-pub const DEFAULT_FOV: f32 = 70.0;
-
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Camera {
     eye_height: f32,
@@ -56,11 +53,12 @@ impl Camera {
         self.eye_height_old + partial_tick * (self.eye_height - self.eye_height_old)
     }
 
-    /// The vertical field of view in degrees, narrowed under water.
-    pub fn fov(&self, partial_tick: f32, eye_in_water: bool) -> f32 {
+    /// The vertical field of view in degrees, from the option's, narrowed
+    /// under water.
+    pub fn fov(&self, option_fov: i32, partial_tick: f32, eye_in_water: bool) -> f32 {
         let modifier =
             self.old_fov_modifier + partial_tick * (self.fov_modifier - self.old_fov_modifier);
-        let fov = DEFAULT_FOV * modifier;
+        let fov = option_fov as f32 * modifier;
         if eye_in_water {
             fov * 0.857_142_87
         } else {

@@ -29,4 +29,7 @@ Ekranlar, ses/grafik/erişilebilirlik alanları, tuş atamaları.
 `docs/remaining-work.md` M6 "Ayarlar" satırı; `docs/option-values-conformance.md` değişmez.
 
 ## Devir notu
-(boş)
+- `voxel-game/src/options.rs`: `Options` (15 alan, Java varsayılan/aralık/anahtar sırası), `load`/`save` (`version:4903` önde, okunan satırlar yerinde güncellenir, bilinmeyen anahtarlar korunur, eksik bilinen anahtarlar sona yazılır), `java_double` (Gson/`Double.toString` biçimi). Kodek davranışı DFU `JsonOps` baytkodundan doğrulandı (sayı≠bool); `ChatVisibility` buraya taşındı, `voxel-net` yeniden dışa aktarır.
+- Bağlandı: FOV (`Camera::fov(option_fov, ..)`, kesme `max`), GUI ölçeği (`WindowSurface::set_gui_scale_option`), duyarlılık (`0.6F`/`0.2F` genişletmesiyle), ters X/Y, tekerlek. `Controls.options` açılışta okunur, yoksa yazılır.
+- Sapma: sohbet sabitlerinin (`WIDTH`, `LINES_*`) `Options`'a bağlanması yapılmadı — T08 aynı işi oracle ile yapıyor; burada oracle'sız dokunmak parity riskiydi.
+- Oracle yok: headless'ta `OptionInstance` kurulumu gerekmedi; kodek davranışı birim testlerle (`options::tests`) ve DFU baytkoduyla kapatıldı. Sürümü eski dosyalar için Java'nın veri düzeltmesi (`dataFix`) uygulanmaz.

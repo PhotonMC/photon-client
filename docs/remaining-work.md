@@ -252,7 +252,10 @@ Bitti: `Component`/dil (`en_us`), stilli yazı, `EditBox`, ipucu kutusu.
   otomatik yeniden doğuyor.
 - **L** Ayarlar: ses, video (görüş mesafesi, FOV, GUI ölçeği, bulanıklık),
   kontroller (tuş atamaları — `P05.a/b`), erişilebilirlik; ayarların
-  kaydı/yüklenmesi (`options.txt`).
+  kaydı/yüklenmesi. **Kısmen:** `options.txt` okunur/yazılır (`voxel-game/src/
+  options.rs`: FOV, GUI ölçeği, fare, tekerlek, sohbet değerleri; bilinmeyen
+  anahtarlar korunur); FOV, GUI ölçeği, duyarlılık, ters çevirme ve tekerlek
+  oyuna bağlı, sohbet değerlerinin çizime bağlanması T08'de.
 - **L** Ana menü, sunucu listesi ve doğrudan bağlanma, bağlantı/yükleme
   ekranları (`LevelLoadingScreen`, `ReceivingLevelScreen`), bağlantı kopma
   ekranı, dünya seçimi (`P25`: Pumpkin ile eşleme).

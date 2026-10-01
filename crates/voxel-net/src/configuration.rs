@@ -11,31 +11,7 @@ pub enum WriteError {
     EncoderError,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ChatVisibility {
-    Full,
-    System,
-    Hidden,
-}
-
-impl ChatVisibility {
-    const fn id(self) -> i32 {
-        match self {
-            Self::Full => 0,
-            Self::System => 1,
-            Self::Hidden => 2,
-        }
-    }
-
-    const fn from_id(id: i32) -> Option<Self> {
-        match id {
-            0 => Some(Self::Full),
-            1 => Some(Self::System),
-            2 => Some(Self::Hidden),
-            _ => None,
-        }
-    }
-}
+pub use voxel_game::options::ChatVisibility;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MainHand {

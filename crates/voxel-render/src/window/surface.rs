@@ -65,6 +65,8 @@ pub struct WindowSurface {
     window: glfw::PWindow,
     events: glfw::GlfwReceiver<(f64, glfw::WindowEvent)>,
     scale: WindowScale,
+    /// `Options.guiScale`, which the scale chosen follows.
+    gui_scale_option: i32,
     /// Where and how big the window was before it went fullscreen.
     windowed: Option<(i32, i32, i32, i32)>,
 }
@@ -125,8 +127,17 @@ impl WindowSurface {
             window,
             events,
             scale,
+            gui_scale_option: 0,
             windowed: None,
         })
+    }
+
+    /// `Options.guiScale` changed: the largest scale it allows is chosen
+    /// again (0 asks for the largest that fits).
+    pub fn set_gui_scale_option(&mut self, option: i32) {
+        self.gui_scale_option = option;
+        let chosen = self.scale.calculate_scale(option, false);
+        self.scale.set_gui_scale(chosen);
     }
 
     /// Current sizing state, refreshed on every framebuffer resize.
@@ -155,7 +166,7 @@ impl WindowSurface {
             if let glfw::WindowEvent::FramebufferSize(width, height) = event {
                 self.scale
                     .set_framebuffer_size(framebuffer_extent(width), framebuffer_extent(height));
-                let chosen = self.scale.calculate_scale(0, false);
+                let chosen = self.scale.calculate_scale(self.gui_scale_option, false);
                 self.scale.set_gui_scale(chosen);
             }
             seen.push(event);
