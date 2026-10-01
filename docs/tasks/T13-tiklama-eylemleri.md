@@ -25,4 +25,6 @@
 `docs/gui-oracle.md`; `docs/remaining-work.md` M5.
 
 ## Devir notu
-(boş)
+- `ChatLog::clicked_style` (Java `ClickableStyleFinder`: son glif, tıklama olayı veya Shift'te insertion; aynı pose/glif alanları), `Controls::style_clicked`: `run_command` (başındaki tek `/` atılır, `ChatCommand` doğrudan; Java'daki komut doğrulama/onay pencereleri — ayrıştırma hatası, imza, izin — yok), `suggest_command` (kutu değiştirilir), `copy_to_clipboard`, `open_url` (`ConfirmScreen::link` = `ConfirmLinkScreen`, güvenilmez; Yes sistem açıcısıyla (`open`/`xdg-open`/`start`), Copy panoya, No/Esc sohbete), `open_file`; `change_page`/`custom` yok sayılır. `chatLinks`/`chatLinksPrompt` seçenekleri tutulmuyor (hep sorar).
+- Oracle `confirm_screen`'e `link` alanı (+25 satır: 3×100 düğme, uyarı); Copy Java'da klavye ister, basılmadı. Tıklama eylemleri için birim test (`clicked_style`), eylem eşlemesi canlıda denenmedi.
+- Açık: komut doğrulama pencereleri, `chatLinks` seçenekleri, güvenilen bağlantı yolu (pause simgeleri `ConfirmLinkScreen.confirmLink` hâlâ bağlı değil).

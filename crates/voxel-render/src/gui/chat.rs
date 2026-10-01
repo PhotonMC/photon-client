@@ -534,18 +534,7 @@ impl ChatLog {
                 background,
             );
         }
-        // The mouse in the chat's own units: the pose undone
-        // (`Matrix3x2f.invert`, in single precision).
-        let local = mouse.map(|(x, y)| {
-            let (m00, m20) = (scale, 4.0 * scale);
-            let det = 1.0 / (m00 * m00);
-            let inverse_x = m00 * det;
-            let inverse_translation = (0.0 - m20 * m00) * det;
-            (
-                inverse_x * x as f32 + inverse_translation,
-                inverse_x * y as f32,
-            )
-        });
+        let local = mouse.map(|mouse| pose_undone(scale, mouse));
         let over = |local: Option<(f32, f32)>, (x0, y0, x1, y1): (i32, i32, i32, i32)| {
             local.is_some_and(|(x, y)| {
                 x >= x0 as f32 && x < x1 as f32 && y >= y0 as f32 && y < y1 as f32
@@ -604,6 +593,42 @@ impl ChatLog {
         tag_tooltip.or_else(|| hover_lines(hovered, lang, font, gui_width))
     }
 
+    /// `ClickableStyleFinder`: the style a press at `mouse` lands on in an
+    /// open chat, the last glyph's that has a click event (or, with
+    /// `insertions`, an insertion).
+    pub fn clicked_style(
+        &self,
+        font: &Font,
+        (_, gui_height): (i32, i32),
+        mouse: (i32, i32),
+        insertions: bool,
+    ) -> Option<Style> {
+        let scale = self.settings.scale as f32;
+        let chat_bottom = ((gui_height - BOTTOM_MARGIN) as f32 / scale).floor() as i32;
+        let entry_height = self.entry_height();
+        let spacing = self.settings.line_spacing;
+        let entry_bottom_to_message_y =
+            (8.0 * (spacing + 1.0) - 4.0 * spacing + 0.5).floor() as i32;
+        let shown = self
+            .lines
+            .len()
+            .saturating_sub(self.scroll)
+            .min(self.lines_per_page(true));
+        let point = pose_undone(scale, mouse);
+        let mut found = None;
+        for i in (0..shown).rev() {
+            let text_top = chat_bottom - i as i32 * entry_height - entry_bottom_to_message_y;
+            let line = &self.lines[i + self.scroll];
+            if let Some(style) =
+                crate::gui::text_hit::style_under(font, &line.runs, (0, text_top), point)
+                && (style.click.is_some() || (insertions && style.insertion.is_some()))
+            {
+                found = Some(style.clone());
+            }
+        }
+        found
+    }
+
     /// The scroll bar of a chat that is open (`extractRenderState`'s last
     /// part): as tall as the lines shown are of all of them.
     fn scroll_bar(
@@ -643,6 +668,19 @@ impl ChatLog {
             alpha << 24 | 13_421_772,
         );
     }
+}
+
+/// A point of the screen in the chat's own units: the pose, which scales
+/// and moves 4 right, undone (`Matrix3x2f.invert`, in single precision).
+fn pose_undone(scale: f32, (x, y): (i32, i32)) -> (f32, f32) {
+    let (m00, m20) = (scale, 4.0 * scale);
+    let det = 1.0 / (m00 * m00);
+    let inverse_x = m00 * det;
+    let inverse_translation = (0.0 - m20 * m00) * det;
+    (
+        inverse_x * x as f32 + inverse_translation,
+        inverse_x * y as f32,
+    )
 }
 
 /// `componentHoverEffect` for a hover event's text: split to half the screen
@@ -911,6 +949,22 @@ impl ChatScreen {
         self.focused_at = Instant::now();
     }
 
+    /// The font the box's text is set in.
+    pub fn font(&self) -> Arc<Font> {
+        self.font.clone()
+    }
+
+    /// `insertText`: the text goes into the box, or takes its place.
+    pub fn insert_text(&mut self, text: &str, replace: bool) {
+        let font = self.font.clone();
+        if replace {
+            self.edit.set_value(text, &font);
+        } else {
+            self.edit.insert_text(text, &font);
+        }
+        self.edited();
+    }
+
     /// The box's text and its cursor.
     pub fn value(&self) -> String {
         self.edit.value()
@@ -1101,6 +1155,40 @@ pub fn plain_runs(text: &str) -> Vec<Run> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_press_on_text_finds_its_click_event_or_its_insertion() {
+        let Some(root) = std::env::var_os("VOXEL_ASSETS") else {
+            return;
+        };
+        let Some(font) = Font::load(std::path::Path::new(&root)) else {
+            return;
+        };
+        let component = Component::from_json(
+            &voxel_core::json::parse(
+                r#"{"text":"link","click_event":{"action":"open_url","url":"https://a.b"},"insertion":"ins"}"#,
+            )
+            .expect("json"),
+        )
+        .expect("component");
+        let mut log = ChatLog::default();
+        log.add_component(&component, &Lang::default(), (None, None), &font, true);
+        let gui = (427, 240);
+        // The line's text starts at x 4, 192 down.
+        let clicked = log.clicked_style(&font, gui, (8, 196), false);
+        assert!(matches!(
+            clicked.as_ref().and_then(|style| style.click.as_deref()),
+            Some(voxel_game::text::ClickEvent::OpenUrl(url)) if url == "https://a.b"
+        ));
+        assert_eq!(
+            log.clicked_style(&font, gui, (8, 196), true)
+                .and_then(|style| style.insertion),
+            Some("ins".into())
+        );
+        // Off the text, nothing.
+        assert!(log.clicked_style(&font, gui, (200, 196), false).is_none());
+        assert!(log.clicked_style(&font, gui, (8, 100), false).is_none());
+    }
 
     #[test]
     fn the_options_set_the_size_of_the_chat() {

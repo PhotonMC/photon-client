@@ -1020,7 +1020,11 @@ public final class GuiOracle {
             Component yes = Component.literal(row.get("yes").getAsString());
             Component no = Component.literal(row.get("no").getAsString());
             net.minecraft.client.gui.screens.ConfirmScreen confirm =
-                row.get("death").getAsBoolean()
+                row.has("link")
+                    ? new net.minecraft.client.gui.screens.ConfirmLinkScreen(callback,
+                        row.getAsJsonObject("link").get("url").getAsString(),
+                        row.getAsJsonObject("link").get("trusted").getAsBoolean())
+                : row.get("death").getAsBoolean()
                     ? new net.minecraft.client.gui.screens.DeathScreen.TitleConfirmScreen(
                         callback, title, message, yes, no)
                     : new net.minecraft.client.gui.screens.ConfirmScreen(callback, title, message, yes, no);

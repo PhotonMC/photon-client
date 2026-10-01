@@ -851,10 +851,13 @@ def gui_confirm_screen_cases():
     what the callback was told."""
     def row(label, width=427, height=240, mouse=(0, 0), death=False, title="Are you sure?",
             message="This cannot be undone.", yes="Yes", no="No", delay=0, ticks=0, keys=(), click=False,
-            in_world=False):
-        return {"label": label, "width": width, "height": height, "mouse": list(mouse), "death": death,
-                "title": title, "message": message, "yes": yes, "no": no, "delay": delay, "ticks": ticks,
-                "keys": list(keys), "click": click, "in_world": in_world}
+            in_world=False, link=None):
+        row = {"label": label, "width": width, "height": height, "mouse": list(mouse), "death": death,
+               "title": title, "message": message, "yes": yes, "no": no, "delay": delay, "ticks": ticks,
+               "keys": list(keys), "click": click, "in_world": in_world}
+        if link:
+            row["link"] = link
+        return row
 
     long_message = ("This message is long enough that it has to wrap onto several lines of the screen "
                     "before the buttons, and it keeps going so that the third line is needed too.")
@@ -890,6 +893,31 @@ def gui_confirm_screen_cases():
         row("click-gap", mouse=(213, 145), click=True),
         row("click-asleep", mouse=(100, 145), delay=20, ticks=5, click=True),
         row("click-awake", mouse=(300, 145), delay=20, ticks=20, click=True),
+    ]
+    # `ConfirmLinkScreen`: three buttons of 100 and, for a link that is not
+    # trusted, a warning. Copy to Clipboard is not pressed (it needs the keyboard).
+    url = "https://example.com/a/path?query=1"
+    untrusted = {"url": url, "trusted": False}
+    trusted = {"url": url, "trusted": True}
+    long_url = "https://example.com/" + "segment/" * 12 + "end"
+    rows += [
+        row("link", link=untrusted), row("link-trusted", link=trusted),
+        row("link-in-world", link=untrusted, in_world=True), row("link-small", 320, 240, link=untrusted),
+        row("link-wide", 854, 480, link=untrusted), row("link-tiny", 200, 150, link=untrusted),
+        row("link-long-url", link={"url": long_url, "trusted": False}),
+        row("link-long-url-trusted", link={"url": long_url, "trusted": True}),
+        row("link-empty-url", link={"url": "", "trusted": False}),
+        row("link-hover-yes", mouse=(110, 150), link=untrusted), row("link-hover-copy", mouse=(213, 150), link=untrusted),
+        row("link-hover-no", mouse=(320, 150), link=untrusted), row("link-hover-trusted", mouse=(110, 145), link=trusted),
+        row("link-tab", keys=["tab"], link=untrusted), row("link-tab-2", keys=["tab"] * 2, link=untrusted),
+        row("link-tab-3", keys=["tab"] * 3, link=untrusted), row("link-tab-4-round", keys=["tab"] * 4, link=untrusted),
+        row("link-shift-tab", keys=["shift+tab"], link=untrusted),
+        row("link-enter-yes", keys=["tab", "enter"], link=untrusted),
+        row("link-enter-no", keys=["tab", "tab", "tab", "enter"], link=untrusted),
+        row("link-escape", keys=["escape"], link=untrusted),
+        row("link-click-yes", mouse=(110, 150), click=True, link=untrusted),
+        row("link-click-no", mouse=(320, 150), click=True, link=untrusted),
+        row("link-click-gap", mouse=(161, 150), click=True, link=untrusted),
     ]
     yield {"case_id": "gui/confirm-screen", "family": "gui", "operation": "confirm_screen", "rows": rows}
 

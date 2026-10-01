@@ -9,6 +9,7 @@ use voxel_net::connection::PlaySession;
 use voxel_render::gui::chat::ChatSettings;
 use voxel_render::gui::chat::{ChatKey, ChatLog, ChatScreen};
 use voxel_render::gui::chat_options::ChatOptionsScreen;
+use voxel_render::gui::confirm::ConfirmAction as LinkAction;
 use voxel_render::gui::confirm::{ConfirmAction, ConfirmBackground, ConfirmScreen};
 use voxel_render::gui::death::{DeathAction, DeathScreen};
 use voxel_render::gui::disconnected::DisconnectedScreen;
@@ -75,6 +76,8 @@ pub struct Controls {
     /// "Title Screen" asks first (`deathScreen.quit.confirm`), over the death
     /// screen, which this takes the place of while it is open.
     pub confirm: Option<ConfirmScreen>,
+    /// `ConfirmLinkScreen`, over the chat, and the link it asks about.
+    pub link_confirm: Option<(ConfirmScreen, String)>,
     /// The screen a lost connection leaves, which nothing replaces.
     pub disconnected: Option<DisconnectedScreen>,
     /// The values of `options.txt` the client reads.
@@ -94,6 +97,21 @@ pub struct Controls {
     pub gui_mouse: (f64, f64),
     /// The button a drag is held with (`MouseHandler.activeButton`).
     active_button: Option<i32>,
+}
+
+/// `Util.getPlatform().openUri`: the system's own opener.
+fn open_uri(uri: &str) {
+    let (program, arguments): (&str, &[&str]) = if cfg!(target_os = "macos") {
+        ("open", &[])
+    } else if cfg!(target_os = "windows") {
+        ("cmd", &["/c", "start", ""])
+    } else {
+        ("xdg-open", &[])
+    };
+    let _ = std::process::Command::new(program)
+        .args(arguments)
+        .arg(uri)
+        .spawn();
 }
 
 /// `MouseHandler.turnPlayer` for a mouse that moved `(dx, dy)`: scaled by
@@ -145,6 +163,7 @@ impl Controls {
             mouse_screen: None,
             death: None,
             confirm: None,
+            link_confirm: None,
             disconnected: None,
             options,
             chat_history: command_history.clone(),
@@ -678,6 +697,7 @@ impl Controls {
             reason,
         ));
         self.chat = None;
+        self.link_confirm = None;
         self.pause = None;
         self.options_screen = None;
         self.video_screen = None;
@@ -821,6 +841,8 @@ impl Controls {
                 session.respawn()?;
                 self.close_death(surface);
             }
+            // The death confirmation has no third button.
+            ConfirmAction::Copy => {}
         }
         Ok(())
     }
@@ -1103,6 +1125,7 @@ impl Controls {
         event: glfw::WindowEvent,
         session: &mut PlaySession,
         surface: &mut WindowSurface,
+        assets: &ScreenAssets,
     ) -> Result {
         let Some(chat) = self.chat.as_mut() else {
             return Ok(());
@@ -1165,13 +1188,114 @@ impl Controls {
                     y * f64::from(size.gui_scaled_height()) / f64::from(height.max(1)),
                 );
             }
-            glfw::WindowEvent::MouseButton(glfw::MouseButton::Button1, glfw::Action::Press, _) => {
+            glfw::WindowEvent::MouseButton(
+                glfw::MouseButton::Button1,
+                glfw::Action::Press,
+                modifiers,
+            ) => {
                 let mouse = (self.gui_mouse.0 as i32, self.gui_mouse.1 as i32);
-                chat.mouse_clicked(mouse);
+                // `ChatScreen.mouseClicked`: the list of matches first, then
+                // the style of the text under the mouse.
+                if !chat.mouse_clicked(mouse) {
+                    let shift = modifiers.contains(glfw::Modifiers::Shift);
+                    let gui = (size.gui_scaled_width(), size.gui_scaled_height());
+                    let font = chat.font();
+                    if let Some(style) = self.chat_log.clicked_style(&font, gui, mouse, shift) {
+                        self.style_clicked(&style, shift, session, surface, assets)?;
+                    }
+                }
             }
             _ => {}
         }
         Ok(())
+    }
+
+    /// `ChatScreen.handleComponentClicked`: what a click on text does. With
+    /// Shift it types the text's insertion; without, its click event.
+    fn style_clicked(
+        &mut self,
+        style: &voxel_game::text::Style,
+        insertions: bool,
+        session: &mut PlaySession,
+        surface: &mut WindowSurface,
+        assets: &ScreenAssets,
+    ) -> Result {
+        use voxel_game::text::ClickEvent;
+        if insertions {
+            if let (Some(insertion), Some(chat)) = (&style.insertion, self.chat.as_mut()) {
+                chat.insert_text(insertion, false);
+            }
+            return Ok(());
+        }
+        let Some(event) = style.click.as_deref() else {
+            return Ok(());
+        };
+        match event {
+            // `Commands.trimOptionalPrefix`, then the command as typed.
+            ClickEvent::RunCommand(command) => {
+                session.send_chat(command.strip_prefix('/').unwrap_or(command), true)?;
+            }
+            ClickEvent::SuggestCommand(command) => {
+                if let Some(chat) = self.chat.as_mut() {
+                    chat.insert_text(command, true);
+                }
+            }
+            ClickEvent::CopyToClipboard(value) => surface.set_clipboard(value),
+            ClickEvent::OpenUrl(url) => {
+                // `clickUrlAction`, with the prompt on (the option is not
+                // kept): an untrusted link asks first.
+                let size = surface.scale();
+                let gui = (size.gui_scaled_width(), size.gui_scaled_height());
+                let screen =
+                    ConfirmScreen::link(&assets.creative.font, &assets.lang, gui, url, false)
+                        .with_background(voxel_render::gui::confirm::ConfirmBackground::Menu {
+                            in_world: true,
+                        });
+                self.link_confirm = Some((screen, url.clone()));
+            }
+            ClickEvent::OpenFile(path) => open_uri(path),
+            // Changing a page and the server's own actions have no screen
+            // here to act on.
+            ClickEvent::ChangePage(_) | ClickEvent::Custom(_) => {}
+        }
+        Ok(())
+    }
+
+    /// An event for the open link confirmation: Yes opens the link, Copy
+    /// keeps it on the clipboard, No and Escape go back to the chat.
+    fn link_event(&mut self, event: glfw::WindowEvent, surface: &mut WindowSurface) {
+        use glfw::{Action, Key, WindowEvent};
+        if let WindowEvent::CursorPos(x, y) = event {
+            self.move_gui_mouse((x, y), surface);
+            return;
+        }
+        let mouse = (self.gui_mouse.0 as i32, self.gui_mouse.1 as i32);
+        let Some((screen, url)) = self.link_confirm.as_mut() else {
+            return;
+        };
+        let action = match event {
+            WindowEvent::Key(Key::Escape, _, Action::Press, _) => screen.escape(),
+            WindowEvent::Key(Key::Tab, _, Action::Press | Action::Repeat, modifiers) => {
+                screen.tab(!modifiers.contains(glfw::Modifiers::Shift));
+                None
+            }
+            WindowEvent::Key(Key::Enter | Key::KpEnter | Key::Space, _, Action::Press, _) => {
+                screen.pressed()
+            }
+            WindowEvent::MouseButton(glfw::MouseButton::Button1, Action::Press, _) => {
+                screen.clicked(mouse)
+            }
+            _ => None,
+        };
+        let Some(action) = action else {
+            return;
+        };
+        match action {
+            LinkAction::Yes => open_uri(url),
+            LinkAction::Copy => surface.set_clipboard(url),
+            LinkAction::No => {}
+        }
+        self.link_confirm = None;
     }
 
     /// Let go of every key, as the mouse is freed.
@@ -1372,8 +1496,12 @@ impl Controls {
                 | glfw::WindowEvent::Scroll(..)
                 | glfw::WindowEvent::CursorPos(..)
         );
+        if self.link_confirm.is_some() && for_screen {
+            self.link_event(event, surface);
+            return Ok(());
+        }
         if self.chat.is_some() && for_screen {
-            return self.chat_event(event, session, surface);
+            return self.chat_event(event, session, surface, assets);
         }
         if self.disconnected.is_some() && for_screen {
             self.disconnected_event(event, surface);

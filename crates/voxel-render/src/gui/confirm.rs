@@ -19,6 +19,8 @@ const MAX_ROWS: usize = 15;
 pub enum ConfirmAction {
     Yes,
     No,
+    /// `ConfirmLinkScreen`'s "Copy to Clipboard".
+    Copy,
 }
 
 /// What stands behind the screen.
@@ -36,8 +38,11 @@ pub enum ConfirmBackground {
 struct Content {
     title: Component,
     message: Component,
-    yes: Component,
-    no: Component,
+    /// The buttons, in order, and how wide each is.
+    buttons: Vec<(Component, ConfirmAction)>,
+    button_width: i32,
+    /// `addAdditionalText`: a line between the message and the buttons.
+    extra: Option<Component>,
 }
 
 pub struct ConfirmScreen {
@@ -46,7 +51,8 @@ pub struct ConfirmScreen {
     /// The message's lines, and the place of the box they stand in.
     message: Vec<Vec<Run>>,
     message_rect: usize,
-    buttons: [(Widget, ConfirmAction); 2],
+    buttons: Vec<(Widget, ConfirmAction)>,
+    extra: Option<Widget>,
     size: (i32, i32),
     /// `delayTicker`: the buttons wake, and Escape opens, when it runs out.
     delay: i32,
@@ -122,34 +128,98 @@ impl ConfirmScreen {
         yes: &Component,
         no: &Component,
     ) -> Self {
+        Self::build(
+            font,
+            lang,
+            size,
+            Content {
+                title: title.clone(),
+                message: message.clone(),
+                buttons: vec![
+                    (yes.clone(), ConfirmAction::Yes),
+                    (no.clone(), ConfirmAction::No),
+                ],
+                button_width: 150,
+                extra: None,
+            },
+        )
+    }
+
+    /// `new ConfirmLinkScreen(callback, url, trusted)`: the link asked
+    /// about, with "Copy to Clipboard" between the answers, and a warning
+    /// when the link is not trusted.
+    pub fn link(font: &Font, lang: &Lang, size: (i32, i32), url: &str, trusted: bool) -> Self {
+        let translated = Component::translatable;
+        Self::build(
+            font,
+            lang,
+            size,
+            Content {
+                title: translated(if trusted {
+                    "chat.link.confirmTrusted"
+                } else {
+                    "chat.link.confirm"
+                }),
+                message: Component::literal(url),
+                buttons: vec![
+                    (
+                        translated(if trusted { "chat.link.open" } else { "gui.yes" }),
+                        ConfirmAction::Yes,
+                    ),
+                    (translated("chat.copy"), ConfirmAction::Copy),
+                    (
+                        translated(if trusted { "gui.cancel" } else { "gui.no" }),
+                        ConfirmAction::No,
+                    ),
+                ],
+                button_width: 100,
+                extra: (!trusted).then(|| {
+                    translated("chat.link.warning").with_style(&Style {
+                        colour: Some(0xFF_CCCC),
+                        ..Style::default()
+                    })
+                }),
+            },
+        )
+    }
+
+    fn build(font: &Font, lang: &Lang, size: (i32, i32), content: Content) -> Self {
         let (width, height) = size;
         let mut arena = Arena::default();
         let runs = |component: &Component| lang.runs(component, &Style::default());
-        let title_text = runs(title);
+        let title_text = runs(&content.title);
         let title_rect = arena.add(font.width_of_runs(&title_text), 9);
         let max_width = width - 50;
-        let lines = message_lines(font, lang, message, max_width);
+        let lines = message_lines(font, lang, &content.message, max_width);
         let widest = lines
             .iter()
             .map(|line| font.width_of_runs(line))
             .max()
             .unwrap_or(0);
         let message_rect = arena.add(max_width.min(widest), lines.len() as i32 * 9);
-        let button = |arena: &mut Arena, label: &Component, action| {
-            let rect = arena.add(150, 20);
-            (
-                Widget {
-                    rect,
-                    active: true,
-                    kind: Kind::Button { label: runs(label) },
-                },
-                action,
-            )
-        };
-        let buttons = [
-            button(&mut arena, yes, ConfirmAction::Yes),
-            button(&mut arena, no, ConfirmAction::No),
-        ];
+        let extra = content.extra.as_ref().map(|component| {
+            let text = runs(component);
+            Widget {
+                rect: arena.add(font.width_of_runs(&text), 9),
+                active: false,
+                kind: Kind::Text { text },
+            }
+        });
+        let buttons: Vec<(Widget, ConfirmAction)> = content
+            .buttons
+            .iter()
+            .map(|(label, action)| {
+                let rect = arena.add(content.button_width, 20);
+                (
+                    Widget {
+                        rect,
+                        active: true,
+                        kind: Kind::Button { label: runs(label) },
+                    },
+                    *action,
+                )
+            })
+            .collect();
         // A column spaced by 8, its cells centred; the buttons a row spaced
         // by 4, each with 16 above.
         let mut row = Grid::new();
@@ -167,7 +237,12 @@ impl ConfirmScreen {
         column.row_spacing = 8;
         column.add(Item::Leaf(title_rect), (0, 0), (1, 1), centred);
         column.add(Item::Leaf(message_rect), (1, 0), (1, 1), centred);
-        column.add(Item::Grid(Box::new(row)), (2, 0), (1, 1), centred);
+        let mut next = 2;
+        if let Some(extra) = &extra {
+            column.add(Item::Leaf(extra.rect), (next, 0), (1, 1), centred);
+            next += 1;
+        }
+        column.add(Item::Grid(Box::new(row)), (next, 0), (1, 1), centred);
         column.arrange(&mut arena);
         column.align_in_rectangle(&mut arena, (0, 0, width, height), (0.5, 0.5));
         Self {
@@ -179,17 +254,13 @@ impl ConfirmScreen {
             message: lines,
             message_rect,
             buttons,
+            extra,
             arena,
             size,
             delay: 0,
             focus: None,
             background: ConfirmBackground::Menu { in_world: false },
-            content: Content {
-                title: title.clone(),
-                message: message.clone(),
-                yes: yes.clone(),
-                no: no.clone(),
-            },
+            content,
         }
     }
 
@@ -215,17 +286,8 @@ impl ConfirmScreen {
     /// leaves it, with the delay as it was and the buttons new (and awake).
     #[must_use]
     pub fn resized(&self, font: &Font, lang: &Lang, size: (i32, i32)) -> Self {
-        let content = &self.content;
-        let mut screen = Self::new(
-            font,
-            lang,
-            size,
-            &content.title,
-            &content.message,
-            &content.yes,
-            &content.no,
-        )
-        .with_background(self.background);
+        let mut screen =
+            Self::build(font, lang, size, self.content.clone()).with_background(self.background);
         screen.delay = self.delay;
         screen
     }
@@ -255,6 +317,9 @@ impl ConfirmScreen {
             ConfirmBackground::Death => death::draw_background(frame, atlas, self.size),
         }
         self.title.draw(frame, atlas, font, &self.arena, false);
+        if let Some(extra) = &self.extra {
+            extra.draw(frame, atlas, font, &self.arena, false);
+        }
         let rect = self.arena.0[self.message_rect];
         let middle = rect.x + rect.width / 2;
         let mut y = rect.y;

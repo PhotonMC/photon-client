@@ -500,7 +500,13 @@ impl Gui {
             .draw(&mut frame, &self.atlas, &self.font, gui_size, now);
         self.titles
             .draw(&mut frame, &self.atlas, &self.font, gui_size, partial);
-        if let Some(confirm) = controls.confirm.as_mut() {
+        if let Some((link, _)) = controls.link_confirm.as_mut() {
+            if link.size() != gui_size {
+                *link = link.resized(&self.font, &self.lang, gui_size);
+            }
+            let mouse = (controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32);
+            link.draw(&mut frame, &self.atlas, &self.font, mouse);
+        } else if let Some(confirm) = controls.confirm.as_mut() {
             if confirm.size() != gui_size {
                 *confirm = confirm.resized(&self.font, &self.lang, gui_size);
             }

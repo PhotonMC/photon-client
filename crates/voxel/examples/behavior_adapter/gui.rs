@@ -497,15 +497,24 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                         in_world: row["in_world"].as_bool().unwrap_or(false),
                     }
                 };
-                let mut screen = ConfirmScreen::new(
-                    &font,
-                    &lang,
-                    size,
-                    &text("title"),
-                    &text("message"),
-                    &text("yes"),
-                    &text("no"),
-                )
+                let mut screen = match row["link"].as_object() {
+                    Some(link) => ConfirmScreen::link(
+                        &font,
+                        &lang,
+                        size,
+                        link["url"].as_str().unwrap_or_default(),
+                        link["trusted"].as_bool().unwrap_or(false),
+                    ),
+                    None => ConfirmScreen::new(
+                        &font,
+                        &lang,
+                        size,
+                        &text("title"),
+                        &text("message"),
+                        &text("yes"),
+                        &text("no"),
+                    ),
+                }
                 .with_background(background);
                 if int("delay") > 0 {
                     screen.set_delay(int("delay"));
@@ -543,6 +552,7 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                     .map(|action| match action {
                         ConfirmAction::Yes => "yes",
                         ConfirmAction::No => "no",
+                        ConfirmAction::Copy => "copy",
                     })
                     .collect();
                 out.push(json!({

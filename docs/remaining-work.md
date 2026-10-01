@@ -154,7 +154,7 @@ Bitti: `Component`/dil (`en_us`), stilli yazı, `EditBox`, ipucu kutusu.
   T ve `/` ile giriş kutusu, geçmiş (yukarı/aşağı), PageUp/PageDown, `Chat` ve
   `ChatCommand` gönderimi (imzasız, boş `LastSeenMessages`). Eksik: kaydırma
   çubuğu, güven simgesi, `DeleteChat`, eylem çubuğu (`overlay`), sohbet
-  görünürlük seçeneğinin sunucuya bildirilmesi ve kısıtlı sohbet istemi, `show_item` hover ipucu, fareyle tıklama (T13)
+  görünürlük seçeneğinin sunucuya bildirilmesi ve kısıtlı sohbet istemi, `show_item` hover ipucu, komut tıklamasında doğrulama/onay pencereleri, `chatLinks` seçenekleri
   olayları, `nextChatIndex` kopuşunda bağlantıyı kesme (yalnız uyarı).
 - **L** İmzalı sohbet: `ChatSessionUpdate`, mesaj zinciri, `ChatCommandSigned`;
   çevrimdışı modda gerekmez, çevrimiçide zorunlu (M9).
