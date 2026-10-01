@@ -268,6 +268,15 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                     }
                     let component = match event["key"].as_str() {
                         Some(key) => voxel_game::text::Component::translatable(key),
+                        None if event["json"].is_string() => {
+                            voxel_game::text::Component::from_json(
+                                &voxel_core::json::parse(
+                                    event["json"].as_str().unwrap_or_default(),
+                                )
+                                .map_err(|error| format!("{error:?}"))?,
+                            )
+                            .ok_or("component")?
+                        }
                         None => voxel_game::text::Component::literal(
                             event["text"].as_str().ok_or("text")?,
                         ),
@@ -305,7 +314,29 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                 if let Some(scroll) = row["scroll"].as_i64() {
                     log.scroll_by(scroll as i32, focused);
                 }
-                log.draw(&mut frame, &atlas, &font, int("height"), focused);
+                let gui = (int("width"), int("height"));
+                match row["mouse"].as_array() {
+                    // The mouse over the open chat: the tooltip of what is under it.
+                    Some(mouse) => {
+                        let mouse = (
+                            mouse[0].as_i64().unwrap_or(0) as i32,
+                            mouse[1].as_i64().unwrap_or(0) as i32,
+                        );
+                        let tooltip = log.draw_with(
+                            &mut frame,
+                            &atlas,
+                            &font,
+                            gui,
+                            focused,
+                            Some(mouse),
+                            &lang,
+                        );
+                        if let Some(lines) = tooltip {
+                            frame.tooltip(&atlas, &font, &lines, mouse, gui);
+                        }
+                    }
+                    None => log.draw(&mut frame, &atlas, &font, gui, focused),
+                }
             }
             "suggestions" => {
                 use voxel_render::gui::chat::ChatScreen;

@@ -9,7 +9,7 @@ def gui_cases():
     rectangles and the text, in order, with their poses applied. The glyphs
     are not drawn; their advances come from the reference's font providers."""
     def chat(label, messages, tick, width=427, height=240, focused=False, scroll=None,
-             extra=(), deletions=(), options=None, rescale=None, lang_after=None):
+             extra=(), deletions=(), options=None, rescale=None, lang_after=None, mouse=None):
         row = {"label": label, "width": width, "height": height,
                "messages": [{"text": text, "tick": at} for text, at in messages] + list(extra),
                "tick": tick}
@@ -25,6 +25,8 @@ def gui_cases():
             row["rescale"] = rescale
         if lang_after:
             row["lang_after"] = lang_after
+        if mouse is not None:
+            row["mouse"] = list(mouse)
         return row
 
     long_text = ("this is a fairly long chat message that should wrap onto a second line "
@@ -109,6 +111,73 @@ def gui_cases():
         chat("rescale-resets-scroll", many, 400, focused=True, scroll=6, rescale=opt(opacity=0.9)),
         chat("rescale-after-options", [(long_text, 0)], 3, options=opt(width=0.8), rescale=opt(width=0.2)),
         chat("tall-window-scaled", [("hello", 0)], 0, width=640, height=480, options=opt(scale=0.5)),
+    ]
+    # The mouse over an open chat: the tooltip of the text under it. The last
+    # line is at the bottom, its text from x 4 and 192 down.
+    import json as _json
+    show = lambda text, **style: dict({"text": text}, **style)
+    tip = lambda value: {"action": "show_text", "value": value}
+    hover = lambda text, value="tooltip text", **style: show(text, hover_event=tip(value), **style)
+    comp = lambda component, at=0, **kw: dict({"json": _json.dumps(component), "tick": at}, **kw)
+    rows += [
+        chat("hover-show-text", [], 5, focused=True, mouse=(10, 196), extra=[comp(hover("hover me"))]),
+        chat("hover-show-text-unfocused", [], 5, mouse=(10, 196), extra=[comp(hover("hover me"))]),
+        chat("hover-miss-right", [], 5, focused=True, mouse=(300, 196), extra=[comp(hover("hover me"))]),
+        chat("hover-miss-above", [], 5, focused=True, mouse=(10, 150), extra=[comp(hover("hover me"))]),
+        chat("hover-left-edge", [], 5, focused=True, mouse=(4, 196), extra=[comp(hover("hover me"))]),
+        chat("hover-before-left-edge", [], 5, focused=True, mouse=(3, 196), extra=[comp(hover("hover me"))]),
+        chat("hover-last-glyph", [], 5, focused=True, mouse=(4 + 6 * 8 - 2, 196), extra=[comp(hover("hover me"))]),
+        chat("hover-past-end", [], 5, focused=True, mouse=(4 + 8 * 6 + 1, 196), extra=[comp(hover("hover me"))]),
+        chat("hover-glyph-top", [], 5, focused=True, mouse=(10, 192), extra=[comp(hover("hover me"))]),
+        chat("hover-glyph-bottom", [], 5, focused=True, mouse=(10, 200), extra=[comp(hover("hover me"))]),
+        chat("hover-below-line", [], 5, focused=True, mouse=(10, 201), extra=[comp(hover("hover me"))]),
+        chat("hover-sibling", [], 5, focused=True, mouse=(40, 196),
+             extra=[comp(show("a", extra=[hover("bold", "bold tip", bold=True)]))]),
+        chat("hover-inherited", [], 5, focused=True, mouse=(20, 196),
+             extra=[comp(hover("parent ", "parent tip", extra=[show("child")]))]),
+        chat("hover-on-child-only", [], 5, focused=True, mouse=(10, 196),
+             extra=[comp(show("plain ", extra=[hover("child", "child tip")]))]),
+        chat("hover-italic", [], 5, focused=True, mouse=(12, 196), extra=[comp(hover("slanted", italic=True))]),
+        chat("hover-bold-edge", [], 5, focused=True, mouse=(11, 196), extra=[comp(hover("bold", bold=True))]),
+        chat("hover-coloured-tip", [], 5, focused=True, mouse=(10, 196),
+             extra=[comp(hover("hover me", {"text": "red tip", "color": "red"}))]),
+        chat("hover-long-tip", [], 5, focused=True, mouse=(10, 196),
+             extra=[comp(hover("hover me", long_text * 2))]),
+        chat("hover-newline-tip", [], 5, focused=True, mouse=(10, 196),
+             extra=[comp(hover("hover me", "first\nsecond\nthird"))]),
+        chat("hover-two-lines-upper", [], 5, focused=True, mouse=(10, 187),
+             extra=[comp(hover("upper", "upper tip"), 0), comp(hover("lower", "lower tip"), 1)]),
+        chat("hover-two-lines-lower", [], 5, focused=True, mouse=(10, 196),
+             extra=[comp(hover("upper", "upper tip"), 0), comp(hover("lower", "lower tip"), 1)]),
+        chat("hover-wrapped-second-line", [], 5, focused=True, mouse=(10, 196),
+             extra=[comp(hover(long_text, "wrapped tip"))]),
+        chat("hover-wrapped-first-line", [], 5, focused=True, mouse=(10, 178),
+             extra=[comp(hover(long_text, "wrapped tip"))]),
+        chat("hover-with-tag-text", [], 5, focused=True, mouse=(10, 196),
+             extra=[comp(hover("tagged"), tag="system")]),
+        chat("hover-with-tag-bar", [], 5, focused=True, mouse=(0, 196),
+             extra=[comp(hover("tagged"), tag="system")]),
+        chat("hover-scaled", [], 5, focused=True, mouse=(5, 198), options=opt(scale=0.5),
+             extra=[comp(hover("hover me"))]),
+        chat("hover-scaled-miss", [], 5, focused=True, mouse=(5, 150), options=opt(scale=0.5),
+             extra=[comp(hover("hover me"))]),
+        chat("hover-spaced", [], 5, focused=True, mouse=(10, 196), options=opt(line_spacing=0.5),
+             extra=[comp(hover("hover me"))]),
+        chat("hover-tall-window", [], 5, focused=True, width=640, height=480, mouse=(10, 436),
+             extra=[comp(hover("hover me"))]),
+        chat("hover-narrow-window", [], 5, focused=True, width=200, height=150, mouse=(10, 106),
+             extra=[comp(hover("hover me", long_text))]),
+        chat("hover-space-glyph", [], 5, focused=True, mouse=(4 + 5 * 6 + 1, 196),
+             extra=[comp(hover("hello world"))]),
+        chat("hover-entity-no-tip", [], 5, focused=True, mouse=(10, 196),
+             extra=[comp(show("entity", hover_event={"action": "show_entity", "id": "minecraft:pig",
+                                                   "uuid": [1, 2, 3, 4]}))]),
+        chat("click-only-no-tip", [], 5, focused=True, mouse=(10, 196),
+             extra=[comp(show("link", click_event={"action": "open_url", "url": "https://example.com"}))]),
+        chat("hover-last-wins", [], 5, focused=True, mouse=(10, 196),
+             extra=[comp(hover("ab", "first", extra=[hover("", "second")]))]),
+        chat("hover-no-mouse-rows-draw", [], 5, focused=True, mouse=(10, 196),
+             extra=[comp(hover("hover me")), {"text": "x", "tick": 1}]),
     ]
     # A language change words the translatable messages again, and wraps them.
     warning = {"key": "options.languageAccuracyWarning"}

@@ -13,7 +13,7 @@ Arayüzün yerleşimi ve davranışı, Java'nın **kendi GUI kodunun** başsız 
 
 | operation | Java tarafı | Senaryolar |
 | --- | --- | --- |
-| `chat` | `ChatComponent.extractRenderState` | sarma, `\n`, solma, açık sohbet, kaydırma çubuğu; sohbet ayarları (ölçek, genişlik, opaklık, arka plan opaklığı, satır aralığı, yükseklikler, ayar sonrası yeniden sarma) ve ölçekli çizim (kesirli konumlar) |
+| `chat` | `ChatComponent.extractRenderState` | sarma, `\n`, solma, açık sohbet, kaydırma çubuğu; sohbet ayarları (ölçek, genişlik, opaklık, arka plan opaklığı, satır aralığı, yükseklikler, ayar sonrası yeniden sarma) ve ölçekli çizim (kesirli konumlar); fare üstündeki `show_text` hover ipucu (glif etkin alanları, ertelenmiş ipucu), tam stile göre run ayrımı |
 | `suggestions` | `CommandSuggestions` + `EditBox` | seçili ilk öğe, hayalet sonek, Tab/Shift+Tab/ok/Esc, sıralama, 10 satırlık pencere |
 | `titles` | `Hud.extractTitle/extractOverlayMessage` | alfa eğrisi, ölçek, süre, eylem çubuğu |
 | `boss_bar` | `BossHealthOverlay.extractRenderState` | renk, çentik, ilerleme genişliği, çubuk sayısı sınırı |

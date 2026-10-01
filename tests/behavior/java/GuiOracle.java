@@ -108,6 +108,28 @@ public final class GuiOracle {
             @Override
             public BakedGlyph getGlyph(int codepoint) {
                 float advance = advance(fontId, codepoint);
+                // A bitmap glyph has the box its provider gives it, as the game bakes it;
+                // a glyph of only an advance has none.
+                for (var provider : FONTS.get(fontId)) {
+                    var glyph = provider.getGlyph(codepoint);
+                    if (glyph == null) {
+                        continue;
+                    }
+                    if (glyph.getClass().getName().endsWith("BitmapProvider$Glyph")) {
+                        try {
+                            float scale = ((Number) get(glyph, "scale")).floatValue();
+                            int width = ((Number) get(glyph, "width")).intValue();
+                            int height = ((Number) get(glyph, "height")).intValue();
+                            int ascent = ((Number) get(glyph, "ascent")).intValue();
+                            float up = 7.0F - ascent;
+                            return new net.minecraft.client.gui.font.glyphs.BakedSheetGlyph(glyph.info(), null, null,
+                                0.0F, 0.0F, 0.0F, 0.0F, 0.0F, width * scale, up, up + height * scale);
+                        } catch (Exception error) {
+                            throw new IllegalStateException(error);
+                        }
+                    }
+                    break;
+                }
                 return new BakedGlyph() {
                     @Override
                     public GlyphInfo info() {
@@ -117,7 +139,7 @@ public final class GuiOracle {
                     @Override
                     public TextRenderable.Styled createGlyph(float x, float y, int color, int shadowColor,
                             Style style, float boldOffset, float shadowOffset) {
-                        return new Box(x, y, x + advance, y + 8, style);
+                        return null;
                     }
                 };
             }
@@ -535,7 +557,9 @@ public final class GuiOracle {
         var rows = new JsonArray();
         for (var element : request.getAsJsonArray("rows")) {
             var row = element.getAsJsonObject();
-            var screen = screen(row.get("width").getAsInt(), row.get("height").getAsInt(), 0, 0);
+            int chatMouseX = row.has("mouse") ? row.get("mouse").getAsJsonArray().get(0).getAsInt() : 0;
+            int chatMouseY = row.has("mouse") ? row.get("mouse").getAsJsonArray().get(1).getAsInt() : 0;
+            var screen = screen(row.get("width").getAsInt(), row.get("height").getAsInt(), chatMouseX, chatMouseY);
             var chat = new net.minecraft.client.gui.components.ChatComponent(screen.minecraft());
             if (row.has("options")) {
                 chatOptions(screen.minecraft().options, row.getAsJsonObject("options"));
@@ -567,6 +591,10 @@ public final class GuiOracle {
                 var tag = event.has("tag") ? tag(event.get("tag").getAsString()) : null;
                 var sig = event.has("signature") ? signature(event.get("signature").getAsInt()) : null;
                 var text = event.has("key") ? Component.translatable(event.get("key").getAsString())
+                    : event.has("json") ? net.minecraft.network.chat.ComponentSerialization.CODEC
+                        .parse(com.mojang.serialization.JsonOps.INSTANCE,
+                            com.google.gson.JsonParser.parseString(event.get("json").getAsString()))
+                        .getOrThrow()
                     : Component.literal(event.get("text").getAsString());
                 if (tag == null && sig == null) {
                     chat.addServerSystemMessage(text);
@@ -597,9 +625,10 @@ public final class GuiOracle {
             if (row.has("scroll")) {
                 chat.scrollChat(row.get("scroll").getAsInt());
             }
-            chat.extractRenderState(screen.graphics(), font, row.get("tick").getAsInt(), 0, 0,
+            chat.extractRenderState(screen.graphics(), font, row.get("tick").getAsInt(), chatMouseX, chatMouseY,
                 focused ? net.minecraft.client.gui.components.ChatComponent.DisplayMode.FOREGROUND
                     : net.minecraft.client.gui.components.ChatComponent.DisplayMode.BACKGROUND, false);
+            screen.graphics().extractDeferredElements(chatMouseX, chatMouseY, 0.0F);
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());
             out.add("ops", record(screen.state()));

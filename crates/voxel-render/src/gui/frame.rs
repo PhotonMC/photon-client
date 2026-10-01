@@ -57,9 +57,9 @@ pub enum DrawOp {
         scale: f32,
         colour: u32,
         shadow: bool,
-        /// How wide the text is, which decides whether a scissor leaves any
-        /// of it.
-        width: i32,
+        /// The box its glyphs fill, which decides whether a scissor leaves
+        /// any of it.
+        bounds: (i32, i32, i32, i32),
         /// Each run: its text, its colour if it has one, bold, italic.
         runs: Vec<(String, Option<u32>, bool, bool)>,
     },
@@ -392,7 +392,12 @@ impl GuiFrame {
                     DrawOp::Fill { rect, .. }
                     | DrawOp::Sprite { rect, .. }
                     | DrawOp::Texture { rect, .. } => *rect,
-                    DrawOp::Text { x, y, width, .. } => (*x, *y, *x + *width as f32, *y + 8.0),
+                    DrawOp::Text { bounds, .. } => (
+                        bounds.0 as f32,
+                        bounds.1 as f32,
+                        bounds.2 as f32,
+                        bounds.3 as f32,
+                    ),
                 };
                 x0 < right as f32 && x1 > left as f32 && y0 < bottom as f32 && y1 > top as f32
             });
@@ -793,22 +798,22 @@ impl GuiFrame {
         runs: &[voxel_game::text::Run],
         colour: u32,
         shadow: bool,
-        width: i32,
+        bounds: Option<(i32, i32, i32, i32)>,
     ) {
         let Some(log) = &mut self.log else {
             return;
         };
-        // The reference draws no call for an empty string.
-        if runs.iter().all(|run| run.text.is_empty()) {
+        // The reference draws no call for text with no glyph to draw.
+        let Some(bounds) = bounds else {
             return;
-        }
+        };
         log.push(DrawOp::Text {
             x: x as f32,
             y: y as f32,
             scale: 1.0,
             colour,
             shadow,
-            width,
+            bounds,
             runs: merged_runs(runs),
         });
     }
@@ -835,7 +840,7 @@ impl GuiFrame {
             runs,
             default_colour,
             shadow,
-            font.width_of_runs(runs),
+            crate::gui::text_hit::bounds(font, runs, (x, y), shadow),
         );
         let unpack =
             |colour: u32| [16, 8, 0, 24].map(|shift| ((colour >> shift) & 0xFF) as f32 / 255.0);
@@ -1003,16 +1008,18 @@ pub type ItemDrawer<'a> = dyn FnMut(&voxel_world::ClientItemStackState, f32, f32
 /// one style are one stretch.
 fn merged_runs(runs: &[voxel_game::text::Run]) -> Vec<(String, Option<u32>, bool, bool)> {
     let mut merged: Vec<(String, Option<u32>, bool, bool)> = Vec::new();
+    let mut last: Option<&voxel_game::text::Style> = None;
     for run in runs {
-        let style = (
-            run.style.colour,
-            run.style.bold == Some(true),
-            run.style.italic == Some(true),
-        );
         match merged.last_mut() {
-            Some(last) if (last.1, last.2, last.3) == style => last.0.push_str(&run.text),
-            _ => merged.push((run.text.clone(), style.0, style.1, style.2)),
+            Some(previous) if last == Some(&run.style) => previous.0.push_str(&run.text),
+            _ => merged.push((
+                run.text.clone(),
+                run.style.colour,
+                run.style.bold == Some(true),
+                run.style.italic == Some(true),
+            )),
         }
+        last = Some(&run.style);
     }
     merged
 }

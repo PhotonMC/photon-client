@@ -10,7 +10,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use voxel_game::commands::{CommandTree, SuggestContext, format_text, usage_lines};
-use voxel_game::text::{Component, Lang, Run, Style};
+use voxel_game::text::{Component, HoverEvent, Lang, Run, Style};
 
 use crate::gui::GuiAtlas;
 use crate::gui::GuiFrame;
@@ -470,18 +470,10 @@ impl ChatLog {
         frame: &mut GuiFrame,
         atlas: &GuiAtlas,
         font: &Font,
-        gui_height: i32,
+        gui: (i32, i32),
         focused: bool,
     ) {
-        self.draw_with(
-            frame,
-            atlas,
-            font,
-            gui_height,
-            focused,
-            None,
-            &Lang::default(),
-        );
+        self.draw_with(frame, atlas, font, gui, focused, None, &Lang::default());
     }
 
     /// [`Self::draw`] with the mouse, for the tooltip of a tag it is over.
@@ -496,7 +488,7 @@ impl ChatLog {
         frame: &mut GuiFrame,
         atlas: &GuiAtlas,
         font: &Font,
-        gui_height: i32,
+        (gui_width, gui_height): (i32, i32),
         focused: bool,
         mouse: Option<(i32, i32)>,
         lang: &Lang,
@@ -560,6 +552,9 @@ impl ChatLog {
             })
         };
         let mut tooltip = None;
+        // The style with a hover event that the mouse is over, the last one
+        // drawn (`hoveredTextStyle`).
+        let mut hovered: Option<&Style> = None;
         for &(i, alpha) in &visible {
             let entry_bottom = chat_bottom - i as i32 * entry_height;
             let entry_top = entry_bottom - entry_height;
@@ -568,6 +563,14 @@ impl ChatLog {
             let text = ((opacity * 255.0) as u32) << 24 | 0x00FF_FFFF;
             let line = &self.lines[i + self.scroll];
             frame.styled_text(atlas, font, &line.runs, 0, text_top, text, true);
+            if let Some(point) = local
+                && focused
+                && let Some(style) =
+                    crate::gui::text_hit::style_under(font, &line.runs, (0, text_top), point)
+                && style.hover.is_some()
+            {
+                hovered = Some(style);
+            }
             let Some(tag) = &line.tag else {
                 continue;
             };
@@ -595,7 +598,10 @@ impl ChatLog {
             focused,
         );
         frame.scale_from(first, scale, (4.0 * scale, 0.0));
-        tooltip.map(|runs| split(&runs, 210, font))
+        let tag_tooltip = tooltip.map(|runs| split(&runs, 210, font));
+        // `componentHoverEffect`: a tag's tooltip comes first, then a hover
+        // event's text, split to half the screen (at least 200).
+        tag_tooltip.or_else(|| hover_lines(hovered, lang, font, gui_width))
     }
 
     /// The scroll bar of a chat that is open (`extractRenderState`'s last
@@ -636,6 +642,24 @@ impl ChatLog {
             (start_x + 2, -y, start_x + 1, -y - height),
             alpha << 24 | 13_421_772,
         );
+    }
+}
+
+/// `componentHoverEffect` for a hover event's text: split to half the screen
+/// (at least 200).
+fn hover_lines(
+    style: Option<&Style>,
+    lang: &Lang,
+    font: &Font,
+    gui_width: i32,
+) -> Option<Vec<Vec<Run>>> {
+    match style?.hover.as_deref()? {
+        HoverEvent::ShowText(text) => Some(split(
+            &lang.runs(text, &Style::default()),
+            (gui_width / 2).max(200),
+            font,
+        )),
+        _ => None,
     }
 }
 

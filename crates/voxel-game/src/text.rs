@@ -4,8 +4,9 @@
 //! with arguments) under a style, followed by siblings that inherit the
 //! style. It comes as the data JSON writes it or as the tag the network
 //! carries; the language turns it into runs of text, each with the style it
-//! ends up in. Not read: keybinds, scores, selectors, NBT contents, click
-//! and hover events, fonts and the shadow colour.
+//! ends up in. Not read: keybinds, scores, selectors, NBT contents, the
+//! dialog click event, an item's components in a hover, fonts and the
+//! shadow colour.
 
 use std::collections::HashMap;
 
@@ -37,7 +38,7 @@ pub fn named_colour(name: &str) -> Option<u32> {
 
 /// `Style`, as far as the text is drawn by it. A field left unset takes
 /// what the parent has.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct Style {
     /// `0xRRGGBB`.
     pub colour: Option<u32>,
@@ -46,6 +47,42 @@ pub struct Style {
     pub underlined: Option<bool>,
     pub strikethrough: Option<bool>,
     pub obfuscated: Option<bool>,
+    /// What a click on the text does (`clickEvent`).
+    pub click: Option<Box<ClickEvent>>,
+    /// What the mouse over the text shows (`hoverEvent`).
+    pub hover: Option<Box<HoverEvent>>,
+    /// What a Shift click on the text types into the chat box.
+    pub insertion: Option<Box<str>>,
+}
+
+/// `ClickEvent`, as far as the client acts on it. The dialog action, which
+/// needs the registry of dialogs, is not read.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ClickEvent {
+    OpenUrl(String),
+    OpenFile(String),
+    RunCommand(String),
+    SuggestCommand(String),
+    ChangePage(i32),
+    CopyToClipboard(String),
+    /// `custom`: the identifier, for the server's own handling.
+    Custom(String),
+}
+
+/// `HoverEvent`.
+#[derive(Debug, Clone, PartialEq)]
+pub enum HoverEvent {
+    ShowText(Box<Component>),
+    /// An item by its identifier and count; its components are not read.
+    ShowItem {
+        id: String,
+        count: i32,
+    },
+    ShowEntity {
+        id: String,
+        uuid: String,
+        name: Option<Box<Component>>,
+    },
 }
 
 impl Style {
@@ -87,6 +124,18 @@ impl Style {
             underlined: flag("underlined"),
             strikethrough: flag("strikethrough"),
             obfuscated: flag("obfuscated"),
+            click: match get("click_event") {
+                Some(FieldValue::Compound(event)) => click_from_nbt(event).map(Box::new),
+                _ => None,
+            },
+            hover: match get("hover_event") {
+                Some(FieldValue::Compound(event)) => hover_from_nbt(event).map(Box::new),
+                _ => None,
+            },
+            insertion: match get("insertion") {
+                Some(FieldValue::Str(text)) => Some(text.as_str().into()),
+                _ => None,
+            },
         }
     }
 
@@ -99,6 +148,9 @@ impl Style {
             underlined: self.underlined.or(parent.underlined),
             strikethrough: self.strikethrough.or(parent.strikethrough),
             obfuscated: self.obfuscated.or(parent.obfuscated),
+            click: self.click.clone().or_else(|| parent.click.clone()),
+            hover: self.hover.clone().or_else(|| parent.hover.clone()),
+            insertion: self.insertion.clone().or_else(|| parent.insertion.clone()),
         }
     }
 }
@@ -223,6 +275,15 @@ impl Component {
                 underlined: flag("underlined"),
                 strikethrough: flag("strikethrough"),
                 obfuscated: flag("obfuscated"),
+                click: object
+                    .object("click_event")
+                    .and_then(click_from_json)
+                    .map(Box::new),
+                hover: object
+                    .object("hover_event")
+                    .and_then(hover_from_json)
+                    .map(Box::new),
+                insertion: object.text("insertion").map(String::into_boxed_str),
             },
             siblings: object
                 .array("extra")
@@ -293,6 +354,127 @@ impl Component {
             _ => None,
         }
     }
+}
+
+/// `ClickEvent.CODEC` from JSON: by its `action`.
+fn click_from_json(event: &JsonObject) -> Option<ClickEvent> {
+    Some(match event.text("action")?.as_str() {
+        "open_url" => ClickEvent::OpenUrl(event.text("url")?),
+        "open_file" => ClickEvent::OpenFile(event.text("path")?),
+        "run_command" => ClickEvent::RunCommand(event.text("command")?),
+        "suggest_command" => ClickEvent::SuggestCommand(event.text("command")?),
+        "change_page" => ClickEvent::ChangePage(event.i32("page").filter(|page| *page > 0)?),
+        "copy_to_clipboard" => ClickEvent::CopyToClipboard(event.text("value")?),
+        "custom" => ClickEvent::Custom(event.text("id")?),
+        _ => return None,
+    })
+}
+
+/// `HoverEvent.CODEC` from JSON.
+fn hover_from_json(event: &JsonObject) -> Option<HoverEvent> {
+    Some(match event.text("action")?.as_str() {
+        "show_text" => {
+            HoverEvent::ShowText(Box::new(Component::from_json(event.get_str("value")?)?))
+        }
+        "show_item" => HoverEvent::ShowItem {
+            id: event.text("id")?,
+            count: event.i32("count").unwrap_or(1),
+        },
+        "show_entity" => HoverEvent::ShowEntity {
+            id: event.text("id")?,
+            uuid: match event.get_str("uuid")? {
+                JsonValue::String(units) => String::from_utf16_lossy(units),
+                JsonValue::Array(parts) => uuid_text(
+                    &parts
+                        .iter()
+                        .filter_map(|part| part.as_i32())
+                        .collect::<Vec<_>>(),
+                )?,
+                _ => return None,
+            },
+            name: event
+                .get_str("name")
+                .and_then(Component::from_json)
+                .map(Box::new),
+        },
+        _ => return None,
+    })
+}
+
+/// A UUID of four integers, as text.
+fn uuid_text(parts: &[i32]) -> Option<String> {
+    let [a, b, c, d] = parts else {
+        return None;
+    };
+    let (a, b, c, d) = (*a as u32, *b as u32, *c as u32, *d as u32);
+    Some(format!(
+        "{a:08x}-{:04x}-{:04x}-{:04x}-{:04x}{d:08x}",
+        b >> 16,
+        b & 0xFFFF,
+        c >> 16,
+        c & 0xFFFF
+    ))
+}
+
+/// `ClickEvent.CODEC` from the tag.
+fn click_from_nbt(event: &[voxel_core::nbt::Field]) -> Option<ClickEvent> {
+    let get = |key: &str| {
+        event
+            .iter()
+            .find(|field| field.key == key)
+            .map(|f| &f.value)
+    };
+    let text = |key: &str| match get(key) {
+        Some(FieldValue::Str(text)) => Some(text.clone()),
+        _ => None,
+    };
+    Some(match text("action")?.as_str() {
+        "open_url" => ClickEvent::OpenUrl(text("url")?),
+        "open_file" => ClickEvent::OpenFile(text("path")?),
+        "run_command" => ClickEvent::RunCommand(text("command")?),
+        "suggest_command" => ClickEvent::SuggestCommand(text("command")?),
+        "change_page" => match get("page")? {
+            FieldValue::Int(page) if *page > 0 => ClickEvent::ChangePage(*page),
+            _ => return None,
+        },
+        "copy_to_clipboard" => ClickEvent::CopyToClipboard(text("value")?),
+        "custom" => ClickEvent::Custom(text("id")?),
+        _ => return None,
+    })
+}
+
+/// `HoverEvent.CODEC` from the tag.
+fn hover_from_nbt(event: &[voxel_core::nbt::Field]) -> Option<HoverEvent> {
+    let get = |key: &str| {
+        event
+            .iter()
+            .find(|field| field.key == key)
+            .map(|f| &f.value)
+    };
+    let text = |key: &str| match get(key) {
+        Some(FieldValue::Str(text)) => Some(text.clone()),
+        _ => None,
+    };
+    Some(match text("action")?.as_str() {
+        "show_text" => HoverEvent::ShowText(Box::new(Component::from_nbt(get("value")?)?)),
+        "show_item" => HoverEvent::ShowItem {
+            id: text("id")?,
+            count: match get("count") {
+                Some(FieldValue::Int(count)) => *count,
+                _ => 1,
+            },
+        },
+        "show_entity" => HoverEvent::ShowEntity {
+            id: text("id")?,
+            uuid: match get("uuid")? {
+                FieldValue::IntArray(parts) => uuid_text(parts)?,
+                FieldValue::Str(text) => text.clone(),
+                _ => return None,
+            },
+            name: get("name").and_then(Component::from_nbt).map(Box::new),
+        },
+        _ => return None,
+    })
 }
 
 /// A colour by name or as `#RRGGBB`.
@@ -391,7 +573,7 @@ fn flat_strings(text: &str) -> Option<Vec<(String, String)>> {
 }
 
 /// A stretch of text in one style.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Run {
     pub text: String,
     pub style: Style,
@@ -557,6 +739,50 @@ impl Lang {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn component(json: &str) -> Component {
+        Component::from_json(&voxel_core::json::parse(json).expect("json")).expect("component")
+    }
+
+    #[test]
+    fn click_and_hover_events_are_read_and_inherited() {
+        let parent = component(
+            r#"{"text":"a","click_event":{"action":"run_command","command":"/say hi"},
+                "hover_event":{"action":"show_text","value":"tip"},"insertion":"ins",
+                "extra":[{"text":"b"}]}"#,
+        );
+        assert_eq!(
+            parent.style.click.as_deref(),
+            Some(&ClickEvent::RunCommand("/say hi".to_owned()))
+        );
+        assert_eq!(parent.style.insertion.as_deref(), Some("ins"));
+        let Some(HoverEvent::ShowText(tip)) = parent.style.hover.as_deref() else {
+            panic!("a text hover");
+        };
+        assert_eq!(**tip, Component::literal("tip"));
+        // The sibling takes the parent's events.
+        let runs = Lang::default().runs(&parent, &Style::default());
+        assert_eq!(runs.len(), 2);
+        assert!(runs.iter().all(|run| run.style.click == parent.style.click));
+        // An action that is not known is no event, and the rest is kept.
+        let odd = component(r#"{"text":"x","click_event":{"action":"nope"},"bold":true}"#);
+        assert_eq!((odd.style.click, odd.style.bold), (None, Some(true)));
+        // A change of page needs a positive page.
+        let page = component(r#"{"text":"x","click_event":{"action":"change_page","page":0}}"#);
+        assert_eq!(page.style.click, None);
+    }
+
+    #[test]
+    fn a_hovered_entity_has_its_uuid_written_out() {
+        let entity = component(
+            r#"{"text":"x","hover_event":{"action":"show_entity","id":"minecraft:pig",
+                "uuid":[1,2,3,4]}}"#,
+        );
+        let Some(HoverEvent::ShowEntity { uuid, .. }) = entity.style.hover.as_deref() else {
+            panic!("an entity hover");
+        };
+        assert_eq!(uuid, "00000001-0000-0002-0000-000300000004");
+    }
 
     fn lang() -> Lang {
         Lang::new([

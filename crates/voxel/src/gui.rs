@@ -471,7 +471,7 @@ impl Gui {
             &mut frame,
             &self.atlas,
             &self.font,
-            size.gui_scaled_height(),
+            (size.gui_scaled_width(), size.gui_scaled_height()),
             focused,
             focused.then_some((controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32)),
             &self.lang,

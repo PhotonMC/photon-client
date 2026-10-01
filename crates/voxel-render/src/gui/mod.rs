@@ -28,6 +28,7 @@ pub mod sidebar;
 pub mod slider;
 pub mod suggestions;
 pub mod tab_list;
+pub mod text_hit;
 pub mod titles;
 pub mod tooltip;
 pub mod video;

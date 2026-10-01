@@ -26,4 +26,6 @@ Tıklama sonucu (T13), `show_item` bileşenli ipucu zenginleştirmesi.
 `docs/gui-oracle.md`; `docs/remaining-work.md` "tıklama/üzerine gelme olayları" satırı.
 
 ## Devir notu
-(boş)
+- `voxel-game/src/text.rs`: `Style.click/hover/insertion`, `ClickEvent`, `HoverEvent` (JSON ve NBT; `Eq` kalktı); bilinmeyen eylem olayı `None` yapar (Java bileşeni hiç ayrıştırmaz — sapma, oracle'da yok), `show_dialog` okunmaz, `show_item` bileşensiz. `gui/text_hit.rs`: `style_under` (glif etkin alanları: `BakedSheetGlyph.left/top/activeRight/bottom`, boşluk `EmptyArea`) ve `bounds` (`PreparedText.bounds`; kırpmayla elenen çizim artık gerçek kutuya göre). Sohbet `draw_with` fare üstündeki `show_text` ipucunu döndürür (etiket ipucu önce, genişlik max(ekran/2, 200)); `show_item` ipucu çizilmez, `show_entity` yalnız ileri ipuçlarında (kapalı).
+- Oracle: `chat` satırlarına `mouse` + `json` (gerçek `ComponentSerialization.CODEC`) + ertelenmiş ipucu; yazı tipi sahtesi artık gerçek `BakedSheetGlyph` kutuları veriyor (bitmap), boşluk `EmptyGlyph` gibi (+36 hover satırı). `merged_runs` tam stile göre birleştirir (Java gibi).
+- Açık: `show_item` ipucu, tıklama sonucu (T13), canlıda hover. Canlı denenmedi.
