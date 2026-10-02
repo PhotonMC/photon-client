@@ -66,7 +66,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T27](T27-hasar-olum-geri-bildirimi.md) | Mob hasar kırmızısı ve ölüm yatışı (`EntityEvent`/`HurtAnimation`/`DamageEvent`, `hurtTime`/`deathTime`); kaçış süresi gözlemi | M | T26, T24 | bitti (1985d1ae) |
 | [T28](T28-insansi-zombi.md) | Zombi ailesi (`HumanoidModel` + zombi kolları) | L | T24, T27 | bitti (33ec5128) |
 | [T29](T29-iskelet-piglin.md) | İskelet ve piglin aileleri (yay/arbalet/kılıç pozları) | M | T28 | bitti (05d7dc65) |
-| [T30](T30-ciftlik-hayvanlari-2.md) | Çiftlik hayvanları 2: koyun, mantar ineği, tavuk, keçi, tavşan | M | T24 | bölündü |
+| [T30](T30-ciftlik-hayvanlari-2.md) | Çiftlik hayvanları 2: koyun, mantar ineği, tavuk, keçi, tavşan | M | T24 | bölündü (b56f4b9c) |
 | [T30b](T30b-keci-tavsan-mantar-inegi.md) | Keçi, tavşan, mantar ineği | M | T30 | açık |
 | [T31](T31-at-deve-ailesi.md) | At, eşek, katır, deve ve lama aileleri | L | T24 | açık |
 | [T32](T32-evcil-yirtici-dortayak.md) | Evcil ve yırtıcı dört ayaklılar: kurt, kedi, vaşak, tilki, panda, kutup ayısı, hoglin, ravager, strider | L | T24 | açık |
