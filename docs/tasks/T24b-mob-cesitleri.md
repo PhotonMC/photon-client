@@ -25,4 +25,7 @@ Diğer mob'lar (PLAN-M4), eyer katmanı.
 `docs/remaining-work.md` M4.
 
 ## Devir notu
-(boş)
+- Yapıldı: `skip_metadata_value` 43 serileştiricinin hepsini yürür (parçacık verisi, `RESOLVABLE_PROFILE`, gömülü resim hariç); `item_components` voxel-game'den voxel-world'e taşındı (voxel-game yeniden dışa aktarır; metadata içindeki eşya yığınını atlamak için); `ClientEntity.variant` (`LivingState`'te), `PIG/COW_VARIANT_DATA_ID` (19/18, oracle'la düzeltildi); `mobs.rs` çeşidi kayıt adından çözüp model katmanı ve doku seçer (`cold_pig`, `warm_cow`… ve bebekleri). Kayıt: `docs/client-entity-metadata-variants-parity-conformance.md`.
+- Oracle: `entity/data-serializers` (43 ad), `entity/variants` (6), `entity/variant-fields`; tablolar `tools/generate/entity_{serializers,variants}.py` ile. Canlı: soğuk/sıcak domuz ve inek, bebekler ayırt edilir çiziliyor.
+- Sapma: bayt biçimleri kodek kaynağından + birim testle (oracle bayt taşıyamaz); diğer çeşitli mob'lar PLAN-M4.
+- Açık: yok.

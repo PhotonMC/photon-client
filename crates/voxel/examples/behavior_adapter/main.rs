@@ -18898,6 +18898,40 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "quadruped_model" => return quadruped_model_result(request),
         "item_entity_pose" => return item_entity_pose_result(request),
         "living_pose" => return living_pose_result(request),
+        "entity_variants" => {
+            let rows: Vec<Value> = ["cow", "pig"]
+                .iter()
+                .flat_map(|kind| voxel_data::entity_type::variants(kind))
+                .map(|variant| {
+                    json!({
+                        "label": format!("{}:{}", variant.kind, variant.name),
+                        "kind": variant.kind,
+                        "name": variant.name,
+                        "asset": variant.asset,
+                        "baby_asset": variant.baby_asset,
+                        "model": variant.model,
+                    })
+                })
+                .collect();
+            return Ok(json!({"rows": rows}));
+        }
+        "entity_variant_fields" => {
+            use voxel_world::{
+                COW_VARIANT_DATA_ID, COW_VARIANT_SERIALIZER_ID, PIG_VARIANT_DATA_ID,
+                PIG_VARIANT_SERIALIZER_ID,
+            };
+            return Ok(json!({"rows": [
+                {"label": "pig", "data_id": PIG_VARIANT_DATA_ID, "serializer": PIG_VARIANT_SERIALIZER_ID},
+                {"label": "cow", "data_id": COW_VARIANT_DATA_ID, "serializer": COW_VARIANT_SERIALIZER_ID},
+            ]}));
+        }
+        "entity_data_serializers" => {
+            let rows: Vec<Value> = (0..)
+                .map_while(|id| voxel_data::entity_type::data_serializer(id).map(|name| (id, name)))
+                .map(|(id, name)| json!({"label": name, "id": id}))
+                .collect();
+            return Ok(json!({"rows": rows}));
+        }
         "entity_types" => {
             let rows: Vec<Value> = (0..)
                 .map_while(|id| voxel_data::entity_type::name(id).map(|name| (id, name)))

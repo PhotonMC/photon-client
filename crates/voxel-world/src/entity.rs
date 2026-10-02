@@ -150,11 +150,14 @@ impl Tracking {
     }
 }
 
-/// `LivingEntity.hurtTime` and `deathTime`.
+/// What a living entity's tick and look keep besides its pose:
+/// `LivingEntity.hurtTime` and `deathTime`, and the registry id of the
+/// variant a pig or a cow wears, once the server has told it.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub(crate) struct HurtState {
+pub(crate) struct LivingState {
     pub(crate) hurt_time: i32,
     pub(crate) death_time: i32,
+    pub(crate) variant: Option<i32>,
 }
 
 /// Entity dimensions used to derive Java's feet-origin bounding box.
@@ -519,7 +522,7 @@ pub struct ClientEntity {
     pub(crate) mob_flags: u8,
     pub(crate) air_supply: i32,
     pub(crate) health_bits: Option<u32>,
-    pub(crate) hurt: HurtState,
+    pub(crate) living: LivingState,
     pub(crate) arrow_count: i32,
     pub(crate) stinger_count: i32,
     pub(crate) effect_ambience: bool,
@@ -1542,23 +1545,29 @@ impl ClientEntity {
         self.health().is_some_and(|health| health <= 0.0)
     }
 
+    /// The registry id of the variant (`PigVariant`, `CowVariant`) the server
+    /// set, or none while it wears the default.
+    pub fn variant(&self) -> Option<i32> {
+        self.living.variant
+    }
+
     pub fn hurt_time(&self) -> i32 {
-        self.hurt.hurt_time
+        self.living.hurt_time
     }
 
     pub fn death_time(&self) -> i32 {
-        self.hurt.death_time
+        self.living.death_time
     }
 
     /// `LivingEntity.baseTick`'s share: `hurtTime` counts down, and a dying
     /// entity's `deathTime` up (`tickDeath`; the server removes it later) while
     /// the level says deaths tick here (`shouldTickDeath`).
     pub(crate) fn tick_hurt_and_death(&mut self, tick_death: bool) {
-        if self.hurt.hurt_time > 0 {
-            self.hurt.hurt_time -= 1;
+        if self.living.hurt_time > 0 {
+            self.living.hurt_time -= 1;
         }
         if self.is_dead_or_dying() && tick_death {
-            self.hurt.death_time += 1;
+            self.living.death_time += 1;
         }
     }
 

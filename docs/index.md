@@ -96,6 +96,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P05.a — OptionInstance ClampingLazyMaxIntRange sözleşmesi — client-parity birleşik kayıt](clamping-lazy-max-int-range-conformance.md)
 - [T26 — Entity hedefleme, `Attack`/`Interact`/`SpectatorAction` — client-parity](client-entity-aim-parity-conformance.md)
 - [T27 — Canlı entity vuruş ve ölüm geri bildirimi (`hurtTime`, `deathTime`, kırmızı örtü, yatış) — client-parity](client-entity-hurt-death-parity-conformance.md)
+- [T24b — Entity metadata serileştiricileri ve pig/cow çeşitleri — client-parity](client-entity-metadata-variants-parity-conformance.md)
 - [P08.c-light.2 — İstemci ışık motoru ve yeniden aydınlatma — client-parity kaydı](client-light-engine-conformance.md)
 - [T26b — Orta tık seçimi (`PickItemFrom*`) ve bakılan varlık önerisi — client-parity](client-pick-item-suggestion-parity-conformance.md)
 - [P10.b — LocalPlayer applyInput — client-parity birleşik kayıt](client-player-apply-input-conformance.md)

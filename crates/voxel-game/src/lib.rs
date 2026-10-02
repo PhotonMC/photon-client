@@ -10,7 +10,9 @@ pub mod game_mode;
 pub mod hotbar;
 pub mod input_event;
 pub mod item;
-pub mod item_components;
+pub use voxel_world::item_components;
+#[cfg(test)]
+mod item_component_tests;
 pub mod item_in_hand;
 pub mod item_values;
 pub mod key_mapping;

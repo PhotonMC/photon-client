@@ -20,6 +20,43 @@ pub fn id(name: &str) -> Option<i32> {
         .map(|index| index as i32)
 }
 
+/// A pig or cow variant of the data pack: the textures (`entity/pig/pig_cold`
+/// with its namespace) and the model family it asks for.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct EntityVariant {
+    /// `pig` or `cow`.
+    pub kind: &'static str,
+    pub name: &'static str,
+    pub asset: &'static str,
+    pub baby_asset: &'static str,
+    /// `normal`, `cold` or `warm`.
+    pub model: &'static str,
+}
+
+/// The variant of that kind with this name (`minecraft:cold`).
+pub fn variant(kind: &str, name: &str) -> Option<&'static EntityVariant> {
+    crate::generated::entity_variants::ENTITY_VARIANTS
+        .iter()
+        .find(|variant| variant.kind == kind && variant.name == name)
+}
+
+/// Every variant of a kind.
+pub fn variants(kind: &str) -> impl Iterator<Item = &'static EntityVariant> {
+    let kind = kind.to_owned();
+    crate::generated::entity_variants::ENTITY_VARIANTS
+        .iter()
+        .filter(move |variant| variant.kind == kind)
+}
+
+/// The name of the entity data serializer the wire numbers `id`
+/// (`PIG_VARIANT`).
+pub fn data_serializer(id: i32) -> Option<&'static str> {
+    usize::try_from(id)
+        .ok()
+        .and_then(|index| crate::generated::entity_serializers::ENTITY_DATA_SERIALIZERS.get(index))
+        .copied()
+}
+
 /// What the crosshair needs of an entity type, as a new entity of it answers
 /// (`isPickable`, `getPickRadius`, `canBePickedFromInside`, and its size in
 /// the standing pose with a baby's, each as width, height, eye height).

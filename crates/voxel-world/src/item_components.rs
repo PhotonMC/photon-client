@@ -155,12 +155,12 @@ pub fn delimit(trusted: &[u8]) -> Option<Vec<u8>> {
     input.is_empty().then(|| patch.delimited())
 }
 
-pub(crate) struct Cursor<'a> {
-    pub(crate) data: &'a [u8],
+pub struct Cursor<'a> {
+    pub data: &'a [u8],
 }
 
 impl Cursor<'_> {
-    pub(crate) fn skip(&mut self, count: usize) -> R {
+    pub fn skip(&mut self, count: usize) -> R {
         if self.data.len() < count {
             return Err(Malformed);
         }
@@ -168,61 +168,61 @@ impl Cursor<'_> {
         Ok(())
     }
 
-    pub(crate) fn byte(&mut self) -> R<u8> {
+    pub fn byte(&mut self) -> R<u8> {
         let byte = *self.data.first().ok_or(Malformed)?;
         self.data = &self.data[1..];
         Ok(byte)
     }
 
-    pub(crate) fn boolean(&mut self) -> R<bool> {
+    pub fn boolean(&mut self) -> R<bool> {
         Ok(self.byte()? != 0)
     }
 
-    pub(crate) fn varint(&mut self) -> R<i32> {
+    pub fn varint(&mut self) -> R<i32> {
         voxel_core::wire::read_varint(&mut self.data).map_err(|_| Malformed)
     }
 
     /// A count that a list or a map reads.
-    pub(crate) fn count(&mut self) -> R<usize> {
+    pub fn count(&mut self) -> R<usize> {
         usize::try_from(self.varint()?).map_err(|_| Malformed)
     }
 
-    pub(crate) fn float(&mut self) -> R {
+    pub fn float(&mut self) -> R {
         self.skip(4)
     }
 
-    pub(crate) fn double(&mut self) -> R {
+    pub fn double(&mut self) -> R {
         self.skip(8)
     }
 
-    pub(crate) fn int(&mut self) -> R {
+    pub fn int(&mut self) -> R {
         self.skip(4)
     }
 
-    pub(crate) fn long(&mut self) -> R {
+    pub fn long(&mut self) -> R {
         self.skip(8)
     }
 
-    pub(crate) fn string(&mut self) -> R {
+    pub fn string(&mut self) -> R {
         let length = self.count()?;
         self.skip(length)
     }
 
-    pub(crate) fn identifier(&mut self) -> R {
+    pub fn identifier(&mut self) -> R {
         self.string()
     }
 
-    pub(crate) fn uuid(&mut self) -> R {
+    pub fn uuid(&mut self) -> R {
         self.skip(16)
     }
 
     /// `ByteBufCodecs.optional`.
-    pub(crate) fn optional(&mut self, value: impl FnOnce(&mut Self) -> R) -> R {
+    pub fn optional(&mut self, value: impl FnOnce(&mut Self) -> R) -> R {
         if self.boolean()? { value(self) } else { Ok(()) }
     }
 
     /// `ByteBufCodecs.list`: a count and that many values.
-    pub(crate) fn list(&mut self, mut value: impl FnMut(&mut Self) -> R) -> R {
+    pub fn list(&mut self, mut value: impl FnMut(&mut Self) -> R) -> R {
         for _ in 0..self.count()? {
             value(self)?;
         }
@@ -230,14 +230,14 @@ impl Cursor<'_> {
     }
 
     /// A network tag: its type, then its payload, with no name.
-    pub(crate) fn tag(&mut self) -> R {
+    pub fn tag(&mut self) -> R {
         let kind = self.byte()?;
         self.tag_payload(kind)
     }
 
     /// `ByteBufCodecs.COMPOUND_TAG`: a compound, or a single end byte for
     /// none.
-    pub(crate) fn compound_tag(&mut self) -> R {
+    pub fn compound_tag(&mut self) -> R {
         match self.byte()? {
             0 => Ok(()),
             10 => self.tag_payload(10),
@@ -245,7 +245,7 @@ impl Cursor<'_> {
         }
     }
 
-    pub(crate) fn tag_payload(&mut self, kind: u8) -> R {
+    pub fn tag_payload(&mut self, kind: u8) -> R {
         match kind {
             0 => Ok(()),
             1 => self.skip(1),
@@ -289,20 +289,20 @@ impl Cursor<'_> {
         }
     }
 
-    pub(crate) fn short(&mut self) -> R<usize> {
+    pub fn short(&mut self) -> R<usize> {
         let high = self.byte()?;
         let low = self.byte()?;
         Ok(usize::from(u16::from_be_bytes([high, low])))
     }
 
-    pub(crate) fn tag_length(&mut self) -> R<usize> {
+    pub fn tag_length(&mut self) -> R<usize> {
         let bytes = [self.byte()?, self.byte()?, self.byte()?, self.byte()?];
         usize::try_from(i32::from_be_bytes(bytes)).map_err(|_| Malformed)
     }
 
     /// `ByteBufCodecs.holder`: a registry id plus one, or a zero and the
     /// direct value.
-    pub(crate) fn holder(&mut self, direct: impl FnOnce(&mut Self) -> R) -> R {
+    pub fn holder(&mut self, direct: impl FnOnce(&mut Self) -> R) -> R {
         if self.varint()? == 0 {
             direct(self)
         } else {
@@ -312,7 +312,7 @@ impl Cursor<'_> {
 
     /// `ByteBufCodecs.holderSet`: a count plus one and that many ids, or a
     /// zero and a tag's name.
-    pub(crate) fn holder_set(&mut self) -> R {
+    pub fn holder_set(&mut self) -> R {
         match self.varint()? {
             0 => self.identifier(),
             count if count > 0 => {
@@ -326,14 +326,14 @@ impl Cursor<'_> {
     }
 
     /// `SoundEvent.STREAM_CODEC`.
-    pub(crate) fn sound(&mut self) -> R {
+    pub fn sound(&mut self) -> R {
         self.holder(|cursor| {
             cursor.identifier()?;
             cursor.optional(Cursor::float)
         })
     }
 
-    pub(crate) fn patch(&mut self) -> R<Patch> {
+    pub fn patch(&mut self) -> R<Patch> {
         let added_count = self.count()?;
         let removed_count = self.count()?;
         let mut patch = Patch {
@@ -354,25 +354,25 @@ impl Cursor<'_> {
     }
 
     /// `ItemStackTemplate.STREAM_CODEC`: an item, a count and a patch.
-    pub(crate) fn template(&mut self) -> R {
+    pub fn template(&mut self) -> R {
         self.varint()?;
         self.varint()?;
         self.patch().map(|_| ())
     }
 
-    pub(crate) fn mob_effect_instance(&mut self) -> R {
+    pub fn mob_effect_instance(&mut self) -> R {
         self.varint()?;
         self.mob_effect_details()
     }
 
-    pub(crate) fn mob_effect_details(&mut self) -> R {
+    pub fn mob_effect_details(&mut self) -> R {
         self.varint()?;
         self.varint()?;
         self.skip(3)?;
         self.optional(Cursor::mob_effect_details)
     }
 
-    pub(crate) fn consume_effect(&mut self) -> R {
+    pub fn consume_effect(&mut self) -> R {
         match self.varint()? {
             0 => {
                 self.list(Cursor::mob_effect_instance)?;
@@ -387,12 +387,12 @@ impl Cursor<'_> {
     }
 
     /// `Filterable.streamCodec`: the raw value and an optional filtered one.
-    pub(crate) fn filterable(&mut self, mut value: impl FnMut(&mut Self) -> R) -> R {
+    pub fn filterable(&mut self, mut value: impl FnMut(&mut Self) -> R) -> R {
         value(self)?;
         self.optional(&mut value)
     }
 
-    pub(crate) fn game_profile_properties(&mut self) -> R {
+    pub fn game_profile_properties(&mut self) -> R {
         self.list(|cursor| {
             cursor.string()?;
             cursor.string()?;
@@ -401,7 +401,7 @@ impl Cursor<'_> {
     }
 
     /// `BlockPredicate.STREAM_CODEC` of the advancement predicates.
-    pub(crate) fn block_predicate(&mut self) -> R {
+    pub fn block_predicate(&mut self) -> R {
         self.optional(Cursor::holder_set)?;
         self.optional(|cursor| {
             cursor.list(|cursor| {
@@ -433,7 +433,7 @@ impl Cursor<'_> {
         clippy::too_many_lines,
         reason = "one arm per component type's network codec"
     )]
-    pub(crate) fn component(&mut self, id: i32) -> R {
+    pub fn component(&mut self, id: i32) -> R {
         match id {
             // Holder registries, ids, enumerations and plain numbers.
             1 | 2 | 3 | 8 | 12 | 19 | 31 | 41 | 43 | 46 | 48 | 63 | 73 | 82..=102 | 104..=110 => {
@@ -687,7 +687,7 @@ impl Cursor<'_> {
         }
     }
 
-    pub(crate) fn firework_explosion(&mut self) -> R {
+    pub fn firework_explosion(&mut self) -> R {
         self.varint()?;
         self.list(Cursor::int)?;
         self.list(Cursor::int)?;
@@ -736,23 +736,6 @@ mod tests {
         let mut cursor = Cursor { data: &tag };
         cursor.tag().expect("a tag");
         assert!(cursor.data.is_empty());
-    }
-
-    #[test]
-    fn every_creative_stack_reads_whole() {
-        let registries = crate::registries::for_tests();
-        for tab in voxel_data::item::creative_tabs::CREATIVE_TABS.iter() {
-            for entry in tab.items {
-                let stack = crate::creative_menu::table_stack(entry, &registries);
-                let mut input = stack.patch_bytes();
-                let patch = read_patch(&mut input).expect("a patch this port wrote reads");
-                assert!(input.is_empty());
-                let ids: Vec<i32> = patch.added.iter().map(|(id, _)| *id).collect();
-                assert_eq!(ids, stack.positive_component_type_ids());
-                assert!(patch.removed.is_empty());
-                assert_eq!(patch.trusted(), stack.patch_bytes());
-            }
-        }
     }
 
     #[test]

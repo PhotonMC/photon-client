@@ -29,6 +29,7 @@ mod constants;
 mod container;
 mod dimension;
 mod entity;
+pub mod item_components;
 mod item_physics;
 mod java_math;
 pub mod light;
@@ -1846,9 +1847,9 @@ impl ClientWorld {
             walk_speed: entity.walk_animation().speed_at(partial_tick),
             swim_amount: entity.swim_amount(partial_tick),
             pose: entity.pose(),
-            red_overlay: entity.hurt.hurt_time > 0 || entity.hurt.death_time > 0,
-            death_time: if entity.hurt.death_time > 0 {
-                entity.hurt.death_time as f32 + partial_tick
+            red_overlay: entity.living.hurt_time > 0 || entity.living.death_time > 0,
+            death_time: if entity.living.death_time > 0 {
+                entity.living.death_time as f32 + partial_tick
             } else {
                 0.0
             },
@@ -1891,7 +1892,7 @@ impl ClientWorld {
             return false;
         };
         entity.walk.set_speed(1.5);
-        entity.hurt.hurt_time = 10;
+        entity.living.hurt_time = 10;
         true
     }
 
@@ -1900,7 +1901,7 @@ impl ClientWorld {
         let Some(entity) = self.entities.get_mut(&entity_id) else {
             return false;
         };
-        entity.hurt.hurt_time = 10;
+        entity.living.hurt_time = 10;
         true
     }
 
@@ -2797,7 +2798,7 @@ impl ClientWorld {
                 mob_flags: 0,
                 air_supply: DEFAULT_AIR_SUPPLY,
                 health_bits: None,
-                hurt: HurtState::default(),
+                living: LivingState::default(),
                 arrow_count: 0,
                 stinger_count: 0,
                 effect_ambience: false,
@@ -3161,6 +3162,9 @@ impl ClientWorld {
             return false;
         };
         entity.metadata = Some(metadata.to_vec());
+        if let Some(variant) = variant_from_metadata(entity.type_id, metadata) {
+            entity.living.variant = Some(variant);
+        }
         if let Some(shared_flags) = shared_flags {
             entity.shared_flags = shared_flags;
         }

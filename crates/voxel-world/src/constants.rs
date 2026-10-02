@@ -137,6 +137,12 @@ pub(crate) const ENTITY_STINGER_COUNT_DATA_ID: u8 = 13;
 pub(crate) const ENTITY_SLEEPING_POS_DATA_ID: u8 = 14;
 pub(crate) const ENTITY_MOB_FLAGS_DATA_ID: u8 = 15;
 pub(crate) const VANILLA_ZOMBIE_BABY_DATA_ID: u8 = 16;
+/// Where a pig's and a cow's variant sit among their data, and the
+/// serializers that carry them.
+pub const PIG_VARIANT_DATA_ID: u8 = 19;
+pub const PIG_VARIANT_SERIALIZER_ID: i32 = 28;
+pub const COW_VARIANT_DATA_ID: u8 = 18;
+pub const COW_VARIANT_SERIALIZER_ID: i32 = 23;
 pub(crate) const ENTITY_DATA_SERIALIZER_BYTE_ID: i32 = 0;
 pub(crate) const ENTITY_DATA_SERIALIZER_INT_ID: i32 = 1;
 pub(crate) const ENTITY_DATA_SERIALIZER_FLOAT_ID: i32 = 3;

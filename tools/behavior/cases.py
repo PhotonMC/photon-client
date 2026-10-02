@@ -14210,6 +14210,9 @@ def entity_cases():
     yield from entity_player_model_cases()
     yield from entity_walk_animation_cases()
     yield from entity_model_layer_cases()
+    yield from entity_data_serializer_cases()
+    yield from entity_variant_field_cases()
+    yield from entity_variant_cases()
     yield from entity_living_pose_cases()
     yield from entity_type_cases()
     yield from entity_quadruped_cases()
@@ -14317,6 +14320,38 @@ def entity_type_cases():
         "case_id": "entity/types",
         "family": "entity",
         "operation": "entity_types",
+        "rows": [{"label": "all"}],
+    }
+
+
+def entity_data_serializer_cases():
+    """The entity data serializers: each one's name and the id the wire
+    carries it by (the order `EntityDataSerializers` registers them in)."""
+    yield {
+        "case_id": "entity/data-serializers",
+        "family": "entity",
+        "operation": "entity_data_serializers",
+        "rows": [{"label": "all"}],
+    }
+
+
+def entity_variant_cases():
+    """The pig and cow variants of the game's data pack: the texture an adult
+    and a baby wear, and the model layer family each asks for."""
+    yield {
+        "case_id": "entity/variants",
+        "family": "entity",
+        "operation": "entity_variants",
+        "rows": [{"label": "all"}],
+    }
+
+
+def entity_variant_field_cases():
+    """Where a pig's and a cow's variant sits among their data."""
+    yield {
+        "case_id": "entity/variant-fields",
+        "family": "entity",
+        "operation": "entity_variant_fields",
         "rows": [{"label": "all"}],
     }
 

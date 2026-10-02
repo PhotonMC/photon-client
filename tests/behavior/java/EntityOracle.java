@@ -358,6 +358,97 @@ public final class EntityOracle {
         return result;
     }
 
+    /** The pig and cow variants the game's data pack holds: their textures and model. */
+    private static JsonObject entityVariants() {
+        var registries = Oracle.vanillaRegistries();
+        var rows = new java.util.TreeMap<String, JsonObject>();
+        registries.lookupOrThrow(net.minecraft.core.registries.Registries.PIG_VARIANT).listElements().forEach(holder -> {
+            var variant = holder.value();
+            variants(rows, "pig", holder.key().identifier().toString(), variant.modelAndTexture().asset().id(),
+                variant.babyTexture().id(), variant.modelAndTexture().model().name());
+        });
+        registries.lookupOrThrow(net.minecraft.core.registries.Registries.COW_VARIANT).listElements().forEach(holder -> {
+            var variant = holder.value();
+            variants(rows, "cow", holder.key().identifier().toString(), variant.modelAndTexture().asset().id(),
+                variant.babyTexture().id(), variant.modelAndTexture().model().name());
+        });
+        var list = new JsonArray();
+        rows.values().forEach(list::add);
+        var result = new JsonObject();
+        result.add("rows", list);
+        return result;
+    }
+
+    private static void variants(
+        final java.util.Map<String, JsonObject> rows, final String kind, final String name,
+        final net.minecraft.resources.Identifier asset, final net.minecraft.resources.Identifier baby,
+        final String model) {
+        var out = new JsonObject();
+        out.addProperty("label", kind + ":" + name);
+        out.addProperty("kind", kind);
+        out.addProperty("name", name);
+        out.addProperty("asset", asset.toString());
+        out.addProperty("baby_asset", baby.toString());
+        out.addProperty("model", model.toLowerCase());
+        rows.put(kind + ":" + name, out);
+    }
+
+    /**
+     * Where the variant sits among a pig's and a cow's data (the accessor
+     * their classes define last but for the sound), and which serializer
+     * carries it.
+     */
+    private static JsonObject entityVariantFields() throws Exception {
+        Oracle.vanillaRegistries();
+        var rows = new JsonArray();
+        for (var type : new Class<?>[] {
+            net.minecraft.world.entity.animal.pig.Pig.class, net.minecraft.world.entity.animal.cow.Cow.class}) {
+            var field = type.getDeclaredField("DATA_VARIANT_ID");
+            field.setAccessible(true);
+            var accessor = (net.minecraft.network.syncher.EntityDataAccessor<?>) field.get(null);
+            var out = new JsonObject();
+            out.addProperty("label", type.getSimpleName().toLowerCase());
+            out.addProperty("data_id", accessor.id());
+            out.addProperty("serializer",
+                net.minecraft.network.syncher.EntityDataSerializers.getSerializedId(accessor.serializer()));
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
+     * Every entity data serializer by the id the wire carries, named by the
+     * field that holds it in `EntityDataSerializers`.
+     */
+    private static JsonObject entityDataSerializers() throws Exception {
+        Oracle.vanillaRegistries();
+        var byId = new java.util.TreeMap<Integer, String>();
+        for (var field : net.minecraft.network.syncher.EntityDataSerializers.class.getDeclaredFields()) {
+            if (!java.lang.reflect.Modifier.isStatic(field.getModifiers())
+                || !net.minecraft.network.syncher.EntityDataSerializer.class.isAssignableFrom(field.getType())) {
+                continue;
+            }
+            field.setAccessible(true);
+            var serializer = (net.minecraft.network.syncher.EntityDataSerializer<?>) field.get(null);
+            int id = net.minecraft.network.syncher.EntityDataSerializers.getSerializedId(serializer);
+            if (id >= 0) {
+                byId.put(id, field.getName());
+            }
+        }
+        var rows = new JsonArray();
+        for (var entry : byId.entrySet()) {
+            var out = new JsonObject();
+            out.addProperty("label", entry.getValue());
+            out.addProperty("id", entry.getKey());
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** Every model layer the game builds: its texture size and the tree of its parts. */
     private static JsonObject modelLayers() throws Exception {
         // The layers are made from registries (decorated pot patterns): the game's bootstrap first.
@@ -394,6 +485,15 @@ public final class EntityOracle {
         }
         if (operation.equals("entity_types")) {
             return entityTypes();
+        }
+        if (operation.equals("entity_variants")) {
+            return entityVariants();
+        }
+        if (operation.equals("entity_variant_fields")) {
+            return entityVariantFields();
+        }
+        if (operation.equals("entity_data_serializers")) {
+            return entityDataSerializers();
         }
         if (operation.equals("quadruped_model")) {
             return quadrupedModel(request);

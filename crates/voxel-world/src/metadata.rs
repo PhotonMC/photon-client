@@ -20,16 +20,41 @@ pub(crate) fn read_effect_particle_type_ids(metadata: &mut &[u8]) -> Option<Vec<
     Some(type_ids)
 }
 
+/// The entity data serializers by id, in the order `EntityDataSerializers`
+/// registers them, and the bytes each one's value takes. A value this port
+/// cannot walk leaves the fields after it unread: a particle with data of its
+/// own, a resolvable profile and a painting variant sent whole.
 pub(crate) fn skip_metadata_value(metadata: &mut &[u8], serializer_id: i32) -> Option<()> {
+    let varint = |metadata: &mut &[u8]| voxel_core::wire::read_varint(metadata).ok().map(drop);
+    let bytes = |metadata: &mut &[u8], count: usize| {
+        *metadata = metadata.get(count..)?;
+        Some(())
+    };
     match serializer_id {
-        ENTITY_DATA_SERIALIZER_BYTE_ID | ENTITY_DATA_SERIALIZER_BOOLEAN_ID => {
-            *metadata = metadata.get(1..)?;
+        // Byte, boolean.
+        ENTITY_DATA_SERIALIZER_BYTE_ID | ENTITY_DATA_SERIALIZER_BOOLEAN_ID => bytes(metadata, 1)?,
+        // Int, block state, optional block state, optional unsigned int,
+        // direction, pose, humanoid arm, and the enums and registry holders:
+        // each a var int.
+        ENTITY_DATA_SERIALIZER_INT_ID
+        | ENTITY_DATA_SERIALIZER_POSE_ID
+        | 12
+        | 14
+        | 15
+        | 19
+        | 21..=32
+        | 35..=38
+        | 42 => varint(metadata)?,
+        2 => {
+            voxel_core::wire::read_varlong(metadata).ok()?;
         }
-        ENTITY_DATA_SERIALIZER_INT_ID | ENTITY_DATA_SERIALIZER_POSE_ID => {
-            voxel_core::wire::read_varint(metadata).ok()?;
+        ENTITY_DATA_SERIALIZER_FLOAT_ID => bytes(metadata, 4)?,
+        4 => {
+            let length = usize::try_from(voxel_core::wire::read_varint(metadata).ok()?).ok()?;
+            bytes(metadata, length)?;
         }
-        ENTITY_DATA_SERIALIZER_FLOAT_ID => {
-            *metadata = metadata.get(4..)?;
+        5 => {
+            voxel_core::nbt::read_any_nbt(metadata).ok()?.as_ref()?;
         }
         ENTITY_DATA_SERIALIZER_OPTIONAL_COMPONENT_ID => {
             let (&present, rest) = metadata.split_first()?;
@@ -39,6 +64,17 @@ pub(crate) fn skip_metadata_value(metadata: &mut &[u8], serializer_id: i32) -> O
                 component.as_ref()?;
             }
         }
+        // Item stack (`ItemStack.OPTIONAL_STREAM_CODEC`).
+        7 => {
+            if voxel_core::wire::read_varint(metadata).ok()? > 0 {
+                varint(metadata)?;
+                crate::item_components::read_patch(metadata).ok()?;
+            }
+        }
+        // Rotations, vector3.
+        9 | 39 => bytes(metadata, 12)?,
+        // Block position.
+        10 => bytes(metadata, 8)?,
         ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_POS_ID => {
             let (&present, rest) = metadata.split_first()?;
             *metadata = rest;
@@ -46,12 +82,66 @@ pub(crate) fn skip_metadata_value(metadata: &mut &[u8], serializer_id: i32) -> O
                 voxel_core::binary::read_blockpos(metadata).ok()?;
             }
         }
+        // Optional living entity reference: a flag and a UUID.
+        13 => {
+            let (&present, rest) = metadata.split_first()?;
+            *metadata = rest;
+            if present != 0 {
+                bytes(metadata, 16)?;
+            }
+        }
+        // One particle, which only the entity effect's colour is known for.
+        16 => {
+            if voxel_core::wire::read_varint(metadata).ok()? != ENTITY_EFFECT_PARTICLE_TYPE_ID {
+                return None;
+            }
+            bytes(metadata, 4)?;
+        }
         ENTITY_DATA_SERIALIZER_PARTICLES_ID => {
             read_effect_particle_type_ids(metadata)?;
         }
+        // Villager data: type, profession, level.
+        18 => {
+            varint(metadata)?;
+            varint(metadata)?;
+            varint(metadata)?;
+        }
+        // Optional global position: a flag, a dimension, a block position.
+        33 => {
+            let (&present, rest) = metadata.split_first()?;
+            *metadata = rest;
+            if present != 0 {
+                let length = usize::try_from(voxel_core::wire::read_varint(metadata).ok()?).ok()?;
+                bytes(metadata, length)?;
+                bytes(metadata, 8)?;
+            }
+        }
+        // Painting variant: a registry holder, or the variant itself.
+        34 => {
+            if voxel_core::wire::read_varint(metadata).ok()? == 0 {
+                return None;
+            }
+        }
+        // Quaternion.
+        40 => bytes(metadata, 16)?,
         _ => return None,
     }
     Some(())
+}
+
+/// The registry id of the variant a pig or a cow of this type wears, if the
+/// data holds one (the default is not sent).
+pub(crate) fn variant_from_metadata(type_id: i32, metadata: &[u8]) -> Option<i32> {
+    let (data_id, serializer) = match voxel_data::entity_type::name(type_id)? {
+        "minecraft:pig" => (PIG_VARIANT_DATA_ID, PIG_VARIANT_SERIALIZER_ID),
+        "minecraft:cow" => (COW_VARIANT_DATA_ID, COW_VARIANT_SERIALIZER_ID),
+        _ => return None,
+    };
+    let (found, mut value) = find_metadata_field(metadata, data_id)?;
+    if found != serializer {
+        return None;
+    }
+    voxel_core::wire::read_varint(&mut value).ok()
 }
 
 /// Position the cursor at one entity-metadata field value.
@@ -252,4 +342,126 @@ pub(crate) fn custom_name_present_from_metadata(metadata: &[u8]) -> Option<bool>
     }
     let component = voxel_core::nbt::read_any_nbt(&mut rest).ok()?;
     Some(component.is_some())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Entity data as the wire writes it: fields of `(data id, serializer id,
+    /// value bytes)`, ended by 255.
+    fn data(fields: &[(u8, i32, &[u8])]) -> Vec<u8> {
+        let mut out = Vec::new();
+        for (id, serializer, value) in fields {
+            out.push(*id);
+            voxel_core::wire::write_varint(*serializer, &mut out);
+            out.extend_from_slice(value);
+        }
+        out.push(255);
+        out
+    }
+
+    #[test]
+    fn the_serializer_ids_are_the_names_this_walk_assumes() {
+        let name = |id| voxel_data::entity_type::data_serializer(id).expect("a serializer");
+        assert_eq!(name(ENTITY_DATA_SERIALIZER_PARTICLES_ID), "PARTICLES");
+        assert_eq!(name(PIG_VARIANT_SERIALIZER_ID), "PIG_VARIANT");
+        assert_eq!(name(COW_VARIANT_SERIALIZER_ID), "COW_VARIANT");
+        // Registry holders and enums are one var int each.
+        for id in 21..=32 {
+            assert!(name(id).ends_with("_VARIANT"), "{id}");
+        }
+        for id in 35..=38 {
+            assert!(name(id).contains("STATE"), "{id}");
+        }
+        assert_eq!(name(42), "HUMANOID_ARM");
+        assert_eq!(name(7), "ITEM_STACK");
+        assert_eq!(name(41), "RESOLVABLE_PROFILE");
+    }
+
+    #[test]
+    fn every_serializer_the_walk_knows_is_stepped_over() {
+        // The value of each serializer, so the field after it is still found.
+        let values: [(i32, &[u8]); 41] = [
+            (0, &[7]),
+            (1, &[0x81, 0x01]),
+            (2, &[0xFF, 0xFF, 0x03]),
+            (3, &[0, 0, 0x80, 0x3F]),
+            (4, &[2, b'h', b'i']),
+            (5, &[8, 0, 2, b'h', b'i']),
+            (6, &[0]),
+            (7, &[0]),
+            (8, &[1]),
+            (9, &[0; 12]),
+            (10, &[0; 8]),
+            (11, &[0]),
+            (12, &[3]),
+            (
+                13,
+                &[1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
+            ),
+            (14, &[0x81, 0x01]),
+            (15, &[0]),
+            (17, &[0]),
+            (18, &[1, 2, 3]),
+            (19, &[0]),
+            (20, &[5]),
+            (21, &[1]),
+            (22, &[1]),
+            (23, &[1]),
+            (24, &[1]),
+            (25, &[1]),
+            (26, &[1]),
+            (27, &[1]),
+            (28, &[1]),
+            (29, &[1]),
+            (30, &[1]),
+            (31, &[1]),
+            (32, &[1]),
+            (33, &[1, 3, b'a', b'b', b'c', 0, 0, 0, 0, 0, 0, 0, 0]),
+            (34, &[4]),
+            (35, &[1]),
+            (36, &[1]),
+            (37, &[1]),
+            (38, &[1]),
+            (39, &[0; 12]),
+            (40, &[0; 16]),
+            (42, &[1]),
+        ];
+        for (serializer, value) in values {
+            let metadata = data(&[(1, serializer, value), (2, 8, &[1])]);
+            assert_eq!(
+                metadata_boolean_value(&metadata, 2),
+                Some(true),
+                "serializer {serializer}"
+            );
+        }
+        // A particle with data of its own, a profile and a painting sent
+        // whole are not walked, and the fields after them are not read.
+        for serializer in [16, 41] {
+            let metadata = data(&[(1, serializer, &[1, 1]), (2, 8, &[1])]);
+            assert_eq!(metadata_boolean_value(&metadata, 2), None, "{serializer}");
+        }
+        let direct_painting = data(&[(1, 34, &[0, 1, 1]), (2, 8, &[1])]);
+        assert_eq!(metadata_boolean_value(&direct_painting, 2), None);
+    }
+
+    #[test]
+    fn a_pigs_and_a_cows_variant_is_read_after_the_fields_before_it() {
+        let pig = voxel_data::entity_type::id("minecraft:pig").expect("pig");
+        let cow = voxel_data::entity_type::id("minecraft:cow").expect("cow");
+        let zombie = voxel_data::entity_type::id("minecraft:zombie").expect("zombie");
+        let metadata = data(&[
+            (6, 20, &[0]),
+            (PIG_VARIANT_DATA_ID, PIG_VARIANT_SERIALIZER_ID, &[2]),
+        ]);
+        assert_eq!(variant_from_metadata(pig, &metadata), Some(2));
+        // A cow's data is told apart by the entity's type, not the id alone.
+        assert_eq!(variant_from_metadata(cow, &metadata), None);
+        assert_eq!(variant_from_metadata(zombie, &metadata), None);
+        let metadata = data(&[(COW_VARIANT_DATA_ID, COW_VARIANT_SERIALIZER_ID, &[1])]);
+        assert_eq!(variant_from_metadata(cow, &metadata), Some(1));
+        // The variant not sent: the default.
+        assert_eq!(variant_from_metadata(pig, &data(&[(6, 20, &[0])])), None);
+    }
 }
