@@ -256,7 +256,7 @@ Bitti: `Component`/dil (`en_us`), stilli yazı, `EditBox`, ipucu kutusu.
   okunur (kullanım yok), kalp sütununun yanıp sönmesi birim testli ama
   oracle'da yalnız ilk çizim, bozuk (`unknown objective`) paketler sessizce
   yok sayılır.
-- **M** Kalan ekran metinleri: `TrackedWaypoint`.
+- **M** Kalan ekran metinleri: yok (`TrackedWaypoint` T14'te yapıldı).
 - **M** Yazı motoru kalanı: unifont yedeği (Latin dışı glifler), altı çizili /
   üstü çizili / karışık yazı, sağdan sola metin (bidi), tıklama/üzerine gelme
   olayları (`ClickEvent`, `HoverEvent`), yazı tipi seçimi, gölge rengi,

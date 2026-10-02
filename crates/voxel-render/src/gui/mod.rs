@@ -16,6 +16,7 @@ pub mod hud;
 pub mod items;
 pub mod language_select;
 pub mod layout;
+pub mod locator;
 pub mod mouse_options;
 pub mod navigation;
 pub mod option_text;

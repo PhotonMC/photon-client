@@ -513,6 +513,7 @@ public final class GuiOracle {
                 case "suggestions" -> suggestions(request);
                 case "titles" -> titles(request);
                 case "boss_bar" -> bossBar(request);
+                case "locator_bar" -> locatorBar(request);
                 case "sidebar" -> sidebar(request);
                 case "command_parse" -> commandParse(request);
                 case "command_suggest" -> commandSuggest(request);
@@ -764,6 +765,106 @@ public final class GuiOracle {
                 method.setAccessible(true);
                 method.invoke(hud, screen.graphics(), tracker);
             }
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("ops", record(screen.state()));
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /** The locator bar over the waypoints packets track, seen from a camera and a player. */
+    private static JsonObject locatorBar(JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        var deviceInfo = new com.mojang.blaze3d.systems.DeviceInfo(null, null, null, true, null, 0.0F, null, null,
+            null, null, null);
+        var backend = (com.mojang.blaze3d.systems.GpuDeviceBackend) java.lang.reflect.Proxy.newProxyInstance(
+            GuiOracle.class.getClassLoader(), new Class<?>[] {com.mojang.blaze3d.systems.GpuDeviceBackend.class},
+            (proxy, method, args) -> method.getName().equals("getDeviceInfo") ? deviceInfo : null);
+        var device = unsafe.allocateInstance(com.mojang.blaze3d.systems.GpuDevice.class);
+        set(device, "backend", backend);
+        var deviceField = com.mojang.blaze3d.systems.RenderSystem.class.getDeclaredField("DEVICE");
+        deviceField.setAccessible(true);
+        deviceField.set(null, device);
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            int width = row.get("width").getAsInt();
+            int height = row.get("height").getAsInt();
+            var screen = screen(width, height, 0, 0);
+            var minecraft = screen.minecraft();
+            var camera = row.getAsJsonObject("camera");
+            var at = camera.getAsJsonArray("pos");
+            var feet = row.getAsJsonObject("player").getAsJsonArray("pos");
+            var uuid = row.getAsJsonObject("player").getAsJsonArray("uuid");
+            var fresh = net.minecraft.client.Camera.class.getDeclaredConstructor();
+            fresh.setAccessible(true);
+            var cameraObject = fresh.newInstance();
+            var setRotation = net.minecraft.client.Camera.class.getDeclaredMethod("setRotation", float.class,
+                float.class);
+            setRotation.setAccessible(true);
+            setRotation.invoke(cameraObject, (float) camera.get("yaw").getAsDouble(),
+                (float) camera.get("pitch").getAsDouble());
+            var setPosition = net.minecraft.client.Camera.class.getDeclaredMethod("setPosition",
+                net.minecraft.world.phys.Vec3.class);
+            setPosition.setAccessible(true);
+            setPosition.invoke(cameraObject, new net.minecraft.world.phys.Vec3(at.get(0).getAsDouble(),
+                at.get(1).getAsDouble(), at.get(2).getAsDouble()));
+            float fov = (float) camera.get("fov").getAsDouble();
+            set(cameraObject, "fov", fov);
+            var projection = (net.minecraft.client.renderer.Projection) get(cameraObject, "projection");
+            projection.setupPerspective(0.05F, (float) camera.get("far").getAsDouble(), fov,
+                (float) camera.get("aspect").getAsDouble(), 1.0F);
+            var renderer = unsafe.allocateInstance(net.minecraft.client.renderer.GameRenderer.class);
+            set(renderer, "mainCamera", cameraObject);
+            set(minecraft, "gameRenderer", renderer);
+
+            var level = unsafe.allocateInstance(net.minecraft.client.multiplayer.ClientLevel.class);
+            set(level, "tickRateManager", new net.minecraft.world.TickRateManager());
+            var player = unsafe.allocateInstance(net.minecraft.client.player.LocalPlayer.class);
+            var position = new net.minecraft.world.phys.Vec3(feet.get(0).getAsDouble(), feet.get(1).getAsDouble(),
+                feet.get(2).getAsDouble());
+            set(player, "level", level);
+            set(player, "position", position);
+            set(player, "blockPosition", net.minecraft.core.BlockPos.containing(position));
+            set(player, "uuid", new java.util.UUID(uuid.get(0).getAsLong(), uuid.get(1).getAsLong()));
+            var listener = unsafe.allocateInstance(net.minecraft.client.multiplayer.ClientPacketListener.class);
+            var manager = new net.minecraft.client.waypoints.ClientWaypointManager();
+            set(listener, "waypointManager", manager);
+            set(player, "connection", listener);
+            set(minecraft, "player", player);
+            set(cameraObject, "entity", player);
+
+            var styles = new HashMap<net.minecraft.resources.ResourceKey<
+                net.minecraft.world.waypoints.WaypointStyleAsset>, net.minecraft.client.resources.WaypointStyle>();
+            for (var name : new String[] {"default", "bowtie"}) {
+                try (var stream = GuiOracle.class.getClassLoader().getResourceAsStream(
+                        "assets/minecraft/waypoint_style/" + name + ".json")) {
+                    var json = com.google.gson.JsonParser.parseReader(new java.io.InputStreamReader(stream));
+                    styles.put(net.minecraft.world.waypoints.WaypointStyleAssets.createId(name),
+                        net.minecraft.client.resources.WaypointStyle.CODEC
+                            .parse(com.mojang.serialization.JsonOps.INSTANCE, json).getOrThrow());
+                }
+            }
+            var styleManager = unsafe.allocateInstance(net.minecraft.client.resources.WaypointStyleManager.class);
+            set(styleManager, "waypointStyles", styles);
+            set(screen.hud(), "waypointStyles", styleManager);
+
+            for (var packetElement : row.getAsJsonArray("packets")) {
+                var hex = packetElement.getAsString();
+                var bytes = new byte[hex.length() / 2];
+                for (int i = 0; i < bytes.length; i++) {
+                    bytes[i] = (byte) Integer.parseInt(hex.substring(2 * i, 2 * i + 2), 16);
+                }
+                var buffer = new net.minecraft.network.RegistryFriendlyByteBuf(
+                    io.netty.buffer.Unpooled.wrappedBuffer(bytes), (net.minecraft.core.RegistryAccess) Oracle.vanillaRegistries());
+                net.minecraft.network.protocol.game.ClientboundTrackedWaypointPacket.STREAM_CODEC.decode(buffer)
+                    .apply(manager);
+            }
+            var bar = new net.minecraft.client.gui.contextualbar.LocatorBar(minecraft);
+            bar.extractBackground(screen.graphics(), net.minecraft.client.DeltaTracker.ZERO);
+            bar.extractRenderState(screen.graphics(), net.minecraft.client.DeltaTracker.ZERO);
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());
             out.add("ops", record(screen.state()));

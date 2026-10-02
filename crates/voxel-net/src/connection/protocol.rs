@@ -96,6 +96,7 @@ pub(crate) const PLAY_CLIENTBOUND_SET_TITLE_TEXT_PACKET_ID: i32 = 114;
 pub(crate) const PLAY_CLIENTBOUND_SET_TITLES_ANIMATION_PACKET_ID: i32 = 115;
 pub(crate) const PLAY_CLIENTBOUND_TAB_LIST_PACKET_ID: i32 = 122;
 pub(crate) const PLAY_CLIENTBOUND_BOSS_EVENT_PACKET_ID: i32 = 9;
+pub(crate) const PLAY_CLIENTBOUND_WAYPOINT_PACKET_ID: i32 = 138;
 pub(crate) const PLAY_CLIENTBOUND_COMMANDS_PACKET_ID: i32 = 16;
 pub(crate) const PLAY_CLIENTBOUND_RESET_SCORE_PACKET_ID: i32 = 79;
 pub(crate) const PLAY_CLIENTBOUND_SET_DISPLAY_OBJECTIVE_PACKET_ID: i32 = 98;
@@ -3398,6 +3399,65 @@ fn parse_boss_event(input: &mut &[u8]) -> Result<HudEvent, ConnectionError> {
         _ => return Err(ConnectionError::Codec("boss event operation")),
     };
     Ok(HudEvent::Boss { id, operation })
+}
+
+/// `ClientboundTrackedWaypointPacket.STREAM_CODEC`: the operation, then the
+/// waypoint (`TrackedWaypoint.read`).
+pub fn parse_waypoint_packet(
+    input: &[u8],
+) -> Result<
+    (
+        voxel_game::waypoint::WaypointOperation,
+        voxel_game::waypoint::TrackedWaypoint,
+    ),
+    ConnectionError,
+> {
+    use voxel_game::waypoint::{
+        TrackedWaypoint, WaypointIcon, WaypointId, WaypointKind, WaypointOperation,
+    };
+    let mut input = input;
+    let input = &mut input;
+    // `ByIdMap.continuous` with `WRAP`: an id past the end comes round.
+    let operation = match read_varint(input, "waypoint operation")?.rem_euclid(3) {
+        0 => WaypointOperation::Track,
+        1 => WaypointOperation::Untrack,
+        _ => WaypointOperation::Update,
+    };
+    let id = if read_bool(input, "waypoint id side")? {
+        WaypointId::Uuid(
+            wire::take::<16>(input)
+                .map(u128::from_be_bytes)
+                .ok_or(ConnectionError::Codec("waypoint uuid"))?,
+        )
+    } else {
+        WaypointId::Name(read_chat_string(input, 32767, "waypoint name")?)
+    };
+    let style = read_identifier_string(input, "waypoint style")?;
+    let colour = if read_bool(input, "waypoint colour present")? {
+        let red = i32::from(read_byte(input, "waypoint red")?);
+        let green = i32::from(read_byte(input, "waypoint green")?);
+        let blue = i32::from(read_byte(input, "waypoint blue")?);
+        Some(red << 16 | green << 8 | blue)
+    } else {
+        None
+    };
+    // `readEnum`: the ordinal, which must exist.
+    let kind = match read_varint(input, "waypoint type")? {
+        0 => WaypointKind::Empty,
+        1 => WaypointKind::Position([
+            read_varint(input, "waypoint x")?,
+            read_varint(input, "waypoint y")?,
+            read_varint(input, "waypoint z")?,
+        ]),
+        2 => WaypointKind::Chunk([
+            read_varint(input, "waypoint chunk x")?,
+            read_varint(input, "waypoint chunk z")?,
+        ]),
+        3 => WaypointKind::Azimuth(read_f32(input, "waypoint angle")?),
+        _ => return Err(ConnectionError::Codec("waypoint type")),
+    };
+    let icon = WaypointIcon { style, colour };
+    Ok((operation, TrackedWaypoint { id, icon, kind }))
 }
 
 /// An enum on the wire: its ordinal as a varint, below `count`.

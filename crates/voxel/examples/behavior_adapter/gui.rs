@@ -27,7 +27,13 @@ fn gui_ops(ops: &[voxel_render::gui::DrawOp]) -> Vec<Value> {
                 String::new(),
                 i64::from(*colour as i32),
             ),
-            DrawOp::Sprite { rect, name } | DrawOp::Texture { rect, name, .. } => (
+            DrawOp::Sprite { rect, name, colour } => (
+                1,
+                [rect.1, rect.0, rect.2, rect.3].map(f64::from),
+                name.clone(),
+                i64::from(*colour as i32),
+            ),
+            DrawOp::Texture { rect, name, .. } => (
                 1,
                 [rect.1, rect.0, rect.2, rect.3].map(f64::from),
                 name.clone(),
@@ -70,9 +76,9 @@ fn gui_ops(ops: &[voxel_render::gui::DrawOp]) -> Vec<Value> {
                 "x1": num(rect.2), "y1": num(rect.3), "color": -1,
                 "u0": f64::from(uv.0), "u1": f64::from(uv.1), "v0": f64::from(uv.2), "v1": f64::from(uv.3),
             }),
-            DrawOp::Sprite { name, rect } => json!({
+            DrawOp::Sprite { name, rect, colour } => json!({
                 "op": "sprite", "name": name, "x0": num(rect.0), "y0": num(rect.1),
-                "x1": num(rect.2), "y1": num(rect.3), "color": -1,
+                "x1": num(rect.2), "y1": num(rect.3), "color": *colour as i32,
             }),
             DrawOp::Text {
                 x,
@@ -998,6 +1004,59 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                     );
                 }
                 bars.draw(&mut frame, &atlas, &font, (int("width"), int("height")), 0);
+            }
+            "locator_bar" => {
+                use voxel_render::gui::locator::{
+                    self, LocatorCamera, LocatorInput, Viewer, WaypointStyles,
+                };
+                let numbers = |value: &Value| -> Vec<f64> {
+                    value
+                        .as_array()
+                        .map(|list| list.iter().filter_map(Value::as_f64).collect())
+                        .unwrap_or_default()
+                };
+                let mut waypoints = voxel_game::waypoint::WaypointManager::default();
+                for packet in row["packets"].as_array().ok_or("packets")? {
+                    let hex = packet.as_str().ok_or("packet")?;
+                    let bytes: Vec<u8> = (0..hex.len() / 2)
+                        .map(|i| u8::from_str_radix(&hex[2 * i..2 * i + 2], 16))
+                        .collect::<Result<_, _>>()
+                        .map_err(|error| error.to_string())?;
+                    let (operation, waypoint) =
+                        voxel_net::connection::parse_waypoint_packet(&bytes)
+                            .map_err(|error| format!("{error:?}"))?;
+                    waypoints.apply(operation, waypoint);
+                }
+                let camera = &row["camera"];
+                let at = numbers(&camera["pos"]);
+                let feet = numbers(&row["player"]["pos"]);
+                let uuid = row["player"]["uuid"].as_array().ok_or("uuid")?;
+                let half = |index: usize| uuid[index].as_i64().unwrap_or(0) as u64;
+                let input = LocatorInput {
+                    waypoints,
+                    camera: LocatorCamera {
+                        y_rot: camera["yaw"].as_f64().unwrap_or(0.0) as f32,
+                        x_rot: camera["pitch"].as_f64().unwrap_or(0.0) as f32,
+                        position: [at[0], at[1], at[2]],
+                        fov: camera["fov"].as_f64().unwrap_or(70.0) as f32,
+                        size: (camera["aspect"].as_f64().unwrap_or(1.0) as f32, 1.0),
+                        z_near: 0.05,
+                        z_far: camera["far"].as_f64().unwrap_or(768.0) as f32,
+                    },
+                    viewer: Viewer {
+                        uuid: u128::from(half(0)) << 64 | u128::from(half(1)),
+                        position: [feet[0], feet[1], feet[2]],
+                    },
+                };
+                let size = (int("width"), int("height"));
+                locator::background(&mut frame, &atlas, size);
+                locator::draw_dots(
+                    &mut frame,
+                    &atlas,
+                    &input,
+                    &WaypointStyles::load(&root),
+                    size,
+                );
             }
             "tab_list" => {
                 use voxel_render::gui::tab_list::{self, HealthStates, TabPlayer, TabScores};

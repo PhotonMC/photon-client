@@ -80,6 +80,8 @@ struct FrameCamera {
     eye_in_water: bool,
     /// `Camera.getCullFrustum`.
     frustum: voxel_render::visibility::Frustum,
+    /// What the locator bar reads of the camera.
+    locator: voxel_render::gui::locator::LocatorCamera,
 }
 
 /// A joined session with its window, renderer and everything the frames
@@ -443,7 +445,17 @@ impl Play {
         // The view bob option's default is on.
         let (walked, bob) = player.view_bob(partial as f32);
         let bob = voxel_render::camera::view_bob(walked, bob);
+        let locator = voxel_render::gui::locator::LocatorCamera {
+            y_rot,
+            x_rot,
+            position: [camera.x, camera.y, camera.z],
+            fov,
+            size: (self.aspect, 1.0),
+            z_near: 0.05,
+            z_far: far,
+        };
         FrameCamera {
+            locator,
             partial,
             eye,
             camera,
@@ -577,7 +589,7 @@ impl Play {
             &mut self.session,
             &mut self.controls,
             (&self.block_renderer, &self.biome_tints),
-            &mut self.player_model,
+            (&mut self.player_model, frame.locator),
         )?;
         let built = Instant::now();
         self.backend.draw_scene(colour, frame.view_projection)?;

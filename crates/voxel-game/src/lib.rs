@@ -23,3 +23,4 @@ pub mod scoreboard;
 pub mod scroll;
 pub mod text;
 pub mod tooltip;
+pub mod waypoint;

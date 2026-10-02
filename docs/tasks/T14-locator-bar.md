@@ -25,4 +25,7 @@ Harita waypoint'leri, entity kaynaklı waypoint'ler (T20+ sonrası).
 `docs/gui-oracle.md`; `docs/remaining-work.md` "TrackedWaypoint" satırı.
 
 ## Devir notu
-(boş)
+- Yapıldı: `voxel-game/waypoint.rs` (durum), `parse_waypoint_packet` (kimlik 138), `voxel-render/gui/locator.rs` (stil, kamera/izdüşüm, noktalar, ok), HUD'da bağlamsal çubuk seçimi (`experienceDisplayStartTick`, 5 sn deneyim önceliği), `locator_bar` oracle'ı (gerçek paket baytları, gerçek `LocatorBar`).
+- Sapma: entity yok, bu yüzden UUID'li `Vec3i` waypoint'in entity gözü konumu yerine blok merkezi kullanılır (Java'da yalnız entity ≤3 blok yakındaysa fark eder). Bilinmeyen stil çizilmez (Java eksik doku çizer). Eşit mesafeli waypoint'lerin sırası Java'da hash haritasına bağlı; burada `hashCode` ile sabit.
+- Oracle `isZZeroToOne = true` ile (Vulkan) kurulur.
+- Açık: harita/entity kaynaklı waypoint'ler (T20+), araç zıplama çubuğu önceliği.

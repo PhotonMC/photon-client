@@ -2594,6 +2594,41 @@ fn boss_event_packets_read_each_operation() {
 }
 
 #[test]
+fn a_waypoint_packet_reads_its_operation_id_icon_and_place() {
+    use voxel_game::waypoint::{WaypointId, WaypointKind, WaypointOperation};
+    // Track, a UUID, the default style with no colour, a block position.
+    let mut track = vec![0, 1];
+    track.extend(5u128.to_be_bytes());
+    track.push(17);
+    track.extend(b"minecraft:default");
+    track.extend([0, 1, 10, 0xFF, 0xFF, 0xFF, 0xFF, 0x0F, 0xE8, 0x07]);
+    let (operation, waypoint) = super::parse_waypoint_packet(&track).unwrap();
+    assert_eq!(operation, WaypointOperation::Track);
+    assert_eq!(waypoint.id, WaypointId::Uuid(5));
+    assert_eq!(waypoint.icon.style, "minecraft:default");
+    assert_eq!(waypoint.icon.colour, None);
+    // A varint of -1 is five bytes.
+    assert_eq!(waypoint.kind, WaypointKind::Position([10, -1, 1000]));
+    // Untrack, a name, a colour, an azimuth.
+    let mut update = vec![2, 0, 1, b'n', 17];
+    update.extend(b"minecraft:default");
+    update.extend([1, 0x10, 0x20, 0x30, 3]);
+    update.extend(1.5f32.to_be_bytes());
+    let (operation, waypoint) = super::parse_waypoint_packet(&update).unwrap();
+    assert_eq!(operation, WaypointOperation::Update);
+    assert_eq!(waypoint.id, WaypointId::Name("n".to_owned()));
+    assert_eq!(waypoint.icon.colour, Some(0x10_2030));
+    assert_eq!(waypoint.kind, WaypointKind::Azimuth(1.5));
+    // A type past the last is refused.
+    let mut odd = vec![1, 1];
+    odd.extend(5u128.to_be_bytes());
+    odd.push(17);
+    odd.extend(b"minecraft:default");
+    odd.extend([0, 9]);
+    assert!(super::parse_waypoint_packet(&odd).is_err());
+}
+
+#[test]
 fn scoreboard_packets_read_their_fields() {
     use voxel_game::scoreboard::{NumberFormat, ScoreboardEvent};
     use voxel_game::text::Component;

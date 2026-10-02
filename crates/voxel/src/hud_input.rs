@@ -2,6 +2,7 @@
 //! the registry's ids), effects, stacks and status.
 
 use voxel_net::connection::PlaySession;
+use voxel_render::gui::locator::{LocatorCamera, LocatorInput, Viewer};
 use voxel_world::ClientPlayerState;
 
 const ARMOR: i32 = 1;
@@ -39,7 +40,11 @@ fn has_effect(local: Option<&ClientPlayerState>, id: i32) -> bool {
 }
 
 /// Everything the HUD draws from, the camera in first person or not.
-pub fn hud_input(session: &PlaySession, first_person: bool) -> voxel_render::gui::HudInput {
+pub fn hud_input(
+    session: &PlaySession,
+    first_person: bool,
+    camera: LocatorCamera,
+) -> voxel_render::gui::HudInput {
     let status = *session.status();
     let game_mode = session.game_mode();
     let local = session.world().local_player();
@@ -75,6 +80,22 @@ pub fn hud_input(session: &PlaySession, first_person: bool) -> voxel_render::gui
         eye_in_water: player.is_some_and(|player| player.is_eye_in_water()),
         experience_progress: status.experience_progress,
         experience_level: status.experience_level,
+        // `willPrioritizeExperienceInfo`.
+        experience_prioritised: status.experience_display_start_tick.wrapping_add(100)
+            > player.map_or(0, |player| player.tick_count()),
+        locator: session.waypoints().has_waypoints().then(|| LocatorInput {
+            waypoints: session.waypoints().clone(),
+            camera,
+            viewer: Viewer {
+                uuid: session
+                    .profile_id()
+                    .map_or(0, |id| u128::from(id.most) << 64 | u128::from(id.least)),
+                position: player.map_or([0.0; 3], |player| {
+                    let at = player.position();
+                    [at.x, at.y, at.z]
+                }),
+            },
+        }),
         attack_strength: player.map_or(1.0, |player| {
             player.attack_strength_scale(0.0, attack_speed(local))
         }),

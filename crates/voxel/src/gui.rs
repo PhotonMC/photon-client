@@ -12,6 +12,7 @@ use voxel_render::gui::boss_bar::BossBars;
 use voxel_render::gui::chat::ChatLog;
 use voxel_render::gui::font::Font;
 use voxel_render::gui::items::GuiItemVertex;
+use voxel_render::gui::locator::LocatorCamera;
 use voxel_render::gui::pause::PauseScreen;
 use voxel_render::gui::screen::ScreenDraw;
 use voxel_render::gui::sidebar::{self, SidebarLine};
@@ -88,6 +89,8 @@ impl Gui {
             items: ItemLayerCache::new(voxel_render::model::DisplayContext::Gui),
             started_at: std::time::Instant::now(),
         };
+        gui.hud
+            .set_waypoint_styles(voxel_render::gui::locator::WaypointStyles::load(root));
         gui.set_language(language);
         Ok(gui)
     }
@@ -411,7 +414,7 @@ impl Gui {
         session: &mut PlaySession,
         controls: &mut Controls,
         (renderer, tints): (&BlockRenderer, &BiomeTints),
-        player_model: &mut PlayerModel,
+        (player_model, locator_camera): (&mut PlayerModel, LocatorCamera),
     ) -> Result<(), Box<dyn std::error::Error>> {
         let size = surface.scale();
         let screen_menu = controls
@@ -450,7 +453,11 @@ impl Gui {
             &self.font,
             size.gui_scaled_width(),
             size.gui_scaled_height(),
-            &hud_input(session, controls.camera_type == CameraType::FirstPerson),
+            &hud_input(
+                session,
+                controls.camera_type == CameraType::FirstPerson,
+                locator_camera,
+            ),
             self.started_at.elapsed().as_millis(),
             &mut draw_item,
         );

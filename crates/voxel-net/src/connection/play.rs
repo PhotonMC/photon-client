@@ -116,6 +116,7 @@ pub struct PlaySession {
     /// the tab list names.
     hud_events: Vec<HudEvent>,
     scoreboard: voxel_game::scoreboard::Scoreboard,
+    waypoints: voxel_game::waypoint::WaypointManager,
     commands: Option<std::sync::Arc<voxel_game::commands::CommandTree>>,
     username: String,
     suggestions: Option<CommandSuggestions>,
@@ -194,6 +195,7 @@ impl PlaySession {
             signature_cache: SignatureCache::default(),
             hud_events: Vec::new(),
             scoreboard: voxel_game::scoreboard::Scoreboard::default(),
+            waypoints: voxel_game::waypoint::WaypointManager::default(),
             commands: None,
             username: username.to_owned(),
             suggestions: None,
@@ -684,6 +686,11 @@ impl PlaySession {
             PLAY_SERVERBOUND_CLIENT_COMMAND_PACKET_ID,
             encode_perform_respawn,
         )
+    }
+
+    /// The waypoints the server has the client track.
+    pub fn waypoints(&self) -> &voxel_game::waypoint::WaypointManager {
+        &self.waypoints
     }
 
     /// What the server's scoreboard packets built.
@@ -1458,7 +1465,19 @@ impl PlaySession {
             }
             PLAY_CLIENTBOUND_SET_EXPERIENCE_PACKET_ID => {
                 let mut input = payload;
-                self.status.experience_progress = read_f32(&mut input)?;
+                let progress = read_f32(&mut input)?;
+                if progress != self.status.experience_progress {
+                    // `setExperienceDisplayStartTickToTickCount`: the first
+                    // change, the one a login brings, never shows.
+                    let tick_count = self.player.as_ref().map_or(0, LocalPlayer::tick_count);
+                    self.status.experience_display_start_tick =
+                        if self.status.experience_display_start_tick == i32::MIN {
+                            -i32::MAX
+                        } else {
+                            tick_count
+                        };
+                }
+                self.status.experience_progress = progress;
                 self.status.experience_level = read_varint(&mut input, "experience level")?;
                 self.status.total_experience = read_varint(&mut input, "total experience")?;
             }
@@ -1640,6 +1659,10 @@ impl PlaySession {
                 Ok(Some(event)) => self.hud_events.push(event),
                 Ok(None) => {}
                 Err(error) => self.warn(format!("hud packet {packet_id}: {error:?}")),
+            },
+            PLAY_CLIENTBOUND_WAYPOINT_PACKET_ID => match parse_waypoint_packet(payload) {
+                Ok((operation, waypoint)) => self.waypoints.apply(operation, waypoint),
+                Err(error) => self.warn(format!("waypoint: {error:?}")),
             },
             PLAY_CLIENTBOUND_COMMANDS_PACKET_ID => match parse_commands_packet(payload) {
                 Ok(tree) => self.commands = Some(std::sync::Arc::new(tree)),
@@ -1882,6 +1905,10 @@ pub struct PlayerStatus {
     pub experience_level: i32,
     pub total_experience: i32,
     pub selected_slot: i32,
+    /// `experienceDisplayStartTick`: the player tick the experience last
+    /// changed at, which keeps the experience bar over the locator bar for
+    /// five seconds.
+    pub experience_display_start_tick: i32,
 }
 
 impl Default for PlayerStatus {
@@ -1894,6 +1921,7 @@ impl Default for PlayerStatus {
             experience_level: 0,
             total_experience: 0,
             selected_slot: 0,
+            experience_display_start_tick: i32::MIN,
         }
     }
 }

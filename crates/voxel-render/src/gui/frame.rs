@@ -42,6 +42,8 @@ pub enum DrawOp {
     Sprite {
         name: String,
         rect: (f32, f32, f32, f32),
+        /// The tint, `0xAARRGGBB` (white for a sprite drawn as it is).
+        colour: u32,
     },
     /// A part of a whole texture, as fractions of it.
     Texture {
@@ -283,6 +285,7 @@ impl GuiFrame {
             log.push(DrawOp::Sprite {
                 name: name.to_owned(),
                 rect: (x as f32, y as f32, (x + w) as f32, (y + h) as f32),
+                colour: 0xFFFF_FFFF,
             });
         }
         self.blit(atlas, GuiBlend::Translucent, name, x, y, w, h);
@@ -301,6 +304,7 @@ impl GuiFrame {
             log.push(DrawOp::Sprite {
                 name: name.to_owned(),
                 rect: (x as f32, y as f32, (x + w) as f32, (y + h) as f32),
+                colour: 0xFFFF_FFFF,
             });
         }
         self.blit_region(
@@ -594,6 +598,7 @@ impl GuiFrame {
             log.push(DrawOp::Sprite {
                 name: name.to_owned(),
                 rect: (x as f32, y as f32, (x + w) as f32, (y + h) as f32),
+                colour: 0xFFFF_FFFF,
             });
         }
         let blend = GuiBlend::Translucent;
@@ -938,6 +943,27 @@ impl GuiFrame {
         }
     }
 
+    /// `GuiGraphics.blitSprite` of a whole sprite in a tint (`0xAARRGGBB`).
+    pub fn sprite_tinted(
+        &mut self,
+        atlas: &GuiAtlas,
+        name: &str,
+        (x, y, w, h): (i32, i32, i32, i32),
+        colour: u32,
+    ) {
+        self.sprite(atlas, name, x, y, w, h);
+        if let Some(DrawOp::Sprite { colour: logged, .. }) =
+            self.log.as_mut().and_then(|log| log.last_mut())
+        {
+            *logged = colour;
+        }
+        let tint = [16, 8, 0, 24].map(|shift| ((colour >> shift) & 0xFF) as f32 / 255.0);
+        let first = self.vertices.len().saturating_sub(6);
+        for vertex in &mut self.vertices[first..] {
+            vertex.colour = tint;
+        }
+    }
+
     /// `GuiGraphics.blitSprite` of part of a sprite: the sprite is taken as
     /// `size` units, and the part from `(u, v)` as big as the drawn area.
     #[expect(
@@ -1057,6 +1083,7 @@ mod tests {
         let sprite = |(x0, y0, x1, y1): (i32, i32, i32, i32)| DrawOp::Sprite {
             name: "a".to_owned(),
             rect: (x0 as f32, y0 as f32, x1 as f32, y1 as f32),
+            colour: 0xFFFF_FFFF,
         };
         // Half in, wholly below, wholly above.
         quad(&mut frame, (0.0, 0.0, 10.0, 20.0));

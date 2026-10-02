@@ -17,6 +17,7 @@ Arayüzün yerleşimi ve davranışı, Java'nın **kendi GUI kodunun** başsız 
 | `suggestions` | `CommandSuggestions` + `EditBox` | seçili ilk öğe, hayalet sonek, Tab/Shift+Tab/ok/Esc, sıralama, 10 satırlık pencere |
 | `titles` | `Hud.extractTitle/extractOverlayMessage` | alfa eğrisi, ölçek, süre, eylem çubuğu |
 | `boss_bar` | `BossHealthOverlay.extractRenderState` | renk, çentik, ilerleme genişliği, çubuk sayısı sınırı |
+| `locator_bar` | `LocatorBar.extractBackground/extractRenderState` (gerçek `ClientboundTrackedWaypointPacket` baytlarından) | mesafe sprite'ı, ±60° kesimi, yukarı/aşağı ok, renk (verilen, ad/UUID karması), chunk/azimut/boş, kendi waypoint'i, uzaktan yakına sıra, kamera yaw/pitch/FOV, track/update/untrack |
 | `command_parse` | `CommandDispatcher.parse`, `CommandSuggestions.formatText/updateUsageInfo` | düğüm aralıkları, istisna iletileri, renkler, kullanım/hata satırları; ağaç gerçek paket baytlarıyla |
 | `command_suggest` | `CommandDispatcher.getCompletionSuggestions` | öneri metinleri, başlangıç, sunucuya sorulup sorulmadığı; `registry_backed` satırları (Java kayıt defterinden yerel, bizde sunucudan) işaretle eşitlenir |
 | `pause_screen` | gerçek `PauseScreen` (init + extractBackground + extractRenderState + extractDeferredElements; Tab/ok tuşu adımları, saat adımları) | ızgara düzeni, düğme/simge sprite'ları, etiket ve başlık yerleri, üzerine gelince vurgu, menü arka planı; ekran boyutları; simge ipuçları (üzerine gelince ve klavye odağında, konumlayıcılar, gecikme), Tab ve ok tuşu odağı |

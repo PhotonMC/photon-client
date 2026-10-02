@@ -1,6 +1,7 @@
 """GUI family corpus: original synthetic screen scenarios; expected values come from the Java JAR."""
 
 import itertools
+import math
 import struct
 
 
@@ -1500,6 +1501,117 @@ def gui_language_cases():
                     for code in ("en_us", "tr_tr", "de_de", "fr_fr", "ja_jp", "ar_sa", "ru_ru", "xx_xx")]}
 
 
+def _waypoint_bytes(operation, ident, kind, contents, style="minecraft:default", color=None):
+    """A `ClientboundTrackedWaypointPacket` body as hex: the operation, the
+    identifier (a name or a UUID given as two longs), the icon, the kind
+    (0 empty, 1 position, 2 chunk, 3 azimuth) and its contents."""
+    import struct
+
+    def varint(value):
+        value &= 0xFFFFFFFF
+        out = b""
+        while True:
+            byte = value & 0x7F
+            value >>= 7
+            out += bytes([byte | (0x80 if value else 0)])
+            if not value:
+                return out
+
+    def utf(text):
+        raw = text.encode()
+        return varint(len(raw)) + raw
+
+    body = varint(operation)
+    if isinstance(ident, tuple):
+        body += b"\x01" + struct.pack(">QQ", ident[0] & (2**64 - 1), ident[1] & (2**64 - 1))
+    else:
+        body += b"\x00" + utf(ident)
+    body += utf(style)
+    body += b"\x00" if color is None else b"\x01" + bytes(color)
+    body += varint(kind)
+    if kind == 1:
+        body += b"".join(varint(v) for v in contents)
+    elif kind == 2:
+        body += b"".join(varint(v) for v in contents)
+    elif kind == 3:
+        body += struct.pack(">f", contents)
+    return body.hex()
+
+
+def gui_locator_bar_cases():
+    """The locator bar: where a dot sits for each heading off the camera's
+    (and where it is cut off), the sprite each distance picks, the arrows for
+    a waypoint above or below, colours (set, hashed from a name, from a UUID),
+    chunk and azimuth waypoints, the viewer's own waypoint left out, the
+    farthest drawn first, a turned and a pitched camera, and the operations
+    that move and remove waypoints.  Names identify the block waypoints and
+    UUIDs the others, as the game has no entity for a UUID to name."""
+    me = (0x1234567890ABCDEF, -0x1234567890ABCDEF)
+
+    def block(name, x, y, z, **icon):
+        return _waypoint_bytes(0, name, 1, (x, y, z), **icon)
+
+    def row(label, packets, yaw=0.0, pitch=0.0, width=427, height=240, eye=(0.5, 65.62, 0.5),
+            fov=70.0, aspect=16 / 9, far=768.0):
+        return {"label": label, "width": width, "height": height, "packets": packets,
+                "camera": {"yaw": yaw, "pitch": pitch, "pos": list(eye), "fov": fov, "aspect": aspect,
+                           "far": far},
+                "player": {"pos": [eye[0], eye[1] - 1.62, eye[2]], "uuid": list(me)}}
+
+    rows = [row("empty", [])]
+    # Ahead is +z at yaw 0; the bar spans sixty degrees either way.
+    for blocks in (10, 60, 127, 128, 160, 200, 250, 331, 332, 400, 3000):
+        rows.append(row("distance-%d" % blocks, [block("ahead", 0, 64, blocks)]))
+    for degrees in (-70, -61, -60, -59, -45, -30, -10, -1, 0, 1, 10, 30, 45, 59, 60, 61, 90, 135, 180):
+        radians = math.radians(degrees)
+        x, z = -math.sin(radians) * 50, math.cos(radians) * 50
+        rows.append(row("angle-%d" % degrees, [block("w", round(x), 64, round(z))]))
+    rows.append(row("above", [block("up", 0, 160, 20)]))
+    rows.append(row("below", [block("down", 0, -60, 20)]))
+    rows.append(row("level", [block("level", 0, 66, 20)]))
+    rows.append(row("behind-above", [block("up", 0, 160, -20)]))
+    rows.append(row("behind-below", [block("down", 0, -60, -20)]))
+    rows.append(row("behind-level", [block("level", 0, 66, -20)]))
+    rows.append(row("overhead", [block("up", 0, 300, 1)]))
+    rows.append(row("colours", [
+        block("red", -20, 64, 50, color=(255, 0, 0)), block("green", 0, 64, 50, color=(0, 255, 0)),
+        block("hashed-a", 20, 64, 50), block("hashed-b", -40, 64, 50), block("hashed-c", 40, 64, 50)]))
+    rows.append(row("grey-and-dark", [
+        block("grey", -20, 64, 50, color=(128, 128, 128)), block("black", 0, 64, 50, color=(0, 0, 0)),
+        block("white", 20, 64, 50, color=(255, 255, 255))]))
+    rows.append(row("bowtie", [
+        block("near", -20, 64, 30, style="minecraft:bowtie"), block("mid", 0, 64, 80, style="minecraft:bowtie"),
+        block("far", 20, 64, 300, style="minecraft:bowtie"), block("end", 40, 64, 500, style="minecraft:bowtie")]))
+    rows.append(row("chunks", [
+        _waypoint_bytes(0, (1, 1), 2, (0, 4)), _waypoint_bytes(0, (2, 2), 2, (-3, 6)),
+        _waypoint_bytes(0, (3, 3), 2, (3, 6)), _waypoint_bytes(0, (4, 4), 2, (0, -5))]))
+    rows.append(row("azimuths", [
+        _waypoint_bytes(0, (5, 5), 3, 0.0), _waypoint_bytes(0, (6, 6), 3, 0.5),
+        _waypoint_bytes(0, (7, 7), 3, -0.7), _waypoint_bytes(0, (8, 8), 3, 3.0)]))
+    rows.append(row("azimuth-looking-up", [_waypoint_bytes(0, (5, 5), 3, 0.3)], pitch=-60.0))
+    rows.append(row("azimuth-looking-down", [_waypoint_bytes(0, (5, 5), 3, 0.3)], pitch=60.0))
+    rows.append(row("chunk-looking-up", [_waypoint_bytes(0, (1, 1), 2, (0, 4))], pitch=-80.0))
+    rows.append(row("empty-waypoint", [_waypoint_bytes(0, (9, 9), 0, None)]))
+    rows.append(row("own-waypoint", [_waypoint_bytes(0, me, 3, 0.0), block("other", 5, 64, 50)]))
+    rows.append(row("overlap", [block("far", 0, 64, 300), block("mid", 1, 64, 150), block("near", 2, 64, 20)]))
+    for yaw in (90.0, -90.0, 180.0, 370.0, -190.0, 45.5):
+        rows.append(row("yaw-%g" % yaw, [block("north", 0, 64, -50), block("east", 50, 64, 0),
+                                         block("west", -50, 64, 0), block("south", 0, 64, 50)], yaw=yaw))
+    for pitch in (-90.0, -45.0, 45.0, 90.0):
+        rows.append(row("pitch-%g" % pitch, [block("ahead", 0, 70, 30), block("low", 0, 55, 30)], pitch=pitch))
+    rows.append(row("wide-fov", [block("up", 0, 100, 30)], fov=110.0))
+    rows.append(row("narrow-fov", [block("up", 0, 80, 30)], fov=30.0))
+    rows.append(row("far-corner", [block("a", -30000, 64, 30000)], eye=(-29990.5, 70.0, 29900.5)))
+    rows.append(row("updated", [block("a", 0, 64, 50), block("b", 20, 64, 50),
+                                _waypoint_bytes(2, "a", 1, (-30, 64, 50))]))
+    rows.append(row("untracked", [block("a", 0, 64, 50), block("b", 20, 64, 50),
+                                  _waypoint_bytes(1, "a", 1, (0, 0, 0))]))
+    rows.append(row("retracked", [block("a", 0, 64, 50), block("a", 20, 64, 80)]))
+    rows.append(row("small-screen", [block("a", 0, 64, 50), block("b", 30, 90, 50)], width=320, height=180))
+    rows.append(row("tall-screen", [block("a", 0, 64, 50)], width=213, height=240))
+    yield {"case_id": "gui/locator_bar", "family": "gui", "operation": "locator_bar", "rows": rows}
+
+
 def gui_generators():
     return itertools.chain(
         gui_cases(), gui_suggestion_cases(), gui_title_cases(), gui_boss_bar_cases(),
@@ -1508,4 +1620,4 @@ def gui_generators():
         gui_tab_list_cases(), gui_container_screen_cases(),
         gui_confirm_screen_cases(), gui_widgets_cases(),
         gui_options_screen_cases(), gui_video_settings_cases(), gui_chat_options_cases(),
-        gui_mouse_cases(), gui_language_cases())
+        gui_mouse_cases(), gui_language_cases(), gui_locator_bar_cases())

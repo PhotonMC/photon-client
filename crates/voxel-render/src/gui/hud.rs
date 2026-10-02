@@ -5,6 +5,7 @@
 
 use super::atlas::GuiAtlas;
 use super::frame::{GuiBlend, GuiFrame, ItemDrawer};
+use super::locator::{self, LocatorInput, WaypointStyles};
 use voxel_core::random::RandomSource;
 
 /// Which hearts the player's health is drawn with: `Hud.HeartType`.
@@ -79,6 +80,11 @@ pub struct HudInput {
     pub eye_in_water: bool,
     pub experience_progress: f32,
     pub experience_level: i32,
+    /// The experience changed within the last five seconds, which keeps its
+    /// bar over the locator bar.
+    pub experience_prioritised: bool,
+    /// The waypoints the server tracks, when it tracks any.
+    pub locator: Option<LocatorInput>,
     /// `getAttackStrengthScale(0)`.
     pub attack_strength: f32,
     /// The hotbar's stacks and the off hand's.
@@ -96,6 +102,7 @@ pub struct Hud {
     last_health_time: u128,
     health_blink_time: i64,
     random: RandomSource,
+    waypoint_styles: WaypointStyles,
 }
 
 impl Default for Hud {
@@ -107,11 +114,17 @@ impl Default for Hud {
             last_health_time: 0,
             health_blink_time: 0,
             random: RandomSource::create(0),
+            waypoint_styles: WaypointStyles::default(),
         }
     }
 }
 
 impl Hud {
+    /// The waypoint styles the locator bar draws with.
+    pub fn set_waypoint_styles(&mut self, styles: WaypointStyles) {
+        self.waypoint_styles = styles;
+    }
+
     /// `Hud.tick`: the HUD's tick count moves on.
     pub fn tick(&mut self) {
         self.tick_count = self.tick_count.wrapping_add(1);
@@ -188,12 +201,60 @@ impl Hud {
         }
         if input.survival {
             self.player_health(&mut frame, atlas, width, height, input, now_millis);
-            // `ExperienceBar.extractBackground`: every level needs some
-            // experience, so the bar always shows.
-            let left = (width - 182) / 2;
-            let top = height - 24 - 5;
-            let progress = (input.experience_progress * 183.0) as i32;
+        }
+        self.contextual_bar(&mut frame, atlas, font, (width, height), input);
+        frame
+    }
+
+    /// `Hud.nextContextualInfoState` and the bar it picks: the experience
+    /// bar, or the locator bar when the server tracks waypoints and the
+    /// experience did not just change. The level shows over either.
+    fn contextual_bar(
+        &self,
+        frame: &mut GuiFrame,
+        atlas: &GuiAtlas,
+        font: &crate::gui::font::Font,
+        (width, height): (i32, i32),
+        input: &HudInput,
+    ) {
+        let t = GuiBlend::Translucent;
+        let left = (width - 182) / 2;
+        let top = height - 24 - 5;
+        let locator = input
+            .locator
+            .as_ref()
+            .filter(|_| !(input.survival && input.experience_prioritised));
+        if locator.is_some() {
+            locator::background(frame, atlas, (width, height));
+        } else if input.survival {
+            // `ExperienceBar.extractBackground`.
             frame.blit(atlas, t, "hud/experience_bar_background", left, top, 182, 5);
+        }
+        if input.survival {
+            // `ContextualBar.extractExperienceLevel`: the level in green,
+            // outlined by four black copies a unit off.
+            if input.experience_level > 0 {
+                let text = input.experience_level.to_string();
+                let x = (width - font.width(&text)) / 2;
+                let y = height - 24 - 9 - 2;
+                for (dx, dy) in [(1, 0), (-1, 0), (0, 1), (0, -1)] {
+                    frame.text(atlas, font, &text, x + dx, y + dy, 0xFF00_0000);
+                }
+                frame.text(atlas, font, &text, x, y, 0xFF80_FF20);
+            }
+        }
+        if let Some(locator) = locator {
+            locator::draw_dots(
+                frame,
+                atlas,
+                locator,
+                &self.waypoint_styles,
+                (width, height),
+            );
+        } else if input.survival {
+            // `ExperienceBar.extractRenderState`: every level needs some
+            // experience, so the bar always shows.
+            let progress = (input.experience_progress * 183.0) as i32;
             if progress > 0 {
                 frame.blit_part(
                     atlas,
@@ -207,19 +268,7 @@ impl Hud {
                     5,
                 );
             }
-            // `ContextualBar.extractExperienceLevel`: the level in green,
-            // outlined by four black copies a unit off.
-            if input.experience_level > 0 {
-                let text = input.experience_level.to_string();
-                let x = (width - font.width(&text)) / 2;
-                let y = height - 24 - 9 - 2;
-                for (dx, dy) in [(1, 0), (-1, 0), (0, 1), (0, -1)] {
-                    frame.text(atlas, font, &text, x + dx, y + dy, 0xFF00_0000);
-                }
-                frame.text(atlas, font, &text, x, y, 0xFF80_FF20);
-            }
         }
-        frame
     }
 
     /// `Hud.extractCrosshair` with the attack indicator under it, as the
