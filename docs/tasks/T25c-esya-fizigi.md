@@ -29,5 +29,6 @@ Kendi `client-parity` kaydı (entity hareket belgeleri gibi); `docs/index.md` gi
 
 ## Devir notu
 - Yapıldı: `voxel-world/src/item_physics.rs` (`ItemEntity.tick` istemci kolu: yerçekimi, çarpışma, blok hız çarpanı, `stepOn` slime, sürtünme, sekme, destek bloğu), `Level::{check_supporting_block,on_pos,block_speed_factor}` `local_player.rs`'den paylaşıma çıkarıldı (oyuncu aynı kodu çağırır). Oracle: `MovementOracle.item_entity_ticks` gerçek `ClientLevel`+`ItemEntity`, 28 satır, bit bit geçti. Kayıt: `docs/client-world-entity-item-tick-parity-conformance.md`.
+- Sonradan (canlı geri bildirim): göreli `MoveEntity` paketleri entity'nin kendi konumuna uygulanıyordu; Java `VecDeltaCodec` tabanına uygular (`ClientEntity.tracking.packet_base`, AddEntity/Move/PositionSync'te güncellenir). İstemci eşyayı ilerletince eşya sunucu konumuna ışınlanıyordu; oracle'a paket olayları eklendi (32 satır, canlı iz: iniş anındaki sync farkı 3e-4).
 - Sapma: akışkana değen eşya simüle edilmez (sunucu konumunda kalır), blok içi etkiler, dünya sınırı ve entity çarpışması yok. Canlı kare düşüşü yakalayamadı (`shot` zamanlaması); düşüşün kanıtı parity.
 - Açık: T25d (akışkan: kaldırma, akıntı; `Entity.updateFluidInteraction` ortak hâle getirilip oyuncuyla paylaşılabilir).

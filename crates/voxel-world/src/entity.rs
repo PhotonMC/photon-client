@@ -131,6 +131,25 @@ pub(crate) struct Support {
     pub(crate) no_blocks: bool,
 }
 
+/// What the client keeps of where an entity is, besides the position itself.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct Tracking {
+    pub(crate) support: Support,
+    /// Where the server's relative position packets count from
+    /// (`Entity.packetPositionCodec`): the last position a packet gave, which
+    /// is not the entity's own once the client moves it.
+    pub(crate) packet_base_bits: [u64; 3],
+}
+
+impl Tracking {
+    pub(crate) fn at(x: f64, y: f64, z: f64) -> Self {
+        Self {
+            support: Support::default(),
+            packet_base_bits: [x.to_bits(), y.to_bits(), z.to_bits()],
+        }
+    }
+}
+
 /// Entity dimensions used to derive Java's feet-origin bounding box.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ClientEntityDimensions {
@@ -471,7 +490,7 @@ pub struct ClientEntity {
     pub(crate) head_lerp_steps: u8,
     pub(crate) interpolation: Option<EntityInterpolationState>,
     pub(crate) on_ground: bool,
-    pub(crate) support: Support,
+    pub(crate) tracking: Tracking,
     pub(crate) always_ticking: bool,
     pub(crate) ticking: bool,
     /// The limbs' walk animation and the swimming pose's ease (a player's).
@@ -1245,6 +1264,16 @@ impl ClientEntity {
         self.x_bits = position.0.to_bits();
         self.y_bits = position.1.to_bits();
         self.z_bits = position.2.to_bits();
+    }
+
+    /// `Entity.getPositionCodec().getBase()`.
+    pub(crate) fn packet_base(&self) -> (f64, f64, f64) {
+        let [x, y, z] = self.tracking.packet_base_bits.map(f64::from_bits);
+        (x, y, z)
+    }
+
+    pub(crate) fn set_packet_base(&mut self, base: (f64, f64, f64)) {
+        self.tracking.packet_base_bits = [base.0.to_bits(), base.1.to_bits(), base.2.to_bits()];
     }
 
     pub fn tick_count(&self) -> i32 {

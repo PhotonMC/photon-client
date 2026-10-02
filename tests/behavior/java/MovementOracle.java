@@ -305,18 +305,61 @@ public final class MovementOracle {
     private static JsonObject itemEntityTicks(JsonObject row) throws Exception {
         var entry = new JsonObject();
         entry.addProperty("label", row.get("label").getAsString());
-        var level = buildScene(row).level();
+        var scene = buildScene(row);
+        var level = scene.level();
+        var listener = scene.listener();
+        // The handlers check they run on the packet thread, and read the level.
+        setField(scene.minecraft(), "packetProcessor",
+            new net.minecraft.network.PacketProcessor(Thread.currentThread()));
+        setField(listener, "level", level);
+        setField(listener, "minecraft", scene.minecraft());
+        // The handlers ask whether the player rides the entity; this one rides nothing.
+        setField(scene.minecraft(), "player",
+            unsafe.allocateInstance(net.minecraft.client.player.LocalPlayer.class));
         var item = new net.minecraft.world.entity.item.ItemEntity(level,
             Oracle.f64(row, "x"), Oracle.f64(row, "y"), Oracle.f64(row, "z"),
             new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIAMOND),
             Oracle.f64(row, "motion_x"), Oracle.f64(row, "motion_y"), Oracle.f64(row, "motion_z"));
-        item.setId(row.get("entity_id").getAsInt());
+        int entityId = row.get("entity_id").getAsInt();
+        item.setId(entityId);
+        // `recreateFromPacket`: where the server's relative moves count from.
+        item.syncPacketPositionCodec(item.getX(), item.getY(), item.getZ());
+        level.addEntity(item);
         if (row.get("on_ground").getAsBoolean()) {
             // `handleMoveEntity` and the teleports hand the packet's flag over.
             item.setOnGround(true);
         }
         var ticks = new JsonArray();
         for (int tick = 0; tick < row.get("tick_count").getAsInt(); tick++) {
+            // The packets that arrived since the last tick, as the listener
+            // handles them.
+            for (var element : row.getAsJsonArray("events")) {
+                var event = element.getAsJsonObject();
+                if (event.get("tick").getAsInt() != tick) {
+                    continue;
+                }
+                boolean onGround = event.has("on_ground") && event.get("on_ground").getAsBoolean();
+                switch (event.get("type").getAsString()) {
+                    case "move" -> listener.handleMoveEntity(
+                        new net.minecraft.network.protocol.game.ClientboundMoveEntityPacket.Pos(entityId,
+                            (short) event.get("xa").getAsInt(), (short) event.get("ya").getAsInt(),
+                            (short) event.get("za").getAsInt(), onGround));
+                    case "sync" -> listener.handleEntityPositionSync(
+                        new net.minecraft.network.protocol.game.ClientboundEntityPositionSyncPacket(entityId,
+                            new net.minecraft.world.entity.PositionMoveRotation(
+                                new net.minecraft.world.phys.Vec3(Oracle.f64(event, "x"),
+                                    Oracle.f64(event, "y"), Oracle.f64(event, "z")),
+                                new net.minecraft.world.phys.Vec3(Oracle.f64(event, "motion_x"),
+                                    Oracle.f64(event, "motion_y"), Oracle.f64(event, "motion_z")),
+                                0.0F, 0.0F),
+                            onGround));
+                    case "motion" -> listener.handleSetEntityMotion(
+                        new net.minecraft.network.protocol.game.ClientboundSetEntityMotionPacket(entityId,
+                            new net.minecraft.world.phys.Vec3(Oracle.f64(event, "motion_x"),
+                                Oracle.f64(event, "motion_y"), Oracle.f64(event, "motion_z"))));
+                    default -> throw new IllegalArgumentException("Unknown event " + event);
+                }
+            }
             level.tickNonPassenger(item);
             var described = new JsonObject();
             described.addProperty("x", Oracle.bits(item.getX()));

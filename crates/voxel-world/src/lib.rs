@@ -2692,7 +2692,7 @@ impl ClientWorld {
                 head_lerp_steps: 0,
                 interpolation: None,
                 on_ground: false,
-                support: Support::default(),
+                tracking: Tracking::at(entity.x, entity.y, entity.z),
                 always_ticking: entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID,
                 ticking: ticking || entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID,
                 walk: living::WalkAnimation::default(),
@@ -3329,7 +3329,7 @@ impl ClientWorld {
         let Some((previous_position, current)) = self
             .entities
             .get(&input.entity_id)
-            .map(|entity| (entity.position(), entity.interpolation_position()))
+            .map(|entity| (entity.position(), entity.packet_base()))
         else {
             return false;
         };
@@ -3350,8 +3350,12 @@ impl ClientWorld {
                 .entities
                 .get_mut(&input.entity_id)
                 .expect("entity checked above");
+            if let Some(position) = new_position {
+                entity.set_packet_base(position);
+            }
             if entity.living_kind().is_some() {
-                let target_position = new_position.unwrap_or(current);
+                let target_position =
+                    new_position.unwrap_or_else(|| entity.interpolation_position());
                 let (current_y_rot, current_x_rot) = entity.interpolation_rotation();
                 let target_y_rot = input.y_rot.unwrap_or(current_y_rot);
                 let target_x_rot = input.x_rot.unwrap_or(current_x_rot);
@@ -3460,6 +3464,9 @@ impl ClientWorld {
                 .entities
                 .get_mut(&entity_id)
                 .expect("entity position was checked above");
+            if mode == EntityPositionUpdateMode::PositionSync {
+                entity.set_packet_base(target_position);
+            }
             if entity.living_kind().is_some() {
                 let rotation = target_rotation.unwrap_or_else(|| entity.interpolation_rotation());
                 let distance_position = match mode {

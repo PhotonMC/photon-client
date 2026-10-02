@@ -196,8 +196,8 @@ impl ClientWorld {
             position: Vec3::new(x, y, z),
             delta: Vec3::new(dx, dy, dz),
             on_ground: entity.on_ground,
-            main_supporting_block: entity.support.main_block,
-            on_ground_no_blocks: entity.support.no_blocks,
+            main_supporting_block: entity.tracking.support.main_block,
+            on_ground_no_blocks: entity.tracking.support.no_blocks,
             no_gravity: entity.no_gravity,
         };
         let Some(step) = item_step(&Level { world: self }, &state) else {
@@ -212,7 +212,7 @@ impl ClientWorld {
         entity.motion_y_bits = step.delta.y.to_bits();
         entity.motion_z_bits = step.delta.z.to_bits();
         entity.on_ground = step.on_ground;
-        entity.support = Support {
+        entity.tracking.support = Support {
             main_block: step.main_supporting_block,
             no_blocks: step.on_ground_no_blocks,
         };
@@ -229,8 +229,8 @@ impl ClientWorld {
         }
         let (x, y, z) = entity.position();
         let position = Vec3::new(x, y, z);
-        let mut main_supporting_block = entity.support.main_block;
-        let mut on_ground_no_blocks = entity.support.no_blocks;
+        let mut main_supporting_block = entity.tracking.support.main_block;
+        let mut on_ground_no_blocks = entity.tracking.support.no_blocks;
         let checked = Level { world: self }.check_supporting_block(
             (&mut main_supporting_block, &mut on_ground_no_blocks),
             (item_box(position), position, 0.0),
@@ -244,7 +244,7 @@ impl ClientWorld {
             .entities
             .get_mut(&entity_id)
             .expect("the item was read above");
-        entity.support = Support {
+        entity.tracking.support = Support {
             main_block: main_supporting_block,
             no_blocks: on_ground_no_blocks,
         };

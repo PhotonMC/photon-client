@@ -13965,8 +13965,10 @@ def movement_item_cases():
         return [{"x": x, "y": y, "z": z, "block": block}
                 for x in range(start, high + 1) for z in range(low, high + 1)]
 
-    def row(label, blocks, position, motion, ticks=60, on_ground=False, entity_id=21):
+    def row(label, blocks, position, motion, ticks=60, on_ground=False, entity_id=21,
+            events=()):
         return {
+            "events": list(events),
             "label": label,
             "blocks": blocks,
             "chunk_radius": 1,
@@ -14037,6 +14039,37 @@ def movement_item_cases():
             + floor(), (0.5, 67.0, 0.5), (0.0, 0.0, 0.0), 60),
         # A box the floor does not reach.
         row("falling-out-of-the-world", [], (0.5, 10.0, 0.5), (0.0, 0.0, 0.0), 30),
+    ]
+    # The server's packets between ticks. A relative move counts from where
+    # the last packet put the item, not from where the client has moved it to.
+    def move(tick, xa, ya, za, on_ground=False):
+        return {"tick": tick, "type": "move", "xa": xa, "ya": ya, "za": za,
+                "on_ground": on_ground}
+
+    def sync(tick, position, motion=(0.0, 0.0, 0.0), on_ground=False):
+        return {"tick": tick, "type": "sync", "x": float_bits(position[0], "f64"),
+                "y": float_bits(position[1], "f64"), "z": float_bits(position[2], "f64"),
+                "motion_x": float_bits(motion[0], "f64"), "motion_y": float_bits(motion[1], "f64"),
+                "motion_z": float_bits(motion[2], "f64"), "on_ground": on_ground}
+
+    def motion(tick, velocity):
+        return {"tick": tick, "type": "motion", "motion_x": float_bits(velocity[0], "f64"),
+                "motion_y": float_bits(velocity[1], "f64"),
+                "motion_z": float_bits(velocity[2], "f64")}
+
+    rows += [
+        row("moves-count-from-the-last-packet", floor(), (0.5, 66.0, 0.5), (0.1, 0.1, 0.0), 40,
+            events=[move(5, 400, 1200, 0), move(10, 800, -300, 40), move(15, 0, 0, 0, True),
+                    move(25, -200, 0, 100, True)]),
+        row("sync-then-moves", floor(), (0.5, 66.0, 0.5), (0.1, 0.1, 0.0), 50,
+            events=[sync(8, (1.25, 64.0, 0.75), on_ground=True), move(12, 100, 0, -100, True),
+                    move(30, 0, 8, 0, True)]),
+        row("motion-packets", floor(), (0.5, 65.0, 0.5), (0.0, 0.0, 0.0), 60, on_ground=True,
+            events=[motion(3, (0.15, 0.3, 0.0)), move(10, 1000, 2000, 0),
+                    motion(20, (0.0, 0.2, 0.1)), sync(40, (3.0, 64.0, 0.5), on_ground=True)]),
+        row("sync-while-resting", floor(), (0.5, 64.0, 0.5), (0.0, 0.0, 0.0), 40, on_ground=True,
+            events=[sync(10, (0.5, 64.0, 0.5), on_ground=True),
+                    sync(30, (0.62, 64.0, 0.5), on_ground=True)]),
     ]
     yield {
         "case_id": "movement/item-entity-ticks",

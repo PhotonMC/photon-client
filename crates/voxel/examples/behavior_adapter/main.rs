@@ -18044,7 +18044,50 @@ fn item_entity_ticks_result(request: &Value) -> Result<Value, String> {
             world.apply_entity_ground_state(entity_id, true);
         }
         let mut ticks = Vec::new();
-        for _ in 0..i32_field(row, "tick_count")? {
+        for tick in 0..i32_field(row, "tick_count")? {
+            // The packets that arrived since the last tick, as the net layer
+            // hands them to the world.
+            for event in row["events"].as_array().ok_or("events must be an array")? {
+                if i32_field(event, "tick")? != tick {
+                    continue;
+                }
+                let on_ground = event["on_ground"].as_bool().unwrap_or(false);
+                match string(event, "type")? {
+                    "move" => {
+                        world.apply_entity_move(voxel_world::EntityMoveInput {
+                            entity_id,
+                            delta_x: i32_field(event, "xa")? as i16,
+                            delta_y: i32_field(event, "ya")? as i16,
+                            delta_z: i32_field(event, "za")? as i16,
+                            has_position: true,
+                            y_rot: None,
+                            x_rot: None,
+                        });
+                        world.apply_entity_ground_state(entity_id, on_ground);
+                    }
+                    "sync" => {
+                        world.apply_entity_position_sync(
+                            entity_id,
+                            (
+                                bits64(event, "x")?,
+                                bits64(event, "y")?,
+                                bits64(event, "z")?,
+                            ),
+                            (0.0, 0.0),
+                        );
+                        world.apply_entity_ground_state(entity_id, on_ground);
+                    }
+                    "motion" => {
+                        world.apply_entity_motion(voxel_world::EntityMotionInput {
+                            entity_id,
+                            x: bits64(event, "motion_x")?,
+                            y: bits64(event, "motion_y")?,
+                            z: bits64(event, "motion_z")?,
+                        });
+                    }
+                    other => return Err(format!("unknown event {other}")),
+                }
+            }
             world.tick_entities();
             let entity = world.entity_at(entity_id).ok_or("item entity vanished")?;
             let (x, y, z) = entity.position();

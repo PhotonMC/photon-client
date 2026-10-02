@@ -21,6 +21,13 @@ bölümleri) ve Rust adapter'ında koşturulur; her tikte çıktı bit bit karş
   bloğu ve `getOnPos`. `:1142-1195`: `maxUpStep` 0 olduğundan basamak yok.
 - `world/entity/Entity.java:904-960`, `world/level/block/SlimeBlock.java:30-38`:
   yerdeki eşya için `stepOn`; slime yatay hızı `0.4 + |y| * 0.2` ile yavaşlatır.
+- `world/entity/Entity.java:355-361`, `network/protocol/game/VecDeltaCodec.java`,
+  `client/multiplayer/ClientPacketListener.java:640-650,729-754`: sunucunun
+  göreli konum paketleri entity'nin gerçek konumuna değil, `packetPositionCodec`
+  tabanına uygulanır. Taban yalnız `AddEntity`'de, `MoveEntity`'nin çözdüğü
+  konumda ve `EntityPositionSync`'te güncellenir. İstemci eşyayı kendi
+  ilerlettiğinde taban ile konum ayrışır; tabanı tutmayan bir istemci her paketle
+  eşyayı yanlış yere atar (canlıda eşyanın sunucu konumuna ışınlanması).
 - İstemcide eşya yerel olarak yetkili değildir: `Entity.move`'daki genel sekme
   (`restituteMovementAfterCollisions`) çalışmaz; yalnız `ItemEntity.tick`'in kendi
   sekmesi vardır. `ClientPacketListener.handleMoveEntity` konumu ve `onGround`'u
@@ -29,8 +36,8 @@ bölümleri) ve Rust adapter'ında koşturulur; her tikte çıktı bit bit karş
 ## Kapsam ve dal kararı
 
 `ItemEntity.tick` istemci kolu ilk kez ölçülüyor; mevcut kayıtlar yalnız
-mermi/blok/küre tiklerini kapsar. Corpus tek `item_entity_ticks` kaydıdır, 28
-satır: blok düşüşü ve yüksekten bırakma, dinlenme (kimliğe göre 4 tikte bir
+mermi/blok/küre tiklerini kapsar. Corpus tek `item_entity_ticks` kaydıdır, 32
+satır (dördü sunucu paketli: göreli hareket, mutlak konum, hız paketi, dinlenirken konum eşitleme; Java'nın gerçek `handleMoveEntity`/`handleEntityPositionSync`/`handleSetEntityMotion` işleyicileriyle): blok düşüşü ve yüksekten bırakma, dinlenme (kimliğe göre 4 tikte bir
 hareket), taş/buz/paketli buz/slime/ruh kumu/bal zeminlerinde kayma ve düşme,
 duvar, tavan, basamak, iki zemin arasındaki kenar (destek bloğu), yarım blok,
 çit, halı ve boşluğa düşme. Zemin türleri aynı kodun yalnız sabit tablosunu
