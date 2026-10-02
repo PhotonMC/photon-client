@@ -35,6 +35,7 @@ pub mod light;
 pub mod living;
 mod metadata;
 mod paletted;
+mod pick;
 mod player;
 mod prediction;
 mod recipes;
@@ -51,6 +52,7 @@ pub use dimension::*;
 pub use entity::*;
 pub use metadata::find_metadata_field as entity_metadata_field;
 pub(crate) use metadata::*;
+pub use pick::EntityHit;
 pub use player::*;
 pub use prediction::{DestroyProgress, SyncedBlock};
 pub use recipes::{

@@ -10,7 +10,7 @@
 ## Yapılacaklar
 1. Taslak: Esc'te metin boş değilse `ChatComponent.draft` (metin + tür: sohbet/komut) sakla; `T` ile yeniden açınca doldur; gönderince/boş bırakınca temizle. Çizim tarafında Java hangi durumda "taslak" gösteriyor (`chat.draft` gri italik) okuyup uygula; yalnız davranış, çizim oracle'da yoksa `chat` operation'ına `draft` satırı ekle.
 2. Seçici izin düzeyi: seçiciler (`@a…`) için `PermissionSet` kontrolü (`Permissions.COMMANDS_ENTITY_SELECTORS`); istemci izin düzeyini `EntityEvent`'ten (`24..28` op düzeyi) alıyor mu bak (`grep -n "permission" crates/voxel-net/src/connection/play.rs`); yoksa `LocalPlayer` izin düzeyi paketini ekle. Yetkisiz oyuncuda `@` öneri listesinde yok, ayrıştırma `Selector not allowed` hatası verir.
-3. Bakılan varlık UUID önerisi M4'e (T26) kalır; `remaining-work.md`'de duruyor.
+3. Bakılan varlık UUID önerisi T26b'ye kalır; `remaining-work.md`'de duruyor.
 
 ## Oracle
 `command_parse`/`command_suggest` operation'ına `permissions` alanı (Java `ClientSuggestionProvider`/`CommandSourceStack` benzeri sahtede `hasPermission`); satırlar: izinli/izinsiz `@`, `@a[`, ad. **Yeni capture.**
@@ -28,4 +28,4 @@ Bakılan varlık UUID'si, imzalı mesaj zinciri.
 - Yapıldı: taslak (`ChatDrafts`/`ChatMethod`/`ExitReason`, `ChatScreen.as_draft`: Backspace siler, düzenleyince biter, gri italik çizim; `saveChatDrafts` seçeneği `options.txt` ve sohbet ayarları düğmesine bağlı; ölümde taslak kalır), seçici izni (entity olayı 34, işlem düzeyi 24–28, `PlaySession::can_use_selectors`, `CommandTree::parse(.., selectors)`, `ScoreHolder` argüman türü, öneri bağlamı).
 - Oracle: `chat_draft` (gerçek ChatScreen/ChatComponent) ve `command_parse/command_suggest` `selectors: false` satırları; hepsi geçti.
 - Sapma: Enter ile boş gönderim artık `Done` (Java'da DONE nedeni); bağlantı kopunca açık kutunun metni taslağa yazılmaz (Java'da ne olduğu doğrulanmadı). Komutla başlayan taslağın çizimi oracle'da yok (ağaç gerekir).
-- Açık: bakılan varlık UUID önerisi (T26).
+- Açık: bakılan varlık UUID önerisi (T26b).

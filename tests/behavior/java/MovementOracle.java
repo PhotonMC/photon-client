@@ -182,6 +182,7 @@ public final class MovementOracle {
             switch (operation) {
                 case "local_player_ticks" -> rows.add(localPlayerTicks(element.getAsJsonObject()));
                 case "item_entity_ticks" -> rows.add(itemEntityTicks(element.getAsJsonObject()));
+                case "entity_pick_table" -> rows.add(entityPickTable(element.getAsJsonObject()));
                 case "light_changes" -> rows.add(lightChanges(element.getAsJsonObject()));
                 case "container_clicks" -> rows.add(containerClicks(element.getAsJsonObject()));
                 default -> throw new IllegalArgumentException(
@@ -385,6 +386,60 @@ public final class MovementOracle {
      * and every packet the player asked to send are reported, the packets as
      * the bytes their own codec writes.
      */
+    /**
+     * Every entity type as a new entity of it answers the crosshair:
+     * `isPickable`, `getPickRadius`, `canBePickedFromInside`, and its size in
+     * the standing pose, a baby's too where the type has babies. A type that
+     * makes no entity here (the player) has no row of answers.
+     */
+    private static JsonObject entityPickTable(JsonObject row) throws Exception {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        var scene = buildScene(row);
+        var level = scene.level();
+        setField(scene.minecraft(), "level", level);
+        setField(scene.listener(), "enabledFeatures", net.minecraft.world.flag.FeatureFlags.DEFAULT_FLAGS);
+        // Teams are looked up by entities that build boss bars.
+        setField(scene.listener(), "scoreboard", new net.minecraft.world.scores.Scoreboard());
+        var types = new JsonArray();
+        var registry = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE;
+        for (var type : registry) {
+            var out = new JsonObject();
+            out.addProperty("label", registry.getKey(type).toString());
+            out.addProperty("id", registry.getId(type));
+            net.minecraft.world.entity.Entity entity = null;
+            try {
+                entity = type.create(level, new net.minecraft.world.entity.EntitySpawnRequest(
+                    net.minecraft.world.entity.EntitySpawnReason.LOAD, true));
+            } catch (Throwable failure) {
+                var where = failure.getStackTrace().length > 0 ? failure.getStackTrace()[0] : null;
+                out.addProperty("error", failure.getClass().getSimpleName() + " at " + where);
+            }
+            out.addProperty("created", entity != null);
+            if (entity != null) {
+                out.addProperty("pickable", entity.isPickable());
+                out.addProperty("pick_radius", Oracle.bits(entity.getPickRadius()));
+                out.addProperty("from_inside", entity.canBePickedFromInside());
+                var size = entity.getDimensions(net.minecraft.world.entity.Pose.STANDING);
+                out.addProperty("width", Oracle.bits(size.width()));
+                out.addProperty("height", Oracle.bits(size.height()));
+                out.addProperty("eye_height", Oracle.bits(size.eyeHeight()));
+                if (entity instanceof net.minecraft.world.entity.Mob mob) {
+                    mob.setBaby(true);
+                    if (mob.isBaby()) {
+                        var baby = mob.getDimensions(net.minecraft.world.entity.Pose.STANDING);
+                        out.addProperty("baby_width", Oracle.bits(baby.width()));
+                        out.addProperty("baby_height", Oracle.bits(baby.height()));
+                        out.addProperty("baby_eye_height", Oracle.bits(baby.eyeHeight()));
+                    }
+                }
+            }
+            types.add(out);
+        }
+        entry.add("types", types);
+        return entry;
+    }
+
     private static JsonObject localPlayerTicks(JsonObject row) throws Exception {
         var entry = new JsonObject();
         entry.addProperty("label", row.get("label").getAsString());
@@ -471,6 +526,21 @@ public final class MovementOracle {
                 }
             }
         }
+        if (row.has("entities")) {
+            // Entities the server told of: made as the type makes them, put
+            // where the scene says and added to the level.
+            for (var element : row.getAsJsonArray("entities")) {
+                var described = element.getAsJsonObject();
+                var type = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getValue(
+                    net.minecraft.resources.Identifier.parse(described.get("type").getAsString()));
+                var entity = type.create(level, new net.minecraft.world.entity.EntitySpawnRequest(
+                    net.minecraft.world.entity.EntitySpawnReason.LOAD, true));
+                entity.setId(described.get("id").getAsInt());
+                entity.snapTo(Oracle.f64(described, "x"), Oracle.f64(described, "y"),
+                    Oracle.f64(described, "z"), 0.0F, 0.0F);
+                level.addEntity(entity);
+            }
+        }
         var startAttack = net.minecraft.client.Minecraft.class.getDeclaredMethod("startAttack");
         startAttack.setAccessible(true);
         var continueAttack = net.minecraft.client.Minecraft.class.getDeclaredMethod(
@@ -544,7 +614,10 @@ public final class MovementOracle {
         if (rightClickDelay > 0) {
             setField(minecraft, "rightClickDelay", rightClickDelay - 1);
         }
-        if (attack.has("target")) {
+        if (attack.has("pick")) {
+            // `Minecraft.pick`: where the crosshair lands, as the player picks it.
+            minecraft.hitResult = minecraft.player.raycastHitResult(1.0F, minecraft.player);
+        } else if (attack.has("target")) {
             var target = attack.getAsJsonObject("target");
             var pos = new BlockPos(target.get("x").getAsInt(), target.get("y").getAsInt(),
                 target.get("z").getAsInt());

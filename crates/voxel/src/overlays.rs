@@ -16,7 +16,8 @@ use voxel_world::local_player::LocalPlayer;
 
 use crate::hud_input::attack_speed;
 use crate::item_layers::ItemLayerCache;
-use crate::view::{eye_position, pick};
+use crate::view::eye_position;
+use voxel_game::pick::pick;
 
 /// Where the frame is drawn from: how far between ticks, the light at the
 /// eyes (packed block and sky light), and the point meshes are measured

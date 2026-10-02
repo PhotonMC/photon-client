@@ -94,6 +94,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P01.c — ChunkPos temsil ve hash sözleşmesi — client-parity birleşik kayıt](chunkpos-representation-conformance.md)
 - [P01.c — ChunkPos validity sözleşmesi — client-parity birleşik kayıt](chunkpos-validity-conformance.md)
 - [P05.a — OptionInstance ClampingLazyMaxIntRange sözleşmesi — client-parity birleşik kayıt](clamping-lazy-max-int-range-conformance.md)
+- [T26 — Entity hedefleme, `Attack`/`Interact`/`SpectatorAction` — client-parity](client-entity-aim-parity-conformance.md)
 - [P08.c-light.2 — İstemci ışık motoru ve yeniden aydınlatma — client-parity kaydı](client-light-engine-conformance.md)
 - [P10.b — LocalPlayer applyInput — client-parity birleşik kayıt](client-player-apply-input-conformance.md)
 - [P10.f — LocalPlayer movement speed attribute binding — client-parity](client-player-attribute-speed-conformance.md)

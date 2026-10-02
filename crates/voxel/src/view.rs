@@ -1,44 +1,8 @@
 //! Where the player looks from and what they look at: the camera type, its
-//! zoom, its projection, and the block picked.
+//! zoom and its projection.
 
 /// The cloud range option's default, in chunks.
 pub const CLOUD_RANGE: i32 = 128;
-
-/// `GameRenderer.pick` for blocks: the outline seen from `eye` along the
-/// view within reach (4.5 blocks, 5 in creative), or a miss. Entities are
-/// not picked.
-pub fn pick(
-    world: &voxel_world::ClientWorld,
-    player: &voxel_world::local_player::LocalPlayer,
-    eye: voxel_core::math::Vec3,
-) -> voxel_game::game_mode::Aim {
-    let reach = if player.abilities().instabuild() {
-        5.0
-    } else {
-        4.5
-    };
-    let (y_rot, x_rot) = player.rotation();
-    let look = voxel_core::math::Vec3::direction_from_rotation_components(x_rot, y_rot);
-    let to = voxel_core::math::Vec3::new(
-        eye.x + look.x * reach,
-        eye.y + look.y * reach,
-        eye.z + look.z * reach,
-    );
-    match world.clip_outlines(eye, to) {
-        // `filterHitResult`: a hit past the reach is a miss.
-        Some(hit) if hit.location.distance_to_sqr(eye) < reach * reach => {
-            voxel_game::game_mode::Aim::Block {
-                x: hit.block_pos.x,
-                y: hit.block_pos.y,
-                z: hit.block_pos.z,
-                face: hit.direction.data3d() as u8,
-                location: [hit.location.x, hit.location.y, hit.location.z],
-                inside: hit.inside,
-            }
-        }
-        _ => voxel_game::game_mode::Aim::Miss,
-    }
-}
 
 /// `Entity.getEyePosition` between ticks.
 pub fn eye_position(

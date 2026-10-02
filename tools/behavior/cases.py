@@ -13645,6 +13645,77 @@ def movement_cases():
         "operation": "local_player_ticks",
         "rows": breaking_rows,
     }
+    # Entities in the crosshair: the player picks as `LocalPlayer.raycastHitResult`
+    # does, among the blocks and the entities the server told of, and the
+    # attack and use keys act on what it lands on. Everything the player sent
+    # is compared as the bytes the packets' own codecs write.
+    def aims(count, clicks=0, use_clicks=0, down=False, use_down=False, **held):
+        ticks = keys(count, **held)
+        for index, tick in enumerate(ticks):
+            tick["attack"] = {"clicks": clicks if index == 0 else 0, "down": down, "pick": True,
+                              "use": {"clicks": use_clicks if index == 0 else 0, "down": use_down},
+                              "watch": []}
+        return ticks
+
+    def mob(entity_id, kind, x, y, z):
+        return {"id": entity_id, "type": f"minecraft:{kind}", "x": float_bits(x, "f64"),
+                "y": float_bits(y, "f64"), "z": float_bits(z, "f64")}
+
+    def facing(label, entities, ticks, blocks=(), main_hand=None, off_hand=None, **kwargs):
+        row = scene(label, floor() + list(blocks), ticks, **kwargs)
+        row["breaking"] = {}
+        if main_hand:
+            row["breaking"]["main_hand"] = main_hand
+        if off_hand:
+            row["breaking"]["off_hand"] = off_hand
+        row["entities"] = entities
+        return row
+
+    zombie = mob(20, "zombie", 0.5, 64.0, 2.5)
+    entity_rows = [
+        facing("attack-zombie", [zombie], aims(2, clicks=1) + aims(3)),
+        facing("attack-twice", [zombie], aims(1, clicks=2) + aims(3)),
+        facing("attack-held", [zombie], aims(12, down=True)),
+        facing("use-on-zombie-empty-hands", [zombie], aims(1, use_clicks=1) + aims(3)),
+        facing("use-on-zombie-with-stone", [zombie], aims(1, use_clicks=1) + aims(3),
+               main_hand="minecraft:stone"),
+        facing("use-on-zombie-both-hands", [zombie], aims(1, use_clicks=1) + aims(3),
+               main_hand="minecraft:stone", off_hand="minecraft:cobblestone"),
+        facing("use-held-on-zombie", [zombie], aims(10, use_down=True)),
+        facing("use-on-zombie-sneaking", [zombie], aims(1, use_clicks=1, sneak=True) + aims(3, sneak=True)),
+        facing("pig-from-above", [mob(21, "pig", 0.5, 64.0, 2.5)], aims(1, clicks=1) + aims(2), x_rot=30.0),
+        facing("cow-below-the-aim", [mob(22, "cow", 0.5, 64.0, 2.5)], aims(1, clicks=1) + aims(2)),
+        facing("armor-stand", [mob(23, "armor_stand", 0.5, 64.0, 2.5)], aims(1, clicks=1) + aims(2)),
+        facing("nearest-of-two", [mob(24, "skeleton", 0.5, 64.0, 2.6), mob(25, "zombie", 0.5, 64.0, 1.8)],
+               aims(1, clicks=1) + aims(2)),
+        facing("nearest-of-two-reversed", [mob(25, "zombie", 0.5, 64.0, 1.8), mob(24, "skeleton", 0.5, 64.0, 2.6)],
+               aims(1, clicks=1) + aims(2)),
+        facing("inside-the-entity", [mob(26, "zombie", 0.5, 64.0, 0.5)], aims(1, clicks=1) + aims(2)),
+        facing("block-in-front", [zombie], aims(1, clicks=1) + aims(6, down=True), blocks=[put(0, 65, 1, "minecraft:dirt")]),
+        facing("entity-in-front-of-block", [mob(20, "zombie", 0.5, 64.0, 1.8)],
+               aims(1, clicks=1) + aims(2), blocks=[put(0, 65, 4, "minecraft:stone")]),
+        facing("out-of-reach", [mob(20, "zombie", 0.5, 64.0, 4.0)], aims(1, clicks=1) + aims(3)),
+        facing("out-of-reach-then-block", [mob(20, "zombie", 0.5, 64.0, 4.0)],
+               aims(1, clicks=1) + aims(3), blocks=[put(0, 65, 6, "minecraft:stone")]),
+        facing("edge-of-reach", [mob(20, "zombie", 0.5, 64.0, 3.45)], aims(1, clicks=1) + aims(3)),
+        facing("not-pickable-arrow", [mob(27, "arrow", 0.5, 65.4, 2.5)], aims(1, clicks=1) + aims(3)),
+        facing("fireball-grows-the-aim", [mob(28, "fireball", 1.8, 65.1, 2.5)],
+               aims(1, clicks=1) + aims(3)),
+        facing("fireball-too-far-aside", [mob(28, "fireball", 2.6, 65.1, 2.5)],
+               aims(1, clicks=1) + aims(3)),
+        facing("boat-ahead", [mob(29, "oak_boat", 0.5, 64.0, 2.5)], aims(1, clicks=1) + aims(3), x_rot=20.0),
+        facing("turned-away", [zombie], aims(1, clicks=1) + aims(3), y_rot=180.0),
+        facing("creative-attack", [zombie], aims(1, clicks=1) + aims(3), game_mode="creative"),
+        facing("adventure-attack", [zombie], aims(1, clicks=1) + aims(3), game_mode="adventure"),
+        facing("spectator-attack", [zombie], aims(1, clicks=1) + aims(3), game_mode="spectator"),
+        facing("sword-in-hand", [zombie], aims(1, clicks=1) + aims(3), main_hand="minecraft:iron_sword"),
+    ]
+    yield {
+        "case_id": "movement/entity-aim",
+        "family": "movement",
+        "operation": "local_player_ticks",
+        "rows": entity_rows,
+    }
     # Container clicks: the inventory screen's clicks into the reference's
     # own inventory menu and game mode, which predicts each click and sends
     # it. Stacks are named by item and count.
@@ -14076,6 +14147,15 @@ def movement_item_cases():
         "family": "movement",
         "operation": "item_entity_ticks",
         "rows": rows,
+    }
+    # What the crosshair needs of every entity type, as a new entity of it
+    # answers: whether it can be aimed at, how much its box grows for the aim,
+    # and its size (a baby's too, for the types that have babies).
+    yield {
+        "case_id": "movement/entity-pick-table",
+        "family": "movement",
+        "operation": "entity_pick_table",
+        "rows": [{"label": "all", "blocks": [], "chunk_radius": 0}],
     }
 
 

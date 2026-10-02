@@ -26,4 +26,8 @@ Saldırı süpürme/özel silah mantığı, kalkan, binme.
 `docs/remaining-work.md` M4 madde 4; T15 notu kapanır.
 
 ## Devir notu
-(boş)
+- Yapıldı: `voxel-world/pick.rs` (`ClientEntity::is_pickable/bounding_box/pick_radius`, `ClientWorld::entity_hit_result` = `ProjectileUtil.getEntityHitResult`), `voxel-game/pick.rs` (`LocalPlayer.pick`: blok/entity karşılaştırma, menzil süzme; menzil `Miner`'dan öznitelik değeri), `Aim::Entity`, `Outgoing::{Attack, Interact, SpectatorAction}` (+ izleyici boş vuruşta `spectator_action`, eskiden eksikti), paket kimlikleri 1/26/62, `view::pick` kaldırıldı.
+- Veri: tür başına `isPickable`/`getPickRadius`/`canBePickedFromInside`/boyut(+bebek) tablosu oracle'dan (`movement/entity-pick-table`, `tools/generate/entity_picks.py`), her parity koşusunda karşılaştırılır. Kayıt: `docs/client-entity-aim-parity-conformance.md`.
+- Oracle: `movement/entity-aim` 27 satır, gerçek `raycastHitResult` + `startAttack/startUseItem`, paketler bayt bayt. Canlı: `Viewer2` ile etiketli domuza sol tık, sunucuda Health 10 → 9.
+- Sapma: `Player.interactOn` istemci tahmini yok (yenebilir eşyayla hayvana sağ tık ayrışabilir); SCALE/poz boyutları, marker armor stand, `ATTACK_RANGE`, `isHandsBusy` yok. Hasar geri bildirimi (`HurtAnimation`, `DamageEvent`) sonraki görevlerde.
+- Açık: T26b (UUID önerisi, `PickItemFromEntity`).

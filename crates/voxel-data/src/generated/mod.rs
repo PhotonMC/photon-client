@@ -4,5 +4,6 @@
 
 pub mod block;
 pub mod entity_models;
+pub mod entity_picks;
 pub mod entity_types;
 pub mod item;

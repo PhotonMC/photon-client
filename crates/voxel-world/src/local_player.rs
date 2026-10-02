@@ -918,6 +918,11 @@ impl LocalPlayer {
         self.x_rot = x_rot.clamp(-90.0, 90.0);
     }
 
+    /// `Entity.getBoundingBox`.
+    pub fn bounding_box(&self) -> voxel_core::aabb::Aabb {
+        self.bounding_box
+    }
+
     pub fn eye_height(&self) -> f32 {
         self.dimensions.eye_height()
     }

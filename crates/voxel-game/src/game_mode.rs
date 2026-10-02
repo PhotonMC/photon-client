@@ -35,6 +35,14 @@ pub enum Aim {
         location: [f64; 3],
         inside: bool,
     },
+    /// An entity, where the aim lands on it, where the entity stands, and its
+    /// box (min then max corner).
+    Entity {
+        id: i32,
+        location: [f64; 3],
+        position: [f64; 3],
+        bounds: [f64; 6],
+    },
 }
 
 /// The attack and use keys for one tick: presses since the last tick and
@@ -82,6 +90,18 @@ pub enum Outgoing {
         y_rot: f32,
         x_rot: f32,
     },
+    /// `ServerboundAttackPacket`.
+    Attack { entity_id: i32 },
+    /// `ServerboundSpectatorActionPacket`.
+    SpectatorAction { entity_id: Option<i32> },
+    /// `ServerboundInteractPacket`: the hit relative to the entity, and
+    /// whether the secondary use (sneaking) is active.
+    Interact {
+        entity_id: i32,
+        hand: u8,
+        location: [f64; 3],
+        secondary_use: bool,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -103,6 +123,10 @@ pub struct Miner {
     pub mining_efficiency: f64,
     pub block_break_speed: f64,
     pub submerged_mining_speed: f64,
+    /// `Attributes.ENTITY_INTERACTION_RANGE`.
+    pub entity_interaction_range: f64,
+    /// `Attributes.BLOCK_INTERACTION_RANGE`.
+    pub block_interaction_range: f64,
 }
 
 const HASTE: i32 = 2;
@@ -111,6 +135,8 @@ const CONDUIT_POWER: i32 = 28;
 const BLOCK_BREAK_SPEED: i32 = 7;
 const MINING_EFFICIENCY: i32 = 24;
 const SUBMERGED_MINING_SPEED: i32 = 34;
+const BLOCK_INTERACTION_RANGE: i32 = 8;
+const ENTITY_INTERACTION_RANGE: i32 = 13;
 const DIRECTION_DOWN: u8 = 0;
 
 impl Miner {
@@ -147,6 +173,8 @@ impl Miner {
             mining_efficiency: attribute(MINING_EFFICIENCY, 0.0, 1024.0),
             block_break_speed: attribute(BLOCK_BREAK_SPEED, 1.0, 1024.0),
             submerged_mining_speed: attribute(SUBMERGED_MINING_SPEED, 0.2, 20.0),
+            entity_interaction_range: attribute(ENTITY_INTERACTION_RANGE, 3.0, 64.0),
+            block_interaction_range: attribute(BLOCK_INTERACTION_RANGE, 4.5, 64.0),
         }
     }
 
@@ -159,6 +187,8 @@ impl Miner {
             mining_efficiency: 0.0,
             block_break_speed: 1.0,
             submerged_mining_speed: 0.2,
+            entity_interaction_range: 3.0,
+            block_interaction_range: 4.5,
         }
     }
 
@@ -307,6 +337,19 @@ impl Context<'_> {
             && z < border.max_z(0.0)
     }
 
+    /// `Player.isWithinEntityInteractionRange(entity, 0.0)` for the box.
+    fn within_entity_interaction_range(&self, b: [f64; 6]) -> bool {
+        let position = self.player.position();
+        let eye = Vec3::new(
+            position.x,
+            position.y + f64::from(self.player.eye_height()),
+            position.z,
+        );
+        let range = self.miner.entity_interaction_range;
+        voxel_core::aabb::Aabb::new(b[0], b[1], b[2], b[3], b[4], b[5]).distance_to_sqr_point(eye)
+            < range * range
+    }
+
     /// `Player.blockActionRestricted`: spectators cannot break, and in
     /// adventure mode nothing can be broken without a `can_break` predicate,
     /// which is not evaluated.
@@ -415,8 +458,21 @@ impl GameMode {
             return false;
         }
         if ctx.mode == ClientPlayerGameMode::Spectator {
-            // `spectatorNoAction`: nothing to send without an entity.
+            // `spectate` of the entity aimed at, or `spectatorNoAction`.
+            out.push(Outgoing::SpectatorAction {
+                entity_id: match aim {
+                    Aim::Entity { id, .. } => Some(id),
+                    _ => None,
+                },
+            });
             return true;
+        }
+        if let Aim::Entity { id, .. } = aim {
+            // `MultiPlayerGameMode.attack`: the server decides what it does.
+            out.push(Outgoing::Attack { entity_id: id });
+            ctx.player.reset_attack_strength();
+            ctx.swing(out);
+            return false;
         }
         let mut end_attack = false;
         let aimed_block = match aim {
@@ -660,6 +716,34 @@ impl GameMode {
         }
         self.right_click_delay = 4;
         for hand in [MAIN_HAND, OFF_HAND] {
+            if let Aim::Entity {
+                id,
+                location,
+                position,
+                bounds,
+            } = aim
+            {
+                let block = position.map(|value| value.floor() as i32);
+                if !ctx.within_border((block[0], block[1], block[2])) {
+                    return;
+                }
+                if ctx.within_entity_interaction_range(bounds) {
+                    // `MultiPlayerGameMode.interact`. What the entity does on
+                    // its own side of the click is not predicted: the click
+                    // passes on to the hand's item as if it had not been
+                    // consumed.
+                    out.push(Outgoing::Interact {
+                        entity_id: id,
+                        hand,
+                        location: [
+                            location[0] - position[0],
+                            location[1] - position[1],
+                            location[2] - position[2],
+                        ],
+                        secondary_use: ctx.player.is_shift_key_down(),
+                    });
+                }
+            }
             if let Aim::Block { .. } = aim {
                 let old_count = ctx.held(hand).map(|(_, count)| count);
                 match self.use_item_on(ctx, hand, aim, out) {
@@ -919,6 +1003,9 @@ impl Outgoing {
             Outgoing::Swing { .. } => "minecraft:swing",
             Outgoing::UseItemOn { .. } => "minecraft:use_item_on",
             Outgoing::UseItem { .. } => "minecraft:use_item",
+            Outgoing::Attack { .. } => "minecraft:attack",
+            Outgoing::SpectatorAction { .. } => "minecraft:spectator_action",
+            Outgoing::Interact { .. } => "minecraft:interact",
         }
     }
 
@@ -979,6 +1066,25 @@ impl Outgoing {
                 voxel_core::wire::write_varint(sequence, &mut out);
                 out.extend_from_slice(&y_rot.to_be_bytes());
                 out.extend_from_slice(&x_rot.to_be_bytes());
+            }
+            Outgoing::Attack { entity_id } => voxel_core::wire::write_varint(entity_id, &mut out),
+            // `OptionalInt`: the value and one, or nothing as zero.
+            Outgoing::SpectatorAction { entity_id } => {
+                voxel_core::wire::write_varint(entity_id.map_or(0, |id| id + 1), &mut out);
+            }
+            Outgoing::Interact {
+                entity_id,
+                hand,
+                location,
+                secondary_use,
+            } => {
+                voxel_core::wire::write_varint(entity_id, &mut out);
+                voxel_core::wire::write_varint(i32::from(hand), &mut out);
+                voxel_core::binary::write_lp_vec3(
+                    Vec3::new(location[0], location[1], location[2]),
+                    &mut out,
+                );
+                out.push(u8::from(secondary_use));
             }
         }
         out

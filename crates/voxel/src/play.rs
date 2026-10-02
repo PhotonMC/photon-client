@@ -26,7 +26,8 @@ use crate::screens::ScreenAssets;
 use crate::script::{HeldKeys, Script};
 use crate::sections::SectionMeshes;
 use crate::sky::{Sky, SkyCamera};
-use crate::view::{CLOUD_RANGE, CameraType, camera_position, eye_position, pick, player_camera};
+use crate::view::{CLOUD_RANGE, CameraType, camera_position, eye_position, player_camera};
+use voxel_game::pick::pick;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 

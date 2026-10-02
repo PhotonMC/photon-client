@@ -1169,6 +1169,9 @@ impl PlaySession {
                     PLAY_SERVERBOUND_USE_ITEM_ON_PACKET_ID
                 }
                 Outgoing::UseItem { .. } => PLAY_SERVERBOUND_USE_ITEM_PACKET_ID,
+                Outgoing::Attack { .. } => PLAY_SERVERBOUND_ATTACK_PACKET_ID,
+                Outgoing::SpectatorAction { .. } => PLAY_SERVERBOUND_SPECTATOR_ACTION_PACKET_ID,
+                Outgoing::Interact { .. } => PLAY_SERVERBOUND_INTERACT_PACKET_ID,
             };
             let body = packet.encode_body();
             self.send(id, |output| {

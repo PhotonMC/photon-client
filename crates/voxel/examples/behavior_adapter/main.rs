@@ -18219,6 +18219,45 @@ fn name_tags_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// `entity_pick_table`: the generated table of what the crosshair needs of
+/// every entity type, answered as the reference's rows are.
+fn entity_pick_table_result(request: &Value) -> Value {
+    let hex = |value: f32| format!("{:08x}", value.to_bits());
+    let rows: Vec<Value> = request["rows"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|row| {
+            let types: Vec<Value> = (0..)
+                .map_while(|id| voxel_data::entity_type::name(id).map(|name| (id, name)))
+                .map(|(id, name)| {
+                    let mut out = json!({"label": name, "id": id});
+                    let Some(pick) = voxel_data::entity_type::pick(id) else {
+                        out["created"] = json!(false);
+                        return out;
+                    };
+                    out["created"] = json!(true);
+                    out["pickable"] = json!(pick.pickable);
+                    out["pick_radius"] = json!(hex(pick.pick_radius));
+                    out["from_inside"] = json!(pick.from_inside);
+                    let (width, height, eye_height) = pick.size;
+                    out["width"] = json!(hex(width));
+                    out["height"] = json!(hex(height));
+                    out["eye_height"] = json!(hex(eye_height));
+                    if let Some((width, height, eye_height)) = pick.baby {
+                        out["baby_width"] = json!(hex(width));
+                        out["baby_height"] = json!(hex(height));
+                        out["baby_eye_height"] = json!(hex(eye_height));
+                    }
+                    out
+                })
+                .collect();
+            json!({"label": row["label"], "types": types})
+        })
+        .collect();
+    json!({"rows": rows})
+}
+
 fn movement_result(request: &Value) -> Result<Value, String> {
     use voxel_world::ClientPlayerGameMode;
     use voxel_world::local_player::LocalPlayer;
@@ -18250,6 +18289,9 @@ fn movement_result(request: &Value) -> Result<Value, String> {
     if string(request, "operation")? == "item_entity_ticks" {
         return item_entity_ticks_result(request);
     }
+    if string(request, "operation")? == "entity_pick_table" {
+        return Ok(entity_pick_table_result(request));
+    }
     if string(request, "operation")? != "local_player_ticks" {
         return Err("unknown movement operation".into());
     }
@@ -18280,6 +18322,25 @@ fn movement_result(request: &Value) -> Result<Value, String> {
         let mut game_mode = voxel_game::game_mode::GameMode::default();
         if let Some(breaking) = breaking {
             world.set_local_player_id(player.entity_id());
+            // Entities the server told of.
+            for described in row["entities"].as_array().into_iter().flatten() {
+                let name = string(described, "type")?;
+                let id = i32_field(described, "id")?;
+                if !world.apply_entity(EntityInput {
+                    entity_id: id,
+                    uuid: Uuid::new(0, id as u64),
+                    type_id: voxel_data::entity_type::id(name)
+                        .ok_or_else(|| format!("unknown entity type {name}"))?,
+                    x: bits64(described, "x")?,
+                    y: bits64(described, "y")?,
+                    z: bits64(described, "z")?,
+                    movement: (0.0, 0.0, 0.0),
+                    rotation: (0.0, 0.0, 0.0),
+                    data: 0,
+                }) {
+                    return Err(format!("entity {name} was rejected"));
+                }
+            }
             if let Some(name) = breaking["main_hand"].as_str() {
                 let item =
                     voxel_game::item::id_of(name).ok_or_else(|| format!("unknown item {name}"))?;
@@ -18360,6 +18421,18 @@ fn movement_result(request: &Value) -> Result<Value, String> {
                     }
                 }
                 let aim = match attack.get("target") {
+                    _ if attack.get("pick").is_some() => {
+                        let at = player.position();
+                        voxel_game::pick::pick(
+                            &world,
+                            &player,
+                            voxel_core::math::Vec3::new(
+                                at.x,
+                                at.y + f64::from(player.eye_height()),
+                                at.z,
+                            ),
+                        )
+                    }
                     Some(target) => {
                         let (x, y, z) = (
                             i32_field(target, "x")?,
